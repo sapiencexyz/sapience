@@ -1,6 +1,6 @@
 import { WebSocketServer, WebSocket, type RawData } from 'ws';
 import type { IncomingMessage } from 'http';
-import { verifyMessage, type Abi, type Address } from 'viem';
+import { verifyMessage, type Abi } from 'viem';
 import { getProviderForChain } from './utils/getProviderForChain';
 import { addBid, getBids, upsertAuction, getAuction } from './registry';
 import { basicValidateBid } from './sim';
@@ -19,11 +19,6 @@ import {
   subscriptionsActive,
 } from './metrics';
 import { config } from './config';
-import {
-  PREDICTION_MARKET_ADDRESS_ARB1,
-  PREDICTION_MARKET_CHAIN_ID_ARB1,
-  getV2ContractAddress,
-} from './constants';
 import Sentry from './instrument';
 import type {
   BotToServerMessage,
@@ -33,26 +28,6 @@ import type {
   BidPayload,
 } from './types';
 import { verifyAuctionSignature } from './auctionSigVerify';
-
-// V2 imports
-import {
-  isV2ClientMessage,
-  type V2AuctionRequestPayload,
-  type V2BidPayload,
-  type V2ServerToClientMessage,
-} from './v2Types';
-import {
-  upsertV2Auction,
-  getV2Auction,
-  addV2Bid,
-  getV2Bids,
-  getV2AuctionDetails,
-} from './v2Registry';
-import { validateV2AuctionRequest, validateV2Bid } from './v2Helpers';
-import {
-  verifyV2PredictorSignature,
-  verifyV2CounterpartySignature,
-} from './v2SigVerify';
 
 function isClientMessage(msg: unknown): msg is ClientToServerMessage {
   if (!msg || typeof msg !== 'object' || msg === null || !('type' in msg)) {
@@ -107,15 +82,6 @@ function send(ws: WebSocket, message: ServerToClientMessage): void {
     messagesSent.inc({ type: message.type });
   } catch (err) {
     console.error('[Relayer] Failed to send message:', err);
-  }
-}
-
-function sendV2(ws: WebSocket, message: V2ServerToClientMessage): void {
-  try {
-    ws.send(JSON.stringify(message));
-    messagesSent.inc({ type: message.type });
-  } catch (err) {
-    console.error('[Relayer] Failed to send V2 message:', err);
   }
 }
 
@@ -221,11 +187,24 @@ export function createAuctionWebSocketServer() {
 
   const vaultSubscriptions = new Map<VaultKey, Set<WebSocket>>();
   const latestVaultQuoteByKey = new Map<VaultKey, PublishVaultQuotePayload>();
+  const SIGNER_CACHE_TTL_MS = 60_000;
+  const SIGNER_CACHE_MAX_SIZE = 500;
   const vaultSignerCache = new Map<
     VaultKey,
     { signers: Set<string>; fetchedAt: number }
   >();
   const vaultObservers = new Set<WebSocket>();
+
+  // Periodically evict expired signer cache entries to prevent unbounded growth
+  const cacheEvictionTimer = setInterval(() => {
+    const now = Date.now();
+    for (const [key, entry] of vaultSignerCache) {
+      if (now - entry.fetchedAt > SIGNER_CACHE_TTL_MS) {
+        vaultSignerCache.delete(key);
+      }
+    }
+  }, SIGNER_CACHE_TTL_MS);
+  wss.on('close', () => clearInterval(cacheEvictionTimer));
 
   function makeVaultKey(chainId: number, vaultAddress: string): VaultKey {
     return `${chainId}:${vaultAddress.toLowerCase()}`;
@@ -328,13 +307,6 @@ export function createAuctionWebSocketServer() {
       inputs: [],
       outputs: [{ name: '', type: 'address' }],
     },
-    {
-      type: 'function',
-      name: 'owner',
-      stateMutability: 'view',
-      inputs: [],
-      outputs: [{ name: '', type: 'address' }],
-    },
   ];
   async function fetchAuthorizedVaultSigners(
     chainId: number,
@@ -350,12 +322,7 @@ export function createAuctionWebSocketServer() {
       })
       .catch(() => undefined)) as string | undefined;
     const set = new Set<string>();
-    if (manager) {
-      set.add(manager.toLowerCase());
-    } else if (config.DEFAULT_VAULT_MANAGER) {
-      // Fallback to default manager if vault contract not deployed
-      set.add(config.DEFAULT_VAULT_MANAGER.toLowerCase());
-    }
+    if (manager) set.add(manager.toLowerCase());
     return set;
   }
   function buildVaultCanonicalMessage(
@@ -608,13 +575,18 @@ export function createAuctionWebSocketServer() {
             const key = makeVaultKey(p.chainId, p.vaultAddress);
             let allowed = vaultSignerCache.get(key);
             const cacheFresh =
-              allowed && Date.now() - allowed.fetchedAt < 60_000;
+              allowed && Date.now() - allowed.fetchedAt < SIGNER_CACHE_TTL_MS;
             if (!cacheFresh) {
               const signers = await fetchAuthorizedVaultSigners(
                 p.chainId,
                 p.vaultAddress
               );
               allowed = { signers, fetchedAt: Date.now() };
+              // Evict oldest entry if cache is full
+              if (vaultSignerCache.size >= SIGNER_CACHE_MAX_SIZE && !vaultSignerCache.has(key)) {
+                const oldestKey = vaultSignerCache.keys().next().value;
+                if (oldestKey) vaultSignerCache.delete(oldestKey);
+              }
               vaultSignerCache.set(key, allowed);
             }
             const canonical = buildVaultCanonicalMessage(p);
@@ -885,327 +857,9 @@ export function createAuctionWebSocketServer() {
           bidCount: currentBids.length,
           subscribers: subscriberCount,
         });
-
+        
         trackDuration(msgType, startTime);
         return;
-      }
-
-      // ============================================================================
-      // V2 Message Handlers
-      // ============================================================================
-      if (isV2ClientMessage(msg)) {
-        // Extract request ID for ack correlation (client sends id at root and/or in payload)
-        const msgWithPayload = msg as { id?: string; payload?: { id?: string } };
-        const requestId = msgWithPayload.id || msgWithPayload.payload?.id;
-
-        // V2 Auction Start
-        if (msg.type === 'v2.auction.start') {
-          const v2Payload = msg.payload as V2AuctionRequestPayload;
-          const v2StartTime = startTime;
-          let pendingV2AuctionId = 'pending';
-
-          logTiming(pendingV2AuctionId, 'v2_received', v2StartTime, {
-            predictor: v2Payload.predictor?.slice(0, 10) || 'unknown',
-            picksCount: v2Payload.picks?.length || 0,
-          });
-
-          // Validate auction request structure
-          const validation = validateV2AuctionRequest(v2Payload);
-          if (!validation.valid) {
-            errorsTotal.inc({ type: 'validation', message_type: 'v2.auction.start' });
-            console.warn(
-              `[Relayer] V2 auction validation failed: ${validation.error}`
-            );
-            sendV2(ws, {
-              type: 'v2.auction.ack',
-              payload: { error: validation.error, id: requestId },
-            });
-            trackDuration(msgType, startTime);
-            return;
-          }
-
-          // Get V2 contract address for this chain
-          const v2ContractAddress = getV2ContractAddress(v2Payload.chainId);
-          if (!v2ContractAddress) {
-            errorsTotal.inc({ type: 'validation', message_type: 'v2.auction.start' });
-            console.warn(
-              `[Relayer] No V2 contract for chainId=${v2Payload.chainId}`
-            );
-            sendV2(ws, {
-              type: 'v2.auction.ack',
-              payload: { error: 'unsupported_chain', id: requestId },
-            });
-            trackDuration(msgType, startTime);
-            return;
-          }
-
-          // Verify predictor signature (EIP-712) - only if signature is provided
-          // In the auction model, predictor signs when accepting a bid (not at auction start)
-          if (v2Payload.predictorSignature) {
-            try {
-              const isValidSig = await verifyV2PredictorSignature(
-                v2Payload,
-                v2ContractAddress as Address
-              );
-
-              if (!isValidSig) {
-                errorsTotal.inc({ type: 'signature', message_type: 'v2.auction.start' });
-                console.warn(
-                  `[Relayer] Invalid V2 predictor signature for predictor=${v2Payload.predictor}`
-                );
-                sendV2(ws, {
-                  type: 'v2.auction.ack',
-                  payload: { error: 'invalid_predictor_signature', id: requestId },
-                });
-                trackDuration(msgType, startTime);
-                return;
-              }
-              logTiming(pendingV2AuctionId, 'v2_sig_verified', v2StartTime);
-              console.log(
-                `[Relayer] Valid V2 predictor signature for predictor=${v2Payload.predictor}`
-              );
-            } catch (err) {
-              errorsTotal.inc({ type: 'signature', message_type: 'v2.auction.start' });
-              console.error('[Relayer] V2 signature verification error:', err);
-              sendV2(ws, {
-                type: 'v2.auction.ack',
-                payload: { error: 'signature_verification_failed', id: requestId },
-              });
-              trackDuration(msgType, startTime);
-              return;
-            }
-          } else {
-            console.log(
-              `[Relayer] V2 auction started without signature (predictor=${v2Payload.predictor}) - signature required when accepting bid`
-            );
-          }
-
-          // Create V2 auction
-          const v2AuctionId = upsertV2Auction(v2Payload);
-          pendingV2AuctionId = v2AuctionId;
-          logTiming(v2AuctionId, 'v2_created', v2StartTime);
-
-          auctionsStarted.inc();
-          // Subscribe this client to the V2 auction channel
-          subscribeToAuction(v2AuctionId, ws, auctionSubscriptions);
-          subscriptionsActive.inc({ subscription_type: 'v2_auction' });
-
-          // Send ack with request ID for client correlation
-          sendV2(ws, {
-            type: 'v2.auction.ack',
-            payload: { auctionId: v2AuctionId, id: requestId },
-          });
-          logTiming(v2AuctionId, 'v2_ack_sent', v2StartTime);
-
-          // Broadcast auction.started to all clients
-          const v2Details = getV2AuctionDetails(v2AuctionId);
-          if (v2Details) {
-            const startedMsg = JSON.stringify({
-              type: 'v2.auction.started',
-              payload: v2Details,
-            });
-            const botCount = wss.clients.size;
-            wss.clients.forEach((client) => {
-              if (client.readyState === WebSocket.OPEN) {
-                client.send(startedMsg);
-              }
-            });
-            logTiming(v2AuctionId, 'v2_broadcast', v2StartTime, { bots: botCount });
-          }
-
-          // Stream current bids if any
-          const v2Bids = getV2Bids(v2AuctionId);
-          if (v2Bids.length > 0) {
-            sendV2(ws, {
-              type: 'v2.auction.bids',
-              payload: { auctionId: v2AuctionId, bids: v2Bids },
-            });
-          }
-
-          trackDuration(msgType, startTime);
-          return;
-        }
-
-        // V2 Auction Subscribe
-        if (msg.type === 'v2.auction.subscribe') {
-          const { auctionId } = msg.payload as { auctionId: string };
-          if (typeof auctionId === 'string' && auctionId.length > 0) {
-            subscribeToAuction(auctionId, ws, auctionSubscriptions);
-            subscriptionsActive.inc({ subscription_type: 'v2_auction' });
-            // Stream current bids
-            const v2Bids = getV2Bids(auctionId);
-            if (v2Bids.length > 0) {
-              sendV2(ws, {
-                type: 'v2.auction.bids',
-                payload: { auctionId, bids: v2Bids },
-              });
-            }
-            sendV2(ws, {
-              type: 'v2.auction.ack',
-              payload: { auctionId, subscribed: true, id: requestId },
-            });
-          } else {
-            sendV2(ws, {
-              type: 'v2.auction.ack',
-              payload: { error: 'missing_auction_id', id: requestId },
-            });
-          }
-          trackDuration(msgType, startTime);
-          return;
-        }
-
-        // V2 Auction Unsubscribe
-        if (msg.type === 'v2.auction.unsubscribe') {
-          const { auctionId } = msg.payload as { auctionId: string };
-          if (typeof auctionId === 'string' && auctionId.length > 0) {
-            unsubscribeFromAuction(auctionId, ws, auctionSubscriptions);
-            subscriptionsActive.dec({ subscription_type: 'v2_auction' });
-            sendV2(ws, {
-              type: 'v2.auction.ack',
-              payload: { auctionId, unsubscribed: true, id: requestId },
-            });
-          } else {
-            sendV2(ws, {
-              type: 'v2.auction.ack',
-              payload: { error: 'missing_auction_id', id: requestId },
-            });
-          }
-          trackDuration(msgType, startTime);
-          return;
-        }
-
-        // V2 Bid Submit
-        if (msg.type === 'v2.bid.submit') {
-          const v2Bid = msg.payload as V2BidPayload;
-          const v2BidStartTime = startTime;
-          logTiming(v2Bid.auctionId || 'unknown', 'v2_bid_received', v2BidStartTime, {
-            counterparty: v2Bid.counterparty?.slice(0, 10) || 'unknown',
-          });
-
-          // Get the auction
-          const v2AuctionRec = getV2Auction(v2Bid.auctionId);
-          if (!v2AuctionRec) {
-            bidsSubmitted.inc({ status: 'rejected' });
-            errorsTotal.inc({ type: 'validation', message_type: 'v2.bid.submit' });
-            sendV2(ws, {
-              type: 'v2.bid.ack',
-              payload: { error: 'auction_not_found_or_expired' },
-            });
-            console.warn(
-              `[Relayer] V2 bid rejected auctionId=${v2Bid.auctionId} reason=auction_not_found`
-            );
-            trackDuration(msgType, startTime);
-            return;
-          }
-
-          // Validate bid structure
-          const bidValidation = validateV2Bid(v2Bid, v2AuctionRec.auction);
-          if (!bidValidation.valid) {
-            bidsSubmitted.inc({ status: 'rejected' });
-            errorsTotal.inc({ type: 'validation', message_type: 'v2.bid.submit' });
-            sendV2(ws, {
-              type: 'v2.bid.ack',
-              payload: { error: bidValidation.error },
-            });
-            console.warn(
-              `[Relayer] V2 bid validation failed: ${bidValidation.error}`
-            );
-            trackDuration(msgType, startTime);
-            return;
-          }
-
-          // Get V2 contract address
-          const v2ContractForBid = getV2ContractAddress(v2AuctionRec.auction.chainId);
-          if (!v2ContractForBid) {
-            bidsSubmitted.inc({ status: 'rejected' });
-            errorsTotal.inc({ type: 'validation', message_type: 'v2.bid.submit' });
-            sendV2(ws, {
-              type: 'v2.bid.ack',
-              payload: { error: 'unsupported_chain' },
-            });
-            trackDuration(msgType, startTime);
-            return;
-          }
-
-          // Verify counterparty signature (EIP-712)
-          try {
-            const isValidCounterpartySig = await verifyV2CounterpartySignature(
-              v2Bid,
-              v2AuctionRec.auction,
-              v2ContractForBid as Address
-            );
-
-            if (!isValidCounterpartySig) {
-              bidsSubmitted.inc({ status: 'rejected' });
-              errorsTotal.inc({ type: 'signature', message_type: 'v2.bid.submit' });
-              sendV2(ws, {
-                type: 'v2.bid.ack',
-                payload: { error: 'invalid_counterparty_signature' },
-              });
-              console.warn(
-                `[Relayer] Invalid V2 counterparty signature for counterparty=${v2Bid.counterparty}`
-              );
-              trackDuration(msgType, startTime);
-              return;
-            }
-          } catch (err) {
-            bidsSubmitted.inc({ status: 'rejected' });
-            errorsTotal.inc({ type: 'signature', message_type: 'v2.bid.submit' });
-            console.error('[Relayer] V2 counterparty signature verification error:', err);
-            sendV2(ws, {
-              type: 'v2.bid.ack',
-              payload: { error: 'signature_verification_failed' },
-            });
-            trackDuration(msgType, startTime);
-            return;
-          }
-
-          // Add bid to registry
-          const validatedV2Bid = addV2Bid(v2Bid.auctionId, v2Bid);
-          if (!validatedV2Bid) {
-            bidsSubmitted.inc({ status: 'error' });
-            errorsTotal.inc({ type: 'validation', message_type: 'v2.bid.submit' });
-            sendV2(ws, {
-              type: 'v2.bid.ack',
-              payload: { error: 'failed_to_add_bid' },
-            });
-            trackDuration(msgType, startTime);
-            return;
-          }
-          logTiming(v2Bid.auctionId, 'v2_bid_validated', v2BidStartTime);
-
-          bidsSubmitted.inc({ status: 'success' });
-          sendV2(ws, {
-            type: 'v2.bid.ack',
-            payload: { bidId: `${v2Bid.auctionId}-${validatedV2Bid.counterparty.slice(0, 8)}` },
-          });
-
-          // Broadcast updated bids to subscribers
-          const currentV2Bids = getV2Bids(v2Bid.auctionId);
-          const v2BidsMsg: V2ServerToClientMessage = {
-            type: 'v2.auction.bids',
-            payload: { auctionId: v2Bid.auctionId, bids: currentV2Bids },
-          };
-          const v2SubscriberCount = auctionSubscriptions.get(v2Bid.auctionId)?.size || 0;
-          broadcastToAuctionSubscribers(
-            v2Bid.auctionId,
-            v2BidsMsg as unknown as ServerToClientMessage,
-            auctionSubscriptions
-          );
-          logTiming(v2Bid.auctionId, 'v2_bid_broadcast', v2BidStartTime, {
-            bidCount: currentV2Bids.length,
-            subscribers: v2SubscriberCount,
-          });
-
-          trackDuration(msgType, startTime);
-          return;
-        }
-
-        // Ping handled earlier, but handle here for V2 type guard
-        if (msg.type === 'ping') {
-          // Already handled above
-          return;
-        }
       }
 
       trackDuration(msgType, startTime);

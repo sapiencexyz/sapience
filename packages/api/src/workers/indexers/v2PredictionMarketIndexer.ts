@@ -20,8 +20,8 @@ interface PredictionCreatedEvent {
   counterparty: `0x${string}`;
   predictorToken: `0x${string}`;
   counterpartyToken: `0x${string}`;
-  predictorWager: bigint;
-  counterpartyWager: bigint;
+  predictorCollateral: bigint;
+  counterpartyCollateral: bigint;
   refCode: `0x${string}`;
 }
 
@@ -34,7 +34,7 @@ interface PredictionSettledEvent {
 }
 
 interface TokensRedeemedEvent {
-  predictionId: `0x${string}`;
+  pickConfigId: `0x${string}`;
   holder: `0x${string}`;
   positionToken: `0x${string}`;
   tokensBurned: bigint;
@@ -244,9 +244,18 @@ class V2PredictionMarketIndexer implements IIndexer {
     };
     process.on('SIGINT', this.sigintHandler);
 
-    // Get the starting block (use blockCreated for historical indexing, or current block)
+    // Get the starting block: resume from DB state, fall back to blockCreated, then current block
     if (this.lastProcessedBlock === 0n) {
-      if (this.blockCreated > 0n) {
+      // Try to resume from last indexed block in DB
+      const state = await prisma.v2IndexerState.findUnique({
+        where: { chainId: this.chainId },
+      });
+      if (state) {
+        this.lastProcessedBlock = BigInt(state.lastIndexedBlock);
+        console.log(
+          `[V2PredictionMarketIndexer] Resuming from last indexed block ${this.lastProcessedBlock}`
+        );
+      } else if (this.blockCreated > 0n) {
         // Start from contract creation block to index historical events
         this.lastProcessedBlock = this.blockCreated - 1n;
         console.log(
@@ -302,6 +311,21 @@ class V2PredictionMarketIndexer implements IIndexer {
           }
 
           this.lastProcessedBlock = currentBlock;
+
+          // Persist indexer state for resume on restart
+          await prisma.v2IndexerState.upsert({
+            where: { chainId: this.chainId },
+            create: {
+              chainId: this.chainId,
+              marketAddress: this.contractAddress,
+              lastIndexedBlock: Number(currentBlock),
+              lastIndexedAt: new Date(),
+            },
+            update: {
+              lastIndexedBlock: Number(currentBlock),
+              lastIndexedAt: new Date(),
+            },
+          });
         }
       } catch (error) {
         console.error('[V2PredictionMarketIndexer] Polling error:', error);
@@ -397,8 +421,8 @@ class V2PredictionMarketIndexer implements IIndexer {
         counterparty: event.counterparty.toLowerCase(),
         predictorToken: event.predictorToken.toLowerCase(),
         counterpartyToken: event.counterpartyToken.toLowerCase(),
-        predictorWager: event.predictorWager.toString(),
-        counterpartyWager: event.counterpartyWager.toString(),
+        predictorCollateral: event.predictorCollateral.toString(),
+        counterpartyCollateral: event.counterpartyCollateral.toString(),
         onChainCreatedAt: timestamp,
         createTxHash: log.transactionHash || '',
         refCode: event.refCode !== ZERO_BYTES32 ? event.refCode : null,
@@ -449,11 +473,12 @@ class V2PredictionMarketIndexer implements IIndexer {
     block: Block
   ): Promise<void> {
     console.log(
-      `[V2PredictionMarketIndexer] Processing TokensRedeemed event: predictionId=${event.predictionId}, holder=${event.holder}`
+      `[V2PredictionMarketIndexer] Processing TokensRedeemed event: pickConfigId=${event.pickConfigId}, holder=${event.holder}`
     );
 
     const timestamp = Number(block.timestamp);
-    const predictionIdLower = event.predictionId.toLowerCase();
+    // ABI param is pickConfigId; stored as predictionId in DB for now (to be renamed)
+    const predictionIdLower = event.pickConfigId.toLowerCase();
 
     // Create redemption record
     await prisma.v2RedemptionRecord.create({

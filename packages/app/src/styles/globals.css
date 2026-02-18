@@ -503,3 +503,43 @@
     @apply headline;
   }
 }
+
+/* =========================================================================
+   Polymarket Parlays feature — scoped to .markets-grid-theme / .market-card
+   Remove this entire block when the feature is removed.
+   ========================================================================= */
+@layer components {
+  .markets-grid-theme {
+    font-family: 'Avenir Next', sans-serif;
+  }
+
+  /* Override dark-theme inherited styles within market cards */
+  .market-card a {
+    font-family: 'Avenir Next', sans-serif !important;
+    color: #1a2a6c !important;
+    text-decoration-color: rgba(46, 92, 255, 0.25) !important;
+  }
+  .market-card a:hover {
+    text-decoration-color: rgba(46, 92, 255, 0.5) !important;
+  }
+  .market-card .font-mono {
+    font-family: 'Avenir Next', sans-serif !important;
+  }
+  .market-card .tabular-nums {
+    font-family: 'Avenir Next', sans-serif !important;
+  }
+  .market-card .text-brand-white {
+    color: #2E5CFF !important;
+  }
+  .market-card .text-accent-gold {
+    color: #2E5CFF !important;
+    font-weight: 600 !important;
+    font-family: 'Avenir Next', sans-serif !important;
+  }
+  .market-card .text-muted-foreground {
+    color: #8ca0cc !important;
+  }
+  .market-card .text-foreground {
+    color: #1a2a6c !important;
+  }
+}

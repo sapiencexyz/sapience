@@ -11,7 +11,7 @@ import { loadSdk } from "./sdk.js";
 interface Bid {
   auctionId: string;
   maker: string;
-  makerWager: string;
+  makerCollateral: string;
   makerDeadline: number;
   makerSignature: string;
   makerNonce: number;
@@ -130,7 +130,7 @@ export async function buildMintCalldata({
     encodedPredictedOutcomes: bid.encodedPredictedOutcomes || "0x",
     resolver: bid.resolver || RESOLVER,
     makerCollateral: BigInt(bid.takerCollateral || bid.wager || '0'), // Requester's stake
-    takerCollateral: BigInt(bid.makerWager || '0'), // Responder's stake
+    takerCollateral: BigInt(bid.makerCollateral || '0'), // Responder's stake
     maker: requester, // Requester - must match msg.sender
     taker: bid.maker, // Responder (bidder address from API)
     makerNonce: requesterNonce, // Requester's nonce from contract

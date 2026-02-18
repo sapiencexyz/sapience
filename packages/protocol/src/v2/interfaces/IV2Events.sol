@@ -15,8 +15,8 @@ interface IV2Events {
         address indexed counterparty,
         address predictorToken,
         address counterpartyToken,
-        uint256 predictorWager,
-        uint256 counterpartyWager,
+        uint256 predictorCollateral,
+        uint256 counterpartyCollateral,
         bytes32 refCode
     );
 
@@ -31,7 +31,7 @@ interface IV2Events {
 
     /// @notice Emitted when tokens are redeemed for collateral
     event TokensRedeemed(
-        bytes32 indexed predictionId,
+        bytes32 indexed pickConfigId,
         address indexed holder,
         address indexed positionToken,
         uint256 tokensBurned,

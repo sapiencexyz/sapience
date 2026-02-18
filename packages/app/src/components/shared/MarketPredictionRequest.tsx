@@ -8,7 +8,6 @@ import { predictionMarketAbi } from '@sapience/sdk';
 import { predictionMarket } from '@sapience/sdk/contracts';
 import {
   DEFAULT_CHAIN_ID,
-  CHAIN_ID_ETHEREAL,
   PREFERRED_ESTIMATE_QUOTER,
 } from '@sapience/sdk/constants';
 import { verifyMakerBidSignature } from '@sapience/sdk';
@@ -37,6 +36,7 @@ interface MarketPredictionRequestProps {
   suppressLoadingPlaceholder?: boolean;
   prefetchedProbability?: number | null;
   skipViewportCheck?: boolean;
+  requestLabel?: string;
 }
 
 // Custom comparator for React.memo: ignore onPrediction identity changes
@@ -54,6 +54,7 @@ function arePropsEqual(
     return false;
   if (prev.skipViewportCheck !== next.skipViewportCheck) return false;
   if (prev.className !== next.className) return false;
+  if (prev.requestLabel !== next.requestLabel) return false;
 
   // Lightweight outcomes comparison (length + marketIds)
   const pO = prev.outcomes;
@@ -81,6 +82,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
   suppressLoadingPlaceholder = false,
   prefetchedProbability = null,
   skipViewportCheck = false,
+  requestLabel = 'Request',
 }) => {
   // Store onPrediction in a ref so we can call the latest version without
   // depending on its identity (avoids rerenders when parent passes new lambdas).
@@ -108,7 +110,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
   const { address: takerAddress } = useAccount();
   // Disable logging for forecast-only components to avoid noisy console output
   const { requestQuotes, bids } = useAuctionStart({ disableLogging: true });
-  const chainId = CHAIN_ID_ETHEREAL;
+  const chainId = DEFAULT_CHAIN_ID;
   const PREDICTION_MARKET_ADDRESS =
     predictionMarket[chainId]?.address ||
     predictionMarket[DEFAULT_CHAIN_ID]?.address;
@@ -209,7 +211,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
                 },
                 bid: {
                   maker: bid.maker as `0x${string}`,
-                  makerWager: bid.makerWager,
+                  makerCollateral: bid.makerCollateral,
                   makerDeadline: bid.makerDeadline,
                   makerSignature: bid.makerSignature as `0x${string}`,
                   makerNonce: lastAuctionParams.takerNonce,
@@ -241,7 +243,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
         const list = valid.length > 0 ? valid : filteredBids;
         const best = list.reduce((bestBid, cur) => {
           try {
-            return BigInt(cur.makerWager) > BigInt(bestBid.makerWager)
+            return BigInt(cur.makerCollateral) > BigInt(bestBid.makerCollateral)
               ? cur
               : bestBid;
           } catch {
@@ -250,7 +252,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
         }, list[0]);
 
         const taker = BigInt(String(lastTakerPositionSizeWei || '0'));
-        const maker = BigInt(String(best?.makerWager || '0'));
+        const maker = BigInt(String(best?.makerCollateral || '0'));
         const denom = maker + taker;
         const prob = denom > 0n ? Number(taker) / Number(denom) : 0.5;
         const clamped = Math.max(0, Math.min(1, prob));
@@ -419,7 +421,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
               exit="hidden"
               transition={FADE_TRANSITION_FAST}
             >
-              Requesting...
+              {requestLabel}ing...
             </motion.span>
           ) : (
             <motion.button
@@ -433,7 +435,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
               exit="hidden"
               transition={FADE_TRANSITION_FAST}
             >
-              Request
+              {requestLabel}
             </motion.button>
           )
         ) : (

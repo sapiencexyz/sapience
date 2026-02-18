@@ -8,16 +8,13 @@ import {
     MessagingReceipt
 } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
-import {
-    ReentrancyGuard
-} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { ReentrancyGuard } from
+    "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {
-    SafeERC20
-} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import {
-    OptionsBuilder
-} from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
+import { SafeERC20 } from
+    "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { OptionsBuilder } from
+    "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
 import "./interfaces/IPredictionMarketBridgeBase.sol";
 
 /// @title PredictionMarketBridgeBase
@@ -264,7 +261,11 @@ abstract contract PredictionMarketBridgeBase is
     }
 
     /// @inheritdoc IPredictionMarketBridgeBase
-    function getEscrowedBalance(address token) external view returns (uint256) {
+    function getEscrowedBalance(address token)
+        external
+        view
+        returns (uint256)
+    {
         return _escrowedBalances[token];
     }
 

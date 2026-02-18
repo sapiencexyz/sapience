@@ -24,6 +24,7 @@ export default typescriptPlugin.config(
       // Not part of the TS build surface area (and may not be included in the project service).
       'hooks/**',
       'scripts/**',
+      'session/**',
       // Tooling config files (CJS) - avoid `no-undef` noise for `module`, etc.
       'postcss.config.js',
       'tailwind.config.js',

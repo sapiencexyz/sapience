@@ -6,9 +6,9 @@ import { Copy, Check, ExternalLink } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import HeroBackgroundLines from '~/components/home/HeroBackgroundLines';
 
-const SKILL_RAW_URL =
-  'https://raw.githubusercontent.com/sapiencexyz/openclaw-sapience/main/SKILL.md';
-const SKILL_REPO_URL = 'https://github.com/sapiencexyz/openclaw-sapience';
+const SKILL_RAW_URL = '/SKILL.md';
+const SKILL_REPO_URL =
+  'https://github.com/sapiencexyz/sapience/blob/main/packages/app/public/SKILL.md';
 
 const SkillsPageContent = () => {
   const { toast } = useToast();
@@ -131,12 +131,12 @@ const SkillsPageContent = () => {
             <p className="text-lg text-muted-foreground">
               Tell your agent to install the skill at{' '}
               <a
-                href={SKILL_REPO_URL}
+                href="https://sapience.xyz/SKILL.md"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="gold-link font-mono"
               >
-                {SKILL_REPO_URL}
+                https://sapience.xyz/SKILL.md
               </a>
             </p>
           </div>
@@ -185,7 +185,7 @@ const SkillsPageContent = () => {
                 <div className="text-muted-foreground text-sm font-mono">
                   Failed to load SKILL.md. View it directly on{' '}
                   <a
-                    href={SKILL_RAW_URL}
+                    href={SKILL_REPO_URL}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="gold-link"

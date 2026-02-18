@@ -34,7 +34,7 @@ type Props = {
   uiTx: UiTransaction;
   predictionsContent: React.ReactNode;
   auctionId: string | null;
-  takerWager: string | null;
+  takerCollateral: string | null;
   taker: string | null;
   resolver: string | null;
   predictedOutcomes: string[];
@@ -58,7 +58,7 @@ const AuctionRequestRow: React.FC<Props> = ({
   uiTx,
   predictionsContent,
   auctionId,
-  takerWager,
+  takerCollateral,
   taker,
   resolver,
   predictedOutcomes,
@@ -182,7 +182,7 @@ const AuctionRequestRow: React.FC<Props> = ({
       chainId,
       predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
       takerAddress: taker as `0x${string}` | undefined,
-      takerWager: takerWager ?? undefined,
+      takerCollateral: takerCollateral ?? undefined,
       takerNonce: takerNonce ?? undefined,
       encodedPredictedOutcomes: predictedOutcomes?.[0] as
         | `0x${string}`
@@ -205,8 +205,8 @@ const AuctionRequestRow: React.FC<Props> = ({
       if (!Array.isArray(validBids) || validBids.length === 0) return null;
       const best = validBids.reduce((prev, curr) => {
         try {
-          const currVal = BigInt(String(curr?.makerWager ?? '0'));
-          const prevVal = BigInt(String(prev?.makerWager ?? '0'));
+          const currVal = BigInt(String(curr?.makerCollateral ?? '0'));
+          const prevVal = BigInt(String(prev?.makerCollateral ?? '0'));
           return currVal > prevVal ? curr : prev;
         } catch {
           return prev;
@@ -214,14 +214,14 @@ const AuctionRequestRow: React.FC<Props> = ({
       }, validBids[0]);
       const makerBid = (() => {
         try {
-          return BigInt(String(best?.makerWager ?? '0'));
+          return BigInt(String(best?.makerCollateral ?? '0'));
         } catch {
           return 0n;
         }
       })();
       const requester = (() => {
         try {
-          return BigInt(String(takerWager ?? '0'));
+          return BigInt(String(takerCollateral ?? '0'));
         } catch {
           return 0n;
         }
@@ -270,12 +270,12 @@ const AuctionRequestRow: React.FC<Props> = ({
     } catch {
       return null;
     }
-  }, [validBids, takerWager]);
+  }, [validBids, takerCollateral]);
 
-  const takerWagerDisplay = useMemo(() => {
+  const takerCollateralDisplay = useMemo(() => {
     try {
-      if (!takerWager) return null;
-      const requester = BigInt(String(takerWager));
+      if (!takerCollateral) return null;
+      const requester = BigInt(String(takerCollateral));
       const requesterNum = Number(formatEther(requester));
       if (!Number.isFinite(requesterNum)) return null;
       return requesterNum.toLocaleString(undefined, {
@@ -285,7 +285,7 @@ const AuctionRequestRow: React.FC<Props> = ({
     } catch {
       return null;
     }
-  }, [takerWager]);
+  }, [takerCollateral]);
 
   const summaryWrapperClass =
     'text-[11px] sm:text-xs whitespace-nowrap flex-shrink-0 flex items-center gap-2 text-muted-foreground';
@@ -294,8 +294,8 @@ const AuctionRequestRow: React.FC<Props> = ({
     ? bestBidSummary.bidDisplay === '—'
       ? '—'
       : `${bestBidSummary.bidDisplay} ${collateralAssetTicker}`
-    : takerWagerDisplay
-      ? `${takerWagerDisplay} ${collateralAssetTicker}`
+    : takerCollateralDisplay
+      ? `${takerCollateralDisplay} ${collateralAssetTicker}`
       : '—';
   const secondaryAmountText = bestBidSummary
     ? bestBidSummary.payoutDisplay === '—'
@@ -407,11 +407,11 @@ const AuctionRequestRow: React.FC<Props> = ({
           ? tokenDecimals
           : 18;
         const amountNum = Number(data.amount || '0');
-        const makerWagerWei = parseUnits(
+        const makerCollateralWei = parseUnits(
           String(data.amount || '0'),
           decimalsToUse
         );
-        if (makerWagerWei <= 0n) {
+        if (makerCollateralWei <= 0n) {
           toast({
             title: 'Invalid amount',
             description: 'Enter a valid bid amount greater than 0.',
@@ -470,9 +470,9 @@ const AuctionRequestRow: React.FC<Props> = ({
             : undefined;
         const resolverAddr =
           typeof resolver === 'string' ? resolver : undefined;
-        const takerWagerWei = (() => {
+        const takerCollateralWei = (() => {
           try {
-            return BigInt(String(takerWager ?? '0'));
+            return BigInt(String(takerCollateral ?? '0'));
           } catch {
             return 0n;
           }
@@ -501,7 +501,7 @@ const AuctionRequestRow: React.FC<Props> = ({
           !hasPredictionData ||
           !resolverAddr ||
           (needsTakerNonce && takerNonceVal === undefined) ||
-          takerWagerWei <= 0n ||
+          takerCollateralWei <= 0n ||
           !taker
         ) {
           const missing: string[] = [];
@@ -510,7 +510,7 @@ const AuctionRequestRow: React.FC<Props> = ({
           if (!resolverAddr) missing.push('resolver');
           if (needsTakerNonce && takerNonceVal === undefined)
             missing.push('maker nonce');
-          if (takerWagerWei <= 0n) missing.push('taker position size');
+          if (takerCollateralWei <= 0n) missing.push('taker position size');
           if (!taker) missing.push('taker');
           toast({
             title: 'Request not ready',
@@ -528,14 +528,14 @@ const AuctionRequestRow: React.FC<Props> = ({
         console.log('[V2 Bid - Auction Data]', {
           isV2Auction,
           v2Picks: isV2Auction ? v2Picks : undefined,
-          takerWager: takerWagerWei.toString(),
+          takerCollateral: takerCollateralWei.toString(),
           taker,
           resolver: resolverAddr,
         });
         const result = await submitBidToWs({
           auctionId,
-          makerWager: makerWagerWei,
-          takerWager: takerWagerWei,
+          makerCollateral: makerCollateralWei,
+          takerCollateral: takerCollateralWei,
           predictedOutcomes: encodedPredicted ? [encodedPredicted] : [],
           resolver: resolverAddr as `0x${string}`,
           taker: taker as `0x${string}`,
@@ -547,8 +547,8 @@ const AuctionRequestRow: React.FC<Props> = ({
         });
 
         if (result.success) {
-          // Calculate total payout (makerWager + takerWager)
-          const totalWei = makerWagerWei + takerWagerWei;
+          // Calculate total payout (makerCollateral + takerCollateral)
+          const totalWei = makerCollateralWei + takerCollateralWei;
           const decimalsForFormat = Number.isFinite(tokenDecimals)
             ? tokenDecimals
             : 18;
@@ -568,8 +568,8 @@ const AuctionRequestRow: React.FC<Props> = ({
             collateralSymbol: collateralAssetTicker,
             meta: {
               auctionId,
-              makerWager: makerWagerWei.toString(),
-              takerWager: takerWagerWei.toString(),
+              makerCollateral: makerCollateralWei.toString(),
+              takerCollateral: takerCollateralWei.toString(),
             },
           });
           toast({
@@ -605,7 +605,7 @@ const AuctionRequestRow: React.FC<Props> = ({
       predictedOutcomes,
       taker,
       resolver,
-      takerWager,
+      takerCollateral,
       takerNonce,
       address,
       openConnectDialog,
@@ -731,7 +731,7 @@ const AuctionRequestRow: React.FC<Props> = ({
           >
             <AuctionRequestChart
               bids={validBids}
-              takerWager={takerWager}
+              takerCollateral={takerCollateral}
               collateralAssetTicker={collateralAssetTicker}
               maxEndTimeSec={maxEndTimeSec ?? undefined}
               taker={taker}
@@ -742,7 +742,7 @@ const AuctionRequestRow: React.FC<Props> = ({
             <AuctionRequestInfo
               uiTx={uiTx}
               bids={validBids}
-              takerWager={takerWager}
+              takerCollateral={takerCollateral}
               collateralAssetTicker={collateralAssetTicker}
               maxEndTimeSec={maxEndTimeSec ?? undefined}
               onSubmit={submitBid}

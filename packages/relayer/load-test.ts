@@ -27,10 +27,11 @@ import {
   signMakerBid,
   extractSiweDomainAndUri,
 } from '@sapience/sdk';
-import {
-  PREDICTION_MARKET_ADDRESS_ARB1,
-  PREDICTION_MARKET_CHAIN_ID_ARB1,
-} from './src/constants';
+import { predictionMarket } from '@sapience/sdk';
+import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+
+const PREDICTION_MARKET_ADDRESS = predictionMarket[CHAIN_ID_ETHEREAL]?.address as `0x${string}`;
+const PREDICTION_MARKET_CHAIN_ID = CHAIN_ID_ETHEREAL;
 import type {
   AuctionRequestPayload,
   BidPayload,
@@ -115,7 +116,7 @@ async function createAuctionStartMessage(
     resolver: '0x0000000000000000000000000000000000000000',
     predictedOutcomes: ['0xdeadbeef'],
     takerNonce: messageId,
-    chainId: 42161,
+    chainId: 5064014,
   };
 
   if (sigType === 'unsigned') {
@@ -172,13 +173,13 @@ async function createBidSubmitMessage(
     resolver: '0x0000000000000000000000000000000000000000',
     predictedOutcomes: ['0xdeadbeef'],
     takerNonce: 0,
-    chainId: 42161,
+    chainId: 5064014,
   };
 
   const payload: BidPayload = {
     auctionId,
     maker,
-    makerWager: '1000000000000000000',
+    makerCollateral: '1000000000000000000',
     makerDeadline: Math.floor(Date.now() / 1000) + 3600, // 1 hour from now
     makerNonce: messageId,
     makerSignature: '0x', // Placeholder
@@ -201,10 +202,10 @@ async function createBidSubmitMessage(
       resolver: auction.resolver as `0x${string}`,
       taker: auction.taker as `0x${string}`,
     },
-    makerWager: BigInt(payload.makerWager),
+    makerCollateral: BigInt(payload.makerCollateral),
     makerDeadline: payload.makerDeadline,
-    chainId: PREDICTION_MARKET_CHAIN_ID_ARB1,
-    verifyingContract: PREDICTION_MARKET_ADDRESS_ARB1,
+    chainId: PREDICTION_MARKET_CHAIN_ID,
+    verifyingContract: PREDICTION_MARKET_ADDRESS,
     maker: maker as `0x${string}`,
     makerNonce: BigInt(payload.makerNonce),
   });

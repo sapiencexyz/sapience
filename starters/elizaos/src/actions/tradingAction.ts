@@ -31,7 +31,7 @@ import {
 interface Bid {
   auctionId: string;
   maker: string;
-  makerWager: string;
+  makerCollateral: string;
   makerDeadline: number;
   makerSignature: string;
   makerNonce: number;
@@ -364,7 +364,7 @@ async function acceptBid({
     elizaLogger.info("[Trading] Executing trade mint transaction on Ethereal...");
     elizaLogger.info(`[Trading] Requester (auction creator): ${requesterAddress}`);
     elizaLogger.info(`[Trading] Responder (bidder): ${bid.maker}`);
-    elizaLogger.info(`[Trading] Collateral - Requester: ${bid.takerCollateral || bid.wager}, Responder: ${bid.makerWager}`);
+    elizaLogger.info(`[Trading] Collateral - Requester: ${bid.takerCollateral || bid.wager}, Responder: ${bid.makerCollateral}`);
     elizaLogger.info(`[Trading] Requester nonce: ${requesterNonce}`);
     
     const mintTx = await submitTransaction({

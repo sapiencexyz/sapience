@@ -29,7 +29,7 @@ export interface AuctionRequestPayload {
   resolver: string; // contract address for market validation
   taker: string; // EOA or smart account address of the taker initiating the auction
   takerNonce: number; // nonce for the taker
-  chainId: number; // chain ID for the auction (e.g., 42161 for Arbitrum)
+  chainId: number; // chain ID for the auction (e.g., 5064014 for Ethereal)
   takerSignature?: string; // EIP-191 signature of the taker (optional for price discovery)
   takerSignedAt?: string; // ISO timestamp when the signature was created (required if takerSignature is provided)
   sessionApproval?: string; // ZeroDev session approval (base64) for smart account session authentication
@@ -62,7 +62,7 @@ export interface BidFillCallData {
 
 export interface MintParlayData {
   taker: string; // EOA
-  takerWager: string; // wei string
+  takerCollateral: string; // wei string
   takerSignature: string; // Taker's signature allowing this specific bid
 }
 
@@ -71,7 +71,7 @@ export type BidFill = BidFillRawTx | BidFillCallData | MintParlayData;
 export interface BidPayload {
   auctionId: string;
   maker: string; // Maker's EOA or smart account address (0x...) - the bidding party
-  makerWager: string; // wei string
+  makerCollateral: string; // wei string
   makerDeadline: number; // unix seconds
   makerSignature: string; // Maker's signature authorizing this specific bid over the typed payload
   makerNonce: number; // nonce for the maker (bidding party)

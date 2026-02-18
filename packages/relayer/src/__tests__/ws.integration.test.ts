@@ -75,7 +75,7 @@ async function createSignedAuction(): Promise<AuctionRequestPayload> {
     resolver: '0x1234567890123456789012345678901234567890',
     taker: takerAccount.address,
     takerNonce: Math.floor(Math.random() * 1000000),
-    chainId: 42161,
+    chainId: 5064014,
   };
 
   const message = createAuctionStartSiweMessage(payload, domain, uri, takerSignedAt);
@@ -96,7 +96,7 @@ function createUnsignedAuction(): AuctionRequestPayload {
     resolver: '0x1234567890123456789012345678901234567890',
     taker: takerAccount.address,
     takerNonce: Math.floor(Math.random() * 1000000),
-    chainId: 42161,
+    chainId: 5064014,
   };
 }
 
@@ -105,7 +105,7 @@ function createValidBid(auctionId: string): BidPayload {
   return {
     auctionId,
     maker: makerAccount.address,
-    makerWager: '500000000000000000',
+    makerCollateral: '500000000000000000',
     makerDeadline: Math.floor(Date.now() / 1000) + 3600,
     makerSignature: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1b',
     makerNonce: 1,
@@ -482,7 +482,7 @@ describe('Multiple Bids', () => {
     const bid2 = {
       ...createValidBid(auctionId),
       maker: '0xdeaddeaddeaddeaddeaddeaddeaddeaddeaddead',
-      makerWager: '600000000000000000',
+      makerCollateral: '600000000000000000',
     };
 
     // Wait for the auction.bids broadcast after second bid

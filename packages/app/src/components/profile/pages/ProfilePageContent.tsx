@@ -21,7 +21,7 @@ import { SCHEMA_UID } from '~/lib/constants';
 import ProfileQuickMetrics from '~/components/profile/ProfileQuickMetrics';
 import ShareAfterRedirect from '~/components/shared/ShareAfterRedirect';
 import {
-  CHAIN_ID_ETHEREAL,
+  DEFAULT_CHAIN_ID,
   CHAIN_ID_ETHEREAL_TESTNET,
 } from '@sapience/sdk/constants';
 
@@ -31,7 +31,7 @@ type TabValue = (typeof TAB_VALUES)[number];
 const ProfilePageContent = () => {
   const params = useParams();
   const address = (params.address as string).toLowerCase() as Address;
-  const chainId = CHAIN_ID_ETHEREAL;
+  const chainId = DEFAULT_CHAIN_ID;
 
   const { data: attestations, isLoading: forecastsLoading } = useForecasts({
     attesterAddress: address,

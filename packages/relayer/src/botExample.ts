@@ -34,7 +34,7 @@ async function ensureApprovalIfConfigured(amount: bigint) {
     const pk = process.env.BOT_PRIVATE_KEY;
     const collateralToken = process.env.BOT_COLLATERAL_TOKEN;
     const spender = process.env.PREDICTION_MARKET_CONTRACT; // contract that will pull maker collateral
-    const chainId = Number(process.env.BOT_CHAIN_ID || '8453');
+    const chainId = Number(process.env.BOT_CHAIN_ID || '5064014');
 
     if (!rpcUrl || !pk || !collateralToken || !spender) {
       console.log(
@@ -115,11 +115,11 @@ ws.on('message', (data: RawData) => {
 
         // Maker offers 50% of what the taker is offering
         // If taker offers 100, maker offers 50, total payout = 150
-        const makerWager = wager / 2n; // 50% of wager
-        const totalPayout = wager + makerWager;
+        const makerCollateral = wager / 2n; // 50% of wager
+        const totalPayout = wager + makerCollateral;
 
         // Ensure ERC-20 approval is set up for the maker (optional, requires env vars)
-        void ensureApprovalIfConfigured(makerWager);
+        void ensureApprovalIfConfigured(makerCollateral);
 
         // Collateral transfers use ERC-20 approvals (not permit).
         // This example demonstrates submitting a bid with explicit fields and an off-chain signature over them.
@@ -129,14 +129,14 @@ ws.on('message', (data: RawData) => {
           payload: {
             auctionId: auction.auctionId,
             maker: '0x0000000000000000000000000000000000000001',
-            makerWager: makerWager.toString(),
+            makerCollateral: makerCollateral.toString(),
             makerDeadline: nowSec + 60,
             makerSignature: '0x' + '11'.repeat(32) + '22'.repeat(32),
             makerNonce: 1,
           },
         };
         console.log(
-          `[BOT] Sending bid auctionId=${auction.auctionId} wager=${wager.toString()} makerWager=${makerWager.toString()} totalPayout=${totalPayout.toString()}`
+          `[BOT] Sending bid auctionId=${auction.auctionId} wager=${wager.toString()} makerCollateral=${makerCollateral.toString()} totalPayout=${totalPayout.toString()}`
         );
         ws.send(JSON.stringify(bid));
         break;
@@ -159,7 +159,7 @@ ws.on('message', (data: RawData) => {
         if (bids.length > 0) {
           const top = bids[0];
           console.log(
-            `[BOT] top bid makerWager=${top?.makerWager} makerDeadline=${top?.makerDeadline}`
+            `[BOT] top bid makerCollateral=${top?.makerCollateral} makerDeadline=${top?.makerDeadline}`
           );
         }
         break;

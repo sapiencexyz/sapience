@@ -20,10 +20,10 @@ import { useV2Nonce } from '~/hooks/blockchain/useV2Contract';
 export interface V2AuctionStartParams {
   /** Array of picks for this prediction */
   picks: Pick[];
-  /** Predictor's wager amount in wei */
-  predictorWager: bigint;
-  /** Requested counterparty wager amount in wei */
-  counterpartyWager: bigint;
+  /** Predictor's collateral amount in wei */
+  predictorCollateral: bigint;
+  /** Requested counterparty collateral amount in wei */
+  counterpartyCollateral: bigint;
   /** Deadline in seconds from now */
   deadlineSeconds?: number;
   /** Optional referral code */
@@ -74,8 +74,8 @@ export function useV2AuctionStart(options: UseV2AuctionStartOptions = {}) {
     async (params: V2AuctionStartParams): Promise<V2AuctionStartResult> => {
       const {
         picks: rawPicks,
-        predictorWager,
-        counterpartyWager,
+        predictorCollateral,
+        counterpartyCollateral,
         deadlineSeconds = 1800, // 30 minutes default
         refCode,
       } = params;
@@ -95,12 +95,12 @@ export function useV2AuctionStart(options: UseV2AuctionStartOptions = {}) {
       // Canonicalize picks for consistent pickConfigId and signatures
       const picks = canonicalizePicks(rawPicks);
 
-      if (predictorWager <= 0n) {
-        return { success: false, error: 'Invalid predictor wager amount' };
+      if (predictorCollateral <= 0n) {
+        return { success: false, error: 'Invalid predictor collateral amount' };
       }
 
-      if (counterpartyWager <= 0n) {
-        return { success: false, error: 'Invalid counterparty wager amount' };
+      if (counterpartyCollateral <= 0n) {
+        return { success: false, error: 'Invalid counterparty collateral amount' };
       }
 
       if (!verifyingContract) {
@@ -128,8 +128,8 @@ export function useV2AuctionStart(options: UseV2AuctionStartOptions = {}) {
       // Note: counterparty is unknown at auction start, use zero address
       const typedData = buildPredictorMintTypedData({
         picks,
-        predictorWager,
-        counterpartyWager,
+        predictorCollateral,
+        counterpartyCollateral,
         predictor: signerAddress,
         counterparty: '0x0000000000000000000000000000000000000000' as Address,
         predictorNonce: nonce,
@@ -174,8 +174,8 @@ export function useV2AuctionStart(options: UseV2AuctionStartOptions = {}) {
           conditionId: p.conditionId,
           predictedOutcome: p.predictedOutcome,
         })),
-        predictorWager: predictorWager.toString(),
-        counterpartyWager: counterpartyWager.toString(),
+        predictorCollateral: predictorCollateral.toString(),
+        counterpartyCollateral: counterpartyCollateral.toString(),
         predictor: signerAddress,
         predictorNonce: Number(nonce),
         predictorDeadline: Number(predictorDeadline),
@@ -222,12 +222,12 @@ export function useV2AuctionStart(options: UseV2AuctionStartOptions = {}) {
           );
           console.log('[V2 Auction Create] pickConfigId:', pickConfigId);
           console.log(
-            '[V2 Auction Create] predictorWager:',
-            predictorWager.toString()
+            '[V2 Auction Create] predictorCollateral:',
+            predictorCollateral.toString()
           );
           console.log(
-            '[V2 Auction Create] counterpartyWager:',
-            counterpartyWager.toString()
+            '[V2 Auction Create] counterpartyCollateral:',
+            counterpartyCollateral.toString()
           );
           console.log('[V2 Auction Create] predictor:', signerAddress);
           console.log('[V2 Auction Create] predictorNonce:', nonce.toString());

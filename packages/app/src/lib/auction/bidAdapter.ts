@@ -25,7 +25,7 @@ export function quoteBidsToAuctionBids(bids: QuoteBid[]): AuctionBidData[] {
     return {
       auctionId: bid.auctionId,
       maker: bid.maker,
-      makerWager: bid.makerWager,
+      makerCollateral: bid.makerCollateral,
       makerDeadline: bid.makerDeadline,
       makerSignature: bid.makerSignature,
       makerNonce: bid.makerNonce,

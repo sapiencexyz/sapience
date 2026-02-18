@@ -52,13 +52,13 @@ function V2PredictionRow({
 }) {
   const isPredictor =
     prediction.predictor.toLowerCase() === userAddress.toLowerCase();
-  const userWager = isPredictor
-    ? prediction.predictorWager
-    : prediction.counterpartyWager;
+  const userCollateral = isPredictor
+    ? prediction.predictorCollateral
+    : prediction.counterpartyCollateral;
   const totalPool =
-    BigInt(prediction.predictorWager) + BigInt(prediction.counterpartyWager);
+    BigInt(prediction.predictorCollateral) + BigInt(prediction.counterpartyCollateral);
 
-  const wagerFormatted = parseFloat(formatEther(BigInt(userWager)));
+  const collateralFormatted = parseFloat(formatEther(BigInt(userCollateral)));
   const totalPoolFormatted = parseFloat(formatEther(totalPool));
 
   // Determine claimable amount if settled
@@ -85,7 +85,7 @@ function V2PredictionRow({
         </Badge>
       </TableCell>
       <TableCell>
-        <NumberDisplay value={wagerFormatted} appendedText={collateralSymbol} />
+        <NumberDisplay value={collateralFormatted} appendedText={collateralSymbol} />
       </TableCell>
       <TableCell>
         <NumberDisplay
@@ -188,7 +188,7 @@ export default function V2PositionsTable({
             <TableRow>
               <TableHead>Prediction ID</TableHead>
               <TableHead>Side</TableHead>
-              <TableHead>Your Wager</TableHead>
+              <TableHead>Your Collateral</TableHead>
               <TableHead>Total Pool</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Claimable</TableHead>

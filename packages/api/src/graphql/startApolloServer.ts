@@ -22,21 +22,11 @@ import Sentry from '../instrument';
 // Import only the actively-used query resolvers from generated TypeGraphQL
 // See graphql-audit._ljm_.md for the full audit of which resolvers are used by consumers
 import {
-  // Attestation: only FindMany (used by app)
   FindManyAttestationResolver,
-
-  // Category: only FindMany (used by app)
   FindManyCategoryResolver,
-
-  // Condition: only FindUnique (used by sdk, parlay-bot)
-  // FindMany and FindFirst are replaced by custom ConditionResolver
   FindUniqueConditionResolver,
-
-  // ConditionGroup: FindUnique (used by parlay-bot) + FindMany (used by app)
   FindManyConditionGroupResolver,
   FindUniqueConditionGroupResolver,
-
-  // User: FindUnique (used by app) + FindMany (deprecated, kept for admin use)
   FindManyUserResolver,
   FindUniqueUserResolver,
 } from '@generated/type-graphql';

@@ -27,7 +27,7 @@ export interface AuctionParams {
   takerNonce: number; // nonce for the taker
   chainId: number; // chain ID for the auction (e.g., 42161 for Arbitrum)
   // V2 auction fields (optional)
-  counterpartyWager?: string; // wei string - counterparty's wager for V2 auctions
+  counterpartyCollateral?: string; // wei string - counterparty's collateral for V2 auctions
   v2Picks?: Array<{
     conditionResolver: `0x${string}`;
     conditionId: `0x${string}`;
@@ -38,7 +38,7 @@ export interface AuctionParams {
 export interface QuoteBid {
   auctionId: string;
   maker: string;
-  makerWager: string; // wei
+  makerCollateral: string; // wei
   makerDeadline: number; // unix seconds
   makerSignature: string; // Maker's bid signature
   makerNonce: number; // nonce for the maker
@@ -54,7 +54,7 @@ export interface QuoteBid {
 export interface V2QuoteBid {
   auctionId: string;
   counterparty: string;
-  counterpartyWager: string; // wei
+  counterpartyCollateral: string; // wei
   counterpartyDeadline: number; // unix seconds
   counterpartySignature: string; // Counterparty's bid signature
   counterpartyNonce: number; // nonce for the counterparty
@@ -208,7 +208,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
                 return {
                   auctionId: b.auctionId || latestAuctionIdRef.current || '',
                   maker: b.maker || ZERO_ADDRESS,
-                  makerWager: b.makerWager || '0',
+                  makerCollateral: b.makerCollateral || '0',
                   makerDeadline: b.makerDeadline || 0,
                   makerSignature: b.makerSignature || '0x',
                   makerNonce: b.makerNonce || 0,
@@ -244,11 +244,11 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
                 // V2 counterpartyNonce = V1 makerNonce
                 // V2 counterpartyDeadline = V1 makerDeadline
                 // V2 counterpartySignature = V1 makerSignature
-                // V2 counterpartyWager comes from the BID (counterparty decides their wager)
+                // V2 counterpartyCollateral comes from the BID (counterparty decides their collateral)
                 return {
                   auctionId: targetAuctionId,
                   maker: b.counterparty || ZERO_ADDRESS,
-                  makerWager: b.counterpartyWager || '0',
+                  makerCollateral: b.counterpartyCollateral || '0',
                   makerDeadline: b.counterpartyDeadline || 0,
                   makerSignature: b.counterpartySignature || '0x',
                   makerNonce: b.counterpartyNonce || 0,
@@ -407,7 +407,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
 
         if (isV2Auction) {
           // V2 Auction Start - no signature needed at start time
-          // Predictor signs when accepting a specific bid (which includes counterpartyWager)
+          // Predictor signs when accepting a specific bid (which includes counterpartyCollateral)
           try {
             const chainId = params.chainId;
 
@@ -424,20 +424,20 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
             const predictorDeadline = nowSec + 300;
 
             // Build V2 auction payload - no signature at start time
-            // Counterparty will specify their wager in their bid
+            // Counterparty will specify their collateral in their bid
             const v2Payload = {
               picks: picks.map((p) => ({
                 conditionResolver: p.conditionResolver,
                 conditionId: p.conditionId,
                 predictedOutcome: p.predictedOutcome,
               })),
-              predictorWager: params.wager,
+              predictorCollateral: params.wager,
               predictor: effectiveTaker,
               predictorNonce: params.takerNonce,
               predictorDeadline,
               chainId,
-              // Note: no predictorSignature or counterpartyWager at auction start
-              // Predictor signs when accepting a bid with specific counterpartyWager
+              // Note: no predictorSignature or counterpartyCollateral at auction start
+              // Predictor signs when accepting a bid with specific counterpartyCollateral
             };
 
             // Send V2 auction start
@@ -593,8 +593,8 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
         encodedPredictedOutcomes: predictedOutcomes[0],
         resolver,
         makerCollateral: auction.wager,
-        // V2 bids have counterpartyWager, V1 bids have makerWager
-        takerCollateral: v2Bid.counterpartyWager ?? bid.makerWager,
+        // V2 bids have counterpartyCollateral, V1 bids have makerCollateral
+        takerCollateral: v2Bid.counterpartyCollateral ?? bid.makerCollateral,
         maker: auction.taker,
         // V2 bids have counterparty, V1 bids have maker
         taker: (v2Bid.counterparty ?? bid.maker) as `0x${string}`,

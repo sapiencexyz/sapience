@@ -7,7 +7,7 @@ import "./IV2Types.sol";
  * @title IPredictionMarketEscrow
  * @notice Interface for the V2 Prediction Market orchestrator
  * @dev Main entry point for mint, settle, and redeem operations.
- *      Uses fungible betting pools - same picks share tokens.
+ *      Uses fungible prediction pools - same picks share tokens.
  */
 interface IPredictionMarketEscrow {
     // ============ Errors ============
@@ -23,7 +23,7 @@ interface IPredictionMarketEscrow {
     error InvalidPicks();
     error DuplicatePick();
     error PicksNotCanonical();
-    error ZeroWager();
+    error ZeroAmount();
     error InvalidToken();
     error InvalidRecipient();
     error TokensStillOutstanding(
@@ -33,11 +33,12 @@ interface IPredictionMarketEscrow {
     error ResolverCallFailed(address resolver, bytes32 conditionId);
     error PickConfigAlreadyResolved();
     error InvalidBurnAmounts();
+    error SponsorUnderfunded();
 
     // ============ External Functions ============
 
     /// @notice Create a new prediction with both parties' signatures
-    /// @param request The mint request containing picks, wagers, and signatures
+    /// @param request The mint request containing picks, collateral amounts, and signatures
     /// @return predictionId The unique prediction identifier
     /// @return predictorToken Address of the predictor position token (may be existing)
     /// @return counterpartyToken Address of the counterparty position token (may be existing)

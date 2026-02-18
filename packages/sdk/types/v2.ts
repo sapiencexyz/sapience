@@ -36,8 +36,8 @@ export interface Pick {
 export interface Prediction {
   predictionId: Hex;
   pickConfigId: Hex;
-  predictorWager: bigint;
-  counterpartyWager: bigint;
+  predictorCollateral: bigint;
+  counterpartyCollateral: bigint;
   predictor: Address;
   counterparty: Address;
   predictorTokensMinted: bigint;
@@ -76,8 +76,8 @@ export interface TokenPair {
 export interface EscrowRecord {
   pickConfigId: Hex;
   totalCollateral: bigint;
-  predictorWager: bigint;
-  counterpartyWager: bigint;
+  predictorCollateral: bigint;
+  counterpartyCollateral: bigint;
   predictorTokensMinted: bigint;
   counterpartyTokensMinted: bigint;
   settled: boolean;
@@ -89,8 +89,8 @@ export interface EscrowRecord {
  */
 export interface MintRequest {
   picks: Pick[];
-  predictorWager: bigint;
-  counterpartyWager: bigint;
+  predictorCollateral: bigint;
+  counterpartyCollateral: bigint;
   predictor: Address;
   counterparty: Address;
   predictorNonce: bigint;
@@ -102,6 +102,9 @@ export interface MintRequest {
   refCode: Hex;
   predictorSessionKeyData: Hex;
   counterpartySessionKeyData: Hex;
+  // Sponsorship support (optional - zeroAddress = self-funded)
+  predictorSponsor: Address;
+  predictorSponsorData: Hex;
 }
 
 /**
@@ -139,8 +142,8 @@ export interface PickJson {
 /** Mint request for JSON transport */
 export interface MintRequestJson {
   picks: PickJson[];
-  predictorWager: string;
-  counterpartyWager: string;
+  predictorCollateral: string;
+  counterpartyCollateral: string;
   predictor: string;
   counterparty: string;
   predictorNonce: number;
@@ -184,8 +187,8 @@ export interface BurnRequestJson {
  */
 export interface V2AuctionRequestPayload {
   picks: PickJson[];
-  predictorWager: string; // wei string
-  counterpartyWager: string; // wei string (requested counterparty stake)
+  predictorCollateral: string; // wei string
+  counterpartyCollateral: string; // wei string (requested counterparty stake)
   predictor: string; // EOA or smart account address
   predictorNonce: number;
   predictorDeadline: number; // unix timestamp
@@ -201,7 +204,7 @@ export interface V2AuctionRequestPayload {
 export interface V2BidPayload {
   auctionId: string;
   counterparty: string; // EOA or smart account address
-  counterpartyWager: string; // wei string - counterparty decides their wager
+  counterpartyCollateral: string; // wei string - counterparty decides their collateral
   counterpartyNonce: number;
   counterpartyDeadline: number; // unix timestamp
   counterpartySignature: string; // EIP-712 MintApproval signature
@@ -247,8 +250,8 @@ export type V2ClientToServerMessage =
 export interface V2AuctionDetails {
   auctionId: string;
   picks: PickJson[];
-  predictorWager: string;
-  counterpartyWager: string;
+  predictorCollateral: string;
+  counterpartyCollateral: string;
   predictor: string;
   predictorDeadline: number;
   chainId: number;
@@ -259,7 +262,7 @@ export interface V2AuctionDetails {
 export interface V2ValidatedBid {
   auctionId: string;
   counterparty: string;
-  counterpartyWager: string; // wei string - counterparty's wager
+  counterpartyCollateral: string; // wei string - counterparty's collateral
   counterpartyNonce: number;
   counterpartyDeadline: number;
   counterpartySignature: string;

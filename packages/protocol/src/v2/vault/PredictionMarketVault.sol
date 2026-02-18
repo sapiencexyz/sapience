@@ -146,7 +146,8 @@ contract PredictionMarketVault is
     uint256 private pendingWithdrawalShares = 0;
 
     /// @notice Total assets pending withdrawal
-    uint256 private pendingWithdrawalAssets = 0;
+    // C-3: pendingWithdrawalAssets removed — was unused bookkeeping vulnerable
+    // to griefing via unconstrained expectedAssets overflow
 
     /// @notice Mapping of user to their pending request (only one request per user at a time)
     mapping(address => PendingRequest) public pendingRequests;
@@ -249,7 +250,7 @@ contract PredictionMarketVault is
         if (
             lastUserInteractionTimestamp[msg.sender] > 0
                 && lastUserInteractionTimestamp[msg.sender]
-                        + withdrawalInteractionDelay > block.timestamp
+                    + withdrawalInteractionDelay > block.timestamp
         ) revert InteractionDelayNotExpired();
 
         PendingRequest storage request = pendingRequests[msg.sender];
@@ -269,7 +270,6 @@ contract PredictionMarketVault is
         });
 
         pendingWithdrawalShares += shares;
-        pendingWithdrawalAssets += expectedAssets;
 
         emit PendingRequestCreated(msg.sender, false, shares, expectedAssets);
     }
@@ -291,7 +291,7 @@ contract PredictionMarketVault is
         if (
             lastUserInteractionTimestamp[msg.sender] > 0
                 && lastUserInteractionTimestamp[msg.sender]
-                        + depositInteractionDelay > block.timestamp
+                    + depositInteractionDelay > block.timestamp
         ) revert InteractionDelayNotExpired();
         PendingRequest storage request = pendingRequests[msg.sender];
         if (request.user == msg.sender && !request.processed) {
@@ -337,7 +337,6 @@ contract PredictionMarketVault is
         }
 
         pendingWithdrawalShares -= request.shares;
-        pendingWithdrawalAssets -= request.assets;
 
         request.user = address(0);
 
@@ -493,7 +492,6 @@ contract PredictionMarketVault is
         request.processed = true;
 
         pendingWithdrawalShares -= request.shares;
-        pendingWithdrawalAssets -= request.assets;
 
         _burn(requestedBy, request.shares);
 
@@ -643,15 +641,9 @@ contract PredictionMarketVault is
     /**
      * @notice Get the total pending withdrawal volume
      * @return shares Total shares pending withdrawal
-     * @return assets Total assets pending withdrawal
      */
-    function getPendingWithdrawals()
-        external
-        view
-        returns (uint256 shares, uint256 assets)
-    {
+    function getPendingWithdrawals() external view returns (uint256 shares) {
         shares = pendingWithdrawalShares;
-        assets = pendingWithdrawalAssets;
     }
 
     /**
@@ -711,12 +703,9 @@ contract PredictionMarketVault is
             bytes32 pickConfigId
         ) {
             // Try to get claimable amount from the market
-            try IPredictionMarketInfo(predictionMarket)
-                .getClaimableAmount(
-                    pickConfigId, positionToken, balance
-                ) returns (
-                uint256 amount
-            ) {
+            try IPredictionMarketInfo(predictionMarket).getClaimableAmount(
+                pickConfigId, positionToken, balance
+            ) returns (uint256 amount) {
                 claimableValue = amount;
             } catch {
                 // Market call failed, claimable value unknown

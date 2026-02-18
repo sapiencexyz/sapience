@@ -22,8 +22,10 @@ contract PredictionMarketEscrowTest is Test {
     uint256 public predictorPk;
     uint256 public counterpartyPk;
 
-    uint256 public constant PREDICTOR_WAGER = 100e18;
-    uint256 public constant COUNTERPARTY_WAGER = 150e18;
+    uint256 public constant PREDICTOR_COLLATERAL = 100e18;
+    uint256 public constant COUNTERPARTY_COLLATERAL = 150e18;
+    uint256 public constant TOTAL_COLLATERAL =
+        PREDICTOR_COLLATERAL + COUNTERPARTY_COLLATERAL;
     bytes32 public constant REF_CODE = keccak256("test-ref-code");
 
     bytes32 public conditionId1;
@@ -83,13 +85,13 @@ contract PredictionMarketEscrowTest is Test {
     function _signApproval(
         bytes32 predictionHash,
         address signer,
-        uint256 wager,
+        uint256 collateral,
         uint256 nonce,
         uint256 deadline,
         uint256 pk
     ) internal view returns (bytes memory) {
         bytes32 approvalHash = market.getMintApprovalHash(
-            predictionHash, signer, wager, nonce, deadline
+            predictionHash, signer, collateral, nonce, deadline
         );
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk, approvalHash);
         return abi.encodePacked(r, s, v);
@@ -104,8 +106,8 @@ contract PredictionMarketEscrowTest is Test {
         bytes32 predictionHash = keccak256(
             abi.encode(
                 pickConfigId,
-                PREDICTOR_WAGER,
-                COUNTERPARTY_WAGER,
+                PREDICTOR_COLLATERAL,
+                COUNTERPARTY_COLLATERAL,
                 predictor,
                 counterparty
             )
@@ -116,8 +118,8 @@ contract PredictionMarketEscrowTest is Test {
         uint256 deadline = block.timestamp + 1 hours;
 
         request.picks = picks;
-        request.predictorWager = PREDICTOR_WAGER;
-        request.counterpartyWager = COUNTERPARTY_WAGER;
+        request.predictorCollateral = PREDICTOR_COLLATERAL;
+        request.counterpartyCollateral = COUNTERPARTY_COLLATERAL;
         request.predictor = predictor;
         request.counterparty = counterparty;
         request.predictorNonce = pNonce;
@@ -127,7 +129,7 @@ contract PredictionMarketEscrowTest is Test {
         request.predictorSignature = _signApproval(
             predictionHash,
             predictor,
-            PREDICTOR_WAGER,
+            PREDICTOR_COLLATERAL,
             pNonce,
             deadline,
             predictorPk
@@ -135,7 +137,7 @@ contract PredictionMarketEscrowTest is Test {
         request.counterpartySignature = _signApproval(
             predictionHash,
             counterparty,
-            COUNTERPARTY_WAGER,
+            COUNTERPARTY_COLLATERAL,
             cNonce,
             deadline,
             counterpartyPk
@@ -143,6 +145,8 @@ contract PredictionMarketEscrowTest is Test {
         request.refCode = REF_CODE;
         request.predictorSessionKeyData = "";
         request.counterpartySessionKeyData = "";
+        request.predictorSponsor = address(0);
+        request.predictorSponsorData = "";
     }
 
     function _mintPrediction(IV2Types.Pick[] memory picks)
@@ -187,25 +191,25 @@ contract PredictionMarketEscrowTest is Test {
         // Check collateral was transferred
         assertEq(
             collateralToken.balanceOf(predictor),
-            predictorBalanceBefore - PREDICTOR_WAGER
+            predictorBalanceBefore - PREDICTOR_COLLATERAL
         );
         assertEq(
             collateralToken.balanceOf(counterparty),
-            counterpartyBalanceBefore - COUNTERPARTY_WAGER
+            counterpartyBalanceBefore - COUNTERPARTY_COLLATERAL
         );
         assertEq(
             collateralToken.balanceOf(address(market)),
-            PREDICTOR_WAGER + COUNTERPARTY_WAGER
+            PREDICTOR_COLLATERAL + COUNTERPARTY_COLLATERAL
         );
 
-        // Check position tokens were minted (amount = wager in fungible model)
+        // Check position tokens were minted (amount = totalCollateral in proportional model)
         assertEq(
             IPredictionMarketToken(predictorToken).balanceOf(predictor),
-            PREDICTOR_WAGER
+            TOTAL_COLLATERAL
         );
         assertEq(
             IPredictionMarketToken(counterpartyToken).balanceOf(counterparty),
-            COUNTERPARTY_WAGER
+            TOTAL_COLLATERAL
         );
 
         // Check prediction data
@@ -213,8 +217,8 @@ contract PredictionMarketEscrowTest is Test {
             market.getPrediction(predictionId);
         assertEq(prediction.predictor, predictor);
         assertEq(prediction.counterparty, counterparty);
-        assertEq(prediction.predictorWager, PREDICTOR_WAGER);
-        assertEq(prediction.counterpartyWager, COUNTERPARTY_WAGER);
+        assertEq(prediction.predictorCollateral, PREDICTOR_COLLATERAL);
+        assertEq(prediction.counterpartyCollateral, COUNTERPARTY_COLLATERAL);
         assertFalse(prediction.settled);
     }
 
@@ -251,14 +255,14 @@ contract PredictionMarketEscrowTest is Test {
         market.mint(request);
     }
 
-    function test_mint_revertIfZeroWager() public {
+    function test_mint_revertIfZeroAmount() public {
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = _createPick(conditionId1, IV2Types.OutcomeSide.YES);
 
         IV2Types.MintRequest memory request = _createMintRequest(picks);
-        request.predictorWager = 0;
+        request.predictorCollateral = 0;
 
-        vm.expectRevert(IPredictionMarketEscrow.ZeroWager.selector);
+        vm.expectRevert(IPredictionMarketEscrow.ZeroAmount.selector);
         market.mint(request);
     }
 
@@ -405,15 +409,15 @@ contract PredictionMarketEscrowTest is Test {
         resolver.settleCondition(conditionId1, IV2Types.OutcomeVector(1, 0));
         market.settle(predictionId, REF_CODE);
 
-        // Predictor redeems (full token balance = PREDICTOR_WAGER)
+        // Predictor redeems (full token balance = TOTAL_COLLATERAL)
         uint256 predictorBalanceBefore = collateralToken.balanceOf(predictor);
 
         vm.prank(predictor);
         uint256 payout =
-            market.redeem(predictorToken, PREDICTOR_WAGER, REF_CODE);
+            market.redeem(predictorToken, TOTAL_COLLATERAL, REF_CODE);
 
         // Predictor should get all collateral
-        assertEq(payout, PREDICTOR_WAGER + COUNTERPARTY_WAGER);
+        assertEq(payout, TOTAL_COLLATERAL);
         assertEq(
             collateralToken.balanceOf(predictor),
             predictorBalanceBefore + payout
@@ -432,16 +436,16 @@ contract PredictionMarketEscrowTest is Test {
         resolver.settleCondition(conditionId1, IV2Types.OutcomeVector(0, 1));
         market.settle(predictionId, REF_CODE);
 
-        // Counterparty redeems (full token balance = COUNTERPARTY_WAGER)
+        // Counterparty redeems (full token balance = TOTAL_COLLATERAL)
         uint256 counterpartyBalanceBefore =
             collateralToken.balanceOf(counterparty);
 
         vm.prank(counterparty);
         uint256 payout =
-            market.redeem(counterpartyToken, COUNTERPARTY_WAGER, REF_CODE);
+            market.redeem(counterpartyToken, TOTAL_COLLATERAL, REF_CODE);
 
         // Counterparty should get all collateral
-        assertEq(payout, PREDICTOR_WAGER + COUNTERPARTY_WAGER);
+        assertEq(payout, TOTAL_COLLATERAL);
         assertEq(
             collateralToken.balanceOf(counterparty),
             counterpartyBalanceBefore + payout
@@ -463,18 +467,18 @@ contract PredictionMarketEscrowTest is Test {
         resolver.settleCondition(conditionId1, IV2Types.OutcomeVector(1, 1));
         market.settle(predictionId, REF_CODE);
 
-        // Both redeem their full token balances
+        // Both redeem their full token balances (TOTAL_COLLATERAL each)
         vm.prank(predictor);
         uint256 predictorPayout =
-            market.redeem(predictorToken, PREDICTOR_WAGER, REF_CODE);
+            market.redeem(predictorToken, TOTAL_COLLATERAL, REF_CODE);
 
         vm.prank(counterparty);
         uint256 counterpartyPayout =
-            market.redeem(counterpartyToken, COUNTERPARTY_WAGER, REF_CODE);
+            market.redeem(counterpartyToken, TOTAL_COLLATERAL, REF_CODE);
 
-        // Each gets their original wager back
-        assertEq(predictorPayout, PREDICTOR_WAGER);
-        assertEq(counterpartyPayout, COUNTERPARTY_WAGER);
+        // Each gets their original collateral back
+        assertEq(predictorPayout, PREDICTOR_COLLATERAL);
+        assertEq(counterpartyPayout, COUNTERPARTY_COLLATERAL);
     }
 
     function test_redeem_partialAmount() public {
@@ -489,18 +493,17 @@ contract PredictionMarketEscrowTest is Test {
         market.settle(predictionId, REF_CODE);
 
         // Predictor redeems half of their tokens
-        uint256 redeemAmount = PREDICTOR_WAGER / 2;
+        uint256 redeemAmount = TOTAL_COLLATERAL / 2;
         vm.prank(predictor);
         uint256 payout = market.redeem(predictorToken, redeemAmount, REF_CODE);
 
         // Should get half of total (since they own all predictor tokens)
-        uint256 totalCollateral = PREDICTOR_WAGER + COUNTERPARTY_WAGER;
-        assertEq(payout, totalCollateral / 2);
+        assertEq(payout, TOTAL_COLLATERAL / 2);
 
         // Should still have half the tokens
         assertEq(
             IPredictionMarketToken(predictorToken).balanceOf(predictor),
-            PREDICTOR_WAGER / 2
+            TOTAL_COLLATERAL / 2
         );
     }
 
@@ -512,7 +515,7 @@ contract PredictionMarketEscrowTest is Test {
 
         vm.prank(predictor);
         vm.expectRevert(IPredictionMarketEscrow.PickConfigNotResolved.selector);
-        market.redeem(predictorToken, PREDICTOR_WAGER, REF_CODE);
+        market.redeem(predictorToken, PREDICTOR_COLLATERAL, REF_CODE);
     }
 
     function test_redeem_revertIfInvalidToken() public {

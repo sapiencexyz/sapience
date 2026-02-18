@@ -83,7 +83,10 @@ interface ILZConditionResolverUmaSide {
     // Asserter management
     function approveAsserter(address asserter) external;
     function revokeAsserter(address asserter) external;
-    function isAsserterApproved(address asserter) external view returns (bool);
+    function isAsserterApproved(address asserter)
+        external
+        view
+        returns (bool);
 
     // Bond management
     function withdrawBond(address token, uint256 amount, address to) external;

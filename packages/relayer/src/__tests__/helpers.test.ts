@@ -16,14 +16,14 @@ const validAuction: AuctionRequestPayload = {
   resolver: '0x1234567890123456789012345678901234567890',
   taker: '0xabcdefabcdefabcdefabcdefabcdefabcdefabcd',
   takerNonce: 1,
-  chainId: 42161,
+  chainId: 5064014,
 };
 
 // Valid bid fixture
 const validBidParams = {
   auctionId: 'test-auction-id',
   maker: '0x1234567890123456789012345678901234567890',
-  makerWager: '500000000000000000', // 0.5 ETH
+  makerCollateral: '500000000000000000', // 0.5 ETH
   makerDeadline: Math.floor(Date.now() / 1000) + 3600, // 1 hour from now
   makerSignature: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1b',
 };
@@ -203,23 +203,23 @@ describe('verifyMakerBid', () => {
     });
   });
 
-  describe('makerWager validation', () => {
-    it('returns ok: false with reason "invalid_maker_wager" for makerWager of "0"', () => {
-      const result = verifyMakerBid({ ...validBidParams, makerWager: '0' });
+  describe('makerCollateral validation', () => {
+    it('returns ok: false with reason "invalid_maker_collateral" for makerCollateral of "0"', () => {
+      const result = verifyMakerBid({ ...validBidParams, makerCollateral: '0' });
       expect(result.ok).toBe(false);
-      expect(result.reason).toBe('invalid_maker_wager');
+      expect(result.reason).toBe('invalid_maker_collateral');
     });
 
-    it('returns ok: false for empty makerWager', () => {
-      const result = verifyMakerBid({ ...validBidParams, makerWager: '' });
+    it('returns ok: false for empty makerCollateral', () => {
+      const result = verifyMakerBid({ ...validBidParams, makerCollateral: '' });
       expect(result.ok).toBe(false);
-      expect(result.reason).toBe('invalid_maker_wager');
+      expect(result.reason).toBe('invalid_maker_collateral');
     });
 
-    it('returns ok: false for negative makerWager', () => {
-      const result = verifyMakerBid({ ...validBidParams, makerWager: '-100' });
+    it('returns ok: false for negative makerCollateral', () => {
+      const result = verifyMakerBid({ ...validBidParams, makerCollateral: '-100' });
       expect(result.ok).toBe(false);
-      expect(result.reason).toBe('invalid_maker_wager');
+      expect(result.reason).toBe('invalid_maker_collateral');
     });
   });
 

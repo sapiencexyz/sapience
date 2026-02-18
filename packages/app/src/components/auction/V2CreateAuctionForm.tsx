@@ -58,8 +58,8 @@ export default function V2CreateAuctionForm({
       predictedOutcome: 0,
     },
   ]);
-  const [predictorWager, setPredictorWager] = useState('');
-  const [counterpartyWager, setCounterpartyWager] = useState('');
+  const [predictorCollateral, setPredictorCollateral] = useState('');
+  const [counterpartyCollateral, setCounterpartyCollateral] = useState('');
   const [deadlineMinutes, setDeadlineMinutes] = useState('5');
   const [error, setError] = useState<string | null>(null);
 
@@ -134,22 +134,22 @@ export default function V2CreateAuctionForm({
       }
     }
 
-    const predictorWagerNum = parseFloat(predictorWager);
-    if (!predictorWager || isNaN(predictorWagerNum) || predictorWagerNum <= 0) {
-      return 'Please enter a valid predictor wager';
+    const predictorCollateralNum = parseFloat(predictorCollateral);
+    if (!predictorCollateral || isNaN(predictorCollateralNum) || predictorCollateralNum <= 0) {
+      return 'Please enter a valid predictor collateral';
     }
 
-    if (predictorWagerNum > collateralBalance) {
+    if (predictorCollateralNum > collateralBalance) {
       return `Insufficient balance. You have ${collateralBalance.toFixed(2)} ${collateralSymbol}`;
     }
 
-    const counterpartyWagerNum = parseFloat(counterpartyWager);
+    const counterpartyCollateralNum = parseFloat(counterpartyCollateral);
     if (
-      !counterpartyWager ||
-      isNaN(counterpartyWagerNum) ||
-      counterpartyWagerNum <= 0
+      !counterpartyCollateral ||
+      isNaN(counterpartyCollateralNum) ||
+      counterpartyCollateralNum <= 0
     ) {
-      return 'Please enter a valid counterparty wager';
+      return 'Please enter a valid counterparty collateral';
     }
 
     return null;
@@ -157,8 +157,8 @@ export default function V2CreateAuctionForm({
     isConnected,
     verifyingContract,
     picks,
-    predictorWager,
-    counterpartyWager,
+    predictorCollateral,
+    counterpartyCollateral,
     collateralBalance,
     collateralSymbol,
   ]);
@@ -185,8 +185,8 @@ export default function V2CreateAuctionForm({
 
         const result = await startAuction({
           picks: sdkPicks,
-          predictorWager: parseEther(predictorWager),
-          counterpartyWager: parseEther(counterpartyWager),
+          predictorCollateral: parseEther(predictorCollateral),
+          counterpartyCollateral: parseEther(counterpartyCollateral),
           deadlineSeconds: parseInt(deadlineMinutes) * 60,
         });
 
@@ -199,8 +199,8 @@ export default function V2CreateAuctionForm({
     },
     [
       picks,
-      predictorWager,
-      counterpartyWager,
+      predictorCollateral,
+      counterpartyCollateral,
       deadlineMinutes,
       validateForm,
       startAuction,
@@ -307,20 +307,20 @@ export default function V2CreateAuctionForm({
             ))}
           </div>
 
-          {/* Wager inputs */}
+          {/* Collateral inputs */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <Label htmlFor="predictorWager">
-                Your Wager ({collateralSymbol})
+              <Label htmlFor="predictorCollateral">
+                Your Collateral ({collateralSymbol})
               </Label>
               <Input
-                id="predictorWager"
+                id="predictorCollateral"
                 type="number"
                 step="0.01"
                 min="0"
                 placeholder="0.00"
-                value={predictorWager}
-                onChange={(e) => setPredictorWager(e.target.value)}
+                value={predictorCollateral}
+                onChange={(e) => setPredictorCollateral(e.target.value)}
               />
               <p className="text-xs text-muted-foreground">
                 Balance:{' '}
@@ -331,17 +331,17 @@ export default function V2CreateAuctionForm({
               </p>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="counterpartyWager">
-                Counterparty Wager ({collateralSymbol})
+              <Label htmlFor="counterpartyCollateral">
+                Counterparty Collateral ({collateralSymbol})
               </Label>
               <Input
-                id="counterpartyWager"
+                id="counterpartyCollateral"
                 type="number"
                 step="0.01"
                 min="0"
                 placeholder="0.00"
-                value={counterpartyWager}
-                onChange={(e) => setCounterpartyWager(e.target.value)}
+                value={counterpartyCollateral}
+                onChange={(e) => setCounterpartyCollateral(e.target.value)}
               />
               <p className="text-xs text-muted-foreground">
                 This is what counterparties must stake to fill your prediction
@@ -374,7 +374,7 @@ export default function V2CreateAuctionForm({
           )}
 
           {/* Summary */}
-          {predictorWager && counterpartyWager && (
+          {predictorCollateral && counterpartyCollateral && (
             <div className="p-4 bg-muted/50 rounded-lg space-y-2">
               <p className="text-sm font-medium">Summary</p>
               <div className="grid grid-cols-2 gap-2 text-sm text-muted-foreground">
@@ -382,8 +382,8 @@ export default function V2CreateAuctionForm({
                 <div className="font-medium text-foreground">
                   <NumberDisplay
                     value={
-                      parseFloat(predictorWager || '0') +
-                      parseFloat(counterpartyWager || '0')
+                      parseFloat(predictorCollateral || '0') +
+                      parseFloat(counterpartyCollateral || '0')
                     }
                     appendedText={collateralSymbol}
                   />
@@ -392,7 +392,7 @@ export default function V2CreateAuctionForm({
                 <div className="font-medium text-emerald-500">
                   +
                   <NumberDisplay
-                    value={parseFloat(counterpartyWager || '0')}
+                    value={parseFloat(counterpartyCollateral || '0')}
                     appendedText={collateralSymbol}
                   />
                 </div>
@@ -400,7 +400,7 @@ export default function V2CreateAuctionForm({
                 <div className="font-medium text-red-500">
                   -
                   <NumberDisplay
-                    value={parseFloat(predictorWager || '0')}
+                    value={parseFloat(predictorCollateral || '0')}
                     appendedText={collateralSymbol}
                   />
                 </div>

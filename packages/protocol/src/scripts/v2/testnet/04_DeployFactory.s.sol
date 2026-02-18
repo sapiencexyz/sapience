@@ -2,9 +2,8 @@
 pragma solidity ^0.8.19;
 
 import { Script, console } from "forge-std/Script.sol";
-import {
-    PredictionMarketTokenFactory
-} from "../../../v2/bridge/PredictionMarketTokenFactory.sol";
+import { PredictionMarketTokenFactory } from
+    "../../../v2/bridge/PredictionMarketTokenFactory.sol";
 
 /// @title Deploy PredictionMarketTokenFactory
 /// @notice Deploy factory on SM Network Sepolia (remote chain)

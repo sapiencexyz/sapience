@@ -11,7 +11,7 @@ This document captures the context agents need when working in the Sapience mono
   - `packages/sdk` – Shared TypeScript SDK (ABIs, hooks, UI kit, GraphQL helpers) built via `tsup` and Storybook.
   - `packages/docs` – Documentation portal powered by Vocs.
   - `packages/polymarket-keeper` – Cron scripts for managing Sapience conditions from Polymarket markets.
-- Shared script: `render-build-sdk.sh` installs workspace devDependencies and builds the SDK before deployment.
+- Backend services deploy on Railway with per-service build/start commands (see `railway.toml` and the Railway dashboard).
 
 ## Core Commands
 Run from repo root unless noted.
@@ -32,19 +32,43 @@ Package-specific highlights:
 - App: standard Next.js commands (`dev`, `build`, `lint`, `type-check`).
 
 ## Environment Notes
-- Services expect a Postgres connection string in `DATABASE_URL` (see `render.yaml` for deployment wiring).
+- Services expect a Postgres connection string in `DATABASE_URL` (see `railway.toml` and the Railway dashboard for deployment wiring).
 - Wallet interaction uses an Anvil chain on `http://localhost:8545` (Chain ID `13370`); reset the nonce when restarting the protocol node.
 - Sentry is integrated across app/API; ensure auth tokens are available when building with sourcemap uploads.
 - The API relies on generated Prisma client and GraphQL types (`prisma:generate`, `generate-types`). These run automatically in most scripts but double-check when editing schemas.
 
+## CI Requirements
+
+CI uses path-filtered jobs — only packages with changed files are checked. All checks must pass before merge.
+
+- **API** (`packages/api`): lint, compile, vitest
+- **App** (`packages/app`): lint, type-check
+- **SDK** (`packages/sdk`): build, lint, type-check
+- **UI** (`packages/ui`): lint, type-check
+- **Relayer** (`packages/relayer`): lint
+- **Protocol** (`packages/protocol`): `forge fmt --check`, contract tests
+
+SDK changes also trigger API, App, and Relayer checks (they depend on it). UI changes trigger App checks.
+
+### Dependency chain
+```
+protocol (standalone — Foundry/Cannon)
+sdk (standalone — tsup)
+  ├── api (depends on sdk)
+  ├── app (depends on sdk + ui)
+  └── relayer (depends on sdk)
+ui (standalone)
+  └── app (depends on ui)
+```
+
 ## Testing & Quality
 - Prefer package-level lint/format commands (`lint`, `lint:fix`, `format`) instead of manual `eslint` invocations.
-- For contract work, use Foundry’s targeted flags (`forge test --match-path …`).
+- For contract work, use Foundry's targeted flags (`forge test --match-path …`).
 - Frontend tests use Jest (`pnpm --filter @sapience/app run test`) and Playwright for E2E (`test:e2e`).
 - Keep Storybook snapshots current when touching shared UI (`pnpm --filter @sapience/sdk run build-storybook`).
 
 ## Deployment & Ops
-- Production is deployed on Render (see `render.yaml`): a web service for the API, worker processes, and a dedicated candle cache builder. Each build path runs `render-build-sdk.sh` to ensure the SDK is compiled first.
+- Backend services are deployed on Railway (see `railway.toml`). Two environments exist: **testing** (deploys from a WIP branch) and **production** (deploys from `main`). Each service has its own build and start commands configured in the Railway dashboard.
 - Contracts deploy via Cannon (`deploy:*` scripts) targeting Sepolia/Base; dry runs available with `simulate-deploy:*`.
 
 ## Agent Tips

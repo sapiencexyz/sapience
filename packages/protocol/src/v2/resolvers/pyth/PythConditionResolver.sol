@@ -1,9 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {
-    ReentrancyGuard
-} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import { ReentrancyGuard } from
+    "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import { IConditionResolver } from "../../interfaces/IConditionResolver.sol";
 import { IV2Types } from "../../interfaces/IV2Types.sol";
@@ -267,9 +266,8 @@ contract PythConditionResolver is IConditionResolver, ReentrancyGuard {
             uint64 publishTimeMicros
         )
     {
-        PythLazerStructs.Update memory u = PythLazerLibBytes.parseUpdateFromPayloadBytes(
-                payload
-            );
+        PythLazerStructs.Update memory u =
+            PythLazerLibBytes.parseUpdateFromPayloadBytes(payload);
 
         publishTimeMicros = u.timestamp;
         publishTimeSec = uint64(u.timestamp / 1_000_000);

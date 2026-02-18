@@ -12,7 +12,7 @@ const STALE_THRESHOLD_MS = 60_000; // 1 minute
 export type AuctionBid = {
   auctionId: string;
   maker: string;
-  makerWager: string;
+  makerCollateral: string;
   makerDeadline: number;
   makerSignature: string;
   makerNonce: number;
@@ -85,7 +85,7 @@ class AuctionBidsHub {
         const obj: AuctionBid = {
           auctionId,
           maker: String(b?.maker || ''),
-          makerWager: String(b?.makerWager || '0'),
+          makerCollateral: String(b?.makerCollateral || '0'),
           makerDeadline: Number(b?.makerDeadline || 0),
           makerSignature: signature,
           makerNonce: Number(b?.makerNonce || 0),

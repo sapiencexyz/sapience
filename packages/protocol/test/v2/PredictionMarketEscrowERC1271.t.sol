@@ -48,9 +48,8 @@ contract MockSmartAccount is IERC1271 {
 
 /// @notice Non-EIP1271 contract (no isValidSignature function)
 contract NonEIP1271Contract {
-    // Intentionally empty - does not implement IERC1271
-
-    }
+// Intentionally empty - does not implement IERC1271
+}
 
 /// @notice Contract that reverts on isValidSignature
 contract RevertingEIP1271Contract is IERC1271 {
@@ -80,8 +79,10 @@ contract PredictionMarketEscrowERC1271Test is Test {
     MockSmartAccount public predictorSmartAccount;
     MockSmartAccount public counterpartySmartAccount;
 
-    uint256 public constant PREDICTOR_WAGER = 100e18;
-    uint256 public constant COUNTERPARTY_WAGER = 150e18;
+    uint256 public constant PREDICTOR_COLLATERAL = 100e18;
+    uint256 public constant COUNTERPARTY_COLLATERAL = 150e18;
+    uint256 public constant TOTAL_COLLATERAL =
+        PREDICTOR_COLLATERAL + COUNTERPARTY_COLLATERAL;
     bytes32 public constant REF_CODE = keccak256("test-ref-code");
 
     bytes32 public conditionId1;
@@ -149,30 +150,27 @@ contract PredictionMarketEscrowERC1271Test is Test {
     function _signApproval(
         bytes32 predictionHash,
         address signer,
-        uint256 wager,
+        uint256 collateral,
         uint256 nonce,
         uint256 deadline,
         uint256 pk
     ) internal view returns (bytes memory) {
         bytes32 approvalHash = market.getMintApprovalHash(
-            predictionHash, signer, wager, nonce, deadline
+            predictionHash, signer, collateral, nonce, deadline
         );
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk, approvalHash);
         return abi.encodePacked(r, s, v);
     }
 
-    function _createMintRequestWithSmartAccountPredictor(IV2Types
-                .Pick[] memory picks)
-        internal
-        view
-        returns (IV2Types.MintRequest memory request)
-    {
+    function _createMintRequestWithSmartAccountPredictor(
+        IV2Types.Pick[] memory picks
+    ) internal view returns (IV2Types.MintRequest memory request) {
         bytes32 pickConfigId = keccak256(abi.encode(picks));
         bytes32 predictionHash = keccak256(
             abi.encode(
                 pickConfigId,
-                PREDICTOR_WAGER,
-                COUNTERPARTY_WAGER,
+                PREDICTOR_COLLATERAL,
+                COUNTERPARTY_COLLATERAL,
                 address(predictorSmartAccount), // Smart account as predictor
                 counterparty
             )
@@ -183,8 +181,8 @@ contract PredictionMarketEscrowERC1271Test is Test {
         uint256 deadline = block.timestamp + 1 hours;
 
         request.picks = picks;
-        request.predictorWager = PREDICTOR_WAGER;
-        request.counterpartyWager = COUNTERPARTY_WAGER;
+        request.predictorCollateral = PREDICTOR_COLLATERAL;
+        request.counterpartyCollateral = COUNTERPARTY_COLLATERAL;
         request.predictor = address(predictorSmartAccount);
         request.counterparty = counterparty;
         request.predictorNonce = pNonce;
@@ -195,7 +193,7 @@ contract PredictionMarketEscrowERC1271Test is Test {
         request.predictorSignature = _signApproval(
             predictionHash,
             address(predictorSmartAccount),
-            PREDICTOR_WAGER,
+            PREDICTOR_COLLATERAL,
             pNonce,
             deadline,
             predictorPk // Owner's private key
@@ -204,7 +202,7 @@ contract PredictionMarketEscrowERC1271Test is Test {
         request.counterpartySignature = _signApproval(
             predictionHash,
             counterparty,
-            COUNTERPARTY_WAGER,
+            COUNTERPARTY_COLLATERAL,
             cNonce,
             deadline,
             counterpartyPk
@@ -212,20 +210,19 @@ contract PredictionMarketEscrowERC1271Test is Test {
         request.refCode = REF_CODE;
         request.predictorSessionKeyData = "";
         request.counterpartySessionKeyData = "";
+        request.predictorSponsor = address(0);
+        request.predictorSponsorData = "";
     }
 
-    function _createMintRequestWithSmartAccountCounterparty(IV2Types
-                .Pick[] memory picks)
-        internal
-        view
-        returns (IV2Types.MintRequest memory request)
-    {
+    function _createMintRequestWithSmartAccountCounterparty(
+        IV2Types.Pick[] memory picks
+    ) internal view returns (IV2Types.MintRequest memory request) {
         bytes32 pickConfigId = keccak256(abi.encode(picks));
         bytes32 predictionHash = keccak256(
             abi.encode(
                 pickConfigId,
-                PREDICTOR_WAGER,
-                COUNTERPARTY_WAGER,
+                PREDICTOR_COLLATERAL,
+                COUNTERPARTY_COLLATERAL,
                 predictor,
                 address(counterpartySmartAccount) // Smart account as counterparty
             )
@@ -236,8 +233,8 @@ contract PredictionMarketEscrowERC1271Test is Test {
         uint256 deadline = block.timestamp + 1 hours;
 
         request.picks = picks;
-        request.predictorWager = PREDICTOR_WAGER;
-        request.counterpartyWager = COUNTERPARTY_WAGER;
+        request.predictorCollateral = PREDICTOR_COLLATERAL;
+        request.counterpartyCollateral = COUNTERPARTY_COLLATERAL;
         request.predictor = predictor;
         request.counterparty = address(counterpartySmartAccount);
         request.predictorNonce = pNonce;
@@ -248,7 +245,7 @@ contract PredictionMarketEscrowERC1271Test is Test {
         request.predictorSignature = _signApproval(
             predictionHash,
             predictor,
-            PREDICTOR_WAGER,
+            PREDICTOR_COLLATERAL,
             pNonce,
             deadline,
             predictorPk
@@ -257,7 +254,7 @@ contract PredictionMarketEscrowERC1271Test is Test {
         request.counterpartySignature = _signApproval(
             predictionHash,
             address(counterpartySmartAccount),
-            COUNTERPARTY_WAGER,
+            COUNTERPARTY_COLLATERAL,
             cNonce,
             deadline,
             counterpartyPk // Owner's private key
@@ -265,6 +262,8 @@ contract PredictionMarketEscrowERC1271Test is Test {
         request.refCode = REF_CODE;
         request.predictorSessionKeyData = "";
         request.counterpartySessionKeyData = "";
+        request.predictorSponsor = address(0);
+        request.predictorSponsorData = "";
     }
 
     function _createMintRequestBothSmartAccounts(IV2Types.Pick[] memory picks)
@@ -276,8 +275,8 @@ contract PredictionMarketEscrowERC1271Test is Test {
         bytes32 predictionHash = keccak256(
             abi.encode(
                 pickConfigId,
-                PREDICTOR_WAGER,
-                COUNTERPARTY_WAGER,
+                PREDICTOR_COLLATERAL,
+                COUNTERPARTY_COLLATERAL,
                 address(predictorSmartAccount),
                 address(counterpartySmartAccount)
             )
@@ -288,8 +287,8 @@ contract PredictionMarketEscrowERC1271Test is Test {
         uint256 deadline = block.timestamp + 1 hours;
 
         request.picks = picks;
-        request.predictorWager = PREDICTOR_WAGER;
-        request.counterpartyWager = COUNTERPARTY_WAGER;
+        request.predictorCollateral = PREDICTOR_COLLATERAL;
+        request.counterpartyCollateral = COUNTERPARTY_COLLATERAL;
         request.predictor = address(predictorSmartAccount);
         request.counterparty = address(counterpartySmartAccount);
         request.predictorNonce = pNonce;
@@ -299,7 +298,7 @@ contract PredictionMarketEscrowERC1271Test is Test {
         request.predictorSignature = _signApproval(
             predictionHash,
             address(predictorSmartAccount),
-            PREDICTOR_WAGER,
+            PREDICTOR_COLLATERAL,
             pNonce,
             deadline,
             predictorPk
@@ -307,7 +306,7 @@ contract PredictionMarketEscrowERC1271Test is Test {
         request.counterpartySignature = _signApproval(
             predictionHash,
             address(counterpartySmartAccount),
-            COUNTERPARTY_WAGER,
+            COUNTERPARTY_COLLATERAL,
             cNonce,
             deadline,
             counterpartyPk
@@ -315,6 +314,8 @@ contract PredictionMarketEscrowERC1271Test is Test {
         request.refCode = REF_CODE;
         request.predictorSessionKeyData = "";
         request.counterpartySessionKeyData = "";
+        request.predictorSponsor = address(0);
+        request.predictorSponsorData = "";
     }
 
     function _createMintRequestEOA(IV2Types.Pick[] memory picks)
@@ -326,8 +327,8 @@ contract PredictionMarketEscrowERC1271Test is Test {
         bytes32 predictionHash = keccak256(
             abi.encode(
                 pickConfigId,
-                PREDICTOR_WAGER,
-                COUNTERPARTY_WAGER,
+                PREDICTOR_COLLATERAL,
+                COUNTERPARTY_COLLATERAL,
                 predictor,
                 counterparty
             )
@@ -338,8 +339,8 @@ contract PredictionMarketEscrowERC1271Test is Test {
         uint256 deadline = block.timestamp + 1 hours;
 
         request.picks = picks;
-        request.predictorWager = PREDICTOR_WAGER;
-        request.counterpartyWager = COUNTERPARTY_WAGER;
+        request.predictorCollateral = PREDICTOR_COLLATERAL;
+        request.counterpartyCollateral = COUNTERPARTY_COLLATERAL;
         request.predictor = predictor;
         request.counterparty = counterparty;
         request.predictorNonce = pNonce;
@@ -349,7 +350,7 @@ contract PredictionMarketEscrowERC1271Test is Test {
         request.predictorSignature = _signApproval(
             predictionHash,
             predictor,
-            PREDICTOR_WAGER,
+            PREDICTOR_COLLATERAL,
             pNonce,
             deadline,
             predictorPk
@@ -357,7 +358,7 @@ contract PredictionMarketEscrowERC1271Test is Test {
         request.counterpartySignature = _signApproval(
             predictionHash,
             counterparty,
-            COUNTERPARTY_WAGER,
+            COUNTERPARTY_COLLATERAL,
             cNonce,
             deadline,
             counterpartyPk
@@ -365,6 +366,8 @@ contract PredictionMarketEscrowERC1271Test is Test {
         request.refCode = REF_CODE;
         request.predictorSessionKeyData = "";
         request.counterpartySessionKeyData = "";
+        request.predictorSponsor = address(0);
+        request.predictorSponsorData = "";
     }
 
     // ============ EIP-1271 Tests ============
@@ -393,14 +396,15 @@ contract PredictionMarketEscrowERC1271Test is Test {
         // Check collateral was transferred from smart account
         assertEq(
             collateralToken.balanceOf(address(predictorSmartAccount)),
-            smartAccountBalanceBefore - PREDICTOR_WAGER
+            smartAccountBalanceBefore - PREDICTOR_COLLATERAL
         );
 
         // Check position tokens were minted to smart account
         assertEq(
-            IPredictionMarketToken(predictorToken)
-                .balanceOf(address(predictorSmartAccount)),
-            PREDICTOR_WAGER
+            IPredictionMarketToken(predictorToken).balanceOf(
+                address(predictorSmartAccount)
+            ),
+            TOTAL_COLLATERAL
         );
 
         // Check prediction data
@@ -429,14 +433,15 @@ contract PredictionMarketEscrowERC1271Test is Test {
         // Check collateral was transferred from smart account
         assertEq(
             collateralToken.balanceOf(address(counterpartySmartAccount)),
-            smartAccountBalanceBefore - COUNTERPARTY_WAGER
+            smartAccountBalanceBefore - COUNTERPARTY_COLLATERAL
         );
 
         // Check position tokens were minted to smart account
         assertEq(
-            IPredictionMarketToken(counterpartyToken)
-                .balanceOf(address(counterpartySmartAccount)),
-            COUNTERPARTY_WAGER
+            IPredictionMarketToken(counterpartyToken).balanceOf(
+                address(counterpartySmartAccount)
+            ),
+            TOTAL_COLLATERAL
         );
 
         // Check prediction data
@@ -469,14 +474,16 @@ contract PredictionMarketEscrowERC1271Test is Test {
 
         // Check tokens minted to smart accounts
         assertEq(
-            IPredictionMarketToken(predictorToken)
-                .balanceOf(address(predictorSmartAccount)),
-            PREDICTOR_WAGER
+            IPredictionMarketToken(predictorToken).balanceOf(
+                address(predictorSmartAccount)
+            ),
+            TOTAL_COLLATERAL
         );
         assertEq(
-            IPredictionMarketToken(counterpartyToken)
-                .balanceOf(address(counterpartySmartAccount)),
-            COUNTERPARTY_WAGER
+            IPredictionMarketToken(counterpartyToken).balanceOf(
+                address(counterpartySmartAccount)
+            ),
+            TOTAL_COLLATERAL
         );
     }
 
@@ -492,8 +499,8 @@ contract PredictionMarketEscrowERC1271Test is Test {
         bytes32 predictionHash = keccak256(
             abi.encode(
                 pickConfigId,
-                PREDICTOR_WAGER,
-                COUNTERPARTY_WAGER,
+                PREDICTOR_COLLATERAL,
+                COUNTERPARTY_COLLATERAL,
                 address(predictorSmartAccount),
                 counterparty
             )
@@ -505,7 +512,7 @@ contract PredictionMarketEscrowERC1271Test is Test {
         request.predictorSignature = _signApproval(
             predictionHash,
             address(predictorSmartAccount),
-            PREDICTOR_WAGER,
+            PREDICTOR_COLLATERAL,
             pNonce,
             deadline,
             counterpartyPk // Wrong key!
@@ -531,8 +538,8 @@ contract PredictionMarketEscrowERC1271Test is Test {
         bytes32 predictionHash = keccak256(
             abi.encode(
                 pickConfigId,
-                PREDICTOR_WAGER,
-                COUNTERPARTY_WAGER,
+                PREDICTOR_COLLATERAL,
+                COUNTERPARTY_COLLATERAL,
                 address(nonEIP1271),
                 counterparty
             )
@@ -544,8 +551,8 @@ contract PredictionMarketEscrowERC1271Test is Test {
 
         IV2Types.MintRequest memory request;
         request.picks = picks;
-        request.predictorWager = PREDICTOR_WAGER;
-        request.counterpartyWager = COUNTERPARTY_WAGER;
+        request.predictorCollateral = PREDICTOR_COLLATERAL;
+        request.counterpartyCollateral = COUNTERPARTY_COLLATERAL;
         request.predictor = address(nonEIP1271);
         request.counterparty = counterparty;
         request.predictorNonce = pNonce;
@@ -556,7 +563,7 @@ contract PredictionMarketEscrowERC1271Test is Test {
         request.predictorSignature = _signApproval(
             predictionHash,
             address(nonEIP1271),
-            PREDICTOR_WAGER,
+            PREDICTOR_COLLATERAL,
             pNonce,
             deadline,
             predictorPk
@@ -564,7 +571,7 @@ contract PredictionMarketEscrowERC1271Test is Test {
         request.counterpartySignature = _signApproval(
             predictionHash,
             counterparty,
-            COUNTERPARTY_WAGER,
+            COUNTERPARTY_COLLATERAL,
             cNonce,
             deadline,
             counterpartyPk
@@ -572,6 +579,8 @@ contract PredictionMarketEscrowERC1271Test is Test {
         request.refCode = REF_CODE;
         request.predictorSessionKeyData = "";
         request.counterpartySessionKeyData = "";
+        request.predictorSponsor = address(0);
+        request.predictorSponsorData = "";
 
         // Should fail because the contract doesn't implement EIP-1271
         vm.expectRevert(IPredictionMarketEscrow.InvalidSignature.selector);
@@ -595,8 +604,8 @@ contract PredictionMarketEscrowERC1271Test is Test {
         bytes32 predictionHash = keccak256(
             abi.encode(
                 pickConfigId,
-                PREDICTOR_WAGER,
-                COUNTERPARTY_WAGER,
+                PREDICTOR_COLLATERAL,
+                COUNTERPARTY_COLLATERAL,
                 address(revertingContract),
                 counterparty
             )
@@ -608,8 +617,8 @@ contract PredictionMarketEscrowERC1271Test is Test {
 
         IV2Types.MintRequest memory request;
         request.picks = picks;
-        request.predictorWager = PREDICTOR_WAGER;
-        request.counterpartyWager = COUNTERPARTY_WAGER;
+        request.predictorCollateral = PREDICTOR_COLLATERAL;
+        request.counterpartyCollateral = COUNTERPARTY_COLLATERAL;
         request.predictor = address(revertingContract);
         request.counterparty = counterparty;
         request.predictorNonce = pNonce;
@@ -619,7 +628,7 @@ contract PredictionMarketEscrowERC1271Test is Test {
         request.predictorSignature = _signApproval(
             predictionHash,
             address(revertingContract),
-            PREDICTOR_WAGER,
+            PREDICTOR_COLLATERAL,
             pNonce,
             deadline,
             predictorPk
@@ -627,7 +636,7 @@ contract PredictionMarketEscrowERC1271Test is Test {
         request.counterpartySignature = _signApproval(
             predictionHash,
             counterparty,
-            COUNTERPARTY_WAGER,
+            COUNTERPARTY_COLLATERAL,
             cNonce,
             deadline,
             counterpartyPk
@@ -635,6 +644,8 @@ contract PredictionMarketEscrowERC1271Test is Test {
         request.refCode = REF_CODE;
         request.predictorSessionKeyData = "";
         request.counterpartySessionKeyData = "";
+        request.predictorSponsor = address(0);
+        request.predictorSponsorData = "";
 
         // Should fail gracefully (catch block in _isEIP1271SignatureValid)
         vm.expectRevert(IPredictionMarketEscrow.InvalidSignature.selector);
@@ -688,10 +699,10 @@ contract PredictionMarketEscrowERC1271Test is Test {
 
         vm.prank(address(predictorSmartAccount));
         uint256 payout =
-            market.redeem(predictorToken, PREDICTOR_WAGER, REF_CODE);
+            market.redeem(predictorToken, TOTAL_COLLATERAL, REF_CODE);
 
         // Smart account should get all collateral
-        assertEq(payout, PREDICTOR_WAGER + COUNTERPARTY_WAGER);
+        assertEq(payout, TOTAL_COLLATERAL);
         assertEq(
             collateralToken.balanceOf(address(predictorSmartAccount)),
             balanceBefore + payout
@@ -721,10 +732,10 @@ contract PredictionMarketEscrowERC1271Test is Test {
 
         vm.prank(counterparty);
         uint256 payout =
-            market.redeem(counterpartyToken, COUNTERPARTY_WAGER, REF_CODE);
+            market.redeem(counterpartyToken, TOTAL_COLLATERAL, REF_CODE);
 
         // Counterparty should get all collateral
-        assertEq(payout, PREDICTOR_WAGER + COUNTERPARTY_WAGER);
+        assertEq(payout, TOTAL_COLLATERAL);
         assertEq(
             collateralToken.balanceOf(counterparty),
             counterpartyBalanceBefore + payout
@@ -751,17 +762,17 @@ contract PredictionMarketEscrowERC1271Test is Test {
         // Settle prediction
         market.settle(predictionId, REF_CODE);
 
-        // Both smart accounts redeem
+        // Both smart accounts redeem (full TOTAL_COLLATERAL each)
         vm.prank(address(predictorSmartAccount));
         uint256 predictorPayout =
-            market.redeem(predictorToken, PREDICTOR_WAGER, REF_CODE);
+            market.redeem(predictorToken, TOTAL_COLLATERAL, REF_CODE);
 
         vm.prank(address(counterpartySmartAccount));
         uint256 counterpartyPayout =
-            market.redeem(counterpartyToken, COUNTERPARTY_WAGER, REF_CODE);
+            market.redeem(counterpartyToken, TOTAL_COLLATERAL, REF_CODE);
 
-        // Each gets their original wager back
-        assertEq(predictorPayout, PREDICTOR_WAGER);
-        assertEq(counterpartyPayout, COUNTERPARTY_WAGER);
+        // Each gets their original collateral back
+        assertEq(predictorPayout, PREDICTOR_COLLATERAL);
+        assertEq(counterpartyPayout, COUNTERPARTY_COLLATERAL);
     }
 }

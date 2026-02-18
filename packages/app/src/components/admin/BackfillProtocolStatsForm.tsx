@@ -6,7 +6,7 @@ import { useToast } from '@sapience/ui/hooks/use-toast';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { useAdminApi } from '~/hooks/useAdminApi';
-import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 
 const Loader = dynamic(() => import('~/components/shared/Loader'), {
   ssr: false,
@@ -27,12 +27,12 @@ const BackfillProtocolStatsForm = () => {
 
       await postJson('/reindex/protocol-stats', {
         days: Number(days),
-        chainId: CHAIN_ID_ETHEREAL,
+        chainId: DEFAULT_CHAIN_ID,
       });
 
       toast({
         title: 'Backfill started',
-        description: `Protocol stats backfill started for ${days} days on Ethereal (${CHAIN_ID_ETHEREAL})`,
+        description: `Protocol stats backfill started for ${days} days on Ethereal (${DEFAULT_CHAIN_ID})`,
       });
     } catch (error) {
       console.error('Protocol stats backfill error:', error);
@@ -56,7 +56,7 @@ const BackfillProtocolStatsForm = () => {
       <div className="space-y-1">
         <div className="text-sm font-medium">Chain</div>
         <div className="text-sm text-muted-foreground">
-          Ethereal ({CHAIN_ID_ETHEREAL})
+          Ethereal ({DEFAULT_CHAIN_ID})
         </div>
       </div>
 

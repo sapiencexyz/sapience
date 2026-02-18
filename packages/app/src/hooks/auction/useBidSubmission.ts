@@ -45,9 +45,9 @@ import { useV2Nonce } from '~/hooks/blockchain/useV2Contract';
 export type BidSubmissionParams = {
   auctionId: string;
   /** Bidder's position size in wei */
-  makerWager: bigint;
+  makerCollateral: bigint;
   /** Auction creator's position size in wei */
-  takerWager: bigint;
+  takerCollateral: bigint;
   /** Encoded predicted outcomes (V1) */
   predictedOutcomes: `0x${string}`[];
   /** Resolver contract address */
@@ -175,8 +175,8 @@ export function useBidSubmission(
     async (params: BidSubmissionParams): Promise<BidSubmissionResult> => {
       const {
         auctionId,
-        makerWager,
-        takerWager,
+        makerCollateral,
+        takerCollateral,
         predictedOutcomes,
         resolver,
         taker,
@@ -218,7 +218,7 @@ export function useBidSubmission(
         return { success: false, error: 'Auction ID required' };
       }
 
-      if (makerWager <= 0n) {
+      if (makerCollateral <= 0n) {
         return { success: false, error: 'Invalid bid amount' };
       }
 
@@ -282,8 +282,8 @@ export function useBidSubmission(
               }),
             ]);
 
-            const needsMoreWusde = wusdeBalance < makerWager;
-            const needsMoreAllowance = wusdeAllowance < makerWager;
+            const needsMoreWusde = wusdeBalance < makerCollateral;
+            const needsMoreAllowance = wusdeAllowance < makerCollateral;
 
             if (needsMoreWusde || needsMoreAllowance) {
               // Check native USDe balance for potential wrapping
@@ -294,7 +294,7 @@ export function useBidSubmission(
               // Also check if there's depositable USDe token (not native ETH-like)
               // wUSDe.deposit() wraps native USDe sent as msg.value
               const wrapAmount = needsMoreWusde
-                ? makerWager - wusdeBalance
+                ? makerCollateral - wusdeBalance
                 : 0n;
 
               if (wrapAmount > 0n && nativeUsdeBalance < wrapAmount) {
@@ -330,7 +330,7 @@ export function useBidSubmission(
                   data: encodeFunctionData({
                     abi: erc20Abi,
                     functionName: 'approve',
-                    args: [escrowAddress, makerWager],
+                    args: [escrowAddress, makerCollateral],
                   }),
                   value: 0n,
                 });
@@ -409,8 +409,8 @@ export function useBidSubmission(
         // In V2 terms: predictor = taker (auction creator), counterparty = maker (bidder)
         const typedData = buildCounterpartyMintTypedData({
           picks,
-          predictorWager: takerWager, // auction creator's wager
-          counterpartyWager: makerWager, // bidder's wager
+          predictorCollateral: takerCollateral, // auction creator's collateral
+          counterpartyCollateral: makerCollateral, // bidder's collateral
           predictor: taker, // auction creator
           counterparty: signerAddress, // bidder (us)
           counterpartyNonce,
@@ -468,8 +468,8 @@ export function useBidSubmission(
             ),
             [
               encodedPredicted,
-              makerWager,
-              takerWager,
+              makerCollateral,
+              takerCollateral,
               getAddress(resolver),
               getAddress(taker),
               BigInt(makerDeadline),
@@ -543,7 +543,7 @@ export function useBidSubmission(
         const v2Payload = {
           auctionId,
           counterparty: signerAddress,
-          counterpartyWager: makerWager.toString(),
+          counterpartyCollateral: makerCollateral.toString(),
           counterpartyNonce: Number(v2Nonce ?? 0n),
           counterpartyDeadline: makerDeadline,
           counterpartySignature: makerSignature,
@@ -558,7 +558,7 @@ export function useBidSubmission(
           makerDeadline,
           makerNonce: takerNonce,
           makerSignature,
-          makerWager: makerWager.toString(),
+          makerCollateral: makerCollateral.toString(),
         };
         client.send({ type: 'bid.submit', payload });
       }

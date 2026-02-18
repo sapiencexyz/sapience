@@ -349,6 +349,7 @@ export type Condition = {
   endTime: Scalars['Int']['output'];
   id: Scalars['String']['output'];
   openInterest: Scalars['String']['output'];
+  predictionCount: Scalars['Int']['output'];
   predictions: Array<Prediction>;
   public: Scalars['Boolean']['output'];
   question: Scalars['String']['output'];
@@ -617,6 +618,7 @@ export type ConditionOrderByWithRelationInput = {
   endTime?: InputMaybe<SortOrder>;
   id?: InputMaybe<SortOrder>;
   openInterest?: InputMaybe<SortOrder>;
+  predictionCount?: InputMaybe<SortOrder>;
   predictions?: InputMaybe<PredictionOrderByRelationAggregateInput>;
   public?: InputMaybe<SortOrder>;
   question?: InputMaybe<SortOrder>;
@@ -647,6 +649,7 @@ export type ConditionScalarFieldEnum =
   | 'endTime'
   | 'id'
   | 'openInterest'
+  | 'predictionCount'
   | 'public'
   | 'question'
   | 'resolvedToYes'
@@ -687,6 +690,7 @@ export type ConditionWhereInput = {
   endTime?: InputMaybe<IntFilter>;
   id?: InputMaybe<StringFilter>;
   openInterest?: InputMaybe<StringFilter>;
+  predictionCount?: InputMaybe<IntFilter>;
   predictions?: InputMaybe<PredictionListRelationFilter>;
   public?: InputMaybe<BoolFilter>;
   question?: InputMaybe<StringFilter>;
@@ -718,6 +722,7 @@ export type ConditionWhereUniqueInput = {
   endTime?: InputMaybe<IntFilter>;
   id?: InputMaybe<Scalars['String']['input']>;
   openInterest?: InputMaybe<StringFilter>;
+  predictionCount?: InputMaybe<IntFilter>;
   predictions?: InputMaybe<PredictionListRelationFilter>;
   public?: InputMaybe<BoolFilter>;
   question?: InputMaybe<StringFilter>;
@@ -1552,6 +1557,7 @@ export type Question = {
   __typename?: 'Question';
   condition?: Maybe<Condition>;
   group?: Maybe<ConditionGroup>;
+  predictionCount?: Maybe<Scalars['Int']['output']>;
   questionType: Scalars['String']['output'];
 };
 
@@ -2051,7 +2057,7 @@ export type V2PredictionType = {
   counterparty: Scalars['String']['output'];
   counterpartyClaimable?: Maybe<Scalars['String']['output']>;
   counterpartyToken: Scalars['String']['output'];
-  counterpartyWager: Scalars['String']['output'];
+  counterpartyCollateral: Scalars['String']['output'];
   createTxHash: Scalars['String']['output'];
   id: Scalars['Int']['output'];
   marketAddress: Scalars['String']['output'];
@@ -2059,7 +2065,7 @@ export type V2PredictionType = {
   predictor: Scalars['String']['output'];
   predictorClaimable?: Maybe<Scalars['String']['output']>;
   predictorToken: Scalars['String']['output'];
-  predictorWager: Scalars['String']['output'];
+  predictorCollateral: Scalars['String']['output'];
   refCode?: Maybe<Scalars['String']['output']>;
   result: Scalars['String']['output'];
   settleTxHash?: Maybe<Scalars['String']['output']>;

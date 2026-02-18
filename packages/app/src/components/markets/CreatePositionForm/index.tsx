@@ -372,7 +372,7 @@ const CreatePositionFormInner = ({
         chainId,
         predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
         takerAddress: taker,
-        takerWager: wager,
+        takerCollateral: wager,
         takerNonce,
         encodedPredictedOutcomes: predictedOutcomes[0] as `0x${string}`,
         resolver: resolver as `0x${string}`,
@@ -877,10 +877,9 @@ const CreatePositionFormInner = ({
           }
 
           const dialogData = {
-            // OG images use shortName when available for more compact display
             picks: selections.map((s) => ({
               conditionId: s.conditionId,
-              question: s.shortName || s.question,
+              question: s.question,
               choice: s.prediction ? 'Yes' : ('No' as 'Yes' | 'No'),
             })),
             positionSize: submittedPositionSize,
@@ -1029,12 +1028,19 @@ const CreatePositionFormInner = ({
     [clearPositionForm, clearSelections, resetProgress]
   );
 
-  // Handle position indexed - mark complete and refetch positions for accurate lastNftId on next trade
+  // Handle position indexed - mark complete, clear form, and refetch positions for accurate lastNftId on next trade
   const handlePositionIndexed = useCallback(() => {
     markPositionIndexed();
+    clearPositionForm();
+    clearSelections();
     // Refetch positions so next trade has correct lastNftId
     refetchUserPositions();
-  }, [markPositionIndexed, refetchUserPositions]);
+  }, [
+    markPositionIndexed,
+    clearPositionForm,
+    clearSelections,
+    refetchUserPositions,
+  ]);
 
   const contentProps = {
     formMethods: formMethods as unknown as UseFormReturn<{

@@ -4,7 +4,7 @@ import { encodeAbiParameters } from "viem";
 interface Bid {
   auctionId: string;
   maker: string;
-  makerWager: string;
+  makerCollateral: string;
   makerDeadline: number;
   makerSignature: string;
   makerNonce: number;
@@ -69,8 +69,8 @@ export function selectBestBid(bids: Bid[]): Bid {
   }
 
   const sortedBids = validBids.sort((a, b) => {
-    const sizeA = parseFloat(a.makerWager || '0');
-    const sizeB = parseFloat(b.makerWager || '0');
+    const sizeA = parseFloat(a.makerCollateral || '0');
+    const sizeB = parseFloat(b.makerCollateral || '0');
     return sizeB - sizeA;
   });
 

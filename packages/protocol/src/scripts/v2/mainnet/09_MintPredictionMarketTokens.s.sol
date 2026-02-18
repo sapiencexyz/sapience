@@ -20,9 +20,9 @@ contract MintPredictionMarketTokens is Script {
         address counterparty;
     }
 
-    struct Wagers {
-        uint256 predictorWager;
-        uint256 counterpartyWager;
+    struct Collaterals {
+        uint256 predictorCollateral;
+        uint256 counterpartyCollateral;
     }
 
     struct SignParams {
@@ -34,11 +34,13 @@ contract MintPredictionMarketTokens is Script {
     function run() external {
         Actors memory actors = _loadActors();
 
-        // Configurable wager amounts via env vars
-        Wagers memory wagers;
-        wagers.predictorWager = vm.envOr("PREDICTOR_WAGER", uint256(100 ether));
-        wagers.counterpartyWager =
-            vm.envOr("COUNTERPARTY_WAGER", wagers.predictorWager / 3);
+        // Configurable collateral amounts via env vars
+        Collaterals memory collaterals;
+        collaterals.predictorCollateral =
+            vm.envOr("PREDICTOR_COLLATERAL", uint256(100 ether));
+        collaterals.counterpartyCollateral = vm.envOr(
+            "COUNTERPARTY_COLLATERAL", collaterals.predictorCollateral / 3
+        );
 
         console.log(
             "=== Mint Prediction Market Tokens via PredictionMarketEscrow (Mainnet) ==="
@@ -46,8 +48,10 @@ contract MintPredictionMarketTokens is Script {
         console.log("Deployer (funder):", actors.deployer);
         console.log("Predictor:", actors.predictor);
         console.log("Counterparty:", actors.counterparty);
-        console.log("Predictor Wager:", wagers.predictorWager);
-        console.log("Counterparty Wager:", wagers.counterpartyWager);
+        console.log("Predictor Collateral:", collaterals.predictorCollateral);
+        console.log(
+            "Counterparty Collateral:", collaterals.counterpartyCollateral
+        );
 
         // Execute mint
         (
@@ -56,7 +60,7 @@ contract MintPredictionMarketTokens is Script {
             address counterpartyToken,
             bytes32 pickConfigId,
             bytes32 conditionId
-        ) = _executeMint(actors, wagers);
+        ) = _executeMint(actors, collaterals);
 
         console.log("");
         console.log("=== Minted Successfully ===");
@@ -93,7 +97,7 @@ contract MintPredictionMarketTokens is Script {
         actors.counterparty = vm.addr(actors.counterpartyPk);
     }
 
-    function _executeMint(Actors memory actors, Wagers memory wagers)
+    function _executeMint(Actors memory actors, Collaterals memory collaterals)
         internal
         returns (
             bytes32 predictionId,
@@ -125,22 +129,24 @@ contract MintPredictionMarketTokens is Script {
 
         // Build mint request with separate predictor and counterparty
         IV2Types.MintRequest memory request =
-            _buildRequest(market, picks, actors, wagers);
+            _buildRequest(market, picks, actors, collaterals);
 
         // Deployer funds the collateral for both sides
         vm.startBroadcast(actors.deployerPk);
-        collateral.transfer(actors.predictor, wagers.predictorWager);
-        collateral.transfer(actors.counterparty, wagers.counterpartyWager);
+        collateral.transfer(actors.predictor, collaterals.predictorCollateral);
+        collateral.transfer(
+            actors.counterparty, collaterals.counterpartyCollateral
+        );
         vm.stopBroadcast();
 
-        // Predictor approves their wager
+        // Predictor approves their collateral
         vm.startBroadcast(actors.predictorPk);
-        collateral.approve(address(market), wagers.predictorWager);
+        collateral.approve(address(market), collaterals.predictorCollateral);
         vm.stopBroadcast();
 
-        // Counterparty approves their wager
+        // Counterparty approves their collateral
         vm.startBroadcast(actors.counterpartyPk);
-        collateral.approve(address(market), wagers.counterpartyWager);
+        collateral.approve(address(market), collaterals.counterpartyCollateral);
         vm.stopBroadcast();
 
         // Anyone can call mint (we use deployer)
@@ -153,15 +159,15 @@ contract MintPredictionMarketTokens is Script {
         PredictionMarketEscrow market,
         IV2Types.Pick[] memory picks,
         Actors memory actors,
-        Wagers memory wagers
+        Collaterals memory collaterals
     ) internal view returns (IV2Types.MintRequest memory request) {
         // Compute prediction hash
         bytes32 pickConfigId = keccak256(abi.encode(picks));
         bytes32 predictionHash = keccak256(
             abi.encode(
                 pickConfigId,
-                wagers.predictorWager,
-                wagers.counterpartyWager,
+                collaterals.predictorCollateral,
+                collaterals.counterpartyCollateral,
                 actors.predictor,
                 actors.counterparty
             )
@@ -180,18 +186,21 @@ contract MintPredictionMarketTokens is Script {
 
         // Sign for predictor
         bytes memory predictorSig = _signPredictor(
-            signParams, actors, wagers.predictorWager, predictorNonce
+            signParams, actors, collaterals.predictorCollateral, predictorNonce
         );
 
         // Sign for counterparty
         bytes memory counterpartySig = _signCounterparty(
-            signParams, actors, wagers.counterpartyWager, counterpartyNonce
+            signParams,
+            actors,
+            collaterals.counterpartyCollateral,
+            counterpartyNonce
         );
 
         request = IV2Types.MintRequest({
             picks: picks,
-            predictorWager: wagers.predictorWager,
-            counterpartyWager: wagers.counterpartyWager,
+            predictorCollateral: collaterals.predictorCollateral,
+            counterpartyCollateral: collaterals.counterpartyCollateral,
             predictor: actors.predictor,
             counterparty: actors.counterparty,
             predictorNonce: predictorNonce,
@@ -202,24 +211,25 @@ contract MintPredictionMarketTokens is Script {
             counterpartySignature: counterpartySig,
             refCode: bytes32(0),
             predictorSessionKeyData: "",
-            counterpartySessionKeyData: ""
+            counterpartySessionKeyData: "",
+            predictorSponsor: address(0),
+            predictorSponsorData: ""
         });
     }
 
     function _signPredictor(
         SignParams memory params,
         Actors memory actors,
-        uint256 wager,
+        uint256 collateral,
         uint256 nonce
     ) internal view returns (bytes memory) {
-        bytes32 approvalHash = params.market
-            .getMintApprovalHash(
-                params.predictionHash,
-                actors.predictor,
-                wager,
-                nonce,
-                params.deadline
-            );
+        bytes32 approvalHash = params.market.getMintApprovalHash(
+            params.predictionHash,
+            actors.predictor,
+            collateral,
+            nonce,
+            params.deadline
+        );
         (uint8 v, bytes32 r, bytes32 s) =
             vm.sign(actors.predictorPk, approvalHash);
         return abi.encodePacked(r, s, v);
@@ -228,17 +238,16 @@ contract MintPredictionMarketTokens is Script {
     function _signCounterparty(
         SignParams memory params,
         Actors memory actors,
-        uint256 wager,
+        uint256 collateral,
         uint256 nonce
     ) internal view returns (bytes memory) {
-        bytes32 approvalHash = params.market
-            .getMintApprovalHash(
-                params.predictionHash,
-                actors.counterparty,
-                wager,
-                nonce,
-                params.deadline
-            );
+        bytes32 approvalHash = params.market.getMintApprovalHash(
+            params.predictionHash,
+            actors.counterparty,
+            collateral,
+            nonce,
+            params.deadline
+        );
         (uint8 v, bytes32 r, bytes32 s) =
             vm.sign(actors.counterpartyPk, approvalHash);
         return abi.encodePacked(r, s, v);

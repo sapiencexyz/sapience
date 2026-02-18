@@ -36,7 +36,7 @@ export const MINT_APPROVAL_TYPES = {
   MintApproval: [
     { name: 'predictionHash', type: 'bytes32' },
     { name: 'signer', type: 'address' },
-    { name: 'wager', type: 'uint256' },
+    { name: 'collateral', type: 'uint256' },
     { name: 'nonce', type: 'uint256' },
     { name: 'deadline', type: 'uint256' },
   ],
@@ -65,12 +65,12 @@ export const BURN_APPROVAL_TYPES = {
  * Compute predictionHash for mint signatures
  *
  * Mirrors `PredictionMarketEscrow.mint`:
- * `keccak256(abi.encode(pickConfigId, predictorWager, counterpartyWager, predictor, counterparty))`
+ * `keccak256(abi.encode(pickConfigId, predictorCollateral, counterpartyCollateral, predictor, counterparty))`
  */
 export function computePredictionHash(
   pickConfigId: Hex,
-  predictorWager: bigint,
-  counterpartyWager: bigint,
+  predictorCollateral: bigint,
+  counterpartyCollateral: bigint,
   predictor: Address,
   counterparty: Address
 ): Hex {
@@ -83,7 +83,7 @@ export function computePredictionHash(
         { type: 'address' },
         { type: 'address' },
       ],
-      [pickConfigId, predictorWager, counterpartyWager, predictor, counterparty]
+      [pickConfigId, predictorCollateral, counterpartyCollateral, predictor, counterparty]
     )
   );
 }
@@ -93,16 +93,16 @@ export function computePredictionHash(
  */
 export function computePredictionHashFromPicks(
   picks: Pick[],
-  predictorWager: bigint,
-  counterpartyWager: bigint,
+  predictorCollateral: bigint,
+  counterpartyCollateral: bigint,
   predictor: Address,
   counterparty: Address
 ): Hex {
   const pickConfigId = computePickConfigId(picks);
   return computePredictionHash(
     pickConfigId,
-    predictorWager,
-    counterpartyWager,
+    predictorCollateral,
+    counterpartyCollateral,
     predictor,
     counterparty
   );
@@ -158,7 +158,7 @@ export function computeBurnHash(
 export function buildMintApprovalTypedData(params: {
   predictionHash: Hex;
   signer: Address;
-  wager: bigint;
+  collateral: bigint;
   nonce: bigint;
   deadline: bigint;
   verifyingContract: Address;
@@ -171,7 +171,7 @@ export function buildMintApprovalTypedData(params: {
     message: {
       predictionHash: params.predictionHash,
       signer: params.signer,
-      wager: params.wager,
+      collateral: params.collateral,
       nonce: params.nonce,
       deadline: params.deadline,
     },
@@ -218,7 +218,7 @@ export function buildBurnApprovalTypedData(params: {
 export function hashMintApproval(params: {
   predictionHash: Hex;
   signer: Address;
-  wager: bigint;
+  collateral: bigint;
   nonce: bigint;
   deadline: bigint;
   verifyingContract: Address;
@@ -255,8 +255,8 @@ export function hashBurnApproval(params: {
  */
 export function buildPredictorMintTypedData(params: {
   picks: Pick[];
-  predictorWager: bigint;
-  counterpartyWager: bigint;
+  predictorCollateral: bigint;
+  counterpartyCollateral: bigint;
   predictor: Address;
   counterparty: Address;
   predictorNonce: bigint;
@@ -266,8 +266,8 @@ export function buildPredictorMintTypedData(params: {
 }) {
   const predictionHash = computePredictionHashFromPicks(
     params.picks,
-    params.predictorWager,
-    params.counterpartyWager,
+    params.predictorCollateral,
+    params.counterpartyCollateral,
     params.predictor,
     params.counterparty
   );
@@ -275,7 +275,7 @@ export function buildPredictorMintTypedData(params: {
   return buildMintApprovalTypedData({
     predictionHash,
     signer: params.predictor,
-    wager: params.predictorWager,
+    collateral: params.predictorCollateral,
     nonce: params.predictorNonce,
     deadline: params.predictorDeadline,
     verifyingContract: params.verifyingContract,
@@ -288,8 +288,8 @@ export function buildPredictorMintTypedData(params: {
  */
 export function buildCounterpartyMintTypedData(params: {
   picks: Pick[];
-  predictorWager: bigint;
-  counterpartyWager: bigint;
+  predictorCollateral: bigint;
+  counterpartyCollateral: bigint;
   predictor: Address;
   counterparty: Address;
   counterpartyNonce: bigint;
@@ -299,8 +299,8 @@ export function buildCounterpartyMintTypedData(params: {
 }) {
   const predictionHash = computePredictionHashFromPicks(
     params.picks,
-    params.predictorWager,
-    params.counterpartyWager,
+    params.predictorCollateral,
+    params.counterpartyCollateral,
     params.predictor,
     params.counterparty
   );
@@ -308,7 +308,7 @@ export function buildCounterpartyMintTypedData(params: {
   return buildMintApprovalTypedData({
     predictionHash,
     signer: params.counterparty,
-    wager: params.counterpartyWager,
+    collateral: params.counterpartyCollateral,
     nonce: params.counterpartyNonce,
     deadline: params.counterpartyDeadline,
     verifyingContract: params.verifyingContract,

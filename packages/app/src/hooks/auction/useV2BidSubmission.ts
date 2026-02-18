@@ -178,8 +178,8 @@ export function useV2BidSubmission(options: UseV2BidSubmissionOptions = {}) {
       // Build typed data for counterparty signature
       const typedData = buildCounterpartyMintTypedData({
         picks,
-        predictorWager: BigInt(auction.predictorWager),
-        counterpartyWager: BigInt(auction.counterpartyWager),
+        predictorCollateral: BigInt(auction.predictorCollateral),
+        counterpartyCollateral: BigInt(auction.counterpartyCollateral),
         predictor: auction.predictor as Address,
         counterparty: signerAddress,
         counterpartyNonce,
@@ -221,7 +221,7 @@ export function useV2BidSubmission(options: UseV2BidSubmissionOptions = {}) {
       const bidPayload: V2BidPayload = {
         auctionId: auction.auctionId,
         counterparty: signerAddress,
-        counterpartyWager: auction.counterpartyWager,
+        counterpartyCollateral: auction.counterpartyCollateral,
         counterpartyNonce: Number(counterpartyNonce),
         counterpartyDeadline: Number(counterpartyDeadline),
         counterpartySignature,

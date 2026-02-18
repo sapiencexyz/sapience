@@ -156,7 +156,10 @@ interface IPredictionMarketBridgeBase {
     /// @notice Get escrowed balance for a token
     /// @param token The token address
     /// @return The escrowed amount
-    function getEscrowedBalance(address token) external view returns (uint256);
+    function getEscrowedBalance(address token)
+        external
+        view
+        returns (uint256);
 
     /// @notice Get bridge configuration
     /// @return The bridge config

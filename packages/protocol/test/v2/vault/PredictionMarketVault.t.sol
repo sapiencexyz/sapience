@@ -3,17 +3,14 @@ pragma solidity ^0.8.22;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
-import {
-    PredictionMarketVault
-} from "../../../src/v2/vault/PredictionMarketVault.sol";
-import {
-    IPredictionMarketVault
-} from "../../../src/v2/vault/interfaces/IPredictionMarketVault.sol";
+import { PredictionMarketVault } from
+    "../../../src/v2/vault/PredictionMarketVault.sol";
+import { IPredictionMarketVault } from
+    "../../../src/v2/vault/interfaces/IPredictionMarketVault.sol";
 import { MockERC20 } from "../mocks/MockERC20.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {
-    SafeERC20
-} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import { SafeERC20 } from
+    "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 contract PredictionMarketVaultTest is Test {
     PredictionMarketVault public vault;
@@ -117,7 +114,8 @@ contract PredictionMarketVaultTest is Test {
         // Check pending request exists
         (
             uint256 shares,
-            uint256 assets,,
+            uint256 assets,
+            ,
             address requestUser,
             bool isDeposit,
             bool processed
@@ -232,7 +230,8 @@ contract PredictionMarketVaultTest is Test {
         // Check pending request exists
         (
             uint256 requestShares,
-            uint256 requestAssets,,
+            uint256 requestAssets,
+            ,
             address requestUser,
             bool isDeposit,
             bool processed
@@ -960,9 +959,8 @@ contract PredictionMarketVaultTest is Test {
     // ============ Pending Withdrawals Accumulator Tests ============
 
     function test_getPendingWithdrawals_zeroByDefault() public view {
-        (uint256 shares, uint256 assets) = vault.getPendingWithdrawals();
+        uint256 shares = vault.getPendingWithdrawals();
         assertEq(shares, 0);
-        assertEq(assets, 0);
     }
 
     function test_getPendingWithdrawals_incrementsOnRequest() public {
@@ -971,9 +969,8 @@ contract PredictionMarketVaultTest is Test {
         vm.prank(user1);
         vault.requestWithdrawal(depositShares, DEPOSIT_AMOUNT);
 
-        (uint256 shares, uint256 assets) = vault.getPendingWithdrawals();
+        uint256 shares = vault.getPendingWithdrawals();
         assertEq(shares, depositShares);
-        assertEq(assets, DEPOSIT_AMOUNT);
     }
 
     function test_getPendingWithdrawals_decrementsOnProcess() public {
@@ -985,9 +982,8 @@ contract PredictionMarketVaultTest is Test {
         vm.prank(manager);
         vault.processWithdrawal(user1);
 
-        (uint256 shares, uint256 assets) = vault.getPendingWithdrawals();
+        uint256 shares = vault.getPendingWithdrawals();
         assertEq(shares, 0);
-        assertEq(assets, 0);
     }
 
     function test_getPendingWithdrawals_decrementsOnCancel() public {
@@ -1001,9 +997,8 @@ contract PredictionMarketVaultTest is Test {
         vm.prank(user1);
         vault.cancelWithdrawal();
 
-        (uint256 shares, uint256 assets) = vault.getPendingWithdrawals();
+        uint256 shares = vault.getPendingWithdrawals();
         assertEq(shares, 0);
-        assertEq(assets, 0);
     }
 
     function test_getPendingWithdrawals_multipleUsers() public {
@@ -1016,17 +1011,15 @@ contract PredictionMarketVaultTest is Test {
         vm.prank(user2);
         vault.requestWithdrawal(shares2, DEPOSIT_AMOUNT * 2);
 
-        (uint256 shares, uint256 assets) = vault.getPendingWithdrawals();
+        uint256 shares = vault.getPendingWithdrawals();
         assertEq(shares, shares1 + shares2);
-        assertEq(assets, DEPOSIT_AMOUNT * 3);
 
         // Process one
         vm.prank(manager);
         vault.processWithdrawal(user1);
 
-        (shares, assets) = vault.getPendingWithdrawals();
+        shares = vault.getPendingWithdrawals();
         assertEq(shares, shares2);
-        assertEq(assets, DEPOSIT_AMOUNT * 2);
     }
 
     // ============ ERC1271 Signature Tests ============

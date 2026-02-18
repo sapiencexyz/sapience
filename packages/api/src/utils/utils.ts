@@ -6,27 +6,12 @@ import {
   webSocket,
   type Transport,
 } from 'viem';
-import { mainnet, sepolia, cannon, base, arbitrum } from 'viem/chains';
+import { cannon, arbitrum } from 'viem/chains';
 import dotenv from 'dotenv';
 import { fromRoot } from './fromRoot';
 import * as viem from 'viem';
 import * as viemChains from 'viem/chains';
 import * as Sentry from '@sentry/node';
-
-// Custom chain definition for Converge (chainId 432)
-export const convergeChain: viem.Chain = {
-  id: 432,
-  name: 'Converge',
-  nativeCurrency: {
-    name: 'Converge',
-    symbol: 'CVG',
-    decimals: 18,
-  },
-  rpcUrls: {
-    default: { http: [process.env.RPC_URL || ''] },
-    public: { http: [process.env.RPC_URL || ''] },
-  },
-};
 
 export const etherealChain: viem.Chain = {
   id: 5064014,
@@ -65,7 +50,6 @@ export const etherealTestnetChain: viem.Chain = {
 
 export const chains: viem.Chain[] = [
   ...Object.values(viemChains),
-  convergeChain,
   etherealChain,
   etherealTestnetChain,
 ];
@@ -98,17 +82,6 @@ const createChainClient = (
   network: string,
   useLocalhost = false
 ) => {
-  // Special handling for Converge (chainId 432)
-  if (chain.id === 432 && process.env.RPC_URL) {
-    return createPublicClient({
-      chain,
-      transport: http(process.env.RPC_URL),
-      batch: {
-        multicall: true,
-      },
-    });
-  }
-
   if (chain.id === 5064014) {
     const rpcUrl =
       process.env.CHAIN_5064014_RPC_URL || 'https://rpc.ethereal.trade';
@@ -146,9 +119,6 @@ const createChainClient = (
   });
 };
 
-export const mainnetPublicClient = createChainClient(mainnet, 'mainnet');
-export const basePublicClient = createChainClient(base, 'base-mainnet');
-export const sepoliaPublicClient = createChainClient(sepolia, 'sepolia');
 export const cannonPublicClient = createChainClient(cannon, 'cannon', true);
 export const arbitrumPublicClient = createChainClient(
   arbitrum,
@@ -163,23 +133,11 @@ export function getProviderForChain(chainId: number): PublicClient {
   let newClient: PublicClient;
 
   switch (chainId) {
-    case 1:
-      newClient = mainnetPublicClient;
-      break;
-    case 11155111:
-      newClient = sepoliaPublicClient;
-      break;
     case 13370:
       newClient = cannonPublicClient;
       break;
-    case 8453:
-      newClient = basePublicClient as PublicClient;
-      break;
     case 42161:
       newClient = arbitrumPublicClient as PublicClient;
-      break;
-    case 432:
-      newClient = createChainClient(convergeChain, 'converge');
       break;
     case 5064014:
       newClient = createChainClient(etherealChain, 'ethereal');
@@ -250,50 +208,6 @@ export async function getBlockByTimestamp(
   }
 
   return closestBlock!;
-}
-
-export async function fetchRenderServices() {
-  const RENDER_API_KEY = process.env.RENDER_API_KEY;
-  if (!RENDER_API_KEY) {
-    throw new Error('RENDER_API_KEY not set');
-  }
-  const url = 'https://api.render.com/v1/services?limit=100';
-  const response = await fetch(url, {
-    method: 'GET',
-    headers: {
-      accept: 'application/json',
-      authorization: `Bearer ${RENDER_API_KEY}`,
-    },
-  });
-
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
-  }
-  return await response.json();
-}
-
-export async function createRenderJob(serviceId: string, startCommand: string) {
-  const RENDER_API_KEY = process.env.RENDER_API_KEY;
-  if (!RENDER_API_KEY) {
-    throw new Error('RENDER_API_KEY not set');
-  }
-
-  const url = `https://api.render.com/v1/services/${serviceId}/jobs`;
-  const response = await fetch(url, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${RENDER_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      startCommand: startCommand,
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`HTTP error! status: ${response.status}`);
-  }
-  return await response.json();
 }
 
 export const CELENIUM_API_KEY = process.env.CELENIUM_API_KEY;

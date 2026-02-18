@@ -40,7 +40,7 @@ export function addBid(
   const verification = verifyMakerBid({
     auctionId,
     maker: bid.maker,
-    makerWager: bid.makerWager,
+    makerCollateral: bid.makerCollateral,
     makerDeadline: bid.makerDeadline,
     makerSignature: bid.makerSignature,
   });

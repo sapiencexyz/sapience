@@ -8,6 +8,7 @@ import Providers from '~/app/providers';
 import { ibmPlexMono } from '~/app/fonts';
 import Layout from '~/components/layout';
 import ChatWidget from '~/components/shared/ChatWidget';
+import CommandMenu from '~/components/shared/CommandMenu';
 import ConsoleMessage from '~/components/shared/ConsoleMessage';
 import FloatingChatButton from '~/components/shared/FloatingChatButton';
 import GlobalLoader from '~/components/shared/GlobalLoader';
@@ -122,6 +123,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
               <TooltipProvider>
                 <Layout>{children}</Layout>
               </TooltipProvider>
+              <CommandMenu />
               <Toaster />
               <InstallDialog />
               <div className="fixed bottom-5 right-4 md:right-6 z-[55]">

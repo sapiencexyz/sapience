@@ -132,7 +132,7 @@ const RFQTab = ({
   const { postJson, putJson } = useAdminApi();
   const { data: categories } = useCategories();
 
-  const currentChainId = CHAIN_ID_ETHEREAL;
+  const currentChainId = DEFAULT_CHAIN_ID;
   const currentChainName = 'Ethereal';
 
   const [question, setQuestion] = useState('');

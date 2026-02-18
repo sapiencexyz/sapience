@@ -31,26 +31,26 @@ export function basicValidateBid(
   if (!bid.maker || typeof bid.maker !== 'string') {
     return { ok: false, reason: 'invalid_maker' };
   }
-  if (!bid.makerWager) {
-    return { ok: false, reason: 'invalid_maker_wager' };
+  if (!bid.makerCollateral) {
+    return { ok: false, reason: 'invalid_maker_collateral' };
   }
 
   try {
-    const makerWagerBigInt = BigInt(bid.makerWager);
+    const makerCollateralBigInt = BigInt(bid.makerCollateral);
 
     // Basic validation: maker wager should be positive
-    if (makerWagerBigInt <= 0n) {
-      return { ok: false, reason: 'invalid_maker_wager' };
+    if (makerCollateralBigInt <= 0n) {
+      return { ok: false, reason: 'invalid_maker_collateral' };
     }
   } catch {
-    return { ok: false, reason: 'invalid_wager_values' };
+    return { ok: false, reason: 'invalid_collateral_values' };
   }
 
   // Validate maker signature payload and deadline (format + expiry)
   const sigCheck = verifyMakerBid({
     auctionId: bid.auctionId,
     maker: bid.maker,
-    makerWager: bid.makerWager,
+    makerCollateral: bid.makerCollateral,
     makerDeadline: bid.makerDeadline,
     makerSignature: bid.makerSignature,
   });
