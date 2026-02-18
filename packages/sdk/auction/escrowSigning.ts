@@ -6,7 +6,7 @@ import {
   type Hex,
   type TypedDataDomain,
 } from 'viem';
-import type { Pick, MintRequest, BurnRequest } from '../types/auction';
+import type { Pick, MintRequest, BurnRequest } from '../types/escrow';
 import { computePickConfigId } from './escrowEncoding';
 
 // ============================================================================

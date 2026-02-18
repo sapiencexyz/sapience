@@ -19,7 +19,7 @@ import type {
   EscrowRecord,
   OutcomeSide,
   SettlementResult,
-} from '../types/auction';
+} from '../types/escrow';
 
 // ============================================================================
 // Chain Configuration

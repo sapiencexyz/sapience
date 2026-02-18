@@ -7,7 +7,7 @@ import type {
   ClientToServerMessage,
   ServerToClientMessage,
   PickJson,
-} from '../types/auction';
+} from '../types/escrow';
 
 // ============================================================================
 // Escrow Auction WebSocket Client

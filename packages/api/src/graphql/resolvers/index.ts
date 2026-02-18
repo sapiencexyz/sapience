@@ -1,6 +1,6 @@
 export { PnLResolver } from './PnLResolver';
 export { ScoreResolver } from './ScoreResolver';
-export { PositionResolver } from './PositionResolver';
+export { EscrowPositionResolver } from './EscrowPositionResolver';
 export { LegacyPositionResolver } from './LegacyPositionResolver';
 export { AnalyticsResolver } from './AnalyticsResolver';
 export { ConditionResolver } from './ConditionResolver';

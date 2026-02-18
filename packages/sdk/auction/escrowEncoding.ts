@@ -4,7 +4,7 @@ import {
   type Address,
   type Hex,
 } from 'viem';
-import type { Pick, PickJson, OutcomeSide } from '../types/auction';
+import type { Pick, PickJson, OutcomeSide } from '../types/escrow';
 
 // ============================================================================
 // Pick Encoding
