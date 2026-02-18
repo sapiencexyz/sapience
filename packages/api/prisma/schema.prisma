@@ -450,3 +450,170 @@ model VaultFlowEvent {
   @@index([eventType])
   @@map("vault_flow_event")
 }
+
+// ───────────────────────────────────────────────
+// V2 Prediction Market Models
+// ───────────────────────────────────────────────
+
+enum V2SettlementResult {
+  UNRESOLVED
+  PREDICTOR_WINS
+  COUNTERPARTY_WINS
+  NON_DECISIVE
+}
+
+/// Tracks the indexer's last-processed block per chain for V2 contracts
+model V2IndexerState {
+  chainId          Int      @id
+  marketAddress    String   @db.VarChar
+  lastIndexedBlock Int
+  lastIndexedAt    DateTime @default(now()) @db.Timestamp(6)
+
+  @@map("v2_indexer_state")
+}
+
+/// A V2 prediction (position) created on-chain via PredictionMarketEscrow
+model V2Prediction {
+  id                     Int       @id @default(autoincrement())
+  createdAt              DateTime  @default(now()) @db.Timestamp(6)
+
+  predictionId           String    @unique @db.VarChar
+  chainId                Int
+  marketAddress          String    @db.VarChar
+  predictor              String    @db.VarChar
+  counterparty           String    @db.VarChar
+  predictorToken         String    @db.VarChar
+  counterpartyToken      String    @db.VarChar
+  predictorCollateral    String    @db.VarChar
+  counterpartyCollateral String    @db.VarChar
+  onChainCreatedAt       Int
+  createTxHash           String    @db.VarChar
+  refCode                String?   @db.VarChar
+
+  // Settlement
+  settled                Boolean   @default(false)
+  settledAt              Int?
+  settleTxHash           String?   @db.VarChar
+  result                 V2SettlementResult @default(UNRESOLVED)
+  predictorClaimable     String?   @db.VarChar
+  counterpartyClaimable  String?   @db.VarChar
+
+  // Collateral deposit tracking
+  collateralDeposited    String?   @db.VarChar
+  collateralDepositedAt  Int?
+
+  @@index([chainId, marketAddress], map: "IDX_v2_prediction_chain_market")
+  @@index([predictor], map: "IDX_v2_prediction_predictor")
+  @@index([counterparty], map: "IDX_v2_prediction_counterparty")
+  @@index([settled], map: "IDX_v2_prediction_settled")
+  @@map("v2_prediction")
+}
+
+/// A pick configuration (group of picks that define a combined position)
+model V2PickConfiguration {
+  id                           String    @id @db.VarChar
+  createdAt                    DateTime  @default(now()) @db.Timestamp(6)
+
+  chainId                      Int
+  marketAddress                String    @db.VarChar
+  totalPredictorCollateral     String    @default("0") @db.VarChar
+  totalCounterpartyCollateral  String    @default("0") @db.VarChar
+  claimedPredictorCollateral   String    @default("0") @db.VarChar
+  claimedCounterpartyCollateral String   @default("0") @db.VarChar
+  resolved                     Boolean   @default(false)
+  result                       V2SettlementResult @default(UNRESOLVED)
+  resolvedAt                   Int?
+  predictorToken               String?   @db.VarChar
+  counterpartyToken            String?   @db.VarChar
+  endsAt                       Int?
+
+  picks                        V2Pick[]
+  positionBalances             V2PositionBalance[]
+
+  @@index([chainId, marketAddress], map: "IDX_v2_pick_config_chain_market")
+  @@index([resolved], map: "IDX_v2_pick_config_resolved")
+  @@map("v2_pick_configuration")
+}
+
+/// Individual pick within a pick configuration
+model V2Pick {
+  id                  Int      @id @default(autoincrement())
+  createdAt           DateTime @default(now()) @db.Timestamp(6)
+
+  pickConfigId        String   @db.VarChar
+  pickConfiguration   V2PickConfiguration @relation(fields: [pickConfigId], references: [id], onDelete: Cascade)
+
+  conditionResolver   String   @db.VarChar
+  conditionId         String   @db.VarChar
+  predictedOutcome    Int
+
+  @@index([pickConfigId], map: "IDX_v2_pick_config_id")
+  @@map("v2_pick")
+}
+
+/// Token balance tracking for V2 positions
+model V2PositionBalance {
+  id               Int      @id @default(autoincrement())
+  createdAt        DateTime @default(now()) @db.Timestamp(6)
+  updatedAt        DateTime @updatedAt @db.Timestamp(6)
+
+  chainId          Int
+  tokenAddress     String   @db.VarChar
+  pickConfigId     String   @db.VarChar
+  pickConfiguration V2PickConfiguration @relation(fields: [pickConfigId], references: [id], onDelete: Cascade)
+  isPredictorToken Boolean
+  holder           String   @db.VarChar
+  balance          String   @db.VarChar
+
+  @@unique([chainId, tokenAddress, holder], map: "UQ_v2_position_balance")
+  @@index([holder], map: "IDX_v2_position_balance_holder")
+  @@index([pickConfigId], map: "IDX_v2_position_balance_pick_config")
+  @@map("v2_position_balance")
+}
+
+/// Record of V2 token redemptions (early exit via redeem)
+model V2RedemptionRecord {
+  id              Int      @id @default(autoincrement())
+  createdAt       DateTime @default(now()) @db.Timestamp(6)
+
+  chainId         Int
+  marketAddress   String   @db.VarChar
+  predictionId    String   @db.VarChar
+  holder          String   @db.VarChar
+  positionToken   String   @db.VarChar
+  tokensBurned    String   @db.VarChar
+  collateralPaid  String   @db.VarChar
+  redeemedAt      Int
+  txHash          String   @db.VarChar
+  refCode         String?  @db.VarChar
+
+  @@index([chainId, marketAddress], map: "IDX_v2_redemption_chain_market")
+  @@index([holder], map: "IDX_v2_redemption_holder")
+  @@index([predictionId], map: "IDX_v2_redemption_prediction")
+  @@map("v2_redemption_record")
+}
+
+/// Record of V2 position burns (settled exits)
+model V2BurnRecord {
+  id                       Int      @id @default(autoincrement())
+  createdAt                DateTime @default(now()) @db.Timestamp(6)
+
+  chainId                  Int
+  marketAddress            String   @db.VarChar
+  pickConfigId             String   @db.VarChar
+  predictorHolder          String   @db.VarChar
+  counterpartyHolder       String   @db.VarChar
+  predictorTokensBurned    String   @db.VarChar
+  counterpartyTokensBurned String   @db.VarChar
+  predictorPayout          String   @db.VarChar
+  counterpartyPayout       String   @db.VarChar
+  burnedAt                 Int
+  txHash                   String   @db.VarChar
+  refCode                  String?  @db.VarChar
+
+  @@index([chainId, marketAddress], map: "IDX_v2_burn_chain_market")
+  @@index([pickConfigId], map: "IDX_v2_burn_pick_config")
+  @@index([predictorHolder], map: "IDX_v2_burn_predictor")
+  @@index([counterpartyHolder], map: "IDX_v2_burn_counterparty")
+  @@map("v2_burn_record")
+}
