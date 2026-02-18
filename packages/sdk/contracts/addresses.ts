@@ -145,10 +145,9 @@ export const predictionMarketEscrow: ChainAddressMap = {
     legacy: [] as const,
   },
   13374202: {
-    // Ethereal testnet
-    address: '0x8730eE1194Cd03A14deA9975e2bafD4C8b6019F1',
-    blockCreated: 2107812,
-    legacy: [] as const,
+    // Ethereal testnet — deployed 2026-02-17
+    address: '0xb5d2E6B148eBdFB02a3456F0Af021FAe81356511',
+    legacy: ['0x8730eE1194Cd03A14deA9975e2bafD4C8b6019F1'] as const,
   },
 } as const;
 
@@ -198,9 +197,9 @@ export const manualConditionResolver: ChainAddressMap = {
     legacy: [] as const,
   },
   13374202: {
-    // Ethereal testnet
-    address: '0x514A4321d89Aa47D1b1Dd9E0a3226249E6ef896A',
-    legacy: [] as const,
+    // Ethereal testnet — deployed 2026-02-17
+    address: '0x9938583eA9a6450Cc64502bDcBF76f4EEa2F9560',
+    legacy: ['0x514A4321d89Aa47D1b1Dd9E0a3226249E6ef896A'] as const,
   },
 } as const;
 
@@ -232,9 +231,9 @@ export const predictionMarketBridge: ChainAddressMap = {
     legacy: [] as const,
   },
   13374202: {
-    // Ethereal testnet
-    address: '0x275Ba9B8DB207afb33022043848216BB7195eDb5',
-    legacy: [] as const,
+    // Ethereal testnet — deployed 2026-02-17
+    address: '0xAe66B4DED22bED7bE9385c29ADEc7AC9e1B97700',
+    legacy: ['0x275Ba9B8DB207afb33022043848216BB7195eDb5'] as const,
   },
 } as const;
 
@@ -249,9 +248,9 @@ export const predictionMarketBridgeRemote: ChainAddressMap = {
     legacy: [] as const,
   },
   421614: {
-    // Arbitrum Sepolia testnet
-    address: '0x1a7F19Ee50FBCa9a4d195E4a3737e7737b252b4c',
-    legacy: [] as const,
+    // Arbitrum Sepolia testnet — deployed 2026-02-17
+    address: '0xE64ca8f0533422BCb6d48dCF11DB2fF3FA26B7Fb',
+    legacy: ['0x1a7F19Ee50FBCa9a4d195E4a3737e7737b252b4c'] as const,
   },
 } as const;
 
@@ -266,9 +265,9 @@ export const predictionMarketTokenFactory: ChainAddressMap = {
     legacy: [] as const,
   },
   421614: {
-    // Arbitrum Sepolia testnet
-    address: '0x0daA1bC7FC4d7f2753FdB65e0AD96b97361385A3',
-    legacy: [] as const,
+    // Arbitrum Sepolia testnet — deployed 2026-02-17
+    address: '0xD0734eb4b22eFc22F53254C276e8A3095740600a',
+    legacy: ['0x0daA1bC7FC4d7f2753FdB65e0AD96b97361385A3'] as const,
   },
 } as const;
 
