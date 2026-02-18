@@ -26,7 +26,8 @@ import {
 } from 'viem';
 import { Input } from '@sapience/ui/components/ui/input';
 import { useToast } from '@sapience/ui/hooks/use-toast';
-import { DEFAULT_CHAIN_ID, ETHEREAL_WUSDE_ADDRESS } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { collateralToken } from '@sapience/sdk/contracts';
 import { useCollateralBalance } from '~/hooks/blockchain/useCollateralBalance';
 import { useSession } from '~/lib/context/SessionContext';
 import {
@@ -70,6 +71,7 @@ export default function CollateralBalanceButton({
 }: CollateralBalanceButtonProps) {
   const { address: eoaAddress, connector } = useAccount();
   const chainId = DEFAULT_CHAIN_ID;
+  const wusdeAddress = collateralToken[chainId]?.address;
 
   // Get smart account address and mode from session context
   const { smartAccountAddress, isCalculatingAddress, isUsingSmartAccount } =
@@ -177,7 +179,7 @@ export default function CollateralBalanceButton({
         });
 
         calls.push({
-          to: ETHEREAL_WUSDE_ADDRESS,
+          to: wusdeAddress,
           data: wrapData,
           value: wrapAmount,
         });
@@ -192,7 +194,7 @@ export default function CollateralBalanceButton({
       });
 
       calls.push({
-        to: ETHEREAL_WUSDE_ADDRESS,
+        to: wusdeAddress,
         data: transferData,
         value: 0n,
       });
@@ -287,7 +289,7 @@ export default function CollateralBalanceButton({
       // This is a single call that can be sponsored by the paymaster
       const calls: { to: Address; data: Hex; value: bigint }[] = [
         {
-          to: ETHEREAL_WUSDE_ADDRESS,
+          to: wusdeAddress,
           data: encodeFunctionData({
             abi: WUSDE_ABI,
             functionName: 'transfer',

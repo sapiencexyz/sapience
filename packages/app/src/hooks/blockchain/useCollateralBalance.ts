@@ -6,7 +6,6 @@ import {
   CHAIN_ID_ETHEREAL,
   DEFAULT_CHAIN_ID,
   CHAIN_ID_ETHEREAL_TESTNET,
-  ETHEREAL_WUSDE_ADDRESS,
 } from '@sapience/sdk/constants';
 import { collateralToken } from '@sapience/sdk/contracts';
 
@@ -60,6 +59,9 @@ export function useCollateralBalance({
     },
   });
 
+  // Collateral token address for the active chain (WUSDe on Ethereal, ERC-20 elsewhere)
+  const collateralAssetAddress = collateralToken[effectiveChainId]?.address;
+
   // --- Ethereal: WUSDe (wrapped) balance ---
   const {
     data: wusdeBalance,
@@ -67,7 +69,7 @@ export function useCollateralBalance({
     refetch: refetchWusde,
   } = useReadContract({
     abi: erc20Abi,
-    address: ETHEREAL_WUSDE_ADDRESS,
+    address: collateralAssetAddress,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
     chainId: effectiveChainId,
@@ -76,9 +78,6 @@ export function useCollateralBalance({
       refetchInterval: 5000,
     },
   });
-
-  // --- Non-Ethereal: ERC-20 collateral balance ---
-  const collateralAssetAddress = collateralToken[effectiveChainId]?.address;
 
   const {
     data: erc20Balance,

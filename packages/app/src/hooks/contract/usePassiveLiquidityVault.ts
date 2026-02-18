@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Address } from 'viem';
 import { erc20Abi } from 'viem';
 import { passiveLiquidityVault } from '@sapience/sdk/contracts';
-import { DEFAULT_CHAIN_ID, ETHEREAL_WUSDE_ADDRESS } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { collateralToken } from '@sapience/sdk/contracts';
 import type { Abi } from 'abitype';
 import {
   liquidityVaultAbi,
@@ -262,7 +263,7 @@ export function usePassiveLiquidityVault(
   // wUSDe balance (for combined balance display)
   const { data: wusdeBalance, refetch: refetchWusdeBalance } = useReadContract({
     abi: erc20Abi,
-    address: ETHEREAL_WUSDE_ADDRESS,
+    address: collateralToken[DEFAULT_CHAIN_ID]?.address,
     functionName: 'balanceOf',
     args: currentAddress ? [currentAddress] : undefined,
     chainId: TARGET_CHAIN_ID,
@@ -276,7 +277,7 @@ export function usePassiveLiquidityVault(
   const { data: wusdeAllowance, refetch: refetchWusdeAllowance } =
     useReadContract({
       abi: erc20Abi,
-      address: ETHEREAL_WUSDE_ADDRESS,
+      address: collateralToken[DEFAULT_CHAIN_ID]?.address,
       functionName: 'allowance',
       args:
         currentAddress && VAULT_ADDRESS
