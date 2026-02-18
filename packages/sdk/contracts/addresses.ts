@@ -163,8 +163,8 @@ export const predictionMarketVault: ChainAddressMap = {
     legacy: [] as const,
   },
   13374202: {
-    // Ethereal testnet - TODO: deploy
-    address: '0x0000000000000000000000000000000000000000',
+    // Ethereal testnet — deployed 2026-02-18
+    address: '0xADf3C8D4B159FdA439E3C0e519DEc3C93DE0a4c3',
     legacy: [] as const,
   },
 } as const;
