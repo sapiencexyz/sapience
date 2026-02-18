@@ -58,13 +58,14 @@ model Migrations {
   @@map("migrations")
 }
 
-model RenderJob {
+model BackgroundJob {
   id        Int      @id(map: "PK_a00488019eafb11b27af1aa1a76") @default(autoincrement())
   createdAt DateTime @default(now()) @db.Timestamp(6)
-  jobId     String   @db.VarChar
-  serviceId String   @db.VarChar
+  command   String   @db.VarChar
+  status    String   @db.VarChar
+  params    String?  @db.VarChar
 
-  @@map("render_job")
+  @@map("background_job")
 }
 
 model Attestation {

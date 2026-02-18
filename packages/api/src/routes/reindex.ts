@@ -1,10 +1,11 @@
 import { Router } from 'express';
 import { handleAsyncErrors } from '../helpers/handleAsyncErrors';
 import prisma from '../db';
-import { createRenderJob, fetchRenderServices } from '../utils/utils';
-import { config } from '../config';
 
 const router = Router();
+
+const ETH_ADDRESS_RE = /^0x[a-fA-F0-9]{40}$/;
+const SAFE_STRING_RE = /^[a-zA-Z0-9_\-.:x]+$/;
 
 const executeLocalReindex = async (
   startCommand: string
@@ -52,42 +53,29 @@ router.post(
   handleAsyncErrors(async (req, res) => {
     const { address, marketId } = req.body;
 
-    const startCommand =
-      `pnpm run start:reindex-accuracy ${address || ''} ${marketId || ''}`.trim();
-
-    if (config.isProd) {
-      const renderServices = await fetchRenderServices();
-      const worker = renderServices.find(
-        (item: {
-          service?: {
-            type?: string;
-            name?: string;
-            branch?: string;
-            id?: string;
-          };
-        }) =>
-          item?.service?.type === 'background_worker' &&
-          item?.service?.name?.startsWith('background-worker') &&
-          item?.service?.branch === 'main'
-      );
-
-      if (!worker?.service?.id) {
-        throw new Error('Background worker not found');
-      }
-
-      const job = await createRenderJob(worker.service.id, startCommand);
-      await prisma.renderJob.create({
-        data: { jobId: job.id, serviceId: job.serviceId },
-      });
-      res.json({ success: true, job });
+    if (address && !ETH_ADDRESS_RE.test(address)) {
+      res.status(400).json({ error: 'Invalid address format' });
+      return;
+    }
+    if (marketId && !SAFE_STRING_RE.test(String(marketId))) {
+      res.status(400).json({ error: 'Invalid marketId format' });
       return;
     }
 
-    // local development
+    const startCommand =
+      `pnpm run start:reindex-accuracy ${address || ''} ${marketId || ''}`.trim();
+
+    const params = JSON.stringify({ address, marketId });
     try {
       const result = await executeLocalReindex(startCommand);
+      await prisma.backgroundJob.create({
+        data: { command: 'reindex-accuracy', status: result.status, params },
+      });
       res.json({ success: true, job: result });
     } catch (error: unknown) {
+      await prisma.backgroundJob.create({
+        data: { command: 'reindex-accuracy', status: 'failed', params },
+      });
       if (error instanceof Error) {
         res.status(500).json({ error: error.message });
       } else {
@@ -102,46 +90,54 @@ router.post(
   handleAsyncErrors(async (req, res) => {
     const { chainId, startTimestamp, endTimestamp, clearExisting } = req.body;
 
-    if (!chainId || isNaN(parseInt(chainId))) {
+    const parsedChainId = parseInt(chainId);
+    if (!chainId || isNaN(parsedChainId)) {
       res.status(400).json({ error: 'Valid chainId is required' });
       return;
     }
-
-    const startCommand = `pnpm run start:reindex-prediction-market ${chainId} ${startTimestamp || 'undefined'} ${endTimestamp || 'undefined'} ${clearExisting || false}`;
-
-    if (config.isProd) {
-      const renderServices = await fetchRenderServices();
-      const worker = renderServices.find(
-        (item: {
-          service?: {
-            type?: string;
-            name?: string;
-            branch?: string;
-            id?: string;
-          };
-        }) =>
-          item?.service?.type === 'background_worker' &&
-          item?.service?.name?.startsWith('background-worker') &&
-          item?.service?.branch === 'main'
-      );
-
-      if (!worker?.service?.id) {
-        throw new Error('Background worker not found');
-      }
-
-      const job = await createRenderJob(worker.service.id, startCommand);
-      await prisma.renderJob.create({
-        data: { jobId: job.id, serviceId: job.serviceId },
-      });
-      res.json({ success: true, job });
+    if (
+      startTimestamp !== undefined &&
+      startTimestamp !== 'undefined' &&
+      isNaN(parseInt(startTimestamp))
+    ) {
+      res.status(400).json({ error: 'startTimestamp must be a number' });
+      return;
+    }
+    if (
+      endTimestamp !== undefined &&
+      endTimestamp !== 'undefined' &&
+      isNaN(parseInt(endTimestamp))
+    ) {
+      res.status(400).json({ error: 'endTimestamp must be a number' });
       return;
     }
 
-    // local development
+    const startCommand = `pnpm run start:reindex-prediction-market ${parsedChainId} ${startTimestamp || 'undefined'} ${endTimestamp || 'undefined'} ${clearExisting === true || clearExisting === 'true'}`;
+
+    const params = JSON.stringify({
+      chainId: parsedChainId,
+      startTimestamp,
+      endTimestamp,
+      clearExisting,
+    });
     try {
       const result = await executeLocalReindex(startCommand);
+      await prisma.backgroundJob.create({
+        data: {
+          command: 'reindex-prediction-market',
+          status: result.status,
+          params,
+        },
+      });
       res.json({ success: true, job: result });
     } catch (error: unknown) {
+      await prisma.backgroundJob.create({
+        data: {
+          command: 'reindex-prediction-market',
+          status: 'failed',
+          params,
+        },
+      });
       if (error instanceof Error) {
         res.status(500).json({ error: error.message });
       } else {
@@ -156,41 +152,33 @@ router.post(
   handleAsyncErrors(async (req, res) => {
     const { days, chainId } = req.body;
 
-    const startCommand = `pnpm run start:backfill-stats ${days || 90} ${chainId || 'undefined'}`;
-
-    if (config.isProd) {
-      const renderServices = await fetchRenderServices();
-      const worker = renderServices.find(
-        (item: {
-          service?: {
-            type?: string;
-            name?: string;
-            branch?: string;
-            id?: string;
-          };
-        }) =>
-          item?.service?.type === 'background_worker' &&
-          item?.service?.name?.startsWith('background-worker') &&
-          item?.service?.branch === 'main'
-      );
-
-      if (!worker?.service?.id) {
-        throw new Error('Background worker not found');
-      }
-
-      const job = await createRenderJob(worker.service.id, startCommand);
-      await prisma.renderJob.create({
-        data: { jobId: job.id, serviceId: job.serviceId },
-      });
-      res.json({ success: true, job });
+    const parsedDays = days !== undefined ? parseInt(days) : 90;
+    if (isNaN(parsedDays) || parsedDays <= 0) {
+      res.status(400).json({ error: 'days must be a positive integer' });
+      return;
+    }
+    if (
+      chainId !== undefined &&
+      chainId !== 'undefined' &&
+      isNaN(parseInt(chainId))
+    ) {
+      res.status(400).json({ error: 'chainId must be a number' });
       return;
     }
 
-    // local development
+    const startCommand = `pnpm run start:backfill-stats ${parsedDays} ${chainId || 'undefined'}`;
+
+    const params = JSON.stringify({ days: parsedDays, chainId });
     try {
       const result = await executeLocalReindex(startCommand);
+      await prisma.backgroundJob.create({
+        data: { command: 'backfill-stats', status: result.status, params },
+      });
       res.json({ success: true, job: result });
     } catch (error: unknown) {
+      await prisma.backgroundJob.create({
+        data: { command: 'backfill-stats', status: 'failed', params },
+      });
       if (error instanceof Error) {
         res.status(500).json({ error: error.message });
       } else {
