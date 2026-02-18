@@ -7,8 +7,8 @@ import {
   extractSiweDomainAndUri,
   type AuctionStartSigningPayload,
 } from '@sapience/sdk';
-import { canonicalizePicks } from '@sapience/sdk/auction/v2Encoding';
-import type { Pick } from '@sapience/sdk/types/v2';
+import { canonicalizePicks } from '@sapience/sdk/auction/escrowEncoding';
+import type { Pick } from '@sapience/sdk/types';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
 import { toAuctionWsUrl } from '~/lib/ws';

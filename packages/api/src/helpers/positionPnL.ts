@@ -1,44 +1,44 @@
 import prisma from '../db';
-import { PositionStatus, V2SettlementResult } from '../../generated/prisma';
+import { LegacyPositionStatus, SettlementResult } from '../../generated/prisma';
 
-export interface PositionPnLEntry {
+export interface LegacyPositionPnLEntry {
   owner: string;
   totalPnL: string; // in wei
   positionCount: number;
 }
 
 /**
- * V2 P&L calculation entry with additional details
+ * Position P&L entry with additional details
  */
-export interface V2PositionPnLEntry {
+export interface PositionPnLEntry {
   owner: string;
   totalPnL: string; // in wei
-  realizedPnL: string; // from redemptions and burns
+  realizedPnL: string; // from claims and closes
   unrealizedPnL: string; // from pending positions
   positionCount: number;
-  redemptionCount: number;
-  burnCount: number;
+  claimCount: number;
+  closeCount: number;
 }
 
-export async function calculatePositionPnL(
+export async function calculateLegacyPositionPnL(
   chainId?: number,
   marketAddress?: string,
   owners?: string[]
-): Promise<PositionPnLEntry[]> {
+): Promise<LegacyPositionPnLEntry[]> {
   const whereClause: {
-    status: { in: PositionStatus[] };
+    status: { in: LegacyPositionStatus[] };
     predictorWon: { not: null };
     chainId?: number;
     marketAddress?: string;
   } = {
-    status: { in: [PositionStatus.settled, PositionStatus.consolidated] },
+    status: { in: [LegacyPositionStatus.settled, LegacyPositionStatus.consolidated] },
     predictorWon: { not: null },
   };
 
   if (chainId) whereClause.chainId = chainId;
   if (marketAddress) whereClause.marketAddress = marketAddress.toLowerCase();
 
-  const positions = await prisma.position.findMany({ where: whereClause });
+  const positions = await prisma.legacyPosition.findMany({ where: whereClause });
 
   const mintTimestamps = Array.from(
     new Set(positions.map((p) => BigInt(p.mintedAt)))
@@ -121,31 +121,31 @@ export async function calculatePositionPnL(
 }
 
 /**
- * Calculate V2 Position P&L for users
+ * Calculate Position P&L for users
  *
- * V2 P&L is calculated from:
- * 1. Redemptions: collateralPaid - original collateral
- * 2. Burns (early exits): payout - proportional original collateral
- * 3. Unredeemed settled positions: claimable - original collateral
+ * P&L is calculated from:
+ * 1. Claims: collateralPaid - original collateral
+ * 2. Closes (early exits): payout - proportional original collateral
+ * 3. Unclaimed settled positions: claimable - original collateral
  *
  * Settlement results:
  * - PREDICTOR_WINS: Predictors get proportional share of total pool
  * - COUNTERPARTY_WINS: Counterparties get proportional share of total pool
  * - NON_DECISIVE: Both sides get back their proportional collateral
  */
-export async function calculateV2PositionPnL(
+export async function calculatePositionPnL(
   chainId?: number,
   marketAddress?: string,
   owners?: string[]
-): Promise<V2PositionPnLEntry[]> {
+): Promise<PositionPnLEntry[]> {
   const ownerStats = new Map<
     string,
     {
       realizedPnL: bigint;
       unrealizedPnL: bigint;
       positionCount: number;
-      redemptionCount: number;
-      burnCount: number;
+      claimCount: number;
+      closeCount: number;
     }
   >();
 
@@ -155,8 +155,8 @@ export async function calculateV2PositionPnL(
         realizedPnL: 0n,
         unrealizedPnL: 0n,
         positionCount: 0,
-        redemptionCount: 0,
-        burnCount: 0,
+        claimCount: 0,
+        closeCount: 0,
       });
     }
     return ownerStats.get(owner)!;
@@ -170,20 +170,20 @@ export async function calculateV2PositionPnL(
     return where;
   };
 
-  // 1. Calculate P&L from redemptions (realized)
-  const redemptions = await prisma.v2RedemptionRecord.findMany({
+  // 1. Calculate P&L from claims (realized)
+  const claims = await prisma.claim.findMany({
     where: buildWhereClause(),
   });
 
-  // Get predictions for redemption context (linked directly via predictionId)
+  // Get predictions for claim context (linked directly via predictionId)
   const predictionIds = new Set<string>();
 
-  for (const redemption of redemptions) {
-    predictionIds.add(redemption.predictionId);
+  for (const claimRecord of claims) {
+    predictionIds.add(claimRecord.predictionId);
   }
 
   // Get all predictions to find original collaterals
-  const predictions = await prisma.v2Prediction.findMany({
+  const predictions = await prisma.escrowPrediction.findMany({
     where: {
       predictionId: { in: Array.from(predictionIds) },
     },
@@ -192,9 +192,9 @@ export async function calculateV2PositionPnL(
   // Build lookup map for predictions by predictionId
   const predictionById = new Map(predictions.map((p) => [p.predictionId, p]));
 
-  // Process redemptions
-  for (const redemption of redemptions) {
-    const holder = redemption.holder.toLowerCase();
+  // Process claims
+  for (const claimRecord of claims) {
+    const holder = claimRecord.holder.toLowerCase();
 
     if (owners?.length) {
       const ownerSet = new Set(owners.map((o) => o.toLowerCase()));
@@ -204,48 +204,47 @@ export async function calculateV2PositionPnL(
     const stats = initOwner(holder);
 
     // Find original collateral for this holder from the prediction
-    const prediction = predictionById.get(redemption.predictionId);
+    const prediction = predictionById.get(claimRecord.predictionId);
     if (!prediction) continue;
 
     let originalCollateral = 0n;
-    const tokensRedeemed = BigInt(redemption.tokensBurned);
 
     // Determine if holder was predictor or counterparty
     if (prediction.predictor.toLowerCase() === holder) {
-      // For predictor, collateral equals tokens (1:1 ratio in V2)
+      // For predictor, collateral equals tokens (1:1 ratio)
       originalCollateral = BigInt(prediction.predictorCollateral);
     } else if (prediction.counterparty.toLowerCase() === holder) {
       originalCollateral = BigInt(prediction.counterpartyCollateral);
     }
 
-    const collateralPaid = BigInt(redemption.collateralPaid);
+    const collateralPaid = BigInt(claimRecord.collateralPaid);
     const pnl = collateralPaid - originalCollateral;
 
     stats.realizedPnL += pnl;
-    stats.redemptionCount++;
+    stats.claimCount++;
     stats.positionCount++;
   }
 
-  // 2. Calculate P&L from burns (realized - early exits)
-  const burns = await prisma.v2BurnRecord.findMany({
+  // 2. Calculate P&L from closes (realized - early exits)
+  const closes = await prisma.close.findMany({
     where: buildWhereClause(),
   });
 
-  for (const burn of burns) {
-    const predictorHolder = burn.predictorHolder.toLowerCase();
-    const counterpartyHolder = burn.counterpartyHolder.toLowerCase();
+  for (const closeRecord of closes) {
+    const predictorHolder = closeRecord.predictorHolder.toLowerCase();
+    const counterpartyHolder = closeRecord.counterpartyHolder.toLowerCase();
 
     // Process predictor holder
     if (!owners?.length || owners.map((o) => o.toLowerCase()).includes(predictorHolder)) {
       const stats = initOwner(predictorHolder);
 
-      // In V2, tokens burned equals collateral portion
-      const tokensBurned = BigInt(burn.predictorTokensBurned);
-      const payout = BigInt(burn.predictorPayout);
+      // Tokens burned equals collateral portion
+      const tokensBurned = BigInt(closeRecord.predictorTokensBurned);
+      const payout = BigInt(closeRecord.predictorPayout);
 
-      // P&L = payout - tokens burned (tokens = collateral in V2)
+      // P&L = payout - tokens burned (tokens = collateral)
       stats.realizedPnL += payout - tokensBurned;
-      stats.burnCount++;
+      stats.closeCount++;
       stats.positionCount++;
     }
 
@@ -253,21 +252,21 @@ export async function calculateV2PositionPnL(
     if (!owners?.length || owners.map((o) => o.toLowerCase()).includes(counterpartyHolder)) {
       const stats = initOwner(counterpartyHolder);
 
-      const tokensBurned = BigInt(burn.counterpartyTokensBurned);
-      const payout = BigInt(burn.counterpartyPayout);
+      const tokensBurned = BigInt(closeRecord.counterpartyTokensBurned);
+      const payout = BigInt(closeRecord.counterpartyPayout);
 
       stats.realizedPnL += payout - tokensBurned;
-      stats.burnCount++;
+      stats.closeCount++;
       stats.positionCount++;
     }
   }
 
-  // 3. Calculate unrealized P&L from settled but unredeemed predictions
-  const settledPredictions = await prisma.v2Prediction.findMany({
+  // 3. Calculate unrealized P&L from settled but unclaimed predictions
+  const settledPredictions = await prisma.escrowPrediction.findMany({
     where: {
       ...buildWhereClause(),
       settled: true,
-      result: { not: V2SettlementResult.UNRESOLVED },
+      result: { not: SettlementResult.UNRESOLVED },
     },
   });
 
@@ -302,35 +301,35 @@ export async function calculateV2PositionPnL(
     realizedPnL: stats.realizedPnL.toString(),
     unrealizedPnL: stats.unrealizedPnL.toString(),
     positionCount: stats.positionCount,
-    redemptionCount: stats.redemptionCount,
-    burnCount: stats.burnCount,
+    claimCount: stats.claimCount,
+    closeCount: stats.closeCount,
   }));
 }
 
 /**
- * Calculate combined V1 + V2 P&L for leaderboard
+ * Calculate combined legacy + current P&L for leaderboard
  */
 export async function calculateCombinedPositionPnL(
   chainId?: number,
   marketAddress?: string,
   owners?: string[]
-): Promise<PositionPnLEntry[]> {
-  const [v1Results, v2Results] = await Promise.all([
+): Promise<LegacyPositionPnLEntry[]> {
+  const [legacyResults, currentResults] = await Promise.all([
+    calculateLegacyPositionPnL(chainId, marketAddress, owners),
     calculatePositionPnL(chainId, marketAddress, owners),
-    calculateV2PositionPnL(chainId, marketAddress, owners),
   ]);
 
   // Merge results by owner
   const mergedStats = new Map<string, { totalPnL: bigint; positionCount: number }>();
 
-  for (const entry of v1Results) {
+  for (const entry of legacyResults) {
     const existing = mergedStats.get(entry.owner) || { totalPnL: 0n, positionCount: 0 };
     existing.totalPnL += BigInt(entry.totalPnL);
     existing.positionCount += entry.positionCount;
     mergedStats.set(entry.owner, existing);
   }
 
-  for (const entry of v2Results) {
+  for (const entry of currentResults) {
     const existing = mergedStats.get(entry.owner) || { totalPnL: 0n, positionCount: 0 };
     existing.totalPnL += BigInt(entry.totalPnL);
     existing.positionCount += entry.positionCount;

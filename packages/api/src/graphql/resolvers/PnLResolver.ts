@@ -6,7 +6,6 @@ import {
 } from '../types/AggregatedProfitTypes';
 import { TtlCache } from '../../utils/ttlCache';
 import {
-  calculatePositionPnL,
   calculateCombinedPositionPnL,
 } from '../../helpers/positionPnL';
 

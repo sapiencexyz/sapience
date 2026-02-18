@@ -12,9 +12,9 @@ import {
 } from '../utils';
 import type { AuctionFeedMessage } from '~/lib/auction/useAuctionRelayerFeed';
 import type {
-  BidSubmissionParams,
-  BidSubmissionResult,
-} from '~/hooks/auction/useBidSubmission';
+  LegacyBidSubmissionParams,
+  LegacyBidSubmissionResult,
+} from '~/hooks/auction/useLegacyBidSubmission';
 
 // Cache and deduplication limits
 const MAX_AUCTION_CACHE_SIZE = 200;
@@ -44,7 +44,7 @@ type UseAuctionMatchingParams = {
   tokenDecimals: number;
   auctionMessages: AuctionFeedMessage[];
   formatCollateralAmount: (value?: string | null) => string | null;
-  submitBid: (params: BidSubmissionParams) => Promise<BidSubmissionResult>;
+  submitBid: (params: LegacyBidSubmissionParams) => Promise<LegacyBidSubmissionResult>;
 };
 
 export function useAuctionMatching({

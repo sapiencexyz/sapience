@@ -23,8 +23,8 @@ import {
 } from '@sapience/ui/components/ui/select';
 import { AlertCircle, Plus, Trash2, Loader2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@sapience/ui/components/ui/alert';
-import type { Pick } from '@sapience/sdk/types/v2';
-import { useV2AuctionStart } from '~/hooks/auction/useV2AuctionStart';
+import type { Pick } from '@sapience/sdk/types';
+import { useAuctionStart } from '~/hooks/auction/useAuctionStart';
 import { useCollateralBalance } from '~/hooks/blockchain/useCollateralBalance';
 import { COLLATERAL_SYMBOLS, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import NumberDisplay from '~/components/shared/NumberDisplay';
@@ -35,19 +35,19 @@ interface PickFormData {
   predictedOutcome: 0 | 1;
 }
 
-interface V2CreateAuctionFormProps {
+interface CreateAuctionFormProps {
   chainId?: number;
   onAuctionCreated?: (auctionId: string, pickConfigId: Hex) => void;
   defaultConditionResolver?: string;
   defaultConditionId?: string;
 }
 
-export default function V2CreateAuctionForm({
+export default function CreateAuctionForm({
   chainId = DEFAULT_CHAIN_ID,
   onAuctionCreated,
   defaultConditionResolver,
   defaultConditionId,
-}: V2CreateAuctionFormProps) {
+}: CreateAuctionFormProps) {
   const collateralSymbol = COLLATERAL_SYMBOLS[chainId] || 'USDe';
 
   // Form state
@@ -70,7 +70,7 @@ export default function V2CreateAuctionForm({
     isConnected,
     address,
     verifyingContract,
-  } = useV2AuctionStart({
+  } = useAuctionStart({
     chainId,
     onAuctionCreated,
     onSignatureRejected: (err) =>
@@ -114,7 +114,7 @@ export default function V2CreateAuctionForm({
     }
 
     if (!verifyingContract) {
-      return 'V2 contract not available on this chain';
+      return 'Escrow contract not available on this chain';
     }
 
     if (picks.length === 0) {
@@ -210,7 +210,7 @@ export default function V2CreateAuctionForm({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Create V2 Prediction</CardTitle>
+        <CardTitle>Create Prediction</CardTitle>
         <CardDescription>
           Create a new prediction auction. Counterparties can bid to fill your
           prediction.

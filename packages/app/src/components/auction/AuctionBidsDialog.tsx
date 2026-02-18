@@ -2,6 +2,7 @@
 
 import type React from 'react';
 import { useEffect, useRef, useState } from 'react';
+import { formatEther } from 'viem';
 import { formatDistanceToNowStrict } from 'date-fns';
 import { Button } from '@sapience/ui/components/ui/button';
 import {
@@ -11,21 +12,67 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@sapience/ui/components/ui/dialog';
-import { TransactionAmountCell } from '~/components/markets/DataDrawer/TransactionCells';
+import { Badge } from '@sapience/ui/components/ui/badge';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import EnsAvatar from '~/components/shared/EnsAvatar';
-import { useAuctionBids } from '~/lib/auction/useAuctionBids';
+import NumberDisplay from '~/components/shared/NumberDisplay';
+import type { AuctionDetails, ValidatedBid } from '@sapience/sdk/types';
+import { useSettings } from '~/lib/context/SettingsContext';
+import { toAuctionWsUrl } from '~/lib/ws';
+import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 
 type Props = {
   auctionId: string | null;
-  makerCollateral: string | null;
-  collateralAssetTicker: string;
+  auction: AuctionDetails | null;
+  collateralSymbol: string;
 };
+
+/**
+ * Hook to subscribe to auction bids via WebSocket
+ */
+function useAuctionBids(auctionId: string | null) {
+  const [bids, setBids] = useState<ValidatedBid[]>([]);
+  const { apiBaseUrl } = useSettings();
+  const wsUrl = toAuctionWsUrl(apiBaseUrl);
+
+  useEffect(() => {
+    if (!auctionId || !wsUrl) {
+      setBids([]);
+      return;
+    }
+
+    const client = getSharedAuctionWsClient(wsUrl);
+
+    // Subscribe to auction
+    client.send({ type: 'v2.auction.subscribe', payload: { auctionId } });
+
+    // Listen for bid updates
+    const removeListener = client.addMessageListener((msg: unknown) => {
+      const data = msg as {
+        type?: string;
+        payload?: { auctionId?: string; bids?: ValidatedBid[] };
+      };
+      if (
+        data?.type === 'v2.auction.bids' &&
+        data.payload?.auctionId === auctionId
+      ) {
+        setBids(data.payload.bids ?? []);
+      }
+    });
+
+    return () => {
+      removeListener();
+      client.send({ type: 'v2.auction.unsubscribe', payload: { auctionId } });
+    };
+  }, [auctionId, wsUrl]);
+
+  return { bids };
+}
 
 const AuctionBidsDialog: React.FC<Props> = ({
   auctionId,
-  makerCollateral,
-  collateralAssetTicker,
+  auction,
+  collateralSymbol,
 }) => {
   const [open, setOpen] = useState(false);
   const { bids } = useAuctionBids(auctionId);
@@ -48,6 +95,13 @@ const AuctionBidsDialog: React.FC<Props> = ({
     return () => clearInterval(id);
   }, [open]);
 
+  const predictorCollateralNum = auction?.predictorCollateral
+    ? parseFloat(formatEther(BigInt(auction.predictorCollateral)))
+    : 0;
+  const counterpartyCollateralNum = auction?.counterpartyCollateral
+    ? parseFloat(formatEther(BigInt(auction.counterpartyCollateral)))
+    : 0;
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>
@@ -62,36 +116,65 @@ const AuctionBidsDialog: React.FC<Props> = ({
           {bids.length} Bids
         </Button>
       </DialogTrigger>
-      <DialogContent className="sm:max-w-[640px] p-0">
-        <DialogHeader className="pt-4 pl-3">
-          <DialogTitle>Bids</DialogTitle>
+      <DialogContent className="sm:max-w-[720px] p-0">
+        <DialogHeader className="pt-4 pl-4 pr-4">
+          <DialogTitle className="flex items-center gap-2">
+            Auction Bids
+            <Badge variant="outline" className="font-normal">
+              {auction?.picks?.length ?? 0} picks
+            </Badge>
+          </DialogTitle>
         </DialogHeader>
+
+        {/* Auction summary */}
+        <div className="px-4 py-2 border-b bg-muted/30">
+          <div className="grid grid-cols-2 gap-4 text-sm">
+            <div>
+              <span className="text-muted-foreground">Predictor Collateral:</span>{' '}
+              <NumberDisplay
+                value={predictorCollateralNum}
+                appendedText={collateralSymbol}
+              />
+            </div>
+            <div>
+              <span className="text-muted-foreground">Counterparty Collateral:</span>{' '}
+              <NumberDisplay
+                value={counterpartyCollateralNum}
+                appendedText={collateralSymbol}
+              />
+            </div>
+          </div>
+        </div>
+
         {bids.length === 0 ? (
-          <div className="text-sm text-muted-foreground px-1 py-6 text-center">
-            No bids yet
+          <div className="text-sm text-muted-foreground px-4 py-8 text-center">
+            No bids yet. Waiting for counterparties to fill this auction.
           </div>
         ) : (
           <div className="overflow-x-auto">
             <table className="w-full text-sm">
               <thead className="bg-muted/30 text-muted-foreground">
                 <tr className="border-b">
-                  <th className="px-3 py-2 text-left align-middle font-medium">
-                    Expires in
+                  <th className="px-4 py-2 text-left align-middle font-medium">
+                    Expires
                   </th>
-                  <th className="px-3 py-2 text-left align-middle font-medium">
-                    Address
+                  <th className="px-4 py-2 text-left align-middle font-medium">
+                    Counterparty
                   </th>
-                  <th className="px-3 py-2 text-left align-middle font-medium">
-                    Amount
+                  <th className="px-4 py-2 text-left align-middle font-medium">
+                    Their Collateral
                   </th>
-                  <th className="px-3 py-2 text-left align-middle font-medium">
-                    Payout
+                  <th className="px-4 py-2 text-left align-middle font-medium">
+                    Total Pool
+                  </th>
+                  <th className="px-4 py-2 text-left align-middle font-medium">
+                    Received
                   </th>
                 </tr>
               </thead>
               <tbody>
-                {bids.map((b, i) => {
-                  const deadlineSec = Number(b?.makerDeadline || 0);
+                {bids.map((bid, i) => {
+                  const deadlineSec = Number(bid?.counterpartyDeadline || 0);
                   const { label: expiresLabel, isExpired } = (() => {
                     if (!Number.isFinite(deadlineSec) || deadlineSec <= 0)
                       return { label: '—', isExpired: false } as const;
@@ -106,59 +189,69 @@ const AuctionBidsDialog: React.FC<Props> = ({
                     }
                     return { label: 'Expired', isExpired: true } as const;
                   })();
-                  const payoutStr = (() => {
+
+                  // Calculate total pool
+                  const totalPoolNum = (() => {
                     try {
-                      const taker = BigInt(String(makerCollateral ?? '0'));
-                      const maker = BigInt(String(b?.makerCollateral ?? '0'));
-                      return (maker + taker).toString();
+                      const predictor = BigInt(auction?.predictorCollateral ?? '0');
+                      const counterparty = BigInt(
+                        auction?.counterpartyCollateral ?? '0'
+                      );
+                      return parseFloat(formatEther(predictor + counterparty));
                     } catch {
-                      return String(b?.makerCollateral || '0');
+                      return 0;
                     }
                   })();
-                  const uiTxAmount = {
-                    id: i,
-                    type: 'FORECAST',
-                    createdAt: new Date().toISOString(),
-                    collateral: String(b?.makerCollateral || '0'),
-                    position: { owner: b?.maker || '' },
-                  } as any;
-                  const uiTxPayout = {
-                    ...uiTxAmount,
-                    collateral: payoutStr,
-                  };
+
+                  // Format received time
+                  const receivedLabel = bid.receivedAt
+                    ? formatDistanceToNowStrict(new Date(bid.receivedAt), {
+                        addSuffix: true,
+                      })
+                    : '—';
+
                   return (
-                    <tr key={i} className="border-b last:border-b-0">
-                      <td className="px-3 py-2 whitespace-nowrap">
+                    <tr
+                      key={i}
+                      className="border-b last:border-b-0 hover:bg-muted/20"
+                    >
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <span
                           className={isExpired ? 'text-destructive' : undefined}
                         >
                           {expiresLabel}
                         </span>
                       </td>
-                      <td className="px-3 py-2 whitespace-nowrap">
+                      <td className="px-4 py-3 whitespace-nowrap">
                         <div className="flex items-center gap-2 min-w-0">
                           <EnsAvatar
-                            address={b?.maker || ''}
-                            className="w-4 h-4 rounded-sm ring-1 ring-border/50 shrink-0"
-                            width={16}
-                            height={16}
+                            address={bid?.counterparty || ''}
+                            className="w-5 h-5 rounded-sm ring-1 ring-border/50 shrink-0"
+                            width={20}
+                            height={20}
                           />
-                          <div className="[&_span.font-mono]:text-foreground min-w-0">
-                            <AddressDisplay address={b?.maker || ''} compact />
+                          <div className="min-w-0">
+                            <AddressDisplay
+                              address={bid?.counterparty || ''}
+                              compact
+                            />
                           </div>
                         </div>
                       </td>
-                      <td className="px-3 py-2 whitespace-nowrap">
-                        <TransactionAmountCell
-                          tx={uiTxAmount}
-                          collateralAssetTicker={collateralAssetTicker}
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <NumberDisplay
+                          value={counterpartyCollateralNum}
+                          appendedText={collateralSymbol}
                         />
                       </td>
-                      <td className="px-3 py-2 whitespace-nowrap">
-                        <TransactionAmountCell
-                          tx={uiTxPayout}
-                          collateralAssetTicker={collateralAssetTicker}
+                      <td className="px-4 py-3 whitespace-nowrap">
+                        <NumberDisplay
+                          value={totalPoolNum}
+                          appendedText={collateralSymbol}
                         />
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-muted-foreground">
+                        {receivedLabel}
                       </td>
                     </tr>
                   );

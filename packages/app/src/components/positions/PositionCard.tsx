@@ -20,14 +20,14 @@ import {
 } from 'lucide-react';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import type {
-  V2PositionBalance,
-  V2PickData,
-} from '~/hooks/graphql/useV2Positions';
-import { useV2ClaimableAmount } from '~/hooks/blockchain/useV2Contract';
-import { useV2Write } from '~/hooks/blockchain/useV2Write';
+  PositionBalance,
+  PickData,
+} from '~/hooks/graphql/usePositions';
+import { useClaimableAmount } from '~/hooks/blockchain/useEscrowContract';
+import { useEscrowWrite } from '~/hooks/blockchain/useEscrowWrite';
 
-interface V2PositionCardProps {
-  position: V2PositionBalance;
+interface PositionCardProps {
+  position: PositionBalance;
   collateralSymbol: string;
   onRefetch?: () => void;
 }
@@ -60,7 +60,7 @@ const RESULT_CONFIG = {
   },
 };
 
-function PickDisplay({ pick }: { pick: V2PickData }) {
+function PickDisplay({ pick }: { pick: PickData }) {
   const outcomeLabel = pick.predictedOutcome === 0 ? 'YES' : 'NO';
   const outcomeColor =
     pick.predictedOutcome === 0 ? 'text-emerald-500' : 'text-red-500';
@@ -82,18 +82,18 @@ function PickDisplay({ pick }: { pick: V2PickData }) {
   );
 }
 
-export default function V2PositionCard({
+export default function PositionCard({
   position,
   collateralSymbol,
   onRefetch,
-}: V2PositionCardProps) {
+}: PositionCardProps) {
   const [isRedeeming, setIsRedeeming] = React.useState(false);
   const pickConfig = position.pickConfig;
   const isPredictor = position.isPredictorToken;
   const isResolved = pickConfig?.resolved ?? false;
   const result = pickConfig?.result ?? 'UNRESOLVED';
 
-  const { redeem } = useV2Write({ chainId: position.chainId });
+  const { redeem } = useEscrowWrite({ chainId: position.chainId });
 
   // Determine if this position is a winner
   const isWinner =
@@ -104,7 +104,7 @@ export default function V2PositionCard({
 
   // Get claimable amount
   const { claimableAmount, isLoading: isLoadingClaimable } =
-    useV2ClaimableAmount({
+    useClaimableAmount({
       pickConfigId: pickConfig?.id as `0x${string}`,
       tokenAddress: position.tokenAddress as Address,
       amount: BigInt(position.balance),

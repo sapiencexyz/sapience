@@ -3,22 +3,22 @@
  * Re-exports and extends V2 types from SDK for relayer-specific use
  */
 
-// Re-export V2 types from SDK
+// Re-export auction types from SDK
 export type {
-  V2AuctionRequestPayload,
-  V2BidPayload,
-  V2BurnRequestPayload,
-  V2ClientToServerMessage,
-  V2ServerToClientMessage,
-  V2AuctionDetails,
-  V2ValidatedBid,
+  AuctionRequestPayload,
+  BidPayload,
+  BurnRequestPayload,
+  ClientToServerMessage,
+  ServerToClientMessage,
+  AuctionDetails,
+  ValidatedBid,
   PickJson,
-} from '@sapience/sdk/types/v2';
+} from '@sapience/sdk/types';
 
 // Relayer-internal V2 auction record
 export interface V2AuctionRecord {
-  auction: import('@sapience/sdk/types/v2').V2AuctionRequestPayload;
-  bids: import('@sapience/sdk/types/v2').V2ValidatedBid[];
+  auction: import('@sapience/sdk/types').AuctionRequestPayload;
+  bids: import('@sapience/sdk/types').ValidatedBid[];
   deadlineMs: number; // absolute epoch ms after which auction expires
   pickConfigId: string; // computed from picks
 }
@@ -26,7 +26,7 @@ export interface V2AuctionRecord {
 // Type guard for V2 client messages
 export function isV2ClientMessage(
   msg: unknown
-): msg is import('@sapience/sdk/types/v2').V2ClientToServerMessage {
+): msg is import('@sapience/sdk/types').ClientToServerMessage {
   if (!msg || typeof msg !== 'object' || !('type' in msg)) {
     return false;
   }

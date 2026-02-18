@@ -53,7 +53,7 @@ export async function processPredictionBurned(
       );
 
       // For reindexing: still check if position needs to be updated (might be missing due to old bug)
-      const existingPosition = await prisma.position.findFirst({
+      const existingPosition = await prisma.legacyPosition.findFirst({
         where: {
           chainId: ctx.chainId,
           marketAddress: log.address.toLowerCase(),
@@ -73,7 +73,7 @@ export async function processPredictionBurned(
         );
         // Recovery: update position in its own transaction
         await prisma.$transaction(async (tx) => {
-          await tx.position.update({
+          await tx.legacyPosition.update({
             where: { id: existingPosition.id },
             data: {
               status: 'settled',
@@ -94,7 +94,7 @@ export async function processPredictionBurned(
       }
     } else {
       // Find position before transaction so we can update atomically
-      const position = await prisma.position.findFirst({
+      const position = await prisma.legacyPosition.findFirst({
         where: {
           chainId: ctx.chainId,
           marketAddress: log.address.toLowerCase(),
@@ -115,7 +115,7 @@ export async function processPredictionBurned(
         });
 
         if (position) {
-          await tx.position.update({
+          await tx.legacyPosition.update({
             where: { id: position.id },
             data: {
               status: 'settled',

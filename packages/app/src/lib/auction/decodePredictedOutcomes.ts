@@ -7,7 +7,7 @@ import {
   predictionMarketLZConditionalTokensResolver,
   manualConditionResolver,
 } from '@sapience/sdk/contracts';
-import type { Pick, OutcomeSide } from '@sapience/sdk/types/v2';
+import type { Pick, OutcomeSide } from '@sapience/sdk/types';
 
 export type UmaDecodedOutcome = {
   kind: 'uma';

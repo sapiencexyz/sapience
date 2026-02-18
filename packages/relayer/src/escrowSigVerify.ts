@@ -13,9 +13,9 @@ import {
 import {
   buildPredictorMintTypedData,
   buildCounterpartyMintTypedData,
-} from '@sapience/sdk/auction/v2Signing';
-import type { Pick } from '@sapience/sdk/types/v2';
-import type { V2AuctionRequestPayload, V2BidPayload } from './v2Types';
+} from '@sapience/sdk/auction/escrowSigning';
+import type { Pick } from '@sapience/sdk/types';
+import type { AuctionRequestPayload, BidPayload } from './escrowTypes';
 import {
   verifySessionApproval,
   computeSmartAccountAddress,
@@ -155,7 +155,7 @@ async function verifyV2SessionKeyData(
 /**
  * Convert JSON picks to SDK Pick format
  */
-function convertPicks(picks: V2AuctionRequestPayload['picks']): Pick[] {
+function convertPicks(picks: AuctionRequestPayload['picks']): Pick[] {
   return picks.map((p) => ({
     conditionResolver: p.conditionResolver as Address,
     conditionId: p.conditionId as Hex,
@@ -190,7 +190,7 @@ function convertTypedDataForViem<T extends { domain: { chainId?: bigint | number
  * @returns true if signature is valid
  */
 export async function verifyV2PredictorSignature(
-  payload: V2AuctionRequestPayload,
+  payload: AuctionRequestPayload,
   verifyingContract: Address,
   counterparty: Address = '0x0000000000000000000000000000000000000000'
 ): Promise<boolean> {
@@ -317,8 +317,8 @@ export async function verifyV2PredictorSignature(
  * @returns true if signature is valid
  */
 export async function verifyV2CounterpartySignature(
-  bid: V2BidPayload,
-  auction: V2AuctionRequestPayload,
+  bid: BidPayload,
+  auction: AuctionRequestPayload,
   verifyingContract: Address
 ): Promise<boolean> {
   if (!bid.counterpartySignature) {

@@ -47,7 +47,7 @@ export async function reindexPredictionMarket(
       }
 
       // Delete positions for this chain
-      const deletedPositions = await prisma.position.deleteMany({
+      const deletedPositions = await prisma.legacyPosition.deleteMany({
         where: { chainId },
       });
 
@@ -92,7 +92,7 @@ export async function reindexPredictionMarket(
       );
 
       // Log some statistics
-      const positionCount = await prisma.position.count({
+      const positionCount = await prisma.legacyPosition.count({
         where: { chainId },
       });
 

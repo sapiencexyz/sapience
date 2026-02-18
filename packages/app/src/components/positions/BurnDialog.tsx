@@ -16,17 +16,17 @@ import { Alert, AlertDescription } from '@sapience/ui/components/ui/alert';
 import Slider from '@sapience/ui/components/ui/slider';
 import { AlertCircle, Flame, Loader2 } from 'lucide-react';
 import NumberDisplay from '~/components/shared/NumberDisplay';
-import { useV2Write } from '~/hooks/blockchain/useV2Write';
-import { useV2Nonce } from '~/hooks/blockchain/useV2Contract';
+import { useEscrowWrite } from '~/hooks/blockchain/useEscrowWrite';
+import { useEscrowNonce } from '~/hooks/blockchain/useEscrowContract';
 import { useSession } from '~/lib/context/SessionContext';
 import { useAccount } from 'wagmi';
 import {
   buildPredictorBurnTypedData,
   buildCounterpartyBurnTypedData,
-} from '@sapience/sdk/auction/v2Signing';
+} from '@sapience/sdk/auction/escrowSigning';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
 
-interface V2BurnDialogProps {
+interface BurnDialogProps {
   pickConfigId: Hex;
   predictorToken: Address;
   counterpartyToken: Address;
@@ -40,14 +40,14 @@ interface V2BurnDialogProps {
 }
 
 /**
- * V2BurnDialog - Bilateral exit dialog for V2 positions
+ * BurnDialog - Bilateral exit dialog for escrow positions
  *
  * Allows a user who holds both predictor and counterparty tokens
  * (or negotiates with another party) to exit before resolution.
  *
  * Conservation constraint: predictorPayout + counterpartyPayout == totalBurned
  */
-export default function V2BurnDialog({
+export default function BurnDialog({
   pickConfigId,
   predictorToken: _predictorToken,
   counterpartyToken: _counterpartyToken,
@@ -58,7 +58,7 @@ export default function V2BurnDialog({
   chainId,
   collateralSymbol,
   onBurnComplete,
-}: V2BurnDialogProps) {
+}: BurnDialogProps) {
   const [open, setOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -88,8 +88,8 @@ export default function V2BurnDialog({
   // Hooks
   useAccount();
   const { signTypedData, effectiveAddress } = useSession();
-  const { burn, isPending } = useV2Write({ chainId });
-  const { nonce: currentNonce } = useV2Nonce({
+  const { burn, isPending } = useEscrowWrite({ chainId });
+  const { nonce: currentNonce } = useEscrowNonce({
     address: effectiveAddress as Address | undefined,
     chainId,
   });

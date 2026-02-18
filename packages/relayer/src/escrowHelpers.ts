@@ -2,9 +2,9 @@
  * V2 Validation Helpers for Relayer
  */
 
-import type { V2AuctionRequestPayload, V2BidPayload } from './v2Types';
-import { computePickConfigId } from '@sapience/sdk/auction/v2Encoding';
-import type { Pick } from '@sapience/sdk/types/v2';
+import type { AuctionRequestPayload, BidPayload } from './escrowTypes';
+import { computePickConfigId } from '@sapience/sdk/auction/escrowEncoding';
+import type { Pick } from '@sapience/sdk/types';
 import type { Address, Hex } from 'viem';
 
 export interface ValidationResult {
@@ -16,7 +16,7 @@ export interface ValidationResult {
  * Validates a V2 auction request has all required fields
  */
 export function validateV2AuctionRequest(
-  payload: V2AuctionRequestPayload
+  payload: AuctionRequestPayload
 ): ValidationResult {
   // Validate picks array
   if (!payload.picks || !Array.isArray(payload.picks) || payload.picks.length === 0) {
@@ -100,8 +100,8 @@ export function validateV2AuctionRequest(
  * Validates a V2 bid has all required fields
  */
 export function validateV2Bid(
-  bid: V2BidPayload,
-  auction: V2AuctionRequestPayload
+  bid: BidPayload,
+  auction: AuctionRequestPayload
 ): ValidationResult {
   // Validate auctionId
   if (!bid.auctionId || typeof bid.auctionId !== 'string') {
@@ -160,7 +160,7 @@ export function validateV2Bid(
 /**
  * Compute pickConfigId from picks array
  */
-export function computeV2PickConfigId(picks: V2AuctionRequestPayload['picks']): string {
+export function computeV2PickConfigId(picks: AuctionRequestPayload['picks']): string {
   const sdkPicks: Pick[] = picks.map((p) => ({
     conditionResolver: p.conditionResolver as Address,
     conditionId: p.conditionId as Hex,

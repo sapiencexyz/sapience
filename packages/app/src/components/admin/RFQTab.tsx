@@ -164,7 +164,7 @@ const RFQTab = ({
   const [v2ChainId, setV2ChainId] = useState<number>(13374202); // Default to Ethereal Testnet
 
   // V2 resolver address helper
-  const V2_RESOLVER_MAP = {
+  const ESCROW_RESOLVER_MAP = {
     manual: manualConditionResolver,
     pyth: pythConditionResolver,
     'uma-lz': lzPMResolver,
@@ -172,10 +172,10 @@ const RFQTab = ({
   };
 
   const getV2ResolverAddress = (
-    type: keyof typeof V2_RESOLVER_MAP,
+    type: keyof typeof ESCROW_RESOLVER_MAP,
     chainId: number
   ): string | null => {
-    const resolver = V2_RESOLVER_MAP[type];
+    const resolver = ESCROW_RESOLVER_MAP[type];
     return resolver?.[chainId]?.address ?? null;
   };
 
@@ -1386,7 +1386,7 @@ const RFQTab = ({
                         v as 'manual' | 'pyth' | 'uma-lz' | 'conditional-tokens'
                       );
                       const addr = getV2ResolverAddress(
-                        v as keyof typeof V2_RESOLVER_MAP,
+                        v as keyof typeof ESCROW_RESOLVER_MAP,
                         v2ChainId
                       );
                       if (addr) setResolver(addr);

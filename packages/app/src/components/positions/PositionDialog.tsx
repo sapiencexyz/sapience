@@ -6,7 +6,7 @@ import { useReadContract } from 'wagmi';
 import { predictionMarketAbi } from '@sapience/sdk';
 import { PicksContent } from '~/components/shared/PicksSummary';
 import PositionSummary from './PositionSummary';
-import type { UIPosition } from './PositionsTable';
+import type { UIPosition } from './LegacyPositionsTable';
 
 interface PositionDialogProps {
   open: boolean;

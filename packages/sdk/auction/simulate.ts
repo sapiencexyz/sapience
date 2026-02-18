@@ -69,7 +69,7 @@ export interface BidData {
 
 export type ValidationStatus = 'pending' | 'valid' | 'invalid';
 
-export interface ValidatedBid<T extends BidData> {
+export interface LegacyValidatedBid<T extends BidData> {
   bid: T;
   validationStatus: ValidationStatus;
   validationError?: string;

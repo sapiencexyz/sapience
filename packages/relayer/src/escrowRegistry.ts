@@ -4,19 +4,19 @@
  */
 
 import type {
-  V2AuctionRequestPayload,
-  V2ValidatedBid,
-} from '@sapience/sdk/types/v2';
-import type { V2AuctionRecord, V2BidPayload } from './v2Types';
-import { validateV2Bid } from './v2Helpers';
-import { computeV2PickConfigId } from './v2Helpers';
+  AuctionRequestPayload,
+  ValidatedBid,
+} from '@sapience/sdk/types';
+import type { V2AuctionRecord, BidPayload } from './escrowTypes';
+import { validateV2Bid } from './escrowHelpers';
+import { computeV2PickConfigId } from './escrowHelpers';
 
 const v2Auctions = new Map<string, V2AuctionRecord>();
 
 /**
  * Create or update a V2 auction
  */
-export function upsertV2Auction(auction: V2AuctionRequestPayload): string {
+export function upsertV2Auction(auction: AuctionRequestPayload): string {
   const auctionId = crypto.randomUUID();
   const ttl = 60_000; // default 60s
   const deadlineMs = Date.now() + Math.max(5_000, Math.min(ttl, 5 * 60_000));
@@ -52,8 +52,8 @@ export function getV2Auction(auctionId: string): V2AuctionRecord | undefined {
  */
 export function addV2Bid(
   auctionId: string,
-  bid: V2BidPayload
-): V2ValidatedBid | undefined {
+  bid: BidPayload
+): ValidatedBid | undefined {
   const rec = getV2Auction(auctionId);
   if (!rec) return undefined;
 
@@ -64,7 +64,7 @@ export function addV2Bid(
     return undefined;
   }
 
-  const validated: V2ValidatedBid = {
+  const validated: ValidatedBid = {
     auctionId,
     counterparty: bid.counterparty,
     counterpartyCollateral: bid.counterpartyCollateral,
@@ -85,7 +85,7 @@ export function addV2Bid(
 /**
  * Get all bids for a V2 auction
  */
-export function getV2Bids(auctionId: string): V2ValidatedBid[] {
+export function getV2Bids(auctionId: string): ValidatedBid[] {
   const rec = getV2Auction(auctionId);
   return rec?.bids ?? [];
 }
@@ -95,7 +95,7 @@ export function getV2Bids(auctionId: string): V2ValidatedBid[] {
  */
 export function getV2AuctionDetails(
   auctionId: string
-): import('@sapience/sdk/types/v2').V2AuctionDetails | undefined {
+): import('@sapience/sdk/types').AuctionDetails | undefined {
   const rec = getV2Auction(auctionId);
   if (!rec) return undefined;
 

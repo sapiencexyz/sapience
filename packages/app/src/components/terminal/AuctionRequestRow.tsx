@@ -26,7 +26,7 @@ import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useConditionsByIds } from '~/hooks/graphql/useConditionsByIds';
 import { useApprovalDialog } from '~/components/terminal/ApprovalDialogContext';
 import { useTerminalLogsOptional } from '~/components/terminal/TerminalLogsContext';
-import { useBidPreflight, useBidSubmission } from '~/hooks/auction';
+import { useBidPreflight, useLegacyBidSubmission } from '~/hooks/auction';
 import PercentChance from '~/components/shared/PercentChance';
 import { decodeAuctionPredictedOutcomes } from '~/lib/auction/decodePredictedOutcomes';
 
@@ -91,7 +91,7 @@ const AuctionRequestRow: React.FC<Props> = ({
   });
 
   // Use shared bid submission hook for signing and WebSocket submission
-  const { submitBid: submitBidToWs } = useBidSubmission({
+  const { submitBid: submitBidToWs } = useLegacyBidSubmission({
     onSignatureRejected: (error) => {
       toast({
         title: 'Signature rejected',
@@ -493,7 +493,7 @@ const AuctionRequestRow: React.FC<Props> = ({
 
         // Validation: V2 needs v2Picks, V1 needs predictedOutcomes
         const hasPredictionData = isV2Auction ? hasV2Picks : !!encodedPredicted;
-        // V2 auctions: counterparty uses their own nonce (from useV2Nonce), not predictor's nonce
+        // V2 auctions: counterparty uses their own nonce (from useEscrowNonce), not predictor's nonce
         // V1 auctions: require taker nonce for signing
         const needsTakerNonce = !isV2Auction;
 

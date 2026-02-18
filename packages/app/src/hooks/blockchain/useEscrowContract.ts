@@ -8,9 +8,9 @@ import { predictionMarketEscrow } from '@sapience/sdk/contracts';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 
 /**
- * Get V2 PredictionMarketEscrow contract address for a chain
+ * Get PredictionMarketEscrow contract address for a chain
  */
-export function useV2ContractAddress(chainId?: number) {
+export function useEscrowContractAddress(chainId?: number) {
   const effectiveChainId = chainId ?? DEFAULT_CHAIN_ID;
   return predictionMarketEscrow[effectiveChainId]?.address as
     | Address
@@ -18,16 +18,16 @@ export function useV2ContractAddress(chainId?: number) {
 }
 
 /**
- * Hook to read V2 nonce for an account
+ * Hook to read nonce for an account
  */
-export function useV2Nonce(params: {
+export function useEscrowNonce(params: {
   address?: Address;
   chainId?: number;
   enabled?: boolean;
 }) {
   const { address, chainId, enabled = true } = params;
   const effectiveChainId = chainId ?? DEFAULT_CHAIN_ID;
-  const contractAddress = useV2ContractAddress(effectiveChainId);
+  const contractAddress = useEscrowContractAddress(effectiveChainId);
 
   const { data, isLoading, error, refetch } = useReadContract({
     abi: predictionMarketEscrowAbi,
@@ -49,16 +49,16 @@ export function useV2Nonce(params: {
 }
 
 /**
- * Hook to read V2 pick configuration
+ * Hook to read pick configuration
  */
-export function useV2PickConfiguration(params: {
+export function usePickConfiguration(params: {
   pickConfigId?: `0x${string}`;
   chainId?: number;
   enabled?: boolean;
 }) {
   const { pickConfigId, chainId, enabled = true } = params;
   const effectiveChainId = chainId ?? DEFAULT_CHAIN_ID;
-  const contractAddress = useV2ContractAddress(effectiveChainId);
+  const contractAddress = useEscrowContractAddress(effectiveChainId);
 
   const { data, isLoading, error, refetch } = useReadContract({
     abi: predictionMarketEscrowAbi,
@@ -101,16 +101,16 @@ export function useV2PickConfiguration(params: {
 }
 
 /**
- * Hook to read V2 token pair for a pick configuration
+ * Hook to read token pair for a pick configuration
  */
-export function useV2TokenPair(params: {
+export function useTokenPair(params: {
   pickConfigId?: `0x${string}`;
   chainId?: number;
   enabled?: boolean;
 }) {
   const { pickConfigId, chainId, enabled = true } = params;
   const effectiveChainId = chainId ?? DEFAULT_CHAIN_ID;
-  const contractAddress = useV2ContractAddress(effectiveChainId);
+  const contractAddress = useEscrowContractAddress(effectiveChainId);
 
   const { data, isLoading, error, refetch } = useReadContract({
     abi: predictionMarketEscrowAbi,
@@ -138,9 +138,9 @@ export function useV2TokenPair(params: {
 }
 
 /**
- * Hook to read V2 position token balance (ERC20)
+ * Hook to read position token balance (ERC20)
  */
-export function useV2TokenBalance(params: {
+export function useTokenBalance(params: {
   tokenAddress?: Address;
   holder?: Address;
   chainId?: number;
@@ -192,16 +192,16 @@ export function useV2TokenBalance(params: {
 }
 
 /**
- * Hook to check if a V2 prediction can be settled
+ * Hook to check if a prediction can be settled
  */
-export function useV2CanSettle(params: {
+export function useCanSettle(params: {
   predictionId?: `0x${string}`;
   chainId?: number;
   enabled?: boolean;
 }) {
   const { predictionId, chainId, enabled = true } = params;
   const effectiveChainId = chainId ?? DEFAULT_CHAIN_ID;
-  const contractAddress = useV2ContractAddress(effectiveChainId);
+  const contractAddress = useEscrowContractAddress(effectiveChainId);
 
   const { data, isLoading, error, refetch } = useReadContract({
     abi: predictionMarketEscrowAbi,
@@ -223,9 +223,9 @@ export function useV2CanSettle(params: {
 }
 
 /**
- * Hook to calculate claimable amount for V2 redemption
+ * Hook to calculate claimable amount for redemption
  */
-export function useV2ClaimableAmount(params: {
+export function useClaimableAmount(params: {
   pickConfigId?: `0x${string}`;
   tokenAddress?: Address;
   amount?: bigint;
@@ -240,7 +240,7 @@ export function useV2ClaimableAmount(params: {
     enabled = true,
   } = params;
   const effectiveChainId = chainId ?? DEFAULT_CHAIN_ID;
-  const contractAddress = useV2ContractAddress(effectiveChainId);
+  const contractAddress = useEscrowContractAddress(effectiveChainId);
 
   const { data, isLoading, error, refetch } = useReadContract({
     abi: predictionMarketEscrowAbi,

@@ -50,7 +50,7 @@ export async function processPredictionConsolidated(
       );
 
       // For reindexing: still check if position needs to be updated (might be missing due to old bug)
-      const existingPosition = await prisma.position.findFirst({
+      const existingPosition = await prisma.legacyPosition.findFirst({
         where: {
           chainId: ctx.chainId,
           marketAddress: log.address.toLowerCase(),
@@ -70,7 +70,7 @@ export async function processPredictionConsolidated(
         );
         // Recovery: update position
         await prisma.$transaction(async (tx) => {
-          await tx.position.update({
+          await tx.legacyPosition.update({
             where: { id: existingPosition.id },
             data: {
               status: 'consolidated',
@@ -90,7 +90,7 @@ export async function processPredictionConsolidated(
         return;
       }
     } else {
-      const position = await prisma.position.findFirst({
+      const position = await prisma.legacyPosition.findFirst({
         where: {
           chainId: ctx.chainId,
           marketAddress: log.address.toLowerCase(),
@@ -111,7 +111,7 @@ export async function processPredictionConsolidated(
         });
 
         if (position) {
-          await tx.position.update({
+          await tx.legacyPosition.update({
             where: { id: position.id },
             data: {
               status: 'consolidated',

@@ -12,7 +12,7 @@ import {
 import {
   useUserPositions,
   type Position,
-} from '~/hooks/graphql/useUserPositions';
+} from '~/hooks/graphql/useLegacyPositions';
 import { SCHEMA_UID } from '~/lib/constants';
 
 type Anchor = 'forecasts' | 'positions';

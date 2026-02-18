@@ -1,8 +1,8 @@
 import type { Address, Hex } from 'viem';
 
 /**
- * V2 Prediction Market Types
- * TypeScript equivalents of the Solidity types in IV2Types.sol
+ * Prediction Market Types
+ * TypeScript equivalents of the Solidity types in the PredictionMarketEscrow contract
  */
 
 /** Outcome side for a pick */
@@ -178,14 +178,14 @@ export interface BurnRequestJson {
 }
 
 // ============================================================================
-// V2 Relay/WebSocket Message Types
+// Relay/WebSocket Message Types
 // ============================================================================
 
 /**
  * V2 auction request payload - initiates a prediction match request
  * The predictor submits their side and waits for a counterparty to fill
  */
-export interface V2AuctionRequestPayload {
+export interface AuctionRequestPayload {
   picks: PickJson[];
   predictorCollateral: string; // wei string
   counterpartyCollateral: string; // wei string (requested counterparty stake)
@@ -201,7 +201,7 @@ export interface V2AuctionRequestPayload {
 /**
  * V2 bid payload - counterparty fills an auction
  */
-export interface V2BidPayload {
+export interface BidPayload {
   auctionId: string;
   counterparty: string; // EOA or smart account address
   counterpartyCollateral: string; // wei string - counterparty decides their collateral
@@ -214,7 +214,7 @@ export interface V2BidPayload {
 /**
  * V2 burn request payload - bilateral exit before resolution
  */
-export interface V2BurnRequestPayload {
+export interface BurnRequestPayload {
   pickConfigId: string;
   predictorTokenAmount: string;
   counterpartyTokenAmount: string;
@@ -236,18 +236,18 @@ export interface V2BurnRequestPayload {
 
 // ----- Client to Server Messages -----
 
-export type V2ClientToServerMessage =
-  | { type: 'v2.auction.start'; payload: V2AuctionRequestPayload }
+export type ClientToServerMessage =
+  | { type: 'v2.auction.start'; payload: AuctionRequestPayload }
   | { type: 'v2.auction.subscribe'; payload: { auctionId: string } }
   | { type: 'v2.auction.unsubscribe'; payload: { auctionId: string } }
-  | { type: 'v2.bid.submit'; payload: V2BidPayload }
-  | { type: 'v2.burn.request'; payload: V2BurnRequestPayload }
+  | { type: 'v2.bid.submit'; payload: BidPayload }
+  | { type: 'v2.burn.request'; payload: BurnRequestPayload }
   | { type: 'ping' };
 
 // ----- Server to Client Messages -----
 
 /** Auction details broadcast to subscribers */
-export interface V2AuctionDetails {
+export interface AuctionDetails {
   auctionId: string;
   picks: PickJson[];
   predictorCollateral: string;
@@ -259,7 +259,7 @@ export interface V2AuctionDetails {
 }
 
 /** Bid that has been validated */
-export interface V2ValidatedBid {
+export interface ValidatedBid {
   auctionId: string;
   counterparty: string;
   counterpartyCollateral: string; // wei string - counterparty's collateral
@@ -270,7 +270,7 @@ export interface V2ValidatedBid {
   receivedAt: string; // ISO timestamp
 }
 
-export type V2ServerToClientMessage =
+export type ServerToClientMessage =
   | {
       type: 'v2.auction.ack';
       payload: {
@@ -282,8 +282,8 @@ export type V2ServerToClientMessage =
       };
     }
   | { type: 'v2.bid.ack'; payload: { bidId?: string; error?: string } }
-  | { type: 'v2.auction.started'; payload: V2AuctionDetails }
-  | { type: 'v2.auction.bids'; payload: { auctionId: string; bids: V2ValidatedBid[] } }
+  | { type: 'v2.auction.started'; payload: AuctionDetails }
+  | { type: 'v2.auction.bids'; payload: { auctionId: string; bids: ValidatedBid[] } }
   | {
       type: 'v2.auction.filled';
       payload: {

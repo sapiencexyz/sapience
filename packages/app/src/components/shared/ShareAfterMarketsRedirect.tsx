@@ -8,7 +8,7 @@ import { useSession } from '~/lib/context/SessionContext';
 import {
   useUserPositions,
   type Position,
-} from '~/hooks/graphql/useUserPositions';
+} from '~/hooks/graphql/useLegacyPositions';
 
 type Anchor = 'forecasts' | 'positions';
 

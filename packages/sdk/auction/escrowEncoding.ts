@@ -4,10 +4,10 @@ import {
   type Address,
   type Hex,
 } from 'viem';
-import type { Pick, PickJson, OutcomeSide } from '../types/v2';
+import type { Pick, PickJson, OutcomeSide } from '../types/auction';
 
 // ============================================================================
-// V2 Pick Encoding
+// Pick Encoding
 // ============================================================================
 
 /**

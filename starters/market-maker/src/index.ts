@@ -85,13 +85,13 @@ type ContractsMap = typeof import('@sapience/sdk/contracts').contracts;
 type BuildMakerBidTypedData = typeof import('@sapience/sdk/auction/signing').buildMakerBidTypedData;
 type SignMakerBid = typeof import('@sapience/sdk/auction/signing').signMakerBid;
 type PrepareForTrade = typeof import('@sapience/sdk/onchain/trading').prepareForTrade;
-// V2 types
-type BuildCounterpartyMintTypedData = typeof import('@sapience/sdk/auction/v2Signing').buildCounterpartyMintTypedData;
-type ComputePredictionHashFromPicks = typeof import('@sapience/sdk/auction/v2Signing').computePredictionHashFromPicks;
-type Pick = import('@sapience/sdk/types/v2').Pick;
-type OutcomeSideType = import('@sapience/sdk/types/v2').OutcomeSide;
-type V2AuctionDetails = import('@sapience/sdk/types/v2').V2AuctionDetails;
-type PickJson = import('@sapience/sdk/types/v2').PickJson;
+// Escrow types
+type BuildCounterpartyMintTypedData = typeof import('@sapience/sdk/auction/escrowSigning').buildCounterpartyMintTypedData;
+type ComputePredictionHashFromPicks = typeof import('@sapience/sdk/auction/escrowSigning').computePredictionHashFromPicks;
+type Pick = import('@sapience/sdk/types').Pick;
+type OutcomeSideType = import('@sapience/sdk/types').OutcomeSide;
+type AuctionDetails = import('@sapience/sdk/types').AuctionDetails;
+type PickJson = import('@sapience/sdk/types').PickJson;
 
 const addressBook = sdk.contracts as ContractsMap;
 const buildMakerBidTypedData = sdk.buildMakerBidTypedData as BuildMakerBidTypedData;
@@ -432,7 +432,7 @@ function start() {
         // ----------------------------------------------------------------
         // V2 Auction Handling
         // ----------------------------------------------------------------
-        const auction = msg.payload as V2AuctionDetails;
+        const auction = msg.payload as AuctionDetails;
         const auctionId = auction.auctionId;
         const predictorCollateral = BigInt(auction.predictorCollateral || '0');
         const counterpartyCollateral = BigInt(auction.counterpartyCollateral || '0');

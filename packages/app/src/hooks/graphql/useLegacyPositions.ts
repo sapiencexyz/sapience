@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import {
-  fetchUserPositions,
-  fetchUserPositionsCount,
-  type Position,
+  fetchLegacyPositions,
+  fetchLegacyPositionsCount,
+  type LegacyPosition,
 } from '@sapience/sdk/queries';
 
-export type { Position };
+export type { LegacyPosition as Position };
 
 export function useUserPositionsCount(address?: string, chainId?: number) {
   const enabled = Boolean(address);
@@ -16,7 +16,7 @@ export function useUserPositionsCount(address?: string, chainId?: number) {
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
-    queryFn: () => fetchUserPositionsCount(address!, chainId),
+    queryFn: () => fetchLegacyPositionsCount(address!, chainId),
   });
   return data ?? 0;
 }
@@ -61,7 +61,7 @@ export function useUserPositions(params: {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     queryFn: () =>
-      fetchUserPositions({
+      fetchLegacyPositions({
         address: address!,
         take,
         skip,

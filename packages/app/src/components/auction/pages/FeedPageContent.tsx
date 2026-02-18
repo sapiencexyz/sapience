@@ -20,7 +20,7 @@ import {
 } from '~/components/markets/DataDrawer/TransactionCells';
 import PositionPredictionsList from '~/components/shared/PositionPredictionsList';
 import { useAuctionRelayerFeed } from '~/lib/auction/useAuctionRelayerFeed';
-import AuctionBidsDialog from '~/components/auction/AuctionBidsDialog';
+import AuctionBidsDialog from '~/components/auction/LegacyAuctionBidsDialog';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import SegmentedTabsList from '~/components/shared/SegmentedTabsList';
@@ -29,7 +29,7 @@ import { useRecentPositions } from '~/hooks/graphql/useRecentPositions';
 import { formatDistanceToNow } from 'date-fns';
 import PicksSummary from '~/components/shared/PicksSummary';
 import CountdownCell from '~/components/shared/CountdownCell';
-import type { UILeg } from '~/components/positions/PositionsTable';
+import type { UILeg } from '~/components/positions/LegacyPositionsTable';
 
 const POSITIONS_PAGE_SIZE = 20;
 

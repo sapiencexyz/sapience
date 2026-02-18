@@ -1,59 +1,81 @@
 import { Arg, Field, Int, ObjectType, Query, Resolver } from 'type-graphql';
-import { Position, Prisma } from '../../../generated/prisma';
+import { Prisma } from '../../../generated/prisma';
 import prisma from '../../db';
 
+// ============================================================================
+// GraphQL Object Types
+// ============================================================================
+
 @ObjectType()
-class CategorySummary {
+class PickType {
+  @Field(() => Int)
+  id!: number;
+
   @Field(() => String)
-  slug!: string;
+  pickConfigId!: string;
+
+  @Field(() => String)
+  conditionResolver!: string;
+
+  @Field(() => String)
+  conditionId!: string;
+
+  @Field(() => Int)
+  predictedOutcome!: number;
 }
 
 @ObjectType()
-class ConditionSummary {
+class PicksType {
   @Field(() => String)
   id!: string;
 
-  @Field(() => String, { nullable: true })
-  question?: string | null;
+  @Field(() => Int)
+  chainId!: number;
 
-  @Field(() => String, { nullable: true })
-  shortName?: string | null;
+  @Field(() => String)
+  marketAddress!: string;
+
+  @Field(() => String)
+  totalPredictorCollateral!: string;
+
+  @Field(() => String)
+  totalCounterpartyCollateral!: string;
+
+  @Field(() => String)
+  claimedPredictorCollateral!: string;
+
+  @Field(() => String)
+  claimedCounterpartyCollateral!: string;
+
+  @Field(() => Boolean)
+  resolved!: boolean;
+
+  @Field(() => String)
+  result!: string;
 
   @Field(() => Int, { nullable: true })
-  endTime?: number | null;
+  resolvedAt?: number | null;
 
   @Field(() => String, { nullable: true })
-  resolver?: string | null;
+  predictorToken?: string | null;
 
-  @Field(() => Boolean)
-  settled!: boolean;
+  @Field(() => String, { nullable: true })
+  counterpartyToken?: string | null;
 
-  @Field(() => Boolean)
-  resolvedToYes!: boolean;
+  @Field(() => Int, { nullable: true })
+  endsAt?: number | null;
 
-  @Field(() => CategorySummary, { nullable: true })
-  category?: { slug: string } | null;
+  @Field(() => [PickType])
+  picks!: PickType[];
 }
 
 @ObjectType()
 class PredictionType {
-  @Field(() => String)
-  conditionId!: string;
-
-  @Field(() => Boolean)
-  outcomeYes!: boolean;
-
-  @Field(() => Int, { nullable: true })
-  chainId?: number | null;
-
-  @Field(() => ConditionSummary, { nullable: true })
-  condition?: ConditionSummary | null;
-}
-
-@ObjectType()
-class PositionType {
   @Field(() => Int)
   id!: number;
+
+  @Field(() => String)
+  predictionId!: string;
 
   @Field(() => Int)
   chainId!: number;
@@ -68,383 +90,566 @@ class PositionType {
   counterparty!: string;
 
   @Field(() => String)
-  predictorNftTokenId!: string;
+  predictorToken!: string;
 
   @Field(() => String)
-  counterpartyNftTokenId!: string;
+  counterpartyToken!: string;
 
   @Field(() => String)
-  totalCollateral!: string;
-
-  @Field(() => String, { nullable: true })
-  predictorCollateral?: string | null;
-
-  @Field(() => String, { nullable: true })
-  counterpartyCollateral?: string | null;
-
-  @Field(() => String, { nullable: true })
-  refCode?: string | null;
+  predictorCollateral!: string;
 
   @Field(() => String)
-  status!: 'active' | 'settled' | 'consolidated';
+  counterpartyCollateral!: string;
 
-  @Field(() => Boolean, { nullable: true })
-  predictorWon?: boolean | null;
+  @Field(() => String, { nullable: true })
+  collateralDeposited?: string | null;
 
-  @Field(() => Int)
-  mintedAt!: number;
+  @Field(() => Int, { nullable: true })
+  collateralDepositedAt?: number | null;
+
+  @Field(() => Boolean)
+  settled!: boolean;
 
   @Field(() => Int, { nullable: true })
   settledAt?: number | null;
 
-  @Field(() => Int, { nullable: true })
-  endsAt?: number | null;
+  @Field(() => String)
+  result!: string;
 
-  @Field(() => [PredictionType])
-  predictions!: PredictionType[];
+  @Field(() => String, { nullable: true })
+  predictorClaimable?: string | null;
+
+  @Field(() => String, { nullable: true })
+  counterpartyClaimable?: string | null;
+
+  @Field(() => String)
+  createTxHash!: string;
+
+  @Field(() => String, { nullable: true })
+  settleTxHash?: string | null;
+
+  @Field(() => String, { nullable: true })
+  refCode?: string | null;
 }
 
-const MAX_TAKE = 50;
+@ObjectType()
+class PositionType {
+  @Field(() => Int)
+  id!: number;
 
-function clampTake(take: number): number {
-  return Math.max(1, Math.min(take, MAX_TAKE));
+  @Field(() => Int)
+  chainId!: number;
+
+  @Field(() => String)
+  tokenAddress!: string;
+
+  @Field(() => String)
+  pickConfigId!: string;
+
+  @Field(() => Boolean)
+  isPredictorToken!: boolean;
+
+  @Field(() => String)
+  holder!: string;
+
+  @Field(() => String)
+  balance!: string;
+
+  @Field(() => PicksType, { nullable: true })
+  pickConfig?: PicksType | null;
 }
 
-function clampSkip(skip: number): number {
-  return Math.max(0, skip);
+@ObjectType()
+class CloseType {
+  @Field(() => Int)
+  id!: number;
+
+  @Field(() => Int)
+  chainId!: number;
+
+  @Field(() => String)
+  marketAddress!: string;
+
+  @Field(() => String)
+  pickConfigId!: string;
+
+  @Field(() => String)
+  predictorHolder!: string;
+
+  @Field(() => String)
+  counterpartyHolder!: string;
+
+  @Field(() => String)
+  predictorTokensBurned!: string;
+
+  @Field(() => String)
+  counterpartyTokensBurned!: string;
+
+  @Field(() => String)
+  predictorPayout!: string;
+
+  @Field(() => String)
+  counterpartyPayout!: string;
+
+  @Field(() => Int)
+  burnedAt!: number;
+
+  @Field(() => String)
+  txHash!: string;
+
+  @Field(() => String, { nullable: true })
+  refCode?: string | null;
 }
 
-async function buildPredictionMap(
-  rows: Position[]
-): Promise<Map<number, PredictionType[]>> {
-  const positionIds = rows.map((r) => r.id);
-  if (positionIds.length === 0) return new Map();
+@ObjectType()
+class ClaimType {
+  @Field(() => Int)
+  id!: number;
 
-  const predictions = await prisma.prediction.findMany({
-    where: { positionId: { in: positionIds } },
-    include: {
-      condition: {
-        select: {
-          id: true,
-          question: true,
-          shortName: true,
-          endTime: true,
-          resolver: true,
-          settled: true,
-          resolvedToYes: true,
-          category: { select: { slug: true } },
-        },
-      },
-    },
-  });
+  @Field(() => Int)
+  chainId!: number;
 
-  const map = new Map<number, PredictionType[]>();
-  for (const p of predictions) {
-    if (!p.positionId) continue;
-    const condition = p.condition && {
-      id: p.condition.id,
-      question: p.condition.question ?? null,
-      shortName: p.condition.shortName ?? null,
-      endTime: p.condition.endTime ?? null,
-      resolver: p.condition.resolver ?? null,
-      settled: p.condition.settled,
-      resolvedToYes: p.condition.resolvedToYes,
-      category: p.condition.category ?? null,
-    };
-    const entry: PredictionType = {
-      conditionId: p.conditionId,
-      outcomeYes: p.outcomeYes,
-      chainId: p.chainId ?? null,
-      condition: condition ?? null,
-    };
-    if (!map.has(p.positionId)) {
-      map.set(p.positionId, []);
-    }
-    map.get(p.positionId)!.push(entry);
-  }
-  return map;
+  @Field(() => String)
+  marketAddress!: string;
+
+  @Field(() => String)
+  predictionId!: string;
+
+  @Field(() => String)
+  holder!: string;
+
+  @Field(() => String)
+  positionToken!: string;
+
+  @Field(() => String)
+  tokensBurned!: string;
+
+  @Field(() => String)
+  collateralPaid!: string;
+
+  @Field(() => Int)
+  redeemedAt!: number;
+
+  @Field(() => String)
+  txHash!: string;
+
+  @Field(() => String, { nullable: true })
+  refCode?: string | null;
 }
 
-async function processRows(rows: Position[]): Promise<PositionType[]> {
-  const predictionMap = await buildPredictionMap(rows);
-
-  return rows.map((r) => ({
-    id: r.id,
-    chainId: r.chainId,
-    marketAddress: r.marketAddress,
-    predictor: r.predictor,
-    counterparty: r.counterparty,
-    predictorNftTokenId: r.predictorNftTokenId,
-    counterpartyNftTokenId: r.counterpartyNftTokenId,
-    totalCollateral: r.totalCollateral,
-    predictorCollateral: r.predictorCollateral ?? null,
-    counterpartyCollateral: r.counterpartyCollateral ?? null,
-    refCode: r.refCode,
-    status: r.status as unknown as PositionType['status'],
-    predictorWon: r.predictorWon,
-    mintedAt: r.mintedAt,
-    settledAt: r.settledAt ?? null,
-    endsAt: r.endsAt ?? null,
-    predictions: predictionMap.get(r.id) ?? [],
-  }));
-}
+// ============================================================================
+// Resolver
+// ============================================================================
 
 @Resolver()
 export class PositionResolver {
-  @Query(() => [PositionType], {
-    description:
-      'Returns the most recently created positions globally, ordered by mintedAt descending.',
-  })
-  async recentPositions(
-    @Arg('take', () => Int, { defaultValue: 20 }) take: number,
-    @Arg('skip', () => Int, { defaultValue: 0 }) skip: number,
-    @Arg('chainId', () => Int, { nullable: true }) chainId?: number,
-    @Arg('status', () => String, { nullable: true })
-    status?: 'active' | 'settled' | 'consolidated'
-  ): Promise<PositionType[]> {
-    const where: Prisma.PositionWhereInput = {};
-    if (chainId !== undefined && chainId !== null) {
-      where.chainId = chainId;
-    }
-    if (status) {
-      where.status = status;
-    }
-
-    const rows = await prisma.position.findMany({
-      where,
-      orderBy: { mintedAt: 'desc' },
-      take: clampTake(take),
-      skip: clampSkip(skip),
-    });
-
-    return processRows(rows);
-  }
+  // -------------------------------------------------------------------------
+  // Predictions (escrow-based)
+  // -------------------------------------------------------------------------
 
   @Query(() => Int)
-  async positionsCount(
+  async predictionsCount(
     @Arg('address', () => String) address: string,
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number
   ): Promise<number> {
     const addr = address.toLowerCase();
-    const where: Prisma.PositionWhereInput = {
+    const where: Prisma.EscrowPredictionWhereInput = {
       OR: [{ predictor: addr }, { counterparty: addr }],
     };
     if (chainId !== undefined && chainId !== null) {
       where.chainId = chainId;
     }
-    return prisma.position.count({ where });
+    return prisma.escrowPrediction.count({ where });
   }
 
-  @Query(() => [PositionType])
-  async positions(
+  @Query(() => [PredictionType])
+  async predictions(
     @Arg('take', () => Int, { defaultValue: 50 }) take: number,
     @Arg('skip', () => Int, { defaultValue: 0 }) skip: number,
     @Arg('address', () => String, { nullable: true }) address?: string,
-    @Arg('orderBy', () => String, { nullable: true }) orderBy?: string,
-    @Arg('orderDirection', () => String, { nullable: true })
-    orderDirection?: string,
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number,
-    @Arg('status', () => String, { nullable: true })
-    status?: 'active' | 'settled' | 'consolidated',
-    @Arg('endsAtGte', () => Int, { nullable: true }) endsAtGte?: number,
-    @Arg('nftTokenId', () => String, { nullable: true }) nftTokenId?: string,
-    @Arg('marketAddress', () => String, { nullable: true })
-    marketAddress?: string
-  ): Promise<PositionType[]> {
-    take = Math.min(take, 200);
+    @Arg('settled', () => Boolean, { nullable: true }) settled?: boolean,
+    @Arg('orderBy', () => String, { nullable: true }) orderBy?: string,
+    @Arg('orderDirection', () => String, { nullable: true }) orderDirection?: string
+  ): Promise<PredictionType[]> {
     const addr = address?.toLowerCase();
 
-    // Raw SQL queries require address for ORDER BY logic, so only use them when address is provided
-    // and not using NFT filtering
-    const useRawSql = addr && !nftTokenId && !marketAddress;
+    const where: Prisma.EscrowPredictionWhereInput = {};
 
-    if (
-      useRawSql &&
-      (orderBy === 'positionSize' || orderBy === 'payout' || orderBy === 'pnl')
-    ) {
-      // Direction is an SQL keyword — validated to a literal, safe for Prisma.raw()
-      const direction = orderDirection === 'asc' ? 'ASC' : 'DESC';
-
-      // Build conditional SQL fragments using Prisma.sql (parameterized) / Prisma.empty
-      const validStatuses = ['active', 'settled', 'consolidated'] as const;
-      const statusFilter =
-        status && validStatuses.includes(status)
-          ? Prisma.sql`AND status = ${status}`
-          : Prisma.empty;
-
-      const endsAtFilter =
-        endsAtGte !== undefined &&
-        endsAtGte !== null &&
-        Number.isInteger(endsAtGte)
-          ? Prisma.sql`AND "endsAt" >= ${endsAtGte}`
-          : Prisma.empty;
-
-      const chainIdFilter =
-        chainId !== undefined && chainId !== null
-          ? Prisma.sql`AND "chainId" = ${chainId}`
-          : Prisma.empty;
-
-      if (orderBy === 'positionSize') {
-        const rows = await prisma.$queryRaw<Position[]>`
-          SELECT * FROM position
-          WHERE (LOWER(predictor) = ${addr} OR LOWER(counterparty) = ${addr}) ${chainIdFilter} ${statusFilter} ${endsAtFilter}
-          ORDER BY CASE
-            WHEN LOWER(predictor) = ${addr} THEN CAST(COALESCE("predictorCollateral", '0') AS DECIMAL)
-            WHEN LOWER(counterparty) = ${addr} THEN CAST(COALESCE("counterpartyCollateral", '0') AS DECIMAL)
-            ELSE 0
-          END ${Prisma.raw(direction)}
-          LIMIT ${take}
-          OFFSET ${skip}
-        `;
-        return processRows(rows);
-      }
-
-      if (orderBy === 'pnl') {
-        const rows = await prisma.$queryRaw<Position[]>`
-          SELECT * FROM position
-          WHERE (LOWER(predictor) = ${addr} OR LOWER(counterparty) = ${addr}) ${chainIdFilter} ${statusFilter} ${endsAtFilter}
-          ORDER BY CASE
-            WHEN status = 'active' THEN 0
-            WHEN LOWER(predictor) = ${addr} THEN
-              CASE
-                WHEN "predictorWon" = true THEN
-                  CAST(COALESCE("totalCollateral", '0') AS DECIMAL) - CAST(COALESCE("predictorCollateral", '0') AS DECIMAL)
-                ELSE
-                  -CAST(COALESCE("predictorCollateral", '0') AS DECIMAL)
-              END
-            WHEN LOWER(counterparty) = ${addr} THEN
-              CASE
-                WHEN "predictorWon" = false THEN
-                  CAST(COALESCE("totalCollateral", '0') AS DECIMAL) - CAST(COALESCE("counterpartyCollateral", '0') AS DECIMAL)
-                ELSE
-                  -CAST(COALESCE("counterpartyCollateral", '0') AS DECIMAL)
-              END
-            ELSE 0
-          END ${Prisma.raw(direction)}
-          LIMIT ${take}
-          OFFSET ${skip}
-        `;
-        return processRows(rows);
-      }
-
-      // payout: sort by totalCollateral but treat lost positions as 0
-      const rows = await prisma.$queryRaw<Position[]>`
-        SELECT * FROM position
-        WHERE (LOWER(predictor) = ${addr} OR LOWER(counterparty) = ${addr}) ${chainIdFilter} ${statusFilter} ${endsAtFilter}
-        ORDER BY CASE
-          WHEN status = 'active' THEN CAST("totalCollateral" AS DECIMAL)
-          WHEN status != 'active' THEN
-            CASE
-              WHEN (LOWER(predictor) = ${addr} AND "predictorWon" = true) THEN CAST("totalCollateral" AS DECIMAL)
-              WHEN (LOWER(counterparty) = ${addr} AND "predictorWon" = false) THEN CAST("totalCollateral" AS DECIMAL)
-              ELSE 0
-            END
-          ELSE 0
-        END ${Prisma.raw(direction)}
-        LIMIT ${take}
-        OFFSET ${skip}
-      `;
-      return processRows(rows);
-    }
-
-    let orderByClause: Prisma.PositionOrderByWithRelationInput = {
-      mintedAt: 'desc',
-    };
-
-    if (orderBy === 'created') {
-      orderByClause = { mintedAt: orderDirection === 'asc' ? 'asc' : 'desc' };
-    } else if (orderBy === 'endsAt') {
-      orderByClause = { endsAt: orderDirection === 'asc' ? 'asc' : 'desc' };
-    }
-
-    const where: Prisma.PositionWhereInput = {};
-
-    // Filter by NFT ID and market address if provided
-    if (nftTokenId && marketAddress) {
-      where.marketAddress = marketAddress.toLowerCase();
-      where.OR = [
-        { predictorNftTokenId: nftTokenId },
-        { counterpartyNftTokenId: nftTokenId },
-      ];
-    }
-    // Otherwise, filter by address if provided
-    else if (addr) {
+    if (addr) {
       where.OR = [{ predictor: addr }, { counterparty: addr }];
     }
-    // If neither address nor NFT filters are provided, return empty array
-    else {
-      return [];
-    }
-
     if (chainId !== undefined && chainId !== null) {
       where.chainId = chainId;
     }
-    if (status) {
-      where.status = status;
-    }
-    if (endsAtGte !== undefined && endsAtGte !== null) {
-      where.endsAt = { gte: endsAtGte };
+    if (settled !== undefined && settled !== null) {
+      where.settled = settled;
     }
 
-    const rows = await prisma.position.findMany({
+    // If no filters provided, return empty
+    if (!addr) {
+      return [];
+    }
+
+    let orderByClause: Prisma.EscrowPredictionOrderByWithRelationInput = {
+      createdAt: 'desc',
+    };
+
+    if (orderBy === 'createdAt') {
+      orderByClause = { createdAt: orderDirection === 'asc' ? 'asc' : 'desc' };
+    } else if (orderBy === 'settledAt') {
+      orderByClause = { settledAt: orderDirection === 'asc' ? 'asc' : 'desc' };
+    }
+
+    const rows = await prisma.escrowPrediction.findMany({
       where,
       orderBy: orderByClause,
       take,
       skip,
     });
 
-    return processRows(rows);
+    return rows.map((r) => ({
+      id: r.id,
+      predictionId: r.predictionId,
+      chainId: r.chainId,
+      marketAddress: r.marketAddress,
+      predictor: r.predictor,
+      counterparty: r.counterparty,
+      predictorToken: r.predictorToken,
+      counterpartyToken: r.counterpartyToken,
+      predictorCollateral: r.predictorCollateral,
+      counterpartyCollateral: r.counterpartyCollateral,
+      collateralDeposited: r.collateralDeposited ?? null,
+      collateralDepositedAt: r.collateralDepositedAt ?? null,
+      settled: r.settled,
+      settledAt: r.settledAt ?? null,
+      result: r.result,
+      predictorClaimable: r.predictorClaimable ?? null,
+      counterpartyClaimable: r.counterpartyClaimable ?? null,
+      createTxHash: r.createTxHash,
+      settleTxHash: r.settleTxHash ?? null,
+      refCode: r.refCode ?? null,
+    }));
   }
 
-  @Query(() => [PositionType])
-  async positionsByConditionId(
-    @Arg('conditionId', () => String) conditionId: string,
-    @Arg('take', () => Int, { defaultValue: 100 }) take: number,
-    @Arg('skip', () => Int, { defaultValue: 0 }) skip: number,
-    @Arg('chainId', () => Int, { nullable: true }) chainId?: number,
-    @Arg('status', () => String, { nullable: true })
-    status?: 'active' | 'settled' | 'consolidated',
-    @Arg('endsAtGte', () => Int, { nullable: true }) endsAtGte?: number
-  ): Promise<PositionType[]> {
-    take = Math.min(take, 200);
+  @Query(() => PredictionType, { nullable: true })
+  async prediction(
+    @Arg('predictionId', () => String) predictionId: string
+  ): Promise<PredictionType | null> {
+    const predictionIdLower = predictionId.toLowerCase();
 
-    const predictionMatches = await prisma.prediction.findMany({
-      where: {
-        positionId: { not: null },
-        conditionId: { equals: conditionId, mode: 'insensitive' },
-        ...(chainId !== undefined && chainId !== null
-          ? { chainId }
-          : undefined),
-      },
-      select: { positionId: true },
+    const r = await prisma.escrowPrediction.findUnique({
+      where: { predictionId: predictionIdLower },
     });
 
-    const positionIds = Array.from(
-      new Set(
-        predictionMatches
-          .map((p) => p.positionId)
-          .filter((id): id is number => id !== null)
-      )
-    );
+    if (!r) return null;
 
-    if (positionIds.length === 0) return [];
+    return {
+      id: r.id,
+      predictionId: r.predictionId,
+      chainId: r.chainId,
+      marketAddress: r.marketAddress,
+      predictor: r.predictor,
+      counterparty: r.counterparty,
+      predictorToken: r.predictorToken,
+      counterpartyToken: r.counterpartyToken,
+      predictorCollateral: r.predictorCollateral,
+      counterpartyCollateral: r.counterpartyCollateral,
+      collateralDeposited: r.collateralDeposited ?? null,
+      collateralDepositedAt: r.collateralDepositedAt ?? null,
+      settled: r.settled,
+      settledAt: r.settledAt ?? null,
+      result: r.result,
+      predictorClaimable: r.predictorClaimable ?? null,
+      counterpartyClaimable: r.counterpartyClaimable ?? null,
+      createTxHash: r.createTxHash,
+      settleTxHash: r.settleTxHash ?? null,
+      refCode: r.refCode ?? null,
+    };
+  }
 
-    const positionWhere: Prisma.PositionWhereInput = {
-      id: { in: positionIds },
-      ...(chainId !== undefined && chainId !== null ? { chainId } : undefined),
-      ...(status ? { status } : undefined),
-      ...(endsAtGte !== undefined && endsAtGte !== null
-        ? { endsAt: { gte: endsAtGte } }
-        : undefined),
+  // -------------------------------------------------------------------------
+  // Pick Configurations
+  // -------------------------------------------------------------------------
+
+  @Query(() => [PicksType])
+  async pickConfigurations(
+    @Arg('take', () => Int, { defaultValue: 50 }) take: number,
+    @Arg('skip', () => Int, { defaultValue: 0 }) skip: number,
+    @Arg('chainId', () => Int, { nullable: true }) chainId?: number,
+    @Arg('resolved', () => Boolean, { nullable: true }) resolved?: boolean,
+    @Arg('result', () => String, { nullable: true }) result?: string
+  ): Promise<PicksType[]> {
+    const where: Prisma.PicksWhereInput = {};
+
+    if (chainId !== undefined && chainId !== null) {
+      where.chainId = chainId;
+    }
+    if (resolved !== undefined && resolved !== null) {
+      where.resolved = resolved;
+    }
+    if (result) {
+      where.result = result as Prisma.EnumSettlementResultFilter;
+    }
+
+    const rows = await prisma.picks.findMany({
+      where,
+      orderBy: { createdAt: 'desc' },
+      take,
+      skip,
+      include: {
+        picks: true,
+      },
+    });
+
+    return rows.map((r) => ({
+      id: r.id,
+      chainId: r.chainId,
+      marketAddress: r.marketAddress,
+      totalPredictorCollateral: r.totalPredictorCollateral,
+      totalCounterpartyCollateral: r.totalCounterpartyCollateral,
+      claimedPredictorCollateral: r.claimedPredictorCollateral,
+      claimedCounterpartyCollateral: r.claimedCounterpartyCollateral,
+      resolved: r.resolved,
+      result: r.result,
+      resolvedAt: r.resolvedAt ?? null,
+      predictorToken: r.predictorToken ?? null,
+      counterpartyToken: r.counterpartyToken ?? null,
+      endsAt: r.endsAt ?? null,
+      picks: r.picks.map((p) => ({
+        id: p.id,
+        pickConfigId: p.pickConfigId,
+        conditionResolver: p.conditionResolver,
+        conditionId: p.conditionId,
+        predictedOutcome: p.predictedOutcome,
+      })),
+    }));
+  }
+
+  @Query(() => PicksType, { nullable: true })
+  async pickConfiguration(
+    @Arg('id', () => String) id: string
+  ): Promise<PicksType | null> {
+    const idLower = id.toLowerCase();
+
+    const r = await prisma.picks.findUnique({
+      where: { id: idLower },
+      include: {
+        picks: true,
+      },
+    });
+
+    if (!r) return null;
+
+    return {
+      id: r.id,
+      chainId: r.chainId,
+      marketAddress: r.marketAddress,
+      totalPredictorCollateral: r.totalPredictorCollateral,
+      totalCounterpartyCollateral: r.totalCounterpartyCollateral,
+      claimedPredictorCollateral: r.claimedPredictorCollateral,
+      claimedCounterpartyCollateral: r.claimedCounterpartyCollateral,
+      resolved: r.resolved,
+      result: r.result,
+      resolvedAt: r.resolvedAt ?? null,
+      predictorToken: r.predictorToken ?? null,
+      counterpartyToken: r.counterpartyToken ?? null,
+      endsAt: r.endsAt ?? null,
+      picks: r.picks.map((p) => ({
+        id: p.id,
+        pickConfigId: p.pickConfigId,
+        conditionResolver: p.conditionResolver,
+        conditionId: p.conditionId,
+        predictedOutcome: p.predictedOutcome,
+      })),
+    };
+  }
+
+  // -------------------------------------------------------------------------
+  // Positions (token balances)
+  // -------------------------------------------------------------------------
+
+  @Query(() => [PositionType])
+  async positions(
+    @Arg('holder', () => String) holder: string,
+    @Arg('take', () => Int, { defaultValue: 50 }) take: number,
+    @Arg('skip', () => Int, { defaultValue: 0 }) skip: number,
+    @Arg('chainId', () => Int, { nullable: true }) chainId?: number,
+    @Arg('pickConfigId', () => String, { nullable: true }) pickConfigId?: string
+  ): Promise<PositionType[]> {
+    const holderLower = holder.toLowerCase();
+    const pickConfigIdLower = pickConfigId?.toLowerCase();
+
+    const where: Prisma.PositionWhereInput = {
+      holder: holderLower,
     };
 
+    if (chainId !== undefined && chainId !== null) {
+      where.chainId = chainId;
+    }
+    if (pickConfigIdLower) {
+      where.pickConfigId = pickConfigIdLower;
+    }
+
     const rows = await prisma.position.findMany({
-      where: positionWhere,
-      orderBy: { mintedAt: 'desc' },
+      where,
+      orderBy: { updatedAt: 'desc' },
+      take,
+      skip,
+      include: {
+        pickConfiguration: {
+          include: {
+            picks: true,
+          },
+        },
+      },
+    });
+
+    return rows.map((r) => ({
+      id: r.id,
+      chainId: r.chainId,
+      tokenAddress: r.tokenAddress,
+      pickConfigId: r.pickConfigId,
+      isPredictorToken: r.isPredictorToken,
+      holder: r.holder,
+      balance: r.balance,
+      pickConfig: r.pickConfiguration
+        ? {
+            id: r.pickConfiguration.id,
+            chainId: r.pickConfiguration.chainId,
+            marketAddress: r.pickConfiguration.marketAddress,
+            totalPredictorCollateral: r.pickConfiguration.totalPredictorCollateral,
+            totalCounterpartyCollateral: r.pickConfiguration.totalCounterpartyCollateral,
+            claimedPredictorCollateral: r.pickConfiguration.claimedPredictorCollateral,
+            claimedCounterpartyCollateral: r.pickConfiguration.claimedCounterpartyCollateral,
+            resolved: r.pickConfiguration.resolved,
+            result: r.pickConfiguration.result,
+            resolvedAt: r.pickConfiguration.resolvedAt ?? null,
+            predictorToken: r.pickConfiguration.predictorToken ?? null,
+            counterpartyToken: r.pickConfiguration.counterpartyToken ?? null,
+            endsAt: r.pickConfiguration.endsAt ?? null,
+            picks: r.pickConfiguration.picks.map((p) => ({
+              id: p.id,
+              pickConfigId: p.pickConfigId,
+              conditionResolver: p.conditionResolver,
+              conditionId: p.conditionId,
+              predictedOutcome: p.predictedOutcome,
+            })),
+          }
+        : null,
+    }));
+  }
+
+  // -------------------------------------------------------------------------
+  // Closes (burn records)
+  // -------------------------------------------------------------------------
+
+  @Query(() => [CloseType])
+  async closes(
+    @Arg('take', () => Int, { defaultValue: 50 }) take: number,
+    @Arg('skip', () => Int, { defaultValue: 0 }) skip: number,
+    @Arg('address', () => String, { nullable: true }) address?: string,
+    @Arg('pickConfigId', () => String, { nullable: true }) pickConfigId?: string,
+    @Arg('chainId', () => Int, { nullable: true }) chainId?: number
+  ): Promise<CloseType[]> {
+    const addr = address?.toLowerCase();
+    const pickConfigIdLower = pickConfigId?.toLowerCase();
+
+    const where: Prisma.CloseWhereInput = {};
+
+    if (addr) {
+      where.OR = [
+        { predictorHolder: addr },
+        { counterpartyHolder: addr },
+      ];
+    }
+    if (pickConfigIdLower) {
+      where.pickConfigId = pickConfigIdLower;
+    }
+    if (chainId !== undefined && chainId !== null) {
+      where.chainId = chainId;
+    }
+
+    // Require at least one filter
+    if (!addr && !pickConfigIdLower) {
+      return [];
+    }
+
+    const rows = await prisma.close.findMany({
+      where,
+      orderBy: { burnedAt: 'desc' },
       take,
       skip,
     });
 
-    return processRows(rows);
+    return rows.map((r) => ({
+      id: r.id,
+      chainId: r.chainId,
+      marketAddress: r.marketAddress,
+      pickConfigId: r.pickConfigId,
+      predictorHolder: r.predictorHolder,
+      counterpartyHolder: r.counterpartyHolder,
+      predictorTokensBurned: r.predictorTokensBurned,
+      counterpartyTokensBurned: r.counterpartyTokensBurned,
+      predictorPayout: r.predictorPayout,
+      counterpartyPayout: r.counterpartyPayout,
+      burnedAt: r.burnedAt,
+      txHash: r.txHash,
+      refCode: r.refCode ?? null,
+    }));
+  }
+
+  // -------------------------------------------------------------------------
+  // Claims (redemption records)
+  // -------------------------------------------------------------------------
+
+  @Query(() => [ClaimType])
+  async claims(
+    @Arg('take', () => Int, { defaultValue: 50 }) take: number,
+    @Arg('skip', () => Int, { defaultValue: 0 }) skip: number,
+    @Arg('holder', () => String, { nullable: true }) holder?: string,
+    @Arg('predictionId', () => String, { nullable: true }) predictionId?: string,
+    @Arg('chainId', () => Int, { nullable: true }) chainId?: number
+  ): Promise<ClaimType[]> {
+    const holderLower = holder?.toLowerCase();
+    const predictionIdLower = predictionId?.toLowerCase();
+
+    const where: Prisma.ClaimWhereInput = {};
+
+    if (holderLower) {
+      where.holder = holderLower;
+    }
+    if (predictionIdLower) {
+      where.predictionId = predictionIdLower;
+    }
+    if (chainId !== undefined && chainId !== null) {
+      where.chainId = chainId;
+    }
+
+    // Require at least one filter
+    if (!holderLower && !predictionIdLower) {
+      return [];
+    }
+
+    const rows = await prisma.claim.findMany({
+      where,
+      orderBy: { redeemedAt: 'desc' },
+      take,
+      skip,
+    });
+
+    return rows.map((r) => ({
+      id: r.id,
+      chainId: r.chainId,
+      marketAddress: r.marketAddress,
+      predictionId: r.predictionId,
+      holder: r.holder,
+      positionToken: r.positionToken,
+      tokensBurned: r.tokensBurned,
+      collateralPaid: r.collateralPaid,
+      redeemedAt: r.redeemedAt,
+      txHash: r.txHash,
+      refCode: r.refCode ?? null,
+    }));
   }
 }

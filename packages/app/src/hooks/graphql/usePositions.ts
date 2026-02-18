@@ -4,9 +4,9 @@ import { useQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 
 /**
- * V2 Prediction - individual prediction record
+ * Prediction - individual prediction record
  */
-export type V2Prediction = {
+export type Prediction = {
   id: number;
   predictionId: string;
   chainId: number;
@@ -33,8 +33,8 @@ export type V2Prediction = {
   refCode?: string | null;
 };
 
-/** V2 Pick in a pick configuration */
-export type V2PickData = {
+/** Pick in a pick configuration */
+export type PickData = {
   id: number;
   pickConfigId: string;
   conditionResolver: string;
@@ -42,8 +42,8 @@ export type V2PickData = {
   predictedOutcome: number;
 };
 
-/** V2 Pick Configuration data */
-export type V2PickConfigData = {
+/** Pick Configuration data */
+export type PickConfigData = {
   id: string;
   chainId: number;
   marketAddress: string;
@@ -57,13 +57,13 @@ export type V2PickConfigData = {
   predictorToken?: string | null;
   counterpartyToken?: string | null;
   endsAt?: number | null;
-  picks: V2PickData[];
+  picks: PickData[];
 };
 
 /**
- * V2 Position Balance - ERC20 token balance for a user
+ * Position Balance - ERC20 token balance for a user
  */
-export type V2PositionBalance = {
+export type PositionBalance = {
   id: number;
   chainId: number;
   tokenAddress: string;
@@ -71,18 +71,18 @@ export type V2PositionBalance = {
   isPredictorToken: boolean;
   holder: string;
   balance: string;
-  pickConfig?: V2PickConfigData | null;
+  pickConfig?: PickConfigData | null;
 };
 
-// GraphQL queries for V2 data
-const V2_PREDICTIONS_QUERY = /* GraphQL */ `
-  query V2Predictions(
+// GraphQL queries
+const PREDICTIONS_QUERY = /* GraphQL */ `
+  query Predictions(
     $address: String!
     $chainId: Int
     $take: Int
     $skip: Int
   ) {
-    v2Predictions(
+    predictions(
       address: $address
       chainId: $chainId
       take: $take
@@ -112,15 +112,15 @@ const V2_PREDICTIONS_QUERY = /* GraphQL */ `
   }
 `;
 
-const V2_PREDICTIONS_COUNT_QUERY = /* GraphQL */ `
-  query V2PredictionsCount($address: String!, $chainId: Int) {
-    v2PredictionsCount(address: $address, chainId: $chainId)
+const PREDICTIONS_COUNT_QUERY = /* GraphQL */ `
+  query PredictionsCount($address: String!, $chainId: Int) {
+    predictionsCount(address: $address, chainId: $chainId)
   }
 `;
 
-const V2_POSITION_BALANCES_QUERY = /* GraphQL */ `
-  query V2PositionBalances($holder: String!, $chainId: Int) {
-    v2PositionBalances(holder: $holder, chainId: $chainId) {
+const POSITION_BALANCES_QUERY = /* GraphQL */ `
+  query Positions($holder: String!, $chainId: Int) {
+    positions(holder: $holder, chainId: $chainId) {
       id
       chainId
       tokenAddress
@@ -155,32 +155,32 @@ const V2_POSITION_BALANCES_QUERY = /* GraphQL */ `
 `;
 
 /**
- * Hook to get V2 predictions count for a user
+ * Hook to get predictions count for a user
  */
-export function useV2PredictionsCount(address?: string, chainId?: number) {
+export function usePredictionsCount(address?: string, chainId?: number) {
   const enabled = Boolean(address);
   const { data } = useQuery({
-    queryKey: ['v2PredictionsCount', address, chainId],
+    queryKey: ['predictionsCount', address, chainId],
     enabled,
     staleTime: 60_000,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     queryFn: async () => {
-      const resp = await graphqlRequest<{ v2PredictionsCount: number }>(
-        V2_PREDICTIONS_COUNT_QUERY,
+      const resp = await graphqlRequest<{ predictionsCount: number }>(
+        PREDICTIONS_COUNT_QUERY,
         { address, chainId: chainId ?? null }
       );
-      return resp?.v2PredictionsCount ?? 0;
+      return resp?.predictionsCount ?? 0;
     },
   });
   return data ?? 0;
 }
 
 /**
- * Hook to get V2 predictions for a user
+ * Hook to get predictions for a user
  */
-export function useV2Predictions(params: {
+export function usePredictions(params: {
   address?: string;
   chainId?: number;
   take?: number;
@@ -190,15 +190,15 @@ export function useV2Predictions(params: {
   const enabled = Boolean(address);
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ['v2Predictions', address, chainId, take, skip],
+    queryKey: ['predictions', address, chainId, take, skip],
     enabled,
     staleTime: 30_000,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     queryFn: async () => {
-      const resp = await graphqlRequest<{ v2Predictions: V2Prediction[] }>(
-        V2_PREDICTIONS_QUERY,
+      const resp = await graphqlRequest<{ predictions: Prediction[] }>(
+        PREDICTIONS_QUERY,
         {
           address,
           chainId: chainId ?? null,
@@ -206,7 +206,7 @@ export function useV2Predictions(params: {
           skip,
         }
       );
-      return resp?.v2Predictions ?? [];
+      return resp?.predictions ?? [];
     },
   });
 
@@ -219,9 +219,9 @@ export function useV2Predictions(params: {
 }
 
 /**
- * Hook to get V2 position balances (ERC20 tokens) for a user
+ * Hook to get position balances (ERC20 tokens) for a user
  */
-export function useV2PositionBalances(params: {
+export function usePositionBalances(params: {
   holder?: string;
   chainId?: number;
 }) {
@@ -229,7 +229,7 @@ export function useV2PositionBalances(params: {
   const enabled = Boolean(holder);
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ['v2PositionBalances', holder, chainId],
+    queryKey: ['positionBalances', holder, chainId],
     enabled,
     staleTime: 30_000,
     gcTime: 5 * 60 * 1000,
@@ -237,12 +237,12 @@ export function useV2PositionBalances(params: {
     refetchOnReconnect: false,
     queryFn: async () => {
       const resp = await graphqlRequest<{
-        v2PositionBalances: V2PositionBalance[];
-      }>(V2_POSITION_BALANCES_QUERY, {
+        positions: PositionBalance[];
+      }>(POSITION_BALANCES_QUERY, {
         holder,
         chainId: chainId ?? null,
       });
-      return resp?.v2PositionBalances ?? [];
+      return resp?.positions ?? [];
     },
   });
 

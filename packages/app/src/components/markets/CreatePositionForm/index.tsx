@@ -59,7 +59,7 @@ import { CreatePositionFormContent } from '~/components/markets/CreatePositionFo
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import { useSubmitPosition } from '~/hooks/forms/useSubmitPosition';
 import { usePositionProgress } from '~/hooks/forms/usePositionProgress';
-import { useUserPositions } from '~/hooks/graphql/useUserPositions';
+import { useUserPositions } from '~/hooks/graphql/useLegacyPositions';
 import { useAuctionStart, type QuoteBid } from '~/lib/auction/useAuctionStart';
 import {
   validateBidsWithSimulation,

@@ -12,7 +12,7 @@ const DEFAULT_USER_MAX_CLAIMS = 5;
 async function calculateVolumeForAddress(address: string): Promise<bigint> {
   const normalizedAddress = address.toLowerCase();
 
-  const positions = await prisma.position.findMany({
+  const positions = await prisma.legacyPosition.findMany({
     where: {
       OR: [
         { predictor: { equals: normalizedAddress, mode: 'insensitive' } },
@@ -638,7 +638,7 @@ router.get(
       }
 
       // Get all positions for these users
-      const positions = await prisma.position.findMany({
+      const positions = await prisma.legacyPosition.findMany({
         where: {
           OR: [
             { predictor: { in: userAddresses, mode: 'insensitive' } },
