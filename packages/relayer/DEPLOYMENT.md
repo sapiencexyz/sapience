@@ -31,22 +31,21 @@ The service will start on `http://localhost:3002` with WebSocket endpoint at `ws
 
 ### Optional
 - `ENABLE_AUCTION_WS`: Enable WebSocket server (default: `true`)
-- `CHAIN_5064014_RPC_URL`: Custom RPC URL for EtherealChain (default: https://rpc.ethereal.trade)
+- `DEFAULT_CHAIN_ID`: Default chain (staging: `13374202`, prod: `5064014`)
+- `CHAIN_5064014_RPC_URL`: Custom RPC URL for Ethereal Mainnet (default: https://rpc.ethereal.trade)
+- `CHAIN_13374202_RPC_URL`: Custom RPC URL for Ethereal Testnet (default: https://rpc.etherealtest.net)
 
 ## Production Deployment
 
-### Render.com
+### Railway
 
-The service is configured in `render.yaml` as a web service:
+All services deploy from the monorepo root. Railway's RAILPACK builder auto-detects the pnpm workspace structure. Per-service config (start commands, env vars) is set in the Railway dashboard.
 
-```yaml
-- name: relayer
-  type: web
-  env: node
-  plan: standard
-  buildCommand: npm install -g pnpm@9 && bash render-build-sdk.sh
-  startCommand: pnpm --filter @sapience/relayer start
-```
+| Setting | Value |
+|---------|-------|
+| Start Command | `pnpm --filter @sapience/relayer start` |
+| Builder | RAILPACK (auto) |
+| Restart Policy | ON_FAILURE (3 retries) |
 
 ### Environment Variables for Production
 
@@ -55,13 +54,13 @@ Set these in your deployment platform:
 - `PORT`: `3002` (or your configured port)
 - `NODE_ENV`: `production`
 - `ENABLE_AUCTION_WS`: `true`
-- `CHAIN_5064014_RPC_URL`: Custom RPC URL for EtherealChain if needed
+- `DEFAULT_CHAIN_ID`: `5064014` (mainnet) or `13374202` (staging/testnet)
+- `CHAIN_5064014_RPC_URL`: Custom RPC URL for Ethereal Mainnet if needed
+- `CHAIN_13374202_RPC_URL`: Custom RPC URL for Ethereal Testnet if needed
 
 ## Reverse Proxy Setup
 
-### Render.com (Recommended)
-
-If deploying to Render, no reverse proxy setup is needed. Render handles routing internally. The service is configured in `render.yaml` and will be accessible at its own URL (e.g., `https://relayer.sapience.xyz`).
+Railway handles routing internally. The service is accessible at its Railway-assigned domain (e.g., `https://relayer.staging.sapience.xyz`).
 
 ### Self-Hosted Setup
 
@@ -194,4 +193,3 @@ FOIL_RELAYER_BASE=http://localhost:3002 pnpm --filter @sapience/relayer run bot
 3. **Origin Validation**: Consider adding origin validation for production
 4. **TLS**: Use WSS (wss://) in production
 5. **Authentication**: Consider adding authentication for production use
-

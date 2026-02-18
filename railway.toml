@@ -1,3 +1,6 @@
+[build]
+builder = "RAILPACK"
+
 [deploy]
-restartPolicyType = "on_failure"
-restartPolicyMaxRetries = 3
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 5
