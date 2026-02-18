@@ -1,4 +1,4 @@
-# Foil App
+# Sapience App
 
 ## Acknowledgments
 

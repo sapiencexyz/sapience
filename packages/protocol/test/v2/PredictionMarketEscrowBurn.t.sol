@@ -1,0 +1,1084 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.19;
+
+import "forge-std/Test.sol";
+import "../../src/v2/PredictionMarketEscrow.sol";
+import "../../src/v2/resolvers/mocks/ManualConditionResolver.sol";
+import "../../src/v2/interfaces/IV2Types.sol";
+import "../../src/v2/interfaces/IV2Events.sol";
+import "../../src/v2/interfaces/IPredictionMarketEscrow.sol";
+import "../../src/v2/interfaces/IPredictionMarketToken.sol";
+import "./mocks/MockERC20.sol";
+
+contract PredictionMarketEscrowBurnTest is Test {
+    // ============ State Variables ============
+
+    PredictionMarketEscrow public market;
+    ManualConditionResolver public resolver;
+    MockERC20 public collateralToken;
+
+    address public owner;
+    address public predictor;
+    address public counterparty;
+    address public settler;
+    address public thirdParty;
+
+    uint256 public predictorPk;
+    uint256 public counterpartyPk;
+    uint256 public thirdPartyPk;
+
+    uint256 public constant PREDICTOR_WAGER = 100e18;
+    uint256 public constant COUNTERPARTY_WAGER = 150e18;
+    bytes32 public constant REF_CODE = keccak256("test-ref-code");
+
+    bytes32 public conditionId1;
+
+    // ============ setUp ============
+
+    function setUp() public {
+        owner = vm.addr(1);
+        predictorPk = 2;
+        predictor = vm.addr(predictorPk);
+        counterpartyPk = 3;
+        counterparty = vm.addr(counterpartyPk);
+        settler = vm.addr(4);
+        thirdPartyPk = 5;
+        thirdParty = vm.addr(thirdPartyPk);
+
+        collateralToken = new MockERC20("Test USDE", "USDE", 18);
+        market = new PredictionMarketEscrow(address(collateralToken), owner);
+
+        vm.prank(owner);
+        resolver = new ManualConditionResolver(owner);
+
+        vm.prank(owner);
+        resolver.approveSettler(settler);
+
+        conditionId1 = keccak256(abi.encode("condition-1"));
+
+        collateralToken.mint(predictor, 10_000e18);
+        collateralToken.mint(counterparty, 10_000e18);
+        collateralToken.mint(thirdParty, 10_000e18);
+
+        vm.prank(predictor);
+        collateralToken.approve(address(market), type(uint256).max);
+        vm.prank(counterparty);
+        collateralToken.approve(address(market), type(uint256).max);
+        vm.prank(thirdParty);
+        collateralToken.approve(address(market), type(uint256).max);
+    }
+
+    // ============ Helpers: Mint ============
+
+    function _createPick(bytes32 _conditionId, IV2Types.OutcomeSide _outcome)
+        internal
+        view
+        returns (IV2Types.Pick memory)
+    {
+        return IV2Types.Pick({
+            conditionResolver: address(resolver),
+            conditionId: _conditionId,
+            predictedOutcome: _outcome
+        });
+    }
+
+    function _signMintApproval(
+        bytes32 predictionHash,
+        address signer,
+        uint256 wager,
+        uint256 nonce,
+        uint256 deadline,
+        uint256 pk
+    ) internal view returns (bytes memory) {
+        bytes32 approvalHash = market.getMintApprovalHash(
+            predictionHash, signer, wager, nonce, deadline
+        );
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk, approvalHash);
+        return abi.encodePacked(r, s, v);
+    }
+
+    function _createMintRequest(IV2Types.Pick[] memory picks)
+        internal
+        view
+        returns (IV2Types.MintRequest memory request)
+    {
+        bytes32 pickConfigId = keccak256(abi.encode(picks));
+        bytes32 predictionHash = keccak256(
+            abi.encode(
+                pickConfigId,
+                PREDICTOR_WAGER,
+                COUNTERPARTY_WAGER,
+                predictor,
+                counterparty
+            )
+        );
+
+        uint256 pNonce = market.getNonce(predictor);
+        uint256 cNonce = market.getNonce(counterparty);
+        uint256 deadline = block.timestamp + 1 hours;
+
+        request.picks = picks;
+        request.predictorWager = PREDICTOR_WAGER;
+        request.counterpartyWager = COUNTERPARTY_WAGER;
+        request.predictor = predictor;
+        request.counterparty = counterparty;
+        request.predictorNonce = pNonce;
+        request.counterpartyNonce = cNonce;
+        request.predictorDeadline = deadline;
+        request.counterpartyDeadline = deadline;
+        request.predictorSignature = _signMintApproval(
+            predictionHash,
+            predictor,
+            PREDICTOR_WAGER,
+            pNonce,
+            deadline,
+            predictorPk
+        );
+        request.counterpartySignature = _signMintApproval(
+            predictionHash,
+            counterparty,
+            COUNTERPARTY_WAGER,
+            cNonce,
+            deadline,
+            counterpartyPk
+        );
+        request.refCode = REF_CODE;
+        request.predictorSessionKeyData = "";
+        request.counterpartySessionKeyData = "";
+    }
+
+    function _mintPrediction(IV2Types.Pick[] memory picks)
+        internal
+        returns (
+            bytes32 predictionId,
+            address predictorToken,
+            address counterpartyToken
+        )
+    {
+        IV2Types.MintRequest memory request = _createMintRequest(picks);
+        return market.mint(request);
+    }
+
+    function _mintDefault()
+        internal
+        returns (
+            bytes32 pickConfigId,
+            address predictorToken,
+            address counterpartyToken
+        )
+    {
+        IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
+        picks[0] = _createPick(conditionId1, IV2Types.OutcomeSide.YES);
+
+        (bytes32 predictionId,,) = _mintPrediction(picks);
+
+        IV2Types.Prediction memory pred = market.getPrediction(predictionId);
+        pickConfigId = pred.pickConfigId;
+
+        IV2Types.TokenPair memory tp = market.getTokenPair(pickConfigId);
+        predictorToken = tp.predictorToken;
+        counterpartyToken = tp.counterpartyToken;
+    }
+
+    // ============ Helpers: Burn ============
+
+    function _signBurnApproval(
+        bytes32 burnHash,
+        address signer,
+        uint256 tokenAmount,
+        uint256 payout,
+        uint256 nonce,
+        uint256 deadline,
+        uint256 pk
+    ) internal view returns (bytes memory) {
+        bytes32 approvalHash = market.getBurnApprovalHash(
+            burnHash, signer, tokenAmount, payout, nonce, deadline
+        );
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk, approvalHash);
+        return abi.encodePacked(r, s, v);
+    }
+
+    function _createBurnRequest(
+        bytes32 pickConfigId,
+        uint256 predictorTokenAmount,
+        uint256 counterpartyTokenAmount,
+        address _predictorHolder,
+        address _counterpartyHolder,
+        uint256 predictorPayout,
+        uint256 counterpartyPayout,
+        uint256 _predictorPk,
+        uint256 _counterpartyPk
+    ) internal view returns (IV2Types.BurnRequest memory request) {
+        bytes32 burnHash = keccak256(
+            abi.encode(
+                pickConfigId,
+                predictorTokenAmount,
+                counterpartyTokenAmount,
+                _predictorHolder,
+                _counterpartyHolder,
+                predictorPayout,
+                counterpartyPayout
+            )
+        );
+
+        uint256 pNonce = market.getNonce(_predictorHolder);
+        uint256 cNonce = market.getNonce(_counterpartyHolder);
+        uint256 deadline = block.timestamp + 1 hours;
+
+        request.pickConfigId = pickConfigId;
+        request.predictorTokenAmount = predictorTokenAmount;
+        request.counterpartyTokenAmount = counterpartyTokenAmount;
+        request.predictorHolder = _predictorHolder;
+        request.counterpartyHolder = _counterpartyHolder;
+        request.predictorPayout = predictorPayout;
+        request.counterpartyPayout = counterpartyPayout;
+        request.predictorNonce = pNonce;
+        request.counterpartyNonce = cNonce;
+        request.predictorDeadline = deadline;
+        request.counterpartyDeadline = deadline;
+        request.predictorSignature = _signBurnApproval(
+            burnHash,
+            _predictorHolder,
+            predictorTokenAmount,
+            predictorPayout,
+            pNonce,
+            deadline,
+            _predictorPk
+        );
+        request.counterpartySignature = _signBurnApproval(
+            burnHash,
+            _counterpartyHolder,
+            counterpartyTokenAmount,
+            counterpartyPayout,
+            cNonce,
+            deadline,
+            _counterpartyPk
+        );
+        request.refCode = REF_CODE;
+        request.predictorSessionKeyData = "";
+        request.counterpartySessionKeyData = "";
+    }
+
+    // ============ Happy Path Tests ============
+
+    function test_burn_basicBilateral() public {
+        (
+            bytes32 pickConfigId,
+            address predictorToken,
+            address counterpartyToken
+        ) = _mintDefault();
+
+        uint256 predictorBalBefore = collateralToken.balanceOf(predictor);
+        uint256 counterpartyBalBefore = collateralToken.balanceOf(counterparty);
+        uint256 marketBalBefore = collateralToken.balanceOf(address(market));
+
+        // Equal split burn: each gets back their tokens worth
+        IV2Types.BurnRequest memory req = _createBurnRequest(
+            pickConfigId,
+            PREDICTOR_WAGER, // burn all predictor tokens
+            COUNTERPARTY_WAGER, // burn all counterparty tokens
+            predictor,
+            counterparty,
+            PREDICTOR_WAGER, // predictor gets back their wager
+            COUNTERPARTY_WAGER, // counterparty gets back their wager
+            predictorPk,
+            counterpartyPk
+        );
+
+        market.burn(req);
+
+        // Verify tokens burned
+        assertEq(IPredictionMarketToken(predictorToken).balanceOf(predictor), 0);
+        assertEq(
+            IPredictionMarketToken(counterpartyToken).balanceOf(counterparty), 0
+        );
+        assertEq(IPredictionMarketToken(predictorToken).totalSupply(), 0);
+        assertEq(IPredictionMarketToken(counterpartyToken).totalSupply(), 0);
+
+        // Verify collateral returned
+        assertEq(
+            collateralToken.balanceOf(predictor),
+            predictorBalBefore + PREDICTOR_WAGER
+        );
+        assertEq(
+            collateralToken.balanceOf(counterparty),
+            counterpartyBalBefore + COUNTERPARTY_WAGER
+        );
+        assertEq(
+            collateralToken.balanceOf(address(market)),
+            marketBalBefore - PREDICTOR_WAGER - COUNTERPARTY_WAGER
+        );
+
+        // Verify accounting updated
+        IV2Types.PickConfiguration memory config =
+            market.getPickConfiguration(pickConfigId);
+        assertEq(config.totalPredictorCollateral, 0);
+        assertEq(config.totalCounterpartyCollateral, 0);
+    }
+
+    function test_burn_unequalPayouts() public {
+        (bytes32 pickConfigId,,) = _mintDefault();
+
+        uint256 totalTokens = PREDICTOR_WAGER + COUNTERPARTY_WAGER;
+        // Predictor negotiates a premium for early exit
+        uint256 predictorPayout = 120e18;
+        uint256 counterpartyPayout = totalTokens - predictorPayout;
+
+        IV2Types.BurnRequest memory req = _createBurnRequest(
+            pickConfigId,
+            PREDICTOR_WAGER,
+            COUNTERPARTY_WAGER,
+            predictor,
+            counterparty,
+            predictorPayout,
+            counterpartyPayout,
+            predictorPk,
+            counterpartyPk
+        );
+
+        uint256 predictorBalBefore = collateralToken.balanceOf(predictor);
+        uint256 counterpartyBalBefore = collateralToken.balanceOf(counterparty);
+
+        market.burn(req);
+
+        assertEq(
+            collateralToken.balanceOf(predictor),
+            predictorBalBefore + predictorPayout
+        );
+        assertEq(
+            collateralToken.balanceOf(counterparty),
+            counterpartyBalBefore + counterpartyPayout
+        );
+    }
+
+    function test_burn_partialBurn() public {
+        (
+            bytes32 pickConfigId,
+            address predictorToken,
+            address counterpartyToken
+        ) = _mintDefault();
+
+        uint256 partialPredictor = 40e18;
+        uint256 partialCounterparty = 60e18;
+        uint256 totalBurned = partialPredictor + partialCounterparty;
+
+        IV2Types.BurnRequest memory req = _createBurnRequest(
+            pickConfigId,
+            partialPredictor,
+            partialCounterparty,
+            predictor,
+            counterparty,
+            partialPredictor, // equal split
+            partialCounterparty,
+            predictorPk,
+            counterpartyPk
+        );
+
+        market.burn(req);
+
+        // Verify remaining tokens
+        assertEq(
+            IPredictionMarketToken(predictorToken).balanceOf(predictor),
+            PREDICTOR_WAGER - partialPredictor
+        );
+        assertEq(
+            IPredictionMarketToken(counterpartyToken).balanceOf(counterparty),
+            COUNTERPARTY_WAGER - partialCounterparty
+        );
+
+        // Verify accounting
+        IV2Types.PickConfiguration memory config =
+            market.getPickConfiguration(pickConfigId);
+        assertEq(
+            config.totalPredictorCollateral, PREDICTOR_WAGER - partialPredictor
+        );
+        assertEq(
+            config.totalCounterpartyCollateral,
+            COUNTERPARTY_WAGER - partialCounterparty
+        );
+
+        // Verify market still holds remaining collateral
+        assertEq(
+            collateralToken.balanceOf(address(market)),
+            PREDICTOR_WAGER + COUNTERPARTY_WAGER - totalBurned
+        );
+    }
+
+    function test_burn_multipleSequentialBurns() public {
+        (
+            bytes32 pickConfigId,
+            address predictorToken,
+            address counterpartyToken
+        ) = _mintDefault();
+
+        // First burn: partial
+        uint256 burn1Predictor = 30e18;
+        uint256 burn1Counterparty = 50e18;
+
+        IV2Types.BurnRequest memory req1 = _createBurnRequest(
+            pickConfigId,
+            burn1Predictor,
+            burn1Counterparty,
+            predictor,
+            counterparty,
+            burn1Predictor,
+            burn1Counterparty,
+            predictorPk,
+            counterpartyPk
+        );
+
+        market.burn(req1);
+
+        // Second burn: another partial
+        uint256 burn2Predictor = 20e18;
+        uint256 burn2Counterparty = 30e18;
+
+        IV2Types.BurnRequest memory req2 = _createBurnRequest(
+            pickConfigId,
+            burn2Predictor,
+            burn2Counterparty,
+            predictor,
+            counterparty,
+            burn2Predictor,
+            burn2Counterparty,
+            predictorPk,
+            counterpartyPk
+        );
+
+        market.burn(req2);
+
+        // Verify remaining tokens
+        assertEq(
+            IPredictionMarketToken(predictorToken).balanceOf(predictor),
+            PREDICTOR_WAGER - burn1Predictor - burn2Predictor
+        );
+        assertEq(
+            IPredictionMarketToken(counterpartyToken).balanceOf(counterparty),
+            COUNTERPARTY_WAGER - burn1Counterparty - burn2Counterparty
+        );
+
+        // Verify accounting
+        IV2Types.PickConfiguration memory config =
+            market.getPickConfiguration(pickConfigId);
+        assertEq(
+            config.totalPredictorCollateral,
+            PREDICTOR_WAGER - burn1Predictor - burn2Predictor
+        );
+        assertEq(
+            config.totalCounterpartyCollateral,
+            COUNTERPARTY_WAGER - burn1Counterparty - burn2Counterparty
+        );
+    }
+
+    function test_burn_noncesIncrementCorrectly() public {
+        (bytes32 pickConfigId,,) = _mintDefault();
+
+        uint256 pNonceBefore = market.getNonce(predictor);
+        uint256 cNonceBefore = market.getNonce(counterparty);
+
+        IV2Types.BurnRequest memory req = _createBurnRequest(
+            pickConfigId,
+            50e18,
+            50e18,
+            predictor,
+            counterparty,
+            50e18,
+            50e18,
+            predictorPk,
+            counterpartyPk
+        );
+
+        market.burn(req);
+
+        assertEq(market.getNonce(predictor), pNonceBefore + 1);
+        assertEq(market.getNonce(counterparty), cNonceBefore + 1);
+    }
+
+    function test_burn_zeroPayoutOneSide() public {
+        (bytes32 pickConfigId,,) = _mintDefault();
+
+        uint256 totalTokens = PREDICTOR_WAGER + COUNTERPARTY_WAGER;
+
+        // Counterparty forfeits, predictor gets everything
+        IV2Types.BurnRequest memory req = _createBurnRequest(
+            pickConfigId,
+            PREDICTOR_WAGER,
+            COUNTERPARTY_WAGER,
+            predictor,
+            counterparty,
+            totalTokens, // predictor gets all
+            0, // counterparty gets nothing
+            predictorPk,
+            counterpartyPk
+        );
+
+        uint256 predictorBalBefore = collateralToken.balanceOf(predictor);
+        uint256 counterpartyBalBefore = collateralToken.balanceOf(counterparty);
+
+        market.burn(req);
+
+        assertEq(
+            collateralToken.balanceOf(predictor),
+            predictorBalBefore + totalTokens
+        );
+        assertEq(collateralToken.balanceOf(counterparty), counterpartyBalBefore);
+    }
+
+    function test_burn_emitsEvent() public {
+        (bytes32 pickConfigId,,) = _mintDefault();
+
+        IV2Types.BurnRequest memory req = _createBurnRequest(
+            pickConfigId,
+            PREDICTOR_WAGER,
+            COUNTERPARTY_WAGER,
+            predictor,
+            counterparty,
+            PREDICTOR_WAGER,
+            COUNTERPARTY_WAGER,
+            predictorPk,
+            counterpartyPk
+        );
+
+        vm.expectEmit(true, true, true, true);
+        emit IV2Events.PositionsBurned(
+            pickConfigId,
+            predictor,
+            counterparty,
+            PREDICTOR_WAGER,
+            COUNTERPARTY_WAGER,
+            PREDICTOR_WAGER,
+            COUNTERPARTY_WAGER,
+            REF_CODE
+        );
+
+        market.burn(req);
+    }
+
+    // ============ Revert Tests ============
+
+    function test_burn_revertIfInvalidPredictorSignature() public {
+        (bytes32 pickConfigId,,) = _mintDefault();
+
+        IV2Types.BurnRequest memory req = _createBurnRequest(
+            pickConfigId,
+            PREDICTOR_WAGER,
+            COUNTERPARTY_WAGER,
+            predictor,
+            counterparty,
+            PREDICTOR_WAGER,
+            COUNTERPARTY_WAGER,
+            predictorPk,
+            counterpartyPk
+        );
+
+        // Corrupt predictor signature
+        req.predictorSignature = abi.encodePacked(
+            bytes32(uint256(1)), bytes32(uint256(2)), uint8(27)
+        );
+
+        vm.expectRevert(IPredictionMarketEscrow.InvalidSignature.selector);
+        market.burn(req);
+    }
+
+    function test_burn_revertIfInvalidCounterpartySignature() public {
+        (bytes32 pickConfigId,,) = _mintDefault();
+
+        IV2Types.BurnRequest memory req = _createBurnRequest(
+            pickConfigId,
+            PREDICTOR_WAGER,
+            COUNTERPARTY_WAGER,
+            predictor,
+            counterparty,
+            PREDICTOR_WAGER,
+            COUNTERPARTY_WAGER,
+            predictorPk,
+            counterpartyPk
+        );
+
+        // Corrupt counterparty signature
+        req.counterpartySignature = abi.encodePacked(
+            bytes32(uint256(1)), bytes32(uint256(2)), uint8(27)
+        );
+
+        vm.expectRevert(IPredictionMarketEscrow.InvalidSignature.selector);
+        market.burn(req);
+    }
+
+    function test_burn_revertIfExpiredPredictorDeadline() public {
+        (bytes32 pickConfigId,,) = _mintDefault();
+
+        IV2Types.BurnRequest memory req = _createBurnRequest(
+            pickConfigId,
+            PREDICTOR_WAGER,
+            COUNTERPARTY_WAGER,
+            predictor,
+            counterparty,
+            PREDICTOR_WAGER,
+            COUNTERPARTY_WAGER,
+            predictorPk,
+            counterpartyPk
+        );
+
+        // Warp past deadline
+        vm.warp(block.timestamp + 2 hours);
+
+        vm.expectRevert(IPredictionMarketEscrow.InvalidSignature.selector);
+        market.burn(req);
+    }
+
+    function test_burn_revertIfWrongPredictorNonce() public {
+        (bytes32 pickConfigId,,) = _mintDefault();
+
+        IV2Types.BurnRequest memory req = _createBurnRequest(
+            pickConfigId,
+            PREDICTOR_WAGER,
+            COUNTERPARTY_WAGER,
+            predictor,
+            counterparty,
+            PREDICTOR_WAGER,
+            COUNTERPARTY_WAGER,
+            predictorPk,
+            counterpartyPk
+        );
+
+        // Set wrong nonce
+        req.predictorNonce = 999;
+
+        vm.expectRevert(IPredictionMarketEscrow.InvalidSignature.selector);
+        market.burn(req);
+    }
+
+    function test_burn_revertIfWrongCounterpartyNonce() public {
+        (bytes32 pickConfigId,,) = _mintDefault();
+
+        IV2Types.BurnRequest memory req = _createBurnRequest(
+            pickConfigId,
+            PREDICTOR_WAGER,
+            COUNTERPARTY_WAGER,
+            predictor,
+            counterparty,
+            PREDICTOR_WAGER,
+            COUNTERPARTY_WAGER,
+            predictorPk,
+            counterpartyPk
+        );
+
+        // Set wrong counterparty nonce
+        req.counterpartyNonce = 999;
+
+        vm.expectRevert(IPredictionMarketEscrow.InvalidSignature.selector);
+        market.burn(req);
+    }
+
+    function test_burn_revertIfZeroPredictorTokenAmount() public {
+        (bytes32 pickConfigId,,) = _mintDefault();
+
+        IV2Types.BurnRequest memory req = _createBurnRequest(
+            pickConfigId,
+            0, // zero predictor amount
+            COUNTERPARTY_WAGER,
+            predictor,
+            counterparty,
+            0,
+            COUNTERPARTY_WAGER,
+            predictorPk,
+            counterpartyPk
+        );
+
+        vm.expectRevert(IPredictionMarketEscrow.ZeroWager.selector);
+        market.burn(req);
+    }
+
+    function test_burn_revertIfZeroCounterpartyTokenAmount() public {
+        (bytes32 pickConfigId,,) = _mintDefault();
+
+        IV2Types.BurnRequest memory req = _createBurnRequest(
+            pickConfigId,
+            PREDICTOR_WAGER,
+            0, // zero counterparty amount
+            predictor,
+            counterparty,
+            PREDICTOR_WAGER,
+            0,
+            predictorPk,
+            counterpartyPk
+        );
+
+        vm.expectRevert(IPredictionMarketEscrow.ZeroWager.selector);
+        market.burn(req);
+    }
+
+    function test_burn_revertIfPayoutSumNotEqualTokenSum() public {
+        (bytes32 pickConfigId,,) = _mintDefault();
+
+        // Payout sum (200) != token sum (250)
+        bytes32 burnHash = keccak256(
+            abi.encode(
+                pickConfigId,
+                PREDICTOR_WAGER,
+                COUNTERPARTY_WAGER,
+                predictor,
+                counterparty,
+                uint256(100e18),
+                uint256(100e18)
+            )
+        );
+
+        uint256 pNonce = market.getNonce(predictor);
+        uint256 cNonce = market.getNonce(counterparty);
+        uint256 deadline = block.timestamp + 1 hours;
+
+        IV2Types.BurnRequest memory req;
+        req.pickConfigId = pickConfigId;
+        req.predictorTokenAmount = PREDICTOR_WAGER;
+        req.counterpartyTokenAmount = COUNTERPARTY_WAGER;
+        req.predictorHolder = predictor;
+        req.counterpartyHolder = counterparty;
+        req.predictorPayout = 100e18;
+        req.counterpartyPayout = 100e18;
+        req.predictorNonce = pNonce;
+        req.counterpartyNonce = cNonce;
+        req.predictorDeadline = deadline;
+        req.counterpartyDeadline = deadline;
+        req.predictorSignature = _signBurnApproval(
+            burnHash,
+            predictor,
+            PREDICTOR_WAGER,
+            100e18,
+            pNonce,
+            deadline,
+            predictorPk
+        );
+        req.counterpartySignature = _signBurnApproval(
+            burnHash,
+            counterparty,
+            COUNTERPARTY_WAGER,
+            100e18,
+            cNonce,
+            deadline,
+            counterpartyPk
+        );
+        req.refCode = REF_CODE;
+        req.predictorSessionKeyData = "";
+        req.counterpartySessionKeyData = "";
+
+        vm.expectRevert(IPredictionMarketEscrow.InvalidBurnAmounts.selector);
+        market.burn(req);
+    }
+
+    function test_burn_revertIfPickConfigAlreadyResolved() public {
+        IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
+        picks[0] = _createPick(conditionId1, IV2Types.OutcomeSide.YES);
+
+        (bytes32 predictionId,,) = _mintPrediction(picks);
+        IV2Types.Prediction memory pred = market.getPrediction(predictionId);
+        bytes32 pickConfigId = pred.pickConfigId;
+
+        // Resolve the condition and settle
+        vm.prank(settler);
+        resolver.settleCondition(conditionId1, IV2Types.OutcomeVector(1, 0));
+        market.settle(predictionId, REF_CODE);
+
+        // Attempt burn after resolution
+        IV2Types.BurnRequest memory req = _createBurnRequest(
+            pickConfigId,
+            PREDICTOR_WAGER,
+            COUNTERPARTY_WAGER,
+            predictor,
+            counterparty,
+            PREDICTOR_WAGER,
+            COUNTERPARTY_WAGER,
+            predictorPk,
+            counterpartyPk
+        );
+
+        vm.expectRevert(
+            IPredictionMarketEscrow.PickConfigAlreadyResolved.selector
+        );
+        market.burn(req);
+    }
+
+    function test_burn_revertIfPickConfigNotFound() public {
+        bytes32 fakePickConfigId = keccak256("fake");
+
+        IV2Types.BurnRequest memory req = _createBurnRequest(
+            fakePickConfigId,
+            PREDICTOR_WAGER,
+            COUNTERPARTY_WAGER,
+            predictor,
+            counterparty,
+            PREDICTOR_WAGER,
+            COUNTERPARTY_WAGER,
+            predictorPk,
+            counterpartyPk
+        );
+
+        vm.expectRevert(IPredictionMarketEscrow.InvalidToken.selector);
+        market.burn(req);
+    }
+
+    function test_burn_revertIfInsufficientTokenBalance() public {
+        (bytes32 pickConfigId,,) = _mintDefault();
+
+        // Try to burn more tokens than holder has
+        IV2Types.BurnRequest memory req = _createBurnRequest(
+            pickConfigId,
+            PREDICTOR_WAGER + 1, // more than available
+            COUNTERPARTY_WAGER,
+            predictor,
+            counterparty,
+            PREDICTOR_WAGER + 1,
+            COUNTERPARTY_WAGER,
+            predictorPk,
+            counterpartyPk
+        );
+
+        vm.expectRevert(); // ERC20 burn will revert
+        market.burn(req);
+    }
+
+    // ============ Integration Tests ============
+
+    function test_burn_thenMintMore() public {
+        (
+            bytes32 pickConfigId,
+            address predictorToken,
+            address counterpartyToken
+        ) = _mintDefault();
+
+        // Burn all
+        IV2Types.BurnRequest memory req = _createBurnRequest(
+            pickConfigId,
+            PREDICTOR_WAGER,
+            COUNTERPARTY_WAGER,
+            predictor,
+            counterparty,
+            PREDICTOR_WAGER,
+            COUNTERPARTY_WAGER,
+            predictorPk,
+            counterpartyPk
+        );
+
+        market.burn(req);
+
+        // Verify accounting is zero
+        IV2Types.PickConfiguration memory config =
+            market.getPickConfiguration(pickConfigId);
+        assertEq(config.totalPredictorCollateral, 0);
+        assertEq(config.totalCounterpartyCollateral, 0);
+
+        // Mint again on same pickConfig
+        IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
+        picks[0] = _createPick(conditionId1, IV2Types.OutcomeSide.YES);
+
+        _mintPrediction(picks);
+
+        // Verify tokens minted again
+        assertEq(
+            IPredictionMarketToken(predictorToken).balanceOf(predictor),
+            PREDICTOR_WAGER
+        );
+        assertEq(
+            IPredictionMarketToken(counterpartyToken).balanceOf(counterparty),
+            COUNTERPARTY_WAGER
+        );
+
+        // Verify accounting restored
+        config = market.getPickConfiguration(pickConfigId);
+        assertEq(config.totalPredictorCollateral, PREDICTOR_WAGER);
+        assertEq(config.totalCounterpartyCollateral, COUNTERPARTY_WAGER);
+    }
+
+    function test_burn_partialThenSettleAndRedeem() public {
+        IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
+        picks[0] = _createPick(conditionId1, IV2Types.OutcomeSide.YES);
+
+        (bytes32 predictionId,,) = _mintPrediction(picks);
+        IV2Types.Prediction memory pred = market.getPrediction(predictionId);
+        bytes32 pickConfigId = pred.pickConfigId;
+        IV2Types.TokenPair memory tp = market.getTokenPair(pickConfigId);
+
+        // Burn half
+        uint256 halfPredictor = PREDICTOR_WAGER / 2;
+        uint256 halfCounterparty = COUNTERPARTY_WAGER / 2;
+
+        IV2Types.BurnRequest memory req = _createBurnRequest(
+            pickConfigId,
+            halfPredictor,
+            halfCounterparty,
+            predictor,
+            counterparty,
+            halfPredictor,
+            halfCounterparty,
+            predictorPk,
+            counterpartyPk
+        );
+
+        market.burn(req);
+
+        // Verify remaining tokens
+        uint256 remainingPredictor = PREDICTOR_WAGER - halfPredictor;
+        uint256 remainingCounterparty = COUNTERPARTY_WAGER - halfCounterparty;
+
+        assertEq(
+            IPredictionMarketToken(tp.predictorToken).balanceOf(predictor),
+            remainingPredictor
+        );
+        assertEq(
+            IPredictionMarketToken(tp.counterpartyToken)
+                .balanceOf(counterparty),
+            remainingCounterparty
+        );
+
+        // Resolve: predictor wins
+        vm.prank(settler);
+        resolver.settleCondition(conditionId1, IV2Types.OutcomeVector(1, 0));
+        market.settle(predictionId, REF_CODE);
+
+        // Predictor redeems remaining tokens
+        uint256 predictorBalBefore = collateralToken.balanceOf(predictor);
+        vm.prank(predictor);
+        uint256 payout =
+            market.redeem(tp.predictorToken, remainingPredictor, REF_CODE);
+
+        // Payout should be total remaining collateral (predictor wins all)
+        uint256 expectedPayout = remainingPredictor + remainingCounterparty;
+        assertEq(payout, expectedPayout);
+        assertEq(
+            collateralToken.balanceOf(predictor),
+            predictorBalBefore + expectedPayout
+        );
+    }
+
+    function test_burn_sameHolderBothSides() public {
+        (
+            bytes32 pickConfigId,
+            address predictorToken,
+            address counterpartyToken
+        ) = _mintDefault();
+
+        // Transfer counterparty tokens to predictor so same address holds both
+        vm.prank(counterparty);
+        IPredictionMarketToken(counterpartyToken)
+            .transfer(predictor, COUNTERPARTY_WAGER);
+
+        // Same address burns both sides
+        // Both nonce checks happen before increment, so both use same current nonce
+        uint256 currentNonce = market.getNonce(predictor);
+
+        bytes32 burnHash = keccak256(
+            abi.encode(
+                pickConfigId,
+                PREDICTOR_WAGER,
+                COUNTERPARTY_WAGER,
+                predictor,
+                predictor, // same address both sides
+                PREDICTOR_WAGER,
+                COUNTERPARTY_WAGER
+            )
+        );
+
+        uint256 deadline = block.timestamp + 1 hours;
+
+        IV2Types.BurnRequest memory req;
+        req.pickConfigId = pickConfigId;
+        req.predictorTokenAmount = PREDICTOR_WAGER;
+        req.counterpartyTokenAmount = COUNTERPARTY_WAGER;
+        req.predictorHolder = predictor;
+        req.counterpartyHolder = predictor; // same address
+        req.predictorPayout = PREDICTOR_WAGER;
+        req.counterpartyPayout = COUNTERPARTY_WAGER;
+        req.predictorNonce = currentNonce;
+        req.counterpartyNonce = currentNonce; // same nonce since checks happen before increment
+        req.predictorDeadline = deadline;
+        req.counterpartyDeadline = deadline;
+        req.predictorSignature = _signBurnApproval(
+            burnHash,
+            predictor,
+            PREDICTOR_WAGER,
+            PREDICTOR_WAGER,
+            currentNonce,
+            deadline,
+            predictorPk
+        );
+        req.counterpartySignature = _signBurnApproval(
+            burnHash,
+            predictor,
+            COUNTERPARTY_WAGER,
+            COUNTERPARTY_WAGER,
+            currentNonce,
+            deadline,
+            predictorPk
+        );
+        req.refCode = REF_CODE;
+        req.predictorSessionKeyData = "";
+        req.counterpartySessionKeyData = "";
+
+        uint256 balBefore = collateralToken.balanceOf(predictor);
+        market.burn(req);
+
+        // Verify tokens burned
+        assertEq(IPredictionMarketToken(predictorToken).balanceOf(predictor), 0);
+        assertEq(
+            IPredictionMarketToken(counterpartyToken).balanceOf(predictor), 0
+        );
+
+        // Verify collateral returned
+        assertEq(
+            collateralToken.balanceOf(predictor),
+            balBefore + PREDICTOR_WAGER + COUNTERPARTY_WAGER
+        );
+
+        // Verify nonce incremented twice (once for each side)
+        assertEq(market.getNonce(predictor), currentNonce + 2);
+    }
+
+    function test_burn_thirdPartyAfterTokenTransfer() public {
+        (
+            bytes32 pickConfigId,
+            address predictorToken,
+            address counterpartyToken
+        ) = _mintDefault();
+
+        // Transfer predictor tokens to thirdParty
+        vm.prank(predictor);
+        IPredictionMarketToken(predictorToken)
+            .transfer(thirdParty, PREDICTOR_WAGER);
+
+        // ThirdParty (now holding predictor tokens) burns with counterparty
+        IV2Types.BurnRequest memory req = _createBurnRequest(
+            pickConfigId,
+            PREDICTOR_WAGER,
+            COUNTERPARTY_WAGER,
+            thirdParty, // new predictor holder
+            counterparty,
+            PREDICTOR_WAGER,
+            COUNTERPARTY_WAGER,
+            thirdPartyPk,
+            counterpartyPk
+        );
+
+        uint256 thirdPartyBalBefore = collateralToken.balanceOf(thirdParty);
+        uint256 counterpartyBalBefore = collateralToken.balanceOf(counterparty);
+
+        market.burn(req);
+
+        // Verify tokens burned from new holders
+        assertEq(
+            IPredictionMarketToken(predictorToken).balanceOf(thirdParty), 0
+        );
+        assertEq(
+            IPredictionMarketToken(counterpartyToken).balanceOf(counterparty), 0
+        );
+
+        // Verify collateral sent to correct addresses
+        assertEq(
+            collateralToken.balanceOf(thirdParty),
+            thirdPartyBalBefore + PREDICTOR_WAGER
+        );
+        assertEq(
+            collateralToken.balanceOf(counterparty),
+            counterpartyBalBefore + COUNTERPARTY_WAGER
+        );
+    }
+}

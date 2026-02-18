@@ -12,3 +12,12 @@ docs/
 
 # Dotenv file
 .env
+.env.deployments
+
+# V2 deployment scripts local config
+src/scripts/v2/*/.env
+src/scripts/v2/*/deployments.json
+src/scripts/v2/*/deployments.log
+
+# Test deployment files
+deployments/test/

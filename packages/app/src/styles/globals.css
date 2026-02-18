@@ -1,0 +1,505 @@
+@import './fonts/AvenirRounded.css';
+@import './fonts/Foil.css';
+
+/* Global Styling here */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --form-foreground: var(--foreground);
+    --background: 0 0% 99%;
+    --foreground: 240 10% 3.9%;
+    --card: 0 0% 100%;
+    --card-foreground: 240 10% 3.9%;
+    --popover: var(--brand-black);
+    --popover-foreground: var(--brand-white);
+    --primary: 240 5.9% 10%;
+    --primary-foreground: 0 0% 98%;
+    --secondary: 240 4.8% 95.9%;
+    --secondary-foreground: 240 5.9% 10%;
+    --muted: 240 4.8% 95.9%;
+    --muted-foreground: 240 3.8% 46.1%;
+    --accent: 240 4.8% 95.9%;
+    --accent-foreground: 240 5.9% 10%;
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 240 5.9% 90%;
+    --input: 240 5.9% 90%;
+    --ring: 240 10% 3.9%;
+    /* App-specific brand accents */
+    --ethena: 219 76% 75%; /* #91B3F0 */
+    --accent-gold: 46 86% 73%; /* #F5D97E */
+    /* Brand neutrals */
+    --brand-black: 60 5% 4%; /* #0B0B0A */
+    --brand-white: 30 20% 96%; /* #F7F5F3 */
+    /* Brand accents */
+    --brand-green: 145 63% 49%; /* #2ECC71 */
+    --brand-red: 6 78% 57%; /* #E74C3C */
+    /* Semantic tokens */
+    --success: var(--brand-green);
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 12%;
+    --info: 217 91% 60%;
+    --info-foreground: 0 0% 100%;
+    /* Trading semantics */
+    --up: var(--brand-green);
+    --down: var(--brand-red);
+    --chart-1: 12 76% 61%;
+    --chart-2: 173 58% 39%;
+    --chart-3: 197 37% 24%;
+    --chart-4: 43 74% 66%;
+    --chart-5: 27 87% 67%;
+    --category-1: 220 75% 58%; /* Blue */
+    --category-2: 265 65% 58%; /* Violet */
+    --category-3: 160 48% 40%; /* Deep Green */
+    --category-4: 44 65% 50%; /* Antique Gold */
+    --category-5: 355 72% 48%; /* Crimson */
+    --category-6: 335 60% 54%; /* Magenta */
+    --category-7: 20 75% 55%; /* Burnt Orange */
+    --radius: 0.5rem;
+    --banner-height: 0px;
+    --banner-offset: 0px;
+    --header-height: 0px;
+    --page-top-offset: 0px;
+  }
+  .dark {
+    --form-foreground: var(--brand-white);
+    --background: 60 5% 8%;
+    --foreground: 37 41% 83%;
+    --card: 222 14% 8%;
+    --card-foreground: 0 0% 88%;
+    --popover: var(--brand-black);
+    --popover-foreground: var(--brand-white);
+    --primary: var(--foreground);
+    --primary-foreground: var(--background);
+    --secondary: 240 3.7% 15.9%;
+    --secondary-foreground: 0 0% 98%;
+    --muted: 222 12% 16%;
+    --muted-foreground: 222 8% 65%;
+    --accent: 240 3.7% 15.9%;
+    --accent-foreground: 0 0% 98%;
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 222 8% 22%;
+    --input: 240 3.7% 15.9%;
+    --ring: 240 4.9% 83.9%;
+    /* App-specific brand accents */
+    --ethena: 219 76% 75%; /* #91B3F0 */
+    --accent-gold: 46 86% 73%; /* #F5D97E */
+    /* Brand neutrals */
+    --brand-black: 60 5% 4%; /* #0B0B0A */
+    --brand-white: 30 20% 96%; /* #F7F5F3 */
+    /* Brand accents */
+    --brand-green: 145 63% 49%; /* #2ECC71 */
+    --brand-red: 6 78% 57%; /* #E74C3C */
+    /* Semantic tokens */
+    --success: var(--brand-green);
+    --success-foreground: 0 0% 8%;
+    --warning: 38 92% 55%;
+    --warning-foreground: 0 0% 8%;
+    --info: 217 91% 70%;
+    --info-foreground: 0 0% 8%;
+    /* Trading semantics */
+    --up: var(--brand-green);
+    --down: var(--brand-red);
+    --chart-1: 220 70% 50%;
+    --chart-2: 160 60% 45%;
+    --chart-3: 30 80% 55%;
+    --chart-4: 280 65% 60%;
+    --chart-5: 340 75% 55%;
+    /* Category palette */
+    --category-1: 220 75% 58%; /* electric navy */
+    --category-2: 265 70% 63%; /* luxe violet */
+    --category-3: 160 48% 40%;
+
+    --category-4: 44 65% 50%;
+
+    --category-5: 355 72% 48%; /* deep cool red */
+    --category-6: 330 65% 56%; /* confident magenta */
+    --category-7: 18 78% 58%; /* burnt orange */
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@layer utilities {
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  .no-scrollbar {
+    -ms-overflow-style: none; /* IE and Edge */
+    scrollbar-width: none; /* Firefox */
+  }
+  @keyframes arrow-pulse {
+    0% {
+      opacity: 0.5;
+    }
+    20% {
+      opacity: 0.8;
+    }
+    40% {
+      opacity: 0.5;
+    }
+    100% {
+      opacity: 0.5;
+    }
+  }
+  .animate-arrow-pulse {
+    animation: arrow-pulse 2.4s ease-in-out infinite;
+  }
+  @keyframes overlay-pulse {
+    0% {
+      opacity: 0.04;
+    }
+    50% {
+      opacity: 0.052;
+    }
+    100% {
+      opacity: 0.04;
+    }
+  }
+  .animate-overlay-pulse {
+    animation: overlay-pulse 9.6s ease-in-out infinite;
+  }
+  @keyframes suggestedRowPulse {
+    0%,
+    100% {
+      opacity: 0.5;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+  @keyframes gold-border-pulse {
+    0% {
+      border-color: hsl(var(--input));
+    }
+    35% {
+      border-color: hsl(var(--accent-gold) / 0.7);
+    }
+    100% {
+      border-color: hsl(var(--input));
+    }
+  }
+  @keyframes gold-underline-sweep-bg {
+    0% {
+      /* base underline position, sweep starts slightly off the left */
+      background-position:
+        0 calc(100% - var(--gold-underline-offset)),
+        -40% calc(100% - var(--gold-underline-offset));
+    }
+    64% {
+      /* sweep reaches far right around 70% of the timeline */
+      background-position:
+        0 calc(100% - var(--gold-underline-offset)),
+        140% calc(100% - var(--gold-underline-offset));
+    }
+    100% {
+      /* hold position to create a brief pause before the next loop */
+      background-position:
+        0 calc(100% - var(--gold-underline-offset)),
+        140% calc(100% - var(--gold-underline-offset));
+    }
+  }
+  @keyframes gold-hr-vertical-sweep {
+    0% {
+      background-position:
+        0 0,
+        0 140%;
+    }
+    21% {
+      background-position:
+        0 0,
+        0 -40%;
+    }
+    100% {
+      background-position:
+        0 0,
+        0 -40%;
+    }
+  }
+  @keyframes gold-hr-sweep {
+    0% {
+      background-position:
+        0 0,
+        -40% 0;
+    }
+    21% {
+      background-position:
+        0 0,
+        140% 0;
+    }
+    100% {
+      background-position:
+        0 0,
+        140% 0;
+    }
+  }
+  @keyframes gold-sheen-sweep {
+    0% {
+      background-position: -40% 0;
+    }
+    64% {
+      background-position: 140% 0;
+    }
+    100% {
+      background-position: 140% 0;
+    }
+  }
+  .gold-sheen {
+    /* Animated sheen overlay that mimics the gold-link hover sweep */
+    --gold-sheen-width: 30%;
+    background-image: linear-gradient(
+      to right,
+      hsl(var(--accent-gold) / 0) 0%,
+      hsl(var(--accent-gold) / 0.6) 50%,
+      hsl(var(--accent-gold) / 0) 100%
+    );
+    background-repeat: no-repeat;
+    background-size: var(--gold-sheen-width) 100%;
+    background-position: -40% 0;
+    animation: gold-sheen-sweep 2s linear infinite;
+  }
+  /* Animated glow cycle for position form buttons, reusing header colors (vertical sweep) */
+  @keyframes position-form-glow-cycle {
+    0% {
+      background-position: 50% 0%;
+    }
+    100% {
+      background-position: 50% 400%;
+    }
+  }
+
+  /* Shimmer sweep animation for deposit banner */
+  @keyframes shimmer {
+    0% {
+      background-position: 100% 0;
+    }
+    100% {
+      background-position: -100% 0;
+    }
+  }
+
+  .animate-shimmer {
+    animation: shimmer 4s ease-in-out infinite;
+    animation-delay: 2s;
+  }
+
+  /* Get Access button – category-colored gradient, continuously animated */
+  @keyframes prismatic-sweep {
+    0% {
+      background-position: 0 0;
+    }
+    100% {
+      background-position: 0 600%;
+    }
+  }
+
+  .btn-get-access {
+    position: relative;
+    background: hsl(var(--accent-gold));
+    overflow: hidden;
+  }
+
+  .btn-get-access::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      hsl(var(--category-3)) 0%,
+      hsl(var(--category-2)) 14.3%,
+      hsl(var(--category-1)) 28.6%,
+      hsl(var(--category-5)) 42.9%,
+      hsl(var(--category-4)) 57.1%,
+      hsl(var(--category-7)) 71.4%,
+      hsl(var(--category-6)) 85.7%,
+      hsl(var(--category-3)) 100%
+    );
+    background-size: 100% 1200%;
+    opacity: 0;
+    transition: opacity 0.4s ease;
+  }
+
+  .btn-get-access:hover::before {
+    opacity: 1;
+    animation: prismatic-sweep 30s linear infinite;
+  }
+
+  /* Loader pulse animation - subtle, tight pulse for loading indicators */
+  @keyframes loader-pulse {
+    0%,
+    100% {
+      opacity: 0.4;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.15);
+    }
+  }
+  .animate-loader-pulse {
+    animation: loader-pulse 1s ease-in-out infinite;
+  }
+}
+
+@layer components {
+  .position-form {
+    /* Scope form elements inside position form to brand white */
+    --form-foreground: var(--brand-white);
+  }
+  .position-form-submit {
+    position: relative;
+    overflow: visible;
+    /* Establish stacking context so ::before can sit behind content */
+    z-index: 0;
+    /* Smoothly adjust base styling while glow is handled in ::before */
+    transition:
+      background-color 220ms ease-out,
+      box-shadow 220ms ease-out,
+      color 150ms ease-out;
+  }
+  .position-form-submit::before {
+    content: '';
+    position: absolute;
+    inset: -4px;
+    border-radius: inherit;
+    /* Glow built from the same colors used in the header gradient, rotated 90deg */
+    background-image: linear-gradient(
+      180deg,
+      var(--position-form-gradient-stops)
+    );
+    /* Make the glow taller/longer so colors have more room to travel */
+    background-size: 100% 400%;
+    background-position: 50% 0%;
+    opacity: 0;
+    transition: opacity 220ms ease-out;
+    filter: blur(10px);
+    pointer-events: none;
+    /* Place glow behind the button box + text */
+    z-index: -1;
+  }
+  .position-form-submit:hover:not(:disabled) {
+    box-shadow: 0 0 18px rgba(255, 255, 255, 0.22);
+    text-shadow:
+      0 0 6px rgba(255, 255, 255, 0.7),
+      0 0 14px rgba(255, 255, 255, 0.35);
+  }
+  .position-form-submit:hover:not(:disabled)::before {
+    opacity: 1;
+    /* Slow down the vertical sweep for a smoother, more ambient hover */
+    animation: position-form-glow-cycle 6s linear infinite;
+  }
+  /* Eyebrow and headline utilities */
+  .eyebrow {
+    @apply uppercase font-medium text-sm leading-5 tracking-widest;
+    letter-spacing: 0.12em;
+  }
+  .headline {
+    @apply font-heading text-xl leading-tight md:text-3xl md:leading-snug lg:text-3xl lg:leading-snug max-w-5xl;
+  }
+  /* Reusable gold link with consistent underline thickness and hover effect */
+  .gold-link {
+    @apply text-accent-gold;
+    display: inline;
+    text-decoration: none;
+    -webkit-box-decoration-break: clone;
+    box-decoration-break: clone;
+    /* underline tokens */
+    --gold-underline-thickness: 1px;
+    --gold-underline-offset: 0px; /* hug text baseline */
+    --gold-underline-sweep-width: 30%;
+    /* base underline + animated sweep */
+    background-image: linear-gradient(
+        to right,
+        hsl(var(--accent-gold) / 0.35) 0%,
+        hsl(var(--accent-gold) / 0.35) 100%
+      ),
+      linear-gradient(
+        to right,
+        hsl(var(--accent-gold) / 0) 0%,
+        hsl(var(--accent-gold) / 0.6) 50%,
+        hsl(var(--accent-gold) / 0) 100%
+      );
+    background-repeat: no-repeat, no-repeat;
+    background-size:
+      100% var(--gold-underline-thickness),
+      var(--gold-underline-sweep-width) var(--gold-underline-thickness);
+    background-position:
+      0 calc(100% - var(--gold-underline-offset)),
+      -40% calc(100% - var(--gold-underline-offset));
+    transition: color 150ms ease;
+    animation: none;
+  }
+  .gold-link:hover {
+    animation: gold-underline-sweep-bg 2s linear infinite;
+  }
+  /* Gold horizontal rule with same sweep animation as gold-link */
+  .gold-hr {
+    height: 1px;
+    border: none;
+    background-image: linear-gradient(
+        to right,
+        hsl(var(--accent-gold) / 0.12) 0%,
+        hsl(var(--accent-gold) / 0.12) 100%
+      ),
+      linear-gradient(
+        to right,
+        hsl(var(--accent-gold) / 0) 0%,
+        hsl(var(--accent-gold) / 0.24) 50%,
+        hsl(var(--accent-gold) / 0) 100%
+      );
+    background-repeat: no-repeat, no-repeat;
+    background-size:
+      100% 1px,
+      30% 1px;
+    background-position:
+      0 0,
+      -40% 0;
+    animation: gold-hr-sweep 6s linear infinite;
+  }
+  .gold-hr-vertical {
+    width: 1px;
+    border: none;
+    background-image: linear-gradient(
+        to bottom,
+        hsl(var(--accent-gold) / 0.12) 0%,
+        hsl(var(--accent-gold) / 0.12) 100%
+      ),
+      linear-gradient(
+        to bottom,
+        hsl(var(--accent-gold) / 0) 0%,
+        hsl(var(--accent-gold) / 0.24) 50%,
+        hsl(var(--accent-gold) / 0) 100%
+      );
+    background-repeat: no-repeat, no-repeat;
+    background-size:
+      1px 100%,
+      1px 30%;
+    background-position:
+      0 0,
+      0 140%;
+    animation: gold-hr-vertical-sweep 6s linear infinite;
+  }
+  /* Ensure popovers/dropdowns match How It Works box border tone */
+  .border.bg-popover {
+    border-color: hsl(var(--brand-white) / 0.1);
+  }
+  /* Back-compat aliases (to be removed later) */
+  .sc-heading {
+    @apply eyebrow;
+  }
+  .sc-headline {
+    @apply headline;
+  }
+}

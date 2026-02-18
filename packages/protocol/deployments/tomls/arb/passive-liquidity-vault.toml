@@ -1,0 +1,22 @@
+name="passive-liquidity-vault"
+version="1.0.3"
+preset="test"
+
+[var.settings]
+collateralToken = "0xD09Ca7E81df62EAe738CD7187EC2E1499e860E02" # testUSDe on Arb1
+manager = "0xdb5Af497A73620d881561eDb508012A5f84e9BA2"
+vaultTicker = "sapLP"
+vaultName = "Sapience LP"
+
+depends = []
+
+[deploy.PassiveLiquidityVault]
+artifact="PassiveLiquidityVault"
+args=[
+  "<%= settings.collateralToken %>",
+  "<%= settings.manager %>",
+  "<%= settings.vaultName %>",
+  "<%= settings.vaultTicker %>"
+]
+depends=[]
+highlight=true

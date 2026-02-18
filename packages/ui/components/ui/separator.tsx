@@ -28,5 +28,5 @@ const Separator = React.forwardRef<
 );
 Separator.displayName = SeparatorPrimitive.Root.displayName;
 
-/* eslint-disable import/prefer-default-export */
+ 
 export { Separator };

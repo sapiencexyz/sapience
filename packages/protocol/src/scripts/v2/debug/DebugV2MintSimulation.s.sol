@@ -1,0 +1,102 @@
+// SPDX-License-Identifier: MIT
+pragma solidity ^0.8.20;
+
+import "forge-std/Script.sol";
+import "forge-std/console.sol";
+import "../src/v2/interfaces/IPredictionMarketEscrow.sol";
+import "../src/v2/interfaces/IV2Types.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+
+/**
+ * @title DebugV2MintSimulation
+ * @notice Simulates the V2 mint call to find the exact revert reason
+ *
+ * Run with:
+ * forge script script/DebugV2MintSimulation.s.sol --rpc-url https://rpc.etherealtest.net -vvvv
+ */
+contract DebugV2MintSimulation is Script {
+    // Contract addresses on Ethereal testnet
+    address constant ESCROW = 0x8730eE1194Cd03A14deA9975e2bafD4C8b6019F1;
+    address constant WUSDE = 0xb7AE43711D85C23Dc862C85B9C95A64DC6351F90;
+    address constant PREDICTOR = 0x5aab6F438Af9289798eEcBf83C06f62abdb529B9; // SmartAccount
+    address constant COUNTERPARTY = 0xd8e6Af4901719176F0e2c89dEfAc30C12Ea6aB4B; // EOA
+    address constant RESOLVER = 0x514A4321d89Aa47D1b1Dd9E0a3226249E6ef896A;
+
+    function run() external view {
+        console.log("=== V2 Mint Simulation Debug ===");
+        console.log("Block timestamp:", block.timestamp);
+
+        // Check balances and allowances first
+        console.log("\n--- Pre-conditions Check ---");
+
+        uint256 predictorWusdeBalance = IERC20(WUSDE).balanceOf(PREDICTOR);
+        uint256 counterpartyWusdeBalance = IERC20(WUSDE).balanceOf(COUNTERPARTY);
+        uint256 predictorAllowance = IERC20(WUSDE).allowance(PREDICTOR, ESCROW);
+        uint256 counterpartyAllowance = IERC20(WUSDE).allowance(COUNTERPARTY, ESCROW);
+
+        console.log("Predictor wUSDe balance:", predictorWusdeBalance);
+        console.log("Counterparty wUSDe balance:", counterpartyWusdeBalance);
+        console.log("Predictor allowance to escrow:", predictorAllowance);
+        console.log("Counterparty allowance to escrow:", counterpartyAllowance);
+
+        // Check nonces
+        uint256 predictorNonce = IPredictionMarketEscrow(ESCROW).getNonce(PREDICTOR);
+        uint256 counterpartyNonce = IPredictionMarketEscrow(ESCROW).getNonce(COUNTERPARTY);
+        console.log("Predictor on-chain nonce:", predictorNonce);
+        console.log("Counterparty on-chain nonce:", counterpartyNonce);
+
+        // Values from the UserOp
+        uint256 predictorWager = 5100000000000000; // 0.0051 USDe
+        uint256 counterpartyWagerValue = 10000000000000000; // 0.01 USDe
+        uint256 predictorDeadline = 1770245065; // 0x6983cbc9
+        uint256 counterpartyDeadline = 1770244820; // 0x6983cad4
+
+        console.log("\n--- Deadline Check ---");
+        console.log("Current timestamp:", block.timestamp);
+        console.log("Predictor deadline:", predictorDeadline);
+        console.log("Counterparty deadline:", counterpartyDeadline);
+
+        if (block.timestamp > predictorDeadline) {
+            console.log("!!! PREDICTOR DEADLINE EXPIRED !!!");
+        }
+        if (block.timestamp > counterpartyDeadline) {
+            console.log("!!! COUNTERPARTY DEADLINE EXPIRED !!!");
+        }
+
+        // Check balance sufficiency
+        console.log("\n--- Balance Sufficiency ---");
+        console.log("Predictor needs:", predictorWager);
+        console.log("Predictor has:", predictorWusdeBalance);
+        if (predictorWusdeBalance < predictorWager) {
+            console.log("!!! PREDICTOR INSUFFICIENT BALANCE !!!");
+        }
+
+        console.log("Counterparty needs:", counterpartyWagerValue);
+        console.log("Counterparty has:", counterpartyWusdeBalance);
+        if (counterpartyWusdeBalance < counterpartyWagerValue) {
+            console.log("!!! COUNTERPARTY INSUFFICIENT BALANCE !!!");
+        }
+
+        // Check allowance sufficiency
+        console.log("\n--- Allowance Sufficiency ---");
+        if (predictorAllowance < predictorWager) {
+            console.log("!!! PREDICTOR INSUFFICIENT ALLOWANCE !!!");
+        }
+        if (counterpartyAllowance < counterpartyWagerValue) {
+            console.log("!!! COUNTERPARTY INSUFFICIENT ALLOWANCE !!!");
+        }
+
+        console.log("\n=== Summary ===");
+        console.log("If deadlines have expired, the signature validation returns false");
+        console.log("which causes revert InvalidSignature()");
+        console.log("But InvalidSignature has a selector, not empty reason.");
+        console.log("");
+        console.log("If the issue is balance/allowance, safeTransferFrom would revert");
+        console.log("with a specific error message.");
+        console.log("");
+        console.log("An empty reason (0x) suggests:");
+        console.log("1. ZeroDev CallPolicy validation failure");
+        console.log("2. Account validation failure");
+        console.log("3. Low-level call failure in account execution");
+    }
+}

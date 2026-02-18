@@ -20,3 +20,5 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 .vercel
+
+/docs/public/components-storybook/

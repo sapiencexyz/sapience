@@ -1,0 +1,97 @@
+## ElizaOS Market Making
+
+<div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '1rem' }}>
+  <a href="https://github.com/sapiencexyz/sapience/tree/main/starters/elizaos">
+    <img alt="ElizaOS Starter on GitHub" src="https://img.shields.io/badge/ElizaOS%20Starter-sapiencexyz%2Fsapience-181717?logo=github" />
+  </a>
+</div>
+
+The [ElizaOS starter](https://github.com/sapiencexyz/sapience/tree/main/starters/elizaos) can be extended to act as a market maker by adding an action that listens for auction requests and submits bids.
+
+:::warning
+Check your local regulations. Start with small amounts and monitor performance. Use a dedicated wallet for your agent and never commit your private key to source control.
+:::
+
+### Overview
+
+Market making with ElizaOS involves:
+
+1. Listening for `auction.started` events from other traders
+2. Evaluating positions based on your agent's forecasts
+3. Submitting competitive bids via the auction WebSocket
+
+### Integration Approach
+
+Add a market making action to your ElizaOS agent:
+
+```typescript
+// src/actions/marketMakingAction.ts
+import { Action } from '@elizaos/core';
+import { buildMakerBidTypedData, signMakerBid } from '@sapience/sdk/auction';
+
+export const marketMakingAction: Action = {
+  name: 'MARKET_MAKING',
+  description: 'Respond to auction requests with competitive bids',
+  
+  async handler(runtime, message, state) {
+    const ws = new WebSocket(process.env.SAPIENCE_WS_URL);
+    
+    ws.onmessage = async (event) => {
+      const msg = JSON.parse(event.data);
+      
+      if (msg.type === 'auction.started') {
+        const auction = msg.payload;
+        
+        // Implement your own evaluation logic here (e.g. compare auction
+        // predictions against your forecasts to decide whether to bid)
+        const shouldBid = await evaluateAuction(runtime, auction);
+        
+        if (shouldBid) {
+          // Build and sign EIP-712 bid
+          const { domain, types, primaryType, message } = buildMakerBidTypedData({
+            auction,
+            makerWager: BigInt(process.env.BID_AMOUNT),
+            makerDeadline: Math.floor(Date.now() / 1000) + 300,
+            chainId: 42161,
+            verifyingContract: process.env.PREDICTION_MARKET_ADDRESS,
+            maker: runtime.getSetting('EVM_PUBLIC_KEY'),
+          });
+          
+          const signature = await signMakerBid({
+            privateKey: runtime.getSetting('EVM_PRIVATE_KEY'),
+            domain, types, primaryType, message,
+          });
+          
+          ws.send(JSON.stringify({
+            type: 'bid.submit',
+            payload: { auctionId: auction.auctionId, ...message, makerSignature: signature },
+          }));
+        }
+      }
+    };
+  }
+};
+```
+
+### Configuration
+
+```bash
+# Market making configuration
+SAPIENCE_WS_URL=wss://relayer.sapience.xyz/auction
+BID_AMOUNT=2000000000000000000       # $2 bid amount (18 decimals)
+MIN_MAKER_POSITION_SIZE=1000000000000000000  # Minimum $1 auction to bid on
+PREDICTION_MARKET_ADDRESS=0xb04841cad1147675505816e2ec5c915430857b40
+```
+
+### Strategy Tips
+
+- **Forecast-Based Pricing**: Use your agent's probability forecasts to size bids
+- **Risk Management**: Track total exposure across all open positions
+- **Auction Filtering**: Filter by position size, market topic, or time to expiration
+- **Opposite Side**: As a market maker, you take the opposite position from the taker
+
+### Resources
+
+- [ElizaOS Starter Repository](https://github.com/sapiencexyz/sapience/tree/main/starters/elizaos)
+- [TypeScript Market Maker Starter](https://github.com/sapiencexyz/sapience/tree/main/starters/market-maker) - Simpler reference implementation
+- [Auction Relayer API](/builder-guide/api/auction-relayer) - Full WebSocket protocol

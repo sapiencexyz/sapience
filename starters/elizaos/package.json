@@ -1,0 +1,78 @@
+{
+  "name": "@sapience/elizaos-starter",
+  "description": "ElizaOS starter for the Sapience monorepo",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "module": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "keywords": [
+    "project",
+    "elizaos",
+    "sapience",
+    "starter"
+  ],
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "import": {
+        "types": "./dist/index.d.ts",
+        "default": "./dist/index.js"
+      }
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "@elizaos/cli": "latest",
+    "@elizaos/core": "latest",
+    "@elizaos/plugin-bootstrap": "latest",
+    "@elizaos/plugin-openai": "^1.5.15",
+    "@elizaos/plugin-openrouter": "^1.5.17",
+    "@elizaos/plugin-sql": "latest",
+    "@elizaos/server": "latest",
+    "@sapience/sdk": "latest",
+    "@tanstack/react-query": "5.29.0",
+    "clsx": "2.1.1",
+    "dotenv": "17.2.1",
+    "react": "18.3.1",
+    "react-dom": "18.3.1",
+    "tailwind-merge": "2.6.0",
+    "tailwindcss": "4.1.10",
+    "viem": "2.33.3",
+    "zod": "^3.25.76"
+  },
+  "devDependencies": {
+    "@types/react": "18.3.3",
+    "@types/react-dom": "18.3.0",
+    "@vitejs/plugin-react": "4.3.1",
+    "prettier": "3.5.3",
+    "tsup": "8.5.0",
+    "typescript": "5.6.3",
+    "vite": "6.0.1"
+  },
+  "scripts": {
+    "prestart": "pnpm run build",
+    "start": "bun x elizaos start",
+    "dev": "bun x elizaos dev",
+    "dev:local-sdk": "SAPIENCE_SDK_PATH=../../packages/sdk/dist/index.js bun x elizaos dev",
+    "dev:panel": "vite",
+    "build": "tsc --noEmit && vite build && tsup",
+    "lint": "prettier --write ./src",
+    "type-check": "tsc --noEmit",
+    "type-check:watch": "tsc --noEmit --watch",
+    "format": "prettier --write ./src",
+    "format:check": "prettier --check ./src",
+    "check-all": "pnpm run type-check && pnpm run format:check"
+  },
+  "publishConfig": {
+    "access": "public"
+  },
+  "packageManager": "bun@1.3.0"
+}

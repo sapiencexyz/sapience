@@ -1,0 +1,111 @@
+/* Style the "Go to App" button */
+.vocs_Sidebar_group > section:first-of-type .vocs_Sidebar_items > a[href="https://sapience.xyz"] {
+  grid-column: 1 / -1;
+  display: block !important;
+  width: 100% !important;
+  margin: 0 0 12px 0;
+  padding: 10px 16px;
+  background: #1a1a1a;
+  color: white !important;
+  text-align: center;
+  border-radius: 8px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 0.2s ease;
+}
+
+.vocs_Sidebar_group > section:first-of-type .vocs_Sidebar_items > a[href="https://sapience.xyz"]::after {
+  content: "→";
+  margin-left: 8px;
+  font-size: 16px;
+  vertical-align: middle;
+  background: none !important;
+  width: auto !important;
+  height: auto !important;
+  transform: none !important;
+  mask: none !important;
+  -webkit-mask: none !important;
+}
+
+.vocs_Sidebar_group > section:first-of-type .vocs_Sidebar_items > a[href="https://sapience.xyz"]:hover {
+  background: #2a2a2a;
+}
+
+/* Promote the top two guide links under the logo and place them side-by-side */
+.vocs_Sidebar_group > section:first-of-type .vocs_Sidebar_items {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 4px;
+  margin-bottom: 0;
+  padding-top: 15px !important;
+  padding-bottom: 0 !important;
+}
+
+.vocs_Sidebar_group > section:first-of-type .vocs_Sidebar_items > a[href="/user-guide/introduction/what-is-sapience"],
+.vocs_Sidebar_group > section:first-of-type .vocs_Sidebar_items > a[href="/builder-guide/getting-started/get-started"] {
+  display: inline-flex !important;
+  align-items: center;
+  justify-content: center;
+  width: 100% !important;
+  font-weight: 500; /* medium */
+  padding: 6px 10px;
+  border-radius: 0;
+  background: transparent;
+  border: none;
+  border-bottom: 2px solid transparent;
+}
+
+.vocs_Sidebar_group > section:first-of-type .vocs_Sidebar_items > a[href="/user-guide/introduction/what-is-sapience"]:hover,
+.vocs_Sidebar_group > section:first-of-type .vocs_Sidebar_items > a[href="/builder-guide/getting-started/get-started"]:hover {
+  border-bottom-color: rgba(145, 179, 240, 0.6);
+}
+
+/* Active tab state */
+.vocs_Sidebar_group > section:first-of-type .vocs_Sidebar_items > a[data-active="true"][href="/user-guide/introduction/what-is-sapience"],
+.vocs_Sidebar_group > section:first-of-type .vocs_Sidebar_items > a[data-active="true"][href="/builder-guide/getting-started/get-started"] {
+  border-bottom-color: rgba(145, 179, 240, 0.8);
+  color: #7AA1EE;
+}
+
+/* Fallback: when a runtime script adds .is-active-tab to top anchors */
+.vocs_Sidebar_group > section:first-of-type .vocs_Sidebar_items > a.is-active-tab[href="/user-guide/introduction/what-is-sapience"],
+.vocs_Sidebar_group > section:first-of-type .vocs_Sidebar_items > a.is-active-tab[href="/builder-guide/getting-started/get-started"] {
+  border-bottom-color: rgba(145, 179, 240, 0.8);
+  color: #7AA1EE;
+}
+
+
+/* Section-aware active tab: highlight User Guide when any /user-guide page is active */
+.vocs_Sidebar_group:has(.vocs_Sidebar_items a[href^="/user-guide/"][data-active="true"]) > section:first-of-type .vocs_Sidebar_items > a[href="/user-guide/introduction/what-is-sapience"] {
+  border-bottom-color: rgba(145, 179, 240, 0.8);
+  color: #7AA1EE;
+}
+
+/* Section-aware active tab: highlight Builder Guide when any non-user-guide section is active */
+.vocs_Sidebar_group:has(.vocs_Sidebar_items a[href^="/builder-guide/"][data-active="true"]) > section:first-of-type .vocs_Sidebar_items > a[href="/builder-guide/getting-started/get-started"] {
+  border-bottom-color: rgba(145, 179, 240, 0.8);
+  color: #7AA1EE;
+}
+/* Section-aware active tab: if any User Guide page is active, activate the User Guide tab */
+.vocs_Sidebar_group:has(.vocs_Sidebar_items a[data-active="true"][href^="/user-guide/"]) > section:first-of-type .vocs_Sidebar_items > a[href="/user-guide/introduction/what-is-sapience"] {
+  border-bottom-color: rgba(145, 179, 240, 0.8);
+  color: #7AA1EE;
+}
+
+/* If any non-User Guide section page is active (root/guides/api/reference/etc.), activate Builder Guide */
+
+/* Fix margins in code-group tab content */
+.vocs_CodeGroup [role="tabpanel"] > *:first-child,
+.vocs_CodeGroup [role="tabpanel"] > div:first-child > *:first-child {
+  margin-top: 0 !important;
+}
+
+/* Ensure paragraphs in code-group tabs have consistent 24px margin-bottom */
+.vocs_CodeGroup [role="tabpanel"] .vocs_Paragraph {
+  margin-bottom: 24px;
+}
+
+/* Reduce extra bottom padding in callouts */
+.vocs_Callout .vocs_Paragraph:last-child {
+  margin-bottom: 0;
+}

@@ -3,6 +3,7 @@
       "target": "ES2020",
       "module": "ESNext",
       "moduleResolution": "node",
+      "jsx": "preserve",
       "outDir": "./dist",
       "rootDir": "./src",
       "strict": true,
@@ -13,12 +14,12 @@
       "strictPropertyInitialization": false,
       "resolveJsonModule": true,
       "baseUrl": ".",
-      "paths": {"@/protocol/*": ["../protocol/*"]},
+      "paths": {},
       "sourceMap": true,
       "inlineSources": true,
       "sourceRoot": "/"
     },
     "include": ["src"],
-    "exclude": ["node_modules", "**/*.spec.ts"]
+    "exclude": ["node_modules", "**/*.spec.ts", "src/graphql/types/generated.ts"]
   }
   

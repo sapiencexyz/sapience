@@ -1,0 +1,45 @@
+name="prediction-market"
+version="1.0.6"
+preset="test"
+
+[var.settings]
+collateralToken = "0xD09Ca7E81df62EAe738CD7187EC2E1499e860E02" # testUSDe on Arb1
+maxPredictionMarkets = "15"
+minCollateral = "10000000000000000" # .01 sUSDe (18 decimals)
+
+# UMA Resolver
+approvedAsserter = "0xdb5Af497A73620d881561eDb508012A5f84e9BA2"
+optimisticOracleV3 = "0xa6147867264374F324524E30C02C331cF28aa879" # https://github.com/UMAprotocol/protocol/blob/master/packages/core/networks/42161.json
+bondCurrency = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831" # https://arbiscan.io/token/0xaf88d065e77c8cC2239327C5EDb3A432268e5831
+bondAmount = "500000000" # 500 * 10^6  
+assertionLiveness = "600"
+
+depends = []
+
+[deploy.PredictionMarket]
+artifact="PredictionMarket"
+args=[
+  "Prediction Market",
+  "SPM",
+  "<%= settings.collateralToken %>",
+  "<%= settings.minCollateral %>"
+]
+depends=[]
+highlight=true
+
+[deploy.SapienceResolver]
+artifact="PredictionMarketSapienceResolver"
+args=[
+  ["<%= settings.maxPredictionMarkets %>"]
+]
+depends=["deploy.PredictionMarket"]
+highlight=true
+
+[deploy.UMAResolver]
+artifact="PredictionMarketUmaResolver"
+args=[
+    { maxPredictionMarkets = "<%= settings.maxPredictionMarkets %>", optimisticOracleV3 = "<%= settings.optimisticOracleV3 %>", bondCurrency = "<%= settings.bondCurrency %>", bondAmount = "<%= settings.bondAmount %>", assertionLiveness = "<%= settings.assertionLiveness %>"},
+    [ "<%= settings.approvedAsserter %>" ]
+]
+depends=["deploy.PredictionMarket"]
+highlight=true

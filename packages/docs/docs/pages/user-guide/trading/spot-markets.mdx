@@ -1,0 +1,21 @@
+---
+title: "Spot Markets"
+description: "Trade single outcomes continuously via onchain order books with concentrated liquidity."
+---
+
+# Spot Markets
+
+## Overview
+
+Spot Markets enable continuous trading of single outcomes. They're ideal when you want to express a view on one specific outcome with fine-grained control over your position's size.
+
+*Yes* tokens (worth 1 USDe if the market resolves to yes) trade against USDe through an liquidity pool with concentrated liquidity—similar to an onchain orderbook.
+
+## How Spot Markets Work
+
+Spot Markets use a **concentrated liquidity model**:
+
+1. Liquidity providers supply capital across specific price ranges
+2. Traders take positions by trading against available liquidity
+3. Positions settle based on the final outcome: YES holders receive full value if the market resolves Yes, or zero if it resolves No
+4. Markets can settle to binary outcomes (0 for No, 1 for Yes) or custom ranges for questions with numeric answers.

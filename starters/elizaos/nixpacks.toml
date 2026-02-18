@@ -1,0 +1,17 @@
+providers = ["node"]
+
+[phases.setup]
+nixPkgs = ["bun"]
+
+[phases.install]
+cmds = ["bun install"]
+
+[phases.build]
+cmds = ["bun run build"]
+
+[variables]
+ELIZAOS_DISABLE_UPDATE_CHECK = "true"
+NO_UPDATE_CHECK = "true"
+
+[start]
+cmd = "bun run start"

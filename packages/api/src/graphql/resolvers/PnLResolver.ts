@@ -1,38 +1,68 @@
-import { Resolver, Query, Arg, Int } from 'type-graphql';
-import { PnLType } from '../types';
-import { PnLPerformance } from '../../performance';
+import { Resolver, Query, Arg, Directive } from 'type-graphql';
+import { PnLType } from '../types/PnLType';
+import {
+  AggregatedProfitEntryType,
+  ProfitRankType,
+} from '../types/AggregatedProfitTypes';
+import { TtlCache } from '../../utils/ttlCache';
+import {
+  calculatePositionPnL,
+  calculateCombinedPositionPnL,
+} from '../../helpers/positionPnL';
+
+const DEFAULT_DECIMALS = 18;
 
 @Resolver(() => PnLType)
 export class PnLResolver {
-  @Query(() => [PnLType])
-  async getEpochLeaderboard(
-    @Arg('chainId', () => Int) chainId: number,
-    @Arg('address', () => String) address: string,
-    @Arg('epochId', () => String) epochId: string
-  ): Promise<PnLType[]> {
-    try {
-      const pnlPerformance = PnLPerformance.getInstance();
-      const pnlData = await pnlPerformance.getEpochPnLs(
-        chainId,
-        address,
-        parseInt(epochId)
-      );
+  private static leaderboardCache = new TtlCache<
+    string,
+    AggregatedProfitEntryType[]
+  >({
+    ttlMs: 60_000,
+    maxSize: 10,
+  });
 
-      return pnlData.map((pnl) => {
-        return {
-          epochId: parseInt(epochId),
-          owner: pnl.owner.toLowerCase(),
-          totalDeposits: pnl.totalDeposits.toString(),
-          totalWithdrawals: pnl.totalWithdrawals.toString(),
-          openPositionsPnL: pnl.openPositionsPnL.toString(),
-          totalPnL: pnl.totalPnL.toString(),
-          positions: Array.from(pnl.positionIds),
-          positionCount: pnl.positionCount,
-        };
-      });
-    } catch (error) {
-      console.error('Error fetching epochs:', error);
-      throw new Error('Failed to fetch epochs');
+  @Query(() => [AggregatedProfitEntryType])
+  @Directive('@cacheControl(maxAge: 60)')
+  async allTimeProfitLeaderboard(): Promise<AggregatedProfitEntryType[]> {
+    // Cache key includes v4 to invalidate old cache after V2 integration
+    const cacheKey = 'allTimeProfitLeaderboard:v4';
+    const existing = PnLResolver.leaderboardCache.get(cacheKey);
+    if (existing) return existing;
+
+    // Use combined V1 + V2 P&L calculation
+    const positionPnL = await calculateCombinedPositionPnL();
+
+    const aggregated = new Map<string, number>();
+
+    for (const r of positionPnL) {
+      const owner = r.owner.toLowerCase();
+      const divisor = Math.pow(10, DEFAULT_DECIMALS);
+      const val = parseFloat(r.totalPnL) / divisor;
+      if (!Number.isFinite(val)) continue;
+      aggregated.set(owner, (aggregated.get(owner) || 0) + val);
     }
+
+    const entries = Array.from(aggregated.entries())
+      .map(([owner, totalPnL]) => ({ owner, totalPnL }))
+      .sort((a, b) => b.totalPnL - a.totalPnL);
+
+    PnLResolver.leaderboardCache.set(cacheKey, entries);
+    return entries;
+  }
+
+  @Query(() => ProfitRankType)
+  @Directive('@cacheControl(maxAge: 60)')
+  async profitRankByAddress(
+    @Arg('owner', () => String) owner: string
+  ): Promise<ProfitRankType> {
+    const leaderboard = await this.allTimeProfitLeaderboard();
+    const lc = owner.toLowerCase();
+    const totalParticipants = leaderboard.length;
+    const idx = leaderboard.findIndex((e) => e.owner === lc);
+    const rank = idx >= 0 ? idx + 1 : null;
+    const totalPnL = leaderboard.find((e) => e.owner === lc)?.totalPnL || 0;
+
+    return { owner: lc, totalPnL, rank, totalParticipants };
   }
 }

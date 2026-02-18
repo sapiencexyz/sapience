@@ -1,16 +1,15 @@
-# Gas and Blobspace with Stable Pricing
+---
+title: Sapience Documentation
+---
+import { useEffect } from "react";
 
-Foil is a fully decentralized marketplace connecting producers of onchain computing resources with consumers.
-
-## Overview
-
-* [Problem: Predictable Onchain Expenditures](/problem)
-* [Solution: Foil Onchain Marketplaces](/solution)
-* [Opportunity: Everything Onchain](/opportunity)
-
-## Protocol Architecture
-
-* [Ethereum L1 Gas Implementation](/l1-implementation)
-* [Token Vault](/token-vault)
-* [Ethereum L2 Gas Implementation](/l2-implementation)
-* [Market Settlement](/market-settlement)
+export default function RedirectToWhatIsSapience() {
+  useEffect(() => {
+    window.location.replace("/user-guide/introduction/what-is-sapience");
+  }, []);
+  return (
+    <p>
+      Redirecting to <a href="/user-guide/introduction/what-is-sapience">What is Sapience?</a>...
+    </p>
+  );
+}

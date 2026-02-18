@@ -1,5 +1,5 @@
 {
-  "name": "@foil/protocol",
+  "name": "@sapience/protocol",
   "license": "MIT",
   "private": true,
   "version": "1.0.1",
@@ -7,31 +7,31 @@
     "dev": "cannon build deployments/tomls/cannonfile.dev.toml --keep-alive --anvil.port 8545 --write-deployments ./deployments/outputs/13370",
     "docgen": "forge doc",
     "test": "forge build --ast && cannon test deployments/tomls/cannonfile.test.toml --forge.vv",
+    "lint": "forge lint",
+    "fmt": "forge fmt",
+    "format": "forge fmt",
+    "format:check": "forge fmt --check",
     "deploy:sepolia": "cannon build deployments/tomls/cannonfile.sepolia.toml --chain-id 11155111 --write-deployments ./deployments/outputs/11155111",
-    "simulate-deploy:sepolia": "cannon build deployments/tomls/cannonfile.sepolia.toml --chain-id 11155111 --dry-run",
+    "simulate-deploy:sepolia": "cannon build deployments/tomls/cannonfile.sepolia.toml --chain-id 11155111 --dry-run --impersonate-all",
     "deploy:base": "cannon build deployments/tomls/cannonfile.base.blobs.toml --chain-id 8453 --write-deployments ./deployments/outputs/8453-blobs",
-    "simulate-deploy:base": "cannon build deployments/tomls/cannonfile.base.blobs.toml --chain-id 8453 --dry-run"
+    "simulate-deploy:base": "cannon build deployments/tomls/cannonfile.base.blobs.toml --chain-id 8453 --dry-run --impersonate-all"
   },
   "devDependencies": {
-    "@types/chai": "^4.3.19",
-    "@types/mocha": "^10.0.8",
-    "@types/node": "^20.16.5",
-    "chai": "^4.5.0",
-    "forge-std": "github:foundry-rs/forge-std#master",
-    "mocha": "^10.7.3",
-    "mocha-junit-reporter": "^2.2.1",
-    "solidity-coverage": "^0.8.13",
-    "ts-node": "^10.9.2",
-    "typechain": "^8.3.2",
-    "typescript": "^5.6.2"
+    "@layerzerolabs/lz-evm-messagelib-v2": "3.0.123",
+    "@layerzerolabs/lz-evm-v1-0.7": "^3.0.156",
+    "@types/node": "20.16.5",
+    "forge-std": "https://codeload.github.com/foundry-rs/forge-std/tar.gz/0e01ca7ba958b8d9818a25b0a10031b0ba3c4c59",
+    "typescript": "5.8.3"
   },
   "dependencies": {
-    "@openzeppelin/contracts": "^5.0.2",
-    "@openzeppelin/contracts-upgradeable": "^5.0.2",
-    "@synthetixio/core-contracts": "^3.6.1",
-    "@uma/core": "^2.59.1",
-    "@uniswap/v3-core": "^1.0.1",
-    "@uniswap/v3-periphery": "^1.4.4",
-    "@usecannon/cli": "2.21.5"
+    "@layerzerolabs/lz-evm-protocol-v2": "3.0.123",
+    "@layerzerolabs/oapp-evm": "0.3.2",
+    "@layerzerolabs/test-devtools-evm-foundry": "8.0.1",
+    "@layerzerolabs/toolbox-foundry": "0.1.13",
+    "@openzeppelin/contracts": "5.0.2",
+    "@synthetixio/core-contracts": "3.6.4",
+    "@uma/core": "2.59.1",
+    "@usecannon/cli": "2.24.1",
+    "solady": "0.1.26"
   }
 }

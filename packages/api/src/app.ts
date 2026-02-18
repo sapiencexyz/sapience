@@ -1,6 +1,9 @@
 import express, { Request } from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import { router } from './routes';
+import { config } from './config';
+import { rateLimiter } from './middleware';
 
 const corsOptions: cors.CorsOptions = {
   origin: (
@@ -8,16 +11,13 @@ const corsOptions: cors.CorsOptions = {
     callback: (error: Error | null, allow?: boolean) => void,
     request?: Request
   ) => {
-    // Allow all requests unless in production or staging
-    if (
-      process.env.NODE_ENV !== 'production' &&
-      process.env.NODE_ENV !== 'staging'
-    ) {
+    // Allow all requests unless in production
+    if (!config.isProd) {
       callback(null, true);
       return;
     }
 
-    // Check for API token in production/staging
+    // Check for API token in production
     const authHeader = request?.headers?.authorization;
     const apiToken = process.env.API_ACCESS_TOKEN;
 
@@ -35,7 +35,8 @@ const corsOptions: cors.CorsOptions = {
     if (
       !origin || // Allow same-origin requests
       /^https?:\/\/([a-zA-Z0-9-]+\.)*foil\.xyz$/.test(origin) ||
-      /^https?:\/\/([a-zA-Z0-9-]+\.)*vercel\.app$/.test(origin) || //staging sites
+      /^https?:\/\/([a-zA-Z0-9-]+\.)*sapience\.xyz$/.test(origin) ||
+      /^https?:\/\/(app|docs)(-[a-z0-9]+-sapiencexyz)?\.vercel\.app$/.test(origin) || //staging sites
       /^https?:\/\/localhost(:\d+)?$/.test(origin) // Allow localhost with optional port
     ) {
       callback(null, true);
@@ -44,17 +45,21 @@ const corsOptions: cors.CorsOptions = {
     }
   },
   optionsSuccessStatus: 200,
-  // Allow the Authorization header to be exposed to the client
-  exposedHeaders: ['Authorization'],
-  // Allow the Authorization header to be sent
-  allowedHeaders: ['Authorization', 'Content-Type'],
+  allowedHeaders: [
+    'Authorization',
+    'Content-Type',
+    'x-admin-signature',
+    'x-admin-signature-timestamp',
+  ],
 };
 
 const app = express();
 
 // Middleware
+app.use(helmet());
 app.use(express.json());
 app.use(cors(corsOptions));
+app.use(rateLimiter);
 
 app.use('/', router);
 

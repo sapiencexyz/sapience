@@ -1,0 +1,33 @@
+---
+title: "Glossary of Terms"
+---
+
+# Glossary
+
+- **Question** - Something that can be resolved to *Yes* or *No* after a specific time.
+
+- **Question Groups** - Contains one or many questions. Questions can exist without being in a group.
+
+- **Categories** - Displayed as "Focus Areas" in the Sapience app (e.g., Crypto, Weather, Geopolitics).
+
+- **Forecast** - A question with a probability (0-100%) and an optional comment [submitted onchain](https://attest.org).
+
+- **Pick** - A question paired with a predicted resolution (*Yes* or *No*).
+
+- **Prediction** - Consists of a position size and one or many picks.
+
+- **Position Size** - Collateral staked on a prediction.
+
+- **USDe** - [Ethena](https://ethena.fi)'s reward-bearing synthetic dollar. [wUSDe](https://explorer.ethereal.trade/address/0xB6fC4B1BFF391e5F6b4a3D2C7Bda1FeE3524692D) (Wrapped USDe) is the ERC-20 token used by prediction market contracts on Ethereal.
+
+- **Auction** - The system in which prediction market participants bid on taking the opposite side of a prediction.
+
+- **Requester/Responder** - Requesters create auctions and responders bid in them. The requester stakes their position size on all of their picks being correct with a signed payload from a responder who predicts at least one pick will be incorrect.
+
+- **Predictor/Counterparty** - In positions, the predictor submits the outcomes and wins if every predicted outcome is correct; the counterparty takes the opposite side. Some contract flows and auction docs still refer to maker/taker (maker = responder or limit-order creator).
+
+- **Resolution** - The prediction market contract determining whether the answer to a question is *Yes* or *No*. Synonymous with "Settlement".
+
+- **Verification** - Used in relation to signed payloads (i.e. signature verification), not market resolution.
+
+- **Accuracy Score** - An inverted horizon-weighted Brier score. For each forecast: `score = (1 - brierScore) × τ`, where `brierScore = (prediction - outcome)²` and `τ` is seconds from forecast to resolution. Scores are averaged per market, then across all markets. Higher is better—rewarding accurate, early predictions.

@@ -1,12 +1,14 @@
+/* @import './fonts/AvenirRounded.css';
+@import './fonts/Foil.css'; */
+
 /* Global Styling here */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-@import './fonts/AvenirRounded.css';
-@import './fonts/Foil.css';
 
 @layer base {
   :root {
+    --form-foreground: var(--foreground);
     --background: 0 0% 100%;
     --foreground: 240 10% 3.9%;
     --card: 0 0% 100%;
@@ -26,6 +28,8 @@
     --border: 240 5.9% 90%;
     --input: 240 5.9% 90%;
     --ring: 240 10% 3.9%;
+    /* Foil-specific brand accents */
+    --ethena: 219 76% 75%; /* #91B3F0 */
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
@@ -42,6 +46,7 @@
     --sidebar-ring: 217.2 91.2% 59.8%;
   }
   .dark {
+    --form-foreground: var(--foreground);
     --background: 240 10% 3.9%;
     --foreground: 0 0% 98%;
     --card: 240 10% 3.9%;
@@ -74,6 +79,8 @@
     --sidebar-accent-foreground: 240 4.8% 95.9%;
     --sidebar-border: 240 3.7% 15.9%;
     --sidebar-ring: 217.2 91.2% 59.8%;
+    /* Foil-specific brand accents */
+    --ethena: 219 76% 75%; /* #91B3F0 */
   }
 }
 

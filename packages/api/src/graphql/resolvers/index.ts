@@ -1,9 +1,8 @@
-export { MarketResolver } from './MarketResolver';
-export { ResourceResolver } from './ResourceResolver';
-export { PositionResolver } from './PositionResolver';
-export { TransactionResolver } from './TransactionResolver';
-export { EpochResolver } from './EpochResolver';
-export { CandleResolver } from './CandleResolver';
 export { PnLResolver } from './PnLResolver';
+export { ScoreResolver } from './ScoreResolver';
+export { PositionResolver } from './PositionResolver';
+export { V2PositionResolver } from './V2PositionResolver';
+export { AnalyticsResolver } from './AnalyticsResolver';
+export { ConditionResolver } from './ConditionResolver';
 export { VolumeResolver } from './VolumeResolver';
-export { CategoryResolver } from './CategoryResolver';
+export { QuestionsResolver } from './QuestionsResolver';

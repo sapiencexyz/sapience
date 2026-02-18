@@ -1,0 +1,41 @@
+---
+title: "Auctions"
+description: "Build predictions and trade via short-lived RFQ-style auctions with onchain settlement."
+---
+
+# Auctions
+
+Sapience uses an RFQ (Request-for-Quote) auction system. You broadcast a prediction, market makers compete to offer you the best odds, and the smart contract enforces the final settlement.
+
+## Building a Prediction
+
+A **prediction** is one or more picks combined with a position size. Each **pick** is a question paired with your expected resolution (*Yes* or *No*).
+
+- **Single-pick example:** "Will BTC exceed $100k by July 1?" → Yes
+- **Multi-pick example:** "Team A wins AND turnout ≥ 60%"
+
+Multi-pick predictions combine several predictions into one position. If *every* pick resolves correctly, you win. If *any* pick is wrong, you lose.
+
+### Probability Intuition
+
+When picks are independent, your prediction's implied probability is roughly the product of each pick's probability.
+
+| Pick | Implied Probability |
+|------|---------------------|
+| Team A wins | 50% |
+| Turnout ≥ 60% | 40% |
+| **Combined** | **20%** (0.5 × 0.4) |
+
+Lower combined probability means higher potential payout—this is why multi-leg positions are attractive for expressing compound forecasts.
+
+## How the Auction Works
+
+1. **Request** — You submit your prediction (picks + position size) to the relayer. This is a simple, [open-source](https://github.com/sapiencexyz/sapience/tree/main/packages/api/src/auction) HTTP service that broadcasts your request to market makers.
+
+2. **Response** — Responders analyze your prediction and submit **cryptographically signed bids**. Each bid includes the responder's position size and an expiration timestamp. Signatures ensure bids can't be forged or tampered with.
+
+3. **Selection** — You choose the best offer (typically the highest position size, meaning better odds for you). Bids expire quickly, so the auction resolves in seconds.
+
+4. **Settlement** — The smart contract verifies the responder's signature, transfers collateral from both parties, and mints NFTs representing each position: your prediction and the responder's counterparty position (predicting that at least one of your picks is wrong).
+
+5. **Resolution** — When questions resolve, the winner burns their NFT to claim the pooled collateral.

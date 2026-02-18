@@ -1,0 +1,388 @@
+'use client';
+
+import type React from 'react';
+import {
+  createContext,
+  useContext,
+  useState,
+  useCallback,
+  useEffect,
+} from 'react';
+import { z } from 'zod';
+import { fetchConditionsByIds } from '~/hooks/graphql/fetchConditionsByIds';
+
+// localStorage key for position selections persistence
+const STORAGE_KEY_SELECTIONS = 'sapience:position-selections';
+
+function loadFromStorage<T>(key: string, fallback: T): T {
+  if (typeof window === 'undefined') return fallback;
+  try {
+    const stored = localStorage.getItem(key);
+    return stored ? JSON.parse(stored) : fallback;
+  } catch {
+    return fallback;
+  }
+}
+import type { Address, Hex } from 'viem';
+import type { Pick as V2Pick } from '@sapience/sdk/types/v2';
+import { OutcomeSide } from '@sapience/sdk/types/v2';
+import { computePickConfigId } from '@sapience/sdk/auction/v2Encoding';
+import type { MarketGroupClassification } from '~/lib/types';
+import { MarketGroupClassification as MarketGroupClassificationEnum } from '~/lib/types';
+import { createPositionDefaults } from '~/lib/utils/positionFormUtils';
+
+// Updated CreatePositionEntry type based on requirements
+interface CreatePositionEntry {
+  id: string;
+  prediction: boolean;
+  marketAddress: string;
+  marketId: number;
+  question: string;
+  chainId: number; // Add chainId to identify which chain the market is on
+  positionSize?: string; // Store default position size
+  marketClassification?: MarketGroupClassification; // Store classification for better form handling
+}
+
+// Lightweight position selection for OTC conditions (no on-chain market data)
+interface PositionSelection {
+  id: string; // unique within position form
+  conditionId: string;
+  question: string; // Full question text (always shown in tooltips)
+  shortName?: string | null; // Short display name (used in CreatePositionForm only)
+  prediction: boolean; // true = yes, false = no
+  categorySlug?: string | null; // category slug for icon display
+  resolverAddress?: string | null; // resolver address for canonical links
+  endTime?: number | null; // Unix timestamp in seconds for filtering expired conditions
+}
+
+// Zod schema for validating PositionSelection from URL params
+const positionSelectionSchema = z.object({
+  id: z.string(),
+  conditionId: z.string(),
+  question: z.string(),
+  shortName: z.string().nullable().optional(),
+  prediction: z.boolean(),
+  categorySlug: z.string().nullable().optional(),
+  resolverAddress: z.string().nullable().optional(),
+  endTime: z.number().nullable().optional(),
+});
+
+const positionSelectionsSchema = z.array(positionSelectionSchema);
+
+// Interface for market data with position
+interface PositionWithMarketData {
+  position: CreatePositionEntry;
+  marketClassification: MarketGroupClassification | undefined;
+  isLoading: boolean;
+  error: boolean | null;
+}
+
+interface CreatePositionContextType {
+  // Separate lists: single positions (on-chain) and position selections (RFQ conditions)
+  createPositionEntries: CreatePositionEntry[]; // legacy alias to singlePositions for backward compat
+  singlePositions: CreatePositionEntry[];
+  selections: PositionSelection[];
+  addPosition: (position: Omit<CreatePositionEntry, 'id'>) => void;
+  removePosition: (id: string) => void;
+  updatePosition: (id: string, updates: Partial<CreatePositionEntry>) => void;
+  clearPositionForm: () => void;
+  // Position selections API
+  addSelection: (selection: Omit<PositionSelection, 'id'>) => void;
+  removeSelection: (id: string) => void;
+  clearSelections: () => void;
+  openPopover: () => void;
+  isPopoverOpen: boolean;
+  setIsPopoverOpen: (open: boolean) => void;
+  // New properties for market data
+  positionsWithMarketData: PositionWithMarketData[];
+  // V2 protocol helpers
+  /** Convert current selections to V2 Pick[] array */
+  getV2Picks: () => V2Pick[];
+  /** Compute V2 pickConfigId from current selections */
+  getV2PickConfigId: () => Hex | null;
+}
+
+export const CreatePositionContext = createContext<
+  CreatePositionContextType | undefined
+>(undefined);
+
+export const useCreatePositionContext = () => {
+  const context = useContext(CreatePositionContext);
+  if (!context) {
+    throw new Error(
+      'useCreatePositionContext must be used within a CreatePositionProvider'
+    );
+  }
+  return context;
+};
+
+interface CreatePositionProviderProps {
+  children: React.ReactNode;
+}
+
+export const CreatePositionProvider = ({
+  children,
+}: CreatePositionProviderProps) => {
+  const [singlePositions, setSinglePositions] = useState<CreatePositionEntry[]>(
+    []
+  );
+  const [selections, setSelections] = useState<PositionSelection[]>(() => {
+    if (typeof window === 'undefined') return [];
+
+    // URL query param takes priority over localStorage
+    try {
+      const params = new URLSearchParams(window.location.search);
+      const encoded = params.get('position');
+      if (encoded) {
+        const parsed = positionSelectionsSchema.safeParse(
+          JSON.parse(decodeURIComponent(escape(atob(encoded))))
+        );
+        if (parsed.success && parsed.data.length > 0) {
+          return parsed.data;
+        }
+      }
+    } catch {
+      // ignore malformed position param, fall through to localStorage
+    }
+
+    return loadFromStorage<PositionSelection[]>(STORAGE_KEY_SELECTIONS, []);
+  });
+  const [isPopoverOpen, setIsPopoverOpen] = useState(() => {
+    // Auto-open popover if loaded from a slip URL
+    if (typeof window === 'undefined') return false;
+    try {
+      const params = new URLSearchParams(window.location.search);
+      return !!params.get('position');
+    } catch {
+      return false;
+    }
+  });
+
+  // Clean up slip param from URL after hydrating (avoid re-triggering on navigation)
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('position')) {
+      params.delete('position');
+      const newUrl = params.toString()
+        ? `${window.location.pathname}?${params.toString()}`
+        : window.location.pathname;
+      window.history.replaceState({}, '', newUrl);
+    }
+  }, []);
+
+  // Persist position selections to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem(STORAGE_KEY_SELECTIONS, JSON.stringify(selections));
+  }, [selections]);
+
+  // Remove settled conditions from the bet slip on mount
+  useEffect(() => {
+    const conditionIds = selections.map((s) => s.conditionId);
+    if (conditionIds.length === 0) return;
+
+    const QUERY = /* GraphQL */ `
+      query ConditionsByIds($where: ConditionWhereInput!) {
+        conditions(where: $where, take: 100) {
+          id
+          settled
+        }
+      }
+    `;
+
+    fetchConditionsByIds<{ id: string; settled: boolean }>(QUERY, conditionIds)
+      .then((conditions) => {
+        const settledIds = new Set(
+          conditions.filter((c) => c.settled).map((c) => c.id)
+        );
+        if (settledIds.size > 0) {
+          setSelections((prev) =>
+            prev.filter((s) => !settledIds.has(s.conditionId))
+          );
+        }
+      })
+      .catch(() => {
+        // Silently ignore — selections will remain until next load
+      });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Spot market functionality removed - positionsWithMarketData is empty
+  const positionsWithMarketData: PositionWithMarketData[] = singlePositions.map(
+    (position) => ({
+      position,
+      marketClassification: position.marketClassification,
+      isLoading: false,
+      error: null,
+    })
+  );
+
+  const addPosition = useCallback(
+    (position: Omit<CreatePositionEntry, 'id'>) => {
+      // Create intelligent defaults based on market classification
+      const defaults = createPositionDefaults(position.marketClassification);
+
+      // Special handling for YES/NO: treat the question as a single logical position
+      if (
+        position.marketClassification === MarketGroupClassificationEnum.YES_NO
+      ) {
+        const existingYesNoIndex = singlePositions.findIndex(
+          (p) =>
+            p.marketAddress === position.marketAddress &&
+            p.marketClassification === MarketGroupClassificationEnum.YES_NO
+        );
+
+        if (existingYesNoIndex !== -1) {
+          setSinglePositions((prev) =>
+            prev.map((p, index) =>
+              index === existingYesNoIndex
+                ? {
+                    ...p,
+                    prediction: position.prediction,
+                    marketId: position.marketId,
+                    question: position.question,
+                    marketClassification: position.marketClassification,
+                    positionSize: p.positionSize || defaults.positionSize,
+                  }
+                : p
+            )
+          );
+          setIsPopoverOpen(true);
+          return;
+        }
+      }
+
+      // Check if a position with the same marketAddress and marketId already exists
+      const existingPositionIndex = singlePositions.findIndex(
+        (p) =>
+          p.marketAddress === position.marketAddress &&
+          p.marketId === position.marketId
+      );
+
+      if (existingPositionIndex !== -1) {
+        setSinglePositions((prev) =>
+          prev.map((p, index) =>
+            index === existingPositionIndex
+              ? {
+                  ...p,
+                  prediction: position.prediction,
+                  question: position.question,
+                  marketClassification: position.marketClassification,
+                  positionSize: p.positionSize || defaults.positionSize,
+                }
+              : p
+          )
+        );
+      } else {
+        const id = `${position.marketAddress}-${position.marketId}-${position.prediction}-${Date.now()}`;
+        const enhancedPosition: CreatePositionEntry = {
+          ...position,
+          id,
+          positionSize: position.positionSize || defaults.positionSize,
+          prediction: position.prediction ?? defaults.prediction ?? false,
+        };
+        setSinglePositions((prev) => [...prev, enhancedPosition]);
+      }
+
+      setIsPopoverOpen(true);
+    },
+    [singlePositions]
+  );
+
+  const removePosition = useCallback(
+    (id: string) => {
+      const newPositions = singlePositions.filter((p) => p.id !== id);
+      setSinglePositions(newPositions);
+    },
+    [singlePositions]
+  );
+
+  const updatePosition = useCallback(
+    (id: string, updates: Partial<CreatePositionEntry>) => {
+      setSinglePositions((prev) =>
+        prev.map((p) => (p.id === id ? { ...p, ...updates } : p))
+      );
+    },
+    []
+  );
+
+  const clearPositionForm = useCallback(() => {
+    setSinglePositions([]);
+  }, []);
+
+  const openPopover = useCallback(() => {
+    setIsPopoverOpen(true);
+  }, []);
+
+  const addSelection = useCallback(
+    (selection: Omit<PositionSelection, 'id'>) => {
+      setSelections((prev) => {
+        const existingIndex = prev.findIndex(
+          (s) => s.conditionId === selection.conditionId
+        );
+
+        if (existingIndex !== -1) {
+          return prev.map((s, i) =>
+            i === existingIndex ? { ...s, prediction: selection.prediction } : s
+          );
+        }
+
+        const id = `${selection.conditionId}-${selection.prediction}-${Date.now()}`;
+        return [...prev, { ...selection, id }];
+      });
+      setIsPopoverOpen(true);
+    },
+    []
+  );
+
+  const removeSelection = useCallback((id: string) => {
+    setSelections((prev) => prev.filter((s) => s.id !== id));
+  }, []);
+
+  const clearSelections = useCallback(() => {
+    setSelections([]);
+  }, []);
+
+  // V2 helpers: convert selections to V2 Pick[] array
+  const getV2Picks = useCallback((): V2Pick[] => {
+    return selections
+      .filter((s) => s.resolverAddress) // Only include selections with resolver address
+      .map((s) => ({
+        conditionResolver: s.resolverAddress as Address,
+        conditionId: s.conditionId as Hex,
+        predictedOutcome: s.prediction ? OutcomeSide.YES : OutcomeSide.NO,
+      }));
+  }, [selections]);
+
+  // V2 helper: compute pickConfigId from current selections
+  const getV2PickConfigId = useCallback((): Hex | null => {
+    const picks = getV2Picks();
+    if (picks.length === 0) return null;
+    return computePickConfigId(picks);
+  }, [getV2Picks]);
+
+  const value: CreatePositionContextType = {
+    createPositionEntries: singlePositions,
+    singlePositions,
+    selections,
+    addPosition,
+    removePosition,
+    updatePosition,
+    clearPositionForm,
+    addSelection,
+    removeSelection,
+    clearSelections,
+    openPopover,
+    isPopoverOpen,
+    setIsPopoverOpen,
+    positionsWithMarketData,
+    getV2Picks,
+    getV2PickConfigId,
+  };
+
+  return (
+    <CreatePositionContext.Provider value={value}>
+      {children}
+    </CreatePositionContext.Provider>
+  );
+};

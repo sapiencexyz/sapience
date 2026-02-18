@@ -1,66 +1,175 @@
-import { initializeDataSource, resourceRepository } from './db';
-import { expressMiddleware } from '@apollo/server/express4';
+import 'reflect-metadata';
+import { initializeDataSource } from './db';
+import { expressMiddleware } from '@as-integrations/express4';
 import { createLoaders } from './graphql/loaders';
 import { app } from './app';
-import dotenv from 'dotenv';
-import path, { dirname } from 'path';
-import { fileURLToPath } from 'url';
-import initSentry from './instrument';
+import { createServer } from 'http';
+import { createChatWebSocketServer } from './websocket/chat';
+import type { IncomingMessage } from 'http';
+import type { Socket } from 'net';
+import { initSentry } from './instrument';
 import { initializeApolloServer } from './graphql/startApolloServer';
-import Sentry from './sentry';
-import { NextFunction, Request, Response } from 'express';
-import { ResourcePerformanceManager } from './performance';
+import Sentry from './instrument';
+import express, { NextFunction, Request, Response } from 'express';
 import { initializeFixtures } from './fixtures';
+import prisma from './db';
+import { config } from './config';
+import {
+  createAuctionProxyMiddleware,
+  proxyAuctionWebSocket,
+} from './utils/auctionProxy';
 
 const PORT = 3001;
-
-// Load environment variables
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 initSentry();
 
 const startServer = async () => {
   await initializeDataSource();
 
-  // Initialize fixtures from fixtures.json
-  await initializeFixtures();
+  if (config.isDev && process.env.DATABASE_URL?.includes('render')) {
+    console.log(
+      'Skipping fixtures initialization since we are in development mode and using production database'
+    );
+  } else {
+    // Initialize fixtures from fixtures.json
+    await initializeFixtures();
+  }
 
   const apolloServer = await initializeApolloServer();
 
-  // Add GraphQL endpoint
+  // Concurrency limiter — shed load when too many GraphQL operations are in-flight.
+  // Returns 503 instantly instead of letting requests queue behind saturated connections.
+  const maxConcurrent = config.GRAPHQL_MAX_CONCURRENT_OPERATIONS;
+  let activeOperations = 0;
+
+  // Add GraphQL endpoint with payload size limit and request timeout
   app.use(
     '/graphql',
+    // Concurrency limiter — must be first to reject before any work
+    (_req: Request, res: Response, next: NextFunction) => {
+      if (activeOperations >= maxConcurrent) {
+        res.status(503).json({
+          errors: [
+            {
+              message: 'Server is busy. Please retry shortly.',
+              extensions: { code: 'SERVER_BUSY' },
+            },
+          ],
+        });
+        return;
+      }
+
+      activeOperations++;
+      res.on('finish', () => {
+        activeOperations--;
+      });
+      next();
+    },
+    express.json({ limit: '100kb' }),
+    // Request timeout middleware
+    (_req: Request, res: Response, next: NextFunction) => {
+      const timeout = config.GRAPHQL_REQUEST_TIMEOUT_MS;
+      res.setTimeout(timeout, () => {
+        if (!res.headersSent) {
+          res.status(408).json({
+            errors: [{ message: `Request timeout after ${timeout}ms` }],
+          });
+        }
+      });
+      next();
+    },
     expressMiddleware(apolloServer, {
       context: async () => ({
         loaders: createLoaders(),
+        prisma,
       }),
     })
   );
 
-  app.listen(PORT, () => {
+  // Proxy /auction HTTP requests to auction service
+  const auctionProxyEnabled = process.env.ENABLE_AUCTION_PROXY !== 'false';
+  if (auctionProxyEnabled) {
+    app.use('/auction', createAuctionProxyMiddleware());
+    console.log('Auction proxy enabled: /auction -> auction service');
+  }
+
+  const httpServer = createServer(app);
+
+  // Create WebSocket server and route upgrades centrally
+  const chatWss = createChatWebSocketServer();
+
+  httpServer.on(
+    'upgrade',
+    async (request: IncomingMessage, socket: Socket, head: Buffer) => {
+      try {
+        const url = request.url || '/';
+        // Origin validation for prod if configured
+        if (
+          url.startsWith('/chat') &&
+          !config.isDev &&
+          process.env.CHAT_ALLOWED_ORIGINS
+        ) {
+          const origin = request.headers['origin'] as string | undefined;
+          const allowed = new Set(
+            process.env.CHAT_ALLOWED_ORIGINS.split(',').map((s) => s.trim())
+          );
+          if (!origin || !Array.from(allowed).some((o) => origin === o)) {
+            try {
+              socket.destroy();
+            } catch {
+              /* ignore */
+            }
+            return;
+          }
+        }
+        if (url.startsWith('/chat')) {
+          chatWss.handleUpgrade(request, socket, head, (ws) => {
+            chatWss.emit('connection', ws, request);
+          });
+          return;
+        }
+        // Proxy /auction WebSocket upgrades to auction service
+        if (auctionProxyEnabled && url.startsWith('/auction')) {
+          const proxied = await proxyAuctionWebSocket(request, socket, head);
+          if (proxied) {
+            return;
+          }
+          // If proxy failed, fall through to destroy socket
+        }
+      } catch (err) {
+        console.error('[Server] Upgrade handler error:', err);
+      }
+      // If not handled, destroy the socket
+      try {
+        socket.destroy();
+      } catch {
+        /* ignore */
+      }
+    }
+  );
+
+  httpServer.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
     console.log(`GraphQL endpoint available at /graphql`);
+    console.log(`Chat WebSocket endpoint at /chat`);
+    if (auctionProxyEnabled) {
+      console.log(`Auction WebSocket endpoint proxied at /auction`);
+    }
   });
 
   // Only set up Sentry error handling in production
-  if (process.env.NODE_ENV === 'production') {
+  if (config.isProd) {
     Sentry.setupExpressErrorHandler(app);
   }
-
-  console.log('ResourcePerformanceManager - Starting');
-  const resources = await resourceRepository.find();
-  const resourcePerformanceManager = ResourcePerformanceManager.getInstance();
-  await resourcePerformanceManager.initialize(resources);
-  console.log('ResourcePerformanceManager - Initialized');
 
   // Global error handle
   // Needs the unused _next parameter to be passed in: https://expressjs.com/en/guide/error-handling.html
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   app.use((err: Error, _req: Request, res: Response, _next: NextFunction) => {
     console.error('An error occurred:', err.message);
-    res.status(500).json({ error: 'Internal server error' });
+    if (!res.headersSent) {
+      res.status(500).json({ error: 'Internal server error' });
+    }
   });
 };
 

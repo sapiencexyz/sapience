@@ -1,15 +1,8 @@
-const withPWA = require('next-pwa')({
-  dest: 'public',
-  disable: process.env.NODE_ENV === 'development',
-  // add your own icons to src/app/manifest.ts
-  // to re-generate manifest.json, you can visit https://tomitm.github.io/appmanifest/
-});
-
 /** @type {import('next').NextConfig} */
-module.exports = withPWA({
-  swcMinify: true,
+const nextConfig = {
   reactStrictMode: true,
   productionBrowserSourceMaps: true,
+  transpilePackages: ['@sapience/ui'],
   eslint: {
     dirs: ['src'],
   },
@@ -21,15 +14,36 @@ module.exports = withPWA({
     });
     return config;
   },
-});
-
+  async headers() {
+    return [
+      {
+        source: '/(.*)',
+        headers: [
+          {
+            key: 'X-Frame-Options',
+            value: 'SAMEORIGIN'
+          },
+        ],
+      },
+    ]
+  },
+  async redirects() {
+    return [
+      {
+        source: '/discord',
+        destination: 'http://discord.gg/sapience',
+        permanent: false,
+      },
+    ];
+  }
+};
 
 // Injected content via Sentry wizard below
 
 const { withSentryConfig } = require("@sentry/nextjs");
 
 module.exports = withSentryConfig(
-  module.exports,
+  nextConfig,
   {
     // For all available options, see:
     // https://github.com/getsentry/sentry-webpack-plugin#options
@@ -62,6 +76,11 @@ module.exports = withSentryConfig(
 
     // Automatically tree-shake Sentry logger statements to reduce bundle size
     disableLogger: true,
+
+    // Only upload source maps in CI
+    sourcemaps: {
+      disable: !process.env.CI,
+    },
 
     // Enables automatic instrumentation of Vercel Cron Monitors. (Does not yet work with App Router route handlers.)
     // See the following for more information:

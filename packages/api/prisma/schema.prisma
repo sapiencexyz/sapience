@@ -1,0 +1,678 @@
+generator client {
+  provider      = "prisma-client-js"
+  output        = "../generated/prisma"
+  binaryTargets = ["native", "debian-openssl-3.0.x"]
+}
+
+generator typegraphql {
+  provider = "typegraphql-prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Category {
+  id              Int              @id(map: "PK_9c4e4a89e3674fc9f382d733f03") @default(autoincrement())
+  createdAt       DateTime         @default(now()) @db.Timestamp(6)
+  name            String           @unique(map: "UQ_23c05c292c439d77b0de816b500") @db.VarChar
+  slug            String           @unique(map: "UQ_cb73208f151aa71cdd78f662d70") @db.VarChar
+  /// @TypeGraphQL.field(name: "conditions")
+  condition       Condition[]
+  /// @TypeGraphQL.field(name: "conditionGroups")
+  condition_group ConditionGroup[]
+
+  @@index([slug], map: "IDX_cb73208f151aa71cdd78f662d7")
+  @@map("category")
+}
+
+model Event {
+  id              Int      @id(map: "PK_30c2f3bbaf6d34a55f8ae6e4614") @default(autoincrement())
+  createdAt       DateTime @default(now()) @db.Timestamp(6)
+  blockNumber     Int
+  transactionHash String   @db.VarChar
+  timestamp       BigInt
+  logIndex        Int
+  logData         Json     @db.Json
+
+  @@index([timestamp], map: "IDX_2c15918ff289396205521c5f3c")
+  @@index([blockNumber], map: "IDX_5430e2d7fe1df2bcada2c12deb")
+  @@map("event")
+}
+
+model KeyValueStore {
+  key       String   @id @db.VarChar(255)
+  value     String   @db.Text
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
+
+  @@map("key_value_store")
+}
+
+model Migrations {
+  id        Int    @id(map: "PK_8c82d7f526340ab734260ea46be") @default(autoincrement())
+  timestamp BigInt
+  name      String @db.VarChar
+
+  @@map("migrations")
+}
+
+model RenderJob {
+  id        Int      @id(map: "PK_a00488019eafb11b27af1aa1a76") @default(autoincrement())
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  jobId     String   @db.VarChar
+  serviceId String   @db.VarChar
+
+  @@map("render_job")
+}
+
+model Attestation {
+  id        Int      @id(map: "PK_attestation") @default(autoincrement())
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+
+  // Core EAS fields
+  uid             String @unique @db.VarChar
+  attester        String @db.VarChar
+  recipient       String @db.VarChar
+  time            Int // Using time instead of timestamp to mimic AES indexer
+  blockNumber     Int
+  transactionHash String @db.VarChar
+  schemaId        String @db.VarChar
+
+  // Prediction market raw data
+  data            String @db.VarChar
+  decodedDataJson String @default("") @db.VarChar
+
+  // Prediction market schema data
+  resolver    String?    @db.VarChar
+  conditionId String?    @db.VarChar
+  condition   Condition? @relation(fields: [conditionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  prediction  String     @db.VarChar
+  comment     String?    @db.Text
+
+  // Relation to scores
+  attestation_score AttestationScore?
+
+  @@unique([uid], map: "UQ_attestation_uid")
+  @@index([attester], map: "IDX_attestation_attester")
+  @@index([recipient], map: "IDX_attestation_recipient")
+  @@index([time], map: "IDX_attestation_time")
+  @@index([resolver], map: "IDX_attestation_resolver")
+  @@map("attestation")
+}
+
+model AttestationScore {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+
+  // Foreign keys and identifiers
+  attestationId Int         @unique
+  attestation   Attestation @relation(fields: [attestationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  attester      String      @db.VarChar
+  marketAddress String?     @db.VarChar
+  marketId      String?     @db.VarChar
+  questionId    String?     @db.VarChar
+  resolver      String?     @db.VarChar
+
+  // Forecast metadata
+  madeAt Int
+  used   Boolean @default(false)
+
+  // Probability and scoring
+  probabilityD18   String?   @db.VarChar
+  probabilityFloat Float?
+  outcome          Int?
+  errorSquared     Float?
+  scoredAt         DateTime? @db.Timestamp(6)
+
+  @@index([attester], map: "IDX_attestation_score_attester")
+  @@index([marketAddress], map: "IDX_attestation_score_market_address")
+  @@index([marketId], map: "IDX_attestation_score_market_id")
+  @@index([attester, marketAddress, marketId], map: "IDX_attestation_score_attester_market")
+  @@index([attester, marketAddress, marketId, madeAt], map: "IDX_attestation_score_attester_market_madeat")
+  @@map("attestation_score")
+}
+
+/// Precomputed horizon-weighted error per (attester, market)
+model AttesterMarketTwError {
+  id            Int      @id @default(autoincrement())
+  createdAt     DateTime @default(now()) @db.Timestamp(6)
+  attester      String   @db.VarChar
+  marketAddress String   @db.VarChar
+  marketId      String   @db.VarChar
+  twError       Float
+  computedAt    DateTime @updatedAt @db.Timestamp(6)
+
+  @@unique([attester, marketAddress, marketId], map: "UQ_attester_market_tw_error")
+  @@index([attester], map: "IDX_attester_market_tw_error_attester")
+  @@index([marketAddress, marketId], map: "IDX_attester_market_tw_error_market")
+  @@map("attester_market_tw_error")
+}
+
+/// Chat message history for ephemeral chat websocket
+model ChatMessage {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  text      String   @db.Text
+  address   String?  @db.VarChar
+  timestamp BigInt   @db.BigInt
+
+  @@index([timestamp], map: "IDX_chat_message_timestamp")
+  @@index([address], map: "IDX_chat_message_address")
+  @@map("chat_message")
+}
+
+model Condition {
+  id             String    @id @db.VarChar
+  createdAt      DateTime  @default(now()) @db.Timestamp(6)
+  question       String    @db.VarChar
+  shortName      String?   @db.VarChar
+  categoryId     Int?
+  category       Category? @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  endTime        Int
+  public         Boolean   @default(true)
+  claimStatement String    @db.VarChar
+  description    String    @db.Text
+  similarMarkets String[]  @default([])
+  chainId        Int       @default(42161)
+  openInterest   String    @default("0") @db.VarChar
+  /// Canonical resolver address for this condition (latest observed wins)
+  resolver       String?   @db.VarChar
+
+  // Resolution status
+  settled            Boolean @default(false)
+  resolvedToYes      Boolean @default(false)
+  settledAt          Int?
+  assertionId        String? @db.VarChar
+  assertionTimestamp Int?
+
+  // Condition group relationship
+  conditionGroupId Int?
+  conditionGroup   ConditionGroup? @relation(fields: [conditionGroupId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  displayOrder     Int? // Order within group, null when not in a group
+
+  // Normalized predictions
+  predictions Prediction[]
+
+  // Attestations referencing this condition
+  attestations Attestation[]
+
+  // V2 picks referencing this condition
+  v2Picks V2Pick[]
+
+  @@index([categoryId])
+  @@index([endTime])
+  @@index([conditionGroupId])
+  @@index([resolver], map: "IDX_condition_resolver")
+  @@index([public, chainId, settled, conditionGroupId], map: "IDX_condition_market_filter")
+  // Raw SQL indexes (not representable in Prisma, managed via migration):
+  // - IDX_condition_oi_numeric: ("openInterest"::numeric) DESC WHERE public = true
+  // - IDX_condition_public_endtime: "endTime" DESC WHERE public = true
+  @@map("condition")
+}
+
+model ConditionGroup {
+  id             Int         @id @default(autoincrement())
+  createdAt      DateTime    @default(now()) @db.Timestamp(6)
+  name           String      @unique @db.VarChar
+  categoryId     Int?
+  category       Category?   @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  similarMarkets String[]    @default([])
+  /// @TypeGraphQL.field(name: "conditions")
+  condition      Condition[]
+
+  @@index([categoryId])
+  @@map("condition_group")
+}
+
+model Prediction {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+
+  // The market condition being predicted
+  conditionId String
+  condition   Condition @relation(fields: [conditionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  // Exactly one of these should be set; enforced in application logic
+  positionId Int?
+  position   Position? @relation(fields: [positionId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  limitOrderId Int?
+  limitOrder   LimitOrder? @relation(fields: [limitOrderId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  // Conceptual prediction data
+  outcomeYes Boolean
+
+  // Optional derived / debugging / traceability fields
+  chainId Int?
+
+  @@unique([positionId, conditionId], map: "UQ_prediction_position_condition")
+  @@unique([limitOrderId, conditionId], map: "UQ_prediction_limit_order_condition")
+  @@index([conditionId], map: "IDX_prediction_condition")
+  @@index([positionId], map: "IDX_prediction_position")
+  @@index([limitOrderId], map: "IDX_prediction_limit_order")
+  @@map("prediction")
+}
+
+/// Position model to store on-chain prediction positions
+model Position {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+
+  // On-chain identifiers
+  chainId                Int
+  marketAddress          String  @db.VarChar
+  predictor              String  @db.VarChar
+  counterparty           String  @db.VarChar
+  predictorNftTokenId    String  @db.VarChar
+  counterpartyNftTokenId String  @db.VarChar
+  totalCollateral        String  @db.VarChar
+  predictorCollateral    String? @db.VarChar
+  counterpartyCollateral String? @db.VarChar
+  refCode                String? @db.VarChar
+
+  // Status
+  status       PositionStatus @default(active)
+  /// True when the predictor's submitted outcomes were correct (previously makerWon)
+  predictorWon Boolean?
+  mintedAt     Int
+  settledAt    Int?
+
+  // Derived for UI convenience
+  endsAt Int?
+
+  // Normalized predictions
+  predictions Prediction[]
+
+  @@index([predictor], map: "IDX_position_predictor")
+  @@index([counterparty], map: "IDX_position_counterparty")
+  @@index([chainId, marketAddress], map: "IDX_position_chain_market")
+  @@map("position")
+}
+
+enum PositionStatus {
+  active
+  settled
+  consolidated
+}
+
+model LimitOrder {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+
+  // On-chain identifiers
+  chainId       Int
+  marketAddress String @db.VarChar
+  orderId       String @db.VarChar
+  predictor     String @db.VarChar
+  resolver      String @db.VarChar
+
+  // Order details
+  predictorCollateral    String  @db.VarChar
+  counterpartyCollateral String  @db.VarChar
+  refCode                String? @db.VarChar
+
+  // Status and lifecycle
+  status LimitOrderStatus @default(pending)
+
+  // Timestamps
+  placedAt    Int
+  filledAt    Int?
+  cancelledAt Int?
+
+  // Set when order is filled
+  counterparty String? @db.VarChar
+
+  // Transaction hashes for traceability
+  placedTxHash    String  @db.VarChar
+  filledTxHash    String? @db.VarChar
+  cancelledTxHash String? @db.VarChar
+
+  // Normalized predictions
+  predictions Prediction[]
+
+  @@unique([chainId, marketAddress, orderId], map: "UQ_limit_order_chain_market_id")
+  @@index([predictor], map: "IDX_limit_order_predictor")
+  @@index([chainId, status], map: "IDX_limit_order_chain_status")
+  @@index([status], map: "IDX_limit_order_status")
+  @@map("limit_order")
+}
+
+enum LimitOrderStatus {
+  pending
+  filled
+  cancelled
+}
+
+/// Application-level user record, keyed by wallet address,
+/// used for referrals and other per-wallet metadata.
+model User {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
+
+  /// Canonical Ethereum wallet address for this user.
+  address String @unique(map: "UQ_user_address") @db.VarChar
+
+  /// keccak256(utf8(trimmed_lowercase_code)) stored as 0x-prefixed hex.
+  refCodeHash String? @unique(map: "UQ_user_ref_code_hash") @db.VarChar
+
+  /// Maximum number of referrals this user's code allows. Default is 0,
+  /// so codes are not usable until explicitly configured.
+  maxReferrals Int @default(0)
+
+  referredById Int?
+  referredBy   User?  @relation("UserReferrals", fields: [referredById], references: [id])
+  referrals    User[] @relation("UserReferrals")
+
+  referredByCodeId  Int?
+  referredByCode    ReferralCode? @relation("AdminCodeClaims", fields: [referredByCodeId], references: [id])
+
+  @@index([address], map: "IDX_user_address")
+  @@map("app_user")
+}
+
+
+model ReferralCode {
+  id           Int       @id @default(autoincrement())
+  createdAt    DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt    DateTime  @updatedAt @db.Timestamp(6)
+
+
+  codeHash     String    @unique(map: "UQ_referral_code_hash") @db.VarChar
+  maxClaims    Int
+  isActive     Boolean   @default(true)
+  expiresAt    Int?
+  createdBy    String    @db.VarChar
+  creatorType  String    @default("user") @db.VarChar(10)
+  claimedBy    User[]    @relation("AdminCodeClaims")
+  @@index([codeHash], map: "IDX_referral_code_hash")
+  @@index([isActive], map: "IDX_referral_code_active")
+  @@index([createdBy], map: "IDX_referral_code_created_by")
+  @@map("referral_code")
+}
+
+/// Daily snapshot of protocol stats from Vault and PredictionMarket contracts
+model ProtocolStatsSnapshot {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+
+  /// Unix timestamp of the snapshot (UTC midnight, seconds since epoch)
+  timestamp     Int      @unique(map: "UQ_protocol_stats_snapshot_timestamp")
+  chainId       Int      @default(5064014)
+
+  /// Vault balance: wUSDe.balanceOf(vault) only, excludes deployed funds (in wei)
+  vaultBalance  String   @db.VarChar
+
+  /// Vault available assets: vault.availableAssets() - excludes pending deposits (in wei)
+  vaultAvailableAssets String @default("0") @db.VarChar
+
+  /// Vault deployed: vault.totalDeployed() - funds deployed to escrow (in wei)
+  vaultDeployed String   @default("0") @db.VarChar
+
+  /// Escrow balance: wUSDe.balanceOf(predictionMarket) (in wei)
+  escrowBalance String @db.VarChar
+
+  /// Vault PnL metrics
+  vaultRealizedPnL      String   @default("0") @db.VarChar  // Total realized PnL from predictions
+  vaultAirdropGains     String   @default("0") @db.VarChar  // Unexpected balance increases
+  vaultDeposits         String   @default("0") @db.VarChar  // Total user deposits
+  vaultWithdrawals      String   @default("0") @db.VarChar  // Total user withdrawals
+  vaultPositionsWon     Int      @default(0)
+  vaultPositionsLost    Int      @default(0)
+  vaultCollateralWon    String   @default("0") @db.VarChar
+  vaultCollateralLost   String   @default("0") @db.VarChar
+
+  @@index([timestamp], map: "IDX_protocol_stats_snapshot_timestamp")
+  @@index([chainId])
+  @@map("protocol_stats_snapshot")
+}
+
+// ============================================================================
+// V2 Protocol Models (PredictionMarketEscrow)
+// ============================================================================
+
+/// V2 Pick Configuration - Fungible betting pool for a specific pick combination
+/// Corresponds to on-chain pickConfigId
+model V2PickConfiguration {
+  id        String   @id @db.VarChar // pickConfigId (bytes32)
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+
+  // On-chain identifiers
+  chainId       Int
+  marketAddress String @db.VarChar // PredictionMarketEscrow address
+
+  // Pool collateral state
+  totalPredictorCollateral      String @db.VarChar // wei
+  totalCounterpartyCollateral   String @db.VarChar // wei
+  claimedPredictorCollateral    String @default("0") @db.VarChar // wei
+  claimedCounterpartyCollateral String @default("0") @db.VarChar // wei
+
+  // Resolution state
+  resolved   Boolean            @default(false)
+  result     V2SettlementResult @default(UNRESOLVED)
+  resolvedAt Int?
+
+  // Token addresses (set on first mint)
+  predictorToken    String? @db.VarChar
+  counterpartyToken String? @db.VarChar
+
+  // Derived from picks for UI convenience
+  endsAt Int?
+
+  // Relations
+  picks V2Pick[]
+
+  @@unique([chainId, marketAddress, id], map: "UQ_v2_pick_config_chain_market_id")
+  @@index([chainId, marketAddress], map: "IDX_v2_pick_config_chain_market")
+  @@index([resolved], map: "IDX_v2_pick_config_resolved")
+  @@map("v2_pick_configuration")
+}
+
+/// V2 Settlement Result - Matches on-chain SettlementResult enum
+enum V2SettlementResult {
+  UNRESOLVED
+  PREDICTOR_WINS
+  COUNTERPARTY_WINS
+  NON_DECISIVE
+}
+
+/// V2 Pick - Individual pick within a pick configuration
+model V2Pick {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+
+  // Parent configuration
+  pickConfigId      String              @db.VarChar
+  pickConfiguration V2PickConfiguration @relation(fields: [pickConfigId], references: [id], onDelete: Cascade)
+
+  // Pick data
+  conditionResolver String @db.VarChar // resolver contract address
+  conditionId       String @db.VarChar // bytes32
+  predictedOutcome  Int // 0 = YES, 1 = NO
+
+  // Link to condition metadata (if exists)
+  condition Condition? @relation(fields: [conditionId], references: [id], onDelete: SetNull)
+
+  @@unique([pickConfigId, conditionResolver, conditionId], map: "UQ_v2_pick_config_resolver_condition")
+  @@index([conditionId], map: "IDX_v2_pick_condition")
+  @@index([conditionResolver], map: "IDX_v2_pick_resolver")
+  @@map("v2_pick")
+}
+
+/// V2 Prediction - Individual prediction record
+/// Corresponds to on-chain predictionId from PredictionCreated event
+model V2Prediction {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+
+  // On-chain identifier
+  predictionId  String @unique @db.VarChar // bytes32
+  chainId       Int
+  marketAddress String @db.VarChar // PredictionMarketEscrow address
+
+  // Parties
+  predictor    String @db.VarChar // EOA or smart account
+  counterparty String @db.VarChar // EOA or smart account
+
+  // Position tokens
+  predictorToken    String @db.VarChar // ERC20 token address
+  counterpartyToken String @db.VarChar // ERC20 token address
+
+  // Wagers
+  predictorWager    String @db.VarChar // wei
+  counterpartyWager String @db.VarChar // wei
+
+  // Collateral deposited (from CollateralDeposited event)
+  collateralDeposited   String? @db.VarChar // wei
+  collateralDepositedAt Int?
+
+  // Settlement status (from PredictionSettled event)
+  settled              Boolean            @default(false)
+  settledAt            Int?
+  settleTxHash         String?            @db.VarChar
+  result               V2SettlementResult @default(UNRESOLVED)
+  predictorClaimable   String?            @db.VarChar // wei
+  counterpartyClaimable String?           @db.VarChar // wei
+
+  // Transaction info
+  onChainCreatedAt Int // block timestamp when prediction was created
+  createTxHash     String @db.VarChar
+
+  // Referral
+  refCode String? @db.VarChar // bytes32
+
+  @@unique([chainId, marketAddress, predictionId], map: "UQ_v2_prediction_chain_market_id")
+  @@index([predictor], map: "IDX_v2_prediction_predictor")
+  @@index([counterparty], map: "IDX_v2_prediction_counterparty")
+  @@index([chainId, marketAddress], map: "IDX_v2_prediction_chain_market")
+  @@map("v2_prediction")
+}
+
+/// V2 Position Token Balance - Track ERC20 position token holdings
+model V2PositionBalance {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
+
+  // Token identity
+  chainId          Int
+  tokenAddress     String  @db.VarChar // PredictionMarketToken address
+  pickConfigId     String  @db.VarChar // Associated pick configuration
+  isPredictorToken Boolean // true = predictor token, false = counterparty token
+
+  // Holder
+  holder String @db.VarChar // EOA or smart account
+
+  // Balance
+  balance String @db.VarChar // ERC20 balance in wei
+
+  @@unique([chainId, tokenAddress, holder], map: "UQ_v2_position_balance_chain_token_holder")
+  @@index([holder], map: "IDX_v2_position_balance_holder")
+  @@index([pickConfigId], map: "IDX_v2_position_balance_pick_config")
+  @@index([chainId, tokenAddress], map: "IDX_v2_position_balance_chain_token")
+  @@map("v2_position_balance")
+}
+
+/// V2 Burn Record - Track bilateral burns (PositionsBurned event)
+model V2BurnRecord {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+
+  // On-chain identifiers
+  chainId       Int
+  marketAddress String @db.VarChar
+  pickConfigId  String @db.VarChar // bytes32
+
+  // Parties
+  predictorHolder    String @db.VarChar
+  counterpartyHolder String @db.VarChar
+
+  // Token amounts burned
+  predictorTokensBurned    String @db.VarChar
+  counterpartyTokensBurned String @db.VarChar
+
+  // Payouts
+  predictorPayout    String @db.VarChar
+  counterpartyPayout String @db.VarChar
+
+  // Transaction info
+  burnedAt Int // block timestamp
+  txHash   String @db.VarChar
+
+  // Referral
+  refCode String? @db.VarChar
+
+  @@index([pickConfigId], map: "IDX_v2_burn_record_pick_config")
+  @@index([predictorHolder], map: "IDX_v2_burn_record_predictor")
+  @@index([counterpartyHolder], map: "IDX_v2_burn_record_counterparty")
+  @@map("v2_burn_record")
+}
+
+/// V2 Redemption Record - Track post-resolution redemptions (TokensRedeemed event)
+model V2RedemptionRecord {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+
+  // On-chain identifiers
+  chainId       Int
+  marketAddress String @db.VarChar
+  predictionId  String @db.VarChar // bytes32
+
+  // Holder
+  holder        String @db.VarChar // EOA or smart account
+  positionToken String @db.VarChar // Token address redeemed
+
+  // Amounts
+  tokensBurned   String @db.VarChar // Tokens burned
+  collateralPaid String @db.VarChar // Collateral received
+
+  // Transaction info
+  redeemedAt Int // block timestamp
+  txHash     String @db.VarChar
+
+  // Referral
+  refCode String? @db.VarChar // bytes32
+
+  @@index([predictionId], map: "IDX_v2_redemption_prediction")
+  @@index([holder], map: "IDX_v2_redemption_holder")
+  @@map("v2_redemption_record")
+}
+
+/// V2 Indexer State - Track indexing progress per chain
+model V2IndexerState {
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
+
+  // Chain identity
+  chainId       Int    @unique
+  marketAddress String @db.VarChar
+
+  // Indexing progress
+  lastIndexedBlock Int
+  lastIndexedAt    DateTime @db.Timestamp(6)
+
+  @@map("v2_indexer_state")
+}
+
+/// Indexed vault deposit/withdrawal events for accurate PnL tracking
+model VaultFlowEvent {
+  id              Int      @id @default(autoincrement())
+  createdAt       DateTime @default(now()) @db.Timestamp(6)
+  chainId         Int
+  blockNumber     Int
+  transactionHash String   @db.VarChar
+  timestamp       Int
+  logIndex        Int
+  eventType       String   @db.VarChar  // 'deposit' or 'withdrawal'
+  user            String   @db.VarChar
+  assets          String   @db.VarChar  // Amount in wei
+  shares          String   @db.VarChar  // Shares minted/burned
+
+  @@unique([chainId, transactionHash, logIndex])
+  @@index([chainId, timestamp])
+  @@index([eventType])
+  @@map("vault_flow_event")
+}

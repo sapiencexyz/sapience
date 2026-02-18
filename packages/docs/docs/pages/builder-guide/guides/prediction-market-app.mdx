@@ -1,0 +1,212 @@
+---
+title: Apps and Interfaces
+description: "Fork the Sapience app or build a custom prediction market interface with the SDK."
+---
+
+:::::info
+**We strongly recommend** using Cursor, Codex, Claude Code, or any other LLM-powered code editor. You may be surprised by how far you can get without writing code yourself. [See Get Started](/builder-guide/getting-started/get-started)
+:::::
+
+# Apps and Interfaces
+
+Build your own prediction market products by customizing the open source [Sapience app](https://sapience.xyz) or starting fresh with [the components in the SDK](/builder-guide/storybook).
+
+:::code-group
+
+<div data-title="Customize the Sapience app">
+
+## Customize the Sapience App
+
+Fork and ship your own version of the Sapience app. If you run into trouble at any step, ask the Cursor agent in the chat panel to diagnose and fix issues.
+
+### Clone the repository using Cursor
+
+[Install Cursor](/builder-guide/getting-started/get-started#cursor-setup) and then:
+
+1. Open the Command Palette in Cursor (Cmd/Ctrl+Shift+P) and choose "Git: Clone".
+2. Paste the repo URL: `https://github.com/sapiencexyz/sapience.git`
+3. Choose a destination folder, then open the cloned repository in Cursor.
+4. If prompted, "Trust the authors" and install recommended extensions.
+
+### Run your copy of the app
+
+Open the terminal in Cursor (Ctrl+`), then run these from the repository root:
+
+```bash
+pnpm install
+pnpm dev:app
+```
+
+**Prerequisites**:
+- Node.js >= 20.14
+- pnpm 9.x (install with `npm install -g pnpm@9`)
+
+If you need help installing these, use the Cursor agent or see the [Get Started guide](/builder-guide/getting-started/get-started).
+
+### Customize the app
+
+Use the Cursor chat panel to prompt the agent to implement your change. Describe the change in plain language and ask it to write/apply the edit, run the app, and fix any errors.
+
+For example:
+
+- Prompt an update such as: "If a user enters a position size greater than 1000, render the responsible position size warning text in aLtErNaTiNg CaSe."
+- Review the code changes and ask the agent if you have questions about the implementation.
+- Verify your change live at `http://localhost:3000`.
+
+### Push your version to GitHub
+
+1. [Create a GitHub account](/builder-guide/getting-started/get-started#git-setup) if you don't already have one.
+2. In GitHub, open `sapiencexyz/sapience` and click "Fork" to create your copy.
+3. Point your local repo at your fork:
+
+Open the terminal in Cursor (Ctrl+`), then run these from the repository root:
+
+```bash
+git remote rename origin upstream
+git remote add origin https://github.com/<your-username>/sapience.git
+git checkout -b my-customization
+git add -A && git commit -m "Customize position form warning"
+git push -u origin my-customization
+```
+
+### Deploy to Vercel
+
+1. In [Vercel](https://vercel.com), create a New Project and import your fork.
+2. Root Directory: `packages/app`.
+3. Framework Preset: Next.js (auto).
+4. Install Command: `pnpm install --frozen-lockfile`.
+5. Build Command: `pnpm build`.
+6. Deploy.
+
+### Contribute a pull request
+
+1. Open a Pull Request from your fork/branch to `sapiencexyz/sapience:main`.
+2. Describe what you changed and why. Include screenshots or a brief demo if relevant.
+3. Respond to any review feedback; once approved, your improvements can be merged to the main Sapience app.
+
+</div>
+
+<div data-title="Build your own app">
+
+## Build from Scratch with the SDK
+
+Scaffold a Next.js app that uses the `@sapience/sdk` package for forms and components, and wires data via GraphQL and the Auction APIs.
+
+### Create a new Next.js app
+
+Prerequisites: Node >= 20.14 and pnpm 9.x.
+
+```bash
+pnpm create next-app my-sapience-app --ts --tailwind --eslint --app --use-pnpm --src-dir
+cd my-sapience-app
+```
+
+### Install @sapience/sdk
+
+```bash
+pnpm add @sapience/sdk
+```
+
+### Install peer dependencies
+
+`@sapience/sdk` expects certain libraries to be provided by your app. Install the core set below, then add optional ones as you use the corresponding components.
+
+**Core peer deps:**
+
+```bash
+pnpm add next react react-dom react-hook-form @tanstack/react-query wagmi viem graphql @apollo/client lucide-react lightweight-charts framer-motion next-themes
+```
+
+**Optional/feature-specific peer deps** (install only if needed):
+
+```bash
+pnpm add @rainbow-me/rainbowkit @tanstack/react-table date-fns dayjs jsbi react-countup next-pwa @uniswap/sdk-core @uniswap/v3-core @uniswap/v3-sdk
+```
+
+Tip: If you run into version conflicts, check `@sapience/sdk`'s `peerDependencies` for compatible versions.
+
+### Start the dev server
+
+```bash
+pnpm dev
+```
+
+### Import components and hooks
+
+```tsx
+import { TradeForm } from '@sapience/ui';
+```
+
+### Connect data
+
+- **GraphQL**: fetch markets, prices, and positions
+- **Auction WS**: submit/receive quotes for Auction Markets
+
+### Example page
+
+```tsx
+import { TradeForm } from '@sapience/ui';
+
+export default function TradePage() {
+  async function onTradeSubmit(values: { size: string; direction: 'Long' | 'Short'; slippage: string; }) {
+    // Integrate with contract write logic or auction relayer
+    console.log('submit trade', values);
+  }
+
+  return (
+    <TradeForm
+      onTradeSubmit={onTradeSubmit}
+      collateralAssetTicker="USDe"
+      walletBalanceDisplay="100.0"
+    />
+  );
+}
+```
+
+### GraphQL example
+
+```typescript
+import { GraphQLClient, gql } from 'graphql-request';
+
+const client = new GraphQLClient('https://api.sapience.xyz/graphql');
+
+const MarketsQuery = gql`
+  query Markets {
+    markets { id title status }
+  }
+`;
+
+export async function fetchMarkets() {
+  return client.request(MarketsQuery);
+}
+```
+
+### Theming and UI
+
+`@sapience/ui` ships with shadcn-like primitives and a Tailwind preset. Import the preset and include it in your Tailwind config.
+
+```typescript
+// tailwind.config.ts
+import type { Config } from 'tailwindcss'
+import sapiencePreset from '@sapience/ui/tailwind-preset'
+
+export default {
+  presets: [sapiencePreset],
+  content: [
+    './pages/**/*.{ts,tsx}',
+    './components/**/*.{ts,tsx}',
+    './app/**/*.{ts,tsx}',
+    './node_modules/@sapience/ui/**/*.{js,mjs,ts,tsx}'
+  ],
+} satisfies Config
+```
+
+### Next Steps
+
+- Add market data via [GraphQL](/builder-guide/api/graphql)
+- Add [Auction Relayer](/builder-guide/api/auction-relayer) for trading via auctions
+- Browse available [UI Components](/builder-guide/storybook) in Storybook
+
+</div>
+
+:::

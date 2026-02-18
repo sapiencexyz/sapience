@@ -1,0 +1,50 @@
+---
+title: "Contracts & Addresses"
+description: "Deployed contract addresses, ABIs, and supported chains."
+---
+
+# Contracts & Addresses
+
+All deployed addresses and ABIs are available in the SDK:
+
+```bash
+npm install @sapience/sdk
+```
+
+```typescript
+import { contracts } from '@sapience/sdk/contracts';
+import { predictionMarketAbi, liquidityVaultAbi } from '@sapience/sdk/abis';
+
+const escrow = contracts.predictionMarket[5064014].address;
+const vault  = contracts.passiveLiquidityVault[5064014].address;
+```
+
+## Supported Chains
+
+| Chain             | ID         | Explorer                                       | Usage                          |
+| ----------------- | ---------- | ---------------------------------------------- | ------------------------------ |
+| Ethereal          | `5064014`  | [explorer.ethereal.trade](https://explorer.ethereal.trade)                   | Primary chain for markets & vaults |
+| Ethereal Testnet  | `13374202` | [testnet-explorer.ethereal.trade](https://testnet-explorer.ethereal.trade)   | v2 contracts                   |
+| Arbitrum          | `42161`    | [arbiscan.io](https://arbiscan.io)             | EAS attestations (forecasts)   |
+
+## Ethereal Mainnet
+
+| Contract                | Address | SDK key |
+| ----------------------- | ------- | ------- |
+| PredictionMarketEscrow  | [`0xAcD757322df2A1A0B3283c851380f3cFd4882cB4`](https://explorer.ethereal.trade/address/0xAcD757322df2A1A0B3283c851380f3cFd4882cB4) | `predictionMarket` |
+| PolymarketResolver      | [`0xdC1Fa830aD1de01f1EF603749f48bD73384286BE`](https://explorer.ethereal.trade/address/0xdC1Fa830aD1de01f1EF603749f48bD73384286BE) | `predictionMarketLZConditionalTokensResolver` |
+| PredictionMarketVault   | [`0x5c1d4feD296d2637205Ac132CE3e030F5d94d026`](https://explorer.ethereal.trade/address/0x5c1d4feD296d2637205Ac132CE3e030F5d94d026) | `passiveLiquidityVault` |
+
+## Ethereal Testnet (v2)
+
+| Contract                | Address | SDK key |
+| ----------------------- | ------- | ------- |
+| PredictionMarketEscrow  | [`0x7b00088CA92d4f11F305CC61758De3580a730f39`](https://testnet-explorer.ethereal.trade/address/0x7b00088CA92d4f11F305CC61758De3580a730f39) | `predictionMarket` |
+| PolymarketResolver      | [`0x2A97702591ACCbF330c6c813C46DE287653eb645`](https://testnet-explorer.ethereal.trade/address/0x2A97702591ACCbF330c6c813C46DE287653eb645) | `lzPMResolver` |
+| PredictionMarketVault   | [`0xb52883b935796Ef6d881B22B4fA9d46a374905D7`](https://testnet-explorer.ethereal.trade/address/0xb52883b935796Ef6d881B22B4fA9d46a374905D7) | `passiveLiquidityVault` |
+
+## Arbitrum — EAS (Forecasts)
+
+| Contract | Address | SDK key |
+| -------- | ------- | ------- |
+| EAS      | [`0xbD75f629A22Dc1ceD33dDA0b68c546A1c035c458`](https://arbiscan.io/address/0xbD75f629A22Dc1ceD33dDA0b68c546A1c035c458) | `eas` |

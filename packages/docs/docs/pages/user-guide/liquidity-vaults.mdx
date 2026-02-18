@@ -1,0 +1,53 @@
+---
+title: "Liquidity Vaults"
+description: "Pool capital with a vault manager who deploys it across Sapience prediction markets."
+---
+
+# Liquidity Vaults
+
+Vaults allow a manager to deploy pooled capital as market-making liquidity in Sapience prediction markets. You deposit USDe to a vault and receive shares representing your ownership of the pool.
+
+**Depositing to a vault carries risk.** The vault manager can participate in prediction markets with these funds as they see fit—only deposit to vaults whose manager you trust.
+
+Explore vaults and deposit at [sapience.xyz/vaults](https://sapience.xyz/vaults).
+
+## How It Works
+
+1. **You deposit USDe** — Your collateral goes into the vault and you receive vault shares representing your ownership.
+2. **The manager deploys funds** — A designated manager uses the vault's capital to respond to auction requests across prediction markets.
+3. **The vault's assets change** — As the vault takes positions, wins, and losses, the total assets grow or shrink. Your shares represent a proportional claim on those assets.
+4. **You withdraw** — Request a withdrawal and receive USDe back, proportional to your share of the vault.
+
+The vault is a smart contract that holds collateral and can sign bids on your behalf. The manager decides *which* auctions to bid on and at what odds, but cannot withdraw your funds—only you can do that by redeeming your shares.
+
+## Depositing
+
+1. Click **Deposit** on the vault page.
+2. Enter the amount of USDe you want to deposit.
+3. Approve the transaction—your USDe is transferred to the vault.
+4. A vault manager processes your deposit request and you receive vault shares.
+
+Deposits use a request-based system. After you submit, the manager confirms the deposit within a short window (typically minutes). If conditions change significantly, you can cancel an unprocessed request and get your USDe back.
+
+## Withdrawing
+
+1. Click **Withdraw** on the vault page.
+2. Enter the number of shares (or equivalent USDe amount) you want to withdraw.
+3. Submit the withdrawal request.
+4. The manager processes your request and transfers USDe to your wallet.
+
+Withdrawals also go through the request system. Vaults typically maintains liquidity reserves so most withdrawals process quickly. If some funds are deployed in active positions, you may need to wait for those positions to settle.
+
+## Vault Shares
+
+When you deposit, you receive **vault shares**—an ERC-20 token representing your ownership stake. If the vault grows from 1,000 USDe to 1,100 USDe while you hold 10% of shares, your shares should now be worth 110 USDe instead of 100 USDe.
+
+Shares are transferable, so you can send them to another wallet or use them in other DeFi protocols.
+
+## Deploying Your Own Vault
+
+Advanced users can deploy custom vaults with their own manager address and parameters. Click **Deploy Vault** on the vault page to create one.
+
+Custom vaults let you run your own market-making strategy, set custom utilization limits, and manage deposits from other users.
+
+See the [Liquidity Provisioning guide](/user-guide/liquidity-provisioning) for more on providing liquidity directly.

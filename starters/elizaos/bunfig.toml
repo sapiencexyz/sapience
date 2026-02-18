@@ -1,0 +1,7 @@
+[install]
+# Ensure bun is used for package management
+lockfile = true
+
+[build]
+# Ensure bun is used for builds
+compile = true

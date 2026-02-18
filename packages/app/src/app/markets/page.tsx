@@ -1,27 +1,18 @@
-import { Loader2 } from 'lucide-react';
 import type { Metadata } from 'next';
-import { Suspense } from 'react';
-
-import MarketsTable from '~/components/marketsTable';
+import PageContainer from '~/components/layout/PageContainer';
+import MarketsPageClient from './MarketsPageClient';
 
 export const metadata: Metadata = {
-  title: 'Gas and Blobspace Markets',
+  title: 'Prediction Markets',
+  description: 'Browse prediction markets across various focus areas',
 };
 
-const Market = () => {
+const ForecastingPage = () => {
   return (
-    <div className="container mx-auto p-8 max-w-8xl">
-      <Suspense
-        fallback={
-          <div className="flex justify-center items-center py-8">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
-        }
-      >
-        <MarketsTable />
-      </Suspense>
-    </div>
+    <PageContainer>
+      <MarketsPageClient />
+    </PageContainer>
   );
 };
 
-export default Market;
+export default ForecastingPage;

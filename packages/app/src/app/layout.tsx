@@ -1,33 +1,42 @@
-import { Toaster } from '@foil/ui/components/ui/toaster';
 import type { Metadata, Viewport } from 'next';
 import type React from 'react';
-
+import { Suspense } from 'react';
+import { Analytics } from '@vercel/analytics/react';
+import { Toaster } from '@sapience/ui/components/ui/toaster';
+import { TooltipProvider } from '@sapience/ui/components/ui/tooltip';
 import Providers from '~/app/providers';
-import '@rainbow-me/rainbowkit/styles.css';
-import '../lib/styles/globals.css';
-import InstallDialog from '~/components/InstallDialog';
+import { ibmPlexMono } from '~/app/fonts';
 import Layout from '~/components/layout';
-import LoadingSpinner from '~/components/loadingSpinner';
+import ChatWidget from '~/components/shared/ChatWidget';
+import ConsoleMessage from '~/components/shared/ConsoleMessage';
+import FloatingChatButton from '~/components/shared/FloatingChatButton';
+import GlobalLoader from '~/components/shared/GlobalLoader';
+import InstallDialog from '~/components/shared/InstallDialog';
+import { ChatProvider } from '~/lib/context/ChatContext';
 import { LoadingProvider } from '~/lib/context/LoadingContext';
+import '~/styles/globals.css';
 
 type RootLayoutProps = {
   children: React.ReactNode;
 };
 
-const APP_NAME = 'Foil';
-const APP_DESCRIPTION =
-  'Foil is a fully decentralized marketplace connecting producers of onchain computing resources with consumers.';
+const APP_NAME = 'Sapience';
+const APP_DESCRIPTION = 'Sapience Prediction Markets';
 const LARGE_ICON_PATH = '/icons/icon-512x512.png';
-const DEFAULT_OG_IMAGE = 'https://foil.xyz/og-image.png';
+const APP_URL = 'https://sapience.xyz';
+
+// Bump this version to cache-bust OG images on external platforms (Twitter, Discord, etc.)
+const OG_VERSION = 1;
+const DEFAULT_OG_IMAGE = `${APP_URL}/og-image.png?v=${OG_VERSION}`;
 
 export const metadata: Metadata = {
-  title: { default: APP_NAME, template: '%s | Foil' },
+  title: { default: APP_NAME, template: `%s | ${APP_NAME}` },
   description: APP_DESCRIPTION,
   applicationName: APP_NAME,
   manifest: '/manifest.json',
-  metadataBase: new URL('https://foil.xyz'),
+  metadataBase: new URL(APP_URL),
   icons: {
-    icon: LARGE_ICON_PATH,
+    icon: [{ url: '/favicon.ico', type: 'image/x-icon', sizes: 'any' }],
     apple: [
       {
         url: LARGE_ICON_PATH,
@@ -35,7 +44,7 @@ export const metadata: Metadata = {
         type: 'image/png',
       },
     ],
-    shortcut: LARGE_ICON_PATH,
+    shortcut: '/favicon.ico',
   },
   appleWebApp: {
     capable: true,
@@ -48,10 +57,10 @@ export const metadata: Metadata = {
   },
   openGraph: {
     type: 'website',
-    url: 'https://foil.xyz',
+    url: APP_URL,
     title: {
       default: APP_NAME,
-      template: '%s | Foil',
+      template: '%s | Sapience',
     },
     description: APP_DESCRIPTION,
     siteName: APP_NAME,
@@ -61,17 +70,17 @@ export const metadata: Metadata = {
         url: DEFAULT_OG_IMAGE,
         width: 1200,
         height: 630,
-        alt: 'Foil is a fully decentralized marketplace connecting producers of onchain computing resources with consumers.',
+        alt: 'Sapience Prediction Markets',
       },
     ],
   },
   twitter: {
-    creator: '@foilxyz',
-    site: '@foilxyz',
+    creator: '@sapiencexyz',
+    site: '@sapiencexyz',
     card: 'summary_large_image',
     title: {
       default: APP_NAME,
-      template: '%s | Foil',
+      template: '%s | Sapience',
     },
     description: APP_DESCRIPTION,
     images: [DEFAULT_OG_IMAGE],
@@ -94,22 +103,38 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
-  themeColor: '#2C2C2E',
+  themeColor: 'black',
   viewportFit: 'cover',
 };
 
 const RootLayout = ({ children }: RootLayoutProps) => {
   return (
-    <html lang="en">
-      <body>
+    <html
+      lang="en"
+      className={`${ibmPlexMono.variable}`}
+      suppressHydrationWarning
+    >
+      <body className="overflow-x-hidden">
         <Providers>
           <LoadingProvider>
-            <LoadingSpinner />
-            <Layout>{children}</Layout>
-            <InstallDialog />
-            <Toaster />
+            <ChatProvider>
+              <GlobalLoader />
+              <TooltipProvider>
+                <Layout>{children}</Layout>
+              </TooltipProvider>
+              <Toaster />
+              <InstallDialog />
+              <div className="fixed bottom-5 right-4 md:right-6 z-[55]">
+                <Suspense fallback={null}>
+                  <FloatingChatButton />
+                </Suspense>
+              </div>
+              <ChatWidget />
+              <ConsoleMessage />
+            </ChatProvider>
           </LoadingProvider>
         </Providers>
+        <Analytics />
       </body>
     </html>
   );

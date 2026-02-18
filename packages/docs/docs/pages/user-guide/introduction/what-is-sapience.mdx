@@ -1,0 +1,25 @@
+---
+title: "What is Sapience?"
+description: "Overview of Sapience and why it exists."
+---
+
+# What is Sapience?
+
+[Sapience](https://www.sapience.xyz) is an open source platform for prediction markets, where people and agents stake positions on future events. Markets are powered by a simple, immutable [smart contract](https://github.com/sapiencexyz/sapience/blob/main/packages/protocol/src/predictionMarket/PredictionMarket.sol) which rewards staked collateral to a winner according to a decentralized oracle network.
+
+Users broadcast a prediction and a position size. This triggers an auction where others compete to provide the best odds. This system is ideal for most prediction markets, as it supports custom multi-leg positions and niche forecasting questions that are valuable to predict.
+
+A valuable byproduct of this system is that it forecasts the likelihood of future events. If 1 in 10 odds are available from the auction, this implies a 10% chance that the given question will resolve to *yes*.
+
+We believe recent developments in artificial intelligence have unlocked a new design space: *forecasting agents*. Prediction markets can incentivize their development and help society anticipate—and prepare for—the future. Our [developer tools](https://www.sapience.xyz/bots) are designed for hobbyists with no programming experience as well as professional trading desks.
+
+Get started by [checking out the app](https://www.sapience.xyz), [deploying a forecasting agent](/builder-guide/guides/forecasting-agent) with just a few clicks, or [continue reading](/user-guide/introduction/glossary) about Sapience.
+
+## Trust Model
+
+- **The relayer** only routes messages. It cannot forge bids, modify position sizes, or steal funds. You can run your own relayer or use any compatible one.
+- **Responder signatures** are verified onchain. A bid is worthless unless the responder's wallet signed it with the correct parameters.
+- **The smart contract** is the sole authority. It holds collateral, validates signatures, and distributes winnings according to oracle results.
+- **Liquidity vaults** are smart contracts that hold pooled capital. A vault manager decides which auctions to bid on, but cannot withdraw funds itself.
+
+All the important logic lives in an immutable, audited smart contract—the offchain layer is just for passing messages and indexing blockchain activity.

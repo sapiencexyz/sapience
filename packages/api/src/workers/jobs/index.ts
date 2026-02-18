@@ -1,0 +1,122 @@
+import { reindexEAS } from './reindexEAS';
+import { backfillAccuracy } from './backfillAccuracy';
+import { reindexAccuracy } from './reindexAccuracy';
+import { reindexPredictionMarket } from './reindexPredictionMarket';
+import {
+  computeAndStoreProtocolStats,
+  backfillProtocolStats,
+} from '../../helpers/protocolStats';
+
+const callReindexEAS = async (argv: string[]) => {
+  const chainId = parseInt(argv[3], 10);
+  const startTimestamp =
+    argv[4] !== 'undefined' ? parseInt(argv[4], 10) : undefined;
+  const endTimestamp =
+    argv[5] !== 'undefined' ? parseInt(argv[5], 10) : undefined;
+  const overwriteExisting = argv[6] === 'true';
+
+  if (isNaN(chainId)) {
+    console.error(
+      'Invalid arguments. Usage: tsx src/worker.ts reindexEAS <chainId> [startTimestamp] [endTimestamp] [overwriteExisting]'
+    );
+    process.exit(1);
+  }
+
+  const result = await reindexEAS(
+    chainId,
+    startTimestamp,
+    endTimestamp,
+    overwriteExisting
+  );
+
+  if (!result) {
+    console.error('Failed to reindex EAS');
+    process.exit(1);
+  }
+
+  console.log('Done reindexing EAS');
+  process.exit(0);
+};
+
+const callReindexPredictionMarket = async (argv: string[]) => {
+  const chainId = parseInt(argv[3], 10);
+  const startTimestamp =
+    argv[4] !== 'undefined' ? parseInt(argv[4], 10) : undefined;
+  const endTimestamp =
+    argv[5] !== 'undefined' ? parseInt(argv[5], 10) : undefined;
+  const clearExisting = argv[6] === 'true';
+
+  if (isNaN(chainId)) {
+    console.error(
+      'Invalid arguments. Usage: tsx src/worker.ts reindexPredictionMarket <chainId> [startTimestamp] [endTimestamp] [clearExisting]'
+    );
+    process.exit(1);
+  }
+
+  const result = await reindexPredictionMarket(
+    chainId,
+    startTimestamp,
+    endTimestamp,
+    clearExisting
+  );
+
+  if (!result) {
+    console.error('Failed to reindex prediction market');
+    process.exit(1);
+  }
+
+  console.log('Done reindexing prediction market');
+  process.exit(0);
+};
+
+const callBackfillAccuracy = async () => {
+  await backfillAccuracy();
+  console.log('Done backfilling accuracy scores');
+  process.exit(0);
+};
+
+export async function handleJobCommand(argv: string[]): Promise<boolean> {
+  const command = argv[2];
+
+  switch (command) {
+    case 'reindexEAS': {
+      await callReindexEAS(argv);
+      return true;
+    }
+    case 'backfillAccuracy': {
+      await callBackfillAccuracy();
+      return true;
+    }
+    case 'reindexAccuracy': {
+      const address = argv[3];
+      const marketId = argv[4];
+      await reindexAccuracy(address, marketId);
+      console.log('Done reindexing accuracy scores');
+      process.exit(0);
+      return true;
+    }
+    case 'reindexPredictionMarket': {
+      await callReindexPredictionMarket(argv);
+      return true;
+    }
+    case 'computeProtocolStats': {
+      const chainId = argv[3] ? parseInt(argv[3], 10) : undefined;
+      await computeAndStoreProtocolStats(chainId);
+      console.log('Done computing protocol stats');
+      process.exit(0);
+      return true;
+    }
+    case 'backfillProtocolStats': {
+      const days = argv[3] ? parseInt(argv[3], 10) : 90;
+      const chainId = argv[4] ? parseInt(argv[4], 10) : undefined;
+      await backfillProtocolStats(chainId, days);
+      console.log('Done backfilling protocol stats');
+      process.exit(0);
+      return true;
+    }
+    default: {
+      // No specific job command matched
+      return false;
+    }
+  }
+}

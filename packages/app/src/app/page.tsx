@@ -1,7 +1,11 @@
-'use client';
+import type { Metadata } from 'next';
+import HomePageContent from '~/components/home/pages/HomePageContent';
 
-import { redirect } from 'next/navigation';
+export const metadata: Metadata = {
+  title: { absolute: 'Sapience | Next-Gen Prediction Markets' },
+  description: 'Forecast the future with next-gen prediction markets',
+};
 
 export default function HomePage() {
-  redirect('/resources/ethereum-gas');
+  return <HomePageContent />;
 }

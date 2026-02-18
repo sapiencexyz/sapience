@@ -3,137 +3,1562 @@
 # !!!   DO NOT MODIFY THIS FILE BY YOURSELF   !!!
 # -----------------------------------------------
 
-type CandleType {
-  close: String!
-  high: String!
-  low: String!
-  open: String!
-  timestamp: Int!
+type AccuracyRankType {
+  accuracyScore: Float!
+  attester: String!
+  rank: Int
+  totalForecasters: Int!
 }
 
-type CategoryType {
-  id: ID!
-  markets: [MarketType!]!
+type AggregatedProfitEntryType {
+  owner: String!
+  totalPnL: Float!
+}
+
+type Attestation {
+  attestation_score(where: AttestationScoreWhereInput): AttestationScore
+  attester: String!
+  blockNumber: Int!
+  comment: String
+  condition(where: ConditionWhereInput): Condition
+  conditionId: String
+  createdAt: DateTimeISO!
+  data: String!
+  decodedDataJson: String!
+  id: Int!
+  prediction: String!
+  recipient: String!
+  resolver: String
+  schemaId: String!
+  time: Int!
+  transactionHash: String!
+  uid: String!
+}
+
+input AttestationListRelationFilter {
+  every: AttestationWhereInput
+  none: AttestationWhereInput
+  some: AttestationWhereInput
+}
+
+input AttestationOrderByRelationAggregateInput {
+  _count: SortOrder
+}
+
+input AttestationOrderByWithRelationInput {
+  attestation_score: AttestationScoreOrderByWithRelationInput
+  attester: SortOrder
+  blockNumber: SortOrder
+  comment: SortOrderInput
+  condition: ConditionOrderByWithRelationInput
+  conditionId: SortOrderInput
+  createdAt: SortOrder
+  data: SortOrder
+  decodedDataJson: SortOrder
+  id: SortOrder
+  prediction: SortOrder
+  recipient: SortOrder
+  resolver: SortOrderInput
+  schemaId: SortOrder
+  time: SortOrder
+  transactionHash: SortOrder
+  uid: SortOrder
+}
+
+input AttestationRelationFilter {
+  is: AttestationWhereInput
+  isNot: AttestationWhereInput
+}
+
+enum AttestationScalarFieldEnum {
+  attester
+  blockNumber
+  comment
+  conditionId
+  createdAt
+  data
+  decodedDataJson
+  id
+  prediction
+  recipient
+  resolver
+  schemaId
+  time
+  transactionHash
+  uid
+}
+
+type AttestationScore {
+  attestation: Attestation!
+  attestationId: Int!
+  attester: String!
+  createdAt: DateTimeISO!
+  errorSquared: Float
+  id: Int!
+  madeAt: Int!
+  marketAddress: String
+  marketId: String
+  outcome: Int
+  probabilityD18: String
+  probabilityFloat: Float
+  questionId: String
+  resolver: String
+  scoredAt: DateTimeISO
+  used: Boolean!
+}
+
+input AttestationScoreNullableRelationFilter {
+  is: AttestationScoreWhereInput
+  isNot: AttestationScoreWhereInput
+}
+
+input AttestationScoreOrderByWithRelationInput {
+  attestation: AttestationOrderByWithRelationInput
+  attestationId: SortOrder
+  attester: SortOrder
+  createdAt: SortOrder
+  errorSquared: SortOrderInput
+  id: SortOrder
+  madeAt: SortOrder
+  marketAddress: SortOrderInput
+  marketId: SortOrderInput
+  outcome: SortOrderInput
+  probabilityD18: SortOrderInput
+  probabilityFloat: SortOrderInput
+  questionId: SortOrderInput
+  resolver: SortOrderInput
+  scoredAt: SortOrderInput
+  used: SortOrder
+}
+
+input AttestationScoreWhereInput {
+  AND: [AttestationScoreWhereInput!]
+  NOT: [AttestationScoreWhereInput!]
+  OR: [AttestationScoreWhereInput!]
+  attestation: AttestationRelationFilter
+  attestationId: IntFilter
+  attester: StringFilter
+  createdAt: DateTimeFilter
+  errorSquared: FloatNullableFilter
+  id: IntFilter
+  madeAt: IntFilter
+  marketAddress: StringNullableFilter
+  marketId: StringNullableFilter
+  outcome: IntNullableFilter
+  probabilityD18: StringNullableFilter
+  probabilityFloat: FloatNullableFilter
+  questionId: StringNullableFilter
+  resolver: StringNullableFilter
+  scoredAt: DateTimeNullableFilter
+  used: BoolFilter
+}
+
+input AttestationWhereInput {
+  AND: [AttestationWhereInput!]
+  NOT: [AttestationWhereInput!]
+  OR: [AttestationWhereInput!]
+  attestation_score: AttestationScoreNullableRelationFilter
+  attester: StringFilter
+  blockNumber: IntFilter
+  comment: StringNullableFilter
+  condition: ConditionNullableRelationFilter
+  conditionId: StringNullableFilter
+  createdAt: DateTimeFilter
+  data: StringFilter
+  decodedDataJson: StringFilter
+  id: IntFilter
+  prediction: StringFilter
+  recipient: StringFilter
+  resolver: StringNullableFilter
+  schemaId: StringFilter
+  time: IntFilter
+  transactionHash: StringFilter
+  uid: StringFilter
+}
+
+input AttestationWhereUniqueInput {
+  AND: [AttestationWhereInput!]
+  NOT: [AttestationWhereInput!]
+  OR: [AttestationWhereInput!]
+  attestation_score: AttestationScoreNullableRelationFilter
+  attester: StringFilter
+  blockNumber: IntFilter
+  comment: StringNullableFilter
+  condition: ConditionNullableRelationFilter
+  conditionId: StringNullableFilter
+  createdAt: DateTimeFilter
+  data: StringFilter
+  decodedDataJson: StringFilter
+  id: Int
+  prediction: StringFilter
+  recipient: StringFilter
+  resolver: StringNullableFilter
+  schemaId: StringFilter
+  time: IntFilter
+  transactionHash: StringFilter
+  uid: String
+}
+
+input BoolFilter {
+  equals: Boolean
+  not: NestedBoolFilter
+}
+
+input BoolNullableFilter {
+  equals: Boolean
+  not: NestedBoolNullableFilter
+}
+
+type Category {
+  _count: CategoryCount
+  conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]!
+  conditions(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): [Condition!]!
+  createdAt: DateTimeISO!
+  id: Int!
   name: String!
   slug: String!
 }
 
-type EpochType {
-  endTimestamp: Int
-  epochId: Int!
-  id: ID!
-  market: MarketType
-  positions: [PositionType!]!
+type CategoryCount {
+  condition(where: ConditionWhereInput): Int!
+  condition_group(where: ConditionGroupWhereInput): Int!
+}
+
+input CategoryNullableRelationFilter {
+  is: CategoryWhereInput
+  isNot: CategoryWhereInput
+}
+
+input CategoryOrderByWithRelationInput {
+  conditionGroups: ConditionGroupOrderByRelationAggregateInput
+  conditions: ConditionOrderByRelationAggregateInput
+  createdAt: SortOrder
+  id: SortOrder
+  name: SortOrder
+  slug: SortOrder
+}
+
+enum CategoryScalarFieldEnum {
+  createdAt
+  id
+  name
+  slug
+}
+
+type CategorySummary {
+  slug: String!
+}
+
+input CategoryWhereInput {
+  AND: [CategoryWhereInput!]
+  NOT: [CategoryWhereInput!]
+  OR: [CategoryWhereInput!]
+  conditionGroups: ConditionGroupListRelationFilter
+  conditions: ConditionListRelationFilter
+  createdAt: DateTimeFilter
+  id: IntFilter
+  name: StringFilter
+  slug: StringFilter
+}
+
+input CategoryWhereUniqueInput {
+  AND: [CategoryWhereInput!]
+  NOT: [CategoryWhereInput!]
+  OR: [CategoryWhereInput!]
+  conditionGroups: ConditionGroupListRelationFilter
+  conditions: ConditionListRelationFilter
+  createdAt: DateTimeFilter
+  id: Int
+  name: String
+  slug: String
+}
+
+type Condition {
+  _count: ConditionCount
+  assertionId: String
+  assertionTimestamp: Int
+  attestations(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): [Attestation!]!
+  category(where: CategoryWhereInput): Category
+  categoryId: Int
+  chainId: Int!
+  claimStatement: String!
+  conditionGroup(where: ConditionGroupWhereInput): ConditionGroup
+  conditionGroupId: Int
+  createdAt: DateTimeISO!
+  description: String!
+  displayOrder: Int
+  endTime: Int!
+  id: String!
+  openInterest: String!
+  predictions(cursor: PredictionWhereUniqueInput, distinct: [PredictionScalarFieldEnum!], orderBy: [PredictionOrderByWithRelationInput!], skip: Int, take: Int, where: PredictionWhereInput): [Prediction!]!
   public: Boolean!
   question: String!
-  settled: Boolean
-  settlementPriceD18: String
-  startTimestamp: Int
+  resolvedToYes: Boolean!
+
+  """Canonical resolver address for this condition (latest observed wins)"""
+  resolver: String
+  settled: Boolean!
+  settledAt: Int
+  shortName: String
+  similarMarkets: [String!]!
+  v2Picks(cursor: V2PickWhereUniqueInput, distinct: [V2PickScalarFieldEnum!], orderBy: [V2PickOrderByWithRelationInput!], skip: Int, take: Int, where: V2PickWhereInput): [V2Pick!]!
 }
 
-type MarketType {
-  address: String!
-  baseTokenName: String
-  category: CategoryType
-  chainId: Int!
-  claimStatement: String
-  collateralAsset: String
-  collateralDecimals: Int
-  deployTimestamp: Int
-  deployTxnBlockNumber: Int
-  epochs: [EpochType!]!
-  id: ID!
-  isCumulative: Boolean!
-  isYin: Boolean!
-  optionNames: [String!]
-  owner: String
+type ConditionCount {
+  attestations(where: AttestationWhereInput): Int!
+  predictions(where: PredictionWhereInput): Int!
+  v2Picks(where: V2PickWhereInput): Int!
+}
+
+type ConditionGroup {
+  _count: ConditionGroupCount
+  category(where: CategoryWhereInput): Category
+  categoryId: Int
+  conditions(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): [Condition!]!
+  createdAt: DateTimeISO!
+  id: Int!
+  name: String!
+  similarMarkets: [String!]!
+}
+
+type ConditionGroupCount {
+  condition(where: ConditionWhereInput): Int!
+}
+
+input ConditionGroupListRelationFilter {
+  every: ConditionGroupWhereInput
+  none: ConditionGroupWhereInput
+  some: ConditionGroupWhereInput
+}
+
+input ConditionGroupNullableRelationFilter {
+  is: ConditionGroupWhereInput
+  isNot: ConditionGroupWhereInput
+}
+
+input ConditionGroupOrderByRelationAggregateInput {
+  _count: SortOrder
+}
+
+input ConditionGroupOrderByWithRelationInput {
+  category: CategoryOrderByWithRelationInput
+  categoryId: SortOrderInput
+  conditions: ConditionOrderByRelationAggregateInput
+  createdAt: SortOrder
+  id: SortOrder
+  name: SortOrder
+  similarMarkets: SortOrder
+}
+
+enum ConditionGroupScalarFieldEnum {
+  categoryId
+  createdAt
+  id
+  name
+  similarMarkets
+}
+
+input ConditionGroupWhereInput {
+  AND: [ConditionGroupWhereInput!]
+  NOT: [ConditionGroupWhereInput!]
+  OR: [ConditionGroupWhereInput!]
+  category: CategoryNullableRelationFilter
+  categoryId: IntNullableFilter
+  conditions: ConditionListRelationFilter
+  createdAt: DateTimeFilter
+  id: IntFilter
+  name: StringFilter
+  similarMarkets: StringNullableListFilter
+}
+
+input ConditionGroupWhereUniqueInput {
+  AND: [ConditionGroupWhereInput!]
+  NOT: [ConditionGroupWhereInput!]
+  OR: [ConditionGroupWhereInput!]
+  category: CategoryNullableRelationFilter
+  categoryId: IntNullableFilter
+  conditions: ConditionListRelationFilter
+  createdAt: DateTimeFilter
+  id: Int
+  name: String
+  similarMarkets: StringNullableListFilter
+}
+
+input ConditionListRelationFilter {
+  every: ConditionWhereInput
+  none: ConditionWhereInput
+  some: ConditionWhereInput
+}
+
+input ConditionNullableRelationFilter {
+  is: ConditionWhereInput
+  isNot: ConditionWhereInput
+}
+
+input ConditionOrderByRelationAggregateInput {
+  _count: SortOrder
+}
+
+input ConditionOrderByWithRelationInput {
+  assertionId: SortOrderInput
+  assertionTimestamp: SortOrderInput
+  attestations: AttestationOrderByRelationAggregateInput
+  category: CategoryOrderByWithRelationInput
+  categoryId: SortOrderInput
+  chainId: SortOrder
+  claimStatement: SortOrder
+  conditionGroup: ConditionGroupOrderByWithRelationInput
+  conditionGroupId: SortOrderInput
+  createdAt: SortOrder
+  description: SortOrder
+  displayOrder: SortOrderInput
+  endTime: SortOrder
+  id: SortOrder
+  openInterest: SortOrder
+  predictions: PredictionOrderByRelationAggregateInput
+  public: SortOrder
+  question: SortOrder
+  resolvedToYes: SortOrder
+  resolver: SortOrderInput
+  settled: SortOrder
+  settledAt: SortOrderInput
+  shortName: SortOrderInput
+  similarMarkets: SortOrder
+  v2Picks: V2PickOrderByRelationAggregateInput
+}
+
+input ConditionRelationFilter {
+  is: ConditionWhereInput
+  isNot: ConditionWhereInput
+}
+
+enum ConditionScalarFieldEnum {
+  assertionId
+  assertionTimestamp
+  categoryId
+  chainId
+  claimStatement
+  conditionGroupId
+  createdAt
+  description
+  displayOrder
+  endTime
+  id
+  openInterest
+  public
+  question
+  resolvedToYes
+  resolver
+  settled
+  settledAt
+  shortName
+  similarMarkets
+}
+
+type ConditionSummary {
+  category: CategorySummary
+  endTime: Int
+  id: String!
   question: String
-  quoteTokenName: String
-  resource: ResourceType
-  vaultAddress: String
+  resolvedToYes: Boolean!
+  resolver: String
+  settled: Boolean!
+  shortName: String
 }
 
-type PnLType {
-  epochId: Int!
-  openPositionsPnL: String!
-  owner: String!
-  positionCount: Int!
-  positions: [Int!]!
-  totalDeposits: String!
-  totalPnL: String!
-  totalWithdrawals: String!
+input ConditionWhereInput {
+  AND: [ConditionWhereInput!]
+  NOT: [ConditionWhereInput!]
+  OR: [ConditionWhereInput!]
+  assertionId: StringNullableFilter
+  assertionTimestamp: IntNullableFilter
+  attestations: AttestationListRelationFilter
+  category: CategoryNullableRelationFilter
+  categoryId: IntNullableFilter
+  chainId: IntFilter
+  claimStatement: StringFilter
+  conditionGroup: ConditionGroupNullableRelationFilter
+  conditionGroupId: IntNullableFilter
+  createdAt: DateTimeFilter
+  description: StringFilter
+  displayOrder: IntNullableFilter
+  endTime: IntFilter
+  id: StringFilter
+  openInterest: StringFilter
+  predictions: PredictionListRelationFilter
+  public: BoolFilter
+  question: StringFilter
+  resolvedToYes: BoolFilter
+  resolver: StringNullableFilter
+  settled: BoolFilter
+  settledAt: IntNullableFilter
+  shortName: StringNullableFilter
+  similarMarkets: StringNullableListFilter
+  v2Picks: V2PickListRelationFilter
+}
+
+input ConditionWhereUniqueInput {
+  AND: [ConditionWhereInput!]
+  NOT: [ConditionWhereInput!]
+  OR: [ConditionWhereInput!]
+  assertionId: StringNullableFilter
+  assertionTimestamp: IntNullableFilter
+  attestations: AttestationListRelationFilter
+  category: CategoryNullableRelationFilter
+  categoryId: IntNullableFilter
+  chainId: IntFilter
+  claimStatement: StringFilter
+  conditionGroup: ConditionGroupNullableRelationFilter
+  conditionGroupId: IntNullableFilter
+  createdAt: DateTimeFilter
+  description: StringFilter
+  displayOrder: IntNullableFilter
+  endTime: IntFilter
+  id: String
+  openInterest: StringFilter
+  predictions: PredictionListRelationFilter
+  public: BoolFilter
+  question: StringFilter
+  resolvedToYes: BoolFilter
+  resolver: StringNullableFilter
+  settled: BoolFilter
+  settledAt: IntNullableFilter
+  shortName: StringNullableFilter
+  similarMarkets: StringNullableListFilter
+  v2Picks: V2PickListRelationFilter
+}
+
+type DailyVolume {
+  timestamp: String!
+  volume: String!
+}
+
+input DateTimeFilter {
+  equals: DateTimeISO
+  gt: DateTimeISO
+  gte: DateTimeISO
+  in: [DateTimeISO!]
+  lt: DateTimeISO
+  lte: DateTimeISO
+  not: NestedDateTimeFilter
+  notIn: [DateTimeISO!]
+}
+
+"""
+A date-time string at UTC, such as 2007-12-03T10:15:30Z, compliant with the `date-time` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar.This scalar is serialized to a string in ISO 8601 format and parsed from a string in ISO 8601 format.
+"""
+scalar DateTimeISO
+
+input DateTimeNullableFilter {
+  equals: DateTimeISO
+  gt: DateTimeISO
+  gte: DateTimeISO
+  in: [DateTimeISO!]
+  lt: DateTimeISO
+  lte: DateTimeISO
+  not: NestedDateTimeNullableFilter
+  notIn: [DateTimeISO!]
+}
+
+input EnumLimitOrderStatusFilter {
+  equals: LimitOrderStatus
+  in: [LimitOrderStatus!]
+  not: NestedEnumLimitOrderStatusFilter
+  notIn: [LimitOrderStatus!]
+}
+
+input EnumPositionStatusFilter {
+  equals: PositionStatus
+  in: [PositionStatus!]
+  not: NestedEnumPositionStatusFilter
+  notIn: [PositionStatus!]
+}
+
+input EnumV2SettlementResultFilter {
+  equals: V2SettlementResult
+  in: [V2SettlementResult!]
+  not: NestedEnumV2SettlementResultFilter
+  notIn: [V2SettlementResult!]
+}
+
+input FloatNullableFilter {
+  equals: Float
+  gt: Float
+  gte: Float
+  in: [Float!]
+  lt: Float
+  lte: Float
+  not: NestedFloatNullableFilter
+  notIn: [Float!]
+}
+
+type ForecasterScoreType {
+  accuracyScore: Float!
+  attester: String!
+  numScored: Int!
+  numTimeWeighted: Int!
+  sumErrorSquared: Float!
+  sumTimeWeightedError: Float!
+}
+
+input IntFilter {
+  equals: Int
+  gt: Int
+  gte: Int
+  in: [Int!]
+  lt: Int
+  lte: Int
+  not: NestedIntFilter
+  notIn: [Int!]
+}
+
+input IntNullableFilter {
+  equals: Int
+  gt: Int
+  gte: Int
+  in: [Int!]
+  lt: Int
+  lte: Int
+  not: NestedIntNullableFilter
+  notIn: [Int!]
+}
+
+type LimitOrder {
+  _count: LimitOrderCount
+  cancelledAt: Int
+  cancelledTxHash: String
+  chainId: Int!
+  counterparty: String
+  counterpartyCollateral: String!
+  createdAt: DateTimeISO!
+  filledAt: Int
+  filledTxHash: String
+  id: Int!
+  marketAddress: String!
+  orderId: String!
+  placedAt: Int!
+  placedTxHash: String!
+  predictions(cursor: PredictionWhereUniqueInput, distinct: [PredictionScalarFieldEnum!], orderBy: [PredictionOrderByWithRelationInput!], skip: Int, take: Int, where: PredictionWhereInput): [Prediction!]!
+  predictor: String!
+  predictorCollateral: String!
+  refCode: String
+  resolver: String!
+  status: LimitOrderStatus!
+}
+
+type LimitOrderCount {
+  predictions(where: PredictionWhereInput): Int!
+}
+
+input LimitOrderNullableRelationFilter {
+  is: LimitOrderWhereInput
+  isNot: LimitOrderWhereInput
+}
+
+input LimitOrderOrderByWithRelationInput {
+  cancelledAt: SortOrderInput
+  cancelledTxHash: SortOrderInput
+  chainId: SortOrder
+  counterparty: SortOrderInput
+  counterpartyCollateral: SortOrder
+  createdAt: SortOrder
+  filledAt: SortOrderInput
+  filledTxHash: SortOrderInput
+  id: SortOrder
+  marketAddress: SortOrder
+  orderId: SortOrder
+  placedAt: SortOrder
+  placedTxHash: SortOrder
+  predictions: PredictionOrderByRelationAggregateInput
+  predictor: SortOrder
+  predictorCollateral: SortOrder
+  refCode: SortOrderInput
+  resolver: SortOrder
+  status: SortOrder
+}
+
+enum LimitOrderStatus {
+  cancelled
+  filled
+  pending
+}
+
+input LimitOrderWhereInput {
+  AND: [LimitOrderWhereInput!]
+  NOT: [LimitOrderWhereInput!]
+  OR: [LimitOrderWhereInput!]
+  cancelledAt: IntNullableFilter
+  cancelledTxHash: StringNullableFilter
+  chainId: IntFilter
+  counterparty: StringNullableFilter
+  counterpartyCollateral: StringFilter
+  createdAt: DateTimeFilter
+  filledAt: IntNullableFilter
+  filledTxHash: StringNullableFilter
+  id: IntFilter
+  marketAddress: StringFilter
+  orderId: StringFilter
+  placedAt: IntFilter
+  placedTxHash: StringFilter
+  predictions: PredictionListRelationFilter
+  predictor: StringFilter
+  predictorCollateral: StringFilter
+  refCode: StringNullableFilter
+  resolver: StringFilter
+  status: EnumLimitOrderStatusFilter
+}
+
+input NestedBoolFilter {
+  equals: Boolean
+  not: NestedBoolFilter
+}
+
+input NestedBoolNullableFilter {
+  equals: Boolean
+  not: NestedBoolNullableFilter
+}
+
+input NestedDateTimeFilter {
+  equals: DateTimeISO
+  gt: DateTimeISO
+  gte: DateTimeISO
+  in: [DateTimeISO!]
+  lt: DateTimeISO
+  lte: DateTimeISO
+  not: NestedDateTimeFilter
+  notIn: [DateTimeISO!]
+}
+
+input NestedDateTimeNullableFilter {
+  equals: DateTimeISO
+  gt: DateTimeISO
+  gte: DateTimeISO
+  in: [DateTimeISO!]
+  lt: DateTimeISO
+  lte: DateTimeISO
+  not: NestedDateTimeNullableFilter
+  notIn: [DateTimeISO!]
+}
+
+input NestedEnumLimitOrderStatusFilter {
+  equals: LimitOrderStatus
+  in: [LimitOrderStatus!]
+  not: NestedEnumLimitOrderStatusFilter
+  notIn: [LimitOrderStatus!]
+}
+
+input NestedEnumPositionStatusFilter {
+  equals: PositionStatus
+  in: [PositionStatus!]
+  not: NestedEnumPositionStatusFilter
+  notIn: [PositionStatus!]
+}
+
+input NestedEnumV2SettlementResultFilter {
+  equals: V2SettlementResult
+  in: [V2SettlementResult!]
+  not: NestedEnumV2SettlementResultFilter
+  notIn: [V2SettlementResult!]
+}
+
+input NestedFloatFilter {
+  equals: Float
+  gt: Float
+  gte: Float
+  in: [Float!]
+  lt: Float
+  lte: Float
+  not: NestedFloatFilter
+  notIn: [Float!]
+}
+
+input NestedFloatNullableFilter {
+  equals: Float
+  gt: Float
+  gte: Float
+  in: [Float!]
+  lt: Float
+  lte: Float
+  not: NestedFloatNullableFilter
+  notIn: [Float!]
+}
+
+input NestedIntFilter {
+  equals: Int
+  gt: Int
+  gte: Int
+  in: [Int!]
+  lt: Int
+  lte: Int
+  not: NestedIntFilter
+  notIn: [Int!]
+}
+
+input NestedIntNullableFilter {
+  equals: Int
+  gt: Int
+  gte: Int
+  in: [Int!]
+  lt: Int
+  lte: Int
+  not: NestedIntNullableFilter
+  notIn: [Int!]
+}
+
+input NestedStringFilter {
+  contains: String
+  endsWith: String
+  equals: String
+  gt: String
+  gte: String
+  in: [String!]
+  lt: String
+  lte: String
+  not: NestedStringFilter
+  notIn: [String!]
+  startsWith: String
+}
+
+input NestedStringNullableFilter {
+  contains: String
+  endsWith: String
+  equals: String
+  gt: String
+  gte: String
+  in: [String!]
+  lt: String
+  lte: String
+  not: NestedStringNullableFilter
+  notIn: [String!]
+  startsWith: String
+}
+
+enum NullsOrder {
+  first
+  last
+}
+
+"""Position model to store on-chain prediction positions"""
+type Position {
+  _count: PositionCount
+  chainId: Int!
+  counterparty: String!
+  counterpartyCollateral: String
+  counterpartyNftTokenId: String!
+  createdAt: DateTimeISO!
+  endsAt: Int
+  id: Int!
+  marketAddress: String!
+  mintedAt: Int!
+  predictions(cursor: PredictionWhereUniqueInput, distinct: [PredictionScalarFieldEnum!], orderBy: [PredictionOrderByWithRelationInput!], skip: Int, take: Int, where: PredictionWhereInput): [Prediction!]!
+  predictor: String!
+  predictorCollateral: String
+  predictorNftTokenId: String!
+
+  """
+  True when the predictor's submitted outcomes were correct (previously makerWon)
+  """
+  predictorWon: Boolean
+  refCode: String
+  settledAt: Int
+  status: PositionStatus!
+  totalCollateral: String!
+}
+
+type PositionCount {
+  predictions(where: PredictionWhereInput): Int!
+}
+
+input PositionNullableRelationFilter {
+  is: PositionWhereInput
+  isNot: PositionWhereInput
+}
+
+input PositionOrderByWithRelationInput {
+  chainId: SortOrder
+  counterparty: SortOrder
+  counterpartyCollateral: SortOrderInput
+  counterpartyNftTokenId: SortOrder
+  createdAt: SortOrder
+  endsAt: SortOrderInput
+  id: SortOrder
+  marketAddress: SortOrder
+  mintedAt: SortOrder
+  predictions: PredictionOrderByRelationAggregateInput
+  predictor: SortOrder
+  predictorCollateral: SortOrderInput
+  predictorNftTokenId: SortOrder
+  predictorWon: SortOrderInput
+  refCode: SortOrderInput
+  settledAt: SortOrderInput
+  status: SortOrder
+  totalCollateral: SortOrder
+}
+
+enum PositionStatus {
+  active
+  consolidated
+  settled
 }
 
 type PositionType {
-  baseToken: String!
-  borrowedBaseToken: String
-  borrowedQuoteToken: String
-  collateral: String!
-  epoch: EpochType!
-  highPriceTick: String
-  id: ID!
-  isLP: Boolean!
-  isSettled: Boolean
-  lowPriceTick: String
-  lpBaseToken: String
-  lpQuoteToken: String
-  owner: String!
+  chainId: Int!
+  counterparty: String!
+  counterpartyCollateral: String
+  counterpartyNftTokenId: String!
+  endsAt: Int
+  id: Int!
+  marketAddress: String!
+  mintedAt: Int!
+  predictions: [PredictionType!]!
+  predictor: String!
+  predictorCollateral: String
+  predictorNftTokenId: String!
+  predictorWon: Boolean
+  refCode: String
+  settledAt: Int
+  status: String!
+  totalCollateral: String!
+}
+
+input PositionWhereInput {
+  AND: [PositionWhereInput!]
+  NOT: [PositionWhereInput!]
+  OR: [PositionWhereInput!]
+  chainId: IntFilter
+  counterparty: StringFilter
+  counterpartyCollateral: StringNullableFilter
+  counterpartyNftTokenId: StringFilter
+  createdAt: DateTimeFilter
+  endsAt: IntNullableFilter
+  id: IntFilter
+  marketAddress: StringFilter
+  mintedAt: IntFilter
+  predictions: PredictionListRelationFilter
+  predictor: StringFilter
+  predictorCollateral: StringNullableFilter
+  predictorNftTokenId: StringFilter
+  predictorWon: BoolNullableFilter
+  refCode: StringNullableFilter
+  settledAt: IntNullableFilter
+  status: EnumPositionStatusFilter
+  totalCollateral: StringFilter
+}
+
+type Prediction {
+  chainId: Int
+  condition: Condition!
+  conditionId: String!
+  createdAt: DateTimeISO!
+  id: Int!
+  limitOrder(where: LimitOrderWhereInput): LimitOrder
+  limitOrderId: Int
+  outcomeYes: Boolean!
+  position(where: PositionWhereInput): Position
+  positionId: Int
+}
+
+input PredictionLimitOrderIdConditionIdCompoundUniqueInput {
+  conditionId: String!
+  limitOrderId: Int!
+}
+
+input PredictionListRelationFilter {
+  every: PredictionWhereInput
+  none: PredictionWhereInput
+  some: PredictionWhereInput
+}
+
+input PredictionOrderByRelationAggregateInput {
+  _count: SortOrder
+}
+
+input PredictionOrderByWithRelationInput {
+  chainId: SortOrderInput
+  condition: ConditionOrderByWithRelationInput
+  conditionId: SortOrder
+  createdAt: SortOrder
+  id: SortOrder
+  limitOrder: LimitOrderOrderByWithRelationInput
+  limitOrderId: SortOrderInput
+  outcomeYes: SortOrder
+  position: PositionOrderByWithRelationInput
+  positionId: SortOrderInput
+}
+
+input PredictionPositionIdConditionIdCompoundUniqueInput {
+  conditionId: String!
   positionId: Int!
-  quoteToken: String!
-  transactions: [TransactionType!]!
+}
+
+enum PredictionScalarFieldEnum {
+  chainId
+  conditionId
+  createdAt
+  id
+  limitOrderId
+  outcomeYes
+  positionId
+}
+
+type PredictionType {
+  chainId: Int
+  condition: ConditionSummary
+  conditionId: String!
+  outcomeYes: Boolean!
+}
+
+input PredictionWhereInput {
+  AND: [PredictionWhereInput!]
+  NOT: [PredictionWhereInput!]
+  OR: [PredictionWhereInput!]
+  chainId: IntNullableFilter
+  condition: ConditionRelationFilter
+  conditionId: StringFilter
+  createdAt: DateTimeFilter
+  id: IntFilter
+  limitOrder: LimitOrderNullableRelationFilter
+  limitOrderId: IntNullableFilter
+  outcomeYes: BoolFilter
+  position: PositionNullableRelationFilter
+  positionId: IntNullableFilter
+}
+
+input PredictionWhereUniqueInput {
+  AND: [PredictionWhereInput!]
+  NOT: [PredictionWhereInput!]
+  OR: [PredictionWhereInput!]
+  chainId: IntNullableFilter
+  condition: ConditionRelationFilter
+  conditionId: StringFilter
+  createdAt: DateTimeFilter
+  id: Int
+  limitOrder: LimitOrderNullableRelationFilter
+  limitOrderId: IntNullableFilter
+  limitOrderId_conditionId: PredictionLimitOrderIdConditionIdCompoundUniqueInput
+  outcomeYes: BoolFilter
+  position: PositionNullableRelationFilter
+  positionId: IntNullableFilter
+  positionId_conditionId: PredictionPositionIdConditionIdCompoundUniqueInput
+}
+
+type ProfitRankType {
+  owner: String!
+  rank: Int
+  totalParticipants: Int!
+  totalPnL: Float!
+}
+
+type ProtocolStat {
+  cumulativeVolume: String!
+  escrowBalance: String!
+  openInterest: String!
+  timestamp: String!
+  vaultAirdropGains: String!
+  vaultAvailableAssets: String!
+  vaultBalance: String!
+  vaultCumulativePnL: String!
+  vaultDeployed: String!
+  vaultDeposits: String!
+  vaultPositionsLost: Int!
+  vaultPositionsWon: Int!
+  vaultWithdrawals: String!
 }
 
 type Query {
-  categories: [CategoryType!]!
-  epochs(marketId: Int): [EpochType!]!
-  getEpochLeaderboard(address: String!, chainId: Int!, epochId: String!): [PnLType!]!
-  indexCandles(address: String!, chainId: Int!, epochId: String!, from: Int!, interval: Int!, to: Int!): [CandleType!]!
-  indexPriceAtTime(address: String!, chainId: Int!, epochId: String!, timestamp: Int!): CandleType
-  legacyMarketCandles(address: String!, chainId: Int!, epochId: String!, from: Int!, interval: Int!, to: Int!): [CandleType!]!
-  market(address: String!, chainId: Int!): MarketType
-  marketCandles(address: String!, chainId: Int!, epochId: String!, from: Int!, interval: Int!, to: Int!): [CandleType!]!
-  markets: [MarketType!]!
-  marketsByCategory(slug: String!): [MarketType!]!
-  positions(chainId: Int, marketAddress: String, owner: String): [PositionType!]!
-  resource(slug: String!): ResourceType
-  resourceCandles(from: Int!, interval: Int!, slug: String!, to: Int!): [CandleType!]!
-  resourcePrices: [ResourcePriceType!]!
-  resourceTrailingAverageCandles(from: Int!, interval: Int!, slug: String!, to: Int!, trailingAvgTime: Int!): [CandleType!]!
-  resources: [ResourceType!]!
-  totalVolumeByEpoch(chainId: Int!, epochId: Int!, marketAddress: String!): Float!
-  transactions(positionId: Int): [TransactionType!]!
+  accuracyRankByAddress(attester: String!): AccuracyRankType!
+  allTimeProfitLeaderboard: [AggregatedProfitEntryType!]!
+  attestations(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): [Attestation!]!
+  categories(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): [Category!]!
+  condition(where: ConditionWhereUniqueInput!): Condition
+  conditionGroup(where: ConditionGroupWhereUniqueInput!): ConditionGroup
+  conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]!
+  conditions(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): [Condition!]!
+  dailyVolumes: [DailyVolume!]!
+  forecasterScore(attester: String!): ForecasterScoreType
+  positions(address: String, chainId: Int, endsAtGte: Int, marketAddress: String, nftTokenId: String, orderBy: String, orderDirection: String, skip: Int! = 0, status: String, take: Int! = 50): [PositionType!]!
+  positionsByConditionId(chainId: Int, conditionId: String!, endsAtGte: Int, skip: Int! = 0, status: String, take: Int! = 100): [PositionType!]!
+  positionsCount(address: String!, chainId: Int): Int!
+  profitRankByAddress(owner: String!): ProfitRankType!
+  protocolStats: [ProtocolStat!]!
+  questionsSorted(categorySlugs: [String!], chainId: Int, minEndTime: Int, resolutionStatus: String, search: String, skip: Int!, sortDirection: String!, sortField: String, take: Int!): [Question!]!
+
+  """
+  Returns the most recently created positions globally, ordered by mintedAt descending.
+  """
+  recentPositions(chainId: Int, skip: Int! = 0, status: String, take: Int! = 20): [PositionType!]!
+  topForecasters(limit: Int! = 10): [ForecasterScoreType!]!
+  tradingVolumeByAddress(address: String!): String!
+  user(where: UserWhereUniqueInput!): User
+  users(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]!
+  v2BurnRecords(address: String, chainId: Int, pickConfigId: String, skip: Int! = 0, take: Int! = 50): [V2BurnRecordType!]!
+  v2PickConfiguration(id: String!): V2PickConfigurationType
+  v2PickConfigurations(chainId: Int, resolved: Boolean, result: String, skip: Int! = 0, take: Int! = 50): [V2PickConfigurationType!]!
+  v2PositionBalances(chainId: Int, holder: String!, pickConfigId: String, skip: Int! = 0, take: Int! = 50): [V2PositionBalanceType!]!
+  v2Prediction(predictionId: String!): V2PredictionType
+  v2Predictions(address: String, chainId: Int, orderBy: String, orderDirection: String, settled: Boolean, skip: Int! = 0, take: Int! = 50): [V2PredictionType!]!
+  v2PredictionsCount(address: String!, chainId: Int): Int!
+  v2RedemptionRecords(chainId: Int, holder: String, predictionId: String, skip: Int! = 0, take: Int! = 50): [V2RedemptionRecordType!]!
 }
 
-type ResourcePriceType {
-  blockNumber: Int!
-  id: ID!
-  resource: ResourceType
-  timestamp: Int!
-  value: String!
+enum QueryMode {
+  default
+  insensitive
 }
 
-type ResourceType {
-  category: CategoryType
-  id: ID!
-  markets: [MarketType!]!
-  name: String!
-  resourcePrices: [ResourcePriceType!]!
-  slug: String!
+type Question {
+  condition: Condition
+  group: ConditionGroup
+  questionType: String!
 }
 
-type TransactionType {
-  baseToken: String
-  baseTokenDelta: String
-  collateral: String
-  collateralDelta: String
-  id: ID!
-  lpBaseDeltaToken: String
-  lpQuoteDeltaToken: String
-  position: PositionType
-  quoteToken: String
-  quoteTokenDelta: String
-  timestamp: Int!
-  tradeRatioD18: String
-  transactionHash: String
-  type: String!
+type ReferralCode {
+  _count: ReferralCodeCount
+  claimedBy(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]!
+  codeHash: String!
+  createdAt: DateTimeISO!
+  createdBy: String!
+  creatorType: String!
+  expiresAt: Int
+  id: Int!
+  isActive: Boolean!
+  maxClaims: Int!
+  updatedAt: DateTimeISO!
+}
+
+type ReferralCodeCount {
+  claimedBy(where: UserWhereInput): Int!
+}
+
+input ReferralCodeNullableRelationFilter {
+  is: ReferralCodeWhereInput
+  isNot: ReferralCodeWhereInput
+}
+
+input ReferralCodeOrderByWithRelationInput {
+  claimedBy: UserOrderByRelationAggregateInput
+  codeHash: SortOrder
+  createdAt: SortOrder
+  createdBy: SortOrder
+  creatorType: SortOrder
+  expiresAt: SortOrderInput
+  id: SortOrder
+  isActive: SortOrder
+  maxClaims: SortOrder
+  updatedAt: SortOrder
+}
+
+input ReferralCodeWhereInput {
+  AND: [ReferralCodeWhereInput!]
+  NOT: [ReferralCodeWhereInput!]
+  OR: [ReferralCodeWhereInput!]
+  claimedBy: UserListRelationFilter
+  codeHash: StringFilter
+  createdAt: DateTimeFilter
+  createdBy: StringFilter
+  creatorType: StringFilter
+  expiresAt: IntNullableFilter
+  id: IntFilter
+  isActive: BoolFilter
+  maxClaims: IntFilter
+  updatedAt: DateTimeFilter
+}
+
+enum SortOrder {
+  asc
+  desc
+}
+
+input SortOrderInput {
+  nulls: NullsOrder
+  sort: SortOrder!
+}
+
+input StringFilter {
+  contains: String
+  endsWith: String
+  equals: String
+  gt: String
+  gte: String
+  in: [String!]
+  lt: String
+  lte: String
+  mode: QueryMode
+  not: NestedStringFilter
+  notIn: [String!]
+  startsWith: String
+}
+
+input StringNullableFilter {
+  contains: String
+  endsWith: String
+  equals: String
+  gt: String
+  gte: String
+  in: [String!]
+  lt: String
+  lte: String
+  mode: QueryMode
+  not: NestedStringNullableFilter
+  notIn: [String!]
+  startsWith: String
+}
+
+input StringNullableListFilter {
+  equals: [String!]
+  has: String
+  hasEvery: [String!]
+  hasSome: [String!]
+  isEmpty: Boolean
+}
+
+"""
+Application-level user record, keyed by wallet address,
+used for referrals and other per-wallet metadata.
+"""
+type User {
+  _count: UserCount
+
+  """Canonical Ethereum wallet address for this user."""
+  address: String!
+  createdAt: DateTimeISO!
+  id: Int!
+
+  """
+  Maximum number of referrals this user's code allows. Default is 0,
+  so codes are not usable until explicitly configured.
+  """
+  maxReferrals: Int!
+
+  """keccak256(utf8(trimmed_lowercase_code)) stored as 0x-prefixed hex."""
+  refCodeHash: String
+  referrals(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]!
+  referredBy(where: UserWhereInput): User
+  referredByCode(where: ReferralCodeWhereInput): ReferralCode
+  referredByCodeId: Int
+  referredById: Int
+  updatedAt: DateTimeISO!
+}
+
+type UserCount {
+  referrals(where: UserWhereInput): Int!
+}
+
+input UserListRelationFilter {
+  every: UserWhereInput
+  none: UserWhereInput
+  some: UserWhereInput
+}
+
+input UserNullableRelationFilter {
+  is: UserWhereInput
+  isNot: UserWhereInput
+}
+
+input UserOrderByRelationAggregateInput {
+  _count: SortOrder
+}
+
+input UserOrderByWithRelationInput {
+  address: SortOrder
+  createdAt: SortOrder
+  id: SortOrder
+  maxReferrals: SortOrder
+  refCodeHash: SortOrderInput
+  referrals: UserOrderByRelationAggregateInput
+  referredBy: UserOrderByWithRelationInput
+  referredByCode: ReferralCodeOrderByWithRelationInput
+  referredByCodeId: SortOrderInput
+  referredById: SortOrderInput
+  updatedAt: SortOrder
+}
+
+enum UserScalarFieldEnum {
+  address
+  createdAt
+  id
+  maxReferrals
+  refCodeHash
+  referredByCodeId
+  referredById
+  updatedAt
+}
+
+input UserWhereInput {
+  AND: [UserWhereInput!]
+  NOT: [UserWhereInput!]
+  OR: [UserWhereInput!]
+  address: StringFilter
+  createdAt: DateTimeFilter
+  id: IntFilter
+  maxReferrals: IntFilter
+  refCodeHash: StringNullableFilter
+  referrals: UserListRelationFilter
+  referredBy: UserNullableRelationFilter
+  referredByCode: ReferralCodeNullableRelationFilter
+  referredByCodeId: IntNullableFilter
+  referredById: IntNullableFilter
+  updatedAt: DateTimeFilter
+}
+
+input UserWhereUniqueInput {
+  AND: [UserWhereInput!]
+  NOT: [UserWhereInput!]
+  OR: [UserWhereInput!]
+  address: String
+  createdAt: DateTimeFilter
+  id: Int
+  maxReferrals: IntFilter
+  refCodeHash: String
+  referrals: UserListRelationFilter
+  referredBy: UserNullableRelationFilter
+  referredByCode: ReferralCodeNullableRelationFilter
+  referredByCodeId: IntNullableFilter
+  referredById: IntNullableFilter
+  updatedAt: DateTimeFilter
+}
+
+type V2BurnRecordType {
+  burnedAt: Int!
+  chainId: Int!
+  counterpartyHolder: String!
+  counterpartyPayout: String!
+  counterpartyTokensBurned: String!
+  id: Int!
+  marketAddress: String!
+  pickConfigId: String!
+  predictorHolder: String!
+  predictorPayout: String!
+  predictorTokensBurned: String!
+  refCode: String
+  txHash: String!
+}
+
+"""V2 Pick - Individual pick within a pick configuration"""
+type V2Pick {
+  condition(where: ConditionWhereInput): Condition
+  conditionId: String!
+  conditionResolver: String!
+  createdAt: DateTimeISO!
+  id: Int!
+  pickConfigId: String!
+  pickConfiguration: V2PickConfiguration!
+  predictedOutcome: Int!
+}
+
+"""
+V2 Pick Configuration - Fungible betting pool for a specific pick combination
+Corresponds to on-chain pickConfigId
+"""
+type V2PickConfiguration {
+  _count: V2PickConfigurationCount
+  chainId: Int!
+  claimedCounterpartyCollateral: String!
+  claimedPredictorCollateral: String!
+  counterpartyToken: String
+  createdAt: DateTimeISO!
+  endsAt: Int
+  id: String!
+  marketAddress: String!
+  picks(cursor: V2PickWhereUniqueInput, distinct: [V2PickScalarFieldEnum!], orderBy: [V2PickOrderByWithRelationInput!], skip: Int, take: Int, where: V2PickWhereInput): [V2Pick!]!
+  predictorToken: String
+  resolved: Boolean!
+  resolvedAt: Int
+  result: V2SettlementResult!
+  totalCounterpartyCollateral: String!
+  totalPredictorCollateral: String!
+}
+
+type V2PickConfigurationCount {
+  picks(where: V2PickWhereInput): Int!
+}
+
+input V2PickConfigurationOrderByWithRelationInput {
+  chainId: SortOrder
+  claimedCounterpartyCollateral: SortOrder
+  claimedPredictorCollateral: SortOrder
+  counterpartyToken: SortOrderInput
+  createdAt: SortOrder
+  endsAt: SortOrderInput
+  id: SortOrder
+  marketAddress: SortOrder
+  picks: V2PickOrderByRelationAggregateInput
+  predictorToken: SortOrderInput
+  resolved: SortOrder
+  resolvedAt: SortOrderInput
+  result: SortOrder
+  totalCounterpartyCollateral: SortOrder
+  totalPredictorCollateral: SortOrder
+}
+
+input V2PickConfigurationRelationFilter {
+  is: V2PickConfigurationWhereInput
+  isNot: V2PickConfigurationWhereInput
+}
+
+type V2PickConfigurationType {
+  chainId: Int!
+  claimedCounterpartyCollateral: String!
+  claimedPredictorCollateral: String!
+  counterpartyToken: String
+  endsAt: Int
+  id: String!
+  marketAddress: String!
+  picks: [V2PickType!]!
+  predictorToken: String
+  resolved: Boolean!
+  resolvedAt: Int
+  result: String!
+  totalCounterpartyCollateral: String!
+  totalPredictorCollateral: String!
+}
+
+input V2PickConfigurationWhereInput {
+  AND: [V2PickConfigurationWhereInput!]
+  NOT: [V2PickConfigurationWhereInput!]
+  OR: [V2PickConfigurationWhereInput!]
+  chainId: IntFilter
+  claimedCounterpartyCollateral: StringFilter
+  claimedPredictorCollateral: StringFilter
+  counterpartyToken: StringNullableFilter
+  createdAt: DateTimeFilter
+  endsAt: IntNullableFilter
+  id: StringFilter
+  marketAddress: StringFilter
+  picks: V2PickListRelationFilter
+  predictorToken: StringNullableFilter
+  resolved: BoolFilter
+  resolvedAt: IntNullableFilter
+  result: EnumV2SettlementResultFilter
+  totalCounterpartyCollateral: StringFilter
+  totalPredictorCollateral: StringFilter
+}
+
+input V2PickListRelationFilter {
+  every: V2PickWhereInput
+  none: V2PickWhereInput
+  some: V2PickWhereInput
+}
+
+input V2PickOrderByRelationAggregateInput {
+  _count: SortOrder
+}
+
+input V2PickOrderByWithRelationInput {
+  condition: ConditionOrderByWithRelationInput
+  conditionId: SortOrder
+  conditionResolver: SortOrder
+  createdAt: SortOrder
+  id: SortOrder
+  pickConfigId: SortOrder
+  pickConfiguration: V2PickConfigurationOrderByWithRelationInput
+  predictedOutcome: SortOrder
+}
+
+input V2PickPickConfigIdConditionResolverConditionIdCompoundUniqueInput {
+  conditionId: String!
+  conditionResolver: String!
+  pickConfigId: String!
+}
+
+enum V2PickScalarFieldEnum {
+  conditionId
+  conditionResolver
+  createdAt
+  id
+  pickConfigId
+  predictedOutcome
+}
+
+type V2PickType {
+  conditionId: String!
+  conditionResolver: String!
+  id: Int!
+  pickConfigId: String!
+  predictedOutcome: Int!
+}
+
+input V2PickWhereInput {
+  AND: [V2PickWhereInput!]
+  NOT: [V2PickWhereInput!]
+  OR: [V2PickWhereInput!]
+  condition: ConditionNullableRelationFilter
+  conditionId: StringFilter
+  conditionResolver: StringFilter
+  createdAt: DateTimeFilter
+  id: IntFilter
+  pickConfigId: StringFilter
+  pickConfiguration: V2PickConfigurationRelationFilter
+  predictedOutcome: IntFilter
+}
+
+input V2PickWhereUniqueInput {
+  AND: [V2PickWhereInput!]
+  NOT: [V2PickWhereInput!]
+  OR: [V2PickWhereInput!]
+  condition: ConditionNullableRelationFilter
+  conditionId: StringFilter
+  conditionResolver: StringFilter
+  createdAt: DateTimeFilter
+  id: Int
+  pickConfigId: StringFilter
+  pickConfigId_conditionResolver_conditionId: V2PickPickConfigIdConditionResolverConditionIdCompoundUniqueInput
+  pickConfiguration: V2PickConfigurationRelationFilter
+  predictedOutcome: IntFilter
+}
+
+type V2PositionBalanceType {
+  balance: String!
+  chainId: Int!
+  holder: String!
+  id: Int!
+  isPredictorToken: Boolean!
+  pickConfig: V2PickConfigurationType
+  pickConfigId: String!
+  tokenAddress: String!
+}
+
+type V2PredictionType {
+  chainId: Int!
+  collateralDeposited: String
+  collateralDepositedAt: Int
+  counterparty: String!
+  counterpartyClaimable: String
+  counterpartyToken: String!
+  counterpartyWager: String!
+  createTxHash: String!
+  id: Int!
+  marketAddress: String!
+  predictionId: String!
+  predictor: String!
+  predictorClaimable: String
+  predictorToken: String!
+  predictorWager: String!
+  refCode: String
+  result: String!
+  settleTxHash: String
+  settled: Boolean!
+  settledAt: Int
+}
+
+type V2RedemptionRecordType {
+  chainId: Int!
+  collateralPaid: String!
+  holder: String!
+  id: Int!
+  marketAddress: String!
+  positionToken: String!
+  predictionId: String!
+  redeemedAt: Int!
+  refCode: String
+  tokensBurned: String!
+  txHash: String!
+}
+
+"""V2 Settlement Result - Matches on-chain SettlementResult enum"""
+enum V2SettlementResult {
+  COUNTERPARTY_WINS
+  NON_DECISIVE
+  PREDICTOR_WINS
+  UNRESOLVED
 }

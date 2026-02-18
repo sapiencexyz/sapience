@@ -1,10 +1,10 @@
 import { Field, ObjectType, Int, Directive } from 'type-graphql';
 
-@Directive('@cacheControl(maxAge: 3)')
+@Directive('@cacheControl(maxAge: 30)')
 @ObjectType()
 export class PnLType {
   @Field(() => Int)
-  epochId: number;
+  marketId: number;
 
   @Field(() => String)
   owner: string;
@@ -26,4 +26,13 @@ export class PnLType {
 
   @Field(() => Int)
   positionCount: number;
+
+  @Field(() => String, { nullable: true })
+  collateralAddress?: string;
+
+  @Field(() => String, { nullable: true })
+  collateralSymbol?: string;
+
+  @Field(() => Int, { nullable: true })
+  collateralDecimals?: number;
 }

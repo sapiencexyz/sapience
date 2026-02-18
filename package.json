@@ -1,30 +1,51 @@
 {
-  "name": "@foil/monorepo",
+  "name": "@sapience/monorepo",
   "version": "0.1",
   "private": true,
   "main": "index.js",
   "scripts": {
-    "build": "pnpm --filter protocol run build && pnpm --filter app run build && pnpm --filter docs run build && pnpm --filter website run build && pnpm --filter data run build",
+    "build": "pnpm --filter protocol run build && pnpm --filter app run build && pnpm --filter data run build",
     "test": "pnpm run test --recursive",
     "dev:protocol": "pnpm --filter protocol run dev",
-    "dev:app": "pnpm --filter app run dev",
+    "dev:app": "pnpm --filter @sapience/app run dev",
     "dev:docs": "pnpm --filter docs run dev",
-    "dev:website": "pnpm --filter website run dev",
-    "dev:agent": "pnpm --filter agent run dev",
     "dev:api": "concurrently \"NODE_ENV=development pnpm --filter api run dev:service\" \"NODE_ENV=development pnpm --filter api run dev:worker\"",
     "dev:api:service": "NODE_ENV=development pnpm --filter api run dev:service",
     "dev:api:worker": "NODE_ENV=development pnpm --filter api run dev:worker",
+    "dev:relayer": "NODE_ENV=development pnpm --filter @sapience/relayer run dev",
     "start:reindex-market": "pnpm --filter api run start:reindex-market",
     "start:reindex-missing": "pnpm --filter api run start:reindex-missing",
-    "start:reindex-resource": "pnpm --filter api run start:reindex-resource"
+    "start:reindex-resource": "pnpm --filter api run start:reindex-resource",
+    "start:reindex-market-group-factory": "pnpm --filter api run start:reindex-market-group-factory",
+    "start:reindex-eas": "pnpm --filter api run start:reindex-eas",
+    "start:reindex-accuracy": "pnpm --filter api run start:reindex-accuracy",
+    "start:backfill-accuracy": "pnpm --filter api run start:backfill-accuracy",
+    "start:compute-stats": "pnpm --filter api run start:compute-stats",
+    "start:backfill-stats": "pnpm --filter api run start:backfill-stats",
+    "start:reindex-prediction-market": "pnpm --filter api run start:reindex-prediction-market"
   },
   "keywords": [],
   "devDependencies": {
-    "concurrently": "^8.2.2"
+    "concurrently": "8.2.2"
   },
   "engines": {
     "node": ">=20.14.x",
     "pnpm": "9.x"
   },
-  "packageManager": "pnpm@9.9.0+sha512.60c18acd138bff695d339be6ad13f7e936eea6745660d4cc4a776d5247c540d0edee1a563695c183a66eb917ef88f2b4feb1fc25f32a7adcadc7aaf3438e99c1"
+  "resolutions": {
+    "@openzeppelin/contracts": "5.0.2"
+  },
+  "pnpm": {
+    "overrides": {
+      "typegraphql-prisma>@prisma/client": "6.10.1",
+      "typegraphql-prisma>prisma": "6.10.1",
+      "form-data": "4.0.4",
+      "request>form-data": "4.0.4",
+      "elliptic": "6.6.1",
+      "protobufjs": "7.2.5",
+      "zod": "3.25.76",
+      "graphql": "16.12.0"
+    }
+  },
+  "packageManager": "pnpm@9.15.9+sha512.68046141893c66fad01c079231128e9afb89ef87e2691d69e4d40eee228988295fd4682181bae55b58418c3a253bde65a505ec7c5f9403ece5cc3cd37dcf2531"
 }

@@ -26,5 +26,5 @@ const Switch = React.forwardRef<
 ));
 Switch.displayName = SwitchPrimitives.Root.displayName;
 
-// eslint-disable-next-line import/prefer-default-export
+ 
 export { Switch };

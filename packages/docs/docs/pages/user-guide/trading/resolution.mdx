@@ -1,0 +1,16 @@
+---
+title: "Resolution"
+description: "Oracles, clarification, and dispute processes for market integrity."
+---
+
+# Resolution
+
+Prediction markets are settled using UMA. Additional resolver contracts are under development.
+
+## UMA
+
+* After the end time of a market/condition has passed and the market deployer can submit a resolution to UMA, also providing a bond.
+* During a challenge window (the "assertion liveness") following submission, anyone can dispute this settlement by posting an equal-sized bond.
+* If no dispute is submitted during this period, market participants can then withdraw collateral based on the value of their position according to the settlement.
+* If a dispute is submitted, UMA tokenholders vote to determine whether the assertion is true or false. Another settlement must be submitted for the market.
+* If the vote resolves to true, the disputer loses their bond. If the vote resolves to false, the asserter loses their bond. 

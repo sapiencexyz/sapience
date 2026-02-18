@@ -1,0 +1,56 @@
+name="prediction-market"
+version="1.1.0"
+preset="test"
+
+[var.settings]
+maxPredictionMarkets = "15"
+minCollateral = "10000000000000000" # .01 testUSDe (18 decimals)
+approvedAsserter = "0xdb5Af497A73620d881561eDb508012A5f84e9BA2"
+optimisticOracleV3 = "0xa6147867264374F324524E30C02C331cF28aa879" # https://github.com/UMAprotocol/protocol/blob/master/packages/core/networks/42161.json
+bondCurrency = "0xaf88d065e77c8cC2239327C5EDb3A432268e5831" # https://arbiscan.io/token/0xaf88d065e77c8cC2239327C5EDb3A432268e5831
+bondAmount = "500000000" # 500 * 10^6  
+assertionLiveness = "600"
+manager = "0x759dd186d243ddec7901d46d7ed94a3b1bc8b948"
+vaultTicker = "sapLP"
+vaultName = "Sapience LP"
+depends = []
+
+[clone.mintableToken]
+source = "mintable-token:2.0@main"
+options.decimals = "18"
+options.initialSupply = "0"
+options.name = "Sapience Test Collateral"
+options.owner = "0xdb5Af497A73620d881561eDb508012A5f84e9BA2"
+options.salt = "round3"
+options.symbol = "testUSDe"
+
+[deploy.PredictionMarket]
+artifact="PredictionMarket"
+args=[
+  "Prediction Market",
+  "SPM",
+  "<%= imports.mintableToken.contracts.Token.address %>",
+  "<%= settings.minCollateral %>"
+]
+depends=[]
+highlight=true
+
+[deploy.UMAResolver]
+artifact="PredictionMarketUmaResolver"
+args=[
+    { maxPredictionMarkets = "<%= settings.maxPredictionMarkets %>", optimisticOracleV3 = "<%= settings.optimisticOracleV3 %>", bondCurrency = "<%= settings.bondCurrency %>", bondAmount = "<%= settings.bondAmount %>", assertionLiveness = "<%= settings.assertionLiveness %>"},
+    [ "<%= settings.approvedAsserter %>" ]
+]
+depends=["deploy.PredictionMarket"]
+highlight=true
+
+[deploy.PassiveLiquidityVault]
+artifact="PassiveLiquidityVault"
+args=[
+  "<%= imports.mintableToken.contracts.Token.address %>",
+  "<%= settings.manager %>",
+  "<%= settings.vaultName %>",
+  "<%= settings.vaultTicker %>"
+]
+depends=[]
+highlight=true

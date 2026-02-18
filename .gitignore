@@ -18,7 +18,18 @@ packages/protocol/deployments/outputs/test
 **/coverage.json
 
 .DS_Store
+CLAUDE.local.md
 
 .vscode
 
 dump.sql
+*storybook.log
+storybook-static
+**/storybook-static/**
+
+**/*.tsbuildinfo
+
+# docker-compose volume data files
+/data/
+
+.playwright-mcp

@@ -1,0 +1,61 @@
+---
+title: "GraphQL API"
+description: "Query markets, positions, and protocol data from the Sapience API."
+---
+
+# GraphQL API
+
+## Sandbox
+
+Explore the API and discover available queries, mutations, and types in the interactive sandbox: **[api.sapience.xyz/graphql](https://api.sapience.xyz/graphql)**
+
+The sandbox includes full schema documentation, autocomplete, and lets you run queries directly in your browser.
+
+## Endpoint
+
+```
+https://api.sapience.xyz/graphql
+```
+
+## TypeScript Types
+
+The SDK exports all GraphQL types for use in your TypeScript projects:
+
+```typescript
+import type { 
+  Category
+} from '@sapience/sdk';
+```
+
+View the full type definitions on GitHub: [packages/sdk/types/graphql.ts](https://github.com/sapiencexyz/sapience/blob/main/packages/sdk/types/graphql.ts)
+
+## Quick Example
+
+```typescript
+import { ApolloClient, InMemoryCache, gql } from '@apollo/client';
+
+const client = new ApolloClient({
+  uri: 'https://api.sapience.xyz/graphql',
+  cache: new InMemoryCache()
+});
+
+const { data } = await client.query({
+  query: gql`
+    query GetCategories {
+      categories {
+        id
+        name
+      }
+    }
+  `
+});
+
+data.categories.forEach(category => {
+  console.log(category.name);
+});
+```
+
+## Notes
+
+- APIs are currently public; please be considerate and cache when possible
+- Pagination is supported via `first`, `skip`, `orderBy`, `orderDirection`

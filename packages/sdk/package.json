@@ -1,0 +1,144 @@
+{
+  "name": "@sapience/sdk",
+  "version": "0.2.0",
+  "license": "MIT",
+  "private": false,
+  "sideEffects": false,
+  "main": "./dist/index.js",
+  "module": "./dist/index.mjs",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist/",
+    "boilerplates/README.md"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./auction/signing": {
+      "types": "./dist/auction/signing.d.ts",
+      "import": "./dist/auction/signing.mjs",
+      "require": "./dist/auction/signing.js"
+    },
+    "./auction/encoding": {
+      "types": "./dist/auction/encoding.d.ts",
+      "import": "./dist/auction/encoding.mjs",
+      "require": "./dist/auction/encoding.js"
+    },
+    "./auction/v2Encoding": {
+      "types": "./dist/auction/v2Encoding.d.ts",
+      "import": "./dist/auction/v2Encoding.mjs",
+      "require": "./dist/auction/v2Encoding.js"
+    },
+    "./auction/v2Signing": {
+      "types": "./dist/auction/v2Signing.d.ts",
+      "import": "./dist/auction/v2Signing.mjs",
+      "require": "./dist/auction/v2Signing.js"
+    },
+    "./relayer/auctionWs": {
+      "types": "./dist/relayer/auctionWs.d.ts",
+      "import": "./dist/relayer/auctionWs.mjs",
+      "require": "./dist/relayer/auctionWs.js"
+    },
+    "./relayer/v2AuctionWs": {
+      "types": "./dist/relayer/v2AuctionWs.d.ts",
+      "import": "./dist/relayer/v2AuctionWs.mjs",
+      "require": "./dist/relayer/v2AuctionWs.js"
+    },
+    "./mcp/client": {
+      "types": "./dist/mcp/client.d.ts",
+      "import": "./dist/mcp/client.mjs",
+      "require": "./dist/mcp/client.js"
+    },
+    "./abis": {
+      "types": "./dist/abis/index.d.ts",
+      "import": "./dist/abis/index.mjs",
+      "require": "./dist/abis/index.js"
+    },
+    "./constants": {
+      "types": "./dist/constants/index.d.ts",
+      "import": "./dist/constants/index.mjs",
+      "require": "./dist/constants/index.js"
+    },
+    "./queries": {
+      "types": "./dist/queries/index.d.ts",
+      "import": "./dist/queries/index.mjs",
+      "require": "./dist/queries/index.js"
+    },
+    "./types": {
+      "types": "./dist/types/index.d.ts",
+      "import": "./dist/types/index.mjs",
+      "require": "./dist/types/index.js"
+    },
+    "./contracts": {
+      "types": "./dist/contracts/index.d.ts",
+      "import": "./dist/contracts/index.mjs",
+      "require": "./dist/contracts/index.js"
+    },
+    "./session": {
+      "types": "./dist/session/index.d.ts",
+      "import": "./dist/session/index.mjs",
+      "require": "./dist/session/index.js"
+    },
+    "./boilerplates": "./boilerplates/README.md"
+  },
+  "scripts": {
+    "prepare": "pnpm run build:lib",
+    "dev": "tsup index.ts auction/signing.ts auction/encoding.ts auction/v2Encoding.ts auction/v2Signing.ts relayer/auctionWs.ts relayer/v2AuctionWs.ts mcp/client.ts abis/index.ts constants/index.ts contracts/index.ts queries/index.ts types/index.ts session/index.ts --format cjs,esm --dts --watch",
+    "build:lib": "tsup index.ts auction/signing.ts auction/encoding.ts auction/v2Encoding.ts auction/v2Signing.ts relayer/auctionWs.ts relayer/v2AuctionWs.ts mcp/client.ts abis/index.ts constants/index.ts contracts/index.ts queries/index.ts types/index.ts session/index.ts --format cjs,esm --dts --tsconfig tsconfig.build.json",
+    "build": "pnpm run build:lib",
+    "lint": "eslint . --quiet",
+    "type-check": "tsc --noEmit",
+    "settle:pyth": "tsx scripts/settlePythMarkets.ts"
+  },
+  "dependencies": {
+    "abitype": "1.0.8",
+    "graphql-request": "7.2.0",
+    "zod": "3.25.1"
+  },
+  "peerDependenciesMeta": {
+    "ws": {
+      "optional": true
+    },
+    "@zerodev/sdk": {
+      "optional": true
+    },
+    "@zerodev/ecdsa-validator": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@eslint/js": "9.31.0",
+    "@types/node": "22.14.0",
+    "@types/react": "19.1.8",
+    "@types/ws": "8.5.10",
+    "@zerodev/ecdsa-validator": "5.3.3",
+    "@zerodev/sdk": "5.4.5",
+    "eslint": "9.31.0",
+    "eslint-plugin-import": "2.32.0",
+    "tsup": "8.5.0",
+    "tsx": "4.19.2",
+    "typescript": "5.8.3",
+    "typescript-eslint": "8.21.0",
+    "viem": "2.23.5",
+    "wagmi": "2.14.16"
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": "5.x",
+    "@zerodev/ecdsa-validator": "5.3.3",
+    "@zerodev/sdk": "5.4.5",
+    "lucide-react": "0.461.0",
+    "react": ">=18 || 19",
+    "react-dom": ">=18 || 19",
+    "react-hook-form": "7.53.0",
+    "viem": "2.23.5",
+    "wagmi": "2.14.16",
+    "ws": "8.18.0"
+  },
+  "engines": {
+    "node": ">=20.14.x",
+    "pnpm": "9.x"
+  }
+}

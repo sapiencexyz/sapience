@@ -1,0 +1,5 @@
+forge script src/scripts/DeployBridgedResolver/Ethereal-Arb1_deployPredictionMarketLZResolver.s.sol --rpc-url https://etherealchain.rpc.url --broadcast --verify
+forge script src/scripts/DeployBridgedResolver/Ethereal-Arb1_deployPredictionMarketLZResolverUmaSide.s.sol --rpc-url https://arb1.arbitrum.io/rpc --broadcast --verify
+forge script src/scripts/DeployBridgedResolver/Ethereal-Arb1_configurePredictionMarketLZResolver.s.sol --rpc-url https://etherealchain.rpc.url --broadcast
+forge script src/scripts/DeployBridgedResolver/Ethereal-Arb1_configurePredictionMarketLZResolverUmaSide.s.sol --rpc-url https://arb1.arbitrum.io/rpc --broadcast
+
