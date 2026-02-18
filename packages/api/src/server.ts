@@ -26,7 +26,7 @@ initSentry();
 const startServer = async () => {
   await initializeDataSource();
 
-  if (config.isDev && process.env.DATABASE_URL?.includes('render')) {
+  if (config.isDev && process.env.DATABASE_URL?.includes('railway')) {
     console.log(
       'Skipping fixtures initialization since we are in development mode and using production database'
     );
