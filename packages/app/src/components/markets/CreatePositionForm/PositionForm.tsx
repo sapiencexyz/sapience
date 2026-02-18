@@ -469,7 +469,7 @@ export default function PositionForm({
           chainId: chainId,
         };
 
-        // For V2-capable chains with conditional token selections, add escrowPicks to trigger V2 auction
+        // For escrow-capable chains with conditional token selections, add escrowPicks to trigger escrow auction
         const isEscrowChain = chainId === CHAIN_ID_ETHEREAL_TESTNET;
         if (isEscrowChain && hasUma && !hasPyth) {
           const escrowPicks = getPicks();
@@ -542,7 +542,7 @@ export default function PositionForm({
   // TODO: Re-enable after fixing the issue where auto-triggers invalidate received bids
   const autoAuctionDebounceRef = useRef<number | undefined>(undefined);
   useEffect(() => {
-    // TEMPORARILY DISABLED for V2 testing - auto-triggers were invalidating received bids
+    // TEMPORARILY DISABLED for escrow testing - auto-triggers were invalidating received bids
     // User must click "INITIATE AUCTION" manually
     return;
 

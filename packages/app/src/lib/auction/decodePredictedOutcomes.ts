@@ -45,7 +45,7 @@ const UMA_RESOLVER_SET = new Set<string>(
     ...Object.values(predictionMarketLZConditionalTokensResolver).map(
       (v) => v?.address
     ),
-    // V2 resolvers that use the same encoding format as UMA
+    // Escrow resolvers that use the same encoding format as UMA
     ...Object.values(manualConditionResolver).map((v) => v?.address),
   ]
     .filter(Boolean)

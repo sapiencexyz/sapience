@@ -66,7 +66,7 @@ const ERC20_ABI = parseAbi([
 // ============================================================================
 
 /**
- * Create a public client for the V2 trading chain
+ * Create a public client for the escrow trading chain
  */
 export function createEscrowPublicClient(
   rpcUrl?: string,
@@ -111,7 +111,7 @@ export async function getPrediction(
 ): Promise<Prediction> {
   const chainId = options?.chainId ?? CHAIN_ID_ETHEREAL;
   const marketAddress = options?.marketAddress ?? getMarketAddress(chainId);
-  if (!marketAddress) throw new Error(`No V2 market address for chain ${chainId}`);
+  if (!marketAddress) throw new Error(`No escrow market address for chain ${chainId}`);
 
   const client = createEscrowPublicClient(options?.rpcUrl, chainId);
   const result = await client.readContract({
@@ -147,7 +147,7 @@ export async function getPickConfiguration(
 ): Promise<PickConfiguration> {
   const chainId = options?.chainId ?? CHAIN_ID_ETHEREAL;
   const marketAddress = options?.marketAddress ?? getMarketAddress(chainId);
-  if (!marketAddress) throw new Error(`No V2 market address for chain ${chainId}`);
+  if (!marketAddress) throw new Error(`No escrow market address for chain ${chainId}`);
 
   const client = createEscrowPublicClient(options?.rpcUrl, chainId);
   const result = await client.readContract({
@@ -181,7 +181,7 @@ export async function getTokenPair(
 ): Promise<TokenPair> {
   const chainId = options?.chainId ?? CHAIN_ID_ETHEREAL;
   const marketAddress = options?.marketAddress ?? getMarketAddress(chainId);
-  if (!marketAddress) throw new Error(`No V2 market address for chain ${chainId}`);
+  if (!marketAddress) throw new Error(`No escrow market address for chain ${chainId}`);
 
   const client = createEscrowPublicClient(options?.rpcUrl, chainId);
   const result = await client.readContract({
@@ -210,7 +210,7 @@ export async function getPicks(
 ): Promise<Pick[]> {
   const chainId = options?.chainId ?? CHAIN_ID_ETHEREAL;
   const marketAddress = options?.marketAddress ?? getMarketAddress(chainId);
-  if (!marketAddress) throw new Error(`No V2 market address for chain ${chainId}`);
+  if (!marketAddress) throw new Error(`No escrow market address for chain ${chainId}`);
 
   const client = createEscrowPublicClient(options?.rpcUrl, chainId);
   const result = await client.readContract({
@@ -240,7 +240,7 @@ export async function getEscrowRecord(
 ): Promise<EscrowRecord> {
   const chainId = options?.chainId ?? CHAIN_ID_ETHEREAL;
   const marketAddress = options?.marketAddress ?? getMarketAddress(chainId);
-  if (!marketAddress) throw new Error(`No V2 market address for chain ${chainId}`);
+  if (!marketAddress) throw new Error(`No escrow market address for chain ${chainId}`);
 
   const client = createEscrowPublicClient(options?.rpcUrl, chainId);
   const result = await client.readContract({
@@ -278,7 +278,7 @@ export async function getNonce(
 ): Promise<bigint> {
   const chainId = options?.chainId ?? CHAIN_ID_ETHEREAL;
   const marketAddress = options?.marketAddress ?? getMarketAddress(chainId);
-  if (!marketAddress) throw new Error(`No V2 market address for chain ${chainId}`);
+  if (!marketAddress) throw new Error(`No escrow market address for chain ${chainId}`);
 
   const client = createEscrowPublicClient(options?.rpcUrl, chainId);
   return await client.readContract({
@@ -302,7 +302,7 @@ export async function canSettle(
 ): Promise<boolean> {
   const chainId = options?.chainId ?? CHAIN_ID_ETHEREAL;
   const marketAddress = options?.marketAddress ?? getMarketAddress(chainId);
-  if (!marketAddress) throw new Error(`No V2 market address for chain ${chainId}`);
+  if (!marketAddress) throw new Error(`No escrow market address for chain ${chainId}`);
 
   const client = createEscrowPublicClient(options?.rpcUrl, chainId);
   return await client.readContract({
@@ -328,7 +328,7 @@ export async function getClaimableAmount(
 ): Promise<bigint> {
   const chainId = options?.chainId ?? CHAIN_ID_ETHEREAL;
   const marketAddress = options?.marketAddress ?? getMarketAddress(chainId);
-  if (!marketAddress) throw new Error(`No V2 market address for chain ${chainId}`);
+  if (!marketAddress) throw new Error(`No escrow market address for chain ${chainId}`);
 
   const client = createEscrowPublicClient(options?.rpcUrl, chainId);
   return await client.readContract({
@@ -356,7 +356,7 @@ export async function isPositionToken(
 ): Promise<boolean> {
   const chainId = options?.chainId ?? CHAIN_ID_ETHEREAL;
   const marketAddress = options?.marketAddress ?? getMarketAddress(chainId);
-  if (!marketAddress) throw new Error(`No V2 market address for chain ${chainId}`);
+  if (!marketAddress) throw new Error(`No escrow market address for chain ${chainId}`);
 
   const client = createEscrowPublicClient(options?.rpcUrl, chainId);
   return await client.readContract({
@@ -380,7 +380,7 @@ export async function isPredictorToken(
 ): Promise<boolean> {
   const chainId = options?.chainId ?? CHAIN_ID_ETHEREAL;
   const marketAddress = options?.marketAddress ?? getMarketAddress(chainId);
-  if (!marketAddress) throw new Error(`No V2 market address for chain ${chainId}`);
+  if (!marketAddress) throw new Error(`No escrow market address for chain ${chainId}`);
 
   const client = createEscrowPublicClient(options?.rpcUrl, chainId);
   return await client.readContract({
@@ -404,7 +404,7 @@ export async function getPickConfigIdFromToken(
 ): Promise<Hex> {
   const chainId = options?.chainId ?? CHAIN_ID_ETHEREAL;
   const marketAddress = options?.marketAddress ?? getMarketAddress(chainId);
-  if (!marketAddress) throw new Error(`No V2 market address for chain ${chainId}`);
+  if (!marketAddress) throw new Error(`No escrow market address for chain ${chainId}`);
 
   const client = createEscrowPublicClient(options?.rpcUrl, chainId);
   return await client.readContract({
@@ -425,7 +425,7 @@ export async function getCollateralToken(options?: {
 }): Promise<Address> {
   const chainId = options?.chainId ?? CHAIN_ID_ETHEREAL;
   const marketAddress = options?.marketAddress ?? getMarketAddress(chainId);
-  if (!marketAddress) throw new Error(`No V2 market address for chain ${chainId}`);
+  if (!marketAddress) throw new Error(`No escrow market address for chain ${chainId}`);
 
   const client = createEscrowPublicClient(options?.rpcUrl, chainId);
   return await client.readContract({
@@ -529,7 +529,7 @@ export async function getFullPositionDetails(
 }> {
   const chainId = options?.chainId ?? CHAIN_ID_ETHEREAL;
   const marketAddress = options?.marketAddress ?? getMarketAddress(chainId);
-  if (!marketAddress) throw new Error(`No V2 market address for chain ${chainId}`);
+  if (!marketAddress) throw new Error(`No escrow market address for chain ${chainId}`);
 
   const client = createEscrowPublicClient(options?.rpcUrl, chainId);
 

@@ -425,7 +425,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
 
             // Build escrow auction payload - no signature at start time
             // Counterparty will specify their collateral in their bid
-            const v2Payload = {
+            const escrowPayload = {
               picks: picks.map((p) => ({
                 conditionResolver: p.conditionResolver,
                 conditionId: p.conditionId,
@@ -444,7 +444,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
             const escrowResponse = await client.sendWithAck<{
               auctionId?: string;
               error?: string;
-            }>('auction.start', v2Payload, { timeoutMs: 10000 });
+            }>('auction.start', escrowPayload, { timeoutMs: 10000 });
 
             if (escrowResponse?.error) {
               console.error('[Escrow Auction] Start failed:', escrowResponse.error);
@@ -588,25 +588,25 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
       // Escrow uses counterparty* fields instead of maker* fields for bidder
       const bid = args.selectedBid;
       // Cast to access escrow fields if present
-      const v2Bid = bid as unknown as Partial<EscrowQuoteBid>;
+      const escrowBid = bid as unknown as Partial<EscrowQuoteBid>;
       return {
         encodedPredictedOutcomes: predictedOutcomes[0],
         resolver,
         makerCollateral: auction.wager,
         // Escrow bids have counterpartyCollateral, V1 bids have makerCollateral
-        takerCollateral: v2Bid.counterpartyCollateral ?? bid.makerCollateral,
+        takerCollateral: escrowBid.counterpartyCollateral ?? bid.makerCollateral,
         maker: auction.taker,
         // Escrow bids have counterparty, V1 bids have maker
-        taker: (v2Bid.counterparty ?? bid.maker) as `0x${string}`,
+        taker: (escrowBid.counterparty ?? bid.maker) as `0x${string}`,
         // Escrow bids have counterpartySignature, V1 bids have makerSignature
-        takerSignature: (v2Bid.counterpartySignature ??
+        takerSignature: (escrowBid.counterpartySignature ??
           bid.makerSignature) as `0x${string}`,
         // Escrow bids have counterpartyDeadline, V1 bids have makerDeadline
-        takerDeadline: String(v2Bid.counterpartyDeadline ?? bid.makerDeadline),
+        takerDeadline: String(escrowBid.counterpartyDeadline ?? bid.makerDeadline),
         refCode: (args.refCode ?? ZERO_BYTES32) as `0x${string}`,
         makerNonce: String(auction.takerNonce),
         // Escrow bids have counterpartyNonce, V1 bids have makerNonce
-        takerClaimedNonce: v2Bid.counterpartyNonce ?? bid.makerNonce,
+        takerClaimedNonce: escrowBid.counterpartyNonce ?? bid.makerNonce,
         // Escrow fields: include picks array if available
         escrowPicks: auction.escrowPicks,
         // Escrow fields: include counterparty session key data from bid

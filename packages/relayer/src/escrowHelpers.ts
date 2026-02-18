@@ -101,6 +101,7 @@ export function validateEscrowAuctionRequest(
  */
 export function validateEscrowBid(
   bid: BidPayload,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   auction: AuctionRequestPayload
 ): ValidationResult {
   // Validate auctionId

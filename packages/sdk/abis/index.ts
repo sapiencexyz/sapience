@@ -9,7 +9,7 @@ import LZResolver from './LZResolver.json';
 import LZResolverUmaSide from './LZResolverUmaSide.json';
 import LZConditionalTokenResolver from './LZConditionalTokenResolver.json';
 
-// V2 ABIs
+// Escrow ABIs
 import PredictionMarketEscrow from './PredictionMarketEscrow.json';
 import PredictionMarketToken from './PredictionMarketToken.json';
 import PredictionMarketVault from './PredictionMarketVault.json';
@@ -21,29 +21,29 @@ import PredictionMarketBridge from './PredictionMarketBridge.json';
 import PredictionMarketBridgeRemote from './PredictionMarketBridgeRemote.json';
 import PredictionMarketTokenFactory from './PredictionMarketTokenFactory.json';
 
-// Legacy (V1) exports - use V2 equivalents for new code
+// Legacy (V1) exports - use escrow equivalents for new code
 
-/** @deprecated Use `predictionMarketEscrowAbi` for V2 protocol */
+/** @deprecated Use `predictionMarketEscrowAbi` for escrow protocol */
 export const predictionMarketAbi: Abi = (PredictionMarket as { abi: Abi }).abi;
 
-/** @deprecated Use `predictionMarketVaultAbi` for V2 protocol */
+/** @deprecated Use `predictionMarketVaultAbi` for escrow protocol */
 export const liquidityVaultAbi: Abi = (LiquidityVault as { abi: Abi }).abi;
 
-/** @deprecated V1 resolver - use `lzConditionResolverAbi` for V2 */
+/** @deprecated V1 resolver - use `lzConditionResolverAbi` for escrow protocol */
 export const umaResolverAbi: Abi = (UMAResolver as { abi: Abi }).abi;
 
 export const collateralTokenAbi: Abi = (CollateralToken as { abi: Abi }).abi;
 
-/** @deprecated V1 resolver - use `lzConditionResolverAbi` for V2 */
+/** @deprecated V1 resolver - use `lzConditionResolverAbi` for escrow protocol */
 export const lzResolverAbi: Abi = (LZResolver as { abi: Abi }).abi;
 
-/** @deprecated V1 resolver - use `lzConditionResolverAbi` for V2 */
+/** @deprecated V1 resolver - use `lzConditionResolverAbi` for escrow protocol */
 export const lzResolverUmaSideAbi: Abi = (LZResolverUmaSide as { abi: Abi }).abi;
 
-/** @deprecated V1 resolver - use `lzConditionResolverAbi` for V2 */
+/** @deprecated V1 resolver - use `lzConditionResolverAbi` for escrow protocol */
 export const lzConditionalTokenResolverAbi: Abi = LZConditionalTokenResolver as Abi;
 
-// V2 exports — ABIs are plain arrays from forge build output
+// Escrow exports — ABIs are plain arrays from forge build output
 export const predictionMarketEscrowAbi = PredictionMarketEscrow as Abi;
 export const predictionMarketTokenAbi = PredictionMarketToken as Abi;
 export const predictionMarketVaultAbi = PredictionMarketVault as Abi;

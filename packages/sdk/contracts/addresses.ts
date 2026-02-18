@@ -130,11 +130,11 @@ export const eas: ChainAddressMap = {
 } as const;
 
 // ============================================
-// V2 Contract Addresses
+// Escrow Contract Addresses
 // ============================================
 
 /**
- * PredictionMarketEscrow (V2)
+ * PredictionMarketEscrow
  * Core escrow contract handling mint, settle, redeem, burn
  * TODO: Update addresses after mainnet deployment
  */
@@ -153,8 +153,8 @@ export const predictionMarketEscrow: ChainAddressMap = {
 } as const;
 
 /**
- * PredictionMarketVault (V2)
- * Passive liquidity vault for V2 protocol
+ * PredictionMarketVault
+ * Passive liquidity vault for escrow protocol
  * TODO: Update addresses after mainnet deployment
  */
 export const predictionMarketVault: ChainAddressMap = {
@@ -171,7 +171,7 @@ export const predictionMarketVault: ChainAddressMap = {
 } as const;
 
 /**
- * PythConditionResolver (V2)
+ * PythConditionResolver
  * Pyth oracle-based condition resolution
  */
 export const pythConditionResolver: ChainAddressMap = {
@@ -188,7 +188,7 @@ export const pythConditionResolver: ChainAddressMap = {
 } as const;
 
 /**
- * ManualConditionResolver (V2)
+ * ManualConditionResolver
  * Admin-controlled condition resolution (for testing/mocks)
  */
 export const manualConditionResolver: ChainAddressMap = {
@@ -205,7 +205,7 @@ export const manualConditionResolver: ChainAddressMap = {
 } as const;
 
 /**
- * LZConditionResolver (V2)
+ * LZConditionResolver
  * LayerZero cross-chain condition resolution
  */
 export const lzConditionResolver: ChainAddressMap = {
@@ -222,7 +222,7 @@ export const lzConditionResolver: ChainAddressMap = {
 } as const;
 
 /**
- * PredictionMarketBridge (V2)
+ * PredictionMarketBridge
  * Bridge contract on source chain (Ethereal)
  */
 export const predictionMarketBridge: ChainAddressMap = {
@@ -239,7 +239,7 @@ export const predictionMarketBridge: ChainAddressMap = {
 } as const;
 
 /**
- * PredictionMarketBridgeRemote (V2)
+ * PredictionMarketBridgeRemote
  * Bridge contract on remote chain (Arbitrum)
  */
 export const predictionMarketBridgeRemote: ChainAddressMap = {
@@ -256,7 +256,7 @@ export const predictionMarketBridgeRemote: ChainAddressMap = {
 } as const;
 
 /**
- * PredictionMarketTokenFactory (V2)
+ * PredictionMarketTokenFactory
  * CREATE3 factory for deterministic token addresses on remote chain
  */
 export const predictionMarketTokenFactory: ChainAddressMap = {
@@ -285,8 +285,8 @@ export const contracts = {
   eas,
 };
 
-// V2 exports
-export const v2Contracts = {
+// Escrow exports
+export const escrowContracts = {
   predictionMarketEscrow,
   predictionMarketVault,
   pythConditionResolver,

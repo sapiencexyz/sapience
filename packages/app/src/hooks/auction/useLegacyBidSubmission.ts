@@ -32,7 +32,7 @@ import { type Pick as EscrowPick } from '@sapience/sdk';
 import { getPublicClientForChainId } from '~/lib/utils/util';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
-import { encodeV2SessionKeyData } from '~/lib/session/sessionKeyManager';
+import { encodeEscrowSessionKeyData } from '~/lib/session/sessionKeyManager';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { toAuctionWsUrl } from '~/lib/ws';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
@@ -54,15 +54,15 @@ export type LegacyBidSubmissionParams = {
   resolver: `0x${string}`;
   /** Auction creator (taker) address */
   taker: `0x${string}`;
-  /** Taker nonce for the auction (required for V1, not needed for V2) */
+  /** Taker nonce for the auction (required for legacy, not needed for escrow) */
   takerNonce?: number;
   /** Bid expiry in seconds from now */
   expirySeconds: number;
   /** Optional max end time (seconds since epoch) to clamp expiry */
   maxEndTimeSec?: number;
-  /** Force V1 protocol even on V2-capable chains (for V1 auctions) */
+  /** Force legacy protocol even on escrow-capable chains (for legacy auctions) */
   forceV1?: boolean;
-  /** V2 picks array (for V2 auctions - used instead of decoding predictedOutcomes) */
+  /** Escrow picks array (for escrow auctions - used instead of decoding predictedOutcomes) */
   escrowPicks?: Array<{
     conditionResolver: string;
     conditionId: string;
@@ -119,7 +119,7 @@ export function useLegacyBidSubmission(
     signTypedData: sessionSignTypedData,
     isUsingSession,
     isUsingSmartAccount,
-    v2SessionKeyApproval,
+    escrowSessionKeyApproval,
     chainClients,
   } = useSession();
   const { toast } = useToast();
@@ -139,8 +139,8 @@ export function useLegacyBidSubmission(
       : predictionMarket[chainId]?.address
   ) as `0x${string}` | undefined;
 
-  // Get V2 nonce for counterparty signing (only used on V2 chains)
-  const { nonce: v2Nonce } = useEscrowNonce({
+  // Get escrow nonce for counterparty signing (only used on escrow chains)
+  const { nonce: escrowNonce } = useEscrowNonce({
     address: effectiveAddress as Address | undefined,
     chainId,
     enabled: isEscrowChain,
@@ -187,9 +187,9 @@ export function useLegacyBidSubmission(
         escrowPicks: providedEscrowPicks,
       } = params;
 
-      // Determine if we should use V2 protocol
-      // Use V2 only if on V2 chain AND auction is not forced to V1
-      const useV2Protocol = isEscrowChain && !forceV1;
+      // Determine if we should use escrow protocol
+      // Use escrow only if on escrow chain AND auction is not forced to legacy
+      const useEscrowProtocol = isEscrowChain && !forceV1;
 
       // Use effectiveAddress from session context (smart account when session active, otherwise EOA)
       const signerAddress = effectiveAddress;
@@ -258,8 +258,8 @@ export function useLegacyBidSubmission(
 
       let makerSignature: `0x${string}`;
 
-      if (useV2Protocol) {
-        // V2: SmartAccount counterparties need wUSDe pre-funded before mint
+      if (useEscrowProtocol) {
+        // Escrow: SmartAccount counterparties need wUSDe pre-funded before mint
         // The predictor calls mint(), which does transferFrom(counterparty) - counterparty can't wrap at that time
         if (isUsingSession && wusdeAddress && chainClients?.ethereal) {
           const escrowAddress = verifyingContract;
@@ -380,14 +380,14 @@ export function useLegacyBidSubmission(
         let picks: EscrowPick[];
 
         if (providedEscrowPicks && providedEscrowPicks.length > 0) {
-          // Use provided V2 picks directly (already in correct format from auction data)
+          // Use provided escrow picks directly (already in correct format from auction data)
           picks = providedEscrowPicks.map((p) => ({
             conditionResolver: p.conditionResolver as `0x${string}`,
             conditionId: p.conditionId as `0x${string}`,
             predictedOutcome: p.predictedOutcome as OutcomeSide,
           }));
         } else {
-          // Fall back to decoding from predictedOutcomes (V1-style auctions on V2 chain)
+          // Fall back to decoding from predictedOutcomes (legacy-style auctions on escrow chain)
           const decoded = decodeAuctionPredictedOutcomes({
             resolver,
             predictedOutcomes,
@@ -398,15 +398,15 @@ export function useLegacyBidSubmission(
         if (picks.length === 0) {
           return {
             success: false,
-            error: 'Could not decode picks for V2 signing',
+            error: 'Could not decode picks for escrow signing',
           };
         }
 
         // Get counterparty nonce (bidder's nonce)
-        const counterpartyNonce = v2Nonce ?? 0n;
+        const counterpartyNonce = escrowNonce ?? 0n;
 
-        // Build V2 typed data for counterparty (bidder)
-        // In V2 terms: predictor = taker (auction creator), counterparty = maker (bidder)
+        // Build escrow typed data for counterparty (bidder)
+        // In escrow terms: predictor = taker (auction creator), counterparty = maker (bidder)
         const typedData = buildCounterpartyMintTypedData({
           picks,
           predictorCollateral: takerCollateral, // auction creator's collateral
@@ -532,24 +532,24 @@ export function useLegacyBidSubmission(
       // Send over shared Auction WS (fire and forget - no ack wait)
       const client = getSharedAuctionWsClient(wsUrl);
 
-      if (useV2Protocol) {
+      if (useEscrowProtocol) {
         // Escrow bid payload - uses escrow terminology (counterparty = bidder)
         // Include session key data if bidder is using session key signing
         const counterpartySessionKeyData =
-          isUsingSession && v2SessionKeyApproval
-            ? encodeV2SessionKeyData(v2SessionKeyApproval)
+          isUsingSession && escrowSessionKeyApproval
+            ? encodeEscrowSessionKeyData(escrowSessionKeyApproval)
             : undefined;
 
-        const v2Payload = {
+        const escrowPayload = {
           auctionId,
           counterparty: signerAddress,
           counterpartyCollateral: makerCollateral.toString(),
-          counterpartyNonce: Number(v2Nonce ?? 0n),
+          counterpartyNonce: Number(escrowNonce ?? 0n),
           counterpartyDeadline: makerDeadline,
           counterpartySignature: makerSignature,
           ...(counterpartySessionKeyData && { counterpartySessionKeyData }),
         };
-        client.send({ type: 'bid.submit', payload: v2Payload });
+        client.send({ type: 'bid.submit', payload: escrowPayload });
       } else {
         // V1 bid payload
         const payload: Record<string, unknown> = {
@@ -586,11 +586,11 @@ export function useLegacyBidSubmission(
       onSignatureRejected,
       effectiveAddress,
       isEscrowChain,
-      v2Nonce,
+      escrowNonce,
       isUsingSession,
       isUsingSmartAccount,
       sessionSignTypedData,
-      v2SessionKeyApproval,
+      escrowSessionKeyApproval,
       chainClients,
       wusdeAddress,
       formatAmount,

@@ -6,7 +6,6 @@
 import {
   recoverTypedDataAddress,
   decodeAbiParameters,
-  hashTypedData,
   type Address,
   type Hex,
 } from 'viem';

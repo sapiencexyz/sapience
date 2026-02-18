@@ -460,6 +460,8 @@ enum SettlementResult {
   PREDICTOR_WINS
   COUNTERPARTY_WINS
   NON_DECISIVE
+
+  @@map("V2SettlementResult")
 }
 
 /// Tracks the indexer's last-processed block per chain

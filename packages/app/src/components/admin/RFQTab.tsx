@@ -912,7 +912,7 @@ const RFQTab = ({
           chainId: protocolVersion === 'escrow' ? escrowChainId : currentChainId,
           resolver: trimmedResolver.toLowerCase(),
           ...(trimmedGroupName ? { groupName: trimmedGroupName } : {}),
-          // V2: pass condition ID directly via conditionHash
+          // Escrow: pass condition ID directly via conditionHash
           ...(protocolVersion === 'escrow' && escrowConditionId
             ? { conditionHash: escrowConditionId }
             : {}),
@@ -1373,7 +1373,7 @@ const RFQTab = ({
                 onChange={(e) => setGroupName(e.target.value)}
               />
             </div>
-            {/* V2-specific fields */}
+            {/* Escrow-specific fields */}
             {protocolVersion === 'escrow' && !editingId && (
               <>
                 {/* Resolver Type - 4 options */}

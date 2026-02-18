@@ -895,7 +895,7 @@ const CreatePositionFormInner = ({
           // Close the popover/drawer
           setIsPopoverOpen(false);
 
-          // For V2, add picks directly from selections (ensures exact match with counterparty signature)
+          // For escrow, add picks directly from selections (ensures exact match with counterparty signature)
           if (isEscrowChain) {
             const escrowPicks = getPicks();
             console.log('[Escrow Form] Building escrowPicks from selections:', {

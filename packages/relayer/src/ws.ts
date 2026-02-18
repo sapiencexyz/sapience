@@ -381,15 +381,6 @@ export function createAuctionWebSocketServer() {
     // Start idle timeout
     resetIdleTimeout();
 
-    // Store request context for signature verification
-    const hostHeader = (req.headers['host'] as string) || 'unknown';
-    // Extract hostname without port to match client extraction
-    const domain = hostHeader.split(':')[0];
-    // Use https/http origin (not wss/ws) to match SIWE standard and keep URI short
-    const protocol =
-      req.headers['x-forwarded-proto'] === 'https' ? 'https' : 'http';
-    const wsUri = `${protocol}://${hostHeader}`;
-
     let rateCount = 0;
     let rateResetAt = Date.now() + RATE_LIMIT_WINDOW_MS;
 
@@ -822,9 +813,9 @@ export function createAuctionWebSocketServer() {
         if (msg.type === 'burn.request') {
           // TODO: Handle burn requests
           send(ws, {
-            type: 'burn.ack' as any,
-            payload: { error: 'burn_not_implemented' },
-          } as any);
+            type: 'error',
+            payload: { message: 'burn_not_implemented', code: 'not_implemented' },
+          });
           trackDuration(msgType, startTime);
           return;
         }

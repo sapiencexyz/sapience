@@ -12,7 +12,7 @@ import type { Pick, PickJson, OutcomeSide } from '../types/auction';
 
 /**
  * ABI parameters for encoding a Pick struct
- * Matches IV2Types.Pick in Solidity
+ * Matches the Pick struct in PredictionMarketEscrow
  */
 const PICK_TUPLE_TYPE = {
   type: 'tuple',

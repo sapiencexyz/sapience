@@ -13,7 +13,7 @@ import { predictionMarketEscrowAbi } from '@sapience/sdk/abis';
 
 const BLOCK_BATCH_SIZE = 100;
 
-// Event type interfaces (matching IV2Events.sol)
+// Event type interfaces (matching PredictionMarketEscrow events)
 interface PredictionCreatedEvent {
   predictionId: `0x${string}`;
   predictor: `0x${string}`;
@@ -527,11 +527,8 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     );
   }
 
-  private async processDustSwept(
-    event: DustSweptEvent,
-    log: Log,
-    block: Block
-  ): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  private async processDustSwept(event: DustSweptEvent, log: Log, block: Block): Promise<void> {
     console.log(
       `[PredictionMarketEscrowIndexer] Processing DustSwept event: pickConfigId=${event.pickConfigId}, amount=${event.amount}`
     );
