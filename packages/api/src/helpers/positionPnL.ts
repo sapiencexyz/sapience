@@ -183,7 +183,7 @@ export async function calculatePositionPnL(
   }
 
   // Get all predictions to find original collaterals
-  const predictions = await prisma.escrowPrediction.findMany({
+  const predictions = await prisma.prediction.findMany({
     where: {
       predictionId: { in: Array.from(predictionIds) },
     },
@@ -262,7 +262,7 @@ export async function calculatePositionPnL(
   }
 
   // 3. Calculate unrealized P&L from settled but unclaimed predictions
-  const settledPredictions = await prisma.escrowPrediction.findMany({
+  const settledPredictions = await prisma.prediction.findMany({
     where: {
       ...buildWhereClause(),
       settled: true,

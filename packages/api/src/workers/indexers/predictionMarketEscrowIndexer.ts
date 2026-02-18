@@ -411,7 +411,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     const timestamp = Number(block.timestamp);
 
     // Create prediction record
-    await prisma.escrowPrediction.upsert({
+    await prisma.prediction.upsert({
       where: { predictionId: predictionIdLower },
       create: {
         predictionId: predictionIdLower,
@@ -450,7 +450,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     const predictionIdLower = event.predictionId.toLowerCase();
 
     // Update prediction as settled
-    await prisma.escrowPrediction.updateMany({
+    await prisma.prediction.updateMany({
       where: { predictionId: predictionIdLower },
       data: {
         settled: true,
@@ -514,7 +514,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     const predictionIdLower = event.predictionId.toLowerCase();
 
     // Update prediction with deposited collateral
-    await prisma.escrowPrediction.updateMany({
+    await prisma.prediction.updateMany({
       where: { predictionId: predictionIdLower },
       data: {
         collateralDeposited: event.totalAmount.toString(),

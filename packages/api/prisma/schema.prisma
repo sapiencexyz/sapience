@@ -473,7 +473,7 @@ model IndexerState {
 }
 
 /// A prediction (position) created on-chain via PredictionMarketEscrow
-model EscrowPrediction {
+model Prediction {
   id                     Int       @id @default(autoincrement())
   createdAt              DateTime  @default(now()) @db.Timestamp(6)
 

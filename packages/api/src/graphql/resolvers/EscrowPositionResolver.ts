@@ -253,13 +253,13 @@ export class EscrowPositionResolver {
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number
   ): Promise<number> {
     const addr = address.toLowerCase();
-    const where: Prisma.EscrowPredictionWhereInput = {
+    const where: Prisma.PredictionWhereInput = {
       OR: [{ predictor: addr }, { counterparty: addr }],
     };
     if (chainId !== undefined && chainId !== null) {
       where.chainId = chainId;
     }
-    return prisma.escrowPrediction.count({ where });
+    return prisma.prediction.count({ where });
   }
 
   @Query(() => [PredictionType])
@@ -274,7 +274,7 @@ export class EscrowPositionResolver {
   ): Promise<PredictionType[]> {
     const addr = address?.toLowerCase();
 
-    const where: Prisma.EscrowPredictionWhereInput = {};
+    const where: Prisma.PredictionWhereInput = {};
 
     if (addr) {
       where.OR = [{ predictor: addr }, { counterparty: addr }];
@@ -291,7 +291,7 @@ export class EscrowPositionResolver {
       return [];
     }
 
-    let orderByClause: Prisma.EscrowPredictionOrderByWithRelationInput = {
+    let orderByClause: Prisma.PredictionOrderByWithRelationInput = {
       createdAt: 'desc',
     };
 
@@ -301,7 +301,7 @@ export class EscrowPositionResolver {
       orderByClause = { settledAt: orderDirection === 'asc' ? 'asc' : 'desc' };
     }
 
-    const rows = await prisma.escrowPrediction.findMany({
+    const rows = await prisma.prediction.findMany({
       where,
       orderBy: orderByClause,
       take,
@@ -338,7 +338,7 @@ export class EscrowPositionResolver {
   ): Promise<PredictionType | null> {
     const predictionIdLower = predictionId.toLowerCase();
 
-    const r = await prisma.escrowPrediction.findUnique({
+    const r = await prisma.prediction.findUnique({
       where: { predictionId: predictionIdLower },
     });
 
