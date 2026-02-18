@@ -9,10 +9,8 @@
 import { encodeFunctionData, erc20Abi, parseAbi } from 'viem';
 import type { Address } from 'viem';
 import { predictionMarketAbi } from '../abis';
-import { CHAIN_ID_ETHEREAL } from '../constants/chain';
-
-/** wUSDe contract address on Ethereal */
-const WUSDE_ADDRESS: Address = '0xB6fC4B1BFF391e5F6b4a3D2C7Bda1FeE3524692D';
+import { CHAIN_ID_ETHEREAL, CHAIN_ID_ETHEREAL_TESTNET } from '../constants/chain';
+import { collateralToken } from '../contracts/addresses';
 
 const WUSDE_ABI = parseAbi([
   'function deposit() payable',
@@ -144,7 +142,9 @@ export function prepareMintCalls(
   }
 
   // 1. Wrap if on Ethereal and wUSDe balance is insufficient
-  if (chainId === CHAIN_ID_ETHEREAL) {
+  const isEthereal = chainId === CHAIN_ID_ETHEREAL || chainId === CHAIN_ID_ETHEREAL_TESTNET;
+  if (isEthereal) {
+    const wusdeAddress = collateralToken[chainId]?.address ?? collateralToken[CHAIN_ID_ETHEREAL]?.address;
     const wrappedBal =
       typeof currentWusdeBalance === 'bigint' ? currentWusdeBalance : 0n;
     const amountToWrap =
@@ -152,7 +152,7 @@ export function prepareMintCalls(
 
     if (amountToWrap > 0n) {
       calls.push({
-        to: WUSDE_ADDRESS,
+        to: wusdeAddress!,
         data: encodeFunctionData({
           abi: WUSDE_ABI,
           functionName: 'deposit',

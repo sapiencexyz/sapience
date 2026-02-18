@@ -23,7 +23,6 @@ jest.mock('@sapience/sdk/constants', () => ({
   CHAIN_ID_ETHEREAL: 5064014,
   CHAIN_ID_ETHEREAL_TESTNET: 13374202,
   DEFAULT_CHAIN_ID: 5064014,
-  ETHEREAL_WUSDE_ADDRESS: '0xWUSDe',
 }));
 
 jest.mock('@sapience/sdk/contracts', () => ({

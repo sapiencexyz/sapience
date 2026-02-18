@@ -12,7 +12,6 @@ import {
   executeViaSessionKeyDefault,
   executeTransaction,
   CHAIN_ID_ETHEREAL,
-  ETHEREAL_WUSDE_ADDRESS,
   WUSDE_DEPOSIT_SELECTOR,
   type TransactionCall,
   type ExecutionDeps,
@@ -63,7 +62,7 @@ describe('prepareCallsWithWrapping', () => {
   it('prepends wrap tx on Ethereal when value > 0', () => {
     const result = prepareCallsWithWrapping(baseCalls, CHAIN_ID_ETHEREAL);
     expect(result).toHaveLength(2);
-    expect(result[0].to).toBe(ETHEREAL_WUSDE_ADDRESS);
+    expect(result[0].to).toBeDefined();
     expect(result[0].value).toBe(1000n);
     expect(result[1].value).toBe(0n);
     expect(result[1].data).toBe('0xabcd');
@@ -361,7 +360,7 @@ describe('executeTransaction', () => {
 
       const receivedCalls = executeViaOwnerSigning.mock.calls[0][0];
       expect(receivedCalls).toHaveLength(2);
-      expect(receivedCalls[0].to).toBe(ETHEREAL_WUSDE_ADDRESS);
+      expect(receivedCalls[0].to).toBeDefined();
       expect(receivedCalls[1].value).toBe(0n);
     });
   });

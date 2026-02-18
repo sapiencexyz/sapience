@@ -9,15 +9,15 @@ import type { Abi, Hash, Hex } from 'viem';
 import { encodeFunctionData } from 'viem';
 import { waitForCallsStatus } from 'viem/actions';
 import {
-  ETHEREAL_WUSDE_ADDRESS,
   DEFAULT_CHAIN_ID,
   CHAIN_ID_ETHEREAL,
   CHAIN_ID_ETHEREAL_TESTNET,
 } from '@sapience/sdk/constants';
+import { collateralToken } from '@sapience/sdk/contracts';
 
 // ─── Constants ───────────────────────────────────────────────────────────────
 
-export { ETHEREAL_WUSDE_ADDRESS, DEFAULT_CHAIN_ID };
+export { DEFAULT_CHAIN_ID };
 // deposit() selector: keccak256("deposit()") = 0xd0e30db0
 export const WUSDE_DEPOSIT_SELECTOR = '0xd0e30db0' as Hex;
 
@@ -130,9 +130,10 @@ export function encodeWriteContractToCall(
 /**
  * Create a WUSDe deposit (wrap) transaction.
  */
-export function createWrapTransaction(amount: bigint): TransactionCall {
+export function createWrapTransaction(amount: bigint, chainId: number = DEFAULT_CHAIN_ID): TransactionCall {
+  const wusdeAddress = collateralToken[chainId]?.address ?? collateralToken[CHAIN_ID_ETHEREAL]?.address;
   return {
-    to: ETHEREAL_WUSDE_ADDRESS,
+    to: wusdeAddress!,
     data: WUSDE_DEPOSIT_SELECTOR,
     value: amount,
   };
@@ -155,7 +156,7 @@ export function prepareCallsWithWrapping(
   );
   if (totalValue === 0n) return calls;
 
-  const wrapTx = createWrapTransaction(totalValue);
+  const wrapTx = createWrapTransaction(totalValue, chainId);
   return [wrapTx, ...calls.map((call) => ({ ...call, value: 0n }))];
 }
 
