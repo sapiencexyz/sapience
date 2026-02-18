@@ -20,6 +20,7 @@ import {
 import {
   COLLATERAL_SYMBOLS,
   CHAIN_ID_ETHEREAL,
+  DEFAULT_CHAIN_ID,
   CHAIN_ID_ETHEREAL_TESTNET,
 } from '@sapience/sdk/constants';
 import { useToast } from '@sapience/ui/hooks/use-toast';

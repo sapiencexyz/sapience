@@ -3,6 +3,10 @@ import { twMerge } from 'tailwind-merge';
 import { createPublicClient, http, defineChain } from 'viem';
 import * as chains from 'viem/chains';
 import { mainnet } from 'viem/chains';
+import {
+  CHAIN_ID_ETHEREAL,
+  CHAIN_ID_ETHEREAL_TESTNET,
+} from '@sapience/sdk/constants';
 
 // Mainnet client for ENS resolution
 export const mainnetClient = createPublicClient({
@@ -13,10 +17,6 @@ export const mainnetClient = createPublicClient({
       )
     : http('https://ethereum-rpc.publicnode.com'),
 });
-
-// Ethereal chain definitions (not in viem/chains)
-const CHAIN_ID_ETHEREAL = 5064014;
-const CHAIN_ID_ETHEREAL_TESTNET = 13374202;
 
 const etherealChain = defineChain({
   id: CHAIN_ID_ETHEREAL,

@@ -4,8 +4,8 @@ import { erc20Abi, formatUnits } from 'viem';
 import {
   COLLATERAL_SYMBOLS,
   CHAIN_ID_ETHEREAL,
-  CHAIN_ID_ETHEREAL_TESTNET,
   DEFAULT_CHAIN_ID,
+  CHAIN_ID_ETHEREAL_TESTNET,
   ETHEREAL_WUSDE_ADDRESS,
 } from '@sapience/sdk/constants';
 import { collateralToken } from '@sapience/sdk/contracts';

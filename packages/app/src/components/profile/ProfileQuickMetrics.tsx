@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { DEFAULT_CHAIN_ID, CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 
 import type { Position } from '~/hooks/graphql/useUserPositions';
 import NumberDisplay from '~/components/shared/NumberDisplay';
@@ -99,7 +99,7 @@ export default function ProfileQuickMetrics({
   positions,
   className,
 }: ProfileQuickMetricsProps) {
-  const chainId = CHAIN_ID_ETHEREAL;
+  const chainId = DEFAULT_CHAIN_ID;
   const collateralSymbol = COLLATERAL_SYMBOLS[chainId] || 'testUSDe';
   const balance = useProfileBalance(address, chainId, collateralSymbol);
   const volume = useProfileVolume(address);

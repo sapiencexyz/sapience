@@ -50,6 +50,7 @@ import {
 } from '@sapience/sdk/contracts';
 import {
   CHAIN_ID_ETHEREAL,
+  DEFAULT_CHAIN_ID,
   CHAIN_ID_ETHEREAL_TESTNET,
   CHAIN_ID_ARBITRUM,
   etherealChain,
@@ -64,7 +65,7 @@ function getEtherealContractAddresses(chainId: number) {
   const effectiveChainId =
     chainId === CHAIN_ID_ETHEREAL_TESTNET
       ? CHAIN_ID_ETHEREAL_TESTNET
-      : CHAIN_ID_ETHEREAL;
+      : DEFAULT_CHAIN_ID;
   // Get escrow address, but only use it if it's not the zero address (not deployed)
   const escrowAddress =
     predictionMarketEscrowAddresses[effectiveChainId]?.address;
@@ -591,7 +592,7 @@ function getEtherealPublicClient(chainId: number) {
 export async function createSession(
   ownerSigner: OwnerSigner,
   durationHours: number,
-  etherealChainId: number = CHAIN_ID_ETHEREAL
+  etherealChainId: number = DEFAULT_CHAIN_ID
 ): Promise<SessionResult> {
   console.debug('[SessionKeyManager] Creating new session...');
 
@@ -1044,7 +1045,7 @@ export async function restoreSession(
   const config: SessionConfig = serialized.config;
 
   // Determine which Ethereal chain was used (default to mainnet for backwards compatibility)
-  const etherealChainId = serialized.etherealChainId ?? CHAIN_ID_ETHEREAL;
+  const etherealChainId = serialized.etherealChainId ?? DEFAULT_CHAIN_ID;
   const selectedEtherealChain = getEtherealChain(etherealChainId);
   const etherealPublicClient = getEtherealPublicClient(etherealChainId);
   const arbitrumPublicClient = getArbitrumPublicClient();
