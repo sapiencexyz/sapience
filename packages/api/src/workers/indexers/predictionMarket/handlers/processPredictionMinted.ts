@@ -239,7 +239,7 @@ export async function processPredictionMinted(
       );
 
       // For reindexing: still check if position needs to be created (might be missing due to old bug)
-      const existingPosition = await prisma.position.findFirst({
+      const existingPosition = await prisma.legacyPosition.findFirst({
         where: {
           chainId: ctx.chainId,
           marketAddress: log.address.toLowerCase(),
@@ -265,7 +265,7 @@ export async function processPredictionMinted(
         }));
 
         await prisma.$transaction(async (tx) => {
-          await tx.position.create({
+          await tx.legacyPosition.create({
             data: {
               chainId: ctx.chainId,
               marketAddress: log.address.toLowerCase(),
@@ -313,7 +313,7 @@ export async function processPredictionMinted(
           },
         });
 
-        await tx.position.create({
+        await tx.legacyPosition.create({
           data: {
             chainId: ctx.chainId,
             marketAddress: log.address.toLowerCase(),

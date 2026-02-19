@@ -17,7 +17,7 @@ import PositionProgressBar from '~/components/shared/PositionProgressBar';
 import {
   useUserPositions,
   type Position,
-} from '~/hooks/graphql/useUserPositions';
+} from '~/hooks/graphql/useLegacyPositions';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useSession } from '~/lib/context/SessionContext';
 import type { PositionProgressState } from '~/types/positionProgress';

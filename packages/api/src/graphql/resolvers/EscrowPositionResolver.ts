@@ -7,7 +7,7 @@ import prisma from '../../db';
 // ============================================================================
 
 @ObjectType()
-class V2PickType {
+class PickType {
   @Field(() => Int)
   id!: number;
 
@@ -25,7 +25,7 @@ class V2PickType {
 }
 
 @ObjectType()
-class V2PickConfigurationType {
+class PicksType {
   @Field(() => String)
   id!: string;
 
@@ -65,12 +65,12 @@ class V2PickConfigurationType {
   @Field(() => Int, { nullable: true })
   endsAt?: number | null;
 
-  @Field(() => [V2PickType])
-  picks!: V2PickType[];
+  @Field(() => [PickType])
+  picks!: PickType[];
 }
 
 @ObjectType()
-class V2PredictionType {
+class PredictionType {
   @Field(() => Int)
   id!: number;
 
@@ -133,7 +133,7 @@ class V2PredictionType {
 }
 
 @ObjectType()
-class V2PositionBalanceType {
+class PositionType {
   @Field(() => Int)
   id!: number;
 
@@ -155,12 +155,12 @@ class V2PositionBalanceType {
   @Field(() => String)
   balance!: string;
 
-  @Field(() => V2PickConfigurationType, { nullable: true })
-  pickConfig?: V2PickConfigurationType | null;
+  @Field(() => PicksType, { nullable: true })
+  pickConfig?: PicksType | null;
 }
 
 @ObjectType()
-class V2BurnRecordType {
+class CloseType {
   @Field(() => Int)
   id!: number;
 
@@ -202,7 +202,7 @@ class V2BurnRecordType {
 }
 
 @ObjectType()
-class V2RedemptionRecordType {
+class ClaimType {
   @Field(() => Int)
   id!: number;
 
@@ -242,28 +242,28 @@ class V2RedemptionRecordType {
 // ============================================================================
 
 @Resolver()
-export class V2PositionResolver {
+export class EscrowPositionResolver {
   // -------------------------------------------------------------------------
-  // V2 Predictions
+  // Predictions (escrow-based)
   // -------------------------------------------------------------------------
 
   @Query(() => Int)
-  async v2PredictionsCount(
+  async predictionsCount(
     @Arg('address', () => String) address: string,
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number
   ): Promise<number> {
     const addr = address.toLowerCase();
-    const where: Prisma.V2PredictionWhereInput = {
+    const where: Prisma.PredictionWhereInput = {
       OR: [{ predictor: addr }, { counterparty: addr }],
     };
     if (chainId !== undefined && chainId !== null) {
       where.chainId = chainId;
     }
-    return prisma.v2Prediction.count({ where });
+    return prisma.prediction.count({ where });
   }
 
-  @Query(() => [V2PredictionType])
-  async v2Predictions(
+  @Query(() => [PredictionType])
+  async predictions(
     @Arg('take', () => Int, { defaultValue: 50 }) take: number,
     @Arg('skip', () => Int, { defaultValue: 0 }) skip: number,
     @Arg('address', () => String, { nullable: true }) address?: string,
@@ -271,10 +271,10 @@ export class V2PositionResolver {
     @Arg('settled', () => Boolean, { nullable: true }) settled?: boolean,
     @Arg('orderBy', () => String, { nullable: true }) orderBy?: string,
     @Arg('orderDirection', () => String, { nullable: true }) orderDirection?: string
-  ): Promise<V2PredictionType[]> {
+  ): Promise<PredictionType[]> {
     const addr = address?.toLowerCase();
 
-    const where: Prisma.V2PredictionWhereInput = {};
+    const where: Prisma.PredictionWhereInput = {};
 
     if (addr) {
       where.OR = [{ predictor: addr }, { counterparty: addr }];
@@ -291,7 +291,7 @@ export class V2PositionResolver {
       return [];
     }
 
-    let orderByClause: Prisma.V2PredictionOrderByWithRelationInput = {
+    let orderByClause: Prisma.PredictionOrderByWithRelationInput = {
       createdAt: 'desc',
     };
 
@@ -301,7 +301,7 @@ export class V2PositionResolver {
       orderByClause = { settledAt: orderDirection === 'asc' ? 'asc' : 'desc' };
     }
 
-    const rows = await prisma.v2Prediction.findMany({
+    const rows = await prisma.prediction.findMany({
       where,
       orderBy: orderByClause,
       take,
@@ -332,13 +332,13 @@ export class V2PositionResolver {
     }));
   }
 
-  @Query(() => V2PredictionType, { nullable: true })
-  async v2Prediction(
+  @Query(() => PredictionType, { nullable: true })
+  async prediction(
     @Arg('predictionId', () => String) predictionId: string
-  ): Promise<V2PredictionType | null> {
+  ): Promise<PredictionType | null> {
     const predictionIdLower = predictionId.toLowerCase();
 
-    const r = await prisma.v2Prediction.findUnique({
+    const r = await prisma.prediction.findUnique({
       where: { predictionId: predictionIdLower },
     });
 
@@ -369,18 +369,18 @@ export class V2PositionResolver {
   }
 
   // -------------------------------------------------------------------------
-  // V2 Pick Configurations
+  // Pick Configurations
   // -------------------------------------------------------------------------
 
-  @Query(() => [V2PickConfigurationType])
-  async v2PickConfigurations(
+  @Query(() => [PicksType])
+  async pickConfigurations(
     @Arg('take', () => Int, { defaultValue: 50 }) take: number,
     @Arg('skip', () => Int, { defaultValue: 0 }) skip: number,
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number,
     @Arg('resolved', () => Boolean, { nullable: true }) resolved?: boolean,
     @Arg('result', () => String, { nullable: true }) result?: string
-  ): Promise<V2PickConfigurationType[]> {
-    const where: Prisma.V2PickConfigurationWhereInput = {};
+  ): Promise<PicksType[]> {
+    const where: Prisma.PicksWhereInput = {};
 
     if (chainId !== undefined && chainId !== null) {
       where.chainId = chainId;
@@ -389,10 +389,10 @@ export class V2PositionResolver {
       where.resolved = resolved;
     }
     if (result) {
-      where.result = result as Prisma.EnumV2SettlementResultFilter;
+      where.result = result as Prisma.EnumSettlementResultFilter;
     }
 
-    const rows = await prisma.v2PickConfiguration.findMany({
+    const rows = await prisma.picks.findMany({
       where,
       orderBy: { createdAt: 'desc' },
       take,
@@ -426,13 +426,13 @@ export class V2PositionResolver {
     }));
   }
 
-  @Query(() => V2PickConfigurationType, { nullable: true })
-  async v2PickConfiguration(
+  @Query(() => PicksType, { nullable: true })
+  async pickConfiguration(
     @Arg('id', () => String) id: string
-  ): Promise<V2PickConfigurationType | null> {
+  ): Promise<PicksType | null> {
     const idLower = id.toLowerCase();
 
-    const r = await prisma.v2PickConfiguration.findUnique({
+    const r = await prisma.picks.findUnique({
       where: { id: idLower },
       include: {
         picks: true,
@@ -466,21 +466,21 @@ export class V2PositionResolver {
   }
 
   // -------------------------------------------------------------------------
-  // V2 Position Balances
+  // Positions (token balances)
   // -------------------------------------------------------------------------
 
-  @Query(() => [V2PositionBalanceType])
-  async v2PositionBalances(
+  @Query(() => [PositionType])
+  async positions(
     @Arg('holder', () => String) holder: string,
     @Arg('take', () => Int, { defaultValue: 50 }) take: number,
     @Arg('skip', () => Int, { defaultValue: 0 }) skip: number,
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number,
     @Arg('pickConfigId', () => String, { nullable: true }) pickConfigId?: string
-  ): Promise<V2PositionBalanceType[]> {
+  ): Promise<PositionType[]> {
     const holderLower = holder.toLowerCase();
     const pickConfigIdLower = pickConfigId?.toLowerCase();
 
-    const where: Prisma.V2PositionBalanceWhereInput = {
+    const where: Prisma.PositionWhereInput = {
       holder: holderLower,
     };
 
@@ -491,7 +491,7 @@ export class V2PositionResolver {
       where.pickConfigId = pickConfigIdLower;
     }
 
-    const rows = await prisma.v2PositionBalance.findMany({
+    const rows = await prisma.position.findMany({
       where,
       orderBy: { updatedAt: 'desc' },
       take,
@@ -541,21 +541,21 @@ export class V2PositionResolver {
   }
 
   // -------------------------------------------------------------------------
-  // V2 Burn Records
+  // Closes (burn records)
   // -------------------------------------------------------------------------
 
-  @Query(() => [V2BurnRecordType])
-  async v2BurnRecords(
+  @Query(() => [CloseType])
+  async closes(
     @Arg('take', () => Int, { defaultValue: 50 }) take: number,
     @Arg('skip', () => Int, { defaultValue: 0 }) skip: number,
     @Arg('address', () => String, { nullable: true }) address?: string,
     @Arg('pickConfigId', () => String, { nullable: true }) pickConfigId?: string,
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number
-  ): Promise<V2BurnRecordType[]> {
+  ): Promise<CloseType[]> {
     const addr = address?.toLowerCase();
     const pickConfigIdLower = pickConfigId?.toLowerCase();
 
-    const where: Prisma.V2BurnRecordWhereInput = {};
+    const where: Prisma.CloseWhereInput = {};
 
     if (addr) {
       where.OR = [
@@ -575,7 +575,7 @@ export class V2PositionResolver {
       return [];
     }
 
-    const rows = await prisma.v2BurnRecord.findMany({
+    const rows = await prisma.close.findMany({
       where,
       orderBy: { burnedAt: 'desc' },
       take,
@@ -600,21 +600,21 @@ export class V2PositionResolver {
   }
 
   // -------------------------------------------------------------------------
-  // V2 Redemption Records
+  // Claims (redemption records)
   // -------------------------------------------------------------------------
 
-  @Query(() => [V2RedemptionRecordType])
-  async v2RedemptionRecords(
+  @Query(() => [ClaimType])
+  async claims(
     @Arg('take', () => Int, { defaultValue: 50 }) take: number,
     @Arg('skip', () => Int, { defaultValue: 0 }) skip: number,
     @Arg('holder', () => String, { nullable: true }) holder?: string,
     @Arg('predictionId', () => String, { nullable: true }) predictionId?: string,
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number
-  ): Promise<V2RedemptionRecordType[]> {
+  ): Promise<ClaimType[]> {
     const holderLower = holder?.toLowerCase();
     const predictionIdLower = predictionId?.toLowerCase();
 
-    const where: Prisma.V2RedemptionRecordWhereInput = {};
+    const where: Prisma.ClaimWhereInput = {};
 
     if (holderLower) {
       where.holder = holderLower;
@@ -631,7 +631,7 @@ export class V2PositionResolver {
       return [];
     }
 
-    const rows = await prisma.v2RedemptionRecord.findMany({
+    const rows = await prisma.claim.findMany({
       where,
       orderBy: { redeemedAt: 'desc' },
       take,

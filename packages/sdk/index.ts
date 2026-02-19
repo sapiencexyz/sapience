@@ -9,18 +9,18 @@ export * from './onchain/claim';
 export * from './onchain/vault';
 export * from './onchain/approval';
 export * from './onchain/position';
-export * from './onchain/v2';
+export * from './onchain/escrow';
 
 // Legacy auction (v1)
 export * from './auction/signing';
 export * from './auction/encoding';
 export * from './auction/simulate';
 
-// V2 auction
-export * from './auction/v2Encoding';
-export * from './auction/v2Signing';
+// Escrow auction
+export * from './auction/escrowEncoding';
+export * from './auction/escrowSigning';
 export * from './auction/secondarySigning';
 
 export * from './relayer/auctionWs';
-export * from './relayer/v2AuctionWs';
+export * from './relayer/escrowAuctionWs';
 

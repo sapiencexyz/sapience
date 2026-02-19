@@ -4,8 +4,8 @@ export type { Category as CategoryType } from './graphql';
 // Export other commonly used types from graphql
 export type { Query } from './graphql';
 
-// V2 types
-export * from './v2';
+// Escrow types
+export * from './escrow';
 
 // Secondary market types
 export * from './secondary';

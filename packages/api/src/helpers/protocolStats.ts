@@ -1,6 +1,6 @@
 import { erc20Abi, formatUnits } from 'viem';
 import prisma from '../db';
-import { PositionStatus } from '../../generated/prisma';
+import { LegacyPositionStatus } from '../../generated/prisma';
 import { getProviderForChain, getBlockByTimestamp } from '../utils/utils';
 import { contracts } from '@sapience/sdk/contracts';
 import { liquidityVaultAbi } from '@sapience/sdk/abis';
@@ -262,13 +262,13 @@ async function calculateVaultPnL(
   const vaultAddressLower = vaultAddress.toLowerCase();
 
   const whereClause: {
-    status: { in: PositionStatus[] };
+    status: { in: LegacyPositionStatus[] };
     predictorWon: { not: null };
     chainId: number;
     settledAt?: { lte: number };
     OR: Array<{ predictor: string } | { counterparty: string }>;
   } = {
-    status: { in: [PositionStatus.settled, PositionStatus.consolidated] },
+    status: { in: [LegacyPositionStatus.settled, LegacyPositionStatus.consolidated] },
     predictorWon: { not: null },
     chainId,
     OR: [{ predictor: vaultAddressLower }, { counterparty: vaultAddressLower }],
@@ -278,7 +278,7 @@ async function calculateVaultPnL(
     whereClause.settledAt = { lte: beforeTimestamp };
   }
 
-  const positions = await prisma.position.findMany({ where: whereClause });
+  const positions = await prisma.legacyPosition.findMany({ where: whereClause });
 
   // Get mint events for collateral breakdown
   const mintTimestamps = Array.from(

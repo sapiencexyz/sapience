@@ -3,21 +3,21 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useAccount, useSignTypedData } from 'wagmi';
 import { type Address, type Hex } from 'viem';
-import { buildPredictorMintTypedData } from '@sapience/sdk/auction/v2Signing';
+import { buildPredictorMintTypedData } from '@sapience/sdk/auction/escrowSigning';
 import {
   computePickConfigId,
   canonicalizePicks,
-} from '@sapience/sdk/auction/v2Encoding';
-import type { Pick, V2AuctionRequestPayload } from '@sapience/sdk/types/v2';
+} from '@sapience/sdk/auction/escrowEncoding';
+import type { Pick, AuctionRequestPayload } from '@sapience/sdk/types';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
 import { toAuctionWsUrl } from '~/lib/ws';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
-import { useV2Nonce } from '~/hooks/blockchain/useV2Contract';
+import { useEscrowNonce } from '~/hooks/blockchain/useEscrowContract';
 
-export interface V2AuctionStartParams {
+export interface AuctionStartParams {
   /** Array of picks for this prediction */
   picks: Pick[];
   /** Predictor's collateral amount in wei */
@@ -30,20 +30,20 @@ export interface V2AuctionStartParams {
   refCode?: Hex;
 }
 
-export interface V2AuctionStartResult {
+export interface AuctionStartResult {
   success: boolean;
   auctionId?: string;
   pickConfigId?: Hex;
   error?: string;
 }
 
-interface UseV2AuctionStartOptions {
+interface UseAuctionStartOptions {
   chainId?: number;
   onSignatureRejected?: (error: Error) => void;
   onAuctionCreated?: (auctionId: string, pickConfigId: Hex) => void;
 }
 
-export function useV2AuctionStart(options: UseV2AuctionStartOptions = {}) {
+export function useAuctionStart(options: UseAuctionStartOptions = {}) {
   const {
     chainId: overrideChainId,
     onSignatureRejected,
@@ -59,7 +59,7 @@ export function useV2AuctionStart(options: UseV2AuctionStartOptions = {}) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Get nonce for the predictor
-  const { nonce: currentNonce, refetch: refetchNonce } = useV2Nonce({
+  const { nonce: currentNonce, refetch: refetchNonce } = useEscrowNonce({
     address: effectiveAddress as Address | undefined,
     chainId,
   });
@@ -71,7 +71,7 @@ export function useV2AuctionStart(options: UseV2AuctionStartOptions = {}) {
     | undefined;
 
   const startAuction = useCallback(
-    async (params: V2AuctionStartParams): Promise<V2AuctionStartResult> => {
+    async (params: AuctionStartParams): Promise<AuctionStartResult> => {
       const {
         picks: rawPicks,
         predictorCollateral,
@@ -106,7 +106,7 @@ export function useV2AuctionStart(options: UseV2AuctionStartOptions = {}) {
       if (!verifyingContract) {
         return {
           success: false,
-          error: 'V2 contract not available for this chain',
+          error: 'Escrow contract not available for this chain',
         };
       }
 
@@ -167,8 +167,8 @@ export function useV2AuctionStart(options: UseV2AuctionStartOptions = {}) {
         return { success: false, error: 'No signature returned' };
       }
 
-      // Build V2 auction request payload
-      const payload: V2AuctionRequestPayload = {
+      // Build auction request payload
+      const payload: AuctionRequestPayload = {
         picks: picks.map((p) => ({
           conditionResolver: p.conditionResolver,
           conditionId: p.conditionId,
@@ -184,7 +184,7 @@ export function useV2AuctionStart(options: UseV2AuctionStartOptions = {}) {
         refCode: refCode ?? undefined,
       };
 
-      // Send V2 auction start message
+      // Send auction start message
       try {
         const client = getSharedAuctionWsClient(wsUrl);
 
@@ -204,40 +204,40 @@ export function useV2AuctionStart(options: UseV2AuctionStartOptions = {}) {
               type?: string;
               payload?: { auctionId?: string; error?: string };
             };
-            if (data?.type === 'v2.auction.ack') {
+            if (data?.type === 'auction.ack') {
               clearTimeout(timeout);
               removeListener();
               resolve(data.payload ?? {});
             }
           });
 
-          // Debug logging for V2 auction signature debugging
+          // Debug logging for auction signature debugging
           console.log(
-            '[V2 Auction Create] picks:',
+            '[Auction Create] picks:',
             picks.map((p) => ({
               resolver: p.conditionResolver,
               conditionId: p.conditionId.slice(0, 10) + '...',
               outcome: p.predictedOutcome,
             }))
           );
-          console.log('[V2 Auction Create] pickConfigId:', pickConfigId);
+          console.log('[Auction Create] pickConfigId:', pickConfigId);
           console.log(
-            '[V2 Auction Create] predictorCollateral:',
+            '[Auction Create] predictorCollateral:',
             predictorCollateral.toString()
           );
           console.log(
-            '[V2 Auction Create] counterpartyCollateral:',
+            '[Auction Create] counterpartyCollateral:',
             counterpartyCollateral.toString()
           );
-          console.log('[V2 Auction Create] predictor:', signerAddress);
-          console.log('[V2 Auction Create] predictorNonce:', nonce.toString());
+          console.log('[Auction Create] predictor:', signerAddress);
+          console.log('[Auction Create] predictorNonce:', nonce.toString());
           console.log(
-            '[V2 Auction Create] predictorDeadline:',
+            '[Auction Create] predictorDeadline:',
             predictorDeadline.toString()
           );
-          console.log('[V2 Auction Create] chainId:', chainId);
+          console.log('[Auction Create] chainId:', chainId);
 
-          client.send({ type: 'v2.auction.start', payload });
+          client.send({ type: 'auction.start', payload });
         });
 
         setIsSubmitting(false);
@@ -252,7 +252,7 @@ export function useV2AuctionStart(options: UseV2AuctionStartOptions = {}) {
           // Dispatch event for UI updates
           try {
             window.dispatchEvent(
-              new CustomEvent('v2.auction.started', {
+              new CustomEvent('auction.started', {
                 detail: { auctionId: response.auctionId, pickConfigId },
               })
             );

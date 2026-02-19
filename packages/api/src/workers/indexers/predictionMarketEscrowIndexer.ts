@@ -13,7 +13,7 @@ import { predictionMarketEscrowAbi } from '@sapience/sdk/abis';
 
 const BLOCK_BATCH_SIZE = 100;
 
-// Event type interfaces (matching IV2Events.sol)
+// Event type interfaces (matching PredictionMarketEscrow events)
 interface PredictionCreatedEvent {
   predictionId: `0x${string}`;
   predictor: `0x${string}`;
@@ -78,13 +78,13 @@ function mapSettlementResult(result: number): 'UNRESOLVED' | 'PREDICTOR_WINS' | 
 const ZERO_BYTES32 = '0x0000000000000000000000000000000000000000000000000000000000000000';
 
 /**
- * V2 Prediction Market Indexer
+ * Prediction Market Escrow Indexer
  * Indexes events from the PredictionMarketEscrow contract
  */
 // Polling interval in milliseconds (10 seconds)
 const POLLING_INTERVAL_MS = 10_000;
 
-class V2PredictionMarketIndexer implements IIndexer {
+class PredictionMarketEscrowIndexer implements IIndexer {
   public client: PublicClient;
   private isWatching: boolean = false;
   private chainId: number;
@@ -109,7 +109,7 @@ class V2PredictionMarketIndexer implements IIndexer {
     this.blockCreated = BigInt(contractEntry.blockCreated || 0);
 
     console.log(
-      `[V2PredictionMarketIndexer] Initialized for chain ${chainId} with contract ${this.contractAddress} (blockCreated: ${this.blockCreated})`
+      `[PredictionMarketEscrowIndexer] Initialized for chain ${chainId} with contract ${this.contractAddress} (blockCreated: ${this.blockCreated})`
     );
   }
 
@@ -120,24 +120,24 @@ class V2PredictionMarketIndexer implements IIndexer {
   ): Promise<boolean> {
     try {
       console.log(
-        `[V2PredictionMarketIndexer:${this.chainId}] Indexing blocks from timestamp ${startTimestamp} to ${endTimestamp || 'latest'} on contract ${this.contractAddress}`
+        `[PredictionMarketEscrowIndexer:${this.chainId}] Indexing blocks from timestamp ${startTimestamp} to ${endTimestamp || 'latest'} on contract ${this.contractAddress}`
       );
 
       const startBlock = await getBlockByTimestamp(this.client, startTimestamp);
       console.log(
-        `[V2PredictionMarketIndexer] Found start block: ${startBlock.number} at timestamp ${startBlock.timestamp}`
+        `[PredictionMarketEscrowIndexer] Found start block: ${startBlock.number} at timestamp ${startBlock.timestamp}`
       );
 
       let endBlock: Block;
       if (endTimestamp) {
         endBlock = await getBlockByTimestamp(this.client, endTimestamp);
         console.log(
-          `[V2PredictionMarketIndexer] Found end block: ${endBlock.number} at timestamp ${endBlock.timestamp}`
+          `[PredictionMarketEscrowIndexer] Found end block: ${endBlock.number} at timestamp ${endBlock.timestamp}`
         );
       } else {
         endBlock = await this.client.getBlock({ blockTag: 'latest' });
         console.log(
-          `[V2PredictionMarketIndexer] Using latest block: ${endBlock.number} at timestamp ${endBlock.timestamp}`
+          `[PredictionMarketEscrowIndexer] Using latest block: ${endBlock.number} at timestamp ${endBlock.timestamp}`
         );
       }
 
@@ -147,7 +147,7 @@ class V2PredictionMarketIndexer implements IIndexer {
       for (let i = startBlockNumber; i <= endBlockNumber; i += BLOCK_BATCH_SIZE) {
         const batchEnd = Math.min(i + BLOCK_BATCH_SIZE - 1, endBlockNumber);
         console.log(
-          `[V2PredictionMarketIndexer] Processing blocks ${i} to ${batchEnd}`
+          `[PredictionMarketEscrowIndexer] Processing blocks ${i} to ${batchEnd}`
         );
 
         // Create array of block numbers in this batch
@@ -159,7 +159,7 @@ class V2PredictionMarketIndexer implements IIndexer {
       }
 
       // Update indexer state
-      await prisma.v2IndexerState.upsert({
+      await prisma.indexerState.upsert({
         where: { chainId: this.chainId },
         create: {
           chainId: this.chainId,
@@ -175,7 +175,7 @@ class V2PredictionMarketIndexer implements IIndexer {
 
       return true;
     } catch (error) {
-      console.error('[V2PredictionMarketIndexer] Error indexing blocks:', error);
+      console.error('[PredictionMarketEscrowIndexer] Error indexing blocks:', error);
       Sentry.captureException(error);
       throw error;
     }
@@ -194,7 +194,7 @@ class V2PredictionMarketIndexer implements IIndexer {
       });
 
       console.log(
-        `[V2PredictionMarketIndexer] Found ${logs.length} logs in blocks ${fromBlock}-${toBlock}`
+        `[PredictionMarketEscrowIndexer] Found ${logs.length} logs in blocks ${fromBlock}-${toBlock}`
       );
 
       // Get blocks for timestamps
@@ -216,7 +216,7 @@ class V2PredictionMarketIndexer implements IIndexer {
       return true;
     } catch (error) {
       console.error(
-        `[V2PredictionMarketIndexer] Error processing blocks ${fromBlock}-${toBlock}:`,
+        `[PredictionMarketEscrowIndexer] Error processing blocks ${fromBlock}-${toBlock}:`,
         error
       );
       Sentry.captureException(error);
@@ -226,19 +226,19 @@ class V2PredictionMarketIndexer implements IIndexer {
 
   async watchBlocksForResource(resourceSlug: string): Promise<void> {
     if (this.isWatching) {
-      console.log(`[V2PredictionMarketIndexer] Already watching ${resourceSlug}`);
+      console.log(`[PredictionMarketEscrowIndexer] Already watching ${resourceSlug}`);
       return;
     }
 
     console.log(
-      `[V2PredictionMarketIndexer] Starting to poll contract ${this.contractAddress} on chain ${this.chainId} for ${resourceSlug}`
+      `[PredictionMarketEscrowIndexer] Starting to poll contract ${this.contractAddress} on chain ${this.chainId} for ${resourceSlug}`
     );
 
     this.isWatching = true;
 
     // Set up SIGINT handler
     this.sigintHandler = () => {
-      console.log('[V2PredictionMarketIndexer] Received SIGINT, stopping...');
+      console.log('[PredictionMarketEscrowIndexer] Received SIGINT, stopping...');
       this.stop();
       process.exit(0);
     };
@@ -247,28 +247,28 @@ class V2PredictionMarketIndexer implements IIndexer {
     // Get the starting block: resume from DB state, fall back to blockCreated, then current block
     if (this.lastProcessedBlock === 0n) {
       // Try to resume from last indexed block in DB
-      const state = await prisma.v2IndexerState.findUnique({
+      const state = await prisma.indexerState.findUnique({
         where: { chainId: this.chainId },
       });
       if (state) {
         this.lastProcessedBlock = BigInt(state.lastIndexedBlock);
         console.log(
-          `[V2PredictionMarketIndexer] Resuming from last indexed block ${this.lastProcessedBlock}`
+          `[PredictionMarketEscrowIndexer] Resuming from last indexed block ${this.lastProcessedBlock}`
         );
       } else if (this.blockCreated > 0n) {
         // Start from contract creation block to index historical events
         this.lastProcessedBlock = this.blockCreated - 1n;
         console.log(
-          `[V2PredictionMarketIndexer] Starting from blockCreated ${this.blockCreated} for historical indexing`
+          `[PredictionMarketEscrowIndexer] Starting from blockCreated ${this.blockCreated} for historical indexing`
         );
       } else {
         try {
           this.lastProcessedBlock = await this.client.getBlockNumber();
           console.log(
-            `[V2PredictionMarketIndexer] Starting from current block ${this.lastProcessedBlock}`
+            `[PredictionMarketEscrowIndexer] Starting from current block ${this.lastProcessedBlock}`
           );
         } catch (error) {
-          console.error('[V2PredictionMarketIndexer] Error getting initial block:', error);
+          console.error('[PredictionMarketEscrowIndexer] Error getting initial block:', error);
           this.lastProcessedBlock = 0n;
         }
       }
@@ -294,7 +294,7 @@ class V2PredictionMarketIndexer implements IIndexer {
 
           if (logs.length > 0) {
             console.log(
-              `[V2PredictionMarketIndexer] Found ${logs.length} events in blocks ${fromBlock}-${toBlock}`
+              `[PredictionMarketEscrowIndexer] Found ${logs.length} events in blocks ${fromBlock}-${toBlock}`
             );
 
             for (const log of logs) {
@@ -304,7 +304,7 @@ class V2PredictionMarketIndexer implements IIndexer {
                 });
                 await this.processLog(log, block);
               } catch (error) {
-                console.error('[V2PredictionMarketIndexer] Error processing log:', error);
+                console.error('[PredictionMarketEscrowIndexer] Error processing log:', error);
                 Sentry.captureException(error);
               }
             }
@@ -313,7 +313,7 @@ class V2PredictionMarketIndexer implements IIndexer {
           this.lastProcessedBlock = currentBlock;
 
           // Persist indexer state for resume on restart
-          await prisma.v2IndexerState.upsert({
+          await prisma.indexerState.upsert({
             where: { chainId: this.chainId },
             create: {
               chainId: this.chainId,
@@ -328,7 +328,7 @@ class V2PredictionMarketIndexer implements IIndexer {
           });
         }
       } catch (error) {
-        console.error('[V2PredictionMarketIndexer] Polling error:', error);
+        console.error('[PredictionMarketEscrowIndexer] Polling error:', error);
         Sentry.captureException(error);
       }
     };
@@ -350,7 +350,7 @@ class V2PredictionMarketIndexer implements IIndexer {
       process.off('SIGINT', this.sigintHandler);
       this.sigintHandler = null;
     }
-    console.log('[V2PredictionMarketIndexer] Stopped');
+    console.log('[PredictionMarketEscrowIndexer] Stopped');
   }
 
   private async processLog(log: Log, block: Block): Promise<void> {
@@ -393,7 +393,7 @@ class V2PredictionMarketIndexer implements IIndexer {
           break;
       }
     } catch (error) {
-      console.error('[V2PredictionMarketIndexer] Error processing log:', error);
+      console.error('[PredictionMarketEscrowIndexer] Error processing log:', error);
       Sentry.captureException(error);
     }
   }
@@ -404,14 +404,14 @@ class V2PredictionMarketIndexer implements IIndexer {
     block: Block
   ): Promise<void> {
     console.log(
-      `[V2PredictionMarketIndexer] Processing PredictionCreated event: predictionId=${event.predictionId}`
+      `[PredictionMarketEscrowIndexer] Processing PredictionCreated event: predictionId=${event.predictionId}`
     );
 
     const predictionIdLower = event.predictionId.toLowerCase();
     const timestamp = Number(block.timestamp);
 
     // Create prediction record
-    await prisma.v2Prediction.upsert({
+    await prisma.prediction.upsert({
       where: { predictionId: predictionIdLower },
       create: {
         predictionId: predictionIdLower,
@@ -433,7 +433,7 @@ class V2PredictionMarketIndexer implements IIndexer {
     });
 
     console.log(
-      `[V2PredictionMarketIndexer] Created prediction ${predictionIdLower}`
+      `[PredictionMarketEscrowIndexer] Created prediction ${predictionIdLower}`
     );
   }
 
@@ -443,14 +443,14 @@ class V2PredictionMarketIndexer implements IIndexer {
     block: Block
   ): Promise<void> {
     console.log(
-      `[V2PredictionMarketIndexer] Processing PredictionSettled event: predictionId=${event.predictionId}, result=${event.result}`
+      `[PredictionMarketEscrowIndexer] Processing PredictionSettled event: predictionId=${event.predictionId}, result=${event.result}`
     );
 
     const timestamp = Number(block.timestamp);
     const predictionIdLower = event.predictionId.toLowerCase();
 
     // Update prediction as settled
-    await prisma.v2Prediction.updateMany({
+    await prisma.prediction.updateMany({
       where: { predictionId: predictionIdLower },
       data: {
         settled: true,
@@ -463,7 +463,7 @@ class V2PredictionMarketIndexer implements IIndexer {
     });
 
     console.log(
-      `[V2PredictionMarketIndexer] Marked prediction ${predictionIdLower} as settled with result ${mapSettlementResult(event.result)}`
+      `[PredictionMarketEscrowIndexer] Marked prediction ${predictionIdLower} as settled with result ${mapSettlementResult(event.result)}`
     );
   }
 
@@ -473,15 +473,15 @@ class V2PredictionMarketIndexer implements IIndexer {
     block: Block
   ): Promise<void> {
     console.log(
-      `[V2PredictionMarketIndexer] Processing TokensRedeemed event: pickConfigId=${event.pickConfigId}, holder=${event.holder}`
+      `[PredictionMarketEscrowIndexer] Processing TokensRedeemed event: pickConfigId=${event.pickConfigId}, holder=${event.holder}`
     );
 
     const timestamp = Number(block.timestamp);
     // ABI param is pickConfigId; stored as predictionId in DB for now (to be renamed)
     const predictionIdLower = event.pickConfigId.toLowerCase();
 
-    // Create redemption record
-    await prisma.v2RedemptionRecord.create({
+    // Create claim record
+    await prisma.claim.create({
       data: {
         chainId: this.chainId,
         marketAddress: this.contractAddress.toLowerCase(),
@@ -497,7 +497,7 @@ class V2PredictionMarketIndexer implements IIndexer {
     });
 
     console.log(
-      `[V2PredictionMarketIndexer] Created redemption record for prediction ${predictionIdLower}`
+      `[PredictionMarketEscrowIndexer] Created claim record for prediction ${predictionIdLower}`
     );
   }
 
@@ -507,14 +507,14 @@ class V2PredictionMarketIndexer implements IIndexer {
     block: Block
   ): Promise<void> {
     console.log(
-      `[V2PredictionMarketIndexer] Processing CollateralDeposited event: predictionId=${event.predictionId}, totalAmount=${event.totalAmount}`
+      `[PredictionMarketEscrowIndexer] Processing CollateralDeposited event: predictionId=${event.predictionId}, totalAmount=${event.totalAmount}`
     );
 
     const timestamp = Number(block.timestamp);
     const predictionIdLower = event.predictionId.toLowerCase();
 
     // Update prediction with deposited collateral
-    await prisma.v2Prediction.updateMany({
+    await prisma.prediction.updateMany({
       where: { predictionId: predictionIdLower },
       data: {
         collateralDeposited: event.totalAmount.toString(),
@@ -523,22 +523,19 @@ class V2PredictionMarketIndexer implements IIndexer {
     });
 
     console.log(
-      `[V2PredictionMarketIndexer] Updated collateral deposited for prediction ${predictionIdLower}`
+      `[PredictionMarketEscrowIndexer] Updated collateral deposited for prediction ${predictionIdLower}`
     );
   }
 
-  private async processDustSwept(
-    event: DustSweptEvent,
-    log: Log,
-    block: Block
-  ): Promise<void> {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  private async processDustSwept(event: DustSweptEvent, log: Log, block: Block): Promise<void> {
     console.log(
-      `[V2PredictionMarketIndexer] Processing DustSwept event: pickConfigId=${event.pickConfigId}, amount=${event.amount}`
+      `[PredictionMarketEscrowIndexer] Processing DustSwept event: pickConfigId=${event.pickConfigId}, amount=${event.amount}`
     );
 
     // DustSwept is informational - log it but no DB action needed
     console.log(
-      `[V2PredictionMarketIndexer] Dust swept: ${event.amount} to ${event.recipient} for pickConfigId ${event.pickConfigId}`
+      `[PredictionMarketEscrowIndexer] Dust swept: ${event.amount} to ${event.recipient} for pickConfigId ${event.pickConfigId}`
     );
   }
 
@@ -548,14 +545,14 @@ class V2PredictionMarketIndexer implements IIndexer {
     block: Block
   ): Promise<void> {
     console.log(
-      `[V2PredictionMarketIndexer] Processing PositionsBurned event: pickConfigId=${event.pickConfigId}`
+      `[PredictionMarketEscrowIndexer] Processing PositionsBurned event: pickConfigId=${event.pickConfigId}`
     );
 
     const timestamp = Number(block.timestamp);
     const pickConfigIdLower = event.pickConfigId.toLowerCase();
 
-    // Create burn record
-    await prisma.v2BurnRecord.create({
+    // Create close record
+    await prisma.close.create({
       data: {
         chainId: this.chainId,
         marketAddress: this.contractAddress.toLowerCase(),
@@ -573,9 +570,9 @@ class V2PredictionMarketIndexer implements IIndexer {
     });
 
     console.log(
-      `[V2PredictionMarketIndexer] Created burn record for pickConfig ${pickConfigIdLower}`
+      `[PredictionMarketEscrowIndexer] Created close record for pickConfig ${pickConfigIdLower}`
     );
   }
 }
 
-export default V2PredictionMarketIndexer;
+export default PredictionMarketEscrowIndexer;

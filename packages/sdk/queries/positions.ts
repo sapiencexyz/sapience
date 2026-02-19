@@ -19,7 +19,7 @@ type PredictedOutcome = {
   } | null;
 };
 
-export type Position = {
+export type LegacyPosition = {
   id: number;
   chainId: number;
   marketAddress: string;
@@ -39,8 +39,8 @@ export type Position = {
   predictions: PredictedOutcome[];
 };
 
-const USER_POSITIONS_QUERY = /* GraphQL */ `
-  query UserPositions(
+const LEGACY_POSITIONS_QUERY = /* GraphQL */ `
+  query LegacyPositions(
     $address: String!
     $take: Int
     $skip: Int
@@ -50,7 +50,7 @@ const USER_POSITIONS_QUERY = /* GraphQL */ `
     $status: String
     $endsAtGte: Int
   ) {
-    positions(
+    legacyPositions(
       address: $address
       take: $take
       skip: $skip
@@ -117,9 +117,9 @@ type CondEnrichRow = {
 };
 
 function enrichPositions(
-  base: Position[],
+  base: LegacyPosition[],
   conditionDataMap: Map<string, CondEnrichRow>
-): Position[] {
+): LegacyPosition[] {
   return base.map((p) => ({
     ...p,
     predictions: (p.predictions || []).map((o) => {
@@ -143,7 +143,7 @@ function enrichPositions(
   }));
 }
 
-async function fetchAndEnrichConditions(base: Position[]): Promise<Map<string, CondEnrichRow>> {
+async function fetchAndEnrichConditions(base: LegacyPosition[]): Promise<Map<string, CondEnrichRow>> {
   const conditionIds = Array.from(
     new Set(
       base.flatMap((p) => (p.predictions || []).map((o) => o.conditionId))
@@ -158,22 +158,22 @@ async function fetchAndEnrichConditions(base: Position[]): Promise<Map<string, C
   return new Map(condRows.map((c) => [c.id, c]));
 }
 
-export async function fetchUserPositionsCount(
+export async function fetchLegacyPositionsCount(
   address: string,
   chainId?: number
 ): Promise<number> {
-  const resp = await graphqlRequest<{ positionsCount: number }>(
+  const resp = await graphqlRequest<{ legacyPositionsCount: number }>(
     /* GraphQL */ `
-      query PositionsCount($address: String!, $chainId: Int) {
-        positionsCount(address: $address, chainId: $chainId)
+      query LegacyPositionsCount($address: String!, $chainId: Int) {
+        legacyPositionsCount(address: $address, chainId: $chainId)
       }
     `,
     { address, chainId: chainId ?? null }
   );
-  return resp?.positionsCount ?? 0;
+  return resp?.legacyPositionsCount ?? 0;
 }
 
-export async function fetchUserPositions(params: {
+export async function fetchLegacyPositions(params: {
   address: string;
   take?: number;
   skip?: number;
@@ -182,7 +182,7 @@ export async function fetchUserPositions(params: {
   chainId?: number;
   status?: string;
   endsAtGte?: number;
-}): Promise<Position[]> {
+}): Promise<LegacyPosition[]> {
   const {
     address,
     take = 50,
@@ -194,8 +194,8 @@ export async function fetchUserPositions(params: {
     endsAtGte,
   } = params;
 
-  const resp = await graphqlRequest<{ positions: Position[] }>(
-    USER_POSITIONS_QUERY,
+  const resp = await graphqlRequest<{ legacyPositions: LegacyPosition[] }>(
+    LEGACY_POSITIONS_QUERY,
     {
       address,
       take,
@@ -207,7 +207,7 @@ export async function fetchUserPositions(params: {
       endsAtGte: endsAtGte ?? null,
     }
   );
-  const base = resp?.positions ?? [];
+  const base = resp?.legacyPositions ?? [];
   const conditionDataMap = await fetchAndEnrichConditions(base);
   if (conditionDataMap.size === 0) return base;
   return enrichPositions(base, conditionDataMap);
@@ -215,14 +215,14 @@ export async function fetchUserPositions(params: {
 
 // --- Positions by condition ID ---
 
-const POSITIONS_BY_CONDITION_ID_QUERY = /* GraphQL */ `
-  query PositionsByConditionId(
+const LEGACY_POSITIONS_BY_CONDITION_ID_QUERY = /* GraphQL */ `
+  query LegacyPositionsByConditionId(
     $conditionId: String!
     $take: Int
     $skip: Int
     $chainId: Int
   ) {
-    positionsByConditionId(
+    legacyPositionsByConditionId(
       conditionId: $conditionId
       take: $take
       skip: $skip
@@ -272,16 +272,16 @@ const POSITIONS_CONDITIONS_ENRICHMENT = /* GraphQL */ `
   }
 `;
 
-export async function fetchPositionsByConditionId(params: {
+export async function fetchLegacyPositionsByConditionId(params: {
   conditionId: string;
   take?: number;
   skip?: number;
   chainId?: number;
-}): Promise<Position[]> {
+}): Promise<LegacyPosition[]> {
   const { conditionId, take = 100, skip = 0, chainId } = params;
 
-  const resp = await graphqlRequest<{ positionsByConditionId: Position[] }>(
-    POSITIONS_BY_CONDITION_ID_QUERY,
+  const resp = await graphqlRequest<{ legacyPositionsByConditionId: LegacyPosition[] }>(
+    LEGACY_POSITIONS_BY_CONDITION_ID_QUERY,
     {
       conditionId,
       take,
@@ -289,7 +289,7 @@ export async function fetchPositionsByConditionId(params: {
       chainId: chainId ?? null,
     }
   );
-  const base = resp?.positionsByConditionId ?? [];
+  const base = resp?.legacyPositionsByConditionId ?? [];
 
   const conditionIds = Array.from(
     new Set(
@@ -335,14 +335,14 @@ export async function fetchPositionsByConditionId(params: {
 
 // --- Recent positions ---
 
-const RECENT_POSITIONS_QUERY = /* GraphQL */ `
-  query RecentPositions(
+const RECENT_LEGACY_POSITIONS_QUERY = /* GraphQL */ `
+  query RecentLegacyPositions(
     $take: Int
     $skip: Int
     $chainId: Int
     $status: String
   ) {
-    recentPositions(
+    recentLegacyPositions(
       take: $take
       skip: $skip
       chainId: $chainId
@@ -384,16 +384,16 @@ const RECENT_POSITIONS_QUERY = /* GraphQL */ `
   }
 `;
 
-export async function fetchRecentPositions(params: {
+export async function fetchRecentLegacyPositions(params: {
   take?: number;
   skip?: number;
   chainId?: number;
   status?: string;
-}): Promise<Position[]> {
+}): Promise<LegacyPosition[]> {
   const { take = 20, skip = 0, chainId, status } = params;
 
-  const resp = await graphqlRequest<{ recentPositions: Position[] }>(
-    RECENT_POSITIONS_QUERY,
+  const resp = await graphqlRequest<{ recentLegacyPositions: LegacyPosition[] }>(
+    RECENT_LEGACY_POSITIONS_QUERY,
     {
       take,
       skip,
@@ -401,5 +401,5 @@ export async function fetchRecentPositions(params: {
       status: status ?? null,
     }
   );
-  return resp?.recentPositions ?? [];
+  return resp?.recentLegacyPositions ?? [];
 }

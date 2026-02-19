@@ -51,7 +51,7 @@ export class PositionReconciler {
       const lookbackSecondsEffective =
         lookbackSeconds ?? POSITION_RECONCILE_CONFIG.defaultLookbackSeconds;
 
-      const chainsRaw = await prisma.position.findMany({
+      const chainsRaw = await prisma.legacyPosition.findMany({
         select: { chainId: true },
         distinct: ['chainId'],
       });
@@ -100,7 +100,7 @@ export class PositionReconciler {
           }
         }
 
-        const positionCount = await prisma.position.count({
+        const positionCount = await prisma.legacyPosition.count({
           where: { chainId },
         });
         totalPositions += positionCount;

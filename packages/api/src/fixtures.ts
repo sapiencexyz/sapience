@@ -3,11 +3,11 @@ import fixturesData from './fixtures.json';
 import { IIndexer } from './interfaces';
 import EASPredictionIndexer from './workers/indexers/easIndexer';
 import PredictionMarketIndexer from './workers/indexers/predictionMarketIndexer';
-import V2PredictionMarketIndexer from './workers/indexers/v2PredictionMarketIndexer';
+import PredictionMarketEscrowIndexer from './workers/indexers/predictionMarketEscrowIndexer';
 
 // Environment variables to control which indexers are enabled
 const ENABLE_V1_INDEXERS = process.env.ENABLE_V1_INDEXERS !== 'false';
-const ENABLE_V2_INDEXERS = process.env.ENABLE_V2_INDEXERS !== 'false';
+const ENABLE_ESCROW_INDEXERS = process.env.ENABLE_ESCROW_INDEXERS !== 'false';
 
 // Build indexers object based on environment configuration
 const buildIndexers = (): { [key: string]: IIndexer } => {
@@ -22,12 +22,12 @@ const buildIndexers = (): { [key: string]: IIndexer } => {
     console.log('[Indexers] V1 indexers disabled (ENABLE_V1_INDEXERS=false)');
   }
 
-  if (ENABLE_V2_INDEXERS) {
-    indexers['v2-prediction-market-ethereal'] = new V2PredictionMarketIndexer(5064014); // Ethereal mainnet (V2)
-    indexers['v2-prediction-market-ethereal-testnet'] = new V2PredictionMarketIndexer(13374202); // Ethereal testnet (V2)
-    console.log('[Indexers] V2 indexers enabled');
+  if (ENABLE_ESCROW_INDEXERS) {
+    indexers['escrow-prediction-market-ethereal'] = new PredictionMarketEscrowIndexer(5064014); // Ethereal mainnet
+    indexers['escrow-prediction-market-ethereal-testnet'] = new PredictionMarketEscrowIndexer(13374202); // Ethereal testnet
+    console.log('[Indexers] Escrow indexers enabled');
   } else {
-    console.log('[Indexers] V2 indexers disabled (ENABLE_V2_INDEXERS=false)');
+    console.log('[Indexers] Escrow indexers disabled (ENABLE_ESCROW_INDEXERS=false)');
   }
 
   return indexers;

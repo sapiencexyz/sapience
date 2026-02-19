@@ -4,15 +4,15 @@ import {
   type Address,
   type Hex,
 } from 'viem';
-import type { Pick, PickJson, OutcomeSide } from '../types/v2';
+import type { Pick, PickJson, OutcomeSide } from '../types/escrow';
 
 // ============================================================================
-// V2 Pick Encoding
+// Pick Encoding
 // ============================================================================
 
 /**
  * ABI parameters for encoding a Pick struct
- * Matches IV2Types.Pick in Solidity
+ * Matches the Pick struct in PredictionMarketEscrow
  */
 const PICK_TUPLE_TYPE = {
   type: 'tuple',

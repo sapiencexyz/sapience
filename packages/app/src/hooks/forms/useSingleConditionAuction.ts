@@ -1,9 +1,9 @@
 'use client';
 
 /**
- * @deprecated V1 single condition auction hook. For V2 protocol, use:
- * - useV2AuctionStart for creating auctions with Pick[] array
- * - V2 supports multi-pick parlays natively
+ * @deprecated Legacy single condition auction hook. For escrow protocol, use:
+ * - useAuctionStart for creating auctions with Pick[] array
+ * - Escrow protocol supports multi-pick parlays natively
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { parseUnits, zeroAddress } from 'viem';

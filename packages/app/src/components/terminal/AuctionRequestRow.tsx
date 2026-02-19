@@ -26,7 +26,7 @@ import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useConditionsByIds } from '~/hooks/graphql/useConditionsByIds';
 import { useApprovalDialog } from '~/components/terminal/ApprovalDialogContext';
 import { useTerminalLogsOptional } from '~/components/terminal/TerminalLogsContext';
-import { useBidPreflight, useBidSubmission } from '~/hooks/auction';
+import { useBidPreflight, useLegacyBidSubmission } from '~/hooks/auction';
 import PercentChance from '~/components/shared/PercentChance';
 import { decodeAuctionPredictedOutcomes } from '~/lib/auction/decodePredictedOutcomes';
 
@@ -44,10 +44,10 @@ type Props = {
   isPinned?: boolean;
   isExpanded?: boolean;
   onToggleExpanded?: (auctionId: string | null) => void;
-  /** Whether this auction uses V2 protocol (from v2.auction.started message) */
-  isV2Auction?: boolean;
-  /** V2 picks array (for V2 auctions) */
-  v2Picks?: Array<{
+  /** Whether this auction uses escrow protocol (from v2.auction.started message) */
+  isEscrowAuction?: boolean;
+  /** Escrow picks array (for escrow auctions) */
+  escrowPicks?: Array<{
     conditionResolver: string;
     conditionId: string;
     predictedOutcome: number;
@@ -68,8 +68,8 @@ const AuctionRequestRow: React.FC<Props> = ({
   isPinned,
   isExpanded: isExpandedProp,
   onToggleExpanded,
-  isV2Auction = false,
-  v2Picks,
+  isEscrowAuction = false,
+  escrowPicks,
 }) => {
   const { address } = useAccount();
   const { openConnectDialog } = useConnectDialog();
@@ -91,7 +91,7 @@ const AuctionRequestRow: React.FC<Props> = ({
   });
 
   // Use shared bid submission hook for signing and WebSocket submission
-  const { submitBid: submitBidToWs } = useBidSubmission({
+  const { submitBid: submitBidToWs } = useLegacyBidSubmission({
     onSignatureRejected: (error) => {
       toast({
         title: 'Signature rejected',
@@ -100,20 +100,20 @@ const AuctionRequestRow: React.FC<Props> = ({
     },
   });
   // Resolve contract address for the current chain
-  // V2 (testnet) uses PredictionMarketEscrow, V1 (mainnet) uses PredictionMarket
-  const isV2Chain = chainId === CHAIN_ID_ETHEREAL_TESTNET;
-  const PREDICTION_MARKET_ADDRESS = isV2Chain
+  // Escrow (testnet) uses PredictionMarketEscrow, V1 (mainnet) uses PredictionMarket
+  const isEscrowChain = chainId === CHAIN_ID_ETHEREAL_TESTNET;
+  const PREDICTION_MARKET_ADDRESS = isEscrowChain
     ? predictionMarketEscrow[chainId]?.address
     : predictionMarket[chainId]?.address;
-  // For V2, use collateral token address directly from SDK
+  // For escrow, use collateral token address directly from SDK
   // For V1, read from PredictionMarket contract config
-  const V2_COLLATERAL_ADDRESS = isV2Chain
+  const ESCROW_COLLATERAL_ADDRESS = isEscrowChain
     ? collateralToken[chainId]?.address
     : undefined;
 
   const predictionMarketConfigRead = useReadContracts({
     contracts:
-      !isV2Chain && PREDICTION_MARKET_ADDRESS
+      !isEscrowChain && PREDICTION_MARKET_ADDRESS
         ? [
             {
               address: PREDICTION_MARKET_ADDRESS,
@@ -123,11 +123,11 @@ const AuctionRequestRow: React.FC<Props> = ({
             },
           ]
         : [],
-    query: { enabled: !isV2Chain && !!PREDICTION_MARKET_ADDRESS },
+    query: { enabled: !isEscrowChain && !!PREDICTION_MARKET_ADDRESS },
   });
   const COLLATERAL_ADDRESS = useMemo(() => {
-    // For V2, use SDK address directly
-    if (isV2Chain) return V2_COLLATERAL_ADDRESS;
+    // For escrow, use SDK address directly
+    if (isEscrowChain) return ESCROW_COLLATERAL_ADDRESS;
     // For V1, use config read
     const item = predictionMarketConfigRead.data?.[0];
     if (item && item.status === 'success') {
@@ -139,7 +139,7 @@ const AuctionRequestRow: React.FC<Props> = ({
       }
     }
     return collateralToken[DEFAULT_CHAIN_ID]?.address;
-  }, [isV2Chain, V2_COLLATERAL_ADDRESS, predictionMarketConfigRead.data]);
+  }, [isEscrowChain, ESCROW_COLLATERAL_ADDRESS, predictionMarketConfigRead.data]);
   // Read token decimals
   const { data: tokenDecimalsData } = useReadContract({
     abi: erc20Abi,
@@ -461,9 +461,9 @@ const AuctionRequestRow: React.FC<Props> = ({
         }
 
         // Ensure essential auction context (after preflight checks)
-        // V2 auctions have v2Picks instead of predictedOutcomes
-        const hasV2Picks =
-          isV2Auction && Array.isArray(v2Picks) && v2Picks.length > 0;
+        // Escrow auctions have escrowPicks instead of predictedOutcomes
+        const hasEscrowPicks =
+          isEscrowAuction && Array.isArray(escrowPicks) && escrowPicks.length > 0;
         const encodedPredicted =
           Array.isArray(predictedOutcomes) && predictedOutcomes[0]
             ? (predictedOutcomes[0] as `0x${string}`)
@@ -491,11 +491,11 @@ const AuctionRequestRow: React.FC<Props> = ({
           }
         }
 
-        // Validation: V2 needs v2Picks, V1 needs predictedOutcomes
-        const hasPredictionData = isV2Auction ? hasV2Picks : !!encodedPredicted;
-        // V2 auctions: counterparty uses their own nonce (from useV2Nonce), not predictor's nonce
+        // Validation: Escrow needs escrowPicks, V1 needs predictedOutcomes
+        const hasPredictionData = isEscrowAuction ? hasEscrowPicks : !!encodedPredicted;
+        // Escrow auctions: counterparty uses their own nonce (from useEscrowNonce), not predictor's nonce
         // V1 auctions: require taker nonce for signing
-        const needsTakerNonce = !isV2Auction;
+        const needsTakerNonce = !isEscrowAuction;
 
         if (
           !hasPredictionData ||
@@ -506,7 +506,7 @@ const AuctionRequestRow: React.FC<Props> = ({
         ) {
           const missing: string[] = [];
           if (!hasPredictionData)
-            missing.push(isV2Auction ? 'v2 picks' : 'predicted outcomes');
+            missing.push(isEscrowAuction ? 'escrow picks' : 'predicted outcomes');
           if (!resolverAddr) missing.push('resolver');
           if (needsTakerNonce && takerNonceVal === undefined)
             missing.push('maker nonce');
@@ -524,10 +524,10 @@ const AuctionRequestRow: React.FC<Props> = ({
         }
 
         // Use shared bid submission hook for signing and WebSocket
-        // If auction is V1 (not V2), force V1 protocol even on V2-capable chains
-        console.log('[V2 Bid - Auction Data]', {
-          isV2Auction,
-          v2Picks: isV2Auction ? v2Picks : undefined,
+        // If auction is V1 (not escrow), force V1 protocol even on escrow-capable chains
+        console.log('[Bid - Auction Data]', {
+          isEscrowAuction,
+          escrowPicks: isEscrowAuction ? escrowPicks : undefined,
           takerCollateral: takerCollateralWei.toString(),
           taker,
           resolver: resolverAddr,
@@ -542,8 +542,8 @@ const AuctionRequestRow: React.FC<Props> = ({
           takerNonce: takerNonceVal,
           expirySeconds: data.expirySeconds,
           maxEndTimeSec: maxEndTimeSec ?? undefined,
-          forceV1: !isV2Auction,
-          v2Picks: isV2Auction ? v2Picks : undefined,
+          forceV1: !isEscrowAuction,
+          escrowPicks: isEscrowAuction ? escrowPicks : undefined,
         });
 
         if (result.success) {
@@ -619,8 +619,8 @@ const AuctionRequestRow: React.FC<Props> = ({
       maxEndTimeSec,
       refetchTakerNonce,
       takerNonceOnChain,
-      isV2Auction,
-      v2Picks,
+      isEscrowAuction,
+      escrowPicks,
     ]
   );
 

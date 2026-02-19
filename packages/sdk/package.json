@@ -27,15 +27,15 @@
       "import": "./dist/auction/encoding.mjs",
       "require": "./dist/auction/encoding.js"
     },
-    "./auction/v2Encoding": {
-      "types": "./dist/auction/v2Encoding.d.ts",
-      "import": "./dist/auction/v2Encoding.mjs",
-      "require": "./dist/auction/v2Encoding.js"
+    "./auction/escrowEncoding": {
+      "types": "./dist/auction/escrowEncoding.d.ts",
+      "import": "./dist/auction/escrowEncoding.mjs",
+      "require": "./dist/auction/escrowEncoding.js"
     },
-    "./auction/v2Signing": {
-      "types": "./dist/auction/v2Signing.d.ts",
-      "import": "./dist/auction/v2Signing.mjs",
-      "require": "./dist/auction/v2Signing.js"
+    "./auction/escrowSigning": {
+      "types": "./dist/auction/escrowSigning.d.ts",
+      "import": "./dist/auction/escrowSigning.mjs",
+      "require": "./dist/auction/escrowSigning.js"
     },
     "./auction/secondarySigning": {
       "types": "./dist/auction/secondarySigning.d.ts",
@@ -47,10 +47,10 @@
       "import": "./dist/relayer/auctionWs.mjs",
       "require": "./dist/relayer/auctionWs.js"
     },
-    "./relayer/v2AuctionWs": {
-      "types": "./dist/relayer/v2AuctionWs.d.ts",
-      "import": "./dist/relayer/v2AuctionWs.mjs",
-      "require": "./dist/relayer/v2AuctionWs.js"
+    "./relayer/escrowAuctionWs": {
+      "types": "./dist/relayer/escrowAuctionWs.d.ts",
+      "import": "./dist/relayer/escrowAuctionWs.mjs",
+      "require": "./dist/relayer/escrowAuctionWs.js"
     },
     "./mcp/client": {
       "types": "./dist/mcp/client.d.ts",
@@ -117,8 +117,8 @@
   },
   "scripts": {
     "prepare": "pnpm run build:lib",
-    "dev": "tsup index.ts auction/signing.ts auction/encoding.ts auction/v2Encoding.ts auction/v2Signing.ts relayer/auctionWs.ts relayer/v2AuctionWs.ts mcp/client.ts abis/index.ts constants/index.ts contracts/index.ts queries/index.ts types/index.ts session/index.ts --format cjs,esm --dts --watch",
-    "build:lib": "tsup index.ts auction/signing.ts auction/encoding.ts auction/v2Encoding.ts auction/v2Signing.ts auction/secondarySigning.ts relayer/auctionWs.ts relayer/v2AuctionWs.ts mcp/client.ts abis/index.ts constants/index.ts contracts/index.ts contracts/addresses.ts queries/index.ts queries/client/graphqlClient.ts types/index.ts types/v2.ts types/secondary.ts types/graphql.ts session/index.ts --format cjs,esm --dts --tsconfig tsconfig.build.json",
+    "dev": "tsup index.ts auction/signing.ts auction/encoding.ts auction/escrowEncoding.ts auction/escrowSigning.ts auction/secondarySigning.ts relayer/auctionWs.ts relayer/escrowAuctionWs.ts mcp/client.ts abis/index.ts constants/index.ts contracts/index.ts contracts/addresses.ts queries/index.ts queries/client/graphqlClient.ts types/index.ts types/escrow.ts types/secondary.ts types/graphql.ts session/index.ts --format cjs,esm --dts --watch",
+    "build:lib": "tsup index.ts auction/signing.ts auction/encoding.ts auction/escrowEncoding.ts auction/escrowSigning.ts auction/secondarySigning.ts relayer/auctionWs.ts relayer/escrowAuctionWs.ts mcp/client.ts abis/index.ts constants/index.ts contracts/index.ts contracts/addresses.ts queries/index.ts queries/client/graphqlClient.ts types/index.ts types/escrow.ts types/secondary.ts types/graphql.ts session/index.ts --format cjs,esm --dts --tsconfig tsconfig.build.json",
     "build": "pnpm run build:lib",
     "lint": "eslint . --quiet",
     "type-check": "tsc --noEmit",

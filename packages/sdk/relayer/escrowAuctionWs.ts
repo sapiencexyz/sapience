@@ -1,25 +1,25 @@
 import WebSocket from 'ws';
 import type { RawData } from 'ws';
 import type {
-  V2AuctionRequestPayload,
-  V2BidPayload,
-  V2BurnRequestPayload,
-  V2ClientToServerMessage,
-  V2ServerToClientMessage,
+  AuctionRequestPayload,
+  BidPayload,
+  BurnRequestPayload,
+  ClientToServerMessage,
+  ServerToClientMessage,
   PickJson,
-} from '../types/v2';
+} from '../types/escrow';
 
 // ============================================================================
-// V2 Auction WebSocket Client
+// Escrow Auction WebSocket Client
 // ============================================================================
 
-export interface V2AuctionWsHandlers {
+export interface AuctionWsHandlers {
   onOpen?: () => void;
   onClose?: (code: number, reason: Buffer) => void;
   onError?: (err: unknown) => void;
   onParseError?: (err: unknown, rawData: RawData) => void;
 
-  // V2-specific message handlers
+  // Escrow-specific message handlers
   onAuctionAck?: (payload: {
     auctionId?: string;
     error?: string;
@@ -62,21 +62,21 @@ export interface V2AuctionWsHandlers {
   onServerError?: (payload: { message: string; code?: string }) => void;
 
   // Fallback for unhandled messages
-  onMessage?: (msg: V2ServerToClientMessage) => void;
+  onMessage?: (msg: ServerToClientMessage) => void;
 }
 
-export interface V2AuctionWsOptions {
+export interface AuctionWsOptions {
   maxRetries?: number;
   pingInterval?: number; // ms, default 30000
 }
 
 /**
- * Create a V2 auction WebSocket client with typed message handling
+ * Create an escrow auction WebSocket client with typed message handling
  */
-export function createV2AuctionWs(
+export function createEscrowAuctionWs(
   url: string,
-  handlers: V2AuctionWsHandlers = {},
-  options: V2AuctionWsOptions = {}
+  handlers: AuctionWsHandlers = {},
+  options: AuctionWsOptions = {}
 ) {
   let ws: WebSocket | null = null;
   let retries = 0;
@@ -104,27 +104,27 @@ export function createV2AuctionWs(
     reconnectTimer = setTimeout(connect, delay);
   }
 
-  function handleMessage(msg: V2ServerToClientMessage) {
+  function handleMessage(msg: ServerToClientMessage) {
     switch (msg.type) {
-      case 'v2.auction.ack':
+      case 'auction.ack':
         handlers.onAuctionAck?.(msg.payload);
         break;
-      case 'v2.bid.ack':
+      case 'bid.ack':
         handlers.onBidAck?.(msg.payload);
         break;
-      case 'v2.auction.started':
+      case 'auction.started':
         handlers.onAuctionStarted?.(msg.payload);
         break;
-      case 'v2.auction.bids':
+      case 'auction.bids':
         handlers.onAuctionBids?.(msg.payload);
         break;
-      case 'v2.auction.filled':
+      case 'auction.filled':
         handlers.onAuctionFilled?.(msg.payload);
         break;
-      case 'v2.auction.expired':
+      case 'auction.expired':
         handlers.onAuctionExpired?.(msg.payload);
         break;
-      case 'v2.burn.ack':
+      case 'burn.ack':
         handlers.onBurnAck?.(msg.payload);
         break;
       case 'pong':
@@ -159,7 +159,7 @@ export function createV2AuctionWs(
 
     ws.on('message', (data: RawData) => {
       try {
-        const msg = JSON.parse(String(data)) as V2ServerToClientMessage;
+        const msg = JSON.parse(String(data)) as ServerToClientMessage;
         handleMessage(msg);
       } catch (e) {
         handlers.onParseError?.(e, data);
@@ -178,7 +178,7 @@ export function createV2AuctionWs(
     });
   }
 
-  function send(msg: V2ClientToServerMessage): boolean {
+  function send(msg: ClientToServerMessage): boolean {
     if (!ws || ws.readyState !== WebSocket.OPEN) return false;
     ws.send(JSON.stringify(msg));
     return true;
@@ -203,38 +203,38 @@ export function createV2AuctionWs(
     },
 
     /**
-     * Start a new V2 auction
+     * Start a new escrow auction
      */
-    startAuction(payload: V2AuctionRequestPayload): boolean {
-      return send({ type: 'v2.auction.start', payload });
+    startAuction(payload: AuctionRequestPayload): boolean {
+      return send({ type: 'auction.start', payload });
     },
 
     /**
      * Subscribe to auction updates
      */
     subscribeAuction(auctionId: string): boolean {
-      return send({ type: 'v2.auction.subscribe', payload: { auctionId } });
+      return send({ type: 'auction.subscribe', payload: { auctionId } });
     },
 
     /**
      * Unsubscribe from auction updates
      */
     unsubscribeAuction(auctionId: string): boolean {
-      return send({ type: 'v2.auction.unsubscribe', payload: { auctionId } });
+      return send({ type: 'auction.unsubscribe', payload: { auctionId } });
     },
 
     /**
      * Submit a bid as counterparty
      */
-    submitBid(payload: V2BidPayload): boolean {
-      return send({ type: 'v2.bid.submit', payload });
+    submitBid(payload: BidPayload): boolean {
+      return send({ type: 'bid.submit', payload });
     },
 
     /**
      * Request a bilateral burn (pre-resolution exit)
      */
-    requestBurn(payload: V2BurnRequestPayload): boolean {
-      return send({ type: 'v2.burn.request', payload });
+    requestBurn(payload: BurnRequestPayload): boolean {
+      return send({ type: 'burn.request', payload });
     },
 
     /**
@@ -245,7 +245,7 @@ export function createV2AuctionWs(
     /**
      * Send raw message
      */
-    sendRaw(msg: V2ClientToServerMessage): boolean {
+    sendRaw(msg: ClientToServerMessage): boolean {
       return send(msg);
     },
 
@@ -272,9 +272,9 @@ export function createV2AuctionWs(
 // ============================================================================
 
 /**
- * Build a V2 auction request payload
+ * Build an escrow auction request payload
  */
-export function buildV2AuctionRequest(params: {
+export function buildAuctionRequest(params: {
   picks: PickJson[];
   predictorCollateral: bigint;
   counterpartyCollateral: bigint;
@@ -285,7 +285,7 @@ export function buildV2AuctionRequest(params: {
   chainId: number;
   refCode?: string;
   predictorSessionKeyData?: string;
-}): V2AuctionRequestPayload {
+}): AuctionRequestPayload {
   return {
     picks: params.picks,
     predictorCollateral: params.predictorCollateral.toString(),
@@ -301,9 +301,9 @@ export function buildV2AuctionRequest(params: {
 }
 
 /**
- * Build a V2 bid payload
+ * Build an escrow bid payload
  */
-export function buildV2BidPayload(params: {
+export function buildBidPayload(params: {
   auctionId: string;
   counterparty: string;
   counterpartyCollateral: string;
@@ -311,7 +311,7 @@ export function buildV2BidPayload(params: {
   counterpartyDeadline: number;
   counterpartySignature: string;
   counterpartySessionKeyData?: string;
-}): V2BidPayload {
+}): BidPayload {
   return {
     auctionId: params.auctionId,
     counterparty: params.counterparty,
@@ -324,9 +324,9 @@ export function buildV2BidPayload(params: {
 }
 
 /**
- * Build a V2 burn request payload
+ * Build an escrow burn request payload
  */
-export function buildV2BurnRequest(params: {
+export function buildBurnRequest(params: {
   pickConfigId: string;
   predictorTokenAmount: bigint;
   counterpartyTokenAmount: bigint;
@@ -344,7 +344,7 @@ export function buildV2BurnRequest(params: {
   refCode?: string;
   predictorSessionKeyData?: string;
   counterpartySessionKeyData?: string;
-}): V2BurnRequestPayload {
+}): BurnRequestPayload {
   return {
     pickConfigId: params.pickConfigId,
     predictorTokenAmount: params.predictorTokenAmount.toString(),

@@ -1,10 +1,10 @@
 /**
- * V2 Validation Helpers for Relayer
+ * Escrow Validation Helpers for Relayer
  */
 
-import type { V2AuctionRequestPayload, V2BidPayload } from './v2Types';
-import { computePickConfigId } from '@sapience/sdk/auction/v2Encoding';
-import type { Pick } from '@sapience/sdk/types/v2';
+import type { AuctionRequestPayload, BidPayload } from './escrowTypes';
+import { computePickConfigId } from '@sapience/sdk/auction/escrowEncoding';
+import type { Pick } from '@sapience/sdk/types';
 import type { Address, Hex } from 'viem';
 
 export interface ValidationResult {
@@ -13,10 +13,10 @@ export interface ValidationResult {
 }
 
 /**
- * Validates a V2 auction request has all required fields
+ * Validates an escrow auction request has all required fields
  */
-export function validateV2AuctionRequest(
-  payload: V2AuctionRequestPayload
+export function validateEscrowAuctionRequest(
+  payload: AuctionRequestPayload
 ): ValidationResult {
   // Validate picks array
   if (!payload.picks || !Array.isArray(payload.picks) || payload.picks.length === 0) {
@@ -97,11 +97,12 @@ export function validateV2AuctionRequest(
 }
 
 /**
- * Validates a V2 bid has all required fields
+ * Validates an escrow bid has all required fields
  */
-export function validateV2Bid(
-  bid: V2BidPayload,
-  auction: V2AuctionRequestPayload
+export function validateEscrowBid(
+  bid: BidPayload,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  auction: AuctionRequestPayload
 ): ValidationResult {
   // Validate auctionId
   if (!bid.auctionId || typeof bid.auctionId !== 'string') {
@@ -160,7 +161,7 @@ export function validateV2Bid(
 /**
  * Compute pickConfigId from picks array
  */
-export function computeV2PickConfigId(picks: V2AuctionRequestPayload['picks']): string {
+export function computeEscrowPickConfigId(picks: AuctionRequestPayload['picks']): string {
   const sdkPicks: Pick[] = picks.map((p) => ({
     conditionResolver: p.conditionResolver as Address,
     conditionId: p.conditionId as Hex,
@@ -172,11 +173,11 @@ export function computeV2PickConfigId(picks: V2AuctionRequestPayload['picks']): 
 /**
  * Creates a standardized error message
  */
-export function createV2ValidationError(
+export function createEscrowValidationError(
   reason: string,
   context?: Record<string, unknown>
 ): string {
-  const baseMessage = `V2 Validation failed: ${reason}`;
+  const baseMessage = `Escrow validation failed: ${reason}`;
   if (context && Object.keys(context).length > 0) {
     const contextStr = Object.entries(context)
       .map(([key, value]) => `${key}=${value}`)

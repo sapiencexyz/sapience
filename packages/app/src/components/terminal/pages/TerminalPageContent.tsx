@@ -136,8 +136,8 @@ const TerminalPageContent: React.FC = () => {
     return displayMessages.filter(
       (m) =>
         m.type === 'auction.started' ||
-        m.type === 'auction.bids' ||
         m.type === 'v2.auction.started' ||
+        m.type === 'auction.bids' ||
         m.type === 'v2.auction.bids'
     );
   }, [displayMessages]);
@@ -801,7 +801,6 @@ const TerminalPageContent: React.FC = () => {
 
   function toUiTx(m: { time: number; type: string; data: any }): UiTransaction {
     const createdAt = new Date(m.time).toISOString();
-    // Handle both V1 and V2 auction started messages
     if (m.type === 'auction.started' || m.type === 'v2.auction.started') {
       const maker =
         (m as any)?.data?.maker || (m as any)?.data?.predictor || '';
@@ -815,14 +814,13 @@ const TerminalPageContent: React.FC = () => {
         position: { owner: maker },
       } as UiTransaction;
     }
-    // Handle both V1 and V2 auction bids messages
     if (m.type === 'auction.bids' || m.type === 'v2.auction.bids') {
       const bids = Array.isArray((m as any)?.data?.bids)
         ? ((m as any).data.bids as unknown as any[])
         : [];
       const top = bids.reduce((best, b) => {
         try {
-          // V1 uses makerCollateral, V2 uses counterpartyCollateral (but we may not have it in bid)
+          // V1 uses makerCollateral, escrow uses counterpartyCollateral (but we may not have it in bid)
           const cur = BigInt(
             String(b?.makerCollateral ?? b?.counterpartyCollateral ?? '0')
           );
@@ -1021,7 +1019,7 @@ const TerminalPageContent: React.FC = () => {
                                   }
                                   resolver={
                                     m?.data?.resolver ||
-                                    // V2: extract resolver from first pick
+                                    // Escrow: extract resolver from first pick
                                     (Array.isArray(m?.data?.picks) &&
                                       m?.data?.picks[0]?.conditionResolver) ||
                                     null
@@ -1043,8 +1041,8 @@ const TerminalPageContent: React.FC = () => {
                                   isPinned={true}
                                   isExpanded={expandedAuctions.has(auctionId)}
                                   onToggleExpanded={toggleExpanded}
-                                  isV2Auction={m?.type === 'v2.auction.started'}
-                                  v2Picks={
+                                  isEscrowAuction={m?.type === 'v2.auction.started'}
+                                  escrowPicks={
                                     Array.isArray(m?.data?.picks)
                                       ? m?.data?.picks
                                       : undefined
@@ -1097,7 +1095,7 @@ const TerminalPageContent: React.FC = () => {
                                       }
                                       resolver={
                                         m?.data?.resolver ||
-                                        // V2: extract resolver from first pick
+                                        // Escrow: extract resolver from first pick
                                         (Array.isArray(m?.data?.picks) &&
                                           m?.data?.picks[0]
                                             ?.conditionResolver) ||
@@ -1127,10 +1125,10 @@ const TerminalPageContent: React.FC = () => {
                                         auctionId
                                       )}
                                       onToggleExpanded={toggleExpanded}
-                                      isV2Auction={
+                                      isEscrowAuction={
                                         m?.type === 'v2.auction.started'
                                       }
-                                      v2Picks={
+                                      escrowPicks={
                                         Array.isArray(m?.data?.picks)
                                           ? m?.data?.picks
                                           : undefined

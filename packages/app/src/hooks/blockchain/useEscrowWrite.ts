@@ -13,10 +13,10 @@ import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useSession } from '~/lib/context/SessionContext';
 
 /**
- * Hook to write to V2 PredictionMarketEscrow contract
+ * Hook to write to PredictionMarketEscrow contract
  * Supports settle, redeem, and burn operations
  */
-export function useV2Write(params: { chainId?: number } = {}) {
+export function useEscrowWrite(params: { chainId?: number } = {}) {
   const { chainId: overrideChainId } = params;
   const chainId = overrideChainId ?? DEFAULT_CHAIN_ID;
 
@@ -37,7 +37,7 @@ export function useV2Write(params: { chainId?: number } = {}) {
     });
 
   /**
-   * Settle a V2 prediction
+   * Settle a prediction
    */
   const settle = useCallback(
     async (params: {
@@ -50,7 +50,7 @@ export function useV2Write(params: { chainId?: number } = {}) {
       } = params;
 
       if (!contractAddress) {
-        return { success: false, error: 'V2 contract not available' };
+        return { success: false, error: 'Escrow contract not available' };
       }
 
       if (!effectiveAddress) {
@@ -79,7 +79,7 @@ export function useV2Write(params: { chainId?: number } = {}) {
   );
 
   /**
-   * Redeem V2 position tokens for collateral
+   * Redeem position tokens for collateral
    */
   const redeem = useCallback(
     async (params: {
@@ -94,7 +94,7 @@ export function useV2Write(params: { chainId?: number } = {}) {
       } = params;
 
       if (!contractAddress) {
-        return { success: false, error: 'V2 contract not available' };
+        return { success: false, error: 'Escrow contract not available' };
       }
 
       if (!effectiveAddress) {
@@ -123,7 +123,7 @@ export function useV2Write(params: { chainId?: number } = {}) {
   );
 
   /**
-   * Burn V2 position tokens (bilateral exit before resolution)
+   * Burn position tokens (bilateral exit before resolution)
    * Requires signatures from both predictor and counterparty holders
    */
   const burn = useCallback(
@@ -150,7 +150,7 @@ export function useV2Write(params: { chainId?: number } = {}) {
       const { burnRequest } = params;
 
       if (!contractAddress) {
-        return { success: false, error: 'V2 contract not available' };
+        return { success: false, error: 'Escrow contract not available' };
       }
 
       if (!effectiveAddress) {

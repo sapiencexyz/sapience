@@ -17,7 +17,7 @@ vi.mock('../../db', () => {
       update: vi.fn(),
       upsert: vi.fn(),
     },
-    position: {
+    legacyPosition: {
       findFirst: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
@@ -486,17 +486,17 @@ describe('PredictionMarketIndexer', () => {
       (prisma.condition.findMany as Mock).mockResolvedValue([
         { id: CONDITION_ID.toLowerCase(), endTime: 1700100000 },
       ]);
-      (prisma.position.create as Mock).mockResolvedValue({ id: 1 });
+      (prisma.legacyPosition.create as Mock).mockResolvedValue({ id: 1 });
       (prisma.event.create as Mock).mockResolvedValue({ id: 1 });
       (prisma.$executeRaw as Mock).mockResolvedValue(1);
 
       await (indexer as any).processPredictionMinted(mintedLog, makeBlock());
 
       expect(prisma.event.create).toHaveBeenCalledTimes(1);
-      expect(prisma.position.create).toHaveBeenCalledTimes(1);
+      expect(prisma.legacyPosition.create).toHaveBeenCalledTimes(1);
 
       // Verify position data
-      const positionData = (prisma.position.create as Mock).mock.calls[0][0]
+      const positionData = (prisma.legacyPosition.create as Mock).mock.calls[0][0]
         .data;
       expect(positionData.status).toBe('active');
       expect(positionData.predictorWon).toBeNull();
@@ -508,25 +508,25 @@ describe('PredictionMarketIndexer', () => {
 
     it('skips event creation but creates position if event exists and position missing', async () => {
       (prisma.event.findFirst as Mock).mockResolvedValue({ id: 1 });
-      (prisma.position.findFirst as Mock).mockResolvedValue(null);
+      (prisma.legacyPosition.findFirst as Mock).mockResolvedValue(null);
       (prisma.condition.findMany as Mock).mockResolvedValue([]);
-      (prisma.position.create as Mock).mockResolvedValue({ id: 2 });
+      (prisma.legacyPosition.create as Mock).mockResolvedValue({ id: 2 });
       (prisma.$executeRaw as Mock).mockResolvedValue(1);
 
       await (indexer as any).processPredictionMinted(mintedLog, makeBlock());
 
       expect(prisma.event.create).not.toHaveBeenCalled();
-      expect(prisma.position.create).toHaveBeenCalledTimes(1);
+      expect(prisma.legacyPosition.create).toHaveBeenCalledTimes(1);
     });
 
     it('skips entirely if event and position both exist', async () => {
       (prisma.event.findFirst as Mock).mockResolvedValue({ id: 1 });
-      (prisma.position.findFirst as Mock).mockResolvedValue({ id: 1 });
+      (prisma.legacyPosition.findFirst as Mock).mockResolvedValue({ id: 1 });
 
       await (indexer as any).processPredictionMinted(mintedLog, makeBlock());
 
       expect(prisma.event.create).not.toHaveBeenCalled();
-      expect(prisma.position.create).not.toHaveBeenCalled();
+      expect(prisma.legacyPosition.create).not.toHaveBeenCalled();
     });
 
     it('catches and reports errors without throwing', async () => {
@@ -576,16 +576,16 @@ describe('PredictionMarketIndexer', () => {
     it('creates event and updates position to settled', async () => {
       (prisma.event.findFirst as Mock).mockResolvedValue(null);
       (prisma.event.create as Mock).mockResolvedValue({ id: 1 });
-      (prisma.position.findFirst as Mock).mockResolvedValue({
+      (prisma.legacyPosition.findFirst as Mock).mockResolvedValue({
         id: 5,
         status: 'active',
       });
-      (prisma.position.update as Mock).mockResolvedValue({ id: 5 });
+      (prisma.legacyPosition.update as Mock).mockResolvedValue({ id: 5 });
 
       await (indexer as any).processPredictionBurned(burnLog, makeBlock());
 
       expect(prisma.event.create).toHaveBeenCalledTimes(1);
-      expect(prisma.position.update).toHaveBeenCalledWith({
+      expect(prisma.legacyPosition.update).toHaveBeenCalledWith({
         where: { id: 5 },
         data: {
           status: 'settled',
@@ -597,7 +597,7 @@ describe('PredictionMarketIndexer', () => {
 
     it('skips if event exists and position already settled', async () => {
       (prisma.event.findFirst as Mock).mockResolvedValue({ id: 1 });
-      (prisma.position.findFirst as Mock).mockResolvedValue({
+      (prisma.legacyPosition.findFirst as Mock).mockResolvedValue({
         id: 5,
         status: 'settled',
       });
@@ -605,16 +605,16 @@ describe('PredictionMarketIndexer', () => {
       await (indexer as any).processPredictionBurned(burnLog, makeBlock());
 
       expect(prisma.event.create).not.toHaveBeenCalled();
-      expect(prisma.position.update).not.toHaveBeenCalled();
+      expect(prisma.legacyPosition.update).not.toHaveBeenCalled();
     });
 
     it('returns early if event exists but position not found', async () => {
       (prisma.event.findFirst as Mock).mockResolvedValue({ id: 1 });
-      (prisma.position.findFirst as Mock).mockResolvedValue(null);
+      (prisma.legacyPosition.findFirst as Mock).mockResolvedValue(null);
 
       await (indexer as any).processPredictionBurned(burnLog, makeBlock());
 
-      expect(prisma.position.update).not.toHaveBeenCalled();
+      expect(prisma.legacyPosition.update).not.toHaveBeenCalled();
     });
 
     it('catches errors without throwing', async () => {
@@ -654,11 +654,11 @@ describe('PredictionMarketIndexer', () => {
     it('creates event and updates position to consolidated', async () => {
       (prisma.event.findFirst as Mock).mockResolvedValue(null);
       (prisma.event.create as Mock).mockResolvedValue({ id: 1 });
-      (prisma.position.findFirst as Mock).mockResolvedValue({
+      (prisma.legacyPosition.findFirst as Mock).mockResolvedValue({
         id: 10,
         status: 'active',
       });
-      (prisma.position.update as Mock).mockResolvedValue({ id: 10 });
+      (prisma.legacyPosition.update as Mock).mockResolvedValue({ id: 10 });
 
       await (indexer as any).processPredictionConsolidated(
         consolLog,
@@ -666,7 +666,7 @@ describe('PredictionMarketIndexer', () => {
       );
 
       expect(prisma.event.create).toHaveBeenCalledTimes(1);
-      expect(prisma.position.update).toHaveBeenCalledWith({
+      expect(prisma.legacyPosition.update).toHaveBeenCalledWith({
         where: { id: 10 },
         data: {
           status: 'consolidated',
@@ -678,7 +678,7 @@ describe('PredictionMarketIndexer', () => {
 
     it('skips if already consolidated', async () => {
       (prisma.event.findFirst as Mock).mockResolvedValue({ id: 1 });
-      (prisma.position.findFirst as Mock).mockResolvedValue({
+      (prisma.legacyPosition.findFirst as Mock).mockResolvedValue({
         id: 10,
         status: 'consolidated',
       });
@@ -688,7 +688,7 @@ describe('PredictionMarketIndexer', () => {
         makeBlock()
       );
 
-      expect(prisma.position.update).not.toHaveBeenCalled();
+      expect(prisma.legacyPosition.update).not.toHaveBeenCalled();
     });
 
     it('catches errors without throwing', async () => {

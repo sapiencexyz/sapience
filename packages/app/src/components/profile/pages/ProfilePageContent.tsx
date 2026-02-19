@@ -9,14 +9,14 @@ import {
   TabsContent,
   TabsTrigger,
 } from '@sapience/ui/components/ui/tabs';
-import { Telescope, ArrowLeftRightIcon, Coins } from 'lucide-react';
+import { Telescope, ArrowLeftRightIcon } from 'lucide-react';
 import SegmentedTabsList from '~/components/shared/SegmentedTabsList';
 import ProfileHeader from '~/components/profile/ProfileHeader';
 import ForecastsTable from '~/components/profile/ForecastsTable';
 import PositionsTable from '~/components/positions/PositionsTable';
-import V2PositionsTable from '~/components/positions/V2PositionsTable';
+import LegacyPositionsTable from '~/components/positions/LegacyPositionsTable';
 import { useForecasts } from '~/hooks/graphql/useForecasts';
-import { useUserPositions } from '~/hooks/graphql/useUserPositions';
+import { useUserPositions, useUserPositionsCount } from '~/hooks/graphql/useLegacyPositions';
 import { SCHEMA_UID } from '~/lib/constants';
 import ProfileQuickMetrics from '~/components/profile/ProfileQuickMetrics';
 import ShareAfterRedirect from '~/components/shared/ShareAfterRedirect';
@@ -25,7 +25,7 @@ import {
   CHAIN_ID_ETHEREAL_TESTNET,
 } from '@sapience/sdk/constants';
 
-const TAB_VALUES = ['positions', 'v2positions', 'forecasts'] as const;
+const TAB_VALUES = ['positions', 'forecasts'] as const;
 type TabValue = (typeof TAB_VALUES)[number];
 
 const ProfilePageContent = () => {
@@ -38,11 +38,14 @@ const ProfilePageContent = () => {
     schemaId: SCHEMA_UID,
   });
 
-  // Positions for this profile address, filtered by chainId
+  // Legacy (V1) positions for this profile address, filtered by chainId
   const { data: positions, isLoading: positionsLoading } = useUserPositions({
     address: String(address),
     chainId,
   });
+
+  // Count of legacy positions to conditionally show the legacy section
+  const legacyPositionsCount = useUserPositionsCount(String(address), chainId);
 
   const allLoaded = !forecastsLoading && !positionsLoading;
 
@@ -104,10 +107,6 @@ const ProfilePageContent = () => {
         <ArrowLeftRightIcon className="h-4 w-4 mr-2" />
         Positions
       </TabsTrigger>
-      <TabsTrigger className="justify-center flex-1 md:flex-none" value="v2positions">
-        <Coins className="h-4 w-4 mr-2" />
-        V2 Positions
-      </TabsTrigger>
       <TabsTrigger
         className="justify-center flex-1 md:flex-none"
         value="forecasts"
@@ -147,18 +146,18 @@ const ProfilePageContent = () => {
               <PositionsTable
                 account={address}
                 showHeaderText={false}
-                chainId={chainId}
-                leftSlot={tabSwitcher}
-              />
-            </TabsContent>
-
-            <TabsContent value="v2positions" className="mt-0">
-              <V2PositionsTable
-                account={address}
-                showHeaderText={false}
                 chainId={CHAIN_ID_ETHEREAL_TESTNET}
                 leftSlot={tabSwitcher}
               />
+              {legacyPositionsCount > 0 && (
+                <div className="border-t border-border/60">
+                  <LegacyPositionsTable
+                    account={address}
+                    showHeaderText={true}
+                    chainId={chainId}
+                  />
+                </div>
+              )}
             </TabsContent>
 
             <TabsContent value="forecasts" className="mt-0">

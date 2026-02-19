@@ -1,15 +1,15 @@
 import { Arg, Field, Int, ObjectType, Query, Resolver } from 'type-graphql';
-import { Position, Prisma } from '../../../generated/prisma';
+import { LegacyPosition, Prisma } from '../../../generated/prisma';
 import prisma from '../../db';
 
 @ObjectType()
-class CategorySummary {
+class LegacyCategorySummary {
   @Field(() => String)
   slug!: string;
 }
 
 @ObjectType()
-class ConditionSummary {
+class LegacyConditionSummary {
   @Field(() => String)
   id!: string;
 
@@ -31,12 +31,12 @@ class ConditionSummary {
   @Field(() => Boolean)
   resolvedToYes!: boolean;
 
-  @Field(() => CategorySummary, { nullable: true })
+  @Field(() => LegacyCategorySummary, { nullable: true })
   category?: { slug: string } | null;
 }
 
 @ObjectType()
-class PredictionType {
+class LegacyPredictionType {
   @Field(() => String)
   conditionId!: string;
 
@@ -46,12 +46,12 @@ class PredictionType {
   @Field(() => Int, { nullable: true })
   chainId?: number | null;
 
-  @Field(() => ConditionSummary, { nullable: true })
-  condition?: ConditionSummary | null;
+  @Field(() => LegacyConditionSummary, { nullable: true })
+  condition?: LegacyConditionSummary | null;
 }
 
 @ObjectType()
-class PositionType {
+class LegacyPositionType {
   @Field(() => Int)
   id!: number;
 
@@ -100,8 +100,8 @@ class PositionType {
   @Field(() => Int, { nullable: true })
   endsAt?: number | null;
 
-  @Field(() => [PredictionType])
-  predictions!: PredictionType[];
+  @Field(() => [LegacyPredictionType])
+  predictions!: LegacyPredictionType[];
 }
 
 const MAX_TAKE = 50;
@@ -115,12 +115,12 @@ function clampSkip(skip: number): number {
 }
 
 async function buildPredictionMap(
-  rows: Position[]
-): Promise<Map<number, PredictionType[]>> {
+  rows: LegacyPosition[]
+): Promise<Map<number, LegacyPredictionType[]>> {
   const positionIds = rows.map((r) => r.id);
   if (positionIds.length === 0) return new Map();
 
-  const predictions = await prisma.prediction.findMany({
+  const predictions = await prisma.legacyPrediction.findMany({
     where: { positionId: { in: positionIds } },
     include: {
       condition: {
@@ -138,7 +138,7 @@ async function buildPredictionMap(
     },
   });
 
-  const map = new Map<number, PredictionType[]>();
+  const map = new Map<number, LegacyPredictionType[]>();
   for (const p of predictions) {
     if (!p.positionId) continue;
     const condition = p.condition && {
@@ -151,7 +151,7 @@ async function buildPredictionMap(
       resolvedToYes: p.condition.resolvedToYes,
       category: p.condition.category ?? null,
     };
-    const entry: PredictionType = {
+    const entry: LegacyPredictionType = {
       conditionId: p.conditionId,
       outcomeYes: p.outcomeYes,
       chainId: p.chainId ?? null,
@@ -165,7 +165,7 @@ async function buildPredictionMap(
   return map;
 }
 
-async function processRows(rows: Position[]): Promise<PositionType[]> {
+async function processRows(rows: LegacyPosition[]): Promise<LegacyPositionType[]> {
   const predictionMap = await buildPredictionMap(rows);
 
   return rows.map((r) => ({
@@ -180,7 +180,7 @@ async function processRows(rows: Position[]): Promise<PositionType[]> {
     predictorCollateral: r.predictorCollateral ?? null,
     counterpartyCollateral: r.counterpartyCollateral ?? null,
     refCode: r.refCode,
-    status: r.status as unknown as PositionType['status'],
+    status: r.status as unknown as LegacyPositionType['status'],
     predictorWon: r.predictorWon,
     mintedAt: r.mintedAt,
     settledAt: r.settledAt ?? null,
@@ -190,19 +190,19 @@ async function processRows(rows: Position[]): Promise<PositionType[]> {
 }
 
 @Resolver()
-export class PositionResolver {
-  @Query(() => [PositionType], {
+export class LegacyPositionResolver {
+  @Query(() => [LegacyPositionType], {
     description:
-      'Returns the most recently created positions globally, ordered by mintedAt descending.',
+      'Returns the most recently created legacy positions globally, ordered by mintedAt descending.',
   })
-  async recentPositions(
+  async recentLegacyPositions(
     @Arg('take', () => Int, { defaultValue: 20 }) take: number,
     @Arg('skip', () => Int, { defaultValue: 0 }) skip: number,
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number,
     @Arg('status', () => String, { nullable: true })
     status?: 'active' | 'settled' | 'consolidated'
-  ): Promise<PositionType[]> {
-    const where: Prisma.PositionWhereInput = {};
+  ): Promise<LegacyPositionType[]> {
+    const where: Prisma.LegacyPositionWhereInput = {};
     if (chainId !== undefined && chainId !== null) {
       where.chainId = chainId;
     }
@@ -210,7 +210,7 @@ export class PositionResolver {
       where.status = status;
     }
 
-    const rows = await prisma.position.findMany({
+    const rows = await prisma.legacyPosition.findMany({
       where,
       orderBy: { mintedAt: 'desc' },
       take: clampTake(take),
@@ -221,22 +221,22 @@ export class PositionResolver {
   }
 
   @Query(() => Int)
-  async positionsCount(
+  async legacyPositionsCount(
     @Arg('address', () => String) address: string,
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number
   ): Promise<number> {
     const addr = address.toLowerCase();
-    const where: Prisma.PositionWhereInput = {
+    const where: Prisma.LegacyPositionWhereInput = {
       OR: [{ predictor: addr }, { counterparty: addr }],
     };
     if (chainId !== undefined && chainId !== null) {
       where.chainId = chainId;
     }
-    return prisma.position.count({ where });
+    return prisma.legacyPosition.count({ where });
   }
 
-  @Query(() => [PositionType])
-  async positions(
+  @Query(() => [LegacyPositionType])
+  async legacyPositions(
     @Arg('take', () => Int, { defaultValue: 50 }) take: number,
     @Arg('skip', () => Int, { defaultValue: 0 }) skip: number,
     @Arg('address', () => String, { nullable: true }) address?: string,
@@ -250,7 +250,7 @@ export class PositionResolver {
     @Arg('nftTokenId', () => String, { nullable: true }) nftTokenId?: string,
     @Arg('marketAddress', () => String, { nullable: true })
     marketAddress?: string
-  ): Promise<PositionType[]> {
+  ): Promise<LegacyPositionType[]> {
     take = Math.min(take, 200);
     const addr = address?.toLowerCase();
 
@@ -285,7 +285,7 @@ export class PositionResolver {
           : Prisma.empty;
 
       if (orderBy === 'positionSize') {
-        const rows = await prisma.$queryRaw<Position[]>`
+        const rows = await prisma.$queryRaw<LegacyPosition[]>`
           SELECT * FROM position
           WHERE (LOWER(predictor) = ${addr} OR LOWER(counterparty) = ${addr}) ${chainIdFilter} ${statusFilter} ${endsAtFilter}
           ORDER BY CASE
@@ -300,7 +300,7 @@ export class PositionResolver {
       }
 
       if (orderBy === 'pnl') {
-        const rows = await prisma.$queryRaw<Position[]>`
+        const rows = await prisma.$queryRaw<LegacyPosition[]>`
           SELECT * FROM position
           WHERE (LOWER(predictor) = ${addr} OR LOWER(counterparty) = ${addr}) ${chainIdFilter} ${statusFilter} ${endsAtFilter}
           ORDER BY CASE
@@ -328,7 +328,7 @@ export class PositionResolver {
       }
 
       // payout: sort by totalCollateral but treat lost positions as 0
-      const rows = await prisma.$queryRaw<Position[]>`
+      const rows = await prisma.$queryRaw<LegacyPosition[]>`
         SELECT * FROM position
         WHERE (LOWER(predictor) = ${addr} OR LOWER(counterparty) = ${addr}) ${chainIdFilter} ${statusFilter} ${endsAtFilter}
         ORDER BY CASE
@@ -347,7 +347,7 @@ export class PositionResolver {
       return processRows(rows);
     }
 
-    let orderByClause: Prisma.PositionOrderByWithRelationInput = {
+    let orderByClause: Prisma.LegacyPositionOrderByWithRelationInput = {
       mintedAt: 'desc',
     };
 
@@ -357,7 +357,7 @@ export class PositionResolver {
       orderByClause = { endsAt: orderDirection === 'asc' ? 'asc' : 'desc' };
     }
 
-    const where: Prisma.PositionWhereInput = {};
+    const where: Prisma.LegacyPositionWhereInput = {};
 
     // Filter by NFT ID and market address if provided
     if (nftTokenId && marketAddress) {
@@ -386,7 +386,7 @@ export class PositionResolver {
       where.endsAt = { gte: endsAtGte };
     }
 
-    const rows = await prisma.position.findMany({
+    const rows = await prisma.legacyPosition.findMany({
       where,
       orderBy: orderByClause,
       take,
@@ -396,8 +396,8 @@ export class PositionResolver {
     return processRows(rows);
   }
 
-  @Query(() => [PositionType])
-  async positionsByConditionId(
+  @Query(() => [LegacyPositionType])
+  async legacyPositionsByConditionId(
     @Arg('conditionId', () => String) conditionId: string,
     @Arg('take', () => Int, { defaultValue: 100 }) take: number,
     @Arg('skip', () => Int, { defaultValue: 0 }) skip: number,
@@ -405,10 +405,10 @@ export class PositionResolver {
     @Arg('status', () => String, { nullable: true })
     status?: 'active' | 'settled' | 'consolidated',
     @Arg('endsAtGte', () => Int, { nullable: true }) endsAtGte?: number
-  ): Promise<PositionType[]> {
+  ): Promise<LegacyPositionType[]> {
     take = Math.min(take, 200);
 
-    const predictionMatches = await prisma.prediction.findMany({
+    const predictionMatches = await prisma.legacyPrediction.findMany({
       where: {
         positionId: { not: null },
         conditionId: { equals: conditionId, mode: 'insensitive' },
@@ -429,7 +429,7 @@ export class PositionResolver {
 
     if (positionIds.length === 0) return [];
 
-    const positionWhere: Prisma.PositionWhereInput = {
+    const positionWhere: Prisma.LegacyPositionWhereInput = {
       id: { in: positionIds },
       ...(chainId !== undefined && chainId !== null ? { chainId } : undefined),
       ...(status ? { status } : undefined),
@@ -438,7 +438,7 @@ export class PositionResolver {
         : undefined),
     };
 
-    const rows = await prisma.position.findMany({
+    const rows = await prisma.legacyPosition.findMany({
       where: positionWhere,
       orderBy: { mintedAt: 'desc' },
       take,

@@ -6,8 +6,8 @@ import {
   type Hex,
   type TypedDataDomain,
 } from 'viem';
-import type { Pick, MintRequest, BurnRequest } from '../types/v2';
-import { computePickConfigId } from './v2Encoding';
+import type { Pick, MintRequest, BurnRequest } from '../types/escrow';
+import { computePickConfigId } from './escrowEncoding';
 
 // ============================================================================
 // EIP-712 Domain & Types
@@ -16,7 +16,7 @@ import { computePickConfigId } from './v2Encoding';
 /**
  * EIP-712 domain for PredictionMarketEscrow
  */
-export function getV2Domain(
+export function getEscrowDomain(
   verifyingContract: Address,
   chainId: number
 ): TypedDataDomain {
@@ -165,7 +165,7 @@ export function buildMintApprovalTypedData(params: {
   chainId: number;
 }) {
   return {
-    domain: getV2Domain(params.verifyingContract, params.chainId),
+    domain: getEscrowDomain(params.verifyingContract, params.chainId),
     types: MINT_APPROVAL_TYPES,
     primaryType: 'MintApproval' as const,
     message: {
@@ -193,7 +193,7 @@ export function buildBurnApprovalTypedData(params: {
   chainId: number;
 }) {
   return {
-    domain: getV2Domain(params.verifyingContract, params.chainId),
+    domain: getEscrowDomain(params.verifyingContract, params.chainId),
     types: BURN_APPROVAL_TYPES,
     primaryType: 'BurnApproval' as const,
     message: {

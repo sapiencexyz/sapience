@@ -7,8 +7,8 @@ import {
   extractSiweDomainAndUri,
   type AuctionStartSigningPayload,
 } from '@sapience/sdk';
-import { canonicalizePicks } from '@sapience/sdk/auction/v2Encoding';
-import type { Pick } from '@sapience/sdk/types/v2';
+import { canonicalizePicks } from '@sapience/sdk/auction/escrowEncoding';
+import type { Pick } from '@sapience/sdk/types';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
 import { toAuctionWsUrl } from '~/lib/ws';
@@ -26,9 +26,9 @@ export interface AuctionParams {
   taker: `0x${string}`; // taker EOA address
   takerNonce: number; // nonce for the taker
   chainId: number; // chain ID for the auction (e.g., 42161 for Arbitrum)
-  // V2 auction fields (optional)
-  counterpartyCollateral?: string; // wei string - counterparty's collateral for V2 auctions
-  v2Picks?: Array<{
+  // Escrow auction fields (optional)
+  counterpartyCollateral?: string; // wei string - counterparty's collateral for escrow auctions
+  escrowPicks?: Array<{
     conditionResolver: `0x${string}`;
     conditionId: `0x${string}`;
     predictedOutcome: number;
@@ -46,12 +46,12 @@ export interface QuoteBid {
   validationStatus?: 'pending' | 'valid' | 'invalid';
   /** Optional reason when validationStatus === 'invalid' */
   validationError?: string;
-  /** V2: Session key data for counterparty (base64 encoded) */
+  /** Escrow: Session key data for counterparty (base64 encoded) */
   counterpartySessionKeyData?: string;
 }
 
-// V2 bid fields (counterparty = bidder in V2 terminology)
-export interface V2QuoteBid {
+// Escrow bid fields (counterparty = bidder in escrow terminology)
+export interface EscrowQuoteBid {
   auctionId: string;
   counterparty: string;
   counterpartyCollateral: string; // wei
@@ -80,14 +80,14 @@ export interface MintPredictionRequestData {
   // For validation: the nonce the bidder (contract taker) claimed when signing
   // This is embedded in their signature and must match their on-chain nonce
   takerClaimedNonce?: number;
-  // V2 picks array (used directly instead of decoding from encodedPredictedOutcomes)
+  // Escrow picks array (used directly instead of decoding from encodedPredictedOutcomes)
   // This ensures the predictor signs the exact same picks the counterparty signed
-  v2Picks?: Array<{
+  escrowPicks?: Array<{
     conditionResolver: `0x${string}`;
     conditionId: `0x${string}`;
     predictedOutcome: number;
   }>;
-  // V2: Session key data for counterparty (base64 encoded)
+  // Escrow: Session key data for counterparty (base64 encoded)
   counterpartySessionKeyData?: string;
 }
 
@@ -221,8 +221,8 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
           setBids(normalized);
         }
 
-        // Handle V2 auction bids (map to V1 QuoteBid format)
-        if (data?.type === 'v2.auction.bids') {
+        // Handle escrow auction bids (map to V1 QuoteBid format)
+        if (data?.type === 'auction.bids') {
           const targetAuctionId = data.payload?.auctionId as string | undefined;
           const rawBids = Array.isArray(data.payload?.bids)
             ? (data.payload.bids as any[])
@@ -239,12 +239,12 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
           const normalized: QuoteBid[] = rawBids
             .map((b): QuoteBid | null => {
               try {
-                // Map V2 bid fields to V1 QuoteBid format:
-                // V2 counterparty = V1 maker (bidder)
-                // V2 counterpartyNonce = V1 makerNonce
-                // V2 counterpartyDeadline = V1 makerDeadline
-                // V2 counterpartySignature = V1 makerSignature
-                // V2 counterpartyCollateral comes from the BID (counterparty decides their collateral)
+                // Map escrow bid fields to V1 QuoteBid format:
+                // Escrow counterparty = V1 maker (bidder)
+                // Escrow counterpartyNonce = V1 makerNonce
+                // Escrow counterpartyDeadline = V1 makerDeadline
+                // Escrow counterpartySignature = V1 makerSignature
+                // Escrow counterpartyCollateral comes from the BID (counterparty decides their collateral)
                 return {
                   auctionId: targetAuctionId,
                   maker: b.counterparty || ZERO_ADDRESS,
@@ -252,7 +252,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
                   makerDeadline: b.counterpartyDeadline || 0,
                   makerSignature: b.counterpartySignature || '0x',
                   makerNonce: b.counterpartyNonce || 0,
-                  // Store V2-specific fields for later use in mint request
+                  // Store escrow-specific fields for later use in mint request
                   counterpartySessionKeyData: b.counterpartySessionKeyData,
                 } as QuoteBid;
               } catch {
@@ -402,17 +402,17 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
         lastAuctionRef.current = { ...params, taker: effectiveTaker };
         setCurrentAuctionParams({ ...params, taker: effectiveTaker });
 
-        // Check if this is a V2 auction (has v2Picks)
-        const isV2Auction = params.v2Picks && params.v2Picks.length > 0;
+        // Check if this is an escrow auction (has escrowPicks)
+        const isEscrowAuction = params.escrowPicks && params.escrowPicks.length > 0;
 
-        if (isV2Auction) {
-          // V2 Auction Start - no signature needed at start time
+        if (isEscrowAuction) {
+          // Escrow Auction Start - no signature needed at start time
           // Predictor signs when accepting a specific bid (which includes counterpartyCollateral)
           try {
             const chainId = params.chainId;
 
-            // Convert v2Picks to Pick[] and canonicalize
-            const rawPicks: Pick[] = params.v2Picks!.map((p) => ({
+            // Convert escrowPicks to Pick[] and canonicalize
+            const rawPicks: Pick[] = params.escrowPicks!.map((p) => ({
               conditionResolver: p.conditionResolver,
               conditionId: p.conditionId,
               predictedOutcome: p.predictedOutcome,
@@ -423,9 +423,9 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
             const nowSec = Math.floor(Date.now() / 1000);
             const predictorDeadline = nowSec + 300;
 
-            // Build V2 auction payload - no signature at start time
+            // Build escrow auction payload - no signature at start time
             // Counterparty will specify their collateral in their bid
-            const v2Payload = {
+            const escrowPayload = {
               picks: picks.map((p) => ({
                 conditionResolver: p.conditionResolver,
                 conditionId: p.conditionId,
@@ -440,35 +440,35 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
               // Predictor signs when accepting a bid with specific counterpartyCollateral
             };
 
-            // Send V2 auction start
-            const v2Response = await client.sendWithAck<{
+            // Send escrow auction start
+            const escrowResponse = await client.sendWithAck<{
               auctionId?: string;
               error?: string;
-            }>('v2.auction.start', v2Payload, { timeoutMs: 10000 });
+            }>('auction.start', escrowPayload, { timeoutMs: 10000 });
 
-            if (v2Response?.error) {
-              console.error('[V2 Auction] Start failed:', v2Response.error);
+            if (escrowResponse?.error) {
+              console.error('[Escrow Auction] Start failed:', escrowResponse.error);
               inflightRef.current = '';
               return;
             }
 
-            const newId = v2Response?.auctionId || null;
+            const newId = escrowResponse?.auctionId || null;
             latestAuctionIdRef.current = newId;
             loggedStaleAuctionsRef.current.clear();
             setAuctionId(newId);
 
-            // Subscribe to V2 auction updates
+            // Subscribe to escrow auction updates
             if (newId) {
               client.send({
-                type: 'v2.auction.subscribe',
+                type: 'auction.subscribe',
                 payload: { auctionId: newId },
               });
             }
 
             inflightRef.current = '';
             return;
-          } catch (v2Error) {
-            console.error('[V2 Auction] Start error:', v2Error);
+          } catch (escrowError) {
+            console.error('[Escrow Auction] Start error:', escrowError);
             inflightRef.current = '';
             return;
           }
@@ -499,11 +499,11 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
             setAuctionId(newId);
             log(`Auction started: id=${newId}`);
 
-            // Also subscribe to V2 auction updates for this auctionId
-            // This enables receiving V2 bids on the same auction
+            // Also subscribe to auction updates for this auctionId
+            // This enables receiving escrow bids on the same auction
             if (newId) {
               client.send({
-                type: 'v2.auction.subscribe',
+                type: 'auction.subscribe',
                 payload: { auctionId: newId },
               });
             }
@@ -585,31 +585,31 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
       // Contract field names map BID (API) roles to contract roles:
       // Contract "maker" = API "taker" (auction creator)
       // Contract "taker" = API "maker" (bidder)
-      // V2 uses counterparty* fields instead of maker* fields for bidder
+      // Escrow uses counterparty* fields instead of maker* fields for bidder
       const bid = args.selectedBid;
-      // Cast to access V2 fields if present
-      const v2Bid = bid as unknown as Partial<V2QuoteBid>;
+      // Cast to access escrow fields if present
+      const escrowBid = bid as unknown as Partial<EscrowQuoteBid>;
       return {
         encodedPredictedOutcomes: predictedOutcomes[0],
         resolver,
         makerCollateral: auction.wager,
-        // V2 bids have counterpartyCollateral, V1 bids have makerCollateral
-        takerCollateral: v2Bid.counterpartyCollateral ?? bid.makerCollateral,
+        // Escrow bids have counterpartyCollateral, V1 bids have makerCollateral
+        takerCollateral: escrowBid.counterpartyCollateral ?? bid.makerCollateral,
         maker: auction.taker,
-        // V2 bids have counterparty, V1 bids have maker
-        taker: (v2Bid.counterparty ?? bid.maker) as `0x${string}`,
-        // V2 bids have counterpartySignature, V1 bids have makerSignature
-        takerSignature: (v2Bid.counterpartySignature ??
+        // Escrow bids have counterparty, V1 bids have maker
+        taker: (escrowBid.counterparty ?? bid.maker) as `0x${string}`,
+        // Escrow bids have counterpartySignature, V1 bids have makerSignature
+        takerSignature: (escrowBid.counterpartySignature ??
           bid.makerSignature) as `0x${string}`,
-        // V2 bids have counterpartyDeadline, V1 bids have makerDeadline
-        takerDeadline: String(v2Bid.counterpartyDeadline ?? bid.makerDeadline),
+        // Escrow bids have counterpartyDeadline, V1 bids have makerDeadline
+        takerDeadline: String(escrowBid.counterpartyDeadline ?? bid.makerDeadline),
         refCode: (args.refCode ?? ZERO_BYTES32) as `0x${string}`,
         makerNonce: String(auction.takerNonce),
-        // V2 bids have counterpartyNonce, V1 bids have makerNonce
-        takerClaimedNonce: v2Bid.counterpartyNonce ?? bid.makerNonce,
-        // V2 fields: include picks array if available
-        v2Picks: auction.v2Picks,
-        // V2 fields: include counterparty session key data from bid
+        // Escrow bids have counterpartyNonce, V1 bids have makerNonce
+        takerClaimedNonce: escrowBid.counterpartyNonce ?? bid.makerNonce,
+        // Escrow fields: include picks array if available
+        escrowPicks: auction.escrowPicks,
+        // Escrow fields: include counterparty session key data from bid
         counterpartySessionKeyData: bid.counterpartySessionKeyData,
       };
     },
