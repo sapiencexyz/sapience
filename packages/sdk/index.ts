@@ -19,6 +19,7 @@ export * from './auction/simulate';
 // Escrow auction
 export * from './auction/escrowEncoding';
 export * from './auction/escrowSigning';
+export * from './auction/secondarySigning';
 
 export * from './relayer/auctionWs';
 export * from './relayer/escrowAuctionWs';

@@ -10,8 +10,8 @@ export const RESOLVER_ADDRESS = '0xdC1Fa830aD1de01f1EF603749f48bD73384286BE' as 
 
 export const DEFAULT_SAPIENCE_API_URL = 'https://api.sapience.xyz';
 
-// Ethereal chain ID (from @sapience/sdk/constants/chain.ts)
-export const CHAIN_ID_ETHEREAL = 5064014 as const;
+// Chain ID — configurable via env var, defaults to Ethereal mainnet
+export const CHAIN_ID = Number(process.env.CHAIN_ID || '5064014');
 
 // Minimum volume threshold (in USD) for including markets
 export const MIN_VOLUME_THRESHOLD = 10_000;

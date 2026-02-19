@@ -33,6 +33,14 @@ import type {
   BidPayload,
 } from './escrowTypes';
 import { isEscrowClientMessage } from './escrowTypes';
+import { isSecondaryClientMessage } from './secondaryMarketTypes';
+import {
+  handleSecondaryAuctionStart,
+  handleSecondaryBidSubmit,
+  handleSecondarySubscribe,
+  handleSecondaryUnsubscribe,
+  unsubscribeFromAllSecondary,
+} from './secondaryMarketHandlers';
 
 function safeParse<T = unknown>(data: RawData): T | null {
   try {
@@ -821,6 +829,31 @@ export function createAuctionWebSocketServer() {
         }
       }
 
+      // Handle Secondary Market messages
+      if (isSecondaryClientMessage(msg) && (msg as { type: string }).type.startsWith('secondary.')) {
+        const secondaryMsg = msg as import('@sapience/sdk/types/secondary').SecondaryClientToServerMessage;
+        if (secondaryMsg.type === 'secondary.auction.start') {
+          await handleSecondaryAuctionStart(ws, secondaryMsg.payload);
+          trackDuration(msgType, startTime);
+          return;
+        }
+        if (secondaryMsg.type === 'secondary.bid.submit') {
+          await handleSecondaryBidSubmit(ws, secondaryMsg.payload);
+          trackDuration(msgType, startTime);
+          return;
+        }
+        if (secondaryMsg.type === 'secondary.auction.subscribe') {
+          handleSecondarySubscribe(ws, secondaryMsg.payload);
+          trackDuration(msgType, startTime);
+          return;
+        }
+        if (secondaryMsg.type === 'secondary.auction.unsubscribe') {
+          handleSecondaryUnsubscribe(ws, secondaryMsg.payload);
+          trackDuration(msgType, startTime);
+          return;
+        }
+      }
+
       trackDuration(msgType, startTime);
       errorsTotal.inc({ type: 'unhandled_message', message_type: msgType });
 
@@ -868,6 +901,8 @@ export function createAuctionWebSocketServer() {
         subscriptionsActive.dec({ subscription_type: 'vault' });
       }
       removeVaultObserver(ws);
+      // Clean up secondary market subscriptions
+      unsubscribeFromAllSecondary(ws);
     });
   });
 
