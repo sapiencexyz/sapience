@@ -247,8 +247,13 @@ export function setupMiddleware(app: Express) {
       next();
     });
   } else {
-    // just check for regular rate limits if x402 is turned off
-    app.use(freeTierLimiter);
+    // Simple rate limiting - no payment path, just reject with 429
+    app.use(rateLimit({
+      windowMs: config.RATE_LIMIT_WINDOW_MS,
+      max: config.FREE_TIER_RATE_LIMIT,
+      standardHeaders: true,
+      legacyHeaders: false,
+    }));
 
     console.log('[x402] Tiered rate limiting disabled (X402_PAY_TO not set)');
   }
