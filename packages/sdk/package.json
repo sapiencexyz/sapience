@@ -82,6 +82,27 @@
       "import": "./dist/types/v2.mjs",
       "require": "./dist/types/v2.js"
     },
+    "./types/secondary": {
+      "types": "./dist/types/secondary.d.ts",
+      "import": "./dist/types/secondary.mjs",
+      "require": "./dist/types/secondary.js"
+    },
+    "./types/graphql": {
+      "types": "./dist/types/graphql.d.ts",
+      "import": "./dist/types/graphql.mjs",
+      "require": "./dist/types/graphql.js"
+    },
+    "./contracts/addresses": {
+      "types": "./dist/contracts/addresses.d.ts",
+      "import": "./dist/contracts/addresses.mjs",
+      "require": "./dist/contracts/addresses.js"
+    },
+    "./queries/client/graphqlClient": {
+      "types": "./dist/queries/client/graphqlClient.d.ts",
+      "import": "./dist/queries/client/graphqlClient.mjs",
+      "require": "./dist/queries/client/graphqlClient.js"
+    },
+    "./queries/abis/erc20abi.json": "./queries/abis/erc20abi.json",
     "./contracts": {
       "types": "./dist/contracts/index.d.ts",
       "import": "./dist/contracts/index.mjs",
@@ -97,7 +118,7 @@
   "scripts": {
     "prepare": "pnpm run build:lib",
     "dev": "tsup index.ts auction/signing.ts auction/encoding.ts auction/v2Encoding.ts auction/v2Signing.ts relayer/auctionWs.ts relayer/v2AuctionWs.ts mcp/client.ts abis/index.ts constants/index.ts contracts/index.ts queries/index.ts types/index.ts session/index.ts --format cjs,esm --dts --watch",
-    "build:lib": "tsup index.ts auction/signing.ts auction/encoding.ts auction/v2Encoding.ts auction/v2Signing.ts auction/secondarySigning.ts relayer/auctionWs.ts relayer/v2AuctionWs.ts mcp/client.ts abis/index.ts constants/index.ts contracts/index.ts queries/index.ts types/index.ts types/v2.ts session/index.ts --format cjs,esm --dts --tsconfig tsconfig.build.json",
+    "build:lib": "tsup index.ts auction/signing.ts auction/encoding.ts auction/v2Encoding.ts auction/v2Signing.ts auction/secondarySigning.ts relayer/auctionWs.ts relayer/v2AuctionWs.ts mcp/client.ts abis/index.ts constants/index.ts contracts/index.ts contracts/addresses.ts queries/index.ts queries/client/graphqlClient.ts types/index.ts types/v2.ts types/secondary.ts types/graphql.ts session/index.ts --format cjs,esm --dts --tsconfig tsconfig.build.json",
     "build": "pnpm run build:lib",
     "lint": "eslint . --quiet",
     "type-check": "tsc --noEmit",
