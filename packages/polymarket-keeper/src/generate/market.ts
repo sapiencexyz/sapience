@@ -43,12 +43,13 @@ export async function fetchEndingSoonestMarkets(): Promise<PolymarketMarket[]> {
   const seenConditionIds = new Set<string>(); // Track seen markets to deduplicate
   const PAGE_SIZE = 500;
   let pageCount = 0;
+  let offset = 0;
 
   console.log(`[Polymarket] Fetching ending-soon markets until ${maxEndDate.toISOString()}...`);
 
   while (true) {
     pageCount++;
-    const url = `https://gamma-api.polymarket.com/markets?limit=${PAGE_SIZE}&active=true&closed=false&order=endDate&ascending=true&end_date_min=${currentMinEndDate}`;
+    const url = `https://gamma-api.polymarket.com/markets?limit=${PAGE_SIZE}&offset=${offset}&active=true&closed=false&order=endDate&ascending=true&end_date_min=${currentMinEndDate}`;
 
     const response = await fetchWithRetry(url, { headers: { 'Accept': 'application/json' } });
 
@@ -95,8 +96,16 @@ export async function fetchEndingSoonestMarkets(): Promise<PolymarketMarket[]> {
       break;
     }
 
-    // Move the cursor to fetch next page (use exact time, dedup handles overlap)
-    currentMinEndDate = maxEndDateInBatch.toISOString();
+    // Move the cursor to fetch next page
+    const newMinEndDate = maxEndDateInBatch.toISOString();
+    if (newMinEndDate === currentMinEndDate) {
+      // Cursor didn't advance — many markets share the same endDate.
+      // Use offset to page through them.
+      offset += PAGE_SIZE;
+    } else {
+      currentMinEndDate = newMinEndDate;
+      offset = 0;
+    }
   }
 
   console.log(`[Polymarket] Total fetched: ${allMarkets.length} markets across ${pageCount} pages`);
