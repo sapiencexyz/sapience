@@ -11,7 +11,7 @@ import type {
   SapienceOutput,
   SapienceCategorySlug,
 } from '../types';
-import { CHAIN_ID_ETHEREAL, LLM_ENABLED, OPENROUTER_API_KEY, LLM_MODEL, DEFAULT_SAPIENCE_API_URL } from '../constants';
+import { CHAIN_ID, LLM_ENABLED, OPENROUTER_API_KEY, LLM_MODEL, DEFAULT_SAPIENCE_API_URL } from '../constants';
 import { inferSapienceCategorySlug } from './category';
 import { transformMatchQuestion, getPolymarketUrl } from './transform';
 import { enrichMarketsWithLLM, type MarketEnrichmentOutput } from '../llm';
@@ -65,7 +65,7 @@ export function transformToSapienceCondition(
     description: market.description || '',
     similarMarkets: [getPolymarketUrl(market)],
     categorySlug: enrichment?.category || inferSapienceCategorySlug(market),  // Use LLM category or fallback
-    chainId: CHAIN_ID_ETHEREAL,
+    chainId: CHAIN_ID,
     groupTitle,
   };
 }
