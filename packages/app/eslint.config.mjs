@@ -12,6 +12,7 @@ export default typescriptPlugin.config(
     ignores: [
       '**/*.test.ts',
       '**/*.test.tsx',
+      '**/*.js',
     ],
   },
   // Base JavaScript recommended config

@@ -11,10 +11,7 @@ import { GraphQLError } from 'graphql';
 import { validateQuery } from './queryValidation.js';
 import {
   getComplexity,
-  simpleEstimator,
-  fieldExtensionsEstimator,
-  listMultiplierEstimator,
-  fieldCostEstimator,
+  createComplexityEstimators,
 } from './queryComplexity.js';
 import { config } from '../config';
 import Sentry from '../instrument';
@@ -139,41 +136,7 @@ export const initializeApolloServer = async () => {
                 schema,
                 query: document,
                 variables: request.variables ?? {},
-                estimators: [
-                  fieldExtensionsEstimator(),
-                  // Assign high costs to expensive aggregate operations (used in groupBy queries)
-                  // This allows simple groupBy queries but blocks full-table aggregations
-                  fieldCostEstimator((fieldName) => {
-                    // Block aggregate fields that require full table scans
-                    if (fieldName === '_all') return 10000;
-                    if (fieldName.startsWith('_count')) return 5000;
-                    if (fieldName.startsWith('_sum')) return 5000;
-                    if (fieldName.startsWith('_avg')) return 5000;
-                    if (fieldName.startsWith('_min')) return 5000;
-                    if (fieldName.startsWith('_max')) return 5000;
-                    // Expensive custom queries — heavy SQL aggregations
-                    if (fieldName === 'protocolStats') return 2000;
-                    if (fieldName === 'dailyVolumes') return 1500;
-                    if (fieldName === 'allTimeProfitLeaderboard') return 2000;
-                    if (fieldName === 'tradingVolumeByAddress') return 500;
-                    if (fieldName === 'profitRankByAddress') return 500;
-                    // Full-table groupBy aggregates (no cache)
-                    if (fieldName === 'topForecasters') return 1500;
-                    if (fieldName === 'accuracyRankByAddress') return 1500;
-                    // Introspection fields - cost for mixed queries
-                    // (pure introspection queries are skipped above)
-                    if (fieldName === '__schema') return 100;
-                    if (fieldName === '__type') return 50;
-                    return undefined;
-                  }),
-                  // Multiply complexity by list size (take/first/limit args) to capture N+1 cost
-                  // maxListSize synced with GRAPHQL_MAX_LIST_SIZE config
-                  listMultiplierEstimator({
-                    defaultListSize: 10,
-                    maxListSize: config.GRAPHQL_MAX_LIST_SIZE,
-                  }),
-                  simpleEstimator({ defaultComplexity: 1 }),
-                ],
+                estimators: createComplexityEstimators(config.GRAPHQL_MAX_LIST_SIZE),
               });
 
               if (config.isDev) {

@@ -530,3 +530,44 @@ export { simpleEstimator } from './estimators/simpleEstimator.js';
 export { fieldExtensionsEstimator } from './estimators/fieldExtensionsEstimator.js';
 export { listMultiplierEstimator } from './estimators/listMultiplierEstimator.js';
 export { fieldCostEstimator } from './estimators/fieldCostEstimator.js';
+
+// Direct imports for use in createComplexityEstimators
+// (type-only imports in estimator files prevent circular dependency issues at runtime)
+import { simpleEstimator as _simple } from './estimators/simpleEstimator.js';
+import { fieldExtensionsEstimator as _fieldExt } from './estimators/fieldExtensionsEstimator.js';
+import { listMultiplierEstimator as _listMult } from './estimators/listMultiplierEstimator.js';
+import { fieldCostEstimator as _fieldCost } from './estimators/fieldCostEstimator.js';
+
+/**
+ * Create the standard complexity estimators used across the API.
+ * Shared by Apollo Server validation and x402 pricing middleware.
+ */
+export function createComplexityEstimators(maxListSize: number): ComplexityEstimator[] {
+  return [
+    _fieldExt(),
+    _fieldCost((fieldName: string) => {
+      // Aggregate fields that require full table scans
+      if (fieldName === '_all') return 10000;
+      if (fieldName.startsWith('_count')) return 5000;
+      if (fieldName.startsWith('_sum')) return 5000;
+      if (fieldName.startsWith('_avg')) return 5000;
+      if (fieldName.startsWith('_min')) return 5000;
+      if (fieldName.startsWith('_max')) return 5000;
+      // Expensive custom queries — heavy SQL aggregations
+      if (fieldName === 'protocolStats') return 2000;
+      if (fieldName === 'dailyVolumes') return 1500;
+      if (fieldName === 'allTimeProfitLeaderboard') return 2000;
+      if (fieldName === 'tradingVolumeByAddress') return 500;
+      if (fieldName === 'profitRankByAddress') return 500;
+      // Full-table groupBy aggregates (no cache)
+      if (fieldName === 'topForecasters') return 1500;
+      if (fieldName === 'accuracyRankByAddress') return 1500;
+      // Introspection fields — cost for mixed queries
+      if (fieldName === '__schema') return 100;
+      if (fieldName === '__type') return 50;
+      return undefined;
+    }),
+    _listMult({ defaultListSize: 10, maxListSize }),
+    _simple({ defaultComplexity: 1 }),
+  ];
+}
