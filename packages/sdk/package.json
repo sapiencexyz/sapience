@@ -37,6 +37,11 @@
       "import": "./dist/auction/v2Signing.mjs",
       "require": "./dist/auction/v2Signing.js"
     },
+    "./auction/secondarySigning": {
+      "types": "./dist/auction/secondarySigning.d.ts",
+      "import": "./dist/auction/secondarySigning.mjs",
+      "require": "./dist/auction/secondarySigning.js"
+    },
     "./relayer/auctionWs": {
       "types": "./dist/relayer/auctionWs.d.ts",
       "import": "./dist/relayer/auctionWs.mjs",
@@ -72,6 +77,11 @@
       "import": "./dist/types/index.mjs",
       "require": "./dist/types/index.js"
     },
+    "./types/v2": {
+      "types": "./dist/types/v2.d.ts",
+      "import": "./dist/types/v2.mjs",
+      "require": "./dist/types/v2.js"
+    },
     "./contracts": {
       "types": "./dist/contracts/index.d.ts",
       "import": "./dist/contracts/index.mjs",
@@ -87,7 +97,7 @@
   "scripts": {
     "prepare": "pnpm run build:lib",
     "dev": "tsup index.ts auction/signing.ts auction/encoding.ts auction/v2Encoding.ts auction/v2Signing.ts relayer/auctionWs.ts relayer/v2AuctionWs.ts mcp/client.ts abis/index.ts constants/index.ts contracts/index.ts queries/index.ts types/index.ts session/index.ts --format cjs,esm --dts --watch",
-    "build:lib": "tsup index.ts auction/signing.ts auction/encoding.ts auction/v2Encoding.ts auction/v2Signing.ts relayer/auctionWs.ts relayer/v2AuctionWs.ts mcp/client.ts abis/index.ts constants/index.ts contracts/index.ts queries/index.ts types/index.ts session/index.ts --format cjs,esm --dts --tsconfig tsconfig.build.json",
+    "build:lib": "tsup index.ts auction/signing.ts auction/encoding.ts auction/v2Encoding.ts auction/v2Signing.ts auction/secondarySigning.ts relayer/auctionWs.ts relayer/v2AuctionWs.ts mcp/client.ts abis/index.ts constants/index.ts contracts/index.ts queries/index.ts types/index.ts types/v2.ts session/index.ts --format cjs,esm --dts --tsconfig tsconfig.build.json",
     "build": "pnpm run build:lib",
     "lint": "eslint . --quiet",
     "type-check": "tsc --noEmit",
