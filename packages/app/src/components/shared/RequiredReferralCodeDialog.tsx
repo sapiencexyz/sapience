@@ -31,7 +31,6 @@ const RequiredReferralCodeDialog = ({
 }: RequiredReferralCodeDialogProps) => {
   const [code, setCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [loggingOut, setLoggingOut] = useState(false);
   const [isGetAccessOpen, setIsGetAccessOpen] = useState(false);
   const { toast } = useToast();
@@ -69,26 +68,41 @@ const RequiredReferralCodeDialog = ({
     if (!code.trim() || submitting) return;
     if (!walletAddress) return;
 
+    setSubmitting(true);
+
+    const normalizedAddress = walletAddress.toLowerCase();
+    const normalizedCode = code.trim().toLowerCase();
+    const codeHash = keccak256(stringToHex(normalizedCode));
+
+    // Canonical message: includes walletAddress and codeHash (plus optional chainId/nonce)
+    const payload = {
+      prefix: 'Sapience Referral',
+      walletAddress: normalizedAddress,
+      codeHash,
+      chainId: null,
+      nonce: null,
+    };
+
+    const message = JSON.stringify(payload);
+
+    // Step 1: Sign the message with the connected wallet
+    let signature: `0x${string}`;
     try {
-      setSubmitting(true);
-      setError(null);
+      signature = await signMessageAsync({ message });
+    } catch (signErr) {
+      console.error('Wallet signing failed:', signErr);
+      toast({
+        title: 'Wallet signature failed',
+        description:
+          'Your wallet could not sign the verification message. Please try again.',
+        variant: 'destructive',
+      });
+      setSubmitting(false);
+      return;
+    }
 
-      const normalizedAddress = walletAddress.toLowerCase();
-      const normalizedCode = code.trim().toLowerCase();
-      const codeHash = keccak256(stringToHex(normalizedCode));
-
-      // Canonical message: includes walletAddress and codeHash (plus optional chainId/nonce)
-      const payload = {
-        prefix: 'Sapience Referral',
-        walletAddress: normalizedAddress,
-        codeHash,
-        chainId: null,
-        nonce: null,
-      };
-
-      const message = JSON.stringify(payload);
-      const signature = await signMessageAsync({ message });
-
+    // Step 2: Submit claim to the server
+    try {
       const resp = await fetch(
         `${process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.sapience.xyz'}/referrals/claim`,
         {
@@ -112,15 +126,30 @@ const RequiredReferralCodeDialog = ({
       } | null;
 
       if (!resp.ok) {
-        const message = data?.message || 'Failed to claim referral code';
-        console.error('Failed to claim referral code', data);
+        const serverMessage = data?.message || 'Unknown error';
+        console.error('Referral claim failed:', {
+          status: resp.status,
+          serverMessage,
+        });
+
+        // Use a specific toast title based on the failure type
+        const title =
+          resp.status === 404
+            ? 'Invite code not found'
+            : resp.status === 401 ||
+                serverMessage.toLowerCase().includes('signature')
+              ? 'Signature verification failed'
+              : resp.status === 409
+                ? 'Already claimed'
+                : resp.status === 403
+                  ? 'Code unavailable'
+                  : 'Claim failed';
+
         toast({
-          title: 'Unable to claim referral code',
-          description: message,
+          title,
+          description: serverMessage,
           variant: 'destructive',
         });
-        // Avoid rendering this error inline in the dialog.
-        setError(null);
         return;
       }
 
@@ -135,8 +164,6 @@ const RequiredReferralCodeDialog = ({
           description: capacityMessage,
           variant: 'destructive',
         });
-        // Keep the dialog open but avoid rendering this message inline.
-        setError(null);
         return;
       }
 
@@ -154,10 +181,11 @@ const RequiredReferralCodeDialog = ({
       onCodeSet?.(code.trim());
       onOpenChange(false);
     } catch (err) {
-      console.error('Failed to claim referral code', err);
+      console.error('Referral claim network error:', err);
       toast({
-        title: 'Unable to claim referral code',
-        description: err instanceof Error ? err.message : 'Please try again.',
+        title: 'Network error',
+        description:
+          'Could not reach the server. Please check your connection and try again.',
         variant: 'destructive',
       });
     } finally {
@@ -209,9 +237,6 @@ const RequiredReferralCodeDialog = ({
                 {submitting ? 'Submitting...' : 'Submit'}
               </Button>
             </div>
-            {error && (
-              <p className="text-xs text-destructive mt-1.5">{error}</p>
-            )}
           </div>
         </form>
 

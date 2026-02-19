@@ -1,4 +1,4 @@
-import 'reflect-metadata';
+  import 'reflect-metadata';
 import { initializeDataSource } from './db';
 import { expressMiddleware } from '@as-integrations/express4';
 import { createLoaders } from './graphql/loaders';
@@ -19,14 +19,14 @@ import {
   proxyAuctionWebSocket,
 } from './utils/auctionProxy';
 
-const PORT = 3001;
+const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
 
 initSentry();
 
 const startServer = async () => {
   await initializeDataSource();
 
-  if (config.isDev && process.env.DATABASE_URL?.includes('render')) {
+  if (config.isDev && process.env.DATABASE_URL?.includes('railway')) {
     console.log(
       'Skipping fixtures initialization since we are in development mode and using production database'
     );

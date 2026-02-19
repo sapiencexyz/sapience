@@ -13,6 +13,7 @@ import {
 import { privateKeyToAccount } from 'viem/accounts';
 import { collateralToken, predictionMarket } from '../contracts/addresses';
 import { CHAIN_ID_ETHEREAL } from '../constants/chain';
+import { ETHEREAL_WUSDE_ADDRESS } from '../constants/addresses';
 
 type Hex = `0x${string}`;
 
@@ -31,9 +32,6 @@ export const tradingChain: Chain = {
 
 // Default trading RPC URL
 export const TRADING_RPC_URL = 'https://rpc.ethereal.trade';
-
-// WUSDe (Wrapped USDe) contract address - collateral token for trading
-export const WUSDE_ADDRESS = collateralToken[CHAIN_ID_ETHEREAL]?.address as Hex;
 
 // WUSDe ABI for wrap/unwrap operations
 const WUSDE_ABI = parseAbi([
@@ -85,7 +83,7 @@ export async function getWUSDEBalance(
 ): Promise<bigint> {
   const client = createTradingPublicClient(rpcUrl);
   const balance = await client.readContract({
-    address: WUSDE_ADDRESS,
+    address: ETHEREAL_WUSDE_ADDRESS,
     abi: WUSDE_ABI,
     functionName: 'balanceOf',
     args: [address],
@@ -122,7 +120,7 @@ export async function wrapUSDe(args: {
   const walletClient = createTradingWalletClient(privateKey, rpcUrl);
   
   const hash = await walletClient.sendTransaction({
-    to: WUSDE_ADDRESS,
+    to: ETHEREAL_WUSDE_ADDRESS,
     data: encodeFunctionData({
       abi: WUSDE_ABI,
       functionName: 'deposit',
@@ -151,7 +149,7 @@ export async function unwrapUSDe(args: {
   const walletClient = createTradingWalletClient(privateKey, rpcUrl);
   
   const hash = await walletClient.sendTransaction({
-    to: WUSDE_ADDRESS,
+    to: ETHEREAL_WUSDE_ADDRESS,
     data: encodeFunctionData({
       abi: WUSDE_ABI,
       functionName: 'withdraw',
@@ -175,7 +173,7 @@ export async function getWUSDEAllowance(args: {
   const publicClient = createTradingPublicClient(rpcUrl);
   
   const allowance = await publicClient.readContract({
-    address: WUSDE_ADDRESS,
+    address: ETHEREAL_WUSDE_ADDRESS,
     abi: ERC20_ABI,
     functionName: 'allowance',
     args: [owner, spender],
@@ -267,7 +265,7 @@ export async function prepareForTrade(args: {
   if (currentAllowance < collateralAmount) {
     // Approve the exact amount needed (or could use max approval for convenience)
     const hash = await walletClient.writeContract({
-      address: WUSDE_ADDRESS,
+      address: ETHEREAL_WUSDE_ADDRESS,
       abi: ERC20_ABI,
       functionName: 'approve',
       args: [spender, collateralAmount],

@@ -1,7 +1,7 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  productionBrowserSourceMaps: true,
+  productionBrowserSourceMaps: false,
   transpilePackages: ['@sapience/ui'],
   eslint: {
     dirs: ['src'],
@@ -12,6 +12,9 @@ const nextConfig = {
       test: /\.html$/,
       type: 'asset/source',
     });
+    // pino-pretty is an optional dep that pino tries to require at runtime;
+    // mark it as external so webpack doesn't fail the build.
+    config.externals = [...(config.externals || []), 'pino-pretty'];
     return config;
   },
   async headers() {
@@ -42,9 +45,9 @@ const nextConfig = {
 
 const { withSentryConfig } = require("@sentry/nextjs");
 
-module.exports = withSentryConfig(
-  nextConfig,
-  {
+const isProduction = process.env.VERCEL_ENV === 'production' || process.env.CI;
+
+const sentryConfig = {
     // For all available options, see:
     // https://github.com/getsentry/sentry-webpack-plugin#options
 
@@ -60,9 +63,9 @@ module.exports = withSentryConfig(
     // Upload a larger set of source maps for prettier stack traces (increases build time)
     widenClientFileUpload: true,
 
-    // Automatically annotate React components to show their full name in breadcrumbs and session replay
+    // Disabled — adds a Babel pass over every component. Re-enable if using Sentry session replay.
     reactComponentAnnotation: {
-      enabled: true,
+      enabled: false,
     },
 
     // Route browser requests to Sentry through a Next.js rewrite to circumvent ad-blockers.
@@ -87,5 +90,9 @@ module.exports = withSentryConfig(
     // https://docs.sentry.io/product/crons/
     // https://vercel.com/docs/cron-jobs
     automaticVercelMonitors: true,
-  }
-);
+};
+
+// Only wrap with Sentry plugin in production/CI — skip source map upload + instrumentation in preview/dev builds
+module.exports = isProduction
+  ? withSentryConfig(nextConfig, sentryConfig)
+  : nextConfig;

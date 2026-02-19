@@ -119,12 +119,15 @@ const corsOptions: cors.CorsOptions = {
       !origin || // Allow same-origin requests
       /^https?:\/\/([a-zA-Z0-9-]+\.)*foil\.xyz$/.test(origin) ||
       /^https?:\/\/([a-zA-Z0-9-]+\.)*sapience\.xyz$/.test(origin) ||
-      /^https?:\/\/(app|docs)(-[a-z0-9]+-sapiencexyz)?\.vercel\.app$/.test(origin) || //staging sites
+      /^https?:\/\/(app|docs)\.vercel\.app$/.test(origin) || // production Vercel
+      /^https?:\/\/(app|docs)-git-[a-z0-9-]+-sapiencexyz\.vercel\.app$/.test(origin) || // preview deploys
       /^https?:\/\/localhost(:\d+)?$/.test(origin) // Allow localhost with optional port
     ) {
       callback(null, true);
     } else {
-      callback(new Error('Not allowed by CORS'));
+      // Reject without throwing — omits CORS headers so browsers still block,
+      // but avoids Sentry noise from originless requests (bots/crawlers/SSR).
+      callback(null, false);
     }
   },
   optionsSuccessStatus: 200,
@@ -146,7 +149,29 @@ const corsOptions: cors.CorsOptions = {
  */
 export function setupMiddleware(app: Express) {
   // Base middleware
-  app.use(helmet());
+  // Configure Helmet CSP to allow Apollo Sandbox's embedded explorer
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        directives: {
+          ...helmet.contentSecurityPolicy.getDefaultDirectives(),
+          'script-src': [
+            "'self'",
+            "'unsafe-inline'",
+            'https://embeddable-sandbox.cdn.apollographql.com',
+          ],
+          'frame-src': ["'self'", 'https://sandbox.embed.apollographql.com'],
+          'img-src': [
+            "'self'",
+            'data:',
+            'https://apollo-server-landing-page.cdn.apollographql.com',
+          ],
+          'connect-src': ["'self'", 'https://*.apollographql.com'],
+        },
+      },
+      crossOriginEmbedderPolicy: false,
+    })
+  );
   app.use(express.json());
   app.use(cors(corsOptions));
 
