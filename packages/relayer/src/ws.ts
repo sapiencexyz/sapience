@@ -28,6 +28,14 @@ import type {
   BidPayload,
 } from './types';
 import { verifyAuctionSignature } from './auctionSigVerify';
+// V2 (Escrow/Primary) imports
+import { isV2ClientMessage } from './v2Types';
+import type { V2AuctionRequestPayload, V2BidPayload } from './v2Types';
+import type { V2ServerToClientMessage } from '@sapience/sdk/types/v2';
+import { upsertV2Auction, getV2Auction, addV2Bid, getV2Bids, getV2AuctionDetails } from './v2Registry';
+import { validateV2AuctionRequest } from './v2Helpers';
+import { verifyV2PredictorSignature, verifyV2CounterpartySignature } from './v2SigVerify';
+import type { Address } from 'viem';
 
 function isClientMessage(msg: unknown): msg is ClientToServerMessage {
   if (!msg || typeof msg !== 'object' || msg === null || !('type' in msg)) {
@@ -860,6 +868,273 @@ export function createAuctionWebSocketServer() {
         
         trackDuration(msgType, startTime);
         return;
+      }
+
+      // ========================================================
+      // V2 (Escrow/Primary) Message Handling
+      // ========================================================
+      if (isV2ClientMessage(msg)) {
+        const v2msg = msg as import('@sapience/sdk/types/v2').V2ClientToServerMessage;
+
+        if (v2msg.type === 'v2.auction.start') {
+          const payload = v2msg.payload as V2AuctionRequestPayload;
+          const auctionStartTime = startTime;
+
+          logTiming('v2-pending', 'received', auctionStartTime, {
+            predictor: payload.predictor?.slice(0, 10) || 'unknown',
+            hasSig: payload.predictorSignature ? 1 : 0,
+          });
+
+          // Validate auction request structure
+          const validation = validateV2AuctionRequest(payload);
+          if (!validation.valid) {
+            errorsTotal.inc({ type: 'validation', message_type: 'v2.auction.start' });
+            const v2Ack: V2ServerToClientMessage = {
+              type: 'v2.auction.ack',
+              payload: { error: validation.error || 'invalid_auction' },
+            };
+            ws.send(JSON.stringify(v2Ack));
+            messagesSent.inc({ type: 'v2.auction.ack' });
+            trackDuration(msgType, startTime);
+            return;
+          }
+
+          // Verify predictor signature if escrow address is configured
+          if (payload.predictorSignature && config.PREDICTION_MARKET_ESCROW_ADDRESS) {
+            try {
+              const isValid = await verifyV2PredictorSignature(
+                payload,
+                config.PREDICTION_MARKET_ESCROW_ADDRESS as Address
+              );
+              if (!isValid) {
+                errorsTotal.inc({ type: 'signature', message_type: 'v2.auction.start' });
+                console.warn(`[Relayer] Invalid V2 predictor signature for predictor=${payload.predictor}`);
+                const v2Ack: V2ServerToClientMessage = {
+                  type: 'v2.auction.ack',
+                  payload: { error: 'invalid_signature' },
+                };
+                ws.send(JSON.stringify(v2Ack));
+                messagesSent.inc({ type: 'v2.auction.ack' });
+                trackDuration(msgType, startTime);
+                return;
+              }
+              logTiming('v2-pending', 'sig_verified', auctionStartTime);
+            } catch (err) {
+              errorsTotal.inc({ type: 'signature', message_type: 'v2.auction.start' });
+              console.error('[Relayer] V2 signature verification error:', err);
+              const v2Ack: V2ServerToClientMessage = {
+                type: 'v2.auction.ack',
+                payload: { error: 'signature_verification_failed' },
+              };
+              ws.send(JSON.stringify(v2Ack));
+              messagesSent.inc({ type: 'v2.auction.ack' });
+              trackDuration(msgType, startTime);
+              return;
+            }
+          }
+
+          // Create auction record
+          const auctionId = upsertV2Auction(payload);
+          logTiming(auctionId, 'v2_created', auctionStartTime);
+          auctionsStarted.inc();
+
+          // Subscribe this client to the auction channel
+          subscribeToAuction(auctionId, ws, auctionSubscriptions);
+          subscriptionsActive.inc({ subscription_type: 'auction' });
+
+          // Send ack with auctionId
+          const requestId = (msg as { id?: string }).id;
+          const v2Ack: V2ServerToClientMessage = {
+            type: 'v2.auction.ack',
+            payload: { auctionId, ...(requestId ? { id: requestId } : {}) },
+          };
+          ws.send(JSON.stringify(v2Ack));
+          messagesSent.inc({ type: 'v2.auction.ack' });
+          logTiming(auctionId, 'v2_ack_sent', auctionStartTime);
+
+          // Broadcast v2.auction.started to all connected clients
+          const auctionDetails = getV2AuctionDetails(auctionId);
+          if (auctionDetails) {
+            const startedMsg = JSON.stringify({
+              type: 'v2.auction.started',
+              payload: { ...auctionDetails, ...payload, auctionId },
+            });
+            const botCount = wss.clients.size;
+            wss.clients.forEach((client) => {
+              if (client.readyState === WebSocket.OPEN) client.send(startedMsg);
+            });
+            logTiming(auctionId, 'v2_broadcast', auctionStartTime, { bots: botCount });
+          }
+
+          // Stream existing bids if any
+          const bids = getV2Bids(auctionId);
+          if (bids.length > 0) {
+            const bidsMsg: V2ServerToClientMessage = {
+              type: 'v2.auction.bids',
+              payload: { auctionId, bids },
+            };
+            ws.send(JSON.stringify(bidsMsg));
+            messagesSent.inc({ type: 'v2.auction.bids' });
+          }
+
+          trackDuration(msgType, startTime);
+          return;
+        }
+
+        if (v2msg.type === 'v2.bid.submit') {
+          const bid = v2msg.payload as V2BidPayload;
+          const bidStartTime = startTime;
+          logTiming(bid.auctionId || 'unknown', 'v2_bid_received', bidStartTime, {
+            counterparty: bid.counterparty?.slice(0, 10) || 'unknown',
+          });
+
+          const rec = getV2Auction(bid.auctionId);
+          if (!rec) {
+            bidsSubmitted.inc({ status: 'rejected' });
+            errorsTotal.inc({ type: 'validation', message_type: 'v2.bid.submit' });
+            const v2BidAck: V2ServerToClientMessage = {
+              type: 'v2.bid.ack',
+              payload: { error: 'auction_not_found_or_expired' },
+            };
+            ws.send(JSON.stringify(v2BidAck));
+            messagesSent.inc({ type: 'v2.bid.ack' });
+            console.warn(`[Relayer] v2.bid.submit rejected auctionId=${bid.auctionId} reason=auction_not_found_or_expired`);
+            trackDuration(msgType, startTime);
+            return;
+          }
+
+          // Verify counterparty signature if escrow address is configured
+          if (config.PREDICTION_MARKET_ESCROW_ADDRESS) {
+            try {
+              const isValid = await verifyV2CounterpartySignature(
+                bid,
+                rec.auction,
+                config.PREDICTION_MARKET_ESCROW_ADDRESS as Address
+              );
+              if (!isValid) {
+                bidsSubmitted.inc({ status: 'rejected' });
+                errorsTotal.inc({ type: 'signature', message_type: 'v2.bid.submit' });
+                const v2BidAck: V2ServerToClientMessage = {
+                  type: 'v2.bid.ack',
+                  payload: { error: 'invalid_counterparty_signature' },
+                };
+                ws.send(JSON.stringify(v2BidAck));
+                messagesSent.inc({ type: 'v2.bid.ack' });
+                console.warn(`[Relayer] v2.bid.submit rejected: invalid counterparty signature`);
+                trackDuration(msgType, startTime);
+                return;
+              }
+              logTiming(bid.auctionId, 'v2_bid_sig_verified', bidStartTime);
+            } catch (err) {
+              console.error('[Relayer] V2 counterparty sig verification error:', err);
+              // Don't block on sig verification failure in case of RPC issues — let contract validate
+            }
+          }
+
+          // Add bid to registry
+          const validated = addV2Bid(bid.auctionId, bid);
+          if (!validated) {
+            bidsSubmitted.inc({ status: 'error' });
+            errorsTotal.inc({ type: 'validation', message_type: 'v2.bid.submit' });
+            const v2BidAck: V2ServerToClientMessage = {
+              type: 'v2.bid.ack',
+              payload: { error: 'bid_validation_failed' },
+            };
+            ws.send(JSON.stringify(v2BidAck));
+            messagesSent.inc({ type: 'v2.bid.ack' });
+            trackDuration(msgType, startTime);
+            return;
+          }
+          logTiming(bid.auctionId, 'v2_bid_validated', bidStartTime);
+
+          bidsSubmitted.inc({ status: 'success' });
+          const v2BidAck: V2ServerToClientMessage = {
+            type: 'v2.bid.ack',
+            payload: {},
+          };
+          ws.send(JSON.stringify(v2BidAck));
+          messagesSent.inc({ type: 'v2.bid.ack' });
+
+          // Broadcast updated bids to auction subscribers
+          const currentBids = getV2Bids(bid.auctionId);
+          const bidsPayload: V2ServerToClientMessage = {
+            type: 'v2.auction.bids',
+            payload: { auctionId: bid.auctionId, bids: currentBids },
+          };
+          const subscriberCount = auctionSubscriptions.get(bid.auctionId)?.size || 0;
+          broadcastToAuctionSubscribers(
+            bid.auctionId,
+            bidsPayload as unknown as ServerToClientMessage,
+            auctionSubscriptions
+          );
+          logTiming(bid.auctionId, 'v2_bid_broadcast', bidStartTime, {
+            bidCount: currentBids.length,
+            subscribers: subscriberCount,
+          });
+
+          trackDuration(msgType, startTime);
+          return;
+        }
+
+        if (v2msg.type === 'v2.auction.subscribe') {
+          const auctionId = (v2msg.payload as { auctionId?: string })?.auctionId;
+          if (typeof auctionId === 'string' && auctionId.length > 0) {
+            subscribeToAuction(auctionId, ws, auctionSubscriptions);
+            subscriptionsActive.inc({ subscription_type: 'auction' });
+            const bids = getV2Bids(auctionId);
+            if (bids.length > 0) {
+              const bidsMsg: V2ServerToClientMessage = {
+                type: 'v2.auction.bids',
+                payload: { auctionId, bids },
+              };
+              ws.send(JSON.stringify(bidsMsg));
+              messagesSent.inc({ type: 'v2.auction.bids' });
+            }
+            const v2Ack: V2ServerToClientMessage = {
+              type: 'v2.auction.ack',
+              payload: { auctionId, subscribed: true },
+            };
+            ws.send(JSON.stringify(v2Ack));
+            messagesSent.inc({ type: 'v2.auction.ack' });
+          } else {
+            const v2Ack: V2ServerToClientMessage = {
+              type: 'v2.auction.ack',
+              payload: { error: 'missing_auction_id' },
+            };
+            ws.send(JSON.stringify(v2Ack));
+            messagesSent.inc({ type: 'v2.auction.ack' });
+          }
+          trackDuration(msgType, startTime);
+          return;
+        }
+
+        if (v2msg.type === 'v2.auction.unsubscribe') {
+          const auctionId = (v2msg.payload as { auctionId?: string })?.auctionId;
+          if (typeof auctionId === 'string' && auctionId.length > 0) {
+            unsubscribeFromAuction(auctionId, ws, auctionSubscriptions);
+            subscriptionsActive.dec({ subscription_type: 'auction' });
+            const v2Ack: V2ServerToClientMessage = {
+              type: 'v2.auction.ack',
+              payload: { auctionId, unsubscribed: true },
+            };
+            ws.send(JSON.stringify(v2Ack));
+            messagesSent.inc({ type: 'v2.auction.ack' });
+          }
+          trackDuration(msgType, startTime);
+          return;
+        }
+
+        // v2.burn.request — not yet implemented, ack with error
+        if (v2msg.type === 'v2.burn.request') {
+          const v2BurnAck: V2ServerToClientMessage = {
+            type: 'v2.burn.ack',
+            payload: { error: 'burn_not_yet_supported' },
+          };
+          ws.send(JSON.stringify(v2BurnAck));
+          messagesSent.inc({ type: 'v2.burn.ack' });
+          trackDuration(msgType, startTime);
+          return;
+        }
       }
 
       trackDuration(msgType, startTime);

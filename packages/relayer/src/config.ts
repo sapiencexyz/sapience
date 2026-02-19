@@ -28,6 +28,7 @@ export const config = cleanEnv(process.env, {
   WS_MAX_CONNECTIONS: num({ default: 1000 }),
   WS_ALLOWED_ORIGINS: str({ default: '' }), // Comma-separated list, empty = allow all
   DEFAULT_VAULT_MANAGER: str({ default: '' }), // Fallback manager address if vault contract not deployed
+  PREDICTION_MARKET_ESCROW_ADDRESS: str({ default: '' }), // PredictionMarketEscrow contract address for V2 signature verification
 });
 
 export const isProd = config.NODE_ENV === 'production';
