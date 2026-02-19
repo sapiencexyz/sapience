@@ -272,6 +272,24 @@ export const predictionMarketTokenFactory: ChainAddressMap = {
   },
 } as const;
 
+/**
+ * SecondaryMarketEscrow (V2)
+ * Atomic OTC swap for position tokens
+ * Deployed: 0x0c12a974E7741135a8431458705Ae16dDa41aA85 (Ethereal testnet)
+ */
+export const secondaryMarketEscrow: ChainAddressMap = {
+  5064014: {
+    // Ethereal mainnet - TODO: deploy
+    address: '0x0000000000000000000000000000000000000000',
+    legacy: [] as const,
+  },
+  13374202: {
+    // Ethereal testnet — deployed 2026-02-18
+    address: '0x0c12a974E7741135a8431458705Ae16dDa41aA85',
+    legacy: [] as const,
+  },
+} as const;
+
 // Legacy exports
 export const contracts = {
   predictionMarket,
@@ -289,6 +307,7 @@ export const contracts = {
 export const v2Contracts = {
   predictionMarketEscrow,
   predictionMarketVault,
+  secondaryMarketEscrow,
   pythConditionResolver,
   manualConditionResolver,
   lzConditionResolver,

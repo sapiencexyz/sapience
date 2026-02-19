@@ -19,6 +19,7 @@ export * from './auction/simulate';
 // V2 auction
 export * from './auction/v2Encoding';
 export * from './auction/v2Signing';
+export * from './auction/secondarySigning';
 
 export * from './relayer/auctionWs';
 export * from './relayer/v2AuctionWs';
