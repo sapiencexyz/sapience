@@ -464,7 +464,10 @@ enum SettlementResult {
 
 /// Tracks the indexer's last-processed block per chain
 model IndexerState {
-  chainId          Int      @id
+  id               Int      @id @default(autoincrement())
+  createdAt        DateTime @default(now()) @db.Timestamp(6)
+  updatedAt        DateTime @updatedAt @db.Timestamp(6)
+  chainId          Int      @unique
   marketAddress    String   @db.VarChar
   lastIndexedBlock Int
   lastIndexedAt    DateTime @default(now()) @db.Timestamp(6)
