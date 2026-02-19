@@ -20,6 +20,7 @@ import IConditionResolver from './IConditionResolver.json';
 import PredictionMarketBridge from './PredictionMarketBridge.json';
 import PredictionMarketBridgeRemote from './PredictionMarketBridgeRemote.json';
 import PredictionMarketTokenFactory from './PredictionMarketTokenFactory.json';
+import SecondaryMarketEscrow from './SecondaryMarketEscrow.json';
 
 // Legacy (V1) exports - use V2 equivalents for new code
 
@@ -54,3 +55,4 @@ export const conditionResolverAbi = IConditionResolver as Abi;
 export const predictionMarketBridgeAbi = PredictionMarketBridge as Abi;
 export const predictionMarketBridgeRemoteAbi = PredictionMarketBridgeRemote as Abi;
 export const predictionMarketTokenFactoryAbi = PredictionMarketTokenFactory as Abi;
+export const secondaryMarketEscrowAbi = (SecondaryMarketEscrow as { abi: Abi }).abi;
