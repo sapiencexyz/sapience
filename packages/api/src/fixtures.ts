@@ -4,7 +4,6 @@ import { IIndexer } from './interfaces';
 import EASPredictionIndexer from './workers/indexers/easIndexer';
 import PredictionMarketIndexer from './workers/indexers/predictionMarketIndexer';
 import V2PredictionMarketIndexer from './workers/indexers/v2PredictionMarketIndexer';
-import SecondaryMarketIndexer from './workers/indexers/secondaryMarketIndexer';
 
 // Environment variables to control which indexers are enabled
 const ENABLE_V1_INDEXERS = process.env.ENABLE_V1_INDEXERS !== 'false';
@@ -26,7 +25,6 @@ const buildIndexers = (): { [key: string]: IIndexer } => {
   if (ENABLE_V2_INDEXERS) {
     indexers['v2-prediction-market-ethereal'] = new V2PredictionMarketIndexer(5064014); // Ethereal mainnet (V2)
     indexers['v2-prediction-market-ethereal-testnet'] = new V2PredictionMarketIndexer(13374202); // Ethereal testnet (V2)
-    indexers['secondary-market-ethereal-testnet'] = new SecondaryMarketIndexer(13374202); // Ethereal testnet (Secondary)
     console.log('[Indexers] V2 indexers enabled');
   } else {
     console.log('[Indexers] V2 indexers disabled (ENABLE_V2_INDEXERS=false)');

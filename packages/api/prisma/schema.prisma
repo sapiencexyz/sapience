@@ -617,37 +617,3 @@ model V2BurnRecord {
   @@index([counterpartyHolder], map: "IDX_v2_burn_counterparty")
   @@map("v2_burn_record")
 }
-
-/// Indexer state for SecondaryMarketEscrow contract
-model V2SecondaryIndexerState {
-  chainId          Int      @id
-  contractAddress  String   @db.VarChar
-  lastIndexedBlock Int
-  lastIndexedAt    DateTime @default(now()) @db.Timestamp(6)
-
-  @@map("v2_secondary_indexer_state")
-}
-
-/// A secondary market trade executed on-chain via SecondaryMarketEscrow
-model V2SecondaryTrade {
-  id          Int       @id @default(autoincrement())
-  createdAt   DateTime  @default(now()) @db.Timestamp(6)
-  chainId     Int
-  tradeHash   String    @unique @db.VarChar
-  seller      String    @db.VarChar
-  buyer       String    @db.VarChar
-  token       String    @db.VarChar
-  collateral  String    @db.VarChar
-  tokenAmount String    @db.VarChar
-  price       String    @db.VarChar
-  refCode     String?   @db.VarChar
-  executedAt  Int
-  txHash      String    @db.VarChar
-  blockNumber Int
-
-  @@index([chainId], map: "IDX_v2_secondary_trade_chain")
-  @@index([seller], map: "IDX_v2_secondary_trade_seller")
-  @@index([buyer], map: "IDX_v2_secondary_trade_buyer")
-  @@index([token], map: "IDX_v2_secondary_trade_token")
-  @@map("v2_secondary_trade")
-}
