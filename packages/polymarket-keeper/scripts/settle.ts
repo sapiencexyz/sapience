@@ -43,7 +43,7 @@ import {
 import { privateKeyToAccount } from 'viem/accounts';
 import { polygon } from 'viem/chains';
 import { fetchWithRetry } from '../src/utils/fetch.js';
-import { RESOLVER_ADDRESS, CHAIN_ID_ETHEREAL } from '../src/constants.js';
+import { RESOLVER_ADDRESS, CHAIN_ID } from '../src/constants.js';
 
 // ============ Constants ============
 
@@ -428,7 +428,7 @@ async function main() {
   const etherealClient = createPublicClient({
     transport: http('https://rpc.ethereal.trade'),
   });
-  console.log(`Ethereal client connected (chain ${CHAIN_ID_ETHEREAL}, resolver ${RESOLVER_ADDRESS})`);
+  console.log(`Ethereal client connected (chain ${CHAIN_ID}, resolver ${RESOLVER_ADDRESS})`);
 
   let walletClient: WalletClient<Transport, typeof polygon, Account> | null = null;
 
