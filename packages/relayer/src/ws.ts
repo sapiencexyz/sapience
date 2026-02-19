@@ -28,6 +28,14 @@ import type {
   BidPayload,
 } from './types';
 import { verifyAuctionSignature } from './auctionSigVerify';
+import { isSecondaryClientMessage } from './secondaryMarketTypes';
+import {
+  handleSecondaryAuctionStart,
+  handleSecondaryBidSubmit,
+  handleSecondarySubscribe,
+  handleSecondaryUnsubscribe,
+  unsubscribeFromAllSecondary,
+} from './secondaryMarketHandlers';
 
 function isClientMessage(msg: unknown): msg is ClientToServerMessage {
   if (!msg || typeof msg !== 'object' || msg === null || !('type' in msg)) {
@@ -785,6 +793,31 @@ export function createAuctionWebSocketServer() {
         }
       }
 
+      // Handle Secondary Market messages
+      if (isSecondaryClientMessage(msg) && (msg as { type: string }).type.startsWith('secondary.')) {
+        const secondaryMsg = msg as import('@sapience/sdk/types/secondary').SecondaryClientToServerMessage;
+        if (secondaryMsg.type === 'secondary.auction.start') {
+          await handleSecondaryAuctionStart(ws, secondaryMsg.payload);
+          trackDuration(msgType, startTime);
+          return;
+        }
+        if (secondaryMsg.type === 'secondary.bid.submit') {
+          await handleSecondaryBidSubmit(ws, secondaryMsg.payload);
+          trackDuration(msgType, startTime);
+          return;
+        }
+        if (secondaryMsg.type === 'secondary.auction.subscribe') {
+          handleSecondarySubscribe(ws, secondaryMsg.payload);
+          trackDuration(msgType, startTime);
+          return;
+        }
+        if (secondaryMsg.type === 'secondary.auction.unsubscribe') {
+          handleSecondaryUnsubscribe(ws, secondaryMsg.payload);
+          trackDuration(msgType, startTime);
+          return;
+        }
+      }
+
       // Handle bot bid messages
       if (isBotMessage(msg)) {
         const bid = msg.payload as BidPayload;
@@ -901,6 +934,8 @@ export function createAuctionWebSocketServer() {
 
       // Clean up auction subscriptions for this client
       unsubscribeFromAllAuctions(ws, auctionSubscriptions);
+      // Clean up secondary market subscriptions
+      unsubscribeFromAllSecondary(ws);
       subscriptionsActive.dec({ subscription_type: 'auction' });
       // Clean up vault subscriptions and observers for this client
       const vaultSubscriptionCount = vaultUnsubscribeAll(ws);
