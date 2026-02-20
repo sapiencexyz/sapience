@@ -1,0 +1,183 @@
+'use client';
+
+import * as React from 'react';
+import { parseEther, formatEther, type Address } from 'viem';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@sapience/ui/components/ui/dialog';
+import { Button } from '@sapience/ui/components/ui/button';
+import { Input } from '@sapience/ui/components/ui/input';
+import { Label } from '@sapience/ui/components/ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@sapience/ui/components/ui/select';
+import { Alert, AlertDescription } from '@sapience/ui/components/ui/alert';
+import { Loader2 } from 'lucide-react';
+import type { PositionBalance } from '~/hooks/graphql/usePositions';
+import { useSecondaryAuctionStart } from '~/hooks/secondary/useSecondaryAuction';
+
+const DEADLINE_OPTIONS = [
+  { label: '5 minutes', value: '300' },
+  { label: '15 minutes', value: '900' },
+  { label: '1 hour', value: '3600' },
+  { label: '24 hours', value: '86400' },
+];
+
+interface SellPositionDialogProps {
+  position: PositionBalance;
+  collateralSymbol: string;
+  chainId: number;
+  onSuccess?: () => void;
+  children: React.ReactNode;
+}
+
+export default function SellPositionDialog({
+  position,
+  collateralSymbol,
+  chainId,
+  onSuccess,
+  children,
+}: SellPositionDialogProps) {
+  const [open, setOpen] = React.useState(false);
+  const [tokenAmount, setTokenAmount] = React.useState(
+    formatEther(BigInt(position.balance))
+  );
+  const [minPrice, setMinPrice] = React.useState('');
+  const [deadlineSeconds, setDeadlineSeconds] = React.useState('900');
+  const [error, setError] = React.useState<string | null>(null);
+
+  const { startAuction, isSubmitting } = useSecondaryAuctionStart({
+    chainId,
+    onSignatureRejected: (err) => setError(err.message),
+    onAuctionCreated: () => {
+      setOpen(false);
+      onSuccess?.();
+    },
+  });
+
+  const handleSubmit = React.useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      setError(null);
+
+      try {
+        const amountWei = parseEther(tokenAmount);
+        const priceWei = parseEther(minPrice);
+
+        if (amountWei <= 0n) {
+          setError('Token amount must be greater than 0');
+          return;
+        }
+        if (priceWei <= 0n) {
+          setError('Minimum price must be greater than 0');
+          return;
+        }
+        if (amountWei > BigInt(position.balance)) {
+          setError('Amount exceeds your balance');
+          return;
+        }
+
+        const result = await startAuction({
+          token: position.tokenAddress as Address,
+          tokenAmount: amountWei,
+          minPrice: priceWei,
+          deadlineSeconds: Number(deadlineSeconds),
+        });
+
+        if (!result.success && result.error) {
+          setError(result.error);
+        }
+      } catch (err: any) {
+        setError(err?.message || 'Failed to create listing');
+      }
+    },
+    [tokenAmount, minPrice, deadlineSeconds, position, startAuction]
+  );
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>{children}</DialogTrigger>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Sell Position Tokens</DialogTitle>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="tokenAmount">Token Amount</Label>
+            <Input
+              id="tokenAmount"
+              type="text"
+              value={tokenAmount}
+              onChange={(e) => setTokenAmount(e.target.value)}
+              placeholder="0.0"
+            />
+            <p className="text-xs text-muted-foreground">
+              Balance: {formatEther(BigInt(position.balance))}
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="minPrice">
+              Minimum Price ({collateralSymbol})
+            </Label>
+            <Input
+              id="minPrice"
+              type="text"
+              value={minPrice}
+              onChange={(e) => setMinPrice(e.target.value)}
+              placeholder="0.0"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="deadline">Deadline</Label>
+            <Select
+              value={deadlineSeconds}
+              onValueChange={setDeadlineSeconds}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {DEADLINE_OPTIONS.map((opt) => (
+                  <SelectItem key={opt.value} value={opt.value}>
+                    {opt.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {error && (
+            <Alert variant="destructive">
+              <AlertDescription>{error}</AlertDescription>
+            </Alert>
+          )}
+
+          <Button
+            type="submit"
+            className="w-full"
+            disabled={isSubmitting || !tokenAmount || !minPrice}
+          >
+            {isSubmitting ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Signing…
+              </>
+            ) : (
+              'List for Sale'
+            )}
+          </Button>
+        </form>
+      </DialogContent>
+    </Dialog>
+  );
+}

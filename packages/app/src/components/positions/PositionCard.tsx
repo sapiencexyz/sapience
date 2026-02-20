@@ -25,6 +25,8 @@ import type {
 } from '~/hooks/graphql/usePositions';
 import { useClaimableAmount } from '~/hooks/blockchain/useEscrowContract';
 import { useEscrowWrite } from '~/hooks/blockchain/useEscrowWrite';
+import SellPositionDialog from '~/components/secondary/SellPositionDialog';
+import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 
 interface PositionCardProps {
   position: PositionBalance;
@@ -247,6 +249,22 @@ export default function PositionCard({
             />
           </div>
         </div>
+
+        {/* Sell button — unresolved escrow positions with balance */}
+        {!isResolved && BigInt(position.balance) > 0n && (
+          <SellPositionDialog
+            position={position}
+            collateralSymbol={
+              COLLATERAL_SYMBOLS[position.chainId] ?? collateralSymbol
+            }
+            chainId={position.chainId}
+            onSuccess={onRefetch}
+          >
+            <Button variant="outline" className="w-full">
+              Sell
+            </Button>
+          </SellPositionDialog>
+        )}
 
         {/* Action button */}
         {isResolved && isWinner && BigInt(position.balance) > 0n && (
