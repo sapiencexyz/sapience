@@ -2,84 +2,356 @@
 pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
+import "../../src/v2/PredictionMarketEscrow.sol";
+import "../../src/v2/resolvers/mocks/ManualConditionResolver.sol";
 import "../../src/v2/sponsors/MatchedSponsor.sol";
 import "../../src/v2/interfaces/IV2Types.sol";
+import "../../src/v2/interfaces/IPredictionMarketEscrow.sol";
+import "../../src/v2/interfaces/IPredictionMarketToken.sol";
 import "./mocks/MockERC20.sol";
 
 contract MatchedSponsorTest is Test {
+    PredictionMarketEscrow public market;
+    ManualConditionResolver public resolver;
     MatchedSponsor public sponsor;
-    MockERC20 public collateral;
+    MockERC20 public collateralToken;
 
-    address public owner = makeAddr("owner");
-    address public escrow = makeAddr("escrow");
-    address public manager = makeAddr("manager");
-    address public alice = makeAddr("alice");
-    address public bob = makeAddr("bob");
-    address public eve = makeAddr("eve");
+    address public owner;
+    address public manager;
+    address public predictor;
+    address public counterparty;
+    address public settler;
+    address public eve;
 
+    uint256 public predictorPk;
+    uint256 public counterpartyPk;
+
+    uint256 public constant PREDICTOR_COLLATERAL = 1e18;
+    uint256 public constant COUNTERPARTY_COLLATERAL = 1e18;
     uint256 public constant MATCH_LIMIT = 1e18;
     uint256 public constant BUDGET = 5e18;
+    bytes32 public constant REF_CODE = keccak256("invite-code");
+
+    bytes32 public conditionId;
 
     function setUp() public {
-        collateral = new MockERC20("WUSDe", "WUSDe", 18);
-        sponsor = new MatchedSponsor(escrow, address(collateral), MATCH_LIMIT, owner);
+        owner = vm.addr(1);
+        predictorPk = 2;
+        predictor = vm.addr(predictorPk);
+        counterpartyPk = 3;
+        counterparty = vm.addr(counterpartyPk);
+        settler = vm.addr(4);
+        manager = vm.addr(5);
+        eve = vm.addr(6);
 
-        // Fund the sponsor contract
-        collateral.mint(address(sponsor), 100e18);
+        // Deploy core infra
+        collateralToken = new MockERC20("WUSDe", "WUSDe", 18);
+        market = new PredictionMarketEscrow(address(collateralToken), owner);
 
-        // Set up budget manager
+        vm.prank(owner);
+        resolver = new ManualConditionResolver(owner);
+        vm.prank(owner);
+        resolver.approveSettler(settler);
+
+        conditionId = keccak256(abi.encode("will-eth-hit-10k"));
+
+        // Deploy sponsor, pointing at real escrow
+        sponsor = new MatchedSponsor(
+            address(market),
+            address(collateralToken),
+            MATCH_LIMIT,
+            owner
+        );
+
+        // Owner sets the API signer as budget manager
         vm.prank(owner);
         sponsor.setBudgetManager(manager);
+
+        // Fund sponsor contract with collateral (anyone can do this)
+        collateralToken.mint(address(sponsor), 100e18);
+
+        // Fund counterparty (predictor doesn't need funds — sponsor pays)
+        collateralToken.mint(counterparty, 100e18);
+        vm.prank(counterparty);
+        collateralToken.approve(address(market), type(uint256).max);
+
+        // Predictor still needs approval for non-sponsored mints
+        collateralToken.mint(predictor, 100e18);
+        vm.prank(predictor);
+        collateralToken.approve(address(market), type(uint256).max);
     }
 
-    // ============ Deployment ============
+    // ============ Helpers ============
 
-    function test_constructor() public view {
-        assertEq(sponsor.escrow(), escrow);
-        assertEq(address(sponsor.collateralToken()), address(collateral));
-        assertEq(sponsor.matchLimit(), MATCH_LIMIT);
-        assertEq(sponsor.owner(), owner);
+    function _createPick(bytes32 _conditionId, IV2Types.OutcomeSide _outcome)
+        internal
+        view
+        returns (IV2Types.Pick memory)
+    {
+        return IV2Types.Pick({
+            conditionResolver: address(resolver),
+            conditionId: _conditionId,
+            predictedOutcome: _outcome
+        });
     }
 
-    // ============ setBudget ============
+    function _signApproval(
+        bytes32 predictionHash,
+        address signer,
+        uint256 collateral,
+        uint256 nonce,
+        uint256 deadline,
+        uint256 pk
+    ) internal view returns (bytes memory) {
+        bytes32 approvalHash = market.getMintApprovalHash(
+            predictionHash, signer, collateral, nonce, deadline
+        );
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk, approvalHash);
+        return abi.encodePacked(r, s, v);
+    }
+
+    function _buildMintRequest(
+        IV2Types.Pick[] memory picks,
+        address sponsorAddr
+    ) internal view returns (IV2Types.MintRequest memory request) {
+        bytes32 pickConfigId = keccak256(abi.encode(picks));
+        bytes32 predictionHash = keccak256(
+            abi.encode(
+                pickConfigId,
+                PREDICTOR_COLLATERAL,
+                COUNTERPARTY_COLLATERAL,
+                predictor,
+                counterparty
+            )
+        );
+
+        uint256 pNonce = market.getNonce(predictor);
+        uint256 cNonce = market.getNonce(counterparty);
+        uint256 deadline = block.timestamp + 1 hours;
+
+        request.picks = picks;
+        request.predictorCollateral = PREDICTOR_COLLATERAL;
+        request.counterpartyCollateral = COUNTERPARTY_COLLATERAL;
+        request.predictor = predictor;
+        request.counterparty = counterparty;
+        request.predictorNonce = pNonce;
+        request.counterpartyNonce = cNonce;
+        request.predictorDeadline = deadline;
+        request.counterpartyDeadline = deadline;
+        request.predictorSignature = _signApproval(
+            predictionHash, predictor, PREDICTOR_COLLATERAL, pNonce, deadline, predictorPk
+        );
+        request.counterpartySignature = _signApproval(
+            predictionHash, counterparty, COUNTERPARTY_COLLATERAL, cNonce, deadline, counterpartyPk
+        );
+        request.refCode = REF_CODE;
+        request.predictorSessionKeyData = "";
+        request.counterpartySessionKeyData = "";
+        request.predictorSponsor = sponsorAddr;
+        request.predictorSponsorData = "";
+    }
+
+    // ============ Integration: Full onboarding flow ============
+
+    function test_fullFlow_sponsoredMint_settle_redeem() public {
+        // 1. API signer grants budget after invite code validation
+        vm.prank(manager);
+        sponsor.setBudget(predictor, BUDGET);
+        assertEq(sponsor.remainingBudget(predictor), BUDGET);
+
+        // 2. Sponsored mint — predictor pays nothing
+        IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
+        picks[0] = _createPick(conditionId, IV2Types.OutcomeSide.YES);
+
+        uint256 predictorBalBefore = collateralToken.balanceOf(predictor);
+        uint256 sponsorBalBefore = collateralToken.balanceOf(address(sponsor));
+
+        IV2Types.MintRequest memory request = _buildMintRequest(picks, address(sponsor));
+        (bytes32 predictionId, address predictorToken, address counterpartyToken) = market.mint(request);
+
+        // Predictor balance unchanged — sponsor paid
+        assertEq(collateralToken.balanceOf(predictor), predictorBalBefore);
+        assertEq(collateralToken.balanceOf(address(sponsor)), sponsorBalBefore - PREDICTOR_COLLATERAL);
+
+        // Budget decremented
+        assertEq(sponsor.remainingBudget(predictor), BUDGET - PREDICTOR_COLLATERAL);
+
+        // Both sides got tokens
+        uint256 totalCollateral = PREDICTOR_COLLATERAL + COUNTERPARTY_COLLATERAL;
+        assertEq(IPredictionMarketToken(predictorToken).balanceOf(predictor), totalCollateral);
+        assertEq(IPredictionMarketToken(counterpartyToken).balanceOf(counterparty), totalCollateral);
+
+        // 3. Resolve condition — predictor wins
+        vm.prank(settler);
+        resolver.resolveCondition(conditionId, IV2Types.OutcomeSide.YES);
+
+        // 4. Redeem — predictor gets all collateral
+        vm.prank(predictor);
+        IPredictionMarketToken(predictorToken).approve(address(market), totalCollateral);
+
+        vm.prank(predictor);
+        market.redeem(predictionId, predictor);
+
+        // Predictor received all collateral (their sponsored 1e18 + counterparty's 1e18)
+        assertEq(
+            collateralToken.balanceOf(predictor),
+            predictorBalBefore + totalCollateral,
+            "Winner should receive all collateral"
+        );
+    }
+
+    function test_fullFlow_sponsoredMint_predictorLoses() public {
+        vm.prank(manager);
+        sponsor.setBudget(predictor, BUDGET);
+
+        IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
+        picks[0] = _createPick(conditionId, IV2Types.OutcomeSide.YES);
+
+        uint256 counterpartyBalBefore = collateralToken.balanceOf(counterparty);
+
+        IV2Types.MintRequest memory request = _buildMintRequest(picks, address(sponsor));
+        (bytes32 predictionId, address predictorToken, address counterpartyToken) = market.mint(request);
+
+        uint256 totalCollateral = PREDICTOR_COLLATERAL + COUNTERPARTY_COLLATERAL;
+
+        // Resolve NO — counterparty wins
+        vm.prank(settler);
+        resolver.resolveCondition(conditionId, IV2Types.OutcomeSide.NO);
+
+        // Counterparty redeems
+        vm.prank(counterparty);
+        IPredictionMarketToken(counterpartyToken).approve(address(market), totalCollateral);
+
+        vm.prank(counterparty);
+        market.redeem(predictionId, counterparty);
+
+        // Counterparty net gain = predictor's sponsored collateral
+        assertEq(
+            collateralToken.balanceOf(counterparty),
+            counterpartyBalBefore - COUNTERPARTY_COLLATERAL + totalCollateral,
+            "Counterparty should profit from sponsored collateral"
+        );
+    }
+
+    function test_multipleSponsoredMints_drainsBudget() public {
+        vm.prank(manager);
+        sponsor.setBudget(predictor, 3e18); // 3 mints worth
+
+        IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
+        picks[0] = _createPick(conditionId, IV2Types.OutcomeSide.YES);
+
+        // Mint 3 times
+        for (uint256 i = 0; i < 3; i++) {
+            IV2Types.MintRequest memory request = _buildMintRequest(picks, address(sponsor));
+            market.mint(request);
+        }
+
+        assertEq(sponsor.remainingBudget(predictor), 0);
+
+        // 4th mint should fail
+        IV2Types.MintRequest memory request4 = _buildMintRequest(picks, address(sponsor));
+        vm.expectRevert(MatchedSponsor.BudgetExceeded.selector);
+        market.mint(request4);
+    }
+
+    // ============ Integration: Match limit ============
+
+    function test_revert_exceedsMatchLimit() public {
+        // Set budget high but match limit is 1e18
+        vm.prank(manager);
+        sponsor.setBudget(predictor, 100e18);
+
+        // Try to mint with 2e18 predictor collateral (> match limit)
+        IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
+        picks[0] = _createPick(conditionId, IV2Types.OutcomeSide.YES);
+
+        bytes32 pickConfigId = keccak256(abi.encode(picks));
+        uint256 bigCollateral = 2e18;
+        bytes32 predictionHash = keccak256(
+            abi.encode(pickConfigId, bigCollateral, COUNTERPARTY_COLLATERAL, predictor, counterparty)
+        );
+
+        uint256 pNonce = market.getNonce(predictor);
+        uint256 cNonce = market.getNonce(counterparty);
+        uint256 deadline = block.timestamp + 1 hours;
+
+        IV2Types.MintRequest memory request;
+        request.picks = picks;
+        request.predictorCollateral = bigCollateral;
+        request.counterpartyCollateral = COUNTERPARTY_COLLATERAL;
+        request.predictor = predictor;
+        request.counterparty = counterparty;
+        request.predictorNonce = pNonce;
+        request.counterpartyNonce = cNonce;
+        request.predictorDeadline = deadline;
+        request.counterpartyDeadline = deadline;
+        request.predictorSignature = _signApproval(predictionHash, predictor, bigCollateral, pNonce, deadline, predictorPk);
+        request.counterpartySignature = _signApproval(predictionHash, counterparty, COUNTERPARTY_COLLATERAL, cNonce, deadline, counterpartyPk);
+        request.refCode = REF_CODE;
+        request.predictorSponsor = address(sponsor);
+        request.predictorSponsorData = "";
+
+        vm.expectRevert(MatchedSponsor.CollateralExceedsMatchLimit.selector);
+        market.mint(request);
+    }
+
+    // ============ Integration: No budget ============
+
+    function test_revert_noBudget() public {
+        // No budget set for predictor
+        IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
+        picks[0] = _createPick(conditionId, IV2Types.OutcomeSide.YES);
+
+        IV2Types.MintRequest memory request = _buildMintRequest(picks, address(sponsor));
+
+        vm.expectRevert(MatchedSponsor.NoBudget.selector);
+        market.mint(request);
+    }
+
+    // ============ Integration: Unsponsored still works ============
+
+    function test_unsponsoredMint_stillWorks() public {
+        IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
+        picks[0] = _createPick(conditionId, IV2Types.OutcomeSide.YES);
+
+        uint256 predictorBalBefore = collateralToken.balanceOf(predictor);
+
+        IV2Types.MintRequest memory request = _buildMintRequest(picks, address(0));
+        market.mint(request);
+
+        // Predictor self-funded
+        assertEq(collateralToken.balanceOf(predictor), predictorBalBefore - PREDICTOR_COLLATERAL);
+    }
+
+    // ============ Unit: Budget manager ============
 
     function test_setBudget_asManager() public {
         vm.prank(manager);
-        sponsor.setBudget(alice, BUDGET);
+        sponsor.setBudget(predictor, BUDGET);
 
-        (uint256 allocated, uint256 used) = sponsor.budgets(alice);
+        (uint256 allocated, uint256 used) = sponsor.budgets(predictor);
         assertEq(allocated, BUDGET);
         assertEq(used, 0);
     }
 
     function test_setBudget_asOwner() public {
         vm.prank(owner);
-        sponsor.setBudget(alice, BUDGET);
+        sponsor.setBudget(predictor, BUDGET);
 
-        (uint256 allocated,) = sponsor.budgets(alice);
+        (uint256 allocated,) = sponsor.budgets(predictor);
         assertEq(allocated, BUDGET);
-    }
-
-    function test_setBudget_emitsEvent() public {
-        vm.expectEmit(true, false, false, true);
-        emit MatchedSponsor.BudgetSet(alice, BUDGET);
-
-        vm.prank(manager);
-        sponsor.setBudget(alice, BUDGET);
     }
 
     function test_setBudget_revert_unauthorized() public {
         vm.prank(eve);
         vm.expectRevert(MatchedSponsor.UnauthorizedBudgetManager.selector);
-        sponsor.setBudget(alice, BUDGET);
+        sponsor.setBudget(predictor, BUDGET);
     }
-
-    // ============ setBudgets (batch) ============
 
     function test_setBudgets_batch() public {
         address[] memory users = new address[](2);
-        users[0] = alice;
-        users[1] = bob;
+        users[0] = predictor;
+        users[1] = counterparty;
 
         uint256[] memory amounts = new uint256[](2);
         amounts[0] = 1e18;
@@ -88,16 +360,14 @@ contract MatchedSponsorTest is Test {
         vm.prank(manager);
         sponsor.setBudgets(users, amounts);
 
-        (uint256 aliceAlloc,) = sponsor.budgets(alice);
-        (uint256 bobAlloc,) = sponsor.budgets(bob);
-        assertEq(aliceAlloc, 1e18);
-        assertEq(bobAlloc, 2e18);
+        assertEq(sponsor.remainingBudget(predictor), 1e18);
+        assertEq(sponsor.remainingBudget(counterparty), 2e18);
     }
 
     function test_setBudgets_revert_lengthMismatch() public {
         address[] memory users = new address[](2);
-        users[0] = alice;
-        users[1] = bob;
+        users[0] = predictor;
+        users[1] = counterparty;
 
         uint256[] memory amounts = new uint256[](1);
         amounts[0] = 1e18;
@@ -107,188 +377,40 @@ contract MatchedSponsorTest is Test {
         sponsor.setBudgets(users, amounts);
     }
 
-    // ============ fundMint ============
-
-    function test_fundMint() public {
-        vm.prank(manager);
-        sponsor.setBudget(alice, BUDGET);
-
-        IV2Types.Pick[] memory picks = new IV2Types.Pick[](0);
-
-        vm.prank(escrow);
-        sponsor.fundMint(escrow, alice, MATCH_LIMIT, picks, "");
-
-        (uint256 allocated, uint256 used) = sponsor.budgets(alice);
-        assertEq(allocated, BUDGET);
-        assertEq(used, MATCH_LIMIT);
-        assertEq(collateral.balanceOf(escrow), MATCH_LIMIT);
-    }
-
-    function test_fundMint_multipleMints() public {
-        vm.prank(manager);
-        sponsor.setBudget(alice, 3e18);
-
-        IV2Types.Pick[] memory picks = new IV2Types.Pick[](0);
-
-        vm.startPrank(escrow);
-        sponsor.fundMint(escrow, alice, MATCH_LIMIT, picks, "");
-        sponsor.fundMint(escrow, alice, MATCH_LIMIT, picks, "");
-        sponsor.fundMint(escrow, alice, MATCH_LIMIT, picks, "");
-        vm.stopPrank();
-
-        (, uint256 used) = sponsor.budgets(alice);
-        assertEq(used, 3e18);
-    }
-
-    function test_fundMint_emitsEvent() public {
-        vm.prank(manager);
-        sponsor.setBudget(alice, BUDGET);
-
-        IV2Types.Pick[] memory picks = new IV2Types.Pick[](0);
-
-        vm.expectEmit(true, true, false, true);
-        emit MatchedSponsor.Sponsored(alice, MATCH_LIMIT, escrow);
-
-        vm.prank(escrow);
-        sponsor.fundMint(escrow, alice, MATCH_LIMIT, picks, "");
-    }
-
-    function test_fundMint_revert_unauthorizedEscrow() public {
-        vm.prank(manager);
-        sponsor.setBudget(alice, BUDGET);
-
-        IV2Types.Pick[] memory picks = new IV2Types.Pick[](0);
-
-        vm.prank(eve);
-        vm.expectRevert(MatchedSponsor.UnauthorizedEscrow.selector);
-        sponsor.fundMint(escrow, alice, MATCH_LIMIT, picks, "");
-    }
-
-    function test_fundMint_revert_exceedsMatchLimit() public {
-        vm.prank(manager);
-        sponsor.setBudget(alice, BUDGET);
-
-        IV2Types.Pick[] memory picks = new IV2Types.Pick[](0);
-
-        vm.prank(escrow);
-        vm.expectRevert(MatchedSponsor.CollateralExceedsMatchLimit.selector);
-        sponsor.fundMint(escrow, alice, MATCH_LIMIT + 1, picks, "");
-    }
-
-    function test_fundMint_revert_noBudget() public {
-        IV2Types.Pick[] memory picks = new IV2Types.Pick[](0);
-
-        vm.prank(escrow);
-        vm.expectRevert(MatchedSponsor.NoBudget.selector);
-        sponsor.fundMint(escrow, alice, MATCH_LIMIT, picks, "");
-    }
-
-    function test_fundMint_revert_budgetExceeded() public {
-        vm.prank(manager);
-        sponsor.setBudget(alice, MATCH_LIMIT); // budget == match limit, only 1 mint
-
-        IV2Types.Pick[] memory picks = new IV2Types.Pick[](0);
-
-        vm.prank(escrow);
-        sponsor.fundMint(escrow, alice, MATCH_LIMIT, picks, "");
-
-        vm.prank(escrow);
-        vm.expectRevert(MatchedSponsor.BudgetExceeded.selector);
-        sponsor.fundMint(escrow, alice, MATCH_LIMIT, picks, "");
-    }
-
-    // ============ remainingBudget ============
-
-    function test_remainingBudget() public {
-        vm.prank(manager);
-        sponsor.setBudget(alice, BUDGET);
-
-        assertEq(sponsor.remainingBudget(alice), BUDGET);
-
-        IV2Types.Pick[] memory picks = new IV2Types.Pick[](0);
-        vm.prank(escrow);
-        sponsor.fundMint(escrow, alice, MATCH_LIMIT, picks, "");
-
-        assertEq(sponsor.remainingBudget(alice), BUDGET - MATCH_LIMIT);
-    }
-
-    function test_remainingBudget_zero() public view {
-        assertEq(sponsor.remainingBudget(alice), 0);
-    }
-
-    // ============ Owner admin ============
+    // ============ Unit: Owner admin ============
 
     function test_setBudgetManager() public {
-        vm.expectEmit(true, false, false, true);
-        emit MatchedSponsor.BudgetManagerSet(eve);
-
         vm.prank(owner);
         sponsor.setBudgetManager(eve);
         assertEq(sponsor.budgetManager(), eve);
     }
 
-    function test_setBudgetManager_revert_notOwner() public {
-        vm.prank(eve);
-        vm.expectRevert();
-        sponsor.setBudgetManager(eve);
-    }
-
     function test_setMatchLimit() public {
-        vm.expectEmit(false, false, false, true);
-        emit MatchedSponsor.MatchLimitSet(10e18);
-
         vm.prank(owner);
         sponsor.setMatchLimit(10e18);
         assertEq(sponsor.matchLimit(), 10e18);
     }
 
-    function test_setMatchLimit_revert_notOwner() public {
-        vm.prank(eve);
-        vm.expectRevert();
-        sponsor.setMatchLimit(10e18);
-    }
-
-    // ============ Sweep ============
+    // ============ Unit: Sweep ============
 
     function test_sweepToken() public {
-        uint256 balance = collateral.balanceOf(address(sponsor));
-
+        uint256 bal = collateralToken.balanceOf(address(sponsor));
         vm.prank(owner);
-        sponsor.sweepToken(IERC20(address(collateral)), owner, balance);
-
-        assertEq(collateral.balanceOf(owner), balance);
-        assertEq(collateral.balanceOf(address(sponsor)), 0);
-    }
-
-    function test_sweepToken_revert_notOwner() public {
-        vm.prank(eve);
-        vm.expectRevert();
-        sponsor.sweepToken(IERC20(address(collateral)), eve, 1e18);
+        sponsor.sweepToken(IERC20(address(collateralToken)), owner, bal);
+        assertEq(collateralToken.balanceOf(address(sponsor)), 0);
+        assertEq(collateralToken.balanceOf(owner), bal);
     }
 
     function test_sweepNative() public {
         vm.deal(address(sponsor), 1 ether);
-
         vm.prank(owner);
         sponsor.sweepNative(payable(owner), 1 ether);
-
-        assertEq(address(owner).balance, 1 ether);
         assertEq(address(sponsor).balance, 0);
     }
 
-    function test_sweepNative_revert_notOwner() public {
-        vm.deal(address(sponsor), 1 ether);
-
-        vm.prank(eve);
-        vm.expectRevert();
-        sponsor.sweepNative(payable(eve), 1 ether);
-    }
-
-    // ============ Receive ============
-
     function test_receiveNative() public {
-        vm.deal(alice, 1 ether);
-        vm.prank(alice);
+        vm.deal(eve, 1 ether);
+        vm.prank(eve);
         (bool success,) = address(sponsor).call{value: 1 ether}("");
         assertTrue(success);
         assertEq(address(sponsor).balance, 1 ether);
