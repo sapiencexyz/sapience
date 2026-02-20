@@ -9,17 +9,16 @@ import "../interfaces/IV2Types.sol";
 
 /**
  * @title MatchedSponsor
- * @notice Sponsor contract for onboarding — funds a predictor's collateral on their first mint
- * @dev Flow: User enters invite code → API signer calls setBudget(user, 1e18) → user mints →
- *      escrow calls fundMint → sponsor transfers collateral to escrow
+ * @notice Funds a predictor's collateral during mint, gated by per-user budgets
+ * @dev Designed for onboarding: user enters invite code → API signer grants budget →
+ *      user mints → escrow calls fundMint → sponsor transfers collateral
  *
- *   Features:
- *   - Budget manager role (API signer) can set per-user budgets without being owner
- *   - Owner sweeps all tokens (ERC20 + native)
- *   - Anyone can fund the contract (just transfer collateral tokens to it)
- *   - Configurable match limit (max collateral per mint)
- *   - Required condition enforcement (resolver + conditionId must be in picks)
- *   - Only the registered escrow can call fundMint
+ *   Roles:
+ *     - Owner: sweep funds, set match limit, set/rotate budget manager
+ *     - Budget manager: set per-user budgets (intended for an API signer)
+ *
+ *   Anyone can fund the contract by transferring collateral tokens to it.
+ *   Deploy a new instance if the escrow or collateral token changes.
  */
 contract MatchedSponsor is IMintSponsor, Ownable {
     using SafeERC20 for IERC20;
@@ -27,17 +26,16 @@ contract MatchedSponsor is IMintSponsor, Ownable {
     // ============ Types ============
 
     struct Budget {
-        uint256 allocated; // Total collateral allocated to this beneficiary
-        uint256 used; // Total collateral already sponsored
+        uint256 allocated;
+        uint256 used;
     }
 
     // ============ Events ============
 
-    event Sponsored(
-        address indexed predictor, uint256 collateral, address indexed escrow
-    );
+    event Sponsored(address indexed predictor, uint256 collateral, address indexed escrow);
     event BudgetSet(address indexed beneficiary, uint256 allocated);
     event BudgetManagerSet(address indexed manager);
+    event MatchLimitSet(uint256 matchLimit);
 
     // ============ Errors ============
 
@@ -46,7 +44,8 @@ contract MatchedSponsor is IMintSponsor, Ownable {
     error NoBudget();
     error BudgetExceeded();
     error CollateralExceedsMatchLimit();
-    error RequiredConditionNotFound();
+    error NativeTransferFailed();
+    error ArrayLengthMismatch();
 
     // ============ State ============
 
@@ -62,23 +61,8 @@ contract MatchedSponsor is IMintSponsor, Ownable {
     /// @notice Address authorized to set user budgets (e.g. API signer)
     address public budgetManager;
 
-    /// @notice Required condition resolver (address(0) = no requirement)
-    address public requiredResolver;
-
-    /// @notice Required condition ID (bytes32(0) = no requirement)
-    bytes32 public requiredConditionId;
-
     /// @notice Per-beneficiary sponsorship budgets
     mapping(address => Budget) public budgets;
-
-    // ============ Modifiers ============
-
-    modifier onlyBudgetManager() {
-        if (msg.sender != budgetManager && msg.sender != owner()) {
-            revert UnauthorizedBudgetManager();
-        }
-        _;
-    }
 
     // ============ Constructor ============
 
@@ -100,7 +84,7 @@ contract MatchedSponsor is IMintSponsor, Ownable {
         address escrow_,
         address predictor,
         uint256 collateral,
-        IV2Types.Pick[] calldata picks,
+        IV2Types.Pick[] calldata, /* picks */
         bytes calldata /* sponsorData */
     ) external override {
         if (msg.sender != escrow) revert UnauthorizedEscrow();
@@ -108,98 +92,79 @@ contract MatchedSponsor is IMintSponsor, Ownable {
 
         Budget storage budget = budgets[predictor];
         if (budget.allocated == 0) revert NoBudget();
-        if (budget.used + collateral > budget.allocated) {
-            revert BudgetExceeded();
-        }
+        if (budget.used + collateral > budget.allocated) revert BudgetExceeded();
 
-        // Enforce required condition if set
-        if (requiredResolver != address(0)) {
-            bool found = false;
-            for (uint256 i = 0; i < picks.length; i++) {
-                if (
-                    picks[i].conditionResolver == requiredResolver
-                        && picks[i].conditionId == requiredConditionId
-                ) {
-                    found = true;
-                    break;
-                }
-            }
-            if (!found) revert RequiredConditionNotFound();
-        }
-
-        // Update budget
         budget.used += collateral;
-
-        // Transfer collateral to the escrow
         collateralToken.safeTransfer(escrow_, collateral);
 
         emit Sponsored(predictor, collateral, escrow_);
     }
 
-    // ============ View Functions ============
+    // ============ View ============
 
-    /// @notice Get remaining budget for a beneficiary
-    function remainingBudget(address beneficiary)
-        external
-        view
-        returns (uint256)
-    {
-        Budget storage budget = budgets[beneficiary];
-        if (budget.allocated <= budget.used) return 0;
-        return budget.allocated - budget.used;
+    /// @notice Remaining sponsorship budget for a beneficiary
+    function remainingBudget(address beneficiary) external view returns (uint256) {
+        Budget storage b = budgets[beneficiary];
+        return b.allocated > b.used ? b.allocated - b.used : 0;
     }
 
-    // ============ Budget Manager Functions ============
+    // ============ Budget Manager ============
 
-    /// @notice Set a beneficiary's total budget allocation
-    /// @dev Callable by budget manager (API signer) or owner
-    function setBudget(address beneficiary, uint256 allocated)
-        external
-        onlyBudgetManager
-    {
+    /// @notice Set a single beneficiary's budget
+    function setBudget(address beneficiary, uint256 allocated) external {
+        _checkBudgetManager();
         budgets[beneficiary].allocated = allocated;
         emit BudgetSet(beneficiary, allocated);
     }
 
-    // ============ Admin Functions (Owner Only) ============
+    /// @notice Set budgets for multiple beneficiaries
+    function setBudgets(
+        address[] calldata beneficiaries,
+        uint256[] calldata allocations
+    ) external {
+        _checkBudgetManager();
+        if (beneficiaries.length != allocations.length) revert ArrayLengthMismatch();
+        for (uint256 i = 0; i < beneficiaries.length; i++) {
+            budgets[beneficiaries[i]].allocated = allocations[i];
+            emit BudgetSet(beneficiaries[i], allocations[i]);
+        }
+    }
 
-    /// @notice Set the budget manager address (e.g. API signer for invite codes)
+    // ============ Owner ============
+
+    /// @notice Set the budget manager (API signer for invite codes)
     function setBudgetManager(address manager) external onlyOwner {
         budgetManager = manager;
         emit BudgetManagerSet(manager);
     }
 
-    /// @notice Set the match limit
+    /// @notice Set the maximum collateral per mint
     function setMatchLimit(uint256 matchLimit_) external onlyOwner {
         matchLimit = matchLimit_;
+        emit MatchLimitSet(matchLimit_);
     }
 
-    /// @notice Set the required condition
-    function setRequiredCondition(address resolver, bytes32 conditionId)
-        external
-        onlyOwner
-    {
-        requiredResolver = resolver;
-        requiredConditionId = conditionId;
-    }
-
-    /// @notice Withdraw ERC20 tokens
-    function withdrawERC20(IERC20 token, address to, uint256 amount)
-        external
-        onlyOwner
-    {
+    /// @notice Sweep ERC20 tokens
+    function sweepToken(IERC20 token, address to, uint256 amount) external onlyOwner {
         token.safeTransfer(to, amount);
     }
 
-    /// @notice Withdraw native gas tokens
-    function withdrawNative(address payable to, uint256 amount)
-        external
-        onlyOwner
-    {
-        (bool success,) = to.call{ value: amount }("");
-        require(success, "Native transfer failed");
+    /// @notice Sweep native gas tokens
+    function sweepNative(address payable to, uint256 amount) external onlyOwner {
+        (bool success,) = to.call{value: amount}("");
+        if (!success) revert NativeTransferFailed();
     }
 
+    // ============ Funding ============
+
     /// @notice Accept native gas token deposits
-    receive() external payable { }
+    receive() external payable {}
+
+    // ============ Internal ============
+
+    function _checkBudgetManager() internal view {
+        if (msg.sender != budgetManager && msg.sender != owner()) {
+            revert UnauthorizedBudgetManager();
+        }
+    }
 }
