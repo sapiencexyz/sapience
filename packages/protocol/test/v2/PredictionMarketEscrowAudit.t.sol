@@ -56,7 +56,7 @@ contract PredictionMarketEscrowAudit is Test {
         escrow = new PredictionMarketEscrow(
             address(collateral), owner, address(tokenFactory)
         );
-        tokenFactory.addDeployer(address(escrow));
+        tokenFactory.setDeployer(address(escrow));
         resolver = new ManualConditionResolver(owner);
         resolver.approveSettler(settler);
         vm.stopPrank();

@@ -49,8 +49,8 @@ contract ConfigureRemoteBridge is Script {
         bytes32 peer = bytes32(uint256(uint160(remoteBridge)));
         bridge.setPeer(remoteEid, peer);
 
-        // Add bridge as factory deployer
-        factory.addDeployer(bridgeAddr);
+        // Set factory deployer to bridge
+        factory.setDeployer(bridgeAddr);
 
         vm.stopBroadcast();
 
@@ -58,7 +58,7 @@ contract ConfigureRemoteBridge is Script {
         console.log("=== Configured ===");
         console.log("Bridge config set");
         console.log("LZ peer set");
-        console.log("Bridge added as factory deployer");
+        console.log("Factory deployer set to bridge");
         console.log("");
         console.log("Config complete:", bridge.isConfigComplete());
         console.log("Factory config complete:", factory.isConfigComplete());

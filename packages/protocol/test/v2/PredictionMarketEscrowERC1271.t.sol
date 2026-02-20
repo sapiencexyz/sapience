@@ -105,7 +105,7 @@ contract PredictionMarketEscrowERC1271Test is Test {
             address(collateralToken), owner, address(tokenFactory)
         );
         vm.prank(owner);
-        tokenFactory.addDeployer(address(market));
+        tokenFactory.setDeployer(address(market));
 
         vm.prank(owner);
         resolver = new ManualConditionResolver(owner);

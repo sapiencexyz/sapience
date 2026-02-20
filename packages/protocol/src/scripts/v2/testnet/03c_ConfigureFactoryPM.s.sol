@@ -7,7 +7,7 @@ import {
 } from "../../../v2/bridge/PredictionMarketTokenFactory.sol";
 
 /// @title Configure PredictionMarketTokenFactory on PM Network (Testnet)
-/// @notice Add Escrow as deployer on the PM Network factory
+/// @notice Set Escrow as deployer on the PM Network factory
 contract ConfigureFactoryPM is Script {
     function run() external {
         address factoryAddr = vm.envAddress("FACTORY_ADDRESS");
@@ -22,13 +22,13 @@ contract ConfigureFactoryPM is Script {
 
         vm.startBroadcast(vm.envUint("DEPLOYER_PRIVATE_KEY"));
 
-        factory.addDeployer(escrowAddr);
+        factory.setDeployer(escrowAddr);
 
         vm.stopBroadcast();
 
         console.log("");
         console.log("=== Configured ===");
-        console.log("Escrow added as factory deployer");
+        console.log("Factory deployer set to escrow");
         console.log("Factory config complete:", factory.isConfigComplete());
     }
 }

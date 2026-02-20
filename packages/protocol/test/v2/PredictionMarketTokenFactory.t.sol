@@ -22,7 +22,7 @@ contract PredictionMarketTokenFactoryTest is Test {
         deployer = address(0x1234);
 
         factory = new PredictionMarketTokenFactory(owner);
-        factory.addDeployer(deployer);
+        factory.setDeployer(deployer);
     }
 
     function test_computeSalt() public view {
@@ -112,19 +112,6 @@ contract PredictionMarketTokenFactoryTest is Test {
             "TEST2",
             address(this)
         );
-    }
-
-    function test_addDeployer() public {
-        address newDeployer = address(0x5678);
-        factory.addDeployer(newDeployer);
-        assertTrue(factory.deployers(newDeployer));
-        assertEq(factory.deployerCount(), 2);
-    }
-
-    function test_removeDeployer() public {
-        factory.removeDeployer(deployer);
-        assertFalse(factory.deployers(deployer));
-        assertEq(factory.deployerCount(), 0);
     }
 
     function test_isConfigComplete() public view {

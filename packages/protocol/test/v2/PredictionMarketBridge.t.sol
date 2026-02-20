@@ -148,8 +148,8 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
             })
         );
 
-        // Add arbitrum bridge as factory deployer
-        factory.addDeployer(address(arbitrumBridge));
+        // Set factory deployer to arbitrum bridge
+        factory.setDeployer(address(arbitrumBridge));
 
         // Deploy mock position token on Ethereal
         positionToken = new MockPredictionMarketToken(
@@ -625,7 +625,7 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
     }
 
     function test_factory_deployer_isCorrect() public view {
-        assertTrue(factory.deployers(address(arbitrumBridge)));
+        assertEq(factory.deployer(), address(arbitrumBridge));
     }
 
     function test_factory_directDeploy_works() public {
