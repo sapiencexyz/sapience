@@ -1,8 +1,14 @@
 import { Request, Response, Router } from 'express';
 import prisma from '../db';
 import { hashReferralCode } from '../helpers';
-import { recoverMessageAddress } from 'viem';
+import { recoverMessageAddress, type Address } from 'viem';
 import { adminAuth } from '../middleware';
+import {
+  grantSponsorshipBudget,
+  getRemainingBudget,
+  isSponsorshipEnabled,
+  getSponsorAddress,
+} from '../services/sponsorship';
 
 const router = Router();
 
@@ -359,12 +365,54 @@ router.post('/claim', async (req: Request, res: Response) => {
       update: { referredByCodeId: code.id },
     });
 
+    // Grant sponsorship budget on-chain (fire-and-forget — don't block the response)
+    const sponsorTxHash = await grantSponsorshipBudget(
+      normalizeAddress(walletAddress) as Address
+    ).catch((err) => {
+      console.error('[referrals] sponsorship grant failed (non-blocking):', err);
+      return null;
+    });
+
     return res.status(200).json({
       allowed: true,
+      ...(sponsorTxHash ? { sponsorTxHash } : {}),
     });
   } catch (e) {
     console.error('Error claiming referral code:', e);
     return res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
+// GET /referrals/sponsor-status?address=0x... - Check sponsorship budget for a wallet
+router.get('/sponsor-status', async (req: Request, res: Response) => {
+  const { address } = req.query;
+
+  if (!address || typeof address !== 'string') {
+    return res.status(400).json({ message: 'address query param is required' });
+  }
+
+  const sponsorAddress = getSponsorAddress();
+  if (!isSponsorshipEnabled() || !sponsorAddress) {
+    return res.status(200).json({
+      enabled: false,
+      sponsorAddress: null,
+      remainingBudget: '0',
+    });
+  }
+
+  try {
+    const remaining = await getRemainingBudget(
+      normalizeAddress(address) as Address
+    );
+
+    return res.status(200).json({
+      enabled: true,
+      sponsorAddress,
+      remainingBudget: (remaining ?? 0n).toString(),
+    });
+  } catch (err) {
+    console.error('[referrals] sponsor-status error:', err);
+    return res.status(500).json({ message: 'Failed to check sponsor status' });
   }
 });
 

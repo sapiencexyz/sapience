@@ -21,6 +21,7 @@ import PredictionMarketBridge from './PredictionMarketBridge.json';
 import PredictionMarketBridgeRemote from './PredictionMarketBridgeRemote.json';
 import PredictionMarketTokenFactory from './PredictionMarketTokenFactory.json';
 import SecondaryMarketEscrow from './SecondaryMarketEscrow.json';
+import OnboardingSponsor from './OnboardingSponsor.json';
 
 // Legacy (V1) exports - use escrow equivalents for new code
 
@@ -56,3 +57,4 @@ export const predictionMarketBridgeAbi = PredictionMarketBridge as Abi;
 export const predictionMarketBridgeRemoteAbi = PredictionMarketBridgeRemote as Abi;
 export const predictionMarketTokenFactoryAbi = PredictionMarketTokenFactory as Abi;
 export const secondaryMarketEscrowAbi = (SecondaryMarketEscrow as { abi: Abi }).abi;
+export const onboardingSponsorAbi = OnboardingSponsor as Abi;
