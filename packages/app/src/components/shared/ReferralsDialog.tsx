@@ -16,9 +16,9 @@ import { keccak256, stringToHex } from 'viem';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useProfileVolume } from '~/hooks/useProfileVolume';
+import { useReferralEligibility } from '~/hooks/useReferralEligibility';
 import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
-
-const VOLUME_THRESHOLD = 5000;
+import { Copy, Check, Lock } from 'lucide-react';
 
 interface ReferralsDialogProps {
   open: boolean;
@@ -36,9 +36,7 @@ type ReferralRow = {
 const ReferralVolumeCell = ({ address }: { address: string }) => {
   const chainId = DEFAULT_CHAIN_ID;
   const collateralSymbol = COLLATERAL_SYMBOLS[chainId] || 'USDe';
-
   const { display, isLoading } = useProfileVolume(address);
-
   return (
     <span className="tabular-nums">
       {isLoading ? '—' : `${display} ${collateralSymbol}`}
@@ -46,23 +44,50 @@ const ReferralVolumeCell = ({ address }: { address: string }) => {
   );
 };
 
+const USER_REFERRALS_QUERY = `
+  query UserReferrals($wallet: String!) {
+    user(where: { address: $wallet }) {
+      address
+      refCodeHash
+      maxReferrals
+      referredByCode {
+        id
+      }
+      referrals {
+        address
+        createdAt
+      }
+    }
+  }
+`;
+
 const ReferralsDialog = ({
   open,
   onOpenChange,
   walletAddress,
   onCodeSet,
 }: ReferralsDialogProps) => {
+  // --- Create invite code state ---
   const [code, setCode] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [createdCode, setCreatedCode] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  // --- Enter invite code state ---
+  const [claimCode, setClaimCode] = useState('');
+  const [claimSubmitting, setClaimSubmitting] = useState(false);
+  const [claimError, setClaimError] = useState<string | null>(null);
+
+  // --- Data state ---
   const [referrals, setReferrals] = useState<ReferralRow[]>([]);
   const [maxReferrals, setMaxReferrals] = useState<number | null>(null);
+  const [hasClaimedCode, setHasClaimedCode] = useState<boolean | null>(null);
+  const [hasExistingCode, setHasExistingCode] = useState(false);
+
   const { toast } = useToast();
   const { signMessageAsync } = useSignMessage();
-
-  const userVolume = useProfileVolume(walletAddress ?? undefined);
-  const hasEnoughVolume = userVolume.value >= VOLUME_THRESHOLD;
-  const inviteCodeDisabled = userVolume.isLoading || !hasEnoughVolume;
+  const eligibility = useReferralEligibility(walletAddress ?? undefined);
 
   const invitesRemaining =
     maxReferrals !== null
@@ -72,20 +97,6 @@ const ReferralsDialog = ({
         )
       : null;
 
-  const USER_REFERRALS_QUERY = `
-    query UserReferrals($wallet: String!) {
-      user(where: { address: $wallet }) {
-        address
-        refCodeHash
-        maxReferrals
-        referrals {
-          address
-          createdAt
-        }
-      }
-    }
-  `;
-
   const fetchReferrals = async (address?: string | null) => {
     const targetAddress = address ?? walletAddress;
     if (!targetAddress) return;
@@ -93,6 +104,8 @@ const ReferralsDialog = ({
       const data = await graphqlRequest<{
         user: {
           maxReferrals: number;
+          refCodeHash?: string | null;
+          referredByCode?: { id: number } | null;
           referrals: { address: string; createdAt: string }[];
         } | null;
       }>(USER_REFERRALS_QUERY, { wallet: targetAddress.toLowerCase() });
@@ -100,8 +113,13 @@ const ReferralsDialog = ({
       if (!data?.user) {
         setReferrals([]);
         setMaxReferrals(null);
+        setHasClaimedCode(false);
+        setHasExistingCode(false);
         return;
       }
+
+      setHasClaimedCode(!!data.user.referredByCode);
+      setHasExistingCode(!!data.user.refCodeHash);
 
       const sorted = [...data.user.referrals].sort(
         (a, b) =>
@@ -111,11 +129,7 @@ const ReferralsDialog = ({
       const rows: ReferralRow[] = sorted.map((r, idx) => {
         const position = idx + 1;
         const withinCapacity = position <= (data.user?.maxReferrals ?? 0);
-        return {
-          address: r.address,
-          index: position,
-          withinCapacity,
-        };
+        return { address: r.address, index: position, withinCapacity };
       });
 
       setReferrals(rows);
@@ -128,13 +142,15 @@ const ReferralsDialog = ({
   useEffect(() => {
     if (open) {
       void fetchReferrals();
+      setCreatedCode(null);
+      setCopied(false);
     }
   }, [open, walletAddress]);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // --- Create invite code handler ---
+  const handleCreateCode = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!code.trim() || submitting) return;
-    if (!walletAddress) return;
+    if (!code.trim() || submitting || !walletAddress) return;
 
     try {
       setSubmitting(true);
@@ -159,9 +175,7 @@ const ReferralsDialog = ({
         `${process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.sapience.xyz'}/referrals/code`,
         {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
+          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             walletAddress: normalizedAddress,
             codePlaintext: code.trim(),
@@ -174,9 +188,6 @@ const ReferralsDialog = ({
         const data = (await resp.json().catch(() => null)) as {
           message?: string;
         } | null;
-        const message =
-          data?.message || 'Unable to set referral code. Please try again.';
-
         if (
           data?.message ===
           'Unable to set referral code. Please choose a different code.'
@@ -186,30 +197,25 @@ const ReferralsDialog = ({
             description: 'Please choose a different code.',
             variant: 'destructive',
           });
-          // Do not render this specific message inline in the dialog.
-          setError(null);
         } else {
-          setError(message);
+          setError(
+            data?.message || 'Unable to set referral code. Please try again.'
+          );
         }
         return;
       }
 
-      // Best-effort local persistence by wallet address so we can
-      // avoid re-prompting users who have already provided a code.
       try {
         if (walletAddress && typeof window !== 'undefined') {
           const key = `sapience:referralCode:${walletAddress.toLowerCase()}`;
           window.localStorage.setItem(key, code.trim());
         }
-      } catch {
-        // If this fails (e.g. privacy mode), the dialog may reappear on next connect.
-      }
+      } catch {}
 
+      setCreatedCode(code.trim());
+      setHasExistingCode(true);
       onCodeSet?.(code.trim());
-      // Immediately refresh referrals so the dashboard reflects the new code
-      // and any updated maxReferrals before closing.
       await fetchReferrals(walletAddress);
-      onOpenChange(false);
     } catch (err) {
       console.error('Failed to set referral code', err);
       toast({
@@ -222,47 +228,241 @@ const ReferralsDialog = ({
     }
   };
 
+  // --- Claim invite code handler ---
+  const handleClaimCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!claimCode.trim() || claimSubmitting || !walletAddress) return;
+
+    setClaimSubmitting(true);
+    setClaimError(null);
+
+    const normalizedAddress = walletAddress.toLowerCase();
+    const normalizedCode = claimCode.trim().toLowerCase();
+    const codeHash = keccak256(stringToHex(normalizedCode));
+
+    const payload = {
+      prefix: 'Sapience Referral',
+      walletAddress: normalizedAddress,
+      codeHash,
+      chainId: null,
+      nonce: null,
+    };
+
+    const message = JSON.stringify(payload);
+
+    let signature: `0x${string}`;
+    try {
+      signature = await signMessageAsync({ message });
+    } catch {
+      toast({
+        title: 'Wallet signature failed',
+        description: 'Please try again.',
+        variant: 'destructive',
+      });
+      setClaimSubmitting(false);
+      return;
+    }
+
+    try {
+      const resp = await fetch(
+        `${process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.sapience.xyz'}/referrals/claim`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            walletAddress: normalizedAddress,
+            codePlaintext: claimCode.trim(),
+            signature,
+          }),
+        }
+      );
+
+      const data = (await resp.json().catch(() => null)) as {
+        allowed?: boolean;
+        index?: number | null;
+        message?: string;
+      } | null;
+
+      if (!resp.ok) {
+        toast({
+          title: 'Claim failed',
+          description: data?.message || 'Unknown error',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      if (data && data.allowed === false && (data.index ?? null) === null) {
+        toast({
+          title: 'Referral code full',
+          description:
+            'This referral code has reached its capacity. Please try a different one.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      try {
+        if (walletAddress && typeof window !== 'undefined') {
+          const key = `sapience:referralCode:${walletAddress.toLowerCase()}`;
+          window.localStorage.setItem(key, claimCode.trim());
+        }
+      } catch {}
+
+      setHasClaimedCode(true);
+      toast({ title: 'Invite code claimed!' });
+      await fetchReferrals(walletAddress);
+    } catch {
+      toast({
+        title: 'Network error',
+        description: 'Could not reach the server. Please try again.',
+        variant: 'destructive',
+      });
+    } finally {
+      setClaimSubmitting(false);
+    }
+  };
+
+  const handleCopy = (text: string) => {
+    navigator.clipboard.writeText(text);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
+  const shareLink = createdCode
+    ? `https://sapience.xyz?ref=${encodeURIComponent(createdCode)}`
+    : null;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
-          <DialogTitle>Invite a Friend</DialogTitle>
+          <DialogTitle>Referrals</DialogTitle>
         </DialogHeader>
 
-        <form onSubmit={handleSubmit} className="space-y-3">
-          <div className="space-y-1.5">
-            <h3 className="text-sm font-medium text-foreground">
-              Create an Invite Code
-            </h3>
-            <div className="flex gap-3">
-              <Input
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                disabled={inviteCodeDisabled || submitting}
-                className="flex-1"
-              />
-              <Button
-                type="submit"
-                className="shrink-0"
-                disabled={inviteCodeDisabled || submitting || !code.trim()}
-              >
-                {submitting ? 'Submitting...' : 'Submit'}
-              </Button>
+        {/* Section A: Enter an Invite Code (only if not yet claimed) */}
+        {hasClaimedCode === false && (
+          <>
+            <div className="space-y-1.5">
+              <h3 className="text-sm font-medium text-foreground">
+                Enter an Invite Code
+              </h3>
+              <form onSubmit={handleClaimCode} className="flex gap-3">
+                <Input
+                  value={claimCode}
+                  onChange={(e) => setClaimCode(e.target.value)}
+                  disabled={claimSubmitting}
+                  placeholder="Enter code..."
+                  className="flex-1"
+                />
+                <Button
+                  type="submit"
+                  className="shrink-0"
+                  disabled={claimSubmitting || !claimCode.trim()}
+                >
+                  {claimSubmitting ? 'Submitting...' : 'Submit'}
+                </Button>
+              </form>
+              {claimError && (
+                <p className="text-xs text-destructive mt-1">{claimError}</p>
+              )}
             </div>
-            <p className="text-[11px] text-muted-foreground">
-              {inviteCodeDisabled
-                ? `You can create an invite code once you've done $${VOLUME_THRESHOLD.toLocaleString()} in trading volume. Current: $${userVolume.display}`
-                : "Only an encrypted version of your code is stored, so you'll need to reset it if you forget it."}
-            </p>
-            {error && (
-              <p className="text-xs text-destructive mt-1.5">{error}</p>
-            )}
-          </div>
-        </form>
+            <hr className="gold-hr" />
+          </>
+        )}
 
+        {/* Section B: Create an Invite Code */}
+        <div className="space-y-1.5">
+          <h3 className="text-sm font-medium text-foreground">
+            Create an Invite Code
+          </h3>
+
+          {!eligibility.eligible && !hasExistingCode ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 text-muted-foreground text-xs">
+                <Lock className="h-3.5 w-3.5 shrink-0" />
+                <span>
+                  Complete {eligibility.requiredPredictions} predictions to
+                  unlock invite codes ({eligibility.predictionCount}/
+                  {eligibility.requiredPredictions})
+                </span>
+              </div>
+              <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+                <div
+                  className="h-full rounded-full bg-accent-gold transition-all duration-300"
+                  style={{
+                    width: `${Math.min(100, (eligibility.predictionCount / eligibility.requiredPredictions) * 100)}%`,
+                  }}
+                />
+              </div>
+            </div>
+          ) : createdCode ? (
+            <div className="space-y-2">
+              <div className="flex items-center gap-2 rounded-md border border-border bg-muted/40 px-3 py-2">
+                <span className="flex-1 font-mono text-sm">{createdCode}</span>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-7 w-7 shrink-0"
+                  onClick={() => handleCopy(createdCode)}
+                >
+                  {copied ? (
+                    <Check className="h-3.5 w-3.5 text-green-500" />
+                  ) : (
+                    <Copy className="h-3.5 w-3.5" />
+                  )}
+                </Button>
+              </div>
+              {shareLink && (
+                <div className="flex items-center gap-2 text-xs">
+                  <span className="text-muted-foreground">Share link:</span>
+                  <button
+                    type="button"
+                    className="gold-link truncate text-left"
+                    onClick={() => handleCopy(shareLink)}
+                  >
+                    {shareLink}
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : (
+            <form onSubmit={handleCreateCode} className="space-y-1.5">
+              <div className="flex gap-3">
+                <Input
+                  value={code}
+                  onChange={(e) => setCode(e.target.value)}
+                  disabled={submitting}
+                  placeholder="Choose a code..."
+                  className="flex-1"
+                />
+                <Button
+                  type="submit"
+                  className="shrink-0"
+                  disabled={submitting || !code.trim()}
+                >
+                  {submitting ? 'Submitting...' : 'Submit'}
+                </Button>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Only an encrypted version of your code is stored, so
+                you&apos;ll need to reset it if you forget it.
+              </p>
+              {error && (
+                <p className="text-xs text-destructive mt-1">{error}</p>
+              )}
+            </form>
+          )}
+        </div>
+
+        <hr className="gold-hr" />
+
+        {/* Section C: Your Referrals */}
         <div className="space-y-2">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-medium text-foreground">Referrals</h3>
+            <h3 className="text-sm font-medium text-foreground">
+              Your Referrals
+            </h3>
             {invitesRemaining !== null && (
               <span className="text-[11px] text-muted-foreground">
                 {invitesRemaining}{' '}

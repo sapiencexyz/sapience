@@ -10,6 +10,9 @@ import {
 import { CHAIN_ID_ETHEREAL, CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
 import { collateralToken } from '@sapience/sdk/contracts';
 import { useAccount, useReadContract } from 'wagmi';
+import { useToast } from '@sapience/ui/hooks/use-toast';
+import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 import { useSession } from '~/lib/context/SessionContext';
 import type { MintPredictionRequestData } from '~/lib/auction/useAuctionStart';
@@ -38,6 +41,7 @@ export function useSubmitPosition({
 }: UseSubmitPositionProps) {
   const { address } = useAccount();
   const { effectiveAddress } = useSession();
+  const { toast: referralToast } = useToast();
 
   // Read current wUSDe balance on Ethereal to avoid unnecessary wrap/deposit calls
   const { data: currentWusdeBalance } = useReadContract({
@@ -102,6 +106,24 @@ export function useSubmitPosition({
       setSuccess('Position prediction minted successfully');
       setError(null);
       onSuccess?.();
+
+      // Check if user just hit 2 predictions → unlock invite codes
+      if (effectiveAddress) {
+        graphqlRequest<{ predictionsCount: number }>(
+          `query($address: String!, $chainId: Int) { predictionsCount(address: $address, chainId: $chainId) }`,
+          { address: effectiveAddress.toLowerCase(), chainId: DEFAULT_CHAIN_ID }
+        )
+          .then((data) => {
+            if (data?.predictionsCount === 2) {
+              referralToast({
+                title: '🎉 You\'ve unlocked invite codes!',
+                description: 'Invite a friend from the Referrals menu.',
+                duration: 8000,
+              });
+            }
+          })
+          .catch(() => {});
+      }
     },
     onError: (err) => {
       const message = err?.message || 'Transaction failed';

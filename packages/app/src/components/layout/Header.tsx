@@ -34,7 +34,8 @@ import {
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import { SiSubstack } from 'react-icons/si';
 
 import { useEffect, useRef, useState } from 'react';
@@ -46,6 +47,7 @@ import EnsAvatar from '~/components/shared/EnsAvatar';
 import GetAccessDialog from '~/components/shared/GetAccessDialog';
 import ReferralsDialog from '~/components/shared/ReferralsDialog';
 import RequiredReferralCodeDialog from '~/components/shared/RequiredReferralCodeDialog';
+import { useReferralEligibility } from '~/hooks/useReferralEligibility';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
 import { useAuth } from '~/lib/context/AuthContext';
 import { useSession } from '~/lib/context/SessionContext';
@@ -217,6 +219,25 @@ const Header = () => {
   const [isReferralsOpen, setIsReferralsOpen] = useState(false);
   const [isReferralRequiredOpen, setIsReferralRequiredOpen] = useState(false);
   const lastWalletAddressRef = useRef<string | null>(null);
+  const [refCode, setRefCode] = useState<string | undefined>(undefined);
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
+  // Capture ?ref=CODE from URL
+  useEffect(() => {
+    const ref = searchParams.get('ref');
+    if (ref) {
+      setRefCode(ref);
+      // Remove ?ref= from URL
+      const url = new URL(window.location.href);
+      url.searchParams.delete('ref');
+      router.replace(url.pathname + url.search);
+      // Auto-open the referral required dialog if wallet is connected
+      setIsReferralRequiredOpen(true);
+    }
+  }, [searchParams]);
+
+  const eligibility = useReferralEligibility(connectedWallet?.address ?? undefined);
 
   // Session context for smart account sessions
   const {
@@ -635,6 +656,9 @@ const Header = () => {
                       >
                         <Users className="mr-0.5 opacity-75 h-4 w-4" />
                         <span>Referrals</span>
+                        {eligibility.eligible && (
+                          <Sparkles className="ml-1 h-3 w-3 text-accent-gold" />
+                        )}
                       </DropdownMenuItem>
                       {/* Account mode toggle - switch between smart account and wallet */}
                       {smartAccountAddress && (
@@ -720,6 +744,7 @@ const Header = () => {
             setIsReferralRequiredOpen(false);
           }}
           onLogout={handleLogout}
+          initialCode={refCode}
         />
       )}
 
