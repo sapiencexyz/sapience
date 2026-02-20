@@ -38,6 +38,8 @@ import { STARGATE_DEPOSIT_URL } from '~/lib/constants';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import { useSwitchChain } from 'wagmi';
+import { useSponsorStatus } from '~/hooks/sponsorship/useSponsorStatus';
+import { formatUnits } from 'viem';
 
 const WUSDE_ABI = parseAbi([
   'function deposit() payable',
@@ -101,6 +103,12 @@ export default function CollateralBalanceButton({
     chainId,
     enabled: Boolean(smartAccountAddress),
   });
+
+  // Sponsorship budget
+  const { isSponsored, remainingBudget } = useSponsorStatus();
+  const sponsorBudgetNumber = isSponsored
+    ? parseFloat(formatUnits(remainingBudget, 18))
+    : 0;
 
   const [isGetUsdeOpen, setIsGetUsdeOpen] = useState(false);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
@@ -341,10 +349,11 @@ export default function CollateralBalanceButton({
     }
   };
 
-  // Display the balance based on the current mode
-  const displayedBalance = isUsingSmartAccount
+  // Display the balance based on the current mode (includes sponsor budget)
+  const walletBalance = isUsingSmartAccount
     ? smartAccountBalance
     : eoaBalance;
+  const displayedBalance = walletBalance + sponsorBudgetNumber;
 
   // Show FUND ACCOUNT button when in smart account mode with zero balance (and not still loading)
   const showFundButton =
@@ -404,6 +413,16 @@ export default function CollateralBalanceButton({
                   {formatDollarLikeBalance(displayedBalance)} {symbol}
                 </p>
               </div>
+              {isSponsored && (
+                <div className="w-full rounded-md border border-ethena/30 bg-ethena/5 px-3 py-2 text-xs text-brand-white/80">
+                  <span className="font-medium text-ethena">
+                    🎁 Sponsored Prediction
+                  </span>
+                  <p className="mt-0.5 text-muted-foreground">
+                    {formatDollarLikeBalance(sponsorBudgetNumber)} {symbol} available for your first prediction — no deposit needed.
+                  </p>
+                </div>
+              )}
               <Button
                 size="sm"
                 className="gap-2 w-full"
