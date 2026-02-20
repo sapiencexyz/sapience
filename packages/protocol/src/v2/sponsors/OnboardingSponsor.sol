@@ -8,7 +8,7 @@ import "../interfaces/IMintSponsor.sol";
 import "../interfaces/IV2Types.sol";
 
 /**
- * @title MatchedSponsor
+ * @title OnboardingSponsor
  * @notice Funds a predictor's collateral during mint, gated by per-user budgets
  * @dev Designed for onboarding: user enters invite code → API signer grants budget →
  *      user mints → escrow calls fundMint → sponsor transfers collateral
@@ -20,7 +20,7 @@ import "../interfaces/IV2Types.sol";
  *   Anyone can fund the contract by transferring collateral tokens to it.
  *   Deploy a new instance if the escrow or collateral token changes.
  */
-contract MatchedSponsor is IMintSponsor, Ownable {
+contract OnboardingSponsor is IMintSponsor, Ownable {
     using SafeERC20 for IERC20;
 
     // ============ Types ============
