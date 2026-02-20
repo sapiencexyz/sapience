@@ -9,12 +9,16 @@ import "../interfaces/IV2Types.sol";
 
 /**
  * @title MatchedSponsor
- * @notice Example sponsor that funds predictor collateral with configurable controls
- * @dev Features:
- *   - Owner-managed per-beneficiary budgets (allocated vs used tracking)
+ * @notice Sponsor contract for onboarding — funds a predictor's collateral on their first mint
+ * @dev Flow: User enters invite code → API signer calls setBudget(user, 1e18) → user mints →
+ *      escrow calls fundMint → sponsor transfers collateral to escrow
+ *
+ *   Features:
+ *   - Budget manager role (API signer) can set per-user budgets without being owner
+ *   - Owner sweeps all tokens (ERC20 + native)
+ *   - Anyone can fund the contract (just transfer collateral tokens to it)
  *   - Configurable match limit (max collateral per mint)
  *   - Required condition enforcement (resolver + conditionId must be in picks)
- *   - Owner can withdraw ERC20s and native gas tokens
  *   - Only the registered escrow can call fundMint
  */
 contract MatchedSponsor is IMintSponsor, Ownable {
@@ -33,10 +37,12 @@ contract MatchedSponsor is IMintSponsor, Ownable {
         address indexed predictor, uint256 collateral, address indexed escrow
     );
     event BudgetSet(address indexed beneficiary, uint256 allocated);
+    event BudgetManagerSet(address indexed manager);
 
     // ============ Errors ============
 
     error UnauthorizedEscrow();
+    error UnauthorizedBudgetManager();
     error NoBudget();
     error BudgetExceeded();
     error CollateralExceedsMatchLimit();
@@ -53,6 +59,9 @@ contract MatchedSponsor is IMintSponsor, Ownable {
     /// @notice Maximum collateral the sponsor will fund per mint
     uint256 public matchLimit;
 
+    /// @notice Address authorized to set user budgets (e.g. API signer)
+    address public budgetManager;
+
     /// @notice Required condition resolver (address(0) = no requirement)
     address public requiredResolver;
 
@@ -61,6 +70,15 @@ contract MatchedSponsor is IMintSponsor, Ownable {
 
     /// @notice Per-beneficiary sponsorship budgets
     mapping(address => Budget) public budgets;
+
+    // ============ Modifiers ============
+
+    modifier onlyBudgetManager() {
+        if (msg.sender != budgetManager && msg.sender != owner()) {
+            revert UnauthorizedBudgetManager();
+        }
+        _;
+    }
 
     // ============ Constructor ============
 
@@ -131,7 +149,25 @@ contract MatchedSponsor is IMintSponsor, Ownable {
         return budget.allocated - budget.used;
     }
 
-    // ============ Admin Functions ============
+    // ============ Budget Manager Functions ============
+
+    /// @notice Set a beneficiary's total budget allocation
+    /// @dev Callable by budget manager (API signer) or owner
+    function setBudget(address beneficiary, uint256 allocated)
+        external
+        onlyBudgetManager
+    {
+        budgets[beneficiary].allocated = allocated;
+        emit BudgetSet(beneficiary, allocated);
+    }
+
+    // ============ Admin Functions (Owner Only) ============
+
+    /// @notice Set the budget manager address (e.g. API signer for invite codes)
+    function setBudgetManager(address manager) external onlyOwner {
+        budgetManager = manager;
+        emit BudgetManagerSet(manager);
+    }
 
     /// @notice Set the match limit
     function setMatchLimit(uint256 matchLimit_) external onlyOwner {
@@ -145,15 +181,6 @@ contract MatchedSponsor is IMintSponsor, Ownable {
     {
         requiredResolver = resolver;
         requiredConditionId = conditionId;
-    }
-
-    /// @notice Set a beneficiary's total budget allocation
-    function setBudget(address beneficiary, uint256 allocated)
-        external
-        onlyOwner
-    {
-        budgets[beneficiary].allocated = allocated;
-        emit BudgetSet(beneficiary, allocated);
     }
 
     /// @notice Withdraw ERC20 tokens
