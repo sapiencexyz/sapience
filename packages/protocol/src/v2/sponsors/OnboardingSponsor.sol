@@ -95,9 +95,9 @@ contract OnboardingSponsor is IMintSponsor, Ownable {
         if (budget.used + collateral > budget.allocated) revert BudgetExceeded();
 
         budget.used += collateral;
-        collateralToken.safeTransfer(escrow_, collateral);
+        collateralToken.safeTransfer(escrow, collateral);
 
-        emit Sponsored(predictor, collateral, escrow_);
+        emit Sponsored(predictor, collateral, escrow);
     }
 
     // ============ View ============
