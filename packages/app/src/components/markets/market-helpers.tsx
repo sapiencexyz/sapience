@@ -330,6 +330,7 @@ export function PredictCell({ condition, className, colorScheme }: { condition: 
       shortName: condition.shortName,
       prediction: true,
       categorySlug: condition.category?.slug,
+      resolverAddress: condition.resolver,
       endTime: condition.endTime,
     });
   }, [
@@ -338,6 +339,7 @@ export function PredictCell({ condition, className, colorScheme }: { condition: 
     condition.endTime,
     condition.question,
     condition.shortName,
+    condition.resolver,
     selections,
     removeSelection,
     addSelection,
@@ -356,6 +358,7 @@ export function PredictCell({ condition, className, colorScheme }: { condition: 
       shortName: condition.shortName,
       prediction: false,
       categorySlug: condition.category?.slug,
+      resolverAddress: condition.resolver,
       endTime: condition.endTime,
     });
   }, [
@@ -364,6 +367,7 @@ export function PredictCell({ condition, className, colorScheme }: { condition: 
     condition.endTime,
     condition.question,
     condition.shortName,
+    condition.resolver,
     selections,
     removeSelection,
     addSelection,
