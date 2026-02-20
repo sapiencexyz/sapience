@@ -6,34 +6,53 @@ import { adminAuth } from '../middleware';
 
 const router = Router();
 
-const VOLUME_THRESHOLD = 5000;
-const DEFAULT_USER_MAX_CLAIMS = 5;
+const VOLUME_THRESHOLD = 1;
+const REQUIRED_PREDICTIONS = 2;
+const DEFAULT_USER_MAX_CLAIMS = 1;
 
 async function calculateVolumeForAddress(address: string): Promise<bigint> {
   const normalizedAddress = address.toLowerCase();
 
-  const positions = await prisma.legacyPosition.findMany({
-    where: {
-      OR: [
-        { predictor: { equals: normalizedAddress, mode: 'insensitive' } },
-        { counterparty: { equals: normalizedAddress, mode: 'insensitive' } },
-      ],
-    },
-    select: {
-      predictor: true,
-      counterparty: true,
-      predictorCollateral: true,
-      counterpartyCollateral: true,
-    },
-  });
+  const [legacyPositions, escrowPredictions] = await Promise.all([
+    prisma.legacyPosition.findMany({
+      where: {
+        OR: [
+          { predictor: { equals: normalizedAddress, mode: 'insensitive' } },
+          { counterparty: { equals: normalizedAddress, mode: 'insensitive' } },
+        ],
+      },
+      select: {
+        predictor: true,
+        counterparty: true,
+        predictorCollateral: true,
+        counterpartyCollateral: true,
+      },
+    }),
+    prisma.prediction.findMany({
+      where: {
+        OR: [
+          { predictor: { equals: normalizedAddress, mode: 'insensitive' } },
+          { counterparty: { equals: normalizedAddress, mode: 'insensitive' } },
+        ],
+      },
+      select: {
+        predictor: true,
+        counterparty: true,
+        predictorCollateral: true,
+        counterpartyCollateral: true,
+      },
+    }),
+  ]);
 
   let total = BigInt(0);
 
-  for (const position of positions) {
+  const allPositions = [...legacyPositions, ...escrowPredictions];
+
+  for (const position of allPositions) {
     const predictorIsUser =
       position.predictor.toLowerCase() === normalizedAddress;
     const counterpartyIsUser =
-      position.counterparty.toLowerCase() === normalizedAddress;
+      position.counterparty?.toLowerCase() === normalizedAddress;
 
     if (predictorIsUser && position.predictorCollateral) {
       try {
@@ -53,6 +72,31 @@ async function calculateVolumeForAddress(address: string): Promise<bigint> {
   }
 
   return total;
+}
+
+async function countPredictionsForAddress(address: string): Promise<number> {
+  const normalizedAddress = address.toLowerCase();
+
+  const [legacyCount, escrowCount] = await Promise.all([
+    prisma.legacyPosition.count({
+      where: {
+        OR: [
+          { predictor: { equals: normalizedAddress, mode: 'insensitive' } },
+          { counterparty: { equals: normalizedAddress, mode: 'insensitive' } },
+        ],
+      },
+    }),
+    prisma.prediction.count({
+      where: {
+        OR: [
+          { predictor: { equals: normalizedAddress, mode: 'insensitive' } },
+          { counterparty: { equals: normalizedAddress, mode: 'insensitive' } },
+        ],
+      },
+    }),
+  ]);
+
+  return legacyCount + escrowCount;
 }
 
 type SetReferralCodeBody = {
@@ -153,19 +197,35 @@ router.post('/code', async (req: Request, res: Response) => {
     return res.status(400).json({ message: 'Failed to verify signature' });
   }
 
-  // Check if user has enough trading volume
+  // Check if user has enough predictions and trading volume
   try {
-    const volumeWei = await calculateVolumeForAddress(walletAddress);
-    const thresholdWei = BigInt(VOLUME_THRESHOLD) * BigInt(10 ** 18);
+    const [predictionCount, volumeWei] = await Promise.all([
+      countPredictionsForAddress(walletAddress),
+      calculateVolumeForAddress(walletAddress),
+    ]);
 
+    if (predictionCount < REQUIRED_PREDICTIONS) {
+      return res.status(403).json({
+        message: `You need at least ${REQUIRED_PREDICTIONS} predictions to create an invite code.`,
+        predictionCount,
+        requiredPredictions: REQUIRED_PREDICTIONS,
+      });
+    }
+
+    const thresholdWei = BigInt(VOLUME_THRESHOLD) * BigInt(10 ** 18);
     if (volumeWei < thresholdWei) {
+      const volumeFormatted = Number(volumeWei / BigInt(10 ** 14)) / 10000;
       return res.status(403).json({
         message: `Insufficient trading volume.`,
+        volume: volumeFormatted,
+        requiredVolume: VOLUME_THRESHOLD,
+        predictionCount,
+        requiredPredictions: REQUIRED_PREDICTIONS,
       });
     }
   } catch (e) {
-    console.error('Error checking trading volume', e);
-    return res.status(500).json({ message: 'Failed to verify trading volume' });
+    console.error('Error checking eligibility', e);
+    return res.status(500).json({ message: 'Failed to verify eligibility' });
   }
 
   try {
@@ -637,21 +697,39 @@ router.get(
         });
       }
 
-      // Get all positions for these users
-      const positions = await prisma.legacyPosition.findMany({
-        where: {
-          OR: [
-            { predictor: { in: userAddresses, mode: 'insensitive' } },
-            { counterparty: { in: userAddresses, mode: 'insensitive' } },
-          ],
-        },
-        select: {
-          predictor: true,
-          counterparty: true,
-          predictorCollateral: true,
-          counterpartyCollateral: true,
-        },
-      });
+      // Get all positions for these users (legacy + escrow)
+      const [legacyPositions, escrowPredictions] = await Promise.all([
+        prisma.legacyPosition.findMany({
+          where: {
+            OR: [
+              { predictor: { in: userAddresses, mode: 'insensitive' } },
+              { counterparty: { in: userAddresses, mode: 'insensitive' } },
+            ],
+          },
+          select: {
+            predictor: true,
+            counterparty: true,
+            predictorCollateral: true,
+            counterpartyCollateral: true,
+          },
+        }),
+        prisma.prediction.findMany({
+          where: {
+            OR: [
+              { predictor: { in: userAddresses, mode: 'insensitive' } },
+              { counterparty: { in: userAddresses, mode: 'insensitive' } },
+            ],
+          },
+          select: {
+            predictor: true,
+            counterparty: true,
+            predictorCollateral: true,
+            counterpartyCollateral: true,
+          },
+        }),
+      ]);
+
+      const positions = [...legacyPositions, ...escrowPredictions];
 
       // Calculate per-user trading volume and position count
       const userStats = new Map<
@@ -668,7 +746,7 @@ router.get(
 
       for (const position of positions) {
         const predictorLower = position.predictor.toLowerCase();
-        const counterpartyLower = position.counterparty.toLowerCase();
+        const counterpartyLower = position.counterparty?.toLowerCase();
 
         // Count position for predictor if they're in our user set
         if (userStats.has(predictorLower)) {
@@ -684,7 +762,7 @@ router.get(
         }
 
         // Count position for counterparty if they're in our user set
-        if (userStats.has(counterpartyLower)) {
+        if (counterpartyLower && userStats.has(counterpartyLower)) {
           const stats = userStats.get(counterpartyLower)!;
           stats.positionCount += 1;
           if (position.counterpartyCollateral) {
