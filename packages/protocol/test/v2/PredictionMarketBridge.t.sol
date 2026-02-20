@@ -1,24 +1,31 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import { TestHelperOz5 } from
-    "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
-import { PredictionMarketBridge } from
-    "../../src/v2/bridge/PredictionMarketBridge.sol";
-import { PredictionMarketBridgeRemote } from
-    "../../src/v2/bridge/PredictionMarketBridgeRemote.sol";
-import { PredictionMarketTokenFactory } from
-    "../../src/v2/bridge/PredictionMarketTokenFactory.sol";
-import { PredictionMarketTokenBridged } from
-    "../../src/v2/bridge/PredictionMarketTokenBridged.sol";
-import { IPredictionMarketBridge } from
-    "../../src/v2/bridge/interfaces/IPredictionMarketBridge.sol";
-import { IPredictionMarketBridgeRemote } from
-    "../../src/v2/bridge/interfaces/IPredictionMarketBridgeRemote.sol";
-import { IPredictionMarketBridgeBase } from
-    "../../src/v2/bridge/interfaces/IPredictionMarketBridgeBase.sol";
-import { MockPredictionMarketToken } from
-    "./mocks/MockPredictionMarketToken.sol";
+import {
+    TestHelperOz5
+} from "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
+import {
+    PredictionMarketBridge
+} from "../../src/v2/bridge/PredictionMarketBridge.sol";
+import {
+    PredictionMarketBridgeRemote
+} from "../../src/v2/bridge/PredictionMarketBridgeRemote.sol";
+import {
+    PredictionMarketTokenFactory
+} from "../../src/v2/bridge/PredictionMarketTokenFactory.sol";
+import { PredictionMarketToken } from "../../src/v2/PredictionMarketToken.sol";
+import {
+    IPredictionMarketBridge
+} from "../../src/v2/bridge/interfaces/IPredictionMarketBridge.sol";
+import {
+    IPredictionMarketBridgeRemote
+} from "../../src/v2/bridge/interfaces/IPredictionMarketBridgeRemote.sol";
+import {
+    IPredictionMarketBridgeBase
+} from "../../src/v2/bridge/interfaces/IPredictionMarketBridgeBase.sol";
+import {
+    MockPredictionMarketToken
+} from "./mocks/MockPredictionMarketToken.sol";
 import { MessagingFee } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 import "forge-std/Test.sol";
 
@@ -141,8 +148,8 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
             })
         );
 
-        // Set factory deployer to arbitrum bridge
-        factory.setDeployer(address(arbitrumBridge));
+        // Add arbitrum bridge as factory deployer
+        factory.addDeployer(address(arbitrumBridge));
 
         // Deploy mock position token on Ethereal
         positionToken = new MockPredictionMarketToken(
@@ -312,15 +319,12 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
 
         // Verify token was deployed and minted
         assertTrue(bridgedToken.code.length > 0);
+        assertEq(PredictionMarketToken(bridgedToken).balanceOf(user), amount);
         assertEq(
-            PredictionMarketTokenBridged(bridgedToken).balanceOf(user), amount
+            PredictionMarketToken(bridgedToken).pickConfigId(), PREDICTION_ID
         );
         assertEq(
-            PredictionMarketTokenBridged(bridgedToken).pickConfigId(),
-            PREDICTION_ID
-        );
-        assertEq(
-            PredictionMarketTokenBridged(bridgedToken).isPredictorToken(),
+            PredictionMarketToken(bridgedToken).isPredictorToken(),
             IS_PREDICTOR_TOKEN
         );
 
@@ -352,15 +356,12 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
 
         address bridgedToken =
             factory.predictAddress(PREDICTION_ID, IS_PREDICTOR_TOKEN);
-        assertEq(
-            PredictionMarketTokenBridged(bridgedToken).balanceOf(user), amount
-        );
+        assertEq(PredictionMarketToken(bridgedToken).balanceOf(user), amount);
 
         // Approve and bridge back
         vm.prank(user);
-        PredictionMarketTokenBridged(bridgedToken).approve(
-            address(arbitrumBridge), amount
-        );
+        PredictionMarketToken(bridgedToken)
+            .approve(address(arbitrumBridge), amount);
 
         MessagingFee memory backFee =
             arbitrumBridge.quoteBridge(bridgedToken, amount);
@@ -371,11 +372,10 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
         );
 
         // Bridged tokens should be escrowed (NOT burned yet)
-        assertEq(PredictionMarketTokenBridged(bridgedToken).balanceOf(user), 0);
+        assertEq(PredictionMarketToken(bridgedToken).balanceOf(user), 0);
         assertEq(
-            PredictionMarketTokenBridged(bridgedToken).balanceOf(
-                address(arbitrumBridge)
-            ),
+            PredictionMarketToken(bridgedToken)
+                .balanceOf(address(arbitrumBridge)),
             amount
         );
         assertEq(arbitrumBridge.getEscrowedBalance(bridgedToken), amount);
@@ -426,9 +426,8 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
 
         // Bridge back partial amount
         vm.prank(user);
-        PredictionMarketTokenBridged(bridgedToken).approve(
-            address(arbitrumBridge), bridgeBackAmount
-        );
+        PredictionMarketToken(bridgedToken)
+            .approve(address(arbitrumBridge), bridgeBackAmount);
 
         MessagingFee memory backFee =
             arbitrumBridge.quoteBridge(bridgedToken, bridgeBackAmount);
@@ -440,7 +439,7 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
 
         // Should have remaining bridged tokens (minus escrowed amount)
         assertEq(
-            PredictionMarketTokenBridged(bridgedToken).balanceOf(user),
+            PredictionMarketToken(bridgedToken).balanceOf(user),
             bridgeAmount - bridgeBackAmount
         );
 
@@ -578,9 +577,8 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
 
         // Initiate bridge back
         vm.prank(user);
-        PredictionMarketTokenBridged(bridgedToken).approve(
-            address(arbitrumBridge), amount
-        );
+        PredictionMarketToken(bridgedToken)
+            .approve(address(arbitrumBridge), amount);
 
         MessagingFee memory backFee =
             arbitrumBridge.quoteBridge(bridgedToken, amount);
@@ -627,7 +625,7 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
     }
 
     function test_factory_deployer_isCorrect() public view {
-        assertEq(factory.deployer(), address(arbitrumBridge));
+        assertTrue(factory.deployers(address(arbitrumBridge)));
     }
 
     function test_factory_directDeploy_works() public {

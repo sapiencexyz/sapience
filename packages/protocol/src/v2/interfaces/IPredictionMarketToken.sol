@@ -16,15 +16,18 @@ interface IPredictionMarketToken is IERC20 {
     /// @notice Check if this is the predictor token (vs counterparty)
     function isPredictorToken() external view returns (bool);
 
-    /// @notice Mint new tokens (used when new predictions are created)
+    /// @notice Get the address authorized to mint/burn tokens
+    function authority() external view returns (address);
+
+    /// @notice Mint new tokens (used when new bets are placed)
     /// @param to The address to mint tokens to
     /// @param amount The amount to mint
-    /// @dev Only callable by market contract
+    /// @dev Only callable by authority
     function mint(address to, uint256 amount) external;
 
     /// @notice Burn tokens from a holder (used during redemption)
     /// @param holder The address to burn tokens from
     /// @param amount The amount to burn
-    /// @dev Only callable by market contract
+    /// @dev Only callable by authority
     function burn(address holder, uint256 amount) external;
 }

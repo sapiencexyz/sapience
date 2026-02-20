@@ -4,6 +4,7 @@ pragma solidity ^0.8.19;
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 import "../../src/v2/PredictionMarketEscrow.sol";
+import "../../src/v2/bridge/PredictionMarketTokenFactory.sol";
 import "../../src/v2/interfaces/IV2Types.sol";
 import "../../src/v2/interfaces/IPredictionMarketEscrow.sol";
 import "../../src/v2/resolvers/mocks/ManualConditionResolver.sol";
@@ -50,7 +51,12 @@ contract PredictionMarketEscrowAudit is Test {
 
         vm.startPrank(owner);
         collateral = new MockERC20("USD Collateral", "USDC", 6);
-        escrow = new PredictionMarketEscrow(address(collateral), owner);
+        PredictionMarketTokenFactory tokenFactory =
+            new PredictionMarketTokenFactory(owner);
+        escrow = new PredictionMarketEscrow(
+            address(collateral), owner, address(tokenFactory)
+        );
+        tokenFactory.addDeployer(address(escrow));
         resolver = new ManualConditionResolver(owner);
         resolver.approveSettler(settler);
         vm.stopPrank();

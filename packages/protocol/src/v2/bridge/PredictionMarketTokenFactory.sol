@@ -4,21 +4,27 @@ pragma solidity ^0.8.19;
 import { CREATE3 } from "solady/utils/CREATE3.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import "./interfaces/IPredictionMarketTokenFactory.sol";
-import "./PredictionMarketTokenBridged.sol";
+import "../PredictionMarketToken.sol";
 
 /// @title PredictionMarketTokenFactory
-/// @notice Factory for deploying bridged position tokens using CREATE3
+/// @notice Factory for deploying position tokens using CREATE3
 /// @dev Ensures deterministic addresses across chains
 contract PredictionMarketTokenFactory is
     IPredictionMarketTokenFactory,
     Ownable
 {
-    /// @notice Address authorized to deploy tokens (bridge)
+    /// @notice Legacy single deployer (for backward compat)
     address public deployer;
 
-    /// @notice Modifier to restrict deployment to authorized deployer
+    /// @notice Mapping of authorized deployers
+    mapping(address => bool) public deployers;
+
+    /// @notice Number of authorized deployers
+    uint256 public deployerCount;
+
+    /// @notice Modifier to restrict deployment to authorized deployers
     modifier onlyDeployer() {
-        if (msg.sender != deployer && msg.sender != owner()) {
+        if (!deployers[msg.sender] && msg.sender != owner()) {
             revert Unauthorized();
         }
         _;
@@ -26,10 +32,38 @@ contract PredictionMarketTokenFactory is
 
     constructor(address owner_) Ownable(owner_) { }
 
-    /// @notice Set the authorized deployer (bridge)
+    /// @notice Set the authorized deployer (backward compat - sets single + adds to mapping)
     /// @param deployer_ The deployer address
     function setDeployer(address deployer_) external onlyOwner {
+        // Remove old deployer from mapping if exists
+        if (deployer != address(0) && deployers[deployer]) {
+            deployers[deployer] = false;
+            deployerCount--;
+        }
         deployer = deployer_;
+        if (deployer_ != address(0) && !deployers[deployer_]) {
+            deployers[deployer_] = true;
+            deployerCount++;
+        }
+    }
+
+    /// @inheritdoc IPredictionMarketTokenFactory
+    function addDeployer(address deployer_) external onlyOwner {
+        if (deployers[deployer_]) revert DeployerAlreadyExists(deployer_);
+        deployers[deployer_] = true;
+        deployerCount++;
+        emit DeployerAdded(deployer_);
+    }
+
+    /// @inheritdoc IPredictionMarketTokenFactory
+    function removeDeployer(address deployer_) external onlyOwner {
+        if (!deployers[deployer_]) revert DeployerNotFound(deployer_);
+        deployers[deployer_] = false;
+        deployerCount--;
+        if (deployer == deployer_) {
+            deployer = address(0);
+        }
+        emit DeployerRemoved(deployer_);
     }
 
     /// @inheritdoc IPredictionMarketTokenFactory
@@ -38,7 +72,7 @@ contract PredictionMarketTokenFactory is
         bool isPredictorToken,
         string calldata name,
         string calldata symbol,
-        address burner
+        address authority
     ) external onlyDeployer returns (address token) {
         bytes32 salt = computeSalt(pickConfigId, isPredictorToken);
 
@@ -55,8 +89,10 @@ contract PredictionMarketTokenFactory is
         // Deploy using CREATE3
         token = CREATE3.deployDeterministic(
             abi.encodePacked(
-                type(PredictionMarketTokenBridged).creationCode,
-                abi.encode(name, symbol, pickConfigId, isPredictorToken, burner)
+                type(PredictionMarketToken).creationCode,
+                abi.encode(
+                    name, symbol, pickConfigId, isPredictorToken, authority
+                )
             ),
             salt
         );
@@ -97,7 +133,7 @@ contract PredictionMarketTokenFactory is
 
     /// @inheritdoc IPredictionMarketTokenFactory
     function isConfigComplete() external view returns (bool) {
-        return deployer != address(0);
+        return deployerCount > 0;
     }
 
     /// @inheritdoc IPredictionMarketTokenFactory

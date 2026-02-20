@@ -10,7 +10,7 @@ import { OptionsBuilder } from
 import "./PredictionMarketBridgeBase.sol";
 import "./interfaces/IPredictionMarketBridgeRemote.sol";
 import "./interfaces/IPredictionMarketTokenFactory.sol";
-import "./interfaces/IPredictionMarketTokenBridged.sol";
+import "../interfaces/IPredictionMarketToken.sol";
 
 /// @title PredictionMarketBridgeRemote
 /// @notice Bridge for position tokens on Arbitrum (remote chain)
@@ -260,7 +260,7 @@ contract PredictionMarketBridgeRemote is
         }
 
         // Mint tokens to recipient
-        IPredictionMarketTokenBridged(remoteToken).mint(recipient, amount);
+        IPredictionMarketToken(remoteToken).mint(recipient, amount);
 
         // Track minted tokens (for audit trail)
         _mintedBridges[bridgeId] = MintedBridge({
@@ -288,9 +288,8 @@ contract PredictionMarketBridgeRemote is
 
             // Now burn the escrowed tokens
             _escrowedBalances[pending.token] -= pending.amount;
-            IPredictionMarketTokenBridged(pending.token).burn(
-                address(this), pending.amount
-            );
+            IPredictionMarketToken(pending.token)
+                .burn(address(this), pending.amount);
 
             emit BridgeCompleted(bridgeId);
         }

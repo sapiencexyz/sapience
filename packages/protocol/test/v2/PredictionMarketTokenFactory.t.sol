@@ -2,10 +2,10 @@
 pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
-import { PredictionMarketTokenFactory } from
-    "../../src/v2/bridge/PredictionMarketTokenFactory.sol";
-import { PredictionMarketTokenBridged } from
-    "../../src/v2/bridge/PredictionMarketTokenBridged.sol";
+import {
+    PredictionMarketTokenFactory
+} from "../../src/v2/bridge/PredictionMarketTokenFactory.sol";
+import { PredictionMarketToken } from "../../src/v2/PredictionMarketToken.sol";
 
 /// @title PredictionMarketTokenFactoryTest
 /// @notice Test suite for CREATE3-based position token factory
@@ -22,7 +22,7 @@ contract PredictionMarketTokenFactoryTest is Test {
         deployer = address(0x1234);
 
         factory = new PredictionMarketTokenFactory(owner);
-        factory.setDeployer(deployer);
+        factory.addDeployer(deployer);
     }
 
     function test_computeSalt() public view {
@@ -87,13 +87,12 @@ contract PredictionMarketTokenFactoryTest is Test {
             PREDICTION_ID, IS_PREDICTOR_TOKEN, "My Token", "MTK", address(this)
         );
 
-        PredictionMarketTokenBridged bridged =
-            PredictionMarketTokenBridged(token);
-        assertEq(bridged.name(), "My Token");
-        assertEq(bridged.symbol(), "MTK");
-        assertEq(bridged.pickConfigId(), PREDICTION_ID);
-        assertEq(bridged.isPredictorToken(), IS_PREDICTOR_TOKEN);
-        assertEq(bridged.bridge(), address(this));
+        PredictionMarketToken pmToken = PredictionMarketToken(token);
+        assertEq(pmToken.name(), "My Token");
+        assertEq(pmToken.symbol(), "MTK");
+        assertEq(pmToken.pickConfigId(), PREDICTION_ID);
+        assertEq(pmToken.isPredictorToken(), IS_PREDICTOR_TOKEN);
+        assertEq(pmToken.authority(), address(this));
     }
 
     function test_deploy_revertIfAlreadyDeployed() public {
@@ -113,5 +112,28 @@ contract PredictionMarketTokenFactoryTest is Test {
             "TEST2",
             address(this)
         );
+    }
+
+    function test_addDeployer() public {
+        address newDeployer = address(0x5678);
+        factory.addDeployer(newDeployer);
+        assertTrue(factory.deployers(newDeployer));
+        assertEq(factory.deployerCount(), 2);
+    }
+
+    function test_removeDeployer() public {
+        factory.removeDeployer(deployer);
+        assertFalse(factory.deployers(deployer));
+        assertEq(factory.deployerCount(), 0);
+    }
+
+    function test_isConfigComplete() public view {
+        assertTrue(factory.isConfigComplete());
+    }
+
+    function test_isConfigComplete_false() public {
+        PredictionMarketTokenFactory emptyFactory =
+            new PredictionMarketTokenFactory(owner);
+        assertFalse(emptyFactory.isConfigComplete());
     }
 }
