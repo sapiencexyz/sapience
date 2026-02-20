@@ -617,3 +617,37 @@ model Close {
   @@index([predictorHolder], map: "IDX_close_predictor")
   @@index([counterpartyHolder], map: "IDX_close_counterparty")
 }
+
+/// Indexer state for SecondaryMarketEscrow contract
+model SecondaryIndexerState {
+  chainId          Int      @id
+  contractAddress  String   @db.VarChar
+  lastIndexedBlock Int
+  lastIndexedAt    DateTime @default(now()) @db.Timestamp(6)
+
+  @@map("secondary_indexer_state")
+}
+
+/// A secondary market trade executed on-chain via SecondaryMarketEscrow
+model SecondaryTrade {
+  id          Int       @id @default(autoincrement())
+  createdAt   DateTime  @default(now()) @db.Timestamp(6)
+  chainId     Int
+  tradeHash   String    @unique @db.VarChar
+  seller      String    @db.VarChar
+  buyer       String    @db.VarChar
+  token       String    @db.VarChar
+  collateral  String    @db.VarChar
+  tokenAmount String    @db.VarChar
+  price       String    @db.VarChar
+  refCode     String?   @db.VarChar
+  executedAt  Int
+  txHash      String    @db.VarChar
+  blockNumber Int
+
+  @@index([chainId], map: "IDX_secondary_trade_chain")
+  @@index([seller], map: "IDX_secondary_trade_seller")
+  @@index([buyer], map: "IDX_secondary_trade_buyer")
+  @@index([token], map: "IDX_secondary_trade_token")
+  @@map("secondary_trade")
+}
