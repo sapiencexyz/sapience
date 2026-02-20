@@ -96,9 +96,9 @@ contract OnboardingSponsor is IMintSponsor, Ownable {
         }
 
         budget.used += request.predictorCollateral;
-        collateralToken.safeTransfer(escrow_, request.predictorCollateral);
+        collateralToken.safeTransfer(escrow, request.predictorCollateral);
 
-        emit Sponsored(request.predictor, request.predictorCollateral, escrow_);
+        emit Sponsored(request.predictor, request.predictorCollateral, escrow);
     }
 
     // ============ View ============
