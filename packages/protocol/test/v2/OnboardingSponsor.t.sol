@@ -4,16 +4,16 @@ pragma solidity ^0.8.19;
 import "forge-std/Test.sol";
 import "../../src/v2/PredictionMarketEscrow.sol";
 import "../../src/v2/resolvers/mocks/ManualConditionResolver.sol";
-import "../../src/v2/sponsors/MatchedSponsor.sol";
+import "../../src/v2/sponsors/OnboardingSponsor.sol";
 import "../../src/v2/interfaces/IV2Types.sol";
 import "../../src/v2/interfaces/IPredictionMarketEscrow.sol";
 import "../../src/v2/interfaces/IPredictionMarketToken.sol";
 import "./mocks/MockERC20.sol";
 
-contract MatchedSponsorTest is Test {
+contract OnboardingSponsorTest is Test {
     PredictionMarketEscrow public market;
     ManualConditionResolver public resolver;
-    MatchedSponsor public sponsor;
+    OnboardingSponsor public sponsor;
     MockERC20 public collateralToken;
 
     address public owner;
@@ -56,7 +56,7 @@ contract MatchedSponsorTest is Test {
         conditionId = keccak256(abi.encode("will-eth-hit-10k"));
 
         // Deploy sponsor, pointing at real escrow
-        sponsor = new MatchedSponsor(
+        sponsor = new OnboardingSponsor(
             address(market),
             address(collateralToken),
             MATCH_LIMIT,
@@ -250,7 +250,7 @@ contract MatchedSponsorTest is Test {
 
         // 4th mint should fail
         IV2Types.MintRequest memory request4 = _buildMintRequest(picks, address(sponsor));
-        vm.expectRevert(MatchedSponsor.BudgetExceeded.selector);
+        vm.expectRevert(OnboardingSponsor.BudgetExceeded.selector);
         market.mint(request4);
     }
 
@@ -291,7 +291,7 @@ contract MatchedSponsorTest is Test {
         request.predictorSponsor = address(sponsor);
         request.predictorSponsorData = "";
 
-        vm.expectRevert(MatchedSponsor.CollateralExceedsMatchLimit.selector);
+        vm.expectRevert(OnboardingSponsor.CollateralExceedsMatchLimit.selector);
         market.mint(request);
     }
 
@@ -304,7 +304,7 @@ contract MatchedSponsorTest is Test {
 
         IV2Types.MintRequest memory request = _buildMintRequest(picks, address(sponsor));
 
-        vm.expectRevert(MatchedSponsor.NoBudget.selector);
+        vm.expectRevert(OnboardingSponsor.NoBudget.selector);
         market.mint(request);
     }
 
@@ -344,7 +344,7 @@ contract MatchedSponsorTest is Test {
 
     function test_setBudget_revert_unauthorized() public {
         vm.prank(eve);
-        vm.expectRevert(MatchedSponsor.UnauthorizedBudgetManager.selector);
+        vm.expectRevert(OnboardingSponsor.UnauthorizedBudgetManager.selector);
         sponsor.setBudget(predictor, BUDGET);
     }
 
@@ -373,7 +373,7 @@ contract MatchedSponsorTest is Test {
         amounts[0] = 1e18;
 
         vm.prank(manager);
-        vm.expectRevert(MatchedSponsor.ArrayLengthMismatch.selector);
+        vm.expectRevert(OnboardingSponsor.ArrayLengthMismatch.selector);
         sponsor.setBudgets(users, amounts);
     }
 
