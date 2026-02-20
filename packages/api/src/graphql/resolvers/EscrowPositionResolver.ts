@@ -123,6 +123,9 @@ class PredictionType {
   counterpartyClaimable?: string | null;
 
   @Field(() => String)
+  createdAt!: string;
+
+  @Field(() => String)
   createTxHash!: string;
 
   @Field(() => String, { nullable: true })
@@ -270,7 +273,8 @@ export class EscrowPositionResolver {
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number,
     @Arg('settled', () => Boolean, { nullable: true }) settled?: boolean,
     @Arg('orderBy', () => String, { nullable: true }) orderBy?: string,
-    @Arg('orderDirection', () => String, { nullable: true }) orderDirection?: string
+    @Arg('orderDirection', () => String, { nullable: true })
+    orderDirection?: string
   ): Promise<PredictionType[]> {
     const addr = address?.toLowerCase();
 
@@ -326,6 +330,7 @@ export class EscrowPositionResolver {
       result: r.result,
       predictorClaimable: r.predictorClaimable ?? null,
       counterpartyClaimable: r.counterpartyClaimable ?? null,
+      createdAt: r.createdAt.toISOString(),
       createTxHash: r.createTxHash,
       settleTxHash: r.settleTxHash ?? null,
       refCode: r.refCode ?? null,
@@ -362,6 +367,7 @@ export class EscrowPositionResolver {
       result: r.result,
       predictorClaimable: r.predictorClaimable ?? null,
       counterpartyClaimable: r.counterpartyClaimable ?? null,
+      createdAt: r.createdAt.toISOString(),
       createTxHash: r.createTxHash,
       settleTxHash: r.settleTxHash ?? null,
       refCode: r.refCode ?? null,
@@ -518,10 +524,14 @@ export class EscrowPositionResolver {
             id: r.pickConfiguration.id,
             chainId: r.pickConfiguration.chainId,
             marketAddress: r.pickConfiguration.marketAddress,
-            totalPredictorCollateral: r.pickConfiguration.totalPredictorCollateral,
-            totalCounterpartyCollateral: r.pickConfiguration.totalCounterpartyCollateral,
-            claimedPredictorCollateral: r.pickConfiguration.claimedPredictorCollateral,
-            claimedCounterpartyCollateral: r.pickConfiguration.claimedCounterpartyCollateral,
+            totalPredictorCollateral:
+              r.pickConfiguration.totalPredictorCollateral,
+            totalCounterpartyCollateral:
+              r.pickConfiguration.totalCounterpartyCollateral,
+            claimedPredictorCollateral:
+              r.pickConfiguration.claimedPredictorCollateral,
+            claimedCounterpartyCollateral:
+              r.pickConfiguration.claimedCounterpartyCollateral,
             resolved: r.pickConfiguration.resolved,
             result: r.pickConfiguration.result,
             resolvedAt: r.pickConfiguration.resolvedAt ?? null,
@@ -549,7 +559,8 @@ export class EscrowPositionResolver {
     @Arg('take', () => Int, { defaultValue: 50 }) take: number,
     @Arg('skip', () => Int, { defaultValue: 0 }) skip: number,
     @Arg('address', () => String, { nullable: true }) address?: string,
-    @Arg('pickConfigId', () => String, { nullable: true }) pickConfigId?: string,
+    @Arg('pickConfigId', () => String, { nullable: true })
+    pickConfigId?: string,
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number
   ): Promise<CloseType[]> {
     const addr = address?.toLowerCase();
@@ -558,10 +569,7 @@ export class EscrowPositionResolver {
     const where: Prisma.CloseWhereInput = {};
 
     if (addr) {
-      where.OR = [
-        { predictorHolder: addr },
-        { counterpartyHolder: addr },
-      ];
+      where.OR = [{ predictorHolder: addr }, { counterpartyHolder: addr }];
     }
     if (pickConfigIdLower) {
       where.pickConfigId = pickConfigIdLower;
@@ -608,7 +616,8 @@ export class EscrowPositionResolver {
     @Arg('take', () => Int, { defaultValue: 50 }) take: number,
     @Arg('skip', () => Int, { defaultValue: 0 }) skip: number,
     @Arg('holder', () => String, { nullable: true }) holder?: string,
-    @Arg('predictionId', () => String, { nullable: true }) predictionId?: string,
+    @Arg('predictionId', () => String, { nullable: true })
+    predictionId?: string,
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number
   ): Promise<ClaimType[]> {
     const holderLower = holder?.toLowerCase();

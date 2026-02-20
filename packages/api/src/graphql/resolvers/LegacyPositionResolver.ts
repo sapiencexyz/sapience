@@ -165,7 +165,9 @@ async function buildPredictionMap(
   return map;
 }
 
-async function processRows(rows: LegacyPosition[]): Promise<LegacyPositionType[]> {
+async function processRows(
+  rows: LegacyPosition[]
+): Promise<LegacyPositionType[]> {
   const predictionMap = await buildPredictionMap(rows);
 
   return rows.map((r) => ({

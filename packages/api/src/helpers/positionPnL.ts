@@ -31,14 +31,18 @@ export async function calculateLegacyPositionPnL(
     chainId?: number;
     marketAddress?: string;
   } = {
-    status: { in: [LegacyPositionStatus.settled, LegacyPositionStatus.consolidated] },
+    status: {
+      in: [LegacyPositionStatus.settled, LegacyPositionStatus.consolidated],
+    },
     predictorWon: { not: null },
   };
 
   if (chainId) whereClause.chainId = chainId;
   if (marketAddress) whereClause.marketAddress = marketAddress.toLowerCase();
 
-  const positions = await prisma.legacyPosition.findMany({ where: whereClause });
+  const positions = await prisma.legacyPosition.findMany({
+    where: whereClause,
+  });
 
   const mintTimestamps = Array.from(
     new Set(positions.map((p) => BigInt(p.mintedAt)))
@@ -235,7 +239,10 @@ export async function calculatePositionPnL(
     const counterpartyHolder = closeRecord.counterpartyHolder.toLowerCase();
 
     // Process predictor holder
-    if (!owners?.length || owners.map((o) => o.toLowerCase()).includes(predictorHolder)) {
+    if (
+      !owners?.length ||
+      owners.map((o) => o.toLowerCase()).includes(predictorHolder)
+    ) {
       const stats = initOwner(predictorHolder);
 
       // Tokens burned equals collateral portion
@@ -249,7 +256,10 @@ export async function calculatePositionPnL(
     }
 
     // Process counterparty holder
-    if (!owners?.length || owners.map((o) => o.toLowerCase()).includes(counterpartyHolder)) {
+    if (
+      !owners?.length ||
+      owners.map((o) => o.toLowerCase()).includes(counterpartyHolder)
+    ) {
       const stats = initOwner(counterpartyHolder);
 
       const tokensBurned = BigInt(closeRecord.counterpartyTokensBurned);
@@ -275,7 +285,10 @@ export async function calculatePositionPnL(
     const counterparty = prediction.counterparty.toLowerCase();
 
     // Calculate unrealized P&L for predictor
-    if (!owners?.length || owners.map((o) => o.toLowerCase()).includes(predictor)) {
+    if (
+      !owners?.length ||
+      owners.map((o) => o.toLowerCase()).includes(predictor)
+    ) {
       const stats = initOwner(predictor);
       const wager = BigInt(prediction.predictorCollateral);
       const claimable = BigInt(prediction.predictorClaimable || '0');
@@ -285,7 +298,10 @@ export async function calculatePositionPnL(
     }
 
     // Calculate unrealized P&L for counterparty
-    if (!owners?.length || owners.map((o) => o.toLowerCase()).includes(counterparty)) {
+    if (
+      !owners?.length ||
+      owners.map((o) => o.toLowerCase()).includes(counterparty)
+    ) {
       const stats = initOwner(counterparty);
       const wager = BigInt(prediction.counterpartyCollateral);
       const claimable = BigInt(prediction.counterpartyClaimable || '0');
@@ -320,17 +336,26 @@ export async function calculateCombinedPositionPnL(
   ]);
 
   // Merge results by owner
-  const mergedStats = new Map<string, { totalPnL: bigint; positionCount: number }>();
+  const mergedStats = new Map<
+    string,
+    { totalPnL: bigint; positionCount: number }
+  >();
 
   for (const entry of legacyResults) {
-    const existing = mergedStats.get(entry.owner) || { totalPnL: 0n, positionCount: 0 };
+    const existing = mergedStats.get(entry.owner) || {
+      totalPnL: 0n,
+      positionCount: 0,
+    };
     existing.totalPnL += BigInt(entry.totalPnL);
     existing.positionCount += entry.positionCount;
     mergedStats.set(entry.owner, existing);
   }
 
   for (const entry of currentResults) {
-    const existing = mergedStats.get(entry.owner) || { totalPnL: 0n, positionCount: 0 };
+    const existing = mergedStats.get(entry.owner) || {
+      totalPnL: 0n,
+      positionCount: 0,
+    };
     existing.totalPnL += BigInt(entry.totalPnL);
     existing.positionCount += entry.positionCount;
     mergedStats.set(entry.owner, existing);

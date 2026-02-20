@@ -15,19 +15,27 @@ const buildIndexers = (): { [key: string]: IIndexer } => {
 
   if (ENABLE_V1_INDEXERS) {
     indexers['attestation-prediction-market'] = new EASPredictionIndexer(42161);
-    indexers['prediction-market-events-arbitrum'] = new PredictionMarketIndexer(42161); // Arbitrum
-    indexers['prediction-market-events-ethereal'] = new PredictionMarketIndexer(5064014); // Ethereal
+    indexers['prediction-market-events-arbitrum'] = new PredictionMarketIndexer(
+      42161
+    ); // Arbitrum
+    indexers['prediction-market-events-ethereal'] = new PredictionMarketIndexer(
+      5064014
+    ); // Ethereal
     console.log('[Indexers] V1 indexers enabled');
   } else {
     console.log('[Indexers] V1 indexers disabled (ENABLE_V1_INDEXERS=false)');
   }
 
   if (ENABLE_ESCROW_INDEXERS) {
-    indexers['escrow-prediction-market-ethereal'] = new PredictionMarketEscrowIndexer(5064014); // Ethereal mainnet
-    indexers['escrow-prediction-market-ethereal-testnet'] = new PredictionMarketEscrowIndexer(13374202); // Ethereal testnet
+    indexers['escrow-prediction-market-ethereal'] =
+      new PredictionMarketEscrowIndexer(5064014); // Ethereal mainnet
+    indexers['escrow-prediction-market-ethereal-testnet'] =
+      new PredictionMarketEscrowIndexer(13374202); // Ethereal testnet
     console.log('[Indexers] Escrow indexers enabled');
   } else {
-    console.log('[Indexers] Escrow indexers disabled (ENABLE_ESCROW_INDEXERS=false)');
+    console.log(
+      '[Indexers] Escrow indexers disabled (ENABLE_ESCROW_INDEXERS=false)'
+    );
   }
 
   return indexers;

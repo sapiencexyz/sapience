@@ -53,7 +53,10 @@ export async function processMarketSubmittedToUMA(
     if (existingEvent) {
       // Event already exists — still update condition if needed
       try {
-        if (condition && (!condition.assertionId || !condition.assertionTimestamp)) {
+        if (
+          condition &&
+          (!condition.assertionId || !condition.assertionTimestamp)
+        ) {
           await prisma.condition.update({
             where: { id: condition.id },
             data: {
@@ -79,7 +82,10 @@ export async function processMarketSubmittedToUMA(
 
     // Wrap condition update + event creation in a transaction
     await prisma.$transaction(async (tx) => {
-      if (condition && (!condition.assertionId || !condition.assertionTimestamp)) {
+      if (
+        condition &&
+        (!condition.assertionId || !condition.assertionTimestamp)
+      ) {
         await tx.condition.update({
           where: { id: condition.id },
           data: {
@@ -100,7 +106,10 @@ export async function processMarketSubmittedToUMA(
       });
     });
 
-    if (condition && (!condition.assertionId || !condition.assertionTimestamp)) {
+    if (
+      condition &&
+      (!condition.assertionId || !condition.assertionTimestamp)
+    ) {
       console.log(
         `[PredictionMarketIndexer] Updated Condition ${eventData.marketId} with assertionId ${eventData.assertionId} and timestamp ${block.timestamp}`
       );

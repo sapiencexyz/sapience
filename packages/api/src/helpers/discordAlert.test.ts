@@ -174,9 +174,10 @@ describe('buildPositionEmbed', () => {
   });
 
   it('uses correct block explorer per chain', () => {
-    const base = buildPositionEmbed(
-      makeAlertData({ chainId: 8453 })
-    ) as Record<string, unknown>;
+    const base = buildPositionEmbed(makeAlertData({ chainId: 8453 })) as Record<
+      string,
+      unknown
+    >;
     const fields = base.fields as Array<{ name: string; value: string }>;
     const baseTx = fields.find((f) => f.name === '🔗 Transaction');
     expect(baseTx?.value).toContain('basescan.org');
@@ -184,7 +185,10 @@ describe('buildPositionEmbed', () => {
     const sepolia = buildPositionEmbed(
       makeAlertData({ chainId: 11155111 })
     ) as Record<string, unknown>;
-    const sepoliaFields = sepolia.fields as Array<{ name: string; value: string }>;
+    const sepoliaFields = sepolia.fields as Array<{
+      name: string;
+      value: string;
+    }>;
     const sepoliaTx = sepoliaFields.find((f) => f.name === '🔗 Transaction');
     expect(sepoliaTx?.value).toContain('sepolia.etherscan.io');
   });
@@ -227,7 +231,8 @@ describe('sendPositionAlert', () => {
 
   it('skips stale blocks without calling fetch', () => {
     const staleData = makeAlertData({
-      blockTimestamp: Math.floor(Date.now() / 1000) - STALE_BLOCK_THRESHOLD_S - 60,
+      blockTimestamp:
+        Math.floor(Date.now() / 1000) - STALE_BLOCK_THRESHOLD_S - 60,
     });
     sendPositionAlert(staleData);
     expect(fetchSpy).not.toHaveBeenCalled();

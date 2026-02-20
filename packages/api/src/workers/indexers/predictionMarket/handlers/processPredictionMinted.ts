@@ -113,14 +113,7 @@ export async function processPredictionMinted(
       ];
 
       const legs = outcomes.map(
-        ([
-          priceId,
-          endTime,
-          strikePrice,
-          strikeExpo,
-          overWinsOnTie,
-          pred,
-        ]) => {
+        ([priceId, endTime, strikePrice, strikeExpo, overWinsOnTie, pred]) => {
           const strikeExpoNum = Number(strikeExpo);
           const marketId = keccak256(
             encodeAbiParameters(
@@ -355,9 +348,7 @@ export async function processPredictionMinted(
           where: { id: { in: conditionIds } },
           select: { id: true, question: true },
         });
-        const questionMap = new Map(
-          conditions.map((c) => [c.id, c.question])
-        );
+        const questionMap = new Map(conditions.map((c) => [c.id, c.question]));
 
         sendPositionAlert({
           predictor: eventData.maker,

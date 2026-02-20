@@ -5,9 +5,7 @@ import {
   ProfitRankType,
 } from '../types/AggregatedProfitTypes';
 import { TtlCache } from '../../utils/ttlCache';
-import {
-  calculateCombinedPositionPnL,
-} from '../../helpers/positionPnL';
+import { calculateCombinedPositionPnL } from '../../helpers/positionPnL';
 
 const DEFAULT_DECIMALS = 18;
 

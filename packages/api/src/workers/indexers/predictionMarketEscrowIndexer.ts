@@ -1,11 +1,6 @@
 import prisma from '../../db';
 import { getProviderForChain, getBlockByTimestamp } from '../../utils/utils';
-import {
-  type PublicClient,
-  decodeEventLog,
-  type Log,
-  type Block,
-} from 'viem';
+import { type PublicClient, decodeEventLog, type Log, type Block } from 'viem';
 import Sentry from '../../instrument';
 import { IIndexer } from '../../interfaces';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
@@ -65,17 +60,25 @@ interface PositionsBurnedEvent {
 }
 
 // Map settlement result number to enum value
-function mapSettlementResult(result: number): 'UNRESOLVED' | 'PREDICTOR_WINS' | 'COUNTERPARTY_WINS' | 'NON_DECISIVE' {
+function mapSettlementResult(
+  result: number
+): 'UNRESOLVED' | 'PREDICTOR_WINS' | 'COUNTERPARTY_WINS' | 'NON_DECISIVE' {
   switch (result) {
-    case 0: return 'UNRESOLVED';
-    case 1: return 'PREDICTOR_WINS';
-    case 2: return 'COUNTERPARTY_WINS';
-    case 3: return 'NON_DECISIVE';
-    default: return 'UNRESOLVED';
+    case 0:
+      return 'UNRESOLVED';
+    case 1:
+      return 'PREDICTOR_WINS';
+    case 2:
+      return 'COUNTERPARTY_WINS';
+    case 3:
+      return 'NON_DECISIVE';
+    default:
+      return 'UNRESOLVED';
   }
 }
 
-const ZERO_BYTES32 = '0x0000000000000000000000000000000000000000000000000000000000000000';
+const ZERO_BYTES32 =
+  '0x0000000000000000000000000000000000000000000000000000000000000000';
 
 /**
  * Prediction Market Escrow Indexer
@@ -144,7 +147,11 @@ class PredictionMarketEscrowIndexer implements IIndexer {
       const startBlockNumber = Number(startBlock.number);
       const endBlockNumber = Number(endBlock.number);
 
-      for (let i = startBlockNumber; i <= endBlockNumber; i += BLOCK_BATCH_SIZE) {
+      for (
+        let i = startBlockNumber;
+        i <= endBlockNumber;
+        i += BLOCK_BATCH_SIZE
+      ) {
         const batchEnd = Math.min(i + BLOCK_BATCH_SIZE - 1, endBlockNumber);
         console.log(
           `[PredictionMarketEscrowIndexer] Processing blocks ${i} to ${batchEnd}`
@@ -175,7 +182,10 @@ class PredictionMarketEscrowIndexer implements IIndexer {
 
       return true;
     } catch (error) {
-      console.error('[PredictionMarketEscrowIndexer] Error indexing blocks:', error);
+      console.error(
+        '[PredictionMarketEscrowIndexer] Error indexing blocks:',
+        error
+      );
       Sentry.captureException(error);
       throw error;
     }
@@ -198,7 +208,9 @@ class PredictionMarketEscrowIndexer implements IIndexer {
       );
 
       // Get blocks for timestamps
-      const blockNumbers = [...new Set(logs.map((log) => Number(log.blockNumber)))];
+      const blockNumbers = [
+        ...new Set(logs.map((log) => Number(log.blockNumber))),
+      ];
       const blockPromises = blockNumbers.map((num) =>
         this.client.getBlock({ blockNumber: BigInt(num) })
       );
@@ -226,7 +238,9 @@ class PredictionMarketEscrowIndexer implements IIndexer {
 
   async watchBlocksForResource(resourceSlug: string): Promise<void> {
     if (this.isWatching) {
-      console.log(`[PredictionMarketEscrowIndexer] Already watching ${resourceSlug}`);
+      console.log(
+        `[PredictionMarketEscrowIndexer] Already watching ${resourceSlug}`
+      );
       return;
     }
 
@@ -238,7 +252,9 @@ class PredictionMarketEscrowIndexer implements IIndexer {
 
     // Set up SIGINT handler
     this.sigintHandler = () => {
-      console.log('[PredictionMarketEscrowIndexer] Received SIGINT, stopping...');
+      console.log(
+        '[PredictionMarketEscrowIndexer] Received SIGINT, stopping...'
+      );
       this.stop();
       process.exit(0);
     };
@@ -268,7 +284,10 @@ class PredictionMarketEscrowIndexer implements IIndexer {
             `[PredictionMarketEscrowIndexer] Starting from current block ${this.lastProcessedBlock}`
           );
         } catch (error) {
-          console.error('[PredictionMarketEscrowIndexer] Error getting initial block:', error);
+          console.error(
+            '[PredictionMarketEscrowIndexer] Error getting initial block:',
+            error
+          );
           this.lastProcessedBlock = 0n;
         }
       }
@@ -304,7 +323,10 @@ class PredictionMarketEscrowIndexer implements IIndexer {
                 });
                 await this.processLog(log, block);
               } catch (error) {
-                console.error('[PredictionMarketEscrowIndexer] Error processing log:', error);
+                console.error(
+                  '[PredictionMarketEscrowIndexer] Error processing log:',
+                  error
+                );
                 Sentry.captureException(error);
               }
             }
@@ -371,29 +393,56 @@ class PredictionMarketEscrowIndexer implements IIndexer {
       const eventName = decoded.eventName as unknown as string;
       switch (eventName) {
         case 'PredictionCreated':
-          await this.processPredictionCreated(decoded.args as unknown as PredictionCreatedEvent, log, block);
+          await this.processPredictionCreated(
+            decoded.args as unknown as PredictionCreatedEvent,
+            log,
+            block
+          );
           break;
         case 'PredictionSettled':
-          await this.processPredictionSettled(decoded.args as unknown as PredictionSettledEvent, log, block);
+          await this.processPredictionSettled(
+            decoded.args as unknown as PredictionSettledEvent,
+            log,
+            block
+          );
           break;
         case 'TokensRedeemed':
-          await this.processTokensRedeemed(decoded.args as unknown as TokensRedeemedEvent, log, block);
+          await this.processTokensRedeemed(
+            decoded.args as unknown as TokensRedeemedEvent,
+            log,
+            block
+          );
           break;
         case 'CollateralDeposited':
-          await this.processCollateralDeposited(decoded.args as unknown as CollateralDepositedEvent, log, block);
+          await this.processCollateralDeposited(
+            decoded.args as unknown as CollateralDepositedEvent,
+            log,
+            block
+          );
           break;
         case 'DustSwept':
-          await this.processDustSwept(decoded.args as unknown as DustSweptEvent, log, block);
+          await this.processDustSwept(
+            decoded.args as unknown as DustSweptEvent,
+            log,
+            block
+          );
           break;
         case 'PositionsBurned':
-          await this.processPositionsBurned(decoded.args as unknown as PositionsBurnedEvent, log, block);
+          await this.processPositionsBurned(
+            decoded.args as unknown as PositionsBurnedEvent,
+            log,
+            block
+          );
           break;
         default:
           // Silently skip other events (e.g., OwnershipTransferred)
           break;
       }
     } catch (error) {
-      console.error('[PredictionMarketEscrowIndexer] Error processing log:', error);
+      console.error(
+        '[PredictionMarketEscrowIndexer] Error processing log:',
+        error
+      );
       Sentry.captureException(error);
     }
   }
@@ -528,7 +577,12 @@ class PredictionMarketEscrowIndexer implements IIndexer {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  private async processDustSwept(event: DustSweptEvent, log: Log, block: Block): Promise<void> {
+  private async processDustSwept(
+    event: DustSweptEvent,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _log: Log, // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _block: Block
+  ): Promise<void> {
     console.log(
       `[PredictionMarketEscrowIndexer] Processing DustSwept event: pickConfigId=${event.pickConfigId}, amount=${event.amount}`
     );

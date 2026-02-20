@@ -268,7 +268,9 @@ async function calculateVaultPnL(
     settledAt?: { lte: number };
     OR: Array<{ predictor: string } | { counterparty: string }>;
   } = {
-    status: { in: [LegacyPositionStatus.settled, LegacyPositionStatus.consolidated] },
+    status: {
+      in: [LegacyPositionStatus.settled, LegacyPositionStatus.consolidated],
+    },
     predictorWon: { not: null },
     chainId,
     OR: [{ predictor: vaultAddressLower }, { counterparty: vaultAddressLower }],
@@ -278,7 +280,9 @@ async function calculateVaultPnL(
     whereClause.settledAt = { lte: beforeTimestamp };
   }
 
-  const positions = await prisma.legacyPosition.findMany({ where: whereClause });
+  const positions = await prisma.legacyPosition.findMany({
+    where: whereClause,
+  });
 
   // Get mint events for collateral breakdown
   const mintTimestamps = Array.from(

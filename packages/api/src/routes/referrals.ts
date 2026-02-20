@@ -319,9 +319,9 @@ router.post('/claim', async (req: Request, res: Response) => {
     });
 
     if (!code) {
-      return res
-        .status(404)
-        .json({ message: 'Invite code not found. Please check and try again.' });
+      return res.status(404).json({
+        message: 'Invite code not found. Please check and try again.',
+      });
     }
 
     // Validate: isActive, not expired, under capacity

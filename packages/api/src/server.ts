@@ -1,4 +1,4 @@
-  import 'reflect-metadata';
+import 'reflect-metadata';
 import { initializeDataSource } from './db';
 import { expressMiddleware } from '@as-integrations/express4';
 import { createLoaders } from './graphql/loaders';

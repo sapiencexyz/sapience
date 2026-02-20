@@ -148,14 +148,10 @@ const TOPIC_PREDICTION_CONSOLIDATED = keccak256(
   toHex('PredictionConsolidated(uint256,uint256,uint256,bytes32)')
 );
 const TOPIC_ORDER_PLACED = keccak256(
-  toHex(
-    'OrderPlaced(address,uint256,bytes,address,uint256,uint256,bytes32)'
-  )
+  toHex('OrderPlaced(address,uint256,bytes,address,uint256,uint256,bytes32)')
 );
 const TOPIC_ORDER_FILLED = keccak256(
-  toHex(
-    'OrderFilled(uint256,address,address,bytes,uint256,uint256,bytes32)'
-  )
+  toHex('OrderFilled(uint256,address,address,bytes,uint256,uint256,bytes32)')
 );
 const TOPIC_ORDER_CANCELLED = keccak256(
   toHex('OrderCancelled(uint256,address,bytes,uint256,uint256)')
@@ -167,9 +163,7 @@ const TOPIC_MARKET_SUBMITTED_TO_UMA = keccak256(
   toHex('MarketSubmittedToUMA(bytes32,bytes32,address,bytes,bool)')
 );
 const TOPIC_CONDITION_RESOLVED = keccak256(
-  toHex(
-    'ConditionResolved(bytes32,bool,bool,uint256,uint256,uint256,uint256)'
-  )
+  toHex('ConditionResolved(bytes32,bool,bool,uint256,uint256,uint256,uint256)')
 );
 const TOPIC_PENDING_REQUEST_PROCESSED = keccak256(
   toHex('PendingRequestProcessed(address,bool,uint256,uint256)')
@@ -412,7 +406,9 @@ describe('PredictionMarketIndexer', () => {
 
     it('handles unknown topic gracefully', async () => {
       const log = makeLog({
-        topics: ['0x0000000000000000000000000000000000000000000000000000000000000000'],
+        topics: [
+          '0x0000000000000000000000000000000000000000000000000000000000000000',
+        ],
       });
       await (indexer as any).processLog(log, makeBlock());
       // Should not throw, no prisma calls
@@ -496,8 +492,8 @@ describe('PredictionMarketIndexer', () => {
       expect(prisma.legacyPosition.create).toHaveBeenCalledTimes(1);
 
       // Verify position data
-      const positionData = (prisma.legacyPosition.create as Mock).mock.calls[0][0]
-        .data;
+      const positionData = (prisma.legacyPosition.create as Mock).mock
+        .calls[0][0].data;
       expect(positionData.status).toBe('active');
       expect(positionData.predictorWon).toBeNull();
       expect(positionData.totalCollateral).toBe('300000000');
@@ -530,9 +526,7 @@ describe('PredictionMarketIndexer', () => {
     });
 
     it('catches and reports errors without throwing', async () => {
-      (prisma.event.findFirst as Mock).mockRejectedValue(
-        new Error('DB error')
-      );
+      (prisma.event.findFirst as Mock).mockRejectedValue(new Error('DB error'));
 
       await expect(
         (indexer as any).processPredictionMinted(mintedLog, makeBlock())
@@ -618,9 +612,7 @@ describe('PredictionMarketIndexer', () => {
     });
 
     it('catches errors without throwing', async () => {
-      (prisma.event.findFirst as Mock).mockRejectedValue(
-        new Error('DB error')
-      );
+      (prisma.event.findFirst as Mock).mockRejectedValue(new Error('DB error'));
       await expect(
         (indexer as any).processPredictionBurned(burnLog, makeBlock())
       ).resolves.toBeUndefined();
@@ -692,9 +684,7 @@ describe('PredictionMarketIndexer', () => {
     });
 
     it('catches errors without throwing', async () => {
-      (prisma.event.findFirst as Mock).mockRejectedValue(
-        new Error('DB error')
-      );
+      (prisma.event.findFirst as Mock).mockRejectedValue(new Error('DB error'));
       await expect(
         (indexer as any).processPredictionConsolidated(consolLog, makeBlock())
       ).resolves.toBeUndefined();
@@ -764,9 +754,7 @@ describe('PredictionMarketIndexer', () => {
     });
 
     it('catches errors without throwing', async () => {
-      (prisma.event.findFirst as Mock).mockRejectedValue(
-        new Error('DB error')
-      );
+      (prisma.event.findFirst as Mock).mockRejectedValue(new Error('DB error'));
       await expect(
         (indexer as any).processOrderPlaced(orderLog, makeBlock())
       ).resolves.toBeUndefined();
@@ -1005,9 +993,7 @@ describe('PredictionMarketIndexer', () => {
     });
 
     it('catches errors without throwing', async () => {
-      (prisma.event.findFirst as Mock).mockRejectedValue(
-        new Error('DB error')
-      );
+      (prisma.event.findFirst as Mock).mockRejectedValue(new Error('DB error'));
       await expect(
         (indexer as any).processMarketResolved(resolveLog, makeBlock())
       ).resolves.toBeUndefined();
@@ -1029,11 +1015,7 @@ describe('PredictionMarketIndexer', () => {
         { type: 'bytes' }, // claim
         { type: 'bool' }, // resolvedToYes
       ],
-      [
-        '0x000000000000000000000000000000000000dEaD',
-        '0x1234',
-        true,
-      ]
+      ['0x000000000000000000000000000000000000dEaD', '0x1234', true]
     );
 
     const umaLog = makeLog({
@@ -1160,9 +1142,7 @@ describe('PredictionMarketIndexer', () => {
     });
 
     it('catches errors without throwing', async () => {
-      (prisma.event.findFirst as Mock).mockRejectedValue(
-        new Error('DB error')
-      );
+      (prisma.event.findFirst as Mock).mockRejectedValue(new Error('DB error'));
       await expect(
         (indexer as any).processConditionResolved(condResolveLog, makeBlock())
       ).resolves.toBeUndefined();
@@ -1206,11 +1186,7 @@ describe('PredictionMarketIndexer', () => {
 
     it('handles withdrawal (direction=false)', async () => {
       const withdrawData = encodeAbiParameters(
-        [
-          { type: 'bool' },
-          { type: 'uint256' },
-          { type: 'uint256' },
-        ],
+        [{ type: 'bool' }, { type: 'uint256' }, { type: 'uint256' }],
         [false, 500000n, 1000000n]
       );
 
@@ -1263,7 +1239,11 @@ describe('PredictionMarketIndexer', () => {
 
     it('continues processing other logs if one fails', async () => {
       // First log will fail in processLog, second should still process
-      const badLog = makeLog({ logIndex: 0, topics: [TOPIC_PREDICTION_MINTED], data: '0x' });
+      const badLog = makeLog({
+        logIndex: 0,
+        topics: [TOPIC_PREDICTION_MINTED],
+        data: '0x',
+      });
       const goodLog = makeLog({ logIndex: 1, topics: ['0xunknown'] });
       mockClient.getLogs.mockResolvedValueOnce([badLog, goodLog]);
 
