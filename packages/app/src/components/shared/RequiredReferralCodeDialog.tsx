@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -20,6 +20,7 @@ interface RequiredReferralCodeDialogProps {
   walletAddress: string | null;
   onCodeSet?: (code: string) => void;
   onLogout: () => void;
+  initialCode?: string;
 }
 
 const RequiredReferralCodeDialog = ({
@@ -28,8 +29,12 @@ const RequiredReferralCodeDialog = ({
   walletAddress,
   onCodeSet,
   onLogout,
+  initialCode,
 }: RequiredReferralCodeDialogProps) => {
-  const [code, setCode] = useState('');
+  const [code, setCode] = useState(initialCode ?? '');
+  useEffect(() => {
+    if (initialCode) setCode(initialCode);
+  }, [initialCode]);
   const [submitting, setSubmitting] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [isGetAccessOpen, setIsGetAccessOpen] = useState(false);
