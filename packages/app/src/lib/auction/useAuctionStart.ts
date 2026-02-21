@@ -174,12 +174,12 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
         const data = msg as { type?: string; payload?: any };
 
         if (data?.type === 'auction.bids') {
-          const rawBids = Array.isArray(data.payload?.bids)
-            ? (data.payload.bids as any[])
-            : [];
-          // Only accept bids for OUR auction id
-          const targetAuctionId: string | null =
-            rawBids.length > 0 ? rawBids[0]?.auctionId || null : null;
+          const targetAuctionId =
+            (data.payload?.auctionId as string | undefined) ||
+            (Array.isArray(data.payload?.bids) && data.payload.bids.length > 0
+              ? data.payload.bids[0]?.auctionId
+              : null) ||
+            null;
 
           if (!targetAuctionId) return;
           // Filter: only process if this is for our current auction
@@ -195,6 +195,10 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
             return;
           }
 
+          const rawBids = Array.isArray(data.payload?.bids)
+            ? (data.payload.bids as any[])
+            : [];
+
           log(
             `Received batch of ${rawBids.length} bid(s) for auction ${targetAuctionId}`
           );
@@ -202,56 +206,20 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
             log(`  - ${formatBidForLog(b)}`);
           });
           const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
+          // Support both V1 (maker*) and escrow (counterparty*) field names
           const normalized: QuoteBid[] = rawBids
             .map((b): QuoteBid | null => {
               try {
                 return {
-                  auctionId: b.auctionId || latestAuctionIdRef.current || '',
-                  maker: b.maker || ZERO_ADDRESS,
-                  makerCollateral: b.makerCollateral || '0',
-                  makerDeadline: b.makerDeadline || 0,
-                  makerSignature: b.makerSignature || '0x',
-                  makerNonce: b.makerNonce || 0,
-                };
-              } catch {
-                return null;
-              }
-            })
-            .filter((b): b is QuoteBid => b !== null);
-          setBids(normalized);
-        }
-
-        // Handle escrow auction bids (map to V1 QuoteBid format)
-        if (data?.type === 'auction.bids') {
-          const targetAuctionId = data.payload?.auctionId as string | undefined;
-          const rawBids = Array.isArray(data.payload?.bids)
-            ? (data.payload.bids as any[])
-            : [];
-
-          if (!targetAuctionId) return;
-          // Filter: only process if this is for our current auction
-          if (targetAuctionId !== latestAuctionIdRef.current) {
-            return;
-          }
-
-          const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
-
-          const normalized: QuoteBid[] = rawBids
-            .map((b): QuoteBid | null => {
-              try {
-                // Map escrow bid fields to V1 QuoteBid format:
-                // Escrow counterparty = V1 maker (bidder)
-                // Escrow counterpartyNonce = V1 makerNonce
-                // Escrow counterpartyDeadline = V1 makerDeadline
-                // Escrow counterpartySignature = V1 makerSignature
-                // Escrow counterpartyCollateral comes from the BID (counterparty decides their collateral)
-                return {
-                  auctionId: targetAuctionId,
-                  maker: b.counterparty || ZERO_ADDRESS,
-                  makerCollateral: b.counterpartyCollateral || '0',
-                  makerDeadline: b.counterpartyDeadline || 0,
-                  makerSignature: b.counterpartySignature || '0x',
-                  makerNonce: b.counterpartyNonce || 0,
+                  auctionId: b.auctionId || targetAuctionId,
+                  maker: b.maker || b.counterparty || ZERO_ADDRESS,
+                  makerCollateral:
+                    b.makerCollateral || b.counterpartyCollateral || '0',
+                  makerDeadline:
+                    b.makerDeadline || b.counterpartyDeadline || 0,
+                  makerSignature:
+                    b.makerSignature || b.counterpartySignature || '0x',
+                  makerNonce: b.makerNonce || b.counterpartyNonce || 0,
                   // Store escrow-specific fields for later use in mint request
                   counterpartySessionKeyData: b.counterpartySessionKeyData,
                 } as QuoteBid;

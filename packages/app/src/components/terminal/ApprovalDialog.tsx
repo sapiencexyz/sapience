@@ -21,7 +21,10 @@ import {
   erc20Abi,
   parseAbi,
 } from 'viem';
-import { predictionMarket } from '@sapience/sdk/contracts';
+import {
+  predictionMarket,
+  predictionMarketEscrow,
+} from '@sapience/sdk/contracts';
 import { predictionMarketAbi } from '@sapience/sdk';
 import {
   CHAIN_ID_ETHEREAL,
@@ -66,33 +69,39 @@ const ApprovalDialog: React.FC = () => {
   const isEtherealChain =
     chainId === CHAIN_ID_ETHEREAL || chainId === CHAIN_ID_ETHEREAL_TESTNET;
 
-  const SPENDER_ADDRESS = predictionMarket[chainId]?.address as
-    | `0x${string}`
-    | undefined;
+  // Escrow chains approve against PredictionMarketEscrow; legacy chains against PredictionMarket
+  const isEscrowChain = chainId === CHAIN_ID_ETHEREAL_TESTNET;
+  const SPENDER_ADDRESS = (
+    isEscrowChain
+      ? predictionMarketEscrow[chainId]?.address
+      : predictionMarket[chainId]?.address
+  ) as `0x${string}` | undefined;
 
-  // Read collateral token address from PredictionMarket contract config
+  // Read collateral token address from PredictionMarket contract config (legacy only)
   const predictionMarketConfigRead = useReadContracts({
-    contracts: SPENDER_ADDRESS
-      ? [
-          {
-            address: SPENDER_ADDRESS,
-            abi: predictionMarketAbi,
-            functionName: 'getConfig',
-            chainId: chainId,
-          },
-        ]
-      : [],
-    query: { enabled: !!SPENDER_ADDRESS },
+    contracts:
+      !isEscrowChain && SPENDER_ADDRESS
+        ? [
+            {
+              address: SPENDER_ADDRESS,
+              abi: predictionMarketAbi,
+              functionName: 'getConfig',
+              chainId: chainId,
+            },
+          ]
+        : [],
+    query: { enabled: !isEscrowChain && !!SPENDER_ADDRESS },
   });
 
   const COLLATERAL_ADDRESS: `0x${string}` | undefined = useMemo(() => {
+    if (isEscrowChain) return collateralToken[chainId]?.address as `0x${string}` | undefined;
     const item = predictionMarketConfigRead.data?.[0];
     if (item && item.status === 'success') {
       const cfg = item.result as { collateralToken: `0x${string}` };
       return cfg?.collateralToken;
     }
     return undefined;
-  }, [predictionMarketConfigRead.data]);
+  }, [isEscrowChain, predictionMarketConfigRead.data]);
 
   // Simplification: on Ethereal, trading collateral is always wUSDe (and native USDe is used for gas + wrapping).
   const collateralAddress = useMemo(() => {

@@ -72,23 +72,31 @@ class AuctionBidsHub {
       ? (msg.payload.bids as any[])
       : [];
     if (raw.length === 0) return;
+    const auctionIdFromPayload = String(msg?.payload?.auctionId || '');
     const updates = new Map<string, AuctionBid[]>();
     for (const b of raw) {
       try {
-        const auctionId = String(b?.auctionId || '');
+        const auctionId = String(b?.auctionId || auctionIdFromPayload || '');
         if (!auctionId) continue;
-        const signature = String(b?.makerSignature || '0x');
+        // Support both V1 (maker*) and escrow (counterparty*) field names
+        const signature = String(
+          b?.makerSignature || b?.counterpartySignature || '0x'
+        );
         const existingTs = this.receivedAtRef.get(signature);
         const receivedAtMs = existingTs ?? Date.now();
         if (existingTs === undefined)
           this.receivedAtRef.set(signature, receivedAtMs);
         const obj: AuctionBid = {
           auctionId,
-          maker: String(b?.maker || ''),
-          makerCollateral: String(b?.makerCollateral || '0'),
-          makerDeadline: Number(b?.makerDeadline || 0),
+          maker: String(b?.maker || b?.counterparty || ''),
+          makerCollateral: String(
+            b?.makerCollateral || b?.counterpartyCollateral || '0'
+          ),
+          makerDeadline: Number(
+            b?.makerDeadline || b?.counterpartyDeadline || 0
+          ),
           makerSignature: signature,
-          makerNonce: Number(b?.makerNonce || 0),
+          makerNonce: Number(b?.makerNonce || b?.counterpartyNonce || 0),
           receivedAtMs,
         };
         if (!updates.has(auctionId)) updates.set(auctionId, []);

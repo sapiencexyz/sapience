@@ -341,7 +341,26 @@ const CreatePositionFormInner = ({
     const { taker, wager, takerNonce, predictedOutcomes, resolver, chainId } =
       currentAuctionParams;
 
-    // Need all auction context to simulate
+    // Escrow auctions use picks instead of predictedOutcomes.
+    // Skip V1 mint simulation for escrow and mark bids as valid directly.
+    const isEscrowAuction =
+      currentAuctionParams.escrowPicks &&
+      currentAuctionParams.escrowPicks.length > 0;
+
+    if (isEscrowAuction) {
+      logPositionForm(
+        `Received ${rawBids.length} escrow bid(s), marking as valid (escrow auctions skip V1 simulation)`
+      );
+      setBids(
+        rawBids.map((b) => ({
+          ...b,
+          validationStatus: 'valid' as const,
+        }))
+      );
+      return;
+    }
+
+    // Need all auction context to simulate (V1 auctions only)
     if (
       !taker ||
       !wager ||

@@ -1099,7 +1099,7 @@ const TerminalPageContent: React.FC = () => {
                                   isPinned={true}
                                   isExpanded={expandedAuctions.has(auctionId)}
                                   onToggleExpanded={toggleExpanded}
-                                  isEscrowAuction={m?.type === 'v2.auction.started'}
+                                  isEscrowAuction={Array.isArray(m?.data?.picks) && m.data.picks.length > 0}
                                   escrowPicks={
                                     Array.isArray(m?.data?.picks)
                                       ? m?.data?.picks
@@ -1183,9 +1183,7 @@ const TerminalPageContent: React.FC = () => {
                                         auctionId
                                       )}
                                       onToggleExpanded={toggleExpanded}
-                                      isEscrowAuction={
-                                        m?.type === 'v2.auction.started'
-                                      }
+                                      isEscrowAuction={Array.isArray(m?.data?.picks) && m.data.picks.length > 0}
                                       escrowPicks={
                                         Array.isArray(m?.data?.picks)
                                           ? m?.data?.picks
