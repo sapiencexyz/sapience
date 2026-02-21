@@ -318,6 +318,10 @@ const CreatePositionFormInner = ({
   // Async validation of bids - validates by simulating the mint transaction
   // This catches all contract errors: signature, nonce, expiry, insufficient funds/allowance, etc.
   useEffect(() => {
+    logPositionForm(
+      `[validation] rawBids=${rawBids.length}, hasParams=${!!currentAuctionParams}, hasMarket=${!!PREDICTION_MARKET_ADDRESS}, escrowPicks=${currentAuctionParams?.escrowPicks?.length ?? 'n/a'}`
+    );
+
     if (rawBids.length === 0) {
       setBids([]);
       return;
@@ -349,7 +353,7 @@ const CreatePositionFormInner = ({
 
     if (isEscrowAuction) {
       logPositionForm(
-        `Received ${rawBids.length} escrow bid(s), marking as valid (escrow auctions skip V1 simulation)`
+        `Received ${rawBids.length} escrow bid(s), marking as valid (escrow auctions skip V1 simulation). First bid: maker=${rawBids[0]?.maker?.slice(0, 10)}, collateral=${rawBids[0]?.makerCollateral}, deadline=${rawBids[0]?.makerDeadline}`
       );
       setBids(
         rawBids.map((b) => ({

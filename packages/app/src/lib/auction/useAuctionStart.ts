@@ -181,6 +181,10 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
               : null) ||
             null;
 
+          log(
+            `[handleMessage] auction.bids received: target=${targetAuctionId?.slice(0, 8)}, current=${latestAuctionIdRef.current?.slice(0, 8)}, bidCount=${Array.isArray(data.payload?.bids) ? data.payload.bids.length : 0}`
+          );
+
           if (!targetAuctionId) return;
           // Filter: only process if this is for our current auction
           if (targetAuctionId !== latestAuctionIdRef.current) {
@@ -199,12 +203,6 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
             ? (data.payload.bids as any[])
             : [];
 
-          log(
-            `Received batch of ${rawBids.length} bid(s) for auction ${targetAuctionId}`
-          );
-          rawBids.forEach((b) => {
-            log(`  - ${formatBidForLog(b)}`);
-          });
           const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
           // Support both V1 (maker*) and escrow (counterparty*) field names
           const normalized: QuoteBid[] = rawBids
@@ -228,7 +226,18 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
               }
             })
             .filter((b): b is QuoteBid => b !== null);
+          // Set bids BEFORE logging so logging errors can never block state updates
           setBids(normalized);
+          log(
+            `Received batch of ${rawBids.length} bid(s) for auction ${targetAuctionId}`
+          );
+          try {
+            rawBids.forEach((b) => {
+              log(`  - ${formatBidForLog(b)}`);
+            });
+          } catch {
+            // Never let logging errors block bid processing
+          }
         }
 
         // auction.ack handled via sendWithAck
@@ -424,6 +433,9 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
             latestAuctionIdRef.current = newId;
             loggedStaleAuctionsRef.current.clear();
             setAuctionId(newId);
+            log(
+              `[escrow] Auction started: id=${newId?.slice(0, 8)}, latestRef=${latestAuctionIdRef.current?.slice(0, 8)}, escrowPicks=${params.escrowPicks?.length}`
+            );
 
             // Subscribe to escrow auction updates
             if (newId) {
