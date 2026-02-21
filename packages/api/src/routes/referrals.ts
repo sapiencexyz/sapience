@@ -160,39 +160,6 @@ async function verifyWalletSignature(params: {
 // Public Routes
 // =============================================================================
 
-// GET /referrals/eligibility - Check invite eligibility for an address
-router.get('/eligibility', async (req: Request, res: Response) => {
-  const address = req.query.address as string | undefined;
-  if (!address) {
-    return res.status(400).json({ message: 'address query parameter is required' });
-  }
-
-  try {
-    const volumeWei = await calculateVolumeForAddress(address);
-    const earnedInvites = Number(volumeWei / VOLUME_PER_INVITE);
-
-    const user = await prisma.user.findUnique({
-      where: { address: normalizeAddress(address) },
-      include: { _count: { select: { referrals: true } } },
-    });
-    const usedInvites = user?._count?.referrals ?? 0;
-
-    const volumeFormatted = Number(volumeWei / (10n ** 14n)) / 10000;
-    const nextInviteAt = (usedInvites + 1) * 10;
-
-    return res.status(200).json({
-      earnedInvites,
-      usedInvites,
-      volume: volumeFormatted,
-      volumeFormatted: `${volumeFormatted} USDe`,
-      nextInviteAt: `${nextInviteAt} USDe`,
-    });
-  } catch (e) {
-    console.error('Error checking eligibility', e);
-    return res.status(500).json({ message: 'Failed to check eligibility' });
-  }
-});
-
 // POST /referrals/code - User creates their own referral code
 // Requires sufficient trading volume
 router.post('/code', async (req: Request, res: Response) => {

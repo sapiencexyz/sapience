@@ -1,45 +1,42 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
+import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 
-interface EligibilityResponse {
-  earnedInvites: number;
-  usedInvites: number;
-  volume: number;
-  volumeFormatted: string;
-  nextInviteAt: string;
-}
+const TRADING_VOLUME_QUERY = /* GraphQL */ `
+  query TradingVolume($address: String!) {
+    tradingVolumeByAddress(address: $address)
+  }
+`;
+
+const VOLUME_PER_INVITE = 10; // 10 USDe per invite
 
 export function useReferralEligibility(address?: string) {
   const lowerAddress = address?.toLowerCase();
 
-  const query = useQuery({
-    queryKey: ['referralEligibility', lowerAddress],
+  const volume = useQuery({
+    queryKey: ['tradingVolumeEligibility', lowerAddress],
     enabled: Boolean(lowerAddress),
     staleTime: 60_000,
-    queryFn: async (): Promise<EligibilityResponse> => {
-      const apiUrl =
-        process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.sapience.xyz';
-      const resp = await fetch(
-        `${apiUrl}/referrals/eligibility?address=${lowerAddress}`
+    queryFn: async () => {
+      const resp = await graphqlRequest<{ tradingVolumeByAddress: string }>(
+        TRADING_VOLUME_QUERY,
+        { address: lowerAddress }
       );
-      if (!resp.ok) throw new Error('Failed to fetch eligibility');
-      return resp.json();
+      const wei = BigInt(resp?.tradingVolumeByAddress || '0');
+      return Number(wei / (10n ** 14n)) / 10000; // to USDe float
     },
   });
 
-  const data = query.data;
-  const earnedInvites = data?.earnedInvites ?? 0;
-  const usedInvites = data?.usedInvites ?? 0;
+  const volumeUsd = volume.data ?? 0;
+  const earnedInvites = Math.floor(volumeUsd / VOLUME_PER_INVITE);
 
   return {
-    eligible: earnedInvites > usedInvites,
+    eligible: earnedInvites > 0,
     earnedInvites,
-    usedInvites,
-    remainingInvites: Math.max(0, earnedInvites - usedInvites),
-    volume: data?.volume ?? 0,
-    nextInviteAt: data?.nextInviteAt ?? '10 USDe',
-    isLoading: query.isLoading,
-    refetch: query.refetch,
+    volume: volumeUsd,
+    nextInviteAt: `${((earnedInvites + 1) * VOLUME_PER_INVITE).toFixed(0)} USDe`,
+    isLoading: volume.isLoading,
+    refetch: () => { void volume.refetch(); },
   };
 }

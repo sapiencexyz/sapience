@@ -395,19 +395,14 @@ const ReferralsDialog = ({
                   }}
                 />
               </div>
-              {eligibility.usedInvites > 0 && (
-                <p className="text-[11px] text-muted-foreground">
-                  {eligibility.usedInvites} invite{eligibility.usedInvites !== 1 ? 's' : ''} used
-                </p>
-              )}
             </div>
           ) : !createdCode && eligibility.eligible && !hasExistingCode ? (
             <div className="space-y-2">
               <p className="text-xs text-muted-foreground">
-                You have {eligibility.remainingInvites} invite code{eligibility.remainingInvites !== 1 ? 's' : ''} available ({eligibility.usedInvites} used)
+                You have {eligibility.earnedInvites} invite code{eligibility.earnedInvites !== 1 ? 's' : ''} available
               </p>
               <p className="text-[11px] text-muted-foreground">
-                Each invite gives your friend 1 USDe for their first prediction
+                Earn 1 invite for every 10 USDe traded. Each invite gives your friend 1 USDe for their first prediction.
               </p>
               <form onSubmit={handleCreateCode} className="space-y-1.5">
                 <div className="flex gap-3">
