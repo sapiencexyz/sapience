@@ -36,7 +36,7 @@ const SPONSOR_ABI = [
  * Default sponsorship budget per new user (in collateral token units).
  * 18 decimals — e.g. 10 USDe = 10_000000000000000000
  */
-const DEFAULT_BUDGET = parseUnits('10', 18);
+const DEFAULT_BUDGET = parseUnits('1', 18);
 
 function getChainForId(chainId: number) {
   switch (chainId) {
