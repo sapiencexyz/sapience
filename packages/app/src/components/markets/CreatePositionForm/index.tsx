@@ -318,6 +318,10 @@ const CreatePositionFormInner = ({
   // Async validation of bids - validates by simulating the mint transaction
   // This catches all contract errors: signature, nonce, expiry, insufficient funds/allowance, etc.
   useEffect(() => {
+    logPositionForm(
+      `[validation] rawBids=${rawBids.length}, hasParams=${!!currentAuctionParams}, hasMarket=${!!PREDICTION_MARKET_ADDRESS}, escrowPicks=${currentAuctionParams?.escrowPicks?.length ?? 'n/a'}`
+    );
+
     if (rawBids.length === 0) {
       setBids([]);
       return;
@@ -341,7 +345,26 @@ const CreatePositionFormInner = ({
     const { taker, wager, takerNonce, predictedOutcomes, resolver, chainId } =
       currentAuctionParams;
 
-    // Need all auction context to simulate
+    // Escrow auctions use picks instead of predictedOutcomes.
+    // Skip V1 mint simulation for escrow and mark bids as valid directly.
+    const isEscrowAuction =
+      currentAuctionParams.escrowPicks &&
+      currentAuctionParams.escrowPicks.length > 0;
+
+    if (isEscrowAuction) {
+      logPositionForm(
+        `Received ${rawBids.length} escrow bid(s), marking as valid (escrow auctions skip V1 simulation). First bid: maker=${rawBids[0]?.maker?.slice(0, 10)}, collateral=${rawBids[0]?.makerCollateral}, deadline=${rawBids[0]?.makerDeadline}`
+      );
+      setBids(
+        rawBids.map((b) => ({
+          ...b,
+          validationStatus: 'valid' as const,
+        }))
+      );
+      return;
+    }
+
+    // Need all auction context to simulate (V1 auctions only)
     if (
       !taker ||
       !wager ||

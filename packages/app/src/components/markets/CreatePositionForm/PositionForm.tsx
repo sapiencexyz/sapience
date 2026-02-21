@@ -254,14 +254,25 @@ export default function PositionForm({
     // If we have a request key set, only accept bids that match it
     // If request key is null, it means selections/position size changed, so ignore all incoming bids
     if (currentRequestKeyRef.current === null) {
+      if (bids.length > 0) {
+        logPositionForm(
+          `[accept] REJECTED: currentRequestKeyRef is null. bids=${bids.length}, currentKey=${currentRequestKey.slice(0, 40)}`
+        );
+      }
       return;
     }
     // Only accept bids if they match the current request
     if (currentRequestKeyRef.current === currentRequestKey) {
       if (bids.length > 0) {
-        logPositionForm(`Received ${bids.length} bid(s)`);
+        logPositionForm(
+          `[accept] ACCEPTED ${bids.length} bid(s). validationStatus=${bids[0]?.validationStatus}, key=${currentRequestKey.slice(0, 40)}`
+        );
       }
       setValidBids(bids);
+    } else if (bids.length > 0) {
+      logPositionForm(
+        `[accept] REJECTED: key mismatch. ref=${currentRequestKeyRef.current?.slice(0, 40)}, current=${currentRequestKey.slice(0, 40)}`
+      );
     }
   }, [bids, predictionsKey, positionSizeValue]);
 
@@ -283,7 +294,9 @@ export default function PositionForm({
     if (nonExpiredBids.length === 0) {
       const resultKey = 'all-expired';
       if (prevFilterResultRef.current !== resultKey) {
-        logPositionForm('All bids expired');
+        logPositionForm(
+          `[bestBid] All ${validBids.length} bid(s) expired. First deadline=${validBids[0]?.makerDeadline}, nowSec=${Math.floor(nowMs / 1000)}`
+        );
         prevFilterResultRef.current = resultKey;
       }
       return { bestBid: null, estimateBid: null };
@@ -486,6 +499,9 @@ export default function PositionForm({
         setLastQuoteRequestMs(Date.now());
         // Set the request key to match incoming bids to this configuration
         currentRequestKeyRef.current = `${predictionsKey}:${positionSizeValue || ''}`;
+        logPositionForm(
+          `[triggerAuction] Key set: ${currentRequestKeyRef.current.slice(0, 50)}, escrowPicks=${params.escrowPicks?.length ?? 0}`
+        );
 
         // Clear in-flight flag after a short delay to allow the debounced request to start
         // This prevents duplicate requests while still allowing future requests
