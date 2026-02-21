@@ -105,6 +105,7 @@ export function getEscrowAuctionDetails(
     predictorCollateral: rec.auction.predictorCollateral,
     counterpartyCollateral: rec.auction.counterpartyCollateral,
     predictor: rec.auction.predictor,
+    predictorNonce: rec.auction.predictorNonce,
     predictorDeadline: rec.auction.predictorDeadline,
     chainId: rec.auction.chainId,
     createdAt: new Date(rec.deadlineMs - 60_000).toISOString(), // Approximate creation time
