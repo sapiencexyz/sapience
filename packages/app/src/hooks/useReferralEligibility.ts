@@ -1,65 +1,45 @@
 'use client';
 
 import { useQuery } from '@tanstack/react-query';
-import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 
-const PREDICTIONS_COUNT_QUERY = /* GraphQL */ `
-  query PredictionsCount($address: String!, $chainId: Int) {
-    predictionsCount(address: $address, chainId: $chainId)
-  }
-`;
-
-const TRADING_VOLUME_QUERY = /* GraphQL */ `
-  query TradingVolume($address: String!) {
-    tradingVolumeByAddress(address: $address)
-  }
-`;
-
-const REQUIRED_PREDICTIONS = 2;
-const REQUIRED_VOLUME_WEI = BigInt('1000000000000000000'); // 1 USDe
+interface EligibilityResponse {
+  earnedInvites: number;
+  usedInvites: number;
+  volume: number;
+  volumeFormatted: string;
+  nextInviteAt: string;
+}
 
 export function useReferralEligibility(address?: string) {
   const lowerAddress = address?.toLowerCase();
 
-  const predictions = useQuery({
-    queryKey: ['predictionsCount', lowerAddress],
+  const query = useQuery({
+    queryKey: ['referralEligibility', lowerAddress],
     enabled: Boolean(lowerAddress),
     staleTime: 60_000,
-    queryFn: async () => {
-      const resp = await graphqlRequest<{ predictionsCount: number }>(
-        PREDICTIONS_COUNT_QUERY,
-        { address: lowerAddress, chainId: DEFAULT_CHAIN_ID }
+    queryFn: async (): Promise<EligibilityResponse> => {
+      const apiUrl =
+        process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.sapience.xyz';
+      const resp = await fetch(
+        `${apiUrl}/referrals/eligibility?address=${lowerAddress}`
       );
-      return resp?.predictionsCount ?? 0;
+      if (!resp.ok) throw new Error('Failed to fetch eligibility');
+      return resp.json();
     },
   });
 
-  const volume = useQuery({
-    queryKey: ['tradingVolumeEligibility', lowerAddress],
-    enabled: Boolean(lowerAddress),
-    staleTime: 60_000,
-    queryFn: async () => {
-      const resp = await graphqlRequest<{ tradingVolumeByAddress: string }>(
-        TRADING_VOLUME_QUERY,
-        { address: lowerAddress }
-      );
-      return BigInt(resp?.tradingVolumeByAddress || '0');
-    },
-  });
-
-  const predictionCount = predictions.data ?? 0;
-  const volumeWei = volume.data ?? 0n;
+  const data = query.data;
+  const earnedInvites = data?.earnedInvites ?? 0;
+  const usedInvites = data?.usedInvites ?? 0;
 
   return {
-    eligible: predictionCount >= REQUIRED_PREDICTIONS && volumeWei >= REQUIRED_VOLUME_WEI,
-    predictionCount,
-    requiredPredictions: REQUIRED_PREDICTIONS,
-    volumeWei,
-    isLoading: predictions.isLoading || volume.isLoading,
-    refetch: () => {
-      void predictions.refetch();
-      void volume.refetch();
-    },
+    eligible: earnedInvites > usedInvites,
+    earnedInvites,
+    usedInvites,
+    remainingInvites: Math.max(0, earnedInvites - usedInvites),
+    volume: data?.volume ?? 0,
+    nextInviteAt: data?.nextInviteAt ?? '10 USDe',
+    isLoading: query.isLoading,
+    refetch: query.refetch,
   };
 }

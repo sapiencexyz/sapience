@@ -6,8 +6,7 @@ import { adminAuth } from '../middleware';
 
 const router = Router();
 
-const VOLUME_THRESHOLD = 1;
-const REQUIRED_PREDICTIONS = 2;
+const VOLUME_PER_INVITE = 10n * 10n ** 18n; // 10 USDe in wei per invite
 const DEFAULT_USER_MAX_CLAIMS = 1;
 
 async function calculateVolumeForAddress(address: string): Promise<bigint> {
@@ -161,6 +160,39 @@ async function verifyWalletSignature(params: {
 // Public Routes
 // =============================================================================
 
+// GET /referrals/eligibility - Check invite eligibility for an address
+router.get('/eligibility', async (req: Request, res: Response) => {
+  const address = req.query.address as string | undefined;
+  if (!address) {
+    return res.status(400).json({ message: 'address query parameter is required' });
+  }
+
+  try {
+    const volumeWei = await calculateVolumeForAddress(address);
+    const earnedInvites = Number(volumeWei / VOLUME_PER_INVITE);
+
+    const user = await prisma.user.findUnique({
+      where: { address: normalizeAddress(address) },
+      include: { _count: { select: { referrals: true } } },
+    });
+    const usedInvites = user?._count?.referrals ?? 0;
+
+    const volumeFormatted = Number(volumeWei / (10n ** 14n)) / 10000;
+    const nextInviteAt = (usedInvites + 1) * 10;
+
+    return res.status(200).json({
+      earnedInvites,
+      usedInvites,
+      volume: volumeFormatted,
+      volumeFormatted: `${volumeFormatted} USDe`,
+      nextInviteAt: `${nextInviteAt} USDe`,
+    });
+  } catch (e) {
+    console.error('Error checking eligibility', e);
+    return res.status(500).json({ message: 'Failed to check eligibility' });
+  }
+});
+
 // POST /referrals/code - User creates their own referral code
 // Requires sufficient trading volume
 router.post('/code', async (req: Request, res: Response) => {
@@ -197,32 +229,38 @@ router.post('/code', async (req: Request, res: Response) => {
     return res.status(400).json({ message: 'Failed to verify signature' });
   }
 
-  // Check if user has enough predictions and trading volume
+  // Check volume-based invite eligibility: 1 invite per 10 USDe volume
   try {
-    const [predictionCount, volumeWei] = await Promise.all([
-      countPredictionsForAddress(walletAddress),
-      calculateVolumeForAddress(walletAddress),
-    ]);
+    const volumeWei = await calculateVolumeForAddress(walletAddress);
+    const earnedInvites = Number(volumeWei / VOLUME_PER_INVITE);
 
-    if (predictionCount < REQUIRED_PREDICTIONS) {
-      return res.status(403).json({
-        message: `You need at least ${REQUIRED_PREDICTIONS} predictions to create an invite code.`,
-        predictionCount,
-        requiredPredictions: REQUIRED_PREDICTIONS,
-      });
-    }
+    // Count how many referrals the user has already made
+    const user = await prisma.user.findUnique({
+      where: { address: normalizeAddress(walletAddress) },
+      include: { _count: { select: { referrals: true } } },
+    });
+    const currentReferralCount = user?._count?.referrals ?? 0;
 
-    const thresholdWei = BigInt(VOLUME_THRESHOLD) * BigInt(10 ** 18);
-    if (volumeWei < thresholdWei) {
-      const volumeFormatted = Number(volumeWei / BigInt(10 ** 14)) / 10000;
+    if (earnedInvites <= 0 || earnedInvites <= currentReferralCount) {
+      const volumeFormatted = Number(volumeWei / (10n ** 14n)) / 10000;
+      const nextThreshold = (currentReferralCount + 1) * 10;
       return res.status(403).json({
-        message: `Insufficient trading volume.`,
+        message: `Insufficient trading volume. You need ${nextThreshold} USDe total volume for your next invite.`,
         volume: volumeFormatted,
-        requiredVolume: VOLUME_THRESHOLD,
-        predictionCount,
-        requiredPredictions: REQUIRED_PREDICTIONS,
+        earnedInvites,
+        usedInvites: currentReferralCount,
       });
     }
+
+    // Update maxReferrals on the user so it grows with volume
+    await prisma.user.upsert({
+      where: { address: normalizeAddress(walletAddress) },
+      create: {
+        address: normalizeAddress(walletAddress),
+        maxReferrals: earnedInvites,
+      },
+      update: { maxReferrals: earnedInvites },
+    });
   } catch (e) {
     console.error('Error checking eligibility', e);
     return res.status(500).json({ message: 'Failed to verify eligibility' });

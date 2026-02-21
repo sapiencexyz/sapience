@@ -382,19 +382,58 @@ const ReferralsDialog = ({
               <div className="flex items-center gap-2 text-muted-foreground text-xs">
                 <Lock className="h-3.5 w-3.5 shrink-0" />
                 <span>
-                  Complete {eligibility.requiredPredictions} predictions to
-                  unlock invite codes ({eligibility.predictionCount}/
-                  {eligibility.requiredPredictions})
+                  {eligibility.volume < 10
+                    ? 'Trade 10 USDe to earn your first invite code'
+                    : `${eligibility.volume.toFixed(2)} / ${eligibility.nextInviteAt} toward your next invite`}
                 </span>
               </div>
               <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
                 <div
                   className="h-full rounded-full bg-accent-gold transition-all duration-300"
                   style={{
-                    width: `${Math.min(100, (eligibility.predictionCount / eligibility.requiredPredictions) * 100)}%`,
+                    width: `${Math.min(100, (eligibility.volume % 10) / 10 * 100)}%`,
                   }}
                 />
               </div>
+              {eligibility.usedInvites > 0 && (
+                <p className="text-[11px] text-muted-foreground">
+                  {eligibility.usedInvites} invite{eligibility.usedInvites !== 1 ? 's' : ''} used
+                </p>
+              )}
+            </div>
+          ) : !createdCode && eligibility.eligible && !hasExistingCode ? (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">
+                You have {eligibility.remainingInvites} invite code{eligibility.remainingInvites !== 1 ? 's' : ''} available ({eligibility.usedInvites} used)
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                Each invite gives your friend 1 USDe for their first prediction
+              </p>
+              <form onSubmit={handleCreateCode} className="space-y-1.5">
+                <div className="flex gap-3">
+                  <Input
+                    value={code}
+                    onChange={(e) => setCode(e.target.value)}
+                    disabled={submitting}
+                    placeholder="Choose a code..."
+                    className="flex-1"
+                  />
+                  <Button
+                    type="submit"
+                    className="shrink-0"
+                    disabled={submitting || !code.trim()}
+                  >
+                    {submitting ? 'Submitting...' : 'Submit'}
+                  </Button>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  Only an encrypted version of your code is stored, so
+                  you&apos;ll need to reset it if you forget it.
+                </p>
+                {error && (
+                  <p className="text-xs text-destructive mt-1">{error}</p>
+                )}
+              </form>
             </div>
           ) : createdCode ? (
             <div className="space-y-2">
