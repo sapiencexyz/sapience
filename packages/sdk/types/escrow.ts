@@ -253,6 +253,7 @@ export interface AuctionDetails {
   predictorCollateral: string;
   counterpartyCollateral: string;
   predictor: string;
+  predictorNonce: number;
   predictorDeadline: number;
   chainId: number;
   createdAt: string; // ISO timestamp
