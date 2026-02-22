@@ -3,10 +3,10 @@
 import { CHAIN_ID_ETHEREAL, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import { Card, CardContent } from '@sapience/ui/components/ui/card';
 import {
-  HoverCard,
-  HoverCardContent,
-  HoverCardTrigger,
-} from '@sapience/ui/components/ui/hover-card';
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@sapience/ui/components/ui/popover';
 import { Info } from 'lucide-react';
 import { useMemo, useState } from 'react';
 import {
@@ -250,13 +250,13 @@ function AnalyticsPageContent(): React.ReactElement {
             <CardContent className="p-6">
               <div className="sc-heading text-foreground mb-2 flex items-center gap-1.5">
                 Protocol TVL
-                <HoverCard openDelay={100} closeDelay={100}>
-                  <HoverCardTrigger asChild>
+                <Popover>
+                  <PopoverTrigger asChild>
                     <button className="text-muted-foreground hover:text-foreground transition-colors">
                       <Info className="h-4 w-4" />
                     </button>
-                  </HoverCardTrigger>
-                  <HoverCardContent
+                  </PopoverTrigger>
+                  <PopoverContent
                     className="w-auto bg-background border border-border p-3"
                     align="start"
                   >
@@ -286,8 +286,8 @@ function AnalyticsPageContent(): React.ReactElement {
                         </span>
                       </div>
                     </div>
-                  </HoverCardContent>
-                </HoverCard>
+                  </PopoverContent>
+                </Popover>
               </div>
               <div className="text-2xl md:text-3xl font-mono h-9 flex items-center">
                 {isLoading ? (
