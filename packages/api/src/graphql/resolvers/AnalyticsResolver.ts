@@ -125,8 +125,6 @@ export class AnalyticsResolver {
         LEFT JOIN position p ON
           p."mintedAt" <= ts.timestamp
           AND (p."settledAt" IS NULL OR p."settledAt" > ts.timestamp)
-          AND p."endsAt" IS NOT NULL
-          AND p."endsAt" > ts.timestamp
           AND p."chainId" = ${chainId}
         GROUP BY ts.timestamp
         ORDER BY ts.timestamp
