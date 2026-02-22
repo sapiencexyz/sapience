@@ -45,7 +45,7 @@ export default function Features() {
         </div>
 
         <div className="space-y-3">
-          <div className="eyebrow text-foreground flex items-center gap-3">
+          <div className="eyebrow text-foreground flex flex-wrap items-center gap-x-3 gap-y-1">
             SECONDARY SALES
             <Badge
               variant="outline"
