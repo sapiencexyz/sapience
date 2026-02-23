@@ -10,7 +10,7 @@ export const metadata: Metadata = {
         url: '/og-skills.png',
         width: 1200,
         height: 630,
-        alt: 'Sapience Skill for Agents - Compatible with Claude, Codex, OpenClawd',
+        alt: 'Sapience Skill for Agents - Compatible with Claude, Codex, OpenClaw',
       },
     ],
   },
