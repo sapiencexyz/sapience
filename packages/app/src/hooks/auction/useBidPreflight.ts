@@ -3,10 +3,14 @@
 import { useCallback, useMemo } from 'react';
 import { useReadContracts } from 'wagmi';
 import { formatUnits } from 'viem';
-import { predictionMarket } from '@sapience/sdk/contracts';
+import {
+  predictionMarket,
+  predictionMarketEscrow,
+  collateralToken,
+} from '@sapience/sdk/contracts';
 import { predictionMarketAbi } from '@sapience/sdk';
 import erc20Abi from '@sapience/sdk/queries/abis/erc20abi.json';
-import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import { CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
 import { useChainValidation } from '~/hooks/blockchain/useChainValidation';
 import { useCollateralBalance } from '~/hooks/blockchain/useCollateralBalance';
 import { useCurrentAddress } from '~/hooks/blockchain/useCurrentAddress';
@@ -65,7 +69,8 @@ export function useBidPreflight(
 ): UseBidPreflightResult {
   const { onError, onLoading } = options;
   const { currentAddress } = useCurrentAddress();
-  const chainId = CHAIN_ID_ETHEREAL;
+  // TODO: Get chainId from context/props when supporting multiple chains
+  const chainId = CHAIN_ID_ETHEREAL_TESTNET;
 
   const {
     balance,
@@ -84,34 +89,48 @@ export function useBidPreflight(
     onLoading,
   });
 
-  // Get PredictionMarket address for the current chain
-  const SPENDER_ADDRESS = predictionMarket[chainId]?.address as
-    | `0x${string}`
-    | undefined;
+  // Get spender address for the current chain
+  // V2 (testnet) uses PredictionMarketEscrow, V1 (mainnet) uses PredictionMarket
+  const isV2Chain = chainId === CHAIN_ID_ETHEREAL_TESTNET;
+  const SPENDER_ADDRESS = (
+    isV2Chain
+      ? predictionMarketEscrow[chainId]?.address
+      : predictionMarket[chainId]?.address
+  ) as `0x${string}` | undefined;
 
-  // Read collateral token address from PredictionMarket contract config
+  // For V2, use collateral token address directly from SDK
+  // For V1, read from PredictionMarket contract config
+  const V2_COLLATERAL_ADDRESS = isV2Chain
+    ? (collateralToken[chainId]?.address as `0x${string}` | undefined)
+    : undefined;
+
+  // Read collateral token address from PredictionMarket contract config (V1 only)
   const predictionMarketConfigRead = useReadContracts({
-    contracts: SPENDER_ADDRESS
-      ? [
-          {
-            address: SPENDER_ADDRESS,
-            abi: predictionMarketAbi,
-            functionName: 'getConfig',
-            chainId: chainId,
-          },
-        ]
-      : [],
-    query: { enabled: !!SPENDER_ADDRESS },
+    contracts:
+      !isV2Chain && SPENDER_ADDRESS
+        ? [
+            {
+              address: SPENDER_ADDRESS,
+              abi: predictionMarketAbi,
+              functionName: 'getConfig',
+              chainId: chainId,
+            },
+          ]
+        : [],
+    query: { enabled: !isV2Chain && !!SPENDER_ADDRESS },
   });
 
   const COLLATERAL_ADDRESS: `0x${string}` | undefined = useMemo(() => {
+    // For V2, use SDK address directly
+    if (isV2Chain) return V2_COLLATERAL_ADDRESS;
+    // For V1, use config read
     const item = predictionMarketConfigRead.data?.[0];
     if (item && item.status === 'success') {
       const cfg = item.result as { collateralToken: `0x${string}` };
       return cfg?.collateralToken;
     }
     return undefined;
-  }, [predictionMarketConfigRead.data]);
+  }, [isV2Chain, V2_COLLATERAL_ADDRESS, predictionMarketConfigRead.data]);
 
   // Read allowance for connected address -> PredictionMarket
   const allowanceRead = useReadContracts({
@@ -147,7 +166,7 @@ export function useBidPreflight(
 
   const isLoading =
     isBalanceLoading ||
-    predictionMarketConfigRead.isLoading ||
+    (!isV2Chain && predictionMarketConfigRead.isLoading) ||
     allowanceRead.isLoading;
 
   const refetch = useCallback(() => {

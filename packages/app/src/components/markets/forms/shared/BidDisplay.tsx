@@ -109,7 +109,7 @@ export default function BidDisplay({
 
       const totalWei = (() => {
         try {
-          return userPositionSizeWei + BigInt(bid.makerWager);
+          return userPositionSizeWei + BigInt(bid.makerCollateral);
         } catch {
           return 0n;
         }
@@ -294,7 +294,7 @@ export default function BidDisplay({
                     bids={chartBids}
                     continuous
                     refreshMs={90}
-                    takerWager={takerPositionSizeWei}
+                    takerCollateral={takerPositionSizeWei}
                     taker={takerAddress}
                     collateralAssetTicker={collateralSymbol}
                     showTooltips={true}

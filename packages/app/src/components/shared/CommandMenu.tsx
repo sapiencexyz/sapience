@@ -29,7 +29,7 @@ import {
   DialogTitle,
 } from '@sapience/ui/components/ui/dialog';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
-import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { isAddress, getAddress } from 'viem';
 import { getDeterministicCategoryColor } from '~/lib/theme/categoryPalette';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
@@ -126,7 +126,7 @@ function useCommandMenuSearch(search: string | undefined, enabled: boolean) {
         // Overfetch 3x: groups expand into multiple rows, and we re-sort
         // client-side to prefer future markets over expired ones
         take: MAX_RESULTS * 3,
-        chainId: CHAIN_ID_ETHEREAL,
+        chainId: DEFAULT_CHAIN_ID,
         search: search?.trim() || null,
       });
 

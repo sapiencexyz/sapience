@@ -302,11 +302,13 @@ type Condition {
   settledAt: Int
   shortName: String
   similarMarkets: [String!]!
+  v2Picks(cursor: V2PickWhereUniqueInput, distinct: [V2PickScalarFieldEnum!], orderBy: [V2PickOrderByWithRelationInput!], skip: Int, take: Int, where: V2PickWhereInput): [V2Pick!]!
 }
 
 type ConditionCount {
   attestations(where: AttestationWhereInput): Int!
   predictions(where: PredictionWhereInput): Int!
+  v2Picks(where: V2PickWhereInput): Int!
 }
 
 type ConditionGroup {
@@ -424,6 +426,7 @@ input ConditionOrderByWithRelationInput {
   settledAt: SortOrderInput
   shortName: SortOrderInput
   similarMarkets: SortOrder
+  v2Picks: V2PickOrderByRelationAggregateInput
 }
 
 input ConditionRelationFilter {
@@ -495,6 +498,7 @@ input ConditionWhereInput {
   settledAt: IntNullableFilter
   shortName: StringNullableFilter
   similarMarkets: StringNullableListFilter
+  v2Picks: V2PickListRelationFilter
 }
 
 input ConditionWhereUniqueInput {
@@ -526,6 +530,7 @@ input ConditionWhereUniqueInput {
   settledAt: IntNullableFilter
   shortName: StringNullableFilter
   similarMarkets: StringNullableListFilter
+  v2Picks: V2PickListRelationFilter
 }
 
 type DailyVolume {
@@ -572,6 +577,13 @@ input EnumPositionStatusFilter {
   in: [PositionStatus!]
   not: NestedEnumPositionStatusFilter
   notIn: [PositionStatus!]
+}
+
+input EnumV2SettlementResultFilter {
+  equals: V2SettlementResult
+  in: [V2SettlementResult!]
+  not: NestedEnumV2SettlementResultFilter
+  notIn: [V2SettlementResult!]
 }
 
 input FloatNullableFilter {
@@ -745,6 +757,24 @@ input NestedEnumPositionStatusFilter {
   in: [PositionStatus!]
   not: NestedEnumPositionStatusFilter
   notIn: [PositionStatus!]
+}
+
+input NestedEnumV2SettlementResultFilter {
+  equals: V2SettlementResult
+  in: [V2SettlementResult!]
+  not: NestedEnumV2SettlementResultFilter
+  notIn: [V2SettlementResult!]
+}
+
+input NestedFloatFilter {
+  equals: Float
+  gt: Float
+  gte: Float
+  in: [Float!]
+  lt: Float
+  lte: Float
+  not: NestedFloatFilter
+  notIn: [Float!]
 }
 
 input NestedFloatNullableFilter {
@@ -1066,6 +1096,14 @@ type Query {
   tradingVolumeByAddress(address: String!): String!
   user(where: UserWhereUniqueInput!): User
   users(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]!
+  v2BurnRecords(address: String, chainId: Int, pickConfigId: String, skip: Int! = 0, take: Int! = 50): [V2BurnRecordType!]!
+  v2PickConfiguration(id: String!): V2PickConfigurationType
+  v2PickConfigurations(chainId: Int, resolved: Boolean, result: String, skip: Int! = 0, take: Int! = 50): [V2PickConfigurationType!]!
+  v2PositionBalances(chainId: Int, holder: String!, pickConfigId: String, skip: Int! = 0, take: Int! = 50): [V2PositionBalanceType!]!
+  v2Prediction(predictionId: String!): V2PredictionType
+  v2Predictions(address: String, chainId: Int, orderBy: String, orderDirection: String, settled: Boolean, skip: Int! = 0, take: Int! = 50): [V2PredictionType!]!
+  v2PredictionsCount(address: String!, chainId: Int): Int!
+  v2RedemptionRecords(chainId: Int, holder: String, predictionId: String, skip: Int! = 0, take: Int! = 50): [V2RedemptionRecordType!]!
 }
 
 enum QueryMode {
@@ -1284,4 +1322,249 @@ input UserWhereUniqueInput {
   referredByCodeId: IntNullableFilter
   referredById: IntNullableFilter
   updatedAt: DateTimeFilter
+}
+
+type V2BurnRecordType {
+  burnedAt: Int!
+  chainId: Int!
+  counterpartyHolder: String!
+  counterpartyPayout: String!
+  counterpartyTokensBurned: String!
+  id: Int!
+  marketAddress: String!
+  pickConfigId: String!
+  predictorHolder: String!
+  predictorPayout: String!
+  predictorTokensBurned: String!
+  refCode: String
+  txHash: String!
+}
+
+"""V2 Pick - Individual pick within a pick configuration"""
+type V2Pick {
+  condition(where: ConditionWhereInput): Condition
+  conditionId: String!
+  conditionResolver: String!
+  createdAt: DateTimeISO!
+  id: Int!
+  pickConfigId: String!
+  pickConfiguration: V2PickConfiguration!
+  predictedOutcome: Int!
+}
+
+"""
+V2 Pick Configuration - Fungible betting pool for a specific pick combination
+Corresponds to on-chain pickConfigId
+"""
+type V2PickConfiguration {
+  _count: V2PickConfigurationCount
+  chainId: Int!
+  claimedCounterpartyCollateral: String!
+  claimedPredictorCollateral: String!
+  counterpartyToken: String
+  createdAt: DateTimeISO!
+  endsAt: Int
+  id: String!
+  marketAddress: String!
+  picks(cursor: V2PickWhereUniqueInput, distinct: [V2PickScalarFieldEnum!], orderBy: [V2PickOrderByWithRelationInput!], skip: Int, take: Int, where: V2PickWhereInput): [V2Pick!]!
+  predictorToken: String
+  resolved: Boolean!
+  resolvedAt: Int
+  result: V2SettlementResult!
+  totalCounterpartyCollateral: String!
+  totalPredictorCollateral: String!
+}
+
+type V2PickConfigurationCount {
+  picks(where: V2PickWhereInput): Int!
+}
+
+input V2PickConfigurationOrderByWithRelationInput {
+  chainId: SortOrder
+  claimedCounterpartyCollateral: SortOrder
+  claimedPredictorCollateral: SortOrder
+  counterpartyToken: SortOrderInput
+  createdAt: SortOrder
+  endsAt: SortOrderInput
+  id: SortOrder
+  marketAddress: SortOrder
+  picks: V2PickOrderByRelationAggregateInput
+  predictorToken: SortOrderInput
+  resolved: SortOrder
+  resolvedAt: SortOrderInput
+  result: SortOrder
+  totalCounterpartyCollateral: SortOrder
+  totalPredictorCollateral: SortOrder
+}
+
+input V2PickConfigurationRelationFilter {
+  is: V2PickConfigurationWhereInput
+  isNot: V2PickConfigurationWhereInput
+}
+
+type V2PickConfigurationType {
+  chainId: Int!
+  claimedCounterpartyCollateral: String!
+  claimedPredictorCollateral: String!
+  counterpartyToken: String
+  endsAt: Int
+  id: String!
+  marketAddress: String!
+  picks: [V2PickType!]!
+  predictorToken: String
+  resolved: Boolean!
+  resolvedAt: Int
+  result: String!
+  totalCounterpartyCollateral: String!
+  totalPredictorCollateral: String!
+}
+
+input V2PickConfigurationWhereInput {
+  AND: [V2PickConfigurationWhereInput!]
+  NOT: [V2PickConfigurationWhereInput!]
+  OR: [V2PickConfigurationWhereInput!]
+  chainId: IntFilter
+  claimedCounterpartyCollateral: StringFilter
+  claimedPredictorCollateral: StringFilter
+  counterpartyToken: StringNullableFilter
+  createdAt: DateTimeFilter
+  endsAt: IntNullableFilter
+  id: StringFilter
+  marketAddress: StringFilter
+  picks: V2PickListRelationFilter
+  predictorToken: StringNullableFilter
+  resolved: BoolFilter
+  resolvedAt: IntNullableFilter
+  result: EnumV2SettlementResultFilter
+  totalCounterpartyCollateral: StringFilter
+  totalPredictorCollateral: StringFilter
+}
+
+input V2PickListRelationFilter {
+  every: V2PickWhereInput
+  none: V2PickWhereInput
+  some: V2PickWhereInput
+}
+
+input V2PickOrderByRelationAggregateInput {
+  _count: SortOrder
+}
+
+input V2PickOrderByWithRelationInput {
+  condition: ConditionOrderByWithRelationInput
+  conditionId: SortOrder
+  conditionResolver: SortOrder
+  createdAt: SortOrder
+  id: SortOrder
+  pickConfigId: SortOrder
+  pickConfiguration: V2PickConfigurationOrderByWithRelationInput
+  predictedOutcome: SortOrder
+}
+
+input V2PickPickConfigIdConditionResolverConditionIdCompoundUniqueInput {
+  conditionId: String!
+  conditionResolver: String!
+  pickConfigId: String!
+}
+
+enum V2PickScalarFieldEnum {
+  conditionId
+  conditionResolver
+  createdAt
+  id
+  pickConfigId
+  predictedOutcome
+}
+
+type V2PickType {
+  conditionId: String!
+  conditionResolver: String!
+  id: Int!
+  pickConfigId: String!
+  predictedOutcome: Int!
+}
+
+input V2PickWhereInput {
+  AND: [V2PickWhereInput!]
+  NOT: [V2PickWhereInput!]
+  OR: [V2PickWhereInput!]
+  condition: ConditionNullableRelationFilter
+  conditionId: StringFilter
+  conditionResolver: StringFilter
+  createdAt: DateTimeFilter
+  id: IntFilter
+  pickConfigId: StringFilter
+  pickConfiguration: V2PickConfigurationRelationFilter
+  predictedOutcome: IntFilter
+}
+
+input V2PickWhereUniqueInput {
+  AND: [V2PickWhereInput!]
+  NOT: [V2PickWhereInput!]
+  OR: [V2PickWhereInput!]
+  condition: ConditionNullableRelationFilter
+  conditionId: StringFilter
+  conditionResolver: StringFilter
+  createdAt: DateTimeFilter
+  id: Int
+  pickConfigId: StringFilter
+  pickConfigId_conditionResolver_conditionId: V2PickPickConfigIdConditionResolverConditionIdCompoundUniqueInput
+  pickConfiguration: V2PickConfigurationRelationFilter
+  predictedOutcome: IntFilter
+}
+
+type V2PositionBalanceType {
+  balance: String!
+  chainId: Int!
+  holder: String!
+  id: Int!
+  isPredictorToken: Boolean!
+  pickConfig: V2PickConfigurationType
+  pickConfigId: String!
+  tokenAddress: String!
+}
+
+type V2PredictionType {
+  chainId: Int!
+  collateralDeposited: String
+  collateralDepositedAt: Int
+  counterparty: String!
+  counterpartyClaimable: String
+  counterpartyToken: String!
+  counterpartyCollateral: String!
+  createTxHash: String!
+  id: Int!
+  marketAddress: String!
+  predictionId: String!
+  predictor: String!
+  predictorClaimable: String
+  predictorToken: String!
+  predictorCollateral: String!
+  refCode: String
+  result: String!
+  settleTxHash: String
+  settled: Boolean!
+  settledAt: Int
+}
+
+type V2RedemptionRecordType {
+  chainId: Int!
+  collateralPaid: String!
+  holder: String!
+  id: Int!
+  marketAddress: String!
+  positionToken: String!
+  predictionId: String!
+  redeemedAt: Int!
+  refCode: String
+  tokensBurned: String!
+  txHash: String!
+}
+
+"""V2 Settlement Result - Matches on-chain SettlementResult enum"""
+enum V2SettlementResult {
+  COUNTERPARTY_WINS
+  NON_DECISIVE
+  PREDICTOR_WINS
+  UNRESOLVED
 }

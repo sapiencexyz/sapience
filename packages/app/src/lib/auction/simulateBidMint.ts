@@ -54,7 +54,7 @@ export async function simulateBidMint(
     chainId,
     predictionMarketAddress,
     takerAddress,
-    takerWager,
+    takerCollateral,
     takerNonce,
     encodedPredictedOutcomes,
     resolver,
@@ -63,7 +63,7 @@ export async function simulateBidMint(
     smartAccountAddress,
   } = options;
 
-  const makerCollateralWei = BigInt(takerWager);
+  const makerCollateralWei = BigInt(takerCollateral);
 
   // Determine the address to use as msg.sender in simulation
   // For smart account modes, use the smart account address
@@ -79,7 +79,7 @@ export async function simulateBidMint(
     `Using state-override simulation for ${executionMode} mode (${simulationAddress.slice(0, 10)}...)`
   );
 
-  const takerCollateralWei = BigInt(bid.makerWager);
+  const takerCollateralWei = BigInt(bid.makerCollateral);
 
   // Build the MintPredictionRequestData struct
   // Contract field names:

@@ -18,13 +18,13 @@ import { useAuctionBids } from '~/lib/auction/useAuctionBids';
 
 type Props = {
   auctionId: string | null;
-  makerWager: string | null;
+  makerCollateral: string | null;
   collateralAssetTicker: string;
 };
 
 const AuctionBidsDialog: React.FC<Props> = ({
   auctionId,
-  makerWager,
+  makerCollateral,
   collateralAssetTicker,
 }) => {
   const [open, setOpen] = useState(false);
@@ -108,18 +108,18 @@ const AuctionBidsDialog: React.FC<Props> = ({
                   })();
                   const payoutStr = (() => {
                     try {
-                      const taker = BigInt(String(makerWager ?? '0'));
-                      const maker = BigInt(String(b?.makerWager ?? '0'));
+                      const taker = BigInt(String(makerCollateral ?? '0'));
+                      const maker = BigInt(String(b?.makerCollateral ?? '0'));
                       return (maker + taker).toString();
                     } catch {
-                      return String(b?.makerWager || '0');
+                      return String(b?.makerCollateral || '0');
                     }
                   })();
                   const uiTxAmount = {
                     id: i,
                     type: 'FORECAST',
                     createdAt: new Date().toISOString(),
-                    collateral: String(b?.makerWager || '0'),
+                    collateral: String(b?.makerCollateral || '0'),
                     position: { owner: b?.maker || '' },
                   } as any;
                   const uiTxPayout = {

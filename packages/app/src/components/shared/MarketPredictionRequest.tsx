@@ -8,7 +8,6 @@ import { predictionMarketAbi } from '@sapience/sdk';
 import { predictionMarket } from '@sapience/sdk/contracts';
 import {
   DEFAULT_CHAIN_ID,
-  CHAIN_ID_ETHEREAL,
   PREFERRED_ESTIMATE_QUOTER,
 } from '@sapience/sdk/constants';
 import { verifyMakerBidSignature } from '@sapience/sdk';
@@ -111,7 +110,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
   const { address: takerAddress } = useAccount();
   // Disable logging for forecast-only components to avoid noisy console output
   const { requestQuotes, bids } = useAuctionStart({ disableLogging: true });
-  const chainId = CHAIN_ID_ETHEREAL;
+  const chainId = DEFAULT_CHAIN_ID;
   const PREDICTION_MARKET_ADDRESS =
     predictionMarket[chainId]?.address ||
     predictionMarket[DEFAULT_CHAIN_ID]?.address;
@@ -212,7 +211,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
                 },
                 bid: {
                   maker: bid.maker as `0x${string}`,
-                  makerWager: bid.makerWager,
+                  makerCollateral: bid.makerCollateral,
                   makerDeadline: bid.makerDeadline,
                   makerSignature: bid.makerSignature as `0x${string}`,
                   makerNonce: lastAuctionParams.takerNonce,
@@ -244,7 +243,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
         const list = valid.length > 0 ? valid : filteredBids;
         const best = list.reduce((bestBid, cur) => {
           try {
-            return BigInt(cur.makerWager) > BigInt(bestBid.makerWager)
+            return BigInt(cur.makerCollateral) > BigInt(bestBid.makerCollateral)
               ? cur
               : bestBid;
           } catch {
@@ -253,7 +252,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
         }, list[0]);
 
         const taker = BigInt(String(lastTakerPositionSizeWei || '0'));
-        const maker = BigInt(String(best?.makerWager || '0'));
+        const maker = BigInt(String(best?.makerCollateral || '0'));
         const denom = maker + taker;
         const prob = denom > 0n ? Number(taker) / Number(denom) : 0.5;
         const clamped = Math.max(0, Math.min(1, prob));
@@ -380,7 +379,11 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
   ]);
 
   // Only fire eager once both taker address and outcomes are ready
+  // TODO: Re-enable after V2 testing - disabled to prevent auto-auctions interfering with V2 flow
   React.useEffect(() => {
+    // TEMPORARILY DISABLED for V2 testing
+    return;
+
     if (!eager) return;
     if (prefetchedProbability != null) return;
     if (eagerlyRequestedRef.current) return;

@@ -23,7 +23,7 @@ import ExpiresInLabel from '~/components/shared/ExpiresInLabel';
 export type AuctionBidData = {
   auctionId: string;
   maker: string;
-  makerWager: string;
+  makerCollateral: string;
   makerDeadline: number;
   makerSignature: string;
   makerNonce: number;
@@ -36,7 +36,7 @@ type Props = {
   refreshMs?: number;
   // When true, use requestAnimationFrame to continuously update time window
   continuous?: boolean;
-  takerWager?: string | null;
+  takerCollateral?: string | null;
   taker?: string | null;
   collateralAssetTicker: string;
   // Whether to show hover tooltips (default true)
@@ -49,7 +49,7 @@ const AuctionBidsChart: React.FC<Props> = ({
   bids,
   refreshMs = 1000,
   continuous = false,
-  takerWager,
+  takerCollateral,
   taker,
   collateralAssetTicker,
   showTooltips = true,
@@ -77,7 +77,7 @@ const AuctionBidsChart: React.FC<Props> = ({
   const chartRef = useRef<HTMLDivElement>(null);
   const takerEth = (() => {
     try {
-      return Number(formatEther(BigInt(String(takerWager ?? '0'))));
+      return Number(formatEther(BigInt(String(takerCollateral ?? '0'))));
     } catch {
       return 0;
     }
@@ -112,7 +112,7 @@ const AuctionBidsChart: React.FC<Props> = ({
         .map((b) => {
           let amount = 0;
           try {
-            amount = Number(formatEther(BigInt(String(b?.makerWager ?? '0'))));
+            amount = Number(formatEther(BigInt(String(b?.makerCollateral ?? '0'))));
           } catch {
             amount = 0;
           }

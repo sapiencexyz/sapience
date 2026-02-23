@@ -1,5 +1,9 @@
 'use client';
 
+/**
+ * @deprecated V1 positions table component. For V2 protocol, use V2PositionsTable
+ * which displays ERC20 position token balances and supports the new settlement flow.
+ */
 import type { Address } from 'viem';
 import { formatEther } from 'viem';
 const ZERO_REF_CODE =

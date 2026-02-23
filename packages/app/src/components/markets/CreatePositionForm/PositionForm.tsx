@@ -13,8 +13,16 @@ import { FormProvider, type UseFormReturn, useWatch } from 'react-hook-form';
 import { parseUnits } from 'viem';
 import { useAccount, useReadContract } from 'wagmi';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
-import { predictionMarketAbi } from '@sapience/sdk';
-import { COLLATERAL_SYMBOLS, CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import {
+  predictionMarketAbi,
+  predictionMarketEscrowAbi,
+} from '@sapience/sdk/abis';
+import {
+  COLLATERAL_SYMBOLS,
+  CHAIN_ID_ETHEREAL,
+  DEFAULT_CHAIN_ID,
+  CHAIN_ID_ETHEREAL_TESTNET,
+} from '@sapience/sdk/constants';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import { PositionSizeInput } from '~/components/markets/forms';
@@ -87,7 +95,8 @@ export default function PositionForm({
   pythPredictions = [],
   onRemovePythPrediction,
 }: PositionFormProps) {
-  const { selections, removeSelection } = useCreatePositionContext();
+  const { selections, removeSelection, getV2Picks } =
+    useCreatePositionContext();
   const { address: takerAddress } = useAccount();
   const { hasConnectedWallet } = useConnectedWallet();
   const { openConnectDialog } = useConnectDialog();
@@ -95,7 +104,8 @@ export default function PositionForm({
   const fallbackCollateralSymbol = COLLATERAL_SYMBOLS[chainId] || 'testUSDe';
   const collateralSymbol = collateralSymbolProp || fallbackCollateralSymbol;
   const [nowMs, setNowMs] = useState<number>(Date.now());
-  const isEtherealChain = chainId === CHAIN_ID_ETHEREAL;
+  const isEtherealChain =
+    chainId === CHAIN_ID_ETHEREAL || chainId === CHAIN_ID_ETHEREAL_TESTNET;
   const [lastQuoteRequestMs, setLastQuoteRequestMs] = useState<number | null>(
     null
   );
@@ -112,28 +122,42 @@ export default function PositionForm({
   const [validBids, setValidBids] = useState<QuoteBid[]>([]);
 
   const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
-  const { effectiveAddress, isUsingSession } = useSession();
+  const {
+    effectiveAddress,
+    isUsingSmartAccount,
+    signMessage: sessionSignMessage,
+  } = useSession();
 
-  // Use effectiveAddress from session context, falling back to zero address for logged-out users
+  // Determine the actual taker address based on signing method
+  // This MUST match the logic in useAuctionStart.requestQuotes
+  // - If using session signing (smart account with active session): use effectiveAddress (smart account)
+  // - Otherwise (signing with wallet): use takerAddress (wallet)
   const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
-  const selectedTakerAddress = effectiveAddress ?? takerAddress ?? ZERO_ADDRESS;
+  const willUseSessionSigning = isUsingSmartAccount && !!sessionSignMessage;
+  const selectedTakerAddress = willUseSessionSigning
+    ? (effectiveAddress ?? takerAddress ?? ZERO_ADDRESS)
+    : (takerAddress ?? ZERO_ADDRESS);
 
   // Get user's collateral balance from context (shared with form schema validation)
   const { balance: userBalance, isLoading: isBalanceLoading } =
     useCollateralBalanceContext();
 
-  // Fetch taker nonce from PredictionMarket contract
-  // Use refetch to get fresh nonce before auction requests
-  const { refetch: refetchTakerNonce } = useReadContract({
+  // Fetch taker nonce from PredictionMarket/PredictionMarketEscrow contract
+  // V2 (testnet) uses getNonce, V1 uses nonces
+  const isV2Chain = chainId === CHAIN_ID_ETHEREAL_TESTNET;
+  const { refetch: refetchTakerNonce, error: nonceError } = useReadContract({
     address: predictionMarketAddress,
-    abi: predictionMarketAbi,
-    functionName: 'nonces',
+    abi: isV2Chain ? predictionMarketEscrowAbi : predictionMarketAbi,
+    functionName: isV2Chain ? 'getNonce' : 'nonces',
     args: selectedTakerAddress ? [selectedTakerAddress] : undefined,
     chainId,
     query: {
       enabled: !!selectedTakerAddress && !!predictionMarketAddress,
     },
   });
+  if (nonceError) {
+    console.error('[Auction] Nonce read error:', nonceError);
+  }
   const [isLimitDialogOpen, setIsLimitDialogOpen] = useState(false);
 
   const positionSizeValue = useWatch({
@@ -143,6 +167,8 @@ export default function PositionForm({
   const prevPositionSizeRef = useRef<string>(positionSizeValue || '');
   // Track the request configuration to ignore stale bids
   const currentRequestKeyRef = useRef<string | null>(null);
+  // Guard to prevent multiple concurrent auction requests
+  const auctionRequestInFlightRef = useRef<boolean>(false);
 
   // Apply rainbow hover effect only for position sizes over 1k
   const isRainbowHoverEnabled = useMemo(() => {
@@ -294,10 +320,10 @@ export default function PositionForm({
       return { bestBid: null, estimateBid: estimateFromFailed };
     }
 
-    // Select the bid with highest makerWager (highest payout for user)
+    // Select the bid with highest makerCollateral (highest payout for user)
     const best = validFilteredBids.reduce((acc, current) => {
       try {
-        return BigInt(current.makerWager) > BigInt(acc.makerWager)
+        return BigInt(current.makerCollateral) > BigInt(acc.makerCollateral)
           ? current
           : acc;
       } catch {
@@ -305,7 +331,7 @@ export default function PositionForm({
       }
     });
 
-    const resultKey = `best:${best.maker}:${best.makerWager}`;
+    const resultKey = `best:${best.maker}:${best.makerCollateral}`;
     if (prevFilterResultRef.current !== resultKey) {
       logPositionForm(`Best bid: ${formatBidForLog(best, collateralDecimals)}`);
       prevFilterResultRef.current = resultKey;
@@ -358,7 +384,14 @@ export default function PositionForm({
       forceRefresh?: boolean;
       requireSignature?: boolean;
     }) => {
-      if (!requestQuotes || !selectedTakerAddress) return;
+      // Prevent multiple concurrent auction requests
+      if (auctionRequestInFlightRef.current) {
+        return;
+      }
+
+      if (!requestQuotes || !selectedTakerAddress) {
+        return;
+      }
 
       const hasUma = selections.length > 0;
       const hasPyth = pythPredictions.length > 0;
@@ -374,10 +407,17 @@ export default function PositionForm({
         });
         return;
       }
-      if (!hasUma && !hasPyth) return;
-      if (hasFormErrors) return;
+      if (!hasUma && !hasPyth) {
+        return;
+      }
+      if (hasFormErrors) {
+        return;
+      }
 
       const positionSizeStr = positionSizeValue || '0';
+
+      // Set in-flight flag to prevent concurrent requests
+      auctionRequestInFlightRef.current = true;
 
       try {
         // Reset display state for a new request (prevents stale "active bid" while awaiting quotes).
@@ -385,9 +425,11 @@ export default function PositionForm({
         setStickyEstimateBid(null);
 
         // Fetch fresh nonce via wagmi refetch (bypasses stale cache)
-        const { data: freshNonce } = await refetchTakerNonce();
+        const nonceResult = await refetchTakerNonce();
+        const freshNonce = nonceResult.data;
 
         if (freshNonce === undefined && takerAddress) {
+          auctionRequestInFlightRef.current = false;
           return;
         }
 
@@ -413,6 +455,7 @@ export default function PositionForm({
               selections.map((s) => ({
                 marketId: s.conditionId || '0',
                 prediction: !!s.prediction,
+                resolverAddress: s.resolverAddress,
               })),
               chainId
             );
@@ -426,6 +469,16 @@ export default function PositionForm({
           chainId: chainId,
         };
 
+        // For V2-capable chains with conditional token selections, add v2Picks to trigger V2 auction
+        const isV2Chain = chainId === CHAIN_ID_ETHEREAL_TESTNET;
+        if (isV2Chain && hasUma && !hasPyth) {
+          const v2Picks = getV2Picks();
+          if (v2Picks.length > 0) {
+            params.v2Picks = v2Picks;
+            // Note: counterpartyCollateral is NOT set here - counterparty decides their collateral in their bid
+          }
+        }
+
         requestQuotes(params, {
           forceRefresh: options?.forceRefresh,
           requireSignature: options?.requireSignature,
@@ -433,8 +486,15 @@ export default function PositionForm({
         setLastQuoteRequestMs(Date.now());
         // Set the request key to match incoming bids to this configuration
         currentRequestKeyRef.current = `${predictionsKey}:${positionSizeValue || ''}`;
+
+        // Clear in-flight flag after a short delay to allow the debounced request to start
+        // This prevents duplicate requests while still allowing future requests
+        setTimeout(() => {
+          auctionRequestInFlightRef.current = false;
+        }, 500);
       } catch (err) {
         // Don't fail silently (especially important for Pyth payload normalization issues).
+        auctionRequestInFlightRef.current = false;
         const msg =
           err instanceof Error
             ? err.message
@@ -462,6 +522,7 @@ export default function PositionForm({
       collateralDecimals,
       chainId,
       predictionsKey,
+      getV2Picks,
     ]
   );
 
@@ -477,15 +538,13 @@ export default function PositionForm({
 
   // Auto-initiate auction when content (predictions/position size) changes
   // We debounce this to avoid spamming the auction endpoint while the user is typing
-  // Only auto-trigger for:
-  // 1. Logged-out users (get unsigned estimates)
-  // 2. Smart account users with active session (session key signing, no popup)
-  // Skip for EOA users and smart account users without session - they must manually click "Request Bids"
-  const autoAuctionDebounceRef = useRef<number | null>(null);
+  // Auto-trigger for all users - logged-out users get unsigned auctions with estimates
+  // TODO: Re-enable after fixing the issue where auto-triggers invalidate received bids
+  const autoAuctionDebounceRef = useRef<number | undefined>(undefined);
   useEffect(() => {
-    // Skip auto-auction for users who would get a wallet signature popup
-    // Only auto-trigger for logged-out users or smart account users with active session
-    if (hasConnectedWallet && !isUsingSession) return;
+    // TEMPORARILY DISABLED for V2 testing - auto-triggers were invalidating received bids
+    // User must click "INITIATE AUCTION" manually
+    return;
 
     // Wait for balance to load before triggering for logged-in users
     // Skip balance loading check for logged-out users (they have no balance to load)
@@ -508,7 +567,7 @@ export default function PositionForm({
     if (hasConnectedWallet && sizeNum > userBalance) return;
 
     // Clear previous debounce timer
-    if (autoAuctionDebounceRef.current) {
+    if (autoAuctionDebounceRef.current !== undefined) {
       window.clearTimeout(autoAuctionDebounceRef.current);
     }
 
@@ -522,13 +581,12 @@ export default function PositionForm({
     }, 300);
 
     return () => {
-      if (autoAuctionDebounceRef.current) {
+      if (autoAuctionDebounceRef.current !== undefined) {
         window.clearTimeout(autoAuctionDebounceRef.current);
       }
     };
   }, [
     hasConnectedWallet,
-    isUsingSession,
     isBalanceLoading,
     hasFormErrors,
     predictionsKey,

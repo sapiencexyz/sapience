@@ -108,12 +108,12 @@ export default function PredictionForm({
       return null;
 
     try {
-      const makerWagerWei = BigInt(bestBid.makerWager);
+      const makerCollateralWei = BigInt(bestBid.makerCollateral);
       const userPositionSizeNum = parseFloat(positionSize || '0');
-      const makerWagerNum = Number(
-        formatUnits(makerWagerWei, collateralDecimals)
+      const makerCollateralNum = Number(
+        formatUnits(makerCollateralWei, collateralDecimals)
       );
-      const totalPayout = userPositionSizeNum + makerWagerNum;
+      const totalPayout = userPositionSizeNum + makerCollateralNum;
 
       if (totalPayout <= 0) return null;
 

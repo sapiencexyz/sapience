@@ -38,8 +38,14 @@ import {
 import { useForm, useWatch, type UseFormReturn } from 'react-hook-form';
 import { z } from 'zod';
 
-import { predictionMarketAbi } from '@sapience/sdk';
-import { predictionMarket } from '@sapience/sdk/contracts';
+import {
+  predictionMarketAbi,
+  predictionMarketEscrowAbi,
+} from '@sapience/sdk/abis';
+import {
+  predictionMarket,
+  predictionMarketEscrow,
+} from '@sapience/sdk/contracts';
 import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import type { Address } from 'viem';
@@ -70,7 +76,7 @@ import {
   YES_SQRT_PRICE_X96,
 } from '~/lib/utils/positionFormUtils';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
-import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import { CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
 import {
   CollateralBalanceProvider,
   useCollateralBalanceContext,
@@ -161,6 +167,7 @@ const CreatePositionFormInner = ({
     selections,
     clearSelections,
     positionsWithMarketData,
+    getV2Picks,
   } = useCreatePositionContext();
 
   const isCompact = useIsBelow(1024);
@@ -174,7 +181,7 @@ const CreatePositionFormInner = ({
     isSessionActive,
   } = useSession();
   const { toast } = useToast();
-  const chainId = CHAIN_ID_ETHEREAL;
+  const chainId = CHAIN_ID_ETHEREAL_TESTNET;
 
   // Preview card dialog state (for "View Card" in SHARE dropdown)
   const [showPreviewCard, setShowPreviewCard] = useState(false);
@@ -261,18 +268,23 @@ const CreatePositionFormInner = ({
   } = useAuctionStart();
 
   // PredictionMarket address via centralized mapping (use positionChainId)
-  const PREDICTION_MARKET_ADDRESS = predictionMarket[positionChainId]?.address;
+  // V2 (testnet) uses PredictionMarketEscrow, V1 uses PredictionMarket
+  const isV2Chain = positionChainId === CHAIN_ID_ETHEREAL_TESTNET;
+  const PREDICTION_MARKET_ADDRESS = isV2Chain
+    ? predictionMarketEscrow[positionChainId]?.address
+    : predictionMarket[positionChainId]?.address;
 
   // State for validated bids (async validation checks market maker balance/allowance)
   const [bids, setBids] = useState<QuoteBid[]>([]);
 
   // Fetch PredictionMarket configuration
+  // V2 uses collateralToken() directly, V1 uses getConfig()
   const predictionMarketConfigRead = useReadContracts({
     contracts: [
       {
         address: PREDICTION_MARKET_ADDRESS,
-        abi: predictionMarketAbi,
-        functionName: 'getConfig',
+        abi: isV2Chain ? predictionMarketEscrowAbi : predictionMarketAbi,
+        functionName: isV2Chain ? 'collateralToken' : 'getConfig',
         chainId: positionChainId,
       },
     ],
@@ -284,10 +296,14 @@ const CreatePositionFormInner = ({
   const collateralToken: Address | undefined = useMemo(() => {
     const item = predictionMarketConfigRead.data?.[0];
     if (item?.status === 'success') {
+      // V2 returns address directly, V1 returns struct with collateralToken
+      if (isV2Chain) {
+        return item.result as Address;
+      }
       return (item.result as { collateralToken: Address })?.collateralToken;
     }
     return undefined;
-  }, [predictionMarketConfigRead.data]);
+  }, [predictionMarketConfigRead.data, isV2Chain]);
 
   // Determine execution mode for bid validation (mirrors useSapienceWriteContract logic)
   // - 'eoa': User in wallet mode (isUsingSmartAccount = false)
@@ -356,7 +372,7 @@ const CreatePositionFormInner = ({
         chainId,
         predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
         takerAddress: taker,
-        takerWager: wager,
+        takerCollateral: wager,
         takerNonce,
         encodedPredictedOutcomes: predictedOutcomes[0] as `0x${string}`,
         resolver: resolver as `0x${string}`,
@@ -405,12 +421,14 @@ const CreatePositionFormInner = ({
   ]);
 
   const minCollateralRaw: bigint | undefined = useMemo(() => {
+    // V2 doesn't have minCollateral concept, so return undefined
+    if (isV2Chain) return undefined;
     const item = predictionMarketConfigRead.data?.[0];
     if (item?.status === 'success') {
       return (item.result as { minCollateral: bigint })?.minCollateral;
     }
     return undefined;
-  }, [predictionMarketConfigRead.data]);
+  }, [predictionMarketConfigRead.data, isV2Chain]);
 
   // Check if we're on an Ethereal chain
   const isEtherealChain = COLLATERAL_SYMBOLS[positionChainId] === 'USDe';
@@ -876,6 +894,36 @@ const CreatePositionFormInner = ({
 
           // Close the popover/drawer
           setIsPopoverOpen(false);
+
+          // For V2, add picks directly from selections (ensures exact match with counterparty signature)
+          if (isV2Chain) {
+            const v2Picks = getV2Picks();
+            console.log('[V2 Form] Building v2Picks from selections:', {
+              selectionsCount: selections.length,
+              v2PicksCount: v2Picks.length,
+              selections: selections.map((s) => ({
+                conditionId: s.conditionId.slice(0, 10) + '...',
+                prediction: s.prediction,
+                resolverAddress: s.resolverAddress || 'MISSING',
+              })),
+              v2Picks: v2Picks.map((p) => ({
+                resolver: p.conditionResolver,
+                conditionId: p.conditionId.slice(0, 10) + '...',
+                outcome: p.predictedOutcome,
+              })),
+            });
+            if (v2Picks.length > 0) {
+              mintReq.v2Picks = v2Picks.map((p) => ({
+                conditionResolver: p.conditionResolver,
+                conditionId: p.conditionId,
+                predictedOutcome: p.predictedOutcome,
+              }));
+            } else {
+              console.warn(
+                '[V2 Form] No v2Picks available - selections may be missing resolverAddress'
+              );
+            }
+          }
 
           // Submit the mint request to PredictionMarket
           submitPosition(mintReq);

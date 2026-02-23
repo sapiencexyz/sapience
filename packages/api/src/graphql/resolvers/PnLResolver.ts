@@ -5,7 +5,10 @@ import {
   ProfitRankType,
 } from '../types/AggregatedProfitTypes';
 import { TtlCache } from '../../utils/ttlCache';
-import { calculatePositionPnL } from '../../helpers/positionPnL';
+import {
+  calculatePositionPnL,
+  calculateCombinedPositionPnL,
+} from '../../helpers/positionPnL';
 
 const DEFAULT_DECIMALS = 18;
 
@@ -22,11 +25,13 @@ export class PnLResolver {
   @Query(() => [AggregatedProfitEntryType])
   @Directive('@cacheControl(maxAge: 60)')
   async allTimeProfitLeaderboard(): Promise<AggregatedProfitEntryType[]> {
-    const cacheKey = 'allTimeProfitLeaderboard:v3';
+    // Cache key includes v4 to invalidate old cache after V2 integration
+    const cacheKey = 'allTimeProfitLeaderboard:v4';
     const existing = PnLResolver.leaderboardCache.get(cacheKey);
     if (existing) return existing;
 
-    const positionPnL = await calculatePositionPnL();
+    // Use combined V1 + V2 P&L calculation
+    const positionPnL = await calculateCombinedPositionPnL();
 
     const aggregated = new Map<string, number>();
 

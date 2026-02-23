@@ -125,7 +125,7 @@ export function createPositionDefaults(
 
 /**
  * Find the best display bid from a list of QuoteBids.
- * Returns the valid bid with the highest makerWager, or a single non-expired bid as fallback.
+ * Returns the valid bid with the highest makerCollateral, or a single non-expired bid as fallback.
  */
 export function getBestDisplayBid(bids: QuoteBid[]): QuoteBid | null {
   const nowMs = Date.now();
@@ -134,7 +134,7 @@ export function getBestDisplayBid(bids: QuoteBid[]): QuoteBid | null {
   if (valid.length > 0) {
     return valid.reduce((best, cur) => {
       try {
-        return BigInt(cur.makerWager) > BigInt(best.makerWager) ? cur : best;
+        return BigInt(cur.makerCollateral) > BigInt(best.makerCollateral) ? cur : best;
       } catch {
         return best;
       }
@@ -156,7 +156,7 @@ export function calculatePayout(
       positionSize || '0',
       collateralDecimals
     );
-    const totalWei = userPositionSizeWei + BigInt(bid.makerWager);
+    const totalWei = userPositionSizeWei + BigInt(bid.makerCollateral);
     return parseFloat(formatUnits(totalWei, collateralDecimals)).toFixed(2);
   } catch {
     return null;

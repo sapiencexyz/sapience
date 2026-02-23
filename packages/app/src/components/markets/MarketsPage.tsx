@@ -12,7 +12,7 @@ import { ChevronLeft, Search } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 
-import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import { CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
 import CreatePositionForm from '~/components/markets/CreatePositionForm';
 import ExampleCombos from '~/components/markets/ExampleCombos';
 import QuestionsTable from '~/components/markets/QuestionsTable';
@@ -41,7 +41,7 @@ const MarketsPage = () => {
   const { data: allCategories = [], isLoading: isLoadingCategories } =
     useCategories();
 
-  const chainId = CHAIN_ID_ETHEREAL;
+  const chainId = CHAIN_ID_ETHEREAL_TESTNET;
 
   // Get compact status (needed by callbacks below)
   const isCompact = useIsBelow(1024);

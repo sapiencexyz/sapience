@@ -62,7 +62,7 @@ export interface BidFillCallData {
 
 export interface MintParlayData {
   taker: string; // EOA
-  takerWager: string; // wei string
+  takerCollateral: string; // wei string
   takerSignature: string; // Taker's signature allowing this specific bid
 }
 
@@ -71,7 +71,7 @@ export type BidFill = BidFillRawTx | BidFillCallData | MintParlayData;
 export interface BidPayload {
   auctionId: string;
   maker: string; // Maker's EOA or smart account address (0x...) - the bidding party
-  makerWager: string; // wei string
+  makerCollateral: string; // wei string
   makerDeadline: number; // unix seconds
   makerSignature: string; // Maker's signature authorizing this specific bid over the typed payload
   makerNonce: number; // nonce for the maker (bidding party)

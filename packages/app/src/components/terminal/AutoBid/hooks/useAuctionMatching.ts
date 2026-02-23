@@ -27,7 +27,7 @@ type AuctionContext = {
   predictedOutcomes: `0x${string}`[];
   resolver: `0x${string}`;
   taker: `0x${string}`;
-  takerWager: string;
+  takerCollateral: string;
   takerNonce: number;
 };
 
@@ -222,7 +222,7 @@ export function useAuctionMatching({
       auctionId?: string | null;
       /** Auction context from the feed message */
       auctionContext?: {
-        takerWager: string; // wei string
+        takerCollateral: string; // wei string
         taker: `0x${string}`;
         takerNonce: number;
         predictedOutcomes: `0x${string}`[];
@@ -230,7 +230,7 @@ export function useAuctionMatching({
       };
       /** For copy_trade: the bid we're copying + increment */
       copyBidContext?: {
-        copiedBidWager: string; // wei string from the bid we're copying
+        copiedBidCollateral: string; // wei string from the bid we're copying
         increment: number; // human-readable increment from order config
       };
       /** Dedupe key to mark as processed on successful signature */
@@ -257,27 +257,27 @@ export function useAuctionMatching({
         return;
       }
 
-      const { takerWager, taker, takerNonce, predictedOutcomes, resolver } =
+      const { takerCollateral, taker, takerNonce, predictedOutcomes, resolver } =
         details.auctionContext;
 
-      // Calculate our bid amount (makerWager)
-      let makerWagerWei: bigint;
+      // Calculate our bid amount (makerCollateral)
+      let makerCollateralWei: bigint;
       try {
         if (details.source === 'copy_trade' && details.copyBidContext) {
           // For copy_trade: copied bid + increment
           const copiedWei = BigInt(
-            details.copyBidContext.copiedBidWager || '0'
+            details.copyBidContext.copiedBidCollateral || '0'
           );
           const incrementWei = parseUnits(
             String(details.copyBidContext.increment || 0),
             tokenDecimals
           );
-          makerWagerWei = copiedWei + incrementWei;
+          makerCollateralWei = copiedWei + incrementWei;
         } else {
           // For conditions strategy: calculate position size based on probability threshold
-          // Formula: makerWager = (probability * takerWager) / (1 - probability)
+          // Formula: makerCollateral = (probability * takerCollateral) / (1 - probability)
           // This gives us the exact odds we want
-          const takerWagerBigInt = BigInt(takerWager || '0');
+          const takerCollateralBigInt = BigInt(takerCollateral || '0');
           const rawProbability = (details.order.odds ?? 50) / 100; // odds is stored as percentage (0-100)
           // Invert probability for opposite-side matches (single-leg orders matching the other side)
           const probability = details.inverted
@@ -304,10 +304,10 @@ export function useAuctionMatching({
           }
 
           // Calculate using bigint math with precision scaling to avoid floating point errors
-          // makerWager = (probability * takerWager) / (1 - probability)
+          // makerCollateral = (probability * takerCollateral) / (1 - probability)
           const PRECISION = 10000n;
           const probabilityScaled = BigInt(Math.round(probability * 10000));
-          const numerator = probabilityScaled * takerWagerBigInt;
+          const numerator = probabilityScaled * takerCollateralBigInt;
           const denominator = PRECISION - probabilityScaled;
 
           if (denominator <= 0n || numerator <= 0n) {
@@ -327,7 +327,7 @@ export function useAuctionMatching({
             return;
           }
 
-          makerWagerWei = numerator / denominator;
+          makerCollateralWei = numerator / denominator;
         }
       } catch {
         pushLogEntry({
@@ -346,7 +346,7 @@ export function useAuctionMatching({
         return;
       }
 
-      if (makerWagerWei <= 0n) {
+      if (makerCollateralWei <= 0n) {
         pushLogEntry({
           kind: 'system',
           message: `${tag} bid skipped, zero bid amount`,
@@ -369,8 +369,8 @@ export function useAuctionMatching({
         // Actually submit the bid using the shared hook
         const result = await submitBid({
           auctionId: details.auctionId,
-          makerWager: makerWagerWei,
-          takerWager: BigInt(takerWager || '0'),
+          makerCollateral: makerCollateralWei,
+          takerCollateral: BigInt(takerCollateral || '0'),
           predictedOutcomes,
           resolver,
           taker,
@@ -378,9 +378,9 @@ export function useAuctionMatching({
           expirySeconds,
         });
 
-        const makerAmount = formatCollateralAmount(makerWagerWei.toString());
-        const takerWagerBigInt = BigInt(takerWager || '0');
-        const totalWei = makerWagerWei + takerWagerBigInt;
+        const makerAmount = formatCollateralAmount(makerCollateralWei.toString());
+        const takerCollateralBigInt = BigInt(takerCollateral || '0');
+        const totalWei = makerCollateralWei + takerCollateralBigInt;
         const payoutAmount = formatCollateralAmount(totalWei.toString());
 
         const submittedStatus =
@@ -408,8 +408,8 @@ export function useAuctionMatching({
               source: details.source,
               auctionId: details.auctionId,
               highlight: submittedStatus,
-              makerWager: makerWagerWei.toString(),
-              takerWager,
+              makerCollateral: makerCollateralWei.toString(),
+              takerCollateral,
             },
           });
         } else {
@@ -514,7 +514,7 @@ export function useAuctionMatching({
 
         // Create a unique key for this bid to prevent duplicate submissions
         // when the same bid appears in multiple auction.bids messages
-        const bidDedupeKey = `${matched.order.id}:${auctionId}:${signature ?? `${maker}:${bid?.makerWager ?? '0'}`}`;
+        const bidDedupeKey = `${matched.order.id}:${auctionId}:${signature ?? `${maker}:${bid?.makerCollateral ?? '0'}`}`;
 
         // Skip if we've already processed this exact bid for this order
         if (processedBidsRef.current.has(bidDedupeKey)) {
@@ -528,13 +528,13 @@ export function useAuctionMatching({
             ? matched.order.increment
             : 1;
 
-        // Calculate the full bid amount for allowance checking (copiedWager + increment)
+        // Calculate the full bid amount for allowance checking (copiedCollateral + increment)
         // This ensures we don't prompt for signature if allowance is insufficient
-        const copiedWagerWei = BigInt(String(bid?.makerWager ?? '0'));
+        const copiedCollateralWei = BigInt(String(bid?.makerCollateral ?? '0'));
         let estimatedSpend: number;
         try {
           const incrementWei = parseUnits(String(increment), tokenDecimals);
-          const totalWei = copiedWagerWei + incrementWei;
+          const totalWei = copiedCollateralWei + incrementWei;
           estimatedSpend = Number(formatUnits(totalWei, tokenDecimals));
         } catch {
           // Fallback to just increment if parsing fails
@@ -559,7 +559,7 @@ export function useAuctionMatching({
             auctionId,
             auctionContext: cachedContext,
             copyBidContext: {
-              copiedBidWager: String(bid?.makerWager ?? '0'),
+              copiedBidCollateral: String(bid?.makerCollateral ?? '0'),
               increment: matched.order.increment ?? 1,
             },
             dedupeKey: bidDedupeKey,
@@ -587,20 +587,28 @@ export function useAuctionMatching({
         return;
       }
 
-      // Extract auction context from auction.started message
+      // Extract auction context from auction.started or v2.auction.started message
+      // V2 uses different field names: predictor, predictorCollateral, predictorNonce
       const auctionId = entry.channel || null;
       const resolverAddr =
         (entry?.data as any)?.resolver ??
         (entry?.data as any)?.payload?.resolver;
       const takerAddr =
-        (entry?.data as any)?.taker ?? (entry?.data as any)?.payload?.taker;
-      const takerWagerStr =
+        (entry?.data as any)?.taker ??
+        (entry?.data as any)?.payload?.taker ??
+        (entry?.data as any)?.predictor ??
+        (entry?.data as any)?.payload?.predictor;
+      const takerCollateralStr =
         (entry?.data as any)?.wager ??
         (entry?.data as any)?.payload?.wager ??
+        (entry?.data as any)?.predictorCollateral ??
+        (entry?.data as any)?.payload?.predictorCollateral ??
         '0';
       const takerNonceNum =
         (entry?.data as any)?.takerNonce ??
         (entry?.data as any)?.payload?.takerNonce ??
+        (entry?.data as any)?.predictorNonce ??
+        (entry?.data as any)?.payload?.predictorNonce ??
         0;
       const predictedOutcomesArr = Array.isArray(rawPredictions)
         ? (rawPredictions as `0x${string}`[])
@@ -617,7 +625,7 @@ export function useAuctionMatching({
           predictedOutcomes: predictedOutcomesArr,
           resolver: resolverAddr as `0x${string}`,
           taker: takerAddr as `0x${string}`,
-          takerWager: takerWagerStr,
+          takerCollateral: takerCollateralStr,
           takerNonce: Number(takerNonceNum),
         };
         auctionContextCacheRef.current.set(auctionId, ctx);
@@ -645,17 +653,17 @@ export function useAuctionMatching({
         }
         const tag = formatOrderTag(order, null, getOrderIndex);
         // For conditions strategy, calculate estimated spend based on probability threshold
-        // Formula: makerWager = (probability * takerWager) / (1 - probability)
+        // Formula: makerCollateral = (probability * takerCollateral) / (1 - probability)
         let estimatedSpend = 1;
         try {
           const probability = (order.odds ?? 50) / 100;
           if (probability > 0 && probability < 1) {
-            const takerWagerNum = Number(
-              formatUnits(BigInt(takerWagerStr || '0'), tokenDecimals)
+            const takerCollateralNum = Number(
+              formatUnits(BigInt(takerCollateralStr || '0'), tokenDecimals)
             );
-            if (Number.isFinite(takerWagerNum) && takerWagerNum > 0) {
+            if (Number.isFinite(takerCollateralNum) && takerCollateralNum > 0) {
               estimatedSpend =
-                (probability * takerWagerNum) / (1 - probability);
+                (probability * takerCollateralNum) / (1 - probability);
             }
           }
         } catch {
@@ -687,7 +695,7 @@ export function useAuctionMatching({
             inverted: matchInfo.inverted,
             auctionId,
             auctionContext: {
-              takerWager: takerWagerStr,
+              takerCollateral: takerCollateralStr,
               taker: takerAddr as `0x${string}`,
               takerNonce: Number(takerNonceNum),
               predictedOutcomes: predictedOutcomesArr,
@@ -710,9 +718,14 @@ export function useAuctionMatching({
   const handleAuctionMessage = useCallback(
     (entry: AuctionFeedMessage) => {
       if (!entry || typeof entry !== 'object') return;
-      if (entry.type === 'auction.bids') {
+      // Handle both V1 (auction.bids) and V2 (v2.auction.bids)
+      if (entry.type === 'auction.bids' || entry.type === 'v2.auction.bids') {
         handleCopyTradeMatches(entry);
-      } else if (entry.type === 'auction.started') {
+        // Handle both V1 (auction.started) and V2 (v2.auction.started)
+      } else if (
+        entry.type === 'auction.started' ||
+        entry.type === 'v2.auction.started'
+      ) {
         handleConditionMatches(entry);
       }
     },

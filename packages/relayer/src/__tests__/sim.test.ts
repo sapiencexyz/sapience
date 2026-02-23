@@ -16,7 +16,7 @@ const validAuction: AuctionRequestPayload = {
 const validBid: BidPayload = {
   auctionId: 'test-auction-id',
   maker: '0x1234567890123456789012345678901234567890',
-  makerWager: '500000000000000000',
+  makerCollateral: '500000000000000000',
   makerDeadline: Math.floor(Date.now() / 1000) + 3600, // 1 hour from now
   makerSignature: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1b',
   makerNonce: 1,
@@ -98,33 +98,33 @@ describe('basicValidateBid', () => {
     });
   });
 
-  describe('makerWager validation', () => {
-    it('returns ok: false with reason "invalid_maker_wager" when makerWager is missing', () => {
-      const invalidBid = { ...validBid, makerWager: '' };
+  describe('makerCollateral validation', () => {
+    it('returns ok: false with reason "invalid_maker_collateral" when makerCollateral is missing', () => {
+      const invalidBid = { ...validBid, makerCollateral: '' };
       const result = basicValidateBid(validAuction, invalidBid);
       expect(result.ok).toBe(false);
-      expect(result.reason).toBe('invalid_maker_wager');
+      expect(result.reason).toBe('invalid_maker_collateral');
     });
 
-    it('returns ok: false with reason "invalid_maker_wager" when makerWager is 0', () => {
-      const invalidBid = { ...validBid, makerWager: '0' };
+    it('returns ok: false with reason "invalid_maker_collateral" when makerCollateral is 0', () => {
+      const invalidBid = { ...validBid, makerCollateral: '0' };
       const result = basicValidateBid(validAuction, invalidBid);
       expect(result.ok).toBe(false);
-      expect(result.reason).toBe('invalid_maker_wager');
+      expect(result.reason).toBe('invalid_maker_collateral');
     });
 
-    it('returns ok: false with reason "invalid_maker_wager" when makerWager is negative', () => {
-      const invalidBid = { ...validBid, makerWager: '-100' };
+    it('returns ok: false with reason "invalid_maker_collateral" when makerCollateral is negative', () => {
+      const invalidBid = { ...validBid, makerCollateral: '-100' };
       const result = basicValidateBid(validAuction, invalidBid);
       expect(result.ok).toBe(false);
-      expect(result.reason).toBe('invalid_maker_wager');
+      expect(result.reason).toBe('invalid_maker_collateral');
     });
 
-    it('returns ok: false with reason "invalid_wager_values" when makerWager is non-numeric', () => {
-      const invalidBid = { ...validBid, makerWager: 'abc' };
+    it('returns ok: false with reason "invalid_collateral_values" when makerCollateral is non-numeric', () => {
+      const invalidBid = { ...validBid, makerCollateral: 'abc' };
       const result = basicValidateBid(validAuction, invalidBid);
       expect(result.ok).toBe(false);
-      expect(result.reason).toBe('invalid_wager_values');
+      expect(result.reason).toBe('invalid_collateral_values');
     });
   });
 
@@ -161,7 +161,7 @@ describe('basicValidateBid', () => {
     it('accepts valid bid with very large wager values', () => {
       const largeWagerBid = {
         ...validBid,
-        makerWager: '999999999999999999999999999999999999',
+        makerCollateral: '999999999999999999999999999999999999',
       };
       const result = basicValidateBid(validAuction, largeWagerBid);
       expect(result.ok).toBe(true);

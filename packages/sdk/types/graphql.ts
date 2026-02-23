@@ -360,6 +360,7 @@ export type Condition = {
   settledAt?: Maybe<Scalars['Int']['output']>;
   shortName?: Maybe<Scalars['String']['output']>;
   similarMarkets: Array<Scalars['String']['output']>;
+  v2Picks: Array<V2Pick>;
 };
 
 
@@ -392,10 +393,41 @@ export type ConditionPredictionsArgs = {
   where?: InputMaybe<PredictionWhereInput>;
 };
 
+
+export type ConditionV2PicksArgs = {
+  cursor?: InputMaybe<V2PickWhereUniqueInput>;
+  distinct?: InputMaybe<Array<V2PickScalarFieldEnum>>;
+  orderBy?: InputMaybe<Array<V2PickOrderByWithRelationInput>>;
+  skip?: InputMaybe<Scalars['Int']['input']>;
+  take?: InputMaybe<Scalars['Int']['input']>;
+  where?: InputMaybe<V2PickWhereInput>;
+};
+
+export type ConditionAvgAggregate = {
+  __typename?: 'ConditionAvgAggregate';
+  assertionTimestamp?: Maybe<Scalars['Float']['output']>;
+  categoryId?: Maybe<Scalars['Float']['output']>;
+  chainId?: Maybe<Scalars['Float']['output']>;
+  conditionGroupId?: Maybe<Scalars['Float']['output']>;
+  displayOrder?: Maybe<Scalars['Float']['output']>;
+  endTime?: Maybe<Scalars['Float']['output']>;
+  settledAt?: Maybe<Scalars['Float']['output']>;
+};
+
+export type ConditionAvgOrderByAggregateInput = {
+  assertionTimestamp?: InputMaybe<SortOrder>;
+  categoryId?: InputMaybe<SortOrder>;
+  chainId?: InputMaybe<SortOrder>;
+  conditionGroupId?: InputMaybe<SortOrder>;
+  displayOrder?: InputMaybe<SortOrder>;
+  endTime?: InputMaybe<SortOrder>;
+  settledAt?: InputMaybe<SortOrder>;
+};
 export type ConditionCount = {
   __typename?: 'ConditionCount';
   attestations: Scalars['Int']['output'];
   predictions: Scalars['Int']['output'];
+  v2Picks: Scalars['Int']['output'];
 };
 
 
@@ -408,6 +440,58 @@ export type ConditionCountPredictionsArgs = {
   where?: InputMaybe<PredictionWhereInput>;
 };
 
+
+export type ConditionCountV2PicksArgs = {
+  where?: InputMaybe<V2PickWhereInput>;
+};
+
+export type ConditionCountAggregate = {
+  __typename?: 'ConditionCountAggregate';
+  _all: Scalars['Int']['output'];
+  assertionId: Scalars['Int']['output'];
+  assertionTimestamp: Scalars['Int']['output'];
+  categoryId: Scalars['Int']['output'];
+  chainId: Scalars['Int']['output'];
+  claimStatement: Scalars['Int']['output'];
+  conditionGroupId: Scalars['Int']['output'];
+  createdAt: Scalars['Int']['output'];
+  description: Scalars['Int']['output'];
+  displayOrder: Scalars['Int']['output'];
+  endTime: Scalars['Int']['output'];
+  id: Scalars['Int']['output'];
+  openInterest: Scalars['Int']['output'];
+  public: Scalars['Int']['output'];
+  question: Scalars['Int']['output'];
+  resolvedToYes: Scalars['Int']['output'];
+  resolver: Scalars['Int']['output'];
+  settled: Scalars['Int']['output'];
+  settledAt: Scalars['Int']['output'];
+  shortName: Scalars['Int']['output'];
+  similarMarkets: Scalars['Int']['output'];
+};
+
+export type ConditionCountOrderByAggregateInput = {
+  assertionId?: InputMaybe<SortOrder>;
+  assertionTimestamp?: InputMaybe<SortOrder>;
+  categoryId?: InputMaybe<SortOrder>;
+  chainId?: InputMaybe<SortOrder>;
+  claimStatement?: InputMaybe<SortOrder>;
+  conditionGroupId?: InputMaybe<SortOrder>;
+  createdAt?: InputMaybe<SortOrder>;
+  description?: InputMaybe<SortOrder>;
+  displayOrder?: InputMaybe<SortOrder>;
+  endTime?: InputMaybe<SortOrder>;
+  id?: InputMaybe<SortOrder>;
+  openInterest?: InputMaybe<SortOrder>;
+  public?: InputMaybe<SortOrder>;
+  question?: InputMaybe<SortOrder>;
+  resolvedToYes?: InputMaybe<SortOrder>;
+  resolver?: InputMaybe<SortOrder>;
+  settled?: InputMaybe<SortOrder>;
+  settledAt?: InputMaybe<SortOrder>;
+  shortName?: InputMaybe<SortOrder>;
+  similarMarkets?: InputMaybe<SortOrder>;
+};
 export type ConditionGroup = {
   __typename?: 'ConditionGroup';
   _count?: Maybe<ConditionGroupCount>;
@@ -544,6 +628,7 @@ export type ConditionOrderByWithRelationInput = {
   settledAt?: InputMaybe<SortOrderInput>;
   shortName?: InputMaybe<SortOrderInput>;
   similarMarkets?: InputMaybe<SortOrder>;
+  v2Picks?: InputMaybe<V2PickOrderByRelationAggregateInput>;
 };
 
 export type ConditionRelationFilter = {
@@ -615,6 +700,7 @@ export type ConditionWhereInput = {
   settledAt?: InputMaybe<IntNullableFilter>;
   shortName?: InputMaybe<StringNullableFilter>;
   similarMarkets?: InputMaybe<StringNullableListFilter>;
+  v2Picks?: InputMaybe<V2PickListRelationFilter>;
 };
 
 export type ConditionWhereUniqueInput = {
@@ -646,6 +732,7 @@ export type ConditionWhereUniqueInput = {
   settledAt?: InputMaybe<IntNullableFilter>;
   shortName?: InputMaybe<StringNullableFilter>;
   similarMarkets?: InputMaybe<StringNullableListFilter>;
+  v2Picks?: InputMaybe<V2PickListRelationFilter>;
 };
 
 export type DailyVolume = {
@@ -688,6 +775,13 @@ export type EnumPositionStatusFilter = {
   in?: InputMaybe<Array<PositionStatus>>;
   not?: InputMaybe<NestedEnumPositionStatusFilter>;
   notIn?: InputMaybe<Array<PositionStatus>>;
+};
+
+export type EnumV2SettlementResultFilter = {
+  equals?: InputMaybe<V2SettlementResult>;
+  in?: InputMaybe<Array<V2SettlementResult>>;
+  not?: InputMaybe<NestedEnumV2SettlementResultFilter>;
+  notIn?: InputMaybe<Array<V2SettlementResult>>;
 };
 
 export type FloatNullableFilter = {
@@ -880,6 +974,23 @@ export type NestedEnumPositionStatusFilter = {
   notIn?: InputMaybe<Array<PositionStatus>>;
 };
 
+export type NestedEnumV2SettlementResultFilter = {
+  equals?: InputMaybe<V2SettlementResult>;
+  in?: InputMaybe<Array<V2SettlementResult>>;
+  not?: InputMaybe<NestedEnumV2SettlementResultFilter>;
+  notIn?: InputMaybe<Array<V2SettlementResult>>;
+};
+
+export type NestedFloatFilter = {
+  equals?: InputMaybe<Scalars['Float']['input']>;
+  gt?: InputMaybe<Scalars['Float']['input']>;
+  gte?: InputMaybe<Scalars['Float']['input']>;
+  in?: InputMaybe<Array<Scalars['Float']['input']>>;
+  lt?: InputMaybe<Scalars['Float']['input']>;
+  lte?: InputMaybe<Scalars['Float']['input']>;
+  not?: InputMaybe<NestedFloatFilter>;
+  notIn?: InputMaybe<Array<Scalars['Float']['input']>>;
+};
 export type NestedFloatNullableFilter = {
   equals?: InputMaybe<Scalars['Float']['input']>;
   gt?: InputMaybe<Scalars['Float']['input']>;
@@ -1224,6 +1335,14 @@ export type Query = {
   tradingVolumeByAddress: Scalars['String']['output'];
   user?: Maybe<User>;
   users: Array<User>;
+  v2BurnRecords: Array<V2BurnRecordType>;
+  v2PickConfiguration?: Maybe<V2PickConfigurationType>;
+  v2PickConfigurations: Array<V2PickConfigurationType>;
+  v2PositionBalances: Array<V2PositionBalanceType>;
+  v2Prediction?: Maybe<V2PredictionType>;
+  v2Predictions: Array<V2PredictionType>;
+  v2PredictionsCount: Scalars['Int']['output'];
+  v2RedemptionRecords: Array<V2RedemptionRecordType>;
 };
 
 
@@ -1365,6 +1484,69 @@ export type QueryUsersArgs = {
   skip?: InputMaybe<Scalars['Int']['input']>;
   take?: InputMaybe<Scalars['Int']['input']>;
   where?: InputMaybe<UserWhereInput>;
+};
+
+
+export type QueryV2BurnRecordsArgs = {
+  address?: InputMaybe<Scalars['String']['input']>;
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  pickConfigId?: InputMaybe<Scalars['String']['input']>;
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
+};
+
+
+export type QueryV2PickConfigurationArgs = {
+  id: Scalars['String']['input'];
+};
+
+
+export type QueryV2PickConfigurationsArgs = {
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  resolved?: InputMaybe<Scalars['Boolean']['input']>;
+  result?: InputMaybe<Scalars['String']['input']>;
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
+};
+
+
+export type QueryV2PositionBalancesArgs = {
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  holder: Scalars['String']['input'];
+  pickConfigId?: InputMaybe<Scalars['String']['input']>;
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
+};
+
+
+export type QueryV2PredictionArgs = {
+  predictionId: Scalars['String']['input'];
+};
+
+
+export type QueryV2PredictionsArgs = {
+  address?: InputMaybe<Scalars['String']['input']>;
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<Scalars['String']['input']>;
+  orderDirection?: InputMaybe<Scalars['String']['input']>;
+  settled?: InputMaybe<Scalars['Boolean']['input']>;
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
+};
+
+
+export type QueryV2PredictionsCountArgs = {
+  address: Scalars['String']['input'];
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+export type QueryV2RedemptionRecordsArgs = {
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  holder?: InputMaybe<Scalars['String']['input']>;
+  predictionId?: InputMaybe<Scalars['String']['input']>;
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
 };
 
 export type QueryMode =
@@ -1635,3 +1817,280 @@ export type UserWhereUniqueInput = {
   referredById?: InputMaybe<IntNullableFilter>;
   updatedAt?: InputMaybe<DateTimeFilter>;
 };
+
+export type V2BurnRecordType = {
+  __typename?: 'V2BurnRecordType';
+  burnedAt: Scalars['Int']['output'];
+  chainId: Scalars['Int']['output'];
+  counterpartyHolder: Scalars['String']['output'];
+  counterpartyPayout: Scalars['String']['output'];
+  counterpartyTokensBurned: Scalars['String']['output'];
+  id: Scalars['Int']['output'];
+  marketAddress: Scalars['String']['output'];
+  pickConfigId: Scalars['String']['output'];
+  predictorHolder: Scalars['String']['output'];
+  predictorPayout: Scalars['String']['output'];
+  predictorTokensBurned: Scalars['String']['output'];
+  refCode?: Maybe<Scalars['String']['output']>;
+  txHash: Scalars['String']['output'];
+};
+
+/** V2 Pick - Individual pick within a pick configuration */
+export type V2Pick = {
+  __typename?: 'V2Pick';
+  condition?: Maybe<Condition>;
+  conditionId: Scalars['String']['output'];
+  conditionResolver: Scalars['String']['output'];
+  createdAt: Scalars['DateTimeISO']['output'];
+  id: Scalars['Int']['output'];
+  pickConfigId: Scalars['String']['output'];
+  pickConfiguration: V2PickConfiguration;
+  predictedOutcome: Scalars['Int']['output'];
+};
+
+
+/** V2 Pick - Individual pick within a pick configuration */
+export type V2PickConditionArgs = {
+  where?: InputMaybe<ConditionWhereInput>;
+};
+
+/**
+ * V2 Pick Configuration - Fungible betting pool for a specific pick combination
+ * Corresponds to on-chain pickConfigId
+ */
+export type V2PickConfiguration = {
+  __typename?: 'V2PickConfiguration';
+  _count?: Maybe<V2PickConfigurationCount>;
+  chainId: Scalars['Int']['output'];
+  claimedCounterpartyCollateral: Scalars['String']['output'];
+  claimedPredictorCollateral: Scalars['String']['output'];
+  counterpartyToken?: Maybe<Scalars['String']['output']>;
+  createdAt: Scalars['DateTimeISO']['output'];
+  endsAt?: Maybe<Scalars['Int']['output']>;
+  id: Scalars['String']['output'];
+  marketAddress: Scalars['String']['output'];
+  picks: Array<V2Pick>;
+  predictorToken?: Maybe<Scalars['String']['output']>;
+  resolved: Scalars['Boolean']['output'];
+  resolvedAt?: Maybe<Scalars['Int']['output']>;
+  result: V2SettlementResult;
+  totalCounterpartyCollateral: Scalars['String']['output'];
+  totalPredictorCollateral: Scalars['String']['output'];
+};
+
+
+/**
+ * V2 Pick Configuration - Fungible betting pool for a specific pick combination
+ * Corresponds to on-chain pickConfigId
+ */
+export type V2PickConfigurationPicksArgs = {
+  cursor?: InputMaybe<V2PickWhereUniqueInput>;
+  distinct?: InputMaybe<Array<V2PickScalarFieldEnum>>;
+  orderBy?: InputMaybe<Array<V2PickOrderByWithRelationInput>>;
+  skip?: InputMaybe<Scalars['Int']['input']>;
+  take?: InputMaybe<Scalars['Int']['input']>;
+  where?: InputMaybe<V2PickWhereInput>;
+};
+
+export type V2PickConfigurationCount = {
+  __typename?: 'V2PickConfigurationCount';
+  picks: Scalars['Int']['output'];
+};
+
+
+export type V2PickConfigurationCountPicksArgs = {
+  where?: InputMaybe<V2PickWhereInput>;
+};
+
+export type V2PickConfigurationOrderByWithRelationInput = {
+  chainId?: InputMaybe<SortOrder>;
+  claimedCounterpartyCollateral?: InputMaybe<SortOrder>;
+  claimedPredictorCollateral?: InputMaybe<SortOrder>;
+  counterpartyToken?: InputMaybe<SortOrderInput>;
+  createdAt?: InputMaybe<SortOrder>;
+  endsAt?: InputMaybe<SortOrderInput>;
+  id?: InputMaybe<SortOrder>;
+  marketAddress?: InputMaybe<SortOrder>;
+  picks?: InputMaybe<V2PickOrderByRelationAggregateInput>;
+  predictorToken?: InputMaybe<SortOrderInput>;
+  resolved?: InputMaybe<SortOrder>;
+  resolvedAt?: InputMaybe<SortOrderInput>;
+  result?: InputMaybe<SortOrder>;
+  totalCounterpartyCollateral?: InputMaybe<SortOrder>;
+  totalPredictorCollateral?: InputMaybe<SortOrder>;
+};
+
+export type V2PickConfigurationRelationFilter = {
+  is?: InputMaybe<V2PickConfigurationWhereInput>;
+  isNot?: InputMaybe<V2PickConfigurationWhereInput>;
+};
+
+export type V2PickConfigurationType = {
+  __typename?: 'V2PickConfigurationType';
+  chainId: Scalars['Int']['output'];
+  claimedCounterpartyCollateral: Scalars['String']['output'];
+  claimedPredictorCollateral: Scalars['String']['output'];
+  counterpartyToken?: Maybe<Scalars['String']['output']>;
+  endsAt?: Maybe<Scalars['Int']['output']>;
+  id: Scalars['String']['output'];
+  marketAddress: Scalars['String']['output'];
+  picks: Array<V2PickType>;
+  predictorToken?: Maybe<Scalars['String']['output']>;
+  resolved: Scalars['Boolean']['output'];
+  resolvedAt?: Maybe<Scalars['Int']['output']>;
+  result: Scalars['String']['output'];
+  totalCounterpartyCollateral: Scalars['String']['output'];
+  totalPredictorCollateral: Scalars['String']['output'];
+};
+
+export type V2PickConfigurationWhereInput = {
+  AND?: InputMaybe<Array<V2PickConfigurationWhereInput>>;
+  NOT?: InputMaybe<Array<V2PickConfigurationWhereInput>>;
+  OR?: InputMaybe<Array<V2PickConfigurationWhereInput>>;
+  chainId?: InputMaybe<IntFilter>;
+  claimedCounterpartyCollateral?: InputMaybe<StringFilter>;
+  claimedPredictorCollateral?: InputMaybe<StringFilter>;
+  counterpartyToken?: InputMaybe<StringNullableFilter>;
+  createdAt?: InputMaybe<DateTimeFilter>;
+  endsAt?: InputMaybe<IntNullableFilter>;
+  id?: InputMaybe<StringFilter>;
+  marketAddress?: InputMaybe<StringFilter>;
+  picks?: InputMaybe<V2PickListRelationFilter>;
+  predictorToken?: InputMaybe<StringNullableFilter>;
+  resolved?: InputMaybe<BoolFilter>;
+  resolvedAt?: InputMaybe<IntNullableFilter>;
+  result?: InputMaybe<EnumV2SettlementResultFilter>;
+  totalCounterpartyCollateral?: InputMaybe<StringFilter>;
+  totalPredictorCollateral?: InputMaybe<StringFilter>;
+};
+
+export type V2PickListRelationFilter = {
+  every?: InputMaybe<V2PickWhereInput>;
+  none?: InputMaybe<V2PickWhereInput>;
+  some?: InputMaybe<V2PickWhereInput>;
+};
+
+export type V2PickOrderByRelationAggregateInput = {
+  _count?: InputMaybe<SortOrder>;
+};
+
+export type V2PickOrderByWithRelationInput = {
+  condition?: InputMaybe<ConditionOrderByWithRelationInput>;
+  conditionId?: InputMaybe<SortOrder>;
+  conditionResolver?: InputMaybe<SortOrder>;
+  createdAt?: InputMaybe<SortOrder>;
+  id?: InputMaybe<SortOrder>;
+  pickConfigId?: InputMaybe<SortOrder>;
+  pickConfiguration?: InputMaybe<V2PickConfigurationOrderByWithRelationInput>;
+  predictedOutcome?: InputMaybe<SortOrder>;
+};
+
+export type V2PickPickConfigIdConditionResolverConditionIdCompoundUniqueInput = {
+  conditionId: Scalars['String']['input'];
+  conditionResolver: Scalars['String']['input'];
+  pickConfigId: Scalars['String']['input'];
+};
+
+export type V2PickScalarFieldEnum =
+  | 'conditionId'
+  | 'conditionResolver'
+  | 'createdAt'
+  | 'id'
+  | 'pickConfigId'
+  | 'predictedOutcome';
+
+export type V2PickType = {
+  __typename?: 'V2PickType';
+  conditionId: Scalars['String']['output'];
+  conditionResolver: Scalars['String']['output'];
+  id: Scalars['Int']['output'];
+  pickConfigId: Scalars['String']['output'];
+  predictedOutcome: Scalars['Int']['output'];
+};
+
+export type V2PickWhereInput = {
+  AND?: InputMaybe<Array<V2PickWhereInput>>;
+  NOT?: InputMaybe<Array<V2PickWhereInput>>;
+  OR?: InputMaybe<Array<V2PickWhereInput>>;
+  condition?: InputMaybe<ConditionNullableRelationFilter>;
+  conditionId?: InputMaybe<StringFilter>;
+  conditionResolver?: InputMaybe<StringFilter>;
+  createdAt?: InputMaybe<DateTimeFilter>;
+  id?: InputMaybe<IntFilter>;
+  pickConfigId?: InputMaybe<StringFilter>;
+  pickConfiguration?: InputMaybe<V2PickConfigurationRelationFilter>;
+  predictedOutcome?: InputMaybe<IntFilter>;
+};
+
+export type V2PickWhereUniqueInput = {
+  AND?: InputMaybe<Array<V2PickWhereInput>>;
+  NOT?: InputMaybe<Array<V2PickWhereInput>>;
+  OR?: InputMaybe<Array<V2PickWhereInput>>;
+  condition?: InputMaybe<ConditionNullableRelationFilter>;
+  conditionId?: InputMaybe<StringFilter>;
+  conditionResolver?: InputMaybe<StringFilter>;
+  createdAt?: InputMaybe<DateTimeFilter>;
+  id?: InputMaybe<Scalars['Int']['input']>;
+  pickConfigId?: InputMaybe<StringFilter>;
+  pickConfigId_conditionResolver_conditionId?: InputMaybe<V2PickPickConfigIdConditionResolverConditionIdCompoundUniqueInput>;
+  pickConfiguration?: InputMaybe<V2PickConfigurationRelationFilter>;
+  predictedOutcome?: InputMaybe<IntFilter>;
+};
+
+export type V2PositionBalanceType = {
+  __typename?: 'V2PositionBalanceType';
+  balance: Scalars['String']['output'];
+  chainId: Scalars['Int']['output'];
+  holder: Scalars['String']['output'];
+  id: Scalars['Int']['output'];
+  isPredictorToken: Scalars['Boolean']['output'];
+  pickConfig?: Maybe<V2PickConfigurationType>;
+  pickConfigId: Scalars['String']['output'];
+  tokenAddress: Scalars['String']['output'];
+};
+
+export type V2PredictionType = {
+  __typename?: 'V2PredictionType';
+  chainId: Scalars['Int']['output'];
+  collateralDeposited?: Maybe<Scalars['String']['output']>;
+  collateralDepositedAt?: Maybe<Scalars['Int']['output']>;
+  counterparty: Scalars['String']['output'];
+  counterpartyClaimable?: Maybe<Scalars['String']['output']>;
+  counterpartyToken: Scalars['String']['output'];
+  counterpartyCollateral: Scalars['String']['output'];
+  createTxHash: Scalars['String']['output'];
+  id: Scalars['Int']['output'];
+  marketAddress: Scalars['String']['output'];
+  predictionId: Scalars['String']['output'];
+  predictor: Scalars['String']['output'];
+  predictorClaimable?: Maybe<Scalars['String']['output']>;
+  predictorToken: Scalars['String']['output'];
+  predictorCollateral: Scalars['String']['output'];
+  refCode?: Maybe<Scalars['String']['output']>;
+  result: Scalars['String']['output'];
+  settleTxHash?: Maybe<Scalars['String']['output']>;
+  settled: Scalars['Boolean']['output'];
+  settledAt?: Maybe<Scalars['Int']['output']>;
+};
+
+export type V2RedemptionRecordType = {
+  __typename?: 'V2RedemptionRecordType';
+  chainId: Scalars['Int']['output'];
+  collateralPaid: Scalars['String']['output'];
+  holder: Scalars['String']['output'];
+  id: Scalars['Int']['output'];
+  marketAddress: Scalars['String']['output'];
+  positionToken: Scalars['String']['output'];
+  predictionId: Scalars['String']['output'];
+  redeemedAt: Scalars['Int']['output'];
+  refCode?: Maybe<Scalars['String']['output']>;
+  tokensBurned: Scalars['String']['output'];
+  txHash: Scalars['String']['output'];
+};
+
+/** V2 Settlement Result - Matches on-chain SettlementResult enum */
+export type V2SettlementResult =
+  | 'COUNTERPARTY_WINS'
+  | 'NON_DECISIVE'
+  | 'PREDICTOR_WINS'
+  | 'UNRESOLVED';

@@ -26,7 +26,7 @@ import {
 } from 'viem';
 import { Input } from '@sapience/ui/components/ui/input';
 import { useToast } from '@sapience/ui/hooks/use-toast';
-import { CHAIN_ID_ETHEREAL, ETHEREAL_WUSDE_ADDRESS } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID, ETHEREAL_WUSDE_ADDRESS } from '@sapience/sdk/constants';
 import { useCollateralBalance } from '~/hooks/blockchain/useCollateralBalance';
 import { useSession } from '~/lib/context/SessionContext';
 import {
@@ -69,7 +69,7 @@ export default function CollateralBalanceButton({
   buttonClassName,
 }: CollateralBalanceButtonProps) {
   const { address: eoaAddress, connector } = useAccount();
-  const chainId = CHAIN_ID_ETHEREAL;
+  const chainId = DEFAULT_CHAIN_ID;
 
   // Get smart account address and mode from session context
   const { smartAccountAddress, isCalculatingAddress, isUsingSmartAccount } =
@@ -160,7 +160,7 @@ export default function CollateralBalanceButton({
 
     try {
       // Switch to Ethereal chain first
-      await switchChainAsync({ chainId: CHAIN_ID_ETHEREAL });
+      await switchChainAsync({ chainId: DEFAULT_CHAIN_ID });
 
       setTransferStatus('Preparing transaction...');
 
@@ -203,7 +203,7 @@ export default function CollateralBalanceButton({
 
       // Execute batched calls with experimental fallback for wallets like Rabby
       await sendCallsAsync({
-        chainId: CHAIN_ID_ETHEREAL,
+        chainId: DEFAULT_CHAIN_ID,
         calls,
         // Enable fallback for wallets that don't support EIP-5792
         experimental_fallback: true,
@@ -310,7 +310,7 @@ export default function CollateralBalanceButton({
       setWithdrawStatus('Confirm in wallet...');
 
       // Execute via sudo transaction (requires wallet signature)
-      await executeSudoTransaction(ownerSigner, calls, CHAIN_ID_ETHEREAL);
+      await executeSudoTransaction(ownerSigner, calls, DEFAULT_CHAIN_ID);
 
       setWithdrawStatus('');
       toast({

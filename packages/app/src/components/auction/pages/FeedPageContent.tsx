@@ -24,7 +24,7 @@ import AuctionBidsDialog from '~/components/auction/AuctionBidsDialog';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import SegmentedTabsList from '~/components/shared/SegmentedTabsList';
-import { CHAIN_ID_ETHEREAL, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import { useRecentPositions } from '~/hooks/graphql/useRecentPositions';
 import { formatDistanceToNow } from 'date-fns';
 import PicksSummary from '~/components/shared/PicksSummary';
@@ -34,7 +34,7 @@ import type { UILeg } from '~/components/positions/PositionsTable';
 const POSITIONS_PAGE_SIZE = 20;
 
 const FeedPageContent: React.FC = () => {
-  const chainId = CHAIN_ID_ETHEREAL;
+  const chainId = DEFAULT_CHAIN_ID;
   const collateralAssetTicker = COLLATERAL_SYMBOLS[chainId] || 'testUSDe';
   const TAB_VALUES = ['positions', 'auctions', 'vault-quotes'] as const;
   type TabValue = (typeof TAB_VALUES)[number];
@@ -102,7 +102,8 @@ const FeedPageContent: React.FC = () => {
     const set = new Set<string>();
     try {
       for (const m of messages) {
-        if (m.type !== 'auction.started') continue;
+        if (m.type !== 'auction.started' && m.type !== 'v2.auction.started')
+          continue;
         const d = m.data as Record<string, unknown> | null;
         const arr = Array.isArray(d?.predictedOutcomes)
           ? (d.predictedOutcomes as string[])
@@ -175,9 +176,10 @@ const FeedPageContent: React.FC = () => {
   }): UiTransaction {
     const createdAt = new Date(m.time).toISOString();
     const d = m.data as Record<string, any> | null;
-    if (m.type === 'auction.started') {
-      const maker = d?.maker || '';
-      const positionSize = d?.wager || '0';
+    // Handle both V1 and V2 auction started messages
+    if (m.type === 'auction.started' || m.type === 'v2.auction.started') {
+      const maker = d?.maker || d?.predictor || '';
+      const positionSize = d?.wager || d?.predictorCollateral || '0';
       return {
         id: m.time,
         type: 'FORECAST',
@@ -186,24 +188,30 @@ const FeedPageContent: React.FC = () => {
         position: { owner: maker },
       } as UiTransaction;
     }
-    if (m.type === 'auction.bids') {
-      const bids = Array.isArray(d?.bids) ? d.bids : [];
+    // Handle both V1 and V2 auction bids messages
+    if (m.type === 'auction.bids' || m.type === 'v2.auction.bids') {
+      const bids = Array.isArray(d?.bids) ? (d.bids as any[]) : [];
       const top = bids.reduce((best, b) => {
         try {
-          const cur = BigInt(String(b?.makerWager ?? '0'));
-          const bestVal = BigInt(String(best?.makerWager ?? '0'));
+          // V1 uses makerCollateral, V2 uses counterpartyCollateral
+          const cur = BigInt(
+            String(b?.makerCollateral ?? b?.counterpartyCollateral ?? '0')
+          );
+          const bestVal = BigInt(
+            String(best?.makerCollateral ?? best?.counterpartyCollateral ?? '0')
+          );
           return cur > bestVal ? b : best;
         } catch {
           return best;
         }
       }, bids[0] || null);
-      const taker = top?.taker || '';
-      const makerWager = top?.makerWager || '0';
+      const taker = top?.taker || top?.counterparty || '';
+      const makerCollateral = top?.makerCollateral || top?.counterpartyCollateral || '0';
       return {
         id: m.time,
         type: 'FORECAST',
         createdAt,
-        collateral: String(makerWager || '0'),
+        collateral: String(makerCollateral || '0'),
         position: { owner: taker },
       } as UiTransaction;
     }
@@ -256,7 +264,7 @@ const FeedPageContent: React.FC = () => {
 
   function renderPredictionsCell(m: { type: string; data: unknown }) {
     try {
-      if (m.type !== 'auction.started')
+      if (m.type !== 'auction.started' && m.type !== 'v2.auction.started')
         return <span className="text-muted-foreground">—</span>;
       const d = m.data as Record<string, unknown> | null;
       const arr = Array.isArray(d?.predictedOutcomes)
@@ -568,8 +576,10 @@ const FeedPageContent: React.FC = () => {
           </TabsContent>
 
           <TabsContent value="auctions">
-            {displayMessages.filter((m) => m.type === 'auction.started')
-              .length === 0 ? (
+            {displayMessages.filter(
+              (m) =>
+                m.type === 'auction.started' || m.type === 'v2.auction.started'
+            ).length === 0 ? (
               <div className="flex justify-center py-24">
                 <span className="inline-flex items-center gap-1 text-foreground">
                   <span className="inline-block h-[6px] w-[6px] rounded-full bg-foreground opacity-80 animate-ping mr-1.5" />
@@ -602,7 +612,11 @@ const FeedPageContent: React.FC = () => {
                     </thead>
                     <tbody>
                       {displayMessages
-                        .filter((m) => m.type === 'auction.started')
+                        .filter(
+                          (m) =>
+                            m.type === 'auction.started' ||
+                            m.type === 'v2.auction.started'
+                        )
                         .map((m, idx) => (
                           <tr
                             key={`started-${idx}`}
@@ -641,7 +655,7 @@ const FeedPageContent: React.FC = () => {
                                 return (
                                   <AuctionBidsDialog
                                     auctionId={auctionId}
-                                    makerWager={String(d?.wager ?? '0')}
+                                    makerCollateral={String(d?.wager ?? '0')}
                                     collateralAssetTicker={
                                       collateralAssetTicker
                                     }

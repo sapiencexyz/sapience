@@ -9,8 +9,17 @@ export * from './onchain/claim';
 export * from './onchain/vault';
 export * from './onchain/approval';
 export * from './onchain/position';
+export * from './onchain/v2';
+
+// Legacy auction (v1)
 export * from './auction/signing';
 export * from './auction/encoding';
 export * from './auction/simulate';
+
+// V2 auction
+export * from './auction/v2Encoding';
+export * from './auction/v2Signing';
+
 export * from './relayer/auctionWs';
+export * from './relayer/v2AuctionWs';
 

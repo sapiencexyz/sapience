@@ -10,9 +10,16 @@ import { useValidatedAuctionBids } from '~/lib/auction/useValidatedAuctionBids';
 import AuctionRequestInfo from '~/components/terminal/AuctionRequestInfo';
 import AuctionRequestChart from '~/components/terminal/AuctionRequestChart';
 import { useAccount, useReadContract, useReadContracts } from 'wagmi';
-import { predictionMarket, collateralToken } from '@sapience/sdk/contracts';
+import {
+  predictionMarket,
+  predictionMarketEscrow,
+  collateralToken,
+} from '@sapience/sdk/contracts';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
-import { DEFAULT_CHAIN_ID, CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import {
+  DEFAULT_CHAIN_ID,
+  CHAIN_ID_ETHEREAL_TESTNET,
+} from '@sapience/sdk/constants';
 import { predictionMarketAbi } from '@sapience/sdk';
 import erc20Abi from '@sapience/sdk/queries/abis/erc20abi.json';
 import { useToast } from '@sapience/ui/hooks/use-toast';
@@ -27,7 +34,7 @@ type Props = {
   uiTx: UiTransaction;
   predictionsContent: React.ReactNode;
   auctionId: string | null;
-  takerWager: string | null;
+  takerCollateral: string | null;
   taker: string | null;
   resolver: string | null;
   predictedOutcomes: string[];
@@ -37,13 +44,21 @@ type Props = {
   isPinned?: boolean;
   isExpanded?: boolean;
   onToggleExpanded?: (auctionId: string | null) => void;
+  /** Whether this auction uses V2 protocol (from v2.auction.started message) */
+  isV2Auction?: boolean;
+  /** V2 picks array (for V2 auctions) */
+  v2Picks?: Array<{
+    conditionResolver: string;
+    conditionId: string;
+    predictedOutcome: number;
+  }>;
 };
 
 const AuctionRequestRow: React.FC<Props> = ({
   uiTx,
   predictionsContent,
   auctionId,
-  takerWager,
+  takerCollateral,
   taker,
   resolver,
   predictedOutcomes,
@@ -53,10 +68,13 @@ const AuctionRequestRow: React.FC<Props> = ({
   isPinned,
   isExpanded: isExpandedProp,
   onToggleExpanded,
+  isV2Auction = false,
+  v2Picks,
 }) => {
   const { address } = useAccount();
   const { openConnectDialog } = useConnectDialog();
-  const chainId = CHAIN_ID_ETHEREAL;
+  // TODO: Get chainId from context/props when supporting multiple chains
+  const chainId = CHAIN_ID_ETHEREAL_TESTNET;
   const { toast } = useToast();
   const { openApproval } = useApprovalDialog();
   const terminalLogs = useTerminalLogsOptional();
@@ -81,22 +99,36 @@ const AuctionRequestRow: React.FC<Props> = ({
       });
     },
   });
-  // Resolve collateral token from PredictionMarket config (fallback to default constant)
-  const PREDICTION_MARKET_ADDRESS = predictionMarket[chainId]?.address;
+  // Resolve contract address for the current chain
+  // V2 (testnet) uses PredictionMarketEscrow, V1 (mainnet) uses PredictionMarket
+  const isV2Chain = chainId === CHAIN_ID_ETHEREAL_TESTNET;
+  const PREDICTION_MARKET_ADDRESS = isV2Chain
+    ? predictionMarketEscrow[chainId]?.address
+    : predictionMarket[chainId]?.address;
+  // For V2, use collateral token address directly from SDK
+  // For V1, read from PredictionMarket contract config
+  const V2_COLLATERAL_ADDRESS = isV2Chain
+    ? collateralToken[chainId]?.address
+    : undefined;
+
   const predictionMarketConfigRead = useReadContracts({
-    contracts: PREDICTION_MARKET_ADDRESS
-      ? [
-          {
-            address: PREDICTION_MARKET_ADDRESS,
-            abi: predictionMarketAbi,
-            functionName: 'getConfig',
-            chainId: chainId,
-          },
-        ]
-      : [],
-    query: { enabled: !!PREDICTION_MARKET_ADDRESS },
+    contracts:
+      !isV2Chain && PREDICTION_MARKET_ADDRESS
+        ? [
+            {
+              address: PREDICTION_MARKET_ADDRESS,
+              abi: predictionMarketAbi,
+              functionName: 'getConfig',
+              chainId: chainId,
+            },
+          ]
+        : [],
+    query: { enabled: !isV2Chain && !!PREDICTION_MARKET_ADDRESS },
   });
   const COLLATERAL_ADDRESS = useMemo(() => {
+    // For V2, use SDK address directly
+    if (isV2Chain) return V2_COLLATERAL_ADDRESS;
+    // For V1, use config read
     const item = predictionMarketConfigRead.data?.[0];
     if (item && item.status === 'success') {
       try {
@@ -107,7 +139,7 @@ const AuctionRequestRow: React.FC<Props> = ({
       }
     }
     return collateralToken[DEFAULT_CHAIN_ID]?.address;
-  }, [predictionMarketConfigRead.data]);
+  }, [isV2Chain, V2_COLLATERAL_ADDRESS, predictionMarketConfigRead.data]);
   // Read token decimals
   const { data: tokenDecimalsData } = useReadContract({
     abi: erc20Abi,
@@ -150,7 +182,7 @@ const AuctionRequestRow: React.FC<Props> = ({
       chainId,
       predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
       takerAddress: taker as `0x${string}` | undefined,
-      takerWager: takerWager ?? undefined,
+      takerCollateral: takerCollateral ?? undefined,
       takerNonce: takerNonce ?? undefined,
       encodedPredictedOutcomes: predictedOutcomes?.[0] as
         | `0x${string}`
@@ -173,8 +205,8 @@ const AuctionRequestRow: React.FC<Props> = ({
       if (!Array.isArray(validBids) || validBids.length === 0) return null;
       const best = validBids.reduce((prev, curr) => {
         try {
-          const currVal = BigInt(String(curr?.makerWager ?? '0'));
-          const prevVal = BigInt(String(prev?.makerWager ?? '0'));
+          const currVal = BigInt(String(curr?.makerCollateral ?? '0'));
+          const prevVal = BigInt(String(prev?.makerCollateral ?? '0'));
           return currVal > prevVal ? curr : prev;
         } catch {
           return prev;
@@ -182,14 +214,14 @@ const AuctionRequestRow: React.FC<Props> = ({
       }, validBids[0]);
       const makerBid = (() => {
         try {
-          return BigInt(String(best?.makerWager ?? '0'));
+          return BigInt(String(best?.makerCollateral ?? '0'));
         } catch {
           return 0n;
         }
       })();
       const requester = (() => {
         try {
-          return BigInt(String(takerWager ?? '0'));
+          return BigInt(String(takerCollateral ?? '0'));
         } catch {
           return 0n;
         }
@@ -238,12 +270,12 @@ const AuctionRequestRow: React.FC<Props> = ({
     } catch {
       return null;
     }
-  }, [validBids, takerWager]);
+  }, [validBids, takerCollateral]);
 
-  const takerWagerDisplay = useMemo(() => {
+  const takerCollateralDisplay = useMemo(() => {
     try {
-      if (!takerWager) return null;
-      const requester = BigInt(String(takerWager));
+      if (!takerCollateral) return null;
+      const requester = BigInt(String(takerCollateral));
       const requesterNum = Number(formatEther(requester));
       if (!Number.isFinite(requesterNum)) return null;
       return requesterNum.toLocaleString(undefined, {
@@ -253,7 +285,7 @@ const AuctionRequestRow: React.FC<Props> = ({
     } catch {
       return null;
     }
-  }, [takerWager]);
+  }, [takerCollateral]);
 
   const summaryWrapperClass =
     'text-[11px] sm:text-xs whitespace-nowrap flex-shrink-0 flex items-center gap-2 text-muted-foreground';
@@ -262,8 +294,8 @@ const AuctionRequestRow: React.FC<Props> = ({
     ? bestBidSummary.bidDisplay === '—'
       ? '—'
       : `${bestBidSummary.bidDisplay} ${collateralAssetTicker}`
-    : takerWagerDisplay
-      ? `${takerWagerDisplay} ${collateralAssetTicker}`
+    : takerCollateralDisplay
+      ? `${takerCollateralDisplay} ${collateralAssetTicker}`
       : '—';
   const secondaryAmountText = bestBidSummary
     ? bestBidSummary.payoutDisplay === '—'
@@ -375,11 +407,11 @@ const AuctionRequestRow: React.FC<Props> = ({
           ? tokenDecimals
           : 18;
         const amountNum = Number(data.amount || '0');
-        const makerWagerWei = parseUnits(
+        const makerCollateralWei = parseUnits(
           String(data.amount || '0'),
           decimalsToUse
         );
-        if (makerWagerWei <= 0n) {
+        if (makerCollateralWei <= 0n) {
           toast({
             title: 'Invalid amount',
             description: 'Enter a valid bid amount greater than 0.',
@@ -429,15 +461,18 @@ const AuctionRequestRow: React.FC<Props> = ({
         }
 
         // Ensure essential auction context (after preflight checks)
+        // V2 auctions have v2Picks instead of predictedOutcomes
+        const hasV2Picks =
+          isV2Auction && Array.isArray(v2Picks) && v2Picks.length > 0;
         const encodedPredicted =
           Array.isArray(predictedOutcomes) && predictedOutcomes[0]
             ? (predictedOutcomes[0] as `0x${string}`)
             : undefined;
         const resolverAddr =
           typeof resolver === 'string' ? resolver : undefined;
-        const takerWagerWei = (() => {
+        const takerCollateralWei = (() => {
           try {
-            return BigInt(String(takerWager ?? '0'));
+            return BigInt(String(takerCollateral ?? '0'));
           } catch {
             return 0n;
           }
@@ -455,18 +490,27 @@ const AuctionRequestRow: React.FC<Props> = ({
             /* noop */
           }
         }
+
+        // Validation: V2 needs v2Picks, V1 needs predictedOutcomes
+        const hasPredictionData = isV2Auction ? hasV2Picks : !!encodedPredicted;
+        // V2 auctions: counterparty uses their own nonce (from useV2Nonce), not predictor's nonce
+        // V1 auctions: require taker nonce for signing
+        const needsTakerNonce = !isV2Auction;
+
         if (
-          !encodedPredicted ||
+          !hasPredictionData ||
           !resolverAddr ||
-          takerNonceVal === undefined ||
-          takerWagerWei <= 0n ||
+          (needsTakerNonce && takerNonceVal === undefined) ||
+          takerCollateralWei <= 0n ||
           !taker
         ) {
           const missing: string[] = [];
-          if (!encodedPredicted) missing.push('predicted outcomes');
+          if (!hasPredictionData)
+            missing.push(isV2Auction ? 'v2 picks' : 'predicted outcomes');
           if (!resolverAddr) missing.push('resolver');
-          if (takerNonceVal === undefined) missing.push('maker nonce');
-          if (takerWagerWei <= 0n) missing.push('taker position size');
+          if (needsTakerNonce && takerNonceVal === undefined)
+            missing.push('maker nonce');
+          if (takerCollateralWei <= 0n) missing.push('taker position size');
           if (!taker) missing.push('taker');
           toast({
             title: 'Request not ready',
@@ -480,21 +524,31 @@ const AuctionRequestRow: React.FC<Props> = ({
         }
 
         // Use shared bid submission hook for signing and WebSocket
+        // If auction is V1 (not V2), force V1 protocol even on V2-capable chains
+        console.log('[V2 Bid - Auction Data]', {
+          isV2Auction,
+          v2Picks: isV2Auction ? v2Picks : undefined,
+          takerCollateral: takerCollateralWei.toString(),
+          taker,
+          resolver: resolverAddr,
+        });
         const result = await submitBidToWs({
           auctionId,
-          makerWager: makerWagerWei,
-          takerWager: takerWagerWei,
-          predictedOutcomes: [encodedPredicted],
+          makerCollateral: makerCollateralWei,
+          takerCollateral: takerCollateralWei,
+          predictedOutcomes: encodedPredicted ? [encodedPredicted] : [],
           resolver: resolverAddr as `0x${string}`,
           taker: taker as `0x${string}`,
           takerNonce: takerNonceVal,
           expirySeconds: data.expirySeconds,
           maxEndTimeSec: maxEndTimeSec ?? undefined,
+          forceV1: !isV2Auction,
+          v2Picks: isV2Auction ? v2Picks : undefined,
         });
 
         if (result.success) {
-          // Calculate total payout (makerWager + takerWager)
-          const totalWei = makerWagerWei + takerWagerWei;
+          // Calculate total payout (makerCollateral + takerCollateral)
+          const totalWei = makerCollateralWei + takerCollateralWei;
           const decimalsForFormat = Number.isFinite(tokenDecimals)
             ? tokenDecimals
             : 18;
@@ -514,8 +568,8 @@ const AuctionRequestRow: React.FC<Props> = ({
             collateralSymbol: collateralAssetTicker,
             meta: {
               auctionId,
-              makerWager: makerWagerWei.toString(),
-              takerWager: takerWagerWei.toString(),
+              makerCollateral: makerCollateralWei.toString(),
+              takerCollateral: takerCollateralWei.toString(),
             },
           });
           toast({
@@ -551,7 +605,7 @@ const AuctionRequestRow: React.FC<Props> = ({
       predictedOutcomes,
       taker,
       resolver,
-      takerWager,
+      takerCollateral,
       takerNonce,
       address,
       openConnectDialog,
@@ -565,6 +619,8 @@ const AuctionRequestRow: React.FC<Props> = ({
       maxEndTimeSec,
       refetchTakerNonce,
       takerNonceOnChain,
+      isV2Auction,
+      v2Picks,
     ]
   );
 
@@ -675,7 +731,7 @@ const AuctionRequestRow: React.FC<Props> = ({
           >
             <AuctionRequestChart
               bids={validBids}
-              takerWager={takerWager}
+              takerCollateral={takerCollateral}
               collateralAssetTicker={collateralAssetTicker}
               maxEndTimeSec={maxEndTimeSec ?? undefined}
               taker={taker}
@@ -686,7 +742,7 @@ const AuctionRequestRow: React.FC<Props> = ({
             <AuctionRequestInfo
               uiTx={uiTx}
               bids={validBids}
-              takerWager={takerWager}
+              takerCollateral={takerCollateral}
               collateralAssetTicker={collateralAssetTicker}
               maxEndTimeSec={maxEndTimeSec ?? undefined}
               onSubmit={submitBid}

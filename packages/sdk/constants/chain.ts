@@ -4,7 +4,17 @@ export const CHAIN_ID_ARBITRUM = 42161 as const;
 export const CHAIN_ID_ETHEREAL = 5064014 as const;
 export const CHAIN_ID_ETHEREAL_TESTNET = 13374202 as const;
 
-export const DEFAULT_CHAIN_ID = CHAIN_ID_ETHEREAL;
+/**
+ * Default chain ID — configurable via environment variable.
+ * Set NEXT_PUBLIC_DEFAULT_CHAIN_ID (app) or DEFAULT_CHAIN_ID (api/relayer)
+ * to switch environments (e.g., 13374202 for Ethereal Testnet).
+ * Falls back to Ethereal mainnet (5064014).
+ */
+export const DEFAULT_CHAIN_ID: number =
+  Number(
+    process.env.NEXT_PUBLIC_DEFAULT_CHAIN_ID ||
+    process.env.DEFAULT_CHAIN_ID
+  ) || CHAIN_ID_ETHEREAL;
 
 export const COLLATERAL_SYMBOLS: Record<number, string> = {
   [CHAIN_ID_ARBITRUM]: 'testUSDe',
@@ -36,4 +46,28 @@ export const etherealChain = {
   fees: {
     defaultPriorityFee: 1n,
   },
+} as const satisfies Chain;
+
+/**
+ * Ethereal Testnet chain definition for viem/wagmi.
+ * Single source of truth - import from @sapience/sdk/constants.
+ */
+export const etherealTestnetChain = {
+  id: CHAIN_ID_ETHEREAL_TESTNET,
+  name: 'Ethereal Testnet',
+  nativeCurrency: {
+    decimals: 18,
+    name: 'USDe',
+    symbol: 'USDe',
+  },
+  rpcUrls: {
+    default: { http: ['https://rpc.etherealtest.net'] },
+  },
+  blockExplorers: {
+    default: {
+      name: 'Ethereal Testnet Explorer',
+      url: 'https://explorer.etherealtest.net',
+    },
+  },
+  testnet: true,
 } as const satisfies Chain;

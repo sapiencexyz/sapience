@@ -85,15 +85,32 @@ type ContractsMap = typeof import('@sapience/sdk/contracts').contracts;
 type BuildMakerBidTypedData = typeof import('@sapience/sdk/auction/signing').buildMakerBidTypedData;
 type SignMakerBid = typeof import('@sapience/sdk/auction/signing').signMakerBid;
 type PrepareForTrade = typeof import('@sapience/sdk/onchain/trading').prepareForTrade;
+// V2 types
+type BuildCounterpartyMintTypedData = typeof import('@sapience/sdk/auction/v2Signing').buildCounterpartyMintTypedData;
+type ComputePredictionHashFromPicks = typeof import('@sapience/sdk/auction/v2Signing').computePredictionHashFromPicks;
+type Pick = import('@sapience/sdk/types/v2').Pick;
+type OutcomeSideType = import('@sapience/sdk/types/v2').OutcomeSide;
+type V2AuctionDetails = import('@sapience/sdk/types/v2').V2AuctionDetails;
+type PickJson = import('@sapience/sdk/types/v2').PickJson;
 
 const addressBook = sdk.contracts as ContractsMap;
 const buildMakerBidTypedData = sdk.buildMakerBidTypedData as BuildMakerBidTypedData;
 const signMakerBid = sdk.signMakerBid as SignMakerBid;
 const prepareForTrade = sdk.prepareForTrade as PrepareForTrade | undefined;
+// V2 signing utilities
+const buildCounterpartyMintTypedData = sdk.buildCounterpartyMintTypedData as BuildCounterpartyMintTypedData | undefined;
+const computePredictionHashFromPicks = sdk.computePredictionHashFromPicks as ComputePredictionHashFromPicks | undefined;
+// OutcomeSide enum values (matching SDK)
+const OutcomeSide = { YES: 0, NO: 1 } as const;
 
+// V1 contract addresses
 const VERIFYING_CONTRACT = (process.env.VERIFYING_CONTRACT || (addressBook.predictionMarket as any)[CHAIN_ID]?.address) as Address;
 const COLLATERAL_TOKEN = (process.env.COLLATERAL_TOKEN || (addressBook.collateralToken as any)[CHAIN_ID]?.address) as Address;
 const POLYMARKET_RESOLVER = ((addressBook.predictionMarketLZConditionalTokensResolver as any)[CHAIN_ID]?.address as string | undefined)?.toLowerCase();
+
+// V2 contract addresses
+const V2_VERIFYING_CONTRACT = (process.env.V2_VERIFYING_CONTRACT || (addressBook.predictionMarketEscrow as any)?.[CHAIN_ID]?.address) as Address | undefined;
+const V2_ENABLED = process.env.V2_ENABLED !== 'false' && !!V2_VERIFYING_CONTRACT && !!buildCounterpartyMintTypedData;
 
 const BID_AMOUNT_DEC = process.env.BID_AMOUNT || '0.01';
 const MIN_MAKER_POSITION_SIZE_DEC = process.env.MIN_MAKER_POSITION_SIZE || '10';
@@ -164,11 +181,22 @@ async function getConditionsByIds(ids: string[]): Promise<Map<string, { shortNam
 }
 
 /**
+ * Convert V2 PickJson array to typed Pick array
+ */
+function convertPicksFromJson(picks: PickJson[]): Pick[] {
+  return picks.map((p) => ({
+    conditionResolver: p.conditionResolver as Address,
+    conditionId: p.conditionId as Hex,
+    predictedOutcome: p.predictedOutcome as 0 | 1,
+  }));
+}
+
+/**
  * Prepare collateral for trading.
- * 
+ *
  * On Ethereal chain (5064014): Native token is USDe but contracts expect WUSDe.
  * Uses SDK's prepareForTrade to wrap USDe -> WUSDe and approve.
- * 
+ *
  * On other chains (Arbitrum, etc.): USDe is already an ERC-20 token, only approval needed.
  */
 async function prepareCollateral() {
@@ -178,17 +206,24 @@ async function prepareCollateral() {
       return;
     }
 
+    const spenders = [VERIFYING_CONTRACT];
+    if (V2_ENABLED && V2_VERIFYING_CONTRACT) {
+      spenders.push(V2_VERIFYING_CONTRACT);
+    }
+
     logger.info([
       '🔐 Preparing collateral for trading',
       fmt.bullet(fmt.field('chain', fmt.value(`${CHAIN_NAME} (${CHAIN_ID})`))),
       fmt.bullet(fmt.field('collateral', fmt.value(formatAddress(COLLATERAL_TOKEN)))),
-      fmt.bullet(fmt.field('spender', fmt.value(formatAddress(VERIFYING_CONTRACT)))),
-    ].join('\n'));
+      fmt.bullet(fmt.field('V1 spender', fmt.value(formatAddress(VERIFYING_CONTRACT)))),
+      V2_ENABLED && V2_VERIFYING_CONTRACT ? fmt.bullet(fmt.field('V2 spender', fmt.value(formatAddress(V2_VERIFYING_CONTRACT)))) : '',
+    ].filter(Boolean).join('\n'));
 
     // On Ethereal, use prepareForTrade to handle USDe wrapping + approval
     if (CHAIN_ID === CHAIN_ID_ETHEREAL && prepareForTrade) {
       logger.info('📦 Using prepareForTrade for Ethereal (wrap USDe -> WUSDe + approve)');
-      
+
+      // Prepare for V1 contract
       const result = await prepareForTrade({
         privateKey: PRIVATE_KEY_HEX,
         collateralAmount: BID_AMOUNT,
@@ -200,8 +235,22 @@ async function prepareCollateral() {
         logger.success(`Wrapped USDe -> WUSDe: ${result.wrapTxHash}`);
       }
       if (result.approvalTxHash) {
-        logger.success(`Approved WUSDe: ${result.approvalTxHash}`);
+        logger.success(`Approved WUSDe for V1: ${result.approvalTxHash}`);
       }
+
+      // Also prepare for V2 contract if enabled
+      if (V2_ENABLED && V2_VERIFYING_CONTRACT) {
+        const v2Result = await prepareForTrade({
+          privateKey: PRIVATE_KEY_HEX,
+          collateralAmount: BID_AMOUNT,
+          spender: V2_VERIFYING_CONTRACT,
+          rpcUrl: RPC_URL,
+        });
+        if (v2Result.approvalTxHash) {
+          logger.success(`Approved WUSDe for V2: ${v2Result.approvalTxHash}`);
+        }
+      }
+
       logger.success(`Ready for trading. WUSDe balance: ${result.wusdBalance}`);
       return;
     }
@@ -212,28 +261,31 @@ async function prepareCollateral() {
     const publicClient = createPublicClient({ transport: http(RPC_URL), chain });
     const walletClient = createWalletClient({ account, transport: http(RPC_URL), chain });
 
-    const current = (await publicClient.readContract({
-      address: COLLATERAL_TOKEN,
-      abi: erc20Abi,
-      functionName: 'allowance',
-      args: [MAKER as Address, VERIFYING_CONTRACT],
-    })) as bigint;
-
     const MAX = (1n << 256n) - 1n;
-    if (current >= MAX / 2n) {
-      logger.success('Approval already sufficient');
-      return;
-    }
 
-    const hash = (await walletClient.writeContract({
-      address: COLLATERAL_TOKEN,
-      abi: erc20Abi,
-      functionName: 'approve',
-      args: [VERIFYING_CONTRACT, MAX],
-      chain,
-    })) as Hex;
-    await publicClient.waitForTransactionReceipt({ hash });
-    logger.success(`Approval tx: ${hash}`);
+    for (const spender of spenders) {
+      const current = (await publicClient.readContract({
+        address: COLLATERAL_TOKEN,
+        abi: erc20Abi,
+        functionName: 'allowance',
+        args: [MAKER as Address, spender],
+      })) as bigint;
+
+      if (current >= MAX / 2n) {
+        logger.success(`Approval already sufficient for ${formatAddress(spender)}`);
+        continue;
+      }
+
+      const hash = (await walletClient.writeContract({
+        address: COLLATERAL_TOKEN,
+        abi: erc20Abi,
+        functionName: 'approve',
+        args: [spender, MAX],
+        chain,
+      })) as Hex;
+      await publicClient.waitForTransactionReceipt({ hash });
+      logger.success(`Approval tx for ${formatAddress(spender)}: ${hash}`);
+    }
   } catch (e) {
     logger.error('Collateral preparation failed:', e);
   }
@@ -246,6 +298,15 @@ function start() {
 
   ws.on('open', () => {
     logger.success('🔌 Connected to relayer');
+    logger.info([
+      '📊 Market maker configuration:',
+      fmt.bullet(fmt.field('Chain', fmt.value(`${CHAIN_NAME} (${CHAIN_ID})`))),
+      fmt.bullet(fmt.field('Bid amount', fmt.value(`${BID_AMOUNT_DEC}`))),
+      fmt.bullet(fmt.field('Min maker wager', fmt.value(`${MIN_MAKER_WAGER_DEC}`))),
+      fmt.bullet(fmt.field('V1 enabled', VERIFYING_CONTRACT ? fmt.yes() : fmt.no())),
+      fmt.bullet(fmt.field('V2 enabled', V2_ENABLED ? fmt.yes() : fmt.no())),
+      MAKER ? fmt.bullet(fmt.field('Maker', fmt.value(formatAddress(MAKER)))) : fmt.bullet(fmt.field('Maker', fmt.no('not configured (dry run)'))),
+    ].join('\n'));
   });
 
   ws.on('message', async (data: RawData) => {
@@ -315,7 +376,7 @@ function start() {
           logger.info(`🎯 Auction started ${fmt.id(auctionId)}`);
         }
 
-        const makerWager = BID_AMOUNT;
+        const makerCollateral = BID_AMOUNT;
         const makerDeadline = Math.floor(Date.now() / 1000) + DEADLINE_SECONDS;
 
         if (!account || !MAKER) {
@@ -333,7 +394,7 @@ function start() {
             predictedOutcomes: auction.predictedOutcomes as string[],
             wager: auction.wager as string,
           },
-          makerWager,
+          makerCollateral,
           makerDeadline,
           chainId: CHAIN_ID,
           verifyingContract: VERIFYING_CONTRACT,
@@ -355,7 +416,7 @@ function start() {
           payload: {
             auctionId,
             maker: MAKER,
-            makerWager: makerWager.toString(),
+            makerCollateral: makerCollateral.toString(),
             makerDeadline,
             makerSignature,
             makerNonce: makerNonce.toString(),
@@ -367,6 +428,108 @@ function start() {
           if (err) logger.error('⛔️ Bid send failed:', err);
           else logger.success('📨 Bid sent');
         });
+      } else if (type === 'v2.auction.started' && V2_ENABLED && V2_VERIFYING_CONTRACT && buildCounterpartyMintTypedData) {
+        // ----------------------------------------------------------------
+        // V2 Auction Handling
+        // ----------------------------------------------------------------
+        const auction = msg.payload as V2AuctionDetails;
+        const auctionId = auction.auctionId;
+        const predictorCollateral = BigInt(auction.predictorCollateral || '0');
+        const counterpartyCollateral = BigInt(auction.counterpartyCollateral || '0');
+        const auctionChainId = auction.chainId;
+
+        // Ignore auctions on different chains
+        if (auctionChainId && auctionChainId !== CHAIN_ID) {
+          return;
+        }
+
+        // Ignore auctions below minimum wager
+        if (predictorCollateral < MIN_MAKER_WAGER) {
+          return;
+        }
+
+        // Log auction with picks
+        try {
+          const picks = (auction.picks || []) as PickJson[];
+          const conditionIds = picks.map((p: PickJson) => p.conditionId);
+          const idToCond = await getConditionsByIds(conditionIds);
+          const legLines = picks
+            .map((p: PickJson) => {
+              const c = idToCond.get(p.conditionId) || {};
+              const name = (c.shortName && String(c.shortName).trim()) || (c.question && String(c.question).trim()) || p.conditionId.slice(0, 10);
+              const yn = p.predictedOutcome === OutcomeSide.YES ? fmt.yes('Yes') : fmt.no('No');
+              return fmt.bullet(`${name}: ${yn}`);
+            })
+            .join('\n');
+          logger.info([`🎯 V2 Auction started ${fmt.id(auctionId)}`, legLines].join('\n'));
+        } catch {
+          logger.info(`🎯 V2 Auction started ${fmt.id(auctionId)}`);
+        }
+
+        if (!account || !MAKER) {
+          logger.info(
+            `Would bid ${BID_AMOUNT_DEC} on V2 auction ${auctionId} but skipping: PRIVATE_KEY not set`
+          );
+          return;
+        }
+
+        const counterpartyDeadline = BigInt(Math.floor(Date.now() / 1000) + DEADLINE_SECONDS);
+        const counterpartyNonce = 0n; // Fresh nonce for counterparty
+
+        // Build typed data for counterparty signature
+        const typedData = buildCounterpartyMintTypedData({
+          picks: convertPicksFromJson(auction.picks),
+          predictorCollateral,
+          counterpartyCollateral: BID_AMOUNT,
+          predictor: auction.predictor as Address,
+          counterparty: MAKER,
+          counterpartyNonce,
+          counterpartyDeadline,
+          verifyingContract: V2_VERIFYING_CONTRACT,
+          chainId: CHAIN_ID,
+        });
+
+        // Sign the typed data
+        const counterpartySignature = await account.signTypedData({
+          domain: {
+            ...typedData.domain,
+            chainId: Number(typedData.domain.chainId),
+          },
+          types: typedData.types,
+          primaryType: typedData.primaryType,
+          message: typedData.message,
+        });
+
+        const v2Bid = {
+          type: 'v2.bid.submit',
+          payload: {
+            auctionId,
+            counterparty: MAKER,
+            counterpartyNonce: Number(counterpartyNonce),
+            counterpartyDeadline: Number(counterpartyDeadline),
+            counterpartySignature,
+          },
+        };
+
+        logger.info(`📤 Sending V2 bid ${fmt.value(BID_AMOUNT_DEC)} on ${fmt.id(auctionId)}`);
+        ws.send(JSON.stringify(v2Bid), (err?: Error) => {
+          if (err) logger.error('⛔️ V2 Bid send failed:', err);
+          else logger.success('📨 V2 Bid sent');
+        });
+      } else if (type === 'v2.bid.ack') {
+        const err = msg?.payload?.error as string | undefined;
+        if (err) logger.warn('⛔️ V2 Bid rejected:', err);
+        else logger.success('✅ V2 Bid acknowledged by relayer');
+      } else if (type === 'v2.auction.bids') {
+        // V2 bids update visibility
+        const count = (msg?.payload?.bids?.length as number | undefined) ?? 0;
+        if (count > 0) logger.info(`📈 V2 Bids update for ${fmt.id(String(msg?.payload?.auctionId))}: ${fmt.value(String(count))}`);
+      } else if (type === 'v2.auction.filled') {
+        const payload = msg?.payload || {};
+        logger.success(`🎉 V2 Auction filled ${fmt.id(String(payload.auctionId))} - tx: ${fmt.value(String(payload.transactionHash))}`);
+      } else if (type === 'v2.auction.expired') {
+        const payload = msg?.payload || {};
+        logger.warn(`⏰ V2 Auction expired ${fmt.id(String(payload.auctionId))}: ${payload.reason || 'unknown'}`);
       } else if (type === 'bid.ack') {
         const err = msg?.payload?.error as string | undefined;
         if (err) logger.warn('⛔️ Bid rejected:', err);

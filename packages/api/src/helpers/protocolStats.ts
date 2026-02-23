@@ -4,7 +4,7 @@ import { PositionStatus } from '../../generated/prisma';
 import { getProviderForChain, getBlockByTimestamp } from '../utils/utils';
 import { contracts } from '@sapience/sdk/contracts';
 import { liquidityVaultAbi } from '@sapience/sdk/abis';
-import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 
 interface VaultPnLResult {
   realizedPnL: bigint;
@@ -38,7 +38,7 @@ interface ProtocolStatsData {
  * Fetch Vault balance: wUSDe.balanceOf(vault) only (excludes deployed funds).
  */
 export async function fetchVaultTVL(
-  chainId: number = CHAIN_ID_ETHEREAL
+  chainId: number = DEFAULT_CHAIN_ID
 ): Promise<bigint> {
   const client = getProviderForChain(chainId);
 
@@ -65,7 +65,7 @@ export async function fetchVaultTVL(
  * Fetch Vault deployed funds: vault.totalDeployed()
  */
 export async function fetchVaultDeployed(
-  chainId: number = CHAIN_ID_ETHEREAL
+  chainId: number = DEFAULT_CHAIN_ID
 ): Promise<bigint> {
   const client = getProviderForChain(chainId);
   const vaultAddress = contracts.passiveLiquidityVault[chainId]?.address;
@@ -113,7 +113,7 @@ export async function fetchVaultDeployedAtBlock(
  * Fetch Vault available assets: vault.availableAssets() (excludes pending deposits)
  */
 export async function fetchVaultAvailableAssets(
-  chainId: number = CHAIN_ID_ETHEREAL
+  chainId: number = DEFAULT_CHAIN_ID
 ): Promise<bigint> {
   const client = getProviderForChain(chainId);
   const vaultAddress = contracts.passiveLiquidityVault[chainId]?.address;
@@ -161,7 +161,7 @@ export async function fetchVaultAvailableAssetsAtBlock(
  * Fetch PredictionMarket TVL: wUSDe.balanceOf(predictionMarket)
  */
 export async function fetchPredictionMarketTVL(
-  chainId: number = CHAIN_ID_ETHEREAL
+  chainId: number = DEFAULT_CHAIN_ID
 ): Promise<bigint> {
   const client = getProviderForChain(chainId);
 
@@ -458,7 +458,7 @@ async function upsertProtocolStatsSnapshot(
  * Main function to compute and store daily protocol stats snapshot.
  */
 export async function computeAndStoreProtocolStats(
-  chainId: number = CHAIN_ID_ETHEREAL
+  chainId: number = DEFAULT_CHAIN_ID
 ): Promise<void> {
   console.log(
     `[ProtocolStats] Starting stats computation for chain ${chainId}`
@@ -553,7 +553,7 @@ export async function getProtocolStatsTimeSeries(days: number = 90) {
  * Backfill historical protocol stats by querying on-chain state at past blocks.
  */
 export async function backfillProtocolStats(
-  chainId: number = CHAIN_ID_ETHEREAL,
+  chainId: number = DEFAULT_CHAIN_ID,
   days: number = 90
 ): Promise<void> {
   const client = getProviderForChain(chainId);

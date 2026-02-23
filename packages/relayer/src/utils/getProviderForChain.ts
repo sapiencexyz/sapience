@@ -36,7 +36,23 @@ export const etherealChain: Chain = {
   },
 };
 
-const supportedChains: Chain[] = [cannon, etherealChain];
+export const etherealTestnetChain: Chain = {
+  id: 13374202,
+  name: 'Ethereal Testnet',
+  nativeCurrency: {
+    name: 'Ethena USDe',
+    symbol: 'USDe',
+    decimals: 18,
+  },
+  rpcUrls: {
+    default: {
+      http: [process.env.CHAIN_13374202_RPC_URL || 'https://rpc.etherealtest.net'],
+    },
+    public: { http: ['https://rpc.etherealtest.net'] },
+  },
+};
+
+const supportedChains: Chain[] = [cannon, etherealChain, etherealTestnetChain];
 
 export function getChainById(id: number): Chain | undefined {
   return supportedChains.find((c) => c.id === id);
@@ -64,6 +80,13 @@ export function getProviderForChain(chainId: number): PublicClient {
       newClient = createPublicClient({
         chain: etherealChain,
         transport: http(process.env.CHAIN_5064014_RPC_URL || 'https://rpc.ethereal.trade'),
+        batch: { multicall: true },
+      });
+      break;
+    case 13374202:
+      newClient = createPublicClient({
+        chain: etherealTestnetChain,
+        transport: http(process.env.CHAIN_13374202_RPC_URL || 'https://rpc.etherealtest.net'),
         batch: { multicall: true },
       });
       break;

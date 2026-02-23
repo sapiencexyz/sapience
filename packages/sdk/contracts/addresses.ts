@@ -129,6 +129,149 @@ export const eas: ChainAddressMap = {
   },
 } as const;
 
+// ============================================
+// V2 Contract Addresses
+// ============================================
+
+/**
+ * PredictionMarketEscrow (V2)
+ * Core escrow contract handling mint, settle, redeem, burn
+ * TODO: Update addresses after mainnet deployment
+ */
+export const predictionMarketEscrow: ChainAddressMap = {
+  5064014: {
+    // Ethereal mainnet - TODO: deploy
+    address: '0x0000000000000000000000000000000000000000',
+    legacy: [] as const,
+  },
+  13374202: {
+    // Ethereal testnet — deployed 2026-02-17
+    address: '0xb5d2E6B148eBdFB02a3456F0Af021FAe81356511',
+    legacy: ['0x8730eE1194Cd03A14deA9975e2bafD4C8b6019F1'] as const,
+  },
+} as const;
+
+/**
+ * PredictionMarketVault (V2)
+ * Passive liquidity vault for V2 protocol
+ * TODO: Update addresses after mainnet deployment
+ */
+export const predictionMarketVault: ChainAddressMap = {
+  5064014: {
+    // Ethereal mainnet - TODO: deploy
+    address: '0x0000000000000000000000000000000000000000',
+    legacy: [] as const,
+  },
+  13374202: {
+    // Ethereal testnet — deployed 2026-02-18
+    address: '0xADf3C8D4B159FdA439E3C0e519DEc3C93DE0a4c3',
+    legacy: [] as const,
+  },
+} as const;
+
+/**
+ * PythConditionResolver (V2)
+ * Pyth oracle-based condition resolution
+ */
+export const pythConditionResolver: ChainAddressMap = {
+  5064014: {
+    // Ethereal mainnet - TODO: deploy
+    address: '0x0000000000000000000000000000000000000000',
+    legacy: [] as const,
+  },
+  13374202: {
+    // Ethereal testnet - TODO: deploy
+    address: '0x0000000000000000000000000000000000000000',
+    legacy: [] as const,
+  },
+} as const;
+
+/**
+ * ManualConditionResolver (V2)
+ * Admin-controlled condition resolution (for testing/mocks)
+ */
+export const manualConditionResolver: ChainAddressMap = {
+  5064014: {
+    // Ethereal mainnet - TODO: deploy
+    address: '0x0000000000000000000000000000000000000000',
+    legacy: [] as const,
+  },
+  13374202: {
+    // Ethereal testnet — deployed 2026-02-17
+    address: '0x9938583eA9a6450Cc64502bDcBF76f4EEa2F9560',
+    legacy: ['0x514A4321d89Aa47D1b1Dd9E0a3226249E6ef896A'] as const,
+  },
+} as const;
+
+/**
+ * LZConditionResolver (V2)
+ * LayerZero cross-chain condition resolution
+ */
+export const lzConditionResolver: ChainAddressMap = {
+  5064014: {
+    // Ethereal mainnet - TODO: deploy
+    address: '0x0000000000000000000000000000000000000000',
+    legacy: [] as const,
+  },
+  13374202: {
+    // Ethereal testnet - TODO: deploy
+    address: '0x0000000000000000000000000000000000000000',
+    legacy: [] as const,
+  },
+} as const;
+
+/**
+ * PredictionMarketBridge (V2)
+ * Bridge contract on source chain (Ethereal)
+ */
+export const predictionMarketBridge: ChainAddressMap = {
+  5064014: {
+    // Ethereal mainnet - TODO: deploy
+    address: '0x0000000000000000000000000000000000000000',
+    legacy: [] as const,
+  },
+  13374202: {
+    // Ethereal testnet — deployed 2026-02-17
+    address: '0xAe66B4DED22bED7bE9385c29ADEc7AC9e1B97700',
+    legacy: ['0x275Ba9B8DB207afb33022043848216BB7195eDb5'] as const,
+  },
+} as const;
+
+/**
+ * PredictionMarketBridgeRemote (V2)
+ * Bridge contract on remote chain (Arbitrum)
+ */
+export const predictionMarketBridgeRemote: ChainAddressMap = {
+  42161: {
+    // Arbitrum mainnet - TODO: deploy
+    address: '0x0000000000000000000000000000000000000000',
+    legacy: [] as const,
+  },
+  421614: {
+    // Arbitrum Sepolia testnet — deployed 2026-02-17
+    address: '0xE64ca8f0533422BCb6d48dCF11DB2fF3FA26B7Fb',
+    legacy: ['0x1a7F19Ee50FBCa9a4d195E4a3737e7737b252b4c'] as const,
+  },
+} as const;
+
+/**
+ * PredictionMarketTokenFactory (V2)
+ * CREATE3 factory for deterministic token addresses on remote chain
+ */
+export const predictionMarketTokenFactory: ChainAddressMap = {
+  42161: {
+    // Arbitrum mainnet - TODO: deploy
+    address: '0x0000000000000000000000000000000000000000',
+    legacy: [] as const,
+  },
+  421614: {
+    // Arbitrum Sepolia testnet — deployed 2026-02-17
+    address: '0xD0734eb4b22eFc22F53254C276e8A3095740600a',
+    legacy: ['0x0daA1bC7FC4d7f2753FdB65e0AD96b97361385A3'] as const,
+  },
+} as const;
+
+// Legacy exports
 export const contracts = {
   predictionMarket,
   predictionMarketLZConditionalTokensResolver,
@@ -139,5 +282,17 @@ export const contracts = {
   passiveLiquidityVault,
   collateralToken,
   eas,
+};
+
+// V2 exports
+export const v2Contracts = {
+  predictionMarketEscrow,
+  predictionMarketVault,
+  pythConditionResolver,
+  manualConditionResolver,
+  lzConditionResolver,
+  predictionMarketBridge,
+  predictionMarketBridgeRemote,
+  predictionMarketTokenFactory,
 };
 

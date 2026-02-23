@@ -16,7 +16,7 @@ const validAuction: AuctionRequestPayload = {
 const createValidBid = (auctionId: string): BidPayload => ({
   auctionId,
   maker: '0x1234567890123456789012345678901234567890',
-  makerWager: '500000000000000000',
+  makerCollateral: '500000000000000000',
   makerDeadline: Math.floor(Date.now() / 1000) + 3600, // 1 hour from now
   makerSignature: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1b',
   makerNonce: 1,
@@ -110,7 +110,7 @@ describe('addBid', () => {
     const result = addBid(auctionId, bid);
     expect(result).toBeDefined();
     expect(result?.maker).toBe(bid.maker);
-    expect(result?.makerWager).toBe(bid.makerWager);
+    expect(result?.makerCollateral).toBe(bid.makerCollateral);
   });
 
   it('returns undefined when auction does not exist', () => {
@@ -191,16 +191,16 @@ describe('addBid', () => {
 
     const bid1: BidPayload = {
       ...createValidBid(auctionId),
-      makerWager: '100',
+      makerCollateral: '100',
     };
     const bid2: BidPayload = {
       ...createValidBid(auctionId),
-      makerWager: '200',
+      makerCollateral: '200',
       maker: '0xdeaddeaddeaddeaddeaddeaddeaddeaddeaddead',
     };
     const bid3: BidPayload = {
       ...createValidBid(auctionId),
-      makerWager: '300',
+      makerCollateral: '300',
       maker: '0xbeefbeefbeefbeefbeefbeefbeefbeefbeefbeef',
     };
 
@@ -260,11 +260,11 @@ describe('getBids', () => {
 
     const bid1: BidPayload = {
       ...createValidBid(auctionId),
-      makerWager: '100',
+      makerCollateral: '100',
     };
     const bid2: BidPayload = {
       ...createValidBid(auctionId),
-      makerWager: '200',
+      makerCollateral: '200',
       maker: '0xdeaddeaddeaddeaddeaddeaddeaddeaddeaddead',
     };
 
@@ -272,8 +272,8 @@ describe('getBids', () => {
     addBid(auctionId, bid2);
 
     const result = getBids(auctionId);
-    expect(result[0].makerWager).toBe('100');
-    expect(result[1].makerWager).toBe('200');
+    expect(result[0].makerCollateral).toBe('100');
+    expect(result[1].makerCollateral).toBe('200');
   });
 
   it('returns empty array for auction with no bids', () => {

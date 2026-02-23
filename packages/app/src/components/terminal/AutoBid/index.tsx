@@ -6,7 +6,7 @@ import { useAccount, useReadContracts } from 'wagmi';
 import { formatUnits } from 'viem';
 import { predictionMarket } from '@sapience/sdk/contracts';
 import { predictionMarketAbi } from '@sapience/sdk';
-import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useConditions } from '~/hooks/graphql/useConditions';
 import { useTokenApproval } from '~/hooks/contract/useTokenApproval';
 import { useCollateralBalance } from '~/hooks/blockchain/useCollateralBalance';
@@ -36,7 +36,7 @@ const MAX_DISPLAY_ALLOWANCE = 10n ** 27n; // 1 billion tokens (10^9) with 18 dec
 
 const AutoBid: React.FC<AutoBidProps> = () => {
   const { address } = useAccount();
-  const chainId = CHAIN_ID_ETHEREAL;
+  const chainId = DEFAULT_CHAIN_ID;
   const { messages: auctionMessages } = useAuctionRelayerFeed();
   const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
 

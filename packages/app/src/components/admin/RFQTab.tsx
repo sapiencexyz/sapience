@@ -47,7 +47,13 @@ import { Copy, Upload, FileText, CheckCircle, XCircle } from 'lucide-react';
 import { formatDistanceToNow, fromUnixTime } from 'date-fns';
 import { useReadContract, useReadContracts } from 'wagmi';
 import { keccak256, concatHex, toHex, isAddress } from 'viem';
-import { lzUmaResolver, lzPMResolver } from '@sapience/sdk/contracts';
+import {
+  lzUmaResolver,
+  lzPMResolver,
+  manualConditionResolver,
+  pythConditionResolver,
+  predictionMarketLZConditionalTokensResolver,
+} from '@sapience/sdk/contracts';
 import { DEFAULT_CHAIN_ID, CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import DateTimePicker from '../shared/DateTimePicker';
 import DataTable from './data-table';
@@ -126,7 +132,7 @@ const RFQTab = ({
   const { postJson, putJson } = useAdminApi();
   const { data: categories } = useCategories();
 
-  const currentChainId = CHAIN_ID_ETHEREAL;
+  const currentChainId = DEFAULT_CHAIN_ID;
   const currentChainName = 'Ethereal';
 
   const [question, setQuestion] = useState('');
@@ -147,6 +153,31 @@ const RFQTab = ({
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [visibilityFilter, setVisibilityFilter] =
     useState<VisibilityFilter>('all');
+  const [chainFilter, setChainFilter] = useState<string>('all');
+
+  // V2 state
+  const [protocolVersion, setProtocolVersion] = useState<'v1' | 'v2'>('v1');
+  const [v2ConditionId, setV2ConditionId] = useState('');
+  const [v2ResolverType, setV2ResolverType] = useState<
+    'manual' | 'pyth' | 'uma-lz' | 'conditional-tokens'
+  >('manual');
+  const [v2ChainId, setV2ChainId] = useState<number>(13374202); // Default to Ethereal Testnet
+
+  // V2 resolver address helper
+  const V2_RESOLVER_MAP = {
+    manual: manualConditionResolver,
+    pyth: pythConditionResolver,
+    'uma-lz': lzPMResolver,
+    'conditional-tokens': predictionMarketLZConditionalTokensResolver,
+  };
+
+  const getV2ResolverAddress = (
+    type: keyof typeof V2_RESOLVER_MAP,
+    chainId: number
+  ): string | null => {
+    const resolver = V2_RESOLVER_MAP[type];
+    return resolver?.[chainId]?.address ?? null;
+  };
 
   const {
     data: conditions,
@@ -154,7 +185,8 @@ const RFQTab = ({
     refetch,
   } = useConditions({
     take: 500,
-    chainId: currentChainId,
+    // When 'all' is selected, don't pass chainId to get all chains
+    ...(chainFilter !== 'all' ? { chainId: Number(chainFilter) } : {}),
     filters: {
       visibility: visibilityFilter,
     },
@@ -237,6 +269,11 @@ const RFQTab = ({
     setResolver('');
     setEditingId(undefined);
     setEditingChainId(undefined);
+    // V2 fields
+    setProtocolVersion('v1');
+    setV2ConditionId('');
+    setV2ResolverType('manual');
+    setV2ChainId(13374202);
   };
 
   // CSV Import helper functions
@@ -614,8 +651,12 @@ const RFQTab = ({
         size: 100,
         cell: ({ getValue }) => {
           const chainId = getValue() as number;
-          const chainName =
-            chainId === CHAIN_ID_ETHEREAL ? 'Ethereal' : 'Arbitrum';
+          const chainNames: Record<number, string> = {
+            5064014: 'Ethereal',
+            13374202: 'Ethereal Testnet',
+            42161: 'Arbitrum',
+          };
+          const chainName = chainNames[chainId] ?? `Chain ${chainId}`;
           return (
             <Badge variant="outline" className="whitespace-nowrap">
               {chainName}
@@ -868,9 +909,13 @@ const RFQTab = ({
           claimStatement,
           description,
           similarMarkets,
-          chainId: currentChainId,
+          chainId: protocolVersion === 'v2' ? v2ChainId : currentChainId,
           resolver: trimmedResolver.toLowerCase(),
           ...(trimmedGroupName ? { groupName: trimmedGroupName } : {}),
+          // V2: pass condition ID directly via conditionHash
+          ...(protocolVersion === 'v2' && v2ConditionId
+            ? { conditionHash: v2ConditionId }
+            : {}),
         };
         await postJson<RFQRow>(`/conditions`, body);
         // Refresh list to reflect server state and close the modal
@@ -946,9 +991,23 @@ const RFQTab = ({
             </SelectContent>
           </Select>
 
+          <span className="text-sm font-medium">Chain:</span>
+          <Select value={chainFilter} onValueChange={setChainFilter}>
+            <SelectTrigger className="w-[180px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Chains</SelectItem>
+              <SelectItem value="5064014">Ethereal</SelectItem>
+              <SelectItem value="13374202">Ethereal Testnet</SelectItem>
+              <SelectItem value="42161">Arbitrum</SelectItem>
+            </SelectContent>
+          </Select>
+
           {(filter !== 'all' ||
             categoryFilter !== 'all' ||
-            visibilityFilter !== 'all') && (
+            visibilityFilter !== 'all' ||
+            chainFilter !== 'all') && (
             <span className="text-sm text-muted-foreground">
               ({rows.length} {rows.length === 1 ? 'condition' : 'conditions'})
             </span>
@@ -1162,6 +1221,36 @@ const RFQTab = ({
             onSubmit={onSubmit}
             className="grid grid-cols-1 gap-4 md:grid-cols-2"
           >
+            {/* Protocol Version Toggle */}
+            <div className="space-y-2 md:col-span-2">
+              <label className="text-sm font-medium">Protocol Version</label>
+              <Select
+                value={protocolVersion}
+                onValueChange={(v) => {
+                  setProtocolVersion(v as 'v1' | 'v2');
+                  // Auto-populate resolver address when switching to V2
+                  if (v === 'v2') {
+                    const addr = getV2ResolverAddress(
+                      v2ResolverType,
+                      v2ChainId
+                    );
+                    if (addr) setResolver(addr);
+                  } else {
+                    setResolver('');
+                  }
+                }}
+                disabled={Boolean(editingId)}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="v1">V1 (Legacy)</SelectItem>
+                  <SelectItem value="v2">V2</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="space-y-2">
               <label className="text-sm font-medium">Question</label>
               <Input
@@ -1196,17 +1285,40 @@ const RFQTab = ({
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">Chain</label>
-              <Input
-                value={
-                  editingId
-                    ? editingChainId === CHAIN_ID_ETHEREAL
-                      ? 'Ethereal'
-                      : 'Arbitrum'
-                    : currentChainName
-                }
-                disabled
-                readOnly
-              />
+              {protocolVersion === 'v2' && !editingId ? (
+                <Select
+                  value={String(v2ChainId)}
+                  onValueChange={(v) => {
+                    setV2ChainId(Number(v));
+                    // Re-populate resolver address
+                    const addr = getV2ResolverAddress(
+                      v2ResolverType,
+                      Number(v)
+                    );
+                    if (addr) setResolver(addr);
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="5064014">Ethereal</SelectItem>
+                    <SelectItem value="13374202">Ethereal Testnet</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input
+                  value={
+                    editingId
+                      ? editingChainId === CHAIN_ID_ETHEREAL
+                        ? 'Ethereal'
+                        : 'Arbitrum'
+                      : currentChainName
+                  }
+                  disabled
+                  readOnly
+                />
+              )}
             </div>
             <div className="space-y-2">
               <label className="text-sm font-medium">End Time (UTC)</label>
@@ -1261,6 +1373,70 @@ const RFQTab = ({
                 onChange={(e) => setGroupName(e.target.value)}
               />
             </div>
+            {/* V2-specific fields */}
+            {protocolVersion === 'v2' && !editingId && (
+              <>
+                {/* Resolver Type - 4 options */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">Resolver Type</label>
+                  <Select
+                    value={v2ResolverType}
+                    onValueChange={(v) => {
+                      setV2ResolverType(
+                        v as 'manual' | 'pyth' | 'uma-lz' | 'conditional-tokens'
+                      );
+                      const addr = getV2ResolverAddress(
+                        v as keyof typeof V2_RESOLVER_MAP,
+                        v2ChainId
+                      );
+                      if (addr) setResolver(addr);
+                    }}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="manual">Manual Resolver</SelectItem>
+                      <SelectItem value="pyth">Pyth Resolver</SelectItem>
+                      <SelectItem value="uma-lz">UMA-LZ Resolver</SelectItem>
+                      <SelectItem value="conditional-tokens">
+                        Conditional Tokens Resolver
+                      </SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                {/* Condition ID */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium">
+                    Condition ID{' '}
+                    <span className="text-muted-foreground font-normal">
+                      (optional - auto-generated if empty)
+                    </span>
+                  </label>
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="0x..."
+                      value={v2ConditionId}
+                      onChange={(e) => setV2ConditionId(e.target.value)}
+                      className="font-mono flex-1"
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        const uniqueData = `${claimStatement}:${endTime}:${Date.now()}`;
+                        const hash = keccak256(toHex(uniqueData));
+                        setV2ConditionId(hash);
+                      }}
+                    >
+                      Generate
+                    </Button>
+                  </div>
+                </div>
+              </>
+            )}
+
             <div className="space-y-2 md:col-span-2">
               <label className="text-sm font-medium">
                 Resolver Address{' '}
@@ -1271,12 +1447,17 @@ const RFQTab = ({
                 value={resolver}
                 onChange={(e) => setResolver(e.target.value)}
                 required={!editingId}
-                disabled={Boolean(editingId)}
+                disabled={Boolean(editingId) || protocolVersion === 'v2'}
                 className="font-mono"
               />
               {editingId && (
                 <p className="text-xs text-muted-foreground">
                   Resolver cannot be changed after creation
+                </p>
+              )}
+              {protocolVersion === 'v2' && !editingId && (
+                <p className="text-xs text-muted-foreground">
+                  Auto-populated from resolver type and chain
                 </p>
               )}
             </div>

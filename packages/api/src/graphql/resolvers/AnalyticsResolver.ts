@@ -1,5 +1,5 @@
 import { Field, Int, ObjectType, Query, Resolver } from 'type-graphql';
-import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import prisma from '../../db';
 import { getProtocolStatsTimeSeries } from '../../helpers/protocolStats';
 
@@ -90,7 +90,7 @@ function buildTimestampMap<T extends { timestamp: bigint }>(
 export class AnalyticsResolver {
   @Query(() => [ProtocolStat])
   async protocolStats(): Promise<ProtocolStat[]> {
-    const chainId = CHAIN_ID_ETHEREAL;
+    const chainId = DEFAULT_CHAIN_ID;
 
     // Fetch snapshots first to get our timestamps
     const protocolSnapshots = await getProtocolStatsTimeSeries(90);
@@ -153,7 +153,7 @@ export class AnalyticsResolver {
 
   @Query(() => [DailyVolume])
   async dailyVolumes(): Promise<DailyVolume[]> {
-    const chainId = CHAIN_ID_ETHEREAL;
+    const chainId = DEFAULT_CHAIN_ID;
 
     // Daily volumes from positions - last 90 days with 0 for days without activity
     const dailyVolumes = await prisma.$queryRaw<DailyVolumeRow[]>`

@@ -14,7 +14,7 @@ const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 type Props = {
   bids: AuctionBid[];
   refreshMs?: number;
-  takerWager: string | null;
+  takerCollateral: string | null;
   collateralAssetTicker: string;
   maxEndTimeSec?: number;
   taker?: string | null;
@@ -26,7 +26,7 @@ type Props = {
 const AuctionRequestChart: React.FC<Props> = ({
   bids,
   refreshMs = 90,
-  takerWager,
+  takerCollateral,
   collateralAssetTicker,
   maxEndTimeSec: _maxEndTimeSec,
   taker,
@@ -66,7 +66,7 @@ const AuctionRequestChart: React.FC<Props> = ({
   const takerAmountDisplay = (() => {
     try {
       return Number(
-        formatUnits(BigInt(String(takerWager ?? '0')), tokenDecimals)
+        formatUnits(BigInt(String(takerCollateral ?? '0')), tokenDecimals)
       );
     } catch {
       return 0;
@@ -135,7 +135,7 @@ const AuctionRequestChart: React.FC<Props> = ({
           bids={displayBids}
           continuous
           refreshMs={refreshMs}
-          takerWager={takerWager}
+          takerCollateral={takerCollateral}
           taker={taker}
           collateralAssetTicker={collateralAssetTicker}
         />

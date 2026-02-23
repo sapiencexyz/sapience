@@ -14,6 +14,7 @@ import {
 export interface PredictedOutcomeInputStub {
   marketId: string; // The id from API (already encoded claim:endTime)
   prediction: boolean;
+  resolverAddress?: string | null; // Optional resolver address from condition
 }
 
 export interface PythOutcomeInputStub {
@@ -169,18 +170,38 @@ export function buildAuctionStartPayload(
   outcomes: PredictedOutcomeInputStub[],
   chainId?: number
 ): { resolver: `0x${string}`; predictedOutcomes: `0x${string}`[] } {
-  // Select the correct resolver based on chain ID
-  const targetChainId = chainId || DEFAULT_CHAIN_ID;
+  // Check if outcomes have a resolver address - use it if all outcomes share the same resolver
+  const outcomesWithResolver = outcomes.filter(
+    (o) => o.resolverAddress && o.resolverAddress.length > 0
+  );
+  const uniqueResolvers = new Set(
+    outcomesWithResolver.map((o) => o.resolverAddress!.toLowerCase())
+  );
+
   let resolverAddress: `0x${string}` | undefined;
 
-  if (targetChainId === CHAIN_ID_ETHEREAL) {
-    // Use Polymarket LZ resolver for Ethereal auctions
-    resolverAddress =
-      predictionMarketLZConditionalTokensResolver[CHAIN_ID_ETHEREAL]?.address;
+  if (uniqueResolvers.size === 1) {
+    // All outcomes share the same resolver - use it
+    resolverAddress = outcomesWithResolver[0].resolverAddress as `0x${string}`;
+  } else if (uniqueResolvers.size > 1) {
+    // Mixed resolvers - this shouldn't happen in a valid combo
+    console.warn(
+      '[buildAuctionStartPayload] Mixed resolvers in outcomes, using first one'
+    );
+    resolverAddress = outcomesWithResolver[0].resolverAddress as `0x${string}`;
   } else {
-    resolverAddress = umaResolver[targetChainId]?.address as
-      | `0x${string}`
-      | undefined;
+    // No resolver in outcomes - fall back to chain-based selection
+    const targetChainId = chainId || DEFAULT_CHAIN_ID;
+
+    if (targetChainId === CHAIN_ID_ETHEREAL) {
+      // Use Polymarket LZ resolver for Ethereal auctions
+      resolverAddress =
+        predictionMarketLZConditionalTokensResolver[DEFAULT_CHAIN_ID]?.address;
+    } else {
+      resolverAddress = umaResolver[targetChainId]?.address as
+        | `0x${string}`
+        | undefined;
+    }
   }
 
   const resolver: `0x${string}` =

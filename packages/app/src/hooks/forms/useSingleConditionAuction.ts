@@ -1,5 +1,10 @@
 'use client';
 
+/**
+ * @deprecated V1 single condition auction hook. For V2 protocol, use:
+ * - useV2AuctionStart for creating auctions with Pick[] array
+ * - V2 supports multi-pick parlays natively
+ */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { parseUnits, zeroAddress } from 'viem';
 import { useAccount, useReadContract } from 'wagmi';
@@ -105,18 +110,18 @@ export function useSingleConditionAuction({
       userPositionSizeWei = 0n;
     }
 
-    // Find bid with highest total payout (userPositionSize + makerWager)
+    // Find bid with highest total payout (userPositionSize + makerCollateral)
     return validBids.reduce((best, current) => {
       const bestPayout = (() => {
         try {
-          return userPositionSizeWei + BigInt(best.makerWager);
+          return userPositionSizeWei + BigInt(best.makerCollateral);
         } catch {
           return 0n;
         }
       })();
       const currentPayout = (() => {
         try {
-          return userPositionSizeWei + BigInt(current.makerWager);
+          return userPositionSizeWei + BigInt(current.makerCollateral);
         } catch {
           return 0n;
         }

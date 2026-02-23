@@ -42,7 +42,7 @@ import { useReadContracts } from 'wagmi';
 import { predictionMarket } from '@sapience/sdk/contracts';
 import { predictionMarketAbi } from '@sapience/sdk';
 import bidsHub from '~/lib/auction/useAuctionBidsHub';
-import { CHAIN_ID_ETHEREAL, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { toAuctionWsUrl } from '~/lib/ws';
 
@@ -64,7 +64,7 @@ const TradeNotifications = () => {
 
 const TerminalPageContent: React.FC = () => {
   const { messages } = useAuctionRelayerFeed({ observeVaultQuotes: false });
-  const chainId = CHAIN_ID_ETHEREAL;
+  const chainId = DEFAULT_CHAIN_ID;
   const collateralAssetTicker = COLLATERAL_SYMBOLS[chainId] || 'testUSDe';
 
   // Ensure bids hub is connected regardless of whether any rows are rendered.
@@ -134,7 +134,11 @@ const TerminalPageContent: React.FC = () => {
 
   const auctionAndBidMessages = useMemo(() => {
     return displayMessages.filter(
-      (m) => m.type === 'auction.started' || m.type === 'auction.bids'
+      (m) =>
+        m.type === 'auction.started' ||
+        m.type === 'auction.bids' ||
+        m.type === 'v2.auction.started' ||
+        m.type === 'v2.auction.bids'
     );
   }, [displayMessages]);
 
@@ -197,7 +201,8 @@ const TerminalPageContent: React.FC = () => {
         }
       | { kind: 'unknown'; data: [] } => {
       try {
-        if (m?.type !== 'auction.started') return { kind: 'unknown', data: [] };
+        if (m?.type !== 'auction.started' && m?.type !== 'v2.auction.started')
+          return { kind: 'unknown', data: [] };
         const cacheKey = `${getAuctionId(m) || 'unknown'}:${String(
           m?.data?.makerNonce ?? 'n'
         )}`;
@@ -256,7 +261,7 @@ const TerminalPageContent: React.FC = () => {
       const t = Number((m as any)?.time || 0);
       const prev = lastActivity.get(id) || 0;
       if (t > prev) lastActivity.set(id, t);
-      if (m.type === 'auction.started') {
+      if (m.type === 'auction.started' || m.type === 'v2.auction.started') {
         const prevStarted = latestStarted.get(id);
         if (!prevStarted || Number(prevStarted?.time || 0) < t) {
           latestStarted.set(id, m);
@@ -290,7 +295,8 @@ const TerminalPageContent: React.FC = () => {
     const set = new Set<string>();
     try {
       for (const m of auctionAndBidMessages) {
-        if (m.type !== 'auction.started') continue;
+        if (m.type !== 'auction.started' && m.type !== 'v2.auction.started')
+          continue;
         const decoded = decodeAuctionPredictedOutcomes({
           resolver:
             (m as any)?.data?.resolver ?? (m as any)?.data?.payload?.resolver,
@@ -312,7 +318,8 @@ const TerminalPageContent: React.FC = () => {
   const uniqueAddresses = useMemo(() => {
     const set = new Set<string>();
     for (const m of auctionAndBidMessages) {
-      if (m.type !== 'auction.started') continue;
+      if (m.type !== 'auction.started' && m.type !== 'v2.auction.started')
+        continue;
       const auctionData = m.data as AuctionStartedData | undefined;
       const taker = auctionData?.taker;
       if (taker && typeof taker === 'string') {
@@ -369,7 +376,7 @@ const TerminalPageContent: React.FC = () => {
 
   function renderPredictionsCell(m: { type: string; data: any }) {
     try {
-      if (m.type !== 'auction.started')
+      if (m.type !== 'auction.started' && m.type !== 'v2.auction.started')
         return <span className="text-muted-foreground">—</span>;
       const decoded = getDecodedPredictedOutcomes(m as any);
 
@@ -794,9 +801,12 @@ const TerminalPageContent: React.FC = () => {
 
   function toUiTx(m: { time: number; type: string; data: any }): UiTransaction {
     const createdAt = new Date(m.time).toISOString();
-    if (m.type === 'auction.started') {
-      const maker = (m as any)?.data?.maker || '';
-      const wager = (m as any)?.data?.wager || '0';
+    // Handle both V1 and V2 auction started messages
+    if (m.type === 'auction.started' || m.type === 'v2.auction.started') {
+      const maker =
+        (m as any)?.data?.maker || (m as any)?.data?.predictor || '';
+      const wager =
+        (m as any)?.data?.wager || (m as any)?.data?.predictorCollateral || '0';
       return {
         id: m.time,
         type: 'FORECAST',
@@ -805,26 +815,32 @@ const TerminalPageContent: React.FC = () => {
         position: { owner: maker },
       } as UiTransaction;
     }
-    if (m.type === 'auction.bids') {
+    // Handle both V1 and V2 auction bids messages
+    if (m.type === 'auction.bids' || m.type === 'v2.auction.bids') {
       const bids = Array.isArray((m as any)?.data?.bids)
         ? ((m as any).data.bids as unknown as any[])
         : [];
       const top = bids.reduce((best, b) => {
         try {
-          const cur = BigInt(String(b?.makerWager ?? '0'));
-          const bestVal = BigInt(String(best?.makerWager ?? '0'));
+          // V1 uses makerCollateral, V2 uses counterpartyCollateral (but we may not have it in bid)
+          const cur = BigInt(
+            String(b?.makerCollateral ?? b?.counterpartyCollateral ?? '0')
+          );
+          const bestVal = BigInt(
+            String(best?.makerCollateral ?? best?.counterpartyCollateral ?? '0')
+          );
           return cur > bestVal ? b : best;
         } catch {
           return best;
         }
       }, bids[0] || null);
-      const taker = top?.taker || '';
-      const makerWager = top?.makerWager || '0';
+      const taker = top?.taker || top?.counterparty || '';
+      const makerCollateral = top?.makerCollateral || top?.counterpartyCollateral || '0';
       return {
         id: m.time,
         type: 'FORECAST',
         createdAt,
-        collateral: String(makerWager || '0'),
+        collateral: String(makerCollateral || '0'),
         position: { owner: taker },
       } as UiTransaction;
     }
@@ -995,16 +1011,30 @@ const TerminalPageContent: React.FC = () => {
                                   uiTx={toUiTx(m)}
                                   predictionsContent={renderPredictionsCell(m)}
                                   auctionId={auctionId}
-                                  takerWager={String(m?.data?.wager ?? '0')}
-                                  taker={m?.data?.taker || null}
-                                  resolver={m?.data?.resolver || null}
+                                  takerCollateral={String(
+                                    m?.data?.wager ??
+                                      m?.data?.predictorCollateral ??
+                                      '0'
+                                  )}
+                                  taker={
+                                    m?.data?.taker || m?.data?.predictor || null
+                                  }
+                                  resolver={
+                                    m?.data?.resolver ||
+                                    // V2: extract resolver from first pick
+                                    (Array.isArray(m?.data?.picks) &&
+                                      m?.data?.picks[0]?.conditionResolver) ||
+                                    null
+                                  }
                                   predictedOutcomes={
                                     Array.isArray(m?.data?.predictedOutcomes)
                                       ? (m?.data?.predictedOutcomes as string[])
                                       : []
                                   }
                                   takerNonce={(() => {
-                                    const raw = m?.data?.takerNonce;
+                                    const raw =
+                                      m?.data?.takerNonce ??
+                                      m?.data?.predictorNonce;
                                     const n = Number(raw);
                                     return Number.isFinite(n) ? n : null;
                                   })()}
@@ -1013,6 +1043,12 @@ const TerminalPageContent: React.FC = () => {
                                   isPinned={true}
                                   isExpanded={expandedAuctions.has(auctionId)}
                                   onToggleExpanded={toggleExpanded}
+                                  isV2Auction={m?.type === 'v2.auction.started'}
+                                  v2Picks={
+                                    Array.isArray(m?.data?.picks)
+                                      ? m?.data?.picks
+                                      : undefined
+                                  }
                                 />
                               </div>
                             );
@@ -1049,9 +1085,24 @@ const TerminalPageContent: React.FC = () => {
                                         m
                                       )}
                                       auctionId={auctionId}
-                                      takerWager={String(m?.data?.wager ?? '0')}
-                                      taker={m?.data?.taker || null}
-                                      resolver={m?.data?.resolver || null}
+                                      takerCollateral={String(
+                                        m?.data?.wager ??
+                                          m?.data?.predictorCollateral ??
+                                          '0'
+                                      )}
+                                      taker={
+                                        m?.data?.taker ||
+                                        m?.data?.predictor ||
+                                        null
+                                      }
+                                      resolver={
+                                        m?.data?.resolver ||
+                                        // V2: extract resolver from first pick
+                                        (Array.isArray(m?.data?.picks) &&
+                                          m?.data?.picks[0]
+                                            ?.conditionResolver) ||
+                                        null
+                                      }
                                       predictedOutcomes={
                                         Array.isArray(
                                           m?.data?.predictedOutcomes
@@ -1061,7 +1112,9 @@ const TerminalPageContent: React.FC = () => {
                                           : []
                                       }
                                       takerNonce={(() => {
-                                        const raw = m?.data?.takerNonce;
+                                        const raw =
+                                          m?.data?.takerNonce ??
+                                          m?.data?.predictorNonce;
                                         const n = Number(raw);
                                         return Number.isFinite(n) ? n : null;
                                       })()}
@@ -1074,6 +1127,14 @@ const TerminalPageContent: React.FC = () => {
                                         auctionId
                                       )}
                                       onToggleExpanded={toggleExpanded}
+                                      isV2Auction={
+                                        m?.type === 'v2.auction.started'
+                                      }
+                                      v2Picks={
+                                        Array.isArray(m?.data?.picks)
+                                          ? m?.data?.picks
+                                          : undefined
+                                      }
                                     />
                                   )}
                                 </div>
