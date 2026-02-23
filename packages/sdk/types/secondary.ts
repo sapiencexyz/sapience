@@ -88,11 +88,25 @@ export interface SecondaryBidPayload {
 
 // ----- Client to Server Messages -----
 
+/** Seller accepts a specific bid — relayer returns buyer's signed payload */
+export interface SecondaryBidAcceptPayload {
+  auctionId: string;
+  buyer: string; // address of the bid to accept
+}
+
+/** Seller cancels their listing */
+export interface SecondaryAuctionCancelPayload {
+  auctionId: string;
+  seller: string; // must match original listing seller
+}
+
 export type SecondaryClientToServerMessage =
   | { type: 'secondary.auction.start'; payload: SecondaryAuctionRequestPayload }
   | { type: 'secondary.auction.subscribe'; payload: { auctionId: string } }
   | { type: 'secondary.auction.unsubscribe'; payload: { auctionId: string } }
+  | { type: 'secondary.auction.cancel'; payload: SecondaryAuctionCancelPayload }
   | { type: 'secondary.bid.submit'; payload: SecondaryBidPayload }
+  | { type: 'secondary.bid.accept'; payload: SecondaryBidAcceptPayload }
   | { type: 'ping' };
 
 // ----- Server to Client Messages -----
@@ -137,6 +151,35 @@ export type SecondaryServerToClientMessage =
   | {
       type: 'secondary.auction.bids';
       payload: { auctionId: string; bids: SecondaryValidatedBid[] };
+    }
+  | {
+      type: 'secondary.bid.accepted';
+      payload: {
+        auctionId: string;
+        buyer: string;
+        price: string;
+        buyerNonce: number;
+        buyerDeadline: number;
+        buyerSignature: string;
+        buyerSessionKeyData?: string;
+        /** Original listing details needed to build the on-chain tx */
+        listing: {
+          token: string;
+          collateral: string;
+          tokenAmount: string;
+          seller: string;
+          sellerNonce: number;
+          sellerDeadline: number;
+          sellerSignature: string;
+          sellerSessionKeyData?: string;
+          chainId: number;
+          refCode?: string;
+        };
+      };
+    }
+  | {
+      type: 'secondary.auction.cancelled';
+      payload: { auctionId: string };
     }
   | {
       type: 'secondary.auction.filled';

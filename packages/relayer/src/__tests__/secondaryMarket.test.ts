@@ -218,6 +218,24 @@ describe('isSecondaryClientMessage', () => {
     ).toBe(true);
   });
 
+  it('recognises secondary.bid.accept', () => {
+    expect(
+      isSecondaryClientMessage({
+        type: 'secondary.bid.accept',
+        payload: {},
+      })
+    ).toBe(true);
+  });
+
+  it('recognises secondary.auction.cancel', () => {
+    expect(
+      isSecondaryClientMessage({
+        type: 'secondary.auction.cancel',
+        payload: {},
+      })
+    ).toBe(true);
+  });
+
   it('returns false for non-secondary messages', () => {
     expect(isSecondaryClientMessage({ type: 'auction.start' })).toBe(false);
     expect(isSecondaryClientMessage({ type: 'bid.submit' })).toBe(false);
@@ -229,5 +247,70 @@ describe('isSecondaryClientMessage', () => {
 
   it('returns true for ping (shared message type)', () => {
     expect(isSecondaryClientMessage({ type: 'ping' })).toBe(true);
+  });
+});
+
+// ============================================================================
+// Bid Accept + Auction Cancel (handler logic via registry)
+// ============================================================================
+
+describe('Bid Accept flow', () => {
+  beforeEach(() => {
+    clearSecondaryListings();
+  });
+
+  it('listing is removed after accepting a bid', () => {
+    const auctionId = addSecondaryListing(createListing())!;
+    const bid = createBid(auctionId);
+    addSecondaryBid(auctionId, bid);
+
+    // Verify bid is there
+    expect(getSecondaryBids(auctionId)).toHaveLength(1);
+
+    // Simulate accept: look up bid, then remove listing
+    const listing = getSecondaryListing(auctionId);
+    expect(listing).toBeTruthy();
+    const foundBid = listing!.bids.find(
+      (b) => b.buyer.toLowerCase() === bid.buyer.toLowerCase()
+    );
+    expect(foundBid).toBeTruthy();
+    expect(foundBid!.buyerSignature).toBe(bid.buyerSignature);
+
+    // Remove listing (as handler would)
+    removeSecondaryListing(auctionId);
+    expect(getSecondaryListing(auctionId)).toBeUndefined();
+  });
+
+  it('returns undefined for non-existent bid buyer', () => {
+    const auctionId = addSecondaryListing(createListing())!;
+    const bid = createBid(auctionId);
+    addSecondaryBid(auctionId, bid);
+
+    const listing = getSecondaryListing(auctionId)!;
+    const notFound = listing.bids.find(
+      (b) => b.buyer.toLowerCase() === '0xdeadbeef'.toLowerCase()
+    );
+    expect(notFound).toBeUndefined();
+  });
+});
+
+describe('Auction Cancel flow', () => {
+  beforeEach(() => {
+    clearSecondaryListings();
+  });
+
+  it('seller can cancel their listing', () => {
+    const listing = createListing();
+    const auctionId = addSecondaryListing(listing)!;
+    expect(getSecondaryListing(auctionId)).toBeTruthy();
+
+    removeSecondaryListing(auctionId);
+    expect(getSecondaryListing(auctionId)).toBeUndefined();
+  });
+
+  it('cancel is idempotent', () => {
+    const auctionId = addSecondaryListing(createListing())!;
+    expect(removeSecondaryListing(auctionId)).toBe(true);
+    expect(removeSecondaryListing(auctionId)).toBe(false);
   });
 });

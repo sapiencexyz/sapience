@@ -37,6 +37,8 @@ import { isSecondaryClientMessage } from './secondaryMarketTypes';
 import {
   handleSecondaryAuctionStart,
   handleSecondaryBidSubmit,
+  handleSecondaryBidAccept,
+  handleSecondaryAuctionCancel,
   handleSecondarySubscribe,
   handleSecondaryUnsubscribe,
   unsubscribeFromAllSecondary,
@@ -839,6 +841,16 @@ export function createAuctionWebSocketServer() {
         }
         if (secondaryMsg.type === 'secondary.bid.submit') {
           await handleSecondaryBidSubmit(ws, secondaryMsg.payload);
+          trackDuration(msgType, startTime);
+          return;
+        }
+        if (secondaryMsg.type === 'secondary.bid.accept') {
+          handleSecondaryBidAccept(ws, secondaryMsg.payload);
+          trackDuration(msgType, startTime);
+          return;
+        }
+        if (secondaryMsg.type === 'secondary.auction.cancel') {
+          handleSecondaryAuctionCancel(ws, secondaryMsg.payload);
           trackDuration(msgType, startTime);
           return;
         }

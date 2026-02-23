@@ -9,6 +9,8 @@ export type {
   TradeRequestJson,
   SecondaryAuctionRequestPayload,
   SecondaryBidPayload,
+  SecondaryBidAcceptPayload,
+  SecondaryAuctionCancelPayload,
   SecondaryClientToServerMessage,
   SecondaryServerToClientMessage,
   SecondaryAuctionDetails,
@@ -42,7 +44,9 @@ export function isSecondaryClientMessage(
     (msgObj.type === 'secondary.auction.start' ||
       msgObj.type === 'secondary.auction.subscribe' ||
       msgObj.type === 'secondary.auction.unsubscribe' ||
+      msgObj.type === 'secondary.auction.cancel' ||
       msgObj.type === 'secondary.bid.submit' ||
+      msgObj.type === 'secondary.bid.accept' ||
       msgObj.type === 'ping')
   );
 }

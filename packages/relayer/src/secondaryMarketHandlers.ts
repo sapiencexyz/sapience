@@ -7,6 +7,8 @@ import type { WebSocket } from 'ws';
 import type {
   SecondaryAuctionRequestPayload,
   SecondaryBidPayload,
+  SecondaryBidAcceptPayload,
+  SecondaryAuctionCancelPayload,
   SecondaryServerToClientMessage,
   SecondaryAuctionDetails,
   SecondaryValidatedBid,
@@ -288,6 +290,139 @@ export function handleSecondaryUnsubscribe(
       payload: { auctionId: payload.auctionId, unsubscribed: true },
     });
   }
+}
+
+/**
+ * Handle secondary.bid.accept — seller picks a winning bid
+ *
+ * The relayer looks up the buyer's signed payload and the original listing,
+ * then sends everything the seller needs to call executeTrade() on-chain.
+ */
+export function handleSecondaryBidAccept(
+  ws: WebSocket,
+  payload: SecondaryBidAcceptPayload
+): void {
+  const listing = getSecondaryListing(payload.auctionId);
+  if (!listing) {
+    sendSecondary(ws, {
+      type: 'secondary.bid.ack',
+      payload: { error: 'auction_not_found_or_expired' },
+    });
+    return;
+  }
+
+  // Find the bid from this buyer
+  const bid = listing.bids.find(
+    (b) => b.buyer.toLowerCase() === payload.buyer.toLowerCase()
+  );
+  if (!bid) {
+    sendSecondary(ws, {
+      type: 'secondary.bid.ack',
+      payload: { error: 'bid_not_found' },
+    });
+    return;
+  }
+
+  // Check buyer deadline hasn't expired
+  const nowSeconds = Math.floor(Date.now() / 1000);
+  if (bid.buyerDeadline <= nowSeconds) {
+    sendSecondary(ws, {
+      type: 'secondary.bid.ack',
+      payload: { error: 'bid_expired' },
+    });
+    return;
+  }
+
+  const { auction } = listing;
+
+  // Send accepted message with all data needed for on-chain execution
+  sendSecondary(ws, {
+    type: 'secondary.bid.accepted',
+    payload: {
+      auctionId: payload.auctionId,
+      buyer: bid.buyer,
+      price: bid.price,
+      buyerNonce: bid.buyerNonce,
+      buyerDeadline: bid.buyerDeadline,
+      buyerSignature: bid.buyerSignature,
+      buyerSessionKeyData: bid.buyerSessionKeyData,
+      listing: {
+        token: auction.token,
+        collateral: auction.collateral,
+        tokenAmount: auction.tokenAmount,
+        seller: auction.seller,
+        sellerNonce: auction.sellerNonce,
+        sellerDeadline: auction.sellerDeadline,
+        sellerSignature: auction.sellerSignature,
+        sellerSessionKeyData: auction.sellerSessionKeyData,
+        chainId: auction.chainId,
+        refCode: auction.refCode,
+      },
+    },
+  });
+
+  // Remove listing — auction is complete
+  removeSecondaryListing(payload.auctionId);
+
+  // Notify all subscribers that this auction is done
+  broadcastToSecondarySubscribers(payload.auctionId, {
+    type: 'secondary.auction.cancelled',
+    payload: { auctionId: payload.auctionId },
+  });
+
+  console.log(
+    `[Secondary] Bid accepted: auction=${payload.auctionId.slice(0, 8)} buyer=${bid.buyer.slice(0, 10)} price=${bid.price}`
+  );
+}
+
+/**
+ * Handle secondary.auction.cancel — seller cancels their listing
+ */
+export function handleSecondaryAuctionCancel(
+  ws: WebSocket,
+  payload: SecondaryAuctionCancelPayload
+): void {
+  const listing = getSecondaryListing(payload.auctionId);
+  if (!listing) {
+    sendSecondary(ws, {
+      type: 'secondary.auction.ack',
+      payload: { error: 'auction_not_found_or_expired' },
+    });
+    return;
+  }
+
+  // Only the seller can cancel
+  if (listing.auction.seller.toLowerCase() !== payload.seller.toLowerCase()) {
+    sendSecondary(ws, {
+      type: 'secondary.auction.ack',
+      payload: { error: 'not_seller' },
+    });
+    return;
+  }
+
+  removeSecondaryListing(payload.auctionId);
+
+  // Ack to seller
+  sendSecondary(ws, {
+    type: 'secondary.auction.cancelled',
+    payload: { auctionId: payload.auctionId },
+  });
+
+  // Notify subscribers
+  broadcastToSecondarySubscribers(payload.auctionId, {
+    type: 'secondary.auction.cancelled',
+    payload: { auctionId: payload.auctionId },
+  });
+
+  // Broadcast to global feed
+  broadcastToGlobalSubscribers({
+    type: 'secondary.auction.cancelled',
+    payload: { auctionId: payload.auctionId },
+  });
+
+  console.log(
+    `[Secondary] Auction cancelled: ${payload.auctionId.slice(0, 8)} by seller=${payload.seller.slice(0, 10)}`
+  );
 }
 
 /**
