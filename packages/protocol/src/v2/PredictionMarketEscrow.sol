@@ -313,10 +313,7 @@ contract PredictionMarketEscrow is
             uint256 balBefore = collateralToken.balanceOf(address(this));
             IMintSponsor(request.predictorSponsor).fundMint(
                 address(this),
-                request.predictor,
-                request.predictorCollateral,
-                request.picks,
-                request.predictorSponsorData
+                request
             );
             if (
                 collateralToken.balanceOf(address(this))
