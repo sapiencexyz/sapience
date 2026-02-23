@@ -152,22 +152,25 @@ class V2PositionTokenTransferIndexer implements IIndexer {
 
     const valueStr = value.toString();
 
-    // Decrement sender balance
-    await prisma.$executeRaw`
-      UPDATE v2_position_balance
-      SET balance = (balance::NUMERIC - ${valueStr}::NUMERIC)::TEXT, "updatedAt" = NOW()
-      WHERE "chainId" = ${this.chainId}
-        AND "tokenAddress" = ${tokenAddress}
-        AND holder = ${fromLower}
-    `;
+    // Wrap both operations in a transaction to prevent inconsistent balances on crash
+    await prisma.$transaction([
+      // Decrement sender balance
+      prisma.$executeRaw`
+        UPDATE v2_position_balance
+        SET balance = (balance::NUMERIC - ${valueStr}::NUMERIC)::TEXT, "updatedAt" = NOW()
+        WHERE "chainId" = ${this.chainId}
+          AND "tokenAddress" = ${tokenAddress}
+          AND holder = ${fromLower}
+      `,
 
-    // Upsert receiver balance (they may not have a row yet)
-    await prisma.$executeRaw`
-      INSERT INTO v2_position_balance ("chainId", "tokenAddress", "pickConfigId", "isPredictorToken", holder, balance, "createdAt", "updatedAt")
-      VALUES (${this.chainId}, ${tokenAddress}, ${info.pickConfigId}, ${info.isPredictorToken}, ${toLower}, ${valueStr}, NOW(), NOW())
-      ON CONFLICT ("chainId", "tokenAddress", holder)
-      DO UPDATE SET balance = (v2_position_balance.balance::NUMERIC + ${valueStr}::NUMERIC)::TEXT, "updatedAt" = NOW()
-    `;
+      // Upsert receiver balance (they may not have a row yet)
+      prisma.$executeRaw`
+        INSERT INTO v2_position_balance ("chainId", "tokenAddress", "pickConfigId", "isPredictorToken", holder, balance, "createdAt", "updatedAt")
+        VALUES (${this.chainId}, ${tokenAddress}, ${info.pickConfigId}, ${info.isPredictorToken}, ${toLower}, ${valueStr}, NOW(), NOW())
+        ON CONFLICT ("chainId", "tokenAddress", holder)
+        DO UPDATE SET balance = (v2_position_balance.balance::NUMERIC + ${valueStr}::NUMERIC)::TEXT, "updatedAt" = NOW()
+      `,
+    ]);
 
     console.log(
       `[V2TransferIndexer] Transfer ${tokenAddress}: ${fromLower} -> ${toLower} amount=${valueStr}`
