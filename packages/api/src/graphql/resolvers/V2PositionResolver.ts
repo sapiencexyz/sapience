@@ -1,6 +1,11 @@
-import { Arg, Field, Int, ObjectType, Query, Resolver } from 'type-graphql';
-import { Prisma } from '../../../generated/prisma';
+import { Arg, Field, Int, ObjectType, Query, Resolver, registerEnumType } from 'type-graphql';
+import { Prisma, V2SettlementResult } from '../../../generated/prisma';
 import prisma from '../../db';
+
+registerEnumType(V2SettlementResult, {
+  name: 'V2SettlementResultEnum',
+  description: 'V2 settlement result — matches on-chain SettlementResult',
+});
 
 // ============================================================================
 // GraphQL Object Types
@@ -378,7 +383,7 @@ export class V2PositionResolver {
     @Arg('skip', () => Int, { defaultValue: 0 }) skip: number,
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number,
     @Arg('resolved', () => Boolean, { nullable: true }) resolved?: boolean,
-    @Arg('result', () => String, { nullable: true }) result?: string
+    @Arg('result', () => V2SettlementResult, { nullable: true }) result?: V2SettlementResult
   ): Promise<V2PickConfigurationType[]> {
     const where: Prisma.V2PickConfigurationWhereInput = {};
 
@@ -389,7 +394,7 @@ export class V2PositionResolver {
       where.resolved = resolved;
     }
     if (result) {
-      where.result = result as Prisma.EnumV2SettlementResultFilter;
+      where.result = result;
     }
 
     const rows = await prisma.v2PickConfiguration.findMany({

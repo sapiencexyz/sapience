@@ -7,7 +7,8 @@ import { predictionMarketEscrow } from '@sapience/sdk/contracts';
 
 const BLOCK_BATCH_SIZE = 100;
 const POLLING_INTERVAL_MS = 10_000;
-const INDEXER_STATE_KEY = 'v2-transfer-indexer';
+const WATCHLIST_REFRESH_MS = 5 * 60 * 1000; // Refresh watch list every 5 minutes
+const TRANSFER_INDEXER_MARKET_ADDRESS = 'v2-transfer-indexer'; // marker for V2IndexerState
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
 const TRANSFER_EVENT = parseAbiItem(
@@ -33,6 +34,8 @@ class V2PositionTokenTransferIndexer implements IIndexer {
   private pollingInterval: NodeJS.Timeout | null = null;
   private sigintHandler: (() => void) | null = null;
   private blockCreated: bigint;
+  private cachedWatchList: { tokenAddresses: string[]; tokenInfoMap: Map<string, TokenInfo> } | null = null;
+  private watchListLastRefreshed = 0;
 
   constructor(chainId: number) {
     this.chainId = chainId;
@@ -100,7 +103,12 @@ class V2PositionTokenTransferIndexer implements IIndexer {
   // --- Core polling logic ---
 
   private async pollCycle(): Promise<void> {
-    const watchList = await this.loadWatchList();
+    const now = Date.now();
+    if (!this.cachedWatchList || now - this.watchListLastRefreshed > WATCHLIST_REFRESH_MS) {
+      this.cachedWatchList = await this.loadWatchList();
+      this.watchListLastRefreshed = now;
+    }
+    const watchList = this.cachedWatchList;
     if (watchList.tokenAddresses.length === 0) return;
 
     const lastBlock = await this.getLastIndexedBlock();
@@ -216,21 +224,29 @@ class V2PositionTokenTransferIndexer implements IIndexer {
     return { tokenAddresses, tokenInfoMap };
   }
 
-  // --- Block cursor persistence via KeyValueStore ---
+  // --- Block cursor persistence via V2IndexerState (matches escrow indexer) ---
 
   private async getLastIndexedBlock(): Promise<bigint> {
-    const key = `${INDEXER_STATE_KEY}:${this.chainId}`;
-    const row = await prisma.keyValueStore.findUnique({ where: { key } });
-    if (row) return BigInt(row.value);
+    const row = await prisma.v2IndexerState.findFirst({
+      where: { chainId: this.chainId, marketAddress: TRANSFER_INDEXER_MARKET_ADDRESS },
+    });
+    if (row) return BigInt(row.lastIndexedBlock);
     return this.blockCreated > 0n ? this.blockCreated - 1n : await this.client.getBlockNumber();
   }
 
   private async setLastIndexedBlock(block: number): Promise<void> {
-    const key = `${INDEXER_STATE_KEY}:${this.chainId}`;
-    await prisma.keyValueStore.upsert({
-      where: { key },
-      create: { key, value: block.toString() },
-      update: { value: block.toString() },
+    await prisma.v2IndexerState.upsert({
+      where: { chainId: this.chainId },
+      create: {
+        chainId: this.chainId,
+        marketAddress: TRANSFER_INDEXER_MARKET_ADDRESS,
+        lastIndexedBlock: block,
+        lastIndexedAt: new Date(),
+      },
+      update: {
+        lastIndexedBlock: block,
+        lastIndexedAt: new Date(),
+      },
     });
   }
 }
