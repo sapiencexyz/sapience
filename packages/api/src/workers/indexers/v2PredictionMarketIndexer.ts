@@ -9,7 +9,7 @@ import {
 import Sentry from '../../instrument';
 import { IIndexer } from '../../interfaces';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
-import { predictionMarketEscrowAbi } from '@sapience/sdk/abis';
+import { predictionMarketEscrowAbi, predictionMarketTokenAbi } from '@sapience/sdk/abis';
 
 const BLOCK_BATCH_SIZE = 100;
 
@@ -403,14 +403,129 @@ class V2PredictionMarketIndexer implements IIndexer {
         createTxHash: log.transactionHash || '',
         refCode: event.refCode !== ZERO_BYTES32 ? event.refCode : null,
       },
-      update: {
-        // No updates needed for existing predictions
-      },
+      update: {},
     });
+
+    // Populate V2PickConfiguration + V2Pick + initial V2PositionBalance
+    await this.ensurePickConfigAndBalances(event, timestamp);
 
     console.log(
       `[V2PredictionMarketIndexer] Created prediction ${predictionIdLower}`
     );
+  }
+
+  /**
+   * On PredictionCreated, read pickConfigId from the contract and upsert
+   * the V2PickConfiguration, V2Pick rows, and initial V2PositionBalance
+   * entries for predictor/counterparty.
+   */
+  private async ensurePickConfigAndBalances(
+    event: PredictionCreatedEvent,
+    timestamp: number
+  ): Promise<void> {
+    try {
+      const predictionOnChain = await this.client.readContract({
+        address: this.contractAddress,
+        abi: predictionMarketEscrowAbi,
+        functionName: 'getPrediction',
+        args: [event.predictionId],
+      }) as {
+        pickConfigId: `0x${string}`;
+        predictorTokensMinted: bigint;
+        counterpartyTokensMinted: bigint;
+      };
+
+      const pickConfigId = predictionOnChain.pickConfigId.toLowerCase();
+      const predictorToken = event.predictorToken.toLowerCase();
+      const counterpartyToken = event.counterpartyToken.toLowerCase();
+
+      // Upsert pick configuration (multiple predictions may share one)
+      const existingConfig = await prisma.v2PickConfiguration.findUnique({
+        where: { id: pickConfigId },
+      });
+
+      if (!existingConfig) {
+        // Read picks from contract
+        const picksOnChain = await this.client.readContract({
+          address: this.contractAddress,
+          abi: predictionMarketEscrowAbi,
+          functionName: 'getPicks',
+          args: [predictionOnChain.pickConfigId],
+        }) as Array<{
+          conditionResolver: `0x${string}`;
+          conditionId: `0x${string}`;
+          predictedOutcome: number;
+        }>;
+
+        await prisma.v2PickConfiguration.create({
+          data: {
+            id: pickConfigId,
+            chainId: this.chainId,
+            marketAddress: this.contractAddress.toLowerCase(),
+            predictorToken,
+            counterpartyToken,
+            totalPredictorCollateral: event.predictorCollateral.toString(),
+            totalCounterpartyCollateral: event.counterpartyCollateral.toString(),
+            picks: {
+              create: picksOnChain.map((pick) => ({
+                conditionResolver: pick.conditionResolver.toLowerCase(),
+                conditionId: pick.conditionId.toLowerCase(),
+                predictedOutcome: pick.predictedOutcome,
+              })),
+            },
+          },
+        });
+
+        console.log(
+          `[V2PredictionMarketIndexer] Created V2PickConfiguration ${pickConfigId}`
+        );
+      } else {
+        // Accumulate collateral totals
+        const newPredictorTotal =
+          (BigInt(existingConfig.totalPredictorCollateral) + event.predictorCollateral).toString();
+        const newCounterpartyTotal =
+          (BigInt(existingConfig.totalCounterpartyCollateral) + event.counterpartyCollateral).toString();
+
+        await prisma.v2PickConfiguration.update({
+          where: { id: pickConfigId },
+          data: {
+            predictorToken,
+            counterpartyToken,
+            totalPredictorCollateral: newPredictorTotal,
+            totalCounterpartyCollateral: newCounterpartyTotal,
+          },
+        });
+      }
+
+      // Upsert initial position balances for predictor and counterparty
+      const predictorMinted = predictionOnChain.predictorTokensMinted.toString();
+      const counterpartyMinted = predictionOnChain.counterpartyTokensMinted.toString();
+
+      // Use raw SQL for balance upserts since Prisma doesn't support BigInt arithmetic
+      await prisma.$executeRaw`
+        INSERT INTO v2_position_balance ("chainId", "tokenAddress", "pickConfigId", "isPredictorToken", holder, balance, "createdAt", "updatedAt")
+        VALUES (${this.chainId}, ${predictorToken}, ${pickConfigId}, true, ${event.predictor.toLowerCase()}, ${predictorMinted}, NOW(), NOW())
+        ON CONFLICT ("chainId", "tokenAddress", holder)
+        DO UPDATE SET balance = (v2_position_balance.balance::NUMERIC + ${predictorMinted}::NUMERIC)::TEXT, "updatedAt" = NOW()
+      `;
+
+      await prisma.$executeRaw`
+        INSERT INTO v2_position_balance ("chainId", "tokenAddress", "pickConfigId", "isPredictorToken", holder, balance, "createdAt", "updatedAt")
+        VALUES (${this.chainId}, ${counterpartyToken}, ${pickConfigId}, false, ${event.counterparty.toLowerCase()}, ${counterpartyMinted}, NOW(), NOW())
+        ON CONFLICT ("chainId", "tokenAddress", holder)
+        DO UPDATE SET balance = (v2_position_balance.balance::NUMERIC + ${counterpartyMinted}::NUMERIC)::TEXT, "updatedAt" = NOW()
+      `;
+
+      console.log(
+        `[V2PredictionMarketIndexer] Upserted position balances for pickConfig ${pickConfigId}`
+      );
+    } catch (error) {
+      console.error(
+        '[V2PredictionMarketIndexer] Error populating pick config / balances:',
+        error
+      );
+      Sentry.captureException(error);
+    }
   }
 
   private async processPredictionSettled(
@@ -470,6 +585,9 @@ class V2PredictionMarketIndexer implements IIndexer {
         refCode: event.refCode !== ZERO_BYTES32 ? event.refCode : null,
       },
     });
+
+    // Check if fully redeemed — look up pick config from the redeemed token
+    await this.checkFullyRedeemed(event.positionToken.toLowerCase());
 
     console.log(
       `[V2PredictionMarketIndexer] Created redemption record for prediction ${predictionIdLower}`
@@ -547,9 +665,75 @@ class V2PredictionMarketIndexer implements IIndexer {
       },
     });
 
+    // Check if fully redeemed using the pick config directly
+    await this.checkFullyRedeemedByPickConfig(pickConfigIdLower);
+
     console.log(
       `[V2PredictionMarketIndexer] Created burn record for pickConfig ${pickConfigIdLower}`
     );
+  }
+
+  /**
+   * Check totalSupply of both position tokens for a pick config.
+   * If both are 0, mark as fullyRedeemed so the transfer indexer
+   * drops them from its watch list.
+   */
+  private async checkFullyRedeemedByPickConfig(pickConfigId: string): Promise<void> {
+    try {
+      const config = await prisma.v2PickConfiguration.findUnique({
+        where: { id: pickConfigId },
+        select: { predictorToken: true, counterpartyToken: true, fullyRedeemed: true },
+      });
+
+      if (!config || config.fullyRedeemed || !config.predictorToken || !config.counterpartyToken) return;
+
+      const [predictorSupply, counterpartySupply] = await Promise.all([
+        this.client.readContract({
+          address: config.predictorToken as `0x${string}`,
+          abi: predictionMarketTokenAbi,
+          functionName: 'totalSupply',
+        }) as Promise<bigint>,
+        this.client.readContract({
+          address: config.counterpartyToken as `0x${string}`,
+          abi: predictionMarketTokenAbi,
+          functionName: 'totalSupply',
+        }) as Promise<bigint>,
+      ]);
+
+      if (predictorSupply === 0n && counterpartySupply === 0n) {
+        await prisma.v2PickConfiguration.update({
+          where: { id: pickConfigId },
+          data: { fullyRedeemed: true },
+        });
+        console.log(
+          `[V2PredictionMarketIndexer] Marked pickConfig ${pickConfigId} as fullyRedeemed`
+        );
+      }
+    } catch (error) {
+      console.error(
+        `[V2PredictionMarketIndexer] Error checking fullyRedeemed for pickConfig ${pickConfigId}:`,
+        error
+      );
+    }
+  }
+
+  /**
+   * Look up the pick config from a token address, then check if fully redeemed.
+   */
+  private async checkFullyRedeemed(tokenAddress: string): Promise<void> {
+    const config = await prisma.v2PickConfiguration.findFirst({
+      where: {
+        OR: [
+          { predictorToken: tokenAddress },
+          { counterpartyToken: tokenAddress },
+        ],
+      },
+      select: { id: true },
+    });
+
+    if (config) {
+      await this.checkFullyRedeemedByPickConfig(config.id);
+    }
   }
 }
 

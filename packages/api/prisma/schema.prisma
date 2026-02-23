@@ -526,12 +526,14 @@ model V2PickConfiguration {
   predictorToken               String?   @db.VarChar
   counterpartyToken            String?   @db.VarChar
   endsAt                       Int?
+  fullyRedeemed                Boolean   @default(false)
 
   picks                        V2Pick[]
   positionBalances             V2PositionBalance[]
 
   @@index([chainId, marketAddress], map: "IDX_v2_pick_config_chain_market")
   @@index([resolved], map: "IDX_v2_pick_config_resolved")
+  @@index([fullyRedeemed], map: "IDX_v2_pick_config_fully_redeemed")
   @@map("v2_pick_configuration")
 }
 
