@@ -22,7 +22,7 @@ interface IPredictionMarketTokenFactory {
     /// @notice Deployment failed
     error DeploymentFailed();
 
-    /// @notice Only authorized deployers can deploy
+    /// @notice Only authorized deployer can deploy
     error Unauthorized();
 
     // ============ Functions ============
@@ -32,14 +32,14 @@ interface IPredictionMarketTokenFactory {
     /// @param isPredictorToken True if this is the predictor token
     /// @param name Token name
     /// @param symbol Token symbol
-    /// @param burner Address authorized to burn tokens
+    /// @param authority Address authorized to mint/burn tokens
     /// @return token The deployed token address
     function deploy(
         bytes32 pickConfigId,
         bool isPredictorToken,
         string calldata name,
         string calldata symbol,
-        address burner
+        address authority
     ) external returns (address token);
 
     /// @notice Predict the address of a token without deploying

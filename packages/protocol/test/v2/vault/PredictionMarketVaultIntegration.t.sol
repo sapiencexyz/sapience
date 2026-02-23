@@ -13,8 +13,12 @@ import { IPredictionMarketEscrow } from
 import { ManualConditionResolver } from
     "../../../src/v2/resolvers/mocks/ManualConditionResolver.sol";
 import { IV2Types } from "../../../src/v2/interfaces/IV2Types.sol";
-import { IPredictionMarketToken } from
-    "../../../src/v2/interfaces/IPredictionMarketToken.sol";
+import {
+    IPredictionMarketToken
+} from "../../../src/v2/interfaces/IPredictionMarketToken.sol";
+import {
+    PredictionMarketTokenFactory
+} from "../../../src/v2/PredictionMarketTokenFactory.sol";
 import { MockERC20 } from "../mocks/MockERC20.sol";
 
 /**
@@ -59,8 +63,14 @@ contract PredictionMarketVaultIntegrationTest is Test {
         // Deploy collateral token
         collateralToken = new MockERC20("Test USDE", "USDE", 18);
 
-        // Deploy prediction market
-        market = new PredictionMarketEscrow(address(collateralToken), owner);
+        // Deploy prediction market with factory
+        PredictionMarketTokenFactory tokenFactory =
+            new PredictionMarketTokenFactory(owner);
+        market = new PredictionMarketEscrow(
+            address(collateralToken), owner, address(tokenFactory)
+        );
+        vm.prank(owner);
+        tokenFactory.setDeployer(address(market));
 
         // Deploy vault
         vm.prank(owner);
