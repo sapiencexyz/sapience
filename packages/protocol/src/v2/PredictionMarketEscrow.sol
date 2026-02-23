@@ -10,6 +10,7 @@ import "./interfaces/IConditionResolver.sol";
 import "./interfaces/IPredictionMarketToken.sol";
 import "./interfaces/IV2Types.sol";
 import "./interfaces/IV2Events.sol";
+import "./interfaces/IMintSponsor.sol";
 import "./interfaces/IPredictionMarketTokenFactory.sol";
 import "./utils/SignatureValidator.sol";
 
