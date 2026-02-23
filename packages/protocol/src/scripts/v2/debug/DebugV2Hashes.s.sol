@@ -2,13 +2,13 @@
 pragma solidity ^0.8.19;
 
 import "forge-std/Script.sol";
-import "../src/v2/interfaces/IV2Types.sol";
+import "../../../v2/interfaces/IV2Types.sol";
 
 interface IEscrowDebug {
     function getMintApprovalHash(
         bytes32 predictionHash,
         address signer,
-        uint256 wager,
+        uint256 collateral,
         uint256 nonce,
         uint256 deadline
     ) external view returns (bytes32);
@@ -47,26 +47,26 @@ contract DebugV2Hashes is Script {
         // Addresses and amounts
         address predictor = 0x5aab6F438Af9289798eEcBf83C06f62abdb529B9;
         address counterparty = 0xd8e6Af4901719176F0e2c89dEfAc30C12Ea6aB4B;
-        uint256 predictorWager = 7100000000000000;
-        uint256 counterpartyWager = 10000000000000000;
+        uint256 predictorCollateral = 7100000000000000;
+        uint256 counterpartyCollateral = 10000000000000000;
 
         // Compute prediction hash (same as contract)
         bytes32 predictionHash = keccak256(
-            abi.encode(pickConfigId, predictorWager, counterpartyWager, predictor, counterparty)
+            abi.encode(pickConfigId, predictorCollateral, counterpartyCollateral, predictor, counterparty)
         );
         console.log("\n=== Prediction Hash ===");
         console.logBytes32(predictionHash);
 
         // Predictor mint approval hash
         bytes32 predictorHash = escrow.getMintApprovalHash(
-            predictionHash, predictor, predictorWager, 0, 1770219190
+            predictionHash, predictor, predictorCollateral, 0, 1770219190
         );
         console.log("\n=== Predictor Mint Approval Hash ===");
         console.logBytes32(predictorHash);
 
         // Counterparty mint approval hash
         bytes32 counterpartyHash = escrow.getMintApprovalHash(
-            predictionHash, counterparty, counterpartyWager, 5, 1770218941
+            predictionHash, counterparty, counterpartyCollateral, 5, 1770218941
         );
         console.log("\n=== Counterparty Mint Approval Hash ===");
         console.logBytes32(counterpartyHash);

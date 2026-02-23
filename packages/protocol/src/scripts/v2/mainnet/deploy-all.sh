@@ -727,7 +727,7 @@ usage() {
     echo "  SKIP_VERIFY=1 (skip contract verification during deployment)"
     echo "  FACTORY_SALT (override default factory CREATE2 salt)"
     echo "  COLLATERAL_NAME, COLLATERAL_SYMBOL, COLLATERAL_INITIAL_SUPPLY (for test collateral)"
-    echo "  PREDICTOR_WAGER, COUNTERPARTY_WAGER, BRIDGE_AMOUNT (for testing)"
+    echo "  PREDICTOR_COLLATERAL, COUNTERPARTY_COLLATERAL, BRIDGE_AMOUNT (for testing)"
     echo "  OUTCOME (yes|no|tie for resolve)"
     echo "  BRIDGE_ID (for retry-pm command)"
     echo "  BRIDGE_BACK_ID (for retry-sm command)"

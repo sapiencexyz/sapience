@@ -764,11 +764,16 @@ contract PredictionMarketEscrow is
     }
 
     /// @notice Calculate claimable amount for a given token amount
+    /// @dev Q-1: validates positionToken is a real position token to prevent misleading results
     function getClaimableAmount(
         bytes32 pickConfigId,
         address positionToken,
         uint256 tokenAmount
     ) external view returns (uint256 claimable) {
+        if (!_isPositionToken[positionToken]) {
+            return 0;
+        }
+
         IV2Types.PickConfiguration storage config =
             _pickConfigurations[pickConfigId];
         if (!config.resolved || tokenAmount == 0) {

@@ -44,8 +44,8 @@ interface IV2Types {
         uint256 counterpartyCollateral; // Amount from counterparty
         address predictor; // Predictor address
         address counterparty; // Counterparty address
-        uint256 predictorTokensMinted; // Tokens minted to predictor (= predictorCollateral)
-        uint256 counterpartyTokensMinted; // Tokens minted to counterparty (= counterpartyCollateral)
+        uint256 predictorTokensMinted; // Tokens minted to predictor (= totalCollateral per C-1)
+        uint256 counterpartyTokensMinted; // Tokens minted to counterparty (= totalCollateral per C-1)
         bool settled; // Whether this prediction has been settled
     }
 

@@ -3,8 +3,8 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Script.sol";
 import "forge-std/console.sol";
-import "../src/v2/interfaces/IPredictionMarketEscrow.sol";
-import "../src/v2/interfaces/IV2Types.sol";
+import "../../../v2/interfaces/IPredictionMarketEscrow.sol";
+import "../../../v2/interfaces/IV2Types.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
@@ -29,15 +29,15 @@ contract DebugV2MintCall is Script {
         // First, simulate deposit + approve as the SmartAccount
         // This mimics what the UserOp batch would do
 
-        uint256 predictorWager = 5100000000000000; // 0.0051 USDe
-        uint256 counterpartyWager = 10000000000000000; // 0.01 USDe
+        uint256 predictorCollateral = 5100000000000000; // 0.0051 USDe
+        uint256 counterpartyCollateral = 10000000000000000; // 0.01 USDe
 
         console.log("\n--- Step 1: Check SmartAccount native balance ---");
         uint256 nativeBalance = PREDICTOR.balance;
         console.log("SmartAccount native balance:", nativeBalance);
-        console.log("Amount needed for wrap:", predictorWager);
+        console.log("Amount needed for wrap:", predictorCollateral);
 
-        if (nativeBalance < predictorWager) {
+        if (nativeBalance < predictorCollateral) {
             console.log("!!! INSUFFICIENT NATIVE BALANCE FOR WRAP !!!");
             return;
         }
@@ -46,7 +46,7 @@ contract DebugV2MintCall is Script {
         vm.startPrank(PREDICTOR);
 
         console.log("\n--- Step 2: Wrap native USDe to wUSDe ---");
-        (bool wrapSuccess,) = WUSDE.call{value: predictorWager}(
+        (bool wrapSuccess,) = WUSDE.call{value: predictorCollateral}(
             abi.encodeWithSignature("deposit()")
         );
         console.log("Wrap success:", wrapSuccess);
@@ -61,7 +61,7 @@ contract DebugV2MintCall is Script {
         console.log("wUSDe balance after wrap:", wusdeBalance);
 
         console.log("\n--- Step 3: Approve escrow to spend wUSDe ---");
-        bool approveSuccess = IERC20(WUSDE).approve(ESCROW, predictorWager);
+        bool approveSuccess = IERC20(WUSDE).approve(ESCROW, predictorCollateral);
         console.log("Approve success:", approveSuccess);
 
         uint256 allowance = IERC20(WUSDE).allowance(PREDICTOR, ESCROW);
@@ -87,8 +87,8 @@ contract DebugV2MintCall is Script {
         // Values from the UserOp
         IV2Types.MintRequest memory request = IV2Types.MintRequest({
             picks: picks,
-            predictorWager: predictorWager,
-            counterpartyWager: counterpartyWager,
+            predictorCollateral: predictorCollateral,
+            counterpartyCollateral: counterpartyCollateral,
             predictor: PREDICTOR,
             counterparty: COUNTERPARTY,
             predictorNonce: 0,
@@ -101,12 +101,14 @@ contract DebugV2MintCall is Script {
             refCode: bytes32(0),
             // Session key data for predictor
             predictorSessionKeyData: hex"00000000000000000000000083236e9d2170ffe24fb620c81aacef049116da54000000000000000000000000efa0e8aa84a713f6a6d4de8cc761fe86c5957d7200000000000000000000000000000000000000000000000000000000698d04c8d9762d852ca8dc23710c3bf3bca341b66f778a0c94cc060f0463687e9c260e9c0000000000000000000000000000000000000000000000000000000000cc12fa00000000000000000000000000000000000000000000000000000000000000c00000000000000000000000000000000000000000000000000000000000000041e716031e242e506e7faa4eb96f1909e7dd0696ac3be5cc73fbfdd4c89bce525a74c92b749ee63f11732d3da4777d50ddb910b7d66e8c446ce0ee3cc55e3d685d1b00000000000000000000000000000000000000000000000000000000000000",
-            counterpartySessionKeyData: hex""
+            counterpartySessionKeyData: hex"",
+            predictorSponsor: address(0),
+            predictorSponsorData: hex""
         });
 
         console.log("MintRequest built with:");
-        console.log("  predictorWager:", request.predictorWager);
-        console.log("  counterpartyWager:", request.counterpartyWager);
+        console.log("  predictorCollateral:", request.predictorCollateral);
+        console.log("  counterpartyCollateral:", request.counterpartyCollateral);
         console.log("  predictor:", request.predictor);
         console.log("  counterparty:", request.counterparty);
         console.log("  predictorNonce:", request.predictorNonce);
