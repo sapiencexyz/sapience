@@ -13,12 +13,17 @@ import "../interfaces/IV2Types.sol";
  * @dev Designed for onboarding: user enters invite code → API signer grants budget →
  *      user mints → escrow calls fundMint → sponsor transfers collateral
  *
+ *   Constraints enforced on-chain:
+ *     - Required counterparty (e.g. vault-bot) — prevents self-dealing
+ *     - Max entry price cap — prevents risk-free farming on near-certain outcomes
+ *       Entry price = predictorCollateral / (predictorCollateral + counterpartyCollateral)
+ *
  *   Roles:
  *     - Owner: sweep funds, set match limit, set/rotate budget manager
  *     - Budget manager: set per-user budgets (intended for an API signer)
  *
  *   Anyone can fund the contract by transferring collateral tokens to it.
- *   Deploy a new instance if the escrow or collateral token changes.
+ *   Deploy a new instance if the escrow, collateral token, counterparty, or price cap changes.
  */
 contract OnboardingSponsor is IMintSponsor, Ownable {
     using SafeERC20 for IERC20;
@@ -41,11 +46,18 @@ contract OnboardingSponsor is IMintSponsor, Ownable {
 
     error UnauthorizedEscrow();
     error UnauthorizedBudgetManager();
+    error UnauthorizedCounterparty();
+    error EntryPriceTooHigh();
     error NoBudget();
     error BudgetExceeded();
     error CollateralExceedsMatchLimit();
     error NativeTransferFailed();
     error ArrayLengthMismatch();
+
+    // ============ Constants ============
+
+    /// @notice Basis points denominator (100% = 10000)
+    uint256 public constant BPS = 10000;
 
     // ============ State ============
 
@@ -54,6 +66,12 @@ contract OnboardingSponsor is IMintSponsor, Ownable {
 
     /// @notice The collateral token used for sponsorship
     IERC20 public immutable collateralToken;
+
+    /// @notice Required counterparty for sponsored mints (e.g. vault-bot)
+    address public immutable requiredCounterparty;
+
+    /// @notice Maximum entry price in basis points (e.g. 7000 = 0.70)
+    uint256 public immutable maxEntryPriceBps;
 
     /// @notice Maximum collateral the sponsor will fund per mint
     uint256 public matchLimit;
@@ -69,11 +87,15 @@ contract OnboardingSponsor is IMintSponsor, Ownable {
     constructor(
         address escrow_,
         address collateralToken_,
+        address requiredCounterparty_,
+        uint256 maxEntryPriceBps_,
         uint256 matchLimit_,
         address owner_
     ) Ownable(owner_) {
         escrow = escrow_;
         collateralToken = IERC20(collateralToken_);
+        requiredCounterparty = requiredCounterparty_;
+        maxEntryPriceBps = maxEntryPriceBps_;
         matchLimit = matchLimit_;
     }
 
@@ -81,10 +103,24 @@ contract OnboardingSponsor is IMintSponsor, Ownable {
 
     /// @inheritdoc IMintSponsor
     function fundMint(
-        address escrow_,
+        address, /* escrow_ */
         IV2Types.MintRequest calldata request
     ) external override {
         if (msg.sender != escrow) revert UnauthorizedEscrow();
+
+        // Enforce required counterparty (prevents self-dealing)
+        if (request.counterparty != requiredCounterparty) {
+            revert UnauthorizedCounterparty();
+        }
+
+        // Enforce entry price cap (prevents risk-free farming)
+        // entryPrice = predictorCollateral / totalCollateral
+        uint256 totalCollateral =
+            request.predictorCollateral + request.counterpartyCollateral;
+        uint256 entryPriceBps =
+            (request.predictorCollateral * BPS) / totalCollateral;
+        if (entryPriceBps > maxEntryPriceBps) revert EntryPriceTooHigh();
+
         if (request.predictorCollateral > matchLimit) {
             revert CollateralExceedsMatchLimit();
         }

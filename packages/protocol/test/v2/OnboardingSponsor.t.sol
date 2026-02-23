@@ -30,6 +30,7 @@ contract OnboardingSponsorTest is Test {
     uint256 public constant COUNTERPARTY_COLLATERAL = 1e18;
     uint256 public constant MATCH_LIMIT = 1e18;
     uint256 public constant BUDGET = 5e18;
+    uint256 public constant MAX_ENTRY_PRICE_BPS = 7000; // 0.70
     bytes32 public constant REF_CODE = keccak256("invite-code");
 
     bytes32 public conditionId;
@@ -55,10 +56,12 @@ contract OnboardingSponsorTest is Test {
 
         conditionId = keccak256(abi.encode("will-eth-hit-10k"));
 
-        // Deploy sponsor, pointing at real escrow
+        // Deploy sponsor, pointing at real escrow with vault-bot as required counterparty
         sponsor = new OnboardingSponsor(
             address(market),
             address(collateralToken),
+            counterparty,           // required counterparty (vault-bot)
+            MAX_ENTRY_PRICE_BPS,    // 0.70 max entry price
             MATCH_LIMIT,
             owner
         );
@@ -414,5 +417,135 @@ contract OnboardingSponsorTest is Test {
         (bool success,) = address(sponsor).call{value: 1 ether}("");
         assertTrue(success);
         assertEq(address(sponsor).balance, 1 ether);
+    }
+
+    // ============ Counterparty restriction ============
+
+    function test_revert_unauthorizedCounterparty() public {
+        vm.prank(manager);
+        sponsor.setBudget(predictor, BUDGET);
+
+        IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
+        picks[0] = _createPick(conditionId, IV2Types.OutcomeSide.YES);
+
+        // Build request with eve as counterparty (not the required vault-bot)
+        bytes32 pickConfigId = keccak256(abi.encode(picks));
+        bytes32 predictionHash = keccak256(
+            abi.encode(pickConfigId, PREDICTOR_COLLATERAL, COUNTERPARTY_COLLATERAL, predictor, eve)
+        );
+
+        uint256 evePk = 6;
+        collateralToken.mint(eve, 100e18);
+        vm.prank(eve);
+        collateralToken.approve(address(market), type(uint256).max);
+
+        uint256 pNonce = market.getNonce(predictor);
+        uint256 eNonce = market.getNonce(eve);
+        uint256 deadline = block.timestamp + 1 hours;
+
+        IV2Types.MintRequest memory request;
+        request.picks = picks;
+        request.predictorCollateral = PREDICTOR_COLLATERAL;
+        request.counterpartyCollateral = COUNTERPARTY_COLLATERAL;
+        request.predictor = predictor;
+        request.counterparty = eve;
+        request.predictorNonce = pNonce;
+        request.counterpartyNonce = eNonce;
+        request.predictorDeadline = deadline;
+        request.counterpartyDeadline = deadline;
+        request.predictorSignature = _signApproval(predictionHash, predictor, PREDICTOR_COLLATERAL, pNonce, deadline, predictorPk);
+        request.counterpartySignature = _signApproval(predictionHash, eve, COUNTERPARTY_COLLATERAL, eNonce, deadline, evePk);
+        request.refCode = REF_CODE;
+        request.predictorSponsor = address(sponsor);
+        request.predictorSponsorData = "";
+
+        vm.expectRevert(OnboardingSponsor.UnauthorizedCounterparty.selector);
+        market.mint(request);
+    }
+
+    // ============ Entry price cap ============
+
+    function test_revert_entryPriceTooHigh() public {
+        vm.prank(manager);
+        sponsor.setBudget(predictor, BUDGET);
+
+        // 0.80 entry price: predictor=4e18, counterparty=1e18 → 4/(4+1) = 0.80 > 0.70
+        uint256 highPredictorCollateral = 4e18;
+        uint256 lowCounterpartyCollateral = 1e18;
+
+        // Need higher match limit for this test
+        vm.prank(owner);
+        sponsor.setMatchLimit(10e18);
+
+        IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
+        picks[0] = _createPick(conditionId, IV2Types.OutcomeSide.YES);
+
+        bytes32 pickConfigId = keccak256(abi.encode(picks));
+        bytes32 predictionHash = keccak256(
+            abi.encode(pickConfigId, highPredictorCollateral, lowCounterpartyCollateral, predictor, counterparty)
+        );
+
+        uint256 pNonce = market.getNonce(predictor);
+        uint256 cNonce = market.getNonce(counterparty);
+        uint256 deadline = block.timestamp + 1 hours;
+
+        IV2Types.MintRequest memory request;
+        request.picks = picks;
+        request.predictorCollateral = highPredictorCollateral;
+        request.counterpartyCollateral = lowCounterpartyCollateral;
+        request.predictor = predictor;
+        request.counterparty = counterparty;
+        request.predictorNonce = pNonce;
+        request.counterpartyNonce = cNonce;
+        request.predictorDeadline = deadline;
+        request.counterpartyDeadline = deadline;
+        request.predictorSignature = _signApproval(predictionHash, predictor, highPredictorCollateral, pNonce, deadline, predictorPk);
+        request.counterpartySignature = _signApproval(predictionHash, counterparty, lowCounterpartyCollateral, cNonce, deadline, counterpartyPk);
+        request.refCode = REF_CODE;
+        request.predictorSponsor = address(sponsor);
+        request.predictorSponsorData = "";
+
+        vm.expectRevert(OnboardingSponsor.EntryPriceTooHigh.selector);
+        market.mint(request);
+    }
+
+    function test_entryPrice_atExactCap_succeeds() public {
+        vm.prank(manager);
+        sponsor.setBudget(predictor, BUDGET);
+
+        // 0.70 entry price: predictor=7e17, counterparty=3e17 → 7/(7+3) = 0.70 = cap
+        uint256 predCol = 7e17;
+        uint256 ctrCol = 3e17;
+
+        IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
+        picks[0] = _createPick(conditionId, IV2Types.OutcomeSide.YES);
+
+        bytes32 pickConfigId = keccak256(abi.encode(picks));
+        bytes32 predictionHash = keccak256(
+            abi.encode(pickConfigId, predCol, ctrCol, predictor, counterparty)
+        );
+
+        uint256 pNonce = market.getNonce(predictor);
+        uint256 cNonce = market.getNonce(counterparty);
+        uint256 deadline = block.timestamp + 1 hours;
+
+        IV2Types.MintRequest memory request;
+        request.picks = picks;
+        request.predictorCollateral = predCol;
+        request.counterpartyCollateral = ctrCol;
+        request.predictor = predictor;
+        request.counterparty = counterparty;
+        request.predictorNonce = pNonce;
+        request.counterpartyNonce = cNonce;
+        request.predictorDeadline = deadline;
+        request.counterpartyDeadline = deadline;
+        request.predictorSignature = _signApproval(predictionHash, predictor, predCol, pNonce, deadline, predictorPk);
+        request.counterpartySignature = _signApproval(predictionHash, counterparty, ctrCol, cNonce, deadline, counterpartyPk);
+        request.refCode = REF_CODE;
+        request.predictorSponsor = address(sponsor);
+        request.predictorSponsorData = "";
+
+        // Should succeed — exactly at the cap
+        market.mint(request);
     }
 }
