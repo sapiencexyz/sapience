@@ -52,24 +52,55 @@ interface ISecondaryMarketEscrow {
         bytes32 refCode
     );
 
+    /// @notice Emitted when a session key is revoked
+    event SessionKeyRevoked(
+        address indexed owner, address indexed sessionKey, uint256 revokedAt
+    );
+
     // ============ Errors ============
 
     error InvalidSignature();
-    error InvalidNonce();
+    error NonceAlreadyUsed();
     error ZeroAmount();
     error SellerBuyerSame();
     error AccountFactoryNotSet();
 
     // ============ Functions ============
 
+    /// @notice Revoke a session key so it can no longer be used for signing
+    /// @param sessionKey The session key address to revoke
+    function revokeSessionKey(address sessionKey) external;
+
+    /// @notice Check if a session key has been revoked by an owner
+    /// @param owner The owner who may have revoked the key
+    /// @param sessionKey The session key to check
+    /// @return revoked True if the session key is revoked
+    function isSessionKeyRevoked(address owner, address sessionKey)
+        external
+        view
+        returns (bool revoked);
+
     /// @notice Execute an atomic OTC trade
     /// @param request The trade request containing token/collateral addresses, amounts, and signatures
     function executeTrade(TradeRequest calldata request) external;
 
-    /// @notice Get the current nonce for an account
+    /// @notice Check if a specific nonce has been used
     /// @param account The account address
-    /// @return nonce The current nonce
-    function getNonce(address account) external view returns (uint256 nonce);
+    /// @param nonce The nonce to check
+    /// @return used True if the nonce has been used
+    function isNonceUsed(address account, uint256 nonce)
+        external
+        view
+        returns (bool used);
+
+    /// @notice Get the raw bitmap word for a nonce word position
+    /// @param account The account address
+    /// @param wordPos The word position (nonce >> 8)
+    /// @return word The bitmap word
+    function nonceBitmap(address account, uint256 wordPos)
+        external
+        view
+        returns (uint256 word);
 
     /// @notice Get the EIP-712 domain separator
     /// @return separator The domain separator

@@ -19,10 +19,10 @@ contract MockGoodSponsor is IMintSponsor {
         collateralToken = IERC20(collateralToken_);
     }
 
-    function fundMint(
-        address escrow,
-        IV2Types.MintRequest calldata request
-    ) external override {
+    function fundMint(address escrow, IV2Types.MintRequest calldata request)
+        external
+        override
+    {
         collateralToken.transfer(escrow, request.predictorCollateral);
     }
 }
@@ -35,10 +35,10 @@ contract MockUnderfundingSponsor is IMintSponsor {
         collateralToken = IERC20(collateralToken_);
     }
 
-    function fundMint(
-        address escrow,
-        IV2Types.MintRequest calldata request
-    ) external override {
+    function fundMint(address escrow, IV2Types.MintRequest calldata request)
+        external
+        override
+    {
         collateralToken.transfer(escrow, request.predictorCollateral / 2);
     }
 }
@@ -64,6 +64,12 @@ contract PredictionMarketEscrowSponsorTest is Test {
     bytes32 public constant REF_CODE = keccak256("test-ref-code");
 
     bytes32 public conditionId1;
+
+    uint256 private _nextNonce = 1;
+
+    function _freshNonce() internal returns (uint256) {
+        return _nextNonce++;
+    }
 
     function setUp() public {
         owner = vm.addr(1);
@@ -146,7 +152,7 @@ contract PredictionMarketEscrowSponsorTest is Test {
         IV2Types.Pick[] memory picks,
         address sponsor,
         bytes memory sponsorData
-    ) internal view returns (IV2Types.MintRequest memory request) {
+    ) internal returns (IV2Types.MintRequest memory request) {
         bytes32 pickConfigId = keccak256(abi.encode(picks));
         bytes32 predictionHash = keccak256(
             abi.encode(
@@ -158,8 +164,8 @@ contract PredictionMarketEscrowSponsorTest is Test {
             )
         );
 
-        uint256 pNonce = market.getNonce(predictor);
-        uint256 cNonce = market.getNonce(counterparty);
+        uint256 pNonce = _freshNonce();
+        uint256 cNonce = _freshNonce();
         uint256 deadline = block.timestamp + 1 hours;
 
         request.picks = picks;
@@ -196,7 +202,6 @@ contract PredictionMarketEscrowSponsorTest is Test {
 
     function _createUnsponsoredMintRequest(IV2Types.Pick[] memory picks)
         internal
-        view
         returns (IV2Types.MintRequest memory request)
     {
         return _createSponsoredMintRequest(picks, address(0), "");
@@ -259,8 +264,9 @@ contract PredictionMarketEscrowSponsorTest is Test {
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = _createPick(conditionId1, IV2Types.OutcomeSide.YES);
 
-        IV2Types.MintRequest memory request =
-            _createSponsoredMintRequest(picks, address(underfundingSponsor), "");
+        IV2Types.MintRequest memory request = _createSponsoredMintRequest(
+            picks, address(underfundingSponsor), ""
+        );
 
         vm.expectRevert(IPredictionMarketEscrow.SponsorUnderfunded.selector);
         market.mint(request);

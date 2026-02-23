@@ -36,6 +36,12 @@ contract PredictionMarketEscrowBurnTest is Test {
 
     bytes32 public conditionId1;
 
+    uint256 private _nextNonce = 1;
+
+    function _freshNonce() internal returns (uint256) {
+        return _nextNonce++;
+    }
+
     // ============ setUp ============
 
     function setUp() public {
@@ -108,7 +114,6 @@ contract PredictionMarketEscrowBurnTest is Test {
 
     function _createMintRequest(IV2Types.Pick[] memory picks)
         internal
-        view
         returns (IV2Types.MintRequest memory request)
     {
         bytes32 pickConfigId = keccak256(abi.encode(picks));
@@ -122,8 +127,8 @@ contract PredictionMarketEscrowBurnTest is Test {
             )
         );
 
-        uint256 pNonce = market.getNonce(predictor);
-        uint256 cNonce = market.getNonce(counterparty);
+        uint256 pNonce = _freshNonce();
+        uint256 cNonce = _freshNonce();
         uint256 deadline = block.timestamp + 1 hours;
 
         request.picks = picks;
@@ -219,7 +224,7 @@ contract PredictionMarketEscrowBurnTest is Test {
         uint256 counterpartyPayout,
         uint256 _predictorPk,
         uint256 _counterpartyPk
-    ) internal view returns (IV2Types.BurnRequest memory request) {
+    ) internal returns (IV2Types.BurnRequest memory request) {
         bytes32 burnHash = keccak256(
             abi.encode(
                 pickConfigId,
@@ -232,8 +237,8 @@ contract PredictionMarketEscrowBurnTest is Test {
             )
         );
 
-        uint256 pNonce = market.getNonce(_predictorHolder);
-        uint256 cNonce = market.getNonce(_counterpartyHolder);
+        uint256 pNonce = _freshNonce();
+        uint256 cNonce = _freshNonce();
         uint256 deadline = block.timestamp + 1 hours;
 
         request.pickConfigId = pickConfigId;
@@ -495,11 +500,11 @@ contract PredictionMarketEscrowBurnTest is Test {
         );
     }
 
-    function test_burn_noncesIncrementCorrectly() public {
+    function test_burn_noncesMarkedUsed() public {
         (bytes32 pickConfigId,,) = _mintDefault();
 
-        uint256 pNonceBefore = market.getNonce(predictor);
-        uint256 cNonceBefore = market.getNonce(counterparty);
+        // Track which nonces will be used
+        uint256 savedNext = _nextNonce;
 
         // Burn 50 tokens from each side
         // predictorBacking = (50 * 100) / 250 = 20
@@ -518,8 +523,8 @@ contract PredictionMarketEscrowBurnTest is Test {
 
         market.burn(req);
 
-        assertEq(market.getNonce(predictor), pNonceBefore + 1);
-        assertEq(market.getNonce(counterparty), cNonceBefore + 1);
+        assertTrue(market.isNonceUsed(predictor, savedNext));
+        assertTrue(market.isNonceUsed(counterparty, savedNext + 1));
     }
 
     function test_burn_zeroPayoutOneSide() public {
@@ -751,8 +756,8 @@ contract PredictionMarketEscrowBurnTest is Test {
             )
         );
 
-        uint256 pNonce = market.getNonce(predictor);
-        uint256 cNonce = market.getNonce(counterparty);
+        uint256 pNonce = _freshNonce();
+        uint256 cNonce = _freshNonce();
         uint256 deadline = block.timestamp + 1 hours;
 
         IV2Types.BurnRequest memory req;
@@ -957,7 +962,8 @@ contract PredictionMarketEscrowBurnTest is Test {
             remainingTokens
         );
         assertEq(
-            IPredictionMarketToken(tp.counterpartyToken).balanceOf(counterparty),
+            IPredictionMarketToken(tp.counterpartyToken)
+                .balanceOf(counterparty),
             remainingTokens
         );
 
@@ -992,13 +998,12 @@ contract PredictionMarketEscrowBurnTest is Test {
 
         // Transfer counterparty tokens to predictor so same address holds both
         vm.prank(counterparty);
-        IPredictionMarketToken(counterpartyToken).transfer(
-            predictor, TOTAL_COLLATERAL
-        );
+        IPredictionMarketToken(counterpartyToken)
+            .transfer(predictor, TOTAL_COLLATERAL);
 
-        // Same address burns both sides
-        // Both nonce checks happen before increment, so both use same current nonce
-        uint256 currentNonce = market.getNonce(predictor);
+        // Same address burns both sides — needs two DIFFERENT nonces with bitmap
+        uint256 predictorNonce = _freshNonce();
+        uint256 counterpartyNonce = _freshNonce();
 
         bytes32 burnHash = keccak256(
             abi.encode(
@@ -1022,8 +1027,8 @@ contract PredictionMarketEscrowBurnTest is Test {
         req.counterpartyHolder = predictor; // same address
         req.predictorPayout = PREDICTOR_COLLATERAL;
         req.counterpartyPayout = COUNTERPARTY_COLLATERAL;
-        req.predictorNonce = currentNonce;
-        req.counterpartyNonce = currentNonce; // same nonce since checks happen before increment
+        req.predictorNonce = predictorNonce;
+        req.counterpartyNonce = counterpartyNonce; // different nonce
         req.predictorDeadline = deadline;
         req.counterpartyDeadline = deadline;
         req.predictorSignature = _signBurnApproval(
@@ -1031,7 +1036,7 @@ contract PredictionMarketEscrowBurnTest is Test {
             predictor,
             TOTAL_COLLATERAL,
             PREDICTOR_COLLATERAL,
-            currentNonce,
+            predictorNonce,
             deadline,
             predictorPk
         );
@@ -1040,7 +1045,7 @@ contract PredictionMarketEscrowBurnTest is Test {
             predictor,
             TOTAL_COLLATERAL,
             COUNTERPARTY_COLLATERAL,
-            currentNonce,
+            counterpartyNonce,
             deadline,
             predictorPk
         );
@@ -1062,8 +1067,9 @@ contract PredictionMarketEscrowBurnTest is Test {
             collateralToken.balanceOf(predictor), balBefore + TOTAL_COLLATERAL
         );
 
-        // Verify nonce incremented twice (once for each side)
-        assertEq(market.getNonce(predictor), currentNonce + 2);
+        // Verify both nonces marked used
+        assertTrue(market.isNonceUsed(predictor, predictorNonce));
+        assertTrue(market.isNonceUsed(predictor, counterpartyNonce));
     }
 
     function test_burn_thirdPartyAfterTokenTransfer() public {
@@ -1075,9 +1081,8 @@ contract PredictionMarketEscrowBurnTest is Test {
 
         // Transfer all predictor tokens to thirdParty
         vm.prank(predictor);
-        IPredictionMarketToken(predictorToken).transfer(
-            thirdParty, TOTAL_COLLATERAL
-        );
+        IPredictionMarketToken(predictorToken)
+            .transfer(thirdParty, TOTAL_COLLATERAL);
 
         // ThirdParty (now holding predictor tokens) burns with counterparty
         IV2Types.BurnRequest memory req = _createBurnRequest(

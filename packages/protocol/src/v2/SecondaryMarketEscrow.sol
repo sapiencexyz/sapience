@@ -36,6 +36,9 @@ contract SecondaryMarketEscrow is
         "SessionKeyApproval(address sessionKey,address smartAccount,uint256 validUntil,bytes32 permissionsHash,uint256 chainId)"
     );
 
+    /// @notice Permission hash for trade operations
+    bytes32 public constant TRADE_PERMISSION = keccak256("V2_TRADE");
+
     /// @notice Gas limit for EIP-1271 signature validation calls
     uint256 internal constant EIP1271_GAS_LIMIT = 500_000;
 
@@ -46,8 +49,11 @@ contract SecondaryMarketEscrow is
 
     // ============ State ============
 
-    /// @notice Nonces for replay protection (per account)
-    mapping(address => uint256) private _nonces;
+    /// @notice Bitmap nonces for replay protection (Permit2-style)
+    mapping(address => mapping(uint256 => uint256)) private _nonceBitmap;
+
+    /// @notice Revoked session keys: owner => sessionKey => revokedAt timestamp
+    mapping(address => mapping(address => uint256)) private _revokedSessionKeys;
 
     // ============ Constructor ============
 
@@ -55,6 +61,23 @@ contract SecondaryMarketEscrow is
     /// @param accountFactory_ The account factory address (address(0) disables session keys)
     constructor(address accountFactory_) {
         accountFactory = IAccountFactory(accountFactory_);
+    }
+
+    // ============ Session Key Management ============
+
+    /// @inheritdoc ISecondaryMarketEscrow
+    function revokeSessionKey(address sessionKey) external {
+        _revokedSessionKeys[msg.sender][sessionKey] = block.timestamp;
+        emit SessionKeyRevoked(msg.sender, sessionKey, block.timestamp);
+    }
+
+    /// @inheritdoc ISecondaryMarketEscrow
+    function isSessionKeyRevoked(address owner, address sessionKey)
+        external
+        view
+        returns (bool revoked)
+    {
+        return _revokedSessionKeys[owner][sessionKey] > 0;
     }
 
     // ============ External Functions ============
@@ -92,10 +115,6 @@ contract SecondaryMarketEscrow is
             )) {
             revert InvalidSignature();
         }
-        if (request.sellerNonce != _nonces[request.seller]) {
-            revert InvalidNonce();
-        }
-
         // Validate buyer signature
         if (!_validatePartySignature(
                 tradeHash,
@@ -107,13 +126,10 @@ contract SecondaryMarketEscrow is
             )) {
             revert InvalidSignature();
         }
-        if (request.buyerNonce != _nonces[request.buyer]) {
-            revert InvalidNonce();
-        }
 
-        // Increment both nonces
-        _nonces[request.seller]++;
-        _nonces[request.buyer]++;
+        // Use bitmap nonces (reverts if already used)
+        _useNonce(request.seller, request.sellerNonce);
+        _useNonce(request.buyer, request.buyerNonce);
 
         // Execute atomic swap
         // 1. Transfer position tokens from seller to buyer
@@ -141,8 +157,23 @@ contract SecondaryMarketEscrow is
     // ============ View Functions ============
 
     /// @inheritdoc ISecondaryMarketEscrow
-    function getNonce(address account) external view returns (uint256 nonce) {
-        return _nonces[account];
+    function isNonceUsed(address account, uint256 nonce)
+        external
+        view
+        returns (bool used)
+    {
+        uint256 wordPos = nonce >> 8;
+        uint256 bitPos = nonce & 0xff;
+        return (_nonceBitmap[account][wordPos] & (1 << bitPos)) != 0;
+    }
+
+    /// @inheritdoc ISecondaryMarketEscrow
+    function nonceBitmap(address account, uint256 wordPos)
+        external
+        view
+        returns (uint256 word)
+    {
+        return _nonceBitmap[account][wordPos];
     }
 
     /// @inheritdoc ISecondaryMarketEscrow
@@ -184,6 +215,20 @@ contract SecondaryMarketEscrow is
             )
         );
         return _hashTypedDataV4(structHash);
+    }
+
+    // ============ Internal: Nonce Management ============
+
+    /// @notice Mark a nonce as used (Permit2-style bitmap)
+    /// @param account The account whose nonce to use
+    /// @param nonce The nonce value to consume
+    function _useNonce(address account, uint256 nonce) internal {
+        uint256 wordPos = nonce >> 8;
+        uint256 bitPos = nonce & 0xff;
+        uint256 bit = 1 << bitPos;
+        uint256 word = _nonceBitmap[account][wordPos];
+        if (word & bit != 0) revert NonceAlreadyUsed();
+        _nonceBitmap[account][wordPos] = word | bit;
     }
 
     // ============ Internal: Signature Validation ============
@@ -308,6 +353,16 @@ contract SecondaryMarketEscrow is
         }
 
         if (block.timestamp > skData.validUntil) {
+            return false;
+        }
+
+        // Check if session key has been revoked
+        if (_revokedSessionKeys[skData.owner][skData.sessionKey] > 0) {
+            return false;
+        }
+
+        // Validate permissionsHash matches TRADE_PERMISSION
+        if (skData.permissionsHash != TRADE_PERMISSION) {
             return false;
         }
 

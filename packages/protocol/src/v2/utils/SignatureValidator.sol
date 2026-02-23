@@ -36,13 +36,28 @@ abstract contract SignatureValidator is EIP712 {
         "SessionKeyApproval(address sessionKey,address smartAccount,uint256 validUntil,bytes32 permissionsHash,uint256 chainId)"
     );
 
+    /// @notice Permission hash for mint operations
+    bytes32 public constant MINT_PERMISSION = keccak256("V2_MINT");
+
+    /// @notice Permission hash for burn operations
+    bytes32 public constant BURN_PERMISSION = keccak256("V2_BURN");
+
     /// @notice Trusted account factory for smart account verification
     /// @dev Used to verify that a smart account is derived from the claimed owner
     IAccountFactory public accountFactory;
 
+    /// @notice Revoked session keys: owner => sessionKey => revokedAt timestamp
+    mapping(address => mapping(address => uint256)) internal
+        _revokedSessionKeys;
+
     /// @notice Emitted when the account factory is updated
     event AccountFactoryUpdated(
         address indexed oldFactory, address indexed newFactory
+    );
+
+    /// @notice Emitted when a session key is revoked
+    event SessionKeyRevoked(
+        address indexed owner, address indexed sessionKey, uint256 revokedAt
     );
 
     /// @notice Error when smart account verification fails
@@ -53,7 +68,30 @@ abstract contract SignatureValidator is EIP712 {
     /// @notice Error when account factory is not set but session key validation is attempted
     error AccountFactoryNotSet();
 
+    /// @notice Error when a revoked session key is used
+    error SessionKeyIsRevoked();
+
     constructor() EIP712("PredictionMarketEscrow", "1") { }
+
+    /// @notice Revoke a session key so it can no longer be used for signing
+    /// @param sessionKey The session key address to revoke
+    function revokeSessionKey(address sessionKey) external virtual {
+        _revokedSessionKeys[msg.sender][sessionKey] = block.timestamp;
+        emit SessionKeyRevoked(msg.sender, sessionKey, block.timestamp);
+    }
+
+    /// @notice Check if a session key has been revoked by an owner
+    /// @param owner The owner who may have revoked the key
+    /// @param sessionKey The session key to check
+    /// @return revoked True if the session key is revoked
+    function isSessionKeyRevoked(address owner, address sessionKey)
+        external
+        view
+        virtual
+        returns (bool revoked)
+    {
+        return _revokedSessionKeys[owner][sessionKey] > 0;
+    }
 
     /// @notice Set the trusted account factory for smart account verification
     /// @param factory_ The account factory address (e.g., ZeroDev Kernel factory)
@@ -125,7 +163,9 @@ abstract contract SignatureValidator is EIP712 {
         }
         try IERC1271(signer).isValidSignature{ gas: EIP1271_GAS_LIMIT }(
             hash, signature
-        ) returns (bytes4 magicValue) {
+        ) returns (
+            bytes4 magicValue
+        ) {
             return magicValue == IERC1271.isValidSignature.selector;
         } catch {
             return false;
@@ -153,11 +193,9 @@ abstract contract SignatureValidator is EIP712 {
         }
 
         // Try ECDSA first (for EOAs)
-        if (
-            _isApprovalValid(
+        if (_isApprovalValid(
                 predictionHash, signer, collateral, nonce, deadline, signature
-            )
-        ) {
+            )) {
             return true;
         }
 
@@ -274,8 +312,7 @@ abstract contract SignatureValidator is EIP712 {
         }
 
         // Try ECDSA first (for EOAs)
-        if (
-            _isBurnApprovalValid(
+        if (_isBurnApprovalValid(
                 burnHash,
                 signer,
                 tokenAmount,
@@ -283,8 +320,7 @@ abstract contract SignatureValidator is EIP712 {
                 nonce,
                 deadline,
                 signature
-            )
-        ) {
+            )) {
             return true;
         }
 
@@ -333,6 +369,20 @@ abstract contract SignatureValidator is EIP712 {
         }
 
         if (block.timestamp > sessionApproval.validUntil) {
+            return false;
+        }
+
+        // Check if session key has been revoked
+        if (
+            _revokedSessionKeys[
+                    sessionApproval.owner
+                ][sessionApproval.sessionKey] > 0
+        ) {
+            return false;
+        }
+
+        // Validate permissionsHash matches BURN_PERMISSION
+        if (sessionApproval.permissionsHash != BURN_PERMISSION) {
             return false;
         }
 
@@ -481,6 +531,20 @@ abstract contract SignatureValidator is EIP712 {
 
         // Check session key is still valid
         if (block.timestamp > sessionApproval.validUntil) {
+            return false;
+        }
+
+        // Check if session key has been revoked
+        if (
+            _revokedSessionKeys[
+                    sessionApproval.owner
+                ][sessionApproval.sessionKey] > 0
+        ) {
+            return false;
+        }
+
+        // Validate permissionsHash matches MINT_PERMISSION
+        if (sessionApproval.permissionsHash != MINT_PERMISSION) {
             return false;
         }
 

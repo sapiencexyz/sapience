@@ -30,6 +30,12 @@ contract PredictionMarketEscrowIntegrationTest is Test {
 
     bytes32 public constant REF_CODE = keccak256("integration-test");
 
+    uint256 private _nextNonce = 1;
+
+    function _freshNonce() internal returns (uint256) {
+        return _nextNonce++;
+    }
+
     function setUp() public {
         owner = vm.addr(1);
         predictorPk = 2;
@@ -88,7 +94,7 @@ contract PredictionMarketEscrowIntegrationTest is Test {
         IV2Types.Pick[] memory picks,
         uint256 pCollateral,
         uint256 cCollateral
-    ) internal view returns (IV2Types.MintRequest memory request) {
+    ) internal returns (IV2Types.MintRequest memory request) {
         bytes32 pickConfigId = keccak256(abi.encode(picks));
         bytes32 predictionHash = keccak256(
             abi.encode(
@@ -96,8 +102,8 @@ contract PredictionMarketEscrowIntegrationTest is Test {
             )
         );
 
-        uint256 pNonce = market.getNonce(predictor);
-        uint256 cNonce = market.getNonce(counterparty);
+        uint256 pNonce = _freshNonce();
+        uint256 cNonce = _freshNonce();
         uint256 deadline = block.timestamp + 1 hours;
 
         request.picks = picks;
