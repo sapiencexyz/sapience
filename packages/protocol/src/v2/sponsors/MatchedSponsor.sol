@@ -80,27 +80,26 @@ contract MatchedSponsor is IMintSponsor, Ownable {
     /// @inheritdoc IMintSponsor
     function fundMint(
         address escrow_,
-        address predictor,
-        uint256 collateral,
-        IV2Types.Pick[] calldata picks,
-        bytes calldata /* sponsorData */
+        IV2Types.MintRequest calldata request
     ) external override {
         if (msg.sender != escrow) revert UnauthorizedEscrow();
-        if (collateral > matchLimit) revert CollateralExceedsMatchLimit();
+        if (request.predictorCollateral > matchLimit) {
+            revert CollateralExceedsMatchLimit();
+        }
 
-        Budget storage budget = budgets[predictor];
+        Budget storage budget = budgets[request.predictor];
         if (budget.allocated == 0) revert NoBudget();
-        if (budget.used + collateral > budget.allocated) {
+        if (budget.used + request.predictorCollateral > budget.allocated) {
             revert BudgetExceeded();
         }
 
         // Enforce required condition if set
         if (requiredResolver != address(0)) {
             bool found = false;
-            for (uint256 i = 0; i < picks.length; i++) {
+            for (uint256 i = 0; i < request.picks.length; i++) {
                 if (
-                    picks[i].conditionResolver == requiredResolver
-                        && picks[i].conditionId == requiredConditionId
+                    request.picks[i].conditionResolver == requiredResolver
+                        && request.picks[i].conditionId == requiredConditionId
                 ) {
                     found = true;
                     break;
@@ -110,12 +109,12 @@ contract MatchedSponsor is IMintSponsor, Ownable {
         }
 
         // Update budget
-        budget.used += collateral;
+        budget.used += request.predictorCollateral;
 
         // Transfer collateral to the escrow
-        collateralToken.safeTransfer(escrow_, collateral);
+        collateralToken.safeTransfer(escrow_, request.predictorCollateral);
 
-        emit Sponsored(predictor, collateral, escrow_);
+        emit Sponsored(request.predictor, request.predictorCollateral, escrow_);
     }
 
     // ============ View Functions ============
