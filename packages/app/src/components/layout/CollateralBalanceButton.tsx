@@ -39,7 +39,7 @@ import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import { useSwitchChain } from 'wagmi';
 import { useSponsorStatus } from '~/hooks/sponsorship/useSponsorStatus';
-import { formatUnits, type Address } from 'viem';
+import { formatUnits } from 'viem';
 
 const WUSDE_ABI = parseAbi([
   'function deposit() payable',
@@ -105,13 +105,10 @@ export default function CollateralBalanceButton({
   });
 
   // Sponsorship budget
-  const { isSponsored, remainingBudget, maxEntryPriceBps } = useSponsorStatus();
+  const { isSponsored, remainingBudget } = useSponsorStatus();
   const sponsorBudgetFormatted = isSponsored
     ? formatUnits(remainingBudget, 18)
     : '0';
-  const maxPricePercent = maxEntryPriceBps > 0n
-    ? Number(maxEntryPriceBps) / 100
-    : 0;
 
   const [isGetUsdeOpen, setIsGetUsdeOpen] = useState(false);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
@@ -388,6 +385,12 @@ export default function CollateralBalanceButton({
               <span className="relative top-[1px] xl:top-0 text-sm font-normal">
                 {formatDollarLikeBalance(displayedBalance)} {symbol}
               </span>
+              {isSponsored && (
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-ethena opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-ethena" />
+                </span>
+              )}
             </div>
           </div>
         </HoverCardTrigger>
@@ -416,12 +419,9 @@ export default function CollateralBalanceButton({
                 </p>
               </div>
               {isSponsored && (
-                <div className="w-full rounded-md border border-ethena/30 bg-ethena/5 px-3 py-2 text-xs text-brand-white/80">
-                  <span className="font-medium text-ethena">
-                    🎁 Sponsored Prediction
-                  </span>
-                  <p className="mt-0.5 text-muted-foreground">
-                    {sponsorBudgetFormatted} {symbol} available for positions priced ≤ {maxPricePercent}% — no deposit needed.
+                <div className="w-full rounded-md border border-ethena/30 bg-ethena/10 px-3 py-2 text-xs">
+                  <p className="text-ethena font-medium">
+                    🎁 {sponsorBudgetFormatted} {symbol} sponsorship available
                   </p>
                 </div>
               )}
