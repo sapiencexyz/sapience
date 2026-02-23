@@ -263,11 +263,16 @@ export async function calculateV2PositionPnL(
   }
 
   // 3. Calculate unrealized P&L from settled but unredeemed predictions
+  // Exclude predictions already counted via redemptions to avoid double-counting
+  const redeemedPredictionIds = redemptions.map((r) => r.predictionId);
   const settledPredictions = await prisma.v2Prediction.findMany({
     where: {
       ...buildWhereClause(),
       settled: true,
       result: { not: V2SettlementResult.UNRESOLVED },
+      ...(redeemedPredictionIds.length > 0
+        ? { predictionId: { notIn: redeemedPredictionIds } }
+        : {}),
     },
   });
 
