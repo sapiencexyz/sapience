@@ -364,7 +364,7 @@ const VaultsPageContent = () => {
         </div>
 
         {/* Cooldown + Deposit Button Group */}
-        <div className="space-y-2 sm:pt-2 pb-3">
+        <div className="flex flex-col gap-3 pt-2">
           {isInteractionDelayActive && (
             <div className="rounded-md border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-800 dark:text-yellow-300">
               This vault implements a cooldown period. Please wait{' '}
@@ -522,7 +522,7 @@ const VaultsPageContent = () => {
         </div>
 
         {/* Cooldown + Withdraw Button Group */}
-        <div className="space-y-2 pt-2">
+        <div className="flex flex-col gap-3 pt-2">
           {isInteractionDelayActive && (
             <div className="rounded-md border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-800 dark:text-yellow-300">
               This vault implements a cooldown period. Please wait{' '}
