@@ -2,15 +2,18 @@
 pragma solidity ^0.8.19;
 
 import { Script, console } from "forge-std/Script.sol";
-import { PredictionMarketBridgeRemote } from
-    "../../../v2/bridge/PredictionMarketBridgeRemote.sol";
-import { PredictionMarketTokenFactory } from
-    "../../../v2/bridge/PredictionMarketTokenFactory.sol";
-import { IPredictionMarketBridgeBase } from
-    "../../../v2/bridge/interfaces/IPredictionMarketBridgeBase.sol";
+import {
+    PredictionMarketBridgeRemote
+} from "../../../v2/bridge/PredictionMarketBridgeRemote.sol";
+import {
+    PredictionMarketTokenFactory
+} from "../../../v2/PredictionMarketTokenFactory.sol";
+import {
+    IPredictionMarketBridgeBase
+} from "../../../v2/bridge/interfaces/IPredictionMarketBridgeBase.sol";
 
-/// @title Configure SM Network Bridge (Mainnet)
-/// @notice Configure bridge on SM Network (Arbitrum mainnet) with Ethereal settings
+/// @title Configure SM Network Bridge
+/// @notice Configure bridge on SM Network with Ethereal settings
 contract ConfigureRemoteBridge is Script {
     function run() external {
         address bridgeAddr = vm.envAddress("SM_NETWORK_BRIDGE_ADDRESS");
@@ -27,9 +30,9 @@ contract ConfigureRemoteBridge is Script {
         PredictionMarketTokenFactory factory =
             PredictionMarketTokenFactory(factoryAddr);
 
-        console.log("=== Configure SM Network Bridge (Mainnet) ===");
+        console.log("=== Configure SM Network Bridge ===");
         console.log("Bridge:", bridgeAddr);
-        console.log("PM Network Bridge:", remoteBridge);
+        console.log("SM Network Bridge:", remoteBridge);
         console.log("Remote EID:", remoteEid);
         console.log("Factory:", factoryAddr);
         console.log("ACK Fee Estimate:", ackFeeEstimate);
@@ -59,6 +62,7 @@ contract ConfigureRemoteBridge is Script {
         console.log("Bridge config set");
         console.log("LZ peer set");
         console.log("Factory deployer set to bridge");
+        console.log("Funded with 0.01 ETH for ACK fees");
         console.log("");
         console.log("Config complete:", bridge.isConfigComplete());
         console.log("Factory config complete:", factory.isConfigComplete());

@@ -33,11 +33,8 @@ interface IPredictionMarketBridgeRemote is IPredictionMarketBridgeBase {
 
     // ============ Errors ============
 
-    /// @notice Token not found
-    error TokenNotFound(address token);
-
-    /// @notice Token deployment failed
-    error TokenDeploymentFailed();
+    /// @notice Token is not a valid factory-deployed position token
+    error InvalidToken(address token);
 
     // ============ Bridge Functions ============
 

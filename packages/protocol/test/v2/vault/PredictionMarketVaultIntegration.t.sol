@@ -18,7 +18,7 @@ import {
 } from "../../../src/v2/interfaces/IPredictionMarketToken.sol";
 import {
     PredictionMarketTokenFactory
-} from "../../../src/v2/bridge/PredictionMarketTokenFactory.sol";
+} from "../../../src/v2/PredictionMarketTokenFactory.sol";
 import { MockERC20 } from "../mocks/MockERC20.sol";
 
 /**

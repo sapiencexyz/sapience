@@ -4,7 +4,7 @@ pragma solidity ^0.8.19;
 import { CREATE3 } from "solady/utils/CREATE3.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import "./interfaces/IPredictionMarketTokenFactory.sol";
-import "../PredictionMarketToken.sol";
+import "./PredictionMarketToken.sol";
 
 /// @title PredictionMarketTokenFactory
 /// @notice Factory for deploying position tokens using CREATE3

@@ -4,7 +4,7 @@ pragma solidity ^0.8.19;
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 import "../../src/v2/PredictionMarketEscrow.sol";
-import "../../src/v2/bridge/PredictionMarketTokenFactory.sol";
+import "../../src/v2/PredictionMarketTokenFactory.sol";
 import "../../src/v2/interfaces/IV2Types.sol";
 import "../../src/v2/interfaces/IPredictionMarketEscrow.sol";
 import "../../src/v2/resolvers/mocks/ManualConditionResolver.sol";

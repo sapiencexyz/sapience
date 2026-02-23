@@ -4,7 +4,7 @@ pragma solidity ^0.8.19;
 import "forge-std/Test.sol";
 import {
     PredictionMarketTokenFactory
-} from "../../src/v2/bridge/PredictionMarketTokenFactory.sol";
+} from "../../src/v2/PredictionMarketTokenFactory.sol";
 import { PredictionMarketToken } from "../../src/v2/PredictionMarketToken.sol";
 
 /// @title PredictionMarketTokenFactoryTest

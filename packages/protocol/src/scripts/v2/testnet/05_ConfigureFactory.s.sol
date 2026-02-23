@@ -4,11 +4,11 @@ pragma solidity ^0.8.19;
 import { Script, console } from "forge-std/Script.sol";
 import {
     PredictionMarketTokenFactory
-} from "../../../v2/bridge/PredictionMarketTokenFactory.sol";
+} from "../../../v2/PredictionMarketTokenFactory.sol";
 
 /// @title Configure PredictionMarketTokenFactory on PM Network (Testnet)
 /// @notice Set Escrow as deployer on the PM Network factory
-contract ConfigureFactoryPM is Script {
+contract ConfigureFactory is Script {
     function run() external {
         address factoryAddr = vm.envAddress("FACTORY_ADDRESS");
         address escrowAddr = vm.envAddress("PREDICTION_MARKET_ADDRESS");
