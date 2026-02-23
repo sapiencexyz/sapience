@@ -1,71 +1,80 @@
 'use client';
 
-import { useQuery } from '@tanstack/react-query';
-import { useAccount } from 'wagmi';
+import { useAccount, useReadContract, useReadContracts } from 'wagmi';
 import { useSession } from '~/lib/context/SessionContext';
-import type { Address } from 'viem';
+import { parseAbi, type Address } from 'viem';
+import { CHAIN_ID_ETHEREAL_TESTNET } from '~/lib/constants';
 
-interface SponsorStatus {
-  /** Whether sponsorship is configured on the API */
-  enabled: boolean;
-  /** OnboardingSponsor contract address (to pass as predictorSponsor in MintRequest) */
-  sponsorAddress: Address | null;
-  /** Remaining budget in wei (collateral token, 18 decimals) */
-  remainingBudget: bigint;
-}
+const SPONSOR_ADDRESS = process.env
+  .NEXT_PUBLIC_SPONSOR_ADDRESS as Address | undefined;
 
-async function fetchSponsorStatus(
-  address: string
-): Promise<SponsorStatus> {
-  const apiUrl = process.env.NEXT_PUBLIC_API_URL || '';
-  const res = await fetch(
-    `${apiUrl}/referrals/sponsor-status?address=${encodeURIComponent(address)}`
-  );
-
-  if (!res.ok) {
-    return { enabled: false, sponsorAddress: null, remainingBudget: 0n };
-  }
-
-  const data = await res.json();
-
-  return {
-    enabled: data.enabled ?? false,
-    sponsorAddress: data.sponsorAddress ?? null,
-    remainingBudget: BigInt(data.remainingBudget || '0'),
-  };
-}
+const sponsorAbi = parseAbi([
+  'function remainingBudget(address) view returns (uint256)',
+  'function requiredCounterparty() view returns (address)',
+  'function maxEntryPriceBps() view returns (uint256)',
+  'function BPS() view returns (uint256)',
+]);
 
 /**
- * Check if the connected user has a sponsorship budget for their first prediction.
+ * Read sponsorship status directly from the OnboardingSponsor contract.
  *
- * When `isSponsored` is true, the create position form should:
- * 1. Pass `sponsorAddress` as `predictorSponsor` in the MintRequest
- * 2. Skip the collateral approval step (sponsor funds the predictor side)
- * 3. Show UI indicating the prediction is sponsored
+ * Returns budget, required counterparty, and max entry price cap — everything
+ * the frontend needs to gate and display sponsored mints. No API call needed.
  */
 export function useSponsorStatus() {
   const { address } = useAccount();
   const { effectiveAddress } = useSession();
 
   const userAddress = effectiveAddress ?? address;
+  const enabled = !!userAddress && !!SPONSOR_ADDRESS;
 
-  const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['sponsor-status', userAddress],
-    queryFn: () => fetchSponsorStatus(userAddress!),
-    enabled: !!userAddress,
-    staleTime: 30_000, // 30s — budget can change after a mint
-    refetchOnWindowFocus: true,
+  const { data, isLoading, error, refetch } = useReadContracts({
+    contracts: [
+      {
+        address: SPONSOR_ADDRESS!,
+        abi: sponsorAbi,
+        functionName: 'remainingBudget',
+        args: [userAddress!],
+        chainId: CHAIN_ID_ETHEREAL_TESTNET,
+      },
+      {
+        address: SPONSOR_ADDRESS!,
+        abi: sponsorAbi,
+        functionName: 'requiredCounterparty',
+        chainId: CHAIN_ID_ETHEREAL_TESTNET,
+      },
+      {
+        address: SPONSOR_ADDRESS!,
+        abi: sponsorAbi,
+        functionName: 'maxEntryPriceBps',
+        chainId: CHAIN_ID_ETHEREAL_TESTNET,
+      },
+    ],
+    query: {
+      enabled,
+      staleTime: 30_000,
+      refetchOnWindowFocus: true,
+    },
   });
+
+  const remainingBudget = (data?.[0]?.result as bigint) ?? 0n;
+  const requiredCounterparty =
+    (data?.[1]?.result as Address) ?? null;
+  const maxEntryPriceBps = (data?.[2]?.result as bigint) ?? 0n;
 
   return {
     /** Whether the user has an active sponsorship budget > 0 */
-    isSponsored: (data?.remainingBudget ?? 0n) > 0n,
+    isSponsored: remainingBudget > 0n,
     /** Sponsor contract address for MintRequest.predictorSponsor */
-    sponsorAddress: data?.sponsorAddress ?? null,
+    sponsorAddress: SPONSOR_ADDRESS ?? null,
     /** Remaining budget in wei */
-    remainingBudget: data?.remainingBudget ?? 0n,
-    /** Whether sponsorship is configured server-side */
-    sponsorshipEnabled: data?.enabled ?? false,
+    remainingBudget,
+    /** Required counterparty address (e.g. vault-bot) */
+    requiredCounterparty,
+    /** Max entry price in basis points (e.g. 7000 = 0.70) */
+    maxEntryPriceBps,
+    /** Whether sponsorship is configured (env var set) */
+    sponsorshipEnabled: !!SPONSOR_ADDRESS,
     /** Loading state */
     isLoading,
     /** Error state */
@@ -73,4 +82,22 @@ export function useSponsorStatus() {
     /** Refetch after a mint to get updated budget */
     refetch,
   };
+}
+
+/**
+ * Check whether a given entry price qualifies for sponsorship.
+ * @param predictorCollateral - predictor's collateral amount
+ * @param counterpartyCollateral - counterparty's collateral amount
+ * @param maxBps - max entry price in basis points from the contract
+ * @returns true if the entry price is at or below the cap
+ */
+export function isEntryPriceEligible(
+  predictorCollateral: bigint,
+  counterpartyCollateral: bigint,
+  maxBps: bigint
+): boolean {
+  if (predictorCollateral === 0n || counterpartyCollateral === 0n) return false;
+  const total = predictorCollateral + counterpartyCollateral;
+  const entryBps = (predictorCollateral * 10000n) / total;
+  return entryBps <= maxBps;
 }

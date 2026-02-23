@@ -39,7 +39,7 @@ import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import { useSwitchChain } from 'wagmi';
 import { useSponsorStatus } from '~/hooks/sponsorship/useSponsorStatus';
-import { formatUnits } from 'viem';
+import { formatUnits, type Address } from 'viem';
 
 const WUSDE_ABI = parseAbi([
   'function deposit() payable',
@@ -105,9 +105,12 @@ export default function CollateralBalanceButton({
   });
 
   // Sponsorship budget
-  const { isSponsored, remainingBudget } = useSponsorStatus();
-  const sponsorBudgetNumber = isSponsored
-    ? parseFloat(formatUnits(remainingBudget, 18))
+  const { isSponsored, remainingBudget, maxEntryPriceBps } = useSponsorStatus();
+  const sponsorBudgetFormatted = isSponsored
+    ? formatUnits(remainingBudget, 18)
+    : '0';
+  const maxPricePercent = maxEntryPriceBps > 0n
+    ? Number(maxEntryPriceBps) / 100
     : 0;
 
   const [isGetUsdeOpen, setIsGetUsdeOpen] = useState(false);
@@ -349,11 +352,10 @@ export default function CollateralBalanceButton({
     }
   };
 
-  // Display the balance based on the current mode (includes sponsor budget)
-  const walletBalance = isUsingSmartAccount
+  // Display the balance based on the current mode
+  const displayedBalance = isUsingSmartAccount
     ? smartAccountBalance
     : eoaBalance;
-  const displayedBalance = walletBalance + sponsorBudgetNumber;
 
   // Show FUND ACCOUNT button when in smart account mode with zero balance (and not still loading)
   const showFundButton =
@@ -419,7 +421,7 @@ export default function CollateralBalanceButton({
                     🎁 Sponsored Prediction
                   </span>
                   <p className="mt-0.5 text-muted-foreground">
-                    {formatDollarLikeBalance(sponsorBudgetNumber)} {symbol} available for your first prediction — no deposit needed.
+                    {sponsorBudgetFormatted} {symbol} available for positions priced ≤ {maxPricePercent}% — no deposit needed.
                   </p>
                 </div>
               )}
