@@ -1064,7 +1064,6 @@ contract PredictionMarketEscrow is
         }
 
         // Process results
-        bool hasNonDecisive = false;
         for (uint256 i = 0; i < numPicks; i++) {
             if (!resolved[i]) {
                 return (false, IV2Types.SettlementResult.UNRESOLVED);
@@ -1072,17 +1071,11 @@ contract PredictionMarketEscrow is
 
             (bool isLoss, bool isNonDecisive) =
                 _evaluatePick(picks[i].predictedOutcome, outcomes[i]);
-            if (isLoss) {
+            if (isLoss || isNonDecisive) {
                 return (true, IV2Types.SettlementResult.COUNTERPARTY_WINS);
-            }
-            if (isNonDecisive) {
-                hasNonDecisive = true;
             }
         }
 
-        if (hasNonDecisive) {
-            return (true, IV2Types.SettlementResult.COUNTERPARTY_WINS);
-        }
         return (true, IV2Types.SettlementResult.PREDICTOR_WINS);
     }
 
@@ -1092,8 +1085,6 @@ contract PredictionMarketEscrow is
         view
         returns (bool canResolve, IV2Types.SettlementResult result)
     {
-        bool hasNonDecisive = false;
-
         for (uint256 i = 0; i < numPicks; i++) {
             IV2Types.Pick storage pick = picks[i];
 
@@ -1119,17 +1110,11 @@ contract PredictionMarketEscrow is
 
             (bool isLoss, bool isNonDecisive) =
                 _evaluatePick(pick.predictedOutcome, outcome);
-            if (isLoss) {
+            if (isLoss || isNonDecisive) {
                 return (true, IV2Types.SettlementResult.COUNTERPARTY_WINS);
-            }
-            if (isNonDecisive) {
-                hasNonDecisive = true;
             }
         }
 
-        if (hasNonDecisive) {
-            return (true, IV2Types.SettlementResult.COUNTERPARTY_WINS);
-        }
         return (true, IV2Types.SettlementResult.PREDICTOR_WINS);
     }
 
