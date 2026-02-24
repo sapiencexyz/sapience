@@ -290,6 +290,26 @@ export const secondaryMarketEscrow: ChainAddressMap = {
   },
 } as const;
 
+/**
+ * OnboardingSponsor
+ * Budget-gated sponsor for onboarding new users via invite codes.
+ * The budgetManager (API signer) calls setBudget when a user claims an invite code,
+ * then the escrow calls fundMint during sponsored mints.
+ * TODO: Update addresses after deployment
+ */
+export const onboardingSponsor: ChainAddressMap = {
+  5064014: {
+    // Ethereal mainnet - TODO: deploy
+    address: '0x0000000000000000000000000000000000000000',
+    legacy: [] as const,
+  },
+  13374202: {
+    // Ethereal testnet - TODO: deploy
+    address: '0x0000000000000000000000000000000000000000',
+    legacy: [] as const,
+  },
+} as const;
+
 // Legacy exports
 export const contracts = {
   predictionMarket,
@@ -308,6 +328,7 @@ export const escrowContracts = {
   predictionMarketEscrow,
   predictionMarketVault,
   secondaryMarketEscrow,
+  onboardingSponsor,
   pythConditionResolver,
   manualConditionResolver,
   lzConditionResolver,

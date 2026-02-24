@@ -1,5 +1,5 @@
 import { useCallback, useState, useMemo } from 'react';
-import { erc20Abi } from 'viem';
+import { erc20Abi, zeroAddress } from 'viem';
 
 import {
   predictionMarketAbi,
@@ -121,6 +121,8 @@ export function useSubmitPosition({
     disableSuccessToast: true,
   });
 
+  const isEscrowChain = chainId === CHAIN_ID_ETHEREAL_TESTNET;
+
   // Prepare calls for sendCalls - combines approval + mint in a single batch
   const prepareCalls = useCallback(
     (mintData: MintPredictionRequestData, freshAllowance?: bigint) => {
@@ -132,6 +134,7 @@ export function useSubmitPosition({
         currentWusdeBalance:
           typeof currentWusdeBalance === 'bigint' ? currentWusdeBalance : 0n,
         currentAllowance: freshAllowance ?? currentAllowance ?? 0n,
+        isEscrowChain,
       });
     },
     [
@@ -140,6 +143,7 @@ export function useSubmitPosition({
       currentAllowance,
       chainId,
       currentWusdeBalance,
+      isEscrowChain,
     ]
   );
 
