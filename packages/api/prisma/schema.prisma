@@ -531,12 +531,14 @@ model Picks {
   predictorToken               String?   @db.VarChar
   counterpartyToken            String?   @db.VarChar
   endsAt                       Int?
+  fullyRedeemed                Boolean   @default(false)
 
   picks                        Pick[]
   positionBalances             Position[]
 
   @@index([chainId, marketAddress], map: "IDX_pick_config_chain_market")
   @@index([resolved], map: "IDX_pick_config_resolved")
+  @@index([fullyRedeemed], map: "IDX_pick_config_fully_redeemed")
 }
 
 /// Individual pick within a pick configuration
