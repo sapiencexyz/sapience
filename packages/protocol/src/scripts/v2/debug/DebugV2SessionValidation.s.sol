@@ -55,7 +55,7 @@ contract DebugV2SessionValidation is Script {
     address constant OWNER = 0xefA0E8Aa84A713f6A6d4De8cC761Fe86c5957d72;
     address constant SMART_ACCOUNT = 0x5aab6F438Af9289798eEcBf83C06f62abdb529B9;
     uint256 constant VALID_UNTIL = 1_770_234_632;
-    // permissionsHash = keccak256("V2_MINT") = keccak256(0x56325f4d494e54)
+    // permissionsHash = keccak256("MINT")
     bytes32 constant PERMISSIONS_HASH =
         0xd9762d852ca8dc23710c3bf3bca341b66f778a0c94cc060f0463687e9c260e9c;
     uint256 constant SESSION_CHAIN_ID = 13_374_202;
@@ -145,7 +145,7 @@ contract DebugV2SessionValidation is Script {
         console.logBytes32(escrowContract.domainSeparator());
         console.log("");
 
-        console.log("PermissionsHash (V2_MINT):");
+        console.log("PermissionsHash (MINT):");
         console.logBytes32(PERMISSIONS_HASH);
         console.log("");
 

@@ -145,7 +145,7 @@ contract SessionKeyRevocationTest is Test {
         returns (bytes memory)
     {
         uint256 validUntil = block.timestamp + 1 days;
-        bytes32 permissionsHash = keccak256("V2_MINT");
+        bytes32 permissionsHash = keccak256("MINT");
 
         bytes32 sessionApprovalHash = market.getSessionKeyApprovalHash(
             skAddr, smartAccount, validUntil, permissionsHash, block.chainid

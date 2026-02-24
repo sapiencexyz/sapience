@@ -37,10 +37,10 @@ abstract contract SignatureValidator is EIP712 {
     );
 
     /// @notice Permission hash for mint operations
-    bytes32 public constant MINT_PERMISSION = keccak256("V2_MINT");
+    bytes32 public constant MINT_PERMISSION = keccak256("MINT");
 
     /// @notice Permission hash for burn operations
-    bytes32 public constant BURN_PERMISSION = keccak256("V2_BURN");
+    bytes32 public constant BURN_PERMISSION = keccak256("BURN");
 
     /// @notice Trusted account factory for smart account verification
     /// @dev Used to verify that a smart account is derived from the claimed owner
