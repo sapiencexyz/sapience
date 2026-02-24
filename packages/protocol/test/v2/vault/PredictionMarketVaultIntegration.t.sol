@@ -364,7 +364,7 @@ contract PredictionMarketVaultIntegrationTest is Test {
         // Settle prediction
         market.settle(predictionId, REF_CODE);
 
-        // Both redeem (full TOTAL_COLLATERAL each) - get original collateral back
+        // Non-decisive = counterparty (vault) wins all collateral
         vm.prank(predictor);
         uint256 predictorPayout =
             market.redeem(predictorToken, TOTAL_COLLATERAL, REF_CODE);
@@ -373,12 +373,12 @@ contract PredictionMarketVaultIntegrationTest is Test {
         uint256 vaultPayout =
             market.redeem(counterpartyToken, TOTAL_COLLATERAL, REF_CODE);
 
-        assertEq(predictorPayout, PREDICTOR_COLLATERAL);
-        assertEq(vaultPayout, COUNTERPARTY_COLLATERAL);
+        assertEq(predictorPayout, 0);
+        assertEq(vaultPayout, TOTAL_COLLATERAL);
 
-        // Both end up with original balances
-        assertEq(collateralToken.balanceOf(predictor), predictorBalanceBefore);
-        assertEq(collateralToken.balanceOf(address(vault)), vaultBalanceBefore);
+        // Vault ends up with predictor's collateral too
+        assertEq(collateralToken.balanceOf(predictor), predictorBalanceBefore - PREDICTOR_COLLATERAL);
+        assertEq(collateralToken.balanceOf(address(vault)), vaultBalanceBefore + PREDICTOR_COLLATERAL);
     }
 
     /**

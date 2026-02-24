@@ -144,13 +144,6 @@ contract PredictionMarketEscrow is
                     predictorSupply, counterpartySupply
                 );
             }
-        } else {
-            // NON_DECISIVE — both sides have claims
-            if (predictorSupply > 0 || counterpartySupply > 0) {
-                revert TokensStillOutstanding(
-                    predictorSupply, counterpartySupply
-                );
-            }
         }
 
         // Calculate remaining dust
@@ -980,9 +973,6 @@ contract PredictionMarketEscrow is
         } else if (result == IV2Types.SettlementResult.COUNTERPARTY_WINS) {
             predictorClaimable = 0;
             counterpartyClaimable = totalCollateral;
-        } else if (result == IV2Types.SettlementResult.NON_DECISIVE) {
-            predictorClaimable = predictorCollateral;
-            counterpartyClaimable = counterpartyCollateral;
         }
     }
 
@@ -1005,11 +995,6 @@ contract PredictionMarketEscrow is
             claimablePool = isPredictor ? totalCollateral : 0;
         } else if (result == IV2Types.SettlementResult.COUNTERPARTY_WINS) {
             claimablePool = isPredictor ? 0 : totalCollateral;
-        } else {
-            // NON_DECISIVE (tie) - each side gets their original collateral back
-            claimablePool = isPredictor
-                ? totalPredictorCollateral
-                : totalCounterpartyCollateral;
         }
     }
 
@@ -1096,7 +1081,7 @@ contract PredictionMarketEscrow is
         }
 
         if (hasNonDecisive) {
-            return (true, IV2Types.SettlementResult.NON_DECISIVE);
+            return (true, IV2Types.SettlementResult.COUNTERPARTY_WINS);
         }
         return (true, IV2Types.SettlementResult.PREDICTOR_WINS);
     }
@@ -1143,7 +1128,7 @@ contract PredictionMarketEscrow is
         }
 
         if (hasNonDecisive) {
-            return (true, IV2Types.SettlementResult.NON_DECISIVE);
+            return (true, IV2Types.SettlementResult.COUNTERPARTY_WINS);
         }
         return (true, IV2Types.SettlementResult.PREDICTOR_WINS);
     }

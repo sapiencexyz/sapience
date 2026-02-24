@@ -356,11 +356,13 @@ contract PredictionMarketEscrowIntegrationTest is Test {
             market.getPickConfiguration(prediction.pickConfigId);
         assertEq(
             uint256(config.result),
-            uint256(IV2Types.SettlementResult.NON_DECISIVE)
+            uint256(IV2Types.SettlementResult.COUNTERPARTY_WINS)
         );
 
-        // Both get their original collateral back
+        // Non-decisive = counterparty wins — counterparty gets all collateral
         uint256 totalCollateral = pCollateral + cCollateral;
+
+        // Predictor gets nothing
         vm.prank(predictor);
         uint256 predictorPayout =
             market.redeem(predictorToken, totalCollateral, REF_CODE);
@@ -369,8 +371,8 @@ contract PredictionMarketEscrowIntegrationTest is Test {
         uint256 counterpartyPayout =
             market.redeem(counterpartyToken, totalCollateral, REF_CODE);
 
-        assertEq(predictorPayout, pCollateral);
-        assertEq(counterpartyPayout, cCollateral);
+        assertEq(predictorPayout, 0);
+        assertEq(counterpartyPayout, totalCollateral);
     }
 
     /**
