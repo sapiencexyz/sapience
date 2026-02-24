@@ -173,9 +173,11 @@ contract MintPredictionMarketTokens is Script {
             )
         );
 
-        // Get nonces
-        uint256 predictorNonce = market.getNonce(actors.predictor);
-        uint256 counterpartyNonce = market.getNonce(actors.counterparty);
+        // Generate unique nonces (bitmap nonces — any unused nonce is valid)
+        uint256 predictorNonce =
+            uint256(keccak256(abi.encode(block.timestamp, "predictor")));
+        uint256 counterpartyNonce =
+            uint256(keccak256(abi.encode(block.timestamp, "counterparty")));
 
         // Setup sign params
         SignParams memory signParams = SignParams({
@@ -223,13 +225,14 @@ contract MintPredictionMarketTokens is Script {
         uint256 collateral,
         uint256 nonce
     ) internal view returns (bytes memory) {
-        bytes32 approvalHash = params.market.getMintApprovalHash(
-            params.predictionHash,
-            actors.predictor,
-            collateral,
-            nonce,
-            params.deadline
-        );
+        bytes32 approvalHash = params.market
+            .getMintApprovalHash(
+                params.predictionHash,
+                actors.predictor,
+                collateral,
+                nonce,
+                params.deadline
+            );
         (uint8 v, bytes32 r, bytes32 s) =
             vm.sign(actors.predictorPk, approvalHash);
         return abi.encodePacked(r, s, v);
@@ -241,13 +244,14 @@ contract MintPredictionMarketTokens is Script {
         uint256 collateral,
         uint256 nonce
     ) internal view returns (bytes memory) {
-        bytes32 approvalHash = params.market.getMintApprovalHash(
-            params.predictionHash,
-            actors.counterparty,
-            collateral,
-            nonce,
-            params.deadline
-        );
+        bytes32 approvalHash = params.market
+            .getMintApprovalHash(
+                params.predictionHash,
+                actors.counterparty,
+                collateral,
+                nonce,
+                params.deadline
+            );
         (uint8 v, bytes32 r, bytes32 s) =
             vm.sign(actors.counterpartyPk, approvalHash);
         return abi.encodePacked(r, s, v);

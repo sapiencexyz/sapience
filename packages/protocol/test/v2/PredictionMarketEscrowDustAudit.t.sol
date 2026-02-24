@@ -44,6 +44,12 @@ contract PredictionMarketEscrowDustAudit is Test {
     bytes32 constant CONDITION_ID = keccak256("DUST_TEST_CONDITION");
     bytes32 constant REF_CODE = bytes32(0);
 
+    uint256 private _nextNonce = 1;
+
+    function _freshNonce() internal returns (uint256) {
+        return _nextNonce++;
+    }
+
     function setUp() public {
         alice = vm.addr(ALICE_PK);
         bob = vm.addr(BOB_PK);
@@ -101,7 +107,7 @@ contract PredictionMarketEscrowDustAudit is Test {
     function _buildMintRequest(
         uint256 predictorCollateral,
         uint256 counterpartyCollateral
-    ) internal view returns (IV2Types.MintRequest memory request) {
+    ) internal returns (IV2Types.MintRequest memory request) {
         IV2Types.Pick[] memory picks = _buildPicks();
         bytes32 pickConfigId = keccak256(abi.encode(picks));
         bytes32 predictionHash = keccak256(
@@ -114,8 +120,8 @@ contract PredictionMarketEscrowDustAudit is Test {
             )
         );
 
-        uint256 pNonce = escrow.getNonce(alice);
-        uint256 cNonce = escrow.getNonce(bob);
+        uint256 pNonce = _freshNonce();
+        uint256 cNonce = _freshNonce();
         uint256 deadline = block.timestamp + 1 hours;
 
         request.picks = picks;
@@ -253,8 +259,8 @@ contract PredictionMarketEscrowDustAudit is Test {
         IV2Types.PickConfiguration memory config = escrow.getPickConfiguration(
             escrow.getPickConfigIdFromToken(predToken)
         );
-        uint256 totalCollateral =
-            config.totalPredictorCollateral + config.totalCounterpartyCollateral;
+        uint256 totalCollateral = config.totalPredictorCollateral
+            + config.totalCounterpartyCollateral;
         uint256 totalClaimed = config.claimedPredictorCollateral
             + config.claimedCounterpartyCollateral;
         uint256 dust = totalCollateral - totalClaimed;

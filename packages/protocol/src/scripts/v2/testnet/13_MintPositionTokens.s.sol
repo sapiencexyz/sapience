@@ -149,9 +149,11 @@ contract MintPredictionMarketTokens is Script {
             )
         );
 
-        // Get nonces and deadline
-        uint256 predictorNonce = market.getNonce(actors.predictor);
-        uint256 counterpartyNonce = market.getNonce(actors.counterparty);
+        // Generate unique nonces (bitmap nonces — any unused nonce is valid)
+        uint256 predictorNonce =
+            uint256(keccak256(abi.encode(block.timestamp, "predictor")));
+        uint256 counterpartyNonce =
+            uint256(keccak256(abi.encode(block.timestamp, "counterparty")));
         uint256 deadline = block.timestamp + 1 hours;
 
         // Sign for predictor

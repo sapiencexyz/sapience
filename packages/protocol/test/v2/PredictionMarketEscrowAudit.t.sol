@@ -42,6 +42,12 @@ contract PredictionMarketEscrowAudit is Test {
     bytes32 constant CONDITION_ID = keccak256("TEST_CONDITION_1");
     bytes32 constant REF_CODE = bytes32(0);
 
+    uint256 private _nextNonce = 1;
+
+    function _freshNonce() internal returns (uint256) {
+        return _nextNonce++;
+    }
+
     function setUp() public {
         alice = vm.addr(ALICE_PK);
         bob = vm.addr(BOB_PK);
@@ -108,14 +114,14 @@ contract PredictionMarketEscrowAudit is Test {
         address counterparty,
         uint256 counterpartyPk,
         uint256 counterpartyCollateral
-    ) internal view returns (IV2Types.MintRequest memory request) {
+    ) internal returns (IV2Types.MintRequest memory request) {
         request.picks = _buildPicks();
         request.predictorCollateral = predictorCollateral;
         request.counterpartyCollateral = counterpartyCollateral;
         request.predictor = predictor;
         request.counterparty = counterparty;
-        request.predictorNonce = escrow.getNonce(predictor);
-        request.counterpartyNonce = escrow.getNonce(counterparty);
+        request.predictorNonce = _freshNonce();
+        request.counterpartyNonce = _freshNonce();
         request.predictorDeadline = block.timestamp + 1 hours;
         request.counterpartyDeadline = block.timestamp + 1 hours;
         request.refCode = REF_CODE;
@@ -168,14 +174,15 @@ contract PredictionMarketEscrowAudit is Test {
             address counterpartyToken
         )
     {
-        IV2Types.MintRequest memory req = _buildMintRequest(
-            predictor,
-            predictorPk,
-            predictorCollateral,
-            counterparty,
-            counterpartyPk,
-            counterpartyCollateral
-        );
+        IV2Types.MintRequest memory req =
+            _buildMintRequest(
+                predictor,
+                predictorPk,
+                predictorCollateral,
+                counterparty,
+                counterpartyPk,
+                counterpartyCollateral
+            );
         return escrow.mint(req);
     }
 
@@ -280,7 +287,7 @@ contract PredictionMarketEscrowAudit is Test {
         _resolveYesWins();
         escrow.settle(pred1, REF_CODE);
 
-        // Build request before expectRevert (getNonce/getMintApprovalHash are staticcalls)
+        // Build request before expectRevert (getMintApprovalHash is a staticcall)
         IV2Types.MintRequest memory req = _buildMintRequest(
             charlie, CHARLIE_PK, 100e6, charlie, CHARLIE_PK, 100e6
         );
@@ -303,7 +310,7 @@ contract PredictionMarketEscrowAudit is Test {
         _resolveYesWins();
         escrow.settle(pred1, REF_CODE);
 
-        // Build request before expectRevert (getNonce/getMintApprovalHash are staticcalls)
+        // Build request before expectRevert (getMintApprovalHash is a staticcall)
         IV2Types.MintRequest memory req = _buildMintRequest(
             charlie, CHARLIE_PK, 1e6, charlie, CHARLIE_PK, 1000e6
         );

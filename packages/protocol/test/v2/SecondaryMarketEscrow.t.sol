@@ -80,6 +80,12 @@ contract SecondaryMarketEscrowTest is Test {
     uint256 public constant PRICE = 50e18;
     bytes32 public constant REF_CODE = keccak256("test-ref");
 
+    uint256 private _nextNonce = 1;
+
+    function _freshNonce() internal returns (uint256) {
+        return _nextNonce++;
+    }
+
     function setUp() public {
         sellerPk = 2;
         seller = vm.addr(sellerPk);
@@ -134,7 +140,6 @@ contract SecondaryMarketEscrowTest is Test {
 
     function _createTradeRequest()
         internal
-        view
         returns (ISecondaryMarketEscrow.TradeRequest memory request)
     {
         return _createTradeRequestWith(
@@ -149,13 +154,8 @@ contract SecondaryMarketEscrowTest is Test {
         uint256 price,
         uint256 _sellerPk,
         uint256 _buyerPk
-    )
-        internal
-        view
-        returns (ISecondaryMarketEscrow.TradeRequest memory request)
-    {
-        bytes32
-            tradeHash = _computeTradeHash(
+    ) internal returns (ISecondaryMarketEscrow.TradeRequest memory request) {
+        bytes32 tradeHash = _computeTradeHash(
             address(positionToken),
             address(collateralToken),
             _seller,
@@ -164,8 +164,8 @@ contract SecondaryMarketEscrowTest is Test {
             price
         );
 
-        uint256 sNonce = escrow.getNonce(_seller);
-        uint256 bNonce = escrow.getNonce(_buyer);
+        uint256 sNonce = _freshNonce();
+        uint256 bNonce = _freshNonce();
         uint256 deadline = block.timestamp + 1 hours;
 
         request.token = address(positionToken);
@@ -240,16 +240,20 @@ contract SecondaryMarketEscrowTest is Test {
         escrow.executeTrade(request);
     }
 
-    function test_executeTrade_incrementsNonces() public {
-        assertEq(escrow.getNonce(seller), 0);
-        assertEq(escrow.getNonce(buyer), 0);
+    function test_executeTrade_marksNoncesUsed() public {
+        uint256 savedNext = _nextNonce;
 
         ISecondaryMarketEscrow.TradeRequest memory request =
             _createTradeRequest();
+
+        // _createTradeRequest called _freshNonce twice (savedNext and savedNext+1)
+        assertFalse(escrow.isNonceUsed(seller, savedNext));
+        assertFalse(escrow.isNonceUsed(buyer, savedNext + 1));
+
         escrow.executeTrade(request);
 
-        assertEq(escrow.getNonce(seller), 1);
-        assertEq(escrow.getNonce(buyer), 1);
+        assertTrue(escrow.isNonceUsed(seller, savedNext));
+        assertTrue(escrow.isNonceUsed(buyer, savedNext + 1));
     }
 
     function test_executeTrade_multipleSequential() public {
@@ -258,13 +262,11 @@ contract SecondaryMarketEscrowTest is Test {
             _createTradeRequest();
         escrow.executeTrade(request1);
 
-        // Second trade (nonces incremented)
+        // Second trade (different nonces)
         ISecondaryMarketEscrow.TradeRequest memory request2 =
             _createTradeRequest();
         escrow.executeTrade(request2);
 
-        assertEq(escrow.getNonce(seller), 2);
-        assertEq(escrow.getNonce(buyer), 2);
         assertEq(positionToken.balanceOf(buyer), TOKEN_AMOUNT * 2);
     }
 
@@ -316,7 +318,7 @@ contract SecondaryMarketEscrowTest is Test {
             PRICE
         );
 
-        uint256 nonce = escrow.getNonce(seller);
+        uint256 nonce = _freshNonce();
         uint256 deadline = block.timestamp + 1 hours;
 
         ISecondaryMarketEscrow.TradeRequest memory request;
@@ -357,14 +359,12 @@ contract SecondaryMarketEscrowTest is Test {
             TOKEN_AMOUNT,
             PRICE
         );
-        uint256 sNonce = escrow.getNonce(seller);
-        uint256 deadline = block.timestamp + 1 hours;
 
         request.sellerSignature = _signTradeApproval(
             tradeHash,
             seller,
-            sNonce,
-            deadline,
+            request.sellerNonce,
+            request.sellerDeadline,
             buyerPk // Wrong key
         );
 
@@ -385,14 +385,12 @@ contract SecondaryMarketEscrowTest is Test {
             TOKEN_AMOUNT,
             PRICE
         );
-        uint256 bNonce = escrow.getNonce(buyer);
-        uint256 deadline = block.timestamp + 1 hours;
 
         request.buyerSignature = _signTradeApproval(
             tradeHash,
             buyer,
-            bNonce,
-            deadline,
+            request.buyerNonce,
+            request.buyerDeadline,
             sellerPk // Wrong key
         );
 
@@ -400,11 +398,17 @@ contract SecondaryMarketEscrowTest is Test {
         escrow.executeTrade(request);
     }
 
-    function test_executeTrade_revertsOnWrongSellerNonce() public {
-        ISecondaryMarketEscrow.TradeRequest memory request =
+    function test_executeTrade_revertsOnReusedSellerNonce() public {
+        // Execute a trade first to mark nonces as used
+        ISecondaryMarketEscrow.TradeRequest memory request1 =
+            _createTradeRequest();
+        uint256 usedSellerNonce = request1.sellerNonce;
+        escrow.executeTrade(request1);
+
+        // Create a new request reusing the seller's nonce
+        ISecondaryMarketEscrow.TradeRequest memory request2 =
             _createTradeRequest();
 
-        // Use nonce 1 but actual nonce is 0
         bytes32 tradeHash = _computeTradeHash(
             address(positionToken),
             address(collateralToken),
@@ -413,23 +417,28 @@ contract SecondaryMarketEscrowTest is Test {
             TOKEN_AMOUNT,
             PRICE
         );
-        uint256 wrongNonce = 1;
         uint256 deadline = block.timestamp + 1 hours;
 
-        request.sellerNonce = wrongNonce;
-        request.sellerSignature = _signTradeApproval(
-            tradeHash, seller, wrongNonce, deadline, sellerPk
+        request2.sellerNonce = usedSellerNonce;
+        request2.sellerSignature = _signTradeApproval(
+            tradeHash, seller, usedSellerNonce, deadline, sellerPk
         );
 
-        vm.expectRevert(ISecondaryMarketEscrow.InvalidNonce.selector);
-        escrow.executeTrade(request);
+        vm.expectRevert(ISecondaryMarketEscrow.NonceAlreadyUsed.selector);
+        escrow.executeTrade(request2);
     }
 
-    function test_executeTrade_revertsOnWrongBuyerNonce() public {
-        ISecondaryMarketEscrow.TradeRequest memory request =
+    function test_executeTrade_revertsOnReusedBuyerNonce() public {
+        // Execute a trade first to mark nonces as used
+        ISecondaryMarketEscrow.TradeRequest memory request1 =
+            _createTradeRequest();
+        uint256 usedBuyerNonce = request1.buyerNonce;
+        escrow.executeTrade(request1);
+
+        // Create a new request reusing the buyer's nonce
+        ISecondaryMarketEscrow.TradeRequest memory request2 =
             _createTradeRequest();
 
-        // Use nonce 1 but actual nonce is 0
         bytes32 tradeHash = _computeTradeHash(
             address(positionToken),
             address(collateralToken),
@@ -438,16 +447,15 @@ contract SecondaryMarketEscrowTest is Test {
             TOKEN_AMOUNT,
             PRICE
         );
-        uint256 wrongNonce = 1;
         uint256 deadline = block.timestamp + 1 hours;
 
-        request.buyerNonce = wrongNonce;
-        request.buyerSignature = _signTradeApproval(
-            tradeHash, buyer, wrongNonce, deadline, buyerPk
+        request2.buyerNonce = usedBuyerNonce;
+        request2.buyerSignature = _signTradeApproval(
+            tradeHash, buyer, usedBuyerNonce, deadline, buyerPk
         );
 
-        vm.expectRevert(ISecondaryMarketEscrow.InvalidNonce.selector);
-        escrow.executeTrade(request);
+        vm.expectRevert(ISecondaryMarketEscrow.NonceAlreadyUsed.selector);
+        escrow.executeTrade(request2);
     }
 
     function test_executeTrade_revertsOnExpiredSellerDeadline() public {
@@ -460,8 +468,8 @@ contract SecondaryMarketEscrowTest is Test {
             PRICE
         );
 
-        uint256 sNonce = escrow.getNonce(seller);
-        uint256 bNonce = escrow.getNonce(buyer);
+        uint256 sNonce = _freshNonce();
+        uint256 bNonce = _freshNonce();
         uint256 expiredDeadline = block.timestamp - 1;
         uint256 validDeadline = block.timestamp + 1 hours;
 
@@ -500,8 +508,8 @@ contract SecondaryMarketEscrowTest is Test {
             PRICE
         );
 
-        uint256 sNonce = escrow.getNonce(seller);
-        uint256 bNonce = escrow.getNonce(buyer);
+        uint256 sNonce = _freshNonce();
+        uint256 bNonce = _freshNonce();
         uint256 validDeadline = block.timestamp + 1 hours;
         uint256 expiredDeadline = block.timestamp - 1;
 
@@ -552,8 +560,8 @@ contract SecondaryMarketEscrowTest is Test {
         // First execution succeeds
         escrow.executeTrade(request);
 
-        // Same request replayed fails (nonces incremented)
-        vm.expectRevert(ISecondaryMarketEscrow.InvalidNonce.selector);
+        // Same request replayed fails (nonces already used)
+        vm.expectRevert(ISecondaryMarketEscrow.NonceAlreadyUsed.selector);
         escrow.executeTrade(request);
     }
 
@@ -712,8 +720,8 @@ contract SecondaryMarketEscrowTest is Test {
             PRICE
         );
 
-        uint256 sNonce = escrow.getNonce(address(smartSeller));
-        uint256 bNonce = escrow.getNonce(buyer);
+        uint256 sNonce = _freshNonce();
+        uint256 bNonce = _freshNonce();
         uint256 deadline = block.timestamp + 1 hours;
 
         ISecondaryMarketEscrow.TradeRequest memory request;
@@ -780,6 +788,12 @@ contract SecondaryMarketEscrowSessionKeyTest is Test {
     address public owner;
     uint256 public sessionKeyPk;
     address public sessionKey;
+
+    uint256 private _nextNonce = 1;
+
+    function _freshNonce() internal returns (uint256) {
+        return _nextNonce++;
+    }
     uint256 public buyerPk;
     address public buyer;
     address public smartAccount;
@@ -844,7 +858,7 @@ contract SecondaryMarketEscrowSessionKeyTest is Test {
 
     function _createSessionKeyData() internal view returns (bytes memory) {
         uint256 validUntil = block.timestamp + 1 days;
-        bytes32 permissionsHash = keccak256("permissions");
+        bytes32 permissionsHash = keccak256("TRADE");
 
         // Owner signs session key approval
         bytes32 sessionApprovalHash = escrow.getSessionKeyApprovalHash(
@@ -867,8 +881,8 @@ contract SecondaryMarketEscrowSessionKeyTest is Test {
 
     function test_executeTrade_withSessionKeySeller() public {
         bytes32 tradeHash = _computeTradeHash();
-        uint256 sNonce = escrow.getNonce(smartAccount);
-        uint256 bNonce = escrow.getNonce(buyer);
+        uint256 sNonce = _freshNonce();
+        uint256 bNonce = _freshNonce();
         uint256 deadline = block.timestamp + 1 hours;
 
         // Session key signs the trade approval for smart account
@@ -909,8 +923,8 @@ contract SecondaryMarketEscrowSessionKeyTest is Test {
 
     function test_executeTrade_sessionKey_expiredSession() public {
         bytes32 tradeHash = _computeTradeHash();
-        uint256 sNonce = escrow.getNonce(smartAccount);
-        uint256 bNonce = escrow.getNonce(buyer);
+        uint256 sNonce = _freshNonce();
+        uint256 bNonce = _freshNonce();
         uint256 deadline = block.timestamp + 1 hours;
 
         bytes memory sellerSig = _signTradeApproval(
@@ -921,7 +935,7 @@ contract SecondaryMarketEscrowSessionKeyTest is Test {
 
         // Create session key data with expired validUntil
         uint256 validUntil = block.timestamp - 1;
-        bytes32 permissionsHash = keccak256("permissions");
+        bytes32 permissionsHash = keccak256("TRADE");
 
         bytes32 sessionApprovalHash = escrow.getSessionKeyApprovalHash(
             sessionKey, smartAccount, validUntil, permissionsHash, block.chainid
@@ -961,8 +975,8 @@ contract SecondaryMarketEscrowSessionKeyTest is Test {
 
     function test_executeTrade_sessionKey_wrongChainId() public {
         bytes32 tradeHash = _computeTradeHash();
-        uint256 sNonce = escrow.getNonce(smartAccount);
-        uint256 bNonce = escrow.getNonce(buyer);
+        uint256 sNonce = _freshNonce();
+        uint256 bNonce = _freshNonce();
         uint256 deadline = block.timestamp + 1 hours;
 
         bytes memory sellerSig = _signTradeApproval(
@@ -973,7 +987,7 @@ contract SecondaryMarketEscrowSessionKeyTest is Test {
 
         // Create session key data with wrong chain ID
         uint256 validUntil = block.timestamp + 1 days;
-        bytes32 permissionsHash = keccak256("permissions");
+        bytes32 permissionsHash = keccak256("TRADE");
         uint256 wrongChainId = 999;
 
         bytes32 sessionApprovalHash = escrow.getSessionKeyApprovalHash(
@@ -1059,7 +1073,7 @@ contract SecondaryMarketEscrowSessionKeyTest is Test {
         bytes memory sessionKeyData;
         {
             uint256 validUntil = block.timestamp + 1 days;
-            bytes32 permissionsHash = keccak256("permissions");
+            bytes32 permissionsHash = keccak256("TRADE");
             bytes memory ownerSig = _signRaw(
                 ownerPk,
                 escrowNoFactory.getSessionKeyApprovalHash(

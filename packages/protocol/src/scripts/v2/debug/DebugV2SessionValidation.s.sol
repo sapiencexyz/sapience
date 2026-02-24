@@ -6,7 +6,10 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 
 interface IEscrowDebug {
-    function getNonce(address account) external view returns (uint256);
+    function isNonceUsed(address account, uint256 nonce)
+        external
+        view
+        returns (bool);
     function accountFactory() external view returns (address);
     function domainSeparator() external view returns (bytes32);
     function getMintApprovalHash(
@@ -26,7 +29,10 @@ interface IEscrowDebug {
 }
 
 interface IAccountFactory {
-    function getAccountAddress(address owner, uint256 index) external view returns (address);
+    function getAccountAddress(address owner, uint256 index)
+        external
+        view
+        returns (address);
 }
 
 /**
@@ -48,10 +54,11 @@ contract DebugV2SessionValidation is Script {
     address constant SESSION_KEY = 0xd94480250f03D10Fb003EfDffC05467b6EE16459;
     address constant OWNER = 0xefA0E8Aa84A713f6A6d4De8cC761Fe86c5957d72;
     address constant SMART_ACCOUNT = 0x5aab6F438Af9289798eEcBf83C06f62abdb529B9;
-    uint256 constant VALID_UNTIL = 1770234632;
-    // permissionsHash = keccak256("V2_MINT") = keccak256(0x56325f4d494e54)
-    bytes32 constant PERMISSIONS_HASH = 0xd9762d852ca8dc23710c3bf3bca341b66f778a0c94cc060f0463687e9c260e9c;
-    uint256 constant SESSION_CHAIN_ID = 13374202;
+    uint256 constant VALID_UNTIL = 1_770_234_632;
+    // permissionsHash = keccak256("MINT")
+    bytes32 constant PERMISSIONS_HASH =
+        0xd9762d852ca8dc23710c3bf3bca341b66f778a0c94cc060f0463687e9c260e9c;
+    uint256 constant SESSION_CHAIN_ID = 13_374_202;
 
     // ========== END CONFIGURATION ==========
 
@@ -99,7 +106,10 @@ contract DebugV2SessionValidation is Script {
         console.log("");
     }
 
-    function _checkAccountDerivation(IEscrowDebug escrowContract) internal view {
+    function _checkAccountDerivation(IEscrowDebug escrowContract)
+        internal
+        view
+    {
         console.log("Step 3: Smart Account Derivation");
         address factoryAddr = escrowContract.accountFactory();
         console.log("  AccountFactory:", factoryAddr);
@@ -121,7 +131,9 @@ contract DebugV2SessionValidation is Script {
         if (derived0 == SMART_ACCOUNT || derived1 == SMART_ACCOUNT) {
             console.log("  Status: PASS");
         } else {
-            console.log("  Status: FAIL (smart account not derived from owner!)");
+            console.log(
+                "  Status: FAIL (smart account not derived from owner!)"
+            );
         }
         console.log("");
     }
@@ -133,12 +145,15 @@ contract DebugV2SessionValidation is Script {
         console.logBytes32(escrowContract.domainSeparator());
         console.log("");
 
-        console.log("PermissionsHash (V2_MINT):");
+        console.log("PermissionsHash (MINT):");
         console.logBytes32(PERMISSIONS_HASH);
         console.log("");
 
-        console.log("On-chain nonces:");
-        console.log("  SmartAccount nonce:", escrowContract.getNonce(SMART_ACCOUNT));
+        console.log("Nonce usage:");
+        console.log(
+            "  SmartAccount nonce 0 used:",
+            escrowContract.isNonceUsed(SMART_ACCOUNT, 0)
+        );
         console.log("");
 
         // Compute and show session approval hash

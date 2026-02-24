@@ -3,10 +3,12 @@ pragma solidity ^0.8.22;
 
 import { Script, console } from "forge-std/Script.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { PredictionMarketVault } from
-    "../../../../v2/vault/PredictionMarketVault.sol";
-import { PredictionMarketEscrow } from
-    "../../../../v2/PredictionMarketEscrow.sol";
+import {
+    PredictionMarketVault
+} from "../../../../v2/vault/PredictionMarketVault.sol";
+import {
+    PredictionMarketEscrow
+} from "../../../../v2/PredictionMarketEscrow.sol";
 import { IV2Types } from "../../../../v2/interfaces/IV2Types.sol";
 
 /// @title Test Vault as Counterparty (Testnet)
@@ -273,9 +275,11 @@ contract TestVaultAsCounterparty is Script {
             )
         );
 
-        // Get nonces
-        uint256 predictorNonce = market.getNonce(actors.predictor);
-        uint256 vaultNonce = market.getNonce(address(vault));
+        // Generate unique nonces (bitmap nonces — any unused nonce is valid)
+        uint256 predictorNonce =
+            uint256(keccak256(abi.encode(block.timestamp, "predictor")));
+        uint256 vaultNonce =
+            uint256(keccak256(abi.encode(block.timestamp, "vault")));
         uint256 deadline = block.timestamp + 1 hours;
 
         // Setup sign params
@@ -322,13 +326,14 @@ contract TestVaultAsCounterparty is Script {
         uint256 collateral,
         uint256 nonce
     ) internal view returns (bytes memory) {
-        bytes32 approvalHash = params.market.getMintApprovalHash(
-            params.predictionHash,
-            actors.predictor,
-            collateral,
-            nonce,
-            params.deadline
-        );
+        bytes32 approvalHash = params.market
+            .getMintApprovalHash(
+                params.predictionHash,
+                actors.predictor,
+                collateral,
+                nonce,
+                params.deadline
+            );
         (uint8 v, bytes32 r, bytes32 s) =
             vm.sign(actors.predictorPk, approvalHash);
         return abi.encodePacked(r, s, v);
@@ -341,13 +346,14 @@ contract TestVaultAsCounterparty is Script {
         uint256 nonce
     ) internal view returns (bytes memory) {
         // Step 1: Get the mint approval hash that the market will pass to vault.isValidSignature
-        bytes32 mintApprovalHash = params.market.getMintApprovalHash(
-            params.predictionHash,
-            address(params.vault),
-            collateral,
-            nonce,
-            params.deadline
-        );
+        bytes32 mintApprovalHash = params.market
+            .getMintApprovalHash(
+                params.predictionHash,
+                address(params.vault),
+                collateral,
+                nonce,
+                params.deadline
+            );
 
         // Step 2: Get the hash that the manager needs to sign
         // The vault wraps the mint approval hash with the manager address
