@@ -17,6 +17,7 @@
     "settle-v2:execute": "tsx scripts/settle-v2.ts --execute",
     "settle-v2:execute:wait": "tsx scripts/settle-v2.ts --execute --wait",
     "start": "node dist/scripts/generate.js && node dist/scripts/settle.js --execute --wait",
+    "start:v2": "node dist/scripts/generate.js && node dist/scripts/settle-v2.js --execute --wait",
     "lint": "eslint src --quiet",
     "lint:fix": "eslint src --fix --quiet && pnpm format",
     "format": "prettier --write src scripts",
