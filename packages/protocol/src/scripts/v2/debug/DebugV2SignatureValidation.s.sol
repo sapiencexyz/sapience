@@ -3,8 +3,8 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Script.sol";
 import "forge-std/console.sol";
-import "../src/v2/PredictionMarketEscrow.sol";
-import "../src/v2/interfaces/IV2Types.sol";
+import "../../../v2/PredictionMarketEscrow.sol";
+import "../../../v2/interfaces/IV2Types.sol";
 
 /**
  * @title DebugV2SignatureValidation
@@ -43,15 +43,15 @@ contract DebugV2SignatureValidation is Script {
         console.log("pickConfigId:");
         console.logBytes32(pickConfigId);
 
-        uint256 predictorWager = 5100000000000000;
-        uint256 counterpartyWager = 10000000000000000;
+        uint256 predictorCollateral = 5100000000000000;
+        uint256 counterpartyCollateral = 10000000000000000;
 
         // Compute predictionHash (same as contract)
         bytes32 predictionHash = keccak256(
             abi.encode(
                 pickConfigId,
-                predictorWager,
-                counterpartyWager,
+                predictorCollateral,
+                counterpartyCollateral,
                 PREDICTOR,
                 COUNTERPARTY
             )
@@ -63,7 +63,7 @@ contract DebugV2SignatureValidation is Script {
         bytes32 contractCounterpartyHash = escrow.getMintApprovalHash(
             predictionHash,
             COUNTERPARTY,
-            counterpartyWager,
+            counterpartyCollateral,
             5, // counterpartyNonce
             1770244820 // counterpartyDeadline
         );
@@ -74,7 +74,7 @@ contract DebugV2SignatureValidation is Script {
         bytes32 contractPredictorHash = escrow.getMintApprovalHash(
             predictionHash,
             PREDICTOR,
-            predictorWager,
+            predictorCollateral,
             0, // predictorNonce
             1770245065 // predictorDeadline
         );

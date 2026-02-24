@@ -11,6 +11,7 @@ import { OptionsBuilder } from
     "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
 import "./PredictionMarketBridgeBase.sol";
 import "./interfaces/IPredictionMarketBridge.sol";
+import "../interfaces/IPredictionMarketTokenFactory.sol";
 import "../interfaces/IPredictionMarketToken.sol";
 
 /// @title PredictionMarketBridge
@@ -26,10 +27,17 @@ contract PredictionMarketBridge is
     // ============ Constants ============
     uint128 private constant GAS_FOR_BRIDGE = 2_000_000;
 
+    // ============ Storage ============
+
+    /// @notice Token factory for validating token origin
+    IPredictionMarketTokenFactory public immutable factory;
+
     // ============ Constructor ============
-    constructor(address endpoint_, address owner_)
+    constructor(address endpoint_, address owner_, address factory_)
         PredictionMarketBridgeBase(endpoint_, owner_)
-    { }
+    {
+        factory = IPredictionMarketTokenFactory(factory_);
+    }
 
     // ============ Bridge Function ============
 
@@ -45,14 +53,32 @@ contract PredictionMarketBridge is
         }
         if (amount == 0) revert ZeroAmount();
 
-        // Validate token has required interface (must be a PositionToken)
-        try IPredictionMarketToken(token).pickConfigId() returns (bytes32) { }
-        catch {
+        // C-4: Validate token was deployed by the factory (not just interface check)
+        // This prevents fake tokens with matching pickConfigId/isPredictorToken
+        // from corrupting bridge mappings and stealing escrowed tokens
+        bytes32 pickConfigId;
+        bool isPredictorToken;
+
+        try IPredictionMarketToken(token).pickConfigId() returns (
+            bytes32 _pickConfigId
+        ) {
+            pickConfigId = _pickConfigId;
+        } catch {
             revert InvalidToken(token);
         }
 
-        try IPredictionMarketToken(token).isPredictorToken() returns (bool) { }
-        catch {
+        try IPredictionMarketToken(token).isPredictorToken() returns (
+            bool _isPredictorToken
+        ) {
+            isPredictorToken = _isPredictorToken;
+        } catch {
+            revert InvalidToken(token);
+        }
+
+        // Verify the token address matches what the factory would deploy
+        address expectedToken =
+            factory.predictAddress(pickConfigId, isPredictorToken);
+        if (token != expectedToken) {
             revert InvalidToken(token);
         }
 
@@ -80,12 +106,12 @@ contract PredictionMarketBridge is
 
         // Build and send LZ message in scoped block to reduce stack depth
         {
-            // Encode message with token metadata
+            // Encode message with token metadata (no source address needed,
+            // remote computes token from factory.predictAddress)
             bytes memory payload = abi.encode(
                 bridgeId,
-                token,
-                IPredictionMarketToken(token).pickConfigId(),
-                IPredictionMarketToken(token).isPredictorToken(),
+                pickConfigId,
+                isPredictorToken,
                 IERC20Metadata(token).name(),
                 IERC20Metadata(token).symbol(),
                 recipient,
@@ -140,7 +166,6 @@ contract PredictionMarketBridge is
         // Build message with actual metadata for accurate fee calculation
         bytes memory payload = abi.encode(
             bytes32(0), // bridgeId placeholder
-            token,
             bytes32(0), // pickConfigId placeholder
             false, // isPredictorToken placeholder
             name,
@@ -171,7 +196,6 @@ contract PredictionMarketBridge is
 
         bytes memory payload = abi.encode(
             bridgeId,
-            pending.token,
             bytes32(0), // pickConfigId placeholder
             false, // isPredictorToken placeholder
             name,
@@ -208,7 +232,6 @@ contract PredictionMarketBridge is
         // Encode same message as original bridge
         bytes memory payload = abi.encode(
             bridgeId,
-            pending.token,
             pickConfigId,
             isPredictorToken,
             name,
@@ -222,8 +245,16 @@ contract PredictionMarketBridge is
 
     /// @dev Handle incoming bridge from remote (release escrowed tokens)
     function _handleBridge(bytes memory data) internal override {
-        (bytes32 bridgeId, address token, address recipient, uint256 amount) =
-            abi.decode(data, (bytes32, address, address, uint256));
+        (
+            bytes32 bridgeId,
+            bytes32 pickConfigId,
+            bool isPredictorToken,
+            address recipient,
+            uint256 amount
+        ) = abi.decode(data, (bytes32, bytes32, bool, address, uint256));
+
+        // Compute source token address from factory
+        address token = factory.predictAddress(pickConfigId, isPredictorToken);
 
         // Check if this bridge was already processed (idempotency)
         if (_processedBridges[bridgeId]) {

@@ -5,13 +5,13 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
-import "./PredictionMarketToken.sol";
 import "./interfaces/IPredictionMarketEscrow.sol";
 import "./interfaces/IConditionResolver.sol";
 import "./interfaces/IPredictionMarketToken.sol";
 import "./interfaces/IV2Types.sol";
 import "./interfaces/IV2Events.sol";
 import "./interfaces/IMintSponsor.sol";
+import "./interfaces/IPredictionMarketTokenFactory.sol";
 import "./utils/SignatureValidator.sol";
 
 /**
@@ -32,6 +32,9 @@ contract PredictionMarketEscrow is
 
     /// @notice The collateral token (WUSDe)
     IERC20 public immutable collateralToken;
+
+    /// @notice The token factory for CREATE3 deployments
+    IPredictionMarketTokenFactory public immutable tokenFactory;
 
     // ============ State: Pick Configurations ============
 
@@ -76,8 +79,12 @@ contract PredictionMarketEscrow is
     /// @notice Create a new prediction market
     /// @param collateralToken_ The collateral token address (WUSDe)
     /// @param owner_ The contract owner (can set account factory)
-    constructor(address collateralToken_, address owner_) Ownable(owner_) {
+    /// @param tokenFactory_ The token factory for CREATE3 deployments
+    constructor(address collateralToken_, address owner_, address tokenFactory_)
+        Ownable(owner_)
+    {
         collateralToken = IERC20(collateralToken_);
+        tokenFactory = IPredictionMarketTokenFactory(tokenFactory_);
     }
 
     // ============ Admin Functions ============
@@ -757,11 +764,16 @@ contract PredictionMarketEscrow is
     }
 
     /// @notice Calculate claimable amount for a given token amount
+    /// @dev Q-1: validates positionToken is a real position token to prevent misleading results
     function getClaimableAmount(
         bytes32 pickConfigId,
         address positionToken,
         uint256 tokenAmount
     ) external view returns (uint256 claimable) {
+        if (!_isPositionToken[positionToken]) {
+            return 0;
+        }
+
         IV2Types.PickConfiguration storage config =
             _pickConfigurations[pickConfigId];
         if (!config.resolved || tokenAmount == 0) {
@@ -811,28 +823,22 @@ contract PredictionMarketEscrow is
         internal
         returns (address predictorToken, address counterpartyToken)
     {
-        // Create predictor token with CREATE2
-        bytes32 predictorSalt = keccak256(abi.encode(pickConfigId, true));
-        predictorToken = address(
-            new PredictionMarketToken{ salt: predictorSalt }(
-                _generateTokenName(pickConfigId, true),
-                _generateTokenSymbol(pickConfigId, true),
-                pickConfigId,
-                true,
-                address(this) // market is the minter/burner
-            )
+        // Deploy predictor token via CREATE3 factory
+        predictorToken = tokenFactory.deploy(
+            pickConfigId,
+            true,
+            _generateTokenName(pickConfigId, true),
+            _generateTokenSymbol(pickConfigId, true),
+            address(this) // market is the minter/burner
         );
 
-        // Create counterparty token with CREATE2
-        bytes32 counterpartySalt = keccak256(abi.encode(pickConfigId, false));
-        counterpartyToken = address(
-            new PredictionMarketToken{ salt: counterpartySalt }(
-                _generateTokenName(pickConfigId, false),
-                _generateTokenSymbol(pickConfigId, false),
-                pickConfigId,
-                false,
-                address(this) // market is the minter/burner
-            )
+        // Deploy counterparty token via CREATE3 factory
+        counterpartyToken = tokenFactory.deploy(
+            pickConfigId,
+            false,
+            _generateTokenName(pickConfigId, false),
+            _generateTokenSymbol(pickConfigId, false),
+            address(this) // market is the minter/burner
         );
 
         // Store mappings

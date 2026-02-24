@@ -3,8 +3,8 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Script.sol";
 import "forge-std/console.sol";
-import "../src/v2/interfaces/IPredictionMarketEscrow.sol";
-import "../src/v2/interfaces/IV2Types.sol";
+import "../../../v2/interfaces/IPredictionMarketEscrow.sol";
+import "../../../v2/interfaces/IV2Types.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
@@ -46,8 +46,8 @@ contract DebugV2MintSimulation is Script {
         console.log("Counterparty on-chain nonce:", counterpartyNonce);
 
         // Values from the UserOp
-        uint256 predictorWager = 5100000000000000; // 0.0051 USDe
-        uint256 counterpartyWagerValue = 10000000000000000; // 0.01 USDe
+        uint256 predictorCollateral = 5100000000000000; // 0.0051 USDe
+        uint256 counterpartyCollateralValue = 10000000000000000; // 0.01 USDe
         uint256 predictorDeadline = 1770245065; // 0x6983cbc9
         uint256 counterpartyDeadline = 1770244820; // 0x6983cad4
 
@@ -65,24 +65,24 @@ contract DebugV2MintSimulation is Script {
 
         // Check balance sufficiency
         console.log("\n--- Balance Sufficiency ---");
-        console.log("Predictor needs:", predictorWager);
+        console.log("Predictor needs:", predictorCollateral);
         console.log("Predictor has:", predictorWusdeBalance);
-        if (predictorWusdeBalance < predictorWager) {
+        if (predictorWusdeBalance < predictorCollateral) {
             console.log("!!! PREDICTOR INSUFFICIENT BALANCE !!!");
         }
 
-        console.log("Counterparty needs:", counterpartyWagerValue);
+        console.log("Counterparty needs:", counterpartyCollateralValue);
         console.log("Counterparty has:", counterpartyWusdeBalance);
-        if (counterpartyWusdeBalance < counterpartyWagerValue) {
+        if (counterpartyWusdeBalance < counterpartyCollateralValue) {
             console.log("!!! COUNTERPARTY INSUFFICIENT BALANCE !!!");
         }
 
         // Check allowance sufficiency
         console.log("\n--- Allowance Sufficiency ---");
-        if (predictorAllowance < predictorWager) {
+        if (predictorAllowance < predictorCollateral) {
             console.log("!!! PREDICTOR INSUFFICIENT ALLOWANCE !!!");
         }
-        if (counterpartyAllowance < counterpartyWagerValue) {
+        if (counterpartyAllowance < counterpartyCollateralValue) {
             console.log("!!! COUNTERPARTY INSUFFICIENT ALLOWANCE !!!");
         }
 

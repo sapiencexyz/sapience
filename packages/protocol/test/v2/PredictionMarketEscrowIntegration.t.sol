@@ -3,6 +3,7 @@ pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
 import "../../src/v2/PredictionMarketEscrow.sol";
+import "../../src/v2/PredictionMarketTokenFactory.sol";
 import "../../src/v2/resolvers/mocks/ManualConditionResolver.sol";
 import "../../src/v2/interfaces/IV2Types.sol";
 import "../../src/v2/interfaces/IPredictionMarketToken.sol";
@@ -40,7 +41,13 @@ contract PredictionMarketEscrowIntegrationTest is Test {
 
         // Deploy contracts
         collateralToken = new MockERC20("Test USDE", "USDE", 18);
-        market = new PredictionMarketEscrow(address(collateralToken), owner);
+        PredictionMarketTokenFactory tokenFactory =
+            new PredictionMarketTokenFactory(owner);
+        market = new PredictionMarketEscrow(
+            address(collateralToken), owner, address(tokenFactory)
+        );
+        vm.prank(owner);
+        tokenFactory.setDeployer(address(market));
 
         vm.prank(owner);
         resolver = new ManualConditionResolver(owner);

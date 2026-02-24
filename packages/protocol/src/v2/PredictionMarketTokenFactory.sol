@@ -4,16 +4,16 @@ pragma solidity ^0.8.19;
 import { CREATE3 } from "solady/utils/CREATE3.sol";
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import "./interfaces/IPredictionMarketTokenFactory.sol";
-import "./PredictionMarketTokenBridged.sol";
+import "./PredictionMarketToken.sol";
 
 /// @title PredictionMarketTokenFactory
-/// @notice Factory for deploying bridged position tokens using CREATE3
+/// @notice Factory for deploying position tokens using CREATE3
 /// @dev Ensures deterministic addresses across chains
 contract PredictionMarketTokenFactory is
     IPredictionMarketTokenFactory,
     Ownable
 {
-    /// @notice Address authorized to deploy tokens (bridge)
+    /// @notice Address authorized to deploy tokens (escrow or bridge)
     address public deployer;
 
     /// @notice Modifier to restrict deployment to authorized deployer
@@ -26,7 +26,7 @@ contract PredictionMarketTokenFactory is
 
     constructor(address owner_) Ownable(owner_) { }
 
-    /// @notice Set the authorized deployer (bridge)
+    /// @notice Set the authorized deployer
     /// @param deployer_ The deployer address
     function setDeployer(address deployer_) external onlyOwner {
         deployer = deployer_;
@@ -38,7 +38,7 @@ contract PredictionMarketTokenFactory is
         bool isPredictorToken,
         string calldata name,
         string calldata symbol,
-        address burner
+        address authority
     ) external onlyDeployer returns (address token) {
         bytes32 salt = computeSalt(pickConfigId, isPredictorToken);
 
@@ -55,8 +55,10 @@ contract PredictionMarketTokenFactory is
         // Deploy using CREATE3
         token = CREATE3.deployDeterministic(
             abi.encodePacked(
-                type(PredictionMarketTokenBridged).creationCode,
-                abi.encode(name, symbol, pickConfigId, isPredictorToken, burner)
+                type(PredictionMarketToken).creationCode,
+                abi.encode(
+                    name, symbol, pickConfigId, isPredictorToken, authority
+                )
             ),
             salt
         );

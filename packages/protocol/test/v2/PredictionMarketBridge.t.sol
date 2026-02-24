@@ -1,24 +1,31 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import { TestHelperOz5 } from
-    "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
-import { PredictionMarketBridge } from
-    "../../src/v2/bridge/PredictionMarketBridge.sol";
-import { PredictionMarketBridgeRemote } from
-    "../../src/v2/bridge/PredictionMarketBridgeRemote.sol";
-import { PredictionMarketTokenFactory } from
-    "../../src/v2/bridge/PredictionMarketTokenFactory.sol";
-import { PredictionMarketTokenBridged } from
-    "../../src/v2/bridge/PredictionMarketTokenBridged.sol";
-import { IPredictionMarketBridge } from
-    "../../src/v2/bridge/interfaces/IPredictionMarketBridge.sol";
-import { IPredictionMarketBridgeRemote } from
-    "../../src/v2/bridge/interfaces/IPredictionMarketBridgeRemote.sol";
-import { IPredictionMarketBridgeBase } from
-    "../../src/v2/bridge/interfaces/IPredictionMarketBridgeBase.sol";
-import { MockPredictionMarketToken } from
-    "./mocks/MockPredictionMarketToken.sol";
+import {
+    TestHelperOz5
+} from "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
+import {
+    PredictionMarketBridge
+} from "../../src/v2/bridge/PredictionMarketBridge.sol";
+import {
+    PredictionMarketBridgeRemote
+} from "../../src/v2/bridge/PredictionMarketBridgeRemote.sol";
+import {
+    PredictionMarketTokenFactory
+} from "../../src/v2/PredictionMarketTokenFactory.sol";
+import { PredictionMarketToken } from "../../src/v2/PredictionMarketToken.sol";
+import {
+    IPredictionMarketBridge
+} from "../../src/v2/bridge/interfaces/IPredictionMarketBridge.sol";
+import {
+    IPredictionMarketBridgeRemote
+} from "../../src/v2/bridge/interfaces/IPredictionMarketBridgeRemote.sol";
+import {
+    IPredictionMarketBridgeBase
+} from "../../src/v2/bridge/interfaces/IPredictionMarketBridgeBase.sol";
+import {
+    IPredictionMarketToken
+} from "../../src/v2/interfaces/IPredictionMarketToken.sol";
 import { MessagingFee } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 import "forge-std/Test.sol";
 
@@ -33,8 +40,9 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
     // Contracts
     PredictionMarketBridge private etherealBridge;
     PredictionMarketBridgeRemote private arbitrumBridge;
-    PredictionMarketTokenFactory private factory;
-    MockPredictionMarketToken private positionToken;
+    PredictionMarketTokenFactory private etherealFactory;
+    PredictionMarketTokenFactory private arbitrumFactory;
+    PredictionMarketToken private positionToken;
 
     // LZ data
     uint32 private etherealEid = 1;
@@ -90,17 +98,21 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
         super.setUp();
         setUpEndpoints(2, LibraryType.UltraLightNode);
 
-        // Deploy factory on Arbitrum side
-        factory = new PredictionMarketTokenFactory(owner);
+        // Deploy factories on both sides
+        etherealFactory = new PredictionMarketTokenFactory(owner);
+        arbitrumFactory = new PredictionMarketTokenFactory(owner);
 
-        // Deploy Ethereal bridge
+        // Deploy Ethereal bridge with factory
         etherealBridge = PredictionMarketBridge(
             payable(
                 _deployOApp(
                     type(PredictionMarketBridge).creationCode,
-                    abi.encode(address(endpoints[etherealEid]), owner)
-                )
-            )
+                    abi.encode(
+                        address(endpoints[etherealEid]),
+                        owner,
+                        address(etherealFactory)
+                    )
+                ))
         );
 
         // Deploy Arbitrum bridge with factory
@@ -109,7 +121,9 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
                 _deployOApp(
                     type(PredictionMarketBridgeRemote).creationCode,
                     abi.encode(
-                        address(endpoints[arbitrumEid]), owner, address(factory)
+                        address(endpoints[arbitrumEid]),
+                        owner,
+                        address(arbitrumFactory)
                     )
                 )
             )
@@ -141,13 +155,22 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
             })
         );
 
-        // Set factory deployer to arbitrum bridge
-        factory.setDeployer(address(arbitrumBridge));
+        // Set factory deployers
+        etherealFactory.setDeployer(address(this)); // test contract acts as Escrow
+        arbitrumFactory.setDeployer(address(arbitrumBridge));
 
-        // Deploy mock position token on Ethereal
-        positionToken = new MockPredictionMarketToken(
-            "Predictor Token", "PRED", PREDICTION_ID, IS_PREDICTOR_TOKEN, user
+        // Deploy position token via Ethereal factory (simulating Escrow deployment)
+        address tokenAddr = etherealFactory.deploy(
+            PREDICTION_ID,
+            IS_PREDICTOR_TOKEN,
+            "Predictor Token",
+            "PRED",
+            address(this) // test contract is authority (can mint/burn)
         );
+        positionToken = PredictionMarketToken(tokenAddr);
+
+        // Mint tokens to user (as authority)
+        positionToken.mint(user, 1e18);
     }
 
     // ============ Constructor Tests ============
@@ -158,7 +181,7 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
     }
 
     function test_constructor_setsFactory() public view {
-        assertEq(arbitrumBridge.getFactory(), address(factory));
+        assertEq(arbitrumBridge.getFactory(), address(arbitrumFactory));
     }
 
     function test_constructor_setsDelayConstants() public view {
@@ -230,6 +253,29 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
         );
         etherealBridge.bridge{ value: 1 ether }(
             address(invalidToken), user, 1e17, bytes32(0)
+        );
+    }
+
+    function test_bridge_revertIfFakeToken_C4() public {
+        // C-4: An attacker deploys a fake token with matching pickConfigId/isPredictorToken
+        // but at a different address than the factory would deploy.
+        // The bridge should reject it because its address doesn't match factory.predictAddress()
+        MockFakeToken fakeToken =
+            new MockFakeToken(PREDICTION_ID, IS_PREDICTOR_TOKEN);
+        fakeToken.mint(user, 1e18);
+
+        vm.prank(user);
+        fakeToken.approve(address(etherealBridge), 1e18);
+
+        vm.prank(user);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IPredictionMarketBridge.InvalidToken.selector,
+                address(fakeToken)
+            )
+        );
+        etherealBridge.bridge{ value: 1 ether }(
+            address(fakeToken), user, 1e17, bytes32(0)
         );
     }
 
@@ -308,19 +354,16 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
 
         // Get the deployed bridged token address
         address bridgedToken =
-            factory.predictAddress(PREDICTION_ID, IS_PREDICTOR_TOKEN);
+            arbitrumFactory.predictAddress(PREDICTION_ID, IS_PREDICTOR_TOKEN);
 
         // Verify token was deployed and minted
         assertTrue(bridgedToken.code.length > 0);
+        assertEq(PredictionMarketToken(bridgedToken).balanceOf(user), amount);
         assertEq(
-            PredictionMarketTokenBridged(bridgedToken).balanceOf(user), amount
+            PredictionMarketToken(bridgedToken).pickConfigId(), PREDICTION_ID
         );
         assertEq(
-            PredictionMarketTokenBridged(bridgedToken).pickConfigId(),
-            PREDICTION_ID
-        );
-        assertEq(
-            PredictionMarketTokenBridged(bridgedToken).isPredictorToken(),
+            PredictionMarketToken(bridgedToken).isPredictorToken(),
             IS_PREDICTOR_TOKEN
         );
 
@@ -351,16 +394,13 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
         verifyPackets(arbitrumEid, addressToBytes32(address(arbitrumBridge)));
 
         address bridgedToken =
-            factory.predictAddress(PREDICTION_ID, IS_PREDICTOR_TOKEN);
-        assertEq(
-            PredictionMarketTokenBridged(bridgedToken).balanceOf(user), amount
-        );
+            arbitrumFactory.predictAddress(PREDICTION_ID, IS_PREDICTOR_TOKEN);
+        assertEq(PredictionMarketToken(bridgedToken).balanceOf(user), amount);
 
         // Approve and bridge back
         vm.prank(user);
-        PredictionMarketTokenBridged(bridgedToken).approve(
-            address(arbitrumBridge), amount
-        );
+        PredictionMarketToken(bridgedToken)
+            .approve(address(arbitrumBridge), amount);
 
         MessagingFee memory backFee =
             arbitrumBridge.quoteBridge(bridgedToken, amount);
@@ -371,11 +411,10 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
         );
 
         // Bridged tokens should be escrowed (NOT burned yet)
-        assertEq(PredictionMarketTokenBridged(bridgedToken).balanceOf(user), 0);
+        assertEq(PredictionMarketToken(bridgedToken).balanceOf(user), 0);
         assertEq(
-            PredictionMarketTokenBridged(bridgedToken).balanceOf(
-                address(arbitrumBridge)
-            ),
+            PredictionMarketToken(bridgedToken)
+                .balanceOf(address(arbitrumBridge)),
             amount
         );
         assertEq(arbitrumBridge.getEscrowedBalance(bridgedToken), amount);
@@ -422,13 +461,12 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
         verifyPackets(arbitrumEid, addressToBytes32(address(arbitrumBridge)));
 
         address bridgedToken =
-            factory.predictAddress(PREDICTION_ID, IS_PREDICTOR_TOKEN);
+            arbitrumFactory.predictAddress(PREDICTION_ID, IS_PREDICTOR_TOKEN);
 
         // Bridge back partial amount
         vm.prank(user);
-        PredictionMarketTokenBridged(bridgedToken).approve(
-            address(arbitrumBridge), bridgeBackAmount
-        );
+        PredictionMarketToken(bridgedToken)
+            .approve(address(arbitrumBridge), bridgeBackAmount);
 
         MessagingFee memory backFee =
             arbitrumBridge.quoteBridge(bridgedToken, bridgeBackAmount);
@@ -440,7 +478,7 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
 
         // Should have remaining bridged tokens (minus escrowed amount)
         assertEq(
-            PredictionMarketTokenBridged(bridgedToken).balanceOf(user),
+            PredictionMarketToken(bridgedToken).balanceOf(user),
             bridgeAmount - bridgeBackAmount
         );
 
@@ -574,13 +612,12 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
         verifyPackets(arbitrumEid, addressToBytes32(address(arbitrumBridge)));
 
         address bridgedToken =
-            factory.predictAddress(PREDICTION_ID, IS_PREDICTOR_TOKEN);
+            arbitrumFactory.predictAddress(PREDICTION_ID, IS_PREDICTOR_TOKEN);
 
         // Initiate bridge back
         vm.prank(user);
-        PredictionMarketTokenBridged(bridgedToken).approve(
-            address(arbitrumBridge), amount
-        );
+        PredictionMarketToken(bridgedToken)
+            .approve(address(arbitrumBridge), amount);
 
         MessagingFee memory backFee =
             arbitrumBridge.quoteBridge(bridgedToken, amount);
@@ -612,28 +649,31 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
     // ============ Factory Tests ============
 
     function test_factory_computeSalt() public view {
-        bytes32 salt = factory.computeSalt(PREDICTION_ID, IS_PREDICTOR_TOKEN);
+        bytes32 salt =
+            arbitrumFactory.computeSalt(PREDICTION_ID, IS_PREDICTOR_TOKEN);
         assertEq(salt, keccak256(abi.encode(PREDICTION_ID, IS_PREDICTOR_TOKEN)));
     }
 
     function test_factory_predictAddress() public view {
         address predicted =
-            factory.predictAddress(PREDICTION_ID, IS_PREDICTOR_TOKEN);
+            arbitrumFactory.predictAddress(PREDICTION_ID, IS_PREDICTOR_TOKEN);
         assertTrue(predicted != address(0));
     }
 
     function test_factory_isDeployed_false() public view {
-        assertFalse(factory.isDeployed(PREDICTION_ID, IS_PREDICTOR_TOKEN));
+        assertFalse(
+            arbitrumFactory.isDeployed(PREDICTION_ID, IS_PREDICTOR_TOKEN)
+        );
     }
 
     function test_factory_deployer_isCorrect() public view {
-        assertEq(factory.deployer(), address(arbitrumBridge));
+        assertEq(arbitrumFactory.deployer(), address(arbitrumBridge));
     }
 
     function test_factory_directDeploy_works() public {
         // Test that factory can deploy directly from the bridge
         vm.prank(address(arbitrumBridge));
-        address token = factory.deploy(
+        address token = arbitrumFactory.deploy(
             PREDICTION_ID,
             IS_PREDICTOR_TOKEN,
             "Test Token",
@@ -659,7 +699,9 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
 
         verifyPackets(arbitrumEid, addressToBytes32(address(arbitrumBridge)));
 
-        assertTrue(factory.isDeployed(PREDICTION_ID, IS_PREDICTOR_TOKEN));
+        assertTrue(
+            arbitrumFactory.isDeployed(PREDICTION_ID, IS_PREDICTOR_TOKEN)
+        );
     }
 
     // ============ ETH Management Tests ============
@@ -709,8 +751,9 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
 
     function test_isConfigComplete_returnsFalse_whenNotConfigured() public {
         // Deploy new bridge without config
-        PredictionMarketBridge newBridge =
-            new PredictionMarketBridge(address(endpoints[etherealEid]), owner);
+        PredictionMarketBridge newBridge = new PredictionMarketBridge(
+            address(endpoints[etherealEid]), owner, address(etherealFactory)
+        );
 
         assertFalse(newBridge.isConfigComplete());
     }
@@ -726,8 +769,9 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
 
     function test_renounceOwnershipSafe_reverts_whenIncomplete() public {
         // Deploy new bridge without config
-        PredictionMarketBridge newBridge =
-            new PredictionMarketBridge(address(endpoints[etherealEid]), owner);
+        PredictionMarketBridge newBridge = new PredictionMarketBridge(
+            address(endpoints[etherealEid]), owner, address(etherealFactory)
+        );
 
         vm.expectRevert("Config incomplete");
         newBridge.renounceOwnershipSafe();
@@ -763,7 +807,7 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
         view
     {
         // Already configured in setUp
-        assertTrue(factory.isConfigComplete());
+        assertTrue(arbitrumFactory.isConfigComplete());
     }
 
     function test_factory_renounceOwnershipSafe_reverts_whenIncomplete()
@@ -781,11 +825,11 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
         public
     {
         // Factory is configured with deployer in setUp
-        assertEq(factory.owner(), owner);
+        assertEq(arbitrumFactory.owner(), owner);
 
-        factory.renounceOwnershipSafe();
+        arbitrumFactory.renounceOwnershipSafe();
 
-        assertEq(factory.owner(), address(0));
+        assertEq(arbitrumFactory.owner(), address(0));
     }
 }
 
@@ -800,3 +844,23 @@ contract MockInvalidToken {
         return "INV";
     }
 }
+
+/// @notice C-4: Mock fake token that implements pickConfigId/isPredictorToken
+/// but was NOT deployed by the factory
+contract MockFakeToken is ERC20 {
+    bytes32 public immutable pickConfigId;
+    bool public immutable isPredictorToken;
+
+    constructor(bytes32 pickConfigId_, bool isPredictorToken_)
+        ERC20("Fake Token", "FAKE")
+    {
+        pickConfigId = pickConfigId_;
+        isPredictorToken = isPredictorToken_;
+    }
+
+    function mint(address to, uint256 amount) external {
+        _mint(to, amount);
+    }
+}
+
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";

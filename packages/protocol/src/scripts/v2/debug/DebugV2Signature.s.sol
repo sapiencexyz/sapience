@@ -11,7 +11,7 @@ interface IEscrowDebug {
     function getMintApprovalHash(
         bytes32 predictionHash,
         address signer,
-        uint256 wager,
+        uint256 collateral,
         uint256 nonce,
         uint256 deadline
     ) external view returns (bytes32);
@@ -50,7 +50,7 @@ contract DebugV2Signature is Script {
 
     // Predictor's MintApproval values (from [V2 Submit] logs)
     bytes32 constant PREDICTION_HASH = bytes32(0); // <-- from [V2 Submit] Hash computation: predictionHash
-    uint256 constant PREDICTOR_WAGER = 0;          // <-- from logs
+    uint256 constant PREDICTOR_COLLATERAL = 0;          // <-- from logs
     uint256 constant PREDICTOR_NONCE = 0;          // <-- from logs
     uint256 constant PREDICTOR_DEADLINE = 0;       // <-- from logs
 
@@ -126,7 +126,7 @@ contract DebugV2Signature is Script {
         bytes32 mintHash = escrow.getMintApprovalHash(
             PREDICTION_HASH,
             SMART_ACCOUNT, // signer is the smart account
-            PREDICTOR_WAGER,
+            PREDICTOR_COLLATERAL,
             PREDICTOR_NONCE,
             PREDICTOR_DEADLINE
         );
