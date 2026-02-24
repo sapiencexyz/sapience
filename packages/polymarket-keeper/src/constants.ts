@@ -5,8 +5,8 @@
 // Admin authentication message (used for signing admin API requests)
 export const ADMIN_AUTHENTICATE_MSG = 'Sign this message to authenticate for admin actions.';
 
-// Placeholder resolver address - update this with actual resolver contract address
-export const RESOLVER_ADDRESS = '0xdC1Fa830aD1de01f1EF603749f48bD73384286BE' as const;
+// Resolver address — configurable via env var, defaults to Ethereal mainnet lzPMResolver
+export const RESOLVER_ADDRESS = (process.env.RESOLVER_ADDRESS || '0xdC1Fa830aD1de01f1EF603749f48bD73384286BE') as `0x${string}`;
 
 export const DEFAULT_SAPIENCE_API_URL = 'https://api.sapience.xyz';
 
