@@ -3,6 +3,7 @@ pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
 import "../../src/v2/PredictionMarketEscrow.sol";
+import "../../src/v2/PredictionMarketTokenFactory.sol";
 import "../../src/v2/resolvers/mocks/ManualConditionResolver.sol";
 import "../../src/v2/sponsors/OnboardingSponsor.sol";
 import "../../src/v2/interfaces/IV2Types.sol";
@@ -26,6 +27,8 @@ contract OnboardingSponsorTest is Test {
     uint256 public predictorPk;
     uint256 public counterpartyPk;
 
+    uint256 private _nextNonce = 1;
+
     uint256 public constant PREDICTOR_COLLATERAL = 1e18;
     uint256 public constant COUNTERPARTY_COLLATERAL = 1e18;
     uint256 public constant MATCH_LIMIT = 1e18;
@@ -34,6 +37,10 @@ contract OnboardingSponsorTest is Test {
     bytes32 public constant REF_CODE = keccak256("invite-code");
 
     bytes32 public conditionId;
+
+    function _freshNonce() internal returns (uint256) {
+        return _nextNonce++;
+    }
 
     function setUp() public {
         owner = vm.addr(1);
@@ -47,7 +54,10 @@ contract OnboardingSponsorTest is Test {
 
         // Deploy core infra
         collateralToken = new MockERC20("WUSDe", "WUSDe", 18);
-        market = new PredictionMarketEscrow(address(collateralToken), owner);
+        PredictionMarketTokenFactory tokenFactory = new PredictionMarketTokenFactory(owner);
+        market = new PredictionMarketEscrow(address(collateralToken), owner, address(tokenFactory));
+        vm.prank(owner);
+        tokenFactory.setDeployer(address(market));
 
         vm.prank(owner);
         resolver = new ManualConditionResolver(owner);
@@ -116,7 +126,7 @@ contract OnboardingSponsorTest is Test {
     function _buildMintRequest(
         IV2Types.Pick[] memory picks,
         address sponsorAddr
-    ) internal view returns (IV2Types.MintRequest memory request) {
+    ) internal returns (IV2Types.MintRequest memory request) {
         bytes32 pickConfigId = keccak256(abi.encode(picks));
         bytes32 predictionHash = keccak256(
             abi.encode(
@@ -128,8 +138,8 @@ contract OnboardingSponsorTest is Test {
             )
         );
 
-        uint256 pNonce = market.getNonce(predictor);
-        uint256 cNonce = market.getNonce(counterparty);
+        uint256 pNonce = _freshNonce();
+        uint256 cNonce = _freshNonce();
         uint256 deadline = block.timestamp + 1 hours;
 
         request.picks = picks;
@@ -186,14 +196,15 @@ contract OnboardingSponsorTest is Test {
 
         // 3. Resolve condition — predictor wins
         vm.prank(settler);
-        resolver.resolveCondition(conditionId, IV2Types.OutcomeSide.YES);
+        resolver.settleCondition(conditionId, IV2Types.OutcomeVector(1, 0));
+        market.settle(predictionId, REF_CODE);
 
         // 4. Redeem — predictor gets all collateral
         vm.prank(predictor);
         IPredictionMarketToken(predictorToken).approve(address(market), totalCollateral);
 
         vm.prank(predictor);
-        market.redeem(predictionId, predictor);
+        market.redeem(predictorToken, totalCollateral, REF_CODE);
 
         // Predictor received all collateral (their sponsored 1e18 + counterparty's 1e18)
         assertEq(
@@ -219,14 +230,15 @@ contract OnboardingSponsorTest is Test {
 
         // Resolve NO — counterparty wins
         vm.prank(settler);
-        resolver.resolveCondition(conditionId, IV2Types.OutcomeSide.NO);
+        resolver.settleCondition(conditionId, IV2Types.OutcomeVector(0, 1));
+        market.settle(predictionId, REF_CODE);
 
         // Counterparty redeems
         vm.prank(counterparty);
         IPredictionMarketToken(counterpartyToken).approve(address(market), totalCollateral);
 
         vm.prank(counterparty);
-        market.redeem(predictionId, counterparty);
+        market.redeem(counterpartyToken, totalCollateral, REF_CODE);
 
         // Counterparty net gain = predictor's sponsored collateral
         assertEq(
@@ -274,8 +286,8 @@ contract OnboardingSponsorTest is Test {
             abi.encode(pickConfigId, bigCollateral, COUNTERPARTY_COLLATERAL, predictor, counterparty)
         );
 
-        uint256 pNonce = market.getNonce(predictor);
-        uint256 cNonce = market.getNonce(counterparty);
+        uint256 pNonce = _freshNonce();
+        uint256 cNonce = _freshNonce();
         uint256 deadline = block.timestamp + 1 hours;
 
         IV2Types.MintRequest memory request;
@@ -439,8 +451,8 @@ contract OnboardingSponsorTest is Test {
         vm.prank(eve);
         collateralToken.approve(address(market), type(uint256).max);
 
-        uint256 pNonce = market.getNonce(predictor);
-        uint256 eNonce = market.getNonce(eve);
+        uint256 pNonce = _freshNonce();
+        uint256 eNonce = _freshNonce();
         uint256 deadline = block.timestamp + 1 hours;
 
         IV2Types.MintRequest memory request;
@@ -485,8 +497,8 @@ contract OnboardingSponsorTest is Test {
             abi.encode(pickConfigId, highPredictorCollateral, lowCounterpartyCollateral, predictor, counterparty)
         );
 
-        uint256 pNonce = market.getNonce(predictor);
-        uint256 cNonce = market.getNonce(counterparty);
+        uint256 pNonce = _freshNonce();
+        uint256 cNonce = _freshNonce();
         uint256 deadline = block.timestamp + 1 hours;
 
         IV2Types.MintRequest memory request;
@@ -525,8 +537,8 @@ contract OnboardingSponsorTest is Test {
             abi.encode(pickConfigId, predCol, ctrCol, predictor, counterparty)
         );
 
-        uint256 pNonce = market.getNonce(predictor);
-        uint256 cNonce = market.getNonce(counterparty);
+        uint256 pNonce = _freshNonce();
+        uint256 cNonce = _freshNonce();
         uint256 deadline = block.timestamp + 1 hours;
 
         IV2Types.MintRequest memory request;

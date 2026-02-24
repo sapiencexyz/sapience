@@ -13,24 +13,30 @@ import { OnboardingSponsor } from "../../../v2/sponsors/OnboardingSponsor.sol";
 ///   PREDICTION_MARKET_ESCROW        - escrow contract address
 ///   COLLATERAL_TOKEN                - WUSDe token address
 ///   MATCH_LIMIT                     - max collateral per mint (in wei, e.g. 1000000000000000000 = 1e18)
+///   REQUIRED_COUNTERPARTY           - required counterparty address (e.g. vault-bot)
+///   MAX_ENTRY_PRICE_BPS             - max entry price in basis points (e.g. 7000 = 0.70)
 ///   BUDGET_MANAGER                  - API signer address (optional, can set later)
 contract DeployOnboardingSponsor is Script {
     function run() external {
         address deployer = vm.envAddress("PM_NETWORK_DEPLOYER_ADDRESS");
         address escrow = vm.envAddress("PREDICTION_MARKET_ESCROW");
         address collateralToken = vm.envAddress("COLLATERAL_TOKEN");
+        address requiredCounterparty = vm.envAddress("REQUIRED_COUNTERPARTY");
+        uint256 maxEntryPriceBps = vm.envUint("MAX_ENTRY_PRICE_BPS");
         uint256 matchLimit = vm.envUint("MATCH_LIMIT");
 
         console.log("=== Deploy OnboardingSponsor (Testnet) ===");
         console.log("Owner:", deployer);
         console.log("Escrow:", escrow);
         console.log("Collateral Token:", collateralToken);
+        console.log("Required Counterparty:", requiredCounterparty);
+        console.log("Max Entry Price BPS:", maxEntryPriceBps);
         console.log("Match Limit:", matchLimit);
 
         vm.startBroadcast(vm.envUint("PM_NETWORK_DEPLOYER_PRIVATE_KEY"));
 
         OnboardingSponsor sponsor =
-            new OnboardingSponsor(escrow, collateralToken, matchLimit, deployer);
+            new OnboardingSponsor(escrow, collateralToken, requiredCounterparty, maxEntryPriceBps, matchLimit, deployer);
 
         // Set budget manager if provided
         address budgetManager = vm.envOr("BUDGET_MANAGER", address(0));
