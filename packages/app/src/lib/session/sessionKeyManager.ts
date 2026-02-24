@@ -221,9 +221,9 @@ export interface EnableTypedData {
   };
 }
 
-// V2 Session Key Approval data for PredictionMarketEscrow
+// Escrow Session Key Approval data for PredictionMarketEscrow
 // This is a separate approval from ZeroDev's enable signature
-export interface V2SessionKeyApproval {
+export interface EscrowSessionKeyApproval {
   sessionKey: Address;
   owner: Address;
   smartAccount: Address;
@@ -233,8 +233,8 @@ export interface V2SessionKeyApproval {
   ownerSignature: Hex;
 }
 
-// V2 Session Key Approval domain and types (matches SignatureValidator.sol)
-const V2_SESSION_KEY_APPROVAL_DOMAIN = {
+// Escrow Session Key Approval domain and types (matches SignatureValidator.sol)
+const ESCROW_SESSION_KEY_APPROVAL_DOMAIN = {
   name: 'PredictionMarketEscrow',
   version: '1',
 } as const;
@@ -248,7 +248,7 @@ const EIP712_DOMAIN_TYPE = [
   { name: 'verifyingContract', type: 'address' },
 ] as const;
 
-const V2_SESSION_KEY_APPROVAL_TYPES = {
+const ESCROW_SESSION_KEY_APPROVAL_TYPES = {
   EIP712Domain: EIP712_DOMAIN_TYPE,
   SessionKeyApproval: [
     { name: 'sessionKey', type: 'address' },
@@ -277,9 +277,9 @@ export interface SerializedSession {
   arbitrumEnableTypedData?: EnableTypedData;
   // Which Ethereal chain was used (mainnet or testnet)
   etherealChainId?: number;
-  // V2 Session Key Approval for PredictionMarketEscrow
-  // This is a separate EIP-712 signature from the owner authorizing session key for V2 mints
-  v2SessionKeyApproval?: V2SessionKeyApproval;
+  // Escrow Session Key Approval for PredictionMarketEscrow
+  // This is a separate EIP-712 signature from the owner authorizing session key for escrow mints
+  escrowSessionKeyApproval?: EscrowSessionKeyApproval;
 }
 
 // Session result with chain clients
@@ -332,17 +332,17 @@ export async function getSmartAccountAddress(
 }
 
 /**
- * Sign V2 Session Key Approval for PredictionMarketEscrow.
+ * Sign Escrow Session Key Approval for PredictionMarketEscrow.
  * This allows the session key to sign MintApproval messages on behalf of the smart account.
  */
-async function signV2SessionKeyApproval(
+async function signEscrowSessionKeyApproval(
   ownerSigner: OwnerSigner,
   sessionKeyAddress: Address,
   smartAccountAddress: Address,
   validUntilSeconds: number,
   chainId: number,
   verifyingContract: Address
-): Promise<V2SessionKeyApproval> {
+): Promise<EscrowSessionKeyApproval> {
   // Compute a permissions hash (we use a simple hash of "V2_MINT" permission)
   // In practice, this could be more specific to the exact permissions granted
   const permissionsHash = keccak256('0x56325f4d494e54' as Hex); // keccak256("V2_MINT")
@@ -350,11 +350,11 @@ async function signV2SessionKeyApproval(
   // For eth_signTypedData_v4, uint256 values should be hex strings when JSON serialized
   const typedData = {
     domain: {
-      ...V2_SESSION_KEY_APPROVAL_DOMAIN,
+      ...ESCROW_SESSION_KEY_APPROVAL_DOMAIN,
       chainId,
       verifyingContract,
     },
-    types: V2_SESSION_KEY_APPROVAL_TYPES,
+    types: ESCROW_SESSION_KEY_APPROVAL_TYPES,
     primaryType: 'SessionKeyApproval' as const,
     message: {
       sessionKey: sessionKeyAddress,
@@ -366,16 +366,16 @@ async function signV2SessionKeyApproval(
   };
 
   console.debug(
-    '[SessionKeyManager] Requesting V2 session key approval signature...'
+    '[SessionKeyManager] Requesting escrow session key approval signature...'
   );
-  console.debug('[SessionKeyManager] V2 approval typed data:', {
+  console.debug('[SessionKeyManager] Escrow approval typed data:', {
     domain: typedData.domain,
     types: typedData.types,
     primaryType: typedData.primaryType,
     message: typedData.message,
   });
   console.debug(
-    '[SessionKeyManager] V2 approval JSON:',
+    '[SessionKeyManager] Escrow approval JSON:',
     JSON.stringify(typedData, null, 2)
   );
 
@@ -385,8 +385,8 @@ async function signV2SessionKeyApproval(
     params: [ownerSigner.address, JSON.stringify(typedData)],
   });
 
-  console.debug('[SessionKeyManager] V2 session key approval signed');
-  console.debug('[SessionKeyManager] V2 approval signature:', signature);
+  console.debug('[SessionKeyManager] Escrow session key approval signed');
+  console.debug('[SessionKeyManager] Escrow approval signature:', signature);
   console.debug('[SessionKeyManager] Signature r:', signature.slice(0, 66));
   console.debug(
     '[SessionKeyManager] Signature s:',
@@ -425,7 +425,7 @@ async function signV2SessionKeyApproval(
         '[SessionKeyManager] ⚠️ SIGNATURE MISMATCH! The recovered signer does not match the owner!'
       );
       console.error(
-        '[SessionKeyManager] This will cause V2 session key validation to fail on-chain.'
+        '[SessionKeyManager] This will cause escrow session key validation to fail on-chain.'
       );
       // Also compute and log the hash for debugging
       const typedDataHash = hashTypedData({
@@ -459,12 +459,12 @@ async function signV2SessionKeyApproval(
 }
 
 /**
- * Encode V2SessionKeyApproval to ABI-encoded bytes for contract consumption.
- * Matches the IV2Types.SessionKeyData struct layout (NOT SignatureValidator.SessionKeyApproval):
+ * Encode EscrowSessionKeyApproval to ABI-encoded bytes for contract consumption.
+ * Matches the SessionKeyData struct layout (NOT SignatureValidator.SessionKeyApproval):
  *   (sessionKey, owner, validUntil, permissionsHash, chainId, ownerSignature)
  * Note: smartAccount is NOT included - the contract gets it from the MintRequest.predictor field
  */
-export function encodeV2SessionKeyData(approval: V2SessionKeyApproval): Hex {
+export function encodeEscrowSessionKeyData(approval: EscrowSessionKeyApproval): Hex {
   // Encode the struct fields as a tuple
   const innerEncoding = encodeAbiParameters(
     [
@@ -660,7 +660,7 @@ export async function createSession(
         valueLimit: BigInt(1e24), // 1,000,000 * 1e18
       },
       {
-        // Single approve permission using ONE_OF to allow PredictionMarket, Vault, and Escrow (V2)
+        // Single approve permission using ONE_OF to allow PredictionMarket, Vault, and Escrow
         target: etherealContracts.wusde,
         abi: collateralTokenAbi,
         functionName: 'approve',
@@ -712,7 +712,7 @@ export async function createSession(
         abi: liquidityVaultAbi,
         functionName: 'cancelWithdrawal',
       },
-      // V2 escrow mint permission (only if escrow is deployed on this chain)
+      // Escrow mint permission (only if escrow is deployed on this chain)
       ...(etherealContracts.predictionMarketEscrow
         ? [
             {
@@ -841,11 +841,11 @@ export async function createSession(
     '[SessionKeyManager] Arbitrum session will be created lazily on first EAS attestation'
   );
 
-  // Sign V2 Session Key Approval for PredictionMarketEscrow (if deployed)
-  let v2SessionKeyApproval: V2SessionKeyApproval | undefined;
+  // Sign Escrow Session Key Approval for PredictionMarketEscrow (if deployed)
+  let escrowSessionKeyApproval: EscrowSessionKeyApproval | undefined;
   if (etherealContracts.predictionMarketEscrow) {
     try {
-      v2SessionKeyApproval = await signV2SessionKeyApproval(
+      escrowSessionKeyApproval = await signEscrowSessionKeyApproval(
         ownerSigner,
         sessionKeyAccount.address,
         smartAccountAddress,
@@ -853,13 +853,13 @@ export async function createSession(
         etherealChainId,
         etherealContracts.predictionMarketEscrow
       );
-      console.debug('[SessionKeyManager] V2 session key approval obtained');
+      console.debug('[SessionKeyManager] Escrow session key approval obtained');
     } catch (e) {
       console.warn(
-        '[SessionKeyManager] Failed to sign V2 session key approval:',
+        '[SessionKeyManager] Failed to sign escrow session key approval:',
         e
       );
-      // Continue without V2 support - V1 will still work
+      // Continue without escrow support - legacy will still work
     }
   }
 
@@ -879,7 +879,7 @@ export async function createSession(
     // Arbitrum approval not set - will be created lazily
     etherealEnableTypedData,
     etherealChainId,
-    v2SessionKeyApproval,
+    escrowSessionKeyApproval,
   };
 
   return {
@@ -1060,24 +1060,24 @@ export async function restoreSession(
     signer: sessionKeyAccount,
   });
 
-  // Validate V2 session key approval matches the session key (if present)
-  if (serialized.v2SessionKeyApproval) {
+  // Validate escrow session key approval matches the session key (if present)
+  if (serialized.escrowSessionKeyApproval) {
     const derivedAddress = sessionKeyAccount.address.toLowerCase();
     const storedAddress =
-      serialized.v2SessionKeyApproval.sessionKey.toLowerCase();
+      serialized.escrowSessionKeyApproval.sessionKey.toLowerCase();
     if (derivedAddress !== storedAddress) {
-      console.error('[SessionKeyManager] V2 session key mismatch detected!', {
+      console.error('[SessionKeyManager] Escrow session key mismatch detected!', {
         derivedFromPrivateKey: sessionKeyAccount.address,
-        storedInV2Approval: serialized.v2SessionKeyApproval.sessionKey,
+        storedInEscrowApproval: serialized.escrowSessionKeyApproval.sessionKey,
       });
       // Clear the corrupted session and throw - user must create a new session
       clearSession();
       throw new Error(
-        'Session key mismatch detected. The stored V2 approval has a different session key. ' +
+        'Session key mismatch detected. The stored escrow approval has a different session key. ' +
           'Please create a new session.'
       );
     }
-    console.debug('[SessionKeyManager] V2 session key validation passed');
+    console.debug('[SessionKeyManager] Escrow session key validation passed');
   }
 
   // Restore Ethereal session (required)
@@ -1193,20 +1193,20 @@ export function saveSession(serialized: SerializedSession): void {
   const derivedAddress = privateKeyToAccount(
     serialized.sessionPrivateKey
   ).address;
-  if (serialized.v2SessionKeyApproval) {
+  if (serialized.escrowSessionKeyApproval) {
     if (
       derivedAddress.toLowerCase() !==
-      serialized.v2SessionKeyApproval.sessionKey.toLowerCase()
+      serialized.escrowSessionKeyApproval.sessionKey.toLowerCase()
     ) {
       console.error(
         '[SessionKeyManager] CRITICAL: Attempted to save session with mismatched keys!',
         {
           derivedFromPrivateKey: derivedAddress,
-          inV2Approval: serialized.v2SessionKeyApproval.sessionKey,
+          inEscrowApproval: serialized.escrowSessionKeyApproval.sessionKey,
         }
       );
       throw new Error(
-        'Cannot save session: session key mismatch between private key and V2 approval'
+        'Cannot save session: session key mismatch between private key and escrow approval'
       );
     }
   }
@@ -1214,7 +1214,7 @@ export function saveSession(serialized: SerializedSession): void {
   console.debug('[SessionKeyManager] Saving session', {
     sessionKeyAddress: derivedAddress,
     smartAccount: serialized.config.smartAccountAddress,
-    hasV2Approval: !!serialized.v2SessionKeyApproval,
+    hasEscrowApproval: !!serialized.escrowSessionKeyApproval,
   });
 
   localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(serialized));
@@ -1249,19 +1249,19 @@ export function loadSession(): SerializedSession | null {
     }
 
     // Validate session key consistency
-    if (parsed.v2SessionKeyApproval && parsed.sessionPrivateKey) {
+    if (parsed.escrowSessionKeyApproval && parsed.sessionPrivateKey) {
       const derivedAddress = privateKeyToAccount(
         parsed.sessionPrivateKey
       ).address;
       if (
         derivedAddress.toLowerCase() !==
-        parsed.v2SessionKeyApproval.sessionKey.toLowerCase()
+        parsed.escrowSessionKeyApproval.sessionKey.toLowerCase()
       ) {
         console.error(
           '[SessionKeyManager] Session key mismatch detected on load!',
           {
             derivedFromPrivateKey: derivedAddress,
-            inV2Approval: parsed.v2SessionKeyApproval.sessionKey,
+            inEscrowApproval: parsed.escrowSessionKeyApproval.sessionKey,
           }
         );
         clearSession();

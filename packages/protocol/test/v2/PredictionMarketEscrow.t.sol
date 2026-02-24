@@ -3,6 +3,7 @@ pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
 import "../../src/v2/PredictionMarketEscrow.sol";
+import "../../src/v2/PredictionMarketTokenFactory.sol";
 import "../../src/v2/resolvers/mocks/ManualConditionResolver.sol";
 import "../../src/v2/interfaces/IV2Types.sol";
 import "../../src/v2/interfaces/IPredictionMarketToken.sol";
@@ -31,6 +32,8 @@ contract PredictionMarketEscrowTest is Test {
     bytes32 public conditionId1;
     bytes32 public conditionId2;
 
+    uint256 private _nextNonce = 1;
+
     function setUp() public {
         // Create accounts with known private keys
         owner = vm.addr(1);
@@ -44,7 +47,13 @@ contract PredictionMarketEscrowTest is Test {
         // Deploy contracts
         collateralToken = new MockERC20("Test USDE", "USDE", 18);
 
-        market = new PredictionMarketEscrow(address(collateralToken), owner);
+        PredictionMarketTokenFactory tokenFactory =
+            new PredictionMarketTokenFactory(owner);
+        market = new PredictionMarketEscrow(
+            address(collateralToken), owner, address(tokenFactory)
+        );
+        vm.prank(owner);
+        tokenFactory.setDeployer(address(market));
 
         vm.prank(owner);
         resolver = new ManualConditionResolver(owner);
@@ -97,9 +106,12 @@ contract PredictionMarketEscrowTest is Test {
         return abi.encodePacked(r, s, v);
     }
 
+    function _freshNonce() internal returns (uint256) {
+        return _nextNonce++;
+    }
+
     function _createMintRequest(IV2Types.Pick[] memory picks)
         internal
-        view
         returns (IV2Types.MintRequest memory request)
     {
         bytes32 pickConfigId = keccak256(abi.encode(picks));
@@ -113,8 +125,8 @@ contract PredictionMarketEscrowTest is Test {
             )
         );
 
-        uint256 pNonce = market.getNonce(predictor);
-        uint256 cNonce = market.getNonce(counterparty);
+        uint256 pNonce = _freshNonce();
+        uint256 cNonce = _freshNonce();
         uint256 deadline = block.timestamp + 1 hours;
 
         request.picks = picks;
@@ -266,17 +278,22 @@ contract PredictionMarketEscrowTest is Test {
         market.mint(request);
     }
 
-    function test_mint_incrementsNonces() public {
+    function test_mint_marksNoncesUsed() public {
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = _createPick(conditionId1, IV2Types.OutcomeSide.YES);
 
-        assertEq(market.getNonce(predictor), 0);
-        assertEq(market.getNonce(counterparty), 0);
+        // Pick nonces that will be used
+        uint256 savedNext = _nextNonce;
+        uint256 pNonce = savedNext;
+        uint256 cNonce = savedNext + 1;
+
+        assertFalse(market.isNonceUsed(predictor, pNonce));
+        assertFalse(market.isNonceUsed(counterparty, cNonce));
 
         _mintPrediction(picks);
 
-        assertEq(market.getNonce(predictor), 1);
-        assertEq(market.getNonce(counterparty), 1);
+        assertTrue(market.isNonceUsed(predictor, pNonce));
+        assertTrue(market.isNonceUsed(counterparty, cNonce));
     }
 
     // ============ Settle Tests ============

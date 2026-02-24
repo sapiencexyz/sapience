@@ -237,7 +237,7 @@ deploy_test_collateral() {
 deploy_ethereal_phase1() {
     log_info "=== Phase 1: Deploy PM Network Infrastructure (Mainnet) ==="
 
-    check_env PM_NETWORK_DEPLOYER_PRIVATE_KEY PM_NETWORK_DEPLOYER_ADDRESS PM_NETWORK_RPC_URL COLLATERAL_TOKEN_ADDRESS || exit 1
+    check_env PM_NETWORK_DEPLOYER_PRIVATE_KEY PM_NETWORK_DEPLOYER_ADDRESS PM_NETWORK_RPC_URL COLLATERAL_TOKEN_ADDRESS FACTORY_OWNER || exit 1
 
     # 01. Deploy Resolver
     run_script "src/scripts/v2/mainnet/01_DeployResolver.s.sol:DeployResolver" "$PM_NETWORK_RPC_URL" "Deploying ManualConditionResolver on PM Network"
@@ -247,16 +247,26 @@ deploy_ethereal_phase1() {
         update_deployment "pmNetwork" "ManualConditionResolver" "$addr"
     fi
 
-    # 02. Deploy PredictionMarketEscrow
-    run_script "src/scripts/v2/mainnet/02_DeployPredictionMarket.s.sol:DeployPredictionMarket" "$PM_NETWORK_RPC_URL" "Deploying PredictionMarketEscrow on PM Network"
+    # 02. Deploy Factory on PM Network (CREATE2 for deterministic address)
+    run_script "src/scripts/v2/mainnet/02_DeployFactory.s.sol:DeployFactory" "$PM_NETWORK_RPC_URL" "Deploying PredictionMarketTokenFactory on PM Network"
+    addr=$(extract_address "$LAST_OUTPUT" "FACTORY_ADDRESS=")
+    if [ -n "$addr" ]; then
+        update_env "FACTORY_ADDRESS" "$addr"
+    fi
+
+    # 03. Deploy PredictionMarketV2 (requires FACTORY_ADDRESS)
+    run_script "src/scripts/v2/mainnet/03_DeployPredictionMarket.s.sol:DeployPredictionMarket" "$PM_NETWORK_RPC_URL" "Deploying PredictionMarketV2 on PM Network"
     addr=$(extract_address "$LAST_OUTPUT" "PREDICTION_MARKET_ADDRESS=")
     if [ -n "$addr" ]; then
         update_env "PREDICTION_MARKET_ADDRESS" "$addr"
         update_deployment "pmNetwork" "PredictionMarketEscrow" "$addr"
     fi
 
-    # 03. Deploy PM Network Bridge
-    run_script "src/scripts/v2/mainnet/03_DeployEtherealBridge.s.sol:DeployEtherealBridge" "$PM_NETWORK_RPC_URL" "Deploying PredictionMarketBridge on PM Network"
+    # 04. Configure Factory on PM Network (set escrow as deployer)
+    run_script_no_verify "src/scripts/v2/mainnet/04_ConfigureFactory.s.sol:ConfigureFactory" "$PM_NETWORK_RPC_URL" "Configuring PM Network Factory (set escrow as deployer)"
+
+    # 05. Deploy PM Network Bridge (requires FACTORY_ADDRESS)
+    run_script "src/scripts/v2/mainnet/05_DeployEtherealBridge.s.sol:DeployEtherealBridge" "$PM_NETWORK_RPC_URL" "Deploying PositionTokenBridge on PM Network"
     addr=$(extract_address "$LAST_OUTPUT" "PM_NETWORK_BRIDGE_ADDRESS=")
     if [ -n "$addr" ]; then
         update_env "PM_NETWORK_BRIDGE_ADDRESS" "$addr"
@@ -272,16 +282,16 @@ deploy_arbitrum_phase2() {
 
     check_env SM_NETWORK_DEPLOYER_PRIVATE_KEY SM_NETWORK_DEPLOYER_ADDRESS SM_NETWORK_RPC_URL SM_NETWORK_LZ_ENDPOINT || exit 1
 
-    # 04. Deploy Factory
-    run_script "src/scripts/v2/mainnet/04_DeployFactory.s.sol:DeployFactory" "$SM_NETWORK_RPC_URL" "Deploying PredictionMarketTokenFactory on SM Network"
+    # 06. Deploy Factory on SM Network (CREATE2 - same address as PM)
+    run_script "src/scripts/v2/mainnet/06_DeployFactorySM.s.sol:DeployFactorySM" "$SM_NETWORK_RPC_URL" "Deploying PredictionMarketTokenFactory on SM Network"
     local addr=$(extract_address "$LAST_OUTPUT" "FACTORY_ADDRESS=")
     if [ -n "$addr" ]; then
         update_env "FACTORY_ADDRESS" "$addr"
         update_deployment "smNetwork" "PredictionMarketTokenFactory" "$addr"
     fi
 
-    # 05. Deploy SM Network Bridge
-    run_script "src/scripts/v2/mainnet/05_DeployRemoteBridge.s.sol:DeployRemoteBridge" "$SM_NETWORK_RPC_URL" "Deploying PredictionMarketBridgeRemote on SM Network"
+    # 07. Deploy SM Network Bridge
+    run_script "src/scripts/v2/mainnet/07_DeployRemoteBridge.s.sol:DeployRemoteBridge" "$SM_NETWORK_RPC_URL" "Deploying PredictionMarketBridgeRemote on SM Network"
     addr=$(extract_address "$LAST_OUTPUT" "SM_NETWORK_BRIDGE_ADDRESS=")
     if [ -n "$addr" ]; then
         update_env "SM_NETWORK_BRIDGE_ADDRESS" "$addr"
@@ -297,11 +307,11 @@ configure_bridges_phase3() {
 
     check_env PM_NETWORK_BRIDGE_ADDRESS SM_NETWORK_BRIDGE_ADDRESS || exit 1
 
-    # 06. Configure PM Network Bridge
-    run_script_no_verify "src/scripts/v2/mainnet/06_ConfigureEtherealBridge.s.sol:ConfigureEtherealBridge" "$PM_NETWORK_RPC_URL" "Configuring PM Network Bridge"
+    # 08. Configure PM Network Bridge
+    run_script_no_verify "src/scripts/v2/mainnet/08_ConfigureEtherealBridge.s.sol:ConfigureEtherealBridge" "$PM_NETWORK_RPC_URL" "Configuring PM Network Bridge"
 
-    # 07. Configure SM Network Bridge
-    run_script_no_verify "src/scripts/v2/mainnet/07_ConfigureRemoteBridge.s.sol:ConfigureRemoteBridge" "$SM_NETWORK_RPC_URL" "Configuring Arbitrum SM Network Bridge"
+    # 10. Configure SM Network Bridge
+    run_script_no_verify "src/scripts/v2/mainnet/10_ConfigureRemoteBridge.s.sol:ConfigureRemoteBridge" "$SM_NETWORK_RPC_URL" "Configuring Arbitrum SM Network Bridge"
 
     log_success "Phase 3 complete: Basic bridge configuration done"
 }
@@ -314,11 +324,11 @@ configure_dvn_phase3b() {
               PM_NETWORK_SEND_LIB PM_NETWORK_RECEIVE_LIB PM_NETWORK_DVN_1 PM_NETWORK_DVN_2 \
               SM_NETWORK_SEND_LIB SM_NETWORK_RECEIVE_LIB SM_NETWORK_DVN_1 SM_NETWORK_DVN_2 SM_NETWORK_EXECUTOR || exit 1
 
-    # 06b. Set DVN for PM Network Bridge
-    run_script_no_verify "src/scripts/v2/mainnet/06b_SetDVN_EtherealBridge.s.sol:SetDVN_EtherealBridge" "$PM_NETWORK_RPC_URL" "Setting DVN for PM Network Bridge"
+    # 09. Set DVN for PM Network Bridge
+    run_script_no_verify "src/scripts/v2/mainnet/09_SetDVN_EtherealBridge.s.sol:SetDVN_EtherealBridge" "$PM_NETWORK_RPC_URL" "Setting DVN for PM Network Bridge"
 
-    # 07b. Set DVN for SM Network Bridge
-    run_script_no_verify "src/scripts/v2/mainnet/07b_SetDVN_RemoteBridge.s.sol:SetDVN_RemoteBridge" "$SM_NETWORK_RPC_URL" "Setting DVN for SM Network Bridge"
+    # 11. Set DVN for SM Network Bridge
+    run_script_no_verify "src/scripts/v2/mainnet/11_SetDVN_RemoteBridge.s.sol:SetDVN_RemoteBridge" "$SM_NETWORK_RPC_URL" "Setting DVN for SM Network Bridge"
 
     log_success "Phase 3b complete: DVN and libraries configured"
 }
@@ -330,8 +340,8 @@ configure_pm_only() {
     check_env PM_NETWORK_BRIDGE_ADDRESS SM_NETWORK_BRIDGE_ADDRESS \
               PM_NETWORK_SEND_LIB PM_NETWORK_RECEIVE_LIB PM_NETWORK_DVN_1 PM_NETWORK_DVN_2 || exit 1
 
-    run_script_no_verify "src/scripts/v2/mainnet/06_ConfigureEtherealBridge.s.sol:ConfigureEtherealBridge" "$PM_NETWORK_RPC_URL" "Configuring PM Network Bridge"
-    run_script_no_verify "src/scripts/v2/mainnet/06b_SetDVN_EtherealBridge.s.sol:SetDVN_EtherealBridge" "$PM_NETWORK_RPC_URL" "Setting DVN for PM Network Bridge"
+    run_script_no_verify "src/scripts/v2/mainnet/08_ConfigureEtherealBridge.s.sol:ConfigureEtherealBridge" "$PM_NETWORK_RPC_URL" "Configuring PM Network Bridge"
+    run_script_no_verify "src/scripts/v2/mainnet/09_SetDVN_EtherealBridge.s.sol:SetDVN_EtherealBridge" "$PM_NETWORK_RPC_URL" "Setting DVN for PM Network Bridge"
 
     log_success "PM Network configuration complete"
 }
@@ -343,8 +353,8 @@ configure_sm_only() {
     check_env PM_NETWORK_BRIDGE_ADDRESS SM_NETWORK_BRIDGE_ADDRESS \
               SM_NETWORK_SEND_LIB SM_NETWORK_RECEIVE_LIB SM_NETWORK_DVN_1 SM_NETWORK_DVN_2 SM_NETWORK_EXECUTOR || exit 1
 
-    run_script_no_verify "src/scripts/v2/mainnet/07_ConfigureRemoteBridge.s.sol:ConfigureRemoteBridge" "$SM_NETWORK_RPC_URL" "Configuring SM Network Bridge"
-    run_script_no_verify "src/scripts/v2/mainnet/07b_SetDVN_RemoteBridge.s.sol:SetDVN_RemoteBridge" "$SM_NETWORK_RPC_URL" "Setting DVN for SM Network Bridge"
+    run_script_no_verify "src/scripts/v2/mainnet/10_ConfigureRemoteBridge.s.sol:ConfigureRemoteBridge" "$SM_NETWORK_RPC_URL" "Configuring SM Network Bridge"
+    run_script_no_verify "src/scripts/v2/mainnet/11_SetDVN_RemoteBridge.s.sol:SetDVN_RemoteBridge" "$SM_NETWORK_RPC_URL" "Setting DVN for SM Network Bridge"
 
     log_success "SM Network configuration complete"
 }
@@ -355,11 +365,11 @@ check_status() {
 
     echo ""
     log_info "PM Network Status:"
-    run_script_no_verify "src/scripts/v2/mainnet/08a_CheckStatus_PMNetwork.s.sol:CheckStatus_PMNetwork" "$PM_NETWORK_RPC_URL" "Checking PM Network status"
+    run_script_no_verify "src/scripts/v2/mainnet/12_CheckStatus_PMNetwork.s.sol:CheckStatus_PMNetwork" "$PM_NETWORK_RPC_URL" "Checking PM Network status"
 
     echo ""
     log_info "SM Network Status:"
-    run_script_no_verify "src/scripts/v2/mainnet/08b_CheckStatus_SMNetwork.s.sol:CheckStatus_SMNetwork" "$SM_NETWORK_RPC_URL" "Checking SM Network status"
+    run_script_no_verify "src/scripts/v2/mainnet/13_CheckStatus_SMNetwork.s.sol:CheckStatus_SMNetwork" "$SM_NETWORK_RPC_URL" "Checking SM Network status"
 }
 
 # Test: Mint Position Tokens
@@ -368,7 +378,7 @@ test_mint() {
 
     check_env PM_NETWORK_RPC_URL PM_NETWORK_DEPLOYER_PRIVATE_KEY PREDICTION_MARKET_ADDRESS COLLATERAL_TOKEN_ADDRESS RESOLVER_ADDRESS PREDICTOR_PRIVATE_KEY COUNTERPARTY_PRIVATE_KEY || exit 1
 
-    run_script_no_verify "src/scripts/v2/mainnet/09_MintPredictionMarketTokens.s.sol:MintPredictionMarketTokens" "$PM_NETWORK_RPC_URL" "Minting position tokens"
+    run_script_no_verify "src/scripts/v2/mainnet/14_MintPositionTokens.s.sol:MintPositionTokens" "$PM_NETWORK_RPC_URL" "Minting position tokens"
 
     # Extract and save token addresses
     local prediction_id=$(echo "$LAST_OUTPUT" | grep "PREDICTION_ID=" | grep -oE '0x[a-fA-F0-9]{64}' | head -1)
@@ -398,7 +408,7 @@ test_bridge_to_remote() {
 
     check_env PM_NETWORK_RPC_URL PM_NETWORK_BRIDGE_ADDRESS PREDICTOR_TOKEN_ADDRESS PREDICTOR_PRIVATE_KEY || exit 1
 
-    run_script_no_verify "src/scripts/v2/mainnet/10_TestBridgeToRemote.s.sol:TestBridgeToRemote" "$PM_NETWORK_RPC_URL" "Bridging tokens to Arbitrum"
+    run_script_no_verify "src/scripts/v2/mainnet/15_TestBridgeToRemote.s.sol:TestBridgeToRemote" "$PM_NETWORK_RPC_URL" "Bridging tokens to Arbitrum"
 
     # Extract and save BRIDGE_ID
     local bridge_id=$(echo "$LAST_OUTPUT" | grep "BRIDGE_ID=" | grep -oE '0x[a-fA-F0-9]{64}' | head -1)
@@ -416,7 +426,7 @@ test_resolve() {
     local outcome="${OUTCOME:-yes}"
     log_info "Resolving with outcome: $outcome"
 
-    run_script_no_verify "src/scripts/v2/mainnet/10b_ResolvePrediction.s.sol:ResolvePrediction" "$PM_NETWORK_RPC_URL" "Resolving prediction (outcome: $outcome)"
+    run_script_no_verify "src/scripts/v2/mainnet/16_ResolvePrediction.s.sol:ResolvePrediction" "$PM_NETWORK_RPC_URL" "Resolving prediction (outcome: $outcome)"
 
     log_success "Prediction resolved"
 }
@@ -427,7 +437,7 @@ test_bridge_back() {
 
     check_env SM_NETWORK_RPC_URL SM_NETWORK_BRIDGE_ADDRESS PREDICTOR_PRIVATE_KEY || exit 1
 
-    run_script_no_verify "src/scripts/v2/mainnet/11_TestBridgeBack.s.sol:TestBridgeBack" "$SM_NETWORK_RPC_URL" "Bridging tokens back to Ethereal"
+    run_script_no_verify "src/scripts/v2/mainnet/17_TestBridgeBack.s.sol:TestBridgeBack" "$SM_NETWORK_RPC_URL" "Bridging tokens back to Ethereal"
 
     # Extract and save BRIDGE_BACK_ID
     local bridge_back_id=$(echo "$LAST_OUTPUT" | grep "BRIDGE_BACK_ID=" | grep -oE '0x[a-fA-F0-9]{64}' | head -1)
@@ -442,7 +452,7 @@ retry_bridge_pm() {
 
     check_env PM_NETWORK_RPC_URL PM_NETWORK_BRIDGE_ADDRESS PM_NETWORK_DEPLOYER_PRIVATE_KEY BRIDGE_ID || exit 1
 
-    run_script_no_verify "src/scripts/v2/mainnet/12_RetryBridgePM.s.sol:RetryBridgePM" "$PM_NETWORK_RPC_URL" "Retrying bridge from PM Network"
+    run_script_no_verify "src/scripts/v2/mainnet/18_RetryBridgePM.s.sol:RetryBridgePM" "$PM_NETWORK_RPC_URL" "Retrying bridge from PM Network"
 
     log_success "Retry initiated - check https://layerzeroscan.com/ for status"
 }
@@ -453,7 +463,7 @@ retry_bridge_sm() {
 
     check_env SM_NETWORK_RPC_URL SM_NETWORK_BRIDGE_ADDRESS SM_NETWORK_DEPLOYER_PRIVATE_KEY BRIDGE_BACK_ID || exit 1
 
-    run_script_no_verify "src/scripts/v2/mainnet/13_RetryBridgeSM.s.sol:RetryBridgeSM" "$SM_NETWORK_RPC_URL" "Retrying bridge from SM Network"
+    run_script_no_verify "src/scripts/v2/mainnet/19_RetryBridgeSM.s.sol:RetryBridgeSM" "$SM_NETWORK_RPC_URL" "Retrying bridge from SM Network"
 
     log_success "Retry initiated - check https://layerzeroscan.com/ for status"
 }
@@ -710,10 +720,14 @@ usage() {
     echo "Required env vars for testing:"
     echo "  PREDICTOR_PRIVATE_KEY, COUNTERPARTY_PRIVATE_KEY"
     echo ""
+    echo "Required env vars for factory (deterministic address):"
+    echo "  FACTORY_OWNER (must be the SAME address on both chains for CREATE2)"
+    echo ""
     echo "Optional env vars:"
     echo "  SKIP_VERIFY=1 (skip contract verification during deployment)"
+    echo "  FACTORY_SALT (override default factory CREATE2 salt)"
     echo "  COLLATERAL_NAME, COLLATERAL_SYMBOL, COLLATERAL_INITIAL_SUPPLY (for test collateral)"
-    echo "  PREDICTOR_WAGER, COUNTERPARTY_WAGER, BRIDGE_AMOUNT (for testing)"
+    echo "  PREDICTOR_COLLATERAL, COUNTERPARTY_COLLATERAL, BRIDGE_AMOUNT (for testing)"
     echo "  OUTCOME (yes|no|tie for resolve)"
     echo "  BRIDGE_ID (for retry-pm command)"
     echo "  BRIDGE_BACK_ID (for retry-sm command)"

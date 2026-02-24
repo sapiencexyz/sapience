@@ -103,14 +103,7 @@ export async function processOrderPlaced(
       ];
 
       const legs = outcomes.map(
-        ([
-          priceId,
-          endTime,
-          strikePrice,
-          strikeExpo,
-          overWinsOnTie,
-          pred,
-        ]) => {
+        ([priceId, endTime, strikePrice, strikeExpo, overWinsOnTie, pred]) => {
           const strikeExpoNum = Number(strikeExpo);
           const marketId = keccak256(
             encodeAbiParameters(

@@ -58,8 +58,9 @@ import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 import { CreatePositionFormContent } from '~/components/markets/CreatePositionForm/CreatePositionFormContent';
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import { useSubmitPosition } from '~/hooks/forms/useSubmitPosition';
+import { useSponsorStatus } from '~/hooks/sponsorship/useSponsorStatus';
 import { usePositionProgress } from '~/hooks/forms/usePositionProgress';
-import { useUserPositions } from '~/hooks/graphql/useUserPositions';
+import { useUserPositions } from '~/hooks/graphql/useLegacyPositions';
 import { useAuctionStart, type QuoteBid } from '~/lib/auction/useAuctionStart';
 import {
   validateBidsWithSimulation,
@@ -167,7 +168,7 @@ const CreatePositionFormInner = ({
     selections,
     clearSelections,
     positionsWithMarketData,
-    getV2Picks,
+    getPicks,
   } = useCreatePositionContext();
 
   const isCompact = useIsBelow(1024);
@@ -268,23 +269,26 @@ const CreatePositionFormInner = ({
   } = useAuctionStart();
 
   // PredictionMarket address via centralized mapping (use positionChainId)
-  // V2 (testnet) uses PredictionMarketEscrow, V1 uses PredictionMarket
-  const isV2Chain = positionChainId === CHAIN_ID_ETHEREAL_TESTNET;
-  const PREDICTION_MARKET_ADDRESS = isV2Chain
+  // Escrow (testnet) uses PredictionMarketEscrow, legacy uses PredictionMarket
+  const isEscrowChain = positionChainId === CHAIN_ID_ETHEREAL_TESTNET;
+  const PREDICTION_MARKET_ADDRESS = isEscrowChain
     ? predictionMarketEscrow[positionChainId]?.address
     : predictionMarket[positionChainId]?.address;
+
+  // Sponsorship status
+  const { isSponsored, sponsorAddress, refetch: refetchSponsor } = useSponsorStatus();
 
   // State for validated bids (async validation checks market maker balance/allowance)
   const [bids, setBids] = useState<QuoteBid[]>([]);
 
   // Fetch PredictionMarket configuration
-  // V2 uses collateralToken() directly, V1 uses getConfig()
+  // Escrow uses collateralToken() directly, legacy uses getConfig()
   const predictionMarketConfigRead = useReadContracts({
     contracts: [
       {
         address: PREDICTION_MARKET_ADDRESS,
-        abi: isV2Chain ? predictionMarketEscrowAbi : predictionMarketAbi,
-        functionName: isV2Chain ? 'collateralToken' : 'getConfig',
+        abi: isEscrowChain ? predictionMarketEscrowAbi : predictionMarketAbi,
+        functionName: isEscrowChain ? 'collateralToken' : 'getConfig',
         chainId: positionChainId,
       },
     ],
@@ -296,14 +300,14 @@ const CreatePositionFormInner = ({
   const collateralToken: Address | undefined = useMemo(() => {
     const item = predictionMarketConfigRead.data?.[0];
     if (item?.status === 'success') {
-      // V2 returns address directly, V1 returns struct with collateralToken
-      if (isV2Chain) {
+      // Escrow returns address directly, legacy returns struct with collateralToken
+      if (isEscrowChain) {
         return item.result as Address;
       }
       return (item.result as { collateralToken: Address })?.collateralToken;
     }
     return undefined;
-  }, [predictionMarketConfigRead.data, isV2Chain]);
+  }, [predictionMarketConfigRead.data, isEscrowChain]);
 
   // Determine execution mode for bid validation (mirrors useSapienceWriteContract logic)
   // - 'eoa': User in wallet mode (isUsingSmartAccount = false)
@@ -318,6 +322,10 @@ const CreatePositionFormInner = ({
   // Async validation of bids - validates by simulating the mint transaction
   // This catches all contract errors: signature, nonce, expiry, insufficient funds/allowance, etc.
   useEffect(() => {
+    logPositionForm(
+      `[validation] rawBids=${rawBids.length}, hasParams=${!!currentAuctionParams}, hasMarket=${!!PREDICTION_MARKET_ADDRESS}, escrowPicks=${currentAuctionParams?.escrowPicks?.length ?? 'n/a'}`
+    );
+
     if (rawBids.length === 0) {
       setBids([]);
       return;
@@ -341,7 +349,26 @@ const CreatePositionFormInner = ({
     const { taker, wager, takerNonce, predictedOutcomes, resolver, chainId } =
       currentAuctionParams;
 
-    // Need all auction context to simulate
+    // Escrow auctions use picks instead of predictedOutcomes.
+    // Skip V1 mint simulation for escrow and mark bids as valid directly.
+    const isEscrowAuction =
+      currentAuctionParams.escrowPicks &&
+      currentAuctionParams.escrowPicks.length > 0;
+
+    if (isEscrowAuction) {
+      logPositionForm(
+        `Received ${rawBids.length} escrow bid(s), marking as valid (escrow auctions skip V1 simulation). First bid: maker=${rawBids[0]?.maker?.slice(0, 10)}, collateral=${rawBids[0]?.makerCollateral}, deadline=${rawBids[0]?.makerDeadline}`
+      );
+      setBids(
+        rawBids.map((b) => ({
+          ...b,
+          validationStatus: 'valid' as const,
+        }))
+      );
+      return;
+    }
+
+    // Need all auction context to simulate (V1 auctions only)
     if (
       !taker ||
       !wager ||
@@ -421,14 +448,14 @@ const CreatePositionFormInner = ({
   ]);
 
   const minCollateralRaw: bigint | undefined = useMemo(() => {
-    // V2 doesn't have minCollateral concept, so return undefined
-    if (isV2Chain) return undefined;
+    // Escrow doesn't have minCollateral concept, so return undefined
+    if (isEscrowChain) return undefined;
     const item = predictionMarketConfigRead.data?.[0];
     if (item?.status === 'success') {
       return (item.result as { minCollateral: bigint })?.minCollateral;
     }
     return undefined;
-  }, [predictionMarketConfigRead.data, isV2Chain]);
+  }, [predictionMarketConfigRead.data, isEscrowChain]);
 
   // Check if we're on an Ethereal chain
   const isEtherealChain = COLLATERAL_SYMBOLS[positionChainId] === 'USDe';
@@ -810,6 +837,8 @@ const CreatePositionFormInner = ({
     onSuccess: () => {
       clearPositionForm();
       setIsPopoverOpen(false);
+      // Refetch sponsor budget (it decreases after a sponsored mint)
+      refetchSponsor();
     },
     onProgressUpdate: {
       onTxSending: startSubmission,
@@ -895,33 +924,40 @@ const CreatePositionFormInner = ({
           // Close the popover/drawer
           setIsPopoverOpen(false);
 
-          // For V2, add picks directly from selections (ensures exact match with counterparty signature)
-          if (isV2Chain) {
-            const v2Picks = getV2Picks();
-            console.log('[V2 Form] Building v2Picks from selections:', {
+          // For escrow, add picks directly from selections (ensures exact match with counterparty signature)
+          if (isEscrowChain) {
+            const escrowPicks = getPicks();
+            console.log('[Escrow Form] Building escrowPicks from selections:', {
               selectionsCount: selections.length,
-              v2PicksCount: v2Picks.length,
+              escrowPicksCount: escrowPicks.length,
               selections: selections.map((s) => ({
                 conditionId: s.conditionId.slice(0, 10) + '...',
                 prediction: s.prediction,
                 resolverAddress: s.resolverAddress || 'MISSING',
               })),
-              v2Picks: v2Picks.map((p) => ({
+              escrowPicks: escrowPicks.map((p) => ({
                 resolver: p.conditionResolver,
                 conditionId: p.conditionId.slice(0, 10) + '...',
                 outcome: p.predictedOutcome,
               })),
             });
-            if (v2Picks.length > 0) {
-              mintReq.v2Picks = v2Picks.map((p) => ({
+            if (escrowPicks.length > 0) {
+              mintReq.escrowPicks = escrowPicks.map((p) => ({
                 conditionResolver: p.conditionResolver,
                 conditionId: p.conditionId,
                 predictedOutcome: p.predictedOutcome,
               }));
             } else {
               console.warn(
-                '[V2 Form] No v2Picks available - selections may be missing resolverAddress'
+                '[Escrow Form] No escrowPicks available - selections may be missing resolverAddress'
               );
+            }
+
+            // Wire sponsorship: if user has a sponsor budget, pass the sponsor address
+            // so the escrow contract calls fundMint instead of pulling from user's wallet
+            if (isSponsored && sponsorAddress) {
+              mintReq.predictorSponsor = sponsorAddress as `0x${string}`;
+              mintReq.predictorSponsorData = '0x' as `0x${string}`;
             }
           }
 

@@ -14,7 +14,7 @@ interface IPredictionMarketEscrow {
 
     error InvalidSignature();
     error ExpiredDeadline();
-    error InvalidNonce();
+    error NonceAlreadyUsed();
     error PredictionNotFound();
     error PredictionNotSettled();
     error PredictionAlreadySettled();
@@ -36,6 +36,19 @@ interface IPredictionMarketEscrow {
     error SponsorUnderfunded();
 
     // ============ External Functions ============
+
+    /// @notice Revoke a session key so it can no longer be used for signing
+    /// @param sessionKey The session key address to revoke
+    function revokeSessionKey(address sessionKey) external;
+
+    /// @notice Check if a session key has been revoked by an owner
+    /// @param owner The owner who may have revoked the key
+    /// @param sessionKey The session key to check
+    /// @return revoked True if the session key is revoked
+    function isSessionKeyRevoked(address owner, address sessionKey)
+        external
+        view
+        returns (bool revoked);
 
     /// @notice Create a new prediction with both parties' signatures
     /// @param request The mint request containing picks, collateral amounts, and signatures
@@ -96,10 +109,23 @@ interface IPredictionMarketEscrow {
         view
         returns (IV2Types.TokenPair memory tokenPair);
 
-    /// @notice Get the current nonce for an account
+    /// @notice Check if a specific nonce has been used
     /// @param account The account address
-    /// @return nonce The current nonce
-    function getNonce(address account) external view returns (uint256 nonce);
+    /// @param nonce The nonce to check
+    /// @return used True if the nonce has been used
+    function isNonceUsed(address account, uint256 nonce)
+        external
+        view
+        returns (bool used);
+
+    /// @notice Get the raw bitmap word for a nonce word position
+    /// @param account The account address
+    /// @param wordPos The word position (nonce >> 8)
+    /// @return word The bitmap word
+    function nonceBitmap(address account, uint256 wordPos)
+        external
+        view
+        returns (uint256 word);
 
     /// @notice Check if a prediction can be settled
     /// @param predictionId The prediction identifier

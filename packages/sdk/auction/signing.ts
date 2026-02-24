@@ -199,7 +199,7 @@ export interface AuctionStartSigningPayload {
  * The takerSignature and takerSignedAt fields are optional for price discovery,
  * but required when submitting a quote request that needs signature verification.
  */
-export interface AuctionRequestPayload {
+export interface LegacyAuctionRequestPayload {
   wager: string; // wei string
   predictedOutcomes: string[]; // Array of bytes strings that the resolver validates/understands
   resolver: string; // contract address for market validation

@@ -26,7 +26,7 @@ import {
   type OwnerSigner,
   type EnableTypedData,
   type SerializedSession,
-  type V2SessionKeyApproval,
+  type EscrowSessionKeyApproval,
 } from '~/lib/session/sessionKeyManager';
 
 /**
@@ -187,8 +187,8 @@ interface SessionContextValue {
   // The Ethereal chain ID the session was created for (mainnet or testnet)
   etherealChainId: number | null;
 
-  // V2 Session Key Approval for PredictionMarketEscrow
-  v2SessionKeyApproval: V2SessionKeyApproval | null;
+  // Escrow Session Key Approval for PredictionMarketEscrow
+  escrowSessionKeyApproval: EscrowSessionKeyApproval | null;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -301,9 +301,9 @@ export function SessionProvider({ children }: SessionProviderProps) {
   const [etherealSessionApproval, setEtherealSessionApproval] =
     useState<SessionApprovalData | null>(null);
 
-  // V2 Session Key Approval for PredictionMarketEscrow
-  const [v2SessionKeyApproval, setV2SessionKeyApproval] =
-    useState<V2SessionKeyApproval | null>(null);
+  // Escrow Session Key Approval for PredictionMarketEscrow
+  const [escrowSessionKeyApproval, setEscrowSessionKeyApproval] =
+    useState<EscrowSessionKeyApproval | null>(null);
 
   // Lazy Arbitrum session creation state
   const [isCreatingArbitrumSession, setIsCreatingArbitrumSession] =
@@ -449,8 +449,8 @@ export function SessionProvider({ children }: SessionProviderProps) {
         const approvalData = extractSessionApprovalData(stored);
         setArbitrumSessionApproval(approvalData.arbitrum);
         setEtherealSessionApproval(approvalData.ethereal);
-        // Restore V2 session key approval if available
-        setV2SessionKeyApproval(stored.v2SessionKeyApproval ?? null);
+        // Restore escrow session key approval if available
+        setEscrowSessionKeyApproval(stored.escrowSessionKeyApproval ?? null);
         setIsSessionActive(true);
         setTimeRemainingMs(result.config.expiresAt - Date.now());
       } catch (error) {
@@ -496,7 +496,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
     setSerializedSession(null);
     setArbitrumSessionApproval(null);
     setEtherealSessionApproval(null);
-    setV2SessionKeyApproval(null);
+    setEscrowSessionKeyApproval(null);
     setTimeRemainingMs(0);
     clearSession();
     console.debug('[SessionContext] Session cleared');
@@ -542,7 +542,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
       setIsStartingSession(true);
       setSessionError(null);
 
-      // Default to Ethereal Testnet for V2 testing
+      // Default to Ethereal Testnet for escrow testing
       const etherealChainId =
         params.etherealChainId ?? CHAIN_ID_ETHEREAL_TESTNET;
 
@@ -577,16 +577,16 @@ export function SessionProvider({ children }: SessionProviderProps) {
         const approvalData = extractSessionApprovalData(result.serialized);
         setArbitrumSessionApproval(approvalData.arbitrum);
         setEtherealSessionApproval(approvalData.ethereal);
-        // Set V2 session key approval if available
-        setV2SessionKeyApproval(result.serialized.v2SessionKeyApproval ?? null);
+        // Set escrow session key approval if available
+        setEscrowSessionKeyApproval(result.serialized.escrowSessionKeyApproval ?? null);
         setIsSessionActive(true);
         setTimeRemainingMs(result.config.expiresAt - Date.now());
         console.debug(
           '[SessionContext] Session active, smart account:',
           result.config.smartAccountAddress
         );
-        if (result.serialized.v2SessionKeyApproval) {
-          console.debug('[SessionContext] V2 session key approval available');
+        if (result.serialized.escrowSessionKeyApproval) {
+          console.debug('[SessionContext] Escrow session key approval available');
         }
       } catch (error) {
         console.error('Failed to start session:', error);
@@ -754,7 +754,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
       isCreatingArbitrumSession,
       createArbitrumSessionIfNeeded,
       etherealChainId,
-      v2SessionKeyApproval,
+      escrowSessionKeyApproval,
     }),
     [
       isSessionActive,
@@ -783,7 +783,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
       isCreatingArbitrumSession,
       createArbitrumSessionIfNeeded,
       etherealChainId,
-      v2SessionKeyApproval,
+      escrowSessionKeyApproval,
     ]
   );
 

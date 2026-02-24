@@ -1,7 +1,9 @@
 import { graphqlRequest } from './client/graphqlClient';
 
+/**
+ * @deprecated Legacy V1 type — will be removed when V2 predictions expose pickConfig.
+ */
 export type LastPositionForIntent = {
-  mintedAt: number;
   predictor: string;
   counterparty: string;
   predictorCollateral?: string | null;
@@ -9,9 +11,13 @@ export type LastPositionForIntent = {
   totalCollateral: string;
 };
 
+/**
+ * @deprecated Legacy V1 query — uses legacyPositions for trade history lookup.
+ * V2 predictions don't expose pickConfig yet, so new escrow trades won't match.
+ */
 const POSITIONS_FOR_LAST_TRADE_QUERY = /* GraphQL */ `
   query PositionsForLastTrade($address: String!, $take: Int) {
-    positions(address: $address, take: $take) {
+    legacyPositions(address: $address, take: $take) {
       mintedAt
       predictor
       counterparty
@@ -36,16 +42,23 @@ type PositionWithPredictions = {
   predictions: Array<{ conditionId: string; outcomeYes: boolean }>;
 };
 
+/**
+ * @deprecated Legacy V1 — will be replaced with V2 predictions query.
+ */
 export async function fetchLastTradePositions(
   predictor: string,
   take = 100
 ): Promise<{ positions: PositionWithPredictions[] }> {
-  return await graphqlRequest<{ positions: PositionWithPredictions[] }>(
+  const resp = await graphqlRequest<{ legacyPositions: PositionWithPredictions[] }>(
     POSITIONS_FOR_LAST_TRADE_QUERY,
     { address: predictor, take: Math.min(take, 100) }
   );
+  return { positions: resp?.legacyPositions ?? [] };
 }
 
+/**
+ * @deprecated Legacy V1 — matches by outcomeYes, will use predictedOutcome in V2.
+ */
 export function findMatchingPosition(
   positions: PositionWithPredictions[],
   outcomesSignature: string

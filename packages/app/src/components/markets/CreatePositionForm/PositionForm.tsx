@@ -6,7 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@sapience/ui/components/ui/dialog';
-import { Info } from 'lucide-react';
+import { Gift, Info } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FormProvider, type UseFormReturn, useWatch } from 'react-hook-form';
@@ -48,6 +48,11 @@ import {
   type UmaPrediction,
 } from '@sapience/ui';
 import { logPositionForm, formatBidForLog } from '~/lib/auction/bidLogger';
+import {
+  useSponsorStatus,
+  isEntryPriceEligible,
+} from '~/hooks/sponsorship/useSponsorStatus';
+import { formatUnits } from 'viem';
 
 interface PositionFormProps {
   methods: UseFormReturn<{
@@ -95,7 +100,7 @@ export default function PositionForm({
   pythPredictions = [],
   onRemovePythPrediction,
 }: PositionFormProps) {
-  const { selections, removeSelection, getV2Picks } =
+  const { selections, removeSelection, getPicks } =
     useCreatePositionContext();
   const { address: takerAddress } = useAccount();
   const { hasConnectedWallet } = useConnectedWallet();
@@ -128,6 +133,9 @@ export default function PositionForm({
     signMessage: sessionSignMessage,
   } = useSession();
 
+  // Sponsorship status
+  const { isSponsored, remainingBudget, maxEntryPriceBps } = useSponsorStatus();
+
   // Determine the actual taker address based on signing method
   // This MUST match the logic in useAuctionStart.requestQuotes
   // - If using session signing (smart account with active session): use effectiveAddress (smart account)
@@ -143,12 +151,12 @@ export default function PositionForm({
     useCollateralBalanceContext();
 
   // Fetch taker nonce from PredictionMarket/PredictionMarketEscrow contract
-  // V2 (testnet) uses getNonce, V1 uses nonces
-  const isV2Chain = chainId === CHAIN_ID_ETHEREAL_TESTNET;
+  // Escrow (testnet) uses getNonce, legacy uses nonces
+  const isEscrowChain = chainId === CHAIN_ID_ETHEREAL_TESTNET;
   const { refetch: refetchTakerNonce, error: nonceError } = useReadContract({
     address: predictionMarketAddress,
-    abi: isV2Chain ? predictionMarketEscrowAbi : predictionMarketAbi,
-    functionName: isV2Chain ? 'getNonce' : 'nonces',
+    abi: isEscrowChain ? predictionMarketEscrowAbi : predictionMarketAbi,
+    functionName: isEscrowChain ? 'getNonce' : 'nonces',
     args: selectedTakerAddress ? [selectedTakerAddress] : undefined,
     chainId,
     query: {
@@ -254,14 +262,25 @@ export default function PositionForm({
     // If we have a request key set, only accept bids that match it
     // If request key is null, it means selections/position size changed, so ignore all incoming bids
     if (currentRequestKeyRef.current === null) {
+      if (bids.length > 0) {
+        logPositionForm(
+          `[accept] REJECTED: currentRequestKeyRef is null. bids=${bids.length}, currentKey=${currentRequestKey.slice(0, 40)}`
+        );
+      }
       return;
     }
     // Only accept bids if they match the current request
     if (currentRequestKeyRef.current === currentRequestKey) {
       if (bids.length > 0) {
-        logPositionForm(`Received ${bids.length} bid(s)`);
+        logPositionForm(
+          `[accept] ACCEPTED ${bids.length} bid(s). validationStatus=${bids[0]?.validationStatus}, key=${currentRequestKey.slice(0, 40)}`
+        );
       }
       setValidBids(bids);
+    } else if (bids.length > 0) {
+      logPositionForm(
+        `[accept] REJECTED: key mismatch. ref=${currentRequestKeyRef.current?.slice(0, 40)}, current=${currentRequestKey.slice(0, 40)}`
+      );
     }
   }, [bids, predictionsKey, positionSizeValue]);
 
@@ -283,7 +302,9 @@ export default function PositionForm({
     if (nonExpiredBids.length === 0) {
       const resultKey = 'all-expired';
       if (prevFilterResultRef.current !== resultKey) {
-        logPositionForm('All bids expired');
+        logPositionForm(
+          `[bestBid] All ${validBids.length} bid(s) expired. First deadline=${validBids[0]?.makerDeadline}, nowSec=${Math.floor(nowMs / 1000)}`
+        );
         prevFilterResultRef.current = resultKey;
       }
       return { bestBid: null, estimateBid: null };
@@ -469,12 +490,12 @@ export default function PositionForm({
           chainId: chainId,
         };
 
-        // For V2-capable chains with conditional token selections, add v2Picks to trigger V2 auction
-        const isV2Chain = chainId === CHAIN_ID_ETHEREAL_TESTNET;
-        if (isV2Chain && hasUma && !hasPyth) {
-          const v2Picks = getV2Picks();
-          if (v2Picks.length > 0) {
-            params.v2Picks = v2Picks;
+        // For escrow-capable chains with conditional token selections, add escrowPicks to trigger escrow auction
+        const isEscrowChain = chainId === CHAIN_ID_ETHEREAL_TESTNET;
+        if (isEscrowChain && hasUma && !hasPyth) {
+          const escrowPicks = getPicks();
+          if (escrowPicks.length > 0) {
+            params.escrowPicks = escrowPicks;
             // Note: counterpartyCollateral is NOT set here - counterparty decides their collateral in their bid
           }
         }
@@ -486,6 +507,9 @@ export default function PositionForm({
         setLastQuoteRequestMs(Date.now());
         // Set the request key to match incoming bids to this configuration
         currentRequestKeyRef.current = `${predictionsKey}:${positionSizeValue || ''}`;
+        logPositionForm(
+          `[triggerAuction] Key set: ${currentRequestKeyRef.current.slice(0, 50)}, escrowPicks=${params.escrowPicks?.length ?? 0}`
+        );
 
         // Clear in-flight flag after a short delay to allow the debounced request to start
         // This prevents duplicate requests while still allowing future requests
@@ -522,7 +546,7 @@ export default function PositionForm({
       collateralDecimals,
       chainId,
       predictionsKey,
-      getV2Picks,
+      getPicks,
     ]
   );
 
@@ -542,7 +566,7 @@ export default function PositionForm({
   // TODO: Re-enable after fixing the issue where auto-triggers invalidate received bids
   const autoAuctionDebounceRef = useRef<number | undefined>(undefined);
   useEffect(() => {
-    // TEMPORARILY DISABLED for V2 testing - auto-triggers were invalidating received bids
+    // TEMPORARILY DISABLED for escrow testing - auto-triggers were invalidating received bids
     // User must click "INITIATE AUCTION" manually
     return;
 
@@ -759,6 +783,48 @@ export default function PositionForm({
               chainId={chainId}
             />
           </div>
+
+          {/* Sponsorship indicator */}
+          {isSponsored && (() => {
+            const activeBid = bestBid ?? stickyEstimateBid;
+            // User's collateral = positionSize (what they typed), vault's collateral = bid.makerCollateral
+            const decimals = collateralDecimals ?? 18;
+            const userCollateral = positionSizeValue
+              ? parseUnits(positionSizeValue, decimals)
+              : 0n;
+            const vaultCollateral = activeBid
+              ? BigInt(activeBid.makerCollateral)
+              : 0n;
+            const bidEligible =
+              !activeBid || !userCollateral
+                ? true // No bid or no size yet — show as available
+                : isEntryPriceEligible(userCollateral, vaultCollateral, maxEntryPriceBps);
+            const sponsorAmountFormatted = formatUnits(remainingBudget, 18);
+
+            return (
+              <div className={`mt-3 rounded-lg border px-3 py-2.5 text-sm ${
+                bidEligible
+                  ? 'border-ethena/30 bg-ethena/5'
+                  : 'border-muted/30 bg-muted/5 opacity-60'
+              }`}>
+                <div className="flex items-center gap-2">
+                  <Gift className={`h-4 w-4 flex-shrink-0 ${bidEligible ? 'text-ethena' : 'text-muted-foreground'}`} />
+                  <div className="flex-1">
+                    <p className={`font-medium ${bidEligible ? 'text-ethena' : 'text-muted-foreground'}`}>
+                      {bidEligible
+                        ? `${sponsorAmountFormatted} ${collateralSymbol} sponsored`
+                        : 'Sponsorship unavailable at this price'}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {bidEligible
+                        ? `You pay ${collateralSymbol} 0 — the sponsor covers your side of this prediction.`
+                        : `Only available for positions priced below ${Number(maxEntryPriceBps) / 100}%.`}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           <div className="mt-5 space-y-1">
             <RestrictedJurisdictionBanner

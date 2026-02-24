@@ -10,7 +10,7 @@ dotEnvConfig({ path: fromRoot('.env') });
  */
 export const config = cleanEnv(process.env, {
   NODE_ENV: str({
-    choices: ['development', 'production', 'test'],
+    choices: ['development', 'staging', 'production', 'test'],
     default: 'development',
   }),
   RATE_LIMIT_WINDOW_MS: num({

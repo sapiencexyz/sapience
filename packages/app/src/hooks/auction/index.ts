@@ -1,6 +1,6 @@
 export * from './useBidPreflight';
-export * from './useBidSubmission';
+export * from './useLegacyBidSubmission';
 
-// V2 Auction hooks
-export * from './useV2AuctionStart';
-export * from './useV2BidSubmission';
+// Escrow auction hooks
+export * from './useAuctionStart';
+export * from './useBidSubmission';

@@ -3,8 +3,8 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Script.sol";
 import "forge-std/console.sol";
-import "../src/v2/interfaces/IPredictionMarketEscrow.sol";
-import "../src/v2/interfaces/IV2Types.sol";
+import "../../../v2/interfaces/IPredictionMarketEscrow.sol";
+import "../../../v2/interfaces/IV2Types.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /**
@@ -32,24 +32,29 @@ contract DebugV2MintSimulation is Script {
         uint256 predictorWusdeBalance = IERC20(WUSDE).balanceOf(PREDICTOR);
         uint256 counterpartyWusdeBalance = IERC20(WUSDE).balanceOf(COUNTERPARTY);
         uint256 predictorAllowance = IERC20(WUSDE).allowance(PREDICTOR, ESCROW);
-        uint256 counterpartyAllowance = IERC20(WUSDE).allowance(COUNTERPARTY, ESCROW);
+        uint256 counterpartyAllowance =
+            IERC20(WUSDE).allowance(COUNTERPARTY, ESCROW);
 
         console.log("Predictor wUSDe balance:", predictorWusdeBalance);
         console.log("Counterparty wUSDe balance:", counterpartyWusdeBalance);
         console.log("Predictor allowance to escrow:", predictorAllowance);
         console.log("Counterparty allowance to escrow:", counterpartyAllowance);
 
-        // Check nonces
-        uint256 predictorNonce = IPredictionMarketEscrow(ESCROW).getNonce(PREDICTOR);
-        uint256 counterpartyNonce = IPredictionMarketEscrow(ESCROW).getNonce(COUNTERPARTY);
-        console.log("Predictor on-chain nonce:", predictorNonce);
-        console.log("Counterparty on-chain nonce:", counterpartyNonce);
+        // Check nonce usage (bitmap nonces — any unused nonce is valid)
+        console.log(
+            "Predictor nonce 0 used:",
+            IPredictionMarketEscrow(ESCROW).isNonceUsed(PREDICTOR, 0)
+        );
+        console.log(
+            "Counterparty nonce 0 used:",
+            IPredictionMarketEscrow(ESCROW).isNonceUsed(COUNTERPARTY, 0)
+        );
 
         // Values from the UserOp
-        uint256 predictorWager = 5100000000000000; // 0.0051 USDe
-        uint256 counterpartyWagerValue = 10000000000000000; // 0.01 USDe
-        uint256 predictorDeadline = 1770245065; // 0x6983cbc9
-        uint256 counterpartyDeadline = 1770244820; // 0x6983cad4
+        uint256 predictorCollateral = 5_100_000_000_000_000; // 0.0051 USDe
+        uint256 counterpartyCollateralValue = 10_000_000_000_000_000; // 0.01 USDe
+        uint256 predictorDeadline = 1_770_245_065; // 0x6983cbc9
+        uint256 counterpartyDeadline = 1_770_244_820; // 0x6983cad4
 
         console.log("\n--- Deadline Check ---");
         console.log("Current timestamp:", block.timestamp);
@@ -65,33 +70,37 @@ contract DebugV2MintSimulation is Script {
 
         // Check balance sufficiency
         console.log("\n--- Balance Sufficiency ---");
-        console.log("Predictor needs:", predictorWager);
+        console.log("Predictor needs:", predictorCollateral);
         console.log("Predictor has:", predictorWusdeBalance);
-        if (predictorWusdeBalance < predictorWager) {
+        if (predictorWusdeBalance < predictorCollateral) {
             console.log("!!! PREDICTOR INSUFFICIENT BALANCE !!!");
         }
 
-        console.log("Counterparty needs:", counterpartyWagerValue);
+        console.log("Counterparty needs:", counterpartyCollateralValue);
         console.log("Counterparty has:", counterpartyWusdeBalance);
-        if (counterpartyWusdeBalance < counterpartyWagerValue) {
+        if (counterpartyWusdeBalance < counterpartyCollateralValue) {
             console.log("!!! COUNTERPARTY INSUFFICIENT BALANCE !!!");
         }
 
         // Check allowance sufficiency
         console.log("\n--- Allowance Sufficiency ---");
-        if (predictorAllowance < predictorWager) {
+        if (predictorAllowance < predictorCollateral) {
             console.log("!!! PREDICTOR INSUFFICIENT ALLOWANCE !!!");
         }
-        if (counterpartyAllowance < counterpartyWagerValue) {
+        if (counterpartyAllowance < counterpartyCollateralValue) {
             console.log("!!! COUNTERPARTY INSUFFICIENT ALLOWANCE !!!");
         }
 
         console.log("\n=== Summary ===");
-        console.log("If deadlines have expired, the signature validation returns false");
+        console.log(
+            "If deadlines have expired, the signature validation returns false"
+        );
         console.log("which causes revert InvalidSignature()");
         console.log("But InvalidSignature has a selector, not empty reason.");
         console.log("");
-        console.log("If the issue is balance/allowance, safeTransferFrom would revert");
+        console.log(
+            "If the issue is balance/allowance, safeTransferFrom would revert"
+        );
         console.log("with a specific error message.");
         console.log("");
         console.log("An empty reason (0x) suggests:");

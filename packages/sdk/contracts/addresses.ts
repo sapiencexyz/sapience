@@ -130,11 +130,11 @@ export const eas: ChainAddressMap = {
 } as const;
 
 // ============================================
-// V2 Contract Addresses
+// Escrow Contract Addresses
 // ============================================
 
 /**
- * PredictionMarketEscrow (V2)
+ * PredictionMarketEscrow
  * Core escrow contract handling mint, settle, redeem, burn
  * TODO: Update addresses after mainnet deployment
  */
@@ -147,13 +147,14 @@ export const predictionMarketEscrow: ChainAddressMap = {
   13374202: {
     // Ethereal testnet — deployed 2026-02-17
     address: '0xb5d2E6B148eBdFB02a3456F0Af021FAe81356511',
+    blockCreated: 2264547,
     legacy: ['0x8730eE1194Cd03A14deA9975e2bafD4C8b6019F1'] as const,
   },
 } as const;
 
 /**
- * PredictionMarketVault (V2)
- * Passive liquidity vault for V2 protocol
+ * PredictionMarketVault
+ * Passive liquidity vault for escrow protocol
  * TODO: Update addresses after mainnet deployment
  */
 export const predictionMarketVault: ChainAddressMap = {
@@ -170,7 +171,7 @@ export const predictionMarketVault: ChainAddressMap = {
 } as const;
 
 /**
- * PythConditionResolver (V2)
+ * PythConditionResolver
  * Pyth oracle-based condition resolution
  */
 export const pythConditionResolver: ChainAddressMap = {
@@ -187,7 +188,7 @@ export const pythConditionResolver: ChainAddressMap = {
 } as const;
 
 /**
- * ManualConditionResolver (V2)
+ * ManualConditionResolver
  * Admin-controlled condition resolution (for testing/mocks)
  */
 export const manualConditionResolver: ChainAddressMap = {
@@ -204,7 +205,7 @@ export const manualConditionResolver: ChainAddressMap = {
 } as const;
 
 /**
- * LZConditionResolver (V2)
+ * LZConditionResolver
  * LayerZero cross-chain condition resolution
  */
 export const lzConditionResolver: ChainAddressMap = {
@@ -221,7 +222,7 @@ export const lzConditionResolver: ChainAddressMap = {
 } as const;
 
 /**
- * PredictionMarketBridge (V2)
+ * PredictionMarketBridge
  * Bridge contract on source chain (Ethereal)
  */
 export const predictionMarketBridge: ChainAddressMap = {
@@ -238,7 +239,7 @@ export const predictionMarketBridge: ChainAddressMap = {
 } as const;
 
 /**
- * PredictionMarketBridgeRemote (V2)
+ * PredictionMarketBridgeRemote
  * Bridge contract on remote chain (Arbitrum)
  */
 export const predictionMarketBridgeRemote: ChainAddressMap = {
@@ -255,7 +256,7 @@ export const predictionMarketBridgeRemote: ChainAddressMap = {
 } as const;
 
 /**
- * PredictionMarketTokenFactory (V2)
+ * PredictionMarketTokenFactory
  * CREATE3 factory for deterministic token addresses on remote chain
  */
 export const predictionMarketTokenFactory: ChainAddressMap = {
@@ -268,6 +269,44 @@ export const predictionMarketTokenFactory: ChainAddressMap = {
     // Arbitrum Sepolia testnet — deployed 2026-02-17
     address: '0xD0734eb4b22eFc22F53254C276e8A3095740600a',
     legacy: ['0x0daA1bC7FC4d7f2753FdB65e0AD96b97361385A3'] as const,
+  },
+} as const;
+
+/**
+ * SecondaryMarketEscrow (V2)
+ * Atomic OTC swap for position tokens
+ * Deployed: 0x0c12a974E7741135a8431458705Ae16dDa41aA85 (Ethereal testnet)
+ */
+export const secondaryMarketEscrow: ChainAddressMap = {
+  5064014: {
+    // Ethereal mainnet - TODO: deploy
+    address: '0x0000000000000000000000000000000000000000',
+    legacy: [] as const,
+  },
+  13374202: {
+    // Ethereal testnet — deployed 2026-02-18
+    address: '0x0c12a974E7741135a8431458705Ae16dDa41aA85',
+    legacy: [] as const,
+  },
+} as const;
+
+/**
+ * OnboardingSponsor
+ * Budget-gated sponsor for onboarding new users via invite codes.
+ * The budgetManager (API signer) calls setBudget when a user claims an invite code,
+ * then the escrow calls fundMint during sponsored mints.
+ * TODO: Update addresses after deployment
+ */
+export const onboardingSponsor: ChainAddressMap = {
+  5064014: {
+    // Ethereal mainnet - TODO: deploy
+    address: '0x0000000000000000000000000000000000000000',
+    legacy: [] as const,
+  },
+  13374202: {
+    // Ethereal testnet - TODO: deploy
+    address: '0x0000000000000000000000000000000000000000',
+    legacy: [] as const,
   },
 } as const;
 
@@ -284,10 +323,12 @@ export const contracts = {
   eas,
 };
 
-// V2 exports
-export const v2Contracts = {
+// Escrow exports
+export const escrowContracts = {
   predictionMarketEscrow,
   predictionMarketVault,
+  secondaryMarketEscrow,
+  onboardingSponsor,
   pythConditionResolver,
   manualConditionResolver,
   lzConditionResolver,

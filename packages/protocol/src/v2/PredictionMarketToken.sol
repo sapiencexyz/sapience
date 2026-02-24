@@ -17,8 +17,8 @@ contract PredictionMarketToken is ERC20, IPredictionMarketToken {
     /// @inheritdoc IPredictionMarketToken
     bool public immutable isPredictorToken;
 
-    /// @notice Address authorized to mint/burn tokens (market contract)
-    address public immutable market;
+    /// @notice Address authorized to mint/burn tokens (market or bridge contract)
+    address public immutable authority;
 
     error Unauthorized();
 
@@ -27,23 +27,23 @@ contract PredictionMarketToken is ERC20, IPredictionMarketToken {
     /// @param symbol_ Token symbol
     /// @param pickConfigId_ The pick configuration this token belongs to
     /// @param isPredictorToken_ True if this is the predictor token
-    /// @param market_ Address authorized to mint/burn tokens (the market contract)
+    /// @param authority_ Address authorized to mint/burn tokens
     constructor(
         string memory name_,
         string memory symbol_,
         bytes32 pickConfigId_,
         bool isPredictorToken_,
-        address market_
+        address authority_
     ) ERC20(name_, symbol_) {
         pickConfigId = pickConfigId_;
         isPredictorToken = isPredictorToken_;
-        market = market_;
-        // No initial mint - tokens are minted dynamically when predictions are created
+        authority = authority_;
+        // No initial mint - tokens are minted dynamically when bets are placed
     }
 
     /// @inheritdoc IPredictionMarketToken
     function mint(address to, uint256 amount) external {
-        if (msg.sender != market) {
+        if (msg.sender != authority) {
             revert Unauthorized();
         }
         _mint(to, amount);
@@ -51,7 +51,7 @@ contract PredictionMarketToken is ERC20, IPredictionMarketToken {
 
     /// @inheritdoc IPredictionMarketToken
     function burn(address holder, uint256 amount) external {
-        if (msg.sender != market) {
+        if (msg.sender != authority) {
             revert Unauthorized();
         }
         _burn(holder, amount);

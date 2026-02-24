@@ -3,7 +3,7 @@ pragma solidity ^0.8.20;
 
 import "forge-std/Script.sol";
 import "forge-std/console.sol";
-import "../src/v2/interfaces/IV2Types.sol";
+import "../../../v2/interfaces/IV2Types.sol";
 
 contract DebugEncoding is Script {
     function run() external pure {

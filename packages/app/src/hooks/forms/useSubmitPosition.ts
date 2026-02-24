@@ -1,5 +1,5 @@
 import { useCallback, useState, useMemo } from 'react';
-import { erc20Abi } from 'viem';
+import { erc20Abi, zeroAddress } from 'viem';
 
 import {
   predictionMarketAbi,
@@ -7,7 +7,8 @@ import {
   validateTakerFunds,
   prepareMintCalls,
 } from '@sapience/sdk';
-import { CHAIN_ID_ETHEREAL, ETHEREAL_WUSDE_ADDRESS } from '@sapience/sdk/constants';
+import { CHAIN_ID_ETHEREAL, CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
+import { collateralToken } from '@sapience/sdk/contracts';
 import { useAccount, useReadContract } from 'wagmi';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 import { useSession } from '~/lib/context/SessionContext';
@@ -40,13 +41,13 @@ export function useSubmitPosition({
 
   // Read current wUSDe balance on Ethereal to avoid unnecessary wrap/deposit calls
   const { data: currentWusdeBalance } = useReadContract({
-    address: ETHEREAL_WUSDE_ADDRESS,
+    address: collateralToken[chainId]?.address,
     abi: erc20Abi,
     functionName: 'balanceOf',
     args: effectiveAddress ? [effectiveAddress] : undefined,
     chainId,
     query: {
-      enabled: !!effectiveAddress && enabled && chainId === CHAIN_ID_ETHEREAL,
+      enabled: !!effectiveAddress && enabled && (chainId === CHAIN_ID_ETHEREAL || chainId === CHAIN_ID_ETHEREAL_TESTNET),
     },
   });
 
@@ -120,6 +121,8 @@ export function useSubmitPosition({
     disableSuccessToast: true,
   });
 
+  const isEscrowChain = chainId === CHAIN_ID_ETHEREAL_TESTNET;
+
   // Prepare calls for sendCalls - combines approval + mint in a single batch
   const prepareCalls = useCallback(
     (mintData: MintPredictionRequestData, freshAllowance?: bigint) => {
@@ -131,6 +134,7 @@ export function useSubmitPosition({
         currentWusdeBalance:
           typeof currentWusdeBalance === 'bigint' ? currentWusdeBalance : 0n,
         currentAllowance: freshAllowance ?? currentAllowance ?? 0n,
+        isEscrowChain,
       });
     },
     [
@@ -139,6 +143,7 @@ export function useSubmitPosition({
       currentAllowance,
       chainId,
       currentWusdeBalance,
+      isEscrowChain,
     ]
   );
 

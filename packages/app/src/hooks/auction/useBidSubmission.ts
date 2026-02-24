@@ -1,152 +1,71 @@
 'use client';
 
-/**
- * Bid submission hook supporting both V1 (mainnet) and V2 (testnet) protocols.
- * V1: Uses SignatureProcessor.Approve EIP-712 format
- * V2: Uses MintApproval EIP-712 format from PredictionMarketEscrow
- */
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useAccount, useSignTypedData } from 'wagmi';
 import {
-  encodeAbiParameters,
-  parseAbiParameters,
-  keccak256,
-  getAddress,
-  parseUnits,
-  formatUnits,
   type Address,
+  type Hex,
+  formatUnits,
+  parseUnits,
+  createPublicClient,
+  http,
 } from 'viem';
+import { buildCounterpartyMintTypedData } from '@sapience/sdk/auction/escrowSigning';
+import { canonicalizePicks } from '@sapience/sdk/auction/escrowEncoding';
+import type {
+  Pick,
+  BidPayload,
+  AuctionDetails,
+} from '@sapience/sdk/types';
+import { predictionMarketEscrow } from '@sapience/sdk/contracts';
+import { predictionMarketEscrowAbi } from '@sapience/sdk/abis';
 import {
-  predictionMarket,
-  predictionMarketEscrow,
-  collateralToken as collateralTokenAddresses,
-} from '@sapience/sdk/contracts';
-import { CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
-import { erc20Abi, encodeFunctionData, parseAbi } from 'viem';
-
-// wUSDe ABI for deposit function (wraps native USDe to wUSDe)
-const WUSDE_DEPOSIT_ABI = parseAbi(['function deposit() payable']);
-import { buildCounterpartyMintTypedData } from '@sapience/sdk/auction/v2Signing';
-import type { OutcomeSide } from '@sapience/sdk';
-import { type Pick as V2Pick } from '@sapience/sdk';
-import { getPublicClientForChainId } from '~/lib/utils/util';
+  DEFAULT_CHAIN_ID,
+  etherealTestnetChain,
+  etherealChain,
+  CHAIN_ID_ETHEREAL_TESTNET,
+} from '@sapience/sdk/constants';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
-import { encodeV2SessionKeyData } from '~/lib/session/sessionKeyManager';
-import { useToast } from '@sapience/ui/hooks/use-toast';
 import { toAuctionWsUrl } from '~/lib/ws';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
-import {
-  decodeAuctionPredictedOutcomes,
-  decodedOutcomesToV2Picks,
-} from '~/lib/auction/decodePredictedOutcomes';
-import { useV2Nonce } from '~/hooks/blockchain/useV2Contract';
 
-export type BidSubmissionParams = {
-  auctionId: string;
-  /** Bidder's position size in wei */
-  makerCollateral: bigint;
-  /** Auction creator's position size in wei */
-  takerCollateral: bigint;
-  /** Encoded predicted outcomes (V1) */
-  predictedOutcomes: `0x${string}`[];
-  /** Resolver contract address */
-  resolver: `0x${string}`;
-  /** Auction creator (taker) address */
-  taker: `0x${string}`;
-  /** Taker nonce for the auction (required for V1, not needed for V2) */
-  takerNonce?: number;
-  /** Bid expiry in seconds from now */
-  expirySeconds: number;
-  /** Optional max end time (seconds since epoch) to clamp expiry */
-  maxEndTimeSec?: number;
-  /** Force V1 protocol even on V2-capable chains (for V1 auctions) */
-  forceV1?: boolean;
-  /** V2 picks array (for V2 auctions - used instead of decoding predictedOutcomes) */
-  v2Picks?: Array<{
-    conditionResolver: string;
-    conditionId: string;
-    predictedOutcome: number;
-  }>;
-};
+export interface BidSubmissionParams {
+  /** The auction to bid on */
+  auction: AuctionDetails;
+  /** Deadline in seconds from now */
+  deadlineSeconds?: number;
+}
 
-export type BidSubmissionResult = {
+export interface BidSubmissionResult {
   success: boolean;
+  bidId?: string;
   error?: string;
-  /** The signature if successful */
-  signature?: `0x${string}`;
-  /** The deadline used */
-  makerDeadline?: number;
-};
+}
 
 interface UseBidSubmissionOptions {
-  /** Called when signature is rejected by user */
+  chainId?: number;
   onSignatureRejected?: (error: Error) => void;
+  onBidSubmitted?: (bidId: string) => void;
 }
 
-interface UseBidSubmissionResult {
-  /** Submit a bid with signing and WebSocket transmission */
-  submitBid: (params: BidSubmissionParams) => Promise<BidSubmissionResult>;
-  /** Whether the wallet is connected */
-  isConnected: boolean;
-  /** Connected wallet address */
-  address: `0x${string}` | undefined;
-  /** Current chain ID */
-  chainId: number;
-  /** WebSocket URL for auction */
-  wsUrl: string | null;
-  /** Verifying contract address */
-  verifyingContract: `0x${string}` | undefined;
-  /** Token decimals for formatting */
-  tokenDecimals: number;
-  /** Format a wei amount to display units */
-  formatAmount: (weiAmount: bigint, decimals?: number) => string;
-  /** Parse a display amount to wei */
-  parseAmount: (displayAmount: string, decimals?: number) => bigint;
-}
+export function useBidSubmission(options: UseBidSubmissionOptions = {}) {
+  const {
+    chainId: overrideChainId,
+    onSignatureRejected,
+    onBidSubmitted,
+  } = options;
 
-export function useBidSubmission(
-  options: UseBidSubmissionOptions = {}
-): UseBidSubmissionResult {
-  const { onSignatureRejected } = options;
   const { address } = useAccount();
   const { signTypedDataAsync } = useSignTypedData();
-  // TODO: Get chainId from context/props when supporting multiple chains
-  const chainId = CHAIN_ID_ETHEREAL_TESTNET;
   const { apiBaseUrl } = useSettings();
-  const {
-    effectiveAddress,
-    signTypedData: sessionSignTypedData,
-    isUsingSession,
-    isUsingSmartAccount,
-    v2SessionKeyApproval,
-    chainClients,
-  } = useSession();
-  const { toast } = useToast();
+  const { effectiveAddress } = useSession();
 
-  // Get wUSDe contract address for the chain
-  const wusdeAddress = collateralTokenAddresses[chainId]?.address as
-    | Address
-    | undefined;
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const wsUrl = useMemo(() => toAuctionWsUrl(apiBaseUrl), [apiBaseUrl]);
 
-  // V2 (testnet) uses PredictionMarketEscrow, V1 (mainnet) uses PredictionMarket
-  const isV2Chain = chainId === CHAIN_ID_ETHEREAL_TESTNET;
-  const verifyingContract = (
-    isV2Chain
-      ? predictionMarketEscrow[chainId]?.address
-      : predictionMarket[chainId]?.address
-  ) as `0x${string}` | undefined;
-
-  // Get V2 nonce for counterparty signing (only used on V2 chains)
-  const { nonce: v2Nonce } = useV2Nonce({
-    address: effectiveAddress as Address | undefined,
-    chainId,
-    enabled: isV2Chain,
-  });
-
-  // Default to 18 decimals, can be overridden in format/parse calls
+  // Default to 18 decimals for formatting
   const tokenDecimals = 18;
 
   const formatAmount = useCallback(
@@ -173,438 +92,218 @@ export function useBidSubmission(
 
   const submitBid = useCallback(
     async (params: BidSubmissionParams): Promise<BidSubmissionResult> => {
-      const {
-        auctionId,
-        makerCollateral,
-        takerCollateral,
-        predictedOutcomes,
-        resolver,
-        taker,
-        takerNonce,
-        expirySeconds,
-        maxEndTimeSec,
-        forceV1 = false,
-        v2Picks: providedV2Picks,
-      } = params;
+      const { auction, deadlineSeconds = 1800 } = params; // 30 minutes default
 
-      // Determine if we should use V2 protocol
-      // Use V2 only if on V2 chain AND auction is not forced to V1
-      const useV2Protocol = isV2Chain && !forceV1;
+      const chainId = auction.chainId ?? overrideChainId ?? DEFAULT_CHAIN_ID;
 
-      // Use effectiveAddress from session context (smart account when session active, otherwise EOA)
-      const signerAddress = effectiveAddress;
+      // Use effectiveAddress from session context
+      const signerAddress = effectiveAddress as Address | undefined;
 
-      // Validate required data
+      // Validation
       if (!signerAddress) {
         return { success: false, error: 'Wallet not connected' };
       }
 
-      // Smart account mode is not supported for terminal bidding
-      if (isUsingSmartAccount) {
-        toast({
-          title: 'Smart Account Not Supported',
-          description:
-            'The trading terminal does not currently support smart account mode. Please switch to EOA mode in settings to place bids.',
-          variant: 'destructive',
-          duration: 6000,
-        });
-        return {
-          success: false,
-          error: 'Smart account mode not supported for terminal bidding',
-        };
-      }
-
-      if (!auctionId) {
+      if (!auction.auctionId) {
         return { success: false, error: 'Auction ID required' };
-      }
-
-      if (makerCollateral <= 0n) {
-        return { success: false, error: 'Invalid bid amount' };
-      }
-
-      const encodedPredicted = predictedOutcomes[0];
-      // V2 auctions use v2Picks, V1 auctions use predictedOutcomes
-      const hasV2Picks = providedV2Picks && providedV2Picks.length > 0;
-      if (!hasV2Picks && !encodedPredicted) {
-        return { success: false, error: 'Missing predicted outcomes' };
-      }
-
-      if (!resolver) {
-        return { success: false, error: 'Missing resolver' };
-      }
-
-      if (!taker) {
-        return { success: false, error: 'Missing taker address' };
-      }
-
-      if (!verifyingContract) {
-        return { success: false, error: 'Missing verifying contract' };
       }
 
       if (!wsUrl) {
         return { success: false, error: 'Realtime connection not configured' };
       }
 
-      // Calculate deadline with optional clamping
-      const nowSec = Math.floor(Date.now() / 1000);
-      const requested = Math.max(0, expirySeconds);
-      const clampedExpiry = (() => {
-        const end = Number(maxEndTimeSec || 0);
-        if (!Number.isFinite(end) || end <= 0) return requested;
-        const remaining = Math.max(0, end - nowSec);
-        return Math.min(requested, remaining);
-      })();
-      const makerDeadline = nowSec + clampedExpiry;
+      const verifyingContract = predictionMarketEscrow[chainId]?.address as
+        | Address
+        | undefined;
 
-      let makerSignature: `0x${string}`;
-
-      if (useV2Protocol) {
-        // V2: SmartAccount counterparties need wUSDe pre-funded before mint
-        // The predictor calls mint(), which does transferFrom(counterparty) - counterparty can't wrap at that time
-        if (isUsingSession && wusdeAddress && chainClients?.ethereal) {
-          const escrowAddress = verifyingContract;
-          const publicClient = getPublicClientForChainId(chainId);
-
-          try {
-            // Check counterparty's current wUSDe state
-            const [wusdeBalance, wusdeAllowance] = await Promise.all([
-              publicClient.readContract({
-                address: wusdeAddress,
-                abi: erc20Abi,
-                functionName: 'balanceOf',
-                args: [signerAddress],
-              }),
-              publicClient.readContract({
-                address: wusdeAddress,
-                abi: erc20Abi,
-                functionName: 'allowance',
-                args: [signerAddress, escrowAddress],
-              }),
-            ]);
-
-            const needsMoreWusde = wusdeBalance < makerCollateral;
-            const needsMoreAllowance = wusdeAllowance < makerCollateral;
-
-            if (needsMoreWusde || needsMoreAllowance) {
-              // Check native USDe balance for potential wrapping
-              const nativeUsdeBalance = await publicClient.getBalance({
-                address: signerAddress,
-              });
-
-              // Also check if there's depositable USDe token (not native ETH-like)
-              // wUSDe.deposit() wraps native USDe sent as msg.value
-              const wrapAmount = needsMoreWusde
-                ? makerCollateral - wusdeBalance
-                : 0n;
-
-              if (wrapAmount > 0n && nativeUsdeBalance < wrapAmount) {
-                return {
-                  success: false,
-                  error: `Insufficient USDe in SmartAccount. Need ${formatAmount(wrapAmount)} more USDe. Please transfer from your wallet.`,
-                };
-              }
-
-              // Build calls for wrap and/or approve
-              const calls: Array<{
-                to: Address;
-                data: `0x${string}`;
-                value: bigint;
-              }> = [];
-
-              if (wrapAmount > 0n) {
-                // Wrap native USDe to wUSDe via deposit()
-                calls.push({
-                  to: wusdeAddress,
-                  data: encodeFunctionData({
-                    abi: WUSDE_DEPOSIT_ABI,
-                    functionName: 'deposit',
-                  }),
-                  value: wrapAmount,
-                });
-              }
-
-              if (needsMoreAllowance) {
-                // Approve escrow to spend wUSDe
-                calls.push({
-                  to: wusdeAddress,
-                  data: encodeFunctionData({
-                    abi: erc20Abi,
-                    functionName: 'approve',
-                    args: [escrowAddress, makerCollateral],
-                  }),
-                  value: 0n,
-                });
-              }
-
-              if (calls.length > 0) {
-                try {
-                  // Execute wrap + approve via session key
-                  const userOpHash =
-                    await chainClients.ethereal.sendUserOperation({
-                      calls,
-                    });
-
-                  // Wait for the UserOp to be included
-                  const receipt =
-                    await chainClients.ethereal.waitForUserOperationReceipt({
-                      hash: userOpHash,
-                    });
-
-                  if (!receipt.success) {
-                    return {
-                      success: false,
-                      error:
-                        'Failed to prepare funds for bid. Please try again.',
-                    };
-                  }
-                } catch (prepError) {
-                  console.error('[V2 Bid] Fund preparation failed:', prepError);
-                  return {
-                    success: false,
-                    error: `Failed to prepare funds: ${prepError instanceof Error ? prepError.message : String(prepError)}`,
-                  };
-                }
-              }
-            }
-          } catch (checkError) {
-            console.warn(
-              '[V2 Bid] Failed to check counterparty funds:',
-              checkError
-            );
-            // Continue with bid - validation will catch issues later
-          }
-        }
-
-        // V2 signing: Use MintApproval typed data
-        // Use provided v2Picks directly if available, otherwise decode from predictedOutcomes
-        let picks: V2Pick[];
-
-        if (providedV2Picks && providedV2Picks.length > 0) {
-          // Use provided V2 picks directly (already in correct format from auction data)
-          picks = providedV2Picks.map((p) => ({
-            conditionResolver: p.conditionResolver as `0x${string}`,
-            conditionId: p.conditionId as `0x${string}`,
-            predictedOutcome: p.predictedOutcome as OutcomeSide,
-          }));
-        } else {
-          // Fall back to decoding from predictedOutcomes (V1-style auctions on V2 chain)
-          const decoded = decodeAuctionPredictedOutcomes({
-            resolver,
-            predictedOutcomes,
-          });
-          picks = decodedOutcomesToV2Picks(decoded, resolver);
-        }
-
-        if (picks.length === 0) {
-          return {
-            success: false,
-            error: 'Could not decode picks for V2 signing',
-          };
-        }
-
-        // Get counterparty nonce (bidder's nonce)
-        const counterpartyNonce = v2Nonce ?? 0n;
-
-        // Build V2 typed data for counterparty (bidder)
-        // In V2 terms: predictor = taker (auction creator), counterparty = maker (bidder)
-        const typedData = buildCounterpartyMintTypedData({
-          picks,
-          predictorCollateral: takerCollateral, // auction creator's collateral
-          counterpartyCollateral: makerCollateral, // bidder's collateral
-          predictor: taker, // auction creator
-          counterparty: signerAddress, // bidder (us)
-          counterpartyNonce,
-          counterpartyDeadline: BigInt(makerDeadline),
-          verifyingContract: verifyingContract,
-          chainId,
-        });
-
-        try {
-          // Use session key signing if session is active, otherwise use wallet
-          if (isUsingSession && sessionSignTypedData) {
-            makerSignature = await sessionSignTypedData({
-              domain: {
-                ...typedData.domain,
-                chainId: Number(typedData.domain.chainId),
-              },
-              types: typedData.types,
-              primaryType: typedData.primaryType,
-              message: typedData.message as Record<string, unknown>,
-            });
-          } else {
-            makerSignature = await signTypedDataAsync({
-              domain: {
-                ...typedData.domain,
-                chainId: Number(typedData.domain.chainId),
-              },
-              types: typedData.types,
-              primaryType: typedData.primaryType,
-              message: typedData.message,
-            });
-          }
-        } catch (e: any) {
-          const error =
-            e instanceof Error ? e : new Error(String(e?.message || e));
-          onSignatureRejected?.(error);
-          return {
-            success: false,
-            error: `Signature rejected: ${error.message}`,
-          };
-        }
-      } else {
-        // V1 signing: Use SignatureProcessor.Approve typed data
-        // V1 requires takerNonce
-        if (takerNonce === undefined) {
-          return {
-            success: false,
-            error: 'Missing taker nonce for V1 signing',
-          };
-        }
-
-        const innerMessageHash = keccak256(
-          encodeAbiParameters(
-            parseAbiParameters(
-              'bytes, uint256, uint256, address, address, uint256, uint256'
-            ),
-            [
-              encodedPredicted,
-              makerCollateral,
-              takerCollateral,
-              getAddress(resolver),
-              getAddress(taker),
-              BigInt(makerDeadline),
-              BigInt(takerNonce),
-            ]
-          )
-        );
-
-        const domain = {
-          name: 'SignatureProcessor',
-          version: '1',
-          chainId: chainId,
-          verifyingContract,
-        } as const;
-
-        const types = {
-          Approve: [
-            { name: 'messageHash', type: 'bytes32' },
-            { name: 'owner', type: 'address' },
-          ],
-        } as const;
-
-        const message = {
-          messageHash: innerMessageHash,
-          owner: getAddress(signerAddress),
-        } as const;
-
-        try {
-          // Use session key signing if session is active, otherwise use wallet
-          if (isUsingSession && sessionSignTypedData) {
-            makerSignature = await sessionSignTypedData({
-              domain,
-              types,
-              primaryType: 'Approve',
-              message: message as Record<string, unknown>,
-            });
-          } else {
-            makerSignature = await signTypedDataAsync({
-              domain,
-              types,
-              primaryType: 'Approve',
-              message,
-            });
-          }
-        } catch (e: any) {
-          const error =
-            e instanceof Error ? e : new Error(String(e?.message || e));
-          onSignatureRejected?.(error);
-          return {
-            success: false,
-            error: `Signature rejected: ${error.message}`,
-          };
-        }
+      if (!verifyingContract) {
+        return {
+          success: false,
+          error: 'Escrow contract not available for this chain',
+        };
       }
 
-      if (!makerSignature) {
+      // Cannot bid on own auction
+      if (signerAddress.toLowerCase() === auction.predictor.toLowerCase()) {
+        return { success: false, error: 'Cannot bid on your own auction' };
+      }
+
+      // Get nonce for the counterparty (this signer) from the contract
+      const chain =
+        chainId === CHAIN_ID_ETHEREAL_TESTNET
+          ? etherealTestnetChain
+          : etherealChain;
+      const publicClient = createPublicClient({
+        chain,
+        transport: http(chain.rpcUrls.default.http[0]),
+      });
+
+      let counterpartyNonce: bigint;
+      try {
+        const nonceResult = await publicClient.readContract({
+          address: verifyingContract,
+          abi: predictionMarketEscrowAbi,
+          functionName: 'getNonce',
+          args: [signerAddress],
+        });
+        counterpartyNonce = BigInt(nonceResult as string | number | bigint);
+        console.log(
+          '[Bid] Fetched counterparty nonce from contract:',
+          counterpartyNonce.toString()
+        );
+      } catch (nonceError) {
+        console.error(
+          '[Bid] Failed to fetch nonce, defaulting to 0:',
+          nonceError
+        );
+        counterpartyNonce = 0n;
+      }
+
+      const client = getSharedAuctionWsClient(wsUrl);
+
+      // Calculate deadline
+      const nowSec = Math.floor(Date.now() / 1000);
+      const counterpartyDeadline = BigInt(
+        nowSec + Math.max(60, deadlineSeconds)
+      );
+
+      // Convert picks from JSON to SDK format and canonicalize
+      const rawPicks: Pick[] = auction.picks.map((p) => ({
+        conditionResolver: p.conditionResolver as Address,
+        conditionId: p.conditionId as Hex,
+        predictedOutcome: p.predictedOutcome,
+      }));
+      const picks = canonicalizePicks(rawPicks);
+
+      // Build typed data for counterparty signature
+      const typedData = buildCounterpartyMintTypedData({
+        picks,
+        predictorCollateral: BigInt(auction.predictorCollateral),
+        counterpartyCollateral: BigInt(auction.counterpartyCollateral),
+        predictor: auction.predictor as Address,
+        counterparty: signerAddress,
+        counterpartyNonce,
+        counterpartyDeadline,
+        verifyingContract,
+        chainId,
+      });
+
+      // Sign the typed data
+      setIsSubmitting(true);
+      let counterpartySignature: Hex;
+      try {
+        counterpartySignature = await signTypedDataAsync({
+          domain: {
+            ...typedData.domain,
+            chainId: Number(typedData.domain.chainId),
+          },
+          types: typedData.types,
+          primaryType: typedData.primaryType,
+          message: typedData.message,
+        });
+      } catch (e: any) {
+        setIsSubmitting(false);
+        const error =
+          e instanceof Error ? e : new Error(String(e?.message || e));
+        onSignatureRejected?.(error);
+        return {
+          success: false,
+          error: `Signature rejected: ${error.message}`,
+        };
+      }
+
+      if (!counterpartySignature) {
+        setIsSubmitting(false);
         return { success: false, error: 'No signature returned' };
       }
 
-      // Send over shared Auction WS (fire and forget - no ack wait)
-      const client = getSharedAuctionWsClient(wsUrl);
-
-      if (useV2Protocol) {
-        // V2 bid payload - uses V2 terminology (counterparty = bidder)
-        // Include session key data if bidder is using session key signing
-        const counterpartySessionKeyData =
-          isUsingSession && v2SessionKeyApproval
-            ? encodeV2SessionKeyData(v2SessionKeyApproval)
-            : undefined;
-
-        const v2Payload = {
-          auctionId,
-          counterparty: signerAddress,
-          counterpartyCollateral: makerCollateral.toString(),
-          counterpartyNonce: Number(v2Nonce ?? 0n),
-          counterpartyDeadline: makerDeadline,
-          counterpartySignature: makerSignature,
-          ...(counterpartySessionKeyData && { counterpartySessionKeyData }),
-        };
-        client.send({ type: 'v2.bid.submit', payload: v2Payload });
-      } else {
-        // V1 bid payload
-        const payload: Record<string, unknown> = {
-          auctionId,
-          maker: signerAddress,
-          makerDeadline,
-          makerNonce: takerNonce,
-          makerSignature,
-          makerCollateral: makerCollateral.toString(),
-        };
-        client.send({ type: 'bid.submit', payload });
-      }
-
-      // Dispatch event for UI updates
-      try {
-        window.dispatchEvent(new Event('auction.bid.submitted'));
-      } catch {
-        void 0;
-      }
-
-      // Bid was signed and sent - return success
-      return {
-        success: true,
-        signature: makerSignature,
-        makerDeadline,
+      // Build bid payload
+      const bidPayload: BidPayload = {
+        auctionId: auction.auctionId,
+        counterparty: signerAddress,
+        counterpartyCollateral: auction.counterpartyCollateral,
+        counterpartyNonce: Number(counterpartyNonce),
+        counterpartyDeadline: Number(counterpartyDeadline),
+        counterpartySignature,
       };
+
+      // Send bid submit message
+      try {
+        const response = await new Promise<{ bidId?: string; error?: string }>(
+          (resolve, reject) => {
+            const timeout = setTimeout(() => {
+              removeListener();
+              reject(new Error('Bid submission timeout'));
+            }, 10000);
+
+            // Listen for ack using the proper API
+            const removeListener = client.addMessageListener((msg: unknown) => {
+              const data = msg as {
+                type?: string;
+                payload?: { bidId?: string; error?: string };
+              };
+              if (data?.type === 'bid.ack') {
+                clearTimeout(timeout);
+                removeListener();
+                resolve(data.payload ?? {});
+              }
+            });
+
+            client.send({ type: 'bid.submit', payload: bidPayload });
+          }
+        );
+
+        setIsSubmitting(false);
+
+        if (response.error) {
+          return { success: false, error: response.error };
+        }
+
+        if (response.bidId || !response.error) {
+          const bidId =
+            response.bidId ??
+            `${auction.auctionId}-${signerAddress.slice(0, 8)}`;
+          onBidSubmitted?.(bidId);
+
+          // Dispatch event for UI updates
+          try {
+            window.dispatchEvent(
+              new CustomEvent('bid.submitted', {
+                detail: { auctionId: auction.auctionId, bidId },
+              })
+            );
+          } catch {
+            void 0;
+          }
+
+          return { success: true, bidId };
+        }
+
+        return { success: false, error: 'Failed to submit bid' };
+      } catch (e: any) {
+        setIsSubmitting(false);
+        return {
+          success: false,
+          error: `Failed to submit bid: ${e?.message || 'Unknown error'}`,
+        };
+      }
     },
     [
-      address,
-      chainId,
-      verifyingContract,
+      effectiveAddress,
+      overrideChainId,
       wsUrl,
       signTypedDataAsync,
       onSignatureRejected,
-      effectiveAddress,
-      isV2Chain,
-      v2Nonce,
-      isUsingSession,
-      isUsingSmartAccount,
-      sessionSignTypedData,
-      v2SessionKeyApproval,
-      chainClients,
-      wusdeAddress,
-      formatAmount,
-      toast,
+      onBidSubmitted,
     ]
   );
 
   return {
     submitBid,
+    isSubmitting,
     isConnected: Boolean(address),
-    address,
-    chainId,
+    address: effectiveAddress as Address | undefined,
     wsUrl,
-    verifyingContract,
     tokenDecimals,
     formatAmount,
     parseAmount,

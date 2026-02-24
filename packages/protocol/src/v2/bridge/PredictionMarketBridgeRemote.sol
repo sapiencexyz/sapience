@@ -9,8 +9,8 @@ import { OptionsBuilder } from
     "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
 import "./PredictionMarketBridgeBase.sol";
 import "./interfaces/IPredictionMarketBridgeRemote.sol";
-import "./interfaces/IPredictionMarketTokenFactory.sol";
-import "./interfaces/IPredictionMarketTokenBridged.sol";
+import "../interfaces/IPredictionMarketTokenFactory.sol";
+import "../interfaces/IPredictionMarketToken.sol";
 
 /// @title PredictionMarketBridgeRemote
 /// @notice Bridge for position tokens on Arbitrum (remote chain)
@@ -30,12 +30,6 @@ contract PredictionMarketBridgeRemote is
 
     /// @notice Token factory for CREATE3 deployments
     IPredictionMarketTokenFactory public immutable factory;
-
-    /// @notice Mapping from source token address to bridged token address
-    mapping(address => address) public sourceToRemote;
-
-    /// @notice Mapping from bridged token address to source token address
-    mapping(address => address) public remoteToSource;
 
     /// @notice Tracking for minted tokens per bridgeId (for audit trail)
     mapping(bytes32 => MintedBridge) private _mintedBridges;
@@ -95,8 +89,12 @@ contract PredictionMarketBridgeRemote is
         }
         if (amount == 0) revert ZeroAmount();
 
-        address sourceToken = remoteToSource[token];
-        if (sourceToken == address(0)) revert TokenNotFound(token);
+        // Validate token was deployed by the factory
+        bytes32 pickConfigId = IPredictionMarketToken(token).pickConfigId();
+        bool isPredictorToken = IPredictionMarketToken(token).isPredictorToken();
+        address expectedToken =
+            factory.predictAddress(pickConfigId, isPredictorToken);
+        if (token != expectedToken) revert InvalidToken(token);
 
         // Transfer tokens to this contract (escrow, NOT burn yet)
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
@@ -120,32 +118,41 @@ contract PredictionMarketBridgeRemote is
         // Track sender's bridges
         _senderBridges[msg.sender].push(bridgeId);
 
-        // Encode message - send the SOURCE token address so Ethereal knows which token to release
-        bytes memory payload =
-            abi.encode(bridgeId, sourceToken, recipient, amount);
-        bytes memory message = abi.encode(CMD_BRIDGE, payload);
+        // Build and send LZ message in scoped block to reduce stack depth
+        {
+            // Encode message with pickConfigId + isPredictorToken
+            // (Ethereal computes token from factory)
+            bytes memory payload = abi.encode(
+                bridgeId, pickConfigId, isPredictorToken, recipient, amount
+            );
+            bytes memory message = abi.encode(CMD_BRIDGE, payload);
 
-        // Calculate ACK fee with buffer to prepay on remote chain
-        uint128 ackFeeWithBuffer = _getAckFeeWithBuffer();
+            // Calculate ACK fee with buffer to prepay on remote chain
+            uint128 ackFeeWithBuffer = _getAckFeeWithBuffer();
 
-        // Build options - include ACK fee as value to send to remote
-        bytes memory options = OptionsBuilder.newOptions()
-            .addExecutorLzReceiveOption(GAS_FOR_BRIDGE, ackFeeWithBuffer);
+            // Build options - include ACK fee as value to send to remote
+            bytes memory options = OptionsBuilder.newOptions()
+                .addExecutorLzReceiveOption(GAS_FOR_BRIDGE, ackFeeWithBuffer);
 
-        // Quote fee
-        MessagingFee memory fee =
-            _quote(_bridgeConfig.remoteEid, message, options, false);
-        if (msg.value < fee.nativeFee) {
-            revert InsufficientFee(fee.nativeFee, msg.value);
+            // Quote fee
+            MessagingFee memory fee =
+                _quote(_bridgeConfig.remoteEid, message, options, false);
+            if (msg.value < fee.nativeFee) {
+                revert InsufficientFee(fee.nativeFee, msg.value);
+            }
+
+            // Send message
+            _lzSend(
+                _bridgeConfig.remoteEid,
+                message,
+                options,
+                fee,
+                payable(msg.sender)
+            );
+
+            // Refund excess ETH
+            _refundExcess(fee.nativeFee);
         }
-
-        // Send message
-        _lzSend(
-            _bridgeConfig.remoteEid, message, options, fee, payable(msg.sender)
-        );
-
-        // Refund excess ETH
-        _refundExcess(fee.nativeFee);
 
         emit BridgeInitiated(
             bridgeId, token, msg.sender, recipient, amount, createdAt, refCode
@@ -155,15 +162,14 @@ contract PredictionMarketBridgeRemote is
     // ============ Quote Functions ============
 
     /// @inheritdoc IPredictionMarketBridgeRemote
-    function quoteBridge(address token, uint256 amount)
+    function quoteBridge(address, uint256 amount)
         external
         view
         returns (MessagingFee memory fee)
     {
-        address sourceToken = remoteToSource[token];
         // Build sample message for quote
         bytes memory payload =
-            abi.encode(bytes32(0), sourceToken, address(0), amount);
+            abi.encode(bytes32(0), bytes32(0), false, address(0), amount);
         bytes memory message = abi.encode(CMD_BRIDGE, payload);
 
         // Include ACK fee with buffer in the quote
@@ -180,10 +186,19 @@ contract PredictionMarketBridgeRemote is
         returns (MessagingFee memory fee)
     {
         PendingBridge storage pending = _pendingBridges[bridgeId];
-        address sourceToken = remoteToSource[pending.token];
+        bytes32 pickConfigId =
+            IPredictionMarketToken(pending.token).pickConfigId();
+        bool isPredictorToken =
+            IPredictionMarketToken(pending.token).isPredictorToken();
+
         // Build sample message for quote
-        bytes memory payload =
-            abi.encode(bridgeId, sourceToken, pending.recipient, pending.amount);
+        bytes memory payload = abi.encode(
+            bridgeId,
+            pickConfigId,
+            isPredictorToken,
+            pending.recipient,
+            pending.amount
+        );
         bytes memory message = abi.encode(CMD_BRIDGE, payload);
 
         // Include ACK fee with buffer in the quote
@@ -202,9 +217,18 @@ contract PredictionMarketBridgeRemote is
         override
         returns (bytes memory message, uint128 gasLimit)
     {
-        address sourceToken = remoteToSource[pending.token];
-        bytes memory payload =
-            abi.encode(bridgeId, sourceToken, pending.recipient, pending.amount);
+        bytes32 pickConfigId =
+            IPredictionMarketToken(pending.token).pickConfigId();
+        bool isPredictorToken =
+            IPredictionMarketToken(pending.token).isPredictorToken();
+
+        bytes memory payload = abi.encode(
+            bridgeId,
+            pickConfigId,
+            isPredictorToken,
+            pending.recipient,
+            pending.amount
+        );
         message = abi.encode(CMD_BRIDGE, payload);
         gasLimit = GAS_FOR_BRIDGE;
     }
@@ -213,7 +237,6 @@ contract PredictionMarketBridgeRemote is
     function _handleBridge(bytes memory data) internal override {
         (
             bytes32 bridgeId,
-            address sourceToken,
             bytes32 pickConfigId,
             bool isPredictorToken,
             string memory name,
@@ -221,8 +244,7 @@ contract PredictionMarketBridgeRemote is
             address recipient,
             uint256 amount
         ) = abi.decode(
-            data,
-            (bytes32, address, bytes32, bool, string, string, address, uint256)
+            data, (bytes32, bytes32, bool, string, string, address, uint256)
         );
 
         // Check if this bridge was already processed (idempotency)
@@ -253,14 +275,8 @@ contract PredictionMarketBridgeRemote is
             isNewDeployment = true;
         }
 
-        // Always update mappings (in case of re-bridging after full release)
-        if (sourceToRemote[sourceToken] == address(0)) {
-            sourceToRemote[sourceToken] = remoteToken;
-            remoteToSource[remoteToken] = sourceToken;
-        }
-
         // Mint tokens to recipient
-        IPredictionMarketTokenBridged(remoteToken).mint(recipient, amount);
+        IPredictionMarketToken(remoteToken).mint(recipient, amount);
 
         // Track minted tokens (for audit trail)
         _mintedBridges[bridgeId] = MintedBridge({
@@ -288,9 +304,8 @@ contract PredictionMarketBridgeRemote is
 
             // Now burn the escrowed tokens
             _escrowedBalances[pending.token] -= pending.amount;
-            IPredictionMarketTokenBridged(pending.token).burn(
-                address(this), pending.amount
-            );
+            IPredictionMarketToken(pending.token)
+                .burn(address(this), pending.amount);
 
             emit BridgeCompleted(bridgeId);
         }

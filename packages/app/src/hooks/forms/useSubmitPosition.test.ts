@@ -36,7 +36,6 @@ jest.mock('@sapience/sdk', () => ({
 
 jest.mock('@sapience/sdk/constants', () => ({
   CHAIN_ID_ETHEREAL: 5064014,
-  ETHEREAL_WUSDE_ADDRESS: '0xWUSDe',
 }));
 
 const mockSendCalls = jest.fn();

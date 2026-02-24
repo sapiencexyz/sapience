@@ -105,7 +105,9 @@ export async function loadPythLazerSymbolMap(): Promise<Map<number, string>> {
   }
 }
 
-export async function resolvePythSyntheticQuestion(priceId: string): Promise<string> {
+export async function resolvePythSyntheticQuestion(
+  priceId: string
+): Promise<string> {
   const lazerId = decodePythLazerIdFromBytes32(priceId);
   if (typeof lazerId !== 'number') return `Pyth market ${priceId}`;
   try {
@@ -116,7 +118,10 @@ export async function resolvePythSyntheticQuestion(priceId: string): Promise<str
   }
 }
 
-export function formatPythDecimalFromInt(priceInt: bigint, expo: number): string {
+export function formatPythDecimalFromInt(
+  priceInt: bigint,
+  expo: number
+): string {
   const sign = priceInt < 0n ? '-' : '';
   const digits = (priceInt < 0n ? -priceInt : priceInt).toString(10);
   if (!digits || /^0+$/.test(digits)) return '0';

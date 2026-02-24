@@ -4,6 +4,7 @@ pragma solidity ^0.8.19;
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
 import "../../src/v2/PredictionMarketEscrow.sol";
+import "../../src/v2/PredictionMarketTokenFactory.sol";
 import "../../src/v2/interfaces/IV2Types.sol";
 import "../../src/v2/interfaces/IPredictionMarketEscrow.sol";
 import "../../src/v2/resolvers/mocks/ManualConditionResolver.sol";
@@ -43,6 +44,12 @@ contract PredictionMarketEscrowDustAudit is Test {
     bytes32 constant CONDITION_ID = keccak256("DUST_TEST_CONDITION");
     bytes32 constant REF_CODE = bytes32(0);
 
+    uint256 private _nextNonce = 1;
+
+    function _freshNonce() internal returns (uint256) {
+        return _nextNonce++;
+    }
+
     function setUp() public {
         alice = vm.addr(ALICE_PK);
         bob = vm.addr(BOB_PK);
@@ -51,7 +58,12 @@ contract PredictionMarketEscrowDustAudit is Test {
 
         vm.startPrank(owner);
         collateral = new MockERC20("USD Collateral", "USDC", 6);
-        escrow = new PredictionMarketEscrow(address(collateral), owner);
+        PredictionMarketTokenFactory tokenFactory =
+            new PredictionMarketTokenFactory(owner);
+        escrow = new PredictionMarketEscrow(
+            address(collateral), owner, address(tokenFactory)
+        );
+        tokenFactory.setDeployer(address(escrow));
         resolver = new ManualConditionResolver(owner);
         resolver.approveSettler(settler);
         vm.stopPrank();
@@ -95,7 +107,7 @@ contract PredictionMarketEscrowDustAudit is Test {
     function _buildMintRequest(
         uint256 predictorCollateral,
         uint256 counterpartyCollateral
-    ) internal view returns (IV2Types.MintRequest memory request) {
+    ) internal returns (IV2Types.MintRequest memory request) {
         IV2Types.Pick[] memory picks = _buildPicks();
         bytes32 pickConfigId = keccak256(abi.encode(picks));
         bytes32 predictionHash = keccak256(
@@ -108,8 +120,8 @@ contract PredictionMarketEscrowDustAudit is Test {
             )
         );
 
-        uint256 pNonce = escrow.getNonce(alice);
-        uint256 cNonce = escrow.getNonce(bob);
+        uint256 pNonce = _freshNonce();
+        uint256 cNonce = _freshNonce();
         uint256 deadline = block.timestamp + 1 hours;
 
         request.picks = picks;
@@ -247,8 +259,8 @@ contract PredictionMarketEscrowDustAudit is Test {
         IV2Types.PickConfiguration memory config = escrow.getPickConfiguration(
             escrow.getPickConfigIdFromToken(predToken)
         );
-        uint256 totalCollateral =
-            config.totalPredictorCollateral + config.totalCounterpartyCollateral;
+        uint256 totalCollateral = config.totalPredictorCollateral
+            + config.totalCounterpartyCollateral;
         uint256 totalClaimed = config.claimedPredictorCollateral
             + config.claimedCounterpartyCollateral;
         uint256 dust = totalCollateral - totalClaimed;

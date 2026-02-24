@@ -1,8 +1,9 @@
 export { PnLResolver } from './PnLResolver';
 export { ScoreResolver } from './ScoreResolver';
-export { PositionResolver } from './PositionResolver';
-export { V2PositionResolver } from './V2PositionResolver';
+export { EscrowPositionResolver } from './EscrowPositionResolver';
+export { LegacyPositionResolver } from './LegacyPositionResolver';
 export { AnalyticsResolver } from './AnalyticsResolver';
 export { ConditionResolver } from './ConditionResolver';
 export { VolumeResolver } from './VolumeResolver';
 export { QuestionsResolver } from './QuestionsResolver';
+export { SecondaryTradeResolver } from './SecondaryTradeResolver';

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import {
-  fetchPositionsByConditionId,
-  type Position,
+  fetchLegacyPositionsByConditionId,
+  type LegacyPosition,
 } from '@sapience/sdk/queries';
 
 export function usePositionsByConditionId(params: {
@@ -20,15 +20,15 @@ export function usePositionsByConditionId(params: {
   const enabled = options?.enabled ?? Boolean(conditionId);
 
   const { data, isLoading, isFetching, error } = useQuery({
-    queryKey: ['positionsByConditionId', conditionId, take, skip, chainId],
+    queryKey: ['legacyPositionsByConditionId', conditionId, take, skip, chainId],
     enabled,
     staleTime: options?.staleTime ?? 30_000,
     gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: options?.refetchOnWindowFocus ?? false,
     refetchOnReconnect: options?.refetchOnReconnect ?? false,
     queryFn: () => {
-      if (!conditionId) return [] as Position[];
-      return fetchPositionsByConditionId({ conditionId, take, skip, chainId });
+      if (!conditionId) return [] as LegacyPosition[];
+      return fetchLegacyPositionsByConditionId({ conditionId, take, skip, chainId });
     },
   });
 

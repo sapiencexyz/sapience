@@ -8,7 +8,7 @@ import type {
   SimulateBidResult,
   BidData,
   ValidationStatus,
-  ValidatedBid,
+  LegacyValidatedBid,
   SimulateBidMintOptions,
 } from '@sapience/sdk';
 import { getPublicClientForChainId } from '~/lib/utils/util';
@@ -18,7 +18,7 @@ import {
 } from '~/lib/auction/bidLogger';
 
 // Re-export types from SDK for backward compatibility
-export type { ExecutionMode, SimulateBidResult, BidData, ValidationStatus, ValidatedBid, SimulateBidMintOptions };
+export type { ExecutionMode, SimulateBidResult, BidData, ValidationStatus, LegacyValidatedBid, SimulateBidMintOptions };
 
 const ZERO_BYTES32: `0x${string}` = `0x${'0'.repeat(64)}`;
 
@@ -175,16 +175,16 @@ export async function simulateBidMint(
  *
  * @param bids - Array of bid data from the API
  * @param options - Auction context and contract addresses
- * @returns Promise<ValidatedBid<T>[]> - Array of bids with validation status
+ * @returns Promise<LegacyValidatedBid<T>[]> - Array of bids with validation status
  */
 export async function validateBidsWithSimulation<T extends BidData>(
   bids: T[],
   options: SimulateBidMintOptions
-): Promise<ValidatedBid<T>[]> {
+): Promise<LegacyValidatedBid<T>[]> {
   logBidValidation(`Validating batch of ${bids.length} bids...`);
 
   const results = await Promise.all(
-    bids.map(async (bid): Promise<ValidatedBid<T>> => {
+    bids.map(async (bid): Promise<LegacyValidatedBid<T>> => {
       try {
         const result = await simulateBidMint(bid, options);
         return {

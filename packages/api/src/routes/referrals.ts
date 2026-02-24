@@ -1,8 +1,9 @@
 import { Request, Response, Router } from 'express';
 import prisma from '../db';
 import { hashReferralCode } from '../helpers';
-import { recoverMessageAddress } from 'viem';
+import { recoverMessageAddress, type Address } from 'viem';
 import { adminAuth } from '../middleware';
+import { grantSponsorshipBudget } from '../services/sponsorship';
 
 const router = Router();
 
@@ -12,7 +13,7 @@ const DEFAULT_USER_MAX_CLAIMS = 5;
 async function calculateVolumeForAddress(address: string): Promise<bigint> {
   const normalizedAddress = address.toLowerCase();
 
-  const positions = await prisma.position.findMany({
+  const positions = await prisma.legacyPosition.findMany({
     where: {
       OR: [
         { predictor: { equals: normalizedAddress, mode: 'insensitive' } },
@@ -319,9 +320,9 @@ router.post('/claim', async (req: Request, res: Response) => {
     });
 
     if (!code) {
-      return res
-        .status(404)
-        .json({ message: 'Invite code not found. Please check and try again.' });
+      return res.status(404).json({
+        message: 'Invite code not found. Please check and try again.',
+      });
     }
 
     // Validate: isActive, not expired, under capacity
@@ -359,8 +360,17 @@ router.post('/claim', async (req: Request, res: Response) => {
       update: { referredByCodeId: code.id },
     });
 
+    // Grant sponsorship budget on-chain (fire-and-forget — don't block the response)
+    const sponsorTxHash = await grantSponsorshipBudget(
+      normalizeAddress(walletAddress) as Address
+    ).catch((err) => {
+      console.error('[referrals] sponsorship grant failed (non-blocking):', err);
+      return null;
+    });
+
     return res.status(200).json({
       allowed: true,
+      ...(sponsorTxHash ? { sponsorTxHash } : {}),
     });
   } catch (e) {
     console.error('Error claiming referral code:', e);
@@ -638,7 +648,7 @@ router.get(
       }
 
       // Get all positions for these users
-      const positions = await prisma.position.findMany({
+      const positions = await prisma.legacyPosition.findMany({
         where: {
           OR: [
             { predictor: { in: userAddresses, mode: 'insensitive' } },

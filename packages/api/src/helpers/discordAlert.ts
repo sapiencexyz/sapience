@@ -13,9 +13,7 @@ import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 const WEBHOOK_PREFIX = 'https://discord.com/api/webhooks/';
 const APP_BASE_URL = 'https://sapience.xyz';
 
-const DISCORD_WEBHOOK_URLS: string[] = (
-  process.env.DISCORD_WEBHOOK_URLS || ''
-)
+const DISCORD_WEBHOOK_URLS: string[] = (process.env.DISCORD_WEBHOOK_URLS || '')
   .split(',')
   .map((u) => u.trim())
   .filter((u) => {

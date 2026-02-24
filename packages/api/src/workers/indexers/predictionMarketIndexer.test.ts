@@ -17,7 +17,7 @@ vi.mock('../../db', () => {
       update: vi.fn(),
       upsert: vi.fn(),
     },
-    position: {
+    legacyPosition: {
       findFirst: vi.fn(),
       create: vi.fn(),
       update: vi.fn(),
@@ -148,14 +148,10 @@ const TOPIC_PREDICTION_CONSOLIDATED = keccak256(
   toHex('PredictionConsolidated(uint256,uint256,uint256,bytes32)')
 );
 const TOPIC_ORDER_PLACED = keccak256(
-  toHex(
-    'OrderPlaced(address,uint256,bytes,address,uint256,uint256,bytes32)'
-  )
+  toHex('OrderPlaced(address,uint256,bytes,address,uint256,uint256,bytes32)')
 );
 const TOPIC_ORDER_FILLED = keccak256(
-  toHex(
-    'OrderFilled(uint256,address,address,bytes,uint256,uint256,bytes32)'
-  )
+  toHex('OrderFilled(uint256,address,address,bytes,uint256,uint256,bytes32)')
 );
 const TOPIC_ORDER_CANCELLED = keccak256(
   toHex('OrderCancelled(uint256,address,bytes,uint256,uint256)')
@@ -167,9 +163,7 @@ const TOPIC_MARKET_SUBMITTED_TO_UMA = keccak256(
   toHex('MarketSubmittedToUMA(bytes32,bytes32,address,bytes,bool)')
 );
 const TOPIC_CONDITION_RESOLVED = keccak256(
-  toHex(
-    'ConditionResolved(bytes32,bool,bool,uint256,uint256,uint256,uint256)'
-  )
+  toHex('ConditionResolved(bytes32,bool,bool,uint256,uint256,uint256,uint256)')
 );
 const TOPIC_PENDING_REQUEST_PROCESSED = keccak256(
   toHex('PendingRequestProcessed(address,bool,uint256,uint256)')
@@ -412,7 +406,9 @@ describe('PredictionMarketIndexer', () => {
 
     it('handles unknown topic gracefully', async () => {
       const log = makeLog({
-        topics: ['0x0000000000000000000000000000000000000000000000000000000000000000'],
+        topics: [
+          '0x0000000000000000000000000000000000000000000000000000000000000000',
+        ],
       });
       await (indexer as any).processLog(log, makeBlock());
       // Should not throw, no prisma calls
@@ -486,18 +482,18 @@ describe('PredictionMarketIndexer', () => {
       (prisma.condition.findMany as Mock).mockResolvedValue([
         { id: CONDITION_ID.toLowerCase(), endTime: 1700100000 },
       ]);
-      (prisma.position.create as Mock).mockResolvedValue({ id: 1 });
+      (prisma.legacyPosition.create as Mock).mockResolvedValue({ id: 1 });
       (prisma.event.create as Mock).mockResolvedValue({ id: 1 });
       (prisma.$executeRaw as Mock).mockResolvedValue(1);
 
       await (indexer as any).processPredictionMinted(mintedLog, makeBlock());
 
       expect(prisma.event.create).toHaveBeenCalledTimes(1);
-      expect(prisma.position.create).toHaveBeenCalledTimes(1);
+      expect(prisma.legacyPosition.create).toHaveBeenCalledTimes(1);
 
       // Verify position data
-      const positionData = (prisma.position.create as Mock).mock.calls[0][0]
-        .data;
+      const positionData = (prisma.legacyPosition.create as Mock).mock
+        .calls[0][0].data;
       expect(positionData.status).toBe('active');
       expect(positionData.predictorWon).toBeNull();
       expect(positionData.totalCollateral).toBe('300000000');
@@ -508,31 +504,29 @@ describe('PredictionMarketIndexer', () => {
 
     it('skips event creation but creates position if event exists and position missing', async () => {
       (prisma.event.findFirst as Mock).mockResolvedValue({ id: 1 });
-      (prisma.position.findFirst as Mock).mockResolvedValue(null);
+      (prisma.legacyPosition.findFirst as Mock).mockResolvedValue(null);
       (prisma.condition.findMany as Mock).mockResolvedValue([]);
-      (prisma.position.create as Mock).mockResolvedValue({ id: 2 });
+      (prisma.legacyPosition.create as Mock).mockResolvedValue({ id: 2 });
       (prisma.$executeRaw as Mock).mockResolvedValue(1);
 
       await (indexer as any).processPredictionMinted(mintedLog, makeBlock());
 
       expect(prisma.event.create).not.toHaveBeenCalled();
-      expect(prisma.position.create).toHaveBeenCalledTimes(1);
+      expect(prisma.legacyPosition.create).toHaveBeenCalledTimes(1);
     });
 
     it('skips entirely if event and position both exist', async () => {
       (prisma.event.findFirst as Mock).mockResolvedValue({ id: 1 });
-      (prisma.position.findFirst as Mock).mockResolvedValue({ id: 1 });
+      (prisma.legacyPosition.findFirst as Mock).mockResolvedValue({ id: 1 });
 
       await (indexer as any).processPredictionMinted(mintedLog, makeBlock());
 
       expect(prisma.event.create).not.toHaveBeenCalled();
-      expect(prisma.position.create).not.toHaveBeenCalled();
+      expect(prisma.legacyPosition.create).not.toHaveBeenCalled();
     });
 
     it('catches and reports errors without throwing', async () => {
-      (prisma.event.findFirst as Mock).mockRejectedValue(
-        new Error('DB error')
-      );
+      (prisma.event.findFirst as Mock).mockRejectedValue(new Error('DB error'));
 
       await expect(
         (indexer as any).processPredictionMinted(mintedLog, makeBlock())
@@ -576,16 +570,16 @@ describe('PredictionMarketIndexer', () => {
     it('creates event and updates position to settled', async () => {
       (prisma.event.findFirst as Mock).mockResolvedValue(null);
       (prisma.event.create as Mock).mockResolvedValue({ id: 1 });
-      (prisma.position.findFirst as Mock).mockResolvedValue({
+      (prisma.legacyPosition.findFirst as Mock).mockResolvedValue({
         id: 5,
         status: 'active',
       });
-      (prisma.position.update as Mock).mockResolvedValue({ id: 5 });
+      (prisma.legacyPosition.update as Mock).mockResolvedValue({ id: 5 });
 
       await (indexer as any).processPredictionBurned(burnLog, makeBlock());
 
       expect(prisma.event.create).toHaveBeenCalledTimes(1);
-      expect(prisma.position.update).toHaveBeenCalledWith({
+      expect(prisma.legacyPosition.update).toHaveBeenCalledWith({
         where: { id: 5 },
         data: {
           status: 'settled',
@@ -597,7 +591,7 @@ describe('PredictionMarketIndexer', () => {
 
     it('skips if event exists and position already settled', async () => {
       (prisma.event.findFirst as Mock).mockResolvedValue({ id: 1 });
-      (prisma.position.findFirst as Mock).mockResolvedValue({
+      (prisma.legacyPosition.findFirst as Mock).mockResolvedValue({
         id: 5,
         status: 'settled',
       });
@@ -605,22 +599,20 @@ describe('PredictionMarketIndexer', () => {
       await (indexer as any).processPredictionBurned(burnLog, makeBlock());
 
       expect(prisma.event.create).not.toHaveBeenCalled();
-      expect(prisma.position.update).not.toHaveBeenCalled();
+      expect(prisma.legacyPosition.update).not.toHaveBeenCalled();
     });
 
     it('returns early if event exists but position not found', async () => {
       (prisma.event.findFirst as Mock).mockResolvedValue({ id: 1 });
-      (prisma.position.findFirst as Mock).mockResolvedValue(null);
+      (prisma.legacyPosition.findFirst as Mock).mockResolvedValue(null);
 
       await (indexer as any).processPredictionBurned(burnLog, makeBlock());
 
-      expect(prisma.position.update).not.toHaveBeenCalled();
+      expect(prisma.legacyPosition.update).not.toHaveBeenCalled();
     });
 
     it('catches errors without throwing', async () => {
-      (prisma.event.findFirst as Mock).mockRejectedValue(
-        new Error('DB error')
-      );
+      (prisma.event.findFirst as Mock).mockRejectedValue(new Error('DB error'));
       await expect(
         (indexer as any).processPredictionBurned(burnLog, makeBlock())
       ).resolves.toBeUndefined();
@@ -654,11 +646,11 @@ describe('PredictionMarketIndexer', () => {
     it('creates event and updates position to consolidated', async () => {
       (prisma.event.findFirst as Mock).mockResolvedValue(null);
       (prisma.event.create as Mock).mockResolvedValue({ id: 1 });
-      (prisma.position.findFirst as Mock).mockResolvedValue({
+      (prisma.legacyPosition.findFirst as Mock).mockResolvedValue({
         id: 10,
         status: 'active',
       });
-      (prisma.position.update as Mock).mockResolvedValue({ id: 10 });
+      (prisma.legacyPosition.update as Mock).mockResolvedValue({ id: 10 });
 
       await (indexer as any).processPredictionConsolidated(
         consolLog,
@@ -666,7 +658,7 @@ describe('PredictionMarketIndexer', () => {
       );
 
       expect(prisma.event.create).toHaveBeenCalledTimes(1);
-      expect(prisma.position.update).toHaveBeenCalledWith({
+      expect(prisma.legacyPosition.update).toHaveBeenCalledWith({
         where: { id: 10 },
         data: {
           status: 'consolidated',
@@ -678,7 +670,7 @@ describe('PredictionMarketIndexer', () => {
 
     it('skips if already consolidated', async () => {
       (prisma.event.findFirst as Mock).mockResolvedValue({ id: 1 });
-      (prisma.position.findFirst as Mock).mockResolvedValue({
+      (prisma.legacyPosition.findFirst as Mock).mockResolvedValue({
         id: 10,
         status: 'consolidated',
       });
@@ -688,13 +680,11 @@ describe('PredictionMarketIndexer', () => {
         makeBlock()
       );
 
-      expect(prisma.position.update).not.toHaveBeenCalled();
+      expect(prisma.legacyPosition.update).not.toHaveBeenCalled();
     });
 
     it('catches errors without throwing', async () => {
-      (prisma.event.findFirst as Mock).mockRejectedValue(
-        new Error('DB error')
-      );
+      (prisma.event.findFirst as Mock).mockRejectedValue(new Error('DB error'));
       await expect(
         (indexer as any).processPredictionConsolidated(consolLog, makeBlock())
       ).resolves.toBeUndefined();
@@ -764,9 +754,7 @@ describe('PredictionMarketIndexer', () => {
     });
 
     it('catches errors without throwing', async () => {
-      (prisma.event.findFirst as Mock).mockRejectedValue(
-        new Error('DB error')
-      );
+      (prisma.event.findFirst as Mock).mockRejectedValue(new Error('DB error'));
       await expect(
         (indexer as any).processOrderPlaced(orderLog, makeBlock())
       ).resolves.toBeUndefined();
@@ -1005,9 +993,7 @@ describe('PredictionMarketIndexer', () => {
     });
 
     it('catches errors without throwing', async () => {
-      (prisma.event.findFirst as Mock).mockRejectedValue(
-        new Error('DB error')
-      );
+      (prisma.event.findFirst as Mock).mockRejectedValue(new Error('DB error'));
       await expect(
         (indexer as any).processMarketResolved(resolveLog, makeBlock())
       ).resolves.toBeUndefined();
@@ -1029,11 +1015,7 @@ describe('PredictionMarketIndexer', () => {
         { type: 'bytes' }, // claim
         { type: 'bool' }, // resolvedToYes
       ],
-      [
-        '0x000000000000000000000000000000000000dEaD',
-        '0x1234',
-        true,
-      ]
+      ['0x000000000000000000000000000000000000dEaD', '0x1234', true]
     );
 
     const umaLog = makeLog({
@@ -1160,9 +1142,7 @@ describe('PredictionMarketIndexer', () => {
     });
 
     it('catches errors without throwing', async () => {
-      (prisma.event.findFirst as Mock).mockRejectedValue(
-        new Error('DB error')
-      );
+      (prisma.event.findFirst as Mock).mockRejectedValue(new Error('DB error'));
       await expect(
         (indexer as any).processConditionResolved(condResolveLog, makeBlock())
       ).resolves.toBeUndefined();
@@ -1206,11 +1186,7 @@ describe('PredictionMarketIndexer', () => {
 
     it('handles withdrawal (direction=false)', async () => {
       const withdrawData = encodeAbiParameters(
-        [
-          { type: 'bool' },
-          { type: 'uint256' },
-          { type: 'uint256' },
-        ],
+        [{ type: 'bool' }, { type: 'uint256' }, { type: 'uint256' }],
         [false, 500000n, 1000000n]
       );
 
@@ -1263,7 +1239,11 @@ describe('PredictionMarketIndexer', () => {
 
     it('continues processing other logs if one fails', async () => {
       // First log will fail in processLog, second should still process
-      const badLog = makeLog({ logIndex: 0, topics: [TOPIC_PREDICTION_MINTED], data: '0x' });
+      const badLog = makeLog({
+        logIndex: 0,
+        topics: [TOPIC_PREDICTION_MINTED],
+        data: '0x',
+      });
       const goodLog = makeLog({ logIndex: 1, topics: ['0xunknown'] });
       mockClient.getLogs.mockResolvedValueOnce([badLog, goodLog]);
 

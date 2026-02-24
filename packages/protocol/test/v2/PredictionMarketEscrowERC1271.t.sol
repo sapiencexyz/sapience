@@ -3,6 +3,7 @@ pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
 import "../../src/v2/PredictionMarketEscrow.sol";
+import "../../src/v2/PredictionMarketTokenFactory.sol";
 import "../../src/v2/resolvers/mocks/ManualConditionResolver.sol";
 import "../../src/v2/interfaces/IV2Types.sol";
 import "../../src/v2/interfaces/IPredictionMarketToken.sol";
@@ -48,8 +49,9 @@ contract MockSmartAccount is IERC1271 {
 
 /// @notice Non-EIP1271 contract (no isValidSignature function)
 contract NonEIP1271Contract {
-// Intentionally empty - does not implement IERC1271
-}
+    // Intentionally empty - does not implement IERC1271
+
+    }
 
 /// @notice Contract that reverts on isValidSignature
 contract RevertingEIP1271Contract is IERC1271 {
@@ -87,6 +89,12 @@ contract PredictionMarketEscrowERC1271Test is Test {
 
     bytes32 public conditionId1;
 
+    uint256 private _nextNonce = 1;
+
+    function _freshNonce() internal returns (uint256) {
+        return _nextNonce++;
+    }
+
     function setUp() public {
         // Create accounts with known private keys
         owner = vm.addr(1);
@@ -98,7 +106,13 @@ contract PredictionMarketEscrowERC1271Test is Test {
 
         // Deploy contracts
         collateralToken = new MockERC20("Test USDE", "USDE", 18);
-        market = new PredictionMarketEscrow(address(collateralToken), owner);
+        PredictionMarketTokenFactory tokenFactory =
+            new PredictionMarketTokenFactory(owner);
+        market = new PredictionMarketEscrow(
+            address(collateralToken), owner, address(tokenFactory)
+        );
+        vm.prank(owner);
+        tokenFactory.setDeployer(address(market));
 
         vm.prank(owner);
         resolver = new ManualConditionResolver(owner);
@@ -162,9 +176,11 @@ contract PredictionMarketEscrowERC1271Test is Test {
         return abi.encodePacked(r, s, v);
     }
 
-    function _createMintRequestWithSmartAccountPredictor(
-        IV2Types.Pick[] memory picks
-    ) internal view returns (IV2Types.MintRequest memory request) {
+    function _createMintRequestWithSmartAccountPredictor(IV2Types
+                .Pick[] memory picks)
+        internal
+        returns (IV2Types.MintRequest memory request)
+    {
         bytes32 pickConfigId = keccak256(abi.encode(picks));
         bytes32 predictionHash = keccak256(
             abi.encode(
@@ -176,8 +192,8 @@ contract PredictionMarketEscrowERC1271Test is Test {
             )
         );
 
-        uint256 pNonce = market.getNonce(address(predictorSmartAccount));
-        uint256 cNonce = market.getNonce(counterparty);
+        uint256 pNonce = _freshNonce();
+        uint256 cNonce = _freshNonce();
         uint256 deadline = block.timestamp + 1 hours;
 
         request.picks = picks;
@@ -214,9 +230,11 @@ contract PredictionMarketEscrowERC1271Test is Test {
         request.predictorSponsorData = "";
     }
 
-    function _createMintRequestWithSmartAccountCounterparty(
-        IV2Types.Pick[] memory picks
-    ) internal view returns (IV2Types.MintRequest memory request) {
+    function _createMintRequestWithSmartAccountCounterparty(IV2Types
+                .Pick[] memory picks)
+        internal
+        returns (IV2Types.MintRequest memory request)
+    {
         bytes32 pickConfigId = keccak256(abi.encode(picks));
         bytes32 predictionHash = keccak256(
             abi.encode(
@@ -228,8 +246,8 @@ contract PredictionMarketEscrowERC1271Test is Test {
             )
         );
 
-        uint256 pNonce = market.getNonce(predictor);
-        uint256 cNonce = market.getNonce(address(counterpartySmartAccount));
+        uint256 pNonce = _freshNonce();
+        uint256 cNonce = _freshNonce();
         uint256 deadline = block.timestamp + 1 hours;
 
         request.picks = picks;
@@ -268,7 +286,6 @@ contract PredictionMarketEscrowERC1271Test is Test {
 
     function _createMintRequestBothSmartAccounts(IV2Types.Pick[] memory picks)
         internal
-        view
         returns (IV2Types.MintRequest memory request)
     {
         bytes32 pickConfigId = keccak256(abi.encode(picks));
@@ -282,8 +299,8 @@ contract PredictionMarketEscrowERC1271Test is Test {
             )
         );
 
-        uint256 pNonce = market.getNonce(address(predictorSmartAccount));
-        uint256 cNonce = market.getNonce(address(counterpartySmartAccount));
+        uint256 pNonce = _freshNonce();
+        uint256 cNonce = _freshNonce();
         uint256 deadline = block.timestamp + 1 hours;
 
         request.picks = picks;
@@ -320,7 +337,6 @@ contract PredictionMarketEscrowERC1271Test is Test {
 
     function _createMintRequestEOA(IV2Types.Pick[] memory picks)
         internal
-        view
         returns (IV2Types.MintRequest memory request)
     {
         bytes32 pickConfigId = keccak256(abi.encode(picks));
@@ -334,8 +350,8 @@ contract PredictionMarketEscrowERC1271Test is Test {
             )
         );
 
-        uint256 pNonce = market.getNonce(predictor);
-        uint256 cNonce = market.getNonce(counterparty);
+        uint256 pNonce = _freshNonce();
+        uint256 cNonce = _freshNonce();
         uint256 deadline = block.timestamp + 1 hours;
 
         request.picks = picks;
@@ -401,9 +417,8 @@ contract PredictionMarketEscrowERC1271Test is Test {
 
         // Check position tokens were minted to smart account
         assertEq(
-            IPredictionMarketToken(predictorToken).balanceOf(
-                address(predictorSmartAccount)
-            ),
+            IPredictionMarketToken(predictorToken)
+                .balanceOf(address(predictorSmartAccount)),
             TOTAL_COLLATERAL
         );
 
@@ -438,9 +453,8 @@ contract PredictionMarketEscrowERC1271Test is Test {
 
         // Check position tokens were minted to smart account
         assertEq(
-            IPredictionMarketToken(counterpartyToken).balanceOf(
-                address(counterpartySmartAccount)
-            ),
+            IPredictionMarketToken(counterpartyToken)
+                .balanceOf(address(counterpartySmartAccount)),
             TOTAL_COLLATERAL
         );
 
@@ -474,15 +488,13 @@ contract PredictionMarketEscrowERC1271Test is Test {
 
         // Check tokens minted to smart accounts
         assertEq(
-            IPredictionMarketToken(predictorToken).balanceOf(
-                address(predictorSmartAccount)
-            ),
+            IPredictionMarketToken(predictorToken)
+                .balanceOf(address(predictorSmartAccount)),
             TOTAL_COLLATERAL
         );
         assertEq(
-            IPredictionMarketToken(counterpartyToken).balanceOf(
-                address(counterpartySmartAccount)
-            ),
+            IPredictionMarketToken(counterpartyToken)
+                .balanceOf(address(counterpartySmartAccount)),
             TOTAL_COLLATERAL
         );
     }
@@ -505,16 +517,14 @@ contract PredictionMarketEscrowERC1271Test is Test {
                 counterparty
             )
         );
-        uint256 pNonce = market.getNonce(address(predictorSmartAccount));
-        uint256 deadline = block.timestamp + 1 hours;
 
         // Sign with wrong key (counterpartyPk instead of predictorPk)
         request.predictorSignature = _signApproval(
             predictionHash,
             address(predictorSmartAccount),
             PREDICTOR_COLLATERAL,
-            pNonce,
-            deadline,
+            request.predictorNonce,
+            request.predictorDeadline,
             counterpartyPk // Wrong key!
         );
 
@@ -545,8 +555,8 @@ contract PredictionMarketEscrowERC1271Test is Test {
             )
         );
 
-        uint256 pNonce = market.getNonce(address(nonEIP1271));
-        uint256 cNonce = market.getNonce(counterparty);
+        uint256 pNonce = _freshNonce();
+        uint256 cNonce = _freshNonce();
         uint256 deadline = block.timestamp + 1 hours;
 
         IV2Types.MintRequest memory request;
@@ -611,8 +621,8 @@ contract PredictionMarketEscrowERC1271Test is Test {
             )
         );
 
-        uint256 pNonce = market.getNonce(address(revertingContract));
-        uint256 cNonce = market.getNonce(counterparty);
+        uint256 pNonce = _freshNonce();
+        uint256 cNonce = _freshNonce();
         uint256 deadline = block.timestamp + 1 hours;
 
         IV2Types.MintRequest memory request;

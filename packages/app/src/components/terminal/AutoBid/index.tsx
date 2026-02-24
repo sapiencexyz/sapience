@@ -14,7 +14,7 @@ import { useApprovalDialog } from '~/components/terminal/ApprovalDialogContext';
 import { useTerminalLogs } from '~/components/terminal/TerminalLogsContext';
 import { useAuctionRelayerFeed } from '~/lib/auction/useAuctionRelayerFeed';
 import { useRestrictedJurisdiction } from '~/hooks/useRestrictedJurisdiction';
-import { useBidSubmission } from '~/hooks/auction';
+import { useLegacyBidSubmission } from '~/hooks/auction';
 import type { MultiSelectItem } from '~/components/terminal/filters/MultiSelect';
 
 import type { AutoBidProps, Order, OrderDraft } from './types';
@@ -165,7 +165,7 @@ const AutoBid: React.FC<AutoBidProps> = () => {
   const { logs, pushLogEntry, setOrderLabelById } = useTerminalLogs();
 
   // Bid submission hook for auto-bid signing and WebSocket submission
-  const { submitBid } = useBidSubmission();
+  const { submitBid } = useLegacyBidSubmission();
 
   // Ref to hold current orderIndexMap to avoid circular dependency
   // (logOrderEvent is passed to useAutoBidOrders which returns orderIndexMap)

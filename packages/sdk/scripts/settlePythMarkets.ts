@@ -207,7 +207,7 @@ const POSITIONS_BY_CONDITION_QUERY = /* GraphQL */ `
     $chainId: Int
     $status: String
   ) {
-    positionsByConditionId(
+    legacyPositionsByConditionId(
       conditionId: $conditionId
       take: $take
       skip: $skip
@@ -941,7 +941,7 @@ async function main() {
   // 2) For each condition, pull active positions.
   const positions: PositionRow[] = [];
   for (const c of conditions) {
-    const data = await gql<{ positionsByConditionId: PositionRow[] }>(
+    const data = await gql<{ legacyPositionsByConditionId: PositionRow[] }>(
       args.graphqlUrl,
       POSITIONS_BY_CONDITION_QUERY,
       {
@@ -952,7 +952,7 @@ async function main() {
         status: args.positionStatus ?? null,
       }
     );
-    for (const p of data.positionsByConditionId) {
+    for (const p of data.legacyPositionsByConditionId) {
       if (p.endsAt && p.endsAt > nowSec) continue;
       positions.push(p);
     }

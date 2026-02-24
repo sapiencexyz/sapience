@@ -6,24 +6,33 @@ import { formatUnits } from 'viem';
  */
 export function formatBidForLog(
   bid: {
-    maker: string;
-    makerCollateral: string;
-    makerDeadline: number;
+    maker?: string;
+    makerCollateral?: string;
+    makerDeadline?: number;
     makerNonce?: number;
+    // Escrow field names (counterparty = bidder in escrow terminology)
+    counterparty?: string;
+    counterpartyCollateral?: string;
+    counterpartyDeadline?: number;
+    counterpartyNonce?: number;
   },
   decimals = 18
 ): string {
-  const makerShort = `${bid.maker.slice(0, 8)}...`;
+  // Support both V1 (maker*) and escrow (counterparty*) field names
+  const addr = bid.maker || bid.counterparty || '(unknown)';
+  const makerShort = addr.length > 8 ? `${addr.slice(0, 8)}...` : addr;
+  const collateral = bid.makerCollateral || bid.counterpartyCollateral || '0';
   let positionSizeFormatted: string;
   try {
-    positionSizeFormatted = formatUnits(BigInt(bid.makerCollateral), decimals);
+    positionSizeFormatted = formatUnits(BigInt(collateral), decimals);
   } catch {
-    positionSizeFormatted = bid.makerCollateral;
+    positionSizeFormatted = collateral;
   }
+  const deadline = bid.makerDeadline || bid.counterpartyDeadline || 0;
   const nowSec = Math.floor(Date.now() / 1000);
-  const expiresIn = Math.max(0, bid.makerDeadline - nowSec);
-  const nonceStr =
-    bid.makerNonce !== undefined ? `, nonce=${bid.makerNonce}` : '';
+  const expiresIn = Math.max(0, deadline - nowSec);
+  const nonce = bid.makerNonce ?? bid.counterpartyNonce;
+  const nonceStr = nonce !== undefined ? `, nonce=${nonce}` : '';
   return `maker=${makerShort}, positionSize=${positionSizeFormatted}, expires in ${expiresIn}s${nonceStr}`;
 }
 

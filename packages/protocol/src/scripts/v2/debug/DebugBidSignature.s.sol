@@ -21,9 +21,9 @@ contract DebugBidSignature is Script {
     address constant PREDICTOR_SMART_ACCOUNT = 0x5aab6F438Af9289798eEcBf83C06f62abdb529B9;
     address constant COUNTERPARTY_EOA = 0xd8e6Af4901719176F0e2c89dEfAc30C12Ea6aB4B;
 
-    // Wagers (from debug logs)
-    uint256 constant PREDICTOR_WAGER = 6300000000000000; // 0.0063 USDe
-    uint256 constant COUNTERPARTY_WAGER = 10000000000000000; // 0.01 USDe
+    // Collateral amounts (from debug logs)
+    uint256 constant PREDICTOR_COLLATERAL = 6300000000000000; // 0.0063 USDe
+    uint256 constant COUNTERPARTY_COLLATERAL = 10000000000000000; // 0.01 USDe
 
     // PickConfigId from logs
     bytes32 constant PICK_CONFIG_ID = 0xcbb669689508534f93fb2a1dd73f67764194db20cf968f17e10b5f8522b093c0;
@@ -47,16 +47,17 @@ contract DebugBidSignature is Script {
         // Step 1: Compute predictionHash with mint-side values
         bytes32 predictionHash = _computePredictionHash(
             PICK_CONFIG_ID,
-            PREDICTOR_WAGER,
-            COUNTERPARTY_WAGER,
+            PREDICTOR_COLLATERAL,
+            COUNTERPARTY_COLLATERAL,
             PREDICTOR_SMART_ACCOUNT,
             COUNTERPARTY_EOA
         );
 
         console.log("Step 1: Compute predictionHash with mint values");
         console.log("  pickConfigId:", vm.toString(PICK_CONFIG_ID));
-        console.log("  predictorWager:", PREDICTOR_WAGER);
-        console.log("  counterpartyWager:", COUNTERPARTY_WAGER);
+        console.log("  predictorCollateral:", PREDICTOR_COLLATERAL);
+        console.log("  counterpartyCollateral:", COUNTERPARTY_COLLATERAL);
+
         console.log("  predictor:", PREDICTOR_SMART_ACCOUNT);
         console.log("  counterparty:", COUNTERPARTY_EOA);
         console.log("  => predictionHash:", vm.toString(predictionHash));
@@ -68,7 +69,7 @@ contract DebugBidSignature is Script {
         bytes32 mintApprovalHash = _getMintApprovalHash(
             predictionHash,
             COUNTERPARTY_EOA,
-            COUNTERPARTY_WAGER,
+            COUNTERPARTY_COLLATERAL,
             COUNTERPARTY_NONCE,
             COUNTERPARTY_DEADLINE
         );
@@ -76,7 +77,7 @@ contract DebugBidSignature is Script {
         console.log("Step 2: Get MintApproval hash for counterparty");
         console.log("  predictionHash:", vm.toString(predictionHash));
         console.log("  signer (counterparty):", COUNTERPARTY_EOA);
-        console.log("  wager:", COUNTERPARTY_WAGER);
+        console.log("  collateral:", COUNTERPARTY_COLLATERAL);
         console.log("  nonce:", COUNTERPARTY_NONCE);
         console.log("  deadline:", COUNTERPARTY_DEADLINE);
         console.log("  => mintApprovalHash:", vm.toString(mintApprovalHash));
@@ -95,12 +96,12 @@ contract DebugBidSignature is Script {
             console.log("=== SIGNATURE MISMATCH - Testing alternative values ===");
             console.log("");
 
-            // Test with swapped wagers
+            // Test with swapped collateral
             _testAlternativeHash(
-                "Swapped wagers (counterparty=predictor, predictor=counterparty)",
+                "Swapped collateral (counterparty=predictor, predictor=counterparty)",
                 PICK_CONFIG_ID,
-                COUNTERPARTY_WAGER, // swap
-                PREDICTOR_WAGER,    // swap
+                COUNTERPARTY_COLLATERAL, // swap
+                PREDICTOR_COLLATERAL,    // swap
                 PREDICTOR_SMART_ACCOUNT,
                 COUNTERPARTY_EOA
             );
@@ -109,8 +110,8 @@ contract DebugBidSignature is Script {
             _testAlternativeHash(
                 "Role swap (counterparty as predictor)",
                 PICK_CONFIG_ID,
-                PREDICTOR_WAGER,
-                COUNTERPARTY_WAGER,
+                PREDICTOR_COLLATERAL,
+                COUNTERPARTY_COLLATERAL,
                 COUNTERPARTY_EOA,
                 PREDICTOR_SMART_ACCOUNT
             );
@@ -122,10 +123,10 @@ contract DebugBidSignature is Script {
 
             // Test with predictor's wager as signer's wager (maybe swapped in MintApproval)
             _testAlternativeMintApproval(
-                "signer wager = predictorWager",
+                "signer collateral = predictorCollateral",
                 EXPECTED_PREDICTION_HASH,
                 COUNTERPARTY_EOA,
-                PREDICTOR_WAGER,  // use predictor wager as signer's wager
+                PREDICTOR_COLLATERAL,  // use predictor wager as signer's wager
                 COUNTERPARTY_NONCE,
                 COUNTERPARTY_DEADLINE
             );
@@ -134,8 +135,8 @@ contract DebugBidSignature is Script {
             _testAlternativeHash(
                 "Zero counterparty (like auction creation)",
                 PICK_CONFIG_ID,
-                PREDICTOR_WAGER,
-                COUNTERPARTY_WAGER,
+                PREDICTOR_COLLATERAL,
+                COUNTERPARTY_COLLATERAL,
                 PREDICTOR_SMART_ACCOUNT,
                 address(0)  // zero address
             );
@@ -145,8 +146,8 @@ contract DebugBidSignature is Script {
             _testAlternativeHash(
                 "Predictor = Owner EOA (not SmartAccount)",
                 PICK_CONFIG_ID,
-                PREDICTOR_WAGER,
-                COUNTERPARTY_WAGER,
+                PREDICTOR_COLLATERAL,
+                COUNTERPARTY_COLLATERAL,
                 OWNER_EOA,  // owner EOA
                 COUNTERPARTY_EOA
             );
@@ -157,7 +158,7 @@ contract DebugBidSignature is Script {
         bytes32 altMintApprovalHash = _getMintApprovalHash(
             EXPECTED_PREDICTION_HASH,
             COUNTERPARTY_EOA,
-            COUNTERPARTY_WAGER,
+            COUNTERPARTY_COLLATERAL,
             nonce,
             COUNTERPARTY_DEADLINE
         );
@@ -172,14 +173,14 @@ contract DebugBidSignature is Script {
         string memory description,
         bytes32 predictionHash,
         address signer,
-        uint256 wager,
+        uint256 collateral,
         uint256 nonce,
         uint256 deadline
     ) internal view {
         bytes32 altMintApprovalHash = _getMintApprovalHash(
             predictionHash,
             signer,
-            wager,
+            collateral,
             nonce,
             deadline
         );
@@ -193,15 +194,15 @@ contract DebugBidSignature is Script {
     function _testAlternativeHash(
         string memory description,
         bytes32 pickConfigId,
-        uint256 predictorWager,
-        uint256 counterpartyWager,
+        uint256 predictorCollateral,
+        uint256 counterpartyCollateral,
         address predictor,
         address counterparty
     ) internal view {
         bytes32 altPredictionHash = _computePredictionHash(
             pickConfigId,
-            predictorWager,
-            counterpartyWager,
+            predictorCollateral,
+            counterpartyCollateral,
             predictor,
             counterparty
         );
@@ -209,7 +210,7 @@ contract DebugBidSignature is Script {
         bytes32 altMintApprovalHash = _getMintApprovalHash(
             altPredictionHash,
             COUNTERPARTY_EOA, // signer is always the counterparty EOA
-            COUNTERPARTY_WAGER,
+            COUNTERPARTY_COLLATERAL,
             COUNTERPARTY_NONCE,
             COUNTERPARTY_DEADLINE
         );
@@ -225,15 +226,15 @@ contract DebugBidSignature is Script {
 
     function _computePredictionHash(
         bytes32 pickConfigId,
-        uint256 predictorWager,
-        uint256 counterpartyWager,
+        uint256 predictorCollateral,
+        uint256 counterpartyCollateral,
         address predictor,
         address counterparty
     ) internal pure returns (bytes32) {
         return keccak256(abi.encode(
             pickConfigId,
-            predictorWager,
-            counterpartyWager,
+            predictorCollateral,
+            counterpartyCollateral,
             predictor,
             counterparty
         ));
@@ -242,7 +243,7 @@ contract DebugBidSignature is Script {
     function _getMintApprovalHash(
         bytes32 predictionHash,
         address signer,
-        uint256 wager,
+        uint256 collateral,
         uint256 nonce,
         uint256 deadline
     ) internal view returns (bytes32) {
@@ -252,7 +253,7 @@ contract DebugBidSignature is Script {
                 "getMintApprovalHash(bytes32,address,uint256,uint256,uint256)",
                 predictionHash,
                 signer,
-                wager,
+                collateral,
                 nonce,
                 deadline
             )

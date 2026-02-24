@@ -5,7 +5,10 @@ import { config } from './config';
 // Appends connection_limit and pool_timeout to DATABASE_URL if not already present.
 const dbUrl = new URL(config.DATABASE_URL);
 if (!dbUrl.searchParams.has('connection_limit')) {
-  dbUrl.searchParams.set('connection_limit', String(config.CONNECTION_POOL_SIZE));
+  dbUrl.searchParams.set(
+    'connection_limit',
+    String(config.CONNECTION_POOL_SIZE)
+  );
 }
 if (!dbUrl.searchParams.has('pool_timeout')) {
   dbUrl.searchParams.set('pool_timeout', '10');

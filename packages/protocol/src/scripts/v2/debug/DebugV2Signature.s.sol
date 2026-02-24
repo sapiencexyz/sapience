@@ -5,13 +5,16 @@ import "forge-std/Script.sol";
 import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 interface IEscrowDebug {
-    function getNonce(address account) external view returns (uint256);
+    function isNonceUsed(address account, uint256 nonce)
+        external
+        view
+        returns (bool);
     function accountFactory() external view returns (address);
     function domainSeparator() external view returns (bytes32);
     function getMintApprovalHash(
         bytes32 predictionHash,
         address signer,
-        uint256 wager,
+        uint256 collateral,
         uint256 nonce,
         uint256 deadline
     ) external view returns (bytes32);
@@ -40,9 +43,10 @@ contract DebugV2Signature is Script {
     address constant SESSION_KEY = 0xd94480250f03D10Fb003EfDffC05467b6EE16459;
     address constant OWNER = 0xefA0E8Aa84A713f6A6d4De8cC761Fe86c5957d72;
     address constant SMART_ACCOUNT = 0x5aab6F438Af9289798eEcBf83C06f62abdb529B9;
-    uint256 constant VALID_UNTIL = 1770234632;
-    bytes32 constant PERMISSIONS_HASH = 0xd9762d852ca8dc23710c3bf3bca341b66f778a0c94cc060f0463687e9c260e9c;
-    uint256 constant SESSION_CHAIN_ID = 13374202;
+    uint256 constant VALID_UNTIL = 1_770_234_632;
+    bytes32 constant PERMISSIONS_HASH =
+        0xd9762d852ca8dc23710c3bf3bca341b66f778a0c94cc060f0463687e9c260e9c;
+    uint256 constant SESSION_CHAIN_ID = 13_374_202;
 
     // ========== FILL IN THESE VALUES FROM FRONTEND LOGS ==========
     // Owner signature on SessionKeyApproval (v2SessionKeyApproval.ownerSignature)
@@ -50,9 +54,9 @@ contract DebugV2Signature is Script {
 
     // Predictor's MintApproval values (from [V2 Submit] logs)
     bytes32 constant PREDICTION_HASH = bytes32(0); // <-- from [V2 Submit] Hash computation: predictionHash
-    uint256 constant PREDICTOR_WAGER = 0;          // <-- from logs
-    uint256 constant PREDICTOR_NONCE = 0;          // <-- from logs
-    uint256 constant PREDICTOR_DEADLINE = 0;       // <-- from logs
+    uint256 constant PREDICTOR_COLLATERAL = 0; // <-- from logs
+    uint256 constant PREDICTOR_NONCE = 0; // <-- from logs
+    uint256 constant PREDICTOR_DEADLINE = 0; // <-- from logs
 
     // Session key signature on MintApproval (predictorSignature)
     bytes constant SESSION_KEY_SIGNATURE = hex""; // <-- PASTE YOUR SESSION KEY SIGNATURE HERE
@@ -74,7 +78,9 @@ contract DebugV2Signature is Script {
     }
 
     function _verifyOwnerSignature(IEscrowDebug escrow) internal view {
-        console.log("=== Step 1: Verify Owner Signature on SessionKeyApproval ===");
+        console.log(
+            "=== Step 1: Verify Owner Signature on SessionKeyApproval ==="
+        );
 
         // Get the hash that the owner should have signed
         bytes32 sessionHash = escrow.getSessionKeyApprovalHash(
@@ -89,8 +95,12 @@ contract DebugV2Signature is Script {
 
         if (OWNER_SIGNATURE.length == 0) {
             console.log("");
-            console.log("!!! OWNER_SIGNATURE not provided - skipping verification");
-            console.log("Fill in OWNER_SIGNATURE with v2SessionKeyApproval.ownerSignature from frontend logs");
+            console.log(
+                "!!! OWNER_SIGNATURE not provided - skipping verification"
+            );
+            console.log(
+                "Fill in OWNER_SIGNATURE with v2SessionKeyApproval.ownerSignature from frontend logs"
+            );
             console.log("");
             return;
         }
@@ -102,7 +112,9 @@ contract DebugV2Signature is Script {
         if (recovered == OWNER) {
             console.log("Status: PASS - Owner signature is valid!");
         } else {
-            console.log("Status: FAIL - Owner signature does NOT recover to owner!");
+            console.log(
+                "Status: FAIL - Owner signature does NOT recover to owner!"
+            );
             console.log("");
             console.log("Possible causes:");
             console.log("  1. Wrong signature");
@@ -113,11 +125,17 @@ contract DebugV2Signature is Script {
     }
 
     function _verifySessionKeySignature(IEscrowDebug escrow) internal view {
-        console.log("=== Step 2: Verify Session Key Signature on MintApproval ===");
+        console.log(
+            "=== Step 2: Verify Session Key Signature on MintApproval ==="
+        );
 
         if (PREDICTION_HASH == bytes32(0)) {
-            console.log("!!! PREDICTION_HASH not provided - skipping verification");
-            console.log("Fill in PREDICTION_HASH from [V2 Submit] Hash computation logs");
+            console.log(
+                "!!! PREDICTION_HASH not provided - skipping verification"
+            );
+            console.log(
+                "Fill in PREDICTION_HASH from [V2 Submit] Hash computation logs"
+            );
             console.log("");
             return;
         }
@@ -126,7 +144,7 @@ contract DebugV2Signature is Script {
         bytes32 mintHash = escrow.getMintApprovalHash(
             PREDICTION_HASH,
             SMART_ACCOUNT, // signer is the smart account
-            PREDICTOR_WAGER,
+            PREDICTOR_COLLATERAL,
             PREDICTOR_NONCE,
             PREDICTOR_DEADLINE
         );
@@ -135,8 +153,12 @@ contract DebugV2Signature is Script {
 
         if (SESSION_KEY_SIGNATURE.length == 0) {
             console.log("");
-            console.log("!!! SESSION_KEY_SIGNATURE not provided - skipping verification");
-            console.log("Fill in SESSION_KEY_SIGNATURE with predictorSignature from frontend logs");
+            console.log(
+                "!!! SESSION_KEY_SIGNATURE not provided - skipping verification"
+            );
+            console.log(
+                "Fill in SESSION_KEY_SIGNATURE with predictorSignature from frontend logs"
+            );
             console.log("");
             return;
         }
@@ -148,7 +170,9 @@ contract DebugV2Signature is Script {
         if (recovered == SESSION_KEY) {
             console.log("Status: PASS - Session key signature is valid!");
         } else {
-            console.log("Status: FAIL - Session key signature does NOT recover to session key!");
+            console.log(
+                "Status: FAIL - Session key signature does NOT recover to session key!"
+            );
             console.log("");
             console.log("Possible causes:");
             console.log("  1. Wrong signature");

@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchRecentPositions } from '@sapience/sdk/queries';
+import { fetchRecentLegacyPositions } from '@sapience/sdk/queries';
 
 export function useRecentPositions(params: {
   take?: number;
@@ -10,13 +10,13 @@ export function useRecentPositions(params: {
   const { take = 20, skip = 0, chainId, status } = params;
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ['recentPositions', take, skip, chainId, status],
+    queryKey: ['recentLegacyPositions', take, skip, chainId, status],
     staleTime: 15_000,
     gcTime: 5 * 60 * 1000,
     placeholderData: (prev) => prev,
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
-    queryFn: () => fetchRecentPositions({ take, skip, chainId, status }),
+    queryFn: () => fetchRecentLegacyPositions({ take, skip, chainId, status }),
   });
 
   return {

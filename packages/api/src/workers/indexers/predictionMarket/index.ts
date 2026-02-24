@@ -113,7 +113,10 @@ class PredictionMarketIndexer implements IIndexer {
   private async processPredictionBurned(log: Log, block: Block): Promise<void> {
     return processPredictionBurned(this.handlerContext, log, block);
   }
-  private async processPredictionConsolidated(log: Log, block: Block): Promise<void> {
+  private async processPredictionConsolidated(
+    log: Log,
+    block: Block
+  ): Promise<void> {
     return processPredictionConsolidated(this.handlerContext, log, block);
   }
   private async processOrderPlaced(log: Log, block: Block): Promise<void> {
@@ -128,13 +131,22 @@ class PredictionMarketIndexer implements IIndexer {
   private async processMarketResolved(log: Log, block: Block): Promise<void> {
     return processMarketResolved(this.handlerContext, log, block);
   }
-  private async processMarketSubmittedToUMA(log: Log, block: Block): Promise<void> {
+  private async processMarketSubmittedToUMA(
+    log: Log,
+    block: Block
+  ): Promise<void> {
     return processMarketSubmittedToUMA(this.handlerContext, log, block);
   }
-  private async processConditionResolved(log: Log, block: Block): Promise<void> {
+  private async processConditionResolved(
+    log: Log,
+    block: Block
+  ): Promise<void> {
     return processConditionResolved(this.handlerContext, log, block);
   }
-  private async processPendingRequestProcessed(log: Log, block: Block): Promise<void> {
+  private async processPendingRequestProcessed(
+    log: Log,
+    block: Block
+  ): Promise<void> {
     return processPendingRequestProcessed(this.handlerContext, log, block);
   }
 

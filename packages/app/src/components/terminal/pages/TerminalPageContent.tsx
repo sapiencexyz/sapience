@@ -50,10 +50,12 @@ import { toAuctionWsUrl } from '~/lib/ws';
 interface AuctionStartedData {
   auctionId?: string;
   taker?: string;
+  predictor?: string;
   takerSignature?: string;
   wager?: string;
   resolver?: string;
   predictedOutcomes?: string[];
+  picks?: Array<{ conditionResolver?: string; conditionId?: string; predictedOutcome?: number }>;
 }
 
 // Defined outside TerminalPageContent to prevent remounting on parent re-renders
@@ -136,8 +138,8 @@ const TerminalPageContent: React.FC = () => {
     return displayMessages.filter(
       (m) =>
         m.type === 'auction.started' ||
-        m.type === 'auction.bids' ||
         m.type === 'v2.auction.started' ||
+        m.type === 'auction.bids' ||
         m.type === 'v2.auction.bids'
     );
   }, [displayMessages]);
@@ -297,6 +299,21 @@ const TerminalPageContent: React.FC = () => {
       for (const m of auctionAndBidMessages) {
         if (m.type !== 'auction.started' && m.type !== 'v2.auction.started')
           continue;
+
+        // Escrow auctions have picks[] with conditionId directly
+        const picks = (m as any)?.data?.picks as
+          | Array<{ conditionId?: string }>
+          | undefined;
+        if (Array.isArray(picks) && picks.length > 0) {
+          for (const p of picks) {
+            if (p.conditionId && typeof p.conditionId === 'string') {
+              set.add(p.conditionId);
+            }
+          }
+          continue;
+        }
+
+        // V1 auctions use resolver + predictedOutcomes
         const decoded = decodeAuctionPredictedOutcomes({
           resolver:
             (m as any)?.data?.resolver ?? (m as any)?.data?.payload?.resolver,
@@ -321,9 +338,9 @@ const TerminalPageContent: React.FC = () => {
       if (m.type !== 'auction.started' && m.type !== 'v2.auction.started')
         continue;
       const auctionData = m.data as AuctionStartedData | undefined;
-      const taker = auctionData?.taker;
-      if (taker && typeof taker === 'string') {
-        set.add(taker);
+      const addr = auctionData?.taker || auctionData?.predictor;
+      if (addr && typeof addr === 'string') {
+        set.add(addr);
       }
     }
     return Array.from(set).sort();
@@ -340,10 +357,13 @@ const TerminalPageContent: React.FC = () => {
   // LRU-style capped at 2000 entries to prevent unbounded growth while being generous
   const CONDITION_CACHE_MAX = 2000;
   const stickyConditionMapRef = useRef<Map<string, any>>(new Map());
+  const [conditionMapTick, setConditionMapTick] = useState(0);
   useEffect(() => {
     try {
+      let changed = false;
       for (const c of conditions || []) {
         if (c && typeof c.id === 'string') {
+          if (!stickyConditionMapRef.current.has(c.id)) changed = true;
           // Delete and re-add to update LRU order (Maps maintain insertion order)
           stickyConditionMapRef.current.delete(c.id);
           stickyConditionMapRef.current.set(c.id, c);
@@ -358,10 +378,13 @@ const TerminalPageContent: React.FC = () => {
           break;
         }
       }
+      // Force re-render when new conditions are added to the map
+      if (changed) setConditionMapTick((t) => (t + 1) % 1_000_000);
     } catch {
       /* noop */
     }
   }, [conditions]);
+  void conditionMapTick;
   const renderConditionMap = stickyConditionMapRef.current;
 
   // Render rows only after the first conditions request completes (success or error); do not hide again on refetches
@@ -378,6 +401,41 @@ const TerminalPageContent: React.FC = () => {
     try {
       if (m.type !== 'auction.started' && m.type !== 'v2.auction.started')
         return <span className="text-muted-foreground">—</span>;
+
+      // Escrow auctions: picks[] with conditionId directly
+      const escrowPicks = (m.data as AuctionStartedData)?.picks;
+      if (Array.isArray(escrowPicks) && escrowPicks.length > 0) {
+        const allResolved = escrowPicks.every(
+          (p) => p.conditionId && renderConditionMap.has(p.conditionId)
+        );
+        if (!allResolved) {
+          if (conditionsError) return null;
+          return <Loader className="w-4 h-4" />;
+        }
+        if (!hasLoadedConditionsOnce) return null;
+        const picks: Pick[] = escrowPicks.map((p) => {
+          const cond = renderConditionMap.get(p.conditionId!);
+          return {
+            question: cond?.question ?? String(p.conditionId),
+            // Escrow predictedOutcome: 0 = Yes, 1 = No (from the predictor's perspective)
+            // In terminal view we show counterparty perspective (inverted)
+            choice: p.predictedOutcome === 0 ? ('No' as const) : ('Yes' as const),
+            conditionId: String(p.conditionId),
+            categorySlug: cond?.category?.slug ?? null,
+          };
+        });
+        return (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.14, ease: 'easeOut' }}
+          >
+            <StackedPredictions legs={picks} className="max-w-full" />
+          </motion.div>
+        );
+      }
+
+      // V1 auctions: decode from resolver + predictedOutcomes
       const decoded = getDecodedPredictedOutcomes(m as any);
 
       // If we can't decode any legs, show bytecode payload only if request errored or completed
@@ -801,7 +859,6 @@ const TerminalPageContent: React.FC = () => {
 
   function toUiTx(m: { time: number; type: string; data: any }): UiTransaction {
     const createdAt = new Date(m.time).toISOString();
-    // Handle both V1 and V2 auction started messages
     if (m.type === 'auction.started' || m.type === 'v2.auction.started') {
       const maker =
         (m as any)?.data?.maker || (m as any)?.data?.predictor || '';
@@ -815,14 +872,13 @@ const TerminalPageContent: React.FC = () => {
         position: { owner: maker },
       } as UiTransaction;
     }
-    // Handle both V1 and V2 auction bids messages
     if (m.type === 'auction.bids' || m.type === 'v2.auction.bids') {
       const bids = Array.isArray((m as any)?.data?.bids)
         ? ((m as any).data.bids as unknown as any[])
         : [];
       const top = bids.reduce((best, b) => {
         try {
-          // V1 uses makerCollateral, V2 uses counterpartyCollateral (but we may not have it in bid)
+          // V1 uses makerCollateral, escrow uses counterpartyCollateral (but we may not have it in bid)
           const cur = BigInt(
             String(b?.makerCollateral ?? b?.counterpartyCollateral ?? '0')
           );
@@ -1021,7 +1077,7 @@ const TerminalPageContent: React.FC = () => {
                                   }
                                   resolver={
                                     m?.data?.resolver ||
-                                    // V2: extract resolver from first pick
+                                    // Escrow: extract resolver from first pick
                                     (Array.isArray(m?.data?.picks) &&
                                       m?.data?.picks[0]?.conditionResolver) ||
                                     null
@@ -1043,8 +1099,8 @@ const TerminalPageContent: React.FC = () => {
                                   isPinned={true}
                                   isExpanded={expandedAuctions.has(auctionId)}
                                   onToggleExpanded={toggleExpanded}
-                                  isV2Auction={m?.type === 'v2.auction.started'}
-                                  v2Picks={
+                                  isEscrowAuction={Array.isArray(m?.data?.picks) && m.data.picks.length > 0}
+                                  escrowPicks={
                                     Array.isArray(m?.data?.picks)
                                       ? m?.data?.picks
                                       : undefined
@@ -1097,7 +1153,7 @@ const TerminalPageContent: React.FC = () => {
                                       }
                                       resolver={
                                         m?.data?.resolver ||
-                                        // V2: extract resolver from first pick
+                                        // Escrow: extract resolver from first pick
                                         (Array.isArray(m?.data?.picks) &&
                                           m?.data?.picks[0]
                                             ?.conditionResolver) ||
@@ -1127,10 +1183,8 @@ const TerminalPageContent: React.FC = () => {
                                         auctionId
                                       )}
                                       onToggleExpanded={toggleExpanded}
-                                      isV2Auction={
-                                        m?.type === 'v2.auction.started'
-                                      }
-                                      v2Picks={
+                                      isEscrowAuction={Array.isArray(m?.data?.picks) && m.data.picks.length > 0}
+                                      escrowPicks={
                                         Array.isArray(m?.data?.picks)
                                           ? m?.data?.picks
                                           : undefined

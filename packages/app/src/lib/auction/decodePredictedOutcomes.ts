@@ -7,7 +7,7 @@ import {
   predictionMarketLZConditionalTokensResolver,
   manualConditionResolver,
 } from '@sapience/sdk/contracts';
-import type { Pick, OutcomeSide } from '@sapience/sdk/types/v2';
+import type { Pick, OutcomeSide } from '@sapience/sdk/types';
 
 export type UmaDecodedOutcome = {
   kind: 'uma';
@@ -45,7 +45,7 @@ const UMA_RESOLVER_SET = new Set<string>(
     ...Object.values(predictionMarketLZConditionalTokensResolver).map(
       (v) => v?.address
     ),
-    // V2 resolvers that use the same encoding format as UMA
+    // Escrow resolvers that use the same encoding format as UMA
     ...Object.values(manualConditionResolver).map((v) => v?.address),
   ]
     .filter(Boolean)
@@ -177,10 +177,10 @@ export function formatUnixSecondsToLocalInput(value: bigint): string {
 }
 
 /**
- * Convert decoded auction outcomes to V2 Pick[] format
- * Used for V2 signing which requires the picks array structure
+ * Convert decoded auction outcomes to Pick[] format
+ * Used for escrow signing which requires the picks array structure
  */
-export function decodedOutcomesToV2Picks(
+export function decodedOutcomesToPicks(
   decoded: DecodedOutcomes,
   resolverAddress: Address
 ): Pick[] {
@@ -193,10 +193,10 @@ export function decodedOutcomesToV2Picks(
     }));
   }
 
-  // Pyth outcomes don't map directly to V2 picks in the same way
+  // Pyth outcomes don't map directly to escrow picks in the same way
   // For now, return empty - Pyth uses different resolver logic
   if (decoded.kind === 'pyth') {
-    console.warn('[V2] Pyth outcomes not yet supported for V2 pick conversion');
+    console.warn('Pyth outcomes not yet supported for pick conversion');
     return [];
   }
 
