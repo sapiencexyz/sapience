@@ -5,7 +5,7 @@ import EASPredictionIndexer from './workers/indexers/easIndexer';
 import PredictionMarketIndexer from './workers/indexers/predictionMarketIndexer';
 import PredictionMarketEscrowIndexer from './workers/indexers/predictionMarketEscrowIndexer';
 import SecondaryMarketIndexer from './workers/indexers/secondaryMarketIndexer';
-import V2PositionTokenTransferIndexer from './workers/indexers/v2PositionTokenTransferIndexer';
+import PositionTokenTransferIndexer from './workers/indexers/positionTokenTransferIndexer';
 
 // Environment variables to control which indexers are enabled
 const ENABLE_V1_INDEXERS = process.env.ENABLE_V1_INDEXERS !== 'false';
@@ -35,8 +35,8 @@ const buildIndexers = (): { [key: string]: IIndexer } => {
       new PredictionMarketEscrowIndexer(13374202); // Ethereal testnet
     indexers['secondary-market-ethereal-testnet'] =
       new SecondaryMarketIndexer(13374202); // Ethereal testnet (Secondary)
-    indexers['v2-transfer-ethereal'] = new V2PositionTokenTransferIndexer(5064014); // ERC20 transfer indexer
-    indexers['v2-transfer-ethereal-testnet'] = new V2PositionTokenTransferIndexer(13374202); // ERC20 transfer indexer (testnet)
+    indexers['position-transfer-ethereal'] = new PositionTokenTransferIndexer(5064014);
+    indexers['position-transfer-ethereal-testnet'] = new PositionTokenTransferIndexer(13374202);
     console.log('[Indexers] Escrow indexers enabled');
   } else {
     console.log(

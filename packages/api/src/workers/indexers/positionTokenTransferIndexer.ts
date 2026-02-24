@@ -8,7 +8,7 @@ import { predictionMarketEscrow } from '@sapience/sdk/contracts';
 const BLOCK_BATCH_SIZE = 100;
 const POLLING_INTERVAL_MS = 10_000;
 const WATCHLIST_REFRESH_MS = 5 * 60 * 1000; // Refresh watch list every 5 minutes
-const TRANSFER_INDEXER_MARKET_ADDRESS = 'v2-transfer-indexer'; // marker for V2IndexerState
+const TRANSFER_INDEXER_MARKET_ADDRESS = 'position-transfer-indexer';
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
 const TRANSFER_EVENT = parseAbiItem(
@@ -27,7 +27,7 @@ interface TokenInfo {
  * Mints (from=0x0) and burns (to=0x0) are skipped — those are handled by the
  * V2PredictionMarketIndexer on PredictionCreated / TokensRedeemed / PositionsBurned.
  */
-class V2PositionTokenTransferIndexer implements IIndexer {
+class PositionTokenTransferIndexer implements IIndexer {
   public client: PublicClient;
   private isWatching = false;
   private chainId: number;
@@ -251,4 +251,4 @@ class V2PositionTokenTransferIndexer implements IIndexer {
   }
 }
 
-export default V2PositionTokenTransferIndexer;
+export default PositionTokenTransferIndexer;
