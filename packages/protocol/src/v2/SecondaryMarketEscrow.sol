@@ -37,7 +37,7 @@ contract SecondaryMarketEscrow is
     );
 
     /// @notice Permission hash for trade operations
-    bytes32 public constant TRADE_PERMISSION = keccak256("V2_TRADE");
+    bytes32 public constant TRADE_PERMISSION = keccak256("TRADE");
 
     /// @notice Gas limit for EIP-1271 signature validation calls
     uint256 internal constant EIP1271_GAS_LIMIT = 500_000;

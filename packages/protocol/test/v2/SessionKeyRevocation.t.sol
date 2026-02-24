@@ -344,7 +344,7 @@ contract SessionKeyRevocationTest is Test {
 
     function _createTradeSessionKeyData() internal view returns (bytes memory) {
         uint256 validUntil = block.timestamp + 1 days;
-        bytes32 permissionsHash = keccak256("V2_TRADE");
+        bytes32 permissionsHash = keccak256("TRADE");
 
         bytes32 sessionApprovalHash = secondaryMarket.getSessionKeyApprovalHash(
             sessionKeyAddr,

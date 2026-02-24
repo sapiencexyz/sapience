@@ -858,7 +858,7 @@ contract SecondaryMarketEscrowSessionKeyTest is Test {
 
     function _createSessionKeyData() internal view returns (bytes memory) {
         uint256 validUntil = block.timestamp + 1 days;
-        bytes32 permissionsHash = keccak256("V2_TRADE");
+        bytes32 permissionsHash = keccak256("TRADE");
 
         // Owner signs session key approval
         bytes32 sessionApprovalHash = escrow.getSessionKeyApprovalHash(
@@ -935,7 +935,7 @@ contract SecondaryMarketEscrowSessionKeyTest is Test {
 
         // Create session key data with expired validUntil
         uint256 validUntil = block.timestamp - 1;
-        bytes32 permissionsHash = keccak256("V2_TRADE");
+        bytes32 permissionsHash = keccak256("TRADE");
 
         bytes32 sessionApprovalHash = escrow.getSessionKeyApprovalHash(
             sessionKey, smartAccount, validUntil, permissionsHash, block.chainid
@@ -987,7 +987,7 @@ contract SecondaryMarketEscrowSessionKeyTest is Test {
 
         // Create session key data with wrong chain ID
         uint256 validUntil = block.timestamp + 1 days;
-        bytes32 permissionsHash = keccak256("V2_TRADE");
+        bytes32 permissionsHash = keccak256("TRADE");
         uint256 wrongChainId = 999;
 
         bytes32 sessionApprovalHash = escrow.getSessionKeyApprovalHash(
@@ -1073,7 +1073,7 @@ contract SecondaryMarketEscrowSessionKeyTest is Test {
         bytes memory sessionKeyData;
         {
             uint256 validUntil = block.timestamp + 1 days;
-            bytes32 permissionsHash = keccak256("V2_TRADE");
+            bytes32 permissionsHash = keccak256("TRADE");
             bytes memory ownerSig = _signRaw(
                 ownerPk,
                 escrowNoFactory.getSessionKeyApprovalHash(
