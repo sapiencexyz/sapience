@@ -523,11 +523,13 @@ export default function QuestionsTable({
   );
 
   // Infinite scroll
+  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
   const { loadMoreRef } = useInfiniteScroll({
     hasMore,
     isFetchingMore,
     isLoading,
     onFetchMore,
+    scrollContainerRef,
   });
 
   // Create columns using refs so column definitions stay stable across prediction
@@ -576,6 +578,7 @@ export default function QuestionsTable({
         className="mt-4"
       />
       <div
+        ref={scrollContainerRef}
         className={cn(
           'rounded-md border border-brand-white/20 overflow-hidden bg-brand-black flex-1 min-h-0',
           showLoading && 'flex flex-col'
