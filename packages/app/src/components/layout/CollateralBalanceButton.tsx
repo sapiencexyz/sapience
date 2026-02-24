@@ -38,6 +38,13 @@ import { STARGATE_DEPOSIT_URL } from '~/lib/constants';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import { useSwitchChain } from 'wagmi';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@sapience/ui/components/ui/tooltip';
+import { useSponsorStatus } from '~/hooks/sponsorship/useSponsorStatus';
+import { formatUnits } from 'viem';
 
 const WUSDE_ABI = parseAbi([
   'function deposit() payable',
@@ -101,6 +108,12 @@ export default function CollateralBalanceButton({
     chainId,
     enabled: Boolean(smartAccountAddress),
   });
+
+  // Sponsorship budget
+  const { isSponsored, remainingBudget } = useSponsorStatus();
+  const sponsorBudgetFormatted = isSponsored
+    ? formatUnits(remainingBudget, 18)
+    : '0';
 
   const [isGetUsdeOpen, setIsGetUsdeOpen] = useState(false);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
@@ -377,6 +390,12 @@ export default function CollateralBalanceButton({
               <span className="relative top-[1px] xl:top-0 text-sm font-normal">
                 {formatDollarLikeBalance(displayedBalance)} {symbol}
               </span>
+              {isSponsored && (
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-ethena opacity-75" />
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-ethena" />
+                </span>
+              )}
             </div>
           </div>
         </HoverCardTrigger>
@@ -404,6 +423,21 @@ export default function CollateralBalanceButton({
                   {formatDollarLikeBalance(displayedBalance)} {symbol}
                 </p>
               </div>
+              {isSponsored && (
+                <div className="w-full rounded-md border border-ethena/30 bg-ethena/10 px-3 py-2 text-xs">
+                  <div className="flex items-center gap-1.5 text-ethena font-medium">
+                    <span>🎁 {sponsorBudgetFormatted} {symbol} sponsorship available</span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Info className="h-3.5 w-3.5 text-ethena/60 cursor-help" />
+                      </TooltipTrigger>
+                      <TooltipContent side="top" className="max-w-[220px] text-xs">
+                        Available for positions quoted &lt;70% chance against the vault.
+                      </TooltipContent>
+                    </Tooltip>
+                  </div>
+                </div>
+              )}
               <Button
                 size="sm"
                 className="gap-2 w-full"

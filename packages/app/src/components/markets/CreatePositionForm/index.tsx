@@ -58,6 +58,7 @@ import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 import { CreatePositionFormContent } from '~/components/markets/CreatePositionForm/CreatePositionFormContent';
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import { useSubmitPosition } from '~/hooks/forms/useSubmitPosition';
+import { useSponsorStatus } from '~/hooks/sponsorship/useSponsorStatus';
 import { usePositionProgress } from '~/hooks/forms/usePositionProgress';
 import { useUserPositions } from '~/hooks/graphql/useLegacyPositions';
 import { useAuctionStart, type QuoteBid } from '~/lib/auction/useAuctionStart';
@@ -273,6 +274,9 @@ const CreatePositionFormInner = ({
   const PREDICTION_MARKET_ADDRESS = isEscrowChain
     ? predictionMarketEscrow[positionChainId]?.address
     : predictionMarket[positionChainId]?.address;
+
+  // Sponsorship status
+  const { isSponsored, sponsorAddress, refetch: refetchSponsor } = useSponsorStatus();
 
   // State for validated bids (async validation checks market maker balance/allowance)
   const [bids, setBids] = useState<QuoteBid[]>([]);
@@ -833,6 +837,8 @@ const CreatePositionFormInner = ({
     onSuccess: () => {
       clearPositionForm();
       setIsPopoverOpen(false);
+      // Refetch sponsor budget (it decreases after a sponsored mint)
+      refetchSponsor();
     },
     onProgressUpdate: {
       onTxSending: startSubmission,
@@ -945,6 +951,13 @@ const CreatePositionFormInner = ({
               console.warn(
                 '[Escrow Form] No escrowPicks available - selections may be missing resolverAddress'
               );
+            }
+
+            // Wire sponsorship: if user has a sponsor budget, pass the sponsor address
+            // so the escrow contract calls fundMint instead of pulling from user's wallet
+            if (isSponsored && sponsorAddress) {
+              mintReq.predictorSponsor = sponsorAddress as `0x${string}`;
+              mintReq.predictorSponsorData = '0x' as `0x${string}`;
             }
           }
 

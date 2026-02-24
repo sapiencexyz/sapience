@@ -6,7 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@sapience/ui/components/ui/dialog';
-import { Info } from 'lucide-react';
+import { Gift, Info } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FormProvider, type UseFormReturn, useWatch } from 'react-hook-form';
@@ -48,6 +48,11 @@ import {
   type UmaPrediction,
 } from '@sapience/ui';
 import { logPositionForm, formatBidForLog } from '~/lib/auction/bidLogger';
+import {
+  useSponsorStatus,
+  isEntryPriceEligible,
+} from '~/hooks/sponsorship/useSponsorStatus';
+import { formatUnits } from 'viem';
 
 interface PositionFormProps {
   methods: UseFormReturn<{
@@ -127,6 +132,9 @@ export default function PositionForm({
     isUsingSmartAccount,
     signMessage: sessionSignMessage,
   } = useSession();
+
+  // Sponsorship status
+  const { isSponsored, remainingBudget, maxEntryPriceBps } = useSponsorStatus();
 
   // Determine the actual taker address based on signing method
   // This MUST match the logic in useAuctionStart.requestQuotes
@@ -775,6 +783,48 @@ export default function PositionForm({
               chainId={chainId}
             />
           </div>
+
+          {/* Sponsorship indicator */}
+          {isSponsored && (() => {
+            const activeBid = bestBid ?? stickyEstimateBid;
+            // User's collateral = positionSize (what they typed), vault's collateral = bid.makerCollateral
+            const decimals = collateralDecimals ?? 18;
+            const userCollateral = positionSizeValue
+              ? parseUnits(positionSizeValue, decimals)
+              : 0n;
+            const vaultCollateral = activeBid
+              ? BigInt(activeBid.makerCollateral)
+              : 0n;
+            const bidEligible =
+              !activeBid || !userCollateral
+                ? true // No bid or no size yet — show as available
+                : isEntryPriceEligible(userCollateral, vaultCollateral, maxEntryPriceBps);
+            const sponsorAmountFormatted = formatUnits(remainingBudget, 18);
+
+            return (
+              <div className={`mt-3 rounded-lg border px-3 py-2.5 text-sm ${
+                bidEligible
+                  ? 'border-ethena/30 bg-ethena/5'
+                  : 'border-muted/30 bg-muted/5 opacity-60'
+              }`}>
+                <div className="flex items-center gap-2">
+                  <Gift className={`h-4 w-4 flex-shrink-0 ${bidEligible ? 'text-ethena' : 'text-muted-foreground'}`} />
+                  <div className="flex-1">
+                    <p className={`font-medium ${bidEligible ? 'text-ethena' : 'text-muted-foreground'}`}>
+                      {bidEligible
+                        ? `${sponsorAmountFormatted} ${collateralSymbol} sponsored`
+                        : 'Sponsorship unavailable at this price'}
+                    </p>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      {bidEligible
+                        ? `You pay ${collateralSymbol} 0 — the sponsor covers your side of this prediction.`
+                        : `Only available for positions priced below ${Number(maxEntryPriceBps) / 100}%.`}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            );
+          })()}
 
           <div className="mt-5 space-y-1">
             <RestrictedJurisdictionBanner
