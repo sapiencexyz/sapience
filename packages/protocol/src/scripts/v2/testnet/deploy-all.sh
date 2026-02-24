@@ -45,6 +45,75 @@ check_env() {
     return $missing
 }
 
+# Validate that a private key derives to the expected address
+validate_key_pair() {
+    local name=$1
+    local address_var=$2
+    local key_var=$3
+
+    local expected="${!address_var}"
+    local key="${!key_var}"
+
+    if [ -z "$expected" ] || [ -z "$key" ]; then
+        log_error "$name: missing $address_var or $key_var"
+        return 1
+    fi
+
+    local derived
+    derived=$(cast wallet address --private-key "$key" 2>/dev/null) || {
+        log_error "$name: failed to derive address from $key_var"
+        return 1
+    }
+
+    # Compare case-insensitively (addresses may differ in checksum)
+    if [ "$(echo "$expected" | tr '[:upper:]' '[:lower:]')" != "$(echo "$derived" | tr '[:upper:]' '[:lower:]')" ]; then
+        log_error "$name: $key_var derives to $derived but $address_var is $expected"
+        return 1
+    fi
+
+    log_success "$name: PK matches address $derived"
+    return 0
+}
+
+# Validate all deployer key pairs and CREATE2 factory requirements
+validate_deployers() {
+    log_info "=== Validating deployer key pairs ==="
+
+    local failed=0
+
+    validate_key_pair "PM Network" PM_NETWORK_DEPLOYER_ADDRESS PM_NETWORK_DEPLOYER_PRIVATE_KEY || failed=1
+    validate_key_pair "SM Network" SM_NETWORK_DEPLOYER_ADDRESS SM_NETWORK_DEPLOYER_PRIVATE_KEY || failed=1
+
+    # CREATE2 factory requires the same owner on both chains for deterministic addresses
+    if [ -n "$PM_NETWORK_DEPLOYER_ADDRESS" ] && [ -n "$SM_NETWORK_DEPLOYER_ADDRESS" ]; then
+        local pm_lower=$(echo "$PM_NETWORK_DEPLOYER_ADDRESS" | tr '[:upper:]' '[:lower:]')
+        local sm_lower=$(echo "$SM_NETWORK_DEPLOYER_ADDRESS" | tr '[:upper:]' '[:lower:]')
+        if [ "$pm_lower" != "$sm_lower" ]; then
+            log_warn "PM and SM deployer addresses differ — factory CREATE2 addresses will NOT match across chains"
+            log_warn "  PM: $PM_NETWORK_DEPLOYER_ADDRESS"
+            log_warn "  SM: $SM_NETWORK_DEPLOYER_ADDRESS"
+        else
+            log_success "PM and SM deployer addresses match — factory CREATE2 will be deterministic"
+        fi
+    fi
+
+    if [ $failed -ne 0 ]; then
+        log_error "Deployer validation failed"
+        exit 1
+    fi
+}
+
+# Map network-specific deployer vars to generic DEPLOYER_* vars
+set_deployer_pm() {
+    export DEPLOYER_ADDRESS="$PM_NETWORK_DEPLOYER_ADDRESS"
+    export DEPLOYER_PRIVATE_KEY="$PM_NETWORK_DEPLOYER_PRIVATE_KEY"
+}
+
+set_deployer_sm() {
+    export DEPLOYER_ADDRESS="$SM_NETWORK_DEPLOYER_ADDRESS"
+    export DEPLOYER_PRIVATE_KEY="$SM_NETWORK_DEPLOYER_PRIVATE_KEY"
+}
+
 # Initialize deployments JSON file if it doesn't exist
 init_deployments_json() {
     if [ ! -f "$DEPLOYMENTS_FILE" ]; then
@@ -258,6 +327,7 @@ deploy_ethereal_phase1() {
     log_info "=== Phase 1: Deploy PM Network Infrastructure ==="
 
     check_env PM_NETWORK_DEPLOYER_PRIVATE_KEY PM_NETWORK_DEPLOYER_ADDRESS PM_NETWORK_RPC_URL COLLATERAL_TOKEN_ADDRESS || exit 1
+    set_deployer_pm
 
     # 02. Deploy Resolver
     run_script "src/scripts/v2/testnet/02_DeployResolver.s.sol:DeployResolver" "$PM_NETWORK_RPC_URL" "Deploying ManualConditionResolver on PM Network"
@@ -272,6 +342,7 @@ deploy_ethereal_phase1() {
     addr=$(extract_address "$LAST_OUTPUT" "FACTORY_ADDRESS=")
     if [ -n "$addr" ]; then
         update_env "FACTORY_ADDRESS" "$addr"
+        update_deployment "pmNetwork" "PredictionMarketTokenFactory" "$addr"
     fi
 
     # 04. Deploy PredictionMarketV2 (requires FACTORY_ADDRESS)
@@ -301,6 +372,7 @@ deploy_arbitrum_phase2() {
     log_info "=== Phase 2: Deploy SM Network Infrastructure ==="
 
     check_env SM_NETWORK_DEPLOYER_PRIVATE_KEY SM_NETWORK_DEPLOYER_ADDRESS SM_NETWORK_RPC_URL SM_NETWORK_LZ_ENDPOINT || exit 1
+    set_deployer_sm
 
     # 07. Deploy Factory on SM Network (CREATE2 - same address as PM)
     run_script "src/scripts/v2/testnet/07_DeployFactorySM.s.sol:DeployFactorySM" "$SM_NETWORK_RPC_URL" "Deploying PredictionMarketTokenFactory on SM Network"
@@ -358,9 +430,10 @@ mint_tokens_phase4() {
     log_info "=== Phase 4: Mint Position Tokens ==="
 
     check_env PREDICTION_MARKET_ADDRESS COLLATERAL_TOKEN_ADDRESS RESOLVER_ADDRESS || exit 1
+    set_deployer_pm
 
     # 13. Mint Position Tokens
-    run_script_no_verify "src/scripts/v2/testnet/13_MintPositionTokens.s.sol:MintPositionTokens" "$PM_NETWORK_RPC_URL" "Minting Position Tokens via PredictionMarketV2"
+    run_script_no_verify "src/scripts/v2/testnet/13_MintPositionTokens.s.sol:MintPredictionMarketTokens" "$PM_NETWORK_RPC_URL" "Minting Position Tokens via PredictionMarketV2"
 
     local addr=$(extract_address "$LAST_OUTPUT" "PREDICTOR_TOKEN_ADDRESS=")
     if [ -n "$addr" ]; then
@@ -500,7 +573,7 @@ verify_sm() {
 
     # Verify Factory if deployed
     if [[ -n "${FACTORY_ADDRESS:-}" ]]; then
-        verify_contract "$FACTORY_ADDRESS" "src/v2/bridge/PredictionMarketTokenFactory.sol:PredictionMarketTokenFactory" \
+        verify_contract "$FACTORY_ADDRESS" "src/v2/PredictionMarketTokenFactory.sol:PredictionMarketTokenFactory" \
             "$rpc_url" "$verifier" "$verifier_url" "$api_key" "PredictionMarketTokenFactory"
     fi
 
@@ -573,6 +646,7 @@ main() {
     echo "========================================"
 
     load_env
+    validate_deployers
 
     # Clean and rebuild to avoid cache issues
     log_info "Cleaning and rebuilding contracts..."
