@@ -3,6 +3,7 @@ import fixturesData from './fixtures.json';
 import { IIndexer } from './interfaces';
 import EASPredictionIndexer from './workers/indexers/easIndexer';
 import PredictionMarketIndexer from './workers/indexers/predictionMarketIndexer';
+import CollateralTransferIndexer from './workers/indexers/collateralTransferIndexer';
 
 export const INDEXERS: {
   [key: string]: IIndexer;
@@ -10,6 +11,7 @@ export const INDEXERS: {
   'attestation-prediction-market': new EASPredictionIndexer(42161),
   'prediction-market-events-arbitrum': new PredictionMarketIndexer(42161), // Arbitrum
   'prediction-market-events-ethereal': new PredictionMarketIndexer(5064014), // Ethereal
+  'collateral-transfer-ethereal': new CollateralTransferIndexer(5064014), // wUSDe transfers
 };
 
 // Function to initialize fixtures - upsert categories from fixtures.json
