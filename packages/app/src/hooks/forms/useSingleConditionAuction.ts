@@ -94,6 +94,7 @@ export function useSingleConditionAuction({
   const bestBid = useMemo(() => {
     if (!bids || bids.length === 0) return null;
 
+    // makerDeadline = counterparty's deadline (legacy naming in QuoteBid type)
     const validBids = bids.filter((bid) => bid.makerDeadline * 1000 > nowMs);
     if (validBids.length === 0) return null;
 
@@ -106,6 +107,7 @@ export function useSingleConditionAuction({
     }
 
     // Find bid with highest total payout (predictorCollateral + counterpartyCollateral)
+    // makerCollateral = counterparty's collateral (legacy naming in QuoteBid type)
     return validBids.reduce((best, current) => {
       const bestPayout = (() => {
         try {
@@ -157,12 +159,13 @@ export function useSingleConditionAuction({
           },
         ];
         const payload = buildAuctionStartPayload(outcomes, chainId);
+        // AuctionParams uses legacy taker/takerNonce naming — maps to predictor/predictorNonce
         const params: AuctionParams = {
           wager: positionSizeWei,
           resolver: payload.resolver,
           predictedOutcomes: payload.predictedOutcomes,
-          taker: selectedPredictorAddress,
-          takerNonce: predictorNonce !== undefined ? Number(predictorNonce) : 0,
+          taker: selectedPredictorAddress,       // predictor address
+          takerNonce: predictorNonce !== undefined ? Number(predictorNonce) : 0, // predictor nonce
           chainId: chainId,
         };
 
