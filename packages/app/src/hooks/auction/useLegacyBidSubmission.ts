@@ -42,14 +42,12 @@ export type LegacyBidSubmissionParams = {
   makerCollateral: bigint;
   /** Auction creator's position size in wei */
   takerCollateral: bigint;
-  /** Encoded predicted outcomes */
+  /** Encoded predicted outcomes (fallback when escrowPicks not provided) */
   predictedOutcomes: `0x${string}`[];
   /** Resolver contract address */
   resolver: `0x${string}`;
   /** Auction creator (taker) address */
   taker: `0x${string}`;
-  /** Taker nonce for the auction */
-  takerNonce?: number;
   /** Bid expiry in seconds from now */
   expirySeconds: number;
   /** Optional max end time (seconds since epoch) to clamp expiry */
