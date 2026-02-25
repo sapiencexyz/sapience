@@ -308,7 +308,15 @@ export function useSapienceWriteContract({
 
       setIsSubmitting(false);
     },
-    [onTxHash, onSuccess, maybeRedirect, toast, successMessage, disableSuccessToast, disableAutoRedirect]
+    [
+      onTxHash,
+      onSuccess,
+      maybeRedirect,
+      toast,
+      successMessage,
+      disableSuccessToast,
+      disableAutoRedirect,
+    ]
   );
 
   // Chain validation
@@ -345,13 +353,20 @@ export function useSapienceWriteContract({
       _chainId: number
     ): Promise<Hash> => {
       const startTime = Date.now();
-      const hash = await executeViaSessionKeyDefault(sessionClient, calls, _chainId, {
-        sessionConfig,
-        onTxSending,
-        onTxSent,
-        onReceiptConfirmed,
-      });
-      console.log(`[SessionTx] Total: ${Date.now() - startTime}ms (skipping on-chain wait)`);
+      const hash = await executeViaSessionKeyDefault(
+        sessionClient,
+        calls,
+        _chainId,
+        {
+          sessionConfig,
+          onTxSending,
+          onTxSent,
+          onReceiptConfirmed,
+        }
+      );
+      console.log(
+        `[SessionTx] Total: ${Date.now() - startTime}ms (skipping on-chain wait)`
+      );
       return hash;
     },
     [sessionConfig, onTxSending, onTxSent, onReceiptConfirmed]
@@ -486,13 +501,11 @@ export function useSapienceWriteContract({
         if (rawCalls.length === 0) {
           throw new Error('No calls to execute');
         }
-        const calls: TransactionCall[] = rawCalls.map(
-          (call: SendCall) => ({
-            to: call.to,
-            data: call.data ?? ('0x' as Hex),
-            value: call.value ? BigInt(call.value) : 0n,
-          })
-        );
+        const calls: TransactionCall[] = rawCalls.map((call: SendCall) => ({
+          to: call.to,
+          data: call.data ?? ('0x' as Hex),
+          value: call.value ? BigInt(call.value) : 0n,
+        }));
 
         const result = await executeTransaction(
           calls,
@@ -515,7 +528,9 @@ export function useSapienceWriteContract({
         // Resolve hash for EOA batch results (EIP-5792 polling)
         let finalHash = result.hash;
         if (result.path === 'eoa' && result.data && !finalHash) {
-          finalHash = (await resolveEoaBatchResult(result.data, client)) as Hash | undefined;
+          finalHash = (await resolveEoaBatchResult(result.data, client)) as
+            | Hash
+            | undefined;
         }
         completeTransaction(finalHash);
       } catch (error) {

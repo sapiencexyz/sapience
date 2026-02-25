@@ -2,7 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Address } from 'viem';
 import { erc20Abi } from 'viem';
 import { passiveLiquidityVault } from '@sapience/sdk/contracts';
-import { DEFAULT_CHAIN_ID, ETHEREAL_WUSDE_ADDRESS } from '@sapience/sdk/constants';
+import {
+  DEFAULT_CHAIN_ID,
+  ETHEREAL_WUSDE_ADDRESS,
+} from '@sapience/sdk/constants';
 import type { Abi } from 'abitype';
 import {
   liquidityVaultAbi,
@@ -31,7 +34,11 @@ const DEFAULT_VAULT_ADDRESS = passiveLiquidityVault[DEFAULT_CHAIN_ID]?.address;
 const PASSIVE_VAULT_ABI: Abi = liquidityVaultAbi;
 // ABI helper: uses SDK's abiHasFunction
 const hasFunction = (name: string, inputsLength?: number) =>
-  abiHasFunction(liquidityVaultAbi as unknown as readonly unknown[], name, inputsLength);
+  abiHasFunction(
+    liquidityVaultAbi as unknown as readonly unknown[],
+    name,
+    inputsLength
+  );
 
 interface VaultData {
   availableAssets: bigint;
@@ -505,7 +512,10 @@ export function usePassiveLiquidityVault(
   }, [userQueueDetails, userDepositIdx, userWithdrawalIdx]);
 
   const pendingRequest: PendingRequestDetails | null = useMemo(
-    () => parsePendingRequest(pendingMapping?.[0]?.result) as PendingRequestDetails | null,
+    () =>
+      parsePendingRequest(
+        pendingMapping?.[0]?.result
+      ) as PendingRequestDetails | null,
     [pendingMapping]
   );
 

@@ -69,7 +69,12 @@ export function useInfiniteScroll({
     const wasLoading = prevIsLoadingRef.current;
     prevIsLoadingRef.current = isLoading;
 
-    if (wasLoading && !isLoading && hasMoreRef.current && !isFetchingMoreRef.current) {
+    if (
+      wasLoading &&
+      !isLoading &&
+      hasMoreRef.current &&
+      !isFetchingMoreRef.current
+    ) {
       const sentinel = loadMoreRef.current;
       if (sentinel) {
         const rect = sentinel.getBoundingClientRect();

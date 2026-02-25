@@ -145,10 +145,7 @@ export function prepareCallsWithWrapping(
 ): TransactionCall[] {
   if (!isEtherealChain(chainId)) return calls;
 
-  const totalValue = calls.reduce(
-    (sum, call) => sum + (call.value ?? 0n),
-    0n
-  );
+  const totalValue = calls.reduce((sum, call) => sum + (call.value ?? 0n), 0n);
   if (totalValue === 0n) return calls;
 
   const wrapTx = createWrapTransaction(totalValue);
@@ -160,8 +157,7 @@ export function prepareCallsWithWrapping(
 export function formatSessionError(error: unknown): string {
   if (error instanceof Error) {
     return (
-      (error as Error & { shortMessage?: string }).shortMessage ||
-      error.message
+      (error as Error & { shortMessage?: string }).shortMessage || error.message
     );
   }
   return String(error) || 'Session transaction failed';
@@ -206,10 +202,7 @@ export async function resolveEoaBatchResult(
     }
     return pickFinalTransactionHash(data);
   } catch (error) {
-    console.error(
-      '[resolveEoaBatchResult] Failed to resolve tx hash:',
-      error
-    );
+    console.error('[resolveEoaBatchResult] Failed to resolve tx hash:', error);
     return undefined;
   }
 }
@@ -358,11 +351,7 @@ export async function executeTransaction(
   if (mode === 'writeContract' && deps.writeContractAsync) {
     // Single-call writeContract path
     // If Ethereal with value, needs wrapping via sendCalls batch
-    if (
-      isEtherealChain(chainId) &&
-      calls.length === 1 &&
-      calls[0].value > 0n
-    ) {
+    if (isEtherealChain(chainId) && calls.length === 1 && calls[0].value > 0n) {
       if (!deps.sendCallsAsync) {
         throw new Error(
           'sendCallsAsync required for Ethereal wrapping in EOA mode'

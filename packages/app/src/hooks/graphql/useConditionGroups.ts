@@ -29,8 +29,18 @@ export const useConditionGroups = (opts?: {
       includeEmptyGroups,
     ],
     queryFn: () =>
-      fetchConditionGroups({ take, skip, chainId, filters, includeEmptyGroups }),
+      fetchConditionGroups({
+        take,
+        skip,
+        chainId,
+        filters,
+        includeEmptyGroups,
+      }),
   });
 };
 
-export type { ConditionGroupType, ConditionGroupConditionType, ConditionGroupFilters };
+export type {
+  ConditionGroupType,
+  ConditionGroupConditionType,
+  ConditionGroupFilters,
+};

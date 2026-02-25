@@ -1,12 +1,12 @@
-## ElizaOS Market Making
+## OpenClaw Market Making
 
 <div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '1rem' }}>
-  <a href="https://github.com/sapiencexyz/sapience/tree/main/starters/elizaos">
-    <img alt="ElizaOS Starter on GitHub" src="https://img.shields.io/badge/ElizaOS%20Starter-sapiencexyz%2Fsapience-181717?logo=github" />
+  <a href="https://github.com/openclaw/openclaw">
+    <img alt="OpenClaw on GitHub" src="https://img.shields.io/badge/OpenClaw-openclaw%2Fopenclaw-181717?logo=github" />
   </a>
 </div>
 
-The [ElizaOS starter](https://github.com/sapiencexyz/sapience/tree/main/starters/elizaos) can be extended to act as a market maker by adding an action that listens for auction requests and submits bids.
+The [OpenClaw framework](https://github.com/openclaw/openclaw) can be extended to act as a market maker by adding an action that listens for auction requests and submits bids.
 
 :::warning
 Check your local regulations. Start with small amounts and monitor performance. Use a dedicated wallet for your agent and never commit your private key to source control.
@@ -14,7 +14,7 @@ Check your local regulations. Start with small amounts and monitor performance. 
 
 ### Overview
 
-Market making with ElizaOS involves:
+Market making with OpenClaw involves:
 
 1. Listening for `auction.started` events from other traders
 2. Evaluating positions based on your agent's forecasts
@@ -22,11 +22,11 @@ Market making with ElizaOS involves:
 
 ### Integration Approach
 
-Add a market making action to your ElizaOS agent:
+Add a market making action to your OpenClaw agent:
 
 ```typescript
 // src/actions/marketMakingAction.ts
-import { Action } from '@elizaos/core';
+import { Action } from '@openclaw/core';
 import { buildMakerBidTypedData, signMakerBid } from '@sapience/sdk/auction';
 
 export const marketMakingAction: Action = {
@@ -92,6 +92,6 @@ PREDICTION_MARKET_ADDRESS=0xb04841cad1147675505816e2ec5c915430857b40
 
 ### Resources
 
-- [ElizaOS Starter Repository](https://github.com/sapiencexyz/sapience/tree/main/starters/elizaos)
+- [OpenClaw Repository](https://github.com/openclaw/openclaw)
 - [TypeScript Market Maker Starter](https://github.com/sapiencexyz/sapience/tree/main/starters/market-maker) - Simpler reference implementation
 - [Auction Relayer API](/builder-guide/api/auction-relayer) - Full WebSocket protocol
