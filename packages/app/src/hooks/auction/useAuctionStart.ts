@@ -1,13 +1,15 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
-import { useAccount } from 'wagmi';
+import { useAccount, useSignTypedData } from 'wagmi';
 import { type Address, type Hex } from 'viem';
+import { buildAuctionIntentTypedData } from '@sapience/sdk/auction/escrowSigning';
 import {
   computePickConfigId,
   canonicalizePicks,
 } from '@sapience/sdk/auction/escrowEncoding';
 import type { Pick, AuctionRFQPayload } from '@sapience/sdk/types';
+import { predictionMarketEscrow } from '@sapience/sdk/contracts';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
@@ -35,17 +37,20 @@ export interface AuctionStartResult {
 
 interface UseAuctionStartOptions {
   chainId?: number;
+  onSignatureRejected?: (error: Error) => void;
   onAuctionCreated?: (auctionId: string, pickConfigId: Hex) => void;
 }
 
 export function useAuctionStart(options: UseAuctionStartOptions = {}) {
   const {
     chainId: overrideChainId,
+    onSignatureRejected,
     onAuctionCreated,
   } = options;
 
   const chainId = overrideChainId ?? DEFAULT_CHAIN_ID;
   const { address } = useAccount();
+  const { signTypedDataAsync } = useSignTypedData();
   const { apiBaseUrl } = useSettings();
   const { effectiveAddress } = useSession();
 
@@ -58,6 +63,10 @@ export function useAuctionStart(options: UseAuctionStartOptions = {}) {
   });
 
   const wsUrl = useMemo(() => toAuctionWsUrl(apiBaseUrl), [apiBaseUrl]);
+
+  const verifyingContract = predictionMarketEscrow[chainId]?.address as
+    | Address
+    | undefined;
 
   const startAuction = useCallback(
     async (params: AuctionStartParams): Promise<AuctionStartResult> => {
@@ -87,6 +96,10 @@ export function useAuctionStart(options: UseAuctionStartOptions = {}) {
         return { success: false, error: 'Invalid predictor collateral amount' };
       }
 
+      if (!verifyingContract) {
+        return { success: false, error: 'Escrow contract not available for this chain' };
+      }
+
       if (!wsUrl) {
         return { success: false, error: 'Realtime connection not configured' };
       }
@@ -101,12 +114,44 @@ export function useAuctionStart(options: UseAuctionStartOptions = {}) {
       // Compute pickConfigId
       const pickConfigId = computePickConfigId(picks);
 
-      // Two-step RFQ: no MintApproval signature at auction start.
-      // The predictor signs after receiving the vault's quote (counterpartyCollateral).
-      // At this stage we just send intent + identity.
-      setIsSubmitting(true);
+      // Two-step RFQ: sign lightweight AuctionIntent (proves identity + intent)
+      // Does NOT commit to counterpartyCollateral or counterparty address.
+      // The real MintApproval is signed in step 3 after receiving the vault's quote.
+      const intentTypedData = buildAuctionIntentTypedData({
+        pickConfigId,
+        predictor: signerAddress,
+        predictorCollateral,
+        predictorNonce: nonce,
+        predictorDeadline,
+        verifyingContract,
+        chainId,
+      });
 
-      // Build auction request payload (no signature, no counterpartyCollateral)
+      setIsSubmitting(true);
+      let intentSignature: Hex;
+      try {
+        intentSignature = await signTypedDataAsync({
+          domain: {
+            ...intentTypedData.domain,
+            chainId: Number(intentTypedData.domain.chainId),
+          },
+          types: intentTypedData.types,
+          primaryType: intentTypedData.primaryType,
+          message: intentTypedData.message,
+        });
+      } catch (e: any) {
+        setIsSubmitting(false);
+        const error = e instanceof Error ? e : new Error(String(e?.message || e));
+        onSignatureRejected?.(error);
+        return { success: false, error: `Signature rejected: ${error.message}` };
+      }
+
+      if (!intentSignature) {
+        setIsSubmitting(false);
+        return { success: false, error: 'No signature returned' };
+      }
+
+      // Build RFQ payload with lightweight intent signature
       const payload: AuctionRFQPayload = {
         picks: picks.map((p) => ({
           conditionResolver: p.conditionResolver,
@@ -117,6 +162,7 @@ export function useAuctionStart(options: UseAuctionStartOptions = {}) {
         predictor: signerAddress,
         predictorNonce: Number(nonce),
         predictorDeadline: Number(predictorDeadline),
+        intentSignature,
         chainId,
         refCode: refCode ?? undefined,
       };
@@ -212,8 +258,11 @@ export function useAuctionStart(options: UseAuctionStartOptions = {}) {
     [
       effectiveAddress,
       chainId,
+      verifyingContract,
       wsUrl,
       currentNonce,
+      signTypedDataAsync,
+      onSignatureRejected,
       onAuctionCreated,
     ]
   );
@@ -224,6 +273,7 @@ export function useAuctionStart(options: UseAuctionStartOptions = {}) {
     isConnected: Boolean(address),
     address: effectiveAddress as Address | undefined,
     chainId,
+    verifyingContract,
     wsUrl,
     currentNonce,
     refetchNonce,

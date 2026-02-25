@@ -279,6 +279,7 @@ export function buildAuctionRequest(params: {
   predictor: string;
   predictorNonce: number;
   predictorDeadline: number;
+  intentSignature: string;
   chainId: number;
   refCode?: string;
   predictorSessionKeyData?: string;
@@ -289,6 +290,7 @@ export function buildAuctionRequest(params: {
     predictor: params.predictor,
     predictorNonce: params.predictorNonce,
     predictorDeadline: params.predictorDeadline,
+    intentSignature: params.intentSignature,
     chainId: params.chainId,
     refCode: params.refCode,
     predictorSessionKeyData: params.predictorSessionKeyData,

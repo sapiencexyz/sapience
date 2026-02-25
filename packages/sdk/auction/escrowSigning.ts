@@ -57,6 +57,21 @@ export const BURN_APPROVAL_TYPES = {
   ],
 } as const;
 
+/**
+ * EIP-712 types for AuctionIntent (lightweight auth at RFQ start)
+ * Relayer-only verification — proves predictor identity + intent without
+ * committing to counterparty details. NOT verified on-chain.
+ */
+export const AUCTION_INTENT_TYPES = {
+  AuctionIntent: [
+    { name: 'pickConfigId', type: 'bytes32' },
+    { name: 'predictor', type: 'address' },
+    { name: 'predictorCollateral', type: 'uint256' },
+    { name: 'predictorNonce', type: 'uint256' },
+    { name: 'predictorDeadline', type: 'uint256' },
+  ],
+} as const;
+
 // ============================================================================
 // Hash Computation
 // ============================================================================
@@ -390,4 +405,36 @@ export function buildCounterpartyBurnTypedData(params: {
     verifyingContract: params.verifyingContract,
     chainId: params.chainId,
   });
+}
+
+// ============================================================================
+// Auction Intent (lightweight RFQ auth)
+// ============================================================================
+
+/**
+ * Build EIP-712 typed data for auction intent (RFQ step 1).
+ * Proves predictor identity + intent without committing to counterparty details.
+ * Relayer-only — NOT verified on-chain.
+ */
+export function buildAuctionIntentTypedData(params: {
+  pickConfigId: Hex;
+  predictor: Address;
+  predictorCollateral: bigint;
+  predictorNonce: bigint;
+  predictorDeadline: bigint;
+  verifyingContract: Address;
+  chainId: number;
+}) {
+  return {
+    domain: getEscrowDomain(params.verifyingContract, params.chainId),
+    types: AUCTION_INTENT_TYPES,
+    primaryType: 'AuctionIntent' as const,
+    message: {
+      pickConfigId: params.pickConfigId,
+      predictor: params.predictor,
+      predictorCollateral: params.predictorCollateral,
+      predictorNonce: params.predictorNonce,
+      predictorDeadline: params.predictorDeadline,
+    },
+  };
 }

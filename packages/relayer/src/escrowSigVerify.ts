@@ -466,3 +466,61 @@ export async function verifyEscrowCounterpartySignature(
     return false;
   }
 }
+
+// ============================================================================
+// Auction Intent Verification (RFQ lightweight auth)
+// ============================================================================
+
+/**
+ * Verify the predictor's AuctionIntent signature at RFQ start.
+ * Relayer-only — proves identity + intent without committing to counterparty details.
+ */
+export async function verifyAuctionIntentSignature(
+  payload: AuctionRFQPayload,
+  verifyingContract: Address
+): Promise<boolean> {
+  if (!payload.intentSignature) {
+    return false;
+  }
+
+  try {
+    const picks = convertPicks(payload.picks);
+
+    const { computePickConfigId } = await import('@sapience/sdk/auction/escrowEncoding');
+    const { AUCTION_INTENT_TYPES, getEscrowDomain } = await import('@sapience/sdk/auction/escrowSigning');
+    const { recoverTypedDataAddress } = await import('viem');
+    const { hashTypedData } = await import('viem');
+
+    const pickConfigId = computePickConfigId(picks);
+    const domain = getEscrowDomain(verifyingContract, payload.chainId);
+
+    const recovered = await recoverTypedDataAddress({
+      domain: {
+        ...domain,
+        chainId: Number(domain.chainId),
+      },
+      types: AUCTION_INTENT_TYPES,
+      primaryType: 'AuctionIntent' as const,
+      message: {
+        pickConfigId,
+        predictor: payload.predictor as Address,
+        predictorCollateral: BigInt(payload.predictorCollateral),
+        predictorNonce: BigInt(payload.predictorNonce),
+        predictorDeadline: BigInt(payload.predictorDeadline),
+      },
+      signature: payload.intentSignature as `0x${string}`,
+    });
+
+    const isValid = recovered.toLowerCase() === payload.predictor.toLowerCase();
+    if (!isValid) {
+      console.warn('[Escrow-Sig] Intent signature mismatch:', {
+        recovered,
+        expected: payload.predictor,
+      });
+    }
+    return isValid;
+  } catch (error) {
+    console.error('[Escrow-Sig] Intent verification error:', error);
+    return false;
+  }
+}

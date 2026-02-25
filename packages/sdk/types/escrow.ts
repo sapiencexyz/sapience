@@ -195,6 +195,7 @@ export interface AuctionRFQPayload {
   predictor: string; // EOA or smart account address
   predictorNonce: number;
   predictorDeadline: number; // unix timestamp
+  intentSignature: string; // EIP-712 AuctionIntent — proves identity + intent, relayer-only
   chainId: number;
   refCode?: string;
   predictorSessionKeyData?: string; // ZeroDev session approval (base64)

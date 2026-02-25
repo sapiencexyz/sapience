@@ -10,6 +10,8 @@ import {
   getEscrowAuctionDetails,
 } from './escrowRegistry';
 import { validateEscrowAuctionRequest, validateEscrowBid } from './escrowHelpers';
+// TODO: Wire up verifyAuctionIntentSignature when escrow address is in relayer env
+// import { verifyAuctionIntentSignature } from './escrowSigVerify';
 import {
   activeConnections,
   connectionsTotal,
