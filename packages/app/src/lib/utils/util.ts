@@ -6,6 +6,7 @@ import { mainnet } from 'viem/chains';
 import {
   CHAIN_ID_ETHEREAL,
   CHAIN_ID_ETHEREAL_TESTNET,
+  DEFAULT_CHAIN_ID,
   etherealChain,
   etherealTestnetChain,
 } from '@sapience/sdk/constants';
@@ -196,3 +197,13 @@ export const shortenAddress = (address: string) => {
   if (address.length < 12) return address;
   return `${address.slice(0, 6)}...${address.slice(-4)}`;
 };
+
+/**
+ * Get the block explorer base URL for a given chain ID.
+ * Defaults to DEFAULT_CHAIN_ID if not specified.
+ */
+export function getExplorerUrl(chainId?: number): string {
+  const id = chainId || DEFAULT_CHAIN_ID;
+  if (id === CHAIN_ID_ETHEREAL_TESTNET) return 'https://explorer.etherealtest.net';
+  return 'https://explorer.ethereal.trade';
+}
