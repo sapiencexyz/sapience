@@ -13,10 +13,7 @@ import { FormProvider, type UseFormReturn, useWatch } from 'react-hook-form';
 import { parseUnits } from 'viem';
 import { useAccount, useReadContract } from 'wagmi';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
-import {
-  predictionMarketAbi,
-  predictionMarketEscrowAbi,
-} from '@sapience/sdk/abis';
+import { predictionMarketEscrowAbi } from '@sapience/sdk/abis';
 import {
   COLLATERAL_SYMBOLS,
   CHAIN_ID_ETHEREAL,
@@ -149,13 +146,11 @@ export default function PositionForm({
   const { balance: userBalance, isLoading: isBalanceLoading } =
     useCollateralBalanceContext();
 
-  // Fetch taker nonce from PredictionMarket/PredictionMarketEscrow contract
-  // Escrow (testnet) uses getNonce, legacy uses nonces
-  const isEscrowChain = chainId === CHAIN_ID_ETHEREAL_TESTNET;
+  // Fetch taker nonce from PredictionMarketEscrow contract
   const { refetch: refetchTakerNonce, error: nonceError } = useReadContract({
     address: predictionMarketAddress,
-    abi: isEscrowChain ? predictionMarketEscrowAbi : predictionMarketAbi,
-    functionName: isEscrowChain ? 'getNonce' : 'nonces',
+    abi: predictionMarketEscrowAbi,
+    functionName: 'getNonce',
     args: selectedTakerAddress ? [selectedTakerAddress] : undefined,
     chainId,
     query: {
@@ -489,13 +484,11 @@ export default function PositionForm({
           chainId: chainId,
         };
 
-        // For escrow-capable chains with conditional token selections, add escrowPicks to trigger escrow auction
-        const isEscrowChain = chainId === CHAIN_ID_ETHEREAL_TESTNET;
-        if (isEscrowChain && hasUma && !hasPyth) {
+        // Add escrowPicks for conditional token selections to trigger escrow auction
+        if (hasUma && !hasPyth) {
           const escrowPicks = getPicks();
           if (escrowPicks.length > 0) {
             params.escrowPicks = escrowPicks;
-            // Note: counterpartyCollateral is NOT set here - counterparty decides their collateral in their bid
           }
         }
 
@@ -507,7 +500,7 @@ export default function PositionForm({
         // Set the request key to match incoming bids to this configuration
         currentRequestKeyRef.current = `${predictionsKey}:${positionSizeValue || ''}`;
         logPositionForm(
-          `[triggerAuction] Key set: ${currentRequestKeyRef.current.slice(0, 50)}, escrowPicks=${params.escrowPicks?.length ?? 0}`
+          `[triggerAuction] Key set: ${currentRequestKeyRef.current.slice(0, 50)}, picks=${params.escrowPicks?.length ?? 0}`
         );
 
         // Clear in-flight flag after a short delay to allow the debounced request to start
