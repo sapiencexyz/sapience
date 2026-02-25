@@ -82,14 +82,14 @@ export function validateEscrowAuctionRequest(
     return { valid: false, error: 'Invalid chainId' };
   }
 
-  // Validate intent signature (lightweight auth — proves predictor identity)
+  // Validate intent signature format if present (backward-compatible — old clients may omit)
   if (
-    !payload.intentSignature ||
-    typeof payload.intentSignature !== 'string' ||
-    !payload.intentSignature.startsWith('0x') ||
-    payload.intentSignature.length < 10
+    payload.intentSignature &&
+    (typeof payload.intentSignature !== 'string' ||
+      !payload.intentSignature.startsWith('0x') ||
+      payload.intentSignature.length < 10)
   ) {
-    return { valid: false, error: 'Missing or invalid intentSignature' };
+    return { valid: false, error: 'Invalid intentSignature format' };
   }
 
   return { valid: true };
