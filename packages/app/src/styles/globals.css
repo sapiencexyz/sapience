@@ -336,6 +336,23 @@
     animation: prismatic-sweep 30s linear infinite;
   }
 
+  /* Horizontal prismatic sweep for vault excess bar */
+  .vault-excess-rainbow {
+    background: repeating-linear-gradient(
+      0deg,
+      hsl(var(--category-3)) 0%,
+      hsl(var(--category-2)) 14.3%,
+      hsl(var(--category-1)) 28.6%,
+      hsl(var(--category-5)) 42.9%,
+      hsl(var(--category-4)) 57.1%,
+      hsl(var(--category-7)) 71.4%,
+      hsl(var(--category-6)) 85.7%,
+      hsl(var(--category-3)) 100%
+    );
+    background-size: 100% 1200%;
+    animation: prismatic-sweep 30s linear infinite;
+  }
+
   /* Loader pulse animation - subtle, tight pulse for loading indicators */
   @keyframes loader-pulse {
     0%,
@@ -529,10 +546,10 @@
     font-family: 'Avenir Next', sans-serif !important;
   }
   .market-card .text-brand-white {
-    color: #2E5CFF !important;
+    color: #2e5cff !important;
   }
   .market-card .text-accent-gold {
-    color: #2E5CFF !important;
+    color: #2e5cff !important;
     font-weight: 600 !important;
     font-family: 'Avenir Next', sans-serif !important;
   }
