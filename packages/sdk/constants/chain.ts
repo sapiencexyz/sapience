@@ -5,13 +5,13 @@ export const CHAIN_ID_ETHEREAL = 5064014 as const;
 export const CHAIN_ID_ETHEREAL_TESTNET = 13374202 as const;
 
 /**
- * Derive the default chain ID from environment:
- * - NEXT_PUBLIC_ENV=staging → Ethereal testnet
- * - Otherwise → Ethereal mainnet
+ * Default chain ID — reads from NEXT_PUBLIC_DEFAULT_CHAIN_ID env var.
+ * Staging sets this to 13374202 (Ethereal testnet).
+ * Falls back to Ethereal mainnet (5064014).
  */
 export const DEFAULT_CHAIN_ID = (
-  typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_ENV === 'staging'
-    ? CHAIN_ID_ETHEREAL_TESTNET
+  typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_DEFAULT_CHAIN_ID
+    ? Number(process.env.NEXT_PUBLIC_DEFAULT_CHAIN_ID)
     : CHAIN_ID_ETHEREAL
 ) as number;
 
