@@ -185,13 +185,13 @@ function convertTypedDataForViem<T extends { domain: { chainId?: bigint | number
  *
  * @param payload - The escrow auction request payload
  * @param verifyingContract - The PredictionMarketEscrow contract address
- * @param counterparty - Placeholder counterparty address (can be zero for auction start)
+ * @param counterparty - Counterparty address (from the vault's bid)
  * @returns true if signature is valid
  */
 export async function verifyEscrowPredictorSignature(
   payload: AuctionRequestPayload,
   verifyingContract: Address,
-  counterparty: Address = '0x0000000000000000000000000000000000000000'
+  counterparty: Address
 ): Promise<boolean> {
   if (!payload.predictorSignature) {
     return false;
