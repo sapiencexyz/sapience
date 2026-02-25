@@ -113,6 +113,8 @@ export interface MintPredictionRequestDataLike {
   predictorSessionKeyData?: string;
   /** Counterparty session key data (base64 encoded, empty if EOA) */
   counterpartySessionKeyData?: string;
+  /** Predictor's EIP-712 MintApproval signature (required for escrow mints) */
+  predictorSignature?: `0x${string}`;
   // Sponsorship fields
   predictorSponsor?: `0x${string}`;
   predictorSponsorData?: `0x${string}`;
@@ -237,7 +239,7 @@ export function prepareMintCalls(
       counterpartyNonce: BigInt(mintData.takerClaimedNonce ?? 0),
       predictorDeadline: BigInt(mintData.takerDeadline), // TODO: separate predictor deadline
       counterpartyDeadline: BigInt(mintData.takerDeadline),
-      predictorSignature: '0x' as Hex, // Predictor is msg.sender — signature filled by wallet
+      predictorSignature: (mintData.predictorSignature || '0x') as Hex,
       counterpartySignature: mintData.takerSignature,
       refCode: mintData.refCode,
       predictorSessionKeyData: (mintData.predictorSessionKeyData
