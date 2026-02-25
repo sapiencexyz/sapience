@@ -214,7 +214,7 @@ export class PositionReconciler {
                 const decoded = decodeEventLog({
                   abi: [TRANSFER_EVENT],
                   data: log.data,
-                  topics: log.topics as [string, ...string[]],
+                  topics: log.topics as [`0x${string}`, ...`0x${string}`[]],
                 });
                 const { from, to, value } = decoded.args as {
                   from: `0x${string}`;
