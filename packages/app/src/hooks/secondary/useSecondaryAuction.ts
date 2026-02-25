@@ -49,7 +49,7 @@ export function useSecondaryAuctionStart(
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { nonce: currentNonce, refetch: refetchNonce } = useSecondaryNonce({
-    address: address as Address | undefined,
+    address,
     chainId,
   });
 
@@ -218,7 +218,7 @@ export function useSecondaryAuctionStart(
     startAuction,
     isSubmitting,
     isConnected: Boolean(address),
-    address: address as Address | undefined,
+    address,
     chainId,
     verifyingContract,
     currentNonce,

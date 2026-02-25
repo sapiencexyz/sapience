@@ -448,68 +448,26 @@ export default function CollateralBalanceButton({
                 <Image
                   src="/usde.svg"
                   alt="USDe"
-                  width={20}
-                  height={20}
-                  className="opacity-90 ml-[-2px] w-5 h-5"
+                  width={16}
+                  height={16}
+                  className="opacity-90"
                 />
-                <span className="relative top-[1px] xl:top-0 text-sm font-normal">
-                  {formatDollarLikeBalance(displayedBalance)} {symbol}
-                </span>
-              </div>
-            </div>
-          </HoverCardTrigger>
-          <HoverCardContent side="bottom" className="w-auto p-4">
-            <div className="flex items-center gap-4">
-              {/* Left section - Get USDe */}
-              <div className="flex flex-col items-center justify-center space-y-3">
-                <div className="space-y-1 text-center">
-                  <p className="font-medium text-sm whitespace-nowrap">
-                    {isUsingSmartAccount
-                      ? 'Sapience Account Balance'
-                      : 'Wallet Balance'}
-                  </p>
-                  {isUsingSmartAccount && smartAccountAddress && (
-                    <div className="flex justify-center">
-                      <AddressDisplay address={smartAccountAddress} compact />
-                    </div>
-                  )}
-                  {!isUsingSmartAccount && eoaAddress && (
-                    <div className="flex justify-center">
-                      <AddressDisplay address={eoaAddress} compact />
-                    </div>
-                  )}
-                  <p className="text-2xl font-mono pt-1">
-                    {formatDollarLikeBalance(displayedBalance)} {symbol}
-                  </p>
-                </div>
-                <Button
-                  size="sm"
-                  className="gap-2 w-full"
-                  onClick={() => setIsGetUsdeOpen(true)}
+                Get USDe
+              </Button>
+              {/* Withdraw button shown when smart account has balance, regardless of mode */}
+              {/* This allows users to recover funds from smart account even when using EOA */}
+              {smartAccountBalance > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setIsWithdrawOpen(true)}
+                  className="text-xs text-muted-foreground hover:text-foreground underline"
                 >
-                  <Image
-                    src="/usde.svg"
-                    alt="USDe"
-                    width={16}
-                    height={16}
-                    className="opacity-90"
-                  />
-                  Get USDe
-                </Button>
-                {/* Withdraw button shown when smart account has balance, regardless of mode */}
-                {/* This allows users to recover funds from smart account even when using EOA */}
-                {smartAccountBalance > 0 && (
-                  <button
-                    type="button"
-                    onClick={() => setIsWithdrawOpen(true)}
-                    className="text-xs text-muted-foreground hover:text-foreground underline"
-                  >
-                    Withdraw from Sapience Account
-                  </button>
-                )}
-              </div>
+                  Withdraw from Sapience Account
+                </button>
+              )}
             </div>
-          </HoverCardContent>
+          </div>
+        </HoverCardContent>
         </HoverCard>
       )}
 
