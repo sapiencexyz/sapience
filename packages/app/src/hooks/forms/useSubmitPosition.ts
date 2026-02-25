@@ -15,6 +15,7 @@ import { useSession } from '~/lib/context/SessionContext';
 import type { MintPredictionRequestData } from '~/lib/auction/useAuctionStart';
 import { getPublicClientForChainId } from '~/lib/utils/util';
 import { buildPredictorMintTypedData } from '@sapience/sdk/auction/escrowSigning';
+import { canonicalizePicks } from '@sapience/sdk/auction/escrowEncoding';
 import type { Pick as EscrowPick } from '@sapience/sdk/types/escrow';
 
 interface UseSubmitPositionProps {
@@ -221,11 +222,13 @@ export function useSubmitPosition({
 
         // Sign predictor's MintApproval for escrow mints
         if (filled.escrowPicks && filled.escrowPicks.length > 0) {
-          const picks: EscrowPick[] = filled.escrowPicks.map((p) => ({
-            conditionResolver: p.conditionResolver,
-            conditionId: p.conditionId,
-            predictedOutcome: p.predictedOutcome,
-          }));
+          const picks: EscrowPick[] = canonicalizePicks(
+            filled.escrowPicks.map((p) => ({
+              conditionResolver: p.conditionResolver,
+              conditionId: p.conditionId,
+              predictedOutcome: p.predictedOutcome,
+            }))
+          );
 
           const typedData = buildPredictorMintTypedData({
             picks,

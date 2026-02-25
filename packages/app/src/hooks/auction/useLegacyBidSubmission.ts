@@ -29,6 +29,7 @@ const WUSDE_DEPOSIT_ABI = parseAbi(['function deposit() payable']);
 import { buildCounterpartyMintTypedData } from '@sapience/sdk/auction/escrowSigning';
 import type { OutcomeSide } from '@sapience/sdk';
 import { type Pick as EscrowPick } from '@sapience/sdk';
+import { canonicalizePicks } from '@sapience/sdk/auction/escrowEncoding';
 import { getPublicClientForChainId } from '~/lib/utils/util';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
