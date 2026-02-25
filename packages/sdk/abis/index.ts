@@ -56,5 +56,5 @@ export const conditionResolverAbi = IConditionResolver as Abi;
 export const predictionMarketBridgeAbi = PredictionMarketBridge as Abi;
 export const predictionMarketBridgeRemoteAbi = PredictionMarketBridgeRemote as Abi;
 export const predictionMarketTokenFactoryAbi = PredictionMarketTokenFactory as Abi;
-export const secondaryMarketEscrowAbi = (SecondaryMarketEscrow as { abi: Abi }).abi;
+export const secondaryMarketEscrowAbi = SecondaryMarketEscrow as Abi;
 export const onboardingSponsorAbi = OnboardingSponsor as Abi;
