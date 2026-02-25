@@ -133,7 +133,7 @@ export function encodeWriteContractToCall(
 export function createWrapTransaction(amount: bigint, chainId: number = DEFAULT_CHAIN_ID): TransactionCall {
   const wusdeAddress = collateralToken[chainId]?.address ?? collateralToken[CHAIN_ID_ETHEREAL]?.address;
   return {
-    to: wusdeAddress!,
+    to: wusdeAddress,
     data: WUSDE_DEPOSIT_SELECTOR,
     value: amount,
   };

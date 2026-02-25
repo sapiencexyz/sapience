@@ -187,7 +187,7 @@ const FeedPageContent: React.FC = () => {
       } as UiTransaction;
     }
     if (m.type === 'auction.bids') {
-      const bids = Array.isArray(d?.bids) ? (d.bids as any[]) : [];
+      const bids = Array.isArray(d?.bids) ? d.bids : [];
       const top = bids.reduce((best, b) => {
         try {
           // V1 uses makerCollateral, escrow uses counterpartyCollateral

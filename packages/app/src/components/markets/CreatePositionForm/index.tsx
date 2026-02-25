@@ -956,8 +956,8 @@ const CreatePositionFormInner = ({
             // Wire sponsorship: if user has a sponsor budget, pass the sponsor address
             // so the escrow contract calls fundMint instead of pulling from user's wallet
             if (isSponsored && sponsorAddress) {
-              mintReq.predictorSponsor = sponsorAddress as `0x${string}`;
-              mintReq.predictorSponsorData = '0x' as `0x${string}`;
+              mintReq.predictorSponsor = sponsorAddress;
+              mintReq.predictorSponsorData = '0x';
             }
           }
 

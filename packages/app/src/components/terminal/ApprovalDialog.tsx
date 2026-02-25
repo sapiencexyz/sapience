@@ -339,7 +339,7 @@ const ApprovalDialog: React.FC = () => {
           chainId,
           calls: [
             {
-              to: collateralToken[chainId]?.address!,
+              to: collateralToken[chainId].address,
               data: wrapCalldata,
               value: wrapAmount,
             },

@@ -1,5 +1,5 @@
 import { useCallback, useState, useMemo } from 'react';
-import { erc20Abi, zeroAddress } from 'viem';
+import { erc20Abi } from 'viem';
 
 import {
   predictionMarketAbi,
