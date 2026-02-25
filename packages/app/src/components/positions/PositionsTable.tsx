@@ -15,10 +15,13 @@ import * as React from 'react';
 import EmptyTabState from '~/components/shared/EmptyTabState';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import Loader from '~/components/shared/Loader';
+import PicksSummary from '~/components/shared/PicksSummary';
+import type { Pick as PickLeg } from '~/components/shared/StackedPredictions';
 import { COLLATERAL_SYMBOLS, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import {
-  usePredictions,
-  type Prediction,
+  usePositionBalances,
+  type PositionBalance,
+  type PickData,
 } from '~/hooks/graphql/usePositions';
 
 // Settlement result display
@@ -41,51 +44,67 @@ function SettlementBadge({ result }: { result: string }) {
   return <Badge variant={config.variant as any}>{config.label}</Badge>;
 }
 
-function PredictionRow({
-  prediction,
-  userAddress,
+/** Map escrow PickData to the Pick interface used by PicksSummary */
+function toPickLegs(picks: PickData[], isPredictorToken: boolean): PickLeg[] {
+  return picks.map((pick) => ({
+    question: pick.conditionId,
+    choice: isPredictorToken
+      ? pick.predictedOutcome === 1
+        ? 'Yes'
+        : 'No'
+      : pick.predictedOutcome === 1
+        ? 'No'
+        : 'Yes',
+    conditionId: pick.conditionId,
+    resolverAddress: pick.conditionResolver,
+  }));
+}
+
+function PositionRow({
+  position,
   collateralSymbol,
 }: {
-  prediction: Prediction;
-  userAddress: string;
+  position: PositionBalance;
   collateralSymbol: string;
 }) {
-  const isPredictor =
-    prediction.predictor.toLowerCase() === userAddress.toLowerCase();
-  const userCollateral = isPredictor
-    ? prediction.predictorCollateral
-    : prediction.counterpartyCollateral;
-  const totalPool =
-    BigInt(prediction.predictorCollateral) + BigInt(prediction.counterpartyCollateral);
+  const { pickConfig, isPredictorToken } = position;
+  const picks = pickConfig?.picks ?? [];
+  const legs = toPickLegs(picks, isPredictorToken);
 
-  const collateralFormatted = parseFloat(formatEther(BigInt(userCollateral)));
+  const balanceFormatted = parseFloat(formatEther(BigInt(position.balance)));
+
+  const totalPool = pickConfig
+    ? BigInt(pickConfig.totalPredictorCollateral) +
+      BigInt(pickConfig.totalCounterpartyCollateral)
+    : 0n;
   const totalPoolFormatted = parseFloat(formatEther(totalPool));
 
-  // Determine claimable amount if settled
-  let claimableFormatted = 0;
-  if (prediction.settled) {
-    const claimable = isPredictor
-      ? prediction.predictorClaimable
-      : prediction.counterpartyClaimable;
-    if (claimable) {
-      claimableFormatted = parseFloat(formatEther(BigInt(claimable)));
-    }
-  }
+  const result = pickConfig?.result ?? 'UNRESOLVED';
+  const isResolved = pickConfig?.resolved ?? false;
+
+  const isWinner =
+    isResolved &&
+    ((isPredictorToken && result === 'PREDICTOR_WINS') ||
+      (!isPredictorToken && result === 'COUNTERPARTY_WINS') ||
+      result === 'NON_DECISIVE');
 
   return (
     <TableRow>
       <TableCell>
-        <code className="text-xs text-muted-foreground">
-          {prediction.predictionId.slice(0, 10)}...
-        </code>
+        <PicksSummary
+          legs={legs}
+          positionId={pickConfig?.id ?? position.id}
+          isCounterparty={!isPredictorToken}
+          marketAddress={pickConfig?.marketAddress}
+        />
       </TableCell>
       <TableCell>
-        <Badge variant={isPredictor ? 'default' : 'secondary'}>
-          {isPredictor ? 'Predictor' : 'Counterparty'}
+        <Badge variant={isPredictorToken ? 'default' : 'secondary'}>
+          {isPredictorToken ? 'Predictor' : 'Counterparty'}
         </Badge>
       </TableCell>
       <TableCell>
-        <NumberDisplay value={collateralFormatted} appendedText={collateralSymbol} />
+        <NumberDisplay value={balanceFormatted} appendedText={collateralSymbol} />
       </TableCell>
       <TableCell>
         <NumberDisplay
@@ -94,14 +113,11 @@ function PredictionRow({
         />
       </TableCell>
       <TableCell>
-        <SettlementBadge result={prediction.result} />
+        <SettlementBadge result={result} />
       </TableCell>
       <TableCell>
-        {prediction.settled && claimableFormatted > 0 ? (
-          <NumberDisplay
-            value={claimableFormatted}
-            appendedText={collateralSymbol}
-          />
+        {isWinner && balanceFormatted > 0 ? (
+          <Badge variant={'success' as any}>Redeemable</Badge>
         ) : (
           <span className="text-muted-foreground">—</span>
         )}
@@ -123,15 +139,18 @@ export default function PositionsTable({
 }) {
   const collateralSymbol = COLLATERAL_SYMBOLS[chainId || DEFAULT_CHAIN_ID] || 'USDe';
 
-  // Fetch predictions for this user
+  // Fetch position balances for this user
   const {
-    data: predictions,
+    data: allPositions,
     isLoading,
     error,
-  } = usePredictions({
-    address: account,
+  } = usePositionBalances({
+    holder: account,
     chainId,
   });
+
+  // Filter out zero-balance positions (fully redeemed)
+  const positions = allPositions.filter((p) => BigInt(p.balance) > 0n);
 
   // Header with leftSlot (tab switcher) and optional title
   const headerContent = (
@@ -141,7 +160,7 @@ export default function PositionsTable({
         {showHeaderText && (
           <div className="flex items-center justify-between">
             <h3 className="text-lg font-semibold">Positions</h3>
-            <Badge variant="outline">{predictions.length} positions</Badge>
+            <Badge variant="outline">{positions.length} positions</Badge>
           </div>
         )}
       </div>
@@ -170,7 +189,7 @@ export default function PositionsTable({
     );
   }
 
-  if (predictions.length === 0) {
+  if (positions.length === 0) {
     return (
       <>
         {headerContent}
@@ -186,20 +205,19 @@ export default function PositionsTable({
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Prediction ID</TableHead>
+              <TableHead>Predictions</TableHead>
               <TableHead>Side</TableHead>
-              <TableHead>Your Collateral</TableHead>
+              <TableHead>Your Balance</TableHead>
               <TableHead>Total Pool</TableHead>
               <TableHead>Status</TableHead>
               <TableHead>Claimable</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {predictions.map((prediction) => (
-              <PredictionRow
-                key={prediction.predictionId}
-                prediction={prediction}
-                userAddress={account}
+            {positions.map((position) => (
+              <PositionRow
+                key={position.id}
+                position={position}
                 collateralSymbol={collateralSymbol}
               />
             ))}
