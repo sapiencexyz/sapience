@@ -1,6 +1,5 @@
 import { reindexEAS } from './reindexEAS';
 import { backfillAccuracy } from './backfillAccuracy';
-import { backfillPositions } from './backfillPositions';
 import { reindexTransfers } from './reindexTransfers';
 import { reindexAccuracy } from './reindexAccuracy';
 import { reindexPredictionMarket } from './reindexPredictionMarket';
@@ -113,13 +112,6 @@ export async function handleJobCommand(argv: string[]): Promise<boolean> {
       const chainId = argv[4] ? parseInt(argv[4], 10) : undefined;
       await backfillProtocolStats(chainId, days);
       console.log('Done backfilling protocol stats');
-      process.exit(0);
-      return true;
-    }
-    case 'backfillPositions': {
-      const chainId = argv[3] ? parseInt(argv[3], 10) : undefined;
-      await backfillPositions(chainId);
-      console.log('Done backfilling positions');
       process.exit(0);
       return true;
     }
