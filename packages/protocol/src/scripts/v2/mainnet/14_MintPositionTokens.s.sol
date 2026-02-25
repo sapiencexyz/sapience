@@ -169,7 +169,9 @@ contract MintPredictionMarketTokens is Script {
                 collaterals.predictorCollateral,
                 collaterals.counterpartyCollateral,
                 actors.predictor,
-                actors.counterparty
+                actors.counterparty,
+                address(0),
+                ""
             )
         );
 

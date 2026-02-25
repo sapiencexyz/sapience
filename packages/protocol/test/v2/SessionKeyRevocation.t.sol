@@ -198,7 +198,9 @@ contract SessionKeyRevocationTest is Test {
                 PREDICTOR_COLLATERAL,
                 COUNTERPARTY_COLLATERAL,
                 smartAccount,
-                counterparty
+                counterparty,
+                address(0),
+                ""
             )
         );
 

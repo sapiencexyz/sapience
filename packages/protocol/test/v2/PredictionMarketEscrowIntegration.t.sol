@@ -98,7 +98,7 @@ contract PredictionMarketEscrowIntegrationTest is Test {
         bytes32 pickConfigId = keccak256(abi.encode(picks));
         bytes32 predictionHash = keccak256(
             abi.encode(
-                pickConfigId, pCollateral, cCollateral, predictor, counterparty
+                pickConfigId, pCollateral, cCollateral, predictor, counterparty, address(0), ""
             )
         );
 

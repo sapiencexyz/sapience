@@ -277,7 +277,9 @@ contract SessionKeyERC1271Test is Test {
                 PREDICTOR_COLLATERAL,
                 COUNTERPARTY_COLLATERAL,
                 predictor,
-                counterparty_
+                counterparty_,
+                address(0),
+                ""
             )
         );
     }

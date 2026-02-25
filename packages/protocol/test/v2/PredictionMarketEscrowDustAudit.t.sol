@@ -116,7 +116,9 @@ contract PredictionMarketEscrowDustAudit is Test {
                 predictorCollateral,
                 counterpartyCollateral,
                 alice,
-                bob
+                bob,
+                address(0),
+                ""
             )
         );
 

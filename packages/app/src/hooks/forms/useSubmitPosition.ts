@@ -212,6 +212,8 @@ export function useSubmitPosition({
             counterparty: filled.taker,
             predictorNonce: nonceValue,
             predictorDeadline: BigInt(filled.takerDeadline),
+            predictorSponsor: '0x0000000000000000000000000000000000000000',
+            predictorSponsorData: '0x',
             verifyingContract: predictionMarketAddress,
             chainId,
           });

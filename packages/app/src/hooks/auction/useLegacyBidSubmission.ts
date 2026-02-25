@@ -395,6 +395,8 @@ export function useLegacyBidSubmission(
           counterparty: signerAddress, // bidder (us)
           counterpartyNonce,
           counterpartyDeadline: BigInt(makerDeadline),
+          predictorSponsor: '0x0000000000000000000000000000000000000000',
+          predictorSponsorData: '0x',
           verifyingContract: verifyingContract,
           chainId,
         });
