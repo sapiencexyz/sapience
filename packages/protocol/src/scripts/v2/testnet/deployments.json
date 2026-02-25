@@ -4,22 +4,24 @@
     "name": "Ethereal Testnet",
     "chainId": null,
     "contracts": {
-      "ManualConditionResolver": "0x514A4321d89Aa47D1b1Dd9E0a3226249E6ef896A",
-      "PredictionMarketEscrow": "0x8730eE1194Cd03A14deA9975e2bafD4C8b6019F1",
-      "PredictionMarketBridge": "0x275Ba9B8DB207afb33022043848216BB7195eDb5",
-      "PredictorToken": "0x0e3e52469bac02EefC0003f8dE91663Aac5821aE",
-      "CounterpartyToken": "0x92D19C5189632afC7092ec403672e08C961f6b9E",
-      "ZeroDevKernelAccountFactory": "0xe8E1B2DFe39DEC9BF381469a2CB35e74767A00bA"
+      "ManualConditionResolver": "0xdf678805f728ab19e1F848383310bE3fb0a7d21E",
+      "PredictionMarketEscrow": "0x649C5cEAC8EEc81b0f3f05aB21DC699d1Bd55d81",
+      "PredictionMarketBridge": "0xd1C8e14FA9Dcd4fac2495BC00013F3ae1eaf5171",
+      "PredictorToken": "0xC8cCe79B46E79167B9400d1aC38F54bd48f8d79C",
+      "CounterpartyToken": "0x45984876A9D8CbD8e6dd6d66BaF1B2d1D772de3b",
+      "ZeroDevKernelAccountFactory": "0xe8E1B2DFe39DEC9BF381469a2CB35e74767A00bA",
+      "PredictionMarketTokenFactory": "0xcbf9eB6AF28fBCc7c19760aC230cC216113742d0",
+      "PredictionMarketVault": "0xce5ccC8bE76d1504B8DfeB8D09969Dcb139B9F72"
     }
   },
   "smNetwork": {
     "name": "Arbitrum Sepolia",
     "chainId": null,
     "contracts": {
-      "PredictionMarketTokenFactory": "0x0daA1bC7FC4d7f2753FdB65e0AD96b97361385A3",
-      "PredictionMarketBridgeRemote": "0x1a7F19Ee50FBCa9a4d195E4a3737e7737b252b4c"
+      "PredictionMarketTokenFactory": "0xcbf9eB6AF28fBCc7c19760aC230cC216113742d0",
+      "PredictionMarketBridgeRemote": "0x7b00088CA92d4f11F305CC61758De3580a730f39"
     }
   },
   "deployedAt": "2026-01-29T19:28:54Z",
-  "lastUpdated": "2026-01-29T20:04:36Z"
+  "lastUpdated": "2026-02-24T19:11:21Z"
 }
