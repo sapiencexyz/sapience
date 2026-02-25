@@ -19,7 +19,7 @@ interface UseSingleConditionAuctionProps {
   chainId: number;
   /** Collateral decimals (default 18) */
   collateralDecimals?: number;
-  /** PredictionMarket contract address for nonce fetching */
+  /** PredictionMarketEscrow contract address for nonce fetching */
   predictionMarketAddress?: `0x${string}`;
   /** Bids from useAuctionStart */
   bids: QuoteBid[];
@@ -62,7 +62,7 @@ export function useSingleConditionAuction({
   bids,
   requestQuotes,
 }: UseSingleConditionAuctionProps): UseSingleConditionAuctionReturn {
-  const { address: takerAddress } = useAccount();
+  const { address: predictorAddress } = useAccount();
   const { effectiveAddress } = useSession();
   const [nowMs, setNowMs] = useState<number>(Date.now());
   const [lastQuoteRequestMs, setLastQuoteRequestMs] = useState<number | null>(
@@ -70,17 +70,17 @@ export function useSingleConditionAuction({
   );
 
   // Use effectiveAddress from session context, falling back to zero address for guests
-  const selectedTakerAddress = effectiveAddress ?? takerAddress ?? zeroAddress;
+  const selectedPredictorAddress = effectiveAddress ?? predictorAddress ?? zeroAddress;
 
-  // Fetch taker nonce from PredictionMarketEscrow contract
-  const { data: takerNonce } = useReadContract({
+  // Fetch predictor nonce from PredictionMarketEscrow contract
+  const { data: predictorNonce } = useReadContract({
     address: predictionMarketAddress,
     abi: predictionMarketEscrowAbi,
     functionName: 'getNonce',
-    args: selectedTakerAddress ? [selectedTakerAddress] : undefined,
+    args: selectedPredictorAddress ? [selectedPredictorAddress] : undefined,
     chainId,
     query: {
-      enabled: !!selectedTakerAddress && !!predictionMarketAddress,
+      enabled: !!selectedPredictorAddress && !!predictionMarketAddress,
     },
   });
 
@@ -98,25 +98,25 @@ export function useSingleConditionAuction({
     if (validBids.length === 0) return null;
 
     // Parse user's position size to wei for payout calculation
-    let userPositionSizeWei: bigint;
+    let predictorCollateralWei: bigint;
     try {
-      userPositionSizeWei = parseUnits(positionSize || '0', collateralDecimals);
+      predictorCollateralWei = parseUnits(positionSize || '0', collateralDecimals);
     } catch {
-      userPositionSizeWei = 0n;
+      predictorCollateralWei = 0n;
     }
 
-    // Find bid with highest total payout (userPositionSize + makerCollateral)
+    // Find bid with highest total payout (predictorCollateral + counterpartyCollateral)
     return validBids.reduce((best, current) => {
       const bestPayout = (() => {
         try {
-          return userPositionSizeWei + BigInt(best.makerCollateral);
+          return predictorCollateralWei + BigInt(best.makerCollateral);
         } catch {
           return 0n;
         }
       })();
       const currentPayout = (() => {
         try {
-          return userPositionSizeWei + BigInt(current.makerCollateral);
+          return predictorCollateralWei + BigInt(current.makerCollateral);
         } catch {
           return 0n;
         }
@@ -137,10 +137,10 @@ export function useSingleConditionAuction({
   const triggerQuoteRequest = useCallback(
     (options?: { forceRefresh?: boolean; requireSignature?: boolean }) => {
       if (!requestQuotes) return;
-      if (!selectedTakerAddress) return;
+      if (!selectedPredictorAddress) return;
       if (!conditionId || prediction === null) return;
       // Wait for nonce if using a real address (not guest)
-      if (selectedTakerAddress !== zeroAddress && takerNonce === undefined)
+      if (selectedPredictorAddress !== zeroAddress && predictorNonce === undefined)
         return;
 
       const positionSizeStr = positionSize || '0';
@@ -161,13 +161,12 @@ export function useSingleConditionAuction({
           wager: positionSizeWei,
           resolver: payload.resolver,
           predictedOutcomes: payload.predictedOutcomes,
-          taker: selectedTakerAddress,
-          takerNonce: takerNonce !== undefined ? Number(takerNonce) : 0,
+          taker: selectedPredictorAddress,
+          takerNonce: predictorNonce !== undefined ? Number(predictorNonce) : 0,
           chainId: chainId,
         };
 
         // For "forecast/preview" quotes we should never prompt a wallet signature.
-        // (Matches `MarketPredictionRequest` behavior.)
         requestQuotes(params, { requireSignature: false, ...options });
         setLastQuoteRequestMs(Date.now());
       } catch {
@@ -176,10 +175,10 @@ export function useSingleConditionAuction({
     },
     [
       requestQuotes,
-      selectedTakerAddress,
+      selectedPredictorAddress,
       conditionId,
       prediction,
-      takerNonce,
+      predictorNonce,
       positionSize,
       collateralDecimals,
       chainId,
@@ -193,15 +192,12 @@ export function useSingleConditionAuction({
     }
   }, [conditionId, prediction, positionSize, triggerQuoteRequest]);
 
-  // Show "Request Bids" button when:
-  // 1. No valid bids exist (never received or all expired)
-  // 2. Not in the 3-second cooldown period after making a request
+  // Show "Request Bids" button when no valid bids exist and not recently requested
   const showRequestBidsButton =
     !bestBid &&
     !recentlyRequested &&
     (allBidsExpired || lastQuoteRequestMs != null);
 
-  // Waiting for bids = recently requested but no valid bids yet
   const isWaitingForBids = recentlyRequested && !bestBid;
 
   return {
