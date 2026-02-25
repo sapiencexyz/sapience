@@ -208,6 +208,9 @@ type ConditionById = {
   endTime?: number | null;
   resolver?: string | null;
   category?: { slug?: string | null } | null;
+  settled?: boolean | null;
+  resolvedToYes?: boolean | null;
+  description?: string | null;
 };
 
 const CONDITIONS_BY_IDS_QUERY = /* GraphQL */ `
@@ -221,6 +224,9 @@ const CONDITIONS_BY_IDS_QUERY = /* GraphQL */ `
       category {
         slug
       }
+      settled
+      resolvedToYes
+      description
     }
   }
 `;
