@@ -15,7 +15,7 @@ contract DeployFactorySM is Script {
 
     /// @dev Default salt for factory deployment (same on both chains)
     bytes32 constant DEFAULT_FACTORY_SALT =
-        keccak256("sapience-prediction-market-token-factory-v1");
+        keccak256("sapience-prediction-market-token-factory-v2");
 
     function run() external {
         address owner = vm.envAddress("DEPLOYER_ADDRESS");
