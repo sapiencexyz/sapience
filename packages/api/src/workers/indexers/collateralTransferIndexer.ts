@@ -175,8 +175,15 @@ class CollateralTransferIndexer implements IIndexer {
     const key = `${INDEXER_STATE_KEY}:${this.chainId}`;
     const row = await prisma.keyValueStore.findUnique({ where: { key } });
     if (row) return BigInt(row.value);
-    // Start from current block if no cursor — backfill can be done separately
-    return await this.client.getBlockNumber();
+
+    // No cursor yet — start from the collateral token's deploy block.
+    // If blockCreated isn't set in the SDK, start from block 0 to capture full history.
+    const entry = collateralToken[this.chainId];
+    const deployBlock = entry?.blockCreated ? BigInt(entry.blockCreated) : 0n;
+    console.log(
+      `[CollateralTransferIndexer] No cursor found, starting from block ${deployBlock}`
+    );
+    return deployBlock;
   }
 
   private async setLastIndexedBlock(block: number): Promise<void> {
