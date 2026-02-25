@@ -207,9 +207,18 @@ export interface AuctionRFQPayload {
  * Contains both collaterals and the predictor's MintApproval signature.
  * This is assembled client-side for the mint() call; never sent through the relayer.
  */
-export interface AuctionRequestPayload extends AuctionRFQPayload {
+export interface AuctionRequestPayload {
+  picks: PickJson[];
+  predictorCollateral: string; // wei string
   counterpartyCollateral: string; // wei string — required at mint time (from vault's bid)
+  predictor: string; // EOA or smart account address
+  predictorNonce: number;
+  predictorDeadline: number; // unix timestamp
+  intentSignature: string; // EIP-712 AuctionIntent
   predictorSignature: string; // EIP-712 MintApproval signature
+  chainId: number;
+  refCode?: string;
+  predictorSessionKeyData?: string;
 }
 
 /**

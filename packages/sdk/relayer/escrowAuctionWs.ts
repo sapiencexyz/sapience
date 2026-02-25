@@ -2,6 +2,7 @@ import WebSocket from 'ws';
 import type { RawData } from 'ws';
 import type {
   AuctionRFQPayload,
+  AuctionDetails,
   BidPayload,
   BurnRequestPayload,
   ClientToServerMessage,
@@ -27,15 +28,7 @@ export interface AuctionWsHandlers {
     unsubscribed?: boolean;
   }) => void;
   onBidAck?: (payload: { bidId?: string; error?: string }) => void;
-  onAuctionStarted?: (payload: {
-    auctionId: string;
-    picks: PickJson[];
-    predictorCollateral: string;
-    predictor: string;
-    predictorDeadline: number;
-    chainId: number;
-    createdAt: string;
-  }) => void;
+  onAuctionStarted?: (payload: AuctionDetails) => void;
   onAuctionBids?: (payload: {
     auctionId: string;
     bids: Array<{
