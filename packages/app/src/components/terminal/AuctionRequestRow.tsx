@@ -406,10 +406,6 @@ const AuctionRequestRow: React.FC<Props> = ({
         // Ensure essential auction context (after preflight checks)
         const hasEscrowPicks =
           Array.isArray(escrowPicks) && escrowPicks.length > 0;
-        const encodedPredicted =
-          Array.isArray(predictedOutcomes) && predictedOutcomes[0]
-            ? (predictedOutcomes[0] as `0x${string}`)
-            : undefined;
         const resolverAddr =
           typeof resolver === 'string' ? resolver : undefined;
         const takerCollateralWei = (() => {
@@ -420,16 +416,14 @@ const AuctionRequestRow: React.FC<Props> = ({
           }
         })();
 
-        const hasPredictionData = hasEscrowPicks || !!encodedPredicted;
-
         if (
-          !hasPredictionData ||
+          !hasEscrowPicks ||
           !resolverAddr ||
           takerCollateralWei <= 0n ||
           !taker
         ) {
           const missing: string[] = [];
-          if (!hasPredictionData) missing.push('escrow picks');
+          if (!hasEscrowPicks) missing.push('escrow picks');
           if (!resolverAddr) missing.push('resolver');
           if (takerCollateralWei <= 0n) missing.push('taker position size');
           if (!taker) missing.push('taker');
@@ -448,12 +442,11 @@ const AuctionRequestRow: React.FC<Props> = ({
           auctionId,
           makerCollateral: makerCollateralWei,
           takerCollateral: takerCollateralWei,
-          predictedOutcomes: encodedPredicted ? [encodedPredicted] : [],
           resolver: resolverAddr as `0x${string}`,
           taker: taker as `0x${string}`,
           expirySeconds: data.expirySeconds,
           maxEndTimeSec: maxEndTimeSec ?? undefined,
-          escrowPicks,
+          escrowPicks: escrowPicks ?? [],
         });
 
         if (result.success) {

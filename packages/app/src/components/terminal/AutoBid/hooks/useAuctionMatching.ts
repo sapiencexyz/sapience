@@ -265,7 +265,7 @@ export function useAuctionMatching({
         return;
       }
 
-      const { takerCollateral, taker, predictedOutcomes, resolver, escrowPicks } =
+      const { takerCollateral, taker, resolver, escrowPicks } =
         details.auctionContext;
 
       // Calculate our bid amount (makerCollateral)
@@ -379,11 +379,10 @@ export function useAuctionMatching({
           auctionId: details.auctionId,
           makerCollateral: makerCollateralWei,
           takerCollateral: BigInt(takerCollateral || '0'),
-          predictedOutcomes,
           resolver,
           taker,
           expirySeconds,
-          escrowPicks,
+          escrowPicks: escrowPicks ?? [],
         });
 
         const makerAmount = formatCollateralAmount(makerCollateralWei.toString());

@@ -30,10 +30,7 @@ import { encodeEscrowSessionKeyData } from '~/lib/session/sessionKeyManager';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { toAuctionWsUrl } from '~/lib/ws';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
-import {
-  decodeAuctionPredictedOutcomes,
-  decodedOutcomesToPicks,
-} from '~/lib/auction/decodePredictedOutcomes';
+
 import { useEscrowNonce } from '~/hooks/blockchain/useEscrowContract';
 
 export type LegacyBidSubmissionParams = {
@@ -42,8 +39,6 @@ export type LegacyBidSubmissionParams = {
   makerCollateral: bigint;
   /** Auction creator's position size in wei */
   takerCollateral: bigint;
-  /** Encoded predicted outcomes (fallback when escrowPicks not provided) */
-  predictedOutcomes: `0x${string}`[];
   /** Resolver contract address */
   resolver: `0x${string}`;
   /** Auction creator (taker) address */
@@ -52,8 +47,8 @@ export type LegacyBidSubmissionParams = {
   expirySeconds: number;
   /** Optional max end time (seconds since epoch) to clamp expiry */
   maxEndTimeSec?: number;
-  /** Escrow picks array (used instead of decoding predictedOutcomes) */
-  escrowPicks?: Array<{
+  /** Escrow picks for signing */
+  escrowPicks: Array<{
     conditionResolver: string;
     conditionId: string;
     predictedOutcome: number;
@@ -163,12 +158,11 @@ export function useLegacyBidSubmission(
         auctionId,
         makerCollateral,
         takerCollateral,
-        predictedOutcomes,
         resolver,
         taker,
         expirySeconds,
         maxEndTimeSec,
-        escrowPicks: providedEscrowPicks,
+        escrowPicks,
       } = params;
 
       // Use effectiveAddress from session context (smart account when session active, otherwise EOA)
@@ -202,11 +196,8 @@ export function useLegacyBidSubmission(
         return { success: false, error: 'Invalid bid amount' };
       }
 
-      const encodedPredicted = predictedOutcomes[0];
-      // Escrow auctions use escrowPicks, legacy auctions use predictedOutcomes
-      const hasEscrowPicks = providedEscrowPicks && providedEscrowPicks.length > 0;
-      if (!hasEscrowPicks && !encodedPredicted) {
-        return { success: false, error: 'Missing predicted outcomes' };
+      if (!escrowPicks || escrowPicks.length === 0) {
+        return { success: false, error: 'Missing escrow picks' };
       }
 
       if (!resolver) {
@@ -356,31 +347,11 @@ export function useLegacyBidSubmission(
         }
 
         // Escrow signing: Use MintApproval typed data
-        // Use provided escrowPicks directly if available, otherwise decode from predictedOutcomes
-        let picks: EscrowPick[];
-
-        if (providedEscrowPicks && providedEscrowPicks.length > 0) {
-          // Use provided escrow picks directly (already in correct format from auction data)
-          picks = providedEscrowPicks.map((p) => ({
-            conditionResolver: p.conditionResolver as `0x${string}`,
-            conditionId: p.conditionId as `0x${string}`,
-            predictedOutcome: p.predictedOutcome as OutcomeSide,
-          }));
-        } else {
-          // Fall back to decoding from predictedOutcomes (legacy-style auctions on escrow chain)
-          const decoded = decodeAuctionPredictedOutcomes({
-            resolver,
-            predictedOutcomes,
-          });
-          picks = decodedOutcomesToPicks(decoded, resolver);
-        }
-
-        if (picks.length === 0) {
-          return {
-            success: false,
-            error: 'Could not decode picks for escrow signing',
-          };
-        }
+        const picks: EscrowPick[] = escrowPicks.map((p) => ({
+          conditionResolver: p.conditionResolver as `0x${string}`,
+          conditionId: p.conditionId as `0x${string}`,
+          predictedOutcome: p.predictedOutcome as OutcomeSide,
+        }));
 
         // Get counterparty nonce (bidder's nonce)
         const counterpartyNonce = escrowNonce ?? 0n;
