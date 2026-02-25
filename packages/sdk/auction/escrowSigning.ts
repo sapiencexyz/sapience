@@ -429,7 +429,18 @@ export function buildAuctionIntentTypedData(params: {
   predictorDeadline: bigint;
   verifyingContract: Address;
   chainId: number;
-}) {
+}): {
+  domain: TypedDataDomain;
+  types: typeof AUCTION_INTENT_TYPES;
+  primaryType: 'AuctionIntent';
+  message: {
+    picks: { conditionResolver: Address; conditionId: Hex; predictedOutcome: number }[];
+    predictor: Address;
+    predictorCollateral: bigint;
+    predictorNonce: bigint;
+    predictorDeadline: bigint;
+  };
+} {
   return {
     domain: getEscrowDomain(params.verifyingContract, params.chainId),
     types: AUCTION_INTENT_TYPES,
