@@ -185,17 +185,31 @@ export interface BurnRequestJson {
  * Escrow auction request payload - initiates a prediction match request
  * The predictor submits their side and waits for a counterparty to fill
  */
-export interface AuctionRequestPayload {
+/**
+ * Step 1: RFQ intent — predictor broadcasts intent, no signature, no counterparty info.
+ * The vault determines counterpartyCollateral (the quote).
+ */
+export interface AuctionRFQPayload {
   picks: PickJson[];
   predictorCollateral: string; // wei string
-  counterpartyCollateral: string; // wei string (requested counterparty stake)
+  counterpartyCollateral?: string; // wei string — optional at RFQ time, defaults to '0'
   predictor: string; // EOA or smart account address
   predictorNonce: number;
   predictorDeadline: number; // unix timestamp
-  predictorSignature: string; // EIP-712 MintApproval signature
+  intentSignature: string; // EIP-712 AuctionIntent — proves identity + intent, relayer-only
   chainId: number;
   refCode?: string;
   predictorSessionKeyData?: string; // ZeroDev session approval (base64)
+}
+
+/**
+ * Full auction request — used after predictor accepts a vault quote.
+ * Contains both collaterals and the predictor's MintApproval signature.
+ * This is assembled client-side for the mint() call; never sent through the relayer.
+ */
+export interface AuctionRequestPayload extends AuctionRFQPayload {
+  counterpartyCollateral: string; // wei string — required at mint time (from vault's bid)
+  predictorSignature: string; // EIP-712 MintApproval signature
 }
 
 /**
@@ -237,7 +251,7 @@ export interface BurnRequestPayload {
 // ----- Client to Server Messages -----
 
 export type ClientToServerMessage =
-  | { type: 'auction.start'; payload: AuctionRequestPayload }
+  | { type: 'auction.start'; payload: AuctionRFQPayload }
   | { type: 'auction.subscribe'; payload: { auctionId: string } }
   | { type: 'auction.unsubscribe'; payload: { auctionId: string } }
   | { type: 'bid.submit'; payload: BidPayload }
@@ -247,11 +261,12 @@ export type ClientToServerMessage =
 // ----- Server to Client Messages -----
 
 /** Auction details broadcast to subscribers */
+/** Broadcast to vaults when an auction starts — no counterpartyCollateral (vault decides) */
 export interface AuctionDetails {
   auctionId: string;
   picks: PickJson[];
   predictorCollateral: string;
-  counterpartyCollateral: string;
+  counterpartyCollateral?: string; // optional — absent at RFQ time, present if predictor specified one
   predictor: string;
   predictorNonce: number;
   predictorDeadline: number;

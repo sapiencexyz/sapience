@@ -33,6 +33,8 @@ import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 export interface BidSubmissionParams {
   /** The auction to bid on */
   auction: AuctionDetails;
+  /** Counterparty's collateral amount (the bid/quote) in wei string */
+  counterpartyCollateral: string;
   /** Deadline in seconds from now */
   deadlineSeconds?: number;
 }
@@ -92,7 +94,7 @@ export function useBidSubmission(options: UseBidSubmissionOptions = {}) {
 
   const submitBid = useCallback(
     async (params: BidSubmissionParams): Promise<BidSubmissionResult> => {
-      const { auction, deadlineSeconds = 1800 } = params; // 30 minutes default
+      const { auction, counterpartyCollateral, deadlineSeconds = 1800 } = params; // 30 minutes default
 
       const chainId = auction.chainId ?? overrideChainId ?? DEFAULT_CHAIN_ID;
 
@@ -179,7 +181,7 @@ export function useBidSubmission(options: UseBidSubmissionOptions = {}) {
       const typedData = buildCounterpartyMintTypedData({
         picks,
         predictorCollateral: BigInt(auction.predictorCollateral),
-        counterpartyCollateral: BigInt(auction.counterpartyCollateral),
+        counterpartyCollateral: BigInt(counterpartyCollateral),
         predictor: auction.predictor as Address,
         counterparty: signerAddress,
         counterpartyNonce,
@@ -221,7 +223,7 @@ export function useBidSubmission(options: UseBidSubmissionOptions = {}) {
       const bidPayload: BidPayload = {
         auctionId: auction.auctionId,
         counterparty: signerAddress,
-        counterpartyCollateral: auction.counterpartyCollateral,
+        counterpartyCollateral,
         counterpartyNonce: Number(counterpartyNonce),
         counterpartyDeadline: Number(counterpartyDeadline),
         counterpartySignature,

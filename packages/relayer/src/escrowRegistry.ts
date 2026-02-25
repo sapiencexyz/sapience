@@ -4,7 +4,7 @@
  */
 
 import type {
-  AuctionRequestPayload,
+  AuctionRFQPayload,
   ValidatedBid,
 } from '@sapience/sdk/types';
 import type { EscrowAuctionRecord, BidPayload } from './escrowTypes';
@@ -16,7 +16,7 @@ const escrowAuctions = new Map<string, EscrowAuctionRecord>();
 /**
  * Create or update an escrow auction
  */
-export function upsertEscrowAuction(auction: AuctionRequestPayload): string {
+export function upsertEscrowAuction(auction: AuctionRFQPayload): string {
   const auctionId = crypto.randomUUID();
   const ttl = 60_000; // default 60s
   const deadlineMs = Date.now() + Math.max(5_000, Math.min(ttl, 5 * 60_000));
@@ -25,7 +25,10 @@ export function upsertEscrowAuction(auction: AuctionRequestPayload): string {
   const pickConfigId = computeEscrowPickConfigId(auction.picks);
 
   escrowAuctions.set(auctionId, {
-    auction,
+    auction: {
+      ...auction,
+      counterpartyCollateral: auction.counterpartyCollateral ?? '0',
+    },
     bids: [],
     deadlineMs,
     pickConfigId,
@@ -103,7 +106,7 @@ export function getEscrowAuctionDetails(
     auctionId,
     picks: rec.auction.picks,
     predictorCollateral: rec.auction.predictorCollateral,
-    counterpartyCollateral: rec.auction.counterpartyCollateral,
+
     predictor: rec.auction.predictor,
     predictorNonce: rec.auction.predictorNonce,
     predictorDeadline: rec.auction.predictorDeadline,

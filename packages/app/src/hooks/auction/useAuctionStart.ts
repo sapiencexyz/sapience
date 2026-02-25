@@ -3,12 +3,12 @@
 import { useCallback, useMemo, useState } from 'react';
 import { useAccount, useSignTypedData } from 'wagmi';
 import { type Address, type Hex } from 'viem';
-import { buildPredictorMintTypedData } from '@sapience/sdk/auction/escrowSigning';
+import { buildAuctionIntentTypedData } from '@sapience/sdk/auction/escrowSigning';
 import {
   computePickConfigId,
   canonicalizePicks,
 } from '@sapience/sdk/auction/escrowEncoding';
-import type { Pick, AuctionRequestPayload } from '@sapience/sdk/types';
+import type { Pick, AuctionRFQPayload } from '@sapience/sdk/types';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useSettings } from '~/lib/context/SettingsContext';
@@ -22,8 +22,6 @@ export interface AuctionStartParams {
   picks: Pick[];
   /** Predictor's collateral amount in wei */
   predictorCollateral: bigint;
-  /** Requested counterparty collateral amount in wei */
-  counterpartyCollateral: bigint;
   /** Deadline in seconds from now */
   deadlineSeconds?: number;
   /** Optional referral code */
@@ -75,7 +73,6 @@ export function useAuctionStart(options: UseAuctionStartOptions = {}) {
       const {
         picks: rawPicks,
         predictorCollateral,
-        counterpartyCollateral,
         deadlineSeconds = 1800, // 30 minutes default
         refCode,
       } = params;
@@ -99,15 +96,8 @@ export function useAuctionStart(options: UseAuctionStartOptions = {}) {
         return { success: false, error: 'Invalid predictor collateral amount' };
       }
 
-      if (counterpartyCollateral <= 0n) {
-        return { success: false, error: 'Invalid counterparty collateral amount' };
-      }
-
       if (!verifyingContract) {
-        return {
-          success: false,
-          error: 'Escrow contract not available for this chain',
-        };
+        return { success: false, error: 'Escrow contract not available for this chain' };
       }
 
       if (!wsUrl) {
@@ -124,62 +114,55 @@ export function useAuctionStart(options: UseAuctionStartOptions = {}) {
       // Compute pickConfigId
       const pickConfigId = computePickConfigId(picks);
 
-      // Build typed data for signing
-      // Note: counterparty is unknown at auction start, use zero address
-      const typedData = buildPredictorMintTypedData({
+      // Two-step RFQ: sign lightweight AuctionIntent (proves identity + intent)
+      // Does NOT commit to counterpartyCollateral or counterparty address.
+      // The real MintApproval is signed in step 3 after receiving the vault's quote.
+      const intentTypedData = buildAuctionIntentTypedData({
         picks,
-        predictorCollateral,
-        counterpartyCollateral,
         predictor: signerAddress,
-        counterparty: '0x0000000000000000000000000000000000000000' as Address,
+        predictorCollateral,
         predictorNonce: nonce,
         predictorDeadline,
         verifyingContract,
         chainId,
       });
 
-      // Sign the typed data
       setIsSubmitting(true);
-      let predictorSignature: Hex;
+      let intentSignature: Hex;
       try {
-        predictorSignature = await signTypedDataAsync({
+        intentSignature = await signTypedDataAsync({
           domain: {
-            ...typedData.domain,
-            chainId: Number(typedData.domain.chainId),
+            ...intentTypedData.domain,
+            chainId: Number(intentTypedData.domain.chainId),
           },
-          types: typedData.types,
-          primaryType: typedData.primaryType,
-          message: typedData.message,
+          types: intentTypedData.types,
+          primaryType: intentTypedData.primaryType,
+          message: intentTypedData.message,
         });
       } catch (e: any) {
         setIsSubmitting(false);
-        const error =
-          e instanceof Error ? e : new Error(String(e?.message || e));
+        const error = e instanceof Error ? e : new Error(String(e?.message || e));
         onSignatureRejected?.(error);
-        return {
-          success: false,
-          error: `Signature rejected: ${error.message}`,
-        };
+        return { success: false, error: `Signature rejected: ${error.message}` };
       }
 
-      if (!predictorSignature) {
+      if (!intentSignature) {
         setIsSubmitting(false);
         return { success: false, error: 'No signature returned' };
       }
 
-      // Build auction request payload
-      const payload: AuctionRequestPayload = {
+      // Build RFQ payload with lightweight intent signature
+      const payload: AuctionRFQPayload = {
         picks: picks.map((p) => ({
           conditionResolver: p.conditionResolver,
           conditionId: p.conditionId,
           predictedOutcome: p.predictedOutcome,
         })),
         predictorCollateral: predictorCollateral.toString(),
-        counterpartyCollateral: counterpartyCollateral.toString(),
         predictor: signerAddress,
         predictorNonce: Number(nonce),
         predictorDeadline: Number(predictorDeadline),
-        predictorSignature,
+        intentSignature,
         chainId,
         refCode: refCode ?? undefined,
       };
@@ -224,10 +207,6 @@ export function useAuctionStart(options: UseAuctionStartOptions = {}) {
           console.log(
             '[Auction Create] predictorCollateral:',
             predictorCollateral.toString()
-          );
-          console.log(
-            '[Auction Create] counterpartyCollateral:',
-            counterpartyCollateral.toString()
           );
           console.log('[Auction Create] predictor:', signerAddress);
           console.log('[Auction Create] predictorNonce:', nonce.toString());

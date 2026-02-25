@@ -10,6 +10,9 @@ import {
   getEscrowAuctionDetails,
 } from './escrowRegistry';
 import { validateEscrowAuctionRequest, validateEscrowBid } from './escrowHelpers';
+import { verifyAuctionIntentSignature } from './escrowSigVerify';
+import { predictionMarketEscrow } from '@sapience/sdk/contracts';
+import type { Address } from 'viem';
 import {
   activeConnections,
   connectionsTotal,
@@ -29,7 +32,7 @@ import Sentry from './instrument';
 import type {
   ClientToServerMessage,
   ServerToClientMessage,
-  AuctionRequestPayload,
+  AuctionRFQPayload,
   BidPayload,
 } from './escrowTypes';
 import { isEscrowClientMessage } from './escrowTypes';
@@ -626,7 +629,7 @@ export function createAuctionWebSocketServer() {
       // Handle Escrow Auction client messages
       if (isEscrowClientMessage(msg)) {
         if (msg.type === 'auction.start') {
-          const payload = msg.payload as AuctionRequestPayload;
+          const payload = msg.payload as AuctionRFQPayload;
           const auctionStartTime = startTime;
           let pendingAuctionId = 'pending';
 
@@ -648,6 +651,27 @@ export function createAuctionWebSocketServer() {
             });
             trackDuration(msgType, startTime);
             return;
+          }
+
+          // Verify intent signature if provided (backward-compatible: skip if absent)
+          if (payload.intentSignature) {
+            const escrowEntry = predictionMarketEscrow[payload.chainId];
+            if (escrowEntry?.address && escrowEntry.address !== '0x0000000000000000000000000000000000000000') {
+              const intentValid = await verifyAuctionIntentSignature(
+                payload,
+                escrowEntry.address as Address
+              );
+              if (!intentValid) {
+                errorsTotal.inc({ type: 'auth', message_type: 'auction.start' });
+                console.warn('[Relayer] auction.start rejected: invalid intent signature');
+                send(ws, {
+                  type: 'auction.ack',
+                  payload: { auctionId: '', error: 'invalid_intent_signature' },
+                });
+                trackDuration(msgType, startTime);
+                return;
+              }
+            }
           }
 
           const auctionId = upsertEscrowAuction(payload);
