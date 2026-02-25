@@ -146,8 +146,9 @@ export const predictionMarketEscrow: ChainAddressMap = {
   },
   13374202: {
     // Ethereal testnet — deployed 2026-02-25
-    address: '0x32Bf5903EA9c98FB20eB07735a8e62D303B60B3C',
+    address: '0x7Bd9b22F89ECa14C5afa4de37Ae7B15C80de7a69',
     legacy: [
+      '0x32Bf5903EA9c98FB20eB07735a8e62D303B60B3C',
       '0xb5d2E6B148eBdFB02a3456F0Af021FAe81356511',
       '0x8730eE1194Cd03A14deA9975e2bafD4C8b6019F1',
     ] as const,
@@ -201,8 +202,9 @@ export const manualConditionResolver: ChainAddressMap = {
   },
   13374202: {
     // Ethereal testnet — deployed 2026-02-25
-    address: '0xAE41b42dC5d9a98C53c7A91c44523173300c1f31',
+    address: '0x31C51d3a6e01a9F15144429ebc71E8815157a0aD',
     legacy: [
+      '0xAE41b42dC5d9a98C53c7A91c44523173300c1f31',
       '0x9938583eA9a6450Cc64502bDcBF76f4EEa2F9560',
       '0x514A4321d89Aa47D1b1Dd9E0a3226249E6ef896A',
     ] as const,
@@ -238,8 +240,9 @@ export const predictionMarketBridge: ChainAddressMap = {
   },
   13374202: {
     // Ethereal testnet — deployed 2026-02-25
-    address: '0xAE32505E17Ff704df7Cd22E99916360328915BEb',
+    address: '0x1F6eF06A42860973A7Ad2A27A4Def0aa78eF49c3',
     legacy: [
+      '0xAE32505E17Ff704df7Cd22E99916360328915BEb',
       '0xAe66B4DED22bED7bE9385c29ADEc7AC9e1B97700',
       '0x275Ba9B8DB207afb33022043848216BB7195eDb5',
     ] as const,
@@ -258,8 +261,9 @@ export const predictionMarketBridgeRemote: ChainAddressMap = {
   },
   421614: {
     // Arbitrum Sepolia testnet — deployed 2026-02-25
-    address: '0x888e445F96515186B7b262d959FFF4AF14151ca9',
+    address: '0x06e2a473aA8652666aa7F1AF8808559b2164c89F',
     legacy: [
+      '0x888e445F96515186B7b262d959FFF4AF14151ca9',
       '0xE64ca8f0533422BCb6d48dCF11DB2fF3FA26B7Fb',
       '0x1a7F19Ee50FBCa9a4d195E4a3737e7737b252b4c',
     ] as const,
@@ -278,15 +282,17 @@ export const predictionMarketTokenFactory: ChainAddressMap = {
   },
   13374202: {
     // Ethereal testnet — deployed 2026-02-25 (CREATE2 deterministic, same address on both chains)
-    address: '0xA2566AF673d4fe3174d0fBDe5ee8cadfc0c684b5',
+    address: '0x6a53c3A010D0Bd9E4BE4815959413A379d5bfDDF',
     legacy: [
+      '0xA2566AF673d4fe3174d0fBDe5ee8cadfc0c684b5',
       '0xcbf9eB6AF28fBCc7c19760aC230cC216113742d0',
     ] as const,
   },
   421614: {
     // Arbitrum Sepolia testnet — deployed 2026-02-25 (CREATE2 deterministic, same address on both chains)
-    address: '0xA2566AF673d4fe3174d0fBDe5ee8cadfc0c684b5',
+    address: '0x6a53c3A010D0Bd9E4BE4815959413A379d5bfDDF',
     legacy: [
+      '0xA2566AF673d4fe3174d0fBDe5ee8cadfc0c684b5',
       '0xD0734eb4b22eFc22F53254C276e8A3095740600a',
       '0x0daA1bC7FC4d7f2753FdB65e0AD96b97361385A3',
     ] as const,
