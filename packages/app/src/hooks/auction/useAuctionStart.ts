@@ -118,7 +118,7 @@ export function useAuctionStart(options: UseAuctionStartOptions = {}) {
       // Does NOT commit to counterpartyCollateral or counterparty address.
       // The real MintApproval is signed in step 3 after receiving the vault's quote.
       const intentTypedData = buildAuctionIntentTypedData({
-        pickConfigId,
+        picks,
         predictor: signerAddress,
         predictorCollateral,
         predictorNonce: nonce,

@@ -358,12 +358,9 @@ export async function verifyAuctionIntentSignature(
   try {
     const picks = convertPicks(payload.picks);
 
-    const { computePickConfigId } = await import('@sapience/sdk/auction/escrowEncoding');
     const { AUCTION_INTENT_TYPES, getEscrowDomain } = await import('@sapience/sdk/auction/escrowSigning');
     const { recoverTypedDataAddress } = await import('viem');
-    const { hashTypedData } = await import('viem');
 
-    const pickConfigId = computePickConfigId(picks);
     const domain = getEscrowDomain(verifyingContract, payload.chainId);
 
     const recovered = await recoverTypedDataAddress({
@@ -374,7 +371,11 @@ export async function verifyAuctionIntentSignature(
       types: AUCTION_INTENT_TYPES,
       primaryType: 'AuctionIntent' as const,
       message: {
-        pickConfigId,
+        picks: picks.map((p) => ({
+          conditionResolver: p.conditionResolver,
+          conditionId: p.conditionId,
+          predictedOutcome: p.predictedOutcome,
+        })),
         predictor: payload.predictor as Address,
         predictorCollateral: BigInt(payload.predictorCollateral),
         predictorNonce: BigInt(payload.predictorNonce),

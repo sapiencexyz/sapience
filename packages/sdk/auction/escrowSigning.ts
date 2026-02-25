@@ -64,11 +64,16 @@ export const BURN_APPROVAL_TYPES = {
  */
 export const AUCTION_INTENT_TYPES = {
   AuctionIntent: [
-    { name: 'pickConfigId', type: 'bytes32' },
+    { name: 'picks', type: 'Pick[]' },
     { name: 'predictor', type: 'address' },
     { name: 'predictorCollateral', type: 'uint256' },
     { name: 'predictorNonce', type: 'uint256' },
     { name: 'predictorDeadline', type: 'uint256' },
+  ],
+  Pick: [
+    { name: 'conditionResolver', type: 'address' },
+    { name: 'conditionId', type: 'bytes32' },
+    { name: 'predictedOutcome', type: 'uint8' },
   ],
 } as const;
 
@@ -417,7 +422,7 @@ export function buildCounterpartyBurnTypedData(params: {
  * Relayer-only — NOT verified on-chain.
  */
 export function buildAuctionIntentTypedData(params: {
-  pickConfigId: Hex;
+  picks: Pick[];
   predictor: Address;
   predictorCollateral: bigint;
   predictorNonce: bigint;
@@ -430,7 +435,11 @@ export function buildAuctionIntentTypedData(params: {
     types: AUCTION_INTENT_TYPES,
     primaryType: 'AuctionIntent' as const,
     message: {
-      pickConfigId: params.pickConfigId,
+      picks: params.picks.map((p) => ({
+        conditionResolver: p.conditionResolver,
+        conditionId: p.conditionId,
+        predictedOutcome: p.predictedOutcome,
+      })),
       predictor: params.predictor,
       predictorCollateral: params.predictorCollateral,
       predictorNonce: params.predictorNonce,
