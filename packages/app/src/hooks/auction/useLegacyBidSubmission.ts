@@ -534,11 +534,12 @@ export function useLegacyBidSubmission(
 
       if (useEscrowProtocol) {
         // Escrow bid payload - uses escrow terminology (counterparty = bidder)
-        // Include session key data if bidder is using session key signing
-        const counterpartySessionKeyData =
-          isUsingSession && escrowSessionKeyApproval
-            ? encodeEscrowSessionKeyData(escrowSessionKeyApproval)
-            : undefined;
+        // For new sessions: no session key data needed (ERC-1271 signature is sufficient)
+        // For legacy sessions: include session key approval data
+        let counterpartySessionKeyData: string | undefined;
+        if (isUsingSession && escrowSessionKeyApproval) {
+          counterpartySessionKeyData = encodeEscrowSessionKeyData(escrowSessionKeyApproval);
+        }
 
         const escrowPayload = {
           auctionId,

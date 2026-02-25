@@ -1146,7 +1146,7 @@ contract PredictionMarketEscrow is
 
     // ============ Internal: Signature Validation ============
 
-    /// @notice Validate a party's signature (supports both EOA and session key)
+    /// @notice Validate a party's signature (supports EOA, ERC-1271, and legacy session key)
     function _validatePartySignature(
         bytes32 predictionHash,
         address signer,
@@ -1162,7 +1162,7 @@ contract PredictionMarketEscrow is
                 predictionHash, signer, collateral, nonce, deadline, signature
             );
         } else {
-            // Session key signature - decode and validate
+            // Legacy: full SessionKeyApproval in calldata
             IV2Types.SessionKeyData memory skData =
                 abi.decode(sessionKeyData, (IV2Types.SessionKeyData));
 
@@ -1188,7 +1188,7 @@ contract PredictionMarketEscrow is
         }
     }
 
-    /// @notice Validate a burn party's signature (supports both EOA and session key)
+    /// @notice Validate a burn party's signature (supports EOA, ERC-1271, and legacy session key)
     function _validateBurnPartySignature(
         bytes32 burnHash,
         address signer,
@@ -1211,7 +1211,7 @@ contract PredictionMarketEscrow is
                 signature
             );
         } else {
-            // Session key signature - decode and validate
+            // Legacy: full SessionKeyApproval in calldata
             IV2Types.SessionKeyData memory skData =
                 abi.decode(sessionKeyData, (IV2Types.SessionKeyData));
 

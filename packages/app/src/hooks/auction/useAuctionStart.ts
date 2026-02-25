@@ -52,7 +52,11 @@ export function useAuctionStart(options: UseAuctionStartOptions = {}) {
   const { address } = useAccount();
   const { signTypedDataAsync } = useSignTypedData();
   const { apiBaseUrl } = useSettings();
-  const { effectiveAddress } = useSession();
+  const {
+    effectiveAddress,
+    signTypedData: sessionSignTypedData,
+    isUsingSession,
+  } = useSession();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -130,15 +134,28 @@ export function useAuctionStart(options: UseAuctionStartOptions = {}) {
       setIsSubmitting(true);
       let intentSignature: Hex;
       try {
-        intentSignature = await signTypedDataAsync({
-          domain: {
-            ...intentTypedData.domain,
-            chainId: Number(intentTypedData.domain.chainId),
-          },
-          types: intentTypedData.types,
-          primaryType: intentTypedData.primaryType,
-          message: intentTypedData.message,
-        });
+        // When session is active, sign with session key (no wallet popup)
+        if (isUsingSession && sessionSignTypedData) {
+          intentSignature = await sessionSignTypedData({
+            domain: {
+              ...intentTypedData.domain,
+              chainId: Number(intentTypedData.domain.chainId),
+            },
+            types: intentTypedData.types,
+            primaryType: intentTypedData.primaryType,
+            message: intentTypedData.message as Record<string, unknown>,
+          });
+        } else {
+          intentSignature = await signTypedDataAsync({
+            domain: {
+              ...intentTypedData.domain,
+              chainId: Number(intentTypedData.domain.chainId),
+            },
+            types: intentTypedData.types,
+            primaryType: intentTypedData.primaryType,
+            message: intentTypedData.message,
+          });
+        }
       } catch (e: any) {
         setIsSubmitting(false);
         const error = e instanceof Error ? e : new Error(String(e?.message || e));
@@ -262,6 +279,8 @@ export function useAuctionStart(options: UseAuctionStartOptions = {}) {
       wsUrl,
       currentNonce,
       signTypedDataAsync,
+      sessionSignTypedData,
+      isUsingSession,
       onSignatureRejected,
       onAuctionCreated,
     ]
