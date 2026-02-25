@@ -7,7 +7,7 @@ import {
   computePickConfigId,
   canonicalizePicks,
 } from '@sapience/sdk/auction/escrowEncoding';
-import type { Pick, AuctionRequestPayload } from '@sapience/sdk/types';
+import type { Pick, AuctionRFQPayload } from '@sapience/sdk/types';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
@@ -107,7 +107,7 @@ export function useAuctionStart(options: UseAuctionStartOptions = {}) {
       setIsSubmitting(true);
 
       // Build auction request payload (no signature, no counterpartyCollateral)
-      const payload: AuctionRequestPayload = {
+      const payload: AuctionRFQPayload = {
         picks: picks.map((p) => ({
           conditionResolver: p.conditionResolver,
           conditionId: p.conditionId,

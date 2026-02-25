@@ -14,7 +14,7 @@ import {
   buildCounterpartyMintTypedData,
 } from '@sapience/sdk/auction/escrowSigning';
 import type { Pick } from '@sapience/sdk/types';
-import type { AuctionRequestPayload, BidPayload } from './escrowTypes';
+import type { AuctionRFQPayload, AuctionRequestPayload, BidPayload } from './escrowTypes';
 import {
   verifySessionApproval,
   computeSmartAccountAddress,
@@ -154,7 +154,7 @@ async function verifyEscrowSessionKeyData(
 /**
  * Convert JSON picks to SDK Pick format
  */
-function convertPicks(picks: AuctionRequestPayload['picks']): Pick[] {
+function convertPicks(picks: AuctionRFQPayload['picks']): Pick[] {
   return picks.map((p) => ({
     conditionResolver: p.conditionResolver as Address,
     conditionId: p.conditionId as Hex,
@@ -317,7 +317,7 @@ export async function verifyEscrowPredictorSignature(
  */
 export async function verifyEscrowCounterpartySignature(
   bid: BidPayload,
-  auction: AuctionRequestPayload,
+  auction: AuctionRFQPayload,
   verifyingContract: Address
 ): Promise<boolean> {
   if (!bid.counterpartySignature) {

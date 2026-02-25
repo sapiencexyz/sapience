@@ -1,7 +1,7 @@
 import WebSocket from 'ws';
 import type { RawData } from 'ws';
 import type {
-  AuctionRequestPayload,
+  AuctionRFQPayload,
   BidPayload,
   BurnRequestPayload,
   ClientToServerMessage,
@@ -31,7 +31,6 @@ export interface AuctionWsHandlers {
     auctionId: string;
     picks: PickJson[];
     predictorCollateral: string;
-    counterpartyCollateral?: string;
     predictor: string;
     predictorDeadline: number;
     chainId: number;
@@ -205,7 +204,7 @@ export function createEscrowAuctionWs(
     /**
      * Start a new escrow auction
      */
-    startAuction(payload: AuctionRequestPayload): boolean {
+    startAuction(payload: AuctionRFQPayload): boolean {
       return send({ type: 'auction.start', payload });
     },
 
@@ -277,25 +276,19 @@ export function createEscrowAuctionWs(
 export function buildAuctionRequest(params: {
   picks: PickJson[];
   predictorCollateral: bigint;
-  counterpartyCollateral?: bigint; // optional in RFQ — counterparty decides
   predictor: string;
   predictorNonce: number;
   predictorDeadline: number;
-  predictorSignature?: string; // absent at RFQ start, signed after receiving quote
   chainId: number;
   refCode?: string;
   predictorSessionKeyData?: string;
-}): AuctionRequestPayload {
+}): AuctionRFQPayload {
   return {
     picks: params.picks,
     predictorCollateral: params.predictorCollateral.toString(),
-    ...(params.counterpartyCollateral !== undefined && {
-      counterpartyCollateral: params.counterpartyCollateral.toString(),
-    }),
     predictor: params.predictor,
     predictorNonce: params.predictorNonce,
     predictorDeadline: params.predictorDeadline,
-    ...(params.predictorSignature && { predictorSignature: params.predictorSignature }),
     chainId: params.chainId,
     refCode: params.refCode,
     predictorSessionKeyData: params.predictorSessionKeyData,
