@@ -1,5 +1,7 @@
 import { reindexEAS } from './reindexEAS';
 import { backfillAccuracy } from './backfillAccuracy';
+import { backfillPositions } from './backfillPositions';
+import { reindexTransfers } from './reindexTransfers';
 import { reindexAccuracy } from './reindexAccuracy';
 import { reindexPredictionMarket } from './reindexPredictionMarket';
 import {
@@ -111,6 +113,31 @@ export async function handleJobCommand(argv: string[]): Promise<boolean> {
       const chainId = argv[4] ? parseInt(argv[4], 10) : undefined;
       await backfillProtocolStats(chainId, days);
       console.log('Done backfilling protocol stats');
+      process.exit(0);
+      return true;
+    }
+    case 'backfillPositions': {
+      const chainId = argv[3] ? parseInt(argv[3], 10) : undefined;
+      await backfillPositions(chainId);
+      console.log('Done backfilling positions');
+      process.exit(0);
+      return true;
+    }
+    case 'reindexTransfers': {
+      const chainId = parseInt(argv[3], 10);
+      const fromBlock = argv[4] ? parseInt(argv[4], 10) : undefined;
+      if (isNaN(chainId)) {
+        console.error(
+          'Invalid arguments. Usage: tsx src/workers/worker.ts reindexTransfers <chainId> [fromBlock]'
+        );
+        process.exit(1);
+      }
+      const result = await reindexTransfers(chainId, fromBlock);
+      if (!result) {
+        console.error('Failed to reindex transfers');
+        process.exit(1);
+      }
+      console.log('Done reindexing transfers');
       process.exit(0);
       return true;
     }
