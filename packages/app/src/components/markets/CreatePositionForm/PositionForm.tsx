@@ -11,11 +11,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FormProvider, type UseFormReturn, useWatch } from 'react-hook-form';
 import { parseUnits } from 'viem';
-import { useAccount, useReadContract } from 'wagmi';
+import { useAccount } from 'wagmi';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
-import {
-  predictionMarketAbi,
-} from '@sapience/sdk/abis';
 import { generateRandomNonce } from '@sapience/sdk';
 import {
   COLLATERAL_SYMBOLS,
@@ -95,7 +92,7 @@ export default function PositionForm({
   collateralSymbol: collateralSymbolProp,
   collateralDecimals,
   minPositionSize,
-  predictionMarketAddress,
+  predictionMarketAddress: _predictionMarketAddress,
   pythPredictions = [],
   onRemovePythPrediction,
 }: PositionFormProps) {
@@ -149,25 +146,11 @@ export default function PositionForm({
   const { balance: userBalance, isLoading: isBalanceLoading } =
     useCollateralBalanceContext();
 
-  // Fetch taker nonce: V1 reads from contract, V2 (escrow) uses random bitmap nonces
-  const isEscrowChain = chainId === CHAIN_ID_ETHEREAL_TESTNET;
-  const { refetch: refetchV1TakerNonce, error: nonceError } = useReadContract({
-    address: predictionMarketAddress,
-    abi: predictionMarketAbi,
-    functionName: 'nonces',
-    args: selectedPredictorAddress ? [selectedPredictorAddress] : undefined,
-    chainId,
-    query: {
-      enabled: !isEscrowChain && !!selectedPredictorAddress && !!predictionMarketAddress,
-    },
-  });
-  if (nonceError) {
-    console.error('[Auction] Nonce read error:', nonceError);
-  }
-  // For escrow chains, generate random nonce; for V1, refetch from contract
-  const refetchTakerNonce = isEscrowChain
-    ? () => Promise.resolve({ data: generateRandomNonce() })
-    : refetchV1TakerNonce;
+  // Escrow uses random bitmap nonces (Permit2-style) — no contract read needed
+  const refetchTakerNonce = useCallback(
+    () => Promise.resolve({ data: generateRandomNonce() }),
+    []
+  );
   const [isLimitDialogOpen, setIsLimitDialogOpen] = useState(false);
 
   const positionSizeValue = useWatch({
@@ -541,7 +524,6 @@ export default function PositionForm({
       toast,
       predictorAddress,
       refetchTakerNonce,
-      isEscrowChain,
       hasFormErrors,
       positionSizeValue,
       collateralDecimals,
