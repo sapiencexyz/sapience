@@ -154,7 +154,9 @@ contract MintPredictionMarketTokens is Script {
                 PREDICTOR_COLLATERAL,
                 COUNTERPARTY_COLLATERAL,
                 actors.predictor,
-                actors.counterparty
+                actors.counterparty,
+                address(0),
+                ""
             )
         );
 

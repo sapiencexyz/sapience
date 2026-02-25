@@ -121,7 +121,9 @@ contract PredictionMarketEscrowTest is Test {
                 PREDICTOR_COLLATERAL,
                 COUNTERPARTY_COLLATERAL,
                 predictor,
-                counterparty
+                counterparty,
+                address(0),
+                ""
             )
         );
 

@@ -209,6 +209,8 @@ export async function verifyEscrowCounterpartySignature(
       counterparty: bid.counterparty as Address,
       counterpartyNonce: BigInt(bid.counterpartyNonce),
       counterpartyDeadline: BigInt(bid.counterpartyDeadline),
+      predictorSponsor: (auction.predictorSponsor ?? '0x0000000000000000000000000000000000000000') as Address,
+      predictorSponsorData: (auction.predictorSponsorData ?? '0x') as Hex,
       verifyingContract,
       chainId: auction.chainId,
     });

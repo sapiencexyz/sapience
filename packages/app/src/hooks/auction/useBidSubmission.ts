@@ -153,6 +153,8 @@ export function useBidSubmission(options: UseBidSubmissionOptions = {}) {
         counterparty: signerAddress,
         counterpartyNonce,
         counterpartyDeadline,
+        predictorSponsor: '0x0000000000000000000000000000000000000000',
+        predictorSponsorData: '0x',
         verifyingContract,
         chainId,
       });

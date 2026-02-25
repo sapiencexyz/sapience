@@ -52,7 +52,7 @@ contract DebugV2Hashes is Script {
 
         // Compute prediction hash (same as contract)
         bytes32 predictionHash = keccak256(
-            abi.encode(pickConfigId, predictorCollateral, counterpartyCollateral, predictor, counterparty)
+            abi.encode(pickConfigId, predictorCollateral, counterpartyCollateral, predictor, counterparty, address(0), "")
         );
         console.log("\n=== Prediction Hash ===");
         console.logBytes32(predictionHash);

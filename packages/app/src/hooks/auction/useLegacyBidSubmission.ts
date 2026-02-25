@@ -194,21 +194,6 @@ export function useLegacyBidSubmission(
         return { success: false, error: 'Wallet not connected' };
       }
 
-      // Smart account mode is not supported for terminal bidding
-      if (isUsingSmartAccount) {
-        toast({
-          title: 'Smart Account Not Supported',
-          description:
-            'The trading terminal does not currently support smart account mode. Please switch to EOA mode in settings to place bids.',
-          variant: 'destructive',
-          duration: 6000,
-        });
-        return {
-          success: false,
-          error: 'Smart account mode not supported for terminal bidding',
-        };
-      }
-
       if (!auctionId) {
         return { success: false, error: 'Auction ID required' };
       }
@@ -410,6 +395,8 @@ export function useLegacyBidSubmission(
           counterparty: signerAddress, // bidder (us)
           counterpartyNonce,
           counterpartyDeadline: BigInt(makerDeadline),
+          predictorSponsor: '0x0000000000000000000000000000000000000000',
+          predictorSponsorData: '0x',
           verifyingContract: verifyingContract,
           chainId,
         });

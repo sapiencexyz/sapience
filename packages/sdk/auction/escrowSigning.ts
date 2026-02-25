@@ -85,14 +85,16 @@ export const AUCTION_INTENT_TYPES = {
  * Compute predictionHash for mint signatures
  *
  * Mirrors `PredictionMarketEscrow.mint`:
- * `keccak256(abi.encode(pickConfigId, predictorCollateral, counterpartyCollateral, predictor, counterparty))`
+ * `keccak256(abi.encode(pickConfigId, predictorCollateral, counterpartyCollateral, predictor, counterparty, predictorSponsor, predictorSponsorData))`
  */
 export function computePredictionHash(
   pickConfigId: Hex,
   predictorCollateral: bigint,
   counterpartyCollateral: bigint,
   predictor: Address,
-  counterparty: Address
+  counterparty: Address,
+  predictorSponsor: Address,
+  predictorSponsorData: Hex
 ): Hex {
   return keccak256(
     encodeAbiParameters(
@@ -102,8 +104,18 @@ export function computePredictionHash(
         { type: 'uint256' },
         { type: 'address' },
         { type: 'address' },
+        { type: 'address' },
+        { type: 'bytes' },
       ],
-      [pickConfigId, predictorCollateral, counterpartyCollateral, predictor, counterparty]
+      [
+        pickConfigId,
+        predictorCollateral,
+        counterpartyCollateral,
+        predictor,
+        counterparty,
+        predictorSponsor,
+        predictorSponsorData,
+      ]
     )
   );
 }
@@ -116,7 +128,9 @@ export function computePredictionHashFromPicks(
   predictorCollateral: bigint,
   counterpartyCollateral: bigint,
   predictor: Address,
-  counterparty: Address
+  counterparty: Address,
+  predictorSponsor: Address,
+  predictorSponsorData: Hex
 ): Hex {
   const pickConfigId = computePickConfigId(picks);
   return computePredictionHash(
@@ -124,7 +138,9 @@ export function computePredictionHashFromPicks(
     predictorCollateral,
     counterpartyCollateral,
     predictor,
-    counterparty
+    counterparty,
+    predictorSponsor,
+    predictorSponsorData
   );
 }
 
@@ -281,6 +297,8 @@ export function buildPredictorMintTypedData(params: {
   counterparty: Address;
   predictorNonce: bigint;
   predictorDeadline: bigint;
+  predictorSponsor: Address;
+  predictorSponsorData: Hex;
   verifyingContract: Address;
   chainId: number;
 }) {
@@ -289,7 +307,9 @@ export function buildPredictorMintTypedData(params: {
     params.predictorCollateral,
     params.counterpartyCollateral,
     params.predictor,
-    params.counterparty
+    params.counterparty,
+    params.predictorSponsor,
+    params.predictorSponsorData
   );
 
   return buildMintApprovalTypedData({
@@ -314,6 +334,8 @@ export function buildCounterpartyMintTypedData(params: {
   counterparty: Address;
   counterpartyNonce: bigint;
   counterpartyDeadline: bigint;
+  predictorSponsor: Address;
+  predictorSponsorData: Hex;
   verifyingContract: Address;
   chainId: number;
 }) {
@@ -322,7 +344,9 @@ export function buildCounterpartyMintTypedData(params: {
     params.predictorCollateral,
     params.counterpartyCollateral,
     params.predictor,
-    params.counterparty
+    params.counterparty,
+    params.predictorSponsor,
+    params.predictorSponsorData
   );
 
   return buildMintApprovalTypedData({

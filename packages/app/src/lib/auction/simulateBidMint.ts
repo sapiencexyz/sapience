@@ -105,34 +105,9 @@ export async function simulateBidMint(
 
   const publicClient = getPublicClientForChainId(chainId);
 
-  // Pre-simulation nonce validation: check if the taker's nonce matches on-chain
-  // This catches stale nonces early with a clear error message
-  // Note: nonces are tracked per smart account address, not EOA
-  try {
-    const actualNonce = await publicClient.readContract({
-      address: predictionMarketAddress,
-      abi: predictionMarketAbi,
-      functionName: 'nonces',
-      args: [simulationAddress],
-    });
-
-    if (actualNonce !== BigInt(takerNonce)) {
-      logBidValidationWarn(
-        `Nonce mismatch for taker ${simulationAddress.slice(0, 10)}: expected ${takerNonce}, actual ${actualNonce}`
-      );
-      return {
-        isValid: false,
-        error: `Taker nonce stale (expected ${takerNonce}, actual ${actualNonce})`,
-      };
-    }
-  } catch (nonceErr) {
-    // If we can't read the nonce, log but continue with simulation
-    // The simulation itself will catch any nonce errors
-    logBidValidationWarn(
-      `Failed to pre-check nonce for ${simulationAddress.slice(0, 10)}:`,
-      nonceErr
-    );
-  }
+  // Note: No pre-simulation nonce validation — bitmap nonces (Permit2-style)
+  // don't have a sequential nonces() function. The simulation itself will
+  // catch any nonce-related errors (e.g., nonce already used).
 
   // Build state overrides using SDK helper
   const stateOverride = buildSimulationStateOverride({

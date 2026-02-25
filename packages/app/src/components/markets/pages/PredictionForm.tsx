@@ -83,6 +83,7 @@ export default function PredictionForm({
     predictionMarketAddress,
     bids,
     requestQuotes,
+    resolverAddress,
   });
 
   // Track which prediction direction the current bestBid corresponds to
@@ -99,7 +100,6 @@ export default function PredictionForm({
   // Derive current forecast from best bid odds
   // Always shows probability of Yes resolution
   const currentForecast = useMemo(() => {
-    // Don't show forecast if bid is stale (from different prediction direction)
     if (
       !bestBid ||
       (bidPredictionRef.current !== null &&

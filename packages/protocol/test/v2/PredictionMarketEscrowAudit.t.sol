@@ -137,7 +137,9 @@ contract PredictionMarketEscrowAudit is Test {
                 predictorCollateral,
                 counterpartyCollateral,
                 predictor,
-                counterparty
+                counterparty,
+                address(0),
+                ""
             )
         );
 
