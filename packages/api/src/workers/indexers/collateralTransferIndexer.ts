@@ -44,22 +44,15 @@ class CollateralTransferIndexer implements IIndexer {
 
   // --- IIndexer interface ---
 
-  async indexBlockPriceFromTimestamp(
-    _resourceSlug: string,
-    _startTimestamp: number,
-    _endTimestamp?: number
-  ): Promise<boolean> {
+  async indexBlockPriceFromTimestamp(): Promise<boolean> {
     return true;
   }
 
-  async indexBlocks(
-    _resourceSlug: string,
-    _blocks: number[]
-  ): Promise<boolean> {
+  async indexBlocks(): Promise<boolean> {
     return true;
   }
 
-  async watchBlocksForResource(_resourceSlug: string): Promise<void> {
+  async watchBlocksForResource(): Promise<void> {
     if (this.isWatching) return;
     this.isWatching = true;
 

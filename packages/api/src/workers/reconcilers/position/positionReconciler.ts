@@ -10,7 +10,7 @@ import { getProviderForChain, getBlockByTimestamp } from '../../../utils/utils';
 import PredictionMarketIndexer from '../../../workers/indexers/predictionMarketIndexer';
 import { predictionMarket, lzPMResolver, lzUmaResolver } from '@sapience/sdk';
 import { predictionMarketLZConditionalTokensResolver, collateralToken } from '@sapience/sdk/contracts';
-import type { Block, Log } from 'viem';
+import type { Block } from 'viem';
 import { parseAbiItem, decodeEventLog } from 'viem';
 
 const TRANSFER_EVENT = parseAbiItem(
