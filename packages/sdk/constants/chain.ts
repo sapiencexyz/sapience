@@ -6,16 +6,14 @@ export const CHAIN_ID_ETHEREAL_TESTNET = 13374202 as const;
 
 /**
  * Derive the default chain ID from environment:
- * - NEXT_PUBLIC_CHAIN_ID takes explicit precedence
- * - NEXT_PUBLIC_FOIL_API_URL containing "staging" → testnet
+ * - NEXT_PUBLIC_ENV=staging → Ethereal testnet
  * - Otherwise → Ethereal mainnet
  */
-export const DEFAULT_CHAIN_ID = ((): number => {
-  if (typeof process === 'undefined' || !process.env) return CHAIN_ID_ETHEREAL;
-  if (process.env.NEXT_PUBLIC_CHAIN_ID) return Number(process.env.NEXT_PUBLIC_CHAIN_ID);
-  if (process.env.NEXT_PUBLIC_FOIL_API_URL?.includes('staging')) return CHAIN_ID_ETHEREAL_TESTNET;
-  return CHAIN_ID_ETHEREAL;
-})();
+export const DEFAULT_CHAIN_ID = (
+  typeof process !== 'undefined' && process.env?.NEXT_PUBLIC_ENV === 'staging'
+    ? CHAIN_ID_ETHEREAL_TESTNET
+    : CHAIN_ID_ETHEREAL
+) as number;
 
 export const COLLATERAL_SYMBOLS: Record<number, string> = {
   [CHAIN_ID_ARBITRUM]: 'testUSDe',
