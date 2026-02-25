@@ -145,6 +145,13 @@ export default function PositionForm({
     ? (effectiveAddress ?? takerAddress ?? ZERO_ADDRESS)
     : (takerAddress ?? ZERO_ADDRESS);
 
+  // Stable refs — read at call time inside triggerAuctionRequest, don't trigger recreation
+  const selectedTakerAddressRef = useRef(selectedTakerAddress);
+  useEffect(() => { selectedTakerAddressRef.current = selectedTakerAddress; }, [selectedTakerAddress]);
+
+  const requestQuotesRef = useRef(requestQuotes);
+  useEffect(() => { requestQuotesRef.current = requestQuotes; }, [requestQuotes]);
+
   // Get user's collateral balance from context (shared with form schema validation)
   const { balance: userBalance, isLoading: isBalanceLoading } =
     useCollateralBalanceContext();
@@ -168,6 +175,11 @@ export default function PositionForm({
   const refetchTakerNonce = isEscrowChain
     ? () => Promise.resolve({ data: generateRandomNonce() })
     : refetchV1TakerNonce;
+
+  // Stable ref — refetchTakerNonce changes identity on every render, read at call time
+  const refetchTakerNonceRef = useRef(refetchTakerNonce);
+  useEffect(() => { refetchTakerNonceRef.current = refetchTakerNonce; }, [refetchTakerNonce]);
+
   const [isLimitDialogOpen, setIsLimitDialogOpen] = useState(false);
 
   const positionSizeValue = useWatch({
@@ -412,7 +424,7 @@ export default function PositionForm({
         return;
       }
 
-      if (!requestQuotes || !selectedTakerAddress) {
+      if (!requestQuotesRef.current || !selectedTakerAddressRef.current) {
         return;
       }
 
@@ -448,7 +460,7 @@ export default function PositionForm({
         setStickyEstimateBid(null);
 
         // Fetch fresh nonce via wagmi refetch (bypasses stale cache)
-        const nonceResult = await refetchTakerNonce();
+        const nonceResult = await refetchTakerNonceRef.current();
         const freshNonce = nonceResult.data;
 
         if (freshNonce === undefined && takerAddress) {
@@ -487,7 +499,7 @@ export default function PositionForm({
           wager: positionSizeWei,
           resolver: payload.resolver,
           predictedOutcomes: payload.predictedOutcomes,
-          taker: selectedTakerAddress,
+          taker: selectedTakerAddressRef.current,
           takerNonce: freshNonce !== undefined ? Number(freshNonce) : 0,
           chainId: chainId,
         };
@@ -502,7 +514,7 @@ export default function PositionForm({
           }
         }
 
-        requestQuotes(params, {
+        requestQuotesRef.current(params, {
           forceRefresh: options?.forceRefresh,
           requireSignature: options?.requireSignature,
         });
@@ -536,13 +548,10 @@ export default function PositionForm({
       }
     },
     [
-      requestQuotes,
-      selectedTakerAddress,
       selections,
       pythPredictions,
       toast,
       takerAddress,
-      refetchTakerNonce,
       isEscrowChain,
       hasFormErrors,
       positionSizeValue,

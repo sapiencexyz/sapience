@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { parseUnits, zeroAddress } from 'viem';
 import { useAccount } from 'wagmi';
 import { generateRandomNonce } from '@sapience/sdk';
@@ -58,6 +58,10 @@ export function useSingleConditionAuction({
 
   const selectedTakerAddress = effectiveAddress ?? takerAddress ?? zeroAddress;
 
+  // Stable ref — read at call time inside triggerQuoteRequest, don't trigger recreation
+  const selectedTakerAddressRef = useRef(selectedTakerAddress);
+  useEffect(() => { selectedTakerAddressRef.current = selectedTakerAddress; }, [selectedTakerAddress]);
+
   useEffect(() => {
     const id = window.setInterval(() => setNowMs(Date.now()), 1000);
     return () => window.clearInterval(id);
@@ -92,7 +96,7 @@ export function useSingleConditionAuction({
   const triggerQuoteRequest = useCallback(
     (options?: { forceRefresh?: boolean; requireSignature?: boolean }) => {
       if (!requestQuotes) return;
-      if (!selectedTakerAddress) return;
+      if (!selectedTakerAddressRef.current) return;
       if (!conditionId || prediction === null) return;
 
       const positionSizeStr = positionSize || '0';
@@ -108,7 +112,7 @@ export function useSingleConditionAuction({
           wager: positionSizeWei,
           resolver: payload.resolver,
           predictedOutcomes: payload.predictedOutcomes,
-          taker: selectedTakerAddress,
+          taker: selectedTakerAddressRef.current,
           takerNonce: Number(generateRandomNonce()),
           chainId,
         };
@@ -129,7 +133,6 @@ export function useSingleConditionAuction({
     },
     [
       requestQuotes,
-      selectedTakerAddress,
       conditionId,
       prediction,
       positionSize,
