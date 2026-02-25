@@ -4,3 +4,4 @@ export * from './useLegacyBidSubmission';
 // Escrow auction hooks
 export * from './useAuctionStart';
 export * from './useBidSubmission';
+export * from './useAcceptBid';
