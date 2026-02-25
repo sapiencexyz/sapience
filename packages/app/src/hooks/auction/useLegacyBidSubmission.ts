@@ -381,19 +381,21 @@ export function useLegacyBidSubmission(
         let picks: EscrowPick[];
 
         if (providedEscrowPicks && providedEscrowPicks.length > 0) {
-          // Use provided escrow picks directly (already in correct format from auction data)
-          picks = providedEscrowPicks.map((p) => ({
-            conditionResolver: p.conditionResolver as `0x${string}`,
-            conditionId: p.conditionId as `0x${string}`,
-            predictedOutcome: p.predictedOutcome as OutcomeSide,
-          }));
+          // Use provided escrow picks directly, canonicalize for contract ordering
+          picks = canonicalizePicks(
+            providedEscrowPicks.map((p) => ({
+              conditionResolver: p.conditionResolver as `0x${string}`,
+              conditionId: p.conditionId as `0x${string}`,
+              predictedOutcome: p.predictedOutcome as OutcomeSide,
+            }))
+          );
         } else {
           // Fall back to decoding from predictedOutcomes (legacy-style auctions on escrow chain)
           const decoded = decodeAuctionPredictedOutcomes({
             resolver,
             predictedOutcomes,
           });
-          picks = decodedOutcomesToPicks(decoded, resolver);
+          picks = canonicalizePicks(decodedOutcomesToPicks(decoded, resolver));
         }
 
         if (picks.length === 0) {
