@@ -1,11 +1,12 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useReadContract } from 'wagmi';
 import { erc20Abi, formatUnits, type Address } from 'viem';
 import { predictionMarketEscrowAbi } from '@sapience/sdk/abis';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { generateRandomNonce } from '@sapience/sdk';
 
 /**
  * Get PredictionMarketEscrow contract address for a chain
@@ -18,32 +19,27 @@ export function useEscrowContractAddress(chainId?: number) {
 }
 
 /**
- * Hook to read nonce for an account
+ * Hook to generate random nonces for the bitmap nonce system (Permit2-style).
+ * No longer reads sequential nonces from the contract.
+ * Each call to refetch() returns a fresh random nonce.
  */
-export function useEscrowNonce(params: {
+export function useEscrowNonce(_params: {
   address?: Address;
   chainId?: number;
   enabled?: boolean;
 }) {
-  const { address, chainId, enabled = true } = params;
-  const effectiveChainId = chainId ?? DEFAULT_CHAIN_ID;
-  const contractAddress = useEscrowContractAddress(effectiveChainId);
+  const [nonce, setNonce] = useState<bigint>(() => generateRandomNonce());
 
-  const { data, isLoading, error, refetch } = useReadContract({
-    abi: predictionMarketEscrowAbi,
-    address: contractAddress,
-    functionName: 'getNonce',
-    args: address ? [address] : undefined,
-    chainId: effectiveChainId,
-    query: {
-      enabled: enabled && Boolean(address) && Boolean(contractAddress),
-    },
-  });
+  const refetch = useCallback(() => {
+    const freshNonce = generateRandomNonce();
+    setNonce(freshNonce);
+    return Promise.resolve({ data: freshNonce });
+  }, []);
 
   return {
-    nonce: data as bigint | undefined,
-    isLoading,
-    error,
+    nonce,
+    isLoading: false,
+    error: null,
     refetch,
   };
 }

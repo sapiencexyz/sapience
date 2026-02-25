@@ -15,7 +15,7 @@ import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
 import { toAuctionWsUrl } from '~/lib/ws';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
-import { useEscrowNonce } from '~/hooks/blockchain/useEscrowContract';
+import { generateRandomNonce } from '@sapience/sdk';
 
 export interface AuctionStartParams {
   /** Array of picks for this prediction */
@@ -60,12 +60,6 @@ export function useAuctionStart(options: UseAuctionStartOptions = {}) {
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Get nonce for the predictor
-  const { nonce: currentNonce, refetch: refetchNonce } = useEscrowNonce({
-    address: effectiveAddress as Address | undefined,
-    chainId,
-  });
-
   const wsUrl = useMemo(() => toAuctionWsUrl(apiBaseUrl), [apiBaseUrl]);
 
   const verifyingContract = predictionMarketEscrow[chainId]?.address as
@@ -108,8 +102,8 @@ export function useAuctionStart(options: UseAuctionStartOptions = {}) {
         return { success: false, error: 'Realtime connection not configured' };
       }
 
-      // Get nonce
-      const nonce = currentNonce ?? 0n;
+      // Generate random nonce for bitmap nonce system (Permit2-style)
+      const nonce = generateRandomNonce();
 
       // Calculate deadline
       const nowSec = Math.floor(Date.now() / 1000);
@@ -277,7 +271,6 @@ export function useAuctionStart(options: UseAuctionStartOptions = {}) {
       chainId,
       verifyingContract,
       wsUrl,
-      currentNonce,
       signTypedDataAsync,
       sessionSignTypedData,
       isUsingSession,
@@ -294,7 +287,5 @@ export function useAuctionStart(options: UseAuctionStartOptions = {}) {
     chainId,
     verifyingContract,
     wsUrl,
-    currentNonce,
-    refetchNonce,
   };
 }

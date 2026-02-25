@@ -17,8 +17,8 @@ import Slider from '@sapience/ui/components/ui/slider';
 import { AlertCircle, Flame, Loader2 } from 'lucide-react';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import { useEscrowWrite } from '~/hooks/blockchain/useEscrowWrite';
-import { useEscrowNonce } from '~/hooks/blockchain/useEscrowContract';
 import { useSession } from '~/lib/context/SessionContext';
+import { generateRandomNonce } from '@sapience/sdk';
 import { useAccount } from 'wagmi';
 import {
   buildPredictorBurnTypedData,
@@ -89,10 +89,6 @@ export default function BurnDialog({
   useAccount();
   const { signTypedData, effectiveAddress } = useSession();
   const { burn, isPending } = useEscrowWrite({ chainId });
-  const { nonce: currentNonce } = useEscrowNonce({
-    address: effectiveAddress as Address | undefined,
-    chainId,
-  });
 
   const verifyingContract = predictionMarketEscrow[chainId]?.address as
     | Address
@@ -121,7 +117,9 @@ export default function BurnDialog({
 
     try {
       const holderAddress = effectiveAddress;
-      const nonce = currentNonce ?? 0n;
+      // Generate two independent random nonces for bitmap nonce system (Permit2-style)
+      const predictorNonce = generateRandomNonce();
+      const counterpartyNonce = generateRandomNonce();
       const deadline = BigInt(Math.floor(Date.now() / 1000) + 3600); // 1 hour deadline
 
       // Build predictor burn typed data
@@ -133,7 +131,7 @@ export default function BurnDialog({
         counterpartyHolder: holderAddress, // Same address for self-burn
         predictorPayout,
         counterpartyPayout,
-        predictorNonce: nonce,
+        predictorNonce,
         predictorDeadline: deadline,
         verifyingContract,
         chainId,
@@ -148,7 +146,7 @@ export default function BurnDialog({
         counterpartyHolder: holderAddress,
         predictorPayout,
         counterpartyPayout,
-        counterpartyNonce: nonce + 1n, // Different nonce for second signature
+        counterpartyNonce,
         counterpartyDeadline: deadline,
         verifyingContract,
         chainId,
@@ -181,8 +179,8 @@ export default function BurnDialog({
           counterpartyHolder: holderAddress,
           predictorPayout,
           counterpartyPayout,
-          predictorNonce: nonce,
-          counterpartyNonce: nonce + 1n,
+          predictorNonce,
+          counterpartyNonce,
           predictorDeadline: deadline,
           counterpartyDeadline: deadline,
           predictorSignature: predictorSignature,
@@ -211,7 +209,6 @@ export default function BurnDialog({
     signTypedData,
     burnAmount,
     canSelfBurn,
-    currentNonce,
     pickConfigId,
     predictorPayout,
     counterpartyPayout,

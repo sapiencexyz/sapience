@@ -7,8 +7,6 @@ import {
   type Hex,
   formatUnits,
   parseUnits,
-  createPublicClient,
-  http,
 } from 'viem';
 import { buildCounterpartyMintTypedData } from '@sapience/sdk/auction/escrowSigning';
 import { canonicalizePicks } from '@sapience/sdk/auction/escrowEncoding';
@@ -18,13 +16,10 @@ import type {
   AuctionDetails,
 } from '@sapience/sdk/types';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
-import { predictionMarketEscrowAbi } from '@sapience/sdk/abis';
 import {
   DEFAULT_CHAIN_ID,
-  etherealTestnetChain,
-  etherealChain,
-  CHAIN_ID_ETHEREAL_TESTNET,
 } from '@sapience/sdk/constants';
+import { generateRandomNonce } from '@sapience/sdk';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
 import { toAuctionWsUrl } from '~/lib/ws';
@@ -130,36 +125,8 @@ export function useBidSubmission(options: UseBidSubmissionOptions = {}) {
         return { success: false, error: 'Cannot bid on your own auction' };
       }
 
-      // Get nonce for the counterparty (this signer) from the contract
-      const chain =
-        chainId === CHAIN_ID_ETHEREAL_TESTNET
-          ? etherealTestnetChain
-          : etherealChain;
-      const publicClient = createPublicClient({
-        chain,
-        transport: http(chain.rpcUrls.default.http[0]),
-      });
-
-      let counterpartyNonce: bigint;
-      try {
-        const nonceResult = await publicClient.readContract({
-          address: verifyingContract,
-          abi: predictionMarketEscrowAbi,
-          functionName: 'getNonce',
-          args: [signerAddress],
-        });
-        counterpartyNonce = BigInt(nonceResult as string | number | bigint);
-        console.log(
-          '[Bid] Fetched counterparty nonce from contract:',
-          counterpartyNonce.toString()
-        );
-      } catch (nonceError) {
-        console.error(
-          '[Bid] Failed to fetch nonce, defaulting to 0:',
-          nonceError
-        );
-        counterpartyNonce = 0n;
-      }
+      // Generate random nonce for bitmap nonce system (Permit2-style)
+      const counterpartyNonce = generateRandomNonce();
 
       const client = getSharedAuctionWsClient(wsUrl);
 
