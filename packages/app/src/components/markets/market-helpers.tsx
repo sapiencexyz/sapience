@@ -103,7 +103,13 @@ export function getRowEndTime(row: TopLevelRow): number {
 // ---------------------------------------------------------------------------
 
 /** Live countdown display */
-export function CountdownCell({ endTime, variant = 'default' }: { endTime: number; variant?: 'default' | 'card' }) {
+export function CountdownCell({
+  endTime,
+  variant = 'default',
+}: {
+  endTime: number;
+  variant?: 'default' | 'card';
+}) {
   const [nowMs, setNowMs] = React.useState<number | null>(null);
 
   React.useEffect(() => {
@@ -153,7 +159,9 @@ export function CountdownCell({ endTime, variant = 'default' }: { endTime: numbe
             {isPast || variant === 'default' ? (
               formatCountdown()
             ) : (
-              <>Ends <span className="font-semibold">{formatCountdown()}</span></>
+              <>
+                Ends <span className="font-semibold">{formatCountdown()}</span>
+              </>
             )}
           </span>
         </TooltipTrigger>
@@ -304,7 +312,15 @@ export function GroupForecastCell({
 }
 
 /** YES/NO split-button wired to CreatePositionContext */
-export function PredictCell({ condition, className, colorScheme }: { condition: ConditionType; className?: string; colorScheme?: 'default' | 'bold' }) {
+export function PredictCell({
+  condition,
+  className,
+  colorScheme,
+}: {
+  condition: ConditionType;
+  className?: string;
+  colorScheme?: 'default' | 'bold';
+}) {
   const { addSelection, removeSelection, selections } =
     useCreatePositionContext();
 
@@ -382,7 +398,7 @@ export function PredictCell({ condition, className, colorScheme }: { condition: 
   }
 
   return (
-    <div className={cn("w-full font-mono", className)}>
+    <div className={cn('w-full font-mono', className)}>
       <YesNoSplitButton
         onYes={handleYes}
         onNo={handleNo}
@@ -478,4 +494,11 @@ export function filterRows(
 }
 
 // Re-export types used by consumers
-export type { ConditionType, ConditionGroupConditionType, QuestionType, SortField, SortDirection, FilterState };
+export type {
+  ConditionType,
+  ConditionGroupConditionType,
+  QuestionType,
+  SortField,
+  SortDirection,
+  FilterState,
+};

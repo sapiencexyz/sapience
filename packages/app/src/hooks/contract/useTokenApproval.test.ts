@@ -7,11 +7,14 @@ jest.mock('wagmi', () => ({
 }));
 
 jest.mock('viem', () => ({
-  parseUnits: (value: string, decimals: number) => BigInt(Math.round(Number(value) * 10 ** decimals)),
+  parseUnits: (value: string, decimals: number) =>
+    BigInt(Math.round(Number(value) * 10 ** decimals)),
   zeroAddress: '0x0000000000000000000000000000000000000000',
 }));
 
-jest.mock('@sapience/sdk/queries/abis/erc20abi.json', () => [], { virtual: true });
+jest.mock('@sapience/sdk/queries/abis/erc20abi.json', () => [], {
+  virtual: true,
+});
 jest.mock('@sapience/sdk', () => ({
   parseAmountToBigInt: (value: string | undefined, decimals: number = 18) => {
     if (!value) return 0n;
@@ -155,7 +158,9 @@ describe('useTokenApproval', () => {
       }
     });
 
-    expect(result.current.error?.message).toMatch('Missing required parameters');
+    expect(result.current.error?.message).toMatch(
+      'Missing required parameters'
+    );
   });
 
   it('approve() sets error when amount is 0', async () => {
@@ -179,7 +184,9 @@ describe('useTokenApproval', () => {
       }
     });
 
-    expect(result.current.error?.message).toMatch('Missing required parameters');
+    expect(result.current.error?.message).toMatch(
+      'Missing required parameters'
+    );
     spy.mockRestore();
   });
 

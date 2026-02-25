@@ -361,18 +361,20 @@ export default function CollateralBalanceButton({
 
   // Show FUND ACCOUNT button when in smart account mode with zero balance (and not still loading)
   const showFundButton =
-    isUsingSmartAccount && smartAccountBalance === 0 && !isSmartAccountBalanceLoading;
+    isUsingSmartAccount &&
+    smartAccountBalance === 0 &&
+    !isSmartAccountBalanceLoading;
 
   return (
     <div className={`flex w-fit mx-3 xl:mx-0 mt-0 ${className ?? ''}`}>
       {showFundButton ? (
-          <button
-            type="button"
-            onClick={() => setIsGetUsdeOpen(true)}
-            className={`btn-get-access inline-flex items-center rounded-md h-10 xl:h-9 px-4 justify-center text-brand-black hover:text-white font-semibold border-0 transition-colors duration-400 font-mono uppercase tracking-widest text-sm ${buttonClassName ?? ''}`}
-          >
-            <span className="relative z-10">Fund Account</span>
-          </button>
+        <button
+          type="button"
+          onClick={() => setIsGetUsdeOpen(true)}
+          className={`btn-get-access inline-flex items-center rounded-md h-10 xl:h-9 px-4 justify-center text-brand-black hover:text-white font-semibold border-0 transition-colors duration-400 font-mono uppercase tracking-widest text-sm ${buttonClassName ?? ''}`}
+        >
+          <span className="relative z-10">Fund Account</span>
+        </button>
       ) : (
       <HoverCard openDelay={100} closeDelay={200}>
         <HoverCardTrigger>
@@ -426,7 +428,7 @@ export default function CollateralBalanceButton({
               {isSponsored && (
                 <div className="w-full rounded-md border border-ethena/30 bg-ethena/10 px-3 py-2 text-xs">
                   <div className="flex items-center gap-1.5 text-ethena font-medium">
-                    <span>🎁 {sponsorBudgetFormatted} {symbol} sponsorship available</span>
+                    <span>{sponsorBudgetFormatted} {symbol} sponsorship available</span>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Info className="h-3.5 w-3.5 text-ethena/60 cursor-help" />
@@ -446,27 +448,69 @@ export default function CollateralBalanceButton({
                 <Image
                   src="/usde.svg"
                   alt="USDe"
-                  width={16}
-                  height={16}
-                  className="opacity-90"
+                  width={20}
+                  height={20}
+                  className="opacity-90 ml-[-2px] w-5 h-5"
                 />
-                Get USDe
-              </Button>
-              {/* Withdraw button shown when smart account has balance, regardless of mode */}
-              {/* This allows users to recover funds from smart account even when using EOA */}
-              {smartAccountBalance > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setIsWithdrawOpen(true)}
-                  className="text-xs text-muted-foreground hover:text-foreground underline"
-                >
-                  Withdraw from Sapience Account
-                </button>
-              )}
+                <span className="relative top-[1px] xl:top-0 text-sm font-normal">
+                  {formatDollarLikeBalance(displayedBalance)} {symbol}
+                </span>
+              </div>
             </div>
-          </div>
-        </HoverCardContent>
-      </HoverCard>
+          </HoverCardTrigger>
+          <HoverCardContent side="bottom" className="w-auto p-4">
+            <div className="flex items-center gap-4">
+              {/* Left section - Get USDe */}
+              <div className="flex flex-col items-center justify-center space-y-3">
+                <div className="space-y-1 text-center">
+                  <p className="font-medium text-sm whitespace-nowrap">
+                    {isUsingSmartAccount
+                      ? 'Sapience Account Balance'
+                      : 'Wallet Balance'}
+                  </p>
+                  {isUsingSmartAccount && smartAccountAddress && (
+                    <div className="flex justify-center">
+                      <AddressDisplay address={smartAccountAddress} compact />
+                    </div>
+                  )}
+                  {!isUsingSmartAccount && eoaAddress && (
+                    <div className="flex justify-center">
+                      <AddressDisplay address={eoaAddress} compact />
+                    </div>
+                  )}
+                  <p className="text-2xl font-mono pt-1">
+                    {formatDollarLikeBalance(displayedBalance)} {symbol}
+                  </p>
+                </div>
+                <Button
+                  size="sm"
+                  className="gap-2 w-full"
+                  onClick={() => setIsGetUsdeOpen(true)}
+                >
+                  <Image
+                    src="/usde.svg"
+                    alt="USDe"
+                    width={16}
+                    height={16}
+                    className="opacity-90"
+                  />
+                  Get USDe
+                </Button>
+                {/* Withdraw button shown when smart account has balance, regardless of mode */}
+                {/* This allows users to recover funds from smart account even when using EOA */}
+                {smartAccountBalance > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setIsWithdrawOpen(true)}
+                    className="text-xs text-muted-foreground hover:text-foreground underline"
+                  >
+                    Withdraw from Sapience Account
+                  </button>
+                )}
+              </div>
+            </div>
+          </HoverCardContent>
+        </HoverCard>
       )}
 
       {/* Get USDe Dialog */}

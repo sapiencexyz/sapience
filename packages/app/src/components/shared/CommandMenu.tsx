@@ -239,7 +239,10 @@ export default function CommandMenu() {
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogContent className="overflow-hidden p-0 shadow-lg max-w-2xl" hideCloseButton>
+      <DialogContent
+        className="overflow-hidden p-0 shadow-lg max-w-2xl"
+        hideCloseButton
+      >
         <DialogTitle className="sr-only">Command Menu</DialogTitle>
         <DialogDescription className="sr-only">
           Search prediction markets, pages, and more
@@ -272,9 +275,7 @@ export default function CommandMenu() {
               <CommandGroup>
                 <CommandItem
                   value={addressMatch}
-                  onSelect={() =>
-                    handleSelect(`/profile/${addressMatch}`)
-                  }
+                  onSelect={() => handleSelect(`/profile/${addressMatch}`)}
                   className="flex items-center gap-3"
                 >
                   <User className="h-4 w-4 shrink-0" />
@@ -307,9 +308,7 @@ export default function CommandMenu() {
                         color={color}
                         categorySlug={categorySlug || null}
                       />
-                      <span
-                        className="text-sm font-mono text-brand-white truncate min-w-0 underline decoration-dotted decoration-1 decoration-brand-white/70 underline-offset-4"
-                      >
+                      <span className="text-sm font-mono text-brand-white truncate min-w-0 underline decoration-dotted decoration-1 decoration-brand-white/70 underline-offset-4">
                         {condition.question}
                       </span>
                     </CommandItem>
@@ -320,9 +319,9 @@ export default function CommandMenu() {
 
             {filteredPages.length > 0 && (
               <>
-                {!isSearching && debouncedSearch && conditionRows.length > 0 && (
-                  <CommandSeparator />
-                )}
+                {!isSearching &&
+                  debouncedSearch &&
+                  conditionRows.length > 0 && <CommandSeparator />}
                 <CommandGroup>
                   {filteredPages.map((page) => (
                     <CommandItem
