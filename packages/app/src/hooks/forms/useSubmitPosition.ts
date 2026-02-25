@@ -40,7 +40,7 @@ export function useSubmitPosition({
 }: UseSubmitPositionProps) {
   const { address } = useAccount();
   const { signTypedDataAsync } = useSignTypedData();
-  const { effectiveAddress } = useSession();
+  const { effectiveAddress, isUsingSession, signTypedData: sessionSignTypedData } = useSession();
 
   // Read current wUSDe balance on Ethereal to avoid unnecessary wrap/deposit calls
   const { data: currentWusdeBalance } = useReadContract({
@@ -239,7 +239,7 @@ export function useSubmitPosition({
             chainId,
           });
 
-          const predictorSignature = await signTypedDataAsync({
+          const signParams = {
             domain: {
               ...typedData.domain,
               chainId: Number(typedData.domain.chainId),
@@ -247,7 +247,11 @@ export function useSubmitPosition({
             types: typedData.types,
             primaryType: typedData.primaryType,
             message: typedData.message,
-          });
+          };
+
+          const predictorSignature = isUsingSession && sessionSignTypedData
+            ? await sessionSignTypedData(signParams)
+            : await signTypedDataAsync(signParams);
 
           filled.predictorSignature = predictorSignature;
         }
@@ -320,6 +324,8 @@ export function useSubmitPosition({
       isProcessing,
       collateralTokenAddress,
       predictionMarketAddress,
+      isUsingSession,
+      sessionSignTypedData,
     ]
   );
 
