@@ -361,18 +361,20 @@ export default function CollateralBalanceButton({
 
   // Show FUND ACCOUNT button when in smart account mode with zero balance (and not still loading)
   const showFundButton =
-    isUsingSmartAccount && smartAccountBalance === 0 && !isSmartAccountBalanceLoading;
+    isUsingSmartAccount &&
+    smartAccountBalance === 0 &&
+    !isSmartAccountBalanceLoading;
 
   return (
     <div className={`flex w-fit mx-3 xl:mx-0 mt-0 ${className ?? ''}`}>
       {showFundButton ? (
-          <button
-            type="button"
-            onClick={() => setIsGetUsdeOpen(true)}
-            className={`btn-get-access inline-flex items-center rounded-md h-10 xl:h-9 px-4 justify-center text-brand-black hover:text-white font-semibold border-0 transition-colors duration-400 font-mono uppercase tracking-widest text-sm ${buttonClassName ?? ''}`}
-          >
-            <span className="relative z-10">Fund Account</span>
-          </button>
+        <button
+          type="button"
+          onClick={() => setIsGetUsdeOpen(true)}
+          className={`btn-get-access inline-flex items-center rounded-md h-10 xl:h-9 px-4 justify-center text-brand-black hover:text-white font-semibold border-0 transition-colors duration-400 font-mono uppercase tracking-widest text-sm ${buttonClassName ?? ''}`}
+        >
+          <span className="relative z-10">Fund Account</span>
+        </button>
       ) : (
       <HoverCard openDelay={100} closeDelay={200}>
         <HoverCardTrigger>
@@ -426,7 +428,7 @@ export default function CollateralBalanceButton({
               {isSponsored && (
                 <div className="w-full rounded-md border border-ethena/30 bg-ethena/10 px-3 py-2 text-xs">
                   <div className="flex items-center gap-1.5 text-ethena font-medium">
-                    <span>🎁 {sponsorBudgetFormatted} {symbol} sponsorship available</span>
+                    <span>{sponsorBudgetFormatted} {symbol} sponsorship available</span>
                     <Tooltip>
                       <TooltipTrigger asChild>
                         <Info className="h-3.5 w-3.5 text-ethena/60 cursor-help" />
@@ -466,7 +468,7 @@ export default function CollateralBalanceButton({
             </div>
           </div>
         </HoverCardContent>
-      </HoverCard>
+        </HoverCard>
       )}
 
       {/* Get USDe Dialog */}

@@ -10,7 +10,7 @@ import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { toAuctionWsUrl } from '~/lib/ws';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
-import { useSecondaryNonce } from '~/hooks/secondary/useSecondaryNonce';
+import { generateRandomNonce } from '@sapience/sdk';
 
 export interface SecondaryAuctionStartParams {
   token: Address;
@@ -47,11 +47,6 @@ export function useSecondaryAuctionStart(
   const { apiBaseUrl } = useSettings();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const { nonce: currentNonce, refetch: refetchNonce } = useSecondaryNonce({
-    address: address as Address | undefined,
-    chainId,
-  });
 
   const wsUrl = useMemo(() => toAuctionWsUrl(apiBaseUrl), [apiBaseUrl]);
 
@@ -97,7 +92,8 @@ export function useSecondaryAuctionStart(
         return { success: false, error: 'Invalid minimum price' };
       }
 
-      const nonce = currentNonce ?? 0n;
+      // Generate random nonce for bitmap nonce system (Permit2-style)
+      const nonce = generateRandomNonce();
       const nowSec = Math.floor(Date.now() / 1000);
       const sellerDeadline = BigInt(nowSec + Math.max(60, deadlineSeconds));
 
@@ -207,7 +203,6 @@ export function useSecondaryAuctionStart(
       verifyingContract,
       collateralAddress,
       wsUrl,
-      currentNonce,
       signTypedDataAsync,
       onSignatureRejected,
       onAuctionCreated,
@@ -218,10 +213,8 @@ export function useSecondaryAuctionStart(
     startAuction,
     isSubmitting,
     isConnected: Boolean(address),
-    address: address as Address | undefined,
+    address,
     chainId,
     verifyingContract,
-    currentNonce,
-    refetchNonce,
   };
 }

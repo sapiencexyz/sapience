@@ -31,6 +31,7 @@ import { toECDSASigner } from '@zerodev/permissions/signers';
 import {
   toCallPolicy,
   toTimestampPolicy,
+  toSignatureCallerPolicy,
   CallPolicyVersion,
   ParamCondition,
 } from '@zerodev/permissions/policies';
@@ -332,10 +333,10 @@ export async function getSmartAccountAddress(
 }
 
 /**
- * Sign Escrow Session Key Approval for PredictionMarketEscrow.
- * This allows the session key to sign MintApproval messages on behalf of the smart account.
+ * @deprecated No longer used — session keys are validated via ERC-1271 on the smart account.
+ * Kept temporarily for reference during migration. Remove after staging validates.
  */
-async function signEscrowSessionKeyApproval(
+async function _signEscrowSessionKeyApproval(
   ownerSigner: OwnerSigner,
   sessionKeyAddress: Address,
   smartAccountAddress: Address,
@@ -491,6 +492,7 @@ export function encodeEscrowSessionKeyData(approval: EscrowSessionKeyApproval): 
     '0000000000000000000000000000000000000000000000000000000000000020';
   return `0x${offsetPointer}${innerEncoding.slice(2)}` as Hex;
 }
+
 
 // ABI for accountFactory verification
 const ACCOUNT_FACTORY_ABI = parseAbi([
@@ -712,7 +714,7 @@ export async function createSession(
         abi: liquidityVaultAbi,
         functionName: 'cancelWithdrawal',
       },
-      // Escrow mint permission (only if escrow is deployed on this chain)
+      // Escrow permissions (only if escrow is deployed on this chain)
       ...(etherealContracts.predictionMarketEscrow
         ? [
             {
@@ -770,13 +772,20 @@ export async function createSession(
     etherealPermissionId
   );
 
-  // Create permission plugin for Ethereal with call policy and timestamp policy
+  // Signature caller policy: allows the escrow contract to call isValidSignature()
+  // on the smart account (ERC-1271 verification for session key signatures)
+  const escrowAddress = etherealContracts.predictionMarketEscrow;
+  const signatureCallerPolicy = toSignatureCallerPolicy({
+    allowedCallers: [escrowAddress].filter(Boolean) as Address[],
+  });
+
+  // Create permission plugin for Ethereal with call, timestamp, and signature caller policies
   const etherealPermissionPlugin = await toPermissionValidator(
     etherealPublicClient,
     {
       entryPoint: ENTRY_POINT,
       signer: sessionKeySigner,
-      policies: [etherealCallPolicy, timestampPolicy],
+      policies: [etherealCallPolicy, timestampPolicy, signatureCallerPolicy],
       kernelVersion: KERNEL_VERSION,
       permissionId: etherealPermissionId,
     }
@@ -841,27 +850,9 @@ export async function createSession(
     '[SessionKeyManager] Arbitrum session will be created lazily on first EAS attestation'
   );
 
-  // Sign Escrow Session Key Approval for PredictionMarketEscrow (if deployed)
-  let escrowSessionKeyApproval: EscrowSessionKeyApproval | undefined;
-  if (etherealContracts.predictionMarketEscrow) {
-    try {
-      escrowSessionKeyApproval = await signEscrowSessionKeyApproval(
-        ownerSigner,
-        sessionKeyAccount.address,
-        smartAccountAddress,
-        validUntilInSeconds,
-        etherealChainId,
-        etherealContracts.predictionMarketEscrow
-      );
-      console.debug('[SessionKeyManager] Escrow session key approval obtained');
-    } catch (e) {
-      console.warn(
-        '[SessionKeyManager] Failed to sign escrow session key approval:',
-        e
-      );
-      // Continue without escrow support - legacy will still work
-    }
-  }
+  // Note: No on-chain registration or separate escrow approval needed.
+  // Session keys sign typed data through the KernelAccountClient, and the escrow
+  // contract verifies via ERC-1271 (isValidSignature) on the smart account.
 
   const config: SessionConfig = {
     durationHours,
@@ -879,7 +870,7 @@ export async function createSession(
     // Arbitrum approval not set - will be created lazily
     etherealEnableTypedData,
     etherealChainId,
-    escrowSessionKeyApproval,
+    // escrowSessionKeyApproval is no longer set — session keys are registered on-chain
   };
 
   return {
@@ -1246,27 +1237,6 @@ export function loadSession(): SerializedSession | null {
       );
       clearSession();
       return null;
-    }
-
-    // Validate session key consistency
-    if (parsed.escrowSessionKeyApproval && parsed.sessionPrivateKey) {
-      const derivedAddress = privateKeyToAccount(
-        parsed.sessionPrivateKey
-      ).address;
-      if (
-        derivedAddress.toLowerCase() !==
-        parsed.escrowSessionKeyApproval.sessionKey.toLowerCase()
-      ) {
-        console.error(
-          '[SessionKeyManager] Session key mismatch detected on load!',
-          {
-            derivedFromPrivateKey: derivedAddress,
-            inEscrowApproval: parsed.escrowSessionKeyApproval.sessionKey,
-          }
-        );
-        clearSession();
-        return null;
-      }
     }
 
     return parsed;

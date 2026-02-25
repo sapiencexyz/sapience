@@ -26,7 +26,7 @@ function loadFromStorage<T>(key: string, fallback: T): T {
 import type { Address, Hex } from 'viem';
 import type { Pick as EscrowPick } from '@sapience/sdk/types';
 import { OutcomeSide } from '@sapience/sdk/types';
-import { computePickConfigId } from '@sapience/sdk/auction/escrowEncoding';
+import { computePickConfigId, canonicalizePicks } from '@sapience/sdk/auction/escrowEncoding';
 import type { MarketGroupClassification } from '~/lib/types';
 import { MarketGroupClassification as MarketGroupClassificationEnum } from '~/lib/types';
 import { createPositionDefaults } from '~/lib/utils/positionFormUtils';
@@ -345,13 +345,15 @@ export const CreatePositionProvider = ({
 
   // Escrow helpers: convert selections to Pick[] array
   const getPicks = useCallback((): EscrowPick[] => {
-    return selections
-      .filter((s) => s.resolverAddress) // Only include selections with resolver address
-      .map((s) => ({
-        conditionResolver: s.resolverAddress as Address,
-        conditionId: s.conditionId as Hex,
-        predictedOutcome: s.prediction ? OutcomeSide.YES : OutcomeSide.NO,
-      }));
+    return canonicalizePicks(
+      selections
+        .filter((s) => s.resolverAddress) // Only include selections with resolver address
+        .map((s) => ({
+          conditionResolver: s.resolverAddress as Address,
+          conditionId: s.conditionId as Hex,
+          predictedOutcome: s.prediction ? OutcomeSide.YES : OutcomeSide.NO,
+        }))
+    );
   }, [selections]);
 
   // Escrow helper: compute pickConfigId from current selections

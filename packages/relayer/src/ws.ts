@@ -29,7 +29,7 @@ import Sentry from './instrument';
 import type {
   ClientToServerMessage,
   ServerToClientMessage,
-  AuctionRequestPayload,
+  AuctionRFQPayload,
   BidPayload,
 } from './escrowTypes';
 import { isEscrowClientMessage } from './escrowTypes';
@@ -626,7 +626,7 @@ export function createAuctionWebSocketServer() {
       // Handle Escrow Auction client messages
       if (isEscrowClientMessage(msg)) {
         if (msg.type === 'auction.start') {
-          const payload = msg.payload as AuctionRequestPayload;
+          const payload = msg.payload as AuctionRFQPayload;
           const auctionStartTime = startTime;
           let pendingAuctionId = 'pending';
 
@@ -649,6 +649,7 @@ export function createAuctionWebSocketServer() {
             trackDuration(msgType, startTime);
             return;
           }
+
 
           const auctionId = upsertEscrowAuction(payload);
           pendingAuctionId = auctionId;

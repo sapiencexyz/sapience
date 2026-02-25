@@ -1,9 +1,9 @@
 'use client';
 
-import { useAccount, useReadContract, useReadContracts } from 'wagmi';
+import { useAccount, useReadContracts } from 'wagmi';
 import { useSession } from '~/lib/context/SessionContext';
 import { parseAbi, type Address } from 'viem';
-import { CHAIN_ID_ETHEREAL_TESTNET } from '~/lib/constants';
+import { CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
 
 const SPONSOR_ADDRESS = process.env
   .NEXT_PUBLIC_SPONSOR_ADDRESS as Address | undefined;

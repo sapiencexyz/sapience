@@ -1,5 +1,5 @@
 import { useCallback, useState, useMemo } from 'react';
-import { erc20Abi, zeroAddress } from 'viem';
+import { erc20Abi } from 'viem';
 
 import {
   predictionMarketAbi,
@@ -9,11 +9,13 @@ import {
 } from '@sapience/sdk';
 import { CHAIN_ID_ETHEREAL, CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
 import { collateralToken } from '@sapience/sdk/contracts';
-import { useAccount, useReadContract } from 'wagmi';
+import { useAccount, useReadContract, useSignTypedData } from 'wagmi';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 import { useSession } from '~/lib/context/SessionContext';
 import type { MintPredictionRequestData } from '~/lib/auction/useAuctionStart';
 import { getPublicClientForChainId } from '~/lib/utils/util';
+import { buildPredictorMintTypedData } from '@sapience/sdk/auction/escrowSigning';
+import type { Pick as EscrowPick } from '@sapience/sdk/types/escrow';
 
 interface UseSubmitPositionProps {
   chainId: number;
@@ -37,6 +39,7 @@ export function useSubmitPosition({
   onProgressUpdate,
 }: UseSubmitPositionProps) {
   const { address } = useAccount();
+  const { signTypedDataAsync } = useSignTypedData();
   const { effectiveAddress } = useSession();
 
   // Read current wUSDe balance on Ethereal to avoid unnecessary wrap/deposit calls
@@ -215,6 +218,39 @@ export function useSubmitPosition({
           predictionMarketAddress,
           publicClient
         );
+
+        // Sign predictor's MintApproval for escrow mints
+        if (filled.escrowPicks && filled.escrowPicks.length > 0) {
+          const picks: EscrowPick[] = filled.escrowPicks.map((p) => ({
+            conditionResolver: p.conditionResolver,
+            conditionId: p.conditionId,
+            predictedOutcome: p.predictedOutcome,
+          }));
+
+          const typedData = buildPredictorMintTypedData({
+            picks,
+            predictorCollateral: BigInt(filled.makerCollateral),
+            counterpartyCollateral: BigInt(filled.takerCollateral),
+            predictor: filled.maker,
+            counterparty: filled.taker,
+            predictorNonce: nonceValue,
+            predictorDeadline: BigInt(filled.takerDeadline),
+            verifyingContract: predictionMarketAddress,
+            chainId,
+          });
+
+          const predictorSignature = await signTypedDataAsync({
+            domain: {
+              ...typedData.domain,
+              chainId: Number(typedData.domain.chainId),
+            },
+            types: typedData.types,
+            primaryType: typedData.primaryType,
+            message: typedData.message,
+          });
+
+          filled.predictorSignature = predictorSignature;
+        }
 
         const calls = prepareCalls(filled, freshAllowance);
         if (calls.length === 0) {

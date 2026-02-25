@@ -5,6 +5,7 @@
 
 // Re-export auction types from SDK
 export type {
+  AuctionRFQPayload,
   AuctionRequestPayload,
   BidPayload,
   BurnRequestPayload,
@@ -17,7 +18,7 @@ export type {
 
 // Relayer-internal escrow auction record
 export interface EscrowAuctionRecord {
-  auction: import('@sapience/sdk/types').AuctionRequestPayload;
+  auction: import('@sapience/sdk/types').AuctionRFQPayload;
   bids: import('@sapience/sdk/types').ValidatedBid[];
   deadlineMs: number; // absolute epoch ms after which auction expires
   pickConfigId: string; // computed from picks

@@ -11,8 +11,8 @@ import { IV2Types } from "../../../v2/interfaces/IV2Types.sol";
 /// @dev Creates a prediction with separate predictor and counterparty addresses
 contract MintPredictionMarketTokens is Script {
     // Collateral amounts (different for predictor and counterparty)
-    uint256 constant PREDICTOR_COLLATERAL = 100 ether; // 100 tokens
-    uint256 constant COUNTERPARTY_COLLATERAL = PREDICTOR_COLLATERAL / 3; // ~33.33 tokens
+    uint256 constant PREDICTOR_COLLATERAL = 0.001 ether;
+    uint256 constant COUNTERPARTY_COLLATERAL = 0.00033 ether;
 
     // Bundle parameters to avoid stack too deep
     struct Actors {
@@ -110,11 +110,20 @@ contract MintPredictionMarketTokens is Script {
         IV2Types.MintRequest memory request =
             _buildRequest(market, picks, actors);
 
-        // Deployer funds the collateral for both sides
-        vm.startBroadcast(actors.deployerPk);
-        collateral.transfer(actors.predictor, PREDICTOR_COLLATERAL);
-        collateral.transfer(actors.counterparty, COUNTERPARTY_COLLATERAL);
-        vm.stopBroadcast();
+        // Deployer funds the collateral only if needed
+        uint256 predictorBal = collateral.balanceOf(actors.predictor);
+        uint256 counterpartyBal = collateral.balanceOf(actors.counterparty);
+
+        if (predictorBal < PREDICTOR_COLLATERAL || counterpartyBal < COUNTERPARTY_COLLATERAL) {
+            vm.startBroadcast(actors.deployerPk);
+            if (predictorBal < PREDICTOR_COLLATERAL) {
+                collateral.transfer(actors.predictor, PREDICTOR_COLLATERAL - predictorBal);
+            }
+            if (counterpartyBal < COUNTERPARTY_COLLATERAL) {
+                collateral.transfer(actors.counterparty, COUNTERPARTY_COLLATERAL - counterpartyBal);
+            }
+            vm.stopBroadcast();
+        }
 
         // Predictor approves their collateral
         vm.startBroadcast(actors.predictorPk);

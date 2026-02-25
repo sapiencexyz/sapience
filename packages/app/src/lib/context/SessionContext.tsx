@@ -187,7 +187,7 @@ interface SessionContextValue {
   // The Ethereal chain ID the session was created for (mainnet or testnet)
   etherealChainId: number | null;
 
-  // Escrow Session Key Approval for PredictionMarketEscrow
+  // Escrow Session Key Approval for PredictionMarketEscrow (legacy, may be null for new sessions)
   escrowSessionKeyApproval: EscrowSessionKeyApproval | null;
 }
 
@@ -366,16 +366,17 @@ export function SessionProvider({ children }: SessionProviderProps) {
     [sessionPrivateKey]
   );
 
-  // Sign typed data with session key
+  // Sign typed data through the KernelAccountClient (ERC-1271 compatible)
+  // The smart account's isValidSignature() can verify these signatures on-chain
   const signTypedData = useCallback(
     async (params: SignTypedDataParams): Promise<Hex> => {
-      if (!sessionPrivateKey) {
+      const client = chainClients.ethereal;
+      if (!client) {
         throw new Error('No active session');
       }
-      const account = privateKeyToAccount(sessionPrivateKey);
-      return account.signTypedData(params as any);
+      return client.signTypedData(params as any);
     },
-    [sessionPrivateKey]
+    [chainClients.ethereal]
   );
 
   // Calculate smart account address when wallet connects
@@ -449,7 +450,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
         const approvalData = extractSessionApprovalData(stored);
         setArbitrumSessionApproval(approvalData.arbitrum);
         setEtherealSessionApproval(approvalData.ethereal);
-        // Restore escrow session key approval if available
+        // Restore escrow session key approval if available (legacy sessions)
         setEscrowSessionKeyApproval(stored.escrowSessionKeyApproval ?? null);
         setIsSessionActive(true);
         setTimeRemainingMs(result.config.expiresAt - Date.now());
@@ -577,7 +578,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
         const approvalData = extractSessionApprovalData(result.serialized);
         setArbitrumSessionApproval(approvalData.arbitrum);
         setEtherealSessionApproval(approvalData.ethereal);
-        // Set escrow session key approval if available
+        // Set escrow session key approval if available (legacy sessions)
         setEscrowSessionKeyApproval(result.serialized.escrowSessionKeyApproval ?? null);
         setIsSessionActive(true);
         setTimeRemainingMs(result.config.expiresAt - Date.now());
@@ -585,9 +586,6 @@ export function SessionProvider({ children }: SessionProviderProps) {
           '[SessionContext] Session active, smart account:',
           result.config.smartAccountAddress
         );
-        if (result.serialized.escrowSessionKeyApproval) {
-          console.debug('[SessionContext] Escrow session key approval available');
-        }
       } catch (error) {
         console.error('Failed to start session:', error);
         setSessionError(
@@ -746,7 +744,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
       isUsingSession,
       effectiveAddress,
       signMessage: sessionPrivateKey ? signMessage : null,
-      signTypedData: sessionPrivateKey ? signTypedData : null,
+      signTypedData: chainClients.ethereal ? signTypedData : null,
       sessionKeyAddress,
       etherealSessionApproval,
       arbitrumSessionApproval,

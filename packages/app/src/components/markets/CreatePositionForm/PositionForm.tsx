@@ -15,12 +15,11 @@ import { useAccount, useReadContract } from 'wagmi';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
 import {
   predictionMarketAbi,
-  predictionMarketEscrowAbi,
 } from '@sapience/sdk/abis';
+import { generateRandomNonce } from '@sapience/sdk';
 import {
   COLLATERAL_SYMBOLS,
   CHAIN_ID_ETHEREAL,
-  DEFAULT_CHAIN_ID,
   CHAIN_ID_ETHEREAL_TESTNET,
 } from '@sapience/sdk/constants';
 import { useToast } from '@sapience/ui/hooks/use-toast';
@@ -150,22 +149,25 @@ export default function PositionForm({
   const { balance: userBalance, isLoading: isBalanceLoading } =
     useCollateralBalanceContext();
 
-  // Fetch taker nonce from PredictionMarket/PredictionMarketEscrow contract
-  // Escrow (testnet) uses getNonce, legacy uses nonces
+  // Fetch taker nonce: V1 reads from contract, V2 (escrow) uses random bitmap nonces
   const isEscrowChain = chainId === CHAIN_ID_ETHEREAL_TESTNET;
-  const { refetch: refetchTakerNonce, error: nonceError } = useReadContract({
+  const { refetch: refetchV1TakerNonce, error: nonceError } = useReadContract({
     address: predictionMarketAddress,
-    abi: isEscrowChain ? predictionMarketEscrowAbi : predictionMarketAbi,
-    functionName: isEscrowChain ? 'getNonce' : 'nonces',
+    abi: predictionMarketAbi,
+    functionName: 'nonces',
     args: selectedTakerAddress ? [selectedTakerAddress] : undefined,
     chainId,
     query: {
-      enabled: !!selectedTakerAddress && !!predictionMarketAddress,
+      enabled: !isEscrowChain && !!selectedTakerAddress && !!predictionMarketAddress,
     },
   });
   if (nonceError) {
     console.error('[Auction] Nonce read error:', nonceError);
   }
+  // For escrow chains, generate random nonce; for V1, refetch from contract
+  const refetchTakerNonce = isEscrowChain
+    ? () => Promise.resolve({ data: generateRandomNonce() })
+    : refetchV1TakerNonce;
   const [isLimitDialogOpen, setIsLimitDialogOpen] = useState(false);
 
   const positionSizeValue = useWatch({
@@ -541,6 +543,7 @@ export default function PositionForm({
       toast,
       takerAddress,
       refetchTakerNonce,
+      isEscrowChain,
       hasFormErrors,
       positionSizeValue,
       collateralDecimals,

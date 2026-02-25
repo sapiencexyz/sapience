@@ -8,7 +8,7 @@ import {
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { predictionMarketLZConditionalTokensResolver } from '@sapience/sdk/contracts';
-import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 
 const API_BASE = process.env.FOIL_RELAYER_BASE || 'http://localhost:3002';
 const WS_URL =
@@ -18,7 +18,7 @@ const WS_URL =
 
 // Polymarket LZ resolver address for Ethereal
 const POLYMARKET_RESOLVER =
-  predictionMarketLZConditionalTokensResolver[CHAIN_ID_ETHEREAL]?.address?.toLowerCase();
+  predictionMarketLZConditionalTokensResolver[DEFAULT_CHAIN_ID]?.address?.toLowerCase();
 
 console.log('[BOT] Env FOIL_RELAYER_BASE =', process.env.FOIL_RELAYER_BASE);
 console.log('[BOT] Connecting to', WS_URL);

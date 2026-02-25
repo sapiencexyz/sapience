@@ -4,15 +4,10 @@ import * as React from 'react';
 import { formatEther } from 'viem';
 import { motion } from 'framer-motion';
 import ConditionTitleLink from '../ConditionTitleLink';
-import {
-  type TopLevelRow,
-  EndTimeCell,
-  PredictCell,
-} from '../market-helpers';
+import { type TopLevelRow, EndTimeCell, PredictCell } from '../market-helpers';
 import { getCategoryIcon } from '~/lib/theme/categoryIcons';
 import { formatPercentChance } from '~/lib/format/percentChance';
 import MarketPredictionRequest from '~/components/shared/MarketPredictionRequest';
-
 
 // ---------------------------------------------------------------------------
 // Animation variants
@@ -159,9 +154,13 @@ function ConditionCard({
   const { condition } = row;
   const oiWei = BigInt(condition.openInterest || '0');
   const probability = predictionMapRef.current[condition.id];
-  const percentLabel = probability != null ? formatPercentChance(probability) : null;
+  const percentLabel =
+    probability != null ? formatPercentChance(probability) : null;
   // Numeric percent for gauge arc (clamped 1–99 to avoid fully-empty/full visual)
-  const percent = probability != null ? Math.max(1, Math.min(99, Math.round(probability * 100))) : null;
+  const percent =
+    probability != null
+      ? Math.max(1, Math.min(99, Math.round(probability * 100)))
+      : null;
   const CategoryIcon = getCategoryIcon(condition.category?.slug);
 
   const handlePrediction = React.useCallback(
@@ -239,7 +238,8 @@ function ConditionCard({
       {/* Bottom: OI left, end time right */}
       <div className="mt-2 flex items-center justify-between">
         <span className="font-display text-[11px] text-gray-500 tabular-nums font-mono">
-          <span className="font-semibold">{formatOI(oiWei)} USDe</span> Open Interest
+          <span className="font-semibold">{formatOI(oiWei)} USDe</span> Open
+          Interest
         </span>
         <span className="font-display text-[11px] text-gray-500 shrink-0">
           {condition.endTime ? (
@@ -313,7 +313,8 @@ function GroupCard({ row, onToggleExpand }: GroupCardProps) {
       {/* Bottom: OI left, end time right */}
       <div className="mt-2 flex items-center justify-between">
         <span className="font-display text-[11px] text-gray-500 tabular-nums font-mono">
-          <span className="font-semibold">{formatOI(oiWei)} USDe</span> Open Interest
+          <span className="font-semibold">{formatOI(oiWei)} USDe</span> Open
+          Interest
         </span>
         <span className="font-display text-[11px] text-gray-500 shrink-0">
           {endTime ? (

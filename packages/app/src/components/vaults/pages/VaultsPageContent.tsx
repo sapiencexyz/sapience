@@ -40,6 +40,8 @@ const DEPOSIT_WHITELIST: `0x${string}`[] = [
   '0x7BB4e4E4674c625b23C550A74cfcfF9Ec50064F3',
 ];
 
+const DEPOSIT_CAP = 10000;
+
 const VaultsPageContent = () => {
   const { currentAddress, isConnected } = useCurrentAddress();
   const { openConnectDialog } = useConnectDialog();
@@ -364,7 +366,7 @@ const VaultsPageContent = () => {
         </div>
 
         {/* Cooldown + Deposit Button Group */}
-        <div className="space-y-2 sm:pt-2 pb-3">
+        <div className="space-y-4 sm:pt-2 pb-3">
           {isInteractionDelayActive && (
             <div className="rounded-md border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-800 dark:text-yellow-300">
               This vault implements a cooldown period. Please wait{' '}
@@ -522,7 +524,7 @@ const VaultsPageContent = () => {
         </div>
 
         {/* Cooldown + Withdraw Button Group */}
-        <div className="space-y-2 pt-2">
+        <div className="space-y-4 pt-2">
           {isInteractionDelayActive && (
             <div className="rounded-md border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-sm text-yellow-800 dark:text-yellow-300">
               This vault implements a cooldown period. Please wait{' '}
@@ -706,12 +708,11 @@ const VaultsPageContent = () => {
     }
   }, [deployedWei, formatAssetAmount]);
 
-  // Vault capacity check (20000 USDe max)
   const VAULT_CAPACITY_WEI = useMemo(() => {
     try {
-      return parseUnits('20000', assetDecimals ?? 18);
+      return parseUnits(DEPOSIT_CAP.toString(), assetDecimals ?? 18);
     } catch {
-      return parseUnits('20000', 18);
+      return parseUnits(DEPOSIT_CAP.toString(), 18);
     }
   }, [assetDecimals]);
 
@@ -723,6 +724,41 @@ const VaultsPageContent = () => {
       return false;
     }
   }, [tvlWei, depositWei, VAULT_CAPACITY_WEI]);
+
+  // Where the deposit cap falls on the utilization bar (bar represents 0→TVL)
+  const capPercentOfTvl = useMemo(() => {
+    try {
+      if (tvlWei <= 0n) return 100;
+      const pct = Number((VAULT_CAPACITY_WEI * 10000n) / tvlWei) / 100;
+      return Math.max(0, Math.min(100, pct));
+    } catch {
+      return 100;
+    }
+  }, [tvlWei, VAULT_CAPACITY_WEI]);
+
+  const depositCapDisplay = formatIntWithCommas(DEPOSIT_CAP.toString());
+
+  // How full the vault is relative to the deposit cap (bar fill)
+  const tvlPercentOfCap = useMemo(() => {
+    try {
+      if (VAULT_CAPACITY_WEI <= 0n) return 0;
+      const pct = Number((tvlWei * 10000n) / VAULT_CAPACITY_WEI) / 100;
+      return Math.max(0, Math.min(100, pct));
+    } catch {
+      return 0;
+    }
+  }, [tvlWei, VAULT_CAPACITY_WEI]);
+
+  // Deployed portion as percentage of the deposit cap (for bar segment)
+  const deployedPercentOfCap = useMemo(() => {
+    try {
+      if (VAULT_CAPACITY_WEI <= 0n) return 0;
+      const pct = Number((deployedWei * 10000n) / VAULT_CAPACITY_WEI) / 100;
+      return Math.max(0, Math.min(100, pct));
+    } catch {
+      return 0;
+    }
+  }, [deployedWei, VAULT_CAPACITY_WEI]);
 
   const isWhitelisted =
     DEPOSIT_WHITELIST.length === 0 ||
@@ -752,10 +788,10 @@ const VaultsPageContent = () => {
     // Vault TVL from live on-chain data (availableAssets + totalDeployed)
     const vaultTvlNum = Number(formatAssetAmount(tvlWei));
 
-    // Ethena base APY (approximately 5%)
-    const ETHENA_BASE_APY = 5;
+    // Ethena base APY (approximately 3.5%)
+    const ETHENA_BASE_APY = 3.5;
 
-    // Effective APY: Protocol earns 5% on its TVL, distributed to vault depositors
+    // Effective APY: Protocol earns 3.5% on its TVL, distributed to vault depositors
     // effectiveApy = (protocolTvl / vaultTvl) * baseApy
     const effectiveApy =
       vaultTvlNum > 0 ? (protocolTvlNum / vaultTvlNum) * ETHENA_BASE_APY : 0;
@@ -832,39 +868,74 @@ const VaultsPageContent = () => {
 
                   {/* Vault Stats - Two column layout on large screens */}
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                    {/* Left Column: PnL Chart & Utilization (appears second on mobile) */}
+                    {/* Left Column: Vault Balance, PnL Chart (appears second on mobile) */}
                     <div className="flex flex-col gap-6 order-2 lg:order-1 lg:min-h-0">
-                      {/* Vault PnL Chart */}
-                      <div className="p-5 pt-4 rounded-lg bg-[hsl(var(--primary)/_0.05)] border border-brand-white/10 lg:flex-1 lg:flex lg:flex-col lg:min-h-0 lg:overflow-hidden">
-                        <VaultPnlChart
-                          protocolStats={protocolStats ?? undefined}
-                          isLoading={isAnalyticsLoading}
-                          className="flex-1"
-                        />
-                      </div>
-
-                      {/* Utilization Block */}
+                      {/* Vault Balance Block */}
                       <div className="p-5 pt-4 rounded-lg bg-[hsl(var(--primary)/_0.05)] border border-brand-white/10">
-                        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 sm:gap-0 mb-3">
-                          <h4 className="text-base font-mono uppercase tracking-wider text-brand-white">
-                            Utilization Rate
-                          </h4>
-                          <span className="text-base font-mono text-foreground">
-                            {utilizationDisplay} DEPLOYED
+                        <h4 className="font-mono text-base uppercase tracking-wider text-brand-white mb-3 sm:mb-2">
+                          Vault Balance
+                          <br className="sm:hidden" />{' '}
+                          <span className="font-medium text-[hsl(var(--ethena))]">
+                            {tvlDisplay} {collateralSymbol}
                           </span>
-                        </div>
-                        <div className="w-full h-3 rounded-sm bg-[hsl(var(--primary)/_0.09)] overflow-hidden shadow-inner">
-                          <div
-                            className="h-3 bg-accent-gold rounded-sm transition-all gold-sheen"
-                            style={{ width: `${utilizationPercent}%` }}
-                          />
+                        </h4>
+                        <div className="relative">
+                          <div className="w-full h-3 rounded-sm bg-[hsl(var(--primary)/_0.09)] overflow-hidden shadow-inner relative">
+                            <div
+                              className="h-3 bg-accent-gold rounded-sm transition-all gold-sheen"
+                              style={{
+                                width: `${tvlWei > VAULT_CAPACITY_WEI ? 100 : tvlPercentOfCap}%`,
+                              }}
+                            />
+                            {/* Utilization overlay — dashed border showing deployed portion */}
+                            <div
+                              className="absolute top-0 left-0 h-3 rounded-sm bg-brand-white transition-all"
+                              style={{
+                                width: `${tvlWei > VAULT_CAPACITY_WEI ? deployedPercentOfCap : Math.min(deployedPercentOfCap, tvlPercentOfCap)}%`,
+                              }}
+                            />
+                          </div>
+                          {/* Deposit cap line + rainbow excess when TVL exceeds cap */}
+                          {tvlWei > VAULT_CAPACITY_WEI && (
+                            <>
+                              {/* Rainbow overlay for excess beyond cap */}
+                              <div
+                                className="absolute top-0 h-3 vault-excess-rainbow rounded-r-sm"
+                                style={{
+                                  left: `${capPercentOfTvl}%`,
+                                  width: `${100 - capPercentOfTvl}%`,
+                                }}
+                              />
+                              <div
+                                className="absolute top-0 w-px h-3 border-l-2 border-background/70"
+                                style={{ left: `${capPercentOfTvl}%` }}
+                              />
+                              <div
+                                className="absolute -top-7 sm:-top-4 font-mono text-[10px] text-brand-white uppercase -translate-x-1/2 text-center sm:whitespace-nowrap"
+                                style={{ left: `${capPercentOfTvl}%` }}
+                              >
+                                <span className="sm:hidden">
+                                  deposit
+                                  <br />
+                                  cap
+                                </span>
+                                <span className="hidden sm:inline">
+                                  deposit cap
+                                </span>
+                              </div>
+                            </>
+                          )}
+                          {/* Deposit cap label at end of bar when TVL is under cap */}
+                          {tvlWei <= VAULT_CAPACITY_WEI && (
+                            <div className="mt-1 text-right font-mono text-[10px] text-muted-foreground/50 uppercase">
+                              {depositCapDisplay} cap
+                            </div>
+                          )}
                         </div>
                         <div className="mt-2 flex flex-col items-start sm:flex-row sm:items-baseline sm:justify-between gap-1 sm:gap-0 text-sm">
                           <span className="font-mono text-muted-foreground uppercase">
-                            {deployedDisplay} of {tvlDisplay}{' '}
-                            <span className="normal-case">
-                              {collateralSymbol}
-                            </span>
+                            {deployedDisplay} {collateralSymbol} (
+                            {utilizationDisplay}) deployed
                           </span>
                           <Link
                             href={`/profile/${VAULT_ADDRESS}`}
@@ -873,6 +944,15 @@ const VaultsPageContent = () => {
                             View Profile
                           </Link>
                         </div>
+                      </div>
+
+                      {/* Vault PnL Chart */}
+                      <div className="p-5 pt-4 rounded-lg bg-[hsl(var(--primary)/_0.05)] border border-brand-white/10 lg:flex-1 lg:flex lg:flex-col lg:min-h-0 lg:overflow-hidden">
+                        <VaultPnlChart
+                          protocolStats={protocolStats ?? undefined}
+                          isLoading={isAnalyticsLoading}
+                          className="flex-1"
+                        />
                       </div>
                     </div>
 

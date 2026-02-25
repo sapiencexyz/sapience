@@ -9,6 +9,7 @@ allowed-tools: Bash(gh *), Bash(git *)
 
 ## Steps
 
+0. If there are uncommited files, commit them, adding an appropriate commit message of a short to medium length.
 1. Get the current branch name with `git rev-parse --abbrev-ref HEAD`
 2. Push the branch: `git push -u origin "$BRANCH"`
 3. Check if a PR already exists: `gh pr list --head "$BRANCH" --json number,url --jq '.[0]'`

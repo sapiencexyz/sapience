@@ -56,7 +56,6 @@ export default defineConfig({
             link: "/builder-guide/guides/market-making-agent",
           },
           { text: "Apps and Interfaces", link: "/builder-guide/guides/prediction-market-app" },
-          { text: "ElizaOS Agent", link: "/builder-guide/guides/elizaos-agent" },
         ],
       },
       {
@@ -93,6 +92,14 @@ export default defineConfig({
             text: "Glossary",
             link: "/user-guide/introduction/glossary",
           },
+        ],
+      },
+      {
+        text: "Agents",
+        items: [
+          { text: "OpenClaw", link: "/user-guide/agents/openclaw" },
+          { text: "Claude Code", link: "/user-guide/agents/claude-code" },
+          { text: "OpenAI Codex", link: "/user-guide/agents/codex" },
         ],
       },
       {

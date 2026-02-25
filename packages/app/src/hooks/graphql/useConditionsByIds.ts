@@ -1,6 +1,9 @@
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { fetchConditionsByIdsQuery, type ConditionById } from '@sapience/sdk/queries';
+import {
+  fetchConditionsByIdsQuery,
+  type ConditionById,
+} from '@sapience/sdk/queries';
 
 export function useConditionsByIds(ids: string[]) {
   const sorted = useMemo(() => Array.from(new Set(ids)).sort(), [ids]);

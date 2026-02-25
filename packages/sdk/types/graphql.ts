@@ -302,11 +302,6 @@ export type CategoryScalarFieldEnum =
   | 'name'
   | 'slug';
 
-export type CategorySummary = {
-  __typename?: 'CategorySummary';
-  slug: Scalars['String']['output'];
-};
-
 export type CategoryWhereInput = {
   AND?: InputMaybe<Array<CategoryWhereInput>>;
   NOT?: InputMaybe<Array<CategoryWhereInput>>;
@@ -331,6 +326,38 @@ export type CategoryWhereUniqueInput = {
   slug?: InputMaybe<Scalars['String']['input']>;
 };
 
+export type ClaimType = {
+  __typename?: 'ClaimType';
+  chainId: Scalars['Int']['output'];
+  collateralPaid: Scalars['String']['output'];
+  holder: Scalars['String']['output'];
+  id: Scalars['Int']['output'];
+  marketAddress: Scalars['String']['output'];
+  positionToken: Scalars['String']['output'];
+  predictionId: Scalars['String']['output'];
+  redeemedAt: Scalars['Int']['output'];
+  refCode?: Maybe<Scalars['String']['output']>;
+  tokensBurned: Scalars['String']['output'];
+  txHash: Scalars['String']['output'];
+};
+
+export type CloseType = {
+  __typename?: 'CloseType';
+  burnedAt: Scalars['Int']['output'];
+  chainId: Scalars['Int']['output'];
+  counterpartyHolder: Scalars['String']['output'];
+  counterpartyPayout: Scalars['String']['output'];
+  counterpartyTokensBurned: Scalars['String']['output'];
+  id: Scalars['Int']['output'];
+  marketAddress: Scalars['String']['output'];
+  pickConfigId: Scalars['String']['output'];
+  predictorHolder: Scalars['String']['output'];
+  predictorPayout: Scalars['String']['output'];
+  predictorTokensBurned: Scalars['String']['output'];
+  refCode?: Maybe<Scalars['String']['output']>;
+  txHash: Scalars['String']['output'];
+};
+
 export type Condition = {
   __typename?: 'Condition';
   _count?: Maybe<ConditionCount>;
@@ -350,7 +377,7 @@ export type Condition = {
   id: Scalars['String']['output'];
   openInterest: Scalars['String']['output'];
   predictionCount: Scalars['Int']['output'];
-  predictions: Array<Prediction>;
+  predictions: Array<LegacyPrediction>;
   public: Scalars['Boolean']['output'];
   question: Scalars['String']['output'];
   resolvedToYes: Scalars['Boolean']['output'];
@@ -384,12 +411,12 @@ export type ConditionConditionGroupArgs = {
 
 
 export type ConditionPredictionsArgs = {
-  cursor?: InputMaybe<PredictionWhereUniqueInput>;
-  distinct?: InputMaybe<Array<PredictionScalarFieldEnum>>;
-  orderBy?: InputMaybe<Array<PredictionOrderByWithRelationInput>>;
+  cursor?: InputMaybe<LegacyPredictionWhereUniqueInput>;
+  distinct?: InputMaybe<Array<LegacyPredictionScalarFieldEnum>>;
+  orderBy?: InputMaybe<Array<LegacyPredictionOrderByWithRelationInput>>;
   skip?: InputMaybe<Scalars['Int']['input']>;
   take?: InputMaybe<Scalars['Int']['input']>;
-  where?: InputMaybe<PredictionWhereInput>;
+  where?: InputMaybe<LegacyPredictionWhereInput>;
 };
 
 export type ConditionCount = {
@@ -405,7 +432,7 @@ export type ConditionCountAttestationsArgs = {
 
 
 export type ConditionCountPredictionsArgs = {
-  where?: InputMaybe<PredictionWhereInput>;
+  where?: InputMaybe<LegacyPredictionWhereInput>;
 };
 
 export type ConditionGroup = {
@@ -535,7 +562,7 @@ export type ConditionOrderByWithRelationInput = {
   id?: InputMaybe<SortOrder>;
   openInterest?: InputMaybe<SortOrder>;
   predictionCount?: InputMaybe<SortOrder>;
-  predictions?: InputMaybe<PredictionOrderByRelationAggregateInput>;
+  predictions?: InputMaybe<LegacyPredictionOrderByRelationAggregateInput>;
   public?: InputMaybe<SortOrder>;
   question?: InputMaybe<SortOrder>;
   resolvedToYes?: InputMaybe<SortOrder>;
@@ -574,18 +601,6 @@ export type ConditionScalarFieldEnum =
   | 'shortName'
   | 'similarMarkets';
 
-export type ConditionSummary = {
-  __typename?: 'ConditionSummary';
-  category?: Maybe<CategorySummary>;
-  endTime?: Maybe<Scalars['Int']['output']>;
-  id: Scalars['String']['output'];
-  question?: Maybe<Scalars['String']['output']>;
-  resolvedToYes: Scalars['Boolean']['output'];
-  resolver?: Maybe<Scalars['String']['output']>;
-  settled: Scalars['Boolean']['output'];
-  shortName?: Maybe<Scalars['String']['output']>;
-};
-
 export type ConditionWhereInput = {
   AND?: InputMaybe<Array<ConditionWhereInput>>;
   NOT?: InputMaybe<Array<ConditionWhereInput>>;
@@ -606,7 +621,7 @@ export type ConditionWhereInput = {
   id?: InputMaybe<StringFilter>;
   openInterest?: InputMaybe<StringFilter>;
   predictionCount?: InputMaybe<IntFilter>;
-  predictions?: InputMaybe<PredictionListRelationFilter>;
+  predictions?: InputMaybe<LegacyPredictionListRelationFilter>;
   public?: InputMaybe<BoolFilter>;
   question?: InputMaybe<StringFilter>;
   resolvedToYes?: InputMaybe<BoolFilter>;
@@ -637,7 +652,7 @@ export type ConditionWhereUniqueInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   openInterest?: InputMaybe<StringFilter>;
   predictionCount?: InputMaybe<IntFilter>;
-  predictions?: InputMaybe<PredictionListRelationFilter>;
+  predictions?: InputMaybe<LegacyPredictionListRelationFilter>;
   public?: InputMaybe<BoolFilter>;
   question?: InputMaybe<StringFilter>;
   resolvedToYes?: InputMaybe<BoolFilter>;
@@ -676,18 +691,18 @@ export type DateTimeNullableFilter = {
   notIn?: InputMaybe<Array<Scalars['DateTimeISO']['input']>>;
 };
 
+export type EnumLegacyPositionStatusFilter = {
+  equals?: InputMaybe<LegacyPositionStatus>;
+  in?: InputMaybe<Array<LegacyPositionStatus>>;
+  not?: InputMaybe<NestedEnumLegacyPositionStatusFilter>;
+  notIn?: InputMaybe<Array<LegacyPositionStatus>>;
+};
+
 export type EnumLimitOrderStatusFilter = {
   equals?: InputMaybe<LimitOrderStatus>;
   in?: InputMaybe<Array<LimitOrderStatus>>;
   not?: InputMaybe<NestedEnumLimitOrderStatusFilter>;
   notIn?: InputMaybe<Array<LimitOrderStatus>>;
-};
-
-export type EnumPositionStatusFilter = {
-  equals?: InputMaybe<PositionStatus>;
-  in?: InputMaybe<Array<PositionStatus>>;
-  not?: InputMaybe<NestedEnumPositionStatusFilter>;
-  notIn?: InputMaybe<Array<PositionStatus>>;
 };
 
 export type FloatNullableFilter = {
@@ -733,6 +748,253 @@ export type IntNullableFilter = {
   notIn?: InputMaybe<Array<Scalars['Int']['input']>>;
 };
 
+export type LegacyCategorySummary = {
+  __typename?: 'LegacyCategorySummary';
+  slug: Scalars['String']['output'];
+};
+
+export type LegacyConditionSummary = {
+  __typename?: 'LegacyConditionSummary';
+  category?: Maybe<LegacyCategorySummary>;
+  endTime?: Maybe<Scalars['Int']['output']>;
+  id: Scalars['String']['output'];
+  question?: Maybe<Scalars['String']['output']>;
+  resolvedToYes: Scalars['Boolean']['output'];
+  resolver?: Maybe<Scalars['String']['output']>;
+  settled: Scalars['Boolean']['output'];
+  shortName?: Maybe<Scalars['String']['output']>;
+};
+
+/** Legacy position model (NFT-based, V1) */
+export type LegacyPosition = {
+  __typename?: 'LegacyPosition';
+  _count?: Maybe<LegacyPositionCount>;
+  chainId: Scalars['Int']['output'];
+  counterparty: Scalars['String']['output'];
+  counterpartyCollateral?: Maybe<Scalars['String']['output']>;
+  counterpartyNftTokenId: Scalars['String']['output'];
+  createdAt: Scalars['DateTimeISO']['output'];
+  endsAt?: Maybe<Scalars['Int']['output']>;
+  id: Scalars['Int']['output'];
+  marketAddress: Scalars['String']['output'];
+  mintedAt: Scalars['Int']['output'];
+  predictions: Array<LegacyPrediction>;
+  predictor: Scalars['String']['output'];
+  predictorCollateral?: Maybe<Scalars['String']['output']>;
+  predictorNftTokenId: Scalars['String']['output'];
+  /** True when the predictor's submitted outcomes were correct (previously makerWon) */
+  predictorWon?: Maybe<Scalars['Boolean']['output']>;
+  refCode?: Maybe<Scalars['String']['output']>;
+  settledAt?: Maybe<Scalars['Int']['output']>;
+  status: LegacyPositionStatus;
+  totalCollateral: Scalars['String']['output'];
+};
+
+
+/** Legacy position model (NFT-based, V1) */
+export type LegacyPositionPredictionsArgs = {
+  cursor?: InputMaybe<LegacyPredictionWhereUniqueInput>;
+  distinct?: InputMaybe<Array<LegacyPredictionScalarFieldEnum>>;
+  orderBy?: InputMaybe<Array<LegacyPredictionOrderByWithRelationInput>>;
+  skip?: InputMaybe<Scalars['Int']['input']>;
+  take?: InputMaybe<Scalars['Int']['input']>;
+  where?: InputMaybe<LegacyPredictionWhereInput>;
+};
+
+export type LegacyPositionCount = {
+  __typename?: 'LegacyPositionCount';
+  predictions: Scalars['Int']['output'];
+};
+
+
+export type LegacyPositionCountPredictionsArgs = {
+  where?: InputMaybe<LegacyPredictionWhereInput>;
+};
+
+export type LegacyPositionNullableRelationFilter = {
+  is?: InputMaybe<LegacyPositionWhereInput>;
+  isNot?: InputMaybe<LegacyPositionWhereInput>;
+};
+
+export type LegacyPositionOrderByWithRelationInput = {
+  chainId?: InputMaybe<SortOrder>;
+  counterparty?: InputMaybe<SortOrder>;
+  counterpartyCollateral?: InputMaybe<SortOrderInput>;
+  counterpartyNftTokenId?: InputMaybe<SortOrder>;
+  createdAt?: InputMaybe<SortOrder>;
+  endsAt?: InputMaybe<SortOrderInput>;
+  id?: InputMaybe<SortOrder>;
+  marketAddress?: InputMaybe<SortOrder>;
+  mintedAt?: InputMaybe<SortOrder>;
+  predictions?: InputMaybe<LegacyPredictionOrderByRelationAggregateInput>;
+  predictor?: InputMaybe<SortOrder>;
+  predictorCollateral?: InputMaybe<SortOrderInput>;
+  predictorNftTokenId?: InputMaybe<SortOrder>;
+  predictorWon?: InputMaybe<SortOrderInput>;
+  refCode?: InputMaybe<SortOrderInput>;
+  settledAt?: InputMaybe<SortOrderInput>;
+  status?: InputMaybe<SortOrder>;
+  totalCollateral?: InputMaybe<SortOrder>;
+};
+
+export type LegacyPositionStatus =
+  | 'active'
+  | 'consolidated'
+  | 'settled';
+
+export type LegacyPositionType = {
+  __typename?: 'LegacyPositionType';
+  chainId: Scalars['Int']['output'];
+  counterparty: Scalars['String']['output'];
+  counterpartyCollateral?: Maybe<Scalars['String']['output']>;
+  counterpartyNftTokenId: Scalars['String']['output'];
+  endsAt?: Maybe<Scalars['Int']['output']>;
+  id: Scalars['Int']['output'];
+  marketAddress: Scalars['String']['output'];
+  mintedAt: Scalars['Int']['output'];
+  predictions: Array<LegacyPredictionType>;
+  predictor: Scalars['String']['output'];
+  predictorCollateral?: Maybe<Scalars['String']['output']>;
+  predictorNftTokenId: Scalars['String']['output'];
+  predictorWon?: Maybe<Scalars['Boolean']['output']>;
+  refCode?: Maybe<Scalars['String']['output']>;
+  settledAt?: Maybe<Scalars['Int']['output']>;
+  status: Scalars['String']['output'];
+  totalCollateral: Scalars['String']['output'];
+};
+
+export type LegacyPositionWhereInput = {
+  AND?: InputMaybe<Array<LegacyPositionWhereInput>>;
+  NOT?: InputMaybe<Array<LegacyPositionWhereInput>>;
+  OR?: InputMaybe<Array<LegacyPositionWhereInput>>;
+  chainId?: InputMaybe<IntFilter>;
+  counterparty?: InputMaybe<StringFilter>;
+  counterpartyCollateral?: InputMaybe<StringNullableFilter>;
+  counterpartyNftTokenId?: InputMaybe<StringFilter>;
+  createdAt?: InputMaybe<DateTimeFilter>;
+  endsAt?: InputMaybe<IntNullableFilter>;
+  id?: InputMaybe<IntFilter>;
+  marketAddress?: InputMaybe<StringFilter>;
+  mintedAt?: InputMaybe<IntFilter>;
+  predictions?: InputMaybe<LegacyPredictionListRelationFilter>;
+  predictor?: InputMaybe<StringFilter>;
+  predictorCollateral?: InputMaybe<StringNullableFilter>;
+  predictorNftTokenId?: InputMaybe<StringFilter>;
+  predictorWon?: InputMaybe<BoolNullableFilter>;
+  refCode?: InputMaybe<StringNullableFilter>;
+  settledAt?: InputMaybe<IntNullableFilter>;
+  status?: InputMaybe<EnumLegacyPositionStatusFilter>;
+  totalCollateral?: InputMaybe<StringFilter>;
+};
+
+export type LegacyPrediction = {
+  __typename?: 'LegacyPrediction';
+  chainId?: Maybe<Scalars['Int']['output']>;
+  condition: Condition;
+  conditionId: Scalars['String']['output'];
+  createdAt: Scalars['DateTimeISO']['output'];
+  id: Scalars['Int']['output'];
+  limitOrder?: Maybe<LimitOrder>;
+  limitOrderId?: Maybe<Scalars['Int']['output']>;
+  outcomeYes: Scalars['Boolean']['output'];
+  position?: Maybe<LegacyPosition>;
+  positionId?: Maybe<Scalars['Int']['output']>;
+};
+
+
+export type LegacyPredictionLimitOrderArgs = {
+  where?: InputMaybe<LimitOrderWhereInput>;
+};
+
+
+export type LegacyPredictionPositionArgs = {
+  where?: InputMaybe<LegacyPositionWhereInput>;
+};
+
+export type LegacyPredictionLimitOrderIdConditionIdCompoundUniqueInput = {
+  conditionId: Scalars['String']['input'];
+  limitOrderId: Scalars['Int']['input'];
+};
+
+export type LegacyPredictionListRelationFilter = {
+  every?: InputMaybe<LegacyPredictionWhereInput>;
+  none?: InputMaybe<LegacyPredictionWhereInput>;
+  some?: InputMaybe<LegacyPredictionWhereInput>;
+};
+
+export type LegacyPredictionOrderByRelationAggregateInput = {
+  _count?: InputMaybe<SortOrder>;
+};
+
+export type LegacyPredictionOrderByWithRelationInput = {
+  chainId?: InputMaybe<SortOrderInput>;
+  condition?: InputMaybe<ConditionOrderByWithRelationInput>;
+  conditionId?: InputMaybe<SortOrder>;
+  createdAt?: InputMaybe<SortOrder>;
+  id?: InputMaybe<SortOrder>;
+  limitOrder?: InputMaybe<LimitOrderOrderByWithRelationInput>;
+  limitOrderId?: InputMaybe<SortOrderInput>;
+  outcomeYes?: InputMaybe<SortOrder>;
+  position?: InputMaybe<LegacyPositionOrderByWithRelationInput>;
+  positionId?: InputMaybe<SortOrderInput>;
+};
+
+export type LegacyPredictionPositionIdConditionIdCompoundUniqueInput = {
+  conditionId: Scalars['String']['input'];
+  positionId: Scalars['Int']['input'];
+};
+
+export type LegacyPredictionScalarFieldEnum =
+  | 'chainId'
+  | 'conditionId'
+  | 'createdAt'
+  | 'id'
+  | 'limitOrderId'
+  | 'outcomeYes'
+  | 'positionId';
+
+export type LegacyPredictionType = {
+  __typename?: 'LegacyPredictionType';
+  chainId?: Maybe<Scalars['Int']['output']>;
+  condition?: Maybe<LegacyConditionSummary>;
+  conditionId: Scalars['String']['output'];
+  outcomeYes: Scalars['Boolean']['output'];
+};
+
+export type LegacyPredictionWhereInput = {
+  AND?: InputMaybe<Array<LegacyPredictionWhereInput>>;
+  NOT?: InputMaybe<Array<LegacyPredictionWhereInput>>;
+  OR?: InputMaybe<Array<LegacyPredictionWhereInput>>;
+  chainId?: InputMaybe<IntNullableFilter>;
+  condition?: InputMaybe<ConditionRelationFilter>;
+  conditionId?: InputMaybe<StringFilter>;
+  createdAt?: InputMaybe<DateTimeFilter>;
+  id?: InputMaybe<IntFilter>;
+  limitOrder?: InputMaybe<LimitOrderNullableRelationFilter>;
+  limitOrderId?: InputMaybe<IntNullableFilter>;
+  outcomeYes?: InputMaybe<BoolFilter>;
+  position?: InputMaybe<LegacyPositionNullableRelationFilter>;
+  positionId?: InputMaybe<IntNullableFilter>;
+};
+
+export type LegacyPredictionWhereUniqueInput = {
+  AND?: InputMaybe<Array<LegacyPredictionWhereInput>>;
+  NOT?: InputMaybe<Array<LegacyPredictionWhereInput>>;
+  OR?: InputMaybe<Array<LegacyPredictionWhereInput>>;
+  chainId?: InputMaybe<IntNullableFilter>;
+  condition?: InputMaybe<ConditionRelationFilter>;
+  conditionId?: InputMaybe<StringFilter>;
+  createdAt?: InputMaybe<DateTimeFilter>;
+  id?: InputMaybe<Scalars['Int']['input']>;
+  limitOrder?: InputMaybe<LimitOrderNullableRelationFilter>;
+  limitOrderId?: InputMaybe<IntNullableFilter>;
+  limitOrderId_conditionId?: InputMaybe<LegacyPredictionLimitOrderIdConditionIdCompoundUniqueInput>;
+  outcomeYes?: InputMaybe<BoolFilter>;
+  position?: InputMaybe<LegacyPositionNullableRelationFilter>;
+  positionId?: InputMaybe<IntNullableFilter>;
+  positionId_conditionId?: InputMaybe<LegacyPredictionPositionIdConditionIdCompoundUniqueInput>;
+};
+
 export type LimitOrder = {
   __typename?: 'LimitOrder';
   _count?: Maybe<LimitOrderCount>;
@@ -749,7 +1011,7 @@ export type LimitOrder = {
   orderId: Scalars['String']['output'];
   placedAt: Scalars['Int']['output'];
   placedTxHash: Scalars['String']['output'];
-  predictions: Array<Prediction>;
+  predictions: Array<LegacyPrediction>;
   predictor: Scalars['String']['output'];
   predictorCollateral: Scalars['String']['output'];
   refCode?: Maybe<Scalars['String']['output']>;
@@ -759,12 +1021,12 @@ export type LimitOrder = {
 
 
 export type LimitOrderPredictionsArgs = {
-  cursor?: InputMaybe<PredictionWhereUniqueInput>;
-  distinct?: InputMaybe<Array<PredictionScalarFieldEnum>>;
-  orderBy?: InputMaybe<Array<PredictionOrderByWithRelationInput>>;
+  cursor?: InputMaybe<LegacyPredictionWhereUniqueInput>;
+  distinct?: InputMaybe<Array<LegacyPredictionScalarFieldEnum>>;
+  orderBy?: InputMaybe<Array<LegacyPredictionOrderByWithRelationInput>>;
   skip?: InputMaybe<Scalars['Int']['input']>;
   take?: InputMaybe<Scalars['Int']['input']>;
-  where?: InputMaybe<PredictionWhereInput>;
+  where?: InputMaybe<LegacyPredictionWhereInput>;
 };
 
 export type LimitOrderCount = {
@@ -774,7 +1036,7 @@ export type LimitOrderCount = {
 
 
 export type LimitOrderCountPredictionsArgs = {
-  where?: InputMaybe<PredictionWhereInput>;
+  where?: InputMaybe<LegacyPredictionWhereInput>;
 };
 
 export type LimitOrderNullableRelationFilter = {
@@ -796,7 +1058,7 @@ export type LimitOrderOrderByWithRelationInput = {
   orderId?: InputMaybe<SortOrder>;
   placedAt?: InputMaybe<SortOrder>;
   placedTxHash?: InputMaybe<SortOrder>;
-  predictions?: InputMaybe<PredictionOrderByRelationAggregateInput>;
+  predictions?: InputMaybe<LegacyPredictionOrderByRelationAggregateInput>;
   predictor?: InputMaybe<SortOrder>;
   predictorCollateral?: InputMaybe<SortOrder>;
   refCode?: InputMaybe<SortOrderInput>;
@@ -826,7 +1088,7 @@ export type LimitOrderWhereInput = {
   orderId?: InputMaybe<StringFilter>;
   placedAt?: InputMaybe<IntFilter>;
   placedTxHash?: InputMaybe<StringFilter>;
-  predictions?: InputMaybe<PredictionListRelationFilter>;
+  predictions?: InputMaybe<LegacyPredictionListRelationFilter>;
   predictor?: InputMaybe<StringFilter>;
   predictorCollateral?: InputMaybe<StringFilter>;
   refCode?: InputMaybe<StringNullableFilter>;
@@ -866,29 +1128,18 @@ export type NestedDateTimeNullableFilter = {
   notIn?: InputMaybe<Array<Scalars['DateTimeISO']['input']>>;
 };
 
+export type NestedEnumLegacyPositionStatusFilter = {
+  equals?: InputMaybe<LegacyPositionStatus>;
+  in?: InputMaybe<Array<LegacyPositionStatus>>;
+  not?: InputMaybe<NestedEnumLegacyPositionStatusFilter>;
+  notIn?: InputMaybe<Array<LegacyPositionStatus>>;
+};
+
 export type NestedEnumLimitOrderStatusFilter = {
   equals?: InputMaybe<LimitOrderStatus>;
   in?: InputMaybe<Array<LimitOrderStatus>>;
   not?: InputMaybe<NestedEnumLimitOrderStatusFilter>;
   notIn?: InputMaybe<Array<LimitOrderStatus>>;
-};
-
-export type NestedEnumPositionStatusFilter = {
-  equals?: InputMaybe<PositionStatus>;
-  in?: InputMaybe<Array<PositionStatus>>;
-  not?: InputMaybe<NestedEnumPositionStatusFilter>;
-  notIn?: InputMaybe<Array<PositionStatus>>;
-};
-
-export type NestedFloatFilter = {
-  equals?: InputMaybe<Scalars['Float']['input']>;
-  gt?: InputMaybe<Scalars['Float']['input']>;
-  gte?: InputMaybe<Scalars['Float']['input']>;
-  in?: InputMaybe<Array<Scalars['Float']['input']>>;
-  lt?: InputMaybe<Scalars['Float']['input']>;
-  lte?: InputMaybe<Scalars['Float']['input']>;
-  not?: InputMaybe<NestedFloatFilter>;
-  notIn?: InputMaybe<Array<Scalars['Float']['input']>>;
 };
 
 export type NestedFloatNullableFilter = {
@@ -956,234 +1207,68 @@ export type NullsOrder =
   | 'first'
   | 'last';
 
-/** Position model to store on-chain prediction positions */
-export type Position = {
-  __typename?: 'Position';
-  _count?: Maybe<PositionCount>;
-  chainId: Scalars['Int']['output'];
-  counterparty: Scalars['String']['output'];
-  counterpartyCollateral?: Maybe<Scalars['String']['output']>;
-  counterpartyNftTokenId: Scalars['String']['output'];
-  createdAt: Scalars['DateTimeISO']['output'];
-  endsAt?: Maybe<Scalars['Int']['output']>;
+export type PickType = {
+  __typename?: 'PickType';
+  conditionId: Scalars['String']['output'];
+  conditionResolver: Scalars['String']['output'];
   id: Scalars['Int']['output'];
+  pickConfigId: Scalars['String']['output'];
+  predictedOutcome: Scalars['Int']['output'];
+};
+
+export type PicksType = {
+  __typename?: 'PicksType';
+  chainId: Scalars['Int']['output'];
+  claimedCounterpartyCollateral: Scalars['String']['output'];
+  claimedPredictorCollateral: Scalars['String']['output'];
+  counterpartyToken?: Maybe<Scalars['String']['output']>;
+  endsAt?: Maybe<Scalars['Int']['output']>;
+  id: Scalars['String']['output'];
   marketAddress: Scalars['String']['output'];
-  mintedAt: Scalars['Int']['output'];
-  predictions: Array<Prediction>;
-  predictor: Scalars['String']['output'];
-  predictorCollateral?: Maybe<Scalars['String']['output']>;
-  predictorNftTokenId: Scalars['String']['output'];
-  /** True when the predictor's submitted outcomes were correct (previously makerWon) */
-  predictorWon?: Maybe<Scalars['Boolean']['output']>;
-  refCode?: Maybe<Scalars['String']['output']>;
-  settledAt?: Maybe<Scalars['Int']['output']>;
-  status: PositionStatus;
-  totalCollateral: Scalars['String']['output'];
+  picks: Array<PickType>;
+  predictorToken?: Maybe<Scalars['String']['output']>;
+  resolved: Scalars['Boolean']['output'];
+  resolvedAt?: Maybe<Scalars['Int']['output']>;
+  result: Scalars['String']['output'];
+  totalCounterpartyCollateral: Scalars['String']['output'];
+  totalPredictorCollateral: Scalars['String']['output'];
 };
-
-
-/** Position model to store on-chain prediction positions */
-export type PositionPredictionsArgs = {
-  cursor?: InputMaybe<PredictionWhereUniqueInput>;
-  distinct?: InputMaybe<Array<PredictionScalarFieldEnum>>;
-  orderBy?: InputMaybe<Array<PredictionOrderByWithRelationInput>>;
-  skip?: InputMaybe<Scalars['Int']['input']>;
-  take?: InputMaybe<Scalars['Int']['input']>;
-  where?: InputMaybe<PredictionWhereInput>;
-};
-
-export type PositionCount = {
-  __typename?: 'PositionCount';
-  predictions: Scalars['Int']['output'];
-};
-
-
-export type PositionCountPredictionsArgs = {
-  where?: InputMaybe<PredictionWhereInput>;
-};
-
-export type PositionNullableRelationFilter = {
-  is?: InputMaybe<PositionWhereInput>;
-  isNot?: InputMaybe<PositionWhereInput>;
-};
-
-export type PositionOrderByWithRelationInput = {
-  chainId?: InputMaybe<SortOrder>;
-  counterparty?: InputMaybe<SortOrder>;
-  counterpartyCollateral?: InputMaybe<SortOrderInput>;
-  counterpartyNftTokenId?: InputMaybe<SortOrder>;
-  createdAt?: InputMaybe<SortOrder>;
-  endsAt?: InputMaybe<SortOrderInput>;
-  id?: InputMaybe<SortOrder>;
-  marketAddress?: InputMaybe<SortOrder>;
-  mintedAt?: InputMaybe<SortOrder>;
-  predictions?: InputMaybe<PredictionOrderByRelationAggregateInput>;
-  predictor?: InputMaybe<SortOrder>;
-  predictorCollateral?: InputMaybe<SortOrderInput>;
-  predictorNftTokenId?: InputMaybe<SortOrder>;
-  predictorWon?: InputMaybe<SortOrderInput>;
-  refCode?: InputMaybe<SortOrderInput>;
-  settledAt?: InputMaybe<SortOrderInput>;
-  status?: InputMaybe<SortOrder>;
-  totalCollateral?: InputMaybe<SortOrder>;
-};
-
-export type PositionStatus =
-  | 'active'
-  | 'consolidated'
-  | 'settled';
 
 export type PositionType = {
   __typename?: 'PositionType';
+  balance: Scalars['String']['output'];
   chainId: Scalars['Int']['output'];
-  counterparty: Scalars['String']['output'];
-  counterpartyCollateral?: Maybe<Scalars['String']['output']>;
-  counterpartyNftTokenId: Scalars['String']['output'];
-  endsAt?: Maybe<Scalars['Int']['output']>;
+  holder: Scalars['String']['output'];
   id: Scalars['Int']['output'];
-  marketAddress: Scalars['String']['output'];
-  mintedAt: Scalars['Int']['output'];
-  predictions: Array<PredictionType>;
-  predictor: Scalars['String']['output'];
-  predictorCollateral?: Maybe<Scalars['String']['output']>;
-  predictorNftTokenId: Scalars['String']['output'];
-  predictorWon?: Maybe<Scalars['Boolean']['output']>;
-  refCode?: Maybe<Scalars['String']['output']>;
-  settledAt?: Maybe<Scalars['Int']['output']>;
-  status: Scalars['String']['output'];
-  totalCollateral: Scalars['String']['output'];
+  isPredictorToken: Scalars['Boolean']['output'];
+  pickConfig?: Maybe<PicksType>;
+  pickConfigId: Scalars['String']['output'];
+  tokenAddress: Scalars['String']['output'];
 };
-
-export type PositionWhereInput = {
-  AND?: InputMaybe<Array<PositionWhereInput>>;
-  NOT?: InputMaybe<Array<PositionWhereInput>>;
-  OR?: InputMaybe<Array<PositionWhereInput>>;
-  chainId?: InputMaybe<IntFilter>;
-  counterparty?: InputMaybe<StringFilter>;
-  counterpartyCollateral?: InputMaybe<StringNullableFilter>;
-  counterpartyNftTokenId?: InputMaybe<StringFilter>;
-  createdAt?: InputMaybe<DateTimeFilter>;
-  endsAt?: InputMaybe<IntNullableFilter>;
-  id?: InputMaybe<IntFilter>;
-  marketAddress?: InputMaybe<StringFilter>;
-  mintedAt?: InputMaybe<IntFilter>;
-  predictions?: InputMaybe<PredictionListRelationFilter>;
-  predictor?: InputMaybe<StringFilter>;
-  predictorCollateral?: InputMaybe<StringNullableFilter>;
-  predictorNftTokenId?: InputMaybe<StringFilter>;
-  predictorWon?: InputMaybe<BoolNullableFilter>;
-  refCode?: InputMaybe<StringNullableFilter>;
-  settledAt?: InputMaybe<IntNullableFilter>;
-  status?: InputMaybe<EnumPositionStatusFilter>;
-  totalCollateral?: InputMaybe<StringFilter>;
-};
-
-export type Prediction = {
-  __typename?: 'Prediction';
-  chainId?: Maybe<Scalars['Int']['output']>;
-  condition: Condition;
-  conditionId: Scalars['String']['output'];
-  createdAt: Scalars['DateTimeISO']['output'];
-  id: Scalars['Int']['output'];
-  limitOrder?: Maybe<LimitOrder>;
-  limitOrderId?: Maybe<Scalars['Int']['output']>;
-  outcomeYes: Scalars['Boolean']['output'];
-  position?: Maybe<Position>;
-  positionId?: Maybe<Scalars['Int']['output']>;
-};
-
-
-export type PredictionLimitOrderArgs = {
-  where?: InputMaybe<LimitOrderWhereInput>;
-};
-
-
-export type PredictionPositionArgs = {
-  where?: InputMaybe<PositionWhereInput>;
-};
-
-export type PredictionLimitOrderIdConditionIdCompoundUniqueInput = {
-  conditionId: Scalars['String']['input'];
-  limitOrderId: Scalars['Int']['input'];
-};
-
-export type PredictionListRelationFilter = {
-  every?: InputMaybe<PredictionWhereInput>;
-  none?: InputMaybe<PredictionWhereInput>;
-  some?: InputMaybe<PredictionWhereInput>;
-};
-
-export type PredictionOrderByRelationAggregateInput = {
-  _count?: InputMaybe<SortOrder>;
-};
-
-export type PredictionOrderByWithRelationInput = {
-  chainId?: InputMaybe<SortOrderInput>;
-  condition?: InputMaybe<ConditionOrderByWithRelationInput>;
-  conditionId?: InputMaybe<SortOrder>;
-  createdAt?: InputMaybe<SortOrder>;
-  id?: InputMaybe<SortOrder>;
-  limitOrder?: InputMaybe<LimitOrderOrderByWithRelationInput>;
-  limitOrderId?: InputMaybe<SortOrderInput>;
-  outcomeYes?: InputMaybe<SortOrder>;
-  position?: InputMaybe<PositionOrderByWithRelationInput>;
-  positionId?: InputMaybe<SortOrderInput>;
-};
-
-export type PredictionPositionIdConditionIdCompoundUniqueInput = {
-  conditionId: Scalars['String']['input'];
-  positionId: Scalars['Int']['input'];
-};
-
-export type PredictionScalarFieldEnum =
-  | 'chainId'
-  | 'conditionId'
-  | 'createdAt'
-  | 'id'
-  | 'limitOrderId'
-  | 'outcomeYes'
-  | 'positionId';
 
 export type PredictionType = {
   __typename?: 'PredictionType';
-  chainId?: Maybe<Scalars['Int']['output']>;
-  condition?: Maybe<ConditionSummary>;
-  conditionId: Scalars['String']['output'];
-  outcomeYes: Scalars['Boolean']['output'];
-};
-
-export type PredictionWhereInput = {
-  AND?: InputMaybe<Array<PredictionWhereInput>>;
-  NOT?: InputMaybe<Array<PredictionWhereInput>>;
-  OR?: InputMaybe<Array<PredictionWhereInput>>;
-  chainId?: InputMaybe<IntNullableFilter>;
-  condition?: InputMaybe<ConditionRelationFilter>;
-  conditionId?: InputMaybe<StringFilter>;
-  createdAt?: InputMaybe<DateTimeFilter>;
-  id?: InputMaybe<IntFilter>;
-  limitOrder?: InputMaybe<LimitOrderNullableRelationFilter>;
-  limitOrderId?: InputMaybe<IntNullableFilter>;
-  outcomeYes?: InputMaybe<BoolFilter>;
-  position?: InputMaybe<PositionNullableRelationFilter>;
-  positionId?: InputMaybe<IntNullableFilter>;
-};
-
-export type PredictionWhereUniqueInput = {
-  AND?: InputMaybe<Array<PredictionWhereInput>>;
-  NOT?: InputMaybe<Array<PredictionWhereInput>>;
-  OR?: InputMaybe<Array<PredictionWhereInput>>;
-  chainId?: InputMaybe<IntNullableFilter>;
-  condition?: InputMaybe<ConditionRelationFilter>;
-  conditionId?: InputMaybe<StringFilter>;
-  createdAt?: InputMaybe<DateTimeFilter>;
-  id?: InputMaybe<Scalars['Int']['input']>;
-  limitOrder?: InputMaybe<LimitOrderNullableRelationFilter>;
-  limitOrderId?: InputMaybe<IntNullableFilter>;
-  limitOrderId_conditionId?: InputMaybe<PredictionLimitOrderIdConditionIdCompoundUniqueInput>;
-  outcomeYes?: InputMaybe<BoolFilter>;
-  position?: InputMaybe<PositionNullableRelationFilter>;
-  positionId?: InputMaybe<IntNullableFilter>;
-  positionId_conditionId?: InputMaybe<PredictionPositionIdConditionIdCompoundUniqueInput>;
+  chainId: Scalars['Int']['output'];
+  collateralDeposited?: Maybe<Scalars['String']['output']>;
+  collateralDepositedAt?: Maybe<Scalars['Int']['output']>;
+  counterparty: Scalars['String']['output'];
+  counterpartyClaimable?: Maybe<Scalars['String']['output']>;
+  counterpartyCollateral: Scalars['String']['output'];
+  counterpartyToken: Scalars['String']['output'];
+  createTxHash: Scalars['String']['output'];
+  createdAt: Scalars['String']['output'];
+  id: Scalars['Int']['output'];
+  marketAddress: Scalars['String']['output'];
+  predictionId: Scalars['String']['output'];
+  predictor: Scalars['String']['output'];
+  predictorClaimable?: Maybe<Scalars['String']['output']>;
+  predictorCollateral: Scalars['String']['output'];
+  predictorToken: Scalars['String']['output'];
+  refCode?: Maybe<Scalars['String']['output']>;
+  result: Scalars['String']['output'];
+  settleTxHash?: Maybe<Scalars['String']['output']>;
+  settled: Scalars['Boolean']['output'];
+  settledAt?: Maybe<Scalars['Int']['output']>;
 };
 
 export type ProfitRankType = {
@@ -1217,20 +1302,28 @@ export type Query = {
   allTimeProfitLeaderboard: Array<AggregatedProfitEntryType>;
   attestations: Array<Attestation>;
   categories: Array<Category>;
+  claims: Array<ClaimType>;
+  closes: Array<CloseType>;
   condition?: Maybe<Condition>;
   conditionGroup?: Maybe<ConditionGroup>;
   conditionGroups: Array<ConditionGroup>;
   conditions: Array<Condition>;
   dailyVolumes: Array<DailyVolume>;
   forecasterScore?: Maybe<ForecasterScoreType>;
+  legacyPositions: Array<LegacyPositionType>;
+  legacyPositionsByConditionId: Array<LegacyPositionType>;
+  legacyPositionsCount: Scalars['Int']['output'];
+  pickConfiguration?: Maybe<PicksType>;
+  pickConfigurations: Array<PicksType>;
   positions: Array<PositionType>;
-  positionsByConditionId: Array<PositionType>;
-  positionsCount: Scalars['Int']['output'];
+  prediction?: Maybe<PredictionType>;
+  predictions: Array<PredictionType>;
+  predictionsCount: Scalars['Int']['output'];
   profitRankByAddress: ProfitRankType;
   protocolStats: Array<ProtocolStat>;
   questionsSorted: Array<Question>;
-  /** Returns the most recently created positions globally, ordered by mintedAt descending. */
-  recentPositions: Array<PositionType>;
+  /** Returns the most recently created legacy positions globally, ordered by mintedAt descending. */
+  recentLegacyPositions: Array<LegacyPositionType>;
   topForecasters: Array<ForecasterScoreType>;
   tradingVolumeByAddress: Scalars['String']['output'];
   user?: Maybe<User>;
@@ -1260,6 +1353,24 @@ export type QueryCategoriesArgs = {
   skip?: InputMaybe<Scalars['Int']['input']>;
   take?: InputMaybe<Scalars['Int']['input']>;
   where?: InputMaybe<CategoryWhereInput>;
+};
+
+
+export type QueryClaimsArgs = {
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  holder?: InputMaybe<Scalars['String']['input']>;
+  predictionId?: InputMaybe<Scalars['String']['input']>;
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
+};
+
+
+export type QueryClosesArgs = {
+  address?: InputMaybe<Scalars['String']['input']>;
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  pickConfigId?: InputMaybe<Scalars['String']['input']>;
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
 };
 
 
@@ -1298,7 +1409,7 @@ export type QueryForecasterScoreArgs = {
 };
 
 
-export type QueryPositionsArgs = {
+export type QueryLegacyPositionsArgs = {
   address?: InputMaybe<Scalars['String']['input']>;
   chainId?: InputMaybe<Scalars['Int']['input']>;
   endsAtGte?: InputMaybe<Scalars['Int']['input']>;
@@ -1312,7 +1423,7 @@ export type QueryPositionsArgs = {
 };
 
 
-export type QueryPositionsByConditionIdArgs = {
+export type QueryLegacyPositionsByConditionIdArgs = {
   chainId?: InputMaybe<Scalars['Int']['input']>;
   conditionId: Scalars['String']['input'];
   endsAtGte?: InputMaybe<Scalars['Int']['input']>;
@@ -1322,7 +1433,52 @@ export type QueryPositionsByConditionIdArgs = {
 };
 
 
-export type QueryPositionsCountArgs = {
+export type QueryLegacyPositionsCountArgs = {
+  address: Scalars['String']['input'];
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+};
+
+
+export type QueryPickConfigurationArgs = {
+  id: Scalars['String']['input'];
+};
+
+
+export type QueryPickConfigurationsArgs = {
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  resolved?: InputMaybe<Scalars['Boolean']['input']>;
+  result?: InputMaybe<Scalars['String']['input']>;
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
+};
+
+
+export type QueryPositionsArgs = {
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  holder: Scalars['String']['input'];
+  pickConfigId?: InputMaybe<Scalars['String']['input']>;
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
+};
+
+
+export type QueryPredictionArgs = {
+  predictionId: Scalars['String']['input'];
+};
+
+
+export type QueryPredictionsArgs = {
+  address?: InputMaybe<Scalars['String']['input']>;
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  orderBy?: InputMaybe<Scalars['String']['input']>;
+  orderDirection?: InputMaybe<Scalars['String']['input']>;
+  settled?: InputMaybe<Scalars['Boolean']['input']>;
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
+};
+
+
+export type QueryPredictionsCountArgs = {
   address: Scalars['String']['input'];
   chainId?: InputMaybe<Scalars['Int']['input']>;
 };
@@ -1346,7 +1502,7 @@ export type QueryQuestionsSortedArgs = {
 };
 
 
-export type QueryRecentPositionsArgs = {
+export type QueryRecentLegacyPositionsArgs = {
   chainId?: InputMaybe<Scalars['Int']['input']>;
   skip?: Scalars['Int']['input'];
   status?: InputMaybe<Scalars['String']['input']>;

@@ -40,7 +40,7 @@ import {
   decodeAuctionPredictedOutcomes,
   decodedOutcomesToPicks,
 } from '~/lib/auction/decodePredictedOutcomes';
-import { useEscrowNonce } from '~/hooks/blockchain/useEscrowContract';
+import { generateRandomNonce } from '@sapience/sdk';
 
 export type LegacyBidSubmissionParams = {
   auctionId: string;
@@ -139,12 +139,7 @@ export function useLegacyBidSubmission(
       : predictionMarket[chainId]?.address
   ) as `0x${string}` | undefined;
 
-  // Get escrow nonce for counterparty signing (only used on escrow chains)
-  const { nonce: escrowNonce } = useEscrowNonce({
-    address: effectiveAddress as Address | undefined,
-    chainId,
-    enabled: isEscrowChain,
-  });
+  // Note: escrow nonces are now generated randomly per-request (bitmap nonce system)
 
   // Default to 18 decimals, can be overridden in format/parse calls
   const tokenDecimals = 18;
@@ -257,6 +252,9 @@ export function useLegacyBidSubmission(
       const makerDeadline = nowSec + clampedExpiry;
 
       let makerSignature: `0x${string}`;
+
+      // Generate random nonce for bitmap nonce system (Permit2-style) - used in escrow flow
+      const counterpartyNonce = useEscrowProtocol ? generateRandomNonce() : 0n;
 
       if (useEscrowProtocol) {
         // Escrow: SmartAccount counterparties need wUSDe pre-funded before mint
@@ -402,9 +400,6 @@ export function useLegacyBidSubmission(
           };
         }
 
-        // Get counterparty nonce (bidder's nonce)
-        const counterpartyNonce = escrowNonce ?? 0n;
-
         // Build escrow typed data for counterparty (bidder)
         // In escrow terms: predictor = taker (auction creator), counterparty = maker (bidder)
         const typedData = buildCounterpartyMintTypedData({
@@ -534,17 +529,18 @@ export function useLegacyBidSubmission(
 
       if (useEscrowProtocol) {
         // Escrow bid payload - uses escrow terminology (counterparty = bidder)
-        // Include session key data if bidder is using session key signing
-        const counterpartySessionKeyData =
-          isUsingSession && escrowSessionKeyApproval
-            ? encodeEscrowSessionKeyData(escrowSessionKeyApproval)
-            : undefined;
+        // For new sessions: no session key data needed (ERC-1271 signature is sufficient)
+        // For legacy sessions: include session key approval data
+        let counterpartySessionKeyData: string | undefined;
+        if (isUsingSession && escrowSessionKeyApproval) {
+          counterpartySessionKeyData = encodeEscrowSessionKeyData(escrowSessionKeyApproval);
+        }
 
         const escrowPayload = {
           auctionId,
           counterparty: signerAddress,
           counterpartyCollateral: makerCollateral.toString(),
-          counterpartyNonce: Number(escrowNonce ?? 0n),
+          counterpartyNonce: Number(counterpartyNonce),
           counterpartyDeadline: makerDeadline,
           counterpartySignature: makerSignature,
           ...(counterpartySessionKeyData && { counterpartySessionKeyData }),
@@ -586,7 +582,6 @@ export function useLegacyBidSubmission(
       onSignatureRejected,
       effectiveAddress,
       isEscrowChain,
-      escrowNonce,
       isUsingSession,
       isUsingSmartAccount,
       sessionSignTypedData,

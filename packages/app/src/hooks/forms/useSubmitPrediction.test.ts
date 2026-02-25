@@ -95,7 +95,9 @@ describe('useSubmitPrediction', () => {
     });
 
     expect(onSuccess).toHaveBeenCalled();
-    expect(result.current.attestationSuccess).toContain('Prediction submitted successfully');
+    expect(result.current.attestationSuccess).toContain(
+      'Prediction submitted successfully'
+    );
   });
 
   it('onError callback sets attestationError', () => {

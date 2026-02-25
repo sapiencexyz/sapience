@@ -55,8 +55,8 @@ const SkillsPageContent = () => {
             <h1 className="font-sans text-3xl md:text-4xl lg:text-5xl text-foreground mb-6">
               Sapience Skill for Agents
             </h1>
-            <p className="font-mono text-sm uppercase tracking-wider text-brand-white mb-8">
-              Compatible with Claude, Codex, OpenClawd, and more
+            <p className="font-mono text-sm md:text-base uppercase tracking-wider text-brand-white mb-8">
+              Compatible with Claude, Codex, OpenClaw, and more
             </p>
             <p className="text-lg md:text-xl text-foreground max-w-4xl mb-8">
               Give your agent skills to autonomously trade prediction markets.

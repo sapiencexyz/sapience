@@ -372,7 +372,7 @@ contract PredictionMarketEscrowTest is Test {
             market.getPickConfiguration(prediction.pickConfigId);
         assertEq(
             uint256(config.result),
-            uint256(IV2Types.SettlementResult.NON_DECISIVE)
+            uint256(IV2Types.SettlementResult.COUNTERPARTY_WINS)
         );
     }
 
@@ -469,7 +469,7 @@ contract PredictionMarketEscrowTest is Test {
         );
     }
 
-    function test_redeem_tie_proportional() public {
+    function test_redeem_tie_counterpartyWins() public {
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = _createPick(conditionId1, IV2Types.OutcomeSide.YES);
 
@@ -479,23 +479,23 @@ contract PredictionMarketEscrowTest is Test {
             address counterpartyToken
         ) = _mintPrediction(picks);
 
-        // Settle to tie
+        // Settle to tie — non-decisive treated as counterparty wins
         vm.prank(settler);
         resolver.settleCondition(conditionId1, IV2Types.OutcomeVector(1, 1));
         market.settle(predictionId, REF_CODE);
 
-        // Both redeem their full token balances (TOTAL_COLLATERAL each)
+        // Predictor gets nothing
         vm.prank(predictor);
         uint256 predictorPayout =
             market.redeem(predictorToken, TOTAL_COLLATERAL, REF_CODE);
 
+        // Counterparty gets all collateral
         vm.prank(counterparty);
         uint256 counterpartyPayout =
             market.redeem(counterpartyToken, TOTAL_COLLATERAL, REF_CODE);
 
-        // Each gets their original collateral back
-        assertEq(predictorPayout, PREDICTOR_COLLATERAL);
-        assertEq(counterpartyPayout, COUNTERPARTY_COLLATERAL);
+        assertEq(predictorPayout, 0);
+        assertEq(counterpartyPayout, TOTAL_COLLATERAL);
     }
 
     function test_redeem_partialAmount() public {

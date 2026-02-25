@@ -40,9 +40,9 @@ const SECONDARY_TRADES_BY_ADDRESS_QUERY = /* GraphQL */ `
       buyer
       tokenAmount
       price
-      transactionHash
+      txHash
       blockNumber
-      timestamp
+      executedAt
     }
   }
 `;
@@ -59,9 +59,9 @@ const SECONDARY_TRADE_QUERY = /* GraphQL */ `
       buyer
       tokenAmount
       price
-      transactionHash
+      txHash
       blockNumber
-      timestamp
+      executedAt
     }
   }
 `;

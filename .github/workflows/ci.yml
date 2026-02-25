@@ -93,6 +93,7 @@ jobs:
             node_modules
             packages/*/node_modules
           key: ${{ runner.os }}-modules-${{ github.sha }}
+      - run: pnpm --filter @sapience/sdk run build:lib
       - run: pnpm --filter @sapience/api run prisma:generate
       - run: pnpm --filter @sapience/api run compile
       - run: pnpm --filter @sapience/api run test -- --run
@@ -112,6 +113,7 @@ jobs:
             node_modules
             packages/*/node_modules
           key: ${{ runner.os }}-modules-${{ github.sha }}
+      - run: pnpm --filter @sapience/sdk run build:lib
       - run: pnpm --filter @sapience/api run prisma:generate
       - run: pnpm --filter @sapience/api run lint
 

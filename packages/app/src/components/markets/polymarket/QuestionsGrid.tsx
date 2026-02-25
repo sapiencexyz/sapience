@@ -80,11 +80,13 @@ export default function QuestionsGrid({
 }: QuestionsGridProps) {
   const { predictionMapRef, handlePrediction } = usePredictionMap();
 
+  const scrollContainerRef = React.useRef<HTMLDivElement>(null);
   const { loadMoreRef } = useInfiniteScroll({
     hasMore,
     isFetchingMore,
     isLoading,
     onFetchMore,
+    scrollContainerRef,
   });
 
   const [openGroupId, setOpenGroupId] = React.useState<number | null>(null);
@@ -111,7 +113,7 @@ export default function QuestionsGrid({
   return (
     <div className="flex flex-col h-full">
       {/* Grid */}
-      <div className="flex-1 min-h-0 overflow-y-auto px-3 pb-6 md:px-6 md:pb-8">
+      <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto px-3 pb-6 md:px-6 md:pb-8">
         <AnimatePresence mode="wait">
           {showLoading ? (
             <motion.div

@@ -1,3 +1,4 @@
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { Input } from '@sapience/ui/components/ui/input';
 import { Label } from '@sapience/ui/components/ui/label';
 import { useEffect, useRef } from 'react';
@@ -88,7 +89,7 @@ export function PositionSizeInput({
   name = 'positionSize',
   collateralSymbol,
   collateralAddress = '0x0000000000000000000000000000000000000000',
-  chainId = 5064014,
+  chainId = DEFAULT_CHAIN_ID,
   minAmount,
   maxAmount,
   hideHeader = false,

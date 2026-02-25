@@ -1160,6 +1160,10 @@ type Query {
   Returns the most recently created legacy positions globally, ordered by mintedAt descending.
   """
   recentLegacyPositions(chainId: Int, skip: Int! = 0, status: String, take: Int! = 20): [LegacyPositionType!]!
+  secondaryTrade(tradeHash: String!): SecondaryTradeType
+  secondaryTrades(buyer: String, chainId: Int, seller: String, skip: Int! = 0, take: Int! = 50, token: String): [SecondaryTradeType!]!
+  secondaryTradesByAddress(address: String!, chainId: Int, skip: Int! = 0, take: Int! = 50): [SecondaryTradeType!]!
+  secondaryTradesCount(buyer: String, chainId: Int, seller: String, token: String): Int!
   topForecasters(limit: Int! = 10): [ForecasterScoreType!]!
   tradingVolumeByAddress(address: String!): String!
   user(where: UserWhereUniqueInput!): User
@@ -1228,6 +1232,22 @@ input ReferralCodeWhereInput {
   isActive: BoolFilter
   maxClaims: IntFilter
   updatedAt: DateTimeFilter
+}
+
+type SecondaryTradeType {
+  blockNumber: Int!
+  buyer: String!
+  chainId: Int!
+  collateral: String!
+  executedAt: Int!
+  id: Int!
+  price: String!
+  refCode: String
+  seller: String!
+  token: String!
+  tokenAmount: String!
+  tradeHash: String!
+  txHash: String!
 }
 
 enum SortOrder {

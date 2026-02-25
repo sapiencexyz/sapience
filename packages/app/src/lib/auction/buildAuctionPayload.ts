@@ -3,7 +3,7 @@ import {
   umaResolver,
   predictionMarketLZConditionalTokensResolver,
 } from '@sapience/sdk/contracts';
-import { CHAIN_ID_ETHEREAL, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { CHAIN_ID_ETHEREAL, CHAIN_ID_ETHEREAL_TESTNET, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import {
   encodePythBinaryOptionOutcomes,
   encodePolymarketPredictedOutcomes,
@@ -193,10 +193,10 @@ export function buildAuctionStartPayload(
     // No resolver in outcomes - fall back to chain-based selection
     const targetChainId = chainId || DEFAULT_CHAIN_ID;
 
-    if (targetChainId === CHAIN_ID_ETHEREAL) {
-      // Use Polymarket LZ resolver for Ethereal auctions
+    if (targetChainId === CHAIN_ID_ETHEREAL || targetChainId === CHAIN_ID_ETHEREAL_TESTNET) {
+      // Use Polymarket LZ resolver for Ethereal auctions (mainnet or testnet)
       resolverAddress =
-        predictionMarketLZConditionalTokensResolver[DEFAULT_CHAIN_ID]?.address;
+        predictionMarketLZConditionalTokensResolver[targetChainId]?.address;
     } else {
       resolverAddress = umaResolver[targetChainId]?.address as
         | `0x${string}`

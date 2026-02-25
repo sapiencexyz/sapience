@@ -18,7 +18,11 @@ if (typeof React.act !== 'function') {
     if (error) {
       throw error;
     }
-    if (result !== null && result !== undefined && typeof result.then === 'function') {
+    if (
+      result !== null &&
+      result !== undefined &&
+      typeof result.then === 'function'
+    ) {
       return result;
     }
     return {

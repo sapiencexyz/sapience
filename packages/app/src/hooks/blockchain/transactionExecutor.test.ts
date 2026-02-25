@@ -56,7 +56,11 @@ describe('isEtherealChain', () => {
 
 describe('prepareCallsWithWrapping', () => {
   const baseCalls: TransactionCall[] = [
-    { to: '0x1111111111111111111111111111111111111111', data: '0xabcd', value: 1000n },
+    {
+      to: '0x1111111111111111111111111111111111111111',
+      data: '0xabcd',
+      value: 1000n,
+    },
   ];
 
   it('prepends wrap tx on Ethereal when value > 0', () => {
@@ -70,7 +74,11 @@ describe('prepareCallsWithWrapping', () => {
 
   it('passes through when value is 0 on Ethereal', () => {
     const zeroCalls: TransactionCall[] = [
-      { to: '0x1111111111111111111111111111111111111111', data: '0xabcd', value: 0n },
+      {
+        to: '0x1111111111111111111111111111111111111111',
+        data: '0xabcd',
+        value: 0n,
+      },
     ];
     const result = prepareCallsWithWrapping(zeroCalls, CHAIN_ID_ETHEREAL);
     expect(result).toHaveLength(1);
@@ -84,8 +92,16 @@ describe('prepareCallsWithWrapping', () => {
 
   it('sums value from multiple calls', () => {
     const multiCalls: TransactionCall[] = [
-      { to: '0x1111111111111111111111111111111111111111', data: '0x01', value: 300n },
-      { to: '0x2222222222222222222222222222222222222222', data: '0x02', value: 700n },
+      {
+        to: '0x1111111111111111111111111111111111111111',
+        data: '0x01',
+        value: 300n,
+      },
+      {
+        to: '0x2222222222222222222222222222222222222222',
+        data: '0x02',
+        value: 700n,
+      },
     ];
     const result = prepareCallsWithWrapping(multiCalls, CHAIN_ID_ETHEREAL);
     expect(result).toHaveLength(3);
@@ -156,18 +172,15 @@ describe('pickFinalTransactionHash', () => {
   it('picks from receipts array (last non-empty)', () => {
     expect(
       pickFinalTransactionHash({
-        receipts: [
-          { transactionHash: '0xaaa' },
-          { transactionHash: '0xbbb' },
-        ],
+        receipts: [{ transactionHash: '0xaaa' }, { transactionHash: '0xbbb' }],
       })
     ).toBe('0xbbb');
   });
 
   it('falls back to transactionHash field', () => {
-    expect(
-      pickFinalTransactionHash({ transactionHash: '0xccc' })
-    ).toBe('0xccc');
+    expect(pickFinalTransactionHash({ transactionHash: '0xccc' })).toBe(
+      '0xccc'
+    );
   });
 
   it('falls back to txHash field', () => {
@@ -205,14 +218,25 @@ describe('resolveEoaBatchResult', () => {
     (waitForCallsStatus as jest.Mock).mockResolvedValue({
       receipts: [{ transactionHash: '0xpolled' }],
     });
-    const result = await resolveEoaBatchResult({ id: 'bundle-2' }, { mock: 'client' });
-    expect(waitForCallsStatus).toHaveBeenCalledWith({ mock: 'client' }, { id: 'bundle-2' });
+    const result = await resolveEoaBatchResult(
+      { id: 'bundle-2' },
+      { mock: 'client' }
+    );
+    expect(waitForCallsStatus).toHaveBeenCalledWith(
+      { mock: 'client' },
+      { id: 'bundle-2' }
+    );
     expect(result).toBe('0xpolled');
   });
 
   it('returns undefined when waitForCallsStatus throws', async () => {
-    (waitForCallsStatus as jest.Mock).mockRejectedValue(new Error('network error'));
-    const result = await resolveEoaBatchResult({ id: 'bundle-3' }, { mock: 'client' });
+    (waitForCallsStatus as jest.Mock).mockRejectedValue(
+      new Error('network error')
+    );
+    const result = await resolveEoaBatchResult(
+      { id: 'bundle-3' },
+      { mock: 'client' }
+    );
     expect(result).toBeUndefined();
   });
 
@@ -238,21 +262,32 @@ describe('executeViaSessionKeyDefault', () => {
 
   it('encodes calls and sends user operation', async () => {
     const calls: TransactionCall[] = [
-      { to: '0x1111111111111111111111111111111111111111', data: '0x', value: 0n },
+      {
+        to: '0x1111111111111111111111111111111111111111',
+        data: '0x',
+        value: 0n,
+      },
     ];
     const onTxSending = jest.fn();
     const onTxSent = jest.fn();
     const onReceiptConfirmed = jest.fn();
 
-    const result = await executeViaSessionKeyDefault(mockClient, calls, CHAIN_ID_ETHEREAL, {
-      onTxSending,
-      onTxSent,
-      onReceiptConfirmed,
-    });
+    const result = await executeViaSessionKeyDefault(
+      mockClient,
+      calls,
+      CHAIN_ID_ETHEREAL,
+      {
+        onTxSending,
+        onTxSent,
+        onReceiptConfirmed,
+      }
+    );
 
     expect(mockEncodeCalls).toHaveBeenCalledWith(calls);
     expect(onTxSending).toHaveBeenCalled();
-    expect(mockSendUserOperation).toHaveBeenCalledWith({ callData: '0xencoded' });
+    expect(mockSendUserOperation).toHaveBeenCalledWith({
+      callData: '0xencoded',
+    });
     expect(onTxSent).toHaveBeenCalledWith('0xuserophash');
     expect(onReceiptConfirmed).toHaveBeenCalled();
     expect(result).toBe('0xuserophash');
@@ -280,19 +315,28 @@ describe('executeViaSessionKeyDefault', () => {
 
 describe('executeTransaction', () => {
   const dummyCalls: TransactionCall[] = [
-    { to: '0x1111111111111111111111111111111111111111', data: '0xaa', value: 0n },
+    {
+      to: '0x1111111111111111111111111111111111111111',
+      data: '0xaa',
+      value: 0n,
+    },
   ];
 
   describe('session path', () => {
     it('calls executeViaSessionKey with wrapped calls', async () => {
       const executeViaSessionKey = jest.fn().mockResolvedValue('0xophash');
-      const result = await executeTransaction(dummyCalls, CHAIN_ID_ETHEREAL, 'session', {
-        sessionClient: {
-          account: { encodeCalls: jest.fn() },
-          sendUserOperation: jest.fn(),
-        },
-        executeViaSessionKey,
-      });
+      const result = await executeTransaction(
+        dummyCalls,
+        CHAIN_ID_ETHEREAL,
+        'session',
+        {
+          sessionClient: {
+            account: { encodeCalls: jest.fn() },
+            sendUserOperation: jest.fn(),
+          },
+          executeViaSessionKey,
+        }
+      );
 
       expect(executeViaSessionKey).toHaveBeenCalled();
       expect(result.path).toBe('session');
@@ -304,7 +348,9 @@ describe('executeTransaction', () => {
         account: { encodeCalls: jest.fn() },
         sendUserOperation: jest.fn(),
       };
-      const createArbitrumSessionIfNeeded = jest.fn().mockResolvedValue(newClient);
+      const createArbitrumSessionIfNeeded = jest
+        .fn()
+        .mockResolvedValue(newClient);
       const executeViaSessionKey = jest.fn().mockResolvedValue('0x');
 
       await executeTransaction(dummyCalls, 42161, 'session', {
@@ -325,10 +371,15 @@ describe('executeTransaction', () => {
     it('falls through to owner when sessionClient is null', async () => {
       const executeViaOwnerSigning = jest.fn().mockResolvedValue('0xownerhash');
 
-      const result = await executeTransaction(dummyCalls, CHAIN_ID_ETHEREAL, 'session', {
-        sessionClient: null,
-        executeViaOwnerSigning,
-      });
+      const result = await executeTransaction(
+        dummyCalls,
+        CHAIN_ID_ETHEREAL,
+        'session',
+        {
+          sessionClient: null,
+          executeViaOwnerSigning,
+        }
+      );
 
       expect(result.path).toBe('owner');
       expect(result.hash).toBe('0xownerhash');
@@ -339,9 +390,14 @@ describe('executeTransaction', () => {
     it('calls executeViaOwnerSigning', async () => {
       const executeViaOwnerSigning = jest.fn().mockResolvedValue('0xownertx');
 
-      const result = await executeTransaction(dummyCalls, CHAIN_ID_ETHEREAL, 'owner', {
-        executeViaOwnerSigning,
-      });
+      const result = await executeTransaction(
+        dummyCalls,
+        CHAIN_ID_ETHEREAL,
+        'owner',
+        {
+          executeViaOwnerSigning,
+        }
+      );
 
       expect(executeViaOwnerSigning).toHaveBeenCalled();
       expect(result.hash).toBe('0xownertx');
@@ -350,7 +406,11 @@ describe('executeTransaction', () => {
 
     it('wraps calls on Ethereal with value', async () => {
       const callsWithValue: TransactionCall[] = [
-        { to: '0x1111111111111111111111111111111111111111', data: '0xaa', value: 500n },
+        {
+          to: '0x1111111111111111111111111111111111111111',
+          data: '0xaa',
+          value: 500n,
+        },
       ];
       const executeViaOwnerSigning = jest.fn().mockResolvedValue('0x');
 
@@ -368,11 +428,23 @@ describe('executeTransaction', () => {
   describe('eoa path', () => {
     it('uses writeContractAsync for single call in writeContract mode', async () => {
       const writeContractAsync = jest.fn().mockResolvedValue('0xeoahash');
-      const originalArgs = { chainId: 42161, address: '0x', abi: [], functionName: 'foo' };
+      const originalArgs = {
+        chainId: 42161,
+        address: '0x',
+        abi: [],
+        functionName: 'foo',
+      };
 
-      const result = await executeTransaction(dummyCalls, 42161, 'eoa', {
-        writeContractAsync,
-      }, 'writeContract', originalArgs);
+      const result = await executeTransaction(
+        dummyCalls,
+        42161,
+        'eoa',
+        {
+          writeContractAsync,
+        },
+        'writeContract',
+        originalArgs
+      );
 
       expect(writeContractAsync).toHaveBeenCalledWith(originalArgs);
       expect(result.hash).toBe('0xeoahash');
@@ -383,9 +455,16 @@ describe('executeTransaction', () => {
       const sendCallsAsync = jest.fn().mockResolvedValue({ txHash: '0xbatch' });
       const originalArgs = { chainId: 42161, calls: dummyCalls };
 
-      const result = await executeTransaction(dummyCalls, 42161, 'eoa', {
-        sendCallsAsync,
-      }, 'sendCalls', originalArgs);
+      const result = await executeTransaction(
+        dummyCalls,
+        42161,
+        'eoa',
+        {
+          sendCallsAsync,
+        },
+        'sendCalls',
+        originalArgs
+      );
 
       expect(sendCallsAsync).toHaveBeenCalled();
       expect(result.data).toEqual({ txHash: '0xbatch' });
@@ -394,7 +473,11 @@ describe('executeTransaction', () => {
 
     it('uses sendCalls for Ethereal writeContract with value (wrapping)', async () => {
       const callsWithValue: TransactionCall[] = [
-        { to: '0x1111111111111111111111111111111111111111', data: '0xaa', value: 100n },
+        {
+          to: '0x1111111111111111111111111111111111111111',
+          data: '0xaa',
+          value: 100n,
+        },
       ];
       const sendCallsAsync = jest.fn().mockResolvedValue({
         receipts: [{ transactionHash: '0xwrapped' }],

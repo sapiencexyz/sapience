@@ -14,7 +14,7 @@ import {
   buildCounterpartyMintTypedData,
 } from '@sapience/sdk/auction/escrowSigning';
 import type { Pick } from '@sapience/sdk/types';
-import type { AuctionRequestPayload, BidPayload } from './escrowTypes';
+import type { AuctionRFQPayload, BidPayload } from './escrowTypes';
 import {
   verifySessionApproval,
   computeSmartAccountAddress,
@@ -154,7 +154,7 @@ async function verifyEscrowSessionKeyData(
 /**
  * Convert JSON picks to SDK Pick format
  */
-function convertPicks(picks: AuctionRequestPayload['picks']): Pick[] {
+function convertPicks(picks: AuctionRFQPayload['picks']): Pick[] {
   return picks.map((p) => ({
     conditionResolver: p.conditionResolver as Address,
     conditionId: p.conditionId as Hex,
@@ -179,134 +179,6 @@ function convertTypedDataForViem<T extends { domain: { chainId?: bigint | number
     },
   };
 }
-
-/**
- * Verifies the predictor's EIP-712 signature for an escrow auction request
- *
- * @param payload - The escrow auction request payload
- * @param verifyingContract - The PredictionMarketEscrow contract address
- * @param counterparty - Placeholder counterparty address (can be zero for auction start)
- * @returns true if signature is valid
- */
-export async function verifyEscrowPredictorSignature(
-  payload: AuctionRequestPayload,
-  verifyingContract: Address,
-  counterparty: Address = '0x0000000000000000000000000000000000000000'
-): Promise<boolean> {
-  if (!payload.predictorSignature) {
-    return false;
-  }
-
-  try {
-    const picks = convertPicks(payload.picks);
-
-    // Build the typed data that should have been signed
-    const rawTypedData = buildPredictorMintTypedData({
-      picks,
-      predictorCollateral: BigInt(payload.predictorCollateral),
-      counterpartyCollateral: BigInt(payload.counterpartyCollateral),
-      predictor: payload.predictor as Address,
-      counterparty,
-      predictorNonce: BigInt(payload.predictorNonce),
-      predictorDeadline: BigInt(payload.predictorDeadline),
-      verifyingContract,
-      chainId: payload.chainId,
-    });
-
-    // Convert chainId to number for viem
-    const typedData = convertTypedDataForViem(rawTypedData);
-
-    const predictorAddress = payload.predictor.toLowerCase() as Address;
-    const signature = payload.predictorSignature as Hex;
-
-    // Path 1: If session key data is present, verify via ZeroDev session
-    if (payload.predictorSessionKeyData) {
-      // Parse the session approval from base64
-      const sessionApprovalPayload: SessionApprovalPayload = {
-        approval: payload.predictorSessionKeyData,
-        chainId: payload.chainId,
-        typedData: undefined, // Uses EIP-712, not session typed data for the approval itself
-      };
-
-      const sessionResult = await verifySessionApproval(
-        sessionApprovalPayload,
-        predictorAddress
-      );
-
-      if (sessionResult.valid && sessionResult.sessionKeyAddress) {
-        // Session approval is valid - verify the signature was signed by the session key
-        const recoveredSigner = await recoverTypedDataAddress({
-          ...typedData,
-          signature,
-        });
-
-        if (
-          recoveredSigner.toLowerCase() !==
-          sessionResult.sessionKeyAddress.toLowerCase()
-        ) {
-          console.warn('[Escrow-Sig] Predictor signature not from session key:', {
-            expected: sessionResult.sessionKeyAddress,
-            recovered: recoveredSigner,
-          });
-          return false;
-        }
-
-        if (process.env.NODE_ENV !== 'production') {
-          console.debug(
-            '[Escrow-Sig] Valid predictor session approval for account:',
-            predictorAddress
-          );
-        }
-        return true;
-      }
-      // Fall through to try other verification methods
-    }
-
-    // Path 2: Try direct EOA verification
-    try {
-      const recoveredSigner = await recoverTypedDataAddress({
-        ...typedData,
-        signature,
-      });
-
-      if (recoveredSigner.toLowerCase() === predictorAddress.toLowerCase()) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.debug('[Escrow-Sig] Valid predictor EOA signature');
-        }
-        return true;
-      }
-    } catch {
-      // EOA verification failed, continue to smart account check
-    }
-
-    // Path 3: Recover signer and verify they own the smart account
-    const recoveredOwner = await recoverTypedDataAddress({
-      ...typedData,
-      signature,
-    });
-
-    const expectedSmartAccount = await computeSmartAccountAddress(recoveredOwner);
-
-    if (expectedSmartAccount.toLowerCase() === predictorAddress.toLowerCase()) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.debug(
-          '[Escrow-Sig] Valid predictor smart account owner signature, owner:',
-          recoveredOwner
-        );
-      }
-      return true;
-    }
-
-    console.warn(
-      '[Escrow-Sig] Predictor signature verification failed: recovered signer does not match'
-    );
-    return false;
-  } catch (error) {
-    console.error('[Escrow-Sig] Predictor verification error:', error);
-    return false;
-  }
-}
-
 /**
  * Verifies the counterparty's EIP-712 signature for an escrow bid
  *
@@ -317,7 +189,7 @@ export async function verifyEscrowPredictorSignature(
  */
 export async function verifyEscrowCounterpartySignature(
   bid: BidPayload,
-  auction: AuctionRequestPayload,
+  auction: AuctionRFQPayload,
   verifyingContract: Address
 ): Promise<boolean> {
   if (!bid.counterpartySignature) {
@@ -463,6 +335,173 @@ export async function verifyEscrowCounterpartySignature(
     return false;
   } catch (error) {
     console.error('[Escrow-Sig] Counterparty verification error:', error);
+    return false;
+  }
+}
+
+// ============================================================================
+// Auction Intent Verification (RFQ lightweight auth)
+// ============================================================================
+
+/**
+ * Verify the predictor's AuctionIntent signature at RFQ start.
+ * Relayer-only — proves identity + intent without committing to counterparty details.
+ * Supports EOA, escrow session keys, and ZeroDev smart accounts.
+ */
+export async function verifyAuctionIntentSignature(
+  payload: AuctionRFQPayload,
+  verifyingContract: Address
+): Promise<boolean> {
+  if (!payload.intentSignature) {
+    return false;
+  }
+
+  try {
+    const picks = convertPicks(payload.picks);
+
+    const { buildAuctionIntentTypedData } = await import(
+      '@sapience/sdk/auction/escrowSigning'
+    );
+
+    const rawTypedData = buildAuctionIntentTypedData({
+      picks,
+      predictor: payload.predictor as Address,
+      predictorCollateral: BigInt(payload.predictorCollateral),
+      predictorNonce: BigInt(payload.predictorNonce),
+      predictorDeadline: BigInt(payload.predictorDeadline),
+      verifyingContract,
+      chainId: payload.chainId,
+    });
+
+    const typedData = convertTypedDataForViem(rawTypedData);
+
+    const predictorAddress = payload.predictor.toLowerCase() as Address;
+    const signature = payload.intentSignature as Hex;
+
+    // Path 1: If session key data is present, try to verify
+    if (payload.predictorSessionKeyData) {
+      // Path 1a: Try ABI-encoded format (hex starting with 0x)
+      const escrowSessionData = decodeEscrowSessionKeyData(
+        payload.predictorSessionKeyData
+      );
+      if (escrowSessionData) {
+        const escrowResult = await verifyEscrowSessionKeyData(
+          escrowSessionData,
+          predictorAddress,
+          verifyingContract
+        );
+
+        if (escrowResult.valid && escrowResult.sessionKeyAddress) {
+          const recoveredSigner = await recoverTypedDataAddress({
+            ...typedData,
+            signature,
+          });
+
+          if (
+            recoveredSigner.toLowerCase() !==
+            escrowResult.sessionKeyAddress.toLowerCase()
+          ) {
+            console.warn(
+              '[Escrow-Sig] Intent signature not from escrow session key:',
+              {
+                expected: escrowResult.sessionKeyAddress,
+                recovered: recoveredSigner,
+              }
+            );
+            return false;
+          }
+
+          console.debug(
+            '[Escrow-Sig] Valid predictor intent escrow session approval for account:',
+            predictorAddress
+          );
+          return true;
+        }
+      }
+
+      // Path 1b: Try ZeroDev format (base64 JSON)
+      const sessionApprovalPayload: SessionApprovalPayload = {
+        approval: payload.predictorSessionKeyData,
+        chainId: payload.chainId,
+        typedData: undefined,
+      };
+
+      const sessionResult = await verifySessionApproval(
+        sessionApprovalPayload,
+        predictorAddress
+      );
+
+      if (sessionResult.valid && sessionResult.sessionKeyAddress) {
+        const recoveredSigner = await recoverTypedDataAddress({
+          ...typedData,
+          signature,
+        });
+
+        if (
+          recoveredSigner.toLowerCase() !==
+          sessionResult.sessionKeyAddress.toLowerCase()
+        ) {
+          console.warn(
+            '[Escrow-Sig] Intent signature not from ZeroDev session key:',
+            {
+              expected: sessionResult.sessionKeyAddress,
+              recovered: recoveredSigner,
+            }
+          );
+          return false;
+        }
+
+        if (process.env.NODE_ENV !== 'production') {
+          console.debug(
+            '[Escrow-Sig] Valid predictor intent ZeroDev session approval for account:',
+            predictorAddress
+          );
+        }
+        return true;
+      }
+    }
+
+    // Path 2: Try direct EOA verification
+    try {
+      const recoveredSigner = await recoverTypedDataAddress({
+        ...typedData,
+        signature,
+      });
+
+      if (recoveredSigner.toLowerCase() === predictorAddress) {
+        if (process.env.NODE_ENV !== 'production') {
+          console.debug('[Escrow-Sig] Valid predictor intent EOA signature');
+        }
+        return true;
+      }
+    } catch {
+      // Continue to smart account check
+    }
+
+    // Path 3: Recover signer and verify they own the smart account
+    const recoveredOwner = await recoverTypedDataAddress({
+      ...typedData,
+      signature,
+    });
+
+    const expectedSmartAccount = await computeSmartAccountAddress(recoveredOwner);
+
+    if (expectedSmartAccount.toLowerCase() === predictorAddress) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.debug(
+          '[Escrow-Sig] Valid predictor intent smart account owner signature, owner:',
+          recoveredOwner
+        );
+      }
+      return true;
+    }
+
+    console.warn(
+      '[Escrow-Sig] Intent signature verification failed: recovered signer does not match'
+    );
+    return false;
+  } catch (error) {
+    console.error('[Escrow-Sig] Intent verification error:', error);
     return false;
   }
 }

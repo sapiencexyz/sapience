@@ -2,7 +2,7 @@
  * Escrow Validation Helpers for Relayer
  */
 
-import type { AuctionRequestPayload, BidPayload } from './escrowTypes';
+import type { AuctionRFQPayload, AuctionRequestPayload, BidPayload } from './escrowTypes';
 import { computePickConfigId } from '@sapience/sdk/auction/escrowEncoding';
 import type { Pick } from '@sapience/sdk/types';
 import type { Address, Hex } from 'viem';
@@ -16,7 +16,7 @@ export interface ValidationResult {
  * Validates an escrow auction request has all required fields
  */
 export function validateEscrowAuctionRequest(
-  payload: AuctionRequestPayload
+  payload: AuctionRFQPayload
 ): ValidationResult {
   // Validate picks array
   if (!payload.picks || !Array.isArray(payload.picks) || payload.picks.length === 0) {
@@ -82,15 +82,14 @@ export function validateEscrowAuctionRequest(
     return { valid: false, error: 'Invalid chainId' };
   }
 
-  // Validate signature format (optional at auction start - predictor signs when accepting a bid)
-  if (payload.predictorSignature) {
-    if (
-      typeof payload.predictorSignature !== 'string' ||
-      !payload.predictorSignature.startsWith('0x') ||
-      payload.predictorSignature.length < 10
-    ) {
-      return { valid: false, error: 'Invalid predictorSignature format' };
-    }
+  // Validate intent signature format if present (backward-compatible — old clients may omit)
+  if (
+    payload.intentSignature &&
+    (typeof payload.intentSignature !== 'string' ||
+      !payload.intentSignature.startsWith('0x') ||
+      payload.intentSignature.length < 10)
+  ) {
+    return { valid: false, error: 'Invalid intentSignature format' };
   }
 
   return { valid: true };
@@ -102,7 +101,7 @@ export function validateEscrowAuctionRequest(
 export function validateEscrowBid(
   bid: BidPayload,
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  auction: AuctionRequestPayload
+  auction: AuctionRFQPayload
 ): ValidationResult {
   // Validate auctionId
   if (!bid.auctionId || typeof bid.auctionId !== 'string') {
@@ -161,7 +160,7 @@ export function validateEscrowBid(
 /**
  * Compute pickConfigId from picks array
  */
-export function computeEscrowPickConfigId(picks: AuctionRequestPayload['picks']): string {
+export function computeEscrowPickConfigId(picks: AuctionRFQPayload['picks']): string {
   const sdkPicks: Pick[] = picks.map((p) => ({
     conditionResolver: p.conditionResolver as Address,
     conditionId: p.conditionId as Hex,

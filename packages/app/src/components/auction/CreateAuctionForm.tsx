@@ -186,7 +186,6 @@ export default function CreateAuctionForm({
         const result = await startAuction({
           picks: sdkPicks,
           predictorCollateral: parseEther(predictorCollateral),
-          counterpartyCollateral: parseEther(counterpartyCollateral),
           deadlineSeconds: parseInt(deadlineMinutes) * 60,
         });
 
