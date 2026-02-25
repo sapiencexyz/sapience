@@ -4,11 +4,9 @@ import { useCallback, useMemo } from 'react';
 import { useReadContracts } from 'wagmi';
 import { formatUnits } from 'viem';
 import {
-  predictionMarket,
   predictionMarketEscrow,
   collateralToken,
 } from '@sapience/sdk/contracts';
-import { predictionMarketAbi } from '@sapience/sdk';
 import erc20Abi from '@sapience/sdk/queries/abis/erc20abi.json';
 import { CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
 import { useChainValidation } from '~/hooks/blockchain/useChainValidation';
@@ -89,48 +87,15 @@ export function useBidPreflight(
     onLoading,
   });
 
-  // Get spender address for the current chain
-  // Escrow (testnet) uses PredictionMarketEscrow, legacy (mainnet) uses PredictionMarket
-  const isEscrowChain = chainId === CHAIN_ID_ETHEREAL_TESTNET;
-  const SPENDER_ADDRESS = (
-    isEscrowChain
-      ? predictionMarketEscrow[chainId]?.address
-      : predictionMarket[chainId]?.address
-  ) as `0x${string}` | undefined;
+  // Spender is always PredictionMarketEscrow
+  const SPENDER_ADDRESS = predictionMarketEscrow[chainId]?.address as
+    | `0x${string}`
+    | undefined;
 
-  // For escrow, use collateral token address directly from SDK
-  // For legacy, read from PredictionMarket contract config
-  const ESCROW_COLLATERAL_ADDRESS = isEscrowChain
-    ? (collateralToken[chainId]?.address as `0x${string}` | undefined)
-    : undefined;
-
-  // Read collateral token address from PredictionMarket contract config (legacy only)
-  const predictionMarketConfigRead = useReadContracts({
-    contracts:
-      !isEscrowChain && SPENDER_ADDRESS
-        ? [
-            {
-              address: SPENDER_ADDRESS,
-              abi: predictionMarketAbi,
-              functionName: 'getConfig',
-              chainId: chainId,
-            },
-          ]
-        : [],
-    query: { enabled: !isEscrowChain && !!SPENDER_ADDRESS },
-  });
-
-  const COLLATERAL_ADDRESS: `0x${string}` | undefined = useMemo(() => {
-    // For escrow, use SDK address directly
-    if (isEscrowChain) return ESCROW_COLLATERAL_ADDRESS;
-    // For legacy, use config read
-    const item = predictionMarketConfigRead.data?.[0];
-    if (item && item.status === 'success') {
-      const cfg = item.result as { collateralToken: `0x${string}` };
-      return cfg?.collateralToken;
-    }
-    return undefined;
-  }, [isEscrowChain, ESCROW_COLLATERAL_ADDRESS, predictionMarketConfigRead.data]);
+  // Collateral token address from SDK
+  const COLLATERAL_ADDRESS = collateralToken[chainId]?.address as
+    | `0x${string}`
+    | undefined;
 
   // Read allowance for connected address -> PredictionMarket
   const allowanceRead = useReadContracts({
@@ -164,10 +129,7 @@ export function useBidPreflight(
     }
   }, [allowanceRead.data, tokenDecimals]);
 
-  const isLoading =
-    isBalanceLoading ||
-    (!isEscrowChain && predictionMarketConfigRead.isLoading) ||
-    allowanceRead.isLoading;
+  const isLoading = isBalanceLoading || allowanceRead.isLoading;
 
   const refetch = useCallback(() => {
     refetchBalance();

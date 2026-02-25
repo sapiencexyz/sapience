@@ -2,7 +2,7 @@ import { useCallback, useState, useMemo } from 'react';
 import { erc20Abi } from 'viem';
 
 import {
-  predictionMarketAbi,
+  predictionMarketEscrowAbi,
   toBigIntSafe,
   validateTakerFunds,
   prepareMintCalls,
@@ -54,11 +54,11 @@ export function useSubmitPosition({
     },
   });
 
-  // Read maker nonce from PredictionMarket
+  // Read maker nonce from PredictionMarketEscrow
   const { data: makerNonce, refetch: refetchMakerNonce } = useReadContract({
     address: predictionMarketAddress,
-    abi: predictionMarketAbi,
-    functionName: 'nonces',
+    abi: predictionMarketEscrowAbi,
+    functionName: 'getNonce',
     args: effectiveAddress ? [effectiveAddress] : undefined,
     chainId,
     query: {
@@ -124,8 +124,6 @@ export function useSubmitPosition({
     disableSuccessToast: true,
   });
 
-  const isEscrowChain = chainId === CHAIN_ID_ETHEREAL_TESTNET;
-
   // Prepare calls for sendCalls - combines approval + mint in a single batch
   const prepareCalls = useCallback(
     (mintData: MintPredictionRequestData, freshAllowance?: bigint) => {
@@ -137,7 +135,7 @@ export function useSubmitPosition({
         currentWusdeBalance:
           typeof currentWusdeBalance === 'bigint' ? currentWusdeBalance : 0n,
         currentAllowance: freshAllowance ?? currentAllowance ?? 0n,
-        isEscrowChain,
+        isEscrowChain: true,
       });
     },
     [
@@ -146,7 +144,6 @@ export function useSubmitPosition({
       currentAllowance,
       chainId,
       currentWusdeBalance,
-      isEscrowChain,
     ]
   );
 

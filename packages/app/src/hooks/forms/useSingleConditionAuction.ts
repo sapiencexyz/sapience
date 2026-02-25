@@ -1,14 +1,9 @@
 'use client';
 
-/**
- * @deprecated Legacy single condition auction hook. For escrow protocol, use:
- * - useAuctionStart for creating auctions with Pick[] array
- * - Escrow protocol supports multi-pick parlays natively
- */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { parseUnits, zeroAddress } from 'viem';
 import { useAccount, useReadContract } from 'wagmi';
-import { predictionMarketAbi } from '@sapience/sdk';
+import { predictionMarketEscrowAbi } from '@sapience/sdk/abis';
 import { buildAuctionStartPayload } from '~/lib/auction/buildAuctionPayload';
 import { useSession } from '~/lib/context/SessionContext';
 import type { AuctionParams, QuoteBid } from '~/lib/auction/useAuctionStart';
@@ -77,11 +72,11 @@ export function useSingleConditionAuction({
   // Use effectiveAddress from session context, falling back to zero address for guests
   const selectedTakerAddress = effectiveAddress ?? takerAddress ?? zeroAddress;
 
-  // Fetch taker nonce from PredictionMarket contract
+  // Fetch taker nonce from PredictionMarketEscrow contract
   const { data: takerNonce } = useReadContract({
     address: predictionMarketAddress,
-    abi: predictionMarketAbi,
-    functionName: 'nonces',
+    abi: predictionMarketEscrowAbi,
+    functionName: 'getNonce',
     args: selectedTakerAddress ? [selectedTakerAddress] : undefined,
     chainId,
     query: {

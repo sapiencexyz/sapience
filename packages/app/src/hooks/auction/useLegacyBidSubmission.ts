@@ -1,23 +1,17 @@
 'use client';
 
 /**
- * Legacy bid submission hook supporting both V1 (mainnet) and escrow (testnet) protocols.
- * V1: Uses SignatureProcessor.Approve EIP-712 format
- * Escrow: Uses MintApproval EIP-712 format from PredictionMarketEscrow
+ * Bid submission hook for escrow protocol.
+ * Uses MintApproval EIP-712 format from PredictionMarketEscrow.
  */
 import { useCallback, useMemo } from 'react';
 import { useAccount, useSignTypedData } from 'wagmi';
 import {
-  encodeAbiParameters,
-  parseAbiParameters,
-  keccak256,
-  getAddress,
   parseUnits,
   formatUnits,
   type Address,
 } from 'viem';
 import {
-  predictionMarket,
   predictionMarketEscrow,
   collateralToken as collateralTokenAddresses,
 } from '@sapience/sdk/contracts';
@@ -48,21 +42,19 @@ export type LegacyBidSubmissionParams = {
   makerCollateral: bigint;
   /** Auction creator's position size in wei */
   takerCollateral: bigint;
-  /** Encoded predicted outcomes (V1) */
+  /** Encoded predicted outcomes */
   predictedOutcomes: `0x${string}`[];
   /** Resolver contract address */
   resolver: `0x${string}`;
   /** Auction creator (taker) address */
   taker: `0x${string}`;
-  /** Taker nonce for the auction (required for legacy, not needed for escrow) */
+  /** Taker nonce for the auction */
   takerNonce?: number;
   /** Bid expiry in seconds from now */
   expirySeconds: number;
   /** Optional max end time (seconds since epoch) to clamp expiry */
   maxEndTimeSec?: number;
-  /** Force legacy protocol even on escrow-capable chains (for legacy auctions) */
-  forceV1?: boolean;
-  /** Escrow picks array (for escrow auctions - used instead of decoding predictedOutcomes) */
+  /** Escrow picks array (used instead of decoding predictedOutcomes) */
   escrowPicks?: Array<{
     conditionResolver: string;
     conditionId: string;
@@ -131,19 +123,15 @@ export function useLegacyBidSubmission(
 
   const wsUrl = useMemo(() => toAuctionWsUrl(apiBaseUrl), [apiBaseUrl]);
 
-  // Escrow (testnet) uses PredictionMarketEscrow, legacy (mainnet) uses PredictionMarket
-  const isEscrowChain = chainId === CHAIN_ID_ETHEREAL_TESTNET;
-  const verifyingContract = (
-    isEscrowChain
-      ? predictionMarketEscrow[chainId]?.address
-      : predictionMarket[chainId]?.address
-  ) as `0x${string}` | undefined;
+  const verifyingContract = predictionMarketEscrow[chainId]?.address as
+    | `0x${string}`
+    | undefined;
 
-  // Get escrow nonce for counterparty signing (only used on escrow chains)
+  // Get escrow nonce for counterparty signing
   const { nonce: escrowNonce } = useEscrowNonce({
     address: effectiveAddress as Address | undefined,
     chainId,
-    enabled: isEscrowChain,
+    enabled: true,
   });
 
   // Default to 18 decimals, can be overridden in format/parse calls
@@ -180,16 +168,10 @@ export function useLegacyBidSubmission(
         predictedOutcomes,
         resolver,
         taker,
-        takerNonce,
         expirySeconds,
         maxEndTimeSec,
-        forceV1 = false,
         escrowPicks: providedEscrowPicks,
       } = params;
-
-      // Determine if we should use escrow protocol
-      // Use escrow only if on escrow chain AND auction is not forced to legacy
-      const useEscrowProtocol = isEscrowChain && !forceV1;
 
       // Use effectiveAddress from session context (smart account when session active, otherwise EOA)
       const signerAddress = effectiveAddress;
@@ -258,8 +240,8 @@ export function useLegacyBidSubmission(
 
       let makerSignature: `0x${string}`;
 
-      if (useEscrowProtocol) {
-        // Escrow: SmartAccount counterparties need wUSDe pre-funded before mint
+      {
+        // SmartAccount counterparties need wUSDe pre-funded before mint
         // The predictor calls mint(), which does transferFrom(counterparty) - counterparty can't wrap at that time
         if (isUsingSession && wusdeAddress && chainClients?.ethereal) {
           const escrowAddress = verifyingContract;
@@ -451,79 +433,6 @@ export function useLegacyBidSubmission(
             error: `Signature rejected: ${error.message}`,
           };
         }
-      } else {
-        // V1 signing: Use SignatureProcessor.Approve typed data
-        // V1 requires takerNonce
-        if (takerNonce === undefined) {
-          return {
-            success: false,
-            error: 'Missing taker nonce for V1 signing',
-          };
-        }
-
-        const innerMessageHash = keccak256(
-          encodeAbiParameters(
-            parseAbiParameters(
-              'bytes, uint256, uint256, address, address, uint256, uint256'
-            ),
-            [
-              encodedPredicted,
-              makerCollateral,
-              takerCollateral,
-              getAddress(resolver),
-              getAddress(taker),
-              BigInt(makerDeadline),
-              BigInt(takerNonce),
-            ]
-          )
-        );
-
-        const domain = {
-          name: 'SignatureProcessor',
-          version: '1',
-          chainId: chainId,
-          verifyingContract,
-        } as const;
-
-        const types = {
-          Approve: [
-            { name: 'messageHash', type: 'bytes32' },
-            { name: 'owner', type: 'address' },
-          ],
-        } as const;
-
-        const message = {
-          messageHash: innerMessageHash,
-          owner: getAddress(signerAddress),
-        } as const;
-
-        try {
-          // Use session key signing if session is active, otherwise use wallet
-          if (isUsingSession && sessionSignTypedData) {
-            makerSignature = await sessionSignTypedData({
-              domain,
-              types,
-              primaryType: 'Approve',
-              message: message as Record<string, unknown>,
-            });
-          } else {
-            makerSignature = await signTypedDataAsync({
-              domain,
-              types,
-              primaryType: 'Approve',
-              message,
-            });
-          }
-        } catch (e: any) {
-          const error =
-            e instanceof Error ? e : new Error(String(e?.message || e));
-          onSignatureRejected?.(error);
-          return {
-            success: false,
-            error: `Signature rejected: ${error.message}`,
-          };
-        }
-      }
 
       if (!makerSignature) {
         return { success: false, error: 'No signature returned' };
@@ -532,37 +441,22 @@ export function useLegacyBidSubmission(
       // Send over shared Auction WS (fire and forget - no ack wait)
       const client = getSharedAuctionWsClient(wsUrl);
 
-      if (useEscrowProtocol) {
-        // Escrow bid payload - uses escrow terminology (counterparty = bidder)
-        // For new sessions: no session key data needed (ERC-1271 signature is sufficient)
-        // For legacy sessions: include session key approval data
-        let counterpartySessionKeyData: string | undefined;
-        if (isUsingSession && escrowSessionKeyApproval) {
-          counterpartySessionKeyData = encodeEscrowSessionKeyData(escrowSessionKeyApproval);
-        }
-
-        const escrowPayload = {
-          auctionId,
-          counterparty: signerAddress,
-          counterpartyCollateral: makerCollateral.toString(),
-          counterpartyNonce: Number(escrowNonce ?? 0n),
-          counterpartyDeadline: makerDeadline,
-          counterpartySignature: makerSignature,
-          ...(counterpartySessionKeyData && { counterpartySessionKeyData }),
-        };
-        client.send({ type: 'bid.submit', payload: escrowPayload });
-      } else {
-        // V1 bid payload
-        const payload: Record<string, unknown> = {
-          auctionId,
-          maker: signerAddress,
-          makerDeadline,
-          makerNonce: takerNonce,
-          makerSignature,
-          makerCollateral: makerCollateral.toString(),
-        };
-        client.send({ type: 'bid.submit', payload });
+      // Escrow bid payload - uses escrow terminology (counterparty = bidder)
+      let counterpartySessionKeyData: string | undefined;
+      if (isUsingSession && escrowSessionKeyApproval) {
+        counterpartySessionKeyData = encodeEscrowSessionKeyData(escrowSessionKeyApproval);
       }
+
+      const escrowPayload = {
+        auctionId,
+        counterparty: signerAddress,
+        counterpartyCollateral: makerCollateral.toString(),
+        counterpartyNonce: Number(escrowNonce ?? 0n),
+        counterpartyDeadline: makerDeadline,
+        counterpartySignature: makerSignature,
+        ...(counterpartySessionKeyData && { counterpartySessionKeyData }),
+      };
+      client.send({ type: 'bid.submit', payload: escrowPayload });
 
       // Dispatch event for UI updates
       try {
@@ -586,7 +480,6 @@ export function useLegacyBidSubmission(
       signTypedDataAsync,
       onSignatureRejected,
       effectiveAddress,
-      isEscrowChain,
       escrowNonce,
       isUsingSession,
       isUsingSmartAccount,
