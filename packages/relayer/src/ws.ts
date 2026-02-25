@@ -653,22 +653,24 @@ export function createAuctionWebSocketServer() {
             return;
           }
 
-          // Verify intent signature if escrow contract is known for this chain
-          const escrowEntry = predictionMarketEscrow[payload.chainId];
-          if (escrowEntry?.address && escrowEntry.address !== '0x0000000000000000000000000000000000000000') {
-            const intentValid = await verifyAuctionIntentSignature(
-              payload,
-              escrowEntry.address as Address
-            );
-            if (!intentValid) {
-              errorsTotal.inc({ type: 'auth', message_type: 'auction.start' });
-              console.warn('[Relayer] auction.start rejected: invalid intent signature');
-              send(ws, {
-                type: 'auction.ack',
-                payload: { auctionId: '', error: 'invalid_intent_signature' },
-              });
-              trackDuration(msgType, startTime);
-              return;
+          // Verify intent signature if provided (backward-compatible: skip if absent)
+          if (payload.intentSignature) {
+            const escrowEntry = predictionMarketEscrow[payload.chainId];
+            if (escrowEntry?.address && escrowEntry.address !== '0x0000000000000000000000000000000000000000') {
+              const intentValid = await verifyAuctionIntentSignature(
+                payload,
+                escrowEntry.address as Address
+              );
+              if (!intentValid) {
+                errorsTotal.inc({ type: 'auth', message_type: 'auction.start' });
+                console.warn('[Relayer] auction.start rejected: invalid intent signature');
+                send(ws, {
+                  type: 'auction.ack',
+                  payload: { auctionId: '', error: 'invalid_intent_signature' },
+                });
+                trackDuration(msgType, startTime);
+                return;
+              }
             }
           }
 
