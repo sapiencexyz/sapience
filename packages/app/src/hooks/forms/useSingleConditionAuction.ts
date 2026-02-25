@@ -7,8 +7,8 @@
  */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { parseUnits, zeroAddress } from 'viem';
-import { useAccount, useReadContract } from 'wagmi';
-import { predictionMarketAbi } from '@sapience/sdk';
+import { useAccount } from 'wagmi';
+import { generateRandomNonce } from '@sapience/sdk';
 import { buildAuctionStartPayload } from '~/lib/auction/buildAuctionPayload';
 import { useSession } from '~/lib/context/SessionContext';
 import type { AuctionParams, QuoteBid } from '~/lib/auction/useAuctionStart';
@@ -24,7 +24,7 @@ interface UseSingleConditionAuctionProps {
   chainId: number;
   /** Collateral decimals (default 18) */
   collateralDecimals?: number;
-  /** PredictionMarket contract address for nonce fetching */
+  /** @deprecated No longer needed — nonces are generated client-side */
   predictionMarketAddress?: `0x${string}`;
   /** Bids from useAuctionStart */
   bids: QuoteBid[];
@@ -63,7 +63,7 @@ export function useSingleConditionAuction({
   positionSize,
   chainId,
   collateralDecimals = 18,
-  predictionMarketAddress,
+  predictionMarketAddress: _predictionMarketAddress,
   bids,
   requestQuotes,
 }: UseSingleConditionAuctionProps): UseSingleConditionAuctionReturn {
@@ -76,18 +76,6 @@ export function useSingleConditionAuction({
 
   // Use effectiveAddress from session context, falling back to zero address for guests
   const selectedTakerAddress = effectiveAddress ?? takerAddress ?? zeroAddress;
-
-  // Fetch taker nonce from PredictionMarket contract
-  const { data: takerNonce } = useReadContract({
-    address: predictionMarketAddress,
-    abi: predictionMarketAbi,
-    functionName: 'nonces',
-    args: selectedTakerAddress ? [selectedTakerAddress] : undefined,
-    chainId,
-    query: {
-      enabled: !!selectedTakerAddress && !!predictionMarketAddress,
-    },
-  });
 
   // Update time every second for expiration tracking
   useEffect(() => {
@@ -144,9 +132,6 @@ export function useSingleConditionAuction({
       if (!requestQuotes) return;
       if (!selectedTakerAddress) return;
       if (!conditionId || prediction === null) return;
-      // Wait for nonce if using a real address (not guest)
-      if (selectedTakerAddress !== zeroAddress && takerNonce === undefined)
-        return;
 
       const positionSizeStr = positionSize || '0';
 
@@ -167,7 +152,7 @@ export function useSingleConditionAuction({
           resolver: payload.resolver,
           predictedOutcomes: payload.predictedOutcomes,
           taker: selectedTakerAddress,
-          takerNonce: takerNonce !== undefined ? Number(takerNonce) : 0,
+          takerNonce: Number(generateRandomNonce()),
           chainId: chainId,
         };
 
@@ -184,7 +169,6 @@ export function useSingleConditionAuction({
       selectedTakerAddress,
       conditionId,
       prediction,
-      takerNonce,
       positionSize,
       collateralDecimals,
       chainId,

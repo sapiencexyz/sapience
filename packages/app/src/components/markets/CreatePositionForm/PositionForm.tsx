@@ -566,13 +566,8 @@ export default function PositionForm({
   // Auto-initiate auction when content (predictions/position size) changes
   // We debounce this to avoid spamming the auction endpoint while the user is typing
   // Auto-trigger for all users - logged-out users get unsigned auctions with estimates
-  // TODO: Re-enable after fixing the issue where auto-triggers invalidate received bids
   const autoAuctionDebounceRef = useRef<number | undefined>(undefined);
   useEffect(() => {
-    // TEMPORARILY DISABLED for escrow testing - auto-triggers were invalidating received bids
-    // User must click "INITIATE AUCTION" manually
-    return;
-
     // Wait for balance to load before triggering for logged-in users
     // Skip balance loading check for logged-out users (they have no balance to load)
     if (hasConnectedWallet && isBalanceLoading) return;
