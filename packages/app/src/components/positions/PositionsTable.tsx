@@ -49,6 +49,7 @@ import {
 import EscrowPositionDialog, {
   type EscrowPositionRow,
 } from '~/components/positions/EscrowPositionDialog';
+import ShareDialog from '~/components/shared/ShareDialog';
 import { formatDistanceToNow } from 'date-fns';
 
 // --- Pyth descriptor parser (same logic as LegacyPositionsTable) ---
@@ -239,6 +240,9 @@ export default function PositionsTable({
   // Dialog state
   const [openDialogId, setOpenDialogId] = React.useState<string | null>(null);
 
+  // Share dialog state
+  const [openShareId, setOpenShareId] = React.useState<string | null>(null);
+
   // Fetch position balances
   const {
     data: positions,
@@ -361,6 +365,12 @@ export default function PositionsTable({
     if (openDialogId === null) return null;
     return rows.find((r) => r.uniqueKey === openDialogId) ?? null;
   }, [rows, openDialogId]);
+
+  // Selected position for share dialog
+  const selectedSharePosition = React.useMemo(() => {
+    if (openShareId === null) return null;
+    return rows.find((r) => r.uniqueKey === openShareId) ?? null;
+  }, [rows, openShareId]);
 
   // Columns
   const columns = React.useMemo<ColumnDef<UIPositionBalance>[]>(
@@ -533,6 +543,22 @@ export default function PositionsTable({
           );
         },
       },
+      {
+        id: 'share',
+        enableSorting: false,
+        header: () => null,
+        cell: ({ row }) => (
+          <div className="whitespace-nowrap mt-6 xl:mt-0 flex justify-start xl:justify-end">
+            <button
+              type="button"
+              className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
+              onClick={() => setOpenShareId(row.original.uniqueKey)}
+            >
+              Share
+            </button>
+          </div>
+        ),
+      },
     ],
     [collateralSymbol]
   );
@@ -644,6 +670,7 @@ export default function PositionsTable({
                     'positionSize',
                     'totalPool',
                     'status',
+                    'share',
                   ]);
                   const result: React.ReactNode[] = [];
                   let i = 0;
@@ -737,6 +764,23 @@ export default function PositionsTable({
         position={selectedPosition as EscrowPositionRow | null}
         collateralSymbol={collateralSymbol}
       />
+
+      {selectedSharePosition && (
+        <ShareDialog
+          question={`Position #${selectedSharePosition.pickConfigId}`}
+          legs={selectedSharePosition.legs.map((l) => ({
+            question: l.question,
+            choice: l.choice,
+          }))}
+          positionSize={Number(formatEther(selectedSharePosition.balance))}
+          payout={Number(formatEther(selectedSharePosition.totalPool))}
+          symbol={collateralSymbol}
+          open={openShareId !== null}
+          onOpenChange={(open) => {
+            if (!open) setOpenShareId(null);
+          }}
+        />
+      )}
     </div>
   );
 }
