@@ -1146,7 +1146,7 @@ contract PredictionMarketEscrow is
 
     // ============ Internal: Signature Validation ============
 
-    /// @notice Validate a party's signature (supports both EOA and session key)
+    /// @notice Validate a party's signature (supports EOA, registered session key, and legacy session key)
     function _validatePartySignature(
         bytes32 predictionHash,
         address signer,
@@ -1161,8 +1161,14 @@ contract PredictionMarketEscrow is
             return _isApprovalValidWithEIP1271Fallback(
                 predictionHash, signer, collateral, nonce, deadline, signature
             );
+        } else if (sessionKeyData.length == 32) {
+            // On-chain registered session key (just the address, abi-encoded)
+            address sessionKey = abi.decode(sessionKeyData, (address));
+            return _isRegisteredSessionKeyValid(
+                predictionHash, signer, collateral, nonce, deadline, signature, sessionKey
+            );
         } else {
-            // Session key signature - decode and validate
+            // Legacy: full SessionKeyApproval in calldata
             IV2Types.SessionKeyData memory skData =
                 abi.decode(sessionKeyData, (IV2Types.SessionKeyData));
 
@@ -1188,7 +1194,7 @@ contract PredictionMarketEscrow is
         }
     }
 
-    /// @notice Validate a burn party's signature (supports both EOA and session key)
+    /// @notice Validate a burn party's signature (supports EOA, registered session key, and legacy session key)
     function _validateBurnPartySignature(
         bytes32 burnHash,
         address signer,
@@ -1210,8 +1216,14 @@ contract PredictionMarketEscrow is
                 deadline,
                 signature
             );
+        } else if (sessionKeyData.length == 32) {
+            // On-chain registered session key (just the address, abi-encoded)
+            address sessionKey = abi.decode(sessionKeyData, (address));
+            return _isRegisteredSessionKeyBurnValid(
+                burnHash, signer, tokenAmount, payout, nonce, deadline, signature, sessionKey
+            );
         } else {
-            // Session key signature - decode and validate
+            // Legacy: full SessionKeyApproval in calldata
             IV2Types.SessionKeyData memory skData =
                 abi.decode(sessionKeyData, (IV2Types.SessionKeyData));
 

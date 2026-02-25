@@ -22,12 +22,16 @@ import {
   saveSession,
   loadSession,
   clearSession,
+  registerSessionKeyOnChain,
   type SessionConfig,
   type OwnerSigner,
   type EnableTypedData,
   type SerializedSession,
   type EscrowSessionKeyApproval,
 } from '~/lib/session/sessionKeyManager';
+import {
+  predictionMarketEscrow as predictionMarketEscrowAddresses,
+} from '@sapience/sdk/contracts';
 
 /**
  * Strip private key and ABIs from approval for safe transport.
@@ -187,8 +191,11 @@ interface SessionContextValue {
   // The Ethereal chain ID the session was created for (mainnet or testnet)
   etherealChainId: number | null;
 
-  // Escrow Session Key Approval for PredictionMarketEscrow
+  // Escrow Session Key Approval for PredictionMarketEscrow (legacy, may be null for new sessions)
   escrowSessionKeyApproval: EscrowSessionKeyApproval | null;
+
+  // Whether the session key has been registered on-chain via registerSessionKey()
+  isSessionKeyRegistered: boolean;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -304,6 +311,9 @@ export function SessionProvider({ children }: SessionProviderProps) {
   // Escrow Session Key Approval for PredictionMarketEscrow
   const [escrowSessionKeyApproval, setEscrowSessionKeyApproval] =
     useState<EscrowSessionKeyApproval | null>(null);
+
+  // On-chain session key registration state
+  const [isSessionKeyRegistered, setIsSessionKeyRegistered] = useState(false);
 
   // Lazy Arbitrum session creation state
   const [isCreatingArbitrumSession, setIsCreatingArbitrumSession] =
@@ -449,10 +459,23 @@ export function SessionProvider({ children }: SessionProviderProps) {
         const approvalData = extractSessionApprovalData(stored);
         setArbitrumSessionApproval(approvalData.arbitrum);
         setEtherealSessionApproval(approvalData.ethereal);
-        // Restore escrow session key approval if available
+        // Restore escrow session key approval if available (legacy sessions)
         setEscrowSessionKeyApproval(stored.escrowSessionKeyApproval ?? null);
         setIsSessionActive(true);
+        setIsSessionKeyRegistered(false);
         setTimeRemainingMs(result.config.expiresAt - Date.now());
+
+        // Auto-register session key on-chain on restore (fire-and-forget)
+        // The contract handles idempotent re-registration gracefully
+        if (result.etherealClient && stored.etherealChainId) {
+          void autoRegisterSessionKey(
+            result.etherealClient,
+            stored.sessionKeyAddress,
+            stored.config.ownerAddress as Address,
+            result.config.expiresAt,
+            stored.etherealChainId
+          );
+        }
       } catch (error) {
         console.error('Failed to restore session:', error);
         clearSession();
@@ -483,6 +506,44 @@ export function SessionProvider({ children }: SessionProviderProps) {
     return () => clearInterval(interval);
   }, [isSessionActive, sessionConfig]);
 
+  // Auto-register session key on-chain (fire-and-forget)
+  const autoRegisterSessionKey = useCallback(
+    async (
+      client: KernelAccountClient,
+      sessionKeyAddr: Address,
+      ownerAddr: Address,
+      expiresAt: number,
+      chainId: number
+    ) => {
+      const escrowEntry = predictionMarketEscrowAddresses[chainId];
+      const escrowAddress = escrowEntry?.address as Address | undefined;
+      if (!escrowAddress || escrowAddress === '0x0000000000000000000000000000000000000000') {
+        console.debug('[SessionContext] No escrow contract for chain, skipping registration');
+        return;
+      }
+
+      // Convert expiresAt (ms) to seconds for the contract
+      const validUntilSeconds = Math.floor(expiresAt / 1000);
+
+      try {
+        console.debug('[SessionContext] Auto-registering session key on-chain...');
+        const txHash = await registerSessionKeyOnChain(
+          client,
+          sessionKeyAddr,
+          ownerAddr,
+          validUntilSeconds,
+          escrowAddress
+        );
+        console.debug('[SessionContext] Session key registered on-chain, tx:', txHash);
+        setIsSessionKeyRegistered(true);
+      } catch (error) {
+        console.warn('[SessionContext] Failed to auto-register session key on-chain:', error);
+        // Non-fatal — the session still works, but on-chain registered path won't be available
+      }
+    },
+    []
+  );
+
   // Internal end session function
   const endSessionInternal = useCallback(() => {
     console.debug(
@@ -497,6 +558,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
     setArbitrumSessionApproval(null);
     setEtherealSessionApproval(null);
     setEscrowSessionKeyApproval(null);
+    setIsSessionKeyRegistered(false);
     setTimeRemainingMs(0);
     clearSession();
     console.debug('[SessionContext] Session cleared');
@@ -577,17 +639,24 @@ export function SessionProvider({ children }: SessionProviderProps) {
         const approvalData = extractSessionApprovalData(result.serialized);
         setArbitrumSessionApproval(approvalData.arbitrum);
         setEtherealSessionApproval(approvalData.ethereal);
-        // Set escrow session key approval if available
+        // Set escrow session key approval if available (legacy sessions)
         setEscrowSessionKeyApproval(result.serialized.escrowSessionKeyApproval ?? null);
         setIsSessionActive(true);
+        setIsSessionKeyRegistered(false);
         setTimeRemainingMs(result.config.expiresAt - Date.now());
         console.debug(
           '[SessionContext] Session active, smart account:',
           result.config.smartAccountAddress
         );
-        if (result.serialized.escrowSessionKeyApproval) {
-          console.debug('[SessionContext] Escrow session key approval available');
-        }
+
+        // Auto-register session key on-chain (fire-and-forget)
+        void autoRegisterSessionKey(
+          result.etherealClient,
+          result.serialized.sessionKeyAddress,
+          walletAddress,
+          result.config.expiresAt,
+          etherealChainId
+        );
       } catch (error) {
         console.error('Failed to start session:', error);
         setSessionError(
@@ -755,6 +824,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
       createArbitrumSessionIfNeeded,
       etherealChainId,
       escrowSessionKeyApproval,
+      isSessionKeyRegistered,
     }),
     [
       isSessionActive,
@@ -784,6 +854,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
       createArbitrumSessionIfNeeded,
       etherealChainId,
       escrowSessionKeyApproval,
+      isSessionKeyRegistered,
     ]
   );
 

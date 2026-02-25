@@ -10,9 +10,9 @@ import {
   getEscrowAuctionDetails,
 } from './escrowRegistry';
 import { validateEscrowAuctionRequest, validateEscrowBid } from './escrowHelpers';
-import { verifyAuctionIntentSignature } from './escrowSigVerify';
-import { predictionMarketEscrow } from '@sapience/sdk/contracts';
-import type { Address } from 'viem';
+// verifyAuctionIntentSignature removed — contract is the single source of truth for sig validation
+// predictionMarketEscrow import removed — no longer needed for relayer-side sig verification
+// Address import removed — no longer needed
 import {
   activeConnections,
   connectionsTotal,
@@ -653,26 +653,9 @@ export function createAuctionWebSocketServer() {
             return;
           }
 
-          // Verify intent signature if provided (backward-compatible: skip if absent)
-          if (payload.intentSignature) {
-            const escrowEntry = predictionMarketEscrow[payload.chainId];
-            if (escrowEntry?.address && escrowEntry.address !== '0x0000000000000000000000000000000000000000') {
-              const intentValid = await verifyAuctionIntentSignature(
-                payload,
-                escrowEntry.address as Address
-              );
-              if (!intentValid) {
-                errorsTotal.inc({ type: 'auth', message_type: 'auction.start' });
-                console.warn('[Relayer] auction.start rejected: invalid intent signature');
-                send(ws, {
-                  type: 'auction.ack',
-                  payload: { auctionId: '', error: 'invalid_intent_signature' },
-                });
-                trackDuration(msgType, startTime);
-                return;
-              }
-            }
-          }
+          // Intent signature verification removed — the contract is the single source of truth
+          // for signature validation. The relayer only does structural/format validation
+          // via validateEscrowAuctionRequest() above.
 
           const auctionId = upsertEscrowAuction(payload);
           pendingAuctionId = auctionId;

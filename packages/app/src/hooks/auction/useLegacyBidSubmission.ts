@@ -32,7 +32,7 @@ import { type Pick as EscrowPick } from '@sapience/sdk';
 import { getPublicClientForChainId } from '~/lib/utils/util';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
-import { encodeEscrowSessionKeyData } from '~/lib/session/sessionKeyManager';
+import { encodeEscrowSessionKeyData, encodeRegisteredSessionKeyData } from '~/lib/session/sessionKeyManager';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { toAuctionWsUrl } from '~/lib/ws';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
@@ -120,6 +120,8 @@ export function useLegacyBidSubmission(
     isUsingSession,
     isUsingSmartAccount,
     escrowSessionKeyApproval,
+    sessionKeyAddress,
+    isSessionKeyRegistered,
     chainClients,
   } = useSession();
   const { toast } = useToast();
@@ -535,10 +537,13 @@ export function useLegacyBidSubmission(
       if (useEscrowProtocol) {
         // Escrow bid payload - uses escrow terminology (counterparty = bidder)
         // Include session key data if bidder is using session key signing
-        const counterpartySessionKeyData =
-          isUsingSession && escrowSessionKeyApproval
-            ? encodeEscrowSessionKeyData(escrowSessionKeyApproval)
-            : undefined;
+        // Prefer on-chain registered format (32 bytes) over legacy format
+        let counterpartySessionKeyData: string | undefined;
+        if (isUsingSession && isSessionKeyRegistered && sessionKeyAddress) {
+          counterpartySessionKeyData = encodeRegisteredSessionKeyData(sessionKeyAddress);
+        } else if (isUsingSession && escrowSessionKeyApproval) {
+          counterpartySessionKeyData = encodeEscrowSessionKeyData(escrowSessionKeyApproval);
+        }
 
         const escrowPayload = {
           auctionId,

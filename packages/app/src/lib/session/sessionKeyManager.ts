@@ -6,6 +6,7 @@ import {
   parseAbi,
   slice,
   encodeAbiParameters,
+  encodeFunctionData,
   recoverTypedDataAddress,
   hashTypedData,
   type Address,
@@ -492,6 +493,43 @@ export function encodeEscrowSessionKeyData(approval: EscrowSessionKeyApproval): 
   return `0x${offsetPointer}${innerEncoding.slice(2)}` as Hex;
 }
 
+/**
+ * Encode a registered session key address as 32-byte ABI-encoded data.
+ * The contract detects the 32-byte length and uses the on-chain registration path.
+ */
+export function encodeRegisteredSessionKeyData(sessionKeyAddress: Address): Hex {
+  return encodeAbiParameters(
+    [{ type: 'address' }],
+    [sessionKeyAddress]
+  );
+}
+
+/**
+ * Register a session key on-chain via UserOp.
+ * Called after session creation — the smart account calls registerSessionKey()
+ * on the escrow contract, which verifies the owner via the account factory.
+ */
+export async function registerSessionKeyOnChain(
+  etherealClient: KernelAccountClient,
+  sessionKeyAddress: Address,
+  ownerAddress: Address,
+  validUntilSeconds: number,
+  escrowAddress: Address
+): Promise<Hex> {
+  const txHash = await etherealClient.sendUserOperation({
+    callData: await etherealClient.account.encodeCalls([{
+      to: escrowAddress,
+      data: encodeFunctionData({
+        abi: predictionMarketEscrowAbi,
+        functionName: 'registerSessionKey',
+        args: [sessionKeyAddress, ownerAddress, BigInt(validUntilSeconds)],
+      }),
+      value: 0n,
+    }]),
+  });
+  return txHash;
+}
+
 // ABI for accountFactory verification
 const ACCOUNT_FACTORY_ABI = parseAbi([
   'function getAccountAddress(address owner, uint256 index) view returns (address)',
@@ -712,13 +750,18 @@ export async function createSession(
         abi: liquidityVaultAbi,
         functionName: 'cancelWithdrawal',
       },
-      // Escrow mint permission (only if escrow is deployed on this chain)
+      // Escrow permissions (only if escrow is deployed on this chain)
       ...(etherealContracts.predictionMarketEscrow
         ? [
             {
               target: etherealContracts.predictionMarketEscrow,
               abi: predictionMarketEscrowAbi,
               functionName: 'mint',
+            },
+            {
+              target: etherealContracts.predictionMarketEscrow,
+              abi: predictionMarketEscrowAbi,
+              functionName: 'registerSessionKey',
             },
           ]
         : []),
@@ -841,27 +884,9 @@ export async function createSession(
     '[SessionKeyManager] Arbitrum session will be created lazily on first EAS attestation'
   );
 
-  // Sign Escrow Session Key Approval for PredictionMarketEscrow (if deployed)
-  let escrowSessionKeyApproval: EscrowSessionKeyApproval | undefined;
-  if (etherealContracts.predictionMarketEscrow) {
-    try {
-      escrowSessionKeyApproval = await signEscrowSessionKeyApproval(
-        ownerSigner,
-        sessionKeyAccount.address,
-        smartAccountAddress,
-        validUntilInSeconds,
-        etherealChainId,
-        etherealContracts.predictionMarketEscrow
-      );
-      console.debug('[SessionKeyManager] Escrow session key approval obtained');
-    } catch (e) {
-      console.warn(
-        '[SessionKeyManager] Failed to sign escrow session key approval:',
-        e
-      );
-      // Continue without escrow support - legacy will still work
-    }
-  }
+  // Note: Escrow session key approval (signEscrowSessionKeyApproval) has been removed.
+  // Session keys are now registered on-chain via registerSessionKey() UserOp after session creation.
+  // This eliminates the second wallet signature during session creation.
 
   const config: SessionConfig = {
     durationHours,
@@ -879,7 +904,7 @@ export async function createSession(
     // Arbitrum approval not set - will be created lazily
     etherealEnableTypedData,
     etherealChainId,
-    escrowSessionKeyApproval,
+    // escrowSessionKeyApproval is no longer set — session keys are registered on-chain
   };
 
   return {
@@ -1246,27 +1271,6 @@ export function loadSession(): SerializedSession | null {
       );
       clearSession();
       return null;
-    }
-
-    // Validate session key consistency
-    if (parsed.escrowSessionKeyApproval && parsed.sessionPrivateKey) {
-      const derivedAddress = privateKeyToAccount(
-        parsed.sessionPrivateKey
-      ).address;
-      if (
-        derivedAddress.toLowerCase() !==
-        parsed.escrowSessionKeyApproval.sessionKey.toLowerCase()
-      ) {
-        console.error(
-          '[SessionKeyManager] Session key mismatch detected on load!',
-          {
-            derivedFromPrivateKey: derivedAddress,
-            inEscrowApproval: parsed.escrowSessionKeyApproval.sessionKey,
-          }
-        );
-        clearSession();
-        return null;
-      }
     }
 
     return parsed;

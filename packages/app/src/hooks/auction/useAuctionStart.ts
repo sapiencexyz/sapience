@@ -13,6 +13,7 @@ import { predictionMarketEscrow } from '@sapience/sdk/contracts';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
+import { encodeRegisteredSessionKeyData } from '~/lib/session/sessionKeyManager';
 import { toAuctionWsUrl } from '~/lib/ws';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 import { useEscrowNonce } from '~/hooks/blockchain/useEscrowContract';
@@ -52,7 +53,13 @@ export function useAuctionStart(options: UseAuctionStartOptions = {}) {
   const { address } = useAccount();
   const { signTypedDataAsync } = useSignTypedData();
   const { apiBaseUrl } = useSettings();
-  const { effectiveAddress } = useSession();
+  const {
+    effectiveAddress,
+    signTypedData: sessionSignTypedData,
+    isUsingSession,
+    isSessionKeyRegistered,
+    sessionKeyAddress,
+  } = useSession();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -130,15 +137,28 @@ export function useAuctionStart(options: UseAuctionStartOptions = {}) {
       setIsSubmitting(true);
       let intentSignature: Hex;
       try {
-        intentSignature = await signTypedDataAsync({
-          domain: {
-            ...intentTypedData.domain,
-            chainId: Number(intentTypedData.domain.chainId),
-          },
-          types: intentTypedData.types,
-          primaryType: intentTypedData.primaryType,
-          message: intentTypedData.message,
-        });
+        // When session is active, sign with session key (no wallet popup)
+        if (isUsingSession && sessionSignTypedData) {
+          intentSignature = await sessionSignTypedData({
+            domain: {
+              ...intentTypedData.domain,
+              chainId: Number(intentTypedData.domain.chainId),
+            },
+            types: intentTypedData.types,
+            primaryType: intentTypedData.primaryType,
+            message: intentTypedData.message as Record<string, unknown>,
+          });
+        } else {
+          intentSignature = await signTypedDataAsync({
+            domain: {
+              ...intentTypedData.domain,
+              chainId: Number(intentTypedData.domain.chainId),
+            },
+            types: intentTypedData.types,
+            primaryType: intentTypedData.primaryType,
+            message: intentTypedData.message,
+          });
+        }
       } catch (e: any) {
         setIsSubmitting(false);
         const error = e instanceof Error ? e : new Error(String(e?.message || e));
@@ -165,6 +185,10 @@ export function useAuctionStart(options: UseAuctionStartOptions = {}) {
         intentSignature,
         chainId,
         refCode: refCode ?? undefined,
+        // Include session key data when using on-chain registered session key
+        ...(isUsingSession && isSessionKeyRegistered && sessionKeyAddress && {
+          predictorSessionKeyData: encodeRegisteredSessionKeyData(sessionKeyAddress),
+        }),
       };
 
       // Send auction start message
@@ -262,6 +286,10 @@ export function useAuctionStart(options: UseAuctionStartOptions = {}) {
       wsUrl,
       currentNonce,
       signTypedDataAsync,
+      sessionSignTypedData,
+      isUsingSession,
+      isSessionKeyRegistered,
+      sessionKeyAddress,
       onSignatureRejected,
       onAuctionCreated,
     ]
