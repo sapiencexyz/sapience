@@ -9,6 +9,7 @@ import {
 } from '@sapience/sdk';
 import {
   CHAIN_ID_ETHEREAL,
+  CHAIN_ID_ETHEREAL_TESTNET,
   ETHEREAL_WUSDE_ADDRESS,
 } from '@sapience/sdk/constants';
 import { useAccount, useReadContract } from 'wagmi';
@@ -49,7 +50,7 @@ export function useSubmitPosition({
     args: effectiveAddress ? [effectiveAddress] : undefined,
     chainId,
     query: {
-      enabled: !!effectiveAddress && enabled && chainId === CHAIN_ID_ETHEREAL,
+      enabled: !!effectiveAddress && enabled && (chainId === CHAIN_ID_ETHEREAL || chainId === CHAIN_ID_ETHEREAL_TESTNET),
     },
   });
 

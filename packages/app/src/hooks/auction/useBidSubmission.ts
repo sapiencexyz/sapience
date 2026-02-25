@@ -11,7 +11,7 @@ import {
   formatUnits,
 } from 'viem';
 import { predictionMarket } from '@sapience/sdk/contracts';
-import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
 import { useToast } from '@sapience/ui/hooks/use-toast';
@@ -81,7 +81,7 @@ export function useBidSubmission(
   const { onSignatureRejected } = options;
   const { address } = useAccount();
   const { signTypedDataAsync } = useSignTypedData();
-  const chainId = CHAIN_ID_ETHEREAL;
+  const chainId = DEFAULT_CHAIN_ID;
   const { apiBaseUrl } = useSettings();
   const { effectiveAddress, isUsingSmartAccount } = useSession();
   const { toast } = useToast();

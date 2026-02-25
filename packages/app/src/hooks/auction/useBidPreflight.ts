@@ -6,7 +6,7 @@ import { formatUnits } from 'viem';
 import { predictionMarket } from '@sapience/sdk/contracts';
 import { predictionMarketAbi } from '@sapience/sdk';
 import erc20Abi from '@sapience/sdk/queries/abis/erc20abi.json';
-import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useChainValidation } from '~/hooks/blockchain/useChainValidation';
 import { useCollateralBalance } from '~/hooks/blockchain/useCollateralBalance';
 import { useCurrentAddress } from '~/hooks/blockchain/useCurrentAddress';
@@ -65,7 +65,7 @@ export function useBidPreflight(
 ): UseBidPreflightResult {
   const { onError, onLoading } = options;
   const { currentAddress } = useCurrentAddress();
-  const chainId = CHAIN_ID_ETHEREAL;
+  const chainId = DEFAULT_CHAIN_ID;
 
   const {
     balance,

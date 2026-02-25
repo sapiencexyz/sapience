@@ -14,6 +14,7 @@ import { ETHEREAL_WUSDE_ADDRESS } from '@sapience/sdk/constants';
 
 export { ETHEREAL_WUSDE_ADDRESS };
 export const CHAIN_ID_ETHEREAL = 5064014;
+export const CHAIN_ID_ETHEREAL_TESTNET = 13374202;
 // deposit() selector: keccak256("deposit()") = 0xd0e30db0
 export const WUSDE_DEPOSIT_SELECTOR = '0xd0e30db0' as Hex;
 
@@ -89,7 +90,7 @@ export interface ExecutionDeps {
 
 /** Check if a chain ID is the Ethereal chain */
 export function isEtherealChain(chainId: number): boolean {
-  return chainId === CHAIN_ID_ETHEREAL;
+  return chainId === CHAIN_ID_ETHEREAL || chainId === CHAIN_ID_ETHEREAL_TESTNET;
 }
 
 /**
