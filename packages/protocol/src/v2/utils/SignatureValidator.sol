@@ -135,9 +135,9 @@ abstract contract SignatureValidator is EIP712 {
         );
 
         bytes32 hash = _hashTypedDataV4(structHash);
-        address recoveredSigner = ECDSA.recover(hash, signature);
+        (address recoveredSigner, ECDSA.RecoverError err,) = ECDSA.tryRecover(hash, signature);
 
-        if (recoveredSigner == address(0)) {
+        if (err != ECDSA.RecoverError.NoError || recoveredSigner == address(0)) {
             return false;
         }
 
@@ -280,9 +280,9 @@ abstract contract SignatureValidator is EIP712 {
         );
 
         bytes32 hash = _hashTypedDataV4(structHash);
-        address recoveredSigner = ECDSA.recover(hash, signature);
+        (address recoveredSigner, ECDSA.RecoverError err,) = ECDSA.tryRecover(hash, signature);
 
-        if (recoveredSigner == address(0)) {
+        if (err != ECDSA.RecoverError.NoError || recoveredSigner == address(0)) {
             return false;
         }
 
