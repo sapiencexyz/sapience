@@ -192,6 +192,7 @@ export interface BurnRequestJson {
 export interface AuctionRFQPayload {
   picks: PickJson[];
   predictorCollateral: string; // wei string
+  counterpartyCollateral?: string; // wei string — optional at RFQ time, defaults to '0'
   predictor: string; // EOA or smart account address
   predictorNonce: number;
   predictorDeadline: number; // unix timestamp
@@ -207,7 +208,7 @@ export interface AuctionRFQPayload {
  * This is assembled client-side for the mint() call; never sent through the relayer.
  */
 export interface AuctionRequestPayload extends AuctionRFQPayload {
-  counterpartyCollateral: string; // wei string — from vault's bid
+  counterpartyCollateral: string; // wei string — required at mint time (from vault's bid)
   predictorSignature: string; // EIP-712 MintApproval signature
 }
 

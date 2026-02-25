@@ -25,7 +25,10 @@ export function upsertEscrowAuction(auction: AuctionRFQPayload): string {
   const pickConfigId = computeEscrowPickConfigId(auction.picks);
 
   escrowAuctions.set(auctionId, {
-    auction,
+    auction: {
+      ...auction,
+      counterpartyCollateral: auction.counterpartyCollateral ?? '0',
+    },
     bids: [],
     deadlineMs,
     pickConfigId,
