@@ -16,9 +16,7 @@ interface IV2Types {
     enum SettlementResult {
         UNRESOLVED,
         PREDICTOR_WINS,
-        COUNTERPARTY_WINS,
-        NON_DECISIVE // Tie or weighted outcome (future-proof)
-
+        COUNTERPARTY_WINS
     }
 
     /// @notice Outcome vector returned by condition resolvers

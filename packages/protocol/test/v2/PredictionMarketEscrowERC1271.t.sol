@@ -781,8 +781,8 @@ contract PredictionMarketEscrowERC1271Test is Test {
         uint256 counterpartyPayout =
             market.redeem(counterpartyToken, TOTAL_COLLATERAL, REF_CODE);
 
-        // Each gets their original collateral back
-        assertEq(predictorPayout, PREDICTOR_COLLATERAL);
-        assertEq(counterpartyPayout, COUNTERPARTY_COLLATERAL);
+        // Non-decisive = counterparty wins all collateral
+        assertEq(predictorPayout, 0);
+        assertEq(counterpartyPayout, TOTAL_COLLATERAL);
     }
 }
