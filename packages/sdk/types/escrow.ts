@@ -266,6 +266,7 @@ export interface AuctionDetails {
   auctionId: string;
   picks: PickJson[];
   predictorCollateral: string;
+  counterpartyCollateral?: string; // optional — absent at RFQ time, present if predictor specified one
   predictor: string;
   predictorNonce: number;
   predictorDeadline: number;
