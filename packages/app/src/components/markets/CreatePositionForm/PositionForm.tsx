@@ -74,7 +74,7 @@ interface PositionFormProps {
   collateralSymbol?: string;
   collateralDecimals?: number;
   minPositionSize?: string;
-  // PredictionMarket contract address for fetching taker nonce
+  // PredictionMarketEscrow contract address for fetching predictor nonce
   predictionMarketAddress?: `0x${string}`;
   pythPredictions?: PythPrediction[];
   onRemovePythPrediction?: (id: string) => void;
@@ -98,7 +98,7 @@ export default function PositionForm({
 }: PositionFormProps) {
   const { selections, removeSelection, getPicks } =
     useCreatePositionContext();
-  const { address: takerAddress } = useAccount();
+  const { address: predictorAddress } = useAccount();
   const { hasConnectedWallet } = useConnectedWallet();
   const { openConnectDialog } = useConnectDialog();
   const { toast } = useToast();
@@ -132,29 +132,29 @@ export default function PositionForm({
   // Sponsorship status
   const { isSponsored, remainingBudget, maxEntryPriceBps } = useSponsorStatus();
 
-  // Determine the actual taker address based on signing method
+  // Determine the actual predictor address based on signing method
   // This MUST match the logic in useAuctionStart.requestQuotes
   // - If using session signing (smart account with active session): use effectiveAddress (smart account)
-  // - Otherwise (signing with wallet): use takerAddress (wallet)
+  // - Otherwise (signing with wallet): use predictorAddress (wallet)
   const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
   const willUseSessionSigning = isUsingSmartAccount && !!sessionSignMessage;
-  const selectedTakerAddress = willUseSessionSigning
-    ? (effectiveAddress ?? takerAddress ?? ZERO_ADDRESS)
-    : (takerAddress ?? ZERO_ADDRESS);
+  const selectedPredictorAddress = willUseSessionSigning
+    ? (effectiveAddress ?? predictorAddress ?? ZERO_ADDRESS)
+    : (predictorAddress ?? ZERO_ADDRESS);
 
   // Get user's collateral balance from context (shared with form schema validation)
   const { balance: userBalance, isLoading: isBalanceLoading } =
     useCollateralBalanceContext();
 
-  // Fetch taker nonce from PredictionMarketEscrow contract
-  const { refetch: refetchTakerNonce, error: nonceError } = useReadContract({
+  // Fetch predictor nonce from PredictionMarketEscrow contract
+  const { refetch: refetchPredictorNonce, error: nonceError } = useReadContract({
     address: predictionMarketAddress,
     abi: predictionMarketEscrowAbi,
     functionName: 'getNonce',
-    args: selectedTakerAddress ? [selectedTakerAddress] : undefined,
+    args: selectedPredictorAddress ? [selectedPredictorAddress] : undefined,
     chainId,
     query: {
-      enabled: !!selectedTakerAddress && !!predictionMarketAddress,
+      enabled: !!selectedPredictorAddress && !!predictionMarketAddress,
     },
   });
   if (nonceError) {
@@ -179,8 +179,8 @@ export default function PositionForm({
     return !Number.isNaN(sizeNum) && sizeNum > 1000;
   }, [positionSizeValue]);
 
-  // Calculate taker position size in wei for auction chart
-  const takerPositionSizeWei = useMemo(() => {
+  // Calculate predictor position size in wei for auction chart
+  const predictorPositionSizeWei = useMemo(() => {
     const decimals = collateralDecimals ?? 18;
     try {
       return parseUnits(positionSizeValue || '0', decimals).toString();
@@ -222,7 +222,7 @@ export default function PositionForm({
   }, [positionSizeValue]);
 
   // Clear bids when wallet connection state changes
-  // Old bids were generated for a different taker address (zero address for logged-out, user address for logged-in)
+  // Old bids were generated for a different predictor address (zero address for logged-out, user address for logged-in)
   const prevHasConnectedWalletRef = useRef(hasConnectedWallet);
   useEffect(() => {
     if (prevHasConnectedWalletRef.current !== hasConnectedWallet) {
@@ -404,7 +404,7 @@ export default function PositionForm({
         return;
       }
 
-      if (!requestQuotes || !selectedTakerAddress) {
+      if (!requestQuotes || !selectedPredictorAddress) {
         return;
       }
 
@@ -440,10 +440,10 @@ export default function PositionForm({
         setStickyEstimateBid(null);
 
         // Fetch fresh nonce via wagmi refetch (bypasses stale cache)
-        const nonceResult = await refetchTakerNonce();
+        const nonceResult = await refetchPredictorNonce();
         const freshNonce = nonceResult.data;
 
-        if (freshNonce === undefined && takerAddress) {
+        if (freshNonce === undefined && predictorAddress) {
           auctionRequestInFlightRef.current = false;
           return;
         }
@@ -475,11 +475,12 @@ export default function PositionForm({
               chainId
             );
 
+        // AuctionParams uses legacy taker naming — maps to predictor
         const params: AuctionParams = {
           wager: positionSizeWei,
           resolver: payload.resolver,
           predictedOutcomes: payload.predictedOutcomes,
-          taker: selectedTakerAddress,
+          taker: selectedPredictorAddress,
           takerNonce: freshNonce !== undefined ? Number(freshNonce) : 0,
           chainId: chainId,
         };
@@ -527,12 +528,12 @@ export default function PositionForm({
     },
     [
       requestQuotes,
-      selectedTakerAddress,
+      selectedPredictorAddress,
       selections,
       pythPredictions,
       toast,
-      takerAddress,
-      refetchTakerNonce,
+      predictorAddress,
+      refetchPredictorNonce,
       hasFormErrors,
       positionSizeValue,
       collateralDecimals,
@@ -839,8 +840,8 @@ export default function PositionForm({
               hintMounted={hintMounted}
               disclaimerMounted={disclaimerMounted}
               allBids={validBids}
-              takerPositionSizeWei={takerPositionSizeWei}
-              takerAddress={selectedTakerAddress}
+              predictorPositionSizeWei={predictorPositionSizeWei}
+              predictorAddress={selectedPredictorAddress}
               showAddPredictionsHint={selections.length === 1}
               isAuctionPending={recentlyRequested && !bestBid}
               hasFormErrors={hasFormErrors}

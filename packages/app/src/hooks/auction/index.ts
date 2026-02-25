@@ -1,5 +1,5 @@
 export * from './useBidPreflight';
-export * from './useLegacyBidSubmission';
+export * from './useEscrowBidSubmission';
 
 // Escrow auction hooks
 export * from './useAuctionStart';

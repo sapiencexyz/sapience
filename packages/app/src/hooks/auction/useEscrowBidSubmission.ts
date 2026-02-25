@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * Bid submission hook for escrow protocol.
+ * Escrow bid submission hook.
  * Uses MintApproval EIP-712 format from PredictionMarketEscrow.
  */
 import { useCallback, useMemo } from 'react';
@@ -33,16 +33,16 @@ import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 
 import { useEscrowNonce } from '~/hooks/blockchain/useEscrowContract';
 
-export type LegacyBidSubmissionParams = {
+export type EscrowBidSubmissionParams = {
   auctionId: string;
-  /** Bidder's position size in wei */
-  makerCollateral: bigint;
-  /** Auction creator's position size in wei */
-  takerCollateral: bigint;
+  /** Counterparty's (bidder's) position size in wei */
+  counterpartyCollateral: bigint;
+  /** Predictor's (auction creator's) position size in wei */
+  predictorCollateral: bigint;
   /** Resolver contract address */
   resolver: `0x${string}`;
-  /** Auction creator (taker) address */
-  taker: `0x${string}`;
+  /** Predictor (auction creator) address */
+  predictor: `0x${string}`;
   /** Bid expiry in seconds from now */
   expirySeconds: number;
   /** Optional max end time (seconds since epoch) to clamp expiry */
@@ -55,13 +55,13 @@ export type LegacyBidSubmissionParams = {
   }>;
 };
 
-export type LegacyBidSubmissionResult = {
+export type EscrowBidSubmissionResult = {
   success: boolean;
   error?: string;
   /** The signature if successful */
   signature?: `0x${string}`;
-  /** The deadline used */
-  makerDeadline?: number;
+  /** The counterparty deadline used */
+  counterpartyDeadline?: number;
 };
 
 interface UseBidSubmissionOptions {
@@ -69,9 +69,9 @@ interface UseBidSubmissionOptions {
   onSignatureRejected?: (error: Error) => void;
 }
 
-interface UseLegacyBidSubmissionResult {
+interface UseEscrowBidSubmissionResult {
   /** Submit a bid with signing and WebSocket transmission */
-  submitBid: (params: LegacyBidSubmissionParams) => Promise<LegacyBidSubmissionResult>;
+  submitBid: (params: EscrowBidSubmissionParams) => Promise<EscrowBidSubmissionResult>;
   /** Whether the wallet is connected */
   isConnected: boolean;
   /** Connected wallet address */
@@ -90,9 +90,9 @@ interface UseLegacyBidSubmissionResult {
   parseAmount: (displayAmount: string, decimals?: number) => bigint;
 }
 
-export function useLegacyBidSubmission(
+export function useEscrowBidSubmission(
   options: UseBidSubmissionOptions = {}
-): UseLegacyBidSubmissionResult {
+): UseEscrowBidSubmissionResult {
   const { onSignatureRejected } = options;
   const { address } = useAccount();
   const { signTypedDataAsync } = useSignTypedData();
@@ -153,13 +153,13 @@ export function useLegacyBidSubmission(
   );
 
   const submitBid = useCallback(
-    async (params: LegacyBidSubmissionParams): Promise<LegacyBidSubmissionResult> => {
+    async (params: EscrowBidSubmissionParams): Promise<EscrowBidSubmissionResult> => {
       const {
         auctionId,
-        makerCollateral,
-        takerCollateral,
+        counterpartyCollateral,
+        predictorCollateral,
         resolver,
-        taker,
+        predictor,
         expirySeconds,
         maxEndTimeSec,
         escrowPicks,
@@ -192,7 +192,7 @@ export function useLegacyBidSubmission(
         return { success: false, error: 'Auction ID required' };
       }
 
-      if (makerCollateral <= 0n) {
+      if (counterpartyCollateral <= 0n) {
         return { success: false, error: 'Invalid bid amount' };
       }
 
@@ -204,8 +204,8 @@ export function useLegacyBidSubmission(
         return { success: false, error: 'Missing resolver' };
       }
 
-      if (!taker) {
-        return { success: false, error: 'Missing taker address' };
+      if (!predictor) {
+        return { success: false, error: 'Missing predictor address' };
       }
 
       if (!verifyingContract) {
@@ -225,9 +225,9 @@ export function useLegacyBidSubmission(
         const remaining = Math.max(0, end - nowSec);
         return Math.min(requested, remaining);
       })();
-      const makerDeadline = nowSec + clampedExpiry;
+      const counterpartyDeadline = nowSec + clampedExpiry;
 
-      let makerSignature: `0x${string}`;
+      let counterpartySignature: `0x${string}`;
 
       {
         // SmartAccount counterparties need wUSDe pre-funded before mint
@@ -253,8 +253,8 @@ export function useLegacyBidSubmission(
               }),
             ]);
 
-            const needsMoreWusde = wusdeBalance < makerCollateral;
-            const needsMoreAllowance = wusdeAllowance < makerCollateral;
+            const needsMoreWusde = wusdeBalance < counterpartyCollateral;
+            const needsMoreAllowance = wusdeAllowance < counterpartyCollateral;
 
             if (needsMoreWusde || needsMoreAllowance) {
               // Check native USDe balance for potential wrapping
@@ -262,10 +262,9 @@ export function useLegacyBidSubmission(
                 address: signerAddress,
               });
 
-              // Also check if there's depositable USDe token (not native ETH-like)
               // wUSDe.deposit() wraps native USDe sent as msg.value
               const wrapAmount = needsMoreWusde
-                ? makerCollateral - wusdeBalance
+                ? counterpartyCollateral - wusdeBalance
                 : 0n;
 
               if (wrapAmount > 0n && nativeUsdeBalance < wrapAmount) {
@@ -301,7 +300,7 @@ export function useLegacyBidSubmission(
                   data: encodeFunctionData({
                     abi: erc20Abi,
                     functionName: 'approve',
-                    args: [escrowAddress, makerCollateral],
+                    args: [escrowAddress, counterpartyCollateral],
                   }),
                   value: 0n,
                 });
@@ -357,15 +356,14 @@ export function useLegacyBidSubmission(
         const counterpartyNonce = escrowNonce ?? 0n;
 
         // Build escrow typed data for counterparty (bidder)
-        // In escrow terms: predictor = taker (auction creator), counterparty = maker (bidder)
         const typedData = buildCounterpartyMintTypedData({
           picks,
-          predictorCollateral: takerCollateral, // auction creator's collateral
-          counterpartyCollateral: makerCollateral, // bidder's collateral
-          predictor: taker, // auction creator
-          counterparty: signerAddress, // bidder (us)
+          predictorCollateral,
+          counterpartyCollateral,
+          predictor,
+          counterparty: signerAddress,
           counterpartyNonce,
-          counterpartyDeadline: BigInt(makerDeadline),
+          counterpartyDeadline: BigInt(counterpartyDeadline),
           verifyingContract: verifyingContract,
           chainId,
         });
@@ -373,7 +371,7 @@ export function useLegacyBidSubmission(
         try {
           // Use session key signing if session is active, otherwise use wallet
           if (isUsingSession && sessionSignTypedData) {
-            makerSignature = await sessionSignTypedData({
+            counterpartySignature = await sessionSignTypedData({
               domain: {
                 ...typedData.domain,
                 chainId: Number(typedData.domain.chainId),
@@ -383,7 +381,7 @@ export function useLegacyBidSubmission(
               message: typedData.message as Record<string, unknown>,
             });
           } else {
-            makerSignature = await signTypedDataAsync({
+            counterpartySignature = await signTypedDataAsync({
               domain: {
                 ...typedData.domain,
                 chainId: Number(typedData.domain.chainId),
@@ -402,15 +400,15 @@ export function useLegacyBidSubmission(
             error: `Signature rejected: ${error.message}`,
           };
         }
+      }
 
-      if (!makerSignature) {
+      if (!counterpartySignature) {
         return { success: false, error: 'No signature returned' };
       }
 
       // Send over shared Auction WS (fire and forget - no ack wait)
       const client = getSharedAuctionWsClient(wsUrl);
 
-      // Escrow bid payload - uses escrow terminology (counterparty = bidder)
       let counterpartySessionKeyData: string | undefined;
       if (isUsingSession && escrowSessionKeyApproval) {
         counterpartySessionKeyData = encodeEscrowSessionKeyData(escrowSessionKeyApproval);
@@ -419,10 +417,10 @@ export function useLegacyBidSubmission(
       const escrowPayload = {
         auctionId,
         counterparty: signerAddress,
-        counterpartyCollateral: makerCollateral.toString(),
+        counterpartyCollateral: counterpartyCollateral.toString(),
         counterpartyNonce: Number(escrowNonce ?? 0n),
-        counterpartyDeadline: makerDeadline,
-        counterpartySignature: makerSignature,
+        counterpartyDeadline,
+        counterpartySignature,
         ...(counterpartySessionKeyData && { counterpartySessionKeyData }),
       };
       client.send({ type: 'bid.submit', payload: escrowPayload });
@@ -437,8 +435,8 @@ export function useLegacyBidSubmission(
       // Bid was signed and sent - return success
       return {
         success: true,
-        signature: makerSignature,
-        makerDeadline,
+        signature: counterpartySignature,
+        counterpartyDeadline,
       };
     },
     [

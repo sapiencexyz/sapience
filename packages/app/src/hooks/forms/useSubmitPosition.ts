@@ -54,8 +54,8 @@ export function useSubmitPosition({
     },
   });
 
-  // Read maker nonce from PredictionMarketEscrow
-  const { data: makerNonce, refetch: refetchMakerNonce } = useReadContract({
+  // Read predictor nonce from PredictionMarketEscrow
+  const { data: predictorNonce, refetch: refetchPredictorNonce } = useReadContract({
     address: predictionMarketAddress,
     abi: predictionMarketEscrowAbi,
     functionName: 'getNonce',
@@ -91,7 +91,7 @@ export function useSubmitPosition({
   const [success, setSuccess] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
-  // Memoized public client for third-party validation (market maker checks)
+  // Memoized public client for third-party validation
   // This is used to validate external addresses, not the user's own state
   const publicClient = useMemo(
     () => getPublicClientForChainId(chainId),
@@ -168,18 +168,18 @@ export function useSubmitPosition({
         if (mintData.makerNonce !== undefined) {
           nonceValue = toBigIntSafe(mintData.makerNonce);
         } else if (forceRefetch) {
-          const result = await refetchMakerNonce();
+          const result = await refetchPredictorNonce();
           nonceValue = result.data as bigint | undefined;
         } else {
-          nonceValue = makerNonce as bigint | undefined;
+          nonceValue = predictorNonce as bigint | undefined;
         }
 
         // Verify on-chain nonce matches what we're sending
-        const { data: freshMakerNonce } = await refetchMakerNonce();
+        const { data: freshPredictorNonce } = await refetchPredictorNonce();
         if (nonceValue === undefined) {
-          throw new Error('Unable to determine maker nonce');
+          throw new Error('Unable to determine predictor nonce');
         }
-        if (freshMakerNonce !== undefined && nonceValue !== freshMakerNonce) {
+        if (freshPredictorNonce !== undefined && nonceValue !== freshPredictorNonce) {
           throw new Error('Your nonce has changed. Please request new bids.');
         }
 
@@ -188,8 +188,8 @@ export function useSubmitPosition({
           makerNonce: nonceValue,
         };
 
-        // Verify the maker address matches the current effective address
-        // The takerSignature was signed by the bidder referencing the maker address
+        // Verify the predictor address matches the current effective address
+        // The counterparty signature was signed by the bidder referencing the predictor address
         // This check must be unconditional to catch session state changes between auction start and submission
         if (filled.maker?.toLowerCase() !== effectiveAddress?.toLowerCase()) {
           throw new Error(
@@ -207,7 +207,7 @@ export function useSubmitPosition({
           freshAllowance = 0n;
         }
 
-        // Safety net: Check bidder's (taker's) allowance and balance
+        // Safety net: Check counterparty's allowance and balance
         await validateTakerFunds(
           filled.taker,
           BigInt(filled.takerCollateral),
@@ -310,8 +310,8 @@ export function useSubmitPosition({
       chainId,
       prepareCalls,
       sendCalls,
-      makerNonce,
-      refetchMakerNonce,
+      predictorNonce,
+      refetchPredictorNonce,
       refetchAllowance,
       publicClient,
       isProcessing,

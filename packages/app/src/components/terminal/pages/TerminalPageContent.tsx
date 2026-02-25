@@ -1067,17 +1067,16 @@ const TerminalPageContent: React.FC = () => {
                                   uiTx={toUiTx(m)}
                                   predictionsContent={renderPredictionsCell(m)}
                                   auctionId={auctionId}
-                                  takerCollateral={String(
-                                    m?.data?.wager ??
-                                      m?.data?.predictorCollateral ??
+                                  predictorCollateral={String(
+                                    m?.data?.predictorCollateral ??
+                                      m?.data?.wager ??
                                       '0'
                                   )}
-                                  taker={
-                                    m?.data?.taker || m?.data?.predictor || null
+                                  predictor={
+                                    m?.data?.predictor || m?.data?.taker || null
                                   }
                                   resolver={
                                     m?.data?.resolver ||
-                                    // Escrow: extract resolver from first pick
                                     (Array.isArray(m?.data?.picks) &&
                                       m?.data?.picks[0]?.conditionResolver) ||
                                     null
@@ -1087,19 +1086,11 @@ const TerminalPageContent: React.FC = () => {
                                       ? (m?.data?.predictedOutcomes as string[])
                                       : []
                                   }
-                                  takerNonce={(() => {
-                                    const raw =
-                                      m?.data?.takerNonce ??
-                                      m?.data?.predictorNonce;
-                                    const n = Number(raw);
-                                    return Number.isFinite(n) ? n : null;
-                                  })()}
                                   collateralAssetTicker={collateralAssetTicker}
                                   onTogglePin={togglePin}
                                   isPinned={true}
                                   isExpanded={expandedAuctions.has(auctionId)}
                                   onToggleExpanded={toggleExpanded}
-                                  isEscrowAuction={Array.isArray(m?.data?.picks) && m.data.picks.length > 0}
                                   escrowPicks={
                                     Array.isArray(m?.data?.picks)
                                       ? m?.data?.picks
@@ -1141,19 +1132,18 @@ const TerminalPageContent: React.FC = () => {
                                         m
                                       )}
                                       auctionId={auctionId}
-                                      takerCollateral={String(
-                                        m?.data?.wager ??
-                                          m?.data?.predictorCollateral ??
+                                      predictorCollateral={String(
+                                        m?.data?.predictorCollateral ??
+                                          m?.data?.wager ??
                                           '0'
                                       )}
-                                      taker={
-                                        m?.data?.taker ||
+                                      predictor={
                                         m?.data?.predictor ||
+                                        m?.data?.taker ||
                                         null
                                       }
                                       resolver={
                                         m?.data?.resolver ||
-                                        // Escrow: extract resolver from first pick
                                         (Array.isArray(m?.data?.picks) &&
                                           m?.data?.picks[0]
                                             ?.conditionResolver) ||
@@ -1167,13 +1157,6 @@ const TerminalPageContent: React.FC = () => {
                                               ?.predictedOutcomes as string[])
                                           : []
                                       }
-                                      takerNonce={(() => {
-                                        const raw =
-                                          m?.data?.takerNonce ??
-                                          m?.data?.predictorNonce;
-                                        const n = Number(raw);
-                                        return Number.isFinite(n) ? n : null;
-                                      })()}
                                       collateralAssetTicker={
                                         collateralAssetTicker
                                       }
@@ -1183,7 +1166,6 @@ const TerminalPageContent: React.FC = () => {
                                         auctionId
                                       )}
                                       onToggleExpanded={toggleExpanded}
-                                      isEscrowAuction={Array.isArray(m?.data?.picks) && m.data.picks.length > 0}
                                       escrowPicks={
                                         Array.isArray(m?.data?.picks)
                                           ? m?.data?.picks

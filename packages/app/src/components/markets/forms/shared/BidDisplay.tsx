@@ -44,10 +44,10 @@ interface BidDisplayProps {
   className?: string;
   /** All bids for auction chart display */
   allBids?: QuoteBid[];
-  /** Taker position size in wei for auction chart */
-  takerPositionSizeWei?: string;
-  /** Taker address for auction chart */
-  takerAddress?: string;
+  /** Predictor position size in wei for auction chart */
+  predictorPositionSizeWei?: string;
+  /** Predictor address for auction chart */
+  predictorAddress?: string;
   /** Whether the payout section takes up space in the layout (default: true) */
   payoutTakesSpace?: boolean;
   /** Show "add more predictions to see bids" hint when only 1 prediction is selected */
@@ -83,8 +83,8 @@ export default function BidDisplay({
   hintMounted = false,
   className,
   allBids = [],
-  takerPositionSizeWei,
-  takerAddress,
+  predictorPositionSizeWei,
+  predictorAddress,
   payoutTakesSpace = true,
   showAddPredictionsHint = false,
   isAuctionPending = false,
@@ -294,8 +294,8 @@ export default function BidDisplay({
                     bids={chartBids}
                     continuous
                     refreshMs={90}
-                    takerCollateral={takerPositionSizeWei}
-                    taker={takerAddress}
+                    takerCollateral={predictorPositionSizeWei}
+                    taker={predictorAddress}
                     collateralAssetTicker={collateralSymbol}
                     showTooltips={true}
                     compact
