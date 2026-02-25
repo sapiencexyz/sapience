@@ -142,6 +142,13 @@ export default function PositionForm({
     ? (effectiveAddress ?? predictorAddress ?? ZERO_ADDRESS)
     : (predictorAddress ?? ZERO_ADDRESS);
 
+  // Stable refs — read at call time inside triggerAuctionRequest, don't trigger recreation
+  const selectedPredictorAddressRef = useRef(selectedPredictorAddress);
+  useEffect(() => { selectedPredictorAddressRef.current = selectedPredictorAddress; }, [selectedPredictorAddress]);
+
+  const requestQuotesRef = useRef(requestQuotes);
+  useEffect(() => { requestQuotesRef.current = requestQuotes; }, [requestQuotes]);
+
   // Get user's collateral balance from context (shared with form schema validation)
   const { balance: userBalance, isLoading: isBalanceLoading } =
     useCollateralBalanceContext();
@@ -395,7 +402,7 @@ export default function PositionForm({
         return;
       }
 
-      if (!requestQuotes || !selectedPredictorAddress) {
+      if (!requestQuotesRef.current || !selectedPredictorAddressRef.current) {
         return;
       }
 
@@ -470,7 +477,7 @@ export default function PositionForm({
           wager: positionSizeWei,
           resolver: payload.resolver,
           predictedOutcomes: payload.predictedOutcomes,
-          predictor: selectedPredictorAddress,
+          predictor: selectedPredictorAddressRef.current,
           predictorNonce: freshNonce !== undefined ? Number(freshNonce) : 0,
           chainId: chainId,
         };
@@ -483,7 +490,7 @@ export default function PositionForm({
           }
         }
 
-        requestQuotes(params, {
+        requestQuotesRef.current(params, {
           forceRefresh: options?.forceRefresh,
           requireSignature: options?.requireSignature,
         });
@@ -517,13 +524,10 @@ export default function PositionForm({
       }
     },
     [
-      requestQuotes,
-      selectedPredictorAddress,
       selections,
       pythPredictions,
       toast,
       predictorAddress,
-      refetchTakerNonce,
       hasFormErrors,
       positionSizeValue,
       collateralDecimals,

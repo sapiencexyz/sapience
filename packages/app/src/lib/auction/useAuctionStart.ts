@@ -136,6 +136,18 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
     effectiveAddress,
     isUsingSmartAccount,
   } = useSession();
+
+  // Stable refs for session state — read at call time, don't trigger requestQuotes recreation
+  const effectiveAddressRef = useRef(effectiveAddress);
+  const etherealSessionApprovalRef = useRef(etherealSessionApproval);
+  const sessionSignMessageRef = useRef(sessionSignMessage);
+  const isUsingSmartAccountRef = useRef(isUsingSmartAccount);
+
+  useEffect(() => { effectiveAddressRef.current = effectiveAddress; }, [effectiveAddress]);
+  useEffect(() => { etherealSessionApprovalRef.current = etherealSessionApproval; }, [etherealSessionApproval]);
+  useEffect(() => { sessionSignMessageRef.current = sessionSignMessage; }, [sessionSignMessage]);
+  useEffect(() => { isUsingSmartAccountRef.current = isUsingSmartAccount; }, [isUsingSmartAccount]);
+
   const relayerBase = useMemo(() => {
     if (apiBaseUrl && apiBaseUrl.length > 0) return apiBaseUrl;
     const explicitRelayer = process.env.NEXT_PUBLIC_FOIL_RELAYER_URL;
@@ -271,9 +283,9 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
       // Determine if we'll use session signing or wallet signing
       // Session signing: use smart account address as predictor
       // Wallet signing: use wallet address as predictor (signature must match predictor for verification)
-      const willUseSessionSigning = isUsingSmartAccount && !!sessionSignMessage;
+      const willUseSessionSigning = isUsingSmartAccountRef.current && !!sessionSignMessageRef.current;
       const effectivePredictor = willUseSessionSigning
-        ? (effectiveAddress ?? params.predictor)
+        ? (effectiveAddressRef.current ?? params.predictor)
         : (walletAddress ?? params.predictor);
 
       const requestPayload = {
@@ -332,7 +344,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
             // Use session key signing when using smart account with active session
             // Otherwise fall back to owner's wallet signing
             if (willUseSessionSigning) {
-              predictorSignature = await sessionSignMessage(message);
+              predictorSignature = await sessionSignMessageRef.current!(message);
             } else {
               predictorSignature = await signMessageAsync({ message });
             }
@@ -363,10 +375,10 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
             : {}),
           // Add session approval data ONLY when actually using session signing
           // This tells the relayer to verify via smart account (EIP-1271) vs EOA (ecrecover)
-          ...(willUseSessionSigning && etherealSessionApproval
+          ...(willUseSessionSigning && etherealSessionApprovalRef.current
             ? {
-                sessionApproval: etherealSessionApproval.approval,
-                sessionTypedData: etherealSessionApproval.typedData,
+                sessionApproval: etherealSessionApprovalRef.current.approval,
+                sessionTypedData: etherealSessionApprovalRef.current.typedData,
               }
             : {}),
         };
@@ -503,16 +515,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
         }
       }, 400);
     },
-    [
-      wsUrl,
-      signMessageAsync,
-      signTypedDataAsync,
-      isUsingSmartAccount,
-      effectiveAddress,
-      walletAddress,
-      etherealSessionApproval,
-      sessionSignMessage,
-    ]
+    [wsUrl, signMessageAsync, signTypedDataAsync, walletAddress]
   );
 
   const acceptBid = useCallback(
