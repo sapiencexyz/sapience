@@ -117,6 +117,7 @@ export function useLegacyBidSubmission(
   const {
     effectiveAddress,
     signTypedData: sessionSignTypedData,
+    signTypedDataRaw,
     isUsingSession,
     isUsingSmartAccount,
     escrowSessionKeyApproval,
@@ -402,9 +403,11 @@ export function useLegacyBidSubmission(
         });
 
         try {
-          // Use session key signing if session is active, otherwise use wallet
-          if (isUsingSession && sessionSignTypedData) {
-            makerSignature = await sessionSignTypedData({
+          // Use raw session key signing for escrow MintApproval (bypasses kernel wrapping,
+          // contract validates via native session key path in SignatureValidator).
+          // Fall back to kernel-wrapped signing only if signTypedDataRaw is unavailable.
+          if (isUsingSession && signTypedDataRaw) {
+            makerSignature = await signTypedDataRaw({
               domain: {
                 ...typedData.domain,
                 chainId: Number(typedData.domain.chainId),
@@ -516,8 +519,8 @@ export function useLegacyBidSubmission(
 
       if (useEscrowProtocol) {
         // Escrow bid payload - uses escrow terminology (counterparty = bidder)
-        // For new sessions: no session key data needed (ERC-1271 signature is sufficient)
-        // For legacy sessions: include session key approval data
+        // Always include session key data when session is active — the contract validates
+        // via native session key path (Option B) instead of ERC-1271.
         let counterpartySessionKeyData: string | undefined;
         if (isUsingSession && escrowSessionKeyApproval) {
           counterpartySessionKeyData = encodeEscrowSessionKeyData(escrowSessionKeyApproval);
@@ -572,6 +575,7 @@ export function useLegacyBidSubmission(
       isUsingSession,
       isUsingSmartAccount,
       sessionSignTypedData,
+      signTypedDataRaw,
       escrowSessionKeyApproval,
       chainClients,
       wusdeAddress,
