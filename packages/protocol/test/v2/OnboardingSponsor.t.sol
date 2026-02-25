@@ -134,7 +134,9 @@ contract OnboardingSponsorTest is Test {
                 PREDICTOR_COLLATERAL,
                 COUNTERPARTY_COLLATERAL,
                 predictor,
-                counterparty
+                counterparty,
+                sponsorAddr,
+                ""
             )
         );
 
@@ -283,7 +285,7 @@ contract OnboardingSponsorTest is Test {
         bytes32 pickConfigId = keccak256(abi.encode(picks));
         uint256 bigCollateral = 2e18;
         bytes32 predictionHash = keccak256(
-            abi.encode(pickConfigId, bigCollateral, COUNTERPARTY_COLLATERAL, predictor, counterparty)
+            abi.encode(pickConfigId, bigCollateral, COUNTERPARTY_COLLATERAL, predictor, counterparty, address(sponsor), "")
         );
 
         uint256 pNonce = _freshNonce();
@@ -443,7 +445,7 @@ contract OnboardingSponsorTest is Test {
         // Build request with eve as counterparty (not the required vault-bot)
         bytes32 pickConfigId = keccak256(abi.encode(picks));
         bytes32 predictionHash = keccak256(
-            abi.encode(pickConfigId, PREDICTOR_COLLATERAL, COUNTERPARTY_COLLATERAL, predictor, eve)
+            abi.encode(pickConfigId, PREDICTOR_COLLATERAL, COUNTERPARTY_COLLATERAL, predictor, eve, address(sponsor), "")
         );
 
         uint256 evePk = 6;
@@ -494,7 +496,7 @@ contract OnboardingSponsorTest is Test {
 
         bytes32 pickConfigId = keccak256(abi.encode(picks));
         bytes32 predictionHash = keccak256(
-            abi.encode(pickConfigId, highPredictorCollateral, lowCounterpartyCollateral, predictor, counterparty)
+            abi.encode(pickConfigId, highPredictorCollateral, lowCounterpartyCollateral, predictor, counterparty, address(sponsor), "")
         );
 
         uint256 pNonce = _freshNonce();
@@ -534,7 +536,7 @@ contract OnboardingSponsorTest is Test {
 
         bytes32 pickConfigId = keccak256(abi.encode(picks));
         bytes32 predictionHash = keccak256(
-            abi.encode(pickConfigId, predCol, ctrCol, predictor, counterparty)
+            abi.encode(pickConfigId, predCol, ctrCol, predictor, counterparty, address(sponsor), "")
         );
 
         uint256 pNonce = _freshNonce();

@@ -299,7 +299,7 @@ const CreatePositionFormInner = ({
     }
 
     logPositionForm(
-      `Received ${rawBids.length} escrow bid(s), marking as valid. First bid: counterparty=${rawBids[0]?.maker?.slice(0, 10)}, collateral=${rawBids[0]?.makerCollateral}, deadline=${rawBids[0]?.makerDeadline}`
+      `Received ${rawBids.length} escrow bid(s), marking as valid. First bid: counterparty=${rawBids[0]?.counterparty?.slice(0, 10)}, collateral=${rawBids[0]?.counterpartyCollateral}, deadline=${rawBids[0]?.counterpartyDeadline}`
     );
     setBids(
       rawBids.map((b) => ({
@@ -712,7 +712,7 @@ const CreatePositionFormInner = ({
     // Validate the bid hasn't expired
     const nowSec = Math.floor(Date.now() / 1000);
 
-    if (bid.makerDeadline <= nowSec) {
+    if (bid.counterpartyDeadline <= nowSec) {
       toast({
         title: 'Bid expired',
         description: 'The bid has expired. Please wait for new bids.',

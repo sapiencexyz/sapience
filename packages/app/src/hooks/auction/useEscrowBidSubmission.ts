@@ -30,8 +30,7 @@ import { encodeEscrowSessionKeyData } from '~/lib/session/sessionKeyManager';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { toAuctionWsUrl } from '~/lib/ws';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
-
-import { useEscrowNonce } from '~/hooks/blockchain/useEscrowContract';
+import { generateRandomNonce } from '@sapience/sdk';
 
 export type EscrowBidSubmissionParams = {
   auctionId: string;
@@ -120,12 +119,7 @@ export function useEscrowBidSubmission(
     | `0x${string}`
     | undefined;
 
-  // Get escrow nonce for counterparty signing
-  const { nonce: escrowNonce } = useEscrowNonce({
-    address: effectiveAddress as Address | undefined,
-    chainId,
-    enabled: true,
-  });
+  // Note: escrow nonces are now generated randomly per-request (bitmap nonce system)
 
   // Default to 18 decimals, can be overridden in format/parse calls
   const tokenDecimals = 18;
@@ -173,21 +167,6 @@ export function useEscrowBidSubmission(
         return { success: false, error: 'Wallet not connected' };
       }
 
-      // Smart account mode is not supported for terminal bidding
-      if (isUsingSmartAccount) {
-        toast({
-          title: 'Smart Account Not Supported',
-          description:
-            'The trading terminal does not currently support smart account mode. Please switch to EOA mode in settings to place bids.',
-          variant: 'destructive',
-          duration: 6000,
-        });
-        return {
-          success: false,
-          error: 'Smart account mode not supported for terminal bidding',
-        };
-      }
-
       if (!auctionId) {
         return { success: false, error: 'Auction ID required' };
       }
@@ -229,8 +208,11 @@ export function useEscrowBidSubmission(
 
       let counterpartySignature: `0x${string}`;
 
+      // Generate random nonce for bitmap nonce system (Permit2-style)
+      const counterpartyNonce = generateRandomNonce();
+
       {
-        // SmartAccount counterparties need wUSDe pre-funded before mint
+        // Escrow: SmartAccount counterparties need wUSDe pre-funded before mint
         // The predictor calls mint(), which does transferFrom(counterparty) - counterparty can't wrap at that time
         if (isUsingSession && wusdeAddress && chainClients?.ethereal) {
           const escrowAddress = verifyingContract;
@@ -352,9 +334,6 @@ export function useEscrowBidSubmission(
           predictedOutcome: p.predictedOutcome as OutcomeSide,
         }));
 
-        // Get counterparty nonce (bidder's nonce)
-        const counterpartyNonce = escrowNonce ?? 0n;
-
         // Build escrow typed data for counterparty (bidder)
         const typedData = buildCounterpartyMintTypedData({
           picks,
@@ -364,6 +343,8 @@ export function useEscrowBidSubmission(
           counterparty: signerAddress,
           counterpartyNonce,
           counterpartyDeadline: BigInt(counterpartyDeadline),
+          predictorSponsor: '0x0000000000000000000000000000000000000000',
+          predictorSponsorData: '0x',
           verifyingContract: verifyingContract,
           chainId,
         });
@@ -409,6 +390,7 @@ export function useEscrowBidSubmission(
       // Send over shared Auction WS (fire and forget - no ack wait)
       const client = getSharedAuctionWsClient(wsUrl);
 
+      // Escrow bid payload
       let counterpartySessionKeyData: string | undefined;
       if (isUsingSession && escrowSessionKeyApproval) {
         counterpartySessionKeyData = encodeEscrowSessionKeyData(escrowSessionKeyApproval);
@@ -418,7 +400,7 @@ export function useEscrowBidSubmission(
         auctionId,
         counterparty: signerAddress,
         counterpartyCollateral: counterpartyCollateral.toString(),
-        counterpartyNonce: Number(escrowNonce ?? 0n),
+        counterpartyNonce: Number(counterpartyNonce),
         counterpartyDeadline,
         counterpartySignature,
         ...(counterpartySessionKeyData && { counterpartySessionKeyData }),
@@ -447,7 +429,7 @@ export function useEscrowBidSubmission(
       signTypedDataAsync,
       onSignatureRejected,
       effectiveAddress,
-      escrowNonce,
+      chainId,
       isUsingSession,
       isUsingSmartAccount,
       sessionSignTypedData,

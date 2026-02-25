@@ -200,6 +200,8 @@ export interface AuctionRFQPayload {
   chainId: number;
   refCode?: string;
   predictorSessionKeyData?: string; // ZeroDev session approval (base64)
+  predictorSponsor?: string; // Sponsor contract address (address(0) = self-funded)
+  predictorSponsorData?: string; // Opaque data passed to sponsor's fundMint
 }
 
 /**

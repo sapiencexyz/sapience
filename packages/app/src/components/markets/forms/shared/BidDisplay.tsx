@@ -109,7 +109,7 @@ export default function BidDisplay({
 
       const totalWei = (() => {
         try {
-          return userPositionSizeWei + BigInt(bid.makerCollateral);
+          return userPositionSizeWei + BigInt(bid.counterpartyCollateral);
         } catch {
           return 0n;
         }
@@ -130,7 +130,7 @@ export default function BidDisplay({
 
   // Check if the current best bid is expired
   const isBidExpired = bestBid
-    ? bestBid.makerDeadline * 1000 - nowMs <= 0
+    ? bestBid.counterpartyDeadline * 1000 - nowMs <= 0
     : true;
 
   // Unified UI state - single source of truth for all UI rendering
@@ -158,7 +158,7 @@ export default function BidDisplay({
 
     const humanTotalVal = calculatePayoutAmount(bestBid, positionSize);
 
-    const remainingMs = bestBid.makerDeadline * 1000 - nowMs;
+    const remainingMs = bestBid.counterpartyDeadline * 1000 - nowMs;
     const secs = Math.max(0, Math.ceil(remainingMs / 1000));
 
     return { humanTotal: humanTotalVal, remainingSecs: secs };
@@ -294,8 +294,8 @@ export default function BidDisplay({
                     bids={chartBids}
                     continuous
                     refreshMs={90}
-                    takerCollateral={predictorPositionSizeWei}
-                    taker={predictorAddress}
+                    predictorCollateral={predictorPositionSizeWei}
+                    predictor={predictorAddress}
                     collateralAssetTicker={collateralSymbol}
                     showTooltips={true}
                     compact

@@ -125,16 +125,16 @@ export function createPositionDefaults(
 
 /**
  * Find the best display bid from a list of QuoteBids.
- * Returns the valid bid with the highest makerCollateral, or a single non-expired bid as fallback.
+ * Returns the valid bid with the highest counterpartyCollateral, or a single non-expired bid as fallback.
  */
 export function getBestDisplayBid(bids: QuoteBid[]): QuoteBid | null {
   const nowMs = Date.now();
-  const nonExpired = bids.filter((b) => b.makerDeadline * 1000 > nowMs);
+  const nonExpired = bids.filter((b) => b.counterpartyDeadline * 1000 > nowMs);
   const valid = nonExpired.filter((b) => b.validationStatus === 'valid');
   if (valid.length > 0) {
     return valid.reduce((best, cur) => {
       try {
-        return BigInt(cur.makerCollateral) > BigInt(best.makerCollateral) ? cur : best;
+        return BigInt(cur.counterpartyCollateral) > BigInt(best.counterpartyCollateral) ? cur : best;
       } catch {
         return best;
       }
@@ -156,7 +156,7 @@ export function calculatePayout(
       positionSize || '0',
       collateralDecimals
     );
-    const totalWei = userPositionSizeWei + BigInt(bid.makerCollateral);
+    const totalWei = userPositionSizeWei + BigInt(bid.counterpartyCollateral);
     return parseFloat(formatUnits(totalWei, collateralDecimals)).toFixed(2);
   } catch {
     return null;

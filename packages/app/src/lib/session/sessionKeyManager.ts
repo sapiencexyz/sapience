@@ -37,7 +37,6 @@ import {
 } from '@zerodev/permissions/policies';
 import { getEntryPoint, KERNEL_V3_1 } from '@zerodev/sdk/constants';
 import {
-  predictionMarketAbi,
   predictionMarketEscrowAbi,
   collateralTokenAbi,
   liquidityVaultAbi,
@@ -662,7 +661,7 @@ export async function createSession(
         valueLimit: BigInt(1e24), // 1,000,000 * 1e18
       },
       {
-        // Single approve permission using ONE_OF to allow PredictionMarket, Vault, and Escrow
+        // Single approve permission using ONE_OF to allow Vault and Escrow
         target: etherealContracts.wusde,
         abi: collateralTokenAbi,
         functionName: 'approve',
@@ -670,28 +669,12 @@ export async function createSession(
           {
             condition: ParamCondition.ONE_OF,
             value: [
-              etherealContracts.predictionMarket,
               etherealContracts.vault,
               etherealContracts.predictionMarketEscrow,
             ].filter(Boolean) as Address[],
           },
           null,
         ],
-      },
-      {
-        target: etherealContracts.predictionMarket,
-        abi: predictionMarketAbi,
-        functionName: 'mint',
-      },
-      {
-        target: etherealContracts.predictionMarket,
-        abi: predictionMarketAbi,
-        functionName: 'burn',
-      },
-      {
-        target: etherealContracts.predictionMarket,
-        abi: predictionMarketAbi,
-        functionName: 'consolidatePrediction',
       },
       // Vault functions for gasless deposits/withdrawals
       {

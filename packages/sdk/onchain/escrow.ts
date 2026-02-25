@@ -38,7 +38,8 @@ const PREDICTION_MARKET_ESCROW_ABI = parseAbi([
   'function getPrediction(bytes32 predictionId) view returns ((bytes32 predictionId, bytes32 pickConfigId, uint256 predictorCollateral, uint256 counterpartyCollateral, address predictor, address counterparty, uint256 predictorTokensMinted, uint256 counterpartyTokensMinted, bool settled))',
   'function getPickConfiguration(bytes32 pickConfigId) view returns ((bytes32 pickConfigId, uint256 totalPredictorCollateral, uint256 totalCounterpartyCollateral, uint256 claimedPredictorCollateral, uint256 claimedCounterpartyCollateral, bool resolved, uint8 result))',
   'function getTokenPair(bytes32 pickConfigId) view returns ((address predictorToken, address counterpartyToken))',
-  'function getNonce(address account) view returns (uint256)',
+  'function isNonceUsed(address account, uint256 nonce) view returns (bool used)',
+  'function nonceBitmap(address account, uint256 wordPos) view returns (uint256 word)',
   'function canSettle(bytes32 predictionId) view returns (bool)',
   'function getPicks(bytes32 pickConfigId) view returns ((address conditionResolver, bytes32 conditionId, uint8 predictedOutcome)[])',
   'function getEscrowRecord(bytes32 predictionId) view returns ((bytes32 pickConfigId, uint256 totalCollateral, uint256 predictorCollateral, uint256 counterpartyCollateral, uint256 predictorTokensMinted, uint256 counterpartyTokensMinted, bool settled))',
@@ -266,16 +267,30 @@ export async function getEscrowRecord(
 // ============================================================================
 
 /**
- * Get the current nonce for an account
+ * Generate a random nonce for the bitmap nonce system (Permit2-style).
+ * With bitmap nonces, any unused nonce value is valid - no need to read
+ * sequential nonces from the contract. Uses crypto.getRandomValues for
+ * strong randomness.
  */
-export async function getNonce(
+export function generateRandomNonce(): bigint {
+  const arr = new Uint32Array(1);
+  crypto.getRandomValues(arr);
+  // Range [1, 2^32] - collision probability is negligible
+  return BigInt(arr[0]) + 1n;
+}
+
+/**
+ * Check if a specific nonce has been used for an account
+ */
+export async function isNonceUsed(
   account: Address,
+  nonce: bigint,
   options?: {
     marketAddress?: Address;
     chainId?: number;
     rpcUrl?: string;
   }
-): Promise<bigint> {
+): Promise<boolean> {
   const chainId = options?.chainId ?? CHAIN_ID_ETHEREAL;
   const marketAddress = options?.marketAddress ?? getMarketAddress(chainId);
   if (!marketAddress) throw new Error(`No escrow market address for chain ${chainId}`);
@@ -284,8 +299,8 @@ export async function getNonce(
   return await client.readContract({
     address: marketAddress,
     abi: PREDICTION_MARKET_ESCROW_ABI,
-    functionName: 'getNonce',
-    args: [account],
+    functionName: 'isNonceUsed',
+    args: [account, nonce],
   });
 }
 

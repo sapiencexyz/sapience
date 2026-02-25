@@ -35,11 +35,11 @@ type SubmitData = {
 type Props = {
   uiTx: UiTransaction;
   bids: any[] | undefined;
-  takerCollateral: string | null;
+  predictorCollateral: string | null;
   collateralAssetTicker: string;
   onSubmit: (data: SubmitData) => void | Promise<void>;
   maxEndTimeSec?: number | null;
-  taker?: string | null;
+  predictor?: string | null;
   resolver?: string | null;
   predictedOutcomes?: string[];
 };
@@ -48,12 +48,12 @@ type BestBidProps = {
   uiTx: UiTransaction;
   sortedBids: any[];
   now: number;
-  takerCollateral: string | null;
+  predictorCollateral: string | null;
   collateralAssetTicker: string;
   lastTrade: {
-    takerStr: string;
+    counterpartyStr: string;
     payoutStr: string;
-    takerNum: number;
+    counterpartyNum: number;
     totalNum: number;
     pct?: number;
   } | null;
@@ -65,7 +65,7 @@ const BestBid: React.FC<BestBidProps> = ({
   uiTx,
   sortedBids,
   now,
-  takerCollateral,
+  predictorCollateral,
   collateralAssetTicker,
   lastTrade,
   lastBid,
@@ -76,11 +76,11 @@ const BestBid: React.FC<BestBidProps> = ({
       for (const b of sortedBids || []) {
         // Skip zero address bids
         if (
-          !b?.maker ||
-          b.maker.toLowerCase() === '0x0000000000000000000000000000000000000000'
+          !b?.counterparty ||
+          b.counterparty.toLowerCase() === '0x0000000000000000000000000000000000000000'
         )
           continue;
-        const deadlineSec = Number(b?.makerDeadline || 0);
+        const deadlineSec = Number(b?.counterpartyDeadline || 0);
         const ms =
           Number.isFinite(deadlineSec) && deadlineSec > 0
             ? deadlineSec * 1000
@@ -119,9 +119,9 @@ const BestBid: React.FC<BestBidProps> = ({
                   className="w-[min(520px,90vw)] rounded-md bg-background border border-border px-3 py-2.5"
                 >
                   <TradePopoverContent
-                    leftAddress={lastBid?.maker || ''}
+                    leftAddress={lastBid?.counterparty || ''}
                     rightAddress={uiTx?.position?.owner || ''}
-                    takerAmountEth={lastTrade.takerNum}
+                    counterpartyAmountEth={lastTrade.counterpartyNum}
                     totalAmountEth={lastTrade.totalNum}
                     percent={lastTrade.pct}
                     ticker={collateralAssetTicker}
@@ -141,7 +141,7 @@ const BestBid: React.FC<BestBidProps> = ({
             {topUnexpiredBid ? (
               (() => {
                 const b = topUnexpiredBid;
-                const deadlineSec = Number(b?.makerDeadline || 0);
+                const deadlineSec = Number(b?.counterpartyDeadline || 0);
                 const secondsRemaining = (() => {
                   if (!Number.isFinite(deadlineSec) || deadlineSec <= 0)
                     return null;
@@ -151,46 +151,47 @@ const BestBid: React.FC<BestBidProps> = ({
                 })();
                 const payoutStr = (() => {
                   try {
-                    const maker = BigInt(String(takerCollateral ?? '0'));
-                    const taker = BigInt(String(b?.makerCollateral ?? '0'));
-                    return (maker + taker).toString();
+                    const predictorWei = BigInt(String(predictorCollateral ?? '0'));
+                    const counterpartyWei = BigInt(String(b?.counterpartyCollateral ?? '0'));
+                    return (predictorWei + counterpartyWei).toString();
                   } catch {
-                    return String(b?.makerCollateral || '0');
+                    return String(b?.counterpartyCollateral || '0');
                   }
                 })();
                 let payoutNumber = 0;
-                let takerNumber = 0;
+                let counterpartyNumber = 0;
                 try {
                   payoutNumber = Number(formatEther(BigInt(payoutStr)));
                 } catch {
                   payoutNumber = Number(payoutStr) || 0;
                 }
                 try {
-                  takerNumber = Number(
-                    formatEther(BigInt(String(b?.makerCollateral ?? '0')))
+                  counterpartyNumber = Number(
+                    formatEther(BigInt(String(b?.counterpartyCollateral ?? '0')))
                   );
                 } catch {
-                  takerNumber = 0;
+                  counterpartyNumber = 0;
                 }
                 let pct: number | null = null;
                 try {
-                  const maker = BigInt(String(takerCollateral ?? '0'));
-                  const taker = BigInt(String(b?.makerCollateral ?? '0'));
-                  const total = maker + taker;
+                  const predictorWei = BigInt(String(predictorCollateral ?? '0'));
+                  const counterpartyWei = BigInt(String(b?.counterpartyCollateral ?? '0'));
+                  const total = predictorWei + counterpartyWei;
                   if (total > 0n) {
-                    const pctTimes100 = Number((taker * 10000n) / total);
+                    const pctTimes100 = Number((counterpartyWei * 10000n) / total);
                     pct = Math.round(pctTimes100 / 100);
                   }
                 } catch {
                   /* noop */
                 }
-                const takerStr = Number.isFinite(takerNumber)
-                  ? takerNumber.toLocaleString(undefined, {
+                const counterpartyStr = Number.isFinite(counterpartyNumber)
+                  ? counterpartyNumber.toLocaleString(undefined, {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
                     })
                   : '—';
                 const payoutDisplay = Number.isFinite(payoutNumber)
+
                   ? payoutNumber.toLocaleString(undefined, {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
@@ -203,7 +204,7 @@ const BestBid: React.FC<BestBidProps> = ({
                         <div className="flex items-baseline justify-between">
                           <span className="align-baseline">
                             <span className="font-mono text-brand-white">
-                              {takerStr} {collateralAssetTicker}
+                              {counterpartyStr} {collateralAssetTicker}
                             </span>{' '}
                             <br className="sm:hidden" />
                             <span className="text-muted-foreground">
@@ -228,14 +229,14 @@ const BestBid: React.FC<BestBidProps> = ({
                           <div className="flex items-center gap-2 min-w-0 text-muted-foreground">
                             <div className="inline-flex items-center gap-1 min-w-0">
                               <EnsAvatar
-                                address={b?.maker || ''}
+                                address={b?.counterparty || ''}
                                 className="w-4 h-4 rounded-sm ring-1 ring-border/50 shrink-0"
                                 width={16}
                                 height={16}
                               />
                               <div className="min-w-0">
                                 <AddressDisplay
-                                  address={b?.maker || ''}
+                                  address={b?.counterparty || ''}
                                   compact
                                 />
                               </div>
@@ -274,11 +275,11 @@ const BestBid: React.FC<BestBidProps> = ({
 const AuctionRequestInfo: React.FC<Props> = ({
   uiTx,
   bids,
-  takerCollateral,
+  predictorCollateral,
   collateralAssetTicker,
   onSubmit,
   maxEndTimeSec,
-  taker,
+  predictor,
   resolver,
   predictedOutcomes,
 }) => {
@@ -289,20 +290,20 @@ const AuctionRequestInfo: React.FC<Props> = ({
     return () => clearInterval(id);
   }, []);
 
-  const takerAmountDisplay = useMemo(() => {
+  const predictorAmountDisplay = useMemo(() => {
     try {
-      return Number(formatEther(BigInt(String(takerCollateral ?? '0'))));
+      return Number(formatEther(BigInt(String(predictorCollateral ?? '0'))));
     } catch {
       return 0;
     }
-  }, [takerCollateral]);
+  }, [predictorCollateral]);
 
-  const highestTakerBidDisplay = useMemo(() => {
+  const highestCounterpartyBidDisplay = useMemo(() => {
     try {
       if (!Array.isArray(bids) || bids.length === 0) return 0;
       const maxWei = bids.reduce((m, b) => {
         try {
-          const v = BigInt(String(b?.makerCollateral ?? '0'));
+          const v = BigInt(String(b?.counterpartyCollateral ?? '0'));
           return v > m ? v : m;
         } catch {
           return m;
@@ -323,7 +324,7 @@ const AuctionRequestInfo: React.FC<Props> = ({
     }, bids[0]);
   }, [bids]);
 
-  // GraphQL-sourced Last Trade based on maker + predicted outcomes signature
+  // GraphQL-sourced Last Trade based on counterparty + predicted outcomes signature
   const outcomesSignature = useMemo(() => {
     try {
       const decoded = decodeAuctionPredictedOutcomes({
@@ -368,7 +369,7 @@ const AuctionRequestInfo: React.FC<Props> = ({
 
   const { data: lastPosition, refetch: refetchLastTrade } =
     useLastTradeForIntent({
-      predictor: taker || uiTx?.position?.owner,
+      predictor: predictor || uiTx?.position?.owner,
       outcomesSignature: outcomesSignature,
     });
 
@@ -399,7 +400,7 @@ const AuctionRequestInfo: React.FC<Props> = ({
           ? Math.round((counterpartyEth / totalEth) * 100)
           : undefined;
       return {
-        takerStr: counterpartyEth.toLocaleString(undefined, {
+        counterpartyStr: counterpartyEth.toLocaleString(undefined, {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
         }),
@@ -407,7 +408,7 @@ const AuctionRequestInfo: React.FC<Props> = ({
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
         }),
-        takerNum: counterpartyEth,
+        counterpartyNum: counterpartyEth,
         totalNum: totalEth,
         pct,
       } as const;
@@ -453,19 +454,19 @@ const AuctionRequestInfo: React.FC<Props> = ({
       const candidates = bids.filter((b) => {
         // Filter out zero address bids
         if (
-          !b?.maker ||
-          b.maker.toLowerCase() === '0x0000000000000000000000000000000000000000'
+          !b?.counterparty ||
+          b.counterparty.toLowerCase() === '0x0000000000000000000000000000000000000000'
         )
           return false;
-        const deadlineSec = Number(b?.makerDeadline || 0);
+        const deadlineSec = Number(b?.counterpartyDeadline || 0);
         if (!Number.isFinite(deadlineSec) || deadlineSec <= 0) return true;
         return deadlineSec * 1000 > now;
       });
       if (candidates.length === 0) return null as any;
       return candidates.reduce((best, b) => {
         try {
-          const cur = BigInt(String(b?.makerCollateral ?? '0'));
-          const bestVal = BigInt(String(best?.makerCollateral ?? '0'));
+          const cur = BigInt(String(b?.counterpartyCollateral ?? '0'));
+          const bestVal = BigInt(String(best?.counterpartyCollateral ?? '0'));
           return cur > bestVal ? b : best;
         } catch {
           return best;
@@ -483,7 +484,7 @@ const AuctionRequestInfo: React.FC<Props> = ({
     const withSortKey = list.map((b) => {
       let positionSize = 0n;
       try {
-        positionSize = BigInt(String(b?.makerCollateral ?? '0'));
+        positionSize = BigInt(String(b?.counterpartyCollateral ?? '0'));
       } catch {
         positionSize = 0n;
       }
@@ -539,8 +540,8 @@ const AuctionRequestInfo: React.FC<Props> = ({
         collateralAssetTicker={collateralAssetTicker}
         decimals={2}
         variant="compact"
-        makerAmountDisplay={takerAmountDisplay}
-        bestBidDisplay={highestTakerBidDisplay}
+        predictorAmountDisplay={predictorAmountDisplay}
+        bestBidDisplay={highestCounterpartyBidDisplay}
         onSubmit={onSubmit}
         maxExpirySeconds={maxRemainingExpirySeconds}
       />
@@ -564,7 +565,7 @@ const AuctionRequestInfo: React.FC<Props> = ({
             uiTx={uiTx}
             sortedBids={sortedBids}
             now={now}
-            takerCollateral={takerCollateral}
+            predictorCollateral={predictorCollateral}
             collateralAssetTicker={collateralAssetTicker}
             lastTrade={lastTrade}
             lastBid={lastBid}

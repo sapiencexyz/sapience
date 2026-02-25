@@ -13,7 +13,10 @@ import { FormProvider, type UseFormReturn, useWatch } from 'react-hook-form';
 import { parseUnits } from 'viem';
 import { useAccount, useReadContract } from 'wagmi';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
-import { predictionMarketEscrowAbi } from '@sapience/sdk/abis';
+import {
+  predictionMarketAbi,
+} from '@sapience/sdk/abis';
+import { generateRandomNonce } from '@sapience/sdk';
 import {
   COLLATERAL_SYMBOLS,
   CHAIN_ID_ETHEREAL,
@@ -146,20 +149,25 @@ export default function PositionForm({
   const { balance: userBalance, isLoading: isBalanceLoading } =
     useCollateralBalanceContext();
 
-  // Fetch predictor nonce from PredictionMarketEscrow contract
-  const { refetch: refetchPredictorNonce, error: nonceError } = useReadContract({
+  // Fetch taker nonce: V1 reads from contract, V2 (escrow) uses random bitmap nonces
+  const isEscrowChain = chainId === CHAIN_ID_ETHEREAL_TESTNET;
+  const { refetch: refetchV1TakerNonce, error: nonceError } = useReadContract({
     address: predictionMarketAddress,
-    abi: predictionMarketEscrowAbi,
-    functionName: 'getNonce',
+    abi: predictionMarketAbi,
+    functionName: 'nonces',
     args: selectedPredictorAddress ? [selectedPredictorAddress] : undefined,
     chainId,
     query: {
-      enabled: !!selectedPredictorAddress && !!predictionMarketAddress,
+      enabled: !isEscrowChain && !!selectedPredictorAddress && !!predictionMarketAddress,
     },
   });
   if (nonceError) {
     console.error('[Auction] Nonce read error:', nonceError);
   }
+  // For escrow chains, generate random nonce; for V1, refetch from contract
+  const refetchTakerNonce = isEscrowChain
+    ? () => Promise.resolve({ data: generateRandomNonce() })
+    : refetchV1TakerNonce;
   const [isLimitDialogOpen, setIsLimitDialogOpen] = useState(false);
 
   const positionSizeValue = useWatch({
@@ -290,14 +298,14 @@ export default function PositionForm({
 
     // Get non-expired bids
     const nonExpiredBids = validBids.filter(
-      (bid) => bid.makerDeadline * 1000 > nowMs
+      (bid) => bid.counterpartyDeadline * 1000 > nowMs
     );
 
     if (nonExpiredBids.length === 0) {
       const resultKey = 'all-expired';
       if (prevFilterResultRef.current !== resultKey) {
         logPositionForm(
-          `[bestBid] All ${validBids.length} bid(s) expired. First deadline=${validBids[0]?.makerDeadline}, nowSec=${Math.floor(nowMs / 1000)}`
+          `[bestBid] All ${validBids.length} bid(s) expired. First deadline=${validBids[0]?.counterpartyDeadline}, nowSec=${Math.floor(nowMs / 1000)}`
         );
         prevFilterResultRef.current = resultKey;
       }
@@ -322,7 +330,7 @@ export default function PositionForm({
 
     if (validFilteredBids.length === 0) {
       const resultKey = estimateFromFailed
-        ? `estimate:${estimateFromFailed.maker}`
+        ? `estimate:${estimateFromFailed.counterparty}`
         : `no-valid:${failedBids.length}`;
       if (prevFilterResultRef.current !== resultKey) {
         if (estimateFromFailed) {
@@ -335,10 +343,10 @@ export default function PositionForm({
       return { bestBid: null, estimateBid: estimateFromFailed };
     }
 
-    // Select the bid with highest makerCollateral (highest payout for user)
+    // Select the bid with highest counterpartyCollateral (highest payout for user)
     const best = validFilteredBids.reduce((acc, current) => {
       try {
-        return BigInt(current.makerCollateral) > BigInt(acc.makerCollateral)
+        return BigInt(current.counterpartyCollateral) > BigInt(acc.counterpartyCollateral)
           ? current
           : acc;
       } catch {
@@ -346,7 +354,7 @@ export default function PositionForm({
       }
     });
 
-    const resultKey = `best:${best.maker}:${best.makerCollateral}`;
+    const resultKey = `best:${best.counterparty}:${best.counterpartyCollateral}`;
     if (prevFilterResultRef.current !== resultKey) {
       logPositionForm(`Best bid: ${formatBidForLog(best, collateralDecimals)}`);
       prevFilterResultRef.current = resultKey;
@@ -366,7 +374,7 @@ export default function PositionForm({
       return;
     }
     // Clear the sticky estimate when there are no non-expired bids left.
-    const hasAnyNonExpired = bids.some((b) => b.makerDeadline * 1000 > nowMs);
+    const hasAnyNonExpired = bids.some((b) => b.counterpartyDeadline * 1000 > nowMs);
     if (!hasAnyNonExpired) setStickyEstimateBid(null);
   }, [bestBid, estimateBid, bids, nowMs]);
 
@@ -440,7 +448,7 @@ export default function PositionForm({
         setStickyEstimateBid(null);
 
         // Fetch fresh nonce via wagmi refetch (bypasses stale cache)
-        const nonceResult = await refetchPredictorNonce();
+        const nonceResult = await refetchTakerNonce();
         const freshNonce = nonceResult.data;
 
         if (freshNonce === undefined && predictorAddress) {
@@ -475,13 +483,12 @@ export default function PositionForm({
               chainId
             );
 
-        // AuctionParams uses legacy taker naming — maps to predictor
         const params: AuctionParams = {
           wager: positionSizeWei,
           resolver: payload.resolver,
           predictedOutcomes: payload.predictedOutcomes,
-          taker: selectedPredictorAddress,
-          takerNonce: freshNonce !== undefined ? Number(freshNonce) : 0,
+          predictor: selectedPredictorAddress,
+          predictorNonce: freshNonce !== undefined ? Number(freshNonce) : 0,
           chainId: chainId,
         };
 
@@ -533,7 +540,8 @@ export default function PositionForm({
       pythPredictions,
       toast,
       predictorAddress,
-      refetchPredictorNonce,
+      refetchTakerNonce,
+      isEscrowChain,
       hasFormErrors,
       positionSizeValue,
       collateralDecimals,
@@ -556,13 +564,8 @@ export default function PositionForm({
   // Auto-initiate auction when content (predictions/position size) changes
   // We debounce this to avoid spamming the auction endpoint while the user is typing
   // Auto-trigger for all users - logged-out users get unsigned auctions with estimates
-  // TODO: Re-enable after fixing the issue where auto-triggers invalidate received bids
   const autoAuctionDebounceRef = useRef<number | undefined>(undefined);
   useEffect(() => {
-    // TEMPORARILY DISABLED for escrow testing - auto-triggers were invalidating received bids
-    // User must click "INITIATE AUCTION" manually
-    return;
-
     // Wait for balance to load before triggering for logged-in users
     // Skip balance loading check for logged-out users (they have no balance to load)
     if (hasConnectedWallet && isBalanceLoading) return;
@@ -780,13 +783,13 @@ export default function PositionForm({
           {/* Sponsorship indicator */}
           {isSponsored && (() => {
             const activeBid = bestBid ?? stickyEstimateBid;
-            // User's collateral = positionSize (what they typed), vault's collateral = bid.makerCollateral
+            // User's collateral = positionSize (what they typed), vault's collateral = bid.counterpartyCollateral
             const decimals = collateralDecimals ?? 18;
             const userCollateral = positionSizeValue
               ? parseUnits(positionSizeValue, decimals)
               : 0n;
             const vaultCollateral = activeBid
-              ? BigInt(activeBid.makerCollateral)
+              ? BigInt(activeBid.counterpartyCollateral)
               : 0n;
             const bidEligible =
               !activeBid || !userCollateral

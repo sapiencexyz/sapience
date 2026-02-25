@@ -125,8 +125,8 @@ const AuctionRequestRow: React.FC<Props> = ({
     {
       chainId,
       predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
-      takerAddress: predictor as `0x${string}` | undefined,
-      takerCollateral: predictorCollateral ?? undefined,
+      predictorAddress: predictor as `0x${string}` | undefined,
+      predictorCollateral: predictorCollateral ?? undefined,
       encodedPredictedOutcomes: predictedOutcomes?.[0] as
         | `0x${string}`
         | undefined,
@@ -148,8 +148,8 @@ const AuctionRequestRow: React.FC<Props> = ({
       if (!Array.isArray(validBids) || validBids.length === 0) return null;
       const best = validBids.reduce((prev, curr) => {
         try {
-          const currVal = BigInt(String(curr?.makerCollateral ?? '0'));
-          const prevVal = BigInt(String(prev?.makerCollateral ?? '0'));
+          const currVal = BigInt(String(curr?.counterpartyCollateral ?? '0'));
+          const prevVal = BigInt(String(prev?.counterpartyCollateral ?? '0'));
           return currVal > prevVal ? curr : prev;
         } catch {
           return prev;
@@ -157,7 +157,7 @@ const AuctionRequestRow: React.FC<Props> = ({
       }, validBids[0]);
       const counterpartyBid = (() => {
         try {
-          return BigInt(String(best?.makerCollateral ?? '0'));
+          return BigInt(String(best?.counterpartyCollateral ?? '0'));
         } catch {
           return 0n;
         }
@@ -633,10 +633,10 @@ const AuctionRequestRow: React.FC<Props> = ({
           >
             <AuctionRequestChart
               bids={validBids}
-              takerCollateral={predictorCollateral}
+              predictorCollateral={predictorCollateral}
               collateralAssetTicker={collateralAssetTicker}
               maxEndTimeSec={maxEndTimeSec ?? undefined}
-              taker={predictor}
+              predictor={predictor}
               hasMultipleConditions={conditionIds.length > 1}
               tokenDecimals={tokenDecimals}
               invalidBidCount={invalidBidCount}
@@ -644,11 +644,11 @@ const AuctionRequestRow: React.FC<Props> = ({
             <AuctionRequestInfo
               uiTx={uiTx}
               bids={validBids}
-              takerCollateral={predictorCollateral}
+              predictorCollateral={predictorCollateral}
               collateralAssetTicker={collateralAssetTicker}
               maxEndTimeSec={maxEndTimeSec ?? undefined}
               onSubmit={submitBid}
-              taker={predictor}
+              predictor={predictor}
               resolver={resolver}
               predictedOutcomes={predictedOutcomes}
             />

@@ -10,20 +10,22 @@ import { OnboardingSponsor } from "../../../v2/sponsors/OnboardingSponsor.sol";
 /// Required env vars:
 ///   PM_NETWORK_DEPLOYER_PRIVATE_KEY - deployer private key
 ///   PM_NETWORK_DEPLOYER_ADDRESS     - deployer address (becomes owner)
-///   PREDICTION_MARKET_ESCROW        - escrow contract address
-///   COLLATERAL_TOKEN                - WUSDe token address
-///   MATCH_LIMIT                     - max collateral per mint (in wei, e.g. 1000000000000000000 = 1e18)
+///   PREDICTION_MARKET_ADDRESS       - escrow contract address
+///   COLLATERAL_TOKEN_ADDRESS        - WUSDe token address
 ///   REQUIRED_COUNTERPARTY           - required counterparty address (e.g. vault-bot)
 ///   MAX_ENTRY_PRICE_BPS             - max entry price in basis points (e.g. 7000 = 0.70)
-///   BUDGET_MANAGER                  - API signer address (optional, can set later)
+///
+/// Optional env vars (can be set later by owner):
+///   MATCH_LIMIT                     - max collateral per mint (default: 1e18)
+///   BUDGET_MANAGER                  - API signer address
 contract DeployOnboardingSponsor is Script {
     function run() external {
         address deployer = vm.envAddress("PM_NETWORK_DEPLOYER_ADDRESS");
-        address escrow = vm.envAddress("PREDICTION_MARKET_ESCROW");
-        address collateralToken = vm.envAddress("COLLATERAL_TOKEN");
+        address escrow = vm.envAddress("PREDICTION_MARKET_ADDRESS");
+        address collateralToken = vm.envAddress("COLLATERAL_TOKEN_ADDRESS");
         address requiredCounterparty = vm.envAddress("REQUIRED_COUNTERPARTY");
         uint256 maxEntryPriceBps = vm.envUint("MAX_ENTRY_PRICE_BPS");
-        uint256 matchLimit = vm.envUint("MATCH_LIMIT");
+        uint256 matchLimit = vm.envOr("MATCH_LIMIT", uint256(1 ether));
 
         console.log("=== Deploy OnboardingSponsor (Testnet) ===");
         console.log("Owner:", deployer);

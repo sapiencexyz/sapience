@@ -496,10 +496,10 @@ export function useAuctionMatching({
         return;
       }
       bids.forEach((bid: any) => {
-        const makerRaw = typeof bid?.maker === 'string' ? bid.maker : null;
-        const maker = normalizeAddress(makerRaw);
-        if (!maker) return;
-        const matched = normalizedOrders.find((item) => item.address === maker);
+        const counterpartyRaw = typeof bid?.counterparty === 'string' ? bid.counterparty : null;
+        const counterpartyAddr = normalizeAddress(counterpartyRaw);
+        if (!counterpartyAddr) return;
+        const matched = normalizedOrders.find((item) => item.address === counterpartyAddr);
         if (!matched) return;
         const auctionId =
           (typeof bid?.auctionId === 'string' && bid.auctionId) ||
@@ -517,11 +517,11 @@ export function useAuctionMatching({
         }
 
         const signature =
-          typeof bid?.makerSignature === 'string' ? bid.makerSignature : null;
+          typeof bid?.counterpartySignature === 'string' ? bid.counterpartySignature : null;
 
         // Create a unique key for this bid to prevent duplicate submissions
         // when the same bid appears in multiple auction.bids messages
-        const bidDedupeKey = `${matched.order.id}:${auctionId}:${signature ?? `${maker}:${bid?.makerCollateral ?? '0'}`}`;
+        const bidDedupeKey = `${matched.order.id}:${auctionId}:${signature ?? `${counterpartyAddr}:${bid?.counterpartyCollateral ?? '0'}`}`;
 
         // Skip if we've already processed this exact bid for this order
         if (processedBidsRef.current.has(bidDedupeKey)) {
@@ -537,7 +537,7 @@ export function useAuctionMatching({
 
         // Calculate the full bid amount for allowance checking (copiedCollateral + increment)
         // This ensures we don't prompt for signature if allowance is insufficient
-        const copiedCollateralWei = BigInt(String(bid?.makerCollateral ?? '0'));
+        const copiedCollateralWei = BigInt(String(bid?.counterpartyCollateral ?? '0'));
         let estimatedSpend: number;
         try {
           const incrementWei = parseUnits(String(increment), tokenDecimals);
@@ -555,7 +555,7 @@ export function useAuctionMatching({
             summary: tag,
             auctionId,
             estimatedSpend,
-            dedupeSuffix: signature ?? maker,
+            dedupeSuffix: signature ?? counterpartyAddr,
           },
         });
         if (!readiness.blocked) {
@@ -566,7 +566,7 @@ export function useAuctionMatching({
             auctionId,
             auctionContext: cachedContext,
             copyBidContext: {
-              copiedBidCollateral: String(bid?.makerCollateral ?? '0'),
+              copiedBidCollateral: String(bid?.counterpartyCollateral ?? '0'),
               increment: matched.order.increment ?? 1,
             },
             dedupeKey: bidDedupeKey,
@@ -602,14 +602,10 @@ export function useAuctionMatching({
         (entry?.data as any)?.payload?.resolver;
       const predictorAddr =
         (entry?.data as any)?.predictor ??
-        (entry?.data as any)?.payload?.predictor ??
-        (entry?.data as any)?.taker ??
-        (entry?.data as any)?.payload?.taker;
+        (entry?.data as any)?.payload?.predictor;
       const predictorCollateralStr =
         (entry?.data as any)?.predictorCollateral ??
         (entry?.data as any)?.payload?.predictorCollateral ??
-        (entry?.data as any)?.wager ??
-        (entry?.data as any)?.payload?.wager ??
         '0';
       const predictedOutcomesArr = Array.isArray(rawPredictions)
         ? (rawPredictions as `0x${string}`[])
@@ -658,7 +654,7 @@ export function useAuctionMatching({
         }
         const tag = formatOrderTag(order, null, getOrderIndex);
         // For conditions strategy, calculate estimated spend based on probability threshold
-        // Formula: makerCollateral = (probability * takerCollateral) / (1 - probability)
+        // Formula: counterpartyCollateral = (probability * predictorCollateral) / (1 - probability)
         let estimatedSpend = 1;
         try {
           const probability = (order.odds ?? 50) / 100;

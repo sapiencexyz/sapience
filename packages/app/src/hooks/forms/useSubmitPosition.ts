@@ -2,7 +2,7 @@ import { useCallback, useState, useMemo } from 'react';
 import { erc20Abi } from 'viem';
 
 import {
-  predictionMarketEscrowAbi,
+  generateRandomNonce,
   toBigIntSafe,
   validateTakerFunds,
   prepareMintCalls,
@@ -40,7 +40,7 @@ export function useSubmitPosition({
 }: UseSubmitPositionProps) {
   const { address } = useAccount();
   const { signTypedDataAsync } = useSignTypedData();
-  const { effectiveAddress } = useSession();
+  const { effectiveAddress, isUsingSession, signTypedData: sessionSignTypedData } = useSession();
 
   // Read current wUSDe balance on Ethereal to avoid unnecessary wrap/deposit calls
   const { data: currentWusdeBalance } = useReadContract({
@@ -51,18 +51,6 @@ export function useSubmitPosition({
     chainId,
     query: {
       enabled: !!effectiveAddress && enabled && (chainId === CHAIN_ID_ETHEREAL || chainId === CHAIN_ID_ETHEREAL_TESTNET),
-    },
-  });
-
-  // Read predictor nonce from PredictionMarketEscrow
-  const { data: predictorNonce, refetch: refetchPredictorNonce } = useReadContract({
-    address: predictionMarketAddress,
-    abi: predictionMarketEscrowAbi,
-    functionName: 'getNonce',
-    args: effectiveAddress ? [effectiveAddress] : undefined,
-    chainId,
-    query: {
-      enabled: !!effectiveAddress && !!predictionMarketAddress && enabled,
     },
   });
 
@@ -162,25 +150,14 @@ export function useSubmitPosition({
       setError(null);
       setSuccess(null);
 
-      const attempt = async (forceRefetch: boolean) => {
-        // Determine nonce value - use auction-provided nonce if available
-        let nonceValue: bigint | undefined;
+      const attempt = async () => {
+        // Determine nonce value - use auction-provided nonce if available,
+        // otherwise generate a random bitmap nonce (Permit2-style)
+        let nonceValue: bigint;
         if (mintData.makerNonce !== undefined) {
-          nonceValue = toBigIntSafe(mintData.makerNonce);
-        } else if (forceRefetch) {
-          const result = await refetchPredictorNonce();
-          nonceValue = result.data as bigint | undefined;
+          nonceValue = toBigIntSafe(mintData.makerNonce) ?? generateRandomNonce();
         } else {
-          nonceValue = predictorNonce as bigint | undefined;
-        }
-
-        // Verify on-chain nonce matches what we're sending
-        const { data: freshPredictorNonce } = await refetchPredictorNonce();
-        if (nonceValue === undefined) {
-          throw new Error('Unable to determine predictor nonce');
-        }
-        if (freshPredictorNonce !== undefined && nonceValue !== freshPredictorNonce) {
-          throw new Error('Your nonce has changed. Please request new bids.');
+          nonceValue = generateRandomNonce();
         }
 
         const filled: MintPredictionRequestData = {
@@ -232,11 +209,13 @@ export function useSubmitPosition({
             counterparty: filled.taker,
             predictorNonce: nonceValue,
             predictorDeadline: BigInt(filled.takerDeadline),
+            predictorSponsor: '0x0000000000000000000000000000000000000000',
+            predictorSponsorData: '0x',
             verifyingContract: predictionMarketAddress,
             chainId,
           });
 
-          const predictorSignature = await signTypedDataAsync({
+          const signParams = {
             domain: {
               ...typedData.domain,
               chainId: Number(typedData.domain.chainId),
@@ -244,7 +223,11 @@ export function useSubmitPosition({
             types: typedData.types,
             primaryType: typedData.primaryType,
             message: typedData.message,
-          });
+          };
+
+          const predictorSignature = isUsingSession && sessionSignTypedData
+            ? await sessionSignTypedData(signParams)
+            : await signTypedDataAsync(signParams);
 
           filled.predictorSignature = predictorSignature;
         }
@@ -266,35 +249,9 @@ export function useSubmitPosition({
           throw new Error('No mint data provided');
         }
 
-        // First attempt with current cached nonce
-        await attempt(false);
+        await attempt();
         setIsProcessing(false);
       } catch (err: any) {
-        const msg = (err?.message || '').toString();
-        const isNonceErr = msg.includes('InvalidMakerNonce');
-        if (isNonceErr) {
-          // Only retry with fresh nonce if we weren't using an auction-provided nonce
-          // For auction bids, the bidder signed over a specific nonce - retrying won't help
-          if (mintData.makerNonce !== undefined) {
-            setError('The bid has become stale. Please request new bids.');
-            setIsProcessing(false);
-            return;
-          }
-
-          try {
-            // One-time retry with fresh nonce (only for non-auction submissions)
-            await attempt(true);
-            setIsProcessing(false);
-            return;
-          } catch (retryErr: any) {
-            const retryMsg = (retryErr?.message || '').toString();
-            setError(
-              retryMsg || 'Failed to submit position prediction after retry'
-            );
-            setIsProcessing(false);
-            return;
-          }
-        }
         const errorMessage =
           err instanceof Error
             ? err.message
@@ -310,13 +267,13 @@ export function useSubmitPosition({
       chainId,
       prepareCalls,
       sendCalls,
-      predictorNonce,
-      refetchPredictorNonce,
       refetchAllowance,
       publicClient,
       isProcessing,
       collateralTokenAddress,
       predictionMarketAddress,
+      isUsingSession,
+      sessionSignTypedData,
     ]
   );
 

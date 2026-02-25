@@ -28,13 +28,13 @@ type Props = {
   }) => void;
   className?: string;
   variant?: 'card' | 'compact';
-  // Maker amount in display units (same units as amount input), used to compute payout and forecast
-  makerAmountDisplay?: number;
+  // Predictor amount in display units (same units as amount input), used to compute payout and forecast
+  predictorAmountDisplay?: number;
   // Optional initial amount in display units to prefill (e.g., highest bid + 1)
   initialAmountDisplay?: number;
   // Optional maximum expiry seconds allowed (e.g., remaining time until latest condition end)
   maxExpirySeconds?: number;
-  // Current best taker position size in display units; used to anchor quick-increment buttons
+  // Current best counterparty position size in display units; used to anchor quick-increment buttons
   bestBidDisplay?: number;
 };
 
@@ -57,7 +57,7 @@ const PlaceBidForm: React.FC<Props> = ({
   onSubmit,
   className,
   variant = 'card',
-  makerAmountDisplay,
+  predictorAmountDisplay,
   initialAmountDisplay,
   maxExpirySeconds,
   bestBidDisplay,
@@ -226,16 +226,16 @@ const PlaceBidForm: React.FC<Props> = ({
       isExpiryValidCompact &&
       !isPermitLoading &&
       !isRestricted;
-    const makerDisplay = Number.isFinite(makerAmountDisplay as number)
-      ? Number(makerAmountDisplay)
+    const predictorDisplay = Number.isFinite(predictorAmountDisplay as number)
+      ? Number(predictorAmountDisplay)
       : 0;
-    const takerDisplay = Number.isFinite(parsedAmount) ? parsedAmount : 0;
+    const counterpartyDisplay = Number.isFinite(parsedAmount) ? parsedAmount : 0;
     const totalDisplay =
-      Number.isFinite(takerDisplay) && Number.isFinite(makerDisplay)
-        ? makerDisplay + takerDisplay
+      Number.isFinite(counterpartyDisplay) && Number.isFinite(predictorDisplay)
+        ? predictorDisplay + counterpartyDisplay
         : NaN;
     const forecastPct =
-      totalDisplay > 0 ? Math.round((takerDisplay / totalDisplay) * 100) : null;
+      totalDisplay > 0 ? Math.round((counterpartyDisplay / totalDisplay) * 100) : null;
     const amountDisplay = Number.isFinite(parsedAmount)
       ? formatAmount(parsedAmount, decimals)
       : '—';
@@ -605,19 +605,19 @@ const PlaceBidForm: React.FC<Props> = ({
             </span>
           </div>
           {(() => {
-            const makerDisplay = Number.isFinite(makerAmountDisplay as number)
-              ? Number(makerAmountDisplay)
+            const predictorDisplay = Number.isFinite(predictorAmountDisplay as number)
+              ? Number(predictorAmountDisplay)
               : 0;
-            const takerDisplay = Number.isFinite(parsedAmount)
+            const counterpartyDisplay = Number.isFinite(parsedAmount)
               ? parsedAmount
               : 0;
             const totalDisplay =
-              Number.isFinite(takerDisplay) && Number.isFinite(makerDisplay)
-                ? makerDisplay + takerDisplay
+              Number.isFinite(counterpartyDisplay) && Number.isFinite(predictorDisplay)
+                ? predictorDisplay + counterpartyDisplay
                 : NaN;
             const forecastPct =
               totalDisplay > 0
-                ? Math.round((takerDisplay / totalDisplay) * 100)
+                ? Math.round((counterpartyDisplay / totalDisplay) * 100)
                 : null;
             return (
               <PayoutLine
@@ -667,15 +667,15 @@ const PlaceBidForm: React.FC<Props> = ({
           <span>for payout</span>{' '}
           <span className="font-semibold">
             {(() => {
-              const makerDisplay = Number.isFinite(makerAmountDisplay as number)
-                ? Number(makerAmountDisplay)
+              const predictorDisplay = Number.isFinite(predictorAmountDisplay as number)
+                ? Number(predictorAmountDisplay)
                 : 0;
-              const takerDisplay = Number.isFinite(parsedAmount)
+              const counterpartyDisplay = Number.isFinite(parsedAmount)
                 ? parsedAmount
                 : 0;
               const totalDisplay =
-                Number.isFinite(takerDisplay) && Number.isFinite(makerDisplay)
-                  ? makerDisplay + takerDisplay
+                Number.isFinite(counterpartyDisplay) && Number.isFinite(predictorDisplay)
+                  ? predictorDisplay + counterpartyDisplay
                   : NaN;
               return Number.isFinite(totalDisplay)
                 ? formatAmount(totalDisplay, decimals)

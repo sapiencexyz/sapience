@@ -1,37 +1,31 @@
 'use client';
 
-import { useReadContract } from 'wagmi';
+import { useCallback, useState } from 'react';
 import type { Address } from 'viem';
-import { secondaryMarketEscrowAbi } from '@sapience/sdk/abis';
-import { secondaryMarketEscrow } from '@sapience/sdk/contracts';
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { generateRandomNonce } from '@sapience/sdk';
 
-export function useSecondaryNonce(params: {
+/**
+ * Hook to generate random nonces for the bitmap nonce system (Permit2-style).
+ * No longer reads sequential nonces from the SecondaryMarketEscrow contract.
+ * Each call to refetch() returns a fresh random nonce.
+ */
+export function useSecondaryNonce(_params: {
   address?: Address;
   chainId?: number;
   enabled?: boolean;
 }) {
-  const { address, chainId, enabled = true } = params;
-  const effectiveChainId = chainId ?? DEFAULT_CHAIN_ID;
-  const contractAddress = secondaryMarketEscrow[effectiveChainId]?.address as
-    | Address
-    | undefined;
+  const [nonce, setNonce] = useState<bigint>(() => generateRandomNonce());
 
-  const { data, isLoading, error, refetch } = useReadContract({
-    abi: secondaryMarketEscrowAbi,
-    address: contractAddress,
-    functionName: 'getNonce',
-    args: address ? [address] : undefined,
-    chainId: effectiveChainId,
-    query: {
-      enabled: enabled && Boolean(address) && Boolean(contractAddress),
-    },
-  });
+  const refetch = useCallback(() => {
+    const freshNonce = generateRandomNonce();
+    setNonce(freshNonce);
+    return Promise.resolve({ data: freshNonce });
+  }, []);
 
   return {
-    nonce: data as bigint | undefined,
-    isLoading,
-    error,
+    nonce,
+    isLoading: false,
+    error: null,
     refetch,
   };
 }

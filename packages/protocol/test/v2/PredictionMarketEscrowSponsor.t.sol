@@ -160,7 +160,9 @@ contract PredictionMarketEscrowSponsorTest is Test {
                 PREDICTOR_COLLATERAL,
                 COUNTERPARTY_COLLATERAL,
                 predictor,
-                counterparty
+                counterparty,
+                sponsor,
+                sponsorData
             )
         );
 

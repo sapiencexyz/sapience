@@ -205,14 +205,16 @@ contract PredictionMarketEscrow is
             )
         );
 
-        // Compute prediction hash for signatures (includes collateral and addresses)
+        // Compute prediction hash for signatures (includes collateral, addresses, and sponsor)
         bytes32 predictionHash = keccak256(
             abi.encode(
                 pickConfigId,
                 request.predictorCollateral,
                 request.counterpartyCollateral,
                 request.predictor,
-                request.counterparty
+                request.counterparty,
+                request.predictorSponsor,
+                request.predictorSponsorData
             )
         );
 

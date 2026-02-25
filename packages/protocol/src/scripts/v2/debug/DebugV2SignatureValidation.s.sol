@@ -53,7 +53,9 @@ contract DebugV2SignatureValidation is Script {
                 predictorCollateral,
                 counterpartyCollateral,
                 PREDICTOR,
-                COUNTERPARTY
+                COUNTERPARTY,
+                address(0),
+                ""
             )
         );
         console.log("predictionHash:");

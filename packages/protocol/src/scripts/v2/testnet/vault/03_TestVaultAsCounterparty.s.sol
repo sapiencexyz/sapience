@@ -271,7 +271,9 @@ contract TestVaultAsCounterparty is Script {
                 collaterals.predictorCollateral,
                 collaterals.counterpartyCollateral,
                 actors.predictor,
-                address(vault)
+                address(vault),
+                address(0),
+                ""
             )
         );
 
