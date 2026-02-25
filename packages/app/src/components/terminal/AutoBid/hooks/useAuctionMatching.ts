@@ -28,7 +28,11 @@ type AuctionContext = {
   resolver: `0x${string}`;
   taker: `0x${string}`;
   takerCollateral: string;
-  takerNonce: number;
+  escrowPicks?: Array<{
+    conditionResolver: string;
+    conditionId: string;
+    predictedOutcome: number;
+  }>;
 };
 
 type UseAuctionMatchingParams = {
@@ -224,9 +228,13 @@ export function useAuctionMatching({
       auctionContext?: {
         takerCollateral: string; // wei string
         taker: `0x${string}`;
-        takerNonce: number;
         predictedOutcomes: `0x${string}`[];
         resolver: `0x${string}`;
+        escrowPicks?: Array<{
+          conditionResolver: string;
+          conditionId: string;
+          predictedOutcome: number;
+        }>;
       };
       /** For copy_trade: the bid we're copying + increment */
       copyBidContext?: {
@@ -257,7 +265,7 @@ export function useAuctionMatching({
         return;
       }
 
-      const { takerCollateral, taker, takerNonce, predictedOutcomes, resolver } =
+      const { takerCollateral, taker, predictedOutcomes, resolver, escrowPicks } =
         details.auctionContext;
 
       // Calculate our bid amount (makerCollateral)
@@ -374,8 +382,8 @@ export function useAuctionMatching({
           predictedOutcomes,
           resolver,
           taker,
-          takerNonce,
           expirySeconds,
+          escrowPicks,
         });
 
         const makerAmount = formatCollateralAmount(makerCollateralWei.toString());
@@ -604,12 +612,6 @@ export function useAuctionMatching({
         (entry?.data as any)?.predictorCollateral ??
         (entry?.data as any)?.payload?.predictorCollateral ??
         '0';
-      const takerNonceNum =
-        (entry?.data as any)?.takerNonce ??
-        (entry?.data as any)?.payload?.takerNonce ??
-        (entry?.data as any)?.predictorNonce ??
-        (entry?.data as any)?.payload?.predictorNonce ??
-        0;
       const predictedOutcomesArr = Array.isArray(rawPredictions)
         ? (rawPredictions as `0x${string}`[])
         : [];
@@ -621,12 +623,16 @@ export function useAuctionMatching({
         resolverAddr &&
         takerAddr
       ) {
+        // Extract escrowPicks from auction message if available
+        const rawEscrowPicks =
+          (entry?.data as any)?.escrowPicks ??
+          (entry?.data as any)?.payload?.escrowPicks;
         const ctx: AuctionContext = {
           predictedOutcomes: predictedOutcomesArr,
           resolver: resolverAddr as `0x${string}`,
           taker: takerAddr as `0x${string}`,
           takerCollateral: takerCollateralStr,
-          takerNonce: Number(takerNonceNum),
+          ...(Array.isArray(rawEscrowPicks) && rawEscrowPicks.length > 0 && { escrowPicks: rawEscrowPicks }),
         };
         auctionContextCacheRef.current.set(auctionId, ctx);
         auctionContextKeysRef.current.push(auctionId);
@@ -689,6 +695,10 @@ export function useAuctionMatching({
         });
         if (!readiness.blocked) {
           // Fire and forget - dedupe key is marked on successful signature
+          // Extract escrowPicks from the auction message
+          const conditionEscrowPicks =
+            (entry?.data as any)?.escrowPicks ??
+            (entry?.data as any)?.payload?.escrowPicks;
           void triggerAutoBidSubmission({
             order,
             source: 'conditions',
@@ -697,9 +707,9 @@ export function useAuctionMatching({
             auctionContext: {
               takerCollateral: takerCollateralStr,
               taker: takerAddr as `0x${string}`,
-              takerNonce: Number(takerNonceNum),
               predictedOutcomes: predictedOutcomesArr,
               resolver: resolverAddr as `0x${string}`,
+              ...(Array.isArray(conditionEscrowPicks) && conditionEscrowPicks.length > 0 && { escrowPicks: conditionEscrowPicks }),
             },
             dedupeKey: bidDedupeKey,
           });

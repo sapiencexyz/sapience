@@ -9,9 +9,8 @@ import { type UiTransaction } from '~/components/markets/DataDrawer/TransactionC
 import { useValidatedAuctionBids } from '~/lib/auction/useValidatedAuctionBids';
 import AuctionRequestInfo from '~/components/terminal/AuctionRequestInfo';
 import AuctionRequestChart from '~/components/terminal/AuctionRequestChart';
-import { useAccount, useReadContract, useReadContracts } from 'wagmi';
+import { useAccount, useReadContract } from 'wagmi';
 import {
-  predictionMarket,
   predictionMarketEscrow,
   collateralToken,
 } from '@sapience/sdk/contracts';
@@ -20,7 +19,6 @@ import {
   DEFAULT_CHAIN_ID,
   CHAIN_ID_ETHEREAL_TESTNET,
 } from '@sapience/sdk/constants';
-import { predictionMarketAbi } from '@sapience/sdk';
 import erc20Abi from '@sapience/sdk/queries/abis/erc20abi.json';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useConditionsByIds } from '~/hooks/graphql/useConditionsByIds';
@@ -38,15 +36,12 @@ type Props = {
   taker: string | null;
   resolver: string | null;
   predictedOutcomes: string[];
-  takerNonce: number | null;
   collateralAssetTicker: string;
   onTogglePin?: (auctionId: string | null) => void;
   isPinned?: boolean;
   isExpanded?: boolean;
   onToggleExpanded?: (auctionId: string | null) => void;
-  /** Whether this auction uses escrow protocol (from v2.auction.started message) */
-  isEscrowAuction?: boolean;
-  /** Escrow picks array (for escrow auctions) */
+  /** Escrow picks array */
   escrowPicks?: Array<{
     conditionResolver: string;
     conditionId: string;
@@ -62,13 +57,11 @@ const AuctionRequestRow: React.FC<Props> = ({
   taker,
   resolver,
   predictedOutcomes,
-  takerNonce,
   collateralAssetTicker,
   onTogglePin,
   isPinned,
   isExpanded: isExpandedProp,
   onToggleExpanded,
-  isEscrowAuction = false,
   escrowPicks,
 }) => {
   const { address } = useAccount();
@@ -99,47 +92,9 @@ const AuctionRequestRow: React.FC<Props> = ({
       });
     },
   });
-  // Resolve contract address for the current chain
-  // Escrow (testnet) uses PredictionMarketEscrow, V1 (mainnet) uses PredictionMarket
-  const isEscrowChain = chainId === CHAIN_ID_ETHEREAL_TESTNET;
-  const PREDICTION_MARKET_ADDRESS = isEscrowChain
-    ? predictionMarketEscrow[chainId]?.address
-    : predictionMarket[chainId]?.address;
-  // For escrow, use collateral token address directly from SDK
-  // For V1, read from PredictionMarket contract config
-  const ESCROW_COLLATERAL_ADDRESS = isEscrowChain
-    ? collateralToken[chainId]?.address
-    : undefined;
-
-  const predictionMarketConfigRead = useReadContracts({
-    contracts:
-      !isEscrowChain && PREDICTION_MARKET_ADDRESS
-        ? [
-            {
-              address: PREDICTION_MARKET_ADDRESS,
-              abi: predictionMarketAbi,
-              functionName: 'getConfig',
-              chainId: chainId,
-            },
-          ]
-        : [],
-    query: { enabled: !isEscrowChain && !!PREDICTION_MARKET_ADDRESS },
-  });
-  const COLLATERAL_ADDRESS = useMemo(() => {
-    // For escrow, use SDK address directly
-    if (isEscrowChain) return ESCROW_COLLATERAL_ADDRESS;
-    // For V1, use config read
-    const item = predictionMarketConfigRead.data?.[0];
-    if (item && item.status === 'success') {
-      try {
-        const cfg = item.result as { collateralToken: `0x${string}` };
-        if (cfg?.collateralToken) return cfg.collateralToken;
-      } catch {
-        /* noop */
-      }
-    }
-    return collateralToken[DEFAULT_CHAIN_ID]?.address;
-  }, [isEscrowChain, ESCROW_COLLATERAL_ADDRESS, predictionMarketConfigRead.data]);
+  // Always use PredictionMarketEscrow
+  const PREDICTION_MARKET_ADDRESS = predictionMarketEscrow[chainId]?.address;
+  const COLLATERAL_ADDRESS = collateralToken[chainId]?.address ?? collateralToken[DEFAULT_CHAIN_ID]?.address;
   // Read token decimals
   const { data: tokenDecimalsData } = useReadContract({
     abi: erc20Abi,
@@ -157,18 +112,7 @@ const AuctionRequestRow: React.FC<Props> = ({
       return 18;
     }
   }, [tokenDecimalsData]);
-  // Read taker nonce on-chain for the provided taker address
-  const { data: takerNonceOnChain, refetch: refetchTakerNonce } =
-    useReadContract({
-      address: PREDICTION_MARKET_ADDRESS,
-      abi: predictionMarketAbi,
-      functionName: 'nonces',
-      args: typeof taker === 'string' ? [taker as `0x${string}`] : undefined,
-      chainId: chainId,
-      query: {
-        enabled: Boolean(PREDICTION_MARKET_ADDRESS && taker),
-      },
-    });
+  // Taker nonce no longer needed — escrow counterparty uses their own nonce
 
   // Use controlled expanded state if provided, otherwise fall back to local state
   const [localExpanded, setLocalExpanded] = useState(false);
@@ -183,7 +127,6 @@ const AuctionRequestRow: React.FC<Props> = ({
       predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
       takerAddress: taker as `0x${string}` | undefined,
       takerCollateral: takerCollateral ?? undefined,
-      takerNonce: takerNonce ?? undefined,
       encodedPredictedOutcomes: predictedOutcomes?.[0] as
         | `0x${string}`
         | undefined,
@@ -461,9 +404,8 @@ const AuctionRequestRow: React.FC<Props> = ({
         }
 
         // Ensure essential auction context (after preflight checks)
-        // Escrow auctions have escrowPicks instead of predictedOutcomes
         const hasEscrowPicks =
-          isEscrowAuction && Array.isArray(escrowPicks) && escrowPicks.length > 0;
+          Array.isArray(escrowPicks) && escrowPicks.length > 0;
         const encodedPredicted =
           Array.isArray(predictedOutcomes) && predictedOutcomes[0]
             ? (predictedOutcomes[0] as `0x${string}`)
@@ -477,39 +419,18 @@ const AuctionRequestRow: React.FC<Props> = ({
             return 0n;
           }
         })();
-        // Resolve maker nonce: prefer feed-provided, fall back to on-chain
-        let takerNonceVal: number | undefined =
-          typeof takerNonce === 'number' ? takerNonce : undefined;
-        if (takerNonceVal === undefined) {
-          try {
-            const fresh = await Promise.resolve(refetchTakerNonce?.());
-            const raw = fresh?.data ?? takerNonceOnChain;
-            const n = Number(raw);
-            if (Number.isFinite(n)) takerNonceVal = n;
-          } catch {
-            /* noop */
-          }
-        }
 
-        // Validation: Escrow needs escrowPicks, V1 needs predictedOutcomes
-        const hasPredictionData = isEscrowAuction ? hasEscrowPicks : !!encodedPredicted;
-        // Escrow auctions: counterparty uses their own nonce (from useEscrowNonce), not predictor's nonce
-        // V1 auctions: require taker nonce for signing
-        const needsTakerNonce = !isEscrowAuction;
+        const hasPredictionData = hasEscrowPicks || !!encodedPredicted;
 
         if (
           !hasPredictionData ||
           !resolverAddr ||
-          (needsTakerNonce && takerNonceVal === undefined) ||
           takerCollateralWei <= 0n ||
           !taker
         ) {
           const missing: string[] = [];
-          if (!hasPredictionData)
-            missing.push(isEscrowAuction ? 'escrow picks' : 'predicted outcomes');
+          if (!hasPredictionData) missing.push('escrow picks');
           if (!resolverAddr) missing.push('resolver');
-          if (needsTakerNonce && takerNonceVal === undefined)
-            missing.push('maker nonce');
           if (takerCollateralWei <= 0n) missing.push('taker position size');
           if (!taker) missing.push('taker');
           toast({
@@ -523,27 +444,16 @@ const AuctionRequestRow: React.FC<Props> = ({
           return;
         }
 
-        // Use shared bid submission hook for signing and WebSocket
-        // If auction is V1 (not escrow), force V1 protocol even on escrow-capable chains
-        console.log('[Bid - Auction Data]', {
-          isEscrowAuction,
-          escrowPicks: isEscrowAuction ? escrowPicks : undefined,
-          takerCollateral: takerCollateralWei.toString(),
-          taker,
-          resolver: resolverAddr,
-        });
-        const result = await submitBidToWs({
+                const result = await submitBidToWs({
           auctionId,
           makerCollateral: makerCollateralWei,
           takerCollateral: takerCollateralWei,
           predictedOutcomes: encodedPredicted ? [encodedPredicted] : [],
           resolver: resolverAddr as `0x${string}`,
           taker: taker as `0x${string}`,
-          takerNonce: takerNonceVal,
           expirySeconds: data.expirySeconds,
           maxEndTimeSec: maxEndTimeSec ?? undefined,
-          forceV1: !isEscrowAuction,
-          escrowPicks: isEscrowAuction ? escrowPicks : undefined,
+          escrowPicks,
         });
 
         if (result.success) {
@@ -606,7 +516,7 @@ const AuctionRequestRow: React.FC<Props> = ({
       taker,
       resolver,
       takerCollateral,
-      takerNonce,
+
       address,
       openConnectDialog,
       runPreflight,
@@ -617,9 +527,7 @@ const AuctionRequestRow: React.FC<Props> = ({
       openApproval,
       tokenDecimals,
       maxEndTimeSec,
-      refetchTakerNonce,
-      takerNonceOnChain,
-      isEscrowAuction,
+
       escrowPicks,
     ]
   );
