@@ -1,62 +1,43 @@
 'use client';
 
-/**
- * @deprecated Legacy single condition auction hook. For escrow protocol, use:
- * - useAuctionStart for creating auctions with Pick[] array
- * - Escrow protocol supports multi-pick parlays natively
- */
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { parseUnits, zeroAddress } from 'viem';
 import { useAccount } from 'wagmi';
 import { generateRandomNonce } from '@sapience/sdk';
+import { CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
+import { OutcomeSide } from '@sapience/sdk/types';
 import { buildAuctionStartPayload } from '~/lib/auction/buildAuctionPayload';
 import { useSession } from '~/lib/context/SessionContext';
 import type { AuctionParams, QuoteBid } from '~/lib/auction/useAuctionStart';
 
 interface UseSingleConditionAuctionProps {
-  /** The condition ID to predict on */
   conditionId: string | null;
-  /** User's prediction: true = Yes, false = No, null = unselected */
   prediction: boolean | null;
-  /** Position size as a string (human-readable, e.g., "10") */
   positionSize: string;
-  /** Chain ID for the prediction market */
   chainId: number;
-  /** Collateral decimals (default 18) */
   collateralDecimals?: number;
   /** @deprecated No longer needed — nonces are generated client-side */
   predictionMarketAddress?: `0x${string}`;
-  /** Bids from useAuctionStart */
   bids: QuoteBid[];
-  /** Request quotes function from useAuctionStart */
   requestQuotes?: (
     params: AuctionParams | null,
     options?: { forceRefresh?: boolean; requireSignature?: boolean }
   ) => void;
+  resolverAddress?: string | null;
 }
 
 interface UseSingleConditionAuctionReturn {
-  /** The best valid bid (highest payout, not expired) */
   bestBid: QuoteBid | null;
-  /** Trigger a quote request (optionally force refresh) */
   triggerQuoteRequest: (options?: {
     forceRefresh?: boolean;
     requireSignature?: boolean;
   }) => void;
-  /** Whether we're waiting for bids (recently requested, no bids yet) */
   isWaitingForBids: boolean;
-  /** Whether to show "Request Bids" button (no valid bids, not recently requested) */
   showRequestBidsButton: boolean;
-  /** Whether all received bids have expired */
   allBidsExpired: boolean;
-  /** Current time in ms (updates every second for expiration tracking) */
   nowMs: number;
 }
 
-/**
- * Hook for managing auction quotes for a single condition.
- * Extracts shared logic from PositionForm for reuse in PredictionForm.
- */
 export function useSingleConditionAuction({
   conditionId,
   prediction,
@@ -66,6 +47,7 @@ export function useSingleConditionAuction({
   predictionMarketAddress: _predictionMarketAddress,
   bids,
   requestQuotes,
+  resolverAddress,
 }: UseSingleConditionAuctionProps): UseSingleConditionAuctionReturn {
   const { address: takerAddress } = useAccount();
   const { effectiveAddress } = useSession();
@@ -74,23 +56,19 @@ export function useSingleConditionAuction({
     null
   );
 
-  // Use effectiveAddress from session context, falling back to zero address for guests
   const selectedTakerAddress = effectiveAddress ?? takerAddress ?? zeroAddress;
 
-  // Update time every second for expiration tracking
   useEffect(() => {
     const id = window.setInterval(() => setNowMs(Date.now()), 1000);
     return () => window.clearInterval(id);
   }, []);
 
-  // Find the best valid bid (not expired, highest payout)
   const bestBid = useMemo(() => {
     if (!bids || bids.length === 0) return null;
 
     const validBids = bids.filter((bid) => bid.makerDeadline * 1000 > nowMs);
     if (validBids.length === 0) return null;
 
-    // Parse user's position size to wei for payout calculation
     let userPositionSizeWei: bigint;
     try {
       userPositionSizeWei = parseUnits(positionSize || '0', collateralDecimals);
@@ -98,35 +76,19 @@ export function useSingleConditionAuction({
       userPositionSizeWei = 0n;
     }
 
-    // Find bid with highest total payout (userPositionSize + makerCollateral)
     return validBids.reduce((best, current) => {
-      const bestPayout = (() => {
-        try {
-          return userPositionSizeWei + BigInt(best.makerCollateral);
-        } catch {
-          return 0n;
-        }
-      })();
-      const currentPayout = (() => {
-        try {
-          return userPositionSizeWei + BigInt(current.makerCollateral);
-        } catch {
-          return 0n;
-        }
-      })();
-
+      const bestPayout = userPositionSizeWei + BigInt(best.makerCollateral);
+      const currentPayout =
+        userPositionSizeWei + BigInt(current.makerCollateral);
       return currentPayout > bestPayout ? current : best;
     });
   }, [bids, positionSize, collateralDecimals, nowMs]);
 
-  // Check if all bids have expired
   const allBidsExpired = bids.length > 0 && !bestBid;
 
-  // Check if we recently made a request (within 6 seconds)
   const recentlyRequested =
     lastQuoteRequestMs != null && nowMs - lastQuoteRequestMs < 6000;
 
-  // Trigger auction quote request
   const triggerQuoteRequest = useCallback(
     (options?: { forceRefresh?: boolean; requireSignature?: boolean }) => {
       if (!requestQuotes) return;
@@ -140,12 +102,7 @@ export function useSingleConditionAuction({
           positionSizeStr,
           collateralDecimals
         ).toString();
-        const outcomes = [
-          {
-            marketId: conditionId,
-            prediction: prediction,
-          },
-        ];
+        const outcomes = [{ marketId: conditionId, prediction }];
         const payload = buildAuctionStartPayload(outcomes, chainId);
         const params: AuctionParams = {
           wager: positionSizeWei,
@@ -153,15 +110,21 @@ export function useSingleConditionAuction({
           predictedOutcomes: payload.predictedOutcomes,
           taker: selectedTakerAddress,
           takerNonce: Number(generateRandomNonce()),
-          chainId: chainId,
+          chainId,
         };
 
-        // For "forecast/preview" quotes we should never prompt a wallet signature.
-        // (Matches `MarketPredictionRequest` behavior.)
+        if (resolverAddress && chainId === CHAIN_ID_ETHEREAL_TESTNET) {
+          params.escrowPicks = [{
+            conditionResolver: resolverAddress as `0x${string}`,
+            conditionId: conditionId as `0x${string}`,
+            predictedOutcome: prediction ? OutcomeSide.YES : OutcomeSide.NO,
+          }];
+        }
+
         requestQuotes(params, { requireSignature: false, ...options });
         setLastQuoteRequestMs(Date.now());
       } catch {
-        // ignore formatting errors
+        // parseUnits may throw on invalid input
       }
     },
     [
@@ -172,25 +135,21 @@ export function useSingleConditionAuction({
       positionSize,
       collateralDecimals,
       chainId,
+      resolverAddress,
     ]
   );
 
-  // Auto-trigger quote request when inputs change
   useEffect(() => {
     if (conditionId && prediction !== null && positionSize) {
       triggerQuoteRequest();
     }
   }, [conditionId, prediction, positionSize, triggerQuoteRequest]);
 
-  // Show "Request Bids" button when:
-  // 1. No valid bids exist (never received or all expired)
-  // 2. Not in the 3-second cooldown period after making a request
   const showRequestBidsButton =
     !bestBid &&
     !recentlyRequested &&
     (allBidsExpired || lastQuoteRequestMs != null);
 
-  // Waiting for bids = recently requested but no valid bids yet
   const isWaitingForBids = recentlyRequested && !bestBid;
 
   return {
