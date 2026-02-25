@@ -3,7 +3,7 @@ import { getProviderForChain } from '../../utils/utils';
 import { type PublicClient, parseAbiItem } from 'viem';
 import Sentry from '../../instrument';
 import { IIndexer } from '../../interfaces';
-import { collateralToken } from '@sapience/sdk/contracts/addresses';
+import { collateralToken } from '@sapience/sdk/contracts';
 
 const BLOCK_BATCH_SIZE = 500;
 const POLLING_INTERVAL_MS = 10_000;
@@ -138,34 +138,30 @@ class CollateralTransferIndexer implements IIndexer {
       blockNumber: bigint | null;
     }>
   ): Promise<void> {
-    for (const log of logs) {
-      const { from, to, value } = log.args;
-      if (!from || !to || value === undefined) continue;
+    const records = logs
+      .filter(
+        (log) =>
+          log.args.from && log.args.to && log.args.value !== undefined
+      )
+      .map((log) => ({
+        chainId: this.chainId,
+        blockNumber: Number(log.blockNumber ?? 0),
+        transactionHash: log.transactionHash,
+        logIndex: log.logIndex ?? 0,
+        from: log.args.from!.toLowerCase(),
+        to: log.args.to!.toLowerCase(),
+        value: log.args.value!.toString(),
+      }));
 
-      const blockNumber = Number(log.blockNumber ?? 0);
-      const logIndex = log.logIndex ?? 0;
+    if (records.length === 0) return;
 
-      try {
-        await prisma.collateralTransfer.create({
-          data: {
-            chainId: this.chainId,
-            blockNumber,
-            transactionHash: log.transactionHash,
-            logIndex,
-            from: from.toLowerCase(),
-            to: to.toLowerCase(),
-            value: value.toString(),
-          },
-        });
-      } catch (error: any) {
-        // Skip duplicates (unique constraint on chainId + txHash + logIndex)
-        if (error?.code === 'P2002') continue;
-        throw error;
-      }
-    }
+    await prisma.collateralTransfer.createMany({
+      data: records,
+      skipDuplicates: true,
+    });
 
     console.log(
-      `[CollateralTransferIndexer] Indexed ${logs.length} transfers at blocks ${logs[0]?.blockNumber}-${logs[logs.length - 1]?.blockNumber}`
+      `[CollateralTransferIndexer] Indexed ${records.length} transfers at blocks ${logs[0]?.blockNumber}-${logs[logs.length - 1]?.blockNumber}`
     );
   }
 
