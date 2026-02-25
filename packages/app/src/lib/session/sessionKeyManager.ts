@@ -333,10 +333,10 @@ export async function getSmartAccountAddress(
 }
 
 /**
- * Sign Escrow Session Key Approval for PredictionMarketEscrow.
- * This allows the session key to sign MintApproval messages on behalf of the smart account.
+ * @deprecated No longer used — session keys are validated via ERC-1271 on the smart account.
+ * Kept temporarily for reference during migration. Remove after staging validates.
  */
-async function signEscrowSessionKeyApproval(
+async function _signEscrowSessionKeyApproval(
   ownerSigner: OwnerSigner,
   sessionKeyAddress: Address,
   smartAccountAddress: Address,

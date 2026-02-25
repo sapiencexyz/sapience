@@ -10,9 +10,6 @@ import {
   getEscrowAuctionDetails,
 } from './escrowRegistry';
 import { validateEscrowAuctionRequest, validateEscrowBid } from './escrowHelpers';
-// verifyAuctionIntentSignature removed — contract is the single source of truth for sig validation
-// predictionMarketEscrow import removed — no longer needed for relayer-side sig verification
-// Address import removed — no longer needed
 import {
   activeConnections,
   connectionsTotal,
@@ -653,9 +650,6 @@ export function createAuctionWebSocketServer() {
             return;
           }
 
-          // Intent signature verification removed — the contract is the single source of truth
-          // for signature validation. The relayer only does structural/format validation
-          // via validateEscrowAuctionRequest() above.
 
           const auctionId = upsertEscrowAuction(payload);
           pendingAuctionId = auctionId;
