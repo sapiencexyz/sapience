@@ -5,3 +5,4 @@ export { AnalyticsResolver } from './AnalyticsResolver';
 export { ConditionResolver } from './ConditionResolver';
 export { VolumeResolver } from './VolumeResolver';
 export { QuestionsResolver } from './QuestionsResolver';
+export { CollateralBalanceResolver } from './CollateralBalanceResolver';

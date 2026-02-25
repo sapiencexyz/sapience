@@ -273,6 +273,29 @@ input CategoryWhereUniqueInput {
   slug: String
 }
 
+type CollateralBalanceSnapshotType {
+  atBlock: Int!
+  balance: String!
+  index: Int!
+}
+
+type CollateralBalanceType {
+  address: String!
+  atBlock: Int
+  balance: String!
+  chainId: Int!
+}
+
+type CollateralTransferType {
+  blockNumber: Int!
+  chainId: Int!
+  from: String!
+  id: Int!
+  to: String!
+  transactionHash: String!
+  value: String!
+}
+
 type Condition {
   _count: ConditionCount
   assertionId: String
@@ -1045,6 +1068,9 @@ type Query {
   allTimeProfitLeaderboard: [AggregatedProfitEntryType!]!
   attestations(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): [Attestation!]!
   categories(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): [Category!]!
+  collateralBalance(address: String!, atBlock: Int, chainId: Int! = 5064014): CollateralBalanceType!
+  collateralBalanceHistory(address: String!, chainId: Int! = 5064014, count: Int! = 12, currentBlock: Int, intervalHours: Int! = 168): [CollateralBalanceSnapshotType!]!
+  collateralTransfers(address: String!, chainId: Int! = 5064014, limit: Int! = 100, offset: Int! = 0): [CollateralTransferType!]!
   condition(where: ConditionWhereUniqueInput!): Condition
   conditionGroup(where: ConditionGroupWhereUniqueInput!): ConditionGroup
   conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]!

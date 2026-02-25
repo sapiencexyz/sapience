@@ -9,8 +9,15 @@ import { getStringParam, setStringParam } from '../reconcilerUtils';
 import { getProviderForChain, getBlockByTimestamp } from '../../../utils/utils';
 import PredictionMarketIndexer from '../../../workers/indexers/predictionMarketIndexer';
 import { predictionMarket, lzPMResolver, lzUmaResolver } from '@sapience/sdk';
-import { predictionMarketLZConditionalTokensResolver } from '@sapience/sdk/contracts';
+import { predictionMarketLZConditionalTokensResolver, collateralToken } from '@sapience/sdk/contracts';
 import type { Block } from 'viem';
+import { parseAbiItem, decodeEventLog } from 'viem';
+
+const TRANSFER_EVENT = parseAbiItem(
+  'event Transfer(address indexed from, address indexed to, uint256 value)'
+);
+const TRANSFER_EVENT_SIG =
+  '0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef';
 
 export class PositionReconciler {
   private static instance: PositionReconciler;
@@ -139,6 +146,12 @@ export class PositionReconciler {
           );
         }
 
+        const collateralEntry = collateralToken[chainId];
+        const collateralAddress = collateralEntry?.address?.toLowerCase();
+        if (collateralAddress) {
+          addresses.push(collateralEntry.address as `0x${string}`);
+        }
+
         try {
           console.log(
             `${POSITION_RECONCILE_CONFIG.logPrefix} Chain ${chainId}: scanning blocks ${fromBlock} to ${toBlock} (range=${toBlock - fromBlock})`
@@ -155,7 +168,24 @@ export class PositionReconciler {
             const indexer = new PredictionMarketIndexer(chainId);
             const blockCache = new Map<bigint, Block>();
 
+            // Split logs: collateral Transfer events vs prediction market events
+            const collateralLogs: typeof logs = [];
+            const predictionLogs: typeof logs = [];
+
             for (const log of logs) {
+              if (
+                collateralAddress &&
+                log.address.toLowerCase() === collateralAddress &&
+                log.topics[0] === TRANSFER_EVENT_SIG
+              ) {
+                collateralLogs.push(log);
+              } else {
+                predictionLogs.push(log);
+              }
+            }
+
+            // Process prediction market logs through existing indexer
+            for (const log of predictionLogs) {
               try {
                 const logBlockNumber = log.blockNumber || 0n;
 
@@ -176,6 +206,54 @@ export class PositionReconciler {
                   logError
                 );
               }
+            }
+
+            // Process collateral Transfer logs into CollateralTransfer table
+            for (const log of collateralLogs) {
+              try {
+                const decoded = decodeEventLog({
+                  abi: [TRANSFER_EVENT],
+                  data: log.data,
+                  topics: log.topics as [`0x${string}`, ...`0x${string}`[]],
+                });
+                const { from, to, value } = decoded.args as {
+                  from: `0x${string}`;
+                  to: `0x${string}`;
+                  value: bigint;
+                };
+
+                await prisma.collateralTransfer.upsert({
+                  where: {
+                    chainId_transactionHash_logIndex: {
+                      chainId,
+                      transactionHash: log.transactionHash!,
+                      logIndex: Number(log.logIndex ?? 0),
+                    },
+                  },
+                  create: {
+                    chainId,
+                    blockNumber: Number(log.blockNumber ?? 0),
+                    transactionHash: log.transactionHash!,
+                    logIndex: Number(log.logIndex ?? 0),
+                    from: from.toLowerCase(),
+                    to: to.toLowerCase(),
+                    value: value.toString(),
+                  },
+                  update: {},
+                });
+                totalUpdated += 1;
+              } catch (logError) {
+                console.error(
+                  `${POSITION_RECONCILE_CONFIG.logPrefix} Error processing collateral transfer log:`,
+                  logError
+                );
+              }
+            }
+
+            if (collateralLogs.length > 0) {
+              console.log(
+                `${POSITION_RECONCILE_CONFIG.logPrefix} Chain ${chainId}: reconciled ${collateralLogs.length} collateral transfers`
+              );
             }
           }
           await this.setWatermark(chainId, toBlock);
