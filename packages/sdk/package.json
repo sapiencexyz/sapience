@@ -52,11 +52,6 @@
       "import": "./dist/relayer/escrowAuctionWs.mjs",
       "require": "./dist/relayer/escrowAuctionWs.js"
     },
-    "./mcp/client": {
-      "types": "./dist/mcp/client.d.ts",
-      "import": "./dist/mcp/client.mjs",
-      "require": "./dist/mcp/client.js"
-    },
     "./abis": {
       "types": "./dist/abis/index.d.ts",
       "import": "./dist/abis/index.mjs",
@@ -117,8 +112,8 @@
   },
   "scripts": {
     "prepare": "pnpm run build:lib",
-    "dev": "tsup index.ts auction/signing.ts auction/encoding.ts auction/escrowEncoding.ts auction/escrowSigning.ts auction/secondarySigning.ts relayer/auctionWs.ts relayer/escrowAuctionWs.ts mcp/client.ts abis/index.ts constants/index.ts contracts/index.ts contracts/addresses.ts queries/index.ts queries/client/graphqlClient.ts types/index.ts types/escrow.ts types/secondary.ts types/graphql.ts session/index.ts --format cjs,esm --dts --watch",
-    "build:lib": "tsup index.ts auction/signing.ts auction/encoding.ts auction/escrowEncoding.ts auction/escrowSigning.ts auction/secondarySigning.ts relayer/auctionWs.ts relayer/escrowAuctionWs.ts mcp/client.ts abis/index.ts constants/index.ts contracts/index.ts contracts/addresses.ts queries/index.ts queries/client/graphqlClient.ts types/index.ts types/escrow.ts types/secondary.ts types/graphql.ts session/index.ts --format cjs,esm --dts --tsconfig tsconfig.build.json",
+    "dev": "tsup index.ts auction/signing.ts auction/encoding.ts auction/escrowEncoding.ts auction/escrowSigning.ts auction/secondarySigning.ts relayer/auctionWs.ts relayer/escrowAuctionWs.ts abis/index.ts constants/index.ts contracts/index.ts contracts/addresses.ts queries/index.ts queries/client/graphqlClient.ts types/index.ts types/escrow.ts types/secondary.ts types/graphql.ts session/index.ts --format cjs,esm --dts --watch",
+    "build:lib": "tsup index.ts auction/signing.ts auction/encoding.ts auction/escrowEncoding.ts auction/escrowSigning.ts auction/secondarySigning.ts relayer/auctionWs.ts relayer/escrowAuctionWs.ts abis/index.ts constants/index.ts contracts/index.ts contracts/addresses.ts queries/index.ts queries/client/graphqlClient.ts types/index.ts types/escrow.ts types/secondary.ts types/graphql.ts session/index.ts --format cjs,esm --dts --tsconfig tsconfig.build.json",
     "build": "pnpm run build:lib",
     "lint": "eslint . --quiet",
     "type-check": "tsc --noEmit",
