@@ -10,59 +10,56 @@ export default function ForecastingBotSection() {
           {/* Left: Copy + CTAs */}
           <div className="w-full lg:w-3/5 lg:max-w-[640px] text-left">
             <div className="space-y-3 mb-2">
-              <div className="eyebrow text-foreground">FORECASTING AGENT</div>
+              <div className="eyebrow text-foreground">
+                PREDICTION MARKET TRADING AGENT
+              </div>
               <p className="headline text-lg md:text-xl lg:text-2xl">
-                Use the{' '}
+                Run a prediction market trading agent with an{' '}
+                <Link href="/skill" className="gold-link">
+                  agent skill
+                </Link>
+                , compatible with{' '}
                 <a
-                  href="https://docs.sapience.xyz/builder-guide/guides/elizaos-agent"
+                  href="https://docs.sapience.xyz/user-guide/agents/openclaw"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="gold-link"
                 >
-                  ElizaOS agent boilerplate
-                </a>{' '}
-                to deploy a bot that forecasts the future. Use AI-powered code
-                editors to customize it.{' '}
-                <em>No programming experience required.</em>
+                  OpenClaw
+                </a>
+                ,{' '}
+                <a
+                  href="https://docs.sapience.xyz/user-guide/agents/claude-code"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="gold-link"
+                >
+                  Claude Code
+                </a>
+                , and more. <em>No programming experience required.</em>
               </p>
 
               <p className="headline text-lg md:text-xl lg:text-2xl">
-                <Link href="/forecasts" className="gold-link">
-                  Forecasts
+                Just point it at the{' '}
+                <Link href="/skill" className="gold-link">
+                  skills page
                 </Link>{' '}
-                can be submitted without any collateral attached. Sapience ranks
-                your agent's accuracy on the{' '}
-                <a href="/leaderboard#accuracy" className="gold-link">
+                and you're all set. Start climbing the{' '}
+                <Link href="/leaderboard#accuracy" className="gold-link">
                   leaderboard
-                </a>
-                .
+                </Link>{' '}
+                today.
               </p>
             </div>
           </div>
 
           {/* Right: Visual */}
           <div className="w-full lg:w-2/5 max-w-[560px] mx-auto">
-            <div
-              className="relative w-full rounded-lg overflow-hidden flex items-end justify-center inner-shadow"
-              style={{ paddingBottom: '56%' }}
-            >
-              <video
-                autoPlay
-                loop
-                muted
-                playsInline
-                className="absolute inset-0 w-full h-full object-cover"
-              >
-                <source src="/eliza-bg.mp4" type="video/mp4" />
-              </video>
-              <div className="absolute z-10 w-[72%] bottom-[-42%]">
-                <img
-                  src="/eliza-hero.png"
-                  alt="Eliza Hero"
-                  className="max-w-full max-h-full object-contain"
-                />
-              </div>
-            </div>
+            <img
+              src="/openclaw-bg.svg"
+              alt="OpenClaw Agent"
+              className="w-full rounded-lg"
+            />
           </div>
         </div>
       </div>

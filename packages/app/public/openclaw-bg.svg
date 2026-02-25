@@ -1,0 +1,62 @@
+<svg viewBox="0 0 800 450" fill="none" xmlns="http://www.w3.org/2000/svg">
+<defs>
+  <radialGradient id="glow" cx="50%" cy="50%" r="35%">
+    <stop offset="0%" stop-color="#6b2020" stop-opacity="0.8"/>
+    <stop offset="50%" stop-color="#1a0a0a" stop-opacity="0.4"/>
+    <stop offset="100%" stop-color="#0a0a1a" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="lobster-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
+    <stop offset="0%" stop-color="#ff4d4d"/>
+    <stop offset="100%" stop-color="#991b1b"/>
+  </linearGradient>
+</defs>
+<style>
+  @keyframes bob {
+    0%, 100% { transform: translate(265px, 100px) scale(2.25); }
+    50% { transform: translate(265px, 112px) scale(2.25); }
+  }
+  .character { animation: bob 3s ease-in-out infinite; }
+</style>
+<!-- Dark space background -->
+<rect width="800" height="450" fill="#0a0a1a"/>
+<!-- Red glow behind character -->
+<ellipse cx="400" cy="255" rx="250" ry="180" fill="url(#glow)"/>
+<!-- Stars -->
+<circle cx="45" cy="60" r="1" fill="#ffffff" opacity="0.6"/>
+<circle cx="120" cy="30" r="0.8" fill="#ffffff" opacity="0.4"/>
+<circle cx="200" cy="80" r="1.2" fill="#ffffff" opacity="0.5"/>
+<circle cx="680" cy="45" r="1" fill="#ffffff" opacity="0.6"/>
+<circle cx="750" cy="90" r="0.8" fill="#ffffff" opacity="0.4"/>
+<circle cx="600" cy="25" r="1.1" fill="#ffffff" opacity="0.5"/>
+<circle cx="520" cy="70" r="0.7" fill="#ffffff" opacity="0.3"/>
+<circle cx="350" cy="20" r="0.9" fill="#ffffff" opacity="0.4"/>
+<circle cx="90" cy="380" r="1" fill="#ffffff" opacity="0.5"/>
+<circle cx="180" cy="410" r="0.8" fill="#ffffff" opacity="0.3"/>
+<circle cx="700" cy="370" r="1.1" fill="#ffffff" opacity="0.5"/>
+<circle cx="620" cy="400" r="0.7" fill="#ffffff" opacity="0.4"/>
+<circle cx="30" cy="200" r="0.9" fill="#ffffff" opacity="0.4"/>
+<circle cx="770" cy="220" r="1" fill="#ffffff" opacity="0.5"/>
+<circle cx="55" cy="300" r="0.8" fill="#ffffff" opacity="0.3"/>
+<circle cx="740" cy="310" r="0.9" fill="#ffffff" opacity="0.4"/>
+<circle cx="160" cy="150" r="1" fill="#00e5cc" opacity="0.3"/>
+<circle cx="650" cy="160" r="0.8" fill="#00e5cc" opacity="0.25"/>
+<circle cx="300" cy="400" r="0.9" fill="#00e5cc" opacity="0.2"/>
+<circle cx="500" cy="390" r="1" fill="#00e5cc" opacity="0.25"/>
+<!-- Character (official OpenClaw lobster) -->
+<g class="character">
+  <!-- Body -->
+  <path d="M60 10 C30 10 15 35 15 55 C15 75 30 95 45 100 L45 110 L55 110 L55 100 C55 100 60 102 65 100 L65 110 L75 110 L75 100 C90 95 105 75 105 55 C105 35 90 10 60 10Z" fill="url(#lobster-gradient)"/>
+  <!-- Left Claw -->
+  <path d="M20 45 C5 40 0 50 5 60 C10 70 20 65 25 55 C28 48 25 45 20 45Z" fill="url(#lobster-gradient)"/>
+  <!-- Right Claw -->
+  <path d="M100 45 C115 40 120 50 115 60 C110 70 100 65 95 55 C92 48 95 45 100 45Z" fill="url(#lobster-gradient)"/>
+  <!-- Antenna -->
+  <path d="M45 15 Q35 5 30 8" stroke="#ff4d4d" stroke-width="2" stroke-linecap="round"/>
+  <path d="M75 15 Q85 5 90 8" stroke="#ff4d4d" stroke-width="2" stroke-linecap="round"/>
+  <!-- Eyes -->
+  <circle cx="45" cy="35" r="6" fill="#050810"/>
+  <circle cx="75" cy="35" r="6" fill="#050810"/>
+  <circle cx="46" cy="34" r="2" fill="#00e5cc"/>
+  <circle cx="76" cy="34" r="2" fill="#00e5cc"/>
+</g>
+</svg>

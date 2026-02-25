@@ -29,21 +29,22 @@ export default function Ecosystem() {
           </div>
           <div className="w-full md:basis-1/3 flex items-center justify-start gap-3 md:gap-4 pl-1 pr-0 md:pl-3 md:pr-3">
             <img
-              src="/eliza-circle.svg"
-              alt="ElizaOS"
+              src="/openclaw-circle.svg"
+              alt="OpenClaw"
               className="h-16 w-16 md:h-24 md:w-24"
             />
             <p className="text-sm md:text-base leading-relaxed text-foreground/80">
-              Deploy an agent that trades prediction markets in minutes with our{' '}
+              Give your agent (
               <a
-                href="https://elizaos.ai"
+                href="https://github.com/openclaw/openclaw"
                 target="_blank"
                 rel="noreferrer"
                 className="gold-link"
               >
-                ElizaOS
-              </a>{' '}
-              starter template.
+                OpenClaw
+              </a>
+              , Claude Code, and more) skills to forecast, trade, and market
+              make.
             </p>
           </div>
           <div className="w-full md:basis-1/3 relative flex items-center justify-start gap-3 md:gap-4 md:pl-1">

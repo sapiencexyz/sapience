@@ -92,11 +92,7 @@ export default function YesNoSplitButton({
         type="button"
         onClick={onYes}
         disabled={disabled}
-        className={cn(
-          fullWidth ? 'flex-1' : 'w-auto',
-          common,
-          yesColors
-        )}
+        className={cn(fullWidth ? 'flex-1' : 'w-auto', common, yesColors)}
       >
         {hasOdds ? (
           <span className="flex flex-col items-center justify-center translate-y-[1px]">
@@ -106,7 +102,9 @@ export default function YesNoSplitButton({
               {yesLabel ?? 'Yes'}
             </span>
             {yesOddsText ? (
-              <span className={cn('text-[8px] leading-none mt-0.5', yesOddsColor)}>
+              <span
+                className={cn('text-[8px] leading-none mt-0.5', yesOddsColor)}
+              >
                 {yesOddsText}
               </span>
             ) : null}
@@ -119,11 +117,7 @@ export default function YesNoSplitButton({
         type="button"
         onClick={onNo}
         disabled={disabled}
-        className={cn(
-          fullWidth ? 'flex-1' : 'w-auto',
-          common,
-          noColors
-        )}
+        className={cn(fullWidth ? 'flex-1' : 'w-auto', common, noColors)}
       >
         {hasOdds ? (
           <span className="flex flex-col items-center justify-center translate-y-[1px]">
@@ -133,7 +127,9 @@ export default function YesNoSplitButton({
               {noLabel ?? 'No'}
             </span>
             {noOddsText ? (
-              <span className={cn('text-[8px] leading-none mt-0.5', noOddsColor)}>
+              <span
+                className={cn('text-[8px] leading-none mt-0.5', noOddsColor)}
+              >
                 {noOddsText}
               </span>
             ) : null}
