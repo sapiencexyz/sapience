@@ -6,7 +6,7 @@ import { useAccount, useReadContracts } from 'wagmi';
 import { formatUnits } from 'viem';
 import { predictionMarket } from '@sapience/sdk/contracts';
 import { predictionMarketAbi } from '@sapience/sdk';
-import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+
 import { useConditions } from '~/hooks/graphql/useConditions';
 import { useTokenApproval } from '~/hooks/contract/useTokenApproval';
 import { useCollateralBalance } from '~/hooks/blockchain/useCollateralBalance';

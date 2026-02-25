@@ -70,7 +70,7 @@ import {
   YES_SQRT_PRICE_X96,
 } from '~/lib/utils/positionFormUtils';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
-import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+
 import {
   CollateralBalanceProvider,
   useCollateralBalanceContext,

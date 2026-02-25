@@ -1,5 +1,5 @@
 import { predictionMarket } from '@sapience/sdk/contracts';
-import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 
 const predictionMarketAbi = [

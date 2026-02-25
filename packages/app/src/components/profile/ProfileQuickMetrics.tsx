@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { DEFAULT_CHAIN_ID, CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 
 import type { Position } from '~/hooks/graphql/useUserPositions';
 import NumberDisplay from '~/components/shared/NumberDisplay';

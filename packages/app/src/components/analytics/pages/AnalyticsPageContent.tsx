@@ -1,6 +1,6 @@
 'use client';
 
-import { CHAIN_ID_ETHEREAL, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
+import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import { Card, CardContent } from '@sapience/ui/components/ui/card';
 import {
   Popover,

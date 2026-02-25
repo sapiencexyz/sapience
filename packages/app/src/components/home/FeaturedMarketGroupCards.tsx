@@ -14,7 +14,7 @@ import TickerMarketCard from './ticker/TickerMarketCard';
 import { useConditions } from '~/hooks/graphql/useConditions';
 import { getCategoryStyle } from '~/lib/utils/categoryStyle';
 import { getActivePublicConditions } from './featuredConditions';
-import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+
 import MarketPredictionRequest from '~/components/shared/MarketPredictionRequest';
 
 // Removed Loader in favor of simple fade-in cards and fixed-height placeholder

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useAccount } from 'wagmi';
 import { useCollateralBalance } from '~/hooks/blockchain/useCollateralBalance';
-import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+
 import { STARGATE_DEPOSIT_URL } from '~/lib/constants';
 import { useBannerHeight } from '~/hooks/useBannerHeight';
 

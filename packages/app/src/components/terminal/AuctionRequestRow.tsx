@@ -12,7 +12,7 @@ import AuctionRequestChart from '~/components/terminal/AuctionRequestChart';
 import { useAccount, useReadContract, useReadContracts } from 'wagmi';
 import { predictionMarket, collateralToken } from '@sapience/sdk/contracts';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
-import { DEFAULT_CHAIN_ID, CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { predictionMarketAbi } from '@sapience/sdk';
 import erc20Abi from '@sapience/sdk/queries/abis/erc20abi.json';
 import { useToast } from '@sapience/ui/hooks/use-toast';

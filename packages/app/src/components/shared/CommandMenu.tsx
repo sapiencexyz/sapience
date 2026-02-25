@@ -29,7 +29,7 @@ import {
   DialogTitle,
 } from '@sapience/ui/components/ui/dialog';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
-import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+
 import { isAddress, getAddress } from 'viem';
 import { getDeterministicCategoryColor } from '~/lib/theme/categoryPalette';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';

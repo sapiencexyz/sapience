@@ -18,7 +18,7 @@ import {
   useUserPositions,
   type Position,
 } from '~/hooks/graphql/useUserPositions';
-import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+
 import { useSession } from '~/lib/context/SessionContext';
 import type { PositionProgressState } from '~/types/positionProgress';
 

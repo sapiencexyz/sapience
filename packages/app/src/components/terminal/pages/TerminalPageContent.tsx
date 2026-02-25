@@ -42,7 +42,7 @@ import { useReadContracts } from 'wagmi';
 import { predictionMarket } from '@sapience/sdk/contracts';
 import { predictionMarketAbi } from '@sapience/sdk';
 import bidsHub from '~/lib/auction/useAuctionBidsHub';
-import { CHAIN_ID_ETHEREAL, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
+import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { toAuctionWsUrl } from '~/lib/ws';
 

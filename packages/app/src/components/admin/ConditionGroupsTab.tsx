@@ -39,7 +39,7 @@ import type {
   ConditionGroupConditionType,
 } from '~/hooks/graphql/useConditionGroups';
 import { useConditions } from '~/hooks/graphql/useConditions';
-import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+
 
 const CATEGORY_NONE_VALUE = '__none__';
 

@@ -16,7 +16,7 @@ import { keccak256, stringToHex } from 'viem';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useProfileVolume } from '~/hooks/useProfileVolume';
-import { CHAIN_ID_ETHEREAL, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
+import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 
 const VOLUME_THRESHOLD = 5000;
 

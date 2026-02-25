@@ -1,6 +1,6 @@
 'use client';
 
-import { CHAIN_ID_ETHEREAL, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
+import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import { useMemo, useState } from 'react';
 import {
   AreaChart,

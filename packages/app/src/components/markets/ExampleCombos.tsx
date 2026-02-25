@@ -6,7 +6,7 @@ import { useAccount, useReadContract } from 'wagmi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { predictionMarketAbi } from '@sapience/sdk';
 import { predictionMarket } from '@sapience/sdk/contracts';
-import { DEFAULT_CHAIN_ID, CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import PercentChance from '~/components/shared/PercentChance';
 import { Table, TableBody, TableCell } from '@sapience/ui/components/ui/table';
 import { Button } from '@sapience/ui/components/ui/button';

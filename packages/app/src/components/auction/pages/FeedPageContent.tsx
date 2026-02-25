@@ -24,7 +24,7 @@ import AuctionBidsDialog from '~/components/auction/AuctionBidsDialog';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import SegmentedTabsList from '~/components/shared/SegmentedTabsList';
-import { CHAIN_ID_ETHEREAL, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
+import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import { useRecentPositions } from '~/hooks/graphql/useRecentPositions';
 import { formatDistanceToNow } from 'date-fns';
 import PicksSummary from '~/components/shared/PicksSummary';

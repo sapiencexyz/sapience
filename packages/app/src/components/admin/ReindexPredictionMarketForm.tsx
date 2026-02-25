@@ -7,7 +7,7 @@ import { useToast } from '@sapience/ui/hooks/use-toast';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { useAdminApi } from '~/hooks/useAdminApi';
-import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 
 // Dynamically import Loader
 const Loader = dynamic(() => import('~/components/shared/Loader'), {
@@ -42,7 +42,7 @@ const ReindexPredictionMarketForm = () => {
 
       toast({
         title: 'Reindex started',
-        description: `Prediction market reindexing started on Ethereal (${CHAIN_ID_ETHEREAL}) ${timeRange}${clearExisting ? ' (clearing existing data)' : ''}`,
+        description: `Prediction market reindexing started on Ethereal (${DEFAULT_CHAIN_ID}) ${timeRange}${clearExisting ? ' (clearing existing data)' : ''}`,
       });
 
       // Reset form
@@ -75,7 +75,7 @@ const ReindexPredictionMarketForm = () => {
       <div className="space-y-1">
         <div className="text-sm font-medium">Chain</div>
         <div className="text-sm text-muted-foreground">
-          Ethereal ({CHAIN_ID_ETHEREAL})
+          Ethereal ({DEFAULT_CHAIN_ID})
         </div>
       </div>
 
