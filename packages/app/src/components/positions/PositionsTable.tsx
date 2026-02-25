@@ -15,7 +15,7 @@ import * as React from 'react';
 import EmptyTabState from '~/components/shared/EmptyTabState';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import Loader from '~/components/shared/Loader';
-import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
+import { COLLATERAL_SYMBOLS, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import {
   usePredictions,
   type Prediction,
@@ -121,7 +121,7 @@ export default function PositionsTable({
   chainId?: number;
   leftSlot?: React.ReactNode;
 }) {
-  const collateralSymbol = COLLATERAL_SYMBOLS[chainId || 5064014] || 'USDe';
+  const collateralSymbol = COLLATERAL_SYMBOLS[chainId || DEFAULT_CHAIN_ID] || 'USDe';
 
   // Fetch predictions for this user
   const {
