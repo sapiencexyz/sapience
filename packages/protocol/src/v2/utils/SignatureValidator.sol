@@ -50,17 +50,6 @@ abstract contract SignatureValidator is EIP712 {
     mapping(address => mapping(address => uint256)) internal
         _revokedSessionKeys;
 
-    /// @notice On-chain session key registration data
-    struct SessionKeyRegistration {
-        address owner;           // EOA owner who controls the smart account
-        uint256 validUntil;      // Expiration timestamp
-        uint256 registeredAt;    // Registration timestamp (0 = not registered)
-    }
-
-    /// @notice Registered session keys: smartAccount => sessionKey => registration
-    mapping(address => mapping(address => SessionKeyRegistration)) internal
-        _registeredSessionKeys;
-
     /// @notice Emitted when the account factory is updated
     event AccountFactoryUpdated(
         address indexed oldFactory, address indexed newFactory
@@ -69,14 +58,6 @@ abstract contract SignatureValidator is EIP712 {
     /// @notice Emitted when a session key is revoked
     event SessionKeyRevoked(
         address indexed owner, address indexed sessionKey, uint256 revokedAt
-    );
-
-    /// @notice Emitted when a session key is registered on-chain
-    event SessionKeyRegistered(
-        address indexed smartAccount,
-        address indexed sessionKey,
-        address indexed owner,
-        uint256 validUntil
     );
 
     /// @notice Error when smart account verification fails
@@ -119,54 +100,6 @@ abstract contract SignatureValidator is EIP712 {
         address oldFactory = address(accountFactory);
         accountFactory = IAccountFactory(factory_);
         emit AccountFactoryUpdated(oldFactory, factory_);
-    }
-
-    /// @notice Register a session key for the calling smart account.
-    /// Called by the smart account itself via UserOp (ZeroDev already validated session key authorization).
-    /// @param sessionKey The session key address to register
-    /// @param owner The EOA owner who controls the smart account
-    /// @param validUntil Expiration timestamp for the session key
-    function registerSessionKey(
-        address sessionKey,
-        address owner,
-        uint256 validUntil
-    ) external {
-        if (address(accountFactory) == address(0)) {
-            revert AccountFactoryNotSet();
-        }
-
-        // Verify the smart account is derived from the claimed owner via account factory
-        address expectedAccount = accountFactory.getAccountAddress(owner, 0);
-        if (expectedAccount != msg.sender) {
-            expectedAccount = accountFactory.getAccountAddress(owner, 1);
-            if (expectedAccount != msg.sender) {
-                revert SmartAccountVerificationFailed(owner, msg.sender, expectedAccount);
-            }
-        }
-
-        _registeredSessionKeys[msg.sender][sessionKey] = SessionKeyRegistration({
-            owner: owner,
-            validUntil: validUntil,
-            registeredAt: block.timestamp
-        });
-
-        emit SessionKeyRegistered(msg.sender, sessionKey, owner, validUntil);
-    }
-
-    /// @notice Check if a session key is registered and valid
-    /// @param smartAccount The smart account address
-    /// @param sessionKey The session key to check
-    /// @return registered True if the session key is registered and valid
-    function isSessionKeyRegistered(
-        address smartAccount,
-        address sessionKey
-    ) external view returns (bool registered) {
-        SessionKeyRegistration memory reg = _registeredSessionKeys[smartAccount][sessionKey];
-        if (reg.registeredAt == 0) return false;
-        if (block.timestamp > reg.validUntil) return false;
-        if (_revokedSessionKeys[reg.owner][sessionKey] > 0) return false;
-        if (_revokedSessionKeys[smartAccount][sessionKey] > 0) return false;
-        return true;
     }
 
     /// @notice Validate a mint approval signature
@@ -558,111 +491,6 @@ abstract contract SignatureValidator is EIP712 {
     /// @return separator The domain separator
     function domainSeparator() external view returns (bytes32 separator) {
         return _domainSeparatorV4();
-    }
-
-    // ============ On-Chain Registered Session Key Validation ============
-
-    /// @notice Validate a mint approval signed by an on-chain registered session key
-    /// @param predictionHash Hash of the prediction parameters
-    /// @param smartAccount The smart account address (expected signer)
-    /// @param collateral Collateral amount
-    /// @param nonce Nonce for replay protection
-    /// @param deadline Signature expiration timestamp
-    /// @param sessionKeySignature The session key's signature on the mint approval
-    /// @param sessionKey The session key address (looked up from on-chain registration)
-    /// @return isValid True if the session key is registered and signature is valid
-    function _isRegisteredSessionKeyValid(
-        bytes32 predictionHash,
-        address smartAccount,
-        uint256 collateral,
-        uint256 nonce,
-        uint256 deadline,
-        bytes memory sessionKeySignature,
-        address sessionKey
-    ) internal view returns (bool isValid) {
-        if (block.timestamp > deadline) return false;
-
-        // Look up registration
-        SessionKeyRegistration memory reg = _registeredSessionKeys[smartAccount][sessionKey];
-        if (reg.registeredAt == 0) return false;
-        if (block.timestamp > reg.validUntil) return false;
-
-        // Check revocation from owner EOA or smart account
-        if (_revokedSessionKeys[reg.owner][sessionKey] > 0) return false;
-        if (_revokedSessionKeys[smartAccount][sessionKey] > 0) return false;
-
-        // Verify session key signed the MintApproval
-        bytes32 mintStructHash = keccak256(
-            abi.encode(
-                MINT_APPROVAL_TYPEHASH,
-                predictionHash,
-                smartAccount,
-                collateral,
-                nonce,
-                deadline
-            )
-        );
-        bytes32 mintHash = _hashTypedDataV4(mintStructHash);
-        address recoveredSigner = ECDSA.recover(mintHash, sessionKeySignature);
-
-        if (recoveredSigner == address(0) || recoveredSigner != sessionKey) {
-            return false;
-        }
-
-        return true;
-    }
-
-    /// @notice Validate a burn approval signed by an on-chain registered session key
-    /// @param burnHash Hash of the burn parameters
-    /// @param smartAccount The smart account address (expected signer)
-    /// @param tokenAmount Token amount
-    /// @param payout Payout amount
-    /// @param nonce Nonce for replay protection
-    /// @param deadline Signature expiration timestamp
-    /// @param sessionKeySignature The session key's signature on the burn approval
-    /// @param sessionKey The session key address (looked up from on-chain registration)
-    /// @return isValid True if the session key is registered and signature is valid
-    function _isRegisteredSessionKeyBurnValid(
-        bytes32 burnHash,
-        address smartAccount,
-        uint256 tokenAmount,
-        uint256 payout,
-        uint256 nonce,
-        uint256 deadline,
-        bytes memory sessionKeySignature,
-        address sessionKey
-    ) internal view returns (bool isValid) {
-        if (block.timestamp > deadline) return false;
-
-        // Look up registration
-        SessionKeyRegistration memory reg = _registeredSessionKeys[smartAccount][sessionKey];
-        if (reg.registeredAt == 0) return false;
-        if (block.timestamp > reg.validUntil) return false;
-
-        // Check revocation from owner EOA or smart account
-        if (_revokedSessionKeys[reg.owner][sessionKey] > 0) return false;
-        if (_revokedSessionKeys[smartAccount][sessionKey] > 0) return false;
-
-        // Verify session key signed the BurnApproval
-        bytes32 burnStructHash = keccak256(
-            abi.encode(
-                BURN_APPROVAL_TYPEHASH,
-                burnHash,
-                smartAccount,
-                tokenAmount,
-                payout,
-                nonce,
-                deadline
-            )
-        );
-        bytes32 burnDigest = _hashTypedDataV4(burnStructHash);
-        address recoveredSigner = ECDSA.recover(burnDigest, sessionKeySignature);
-
-        if (recoveredSigner == address(0) || recoveredSigner != sessionKey) {
-            return false;
-        }
-
-        return true;
     }
 
     // ============ Session Key Support (Option B) ============

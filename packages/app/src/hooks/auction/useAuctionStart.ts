@@ -13,7 +13,6 @@ import { predictionMarketEscrow } from '@sapience/sdk/contracts';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
-import { encodeRegisteredSessionKeyData } from '~/lib/session/sessionKeyManager';
 import { toAuctionWsUrl } from '~/lib/ws';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 import { useEscrowNonce } from '~/hooks/blockchain/useEscrowContract';
@@ -57,8 +56,6 @@ export function useAuctionStart(options: UseAuctionStartOptions = {}) {
     effectiveAddress,
     signTypedData: sessionSignTypedData,
     isUsingSession,
-    isSessionKeyRegistered,
-    sessionKeyAddress,
   } = useSession();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -185,10 +182,6 @@ export function useAuctionStart(options: UseAuctionStartOptions = {}) {
         intentSignature,
         chainId,
         refCode: refCode ?? undefined,
-        // Include session key data when using on-chain registered session key
-        ...(isUsingSession && isSessionKeyRegistered && sessionKeyAddress && {
-          predictorSessionKeyData: encodeRegisteredSessionKeyData(sessionKeyAddress),
-        }),
       };
 
       // Send auction start message
@@ -288,8 +281,6 @@ export function useAuctionStart(options: UseAuctionStartOptions = {}) {
       signTypedDataAsync,
       sessionSignTypedData,
       isUsingSession,
-      isSessionKeyRegistered,
-      sessionKeyAddress,
       onSignatureRejected,
       onAuctionCreated,
     ]

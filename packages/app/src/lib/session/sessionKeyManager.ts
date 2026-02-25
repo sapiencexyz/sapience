@@ -6,7 +6,6 @@ import {
   parseAbi,
   slice,
   encodeAbiParameters,
-  encodeFunctionData,
   recoverTypedDataAddress,
   hashTypedData,
   type Address,
@@ -32,6 +31,7 @@ import { toECDSASigner } from '@zerodev/permissions/signers';
 import {
   toCallPolicy,
   toTimestampPolicy,
+  toSignatureCallerPolicy,
   CallPolicyVersion,
   ParamCondition,
 } from '@zerodev/permissions/policies';
@@ -493,42 +493,6 @@ export function encodeEscrowSessionKeyData(approval: EscrowSessionKeyApproval): 
   return `0x${offsetPointer}${innerEncoding.slice(2)}` as Hex;
 }
 
-/**
- * Encode a registered session key address as 32-byte ABI-encoded data.
- * The contract detects the 32-byte length and uses the on-chain registration path.
- */
-export function encodeRegisteredSessionKeyData(sessionKeyAddress: Address): Hex {
-  return encodeAbiParameters(
-    [{ type: 'address' }],
-    [sessionKeyAddress]
-  );
-}
-
-/**
- * Register a session key on-chain via UserOp.
- * Called after session creation — the smart account calls registerSessionKey()
- * on the escrow contract, which verifies the owner via the account factory.
- */
-export async function registerSessionKeyOnChain(
-  etherealClient: KernelAccountClient,
-  sessionKeyAddress: Address,
-  ownerAddress: Address,
-  validUntilSeconds: number,
-  escrowAddress: Address
-): Promise<Hex> {
-  const txHash = await etherealClient.sendUserOperation({
-    callData: await etherealClient.account.encodeCalls([{
-      to: escrowAddress,
-      data: encodeFunctionData({
-        abi: predictionMarketEscrowAbi,
-        functionName: 'registerSessionKey',
-        args: [sessionKeyAddress, ownerAddress, BigInt(validUntilSeconds)],
-      }),
-      value: 0n,
-    }]),
-  });
-  return txHash;
-}
 
 // ABI for accountFactory verification
 const ACCOUNT_FACTORY_ABI = parseAbi([
@@ -758,11 +722,6 @@ export async function createSession(
               abi: predictionMarketEscrowAbi,
               functionName: 'mint',
             },
-            {
-              target: etherealContracts.predictionMarketEscrow,
-              abi: predictionMarketEscrowAbi,
-              functionName: 'registerSessionKey',
-            },
           ]
         : []),
     ],
@@ -813,13 +772,20 @@ export async function createSession(
     etherealPermissionId
   );
 
-  // Create permission plugin for Ethereal with call policy and timestamp policy
+  // Signature caller policy: allows the escrow contract to call isValidSignature()
+  // on the smart account (ERC-1271 verification for session key signatures)
+  const escrowAddress = etherealContracts.predictionMarketEscrow;
+  const signatureCallerPolicy = toSignatureCallerPolicy({
+    allowedCallers: [escrowAddress].filter(Boolean) as Address[],
+  });
+
+  // Create permission plugin for Ethereal with call, timestamp, and signature caller policies
   const etherealPermissionPlugin = await toPermissionValidator(
     etherealPublicClient,
     {
       entryPoint: ENTRY_POINT,
       signer: sessionKeySigner,
-      policies: [etherealCallPolicy, timestampPolicy],
+      policies: [etherealCallPolicy, timestampPolicy, signatureCallerPolicy],
       kernelVersion: KERNEL_VERSION,
       permissionId: etherealPermissionId,
     }
@@ -884,9 +850,9 @@ export async function createSession(
     '[SessionKeyManager] Arbitrum session will be created lazily on first EAS attestation'
   );
 
-  // Note: Escrow session key approval (signEscrowSessionKeyApproval) has been removed.
-  // Session keys are now registered on-chain via registerSessionKey() UserOp after session creation.
-  // This eliminates the second wallet signature during session creation.
+  // Note: No on-chain registration or separate escrow approval needed.
+  // Session keys sign typed data through the KernelAccountClient, and the escrow
+  // contract verifies via ERC-1271 (isValidSignature) on the smart account.
 
   const config: SessionConfig = {
     durationHours,
