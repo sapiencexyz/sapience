@@ -141,8 +141,8 @@ const NavLinks = ({ onClose }: NavLinksProps) => {
           Forecasting
         </Link>
         <Link
-          href="/skills"
-          className={`flex w-fit px-3 py-2 rounded-full ${linkClass} ${isActive('/skills', pathname) ? activeClass : ''} hover:text-accent-gold transition-colors`}
+          href="/skill"
+          className={`flex w-fit px-3 py-2 rounded-full ${linkClass} ${isActive('/skill', pathname) ? activeClass : ''} hover:text-accent-gold transition-colors`}
           onClick={handleLinkClick}
         >
           Agent Skills
@@ -536,7 +536,7 @@ const Header = () => {
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>
                     <Link
-                      href="/skills"
+                      href="/skill"
                       className="group cursor-pointer flex items-center transition-colors hover:text-accent-gold data-[highlighted]:text-accent-gold hover:bg-transparent data-[highlighted]:bg-transparent"
                     >
                       <Sparkles className="mr-px h-4 w-4 opacity-75 transition-colors group-hover:opacity-100 data-[highlighted]:opacity-100" />

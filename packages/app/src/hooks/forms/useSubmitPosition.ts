@@ -7,7 +7,10 @@ import {
   validateTakerFunds,
   prepareMintCalls,
 } from '@sapience/sdk';
-import { CHAIN_ID_ETHEREAL, ETHEREAL_WUSDE_ADDRESS } from '@sapience/sdk/constants';
+import {
+  CHAIN_ID_ETHEREAL,
+  ETHEREAL_WUSDE_ADDRESS,
+} from '@sapience/sdk/constants';
 import { useAccount, useReadContract } from 'wagmi';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 import { useSession } from '~/lib/context/SessionContext';

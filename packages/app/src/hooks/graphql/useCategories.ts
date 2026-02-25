@@ -1,5 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { fetchCategories, type CategoryQueryResult } from '@sapience/sdk/queries';
+import {
+  fetchCategories,
+  type CategoryQueryResult,
+} from '@sapience/sdk/queries';
 import type { Category as CategoryType } from '@sapience/sdk/types/graphql';
 
 export const useCategories = () => {

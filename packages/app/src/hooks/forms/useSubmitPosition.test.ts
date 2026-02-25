@@ -21,9 +21,14 @@ jest.mock('viem', () => ({
   parseAbi: jest.fn().mockReturnValue([]),
 }));
 
-const mockPrepareMintCalls = jest.fn().mockReturnValue([
-  { to: '0xMarket' as `0x${string}`, data: '0xEncodedCalldata' as `0x${string}` },
-]);
+const mockPrepareMintCalls = jest
+  .fn()
+  .mockReturnValue([
+    {
+      to: '0xMarket' as `0x${string}`,
+      data: '0xEncodedCalldata' as `0x${string}`,
+    },
+  ]);
 jest.mock('@sapience/sdk', () => ({
   predictionMarketAbi: [],
   toBigIntSafe: (value: string | number | bigint | undefined) => {
@@ -82,7 +87,8 @@ const VALID_MINT_DATA: MintPredictionRequestData = {
   taker: '0xBidder' as `0x${string}`,
   takerSignature: '0xSig' as `0x${string}`,
   takerDeadline: '9999999999',
-  refCode: '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`,
+  refCode:
+    '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`,
 };
 
 describe('useSubmitPosition', () => {
@@ -239,7 +245,9 @@ describe('useSubmitPosition', () => {
       capturedCallbacks.onSuccess?.();
     });
 
-    expect(result.current.success).toBe('Position prediction minted successfully');
+    expect(result.current.success).toBe(
+      'Position prediction minted successfully'
+    );
     expect(result.current.error).toBeNull();
   });
 
