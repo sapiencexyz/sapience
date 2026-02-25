@@ -172,7 +172,9 @@ contract PredictionMarketVaultIntegrationTest is Test {
                 pCollateral,
                 cCollateral,
                 predictor,
-                address(vault)
+                address(vault),
+                address(0),
+                ""
             )
         );
 
@@ -649,7 +651,9 @@ contract PredictionMarketVaultIntegrationTest is Test {
                 PREDICTOR_COLLATERAL,
                 COUNTERPARTY_COLLATERAL,
                 predictor,
-                address(vault)
+                address(vault),
+                address(0),
+                ""
             )
         );
 

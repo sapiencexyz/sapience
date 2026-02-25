@@ -236,7 +236,9 @@ contract DebugBidSignature is Script {
             predictorCollateral,
             counterpartyCollateral,
             predictor,
-            counterparty
+            counterparty,
+            address(0),
+            ""
         ));
     }
 

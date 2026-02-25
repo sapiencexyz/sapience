@@ -188,7 +188,9 @@ contract PredictionMarketEscrowERC1271Test is Test {
                 PREDICTOR_COLLATERAL,
                 COUNTERPARTY_COLLATERAL,
                 address(predictorSmartAccount), // Smart account as predictor
-                counterparty
+                counterparty,
+                address(0),
+                ""
             )
         );
 
@@ -242,7 +244,9 @@ contract PredictionMarketEscrowERC1271Test is Test {
                 PREDICTOR_COLLATERAL,
                 COUNTERPARTY_COLLATERAL,
                 predictor,
-                address(counterpartySmartAccount) // Smart account as counterparty
+                address(counterpartySmartAccount), // Smart account as counterparty
+                address(0),
+                ""
             )
         );
 
@@ -295,7 +299,9 @@ contract PredictionMarketEscrowERC1271Test is Test {
                 PREDICTOR_COLLATERAL,
                 COUNTERPARTY_COLLATERAL,
                 address(predictorSmartAccount),
-                address(counterpartySmartAccount)
+                address(counterpartySmartAccount),
+                address(0),
+                ""
             )
         );
 
@@ -346,7 +352,9 @@ contract PredictionMarketEscrowERC1271Test is Test {
                 PREDICTOR_COLLATERAL,
                 COUNTERPARTY_COLLATERAL,
                 predictor,
-                counterparty
+                counterparty,
+                address(0),
+                ""
             )
         );
 
@@ -514,7 +522,9 @@ contract PredictionMarketEscrowERC1271Test is Test {
                 PREDICTOR_COLLATERAL,
                 COUNTERPARTY_COLLATERAL,
                 address(predictorSmartAccount),
-                counterparty
+                counterparty,
+                address(0),
+                ""
             )
         );
 
@@ -551,7 +561,9 @@ contract PredictionMarketEscrowERC1271Test is Test {
                 PREDICTOR_COLLATERAL,
                 COUNTERPARTY_COLLATERAL,
                 address(nonEIP1271),
-                counterparty
+                counterparty,
+                address(0),
+                ""
             )
         );
 
@@ -617,7 +629,9 @@ contract PredictionMarketEscrowERC1271Test is Test {
                 PREDICTOR_COLLATERAL,
                 COUNTERPARTY_COLLATERAL,
                 address(revertingContract),
-                counterparty
+                counterparty,
+                address(0),
+                ""
             )
         );
 
