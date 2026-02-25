@@ -103,7 +103,7 @@ export function getEscrowAuctionDetails(
     auctionId,
     picks: rec.auction.picks,
     predictorCollateral: rec.auction.predictorCollateral,
-    counterpartyCollateral: rec.auction.counterpartyCollateral,
+    ...(rec.auction.counterpartyCollateral && { counterpartyCollateral: rec.auction.counterpartyCollateral }),
     predictor: rec.auction.predictor,
     predictorNonce: rec.auction.predictorNonce,
     predictorDeadline: rec.auction.predictorDeadline,

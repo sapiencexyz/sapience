@@ -204,7 +204,7 @@ export async function verifyEscrowPredictorSignature(
     const rawTypedData = buildPredictorMintTypedData({
       picks,
       predictorCollateral: BigInt(payload.predictorCollateral),
-      counterpartyCollateral: BigInt(payload.counterpartyCollateral),
+      counterpartyCollateral: BigInt(payload.counterpartyCollateral ?? '0'),
       predictor: payload.predictor as Address,
       counterparty,
       predictorNonce: BigInt(payload.predictorNonce),

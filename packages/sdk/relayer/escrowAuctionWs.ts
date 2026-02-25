@@ -31,7 +31,7 @@ export interface AuctionWsHandlers {
     auctionId: string;
     picks: PickJson[];
     predictorCollateral: string;
-    counterpartyCollateral: string;
+    counterpartyCollateral?: string;
     predictor: string;
     predictorDeadline: number;
     chainId: number;
@@ -277,11 +277,11 @@ export function createEscrowAuctionWs(
 export function buildAuctionRequest(params: {
   picks: PickJson[];
   predictorCollateral: bigint;
-  counterpartyCollateral: bigint;
+  counterpartyCollateral?: bigint; // optional in RFQ — counterparty decides
   predictor: string;
   predictorNonce: number;
   predictorDeadline: number;
-  predictorSignature: string;
+  predictorSignature?: string; // absent at RFQ start, signed after receiving quote
   chainId: number;
   refCode?: string;
   predictorSessionKeyData?: string;
@@ -289,11 +289,13 @@ export function buildAuctionRequest(params: {
   return {
     picks: params.picks,
     predictorCollateral: params.predictorCollateral.toString(),
-    counterpartyCollateral: params.counterpartyCollateral.toString(),
+    ...(params.counterpartyCollateral !== undefined && {
+      counterpartyCollateral: params.counterpartyCollateral.toString(),
+    }),
     predictor: params.predictor,
     predictorNonce: params.predictorNonce,
     predictorDeadline: params.predictorDeadline,
-    predictorSignature: params.predictorSignature,
+    ...(params.predictorSignature && { predictorSignature: params.predictorSignature }),
     chainId: params.chainId,
     refCode: params.refCode,
     predictorSessionKeyData: params.predictorSessionKeyData,

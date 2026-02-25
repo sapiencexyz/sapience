@@ -179,7 +179,7 @@ export function useBidSubmission(options: UseBidSubmissionOptions = {}) {
       const typedData = buildCounterpartyMintTypedData({
         picks,
         predictorCollateral: BigInt(auction.predictorCollateral),
-        counterpartyCollateral: BigInt(auction.counterpartyCollateral),
+        counterpartyCollateral: BigInt(auction.counterpartyCollateral ?? '0'),
         predictor: auction.predictor as Address,
         counterparty: signerAddress,
         counterpartyNonce,
@@ -221,7 +221,7 @@ export function useBidSubmission(options: UseBidSubmissionOptions = {}) {
       const bidPayload: BidPayload = {
         auctionId: auction.auctionId,
         counterparty: signerAddress,
-        counterpartyCollateral: auction.counterpartyCollateral,
+        counterpartyCollateral: auction.counterpartyCollateral ?? '0',
         counterpartyNonce: Number(counterpartyNonce),
         counterpartyDeadline: Number(counterpartyDeadline),
         counterpartySignature,

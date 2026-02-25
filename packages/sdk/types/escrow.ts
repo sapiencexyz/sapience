@@ -188,11 +188,11 @@ export interface BurnRequestJson {
 export interface AuctionRequestPayload {
   picks: PickJson[];
   predictorCollateral: string; // wei string
-  counterpartyCollateral: string; // wei string (requested counterparty stake)
+  counterpartyCollateral?: string; // wei string — optional in RFQ (counterparty decides)
   predictor: string; // EOA or smart account address
   predictorNonce: number;
   predictorDeadline: number; // unix timestamp
-  predictorSignature: string; // EIP-712 MintApproval signature
+  predictorSignature?: string; // EIP-712 MintApproval — absent at RFQ start, signed after receiving quote
   chainId: number;
   refCode?: string;
   predictorSessionKeyData?: string; // ZeroDev session approval (base64)
@@ -251,7 +251,7 @@ export interface AuctionDetails {
   auctionId: string;
   picks: PickJson[];
   predictorCollateral: string;
-  counterpartyCollateral: string;
+  counterpartyCollateral?: string; // optional — absent in pure RFQ
   predictor: string;
   predictorNonce: number;
   predictorDeadline: number;
