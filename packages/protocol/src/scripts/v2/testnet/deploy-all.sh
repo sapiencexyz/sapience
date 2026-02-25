@@ -364,6 +364,14 @@ deploy_ethereal_phase1() {
         update_deployment "pmNetwork" "PredictionMarketBridge" "$addr"
     fi
 
+    # 19. Deploy AccountFactory and configure on Escrow (or reuse existing)
+    run_script "src/scripts/v2/testnet/19_DeployAccountFactory.s.sol:DeployAccountFactory" "$PM_NETWORK_RPC_URL" "Deploying ZeroDevKernelAccountFactory and configuring on Escrow"
+    addr=$(extract_address "$LAST_OUTPUT" "ACCOUNT_FACTORY_ADDRESS=")
+    if [ -n "$addr" ]; then
+        update_env "ACCOUNT_FACTORY_ADDRESS" "$addr"
+        update_deployment "pmNetwork" "ZeroDevKernelAccountFactory" "$addr"
+    fi
+
     log_success "Phase 1 complete: Ethereal infrastructure deployed"
 }
 
