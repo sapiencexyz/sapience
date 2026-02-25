@@ -99,7 +99,7 @@ export default function ProfileQuickMetrics({
   positions,
   className,
 }: ProfileQuickMetricsProps) {
-  const chainId = CHAIN_ID_ETHEREAL;
+  const chainId = DEFAULT_CHAIN_ID;
   const collateralSymbol = COLLATERAL_SYMBOLS[chainId] || 'testUSDe';
   const balance = useProfileBalance(address, chainId, collateralSymbol);
   const volume = useProfileVolume(address);

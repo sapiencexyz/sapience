@@ -156,7 +156,7 @@ export default function VaultPnlChart({
   externalPeriod,
   showHeader = true,
 }: VaultPnlChartProps) {
-  const collateralSymbol = COLLATERAL_SYMBOLS[CHAIN_ID_ETHEREAL] || 'USDe';
+  const collateralSymbol = COLLATERAL_SYMBOLS[DEFAULT_CHAIN_ID] || 'USDe';
   const [internalPeriod, setInternalPeriod] = useState<Period>('3M');
   const period = externalPeriod ?? internalPeriod;
   const setPeriod = setInternalPeriod;

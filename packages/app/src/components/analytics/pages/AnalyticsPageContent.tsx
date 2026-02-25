@@ -169,7 +169,7 @@ function filterDataByPeriod<T extends { timestamp: string }>(
 }
 
 function AnalyticsPageContent(): React.ReactElement {
-  const collateralSymbol = COLLATERAL_SYMBOLS[CHAIN_ID_ETHEREAL] || 'USDe';
+  const collateralSymbol = COLLATERAL_SYMBOLS[DEFAULT_CHAIN_ID] || 'USDe';
 
   // Period states for each chart
   const [volumePeriod, setVolumePeriod] = useState<Period>('3M');

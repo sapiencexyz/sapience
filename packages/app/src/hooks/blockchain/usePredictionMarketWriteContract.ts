@@ -28,7 +28,7 @@ export function usePredictionMarketWriteContract(opts?: {
     onError: opts?.onError,
   });
 
-  const chainId = CHAIN_ID_ETHEREAL;
+  const chainId = DEFAULT_CHAIN_ID;
   const PREDICTION_MARKET_ADDRESS = predictionMarket[chainId]?.address;
 
   function burn(tokenId: bigint, refCode: `0x${string}`) {

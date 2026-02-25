@@ -174,7 +174,7 @@ const CreatePositionFormInner = ({
     isSessionActive,
   } = useSession();
   const { toast } = useToast();
-  const chainId = CHAIN_ID_ETHEREAL;
+  const chainId = DEFAULT_CHAIN_ID;
 
   // Preview card dialog state (for "View Card" in SHARE dropdown)
   const [showPreviewCard, setShowPreviewCard] = useState(false);

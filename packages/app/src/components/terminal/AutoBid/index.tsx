@@ -36,7 +36,7 @@ const MAX_DISPLAY_ALLOWANCE = 10n ** 27n; // 1 billion tokens (10^9) with 18 dec
 
 const AutoBid: React.FC<AutoBidProps> = () => {
   const { address } = useAccount();
-  const chainId = CHAIN_ID_ETHEREAL;
+  const chainId = DEFAULT_CHAIN_ID;
   const { messages: auctionMessages } = useAuctionRelayerFeed();
   const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
 

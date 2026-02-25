@@ -48,7 +48,7 @@ const NUM_TO_DISPLAY = 3;
 const DISPLAY_TIMEOUT_MS = 4000;
 
 const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
-  const chainId = CHAIN_ID_ETHEREAL;
+  const chainId = DEFAULT_CHAIN_ID;
 
   const { data: allConditions = [], isLoading } = useConditions({
     take: 100,

@@ -34,7 +34,7 @@ type ReferralRow = {
 };
 
 const ReferralVolumeCell = ({ address }: { address: string }) => {
-  const chainId = CHAIN_ID_ETHEREAL;
+  const chainId = DEFAULT_CHAIN_ID;
   const collateralSymbol = COLLATERAL_SYMBOLS[chainId] || 'USDe';
 
   const { display, isLoading } = useProfileVolume(address);

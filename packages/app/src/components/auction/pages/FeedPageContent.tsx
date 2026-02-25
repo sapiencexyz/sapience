@@ -34,7 +34,7 @@ import type { UILeg } from '~/components/positions/PositionsTable';
 const POSITIONS_PAGE_SIZE = 20;
 
 const FeedPageContent: React.FC = () => {
-  const chainId = CHAIN_ID_ETHEREAL;
+  const chainId = DEFAULT_CHAIN_ID;
   const collateralAssetTicker = COLLATERAL_SYMBOLS[chainId] || 'testUSDe';
   const TAB_VALUES = ['positions', 'auctions', 'vault-quotes'] as const;
   type TabValue = (typeof TAB_VALUES)[number];

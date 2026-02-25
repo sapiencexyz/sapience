@@ -14,8 +14,9 @@ export const mainnetClient = createPublicClient({
     : http('https://ethereum-rpc.publicnode.com'),
 });
 
-// Ethereal chain definition (not in viem/chains)
+// Ethereal chain definitions (not in viem/chains)
 const CHAIN_ID_ETHEREAL = 5064014;
+const CHAIN_ID_ETHEREAL_TESTNET = 13374202;
 const etherealChain = defineChain({
   id: CHAIN_ID_ETHEREAL,
   name: 'EtherealChain',
@@ -39,6 +40,29 @@ const etherealChain = defineChain({
     },
   },
 });
+const etherealTestnetChain = defineChain({
+  id: CHAIN_ID_ETHEREAL_TESTNET,
+  name: 'Ethereal Testnet',
+  nativeCurrency: {
+    decimals: 18,
+    name: 'USDe',
+    symbol: 'USDe',
+  },
+  rpcUrls: {
+    default: {
+      http: ['https://rpc.etherealtest.net'],
+    },
+    public: {
+      http: ['https://rpc.etherealtest.net'],
+    },
+  },
+  blockExplorers: {
+    default: {
+      name: 'Ethereal Testnet Explorer',
+      url: 'https://explorer.etherealtest.net',
+    },
+  },
+});
 
 // Use unknown to avoid structural type incompatibilities across different viem instances
 const publicClientCache: Map<number, unknown> = new Map();
@@ -48,14 +72,14 @@ export function getPublicClientForChainId(chainId: number) {
   if (cached) return cached as any;
 
   // Handle Ethereal chain specifically since it's not in viem/chains
-  if (chainId === CHAIN_ID_ETHEREAL) {
+  if (chainId === CHAIN_ID_ETHEREAL || chainId === CHAIN_ID_ETHEREAL_TESTNET) {
     // Allow per-chain override via NEXT_PUBLIC_RPC_<CHAINID>
     const envKey = `NEXT_PUBLIC_RPC_${chainId}` as keyof NodeJS.ProcessEnv;
     const envUrl = process.env[envKey as string];
     const rpcUrl = envUrl || 'https://rpc.ethereal.trade';
 
     const client = createPublicClient({
-      chain: etherealChain,
+      chain: chainId === CHAIN_ID_ETHEREAL_TESTNET ? etherealTestnetChain : etherealChain,
       transport: http(rpcUrl),
     });
     publicClientCache.set(chainId, client);

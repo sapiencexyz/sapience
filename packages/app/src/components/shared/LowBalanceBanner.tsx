@@ -21,7 +21,7 @@ const LowBalanceBanner: React.FC<LowBalanceBannerProps> = ({
   onVisibilityChange,
 }) => {
   const { address, isConnected } = useAccount();
-  const chainId = CHAIN_ID_ETHEREAL;
+  const chainId = DEFAULT_CHAIN_ID;
   const { balance, isLoading } = useCollateralBalance({
     address,
     chainId,

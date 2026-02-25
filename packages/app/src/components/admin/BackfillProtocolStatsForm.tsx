@@ -27,7 +27,7 @@ const BackfillProtocolStatsForm = () => {
 
       await postJson('/reindex/protocol-stats', {
         days: Number(days),
-        chainId: CHAIN_ID_ETHEREAL,
+        chainId: DEFAULT_CHAIN_ID,
       });
 
       toast({

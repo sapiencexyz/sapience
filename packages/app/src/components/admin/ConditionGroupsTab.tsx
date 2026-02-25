@@ -99,7 +99,7 @@ const ConditionGroupsTab = ({
   const { toast } = useToast();
   const { postJson, putJson, deleteJson, getJson } = useAdminApi();
   const { data: categories } = useCategories();
-  const currentChainId = CHAIN_ID_ETHEREAL;
+  const currentChainId = DEFAULT_CHAIN_ID;
 
   const {
     data: conditionGroups,

@@ -52,7 +52,7 @@ export function CollateralBalanceProvider({
   const { isConnected } = useAccount();
   const { effectiveAddress, isUsingSmartAccount, isCalculatingAddress } =
     useSession();
-  const chainId = CHAIN_ID_ETHEREAL;
+  const chainId = DEFAULT_CHAIN_ID;
 
   const {
     balance,

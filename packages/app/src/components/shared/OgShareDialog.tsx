@@ -88,7 +88,7 @@ export default function OgShareDialogBase({
   const [imgLoading, setImgLoading] = useState(true);
   const { toast } = useToast();
   const { effectiveAddress } = useSession();
-  const chainId = CHAIN_ID_ETHEREAL;
+  const chainId = DEFAULT_CHAIN_ID;
   const [positionResolved, setPositionResolved] = useState(false);
 
   // Store resolved position data for share URL

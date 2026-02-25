@@ -34,7 +34,7 @@ interface FeaturedCondition {
 
 export default function FeaturedMarketGroupCards() {
   // Fetch recent conditions for the currently selected chain
-  const chainId = CHAIN_ID_ETHEREAL;
+  const chainId = DEFAULT_CHAIN_ID;
   const { data: conditions, isLoading: isLoadingConditions } = useConditions({
     take: 100,
     chainId,

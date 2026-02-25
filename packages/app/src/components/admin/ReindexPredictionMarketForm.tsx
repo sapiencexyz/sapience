@@ -30,7 +30,7 @@ const ReindexPredictionMarketForm = () => {
       setIsLoading(true);
 
       await postJson(`/reindex/prediction-market`, {
-        chainId: CHAIN_ID_ETHEREAL,
+        chainId: DEFAULT_CHAIN_ID,
         ...(startTimestamp && { startTimestamp: Number(startTimestamp) }),
         ...(endTimestamp && { endTimestamp: Number(endTimestamp) }),
         clearExisting,

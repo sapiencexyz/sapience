@@ -46,6 +46,7 @@ import {
 import {
   CHAIN_ID_ETHEREAL,
   CHAIN_ID_ARBITRUM,
+  DEFAULT_CHAIN_ID,
   etherealChain,
 } from '@sapience/sdk/constants';
 
@@ -53,10 +54,10 @@ import {
 export { etherealChain as ethereal };
 
 const WUSDE_ADDRESS_ETHEREAL =
-  collateralTokenAddresses[CHAIN_ID_ETHEREAL].address;
+  collateralTokenAddresses[DEFAULT_CHAIN_ID]?.address || collateralTokenAddresses[CHAIN_ID_ETHEREAL].address;
 const PREDICTION_MARKET_ETHEREAL =
-  predictionMarketAddresses[CHAIN_ID_ETHEREAL].address;
-const VAULT_ETHEREAL = vaultAddresses[CHAIN_ID_ETHEREAL].address;
+  predictionMarketAddresses[DEFAULT_CHAIN_ID]?.address || predictionMarketAddresses[CHAIN_ID_ETHEREAL].address;
+const VAULT_ETHEREAL = vaultAddresses[DEFAULT_CHAIN_ID]?.address || vaultAddresses[CHAIN_ID_ETHEREAL].address;
 const EAS_ARBITRUM = easAddresses[CHAIN_ID_ARBITRUM].address;
 
 const WUSDE_ABI = parseAbi([

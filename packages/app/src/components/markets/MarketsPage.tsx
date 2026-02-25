@@ -41,7 +41,7 @@ const MarketsPage = () => {
   const { data: allCategories = [], isLoading: isLoadingCategories } =
     useCategories();
 
-  const chainId = CHAIN_ID_ETHEREAL;
+  const chainId = DEFAULT_CHAIN_ID;
 
   // Get compact status (needed by callbacks below)
   const isCompact = useIsBelow(1024);

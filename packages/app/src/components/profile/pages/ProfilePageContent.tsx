@@ -27,7 +27,7 @@ type TabValue = (typeof TAB_VALUES)[number];
 const ProfilePageContent = () => {
   const params = useParams();
   const address = (params.address as string).toLowerCase() as Address;
-  const chainId = CHAIN_ID_ETHEREAL;
+  const chainId = DEFAULT_CHAIN_ID;
 
   const { data: attestations, isLoading: forecastsLoading } = useForecasts({
     attesterAddress: address,

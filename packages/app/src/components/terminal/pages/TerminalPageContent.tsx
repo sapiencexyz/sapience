@@ -64,7 +64,7 @@ const TradeNotifications = () => {
 
 const TerminalPageContent: React.FC = () => {
   const { messages } = useAuctionRelayerFeed({ observeVaultQuotes: false });
-  const chainId = CHAIN_ID_ETHEREAL;
+  const chainId = DEFAULT_CHAIN_ID;
   const collateralAssetTicker = COLLATERAL_SYMBOLS[chainId] || 'testUSDe';
 
   // Ensure bids hub is connected regardless of whether any rows are rendered.
