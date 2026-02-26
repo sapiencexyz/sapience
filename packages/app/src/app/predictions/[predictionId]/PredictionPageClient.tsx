@@ -3,10 +3,6 @@
 import { formatEther } from 'viem';
 import { PicksContent } from '~/components/shared/PicksSummary';
 import PositionSummary from '~/components/positions/PositionSummary';
-import OgShareDialogBase from '~/components/shared/OgShareDialog';
-import { Button } from '@sapience/ui/components/ui/button';
-import { Share2 } from 'lucide-react';
-import { useState } from 'react';
 import type { PredictionData, ConditionData } from '~/app/og/_prediction-helpers';
 import type { Pick } from '~/components/shared/StackedPredictions';
 
@@ -28,8 +24,6 @@ export default function PredictionPageClient({
   serverPrediction: PredictionData | null;
   serverConditions: (ConditionData & { id: string })[];
 }) {
-  const [showShare, setShowShare] = useState(false);
-
   if (!serverPrediction) {
     return (
       <div className="text-center text-muted-foreground">
@@ -87,12 +81,6 @@ export default function PredictionPageClient({
       ? (pnl / positionSize) * 100
       : null;
 
-  const shareImageSrc = `/og/prediction?predictionId=${encodeURIComponent(predictionId)}`;
-  const shareUrl =
-    typeof window !== 'undefined'
-      ? `${window.location.origin}/predictions/${predictionId}`
-      : `/predictions/${predictionId}`;
-
   return (
     <>
       <div className="mb-6">
@@ -124,24 +112,6 @@ export default function PredictionPageClient({
               ? 'pending'
               : 'active'
         }
-      />
-
-      <div className="mt-6 flex justify-end">
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => setShowShare(true)}
-        >
-          <Share2 className="mr-1 h-4 w-4" /> Share
-        </Button>
-      </div>
-
-      <OgShareDialogBase
-        imageSrc={shareImageSrc}
-        open={showShare}
-        onOpenChange={setShowShare}
-        title="Share Prediction"
-        shareUrl={shareUrl}
       />
     </>
   );
