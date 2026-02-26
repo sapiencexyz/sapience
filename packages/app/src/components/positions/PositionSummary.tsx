@@ -67,7 +67,12 @@ export default function PositionSummary({
       <div className="flex items-center gap-2 pb-2">
         {/* Left group: Position ID, external link, counterparty badge */}
         <div className="flex items-center gap-2">
-          <h2 className="eyebrow text-foreground">Position #{positionId}</h2>
+          <h2 className="eyebrow text-foreground">
+            Prediction{' '}
+            {typeof positionId === 'string' && positionId.startsWith('0x') && positionId.length > 12
+              ? `${positionId.slice(0, 6)}...${positionId.slice(-4)}`
+              : `#${positionId}`}
+          </h2>
           {positionUrl && (
             <Link
               href={positionUrl}

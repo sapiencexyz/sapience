@@ -97,7 +97,7 @@ export default function PredictionPageClient({
     <>
       <div className="mb-6">
         <PositionSummary
-          positionId={predictionId.slice(0, 8)}
+          positionId={predictionId}
           createdAt={createdAt}
           endsAtMs={endsAtMs}
           positionSize={positionSize}
@@ -113,7 +113,7 @@ export default function PredictionPageClient({
 
       <PicksContent
         legs={legs}
-        positionId={predictionId.slice(0, 8)}
+        positionId={predictionId}
         hideHeader
         positionStatus={
           isSettled
