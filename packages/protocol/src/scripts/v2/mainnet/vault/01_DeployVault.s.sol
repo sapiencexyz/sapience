@@ -14,7 +14,8 @@ contract DeployVault is Script {
         address deployer = vm.addr(deployerPk);
 
         // Manager is the COUNTERPARTY wallet (signs approvals, processes deposits/withdrawals)
-        address manager = vm.addr(vm.envUint("COUNTERPARTY_PRIVATE_KEY"));
+        // Falls back to deployer if VAULT_MANAGER is not set
+        address manager = vm.envOr("VAULT_MANAGER", deployer);
 
         address collateralToken = vm.envAddress("COLLATERAL_TOKEN_ADDRESS");
 

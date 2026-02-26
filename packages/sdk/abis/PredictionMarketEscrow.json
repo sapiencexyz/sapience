@@ -1207,6 +1207,54 @@
   },
   {
     "type": "event",
+    "name": "PickConfigCreated",
+    "inputs": [
+      {
+        "name": "pickConfigId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "predictorToken",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "counterpartyToken",
+        "type": "address",
+        "indexed": false,
+        "internalType": "address"
+      },
+      {
+        "name": "picks",
+        "type": "tuple[]",
+        "indexed": false,
+        "internalType": "struct IV2Types.Pick[]",
+        "components": [
+          {
+            "name": "conditionResolver",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "conditionId",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "predictedOutcome",
+            "type": "uint8",
+            "internalType": "enum IV2Types.OutcomeSide"
+          }
+        ]
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
     "name": "PositionsBurned",
     "inputs": [
       {
@@ -1308,6 +1356,12 @@
       },
       {
         "name": "refCode",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "pickConfigId",
         "type": "bytes32",
         "indexed": false,
         "internalType": "bytes32"
