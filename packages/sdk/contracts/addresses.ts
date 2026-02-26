@@ -316,8 +316,8 @@ export const predictionMarketTokenFactory: ChainAddressMap = {
  */
 export const secondaryMarketEscrow: ChainAddressMap = {
   5064014: {
-    // Ethereal mainnet - TODO: deploy
-    address: '0x0000000000000000000000000000000000000000',
+    // Ethereal mainnet — deployed 2026-02-26
+    address: '0xc46C3140D2c776f83Cf908B3b93f20165e294064',
     legacy: [] as const,
   },
   13374202: {
