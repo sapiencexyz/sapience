@@ -4,7 +4,6 @@ import {
   http,
   type Chain,
 } from 'viem';
-import { cannon } from 'viem/chains';
 import dotenv from 'dotenv';
 import { fileURLToPath } from 'url';
 import { dirname, resolve } from 'path';
@@ -52,7 +51,7 @@ export const etherealTestnetChain: Chain = {
   },
 };
 
-const supportedChains: Chain[] = [cannon, etherealChain, etherealTestnetChain];
+const supportedChains: Chain[] = [etherealChain, etherealTestnetChain];
 
 export function getChainById(id: number): Chain | undefined {
   return supportedChains.find((c) => c.id === id);
@@ -68,14 +67,6 @@ export function getProviderForChain(chainId: number): PublicClient {
   let newClient: PublicClient;
 
   switch (chainId) {
-    case 13370:
-      // Cannon chain - use localhost for local dev
-      newClient = createPublicClient({
-        chain: { id: 13370, name: 'Cannon' } as Chain,
-        transport: http('http://localhost:8545'),
-        batch: { multicall: true },
-      });
-      break;
     case 5064014:
       newClient = createPublicClient({
         chain: etherealChain,

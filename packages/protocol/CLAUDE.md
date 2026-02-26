@@ -4,32 +4,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Foil Protocol is a decentralized prediction market protocol with fungible prediction pools using a parimutuel model and cross-chain bridge support.
+Sapience Protocol is a decentralized prediction market protocol with fungible prediction pools using a parimutuel model and cross-chain bridge support.
 
 ## Commands
 
 ### Development
 ```bash
-pnpm dev                    # Start local development with Anvil on port 8545
-pnpm test                   # Run all tests using Cannon and Forge
+pnpm test                   # Run all tests using Forge
 pnpm docgen                 # Generate documentation with Forge
-```
-
-### Deployment
-```bash
-pnpm deploy:sepolia         # Deploy to Sepolia testnet
-pnpm deploy:base           # Deploy to Base mainnet
-pnpm simulate-deploy:sepolia # Dry-run deployment on Sepolia
-pnpm simulate-deploy:base   # Dry-run deployment on Base
-
-# Manual cannon deployment (example from README)
-pnpm cannon build deployments/tomls/base-mainnet/foil-with-factory.toml --chain-id 8453 --wipe --dry-run --impersonate-all
 ```
 
 ### Testing Individual Files
 ```bash
 # Run specific test file
-forge test --match-path test/market/modules/LiquidityModule/CreateLiquidityPosition.t.sol -vvv
+forge test --match-path test/v2/PredictionMarketEscrow.t.sol -vvv
 
 # Run specific test function
 forge test --match-test test_revertWhen_invalidEpoch -vvv
@@ -47,16 +35,24 @@ pnpm fmt  # format solidity source files
 src/
 ├── v2/                  # Main protocol
 │   ├── bridge/          # Position token bridge (Ethereal <-> Arbitrum)
-│   ├── interfaces/      # V2 interfaces
-│   ├── resolvers/       # Condition resolvers
+│   ├── interfaces/      # V2 interfaces and types
+│   ├── resolvers/       # Condition resolvers (pyth/, lz-uma/, conditionalTokens/, mocks/)
+│   ├── sponsors/        # Mint sponsors (OnboardingSponsor)
 │   ├── utils/           # Signature validation, account factory
-│   ├── PredictionMarketEscrow.sol
-│   ├── PredictionMarketToken.sol
+│   ├── vault/           # PredictionMarketVault (LP deposits/withdrawals)
+│   ├── PredictionMarketEscrow.sol   # Core escrow: mint, burn, settle, redeem
+│   ├── PredictionMarketToken.sol    # ERC20 position token
+│   ├── PredictionMarketTokenFactory.sol  # CREATE3 factory for deterministic addresses
+│   ├── SecondaryMarketEscrow.sol    # Atomic OTC swap for position tokens
 │   └── v2.md            # Detailed specification
-├── predictionMarket/    # Legacy prediction market
-├── bridge/              # LayerZero bridge utilities
-├── vault/               # Passive liquidity vault
-└── external/            # External interfaces
+├── legacy/              # Legacy v1 contracts
+│   ├── predictionMarket/
+│   ├── bridge/
+│   ├── vault/
+│   ├── external/
+│   └── scripts/
+└── scripts/
+    └── v2/              # V2 deployment scripts
 ```
 
 ## Contract Verification
@@ -98,23 +94,27 @@ See `src/v2/v2.md` for the complete specification.
 
 ### Parimutuel Model
 
-Users with the same picks share tokens. Token supply equals total collateral:
-- Mint 50 USDE -> receive 50 predictor tokens
-- Winner side gets all collateral proportionally
+Users with the same picks share fungible tokens. Both sides of a mint receive tokens equal to the prediction's total collateral (predictor + counterparty). This bakes the odds into the token amount, keeping tokens fungible regardless of the odds at which each prediction was placed. Winner side gets all collateral proportionally to tokens held.
 
 ### Main Contracts
 
-- **PredictionMarketEscrow.sol**: Core contract handling mint, settle, redeem
+- **PredictionMarketEscrow.sol**: Core escrow handling mint, burn, settle, redeem. Uses bitmap nonces (Permit2-style) and supports session keys with revocation
 - **PredictionMarketToken.sol**: ERC20 position token with pickConfigId and isPredictorToken metadata
+- **PredictionMarketTokenFactory.sol**: CREATE3 factory for deterministic token addresses across chains
+- **SecondaryMarketEscrow.sol**: Permissionless atomic OTC swap for position tokens (no ownership, no funds at rest)
+- **PredictionMarketVault.sol**: Passive liquidity vault for LP deposits/withdrawals with request-based flow
+- **OnboardingSponsor.sol**: Funds predictor collateral during mint, gated by per-user budgets
 - **IConditionResolver**: Interface for condition resolution returning `OutcomeVector [yesWeight, noWeight]`
 
 ### Condition Resolvers
 
 Located in `src/v2/resolvers/`:
-- **PythConditionResolver**: Pyth oracle-based resolution
-- **ManualConditionResolver**: Admin-controlled resolution
-- **LZConditionResolver**: Cross-chain resolution via LayerZero
-- **ConditionalTokensConditionResolver**: Gnosis conditional tokens integration
+- **PythConditionResolver** (`pyth/`): Pyth oracle-based resolution
+- **ManualConditionResolver** (`mocks/`): Admin-controlled resolution
+- **LZConditionResolver** (`lz-uma/`): Cross-chain resolution via LayerZero (Ethereal side)
+- **LZConditionResolverUmaSide** (`lz-uma/`): UMA oracle side for cross-chain resolution
+- **ConditionalTokensConditionResolver** (`conditionalTokens/`): Gnosis conditional tokens integration
+- **ConditionalTokensReader** (`conditionalTokens/`): Reads Gnosis CT payouts and sends to Ethereal via LZ
 
 ### Resolution Flow
 
@@ -147,25 +147,18 @@ PredictionMarketBridgeBase (abstract)
 - `PredictionMarketBridgeBase.sol`: Abstract base with shared logic
 - `PredictionMarketBridge.sol`: Ethereal side (escrow, release)
 - `PredictionMarketBridgeRemote.sol`: Arbitrum side (mint, burn)
-- `PredictionMarketTokenFactory.sol`: CREATE3 factory
-- `PredictionMarketTokenBridged.sol`: Mintable/burnable ERC20 on Arbitrum
-
-### Deployment Configuration
-
-Cannon deployment system using TOML files in `deployments/tomls/`:
-- `cannonfile.dev.toml`: Local development
-- `cannonfile.test.toml`: Test configuration
-- `cannonfile.sepolia.toml`: Sepolia testnet
-- `cannonfile.base.blobs.toml`: Base mainnet
+- `PredictionMarketTokenFactory.sol`: CREATE3 factory for deterministic addresses
+- `PredictionMarketToken.sol`: Same ERC20 deployed on remote chain with bridge as mint/burn authority
 
 ## Rules
 
 - All tests must pass before commit
-- Run lint and format before commit 
+- Run lint and format before commit
 - To run lint and format, execute `pnpm format && pnpm lint` inside protocol package folder
 
 ## Key Dependencies
 
-- **@openzeppelin/contracts**: Standard implementations
-- **@layerzerolabs/lz-evm-oapp-v2**: Cross-chain messaging
-- **cannon-std**: Deployment and testing utilities
+- **@openzeppelin/contracts**: Standard implementations (ERC20, access control, security)
+- **@layerzerolabs/oapp-evm**: Cross-chain messaging via LayerZero
+- **solady**: CREATE3 for deterministic cross-chain token deployment
+- **@uma/core**: UMA Optimistic Oracle integration for condition resolution

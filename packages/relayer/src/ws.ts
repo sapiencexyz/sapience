@@ -633,6 +633,7 @@ export function createAuctionWebSocketServer() {
           logTiming(pendingAuctionId, 'received', auctionStartTime, {
             predictor: payload.predictor?.slice(0, 10) || 'unknown',
             picks: payload.picks?.length ?? 0,
+            keys: Object.keys(payload).join(','),
           });
 
           // Validate auction request structure

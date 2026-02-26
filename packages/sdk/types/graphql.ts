@@ -1324,6 +1324,10 @@ export type Query = {
   questionsSorted: Array<Question>;
   /** Returns the most recently created legacy positions globally, ordered by mintedAt descending. */
   recentLegacyPositions: Array<LegacyPositionType>;
+  secondaryTrade?: Maybe<SecondaryTradeType>;
+  secondaryTrades: Array<SecondaryTradeType>;
+  secondaryTradesByAddress: Array<SecondaryTradeType>;
+  secondaryTradesCount: Scalars['Int']['output'];
   topForecasters: Array<ForecasterScoreType>;
   tradingVolumeByAddress: Scalars['String']['output'];
   user?: Maybe<User>;
@@ -1510,6 +1514,37 @@ export type QueryRecentLegacyPositionsArgs = {
 };
 
 
+export type QuerySecondaryTradeArgs = {
+  tradeHash: Scalars['String']['input'];
+};
+
+
+export type QuerySecondaryTradesArgs = {
+  buyer?: InputMaybe<Scalars['String']['input']>;
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  seller?: InputMaybe<Scalars['String']['input']>;
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
+  token?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QuerySecondaryTradesByAddressArgs = {
+  address: Scalars['String']['input'];
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
+};
+
+
+export type QuerySecondaryTradesCountArgs = {
+  buyer?: InputMaybe<Scalars['String']['input']>;
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  seller?: InputMaybe<Scalars['String']['input']>;
+  token?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type QueryTopForecastersArgs = {
   limit?: Scalars['Int']['input'];
 };
@@ -1613,6 +1648,23 @@ export type ReferralCodeWhereInput = {
   isActive?: InputMaybe<BoolFilter>;
   maxClaims?: InputMaybe<IntFilter>;
   updatedAt?: InputMaybe<DateTimeFilter>;
+};
+
+export type SecondaryTradeType = {
+  __typename?: 'SecondaryTradeType';
+  blockNumber: Scalars['Int']['output'];
+  buyer: Scalars['String']['output'];
+  chainId: Scalars['Int']['output'];
+  collateral: Scalars['String']['output'];
+  executedAt: Scalars['Int']['output'];
+  id: Scalars['Int']['output'];
+  price: Scalars['String']['output'];
+  refCode?: Maybe<Scalars['String']['output']>;
+  seller: Scalars['String']['output'];
+  token: Scalars['String']['output'];
+  tokenAmount: Scalars['String']['output'];
+  tradeHash: Scalars['String']['output'];
+  txHash: Scalars['String']['output'];
 };
 
 export type SortOrder =

@@ -294,6 +294,8 @@ export function ForecastCell({
       prefetchedProbability={prefetchedProbability}
       onPrediction={onPrediction}
       skipViewportCheck={skipViewportCheck}
+      chainId={condition.chainId}
+      resolverAddress={condition.resolver}
     />
   );
 }
