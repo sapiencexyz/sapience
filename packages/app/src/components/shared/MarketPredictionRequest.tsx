@@ -8,6 +8,7 @@ import { predictionMarketAbi } from '@sapience/sdk';
 import { predictionMarket } from '@sapience/sdk/contracts';
 import {
   DEFAULT_CHAIN_ID,
+  CHAIN_ID_ETHEREAL_TESTNET,
   PREFERRED_ESTIMATE_QUOTER,
 } from '@sapience/sdk/constants';
 import { verifyMakerBidSignature } from '@sapience/sdk';
@@ -37,6 +38,8 @@ interface MarketPredictionRequestProps {
   prefetchedProbability?: number | null;
   skipViewportCheck?: boolean;
   requestLabel?: string;
+  chainId?: number;
+  resolverAddress?: string | null;
 }
 
 // Custom comparator for React.memo: ignore onPrediction identity changes
@@ -55,6 +58,8 @@ function arePropsEqual(
   if (prev.skipViewportCheck !== next.skipViewportCheck) return false;
   if (prev.className !== next.className) return false;
   if (prev.requestLabel !== next.requestLabel) return false;
+  if (prev.chainId !== next.chainId) return false;
+  if (prev.resolverAddress !== next.resolverAddress) return false;
 
   // Lightweight outcomes comparison (length + marketIds)
   const pO = prev.outcomes;
@@ -83,6 +88,8 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
   prefetchedProbability = null,
   skipViewportCheck = false,
   requestLabel = 'Request',
+  chainId: chainIdProp,
+  resolverAddress,
 }) => {
   // Store onPrediction in a ref so we can call the latest version without
   // depending on its identity (avoids rerenders when parent passes new lambdas).
@@ -110,7 +117,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
   const { address: takerAddress } = useAccount();
   // Disable logging for forecast-only components to avoid noisy console output
   const { requestQuotes, bids } = useAuctionStart({ disableLogging: true });
-  const chainId = DEFAULT_CHAIN_ID;
+  const chainId = chainIdProp ?? DEFAULT_CHAIN_ID;
   const PREDICTION_MARKET_ADDRESS =
     predictionMarket[chainId]?.address ||
     predictionMarket[DEFAULT_CHAIN_ID]?.address;
@@ -302,6 +309,14 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
       const positionSizeWei = parseUnits('1', 18).toString();
       setLastTakerPositionSizeWei(positionSizeWei);
       const payload = buildAuctionStartPayload(effectiveOutcomes, chainId);
+      const isEscrow = chainId === CHAIN_ID_ETHEREAL_TESTNET && !!resolverAddress;
+      const escrowPicks = isEscrow
+        ? effectiveOutcomes.map((o) => ({
+            conditionResolver: resolverAddress as `0x${string}`,
+            conditionId: (o.marketId.startsWith('0x') ? o.marketId : `0x${o.marketId}`) as `0x${string}`,
+            predictedOutcome: o.prediction ? 1 : 0,
+          }))
+        : undefined;
       const auctionParams = {
         wager: positionSizeWei,
         resolver: payload.resolver,
@@ -309,6 +324,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
         taker: selectedTakerAddress,
         takerNonce: takerNonce !== undefined ? Number(takerNonce) : 0,
         chainId: chainId,
+        ...(escrowPicks && { escrowPicks }),
       };
       setLastAuctionParams(auctionParams);
       const send = () => {
@@ -345,6 +361,14 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
         const positionSizeWei = parseUnits('1', 18).toString();
         setLastTakerPositionSizeWei(positionSizeWei);
         const payload = buildAuctionStartPayload(effectiveOutcomes, chainId);
+        const isEscrow = chainId === CHAIN_ID_ETHEREAL_TESTNET && !!resolverAddress;
+        const escrowPicks = isEscrow
+          ? effectiveOutcomes.map((o) => ({
+              conditionResolver: resolverAddress as `0x${string}`,
+              conditionId: (o.marketId.startsWith('0x') ? o.marketId : `0x${o.marketId}`) as `0x${string}`,
+              predictedOutcome: o.prediction ? 1 : 0,
+            }))
+          : undefined;
         const auctionParams = {
           wager: positionSizeWei,
           resolver: payload.resolver,
@@ -352,6 +376,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
           taker: selectedTakerAddress,
           takerNonce: takerNonce !== undefined ? Number(takerNonce) : 0,
           chainId: chainId,
+          ...(escrowPicks && { escrowPicks }),
         };
         setLastAuctionParams(auctionParams);
         const send = () => {
