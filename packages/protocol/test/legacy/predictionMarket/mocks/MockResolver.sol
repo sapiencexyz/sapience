@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "../../../src/predictionMarket/interfaces/IPredictionMarketResolver.sol";
-import "../../../src/predictionMarket/interfaces/IPredictionStructs.sol";
+import "../../../../src/legacy/predictionMarket/interfaces/IPredictionMarketResolver.sol";
+import "../../../../src/legacy/predictionMarket/interfaces/IPredictionStructs.sol";
 
 contract MockResolver is IPredictionMarketResolver {
     bool public shouldValidate = true;

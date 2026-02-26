@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
-import "../../predictionMarket/utils/SignatureProcessor.sol";
+import "../utils/SignatureProcessor.sol";
 import "./interfaces/IPredictionMarketVault.sol";
 
 /// @dev Minimal interface for querying prediction market token info

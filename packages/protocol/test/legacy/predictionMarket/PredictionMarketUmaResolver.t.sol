@@ -2,8 +2,8 @@
 pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
-import "../../src/predictionMarket/resolvers/PredictionMarketUmaResolver.sol";
-import "../../src/predictionMarket/interfaces/IPredictionMarketResolver.sol";
+import "../../../src/legacy/predictionMarket/resolvers/PredictionMarketUmaResolver.sol";
+import "../../../src/legacy/predictionMarket/interfaces/IPredictionMarketResolver.sol";
 import "./mocks/MockERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 

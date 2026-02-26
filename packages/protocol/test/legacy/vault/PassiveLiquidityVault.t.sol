@@ -3,8 +3,8 @@ pragma solidity ^0.8.22;
 
 import "forge-std/Test.sol";
 import "forge-std/console.sol";
-import "../../src/vault/PassiveLiquidityVault.sol";
-import "../../src/vault/interfaces/IPassiveLiquidityVault.sol";
+import "../../../src/legacy/vault/PassiveLiquidityVault.sol";
+import "../../../src/legacy/vault/interfaces/IPassiveLiquidityVault.sol";
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 

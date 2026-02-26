@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {PredictionMarketLZResolverUmaSide} from "../../../src/predictionMarket/resolvers/PredictionMarketLZResolverUmaSide.sol";
+import {PredictionMarketLZResolverUmaSide} from "../../../../src/legacy/predictionMarket/resolvers/PredictionMarketLZResolverUmaSide.sol";
 
 /**
  * @title MockOptimisticOracleV3ForPMResolver

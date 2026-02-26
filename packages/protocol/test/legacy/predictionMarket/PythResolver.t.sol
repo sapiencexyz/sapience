@@ -3,10 +3,10 @@ pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
 
-import "../../src/predictionMarket/resolvers/PythResolver.sol";
-import "../../src/predictionMarket/interfaces/IPredictionMarketResolver.sol";
-import "../../src/predictionMarket/resolvers/pythLazer/IPythLazer.sol";
-import "../../src/predictionMarket/resolvers/pythLazer/PythLazerStructs.sol";
+import "../../../src/legacy/predictionMarket/resolvers/PythResolver.sol";
+import "../../../src/legacy/predictionMarket/interfaces/IPredictionMarketResolver.sol";
+import "../../../src/legacy/predictionMarket/resolvers/pythLazer/IPythLazer.sol";
+import "../../../src/legacy/predictionMarket/resolvers/pythLazer/PythLazerStructs.sol";
 
 contract MockPythLazer is IPythLazer {
     uint256 internal fee;

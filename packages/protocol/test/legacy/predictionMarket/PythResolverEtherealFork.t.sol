@@ -4,11 +4,11 @@ pragma solidity ^0.8.19;
 import "forge-std/Test.sol";
 import "forge-std/StdJson.sol";
 
-import "../../src/predictionMarket/resolvers/PythResolver.sol";
-import "../../src/predictionMarket/resolvers/pythLazer/IPythLazer.sol";
-import "../../src/predictionMarket/resolvers/pythLazer/PythLazerLib.sol";
-import "../../src/predictionMarket/resolvers/pythLazer/PythLazerLibBytes.sol";
-import "../../src/predictionMarket/resolvers/pythLazer/PythLazerStructs.sol";
+import "../../../src/legacy/predictionMarket/resolvers/PythResolver.sol";
+import "../../../src/legacy/predictionMarket/resolvers/pythLazer/IPythLazer.sol";
+import "../../../src/legacy/predictionMarket/resolvers/pythLazer/PythLazerLib.sol";
+import "../../../src/legacy/predictionMarket/resolvers/pythLazer/PythLazerLibBytes.sol";
+import "../../../src/legacy/predictionMarket/resolvers/pythLazer/PythLazerStructs.sol";
 
 /// @notice Ethereal fork/e2e test for the Pyth Lazer-based resolver.
 /// @dev This test is **opt-in** and will be skipped unless `RUN_PYTH_ETHEREAL_FORK_TESTS=true`.

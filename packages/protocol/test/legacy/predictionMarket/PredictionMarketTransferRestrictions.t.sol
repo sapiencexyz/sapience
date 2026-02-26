@@ -2,11 +2,11 @@
 pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
-import "../../src/predictionMarket/PredictionMarket.sol";
-import "../../src/predictionMarket/interfaces/IPredictionStructs.sol";
-import "../../src/predictionMarket/interfaces/IPredictionMarketResolver.sol";
-import "../../src/vault/PassiveLiquidityVault.sol";
-import "../../src/vault/interfaces/IPassiveLiquidityVault.sol";
+import "../../../src/legacy/predictionMarket/PredictionMarket.sol";
+import "../../../src/legacy/predictionMarket/interfaces/IPredictionStructs.sol";
+import "../../../src/legacy/predictionMarket/interfaces/IPredictionMarketResolver.sol";
+import "../../../src/legacy/vault/PassiveLiquidityVault.sol";
+import "../../../src/legacy/vault/interfaces/IPassiveLiquidityVault.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "@openzeppelin/contracts/token/ERC721/IERC721Receiver.sol";
 import "./mocks/MockERC20.sol";

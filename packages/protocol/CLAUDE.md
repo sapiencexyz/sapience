@@ -4,32 +4,20 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Foil Protocol is a decentralized prediction market protocol with fungible prediction pools using a parimutuel model and cross-chain bridge support.
+Sapience Protocol is a decentralized prediction market protocol with fungible prediction pools using a parimutuel model and cross-chain bridge support.
 
 ## Commands
 
 ### Development
 ```bash
-pnpm dev                    # Start local development with Anvil on port 8545
-pnpm test                   # Run all tests using Cannon and Forge
+pnpm test                   # Run all tests using Forge
 pnpm docgen                 # Generate documentation with Forge
-```
-
-### Deployment
-```bash
-pnpm deploy:sepolia         # Deploy to Sepolia testnet
-pnpm deploy:base           # Deploy to Base mainnet
-pnpm simulate-deploy:sepolia # Dry-run deployment on Sepolia
-pnpm simulate-deploy:base   # Dry-run deployment on Base
-
-# Manual cannon deployment (example from README)
-pnpm cannon build deployments/tomls/base-mainnet/foil-with-factory.toml --chain-id 8453 --wipe --dry-run --impersonate-all
 ```
 
 ### Testing Individual Files
 ```bash
 # Run specific test file
-forge test --match-path test/market/modules/LiquidityModule/CreateLiquidityPosition.t.sol -vvv
+forge test --match-path test/v2/PredictionMarketEscrow.t.sol -vvv
 
 # Run specific test function
 forge test --match-test test_revertWhen_invalidEpoch -vvv
@@ -53,10 +41,13 @@ src/
 │   ├── PredictionMarketEscrow.sol
 │   ├── PredictionMarketToken.sol
 │   └── v2.md            # Detailed specification
-├── predictionMarket/    # Legacy prediction market
-├── bridge/              # LayerZero bridge utilities
-├── vault/               # Passive liquidity vault
-└── external/            # External interfaces
+├── legacy/              # Legacy v1 contracts
+│   ├── predictionMarket/
+│   ├── bridge/
+│   ├── vault/
+│   └── external/
+└── scripts/
+    └── v2/              # V2 deployment scripts
 ```
 
 ## Contract Verification
@@ -150,22 +141,13 @@ PredictionMarketBridgeBase (abstract)
 - `PredictionMarketTokenFactory.sol`: CREATE3 factory
 - `PredictionMarketTokenBridged.sol`: Mintable/burnable ERC20 on Arbitrum
 
-### Deployment Configuration
-
-Cannon deployment system using TOML files in `deployments/tomls/`:
-- `cannonfile.dev.toml`: Local development
-- `cannonfile.test.toml`: Test configuration
-- `cannonfile.sepolia.toml`: Sepolia testnet
-- `cannonfile.base.blobs.toml`: Base mainnet
-
 ## Rules
 
 - All tests must pass before commit
-- Run lint and format before commit 
+- Run lint and format before commit
 - To run lint and format, execute `pnpm format && pnpm lint` inside protocol package folder
 
 ## Key Dependencies
 
 - **@openzeppelin/contracts**: Standard implementations
 - **@layerzerolabs/lz-evm-oapp-v2**: Cross-chain messaging
-- **cannon-std**: Deployment and testing utilities
