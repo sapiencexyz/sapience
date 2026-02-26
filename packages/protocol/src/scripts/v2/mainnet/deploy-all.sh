@@ -103,6 +103,17 @@ validate_deployers() {
     fi
 }
 
+# Map network-specific deployer vars to generic DEPLOYER_* vars
+set_deployer_pm() {
+    export DEPLOYER_ADDRESS="$PM_NETWORK_DEPLOYER_ADDRESS"
+    export DEPLOYER_PRIVATE_KEY="$PM_NETWORK_DEPLOYER_PRIVATE_KEY"
+}
+
+set_deployer_sm() {
+    export DEPLOYER_ADDRESS="$SM_NETWORK_DEPLOYER_ADDRESS"
+    export DEPLOYER_PRIVATE_KEY="$SM_NETWORK_DEPLOYER_PRIVATE_KEY"
+}
+
 # Initialize deployments JSON file if it doesn't exist
 init_deployments_json() {
     if [ ! -f "$DEPLOYMENTS_FILE" ]; then
@@ -302,7 +313,8 @@ deploy_test_collateral() {
 deploy_ethereal_phase1() {
     log_info "=== Phase 1: Deploy PM Network Infrastructure (Mainnet) ==="
 
-    check_env PM_NETWORK_DEPLOYER_PRIVATE_KEY PM_NETWORK_DEPLOYER_ADDRESS PM_NETWORK_RPC_URL COLLATERAL_TOKEN_ADDRESS FACTORY_OWNER || exit 1
+    check_env PM_NETWORK_DEPLOYER_PRIVATE_KEY PM_NETWORK_DEPLOYER_ADDRESS PM_NETWORK_RPC_URL COLLATERAL_TOKEN_ADDRESS || exit 1
+    set_deployer_pm
 
     # 01. Deploy Resolver
     run_script "src/scripts/v2/mainnet/01_DeployResolver.s.sol:DeployResolver" "$PM_NETWORK_RPC_URL" "Deploying ManualConditionResolver on PM Network"
@@ -355,6 +367,7 @@ deploy_arbitrum_phase2() {
     log_info "=== Phase 2: Deploy SM Network Infrastructure (Mainnet) ==="
 
     check_env SM_NETWORK_DEPLOYER_PRIVATE_KEY SM_NETWORK_DEPLOYER_ADDRESS SM_NETWORK_RPC_URL SM_NETWORK_LZ_ENDPOINT || exit 1
+    set_deployer_sm
 
     # 06. Deploy Factory on SM Network (CREATE2 - same address as PM)
     run_script "src/scripts/v2/mainnet/06_DeployFactorySM.s.sol:DeployFactorySM" "$SM_NETWORK_RPC_URL" "Deploying PredictionMarketTokenFactory on SM Network"
@@ -803,9 +816,6 @@ usage() {
     echo ""
     echo "Required env vars for testing:"
     echo "  PREDICTOR_PRIVATE_KEY, COUNTERPARTY_PRIVATE_KEY"
-    echo ""
-    echo "Required env vars for factory (deterministic address):"
-    echo "  FACTORY_OWNER (must be the SAME address on both chains for CREATE2)"
     echo ""
     echo "Optional env vars:"
     echo "  SKIP_VERIFY=1 (skip contract verification during deployment)"

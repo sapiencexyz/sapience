@@ -1,0 +1,24 @@
+{
+  "network": "mainnet",
+  "pmNetwork": {
+    "name": "Ethereal",
+    "chainId": 5064014,
+    "contracts": {
+      "ManualConditionResolver": "0xAdFcDD47f8E09D5Cc00B25d2bbC3A8fdc3Ad4674",
+      "PredictionMarketTokenFactory": "0x82b1b600DaCFcff4Cc1e3bD02c542222597e5Fe2",
+      "PredictionMarketEscrow": "0x23C765fcE26aDbA3A1e0790d548410367D5A3487",
+      "PredictionMarketBridge": "0xf3a0026Bd8Bf3B3ca41177C93b99F97dfB657506",
+      "ZeroDevKernelAccountFactory": "0x91C9de557e47c08A32FBd6878Cac2Eb9A121c590"
+    }
+  },
+  "smNetwork": {
+    "name": "Arbitrum One",
+    "chainId": 42161,
+    "contracts": {
+      "PredictionMarketTokenFactory": "0x82b1b600DaCFcff4Cc1e3bD02c542222597e5Fe2",
+      "PredictionMarketBridgeRemote": "0x136700DBA1cCC2eDd16aB0bf439bd6b65574F99f"
+    }
+  },
+  "deployedAt": "2026-02-26T17:59:07Z",
+  "lastUpdated": "2026-02-26T18:01:16Z"
+}

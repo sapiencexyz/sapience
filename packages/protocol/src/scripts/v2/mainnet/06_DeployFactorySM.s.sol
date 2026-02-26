@@ -9,7 +9,7 @@ import {
 /// @title Deploy PredictionMarketTokenFactory on SM Network (Mainnet)
 /// @notice Deploy factory on Arbitrum mainnet using CREATE2 for deterministic address
 /// @dev Uses Arachnid CREATE2 proxy to ensure same factory address across chains.
-///      FACTORY_OWNER must be the same address used on PM Network deployment.
+///      DEPLOYER_ADDRESS must be the same address used on PM Network deployment.
 contract DeployFactorySM is Script {
     /// @dev Arachnid deterministic deployment proxy (same address on all EVM chains)
     address constant CREATE2_PROXY = 0x4e59b44847b379578588920cA78FbF26c0B4956C;
@@ -19,8 +19,8 @@ contract DeployFactorySM is Script {
         keccak256("sapience-prediction-market-token-factory-v1");
 
     function run() external {
-        // FACTORY_OWNER must be the same on both chains for same CREATE2 address
-        address owner = vm.envAddress("FACTORY_OWNER");
+        // DEPLOYER_ADDRESS must be the same on both chains for same CREATE2 address
+        address owner = vm.envAddress("DEPLOYER_ADDRESS");
         bytes32 salt = vm.envOr("FACTORY_SALT", DEFAULT_FACTORY_SALT);
 
         bytes memory initCode = abi.encodePacked(

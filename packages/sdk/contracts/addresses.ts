@@ -136,12 +136,11 @@ export const eas: ChainAddressMap = {
 /**
  * PredictionMarketEscrow
  * Core escrow contract handling mint, settle, redeem, burn
- * TODO: Update addresses after mainnet deployment
  */
 export const predictionMarketEscrow: ChainAddressMap = {
   5064014: {
-    // Ethereal mainnet - TODO: deploy
-    address: '0x0000000000000000000000000000000000000000',
+    // Ethereal mainnet — deployed 2026-02-26
+    address: '0x23C765fcE26aDbA3A1e0790d548410367D5A3487',
     legacy: [] as const,
   },
   13374202: {
@@ -197,8 +196,8 @@ export const pythConditionResolver: ChainAddressMap = {
  */
 export const manualConditionResolver: ChainAddressMap = {
   5064014: {
-    // Ethereal mainnet - TODO: deploy
-    address: '0x0000000000000000000000000000000000000000',
+    // Ethereal mainnet — deployed 2026-02-26
+    address: '0xAdFcDD47f8E09D5Cc00B25d2bbC3A8fdc3Ad4674',
     legacy: [] as const,
   },
   13374202: {
@@ -236,8 +235,8 @@ export const lzConditionResolver: ChainAddressMap = {
  */
 export const predictionMarketBridge: ChainAddressMap = {
   5064014: {
-    // Ethereal mainnet - TODO: deploy
-    address: '0x0000000000000000000000000000000000000000',
+    // Ethereal mainnet — deployed 2026-02-26
+    address: '0xf3a0026Bd8Bf3B3ca41177C93b99F97dfB657506',
     legacy: [] as const,
   },
   13374202: {
@@ -258,8 +257,8 @@ export const predictionMarketBridge: ChainAddressMap = {
  */
 export const predictionMarketBridgeRemote: ChainAddressMap = {
   42161: {
-    // Arbitrum mainnet - TODO: deploy
-    address: '0x0000000000000000000000000000000000000000',
+    // Arbitrum mainnet — deployed 2026-02-26
+    address: '0x136700DBA1cCC2eDd16aB0bf439bd6b65574F99f',
     legacy: [] as const,
   },
   421614: {
@@ -279,9 +278,14 @@ export const predictionMarketBridgeRemote: ChainAddressMap = {
  * CREATE3 factory for deterministic token addresses on remote chain
  */
 export const predictionMarketTokenFactory: ChainAddressMap = {
+  5064014: {
+    // Ethereal mainnet — deployed 2026-02-26 (CREATE2 deterministic, same address on both chains)
+    address: '0x82b1b600DaCFcff4Cc1e3bD02c542222597e5Fe2',
+    legacy: [] as const,
+  },
   42161: {
-    // Arbitrum mainnet - TODO: deploy
-    address: '0x0000000000000000000000000000000000000000',
+    // Arbitrum mainnet — deployed 2026-02-26 (CREATE2 deterministic, same address on both chains)
+    address: '0x82b1b600DaCFcff4Cc1e3bD02c542222597e5Fe2',
     legacy: [] as const,
   },
   13374202: {
