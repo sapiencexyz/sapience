@@ -635,6 +635,16 @@ verify_pm() {
         verify_contract "$COLLATERAL_TOKEN_ADDRESS" "test/v2/mocks/MockERC20.sol:MockERC20" "$PM_NETWORK_RPC_URL" "MockERC20 (test collateral)"
     fi
 
+    # Verify Factory if deployed
+    if [[ -n "${FACTORY_ADDRESS:-}" ]]; then
+        verify_contract "$FACTORY_ADDRESS" "src/v2/PredictionMarketTokenFactory.sol:PredictionMarketTokenFactory" "$PM_NETWORK_RPC_URL" "PredictionMarketTokenFactory"
+    fi
+
+    # Verify AccountFactory if deployed
+    if [[ -n "${ACCOUNT_FACTORY_ADDRESS:-}" ]]; then
+        verify_contract "$ACCOUNT_FACTORY_ADDRESS" "src/v2/utils/ZeroDevKernelAccountFactory.sol:ZeroDevKernelAccountFactory" "$PM_NETWORK_RPC_URL" "ZeroDevKernelAccountFactory"
+    fi
+
     log_success "PM Network verification complete"
 }
 

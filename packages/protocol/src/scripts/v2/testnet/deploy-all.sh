@@ -565,6 +565,18 @@ verify_pm() {
             "$rpc_url" "$verifier" "$verifier_url" "$api_key" "PredictionMarketBridge"
     fi
 
+    # Verify Factory if deployed
+    if [[ -n "${FACTORY_ADDRESS:-}" ]]; then
+        verify_contract "$FACTORY_ADDRESS" "src/v2/PredictionMarketTokenFactory.sol:PredictionMarketTokenFactory" \
+            "$rpc_url" "$verifier" "$verifier_url" "$api_key" "PredictionMarketTokenFactory"
+    fi
+
+    # Verify AccountFactory if deployed
+    if [[ -n "${ACCOUNT_FACTORY_ADDRESS:-}" ]]; then
+        verify_contract "$ACCOUNT_FACTORY_ADDRESS" "src/v2/utils/ZeroDevKernelAccountFactory.sol:ZeroDevKernelAccountFactory" \
+            "$rpc_url" "$verifier" "$verifier_url" "$api_key" "ZeroDevKernelAccountFactory"
+    fi
+
     log_success "PM Network verification complete"
 }
 
