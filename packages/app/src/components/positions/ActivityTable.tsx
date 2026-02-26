@@ -467,8 +467,8 @@ export default function ActivityTable({
       {headerContent}
       <div className="overflow-x-auto">
         <table className="w-full text-sm [&>tbody>tr>td]:align-middle [&>tbody>tr:hover]:bg-muted/50 [&>tbody>tr>td]:text-brand-white">
-          <thead className="hidden xl:table-header-group text-sm font-medium text-brand-white border-b">
-            <tr>
+          <thead className="hidden xl:table-header-group text-sm font-medium text-muted-foreground">
+            <tr className="bg-white/[0.03] border-b border-border/60">
               <th className="px-4 py-3 text-left align-middle font-medium">
                 Created
               </th>

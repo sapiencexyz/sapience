@@ -15,7 +15,7 @@ import * as React from 'react';
 import EmptyTabState from '~/components/shared/EmptyTabState';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import Loader from '~/components/shared/Loader';
-import PicksSummary from '~/components/shared/PicksSummary';
+
 import CountdownCell from '~/components/shared/CountdownCell';
 import { formatDistanceToNow } from 'date-fns';
 import type { Pick as PickLeg } from '~/components/shared/StackedPredictions';
@@ -26,9 +26,16 @@ import {
   type PickData,
 } from '~/hooks/graphql/usePositions';
 import { useConditionsByIds } from '~/hooks/graphql/useConditionsByIds';
-import { PicksContent } from '~/components/shared/PicksSummary';
-import { Dialog, DialogContent } from '@sapience/ui/components/ui/dialog';
-import PositionSummary from '~/components/positions/PositionSummary';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@sapience/ui/components/ui/popover';
+import { StackedIcons } from '~/components/shared/StackedPredictions';
+import CounterpartyBadge from '~/components/shared/CounterpartyBadge';
+import { getCategoryIcon } from '~/lib/theme/categoryIcons';
+import { getCategoryStyle } from '~/lib/utils/categoryStyle';
+import { PredictionChoiceBadge } from '@sapience/ui';
 import OgShareDialogBase from '~/components/shared/OgShareDialog';
 
 type ConditionsMap = Map<string, { question?: string | null; shortName?: string | null; endTime?: number | null; category?: { slug?: string | null } | null }>;
@@ -40,7 +47,7 @@ function toPickLegs(
   conditionsMap: ConditionsMap,
 ): PickLeg[] {
   return picks.map((pick) => ({
-    question: pick.conditionId,
+    question: conditionsMap.get(pick.conditionId)?.question ?? conditionsMap.get(pick.conditionId)?.shortName ?? pick.conditionId,
     choice: isPredictorToken
       ? pick.predictedOutcome === 1
         ? 'Yes'
@@ -59,13 +66,11 @@ function PositionRow({
   collateralSymbol,
   conditionsMap,
   onShare,
-  onOpenDialog,
 }: {
   position: PositionBalance;
   collateralSymbol: string;
   conditionsMap: ConditionsMap;
   onShare: (position: PositionBalance) => void;
-  onOpenDialog: () => void;
 }) {
   const { pickConfig, isPredictorToken } = position;
   const picks = pickConfig?.picks ?? [];
@@ -115,14 +120,54 @@ function PositionRow({
   return (
     <TableRow>
       <TableCell>
-        <PicksSummary
-          legs={legs}
-          positionId={pickConfig?.id ?? position.id}
-          isCounterparty={!isPredictorToken}
-          marketAddress={pickConfig?.marketAddress}
-          predictionId={pickConfig?.predictionId}
-          onClick={onOpenDialog}
-        />
+        <div className="flex items-center gap-2">
+          <StackedIcons legs={legs} />
+          {legs.length > 0 ? (
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="text-lg font-mono font-semibold text-brand-white hover:text-brand-white/70 underline decoration-dotted underline-offset-4 transition-colors cursor-pointer whitespace-nowrap"
+                >
+                  {legs.length} {legs.length === 1 ? 'PICK' : 'PICKS'}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent
+                className="w-auto max-w-sm p-0 bg-brand-black border-brand-white/20"
+                align="start"
+              >
+                <div className="flex flex-col divide-y divide-brand-white/20">
+                  {legs.map((leg, i) => {
+                    const CategoryIcon = getCategoryIcon(leg.categorySlug);
+                    const color = getCategoryStyle(leg.categorySlug).color;
+                    return (
+                      <div
+                        key={`pick-${i}`}
+                        className="flex items-center gap-3 px-3 py-2"
+                      >
+                        <div
+                          className="w-6 h-6 rounded-full shrink-0 flex items-center justify-center"
+                          style={{ backgroundColor: color }}
+                        >
+                          <CategoryIcon className="h-3 w-3 text-white/80" />
+                        </div>
+                        <span className="text-sm flex-1 min-w-0 font-mono truncate">
+                          {leg.question}
+                        </span>
+                        <PredictionChoiceBadge choice={String(leg.choice).toUpperCase()} />
+                      </div>
+                    );
+                  })}
+                </div>
+              </PopoverContent>
+            </Popover>
+          ) : (
+            <span className="text-lg font-mono font-semibold text-brand-white whitespace-nowrap">
+              —
+            </span>
+          )}
+          {!isPredictorToken && <CounterpartyBadge />}
+        </div>
       </TableCell>
       <TableCell>
         <NumberDisplay value={balanceFormatted} appendedText={collateralSymbol} className="text-brand-white font-mono" />
@@ -191,7 +236,7 @@ function PositionRow({
         })()}
       </TableCell>
       {/* Share */}
-      <TableCell>
+      <TableCell className="text-right">
         <button
           type="button"
           className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
@@ -245,9 +290,6 @@ export default function PositionsTable({
 
   // Share dialog state
   const [sharePosition, setSharePosition] = React.useState<PositionBalance | null>(null);
-
-  // Position detail dialog state
-  const [dialogPosition, setDialogPosition] = React.useState<PositionBalance | null>(null);
 
   // Build OG image URL for position sharing with balance overrides
   const shareImageSrc = React.useMemo(() => {
@@ -345,7 +387,7 @@ export default function PositionsTable({
       <div className="rounded-md">
         <Table>
           <TableHeader>
-            <TableRow>
+            <TableRow className="hover:!bg-white/[0.03] bg-white/[0.03] border-b border-border/60">
               <TableHead>Position</TableHead>
               <TableHead>Position Size</TableHead>
               <TableHead>Payout</TableHead>
@@ -362,7 +404,6 @@ export default function PositionsTable({
                 collateralSymbol={collateralSymbol}
                 conditionsMap={conditionsMap}
                 onShare={setSharePosition}
-                onOpenDialog={() => setDialogPosition(position)}
               />
             ))}
           </TableBody>
@@ -381,118 +422,6 @@ export default function PositionsTable({
             : undefined}
         />
       )}
-      <PositionDetailDialog
-        position={dialogPosition}
-        conditionsMap={conditionsMap}
-        collateralSymbol={collateralSymbol}
-        onOpenChange={(open) => { if (!open) setDialogPosition(null); }}
-      />
     </>
-  );
-}
-
-function PositionDetailDialog({
-  position,
-  conditionsMap,
-  collateralSymbol,
-  onOpenChange,
-}: {
-  position: PositionBalance | null;
-  conditionsMap: ConditionsMap;
-  collateralSymbol: string;
-  onOpenChange: (open: boolean) => void;
-}) {
-  if (!position) return null;
-
-  const { pickConfig, isPredictorToken } = position;
-  const picks = pickConfig?.picks ?? [];
-  const legs: PickLeg[] = picks.map((pick) => {
-    const condition = conditionsMap.get(pick.conditionId);
-    return {
-      question: condition?.question || condition?.shortName || pick.conditionId,
-      choice: isPredictorToken
-        ? pick.predictedOutcome === 1 ? 'Yes' : 'No'
-        : pick.predictedOutcome === 1 ? 'No' : 'Yes',
-      conditionId: pick.conditionId,
-      resolverAddress: pick.conditionResolver,
-      categorySlug: condition?.category?.slug ?? null,
-      endTime: condition?.endTime ?? null,
-    };
-  });
-
-  const balance = BigInt(position.balance);
-  const balanceFormatted = parseFloat(formatEther(balance));
-
-  const totalPool = pickConfig
-    ? BigInt(pickConfig.totalPredictorCollateral) +
-      BigInt(pickConfig.totalCounterpartyCollateral)
-    : 0n;
-  const sideCollateral = pickConfig
-    ? BigInt(
-        isPredictorToken
-          ? pickConfig.totalPredictorCollateral
-          : pickConfig.totalCounterpartyCollateral
-      )
-    : 0n;
-  const payout =
-    sideCollateral > 0n ? (balance * totalPool) / sideCollateral : 0n;
-  const payoutFormatted = parseFloat(formatEther(payout));
-
-  const result = pickConfig?.result ?? 'UNRESOLVED';
-  const isResolved = pickConfig?.resolved ?? false;
-  const viewerWon =
-    isResolved &&
-    ((isPredictorToken && result === 'PREDICTOR_WINS') ||
-      (!isPredictorToken && result === 'COUNTERPARTY_WINS') ||
-      result === 'NON_DECISIVE');
-
-  const pnl = isResolved
-    ? viewerWon
-      ? payoutFormatted - balanceFormatted
-      : -balanceFormatted
-    : null;
-  const roi =
-    pnl !== null && balanceFormatted > 0
-      ? (pnl / balanceFormatted) * 100
-      : null;
-
-  const endsAtMs = picks.reduce((max, pick) => {
-    const endTime = conditionsMap.get(pick.conditionId)?.endTime;
-    return endTime ? Math.max(max, endTime * 1000) : max;
-  }, 0) || null;
-
-  const positionStatus: 'won' | 'lost' | 'pending' | 'active' =
-    isResolved && viewerWon ? 'won'
-    : isResolved ? 'lost'
-    : endsAtMs && endsAtMs <= Date.now() ? 'pending'
-    : 'active';
-
-  return (
-    <Dialog open onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl pt-8">
-        <PositionSummary
-          positionId={pickConfig?.predictionId ?? String(position.id)}
-          isCounterpartyPosition={!isPredictorToken}
-          createdAt={null}
-          endsAtMs={endsAtMs}
-          positionSize={balanceFormatted}
-          payout={payoutFormatted}
-          pnl={pnl}
-          roi={roi}
-          isSettled={isResolved}
-          positionWon={viewerWon}
-          collateralSymbol={collateralSymbol}
-          positionUrl={pickConfig?.predictionId ? `/predictions/${pickConfig.predictionId}` : undefined}
-        />
-
-        <PicksContent
-          legs={legs}
-          positionId={pickConfig?.predictionId ?? String(position.id)}
-          isCounterparty={!isPredictorToken}
-          hideHeader
-          positionStatus={positionStatus}
-        />
-      </DialogContent>
-    </Dialog>
   );
 }

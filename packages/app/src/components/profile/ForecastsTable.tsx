@@ -710,7 +710,7 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
         <>
           <div className="overflow-hidden bg-brand-black relative">
             <Table className="w-full table-auto">
-              <TableHeader className="hidden xl:table-header-group text-sm font-medium text-brand-white">
+              <TableHeader className="hidden xl:table-header-group text-sm font-medium text-muted-foreground">
                 {table.getHeaderGroups().map((headerGroup) => (
                   <TableRow
                     key={headerGroup.id}
