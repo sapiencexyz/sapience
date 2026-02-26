@@ -834,6 +834,35 @@ export async function createSession(
     '[SessionKeyManager] Arbitrum session will be created lazily on first EAS attestation'
   );
 
+  // Deploy the smart account on-chain via a no-op UserOp if not already deployed.
+  // This ensures ERC-1271 isValidSignature works on the first mint (the escrow
+  // contract checks signer.code.length > 0 before attempting ERC-1271 fallback).
+  const etherealPublicClientForDeploy = getEtherealPublicClient(etherealChainId);
+  const deployedCode = await etherealPublicClientForDeploy.getCode({ address: smartAccountAddress });
+  if (!deployedCode || deployedCode === '0x') {
+    console.debug('[SessionKeyManager] Smart account not deployed, sending deployment UserOp...');
+    try {
+      const deployStart = Date.now();
+      // Send a no-op UserOp — the bundler will include initCode to deploy
+      // the smart account as part of this operation.
+      const deployOpHash = await etherealClient.sendUserOperation({
+        callData: await etherealAccount.encodeCalls([{
+          to: smartAccountAddress,
+          data: '0x' as Hex,
+          value: BigInt(0),
+        }]),
+      });
+      console.debug(
+        `[SessionKeyManager] Smart account deployment UserOp sent in ${Date.now() - deployStart}ms, hash: ${deployOpHash}`
+      );
+    } catch (e) {
+      console.warn('[SessionKeyManager] Failed to deploy smart account:', e);
+      // Non-fatal — session still works with Path B (native session key validation)
+    }
+  } else {
+    console.debug('[SessionKeyManager] Smart account already deployed');
+  }
+
   // Sign escrow session key approval so the contract can validate via native
   // session key path (Option B in SignatureValidator) instead of ERC-1271.
   let escrowSessionKeyApproval: EscrowSessionKeyApproval | undefined;
@@ -1084,6 +1113,27 @@ export async function restoreSession(
     etherealAccount
   );
   console.debug('[SessionKeyManager] Ethereal session restored');
+
+  // Ensure the smart account is deployed (may not be if session was created
+  // before deployment logic was added, or if the deploy UserOp failed).
+  const deployedCode = await etherealPublicClient.getCode({
+    address: etherealAccount.address,
+  });
+  if (!deployedCode || deployedCode === '0x') {
+    console.debug('[SessionKeyManager] Smart account not deployed, deploying on restore...');
+    try {
+      const deployOpHash = await etherealClient.sendUserOperation({
+        callData: await etherealAccount.encodeCalls([{
+          to: etherealAccount.address,
+          data: '0x' as Hex,
+          value: BigInt(0),
+        }]),
+      });
+      console.debug(`[SessionKeyManager] Smart account deployed on restore, hash: ${deployOpHash}`);
+    } catch (e) {
+      console.warn('[SessionKeyManager] Failed to deploy smart account on restore:', e);
+    }
+  }
 
   // Restore Arbitrum session (optional - may not exist yet)
   let arbitrumClient: KernelAccountClient | null = null;
