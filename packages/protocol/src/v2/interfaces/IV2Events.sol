@@ -8,6 +8,14 @@ import "./IV2Types.sol";
  * @notice Events for the V2 Prediction Market protocol
  */
 interface IV2Events {
+    /// @notice Emitted when a new pick configuration is created (once per unique pick combo)
+    event PickConfigCreated(
+        bytes32 indexed pickConfigId,
+        address predictorToken,
+        address counterpartyToken,
+        IV2Types.Pick[] picks
+    );
+
     /// @notice Emitted when a new prediction is created
     event PredictionCreated(
         bytes32 indexed predictionId,
@@ -17,7 +25,8 @@ interface IV2Events {
         address counterpartyToken,
         uint256 predictorCollateral,
         uint256 counterpartyCollateral,
-        bytes32 refCode
+        bytes32 refCode,
+        bytes32 pickConfigId
     );
 
     /// @notice Emitted when a prediction is settled
