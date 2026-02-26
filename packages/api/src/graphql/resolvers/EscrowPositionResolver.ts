@@ -290,11 +290,6 @@ export class EscrowPositionResolver {
       where.settled = settled;
     }
 
-    // If no filters provided, return empty
-    if (!addr) {
-      return [];
-    }
-
     let orderByClause: Prisma.PredictionOrderByWithRelationInput = {
       createdAt: 'desc',
     };
