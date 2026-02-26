@@ -510,7 +510,8 @@ export default function PositionForm({
           const escrowPicks = getPicks();
           if (escrowPicks.length > 0) {
             params.escrowPicks = escrowPicks;
-            // Note: counterpartyCollateral is NOT set here - counterparty decides their collateral in their bid
+          } else {
+            console.warn('[PositionForm] Escrow chain but getPicks() empty', selections.map(s => ({ id: s.conditionId, resolver: s.resolverAddress })));
           }
         }
 
