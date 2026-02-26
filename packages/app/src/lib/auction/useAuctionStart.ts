@@ -90,6 +90,8 @@ export interface MintPredictionRequestData {
   }>;
   // Escrow: Session key data for counterparty (base64 encoded)
   counterpartySessionKeyData?: string;
+  // Escrow: Session key data for predictor (ABI-encoded)
+  predictorSessionKeyData?: string;
   // Predictor's EIP-712 MintApproval signature (populated at submit time for escrow mints)
   predictorSignature?: `0x${string}`;
   // Sponsorship: OnboardingSponsor contract address (address(0) = self-funded)

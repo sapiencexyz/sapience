@@ -270,6 +270,10 @@ contract PredictionMarketEscrow is
                 resolved: false,
                 result: IV2Types.SettlementResult.UNRESOLVED
             });
+
+            emit PickConfigCreated(
+                pickConfigId, predictorToken, counterpartyToken, request.picks
+            );
         } else {
             // Reuse existing tokens
             predictorToken = tokenPair.predictorToken;
@@ -370,7 +374,8 @@ contract PredictionMarketEscrow is
             counterpartyToken,
             request.predictorCollateral,
             request.counterpartyCollateral,
-            request.refCode
+            request.refCode,
+            pickConfigId
         );
 
         emit CollateralDeposited(predictionId, totalCollateral);

@@ -101,6 +101,7 @@ export function useEscrowBidSubmission(
   const {
     effectiveAddress,
     signTypedData: sessionSignTypedData,
+    signTypedDataRaw,
     isUsingSession,
     isUsingSmartAccount,
     escrowSessionKeyApproval,
@@ -350,9 +351,10 @@ export function useEscrowBidSubmission(
         });
 
         try {
-          // Use session key signing if session is active, otherwise use wallet
-          if (isUsingSession && sessionSignTypedData) {
-            counterpartySignature = await sessionSignTypedData({
+          // Use raw session key signing for escrow MintApproval (bypasses kernel wrapping,
+          // contract validates via native session key path in SignatureValidator).
+          if (isUsingSession && signTypedDataRaw) {
+            counterpartySignature = await signTypedDataRaw({
               domain: {
                 ...typedData.domain,
                 chainId: Number(typedData.domain.chainId),
@@ -390,7 +392,8 @@ export function useEscrowBidSubmission(
       // Send over shared Auction WS (fire and forget - no ack wait)
       const client = getSharedAuctionWsClient(wsUrl);
 
-      // Escrow bid payload
+      // Always include session key data when session is active — the contract validates
+      // via native session key path (Option B) instead of ERC-1271.
       let counterpartySessionKeyData: string | undefined;
       if (isUsingSession && escrowSessionKeyApproval) {
         counterpartySessionKeyData = encodeEscrowSessionKeyData(escrowSessionKeyApproval);
@@ -433,6 +436,7 @@ export function useEscrowBidSubmission(
       isUsingSession,
       isUsingSmartAccount,
       sessionSignTypedData,
+      signTypedDataRaw,
       escrowSessionKeyApproval,
       chainClients,
       wusdeAddress,
