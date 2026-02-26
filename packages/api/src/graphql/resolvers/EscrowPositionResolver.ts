@@ -276,6 +276,7 @@ export class EscrowPositionResolver {
     @Arg('take', () => Int, { defaultValue: 50 }) take: number,
     @Arg('skip', () => Int, { defaultValue: 0 }) skip: number,
     @Arg('address', () => String, { nullable: true }) address?: string,
+    @Arg('conditionId', () => String, { nullable: true }) conditionId?: string,
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number,
     @Arg('settled', () => Boolean, { nullable: true }) settled?: boolean,
     @Arg('orderBy', () => String, { nullable: true }) orderBy?: string,
@@ -289,6 +290,36 @@ export class EscrowPositionResolver {
     if (addr) {
       where.OR = [{ predictor: addr }, { counterparty: addr }];
     }
+
+    if (conditionId) {
+      const matchingPicks = await prisma.pick.findMany({
+        where: { conditionId: { equals: conditionId.toLowerCase(), mode: 'insensitive' } },
+        select: { pickConfigId: true },
+        distinct: ['pickConfigId'],
+      });
+      const pickConfigIds = matchingPicks.map((p) => p.pickConfigId);
+      if (pickConfigIds.length === 0) return [];
+
+      const pickConfigs = await prisma.picks.findMany({
+        where: { id: { in: pickConfigIds } },
+        select: { predictorToken: true, counterpartyToken: true },
+      });
+      const tokens = [
+        ...new Set(
+          pickConfigs.flatMap((pc) =>
+            [pc.predictorToken, pc.counterpartyToken].filter(Boolean)
+          )
+        ),
+      ] as string[];
+      if (tokens.length === 0) return [];
+
+      where.OR = [
+        ...(where.OR ?? []),
+        { predictorToken: { in: tokens } },
+        { counterpartyToken: { in: tokens } },
+      ];
+    }
+
     if (chainId !== undefined && chainId !== null) {
       where.chainId = chainId;
     }
@@ -577,18 +608,37 @@ export class EscrowPositionResolver {
 
   @Query(() => [PositionType])
   async positions(
-    @Arg('holder', () => String) holder: string,
-    @Arg('take', () => Int, { defaultValue: 50 }) take: number,
-    @Arg('skip', () => Int, { defaultValue: 0 }) skip: number,
+    @Arg('holder', () => String, { nullable: true }) holder?: string,
+    @Arg('conditionId', () => String, { nullable: true }) conditionId?: string,
+    @Arg('take', () => Int, { defaultValue: 50 }) take: number = 50,
+    @Arg('skip', () => Int, { defaultValue: 0 }) skip: number = 0,
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number,
     @Arg('pickConfigId', () => String, { nullable: true }) pickConfigId?: string
   ): Promise<PositionType[]> {
-    const holderLower = holder.toLowerCase();
+    const holderLower = holder?.toLowerCase();
     const pickConfigIdLower = pickConfigId?.toLowerCase();
 
-    const where: Prisma.PositionWhereInput = {
-      holder: holderLower,
-    };
+    const where: Prisma.PositionWhereInput = {};
+
+    if (holderLower) {
+      where.holder = holderLower;
+    }
+
+    if (conditionId) {
+      const matchingPicks = await prisma.pick.findMany({
+        where: { conditionId: { equals: conditionId.toLowerCase(), mode: 'insensitive' } },
+        select: { pickConfigId: true },
+        distinct: ['pickConfigId'],
+      });
+      const pickConfigIds = matchingPicks.map((p) => p.pickConfigId);
+      if (pickConfigIds.length === 0) return [];
+      where.pickConfigId = { in: pickConfigIds };
+    }
+
+    // Require at least one filter
+    if (!holderLower && !conditionId && !pickConfigIdLower) {
+      return [];
+    }
 
     if (chainId !== undefined && chainId !== null) {
       where.chainId = chainId;
