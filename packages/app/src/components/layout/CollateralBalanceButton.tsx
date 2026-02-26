@@ -89,6 +89,7 @@ export default function CollateralBalanceButton({
     balance: eoaBalance,
     nativeBalance: eoaNativeBalance,
     wrappedBalance: eoaWrappedBalance,
+    rawWrappedBalance: rawEoaWrappedBalance,
     symbol,
     refetch: refetchEoaBalance,
   } = useCollateralBalance({
@@ -183,9 +184,16 @@ export default function CollateralBalanceButton({
       const calls: { to: `0x${string}`; data: `0x${string}`; value: bigint }[] =
         [];
 
+      // Compute amounts in wei using raw BigInts to avoid float precision loss
+      const transferAmountWei = parseEther(transferAmount || '0');
+      const fromWrappedWei =
+        transferAmountWei <= rawEoaWrappedBalance
+          ? transferAmountWei
+          : rawEoaWrappedBalance;
+      const fromNativeWei = transferAmountWei - fromWrappedWei;
+
       // If we need to wrap native USDe, add wrap call first
-      if (fromNative > 0) {
-        const wrapAmount = parseEther(fromNative.toString());
+      if (fromNativeWei > 0n) {
         const wrapData = encodeFunctionData({
           abi: WUSDE_ABI,
           functionName: 'deposit',
@@ -194,16 +202,15 @@ export default function CollateralBalanceButton({
         calls.push({
           to: wusdeAddress,
           data: wrapData,
-          value: wrapAmount,
+          value: fromNativeWei,
         });
       }
 
       // Add transfer call (transfer the full requested amount as wUSDe)
-      const transferAmount = parseEther(transferAmountNum.toString());
       const transferData = encodeFunctionData({
         abi: WUSDE_ABI,
         functionName: 'transfer',
-        args: [smartAccountAddress, transferAmount],
+        args: [smartAccountAddress, transferAmountWei],
       });
 
       calls.push({

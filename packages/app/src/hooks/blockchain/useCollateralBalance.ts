@@ -20,6 +20,10 @@ interface UseCollateralBalanceProps {
 
 interface UseCollateralBalanceResult {
   rawBalance: bigint | undefined;
+  /** Raw native USDe balance in wei (only on Ethereal) */
+  rawNativeBalance: bigint;
+  /** Raw wrapped USDe balance in wei (only on Ethereal) */
+  rawWrappedBalance: bigint;
   balance: number;
   /** Native USDe balance (only on Ethereal) */
   nativeBalance: number;
@@ -121,6 +125,8 @@ export function useCollateralBalance({
 
       return {
         rawBalance: rawTotal,
+        rawNativeBalance: rawNative,
+        rawWrappedBalance: rawWrapped,
         balance: totalNum,
         nativeBalance: nativeNum,
         wrappedBalance: wrappedNum,
@@ -134,6 +140,8 @@ export function useCollateralBalance({
 
     return {
       rawBalance: erc20Balance ? raw : undefined,
+      rawNativeBalance: 0n,
+      rawWrappedBalance: 0n,
       balance: num,
       nativeBalance: 0,
       wrappedBalance: 0,
@@ -143,6 +151,8 @@ export function useCollateralBalance({
 
   return {
     rawBalance: result.rawBalance,
+    rawNativeBalance: result.rawNativeBalance,
+    rawWrappedBalance: result.rawWrappedBalance,
     balance: result.balance,
     nativeBalance: result.nativeBalance,
     wrappedBalance: result.wrappedBalance,

@@ -10,7 +10,6 @@ import React, {
 import {
   useReadContract,
   useBalance,
-  useAccount,
   useSendCalls,
 } from 'wagmi';
 import {
@@ -44,6 +43,7 @@ import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useTokenApproval } from '~/hooks/contract/useTokenApproval';
 import { formatFiveSigFigs } from '~/lib/utils/util';
 import { useApprovalDialog } from './ApprovalDialogContext';
+import { useCurrentAddress } from '~/hooks/blockchain/useCurrentAddress';
 
 const GAS_RESERVE = 0.5;
 
@@ -59,7 +59,7 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const ApprovalDialog: React.FC = () => {
   const { isOpen, setOpen, requiredAmount } = useApprovalDialog();
   const chainId = DEFAULT_CHAIN_ID;
-  const { address } = useAccount();
+  const { currentAddress: address, isUsingSmartAccount } = useCurrentAddress();
   const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
   const { toast } = useToast();
 
@@ -134,13 +134,15 @@ const ApprovalDialog: React.FC = () => {
   }, [decimals]);
 
   const gasReserveWei = useMemo(() => {
+    // Smart account transactions are sponsored — no gas reserve needed
+    if (isUsingSmartAccount) return 0n;
     try {
       return parseUnits(String(GAS_RESERVE), tokenDecimals);
     } catch {
       // Fallback: treat reserve as 0 if decimals aren't ready yet
       return 0n;
     }
-  }, [tokenDecimals]);
+  }, [isUsingSmartAccount, tokenDecimals]);
 
   const approveAmountWei = useMemo(() => {
     try {
@@ -455,11 +457,16 @@ const ApprovalDialog: React.FC = () => {
           </div>
 
           {/* Account Balance Display */}
-          <div className="text-xs text-muted-foreground !mt-2">
-            <span>Account Balance: </span>
-            <span className="text-brand-white font-mono">
-              {effectiveBalanceDisplay} USDe
-            </span>
+          <div className="text-xs text-muted-foreground !mt-2 space-y-0.5">
+            <div>
+              <span>Account Balance: </span>
+              <span className="text-brand-white font-mono">
+                {effectiveBalanceDisplay} USDe
+              </span>
+            </div>
+            {!isUsingSmartAccount && gasReserveWei > 0n && (
+              <div>{GAS_RESERVE} USDe reserved for gas</div>
+            )}
           </div>
 
           <Button
