@@ -1505,7 +1505,7 @@ export default function PositionsTable({
           payout={Number(formatEther(selectedPosition.totalPayoutWei || 0n))}
           symbol="USDe"
           owner={String(account)}
-          imagePath="/og/position"
+          imagePath="/og/prediction"
           extraParams={{
             ...(selectedPosition.isCounterpartyPosition ? { anti: '1' } : {}),
           }}

@@ -16,6 +16,8 @@ import EmptyTabState from '~/components/shared/EmptyTabState';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import Loader from '~/components/shared/Loader';
 import PicksSummary from '~/components/shared/PicksSummary';
+import CountdownCell from '~/components/shared/CountdownCell';
+import { formatDistanceToNow } from 'date-fns';
 import type { Pick as PickLeg } from '~/components/shared/StackedPredictions';
 import { COLLATERAL_SYMBOLS, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import {
@@ -23,29 +25,17 @@ import {
   type PositionBalance,
   type PickData,
 } from '~/hooks/graphql/usePositions';
+import { useConditionsByIds } from '~/hooks/graphql/useConditionsByIds';
+import OgShareDialogBase from '~/components/shared/OgShareDialog';
 
-// Settlement result display
-const SETTLEMENT_RESULT_LABELS: Record<
-  string,
-  {
-    label: string;
-    variant: 'default' | 'success' | 'destructive' | 'secondary';
-  }
-> = {
-  UNRESOLVED: { label: 'Pending', variant: 'secondary' },
-  PREDICTOR_WINS: { label: 'Predictor Wins', variant: 'success' },
-  COUNTERPARTY_WINS: { label: 'Counterparty Wins', variant: 'success' },
-  NON_DECISIVE: { label: 'Non-Decisive', variant: 'default' },
-};
-
-function SettlementBadge({ result }: { result: string }) {
-  const config =
-    SETTLEMENT_RESULT_LABELS[result] || SETTLEMENT_RESULT_LABELS.UNRESOLVED;
-  return <Badge variant={config.variant as any}>{config.label}</Badge>;
-}
+type ConditionsMap = Map<string, { question?: string | null; shortName?: string | null; endTime?: number | null; category?: { slug?: string | null } | null }>;
 
 /** Map escrow PickData to the Pick interface used by PicksSummary */
-function toPickLegs(picks: PickData[], isPredictorToken: boolean): PickLeg[] {
+function toPickLegs(
+  picks: PickData[],
+  isPredictorToken: boolean,
+  conditionsMap: ConditionsMap,
+): PickLeg[] {
   return picks.map((pick) => ({
     question: pick.conditionId,
     choice: isPredictorToken
@@ -57,36 +47,65 @@ function toPickLegs(picks: PickData[], isPredictorToken: boolean): PickLeg[] {
         : 'Yes',
     conditionId: pick.conditionId,
     resolverAddress: pick.conditionResolver,
+    categorySlug: conditionsMap.get(pick.conditionId)?.category?.slug ?? null,
   }));
 }
 
 function PositionRow({
   position,
   collateralSymbol,
+  conditionsMap,
+  onShare,
 }: {
   position: PositionBalance;
   collateralSymbol: string;
+  conditionsMap: ConditionsMap;
+  onShare: (position: PositionBalance) => void;
 }) {
   const { pickConfig, isPredictorToken } = position;
   const picks = pickConfig?.picks ?? [];
-  const legs = toPickLegs(picks, isPredictorToken);
+  const legs = toPickLegs(picks, isPredictorToken, conditionsMap);
 
-  const balanceFormatted = parseFloat(formatEther(BigInt(position.balance)));
+  const balance = BigInt(position.balance);
+  const balanceFormatted = parseFloat(formatEther(balance));
 
+  // Payout if the user's side wins: (balance / sideCollateral) * totalPool
   const totalPool = pickConfig
     ? BigInt(pickConfig.totalPredictorCollateral) +
       BigInt(pickConfig.totalCounterpartyCollateral)
     : 0n;
-  const totalPoolFormatted = parseFloat(formatEther(totalPool));
+  const sideCollateral = pickConfig
+    ? BigInt(
+        isPredictorToken
+          ? pickConfig.totalPredictorCollateral
+          : pickConfig.totalCounterpartyCollateral
+      )
+    : 0n;
+  const payout =
+    sideCollateral > 0n
+      ? (balance * totalPool) / sideCollateral
+      : 0n;
+  const payoutFormatted = parseFloat(formatEther(payout));
 
   const result = pickConfig?.result ?? 'UNRESOLVED';
   const isResolved = pickConfig?.resolved ?? false;
 
-  const isWinner =
+  const viewerWon =
     isResolved &&
     ((isPredictorToken && result === 'PREDICTOR_WINS') ||
       (!isPredictorToken && result === 'COUNTERPARTY_WINS') ||
       result === 'NON_DECISIVE');
+
+  // PnL: profit if won (totalPool - positionSize), loss if lost (-positionSize)
+  const pnlValue = isResolved
+    ? viewerWon
+      ? payoutFormatted - balanceFormatted
+      : -balanceFormatted
+    : null;
+  const roi =
+    pnlValue !== null && balanceFormatted > 0
+      ? (pnlValue / balanceFormatted) * 100
+      : 0;
 
   return (
     <TableRow>
@@ -96,31 +115,84 @@ function PositionRow({
           positionId={pickConfig?.id ?? position.id}
           isCounterparty={!isPredictorToken}
           marketAddress={pickConfig?.marketAddress}
+          predictionId={pickConfig?.predictionId}
         />
       </TableCell>
       <TableCell>
-        <Badge variant={isPredictorToken ? 'default' : 'secondary'}>
-          {isPredictorToken ? 'Predictor' : 'Counterparty'}
-        </Badge>
-      </TableCell>
-      <TableCell>
-        <NumberDisplay value={balanceFormatted} appendedText={collateralSymbol} />
+        <NumberDisplay value={balanceFormatted} appendedText={collateralSymbol} className="text-brand-white font-mono" />
       </TableCell>
       <TableCell>
         <NumberDisplay
-          value={totalPoolFormatted}
+          value={payoutFormatted}
           appendedText={collateralSymbol}
+          className="text-brand-white font-mono"
         />
       </TableCell>
+      {/* Profit/Loss */}
       <TableCell>
-        <SettlementBadge result={result} />
-      </TableCell>
-      <TableCell>
-        {isWinner && balanceFormatted > 0 ? (
-          <Badge variant={'success' as any}>Redeemable</Badge>
+        {pnlValue !== null ? (
+          <div
+            className={`whitespace-nowrap tabular-nums font-mono flex items-baseline gap-1.5 ${pnlValue >= 0 ? 'text-green-600' : 'text-red-600'}`}
+          >
+            <NumberDisplay
+              value={pnlValue}
+              className={`tabular-nums font-mono ${pnlValue >= 0 ? 'text-green-600' : 'text-red-600'}`}
+            />{' '}
+            <span
+              className={`tabular-nums font-mono ${pnlValue >= 0 ? 'text-green-600' : 'text-red-600'}`}
+            >
+              {collateralSymbol}
+            </span>
+            {balanceFormatted > 0 && (
+              <span
+                className={`text-[10px] leading-tight tabular-nums font-mono ${pnlValue >= 0 ? 'text-green-600' : 'text-red-600'}`}
+              >
+                {roi >= 0 ? '+' : ''}
+                {Math.round(roi).toLocaleString()}%
+              </span>
+            )}
+          </div>
         ) : (
-          <span className="text-muted-foreground">—</span>
+          <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
+            PENDING
+          </span>
         )}
+      </TableCell>
+      {/* Ends */}
+      <TableCell className="whitespace-nowrap">
+        {(() => {
+          const endsAt = Math.max(
+            0,
+            ...picks.map((p) => conditionsMap.get(p.conditionId)?.endTime ?? 0),
+          );
+          if (!endsAt) return <span className="text-muted-foreground">—</span>;
+          const endsAtMs = endsAt * 1000;
+          if (endsAtMs > Date.now()) {
+            return <CountdownCell endTime={endsAt} />;
+          }
+          if (!isResolved) {
+            return (
+              <span className="whitespace-nowrap font-mono text-accent-gold">
+                ENDS SOON
+              </span>
+            );
+          }
+          return (
+            <span className="text-brand-white text-sm">
+              {formatDistanceToNow(new Date(endsAtMs), { addSuffix: true })}
+            </span>
+          );
+        })()}
+      </TableCell>
+      {/* Share */}
+      <TableCell>
+        <button
+          type="button"
+          className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
+          onClick={() => onShare(position)}
+        >
+          Share
+        </button>
       </TableCell>
     </TableRow>
   );
@@ -151,6 +223,66 @@ export default function PositionsTable({
 
   // Filter out zero-balance positions (fully redeemed)
   const positions = allPositions.filter((p) => BigInt(p.balance) > 0n);
+
+  // Collect all unique conditionIds to fetch category data
+  const conditionIds = React.useMemo(() => {
+    const ids = new Set<string>();
+    for (const p of positions) {
+      for (const pick of p.pickConfig?.picks ?? []) {
+        ids.add(pick.conditionId);
+      }
+    }
+    return Array.from(ids);
+  }, [positions]);
+
+  const { map: conditionsMap } = useConditionsByIds(conditionIds);
+
+  // Share dialog state
+  const [sharePosition, setSharePosition] = React.useState<PositionBalance | null>(null);
+
+  // Build OG image URL for position sharing with balance overrides
+  const shareImageSrc = React.useMemo(() => {
+    if (!sharePosition) return null;
+    const { pickConfig, isPredictorToken } = sharePosition;
+    const picks = pickConfig?.picks ?? [];
+
+    const balance = BigInt(sharePosition.balance);
+    const totalPool = pickConfig
+      ? BigInt(pickConfig.totalPredictorCollateral) +
+        BigInt(pickConfig.totalCounterpartyCollateral)
+      : 0n;
+    const sideCollateral = pickConfig
+      ? BigInt(
+          isPredictorToken
+            ? pickConfig.totalPredictorCollateral
+            : pickConfig.totalCounterpartyCollateral
+        )
+      : 0n;
+    const payout =
+      sideCollateral > 0n ? (balance * totalPool) / sideCollateral : 0n;
+
+    const wager = parseFloat(formatEther(balance)).toFixed(2);
+    const payoutStr = parseFloat(formatEther(payout)).toFixed(2);
+
+    const qp = new URLSearchParams();
+    qp.set('wager', wager);
+    qp.set('payout', payoutStr);
+    qp.set('symbol', collateralSymbol);
+    if (!isPredictorToken) {
+      qp.set('anti', '1');
+    }
+
+    for (const pick of picks) {
+      const condition = conditionsMap.get(pick.conditionId);
+      const question = condition?.question ?? condition?.shortName ?? pick.conditionId;
+      const choice = isPredictorToken
+        ? pick.predictedOutcome === 1 ? 'Yes' : 'No'
+        : pick.predictedOutcome === 1 ? 'No' : 'Yes';
+      qp.append('leg', `${question}|${choice}`);
+    }
+
+    return `/og/prediction?${qp.toString()}`;
+  }, [sharePosition, conditionsMap, collateralSymbol]);
 
   // Header with leftSlot (tab switcher) and optional title
   const headerContent = (
@@ -206,11 +338,11 @@ export default function PositionsTable({
           <TableHeader>
             <TableRow>
               <TableHead>Predictions</TableHead>
-              <TableHead>Side</TableHead>
-              <TableHead>Your Balance</TableHead>
-              <TableHead>Total Pool</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Claimable</TableHead>
+              <TableHead>Position Size</TableHead>
+              <TableHead>Payout</TableHead>
+              <TableHead>Profit/Loss</TableHead>
+              <TableHead>Ends</TableHead>
+              <TableHead></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -219,11 +351,26 @@ export default function PositionsTable({
                 key={position.id}
                 position={position}
                 collateralSymbol={collateralSymbol}
+                conditionsMap={conditionsMap}
+                onShare={setSharePosition}
               />
             ))}
           </TableBody>
         </Table>
       </div>
+      {sharePosition && shareImageSrc && (
+        <OgShareDialogBase
+          imageSrc={shareImageSrc}
+          open={!!sharePosition}
+          onOpenChange={(open) => { if (!open) setSharePosition(null); }}
+          title="Share Position"
+          shareUrl={sharePosition.pickConfig?.predictionId
+            ? (typeof window !== 'undefined'
+              ? `${window.location.origin}/predictions/${sharePosition.pickConfig.predictionId}`
+              : `/predictions/${sharePosition.pickConfig.predictionId}`)
+            : undefined}
+        />
+      )}
     </>
   );
 }

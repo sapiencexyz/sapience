@@ -30,7 +30,9 @@ export type Prediction = {
   predictorClaimable?: string | null;
   counterpartyClaimable?: string | null;
   createTxHash: string;
+  createdAt: string;
   refCode?: string | null;
+  pickConfig?: PickConfigData | null;
 };
 
 /** Pick in a pick configuration */
@@ -58,6 +60,7 @@ export type PickConfigData = {
   counterpartyToken?: string | null;
   endsAt?: number | null;
   picks: PickData[];
+  predictionId?: string | null;
 };
 
 /**
@@ -75,6 +78,31 @@ export type PositionBalance = {
 };
 
 // GraphQL queries
+const PICK_CONFIG_FRAGMENT = /* GraphQL */ `
+  pickConfig {
+    id
+    chainId
+    marketAddress
+    totalPredictorCollateral
+    totalCounterpartyCollateral
+    claimedPredictorCollateral
+    claimedCounterpartyCollateral
+    resolved
+    result
+    resolvedAt
+    predictorToken
+    counterpartyToken
+    endsAt
+    picks {
+      id
+      pickConfigId
+      conditionResolver
+      conditionId
+      predictedOutcome
+    }
+  }
+`;
+
 const PREDICTIONS_QUERY = /* GraphQL */ `
   query Predictions(
     $address: String!
@@ -107,7 +135,44 @@ const PREDICTIONS_QUERY = /* GraphQL */ `
       predictorClaimable
       counterpartyClaimable
       createTxHash
+      createdAt
       refCode
+      ${PICK_CONFIG_FRAGMENT}
+    }
+  }
+`;
+
+const RECENT_PREDICTIONS_QUERY = /* GraphQL */ `
+  query RecentPredictions(
+    $take: Int
+    $skip: Int
+  ) {
+    predictions(
+      take: $take
+      skip: $skip
+    ) {
+      id
+      predictionId
+      chainId
+      marketAddress
+      predictor
+      counterparty
+      predictorToken
+      counterpartyToken
+      predictorCollateral
+      counterpartyCollateral
+      collateralDeposited
+      collateralDepositedAt
+      settled
+      settledAt
+      settleTxHash
+      result
+      predictorClaimable
+      counterpartyClaimable
+      createTxHash
+      createdAt
+      refCode
+      ${PICK_CONFIG_FRAGMENT}
     }
   }
 `;
@@ -115,6 +180,35 @@ const PREDICTIONS_QUERY = /* GraphQL */ `
 const PREDICTIONS_COUNT_QUERY = /* GraphQL */ `
   query PredictionsCount($address: String!, $chainId: Int) {
     predictionsCount(address: $address, chainId: $chainId)
+  }
+`;
+
+const PREDICTION_QUERY = /* GraphQL */ `
+  query Prediction($predictionId: String!) {
+    prediction(predictionId: $predictionId) {
+      id
+      predictionId
+      chainId
+      marketAddress
+      predictor
+      counterparty
+      predictorToken
+      counterpartyToken
+      predictorCollateral
+      counterpartyCollateral
+      collateralDeposited
+      collateralDepositedAt
+      settled
+      settledAt
+      settleTxHash
+      result
+      predictorClaimable
+      counterpartyClaimable
+      createTxHash
+      createdAt
+      refCode
+      ${PICK_CONFIG_FRAGMENT}
+    }
   }
 `;
 
@@ -142,6 +236,7 @@ const POSITION_BALANCES_QUERY = /* GraphQL */ `
         predictorToken
         counterpartyToken
         endsAt
+        predictionId
         picks {
           id
           pickConfigId
@@ -248,6 +343,70 @@ export function usePositionBalances(params: {
 
   return {
     data: data ?? [],
+    isLoading: !!enabled && (isLoading || isFetching),
+    error,
+    refetch,
+  };
+}
+
+/**
+ * Hook to get recent predictions across all users (for the Feed page)
+ */
+export function useRecentPredictions(params: {
+  take?: number;
+  skip?: number;
+  enabled?: boolean;
+}) {
+  const { take = 50, skip = 0, enabled = true } = params;
+
+  const { data, isLoading, isFetching, error, refetch } = useQuery({
+    queryKey: ['recentPredictions', take, skip],
+    enabled,
+    staleTime: 15_000,
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    queryFn: async () => {
+      const resp = await graphqlRequest<{ predictions: Prediction[] }>(
+        RECENT_PREDICTIONS_QUERY,
+        { take, skip }
+      );
+      return resp?.predictions ?? [];
+    },
+  });
+
+  return {
+    data: data ?? [],
+    isLoading: isLoading || isFetching,
+    error,
+    refetch,
+  };
+}
+
+/**
+ * Hook to get a single prediction by predictionId (includes pickConfig)
+ */
+export function usePrediction(predictionId?: string) {
+  const enabled = Boolean(predictionId);
+
+  const { data, isLoading, isFetching, error, refetch } = useQuery({
+    queryKey: ['prediction', predictionId],
+    enabled,
+    staleTime: 30_000,
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    queryFn: async () => {
+      const resp = await graphqlRequest<{ prediction: Prediction | null }>(
+        PREDICTION_QUERY,
+        { predictionId }
+      );
+      return resp?.prediction ?? null;
+    },
+  });
+
+  return {
+    data: data ?? null,
     isLoading: !!enabled && (isLoading || isFetching),
     error,
     refetch,

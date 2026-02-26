@@ -149,7 +149,7 @@ export default function ShareAfterMarketsRedirect() {
           });
         }
 
-        const ogUrl = `/og/position?${qp.toString()}`;
+        const ogUrl = `/og/prediction?${qp.toString()}`;
         return ogUrl;
       } catch (e) {
         console.error(
@@ -362,7 +362,7 @@ export default function ShareAfterMarketsRedirect() {
             qp.set('symbol', intent.positionForm.symbol);
           }
 
-          const ogUrl = `/og/position?${qp.toString()}`;
+          const ogUrl = `/og/prediction?${qp.toString()}`;
           setImageSrc(ogUrl);
           setOpen(true);
           clearIntent();

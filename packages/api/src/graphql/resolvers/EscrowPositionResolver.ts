@@ -67,6 +67,9 @@ class PicksType {
 
   @Field(() => [PickType])
   picks!: PickType[];
+
+  @Field(() => String, { nullable: true })
+  predictionId?: string | null;
 }
 
 @ObjectType()
@@ -133,6 +136,9 @@ class PredictionType {
 
   @Field(() => String, { nullable: true })
   refCode?: string | null;
+
+  @Field(() => PicksType, { nullable: true })
+  pickConfig?: PicksType | null;
 }
 
 @ObjectType()
@@ -290,11 +296,6 @@ export class EscrowPositionResolver {
       where.settled = settled;
     }
 
-    // If no filters provided, return empty
-    if (!addr) {
-      return [];
-    }
-
     let orderByClause: Prisma.PredictionOrderByWithRelationInput = {
       createdAt: 'desc',
     };
@@ -311,6 +312,57 @@ export class EscrowPositionResolver {
       take,
       skip,
     });
+
+    // Batch-load pickConfigs for all predictions by collecting token addresses
+    const allTokenAddresses = new Set<string>();
+    for (const r of rows) {
+      if (r.predictorToken) allTokenAddresses.add(r.predictorToken);
+      if (r.counterpartyToken) allTokenAddresses.add(r.counterpartyToken);
+    }
+
+    const tokenToPickConfig = new Map<string, PicksType>();
+    if (allTokenAddresses.size > 0) {
+      const positions = await prisma.position.findMany({
+        where: {
+          tokenAddress: { in: Array.from(allTokenAddresses) },
+        },
+        distinct: ['pickConfigId'],
+        include: {
+          pickConfiguration: {
+            include: { picks: true },
+          },
+        },
+      });
+
+      for (const pos of positions) {
+        if (pos.pickConfiguration) {
+          const pc = pos.pickConfiguration;
+          const mapped: PicksType = {
+            id: pc.id,
+            chainId: pc.chainId,
+            marketAddress: pc.marketAddress,
+            totalPredictorCollateral: pc.totalPredictorCollateral,
+            totalCounterpartyCollateral: pc.totalCounterpartyCollateral,
+            claimedPredictorCollateral: pc.claimedPredictorCollateral,
+            claimedCounterpartyCollateral: pc.claimedCounterpartyCollateral,
+            resolved: pc.resolved,
+            result: pc.result,
+            resolvedAt: pc.resolvedAt ?? null,
+            predictorToken: pc.predictorToken ?? null,
+            counterpartyToken: pc.counterpartyToken ?? null,
+            endsAt: pc.endsAt ?? null,
+            picks: pc.picks.map((p) => ({
+              id: p.id,
+              pickConfigId: p.pickConfigId,
+              conditionResolver: p.conditionResolver,
+              conditionId: p.conditionId,
+              predictedOutcome: p.predictedOutcome,
+            })),
+          };
+          tokenToPickConfig.set(pos.tokenAddress, mapped);
+        }
+      }
+    }
 
     return rows.map((r) => ({
       id: r.id,
@@ -334,6 +386,10 @@ export class EscrowPositionResolver {
       createTxHash: r.createTxHash,
       settleTxHash: r.settleTxHash ?? null,
       refCode: r.refCode ?? null,
+      pickConfig:
+        tokenToPickConfig.get(r.predictorToken) ??
+        tokenToPickConfig.get(r.counterpartyToken) ??
+        null,
     }));
   }
 
@@ -348,6 +404,49 @@ export class EscrowPositionResolver {
     });
 
     if (!r) return null;
+
+    // Look up pickConfig via Position matching predictorToken or counterpartyToken
+    let pickConfig: PicksType | null = null;
+    const tokenAddresses = [r.predictorToken, r.counterpartyToken].filter(
+      Boolean
+    );
+    if (tokenAddresses.length > 0) {
+      const position = await prisma.position.findFirst({
+        where: {
+          tokenAddress: { in: tokenAddresses },
+        },
+        include: {
+          pickConfiguration: {
+            include: { picks: true },
+          },
+        },
+      });
+      if (position?.pickConfiguration) {
+        const pc = position.pickConfiguration;
+        pickConfig = {
+          id: pc.id,
+          chainId: pc.chainId,
+          marketAddress: pc.marketAddress,
+          totalPredictorCollateral: pc.totalPredictorCollateral,
+          totalCounterpartyCollateral: pc.totalCounterpartyCollateral,
+          claimedPredictorCollateral: pc.claimedPredictorCollateral,
+          claimedCounterpartyCollateral: pc.claimedCounterpartyCollateral,
+          resolved: pc.resolved,
+          result: pc.result,
+          resolvedAt: pc.resolvedAt ?? null,
+          predictorToken: pc.predictorToken ?? null,
+          counterpartyToken: pc.counterpartyToken ?? null,
+          endsAt: pc.endsAt ?? null,
+          picks: pc.picks.map((p) => ({
+            id: p.id,
+            pickConfigId: p.pickConfigId,
+            conditionResolver: p.conditionResolver,
+            conditionId: p.conditionId,
+            predictedOutcome: p.predictedOutcome,
+          })),
+        };
+      }
+    }
 
     return {
       id: r.id,
@@ -371,6 +470,7 @@ export class EscrowPositionResolver {
       createTxHash: r.createTxHash,
       settleTxHash: r.settleTxHash ?? null,
       refCode: r.refCode ?? null,
+      pickConfig,
     };
   }
 
@@ -511,6 +611,29 @@ export class EscrowPositionResolver {
       },
     });
 
+    // Look up predictionIds for each position's token address
+    const tokenAddresses = rows.map((r) => r.tokenAddress);
+    const predictionIdMap = new Map<string, string>();
+    if (tokenAddresses.length > 0) {
+      const predictions = await prisma.prediction.findMany({
+        where: {
+          OR: [
+            { predictorToken: { in: tokenAddresses } },
+            { counterpartyToken: { in: tokenAddresses } },
+          ],
+        },
+        select: {
+          predictionId: true,
+          predictorToken: true,
+          counterpartyToken: true,
+        },
+      });
+      for (const pred of predictions) {
+        predictionIdMap.set(pred.predictorToken, pred.predictionId);
+        predictionIdMap.set(pred.counterpartyToken, pred.predictionId);
+      }
+    }
+
     return rows.map((r) => ({
       id: r.id,
       chainId: r.chainId,
@@ -545,6 +668,7 @@ export class EscrowPositionResolver {
               conditionId: p.conditionId,
               predictedOutcome: p.predictedOutcome,
             })),
+            predictionId: predictionIdMap.get(r.tokenAddress) ?? null,
           }
         : null,
     }));

@@ -22,111 +22,138 @@ import {
   type ResolutionStatus,
 } from '../_shared';
 import {
-  POSITION_BY_NFT_QUERY,
+  PREDICTION_BY_ID_QUERY,
+  CONDITIONS_BY_IDS_QUERY,
   getGraphQLEndpoint,
   formatUnits,
   normalizeChoiceLabel,
   getChoiceTone,
   roundToTwoDecimals,
-  type PositionPrediction,
-} from '../_position-helpers';
+  type PredictionData,
+  type ConditionData,
+} from '../_prediction-helpers';
 
-export const runtime = 'edge';
+export const runtime = 'nodejs';
 
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
 
-    // Check if nftId and marketAddress are provided - if so, query API for position data
-    const nftIdParam = searchParams.get('nftId');
-    const marketAddressParam = searchParams.get('marketAddress');
+    // Read query params
+    const predictionId = searchParams.get('predictionId');
     let positionSizeRaw = normalizeText(searchParams.get('wager'), 32);
     let payoutRaw = normalizeText(searchParams.get('payout'), 32);
     let symbol = normalizeText(searchParams.get('symbol'), 16);
     let rawLegs: string[] = searchParams.getAll('leg');
     let antiParam = normalizeText(searchParams.get('anti'), 16).toLowerCase();
 
-    // Try NFT ID and market address first (preferred method)
-    if (nftIdParam && marketAddressParam) {
+    const hasLegs = rawLegs.length > 0;
+
+    // If predictionId is provided and we need data from it (no legs, or need to fill in missing data)
+    if (predictionId) {
       try {
         const graphqlEndpoint = getGraphQLEndpoint();
+        let prediction: PredictionData | null = null;
 
         const response = await fetch(graphqlEndpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            query: POSITION_BY_NFT_QUERY,
-            variables: {
-              nftTokenId: nftIdParam,
-              marketAddress: marketAddressParam,
-            },
+            query: PREDICTION_BY_ID_QUERY,
+            variables: { predictionId },
           }),
         });
 
         if (response.ok) {
           const result = await response.json();
-          const positions = result?.data?.positions;
-          const position =
-            positions && positions.length > 0 ? positions[0] : null;
+          prediction = result?.data?.prediction ?? null;
+        }
 
-          if (position) {
-            // Determine if queried NFT is counterparty's NFT (for anti flag and position size display)
-            const isCounterpartyNft =
-              position.counterpartyNftTokenId === nftIdParam;
-            if (isCounterpartyNft) {
-              antiParam = '1';
-            }
+        if (prediction) {
+          // Build legs from picks if not provided via query params
+          if (!hasLegs) {
+            const picks = prediction.pickConfig?.picks ?? [];
+            const conditionIds = picks.map((p) => p.conditionId);
 
-            // Get position size and payout
-            // If the queried NFT is the counterparty's, show counterparty's position size
-            const collateral = isCounterpartyNft
-              ? position.counterpartyCollateral
-              : position.predictorCollateral;
-            const totalCollateral = position.totalCollateral;
-
-            if (collateral) {
-              positionSizeRaw = formatUnits(collateral);
-            }
-            if (totalCollateral) {
-              payoutRaw = formatUnits(totalCollateral);
-            }
-
-            // Default symbol if not provided
-            if (!symbol) {
-              symbol = 'USDe';
-            }
-
-            // Build legs from predictions
-            if (position.predictions && position.predictions.length > 0) {
-              rawLegs = position.predictions.map((pred: PositionPrediction) => {
-                const question =
-                  pred.condition?.question || pred.condition?.shortName || '';
-                const choice = pred.outcomeYes ? 'Yes' : 'No';
-                // Compute resolution status per leg
-                let resolution: ResolutionStatus | null = null;
-                if (pred.condition?.settled) {
-                  const predictorCorrect =
-                    pred.outcomeYes === pred.condition.resolvedToYes;
-                  // Counterparty wins when predictor is wrong
-                  const correct = isCounterpartyNft
-                    ? !predictorCorrect
-                    : predictorCorrect;
-                  resolution = correct ? 'correct' : 'incorrect';
-                } else if (pred.condition?.settled === false) {
-                  resolution = 'pending';
+            // Fetch condition question text
+            const conditionsMap = new Map<string, ConditionData>();
+            if (conditionIds.length > 0) {
+              try {
+                const condResp = await fetch(graphqlEndpoint, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    query: CONDITIONS_BY_IDS_QUERY,
+                    variables: { where: { id: { in: conditionIds } } },
+                  }),
+                });
+                if (condResp.ok) {
+                  const condResult = await condResp.json();
+                  const conditions: ConditionData[] =
+                    condResult?.data?.conditions ?? [];
+                  for (const c of conditions) {
+                    conditionsMap.set(c.id, c);
+                  }
                 }
-                return `${question}|${choice}|${resolution ?? ''}`;
-              });
+              } catch (err) {
+                console.error('Failed to fetch conditions:', err);
+              }
             }
+
+            rawLegs = picks.map((pick) => {
+              const condition = conditionsMap.get(pick.conditionId);
+              const question =
+                condition?.question ||
+                condition?.shortName ||
+                pick.conditionId;
+              const choice = pick.predictedOutcome === 1 ? 'Yes' : 'No';
+
+              // Determine resolution status per leg
+              let resolution: ResolutionStatus | null = null;
+              if (condition?.settled) {
+                const predictedYes = pick.predictedOutcome === 1;
+                const resolvedToYes = condition.resolvedToYes ?? false;
+                const correct = predictedYes === resolvedToYes;
+                resolution = correct ? 'correct' : 'incorrect';
+              } else if (condition?.settled === false) {
+                resolution = 'pending';
+              }
+
+              return `${question}|${choice}|${resolution ?? ''}`;
+            });
           }
+
+          // Use API data for wager/payout only if not provided via query params
+          if (!positionSizeRaw) {
+            positionSizeRaw = formatUnits(prediction.predictorCollateral);
+          }
+          if (!payoutRaw) {
+            const totalCollateral =
+              BigInt(prediction.predictorCollateral) +
+              BigInt(prediction.counterpartyCollateral);
+            payoutRaw = formatUnits(totalCollateral.toString());
+          }
+
+          // Default symbol if not provided
+          if (!symbol) {
+            symbol = 'USDe';
+          }
+        } else if (!hasLegs) {
+          // No prediction found and no legs provided — nothing to render
+          return createErrorImageResponse(new Error('Prediction not found'));
         }
       } catch (err) {
-        // If API query fails, fall back to query params
-        console.error(
-          'Failed to fetch position from API by NFT and market:',
-          err
-        );
+        console.error('Failed to fetch prediction:', err);
+        // If API fails but we have legs from query params, continue rendering
+        if (!hasLegs) {
+          return createErrorImageResponse(err);
+        }
       }
+    }
+
+    // Default symbol
+    if (!symbol) {
+      symbol = 'USDe';
     }
 
     // Round position size and payout to 2 decimals
@@ -186,8 +213,6 @@ export async function GET(req: Request) {
     const width = WIDTH;
     const height = HEIGHT;
     const scale = getScale(width);
-    // Note: next/og ImageResponse custom headers can cause non-image responses for next/image fetch.
-    // Skip attaching headers directly to ImageResponse to ensure proper content-type.
 
     const compact = legs.length > 3;
     const potentialReturn = computePotentialReturn(positionSize, payout);
@@ -229,8 +254,6 @@ export async function GET(req: Request) {
                       }}
                     >
                       {legs.map((leg, idx) => {
-                        // Split text into words so badge flows inline.
-                        // Icon sits outside the wrapping text so wrapped lines align to text edge, not the icon.
                         const words = leg.text.split(' ');
                         const lineH = (compact ? 30 : 40) * scale;
                         return (

@@ -21,6 +21,7 @@ interface PicksSummaryProps {
   isCounterparty?: boolean;
   hasPythLeg?: boolean;
   marketAddress?: string;
+  predictionId?: string | null;
   onClick?: () => void;
 }
 
@@ -189,13 +190,16 @@ export default function PicksSummary({
   isCounterparty,
   hasPythLeg,
   marketAddress,
+  predictionId,
   onClick,
 }: PicksSummaryProps) {
   if (!legs || legs.length === 0) return null;
 
-  const href = marketAddress
-    ? `/positions/${marketAddress}/${positionId}`
-    : undefined;
+  const href = predictionId
+    ? `/predictions/${predictionId}`
+    : marketAddress
+      ? `/positions/${marketAddress}/${positionId}`
+      : undefined;
 
   return (
     <div className="flex items-center gap-2">

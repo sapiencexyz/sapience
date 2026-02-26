@@ -44,7 +44,7 @@ export default function ShareDialog({
   owner,
   extraParams,
   trigger,
-  imagePath = '/og/position',
+  imagePath = '/og/prediction',
   title = 'Share',
   open: controlledOpen,
   onOpenChange,
@@ -54,9 +54,9 @@ export default function ShareDialog({
   const queryString = useMemo(() => {
     const sp = new URLSearchParams();
 
-    // If nftId and marketAddress are provided and we're using /og/position, use them
+    // If nftId and marketAddress are provided and we're using /og/prediction, use them
     // This allows the edge endpoint to query the API for position data
-    if (nftId && marketAddress && imagePath === '/og/position') {
+    if (nftId && marketAddress && imagePath === '/og/prediction') {
       sp.set('nftId', String(nftId));
       sp.set('marketAddress', String(marketAddress));
       return sp.toString();

@@ -850,7 +850,7 @@ const CreatePositionFormInner = ({
       qp.set('symbol', shareDialogData.symbol);
     }
 
-    return `/og/position?${qp.toString()}`;
+    return `/og/prediction?${qp.toString()}`;
   }, [shareDialogData, effectiveAddress]);
 
   // Build OG image URL for the preview card (drafted position, not yet submitted)
@@ -875,7 +875,7 @@ const CreatePositionFormInner = ({
       if (payout) qp.set('payout', payout);
     }
 
-    return `/og/position?${qp.toString()}`;
+    return `/og/prediction?${qp.toString()}`;
   }, [
     selections,
     effectiveAddress,
@@ -945,10 +945,9 @@ const CreatePositionFormInner = ({
       open={showShareDialog}
       onOpenChange={handleShareDialogClose}
       title="Trade Submitted"
-      trackPosition={true}
-      lastNftId={shareDialogData?.lastNftId}
+      trackPrediction={true}
       progressState={progressState}
-      onPositionIndexed={handlePositionIndexed}
+      onPredictionIndexed={handlePositionIndexed}
     />
   );
 
