@@ -162,8 +162,8 @@ export const predictionMarketEscrow: ChainAddressMap = {
  */
 export const predictionMarketVault: ChainAddressMap = {
   5064014: {
-    // Ethereal mainnet - TODO: deploy
-    address: '0x0000000000000000000000000000000000000000',
+    // Ethereal mainnet — deployed 2026-02-26
+    address: '0x5704dB4b2c068d74Fde25257106a7029463f812E',
     legacy: [] as const,
   },
   13374202: {
@@ -321,9 +321,9 @@ export const secondaryMarketEscrow: ChainAddressMap = {
     legacy: [] as const,
   },
   13374202: {
-    // Ethereal testnet — deployed 2026-02-18
-    address: '0x0c12a974E7741135a8431458705Ae16dDa41aA85',
-    legacy: [] as const,
+    // Ethereal testnet — redeployed 2026-02-26 (bitmap nonces + session key revocation)
+    address: '0x16222940184Aad2E806529C963531e36c13875cF',
+    legacy: ['0x0c12a974E7741135a8431458705Ae16dDa41aA85'] as const,
   },
 } as const;
 

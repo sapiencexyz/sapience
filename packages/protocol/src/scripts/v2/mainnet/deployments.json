@@ -9,7 +9,8 @@
       "PredictionMarketEscrow": "0x23C765fcE26aDbA3A1e0790d548410367D5A3487",
       "PredictionMarketBridge": "0xf3a0026Bd8Bf3B3ca41177C93b99F97dfB657506",
       "ZeroDevKernelAccountFactory": "0x91C9de557e47c08A32FBd6878Cac2Eb9A121c590",
-      "SecondaryMarketEscrow": "0xc46C3140D2c776f83Cf908B3b93f20165e294064"
+      "SecondaryMarketEscrow": "0xc46C3140D2c776f83Cf908B3b93f20165e294064",
+      "PredictionMarketVault": "0x5704dB4b2c068d74Fde25257106a7029463f812E"
     }
   },
   "smNetwork": {
