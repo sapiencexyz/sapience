@@ -5,6 +5,7 @@ import {
   keccak256,
   parseAbi,
   slice,
+  toHex,
   encodeAbiParameters,
   recoverTypedDataAddress,
   hashTypedData,
@@ -346,7 +347,7 @@ async function _signEscrowSessionKeyApproval(
 ): Promise<EscrowSessionKeyApproval> {
   // Compute a permissions hash (we use a simple hash of "V2_MINT" permission)
   // In practice, this could be more specific to the exact permissions granted
-  const permissionsHash = keccak256('0x56325f4d494e54' as Hex); // keccak256("V2_MINT")
+  const permissionsHash = keccak256(toHex('MINT')); // must match SignatureValidator.MINT_PERMISSION
 
   // For eth_signTypedData_v4, uint256 values should be hex strings when JSON serialized
   const typedData = {
@@ -850,9 +851,24 @@ export async function createSession(
     '[SessionKeyManager] Arbitrum session will be created lazily on first EAS attestation'
   );
 
-  // Note: No on-chain registration or separate escrow approval needed.
-  // Session keys sign typed data through the KernelAccountClient, and the escrow
-  // contract verifies via ERC-1271 (isValidSignature) on the smart account.
+  // Sign escrow session key approval so the contract can validate via native
+  // session key path (Option B in SignatureValidator) instead of ERC-1271.
+  let escrowSessionKeyApproval: EscrowSessionKeyApproval | undefined;
+  if (etherealContracts.predictionMarketEscrow) {
+    try {
+      escrowSessionKeyApproval = await _signEscrowSessionKeyApproval(
+        ownerSigner,
+        sessionKeyAccount.address,
+        smartAccountAddress,
+        validUntilInSeconds,
+        etherealChainId,
+        etherealContracts.predictionMarketEscrow
+      );
+      console.debug('[SessionKeyManager] Escrow session key approval signed');
+    } catch (e) {
+      console.warn('[SessionKeyManager] Failed to sign escrow session key approval:', e);
+    }
+  }
 
   const config: SessionConfig = {
     durationHours,
@@ -870,7 +886,7 @@ export async function createSession(
     // Arbitrum approval not set - will be created lazily
     etherealEnableTypedData,
     etherealChainId,
-    // escrowSessionKeyApproval is no longer set — session keys are registered on-chain
+    escrowSessionKeyApproval,
   };
 
   return {

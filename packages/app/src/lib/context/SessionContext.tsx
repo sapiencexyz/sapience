@@ -187,8 +187,11 @@ interface SessionContextValue {
   // The Ethereal chain ID the session was created for (mainnet or testnet)
   etherealChainId: number | null;
 
-  // Escrow Session Key Approval for PredictionMarketEscrow (legacy, may be null for new sessions)
+  // Escrow Session Key Approval for PredictionMarketEscrow
   escrowSessionKeyApproval: EscrowSessionKeyApproval | null;
+
+  // Raw session key signing (bypasses kernel wrapping) for escrow approval signatures
+  signTypedDataRaw: ((params: SignTypedDataParams) => Promise<Hex>) | null;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -377,6 +380,20 @@ export function SessionProvider({ children }: SessionProviderProps) {
       return client.signTypedData(params as any);
     },
     [chainClients.ethereal]
+  );
+
+  // Sign typed data directly with the raw session key (plain ECDSA, no kernel wrapping).
+  // Used for escrow MintApproval signatures that go through the contract's native
+  // session key validation path (Option B in SignatureValidator).
+  const signTypedDataRaw = useCallback(
+    async (params: SignTypedDataParams): Promise<Hex> => {
+      if (!sessionPrivateKey) {
+        throw new Error('No active session');
+      }
+      const account = privateKeyToAccount(sessionPrivateKey);
+      return account.signTypedData(params as any);
+    },
+    [sessionPrivateKey]
   );
 
   // Calculate smart account address when wallet connects
@@ -745,6 +762,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
       effectiveAddress,
       signMessage: sessionPrivateKey ? signMessage : null,
       signTypedData: chainClients.ethereal ? signTypedData : null,
+      signTypedDataRaw: sessionPrivateKey ? signTypedDataRaw : null,
       sessionKeyAddress,
       etherealSessionApproval,
       arbitrumSessionApproval,
@@ -774,6 +792,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
       sessionPrivateKey,
       signMessage,
       signTypedData,
+      signTypedDataRaw,
       sessionKeyAddress,
       etherealSessionApproval,
       arbitrumSessionApproval,
