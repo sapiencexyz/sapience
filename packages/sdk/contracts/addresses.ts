@@ -94,8 +94,8 @@ export const passiveLiquidityVault: ChainAddressMap = {
     legacy: [] as const,
   },
   13374202: {
-    address: '0xb52883b935796Ef6d881B22B4fA9d46a374905D7',
-    legacy: [] as const,
+    address: '0xADf3C8D4B159FdA439E3C0e519DEc3C93DE0a4c3',
+    legacy: ['0xb52883b935796Ef6d881B22B4fA9d46a374905D7'] as const,
   },
 } as const;
 
