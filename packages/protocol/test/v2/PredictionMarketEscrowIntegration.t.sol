@@ -6,6 +6,7 @@ import "../../src/v2/PredictionMarketEscrow.sol";
 import "../../src/v2/PredictionMarketTokenFactory.sol";
 import "../../src/v2/resolvers/mocks/ManualConditionResolver.sol";
 import "../../src/v2/interfaces/IV2Types.sol";
+import "../../src/v2/interfaces/IV2Events.sol";
 import "../../src/v2/interfaces/IPredictionMarketToken.sol";
 import "./mocks/MockERC20.sol";
 
@@ -591,5 +592,220 @@ contract PredictionMarketEscrowIntegrationTest is Test {
         uint256 payout =
             market.redeem(predictorToken, totalCollateral, REF_CODE);
         assertEq(payout, totalCollateral);
+    }
+
+    // ============ Event Emission Tests ============
+
+    /**
+     * @notice Test: PickConfigCreated is emitted on first mint for a pick config
+     */
+    function test_emit_PickConfigCreated_onFirstMint() public {
+        bytes32 conditionId = keccak256("event-test-pick-config");
+
+        IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
+        picks[0] = IV2Types.Pick({
+            conditionResolver: address(resolver),
+            conditionId: conditionId,
+            predictedOutcome: IV2Types.OutcomeSide.YES
+        });
+
+        bytes32 pickConfigId = keccak256(abi.encode(picks));
+
+        uint256 pCollateral = 1000e18;
+        uint256 cCollateral = 1000e18;
+        IV2Types.MintRequest memory request =
+            _createMintRequest(picks, pCollateral, cCollateral);
+
+        // Expect PickConfigCreated with the correct pickConfigId
+        vm.expectEmit(true, false, false, false, address(market));
+        emit IV2Events.PickConfigCreated(
+            pickConfigId, address(0), address(0), picks
+        );
+
+        market.mint(request);
+    }
+
+    /**
+     * @notice Test: PickConfigCreated is NOT emitted on second mint with same picks
+     */
+    function test_noEmit_PickConfigCreated_onSecondMint() public {
+        bytes32 conditionId = keccak256("event-test-no-duplicate");
+
+        IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
+        picks[0] = IV2Types.Pick({
+            conditionResolver: address(resolver),
+            conditionId: conditionId,
+            predictedOutcome: IV2Types.OutcomeSide.YES
+        });
+
+        uint256 pCollateral = 500e18;
+        uint256 cCollateral = 500e18;
+
+        // First mint - creates pick config
+        IV2Types.MintRequest memory request1 =
+            _createMintRequest(picks, pCollateral, cCollateral);
+        market.mint(request1);
+
+        // Second mint with same picks - should NOT emit PickConfigCreated
+        IV2Types.MintRequest memory request2 =
+            _createMintRequest(picks, pCollateral, cCollateral);
+
+        vm.recordLogs();
+        market.mint(request2);
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+
+        bytes32 pickConfigCreatedSelector =
+            keccak256("PickConfigCreated(bytes32,address,address,(address,bytes32,uint8)[])");
+
+        for (uint256 i = 0; i < logs.length; i++) {
+            assertTrue(
+                logs[i].topics[0] != pickConfigCreatedSelector,
+                "PickConfigCreated should not be emitted on second mint"
+            );
+        }
+    }
+
+    /**
+     * @notice Test: PickConfigCreated event contains correct token addresses and picks
+     */
+    function test_emit_PickConfigCreated_correctData() public {
+        bytes32 conditionId = keccak256("event-test-data");
+
+        IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
+        picks[0] = IV2Types.Pick({
+            conditionResolver: address(resolver),
+            conditionId: conditionId,
+            predictedOutcome: IV2Types.OutcomeSide.NO
+        });
+
+        bytes32 pickConfigId = keccak256(abi.encode(picks));
+
+        uint256 pCollateral = 1000e18;
+        uint256 cCollateral = 1000e18;
+        IV2Types.MintRequest memory request =
+            _createMintRequest(picks, pCollateral, cCollateral);
+
+        vm.recordLogs();
+        (
+            ,
+            address predictorToken,
+            address counterpartyToken
+        ) = market.mint(request);
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+
+        // Find the PickConfigCreated event
+        bytes32 pickConfigCreatedSelector =
+            keccak256("PickConfigCreated(bytes32,address,address,(address,bytes32,uint8)[])");
+
+        bool found = false;
+        for (uint256 i = 0; i < logs.length; i++) {
+            if (logs[i].topics[0] == pickConfigCreatedSelector) {
+                found = true;
+                // topic[1] is indexed pickConfigId
+                assertEq(logs[i].topics[1], pickConfigId);
+                // Decode non-indexed data: (address, address, Pick[])
+                (
+                    address emittedPredictorToken,
+                    address emittedCounterpartyToken,
+                ) = abi.decode(logs[i].data, (address, address, IV2Types.Pick[]));
+                assertEq(emittedPredictorToken, predictorToken);
+                assertEq(emittedCounterpartyToken, counterpartyToken);
+                break;
+            }
+        }
+        assertTrue(found, "PickConfigCreated event not found");
+    }
+
+    /**
+     * @notice Test: PredictionCreated event includes pickConfigId
+     */
+    function test_emit_PredictionCreated_includesPickConfigId() public {
+        bytes32 conditionId = keccak256("event-test-prediction-created");
+
+        IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
+        picks[0] = IV2Types.Pick({
+            conditionResolver: address(resolver),
+            conditionId: conditionId,
+            predictedOutcome: IV2Types.OutcomeSide.YES
+        });
+
+        bytes32 pickConfigId = keccak256(abi.encode(picks));
+
+        IV2Types.MintRequest memory request =
+            _createMintRequest(picks, 1000e18, 2000e18);
+
+        vm.recordLogs();
+        (bytes32 predictionId,,) = market.mint(request);
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+
+        bytes32 predictionCreatedSelector = keccak256(
+            "PredictionCreated(bytes32,address,address,address,address,uint256,uint256,bytes32,bytes32)"
+        );
+
+        bool found = false;
+        for (uint256 i = 0; i < logs.length; i++) {
+            if (logs[i].topics[0] != predictionCreatedSelector) continue;
+            found = true;
+            assertEq(logs[i].topics[1], predictionId);
+            // Decode last field (pickConfigId) from non-indexed data
+            (,,,,, bytes32 emittedPickConfigId) = abi.decode(
+                logs[i].data,
+                (address, address, uint256, uint256, bytes32, bytes32)
+            );
+            assertEq(emittedPickConfigId, pickConfigId);
+            break;
+        }
+        assertTrue(found, "PredictionCreated event not found");
+    }
+
+    /**
+     * @notice Test: Second mint with same picks emits PredictionCreated with same pickConfigId
+     */
+    function test_emit_PredictionCreated_samePickConfigIdOnSecondMint() public {
+        bytes32 conditionId = keccak256("event-test-same-config");
+
+        IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
+        picks[0] = IV2Types.Pick({
+            conditionResolver: address(resolver),
+            conditionId: conditionId,
+            predictedOutcome: IV2Types.OutcomeSide.YES
+        });
+
+        bytes32 pickConfigId = keccak256(abi.encode(picks));
+
+        // First mint
+        IV2Types.MintRequest memory request1 =
+            _createMintRequest(picks, 500e18, 500e18);
+        market.mint(request1);
+
+        // Second mint with same picks
+        IV2Types.MintRequest memory request2 =
+            _createMintRequest(picks, 800e18, 800e18);
+
+        vm.recordLogs();
+        market.mint(request2);
+        Vm.Log[] memory logs = vm.getRecordedLogs();
+
+        bytes32 predictionCreatedSelector = keccak256(
+            "PredictionCreated(bytes32,address,address,address,address,uint256,uint256,bytes32,bytes32)"
+        );
+
+        bool found = false;
+        for (uint256 i = 0; i < logs.length; i++) {
+            if (logs[i].topics[0] == predictionCreatedSelector) {
+                found = true;
+                (,,,,, bytes32 emittedPickConfigId) = abi.decode(
+                    logs[i].data,
+                    (address, address, uint256, uint256, bytes32, bytes32)
+                );
+                assertEq(
+                    emittedPickConfigId,
+                    pickConfigId,
+                    "Second mint should have same pickConfigId"
+                );
+                break;
+            }
+        }
+        assertTrue(found, "PredictionCreated event not found on second mint");
     }
 }
