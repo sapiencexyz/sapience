@@ -11,11 +11,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FormProvider, type UseFormReturn, useWatch } from 'react-hook-form';
 import { parseUnits } from 'viem';
-import { useAccount, useReadContract } from 'wagmi';
+import { useAccount } from 'wagmi';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
-import {
-  predictionMarketAbi,
-} from '@sapience/sdk/abis';
 import { generateRandomNonce } from '@sapience/sdk';
 import {
   COLLATERAL_SYMBOLS,
@@ -77,7 +74,7 @@ interface PositionFormProps {
   collateralSymbol?: string;
   collateralDecimals?: number;
   minPositionSize?: string;
-  // PredictionMarket contract address for fetching taker nonce
+  // PredictionMarketEscrow contract address for fetching predictor nonce
   predictionMarketAddress?: `0x${string}`;
   pythPredictions?: PythPrediction[];
   onRemovePythPrediction?: (id: string) => void;
@@ -95,13 +92,13 @@ export default function PositionForm({
   collateralSymbol: collateralSymbolProp,
   collateralDecimals,
   minPositionSize,
-  predictionMarketAddress,
+  predictionMarketAddress: _predictionMarketAddress,
   pythPredictions = [],
   onRemovePythPrediction,
 }: PositionFormProps) {
   const { selections, removeSelection, getPicks } =
     useCreatePositionContext();
-  const { address: takerAddress } = useAccount();
+  const { address: predictorAddress } = useAccount();
   const { hasConnectedWallet } = useConnectedWallet();
   const { openConnectDialog } = useConnectDialog();
   const { toast } = useToast();
@@ -135,19 +132,19 @@ export default function PositionForm({
   // Sponsorship status
   const { isSponsored, remainingBudget, maxEntryPriceBps } = useSponsorStatus();
 
-  // Determine the actual taker address based on signing method
+  // Determine the actual predictor address based on signing method
   // This MUST match the logic in useAuctionStart.requestQuotes
   // - If using session signing (smart account with active session): use effectiveAddress (smart account)
-  // - Otherwise (signing with wallet): use takerAddress (wallet)
+  // - Otherwise (signing with wallet): use predictorAddress (wallet)
   const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
   const willUseSessionSigning = isUsingSmartAccount && !!sessionSignMessage;
-  const selectedTakerAddress = willUseSessionSigning
-    ? (effectiveAddress ?? takerAddress ?? ZERO_ADDRESS)
-    : (takerAddress ?? ZERO_ADDRESS);
+  const selectedPredictorAddress = willUseSessionSigning
+    ? (effectiveAddress ?? predictorAddress ?? ZERO_ADDRESS)
+    : (predictorAddress ?? ZERO_ADDRESS);
 
   // Stable refs — read at call time inside triggerAuctionRequest, don't trigger recreation
-  const selectedTakerAddressRef = useRef(selectedTakerAddress);
-  useEffect(() => { selectedTakerAddressRef.current = selectedTakerAddress; }, [selectedTakerAddress]);
+  const selectedPredictorAddressRef = useRef(selectedPredictorAddress);
+  useEffect(() => { selectedPredictorAddressRef.current = selectedPredictorAddress; }, [selectedPredictorAddress]);
 
   const requestQuotesRef = useRef(requestQuotes);
   useEffect(() => { requestQuotesRef.current = requestQuotes; }, [requestQuotes]);
@@ -156,30 +153,11 @@ export default function PositionForm({
   const { balance: userBalance, isLoading: isBalanceLoading } =
     useCollateralBalanceContext();
 
-  // Fetch taker nonce: V1 reads from contract, V2 (escrow) uses random bitmap nonces
-  const isEscrowChain = chainId === CHAIN_ID_ETHEREAL_TESTNET;
-  const { refetch: refetchV1TakerNonce, error: nonceError } = useReadContract({
-    address: predictionMarketAddress,
-    abi: predictionMarketAbi,
-    functionName: 'nonces',
-    args: selectedTakerAddress ? [selectedTakerAddress] : undefined,
-    chainId,
-    query: {
-      enabled: !isEscrowChain && !!selectedTakerAddress && !!predictionMarketAddress,
-    },
-  });
-  if (nonceError) {
-    console.error('[Auction] Nonce read error:', nonceError);
-  }
-  // For escrow chains, generate random nonce; for V1, refetch from contract
-  const refetchTakerNonce = isEscrowChain
-    ? () => Promise.resolve({ data: generateRandomNonce() })
-    : refetchV1TakerNonce;
-
-  // Stable ref — refetchTakerNonce changes identity on every render, read at call time
-  const refetchTakerNonceRef = useRef(refetchTakerNonce);
-  useEffect(() => { refetchTakerNonceRef.current = refetchTakerNonce; }, [refetchTakerNonce]);
-
+  // Escrow uses random bitmap nonces (Permit2-style) — no contract read needed
+  const refetchTakerNonce = useCallback(
+    () => Promise.resolve({ data: generateRandomNonce() }),
+    []
+  );
   const [isLimitDialogOpen, setIsLimitDialogOpen] = useState(false);
 
   const positionSizeValue = useWatch({
@@ -199,8 +177,8 @@ export default function PositionForm({
     return !Number.isNaN(sizeNum) && sizeNum > 1000;
   }, [positionSizeValue]);
 
-  // Calculate taker position size in wei for auction chart
-  const takerPositionSizeWei = useMemo(() => {
+  // Calculate predictor position size in wei for auction chart
+  const predictorPositionSizeWei = useMemo(() => {
     const decimals = collateralDecimals ?? 18;
     try {
       return parseUnits(positionSizeValue || '0', decimals).toString();
@@ -242,7 +220,7 @@ export default function PositionForm({
   }, [positionSizeValue]);
 
   // Clear bids when wallet connection state changes
-  // Old bids were generated for a different taker address (zero address for logged-out, user address for logged-in)
+  // Old bids were generated for a different predictor address (zero address for logged-out, user address for logged-in)
   const prevHasConnectedWalletRef = useRef(hasConnectedWallet);
   useEffect(() => {
     if (prevHasConnectedWalletRef.current !== hasConnectedWallet) {
@@ -310,14 +288,14 @@ export default function PositionForm({
 
     // Get non-expired bids
     const nonExpiredBids = validBids.filter(
-      (bid) => bid.makerDeadline * 1000 > nowMs
+      (bid) => bid.counterpartyDeadline * 1000 > nowMs
     );
 
     if (nonExpiredBids.length === 0) {
       const resultKey = 'all-expired';
       if (prevFilterResultRef.current !== resultKey) {
         logPositionForm(
-          `[bestBid] All ${validBids.length} bid(s) expired. First deadline=${validBids[0]?.makerDeadline}, nowSec=${Math.floor(nowMs / 1000)}`
+          `[bestBid] All ${validBids.length} bid(s) expired. First deadline=${validBids[0]?.counterpartyDeadline}, nowSec=${Math.floor(nowMs / 1000)}`
         );
         prevFilterResultRef.current = resultKey;
       }
@@ -342,7 +320,7 @@ export default function PositionForm({
 
     if (validFilteredBids.length === 0) {
       const resultKey = estimateFromFailed
-        ? `estimate:${estimateFromFailed.maker}`
+        ? `estimate:${estimateFromFailed.counterparty}`
         : `no-valid:${failedBids.length}`;
       if (prevFilterResultRef.current !== resultKey) {
         if (estimateFromFailed) {
@@ -355,10 +333,10 @@ export default function PositionForm({
       return { bestBid: null, estimateBid: estimateFromFailed };
     }
 
-    // Select the bid with highest makerCollateral (highest payout for user)
+    // Select the bid with highest counterpartyCollateral (highest payout for user)
     const best = validFilteredBids.reduce((acc, current) => {
       try {
-        return BigInt(current.makerCollateral) > BigInt(acc.makerCollateral)
+        return BigInt(current.counterpartyCollateral) > BigInt(acc.counterpartyCollateral)
           ? current
           : acc;
       } catch {
@@ -366,7 +344,7 @@ export default function PositionForm({
       }
     });
 
-    const resultKey = `best:${best.maker}:${best.makerCollateral}`;
+    const resultKey = `best:${best.counterparty}:${best.counterpartyCollateral}`;
     if (prevFilterResultRef.current !== resultKey) {
       logPositionForm(`Best bid: ${formatBidForLog(best, collateralDecimals)}`);
       prevFilterResultRef.current = resultKey;
@@ -386,7 +364,7 @@ export default function PositionForm({
       return;
     }
     // Clear the sticky estimate when there are no non-expired bids left.
-    const hasAnyNonExpired = bids.some((b) => b.makerDeadline * 1000 > nowMs);
+    const hasAnyNonExpired = bids.some((b) => b.counterpartyDeadline * 1000 > nowMs);
     if (!hasAnyNonExpired) setStickyEstimateBid(null);
   }, [bestBid, estimateBid, bids, nowMs]);
 
@@ -424,7 +402,7 @@ export default function PositionForm({
         return;
       }
 
-      if (!requestQuotesRef.current || !selectedTakerAddressRef.current) {
+      if (!requestQuotesRef.current || !selectedPredictorAddressRef.current) {
         return;
       }
 
@@ -460,10 +438,10 @@ export default function PositionForm({
         setStickyEstimateBid(null);
 
         // Fetch fresh nonce via wagmi refetch (bypasses stale cache)
-        const nonceResult = await refetchTakerNonceRef.current();
+        const nonceResult = await refetchTakerNonce();
         const freshNonce = nonceResult.data;
 
-        if (freshNonce === undefined && takerAddress) {
+        if (freshNonce === undefined && predictorAddress) {
           auctionRequestInFlightRef.current = false;
           return;
         }
@@ -499,14 +477,13 @@ export default function PositionForm({
           wager: positionSizeWei,
           resolver: payload.resolver,
           predictedOutcomes: payload.predictedOutcomes,
-          taker: selectedTakerAddressRef.current,
-          takerNonce: freshNonce !== undefined ? Number(freshNonce) : 0,
+          predictor: selectedPredictorAddressRef.current,
+          predictorNonce: freshNonce !== undefined ? Number(freshNonce) : 0,
           chainId: chainId,
         };
 
-        // For escrow-capable chains with conditional token selections, add escrowPicks to trigger escrow auction
-        const isEscrowChain = chainId === CHAIN_ID_ETHEREAL_TESTNET;
-        if (isEscrowChain && hasUma && !hasPyth) {
+        // Add escrowPicks for conditional token selections to trigger escrow auction
+        if (hasUma && !hasPyth) {
           const escrowPicks = getPicks();
           if (escrowPicks.length > 0) {
             params.escrowPicks = escrowPicks;
@@ -523,7 +500,7 @@ export default function PositionForm({
         // Set the request key to match incoming bids to this configuration
         currentRequestKeyRef.current = `${predictionsKey}:${positionSizeValue || ''}`;
         logPositionForm(
-          `[triggerAuction] Key set: ${currentRequestKeyRef.current.slice(0, 50)}, escrowPicks=${params.escrowPicks?.length ?? 0}`
+          `[triggerAuction] Key set: ${currentRequestKeyRef.current.slice(0, 50)}, picks=${params.escrowPicks?.length ?? 0}`
         );
 
         // Clear in-flight flag after a short delay to allow the debounced request to start
@@ -552,8 +529,7 @@ export default function PositionForm({
       selections,
       pythPredictions,
       toast,
-      takerAddress,
-      isEscrowChain,
+      predictorAddress,
       hasFormErrors,
       positionSizeValue,
       collateralDecimals,
@@ -795,13 +771,13 @@ export default function PositionForm({
           {/* Sponsorship indicator */}
           {isSponsored && (() => {
             const activeBid = bestBid ?? stickyEstimateBid;
-            // User's collateral = positionSize (what they typed), vault's collateral = bid.makerCollateral
+            // User's collateral = positionSize (what they typed), vault's collateral = bid.counterpartyCollateral
             const decimals = collateralDecimals ?? 18;
             const userCollateral = positionSizeValue
               ? parseUnits(positionSizeValue, decimals)
               : 0n;
             const vaultCollateral = activeBid
-              ? BigInt(activeBid.makerCollateral)
+              ? BigInt(activeBid.counterpartyCollateral)
               : 0n;
             const bidEligible =
               !activeBid || !userCollateral
@@ -855,8 +831,8 @@ export default function PositionForm({
               hintMounted={hintMounted}
               disclaimerMounted={disclaimerMounted}
               allBids={validBids}
-              takerPositionSizeWei={takerPositionSizeWei}
-              takerAddress={selectedTakerAddress}
+              predictorPositionSizeWei={predictorPositionSizeWei}
+              predictorAddress={selectedPredictorAddress}
               showAddPredictionsHint={selections.length === 1}
               isAuctionPending={recentlyRequested && !bestBid}
               hasFormErrors={hasFormErrors}

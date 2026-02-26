@@ -4,8 +4,8 @@ import * as React from 'react';
 import { parseUnits } from 'viem';
 import { useAccount, useReadContract } from 'wagmi';
 import { motion, AnimatePresence } from 'framer-motion';
-import { predictionMarketAbi } from '@sapience/sdk';
-import { predictionMarket } from '@sapience/sdk/contracts';
+import { predictionMarketEscrowAbi } from '@sapience/sdk/abis';
+import { predictionMarketEscrow } from '@sapience/sdk/contracts';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import PercentChance from '~/components/shared/PercentChance';
 import { Table, TableBody, TableCell } from '@sapience/ui/components/ui/table';
@@ -42,7 +42,7 @@ type ComboWithQuote = {
 
 const ZERO_ADDRESS =
   '0x0000000000000000000000000000000000000000' as `0x${string}`;
-const TAKER_POSITION_SIZE_WEI = parseUnits('1', 18).toString();
+const PREDICTOR_POSITION_SIZE_WEI = parseUnits('1', 18).toString();
 const NUM_QUOTES_TO_REQUEST = 9;
 const NUM_TO_DISPLAY = 3;
 const DISPLAY_TIMEOUT_MS = 4000;
@@ -59,18 +59,18 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
   const { address: walletAddress } = useAccount();
 
   const PREDICTION_MARKET_ADDRESS =
-    predictionMarket[chainId]?.address ||
-    predictionMarket[DEFAULT_CHAIN_ID]?.address;
+    predictionMarketEscrow[chainId]?.address ||
+    predictionMarketEscrow[DEFAULT_CHAIN_ID]?.address;
 
-  const selectedTakerAddress = walletAddress || ZERO_ADDRESS;
+  const selectedPredictorAddress = walletAddress || ZERO_ADDRESS;
 
-  const { data: takerNonce } = useReadContract({
+  const { data: predictorNonce } = useReadContract({
     address: PREDICTION_MARKET_ADDRESS,
-    abi: predictionMarketAbi,
-    functionName: 'nonces',
-    args: selectedTakerAddress ? [selectedTakerAddress] : undefined,
+    abi: predictionMarketEscrowAbi,
+    functionName: 'getNonce',
+    args: selectedPredictorAddress ? [selectedPredictorAddress] : undefined,
     chainId: chainId,
-    query: { enabled: !!selectedTakerAddress && !!PREDICTION_MARKET_ADDRESS },
+    query: { enabled: !!selectedPredictorAddress && !!PREDICTION_MARKET_ADDRESS },
   });
 
   const wsUrl = React.useMemo(() => toAuctionWsUrl(apiBaseUrl), [apiBaseUrl]);
@@ -211,11 +211,11 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
           }));
           const payload = buildAuctionStartPayload(outcomes, chainId);
           const requestPayload = {
-            wager: TAKER_POSITION_SIZE_WEI,
+            wager: PREDICTOR_POSITION_SIZE_WEI,
             resolver: payload.resolver,
             predictedOutcomes: payload.predictedOutcomes,
-            taker: selectedTakerAddress,
-            takerNonce: takerNonce !== undefined ? Number(takerNonce) : 0,
+            taker: selectedPredictorAddress,
+            predictorNonce: predictorNonce !== undefined ? Number(predictorNonce) : 0,
             chainId: chainId,
           };
 
@@ -261,13 +261,13 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
     allConditions,
     generateCombos,
     chainId,
-    selectedTakerAddress,
-    takerNonce,
+    selectedPredictorAddress,
+    predictorNonce,
   ]);
 
   // Trigger quote requests when conditions first load.
   // Deliberately omit requestAllQuotes from deps: we only want this to fire
-  // once when data arrives, not re-fire when takerNonce/wsUrl change (which
+  // once when data arrives, not re-fire when predictorNonce/wsUrl change (which
   // would reset comboQuotes and the timeout timer, causing permanent skeletons).
   React.useEffect(() => {
     if (!isLoading && allConditions.length > 0) {
@@ -286,18 +286,18 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
 
         const nowMs = Date.now();
         const valid = bids.filter((b) => {
-          const dl = Number(b?.makerDeadline || 0);
+          const dl = Number(b?.counterpartyDeadline || 0);
           return Number.isFinite(dl) ? dl * 1000 > nowMs : true;
         });
         const list = valid.length > 0 ? valid : bids;
         const best = list.reduce((acc, cur) => {
-          return BigInt(cur.makerCollateral) > BigInt(acc.makerCollateral) ? cur : acc;
+          return BigInt(cur.counterpartyCollateral) > BigInt(acc.counterpartyCollateral) ? cur : acc;
         }, list[0]);
 
-        const taker = BigInt(TAKER_POSITION_SIZE_WEI);
-        const maker = BigInt(String(best?.makerCollateral || '0'));
-        const denom = maker + taker;
-        const prob = denom > 0n ? Number(maker) / Number(denom) : 0.5;
+        const predictorWei = BigInt(PREDICTOR_POSITION_SIZE_WEI);
+        const counterpartyWei = BigInt(String(best?.counterpartyCollateral || '0'));
+        const denom = counterpartyWei + predictorWei;
+        const prob = denom > 0n ? Number(counterpartyWei) / Number(denom) : 0.5;
         const safeProbability = Math.max(0, Math.min(1, prob));
 
         return {

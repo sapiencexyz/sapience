@@ -22,11 +22,11 @@ import ExpiresInLabel from '~/components/shared/ExpiresInLabel';
 
 export type AuctionBidData = {
   auctionId: string;
-  maker: string;
-  makerCollateral: string;
-  makerDeadline: number;
-  makerSignature: string;
-  makerNonce: number;
+  counterparty: string;
+  counterpartyCollateral: string;
+  counterpartyDeadline: number;
+  counterpartySignature: string;
+  counterpartyNonce: number;
   receivedAtMs?: number;
 };
 
@@ -36,8 +36,8 @@ type Props = {
   refreshMs?: number;
   // When true, use requestAnimationFrame to continuously update time window
   continuous?: boolean;
-  takerCollateral?: string | null;
-  taker?: string | null;
+  predictorCollateral?: string | null;
+  predictor?: string | null;
   collateralAssetTicker: string;
   // Whether to show hover tooltips (default true)
   showTooltips?: boolean;
@@ -49,8 +49,8 @@ const AuctionBidsChart: React.FC<Props> = ({
   bids,
   refreshMs = 1000,
   continuous = false,
-  takerCollateral,
-  taker,
+  predictorCollateral,
+  predictor,
   collateralAssetTicker,
   showTooltips = true,
   compact = false,
@@ -63,7 +63,7 @@ const AuctionBidsChart: React.FC<Props> = ({
     seriesKey: string; // key of the hovered series for highlighting
     data: {
       amount: number;
-      makerAddress: string;
+      counterpartyAddress: string;
       endMs: number;
     };
   } | null>(null);
@@ -75,9 +75,9 @@ const AuctionBidsChart: React.FC<Props> = ({
     lastDisplayedBidRef.current = hoveredBid;
   }
   const chartRef = useRef<HTMLDivElement>(null);
-  const takerEth = (() => {
+  const predictorEth = (() => {
     try {
-      return Number(formatEther(BigInt(String(takerCollateral ?? '0'))));
+      return Number(formatEther(BigInt(String(predictorCollateral ?? '0'))));
     } catch {
       return 0;
     }
@@ -112,13 +112,13 @@ const AuctionBidsChart: React.FC<Props> = ({
         .map((b) => {
           let amount = 0;
           try {
-            amount = Number(formatEther(BigInt(String(b?.makerCollateral ?? '0'))));
+            amount = Number(formatEther(BigInt(String(b?.counterpartyCollateral ?? '0'))));
           } catch {
             amount = 0;
           }
           // Use receivedAtMs if available, otherwise estimate from deadline
           const start = Number(b?.receivedAtMs || nowMs - 30000);
-          const end = Number(b?.makerDeadline || 0) * 1000;
+          const end = Number(b?.counterpartyDeadline || 0) * 1000;
           if (
             !Number.isFinite(amount) ||
             amount <= 0 ||
@@ -133,13 +133,13 @@ const AuctionBidsChart: React.FC<Props> = ({
               data: {
                 time: number;
                 amount: number;
-                makerAddress?: string;
-                takerAmountEth?: number;
+                counterpartyAddress?: string;
+                counterpartyAmountEth?: number;
                 endMs?: number;
               }[];
             };
           }
-          const key = `${String((b as any)?.id ?? (b as any)?.takerTxHash ?? start)}-${end}`;
+          const key = `${String((b as any)?.id ?? (b as any)?.predictorTxHash ?? start)}-${end}`;
           return {
             key,
             start,
@@ -148,15 +148,15 @@ const AuctionBidsChart: React.FC<Props> = ({
               {
                 time: start,
                 amount,
-                makerAddress: b.maker || '',
-                takerAmountEth: amount,
+                counterpartyAddress: b.counterparty || '',
+                counterpartyAmountEth: amount,
                 endMs: end,
               },
               {
                 time: end,
                 amount,
-                makerAddress: b.maker || '',
-                takerAmountEth: amount,
+                counterpartyAddress: b.counterparty || '',
+                counterpartyAmountEth: amount,
                 endMs: end,
               },
             ],
@@ -170,8 +170,8 @@ const AuctionBidsChart: React.FC<Props> = ({
         data: {
           time: number;
           amount: number;
-          makerAddress?: string;
-          takerAmountEth?: number;
+          counterpartyAddress?: string;
+          counterpartyAmountEth?: number;
           endMs?: number;
         }[];
       }[],
@@ -288,7 +288,7 @@ const AuctionBidsChart: React.FC<Props> = ({
           seriesKey: result.key,
           data: {
             amount: result.data.amount,
-            makerAddress: result.data.makerAddress || '',
+            counterpartyAddress: result.data.counterpartyAddress || '',
             endMs: result.data.endMs || 0,
           },
         });
@@ -480,17 +480,17 @@ const AuctionBidsChart: React.FC<Props> = ({
             {displayBidData && (
               <div className="px-3 py-2.5">
                 <TradePopoverContent
-                  leftAddress={displayBidData.data.makerAddress}
-                  rightAddress={String(taker || '')}
-                  takerAmountEth={displayBidData.data.amount}
+                  leftAddress={displayBidData.data.counterpartyAddress}
+                  rightAddress={String(predictor || '')}
+                  counterpartyAmountEth={displayBidData.data.amount}
                   totalAmountEth={
                     displayBidData.data.amount +
-                    (Number.isFinite(takerEth) ? takerEth : 0)
+                    (Number.isFinite(predictorEth) ? predictorEth : 0)
                   }
                   percent={
-                    displayBidData.data.amount + takerEth > 0
+                    displayBidData.data.amount + predictorEth > 0
                       ? Math.round(
-                          (takerEth / (displayBidData.data.amount + takerEth)) *
+                          (predictorEth / (displayBidData.data.amount + predictorEth)) *
                             100
                         )
                       : undefined

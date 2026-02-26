@@ -39,8 +39,7 @@ import { type MultiSelectItem } from '~/components/terminal/filters/MultiSelect'
 import { useConditionsByIds } from '~/hooks/graphql/useConditionsByIds';
 import Loader from '~/components/shared/Loader';
 import { useReadContracts } from 'wagmi';
-import { predictionMarket } from '@sapience/sdk/contracts';
-import { predictionMarketAbi } from '@sapience/sdk';
+import { collateralToken } from '@sapience/sdk/contracts';
 import bidsHub from '~/lib/auction/useAuctionBidsHub';
 import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import { useSettings } from '~/lib/context/SettingsContext';
@@ -49,10 +48,8 @@ import { toAuctionWsUrl } from '~/lib/ws';
 /** Shape of auction.started message data payload */
 interface AuctionStartedData {
   auctionId?: string;
-  taker?: string;
   predictor?: string;
-  takerSignature?: string;
-  wager?: string;
+  predictorCollateral?: string;
   resolver?: string;
   predictedOutcomes?: string[];
   picks?: Array<{ conditionResolver?: string; conditionId?: string; predictedOutcome?: number }>;
@@ -154,7 +151,7 @@ const TerminalPageContent: React.FC = () => {
     );
   }, []);
 
-  // Cached decoder for predicted outcomes keyed by auctionId + makerNonce
+  // Cached decoder for predicted outcomes keyed by auctionId + predictorNonce
   // Stores { data, accessedAt } for time-based LRU pruning
   const decodeCacheRef = useRef<
     Map<
@@ -206,7 +203,7 @@ const TerminalPageContent: React.FC = () => {
         if (m?.type !== 'auction.started' && m?.type !== 'v2.auction.started')
           return { kind: 'unknown', data: [] };
         const cacheKey = `${getAuctionId(m) || 'unknown'}:${String(
-          m?.data?.makerNonce ?? 'n'
+          m?.data?.predictorNonce ?? 'n'
         )}`;
         const cached = decodeCacheRef.current.get(cacheKey);
         if (cached) {
@@ -338,7 +335,7 @@ const TerminalPageContent: React.FC = () => {
       if (m.type !== 'auction.started' && m.type !== 'v2.auction.started')
         continue;
       const auctionData = m.data as AuctionStartedData | undefined;
-      const addr = auctionData?.taker || auctionData?.predictor;
+      const addr = auctionData?.predictor;
       if (addr && typeof addr === 'string') {
         set.add(addr);
       }
@@ -522,30 +519,8 @@ const TerminalPageContent: React.FC = () => {
     }
   }
 
-  // Fetch PredictionMarket config to get collateral token, then read ERC20 decimals
-  const PREDICTION_MARKET_ADDRESS = predictionMarket[chainId]?.address;
-  const predictionMarketConfigRead = useReadContracts({
-    contracts: PREDICTION_MARKET_ADDRESS
-      ? [
-          {
-            address: PREDICTION_MARKET_ADDRESS,
-            abi: predictionMarketAbi,
-            functionName: 'getConfig',
-            chainId: chainId,
-          },
-        ]
-      : [],
-    query: { enabled: !!PREDICTION_MARKET_ADDRESS },
-  });
-
-  const collateralTokenAddress: `0x${string}` | undefined = useMemo(() => {
-    const item = predictionMarketConfigRead.data?.[0];
-    if (item && item.status === 'success') {
-      const cfg = item.result as { collateralToken: `0x${string}` };
-      return cfg?.collateralToken;
-    }
-    return undefined;
-  }, [predictionMarketConfigRead.data]);
+  // Use collateral token address directly from SDK constants (V2/escrow path)
+  const collateralTokenAddress: `0x${string}` | undefined = collateralToken[chainId]?.address as `0x${string}` | undefined;
 
   const erc20MetaRead = useReadContracts({
     contracts: collateralTokenAddress
@@ -679,20 +654,19 @@ const TerminalPageContent: React.FC = () => {
       const auctionData = row.m?.data as AuctionStartedData | undefined;
       if (selectedAddresses.length > 0) {
         if (
-          !auctionData?.taker ||
-          !selectedAddresses.includes(auctionData.taker)
+          !auctionData?.predictor ||
+          !selectedAddresses.includes(auctionData.predictor)
         )
           return false;
       }
 
-      // Check signed filter
-      const isSigned =
-        !!auctionData?.takerSignature && auctionData.takerSignature !== '0x';
+      // Check signed filter (V2 escrow auctions are always signed)
+      const isSigned = true;
       if (signedFilter === 'signed' && !isSigned) return false;
       if (signedFilter === 'unsigned' && isSigned) return false;
 
       try {
-        const positionSizeWei = BigInt(String(auctionData?.wager ?? '0'));
+        const positionSizeWei = BigInt(String(auctionData?.predictorCollateral ?? '0'));
         const bidsCount = bidsCountByAuction.get(row.id) ?? 0;
         // Check bids range
         if (bidsCount < bidsRangeNum[0]) return false;
@@ -860,16 +834,15 @@ const TerminalPageContent: React.FC = () => {
   function toUiTx(m: { time: number; type: string; data: any }): UiTransaction {
     const createdAt = new Date(m.time).toISOString();
     if (m.type === 'auction.started' || m.type === 'v2.auction.started') {
-      const maker =
-        (m as any)?.data?.maker || (m as any)?.data?.predictor || '';
-      const wager =
-        (m as any)?.data?.wager || (m as any)?.data?.predictorCollateral || '0';
+      const predictor = (m as any)?.data?.predictor || '';
+      const predictorCollateral =
+        (m as any)?.data?.predictorCollateral || '0';
       return {
         id: m.time,
         type: 'FORECAST',
         createdAt,
-        collateral: String(wager || '0'),
-        position: { owner: maker },
+        collateral: String(predictorCollateral || '0'),
+        position: { owner: predictor },
       } as UiTransaction;
     }
     if (m.type === 'auction.bids' || m.type === 'v2.auction.bids') {
@@ -878,26 +851,25 @@ const TerminalPageContent: React.FC = () => {
         : [];
       const top = bids.reduce((best, b) => {
         try {
-          // V1 uses makerCollateral, escrow uses counterpartyCollateral (but we may not have it in bid)
           const cur = BigInt(
-            String(b?.makerCollateral ?? b?.counterpartyCollateral ?? '0')
+            String(b?.counterpartyCollateral ?? '0')
           );
           const bestVal = BigInt(
-            String(best?.makerCollateral ?? best?.counterpartyCollateral ?? '0')
+            String(best?.counterpartyCollateral ?? '0')
           );
           return cur > bestVal ? b : best;
         } catch {
           return best;
         }
       }, bids[0] || null);
-      const taker = top?.taker || top?.counterparty || '';
-      const makerCollateral = top?.makerCollateral || top?.counterpartyCollateral || '0';
+      const counterparty = top?.counterparty || '';
+      const counterpartyCollateral = top?.counterpartyCollateral || '0';
       return {
         id: m.time,
         type: 'FORECAST',
         createdAt,
-        collateral: String(makerCollateral || '0'),
-        position: { owner: taker },
+        collateral: String(counterpartyCollateral || '0'),
+        position: { owner: counterparty },
       } as UiTransaction;
     }
     return {
@@ -1067,17 +1039,15 @@ const TerminalPageContent: React.FC = () => {
                                   uiTx={toUiTx(m)}
                                   predictionsContent={renderPredictionsCell(m)}
                                   auctionId={auctionId}
-                                  takerCollateral={String(
-                                    m?.data?.wager ??
-                                      m?.data?.predictorCollateral ??
+                                  predictorCollateral={String(
+                                    m?.data?.predictorCollateral ??
                                       '0'
                                   )}
-                                  taker={
-                                    m?.data?.taker || m?.data?.predictor || null
+                                  predictor={
+                                    m?.data?.predictor || null
                                   }
                                   resolver={
                                     m?.data?.resolver ||
-                                    // Escrow: extract resolver from first pick
                                     (Array.isArray(m?.data?.picks) &&
                                       m?.data?.picks[0]?.conditionResolver) ||
                                     null
@@ -1087,19 +1057,11 @@ const TerminalPageContent: React.FC = () => {
                                       ? (m?.data?.predictedOutcomes as string[])
                                       : []
                                   }
-                                  takerNonce={(() => {
-                                    const raw =
-                                      m?.data?.takerNonce ??
-                                      m?.data?.predictorNonce;
-                                    const n = Number(raw);
-                                    return Number.isFinite(n) ? n : null;
-                                  })()}
                                   collateralAssetTicker={collateralAssetTicker}
                                   onTogglePin={togglePin}
                                   isPinned={true}
                                   isExpanded={expandedAuctions.has(auctionId)}
                                   onToggleExpanded={toggleExpanded}
-                                  isEscrowAuction={Array.isArray(m?.data?.picks) && m.data.picks.length > 0}
                                   escrowPicks={
                                     Array.isArray(m?.data?.picks)
                                       ? m?.data?.picks
@@ -1141,19 +1103,16 @@ const TerminalPageContent: React.FC = () => {
                                         m
                                       )}
                                       auctionId={auctionId}
-                                      takerCollateral={String(
-                                        m?.data?.wager ??
-                                          m?.data?.predictorCollateral ??
+                                      predictorCollateral={String(
+                                        m?.data?.predictorCollateral ??
                                           '0'
                                       )}
-                                      taker={
-                                        m?.data?.taker ||
+                                      predictor={
                                         m?.data?.predictor ||
                                         null
                                       }
                                       resolver={
                                         m?.data?.resolver ||
-                                        // Escrow: extract resolver from first pick
                                         (Array.isArray(m?.data?.picks) &&
                                           m?.data?.picks[0]
                                             ?.conditionResolver) ||
@@ -1167,13 +1126,6 @@ const TerminalPageContent: React.FC = () => {
                                               ?.predictedOutcomes as string[])
                                           : []
                                       }
-                                      takerNonce={(() => {
-                                        const raw =
-                                          m?.data?.takerNonce ??
-                                          m?.data?.predictorNonce;
-                                        const n = Number(raw);
-                                        return Number.isFinite(n) ? n : null;
-                                      })()}
                                       collateralAssetTicker={
                                         collateralAssetTicker
                                       }
@@ -1183,7 +1135,6 @@ const TerminalPageContent: React.FC = () => {
                                         auctionId
                                       )}
                                       onToggleExpanded={toggleExpanded}
-                                      isEscrowAuction={Array.isArray(m?.data?.picks) && m.data.picks.length > 0}
                                       escrowPicks={
                                         Array.isArray(m?.data?.picks)
                                           ? m?.data?.picks

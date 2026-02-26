@@ -49,14 +49,15 @@ export function useSingleConditionAuction({
   requestQuotes,
   resolverAddress,
 }: UseSingleConditionAuctionProps): UseSingleConditionAuctionReturn {
-  const { address: takerAddress } = useAccount();
+  const { address: predictorAddress } = useAccount();
   const { effectiveAddress } = useSession();
   const [nowMs, setNowMs] = useState<number>(Date.now());
   const [lastQuoteRequestMs, setLastQuoteRequestMs] = useState<number | null>(
     null
   );
 
-  const selectedTakerAddress = effectiveAddress ?? takerAddress ?? zeroAddress;
+  const selectedTakerAddress = effectiveAddress ?? predictorAddress ?? zeroAddress;
+
 
   // Stable ref — read at call time inside triggerQuoteRequest, don't trigger recreation
   const selectedTakerAddressRef = useRef(selectedTakerAddress);
@@ -70,7 +71,7 @@ export function useSingleConditionAuction({
   const bestBid = useMemo(() => {
     if (!bids || bids.length === 0) return null;
 
-    const validBids = bids.filter((bid) => bid.makerDeadline * 1000 > nowMs);
+    const validBids = bids.filter((bid) => bid.counterpartyDeadline * 1000 > nowMs);
     if (validBids.length === 0) return null;
 
     let userPositionSizeWei: bigint;
@@ -81,9 +82,9 @@ export function useSingleConditionAuction({
     }
 
     return validBids.reduce((best, current) => {
-      const bestPayout = userPositionSizeWei + BigInt(best.makerCollateral);
+      const bestPayout = userPositionSizeWei + BigInt(best.counterpartyCollateral);
       const currentPayout =
-        userPositionSizeWei + BigInt(current.makerCollateral);
+        userPositionSizeWei + BigInt(current.counterpartyCollateral);
       return currentPayout > bestPayout ? current : best;
     });
   }, [bids, positionSize, collateralDecimals, nowMs]);
@@ -112,8 +113,8 @@ export function useSingleConditionAuction({
           wager: positionSizeWei,
           resolver: payload.resolver,
           predictedOutcomes: payload.predictedOutcomes,
-          taker: selectedTakerAddressRef.current,
-          takerNonce: Number(generateRandomNonce()),
+          predictor: selectedTakerAddress,
+          predictorNonce: Number(generateRandomNonce()),
           chainId,
         };
 
@@ -124,6 +125,7 @@ export function useSingleConditionAuction({
             predictedOutcome: prediction ? OutcomeSide.YES : OutcomeSide.NO,
           }];
         }
+
 
         requestQuotes(params, { requireSignature: false, ...options });
         setLastQuoteRequestMs(Date.now());

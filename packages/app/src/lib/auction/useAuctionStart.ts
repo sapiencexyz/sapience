@@ -21,11 +21,11 @@ import {
 } from '~/lib/auction/bidLogger';
 
 export interface AuctionParams {
-  wager: string; // wei string - taker's position size
+  wager: string; // wei string - predictor's position size
   resolver: string; // contract address for market validation
   predictedOutcomes: string[]; // Array of bytes strings that the resolver validates/understands
-  taker: `0x${string}`; // taker EOA address
-  takerNonce: number; // nonce for the taker
+  predictor: `0x${string}`; // predictor EOA address
+  predictorNonce: number; // nonce for the predictor
   chainId: number; // chain ID for the auction (e.g., 42161 for Arbitrum)
   // Escrow auction fields (optional)
   counterpartyCollateral?: string; // wei string - counterparty's collateral for escrow auctions
@@ -38,11 +38,11 @@ export interface AuctionParams {
 
 export interface QuoteBid {
   auctionId: string;
-  maker: string;
-  makerCollateral: string; // wei
-  makerDeadline: number; // unix seconds
-  makerSignature: string; // Maker's bid signature
-  makerNonce: number; // nonce for the maker
+  counterparty: string;
+  counterpartyCollateral: string; // wei
+  counterpartyDeadline: number; // unix seconds
+  counterpartySignature: string; // Counterparty's bid signature
+  counterpartyNonce: number; // nonce for the counterparty
   /** Client-side validity marker for UI display/filtering */
   validationStatus?: 'pending' | 'valid' | 'invalid';
   /** Optional reason when validationStatus === 'invalid' */
@@ -225,20 +225,19 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
             : [];
 
           const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
-          // Support both V1 (maker*) and escrow (counterparty*) field names
           const normalized: QuoteBid[] = rawBids
             .map((b): QuoteBid | null => {
               try {
                 return {
                   auctionId: b.auctionId || targetAuctionId,
-                  maker: b.maker || b.counterparty || ZERO_ADDRESS,
-                  makerCollateral:
-                    b.makerCollateral || b.counterpartyCollateral || '0',
-                  makerDeadline:
-                    b.makerDeadline || b.counterpartyDeadline || 0,
-                  makerSignature:
-                    b.makerSignature || b.counterpartySignature || '0x',
-                  makerNonce: b.makerNonce || b.counterpartyNonce || 0,
+                  counterparty: b.counterparty || ZERO_ADDRESS,
+                  counterpartyCollateral:
+                    b.counterpartyCollateral || '0',
+                  counterpartyDeadline:
+                    b.counterpartyDeadline || 0,
+                  counterpartySignature:
+                    b.counterpartySignature || '0x',
+                  counterpartyNonce: b.counterpartyNonce || 0,
                   // Store escrow-specific fields for later use in mint request
                   counterpartySessionKeyData: b.counterpartySessionKeyData,
                 } as QuoteBid;
@@ -285,19 +284,19 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
       if (!params || !wsUrl) return;
 
       // Determine if we'll use session signing or wallet signing
-      // Session signing: use smart account address as taker
-      // Wallet signing: use wallet address as taker (signature must match taker for verification)
+      // Session signing: use smart account address as predictor
+      // Wallet signing: use wallet address as predictor (signature must match predictor for verification)
       const willUseSessionSigning = isUsingSmartAccountRef.current && !!sessionSignMessageRef.current;
-      const effectiveTaker = willUseSessionSigning
-        ? (effectiveAddressRef.current ?? params.taker)
-        : (walletAddress ?? params.taker);
+      const effectivePredictor = willUseSessionSigning
+        ? (effectiveAddressRef.current ?? params.predictor)
+        : (walletAddress ?? params.predictor);
 
       const requestPayload = {
         wager: params.wager,
         resolver: params.resolver,
         predictedOutcomes: params.predictedOutcomes,
-        taker: effectiveTaker,
-        takerNonce: params.takerNonce,
+        taker: effectivePredictor,
+        takerNonce: params.predictorNonce,
         chainId: params.chainId,
       };
 
@@ -321,8 +320,8 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
         pendingRequestIdRef.current = thisRequestId;
 
         // Generate SIWE signature for the auction request if required
-        let takerSignature: string | undefined;
-        let takerSignedAt: string | undefined;
+        let predictorSignature: string | undefined;
+        let predictorSignedAt: string | undefined;
         const requireSignature = options?.requireSignature ?? true; // Default to true to ask for signature as default behavior
 
         if (requireSignature) {
@@ -334,8 +333,8 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
               wager: params.wager,
               predictedOutcomes: params.predictedOutcomes,
               resolver: params.resolver,
-              taker: effectiveTaker,
-              takerNonce: params.takerNonce,
+              taker: effectivePredictor,
+              takerNonce: params.predictorNonce,
               chainId: params.chainId,
             };
             const message = createAuctionStartSiweMessage(
@@ -348,11 +347,11 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
             // Use session key signing when using smart account with active session
             // Otherwise fall back to owner's wallet signing
             if (willUseSessionSigning) {
-              takerSignature = await sessionSignMessageRef.current!(message);
+              predictorSignature = await sessionSignMessageRef.current!(message);
             } else {
-              takerSignature = await signMessageAsync({ message });
+              predictorSignature = await signMessageAsync({ message });
             }
-            takerSignedAt = issuedAt;
+            predictorSignedAt = issuedAt;
           } catch (signError) {
             // If signature is required and fails, log and return early
             logWarn('Failed to sign auction request:', signError);
@@ -374,8 +373,8 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
         // Build final payload with signature and session data
         const payloadWithSignature: Record<string, unknown> = {
           ...requestPayload,
-          ...(takerSignature && takerSignedAt
-            ? { takerSignature, takerSignedAt }
+          ...(predictorSignature && predictorSignedAt
+            ? { takerSignature: predictorSignature, takerSignedAt: predictorSignedAt }
             : {}),
           // Add session approval data ONLY when actually using session signing
           // This tells the relayer to verify via smart account (EIP-1271) vs EOA (ecrecover)
@@ -395,10 +394,10 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
         // new auction ID from the server.
         inflightRef.current = key;
         setBids([]);
-        // Store params with effectiveTaker so buildMintRequestDataFromBid uses the correct address
+        // Store params with effectivePredictor so buildMintRequestDataFromBid uses the correct address
         // (smart account address when session is active, otherwise EOA)
-        lastAuctionRef.current = { ...params, taker: effectiveTaker };
-        setCurrentAuctionParams({ ...params, taker: effectiveTaker });
+        lastAuctionRef.current = { ...params, predictor: effectivePredictor };
+        setCurrentAuctionParams({ ...params, predictor: effectivePredictor });
 
         // Check if this is an escrow auction (has escrowPicks)
         const isEscrowAuction = params.escrowPicks && params.escrowPicks.length > 0;
@@ -430,8 +429,8 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
                 predictedOutcome: p.predictedOutcome,
               })),
               predictorCollateral: params.wager,
-              predictor: effectiveTaker,
-              predictorNonce: params.takerNonce,
+              predictor: effectivePredictor,
+              predictorNonce: params.predictorNonce,
               predictorDeadline,
               chainId,
               // Note: no predictorSignature or counterpartyCollateral at auction start
@@ -481,7 +480,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
           }
           // V1 Auction Start (original logic)
           log(
-            `Requesting quotes: wager=${params.wager} wei, predictions=${params.predictedOutcomes.length}, taker=${effectiveTaker.slice(0, 10)}...`
+            `Requesting quotes: wager=${params.wager} wei, predictions=${params.predictedOutcomes.length}, predictor=${effectivePredictor.slice(0, 10)}...`
           );
 
           try {
@@ -579,31 +578,22 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
 
       const ZERO_BYTES32 = `0x${'0'.repeat(64)}`;
 
-      // Contract field names map BID (API) roles to contract roles:
-      // Contract "maker" = API "taker" (auction creator)
-      // Contract "taker" = API "maker" (bidder)
-      // Escrow uses counterparty* fields instead of maker* fields for bidder
+      // Contract field names map roles to contract struct:
+      // Contract "maker" = predictor (auction creator)
+      // Contract "taker" = counterparty (bidder)
       const bid = args.selectedBid;
-      // Cast to access escrow fields if present
-      const escrowBid = bid as unknown as Partial<EscrowQuoteBid>;
       return {
         encodedPredictedOutcomes: predictedOutcomes[0],
         resolver,
         makerCollateral: auction.wager,
-        // Escrow bids have counterpartyCollateral, V1 bids have makerCollateral
-        takerCollateral: escrowBid.counterpartyCollateral ?? bid.makerCollateral,
-        maker: auction.taker,
-        // Escrow bids have counterparty, V1 bids have maker
-        taker: (escrowBid.counterparty ?? bid.maker) as `0x${string}`,
-        // Escrow bids have counterpartySignature, V1 bids have makerSignature
-        takerSignature: (escrowBid.counterpartySignature ??
-          bid.makerSignature) as `0x${string}`,
-        // Escrow bids have counterpartyDeadline, V1 bids have makerDeadline
-        takerDeadline: String(escrowBid.counterpartyDeadline ?? bid.makerDeadline),
+        takerCollateral: bid.counterpartyCollateral,
+        maker: auction.predictor,
+        taker: bid.counterparty as `0x${string}`,
+        takerSignature: bid.counterpartySignature as `0x${string}`,
+        takerDeadline: String(bid.counterpartyDeadline),
         refCode: (args.refCode ?? ZERO_BYTES32) as `0x${string}`,
-        makerNonce: String(auction.takerNonce),
-        // Escrow bids have counterpartyNonce, V1 bids have makerNonce
-        takerClaimedNonce: escrowBid.counterpartyNonce ?? bid.makerNonce,
+        makerNonce: String(auction.predictorNonce),
+        takerClaimedNonce: bid.counterpartyNonce,
         // Escrow fields: include picks array if available
         escrowPicks: auction.escrowPicks,
         // Escrow fields: include counterparty session key data from bid

@@ -9,9 +9,7 @@ import React, {
 } from 'react';
 import {
   useReadContract,
-  useReadContracts,
   useBalance,
-  useAccount,
   useSendCalls,
 } from 'wagmi';
 import {
@@ -22,10 +20,8 @@ import {
   parseAbi,
 } from 'viem';
 import {
-  predictionMarket,
   predictionMarketEscrow,
 } from '@sapience/sdk/contracts';
-import { predictionMarketAbi } from '@sapience/sdk';
 import {
   CHAIN_ID_ETHEREAL,
   DEFAULT_CHAIN_ID,
@@ -47,6 +43,7 @@ import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useTokenApproval } from '~/hooks/contract/useTokenApproval';
 import { formatFiveSigFigs } from '~/lib/utils/util';
 import { useApprovalDialog } from './ApprovalDialogContext';
+import { useCurrentAddress } from '~/hooks/blockchain/useCurrentAddress';
 
 const GAS_RESERVE = 0.5;
 
@@ -62,46 +59,16 @@ const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 const ApprovalDialog: React.FC = () => {
   const { isOpen, setOpen, requiredAmount } = useApprovalDialog();
   const chainId = DEFAULT_CHAIN_ID;
-  const { address } = useAccount();
+  const { currentAddress: address, isUsingSmartAccount } = useCurrentAddress();
   const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
   const { toast } = useToast();
 
   const isEtherealChain =
     chainId === CHAIN_ID_ETHEREAL || chainId === CHAIN_ID_ETHEREAL_TESTNET;
 
-  // Escrow chains approve against PredictionMarketEscrow; legacy chains against PredictionMarket
-  const isEscrowChain = chainId === CHAIN_ID_ETHEREAL_TESTNET;
-  const SPENDER_ADDRESS = (
-    isEscrowChain
-      ? predictionMarketEscrow[chainId]?.address
-      : predictionMarket[chainId]?.address
-  ) as `0x${string}` | undefined;
+  const SPENDER_ADDRESS = predictionMarketEscrow[chainId]?.address as `0x${string}` | undefined;
 
-  // Read collateral token address from PredictionMarket contract config (legacy only)
-  const predictionMarketConfigRead = useReadContracts({
-    contracts:
-      !isEscrowChain && SPENDER_ADDRESS
-        ? [
-            {
-              address: SPENDER_ADDRESS,
-              abi: predictionMarketAbi,
-              functionName: 'getConfig',
-              chainId: chainId,
-            },
-          ]
-        : [],
-    query: { enabled: !isEscrowChain && !!SPENDER_ADDRESS },
-  });
-
-  const COLLATERAL_ADDRESS: `0x${string}` | undefined = useMemo(() => {
-    if (isEscrowChain) return collateralToken[chainId]?.address as `0x${string}` | undefined;
-    const item = predictionMarketConfigRead.data?.[0];
-    if (item && item.status === 'success') {
-      const cfg = item.result as { collateralToken: `0x${string}` };
-      return cfg?.collateralToken;
-    }
-    return undefined;
-  }, [isEscrowChain, predictionMarketConfigRead.data]);
+  const COLLATERAL_ADDRESS: `0x${string}` | undefined = collateralToken[chainId]?.address as `0x${string}` | undefined;
 
   // Simplification: on Ethereal, trading collateral is always wUSDe (and native USDe is used for gas + wrapping).
   const collateralAddress = useMemo(() => {
@@ -167,13 +134,15 @@ const ApprovalDialog: React.FC = () => {
   }, [decimals]);
 
   const gasReserveWei = useMemo(() => {
+    // Smart account transactions are sponsored — no gas reserve needed
+    if (isUsingSmartAccount) return 0n;
     try {
       return parseUnits(String(GAS_RESERVE), tokenDecimals);
     } catch {
       // Fallback: treat reserve as 0 if decimals aren't ready yet
       return 0n;
     }
-  }, [tokenDecimals]);
+  }, [isUsingSmartAccount, tokenDecimals]);
 
   const approveAmountWei = useMemo(() => {
     try {
@@ -488,11 +457,16 @@ const ApprovalDialog: React.FC = () => {
           </div>
 
           {/* Account Balance Display */}
-          <div className="text-xs text-muted-foreground !mt-2">
-            <span>Account Balance: </span>
-            <span className="text-brand-white font-mono">
-              {effectiveBalanceDisplay} USDe
-            </span>
+          <div className="text-xs text-muted-foreground !mt-2 space-y-0.5">
+            <div>
+              <span>Account Balance: </span>
+              <span className="text-brand-white font-mono">
+                {effectiveBalanceDisplay} USDe
+              </span>
+            </div>
+            {!isUsingSmartAccount && gasReserveWei > 0n && (
+              <div>{GAS_RESERVE} USDe reserved for gas</div>
+            )}
           </div>
 
           <Button

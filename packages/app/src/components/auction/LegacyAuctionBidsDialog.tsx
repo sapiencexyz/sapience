@@ -18,13 +18,13 @@ import { useAuctionBids } from '~/lib/auction/useAuctionBids';
 
 type Props = {
   auctionId: string | null;
-  makerCollateral: string | null;
+  predictorCollateral: string | null;
   collateralAssetTicker: string;
 };
 
 const AuctionBidsDialog: React.FC<Props> = ({
   auctionId,
-  makerCollateral,
+  predictorCollateral,
   collateralAssetTicker,
 }) => {
   const [open, setOpen] = useState(false);
@@ -91,7 +91,7 @@ const AuctionBidsDialog: React.FC<Props> = ({
               </thead>
               <tbody>
                 {bids.map((b, i) => {
-                  const deadlineSec = Number(b?.makerDeadline || 0);
+                  const deadlineSec = Number(b?.counterpartyDeadline || 0);
                   const { label: expiresLabel, isExpired } = (() => {
                     if (!Number.isFinite(deadlineSec) || deadlineSec <= 0)
                       return { label: '—', isExpired: false } as const;
@@ -108,19 +108,19 @@ const AuctionBidsDialog: React.FC<Props> = ({
                   })();
                   const payoutStr = (() => {
                     try {
-                      const taker = BigInt(String(makerCollateral ?? '0'));
-                      const maker = BigInt(String(b?.makerCollateral ?? '0'));
-                      return (maker + taker).toString();
+                      const predictorWei = BigInt(String(predictorCollateral ?? '0'));
+                      const counterpartyWei = BigInt(String(b?.counterpartyCollateral ?? '0'));
+                      return (counterpartyWei + predictorWei).toString();
                     } catch {
-                      return String(b?.makerCollateral || '0');
+                      return String(b?.counterpartyCollateral || '0');
                     }
                   })();
                   const uiTxAmount = {
                     id: i,
                     type: 'FORECAST',
                     createdAt: new Date().toISOString(),
-                    collateral: String(b?.makerCollateral || '0'),
-                    position: { owner: b?.maker || '' },
+                    collateral: String(b?.counterpartyCollateral || '0'),
+                    position: { owner: b?.counterparty || '' },
                   } as any;
                   const uiTxPayout = {
                     ...uiTxAmount,
@@ -138,13 +138,13 @@ const AuctionBidsDialog: React.FC<Props> = ({
                       <td className="px-3 py-2 whitespace-nowrap">
                         <div className="flex items-center gap-2 min-w-0">
                           <EnsAvatar
-                            address={b?.maker || ''}
+                            address={b?.counterparty || ''}
                             className="w-4 h-4 rounded-sm ring-1 ring-border/50 shrink-0"
                             width={16}
                             height={16}
                           />
                           <div className="[&_span.font-mono]:text-foreground min-w-0">
-                            <AddressDisplay address={b?.maker || ''} compact />
+                            <AddressDisplay address={b?.counterparty || ''} compact />
                           </div>
                         </div>
                       </td>

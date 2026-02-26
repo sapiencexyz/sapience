@@ -11,11 +11,11 @@ const STALE_THRESHOLD_MS = 60_000; // 1 minute
 
 export type AuctionBid = {
   auctionId: string;
-  maker: string;
-  makerCollateral: string;
-  makerDeadline: number;
-  makerSignature: string;
-  makerNonce: number;
+  counterparty: string;
+  counterpartyCollateral: string;
+  counterpartyDeadline: number;
+  counterpartySignature: string;
+  counterpartyNonce: number;
   receivedAtMs: number;
 };
 
@@ -78,25 +78,22 @@ class AuctionBidsHub {
       try {
         const auctionId = String(b?.auctionId || auctionIdFromPayload || '');
         if (!auctionId) continue;
-        // Support both V1 (maker*) and escrow (counterparty*) field names
-        const signature = String(
-          b?.makerSignature || b?.counterpartySignature || '0x'
-        );
+        const signature = String(b?.counterpartySignature || '0x');
         const existingTs = this.receivedAtRef.get(signature);
         const receivedAtMs = existingTs ?? Date.now();
         if (existingTs === undefined)
           this.receivedAtRef.set(signature, receivedAtMs);
         const obj: AuctionBid = {
           auctionId,
-          maker: String(b?.maker || b?.counterparty || ''),
-          makerCollateral: String(
-            b?.makerCollateral || b?.counterpartyCollateral || '0'
+          counterparty: String(b?.counterparty || ''),
+          counterpartyCollateral: String(
+            b?.counterpartyCollateral || '0'
           ),
-          makerDeadline: Number(
-            b?.makerDeadline || b?.counterpartyDeadline || 0
+          counterpartyDeadline: Number(
+            b?.counterpartyDeadline || 0
           ),
-          makerSignature: signature,
-          makerNonce: Number(b?.makerNonce || b?.counterpartyNonce || 0),
+          counterpartySignature: signature,
+          counterpartyNonce: Number(b?.counterpartyNonce || 0),
           receivedAtMs,
         };
         if (!updates.has(auctionId)) updates.set(auctionId, []);
@@ -112,10 +109,10 @@ class AuctionBidsHub {
         // Merge existing and new bids, deduplicating by signature
         const bySignature = new Map<string, AuctionBid>();
         for (const bid of existing) {
-          bySignature.set(bid.makerSignature, bid);
+          bySignature.set(bid.counterpartySignature, bid);
         }
         for (const bid of newBids) {
-          bySignature.set(bid.makerSignature, bid);
+          bySignature.set(bid.counterpartySignature, bid);
         }
 
         // Sort by receivedAt (newest first) and cap at 200
@@ -188,10 +185,10 @@ class AuctionBidsHub {
         continue;
       }
 
-      // Find the latest bid expiry (highest makerDeadline)
+      // Find the latest bid expiry (highest counterpartyDeadline)
       let latestExpiryMs = 0;
       for (const bid of bids) {
-        const expiryMs = bid.makerDeadline * 1000;
+        const expiryMs = bid.counterpartyDeadline * 1000;
         if (expiryMs > latestExpiryMs) {
           latestExpiryMs = expiryMs;
         }
@@ -208,7 +205,7 @@ class AuctionBidsHub {
       const bids = this.bidsByAuctionId.get(id);
       if (bids) {
         for (const bid of bids) {
-          this.receivedAtRef.delete(bid.makerSignature);
+          this.receivedAtRef.delete(bid.counterpartySignature);
         }
       }
       this.bidsByAuctionId.delete(id);

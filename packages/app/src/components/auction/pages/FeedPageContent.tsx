@@ -176,40 +176,39 @@ const FeedPageContent: React.FC = () => {
     const createdAt = new Date(m.time).toISOString();
     const d = m.data as Record<string, any> | null;
     if (m.type === 'auction.started') {
-      const maker = d?.maker || d?.predictor || '';
-      const positionSize = d?.wager || d?.predictorCollateral || '0';
+      const predictor = d?.predictor || '';
+      const positionSize = d?.predictorCollateral || '0';
       return {
         id: m.time,
         type: 'FORECAST',
         createdAt,
         collateral: String(positionSize || '0'),
-        position: { owner: maker },
+        position: { owner: predictor },
       } as UiTransaction;
     }
     if (m.type === 'auction.bids') {
       const bids = Array.isArray(d?.bids) ? d.bids : [];
       const top = bids.reduce((best, b) => {
         try {
-          // V1 uses makerCollateral, escrow uses counterpartyCollateral
           const cur = BigInt(
-            String(b?.makerCollateral ?? b?.counterpartyCollateral ?? '0')
+            String(b?.counterpartyCollateral ?? '0')
           );
           const bestVal = BigInt(
-            String(best?.makerCollateral ?? best?.counterpartyCollateral ?? '0')
+            String(best?.counterpartyCollateral ?? '0')
           );
           return cur > bestVal ? b : best;
         } catch {
           return best;
         }
       }, bids[0] || null);
-      const taker = top?.taker || top?.counterparty || '';
-      const makerCollateral = top?.makerCollateral || top?.counterpartyCollateral || '0';
+      const counterparty = top?.counterparty || '';
+      const counterpartyCollateral = top?.counterpartyCollateral || '0';
       return {
         id: m.time,
         type: 'FORECAST',
         createdAt,
-        collateral: String(makerCollateral || '0'),
-        position: { owner: taker },
+        collateral: String(counterpartyCollateral || '0'),
+        position: { owner: counterparty },
       } as UiTransaction;
     }
     return {
@@ -646,7 +645,7 @@ const FeedPageContent: React.FC = () => {
                                 return (
                                   <AuctionBidsDialog
                                     auctionId={auctionId}
-                                    makerCollateral={String(d?.wager ?? '0')}
+                                    predictorCollateral={String(d?.predictorCollateral ?? '0')}
                                     collateralAssetTicker={
                                       collateralAssetTicker
                                     }

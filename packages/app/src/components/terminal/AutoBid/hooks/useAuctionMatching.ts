@@ -12,9 +12,9 @@ import {
 } from '../utils';
 import type { AuctionFeedMessage } from '~/lib/auction/useAuctionRelayerFeed';
 import type {
-  LegacyBidSubmissionParams,
-  LegacyBidSubmissionResult,
-} from '~/hooks/auction/useLegacyBidSubmission';
+  EscrowBidSubmissionParams,
+  EscrowBidSubmissionResult,
+} from '~/hooks/auction/useEscrowBidSubmission';
 
 // Cache and deduplication limits
 const MAX_AUCTION_CACHE_SIZE = 200;
@@ -26,9 +26,13 @@ const BID_EXPIRY_SECONDS = 60;
 type AuctionContext = {
   predictedOutcomes: `0x${string}`[];
   resolver: `0x${string}`;
-  taker: `0x${string}`;
-  takerCollateral: string;
-  takerNonce: number;
+  predictor: `0x${string}`;
+  predictorCollateral: string;
+  escrowPicks?: Array<{
+    conditionResolver: string;
+    conditionId: string;
+    predictedOutcome: number;
+  }>;
 };
 
 type UseAuctionMatchingParams = {
@@ -44,7 +48,7 @@ type UseAuctionMatchingParams = {
   tokenDecimals: number;
   auctionMessages: AuctionFeedMessage[];
   formatCollateralAmount: (value?: string | null) => string | null;
-  submitBid: (params: LegacyBidSubmissionParams) => Promise<LegacyBidSubmissionResult>;
+  submitBid: (params: EscrowBidSubmissionParams) => Promise<EscrowBidSubmissionResult>;
 };
 
 export function useAuctionMatching({
@@ -222,11 +226,15 @@ export function useAuctionMatching({
       auctionId?: string | null;
       /** Auction context from the feed message */
       auctionContext?: {
-        takerCollateral: string; // wei string
-        taker: `0x${string}`;
-        takerNonce: number;
+        predictorCollateral: string; // wei string
+        predictor: `0x${string}`;
         predictedOutcomes: `0x${string}`[];
         resolver: `0x${string}`;
+        escrowPicks?: Array<{
+          conditionResolver: string;
+          conditionId: string;
+          predictedOutcome: number;
+        }>;
       };
       /** For copy_trade: the bid we're copying + increment */
       copyBidContext?: {
@@ -257,11 +265,11 @@ export function useAuctionMatching({
         return;
       }
 
-      const { takerCollateral, taker, takerNonce, predictedOutcomes, resolver } =
+      const { predictorCollateral, predictor, resolver, escrowPicks } =
         details.auctionContext;
 
-      // Calculate our bid amount (makerCollateral)
-      let makerCollateralWei: bigint;
+      // Calculate our bid amount (counterpartyCollateral)
+      let counterpartyCollateralWei: bigint;
       try {
         if (details.source === 'copy_trade' && details.copyBidContext) {
           // For copy_trade: copied bid + increment
@@ -272,12 +280,12 @@ export function useAuctionMatching({
             String(details.copyBidContext.increment || 0),
             tokenDecimals
           );
-          makerCollateralWei = copiedWei + incrementWei;
+          counterpartyCollateralWei = copiedWei + incrementWei;
         } else {
           // For conditions strategy: calculate position size based on probability threshold
-          // Formula: makerCollateral = (probability * takerCollateral) / (1 - probability)
+          // Formula: counterpartyCollateral = (probability * predictorCollateral) / (1 - probability)
           // This gives us the exact odds we want
-          const takerCollateralBigInt = BigInt(takerCollateral || '0');
+          const predictorCollateralBigInt = BigInt(predictorCollateral || '0');
           const rawProbability = (details.order.odds ?? 50) / 100; // odds is stored as percentage (0-100)
           // Invert probability for opposite-side matches (single-leg orders matching the other side)
           const probability = details.inverted
@@ -304,10 +312,10 @@ export function useAuctionMatching({
           }
 
           // Calculate using bigint math with precision scaling to avoid floating point errors
-          // makerCollateral = (probability * takerCollateral) / (1 - probability)
+          // counterpartyCollateral = (probability * predictorCollateral) / (1 - probability)
           const PRECISION = 10000n;
           const probabilityScaled = BigInt(Math.round(probability * 10000));
-          const numerator = probabilityScaled * takerCollateralBigInt;
+          const numerator = probabilityScaled * predictorCollateralBigInt;
           const denominator = PRECISION - probabilityScaled;
 
           if (denominator <= 0n || numerator <= 0n) {
@@ -327,7 +335,7 @@ export function useAuctionMatching({
             return;
           }
 
-          makerCollateralWei = numerator / denominator;
+          counterpartyCollateralWei = numerator / denominator;
         }
       } catch {
         pushLogEntry({
@@ -346,7 +354,7 @@ export function useAuctionMatching({
         return;
       }
 
-      if (makerCollateralWei <= 0n) {
+      if (counterpartyCollateralWei <= 0n) {
         pushLogEntry({
           kind: 'system',
           message: `${tag} bid skipped, zero bid amount`,
@@ -369,25 +377,24 @@ export function useAuctionMatching({
         // Actually submit the bid using the shared hook
         const result = await submitBid({
           auctionId: details.auctionId,
-          makerCollateral: makerCollateralWei,
-          takerCollateral: BigInt(takerCollateral || '0'),
-          predictedOutcomes,
+          counterpartyCollateral: counterpartyCollateralWei,
+          predictorCollateral: BigInt(predictorCollateral || '0'),
           resolver,
-          taker,
-          takerNonce,
+          predictor,
           expirySeconds,
+          escrowPicks: escrowPicks ?? [],
         });
 
-        const makerAmount = formatCollateralAmount(makerCollateralWei.toString());
-        const takerCollateralBigInt = BigInt(takerCollateral || '0');
-        const totalWei = makerCollateralWei + takerCollateralBigInt;
+        const counterpartyAmount = formatCollateralAmount(counterpartyCollateralWei.toString());
+        const predictorCollateralBigInt = BigInt(predictorCollateral || '0');
+        const totalWei = counterpartyCollateralWei + predictorCollateralBigInt;
         const payoutAmount = formatCollateralAmount(totalWei.toString());
 
         const submittedStatus =
-          makerAmount && payoutAmount
-            ? `${makerAmount} ${collateralSymbol} for payout ${payoutAmount} ${collateralSymbol}`
-            : makerAmount
-              ? `${makerAmount} ${collateralSymbol}`
+          counterpartyAmount && payoutAmount
+            ? `${counterpartyAmount} ${collateralSymbol} for payout ${payoutAmount} ${collateralSymbol}`
+            : counterpartyAmount
+              ? `${counterpartyAmount} ${collateralSymbol}`
               : 'Submitted';
 
         if (result.signature) {
@@ -408,8 +415,8 @@ export function useAuctionMatching({
               source: details.source,
               auctionId: details.auctionId,
               highlight: submittedStatus,
-              makerCollateral: makerCollateralWei.toString(),
-              takerCollateral,
+              counterpartyCollateral: counterpartyCollateralWei.toString(),
+              predictorCollateral,
             },
           });
         } else {
@@ -489,10 +496,10 @@ export function useAuctionMatching({
         return;
       }
       bids.forEach((bid: any) => {
-        const makerRaw = typeof bid?.maker === 'string' ? bid.maker : null;
-        const maker = normalizeAddress(makerRaw);
-        if (!maker) return;
-        const matched = normalizedOrders.find((item) => item.address === maker);
+        const counterpartyRaw = typeof bid?.counterparty === 'string' ? bid.counterparty : null;
+        const counterpartyAddr = normalizeAddress(counterpartyRaw);
+        if (!counterpartyAddr) return;
+        const matched = normalizedOrders.find((item) => item.address === counterpartyAddr);
         if (!matched) return;
         const auctionId =
           (typeof bid?.auctionId === 'string' && bid.auctionId) ||
@@ -510,11 +517,11 @@ export function useAuctionMatching({
         }
 
         const signature =
-          typeof bid?.makerSignature === 'string' ? bid.makerSignature : null;
+          typeof bid?.counterpartySignature === 'string' ? bid.counterpartySignature : null;
 
         // Create a unique key for this bid to prevent duplicate submissions
         // when the same bid appears in multiple auction.bids messages
-        const bidDedupeKey = `${matched.order.id}:${auctionId}:${signature ?? `${maker}:${bid?.makerCollateral ?? '0'}`}`;
+        const bidDedupeKey = `${matched.order.id}:${auctionId}:${signature ?? `${counterpartyAddr}:${bid?.counterpartyCollateral ?? '0'}`}`;
 
         // Skip if we've already processed this exact bid for this order
         if (processedBidsRef.current.has(bidDedupeKey)) {
@@ -530,7 +537,7 @@ export function useAuctionMatching({
 
         // Calculate the full bid amount for allowance checking (copiedCollateral + increment)
         // This ensures we don't prompt for signature if allowance is insufficient
-        const copiedCollateralWei = BigInt(String(bid?.makerCollateral ?? '0'));
+        const copiedCollateralWei = BigInt(String(bid?.counterpartyCollateral ?? '0'));
         let estimatedSpend: number;
         try {
           const incrementWei = parseUnits(String(increment), tokenDecimals);
@@ -548,7 +555,7 @@ export function useAuctionMatching({
             summary: tag,
             auctionId,
             estimatedSpend,
-            dedupeSuffix: signature ?? maker,
+            dedupeSuffix: signature ?? counterpartyAddr,
           },
         });
         if (!readiness.blocked) {
@@ -559,7 +566,7 @@ export function useAuctionMatching({
             auctionId,
             auctionContext: cachedContext,
             copyBidContext: {
-              copiedBidCollateral: String(bid?.makerCollateral ?? '0'),
+              copiedBidCollateral: String(bid?.counterpartyCollateral ?? '0'),
               increment: matched.order.increment ?? 1,
             },
             dedupeKey: bidDedupeKey,
@@ -593,23 +600,13 @@ export function useAuctionMatching({
       const resolverAddr =
         (entry?.data as any)?.resolver ??
         (entry?.data as any)?.payload?.resolver;
-      const takerAddr =
-        (entry?.data as any)?.taker ??
-        (entry?.data as any)?.payload?.taker ??
+      const predictorAddr =
         (entry?.data as any)?.predictor ??
         (entry?.data as any)?.payload?.predictor;
-      const takerCollateralStr =
-        (entry?.data as any)?.wager ??
-        (entry?.data as any)?.payload?.wager ??
+      const predictorCollateralStr =
         (entry?.data as any)?.predictorCollateral ??
         (entry?.data as any)?.payload?.predictorCollateral ??
         '0';
-      const takerNonceNum =
-        (entry?.data as any)?.takerNonce ??
-        (entry?.data as any)?.payload?.takerNonce ??
-        (entry?.data as any)?.predictorNonce ??
-        (entry?.data as any)?.payload?.predictorNonce ??
-        0;
       const predictedOutcomesArr = Array.isArray(rawPredictions)
         ? (rawPredictions as `0x${string}`[])
         : [];
@@ -619,14 +616,18 @@ export function useAuctionMatching({
         auctionId &&
         predictedOutcomesArr.length > 0 &&
         resolverAddr &&
-        takerAddr
+        predictorAddr
       ) {
+        // Extract escrowPicks from auction message if available
+        const rawEscrowPicks =
+          (entry?.data as any)?.escrowPicks ??
+          (entry?.data as any)?.payload?.escrowPicks;
         const ctx: AuctionContext = {
           predictedOutcomes: predictedOutcomesArr,
           resolver: resolverAddr as `0x${string}`,
-          taker: takerAddr as `0x${string}`,
-          takerCollateral: takerCollateralStr,
-          takerNonce: Number(takerNonceNum),
+          predictor: predictorAddr as `0x${string}`,
+          predictorCollateral: predictorCollateralStr,
+          ...(Array.isArray(rawEscrowPicks) && rawEscrowPicks.length > 0 && { escrowPicks: rawEscrowPicks }),
         };
         auctionContextCacheRef.current.set(auctionId, ctx);
         auctionContextKeysRef.current.push(auctionId);
@@ -653,17 +654,17 @@ export function useAuctionMatching({
         }
         const tag = formatOrderTag(order, null, getOrderIndex);
         // For conditions strategy, calculate estimated spend based on probability threshold
-        // Formula: makerCollateral = (probability * takerCollateral) / (1 - probability)
+        // Formula: counterpartyCollateral = (probability * predictorCollateral) / (1 - probability)
         let estimatedSpend = 1;
         try {
           const probability = (order.odds ?? 50) / 100;
           if (probability > 0 && probability < 1) {
-            const takerCollateralNum = Number(
-              formatUnits(BigInt(takerCollateralStr || '0'), tokenDecimals)
+            const predictorCollateralNum = Number(
+              formatUnits(BigInt(predictorCollateralStr || '0'), tokenDecimals)
             );
-            if (Number.isFinite(takerCollateralNum) && takerCollateralNum > 0) {
+            if (Number.isFinite(predictorCollateralNum) && predictorCollateralNum > 0) {
               estimatedSpend =
-                (probability * takerCollateralNum) / (1 - probability);
+                (probability * predictorCollateralNum) / (1 - probability);
             }
           }
         } catch {
@@ -689,17 +690,21 @@ export function useAuctionMatching({
         });
         if (!readiness.blocked) {
           // Fire and forget - dedupe key is marked on successful signature
+          // Extract escrowPicks from the auction message
+          const conditionEscrowPicks =
+            (entry?.data as any)?.escrowPicks ??
+            (entry?.data as any)?.payload?.escrowPicks;
           void triggerAutoBidSubmission({
             order,
             source: 'conditions',
             inverted: matchInfo.inverted,
             auctionId,
             auctionContext: {
-              takerCollateral: takerCollateralStr,
-              taker: takerAddr as `0x${string}`,
-              takerNonce: Number(takerNonceNum),
+              predictorCollateral: predictorCollateralStr,
+              predictor: predictorAddr as `0x${string}`,
               predictedOutcomes: predictedOutcomesArr,
               resolver: resolverAddr as `0x${string}`,
+              ...(Array.isArray(conditionEscrowPicks) && conditionEscrowPicks.length > 0 && { escrowPicks: conditionEscrowPicks }),
             },
             dedupeKey: bidDedupeKey,
           });

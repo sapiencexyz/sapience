@@ -80,7 +80,7 @@ export function useSubmitPosition({
   const [success, setSuccess] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
-  // Memoized public client for third-party validation (market maker checks)
+  // Memoized public client for third-party validation
   // This is used to validate external addresses, not the user's own state
   const publicClient = useMemo(
     () => getPublicClientForChainId(chainId),
@@ -113,8 +113,6 @@ export function useSubmitPosition({
     disableSuccessToast: true,
   });
 
-  const isEscrowChain = chainId === CHAIN_ID_ETHEREAL_TESTNET;
-
   // Prepare calls for sendCalls - combines approval + mint in a single batch
   const prepareCalls = useCallback(
     (mintData: MintPredictionRequestData, freshAllowance?: bigint) => {
@@ -126,7 +124,7 @@ export function useSubmitPosition({
         currentWusdeBalance:
           typeof currentWusdeBalance === 'bigint' ? currentWusdeBalance : 0n,
         currentAllowance: freshAllowance ?? currentAllowance ?? 0n,
-        isEscrowChain,
+        isEscrowChain: true,
       });
     },
     [
@@ -135,7 +133,6 @@ export function useSubmitPosition({
       currentAllowance,
       chainId,
       currentWusdeBalance,
-      isEscrowChain,
     ]
   );
 
@@ -169,8 +166,8 @@ export function useSubmitPosition({
           makerNonce: nonceValue,
         };
 
-        // Verify the maker address matches the current effective address
-        // The takerSignature was signed by the bidder referencing the maker address
+        // Verify the predictor address matches the current effective address
+        // The counterparty signature was signed by the bidder referencing the predictor address
         // This check must be unconditional to catch session state changes between auction start and submission
         if (filled.maker?.toLowerCase() !== effectiveAddress?.toLowerCase()) {
           throw new Error(
@@ -188,7 +185,7 @@ export function useSubmitPosition({
           freshAllowance = 0n;
         }
 
-        // Safety net: Check bidder's (taker's) allowance and balance
+        // Safety net: Check counterparty's allowance and balance
         await validateTakerFunds(
           filled.taker,
           BigInt(filled.takerCollateral),
