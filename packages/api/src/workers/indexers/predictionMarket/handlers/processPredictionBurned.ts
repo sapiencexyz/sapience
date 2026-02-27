@@ -82,6 +82,22 @@ export async function processPredictionBurned(
             },
           });
         });
+
+        // Decrement open interest for conditions linked to this position
+        const recoveryPredictions = await prisma.legacyPrediction.findMany({
+          where: { positionId: existingPosition.id },
+          select: { conditionId: true },
+        });
+        for (const lp of recoveryPredictions) {
+          await prisma.$executeRaw`
+            UPDATE condition
+            SET "openInterest" = GREATEST(
+              (COALESCE("openInterest"::NUMERIC, 0) - ${existingPosition.totalCollateral}::NUMERIC), 0
+            )::TEXT
+            WHERE id = ${lp.conditionId}
+          `;
+        }
+
         console.log(
           `[PredictionMarketIndexer] Processed PredictionBurned (recovery): ${eventData.makerNftTokenId}, ${eventData.takerNftTokenId}`
         );
@@ -123,6 +139,21 @@ export async function processPredictionBurned(
               settledAt: Number(block.timestamp),
             },
           });
+
+          // Decrement open interest for conditions linked to this position
+          const mainPredictions = await tx.legacyPrediction.findMany({
+            where: { positionId: position.id },
+            select: { conditionId: true },
+          });
+          for (const lp of mainPredictions) {
+            await tx.$executeRaw`
+              UPDATE condition
+              SET "openInterest" = GREATEST(
+                (COALESCE("openInterest"::NUMERIC, 0) - ${position.totalCollateral}::NUMERIC), 0
+              )::TEXT
+              WHERE id = ${lp.conditionId}
+            `;
+          }
         }
       });
     }

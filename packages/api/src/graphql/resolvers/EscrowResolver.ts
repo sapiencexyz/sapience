@@ -25,7 +25,7 @@ class PickType {
 }
 
 @ObjectType()
-class PicksType {
+class PickConfigurationType {
   @Field(() => String)
   id!: string;
 
@@ -137,8 +137,8 @@ class PredictionType {
   @Field(() => String, { nullable: true })
   refCode?: string | null;
 
-  @Field(() => PicksType, { nullable: true })
-  pickConfig?: PicksType | null;
+  @Field(() => PickConfigurationType, { nullable: true })
+  pickConfig?: PickConfigurationType | null;
 }
 
 @ObjectType()
@@ -164,8 +164,8 @@ class PositionType {
   @Field(() => String)
   balance!: string;
 
-  @Field(() => PicksType, { nullable: true })
-  pickConfig?: PicksType | null;
+  @Field(() => PickConfigurationType, { nullable: true })
+  pickConfig?: PickConfigurationType | null;
 }
 
 @ObjectType()
@@ -251,7 +251,7 @@ class ClaimType {
 // ============================================================================
 
 @Resolver()
-export class EscrowPositionResolver {
+export class EscrowResolver {
   // -------------------------------------------------------------------------
   // Predictions (escrow-based)
   // -------------------------------------------------------------------------
@@ -286,9 +286,10 @@ export class EscrowPositionResolver {
     const addr = address?.toLowerCase();
 
     const where: Prisma.PredictionWhereInput = {};
+    const filters: Prisma.PredictionWhereInput[] = [];
 
     if (addr) {
-      where.OR = [{ predictor: addr }, { counterparty: addr }];
+      filters.push({ OR: [{ predictor: addr }, { counterparty: addr }] });
     }
 
     if (conditionId) {
@@ -313,18 +314,23 @@ export class EscrowPositionResolver {
       ] as string[];
       if (tokens.length === 0) return [];
 
-      where.OR = [
-        ...(where.OR ?? []),
-        { predictorToken: { in: tokens } },
-        { counterpartyToken: { in: tokens } },
-      ];
+      filters.push({
+        OR: [
+          { predictorToken: { in: tokens } },
+          { counterpartyToken: { in: tokens } },
+        ],
+      });
     }
 
     if (chainId !== undefined && chainId !== null) {
-      where.chainId = chainId;
+      filters.push({ chainId });
     }
     if (settled !== undefined && settled !== null) {
-      where.settled = settled;
+      filters.push({ settled });
+    }
+
+    if (filters.length > 0) {
+      where.AND = filters;
     }
 
     let orderByClause: Prisma.PredictionOrderByWithRelationInput = {
@@ -351,7 +357,7 @@ export class EscrowPositionResolver {
       if (r.counterpartyToken) allTokenAddresses.add(r.counterpartyToken);
     }
 
-    const tokenToPickConfig = new Map<string, PicksType>();
+    const tokenToPickConfig = new Map<string, PickConfigurationType>();
     if (allTokenAddresses.size > 0) {
       const positions = await prisma.position.findMany({
         where: {
@@ -368,7 +374,7 @@ export class EscrowPositionResolver {
       for (const pos of positions) {
         if (pos.pickConfiguration) {
           const pc = pos.pickConfiguration;
-          const mapped: PicksType = {
+          const mapped: PickConfigurationType = {
             id: pc.id,
             chainId: pc.chainId,
             marketAddress: pc.marketAddress,
@@ -437,7 +443,7 @@ export class EscrowPositionResolver {
     if (!r) return null;
 
     // Look up pickConfig via Position matching predictorToken or counterpartyToken
-    let pickConfig: PicksType | null = null;
+    let pickConfig: PickConfigurationType | null = null;
     const tokenAddresses = [r.predictorToken, r.counterpartyToken].filter(
       Boolean
     );
@@ -509,14 +515,14 @@ export class EscrowPositionResolver {
   // Pick Configurations
   // -------------------------------------------------------------------------
 
-  @Query(() => [PicksType])
+  @Query(() => [PickConfigurationType])
   async pickConfigurations(
     @Arg('take', () => Int, { defaultValue: 50 }) take: number,
     @Arg('skip', () => Int, { defaultValue: 0 }) skip: number,
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number,
     @Arg('resolved', () => Boolean, { nullable: true }) resolved?: boolean,
     @Arg('result', () => String, { nullable: true }) result?: string
-  ): Promise<PicksType[]> {
+  ): Promise<PickConfigurationType[]> {
     const where: Prisma.PicksWhereInput = {};
 
     if (chainId !== undefined && chainId !== null) {
@@ -563,10 +569,10 @@ export class EscrowPositionResolver {
     }));
   }
 
-  @Query(() => PicksType, { nullable: true })
+  @Query(() => PickConfigurationType, { nullable: true })
   async pickConfiguration(
     @Arg('id', () => String) id: string
-  ): Promise<PicksType | null> {
+  ): Promise<PickConfigurationType | null> {
     const idLower = id.toLowerCase();
 
     const r = await prisma.picks.findUnique({

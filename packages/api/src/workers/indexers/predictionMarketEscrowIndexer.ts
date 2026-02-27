@@ -577,12 +577,13 @@ class PredictionMarketEscrowIndexer implements IIndexer {
           `;
         }
 
-        // Update open interest for each condition referenced by the picks
+        // Update open interest and prediction count for each condition referenced by the picks
         for (const pick of picksOnChain) {
           const conditionId = (pick.conditionId as string).toLowerCase();
           await prisma.$executeRaw`
             UPDATE condition
-            SET "openInterest" = (COALESCE("openInterest"::NUMERIC, 0) + ${totalCollateral}::NUMERIC)::TEXT
+            SET "openInterest" = (COALESCE("openInterest"::NUMERIC, 0) + ${totalCollateral}::NUMERIC)::TEXT,
+                "predictionCount" = "predictionCount" + 1
             WHERE id = ${conditionId}
           `;
         }
@@ -599,7 +600,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
           WHERE id = ${pickConfigId}
         `;
 
-        // Update open interest for existing picks' conditions
+        // Update open interest and prediction count for existing picks' conditions
         const existingPicks = await prisma.pick.findMany({
           where: { pickConfigId },
           select: { conditionId: true },
@@ -607,7 +608,8 @@ class PredictionMarketEscrowIndexer implements IIndexer {
         for (const pick of existingPicks) {
           await prisma.$executeRaw`
             UPDATE condition
-            SET "openInterest" = (COALESCE("openInterest"::NUMERIC, 0) + ${totalCollateral}::NUMERIC)::TEXT
+            SET "openInterest" = (COALESCE("openInterest"::NUMERIC, 0) + ${totalCollateral}::NUMERIC)::TEXT,
+                "predictionCount" = "predictionCount" + 1
             WHERE id = ${pick.conditionId}
           `;
         }
@@ -668,6 +670,37 @@ class PredictionMarketEscrowIndexer implements IIndexer {
         counterpartyClaimable: event.counterpartyClaimable.toString(),
       },
     });
+
+    // Decrement open interest for conditions linked to this prediction
+    const pred = await prisma.prediction.findUnique({
+      where: { predictionId: predictionIdLower },
+    });
+    if (pred) {
+      const totalCollateral = (
+        BigInt(pred.predictorCollateral) + BigInt(pred.counterpartyCollateral)
+      ).toString();
+
+      const tokenAddresses = [pred.predictorToken, pred.counterpartyToken];
+      const position = await prisma.position.findFirst({
+        where: { tokenAddress: { in: tokenAddresses } },
+        select: { pickConfigId: true },
+      });
+      if (position) {
+        const picks = await prisma.pick.findMany({
+          where: { pickConfigId: position.pickConfigId },
+          select: { conditionId: true },
+        });
+        for (const pick of picks) {
+          await prisma.$executeRaw`
+            UPDATE condition
+            SET "openInterest" = GREATEST(
+              (COALESCE("openInterest"::NUMERIC, 0) - ${totalCollateral}::NUMERIC), 0
+            )::TEXT
+            WHERE id = ${pick.conditionId}
+          `;
+        }
+      }
+    }
 
     console.log(
       `[PredictionMarketEscrowIndexer] Marked prediction ${predictionIdLower} as settled with result ${mapSettlementResult(event.result)}`
@@ -783,6 +816,26 @@ class PredictionMarketEscrowIndexer implements IIndexer {
         refCode: event.refCode !== ZERO_BYTES32 ? event.refCode : null,
       },
     });
+
+    // Decrement open interest by the collateral released in this close
+    const closeCollateral = (
+      BigInt(event.predictorPayout.toString()) +
+      BigInt(event.counterpartyPayout.toString())
+    ).toString();
+
+    const picks = await prisma.pick.findMany({
+      where: { pickConfigId: pickConfigIdLower },
+      select: { conditionId: true },
+    });
+    for (const pick of picks) {
+      await prisma.$executeRaw`
+        UPDATE condition
+        SET "openInterest" = GREATEST(
+          (COALESCE("openInterest"::NUMERIC, 0) - ${closeCollateral}::NUMERIC), 0
+        )::TEXT
+        WHERE id = ${pick.conditionId}
+      `;
+    }
 
     // Check if fully redeemed
     await this.checkFullyRedeemedByPickConfig(pickConfigIdLower);
