@@ -559,6 +559,11 @@ export function createComplexityEstimators(maxListSize: number): ComplexityEstim
       if (fieldName === 'allTimeProfitLeaderboard') return 2000;
       if (fieldName === 'tradingVolumeByAddress') return 500;
       if (fieldName === 'profitRankByAddress') return 500;
+      // Time-series analytics — heavy SQL with generate_series + aggregation
+      if (fieldName === 'userVolumeHistory') return 1000;
+      if (fieldName === 'userPnlHistory') return 1500;
+      if (fieldName === 'userBalanceHistory') return 2000;
+      if (fieldName === 'protocolVolumeHistory') return 1500;
       // Full-table groupBy aggregates (no cache)
       if (fieldName === 'topForecasters') return 1500;
       if (fieldName === 'accuracyRankByAddress') return 1500;

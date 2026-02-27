@@ -191,7 +191,10 @@ export class AnalyticsResolver {
     });
   }
 
-  @Query(() => [DailyVolume])
+  @Query(() => [DailyVolume], {
+    deprecationReason:
+      'Use protocolVolumeHistory(interval: DAY) instead for flexible time-series volume data.',
+  })
   async dailyVolumes(): Promise<DailyVolume[]> {
     const chainId = DEFAULT_CHAIN_ID;
 

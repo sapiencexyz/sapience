@@ -7,3 +7,4 @@ export { ConditionResolver } from './ConditionResolver';
 export { VolumeResolver } from './VolumeResolver';
 export { QuestionsResolver } from './QuestionsResolver';
 export { SecondaryTradeResolver } from './SecondaryTradeResolver';
+export { TimeSeriesResolver } from './TimeSeriesResolver';
