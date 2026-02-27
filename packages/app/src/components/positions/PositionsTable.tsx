@@ -37,6 +37,15 @@ import { getCategoryIcon } from '~/lib/theme/categoryIcons';
 import { getCategoryStyle } from '~/lib/utils/categoryStyle';
 import { PredictionChoiceBadge } from '@sapience/ui';
 import OgShareDialogBase from '~/components/shared/OgShareDialog';
+import {
+  PositionsTableFilters,
+  getDefaultPositionsFilterState,
+  type PositionsFilterState,
+} from '~/components/positions/PositionsTableFilters';
+import {
+  isWithinDateRange,
+  matchesConditionSearch,
+} from '~/lib/utils/tableFilters';
 
 function PositionRow({
   position,
@@ -247,6 +256,9 @@ export default function PositionsTable({
 }) {
   const collateralSymbol =
     COLLATERAL_SYMBOLS[chainId || DEFAULT_CHAIN_ID] || 'USDe';
+  const [filters, setFilters] = React.useState<PositionsFilterState>(
+    getDefaultPositionsFilterState
+  );
 
   // Fetch position balances for this user
   const {
@@ -289,6 +301,69 @@ export default function PositionsTable({
   }, [positions]);
 
   const { map: conditionsMap } = useConditionsByIds(conditionIds);
+
+  // Apply client-side filters
+  const filteredPositions = React.useMemo(() => {
+    let result = positions;
+
+    // Filter by search term
+    if (filters.searchTerm.trim()) {
+      const term = filters.searchTerm.trim();
+      result = result.filter((p) => {
+        const ids = (p.pickConfig?.picks ?? []).map((pk) => pk.conditionId);
+        return matchesConditionSearch(term, ids, conditionsMap);
+      });
+    }
+
+    // Filter by status
+    if (filters.status.length > 0 && filters.status.length < 3) {
+      result = result.filter((p) => {
+        const res = p.pickConfig?.result ?? 'UNRESOLVED';
+        const isResolved = p.pickConfig?.resolved ?? false;
+        if (!isResolved) return filters.status.includes('active');
+        const viewerWon =
+          (p.isPredictorToken && res === 'PREDICTOR_WINS') ||
+          (!p.isPredictorToken && res === 'COUNTERPARTY_WINS') ||
+          res === 'NON_DECISIVE';
+        if (viewerWon) return filters.status.includes('won');
+        return filters.status.includes('lost');
+      });
+    }
+
+    // Filter by position size range
+    if (
+      filters.valueRange[0] > 0 ||
+      filters.valueRange[1] < Infinity
+    ) {
+      result = result.filter((p) => {
+        const balanceEth = parseFloat(formatEther(BigInt(p.balance)));
+        return (
+          balanceEth >= filters.valueRange[0] &&
+          balanceEth <= filters.valueRange[1]
+        );
+      });
+    }
+
+    // Filter by date range (end time relative to now)
+    if (
+      filters.dateRange[0] > -Infinity ||
+      filters.dateRange[1] < Infinity
+    ) {
+      result = result.filter((p) => {
+        const rawPicks = p.pickConfig?.picks ?? [];
+        const endsAt = Math.max(
+          0,
+          ...rawPicks.map(
+            (pk) => conditionsMap.get(pk.conditionId)?.endTime ?? 0
+          )
+        );
+        if (!endsAt) return true; // no end time, don't filter out
+        return isWithinDateRange(endsAt * 1000, filters.dateRange);
+      });
+    }
+
+    return result;
+  }, [positions, filters, conditionsMap]);
 
   // Share dialog state
   const [sharePosition, setSharePosition] =
@@ -343,21 +418,27 @@ export default function PositionsTable({
     return `/og/prediction?${qp.toString()}`;
   }, [sharePosition, conditionsMap, collateralSymbol]);
 
-  // Header with leftSlot (tab switcher) and optional title
-  const headerContent =
-    leftSlot || showHeaderText ? (
-      <div className="px-4 py-4 border-b border-border flex items-center gap-4">
-        {leftSlot}
-        <div className="flex-1">
-          {showHeaderText && (
-            <div className="flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Positions</h3>
-              <Badge variant="outline">{positions.length} positions</Badge>
-            </div>
-          )}
+  // Header with leftSlot (tab switcher), optional title, and filters
+  const headerContent = (
+    <div className="px-4 py-4 border-b border-border/60 flex flex-col gap-4 bg-white/[0.03]">
+      {(leftSlot || showHeaderText) && (
+        <div className="flex items-center gap-4">
+          {leftSlot}
+          <div className="flex-1">
+            {showHeaderText && (
+              <div className="flex items-center justify-between">
+                <h3 className="text-lg font-semibold">Positions</h3>
+                <Badge variant="outline">
+                  {filteredPositions.length} positions
+                </Badge>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
-    ) : null;
+      )}
+      <PositionsTableFilters filters={filters} onFiltersChange={setFilters} />
+    </div>
+  );
 
   if (isLoading) {
     return (
@@ -390,6 +471,15 @@ export default function PositionsTable({
     );
   }
 
+  if (filteredPositions.length === 0) {
+    return (
+      <>
+        {headerContent}
+        <EmptyTabState message="No positions match your filters" />
+      </>
+    );
+  }
+
   return (
     <>
       {headerContent}
@@ -406,7 +496,7 @@ export default function PositionsTable({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {positions.map((position) => (
+            {filteredPositions.map((position) => (
               <PositionRow
                 key={position.id}
                 position={position}
