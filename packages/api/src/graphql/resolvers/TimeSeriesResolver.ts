@@ -1,15 +1,15 @@
 import { Resolver, Query, Args, Directive } from 'type-graphql';
 import {
-  UserTimeSeriesArgs,
+  AccountTimeSeriesArgs,
   TimeSeriesArgs,
   VolumeDataPoint,
   PnlDataPoint,
   BalanceDataPoint,
 } from '../types/TimeSeriesTypes';
 import {
-  queryUserVolumeHistory,
-  queryUserPnlHistory,
-  queryUserBalanceHistory,
+  queryAccountVolumeHistory,
+  queryAccountPnlHistory,
+  queryAccountBalanceHistory,
   queryProtocolVolumeHistory,
 } from '../../helpers/timeSeriesQueries';
 
@@ -17,26 +17,26 @@ import {
 export class TimeSeriesResolver {
   @Query(() => [VolumeDataPoint])
   @Directive('@cacheControl(maxAge: 60)')
-  async userVolumeHistory(
-    @Args() { address, interval, from, to }: UserTimeSeriesArgs
+  async accountVolumeHistory(
+    @Args() { address, interval, from, to }: AccountTimeSeriesArgs
   ): Promise<VolumeDataPoint[]> {
-    return queryUserVolumeHistory(address, interval, from, to);
+    return queryAccountVolumeHistory(address, interval, from, to);
   }
 
   @Query(() => [PnlDataPoint])
   @Directive('@cacheControl(maxAge: 60)')
-  async userPnlHistory(
-    @Args() { address, interval, from, to }: UserTimeSeriesArgs
+  async accountPnlHistory(
+    @Args() { address, interval, from, to }: AccountTimeSeriesArgs
   ): Promise<PnlDataPoint[]> {
-    return queryUserPnlHistory(address, interval, from, to);
+    return queryAccountPnlHistory(address, interval, from, to);
   }
 
   @Query(() => [BalanceDataPoint])
   @Directive('@cacheControl(maxAge: 60)')
-  async userBalanceHistory(
-    @Args() { address, interval, from, to }: UserTimeSeriesArgs
+  async accountBalanceHistory(
+    @Args() { address, interval, from, to }: AccountTimeSeriesArgs
   ): Promise<BalanceDataPoint[]> {
-    return queryUserBalanceHistory(address, interval, from, to);
+    return queryAccountBalanceHistory(address, interval, from, to);
   }
 
   @Query(() => [VolumeDataPoint])

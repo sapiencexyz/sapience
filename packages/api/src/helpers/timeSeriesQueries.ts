@@ -89,9 +89,9 @@ interface BalanceRow {
   claimable_collateral: string;
 }
 
-// ─── User Volume History ──────────────────────────────────────────────────────
+// ─── Account Volume History ───────────────────────────────────────────────────
 
-export async function queryUserVolumeHistory(
+export async function queryAccountVolumeHistory(
   address: string,
   interval: TimeInterval,
   from?: Date,
@@ -156,9 +156,9 @@ export async function queryUserVolumeHistory(
   }));
 }
 
-// ─── User PnL History ─────────────────────────────────────────────────────────
+// ─── Account PnL History ──────────────────────────────────────────────────────
 
-export async function queryUserPnlHistory(
+export async function queryAccountPnlHistory(
   address: string,
   interval: TimeInterval,
   from?: Date,
@@ -180,7 +180,7 @@ export async function queryUserPnlHistory(
       ) AS bucket_start
     ),
     pnl_events AS (
-      -- V2 Claims: user redeems settled prediction
+      -- V2 Claims: account redeems settled prediction
       SELECT
         cl."redeemedAt" AS event_ts,
         CAST(cl."collateralPaid" AS DECIMAL) - CAST(
@@ -244,9 +244,9 @@ export async function queryUserPnlHistory(
   }));
 }
 
-// ─── User Balance History ─────────────────────────────────────────────────────
+// ─── Account Balance History ──────────────────────────────────────────────────
 
-export async function queryUserBalanceHistory(
+export async function queryAccountBalanceHistory(
   address: string,
   interval: TimeInterval,
   from?: Date,

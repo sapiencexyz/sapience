@@ -29,7 +29,7 @@ export const INTERVAL_TO_PG_STEP: Record<TimeInterval, string> = {
 };
 
 @ArgsType()
-export class UserTimeSeriesArgs {
+export class AccountTimeSeriesArgs {
   @Field(() => String)
   address!: string;
 
