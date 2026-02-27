@@ -257,7 +257,7 @@ export class EscrowResolver {
   // -------------------------------------------------------------------------
 
   @Query(() => Int)
-  async predictionsCount(
+  async predictionCount(
     @Arg('address', () => String) address: string,
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number
   ): Promise<number> {

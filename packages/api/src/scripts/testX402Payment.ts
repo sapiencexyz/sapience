@@ -55,11 +55,11 @@ const TEST_QUERIES = {
     body: JSON.stringify({
       query: `
         query {
-          dailyVolumes {
+          protocolStats {
             timestamp
-            volume
+            dailyVolume
           }
-          topForecasters(limit: 10) {
+          accuracyLeaderboard(limit: 10) {
             attester
             accuracyScore
           }

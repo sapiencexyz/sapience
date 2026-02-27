@@ -21,9 +21,9 @@ export class PnLResolver {
 
   @Query(() => [AggregatedProfitEntryType])
   @Directive('@cacheControl(maxAge: 60)')
-  async allTimeProfitLeaderboard(): Promise<AggregatedProfitEntryType[]> {
+  async profitLeaderboard(): Promise<AggregatedProfitEntryType[]> {
     // Cache key includes v4 to invalidate old cache after escrow integration
-    const cacheKey = 'allTimeProfitLeaderboard:v4';
+    const cacheKey = 'profitLeaderboard:v4';
     const existing = PnLResolver.leaderboardCache.get(cacheKey);
     if (existing) return existing;
 
@@ -50,10 +50,10 @@ export class PnLResolver {
 
   @Query(() => ProfitRankType)
   @Directive('@cacheControl(maxAge: 60)')
-  async profitRankByAddress(
+  async accountProfitRank(
     @Arg('owner', () => String) owner: string
   ): Promise<ProfitRankType> {
-    const leaderboard = await this.allTimeProfitLeaderboard();
+    const leaderboard = await this.profitLeaderboard();
     const lc = owner.toLowerCase();
     const totalParticipants = leaderboard.length;
     const idx = leaderboard.findIndex((e) => e.owner === lc);

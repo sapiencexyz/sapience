@@ -157,14 +157,14 @@ curl -X POST https://api.sapience.xyz/graphql \
 ```bash
 curl -X POST https://api.sapience.xyz/graphql \
   -H "Content-Type: application/json" \
-  -d '{"query":"query($limit:Int!){ topForecasters(limit:$limit){ attester accuracyScore numTimeWeighted }}","variables":{"limit":50}}'
+  -d '{"query":"query($limit:Int!){ accuracyLeaderboard(limit:$limit){ attester accuracyScore numTimeWeighted }}","variables":{"limit":50}}'
 ```
 
 ### Your Forecasting Rank
 ```bash
 curl -X POST https://api.sapience.xyz/graphql \
   -H "Content-Type: application/json" \
-  -d '{"query":"query($attester:String!){ accuracyRankByAddress(attester:$attester){ accuracyScore rank totalForecasters }}","variables":{"attester":"0x..."}}'
+  -d '{"query":"query($attester:String!){ accountAccuracyRank(attester:$attester){ accuracyScore rank totalForecasters }}","variables":{"attester":"0x..."}}'
 ```
 
 ## Polymarket Prices

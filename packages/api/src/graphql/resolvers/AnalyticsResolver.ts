@@ -51,20 +51,6 @@ class ProtocolStat {
   dailyVolume!: string;
 }
 
-@ObjectType()
-class DailyVolume {
-  @Field(() => String)
-  timestamp!: string;
-
-  @Field(() => String)
-  volume!: string;
-}
-
-interface DailyVolumeRow {
-  timestamp: bigint;
-  daily_volume: string | null;
-}
-
 interface CumulativeVolumeRow {
   timestamp: bigint;
   cumulative_volume: string | null;
@@ -191,45 +177,4 @@ export class AnalyticsResolver {
     });
   }
 
-  @Query(() => [DailyVolume], {
-    deprecationReason:
-      'Use protocolVolume(interval: DAY) instead for flexible time-series volume data.',
-  })
-  async dailyVolumes(): Promise<DailyVolume[]> {
-    const chainId = DEFAULT_CHAIN_ID;
-
-    // Daily volumes from V1 legacy positions + V2 predictions - last 90 days
-    const dailyVolumes = await prisma.$queryRaw<DailyVolumeRow[]>`
-      WITH date_series AS (
-        SELECT generate_series(
-          CURRENT_DATE - INTERVAL '90 days',
-          CURRENT_DATE,
-          '1 day'::interval
-        )::date as date
-      ),
-      all_volumes AS (
-        SELECT "mintedAt" AS created_ts, CAST("totalCollateral" AS DECIMAL) AS vol, "chainId"
-        FROM position
-        UNION ALL
-        SELECT "onChainCreatedAt" AS created_ts,
-          CAST("predictorCollateral" AS DECIMAL) + CAST("counterpartyCollateral" AS DECIMAL) AS vol,
-          "chainId"
-        FROM "Prediction"
-      )
-      SELECT
-        EXTRACT(EPOCH FROM d.date)::BIGINT as timestamp,
-        COALESCE(SUM(v.vol), 0)::TEXT as daily_volume
-      FROM date_series d
-      LEFT JOIN all_volumes v ON
-        DATE_TRUNC('day', TO_TIMESTAMP(v.created_ts))::date = d.date
-        AND v."chainId" = ${chainId}
-      GROUP BY d.date
-      ORDER BY timestamp
-    `;
-
-    return dailyVolumes.map((row) => ({
-      timestamp: row.timestamp.toString(),
-      volume: row.daily_volume || '0',
-    }));
-  }
 }

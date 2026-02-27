@@ -57,7 +57,7 @@ export class ScoreResolver {
 
   @Query(() => ForecasterScoreType, { nullable: true })
   @Directive('@cacheControl(maxAge: 60)')
-  async forecasterScore(
+  async accountAccuracy(
     @Arg('attester', () => String) attester: string
   ): Promise<ForecasterScoreType | null> {
     const a = attester.toLowerCase();
@@ -90,7 +90,7 @@ export class ScoreResolver {
 
   @Query(() => [ForecasterScoreType])
   @Directive('@cacheControl(maxAge: 60)')
-  async topForecasters(
+  async accuracyLeaderboard(
     @Arg('limit', () => Int, { defaultValue: 10 }) limit: number
   ): Promise<ForecasterScoreType[]> {
     const capped = Math.max(1, Math.min(limit, 100));
@@ -120,7 +120,7 @@ export class ScoreResolver {
 
   @Query(() => AccuracyRankType)
   @Directive('@cacheControl(maxAge: 60)')
-  async accuracyRankByAddress(
+  async accountAccuracyRank(
     @Arg('attester', () => String) attester: string
   ): Promise<AccuracyRankType> {
     const target = attester.toLowerCase();

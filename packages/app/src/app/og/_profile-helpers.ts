@@ -8,8 +8,8 @@ import { getGraphQLEndpoint, formatUnits } from './_prediction-helpers';
 // ---------- GraphQL queries ----------
 
 const ALL_TIME_PROFIT_LEADERBOARD_QUERY = `
-  query AllTimeProfitLeaderboard {
-    allTimeProfitLeaderboard {
+  query ProfitLeaderboard {
+    profitLeaderboard {
       owner
       totalPnL
     }
@@ -17,8 +17,8 @@ const ALL_TIME_PROFIT_LEADERBOARD_QUERY = `
 `;
 
 const ACCURACY_RANK_QUERY = `
-  query AccuracyRankByAddress($attester: String!) {
-    accuracyRankByAddress(attester: $attester) {
+  query AccountAccuracyRank($attester: String!) {
+    accountAccuracyRank(attester: $attester) {
       attester
       accuracyScore
       rank
@@ -29,7 +29,7 @@ const ACCURACY_RANK_QUERY = `
 
 const TRADING_VOLUME_QUERY = `
   query TradingVolume($address: String!) {
-    tradingVolumeByAddress(address: $address)
+    accountTotalVolume(address: $address)
   }
 `;
 
@@ -83,10 +83,10 @@ async function fetchProfitRank(address: string): Promise<{
   totalParticipants: number;
 }> {
   const data = await gqlFetch<{
-    allTimeProfitLeaderboard: Array<{ owner: string; totalPnL: number }>;
+    profitLeaderboard: Array<{ owner: string; totalPnL: number }>;
   }>(ALL_TIME_PROFIT_LEADERBOARD_QUERY);
 
-  const entries = data?.allTimeProfitLeaderboard || [];
+  const entries = data?.profitLeaderboard || [];
   const sorted = entries.sort((a, b) => b.totalPnL - a.totalPnL);
   const addressLc = address.toLowerCase();
   const idx = sorted.findIndex((e) => e.owner.toLowerCase() === addressLc);
@@ -105,14 +105,14 @@ async function fetchAccuracyRank(address: string): Promise<{
   totalForecasters: number;
 }> {
   const data = await gqlFetch<{
-    accuracyRankByAddress: {
+    accountAccuracyRank: {
       accuracyScore: number;
       rank: number | null;
       totalForecasters: number;
     };
   }>(ACCURACY_RANK_QUERY, { attester: address.toLowerCase() });
 
-  const r = data?.accuracyRankByAddress;
+  const r = data?.accountAccuracyRank;
   if (!r) return { accuracyScore: null, rank: null, totalForecasters: 0 };
   return {
     accuracyScore: r.accuracyScore ?? null,
@@ -122,12 +122,12 @@ async function fetchAccuracyRank(address: string): Promise<{
 }
 
 async function fetchVolume(address: string): Promise<string | null> {
-  const data = await gqlFetch<{ tradingVolumeByAddress: string }>(
+  const data = await gqlFetch<{ accountTotalVolume: string }>(
     TRADING_VOLUME_QUERY,
     { address: address.toLowerCase() }
   );
 
-  const volumeWei = data?.tradingVolumeByAddress || '0';
+  const volumeWei = data?.accountTotalVolume || '0';
   const formatted = formatUnits(volumeWei, 18);
   const num = Number(formatted);
   if (!Number.isFinite(num) || num === 0) return null;

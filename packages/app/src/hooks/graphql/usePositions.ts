@@ -216,7 +216,7 @@ const RECENT_PREDICTIONS_QUERY = /* GraphQL */ `
 
 const PREDICTIONS_COUNT_QUERY = /* GraphQL */ `
   query PredictionsCount($address: String!, $chainId: Int) {
-    predictionsCount(address: $address, chainId: $chainId)
+    predictionCount(address: $address, chainId: $chainId)
   }
 `;
 
@@ -336,11 +336,11 @@ export function usePredictionsCount(address?: string, chainId?: number) {
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     queryFn: async () => {
-      const resp = await graphqlRequest<{ predictionsCount: number }>(
+      const resp = await graphqlRequest<{ predictionCount: number }>(
         PREDICTIONS_COUNT_QUERY,
         { address, chainId: chainId ?? null }
       );
-      return resp?.predictionsCount ?? 0;
+      return resp?.predictionCount ?? 0;
     },
   });
   return data ?? 0;

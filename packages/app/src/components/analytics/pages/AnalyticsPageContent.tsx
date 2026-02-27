@@ -20,10 +20,7 @@ import {
   ComposedChart,
   Bar,
 } from 'recharts';
-import {
-  useProtocolStats,
-  useDailyVolumes,
-} from '~/hooks/graphql/useAnalytics';
+import { useProtocolStats } from '~/hooks/graphql/useAnalytics';
 import Loader from '~/components/shared/Loader';
 import PeriodFilter, {
   type Period,
@@ -179,7 +176,6 @@ function AnalyticsPageContent(): React.ReactElement {
 
   // Fetch protocol stats and daily volumes
   const { data: protocolStats, isLoading: statsLoading } = useProtocolStats();
-  const { data: dailyVolumes, isLoading: volumesLoading } = useDailyVolumes();
 
   // Get summary from the last protocol stat
   const summary = useMemo(() => {
@@ -206,15 +202,13 @@ function AnalyticsPageContent(): React.ReactElement {
     });
   }, [protocolStats]);
 
-  // Prepare chart data for daily volumes
   const volumeChartData = useMemo(() => {
-    if (!dailyVolumes) return [];
-
-    return dailyVolumes.map((point) => ({
+    if (!protocolStats) return [];
+    return protocolStats.map((point) => ({
       timestamp: point.timestamp,
-      volume: parseFloat(point.volume) / 1e18,
+      volume: parseFloat(point.dailyVolume) / 1e18,
     }));
-  }, [dailyVolumes]);
+  }, [protocolStats]);
 
   // Filter chart data based on selected periods
   const filteredVolumeData = useMemo(
@@ -232,7 +226,7 @@ function AnalyticsPageContent(): React.ReactElement {
     [statsChartData, tvlPeriod]
   );
 
-  const isLoading = statsLoading || volumesLoading;
+  const isLoading = statsLoading;
 
   return (
     <div className="relative">

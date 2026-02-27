@@ -26,18 +26,18 @@ export interface UserProfitRankResult {
   totalParticipants: number;
 }
 
-const GET_ALL_TIME_PROFIT_LEADERBOARD = /* GraphQL */ `
-  query AllTimeProfitLeaderboard {
-    allTimeProfitLeaderboard {
+const GET_PROFIT_LEADERBOARD = /* GraphQL */ `
+  query ProfitLeaderboard {
+    profitLeaderboard {
       owner
       totalPnL
     }
   }
 `;
 
-const GET_TOP_FORECASTERS = /* GraphQL */ `
-  query TopForecasters($limit: Int!) {
-    topForecasters(limit: $limit) {
+const GET_ACCURACY_LEADERBOARD = /* GraphQL */ `
+  query AccuracyLeaderboard($limit: Int!) {
+    accuracyLeaderboard(limit: $limit) {
       attester
       numScored
       sumErrorSquared
@@ -48,9 +48,9 @@ const GET_TOP_FORECASTERS = /* GraphQL */ `
   }
 `;
 
-const GET_ACCURACY_RANK = /* GraphQL */ `
-  query AccuracyRankByAddress($attester: String!) {
-    accuracyRankByAddress(attester: $attester) {
+const GET_ACCOUNT_ACCURACY_RANK = /* GraphQL */ `
+  query AccountAccuracyRank($attester: String!) {
+    accountAccuracyRank(attester: $attester) {
       attester
       accuracyScore
       rank
@@ -61,19 +61,19 @@ const GET_ACCURACY_RANK = /* GraphQL */ `
 
 export async function fetchLeaderboard(): Promise<AggregatedLeaderboardEntry[]> {
   const data = await graphqlRequest<{
-    allTimeProfitLeaderboard: AggregatedLeaderboardEntry[];
-  }>(GET_ALL_TIME_PROFIT_LEADERBOARD);
-  return (data?.allTimeProfitLeaderboard || []).slice(0, 100);
+    profitLeaderboard: AggregatedLeaderboardEntry[];
+  }>(GET_PROFIT_LEADERBOARD);
+  return (data?.profitLeaderboard || []).slice(0, 100);
 }
 
 export async function fetchAccuracyLeaderboard(
   limit = 10
 ): Promise<ForecasterScore[]> {
-  const data = await graphqlRequest<{ topForecasters: ForecasterScore[] }>(
-    GET_TOP_FORECASTERS,
+  const data = await graphqlRequest<{ accuracyLeaderboard: ForecasterScore[] }>(
+    GET_ACCURACY_LEADERBOARD,
     { limit }
   );
-  return data.topForecasters || [];
+  return data.accuracyLeaderboard || [];
 }
 
 export async function fetchForecasterRank(
@@ -81,13 +81,13 @@ export async function fetchForecasterRank(
 ): Promise<ForecasterRankResult> {
   const a = attester.toLowerCase();
   const data = await graphqlRequest<{
-    accuracyRankByAddress: {
+    accountAccuracyRank: {
       accuracyScore: number;
       rank: number | null;
       totalForecasters: number;
     };
-  }>(GET_ACCURACY_RANK, { attester: a });
-  const r = data?.accuracyRankByAddress;
+  }>(GET_ACCOUNT_ACCURACY_RANK, { attester: a });
+  const r = data?.accountAccuracyRank;
   if (!r) return { accuracyScore: null, rank: null, totalForecasters: 0 };
   return {
     accuracyScore: r.accuracyScore ?? 0,
@@ -102,13 +102,13 @@ export async function fetchUserProfitRank(
   const addressLc = ownerAddress.toLowerCase();
 
   const data = await graphqlRequest<{
-    allTimeProfitLeaderboard: Array<{
+    profitLeaderboard: Array<{
       owner: string;
       totalPnL: number;
     }>;
-  }>(GET_ALL_TIME_PROFIT_LEADERBOARD);
+  }>(GET_PROFIT_LEADERBOARD);
 
-  const entries = data?.allTimeProfitLeaderboard || [];
+  const entries = data?.profitLeaderboard || [];
   const sortedEntries = entries.sort((a, b) => b.totalPnL - a.totalPnL);
 
   const totalParticipants = sortedEntries.length;

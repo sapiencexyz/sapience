@@ -26,7 +26,7 @@ vi.mock('../helpers/scoringService', () => ({
 import prismaDefault from '../db';
 import { ScoreResolver } from '../graphql/resolvers/ScoreResolver';
 
-describe('ScoreResolver.topForecasters', () => {
+describe('ScoreResolver.accuracyLeaderboard', () => {
   beforeEach(() => vi.clearAllMocks());
 
   const prisma = prismaDefault as unknown as {
@@ -51,7 +51,7 @@ describe('ScoreResolver.topForecasters', () => {
     ]);
 
     const resolver = new ScoreResolver();
-    const result = await resolver.topForecasters(2);
+    const result = await resolver.accuracyLeaderboard(2);
     expect(result.length).toBe(2);
     expect(result[0].accuracyScore).toBeGreaterThanOrEqual(
       result[1].accuracyScore
