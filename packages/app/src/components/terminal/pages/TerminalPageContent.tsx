@@ -524,7 +524,7 @@ const TerminalPageContent: React.FC = () => {
     }
   }
 
-  // Use collateral token address directly from SDK constants (V2/escrow path)
+  // Use collateral token address directly from SDK constants
   const collateralTokenAddress: `0x${string}` | undefined = collateralToken[
     chainId
   ]?.address as `0x${string}` | undefined;
@@ -667,7 +667,7 @@ const TerminalPageContent: React.FC = () => {
           return false;
       }
 
-      // Check signed filter (V2 escrow auctions are always signed)
+      // Check signed filter (escrow auctions are always signed)
       const isSigned = true;
       if (signedFilter === 'signed' && !isSigned) return false;
       if (signedFilter === 'unsigned' && isSigned) return false;
