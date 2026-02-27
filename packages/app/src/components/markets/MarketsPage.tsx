@@ -12,7 +12,6 @@ import { ChevronLeft, Search } from 'lucide-react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import CreatePositionForm from '~/components/markets/CreatePositionForm';
 import ExampleCombos from '~/components/markets/ExampleCombos';
 import QuestionsTable from '~/components/markets/QuestionsTable';
@@ -40,8 +39,6 @@ function isEnabledFlagValue(raw: string | null): boolean {
 const MarketsPage = () => {
   const { data: allCategories = [], isLoading: isLoadingCategories } =
     useCategories();
-
-  const chainId = DEFAULT_CHAIN_ID;
 
   // Get compact status (needed by callbacks below)
   const isCompact = useIsBelow(1024);
@@ -173,7 +170,6 @@ const MarketsPage = () => {
     hasMore,
     fetchMore,
   } = useInfiniteQuestions({
-    chainId,
     search: debouncedSearchTerm.trim() || undefined,
     categorySlugs:
       filters.selectedCategories.length > 0
