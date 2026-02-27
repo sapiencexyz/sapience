@@ -233,7 +233,7 @@ export class ConditionResolver {
       result: r.result,
       predictorClaimable: r.predictorClaimable ?? null,
       counterpartyClaimable: r.counterpartyClaimable ?? null,
-      createdAt: r.createdAt.toISOString(),
+      createdAt: r.createdAt,
       createTxHash: r.createTxHash,
       settleTxHash: r.settleTxHash ?? null,
       refCode: r.refCode ?? null,

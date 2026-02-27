@@ -10,10 +10,12 @@ import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import prisma from '../../db';
 import { getProtocolStatsTimeSeries } from '../../helpers/protocolStats';
 
-@ObjectType()
+@ObjectType({
+  description: 'Daily protocol-wide statistics snapshot including vault metrics, volume, and PnL',
+})
 class ProtocolStat {
-  @Field(() => String)
-  timestamp!: string;
+  @Field(() => Int, { description: 'Unix epoch timestamp (seconds) for midnight UTC of the snapshot day' })
+  timestamp!: number;
 
   @Field(() => String)
   cumulativeVolume!: string;
@@ -87,7 +89,9 @@ function buildTimestampMap<T extends { timestamp: bigint }>(
 
 @Resolver()
 export class AnalyticsResolver {
-  @Query(() => [ProtocolStat])
+  @Query(() => [ProtocolStat], {
+    description: 'Daily protocol statistics time series (last 90 days) — vault balance, volume, PnL, and open interest',
+  })
   @Directive('@cacheControl(maxAge: 120)')
   async protocolStats(): Promise<ProtocolStat[]> {
     const chainId = DEFAULT_CHAIN_ID;
@@ -163,7 +167,7 @@ export class AnalyticsResolver {
       ).toString();
 
       return {
-        timestamp: snapshot.timestamp.toString(),
+        timestamp: snapshot.timestamp,
         cumulativeVolume: cumVol,
         openInterest: oiMap.get(snapshot.timestamp) || '0',
         vaultBalance: snapshot.vaultBalance,

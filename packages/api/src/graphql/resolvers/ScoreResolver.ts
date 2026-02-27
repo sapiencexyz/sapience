@@ -11,7 +11,9 @@ import {
 import prisma from '../../db';
 import { TtlCache } from '../../utils/ttlCache';
 
-@ObjectType('ForecasterScore')
+@ObjectType('ForecasterScore', {
+  description: 'Accuracy score for a forecaster, aggregated across all scored markets',
+})
 class ForecasterScoreType {
   @Field(() => String)
   address!: string;
@@ -32,7 +34,9 @@ class ForecasterScoreType {
   accuracyScore!: number;
 }
 
-@ObjectType('AccuracyRank')
+@ObjectType('AccuracyRank', {
+  description: 'Accuracy rank for an address on the forecasting leaderboard',
+})
 class AccuracyRankType {
   @Field(() => String)
   address!: string;
@@ -86,7 +90,10 @@ export class ScoreResolver {
     return scores;
   }
 
-  @Query(() => ForecasterScoreType, { nullable: true })
+  @Query(() => ForecasterScoreType, {
+    nullable: true,
+    description: 'Accuracy score for a single forecaster address, or null if no scored attestations exist',
+  })
   @Directive('@cacheControl(maxAge: 60)')
   async accountAccuracy(
     @Arg('address', () => String) address: string
@@ -119,7 +126,9 @@ export class ScoreResolver {
     };
   }
 
-  @Query(() => [ForecasterScoreType])
+  @Query(() => [ForecasterScoreType], {
+    description: 'Top forecasters ranked by accuracy score',
+  })
   @Directive('@cacheControl(maxAge: 60)')
   async accuracyLeaderboard(
     @Arg('limit', () => Int, { defaultValue: 10 }) limit: number
@@ -138,7 +147,9 @@ export class ScoreResolver {
     }));
   }
 
-  @Query(() => AccuracyRankType)
+  @Query(() => AccuracyRankType, {
+    description: 'Accuracy rank and score for a single address relative to all forecasters',
+  })
   @Directive('@cacheControl(maxAge: 60)')
   async accountAccuracyRank(
     @Arg('address', () => String) address: string

@@ -110,8 +110,8 @@ function ChartTooltip({
 
   // Format timestamp (Unix seconds) to date string
   let dateLabel = '';
-  if (label) {
-    const date = new Date(parseInt(label, 10) * 1000);
+  if (label != null) {
+    const date = new Date(Number(label) * 1000);
     const months = [
       'Jan',
       'Feb',
@@ -141,9 +141,9 @@ function ChartTooltip({
   );
 }
 
-function formatTimestampTick(value: string): string {
+function formatTimestampTick(value: number): string {
   // Parse Unix timestamp (seconds) to date
-  const date = new Date(parseInt(value, 10) * 1000);
+  const date = new Date(value * 1000);
   return `${date.getUTCMonth() + 1}/${date.getUTCDate()}`;
 }
 
@@ -155,14 +155,14 @@ const CHART_AXIS_STYLE = {
 
 const CHART_MARGIN = { top: 10, right: 0, left: 0, bottom: 0 };
 
-function filterDataByPeriod<T extends { timestamp: string }>(
+function filterDataByPeriod<T extends { timestamp: number }>(
   data: T[],
   period: Period
 ): T[] {
   const days = PERIOD_DAYS[period];
   if (days === Infinity) return data;
   const cutoff = Math.floor(Date.now() / 1000) - days * 24 * 60 * 60;
-  return data.filter((item) => parseInt(item.timestamp, 10) >= cutoff);
+  return data.filter((item) => item.timestamp >= cutoff);
 }
 
 function AnalyticsPageContent(): React.ReactElement {

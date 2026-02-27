@@ -6,7 +6,9 @@ import prisma from '../../db';
 // GraphQL Object Types
 // ============================================================================
 
-@ObjectType('Trade')
+@ObjectType('Trade', {
+  description: 'Secondary market trade record where position tokens are exchanged between users',
+})
 class SecondaryTradeType {
   @Field(() => Int)
   id!: number;
@@ -54,7 +56,9 @@ class SecondaryTradeType {
 
 @Resolver()
 export class TradeResolver {
-  @Query(() => [SecondaryTradeType])
+  @Query(() => [SecondaryTradeType], {
+    description: 'Paginated list of secondary market trades, filterable by seller, buyer, token, and chain',
+  })
   async trades(
     @Arg('take', () => Int, { defaultValue: 50 }) take: number,
     @Arg('skip', () => Int, { defaultValue: 0 }) skip: number,
@@ -100,7 +104,10 @@ export class TradeResolver {
     }));
   }
 
-  @Query(() => SecondaryTradeType, { nullable: true })
+  @Query(() => SecondaryTradeType, {
+    nullable: true,
+    description: 'Look up a single secondary market trade by its trade hash',
+  })
   async trade(
     @Arg('id', () => String) id: string
   ): Promise<SecondaryTradeType | null> {
@@ -127,7 +134,9 @@ export class TradeResolver {
     };
   }
 
-  @Query(() => Int)
+  @Query(() => Int, {
+    description: 'Count of secondary market trades matching the given filters',
+  })
   async tradeCount(
     @Arg('seller', () => String, { nullable: true }) seller?: string,
     @Arg('buyer', () => String, { nullable: true }) buyer?: string,

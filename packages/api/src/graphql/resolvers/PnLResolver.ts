@@ -19,7 +19,9 @@ export class PnLResolver {
     maxSize: 10,
   });
 
-  @Query(() => [AggregatedProfitEntryType])
+  @Query(() => [AggregatedProfitEntryType], {
+    description: 'Profit leaderboard — addresses ranked by total PnL across all positions',
+  })
   @Directive('@cacheControl(maxAge: 60)')
   async profitLeaderboard(
     @Arg('limit', () => Int, { defaultValue: 10 }) limit: number,
@@ -55,7 +57,9 @@ export class PnLResolver {
     return entries.slice(skip, skip + cappedLimit);
   }
 
-  @Query(() => ProfitRankType)
+  @Query(() => ProfitRankType, {
+    description: 'Profit rank and total PnL for a single address relative to all participants',
+  })
   @Directive('@cacheControl(maxAge: 60)')
   async accountProfitRank(
     @Arg('address', () => String) address: string

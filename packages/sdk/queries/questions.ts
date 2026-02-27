@@ -2,7 +2,7 @@ import { graphqlRequest } from './client/graphqlClient';
 import type { ConditionType } from './conditions';
 import type { ConditionGroupType } from './conditionGroups';
 
-export type SortField = 'openInterest' | 'endTime';
+export type SortField = 'openInterest' | 'endTime' | 'createdAt' | 'predictionCount';
 export type SortDirection = 'asc' | 'desc';
 
 export interface QuestionType {
@@ -16,12 +16,12 @@ const GET_QUESTIONS = /* GraphQL */ `
     $take: Int!
     $skip: Int!
     $chainId: Int
-    $sortField: String!
-    $sortDirection: String!
+    $sortField: QuestionSortField!
+    $sortDirection: SortOrder!
     $search: String
     $categorySlugs: [String!]
     $minEndTime: Int
-    $resolutionStatus: String
+    $resolutionStatus: ResolutionStatus
   ) {
     questions(
       take: $take
@@ -102,8 +102,8 @@ export interface FetchQuestionsSortedParams {
   take: number;
   skip: number;
   chainId?: number;
-  sortField: string;
-  sortDirection: string;
+  sortField: SortField;
+  sortDirection: SortDirection;
   search?: string;
   categorySlugs?: string[];
   minEndTime?: number;

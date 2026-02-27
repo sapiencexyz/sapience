@@ -12,8 +12,8 @@ const RECENT_PREDICTIONS_QUERY = /* GraphQL */ `
     $address: String!
     $take: Int
     $skip: Int
-    $orderBy: String
-    $orderDirection: String
+    $orderBy: PredictionSortField
+    $orderDirection: SortOrder
   ) {
     predictions(
       address: $address

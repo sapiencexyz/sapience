@@ -157,7 +157,7 @@ export async function queryAccountVolume(
   `;
 
   return rows.map((row) => ({
-    timestamp: row.timestamp.toString(),
+    timestamp: Number(row.timestamp),
     volume: row.volume || '0',
   }));
 }
@@ -249,7 +249,7 @@ export async function queryAccountPnl(
   `;
 
   return rows.map((row) => ({
-    timestamp: row.timestamp.toString(),
+    timestamp: Number(row.timestamp),
     pnl: row.pnl || '0',
     cumulativePnl: row.cumulative_pnl || '0',
   }));
@@ -342,7 +342,7 @@ export async function queryAccountBalance(
   `;
 
   return rows.map((row) => ({
-    timestamp: row.timestamp.toString(),
+    timestamp: Number(row.timestamp),
     deployedCollateral: row.deployed_collateral || '0',
     claimableCollateral: row.claimable_collateral || '0',
   }));
@@ -401,7 +401,7 @@ export async function queryProtocolVolume(
   `;
 
   return rows.map((row) => ({
-    timestamp: row.timestamp.toString(),
+    timestamp: Number(row.timestamp),
     volume: row.volume || '0',
   }));
 }
