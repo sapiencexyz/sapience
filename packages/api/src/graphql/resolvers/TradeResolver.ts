@@ -63,6 +63,7 @@ export class TradeResolver {
     @Arg('token', () => String, { nullable: true }) token?: string,
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number
   ): Promise<SecondaryTradeType[]> {
+    const cappedTake = Math.max(1, Math.min(take, 100));
     const where: Prisma.SecondaryTradeWhereInput = {};
 
     if (seller) where.seller = seller.toLowerCase();
@@ -78,7 +79,7 @@ export class TradeResolver {
     const rows = await prisma.secondaryTrade.findMany({
       where,
       orderBy: { executedAt: 'desc' },
-      take,
+      take: cappedTake,
       skip,
     });
 
@@ -144,5 +145,4 @@ export class TradeResolver {
 
     return prisma.secondaryTrade.count({ where });
   }
-
 }

@@ -55,6 +55,37 @@ export class ScoreResolver {
     maxSize: 5000,
   });
 
+  // Cache for the full leaderboard aggregation (shared by accuracyLeaderboard + accountAccuracyRank)
+  private static leaderboardCache = new TtlCache<
+    string,
+    { attester: string; accuracyScore: number }[]
+  >({
+    ttlMs: 60_000,
+    maxSize: 1,
+  });
+
+  private static async getLeaderboardScores(): Promise<
+    { attester: string; accuracyScore: number }[]
+  > {
+    const cached = ScoreResolver.leaderboardCache.get('leaderboard');
+    if (cached) return cached;
+
+    const agg = await prisma.attesterMarketTwError.groupBy({
+      by: ['attester'],
+      _avg: { twError: true },
+    });
+
+    const scores = agg
+      .map((row) => ({
+        attester: (row.attester as string).toLowerCase(),
+        accuracyScore: (row._avg.twError as number | null) ?? 0,
+      }))
+      .sort((a, b) => b.accuracyScore - a.accuracyScore);
+
+    ScoreResolver.leaderboardCache.set('leaderboard', scores);
+    return scores;
+  }
+
   @Query(() => ForecasterScoreType, { nullable: true })
   @Directive('@cacheControl(maxAge: 60)')
   async accountAccuracy(
@@ -95,27 +126,16 @@ export class ScoreResolver {
   ): Promise<ForecasterScoreType[]> {
     const capped = Math.max(1, Math.min(limit, 100));
 
-    // twError now stores accuracy scores directly (higher is better)
-    const agg = await prisma.attesterMarketTwError.groupBy({
-      by: ['attester'],
-      _avg: { twError: true },
-    });
+    const scores = await ScoreResolver.getLeaderboardScores();
 
-    const results = agg.map((row) => {
-      // twError stores (1 - brierScore) * tau, so avg is the accuracy score
-      const score = (row._avg.twError as number | null) ?? 0;
-      return {
-        address: (row.attester as string).toLowerCase(),
-        numScored: 0,
-        sumErrorSquared: 0,
-        numTimeWeighted: 0,
-        sumTimeWeightedError: 0,
-        accuracyScore: score,
-      } as ForecasterScoreType;
-    });
-
-    results.sort((a, b) => b.accuracyScore - a.accuracyScore);
-    return results.slice(0, capped);
+    return scores.slice(0, capped).map((s) => ({
+      address: s.attester,
+      numScored: 0,
+      sumErrorSquared: 0,
+      numTimeWeighted: 0,
+      sumTimeWeightedError: 0,
+      accuracyScore: s.accuracyScore,
+    }));
   }
 
   @Query(() => AccuracyRankType)
@@ -125,22 +145,8 @@ export class ScoreResolver {
   ): Promise<AccuracyRankType> {
     const target = address.toLowerCase();
 
-    // twError now stores accuracy scores directly (higher is better)
-    const agg = await prisma.attesterMarketTwError.groupBy({
-      by: ['attester'],
-      _avg: { twError: true },
-    });
+    const scores = await ScoreResolver.getLeaderboardScores();
 
-    const scores = agg.map((row) => {
-      // twError stores (1 - brierScore) * tau, so avg is the accuracy score
-      const accuracyScore = (row._avg.twError as number | null) ?? 0;
-      return {
-        attester: (row.attester as string).toLowerCase(),
-        accuracyScore,
-      };
-    });
-
-    scores.sort((x, y) => y.accuracyScore - x.accuracyScore);
     const totalForecasters = scores.length;
     const idx = scores.findIndex((s) => s.attester === target);
     const rank = idx >= 0 ? idx + 1 : null;

@@ -1,4 +1,11 @@
-import { Field, Int, ObjectType, Query, Resolver } from 'type-graphql';
+import {
+  Directive,
+  Field,
+  Int,
+  ObjectType,
+  Query,
+  Resolver,
+} from 'type-graphql';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import prisma from '../../db';
 import { getProtocolStatsTimeSeries } from '../../helpers/protocolStats';
@@ -81,6 +88,7 @@ function buildTimestampMap<T extends { timestamp: bigint }>(
 @Resolver()
 export class AnalyticsResolver {
   @Query(() => [ProtocolStat])
+  @Directive('@cacheControl(maxAge: 120)')
   async protocolStats(): Promise<ProtocolStat[]> {
     const chainId = DEFAULT_CHAIN_ID;
 
@@ -146,13 +154,10 @@ export class AnalyticsResolver {
     return protocolSnapshots.map((snapshot, i) => {
       const cumVol = volumeMap.get(snapshot.timestamp) || '0';
       const prevCumVol =
-        i > 0
-          ? volumeMap.get(protocolSnapshots[i - 1].timestamp) || '0'
-          : '0';
+        i > 0 ? volumeMap.get(protocolSnapshots[i - 1].timestamp) || '0' : '0';
       const dailyVolume = (BigInt(cumVol) - BigInt(prevCumVol)).toString();
 
-      const prevPnL =
-        i > 0 ? protocolSnapshots[i - 1].vaultRealizedPnL : '0';
+      const prevPnL = i > 0 ? protocolSnapshots[i - 1].vaultRealizedPnL : '0';
       const dailyPnL = (
         BigInt(snapshot.vaultRealizedPnL) - BigInt(prevPnL)
       ).toString();
@@ -176,5 +181,4 @@ export class AnalyticsResolver {
       };
     });
   }
-
 }

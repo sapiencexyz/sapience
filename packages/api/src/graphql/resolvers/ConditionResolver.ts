@@ -1,4 +1,13 @@
-import { Arg, Ctx, FieldResolver, Info, Int, Query, Resolver, Root } from 'type-graphql';
+import {
+  Arg,
+  Ctx,
+  FieldResolver,
+  Info,
+  Int,
+  Query,
+  Resolver,
+  Root,
+} from 'type-graphql';
 import { GraphQLResolveInfo } from 'graphql';
 import {
   Condition,
@@ -14,7 +23,8 @@ import {
 } from '@generated/type-graphql/helpers';
 import type { ApolloContext } from '../startApolloServer';
 import prisma from '../../db';
-import { PredictionType, PickConfigurationType } from './EscrowResolver';
+import { PredictionType } from './EscrowResolver';
+import { batchLoadPickConfigs } from '../helpers/batchLoadPickConfigs';
 
 /**
  * Custom Condition resolver that defaults to hiding private conditions (public: false).
@@ -157,6 +167,7 @@ export class ConditionResolver {
     @Arg('take', () => Int, { defaultValue: 50 }) take: number,
     @Arg('skip', () => Int, { defaultValue: 0 }) skip: number
   ): Promise<PredictionType[]> {
+    const cappedTake = Math.max(1, Math.min(take, 100));
     // Find Pick records with this conditionId
     const matchingPicks = await prisma.pick.findMany({
       where: { conditionId: { equals: condition.id, mode: 'insensitive' } },
@@ -189,7 +200,7 @@ export class ConditionResolver {
         ],
       },
       orderBy: { createdAt: 'desc' },
-      take,
+      take: cappedTake,
       skip,
     });
 
@@ -200,45 +211,9 @@ export class ConditionResolver {
       if (r.counterpartyToken) allTokenAddresses.add(r.counterpartyToken);
     }
 
-    const tokenToPickConfig = new Map<string, PickConfigurationType>();
-    if (allTokenAddresses.size > 0) {
-      const positions = await prisma.position.findMany({
-        where: { tokenAddress: { in: Array.from(allTokenAddresses) } },
-        distinct: ['pickConfigId'],
-        include: {
-          pickConfiguration: { include: { picks: true } },
-        },
-      });
-
-      for (const pos of positions) {
-        if (pos.pickConfiguration) {
-          const pc = pos.pickConfiguration;
-          const mapped: PickConfigurationType = {
-            id: pc.id,
-            chainId: pc.chainId,
-            marketAddress: pc.marketAddress,
-            totalPredictorCollateral: pc.totalPredictorCollateral,
-            totalCounterpartyCollateral: pc.totalCounterpartyCollateral,
-            claimedPredictorCollateral: pc.claimedPredictorCollateral,
-            claimedCounterpartyCollateral: pc.claimedCounterpartyCollateral,
-            resolved: pc.resolved,
-            result: pc.result,
-            resolvedAt: pc.resolvedAt ?? null,
-            predictorToken: pc.predictorToken ?? null,
-            counterpartyToken: pc.counterpartyToken ?? null,
-            endsAt: pc.endsAt ?? null,
-            picks: pc.picks.map((p) => ({
-              id: p.id,
-              pickConfigId: p.pickConfigId,
-              conditionResolver: p.conditionResolver,
-              conditionId: p.conditionId,
-              predictedOutcome: p.predictedOutcome,
-            })),
-          };
-          tokenToPickConfig.set(pos.tokenAddress, mapped);
-        }
-      }
-    }
+    const tokenToPickConfig = await batchLoadPickConfigs(
+      Array.from(allTokenAddresses)
+    );
 
     return rows.map((r) => ({
       id: r.id,
