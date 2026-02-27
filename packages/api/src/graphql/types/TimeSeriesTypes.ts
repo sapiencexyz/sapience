@@ -1,4 +1,4 @@
-import { registerEnumType, ObjectType, Field, ArgsType } from 'type-graphql';
+import { registerEnumType, ObjectType, Field } from 'type-graphql';
 
 export enum TimeInterval {
   HOUR = 'HOUR',
@@ -27,33 +27,6 @@ export const INTERVAL_TO_PG_STEP: Record<TimeInterval, string> = {
   [TimeInterval.WEEK]: '1 week',
   [TimeInterval.MONTH]: '1 month',
 };
-
-@ArgsType()
-export class AccountTimeSeriesArgs {
-  @Field(() => String)
-  address!: string;
-
-  @Field(() => TimeInterval)
-  interval!: TimeInterval;
-
-  @Field(() => Date, { nullable: true })
-  from?: Date;
-
-  @Field(() => Date, { nullable: true })
-  to?: Date;
-}
-
-@ArgsType()
-export class TimeSeriesArgs {
-  @Field(() => TimeInterval)
-  interval!: TimeInterval;
-
-  @Field(() => Date, { nullable: true })
-  from?: Date;
-
-  @Field(() => Date, { nullable: true })
-  to?: Date;
-}
 
 @ObjectType()
 export class VolumeDataPoint {

@@ -90,6 +90,7 @@ interface BalanceRow {
 }
 
 // ─── Account Volume ──────────────────────────────────────────────────────────
+// Addresses are stored lowercase by all indexers, so no LOWER() is needed.
 
 export async function queryAccountVolume(
   address: string,
@@ -114,31 +115,31 @@ export async function queryAccountVolume(
     ),
     all_volumes AS (
       SELECT "mintedAt" AS created_ts,
-        CASE WHEN LOWER(predictor) = ${addr}
+        CASE WHEN predictor = ${addr}
              THEN CAST(COALESCE("predictorCollateral", '0') AS DECIMAL)
              ELSE 0 END
-        + CASE WHEN LOWER(counterparty) = ${addr}
+        + CASE WHEN counterparty = ${addr}
                THEN CAST(COALESCE("counterpartyCollateral", '0') AS DECIMAL)
                ELSE 0 END
         AS vol
       FROM position
-      WHERE LOWER(predictor) = ${addr} OR LOWER(counterparty) = ${addr}
+      WHERE predictor = ${addr} OR counterparty = ${addr}
       UNION ALL
       SELECT "onChainCreatedAt" AS created_ts,
-        CASE WHEN LOWER(predictor) = ${addr}
+        CASE WHEN predictor = ${addr}
              THEN CAST("predictorCollateral" AS DECIMAL)
              ELSE 0 END
-        + CASE WHEN LOWER(counterparty) = ${addr}
+        + CASE WHEN counterparty = ${addr}
                THEN CAST("counterpartyCollateral" AS DECIMAL)
                ELSE 0 END
         AS vol
       FROM "Prediction"
-      WHERE LOWER(predictor) = ${addr} OR LOWER(counterparty) = ${addr}
+      WHERE predictor = ${addr} OR counterparty = ${addr}
       UNION ALL
       SELECT "executedAt" AS created_ts,
         CAST(collateral AS DECIMAL) AS vol
       FROM secondary_trade
-      WHERE LOWER(buyer) = ${addr} OR LOWER(seller) = ${addr}
+      WHERE buyer = ${addr} OR seller = ${addr}
     )
     SELECT
       EXTRACT(EPOCH FROM b.bucket_start)::BIGINT AS timestamp,
@@ -184,46 +185,46 @@ export async function queryAccountPnl(
       SELECT
         cl."redeemedAt" AS event_ts,
         CAST(cl."collateralPaid" AS DECIMAL) - CAST(
-          CASE WHEN LOWER(p.predictor) = ${addr}
+          CASE WHEN p.predictor = ${addr}
                THEN p."predictorCollateral"
                ELSE p."counterpartyCollateral" END AS DECIMAL
         ) AS pnl
       FROM "Claim" cl
       JOIN "Prediction" p ON cl."predictionId" = p."predictionId"
-      WHERE LOWER(cl.holder) = ${addr}
+      WHERE cl.holder = ${addr}
       UNION ALL
       -- V2 Closes: position settlement
       SELECT
         c."burnedAt" AS event_ts,
         CASE
-          WHEN LOWER(c."predictorHolder") = ${addr}
+          WHEN c."predictorHolder" = ${addr}
           THEN CAST(c."predictorPayout" AS DECIMAL) - CAST(c."predictorTokensBurned" AS DECIMAL)
           ELSE 0
         END
         + CASE
-          WHEN LOWER(c."counterpartyHolder") = ${addr}
+          WHEN c."counterpartyHolder" = ${addr}
           THEN CAST(c."counterpartyPayout" AS DECIMAL) - CAST(c."counterpartyTokensBurned" AS DECIMAL)
           ELSE 0
         END AS pnl
       FROM "Close" c
-      WHERE LOWER(c."predictorHolder") = ${addr} OR LOWER(c."counterpartyHolder") = ${addr}
+      WHERE c."predictorHolder" = ${addr} OR c."counterpartyHolder" = ${addr}
       UNION ALL
       -- V1 Legacy settled positions
       SELECT
         lp."settledAt" AS event_ts,
         CASE
-          WHEN LOWER(lp.predictor) = ${addr} AND lp."predictorWon" = true
+          WHEN lp.predictor = ${addr} AND lp."predictorWon" = true
           THEN CAST(lp."totalCollateral" AS DECIMAL) - CAST(COALESCE(lp."predictorCollateral", '0') AS DECIMAL)
-          WHEN LOWER(lp.predictor) = ${addr} AND lp."predictorWon" = false
+          WHEN lp.predictor = ${addr} AND lp."predictorWon" = false
           THEN -CAST(COALESCE(lp."predictorCollateral", '0') AS DECIMAL)
-          WHEN LOWER(lp.counterparty) = ${addr} AND lp."predictorWon" = false
+          WHEN lp.counterparty = ${addr} AND lp."predictorWon" = false
           THEN CAST(lp."totalCollateral" AS DECIMAL) - CAST(COALESCE(lp."counterpartyCollateral", '0') AS DECIMAL)
-          WHEN LOWER(lp.counterparty) = ${addr} AND lp."predictorWon" = true
+          WHEN lp.counterparty = ${addr} AND lp."predictorWon" = true
           THEN -CAST(COALESCE(lp."counterpartyCollateral", '0') AS DECIMAL)
           ELSE 0
         END AS pnl
       FROM position lp
-      WHERE (LOWER(lp.predictor) = ${addr} OR LOWER(lp.counterparty) = ${addr})
+      WHERE (lp.predictor = ${addr} OR lp.counterparty = ${addr})
         AND lp."settledAt" IS NOT NULL
     )
     SELECT
@@ -245,6 +246,8 @@ export async function queryAccountPnl(
 }
 
 // ─── Account Balance ─────────────────────────────────────────────────────────
+// Uses CTEs to materialize position data once, then scans the small per-user
+// result set per bucket instead of re-scanning the full tables per bucket.
 
 export async function queryAccountBalance(
   address: string,
@@ -266,56 +269,62 @@ export async function queryAccountBalance(
         TO_TIMESTAMP(${toEpoch}),
         ${Prisma.raw(`'${pgStep}'::INTERVAL`)}
       ) AS bucket_start
+    ),
+    -- Materialize all positions for this account once
+    all_deployed AS (
+      SELECT "onChainCreatedAt" AS created_ts, "settledAt" AS settled_ts,
+        CASE WHEN predictor = ${addr}
+             THEN CAST("predictorCollateral" AS DECIMAL)
+             WHEN counterparty = ${addr}
+             THEN CAST("counterpartyCollateral" AS DECIMAL)
+             ELSE 0 END AS collateral
+      FROM "Prediction"
+      WHERE predictor = ${addr} OR counterparty = ${addr}
+      UNION ALL
+      SELECT "mintedAt" AS created_ts, "settledAt" AS settled_ts,
+        CASE WHEN predictor = ${addr}
+             THEN CAST(COALESCE("predictorCollateral", '0') AS DECIMAL)
+             WHEN counterparty = ${addr}
+             THEN CAST(COALESCE("counterpartyCollateral", '0') AS DECIMAL)
+             ELSE 0 END AS collateral
+      FROM position
+      WHERE predictor = ${addr} OR counterparty = ${addr}
+    ),
+    all_claimable AS (
+      SELECT p."settledAt" AS settled_ts,
+        CASE WHEN p.predictor = ${addr}
+             THEN CAST(COALESCE(p."predictorClaimable", '0') AS DECIMAL)
+             WHEN p.counterparty = ${addr}
+             THEN CAST(COALESCE(p."counterpartyClaimable", '0') AS DECIMAL)
+             ELSE 0 END AS claimable,
+        p."predictionId"
+      FROM "Prediction" p
+      WHERE (p.predictor = ${addr} OR p.counterparty = ${addr})
+        AND p."settledAt" IS NOT NULL
+    ),
+    account_claims AS (
+      SELECT "predictionId", "redeemedAt"
+      FROM "Claim"
+      WHERE holder = ${addr}
     )
     SELECT
       EXTRACT(EPOCH FROM b.bucket_start)::BIGINT AS timestamp,
-      (
-        SELECT COALESCE(SUM(collateral), 0)::TEXT
-        FROM (
-          SELECT
-            CASE WHEN LOWER(p.predictor) = ${addr}
-                 THEN CAST(p."predictorCollateral" AS DECIMAL)
-                 WHEN LOWER(p.counterparty) = ${addr}
-                 THEN CAST(p."counterpartyCollateral" AS DECIMAL)
-                 ELSE 0 END AS collateral
-          FROM "Prediction" p
-          WHERE (LOWER(p.predictor) = ${addr} OR LOWER(p.counterparty) = ${addr})
-            AND p."onChainCreatedAt" <= EXTRACT(EPOCH FROM b.bucket_start)::BIGINT
-            AND (p."settledAt" IS NULL OR p."settledAt" > EXTRACT(EPOCH FROM b.bucket_start)::BIGINT)
-          UNION ALL
-          SELECT
-            CASE WHEN LOWER(lp.predictor) = ${addr}
-                 THEN CAST(COALESCE(lp."predictorCollateral", '0') AS DECIMAL)
-                 WHEN LOWER(lp.counterparty) = ${addr}
-                 THEN CAST(COALESCE(lp."counterpartyCollateral", '0') AS DECIMAL)
-                 ELSE 0 END AS collateral
-          FROM position lp
-          WHERE (LOWER(lp.predictor) = ${addr} OR LOWER(lp.counterparty) = ${addr})
-            AND lp."mintedAt" <= EXTRACT(EPOCH FROM b.bucket_start)::BIGINT
-            AND (lp."settledAt" IS NULL OR lp."settledAt" > EXTRACT(EPOCH FROM b.bucket_start)::BIGINT)
-        ) deployed
-      ) AS deployed_collateral,
-      (
-        SELECT COALESCE(SUM(claimable), 0)::TEXT
-        FROM (
-          SELECT
-            CASE WHEN LOWER(p.predictor) = ${addr}
-                 THEN CAST(COALESCE(p."predictorClaimable", '0') AS DECIMAL)
-                 WHEN LOWER(p.counterparty) = ${addr}
-                 THEN CAST(COALESCE(p."counterpartyClaimable", '0') AS DECIMAL)
-                 ELSE 0 END AS claimable
-          FROM "Prediction" p
-          WHERE (LOWER(p.predictor) = ${addr} OR LOWER(p.counterparty) = ${addr})
-            AND p."settledAt" IS NOT NULL
-            AND p."settledAt" <= EXTRACT(EPOCH FROM b.bucket_start)::BIGINT
-            AND NOT EXISTS (
-              SELECT 1 FROM "Claim" c
-              WHERE c."predictionId" = p."predictionId"
-                AND LOWER(c.holder) = ${addr}
-                AND c."redeemedAt" <= EXTRACT(EPOCH FROM b.bucket_start)::BIGINT
-            )
-        ) claimable_sub
-      ) AS claimable_collateral
+      COALESCE((
+        SELECT SUM(d.collateral)
+        FROM all_deployed d
+        WHERE d.created_ts <= EXTRACT(EPOCH FROM b.bucket_start)::BIGINT
+          AND (d.settled_ts IS NULL OR d.settled_ts > EXTRACT(EPOCH FROM b.bucket_start)::BIGINT)
+      ), 0)::TEXT AS deployed_collateral,
+      COALESCE((
+        SELECT SUM(ac.claimable)
+        FROM all_claimable ac
+        WHERE ac.settled_ts <= EXTRACT(EPOCH FROM b.bucket_start)::BIGINT
+          AND NOT EXISTS (
+            SELECT 1 FROM account_claims c
+            WHERE c."predictionId" = ac."predictionId"
+              AND c."redeemedAt" <= EXTRACT(EPOCH FROM b.bucket_start)::BIGINT
+          )
+      ), 0)::TEXT AS claimable_collateral
     FROM buckets b
     ORDER BY b.bucket_start
   `;

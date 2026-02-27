@@ -97,7 +97,7 @@ export class ConditionResolver {
             public: { equals: true },
           };
 
-    const effectiveTake = take != null ? Math.min(take, 100) : undefined;
+    const effectiveTake = take != null ? Math.min(take, 100) : 50;
 
     return getPrismaFromContext(ctx).condition.findMany({
       where: effectiveWhere,

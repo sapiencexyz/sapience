@@ -60,12 +60,18 @@ export class PnLResolver {
   async accountProfitRank(
     @Arg('address', () => String) address: string
   ): Promise<ProfitRankType> {
-    const leaderboard = await this.profitLeaderboard(100, 0);
+    // Ensure cache is populated (call with minimal args to trigger cache fill)
+    await this.profitLeaderboard(1, 0);
+
+    // Access the full cached array to search across all participants
+    const cacheKey = 'profitLeaderboard:v5';
+    const fullLeaderboard = PnLResolver.leaderboardCache.get(cacheKey) || [];
     const lc = address.toLowerCase();
-    const totalParticipants = leaderboard.length;
-    const idx = leaderboard.findIndex((e) => e.address === lc);
+    const totalParticipants = fullLeaderboard.length;
+    const idx = fullLeaderboard.findIndex((e) => e.address === lc);
     const rank = idx >= 0 ? idx + 1 : null;
-    const totalPnL = leaderboard.find((e) => e.address === lc)?.totalPnL || '0';
+    const totalPnL =
+      fullLeaderboard.find((e) => e.address === lc)?.totalPnL || '0';
 
     return { address: lc, totalPnL, rank, totalParticipants };
   }

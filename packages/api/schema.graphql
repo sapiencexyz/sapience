@@ -10,11 +10,6 @@ type AccuracyRank {
   totalForecasters: Int!
 }
 
-type ProfitEntry {
-  address: String!
-  totalPnL: String!
-}
-
 type Attestation {
   attestation_score(where: AttestationScoreWhereInput): AttestationScore
   attester: String!
@@ -199,6 +194,12 @@ input AttestationWhereUniqueInput {
   uid: String
 }
 
+type BalanceDataPoint {
+  claimableCollateral: String!
+  deployedCollateral: String!
+  timestamp: String!
+}
+
 input BoolFilter {
   equals: Boolean
   not: NestedBoolFilter
@@ -317,7 +318,7 @@ type Condition {
   id: String!
   openInterest: String!
   predictionCount: Int!
-  predictions(skip: Int! = 0, take: Int! = 50): [Prediction!]!
+  predictions(cursor: LegacyPredictionWhereUniqueInput, distinct: [LegacyPredictionScalarFieldEnum!], orderBy: [LegacyPredictionOrderByWithRelationInput!], skip: Int, take: Int, where: LegacyPredictionWhereInput): [LegacyPrediction!]!
   public: Boolean!
   question: String!
   resolvedToYes: Boolean!
@@ -332,6 +333,7 @@ type Condition {
 
 type ConditionCount {
   attestations(where: AttestationWhereInput): Int!
+  predictions(where: LegacyPredictionWhereInput): Int!
 }
 
 type ConditionGroup {
@@ -625,7 +627,6 @@ input IntNullableFilter {
   notIn: [Int!]
 }
 
-
 """Legacy position model (NFT-based, V1)"""
 type LegacyPosition {
   _count: LegacyPositionCount
@@ -688,7 +689,6 @@ enum LegacyPositionStatus {
   consolidated
   settled
 }
-
 
 input LegacyPositionWhereInput {
   AND: [LegacyPositionWhereInput!]
@@ -769,7 +769,6 @@ enum LegacyPredictionScalarFieldEnum {
   outcomeYes
   positionId
 }
-
 
 input LegacyPredictionWhereInput {
   AND: [LegacyPredictionWhereInput!]
@@ -1028,6 +1027,12 @@ type PickConfiguration {
   totalPredictorCollateral: String!
 }
 
+type PnlDataPoint {
+  cumulativePnl: String!
+  pnl: String!
+  timestamp: String!
+}
+
 type Position {
   balance: String!
   chainId: Int!
@@ -1064,6 +1069,11 @@ type Prediction {
   settledAt: Int
 }
 
+type ProfitEntry {
+  address: String!
+  totalPnL: String!
+}
+
 type ProfitRank {
   address: String!
   rank: Int
@@ -1073,6 +1083,8 @@ type ProfitRank {
 
 type ProtocolStat {
   cumulativeVolume: String!
+  dailyPnL: String!
+  dailyVolume: String!
   escrowBalance: String!
   openInterest: String!
   timestamp: String!
@@ -1087,38 +1099,14 @@ type ProtocolStat {
   vaultWithdrawals: String!
 }
 
-enum TimeInterval {
-  HOUR
-  DAY
-  WEEK
-  MONTH
-}
-
-type BalanceDataPoint {
-  timestamp: String!
-  deployedCollateral: String!
-  claimableCollateral: String!
-}
-
-type PnlDataPoint {
-  timestamp: String!
-  pnl: String!
-  cumulativePnl: String!
-}
-
-type VolumeDataPoint {
-  timestamp: String!
-  volume: String!
-}
-
 type Query {
   accountAccuracy(address: String!): ForecasterScore
   accountAccuracyRank(address: String!): AccuracyRank!
-  accountBalance(address: String!, interval: TimeInterval!, from: DateTimeISO, to: DateTimeISO): [BalanceDataPoint!]!
-  accountPnl(address: String!, interval: TimeInterval!, from: DateTimeISO, to: DateTimeISO): [PnlDataPoint!]!
+  accountBalance(address: String!, from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [BalanceDataPoint!]!
+  accountPnl(address: String!, from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [PnlDataPoint!]!
   accountProfitRank(address: String!): ProfitRank!
   accountTotalVolume(address: String!): String!
-  accountVolume(address: String!, interval: TimeInterval!, from: DateTimeISO, to: DateTimeISO): [VolumeDataPoint!]!
+  accountVolume(address: String!, from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [VolumeDataPoint!]!
   accuracyLeaderboard(limit: Int! = 10): [ForecasterScore!]!
   attestations(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): [Attestation!]!
   categories(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): [Category!]!
@@ -1130,13 +1118,13 @@ type Query {
   conditions(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): [Condition!]!
   pickConfiguration(id: String!): PickConfiguration
   pickConfigurations(chainId: Int, resolved: Boolean, result: String, skip: Int! = 0, take: Int! = 50): [PickConfiguration!]!
-  positions(holder: String, conditionId: String, chainId: Int, pickConfigId: String, skip: Int! = 0, take: Int! = 50): [Position!]!
+  positions(chainId: Int, conditionId: String, holder: String, pickConfigId: String, skip: Int! = 0, take: Int! = 50): [Position!]!
   prediction(id: String!): Prediction
   predictionCount(address: String!, chainId: Int): Int!
-  predictions(address: String, conditionId: String, chainId: Int, orderBy: String, orderDirection: String, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Prediction!]!
+  predictions(address: String, chainId: Int, conditionId: String, orderBy: String, orderDirection: String, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Prediction!]!
   profitLeaderboard(limit: Int! = 10, skip: Int! = 0): [ProfitEntry!]!
   protocolStats: [ProtocolStat!]!
-  protocolVolume(interval: TimeInterval!, from: DateTimeISO, to: DateTimeISO): [VolumeDataPoint!]!
+  protocolVolume(from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [VolumeDataPoint!]!
   questions(categorySlugs: [String!], chainId: Int, minEndTime: Int, resolutionStatus: String, search: String, skip: Int! = 0, sortDirection: String! = "DESC", sortField: String, take: Int! = 50): [Question!]!
   trade(id: String!): Trade
   tradeCount(buyer: String, chainId: Int, seller: String, token: String): Int!
@@ -1209,22 +1197,6 @@ input ReferralCodeWhereInput {
   updatedAt: DateTimeFilter
 }
 
-type Trade {
-  blockNumber: Int!
-  buyer: String!
-  chainId: Int!
-  collateral: String!
-  executedAt: Int!
-  id: Int!
-  price: String!
-  refCode: String
-  seller: String!
-  token: String!
-  tokenAmount: String!
-  tradeHash: String!
-  txHash: String!
-}
-
 enum SortOrder {
   asc
   desc
@@ -1271,6 +1243,30 @@ input StringNullableListFilter {
   hasEvery: [String!]
   hasSome: [String!]
   isEmpty: Boolean
+}
+
+"""Time interval for bucketing time-series data"""
+enum TimeInterval {
+  DAY
+  HOUR
+  MONTH
+  WEEK
+}
+
+type Trade {
+  blockNumber: Int!
+  buyer: String!
+  chainId: Int!
+  collateral: String!
+  executedAt: Int!
+  id: Int!
+  price: String!
+  refCode: String
+  seller: String!
+  token: String!
+  tokenAmount: String!
+  tradeHash: String!
+  txHash: String!
 }
 
 """
@@ -1377,4 +1373,9 @@ input UserWhereUniqueInput {
   referredByCodeId: IntNullableFilter
   referredById: IntNullableFilter
   updatedAt: DateTimeFilter
+}
+
+type VolumeDataPoint {
+  timestamp: String!
+  volume: String!
 }

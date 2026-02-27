@@ -1,7 +1,6 @@
-import { Resolver, Query, Args, Directive } from 'type-graphql';
+import { Resolver, Query, Arg, Directive } from 'type-graphql';
 import {
-  AccountTimeSeriesArgs,
-  TimeSeriesArgs,
+  TimeInterval,
   VolumeDataPoint,
   PnlDataPoint,
   BalanceDataPoint,
@@ -18,7 +17,10 @@ export class TimeSeriesResolver {
   @Query(() => [VolumeDataPoint])
   @Directive('@cacheControl(maxAge: 60)')
   async accountVolume(
-    @Args() { address, interval, from, to }: AccountTimeSeriesArgs
+    @Arg('address', () => String) address: string,
+    @Arg('interval', () => TimeInterval) interval: TimeInterval,
+    @Arg('from', () => Date, { nullable: true }) from?: Date,
+    @Arg('to', () => Date, { nullable: true }) to?: Date
   ): Promise<VolumeDataPoint[]> {
     return queryAccountVolume(address, interval, from, to);
   }
@@ -26,7 +28,10 @@ export class TimeSeriesResolver {
   @Query(() => [PnlDataPoint])
   @Directive('@cacheControl(maxAge: 60)')
   async accountPnl(
-    @Args() { address, interval, from, to }: AccountTimeSeriesArgs
+    @Arg('address', () => String) address: string,
+    @Arg('interval', () => TimeInterval) interval: TimeInterval,
+    @Arg('from', () => Date, { nullable: true }) from?: Date,
+    @Arg('to', () => Date, { nullable: true }) to?: Date
   ): Promise<PnlDataPoint[]> {
     return queryAccountPnl(address, interval, from, to);
   }
@@ -34,7 +39,10 @@ export class TimeSeriesResolver {
   @Query(() => [BalanceDataPoint])
   @Directive('@cacheControl(maxAge: 60)')
   async accountBalance(
-    @Args() { address, interval, from, to }: AccountTimeSeriesArgs
+    @Arg('address', () => String) address: string,
+    @Arg('interval', () => TimeInterval) interval: TimeInterval,
+    @Arg('from', () => Date, { nullable: true }) from?: Date,
+    @Arg('to', () => Date, { nullable: true }) to?: Date
   ): Promise<BalanceDataPoint[]> {
     return queryAccountBalance(address, interval, from, to);
   }
@@ -42,7 +50,9 @@ export class TimeSeriesResolver {
   @Query(() => [VolumeDataPoint])
   @Directive('@cacheControl(maxAge: 120)')
   async protocolVolume(
-    @Args() { interval, from, to }: TimeSeriesArgs
+    @Arg('interval', () => TimeInterval) interval: TimeInterval,
+    @Arg('from', () => Date, { nullable: true }) from?: Date,
+    @Arg('to', () => Date, { nullable: true }) to?: Date
   ): Promise<VolumeDataPoint[]> {
     return queryProtocolVolume(interval, from, to);
   }

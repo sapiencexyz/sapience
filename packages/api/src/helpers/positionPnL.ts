@@ -323,47 +323,86 @@ export async function calculatePositionPnL(
 }
 
 /**
- * Calculate combined legacy + current P&L for leaderboard
+ * Calculate combined legacy + current P&L for leaderboard using SQL aggregation.
+ * Performs all aggregation in the database to avoid loading individual records into memory.
  */
-export async function calculateCombinedPositionPnL(
-  chainId?: number,
-  marketAddress?: string,
-  owners?: string[]
-): Promise<LegacyPositionPnLEntry[]> {
-  const [legacyResults, currentResults] = await Promise.all([
-    calculateLegacyPositionPnL(chainId, marketAddress, owners),
-    calculatePositionPnL(chainId, marketAddress, owners),
-  ]);
-
-  // Merge results by owner
-  const mergedStats = new Map<
-    string,
-    { totalPnL: bigint; positionCount: number }
-  >();
-
-  for (const entry of legacyResults) {
-    const existing = mergedStats.get(entry.owner) || {
-      totalPnL: 0n,
-      positionCount: 0,
-    };
-    existing.totalPnL += BigInt(entry.totalPnL);
-    existing.positionCount += entry.positionCount;
-    mergedStats.set(entry.owner, existing);
+export async function calculateCombinedPositionPnL(): Promise<
+  LegacyPositionPnLEntry[]
+> {
+  interface LeaderboardRow {
+    address: string;
+    total_pnl: string;
+    position_count: bigint;
   }
 
-  for (const entry of currentResults) {
-    const existing = mergedStats.get(entry.owner) || {
-      totalPnL: 0n,
-      positionCount: 0,
-    };
-    existing.totalPnL += BigInt(entry.totalPnL);
-    existing.positionCount += entry.positionCount;
-    mergedStats.set(entry.owner, existing);
-  }
+  const rows = await prisma.$queryRaw<LeaderboardRow[]>`
+    WITH all_pnl AS (
+      -- V1 Legacy: predictor side
+      SELECT predictor AS address,
+        CASE WHEN "predictorWon" = true
+             THEN CAST("totalCollateral" AS DECIMAL) - CAST(COALESCE("predictorCollateral", '0') AS DECIMAL)
+             ELSE -CAST(COALESCE("predictorCollateral", '0') AS DECIMAL)
+        END AS pnl
+      FROM position
+      WHERE status IN ('settled', 'consolidated') AND "predictorWon" IS NOT NULL
+      UNION ALL
+      -- V1 Legacy: counterparty side
+      SELECT counterparty AS address,
+        CASE WHEN "predictorWon" = false
+             THEN CAST("totalCollateral" AS DECIMAL) - CAST(COALESCE("counterpartyCollateral", '0') AS DECIMAL)
+             ELSE -CAST(COALESCE("counterpartyCollateral", '0') AS DECIMAL)
+        END AS pnl
+      FROM position
+      WHERE status IN ('settled', 'consolidated') AND "predictorWon" IS NOT NULL
+      UNION ALL
+      -- V2 Claims: holder redeems settled prediction
+      SELECT cl.holder AS address,
+        CAST(cl."collateralPaid" AS DECIMAL) - CAST(
+          CASE WHEN p.predictor = cl.holder THEN p."predictorCollateral"
+               ELSE p."counterpartyCollateral" END AS DECIMAL
+        ) AS pnl
+      FROM "Claim" cl
+      JOIN "Prediction" p ON cl."predictionId" = p."predictionId"
+      UNION ALL
+      -- V2 Closes: predictor payout
+      SELECT c."predictorHolder" AS address,
+        CAST(c."predictorPayout" AS DECIMAL) - CAST(c."predictorTokensBurned" AS DECIMAL) AS pnl
+      FROM "Close" c
+      UNION ALL
+      -- V2 Closes: counterparty payout
+      SELECT c."counterpartyHolder" AS address,
+        CAST(c."counterpartyPayout" AS DECIMAL) - CAST(c."counterpartyTokensBurned" AS DECIMAL) AS pnl
+      FROM "Close" c
+      UNION ALL
+      -- V2 Unclaimed settled: predictor side (exclude already-claimed)
+      SELECT p.predictor AS address,
+        CAST(COALESCE(p."predictorClaimable", '0') AS DECIMAL) - CAST(p."predictorCollateral" AS DECIMAL) AS pnl
+      FROM "Prediction" p
+      WHERE p.settled = true AND p.result != 'UNRESOLVED'
+        AND NOT EXISTS (
+          SELECT 1 FROM "Claim" c
+          WHERE c."predictionId" = p."predictionId" AND c.holder = p.predictor
+        )
+      UNION ALL
+      -- V2 Unclaimed settled: counterparty side (exclude already-claimed)
+      SELECT p.counterparty AS address,
+        CAST(COALESCE(p."counterpartyClaimable", '0') AS DECIMAL) - CAST(p."counterpartyCollateral" AS DECIMAL) AS pnl
+      FROM "Prediction" p
+      WHERE p.settled = true AND p.result != 'UNRESOLVED'
+        AND NOT EXISTS (
+          SELECT 1 FROM "Claim" c
+          WHERE c."predictionId" = p."predictionId" AND c.holder = p.counterparty
+        )
+    )
+    SELECT address, SUM(pnl)::TEXT AS total_pnl, COUNT(*)::BIGINT AS position_count
+    FROM all_pnl
+    GROUP BY address
+    ORDER BY SUM(pnl) DESC
+  `;
 
-  return Array.from(mergedStats.entries()).map(([owner, stats]) => ({
-    owner,
-    totalPnL: stats.totalPnL.toString(),
-    positionCount: stats.positionCount,
+  return rows.map((r) => ({
+    owner: r.address,
+    totalPnL: r.total_pnl,
+    positionCount: Number(r.position_count),
   }));
 }
