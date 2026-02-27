@@ -65,7 +65,6 @@ import {
   YES_SQRT_PRICE_X96,
 } from '~/lib/utils/positionFormUtils';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
-import { CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
 import {
   CollateralBalanceProvider,
   useCollateralBalanceContext,
@@ -164,7 +163,7 @@ const CreatePositionFormInner = ({
   const { address } = useAccount();
   const { effectiveAddress } = useSession();
   const { toast } = useToast();
-  const chainId = CHAIN_ID_ETHEREAL_TESTNET;
+  const chainId = DEFAULT_CHAIN_ID;
 
   // Preview card dialog state (for "View Card" in SHARE dropdown)
   const [showPreviewCard, setShowPreviewCard] = useState(false);

@@ -11,7 +11,7 @@ import {
   predictionMarketEscrow,
   collateralToken as collateralTokenAddresses,
 } from '@sapience/sdk/contracts';
-import { CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { erc20Abi, encodeFunctionData, parseAbi } from 'viem';
 
 // wUSDe ABI for deposit function (wraps native USDe to wUSDe)
@@ -94,7 +94,7 @@ export function useEscrowBidSubmission(
   const { address } = useAccount();
   const { signTypedDataAsync } = useSignTypedData();
   // TODO: Get chainId from context/props when supporting multiple chains
-  const chainId = CHAIN_ID_ETHEREAL_TESTNET;
+  const chainId = DEFAULT_CHAIN_ID;
   const { apiBaseUrl } = useSettings();
   const {
     effectiveAddress,
@@ -437,7 +437,6 @@ export function useEscrowBidSubmission(
       signTypedDataAsync,
       onSignatureRejected,
       effectiveAddress,
-      chainId,
       isUsingSession,
       isUsingSmartAccount,
       sessionSignTypedData,
