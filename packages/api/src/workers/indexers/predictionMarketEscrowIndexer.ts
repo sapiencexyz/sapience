@@ -724,7 +724,9 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     );
 
     const timestamp = Number(block.timestamp);
-    // ABI param is pickConfigId; stored as predictionId in DB for now (to be renamed)
+    // NOTE: The on-chain event field is pickConfigId, but the DB column is named predictionId.
+    // This is a known misnomer — Claim.predictionId actually stores a pickConfigId.
+    // P&L code uses tokensBurned as cost basis to avoid depending on this field for joins.
     const predictionIdLower = event.pickConfigId.toLowerCase();
 
     // Create claim record

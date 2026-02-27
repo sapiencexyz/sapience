@@ -194,14 +194,19 @@ const AuctionBidsDialog: React.FC<Props> = ({
                     return { label: 'Expired', isExpired: true } as const;
                   })();
 
-                  // Calculate total pool
+                  // Per-bid counterparty collateral
+                  const bidCounterpartyCollateralNum = bid?.counterpartyCollateral
+                    ? parseFloat(formatEther(BigInt(bid.counterpartyCollateral)))
+                    : 0;
+
+                  // Calculate total pool using per-bid counterparty collateral
                   const totalPoolNum = (() => {
                     try {
                       const predictor = BigInt(
                         auction?.predictorCollateral ?? '0'
                       );
                       const counterparty = BigInt(
-                        auction?.counterpartyCollateral ?? '0'
+                        bid?.counterpartyCollateral ?? '0'
                       );
                       return parseFloat(formatEther(predictor + counterparty));
                     } catch {
@@ -246,7 +251,7 @@ const AuctionBidsDialog: React.FC<Props> = ({
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap">
                         <NumberDisplay
-                          value={counterpartyCollateralNum}
+                          value={bidCounterpartyCollateralNum}
                           appendedText={collateralSymbol}
                         />
                       </td>

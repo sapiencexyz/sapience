@@ -177,27 +177,25 @@ export class ConditionResolver {
     const pickConfigIds = matchingPicks.map((p) => p.pickConfigId);
     if (pickConfigIds.length === 0) return [];
 
-    // Get tokens from PickConfigurations
+    // Get token pairs from PickConfigurations
     const pickConfigs = await prisma.picks.findMany({
       where: { id: { in: pickConfigIds } },
       select: { predictorToken: true, counterpartyToken: true },
     });
-    const tokens = [
-      ...new Set(
-        pickConfigs.flatMap((pc) =>
-          [pc.predictorToken, pc.counterpartyToken].filter(Boolean)
-        )
-      ),
-    ] as string[];
-    if (tokens.length === 0) return [];
 
-    // Query Prediction table by tokens
+    // Build AND filters per pick config — both tokens must match to avoid false positives
+    const tokenPairFilters = pickConfigs
+      .filter((pc) => pc.predictorToken && pc.counterpartyToken)
+      .map((pc) => ({
+        predictorToken: pc.predictorToken!,
+        counterpartyToken: pc.counterpartyToken!,
+      }));
+    if (tokenPairFilters.length === 0) return [];
+
+    // Query Prediction table by token pairs (AND within each pair, OR across pairs)
     const rows = await prisma.prediction.findMany({
       where: {
-        OR: [
-          { predictorToken: { in: tokens } },
-          { counterpartyToken: { in: tokens } },
-        ],
+        OR: tokenPairFilters,
       },
       orderBy: { createdAt: 'desc' },
       take: cappedTake,

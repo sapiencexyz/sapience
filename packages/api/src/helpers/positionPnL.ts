@@ -175,35 +175,22 @@ export async function calculatePositionPnL(
   };
 
   // 1. Calculate P&L from claims (realized)
+  // Note: Claim.predictionId actually stores a pickConfigId (from the TokensRedeemed event).
+  // We use tokensBurned as cost basis since position tokens are minted 1:1 with collateral.
   const claims = await prisma.claim.findMany({
     where: buildWhereClause(),
   });
 
-  // Get predictions for claim context (linked directly via predictionId)
-  const predictionIds = new Set<string>();
-  // Track claimed (predictionId, holder) pairs to avoid double-counting in step 3
-  const claimedPairs = new Set<string>();
+  // Track claimed (positionToken, holder) pairs to avoid double-counting in step 3
+  const claimedTokenHolders = new Set<string>();
 
-  for (const claimRecord of claims) {
-    predictionIds.add(claimRecord.predictionId);
-    claimedPairs.add(
-      `${claimRecord.predictionId}:${claimRecord.holder.toLowerCase()}`
-    );
-  }
-
-  // Get all predictions to find original collaterals
-  const predictions = await prisma.prediction.findMany({
-    where: {
-      predictionId: { in: Array.from(predictionIds) },
-    },
-  });
-
-  // Build lookup map for predictions by predictionId
-  const predictionById = new Map(predictions.map((p) => [p.predictionId, p]));
-
-  // Process claims
+  // Process claims — P&L = collateralPaid - tokensBurned (tokens = collateral at 1:1 ratio)
   for (const claimRecord of claims) {
     const holder = claimRecord.holder.toLowerCase();
+
+    claimedTokenHolders.add(
+      `${claimRecord.positionToken.toLowerCase()}:${holder}`
+    );
 
     if (owners?.length) {
       const ownerSet = new Set(owners.map((o) => o.toLowerCase()));
@@ -212,22 +199,9 @@ export async function calculatePositionPnL(
 
     const stats = initOwner(holder);
 
-    // Find original collateral for this holder from the prediction
-    const prediction = predictionById.get(claimRecord.predictionId);
-    if (!prediction) continue;
-
-    let originalCollateral = 0n;
-
-    // Determine if holder was predictor or counterparty
-    if (prediction.predictor.toLowerCase() === holder) {
-      // For predictor, collateral equals tokens (1:1 ratio)
-      originalCollateral = BigInt(prediction.predictorCollateral);
-    } else if (prediction.counterparty.toLowerCase() === holder) {
-      originalCollateral = BigInt(prediction.counterpartyCollateral);
-    }
-
     const collateralPaid = BigInt(claimRecord.collateralPaid);
-    const pnl = collateralPaid - originalCollateral;
+    const tokensBurned = BigInt(claimRecord.tokensBurned);
+    const pnl = collateralPaid - tokensBurned;
 
     stats.realizedPnL += pnl;
     stats.claimCount++;
@@ -291,7 +265,9 @@ export async function calculatePositionPnL(
 
     // Calculate unrealized P&L for predictor (skip if already claimed in step 1)
     if (
-      !claimedPairs.has(`${prediction.predictionId}:${predictor}`) &&
+      !claimedTokenHolders.has(
+        `${prediction.predictorToken.toLowerCase()}:${predictor}`
+      ) &&
       (!owners?.length ||
         owners.map((o) => o.toLowerCase()).includes(predictor))
     ) {
@@ -305,7 +281,9 @@ export async function calculatePositionPnL(
 
     // Calculate unrealized P&L for counterparty (skip if already claimed in step 1)
     if (
-      !claimedPairs.has(`${prediction.predictionId}:${counterparty}`) &&
+      !claimedTokenHolders.has(
+        `${prediction.counterpartyToken.toLowerCase()}:${counterparty}`
+      ) &&
       (!owners?.length ||
         owners.map((o) => o.toLowerCase()).includes(counterparty))
     ) {
@@ -363,13 +341,11 @@ export async function calculateCombinedPositionPnL(): Promise<
       WHERE status IN ('settled', 'consolidated') AND "predictorWon" IS NOT NULL
       UNION ALL
       -- V2 Claims: holder redeems settled prediction
+      -- Note: Claim.predictionId stores pickConfigId, so we use tokensBurned as cost basis
+      -- (position tokens are minted 1:1 with collateral)
       SELECT cl.holder AS address,
-        CAST(cl."collateralPaid" AS DECIMAL) - CAST(
-          CASE WHEN p.predictor = cl.holder THEN p."predictorCollateral"
-               ELSE p."counterpartyCollateral" END AS DECIMAL
-        ) AS pnl
+        CAST(cl."collateralPaid" AS DECIMAL) - CAST(cl."tokensBurned" AS DECIMAL) AS pnl
       FROM "Claim" cl
-      JOIN "Prediction" p ON cl."predictionId" = p."predictionId"
       UNION ALL
       -- V2 Closes: predictor payout
       SELECT c."predictorHolder" AS address,
@@ -382,13 +358,14 @@ export async function calculateCombinedPositionPnL(): Promise<
       FROM "Close" c
       UNION ALL
       -- V2 Unclaimed settled: predictor side (exclude already-claimed)
+      -- Match claims by positionToken since Claim.predictionId stores pickConfigId
       SELECT p.predictor AS address,
         CAST(COALESCE(p."predictorClaimable", '0') AS DECIMAL) - CAST(p."predictorCollateral" AS DECIMAL) AS pnl
       FROM "Prediction" p
       WHERE p.settled = true AND p.result != 'UNRESOLVED'
         AND NOT EXISTS (
           SELECT 1 FROM "Claim" c
-          WHERE c."predictionId" = p."predictionId" AND c.holder = p.predictor
+          WHERE c."positionToken" = p."predictorToken" AND c.holder = p.predictor
         )
       UNION ALL
       -- V2 Unclaimed settled: counterparty side (exclude already-claimed)
@@ -398,7 +375,7 @@ export async function calculateCombinedPositionPnL(): Promise<
       WHERE p.settled = true AND p.result != 'UNRESOLVED'
         AND NOT EXISTS (
           SELECT 1 FROM "Claim" c
-          WHERE c."predictionId" = p."predictionId" AND c.holder = p.counterparty
+          WHERE c."positionToken" = p."counterpartyToken" AND c.holder = p.counterparty
         )
     )
     SELECT address, SUM(pnl)::TEXT AS total_pnl, COUNT(*)::BIGINT AS position_count
