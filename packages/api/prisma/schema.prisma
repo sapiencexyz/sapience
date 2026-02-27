@@ -514,6 +514,7 @@ model Prediction {
   @@index([settled], map: "IDX_prediction_settled")
 }
 
+// TODO: Rename Prisma model Picks → PickConfiguration (requires migration with @@map)
 /// A pick configuration (group of picks that define a combined position)
 model Picks {
   id                           String    @id @db.VarChar

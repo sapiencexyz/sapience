@@ -43,6 +43,12 @@ class ProtocolStat {
 
   @Field(() => String)
   vaultAirdropGains!: string;
+
+  @Field(() => String)
+  dailyPnL!: string;
+
+  @Field(() => String)
+  dailyVolume!: string;
 }
 
 @ObjectType()
@@ -104,28 +110,45 @@ export class AnalyticsResolver {
 
     // Fetch volume and OI data at snapshot timestamps in parallel
     const [cumulativeVolumes, openInterests] = await Promise.all([
-      // Cumulative volume up to each snapshot timestamp
+      // Cumulative volume up to each snapshot timestamp (V1 legacy + V2 predictions)
       prisma.$queryRaw<CumulativeVolumeRow[]>`
         SELECT
           ts.timestamp,
-          COALESCE(SUM(CAST(p."totalCollateral" AS DECIMAL)), 0)::TEXT as cumulative_volume
+          COALESCE(SUM(vol), 0)::TEXT as cumulative_volume
         FROM UNNEST(${snapshotTimestamps}::BIGINT[]) AS ts(timestamp)
-        LEFT JOIN position p ON
-          p."mintedAt" <= ts.timestamp
-          AND p."chainId" = ${chainId}
+        LEFT JOIN (
+          SELECT "mintedAt" AS created_ts, CAST("totalCollateral" AS DECIMAL) AS vol, "chainId"
+          FROM position
+          UNION ALL
+          SELECT "onChainCreatedAt" AS created_ts,
+            CAST("predictorCollateral" AS DECIMAL) + CAST("counterpartyCollateral" AS DECIMAL) AS vol,
+            "chainId"
+          FROM "Prediction"
+        ) combined ON
+          combined.created_ts <= ts.timestamp
+          AND combined."chainId" = ${chainId}
         GROUP BY ts.timestamp
         ORDER BY ts.timestamp
       `,
-      // Open interest at each snapshot timestamp
+      // Open interest at each snapshot timestamp (V1 legacy + V2 predictions)
       prisma.$queryRaw<DailyOIRow[]>`
         SELECT
           ts.timestamp,
-          COALESCE(SUM(CAST(p."totalCollateral" AS DECIMAL)), 0)::TEXT as open_interest
+          COALESCE(SUM(vol), 0)::TEXT as open_interest
         FROM UNNEST(${snapshotTimestamps}::BIGINT[]) AS ts(timestamp)
-        LEFT JOIN position p ON
-          p."mintedAt" <= ts.timestamp
-          AND (p."settledAt" IS NULL OR p."settledAt" > ts.timestamp)
-          AND p."chainId" = ${chainId}
+        LEFT JOIN (
+          SELECT "mintedAt" AS created_ts, "settledAt" AS settled_ts,
+            CAST("totalCollateral" AS DECIMAL) AS vol, "chainId"
+          FROM position
+          UNION ALL
+          SELECT "onChainCreatedAt" AS created_ts, "settledAt" AS settled_ts,
+            CAST("predictorCollateral" AS DECIMAL) + CAST("counterpartyCollateral" AS DECIMAL) AS vol,
+            "chainId"
+          FROM "Prediction"
+        ) combined ON
+          combined.created_ts <= ts.timestamp
+          AND (combined.settled_ts IS NULL OR combined.settled_ts > ts.timestamp)
+          AND combined."chainId" = ${chainId}
         GROUP BY ts.timestamp
         ORDER BY ts.timestamp
       `,
@@ -134,28 +157,45 @@ export class AnalyticsResolver {
     const volumeMap = buildTimestampMap(cumulativeVolumes, 'cumulative_volume');
     const oiMap = buildTimestampMap(openInterests, 'open_interest');
 
-    return protocolSnapshots.map((snapshot) => ({
-      timestamp: snapshot.timestamp.toString(),
-      cumulativeVolume: volumeMap.get(snapshot.timestamp) || '0',
-      openInterest: oiMap.get(snapshot.timestamp) || '0',
-      vaultBalance: snapshot.vaultBalance,
-      vaultAvailableAssets: snapshot.vaultAvailableAssets,
-      vaultDeployed: snapshot.vaultDeployed,
-      escrowBalance: snapshot.escrowBalance,
-      vaultCumulativePnL: snapshot.vaultRealizedPnL,
-      vaultPositionsWon: snapshot.vaultPositionsWon,
-      vaultPositionsLost: snapshot.vaultPositionsLost,
-      vaultDeposits: snapshot.vaultDeposits,
-      vaultWithdrawals: snapshot.vaultWithdrawals,
-      vaultAirdropGains: snapshot.vaultAirdropGains,
-    }));
+    return protocolSnapshots.map((snapshot, i) => {
+      const cumVol = volumeMap.get(snapshot.timestamp) || '0';
+      const prevCumVol =
+        i > 0
+          ? volumeMap.get(protocolSnapshots[i - 1].timestamp) || '0'
+          : '0';
+      const dailyVolume = (BigInt(cumVol) - BigInt(prevCumVol)).toString();
+
+      const prevPnL =
+        i > 0 ? protocolSnapshots[i - 1].vaultRealizedPnL : '0';
+      const dailyPnL = (
+        BigInt(snapshot.vaultRealizedPnL) - BigInt(prevPnL)
+      ).toString();
+
+      return {
+        timestamp: snapshot.timestamp.toString(),
+        cumulativeVolume: cumVol,
+        openInterest: oiMap.get(snapshot.timestamp) || '0',
+        vaultBalance: snapshot.vaultBalance,
+        vaultAvailableAssets: snapshot.vaultAvailableAssets,
+        vaultDeployed: snapshot.vaultDeployed,
+        escrowBalance: snapshot.escrowBalance,
+        vaultCumulativePnL: snapshot.vaultRealizedPnL,
+        vaultPositionsWon: snapshot.vaultPositionsWon,
+        vaultPositionsLost: snapshot.vaultPositionsLost,
+        vaultDeposits: snapshot.vaultDeposits,
+        vaultWithdrawals: snapshot.vaultWithdrawals,
+        vaultAirdropGains: snapshot.vaultAirdropGains,
+        dailyPnL,
+        dailyVolume,
+      };
+    });
   }
 
   @Query(() => [DailyVolume])
   async dailyVolumes(): Promise<DailyVolume[]> {
     const chainId = DEFAULT_CHAIN_ID;
 
-    // Daily volumes from positions - last 90 days with 0 for days without activity
+    // Daily volumes from V1 legacy positions + V2 predictions - last 90 days
     const dailyVolumes = await prisma.$queryRaw<DailyVolumeRow[]>`
       WITH date_series AS (
         SELECT generate_series(
@@ -163,14 +203,23 @@ export class AnalyticsResolver {
           CURRENT_DATE,
           '1 day'::interval
         )::date as date
+      ),
+      all_volumes AS (
+        SELECT "mintedAt" AS created_ts, CAST("totalCollateral" AS DECIMAL) AS vol, "chainId"
+        FROM position
+        UNION ALL
+        SELECT "onChainCreatedAt" AS created_ts,
+          CAST("predictorCollateral" AS DECIMAL) + CAST("counterpartyCollateral" AS DECIMAL) AS vol,
+          "chainId"
+        FROM "Prediction"
       )
       SELECT
         EXTRACT(EPOCH FROM d.date)::BIGINT as timestamp,
-        COALESCE(SUM(CAST(p."totalCollateral" AS DECIMAL)), 0)::TEXT as daily_volume
+        COALESCE(SUM(v.vol), 0)::TEXT as daily_volume
       FROM date_series d
-      LEFT JOIN position p ON
-        DATE_TRUNC('day', TO_TIMESTAMP(p."mintedAt"))::date = d.date
-        AND p."chainId" = ${chainId}
+      LEFT JOIN all_volumes v ON
+        DATE_TRUNC('day', TO_TIMESTAMP(v.created_ts))::date = d.date
+        AND v."chainId" = ${chainId}
       GROUP BY d.date
       ORDER BY timestamp
     `;

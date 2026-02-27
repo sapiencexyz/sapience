@@ -32,7 +32,7 @@ import {
 import {
   PnLResolver,
   ScoreResolver,
-  EscrowPositionResolver,
+  EscrowResolver,
   LegacyPositionResolver,
   AnalyticsResolver,
   ConditionResolver,
@@ -64,7 +64,7 @@ export const initializeApolloServer = async () => {
     .concat([
       PnLResolver,
       ScoreResolver,
-      EscrowPositionResolver,
+      EscrowResolver,
       LegacyPositionResolver,
       AnalyticsResolver,
       ConditionResolver,
