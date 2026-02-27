@@ -12,22 +12,6 @@ export interface QuestionType {
   condition?: ConditionType | null;
 }
 
-/** Map camelCase sort field to GraphQL QuestionSortField enum key */
-const SORT_FIELD_TO_ENUM: Record<SortField, string> = {
-  openInterest: 'OPEN_INTEREST',
-  endTime: 'END_TIME',
-  createdAt: 'CREATED_AT',
-  predictionCount: 'PREDICTION_COUNT',
-};
-
-/** Map camelCase resolution status to GraphQL ResolutionStatus enum key */
-const RESOLUTION_STATUS_TO_ENUM: Record<string, string> = {
-  all: 'ALL',
-  unresolved: 'UNRESOLVED',
-  resolvedYes: 'RESOLVED_YES',
-  resolvedNo: 'RESOLVED_NO',
-};
-
 const GET_QUESTIONS = /* GraphQL */ `
   query Questions(
     $take: Int!
@@ -137,14 +121,12 @@ export async function fetchQuestionsSorted(
     take: params.take,
     skip: params.skip,
     chainId: params.chainId ?? null,
-    sortField: SORT_FIELD_TO_ENUM[params.sortField] ?? params.sortField,
+    sortField: params.sortField,
     sortDirection: params.sortDirection,
     search: params.search?.trim() || null,
     categorySlugs: params.categorySlugs?.length ? params.categorySlugs : null,
     minEndTime: params.minEndTime ?? null,
-    resolutionStatus: params.resolutionStatus
-      ? (RESOLUTION_STATUS_TO_ENUM[params.resolutionStatus] ?? params.resolutionStatus)
-      : null,
+    resolutionStatus: params.resolutionStatus ?? null,
   };
 
   const data = await graphqlRequest<QuestionsQueryResult>(
@@ -152,9 +134,5 @@ export async function fetchQuestionsSorted(
     variables
   );
 
-  // Normalize GraphQL enum response (UPPER_CASE) to camelCase for consumers
-  return (data.questions ?? []).map((q) => ({
-    ...q,
-    questionType: q.questionType.toLowerCase() as 'group' | 'condition',
-  }));
+  return data.questions ?? [];
 }
