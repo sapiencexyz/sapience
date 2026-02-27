@@ -12,26 +12,21 @@ import {
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { collateralToken, predictionMarket } from '../contracts/addresses';
-import { CHAIN_ID_ETHEREAL, DEFAULT_CHAIN_ID } from '../constants/chain';
+import {
+  CHAIN_ID_ETHEREAL,
+  DEFAULT_CHAIN_ID,
+  etherealChain,
+  getRpcUrl,
+} from '../constants/chain';
 import { getCollateralAddress } from '../constants/addresses';
 
 type Hex = `0x${string}`;
 
-// Ethereal chain definition (trading chain)
-export const tradingChain: Chain = {
-  id: CHAIN_ID_ETHEREAL,
-  name: 'Ethereal',
-  nativeCurrency: { name: 'USDe', symbol: 'USDe', decimals: 18 },
-  rpcUrls: {
-    default: { http: ['https://rpc.ethereal.trade'] },
-  },
-  blockExplorers: {
-    default: { name: 'Ethereal Explorer', url: 'https://explorer.ethereal.trade' },
-  },
-};
+/** @deprecated Import `etherealChain` from `@sapience/sdk/constants` instead. */
+export const tradingChain: Chain = etherealChain;
 
-// Default trading RPC URL
-export const TRADING_RPC_URL = 'https://rpc.ethereal.trade';
+/** @deprecated Use `getRpcUrl(CHAIN_ID_ETHEREAL)` instead. */
+export const TRADING_RPC_URL = getRpcUrl(CHAIN_ID_ETHEREAL);
 
 // WUSDe ABI for wrap/unwrap operations
 const WUSDE_ABI = parseAbi([

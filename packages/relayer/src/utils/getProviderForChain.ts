@@ -1,89 +1,53 @@
 import {
   type PublicClient,
+  type Chain,
   createPublicClient,
   http,
-  type Chain,
 } from 'viem';
-import dotenv from 'dotenv';
-import { fileURLToPath } from 'url';
-import { dirname, resolve } from 'path';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
-
-function fromRoot(relativePath: string): string {
-  const repoRoot = resolve(__dirname, '../../../..');
-  return resolve(repoRoot, relativePath);
-}
-
-// Load environment variables
-dotenv.config({ path: fromRoot('.env') });
-
-export const etherealChain: Chain = {
-  id: 5064014,
-  name: 'EtherealChain',
-  nativeCurrency: {
-    name: 'Ethena USDe',
-    symbol: 'USDe',
-    decimals: 18,
-  },
-  rpcUrls: {
-    default: {
-      http: [process.env.CHAIN_5064014_RPC_URL || 'https://rpc.ethereal.trade'],
-    },
-    public: { http: ['https://rpc.ethereal.trade'] },
-  },
-};
-
-export const etherealTestnetChain: Chain = {
-  id: 13374202,
-  name: 'Ethereal Testnet',
-  nativeCurrency: {
-    name: 'Ethena USDe',
-    symbol: 'USDe',
-    decimals: 18,
-  },
-  rpcUrls: {
-    default: {
-      http: [process.env.CHAIN_13374202_RPC_URL || 'https://rpc.etherealtest.net'],
-    },
-    public: { http: ['https://rpc.etherealtest.net'] },
-  },
-};
-
-const supportedChains: Chain[] = [etherealChain, etherealTestnetChain];
-
-export function getChainById(id: number): Chain | undefined {
-  return supportedChains.find((c) => c.id === id);
-}
+import {
+  CHAIN_ID_ETHEREAL,
+  CHAIN_ID_ETHEREAL_TESTNET,
+  getRpcUrl,
+} from '@sapience/sdk/constants';
 
 const clientMap = new Map<number, PublicClient>();
+
+// Local chain definitions to avoid cross-package viem type mismatch.
+// Chain IDs and RPC URLs are sourced from the SDK.
+function buildChain(chainId: number): Chain {
+  const rpcUrl = getRpcUrl(chainId);
+  switch (chainId) {
+    case CHAIN_ID_ETHEREAL:
+      return {
+        id: CHAIN_ID_ETHEREAL,
+        name: 'Ethereal',
+        nativeCurrency: { name: 'USDe', symbol: 'USDe', decimals: 18 },
+        rpcUrls: { default: { http: [rpcUrl] } },
+      };
+    case CHAIN_ID_ETHEREAL_TESTNET:
+      return {
+        id: CHAIN_ID_ETHEREAL_TESTNET,
+        name: 'Ethereal Testnet',
+        nativeCurrency: { name: 'USDe', symbol: 'USDe', decimals: 18 },
+        rpcUrls: { default: { http: [rpcUrl] } },
+        testnet: true,
+      };
+    default:
+      throw new Error(`Unsupported chain ID: ${chainId}`);
+  }
+}
 
 export function getProviderForChain(chainId: number): PublicClient {
   if (clientMap.has(chainId)) {
     return clientMap.get(chainId)!;
   }
 
-  let newClient: PublicClient;
-
-  switch (chainId) {
-    case 5064014:
-      newClient = createPublicClient({
-        chain: etherealChain,
-        transport: http(process.env.CHAIN_5064014_RPC_URL || 'https://rpc.ethereal.trade'),
-        batch: { multicall: true },
-      });
-      break;
-    case 13374202:
-      newClient = createPublicClient({
-        chain: etherealTestnetChain,
-        transport: http(process.env.CHAIN_13374202_RPC_URL || 'https://rpc.etherealtest.net'),
-        batch: { multicall: true },
-      });
-      break;
-    default:
-      throw new Error(`Unsupported chain ID: ${chainId}`);
-  }
+  const chain = buildChain(chainId);
+  const newClient = createPublicClient({
+    chain,
+    transport: http(chain.rpcUrls.default.http[0]),
+    batch: { multicall: true },
+  });
 
   clientMap.set(chainId, newClient);
 
