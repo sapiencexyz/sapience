@@ -161,8 +161,8 @@ export default function QuestionPageContent({
     );
   }, [router, conditionId, resolverAddress, resolverAddressFromUrl]);
 
-  // Fetch V2 escrow predictions for this condition
-  const { data: v2Predictions, isLoading: isLoadingPredictions } =
+  // Fetch escrow predictions for this condition
+  const { data: predictions, isLoading: isLoadingPredictions } =
     usePredictionsByConditionId({
       conditionId,
       take: 100,
@@ -176,13 +176,13 @@ export default function QuestionPageContent({
     },
   });
 
-  // Transform V2 prediction data for scatter plot
+  // Transform prediction data for scatter plot
   const scatterData = useMemo((): PredictionData[] => {
-    if (!v2Predictions || v2Predictions.length === 0) {
+    if (!predictions || predictions.length === 0) {
       return [];
     }
 
-    return v2Predictions
+    return predictions
       .map((pred) => {
         try {
           const picks = pred.pickConfig?.picks ?? [];
@@ -250,7 +250,7 @@ export default function QuestionPageContent({
         }
       })
       .filter(Boolean) as PredictionData[];
-  }, [v2Predictions, conditionId]);
+  }, [predictions, conditionId]);
 
   // Calculate position size range from actual data for dynamic sizing
   const positionSizeRange = useMemo(() => {
@@ -332,7 +332,7 @@ export default function QuestionPageContent({
   }, [forecasts]);
 
   // Computed flags for conditional rendering
-  const hasPositions = v2Predictions.length > 0;
+  const hasPositions = predictions.length > 0;
   const hasForecasts = forecastScatterData.length > 0;
   const shouldShowChart = hasPositions || hasForecasts || isLoadingPredictions;
 

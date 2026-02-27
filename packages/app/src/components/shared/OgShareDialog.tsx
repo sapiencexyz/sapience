@@ -40,7 +40,7 @@ interface OgShareDialogBaseProps {
   onPositionIndexed?: () => void; // Called when position is found in GraphQL
   shareUrl?: string; // Override share URL (e.g. for slip preview cards)
   forecastUid?: string; // For forecast share URLs (/forecast/{uid})
-  trackPrediction?: boolean; // Enable prediction tracking (V2 escrow)
+  trackPrediction?: boolean; // Enable prediction tracking
   predictionTimestamp?: number; // Timestamp when prediction was submitted (ms)
   onPredictionIndexed?: () => void; // Called when prediction is found
 }
@@ -102,7 +102,7 @@ export default function OgShareDialogBase({
   const pollingCancelledRef = useRef(false);
   const dialogOpenTimestampRef = useRef<number | null>(null);
 
-  // Store resolved predictionId for V2 escrow tracking
+  // Store resolved predictionId for prediction tracking
   const [resolvedPredictionId, setResolvedPredictionId] = useState<
     string | null
   >(null);
@@ -113,7 +113,7 @@ export default function OgShareDialogBase({
   // Use effectiveAddress from session context for position tracking
   const userAddress = effectiveAddress?.toLowerCase();
 
-  // Fetch predictions for V2 escrow tracking
+  // Fetch predictions for tracking
   const { data: predictions, refetch: refetchPredictions } = usePredictions({
     address: trackPrediction && userAddress ? userAddress : undefined,
     take: 5,
@@ -287,7 +287,7 @@ export default function OgShareDialogBase({
     onPositionIndexed,
   ]);
 
-  // Prediction tracking logic (V2 escrow)
+  // Prediction tracking logic
   useEffect(() => {
     if (!trackPrediction || !open || !userAddress) return;
     if (resolvedPredictionId) {
@@ -401,7 +401,7 @@ export default function OgShareDialogBase({
   const buildShareUrl = useCallback((): string => {
     if (shareUrlProp) return shareUrlProp;
 
-    // V2 escrow: use prediction URL when resolved
+    // Use prediction URL when resolved
     if (resolvedPredictionId) {
       const relativeUrl = `/predictions/${resolvedPredictionId}`;
       if (typeof window === 'undefined') return relativeUrl;

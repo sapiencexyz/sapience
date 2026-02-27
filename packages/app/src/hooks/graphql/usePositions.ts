@@ -496,7 +496,7 @@ export function useRecentPredictions(params: {
 }
 
 /**
- * Hook to get predictions for a condition (V2 escrow predictions)
+ * Hook to get predictions for a condition
  */
 export function usePredictionsByConditionId(params: {
   conditionId?: string;
