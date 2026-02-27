@@ -31,6 +31,15 @@ import { useConditionsByIds } from '~/hooks/graphql/useConditionsByIds';
 import OgShareDialogBase from '~/components/shared/OgShareDialog';
 import PredictionDialog from '~/components/positions/PredictionDialog';
 import { toPicks, type ConditionsMap } from '~/components/positions/toPickLegs';
+import {
+  ActivityTableFilters,
+  getDefaultActivityFilterState,
+  type ActivityFilterState,
+} from '~/components/positions/ActivityTableFilters';
+import {
+  isWithinDateRange,
+  matchesConditionSearch,
+} from '~/lib/utils/tableFilters';
 
 function ActivityRow({
   prediction,
@@ -345,10 +354,13 @@ export default function ActivityTable({
   const collateralSymbol = COLLATERAL_SYMBOLS[DEFAULT_CHAIN_ID] || 'USDe';
   const effectivePageSize = pageSize ?? DEFAULT_PAGE_SIZE;
   const [take, setTake] = useState(effectivePageSize);
+  const [filters, setFilters] = useState<ActivityFilterState>(
+    getDefaultActivityFilterState
+  );
 
   // Predictions: address-filtered when account provided, conditionId-filtered,
   // or all recent otherwise
-  const { data: filteredPredictions, isLoading: filteredLoading } =
+  const { data: accountPredictions, isLoading: accountLoading } =
     usePredictions({ address: account, take, skip: 0 });
 
   const { data: conditionPredictions, isLoading: conditionLoading } =
@@ -366,12 +378,12 @@ export default function ActivityTable({
     });
 
   const predictions = account
-    ? filteredPredictions
+    ? accountPredictions
     : conditionId
       ? conditionPredictions
       : recentPredictions;
   const predictionsLoading = account
-    ? filteredLoading
+    ? accountLoading
     : conditionId
       ? conditionLoading
       : recentLoading;
@@ -435,6 +447,63 @@ export default function ActivityTable({
 
   const { map: conditionsMap } = useConditionsByIds(conditionIds);
 
+  // Apply client-side filters
+  const filteredPredictions = React.useMemo(() => {
+    let result = enrichedPredictions;
+
+    // Filter by search term (match against condition question text)
+    if (filters.searchTerm.trim()) {
+      const term = filters.searchTerm.trim();
+      result = result.filter(({ pickConfig }) => {
+        const ids = (pickConfig?.picks ?? []).map((p) => p.conditionId);
+        return matchesConditionSearch(term, ids, conditionsMap);
+      });
+    }
+
+    // Filter by status
+    if (filters.status.length > 0 && filters.status.length < 3) {
+      result = result.filter(({ prediction }) => {
+        if (!prediction.settled) return filters.status.includes('pending');
+        if (prediction.result === 'PREDICTOR_WINS')
+          return filters.status.includes('predictor_won');
+        if (prediction.result === 'COUNTERPARTY_WINS')
+          return filters.status.includes('counterparty_won');
+        return filters.status.includes('pending');
+      });
+    }
+
+    // Filter by payout range
+    if (
+      filters.valueRange[0] > 0 ||
+      filters.valueRange[1] < Infinity
+    ) {
+      result = result.filter(({ prediction }) => {
+        const totalEth =
+          Number(formatEther(BigInt(prediction.predictorCollateral))) +
+          Number(formatEther(BigInt(prediction.counterpartyCollateral)));
+        return (
+          totalEth >= filters.valueRange[0] &&
+          totalEth <= filters.valueRange[1]
+        );
+      });
+    }
+
+    // Filter by date range
+    if (
+      filters.dateRange[0] > -Infinity ||
+      filters.dateRange[1] < Infinity
+    ) {
+      result = result.filter(({ prediction }) => {
+        const timestampMs = prediction.collateralDepositedAt
+          ? prediction.collateralDepositedAt * 1000
+          : new Date(prediction.createdAt).getTime();
+        return isWithinDateRange(timestampMs, filters.dateRange);
+      });
+    }
+
+    return result;
+  }, [enrichedPredictions, filters, conditionsMap]);
+
   // Share dialog state
   const [sharePrediction, setSharePrediction] = useState<{
     prediction: Prediction;
@@ -449,14 +518,16 @@ export default function ActivityTable({
     isPredictorSide: boolean;
   } | null>(null);
 
-  const hasMore = !account && !conditionId && predictions.length > take;
+  const hasMore = predictions.length > take;
 
-  const headerContent = leftSlot ? (
-    <div className="px-4 py-4 border-b border-border flex items-center gap-4">
-      {leftSlot}
-      <div className="flex-1" />
+  const headerContent = (
+    <div className="px-4 py-4 border-b border-border/60 flex flex-col sm:flex-row sm:items-center gap-4 bg-white/[0.03]">
+      {leftSlot && leftSlot}
+      <div className="flex-1">
+        <ActivityTableFilters filters={filters} onFiltersChange={setFilters} />
+      </div>
     </div>
-  ) : null;
+  );
 
   if (isLoading) {
     return (
@@ -474,6 +545,15 @@ export default function ActivityTable({
       <>
         {headerContent}
         <EmptyTabState message="No activity found" />
+      </>
+    );
+  }
+
+  if (filteredPredictions.length === 0) {
+    return (
+      <>
+        {headerContent}
+        <EmptyTabState message="No activity matches your filters" />
       </>
     );
   }
@@ -509,7 +589,7 @@ export default function ActivityTable({
             </tr>
           </thead>
           <tbody>
-            {enrichedPredictions.map(
+            {filteredPredictions.map(
               ({ prediction, pickConfig, isPredictorSide }) => (
                 <ActivityRow
                   key={prediction.id}
