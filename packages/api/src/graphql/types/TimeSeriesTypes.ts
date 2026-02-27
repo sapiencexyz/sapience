@@ -32,7 +32,9 @@ export const INTERVAL_TO_PG_STEP: Record<TimeInterval, string> = {
   description: 'Time-bucketed volume data point for charts',
 })
 export class VolumeDataPoint {
-  @Field(() => Int, { description: 'Unix epoch timestamp (seconds) for the start of this bucket' })
+  @Field(() => Int, {
+    description: 'Unix epoch timestamp (seconds) for the start of this bucket',
+  })
   timestamp!: number;
 
   @Field(() => String, { description: 'Total volume in wei for this bucket' })
@@ -43,7 +45,9 @@ export class VolumeDataPoint {
   description: 'Time-bucketed PnL data point with cumulative tracking',
 })
 export class PnlDataPoint {
-  @Field(() => Int, { description: 'Unix epoch timestamp (seconds) for the start of this bucket' })
+  @Field(() => Int, {
+    description: 'Unix epoch timestamp (seconds) for the start of this bucket',
+  })
   timestamp!: number;
 
   @Field(() => String, { description: 'PnL for this bucket in wei' })
@@ -54,15 +58,22 @@ export class PnlDataPoint {
 }
 
 @ObjectType({
-  description: 'Time-bucketed balance snapshot showing deployed and claimable collateral',
+  description:
+    'Time-bucketed balance snapshot showing deployed and claimable collateral',
 })
 export class BalanceDataPoint {
-  @Field(() => Int, { description: 'Unix epoch timestamp (seconds) for the start of this bucket' })
+  @Field(() => Int, {
+    description: 'Unix epoch timestamp (seconds) for the start of this bucket',
+  })
   timestamp!: number;
 
-  @Field(() => String, { description: 'Active collateral deployed in open positions (wei)' })
+  @Field(() => String, {
+    description: 'Active collateral deployed in open positions (wei)',
+  })
   deployedCollateral!: string;
 
-  @Field(() => String, { description: 'Collateral available to claim from settled positions (wei)' })
+  @Field(() => String, {
+    description: 'Collateral available to claim from settled positions (wei)',
+  })
   claimableCollateral!: string;
 }

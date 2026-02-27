@@ -2,7 +2,8 @@ import { Field, Int, ObjectType, Directive } from 'type-graphql';
 
 @Directive('@cacheControl(maxAge: 60)')
 @ObjectType('ProfitEntry', {
-  description: 'Aggregated profit/loss entry for a single address across all positions',
+  description:
+    'Aggregated profit/loss entry for a single address across all positions',
 })
 export class AggregatedProfitEntryType {
   @Field(() => String)

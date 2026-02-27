@@ -26,7 +26,8 @@ export enum QuestionItemType {
 
 registerEnumType(QuestionItemType, {
   name: 'QuestionItemType',
-  description: 'Whether a question is a group of related conditions or a single condition',
+  description:
+    'Whether a question is a group of related conditions or a single condition',
 });
 
 /** Fields available for sorting the questions list. */
@@ -107,7 +108,7 @@ export class QuestionsResolver {
     @Arg('chainId', () => Int, { nullable: true }) chainId: number | null,
     @Arg('sortField', () => QuestionSortField, { nullable: true })
     sortField: QuestionSortField | null,
-    @Arg('sortDirection', () => SortOrder, { defaultValue: 'desc' })
+    @Arg('sortDirection', () => SortOrder, { defaultValue: SortOrder.desc })
     sortDirection: SortOrder,
     @Arg('search', () => String, { nullable: true }) search: string | null,
     @Arg('categorySlugs', () => [String], { nullable: true })
@@ -137,13 +138,13 @@ export class QuestionsResolver {
 
     // Build resolution status SQL filter
     const resolvedFilter = (() => {
-      if (resolutionStatus && resolutionStatus !== 'all') {
+      if (resolutionStatus && resolutionStatus !== ResolutionStatus.ALL) {
         switch (resolutionStatus) {
-          case 'unresolved':
+          case ResolutionStatus.UNRESOLVED:
             return Prisma.sql`AND c.settled = false`;
-          case 'resolvedYes':
+          case ResolutionStatus.RESOLVED_YES:
             return Prisma.sql`AND c.settled = true AND c."resolvedToYes" = true`;
-          case 'resolvedNo':
+          case ResolutionStatus.RESOLVED_NO:
             return Prisma.sql`AND c.settled = true AND c."resolvedToYes" = false`;
           default:
             return Prisma.empty;
@@ -324,13 +325,13 @@ export class QuestionsResolver {
     // Apply the same filters to nested conditions that we used in the SQL query
     // Build Prisma where clause for nested conditions (mirrors SQL filter)
     const resolvedPrismaFilter = (() => {
-      if (resolutionStatus && resolutionStatus !== 'all') {
+      if (resolutionStatus && resolutionStatus !== ResolutionStatus.ALL) {
         switch (resolutionStatus) {
-          case 'unresolved':
+          case ResolutionStatus.UNRESOLVED:
             return { settled: false };
-          case 'resolvedYes':
+          case ResolutionStatus.RESOLVED_YES:
             return { settled: true, resolvedToYes: true };
-          case 'resolvedNo':
+          case ResolutionStatus.RESOLVED_NO:
             return { settled: true, resolvedToYes: false };
           default:
             return {};
@@ -394,7 +395,7 @@ export class QuestionsResolver {
         const group = groupMap.get(item.group_id);
         if (group) {
           result.push({
-            questionType: 'group',
+            questionType: QuestionItemType.GROUP,
             group: {
               ...group,
               conditions: group.condition, // Map Prisma 'condition' to GraphQL 'conditions'
@@ -407,7 +408,7 @@ export class QuestionsResolver {
         const condition = conditionMap.get(item.condition_id);
         if (condition) {
           result.push({
-            questionType: 'condition',
+            questionType: QuestionItemType.CONDITION,
             group: null,
             condition: condition as Condition,
             predictionCount: Number(item.prediction_count),

@@ -28,7 +28,8 @@ export class TimeSeriesResolver {
   }
 
   @Query(() => [PnlDataPoint], {
-    description: 'Time-bucketed profit and loss for a single address with cumulative tracking',
+    description:
+      'Time-bucketed profit and loss for a single address with cumulative tracking',
   })
   @Directive('@cacheControl(maxAge: 60)')
   async accountPnl(
@@ -41,7 +42,8 @@ export class TimeSeriesResolver {
   }
 
   @Query(() => [BalanceDataPoint], {
-    description: 'Time-bucketed balance snapshots for a single address showing deployed and claimable collateral',
+    description:
+      'Time-bucketed balance snapshots for a single address showing deployed and claimable collateral',
   })
   @Directive('@cacheControl(maxAge: 60)')
   async accountBalance(

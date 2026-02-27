@@ -7,7 +7,8 @@ import prisma from '../../db';
 // ============================================================================
 
 @ObjectType('Trade', {
-  description: 'Secondary market trade record where position tokens are exchanged between users',
+  description:
+    'Secondary market trade record where position tokens are exchanged between users',
 })
 class SecondaryTradeType {
   @Field(() => Int)
@@ -57,7 +58,8 @@ class SecondaryTradeType {
 @Resolver()
 export class TradeResolver {
   @Query(() => [SecondaryTradeType], {
-    description: 'Paginated list of secondary market trades, filterable by seller, buyer, token, and chain',
+    description:
+      'Paginated list of secondary market trades, filterable by seller, buyer, token, and chain',
   })
   async trades(
     @Arg('take', () => Int, { defaultValue: 50 }) take: number,

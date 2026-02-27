@@ -188,7 +188,8 @@ export class PredictionType {
 }
 
 @ObjectType('Position', {
-  description: 'ERC-20 token balance representing a side of a prediction position',
+  description:
+    'ERC-20 token balance representing a side of a prediction position',
 })
 class PositionType {
   @Field(() => Int)
@@ -217,7 +218,8 @@ class PositionType {
 }
 
 @ObjectType('Close', {
-  description: 'Record of a position close where both sides burn tokens and receive payouts',
+  description:
+    'Record of a position close where both sides burn tokens and receive payouts',
 })
 class CloseType {
   @Field(() => Int)
@@ -261,7 +263,8 @@ class CloseType {
 }
 
 @ObjectType('Claim', {
-  description: 'Record of a settled prediction redemption where a holder burns tokens for collateral',
+  description:
+    'Record of a settled prediction redemption where a holder burns tokens for collateral',
 })
 class ClaimType {
   @Field(() => Int)
@@ -326,7 +329,8 @@ export class EscrowResolver {
   }
 
   @Query(() => [PredictionType], {
-    description: 'Paginated list of escrow-based predictions, filterable by address, condition, chain, and settlement status',
+    description:
+      'Paginated list of escrow-based predictions, filterable by address, condition, chain, and settlement status',
   })
   async predictions(
     @Arg('take', () => Int, { defaultValue: 50 }) take: number,
@@ -335,7 +339,8 @@ export class EscrowResolver {
     @Arg('conditionId', () => String, { nullable: true }) conditionId?: string,
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number,
     @Arg('settled', () => Boolean, { nullable: true }) settled?: boolean,
-    @Arg('orderBy', () => PredictionSortField, { nullable: true }) orderBy?: PredictionSortField,
+    @Arg('orderBy', () => PredictionSortField, { nullable: true })
+    orderBy?: PredictionSortField,
     @Arg('orderDirection', () => SortOrder, { nullable: true })
     orderDirection?: SortOrder
   ): Promise<PredictionType[]> {
@@ -541,14 +546,16 @@ export class EscrowResolver {
   // -------------------------------------------------------------------------
 
   @Query(() => [PickConfigurationType], {
-    description: 'Paginated list of pick configurations, filterable by chain, resolution status, and result',
+    description:
+      'Paginated list of pick configurations, filterable by chain, resolution status, and result',
   })
   async pickConfigurations(
     @Arg('take', () => Int, { defaultValue: 50 }) take: number,
     @Arg('skip', () => Int, { defaultValue: 0 }) skip: number,
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number,
     @Arg('resolved', () => Boolean, { nullable: true }) resolved?: boolean,
-    @Arg('result', () => SettlementResult, { nullable: true }) result?: SettlementResult
+    @Arg('result', () => SettlementResult, { nullable: true })
+    result?: SettlementResult
   ): Promise<PickConfigurationType[]> {
     const cappedTake = Math.max(1, Math.min(take, 100));
     const where: Prisma.PicksWhereInput = {};
@@ -644,7 +651,8 @@ export class EscrowResolver {
   // -------------------------------------------------------------------------
 
   @Query(() => [PositionType], {
-    description: 'Paginated list of token position balances, filterable by holder, condition, chain, or pick config',
+    description:
+      'Paginated list of token position balances, filterable by holder, condition, chain, or pick config',
   })
   async positions(
     @Arg('holder', () => String, { nullable: true }) holder?: string,
@@ -774,7 +782,8 @@ export class EscrowResolver {
   // -------------------------------------------------------------------------
 
   @Query(() => [CloseType], {
-    description: 'Paginated list of position close (burn) records, filterable by address, pick config, and chain',
+    description:
+      'Paginated list of position close (burn) records, filterable by address, pick config, and chain',
   })
   async closes(
     @Arg('take', () => Int, { defaultValue: 50 }) take: number,
@@ -834,7 +843,8 @@ export class EscrowResolver {
   // -------------------------------------------------------------------------
 
   @Query(() => [ClaimType], {
-    description: 'Paginated list of prediction claim (redemption) records, filterable by holder, prediction, and chain',
+    description:
+      'Paginated list of prediction claim (redemption) records, filterable by holder, prediction, and chain',
   })
   async claims(
     @Arg('take', () => Int, { defaultValue: 50 }) take: number,

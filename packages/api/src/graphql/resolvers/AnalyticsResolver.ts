@@ -11,10 +11,14 @@ import prisma from '../../db';
 import { getProtocolStatsTimeSeries } from '../../helpers/protocolStats';
 
 @ObjectType({
-  description: 'Daily protocol-wide statistics snapshot including vault metrics, volume, and PnL',
+  description:
+    'Daily protocol-wide statistics snapshot including vault metrics, volume, and PnL',
 })
 class ProtocolStat {
-  @Field(() => Int, { description: 'Unix epoch timestamp (seconds) for midnight UTC of the snapshot day' })
+  @Field(() => Int, {
+    description:
+      'Unix epoch timestamp (seconds) for midnight UTC of the snapshot day',
+  })
   timestamp!: number;
 
   @Field(() => String)
@@ -90,7 +94,8 @@ function buildTimestampMap<T extends { timestamp: bigint }>(
 @Resolver()
 export class AnalyticsResolver {
   @Query(() => [ProtocolStat], {
-    description: 'Daily protocol statistics time series (last 90 days) — vault balance, volume, PnL, and open interest',
+    description:
+      'Daily protocol statistics time series (last 90 days) — vault balance, volume, PnL, and open interest',
   })
   @Directive('@cacheControl(maxAge: 120)')
   async protocolStats(): Promise<ProtocolStat[]> {

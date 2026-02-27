@@ -12,7 +12,8 @@ import prisma from '../../db';
 import { TtlCache } from '../../utils/ttlCache';
 
 @ObjectType('ForecasterScore', {
-  description: 'Accuracy score for a forecaster, aggregated across all scored markets',
+  description:
+    'Accuracy score for a forecaster, aggregated across all scored markets',
 })
 class ForecasterScoreType {
   @Field(() => String)
@@ -92,7 +93,8 @@ export class ScoreResolver {
 
   @Query(() => ForecasterScoreType, {
     nullable: true,
-    description: 'Accuracy score for a single forecaster address, or null if no scored attestations exist',
+    description:
+      'Accuracy score for a single forecaster address, or null if no scored attestations exist',
   })
   @Directive('@cacheControl(maxAge: 60)')
   async accountAccuracy(
@@ -148,7 +150,8 @@ export class ScoreResolver {
   }
 
   @Query(() => AccuracyRankType, {
-    description: 'Accuracy rank and score for a single address relative to all forecasters',
+    description:
+      'Accuracy rank and score for a single address relative to all forecasters',
   })
   @Directive('@cacheControl(maxAge: 60)')
   async accountAccuracyRank(

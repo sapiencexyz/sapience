@@ -186,7 +186,9 @@ export async function calculatePositionPnL(
 
   for (const claimRecord of claims) {
     predictionIds.add(claimRecord.predictionId);
-    claimedPairs.add(`${claimRecord.predictionId}:${claimRecord.holder.toLowerCase()}`);
+    claimedPairs.add(
+      `${claimRecord.predictionId}:${claimRecord.holder.toLowerCase()}`
+    );
   }
 
   // Get all predictions to find original collaterals

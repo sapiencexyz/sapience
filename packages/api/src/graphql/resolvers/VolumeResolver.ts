@@ -8,7 +8,8 @@ interface VolumeRow {
 @Resolver()
 export class VolumeResolver {
   @Query(() => String, {
-    description: 'Total lifetime trading volume in wei for the given address across all prediction types',
+    description:
+      'Total lifetime trading volume in wei for the given address across all prediction types',
   })
   async accountTotalVolume(
     @Arg('address', () => String) address: string
