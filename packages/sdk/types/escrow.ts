@@ -236,29 +236,6 @@ export interface BidPayload {
   counterpartySessionKeyData?: string; // ZeroDev session approval (base64)
 }
 
-/**
- * Escrow burn request payload - bilateral exit before resolution
- */
-export interface BurnRequestPayload {
-  pickConfigId: string;
-  predictorTokenAmount: string;
-  counterpartyTokenAmount: string;
-  predictorHolder: string;
-  counterpartyHolder: string;
-  predictorPayout: string;
-  counterpartyPayout: string;
-  predictorNonce: number;
-  counterpartyNonce: number;
-  predictorDeadline: number;
-  counterpartyDeadline: number;
-  predictorSignature: string;
-  counterpartySignature: string;
-  chainId: number;
-  refCode?: string;
-  predictorSessionKeyData?: string;
-  counterpartySessionKeyData?: string;
-}
-
 // ----- Client to Server Messages -----
 
 export type ClientToServerMessage =
@@ -266,7 +243,6 @@ export type ClientToServerMessage =
   | { type: 'auction.subscribe'; payload: { auctionId: string } }
   | { type: 'auction.unsubscribe'; payload: { auctionId: string } }
   | { type: 'bid.submit'; payload: BidPayload }
-  | { type: 'burn.request'; payload: BurnRequestPayload }
   | { type: 'ping' };
 
 // ----- Server to Client Messages -----
@@ -323,14 +299,6 @@ export type ServerToClientMessage =
   | {
       type: 'auction.expired';
       payload: { auctionId: string; reason: string };
-    }
-  | {
-      type: 'burn.ack';
-      payload: {
-        burnId?: string;
-        transactionHash?: string;
-        error?: string;
-      };
     }
   | { type: 'pong' }
   | { type: 'error'; payload: { message: string; code?: string } };
