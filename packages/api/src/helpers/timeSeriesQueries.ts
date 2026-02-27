@@ -107,11 +107,14 @@ export async function queryAccountVolume(
 
   const rows = await prisma.$queryRaw<VolumeRow[]>`
     WITH buckets AS (
-      SELECT generate_series(
+      SELECT
+        EXTRACT(EPOCH FROM gs)::BIGINT AS bucket_epoch,
+        EXTRACT(EPOCH FROM gs + ${Prisma.raw(`'${pgStep}'::INTERVAL`)})::BIGINT AS next_epoch
+      FROM generate_series(
         DATE_TRUNC(${Prisma.raw(`'${pgTrunc}'`)}, TO_TIMESTAMP(${fromEpoch})),
         TO_TIMESTAMP(${toEpoch}),
         ${Prisma.raw(`'${pgStep}'::INTERVAL`)}
-      ) AS bucket_start
+      ) gs
     ),
     all_volumes AS (
       SELECT "mintedAt" AS created_ts,
@@ -123,7 +126,8 @@ export async function queryAccountVolume(
                ELSE 0 END
         AS vol
       FROM position
-      WHERE predictor = ${addr} OR counterparty = ${addr}
+      WHERE (predictor = ${addr} OR counterparty = ${addr})
+        AND "mintedAt" >= ${fromEpoch} AND "mintedAt" <= ${toEpoch}
       UNION ALL
       SELECT "onChainCreatedAt" AS created_ts,
         CASE WHEN predictor = ${addr}
@@ -134,21 +138,22 @@ export async function queryAccountVolume(
                ELSE 0 END
         AS vol
       FROM "Prediction"
-      WHERE predictor = ${addr} OR counterparty = ${addr}
+      WHERE (predictor = ${addr} OR counterparty = ${addr})
+        AND "onChainCreatedAt" >= ${fromEpoch} AND "onChainCreatedAt" <= ${toEpoch}
       UNION ALL
       SELECT "executedAt" AS created_ts,
         CAST(collateral AS DECIMAL) AS vol
       FROM secondary_trade
-      WHERE buyer = ${addr} OR seller = ${addr}
+      WHERE (buyer = ${addr} OR seller = ${addr})
+        AND "executedAt" >= ${fromEpoch} AND "executedAt" <= ${toEpoch}
     )
     SELECT
-      EXTRACT(EPOCH FROM b.bucket_start)::BIGINT AS timestamp,
+      b.bucket_epoch AS timestamp,
       COALESCE(SUM(v.vol), 0)::TEXT AS volume
     FROM buckets b
-    LEFT JOIN all_volumes v ON
-      DATE_TRUNC(${Prisma.raw(`'${pgTrunc}'`)}, TO_TIMESTAMP(v.created_ts)) = b.bucket_start
-    GROUP BY b.bucket_start
-    ORDER BY b.bucket_start
+    LEFT JOIN all_volumes v ON v.created_ts >= b.bucket_epoch AND v.created_ts < b.next_epoch
+    GROUP BY b.bucket_epoch
+    ORDER BY b.bucket_epoch
   `;
 
   return rows.map((row) => ({
@@ -174,11 +179,14 @@ export async function queryAccountPnl(
 
   const rows = await prisma.$queryRaw<PnlRow[]>`
     WITH buckets AS (
-      SELECT generate_series(
+      SELECT
+        EXTRACT(EPOCH FROM gs)::BIGINT AS bucket_epoch,
+        EXTRACT(EPOCH FROM gs + ${Prisma.raw(`'${pgStep}'::INTERVAL`)})::BIGINT AS next_epoch
+      FROM generate_series(
         DATE_TRUNC(${Prisma.raw(`'${pgTrunc}'`)}, TO_TIMESTAMP(${fromEpoch})),
         TO_TIMESTAMP(${toEpoch}),
         ${Prisma.raw(`'${pgStep}'::INTERVAL`)}
-      ) AS bucket_start
+      ) gs
     ),
     pnl_events AS (
       -- V2 Claims: account redeems settled prediction
@@ -192,6 +200,7 @@ export async function queryAccountPnl(
       FROM "Claim" cl
       JOIN "Prediction" p ON cl."predictionId" = p."predictionId"
       WHERE cl.holder = ${addr}
+        AND cl."redeemedAt" >= ${fromEpoch} AND cl."redeemedAt" <= ${toEpoch}
       UNION ALL
       -- V2 Closes: position settlement
       SELECT
@@ -207,7 +216,8 @@ export async function queryAccountPnl(
           ELSE 0
         END AS pnl
       FROM "Close" c
-      WHERE c."predictorHolder" = ${addr} OR c."counterpartyHolder" = ${addr}
+      WHERE (c."predictorHolder" = ${addr} OR c."counterpartyHolder" = ${addr})
+        AND c."burnedAt" >= ${fromEpoch} AND c."burnedAt" <= ${toEpoch}
       UNION ALL
       -- V1 Legacy settled positions
       SELECT
@@ -226,16 +236,16 @@ export async function queryAccountPnl(
       FROM position lp
       WHERE (lp.predictor = ${addr} OR lp.counterparty = ${addr})
         AND lp."settledAt" IS NOT NULL
+        AND lp."settledAt" >= ${fromEpoch} AND lp."settledAt" <= ${toEpoch}
     )
     SELECT
-      EXTRACT(EPOCH FROM b.bucket_start)::BIGINT AS timestamp,
+      b.bucket_epoch AS timestamp,
       COALESCE(SUM(e.pnl), 0)::TEXT AS pnl,
-      SUM(COALESCE(SUM(e.pnl), 0)) OVER (ORDER BY b.bucket_start)::TEXT AS cumulative_pnl
+      SUM(COALESCE(SUM(e.pnl), 0)) OVER (ORDER BY b.bucket_epoch)::TEXT AS cumulative_pnl
     FROM buckets b
-    LEFT JOIN pnl_events e ON
-      DATE_TRUNC(${Prisma.raw(`'${pgTrunc}'`)}, TO_TIMESTAMP(e.event_ts)) = b.bucket_start
-    GROUP BY b.bucket_start
-    ORDER BY b.bucket_start
+    LEFT JOIN pnl_events e ON e.event_ts >= b.bucket_epoch AND e.event_ts < b.next_epoch
+    GROUP BY b.bucket_epoch
+    ORDER BY b.bucket_epoch
   `;
 
   return rows.map((row) => ({
@@ -264,11 +274,13 @@ export async function queryAccountBalance(
 
   const rows = await prisma.$queryRaw<BalanceRow[]>`
     WITH buckets AS (
-      SELECT generate_series(
+      SELECT
+        EXTRACT(EPOCH FROM gs)::BIGINT AS bucket_epoch
+      FROM generate_series(
         DATE_TRUNC(${Prisma.raw(`'${pgTrunc}'`)}, TO_TIMESTAMP(${fromEpoch})),
         TO_TIMESTAMP(${toEpoch}),
         ${Prisma.raw(`'${pgStep}'::INTERVAL`)}
-      ) AS bucket_start
+      ) gs
     ),
     -- Materialize all positions for this account once
     all_deployed AS (
@@ -308,25 +320,25 @@ export async function queryAccountBalance(
       WHERE holder = ${addr}
     )
     SELECT
-      EXTRACT(EPOCH FROM b.bucket_start)::BIGINT AS timestamp,
+      b.bucket_epoch AS timestamp,
       COALESCE((
         SELECT SUM(d.collateral)
         FROM all_deployed d
-        WHERE d.created_ts <= EXTRACT(EPOCH FROM b.bucket_start)::BIGINT
-          AND (d.settled_ts IS NULL OR d.settled_ts > EXTRACT(EPOCH FROM b.bucket_start)::BIGINT)
+        WHERE d.created_ts <= b.bucket_epoch
+          AND (d.settled_ts IS NULL OR d.settled_ts > b.bucket_epoch)
       ), 0)::TEXT AS deployed_collateral,
       COALESCE((
         SELECT SUM(ac.claimable)
         FROM all_claimable ac
-        WHERE ac.settled_ts <= EXTRACT(EPOCH FROM b.bucket_start)::BIGINT
+        WHERE ac.settled_ts <= b.bucket_epoch
           AND NOT EXISTS (
             SELECT 1 FROM account_claims c
             WHERE c."predictionId" = ac."predictionId"
-              AND c."redeemedAt" <= EXTRACT(EPOCH FROM b.bucket_start)::BIGINT
+              AND c."redeemedAt" <= b.bucket_epoch
           )
       ), 0)::TEXT AS claimable_collateral
     FROM buckets b
-    ORDER BY b.bucket_start
+    ORDER BY b.bucket_epoch
   `;
 
   return rows.map((row) => ({
@@ -352,35 +364,40 @@ export async function queryProtocolVolume(
 
   const rows = await prisma.$queryRaw<VolumeRow[]>`
     WITH buckets AS (
-      SELECT generate_series(
+      SELECT
+        EXTRACT(EPOCH FROM gs)::BIGINT AS bucket_epoch,
+        EXTRACT(EPOCH FROM gs + ${Prisma.raw(`'${pgStep}'::INTERVAL`)})::BIGINT AS next_epoch
+      FROM generate_series(
         DATE_TRUNC(${Prisma.raw(`'${pgTrunc}'`)}, TO_TIMESTAMP(${fromEpoch})),
         TO_TIMESTAMP(${toEpoch}),
         ${Prisma.raw(`'${pgStep}'::INTERVAL`)}
-      ) AS bucket_start
+      ) gs
     ),
     all_volumes AS (
-      SELECT "mintedAt" AS created_ts, CAST("totalCollateral" AS DECIMAL) AS vol, "chainId"
+      SELECT "mintedAt" AS created_ts, CAST("totalCollateral" AS DECIMAL) AS vol
       FROM position
+      WHERE "chainId" = ${chainId}
+        AND "mintedAt" >= ${fromEpoch} AND "mintedAt" <= ${toEpoch}
       UNION ALL
       SELECT "onChainCreatedAt" AS created_ts,
-        CAST("predictorCollateral" AS DECIMAL) + CAST("counterpartyCollateral" AS DECIMAL) AS vol,
-        "chainId"
+        CAST("predictorCollateral" AS DECIMAL) + CAST("counterpartyCollateral" AS DECIMAL) AS vol
       FROM "Prediction"
+      WHERE "chainId" = ${chainId}
+        AND "onChainCreatedAt" >= ${fromEpoch} AND "onChainCreatedAt" <= ${toEpoch}
       UNION ALL
       SELECT "executedAt" AS created_ts,
-        CAST(collateral AS DECIMAL) AS vol,
-        "chainId"
+        CAST(collateral AS DECIMAL) AS vol
       FROM secondary_trade
+      WHERE "chainId" = ${chainId}
+        AND "executedAt" >= ${fromEpoch} AND "executedAt" <= ${toEpoch}
     )
     SELECT
-      EXTRACT(EPOCH FROM b.bucket_start)::BIGINT AS timestamp,
+      b.bucket_epoch AS timestamp,
       COALESCE(SUM(v.vol), 0)::TEXT AS volume
     FROM buckets b
-    LEFT JOIN all_volumes v ON
-      DATE_TRUNC(${Prisma.raw(`'${pgTrunc}'`)}, TO_TIMESTAMP(v.created_ts)) = b.bucket_start
-      AND v."chainId" = ${chainId}
-    GROUP BY b.bucket_start
-    ORDER BY b.bucket_start
+    LEFT JOIN all_volumes v ON v.created_ts >= b.bucket_epoch AND v.created_ts < b.next_epoch
+    GROUP BY b.bucket_epoch
+    ORDER BY b.bucket_epoch
   `;
 
   return rows.map((row) => ({

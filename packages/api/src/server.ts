@@ -56,8 +56,19 @@ const startServer = async () => {
   app.use(
     '/graphql',
     // Concurrency limiter — must be first to reject before any work
-    (_req: Request, res: Response, next: NextFunction) => {
+    (req: Request, res: Response, next: NextFunction) => {
       if (activeOperations >= maxConcurrent) {
+        const ip =
+          (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+          req.socket.remoteAddress ||
+          'unknown';
+        console.warn(
+          `[Server] 503 load shed: ${activeOperations}/${maxConcurrent} active, ip=${ip}, path=${req.path}`
+        );
+        Sentry.captureMessage(
+          `Load shedding: ${activeOperations} active operations (max ${maxConcurrent})`,
+          { level: 'warning', extra: { ip, path: req.path, activeOperations } }
+        );
         res.status(503).json({
           errors: [
             {

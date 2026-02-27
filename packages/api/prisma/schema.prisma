@@ -289,6 +289,9 @@ model LegacyPosition {
   @@index([predictor], map: "IDX_position_predictor")
   @@index([counterparty], map: "IDX_position_counterparty")
   @@index([chainId, marketAddress], map: "IDX_position_chain_market")
+  @@index([mintedAt], map: "IDX_position_minted_at")
+  @@index([settledAt], map: "IDX_position_settled_at")
+  @@index([status], map: "IDX_position_status")
   @@map("position")
 }
 
@@ -512,6 +515,10 @@ model Prediction {
   @@index([predictor], map: "IDX_prediction_predictor")
   @@index([counterparty], map: "IDX_prediction_counterparty")
   @@index([settled], map: "IDX_prediction_settled")
+  @@index([onChainCreatedAt], map: "IDX_prediction_created_at")
+  @@index([settledAt], map: "IDX_prediction_settled_at")
+  @@index([predictorToken], map: "IDX_prediction_predictor_token")
+  @@index([counterpartyToken], map: "IDX_prediction_counterparty_token")
 }
 
 // TODO: Rename Prisma model Picks → PickConfiguration (requires migration with @@map)
@@ -597,6 +604,7 @@ model Claim {
   @@index([chainId, marketAddress], map: "IDX_claim_chain_market")
   @@index([holder], map: "IDX_claim_holder")
   @@index([predictionId], map: "IDX_claim_prediction")
+  @@index([redeemedAt], map: "IDX_claim_redeemed_at")
 }
 
 /// Record of position closes (settled exits)
@@ -621,6 +629,7 @@ model Close {
   @@index([pickConfigId], map: "IDX_close_pick_config")
   @@index([predictorHolder], map: "IDX_close_predictor")
   @@index([counterpartyHolder], map: "IDX_close_counterparty")
+  @@index([burnedAt], map: "IDX_close_burned_at")
 }
 
 /// Indexer state for SecondaryMarketEscrow contract
@@ -654,5 +663,6 @@ model SecondaryTrade {
   @@index([seller], map: "IDX_secondary_trade_seller")
   @@index([buyer], map: "IDX_secondary_trade_buyer")
   @@index([token], map: "IDX_secondary_trade_token")
+  @@index([executedAt], map: "IDX_secondary_trade_executed_at")
   @@map("secondary_trade")
 }
