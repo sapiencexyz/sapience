@@ -555,6 +555,7 @@ model Pick {
   predictedOutcome    Int
 
   @@index([pickConfigId], map: "IDX_pick_config_id")
+  @@index([conditionId], map: "IDX_pick_condition_id")
 }
 
 /// Token balance tracking for positions
@@ -574,6 +575,7 @@ model Position {
   @@unique([chainId, tokenAddress, holder], map: "UQ_position_balance")
   @@index([holder], map: "IDX_position_balance_holder")
   @@index([pickConfigId], map: "IDX_position_balance_pick_config")
+  @@index([tokenAddress], map: "IDX_position_token_address")
 }
 
 /// Record of token claims (early exit via redeem)

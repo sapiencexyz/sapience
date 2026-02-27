@@ -1,11 +1,6 @@
 import prisma from '../../db';
 import { getProviderForChain, getBlockByTimestamp } from '../../utils/utils';
-import {
-  type PublicClient,
-  decodeEventLog,
-  type Log,
-  type Block,
-} from 'viem';
+import { type PublicClient, decodeEventLog, type Log, type Block } from 'viem';
 import Sentry from '../../instrument';
 import { IIndexer } from '../../interfaces';
 import { secondaryMarketEscrow } from '@sapience/sdk/contracts';
@@ -13,7 +8,8 @@ import { secondaryMarketEscrowAbi } from '@sapience/sdk/abis';
 
 const BLOCK_BATCH_SIZE = 100;
 const POLLING_INTERVAL_MS = 10_000;
-const ZERO_BYTES32 = '0x0000000000000000000000000000000000000000000000000000000000000000';
+const ZERO_BYTES32 =
+  '0x0000000000000000000000000000000000000000000000000000000000000000';
 
 interface TradeExecutedEvent {
   tradeHash: `0x${string}`;
@@ -79,7 +75,11 @@ class SecondaryMarketIndexer implements IIndexer {
       const startBlockNumber = Number(startBlock.number);
       const endBlockNumber = Number(endBlock.number);
 
-      for (let i = startBlockNumber; i <= endBlockNumber; i += BLOCK_BATCH_SIZE) {
+      for (
+        let i = startBlockNumber;
+        i <= endBlockNumber;
+        i += BLOCK_BATCH_SIZE
+      ) {
         const batchEnd = Math.min(i + BLOCK_BATCH_SIZE - 1, endBlockNumber);
         console.log(
           `[SecondaryMarketIndexer] Processing blocks ${i} to ${batchEnd}`
@@ -130,7 +130,9 @@ class SecondaryMarketIndexer implements IIndexer {
         `[SecondaryMarketIndexer] Found ${logs.length} logs in blocks ${fromBlock}-${toBlock}`
       );
 
-      const blockNumbers = [...new Set(logs.map((log) => Number(log.blockNumber)))];
+      const blockNumbers = [
+        ...new Set(logs.map((log) => Number(log.blockNumber))),
+      ];
       const blockPromises = blockNumbers.map((num) =>
         this.client.getBlock({ blockNumber: BigInt(num) })
       );
@@ -195,7 +197,10 @@ class SecondaryMarketIndexer implements IIndexer {
             `[SecondaryMarketIndexer] Starting from current block ${this.lastProcessedBlock}`
           );
         } catch (error) {
-          console.error('[SecondaryMarketIndexer] Error getting initial block:', error);
+          console.error(
+            '[SecondaryMarketIndexer] Error getting initial block:',
+            error
+          );
           this.lastProcessedBlock = 0n;
         }
       }
@@ -229,7 +234,10 @@ class SecondaryMarketIndexer implements IIndexer {
                 });
                 await this.processLog(log, block);
               } catch (error) {
-                console.error('[SecondaryMarketIndexer] Error processing log:', error);
+                console.error(
+                  '[SecondaryMarketIndexer] Error processing log:',
+                  error
+                );
                 Sentry.captureException(error);
               }
             }
@@ -289,7 +297,11 @@ class SecondaryMarketIndexer implements IIndexer {
 
       const eventName = decoded.eventName as unknown as string;
       if (eventName === 'TradeExecuted') {
-        await this.processTradeExecuted(decoded.args as unknown as TradeExecutedEvent, log, block);
+        await this.processTradeExecuted(
+          decoded.args as unknown as TradeExecutedEvent,
+          log,
+          block
+        );
       }
     } catch (error) {
       console.error('[SecondaryMarketIndexer] Error processing log:', error);
@@ -328,9 +340,7 @@ class SecondaryMarketIndexer implements IIndexer {
       update: {},
     });
 
-    console.log(
-      `[SecondaryMarketIndexer] Indexed trade ${tradeHashLower}`
-    );
+    console.log(`[SecondaryMarketIndexer] Indexed trade ${tradeHashLower}`);
   }
 }
 

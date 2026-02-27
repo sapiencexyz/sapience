@@ -140,16 +140,18 @@ export async function grantSponsorshipBudget(
     }
 
     // Send setBudget transaction
+    const chain = getChainForId(config.chainId);
+    const account = privateKeyToAccount(config.budgetManagerPrivateKey);
     const hash = await walletClient.writeContract({
       address: config.sponsorAddress,
       abi: SPONSOR_ABI,
       functionName: 'setBudget',
       args: [beneficiary, config.budgetPerUser!],
+      chain,
+      account,
     });
 
-    console.log(
-      `[sponsorship] setBudget tx sent for ${beneficiary}: ${hash}`
-    );
+    console.log(`[sponsorship] setBudget tx sent for ${beneficiary}: ${hash}`);
 
     // Wait for confirmation (fire-and-forget style — don't block the claim response)
     publicClient

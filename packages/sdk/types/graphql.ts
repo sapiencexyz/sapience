@@ -16,18 +16,12 @@ export type Scalars = {
   DateTimeISO: { input: any; output: any; }
 };
 
-export type AccuracyRankType = {
-  __typename?: 'AccuracyRankType';
+export type AccuracyRank = {
+  __typename?: 'AccuracyRank';
   accuracyScore: Scalars['Float']['output'];
-  attester: Scalars['String']['output'];
+  address: Scalars['String']['output'];
   rank?: Maybe<Scalars['Int']['output']>;
   totalForecasters: Scalars['Int']['output'];
-};
-
-export type AggregatedProfitEntryType = {
-  __typename?: 'AggregatedProfitEntryType';
-  owner: Scalars['String']['output'];
-  totalPnL: Scalars['Float']['output'];
 };
 
 export type Attestation = {
@@ -225,6 +219,13 @@ export type AttestationWhereUniqueInput = {
   uid?: InputMaybe<Scalars['String']['input']>;
 };
 
+export type BalanceDataPoint = {
+  __typename?: 'BalanceDataPoint';
+  claimableCollateral: Scalars['String']['output'];
+  deployedCollateral: Scalars['String']['output'];
+  timestamp: Scalars['String']['output'];
+};
+
 export type BoolFilter = {
   equals?: InputMaybe<Scalars['Boolean']['input']>;
   not?: InputMaybe<NestedBoolFilter>;
@@ -326,8 +327,8 @@ export type CategoryWhereUniqueInput = {
   slug?: InputMaybe<Scalars['String']['input']>;
 };
 
-export type ClaimType = {
-  __typename?: 'ClaimType';
+export type Claim = {
+  __typename?: 'Claim';
   chainId: Scalars['Int']['output'];
   collateralPaid: Scalars['String']['output'];
   holder: Scalars['String']['output'];
@@ -341,8 +342,8 @@ export type ClaimType = {
   txHash: Scalars['String']['output'];
 };
 
-export type CloseType = {
-  __typename?: 'CloseType';
+export type Close = {
+  __typename?: 'Close';
   burnedAt: Scalars['Int']['output'];
   chainId: Scalars['Int']['output'];
   counterpartyHolder: Scalars['String']['output'];
@@ -377,7 +378,7 @@ export type Condition = {
   id: Scalars['String']['output'];
   openInterest: Scalars['String']['output'];
   predictionCount: Scalars['Int']['output'];
-  predictions: Array<LegacyPrediction>;
+  predictions: Array<Prediction>;
   public: Scalars['Boolean']['output'];
   question: Scalars['String']['output'];
   resolvedToYes: Scalars['Boolean']['output'];
@@ -411,28 +412,18 @@ export type ConditionConditionGroupArgs = {
 
 
 export type ConditionPredictionsArgs = {
-  cursor?: InputMaybe<LegacyPredictionWhereUniqueInput>;
-  distinct?: InputMaybe<Array<LegacyPredictionScalarFieldEnum>>;
-  orderBy?: InputMaybe<Array<LegacyPredictionOrderByWithRelationInput>>;
-  skip?: InputMaybe<Scalars['Int']['input']>;
-  take?: InputMaybe<Scalars['Int']['input']>;
-  where?: InputMaybe<LegacyPredictionWhereInput>;
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
 };
 
 export type ConditionCount = {
   __typename?: 'ConditionCount';
   attestations: Scalars['Int']['output'];
-  predictions: Scalars['Int']['output'];
 };
 
 
 export type ConditionCountAttestationsArgs = {
   where?: InputMaybe<AttestationWhereInput>;
-};
-
-
-export type ConditionCountPredictionsArgs = {
-  where?: InputMaybe<LegacyPredictionWhereInput>;
 };
 
 export type ConditionGroup = {
@@ -663,12 +654,6 @@ export type ConditionWhereUniqueInput = {
   similarMarkets?: InputMaybe<StringNullableListFilter>;
 };
 
-export type DailyVolume = {
-  __typename?: 'DailyVolume';
-  timestamp: Scalars['String']['output'];
-  volume: Scalars['String']['output'];
-};
-
 export type DateTimeFilter = {
   equals?: InputMaybe<Scalars['DateTimeISO']['input']>;
   gt?: InputMaybe<Scalars['DateTimeISO']['input']>;
@@ -716,10 +701,10 @@ export type FloatNullableFilter = {
   notIn?: InputMaybe<Array<Scalars['Float']['input']>>;
 };
 
-export type ForecasterScoreType = {
-  __typename?: 'ForecasterScoreType';
+export type ForecasterScore = {
+  __typename?: 'ForecasterScore';
   accuracyScore: Scalars['Float']['output'];
-  attester: Scalars['String']['output'];
+  address: Scalars['String']['output'];
   numScored: Scalars['Int']['output'];
   numTimeWeighted: Scalars['Int']['output'];
   sumErrorSquared: Scalars['Float']['output'];
@@ -746,23 +731,6 @@ export type IntNullableFilter = {
   lte?: InputMaybe<Scalars['Int']['input']>;
   not?: InputMaybe<NestedIntNullableFilter>;
   notIn?: InputMaybe<Array<Scalars['Int']['input']>>;
-};
-
-export type LegacyCategorySummary = {
-  __typename?: 'LegacyCategorySummary';
-  slug: Scalars['String']['output'];
-};
-
-export type LegacyConditionSummary = {
-  __typename?: 'LegacyConditionSummary';
-  category?: Maybe<LegacyCategorySummary>;
-  endTime?: Maybe<Scalars['Int']['output']>;
-  id: Scalars['String']['output'];
-  question?: Maybe<Scalars['String']['output']>;
-  resolvedToYes: Scalars['Boolean']['output'];
-  resolver?: Maybe<Scalars['String']['output']>;
-  settled: Scalars['Boolean']['output'];
-  shortName?: Maybe<Scalars['String']['output']>;
 };
 
 /** Legacy position model (NFT-based, V1) */
@@ -841,27 +809,6 @@ export type LegacyPositionStatus =
   | 'active'
   | 'consolidated'
   | 'settled';
-
-export type LegacyPositionType = {
-  __typename?: 'LegacyPositionType';
-  chainId: Scalars['Int']['output'];
-  counterparty: Scalars['String']['output'];
-  counterpartyCollateral?: Maybe<Scalars['String']['output']>;
-  counterpartyNftTokenId: Scalars['String']['output'];
-  endsAt?: Maybe<Scalars['Int']['output']>;
-  id: Scalars['Int']['output'];
-  marketAddress: Scalars['String']['output'];
-  mintedAt: Scalars['Int']['output'];
-  predictions: Array<LegacyPredictionType>;
-  predictor: Scalars['String']['output'];
-  predictorCollateral?: Maybe<Scalars['String']['output']>;
-  predictorNftTokenId: Scalars['String']['output'];
-  predictorWon?: Maybe<Scalars['Boolean']['output']>;
-  refCode?: Maybe<Scalars['String']['output']>;
-  settledAt?: Maybe<Scalars['Int']['output']>;
-  status: Scalars['String']['output'];
-  totalCollateral: Scalars['String']['output'];
-};
 
 export type LegacyPositionWhereInput = {
   AND?: InputMaybe<Array<LegacyPositionWhereInput>>;
@@ -952,14 +899,6 @@ export type LegacyPredictionScalarFieldEnum =
   | 'limitOrderId'
   | 'outcomeYes'
   | 'positionId';
-
-export type LegacyPredictionType = {
-  __typename?: 'LegacyPredictionType';
-  chainId?: Maybe<Scalars['Int']['output']>;
-  condition?: Maybe<LegacyConditionSummary>;
-  conditionId: Scalars['String']['output'];
-  outcomeYes: Scalars['Boolean']['output'];
-};
 
 export type LegacyPredictionWhereInput = {
   AND?: InputMaybe<Array<LegacyPredictionWhereInput>>;
@@ -1207,8 +1146,8 @@ export type NullsOrder =
   | 'first'
   | 'last';
 
-export type PickType = {
-  __typename?: 'PickType';
+export type Pick = {
+  __typename?: 'Pick';
   conditionId: Scalars['String']['output'];
   conditionResolver: Scalars['String']['output'];
   id: Scalars['Int']['output'];
@@ -1216,8 +1155,8 @@ export type PickType = {
   predictedOutcome: Scalars['Int']['output'];
 };
 
-export type PicksType = {
-  __typename?: 'PicksType';
+export type PickConfiguration = {
+  __typename?: 'PickConfiguration';
   chainId: Scalars['Int']['output'];
   claimedCounterpartyCollateral: Scalars['String']['output'];
   claimedPredictorCollateral: Scalars['String']['output'];
@@ -1225,7 +1164,7 @@ export type PicksType = {
   endsAt?: Maybe<Scalars['Int']['output']>;
   id: Scalars['String']['output'];
   marketAddress: Scalars['String']['output'];
-  picks: Array<PickType>;
+  picks: Array<Pick>;
   predictionId?: Maybe<Scalars['String']['output']>;
   predictorToken?: Maybe<Scalars['String']['output']>;
   resolved: Scalars['Boolean']['output'];
@@ -1235,20 +1174,27 @@ export type PicksType = {
   totalPredictorCollateral: Scalars['String']['output'];
 };
 
-export type PositionType = {
-  __typename?: 'PositionType';
+export type PnlDataPoint = {
+  __typename?: 'PnlDataPoint';
+  cumulativePnl: Scalars['String']['output'];
+  pnl: Scalars['String']['output'];
+  timestamp: Scalars['String']['output'];
+};
+
+export type Position = {
+  __typename?: 'Position';
   balance: Scalars['String']['output'];
   chainId: Scalars['Int']['output'];
   holder: Scalars['String']['output'];
   id: Scalars['Int']['output'];
   isPredictorToken: Scalars['Boolean']['output'];
-  pickConfig?: Maybe<PicksType>;
+  pickConfig?: Maybe<PickConfiguration>;
   pickConfigId: Scalars['String']['output'];
   tokenAddress: Scalars['String']['output'];
 };
 
-export type PredictionType = {
-  __typename?: 'PredictionType';
+export type Prediction = {
+  __typename?: 'Prediction';
   chainId: Scalars['Int']['output'];
   collateralDeposited?: Maybe<Scalars['String']['output']>;
   collateralDepositedAt?: Maybe<Scalars['Int']['output']>;
@@ -1260,6 +1206,7 @@ export type PredictionType = {
   createdAt: Scalars['String']['output'];
   id: Scalars['Int']['output'];
   marketAddress: Scalars['String']['output'];
+  pickConfig?: Maybe<PickConfiguration>;
   predictionId: Scalars['String']['output'];
   predictor: Scalars['String']['output'];
   predictorClaimable?: Maybe<Scalars['String']['output']>;
@@ -1272,12 +1219,18 @@ export type PredictionType = {
   settledAt?: Maybe<Scalars['Int']['output']>;
 };
 
-export type ProfitRankType = {
-  __typename?: 'ProfitRankType';
-  owner: Scalars['String']['output'];
+export type ProfitEntry = {
+  __typename?: 'ProfitEntry';
+  address: Scalars['String']['output'];
+  totalPnL: Scalars['String']['output'];
+};
+
+export type ProfitRank = {
+  __typename?: 'ProfitRank';
+  address: Scalars['String']['output'];
   rank?: Maybe<Scalars['Int']['output']>;
   totalParticipants: Scalars['Int']['output'];
-  totalPnL: Scalars['Float']['output'];
+  totalPnL: Scalars['String']['output'];
 };
 
 export type ProtocolStat = {
@@ -1299,45 +1252,86 @@ export type ProtocolStat = {
 
 export type Query = {
   __typename?: 'Query';
-  accuracyRankByAddress: AccuracyRankType;
-  allTimeProfitLeaderboard: Array<AggregatedProfitEntryType>;
+  accountAccuracy?: Maybe<ForecasterScore>;
+  accountAccuracyRank: AccuracyRank;
+  accountBalance: Array<BalanceDataPoint>;
+  accountPnl: Array<PnlDataPoint>;
+  accountProfitRank: ProfitRank;
+  accountTotalVolume: Scalars['String']['output'];
+  accountVolume: Array<VolumeDataPoint>;
+  accuracyLeaderboard: Array<ForecasterScore>;
   attestations: Array<Attestation>;
   categories: Array<Category>;
-  claims: Array<ClaimType>;
-  closes: Array<CloseType>;
+  claims: Array<Claim>;
+  closes: Array<Close>;
   condition?: Maybe<Condition>;
   conditionGroup?: Maybe<ConditionGroup>;
   conditionGroups: Array<ConditionGroup>;
   conditions: Array<Condition>;
-  dailyVolumes: Array<DailyVolume>;
-  forecasterScore?: Maybe<ForecasterScoreType>;
-  legacyPositions: Array<LegacyPositionType>;
-  legacyPositionsByConditionId: Array<LegacyPositionType>;
-  legacyPositionsCount: Scalars['Int']['output'];
-  pickConfiguration?: Maybe<PicksType>;
-  pickConfigurations: Array<PicksType>;
-  positions: Array<PositionType>;
-  prediction?: Maybe<PredictionType>;
-  predictions: Array<PredictionType>;
-  predictionsCount: Scalars['Int']['output'];
-  profitRankByAddress: ProfitRankType;
+  pickConfiguration?: Maybe<PickConfiguration>;
+  pickConfigurations: Array<PickConfiguration>;
+  positions: Array<Position>;
+  prediction?: Maybe<Prediction>;
+  predictionCount: Scalars['Int']['output'];
+  predictions: Array<Prediction>;
+  profitLeaderboard: Array<ProfitEntry>;
   protocolStats: Array<ProtocolStat>;
-  questionsSorted: Array<Question>;
-  /** Returns the most recently created legacy positions globally, ordered by mintedAt descending. */
-  recentLegacyPositions: Array<LegacyPositionType>;
-  secondaryTrade?: Maybe<SecondaryTradeType>;
-  secondaryTrades: Array<SecondaryTradeType>;
-  secondaryTradesByAddress: Array<SecondaryTradeType>;
-  secondaryTradesCount: Scalars['Int']['output'];
-  topForecasters: Array<ForecasterScoreType>;
-  tradingVolumeByAddress: Scalars['String']['output'];
+  protocolVolume: Array<VolumeDataPoint>;
+  questions: Array<Question>;
+  trade?: Maybe<Trade>;
+  tradeCount: Scalars['Int']['output'];
+  trades: Array<Trade>;
   user?: Maybe<User>;
   users: Array<User>;
 };
 
 
-export type QueryAccuracyRankByAddressArgs = {
-  attester: Scalars['String']['input'];
+export type QueryAccountAccuracyArgs = {
+  address: Scalars['String']['input'];
+};
+
+
+export type QueryAccountAccuracyRankArgs = {
+  address: Scalars['String']['input'];
+};
+
+
+export type QueryAccountBalanceArgs = {
+  address: Scalars['String']['input'];
+  from?: InputMaybe<Scalars['DateTimeISO']['input']>;
+  interval: TimeInterval;
+  to?: InputMaybe<Scalars['DateTimeISO']['input']>;
+};
+
+
+export type QueryAccountPnlArgs = {
+  address: Scalars['String']['input'];
+  from?: InputMaybe<Scalars['DateTimeISO']['input']>;
+  interval: TimeInterval;
+  to?: InputMaybe<Scalars['DateTimeISO']['input']>;
+};
+
+
+export type QueryAccountProfitRankArgs = {
+  address: Scalars['String']['input'];
+};
+
+
+export type QueryAccountTotalVolumeArgs = {
+  address: Scalars['String']['input'];
+};
+
+
+export type QueryAccountVolumeArgs = {
+  address: Scalars['String']['input'];
+  from?: InputMaybe<Scalars['DateTimeISO']['input']>;
+  interval: TimeInterval;
+  to?: InputMaybe<Scalars['DateTimeISO']['input']>;
+};
+
+
+export type QueryAccuracyLeaderboardArgs = {
+  limit?: Scalars['Int']['input'];
 };
 
 
@@ -1409,41 +1403,6 @@ export type QueryConditionsArgs = {
 };
 
 
-export type QueryForecasterScoreArgs = {
-  attester: Scalars['String']['input'];
-};
-
-
-export type QueryLegacyPositionsArgs = {
-  address?: InputMaybe<Scalars['String']['input']>;
-  chainId?: InputMaybe<Scalars['Int']['input']>;
-  endsAtGte?: InputMaybe<Scalars['Int']['input']>;
-  marketAddress?: InputMaybe<Scalars['String']['input']>;
-  nftTokenId?: InputMaybe<Scalars['String']['input']>;
-  orderBy?: InputMaybe<Scalars['String']['input']>;
-  orderDirection?: InputMaybe<Scalars['String']['input']>;
-  skip?: Scalars['Int']['input'];
-  status?: InputMaybe<Scalars['String']['input']>;
-  take?: Scalars['Int']['input'];
-};
-
-
-export type QueryLegacyPositionsByConditionIdArgs = {
-  chainId?: InputMaybe<Scalars['Int']['input']>;
-  conditionId: Scalars['String']['input'];
-  endsAtGte?: InputMaybe<Scalars['Int']['input']>;
-  skip?: Scalars['Int']['input'];
-  status?: InputMaybe<Scalars['String']['input']>;
-  take?: Scalars['Int']['input'];
-};
-
-
-export type QueryLegacyPositionsCountArgs = {
-  address: Scalars['String']['input'];
-  chainId?: InputMaybe<Scalars['Int']['input']>;
-};
-
-
 export type QueryPickConfigurationArgs = {
   id: Scalars['String']['input'];
 };
@@ -1469,7 +1428,13 @@ export type QueryPositionsArgs = {
 
 
 export type QueryPredictionArgs = {
-  predictionId: Scalars['String']['input'];
+  id: Scalars['String']['input'];
+};
+
+
+export type QueryPredictionCountArgs = {
+  address: Scalars['String']['input'];
+  chainId?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -1485,62 +1450,38 @@ export type QueryPredictionsArgs = {
 };
 
 
-export type QueryPredictionsCountArgs = {
-  address: Scalars['String']['input'];
-  chainId?: InputMaybe<Scalars['Int']['input']>;
+export type QueryProfitLeaderboardArgs = {
+  limit?: Scalars['Int']['input'];
+  skip?: Scalars['Int']['input'];
 };
 
 
-export type QueryProfitRankByAddressArgs = {
-  owner: Scalars['String']['input'];
+export type QueryProtocolVolumeArgs = {
+  from?: InputMaybe<Scalars['DateTimeISO']['input']>;
+  interval: TimeInterval;
+  to?: InputMaybe<Scalars['DateTimeISO']['input']>;
 };
 
 
-export type QueryQuestionsSortedArgs = {
+export type QueryQuestionsArgs = {
   categorySlugs?: InputMaybe<Array<Scalars['String']['input']>>;
   chainId?: InputMaybe<Scalars['Int']['input']>;
   minEndTime?: InputMaybe<Scalars['Int']['input']>;
   resolutionStatus?: InputMaybe<Scalars['String']['input']>;
   search?: InputMaybe<Scalars['String']['input']>;
-  skip: Scalars['Int']['input'];
-  sortDirection: Scalars['String']['input'];
+  skip?: Scalars['Int']['input'];
+  sortDirection?: Scalars['String']['input'];
   sortField?: InputMaybe<Scalars['String']['input']>;
-  take: Scalars['Int']['input'];
-};
-
-
-export type QueryRecentLegacyPositionsArgs = {
-  chainId?: InputMaybe<Scalars['Int']['input']>;
-  skip?: Scalars['Int']['input'];
-  status?: InputMaybe<Scalars['String']['input']>;
   take?: Scalars['Int']['input'];
 };
 
 
-export type QuerySecondaryTradeArgs = {
-  tradeHash: Scalars['String']['input'];
+export type QueryTradeArgs = {
+  id: Scalars['String']['input'];
 };
 
 
-export type QuerySecondaryTradesArgs = {
-  buyer?: InputMaybe<Scalars['String']['input']>;
-  chainId?: InputMaybe<Scalars['Int']['input']>;
-  seller?: InputMaybe<Scalars['String']['input']>;
-  skip?: Scalars['Int']['input'];
-  take?: Scalars['Int']['input'];
-  token?: InputMaybe<Scalars['String']['input']>;
-};
-
-
-export type QuerySecondaryTradesByAddressArgs = {
-  address: Scalars['String']['input'];
-  chainId?: InputMaybe<Scalars['Int']['input']>;
-  skip?: Scalars['Int']['input'];
-  take?: Scalars['Int']['input'];
-};
-
-
-export type QuerySecondaryTradesCountArgs = {
+export type QueryTradeCountArgs = {
   buyer?: InputMaybe<Scalars['String']['input']>;
   chainId?: InputMaybe<Scalars['Int']['input']>;
   seller?: InputMaybe<Scalars['String']['input']>;
@@ -1548,13 +1489,13 @@ export type QuerySecondaryTradesCountArgs = {
 };
 
 
-export type QueryTopForecastersArgs = {
-  limit?: Scalars['Int']['input'];
-};
-
-
-export type QueryTradingVolumeByAddressArgs = {
-  address: Scalars['String']['input'];
+export type QueryTradesArgs = {
+  buyer?: InputMaybe<Scalars['String']['input']>;
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  seller?: InputMaybe<Scalars['String']['input']>;
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
+  token?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -1653,23 +1594,6 @@ export type ReferralCodeWhereInput = {
   updatedAt?: InputMaybe<DateTimeFilter>;
 };
 
-export type SecondaryTradeType = {
-  __typename?: 'SecondaryTradeType';
-  blockNumber: Scalars['Int']['output'];
-  buyer: Scalars['String']['output'];
-  chainId: Scalars['Int']['output'];
-  collateral: Scalars['String']['output'];
-  executedAt: Scalars['Int']['output'];
-  id: Scalars['Int']['output'];
-  price: Scalars['String']['output'];
-  refCode?: Maybe<Scalars['String']['output']>;
-  seller: Scalars['String']['output'];
-  token: Scalars['String']['output'];
-  tokenAmount: Scalars['String']['output'];
-  tradeHash: Scalars['String']['output'];
-  txHash: Scalars['String']['output'];
-};
-
 export type SortOrder =
   | 'asc'
   | 'desc';
@@ -1715,6 +1639,29 @@ export type StringNullableListFilter = {
   hasEvery?: InputMaybe<Array<Scalars['String']['input']>>;
   hasSome?: InputMaybe<Array<Scalars['String']['input']>>;
   isEmpty?: InputMaybe<Scalars['Boolean']['input']>;
+};
+
+export type TimeInterval =
+  | 'DAY'
+  | 'HOUR'
+  | 'MONTH'
+  | 'WEEK';
+
+export type Trade = {
+  __typename?: 'Trade';
+  blockNumber: Scalars['Int']['output'];
+  buyer: Scalars['String']['output'];
+  chainId: Scalars['Int']['output'];
+  collateral: Scalars['String']['output'];
+  executedAt: Scalars['Int']['output'];
+  id: Scalars['Int']['output'];
+  price: Scalars['String']['output'];
+  refCode?: Maybe<Scalars['String']['output']>;
+  seller: Scalars['String']['output'];
+  token: Scalars['String']['output'];
+  tokenAmount: Scalars['String']['output'];
+  tradeHash: Scalars['String']['output'];
+  txHash: Scalars['String']['output'];
 };
 
 /**
@@ -1856,4 +1803,10 @@ export type UserWhereUniqueInput = {
   referredByCodeId?: InputMaybe<IntNullableFilter>;
   referredById?: InputMaybe<IntNullableFilter>;
   updatedAt?: InputMaybe<DateTimeFilter>;
+};
+
+export type VolumeDataPoint = {
+  __typename?: 'VolumeDataPoint';
+  timestamp: Scalars['String']['output'];
+  volume: Scalars['String']['output'];
 };

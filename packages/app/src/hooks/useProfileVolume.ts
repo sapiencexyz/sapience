@@ -6,7 +6,7 @@ import { formatUnits } from 'viem';
 
 const TRADING_VOLUME_QUERY = /* GraphQL */ `
   query TradingVolume($address: String!) {
-    tradingVolumeByAddress(address: $address)
+    accountTotalVolume(address: $address)
   }
 `;
 
@@ -20,10 +20,10 @@ export function useProfileVolume(address?: string) {
     refetchOnReconnect: false,
     queryFn: async () => {
       const resp = await graphqlRequest<{
-        tradingVolumeByAddress: string;
+        accountTotalVolume: string;
       }>(TRADING_VOLUME_QUERY, { address: address?.toLowerCase() });
 
-      const volumeWei = BigInt(resp?.tradingVolumeByAddress || '0');
+      const volumeWei = BigInt(resp?.accountTotalVolume || '0');
       const value = Number(formatUnits(volumeWei, 18));
 
       return {

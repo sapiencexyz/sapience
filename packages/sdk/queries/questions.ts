@@ -11,8 +11,8 @@ export interface QuestionType {
   condition?: ConditionType | null;
 }
 
-const GET_QUESTIONS_SORTED = /* GraphQL */ `
-  query QuestionsSorted(
+const GET_QUESTIONS = /* GraphQL */ `
+  query Questions(
     $take: Int!
     $skip: Int!
     $chainId: Int
@@ -23,7 +23,7 @@ const GET_QUESTIONS_SORTED = /* GraphQL */ `
     $minEndTime: Int
     $resolutionStatus: String
   ) {
-    questionsSorted(
+    questions(
       take: $take
       skip: $skip
       chainId: $chainId
@@ -114,7 +114,7 @@ export async function fetchQuestionsSorted(
   params: FetchQuestionsSortedParams
 ): Promise<QuestionType[]> {
   type QuestionsQueryResult = {
-    questionsSorted: QuestionType[];
+    questions: QuestionType[];
   };
   const variables = {
     take: params.take,
@@ -129,9 +129,9 @@ export async function fetchQuestionsSorted(
   };
 
   const data = await graphqlRequest<QuestionsQueryResult>(
-    GET_QUESTIONS_SORTED,
+    GET_QUESTIONS,
     variables
   );
 
-  return data.questionsSorted ?? [];
+  return data.questions ?? [];
 }

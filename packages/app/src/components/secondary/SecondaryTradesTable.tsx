@@ -69,7 +69,7 @@ export default function SecondaryTradesTable({
           const role = isSeller ? 'Seller' : 'Buyer';
           const amount = parseFloat(formatEther(BigInt(trade.tokenAmount)));
           const price = parseFloat(formatEther(BigInt(trade.price)));
-          const date = new Date(trade.timestamp * 1000);
+          const date = new Date(trade.executedAt * 1000);
 
           return (
             <TableRow key={trade.tradeHash}>
@@ -92,13 +92,13 @@ export default function SecondaryTradesTable({
               </TableCell>
               <TableCell>
                 <a
-                  href={getExplorerTxUrl(trade.chainId, trade.transactionHash)}
+                  href={getExplorerTxUrl(trade.chainId, trade.txHash)}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="font-mono text-xs text-blue-500 hover:underline"
                 >
-                  {trade.transactionHash.slice(0, 6)}…
-                  {trade.transactionHash.slice(-4)}
+                  {trade.txHash.slice(0, 6)}…
+                  {trade.txHash.slice(-4)}
                 </a>
               </TableCell>
             </TableRow>

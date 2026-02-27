@@ -55,11 +55,11 @@ const TEST_QUERIES = {
     body: JSON.stringify({
       query: `
         query {
-          dailyVolumes {
+          protocolStats {
             timestamp
-            volume
+            dailyVolume
           }
-          topForecasters(limit: 10) {
+          accuracyLeaderboard(limit: 10) {
             attester
             accuracyScore
           }
@@ -118,12 +118,16 @@ async function main() {
 
   if (preCheck.status === 402) {
     console.error('\n⚠️  ERROR: Rate limiter already exhausted!');
-    console.error('The free tier (200 req/min) is already used up from a previous test run.');
+    console.error(
+      'The free tier (200 req/min) is already used up from a previous test run.'
+    );
     console.error('\nPlease RESTART the API server to reset the rate limiter:');
     console.error('  1. Stop the API server (Ctrl+C)');
     console.error('  2. Run: pnpm dev:service');
     console.error('  3. Wait for it to start, then run this test again\n');
-    console.error('Alternatively, wait 60 seconds for the rate limit window to reset.\n');
+    console.error(
+      'Alternatively, wait 60 seconds for the rate limit window to reset.\n'
+    );
     process.exit(1);
   }
 
@@ -131,7 +135,9 @@ async function main() {
 
   // Step 0: Test complexity-based pricing (within free tier)
   console.log('--- Step 0: Testing complexity-based pricing ---');
-  console.log('Making 3 test requests to verify dynamic pricing based on query complexity:\n');
+  console.log(
+    'Making 3 test requests to verify dynamic pricing based on query complexity:\n'
+  );
 
   for (const [, queryConfig] of Object.entries(TEST_QUERIES)) {
     const testResponse = await fetch(`${API_URL}${ENDPOINT}`, {
@@ -145,7 +151,9 @@ async function main() {
     if (testResponse.status === 200) {
       console.log(`✓ ${queryConfig.name}`);
       console.log(`  Status: 200 OK (within free tier)`);
-      console.log(`  Expected price when payment required: $${Number(queryConfig.expectedPrice) / 1000000} (${queryConfig.expectedPrice} USDC)\n`);
+      console.log(
+        `  Expected price when payment required: $${Number(queryConfig.expectedPrice) / 1000000} (${queryConfig.expectedPrice} USDC)\n`
+      );
     } else {
       console.error(`✗ ${queryConfig.name}`);
       console.error(`  Expected 200, got ${testResponse.status}\n`);
@@ -172,7 +180,9 @@ async function main() {
       process.exit(1);
     }
     if (i % 50 === 0) {
-      console.log(`  ${i + 3}/200 free requests completed (${i}/${remainingFreeRequests} in this step)`);
+      console.log(
+        `  ${i + 3}/200 free requests completed (${i}/${remainingFreeRequests} in this step)`
+      );
     }
   }
   console.log(`Free tier exhausted (200/200 total)\n`);
@@ -211,9 +221,7 @@ async function main() {
   }
 
   console.log('Payment requirements received:');
-  console.log(
-    `  Version: ${paymentRequired.x402Version}`
-  );
+  console.log(`  Version: ${paymentRequired.x402Version}`);
   if (paymentRequired.accepts?.length > 0) {
     const req = paymentRequired.accepts[0];
     console.log(`  Network: ${req.network}`);
@@ -231,7 +239,9 @@ async function main() {
   const evmSigner = toClientEvmSigner({
     address: account.address,
     signTypedData: (message) =>
-      walletClient.signTypedData(message as Parameters<typeof walletClient.signTypedData>[0]),
+      walletClient.signTypedData(
+        message as Parameters<typeof walletClient.signTypedData>[0]
+      ),
   });
 
   const client = new x402Client();
@@ -278,7 +288,9 @@ async function main() {
   console.log('\n✓ x402 payment flow completed successfully!');
 
   // Step 5: Test complexity-based pricing with actual payments
-  console.log('\n--- Step 5: Testing complexity-based pricing with different queries ---');
+  console.log(
+    '\n--- Step 5: Testing complexity-based pricing with different queries ---'
+  );
 
   for (const [tier, queryConfig] of Object.entries(TEST_QUERIES)) {
     console.log(`\nTesting ${tier} tier: ${queryConfig.name}`);
@@ -301,7 +313,9 @@ async function main() {
         const actualPrice = pricing.accepts[0].amount;
         const priceUSD = Number(actualPrice) / 1000000;
 
-        console.log(`  Expected price: $${Number(queryConfig.expectedPrice) / 1000000} (${queryConfig.expectedPrice} USDC)`);
+        console.log(
+          `  Expected price: $${Number(queryConfig.expectedPrice) / 1000000} (${queryConfig.expectedPrice} USDC)`
+        );
         console.log(`  Actual price:   $${priceUSD} (${actualPrice} USDC)`);
 
         if (actualPrice === queryConfig.expectedPrice) {
@@ -312,7 +326,8 @@ async function main() {
 
         // Sign and pay
         const paymentPayload = await httpClient.createPaymentPayload(pricing);
-        const paymentHeaders = httpClient.encodePaymentSignatureHeader(paymentPayload);
+        const paymentHeaders =
+          httpClient.encodePaymentSignatureHeader(paymentPayload);
 
         const paidResponse = await fetch(`${API_URL}${ENDPOINT}`, {
           method: 'POST',

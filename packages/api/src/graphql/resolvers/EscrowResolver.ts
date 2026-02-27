@@ -1,13 +1,14 @@
 import { Arg, Field, Int, ObjectType, Query, Resolver } from 'type-graphql';
 import { Prisma } from '../../../generated/prisma';
 import prisma from '../../db';
+import { batchLoadPickConfigs } from '../helpers/batchLoadPickConfigs';
 
 // ============================================================================
 // GraphQL Object Types
 // ============================================================================
 
-@ObjectType()
-class PickType {
+@ObjectType('Pick')
+export class PickType {
   @Field(() => Int)
   id!: number;
 
@@ -24,8 +25,8 @@ class PickType {
   predictedOutcome!: number;
 }
 
-@ObjectType()
-class PickConfigurationType {
+@ObjectType('PickConfiguration')
+export class PickConfigurationType {
   @Field(() => String)
   id!: string;
 
@@ -72,8 +73,8 @@ class PickConfigurationType {
   predictionId?: string | null;
 }
 
-@ObjectType()
-class PredictionType {
+@ObjectType('Prediction')
+export class PredictionType {
   @Field(() => Int)
   id!: number;
 
@@ -141,7 +142,7 @@ class PredictionType {
   pickConfig?: PickConfigurationType | null;
 }
 
-@ObjectType()
+@ObjectType('Position')
 class PositionType {
   @Field(() => Int)
   id!: number;
@@ -168,7 +169,7 @@ class PositionType {
   pickConfig?: PickConfigurationType | null;
 }
 
-@ObjectType()
+@ObjectType('Close')
 class CloseType {
   @Field(() => Int)
   id!: number;
@@ -210,7 +211,7 @@ class CloseType {
   refCode?: string | null;
 }
 
-@ObjectType()
+@ObjectType('Claim')
 class ClaimType {
   @Field(() => Int)
   id!: number;
@@ -257,7 +258,7 @@ export class EscrowResolver {
   // -------------------------------------------------------------------------
 
   @Query(() => Int)
-  async predictionsCount(
+  async predictionCount(
     @Arg('address', () => String) address: string,
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number
   ): Promise<number> {
@@ -283,6 +284,7 @@ export class EscrowResolver {
     @Arg('orderDirection', () => String, { nullable: true })
     orderDirection?: string
   ): Promise<PredictionType[]> {
+    const cappedTake = Math.max(1, Math.min(take, 100));
     const addr = address?.toLowerCase();
 
     const where: Prisma.PredictionWhereInput = {};
@@ -294,7 +296,12 @@ export class EscrowResolver {
 
     if (conditionId) {
       const matchingPicks = await prisma.pick.findMany({
-        where: { conditionId: { equals: conditionId.toLowerCase(), mode: 'insensitive' } },
+        where: {
+          conditionId: {
+            equals: conditionId.toLowerCase(),
+            mode: 'insensitive',
+          },
+        },
         select: { pickConfigId: true },
         distinct: ['pickConfigId'],
       });
@@ -346,7 +353,7 @@ export class EscrowResolver {
     const rows = await prisma.prediction.findMany({
       where,
       orderBy: orderByClause,
-      take,
+      take: cappedTake,
       skip,
     });
 
@@ -357,49 +364,9 @@ export class EscrowResolver {
       if (r.counterpartyToken) allTokenAddresses.add(r.counterpartyToken);
     }
 
-    const tokenToPickConfig = new Map<string, PickConfigurationType>();
-    if (allTokenAddresses.size > 0) {
-      const positions = await prisma.position.findMany({
-        where: {
-          tokenAddress: { in: Array.from(allTokenAddresses) },
-        },
-        distinct: ['pickConfigId'],
-        include: {
-          pickConfiguration: {
-            include: { picks: true },
-          },
-        },
-      });
-
-      for (const pos of positions) {
-        if (pos.pickConfiguration) {
-          const pc = pos.pickConfiguration;
-          const mapped: PickConfigurationType = {
-            id: pc.id,
-            chainId: pc.chainId,
-            marketAddress: pc.marketAddress,
-            totalPredictorCollateral: pc.totalPredictorCollateral,
-            totalCounterpartyCollateral: pc.totalCounterpartyCollateral,
-            claimedPredictorCollateral: pc.claimedPredictorCollateral,
-            claimedCounterpartyCollateral: pc.claimedCounterpartyCollateral,
-            resolved: pc.resolved,
-            result: pc.result,
-            resolvedAt: pc.resolvedAt ?? null,
-            predictorToken: pc.predictorToken ?? null,
-            counterpartyToken: pc.counterpartyToken ?? null,
-            endsAt: pc.endsAt ?? null,
-            picks: pc.picks.map((p) => ({
-              id: p.id,
-              pickConfigId: p.pickConfigId,
-              conditionResolver: p.conditionResolver,
-              conditionId: p.conditionId,
-              predictedOutcome: p.predictedOutcome,
-            })),
-          };
-          tokenToPickConfig.set(pos.tokenAddress, mapped);
-        }
-      }
-    }
+    const tokenToPickConfig = await batchLoadPickConfigs(
+      Array.from(allTokenAddresses)
+    );
 
     return rows.map((r) => ({
       id: r.id,
@@ -432,9 +399,9 @@ export class EscrowResolver {
 
   @Query(() => PredictionType, { nullable: true })
   async prediction(
-    @Arg('predictionId', () => String) predictionId: string
+    @Arg('id', () => String) id: string
   ): Promise<PredictionType | null> {
-    const predictionIdLower = predictionId.toLowerCase();
+    const predictionIdLower = id.toLowerCase();
 
     const r = await prisma.prediction.findUnique({
       where: { predictionId: predictionIdLower },
@@ -523,6 +490,7 @@ export class EscrowResolver {
     @Arg('resolved', () => Boolean, { nullable: true }) resolved?: boolean,
     @Arg('result', () => String, { nullable: true }) result?: string
   ): Promise<PickConfigurationType[]> {
+    const cappedTake = Math.max(1, Math.min(take, 100));
     const where: Prisma.PicksWhereInput = {};
 
     if (chainId !== undefined && chainId !== null) {
@@ -538,7 +506,7 @@ export class EscrowResolver {
     const rows = await prisma.picks.findMany({
       where,
       orderBy: { createdAt: 'desc' },
-      take,
+      take: cappedTake,
       skip,
       include: {
         picks: true,
@@ -621,6 +589,7 @@ export class EscrowResolver {
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number,
     @Arg('pickConfigId', () => String, { nullable: true }) pickConfigId?: string
   ): Promise<PositionType[]> {
+    const cappedTake = Math.max(1, Math.min(take, 100));
     const holderLower = holder?.toLowerCase();
     const pickConfigIdLower = pickConfigId?.toLowerCase();
 
@@ -632,7 +601,12 @@ export class EscrowResolver {
 
     if (conditionId) {
       const matchingPicks = await prisma.pick.findMany({
-        where: { conditionId: { equals: conditionId.toLowerCase(), mode: 'insensitive' } },
+        where: {
+          conditionId: {
+            equals: conditionId.toLowerCase(),
+            mode: 'insensitive',
+          },
+        },
         select: { pickConfigId: true },
         distinct: ['pickConfigId'],
       });
@@ -656,7 +630,7 @@ export class EscrowResolver {
     const rows = await prisma.position.findMany({
       where,
       orderBy: { updatedAt: 'desc' },
-      take,
+      take: cappedTake,
       skip,
       include: {
         pickConfiguration: {
@@ -743,6 +717,7 @@ export class EscrowResolver {
     pickConfigId?: string,
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number
   ): Promise<CloseType[]> {
+    const cappedTake = Math.max(1, Math.min(take, 100));
     const addr = address?.toLowerCase();
     const pickConfigIdLower = pickConfigId?.toLowerCase();
 
@@ -766,7 +741,7 @@ export class EscrowResolver {
     const rows = await prisma.close.findMany({
       where,
       orderBy: { burnedAt: 'desc' },
-      take,
+      take: cappedTake,
       skip,
     });
 
@@ -800,6 +775,7 @@ export class EscrowResolver {
     predictionId?: string,
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number
   ): Promise<ClaimType[]> {
+    const cappedTake = Math.max(1, Math.min(take, 100));
     const holderLower = holder?.toLowerCase();
     const predictionIdLower = predictionId?.toLowerCase();
 
@@ -823,7 +799,7 @@ export class EscrowResolver {
     const rows = await prisma.claim.findMany({
       where,
       orderBy: { redeemedAt: 'desc' },
-      take,
+      take: cappedTake,
       skip,
     });
 

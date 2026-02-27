@@ -6,7 +6,7 @@ import prisma from '../../db';
 // GraphQL Object Types
 // ============================================================================
 
-@ObjectType()
+@ObjectType('Trade')
 class SecondaryTradeType {
   @Field(() => Int)
   id!: number;
@@ -53,9 +53,9 @@ class SecondaryTradeType {
 // ============================================================================
 
 @Resolver()
-export class SecondaryTradeResolver {
+export class TradeResolver {
   @Query(() => [SecondaryTradeType])
-  async secondaryTrades(
+  async trades(
     @Arg('take', () => Int, { defaultValue: 50 }) take: number,
     @Arg('skip', () => Int, { defaultValue: 0 }) skip: number,
     @Arg('seller', () => String, { nullable: true }) seller?: string,
@@ -63,6 +63,7 @@ export class SecondaryTradeResolver {
     @Arg('token', () => String, { nullable: true }) token?: string,
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number
   ): Promise<SecondaryTradeType[]> {
+    const cappedTake = Math.max(1, Math.min(take, 100));
     const where: Prisma.SecondaryTradeWhereInput = {};
 
     if (seller) where.seller = seller.toLowerCase();
@@ -78,7 +79,7 @@ export class SecondaryTradeResolver {
     const rows = await prisma.secondaryTrade.findMany({
       where,
       orderBy: { executedAt: 'desc' },
-      take,
+      take: cappedTake,
       skip,
     });
 
@@ -100,11 +101,11 @@ export class SecondaryTradeResolver {
   }
 
   @Query(() => SecondaryTradeType, { nullable: true })
-  async secondaryTrade(
-    @Arg('tradeHash', () => String) tradeHash: string
+  async trade(
+    @Arg('id', () => String) id: string
   ): Promise<SecondaryTradeType | null> {
     const r = await prisma.secondaryTrade.findUnique({
-      where: { tradeHash: tradeHash.toLowerCase() },
+      where: { tradeHash: id.toLowerCase() },
     });
 
     if (!r) return null;
@@ -127,7 +128,7 @@ export class SecondaryTradeResolver {
   }
 
   @Query(() => Int)
-  async secondaryTradesCount(
+  async tradeCount(
     @Arg('seller', () => String, { nullable: true }) seller?: string,
     @Arg('buyer', () => String, { nullable: true }) buyer?: string,
     @Arg('token', () => String, { nullable: true }) token?: string,
@@ -143,47 +144,5 @@ export class SecondaryTradeResolver {
     if (!seller && !buyer && !token) return 0;
 
     return prisma.secondaryTrade.count({ where });
-  }
-
-  /**
-   * Get all trades for an address (as seller OR buyer)
-   */
-  @Query(() => [SecondaryTradeType])
-  async secondaryTradesByAddress(
-    @Arg('address', () => String) address: string,
-    @Arg('take', () => Int, { defaultValue: 50 }) take: number,
-    @Arg('skip', () => Int, { defaultValue: 0 }) skip: number,
-    @Arg('chainId', () => Int, { nullable: true }) chainId?: number
-  ): Promise<SecondaryTradeType[]> {
-    const addr = address.toLowerCase();
-
-    const where: Prisma.SecondaryTradeWhereInput = {
-      OR: [{ seller: addr }, { buyer: addr }],
-    };
-
-    if (chainId !== undefined && chainId !== null) where.chainId = chainId;
-
-    const rows = await prisma.secondaryTrade.findMany({
-      where,
-      orderBy: { executedAt: 'desc' },
-      take,
-      skip,
-    });
-
-    return rows.map((r) => ({
-      id: r.id,
-      chainId: r.chainId,
-      tradeHash: r.tradeHash,
-      seller: r.seller,
-      buyer: r.buyer,
-      token: r.token,
-      collateral: r.collateral,
-      tokenAmount: r.tokenAmount,
-      price: r.price,
-      refCode: r.refCode ?? null,
-      executedAt: r.executedAt,
-      txHash: r.txHash,
-      blockNumber: r.blockNumber,
-    }));
   }
 }

@@ -364,7 +364,10 @@ router.post('/claim', async (req: Request, res: Response) => {
     const sponsorTxHash = await grantSponsorshipBudget(
       normalizeAddress(walletAddress) as Address
     ).catch((err) => {
-      console.error('[referrals] sponsorship grant failed (non-blocking):', err);
+      console.error(
+        '[referrals] sponsorship grant failed (non-blocking):',
+        err
+      );
       return null;
     });
 

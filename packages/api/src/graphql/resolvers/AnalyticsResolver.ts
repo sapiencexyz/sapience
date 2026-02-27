@@ -1,4 +1,11 @@
-import { Field, Int, ObjectType, Query, Resolver } from 'type-graphql';
+import {
+  Directive,
+  Field,
+  Int,
+  ObjectType,
+  Query,
+  Resolver,
+} from 'type-graphql';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import prisma from '../../db';
 import { getProtocolStatsTimeSeries } from '../../helpers/protocolStats';
@@ -51,20 +58,6 @@ class ProtocolStat {
   dailyVolume!: string;
 }
 
-@ObjectType()
-class DailyVolume {
-  @Field(() => String)
-  timestamp!: string;
-
-  @Field(() => String)
-  volume!: string;
-}
-
-interface DailyVolumeRow {
-  timestamp: bigint;
-  daily_volume: string | null;
-}
-
 interface CumulativeVolumeRow {
   timestamp: bigint;
   cumulative_volume: string | null;
@@ -95,6 +88,7 @@ function buildTimestampMap<T extends { timestamp: bigint }>(
 @Resolver()
 export class AnalyticsResolver {
   @Query(() => [ProtocolStat])
+  @Directive('@cacheControl(maxAge: 120)')
   async protocolStats(): Promise<ProtocolStat[]> {
     const chainId = DEFAULT_CHAIN_ID;
 
@@ -160,13 +154,10 @@ export class AnalyticsResolver {
     return protocolSnapshots.map((snapshot, i) => {
       const cumVol = volumeMap.get(snapshot.timestamp) || '0';
       const prevCumVol =
-        i > 0
-          ? volumeMap.get(protocolSnapshots[i - 1].timestamp) || '0'
-          : '0';
+        i > 0 ? volumeMap.get(protocolSnapshots[i - 1].timestamp) || '0' : '0';
       const dailyVolume = (BigInt(cumVol) - BigInt(prevCumVol)).toString();
 
-      const prevPnL =
-        i > 0 ? protocolSnapshots[i - 1].vaultRealizedPnL : '0';
+      const prevPnL = i > 0 ? protocolSnapshots[i - 1].vaultRealizedPnL : '0';
       const dailyPnL = (
         BigInt(snapshot.vaultRealizedPnL) - BigInt(prevPnL)
       ).toString();
@@ -189,44 +180,5 @@ export class AnalyticsResolver {
         dailyVolume,
       };
     });
-  }
-
-  @Query(() => [DailyVolume])
-  async dailyVolumes(): Promise<DailyVolume[]> {
-    const chainId = DEFAULT_CHAIN_ID;
-
-    // Daily volumes from V1 legacy positions + V2 predictions - last 90 days
-    const dailyVolumes = await prisma.$queryRaw<DailyVolumeRow[]>`
-      WITH date_series AS (
-        SELECT generate_series(
-          CURRENT_DATE - INTERVAL '90 days',
-          CURRENT_DATE,
-          '1 day'::interval
-        )::date as date
-      ),
-      all_volumes AS (
-        SELECT "mintedAt" AS created_ts, CAST("totalCollateral" AS DECIMAL) AS vol, "chainId"
-        FROM position
-        UNION ALL
-        SELECT "onChainCreatedAt" AS created_ts,
-          CAST("predictorCollateral" AS DECIMAL) + CAST("counterpartyCollateral" AS DECIMAL) AS vol,
-          "chainId"
-        FROM "Prediction"
-      )
-      SELECT
-        EXTRACT(EPOCH FROM d.date)::BIGINT as timestamp,
-        COALESCE(SUM(v.vol), 0)::TEXT as daily_volume
-      FROM date_series d
-      LEFT JOIN all_volumes v ON
-        DATE_TRUNC('day', TO_TIMESTAMP(v.created_ts))::date = d.date
-        AND v."chainId" = ${chainId}
-      GROUP BY d.date
-      ORDER BY timestamp
-    `;
-
-    return dailyVolumes.map((row) => ({
-      timestamp: row.timestamp.toString(),
-      volume: row.daily_volume || '0',
-    }));
   }
 }

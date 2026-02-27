@@ -4,7 +4,10 @@ import { type PublicClient, decodeEventLog, type Log, type Block } from 'viem';
 import Sentry from '../../instrument';
 import { IIndexer } from '../../interfaces';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
-import { predictionMarketEscrowAbi, predictionMarketTokenAbi } from '@sapience/sdk/abis';
+import {
+  predictionMarketEscrowAbi,
+  predictionMarketTokenAbi,
+} from '@sapience/sdk/abis';
 
 const BLOCK_BATCH_SIZE = 100;
 
@@ -508,13 +511,13 @@ class PredictionMarketEscrowIndexer implements IIndexer {
   ): Promise<void> {
     try {
       // Get pickConfigId from the on-chain prediction (read at event block for correctness)
-      const predictionOnChain = await this.client.readContract({
+      const predictionOnChain = (await this.client.readContract({
         address: this.contractAddress,
         abi: predictionMarketEscrowAbi,
         functionName: 'getPrediction',
         args: [event.predictionId],
         blockNumber: log.blockNumber!,
-      }) as {
+      })) as {
         pickConfigId: `0x${string}`;
         predictorTokensMinted: bigint;
         counterpartyTokensMinted: bigint;
@@ -536,13 +539,13 @@ class PredictionMarketEscrowIndexer implements IIndexer {
 
       if (!existingConfig) {
         // Read picks from contract
-        const picksOnChain = await this.client.readContract({
+        const picksOnChain = (await this.client.readContract({
           address: this.contractAddress,
           abi: predictionMarketEscrowAbi,
           functionName: 'getPicks',
           args: [predictionOnChain.pickConfigId],
           blockNumber: log.blockNumber!,
-        }) as Array<{
+        })) as Array<{
           conditionResolver: `0x${string}`;
           conditionId: `0x${string}`;
           predictedOutcome: number;
@@ -560,7 +563,9 @@ class PredictionMarketEscrowIndexer implements IIndexer {
               totalCounterpartyCollateral: counterpartyCollateralStr,
               picks: {
                 create: picksOnChain.map((pick) => ({
-                  conditionResolver: (pick.conditionResolver as string).toLowerCase(),
+                  conditionResolver: (
+                    pick.conditionResolver as string
+                  ).toLowerCase(),
                   conditionId: (pick.conditionId as string).toLowerCase(),
                   predictedOutcome: Number(pick.predictedOutcome),
                 })),
@@ -616,8 +621,10 @@ class PredictionMarketEscrowIndexer implements IIndexer {
       }
 
       // Upsert initial position balances for predictor and counterparty
-      const predictorMinted = predictionOnChain.predictorTokensMinted.toString();
-      const counterpartyMinted = predictionOnChain.counterpartyTokensMinted.toString();
+      const predictorMinted =
+        predictionOnChain.predictorTokensMinted.toString();
+      const counterpartyMinted =
+        predictionOnChain.counterpartyTokensMinted.toString();
 
       await prisma.$executeRaw`
         INSERT INTO "Position" ("chainId", "tokenAddress", "pickConfigId", "isPredictorToken", holder, balance, "createdAt", "updatedAt")
@@ -850,14 +857,26 @@ class PredictionMarketEscrowIndexer implements IIndexer {
    * If both are 0, mark as fullyRedeemed so the transfer indexer
    * drops them from its watch list.
    */
-  private async checkFullyRedeemedByPickConfig(pickConfigId: string): Promise<void> {
+  private async checkFullyRedeemedByPickConfig(
+    pickConfigId: string
+  ): Promise<void> {
     try {
       const config = await prisma.picks.findUnique({
         where: { id: pickConfigId },
-        select: { predictorToken: true, counterpartyToken: true, fullyRedeemed: true },
+        select: {
+          predictorToken: true,
+          counterpartyToken: true,
+          fullyRedeemed: true,
+        },
       });
 
-      if (!config || config.fullyRedeemed || !config.predictorToken || !config.counterpartyToken) return;
+      if (
+        !config ||
+        config.fullyRedeemed ||
+        !config.predictorToken ||
+        !config.counterpartyToken
+      )
+        return;
 
       const [predictorSupply, counterpartySupply] = await Promise.all([
         this.client.readContract({

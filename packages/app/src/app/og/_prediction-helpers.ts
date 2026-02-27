@@ -64,8 +64,8 @@ export function roundToTwoDecimals(value: string): string {
 
 // GraphQL query for fetching prediction data by predictionId
 export const PREDICTION_BY_ID_QUERY = `
-  query Prediction($predictionId: String!) {
-    prediction(predictionId: $predictionId) {
+  query Prediction($id: String!) {
+    prediction(id: $id) {
       id
       predictionId
       chainId

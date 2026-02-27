@@ -33,12 +33,12 @@ import {
   PnLResolver,
   ScoreResolver,
   EscrowResolver,
-  LegacyPositionResolver,
   AnalyticsResolver,
   ConditionResolver,
   VolumeResolver,
   QuestionsResolver,
-  SecondaryTradeResolver,
+  TradeResolver,
+  TimeSeriesResolver,
 } from './resolvers';
 
 export interface ApolloContext {
@@ -65,12 +65,12 @@ export const initializeApolloServer = async () => {
       PnLResolver,
       ScoreResolver,
       EscrowResolver,
-      LegacyPositionResolver,
       AnalyticsResolver,
       ConditionResolver,
       VolumeResolver,
       QuestionsResolver,
-      SecondaryTradeResolver,
+      TradeResolver,
+      TimeSeriesResolver,
     ]);
   const schema = await buildSchema({
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -140,7 +140,9 @@ export const initializeApolloServer = async () => {
                 schema,
                 query: document,
                 variables: request.variables ?? {},
-                estimators: createComplexityEstimators(config.GRAPHQL_MAX_LIST_SIZE),
+                estimators: createComplexityEstimators(
+                  config.GRAPHQL_MAX_LIST_SIZE
+                ),
               });
 
               if (config.isDev) {

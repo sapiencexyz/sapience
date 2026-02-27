@@ -8,7 +8,7 @@ interface VolumeRow {
 @Resolver()
 export class VolumeResolver {
   @Query(() => String)
-  async tradingVolumeByAddress(
+  async accountTotalVolume(
     @Arg('address', () => String) address: string
   ): Promise<string> {
     const addr = address.toLowerCase();
