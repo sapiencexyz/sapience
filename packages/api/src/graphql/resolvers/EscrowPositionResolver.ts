@@ -643,7 +643,7 @@ export class EscrowPositionResolver {
     if (chainId !== undefined && chainId !== null) {
       where.chainId = chainId;
     }
-    if (pickConfigIdLower) {
+    if (pickConfigIdLower && !conditionId) {
       where.pickConfigId = pickConfigIdLower;
     }
 

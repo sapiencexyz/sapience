@@ -48,7 +48,9 @@ type UseAuctionMatchingParams = {
   tokenDecimals: number;
   auctionMessages: AuctionFeedMessage[];
   formatCollateralAmount: (value?: string | null) => string | null;
-  submitBid: (params: EscrowBidSubmissionParams) => Promise<EscrowBidSubmissionResult>;
+  submitBid: (
+    params: EscrowBidSubmissionParams
+  ) => Promise<EscrowBidSubmissionResult>;
 };
 
 export function useAuctionMatching({
@@ -385,7 +387,9 @@ export function useAuctionMatching({
           escrowPicks: escrowPicks ?? [],
         });
 
-        const counterpartyAmount = formatCollateralAmount(counterpartyCollateralWei.toString());
+        const counterpartyAmount = formatCollateralAmount(
+          counterpartyCollateralWei.toString()
+        );
         const predictorCollateralBigInt = BigInt(predictorCollateral || '0');
         const totalWei = counterpartyCollateralWei + predictorCollateralBigInt;
         const payoutAmount = formatCollateralAmount(totalWei.toString());
@@ -496,10 +500,13 @@ export function useAuctionMatching({
         return;
       }
       bids.forEach((bid: any) => {
-        const counterpartyRaw = typeof bid?.counterparty === 'string' ? bid.counterparty : null;
+        const counterpartyRaw =
+          typeof bid?.counterparty === 'string' ? bid.counterparty : null;
         const counterpartyAddr = normalizeAddress(counterpartyRaw);
         if (!counterpartyAddr) return;
-        const matched = normalizedOrders.find((item) => item.address === counterpartyAddr);
+        const matched = normalizedOrders.find(
+          (item) => item.address === counterpartyAddr
+        );
         if (!matched) return;
         const auctionId =
           (typeof bid?.auctionId === 'string' && bid.auctionId) ||
@@ -517,7 +524,9 @@ export function useAuctionMatching({
         }
 
         const signature =
-          typeof bid?.counterpartySignature === 'string' ? bid.counterpartySignature : null;
+          typeof bid?.counterpartySignature === 'string'
+            ? bid.counterpartySignature
+            : null;
 
         // Create a unique key for this bid to prevent duplicate submissions
         // when the same bid appears in multiple auction.bids messages
@@ -537,7 +546,9 @@ export function useAuctionMatching({
 
         // Calculate the full bid amount for allowance checking (copiedCollateral + increment)
         // This ensures we don't prompt for signature if allowance is insufficient
-        const copiedCollateralWei = BigInt(String(bid?.counterpartyCollateral ?? '0'));
+        const copiedCollateralWei = BigInt(
+          String(bid?.counterpartyCollateral ?? '0')
+        );
         let estimatedSpend: number;
         try {
           const incrementWei = parseUnits(String(increment), tokenDecimals);
@@ -627,7 +638,8 @@ export function useAuctionMatching({
           resolver: resolverAddr as `0x${string}`,
           predictor: predictorAddr as `0x${string}`,
           predictorCollateral: predictorCollateralStr,
-          ...(Array.isArray(rawEscrowPicks) && rawEscrowPicks.length > 0 && { escrowPicks: rawEscrowPicks }),
+          ...(Array.isArray(rawEscrowPicks) &&
+            rawEscrowPicks.length > 0 && { escrowPicks: rawEscrowPicks }),
         };
         auctionContextCacheRef.current.set(auctionId, ctx);
         auctionContextKeysRef.current.push(auctionId);
@@ -662,7 +674,10 @@ export function useAuctionMatching({
             const predictorCollateralNum = Number(
               formatUnits(BigInt(predictorCollateralStr || '0'), tokenDecimals)
             );
-            if (Number.isFinite(predictorCollateralNum) && predictorCollateralNum > 0) {
+            if (
+              Number.isFinite(predictorCollateralNum) &&
+              predictorCollateralNum > 0
+            ) {
               estimatedSpend =
                 (probability * predictorCollateralNum) / (1 - probability);
             }
@@ -704,7 +719,10 @@ export function useAuctionMatching({
               predictor: predictorAddr as `0x${string}`,
               predictedOutcomes: predictedOutcomesArr,
               resolver: resolverAddr as `0x${string}`,
-              ...(Array.isArray(conditionEscrowPicks) && conditionEscrowPicks.length > 0 && { escrowPicks: conditionEscrowPicks }),
+              ...(Array.isArray(conditionEscrowPicks) &&
+                conditionEscrowPicks.length > 0 && {
+                  escrowPicks: conditionEscrowPicks,
+                }),
             },
             dedupeKey: bidDedupeKey,
           });

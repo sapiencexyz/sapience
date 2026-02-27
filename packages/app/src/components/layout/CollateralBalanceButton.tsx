@@ -383,98 +383,104 @@ export default function CollateralBalanceButton({
           <span className="relative z-10">Fund Account</span>
         </button>
       ) : (
-      <HoverCard openDelay={100} closeDelay={200}>
-        <HoverCardTrigger>
-          <div
-            className={`inline-flex items-center rounded-md h-9 px-3 justify-start gap-2 bg-brand-black text-brand-white border border-ethena/40 hover:bg-brand-black/90 font-mono shadow-[0_0_12px_rgba(136,180,245,0.3)] hover:shadow-[0_0_18px_rgba(136,180,245,0.5)] transition-shadow cursor-default text-sm ${buttonClassName ?? ''}`}
-          >
-            <div className="flex items-center gap-2">
-              <Image
-                src="/usde.svg"
-                alt="USDe"
-                width={20}
-                height={20}
-                className="opacity-90 ml-[-2px] w-5 h-5"
-              />
-              <span className="relative top-[1px] xl:top-0 text-sm font-normal">
-                {formatDollarLikeBalance(displayedBalance)} {symbol}
-              </span>
-              {isSponsored && (
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-ethena opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-ethena" />
-                </span>
-              )}
-            </div>
-          </div>
-        </HoverCardTrigger>
-        <HoverCardContent side="bottom" className="w-auto p-4">
-          <div className="flex items-center gap-4">
-            {/* Left section - Get USDe */}
-            <div className="flex flex-col items-center justify-center space-y-3">
-              <div className="space-y-1 text-center">
-                <p className="font-medium text-sm whitespace-nowrap">
-                  {isUsingSmartAccount
-                    ? 'Sapience Account Balance'
-                    : 'Wallet Balance'}
-                </p>
-                {isUsingSmartAccount && smartAccountAddress && (
-                  <div className="flex justify-center">
-                    <AddressDisplay address={smartAccountAddress} compact />
-                  </div>
-                )}
-                {!isUsingSmartAccount && eoaAddress && (
-                  <div className="flex justify-center">
-                    <AddressDisplay address={eoaAddress} compact />
-                  </div>
-                )}
-                <p className="text-2xl font-mono pt-1">
-                  {formatDollarLikeBalance(displayedBalance)} {symbol}
-                </p>
-              </div>
-              {isSponsored && (
-                <div className="w-full rounded-md border border-ethena/30 bg-ethena/10 px-3 py-2 text-xs">
-                  <div className="flex items-center gap-1.5 text-ethena font-medium">
-                    <span>{sponsorBudgetFormatted} {symbol} sponsorship available</span>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Info className="h-3.5 w-3.5 text-ethena/60 cursor-help" />
-                      </TooltipTrigger>
-                      <TooltipContent side="top" className="max-w-[220px] text-xs">
-                        Available for positions quoted &lt;70% chance against the vault.
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                </div>
-              )}
-              <Button
-                size="sm"
-                className="gap-2 w-full"
-                onClick={() => setIsGetUsdeOpen(true)}
-              >
+        <HoverCard openDelay={100} closeDelay={200}>
+          <HoverCardTrigger>
+            <div
+              className={`inline-flex items-center rounded-md h-9 px-3 justify-start gap-2 bg-brand-black text-brand-white border border-ethena/40 hover:bg-brand-black/90 font-mono shadow-[0_0_12px_rgba(136,180,245,0.3)] hover:shadow-[0_0_18px_rgba(136,180,245,0.5)] transition-shadow cursor-default text-sm ${buttonClassName ?? ''}`}
+            >
+              <div className="flex items-center gap-2">
                 <Image
                   src="/usde.svg"
                   alt="USDe"
-                  width={16}
-                  height={16}
-                  className="opacity-90"
+                  width={20}
+                  height={20}
+                  className="opacity-90 ml-[-2px] w-5 h-5"
                 />
-                Get USDe
-              </Button>
-              {/* Withdraw button shown when smart account has balance, regardless of mode */}
-              {/* This allows users to recover funds from smart account even when using EOA */}
-              {smartAccountBalance > 0 && (
-                <button
-                  type="button"
-                  onClick={() => setIsWithdrawOpen(true)}
-                  className="text-xs text-muted-foreground hover:text-foreground underline"
-                >
-                  Withdraw from Sapience Account
-                </button>
-              )}
+                <span className="relative top-[1px] xl:top-0 text-sm font-normal">
+                  {formatDollarLikeBalance(displayedBalance)} {symbol}
+                </span>
+                {isSponsored && (
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-ethena opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-ethena" />
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
-        </HoverCardContent>
+          </HoverCardTrigger>
+          <HoverCardContent side="bottom" className="w-auto p-4">
+            <div className="flex items-center gap-4">
+              {/* Left section - Get USDe */}
+              <div className="flex flex-col items-center justify-center space-y-3">
+                <div className="space-y-1 text-center">
+                  <p className="font-medium text-sm whitespace-nowrap">
+                    {isUsingSmartAccount
+                      ? 'Sapience Account Balance'
+                      : 'Wallet Balance'}
+                  </p>
+                  {isUsingSmartAccount && smartAccountAddress && (
+                    <div className="flex justify-center">
+                      <AddressDisplay address={smartAccountAddress} compact />
+                    </div>
+                  )}
+                  {!isUsingSmartAccount && eoaAddress && (
+                    <div className="flex justify-center">
+                      <AddressDisplay address={eoaAddress} compact />
+                    </div>
+                  )}
+                  <p className="text-2xl font-mono pt-1">
+                    {formatDollarLikeBalance(displayedBalance)} {symbol}
+                  </p>
+                </div>
+                {isSponsored && (
+                  <div className="w-full rounded-md border border-ethena/30 bg-ethena/10 px-3 py-2 text-xs">
+                    <div className="flex items-center gap-1.5 text-ethena font-medium">
+                      <span>
+                        {sponsorBudgetFormatted} {symbol} sponsorship available
+                      </span>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-3.5 w-3.5 text-ethena/60 cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent
+                          side="top"
+                          className="max-w-[220px] text-xs"
+                        >
+                          Available for positions quoted &lt;70% chance against
+                          the vault.
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                  </div>
+                )}
+                <Button
+                  size="sm"
+                  className="gap-2 w-full"
+                  onClick={() => setIsGetUsdeOpen(true)}
+                >
+                  <Image
+                    src="/usde.svg"
+                    alt="USDe"
+                    width={16}
+                    height={16}
+                    className="opacity-90"
+                  />
+                  Get USDe
+                </Button>
+                {/* Withdraw button shown when smart account has balance, regardless of mode */}
+                {/* This allows users to recover funds from smart account even when using EOA */}
+                {smartAccountBalance > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setIsWithdrawOpen(true)}
+                    className="text-xs text-muted-foreground hover:text-foreground underline"
+                  >
+                    Withdraw from Sapience Account
+                  </button>
+                )}
+              </div>
+            </div>
+          </HoverCardContent>
         </HoverCard>
       )}
 

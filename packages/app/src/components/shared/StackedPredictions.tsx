@@ -29,7 +29,7 @@ export interface Pick {
   description?: string | null;
   /**
    * When set to 'pyth', stacked icons will render the Pyth mark instead of a category icon.
-   * (Useful when a combo includes a Pyth leg.)
+   * (Useful when a combo includes a Pyth pick.)
    */
   source?: 'uma' | 'pyth';
   /**
@@ -44,7 +44,7 @@ export interface Pick {
 }
 
 interface StackedPredictionsProps {
-  legs: Pick[];
+  picks: Pick[];
   /** Show icons stacked before the question (default: true) */
   showIcons?: boolean;
   /** Additional className for the container */
@@ -62,31 +62,31 @@ function getCategoryColor(slug?: string | null): string {
  * Can be used separately when icons need to be in a different cell/container.
  */
 export function StackedIcons({
-  legs,
+  picks,
   className,
 }: {
-  legs: Pick[];
+  picks: Pick[];
   className?: string;
 }) {
-  if (!legs || legs.length === 0) {
+  if (!picks || picks.length === 0) {
     return null;
   }
 
-  const colors = legs.map((leg) => getCategoryColor(leg.categorySlug));
+  const colors = picks.map((pick) => getCategoryColor(pick.categorySlug));
 
   return (
     <div className={`flex items-center -space-x-2 ${className ?? ''}`}>
-      {legs.map((leg, i) => {
-        const isPyth = leg.source === 'pyth';
-        const CategoryIcon = getCategoryIcon(leg.categorySlug);
+      {picks.map((pick, i) => {
+        const isPyth = pick.source === 'pyth';
+        const CategoryIcon = getCategoryIcon(pick.categorySlug);
         const color = colors[i] || 'hsl(var(--muted-foreground))';
         return (
           <div
-            key={`icon-${leg.conditionId || i}-${i}`}
+            key={`icon-${pick.conditionId || i}-${i}`}
             className="w-6 h-6 rounded-full shrink-0 flex items-center justify-center ring-2 ring-background"
             style={{
               backgroundColor: isPyth ? 'hsl(var(--muted))' : color,
-              zIndex: legs.length - i,
+              zIndex: picks.length - i,
             }}
           >
             {isPyth ? (
@@ -111,23 +111,24 @@ export function StackedIcons({
  */
 export const StackedPredictionsTitle = React.memo(
   function StackedPredictionsTitle({
-    legs,
+    picks,
     className,
     maxWidthClass = 'max-w-[300px]',
   }: {
-    legs: Pick[];
+    picks: Pick[];
     className?: string;
     maxWidthClass?: string;
   }) {
-    if (!legs || legs.length === 0) {
+    if (!picks || picks.length === 0) {
       return null;
     }
 
-    const firstLeg = legs[0];
-    const remainingLegs = legs.slice(1);
-    const remainingCount = remainingLegs.length;
-    const badgeLabel = String(firstLeg.choice).toUpperCase();
-    const firstIsPyth = firstLeg.source === 'pyth' && !!firstLeg.pythPrediction;
+    const firstPick = picks[0];
+    const remainingPicks = picks.slice(1);
+    const remainingCount = remainingPicks.length;
+    const badgeLabel = String(firstPick.choice).toUpperCase();
+    const firstIsPyth =
+      firstPick.source === 'pyth' && !!firstPick.pythPrediction;
 
     return (
       <div
@@ -136,7 +137,7 @@ export const StackedPredictionsTitle = React.memo(
         {firstIsPyth ? (
           <div className={`min-w-0 flex-initial ${maxWidthClass}`}>
             <PythPredictionListItem
-              prediction={firstLeg.pythPrediction!}
+              prediction={firstPick.pythPrediction!}
               layout="inline"
               showOracleIcon={false}
             />
@@ -147,17 +148,17 @@ export const StackedPredictionsTitle = React.memo(
             <span
               className={`inline-flex items-center gap-2 min-w-0 max-w-full ${maxWidthClass}`}
             >
-              {firstLeg.conditionId ? (
+              {firstPick.conditionId ? (
                 <ConditionTitleLink
-                  conditionId={firstLeg.conditionId}
-                  resolverAddress={firstLeg.resolverAddress ?? undefined}
-                  title={firstLeg.question}
+                  conditionId={firstPick.conditionId}
+                  resolverAddress={firstPick.resolverAddress ?? undefined}
+                  title={firstPick.question}
                   clampLines={1}
                   className="text-sm min-w-0 flex-1"
                 />
               ) : (
                 <span className="min-w-0 flex-1 block truncate text-sm font-mono text-brand-white">
-                  {firstLeg.question}
+                  {firstPick.question}
                 </span>
               )}
               <span className="shrink-0 whitespace-nowrap">
@@ -188,43 +189,43 @@ export const StackedPredictionsTitle = React.memo(
                   align="start"
                 >
                   <div className="flex flex-col divide-y divide-brand-white/20">
-                    {remainingLegs.map((leg, i) => (
+                    {remainingPicks.map((pick, i) => (
                       <div
-                        key={`${leg.conditionId || i}-${i}`}
+                        key={`${pick.conditionId || i}-${i}`}
                         className="flex items-center gap-3 px-3 py-2"
                       >
-                        {leg.source === 'pyth' && leg.pythPrediction ? (
+                        {pick.source === 'pyth' && pick.pythPrediction ? (
                           <div className="min-w-0 flex-1">
                             <PythPredictionListItem
-                              prediction={leg.pythPrediction}
+                              prediction={pick.pythPrediction}
                               layout="inline"
                             />
                           </div>
                         ) : (
                           <>
                             <MarketBadge
-                              label={leg.question}
+                              label={pick.question}
                               size={32}
-                              color={getCategoryColor(leg.categorySlug)}
-                              categorySlug={leg.categorySlug}
+                              color={getCategoryColor(pick.categorySlug)}
+                              categorySlug={pick.categorySlug}
                             />
-                            {leg.conditionId ? (
+                            {pick.conditionId ? (
                               <ConditionTitleLink
-                                conditionId={leg.conditionId}
+                                conditionId={pick.conditionId}
                                 resolverAddress={
-                                  leg.resolverAddress ?? undefined
+                                  pick.resolverAddress ?? undefined
                                 }
-                                title={leg.question}
+                                title={pick.question}
                                 clampLines={1}
                                 className="text-sm"
                               />
                             ) : (
                               <span className="text-sm font-mono text-brand-white">
-                                {leg.question}
+                                {pick.question}
                               </span>
                             )}
                             <PredictionChoiceBadge
-                              choice={String(leg.choice).toUpperCase()}
+                              choice={String(pick.choice).toUpperCase()}
                             />
                           </>
                         )}
@@ -251,20 +252,20 @@ export const StackedPredictionsTitle = React.memo(
  * `StackedIcons` and `StackedPredictionsTitle` separately.
  */
 const StackedPredictions = React.memo(function StackedPredictions({
-  legs,
+  picks,
   showIcons = true,
   className,
   maxWidthClass = 'max-w-[300px]',
 }: StackedPredictionsProps) {
-  if (!legs || legs.length === 0) {
+  if (!picks || picks.length === 0) {
     return null;
   }
 
   return (
     <div className={className}>
       <div className="flex flex-col xl:flex-row xl:items-center gap-2 min-w-0">
-        {showIcons && <StackedIcons legs={legs} />}
-        <StackedPredictionsTitle legs={legs} maxWidthClass={maxWidthClass} />
+        {showIcons && <StackedIcons picks={picks} />}
+        <StackedPredictionsTitle picks={picks} maxWidthClass={maxWidthClass} />
       </div>
     </div>
   );

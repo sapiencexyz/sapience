@@ -42,6 +42,7 @@ export const UMA_RESOLVER_DISPLAY: Record<
 // Known Polymarket resolver addresses (case-insensitive checks should normalize)
 export const POLYMARKET_RESOLVER_ADDRESSES = new Set([
   '0xdC1Fa830aD1de01f1EF603749f48bD73384286BE'.toLowerCase(),
+  '0x9938583ea9a6450cc64502bdcbf76f4eea2f9560'.toLowerCase(),
 ]);
 
 // Display metadata for Polymarket resolvers keyed by full address
@@ -56,6 +57,13 @@ export const POLYMARKET_RESOLVER_DISPLAY: Record<
   }
 > = {
   '0xdC1Fa830aD1de01f1EF603749f48bD73384286BE': {
+    name: 'Polymarket',
+    icon: '/polymarket-logomark.png',
+    badgeIcon: '/polymarket-badge.png',
+    iconAlt: 'Polymarket',
+    url: 'https://polymarket.com/',
+  },
+  '0x9938583ea9a6450cc64502bdcbf76f4eea2f9560': {
     name: 'Polymarket',
     icon: '/polymarket-logomark.png',
     badgeIcon: '/polymarket-badge.png',

@@ -85,9 +85,7 @@ export function useTradeSettledNotifications() {
     let maxCreatedAt = latestCreatedAtRef.current;
 
     for (const pred of predictions) {
-      const createdAtTs = Math.floor(
-        new Date(pred.createdAt).getTime() / 1000
-      );
+      const createdAtTs = Math.floor(new Date(pred.createdAt).getTime() / 1000);
 
       // Skip if prediction is older than or equal to when we last processed
       if (createdAtTs <= latestCreatedAtRef.current) continue;
@@ -103,7 +101,7 @@ export function useTradeSettledNotifications() {
 
       // Format predictor address for display
       const truncatedPredictor = `${pred.predictor.slice(0, 6)}...${pred.predictor.slice(-4)}`;
-      const shareUrl = `/positions/${pred.marketAddress}/${pred.predictionId}`;
+      const shareUrl = `/predictions/${pred.predictionId}`;
 
       // Push log entry
       pushLogEntry({
@@ -122,7 +120,7 @@ export function useTradeSettledNotifications() {
         description: (
           <div className="flex flex-col gap-4">
             <span>
-              Position #{pred.id} was completed with {truncatedPredictor}
+              Prediction #{pred.id} was completed with {truncatedPredictor}
             </span>
             <ToastAction
               altText="View position"

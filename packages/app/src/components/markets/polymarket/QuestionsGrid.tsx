@@ -113,7 +113,10 @@ export default function QuestionsGrid({
   return (
     <div className="flex flex-col h-full">
       {/* Grid */}
-      <div ref={scrollContainerRef} className="flex-1 min-h-0 overflow-y-auto px-3 pb-6 md:px-6 md:pb-8">
+      <div
+        ref={scrollContainerRef}
+        className="flex-1 min-h-0 overflow-y-auto px-3 pb-6 md:px-6 md:pb-8"
+      >
         <AnimatePresence mode="wait">
           {showLoading ? (
             <motion.div

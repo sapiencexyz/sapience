@@ -3,7 +3,7 @@
 import { isAddress, getAddress } from 'viem';
 import { mainnetClient } from '~/lib/utils/util';
 import { getEnsAvatarUrlForAddress } from '~/lib/ens/avatar';
-import { getGraphQLEndpoint, formatUnits } from './_position-helpers';
+import { getGraphQLEndpoint, formatUnits } from './_prediction-helpers';
 
 // ---------- GraphQL queries ----------
 

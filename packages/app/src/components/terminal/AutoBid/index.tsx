@@ -4,7 +4,10 @@ import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAccount } from 'wagmi';
 import { formatUnits } from 'viem';
-import { predictionMarketEscrow, collateralToken } from '@sapience/sdk/contracts';
+import {
+  predictionMarketEscrow,
+  collateralToken,
+} from '@sapience/sdk/contracts';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useConditions } from '~/hooks/graphql/useConditions';
 import { useTokenApproval } from '~/hooks/contract/useTokenApproval';

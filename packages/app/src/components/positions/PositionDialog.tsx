@@ -60,7 +60,7 @@ export default function PositionDialog({
     : Number(formatEther(BigInt(position.pnlWei || '0')));
   const roi = positionSize > 0 ? (pnlValue / positionSize) * 100 : 0;
 
-  const positionUrl = `/positions/${position.marketAddress}/${position.positionId}`;
+  const positionUrl = `/predictions/${position.positionId}`;
   const createdAt = position.createdAt ? new Date(position.createdAt) : null;
 
   const getPositionStatus = ():
@@ -100,7 +100,7 @@ export default function PositionDialog({
         />
 
         <PicksContent
-          legs={position.legs}
+          picks={position.legs}
           positionId={position.positionId}
           isCounterparty={isCounterpartyPosition}
           hideHeader

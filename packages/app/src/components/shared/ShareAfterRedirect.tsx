@@ -134,7 +134,7 @@ export default function ShareAfterRedirect({ address }: { address: Address }) {
 
           qp.set('symbol', collateralSymbol);
 
-          return `/og/position?${qp.toString()}`;
+          return `/og/prediction?${qp.toString()}`;
         }
       } catch {
         // ignore

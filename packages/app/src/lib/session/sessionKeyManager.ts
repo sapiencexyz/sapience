@@ -473,7 +473,9 @@ async function _signEscrowSessionKeyApproval(
  *   (sessionKey, owner, validUntil, permissionsHash, chainId, ownerSignature)
  * Note: smartAccount is NOT included - the contract gets it from the MintRequest.predictor field
  */
-export function encodeEscrowSessionKeyData(approval: EscrowSessionKeyApproval): Hex {
+export function encodeEscrowSessionKeyData(
+  approval: EscrowSessionKeyApproval
+): Hex {
   // Encode the struct fields as a tuple
   const innerEncoding = encodeAbiParameters(
     [
@@ -500,7 +502,6 @@ export function encodeEscrowSessionKeyData(approval: EscrowSessionKeyApproval): 
     '0000000000000000000000000000000000000000000000000000000000000020';
   return `0x${offsetPointer}${innerEncoding.slice(2)}` as Hex;
 }
-
 
 // ABI for accountFactory verification
 const ACCOUNT_FACTORY_ABI = parseAbi([
@@ -851,10 +852,15 @@ export async function createSession(
   // contract checks signer.code.length > 0 before attempting ERC-1271 fallback).
   // We use approve(vault, 0) as the callData because a raw no-op (0x) is not in
   // the session key's CallPolicy and would cause an AA23 paymaster revert.
-  const etherealPublicClientForDeploy = getEtherealPublicClient(etherealChainId);
-  const deployedCode = await etherealPublicClientForDeploy.getCode({ address: smartAccountAddress });
+  const etherealPublicClientForDeploy =
+    getEtherealPublicClient(etherealChainId);
+  const deployedCode = await etherealPublicClientForDeploy.getCode({
+    address: smartAccountAddress,
+  });
   if (!deployedCode || deployedCode === '0x') {
-    console.debug('[SessionKeyManager] Smart account not deployed, sending deployment UserOp...');
+    console.debug(
+      '[SessionKeyManager] Smart account not deployed, sending deployment UserOp...'
+    );
     try {
       const deployStart = Date.now();
       // Send a harmless approve(vault, 0) UserOp — the bundler will include
@@ -862,15 +868,17 @@ export async function createSession(
       // approve(vault, 0) is within the session key's CallPolicy permissions
       // and is effectively a no-op (approving zero amount).
       const deployOpHash = await etherealClient.sendUserOperation({
-        callData: await etherealAccount.encodeCalls([{
-          to: etherealContracts.wusde,
-          data: encodeFunctionData({
-            abi: collateralTokenAbi,
-            functionName: 'approve',
-            args: [etherealContracts.vault, BigInt(0)],
-          }),
-          value: BigInt(0),
-        }]),
+        callData: await etherealAccount.encodeCalls([
+          {
+            to: etherealContracts.wusde,
+            data: encodeFunctionData({
+              abi: collateralTokenAbi,
+              functionName: 'approve',
+              args: [etherealContracts.vault, BigInt(0)],
+            }),
+            value: BigInt(0),
+          },
+        ]),
       });
       console.debug(
         `[SessionKeyManager] Smart account deployment UserOp sent in ${Date.now() - deployStart}ms, hash: ${deployOpHash}`
@@ -899,7 +907,10 @@ export async function createSession(
       );
       console.debug('[SessionKeyManager] Escrow session key approval signed');
     } catch (e) {
-      console.warn('[SessionKeyManager] Failed to sign escrow session key approval:', e);
+      console.warn(
+        '[SessionKeyManager] Failed to sign escrow session key approval:',
+        e
+      );
     }
   }
 
@@ -1106,10 +1117,14 @@ export async function restoreSession(
     const storedAddress =
       serialized.escrowSessionKeyApproval.sessionKey.toLowerCase();
     if (derivedAddress !== storedAddress) {
-      console.error('[SessionKeyManager] Escrow session key mismatch detected!', {
-        derivedFromPrivateKey: sessionKeyAccount.address,
-        storedInEscrowApproval: serialized.escrowSessionKeyApproval.sessionKey,
-      });
+      console.error(
+        '[SessionKeyManager] Escrow session key mismatch detected!',
+        {
+          derivedFromPrivateKey: sessionKeyAccount.address,
+          storedInEscrowApproval:
+            serialized.escrowSessionKeyApproval.sessionKey,
+        }
+      );
       // Clear the corrupted session and throw - user must create a new session
       clearSession();
       throw new Error(
@@ -1141,26 +1156,35 @@ export async function restoreSession(
     address: etherealAccount.address,
   });
   if (!deployedCode || deployedCode === '0x') {
-    console.debug('[SessionKeyManager] Smart account not deployed, deploying on restore...');
+    console.debug(
+      '[SessionKeyManager] Smart account not deployed, deploying on restore...'
+    );
     try {
       // Use approve(vault, 0) as a harmless call within CallPolicy permissions.
       // A raw no-op (0x) would cause AA23 paymaster revert since it's not in the
       // session key's CallPolicy. The bundler includes initCode to deploy the account.
       const restoreContracts = getEtherealContractAddresses(etherealChainId);
       const deployOpHash = await etherealClient.sendUserOperation({
-        callData: await etherealAccount.encodeCalls([{
-          to: restoreContracts.wusde,
-          data: encodeFunctionData({
-            abi: collateralTokenAbi,
-            functionName: 'approve',
-            args: [restoreContracts.vault, BigInt(0)],
-          }),
-          value: BigInt(0),
-        }]),
+        callData: await etherealAccount.encodeCalls([
+          {
+            to: restoreContracts.wusde,
+            data: encodeFunctionData({
+              abi: collateralTokenAbi,
+              functionName: 'approve',
+              args: [restoreContracts.vault, BigInt(0)],
+            }),
+            value: BigInt(0),
+          },
+        ]),
       });
-      console.debug(`[SessionKeyManager] Smart account deployed on restore, hash: ${deployOpHash}`);
+      console.debug(
+        `[SessionKeyManager] Smart account deployed on restore, hash: ${deployOpHash}`
+      );
     } catch (e) {
-      console.warn('[SessionKeyManager] Failed to deploy smart account on restore:', e);
+      console.warn(
+        '[SessionKeyManager] Failed to deploy smart account on restore:',
+        e
+      );
     }
   }
 

@@ -19,10 +19,7 @@ import {
   TrendingDown,
 } from 'lucide-react';
 import NumberDisplay from '~/components/shared/NumberDisplay';
-import type {
-  PositionBalance,
-  PickData,
-} from '~/hooks/graphql/usePositions';
+import type { PositionBalance, PickData } from '~/hooks/graphql/usePositions';
 import { useClaimableAmount } from '~/hooks/blockchain/useEscrowContract';
 import { useEscrowWrite } from '~/hooks/blockchain/useEscrowWrite';
 import SellPositionDialog from '~/components/secondary/SellPositionDialog';
@@ -105,14 +102,15 @@ export default function PositionCard({
       result === 'NON_DECISIVE');
 
   // Get claimable amount
-  const { claimableAmount, isLoading: isLoadingClaimable } =
-    useClaimableAmount({
+  const { claimableAmount, isLoading: isLoadingClaimable } = useClaimableAmount(
+    {
       pickConfigId: pickConfig?.id as `0x${string}`,
       tokenAddress: position.tokenAddress as Address,
       amount: BigInt(position.balance),
       chainId: position.chainId,
       enabled: isResolved && BigInt(position.balance) > 0n,
-    });
+    }
+  );
 
   const balanceFormatted = parseFloat(formatEther(BigInt(position.balance)));
   const claimableFormatted = claimableAmount

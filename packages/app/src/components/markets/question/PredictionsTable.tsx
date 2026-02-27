@@ -32,7 +32,6 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@sapience/ui/components/ui/popover';
-import Link from 'next/link';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import MarketBadge from '~/components/markets/MarketBadge';
@@ -86,30 +85,13 @@ export function PredictionsTable({ data, isLoading }: PredictionsTableProps) {
             second: '2-digit',
             timeZoneName: 'short',
           });
-          const { marketAddress, nftTokenId } = row.original;
-          const positionHref =
-            marketAddress && nftTokenId
-              ? `/positions/${marketAddress}/${nftTokenId}`
-              : undefined;
-          const timeContent = (
-            <span className="text-muted-foreground text-sm whitespace-nowrap">
-              {relativeTime}
-            </span>
-          );
           return (
             <TooltipProvider>
               <UITooltip>
                 <TooltipTrigger asChild>
-                  {positionHref ? (
-                    <Link
-                      href={positionHref}
-                      className="hover:text-brand-white transition-colors underline decoration-dotted underline-offset-2 cursor-pointer"
-                    >
-                      {timeContent}
-                    </Link>
-                  ) : (
-                    <span className="cursor-help">{timeContent}</span>
-                  )}
+                  <span className="text-muted-foreground text-sm whitespace-nowrap cursor-help">
+                    {relativeTime}
+                  </span>
                 </TooltipTrigger>
                 <TooltipContent>
                   <span>{exactTime}</span>

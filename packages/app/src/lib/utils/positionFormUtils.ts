@@ -134,7 +134,10 @@ export function getBestDisplayBid(bids: QuoteBid[]): QuoteBid | null {
   if (valid.length > 0) {
     return valid.reduce((best, cur) => {
       try {
-        return BigInt(cur.counterpartyCollateral) > BigInt(best.counterpartyCollateral) ? cur : best;
+        return BigInt(cur.counterpartyCollateral) >
+          BigInt(best.counterpartyCollateral)
+          ? cur
+          : best;
       } catch {
         return best;
       }

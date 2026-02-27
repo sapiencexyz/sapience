@@ -6,11 +6,7 @@
  */
 import { useCallback, useMemo } from 'react';
 import { useAccount, useSignTypedData } from 'wagmi';
-import {
-  parseUnits,
-  formatUnits,
-  type Address,
-} from 'viem';
+import { parseUnits, formatUnits, type Address } from 'viem';
 import {
   predictionMarketEscrow,
   collateralToken as collateralTokenAddresses,
@@ -70,7 +66,9 @@ interface UseBidSubmissionOptions {
 
 interface UseEscrowBidSubmissionResult {
   /** Submit a bid with signing and WebSocket transmission */
-  submitBid: (params: EscrowBidSubmissionParams) => Promise<EscrowBidSubmissionResult>;
+  submitBid: (
+    params: EscrowBidSubmissionParams
+  ) => Promise<EscrowBidSubmissionResult>;
   /** Whether the wallet is connected */
   isConnected: boolean;
   /** Connected wallet address */
@@ -148,7 +146,9 @@ export function useEscrowBidSubmission(
   );
 
   const submitBid = useCallback(
-    async (params: EscrowBidSubmissionParams): Promise<EscrowBidSubmissionResult> => {
+    async (
+      params: EscrowBidSubmissionParams
+    ): Promise<EscrowBidSubmissionResult> => {
       const {
         auctionId,
         counterpartyCollateral,
@@ -311,7 +311,10 @@ export function useEscrowBidSubmission(
                     };
                   }
                 } catch (prepError) {
-                  console.error('[Escrow Bid] Fund preparation failed:', prepError);
+                  console.error(
+                    '[Escrow Bid] Fund preparation failed:',
+                    prepError
+                  );
                   return {
                     success: false,
                     error: `Failed to prepare funds: ${prepError instanceof Error ? prepError.message : String(prepError)}`,
@@ -396,7 +399,9 @@ export function useEscrowBidSubmission(
       // via native session key path (Option B) instead of ERC-1271.
       let counterpartySessionKeyData: string | undefined;
       if (isUsingSession && escrowSessionKeyApproval) {
-        counterpartySessionKeyData = encodeEscrowSessionKeyData(escrowSessionKeyApproval);
+        counterpartySessionKeyData = encodeEscrowSessionKeyData(
+          escrowSessionKeyApproval
+        );
       }
 
       const escrowPayload = {

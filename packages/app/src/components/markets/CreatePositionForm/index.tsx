@@ -57,7 +57,6 @@ import { usePositionProgress } from '~/hooks/forms/usePositionProgress';
 import { useUserPositions } from '~/hooks/graphql/useLegacyPositions';
 import { useAuctionStart, type QuoteBid } from '~/lib/auction/useAuctionStart';
 
-
 import { logPositionForm } from '~/lib/auction/bidLogger';
 import { MarketGroupClassification } from '~/lib/types';
 import {
@@ -256,10 +255,15 @@ const CreatePositionFormInner = ({
   } = useAuctionStart();
 
   // Always use PredictionMarketEscrow
-  const PREDICTION_MARKET_ADDRESS = predictionMarketEscrow[positionChainId]?.address;
+  const PREDICTION_MARKET_ADDRESS =
+    predictionMarketEscrow[positionChainId]?.address;
 
   // Sponsorship status
-  const { isSponsored, sponsorAddress, refetch: refetchSponsor } = useSponsorStatus();
+  const {
+    isSponsored,
+    sponsorAddress,
+    refetch: refetchSponsor,
+  } = useSponsorStatus();
 
   // State for validated bids (async validation checks market maker balance/allowance)
   const [bids, setBids] = useState<QuoteBid[]>([]);
@@ -850,7 +854,7 @@ const CreatePositionFormInner = ({
       qp.set('symbol', shareDialogData.symbol);
     }
 
-    return `/og/position?${qp.toString()}`;
+    return `/og/prediction?${qp.toString()}`;
   }, [shareDialogData, effectiveAddress]);
 
   // Build OG image URL for the preview card (drafted position, not yet submitted)
@@ -875,7 +879,7 @@ const CreatePositionFormInner = ({
       if (payout) qp.set('payout', payout);
     }
 
-    return `/og/position?${qp.toString()}`;
+    return `/og/prediction?${qp.toString()}`;
   }, [
     selections,
     effectiveAddress,
@@ -945,10 +949,9 @@ const CreatePositionFormInner = ({
       open={showShareDialog}
       onOpenChange={handleShareDialogClose}
       title="Trade Submitted"
-      trackPosition={true}
-      lastNftId={shareDialogData?.lastNftId}
+      trackPrediction={true}
       progressState={progressState}
-      onPositionIndexed={handlePositionIndexed}
+      onPredictionIndexed={handlePositionIndexed}
     />
   );
 

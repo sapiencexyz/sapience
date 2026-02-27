@@ -86,12 +86,8 @@ class AuctionBidsHub {
         const obj: AuctionBid = {
           auctionId,
           counterparty: String(b?.counterparty || ''),
-          counterpartyCollateral: String(
-            b?.counterpartyCollateral || '0'
-          ),
-          counterpartyDeadline: Number(
-            b?.counterpartyDeadline || 0
-          ),
+          counterpartyCollateral: String(b?.counterpartyCollateral || '0'),
+          counterpartyDeadline: Number(b?.counterpartyDeadline || 0),
           counterpartySignature: signature,
           counterpartyNonce: Number(b?.counterpartyNonce || 0),
           receivedAtMs,

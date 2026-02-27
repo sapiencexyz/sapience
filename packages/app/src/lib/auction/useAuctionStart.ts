@@ -146,10 +146,18 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
   const sessionSignMessageRef = useRef(sessionSignMessage);
   const isUsingSmartAccountRef = useRef(isUsingSmartAccount);
 
-  useEffect(() => { effectiveAddressRef.current = effectiveAddress; }, [effectiveAddress]);
-  useEffect(() => { etherealSessionApprovalRef.current = etherealSessionApproval; }, [etherealSessionApproval]);
-  useEffect(() => { sessionSignMessageRef.current = sessionSignMessage; }, [sessionSignMessage]);
-  useEffect(() => { isUsingSmartAccountRef.current = isUsingSmartAccount; }, [isUsingSmartAccount]);
+  useEffect(() => {
+    effectiveAddressRef.current = effectiveAddress;
+  }, [effectiveAddress]);
+  useEffect(() => {
+    etherealSessionApprovalRef.current = etherealSessionApproval;
+  }, [etherealSessionApproval]);
+  useEffect(() => {
+    sessionSignMessageRef.current = sessionSignMessage;
+  }, [sessionSignMessage]);
+  useEffect(() => {
+    isUsingSmartAccountRef.current = isUsingSmartAccount;
+  }, [isUsingSmartAccount]);
 
   const relayerBase = useMemo(() => {
     if (apiBaseUrl && apiBaseUrl.length > 0) return apiBaseUrl;
@@ -231,12 +239,9 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
                 return {
                   auctionId: b.auctionId || targetAuctionId,
                   counterparty: b.counterparty || ZERO_ADDRESS,
-                  counterpartyCollateral:
-                    b.counterpartyCollateral || '0',
-                  counterpartyDeadline:
-                    b.counterpartyDeadline || 0,
-                  counterpartySignature:
-                    b.counterpartySignature || '0x',
+                  counterpartyCollateral: b.counterpartyCollateral || '0',
+                  counterpartyDeadline: b.counterpartyDeadline || 0,
+                  counterpartySignature: b.counterpartySignature || '0x',
                   counterpartyNonce: b.counterpartyNonce || 0,
                   // Store escrow-specific fields for later use in mint request
                   counterpartySessionKeyData: b.counterpartySessionKeyData,
@@ -286,7 +291,8 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
       // Determine if we'll use session signing or wallet signing
       // Session signing: use smart account address as predictor
       // Wallet signing: use wallet address as predictor (signature must match predictor for verification)
-      const willUseSessionSigning = isUsingSmartAccountRef.current && !!sessionSignMessageRef.current;
+      const willUseSessionSigning =
+        isUsingSmartAccountRef.current && !!sessionSignMessageRef.current;
       const effectivePredictor = willUseSessionSigning
         ? (effectiveAddressRef.current ?? params.predictor)
         : (walletAddress ?? params.predictor);
@@ -347,7 +353,8 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
             // Use session key signing when using smart account with active session
             // Otherwise fall back to owner's wallet signing
             if (willUseSessionSigning) {
-              predictorSignature = await sessionSignMessageRef.current!(message);
+              predictorSignature =
+                await sessionSignMessageRef.current!(message);
             } else {
               predictorSignature = await signMessageAsync({ message });
             }
@@ -374,7 +381,10 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
         const payloadWithSignature: Record<string, unknown> = {
           ...requestPayload,
           ...(predictorSignature && predictorSignedAt
-            ? { takerSignature: predictorSignature, takerSignedAt: predictorSignedAt }
+            ? {
+                takerSignature: predictorSignature,
+                takerSignedAt: predictorSignedAt,
+              }
             : {}),
           // Add session approval data ONLY when actually using session signing
           // This tells the relayer to verify via smart account (EIP-1271) vs EOA (ecrecover)
@@ -400,7 +410,8 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
         setCurrentAuctionParams({ ...params, predictor: effectivePredictor });
 
         // Check if this is an escrow auction (has escrowPicks)
-        const isEscrowAuction = params.escrowPicks && params.escrowPicks.length > 0;
+        const isEscrowAuction =
+          params.escrowPicks && params.escrowPicks.length > 0;
 
         if (isEscrowAuction) {
           // Escrow Auction Start - no signature needed at start time
@@ -444,7 +455,10 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
             }>('auction.start', escrowPayload, { timeoutMs: 10000 });
 
             if (escrowResponse?.error) {
-              console.error('[Escrow Auction] Start failed:', escrowResponse.error);
+              console.error(
+                '[Escrow Auction] Start failed:',
+                escrowResponse.error
+              );
               inflightRef.current = '';
               return;
             }
@@ -474,7 +488,9 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
           }
         } else {
           if (params.chainId === CHAIN_ID_ETHEREAL_TESTNET) {
-            console.error('[Auction] Escrow picks missing on Ethereal chain — cannot fall through to V1');
+            console.error(
+              '[Auction] Escrow picks missing on Ethereal chain — cannot fall through to V1'
+            );
             inflightRef.current = '';
             return;
           }

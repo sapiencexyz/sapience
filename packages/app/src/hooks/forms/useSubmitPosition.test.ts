@@ -21,14 +21,12 @@ jest.mock('viem', () => ({
   parseAbi: jest.fn().mockReturnValue([]),
 }));
 
-const mockPrepareMintCalls = jest
-  .fn()
-  .mockReturnValue([
-    {
-      to: '0xMarket' as `0x${string}`,
-      data: '0xEncodedCalldata' as `0x${string}`,
-    },
-  ]);
+const mockPrepareMintCalls = jest.fn().mockReturnValue([
+  {
+    to: '0xMarket' as `0x${string}`,
+    data: '0xEncodedCalldata' as `0x${string}`,
+  },
+]);
 jest.mock('@sapience/sdk', () => ({
   predictionMarketAbi: [],
   toBigIntSafe: (value: string | number | bigint | undefined) => {

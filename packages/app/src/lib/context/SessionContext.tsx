@@ -238,7 +238,8 @@ export function SessionProvider({ children }: SessionProviderProps) {
   // Status state
   const [isStartingSession, setIsStartingSession] = useState(false);
   const [isRestoringSession, setIsRestoringSession] = useState(false);
-  const [sessionCreationStep, setSessionCreationStep] = useState<SessionCreationStep | null>(null);
+  const [sessionCreationStep, setSessionCreationStep] =
+    useState<SessionCreationStep | null>(null);
   const [sessionError, setSessionError] = useState<Error | null>(null);
 
   // Smart account address state
@@ -601,7 +602,9 @@ export function SessionProvider({ children }: SessionProviderProps) {
         setArbitrumSessionApproval(approvalData.arbitrum);
         setEtherealSessionApproval(approvalData.ethereal);
         // Set escrow session key approval if available (legacy sessions)
-        setEscrowSessionKeyApproval(result.serialized.escrowSessionKeyApproval ?? null);
+        setEscrowSessionKeyApproval(
+          result.serialized.escrowSessionKeyApproval ?? null
+        );
         setIsSessionActive(true);
         setTimeRemainingMs(result.config.expiresAt - Date.now());
         console.debug(

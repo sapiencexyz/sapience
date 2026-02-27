@@ -40,8 +40,7 @@ export default function SecondaryTradesTable({
     chainId,
   });
 
-  const collateralSymbol =
-    COLLATERAL_SYMBOLS[chainId ?? 0] ?? 'COLLATERAL';
+  const collateralSymbol = COLLATERAL_SYMBOLS[chainId ?? 0] ?? 'COLLATERAL';
 
   if (isLoading) {
     return <Loader />;
@@ -86,10 +85,7 @@ export default function SecondaryTradesTable({
                 <NumberDisplay value={amount} />
               </TableCell>
               <TableCell>
-                <NumberDisplay
-                  value={price}
-                  appendedText={collateralSymbol}
-                />
+                <NumberDisplay value={price} appendedText={collateralSymbol} />
               </TableCell>
               <TableCell className="text-sm text-muted-foreground">
                 {date.toLocaleDateString()}

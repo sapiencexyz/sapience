@@ -77,7 +77,8 @@ const BestBid: React.FC<BestBidProps> = ({
         // Skip zero address bids
         if (
           !b?.counterparty ||
-          b.counterparty.toLowerCase() === '0x0000000000000000000000000000000000000000'
+          b.counterparty.toLowerCase() ===
+            '0x0000000000000000000000000000000000000000'
         )
           continue;
         const deadlineSec = Number(b?.counterpartyDeadline || 0);
@@ -151,8 +152,12 @@ const BestBid: React.FC<BestBidProps> = ({
                 })();
                 const payoutStr = (() => {
                   try {
-                    const predictorWei = BigInt(String(predictorCollateral ?? '0'));
-                    const counterpartyWei = BigInt(String(b?.counterpartyCollateral ?? '0'));
+                    const predictorWei = BigInt(
+                      String(predictorCollateral ?? '0')
+                    );
+                    const counterpartyWei = BigInt(
+                      String(b?.counterpartyCollateral ?? '0')
+                    );
                     return (predictorWei + counterpartyWei).toString();
                   } catch {
                     return String(b?.counterpartyCollateral || '0');
@@ -167,18 +172,26 @@ const BestBid: React.FC<BestBidProps> = ({
                 }
                 try {
                   counterpartyNumber = Number(
-                    formatEther(BigInt(String(b?.counterpartyCollateral ?? '0')))
+                    formatEther(
+                      BigInt(String(b?.counterpartyCollateral ?? '0'))
+                    )
                   );
                 } catch {
                   counterpartyNumber = 0;
                 }
                 let pct: number | null = null;
                 try {
-                  const predictorWei = BigInt(String(predictorCollateral ?? '0'));
-                  const counterpartyWei = BigInt(String(b?.counterpartyCollateral ?? '0'));
+                  const predictorWei = BigInt(
+                    String(predictorCollateral ?? '0')
+                  );
+                  const counterpartyWei = BigInt(
+                    String(b?.counterpartyCollateral ?? '0')
+                  );
                   const total = predictorWei + counterpartyWei;
                   if (total > 0n) {
-                    const pctTimes100 = Number((counterpartyWei * 10000n) / total);
+                    const pctTimes100 = Number(
+                      (counterpartyWei * 10000n) / total
+                    );
                     pct = Math.round(pctTimes100 / 100);
                   }
                 } catch {
@@ -191,7 +204,6 @@ const BestBid: React.FC<BestBidProps> = ({
                     })
                   : '—';
                 const payoutDisplay = Number.isFinite(payoutNumber)
-
                   ? payoutNumber.toLocaleString(undefined, {
                       minimumFractionDigits: 2,
                       maximumFractionDigits: 2,
@@ -455,7 +467,8 @@ const AuctionRequestInfo: React.FC<Props> = ({
         // Filter out zero address bids
         if (
           !b?.counterparty ||
-          b.counterparty.toLowerCase() === '0x0000000000000000000000000000000000000000'
+          b.counterparty.toLowerCase() ===
+            '0x0000000000000000000000000000000000000000'
         )
           return false;
         const deadlineSec = Number(b?.counterpartyDeadline || 0);

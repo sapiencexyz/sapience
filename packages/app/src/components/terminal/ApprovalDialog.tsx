@@ -7,11 +7,7 @@ import React, {
   useCallback,
   useRef,
 } from 'react';
-import {
-  useReadContract,
-  useBalance,
-  useSendCalls,
-} from 'wagmi';
+import { useReadContract, useBalance, useSendCalls } from 'wagmi';
 import {
   formatUnits,
   parseUnits,
@@ -19,9 +15,7 @@ import {
   erc20Abi,
   parseAbi,
 } from 'viem';
-import {
-  predictionMarketEscrow,
-} from '@sapience/sdk/contracts';
+import { predictionMarketEscrow } from '@sapience/sdk/contracts';
 import {
   CHAIN_ID_ETHEREAL,
   DEFAULT_CHAIN_ID,
@@ -66,13 +60,18 @@ const ApprovalDialog: React.FC = () => {
   const isEtherealChain =
     chainId === CHAIN_ID_ETHEREAL || chainId === CHAIN_ID_ETHEREAL_TESTNET;
 
-  const SPENDER_ADDRESS = predictionMarketEscrow[chainId]?.address as `0x${string}` | undefined;
+  const SPENDER_ADDRESS = predictionMarketEscrow[chainId]?.address as
+    | `0x${string}`
+    | undefined;
 
-  const COLLATERAL_ADDRESS: `0x${string}` | undefined = collateralToken[chainId]?.address as `0x${string}` | undefined;
+  const COLLATERAL_ADDRESS: `0x${string}` | undefined = collateralToken[chainId]
+    ?.address as `0x${string}` | undefined;
 
   // Simplification: on Ethereal, trading collateral is always wUSDe (and native USDe is used for gas + wrapping).
   const collateralAddress = useMemo(() => {
-    return isEtherealChain ? collateralToken[chainId]?.address : COLLATERAL_ADDRESS;
+    return isEtherealChain
+      ? collateralToken[chainId]?.address
+      : COLLATERAL_ADDRESS;
   }, [isEtherealChain, COLLATERAL_ADDRESS]);
 
   const { data: decimals } = useReadContract({

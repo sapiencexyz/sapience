@@ -130,14 +130,18 @@ const AuctionBidsDialog: React.FC<Props> = ({
         <div className="px-4 py-2 border-b bg-muted/30">
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <span className="text-muted-foreground">Predictor Collateral:</span>{' '}
+              <span className="text-muted-foreground">
+                Predictor Collateral:
+              </span>{' '}
               <NumberDisplay
                 value={predictorCollateralNum}
                 appendedText={collateralSymbol}
               />
             </div>
             <div>
-              <span className="text-muted-foreground">Counterparty Collateral:</span>{' '}
+              <span className="text-muted-foreground">
+                Counterparty Collateral:
+              </span>{' '}
               <NumberDisplay
                 value={counterpartyCollateralNum}
                 appendedText={collateralSymbol}
@@ -193,7 +197,9 @@ const AuctionBidsDialog: React.FC<Props> = ({
                   // Calculate total pool
                   const totalPoolNum = (() => {
                     try {
-                      const predictor = BigInt(auction?.predictorCollateral ?? '0');
+                      const predictor = BigInt(
+                        auction?.predictorCollateral ?? '0'
+                      );
                       const counterparty = BigInt(
                         auction?.counterpartyCollateral ?? '0'
                       );

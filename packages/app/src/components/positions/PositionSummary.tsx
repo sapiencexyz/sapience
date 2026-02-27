@@ -57,8 +57,8 @@ export default function PositionSummary({
   predictorAddress,
   counterpartyAddress,
 }: PositionSummaryProps) {
-  const showAddressesRow =
-    isOwnerLoading || currentOwner || predictorAddress || counterpartyAddress;
+  const showOwner = isOwnerLoading || !!currentOwner;
+  const showAddressesRow = showOwner || predictorAddress || counterpartyAddress;
 
   return (
     <div className="space-y-4 pt-2">
@@ -66,14 +66,21 @@ export default function PositionSummary({
       <div className="flex items-center gap-2 pb-2">
         {/* Left group: Position ID, external link, counterparty badge */}
         <div className="flex items-center gap-2">
-          <h2 className="eyebrow text-foreground">Position #{positionId}</h2>
+          <h2 className="eyebrow text-foreground">
+            Prediction{' '}
+            {typeof positionId === 'string' &&
+            positionId.startsWith('0x') &&
+            positionId.length > 12
+              ? `${positionId.slice(0, 6)}...${positionId.slice(-4)}`
+              : `#${positionId}`}
+          </h2>
           {positionUrl && (
             <Link
               href={positionUrl}
               target="_blank"
               rel="noopener noreferrer"
               className="text-muted-foreground hover:text-foreground transition-colors"
-              title="View full position page"
+              title="View full prediction page"
             >
               <ExternalLink className="h-4 w-4" />
             </Link>
@@ -128,35 +135,39 @@ export default function PositionSummary({
 
       {/* Addresses row */}
       {showAddressesRow && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          {/* Current Owner */}
-          <div className="space-y-1">
-            <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
-              Current Owner
-            </div>
-            {isOwnerLoading ? (
-              <div className="flex items-center h-[24px]">
-                <Loader className="w-3.5 h-3.5" />
+        <div
+          className={`grid grid-cols-1 gap-4 ${showOwner ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}
+        >
+          {/* Current Owner - only shown for NFT-based positions */}
+          {showOwner && (
+            <div className="space-y-1">
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
+                Current Owner
               </div>
-            ) : currentOwner ? (
-              <Link
-                href={`/profile/${currentOwner}`}
-                className="inline-flex items-center gap-1.5 text-sm md:text-base font-medium tabular-nums text-foreground hover:text-accent-gold transition-colors"
-              >
-                <EnsAvatar
-                  address={currentOwner}
-                  className="shrink-0 rounded-sm ring-1 ring-border/50"
-                  width={16}
-                  height={16}
-                />
-                <AddressDisplay address={currentOwner} />
-              </Link>
-            ) : (
-              <span className="text-sm md:text-base font-medium tabular-nums text-muted-foreground">
-                —
-              </span>
-            )}
-          </div>
+              {isOwnerLoading ? (
+                <div className="flex items-center h-[24px]">
+                  <Loader className="w-3.5 h-3.5" />
+                </div>
+              ) : currentOwner ? (
+                <Link
+                  href={`/profile/${currentOwner}`}
+                  className="inline-flex items-center gap-1.5 text-sm md:text-base font-medium tabular-nums text-foreground hover:text-accent-gold transition-colors"
+                >
+                  <EnsAvatar
+                    address={currentOwner}
+                    className="shrink-0 rounded-sm ring-1 ring-border/50"
+                    width={16}
+                    height={16}
+                  />
+                  <AddressDisplay address={currentOwner} />
+                </Link>
+              ) : (
+                <span className="text-sm md:text-base font-medium tabular-nums text-muted-foreground">
+                  —
+                </span>
+              )}
+            </div>
+          )}
 
           {/* Predictor */}
           <div className="space-y-1">

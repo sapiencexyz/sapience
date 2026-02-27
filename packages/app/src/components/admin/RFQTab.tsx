@@ -156,7 +156,9 @@ const RFQTab = ({
   const [chainFilter, setChainFilter] = useState<string>('all');
 
   // Escrow state
-  const [protocolVersion, setProtocolVersion] = useState<'legacy' | 'escrow'>('legacy');
+  const [protocolVersion, setProtocolVersion] = useState<'legacy' | 'escrow'>(
+    'legacy'
+  );
   const [escrowConditionId, setEscrowConditionId] = useState('');
   const [escrowResolverType, setEscrowResolverType] = useState<
     'manual' | 'pyth' | 'uma-lz' | 'conditional-tokens'
@@ -909,7 +911,8 @@ const RFQTab = ({
           claimStatement,
           description,
           similarMarkets,
-          chainId: protocolVersion === 'escrow' ? escrowChainId : currentChainId,
+          chainId:
+            protocolVersion === 'escrow' ? escrowChainId : currentChainId,
           resolver: trimmedResolver.toLowerCase(),
           ...(trimmedGroupName ? { groupName: trimmedGroupName } : {}),
           // Escrow: pass condition ID directly via conditionHash

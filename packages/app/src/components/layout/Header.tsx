@@ -31,6 +31,7 @@ import {
   Wallet,
   XCircle,
   BarChart3,
+  Activity,
 } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -169,6 +170,13 @@ const NavLinks = ({ onClose }: NavLinksProps) => {
           onClick={handleLinkClick}
         >
           Analytics
+        </Link>
+        <Link
+          href="/feed"
+          className={`flex w-fit px-3 py-2 rounded-full ${linkClass} ${isActive('/feed', pathname) ? activeClass : ''} hover:text-accent-gold transition-colors`}
+          onClick={handleLinkClick}
+        >
+          Feed
         </Link>
         {/* Mobile settings link, placed under links */}
         <Link
@@ -559,6 +567,15 @@ const Header = () => {
                     >
                       <BarChart3 className="mr-px h-4 w-4 opacity-75 transition-colors group-hover:opacity-100 data-[highlighted]:opacity-100" />
                       <span>Analytics</span>
+                    </Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link
+                      href="/feed"
+                      className="group cursor-pointer flex items-center transition-colors hover:text-accent-gold data-[highlighted]:text-accent-gold hover:bg-transparent data-[highlighted]:bg-transparent"
+                    >
+                      <Activity className="mr-px h-4 w-4 opacity-75 transition-colors group-hover:opacity-100 data-[highlighted]:opacity-100" />
+                      <span>Feed</span>
                     </Link>
                   </DropdownMenuItem>
                   <DropdownMenuItem asChild>

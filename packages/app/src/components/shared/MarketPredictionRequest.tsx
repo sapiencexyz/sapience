@@ -179,7 +179,9 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
     functionName: 'getNonce',
     args: selectedPredictorAddress ? [selectedPredictorAddress] : undefined,
     chainId: chainId,
-    query: { enabled: !!selectedPredictorAddress && !!PREDICTION_MARKET_ADDRESS },
+    query: {
+      enabled: !!selectedPredictorAddress && !!PREDICTION_MARKET_ADDRESS,
+    },
   });
 
   // unified via PercentChance component
@@ -201,7 +203,8 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
 
           const trustedBotBids = bids.filter(
             (b) =>
-              b.counterparty?.toLowerCase() === PREFERRED_ESTIMATE_QUOTER.toLowerCase()
+              b.counterparty?.toLowerCase() ===
+              PREFERRED_ESTIMATE_QUOTER.toLowerCase()
           );
 
           // Verify each bid's signature
@@ -252,7 +255,8 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
         const list = valid.length > 0 ? valid : filteredBids;
         const best = list.reduce((bestBid, cur) => {
           try {
-            return BigInt(cur.counterpartyCollateral) > BigInt(bestBid.counterpartyCollateral)
+            return BigInt(cur.counterpartyCollateral) >
+              BigInt(bestBid.counterpartyCollateral)
               ? cur
               : bestBid;
           } catch {
@@ -260,8 +264,12 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
           }
         }, list[0]);
 
-        const predictorWei = BigInt(String(lastPredictorPositionSizeWei || '0'));
-        const counterpartyWei = BigInt(String(best?.counterpartyCollateral || '0'));
+        const predictorWei = BigInt(
+          String(lastPredictorPositionSizeWei || '0')
+        );
+        const counterpartyWei = BigInt(
+          String(best?.counterpartyCollateral || '0')
+        );
         const denom = counterpartyWei + predictorWei;
         const prob = denom > 0n ? Number(predictorWei) / Number(denom) : 0.5;
         const clamped = Math.max(0, Math.min(1, prob));
@@ -311,11 +319,14 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
       const positionSizeWei = parseUnits('1', 18).toString();
       setLastPredictorPositionSizeWei(positionSizeWei);
       const payload = buildAuctionStartPayload(effectiveOutcomes, chainId);
-      const isEscrow = chainId === CHAIN_ID_ETHEREAL_TESTNET && !!resolverAddress;
+      const isEscrow =
+        chainId === CHAIN_ID_ETHEREAL_TESTNET && !!resolverAddress;
       const escrowPicks = isEscrow
         ? effectiveOutcomes.map((o) => ({
             conditionResolver: resolverAddress as `0x${string}`,
-            conditionId: (o.marketId.startsWith('0x') ? o.marketId : `0x${o.marketId}`) as `0x${string}`,
+            conditionId: (o.marketId.startsWith('0x')
+              ? o.marketId
+              : `0x${o.marketId}`) as `0x${string}`,
             predictedOutcome: o.prediction ? 1 : 0,
           }))
         : undefined;
@@ -324,7 +335,8 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
         resolver: payload.resolver,
         predictedOutcomes: payload.predictedOutcomes,
         predictor: selectedPredictorAddress,
-        predictorNonce: predictorNonce !== undefined ? Number(predictorNonce) : 0,
+        predictorNonce:
+          predictorNonce !== undefined ? Number(predictorNonce) : 0,
         chainId: chainId,
         ...(escrowPicks && { escrowPicks }),
       };
@@ -363,11 +375,14 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
         const positionSizeWei = parseUnits('1', 18).toString();
         setLastPredictorPositionSizeWei(positionSizeWei);
         const payload = buildAuctionStartPayload(effectiveOutcomes, chainId);
-        const isEscrow = chainId === CHAIN_ID_ETHEREAL_TESTNET && !!resolverAddress;
+        const isEscrow =
+          chainId === CHAIN_ID_ETHEREAL_TESTNET && !!resolverAddress;
         const escrowPicks = isEscrow
           ? effectiveOutcomes.map((o) => ({
               conditionResolver: resolverAddress as `0x${string}`,
-              conditionId: (o.marketId.startsWith('0x') ? o.marketId : `0x${o.marketId}`) as `0x${string}`,
+              conditionId: (o.marketId.startsWith('0x')
+                ? o.marketId
+                : `0x${o.marketId}`) as `0x${string}`,
               predictedOutcome: o.prediction ? 1 : 0,
             }))
           : undefined;
@@ -376,7 +391,8 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
           resolver: payload.resolver,
           predictedOutcomes: payload.predictedOutcomes,
           predictor: selectedPredictorAddress,
-          predictorNonce: predictorNonce !== undefined ? Number(predictorNonce) : 0,
+          predictorNonce:
+            predictorNonce !== undefined ? Number(predictorNonce) : 0,
           chainId: chainId,
           ...(escrowPicks && { escrowPicks }),
         };

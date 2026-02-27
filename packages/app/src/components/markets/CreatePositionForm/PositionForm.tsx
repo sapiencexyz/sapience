@@ -96,8 +96,7 @@ export default function PositionForm({
   pythPredictions = [],
   onRemovePythPrediction,
 }: PositionFormProps) {
-  const { selections, removeSelection, getPicks } =
-    useCreatePositionContext();
+  const { selections, removeSelection, getPicks } = useCreatePositionContext();
   const { address: predictorAddress } = useAccount();
   const { hasConnectedWallet } = useConnectedWallet();
   const { openConnectDialog } = useConnectDialog();
@@ -144,10 +143,14 @@ export default function PositionForm({
 
   // Stable refs — read at call time inside triggerAuctionRequest, don't trigger recreation
   const selectedPredictorAddressRef = useRef(selectedPredictorAddress);
-  useEffect(() => { selectedPredictorAddressRef.current = selectedPredictorAddress; }, [selectedPredictorAddress]);
+  useEffect(() => {
+    selectedPredictorAddressRef.current = selectedPredictorAddress;
+  }, [selectedPredictorAddress]);
 
   const requestQuotesRef = useRef(requestQuotes);
-  useEffect(() => { requestQuotesRef.current = requestQuotes; }, [requestQuotes]);
+  useEffect(() => {
+    requestQuotesRef.current = requestQuotes;
+  }, [requestQuotes]);
 
   // Get user's collateral balance from context (shared with form schema validation)
   const { balance: userBalance, isLoading: isBalanceLoading } =
@@ -336,7 +339,8 @@ export default function PositionForm({
     // Select the bid with highest counterpartyCollateral (highest payout for user)
     const best = validFilteredBids.reduce((acc, current) => {
       try {
-        return BigInt(current.counterpartyCollateral) > BigInt(acc.counterpartyCollateral)
+        return BigInt(current.counterpartyCollateral) >
+          BigInt(acc.counterpartyCollateral)
           ? current
           : acc;
       } catch {
@@ -364,7 +368,9 @@ export default function PositionForm({
       return;
     }
     // Clear the sticky estimate when there are no non-expired bids left.
-    const hasAnyNonExpired = bids.some((b) => b.counterpartyDeadline * 1000 > nowMs);
+    const hasAnyNonExpired = bids.some(
+      (b) => b.counterpartyDeadline * 1000 > nowMs
+    );
     if (!hasAnyNonExpired) setStickyEstimateBid(null);
   }, [bestBid, estimateBid, bids, nowMs]);
 
@@ -488,7 +494,13 @@ export default function PositionForm({
           if (escrowPicks.length > 0) {
             params.escrowPicks = escrowPicks;
           } else {
-            console.warn('[PositionForm] Escrow chain but getPicks() empty', selections.map(s => ({ id: s.conditionId, resolver: s.resolverAddress })));
+            console.warn(
+              '[PositionForm] Escrow chain but getPicks() empty',
+              selections.map((s) => ({
+                id: s.conditionId,
+                resolver: s.resolverAddress,
+              }))
+            );
           }
         }
 
@@ -769,46 +781,57 @@ export default function PositionForm({
           </div>
 
           {/* Sponsorship indicator */}
-          {isSponsored && (() => {
-            const activeBid = bestBid ?? stickyEstimateBid;
-            // User's collateral = positionSize (what they typed), vault's collateral = bid.counterpartyCollateral
-            const decimals = collateralDecimals ?? 18;
-            const userCollateral = positionSizeValue
-              ? parseUnits(positionSizeValue, decimals)
-              : 0n;
-            const vaultCollateral = activeBid
-              ? BigInt(activeBid.counterpartyCollateral)
-              : 0n;
-            const bidEligible =
-              !activeBid || !userCollateral
-                ? true // No bid or no size yet — show as available
-                : isEntryPriceEligible(userCollateral, vaultCollateral, maxEntryPriceBps);
-            const sponsorAmountFormatted = formatUnits(remainingBudget, 18);
+          {isSponsored &&
+            (() => {
+              const activeBid = bestBid ?? stickyEstimateBid;
+              // User's collateral = positionSize (what they typed), vault's collateral = bid.counterpartyCollateral
+              const decimals = collateralDecimals ?? 18;
+              const userCollateral = positionSizeValue
+                ? parseUnits(positionSizeValue, decimals)
+                : 0n;
+              const vaultCollateral = activeBid
+                ? BigInt(activeBid.counterpartyCollateral)
+                : 0n;
+              const bidEligible =
+                !activeBid || !userCollateral
+                  ? true // No bid or no size yet — show as available
+                  : isEntryPriceEligible(
+                      userCollateral,
+                      vaultCollateral,
+                      maxEntryPriceBps
+                    );
+              const sponsorAmountFormatted = formatUnits(remainingBudget, 18);
 
-            return (
-              <div className={`mt-3 rounded-lg border px-3 py-2.5 text-sm ${
-                bidEligible
-                  ? 'border-ethena/30 bg-ethena/5'
-                  : 'border-muted/30 bg-muted/5 opacity-60'
-              }`}>
-                <div className="flex items-center gap-2">
-                  <Gift className={`h-4 w-4 flex-shrink-0 ${bidEligible ? 'text-ethena' : 'text-muted-foreground'}`} />
-                  <div className="flex-1">
-                    <p className={`font-medium ${bidEligible ? 'text-ethena' : 'text-muted-foreground'}`}>
-                      {bidEligible
-                        ? `${sponsorAmountFormatted} ${collateralSymbol} sponsored`
-                        : 'Sponsorship unavailable at this price'}
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-0.5">
-                      {bidEligible
-                        ? `You pay ${collateralSymbol} 0 — the sponsor covers your side of this prediction.`
-                        : `Only available for positions priced below ${Number(maxEntryPriceBps) / 100}%.`}
-                    </p>
+              return (
+                <div
+                  className={`mt-3 rounded-lg border px-3 py-2.5 text-sm ${
+                    bidEligible
+                      ? 'border-ethena/30 bg-ethena/5'
+                      : 'border-muted/30 bg-muted/5 opacity-60'
+                  }`}
+                >
+                  <div className="flex items-center gap-2">
+                    <Gift
+                      className={`h-4 w-4 flex-shrink-0 ${bidEligible ? 'text-ethena' : 'text-muted-foreground'}`}
+                    />
+                    <div className="flex-1">
+                      <p
+                        className={`font-medium ${bidEligible ? 'text-ethena' : 'text-muted-foreground'}`}
+                      >
+                        {bidEligible
+                          ? `${sponsorAmountFormatted} ${collateralSymbol} sponsored`
+                          : 'Sponsorship unavailable at this price'}
+                      </p>
+                      <p className="text-xs text-muted-foreground mt-0.5">
+                        {bidEligible
+                          ? `You pay ${collateralSymbol} 0 — the sponsor covers your side of this prediction.`
+                          : `Only available for positions priced below ${Number(maxEntryPriceBps) / 100}%.`}
+                      </p>
+                    </div>
                   </div>
                 </div>
-              </div>
-            );
-          })()}
+              );
+            })()}
 
           <div className="mt-5 space-y-1">
             <RestrictedJurisdictionBanner

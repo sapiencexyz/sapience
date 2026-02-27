@@ -115,7 +115,7 @@ export default function ConnectDialog({
     if (!isCreatingSession) return null;
     switch (sessionCreationStep) {
       case 'switching-network':
-        return "SWITCHING NETWORK";
+        return 'SWITCHING NETWORK';
       case 'requesting-approval':
         return 'ESTABLISHING CONNECTION (1/2)';
       case 'deploying-account':
@@ -201,7 +201,8 @@ export default function ConnectDialog({
 
   // Start session when opened with startSessionOnOpen flag (e.g. after refcode entry)
   useEffect(() => {
-    if (!startSessionOnOpen || !open || !isConnected || isCreatingSession) return;
+    if (!startSessionOnOpen || !open || !isConnected || isCreatingSession)
+      return;
 
     onSessionStarted?.();
     setIsCreatingSession(true);
@@ -255,7 +256,10 @@ export default function ConnectDialog({
             }>(USER_REFERRAL_STATUS_QUERY, { wallet: currentAddress });
 
             const user = data?.user;
-            hasReferral = !!(user && (user.refCodeHash || user.referredBy || user.referredByCode));
+            hasReferral = !!(
+              user &&
+              (user.refCodeHash || user.referredBy || user.referredByCode)
+            );
 
             console.debug('[ConnectDialog] Referral check:', {
               currentAddress,

@@ -1,8 +1,8 @@
 // Forecast-specific helpers for OG image generation and forecast pages
 
-import { getGraphQLEndpoint } from './_position-helpers';
+import { getGraphQLEndpoint } from './_prediction-helpers';
 
-export { getGraphQLEndpoint } from './_position-helpers';
+export { getGraphQLEndpoint } from './_prediction-helpers';
 
 // GraphQL query for fetching attestation data by uid
 export const ATTESTATION_BY_UID_QUERY = `

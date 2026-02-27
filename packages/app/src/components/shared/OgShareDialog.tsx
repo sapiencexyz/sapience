@@ -18,6 +18,7 @@ import {
   useUserPositions,
   type Position,
 } from '~/hooks/graphql/useLegacyPositions';
+import { usePredictions, type Prediction } from '~/hooks/graphql/usePositions';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useSession } from '~/lib/context/SessionContext';
 import type { PositionProgressState } from '~/types/positionProgress';
@@ -26,7 +27,7 @@ import type { PositionProgressState } from '~/types/positionProgress';
 let dialogOpenCounter = 0;
 
 interface OgShareDialogBaseProps {
-  imageSrc: string; // Relative path with query, e.g. "/og/position?..."
+  imageSrc: string; // Relative path with query, e.g. "/og/prediction?..."
   title?: string; // Dialog title
   trigger?: React.ReactNode;
   shareTitle?: string; // Unused but kept for backward compatibility
@@ -39,6 +40,9 @@ interface OgShareDialogBaseProps {
   onPositionIndexed?: () => void; // Called when position is found in GraphQL
   shareUrl?: string; // Override share URL (e.g. for slip preview cards)
   forecastUid?: string; // For forecast share URLs (/forecast/{uid})
+  trackPrediction?: boolean; // Enable prediction tracking (V2 escrow)
+  predictionTimestamp?: number; // Timestamp when prediction was submitted (ms)
+  onPredictionIndexed?: () => void; // Called when prediction is found
 }
 
 export default function OgShareDialogBase({
@@ -54,6 +58,9 @@ export default function OgShareDialogBase({
   onPositionIndexed,
   shareUrl: shareUrlProp,
   forecastUid,
+  trackPrediction = false,
+  predictionTimestamp,
+  onPredictionIndexed,
 }: OgShareDialogBaseProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const isControlled = typeof controlledOpen === 'boolean';
@@ -91,17 +98,26 @@ export default function OgShareDialogBase({
   const chainId = DEFAULT_CHAIN_ID;
   const [positionResolved, setPositionResolved] = useState(false);
 
-  // Store resolved position data for share URL
-  const [resolvedPositionData, setResolvedPositionData] = useState<{
-    nftId: string;
-    marketAddress: string;
-  } | null>(null);
   const pollingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const pollingCancelledRef = useRef(false);
   const dialogOpenTimestampRef = useRef<number | null>(null);
 
+  // Store resolved predictionId for V2 escrow tracking
+  const [resolvedPredictionId, setResolvedPredictionId] = useState<
+    string | null
+  >(null);
+  const predictionPollingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const predictionPollingCancelledRef = useRef(false);
+  const predictionOpenTimestampRef = useRef<number | null>(null);
+
   // Use effectiveAddress from session context for position tracking
   const userAddress = effectiveAddress?.toLowerCase();
+
+  // Fetch predictions for V2 escrow tracking
+  const { data: predictions, refetch: refetchPredictions } = usePredictions({
+    address: trackPrediction && userAddress ? userAddress : undefined,
+    take: 5,
+  });
 
   // Fetch positions for tracking
   const { data: positions, refetch: refetchPositions } = useUserPositions({
@@ -141,10 +157,6 @@ export default function OgShareDialogBase({
         mintedAt: position.mintedAt,
       });
       setPositionResolved(true);
-      setResolvedPositionData({
-        nftId: position.predictorNftTokenId,
-        marketAddress: position.marketAddress,
-      });
       onPositionIndexed?.();
       pollingCancelledRef.current = true;
       if (pollingTimerRef.current) {
@@ -275,17 +287,96 @@ export default function OgShareDialogBase({
     onPositionIndexed,
   ]);
 
+  // Prediction tracking logic (V2 escrow)
+  useEffect(() => {
+    if (!trackPrediction || !open || !userAddress) return;
+    if (resolvedPredictionId) {
+      predictionPollingCancelledRef.current = true;
+      if (predictionPollingTimerRef.current) {
+        clearTimeout(predictionPollingTimerRef.current);
+        predictionPollingTimerRef.current = null;
+      }
+      return;
+    }
+
+    const minTimestamp = predictionOpenTimestampRef.current || Date.now();
+
+    const checkPredictions = (preds: Prediction[]): boolean => {
+      if (!preds || preds.length === 0) return false;
+      const found = preds.find((p) => {
+        const createdAtMs = new Date(p.createdAt).getTime();
+        return createdAtMs >= minTimestamp - 10_000; // 10s buffer for clock skew
+      });
+      if (found) {
+        setResolvedPredictionId(found.predictionId);
+        onPredictionIndexed?.();
+        setPositionResolved(true); // reuse positionResolved to show buttons
+        predictionPollingCancelledRef.current = true;
+        if (predictionPollingTimerRef.current) {
+          clearTimeout(predictionPollingTimerRef.current);
+          predictionPollingTimerRef.current = null;
+        }
+        return true;
+      }
+      return false;
+    };
+
+    if (predictions.length > 0) {
+      checkPredictions(predictions);
+    }
+
+    predictionPollingCancelledRef.current = false;
+    const poll = async () => {
+      if (predictionPollingCancelledRef.current) return;
+      try {
+        const result = await refetchPredictions();
+        const latest = result.data || [];
+        if (!predictionPollingCancelledRef.current) {
+          checkPredictions(latest);
+        }
+      } catch (err) {
+        console.warn('[OgShareDialog] prediction refetch threw', err);
+      }
+      if (!predictionPollingCancelledRef.current) {
+        predictionPollingTimerRef.current = setTimeout(poll, 500);
+      }
+    };
+    predictionPollingTimerRef.current = setTimeout(poll, 500);
+
+    return () => {
+      predictionPollingCancelledRef.current = true;
+      if (predictionPollingTimerRef.current) {
+        clearTimeout(predictionPollingTimerRef.current);
+        predictionPollingTimerRef.current = null;
+      }
+    };
+  }, [
+    trackPrediction,
+    open,
+    userAddress,
+    resolvedPredictionId,
+    predictions,
+    refetchPredictions,
+    onPredictionIndexed,
+  ]);
+
   // Reset tracking state when dialog closes
   useEffect(() => {
     if (!open) {
       setPositionResolved(false);
-      setResolvedPositionData(null); // Reset resolved position data
+      setResolvedPredictionId(null); // Reset resolved prediction data
       setImgLoading(true); // Reset image loading state to prevent flash on reopen
       dialogOpenTimestampRef.current = null;
+      predictionOpenTimestampRef.current = null;
       pollingCancelledRef.current = true;
+      predictionPollingCancelledRef.current = true;
       if (pollingTimerRef.current) {
         clearTimeout(pollingTimerRef.current);
         pollingTimerRef.current = null;
+      }
+      if (predictionPollingTimerRef.current) {
+        clearTimeout(predictionPollingTimerRef.current);
+        predictionPollingTimerRef.current = null;
       }
     }
   }, [open]);
@@ -307,50 +398,38 @@ export default function OgShareDialogBase({
     }
   };
 
-  // Extract nftId and marketAddress from imageSrc if present
-  const positionShareParams = useMemo(() => {
-    try {
-      if (typeof window === 'undefined') return null;
-      const url = new URL(imageSrc, window.location.origin);
-      const nftId = url.searchParams.get('nftId');
-      const marketAddress = url.searchParams.get('marketAddress');
-
-      // Use NFT ID and market address
-      if (nftId && marketAddress) {
-        return { nftId, marketAddress };
-      }
-    } catch {
-      // ignore
-    }
-    return null;
-  }, [imageSrc]);
-
   const buildShareUrl = useCallback((): string => {
     if (shareUrlProp) return shareUrlProp;
 
-    const nftId = resolvedPositionData?.nftId || positionShareParams?.nftId;
-    const marketAddress =
-      resolvedPositionData?.marketAddress || positionShareParams?.marketAddress;
+    // V2 escrow: use prediction URL when resolved
+    if (resolvedPredictionId) {
+      const relativeUrl = `/predictions/${resolvedPredictionId}`;
+      if (typeof window === 'undefined') return relativeUrl;
+      return `${window.location.origin}${relativeUrl}`;
+    }
 
     let relativeUrl = '/';
     if (forecastUid) {
       relativeUrl = `/forecast/${forecastUid}`;
-    } else if (nftId && marketAddress) {
-      relativeUrl = `/positions/${marketAddress}/${nftId}`;
     }
 
     if (typeof window === 'undefined') {
       return relativeUrl;
     }
     return `${window.location.origin}${relativeUrl}`;
-  }, [shareUrlProp, resolvedPositionData, positionShareParams, forecastUid]);
+  }, [shareUrlProp, resolvedPredictionId, forecastUid]);
+
+  // Always use the original imageSrc (query-param card). The share URL already
+  // updates to /predictions/{id} when the prediction resolves, so social media
+  // crawlers get the API-dependent OG image from the prediction page's meta tags.
+  const effectiveImageSrc = imageSrc;
 
   // Absolute URL to the actual image route (for copying image binary)
   const absoluteImageUrl = useMemo(() => {
     if (typeof window !== 'undefined')
-      return `${window.location.origin}${imageSrc}`;
-    return imageSrc;
-  }, [imageSrc]);
+      return `${window.location.origin}${effectiveImageSrc}`;
+    return effectiveImageSrc;
+  }, [effectiveImageSrc]);
 
   // Set dialogOpenTimestamp when dialog opens for position tracking
   useEffect(() => {
@@ -359,7 +438,14 @@ export default function OgShareDialogBase({
     }
   }, [open, trackPosition, positionTimestamp]);
 
-  const previewSrc = `${imageSrc}${cacheBust ? `&cb=${cacheBust}` : ''}`;
+  // Set predictionOpenTimestamp when dialog opens for prediction tracking
+  useEffect(() => {
+    if (open && trackPrediction && !predictionOpenTimestampRef.current) {
+      predictionOpenTimestampRef.current = predictionTimestamp || Date.now();
+    }
+  }, [open, trackPrediction, predictionTimestamp]);
+
+  const previewSrc = `${effectiveImageSrc}${cacheBust ? `&cb=${cacheBust}` : ''}`;
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -375,7 +461,7 @@ export default function OgShareDialogBase({
               <HeroBackgroundLines className="opacity-60 !-z-0" />
             </div>
             {/* Loading text for non-tracking mode */}
-            {!trackPosition && imgLoading && (
+            {!trackPosition && !trackPrediction && imgLoading && (
               <div className="absolute inset-0 flex items-center justify-center z-10">
                 <span className="font-mono text-[hsl(var(--accent-gold))] text-lg uppercase tracking-wider">
                   LOADING...
@@ -397,7 +483,7 @@ export default function OgShareDialogBase({
           {/* Progress bar and buttons container - they cross-fade */}
           <div className="relative mt-4 min-h-[44px]">
             {/* Progress bar - fades out when resolved */}
-            {trackPosition && progressState && (
+            {(trackPosition || trackPrediction) && progressState && (
               <div
                 className={`absolute inset-0 transition-opacity duration-500 ${
                   positionResolved
@@ -414,14 +500,16 @@ export default function OgShareDialogBase({
             {/* Buttons - fade in on top of progress bar when resolved */}
             <div
               className={`absolute inset-0 flex items-center transition-opacity duration-500 ease-out ${
-                trackPosition && !positionResolved
+                (trackPosition || trackPrediction) && !positionResolved
                   ? 'opacity-0 pointer-events-none'
                   : 'opacity-100'
               }`}
             >
               <div
                 className={`grid gap-4 w-full ${
-                  trackPosition && userAddress ? 'grid-cols-4' : 'grid-cols-3'
+                  (trackPosition || trackPrediction) && userAddress
+                    ? 'grid-cols-4'
+                    : 'grid-cols-3'
                 }`}
               >
                 {/* Copy */}
@@ -509,7 +597,7 @@ export default function OgShareDialogBase({
                   <Share2 className="mr-0.5 h-4 w-4" /> Share
                 </Button>
                 {/* Portfolio */}
-                {trackPosition && userAddress && (
+                {(trackPosition || trackPrediction) && userAddress && (
                   <Button
                     size="lg"
                     className="w-full"
