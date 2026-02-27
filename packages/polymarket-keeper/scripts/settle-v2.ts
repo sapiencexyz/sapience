@@ -62,9 +62,10 @@ const V2_CHAIN_ID = Number(process.env.V2_CHAIN_ID || '13374202');
 // Ethereal testnet RPC
 const ETHEREAL_TESTNET_RPC = 'https://rpc.etherealtest.net';
 
-// ConditionalTokensReader contract on Polygon (same as v1)
-const CONDITIONAL_TOKENS_READER_ADDRESS =
-  '0x97b356E9689dCEa3a268Ac6D7d8A87A24fa95ae2' as Address;
+// ConditionalTokensReader contract on Polygon
+const CONDITIONAL_TOKENS_READER_ADDRESS = (process.env
+  .CONDITIONAL_TOKENS_READER_ADDRESS ||
+  '0x882288A664e29aEBC654Fa9679697d23716fcCD1') as Address;
 
 // Default Sapience API URL
 const DEFAULT_API_URL = 'https://api.sapience.xyz/graphql';

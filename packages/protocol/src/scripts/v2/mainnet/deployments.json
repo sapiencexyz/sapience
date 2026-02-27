@@ -10,7 +10,9 @@
       "PredictionMarketBridge": "0xf3a0026Bd8Bf3B3ca41177C93b99F97dfB657506",
       "ZeroDevKernelAccountFactory": "0x91C9de557e47c08A32FBd6878Cac2Eb9A121c590",
       "SecondaryMarketEscrow": "0xc46C3140D2c776f83Cf908B3b93f20165e294064",
-      "PredictionMarketVault": "0x5704dB4b2c068d74Fde25257106a7029463f812E"
+      "PredictionMarketVault": "0x5704dB4b2c068d74Fde25257106a7029463f812E",
+      "PythConditionResolver": "0x6399F6397701e4213BBaEf9f7a15EF31C9c329E1",
+      "ConditionalTokensConditionResolver": "0x130598b7334901077cA5369b098Fd47F042CdcC9"
     }
   },
   "smNetwork": {
@@ -22,5 +24,10 @@
     }
   },
   "deployedAt": "2026-02-26T17:59:07Z",
-  "lastUpdated": "2026-02-26T18:01:16Z"
+  "lastUpdated": "2026-02-27T15:10:26Z",
+  "polygonNetwork": {
+    "contracts": {
+      "ConditionalTokensReader": "0x882288A664e29aEBC654Fa9679697d23716fcCD1"
+    }
+  }
 }

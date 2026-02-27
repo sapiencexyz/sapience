@@ -4,6 +4,8 @@ import {
   lzUmaResolver,
   umaResolver,
   pythResolver,
+  pythConditionResolver,
+  conditionalTokensConditionResolver,
 } from '@sapience/sdk/contracts/addresses';
 
 type Address = `0x${string}`;
@@ -26,7 +28,13 @@ function findChainIdForAddress(
   return null;
 }
 
-export type ResolverKind = 'lzPM' | 'lzUma' | 'uma' | 'pyth' | 'unknown';
+export type ResolverKind =
+  | 'lzPM'
+  | 'lzUma'
+  | 'uma'
+  | 'pyth'
+  | 'conditionalTokens'
+  | 'unknown';
 
 export function inferResolverKind(
   resolverAddress?: string | null
@@ -37,6 +45,13 @@ export function inferResolverKind(
   if (findChainIdForAddress(addr, lzUmaResolver as any) != null) return 'lzUma';
   if (findChainIdForAddress(addr, umaResolver as any) != null) return 'uma';
   if (findChainIdForAddress(addr, pythResolver as any) != null) return 'pyth';
+  if (findChainIdForAddress(addr, pythConditionResolver as any) != null)
+    return 'pyth';
+  if (
+    findChainIdForAddress(addr, conditionalTokensConditionResolver as any) !=
+    null
+  )
+    return 'conditionalTokens';
   return 'unknown';
 }
 
@@ -55,6 +70,18 @@ export function inferChainIdFromResolverAddress(
 
   const pythChain = findChainIdForAddress(addr, pythResolver as any);
   if (pythChain != null) return pythChain;
+
+  const pythCondChain = findChainIdForAddress(
+    addr,
+    pythConditionResolver as any
+  );
+  if (pythCondChain != null) return pythCondChain;
+
+  const ctChain = findChainIdForAddress(
+    addr,
+    conditionalTokensConditionResolver as any
+  );
+  if (ctChain != null) return ctChain;
 
   const lzUmaChain = findChainIdForAddress(addr, lzUmaResolver as any);
   if (lzUmaChain != null) return lzUmaChain;
@@ -97,6 +124,7 @@ export function getAdminSettlementTarget(opts: {
 }): { chainId: number; resolverAddress: Address } | null {
   const kind = inferResolverKind(opts.conditionResolver);
   if (kind === 'pyth') return null;
+  if (kind === 'conditionalTokens') return null;
 
   if (kind === 'lzPM') {
     const arb = (lzUmaResolver as any)[CHAIN_ID_ARBITRUM]?.address as
