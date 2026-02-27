@@ -1,7 +1,9 @@
 import { Field, Int, ObjectType, Directive } from 'type-graphql';
 
 @Directive('@cacheControl(maxAge: 60)')
-@ObjectType('ProfitEntry')
+@ObjectType('ProfitEntry', {
+  description: 'Aggregated profit/loss entry for a single address across all positions',
+})
 export class AggregatedProfitEntryType {
   @Field(() => String)
   address!: string;
@@ -11,7 +13,9 @@ export class AggregatedProfitEntryType {
 }
 
 @Directive('@cacheControl(maxAge: 60)')
-@ObjectType('ProfitRank')
+@ObjectType('ProfitRank', {
+  description: 'Profit rank and total PnL for an address on the leaderboard',
+})
 export class ProfitRankType {
   @Field(() => String)
   address!: string;

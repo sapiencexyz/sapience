@@ -1,7 +1,7 @@
 import { graphqlRequest } from './client/graphqlClient';
 
 export interface ProtocolStat {
-  timestamp: string;
+  timestamp: number;
   cumulativeVolume: string;
   openInterest: string;
   vaultBalance: string;

@@ -1,4 +1,4 @@
-import { registerEnumType, ObjectType, Field } from 'type-graphql';
+import { registerEnumType, ObjectType, Field, Int } from 'type-graphql';
 
 export enum TimeInterval {
   HOUR = 'HOUR',
@@ -28,35 +28,41 @@ export const INTERVAL_TO_PG_STEP: Record<TimeInterval, string> = {
   [TimeInterval.MONTH]: '1 month',
 };
 
-@ObjectType()
+@ObjectType({
+  description: 'Time-bucketed volume data point for charts',
+})
 export class VolumeDataPoint {
-  @Field(() => String)
-  timestamp!: string;
+  @Field(() => Int, { description: 'Unix epoch timestamp (seconds) for the start of this bucket' })
+  timestamp!: number;
 
-  @Field(() => String)
+  @Field(() => String, { description: 'Total volume in wei for this bucket' })
   volume!: string;
 }
 
-@ObjectType()
+@ObjectType({
+  description: 'Time-bucketed PnL data point with cumulative tracking',
+})
 export class PnlDataPoint {
-  @Field(() => String)
-  timestamp!: string;
+  @Field(() => Int, { description: 'Unix epoch timestamp (seconds) for the start of this bucket' })
+  timestamp!: number;
 
-  @Field(() => String)
+  @Field(() => String, { description: 'PnL for this bucket in wei' })
   pnl!: string;
 
-  @Field(() => String)
+  @Field(() => String, { description: 'Running cumulative PnL in wei' })
   cumulativePnl!: string;
 }
 
-@ObjectType()
+@ObjectType({
+  description: 'Time-bucketed balance snapshot showing deployed and claimable collateral',
+})
 export class BalanceDataPoint {
-  @Field(() => String)
-  timestamp!: string;
+  @Field(() => Int, { description: 'Unix epoch timestamp (seconds) for the start of this bucket' })
+  timestamp!: number;
 
-  @Field(() => String)
+  @Field(() => String, { description: 'Active collateral deployed in open positions (wei)' })
   deployedCollateral!: string;
 
-  @Field(() => String)
+  @Field(() => String, { description: 'Collateral available to claim from settled positions (wei)' })
   claimableCollateral!: string;
 }

@@ -223,7 +223,7 @@ export type BalanceDataPoint = {
   __typename?: 'BalanceDataPoint';
   claimableCollateral: Scalars['String']['output'];
   deployedCollateral: Scalars['String']['output'];
-  timestamp: Scalars['String']['output'];
+  timestamp: Scalars['Int']['output'];
 };
 
 export type BoolFilter = {
@@ -1146,6 +1146,10 @@ export type NullsOrder =
   | 'first'
   | 'last';
 
+export type PredictionSortField =
+  | 'createdAt'
+  | 'settledAt';
+
 export type Pick = {
   __typename?: 'Pick';
   conditionId: Scalars['String']['output'];
@@ -1169,7 +1173,7 @@ export type PickConfiguration = {
   predictorToken?: Maybe<Scalars['String']['output']>;
   resolved: Scalars['Boolean']['output'];
   resolvedAt?: Maybe<Scalars['Int']['output']>;
-  result: Scalars['String']['output'];
+  result: SettlementResult;
   totalCounterpartyCollateral: Scalars['String']['output'];
   totalPredictorCollateral: Scalars['String']['output'];
 };
@@ -1178,7 +1182,7 @@ export type PnlDataPoint = {
   __typename?: 'PnlDataPoint';
   cumulativePnl: Scalars['String']['output'];
   pnl: Scalars['String']['output'];
-  timestamp: Scalars['String']['output'];
+  timestamp: Scalars['Int']['output'];
 };
 
 export type Position = {
@@ -1203,7 +1207,7 @@ export type Prediction = {
   counterpartyCollateral: Scalars['String']['output'];
   counterpartyToken: Scalars['String']['output'];
   createTxHash: Scalars['String']['output'];
-  createdAt: Scalars['String']['output'];
+  createdAt: Scalars['DateTimeISO']['output'];
   id: Scalars['Int']['output'];
   marketAddress: Scalars['String']['output'];
   pickConfig?: Maybe<PickConfiguration>;
@@ -1213,7 +1217,7 @@ export type Prediction = {
   predictorCollateral: Scalars['String']['output'];
   predictorToken: Scalars['String']['output'];
   refCode?: Maybe<Scalars['String']['output']>;
-  result: Scalars['String']['output'];
+  result: SettlementResult;
   settleTxHash?: Maybe<Scalars['String']['output']>;
   settled: Scalars['Boolean']['output'];
   settledAt?: Maybe<Scalars['Int']['output']>;
@@ -1238,7 +1242,7 @@ export type ProtocolStat = {
   cumulativeVolume: Scalars['String']['output'];
   escrowBalance: Scalars['String']['output'];
   openInterest: Scalars['String']['output'];
-  timestamp: Scalars['String']['output'];
+  timestamp: Scalars['Int']['output'];
   vaultAirdropGains: Scalars['String']['output'];
   vaultAvailableAssets: Scalars['String']['output'];
   vaultBalance: Scalars['String']['output'];
@@ -1411,7 +1415,7 @@ export type QueryPickConfigurationArgs = {
 export type QueryPickConfigurationsArgs = {
   chainId?: InputMaybe<Scalars['Int']['input']>;
   resolved?: InputMaybe<Scalars['Boolean']['input']>;
-  result?: InputMaybe<Scalars['String']['input']>;
+  result?: InputMaybe<SettlementResult>;
   skip?: Scalars['Int']['input'];
   take?: Scalars['Int']['input'];
 };
@@ -1442,8 +1446,8 @@ export type QueryPredictionsArgs = {
   address?: InputMaybe<Scalars['String']['input']>;
   chainId?: InputMaybe<Scalars['Int']['input']>;
   conditionId?: InputMaybe<Scalars['String']['input']>;
-  orderBy?: InputMaybe<Scalars['String']['input']>;
-  orderDirection?: InputMaybe<Scalars['String']['input']>;
+  orderBy?: InputMaybe<PredictionSortField>;
+  orderDirection?: InputMaybe<SortOrder>;
   settled?: InputMaybe<Scalars['Boolean']['input']>;
   skip?: Scalars['Int']['input'];
   take?: Scalars['Int']['input'];
@@ -1467,11 +1471,11 @@ export type QueryQuestionsArgs = {
   categorySlugs?: InputMaybe<Array<Scalars['String']['input']>>;
   chainId?: InputMaybe<Scalars['Int']['input']>;
   minEndTime?: InputMaybe<Scalars['Int']['input']>;
-  resolutionStatus?: InputMaybe<Scalars['String']['input']>;
+  resolutionStatus?: InputMaybe<ResolutionStatus>;
   search?: InputMaybe<Scalars['String']['input']>;
   skip?: Scalars['Int']['input'];
-  sortDirection?: Scalars['String']['input'];
-  sortField?: InputMaybe<Scalars['String']['input']>;
+  sortDirection?: SortOrder;
+  sortField?: InputMaybe<QuestionSortField>;
   take?: Scalars['Int']['input'];
 };
 
@@ -1517,12 +1521,22 @@ export type QueryMode =
   | 'default'
   | 'insensitive';
 
+export type QuestionItemType =
+  | 'group'
+  | 'condition';
+
+export type QuestionSortField =
+  | 'openInterest'
+  | 'endTime'
+  | 'createdAt'
+  | 'predictionCount';
+
 export type Question = {
   __typename?: 'Question';
   condition?: Maybe<Condition>;
   group?: Maybe<ConditionGroup>;
   predictionCount?: Maybe<Scalars['Int']['output']>;
-  questionType: Scalars['String']['output'];
+  questionType: QuestionItemType;
 };
 
 export type ReferralCode = {
@@ -1593,6 +1607,18 @@ export type ReferralCodeWhereInput = {
   maxClaims?: InputMaybe<IntFilter>;
   updatedAt?: InputMaybe<DateTimeFilter>;
 };
+
+export type ResolutionStatus =
+  | 'all'
+  | 'unresolved'
+  | 'resolvedYes'
+  | 'resolvedNo';
+
+export type SettlementResult =
+  | 'UNRESOLVED'
+  | 'PREDICTOR_WINS'
+  | 'COUNTERPARTY_WINS'
+  | 'NON_DECISIVE';
 
 export type SortOrder =
   | 'asc'
@@ -1807,6 +1833,6 @@ export type UserWhereUniqueInput = {
 
 export type VolumeDataPoint = {
   __typename?: 'VolumeDataPoint';
-  timestamp: Scalars['String']['output'];
+  timestamp: Scalars['Int']['output'];
   volume: Scalars['String']['output'];
 };

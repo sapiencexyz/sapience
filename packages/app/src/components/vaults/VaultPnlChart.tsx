@@ -33,8 +33,8 @@ function formatLargeNumber(value: number): string {
   return value.toFixed(2);
 }
 
-function formatTimestampTick(value: string): string {
-  const date = new Date(parseInt(value, 10) * 1000);
+function formatTimestampTick(value: number): string {
+  const date = new Date(value * 1000);
   return `${date.getUTCMonth() + 1}/${date.getUTCDate()}`;
 }
 
@@ -91,8 +91,8 @@ function ChartTooltip({
 
   // Format timestamp (Unix seconds) to date string
   let dateLabel = '';
-  if (label) {
-    const date = new Date(parseInt(label, 10) * 1000);
+  if (label != null) {
+    const date = new Date(Number(label) * 1000);
     const months = [
       'Jan',
       'Feb',
@@ -180,7 +180,7 @@ export default function VaultPnlChart({
         : Math.floor(Date.now() / 1000) - periodDays * 24 * 60 * 60;
 
     const filteredStats = protocolStats.filter(
-      (stat) => parseInt(stat.timestamp, 10) >= cutoffTimestamp
+      (stat) => stat.timestamp >= cutoffTimestamp
     );
 
     if (filteredStats.length === 0) return [];
@@ -211,8 +211,8 @@ export default function VaultPnlChart({
     const lastPoint = chartData[chartData.length - 1];
 
     // Calculate days elapsed
-    const startTimestamp = parseInt(firstPoint.timestamp, 10);
-    const endTimestamp = parseInt(lastPoint.timestamp, 10);
+    const startTimestamp = firstPoint.timestamp;
+    const endTimestamp = lastPoint.timestamp;
     const daysElapsed = (endTimestamp - startTimestamp) / (24 * 60 * 60);
 
     // Require minimum 1 day of data for meaningful APY

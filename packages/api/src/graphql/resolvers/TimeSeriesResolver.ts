@@ -14,7 +14,9 @@ import {
 
 @Resolver()
 export class TimeSeriesResolver {
-  @Query(() => [VolumeDataPoint])
+  @Query(() => [VolumeDataPoint], {
+    description: 'Time-bucketed trading volume for a single address',
+  })
   @Directive('@cacheControl(maxAge: 60)')
   async accountVolume(
     @Arg('address', () => String) address: string,
@@ -25,7 +27,9 @@ export class TimeSeriesResolver {
     return queryAccountVolume(address, interval, from, to);
   }
 
-  @Query(() => [PnlDataPoint])
+  @Query(() => [PnlDataPoint], {
+    description: 'Time-bucketed profit and loss for a single address with cumulative tracking',
+  })
   @Directive('@cacheControl(maxAge: 60)')
   async accountPnl(
     @Arg('address', () => String) address: string,
@@ -36,7 +40,9 @@ export class TimeSeriesResolver {
     return queryAccountPnl(address, interval, from, to);
   }
 
-  @Query(() => [BalanceDataPoint])
+  @Query(() => [BalanceDataPoint], {
+    description: 'Time-bucketed balance snapshots for a single address showing deployed and claimable collateral',
+  })
   @Directive('@cacheControl(maxAge: 60)')
   async accountBalance(
     @Arg('address', () => String) address: string,
@@ -47,7 +53,9 @@ export class TimeSeriesResolver {
     return queryAccountBalance(address, interval, from, to);
   }
 
-  @Query(() => [VolumeDataPoint])
+  @Query(() => [VolumeDataPoint], {
+    description: 'Time-bucketed total protocol trading volume across all users',
+  })
   @Directive('@cacheControl(maxAge: 120)')
   async protocolVolume(
     @Arg('interval', () => TimeInterval) interval: TimeInterval,

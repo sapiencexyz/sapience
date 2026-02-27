@@ -1,13 +1,52 @@
-import { Arg, Field, Int, ObjectType, Query, Resolver } from 'type-graphql';
+import {
+  Arg,
+  Field,
+  Int,
+  ObjectType,
+  Query,
+  Resolver,
+  registerEnumType,
+} from 'type-graphql';
 import { Prisma } from '../../../generated/prisma';
+import { SortOrder } from '@generated/type-graphql';
 import prisma from '../../db';
 import { batchLoadPickConfigs } from '../helpers/batchLoadPickConfigs';
+
+// ============================================================================
+// Enums
+// ============================================================================
+
+/** Settlement result for a prediction or pick configuration. */
+export enum SettlementResult {
+  UNRESOLVED = 'UNRESOLVED',
+  PREDICTOR_WINS = 'PREDICTOR_WINS',
+  COUNTERPARTY_WINS = 'COUNTERPARTY_WINS',
+  NON_DECISIVE = 'NON_DECISIVE',
+}
+
+registerEnumType(SettlementResult, {
+  name: 'SettlementResult',
+  description: 'Outcome of a prediction settlement',
+});
+
+/** Fields available for sorting predictions. */
+export enum PredictionSortField {
+  CREATED_AT = 'createdAt',
+  SETTLED_AT = 'settledAt',
+}
+
+registerEnumType(PredictionSortField, {
+  name: 'PredictionSortField',
+  description: 'Field to sort predictions by',
+});
 
 // ============================================================================
 // GraphQL Object Types
 // ============================================================================
 
-@ObjectType('Pick')
+@ObjectType('Pick', {
+  description: 'Individual outcome pick within a pick configuration',
+})
 export class PickType {
   @Field(() => Int)
   id!: number;
@@ -25,7 +64,10 @@ export class PickType {
   predictedOutcome!: number;
 }
 
-@ObjectType('PickConfiguration')
+@ObjectType('PickConfiguration', {
+  description:
+    'Group of outcome picks forming a combined prediction position, with collateral and settlement tracking',
+})
 export class PickConfigurationType {
   @Field(() => String)
   id!: string;
@@ -51,7 +93,7 @@ export class PickConfigurationType {
   @Field(() => Boolean)
   resolved!: boolean;
 
-  @Field(() => String)
+  @Field(() => SettlementResult)
   result!: string;
 
   @Field(() => Int, { nullable: true })
@@ -73,7 +115,10 @@ export class PickConfigurationType {
   predictionId?: string | null;
 }
 
-@ObjectType('Prediction')
+@ObjectType('Prediction', {
+  description:
+    'Escrow-based prediction record between a predictor and counterparty, with collateral and settlement tracking',
+})
 export class PredictionType {
   @Field(() => Int)
   id!: number;
@@ -117,7 +162,7 @@ export class PredictionType {
   @Field(() => Int, { nullable: true })
   settledAt?: number | null;
 
-  @Field(() => String)
+  @Field(() => SettlementResult)
   result!: string;
 
   @Field(() => String, { nullable: true })
@@ -126,8 +171,8 @@ export class PredictionType {
   @Field(() => String, { nullable: true })
   counterpartyClaimable?: string | null;
 
-  @Field(() => String)
-  createdAt!: string;
+  @Field(() => Date)
+  createdAt!: Date;
 
   @Field(() => String)
   createTxHash!: string;
@@ -142,7 +187,9 @@ export class PredictionType {
   pickConfig?: PickConfigurationType | null;
 }
 
-@ObjectType('Position')
+@ObjectType('Position', {
+  description: 'ERC-20 token balance representing a side of a prediction position',
+})
 class PositionType {
   @Field(() => Int)
   id!: number;
@@ -169,7 +216,9 @@ class PositionType {
   pickConfig?: PickConfigurationType | null;
 }
 
-@ObjectType('Close')
+@ObjectType('Close', {
+  description: 'Record of a position close where both sides burn tokens and receive payouts',
+})
 class CloseType {
   @Field(() => Int)
   id!: number;
@@ -211,7 +260,9 @@ class CloseType {
   refCode?: string | null;
 }
 
-@ObjectType('Claim')
+@ObjectType('Claim', {
+  description: 'Record of a settled prediction redemption where a holder burns tokens for collateral',
+})
 class ClaimType {
   @Field(() => Int)
   id!: number;
@@ -257,7 +308,9 @@ export class EscrowResolver {
   // Predictions (escrow-based)
   // -------------------------------------------------------------------------
 
-  @Query(() => Int)
+  @Query(() => Int, {
+    description: 'Count of escrow predictions involving the given address',
+  })
   async predictionCount(
     @Arg('address', () => String) address: string,
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number
@@ -272,7 +325,9 @@ export class EscrowResolver {
     return prisma.prediction.count({ where });
   }
 
-  @Query(() => [PredictionType])
+  @Query(() => [PredictionType], {
+    description: 'Paginated list of escrow-based predictions, filterable by address, condition, chain, and settlement status',
+  })
   async predictions(
     @Arg('take', () => Int, { defaultValue: 50 }) take: number,
     @Arg('skip', () => Int, { defaultValue: 0 }) skip: number,
@@ -280,9 +335,9 @@ export class EscrowResolver {
     @Arg('conditionId', () => String, { nullable: true }) conditionId?: string,
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number,
     @Arg('settled', () => Boolean, { nullable: true }) settled?: boolean,
-    @Arg('orderBy', () => String, { nullable: true }) orderBy?: string,
-    @Arg('orderDirection', () => String, { nullable: true })
-    orderDirection?: string
+    @Arg('orderBy', () => PredictionSortField, { nullable: true }) orderBy?: PredictionSortField,
+    @Arg('orderDirection', () => SortOrder, { nullable: true })
+    orderDirection?: SortOrder
   ): Promise<PredictionType[]> {
     const cappedTake = Math.max(1, Math.min(take, 100));
     const addr = address?.toLowerCase();
@@ -386,7 +441,7 @@ export class EscrowResolver {
       result: r.result,
       predictorClaimable: r.predictorClaimable ?? null,
       counterpartyClaimable: r.counterpartyClaimable ?? null,
-      createdAt: r.createdAt.toISOString(),
+      createdAt: r.createdAt,
       createTxHash: r.createTxHash,
       settleTxHash: r.settleTxHash ?? null,
       refCode: r.refCode ?? null,
@@ -397,7 +452,10 @@ export class EscrowResolver {
     }));
   }
 
-  @Query(() => PredictionType, { nullable: true })
+  @Query(() => PredictionType, {
+    nullable: true,
+    description: 'Look up a single prediction by its on-chain prediction ID',
+  })
   async prediction(
     @Arg('id', () => String) id: string
   ): Promise<PredictionType | null> {
@@ -470,7 +528,7 @@ export class EscrowResolver {
       result: r.result,
       predictorClaimable: r.predictorClaimable ?? null,
       counterpartyClaimable: r.counterpartyClaimable ?? null,
-      createdAt: r.createdAt.toISOString(),
+      createdAt: r.createdAt,
       createTxHash: r.createTxHash,
       settleTxHash: r.settleTxHash ?? null,
       refCode: r.refCode ?? null,
@@ -482,13 +540,15 @@ export class EscrowResolver {
   // Pick Configurations
   // -------------------------------------------------------------------------
 
-  @Query(() => [PickConfigurationType])
+  @Query(() => [PickConfigurationType], {
+    description: 'Paginated list of pick configurations, filterable by chain, resolution status, and result',
+  })
   async pickConfigurations(
     @Arg('take', () => Int, { defaultValue: 50 }) take: number,
     @Arg('skip', () => Int, { defaultValue: 0 }) skip: number,
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number,
     @Arg('resolved', () => Boolean, { nullable: true }) resolved?: boolean,
-    @Arg('result', () => String, { nullable: true }) result?: string
+    @Arg('result', () => SettlementResult, { nullable: true }) result?: SettlementResult
   ): Promise<PickConfigurationType[]> {
     const cappedTake = Math.max(1, Math.min(take, 100));
     const where: Prisma.PicksWhereInput = {};
@@ -500,7 +560,7 @@ export class EscrowResolver {
       where.resolved = resolved;
     }
     if (result) {
-      where.result = result as Prisma.EnumSettlementResultFilter;
+      where.result = result as unknown as Prisma.EnumSettlementResultFilter;
     }
 
     const rows = await prisma.picks.findMany({
@@ -537,7 +597,10 @@ export class EscrowResolver {
     }));
   }
 
-  @Query(() => PickConfigurationType, { nullable: true })
+  @Query(() => PickConfigurationType, {
+    nullable: true,
+    description: 'Look up a single pick configuration by ID',
+  })
   async pickConfiguration(
     @Arg('id', () => String) id: string
   ): Promise<PickConfigurationType | null> {
@@ -580,7 +643,9 @@ export class EscrowResolver {
   // Positions (token balances)
   // -------------------------------------------------------------------------
 
-  @Query(() => [PositionType])
+  @Query(() => [PositionType], {
+    description: 'Paginated list of token position balances, filterable by holder, condition, chain, or pick config',
+  })
   async positions(
     @Arg('holder', () => String, { nullable: true }) holder?: string,
     @Arg('conditionId', () => String, { nullable: true }) conditionId?: string,
@@ -708,7 +773,9 @@ export class EscrowResolver {
   // Closes (burn records)
   // -------------------------------------------------------------------------
 
-  @Query(() => [CloseType])
+  @Query(() => [CloseType], {
+    description: 'Paginated list of position close (burn) records, filterable by address, pick config, and chain',
+  })
   async closes(
     @Arg('take', () => Int, { defaultValue: 50 }) take: number,
     @Arg('skip', () => Int, { defaultValue: 0 }) skip: number,
@@ -766,7 +833,9 @@ export class EscrowResolver {
   // Claims (redemption records)
   // -------------------------------------------------------------------------
 
-  @Query(() => [ClaimType])
+  @Query(() => [ClaimType], {
+    description: 'Paginated list of prediction claim (redemption) records, filterable by holder, prediction, and chain',
+  })
   async claims(
     @Arg('take', () => Int, { defaultValue: 50 }) take: number,
     @Arg('skip', () => Int, { defaultValue: 0 }) skip: number,
