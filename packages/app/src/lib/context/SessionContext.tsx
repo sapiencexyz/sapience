@@ -13,7 +13,7 @@ import { useAccount, useSwitchChain } from 'wagmi';
 import type { Address, EIP1193Provider, Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import type { KernelAccountClient } from '@zerodev/sdk';
-import { CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import {
   createSession,
   createArbitrumSession,
@@ -565,9 +565,8 @@ export function SessionProvider({ children }: SessionProviderProps) {
       setSessionCreationStep(null);
       setSessionError(null);
 
-      // Default to Ethereal Testnet for escrow testing
       const etherealChainId =
-        params.etherealChainId ?? CHAIN_ID_ETHEREAL_TESTNET;
+        params.etherealChainId ?? DEFAULT_CHAIN_ID;
 
       try {
         const provider = (await connector.getProvider()) as EIP1193Provider;

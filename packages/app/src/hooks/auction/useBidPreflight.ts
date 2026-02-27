@@ -8,7 +8,7 @@ import {
   collateralToken,
 } from '@sapience/sdk/contracts';
 import erc20Abi from '@sapience/sdk/queries/abis/erc20abi.json';
-import { CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useChainValidation } from '~/hooks/blockchain/useChainValidation';
 import { useCollateralBalance } from '~/hooks/blockchain/useCollateralBalance';
 import { useCurrentAddress } from '~/hooks/blockchain/useCurrentAddress';
@@ -68,7 +68,7 @@ export function useBidPreflight(
   const { onError, onLoading } = options;
   const { currentAddress } = useCurrentAddress();
   // TODO: Get chainId from context/props when supporting multiple chains
-  const chainId = CHAIN_ID_ETHEREAL_TESTNET;
+  const chainId = DEFAULT_CHAIN_ID;
 
   const {
     balance,
