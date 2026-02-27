@@ -128,7 +128,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
 
   // Track viewport visibility to trigger eager load only when visible
   const rootRef = React.useRef<HTMLDivElement | null>(null);
-  const [isInViewport, setIsInViewport] = React.useState<boolean>(false);
+  const [_isInViewport, setIsInViewport] = React.useState<boolean>(false);
 
   React.useEffect(() => {
     if (!eager) return;

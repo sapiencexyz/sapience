@@ -22,7 +22,6 @@ import {
   Handshake,
   Telescope,
 } from 'lucide-react';
-import { predictionMarket } from '@sapience/sdk/contracts';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { formatEther } from 'viem';
 import EndTimeDisplay from '~/components/shared/EndTimeDisplay';
@@ -421,10 +420,6 @@ export default function QuestionPageContent({
 
   // Disable logging - only CreatePositionForm should log auction activity
   const { bids, requestQuotes } = useAuctionStart({ disableLogging: true });
-  const predictionMarketAddress =
-    predictionMarket[chainId]?.address ??
-    predictionMarket[DEFAULT_CHAIN_ID]?.address;
-
   if (isLoading) {
     return (
       <div

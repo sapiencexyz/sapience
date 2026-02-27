@@ -15,7 +15,6 @@ import { useToast } from '@sapience/ui/hooks/use-toast';
 import HeroBackgroundLines from '~/components/home/HeroBackgroundLines';
 import PositionProgressBar from '~/components/shared/PositionProgressBar';
 import { usePredictions, type Prediction } from '~/hooks/graphql/usePositions';
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useSession } from '~/lib/context/SessionContext';
 import type { PositionProgressState } from '~/types/positionProgress';
 
@@ -49,7 +48,7 @@ export default function OgShareDialogBase({
   trackPosition = false,
   positionTimestamp,
   progressState,
-  onPositionIndexed,
+  onPositionIndexed: _onPositionIndexed,
   shareUrl: shareUrlProp,
   forecastUid,
   trackPrediction = false,
@@ -89,7 +88,6 @@ export default function OgShareDialogBase({
   const [imgLoading, setImgLoading] = useState(true);
   const { toast } = useToast();
   const { effectiveAddress } = useSession();
-  const chainId = DEFAULT_CHAIN_ID;
   const [positionResolved, setPositionResolved] = useState(false);
 
   const pollingTimerRef = useRef<NodeJS.Timeout | null>(null);
