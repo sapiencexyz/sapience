@@ -1437,24 +1437,24 @@ enum PredictionSortField {
 
 """Whether a question is a group of related conditions or a single condition"""
 enum QuestionItemType {
-  CONDITION
-  GROUP
+  condition
+  group
 }
 
 """Field to sort questions by"""
 enum QuestionSortField {
-  CREATED_AT
-  END_TIME
-  OPEN_INTEREST
-  PREDICTION_COUNT
+  createdAt
+  endTime
+  openInterest
+  predictionCount
 }
 
 """Filter questions by their resolution status"""
 enum ResolutionStatus {
-  ALL
-  RESOLVED_NO
-  RESOLVED_YES
-  UNRESOLVED
+  all
+  resolvedNo
+  resolvedYes
+  unresolved
 }
 
 """Outcome of a prediction settlement"""

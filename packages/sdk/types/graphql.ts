@@ -16,6 +16,7 @@ export type Scalars = {
   DateTimeISO: { input: any; output: any; }
 };
 
+/** Accuracy rank for an address on the forecasting leaderboard */
 export type AccuracyRank = {
   __typename?: 'AccuracyRank';
   accuracyScore: Scalars['Float']['output'];
@@ -219,10 +220,14 @@ export type AttestationWhereUniqueInput = {
   uid?: InputMaybe<Scalars['String']['input']>;
 };
 
+/** Time-bucketed balance snapshot showing deployed and claimable collateral */
 export type BalanceDataPoint = {
   __typename?: 'BalanceDataPoint';
+  /** Collateral available to claim from settled positions (wei) */
   claimableCollateral: Scalars['String']['output'];
+  /** Active collateral deployed in open positions (wei) */
   deployedCollateral: Scalars['String']['output'];
+  /** Unix epoch timestamp (seconds) for the start of this bucket */
   timestamp: Scalars['Int']['output'];
 };
 
@@ -327,6 +332,7 @@ export type CategoryWhereUniqueInput = {
   slug?: InputMaybe<Scalars['String']['input']>;
 };
 
+/** Record of a settled prediction redemption where a holder burns tokens for collateral */
 export type Claim = {
   __typename?: 'Claim';
   chainId: Scalars['Int']['output'];
@@ -342,6 +348,7 @@ export type Claim = {
   txHash: Scalars['String']['output'];
 };
 
+/** Record of a position close where both sides burn tokens and receive payouts */
 export type Close = {
   __typename?: 'Close';
   burnedAt: Scalars['Int']['output'];
@@ -378,6 +385,7 @@ export type Condition = {
   id: Scalars['String']['output'];
   openInterest: Scalars['String']['output'];
   predictionCount: Scalars['Int']['output'];
+  /** V2 escrow-based predictions linked to this condition via pick configurations */
   predictions: Array<Prediction>;
   public: Scalars['Boolean']['output'];
   question: Scalars['String']['output'];
@@ -419,11 +427,17 @@ export type ConditionPredictionsArgs = {
 export type ConditionCount = {
   __typename?: 'ConditionCount';
   attestations: Scalars['Int']['output'];
+  predictions: Scalars['Int']['output'];
 };
 
 
 export type ConditionCountAttestationsArgs = {
   where?: InputMaybe<AttestationWhereInput>;
+};
+
+
+export type ConditionCountPredictionsArgs = {
+  where?: InputMaybe<LegacyPredictionWhereInput>;
 };
 
 export type ConditionGroup = {
@@ -701,6 +715,7 @@ export type FloatNullableFilter = {
   notIn?: InputMaybe<Array<Scalars['Float']['input']>>;
 };
 
+/** Accuracy score for a forecaster, aggregated across all scored markets */
 export type ForecasterScore = {
   __typename?: 'ForecasterScore';
   accuracyScore: Scalars['Float']['output'];
@@ -1146,10 +1161,7 @@ export type NullsOrder =
   | 'first'
   | 'last';
 
-export type PredictionSortField =
-  | 'createdAt'
-  | 'settledAt';
-
+/** Individual outcome pick within a pick configuration */
 export type Pick = {
   __typename?: 'Pick';
   conditionId: Scalars['String']['output'];
@@ -1159,6 +1171,7 @@ export type Pick = {
   predictedOutcome: Scalars['Int']['output'];
 };
 
+/** Group of outcome picks forming a combined prediction position, with collateral and settlement tracking */
 export type PickConfiguration = {
   __typename?: 'PickConfiguration';
   chainId: Scalars['Int']['output'];
@@ -1178,13 +1191,18 @@ export type PickConfiguration = {
   totalPredictorCollateral: Scalars['String']['output'];
 };
 
+/** Time-bucketed PnL data point with cumulative tracking */
 export type PnlDataPoint = {
   __typename?: 'PnlDataPoint';
+  /** Running cumulative PnL in wei */
   cumulativePnl: Scalars['String']['output'];
+  /** PnL for this bucket in wei */
   pnl: Scalars['String']['output'];
+  /** Unix epoch timestamp (seconds) for the start of this bucket */
   timestamp: Scalars['Int']['output'];
 };
 
+/** ERC-20 token balance representing a side of a prediction position */
 export type Position = {
   __typename?: 'Position';
   balance: Scalars['String']['output'];
@@ -1197,6 +1215,7 @@ export type Position = {
   tokenAddress: Scalars['String']['output'];
 };
 
+/** Escrow-based prediction record between a predictor and counterparty, with collateral and settlement tracking */
 export type Prediction = {
   __typename?: 'Prediction';
   chainId: Scalars['Int']['output'];
@@ -1223,12 +1242,19 @@ export type Prediction = {
   settledAt?: Maybe<Scalars['Int']['output']>;
 };
 
+/** Field to sort predictions by */
+export type PredictionSortField =
+  | 'CREATED_AT'
+  | 'SETTLED_AT';
+
+/** Aggregated profit/loss entry for a single address across all positions */
 export type ProfitEntry = {
   __typename?: 'ProfitEntry';
   address: Scalars['String']['output'];
   totalPnL: Scalars['String']['output'];
 };
 
+/** Profit rank and total PnL for an address on the leaderboard */
 export type ProfitRank = {
   __typename?: 'ProfitRank';
   address: Scalars['String']['output'];
@@ -1237,11 +1263,15 @@ export type ProfitRank = {
   totalPnL: Scalars['String']['output'];
 };
 
+/** Daily protocol-wide statistics snapshot including vault metrics, volume, and PnL */
 export type ProtocolStat = {
   __typename?: 'ProtocolStat';
   cumulativeVolume: Scalars['String']['output'];
+  dailyPnL: Scalars['String']['output'];
+  dailyVolume: Scalars['String']['output'];
   escrowBalance: Scalars['String']['output'];
   openInterest: Scalars['String']['output'];
+  /** Unix epoch timestamp (seconds) for midnight UTC of the snapshot day */
   timestamp: Scalars['Int']['output'];
   vaultAirdropGains: Scalars['String']['output'];
   vaultAvailableAssets: Scalars['String']['output'];
@@ -1256,34 +1286,57 @@ export type ProtocolStat = {
 
 export type Query = {
   __typename?: 'Query';
+  /** Accuracy score for a single forecaster address, or null if no scored attestations exist */
   accountAccuracy?: Maybe<ForecasterScore>;
+  /** Accuracy rank and score for a single address relative to all forecasters */
   accountAccuracyRank: AccuracyRank;
+  /** Time-bucketed balance snapshots for a single address showing deployed and claimable collateral */
   accountBalance: Array<BalanceDataPoint>;
+  /** Time-bucketed profit and loss for a single address with cumulative tracking */
   accountPnl: Array<PnlDataPoint>;
+  /** Profit rank and total PnL for a single address relative to all participants */
   accountProfitRank: ProfitRank;
+  /** Total lifetime trading volume in wei for the given address across all prediction types */
   accountTotalVolume: Scalars['String']['output'];
+  /** Time-bucketed trading volume for a single address */
   accountVolume: Array<VolumeDataPoint>;
+  /** Top forecasters ranked by accuracy score */
   accuracyLeaderboard: Array<ForecasterScore>;
   attestations: Array<Attestation>;
   categories: Array<Category>;
+  /** Paginated list of prediction claim (redemption) records, filterable by holder, prediction, and chain */
   claims: Array<Claim>;
+  /** Paginated list of position close (burn) records, filterable by address, pick config, and chain */
   closes: Array<Close>;
   condition?: Maybe<Condition>;
   conditionGroup?: Maybe<ConditionGroup>;
   conditionGroups: Array<ConditionGroup>;
   conditions: Array<Condition>;
+  /** Look up a single pick configuration by ID */
   pickConfiguration?: Maybe<PickConfiguration>;
+  /** Paginated list of pick configurations, filterable by chain, resolution status, and result */
   pickConfigurations: Array<PickConfiguration>;
+  /** Paginated list of token position balances, filterable by holder, condition, chain, or pick config */
   positions: Array<Position>;
+  /** Look up a single prediction by its on-chain prediction ID */
   prediction?: Maybe<Prediction>;
+  /** Count of escrow predictions involving the given address */
   predictionCount: Scalars['Int']['output'];
+  /** Paginated list of escrow-based predictions, filterable by address, condition, chain, and settlement status */
   predictions: Array<Prediction>;
+  /** Profit leaderboard — addresses ranked by total PnL across all positions */
   profitLeaderboard: Array<ProfitEntry>;
+  /** Daily protocol statistics time series (last 90 days) — vault balance, volume, PnL, and open interest */
   protocolStats: Array<ProtocolStat>;
+  /** Time-bucketed total protocol trading volume across all users */
   protocolVolume: Array<VolumeDataPoint>;
+  /** Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field */
   questions: Array<Question>;
+  /** Look up a single secondary market trade by its trade hash */
   trade?: Maybe<Trade>;
+  /** Count of secondary market trades matching the given filters */
   tradeCount: Scalars['Int']['output'];
+  /** Paginated list of secondary market trades, filterable by seller, buyer, token, and chain */
   trades: Array<Trade>;
   user?: Maybe<User>;
   users: Array<User>;
@@ -1521,16 +1574,7 @@ export type QueryMode =
   | 'default'
   | 'insensitive';
 
-export type QuestionItemType =
-  | 'group'
-  | 'condition';
-
-export type QuestionSortField =
-  | 'openInterest'
-  | 'endTime'
-  | 'createdAt'
-  | 'predictionCount';
-
+/** A question item — either a group of related conditions or a single ungrouped condition */
 export type Question = {
   __typename?: 'Question';
   condition?: Maybe<Condition>;
@@ -1538,6 +1582,18 @@ export type Question = {
   predictionCount?: Maybe<Scalars['Int']['output']>;
   questionType: QuestionItemType;
 };
+
+/** Whether a question is a group of related conditions or a single condition */
+export type QuestionItemType =
+  | 'condition'
+  | 'group';
+
+/** Field to sort questions by */
+export type QuestionSortField =
+  | 'createdAt'
+  | 'endTime'
+  | 'openInterest'
+  | 'predictionCount';
 
 export type ReferralCode = {
   __typename?: 'ReferralCode';
@@ -1608,17 +1664,19 @@ export type ReferralCodeWhereInput = {
   updatedAt?: InputMaybe<DateTimeFilter>;
 };
 
+/** Filter questions by their resolution status */
 export type ResolutionStatus =
   | 'all'
-  | 'unresolved'
+  | 'resolvedNo'
   | 'resolvedYes'
-  | 'resolvedNo';
+  | 'unresolved';
 
+/** Outcome of a prediction settlement */
 export type SettlementResult =
-  | 'UNRESOLVED'
-  | 'PREDICTOR_WINS'
   | 'COUNTERPARTY_WINS'
-  | 'NON_DECISIVE';
+  | 'NON_DECISIVE'
+  | 'PREDICTOR_WINS'
+  | 'UNRESOLVED';
 
 export type SortOrder =
   | 'asc'
@@ -1667,12 +1725,14 @@ export type StringNullableListFilter = {
   isEmpty?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
+/** Time interval for bucketing time-series data */
 export type TimeInterval =
   | 'DAY'
   | 'HOUR'
   | 'MONTH'
   | 'WEEK';
 
+/** Secondary market trade record where position tokens are exchanged between users */
 export type Trade = {
   __typename?: 'Trade';
   blockNumber: Scalars['Int']['output'];
@@ -1831,8 +1891,11 @@ export type UserWhereUniqueInput = {
   updatedAt?: InputMaybe<DateTimeFilter>;
 };
 
+/** Time-bucketed volume data point for charts */
 export type VolumeDataPoint = {
   __typename?: 'VolumeDataPoint';
+  /** Unix epoch timestamp (seconds) for the start of this bucket */
   timestamp: Scalars['Int']['output'];
+  /** Total volume in wei for this bucket */
   volume: Scalars['String']['output'];
 };
