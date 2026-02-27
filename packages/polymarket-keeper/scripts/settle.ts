@@ -48,7 +48,9 @@ import { RESOLVER_ADDRESS, CHAIN_ID } from '../src/constants.js';
 // ============ Constants ============
 
 // ConditionalTokensReader contract on Polygon
-const CONDITIONAL_TOKENS_READER_ADDRESS = '0x97b356E9689dCEa3a268Ac6D7d8A87A24fa95ae2' as Address;
+const CONDITIONAL_TOKENS_READER_ADDRESS = (process.env
+  .CONDITIONAL_TOKENS_READER_ADDRESS ||
+  '0x882288A664e29aEBC654Fa9679697d23716fcCD1') as Address;
 
 // Default Sapience API URL
 const DEFAULT_SAPIENCE_API_URL = 'https://api.sapience.xyz/graphql';

@@ -179,14 +179,38 @@ export const predictionMarketVault: ChainAddressMap = {
  */
 export const pythConditionResolver: ChainAddressMap = {
   5064014: {
-    // Ethereal mainnet - TODO: deploy
-    address: '0x0000000000000000000000000000000000000000',
+    // Ethereal mainnet — deployed 2026-02-28
+    address: '0x6399F6397701e4213BBaEf9f7a15EF31C9c329E1',
     legacy: [] as const,
   },
   13374202: {
-    // Ethereal testnet - TODO: deploy
-    address: '0x0000000000000000000000000000000000000000',
+    // Ethereal testnet — deployed 2026-02-28
+    address: '0xe29568D2ec56dD25D62f05eF28f7EC7C1C899D7c',
     legacy: [] as const,
+  },
+} as const;
+
+/**
+ * ConditionalTokensConditionResolver
+ * Receives Gnosis CT resolution data from Polygon via LayerZero
+ */
+export const conditionalTokensConditionResolver: ChainAddressMap = {
+  5064014: {
+    // Ethereal mainnet — deployed 2026-02-28
+    address: '0x130598b7334901077cA5369b098Fd47F042CdcC9',
+    legacy: [] as const,
+  },
+} as const;
+
+/**
+ * ConditionalTokensReader
+ * Reads Gnosis CT payouts on Polygon and sends to Ethereal via LayerZero
+ */
+export const conditionalTokensReader: ChainAddressMap = {
+  137: {
+    // Polygon mainnet — deployed 2026-02-28
+    address: '0x882288A664e29aEBC654Fa9679697d23716fcCD1',
+    legacy: ['0x97b356E9689dCEa3a268Ac6D7d8A87A24fa95ae2'] as const,
   },
 } as const;
 
@@ -369,6 +393,8 @@ export const escrowContracts = {
   pythConditionResolver,
   manualConditionResolver,
   lzConditionResolver,
+  conditionalTokensConditionResolver,
+  conditionalTokensReader,
   predictionMarketBridge,
   predictionMarketBridgeRemote,
   predictionMarketTokenFactory,

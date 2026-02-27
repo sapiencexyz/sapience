@@ -84,6 +84,11 @@ validate_deployers() {
     validate_key_pair "PM Network" PM_NETWORK_DEPLOYER_ADDRESS PM_NETWORK_DEPLOYER_PRIVATE_KEY || failed=1
     validate_key_pair "SM Network" SM_NETWORK_DEPLOYER_ADDRESS SM_NETWORK_DEPLOYER_PRIVATE_KEY || failed=1
 
+    # Polygon deployer (optional, only needed for CT resolver deployment)
+    if [ -n "${POLYGON_DEPLOYER_ADDRESS:-}" ] && [ -n "${POLYGON_DEPLOYER_PRIVATE_KEY:-}" ]; then
+        validate_key_pair "Polygon" POLYGON_DEPLOYER_ADDRESS POLYGON_DEPLOYER_PRIVATE_KEY || failed=1
+    fi
+
     # CREATE2 factory requires the same owner on both chains for deterministic addresses
     if [ -n "$PM_NETWORK_DEPLOYER_ADDRESS" ] && [ -n "$SM_NETWORK_DEPLOYER_ADDRESS" ]; then
         local pm_lower=$(echo "$PM_NETWORK_DEPLOYER_ADDRESS" | tr '[:upper:]' '[:lower:]')
@@ -114,6 +119,11 @@ set_deployer_sm() {
     export DEPLOYER_PRIVATE_KEY="$SM_NETWORK_DEPLOYER_PRIVATE_KEY"
 }
 
+set_deployer_polygon() {
+    export DEPLOYER_ADDRESS="$POLYGON_DEPLOYER_ADDRESS"
+    export DEPLOYER_PRIVATE_KEY="$POLYGON_DEPLOYER_PRIVATE_KEY"
+}
+
 # Initialize deployments JSON file if it doesn't exist
 init_deployments_json() {
     if [ ! -f "$DEPLOYMENTS_FILE" ]; then
@@ -128,6 +138,11 @@ init_deployments_json() {
   "smNetwork": {
     "name": "Arbitrum One",
     "chainId": 42161,
+    "contracts": {}
+  },
+  "polygonNetwork": {
+    "name": "Polygon",
+    "chainId": 137,
     "contracts": {}
   },
   "deployedAt": null,
@@ -229,6 +244,11 @@ get_verifier_args() {
         if [[ -n "${SM_NETWORK_ETHERSCAN_API_KEY:-}" ]]; then
             verify_args="--verify --etherscan-api-key $SM_NETWORK_ETHERSCAN_API_KEY"
         fi
+    elif [[ "$rpc_url" == "${POLYGON_RPC_URL:-}" ]]; then
+        # Polygon uses Polygonscan (Etherscan-compatible)
+        if [[ -n "${POLYGON_ETHERSCAN_API_KEY:-}" ]]; then
+            verify_args="--verify --etherscan-api-key $POLYGON_ETHERSCAN_API_KEY"
+        fi
     fi
 
     echo "$verify_args"
@@ -307,6 +327,55 @@ deploy_test_collateral() {
     fi
 
     log_success "Test collateral token deployed"
+}
+
+# Deploy PythConditionResolver on Ethereal
+deploy_pyth_resolver() {
+    log_info "=== Deploy PythConditionResolver (Ethereal) ==="
+
+    check_env PM_NETWORK_DEPLOYER_PRIVATE_KEY PM_NETWORK_DEPLOYER_ADDRESS PM_NETWORK_RPC_URL PYTH_LAZER_ADDRESS || exit 1
+
+    run_script "src/scripts/v2/mainnet/DeployPythConditionResolver.s.sol:DeployPythConditionResolver" "$PM_NETWORK_RPC_URL" "Deploying PythConditionResolver on Ethereal"
+    local addr=$(extract_address "$LAST_OUTPUT" "PYTH_CONDITION_RESOLVER_ADDRESS=")
+    if [ -n "$addr" ]; then
+        update_env "PYTH_CONDITION_RESOLVER_ADDRESS" "$addr"
+        update_deployment "pmNetwork" "PythConditionResolver" "$addr"
+    fi
+
+    log_success "PythConditionResolver deployed"
+}
+
+# Deploy ConditionalTokens resolver pair (Ethereal + Polygon) and configure bridge
+deploy_ct_resolvers() {
+    log_info "=== Deploy ConditionalTokens Resolvers (Ethereal + Polygon) ==="
+
+    check_env PM_NETWORK_DEPLOYER_PRIVATE_KEY PM_NETWORK_DEPLOYER_ADDRESS PM_NETWORK_RPC_URL PM_NETWORK_LZ_ENDPOINT PM_NETWORK_LZ_EID \
+              POLYGON_DEPLOYER_PRIVATE_KEY POLYGON_DEPLOYER_ADDRESS POLYGON_RPC_URL POLYGON_LZ_ENDPOINT POLYGON_LZ_EID \
+              POLYGON_CONDITIONAL_TOKENS_ADDRESS || exit 1
+
+    # 1. Deploy ConditionalTokensConditionResolver on Ethereal
+    run_script "src/scripts/v2/mainnet/DeployConditionalTokensConditionResolver.s.sol:DeployConditionalTokensConditionResolver" "$PM_NETWORK_RPC_URL" "Deploying ConditionalTokensConditionResolver on Ethereal"
+    local resolver_addr=$(extract_address "$LAST_OUTPUT" "CT_CONDITION_RESOLVER_ADDRESS=")
+    if [ -n "$resolver_addr" ]; then
+        update_env "CT_CONDITION_RESOLVER_ADDRESS" "$resolver_addr"
+        update_deployment "pmNetwork" "ConditionalTokensConditionResolver" "$resolver_addr"
+    fi
+
+    # 2. Deploy ConditionalTokensReader on Polygon
+    run_script "src/scripts/v2/mainnet/DeployConditionalTokensReader.s.sol:DeployConditionalTokensReader" "$POLYGON_RPC_URL" "Deploying ConditionalTokensReader on Polygon"
+    local reader_addr=$(extract_address "$LAST_OUTPUT" "CT_READER_ADDRESS=")
+    if [ -n "$reader_addr" ]; then
+        update_env "CT_READER_ADDRESS" "$reader_addr"
+        update_deployment "polygonNetwork" "ConditionalTokensReader" "$reader_addr"
+    fi
+
+    # 3. Configure CT Resolver on Ethereal (setBridgeConfig + setPeer)
+    run_script_no_verify "src/scripts/v2/mainnet/ConfigureCTResolver.s.sol:ConfigureCTResolver" "$PM_NETWORK_RPC_URL" "Configuring CT Resolver bridge on Ethereal"
+
+    # 4. Configure CT Reader on Polygon (setBridgeConfig + setPeer)
+    run_script_no_verify "src/scripts/v2/mainnet/ConfigureCTReader.s.sol:ConfigureCTReader" "$POLYGON_RPC_URL" "Configuring CT Reader bridge on Polygon"
+
+    log_success "ConditionalTokens resolvers deployed and bridge configured"
 }
 
 # Phase 1: Deploy PM Network Infrastructure
@@ -689,6 +758,13 @@ verify_contract() {
             return 0
         fi
         verify_cmd="forge verify-contract $address $contract_path --chain-id 42161 --etherscan-api-key $SM_NETWORK_ETHERSCAN_API_KEY"
+    elif [[ "$rpc_url" == "${POLYGON_RPC_URL:-}" ]]; then
+        # Polygon uses Polygonscan
+        if [[ -z "${POLYGON_ETHERSCAN_API_KEY:-}" ]]; then
+            log_warn "POLYGON_ETHERSCAN_API_KEY not set, skipping $description"
+            return 0
+        fi
+        verify_cmd="forge verify-contract $address $contract_path --chain-id 137 --etherscan-api-key $POLYGON_ETHERSCAN_API_KEY"
     fi
 
     if [[ -n "$verify_cmd" ]]; then
@@ -732,7 +808,36 @@ verify_pm() {
         verify_contract "$ACCOUNT_FACTORY_ADDRESS" "src/v2/utils/ZeroDevKernelAccountFactory.sol:ZeroDevKernelAccountFactory" "$PM_NETWORK_RPC_URL" "ZeroDevKernelAccountFactory"
     fi
 
+    # Verify PythConditionResolver if deployed
+    if [[ -n "${PYTH_CONDITION_RESOLVER_ADDRESS:-}" ]]; then
+        verify_contract "$PYTH_CONDITION_RESOLVER_ADDRESS" "src/v2/resolvers/pyth/PythConditionResolver.sol:PythConditionResolver" "$PM_NETWORK_RPC_URL" "PythConditionResolver"
+    fi
+
+    # Verify ConditionalTokensConditionResolver if deployed
+    if [[ -n "${CT_CONDITION_RESOLVER_ADDRESS:-}" ]]; then
+        verify_contract "$CT_CONDITION_RESOLVER_ADDRESS" "src/v2/resolvers/conditionalTokens/ConditionalTokensConditionResolver.sol:ConditionalTokensConditionResolver" "$PM_NETWORK_RPC_URL" "ConditionalTokensConditionResolver"
+    fi
+
     log_success "PM Network verification complete"
+}
+
+# Verify Polygon contracts
+verify_polygon() {
+    log_info "=== Verify Polygon Contracts ==="
+
+    check_env POLYGON_RPC_URL || exit 1
+
+    if [[ -z "${POLYGON_ETHERSCAN_API_KEY:-}" ]]; then
+        log_error "POLYGON_ETHERSCAN_API_KEY required for Polygon verification"
+        exit 1
+    fi
+
+    # Verify ConditionalTokensReader if deployed
+    if [[ -n "${CT_READER_ADDRESS:-}" ]]; then
+        verify_contract "$CT_READER_ADDRESS" "src/v2/resolvers/conditionalTokens/ConditionalTokensReader.sol:ConditionalTokensReader" "$POLYGON_RPC_URL" "ConditionalTokensReader"
+    fi
+
+    log_success "Polygon verification complete"
 }
 
 # Verify SM Network contracts (Arbitrum)
@@ -775,9 +880,14 @@ usage() {
     echo "  configure-sm          Configure SM Network bridge only"
     echo "  status                Check deployment status"
     echo ""
+    echo "Resolver Deployment Commands:"
+    echo "  deploy-pyth-resolver  Deploy PythConditionResolver on Ethereal"
+    echo "  deploy-ct-resolvers   Deploy CT Reader (Polygon) + CT Resolver (Ethereal) + configure bridge"
+    echo ""
     echo "Verification Commands:"
     echo "  verify-pm             Verify contracts on PM Network (Ethereal/Blockscout)"
     echo "  verify-sm             Verify contracts on SM Network (Arbitrum/Arbiscan)"
+    echo "  verify-polygon        Verify contracts on Polygon (Polygonscan)"
     echo ""
     echo "Test Commands:"
     echo "  mint                  Mint position tokens for testing"
@@ -809,6 +919,9 @@ usage() {
     echo "  BRIDGE_BACK_ID=0x... $0 retry-sm  # Retry bridge-back from Arbitrum"
     echo "  $0 check-bridge                   # Check bridge status on PM Network"
     echo "  $0 check-bridge-back              # Check bridge-back status on SM Network"
+    echo "  $0 deploy-pyth-resolver           # Deploy PythConditionResolver on Ethereal"
+    echo "  $0 deploy-ct-resolvers            # Deploy CT pair + configure bridge"
+    echo "  $0 verify-polygon                 # Verify Polygon contracts"
     echo ""
     echo "Required env vars for DVN config (2 DVNs for production):"
     echo "  PM_NETWORK_SEND_LIB, PM_NETWORK_RECEIVE_LIB, PM_NETWORK_DVN_1, PM_NETWORK_DVN_2"
@@ -825,6 +938,14 @@ usage() {
     echo "  OUTCOME (yes|no|tie for resolve)"
     echo "  BRIDGE_ID (for retry-pm command)"
     echo "  BRIDGE_BACK_ID (for retry-sm command)"
+    echo ""
+    echo "Required env vars for PythConditionResolver:"
+    echo "  PYTH_LAZER_ADDRESS"
+    echo ""
+    echo "Required env vars for CT resolvers:"
+    echo "  PM_NETWORK_LZ_ENDPOINT, PM_NETWORK_LZ_EID"
+    echo "  POLYGON_DEPLOYER_ADDRESS, POLYGON_DEPLOYER_PRIVATE_KEY, POLYGON_RPC_URL"
+    echo "  POLYGON_LZ_ENDPOINT, POLYGON_LZ_EID, POLYGON_CONDITIONAL_TOKENS_ADDRESS"
     echo ""
     echo "IMPORTANT: This is a MAINNET deployment script. Double-check all addresses!"
 }
@@ -893,6 +1014,12 @@ main() {
         configure-sm)
             configure_sm_only
             ;;
+        deploy-pyth-resolver)
+            deploy_pyth_resolver
+            ;;
+        deploy-ct-resolvers)
+            deploy_ct_resolvers
+            ;;
         status)
             check_status
             ;;
@@ -901,6 +1028,9 @@ main() {
             ;;
         verify-sm)
             verify_sm
+            ;;
+        verify-polygon)
+            verify_polygon
             ;;
         mint)
             test_mint

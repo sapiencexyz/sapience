@@ -10,7 +10,8 @@
       "PredictionMarketBridge": "0xAf0c78547018F9e2e515e6Fc0064DD091f3dDE38",
       "ZeroDevKernelAccountFactory": "0x077682486baadc54D99a524100De0A062c437DE3",
       "PredictionMarketVault": "0xce5ccC8bE76d1504B8DfeB8D09969Dcb139B9F72",
-      "SecondaryMarketEscrow": "0x16222940184Aad2E806529C963531e36c13875cF"
+      "SecondaryMarketEscrow": "0x16222940184Aad2E806529C963531e36c13875cF",
+      "PythConditionResolver": "0xe29568D2ec56dD25D62f05eF28f7EC7C1C899D7c"
     }
   },
   "smNetwork": {
@@ -22,5 +23,5 @@
     }
   },
   "deployedAt": "2026-02-26T22:00:00Z",
-  "lastUpdated": "2026-02-26T22:00:00Z"
+  "lastUpdated": "2026-02-27T15:30:40Z"
 }
