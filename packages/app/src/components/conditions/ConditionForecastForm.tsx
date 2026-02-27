@@ -7,7 +7,6 @@ import { FormProvider, useForm } from 'react-hook-form';
 import { Button } from '@sapience/ui/components/ui/button';
 import YesNoPredict from '~/components/markets/forms/inputs/YesNoPredict';
 import { useSubmitPrediction } from '~/hooks/forms/useSubmitPrediction';
-import { MarketGroupClassification } from '~/lib/types';
 
 interface ConditionForecastFormProps {
   conditionId: string;
@@ -62,7 +61,6 @@ const ConditionForecastForm: React.FC<ConditionForecastFormProps> = ({
   const comment = methods.watch('comment');
 
   const { submitPrediction, isAttesting } = useSubmitPrediction({
-    marketClassification: MarketGroupClassification.YES_NO,
     submissionValue: predictionValue,
     comment,
     onSuccess,
