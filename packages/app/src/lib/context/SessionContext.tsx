@@ -27,6 +27,7 @@ import {
   type EnableTypedData,
   type SerializedSession,
   type EscrowSessionKeyApproval,
+  type SessionCreationStep,
 } from '~/lib/session/sessionKeyManager';
 
 /**
@@ -139,6 +140,7 @@ interface SessionContextValue {
   // Status
   isStartingSession: boolean;
   isRestoringSession: boolean;
+  sessionCreationStep: SessionCreationStep | null;
   sessionError: Error | null;
 
   // Time remaining in milliseconds
@@ -236,6 +238,8 @@ export function SessionProvider({ children }: SessionProviderProps) {
   // Status state
   const [isStartingSession, setIsStartingSession] = useState(false);
   const [isRestoringSession, setIsRestoringSession] = useState(false);
+  const [sessionCreationStep, setSessionCreationStep] =
+    useState<SessionCreationStep | null>(null);
   const [sessionError, setSessionError] = useState<Error | null>(null);
 
   // Smart account address state
@@ -558,6 +562,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
       }
 
       setIsStartingSession(true);
+      setSessionCreationStep(null);
       setSessionError(null);
 
       // Default to Ethereal Testnet for escrow testing
@@ -575,7 +580,8 @@ export function SessionProvider({ children }: SessionProviderProps) {
         const result = await createSession(
           ownerSigner,
           params.durationHours,
-          etherealChainId
+          etherealChainId,
+          setSessionCreationStep
         );
 
         // Save to localStorage
@@ -613,6 +619,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
         throw error;
       } finally {
         setIsStartingSession(false);
+        setSessionCreationStep(null);
       }
     },
     [walletAddress, connector, switchChainAsync]
@@ -753,6 +760,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
       endSession,
       isStartingSession,
       isRestoringSession,
+      sessionCreationStep,
       sessionError,
       timeRemainingMs,
       smartAccountAddress,
@@ -782,6 +790,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
       endSession,
       isStartingSession,
       isRestoringSession,
+      sessionCreationStep,
       sessionError,
       timeRemainingMs,
       smartAccountAddress,

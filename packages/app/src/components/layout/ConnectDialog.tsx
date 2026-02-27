@@ -27,6 +27,9 @@ const USER_REFERRAL_STATUS_QUERY = `
       referredBy {
         id
       }
+      referredByCode {
+        id
+      }
     }
   }
 `;
@@ -51,6 +54,10 @@ interface EIP6963AnnounceProviderEvent extends Event {
 interface ConnectDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  /** When true, immediately start session creation (wallet already connected) */
+  startSessionOnOpen?: boolean;
+  /** Called after startSessionOnOpen has been consumed */
+  onSessionStarted?: () => void;
 }
 
 // Featured wallets to always show (with download links if not installed)
@@ -84,11 +91,13 @@ const FEATURED_WALLETS = [
 export default function ConnectDialog({
   open,
   onOpenChange,
+  startSessionOnOpen,
+  onSessionStarted,
 }: ConnectDialogProps) {
   const { isConnected, address } = useAccount();
   const [isClient, setIsClient] = useState(false);
   const { clearLoggedOut } = useAuth();
-  const { startSession } = useSession();
+  const { startSession, sessionCreationStep } = useSession();
   const { connectionDurationHours } = useSettings();
 
   // Track if we're creating a session after wallet connection
@@ -100,6 +109,59 @@ export default function ConnectDialog({
 
   const { connect, isPending, connectors } = useConnect();
   const [connectingId, setConnectingId] = useState<string | null>(null);
+
+  // Dynamic status message based on session creation progress (without dots — animated separately)
+  const statusMessage = useMemo(() => {
+    if (!isCreatingSession) return null;
+    switch (sessionCreationStep) {
+      case 'switching-network':
+        return 'SWITCHING NETWORK';
+      case 'requesting-approval':
+        return 'ESTABLISHING CONNECTION (1/2)';
+      case 'deploying-account':
+      case 'finalizing':
+        return 'ESTABLISHING CONNECTION (2/2)';
+      default:
+        return 'ESTABLISHING CONNECTION';
+    }
+  }, [isCreatingSession, sessionCreationStep]);
+
+  // Animated dots: cycles . -> .. -> ... every 500ms
+  const [dotCount, setDotCount] = useState(1);
+  useEffect(() => {
+    if (!isCreatingSession) {
+      setDotCount(1);
+      return;
+    }
+    const interval = setInterval(() => {
+      setDotCount((prev) => (prev % 3) + 1);
+    }, 500);
+    return () => clearInterval(interval);
+  }, [isCreatingSession]);
+
+  // Track previous message for fade transition
+  const [displayedMessage, setDisplayedMessage] = useState<string | null>(null);
+  const [isFading, setIsFading] = useState(false);
+  useEffect(() => {
+    if (!statusMessage) {
+      setDisplayedMessage(null);
+      return;
+    }
+    if (displayedMessage === null) {
+      // First message — show immediately
+      setDisplayedMessage(statusMessage);
+      return;
+    }
+    if (statusMessage !== displayedMessage) {
+      // Message changed — fade out, swap, fade in
+      setIsFading(true);
+      const timeout = setTimeout(() => {
+        setDisplayedMessage(statusMessage);
+        setIsFading(false);
+      }, 200);
+      return () => clearTimeout(timeout);
+    }
+  }, [statusMessage, displayedMessage]);
 
   // EIP-6963 wallet discovery
   const [discoveredWallets, setDiscoveredWallets] = useState<
@@ -137,8 +199,36 @@ export default function ConnectDialog({
     setIsClient(true);
   }, []);
 
+  // Start session when opened with startSessionOnOpen flag (e.g. after refcode entry)
+  useEffect(() => {
+    if (!startSessionOnOpen || !open || !isConnected || isCreatingSession)
+      return;
+
+    onSessionStarted?.();
+    setIsCreatingSession(true);
+
+    const runSession = async () => {
+      try {
+        console.debug('[ConnectDialog] Starting session after refcode entry');
+        await startSession({
+          durationHours:
+            connectionDurationHours ?? DEFAULT_CONNECTION_DURATION_HOURS,
+        });
+        console.debug('[ConnectDialog] Session created successfully');
+      } catch (error) {
+        console.error('[ConnectDialog] Failed to create session:', error);
+      } finally {
+        setIsCreatingSession(false);
+        onOpenChange(false);
+      }
+    };
+
+    void runSession();
+  }, [startSessionOnOpen, open, isConnected]); // eslint-disable-line react-hooks/exhaustive-deps
+
   // Auto-create session when wallet connects, then close dialog
-  // Only creates session if user has a valid referral relationship
+  // Only creates session if user has a valid referral relationship.
+  // If no referral, closes the dialog and lets Header show the refcode dialog.
   useEffect(() => {
     const wasConnected = prevConnectedRef.current;
     prevConnectedRef.current = isConnected;
@@ -149,7 +239,6 @@ export default function ConnectDialog({
         '[ConnectDialog] Fresh wallet connection detected, checking referral status...'
       );
       clearLoggedOut();
-      setIsCreatingSession(true);
 
       const createSessionAsync = async () => {
         try {
@@ -162,17 +251,22 @@ export default function ConnectDialog({
                 address: string;
                 refCodeHash?: string | null;
                 referredBy?: { id: number } | null;
+                referredByCode?: { id: number } | null;
               } | null;
             }>(USER_REFERRAL_STATUS_QUERY, { wallet: currentAddress });
 
             const user = data?.user;
-            hasReferral = !!(user && (user.refCodeHash || user.referredBy));
+            hasReferral = !!(
+              user &&
+              (user.refCodeHash || user.referredBy || user.referredByCode)
+            );
 
             console.debug('[ConnectDialog] Referral check:', {
               currentAddress,
               hasReferral,
               refCodeHash: user?.refCodeHash,
               referredBy: user?.referredBy,
+              referredByCode: user?.referredByCode,
             });
           } catch (error) {
             console.error(
@@ -191,9 +285,13 @@ export default function ConnectDialog({
           }
 
           if (!hasReferral) {
+            // No referral — close dialog and let Header show RequiredReferralCodeDialog
+            onOpenChange(false);
             return;
           }
 
+          // Has referral — start session creation with progress overlay
+          setIsCreatingSession(true);
           console.debug('[ConnectDialog] Starting session');
           await startSession({
             durationHours:
@@ -346,11 +444,17 @@ export default function ConnectDialog({
 
         {/* Wallet Options */}
         <div className="relative flex flex-col gap-3">
-          {/* Establishing connection overlay */}
+          {/* Dynamic status overlay */}
           {isCreatingSession && (
             <div className="absolute inset-0 z-10 flex items-center justify-center bg-background/80 backdrop-blur-[2px] rounded-md animate-in fade-in duration-300">
-              <span className="font-mono text-sm tracking-wide text-accent-gold">
-                ESTABLISHING CONNECTION...
+              <span
+                className="font-mono text-sm tracking-wide text-accent-gold transition-opacity duration-200"
+                style={{ opacity: isFading ? 0 : 1 }}
+              >
+                {displayedMessage ?? 'GETTING READY'}
+                <span className="inline-block w-[1.5ch] text-left">
+                  {'.'.repeat(dotCount)}
+                </span>
               </span>
             </div>
           )}

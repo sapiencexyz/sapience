@@ -7,6 +7,7 @@ import {
   slice,
   toHex,
   encodeAbiParameters,
+  encodeFunctionData,
   recoverTypedDataAddress,
   hashTypedData,
   type Address,
@@ -290,6 +291,13 @@ export interface SessionResult {
   arbitrumClient: KernelAccountClient | null; // null until first EAS attestation
   serialized: SerializedSession;
 }
+
+// Progress steps reported during session creation
+export type SessionCreationStep =
+  | 'switching-network'
+  | 'requesting-approval'
+  | 'deploying-account'
+  | 'finalizing';
 
 // Owner signer interface (what we get from connected wallet)
 // The provider should be an EIP-1193 compatible Ethereum provider
@@ -595,7 +603,8 @@ function getEtherealPublicClient(chainId: number) {
 export async function createSession(
   ownerSigner: OwnerSigner,
   durationHours: number,
-  etherealChainId: number = DEFAULT_CHAIN_ID
+  etherealChainId: number = DEFAULT_CHAIN_ID,
+  onProgress?: (step: SessionCreationStep) => void
 ): Promise<SessionResult> {
   console.debug('[SessionKeyManager] Creating new session...');
 
@@ -726,6 +735,7 @@ export async function createSession(
   );
 
   // Switch to Ethereal chain
+  onProgress?.('switching-network');
   console.debug(
     `[SessionKeyManager] Switching to Ethereal chain ${etherealChainId}...`
   );
@@ -816,6 +826,7 @@ export async function createSession(
   }
 
   // Serialize Ethereal account (triggers EIP-712 signature)
+  onProgress?.('requesting-approval');
   console.debug(
     '[SessionKeyManager] Requesting owner approval for Ethereal session key...'
   );
@@ -835,9 +846,12 @@ export async function createSession(
     '[SessionKeyManager] Arbitrum session will be created lazily on first EAS attestation'
   );
 
-  // Deploy the smart account on-chain via a no-op UserOp if not already deployed.
+  onProgress?.('deploying-account');
+  // Deploy the smart account on-chain via a deployment UserOp if not already deployed.
   // This ensures ERC-1271 isValidSignature works on the first mint (the escrow
   // contract checks signer.code.length > 0 before attempting ERC-1271 fallback).
+  // We use approve(vault, 0) as the callData because a raw no-op (0x) is not in
+  // the session key's CallPolicy and would cause an AA23 paymaster revert.
   const etherealPublicClientForDeploy =
     getEtherealPublicClient(etherealChainId);
   const deployedCode = await etherealPublicClientForDeploy.getCode({
@@ -849,13 +863,19 @@ export async function createSession(
     );
     try {
       const deployStart = Date.now();
-      // Send a no-op UserOp — the bundler will include initCode to deploy
-      // the smart account as part of this operation.
+      // Send a harmless approve(vault, 0) UserOp — the bundler will include
+      // initCode to deploy the smart account as part of this operation.
+      // approve(vault, 0) is within the session key's CallPolicy permissions
+      // and is effectively a no-op (approving zero amount).
       const deployOpHash = await etherealClient.sendUserOperation({
         callData: await etherealAccount.encodeCalls([
           {
-            to: smartAccountAddress,
-            data: '0x' as Hex,
+            to: etherealContracts.wusde,
+            data: encodeFunctionData({
+              abi: collateralTokenAbi,
+              functionName: 'approve',
+              args: [etherealContracts.vault, BigInt(0)],
+            }),
             value: BigInt(0),
           },
         ]),
@@ -871,6 +891,7 @@ export async function createSession(
     console.debug('[SessionKeyManager] Smart account already deployed');
   }
 
+  onProgress?.('finalizing');
   // Sign escrow session key approval so the contract can validate via native
   // session key path (Option B in SignatureValidator) instead of ERC-1271.
   let escrowSessionKeyApproval: EscrowSessionKeyApproval | undefined;
@@ -1139,11 +1160,19 @@ export async function restoreSession(
       '[SessionKeyManager] Smart account not deployed, deploying on restore...'
     );
     try {
+      // Use approve(vault, 0) as a harmless call within CallPolicy permissions.
+      // A raw no-op (0x) would cause AA23 paymaster revert since it's not in the
+      // session key's CallPolicy. The bundler includes initCode to deploy the account.
+      const restoreContracts = getEtherealContractAddresses(etherealChainId);
       const deployOpHash = await etherealClient.sendUserOperation({
         callData: await etherealAccount.encodeCalls([
           {
-            to: etherealAccount.address,
-            data: '0x' as Hex,
+            to: restoreContracts.wusde,
+            data: encodeFunctionData({
+              abi: collateralTokenAbi,
+              functionName: 'approve',
+              args: [restoreContracts.vault, BigInt(0)],
+            }),
             value: BigInt(0),
           },
         ]),

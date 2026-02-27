@@ -214,7 +214,7 @@ const NavLinks = ({ onClose }: NavLinksProps) => {
 
 const Header = () => {
   const { ready, hasConnectedWallet, connectedWallet } = useConnectedWallet();
-  const { openConnectDialog } = useConnectDialog();
+  const { openConnectDialog, openAndStartSession } = useConnectDialog();
   const { setLoggedOut } = useAuth();
   const { disconnect } = useDisconnect();
   const { toast } = useToast();
@@ -735,6 +735,10 @@ const Header = () => {
           walletAddress={connectedWallet.address}
           onCodeSet={() => {
             setIsReferralRequiredOpen(false);
+            // Open ConnectDialog and start session creation with progress overlay
+            if (!isSessionActive && !isStartingSession) {
+              openAndStartSession();
+            }
           }}
           onLogout={handleLogout}
         />
