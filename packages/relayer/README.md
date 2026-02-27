@@ -87,36 +87,7 @@ Submit a bid as counterparty for an open auction.
 }
 ```
 
-#### 5. `burn.request`
-
-Request a bilateral burn (pre-resolution exit). Both parties must sign.
-
-```typescript
-{
-  type: 'burn.request',
-  payload: {
-    pickConfigId: string,
-    predictorTokenAmount: string,         // Predictor tokens to burn (wei)
-    counterpartyTokenAmount: string,      // Counterparty tokens to burn (wei)
-    predictorHolder: string,
-    counterpartyHolder: string,
-    predictorPayout: string,              // Predictor payout (wei)
-    counterpartyPayout: string,           // Counterparty payout (wei)
-    predictorNonce: number,
-    counterpartyNonce: number,
-    predictorDeadline: number,
-    counterpartyDeadline: number,
-    predictorSignature: string,
-    counterpartySignature: string,
-    chainId: number,
-    refCode?: string,
-    predictorSessionKeyData?: string,
-    counterpartySessionKeyData?: string
-  }
-}
-```
-
-#### 6. `ping`
+#### 5. `ping`
 
 Keep-alive message. Server responds with `pong`.
 
@@ -134,7 +105,6 @@ Keep-alive message. Server responds with `pong`.
 | `auction.filled` | Sent when prediction is minted on-chain. Contains `{ auctionId, predictionId, pickConfigId, transactionHash }` |
 | `auction.expired` | Sent when auction deadline passes. Contains `{ auctionId, reason }` |
 | `bid.ack` | Confirms bid receipt or reports error. Contains `{ bidId?, error? }` |
-| `burn.ack` | Confirms burn request. Contains `{ burnId?, transactionHash?, error? }` |
 | `pong` | Response to `ping` |
 | `error` | Server error. Contains `{ message, code? }` |
 

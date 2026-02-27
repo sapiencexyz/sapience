@@ -8,7 +8,6 @@ export type {
   AuctionRFQPayload,
   AuctionRequestPayload,
   BidPayload,
-  BurnRequestPayload,
   ClientToServerMessage,
   ServerToClientMessage,
   AuctionDetails,
@@ -38,7 +37,6 @@ export function isEscrowClientMessage(
       msgObj.type === 'auction.subscribe' ||
       msgObj.type === 'auction.unsubscribe' ||
       msgObj.type === 'bid.submit' ||
-      msgObj.type === 'burn.request' ||
       msgObj.type === 'ping')
   );
 }

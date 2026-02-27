@@ -4,7 +4,6 @@ import type {
   AuctionRFQPayload,
   AuctionDetails,
   BidPayload,
-  BurnRequestPayload,
   ClientToServerMessage,
   ServerToClientMessage,
   PickJson,
@@ -45,11 +44,6 @@ export interface AuctionWsHandlers {
     transactionHash: string;
   }) => void;
   onAuctionExpired?: (payload: { auctionId: string; reason: string }) => void;
-  onBurnAck?: (payload: {
-    burnId?: string;
-    transactionHash?: string;
-    error?: string;
-  }) => void;
   onPong?: () => void;
   onServerError?: (payload: { message: string; code?: string }) => void;
 
@@ -115,9 +109,6 @@ export function createEscrowAuctionWs(
         break;
       case 'auction.expired':
         handlers.onAuctionExpired?.(msg.payload);
-        break;
-      case 'burn.ack':
-        handlers.onBurnAck?.(msg.payload);
         break;
       case 'pong':
         handlers.onPong?.();
@@ -223,13 +214,6 @@ export function createEscrowAuctionWs(
     },
 
     /**
-     * Request a bilateral burn (pre-resolution exit)
-     */
-    requestBurn(payload: BurnRequestPayload): boolean {
-      return send({ type: 'burn.request', payload });
-    },
-
-    /**
      * Send ping to keep connection alive
      */
     ping: sendPing,
@@ -313,45 +297,3 @@ export function buildBidPayload(params: {
   };
 }
 
-/**
- * Build an escrow burn request payload
- */
-export function buildBurnRequest(params: {
-  pickConfigId: string;
-  predictorTokenAmount: bigint;
-  counterpartyTokenAmount: bigint;
-  predictorHolder: string;
-  counterpartyHolder: string;
-  predictorPayout: bigint;
-  counterpartyPayout: bigint;
-  predictorNonce: number;
-  counterpartyNonce: number;
-  predictorDeadline: number;
-  counterpartyDeadline: number;
-  predictorSignature: string;
-  counterpartySignature: string;
-  chainId: number;
-  refCode?: string;
-  predictorSessionKeyData?: string;
-  counterpartySessionKeyData?: string;
-}): BurnRequestPayload {
-  return {
-    pickConfigId: params.pickConfigId,
-    predictorTokenAmount: params.predictorTokenAmount.toString(),
-    counterpartyTokenAmount: params.counterpartyTokenAmount.toString(),
-    predictorHolder: params.predictorHolder,
-    counterpartyHolder: params.counterpartyHolder,
-    predictorPayout: params.predictorPayout.toString(),
-    counterpartyPayout: params.counterpartyPayout.toString(),
-    predictorNonce: params.predictorNonce,
-    counterpartyNonce: params.counterpartyNonce,
-    predictorDeadline: params.predictorDeadline,
-    counterpartyDeadline: params.counterpartyDeadline,
-    predictorSignature: params.predictorSignature,
-    counterpartySignature: params.counterpartySignature,
-    chainId: params.chainId,
-    refCode: params.refCode,
-    predictorSessionKeyData: params.predictorSessionKeyData,
-    counterpartySessionKeyData: params.counterpartySessionKeyData,
-  };
-}

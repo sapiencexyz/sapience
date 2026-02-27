@@ -820,15 +820,6 @@ export function createAuctionWebSocketServer() {
           trackDuration(msgType, startTime);
           return;
         }
-        if (msg.type === 'burn.request') {
-          // TODO: Handle burn requests
-          send(ws, {
-            type: 'error',
-            payload: { message: 'burn_not_implemented', code: 'not_implemented' },
-          });
-          trackDuration(msgType, startTime);
-          return;
-        }
       }
 
       // Handle Secondary Market messages
