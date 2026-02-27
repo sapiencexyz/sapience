@@ -378,6 +378,51 @@ deploy_ct_resolvers() {
     log_success "ConditionalTokens resolvers deployed and bridge configured"
 }
 
+# Configure DVN for CT Reader (Polygon) and CT Resolver (Ethereal)
+configure_ct_dvn() {
+    log_info "=== Configure DVN for CT Reader (Polygon) + CT Resolver (Ethereal) ==="
+
+    # 1. CT Reader on Polygon — send config (DVN + executor)
+    check_env POLYGON_DEPLOYER_PRIVATE_KEY POLYGON_RPC_URL POLYGON_LZ_ENDPOINT PM_NETWORK_LZ_EID \
+              CT_READER_ADDRESS POLYGON_SEND_LIB POLYGON_DVN_1 POLYGON_DVN_2 POLYGON_EXECUTOR || exit 1
+
+    run_script_no_verify "src/scripts/v2/mainnet/SetDVN_CTReader.s.sol:SetDVN_CTReader" "$POLYGON_RPC_URL" "Configuring DVN for CT Reader on Polygon (send config)"
+
+    # 2. CT Resolver on Ethereal — receive config (DVN)
+    check_env PM_NETWORK_DEPLOYER_PRIVATE_KEY PM_NETWORK_RPC_URL PM_NETWORK_LZ_ENDPOINT POLYGON_LZ_EID \
+              CT_CONDITION_RESOLVER_ADDRESS PM_NETWORK_RECEIVE_LIB PM_NETWORK_DVN_1 PM_NETWORK_DVN_2 || exit 1
+
+    run_script_no_verify "src/scripts/v2/mainnet/SetDVN_CTResolver.s.sol:SetDVN_CTResolver" "$PM_NETWORK_RPC_URL" "Configuring DVN for CT Resolver on Ethereal (receive config)"
+
+    log_success "DVN configured for CT Reader + CT Resolver"
+}
+
+# Test CT Resolver Bridge: request resolution from Polygon, send to Ethereal via LZ
+test_ct_bridge() {
+    log_info "=== Test CT Resolver Bridge (Polygon -> Ethereal via LayerZero) ==="
+
+    check_env POLYGON_DEPLOYER_PRIVATE_KEY POLYGON_RPC_URL CT_READER_ADDRESS CONDITION_ID || exit 1
+
+    run_script_no_verify "src/scripts/v2/mainnet/TestCTResolverBridge.s.sol:TestCTResolverBridge" "$POLYGON_RPC_URL" "Requesting CT resolution from Polygon"
+
+    log_success "Resolution requested — track delivery at https://layerzeroscan.com/"
+    log_info "After ~1-2 min, run: $0 check-ct-resolution"
+}
+
+# Check CT resolution on Ethereal
+check_ct_resolution() {
+    log_info "=== Check CT Resolution on Ethereal ==="
+
+    check_env PM_NETWORK_RPC_URL CT_CONDITION_RESOLVER_ADDRESS CONDITION_ID || exit 1
+
+    cd "$PROTOCOL_DIR"
+    forge script "src/scripts/v2/mainnet/CheckCTResolution.s.sol:CheckCTResolution" \
+        --rpc-url "$PM_NETWORK_RPC_URL" -vvvv || {
+        log_error "Failed to check CT resolution"
+        exit 1
+    }
+}
+
 # Phase 1: Deploy PM Network Infrastructure
 deploy_ethereal_phase1() {
     log_info "=== Phase 1: Deploy PM Network Infrastructure (Mainnet) ==="
@@ -883,6 +928,7 @@ usage() {
     echo "Resolver Deployment Commands:"
     echo "  deploy-pyth-resolver  Deploy PythConditionResolver on Ethereal"
     echo "  deploy-ct-resolvers   Deploy CT Reader (Polygon) + CT Resolver (Ethereal) + configure bridge"
+    echo "  configure-ct-dvn      Configure DVN for CT Reader (Polygon send) + CT Resolver (Ethereal receive)"
     echo ""
     echo "Verification Commands:"
     echo "  verify-pm             Verify contracts on PM Network (Ethereal/Blockscout)"
@@ -894,6 +940,8 @@ usage() {
     echo "  bridge-to             Bridge tokens from Ethereal to Arbitrum"
     echo "  resolve               Resolve prediction (set OUTCOME=yes|no|tie)"
     echo "  bridge-back           Bridge tokens back from Arbitrum to Ethereal"
+    echo "  test-ct-bridge        Request CT resolution from Polygon via LayerZero (needs CONDITION_ID)"
+    echo "  check-ct-resolution   Check if CT resolution arrived on Ethereal (needs CONDITION_ID)"
     echo ""
     echo "Retry Commands:"
     echo "  retry-pm              Retry a pending bridge from PM Network (uses BRIDGE_ID)"
@@ -922,6 +970,8 @@ usage() {
     echo "  $0 deploy-pyth-resolver           # Deploy PythConditionResolver on Ethereal"
     echo "  $0 deploy-ct-resolvers            # Deploy CT pair + configure bridge"
     echo "  $0 verify-polygon                 # Verify Polygon contracts"
+    echo "  CONDITION_ID=0x... $0 test-ct-bridge       # Request CT resolution via LZ"
+    echo "  CONDITION_ID=0x... $0 check-ct-resolution  # Check CT resolution on Ethereal"
     echo ""
     echo "Required env vars for DVN config (2 DVNs for production):"
     echo "  PM_NETWORK_SEND_LIB, PM_NETWORK_RECEIVE_LIB, PM_NETWORK_DVN_1, PM_NETWORK_DVN_2"
@@ -946,6 +996,10 @@ usage() {
     echo "  PM_NETWORK_LZ_ENDPOINT, PM_NETWORK_LZ_EID"
     echo "  POLYGON_DEPLOYER_ADDRESS, POLYGON_DEPLOYER_PRIVATE_KEY, POLYGON_RPC_URL"
     echo "  POLYGON_LZ_ENDPOINT, POLYGON_LZ_EID, POLYGON_CONDITIONAL_TOKENS_ADDRESS"
+    echo ""
+    echo "Required env vars for CT DVN config (configure-ct-dvn):"
+    echo "  POLYGON_SEND_LIB, POLYGON_DVN_1, POLYGON_DVN_2, POLYGON_EXECUTOR"
+    echo "  PM_NETWORK_RECEIVE_LIB, PM_NETWORK_DVN_1, PM_NETWORK_DVN_2"
     echo ""
     echo "IMPORTANT: This is a MAINNET deployment script. Double-check all addresses!"
 }
@@ -1031,6 +1085,15 @@ main() {
             ;;
         verify-polygon)
             verify_polygon
+            ;;
+        configure-ct-dvn)
+            configure_ct_dvn
+            ;;
+        test-ct-bridge)
+            test_ct_bridge
+            ;;
+        check-ct-resolution)
+            check_ct_resolution
             ;;
         mint)
             test_mint
