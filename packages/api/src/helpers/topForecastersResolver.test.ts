@@ -57,7 +57,7 @@ describe('ScoreResolver.accuracyLeaderboard', () => {
       result[1].accuracyScore
     );
     // ensure ordering by accuracy desc (B should be first)
-    expect(result[0].attester).toBe('b');
-    expect(result[1].attester).toBe('a');
+    expect(result[0].address).toBe('b');
+    expect(result[1].address).toBe('a');
   });
 });

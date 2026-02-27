@@ -8,18 +8,18 @@ import { getGraphQLEndpoint, formatUnits } from './_prediction-helpers';
 // ---------- GraphQL queries ----------
 
 const ALL_TIME_PROFIT_LEADERBOARD_QUERY = `
-  query ProfitLeaderboard {
-    profitLeaderboard {
-      owner
+  query ProfitLeaderboard($limit: Int) {
+    profitLeaderboard(limit: $limit) {
+      address
       totalPnL
     }
   }
 `;
 
 const ACCURACY_RANK_QUERY = `
-  query AccountAccuracyRank($attester: String!) {
-    accountAccuracyRank(attester: $attester) {
-      attester
+  query AccountAccuracyRank($address: String!) {
+    accountAccuracyRank(address: $address) {
+      address
       accuracyScore
       rank
       totalForecasters
@@ -83,17 +83,21 @@ async function fetchProfitRank(address: string): Promise<{
   totalParticipants: number;
 }> {
   const data = await gqlFetch<{
-    profitLeaderboard: Array<{ owner: string; totalPnL: number }>;
-  }>(ALL_TIME_PROFIT_LEADERBOARD_QUERY);
+    profitLeaderboard: Array<{ address: string; totalPnL: string }>;
+  }>(ALL_TIME_PROFIT_LEADERBOARD_QUERY, { limit: 100 });
 
   const entries = data?.profitLeaderboard || [];
-  const sorted = entries.sort((a, b) => b.totalPnL - a.totalPnL);
+  const sorted = entries.sort(
+    (a, b) => parseFloat(b.totalPnL) - parseFloat(a.totalPnL)
+  );
   const addressLc = address.toLowerCase();
-  const idx = sorted.findIndex((e) => e.owner.toLowerCase() === addressLc);
+  const idx = sorted.findIndex(
+    (e) => e.address.toLowerCase() === addressLc
+  );
   const entry = idx >= 0 ? sorted[idx] : null;
 
   return {
-    totalPnL: entry?.totalPnL ?? null,
+    totalPnL: entry ? parseFloat(entry.totalPnL) : null,
     rank: idx >= 0 ? idx + 1 : null,
     totalParticipants: sorted.length,
   };
@@ -110,7 +114,7 @@ async function fetchAccuracyRank(address: string): Promise<{
       rank: number | null;
       totalForecasters: number;
     };
-  }>(ACCURACY_RANK_QUERY, { attester: address.toLowerCase() });
+  }>(ACCURACY_RANK_QUERY, { address: address.toLowerCase() });
 
   const r = data?.accountAccuracyRank;
   if (!r) return { accuracyScore: null, rank: null, totalForecasters: 0 };

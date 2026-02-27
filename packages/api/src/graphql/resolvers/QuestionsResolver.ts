@@ -47,12 +47,12 @@ export class QuestionsResolver {
   @Query(() => [Question], { nullable: false })
   async questions(
     @Ctx() ctx: ApolloContext,
-    @Arg('take', () => Int) take: number,
-    @Arg('skip', () => Int) skip: number,
+    @Arg('take', () => Int, { defaultValue: 50 }) take: number,
+    @Arg('skip', () => Int, { defaultValue: 0 }) skip: number,
     @Arg('chainId', () => Int, { nullable: true }) chainId: number | null,
     @Arg('sortField', () => String, { nullable: true })
     sortField: string | null,
-    @Arg('sortDirection', () => String) sortDirection: string,
+    @Arg('sortDirection', () => String, { defaultValue: 'DESC' }) sortDirection: string,
     @Arg('search', () => String, { nullable: true }) search: string | null,
     @Arg('categorySlugs', () => [String], { nullable: true })
     categorySlugs: string[] | null,

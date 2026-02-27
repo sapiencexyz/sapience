@@ -60,7 +60,7 @@ export async function GET(req: Request) {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             query: PREDICTION_BY_ID_QUERY,
-            variables: { predictionId },
+            variables: { id: predictionId },
           }),
         });
 

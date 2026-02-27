@@ -37,7 +37,7 @@ import {
   ConditionResolver,
   VolumeResolver,
   QuestionsResolver,
-  SecondaryTradeResolver,
+  TradeResolver,
   TimeSeriesResolver,
 } from './resolvers';
 
@@ -69,7 +69,7 @@ export const initializeApolloServer = async () => {
       ConditionResolver,
       VolumeResolver,
       QuestionsResolver,
-      SecondaryTradeResolver,
+      TradeResolver,
       TimeSeriesResolver,
     ]);
   const schema = await buildSchema({

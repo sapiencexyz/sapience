@@ -6,7 +6,7 @@ import prisma from '../../db';
 // GraphQL Object Types
 // ============================================================================
 
-@ObjectType()
+@ObjectType('Trade')
 class SecondaryTradeType {
   @Field(() => Int)
   id!: number;
@@ -53,7 +53,7 @@ class SecondaryTradeType {
 // ============================================================================
 
 @Resolver()
-export class SecondaryTradeResolver {
+export class TradeResolver {
   @Query(() => [SecondaryTradeType])
   async trades(
     @Arg('take', () => Int, { defaultValue: 50 }) take: number,
@@ -101,10 +101,10 @@ export class SecondaryTradeResolver {
 
   @Query(() => SecondaryTradeType, { nullable: true })
   async trade(
-    @Arg('tradeHash', () => String) tradeHash: string
+    @Arg('id', () => String) id: string
   ): Promise<SecondaryTradeType | null> {
     const r = await prisma.secondaryTrade.findUnique({
-      where: { tradeHash: tradeHash.toLowerCase() },
+      where: { tradeHash: id.toLowerCase() },
     });
 
     if (!r) return null;

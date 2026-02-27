@@ -6,8 +6,8 @@ import prisma from '../../db';
 // GraphQL Object Types
 // ============================================================================
 
-@ObjectType()
-class PickType {
+@ObjectType('Pick')
+export class PickType {
   @Field(() => Int)
   id!: number;
 
@@ -24,8 +24,8 @@ class PickType {
   predictedOutcome!: number;
 }
 
-@ObjectType()
-class PickConfigurationType {
+@ObjectType('PickConfiguration')
+export class PickConfigurationType {
   @Field(() => String)
   id!: string;
 
@@ -72,8 +72,8 @@ class PickConfigurationType {
   predictionId?: string | null;
 }
 
-@ObjectType()
-class PredictionType {
+@ObjectType('Prediction')
+export class PredictionType {
   @Field(() => Int)
   id!: number;
 
@@ -141,7 +141,7 @@ class PredictionType {
   pickConfig?: PickConfigurationType | null;
 }
 
-@ObjectType()
+@ObjectType('Position')
 class PositionType {
   @Field(() => Int)
   id!: number;
@@ -168,7 +168,7 @@ class PositionType {
   pickConfig?: PickConfigurationType | null;
 }
 
-@ObjectType()
+@ObjectType('Close')
 class CloseType {
   @Field(() => Int)
   id!: number;
@@ -210,7 +210,7 @@ class CloseType {
   refCode?: string | null;
 }
 
-@ObjectType()
+@ObjectType('Claim')
 class ClaimType {
   @Field(() => Int)
   id!: number;
@@ -432,9 +432,9 @@ export class EscrowResolver {
 
   @Query(() => PredictionType, { nullable: true })
   async prediction(
-    @Arg('predictionId', () => String) predictionId: string
+    @Arg('id', () => String) id: string
   ): Promise<PredictionType | null> {
-    const predictionIdLower = predictionId.toLowerCase();
+    const predictionIdLower = id.toLowerCase();
 
     const r = await prisma.prediction.findUnique({
       where: { predictionId: predictionIdLower },

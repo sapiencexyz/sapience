@@ -11,10 +11,10 @@ import {
 import prisma from '../../db';
 import { TtlCache } from '../../utils/ttlCache';
 
-@ObjectType()
+@ObjectType('ForecasterScore')
 class ForecasterScoreType {
   @Field(() => String)
-  attester!: string;
+  address!: string;
 
   @Field(() => Int)
   numScored!: number;
@@ -32,10 +32,10 @@ class ForecasterScoreType {
   accuracyScore!: number;
 }
 
-@ObjectType()
+@ObjectType('AccuracyRank')
 class AccuracyRankType {
   @Field(() => String)
-  attester!: string;
+  address!: string;
 
   @Field(() => Float)
   accuracyScore!: number;
@@ -58,9 +58,9 @@ export class ScoreResolver {
   @Query(() => ForecasterScoreType, { nullable: true })
   @Directive('@cacheControl(maxAge: 60)')
   async accountAccuracy(
-    @Arg('attester', () => String) attester: string
+    @Arg('address', () => String) address: string
   ): Promise<ForecasterScoreType | null> {
-    const a = attester.toLowerCase();
+    const a = address.toLowerCase();
 
     // Aggregate accuracy scores across markets for this attester
     // twError now stores accuracy scores directly (higher is better)
@@ -79,7 +79,7 @@ export class ScoreResolver {
     const accuracyScore = sumTimeWeightedError / numTimeWeighted;
 
     return {
-      attester: a,
+      address: a,
       numScored: 0,
       sumErrorSquared: 0,
       numTimeWeighted,
@@ -105,7 +105,7 @@ export class ScoreResolver {
       // twError stores (1 - brierScore) * tau, so avg is the accuracy score
       const score = (row._avg.twError as number | null) ?? 0;
       return {
-        attester: (row.attester as string).toLowerCase(),
+        address: (row.attester as string).toLowerCase(),
         numScored: 0,
         sumErrorSquared: 0,
         numTimeWeighted: 0,
@@ -121,9 +121,9 @@ export class ScoreResolver {
   @Query(() => AccuracyRankType)
   @Directive('@cacheControl(maxAge: 60)')
   async accountAccuracyRank(
-    @Arg('attester', () => String) attester: string
+    @Arg('address', () => String) address: string
   ): Promise<AccuracyRankType> {
-    const target = attester.toLowerCase();
+    const target = address.toLowerCase();
 
     // twError now stores accuracy scores directly (higher is better)
     const agg = await prisma.attesterMarketTwError.groupBy({
@@ -147,7 +147,7 @@ export class ScoreResolver {
     const accuracyScore = idx >= 0 ? scores[idx].accuracyScore : 0;
 
     return {
-      attester: target,
+      address: target,
       accuracyScore,
       rank,
       totalForecasters,

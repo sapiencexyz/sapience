@@ -1,4 +1,4 @@
-import { Arg, Ctx, Info, Int, Query, Resolver } from 'type-graphql';
+import { Arg, Ctx, FieldResolver, Info, Int, Query, Resolver, Root } from 'type-graphql';
 import { GraphQLResolveInfo } from 'graphql';
 import {
   Condition,
@@ -13,6 +13,8 @@ import {
   transformCountFieldIntoSelectRelationsCount,
 } from '@generated/type-graphql/helpers';
 import type { ApolloContext } from '../startApolloServer';
+import prisma from '../../db';
+import { PredictionType, PickConfigurationType } from './EscrowResolver';
 
 /**
  * Custom Condition resolver that defaults to hiding private conditions (public: false).
@@ -147,5 +149,123 @@ export class ConditionResolver {
     }
 
     return false;
+  }
+
+  @FieldResolver(() => [PredictionType])
+  async predictions(
+    @Root() condition: Condition,
+    @Arg('take', () => Int, { defaultValue: 50 }) take: number,
+    @Arg('skip', () => Int, { defaultValue: 0 }) skip: number
+  ): Promise<PredictionType[]> {
+    // Find Pick records with this conditionId
+    const matchingPicks = await prisma.pick.findMany({
+      where: { conditionId: { equals: condition.id, mode: 'insensitive' } },
+      select: { pickConfigId: true },
+      distinct: ['pickConfigId'],
+    });
+    const pickConfigIds = matchingPicks.map((p) => p.pickConfigId);
+    if (pickConfigIds.length === 0) return [];
+
+    // Get tokens from PickConfigurations
+    const pickConfigs = await prisma.picks.findMany({
+      where: { id: { in: pickConfigIds } },
+      select: { predictorToken: true, counterpartyToken: true },
+    });
+    const tokens = [
+      ...new Set(
+        pickConfigs.flatMap((pc) =>
+          [pc.predictorToken, pc.counterpartyToken].filter(Boolean)
+        )
+      ),
+    ] as string[];
+    if (tokens.length === 0) return [];
+
+    // Query Prediction table by tokens
+    const rows = await prisma.prediction.findMany({
+      where: {
+        OR: [
+          { predictorToken: { in: tokens } },
+          { counterpartyToken: { in: tokens } },
+        ],
+      },
+      orderBy: { createdAt: 'desc' },
+      take,
+      skip,
+    });
+
+    // Batch-load pickConfigs for mapping
+    const allTokenAddresses = new Set<string>();
+    for (const r of rows) {
+      if (r.predictorToken) allTokenAddresses.add(r.predictorToken);
+      if (r.counterpartyToken) allTokenAddresses.add(r.counterpartyToken);
+    }
+
+    const tokenToPickConfig = new Map<string, PickConfigurationType>();
+    if (allTokenAddresses.size > 0) {
+      const positions = await prisma.position.findMany({
+        where: { tokenAddress: { in: Array.from(allTokenAddresses) } },
+        distinct: ['pickConfigId'],
+        include: {
+          pickConfiguration: { include: { picks: true } },
+        },
+      });
+
+      for (const pos of positions) {
+        if (pos.pickConfiguration) {
+          const pc = pos.pickConfiguration;
+          const mapped: PickConfigurationType = {
+            id: pc.id,
+            chainId: pc.chainId,
+            marketAddress: pc.marketAddress,
+            totalPredictorCollateral: pc.totalPredictorCollateral,
+            totalCounterpartyCollateral: pc.totalCounterpartyCollateral,
+            claimedPredictorCollateral: pc.claimedPredictorCollateral,
+            claimedCounterpartyCollateral: pc.claimedCounterpartyCollateral,
+            resolved: pc.resolved,
+            result: pc.result,
+            resolvedAt: pc.resolvedAt ?? null,
+            predictorToken: pc.predictorToken ?? null,
+            counterpartyToken: pc.counterpartyToken ?? null,
+            endsAt: pc.endsAt ?? null,
+            picks: pc.picks.map((p) => ({
+              id: p.id,
+              pickConfigId: p.pickConfigId,
+              conditionResolver: p.conditionResolver,
+              conditionId: p.conditionId,
+              predictedOutcome: p.predictedOutcome,
+            })),
+          };
+          tokenToPickConfig.set(pos.tokenAddress, mapped);
+        }
+      }
+    }
+
+    return rows.map((r) => ({
+      id: r.id,
+      predictionId: r.predictionId,
+      chainId: r.chainId,
+      marketAddress: r.marketAddress,
+      predictor: r.predictor,
+      counterparty: r.counterparty,
+      predictorToken: r.predictorToken,
+      counterpartyToken: r.counterpartyToken,
+      predictorCollateral: r.predictorCollateral,
+      counterpartyCollateral: r.counterpartyCollateral,
+      collateralDeposited: r.collateralDeposited ?? null,
+      collateralDepositedAt: r.collateralDepositedAt ?? null,
+      settled: r.settled,
+      settledAt: r.settledAt ?? null,
+      result: r.result,
+      predictorClaimable: r.predictorClaimable ?? null,
+      counterpartyClaimable: r.counterpartyClaimable ?? null,
+      createdAt: r.createdAt.toISOString(),
+      createTxHash: r.createTxHash,
+      settleTxHash: r.settleTxHash ?? null,
+      refCode: r.refCode ?? null,
+      pickConfig:
+        tokenToPickConfig.get(r.predictorToken) ??
+        tokenToPickConfig.get(r.counterpartyToken) ??
+        null,
+    }));
   }
 }

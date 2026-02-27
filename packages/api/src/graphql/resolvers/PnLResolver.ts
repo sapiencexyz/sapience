@@ -1,4 +1,4 @@
-import { Resolver, Query, Arg, Directive } from 'type-graphql';
+import { Resolver, Query, Arg, Int, Directive } from 'type-graphql';
 import { PnLType } from '../types/PnLType';
 import {
   AggregatedProfitEntryType,
@@ -21,11 +21,17 @@ export class PnLResolver {
 
   @Query(() => [AggregatedProfitEntryType])
   @Directive('@cacheControl(maxAge: 60)')
-  async profitLeaderboard(): Promise<AggregatedProfitEntryType[]> {
-    // Cache key includes v4 to invalidate old cache after escrow integration
-    const cacheKey = 'profitLeaderboard:v4';
+  async profitLeaderboard(
+    @Arg('limit', () => Int, { defaultValue: 10 }) limit: number,
+    @Arg('skip', () => Int, { defaultValue: 0 }) skip: number
+  ): Promise<AggregatedProfitEntryType[]> {
+    // Cache key includes v5 to invalidate old cache after field renames
+    const cacheKey = 'profitLeaderboard:v5';
     const existing = PnLResolver.leaderboardCache.get(cacheKey);
-    if (existing) return existing;
+    if (existing) {
+      const cappedLimit = Math.max(1, Math.min(limit, 100));
+      return existing.slice(skip, skip + cappedLimit);
+    }
 
     // Use combined legacy + escrow P&L calculation
     const positionPnL = await calculateCombinedPositionPnL();
@@ -33,33 +39,34 @@ export class PnLResolver {
     const aggregated = new Map<string, number>();
 
     for (const r of positionPnL) {
-      const owner = r.owner.toLowerCase();
+      const addr = r.owner.toLowerCase();
       const divisor = Math.pow(10, DEFAULT_DECIMALS);
       const val = parseFloat(r.totalPnL) / divisor;
       if (!Number.isFinite(val)) continue;
-      aggregated.set(owner, (aggregated.get(owner) || 0) + val);
+      aggregated.set(addr, (aggregated.get(addr) || 0) + val);
     }
 
     const entries = Array.from(aggregated.entries())
-      .map(([owner, totalPnL]) => ({ owner, totalPnL }))
-      .sort((a, b) => b.totalPnL - a.totalPnL);
+      .map(([address, pnl]) => ({ address, totalPnL: pnl.toFixed(18) }))
+      .sort((a, b) => parseFloat(b.totalPnL) - parseFloat(a.totalPnL));
 
     PnLResolver.leaderboardCache.set(cacheKey, entries);
-    return entries;
+    const cappedLimit = Math.max(1, Math.min(limit, 100));
+    return entries.slice(skip, skip + cappedLimit);
   }
 
   @Query(() => ProfitRankType)
   @Directive('@cacheControl(maxAge: 60)')
   async accountProfitRank(
-    @Arg('owner', () => String) owner: string
+    @Arg('address', () => String) address: string
   ): Promise<ProfitRankType> {
-    const leaderboard = await this.profitLeaderboard();
-    const lc = owner.toLowerCase();
+    const leaderboard = await this.profitLeaderboard(100, 0);
+    const lc = address.toLowerCase();
     const totalParticipants = leaderboard.length;
-    const idx = leaderboard.findIndex((e) => e.owner === lc);
+    const idx = leaderboard.findIndex((e) => e.address === lc);
     const rank = idx >= 0 ? idx + 1 : null;
-    const totalPnL = leaderboard.find((e) => e.owner === lc)?.totalPnL || 0;
+    const totalPnL = leaderboard.find((e) => e.address === lc)?.totalPnL || '0';
 
-    return { owner: lc, totalPnL, rank, totalParticipants };
+    return { address: lc, totalPnL, rank, totalParticipants };
   }
 }

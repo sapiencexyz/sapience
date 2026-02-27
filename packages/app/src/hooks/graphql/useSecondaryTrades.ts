@@ -35,8 +35,8 @@ const TRADES_BY_BUYER_QUERY = /* GraphQL */ `
 `;
 
 const TRADE_QUERY = /* GraphQL */ `
-  query Trade($tradeHash: String!) {
-    trade(tradeHash: $tradeHash) {
+  query Trade($id: String!) {
+    trade(id: $id) {
       id tradeHash chainId token collateral seller buyer tokenAmount price txHash blockNumber executedAt
     }
   }
@@ -100,7 +100,7 @@ export function useSecondaryTrade(tradeHash?: string) {
     queryFn: async () => {
       const resp = await graphqlRequest<{
         trade: SecondaryTrade | null;
-      }>(TRADE_QUERY, { tradeHash });
+      }>(TRADE_QUERY, { id: tradeHash });
       return resp?.trade ?? null;
     },
   });

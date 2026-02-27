@@ -64,7 +64,7 @@ async function fetchPrediction(predictionId: string): Promise<{
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         query: PREDICTION_BY_ID_QUERY,
-        variables: { predictionId },
+        variables: { id: predictionId },
       }),
       next: { revalidate: 30 },
     });

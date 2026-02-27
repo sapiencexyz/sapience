@@ -3,16 +3,16 @@
 # !!!   DO NOT MODIFY THIS FILE BY YOURSELF   !!!
 # -----------------------------------------------
 
-type AccuracyRankType {
+type AccuracyRank {
   accuracyScore: Float!
-  attester: String!
+  address: String!
   rank: Int
   totalForecasters: Int!
 }
 
-type AggregatedProfitEntryType {
-  owner: String!
-  totalPnL: Float!
+type ProfitEntry {
+  address: String!
+  totalPnL: String!
 }
 
 type Attestation {
@@ -269,7 +269,7 @@ input CategoryWhereUniqueInput {
   slug: String
 }
 
-type ClaimType {
+type Claim {
   chainId: Int!
   collateralPaid: String!
   holder: String!
@@ -283,7 +283,7 @@ type ClaimType {
   txHash: String!
 }
 
-type CloseType {
+type Close {
   burnedAt: Int!
   chainId: Int!
   counterpartyHolder: String!
@@ -317,7 +317,7 @@ type Condition {
   id: String!
   openInterest: String!
   predictionCount: Int!
-  predictions(cursor: LegacyPredictionWhereUniqueInput, distinct: [LegacyPredictionScalarFieldEnum!], orderBy: [LegacyPredictionOrderByWithRelationInput!], skip: Int, take: Int, where: LegacyPredictionWhereInput): [LegacyPrediction!]!
+  predictions(skip: Int! = 0, take: Int! = 50): [Prediction!]!
   public: Boolean!
   question: String!
   resolvedToYes: Boolean!
@@ -332,7 +332,6 @@ type Condition {
 
 type ConditionCount {
   attestations(where: AttestationWhereInput): Int!
-  predictions(where: LegacyPredictionWhereInput): Int!
 }
 
 type ConditionGroup {
@@ -595,9 +594,9 @@ input FloatNullableFilter {
   notIn: [Float!]
 }
 
-type ForecasterScoreType {
+type ForecasterScore {
   accuracyScore: Float!
-  attester: String!
+  address: String!
   numScored: Int!
   numTimeWeighted: Int!
   sumErrorSquared: Float!
@@ -1003,7 +1002,7 @@ enum NullsOrder {
   last
 }
 
-type PickType {
+type Pick {
   conditionId: String!
   conditionResolver: String!
   id: Int!
@@ -1011,7 +1010,7 @@ type PickType {
   predictedOutcome: Int!
 }
 
-type PicksType {
+type PickConfiguration {
   chainId: Int!
   claimedCounterpartyCollateral: String!
   claimedPredictorCollateral: String!
@@ -1019,7 +1018,7 @@ type PicksType {
   endsAt: Int
   id: String!
   marketAddress: String!
-  picks: [PickType!]!
+  picks: [Pick!]!
   predictionId: String
   predictorToken: String
   resolved: Boolean!
@@ -1029,18 +1028,18 @@ type PicksType {
   totalPredictorCollateral: String!
 }
 
-type PositionType {
+type Position {
   balance: String!
   chainId: Int!
   holder: String!
   id: Int!
   isPredictorToken: Boolean!
-  pickConfig: PicksType
+  pickConfig: PickConfiguration
   pickConfigId: String!
   tokenAddress: String!
 }
 
-type PredictionType {
+type Prediction {
   chainId: Int!
   collateralDeposited: String
   collateralDepositedAt: Int
@@ -1052,6 +1051,7 @@ type PredictionType {
   createdAt: String!
   id: Int!
   marketAddress: String!
+  pickConfig: PickConfiguration
   predictionId: String!
   predictor: String!
   predictorClaimable: String
@@ -1064,11 +1064,11 @@ type PredictionType {
   settledAt: Int
 }
 
-type ProfitRankType {
-  owner: String!
+type ProfitRank {
+  address: String!
   rank: Int
   totalParticipants: Int!
-  totalPnL: Float!
+  totalPnL: String!
 }
 
 type ProtocolStat {
@@ -1112,35 +1112,35 @@ type VolumeDataPoint {
 }
 
 type Query {
-  accountAccuracy(attester: String!): ForecasterScoreType
-  accountAccuracyRank(attester: String!): AccuracyRankType!
+  accountAccuracy(address: String!): ForecasterScore
+  accountAccuracyRank(address: String!): AccuracyRank!
   accountBalance(address: String!, interval: TimeInterval!, from: DateTimeISO, to: DateTimeISO): [BalanceDataPoint!]!
   accountPnl(address: String!, interval: TimeInterval!, from: DateTimeISO, to: DateTimeISO): [PnlDataPoint!]!
-  accountProfitRank(owner: String!): ProfitRankType!
+  accountProfitRank(address: String!): ProfitRank!
   accountTotalVolume(address: String!): String!
   accountVolume(address: String!, interval: TimeInterval!, from: DateTimeISO, to: DateTimeISO): [VolumeDataPoint!]!
-  accuracyLeaderboard(limit: Int! = 10): [ForecasterScoreType!]!
+  accuracyLeaderboard(limit: Int! = 10): [ForecasterScore!]!
   attestations(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): [Attestation!]!
   categories(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): [Category!]!
-  claims(chainId: Int, holder: String, predictionId: String, skip: Int! = 0, take: Int! = 50): [ClaimType!]!
-  closes(address: String, chainId: Int, pickConfigId: String, skip: Int! = 0, take: Int! = 50): [CloseType!]!
+  claims(chainId: Int, holder: String, predictionId: String, skip: Int! = 0, take: Int! = 50): [Claim!]!
+  closes(address: String, chainId: Int, pickConfigId: String, skip: Int! = 0, take: Int! = 50): [Close!]!
   condition(where: ConditionWhereUniqueInput!): Condition
   conditionGroup(where: ConditionGroupWhereUniqueInput!): ConditionGroup
   conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]!
   conditions(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): [Condition!]!
-  pickConfiguration(id: String!): PicksType
-  pickConfigurations(chainId: Int, resolved: Boolean, result: String, skip: Int! = 0, take: Int! = 50): [PicksType!]!
-  positions(holder: String, conditionId: String, chainId: Int, pickConfigId: String, skip: Int! = 0, take: Int! = 50): [PositionType!]!
-  prediction(predictionId: String!): PredictionType
+  pickConfiguration(id: String!): PickConfiguration
+  pickConfigurations(chainId: Int, resolved: Boolean, result: String, skip: Int! = 0, take: Int! = 50): [PickConfiguration!]!
+  positions(holder: String, conditionId: String, chainId: Int, pickConfigId: String, skip: Int! = 0, take: Int! = 50): [Position!]!
+  prediction(id: String!): Prediction
   predictionCount(address: String!, chainId: Int): Int!
-  predictions(address: String, conditionId: String, chainId: Int, orderBy: String, orderDirection: String, settled: Boolean, skip: Int! = 0, take: Int! = 50): [PredictionType!]!
-  profitLeaderboard: [AggregatedProfitEntryType!]!
+  predictions(address: String, conditionId: String, chainId: Int, orderBy: String, orderDirection: String, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Prediction!]!
+  profitLeaderboard(limit: Int! = 10, skip: Int! = 0): [ProfitEntry!]!
   protocolStats: [ProtocolStat!]!
   protocolVolume(interval: TimeInterval!, from: DateTimeISO, to: DateTimeISO): [VolumeDataPoint!]!
-  questions(categorySlugs: [String!], chainId: Int, minEndTime: Int, resolutionStatus: String, search: String, skip: Int!, sortDirection: String!, sortField: String, take: Int!): [Question!]!
-  trade(tradeHash: String!): SecondaryTradeType
+  questions(categorySlugs: [String!], chainId: Int, minEndTime: Int, resolutionStatus: String, search: String, skip: Int! = 0, sortDirection: String! = "DESC", sortField: String, take: Int! = 50): [Question!]!
+  trade(id: String!): Trade
   tradeCount(buyer: String, chainId: Int, seller: String, token: String): Int!
-  trades(buyer: String, chainId: Int, seller: String, skip: Int! = 0, take: Int! = 50, token: String): [SecondaryTradeType!]!
+  trades(buyer: String, chainId: Int, seller: String, skip: Int! = 0, take: Int! = 50, token: String): [Trade!]!
   user(where: UserWhereUniqueInput!): User
   users(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]!
 }
@@ -1209,7 +1209,7 @@ input ReferralCodeWhereInput {
   updatedAt: DateTimeFilter
 }
 
-type SecondaryTradeType {
+type Trade {
   blockNumber: Int!
   buyer: String!
   chainId: Int!
