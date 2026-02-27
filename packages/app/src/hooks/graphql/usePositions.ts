@@ -78,7 +78,7 @@ export type PositionBalance = {
 };
 
 // GraphQL queries
-const PICK_CONFIG_FRAGMENT = /* GraphQL */ `
+const PICK_CONFIG_FRAGMENT = `
   pickConfig {
     id
     chainId
@@ -113,6 +113,43 @@ const PREDICTIONS_QUERY = /* GraphQL */ `
     predictions(
       address: $address
       chainId: $chainId
+      take: $take
+      skip: $skip
+    ) {
+      id
+      predictionId
+      chainId
+      marketAddress
+      predictor
+      counterparty
+      predictorToken
+      counterpartyToken
+      predictorCollateral
+      counterpartyCollateral
+      collateralDeposited
+      collateralDepositedAt
+      settled
+      settledAt
+      settleTxHash
+      result
+      predictorClaimable
+      counterpartyClaimable
+      createTxHash
+      createdAt
+      refCode
+      ${PICK_CONFIG_FRAGMENT}
+    }
+  }
+`;
+
+const PREDICTIONS_BY_CONDITION_QUERY = /* GraphQL */ `
+  query PredictionsByCondition(
+    $conditionId: String!
+    $take: Int
+    $skip: Int
+  ) {
+    predictions(
+      conditionId: $conditionId
       take: $take
       skip: $skip
     ) {
@@ -249,6 +286,43 @@ const POSITION_BALANCES_QUERY = /* GraphQL */ `
   }
 `;
 
+const POSITION_BALANCES_BY_CONDITION_QUERY = /* GraphQL */ `
+  query PositionsByCondition($conditionId: String!, $take: Int, $skip: Int) {
+    positions(conditionId: $conditionId, take: $take, skip: $skip) {
+      id
+      chainId
+      tokenAddress
+      pickConfigId
+      isPredictorToken
+      holder
+      balance
+      pickConfig {
+        id
+        chainId
+        marketAddress
+        totalPredictorCollateral
+        totalCounterpartyCollateral
+        claimedPredictorCollateral
+        claimedCounterpartyCollateral
+        resolved
+        result
+        resolvedAt
+        predictorToken
+        counterpartyToken
+        endsAt
+        predictionId
+        picks {
+          id
+          pickConfigId
+          conditionResolver
+          conditionId
+          predictedOutcome
+        }
+      }
+    }
+  }
+`;
+
 /**
  * Hook to get predictions count for a user
  */
@@ -350,6 +424,44 @@ export function usePositionBalances(params: {
 }
 
 /**
+ * Hook to get position balances for a condition (all holders)
+ */
+export function usePositionBalancesByConditionId(params: {
+  conditionId?: string;
+  take?: number;
+  skip?: number;
+}) {
+  const { conditionId, take = 100, skip = 0 } = params;
+  const enabled = Boolean(conditionId);
+
+  const { data, isLoading, isFetching, error, refetch } = useQuery({
+    queryKey: ['positionBalancesByCondition', conditionId, take, skip],
+    enabled,
+    staleTime: 30_000,
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    queryFn: async () => {
+      const resp = await graphqlRequest<{
+        positions: PositionBalance[];
+      }>(POSITION_BALANCES_BY_CONDITION_QUERY, {
+        conditionId,
+        take,
+        skip,
+      });
+      return resp?.positions ?? [];
+    },
+  });
+
+  return {
+    data: data ?? [],
+    isLoading: !!enabled && (isLoading || isFetching),
+    error,
+    refetch,
+  };
+}
+
+/**
  * Hook to get recent predictions across all users (for the Feed page)
  */
 export function useRecentPredictions(params: {
@@ -378,6 +490,41 @@ export function useRecentPredictions(params: {
   return {
     data: data ?? [],
     isLoading: isLoading || isFetching,
+    error,
+    refetch,
+  };
+}
+
+/**
+ * Hook to get predictions for a condition (V2 escrow predictions)
+ */
+export function usePredictionsByConditionId(params: {
+  conditionId?: string;
+  take?: number;
+  skip?: number;
+}) {
+  const { conditionId, take = 50, skip = 0 } = params;
+  const enabled = Boolean(conditionId);
+
+  const { data, isLoading, isFetching, error, refetch } = useQuery({
+    queryKey: ['predictionsByCondition', conditionId, take, skip],
+    enabled,
+    staleTime: 30_000,
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    queryFn: async () => {
+      const resp = await graphqlRequest<{ predictions: Prediction[] }>(
+        PREDICTIONS_BY_CONDITION_QUERY,
+        { conditionId, take, skip }
+      );
+      return resp?.predictions ?? [];
+    },
+  });
+
+  return {
+    data: data ?? [],
+    isLoading: !!enabled && (isLoading || isFetching),
     error,
     refetch,
   };

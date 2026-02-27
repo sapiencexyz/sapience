@@ -21,40 +21,16 @@ import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import { COLLATERAL_SYMBOLS, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import {
   usePredictions,
+  usePredictionsByConditionId,
   useRecentPredictions,
   usePositionBalances,
   type Prediction,
-  type PickData,
   type PickConfigData,
 } from '~/hooks/graphql/usePositions';
 import { useConditionsByIds } from '~/hooks/graphql/useConditionsByIds';
 import OgShareDialogBase from '~/components/shared/OgShareDialog';
 import PredictionDialog from '~/components/positions/PredictionDialog';
-import type { ConditionById } from '@sapience/sdk/queries';
-import type { Pick as PickLeg } from '~/components/shared/StackedPredictions';
-
-type ConditionsMap = Map<string, ConditionById>;
-
-/** Map escrow PickData to the Pick interface used by PicksSummary */
-function toPickLegs(
-  picks: PickData[],
-  isPredictorSide: boolean,
-  conditionsMap: ConditionsMap,
-): PickLeg[] {
-  return picks.map((pick) => ({
-    question: pick.conditionId,
-    choice: isPredictorSide
-      ? pick.predictedOutcome === 1
-        ? 'Yes'
-        : 'No'
-      : pick.predictedOutcome === 1
-        ? 'No'
-        : 'Yes',
-    conditionId: pick.conditionId,
-    resolverAddress: pick.conditionResolver,
-    categorySlug: conditionsMap.get(pick.conditionId)?.category?.slug ?? null,
-  }));
-}
+import { toPicks, type ConditionsMap } from '~/components/positions/toPickLegs';
 
 function ActivityRow({
   prediction,
@@ -70,11 +46,15 @@ function ActivityRow({
   isPredictorSide: boolean;
   collateralSymbol: string;
   conditionsMap: ConditionsMap;
-  onShare: (data: { prediction: Prediction; pickConfig: PickConfigData | null; isPredictorSide: boolean }) => void;
+  onShare: (data: {
+    prediction: Prediction;
+    pickConfig: PickConfigData | null;
+    isPredictorSide: boolean;
+  }) => void;
   onOpenDialog: () => void;
 }) {
-  const picks = pickConfig?.picks ?? [];
-  const legs = toPickLegs(picks, isPredictorSide, conditionsMap);
+  const rawPicks = pickConfig?.picks ?? [];
+  const pickLegs = toPicks(rawPicks, isPredictorSide, conditionsMap);
 
   // Timestamp
   const timestamp = prediction.collateralDepositedAt
@@ -93,10 +73,10 @@ function ActivityRow({
 
   // Collateral amounts
   const predictorEth = Number(
-    formatEther(BigInt(prediction.predictorCollateral)),
+    formatEther(BigInt(prediction.predictorCollateral))
   );
   const counterpartyEth = Number(
-    formatEther(BigInt(prediction.counterpartyCollateral)),
+    formatEther(BigInt(prediction.counterpartyCollateral))
   );
   const totalEth = predictorEth + counterpartyEth;
 
@@ -107,8 +87,12 @@ function ActivityRow({
   const counterpartyWon = result === 'COUNTERPARTY_WINS';
 
   // Ends: max endTime from condition data
-  const endsAtSec = pickConfig?.endsAt
-    ?? Math.max(0, ...picks.map((p) => conditionsMap.get(p.conditionId)?.endTime ?? 0));
+  const endsAtSec =
+    pickConfig?.endsAt ??
+    Math.max(
+      0,
+      ...rawPicks.map((p) => conditionsMap.get(p.conditionId)?.endTime ?? 0)
+    );
   const endsAtMs = endsAtSec * 1000;
 
   return (
@@ -139,12 +123,10 @@ function ActivityRow({
           <div className="xl:hidden text-xs text-muted-foreground mb-1">
             Predictions
           </div>
-          {legs.length > 0 ? (
+          {pickLegs.length > 0 ? (
             <PicksSummary
-              legs={legs}
-              positionId={pickConfig?.id ?? prediction.id}
+              picks={pickLegs}
               isCounterparty={!isPredictorSide}
-              marketAddress={pickConfig?.marketAddress}
               predictionId={prediction.predictionId}
               onClick={onOpenDialog}
             />
@@ -287,8 +269,12 @@ function SharePredictionDialog({
   const picks = pickConfig?.picks ?? [];
 
   const imageSrc = React.useMemo(() => {
-    const predictorEth = Number(formatEther(BigInt(prediction.predictorCollateral)));
-    const counterpartyEth = Number(formatEther(BigInt(prediction.counterpartyCollateral)));
+    const predictorEth = Number(
+      formatEther(BigInt(prediction.predictorCollateral))
+    );
+    const counterpartyEth = Number(
+      formatEther(BigInt(prediction.counterpartyCollateral))
+    );
     const totalEth = predictorEth + counterpartyEth;
 
     const wager = isPredictorSide ? predictorEth : counterpartyEth;
@@ -303,25 +289,40 @@ function SharePredictionDialog({
 
     for (const pick of picks) {
       const condition = conditionsMap.get(pick.conditionId);
-      const question = condition?.question ?? condition?.shortName ?? pick.conditionId;
+      const question =
+        condition?.question ?? condition?.shortName ?? pick.conditionId;
       const choice = isPredictorSide
-        ? pick.predictedOutcome === 1 ? 'Yes' : 'No'
-        : pick.predictedOutcome === 1 ? 'No' : 'Yes';
+        ? pick.predictedOutcome === 1
+          ? 'Yes'
+          : 'No'
+        : pick.predictedOutcome === 1
+          ? 'No'
+          : 'Yes';
       qp.append('leg', `${question}|${choice}`);
     }
 
     return `/og/prediction?${qp.toString()}`;
-  }, [prediction, pickConfig, isPredictorSide, conditionsMap, collateralSymbol, picks]);
+  }, [
+    prediction,
+    pickConfig,
+    isPredictorSide,
+    conditionsMap,
+    collateralSymbol,
+    picks,
+  ]);
 
-  const shareUrl = typeof window !== 'undefined'
-    ? `${window.location.origin}/predictions/${prediction.predictionId}`
-    : `/predictions/${prediction.predictionId}`;
+  const shareUrl =
+    typeof window !== 'undefined'
+      ? `${window.location.origin}/predictions/${prediction.predictionId}`
+      : `/predictions/${prediction.predictionId}`;
 
   return (
     <OgShareDialogBase
       imageSrc={imageSrc}
       open
-      onOpenChange={(open) => { if (!open) onClose(); }}
+      onOpenChange={(open) => {
+        if (!open) onClose();
+      }}
       title="Share Prediction"
       shareUrl={shareUrl}
     />
@@ -332,10 +333,12 @@ const DEFAULT_PAGE_SIZE = 20;
 
 export default function ActivityTable({
   account,
+  conditionId,
   leftSlot,
   pageSize,
 }: {
   account?: Address;
+  conditionId?: string;
   leftSlot?: React.ReactNode;
   pageSize?: number;
 }) {
@@ -343,27 +346,41 @@ export default function ActivityTable({
   const effectivePageSize = pageSize ?? DEFAULT_PAGE_SIZE;
   const [take, setTake] = useState(effectivePageSize);
 
-  // Predictions: address-filtered when account provided, all recent otherwise
-  // usePredictions is internally disabled when address is falsy
-  const {
-    data: filteredPredictions,
-    isLoading: filteredLoading,
-  } = usePredictions({ address: account, take, skip: 0 });
+  // Predictions: address-filtered when account provided, conditionId-filtered,
+  // or all recent otherwise
+  const { data: filteredPredictions, isLoading: filteredLoading } =
+    usePredictions({ address: account, take, skip: 0 });
 
-  const {
-    data: recentPredictions,
-    isLoading: recentLoading,
-  } = useRecentPredictions({ take: take + 1, skip: 0, enabled: !account });
+  const { data: conditionPredictions, isLoading: conditionLoading } =
+    usePredictionsByConditionId({
+      conditionId: !account ? conditionId : undefined,
+      take,
+      skip: 0,
+    });
 
-  const predictions = account ? filteredPredictions : recentPredictions;
-  const predictionsLoading = account ? filteredLoading : recentLoading;
+  const { data: recentPredictions, isLoading: recentLoading } =
+    useRecentPredictions({
+      take: take + 1,
+      skip: 0,
+      enabled: !account && !conditionId,
+    });
+
+  const predictions = account
+    ? filteredPredictions
+    : conditionId
+      ? conditionPredictions
+      : recentPredictions;
+  const predictionsLoading = account
+    ? filteredLoading
+    : conditionId
+      ? conditionLoading
+      : recentLoading;
 
   // Positions (for pickConfig enrichment): only meaningful with an account
   // usePositionBalances is internally disabled when holder is falsy
-  const {
-    data: positions,
-    isLoading: positionsLoading,
-  } = usePositionBalances({ holder: account });
+  const { data: positions, isLoading: positionsLoading } = usePositionBalances({
+    holder: account,
+  });
 
   const isLoading = predictionsLoading || (account ? positionsLoading : false);
 
@@ -387,14 +404,13 @@ export default function ActivityTable({
   // Enrich predictions with pickConfig data
   // Prefer pickConfig from the prediction query (V2), fall back to tokenMap lookup
   const enrichedPredictions = React.useMemo(() => {
-    const display = !account && predictions.length > take
-      ? predictions.slice(0, take)
-      : predictions;
+    const display =
+      !account && predictions.length > take
+        ? predictions.slice(0, take)
+        : predictions;
     return display.map((pred) => {
       const byPredictor = tokenMap.get(pred.predictorToken.toLowerCase());
-      const byCounterparty = tokenMap.get(
-        pred.counterpartyToken.toLowerCase(),
-      );
+      const byCounterparty = tokenMap.get(pred.counterpartyToken.toLowerCase());
       const match = byPredictor ?? byCounterparty;
       return {
         prediction: pred,
@@ -433,7 +449,7 @@ export default function ActivityTable({
     isPredictorSide: boolean;
   } | null>(null);
 
-  const hasMore = !account && predictions.length > take;
+  const hasMore = !account && !conditionId && predictions.length > take;
 
   const headerContent = leftSlot ? (
     <div className="px-4 py-4 border-b border-border flex items-center gap-4">
@@ -503,9 +519,15 @@ export default function ActivityTable({
                   collateralSymbol={collateralSymbol}
                   conditionsMap={conditionsMap}
                   onShare={(data) => setSharePrediction(data)}
-                  onOpenDialog={() => setDialogPrediction({ prediction, pickConfig, isPredictorSide })}
+                  onOpenDialog={() =>
+                    setDialogPrediction({
+                      prediction,
+                      pickConfig,
+                      isPredictorSide,
+                    })
+                  }
                 />
-              ),
+              )
             )}
           </tbody>
         </table>
@@ -531,7 +553,9 @@ export default function ActivityTable({
       )}
       <PredictionDialog
         open={dialogPrediction !== null}
-        onOpenChange={(open) => { if (!open) setDialogPrediction(null); }}
+        onOpenChange={(open) => {
+          if (!open) setDialogPrediction(null);
+        }}
         prediction={dialogPrediction?.prediction ?? null}
         pickConfig={dialogPrediction?.pickConfig ?? null}
         isPredictorSide={dialogPrediction?.isPredictorSide ?? true}

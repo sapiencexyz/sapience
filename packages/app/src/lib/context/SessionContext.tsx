@@ -596,7 +596,9 @@ export function SessionProvider({ children }: SessionProviderProps) {
         setArbitrumSessionApproval(approvalData.arbitrum);
         setEtherealSessionApproval(approvalData.ethereal);
         // Set escrow session key approval if available (legacy sessions)
-        setEscrowSessionKeyApproval(result.serialized.escrowSessionKeyApproval ?? null);
+        setEscrowSessionKeyApproval(
+          result.serialized.escrowSessionKeyApproval ?? null
+        );
         setIsSessionActive(true);
         setTimeRemainingMs(result.config.expiresAt - Date.now());
         console.debug(

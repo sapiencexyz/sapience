@@ -18,7 +18,14 @@ import {
 } from '~/lib/auction/bidLogger';
 
 // Re-export types from SDK for backward compatibility
-export type { ExecutionMode, SimulateBidResult, BidData, ValidationStatus, LegacyValidatedBid, SimulateBidMintOptions };
+export type {
+  ExecutionMode,
+  SimulateBidResult,
+  BidData,
+  ValidationStatus,
+  LegacyValidatedBid,
+  SimulateBidMintOptions,
+};
 
 const ZERO_BYTES32: `0x${string}` = `0x${'0'.repeat(64)}`;
 

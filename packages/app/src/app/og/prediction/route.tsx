@@ -45,7 +45,7 @@ export async function GET(req: Request) {
     let payoutRaw = normalizeText(searchParams.get('payout'), 32);
     let symbol = normalizeText(searchParams.get('symbol'), 16);
     let rawLegs: string[] = searchParams.getAll('leg');
-    let antiParam = normalizeText(searchParams.get('anti'), 16).toLowerCase();
+    const antiParam = normalizeText(searchParams.get('anti'), 16).toLowerCase();
 
     const hasLegs = rawLegs.length > 0;
 
@@ -103,9 +103,7 @@ export async function GET(req: Request) {
             rawLegs = picks.map((pick) => {
               const condition = conditionsMap.get(pick.conditionId);
               const question =
-                condition?.question ||
-                condition?.shortName ||
-                pick.conditionId;
+                condition?.question || condition?.shortName || pick.conditionId;
               const choice = pick.predictedOutcome === 1 ? 'Yes' : 'No';
 
               // Determine resolution status per leg
@@ -163,25 +161,25 @@ export async function GET(req: Request) {
     const positionSize = addThousandsSeparators(positionSizeRawRounded);
     const payout = addThousandsSeparators(payoutRawRounded);
 
+    // Counterparty flag (anti param) to change label to "Prediction Against"
+    const isCounterparty = ['1', 'true', 'yes', 'anti', 'against'].includes(
+      antiParam
+    );
+
     // Compute implied probability (matches formatPercentChance from lib/format)
     let implied: string | null = null;
     const positionSizeNum = Number(positionSizeRawRounded.replace(/,/g, ''));
     const payoutNum = Number(payoutRawRounded.replace(/,/g, ''));
     if (positionSizeNum > 0 && payoutNum > 0) {
       const raw = positionSizeNum / payoutNum;
-      const isAnti = ['1', 'true', 'yes', 'anti', 'against'].includes(
-        antiParam
+      const pct = Math.max(
+        0,
+        Math.min(100, (isCounterparty ? 1 - raw : raw) * 100)
       );
-      const pct = Math.max(0, Math.min(100, (isAnti ? 1 - raw : raw) * 100));
       if (pct < 1) implied = '<1%';
       else if (pct > 99) implied = '>99%';
       else implied = `${Math.round(pct)}%`;
     }
-
-    // Counterparty flag (anti param) to change label to "Prediction Against"
-    const isCounterparty = ['1', 'true', 'yes', 'anti', 'against'].includes(
-      antiParam
-    );
 
     // Shared assets and fonts
     const { bgUrl } = commonAssets(req);

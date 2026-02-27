@@ -3,7 +3,10 @@
 import { formatEther } from 'viem';
 import { PicksContent } from '~/components/shared/PicksSummary';
 import PositionSummary from '~/components/positions/PositionSummary';
-import type { PredictionData, ConditionData } from '~/app/og/_prediction-helpers';
+import type {
+  PredictionData,
+  ConditionData,
+} from '~/app/og/_prediction-helpers';
 import type { Pick } from '~/components/shared/StackedPredictions';
 
 function formatCollateral(wei?: string): number {
@@ -35,8 +38,8 @@ export default function PredictionPageClient({
   const conditionsMap = new Map(serverConditions.map((c) => [c.id, c]));
   const picks = serverPrediction.pickConfig?.picks ?? [];
 
-  // Build legs from predictor's perspective
-  const legs: Pick[] = picks.map((pick) => {
+  // Build picks from predictor's perspective
+  const displayPicks: Pick[] = picks.map((pick) => {
     const condition = conditionsMap.get(pick.conditionId);
     return {
       question: condition?.question || condition?.shortName || pick.conditionId,
@@ -59,16 +62,16 @@ export default function PredictionPageClient({
     : null;
 
   // Compute the maximum endTime from conditions
-  const endsAtMs = picks.reduce((max, pick) => {
-    const endTime = conditionsMap.get(pick.conditionId)?.endTime;
-    return endTime ? Math.max(max, endTime * 1000) : max;
-  }, 0) || null;
+  const endsAtMs =
+    picks.reduce((max, pick) => {
+      const endTime = conditionsMap.get(pick.conditionId)?.endTime;
+      return endTime ? Math.max(max, endTime * 1000) : max;
+    }, 0) || null;
 
   const isSettled = serverPrediction.settled;
   const result = serverPrediction.result;
   const predictorWon = result === 'PREDICTOR_WINS';
-  const positionWon =
-    isSettled && (predictorWon || result === 'NON_DECISIVE');
+  const positionWon = isSettled && (predictorWon || result === 'NON_DECISIVE');
 
   // PnL
   const pnl = isSettled
@@ -77,9 +80,7 @@ export default function PredictionPageClient({
       : -positionSize
     : null;
   const roi =
-    pnl !== null && positionSize > 0
-      ? (pnl / positionSize) * 100
-      : null;
+    pnl !== null && positionSize > 0 ? (pnl / positionSize) * 100 : null;
 
   return (
     <>
@@ -100,7 +101,7 @@ export default function PredictionPageClient({
       </div>
 
       <PicksContent
-        legs={legs}
+        picks={displayPicks}
         positionId={predictionId}
         hideHeader
         positionStatus={

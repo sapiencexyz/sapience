@@ -57,8 +57,7 @@ export function useInfiniteScroll({
     if (!sentinel) return;
 
     const rect = sentinel.getBoundingClientRect();
-    const isVisible =
-      rect.top < window.innerHeight + 200 && rect.bottom > -200;
+    const isVisible = rect.top < window.innerHeight + 200 && rect.bottom > -200;
     if (isVisible) onFetchMoreRef.current?.();
   });
 

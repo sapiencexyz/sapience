@@ -20,7 +20,6 @@ import { SCHEMA_UID } from '~/lib/constants';
 import ProfileQuickMetrics from '~/components/profile/ProfileQuickMetrics';
 import ShareAfterRedirect from '~/components/shared/ShareAfterRedirect';
 
-
 const TAB_VALUES = ['positions', 'forecasts', 'activity'] as const;
 type TabValue = (typeof TAB_VALUES)[number];
 
@@ -151,10 +150,7 @@ const ProfilePageContent = () => {
             </TabsContent>
 
             <TabsContent value="activity" className="mt-0">
-              <ActivityTable
-                account={address}
-                leftSlot={tabSwitcher}
-              />
+              <ActivityTable account={address} leftSlot={tabSwitcher} />
             </TabsContent>
           </div>
         </Tabs>

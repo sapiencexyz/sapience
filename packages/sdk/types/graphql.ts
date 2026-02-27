@@ -1226,6 +1226,7 @@ export type PicksType = {
   id: Scalars['String']['output'];
   marketAddress: Scalars['String']['output'];
   picks: Array<PickType>;
+  predictionId?: Maybe<Scalars['String']['output']>;
   predictorToken?: Maybe<Scalars['String']['output']>;
   resolved: Scalars['Boolean']['output'];
   resolvedAt?: Maybe<Scalars['Int']['output']>;
@@ -1459,7 +1460,8 @@ export type QueryPickConfigurationsArgs = {
 
 export type QueryPositionsArgs = {
   chainId?: InputMaybe<Scalars['Int']['input']>;
-  holder: Scalars['String']['input'];
+  conditionId?: InputMaybe<Scalars['String']['input']>;
+  holder?: InputMaybe<Scalars['String']['input']>;
   pickConfigId?: InputMaybe<Scalars['String']['input']>;
   skip?: Scalars['Int']['input'];
   take?: Scalars['Int']['input'];
@@ -1474,6 +1476,7 @@ export type QueryPredictionArgs = {
 export type QueryPredictionsArgs = {
   address?: InputMaybe<Scalars['String']['input']>;
   chainId?: InputMaybe<Scalars['Int']['input']>;
+  conditionId?: InputMaybe<Scalars['String']['input']>;
   orderBy?: InputMaybe<Scalars['String']['input']>;
   orderDirection?: InputMaybe<Scalars['String']['input']>;
   settled?: InputMaybe<Scalars['Boolean']['input']>;

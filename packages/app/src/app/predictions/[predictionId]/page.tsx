@@ -52,9 +52,7 @@ export async function generateMetadata(
   };
 }
 
-async function fetchPrediction(
-  predictionId: string
-): Promise<{
+async function fetchPrediction(predictionId: string): Promise<{
   prediction: PredictionData | null;
   conditions: Map<string, ConditionData>;
 }> {
@@ -70,9 +68,9 @@ async function fetchPrediction(
       }),
       next: { revalidate: 30 },
     });
+    if (!resp.ok) return { prediction: null, conditions };
     const json = await resp.json();
-    const prediction: PredictionData | null =
-      json?.data?.prediction ?? null;
+    const prediction: PredictionData | null = json?.data?.prediction ?? null;
     if (!prediction) return { prediction: null, conditions };
 
     // Fetch condition data for picks
@@ -89,6 +87,7 @@ async function fetchPrediction(
           }),
           next: { revalidate: 30 },
         });
+        if (!condResp.ok) throw new Error('Conditions fetch failed');
         const condJson = await condResp.json();
         const conds: ConditionData[] = condJson?.data?.conditions ?? [];
         for (const c of conds) {

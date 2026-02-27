@@ -94,7 +94,9 @@ const AuctionRequestRow: React.FC<Props> = ({
   });
   // Always use PredictionMarketEscrow
   const PREDICTION_MARKET_ADDRESS = predictionMarketEscrow[chainId]?.address;
-  const COLLATERAL_ADDRESS = collateralToken[chainId]?.address ?? collateralToken[DEFAULT_CHAIN_ID]?.address;
+  const COLLATERAL_ADDRESS =
+    collateralToken[chainId]?.address ??
+    collateralToken[DEFAULT_CHAIN_ID]?.address;
   // Read token decimals
   const { data: tokenDecimalsData } = useReadContract({
     abi: erc20Abi,
@@ -365,7 +367,6 @@ const AuctionRequestRow: React.FC<Props> = ({
         // Run preflight checks: chain switch, balance, allowance
         const preflightResult = await runPreflight(amountNum);
 
-
         if (!preflightResult.canProceed) {
           // Log the issue to terminal logs
           if (preflightResult.blockedReason === 'insufficient_balance') {
@@ -426,7 +427,8 @@ const AuctionRequestRow: React.FC<Props> = ({
           const missing: string[] = [];
           if (!hasEscrowPicks) missing.push('escrow picks');
           if (!resolverAddr) missing.push('resolver');
-          if (predictorCollateralWei <= 0n) missing.push('predictor position size');
+          if (predictorCollateralWei <= 0n)
+            missing.push('predictor position size');
           if (!predictor) missing.push('predictor');
           toast({
             title: 'Request not ready',

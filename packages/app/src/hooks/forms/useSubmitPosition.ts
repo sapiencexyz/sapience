@@ -7,7 +7,10 @@ import {
   validateTakerFunds,
   prepareMintCalls,
 } from '@sapience/sdk';
-import { CHAIN_ID_ETHEREAL, CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
+import {
+  CHAIN_ID_ETHEREAL,
+  CHAIN_ID_ETHEREAL_TESTNET,
+} from '@sapience/sdk/constants';
 import { collateralToken } from '@sapience/sdk/contracts';
 import { useAccount, useReadContract, useSignTypedData } from 'wagmi';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
@@ -41,7 +44,13 @@ export function useSubmitPosition({
 }: UseSubmitPositionProps) {
   const { address } = useAccount();
   const { signTypedDataAsync } = useSignTypedData();
-  const { effectiveAddress, isUsingSession, signTypedData: sessionSignTypedData, signTypedDataRaw, escrowSessionKeyApproval } = useSession();
+  const {
+    effectiveAddress,
+    isUsingSession,
+    signTypedData: sessionSignTypedData,
+    signTypedDataRaw,
+    escrowSessionKeyApproval,
+  } = useSession();
 
   // Read current wUSDe balance on Ethereal to avoid unnecessary wrap/deposit calls
   const { data: currentWusdeBalance } = useReadContract({
@@ -51,7 +60,11 @@ export function useSubmitPosition({
     args: effectiveAddress ? [effectiveAddress] : undefined,
     chainId,
     query: {
-      enabled: !!effectiveAddress && enabled && (chainId === CHAIN_ID_ETHEREAL || chainId === CHAIN_ID_ETHEREAL_TESTNET),
+      enabled:
+        !!effectiveAddress &&
+        enabled &&
+        (chainId === CHAIN_ID_ETHEREAL ||
+          chainId === CHAIN_ID_ETHEREAL_TESTNET),
     },
   });
 
@@ -156,7 +169,8 @@ export function useSubmitPosition({
         // otherwise generate a random bitmap nonce (Permit2-style)
         let nonceValue: bigint;
         if (mintData.makerNonce !== undefined) {
-          nonceValue = toBigIntSafe(mintData.makerNonce) ?? generateRandomNonce();
+          nonceValue =
+            toBigIntSafe(mintData.makerNonce) ?? generateRandomNonce();
         } else {
           nonceValue = generateRandomNonce();
         }
@@ -228,15 +242,18 @@ export function useSubmitPosition({
 
           // Use raw session key signing for escrow MintApproval (bypasses kernel wrapping,
           // contract validates via native session key path in SignatureValidator).
-          const predictorSignature = isUsingSession && signTypedDataRaw
-            ? await signTypedDataRaw(signParams)
-            : await signTypedDataAsync(signParams);
+          const predictorSignature =
+            isUsingSession && signTypedDataRaw
+              ? await signTypedDataRaw(signParams)
+              : await signTypedDataAsync(signParams);
 
           filled.predictorSignature = predictorSignature;
 
           // Include predictor session key data for escrow contract validation
           if (isUsingSession && escrowSessionKeyApproval) {
-            filled.predictorSessionKeyData = encodeEscrowSessionKeyData(escrowSessionKeyApproval);
+            filled.predictorSessionKeyData = encodeEscrowSessionKeyData(
+              escrowSessionKeyApproval
+            );
           }
         }
 

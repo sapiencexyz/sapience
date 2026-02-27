@@ -465,7 +465,9 @@ async function _signEscrowSessionKeyApproval(
  *   (sessionKey, owner, validUntil, permissionsHash, chainId, ownerSignature)
  * Note: smartAccount is NOT included - the contract gets it from the MintRequest.predictor field
  */
-export function encodeEscrowSessionKeyData(approval: EscrowSessionKeyApproval): Hex {
+export function encodeEscrowSessionKeyData(
+  approval: EscrowSessionKeyApproval
+): Hex {
   // Encode the struct fields as a tuple
   const innerEncoding = encodeAbiParameters(
     [
@@ -492,7 +494,6 @@ export function encodeEscrowSessionKeyData(approval: EscrowSessionKeyApproval): 
     '0000000000000000000000000000000000000000000000000000000000000020';
   return `0x${offsetPointer}${innerEncoding.slice(2)}` as Hex;
 }
-
 
 // ABI for accountFactory verification
 const ACCOUNT_FACTORY_ABI = parseAbi([
@@ -837,20 +838,27 @@ export async function createSession(
   // Deploy the smart account on-chain via a no-op UserOp if not already deployed.
   // This ensures ERC-1271 isValidSignature works on the first mint (the escrow
   // contract checks signer.code.length > 0 before attempting ERC-1271 fallback).
-  const etherealPublicClientForDeploy = getEtherealPublicClient(etherealChainId);
-  const deployedCode = await etherealPublicClientForDeploy.getCode({ address: smartAccountAddress });
+  const etherealPublicClientForDeploy =
+    getEtherealPublicClient(etherealChainId);
+  const deployedCode = await etherealPublicClientForDeploy.getCode({
+    address: smartAccountAddress,
+  });
   if (!deployedCode || deployedCode === '0x') {
-    console.debug('[SessionKeyManager] Smart account not deployed, sending deployment UserOp...');
+    console.debug(
+      '[SessionKeyManager] Smart account not deployed, sending deployment UserOp...'
+    );
     try {
       const deployStart = Date.now();
       // Send a no-op UserOp — the bundler will include initCode to deploy
       // the smart account as part of this operation.
       const deployOpHash = await etherealClient.sendUserOperation({
-        callData: await etherealAccount.encodeCalls([{
-          to: smartAccountAddress,
-          data: '0x' as Hex,
-          value: BigInt(0),
-        }]),
+        callData: await etherealAccount.encodeCalls([
+          {
+            to: smartAccountAddress,
+            data: '0x' as Hex,
+            value: BigInt(0),
+          },
+        ]),
       });
       console.debug(
         `[SessionKeyManager] Smart account deployment UserOp sent in ${Date.now() - deployStart}ms, hash: ${deployOpHash}`
@@ -878,7 +886,10 @@ export async function createSession(
       );
       console.debug('[SessionKeyManager] Escrow session key approval signed');
     } catch (e) {
-      console.warn('[SessionKeyManager] Failed to sign escrow session key approval:', e);
+      console.warn(
+        '[SessionKeyManager] Failed to sign escrow session key approval:',
+        e
+      );
     }
   }
 
@@ -1085,10 +1096,14 @@ export async function restoreSession(
     const storedAddress =
       serialized.escrowSessionKeyApproval.sessionKey.toLowerCase();
     if (derivedAddress !== storedAddress) {
-      console.error('[SessionKeyManager] Escrow session key mismatch detected!', {
-        derivedFromPrivateKey: sessionKeyAccount.address,
-        storedInEscrowApproval: serialized.escrowSessionKeyApproval.sessionKey,
-      });
+      console.error(
+        '[SessionKeyManager] Escrow session key mismatch detected!',
+        {
+          derivedFromPrivateKey: sessionKeyAccount.address,
+          storedInEscrowApproval:
+            serialized.escrowSessionKeyApproval.sessionKey,
+        }
+      );
       // Clear the corrupted session and throw - user must create a new session
       clearSession();
       throw new Error(
@@ -1120,18 +1135,27 @@ export async function restoreSession(
     address: etherealAccount.address,
   });
   if (!deployedCode || deployedCode === '0x') {
-    console.debug('[SessionKeyManager] Smart account not deployed, deploying on restore...');
+    console.debug(
+      '[SessionKeyManager] Smart account not deployed, deploying on restore...'
+    );
     try {
       const deployOpHash = await etherealClient.sendUserOperation({
-        callData: await etherealAccount.encodeCalls([{
-          to: etherealAccount.address,
-          data: '0x' as Hex,
-          value: BigInt(0),
-        }]),
+        callData: await etherealAccount.encodeCalls([
+          {
+            to: etherealAccount.address,
+            data: '0x' as Hex,
+            value: BigInt(0),
+          },
+        ]),
       });
-      console.debug(`[SessionKeyManager] Smart account deployed on restore, hash: ${deployOpHash}`);
+      console.debug(
+        `[SessionKeyManager] Smart account deployed on restore, hash: ${deployOpHash}`
+      );
     } catch (e) {
-      console.warn('[SessionKeyManager] Failed to deploy smart account on restore:', e);
+      console.warn(
+        '[SessionKeyManager] Failed to deploy smart account on restore:',
+        e
+      );
     }
   }
 

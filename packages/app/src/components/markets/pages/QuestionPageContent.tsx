@@ -14,6 +14,7 @@ import {
   TabsTrigger,
 } from '@sapience/ui/components/ui/tabs';
 import {
+  Activity,
   ArrowLeftRight,
   Bot,
   FileText,
@@ -33,7 +34,9 @@ import ConditionForecastForm from '~/components/conditions/ConditionForecastForm
 import { UMA_RESOLVER_ARBITRUM } from '~/lib/constants';
 import { FocusAreaBadge } from '~/components/shared/FocusAreaBadge';
 import ResearchAgent from '~/components/markets/ResearchAgent';
-import { usePositionsByConditionId } from '~/hooks/graphql/usePositionsByConditionId';
+import ActivityTable from '~/components/positions/ActivityTable';
+import PositionsTable from '~/components/positions/PositionsTable';
+import { usePredictionsByConditionId } from '~/hooks/graphql/usePositions';
 import { useForecasts } from '~/hooks/graphql/useForecasts';
 import { d18ToPercentage } from '~/lib/utils/util';
 import { useAuctionStart } from '~/lib/auction/useAuctionStart';
@@ -43,7 +46,6 @@ import {
   type ForecastData,
   type CombinedPrediction,
   PredictionScatterChart,
-  PredictionsTable,
   TechSpecTable,
   scatterChartStyles,
 } from '~/components/markets/question';
@@ -159,14 +161,11 @@ export default function QuestionPageContent({
     );
   }, [router, conditionId, resolverAddress, resolverAddressFromUrl]);
 
-  // Fetch positions for this condition
-  const { data: positions, isLoading: isLoadingPositions } =
-    usePositionsByConditionId({
+  // Fetch V2 escrow predictions for this condition
+  const { data: v2Predictions, isLoading: isLoadingPredictions } =
+    usePredictionsByConditionId({
       conditionId,
-      chainId,
-      options: {
-        enabled: Boolean(conditionId),
-      },
+      take: 100,
     });
 
   // Fetch forecasts for this condition
@@ -177,132 +176,81 @@ export default function QuestionPageContent({
     },
   });
 
-  // Transform position data for scatter plot
-  // x = time (unix timestamp), y = prediction probability (0-100), positionSize = amount committed
+  // Transform V2 prediction data for scatter plot
   const scatterData = useMemo((): PredictionData[] => {
-    // If no real positions, return empty array
-    if (!positions || positions.length === 0) {
+    if (!v2Predictions || v2Predictions.length === 0) {
       return [];
     }
 
-    const realData = positions
-      .map((position) => {
+    return v2Predictions
+      .map((pred) => {
         try {
-          // Find the prediction for the current conditionId in this position
-          const currentConditionOutcome = position.predictions.find(
-            (outcome) =>
-              outcome.conditionId.toLowerCase() === conditionId.toLowerCase()
+          const picks = pred.pickConfig?.picks ?? [];
+          // Find the pick matching the current conditionId
+          const currentPick = picks.find(
+            (p) => p.conditionId.toLowerCase() === conditionId.toLowerCase()
           );
+          if (!currentPick) return null;
 
-          if (!currentConditionOutcome) {
-            return null;
-          }
+          // Predictor predicted YES if predictedOutcome === 1
+          const predictorPrediction = currentPick.predictedOutcome === 1;
 
-          // Get other conditions in the position (for combined predictions)
-          const otherOutcomes = position.predictions.filter(
-            (outcome) =>
-              outcome.conditionId.toLowerCase() !== conditionId.toLowerCase()
+          // Other picks become combined predictions
+          const otherPicks = picks.filter(
+            (p) => p.conditionId.toLowerCase() !== conditionId.toLowerCase()
           );
-
-          // Calculate individual collateral amounts
-          let predictorCollateral = 0;
-          let counterpartyCollateral = 0;
-          try {
-            predictorCollateral = position.predictorCollateral
-              ? parseFloat(formatEther(BigInt(position.predictorCollateral)))
-              : 0;
-            counterpartyCollateral = position.counterpartyCollateral
-              ? parseFloat(formatEther(BigInt(position.counterpartyCollateral)))
-              : 0;
-          } catch {
-            // Fallback: try to derive from totalCollateral if individual amounts not available
-            try {
-              const totalCollateralWei = BigInt(
-                position.totalCollateral || '0'
-              );
-              const totalCollateral = parseFloat(
-                formatEther(totalCollateralWei)
-              );
-              // If individual amounts not available, split evenly (fallback)
-              predictorCollateral = totalCollateral / 2;
-              counterpartyCollateral = totalCollateral / 2;
-            } catch {
-              predictorCollateral = 0;
-              counterpartyCollateral = 0;
-            }
-          }
-
-          // Calculate total position size (for sizing)
-          const positionSize = predictorCollateral + counterpartyCollateral;
-
-          // predictions represents the predictor's predictions
-          // Counterparty takes the opposite side on each market
-          const predictorPrediction = currentConditionOutcome.outcomeYes;
-
-          // Build combined predictions array if there are other conditions
           const combinedPredictions: CombinedPrediction[] | undefined =
-            otherOutcomes.length > 0
-              ? otherOutcomes.map((outcome) => ({
-                  conditionId: outcome.conditionId,
-                  resolverAddress: outcome.condition?.resolver ?? undefined,
-                  question:
-                    outcome.condition?.shortName ||
-                    outcome.condition?.question ||
-                    outcome.conditionId,
-                  prediction: outcome.outcomeYes,
-                  categorySlug: outcome.condition?.category?.slug,
+            otherPicks.length > 0
+              ? otherPicks.map((p) => ({
+                  conditionId: p.conditionId,
+                  question: p.conditionId,
+                  prediction: p.predictedOutcome === 1,
                 }))
               : undefined;
 
-          // Convert mintedAt (seconds) to milliseconds
-          const timestamp = position.mintedAt * 1000;
-          const date = new Date(timestamp);
+          const predictorCollateral = parseFloat(
+            formatEther(BigInt(pred.predictorCollateral))
+          );
+          const counterpartyCollateral = parseFloat(
+            formatEther(BigInt(pred.counterpartyCollateral))
+          );
+          const positionSize = predictorCollateral + counterpartyCollateral;
 
-          // Calculate implied probability of YES from position sizes
-          // Always compute based on predictor vs counterparty position size:
-          // - If predictor bets YES: probability of YES = predictorCollateral / totalPositionSize
-          // - If predictor bets NO: probability of YES = counterpartyCollateral / totalPositionSize
-          let predictionPercent = 50; // Default fallback
-          const totalPositionSize =
-            predictorCollateral + counterpartyCollateral;
-          if (totalPositionSize > 0) {
-            if (predictorPrediction) {
-              // Predictor bets YES: probability of YES = predictorCollateral / totalPositionSize
-              predictionPercent =
-                (predictorCollateral / totalPositionSize) * 100;
-            } else {
-              // Predictor bets NO: probability of YES = counterpartyCollateral / totalPositionSize
-              predictionPercent =
-                (counterpartyCollateral / totalPositionSize) * 100;
-            }
-            // Clamp to 0-100 range
+          // Implied probability of YES
+          let predictionPercent = 50;
+          if (positionSize > 0) {
+            predictionPercent = predictorPrediction
+              ? (predictorCollateral / positionSize) * 100
+              : (counterpartyCollateral / positionSize) * 100;
             predictionPercent = Math.max(0, Math.min(100, predictionPercent));
           }
+
+          // Use collateralDepositedAt (seconds) or createdAt
+          const timestamp = pred.collateralDepositedAt
+            ? pred.collateralDepositedAt * 1000
+            : new Date(pred.createdAt).getTime();
+          const date = new Date(timestamp);
 
           return {
             x: timestamp,
             y: predictionPercent,
             positionSize,
-            predictor: position.predictor,
-            counterparty: position.counterparty,
+            predictor: pred.predictor,
+            counterparty: pred.counterparty,
             predictorPrediction,
             predictorCollateral,
             counterpartyCollateral,
             time: date.toLocaleString(),
             combinedPredictions,
             combinedWithYes: predictorPrediction,
-            marketAddress: position.marketAddress,
-            nftTokenId: position.predictorNftTokenId,
+            marketAddress: pred.marketAddress,
           };
-        } catch (error) {
-          console.error('Error processing position:', error);
+        } catch {
           return null;
         }
       })
       .filter(Boolean) as PredictionData[];
-
-    return realData;
-  }, [positions, conditionId]);
+  }, [v2Predictions, conditionId]);
 
   // Calculate position size range from actual data for dynamic sizing
   const positionSizeRange = useMemo(() => {
@@ -384,12 +332,13 @@ export default function QuestionPageContent({
   }, [forecasts]);
 
   // Computed flags for conditional rendering
-  const hasPositions = scatterData.length > 0;
+  const hasPositions = v2Predictions.length > 0;
   const hasForecasts = forecastScatterData.length > 0;
-  const shouldShowChart = hasPositions || hasForecasts || isLoadingPositions;
+  const shouldShowChart = hasPositions || hasForecasts || isLoadingPredictions;
 
   type PrimaryTab =
     | 'predictions'
+    | 'positions'
     | 'forecasts'
     | 'resolution'
     | 'agent'
@@ -402,7 +351,10 @@ export default function QuestionPageContent({
     setPrimaryTab(value as PrimaryTab);
 
   const primaryTabValue = useMemo(() => {
-    if (!hasPositions && primaryTab === 'predictions') {
+    if (
+      !hasPositions &&
+      (primaryTab === 'predictions' || primaryTab === 'positions')
+    ) {
       return 'forecasts';
     }
     return primaryTab;
@@ -548,7 +500,7 @@ export default function QuestionPageContent({
       <PredictionScatterChart
         scatterData={scatterData}
         forecastScatterData={forecastScatterData}
-        isLoading={isLoadingPositions}
+        isLoading={isLoadingPredictions}
         positionSizeRange={positionSizeRange}
         xDomain={xDomain}
         xTicks={xTicks}
@@ -575,13 +527,22 @@ export default function QuestionPageContent({
         <div className="flex items-center gap-4 px-2 py-2.5 border-b border-border/60 bg-muted/10 overflow-x-auto">
           <TabsList className="h-auto p-0 bg-transparent gap-2 flex-nowrap">
             {hasPositions && (
-              <TabsTrigger
-                value="predictions"
-                className="px-3 py-1.5 text-sm rounded-md bg-brand-white/[0.08] data-[state=active]:bg-brand-white/15 data-[state=active]:text-brand-white text-muted-foreground hover:text-brand-white/80 hover:bg-brand-white/[0.12] transition-colors inline-flex items-center gap-1.5 whitespace-nowrap"
-              >
-                <ArrowLeftRight className="h-3.5 w-3.5" />
-                Positions
-              </TabsTrigger>
+              <>
+                <TabsTrigger
+                  value="predictions"
+                  className="px-3 py-1.5 text-sm rounded-md bg-brand-white/[0.08] data-[state=active]:bg-brand-white/15 data-[state=active]:text-brand-white text-muted-foreground hover:text-brand-white/80 hover:bg-brand-white/[0.12] transition-colors inline-flex items-center gap-1.5 whitespace-nowrap"
+                >
+                  <Activity className="h-3.5 w-3.5" />
+                  Activity
+                </TabsTrigger>
+                <TabsTrigger
+                  value="positions"
+                  className="px-3 py-1.5 text-sm rounded-md bg-brand-white/[0.08] data-[state=active]:bg-brand-white/15 data-[state=active]:text-brand-white text-muted-foreground hover:text-brand-white/80 hover:bg-brand-white/[0.12] transition-colors inline-flex items-center gap-1.5 whitespace-nowrap"
+                >
+                  <ArrowLeftRight className="h-3.5 w-3.5" />
+                  Positions
+                </TabsTrigger>
+              </>
             )}
             <TabsTrigger
               value="forecasts"
@@ -613,9 +574,13 @@ export default function QuestionPageContent({
             </TabsTrigger>
           </TabsList>
         </div>
-        {/* Content area - Positions */}
+        {/* Content area - Predictions */}
         <TabsContent value="predictions" className="m-0">
-          <PredictionsTable data={scatterData} isLoading={isLoadingPositions} />
+          <ActivityTable conditionId={conditionId} />
+        </TabsContent>
+        {/* Content area - Positions */}
+        <TabsContent value="positions" className="m-0">
+          <PositionsTable conditionId={conditionId} showHeaderText={false} />
         </TabsContent>
         {/* Content area - Forecasts */}
         <TabsContent value="forecasts" className="m-0">
@@ -693,13 +658,22 @@ export default function QuestionPageContent({
         <div className="flex items-center gap-4 px-2 py-2.5 border-b border-border/60 bg-muted/10">
           <TabsList className="h-auto p-0 bg-transparent gap-2">
             {hasPositions && (
-              <TabsTrigger
-                value="predictions"
-                className="px-3 py-1.5 text-sm rounded-md bg-brand-white/[0.08] data-[state=active]:bg-brand-white/15 data-[state=active]:text-brand-white text-muted-foreground hover:text-brand-white/80 hover:bg-brand-white/[0.12] transition-colors inline-flex items-center gap-1.5"
-              >
-                <ArrowLeftRight className="h-3.5 w-3.5" />
-                Positions
-              </TabsTrigger>
+              <>
+                <TabsTrigger
+                  value="predictions"
+                  className="px-3 py-1.5 text-sm rounded-md bg-brand-white/[0.08] data-[state=active]:bg-brand-white/15 data-[state=active]:text-brand-white text-muted-foreground hover:text-brand-white/80 hover:bg-brand-white/[0.12] transition-colors inline-flex items-center gap-1.5"
+                >
+                  <Activity className="h-3.5 w-3.5" />
+                  Activity
+                </TabsTrigger>
+                <TabsTrigger
+                  value="positions"
+                  className="px-3 py-1.5 text-sm rounded-md bg-brand-white/[0.08] data-[state=active]:bg-brand-white/15 data-[state=active]:text-brand-white text-muted-foreground hover:text-brand-white/80 hover:bg-brand-white/[0.12] transition-colors inline-flex items-center gap-1.5"
+                >
+                  <ArrowLeftRight className="h-3.5 w-3.5" />
+                  Positions
+                </TabsTrigger>
+              </>
             )}
             <TabsTrigger
               value="forecasts"
@@ -726,7 +700,10 @@ export default function QuestionPageContent({
         </div>
         {/* Content area */}
         <TabsContent value="predictions" className="m-0">
-          <PredictionsTable data={scatterData} isLoading={isLoadingPositions} />
+          <ActivityTable conditionId={conditionId} />
+        </TabsContent>
+        <TabsContent value="positions" className="m-0">
+          <PositionsTable conditionId={conditionId} showHeaderText={false} />
         </TabsContent>
         <TabsContent value="forecasts" className="m-0">
           {!data?.settled && (

@@ -130,8 +130,13 @@ export function encodeWriteContractToCall(
 /**
  * Create a WUSDe deposit (wrap) transaction.
  */
-export function createWrapTransaction(amount: bigint, chainId: number = DEFAULT_CHAIN_ID): TransactionCall {
-  const wusdeAddress = collateralToken[chainId]?.address ?? collateralToken[CHAIN_ID_ETHEREAL]?.address;
+export function createWrapTransaction(
+  amount: bigint,
+  chainId: number = DEFAULT_CHAIN_ID
+): TransactionCall {
+  const wusdeAddress =
+    collateralToken[chainId]?.address ??
+    collateralToken[CHAIN_ID_ETHEREAL]?.address;
   return {
     to: wusdeAddress,
     data: WUSDE_DEPOSIT_SELECTOR,

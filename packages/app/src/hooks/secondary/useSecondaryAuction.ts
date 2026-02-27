@@ -5,7 +5,10 @@ import { useAccount, useSignTypedData } from 'wagmi';
 import { type Address, type Hex } from 'viem';
 import { buildSellerTradeApproval } from '@sapience/sdk/auction/secondarySigning';
 import type { SecondaryAuctionRequestPayload } from '@sapience/sdk/types/secondary';
-import { secondaryMarketEscrow, collateralToken } from '@sapience/sdk/contracts';
+import {
+  secondaryMarketEscrow,
+  collateralToken,
+} from '@sapience/sdk/contracts';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { toAuctionWsUrl } from '~/lib/ws';

@@ -112,7 +112,9 @@ const AuctionBidsChart: React.FC<Props> = ({
         .map((b) => {
           let amount = 0;
           try {
-            amount = Number(formatEther(BigInt(String(b?.counterpartyCollateral ?? '0'))));
+            amount = Number(
+              formatEther(BigInt(String(b?.counterpartyCollateral ?? '0')))
+            );
           } catch {
             amount = 0;
           }
@@ -490,7 +492,8 @@ const AuctionBidsChart: React.FC<Props> = ({
                   percent={
                     displayBidData.data.amount + predictorEth > 0
                       ? Math.round(
-                          (predictorEth / (displayBidData.data.amount + predictorEth)) *
+                          (predictorEth /
+                            (displayBidData.data.amount + predictorEth)) *
                             100
                         )
                       : undefined

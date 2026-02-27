@@ -108,8 +108,12 @@ const AuctionBidsDialog: React.FC<Props> = ({
                   })();
                   const payoutStr = (() => {
                     try {
-                      const predictorWei = BigInt(String(predictorCollateral ?? '0'));
-                      const counterpartyWei = BigInt(String(b?.counterpartyCollateral ?? '0'));
+                      const predictorWei = BigInt(
+                        String(predictorCollateral ?? '0')
+                      );
+                      const counterpartyWei = BigInt(
+                        String(b?.counterpartyCollateral ?? '0')
+                      );
                       return (counterpartyWei + predictorWei).toString();
                     } catch {
                       return String(b?.counterpartyCollateral || '0');
@@ -144,7 +148,10 @@ const AuctionBidsDialog: React.FC<Props> = ({
                             height={16}
                           />
                           <div className="[&_span.font-mono]:text-foreground min-w-0">
-                            <AddressDisplay address={b?.counterparty || ''} compact />
+                            <AddressDisplay
+                              address={b?.counterparty || ''}
+                              compact
+                            />
                           </div>
                         </div>
                       </td>

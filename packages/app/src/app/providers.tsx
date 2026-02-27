@@ -38,7 +38,9 @@ const buildChainsAndTransports = () => {
         : 'https://arbitrum-rpc.publicnode.com'
     ),
     [etherealChain.id]: http(etherealChain.rpcUrls.default.http[0]),
-    [etherealTestnetChain.id]: http(etherealTestnetChain.rpcUrls.default.http[0]),
+    [etherealTestnetChain.id]: http(
+      etherealTestnetChain.rpcUrls.default.http[0]
+    ),
   };
 
   const chains: Chain[] = [arbitrum, etherealChain, etherealTestnetChain];

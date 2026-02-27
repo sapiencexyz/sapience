@@ -220,7 +220,9 @@ export function useValidatedAuctionBids(
   // Clean up validation results for bids that are no longer in rawBids
   // This prevents unbounded memory growth when running indefinitely
   useEffect(() => {
-    const currentSignatures = new Set(rawBids.map((b) => b.counterpartySignature));
+    const currentSignatures = new Set(
+      rawBids.map((b) => b.counterpartySignature)
+    );
 
     // Clean up validatedSignaturesRef
     for (const sig of validatedSignaturesRef.current) {
@@ -255,7 +257,10 @@ export function useValidatedAuctionBids(
   const validatedBids = useMemo((): ValidatedAuctionBid[] => {
     return rawBids.map((bid): ValidatedAuctionBid => {
       // Filter out zero address bids immediately
-      if (!bid.counterparty || bid.counterparty.toLowerCase() === ZERO_ADDRESS) {
+      if (
+        !bid.counterparty ||
+        bid.counterparty.toLowerCase() === ZERO_ADDRESS
+      ) {
         return {
           ...bid,
           validationStatus: 'invalid',

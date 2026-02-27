@@ -95,7 +95,10 @@ export function useAuctionStart(options: UseAuctionStartOptions = {}) {
       }
 
       if (!verifyingContract) {
-        return { success: false, error: 'Escrow contract not available for this chain' };
+        return {
+          success: false,
+          error: 'Escrow contract not available for this chain',
+        };
       }
 
       if (!wsUrl) {
@@ -152,9 +155,13 @@ export function useAuctionStart(options: UseAuctionStartOptions = {}) {
         }
       } catch (e: any) {
         setIsSubmitting(false);
-        const error = e instanceof Error ? e : new Error(String(e?.message || e));
+        const error =
+          e instanceof Error ? e : new Error(String(e?.message || e));
         onSignatureRejected?.(error);
-        return { success: false, error: `Signature rejected: ${error.message}` };
+        return {
+          success: false,
+          error: `Signature rejected: ${error.message}`,
+        };
       }
 
       if (!intentSignature) {

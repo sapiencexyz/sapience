@@ -16,34 +16,32 @@ import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
 import MarketPredictionRequest from '~/components/shared/MarketPredictionRequest';
 
 interface PicksSummaryProps {
-  legs: Pick[];
-  positionId: string | number;
+  picks: Pick[];
   isCounterparty?: boolean;
-  hasPythLeg?: boolean;
-  marketAddress?: string;
+  hasPythPick?: boolean;
   predictionId?: string | null;
   onClick?: () => void;
 }
 
 export interface PicksContentProps {
-  legs: Pick[];
+  picks: Pick[];
   positionId: string | number;
   isCounterparty?: boolean;
-  hasPythLeg?: boolean;
+  hasPythPick?: boolean;
   createdAt?: string | number;
   hideHeader?: boolean;
-  /** Position-level status: controls what the "Ends" column shows for settled legs */
+  /** Position-level status: controls what the "Ends" column shows for settled picks */
   positionStatus?: 'won' | 'lost' | 'pending' | 'claimed' | 'active';
 }
 
-function PickForecastCell({ leg }: { leg: Pick }) {
-  if (leg.settled) {
-    return <ResolutionBadge settled resolvedToYes={leg.resolvedToYes} />;
+function PickForecastCell({ pick }: { pick: Pick }) {
+  if (pick.settled) {
+    return <ResolutionBadge settled resolvedToYes={pick.resolvedToYes} />;
   }
 
   return (
     <MarketPredictionRequest
-      conditionId={leg.conditionId}
+      conditionId={pick.conditionId}
       inline
       eager
       skipViewportCheck
@@ -52,22 +50,22 @@ function PickForecastCell({ leg }: { leg: Pick }) {
 }
 
 function PickEndsCell({
-  leg,
+  pick,
   positionStatus,
 }: {
-  leg: Pick;
+  pick: Pick;
   positionStatus?: PicksContentProps['positionStatus'];
 }) {
-  if (!leg.endTime) {
+  if (!pick.endTime) {
     return <span className="text-muted-foreground">—</span>;
   }
 
-  // Leg not settled → standard condition lifecycle (countdown or pending)
-  if (!leg.settled) {
-    return <ConditionStatus settled={false} endTime={leg.endTime} />;
+  // Pick not settled → standard condition lifecycle (countdown or pending)
+  if (!pick.settled) {
+    return <ConditionStatus settled={false} endTime={pick.endTime} />;
   }
 
-  // Leg is settled — show position-level status if available
+  // Pick is settled — show position-level status if available
   if (
     positionStatus === 'won' ||
     positionStatus === 'lost' ||
@@ -84,15 +82,15 @@ function PickEndsCell({
     );
   }
 
-  // Fallback: show resolved status per leg
-  return <ResolutionBadge settled resolvedToYes={leg.resolvedToYes} />;
+  // Fallback: show resolved status per pick
+  return <ResolutionBadge settled resolvedToYes={pick.resolvedToYes} />;
 }
 
 export function PicksContent({
-  legs,
+  picks,
   positionId,
   isCounterparty,
-  hasPythLeg,
+  hasPythPick,
   createdAt,
   hideHeader,
   positionStatus,
@@ -101,8 +99,8 @@ export function PicksContent({
     <div className="pt-4">
       {!hideHeader && (
         <div className="flex items-baseline gap-2 text-lg font-semibold mb-4">
-          Position #{positionId}
-          {isCounterparty && !hasPythLeg && <CounterpartyBadge />}
+          Prediction #{positionId}
+          {isCounterparty && !hasPythPick && <CounterpartyBadge />}
           {createdAt && (
             <span className="text-sm font-normal text-muted-foreground">
               created{' '}
@@ -119,7 +117,9 @@ export function PicksContent({
             <tr className="border-b border-brand-white/10 text-left text-muted-foreground">
               <th className="pb-2 pr-4 font-medium w-full">Question</th>
               <th className="pb-2 pr-8 font-medium whitespace-nowrap">
-                {legs.every((leg) => leg.settled) ? 'Resolution' : 'Forecast'}
+                {picks.every((pick) => pick.settled)
+                  ? 'Resolution'
+                  : 'Forecast'}
               </th>
               <th className="pb-2 pr-4 font-medium text-right whitespace-nowrap">
                 Prediction
@@ -130,16 +130,16 @@ export function PicksContent({
             </tr>
           </thead>
           <tbody>
-            {legs.map((leg, i) => (
+            {picks.map((pick, i) => (
               <tr
-                key={`${leg.conditionId || i}-${i}`}
+                key={`${pick.conditionId || i}-${i}`}
                 className="border-b border-brand-white/5"
               >
                 <td className="py-2 pr-4 w-full max-w-[480px]">
                   <div className="flex items-center gap-2 min-w-0">
                     {(() => {
-                      const CategoryIcon = getCategoryIcon(leg.categorySlug);
-                      const color = getCategoryStyle(leg.categorySlug).color;
+                      const CategoryIcon = getCategoryIcon(pick.categorySlug);
+                      const color = getCategoryStyle(pick.categorySlug).color;
                       return (
                         <div
                           className="w-6 h-6 rounded-full shrink-0 flex items-center justify-center"
@@ -149,31 +149,31 @@ export function PicksContent({
                         </div>
                       );
                     })()}
-                    {leg.conditionId ? (
+                    {pick.conditionId ? (
                       <ConditionTitleLink
-                        conditionId={leg.conditionId}
-                        resolverAddress={leg.resolverAddress ?? undefined}
-                        title={leg.question}
+                        conditionId={pick.conditionId}
+                        resolverAddress={pick.resolverAddress ?? undefined}
+                        title={pick.question}
                         clampLines={1}
                         className="text-sm min-w-0"
                       />
                     ) : (
                       <span className="truncate text-brand-white font-mono text-sm min-w-0">
-                        {leg.question}
+                        {pick.question}
                       </span>
                     )}
                   </div>
                 </td>
                 <td className="py-2 pr-8 whitespace-nowrap">
-                  <PickForecastCell leg={leg} />
+                  <PickForecastCell pick={pick} />
                 </td>
                 <td className="py-2 pr-4 text-right whitespace-nowrap">
                   <PredictionChoiceBadge
-                    choice={String(leg.choice).toUpperCase()}
+                    choice={String(pick.choice).toUpperCase()}
                   />
                 </td>
                 <td className="py-2 pl-4 text-right whitespace-nowrap">
-                  <PickEndsCell leg={leg} positionStatus={positionStatus} />
+                  <PickEndsCell pick={pick} positionStatus={positionStatus} />
                 </td>
               </tr>
             ))}
@@ -185,25 +185,19 @@ export function PicksContent({
 }
 
 export default function PicksSummary({
-  legs,
-  positionId,
+  picks,
   isCounterparty,
-  hasPythLeg,
-  marketAddress,
+  hasPythPick,
   predictionId,
   onClick,
 }: PicksSummaryProps) {
-  if (!legs || legs.length === 0) return null;
+  if (!picks || picks.length === 0) return null;
 
-  const href = predictionId
-    ? `/predictions/${predictionId}`
-    : marketAddress
-      ? `/positions/${marketAddress}/${positionId}`
-      : undefined;
+  const href = predictionId ? `/predictions/${predictionId}` : undefined;
 
   return (
     <div className="flex items-center gap-2">
-      <StackedIcons legs={legs} />
+      <StackedIcons picks={picks} />
       {href ? (
         onClick ? (
           <button
@@ -211,22 +205,22 @@ export default function PicksSummary({
             onClick={onClick}
             className="text-lg font-mono font-semibold text-brand-white hover:text-brand-white/70 underline decoration-dotted underline-offset-4 transition-colors cursor-pointer whitespace-nowrap"
           >
-            {legs.length} {legs.length === 1 ? 'PICK' : 'PICKS'}
+            {picks.length} {picks.length === 1 ? 'PICK' : 'PICKS'}
           </button>
         ) : (
           <Link
             href={href}
             className="text-lg font-mono font-semibold text-brand-white hover:text-brand-white/70 underline decoration-dotted underline-offset-4 transition-colors cursor-pointer whitespace-nowrap"
           >
-            {legs.length} {legs.length === 1 ? 'PICK' : 'PICKS'}
+            {picks.length} {picks.length === 1 ? 'PICK' : 'PICKS'}
           </Link>
         )
       ) : (
         <span className="text-lg font-mono font-semibold text-brand-white whitespace-nowrap">
-          {legs.length} {legs.length === 1 ? 'PICK' : 'PICKS'}
+          {picks.length} {picks.length === 1 ? 'PICK' : 'PICKS'}
         </span>
       )}
-      {isCounterparty && !hasPythLeg && <CounterpartyBadge />}
+      {isCounterparty && !hasPythPick && <CounterpartyBadge />}
     </div>
   );
 }

@@ -70,7 +70,9 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
     functionName: 'getNonce',
     args: selectedPredictorAddress ? [selectedPredictorAddress] : undefined,
     chainId: chainId,
-    query: { enabled: !!selectedPredictorAddress && !!PREDICTION_MARKET_ADDRESS },
+    query: {
+      enabled: !!selectedPredictorAddress && !!PREDICTION_MARKET_ADDRESS,
+    },
   });
 
   const wsUrl = React.useMemo(() => toAuctionWsUrl(apiBaseUrl), [apiBaseUrl]);
@@ -215,7 +217,8 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
             resolver: payload.resolver,
             predictedOutcomes: payload.predictedOutcomes,
             taker: selectedPredictorAddress,
-            predictorNonce: predictorNonce !== undefined ? Number(predictorNonce) : 0,
+            predictorNonce:
+              predictorNonce !== undefined ? Number(predictorNonce) : 0,
             chainId: chainId,
           };
 
@@ -291,11 +294,16 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
         });
         const list = valid.length > 0 ? valid : bids;
         const best = list.reduce((acc, cur) => {
-          return BigInt(cur.counterpartyCollateral) > BigInt(acc.counterpartyCollateral) ? cur : acc;
+          return BigInt(cur.counterpartyCollateral) >
+            BigInt(acc.counterpartyCollateral)
+            ? cur
+            : acc;
         }, list[0]);
 
         const predictorWei = BigInt(PREDICTOR_POSITION_SIZE_WEI);
-        const counterpartyWei = BigInt(String(best?.counterpartyCollateral || '0'));
+        const counterpartyWei = BigInt(
+          String(best?.counterpartyCollateral || '0')
+        );
         const denom = counterpartyWei + predictorWei;
         const prob = denom > 0n ? Number(counterpartyWei) / Number(denom) : 0.5;
         const safeProbability = Math.max(0, Math.min(1, prob));
@@ -419,7 +427,7 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
                             transition={{ duration: 0.3 }}
                             className="absolute inset-0 py-3 pl-4 pr-3 flex items-center"
                           >
-                            <StackedIcons legs={legs} />
+                            <StackedIcons picks={legs} />
                           </motion.div>
                         ) : (
                           <motion.div
@@ -456,12 +464,12 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
                         >
                           {/* Mobile Row 1: Icons (on their own line) */}
                           <StackedIcons
-                            legs={legs}
+                            picks={legs}
                             className="flex md:hidden"
                           />
                           {/* Row 2: Question + Badge + "and N others" */}
                           <StackedPredictionsTitle
-                            legs={legs}
+                            picks={legs}
                             className="md:gap-x-2"
                             maxWidthClass="max-w-full md:max-w-[460px]"
                           />

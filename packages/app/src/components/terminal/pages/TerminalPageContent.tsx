@@ -52,7 +52,11 @@ interface AuctionStartedData {
   predictorCollateral?: string;
   resolver?: string;
   predictedOutcomes?: string[];
-  picks?: Array<{ conditionResolver?: string; conditionId?: string; predictedOutcome?: number }>;
+  picks?: Array<{
+    conditionResolver?: string;
+    conditionId?: string;
+    predictedOutcome?: number;
+  }>;
 }
 
 // Defined outside TerminalPageContent to prevent remounting on parent re-renders
@@ -416,7 +420,8 @@ const TerminalPageContent: React.FC = () => {
             question: cond?.question ?? String(p.conditionId),
             // Escrow predictedOutcome: 0 = Yes, 1 = No (from the predictor's perspective)
             // In terminal view we show counterparty perspective (inverted)
-            choice: p.predictedOutcome === 0 ? ('No' as const) : ('Yes' as const),
+            choice:
+              p.predictedOutcome === 0 ? ('No' as const) : ('Yes' as const),
             conditionId: String(p.conditionId),
             categorySlug: cond?.category?.slug ?? null,
           };
@@ -427,7 +432,7 @@ const TerminalPageContent: React.FC = () => {
             animate={{ opacity: 1 }}
             transition={{ duration: 0.14, ease: 'easeOut' }}
           >
-            <StackedPredictions legs={picks} className="max-w-full" />
+            <StackedPredictions picks={picks} className="max-w-full" />
           </motion.div>
         );
       }
@@ -511,7 +516,7 @@ const TerminalPageContent: React.FC = () => {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.14, ease: 'easeOut' }}
         >
-          <StackedPredictions legs={picks} className="max-w-full" />
+          <StackedPredictions picks={picks} className="max-w-full" />
         </motion.div>
       );
     } catch {
@@ -520,7 +525,9 @@ const TerminalPageContent: React.FC = () => {
   }
 
   // Use collateral token address directly from SDK constants (V2/escrow path)
-  const collateralTokenAddress: `0x${string}` | undefined = collateralToken[chainId]?.address as `0x${string}` | undefined;
+  const collateralTokenAddress: `0x${string}` | undefined = collateralToken[
+    chainId
+  ]?.address as `0x${string}` | undefined;
 
   const erc20MetaRead = useReadContracts({
     contracts: collateralTokenAddress
@@ -666,7 +673,9 @@ const TerminalPageContent: React.FC = () => {
       if (signedFilter === 'unsigned' && isSigned) return false;
 
       try {
-        const positionSizeWei = BigInt(String(auctionData?.predictorCollateral ?? '0'));
+        const positionSizeWei = BigInt(
+          String(auctionData?.predictorCollateral ?? '0')
+        );
         const bidsCount = bidsCountByAuction.get(row.id) ?? 0;
         // Check bids range
         if (bidsCount < bidsRangeNum[0]) return false;
@@ -835,8 +844,7 @@ const TerminalPageContent: React.FC = () => {
     const createdAt = new Date(m.time).toISOString();
     if (m.type === 'auction.started' || m.type === 'v2.auction.started') {
       const predictor = (m as any)?.data?.predictor || '';
-      const predictorCollateral =
-        (m as any)?.data?.predictorCollateral || '0';
+      const predictorCollateral = (m as any)?.data?.predictorCollateral || '0';
       return {
         id: m.time,
         type: 'FORECAST',
@@ -851,12 +859,8 @@ const TerminalPageContent: React.FC = () => {
         : [];
       const top = bids.reduce((best, b) => {
         try {
-          const cur = BigInt(
-            String(b?.counterpartyCollateral ?? '0')
-          );
-          const bestVal = BigInt(
-            String(best?.counterpartyCollateral ?? '0')
-          );
+          const cur = BigInt(String(b?.counterpartyCollateral ?? '0'));
+          const bestVal = BigInt(String(best?.counterpartyCollateral ?? '0'));
           return cur > bestVal ? b : best;
         } catch {
           return best;
@@ -1040,12 +1044,9 @@ const TerminalPageContent: React.FC = () => {
                                   predictionsContent={renderPredictionsCell(m)}
                                   auctionId={auctionId}
                                   predictorCollateral={String(
-                                    m?.data?.predictorCollateral ??
-                                      '0'
+                                    m?.data?.predictorCollateral ?? '0'
                                   )}
-                                  predictor={
-                                    m?.data?.predictor || null
-                                  }
+                                  predictor={m?.data?.predictor || null}
                                   resolver={
                                     m?.data?.resolver ||
                                     (Array.isArray(m?.data?.picks) &&
@@ -1104,13 +1105,9 @@ const TerminalPageContent: React.FC = () => {
                                       )}
                                       auctionId={auctionId}
                                       predictorCollateral={String(
-                                        m?.data?.predictorCollateral ??
-                                          '0'
+                                        m?.data?.predictorCollateral ?? '0'
                                       )}
-                                      predictor={
-                                        m?.data?.predictor ||
-                                        null
-                                      }
+                                      predictor={m?.data?.predictor || null}
                                       resolver={
                                         m?.data?.resolver ||
                                         (Array.isArray(m?.data?.picks) &&

@@ -5,8 +5,9 @@ import { useSession } from '~/lib/context/SessionContext';
 import { parseAbi, type Address } from 'viem';
 import { CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
 
-const SPONSOR_ADDRESS = process.env
-  .NEXT_PUBLIC_SPONSOR_ADDRESS as Address | undefined;
+const SPONSOR_ADDRESS = process.env.NEXT_PUBLIC_SPONSOR_ADDRESS as
+  | Address
+  | undefined;
 
 const sponsorAbi = parseAbi([
   'function remainingBudget(address) view returns (uint256)',
@@ -58,8 +59,7 @@ export function useSponsorStatus() {
   });
 
   const remainingBudget = (data?.[0]?.result as bigint) ?? 0n;
-  const requiredCounterparty =
-    (data?.[1]?.result as Address) ?? null;
+  const requiredCounterparty = (data?.[1]?.result as Address) ?? null;
   const maxEntryPriceBps = (data?.[2]?.result as bigint) ?? 0n;
 
   return {

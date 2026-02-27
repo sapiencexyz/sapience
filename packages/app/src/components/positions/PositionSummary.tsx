@@ -58,8 +58,7 @@ export default function PositionSummary({
   counterpartyAddress,
 }: PositionSummaryProps) {
   const showOwner = isOwnerLoading || !!currentOwner;
-  const showAddressesRow =
-    showOwner || predictorAddress || counterpartyAddress;
+  const showAddressesRow = showOwner || predictorAddress || counterpartyAddress;
 
   return (
     <div className="space-y-4 pt-2">
@@ -69,7 +68,9 @@ export default function PositionSummary({
         <div className="flex items-center gap-2">
           <h2 className="eyebrow text-foreground">
             Prediction{' '}
-            {typeof positionId === 'string' && positionId.startsWith('0x') && positionId.length > 12
+            {typeof positionId === 'string' &&
+            positionId.startsWith('0x') &&
+            positionId.length > 12
               ? `${positionId.slice(0, 6)}...${positionId.slice(-4)}`
               : `#${positionId}`}
           </h2>
@@ -79,7 +80,7 @@ export default function PositionSummary({
               target="_blank"
               rel="noopener noreferrer"
               className="text-muted-foreground hover:text-foreground transition-colors"
-              title="View full position page"
+              title="View full prediction page"
             >
               <ExternalLink className="h-4 w-4" />
             </Link>
@@ -134,7 +135,9 @@ export default function PositionSummary({
 
       {/* Addresses row */}
       {showAddressesRow && (
-        <div className={`grid grid-cols-1 gap-4 ${showOwner ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}>
+        <div
+          className={`grid grid-cols-1 gap-4 ${showOwner ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}
+        >
           {/* Current Owner - only shown for NFT-based positions */}
           {showOwner && (
             <div className="space-y-1">

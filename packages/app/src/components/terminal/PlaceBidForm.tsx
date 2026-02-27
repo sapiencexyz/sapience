@@ -229,13 +229,17 @@ const PlaceBidForm: React.FC<Props> = ({
     const predictorDisplay = Number.isFinite(predictorAmountDisplay as number)
       ? Number(predictorAmountDisplay)
       : 0;
-    const counterpartyDisplay = Number.isFinite(parsedAmount) ? parsedAmount : 0;
+    const counterpartyDisplay = Number.isFinite(parsedAmount)
+      ? parsedAmount
+      : 0;
     const totalDisplay =
       Number.isFinite(counterpartyDisplay) && Number.isFinite(predictorDisplay)
         ? predictorDisplay + counterpartyDisplay
         : NaN;
     const forecastPct =
-      totalDisplay > 0 ? Math.round((counterpartyDisplay / totalDisplay) * 100) : null;
+      totalDisplay > 0
+        ? Math.round((counterpartyDisplay / totalDisplay) * 100)
+        : null;
     const amountDisplay = Number.isFinite(parsedAmount)
       ? formatAmount(parsedAmount, decimals)
       : '—';
@@ -605,14 +609,17 @@ const PlaceBidForm: React.FC<Props> = ({
             </span>
           </div>
           {(() => {
-            const predictorDisplay = Number.isFinite(predictorAmountDisplay as number)
+            const predictorDisplay = Number.isFinite(
+              predictorAmountDisplay as number
+            )
               ? Number(predictorAmountDisplay)
               : 0;
             const counterpartyDisplay = Number.isFinite(parsedAmount)
               ? parsedAmount
               : 0;
             const totalDisplay =
-              Number.isFinite(counterpartyDisplay) && Number.isFinite(predictorDisplay)
+              Number.isFinite(counterpartyDisplay) &&
+              Number.isFinite(predictorDisplay)
                 ? predictorDisplay + counterpartyDisplay
                 : NaN;
             const forecastPct =
@@ -667,14 +674,17 @@ const PlaceBidForm: React.FC<Props> = ({
           <span>for payout</span>{' '}
           <span className="font-semibold">
             {(() => {
-              const predictorDisplay = Number.isFinite(predictorAmountDisplay as number)
+              const predictorDisplay = Number.isFinite(
+                predictorAmountDisplay as number
+              )
                 ? Number(predictorAmountDisplay)
                 : 0;
               const counterpartyDisplay = Number.isFinite(parsedAmount)
                 ? parsedAmount
                 : 0;
               const totalDisplay =
-                Number.isFinite(counterpartyDisplay) && Number.isFinite(predictorDisplay)
+                Number.isFinite(counterpartyDisplay) &&
+                Number.isFinite(predictorDisplay)
                   ? predictorDisplay + counterpartyDisplay
                   : NaN;
               return Number.isFinite(totalDisplay)

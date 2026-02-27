@@ -248,7 +248,9 @@ async function fetchEstimate(conditionId: string): Promise<number | null> {
         },
         onMessage: (msg: {
           type?: string;
-          payload?: { bids?: Array<{ maker?: string; makerCollateral?: string }> };
+          payload?: {
+            bids?: Array<{ maker?: string; makerCollateral?: string }>;
+          };
         }) => {
           if (settled) return;
           if (msg?.type !== 'auction.bids') return;
@@ -267,7 +269,9 @@ async function fetchEstimate(conditionId: string): Promise<number | null> {
           client.close();
 
           const takerCollateral = BigInt(parseUnits('1', 18).toString());
-          const makerCollateral = BigInt(String(quoterBid.makerCollateral || '0'));
+          const makerCollateral = BigInt(
+            String(quoterBid.makerCollateral || '0')
+          );
           const denom = takerCollateral + makerCollateral;
           if (denom === 0n) {
             resolve(null);

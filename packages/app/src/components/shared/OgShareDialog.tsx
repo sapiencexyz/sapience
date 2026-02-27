@@ -18,10 +18,7 @@ import {
   useUserPositions,
   type Position,
 } from '~/hooks/graphql/useLegacyPositions';
-import {
-  usePredictions,
-  type Prediction,
-} from '~/hooks/graphql/usePositions';
+import { usePredictions, type Prediction } from '~/hooks/graphql/usePositions';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useSession } from '~/lib/context/SessionContext';
 import type { PositionProgressState } from '~/types/positionProgress';
@@ -101,17 +98,14 @@ export default function OgShareDialogBase({
   const chainId = DEFAULT_CHAIN_ID;
   const [positionResolved, setPositionResolved] = useState(false);
 
-  // Store resolved position data for share URL
-  const [resolvedPositionData, setResolvedPositionData] = useState<{
-    nftId: string;
-    marketAddress: string;
-  } | null>(null);
   const pollingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const pollingCancelledRef = useRef(false);
   const dialogOpenTimestampRef = useRef<number | null>(null);
 
   // Store resolved predictionId for V2 escrow tracking
-  const [resolvedPredictionId, setResolvedPredictionId] = useState<string | null>(null);
+  const [resolvedPredictionId, setResolvedPredictionId] = useState<
+    string | null
+  >(null);
   const predictionPollingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const predictionPollingCancelledRef = useRef(false);
   const predictionOpenTimestampRef = useRef<number | null>(null);
@@ -163,10 +157,6 @@ export default function OgShareDialogBase({
         mintedAt: position.mintedAt,
       });
       setPositionResolved(true);
-      setResolvedPositionData({
-        nftId: position.predictorNftTokenId,
-        marketAddress: position.marketAddress,
-      });
       onPositionIndexed?.();
       pollingCancelledRef.current = true;
       if (pollingTimerRef.current) {
@@ -374,7 +364,6 @@ export default function OgShareDialogBase({
   useEffect(() => {
     if (!open) {
       setPositionResolved(false);
-      setResolvedPositionData(null); // Reset resolved position data
       setResolvedPredictionId(null); // Reset resolved prediction data
       setImgLoading(true); // Reset image loading state to prevent flash on reopen
       dialogOpenTimestampRef.current = null;
@@ -409,24 +398,6 @@ export default function OgShareDialogBase({
     }
   };
 
-  // Extract nftId and marketAddress from imageSrc if present
-  const positionShareParams = useMemo(() => {
-    try {
-      if (typeof window === 'undefined') return null;
-      const url = new URL(imageSrc, window.location.origin);
-      const nftId = url.searchParams.get('nftId');
-      const marketAddress = url.searchParams.get('marketAddress');
-
-      // Use NFT ID and market address
-      if (nftId && marketAddress) {
-        return { nftId, marketAddress };
-      }
-    } catch {
-      // ignore
-    }
-    return null;
-  }, [imageSrc]);
-
   const buildShareUrl = useCallback((): string => {
     if (shareUrlProp) return shareUrlProp;
 
@@ -437,22 +408,16 @@ export default function OgShareDialogBase({
       return `${window.location.origin}${relativeUrl}`;
     }
 
-    const nftId = resolvedPositionData?.nftId || positionShareParams?.nftId;
-    const marketAddress =
-      resolvedPositionData?.marketAddress || positionShareParams?.marketAddress;
-
     let relativeUrl = '/';
     if (forecastUid) {
       relativeUrl = `/forecast/${forecastUid}`;
-    } else if (nftId && marketAddress) {
-      relativeUrl = `/predictions/${marketAddress}/${nftId}`;
     }
 
     if (typeof window === 'undefined') {
       return relativeUrl;
     }
     return `${window.location.origin}${relativeUrl}`;
-  }, [shareUrlProp, resolvedPredictionId, resolvedPositionData, positionShareParams, forecastUid]);
+  }, [shareUrlProp, resolvedPredictionId, forecastUid]);
 
   // Always use the original imageSrc (query-param card). The share URL already
   // updates to /predictions/{id} when the prediction resolves, so social media
@@ -542,7 +507,9 @@ export default function OgShareDialogBase({
             >
               <div
                 className={`grid gap-4 w-full ${
-                  (trackPosition || trackPrediction) && userAddress ? 'grid-cols-4' : 'grid-cols-3'
+                  (trackPosition || trackPrediction) && userAddress
+                    ? 'grid-cols-4'
+                    : 'grid-cols-3'
                 }`}
               >
                 {/* Copy */}

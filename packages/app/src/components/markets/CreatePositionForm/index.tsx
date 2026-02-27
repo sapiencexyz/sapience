@@ -57,7 +57,6 @@ import { usePositionProgress } from '~/hooks/forms/usePositionProgress';
 import { useUserPositions } from '~/hooks/graphql/useLegacyPositions';
 import { useAuctionStart, type QuoteBid } from '~/lib/auction/useAuctionStart';
 
-
 import { logPositionForm } from '~/lib/auction/bidLogger';
 import { MarketGroupClassification } from '~/lib/types';
 import {
@@ -256,10 +255,15 @@ const CreatePositionFormInner = ({
   } = useAuctionStart();
 
   // Always use PredictionMarketEscrow
-  const PREDICTION_MARKET_ADDRESS = predictionMarketEscrow[positionChainId]?.address;
+  const PREDICTION_MARKET_ADDRESS =
+    predictionMarketEscrow[positionChainId]?.address;
 
   // Sponsorship status
-  const { isSponsored, sponsorAddress, refetch: refetchSponsor } = useSponsorStatus();
+  const {
+    isSponsored,
+    sponsorAddress,
+    refetch: refetchSponsor,
+  } = useSponsorStatus();
 
   // State for validated bids (async validation checks market maker balance/allowance)
   const [bids, setBids] = useState<QuoteBid[]>([]);

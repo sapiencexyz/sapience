@@ -135,7 +135,11 @@ export default function CreateAuctionForm({
     }
 
     const predictorCollateralNum = parseFloat(predictorCollateral);
-    if (!predictorCollateral || isNaN(predictorCollateralNum) || predictorCollateralNum <= 0) {
+    if (
+      !predictorCollateral ||
+      isNaN(predictorCollateralNum) ||
+      predictorCollateralNum <= 0
+    ) {
       return 'Please enter a valid predictor collateral';
     }
 

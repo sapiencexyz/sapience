@@ -56,12 +56,14 @@ export function useSingleConditionAuction({
     null
   );
 
-  const selectedTakerAddress = effectiveAddress ?? predictorAddress ?? zeroAddress;
-
+  const selectedTakerAddress =
+    effectiveAddress ?? predictorAddress ?? zeroAddress;
 
   // Stable ref — read at call time inside triggerQuoteRequest, don't trigger recreation
   const selectedTakerAddressRef = useRef(selectedTakerAddress);
-  useEffect(() => { selectedTakerAddressRef.current = selectedTakerAddress; }, [selectedTakerAddress]);
+  useEffect(() => {
+    selectedTakerAddressRef.current = selectedTakerAddress;
+  }, [selectedTakerAddress]);
 
   useEffect(() => {
     const id = window.setInterval(() => setNowMs(Date.now()), 1000);
@@ -71,7 +73,9 @@ export function useSingleConditionAuction({
   const bestBid = useMemo(() => {
     if (!bids || bids.length === 0) return null;
 
-    const validBids = bids.filter((bid) => bid.counterpartyDeadline * 1000 > nowMs);
+    const validBids = bids.filter(
+      (bid) => bid.counterpartyDeadline * 1000 > nowMs
+    );
     if (validBids.length === 0) return null;
 
     let userPositionSizeWei: bigint;
@@ -82,7 +86,8 @@ export function useSingleConditionAuction({
     }
 
     return validBids.reduce((best, current) => {
-      const bestPayout = userPositionSizeWei + BigInt(best.counterpartyCollateral);
+      const bestPayout =
+        userPositionSizeWei + BigInt(best.counterpartyCollateral);
       const currentPayout =
         userPositionSizeWei + BigInt(current.counterpartyCollateral);
       return currentPayout > bestPayout ? current : best;
@@ -119,13 +124,14 @@ export function useSingleConditionAuction({
         };
 
         if (resolverAddress && chainId === CHAIN_ID_ETHEREAL_TESTNET) {
-          params.escrowPicks = [{
-            conditionResolver: resolverAddress as `0x${string}`,
-            conditionId: conditionId as `0x${string}`,
-            predictedOutcome: prediction ? OutcomeSide.YES : OutcomeSide.NO,
-          }];
+          params.escrowPicks = [
+            {
+              conditionResolver: resolverAddress as `0x${string}`,
+              conditionId: conditionId as `0x${string}`,
+              predictedOutcome: prediction ? OutcomeSide.YES : OutcomeSide.NO,
+            },
+          ];
         }
-
 
         requestQuotes(params, { requireSignature: false, ...options });
         setLastQuoteRequestMs(Date.now());

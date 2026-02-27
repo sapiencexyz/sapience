@@ -18,12 +18,12 @@ import Loader from '~/components/shared/Loader';
 
 import CountdownCell from '~/components/shared/CountdownCell';
 import { formatDistanceToNow } from 'date-fns';
-import type { Pick as PickLeg } from '~/components/shared/StackedPredictions';
+import { toPicks, type ConditionsMap } from '~/components/positions/toPickLegs';
 import { COLLATERAL_SYMBOLS, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import {
   usePositionBalances,
+  usePositionBalancesByConditionId,
   type PositionBalance,
-  type PickData,
 } from '~/hooks/graphql/usePositions';
 import { useConditionsByIds } from '~/hooks/graphql/useConditionsByIds';
 import {
@@ -38,29 +38,6 @@ import { getCategoryStyle } from '~/lib/utils/categoryStyle';
 import { PredictionChoiceBadge } from '@sapience/ui';
 import OgShareDialogBase from '~/components/shared/OgShareDialog';
 
-type ConditionsMap = Map<string, { question?: string | null; shortName?: string | null; endTime?: number | null; category?: { slug?: string | null } | null }>;
-
-/** Map escrow PickData to the Pick interface used by PicksSummary */
-function toPickLegs(
-  picks: PickData[],
-  isPredictorToken: boolean,
-  conditionsMap: ConditionsMap,
-): PickLeg[] {
-  return picks.map((pick) => ({
-    question: conditionsMap.get(pick.conditionId)?.question ?? conditionsMap.get(pick.conditionId)?.shortName ?? pick.conditionId,
-    choice: isPredictorToken
-      ? pick.predictedOutcome === 1
-        ? 'Yes'
-        : 'No'
-      : pick.predictedOutcome === 1
-        ? 'No'
-        : 'Yes',
-    conditionId: pick.conditionId,
-    resolverAddress: pick.conditionResolver,
-    categorySlug: conditionsMap.get(pick.conditionId)?.category?.slug ?? null,
-  }));
-}
-
 function PositionRow({
   position,
   collateralSymbol,
@@ -73,8 +50,8 @@ function PositionRow({
   onShare: (position: PositionBalance) => void;
 }) {
   const { pickConfig, isPredictorToken } = position;
-  const picks = pickConfig?.picks ?? [];
-  const legs = toPickLegs(picks, isPredictorToken, conditionsMap);
+  const rawPicks = pickConfig?.picks ?? [];
+  const picks = toPicks(rawPicks, isPredictorToken, conditionsMap);
 
   const balance = BigInt(position.balance);
   const balanceFormatted = parseFloat(formatEther(balance));
@@ -92,9 +69,7 @@ function PositionRow({
       )
     : 0n;
   const payout =
-    sideCollateral > 0n
-      ? (balance * totalPool) / sideCollateral
-      : 0n;
+    sideCollateral > 0n ? (balance * totalPool) / sideCollateral : 0n;
   const payoutFormatted = parseFloat(formatEther(payout));
 
   const result = pickConfig?.result ?? 'UNRESOLVED';
@@ -121,15 +96,15 @@ function PositionRow({
     <TableRow>
       <TableCell>
         <div className="flex items-center gap-2">
-          <StackedIcons legs={legs} />
-          {legs.length > 0 ? (
+          <StackedIcons picks={picks} />
+          {picks.length > 0 ? (
             <Popover>
               <PopoverTrigger asChild>
                 <button
                   type="button"
                   className="text-lg font-mono font-semibold text-brand-white hover:text-brand-white/70 underline decoration-dotted underline-offset-4 transition-colors cursor-pointer whitespace-nowrap"
                 >
-                  {legs.length} {legs.length === 1 ? 'PICK' : 'PICKS'}
+                  {picks.length} {picks.length === 1 ? 'PICK' : 'PICKS'}
                 </button>
               </PopoverTrigger>
               <PopoverContent
@@ -137,9 +112,9 @@ function PositionRow({
                 align="start"
               >
                 <div className="flex flex-col divide-y divide-brand-white/20">
-                  {legs.map((leg, i) => {
-                    const CategoryIcon = getCategoryIcon(leg.categorySlug);
-                    const color = getCategoryStyle(leg.categorySlug).color;
+                  {picks.map((pick, i) => {
+                    const CategoryIcon = getCategoryIcon(pick.categorySlug);
+                    const color = getCategoryStyle(pick.categorySlug).color;
                     return (
                       <div
                         key={`pick-${i}`}
@@ -152,9 +127,11 @@ function PositionRow({
                           <CategoryIcon className="h-3 w-3 text-white/80" />
                         </div>
                         <span className="text-sm flex-1 min-w-0 font-mono truncate">
-                          {leg.question}
+                          {pick.question}
                         </span>
-                        <PredictionChoiceBadge choice={String(leg.choice).toUpperCase()} />
+                        <PredictionChoiceBadge
+                          choice={String(pick.choice).toUpperCase()}
+                        />
                       </div>
                     );
                   })}
@@ -170,7 +147,11 @@ function PositionRow({
         </div>
       </TableCell>
       <TableCell>
-        <NumberDisplay value={balanceFormatted} appendedText={collateralSymbol} className="text-brand-white font-mono" />
+        <NumberDisplay
+          value={balanceFormatted}
+          appendedText={collateralSymbol}
+          className="text-brand-white font-mono"
+        />
       </TableCell>
       <TableCell>
         <NumberDisplay
@@ -214,7 +195,9 @@ function PositionRow({
         {(() => {
           const endsAt = Math.max(
             0,
-            ...picks.map((p) => conditionsMap.get(p.conditionId)?.endTime ?? 0),
+            ...rawPicks.map(
+              (p) => conditionsMap.get(p.conditionId)?.endTime ?? 0
+            )
           );
           if (!endsAt) return <span className="text-muted-foreground">—</span>;
           const endsAtMs = endsAt * 1000;
@@ -251,29 +234,48 @@ function PositionRow({
 
 export default function PositionsTable({
   account,
+  conditionId,
   showHeaderText = true,
   chainId,
   leftSlot,
 }: {
-  account: Address;
+  account?: Address;
+  conditionId?: string;
   showHeaderText?: boolean;
   chainId?: number;
   leftSlot?: React.ReactNode;
 }) {
-  const collateralSymbol = COLLATERAL_SYMBOLS[chainId || DEFAULT_CHAIN_ID] || 'USDe';
+  const collateralSymbol =
+    COLLATERAL_SYMBOLS[chainId || DEFAULT_CHAIN_ID] || 'USDe';
 
   // Fetch position balances for this user
   const {
-    data: allPositions,
-    isLoading,
-    error,
+    data: accountPositions,
+    isLoading: accountLoading,
+    error: accountError,
   } = usePositionBalances({
     holder: account,
     chainId,
   });
 
+  // Fetch position balances for a condition (all holders)
+  const {
+    data: conditionPositions,
+    isLoading: conditionLoading,
+    error: conditionError,
+  } = usePositionBalancesByConditionId({
+    conditionId: !account ? conditionId : undefined,
+  });
+
+  const allPositions = account ? accountPositions : conditionPositions;
+  const isLoading = account ? accountLoading : conditionLoading;
+  const error = account ? accountError : conditionError;
+
   // Filter out zero-balance positions (fully redeemed)
-  const positions = allPositions.filter((p) => BigInt(p.balance) > 0n);
+  const positions = React.useMemo(
+    () => allPositions.filter((p) => BigInt(p.balance) > 0n),
+    [allPositions]
+  );
 
   // Collect all unique conditionIds to fetch category data
   const conditionIds = React.useMemo(() => {
@@ -289,7 +291,8 @@ export default function PositionsTable({
   const { map: conditionsMap } = useConditionsByIds(conditionIds);
 
   // Share dialog state
-  const [sharePosition, setSharePosition] = React.useState<PositionBalance | null>(null);
+  const [sharePosition, setSharePosition] =
+    React.useState<PositionBalance | null>(null);
 
   // Build OG image URL for position sharing with balance overrides
   const shareImageSrc = React.useMemo(() => {
@@ -325,10 +328,15 @@ export default function PositionsTable({
 
     for (const pick of picks) {
       const condition = conditionsMap.get(pick.conditionId);
-      const question = condition?.question ?? condition?.shortName ?? pick.conditionId;
+      const question =
+        condition?.question ?? condition?.shortName ?? pick.conditionId;
       const choice = isPredictorToken
-        ? pick.predictedOutcome === 1 ? 'Yes' : 'No'
-        : pick.predictedOutcome === 1 ? 'No' : 'Yes';
+        ? pick.predictedOutcome === 1
+          ? 'Yes'
+          : 'No'
+        : pick.predictedOutcome === 1
+          ? 'No'
+          : 'Yes';
       qp.append('leg', `${question}|${choice}`);
     }
 
@@ -336,19 +344,20 @@ export default function PositionsTable({
   }, [sharePosition, conditionsMap, collateralSymbol]);
 
   // Header with leftSlot (tab switcher) and optional title
-  const headerContent = (
-    <div className="px-4 py-4 border-b border-border flex items-center gap-4">
-      {leftSlot}
-      <div className="flex-1">
-        {showHeaderText && (
-          <div className="flex items-center justify-between">
-            <h3 className="text-lg font-semibold">Positions</h3>
-            <Badge variant="outline">{positions.length} positions</Badge>
-          </div>
-        )}
+  const headerContent =
+    leftSlot || showHeaderText ? (
+      <div className="px-4 py-4 border-b border-border flex items-center gap-4">
+        {leftSlot}
+        <div className="flex-1">
+          {showHeaderText && (
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Positions</h3>
+              <Badge variant="outline">{positions.length} positions</Badge>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
-  );
+    ) : null;
 
   if (isLoading) {
     return (
@@ -388,12 +397,12 @@ export default function PositionsTable({
         <Table>
           <TableHeader>
             <TableRow className="hover:!bg-white/[0.03] bg-white/[0.03] border-b border-border/60">
-              <TableHead>Position</TableHead>
-              <TableHead>Position Size</TableHead>
-              <TableHead>Payout</TableHead>
-              <TableHead>Profit/Loss</TableHead>
-              <TableHead>Ends</TableHead>
-              <TableHead></TableHead>
+              <TableHead className="h-auto py-3">Position</TableHead>
+              <TableHead className="h-auto py-3">Position Size</TableHead>
+              <TableHead className="h-auto py-3">Payout</TableHead>
+              <TableHead className="h-auto py-3">Profit/Loss</TableHead>
+              <TableHead className="h-auto py-3">Ends</TableHead>
+              <TableHead className="h-auto py-3"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -413,13 +422,17 @@ export default function PositionsTable({
         <OgShareDialogBase
           imageSrc={shareImageSrc}
           open={!!sharePosition}
-          onOpenChange={(open) => { if (!open) setSharePosition(null); }}
-          title="Share Position"
-          shareUrl={sharePosition.pickConfig?.predictionId
-            ? (typeof window !== 'undefined'
-              ? `${window.location.origin}/predictions/${sharePosition.pickConfig.predictionId}`
-              : `/predictions/${sharePosition.pickConfig.predictionId}`)
-            : undefined}
+          onOpenChange={(open) => {
+            if (!open) setSharePosition(null);
+          }}
+          title="Share Prediction"
+          shareUrl={
+            sharePosition.pickConfig?.predictionId
+              ? typeof window !== 'undefined'
+                ? `${window.location.origin}/predictions/${sharePosition.pickConfig.predictionId}`
+                : `/predictions/${sharePosition.pickConfig.predictionId}`
+              : undefined
+          }
         />
       )}
     </>

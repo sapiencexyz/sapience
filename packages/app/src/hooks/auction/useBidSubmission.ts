@@ -2,23 +2,12 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { useAccount, useSignTypedData } from 'wagmi';
-import {
-  type Address,
-  type Hex,
-  formatUnits,
-  parseUnits,
-} from 'viem';
+import { type Address, type Hex, formatUnits, parseUnits } from 'viem';
 import { buildCounterpartyMintTypedData } from '@sapience/sdk/auction/escrowSigning';
 import { canonicalizePicks } from '@sapience/sdk/auction/escrowEncoding';
-import type {
-  Pick,
-  BidPayload,
-  AuctionDetails,
-} from '@sapience/sdk/types';
+import type { Pick, BidPayload, AuctionDetails } from '@sapience/sdk/types';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
-import {
-  DEFAULT_CHAIN_ID,
-} from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { generateRandomNonce } from '@sapience/sdk';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
@@ -89,7 +78,11 @@ export function useBidSubmission(options: UseBidSubmissionOptions = {}) {
 
   const submitBid = useCallback(
     async (params: BidSubmissionParams): Promise<BidSubmissionResult> => {
-      const { auction, counterpartyCollateral, deadlineSeconds = 1800 } = params; // 30 minutes default
+      const {
+        auction,
+        counterpartyCollateral,
+        deadlineSeconds = 1800,
+      } = params; // 30 minutes default
 
       const chainId = auction.chainId ?? overrideChainId ?? DEFAULT_CHAIN_ID;
 

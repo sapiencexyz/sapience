@@ -125,9 +125,7 @@ export default function SellPositionDialog({
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="minPrice">
-              Minimum Price ({collateralSymbol})
-            </Label>
+            <Label htmlFor="minPrice">Minimum Price ({collateralSymbol})</Label>
             <Input
               id="minPrice"
               type="text"
@@ -139,10 +137,7 @@ export default function SellPositionDialog({
 
           <div className="space-y-2">
             <Label htmlFor="deadline">Deadline</Label>
-            <Select
-              value={deadlineSeconds}
-              onValueChange={setDeadlineSeconds}
-            >
+            <Select value={deadlineSeconds} onValueChange={setDeadlineSeconds}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>

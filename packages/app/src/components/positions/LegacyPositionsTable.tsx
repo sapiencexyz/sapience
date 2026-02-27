@@ -768,11 +768,9 @@ export default function PositionsTable({
                 Predictions
               </div>
               <PicksSummary
-                legs={row.original.legs}
-                positionId={row.original.positionId}
+                picks={row.original.legs}
                 isCounterparty={row.original.isCounterpartyPosition}
-                hasPythLeg={hasPythLeg}
-                marketAddress={row.original.marketAddress}
+                hasPythPick={hasPythLeg}
                 onClick={() => setOpenPositionDialogId(row.original.positionId)}
               />
             </div>
@@ -1497,7 +1495,7 @@ export default function PositionsTable({
                 String(selectedPosition.positionId)
           }
           marketAddress={selectedPosition.marketAddress}
-          legs={selectedPosition.legs?.map((l) => ({
+          picks={selectedPosition.legs?.map((l) => ({
             question: l.question,
             choice: l.choice,
           }))}

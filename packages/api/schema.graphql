@@ -1064,6 +1064,7 @@ type PicksType {
   id: String!
   marketAddress: String!
   picks: [PickType!]!
+  predictionId: String
   predictorToken: String
   resolved: Boolean!
   resolvedAt: Int
@@ -1148,9 +1149,9 @@ type Query {
   legacyPositionsCount(address: String!, chainId: Int): Int!
   pickConfiguration(id: String!): PicksType
   pickConfigurations(chainId: Int, resolved: Boolean, result: String, skip: Int! = 0, take: Int! = 50): [PicksType!]!
-  positions(chainId: Int, holder: String!, pickConfigId: String, skip: Int! = 0, take: Int! = 50): [PositionType!]!
+  positions(holder: String, conditionId: String, chainId: Int, pickConfigId: String, skip: Int! = 0, take: Int! = 50): [PositionType!]!
   prediction(predictionId: String!): PredictionType
-  predictions(address: String, chainId: Int, orderBy: String, orderDirection: String, settled: Boolean, skip: Int! = 0, take: Int! = 50): [PredictionType!]!
+  predictions(address: String, conditionId: String, chainId: Int, orderBy: String, orderDirection: String, settled: Boolean, skip: Int! = 0, take: Int! = 50): [PredictionType!]!
   predictionsCount(address: String!, chainId: Int): Int!
   profitRankByAddress(owner: String!): ProfitRankType!
   protocolStats: [ProtocolStat!]!

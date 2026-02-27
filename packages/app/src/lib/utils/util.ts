@@ -36,7 +36,11 @@ export function getPublicClientForChainId(chainId: number) {
     const envKey = `NEXT_PUBLIC_RPC_${chainId}` as keyof NodeJS.ProcessEnv;
     const envUrl = process.env[envKey as string];
     const isTestnet = chainId === CHAIN_ID_ETHEREAL_TESTNET;
-    const rpcUrl = envUrl || (isTestnet ? 'https://rpc.etherealtest.net' : 'https://rpc.ethereal.trade');
+    const rpcUrl =
+      envUrl ||
+      (isTestnet
+        ? 'https://rpc.etherealtest.net'
+        : 'https://rpc.ethereal.trade');
 
     const client = createPublicClient({
       chain: isTestnet ? etherealTestnetChain : etherealChain,
@@ -204,6 +208,7 @@ export const shortenAddress = (address: string) => {
  */
 export function getExplorerUrl(chainId?: number): string {
   const id = chainId || DEFAULT_CHAIN_ID;
-  if (id === CHAIN_ID_ETHEREAL_TESTNET) return 'https://explorer.etherealtest.net';
+  if (id === CHAIN_ID_ETHEREAL_TESTNET)
+    return 'https://explorer.etherealtest.net';
   return 'https://explorer.ethereal.trade';
 }
