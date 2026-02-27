@@ -89,9 +89,9 @@ interface BalanceRow {
   claimable_collateral: string;
 }
 
-// ─── Account Volume History ───────────────────────────────────────────────────
+// ─── Account Volume ──────────────────────────────────────────────────────────
 
-export async function queryAccountVolumeHistory(
+export async function queryAccountVolume(
   address: string,
   interval: TimeInterval,
   from?: Date,
@@ -156,9 +156,9 @@ export async function queryAccountVolumeHistory(
   }));
 }
 
-// ─── Account PnL History ──────────────────────────────────────────────────────
+// ─── Account PnL ─────────────────────────────────────────────────────────────
 
-export async function queryAccountPnlHistory(
+export async function queryAccountPnl(
   address: string,
   interval: TimeInterval,
   from?: Date,
@@ -244,9 +244,9 @@ export async function queryAccountPnlHistory(
   }));
 }
 
-// ─── Account Balance History ──────────────────────────────────────────────────
+// ─── Account Balance ─────────────────────────────────────────────────────────
 
-export async function queryAccountBalanceHistory(
+export async function queryAccountBalance(
   address: string,
   interval: TimeInterval,
   from?: Date,
@@ -327,9 +327,9 @@ export async function queryAccountBalanceHistory(
   }));
 }
 
-// ─── Protocol Volume History ──────────────────────────────────────────────────
+// ─── Protocol Volume ─────────────────────────────────────────────────────────
 
-export async function queryProtocolVolumeHistory(
+export async function queryProtocolVolume(
   interval: TimeInterval,
   from?: Date,
   to?: Date
