@@ -57,3 +57,4 @@ sitemap*.xml
 .env.sentry-build-plugin
 
 /.next/
+.env*.local
