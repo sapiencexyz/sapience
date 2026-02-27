@@ -122,7 +122,6 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
     predictionMarketEscrow[chainId]?.address ||
     predictionMarketEscrow[DEFAULT_CHAIN_ID]?.address;
 
-  const eagerlyRequestedRef = React.useRef<boolean>(false);
   const eagerJitterMsRef = React.useRef<number>(
     Math.floor(Math.random() * 301)
   );
@@ -419,28 +418,6 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
     isRequesting,
     eager,
     chainId,
-  ]);
-
-  // Only fire eager once both predictor address and outcomes are ready
-  // TODO: Re-enable after escrow testing - disabled to prevent auto-auctions interfering with escrow flow
-  React.useEffect(() => {
-    // TEMPORARILY DISABLED for escrow testing
-    return;
-
-    if (!eager) return;
-    if (prefetchedProbability != null) return;
-    if (eagerlyRequestedRef.current) return;
-    if (!isInViewport) return;
-    if (!selectedPredictorAddress) return;
-    if (effectiveOutcomes.length === 0) return;
-    eagerlyRequestedRef.current = true;
-    handleRequestPrediction();
-  }, [
-    eager,
-    isInViewport,
-    selectedPredictorAddress,
-    effectiveOutcomes.length,
-    handleRequestPrediction,
   ]);
 
   return (

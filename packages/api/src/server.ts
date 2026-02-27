@@ -1,7 +1,6 @@
 import 'reflect-metadata';
 import { initializeDataSource } from './db';
 import { expressMiddleware } from '@as-integrations/express4';
-import { createLoaders } from './graphql/loaders';
 import { app } from './app';
 import { createServer } from 'http';
 import { createChatWebSocketServer } from './websocket/chat';
@@ -101,7 +100,6 @@ const startServer = async () => {
     },
     expressMiddleware(apolloServer, {
       context: async () => ({
-        loaders: createLoaders(),
         prisma,
       }),
     })

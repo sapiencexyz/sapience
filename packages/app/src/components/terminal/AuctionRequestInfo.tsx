@@ -21,8 +21,8 @@ import {
 import { HelpCircle } from 'lucide-react';
 import { type UiTransaction } from '~/components/markets/DataDrawer/TransactionCells';
 import { useLastTradeForIntent } from '~/hooks/graphql/useLastTradeForIntent';
-import TradePopoverContent from '~/components/terminal/TradePopoverContent';
-import ExpiresInLabel from '~/components/terminal/ExpiresInLabel';
+import TradePopoverContent from '~/components/shared/TradePopoverContent';
+import ExpiresInLabel from '~/components/shared/ExpiresInLabel';
 import PercentChance from '~/components/shared/PercentChance';
 import { decodeAuctionPredictedOutcomes } from '~/lib/auction/decodePredictedOutcomes';
 

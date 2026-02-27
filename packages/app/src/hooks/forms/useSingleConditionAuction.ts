@@ -16,8 +16,6 @@ interface UseSingleConditionAuctionProps {
   positionSize: string;
   chainId: number;
   collateralDecimals?: number;
-  /** @deprecated No longer needed — nonces are generated client-side */
-  predictionMarketAddress?: `0x${string}`;
   bids: QuoteBid[];
   requestQuotes?: (
     params: AuctionParams | null,
@@ -44,7 +42,6 @@ export function useSingleConditionAuction({
   positionSize,
   chainId,
   collateralDecimals = 18,
-  predictionMarketAddress: _predictionMarketAddress,
   bids,
   requestQuotes,
   resolverAddress,

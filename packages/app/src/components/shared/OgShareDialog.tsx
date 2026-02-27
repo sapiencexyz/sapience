@@ -14,10 +14,6 @@ import { useEffect, useMemo, useState, useRef, useCallback } from 'react';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import HeroBackgroundLines from '~/components/home/HeroBackgroundLines';
 import PositionProgressBar from '~/components/shared/PositionProgressBar';
-import {
-  useUserPositions,
-  type Position,
-} from '~/hooks/graphql/useLegacyPositions';
 import { usePredictions, type Prediction } from '~/hooks/graphql/usePositions';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useSession } from '~/lib/context/SessionContext';
@@ -35,7 +31,6 @@ interface OgShareDialogBaseProps {
   onOpenChange?: (open: boolean) => void;
   trackPosition?: boolean; // Enable position tracking
   positionTimestamp?: number; // Timestamp when position was placed (ms)
-  lastNftId?: string; // Last NFT ID before this position was submitted (for validation)
   progressState?: PositionProgressState; // Progress state for showing submission stages
   onPositionIndexed?: () => void; // Called when position is found in GraphQL
   shareUrl?: string; // Override share URL (e.g. for slip preview cards)
@@ -53,7 +48,6 @@ export default function OgShareDialogBase({
   onOpenChange,
   trackPosition = false,
   positionTimestamp,
-  lastNftId,
   progressState,
   onPositionIndexed,
   shareUrl: shareUrlProp,
@@ -118,174 +112,6 @@ export default function OgShareDialogBase({
     address: trackPrediction && userAddress ? userAddress : undefined,
     take: 5,
   });
-
-  // Fetch positions for tracking
-  const { data: positions, refetch: refetchPositions } = useUserPositions({
-    address: trackPosition && userAddress ? userAddress : undefined,
-    chainId,
-    take: 10, // Only need recent positions
-    orderBy: 'mintedAt',
-    orderDirection: 'desc',
-  });
-
-  // Position tracking logic
-  useEffect(() => {
-    if (!trackPosition || !open || !userAddress) {
-      return;
-    }
-
-    // Stop polling once position is resolved - prevents flickering
-    if (positionResolved) {
-      pollingCancelledRef.current = true;
-      if (pollingTimerRef.current) {
-        clearTimeout(pollingTimerRef.current);
-        pollingTimerRef.current = null;
-      }
-      return;
-    }
-
-    console.debug('[OgShareDialog] polling started', {
-      userAddress,
-      lastNftId,
-      dialogOpenTimestamp: dialogOpenTimestampRef.current,
-    });
-
-    const resolvePosition = (position: Position): void => {
-      console.debug('[OgShareDialog] resolved!', {
-        nftId: position.predictorNftTokenId,
-        marketAddress: position.marketAddress,
-        mintedAt: position.mintedAt,
-      });
-      setPositionResolved(true);
-      onPositionIndexed?.();
-      pollingCancelledRef.current = true;
-      if (pollingTimerRef.current) {
-        clearTimeout(pollingTimerRef.current);
-        pollingTimerRef.current = null;
-      }
-    };
-
-    let pollCount = 0;
-
-    const checkPosition = (positionsToCheck: Position[]): boolean => {
-      if (!positionsToCheck || positionsToCheck.length === 0) {
-        return false;
-      }
-
-      const nftIds = positionsToCheck.map((p) => p.predictorNftTokenId);
-
-      // Primary strategy: find position with NFT ID > lastNftId.
-      // The modal is blocking so only one new position can exist.
-      if (lastNftId) {
-        try {
-          const lastNftIdBigInt = BigInt(lastNftId);
-          const found = positionsToCheck.find((p: Position) => {
-            try {
-              return BigInt(p.predictorNftTokenId || '0') > lastNftIdBigInt;
-            } catch {
-              return false;
-            }
-          });
-          if (found) {
-            resolvePosition(found);
-            return true;
-          }
-          // Log every ~5s (every 10th poll) to avoid spam
-          if (pollCount % 10 === 0) {
-            console.debug('[OgShareDialog] no nftId > lastNftId yet', {
-              lastNftId,
-              nftIds,
-              pollCount,
-            });
-          }
-        } catch {
-          console.warn('[OgShareDialog] lastNftId parse error', { lastNftId });
-        }
-        // Don't fall through — wait for NFT ID match to avoid resolving a stale position
-        return false;
-      }
-
-      // Fallback (no lastNftId, e.g. first-time user): accept any position
-      // minted after the dialog opened (10s buffer for clock skew)
-      const minTimestamp =
-        (dialogOpenTimestampRef.current || Date.now()) - 10 * 1000;
-      const minTimestampSeconds = Math.floor(minTimestamp / 1000);
-
-      const found = positionsToCheck.find((p: Position) => {
-        const mintedAtSeconds = Number(p.mintedAt);
-        return mintedAtSeconds >= minTimestampSeconds;
-      });
-
-      if (found) {
-        console.debug('[OgShareDialog] resolved via timestamp fallback', {
-          mintedAt: found.mintedAt,
-          minTimestampSeconds,
-        });
-        resolvePosition(found);
-        return true;
-      }
-
-      if (pollCount % 10 === 0) {
-        const mintedAts = positionsToCheck.map((p) => p.mintedAt);
-        console.debug('[OgShareDialog] timestamp fallback: no match', {
-          minTimestampSeconds,
-          mintedAts,
-          pollCount,
-        });
-      }
-      return false;
-    };
-
-    // Initial check
-    if (positions && positions.length > 0) {
-      checkPosition(positions);
-    }
-
-    // Poll with recursive setTimeout so each fetch completes before the next
-    // starts. Using setInterval with 500ms caused fetches to be cancelled by
-    // React Query's cancelRefetch default when the two-query queryFn took >500ms.
-    pollingCancelledRef.current = false;
-    const poll = async () => {
-      if (pollingCancelledRef.current) return;
-      pollCount++;
-      try {
-        const result = await refetchPositions();
-        const latestPositions = result.data || [];
-        if (latestPositions.length === 0 && pollCount % 10 === 0) {
-          console.warn('[OgShareDialog] refetch returned 0 positions', {
-            pollCount,
-            resultStatus: result.status,
-            error: result.error?.message,
-          });
-        }
-        if (!pollingCancelledRef.current) {
-          checkPosition(latestPositions);
-        }
-      } catch (err) {
-        console.warn('[OgShareDialog] refetch threw', err);
-      }
-      if (!pollingCancelledRef.current) {
-        pollingTimerRef.current = setTimeout(poll, 500);
-      }
-    };
-    pollingTimerRef.current = setTimeout(poll, 500);
-
-    return () => {
-      pollingCancelledRef.current = true;
-      if (pollingTimerRef.current) {
-        clearTimeout(pollingTimerRef.current);
-        pollingTimerRef.current = null;
-      }
-    };
-  }, [
-    trackPosition,
-    open,
-    userAddress,
-    positionResolved,
-    refetchPositions,
-    lastNftId,
-    onPositionIndexed,
-  ]);
 
   // Prediction tracking logic
   useEffect(() => {
