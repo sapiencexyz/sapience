@@ -3,7 +3,7 @@
 import * as React from 'react';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 
-import type { Position } from '~/hooks/graphql/useLegacyPositions';
+import type { LegacyPosition as Position } from '@sapience/sdk/queries';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import { useUserProfitRank } from '~/hooks/graphql/useUserProfitRank';
 import { useForecasterRank } from '~/hooks/graphql/useForecasterRank';

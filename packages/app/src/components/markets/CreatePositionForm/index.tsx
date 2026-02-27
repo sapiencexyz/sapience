@@ -54,7 +54,6 @@ import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import { useSubmitPosition } from '~/hooks/forms/useSubmitPosition';
 import { useSponsorStatus } from '~/hooks/sponsorship/useSponsorStatus';
 import { usePositionProgress } from '~/hooks/forms/usePositionProgress';
-import { useUserPositions } from '~/hooks/graphql/useLegacyPositions';
 import { useAuctionStart, type QuoteBid } from '~/lib/auction/useAuctionStart';
 
 import { logPositionForm } from '~/lib/auction/bidLogger';
@@ -212,7 +211,6 @@ const CreatePositionFormInner = ({
     positionSize: string;
     payout?: string;
     symbol: string;
-    lastNftId?: string;
   } | null>(null);
 
   // Position progress tracking for benchmarking and UI
@@ -228,21 +226,6 @@ const CreatePositionFormInner = ({
     () => chainId || createPositionEntries[0]?.chainId || DEFAULT_CHAIN_ID,
     [chainId, createPositionEntries]
   );
-
-  // effectiveAddress from session context is used for position queries
-
-  // Get latest NFT ID from positions for tracking
-  // Always call hook unconditionally to maintain hook order
-  const { data: userPositions, refetch: refetchUserPositions } =
-    useUserPositions({
-      address: effectiveAddress
-        ? String(effectiveAddress).toLowerCase()
-        : undefined,
-      chainId: positionChainId,
-      take: 1, // Only need the latest one
-      orderBy: 'mintedAt',
-      orderDirection: 'desc',
-    });
 
   const {
     bids: rawBids,
@@ -686,23 +669,6 @@ const CreatePositionFormInner = ({
               (limitAmount !== undefined ? String(limitAmount) : undefined);
           }
 
-          // Get lastNftId from current positions (sync)
-          let lastNftId: string | undefined = undefined;
-          if (userPositions && userPositions.length > 0) {
-            const latestPosition = userPositions.reduce((latest, current) => {
-              try {
-                const latestNftId = BigInt(latest.predictorNftTokenId || '0');
-                const currentNftId = BigInt(current.predictorNftTokenId || '0');
-                return currentNftId > latestNftId ? current : latest;
-              } catch {
-                return latest;
-              }
-            }, userPositions[0]);
-            if (latestPosition?.predictorNftTokenId) {
-              lastNftId = latestPosition.predictorNftTokenId;
-            }
-          }
-
           const dialogData = {
             picks: selections.map((s) => ({
               conditionId: s.conditionId,
@@ -712,7 +678,6 @@ const CreatePositionFormInner = ({
             positionSize: submittedPositionSize,
             payout,
             symbol: collateralSymbol || 'testUSDe',
-            lastNftId,
           };
 
           // Open share dialog immediately with position form data
@@ -842,18 +807,15 @@ const CreatePositionFormInner = ({
     [clearPositionForm, clearSelections, resetProgress]
   );
 
-  // Handle position indexed - mark complete, clear form, and refetch positions for accurate lastNftId on next trade
+  // Handle position indexed - mark complete, clear form
   const handlePositionIndexed = useCallback(() => {
     markPositionIndexed();
     clearPositionForm();
     clearSelections();
-    // Refetch positions so next trade has correct lastNftId
-    refetchUserPositions();
   }, [
     markPositionIndexed,
     clearPositionForm,
     clearSelections,
-    refetchUserPositions,
   ]);
 
   const contentProps = {

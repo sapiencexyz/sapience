@@ -27,8 +27,6 @@ interface PredictionFormProps {
   chainId: number;
   /** Collateral decimals (default 18) */
   collateralDecimals?: number;
-  /** PredictionMarket contract address */
-  predictionMarketAddress?: `0x${string}`;
   /** Bids from useAuctionStart */
   bids: QuoteBid[];
   /** Request quotes function from useAuctionStart */
@@ -54,7 +52,6 @@ export default function PredictionForm({
   resolverAddress,
   chainId,
   collateralDecimals = 18,
-  predictionMarketAddress,
   bids,
   requestQuotes,
   className,
@@ -80,7 +77,6 @@ export default function PredictionForm({
     positionSize,
     chainId,
     collateralDecimals,
-    predictionMarketAddress,
     bids,
     requestQuotes,
     resolverAddress,

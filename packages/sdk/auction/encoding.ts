@@ -13,11 +13,6 @@ export type PolymarketPredictedOutcome = {
   prediction: boolean; // true = YES, false = NO
 };
 
-/** @deprecated Use `PolymarketPredictedOutcome` instead. */
-export type UmaPredictedOutcome = PolymarketPredictedOutcome;
-/** @deprecated Use `PolymarketPredictedOutcome` instead. */
-export type PredictedOutcome = PolymarketPredictedOutcome;
-
 export function encodePolymarketPredictedOutcomes(outcomes: PolymarketPredictedOutcome[]): Hex {
   return encodeAbiParameters(
     [
@@ -32,11 +27,6 @@ export function encodePolymarketPredictedOutcomes(outcomes: PolymarketPredictedO
     [outcomes]
   );
 }
-
-/** @deprecated Use `encodePolymarketPredictedOutcomes` instead. */
-export const encodeUmaPredictedOutcomes = encodePolymarketPredictedOutcomes;
-/** @deprecated Use `encodePolymarketPredictedOutcomes` instead. */
-export const encodePredictedOutcomes = encodePolymarketPredictedOutcomes;
 
 // ============================================================================
 // Pyth Resolver Encoding (PythResolver.BinaryOptionOutcome[])

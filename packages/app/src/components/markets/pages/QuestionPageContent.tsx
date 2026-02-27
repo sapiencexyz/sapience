@@ -463,7 +463,6 @@ export default function QuestionPageContent({
       categorySlug={data.category?.slug}
       resolverAddress={resolverAddress}
       chainId={chainId}
-      predictionMarketAddress={predictionMarketAddress}
       bids={bids}
       requestQuotes={requestQuotes}
       settled={data.settled}
