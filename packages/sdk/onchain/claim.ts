@@ -12,25 +12,12 @@ import {
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { predictionMarket } from '../contracts/addresses';
-import { CHAIN_ID_ETHEREAL } from '../constants/chain';
+import { CHAIN_ID_ETHEREAL, etherealChain, getRpcUrl } from '../constants/chain';
 
 type Hex = `0x${string}`;
 
-// Ethereal chain definition (trading chain)
-const tradingChain: Chain = {
-  id: CHAIN_ID_ETHEREAL,
-  name: 'Ethereal',
-  nativeCurrency: { name: 'USDe', symbol: 'USDe', decimals: 18 },
-  rpcUrls: {
-    default: { http: ['https://rpc.ethereal.trade'] },
-  },
-  blockExplorers: {
-    default: { name: 'Ethereal Explorer', url: 'https://explorer.ethereal.trade' },
-  },
-};
-
-// Default trading RPC URL
-const TRADING_RPC_URL = 'https://rpc.ethereal.trade';
+const tradingChain: Chain = etherealChain;
+const TRADING_RPC_URL = getRpcUrl(CHAIN_ID_ETHEREAL);
 
 // PredictionMarket ABI for burn function
 const PREDICTION_MARKET_ABI = parseAbi([

@@ -3,8 +3,7 @@ import { createServer, type Server } from 'http';
 import WebSocket from 'ws';
 import { createAuctionWebSocketServer } from '../ws';
 import { privateKeyToAccount, generatePrivateKey } from 'viem/accounts';
-import { createAuctionStartSiweMessage } from '@sapience/sdk';
-import type { AuctionRequestPayload, BidPayload } from '../types';
+import type { AuctionRFQPayload, BidPayload } from '../escrowTypes';
 
 // Test server setup
 let httpServer: Server;
@@ -12,18 +11,10 @@ let wss: ReturnType<typeof createAuctionWebSocketServer>;
 let serverPort: number;
 
 // Test accounts
-const takerPrivateKey = generatePrivateKey();
-const takerAccount = privateKeyToAccount(takerPrivateKey);
-const makerPrivateKey = generatePrivateKey();
-const makerAccount = privateKeyToAccount(makerPrivateKey);
-
-// Domain and URI are derived from the Host header in the WebSocket request
-// We need to compute them dynamically based on the server port
-function getSigningParams() {
-  const domain = 'localhost';
-  const uri = `http://localhost:${serverPort}`;
-  return { domain, uri };
-}
+const predictorPrivateKey = generatePrivateKey();
+const predictorAccount = privateKeyToAccount(predictorPrivateKey);
+const counterpartyPrivateKey = generatePrivateKey();
+const counterpartyAccount = privateKeyToAccount(counterpartyPrivateKey);
 
 // Helper to create WebSocket connection
 function createClient(): Promise<WebSocket> {
@@ -65,37 +56,22 @@ async function sendAndWait(
   return responsePromise;
 }
 
-// Helper to create signed auction
-async function createSignedAuction(): Promise<AuctionRequestPayload> {
-  const { domain, uri } = getSigningParams();
-  const takerSignedAt = new Date().toISOString();
-  const payload = {
-    wager: '1000000000000000000',
-    predictedOutcomes: ['0xdeadbeef'],
-    resolver: '0x1234567890123456789012345678901234567890',
-    taker: takerAccount.address,
-    takerNonce: Math.floor(Math.random() * 1000000),
-    chainId: 5064014,
-  };
+// Valid test pick for escrow auctions
+const TEST_PICK = {
+  conditionResolver: '0x1234567890123456789012345678901234567890',
+  conditionId: '0x' + 'ab'.repeat(32),
+  predictedOutcome: 0 as const,
+};
 
-  const message = createAuctionStartSiweMessage(payload, domain, uri, takerSignedAt);
-  const signature = await takerAccount.signMessage({ message });
-
+// Helper to create a valid escrow auction RFQ payload
+function createAuctionRFQ(): AuctionRFQPayload {
   return {
-    ...payload,
-    takerSignature: signature,
-    takerSignedAt,
-  };
-}
-
-// Helper to create unsigned auction
-function createUnsignedAuction(): AuctionRequestPayload {
-  return {
-    wager: '1000000000000000000',
-    predictedOutcomes: ['0xdeadbeef'],
-    resolver: '0x1234567890123456789012345678901234567890',
-    taker: takerAccount.address,
-    takerNonce: Math.floor(Math.random() * 1000000),
+    picks: [TEST_PICK],
+    predictorCollateral: '1000000000000000000',
+    predictor: predictorAccount.address,
+    predictorNonce: Math.floor(Math.random() * 1000000),
+    predictorDeadline: Math.floor(Date.now() / 1000) + 3600,
+    intentSignature: '0x' + 'aa'.repeat(65),
     chainId: 5064014,
   };
 }
@@ -104,11 +80,11 @@ function createUnsignedAuction(): AuctionRequestPayload {
 function createValidBid(auctionId: string): BidPayload {
   return {
     auctionId,
-    maker: makerAccount.address,
-    makerCollateral: '500000000000000000',
-    makerDeadline: Math.floor(Date.now() / 1000) + 3600,
-    makerSignature: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1b',
-    makerNonce: 1,
+    counterparty: counterpartyAccount.address,
+    counterpartyCollateral: '500000000000000000',
+    counterpartyDeadline: Math.floor(Date.now() / 1000) + 3600,
+    counterpartySignature: '0x' + 'bb'.repeat(65),
+    counterpartyNonce: 1,
   };
 }
 
@@ -166,9 +142,9 @@ describe('WebSocket Connection Lifecycle', () => {
 });
 
 describe('auction.start Handler', () => {
-  it('returns auction.ack with auctionId for valid unsigned auction', async () => {
+  it('returns auction.ack with auctionId for valid auction', async () => {
     const ws = await createClient();
-    const auction = createUnsignedAuction();
+    const auction = createAuctionRFQ();
 
     const response = await sendAndWait(
       ws,
@@ -184,9 +160,9 @@ describe('auction.start Handler', () => {
     ws.close();
   });
 
-  it('returns auction.ack with auctionId for valid signed auction', async () => {
+  it('returns auction.ack with auctionId for auction with intentSignature', async () => {
     const ws = await createClient();
-    const auction = await createSignedAuction();
+    const auction = createAuctionRFQ();
 
     const response = await sendAndWait(
       ws,
@@ -201,11 +177,9 @@ describe('auction.start Handler', () => {
     ws.close();
   });
 
-  it('returns auction.ack with error for invalid taker signature', async () => {
+  it('returns auction.ack with error for missing picks', async () => {
     const ws = await createClient();
-    const auction = await createSignedAuction();
-    // Tamper with the wager to invalidate the signature
-    auction.wager = '2000000000000000000';
+    const auction = { ...createAuctionRFQ(), picks: [] };
 
     const response = await sendAndWait(
       ws,
@@ -222,7 +196,7 @@ describe('auction.start Handler', () => {
   it('broadcasts auction.started to all connected clients', async () => {
     const ws1 = await createClient();
     const ws2 = await createClient();
-    const auction = createUnsignedAuction();
+    const auction = createAuctionRFQ();
 
     // Set up listener on ws2 before ws1 sends auction
     const broadcastPromise = waitForMessage(ws2, 'auction.started');
@@ -230,10 +204,9 @@ describe('auction.start Handler', () => {
     // Send auction from ws1
     ws1.send(JSON.stringify({ type: 'auction.start', payload: auction }));
 
-    const broadcast = await broadcastPromise as { type: string; payload: AuctionRequestPayload & { auctionId: string } };
+    const broadcast = await broadcastPromise as { type: string; payload: { auctionId: string; predictorCollateral?: string } };
     expect(broadcast.type).toBe('auction.started');
     expect(broadcast.payload.auctionId).toBeDefined();
-    expect(broadcast.payload.wager).toBe(auction.wager);
 
     ws1.close();
     ws2.close();
@@ -243,7 +216,7 @@ describe('auction.start Handler', () => {
 describe('auction.subscribe Handler', () => {
   it('returns auction.ack with subscribed:true for valid auctionId', async () => {
     const ws = await createClient();
-    const auction = createUnsignedAuction();
+    const auction = createAuctionRFQ();
 
     // First create an auction
     const ackResponse = await sendAndWait(
@@ -285,7 +258,7 @@ describe('auction.subscribe Handler', () => {
 describe('auction.unsubscribe Handler', () => {
   it('returns auction.ack with unsubscribed:true for valid auctionId', async () => {
     const ws = await createClient();
-    const auction = createUnsignedAuction();
+    const auction = createAuctionRFQ();
 
     // Create and subscribe to auction
     const ackResponse = await sendAndWait(
@@ -326,7 +299,7 @@ describe('auction.unsubscribe Handler', () => {
 describe('bid.submit Handler', () => {
   it('returns bid.ack with empty payload for valid bid', async () => {
     const ws = await createClient();
-    const auction = createUnsignedAuction();
+    const auction = createAuctionRFQ();
 
     // Create auction first
     const ackResponse = await sendAndWait(
@@ -367,9 +340,9 @@ describe('bid.submit Handler', () => {
     ws.close();
   });
 
-  it('returns bid.ack with error for expired makerDeadline', async () => {
+  it('returns bid.ack with error for expired counterpartyDeadline', async () => {
     const ws = await createClient();
-    const auction = createUnsignedAuction();
+    const auction = createAuctionRFQ();
 
     // Create auction
     const ackResponse = await sendAndWait(
@@ -381,7 +354,7 @@ describe('bid.submit Handler', () => {
     const auctionId = ackResponse.payload.auctionId;
     const bid = {
       ...createValidBid(auctionId),
-      makerDeadline: Math.floor(Date.now() / 1000) - 100, // Expired
+      counterpartyDeadline: Math.floor(Date.now() / 1000) - 100, // Expired
     };
 
     const response = await sendAndWait(
@@ -390,7 +363,7 @@ describe('bid.submit Handler', () => {
       'bid.ack'
     ) as { type: string; payload: { error?: string } };
 
-    expect(response.payload.error).toBe('quote_expired');
+    expect(response.payload.error).toBe('counterpartyDeadline must be in the future');
 
     ws.close();
   });
@@ -398,7 +371,7 @@ describe('bid.submit Handler', () => {
   it('broadcasts auction.bids to subscribed clients after successful bid', async () => {
     const wsCreator = await createClient();
     const wsBidder = await createClient();
-    const auction = createUnsignedAuction();
+    const auction = createAuctionRFQ();
 
     // Create auction (creator is auto-subscribed)
     const ackResponse = await sendAndWait(
@@ -421,7 +394,7 @@ describe('bid.submit Handler', () => {
     expect(bidsMessage.type).toBe('auction.bids');
     expect(bidsMessage.payload.auctionId).toBe(auctionId);
     expect(bidsMessage.payload.bids).toHaveLength(1);
-    expect(bidsMessage.payload.bids[0].maker).toBe(bid.maker);
+    expect(bidsMessage.payload.bids[0].counterparty).toBe(bid.counterparty);
 
     wsCreator.close();
     wsBidder.close();
@@ -463,7 +436,7 @@ describe('Invalid Messages', () => {
 describe('Multiple Bids', () => {
   it('accumulates multiple bids for same auction', async () => {
     const ws = await createClient();
-    const auction = createUnsignedAuction();
+    const auction = createAuctionRFQ();
 
     // Create auction
     const ackResponse = await sendAndWait(
@@ -478,11 +451,11 @@ describe('Multiple Bids', () => {
     const bid1 = createValidBid(auctionId);
     await sendAndWait(ws, { type: 'bid.submit', payload: bid1 }, 'bid.ack');
 
-    // Submit second bid from different maker
+    // Submit second bid from different counterparty
     const bid2 = {
       ...createValidBid(auctionId),
-      maker: '0xdeaddeaddeaddeaddeaddeaddeaddeaddeaddead',
-      makerCollateral: '600000000000000000',
+      counterparty: '0xDeaDDeaDDeaDDeaDDeaDDeaDDeaDDeaDDeaDDeaD',
+      counterpartyCollateral: '600000000000000000',
     };
 
     // Wait for the auction.bids broadcast after second bid
@@ -500,7 +473,7 @@ describe('Subscription Behavior', () => {
   it('receives auction.bids after subscribing to existing auction', async () => {
     const wsCreator = await createClient();
     const wsSubscriber = await createClient();
-    const auction = createUnsignedAuction();
+    const auction = createAuctionRFQ();
 
     // Create auction
     const ackResponse = await sendAndWait(

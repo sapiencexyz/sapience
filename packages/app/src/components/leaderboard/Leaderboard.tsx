@@ -155,9 +155,9 @@ const PnLLeaderboard = () => {
         cell: RankCell,
       },
       {
-        id: 'owner',
+        id: 'address',
         header: () => 'Ethereum Account Address',
-        accessorKey: 'owner',
+        accessorKey: 'address',
         cell: OwnerCell,
       },
       {
@@ -222,13 +222,13 @@ const PnLLeaderboard = () => {
             const pinnedRow =
               address && rows.length > 0
                 ? rows.find((r) => {
-                    const owner =
-                      r.getValue('owner') ??
-                      (r as unknown as { original?: { owner?: string } })
-                        ?.original?.owner;
+                    const addr =
+                      r.getValue('address') ??
+                      (r as unknown as { original?: { address?: string } })
+                        ?.original?.address;
                     return (
-                      typeof owner === 'string' &&
-                      owner.toLowerCase() === address.toLowerCase()
+                      typeof addr === 'string' &&
+                      addr.toLowerCase() === address.toLowerCase()
                     );
                   })
                 : undefined;
@@ -327,9 +327,9 @@ const AccuracyLeaderboard = () => {
     () => [
       { id: 'rank', header: () => '', cell: RankCell },
       {
-        id: 'attester',
+        id: 'address',
         header: () => 'Ethereum Account Address',
-        accessorKey: 'attester',
+        accessorKey: 'address',
         cell: OwnerCell,
       },
       {
@@ -408,13 +408,13 @@ const AccuracyLeaderboard = () => {
             const pinnedRow =
               address && rows.length > 0
                 ? rows.find((r) => {
-                    const attester =
-                      r.getValue('attester') ??
-                      (r as unknown as { original?: { attester?: string } })
-                        ?.original?.attester;
+                    const addr =
+                      r.getValue('address') ??
+                      (r as unknown as { original?: { address?: string } })
+                        ?.original?.address;
                     return (
-                      typeof attester === 'string' &&
-                      attester.toLowerCase() === address.toLowerCase()
+                      typeof addr === 'string' &&
+                      addr.toLowerCase() === address.toLowerCase()
                     );
                   })
                 : undefined;

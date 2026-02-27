@@ -71,3 +71,30 @@ export const etherealTestnetChain = {
   },
   testnet: true,
 } as const satisfies Chain;
+
+/**
+ * Get chain configuration with optional env-var RPC override.
+ * Env var: CHAIN_{chainId}_RPC_URL (e.g., CHAIN_5064014_RPC_URL)
+ */
+export function getChainConfig(chainId: number): Chain {
+  const envRpc = process.env[`CHAIN_${chainId}_RPC_URL`];
+  switch (chainId) {
+    case CHAIN_ID_ETHEREAL:
+      return envRpc
+        ? { ...etherealChain, rpcUrls: { default: { http: [envRpc] } } }
+        : etherealChain;
+    case CHAIN_ID_ETHEREAL_TESTNET:
+      return envRpc
+        ? { ...etherealTestnetChain, rpcUrls: { default: { http: [envRpc] } } }
+        : etherealTestnetChain;
+    default:
+      throw new Error(`Unsupported chain: ${chainId}`);
+  }
+}
+
+/**
+ * Get the RPC URL for a chain, respecting env-var overrides.
+ */
+export function getRpcUrl(chainId: number): string {
+  return getChainConfig(chainId).rpcUrls.default.http[0];
+}

@@ -50,7 +50,7 @@ type Props = {
 };
 
 const AuctionRequestRow: React.FC<Props> = ({
-  uiTx,
+  uiTx: _uiTx,
   predictionsContent,
   auctionId,
   predictorCollateral,
@@ -644,15 +644,11 @@ const AuctionRequestRow: React.FC<Props> = ({
               invalidBidCount={invalidBidCount}
             />
             <AuctionRequestInfo
-              uiTx={uiTx}
               bids={validBids}
               predictorCollateral={predictorCollateral}
               collateralAssetTicker={collateralAssetTicker}
               maxEndTimeSec={maxEndTimeSec ?? undefined}
               onSubmit={submitBid}
-              predictor={predictor}
-              resolver={resolver}
-              predictedOutcomes={predictedOutcomes}
             />
           </motion.div>
         ) : null}

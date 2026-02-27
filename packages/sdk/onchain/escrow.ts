@@ -9,8 +9,7 @@ import {
   type Transport,
 } from 'viem';
 import { predictionMarketEscrow } from '../contracts/addresses';
-import { CHAIN_ID_ETHEREAL } from '../constants/chain';
-import { tradingChain } from './trading';
+import { CHAIN_ID_ETHEREAL, getChainConfig, getRpcUrl } from '../constants/chain';
 import type {
   Prediction,
   PickConfiguration,
@@ -20,13 +19,6 @@ import type {
   OutcomeSide,
   SettlementResult,
 } from '../types/escrow';
-
-// ============================================================================
-// Chain Configuration
-// ============================================================================
-
-/** Default escrow RPC URL */
-export const ESCROW_RPC_URL = 'https://rpc.ethereal.trade';
 
 // ============================================================================
 // ABI Definitions
@@ -73,18 +65,11 @@ export function createEscrowPublicClient(
   rpcUrl?: string,
   chainId: number = CHAIN_ID_ETHEREAL
 ): PublicClient<Transport, Chain> {
-  const chain: Chain = chainId === CHAIN_ID_ETHEREAL
-    ? tradingChain
-    : {
-        id: chainId,
-        name: `Chain ${chainId}`,
-        nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
-        rpcUrls: { default: { http: [rpcUrl || ESCROW_RPC_URL] } },
-      };
+  const chain = getChainConfig(chainId);
 
   return createPublicClient({
     chain,
-    transport: http(rpcUrl || ESCROW_RPC_URL),
+    transport: http(rpcUrl || getRpcUrl(chainId)),
   });
 }
 

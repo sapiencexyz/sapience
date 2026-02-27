@@ -45,11 +45,11 @@ export const config = cleanEnv(process.env, {
     desc: 'Postgres connection string',
   }),
   CONNECTION_POOL_SIZE: num({
-    default: 50,
+    default: 20,
     desc: 'Max Prisma connection pool size',
   }),
   GRAPHQL_MAX_CONCURRENT_OPERATIONS: num({
-    default: 200,
+    default: 50,
     desc: 'Max concurrent GraphQL operations before shedding load with 503',
   }),
   // x402 payment integration
