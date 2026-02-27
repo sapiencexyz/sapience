@@ -181,9 +181,12 @@ export async function calculatePositionPnL(
 
   // Get predictions for claim context (linked directly via predictionId)
   const predictionIds = new Set<string>();
+  // Track claimed (predictionId, holder) pairs to avoid double-counting in step 3
+  const claimedPairs = new Set<string>();
 
   for (const claimRecord of claims) {
     predictionIds.add(claimRecord.predictionId);
+    claimedPairs.add(`${claimRecord.predictionId}:${claimRecord.holder.toLowerCase()}`);
   }
 
   // Get all predictions to find original collaterals
@@ -284,10 +287,11 @@ export async function calculatePositionPnL(
     const predictor = prediction.predictor.toLowerCase();
     const counterparty = prediction.counterparty.toLowerCase();
 
-    // Calculate unrealized P&L for predictor
+    // Calculate unrealized P&L for predictor (skip if already claimed in step 1)
     if (
-      !owners?.length ||
-      owners.map((o) => o.toLowerCase()).includes(predictor)
+      !claimedPairs.has(`${prediction.predictionId}:${predictor}`) &&
+      (!owners?.length ||
+        owners.map((o) => o.toLowerCase()).includes(predictor))
     ) {
       const stats = initOwner(predictor);
       const wager = BigInt(prediction.predictorCollateral);
@@ -297,10 +301,11 @@ export async function calculatePositionPnL(
       stats.positionCount++;
     }
 
-    // Calculate unrealized P&L for counterparty
+    // Calculate unrealized P&L for counterparty (skip if already claimed in step 1)
     if (
-      !owners?.length ||
-      owners.map((o) => o.toLowerCase()).includes(counterparty)
+      !claimedPairs.has(`${prediction.predictionId}:${counterparty}`) &&
+      (!owners?.length ||
+        owners.map((o) => o.toLowerCase()).includes(counterparty))
     ) {
       const stats = initOwner(counterparty);
       const wager = BigInt(prediction.counterpartyCollateral);

@@ -25,11 +25,17 @@ const mockPrivateKey =
 jest.mock('viem', () => ({
   createPublicClient: jest.fn(() => ({
     chain: { id: 42161 },
+    getCode: jest.fn().mockResolvedValue('0x1234'),
   })),
   http: jest.fn((url: string) => ({ url })),
   keccak256: jest.fn(() => '0x' + '1'.repeat(64)),
   parseAbi: jest.fn((abi: string[]) => abi),
   slice: jest.fn(() => '0x12345678'),
+  toHex: jest.fn((val: unknown) => '0x' + String(val)),
+  encodeAbiParameters: jest.fn(() => '0xencoded'),
+  encodeFunctionData: jest.fn(() => '0xencodedFn'),
+  recoverTypedDataAddress: jest.fn().mockResolvedValue(mockSessionKeyAddress),
+  hashTypedData: jest.fn(() => '0x' + '2'.repeat(64)),
 }));
 
 jest.mock('viem/accounts', () => ({
@@ -152,6 +158,9 @@ jest.mock('@zerodev/permissions/policies', () => ({
     validAfter: 0,
     validUntil: 0,
   })),
+  toSignatureCallerPolicy: jest.fn(() => ({
+    type: 'signature-caller-policy',
+  })),
   CallPolicyVersion: {
     V0_0_4: 'V0_0_4',
   },
@@ -163,29 +172,42 @@ jest.mock('@zerodev/permissions/policies', () => ({
 // Mock @sapience/sdk
 jest.mock('@sapience/sdk/abis', () => ({
   predictionMarketAbi: [],
+  predictionMarketEscrowAbi: [],
   collateralTokenAbi: [],
+  liquidityVaultAbi: [],
 }));
 
 jest.mock('@sapience/sdk/contracts', () => ({
   predictionMarket: {
     5064014: { address: '0xPredictionMarketEthereal' },
+    13374202: { address: '0xPredictionMarketEtherealTestnet' },
     42161: { address: '0xPredictionMarketArbitrum' },
+  },
+  predictionMarketEscrow: {
+    5064014: { address: '0xEscrowEthereal' },
+    13374202: { address: '0xEscrowEtherealTestnet' },
   },
   collateralToken: {
     5064014: { address: '0xWUSDEEthereal' },
+    13374202: { address: '0xWUSDEEtherealTestnet' },
     42161: { address: '0xWUSDEArbitrum' },
   },
   eas: {
+    5064014: { address: '0xEASEthereal' },
+    13374202: { address: '0xEASEtherealTestnet' },
     42161: { address: '0xEASArbitrum' },
   },
   passiveLiquidityVault: {
     5064014: { address: '0xVaultEthereal' },
+    13374202: { address: '0xVaultEtherealTestnet' },
   },
 }));
 
 jest.mock('@sapience/sdk/constants', () => ({
   CHAIN_ID_ETHEREAL: 5064014,
+  CHAIN_ID_ETHEREAL_TESTNET: 13374202,
   CHAIN_ID_ARBITRUM: 42161,
+  DEFAULT_CHAIN_ID: 5064014,
   etherealChain: {
     id: 5064014,
     name: 'Ethereal',
@@ -199,6 +221,21 @@ jest.mock('@sapience/sdk/constants', () => ({
         url: 'https://explorer.ethereal.trade',
       },
     },
+  },
+  etherealTestnetChain: {
+    id: 13374202,
+    name: 'Ethereal Testnet',
+    nativeCurrency: { decimals: 18, name: 'USDe', symbol: 'USDe' },
+    rpcUrls: {
+      default: { http: ['https://rpc.etherealtest.net'] },
+    },
+    blockExplorers: {
+      default: {
+        name: 'Ethereal Testnet Explorer',
+        url: 'https://explorer.etherealtest.net',
+      },
+    },
+    testnet: true,
   },
 }));
 

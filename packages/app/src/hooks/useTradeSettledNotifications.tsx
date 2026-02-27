@@ -68,7 +68,7 @@ export function useTradeSettledNotifications() {
           address: address.toLowerCase(),
           take: 10,
           skip: 0,
-          orderBy: 'createdAt',
+          orderBy: 'CREATED_AT',
           orderDirection: 'desc',
         }
       );

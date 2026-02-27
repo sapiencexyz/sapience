@@ -11,12 +11,15 @@ import {
   resolveEoaBatchResult,
   executeViaSessionKeyDefault,
   executeTransaction,
-  CHAIN_ID_ETHEREAL,
   WUSDE_DEPOSIT_SELECTOR,
   type TransactionCall,
   type ExecutionDeps,
   type SessionClient,
 } from './transactionExecutor';
+
+// Chain ID constants matching @sapience/sdk/constants
+const CHAIN_ID_ETHEREAL = 5064014;
+const CHAIN_ID_ETHEREAL_TESTNET = 13374202;
 
 jest.mock('viem/actions', () => ({
   waitForCallsStatus: jest.fn(),
@@ -44,6 +47,10 @@ describe('getExecutionPath', () => {
 describe('isEtherealChain', () => {
   it('returns true for Ethereal chain ID', () => {
     expect(isEtherealChain(CHAIN_ID_ETHEREAL)).toBe(true);
+  });
+
+  it('returns true for Ethereal Testnet chain ID', () => {
+    expect(isEtherealChain(CHAIN_ID_ETHEREAL_TESTNET)).toBe(true);
   });
 
   it('returns false for other chains', () => {

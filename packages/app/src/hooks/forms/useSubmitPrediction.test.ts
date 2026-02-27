@@ -132,6 +132,47 @@ describe('useSubmitPrediction', () => {
     );
   });
 
+  it('different submission value works', async () => {
+    const { result } = renderHook(() =>
+      useSubmitPrediction({
+        ...DEFAULT_PROPS,
+        submissionValue: '60',
+      })
+    );
+
+    await act(async () => {
+      await result.current.submitPrediction();
+    });
+
+    expect(result.current.attestationError).toBeNull();
+    expect(mockEncodeAbiParameters).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.arrayContaining([
+        '0xResolver',
+        '0xCondition',
+        BigInt(Math.round(60 * 1e18)),
+        'test comment',
+      ])
+    );
+  });
+
+  it('negative numeric input still submits (no client-side validation)', async () => {
+    const { result } = renderHook(() =>
+      useSubmitPrediction({
+        ...DEFAULT_PROPS,
+        submissionValue: '-5',
+      })
+    );
+
+    await act(async () => {
+      await result.current.submitPrediction();
+    });
+
+    // Negative values are encoded and submitted without client-side validation
+    expect(result.current.attestationError).toBeNull();
+    expect(mockWriteContract).toHaveBeenCalled();
+  });
+
   it('resetAttestationStatus clears error and success', async () => {
     mockUseAccount.mockReturnValue({ address: undefined });
 

@@ -18,6 +18,7 @@ FROM (
 WHERE c.id = sub."conditionId";
 
 -- Step 3: Add V2 unsettled predictions' collateral to OI
+-- Use AND to match both token addresses (avoids cross-join inflation from OR)
 UPDATE condition c
 SET "openInterest" = (COALESCE(c."openInterest"::NUMERIC, 0) + sub.oi)::TEXT
 FROM (
@@ -27,7 +28,7 @@ FROM (
   JOIN "Picks" pc ON pc.id = pk."pickConfigId"
   JOIN "Prediction" pred ON (
     pred."predictorToken" = pc."predictorToken"
-    OR pred."counterpartyToken" = pc."counterpartyToken"
+    AND pred."counterpartyToken" = pc."counterpartyToken"
   )
   WHERE pred.settled = false
   GROUP BY pk."conditionId"
@@ -36,6 +37,7 @@ WHERE c.id = sub."conditionId";
 
 -- Step 4: Backfill V2 prediction counts
 -- The existing trigger covers V1 (prediction table), so only add V2 counts
+-- Use AND to match both token addresses (avoids cross-join inflation from OR)
 UPDATE condition c
 SET "predictionCount" = c."predictionCount" + sub.cnt
 FROM (
@@ -44,7 +46,7 @@ FROM (
   JOIN "Picks" pc ON pc.id = pk."pickConfigId"
   JOIN "Prediction" pred ON (
     pred."predictorToken" = pc."predictorToken"
-    OR pred."counterpartyToken" = pc."counterpartyToken"
+    AND pred."counterpartyToken" = pc."counterpartyToken"
   )
   GROUP BY pk."conditionId"
 ) sub

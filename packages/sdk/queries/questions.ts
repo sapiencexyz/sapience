@@ -4,12 +4,29 @@ import type { ConditionGroupType } from './conditionGroups';
 
 export type SortField = 'openInterest' | 'endTime' | 'createdAt' | 'predictionCount';
 export type SortDirection = 'asc' | 'desc';
+export type ResolutionStatusValue = 'all' | 'unresolved' | 'resolvedYes' | 'resolvedNo';
 
 export interface QuestionType {
   questionType: 'group' | 'condition';
   group?: ConditionGroupType | null;
   condition?: ConditionType | null;
 }
+
+/** Map camelCase sort field to GraphQL QuestionSortField enum key */
+const SORT_FIELD_TO_ENUM: Record<SortField, string> = {
+  openInterest: 'OPEN_INTEREST',
+  endTime: 'END_TIME',
+  createdAt: 'CREATED_AT',
+  predictionCount: 'PREDICTION_COUNT',
+};
+
+/** Map camelCase resolution status to GraphQL ResolutionStatus enum key */
+const RESOLUTION_STATUS_TO_ENUM: Record<string, string> = {
+  all: 'ALL',
+  unresolved: 'UNRESOLVED',
+  resolvedYes: 'RESOLVED_YES',
+  resolvedNo: 'RESOLVED_NO',
+};
 
 const GET_QUESTIONS = /* GraphQL */ `
   query Questions(
@@ -120,12 +137,14 @@ export async function fetchQuestionsSorted(
     take: params.take,
     skip: params.skip,
     chainId: params.chainId ?? null,
-    sortField: params.sortField,
+    sortField: SORT_FIELD_TO_ENUM[params.sortField] ?? params.sortField,
     sortDirection: params.sortDirection,
     search: params.search?.trim() || null,
     categorySlugs: params.categorySlugs?.length ? params.categorySlugs : null,
     minEndTime: params.minEndTime ?? null,
-    resolutionStatus: params.resolutionStatus ?? null,
+    resolutionStatus: params.resolutionStatus
+      ? (RESOLUTION_STATUS_TO_ENUM[params.resolutionStatus] ?? params.resolutionStatus)
+      : null,
   };
 
   const data = await graphqlRequest<QuestionsQueryResult>(
@@ -133,5 +152,9 @@ export async function fetchQuestionsSorted(
     variables
   );
 
-  return data.questions ?? [];
+  // Normalize GraphQL enum response (UPPER_CASE) to camelCase for consumers
+  return (data.questions ?? []).map((q) => ({
+    ...q,
+    questionType: q.questionType.toLowerCase() as 'group' | 'condition',
+  }));
 }

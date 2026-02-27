@@ -60,7 +60,7 @@ const TEST_QUERIES = {
             dailyVolume
           }
           accuracyLeaderboard(limit: 10) {
-            attester
+            address
             accuracyScore
           }
         }
