@@ -1,9 +1,8 @@
 import type React from 'react';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { Order } from '../types';
 import OrderCard from './OrderCard';
 import { cn } from '~/lib/utils/util';
-import { useToast } from '@sapience/ui/hooks/use-toast';
 
 type OrdersListProps = {
   orders: Order[];
@@ -14,6 +13,7 @@ type OrdersListProps = {
   describeAutoPauseStatus: (order: Order) => string;
   onToggleStatus: (id: string) => void;
   onEdit: (order: Order) => void;
+  onCreateOrder: () => void;
 };
 
 const OrdersList: React.FC<OrdersListProps> = ({
@@ -25,17 +25,10 @@ const OrdersList: React.FC<OrdersListProps> = ({
   describeAutoPauseStatus,
   onToggleStatus,
   onEdit,
+  onCreateOrder,
 }) => {
   const ordersScrollRef = useRef<HTMLDivElement | null>(null);
   const [showOrdersScrollShadow, setShowOrdersScrollShadow] = useState(false);
-  const { toast } = useToast();
-
-  const handleCreateOrder = useCallback(() => {
-    toast({
-      title: 'Auto-bid Coming Soon',
-      description: 'Request early access in Discord.',
-    });
-  }, [toast]);
 
   useEffect(() => {
     const node = ordersScrollRef.current;
@@ -72,7 +65,7 @@ const OrdersList: React.FC<OrdersListProps> = ({
             <button
               type="button"
               className="font-mono text-[11px] uppercase tracking-[0.2em] text-accent-gold underline decoration-dotted decoration-accent-gold/70 underline-offset-4 transition-colors hover:text-accent-gold/80"
-              onClick={handleCreateOrder}
+              onClick={onCreateOrder}
             >
               Create Order
             </button>
@@ -84,7 +77,7 @@ const OrdersList: React.FC<OrdersListProps> = ({
               <div className="flex h-full flex-col items-center justify-center rounded-md border border-dashed border-border/60 p-6 text-center text-sm text-muted-foreground">
                 <button
                   type="button"
-                  onClick={handleCreateOrder}
+                  onClick={onCreateOrder}
                   className="gold-link"
                 >
                   Create an order
