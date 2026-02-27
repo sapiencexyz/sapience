@@ -140,7 +140,9 @@ export const initializeApolloServer = async () => {
                 schema,
                 query: document,
                 variables: request.variables ?? {},
-                estimators: createComplexityEstimators(config.GRAPHQL_MAX_LIST_SIZE),
+                estimators: createComplexityEstimators(
+                  config.GRAPHQL_MAX_LIST_SIZE
+                ),
               });
 
               if (config.isDev) {

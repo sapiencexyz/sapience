@@ -41,9 +41,7 @@ class PositionTokenTransferIndexer implements IIndexer {
     const contractEntry = predictionMarketEscrow[chainId];
     this.blockCreated = BigInt(contractEntry?.blockCreated || 0);
 
-    console.log(
-      `[TransferIndexer] Initialized for chain ${chainId}`
-    );
+    console.log(`[TransferIndexer] Initialized for chain ${chainId}`);
   }
 
   // --- IIndexer interface ---
@@ -56,7 +54,10 @@ class PositionTokenTransferIndexer implements IIndexer {
     return true;
   }
 
-  async indexBlocks(_resourceSlug: string, _blocks: number[]): Promise<boolean> {
+  async indexBlocks(
+    _resourceSlug: string,
+    _blocks: number[]
+  ): Promise<boolean> {
     return true;
   }
 
@@ -110,10 +111,15 @@ class PositionTokenTransferIndexer implements IIndexer {
     const fromBlock = lastBlock + 1n;
 
     // Process in batches
-    for (let start = fromBlock; start <= currentBlock; start += BigInt(BLOCK_BATCH_SIZE)) {
-      const end = start + BigInt(BLOCK_BATCH_SIZE) - 1n > currentBlock
-        ? currentBlock
-        : start + BigInt(BLOCK_BATCH_SIZE) - 1n;
+    for (
+      let start = fromBlock;
+      start <= currentBlock;
+      start += BigInt(BLOCK_BATCH_SIZE)
+    ) {
+      const end =
+        start + BigInt(BLOCK_BATCH_SIZE) - 1n > currentBlock
+          ? currentBlock
+          : start + BigInt(BLOCK_BATCH_SIZE) - 1n;
 
       const logs = await this.client.getLogs({
         address: watchList.tokenAddresses as `0x${string}`[],
@@ -125,7 +131,13 @@ class PositionTokenTransferIndexer implements IIndexer {
       for (const log of logs) {
         const { from, to, value } = log.args;
         if (!from || !to || value === undefined) continue;
-        await this.processTransfer(log.address, from, to, value, watchList.tokenInfoMap);
+        await this.processTransfer(
+          log.address,
+          from,
+          to,
+          value,
+          watchList.tokenInfoMap
+        );
       }
     }
 
@@ -201,12 +213,18 @@ class PositionTokenTransferIndexer implements IIndexer {
       if (config.predictorToken) {
         const addr = config.predictorToken.toLowerCase();
         tokenAddresses.push(addr);
-        tokenInfoMap.set(addr, { pickConfigId: config.id, isPredictorToken: true });
+        tokenInfoMap.set(addr, {
+          pickConfigId: config.id,
+          isPredictorToken: true,
+        });
       }
       if (config.counterpartyToken) {
         const addr = config.counterpartyToken.toLowerCase();
         tokenAddresses.push(addr);
-        tokenInfoMap.set(addr, { pickConfigId: config.id, isPredictorToken: false });
+        tokenInfoMap.set(addr, {
+          pickConfigId: config.id,
+          isPredictorToken: false,
+        });
       }
     }
 
@@ -219,7 +237,9 @@ class PositionTokenTransferIndexer implements IIndexer {
     const key = `${INDEXER_STATE_KEY}:${this.chainId}`;
     const row = await prisma.keyValueStore.findUnique({ where: { key } });
     if (row) return BigInt(row.value);
-    return this.blockCreated > 0n ? this.blockCreated - 1n : await this.client.getBlockNumber();
+    return this.blockCreated > 0n
+      ? this.blockCreated - 1n
+      : await this.client.getBlockNumber();
   }
 
   private async setLastIndexedBlock(block: number): Promise<void> {

@@ -157,14 +157,14 @@ curl -X POST https://api.sapience.xyz/graphql \
 ```bash
 curl -X POST https://api.sapience.xyz/graphql \
   -H "Content-Type: application/json" \
-  -d '{"query":"query($limit:Int!){ accuracyLeaderboard(limit:$limit){ attester accuracyScore numTimeWeighted }}","variables":{"limit":50}}'
+  -d '{"query":"query($limit:Int!){ accuracyLeaderboard(limit:$limit){ address accuracyScore numTimeWeighted }}","variables":{"limit":50}}'
 ```
 
 ### Your Forecasting Rank
 ```bash
 curl -X POST https://api.sapience.xyz/graphql \
   -H "Content-Type: application/json" \
-  -d '{"query":"query($attester:String!){ accountAccuracyRank(attester:$attester){ accuracyScore rank totalForecasters }}","variables":{"attester":"0x..."}}'
+  -d '{"query":"query($address:String!){ accountAccuracyRank(address:$address){ accuracyScore rank totalForecasters }}","variables":{"address":"0x..."}}'
 ```
 
 ## Polymarket Prices
@@ -240,7 +240,7 @@ const calldata = buildForecastCalldata(
 // Submit with any Arbitrum wallet/provider
 ```
 
-Check your rank via the `accuracyRankByAddress` query (see [GraphQL Queries](#graphql-queries)).
+Check your rank via the `accountAccuracyRank` query (see [GraphQL Queries](#graphql-queries)).
 
 ### Scoring
 

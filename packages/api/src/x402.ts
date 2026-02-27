@@ -12,7 +12,13 @@ import { x402Facilitator } from '@x402/core/facilitator';
 import { registerExactEvmScheme as registerFacilitatorEvmScheme } from '@x402/evm/exact/facilitator';
 import { toFacilitatorEvmSigner } from '@x402/evm';
 import { config } from './config';
-import { createWalletClient, http, publicActions, createPublicClient, formatGwei } from 'viem';
+import {
+  createWalletClient,
+  http,
+  publicActions,
+  createPublicClient,
+  formatGwei,
+} from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { arbitrum } from 'viem/chains';
 import type { Request, Response, NextFunction } from 'express';
@@ -33,8 +39,8 @@ const USDC_ARBITRUM = '0xaf88d065e77c8cC2239327C5EDb3A432268e5831';
 // - Medium queries (moderate lists, some aggregations): 1000-5000
 // - Complex queries (expensive aggregations, large lists): 5000+
 const COMPLEXITY_TIERS = {
-  simple: { maxComplexity: 1000, priceUSDC: 5000, priceUSD: 0.005 },     // $0.005 for simple queries
-  medium: { maxComplexity: 5000, priceUSDC: 15000, priceUSD: 0.015 },    // $0.015 for medium queries
+  simple: { maxComplexity: 1000, priceUSDC: 5000, priceUSD: 0.005 }, // $0.005 for simple queries
+  medium: { maxComplexity: 5000, priceUSDC: 15000, priceUSD: 0.015 }, // $0.015 for medium queries
   complex: { maxComplexity: Infinity, priceUSDC: 30000, priceUSD: 0.03 }, // $0.03 for complex queries
 };
 
@@ -72,7 +78,10 @@ const ETH_PRICE_CACHE_MS = 60_000;
 const ETH_PRICE_FALLBACK = 3000;
 
 async function getEthUsdPrice(): Promise<number> {
-  if (cachedEthPrice && Date.now() - cachedEthPrice.fetchedAt < ETH_PRICE_CACHE_MS) {
+  if (
+    cachedEthPrice &&
+    Date.now() - cachedEthPrice.fetchedAt < ETH_PRICE_CACHE_MS
+  ) {
     return cachedEthPrice.price;
   }
 
@@ -96,7 +105,10 @@ async function getEthUsdPrice(): Promise<number> {
  * Calculate GraphQL query complexity using the same estimators as Apollo validation
  * Returns a complexity score used for tiered pricing (0-10000+)
  */
-function calculateGraphQLComplexity(query: string, variables?: Record<string, unknown>): number {
+function calculateGraphQLComplexity(
+  query: string,
+  variables?: Record<string, unknown>
+): number {
   if (!query) return 1;
 
   try {
@@ -108,7 +120,9 @@ function calculateGraphQLComplexity(query: string, variables?: Record<string, un
     const schema = sharedSchema.schema;
 
     if (!schema) {
-      console.warn('[x402] GraphQL schema not available, using fallback complexity=1');
+      console.warn(
+        '[x402] GraphQL schema not available, using fallback complexity=1'
+      );
       return 1;
     }
 
@@ -144,7 +158,9 @@ function getComplexityTier(complexity: number): typeof COMPLEXITY_TIERS.simple {
  * Check if current gas costs exceed the payment amount
  * Returns true if gas cost > payment (unprofitable to settle)
  */
-async function isGasTooExpensive(paymentAmountUSD: number): Promise<{ tooExpensive: boolean; gasCostUSD: number; gasPrice: string }> {
+async function isGasTooExpensive(
+  paymentAmountUSD: number
+): Promise<{ tooExpensive: boolean; gasCostUSD: number; gasPrice: string }> {
   try {
     // Get current gas price on Arbitrum
     const gasPrice = await publicClient.getGasPrice();
@@ -174,15 +190,15 @@ async function isGasTooExpensive(paymentAmountUSD: number): Promise<{ tooExpensi
   }
 }
 
-
-
 /**
  * Create x402 server with in-process facilitator (no separate service needed).
  * The facilitator verifies and settles payments directly using the configured private key.
  */
 function createX402Server() {
   if (!config.X402_FACILITATOR_PRIVATE_KEY) {
-    throw new Error('[x402] X402_FACILITATOR_PRIVATE_KEY is required for payment processing');
+    throw new Error(
+      '[x402] X402_FACILITATOR_PRIVATE_KEY is required for payment processing'
+    );
   }
 
   // Create viem wallet client for on-chain settlement
@@ -198,10 +214,18 @@ function createX402Server() {
   // Wrap as x402 FacilitatorEvmSigner
   const signer = toFacilitatorEvmSigner({
     address: account.address,
-    readContract: (args) => client.readContract(args as Parameters<typeof client.readContract>[0]),
-    verifyTypedData: (args) => client.verifyTypedData(args as Parameters<typeof client.verifyTypedData>[0]),
-    writeContract: (args) => client.writeContract(args as Parameters<typeof client.writeContract>[0]),
-    sendTransaction: (args) => client.sendTransaction(args as Parameters<typeof client.sendTransaction>[0]),
+    readContract: (args) =>
+      client.readContract(args as Parameters<typeof client.readContract>[0]),
+    verifyTypedData: (args) =>
+      client.verifyTypedData(
+        args as Parameters<typeof client.verifyTypedData>[0]
+      ),
+    writeContract: (args) =>
+      client.writeContract(args as Parameters<typeof client.writeContract>[0]),
+    sendTransaction: (args) =>
+      client.sendTransaction(
+        args as Parameters<typeof client.sendTransaction>[0]
+      ),
     waitForTransactionReceipt: (args) => client.waitForTransactionReceipt(args),
     getCode: (args) => client.getCode(args),
   });
@@ -228,7 +252,9 @@ function createX402Server() {
   const server = new x402ResourceServer(localClient as any);
   registerServerEvmScheme(server);
 
-  console.log(`[x402] In-process facilitator initialized (address: ${account.address})`);
+  console.log(
+    `[x402] In-process facilitator initialized (address: ${account.address})`
+  );
 
   return server;
 }
@@ -300,7 +326,10 @@ export function createGasAwareX402Middleware() {
     let complexity = 0;
 
     if (req.path === '/graphql' && req.method === 'POST' && req.body?.query) {
-      complexity = calculateGraphQLComplexity(req.body.query, req.body.variables);
+      complexity = calculateGraphQLComplexity(
+        req.body.query,
+        req.body.variables
+      );
       tier = getComplexityTier(complexity);
 
       console.log(
@@ -309,17 +338,20 @@ export function createGasAwareX402Middleware() {
     }
 
     // Check if gas is too expensive before requiring payment
-    const { tooExpensive, gasCostUSD, gasPrice } = await isGasTooExpensive(tier.priceUSD);
+    const { tooExpensive, gasCostUSD, gasPrice } = await isGasTooExpensive(
+      tier.priceUSD
+    );
 
     if (tooExpensive) {
       console.warn(
         `[x402] Gas too expensive (${gasCostUSD.toFixed(6)} USD > ${tier.priceUSD} USD payment). ` +
-        `Gas price: ${gasPrice} gwei. Returning 503.`
+          `Gas price: ${gasPrice} gwei. Returning 503.`
       );
 
       res.status(503).json({
         error: 'Service Temporarily Unavailable',
-        message: 'Payment settlement costs exceed payment amount due to high gas prices. Please try again later.',
+        message:
+          'Payment settlement costs exceed payment amount due to high gas prices. Please try again later.',
         details: {
           gasCostUSD: gasCostUSD.toFixed(6),
           paymentAmountUSD: tier.priceUSD.toFixed(3),
@@ -343,4 +375,3 @@ export function createGasAwareX402Middleware() {
     return selectedMiddleware(req, res, next);
   };
 }
-

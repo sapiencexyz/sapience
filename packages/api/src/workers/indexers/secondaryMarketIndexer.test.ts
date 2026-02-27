@@ -20,9 +20,13 @@ vi.mock('../../utils/utils', () => ({
   getProviderForChain: () => ({
     getBlockNumber: vi.fn().mockResolvedValue(100n),
     getLogs: vi.fn().mockResolvedValue([]),
-    getBlock: vi.fn().mockResolvedValue({ number: 100n, timestamp: 1700000000n }),
+    getBlock: vi
+      .fn()
+      .mockResolvedValue({ number: 100n, timestamp: 1700000000n }),
   }),
-  getBlockByTimestamp: vi.fn().mockResolvedValue({ number: 50n, timestamp: 1699999000n }),
+  getBlockByTimestamp: vi
+    .fn()
+    .mockResolvedValue({ number: 50n, timestamp: 1699999000n }),
 }));
 vi.mock('@sapience/sdk/contracts', () => ({
   secondaryMarketEscrow: {
@@ -61,7 +65,8 @@ const SELLER = '0x1111111111111111111111111111111111111111';
 const BUYER = '0x2222222222222222222222222222222222222222';
 const TOKEN = '0x3333333333333333333333333333333333333333';
 const COLLATERAL = '0x4444444444444444444444444444444444444444';
-const ZERO_BYTES32 = '0x0000000000000000000000000000000000000000000000000000000000000000';
+const ZERO_BYTES32 =
+  '0x0000000000000000000000000000000000000000000000000000000000000000';
 
 function makeTradeExecutedLog() {
   const abi = [
@@ -111,13 +116,13 @@ function makeTradeExecutedLog() {
 
   return {
     address: '0x0c12a974E7741135a8431458705Ae16dDa41aA85' as `0x${string}`,
-    blockHash: '0x' + '00'.repeat(32) as `0x${string}`,
+    blockHash: ('0x' + '00'.repeat(32)) as `0x${string}`,
     blockNumber: 50n,
     data,
     logIndex: 0,
     removed: false,
     topics: topics as [`0x${string}`, ...`0x${string}`[]],
-    transactionHash: '0x' + 'ab'.repeat(32) as `0x${string}`,
+    transactionHash: ('0x' + 'ab'.repeat(32)) as `0x${string}`,
     transactionIndex: 0,
   };
 }
@@ -183,8 +188,10 @@ describe('SecondaryMarketIndexer', () => {
 
     expect(mockPrisma.secondaryTrade.upsert).toHaveBeenCalledTimes(2);
     // Both calls use the same tradeHash — upsert handles idempotency
-    const hash1 = mockPrisma.secondaryTrade.upsert.mock.calls[0][0].where.tradeHash;
-    const hash2 = mockPrisma.secondaryTrade.upsert.mock.calls[1][0].where.tradeHash;
+    const hash1 =
+      mockPrisma.secondaryTrade.upsert.mock.calls[0][0].where.tradeHash;
+    const hash2 =
+      mockPrisma.secondaryTrade.upsert.mock.calls[1][0].where.tradeHash;
     expect(hash1).toBe(hash2);
   });
 
