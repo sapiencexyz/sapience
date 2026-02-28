@@ -285,11 +285,14 @@ export function SessionProvider({ children }: SessionProviderProps) {
   // Effective address - the address the app uses for transactions, balance display, etc.
   const effectiveAddress = useMemo((): Address | null => {
     if (!walletAddress) return null;
-    if (isUsingSmartAccount) {
+    // Only use smart account address when session is active (can auto-sign via kernel).
+    // In wallet mode (no session), use EOA — the Kernel's isValidSignature doesn't
+    // validate raw owner signatures, so the predictor address must match the signer.
+    if (isUsingSession && smartAccountAddress) {
       return smartAccountAddress;
     }
     return walletAddress;
-  }, [walletAddress, isUsingSmartAccount, smartAccountAddress]);
+  }, [walletAddress, isUsingSession, smartAccountAddress]);
 
   // Time remaining
   const [timeRemainingMs, setTimeRemainingMs] = useState(0);
