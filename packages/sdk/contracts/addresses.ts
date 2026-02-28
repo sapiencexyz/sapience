@@ -245,7 +245,7 @@ export const lzConditionResolver: ChainAddressMap = {
     // Ethereal mainnet - TODO: deploy
     address: '0x0000000000000000000000000000000000000000',
     legacy: [] as const,
-  },
+  }, 
   13374202: {
     // Ethereal testnet - TODO: deploy
     address: '0x0000000000000000000000000000000000000000',
