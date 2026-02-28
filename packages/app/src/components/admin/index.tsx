@@ -25,7 +25,7 @@ import { getSmartAccountAddress } from '~/lib/session/sessionKeyManager';
 import RFQTab from './RFQTab';
 import ConditionGroupsTab from './ConditionGroupsTab';
 import ReferralCodesTab from './ReferralCodesTab';
-import ReindexPredictionMarketForm from './ReindexPredictionMarketForm';
+import ReindexConditionSettledForm from './ReindexConditionSettledForm';
 import BackfillProtocolStatsForm from './BackfillProtocolStatsForm';
 import { useAdminApi } from '~/hooks/useAdminApi';
 import { useSettings } from '~/lib/context/SettingsContext';
@@ -122,7 +122,7 @@ const Admin = () => {
   const [accuracyReindexOpen, setAccuracyReindexOpen] = useState(false);
   const [createConditionOpen, setCreateConditionOpen] = useState(false);
   const [rfqCsvImportOpen, setRfqCsvImportOpen] = useState(false);
-  const [predictionMarketReindexOpen, setPredictionMarketReindexOpen] =
+  const [conditionSettledReindexOpen, setConditionSettledReindexOpen] =
     useState(false);
   const [protocolStatsBackfillOpen, setProtocolStatsBackfillOpen] =
     useState(false);
@@ -202,19 +202,19 @@ const Admin = () => {
             </DialogContent>
           </Dialog>
           <Dialog
-            open={predictionMarketReindexOpen}
-            onOpenChange={setPredictionMarketReindexOpen}
+            open={conditionSettledReindexOpen}
+            onOpenChange={setConditionSettledReindexOpen}
           >
             <DialogTrigger asChild>
               <Button variant="outline" size="sm">
-                Reindex Prediction Markets
+                Reindex Condition Settled
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-sm">
               <DialogHeader>
-                <DialogTitle>Reindex Prediction Markets</DialogTitle>
+                <DialogTitle>Reindex Condition Settled</DialogTitle>
               </DialogHeader>
-              <ReindexPredictionMarketForm />
+              <ReindexConditionSettledForm />
             </DialogContent>
           </Dialog>
           <Dialog

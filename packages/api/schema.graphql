@@ -195,12 +195,16 @@ input AttestationWhereUniqueInput {
   uid: String
 }
 
-"""Time-bucketed balance snapshot showing deployed and claimable collateral"""
+"""
+Time-bucketed balance snapshot showing deployed and claimable collateral
+"""
 type BalanceDataPoint {
   """Collateral available to claim from settled positions (wei)"""
   claimableCollateral: String!
+
   """Active collateral deployed in open positions (wei)"""
   deployedCollateral: String!
+
   """Unix epoch timestamp (seconds) for the start of this bucket"""
   timestamp: Int!
 }
@@ -275,7 +279,9 @@ input CategoryWhereUniqueInput {
   slug: String
 }
 
-"""Record of a settled prediction redemption where a holder burns tokens for collateral"""
+"""
+Record of a settled prediction redemption where a holder burns tokens for collateral
+"""
 type Claim {
   chainId: Int!
   collateralPaid: String!
@@ -290,7 +296,9 @@ type Claim {
   txHash: String!
 }
 
-"""Record of a position close where both sides burn tokens and receive payouts"""
+"""
+Record of a position close where both sides burn tokens and receive payouts
+"""
 type Close {
   burnedAt: Int!
   chainId: Int!
@@ -325,8 +333,7 @@ type Condition {
   id: String!
   openInterest: String!
   predictionCount: Int!
-  """V2 escrow-based predictions linked to this condition via pick configurations"""
-  predictions(skip: Int! = 0, take: Int! = 50): [Prediction!]!
+  predictions(cursor: LegacyPredictionWhereUniqueInput, distinct: [LegacyPredictionScalarFieldEnum!], orderBy: [LegacyPredictionOrderByWithRelationInput!], skip: Int, take: Int, where: LegacyPredictionWhereInput): [LegacyPrediction!]!
   public: Boolean!
   question: String!
   resolvedToYes: Boolean!
@@ -1019,7 +1026,9 @@ type Pick {
   predictedOutcome: Int!
 }
 
-"""Group of outcome picks forming a combined prediction position, with collateral and settlement tracking"""
+"""
+Group of outcome picks forming a combined prediction position, with collateral and settlement tracking
+"""
 type PickConfiguration {
   chainId: Int!
   claimedCounterpartyCollateral: String!
@@ -1042,8 +1051,10 @@ type PickConfiguration {
 type PnlDataPoint {
   """Running cumulative PnL in wei"""
   cumulativePnl: String!
+
   """PnL for this bucket in wei"""
   pnl: String!
+
   """Unix epoch timestamp (seconds) for the start of this bucket"""
   timestamp: Int!
 }
@@ -1060,7 +1071,9 @@ type Position {
   tokenAddress: String!
 }
 
-"""Escrow-based prediction record between a predictor and counterparty, with collateral and settlement tracking"""
+"""
+Escrow-based prediction record between a predictor and counterparty, with collateral and settlement tracking
+"""
 type Prediction {
   chainId: Int!
   collateralDeposited: String
@@ -1086,6 +1099,12 @@ type Prediction {
   settledAt: Int
 }
 
+"""Field to sort predictions by"""
+enum PredictionSortField {
+  CREATED_AT
+  SETTLED_AT
+}
+
 """Aggregated profit/loss entry for a single address across all positions"""
 type ProfitEntry {
   address: String!
@@ -1100,13 +1119,16 @@ type ProfitRank {
   totalPnL: String!
 }
 
-"""Daily protocol-wide statistics snapshot including vault metrics, volume, and PnL"""
+"""
+Daily protocol-wide statistics snapshot including vault metrics, volume, and PnL
+"""
 type ProtocolStat {
   cumulativeVolume: String!
   dailyPnL: String!
   dailyVolume: String!
   escrowBalance: String!
   openInterest: String!
+
   """Unix epoch timestamp (seconds) for midnight UTC of the snapshot day"""
   timestamp: Int!
   vaultAirdropGains: String!
@@ -1121,57 +1143,109 @@ type ProtocolStat {
 }
 
 type Query {
-  """Accuracy score for a single forecaster address, or null if no scored attestations exist"""
+  """
+  Accuracy score for a single forecaster address, or null if no scored attestations exist
+  """
   accountAccuracy(address: String!): ForecasterScore
-  """Accuracy rank and score for a single address relative to all forecasters"""
+
+  """
+  Accuracy rank and score for a single address relative to all forecasters
+  """
   accountAccuracyRank(address: String!): AccuracyRank!
-  """Time-bucketed balance snapshots for a single address showing deployed and claimable collateral"""
+
+  """
+  Time-bucketed balance snapshots for a single address showing deployed and claimable collateral
+  """
   accountBalance(address: String!, from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [BalanceDataPoint!]!
-  """Time-bucketed profit and loss for a single address with cumulative tracking"""
+
+  """
+  Time-bucketed profit and loss for a single address with cumulative tracking
+  """
   accountPnl(address: String!, from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [PnlDataPoint!]!
-  """Profit rank and total PnL for a single address relative to all participants"""
+
+  """
+  Profit rank and total PnL for a single address relative to all participants
+  """
   accountProfitRank(address: String!): ProfitRank!
-  """Total lifetime trading volume in wei for the given address across all prediction types"""
+
+  """
+  Total lifetime trading volume in wei for the given address across all prediction types
+  """
   accountTotalVolume(address: String!): String!
+
   """Time-bucketed trading volume for a single address"""
   accountVolume(address: String!, from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [VolumeDataPoint!]!
+
   """Top forecasters ranked by accuracy score"""
   accuracyLeaderboard(limit: Int! = 10): [ForecasterScore!]!
   attestations(cursor: AttestationWhereUniqueInput, distinct: [AttestationScalarFieldEnum!], orderBy: [AttestationOrderByWithRelationInput!], skip: Int, take: Int, where: AttestationWhereInput): [Attestation!]!
   categories(cursor: CategoryWhereUniqueInput, distinct: [CategoryScalarFieldEnum!], orderBy: [CategoryOrderByWithRelationInput!], skip: Int, take: Int, where: CategoryWhereInput): [Category!]!
-  """Paginated list of prediction claim (redemption) records, filterable by holder, prediction, and chain"""
+
+  """
+  Paginated list of prediction claim (redemption) records, filterable by holder, prediction, and chain
+  """
   claims(chainId: Int, holder: String, predictionId: String, skip: Int! = 0, take: Int! = 50): [Claim!]!
-  """Paginated list of position close (burn) records, filterable by address, pick config, and chain"""
+
+  """
+  Paginated list of position close (burn) records, filterable by address, pick config, and chain
+  """
   closes(address: String, chainId: Int, pickConfigId: String, skip: Int! = 0, take: Int! = 50): [Close!]!
   condition(where: ConditionWhereUniqueInput!): Condition
   conditionGroup(where: ConditionGroupWhereUniqueInput!): ConditionGroup
   conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]!
   conditions(cursor: ConditionWhereUniqueInput, distinct: [ConditionScalarFieldEnum!], orderBy: [ConditionOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionWhereInput): [Condition!]!
+
   """Look up a single pick configuration by ID"""
   pickConfiguration(id: String!): PickConfiguration
-  """Paginated list of pick configurations, filterable by chain, resolution status, and result"""
+
+  """
+  Paginated list of pick configurations, filterable by chain, resolution status, and result
+  """
   pickConfigurations(chainId: Int, resolved: Boolean, result: SettlementResult, skip: Int! = 0, take: Int! = 50): [PickConfiguration!]!
-  """Paginated list of token position balances, filterable by holder, condition, chain, or pick config"""
+
+  """
+  Paginated list of token position balances, filterable by holder, condition, chain, or pick config
+  """
   positions(chainId: Int, conditionId: String, holder: String, pickConfigId: String, skip: Int! = 0, take: Int! = 50): [Position!]!
+
   """Look up a single prediction by its on-chain prediction ID"""
   prediction(id: String!): Prediction
+
   """Count of escrow predictions involving the given address"""
   predictionCount(address: String!, chainId: Int): Int!
-  """Paginated list of escrow-based predictions, filterable by address, condition, chain, and settlement status"""
+
+  """
+  Paginated list of escrow-based predictions, filterable by address, condition, chain, and settlement status
+  """
   predictions(address: String, chainId: Int, conditionId: String, orderBy: PredictionSortField, orderDirection: SortOrder, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Prediction!]!
-  """Profit leaderboard — addresses ranked by total PnL across all positions"""
+
+  """
+  Profit leaderboard — addresses ranked by total PnL across all positions
+  """
   profitLeaderboard(limit: Int! = 10, skip: Int! = 0): [ProfitEntry!]!
-  """Daily protocol statistics time series (last 90 days) — vault balance, volume, PnL, and open interest"""
+
+  """
+  Daily protocol statistics time series (last 90 days) — vault balance, volume, PnL, and open interest
+  """
   protocolStats: [ProtocolStat!]!
+
   """Time-bucketed total protocol trading volume across all users"""
   protocolVolume(from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [VolumeDataPoint!]!
-  """Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field"""
+
+  """
+  Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field
+  """
   questions(categorySlugs: [String!], chainId: Int, minEndTime: Int, resolutionStatus: ResolutionStatus, search: String, skip: Int! = 0, sortDirection: SortOrder! = desc, sortField: QuestionSortField, take: Int! = 50): [Question!]!
+
   """Look up a single secondary market trade by its trade hash"""
   trade(id: String!): Trade
+
   """Count of secondary market trades matching the given filters"""
   tradeCount(buyer: String, chainId: Int, seller: String, token: String): Int!
-  """Paginated list of secondary market trades, filterable by seller, buyer, token, and chain"""
+
+  """
+  Paginated list of secondary market trades, filterable by seller, buyer, token, and chain
+  """
   trades(buyer: String, chainId: Int, seller: String, skip: Int! = 0, take: Int! = 50, token: String): [Trade!]!
   user(where: UserWhereUniqueInput!): User
   users(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]!
@@ -1182,12 +1256,30 @@ enum QueryMode {
   insensitive
 }
 
-"""A question item — either a group of related conditions or a single ungrouped condition"""
+"""
+A question item — either a group of related conditions or a single ungrouped condition
+"""
 type Question {
   condition: Condition
   group: ConditionGroup
   predictionCount: Int
   questionType: QuestionItemType!
+}
+
+"""
+Whether a question is a group of related conditions or a single condition
+"""
+enum QuestionItemType {
+  condition
+  group
+}
+
+"""Field to sort questions by"""
+enum QuestionSortField {
+  createdAt
+  endTime
+  openInterest
+  predictionCount
 }
 
 type ReferralCode {
@@ -1240,6 +1332,22 @@ input ReferralCodeWhereInput {
   isActive: BoolFilter
   maxClaims: IntFilter
   updatedAt: DateTimeFilter
+}
+
+"""Filter questions by their resolution status"""
+enum ResolutionStatus {
+  all
+  resolvedNo
+  resolvedYes
+  unresolved
+}
+
+"""Outcome of a prediction settlement"""
+enum SettlementResult {
+  COUNTERPARTY_WINS
+  NON_DECISIVE
+  PREDICTOR_WINS
+  UNRESOLVED
 }
 
 enum SortOrder {
@@ -1298,7 +1406,9 @@ enum TimeInterval {
   WEEK
 }
 
-"""Secondary market trade record where position tokens are exchanged between users"""
+"""
+Secondary market trade record where position tokens are exchanged between users
+"""
 type Trade {
   blockNumber: Int!
   buyer: String!
@@ -1425,42 +1535,7 @@ input UserWhereUniqueInput {
 type VolumeDataPoint {
   """Unix epoch timestamp (seconds) for the start of this bucket"""
   timestamp: Int!
+
   """Total volume in wei for this bucket"""
   volume: String!
-}
-
-"""Field to sort predictions by"""
-enum PredictionSortField {
-  CREATED_AT
-  SETTLED_AT
-}
-
-"""Whether a question is a group of related conditions or a single condition"""
-enum QuestionItemType {
-  condition
-  group
-}
-
-"""Field to sort questions by"""
-enum QuestionSortField {
-  createdAt
-  endTime
-  openInterest
-  predictionCount
-}
-
-"""Filter questions by their resolution status"""
-enum ResolutionStatus {
-  all
-  resolvedNo
-  resolvedYes
-  unresolved
-}
-
-"""Outcome of a prediction settlement"""
-enum SettlementResult {
-  COUNTERPARTY_WINS
-  NON_DECISIVE
-  PREDICTOR_WINS
-  UNRESOLVED
 }

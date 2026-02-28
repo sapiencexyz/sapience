@@ -2,31 +2,19 @@ import prisma from './db';
 import fixturesData from './fixtures.json';
 import { IIndexer } from './interfaces';
 import EASPredictionIndexer from './workers/indexers/easIndexer';
-import PredictionMarketIndexer from './workers/indexers/predictionMarketIndexer';
 import PredictionMarketEscrowIndexer from './workers/indexers/predictionMarketEscrowIndexer';
 import SecondaryMarketIndexer from './workers/indexers/secondaryMarketIndexer';
 import PositionTokenTransferIndexer from './workers/indexers/positionTokenTransferIndexer';
+import ConditionSettledIndexer from './workers/indexers/conditionSettledIndexer';
 
-// Environment variables to control which indexers are enabled
-const ENABLE_V1_INDEXERS = process.env.ENABLE_V1_INDEXERS !== 'false';
-const ENABLE_ESCROW_INDEXERS = process.env.ENABLE_ESCROW_INDEXERS !== 'false';
+// Environment variable to control whether V2 indexers are enabled
+const ENABLE_ESCROW_INDEXERS = process.env.ENABLE_ESCROW_INDEXERS === 'true';
 
 // Build indexers object based on environment configuration
 const buildIndexers = (): { [key: string]: IIndexer } => {
   const indexers: { [key: string]: IIndexer } = {};
 
-  if (ENABLE_V1_INDEXERS) {
-    indexers['attestation-prediction-market'] = new EASPredictionIndexer(42161);
-    indexers['prediction-market-events-arbitrum'] = new PredictionMarketIndexer(
-      42161
-    ); // Arbitrum
-    indexers['prediction-market-events-ethereal'] = new PredictionMarketIndexer(
-      5064014
-    ); // Ethereal
-    console.log('[Indexers] V1 indexers enabled');
-  } else {
-    console.log('[Indexers] V1 indexers disabled (ENABLE_V1_INDEXERS=false)');
-  }
+  indexers['attestation-prediction-market'] = new EASPredictionIndexer(42161);
 
   if (ENABLE_ESCROW_INDEXERS) {
     indexers['escrow-prediction-market-ethereal'] =
@@ -40,10 +28,15 @@ const buildIndexers = (): { [key: string]: IIndexer } => {
     indexers['transfer-ethereal-testnet'] = new PositionTokenTransferIndexer(
       13374202
     );
-    console.log('[Indexers] Escrow indexers enabled');
+    indexers['condition-settled-ethereal'] = new ConditionSettledIndexer(
+      5064014
+    ); // Ethereal mainnet
+    indexers['condition-settled-ethereal-testnet'] =
+      new ConditionSettledIndexer(13374202); // Ethereal testnet
+    console.log('[Indexers] V2 indexers enabled');
   } else {
     console.log(
-      '[Indexers] Escrow indexers disabled (ENABLE_ESCROW_INDEXERS=false)'
+      '[Indexers] V2 indexers disabled (ENABLE_ESCROW_INDEXERS=false)'
     );
   }
 

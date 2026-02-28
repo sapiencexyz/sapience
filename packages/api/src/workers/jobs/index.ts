@@ -2,7 +2,7 @@ import { reindexEAS } from './reindexEAS';
 import { backfillAccuracy } from './backfillAccuracy';
 import { reindexTransfers } from './reindexTransfers';
 import { reindexAccuracy } from './reindexAccuracy';
-import { reindexPredictionMarket } from './reindexPredictionMarket';
+import { reindexConditionSettled } from './reindexConditionSettled';
 import {
   computeAndStoreProtocolStats,
   backfillProtocolStats,
@@ -39,37 +39,6 @@ const callReindexEAS = async (argv: string[]) => {
   process.exit(0);
 };
 
-const callReindexPredictionMarket = async (argv: string[]) => {
-  const chainId = parseInt(argv[3], 10);
-  const startTimestamp =
-    argv[4] !== 'undefined' ? parseInt(argv[4], 10) : undefined;
-  const endTimestamp =
-    argv[5] !== 'undefined' ? parseInt(argv[5], 10) : undefined;
-  const clearExisting = argv[6] === 'true';
-
-  if (isNaN(chainId)) {
-    console.error(
-      'Invalid arguments. Usage: tsx src/worker.ts reindexPredictionMarket <chainId> [startTimestamp] [endTimestamp] [clearExisting]'
-    );
-    process.exit(1);
-  }
-
-  const result = await reindexPredictionMarket(
-    chainId,
-    startTimestamp,
-    endTimestamp,
-    clearExisting
-  );
-
-  if (!result) {
-    console.error('Failed to reindex prediction market');
-    process.exit(1);
-  }
-
-  console.log('Done reindexing prediction market');
-  process.exit(0);
-};
-
 const callBackfillAccuracy = async () => {
   await backfillAccuracy();
   console.log('Done backfilling accuracy scores');
@@ -96,10 +65,6 @@ export async function handleJobCommand(argv: string[]): Promise<boolean> {
       process.exit(0);
       return true;
     }
-    case 'reindexPredictionMarket': {
-      await callReindexPredictionMarket(argv);
-      return true;
-    }
     case 'computeProtocolStats': {
       const chainId = argv[3] ? parseInt(argv[3], 10) : undefined;
       await computeAndStoreProtocolStats(chainId);
@@ -112,6 +77,23 @@ export async function handleJobCommand(argv: string[]): Promise<boolean> {
       const chainId = argv[4] ? parseInt(argv[4], 10) : undefined;
       await backfillProtocolStats(chainId, days);
       console.log('Done backfilling protocol stats');
+      process.exit(0);
+      return true;
+    }
+    case 'reindexConditionSettled': {
+      const chainId = parseInt(argv[3], 10);
+      const startTimestamp =
+        argv[4] !== 'undefined' ? parseInt(argv[4], 10) : undefined;
+      const endTimestamp =
+        argv[5] !== 'undefined' ? parseInt(argv[5], 10) : undefined;
+      if (isNaN(chainId)) {
+        console.error(
+          'Invalid arguments. Usage: tsx src/workers/worker.ts reindexConditionSettled <chainId> [startTimestamp] [endTimestamp]'
+        );
+        process.exit(1);
+      }
+      await reindexConditionSettled(chainId, startTimestamp, endTimestamp);
+      console.log('Done reindexing condition settled events');
       process.exit(0);
       return true;
     }

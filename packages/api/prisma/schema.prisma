@@ -469,16 +469,17 @@ enum SettlementResult {
   @@map("V2SettlementResult")
 }
 
-/// Tracks the indexer's last-processed block per chain
+/// Tracks the indexer's last-processed block per chain + contract
 model IndexerState {
   id               Int      @id @default(autoincrement())
   createdAt        DateTime @default(now()) @db.Timestamp(6)
   updatedAt        DateTime @updatedAt @db.Timestamp(6)
-  chainId          Int      @unique
+  chainId          Int
   marketAddress    String   @db.VarChar
   lastIndexedBlock Int
   lastIndexedAt    DateTime @default(now()) @db.Timestamp(6)
 
+  @@unique([chainId, marketAddress])
 }
 
 /// A prediction (position) created on-chain via PredictionMarketEscrow

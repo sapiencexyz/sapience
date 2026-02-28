@@ -41,7 +41,7 @@ class PositionTokenTransferIndexer implements IIndexer {
     const contractEntry = predictionMarketEscrow[chainId];
     this.blockCreated = BigInt(contractEntry?.blockCreated || 0);
 
-    console.log(`[TransferIndexer] Initialized for chain ${chainId}`);
+    console.log(`[TransferIndexer:${this.chainId}] Initialized`);
   }
 
   // --- IIndexer interface ---
@@ -76,7 +76,7 @@ class PositionTokenTransferIndexer implements IIndexer {
       try {
         await this.pollCycle();
       } catch (error) {
-        console.error('[TransferIndexer] Poll cycle error:', error);
+        console.error(`[TransferIndexer:${this.chainId}] Poll cycle error:`, error);
         Sentry.captureException(error);
       }
     };
@@ -95,7 +95,7 @@ class PositionTokenTransferIndexer implements IIndexer {
       process.off('SIGINT', this.sigintHandler);
       this.sigintHandler = null;
     }
-    console.log('[TransferIndexer] Stopped');
+    console.log(`[TransferIndexer:${this.chainId}] Stopped`);
   }
 
   // --- Core polling logic ---
@@ -182,7 +182,7 @@ class PositionTokenTransferIndexer implements IIndexer {
     `;
 
     console.log(
-      `[TransferIndexer] Transfer ${tokenAddress}: ${fromLower} -> ${toLower} amount=${valueStr}`
+      `[TransferIndexer:${this.chainId}] Transfer ${tokenAddress}: ${fromLower} -> ${toLower} amount=${valueStr}`
     );
   }
 
@@ -243,6 +243,9 @@ class PositionTokenTransferIndexer implements IIndexer {
   }
 
   private async setLastIndexedBlock(block: number): Promise<void> {
+    console.log(
+      `[TransferIndexer:${this.chainId}] Persisting watermark block=${block}`
+    );
     const key = `${INDEXER_STATE_KEY}:${this.chainId}`;
     await prisma.keyValueStore.upsert({
       where: { key },

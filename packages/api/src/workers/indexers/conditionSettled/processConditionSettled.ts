@@ -1,37 +1,57 @@
-import prisma from '../../../../db';
+import prisma from '../../../db';
 import { decodeEventLog, type Log, type Block } from 'viem';
-import Sentry from '../../../../instrument';
+import Sentry from '../../../instrument';
 import {
   scoreSelectedForecastsForSettledMarket,
   computeAndStoreMarketTwErrors,
-} from '../../../../helpers/scoringService';
-import { CONDITION_RESOLVED_EVENT_ABI } from '../constants';
-import type { ConditionResolvedEvent } from '../types';
-import type { HandlerContext } from '../handlerContext';
+} from '../../../helpers/scoringService';
+import type { HandlerContext } from './handlerContext';
 
-export async function processConditionResolved(
-  _ctx: HandlerContext,
+const CONDITION_SETTLED_EVENT_ABI = [
+  {
+    type: 'event',
+    name: 'ConditionSettled',
+    inputs: [
+      { name: 'conditionId', type: 'bytes32', indexed: true },
+      { name: 'yesWeight', type: 'uint256', indexed: false },
+      { name: 'noWeight', type: 'uint256', indexed: false },
+      { name: 'settler', type: 'address', indexed: true },
+    ],
+  },
+] as const;
+
+interface ConditionSettledEvent {
+  conditionId: string;
+  yesWeight: bigint;
+  noWeight: bigint;
+  settler: string;
+}
+
+export async function processConditionSettled(
+  ctx: HandlerContext,
   log: Log,
   block: Block
 ): Promise<void> {
+  const tag = `[ConditionSettledIndexer:${ctx.chainId}]`;
   try {
     const decoded = decodeEventLog({
-      abi: CONDITION_RESOLVED_EVENT_ABI,
+      abi: CONDITION_SETTLED_EVENT_ABI,
       data: log.data,
       topics: log.topics,
-    }) as { args: ConditionResolvedEvent };
+    }) as { args: ConditionSettledEvent };
 
     const conditionId = decoded.args.conditionId.toLowerCase();
 
+    const resolvedToYes =
+      decoded.args.yesWeight > 0n && decoded.args.noWeight === 0n;
+
     const eventData = {
-      eventType: 'ConditionResolved',
+      eventType: 'ConditionSettled',
       conditionId,
-      resolvedToYes: decoded.args.resolvedToYes,
-      invalid: decoded.args.invalid,
-      payoutDenominator: decoded.args.payoutDenominator.toString(),
-      noPayout: decoded.args.noPayout.toString(),
-      yesPayout: decoded.args.yesPayout.toString(),
-      timestamp: decoded.args.timestamp.toString(),
+      yesWeight: decoded.args.yesWeight.toString(),
+      noWeight: decoded.args.noWeight.toString(),
+      settler: decoded.args.settler,
+      resolvedToYes,
       blockNumber: Number(log.blockNumber),
       transactionHash: log.transactionHash,
       logIndex: log.logIndex,
@@ -55,7 +75,7 @@ export async function processConditionResolved(
 
     if (existingEvent) {
       console.log(
-        `[PredictionMarketIndexer] Skipping duplicate ConditionResolved event tx=${eventKey.transactionHash} block=${eventKey.blockNumber} logIndex=${eventKey.logIndex}`
+        `${tag} Skipping duplicate ConditionSettled event tx=${eventKey.transactionHash} block=${eventKey.blockNumber} logIndex=${eventKey.logIndex}`
       );
       return;
     }
@@ -88,7 +108,7 @@ export async function processConditionResolved(
             },
           });
           console.log(
-            `[PredictionMarketIndexer] Skipping ConditionResolved for ${conditionId}: ` +
+            `${tag} Skipping ConditionSettled for ${conditionId}: ` +
               `event source ${eventSourceAddress} does not match condition resolver ${conditionResolver}`
           );
         } else {
@@ -107,30 +127,30 @@ export async function processConditionResolved(
               where: { id: condition.id },
               data: {
                 settled: true,
-                resolvedToYes: eventData.resolvedToYes,
-                settledAt: Number(decoded.args.timestamp),
+                resolvedToYes,
+                settledAt: Number(block.timestamp),
               },
             });
           });
           console.log(
-            `[PredictionMarketIndexer] Updated Condition ${conditionId} to settled via ConditionResolved`
+            `${tag} Updated Condition ${conditionId} to settled via ConditionSettled`
           );
 
           // Score forecasts and compute TW errors for the accuracy leaderboard
-          const marketAddress = condition.resolver?.toLowerCase();
-          if (marketAddress) {
+          const resolverAddress = condition.resolver?.toLowerCase();
+          if (resolverAddress) {
             try {
               await scoreSelectedForecastsForSettledMarket(
-                marketAddress,
+                resolverAddress,
                 condition.id
               );
-              await computeAndStoreMarketTwErrors(marketAddress, condition.id);
+              await computeAndStoreMarketTwErrors(resolverAddress, condition.id);
               console.log(
-                `[PredictionMarketIndexer] Scored forecasts and computed TW errors for ${conditionId}`
+                `${tag} Scored forecasts and computed TW errors for ${conditionId}`
               );
             } catch (scoringError) {
               console.error(
-                `[PredictionMarketIndexer] Error scoring forecasts for ${conditionId}:`,
+                `${tag} Error scoring forecasts for ${conditionId}:`,
                 scoringError
               );
             }
@@ -148,22 +168,22 @@ export async function processConditionResolved(
           },
         });
         console.warn(
-          `[PredictionMarketIndexer] ConditionResolved but no matching Condition found for conditionId=${conditionId}`
+          `${tag} ConditionSettled but no matching Condition found for conditionId=${conditionId}`
         );
       }
     } catch (conditionError) {
       console.error(
-        '[PredictionMarketIndexer] Failed to update Condition on ConditionResolved:',
+        `${tag} Failed to update Condition on ConditionSettled:`,
         conditionError
       );
     }
 
     console.log(
-      `[PredictionMarketIndexer] Processed ConditionResolved: conditionId=${conditionId}, resolvedToYes=${eventData.resolvedToYes}, invalid=${eventData.invalid}`
+      `${tag} Processed ConditionSettled: conditionId=${conditionId}, resolvedToYes=${resolvedToYes}, settler=${decoded.args.settler}`
     );
   } catch (error) {
     console.error(
-      '[PredictionMarketIndexer] Error processing ConditionResolved:',
+      `${tag} Error processing ConditionSettled:`,
       error
     );
     Sentry.captureException(error);
