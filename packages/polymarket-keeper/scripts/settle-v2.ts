@@ -48,16 +48,19 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { polygon } from 'viem/chains';
 import { fetchWithRetry } from '../src/utils/fetch.js';
 import { confirmProductionAccess } from '../src/utils/index.js';
-import { DEFAULT_SAPIENCE_API_URL } from '../src/constants.js';
+import {
+  manualConditionResolver,
+  conditionalTokensReader,
+} from '@sapience/sdk/contracts';
 
 // ============ Constants ============
 
-// ManualConditionResolver on Ethereal testnet
-const V2_RESOLVER_ADDRESS = (process.env.V2_RESOLVER_ADDRESS ||
-  '0x9938583eA9a6450Cc64502bDcBF76f4EEa2F9560') as Address;
-
 // Ethereal testnet chain ID
-const V2_CHAIN_ID = Number(process.env.V2_CHAIN_ID || '13374202');
+const V2_CHAIN_ID = Number(process.env.CHAIN_ID || '13374202');
+
+// ManualConditionResolver on Ethereal (env override or SDK address for chain)
+const V2_RESOLVER_ADDRESS = (process.env.V2_RESOLVER_ADDRESS ||
+  manualConditionResolver[V2_CHAIN_ID]?.address) as Address;
 
 // Ethereal testnet RPC
 const ETHEREAL_TESTNET_RPC = 'https://rpc.etherealtest.net';
@@ -65,7 +68,7 @@ const ETHEREAL_TESTNET_RPC = 'https://rpc.etherealtest.net';
 // ConditionalTokensReader contract on Polygon
 const CONDITIONAL_TOKENS_READER_ADDRESS = (process.env
   .CONDITIONAL_TOKENS_READER_ADDRESS ||
-  '0x882288A664e29aEBC654Fa9679697d23716fcCD1') as Address;
+  conditionalTokensReader[137]?.address) as Address;
 
 // Default Sapience API URL
 const DEFAULT_API_URL = 'https://api.sapience.xyz/graphql';
@@ -231,7 +234,7 @@ Environment Variables:
   POLYGON_RPC_URL          Polygon RPC URL (required)
   ADMIN_PRIVATE_KEY        Private key for signing transactions (required for --execute)
   SAPIENCE_API_URL         Sapience GraphQL API URL (default: https://api.sapience.xyz)
-  V2_RESOLVER_ADDRESS      ManualConditionResolver address (default: 0x9938583eA9a6450Cc64502bDcBF76f4EEa2F9560)
+  V2_RESOLVER_ADDRESS      ManualConditionResolver address (default: from SDK for V2_CHAIN_ID)
   V2_CHAIN_ID              Ethereal testnet chain ID (default: 13374202)
 
 Examples:
@@ -458,11 +461,10 @@ async function checkAndSettleCondition(
   options: CLIOptions
 ): Promise<SettlementResult> {
   const conditionId = condition.id as Hex;
-  const shortId = conditionId.slice(0, 10) + '...';
 
   try {
     // Step 1: Check if already settled on ManualConditionResolver
-    console.log(`[${shortId}] Checking ManualConditionResolver...`);
+    console.log(`[${conditionId}] Checking ManualConditionResolver...`);
     const [isResolved] = await etherealClient.readContract({
       address: V2_RESOLVER_ADDRESS,
       abi: manualConditionResolverAbi,
@@ -471,7 +473,7 @@ async function checkAndSettleCondition(
     });
 
     if (isResolved) {
-      console.log(`[${shortId}] Already settled on ManualConditionResolver`);
+      console.log(`[${conditionId}] Already settled on ManualConditionResolver`);
       return {
         conditionId,
         alreadyResolved: true,
@@ -482,7 +484,7 @@ async function checkAndSettleCondition(
     }
 
     // Step 2: Check if resolved on Polygon (ConditionalTokensReader)
-    console.log(`[${shortId}] Checking canRequestResolution on Polygon...`);
+    console.log(`[${conditionId}] Checking canRequestResolution on Polygon...`);
     const canResolve = await polygonClient.readContract({
       address: CONDITIONAL_TOKENS_READER_ADDRESS,
       abi: conditionalTokensReaderAbi,
@@ -494,7 +496,7 @@ async function checkAndSettleCondition(
 
     if (canResolve) {
       // Read the full resolution data from Polygon
-      console.log(`[${shortId}] Reading resolution data from Polygon...`);
+      console.log(`[${conditionId}] Reading resolution data from Polygon...`);
       const conditionData = await polygonClient.readContract({
         address: CONDITIONAL_TOKENS_READER_ADDRESS,
         abi: conditionalTokensReaderAbi,
@@ -507,12 +509,12 @@ async function checkAndSettleCondition(
         conditionData.noPayout
       );
       console.log(
-        `[${shortId}] Polygon outcome: ${outcomeToString(outcome)} (yes=${conditionData.yesPayout}, no=${conditionData.noPayout}, denom=${conditionData.payoutDenominator})`
+        `[${conditionId}] Polygon outcome: ${outcomeToString(outcome)} (yes=${conditionData.yesPayout}, no=${conditionData.noPayout}, denom=${conditionData.payoutDenominator})`
       );
     } else {
       // Step 3: Fallback — check Polymarket APIs for voided markets
       console.log(
-        `[${shortId}] Not resolved on-chain, checking Polymarket APIs...`
+        `[${conditionId}] Not resolved on-chain, checking Polymarket APIs...`
       );
       const isClosedOnApi = await checkPolymarketApiResolution(conditionId);
 
@@ -520,10 +522,10 @@ async function checkAndSettleCondition(
         // Voided market — settle as tie
         outcome = { yesWeight: 1n, noWeight: 1n };
         console.log(
-          `[${shortId}] Market voided/closed on Polymarket API, settling as TIE`
+          `[${conditionId}] Market voided/closed on Polymarket API, settling as TIE`
         );
       } else {
-        console.log(`[${shortId}] Not resolved anywhere yet, skipping`);
+        console.log(`[${conditionId}] Not resolved anywhere yet, skipping`);
         return {
           conditionId,
           alreadyResolved: false,
@@ -537,7 +539,7 @@ async function checkAndSettleCondition(
     // Settle the condition on ManualConditionResolver
     if (options.dryRun) {
       console.log(
-        `[${shortId}] DRY RUN — would call settleCondition(${outcomeToString(outcome)})`
+        `[${conditionId}] DRY RUN — would call settleCondition(${outcomeToString(outcome)})`
       );
       return {
         conditionId,
@@ -562,7 +564,7 @@ async function checkAndSettleCondition(
     }
 
     console.log(
-      `[${shortId}] Settling condition as ${outcomeToString(outcome)}...`
+      `[${conditionId}] Settling condition as ${outcomeToString(outcome)}...`
     );
 
     const outcomeArg = {
@@ -582,7 +584,7 @@ async function checkAndSettleCondition(
     });
     const gasLimit = (estimatedGas * 130n) / 100n;
     console.log(
-      `[${shortId}] Estimated gas: ${estimatedGas}, using limit: ${gasLimit}`
+      `[${conditionId}] Estimated gas: ${estimatedGas}, using limit: ${gasLimit}`
     );
 
     const hash = await walletClient.writeContract({
@@ -596,12 +598,12 @@ async function checkAndSettleCondition(
       gas: gasLimit,
     });
 
-    console.log(`[${shortId}] Transaction sent: ${hash}`);
+    console.log(`[${conditionId}] Transaction sent: ${hash}`);
 
     if (options.wait) {
-      console.log(`[${shortId}] Waiting for confirmation...`);
+      console.log(`[${conditionId}] Waiting for confirmation...`);
       const receipt = await etherealClient.waitForTransactionReceipt({ hash });
-      console.log(`[${shortId}] Confirmed in block ${receipt.blockNumber}`);
+      console.log(`[${conditionId}] Confirmed in block ${receipt.blockNumber}`);
     }
 
     return {

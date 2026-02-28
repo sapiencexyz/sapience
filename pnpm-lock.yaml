@@ -379,6 +379,9 @@ importers:
 
   packages/polymarket-keeper:
     dependencies:
+      '@sapience/sdk':
+        specifier: workspace:*
+        version: link:../sdk
       dotenv:
         specifier: 16.4.5
         version: 16.4.5

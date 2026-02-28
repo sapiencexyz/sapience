@@ -1,3 +1,5 @@
+import { manualConditionResolver } from '@sapience/sdk/contracts';
+
 /**
  * Configuration constants
  */
@@ -6,14 +8,16 @@
 export const ADMIN_AUTHENTICATE_MSG =
   'Sign this message to authenticate for admin actions.';
 
-// Resolver address — configurable via env var, defaults to LZConditionalTokensResolver on Ethereal mainnet
-export const RESOLVER_ADDRESS = (process.env.RESOLVER_ADDRESS ||
-  '0xdC1Fa830aD1de01f1EF603749f48bD73384286BE') as `0x${string}`;
-
-export const DEFAULT_SAPIENCE_API_URL = 'https://api.sapience.xyz';
-
 // Chain ID — configurable via env var, defaults to Ethereal mainnet
 export const CHAIN_ID = Number(process.env.CHAIN_ID || '5064014');
+
+// Resolver address — configurable via env var, defaults to ManualConditionResolver for CHAIN_ID
+export const RESOLVER_ADDRESS = (process.env.RESOLVER_ADDRESS ||
+  // predictionMarketLZConditionalTokensResolver[CHAIN_ID]?.address ||
+  manualConditionResolver[CHAIN_ID]?.address ||
+  '') as `0x${string}`;
+
+export const DEFAULT_SAPIENCE_API_URL = 'https://api.sapience.xyz';
 
 // Minimum volume threshold (in USD) for including markets
 export const MIN_VOLUME_THRESHOLD = 10_000;
