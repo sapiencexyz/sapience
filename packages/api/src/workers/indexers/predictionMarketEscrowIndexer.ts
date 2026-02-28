@@ -115,7 +115,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     this.blockCreated = BigInt(contractEntry.blockCreated || 0);
 
     console.log(
-      `[PredictionMarketEscrowIndexer] Initialized for chain ${chainId} with contract ${this.contractAddress} (blockCreated: ${this.blockCreated})`
+      `[PredictionMarketEscrowIndexer:${this.chainId}] Initialized with contract ${this.contractAddress} (blockCreated: ${this.blockCreated})`
     );
   }
 
@@ -131,19 +131,19 @@ class PredictionMarketEscrowIndexer implements IIndexer {
 
       const startBlock = await getBlockByTimestamp(this.client, startTimestamp);
       console.log(
-        `[PredictionMarketEscrowIndexer] Found start block: ${startBlock.number} at timestamp ${startBlock.timestamp}`
+        `[PredictionMarketEscrowIndexer:${this.chainId}] Found start block: ${startBlock.number} at timestamp ${startBlock.timestamp}`
       );
 
       let endBlock: Block;
       if (endTimestamp) {
         endBlock = await getBlockByTimestamp(this.client, endTimestamp);
         console.log(
-          `[PredictionMarketEscrowIndexer] Found end block: ${endBlock.number} at timestamp ${endBlock.timestamp}`
+          `[PredictionMarketEscrowIndexer:${this.chainId}] Found end block: ${endBlock.number} at timestamp ${endBlock.timestamp}`
         );
       } else {
         endBlock = await this.client.getBlock({ blockTag: 'latest' });
         console.log(
-          `[PredictionMarketEscrowIndexer] Using latest block: ${endBlock.number} at timestamp ${endBlock.timestamp}`
+          `[PredictionMarketEscrowIndexer:${this.chainId}] Using latest block: ${endBlock.number} at timestamp ${endBlock.timestamp}`
         );
       }
 
@@ -157,7 +157,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
       ) {
         const batchEnd = Math.min(i + BLOCK_BATCH_SIZE - 1, endBlockNumber);
         console.log(
-          `[PredictionMarketEscrowIndexer] Processing blocks ${i} to ${batchEnd}`
+          `[PredictionMarketEscrowIndexer:${this.chainId}] Processing blocks ${i} to ${batchEnd}`
         );
 
         // Create array of block numbers in this batch
@@ -169,8 +169,16 @@ class PredictionMarketEscrowIndexer implements IIndexer {
       }
 
       // Update indexer state
+      console.log(
+        `[PredictionMarketEscrowIndexer:${this.chainId}] Persisting watermark block=${endBlockNumber}`
+      );
       await prisma.indexerState.upsert({
-        where: { chainId: this.chainId },
+        where: {
+          chainId_marketAddress: {
+            chainId: this.chainId,
+            marketAddress: this.contractAddress,
+          },
+        },
         create: {
           chainId: this.chainId,
           marketAddress: this.contractAddress,
@@ -186,7 +194,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
       return true;
     } catch (error) {
       console.error(
-        '[PredictionMarketEscrowIndexer] Error indexing blocks:',
+        `[PredictionMarketEscrowIndexer:${this.chainId}] Error indexing blocks:`,
         error
       );
       Sentry.captureException(error);
@@ -207,7 +215,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
       });
 
       console.log(
-        `[PredictionMarketEscrowIndexer] Found ${logs.length} logs in blocks ${fromBlock}-${toBlock}`
+        `[PredictionMarketEscrowIndexer:${this.chainId}] Found ${logs.length} logs in blocks ${fromBlock}-${toBlock}`
       );
 
       // Get blocks for timestamps
@@ -231,7 +239,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
       return true;
     } catch (error) {
       console.error(
-        `[PredictionMarketEscrowIndexer] Error processing blocks ${fromBlock}-${toBlock}:`,
+        `[PredictionMarketEscrowIndexer:${this.chainId}] Error processing blocks ${fromBlock}-${toBlock}:`,
         error
       );
       Sentry.captureException(error);
@@ -242,13 +250,13 @@ class PredictionMarketEscrowIndexer implements IIndexer {
   async watchBlocksForResource(resourceSlug: string): Promise<void> {
     if (this.isWatching) {
       console.log(
-        `[PredictionMarketEscrowIndexer] Already watching ${resourceSlug}`
+        `[PredictionMarketEscrowIndexer:${this.chainId}] Already watching ${resourceSlug}`
       );
       return;
     }
 
     console.log(
-      `[PredictionMarketEscrowIndexer] Starting to poll contract ${this.contractAddress} on chain ${this.chainId} for ${resourceSlug}`
+      `[PredictionMarketEscrowIndexer:${this.chainId}] Starting to poll contract ${this.contractAddress} for ${resourceSlug}`
     );
 
     this.isWatching = true;
@@ -256,7 +264,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     // Set up SIGINT handler
     this.sigintHandler = () => {
       console.log(
-        '[PredictionMarketEscrowIndexer] Received SIGINT, stopping...'
+        `[PredictionMarketEscrowIndexer:${this.chainId}] Received SIGINT, stopping...`
       );
       this.stop();
       process.exit(0);
@@ -266,29 +274,32 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     // Get the starting block: resume from DB state, fall back to blockCreated, then current block
     if (this.lastProcessedBlock === 0n) {
       // Try to resume from last indexed block in DB
-      const state = await prisma.indexerState.findUnique({
-        where: { chainId: this.chainId },
+      const state = await prisma.indexerState.findFirst({
+        where: {
+          chainId: this.chainId,
+          marketAddress: this.contractAddress,
+        },
       });
       if (state) {
         this.lastProcessedBlock = BigInt(state.lastIndexedBlock);
         console.log(
-          `[PredictionMarketEscrowIndexer] Resuming from last indexed block ${this.lastProcessedBlock}`
+          `[PredictionMarketEscrowIndexer:${this.chainId}] Resuming from watermark block ${this.lastProcessedBlock}`
         );
       } else if (this.blockCreated > 0n) {
         // Start from contract creation block to index historical events
         this.lastProcessedBlock = this.blockCreated - 1n;
         console.log(
-          `[PredictionMarketEscrowIndexer] Starting from blockCreated ${this.blockCreated} for historical indexing`
+          `[PredictionMarketEscrowIndexer:${this.chainId}] Starting from blockCreated ${this.blockCreated} for historical indexing`
         );
       } else {
         try {
           this.lastProcessedBlock = await this.client.getBlockNumber();
           console.log(
-            `[PredictionMarketEscrowIndexer] Starting from current block ${this.lastProcessedBlock}`
+            `[PredictionMarketEscrowIndexer:${this.chainId}] No watermark found, starting from current block ${this.lastProcessedBlock}`
           );
         } catch (error) {
           console.error(
-            '[PredictionMarketEscrowIndexer] Error getting initial block:',
+            `[PredictionMarketEscrowIndexer:${this.chainId}] Error getting initial block:`,
             error
           );
           this.lastProcessedBlock = 0n;
@@ -316,7 +327,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
 
           if (logs.length > 0) {
             console.log(
-              `[PredictionMarketEscrowIndexer] Found ${logs.length} events in blocks ${fromBlock}-${toBlock}`
+              `[PredictionMarketEscrowIndexer:${this.chainId}] Found ${logs.length} events in blocks ${fromBlock}-${toBlock}`
             );
 
             for (const log of logs) {
@@ -327,7 +338,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
                 await this.processLog(log, block);
               } catch (error) {
                 console.error(
-                  '[PredictionMarketEscrowIndexer] Error processing log:',
+                  `[PredictionMarketEscrowIndexer:${this.chainId}] Error processing log:`,
                   error
                 );
                 Sentry.captureException(error);
@@ -338,8 +349,16 @@ class PredictionMarketEscrowIndexer implements IIndexer {
           this.lastProcessedBlock = currentBlock;
 
           // Persist indexer state for resume on restart
+          console.log(
+            `[PredictionMarketEscrowIndexer:${this.chainId}] Persisting watermark block=${currentBlock}`
+          );
           await prisma.indexerState.upsert({
-            where: { chainId: this.chainId },
+            where: {
+              chainId_marketAddress: {
+                chainId: this.chainId,
+                marketAddress: this.contractAddress,
+              },
+            },
             create: {
               chainId: this.chainId,
               marketAddress: this.contractAddress,
@@ -353,7 +372,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
           });
         }
       } catch (error) {
-        console.error('[PredictionMarketEscrowIndexer] Polling error:', error);
+        console.error(`[PredictionMarketEscrowIndexer:${this.chainId}] Polling error:`, error);
         Sentry.captureException(error);
       }
     };
@@ -375,7 +394,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
       process.off('SIGINT', this.sigintHandler);
       this.sigintHandler = null;
     }
-    console.log('[PredictionMarketEscrowIndexer] Stopped');
+    console.log(`[PredictionMarketEscrowIndexer:${this.chainId}] Stopped`);
   }
 
   private async processLog(log: Log, block: Block): Promise<void> {
@@ -443,7 +462,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
       }
     } catch (error) {
       console.error(
-        '[PredictionMarketEscrowIndexer] Error processing log:',
+        `[PredictionMarketEscrowIndexer:${this.chainId}] Error processing log:`,
         error
       );
       Sentry.captureException(error);
@@ -456,7 +475,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     block: Block
   ): Promise<void> {
     console.log(
-      `[PredictionMarketEscrowIndexer] Processing PredictionCreated event: predictionId=${event.predictionId}`
+      `[PredictionMarketEscrowIndexer:${this.chainId}] Processing PredictionCreated event: predictionId=${event.predictionId}`
     );
 
     const predictionIdLower = event.predictionId.toLowerCase();
@@ -469,7 +488,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
 
     if (existingPrediction) {
       console.log(
-        `[PredictionMarketEscrowIndexer] Prediction ${predictionIdLower} already exists, skipping`
+        `[PredictionMarketEscrowIndexer:${this.chainId}] Prediction ${predictionIdLower} already exists, skipping`
       );
       return;
     }
@@ -496,7 +515,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     await this.ensurePickConfigAndBalances(event, log);
 
     console.log(
-      `[PredictionMarketEscrowIndexer] Processed PredictionCreated ${predictionIdLower}`
+      `[PredictionMarketEscrowIndexer:${this.chainId}] Processed PredictionCreated ${predictionIdLower}`
     );
   }
 
@@ -594,7 +613,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
         }
 
         console.log(
-          `[PredictionMarketEscrowIndexer] Created Picks config ${pickConfigId}`
+          `[PredictionMarketEscrowIndexer:${this.chainId}] Created Picks config ${pickConfigId}`
         );
       } else {
         // Picks already exist — accumulate collateral totals
@@ -641,12 +660,12 @@ class PredictionMarketEscrowIndexer implements IIndexer {
       `;
 
       console.log(
-        `[PredictionMarketEscrowIndexer] Upserted position balances for pickConfig ${pickConfigId}`
+        `[PredictionMarketEscrowIndexer:${this.chainId}] Upserted position balances for pickConfig ${pickConfigId}`
       );
     } catch (error) {
       // Log but don't fail the indexer — the prediction record is already saved
       console.error(
-        '[PredictionMarketEscrowIndexer] Error populating pick config / balances:',
+        `[PredictionMarketEscrowIndexer:${this.chainId}] Error populating pick config / balances:`,
         error
       );
       Sentry.captureException(error);
@@ -659,7 +678,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     block: Block
   ): Promise<void> {
     console.log(
-      `[PredictionMarketEscrowIndexer] Processing PredictionSettled event: predictionId=${event.predictionId}, result=${event.result}`
+      `[PredictionMarketEscrowIndexer:${this.chainId}] Processing PredictionSettled event: predictionId=${event.predictionId}, result=${event.result}`
     );
 
     const timestamp = Number(block.timestamp);
@@ -710,7 +729,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     }
 
     console.log(
-      `[PredictionMarketEscrowIndexer] Marked prediction ${predictionIdLower} as settled with result ${mapSettlementResult(event.result)}`
+      `[PredictionMarketEscrowIndexer:${this.chainId}] Marked prediction ${predictionIdLower} as settled with result ${mapSettlementResult(event.result)}`
     );
   }
 
@@ -720,7 +739,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     block: Block
   ): Promise<void> {
     console.log(
-      `[PredictionMarketEscrowIndexer] Processing TokensRedeemed event: pickConfigId=${event.pickConfigId}, holder=${event.holder}`
+      `[PredictionMarketEscrowIndexer:${this.chainId}] Processing TokensRedeemed event: pickConfigId=${event.pickConfigId}, holder=${event.holder}`
     );
 
     const timestamp = Number(block.timestamp);
@@ -749,7 +768,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     await this.checkFullyRedeemed(event.positionToken.toLowerCase());
 
     console.log(
-      `[PredictionMarketEscrowIndexer] Created claim record for prediction ${predictionIdLower}`
+      `[PredictionMarketEscrowIndexer:${this.chainId}] Created claim record for prediction ${predictionIdLower}`
     );
   }
 
@@ -759,7 +778,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     block: Block
   ): Promise<void> {
     console.log(
-      `[PredictionMarketEscrowIndexer] Processing CollateralDeposited event: predictionId=${event.predictionId}, totalAmount=${event.totalAmount}`
+      `[PredictionMarketEscrowIndexer:${this.chainId}] Processing CollateralDeposited event: predictionId=${event.predictionId}, totalAmount=${event.totalAmount}`
     );
 
     const timestamp = Number(block.timestamp);
@@ -775,7 +794,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     });
 
     console.log(
-      `[PredictionMarketEscrowIndexer] Updated collateral deposited for prediction ${predictionIdLower}`
+      `[PredictionMarketEscrowIndexer:${this.chainId}] Updated collateral deposited for prediction ${predictionIdLower}`
     );
   }
 
@@ -787,12 +806,12 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     _block: Block
   ): Promise<void> {
     console.log(
-      `[PredictionMarketEscrowIndexer] Processing DustSwept event: pickConfigId=${event.pickConfigId}, amount=${event.amount}`
+      `[PredictionMarketEscrowIndexer:${this.chainId}] Processing DustSwept event: pickConfigId=${event.pickConfigId}, amount=${event.amount}`
     );
 
     // DustSwept is informational - log it but no DB action needed
     console.log(
-      `[PredictionMarketEscrowIndexer] Dust swept: ${event.amount} to ${event.recipient} for pickConfigId ${event.pickConfigId}`
+      `[PredictionMarketEscrowIndexer:${this.chainId}] Dust swept: ${event.amount} to ${event.recipient} for pickConfigId ${event.pickConfigId}`
     );
   }
 
@@ -802,7 +821,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     block: Block
   ): Promise<void> {
     console.log(
-      `[PredictionMarketEscrowIndexer] Processing PositionsBurned event: pickConfigId=${event.pickConfigId}`
+      `[PredictionMarketEscrowIndexer:${this.chainId}] Processing PositionsBurned event: pickConfigId=${event.pickConfigId}`
     );
 
     const timestamp = Number(block.timestamp);
@@ -850,7 +869,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     await this.checkFullyRedeemedByPickConfig(pickConfigIdLower);
 
     console.log(
-      `[PredictionMarketEscrowIndexer] Created close record for pickConfig ${pickConfigIdLower}`
+      `[PredictionMarketEscrowIndexer:${this.chainId}] Created close record for pickConfig ${pickConfigIdLower}`
     );
   }
 
@@ -899,12 +918,12 @@ class PredictionMarketEscrowIndexer implements IIndexer {
           data: { fullyRedeemed: true },
         });
         console.log(
-          `[PredictionMarketEscrowIndexer] Marked pickConfig ${pickConfigId} as fullyRedeemed`
+          `[PredictionMarketEscrowIndexer:${this.chainId}] Marked pickConfig ${pickConfigId} as fullyRedeemed`
         );
       }
     } catch (error) {
       console.error(
-        `[PredictionMarketEscrowIndexer] Error checking fullyRedeemed for pickConfig ${pickConfigId}:`,
+        `[PredictionMarketEscrowIndexer:${this.chainId}] Error checking fullyRedeemed for pickConfig ${pickConfigId}:`,
         error
       );
     }

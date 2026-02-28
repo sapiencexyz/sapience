@@ -2,25 +2,22 @@
 
 import { Button } from '@sapience/ui/components/ui/button';
 import { Input } from '@sapience/ui/components/ui/input';
-import { Checkbox } from '@sapience/ui/components/ui/checkbox';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import dynamic from 'next/dynamic';
 import { useState } from 'react';
 import { useAdminApi } from '~/hooks/useAdminApi';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 
-// Dynamically import Loader
 const Loader = dynamic(() => import('~/components/shared/Loader'), {
   ssr: false,
   loading: () => <div className="w-4 h-4" />,
 });
 
-const ReindexPredictionMarketForm = () => {
+const ReindexConditionSettledForm = () => {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const [startTimestamp, setStartTimestamp] = useState('');
   const [endTimestamp, setEndTimestamp] = useState('');
-  const [clearExisting, setClearExisting] = useState(false);
   const { postJson } = useAdminApi();
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -29,11 +26,10 @@ const ReindexPredictionMarketForm = () => {
     try {
       setIsLoading(true);
 
-      await postJson(`/reindex/prediction-market`, {
+      await postJson(`/reindex/condition-settled`, {
         chainId: DEFAULT_CHAIN_ID,
         ...(startTimestamp && { startTimestamp: Number(startTimestamp) }),
         ...(endTimestamp && { endTimestamp: Number(endTimestamp) }),
-        clearExisting,
       });
 
       const timeRange = startTimestamp
@@ -42,15 +38,13 @@ const ReindexPredictionMarketForm = () => {
 
       toast({
         title: 'Reindex started',
-        description: `Prediction market reindexing started on Ethereal (${DEFAULT_CHAIN_ID}) ${timeRange}${clearExisting ? ' (clearing existing data)' : ''}`,
+        description: `Prediction market reindexing started on Ethereal (${DEFAULT_CHAIN_ID}) ${timeRange}`,
       });
 
-      // Reset form
       setStartTimestamp('');
       setEndTimestamp('');
-      setClearExisting(false);
     } catch (error) {
-      console.error('Reindex prediction market error:', error);
+      console.error('Reindex condition settled error:', error);
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -62,7 +56,6 @@ const ReindexPredictionMarketForm = () => {
     }
   };
 
-  // Helper function to set common time ranges
   const setTimeRange = (hours: number) => {
     const now = Math.floor(Date.now() / 1000);
     const start = now - hours * 60 * 60;
@@ -157,24 +150,6 @@ const ReindexPredictionMarketForm = () => {
         </p>
       </div>
 
-      <div className="flex items-center space-x-2">
-        <Checkbox
-          id="clearExisting"
-          checked={clearExisting}
-          onCheckedChange={(checked) => setClearExisting(checked as boolean)}
-        />
-        <label
-          htmlFor="clearExisting"
-          className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-        >
-          Clear existing data before reindexing
-        </label>
-      </div>
-      <p className="text-sm text-muted-foreground">
-        ⚠️ Warning: This will delete all existing positions and events for the
-        selected chain before reindexing.
-      </p>
-
       <Button type="submit" disabled={isLoading} className="w-full">
         {isLoading ? (
           <>
@@ -189,4 +164,4 @@ const ReindexPredictionMarketForm = () => {
   );
 };
 
-export default ReindexPredictionMarketForm;
+export default ReindexConditionSettledForm;

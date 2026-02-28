@@ -153,7 +153,7 @@ class EASPredictionIndexer implements IIndexer {
       };
     } catch (error) {
       console.error(
-        `[EASPredictionIndexer] Error fetching attestation data for ${uid}:`,
+        `[EASPredictionIndexer:${this.chainId}] Error fetching attestation data for ${uid}:`,
         error
       );
       return null;
@@ -179,7 +179,7 @@ class EASPredictionIndexer implements IIndexer {
       };
     } catch (error) {
       console.error(
-        '[EASPredictionIndexer] Error decoding forecast data:',
+        `[EASPredictionIndexer:${this.chainId}] Error decoding forecast data:`,
         error
       );
       return null;
@@ -228,7 +228,7 @@ class EASPredictionIndexer implements IIndexer {
       return events;
     } catch (error) {
       console.error(
-        `[EASPredictionIndexer] Error fetching prediction market events from block ${fromBlock} to ${toBlock}:`,
+        `[EASPredictionIndexer:${this.chainId}] Error fetching prediction market events from block ${fromBlock} to ${toBlock}:`,
         error
       );
       return [];
@@ -242,7 +242,7 @@ class EASPredictionIndexer implements IIndexer {
       const attestationData = await this.getAttestationData(event.uid);
       if (!attestationData) {
         console.warn(
-          `[EASPredictionIndexer] Could not fetch attestation data for ${event.uid}`
+          `[EASPredictionIndexer:${this.chainId}] Could not fetch attestation data for ${event.uid}`
         );
         return;
       }
@@ -250,7 +250,7 @@ class EASPredictionIndexer implements IIndexer {
       const decodedData = this.decodeForecastData(attestationData.data);
       if (!decodedData) {
         console.warn(
-          `[EASPredictionIndexer] Could not decode forecast data for ${event.uid}`
+          `[EASPredictionIndexer:${this.chainId}] Could not decode forecast data for ${event.uid}`
         );
         return;
       }
@@ -293,11 +293,11 @@ class EASPredictionIndexer implements IIndexer {
       await upsertAttestationScoreFromAttestation(att.id);
 
       console.log(
-        `[EASPredictionIndexer] Stored forecast attestation ${event.uid} (resolver: ${decodedData.resolver}) with forecast ${decodedData.forecast}`
+        `[EASPredictionIndexer:${this.chainId}] Stored forecast attestation ${event.uid} (resolver: ${decodedData.resolver}) with forecast ${decodedData.forecast}`
       );
     } catch (error) {
       console.error(
-        `[EASPredictionIndexer] Error storing prediction attestation:`,
+        `[EASPredictionIndexer:${this.chainId}] Error storing prediction attestation:`,
         error
       );
       Sentry.withScope((scope: Sentry.Scope) => {
@@ -343,7 +343,7 @@ class EASPredictionIndexer implements IIndexer {
       const endBlockNumber = Number(endBlock.number);
 
       console.log(
-        `[EASPredictionIndexer] Indexing prediction market attestations from block ${currentBlock} to ${endBlockNumber}`
+        `[EASPredictionIndexer:${this.chainId}] Indexing prediction market attestations from block ${currentBlock} to ${endBlockNumber}`
       );
 
       // Process blocks in batches
@@ -354,7 +354,7 @@ class EASPredictionIndexer implements IIndexer {
         );
 
         console.log(
-          `[EASPredictionIndexer] Processing batch: blocks ${currentBlock} to ${batchEnd}`
+          `[EASPredictionIndexer:${this.chainId}] Processing batch: blocks ${currentBlock} to ${batchEnd}`
         );
 
         const skipBlocks: number[] = [];
@@ -373,7 +373,7 @@ class EASPredictionIndexer implements IIndexer {
 
             if (existingAttestations) {
               console.log(
-                `[EASPredictionIndexer] Already have data for block ${blockNumber}, skipping...`
+                `[EASPredictionIndexer:${this.chainId}] Already have data for block ${blockNumber}, skipping...`
               );
               skipBlocks.push(blockNumber);
             }
@@ -388,12 +388,12 @@ class EASPredictionIndexer implements IIndexer {
           );
           if (events.length > 0) {
             console.log(
-              `[EASPredictionIndexer] Found ${events.length} prediction market attestations in blocks ${currentBlock} to ${batchEnd}`
+              `[EASPredictionIndexer:${this.chainId}] Found ${events.length} prediction market attestations in blocks ${currentBlock} to ${batchEnd}`
             );
           }
         } catch (error) {
           console.error(
-            `[EASPredictionIndexer] Error fetching prediction market events for blocks ${currentBlock} to ${batchEnd}:`,
+            `[EASPredictionIndexer:${this.chainId}] Error fetching prediction market events for blocks ${currentBlock} to ${batchEnd}:`,
             error
           );
 
@@ -414,7 +414,7 @@ class EASPredictionIndexer implements IIndexer {
 
             if (events.length > 0) {
               console.log(
-                `[EASPredictionIndexer] Found ${events.length} prediction market attestations in block ${blockNumber}`
+                `[EASPredictionIndexer:${this.chainId}] Found ${events.length} prediction market attestations in block ${blockNumber}`
               );
               events.push(...currentEvents);
             }
@@ -431,7 +431,7 @@ class EASPredictionIndexer implements IIndexer {
             await this.storeForecastAttestation(event);
           } catch (error) {
             console.error(
-              `[EASPredictionIndexer] Error processing block ${event.blockNumber}:`,
+              `[EASPredictionIndexer:${this.chainId}] Error processing block ${event.blockNumber}:`,
               error
             );
             Sentry.withScope((scope: Sentry.Scope) => {
@@ -450,7 +450,7 @@ class EASPredictionIndexer implements IIndexer {
       return true;
     } catch (error) {
       console.error(
-        `[EASPredictionIndexer] Error in indexBlocksFromTimestamp:`,
+        `[EASPredictionIndexer:${this.chainId}] Error in indexBlocksFromTimestamp:`,
         error
       );
       Sentry.withScope((scope: Sentry.Scope) => {
@@ -466,7 +466,7 @@ class EASPredictionIndexer implements IIndexer {
   async indexBlocks(_resourceSlug: string, blocks: number[]): Promise<boolean> {
     try {
       console.log(
-        `[EASPredictionIndexer] Indexing ${blocks.length} specific blocks`
+        `[EASPredictionIndexer:${this.chainId}] Indexing ${blocks.length} specific blocks`
       );
 
       for (const blockNumber of blocks) {
@@ -478,7 +478,7 @@ class EASPredictionIndexer implements IIndexer {
 
           if (events.length > 0) {
             console.log(
-              `[EASPredictionIndexer] Found ${events.length} prediction market attestations in block ${blockNumber}`
+              `[EASPredictionIndexer:${this.chainId}] Found ${events.length} prediction market attestations in block ${blockNumber}`
             );
 
             for (const event of events) {
@@ -487,7 +487,7 @@ class EASPredictionIndexer implements IIndexer {
           }
         } catch (error) {
           console.error(
-            `[EASPredictionIndexer] Error processing block ${blockNumber}:`,
+            `[EASPredictionIndexer:${this.chainId}] Error processing block ${blockNumber}:`,
             error
           );
           Sentry.withScope((scope: Sentry.Scope) => {
@@ -501,7 +501,7 @@ class EASPredictionIndexer implements IIndexer {
       return true;
     } catch (error) {
       console.error(
-        `[EASPredictionIndexer] Error in indexSpecificBlocks:`,
+        `[EASPredictionIndexer:${this.chainId}] Error in indexSpecificBlocks:`,
         error
       );
       Sentry.withScope((scope: Sentry.Scope) => {
@@ -517,14 +517,14 @@ class EASPredictionIndexer implements IIndexer {
   async watchBlocksForResource(_resourceSlug: string): Promise<void> {
     if (this.isWatching) {
       console.log(
-        `[EASPredictionIndexer] Already watching for new predictions`
+        `[EASPredictionIndexer:${this.chainId}] Already watching for new predictions`
       );
       return;
     }
 
     this.isWatching = true;
     console.log(
-      `[EASPredictionIndexer] Starting to watch for new prediction market attestations on chain ${this.chainId}`
+      `[EASPredictionIndexer:${this.chainId}] Starting to watch for new prediction market attestations`
     );
 
     try {
@@ -542,7 +542,7 @@ class EASPredictionIndexer implements IIndexer {
               if (log.args.schemaUID !== FORECAST_SCHEMA_ID) {
                 // Skip if not a prediction market attestation for this schema
                 console.log(
-                  `[EASPredictionIndexer] Skipping event with schema ${log.args.schemaUID}`
+                  `[EASPredictionIndexer:${this.chainId}] Skipping event with schema ${log.args.schemaUID}`
                 );
                 continue;
               }
@@ -563,11 +563,11 @@ class EASPredictionIndexer implements IIndexer {
 
               await this.storeForecastAttestation(event);
               console.log(
-                `[EASPredictionIndexer] Processed new prediction: ${event.uid}`
+                `[EASPredictionIndexer:${this.chainId}] Processed new prediction: ${event.uid}`
               );
             } catch (error) {
               console.error(
-                `[EASPredictionIndexer] Error processing prediction event:`,
+                `[EASPredictionIndexer:${this.chainId}] Error processing prediction event:`,
                 error
               );
             }
@@ -575,7 +575,7 @@ class EASPredictionIndexer implements IIndexer {
         },
         onError: (error) => {
           console.error(
-            `[EASPredictionIndexer] Error in prediction watcher:`,
+            `[EASPredictionIndexer:${this.chainId}] Error in prediction watcher:`,
             error
           );
         },
@@ -587,7 +587,7 @@ class EASPredictionIndexer implements IIndexer {
         this.isWatching = false;
       });
     } catch (error) {
-      console.error(`[EASPredictionIndexer] Error setting up watcher:`, error);
+      console.error(`[EASPredictionIndexer:${this.chainId}] Error setting up watcher:`, error);
       this.isWatching = false;
       Sentry.withScope((scope: Sentry.Scope) => {
         scope.setExtra('chainId', this.chainId);

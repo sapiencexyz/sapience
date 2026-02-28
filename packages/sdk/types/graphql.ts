@@ -385,8 +385,7 @@ export type Condition = {
   id: Scalars['String']['output'];
   openInterest: Scalars['String']['output'];
   predictionCount: Scalars['Int']['output'];
-  /** V2 escrow-based predictions linked to this condition via pick configurations */
-  predictions: Array<Prediction>;
+  predictions: Array<LegacyPrediction>;
   public: Scalars['Boolean']['output'];
   question: Scalars['String']['output'];
   resolvedToYes: Scalars['Boolean']['output'];
@@ -420,8 +419,12 @@ export type ConditionConditionGroupArgs = {
 
 
 export type ConditionPredictionsArgs = {
-  skip?: Scalars['Int']['input'];
-  take?: Scalars['Int']['input'];
+  cursor?: InputMaybe<LegacyPredictionWhereUniqueInput>;
+  distinct?: InputMaybe<Array<LegacyPredictionScalarFieldEnum>>;
+  orderBy?: InputMaybe<Array<LegacyPredictionOrderByWithRelationInput>>;
+  skip?: InputMaybe<Scalars['Int']['input']>;
+  take?: InputMaybe<Scalars['Int']['input']>;
+  where?: InputMaybe<LegacyPredictionWhereInput>;
 };
 
 export type ConditionCount = {
