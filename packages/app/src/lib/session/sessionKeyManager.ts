@@ -892,27 +892,10 @@ export async function createSession(
   }
 
   onProgress?.('finalizing');
-  // Sign escrow session key approval so the contract can validate via native
-  // session key path (Option B in SignatureValidator) instead of ERC-1271.
-  let escrowSessionKeyApproval: EscrowSessionKeyApproval | undefined;
-  if (etherealContracts.predictionMarketEscrow) {
-    try {
-      escrowSessionKeyApproval = await _signEscrowSessionKeyApproval(
-        ownerSigner,
-        sessionKeyAccount.address,
-        smartAccountAddress,
-        validUntilInSeconds,
-        etherealChainId,
-        etherealContracts.predictionMarketEscrow
-      );
-      console.debug('[SessionKeyManager] Escrow session key approval signed');
-    } catch (e) {
-      console.warn(
-        '[SessionKeyManager] Failed to sign escrow session key approval:',
-        e
-      );
-    }
-  }
+  // Note: escrow session key approval (Option B) has been removed.
+  // Contract now validates session signatures via ERC-1271 (isValidSignature)
+  // on the deployed smart account. This eliminates the second wallet popup
+  // during session creation.
 
   const config: SessionConfig = {
     durationHours,
@@ -930,7 +913,6 @@ export async function createSession(
     // Arbitrum approval not set - will be created lazily
     etherealEnableTypedData,
     etherealChainId,
-    escrowSessionKeyApproval,
   };
 
   return {

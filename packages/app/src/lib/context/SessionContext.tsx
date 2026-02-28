@@ -472,7 +472,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
         setArbitrumSessionApproval(approvalData.arbitrum);
         setEtherealSessionApproval(approvalData.ethereal);
         // Restore escrow session key approval if available (legacy sessions)
-        setEscrowSessionKeyApproval(stored.escrowSessionKeyApproval ?? null);
+        // escrowSessionKeyApproval removed — contract validates via ERC-1271
         setIsSessionActive(true);
         setTimeRemainingMs(result.config.expiresAt - Date.now());
       } catch (error) {
@@ -601,9 +601,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
         setArbitrumSessionApproval(approvalData.arbitrum);
         setEtherealSessionApproval(approvalData.ethereal);
         // Set escrow session key approval if available (legacy sessions)
-        setEscrowSessionKeyApproval(
-          result.serialized.escrowSessionKeyApproval ?? null
-        );
+        // escrowSessionKeyApproval removed — contract validates via ERC-1271
         setIsSessionActive(true);
         setTimeRemainingMs(result.config.expiresAt - Date.now());
         console.debug(
