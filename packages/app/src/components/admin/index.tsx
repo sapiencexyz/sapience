@@ -207,12 +207,12 @@ const Admin = () => {
           >
             <DialogTrigger asChild>
               <Button variant="outline" size="sm">
-                Reindex Condition Settled
+                Reindex Prediction Markets
               </Button>
             </DialogTrigger>
             <DialogContent className="max-w-sm">
               <DialogHeader>
-                <DialogTitle>Reindex Condition Settled</DialogTitle>
+                <DialogTitle>Reindex Prediction Markets</DialogTitle>
               </DialogHeader>
               <ReindexConditionSettledForm />
             </DialogContent>

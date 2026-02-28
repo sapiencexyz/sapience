@@ -38,7 +38,7 @@ const ReindexConditionSettledForm = () => {
 
       toast({
         title: 'Reindex started',
-        description: `Condition settled reindexing started on Ethereal (${DEFAULT_CHAIN_ID}) ${timeRange}`,
+        description: `Prediction market reindexing started on Ethereal (${DEFAULT_CHAIN_ID}) ${timeRange}`,
       });
 
       setStartTimestamp('');
@@ -157,7 +157,7 @@ const ReindexConditionSettledForm = () => {
             <span className="ml-2">Processing...</span>
           </>
         ) : (
-          'Reindex Condition Settled'
+          'Reindex Prediction Markets'
         )}
       </Button>
     </form>
