@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/utils/Pausable.sol";
 import "@openzeppelin/contracts/utils/math/Math.sol";
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
-import "../utils/SignatureProcessor.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "./interfaces/IPredictionMarketVault.sol";
 
 /// @dev Minimal interface for querying prediction market token info
@@ -62,7 +62,6 @@ contract PredictionMarketVault is
     Ownable2Step,
     ReentrancyGuard,
     Pausable,
-    SignatureProcessor,
     ERC165
 {
     using SafeERC20 for IERC20;
@@ -614,13 +613,17 @@ contract PredictionMarketVault is
 
     // ============ Signature Functions ============
 
-    function isValidSignature(bytes32 messageHash, bytes memory signature)
+    /// @notice ERC-1271: validate that the manager signed the given hash
+    /// @dev The manager signs the raw EIP-712 hash (e.g. MintApproval from PredictionMarketEscrow).
+    ///      No additional wrapping — the manager uses the same typed data any EOA counterparty would,
+    ///      just with signer = vault address instead of their own EOA.
+    function isValidSignature(bytes32 hash, bytes memory signature)
         external
         view
         returns (bytes4)
     {
-        // check if the signer was the manager
-        if (_isApprovalValid(messageHash, manager, signature)) {
+        (address recovered, ECDSA.RecoverError err,) = ECDSA.tryRecover(hash, signature);
+        if (err == ECDSA.RecoverError.NoError && recovered == manager) {
             return IERC1271.isValidSignature.selector;
         }
         return 0xFFFFFFFF;

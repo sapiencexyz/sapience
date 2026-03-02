@@ -151,12 +151,9 @@ contract PredictionMarketVaultIntegrationTest is Test {
             predictionHash, address(vault), collateral, nonce, deadline
         );
 
-        // Get the hash that the manager needs to sign (vault wraps the mint approval hash)
-        bytes32 vaultApprovalHash =
-            vault.getApprovalHash(mintApprovalHash, manager);
-
-        // Manager signs the vault approval hash
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(managerPk, vaultApprovalHash);
+        // Manager signs the raw mint approval hash directly (no double-wrap)
+        // The vault's isValidSignature does ECDSA.recover(hash, sig) == manager
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(managerPk, mintApprovalHash);
         return abi.encodePacked(r, s, v);
     }
 
@@ -682,10 +679,9 @@ contract PredictionMarketVaultIntegrationTest is Test {
             cNonce,
             deadline
         );
-        bytes32 vaultApprovalHash =
-            vault.getApprovalHash(mintApprovalHash, manager);
+        // Sign with wrong key — should fail validation
         (uint8 v, bytes32 r, bytes32 s) =
-            vm.sign(predictorPk, vaultApprovalHash); // Wrong key!
+            vm.sign(predictorPk, mintApprovalHash); // Wrong key!
         request.counterpartySignature = abi.encodePacked(r, s, v);
         request.refCode = REF_CODE;
         request.predictorSessionKeyData = "";

@@ -1027,10 +1027,7 @@ contract PredictionMarketVaultTest is Test {
     function test_isValidSignatureWithValidManagerSignature() public {
         bytes32 messageHash = keccak256("test message");
 
-        // Get the expected typed data hash
-        bytes32 typedDataHash = vault.getApprovalHash(messageHash, manager);
-
-        // Sign with manager's private key (0x2 is the address, we need a proper key)
+        // Sign the raw hash directly with the manager's key (no double-wrap)
         uint256 managerPrivateKey = 0x12345;
         address managerAddr = vm.addr(managerPrivateKey);
 
@@ -1038,11 +1035,9 @@ contract PredictionMarketVaultTest is Test {
         vm.prank(owner);
         vault.setManager(managerAddr);
 
-        // Get the new typed data hash for the new manager
-        typedDataHash = vault.getApprovalHash(messageHash, managerAddr);
-
+        // Manager signs the raw hash — same as any EOA would
         (uint8 v, bytes32 r, bytes32 s) =
-            vm.sign(managerPrivateKey, typedDataHash);
+            vm.sign(managerPrivateKey, messageHash);
         bytes memory signature = abi.encodePacked(r, s, v);
 
         bytes4 result = vault.isValidSignature(messageHash, signature);
@@ -1054,9 +1049,8 @@ contract PredictionMarketVaultTest is Test {
 
         // Sign with wrong key
         uint256 wrongPrivateKey = 0x99999;
-        bytes32 typedDataHash = vault.getApprovalHash(messageHash, manager);
         (uint8 v, bytes32 r, bytes32 s) =
-            vm.sign(wrongPrivateKey, typedDataHash);
+            vm.sign(wrongPrivateKey, messageHash);
         bytes memory signature = abi.encodePacked(r, s, v);
 
         bytes4 result = vault.isValidSignature(messageHash, signature);
