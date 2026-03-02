@@ -2,8 +2,8 @@ import { erc20Abi, formatUnits } from 'viem';
 import prisma from '../db';
 import { LegacyPositionStatus } from '../../generated/prisma';
 import { getProviderForChain, getBlockByTimestamp } from '../utils/utils';
-import { contracts } from '@sapience/sdk/contracts';
-import { liquidityVaultAbi } from '@sapience/sdk/abis';
+import { contracts, escrowContracts } from '@sapience/sdk/contracts';
+import { predictionMarketVaultAbi } from '@sapience/sdk/abis';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 
 interface VaultPnLResult {
@@ -35,14 +35,14 @@ interface ProtocolStatsData {
 }
 
 /**
- * Fetch Vault balance: wUSDe.balanceOf(vault) only (excludes deployed funds).
+ * Fetch Vault balance: collateral.balanceOf(vault)
  */
 export async function fetchVaultTVL(
   chainId: number = DEFAULT_CHAIN_ID
 ): Promise<bigint> {
   const client = getProviderForChain(chainId);
 
-  const vaultAddress = contracts.passiveLiquidityVault[chainId]?.address;
+  const vaultAddress = escrowContracts.predictionMarketVault[chainId]?.address;
   const collateralAddress = contracts.collateralToken[chainId]?.address;
 
   if (!vaultAddress || !collateralAddress) {
@@ -51,72 +51,45 @@ export async function fetchVaultTVL(
     );
   }
 
-  const wUsdeBalance = await client.readContract({
+  const balance = await client.readContract({
     address: collateralAddress,
     abi: erc20Abi,
     functionName: 'balanceOf',
     args: [vaultAddress],
   });
 
-  return wUsdeBalance;
+  return balance;
 }
 
 /**
- * Fetch Vault deployed funds: vault.totalDeployed()
+ * Fetch Vault deployed funds.
+ * V2 PredictionMarketVault has no "deployed" concept — returns 0.
  */
 export async function fetchVaultDeployed(
-  chainId: number = DEFAULT_CHAIN_ID
+  _chainId: number = DEFAULT_CHAIN_ID
 ): Promise<bigint> {
-  const client = getProviderForChain(chainId);
-  const vaultAddress = contracts.passiveLiquidityVault[chainId]?.address;
-
-  if (!vaultAddress) {
-    throw new Error(`Vault not configured for chain ${chainId}`);
-  }
-
-  const totalDeployed = (await client.readContract({
-    address: vaultAddress,
-    abi: liquidityVaultAbi,
-    functionName: 'totalDeployed',
-    args: [],
-  })) as bigint;
-
-  return totalDeployed;
+  return 0n;
 }
 
 /**
  * Fetch Vault deployed funds at a specific block number.
+ * V2 PredictionMarketVault has no "deployed" concept — returns 0.
  */
 export async function fetchVaultDeployedAtBlock(
-  chainId: number,
-  blockNumber: bigint
+  _chainId: number,
+  _blockNumber: bigint
 ): Promise<bigint> {
-  const client = getProviderForChain(chainId);
-  const vaultAddress = contracts.passiveLiquidityVault[chainId]?.address;
-
-  if (!vaultAddress) {
-    throw new Error(`Vault not configured for chain ${chainId}`);
-  }
-
-  const totalDeployed = (await client.readContract({
-    address: vaultAddress,
-    abi: liquidityVaultAbi,
-    functionName: 'totalDeployed',
-    args: [],
-    blockNumber,
-  })) as bigint;
-
-  return totalDeployed;
+  return 0n;
 }
 
 /**
- * Fetch Vault available assets: vault.availableAssets() (excludes pending deposits)
+ * Fetch Vault available assets: vault.availableAssets()
  */
 export async function fetchVaultAvailableAssets(
   chainId: number = DEFAULT_CHAIN_ID
 ): Promise<bigint> {
   const client = getProviderForChain(chainId);
-  const vaultAddress = contracts.passiveLiquidityVault[chainId]?.address;
+  const vaultAddress = escrowContracts.predictionMarketVault[chainId]?.address;
 
   if (!vaultAddress) {
     throw new Error(`Vault not configured for chain ${chainId}`);
@@ -124,7 +97,7 @@ export async function fetchVaultAvailableAssets(
 
   const availableAssets = (await client.readContract({
     address: vaultAddress,
-    abi: liquidityVaultAbi,
+    abi: predictionMarketVaultAbi,
     functionName: 'availableAssets',
     args: [],
   })) as bigint;
@@ -140,7 +113,7 @@ export async function fetchVaultAvailableAssetsAtBlock(
   blockNumber: bigint
 ): Promise<bigint> {
   const client = getProviderForChain(chainId);
-  const vaultAddress = contracts.passiveLiquidityVault[chainId]?.address;
+  const vaultAddress = escrowContracts.predictionMarketVault[chainId]?.address;
 
   if (!vaultAddress) {
     throw new Error(`Vault not configured for chain ${chainId}`);
@@ -148,7 +121,7 @@ export async function fetchVaultAvailableAssetsAtBlock(
 
   const availableAssets = (await client.readContract({
     address: vaultAddress,
-    abi: liquidityVaultAbi,
+    abi: predictionMarketVaultAbi,
     functionName: 'availableAssets',
     args: [],
     blockNumber,
@@ -158,30 +131,31 @@ export async function fetchVaultAvailableAssetsAtBlock(
 }
 
 /**
- * Fetch PredictionMarket TVL: wUSDe.balanceOf(predictionMarket)
+ * Fetch Escrow TVL: collateral.balanceOf(predictionMarketEscrow)
  */
 export async function fetchPredictionMarketTVL(
   chainId: number = DEFAULT_CHAIN_ID
 ): Promise<bigint> {
   const client = getProviderForChain(chainId);
 
-  const pmAddress = contracts.predictionMarket[chainId]?.address;
+  const escrowAddress =
+    escrowContracts.predictionMarketEscrow[chainId]?.address;
   const collateralAddress = contracts.collateralToken[chainId]?.address;
 
-  if (!pmAddress || !collateralAddress) {
+  if (!escrowAddress || !collateralAddress) {
     throw new Error(
-      `PredictionMarket or collateral token not configured for chain ${chainId}`
+      `PredictionMarketEscrow or collateral token not configured for chain ${chainId}`
     );
   }
 
-  const wUsdeBalance = await client.readContract({
+  const balance = await client.readContract({
     address: collateralAddress,
     abi: erc20Abi,
     functionName: 'balanceOf',
-    args: [pmAddress],
+    args: [escrowAddress],
   });
 
-  return wUsdeBalance;
+  return balance;
 }
 
 /**
@@ -193,7 +167,7 @@ export async function fetchVaultTVLAtBlock(
 ): Promise<bigint> {
   const client = getProviderForChain(chainId);
 
-  const vaultAddress = contracts.passiveLiquidityVault[chainId]?.address;
+  const vaultAddress = escrowContracts.predictionMarketVault[chainId]?.address;
   const collateralAddress = contracts.collateralToken[chainId]?.address;
 
   if (!vaultAddress || !collateralAddress) {
@@ -202,7 +176,7 @@ export async function fetchVaultTVLAtBlock(
     );
   }
 
-  const wUsdeBalance = await client.readContract({
+  const balance = await client.readContract({
     address: collateralAddress,
     abi: erc20Abi,
     functionName: 'balanceOf',
@@ -210,11 +184,11 @@ export async function fetchVaultTVLAtBlock(
     blockNumber,
   });
 
-  return wUsdeBalance;
+  return balance;
 }
 
 /**
- * Fetch PredictionMarket TVL at a specific block number (for historical queries).
+ * Fetch Escrow TVL at a specific block number (for historical queries).
  */
 export async function fetchPredictionMarketTVLAtBlock(
   chainId: number,
@@ -222,24 +196,25 @@ export async function fetchPredictionMarketTVLAtBlock(
 ): Promise<bigint> {
   const client = getProviderForChain(chainId);
 
-  const pmAddress = contracts.predictionMarket[chainId]?.address;
+  const escrowAddress =
+    escrowContracts.predictionMarketEscrow[chainId]?.address;
   const collateralAddress = contracts.collateralToken[chainId]?.address;
 
-  if (!pmAddress || !collateralAddress) {
+  if (!escrowAddress || !collateralAddress) {
     throw new Error(
-      `PredictionMarket or collateral token not configured for chain ${chainId}`
+      `PredictionMarketEscrow or collateral token not configured for chain ${chainId}`
     );
   }
 
-  const wUsdeBalance = await client.readContract({
+  const balance = await client.readContract({
     address: collateralAddress,
     abi: erc20Abi,
     functionName: 'balanceOf',
-    args: [pmAddress],
+    args: [escrowAddress],
     blockNumber,
   });
 
-  return wUsdeBalance;
+  return balance;
 }
 
 /**
@@ -249,7 +224,8 @@ async function calculateVaultPnL(
   chainId: number,
   beforeTimestamp?: number
 ): Promise<VaultPnLResult> {
-  const vaultAddress = contracts.passiveLiquidityVault[chainId]?.address;
+  const vaultAddress =
+    escrowContracts.predictionMarketVault[chainId]?.address;
   if (!vaultAddress) {
     return {
       realizedPnL: 0n,
