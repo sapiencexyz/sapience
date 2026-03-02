@@ -331,6 +331,7 @@ type Condition {
   displayOrder: Int
   endTime: Int!
   id: String!
+  nonDecisive: Boolean!
   openInterest: String!
   predictionCount: Int!
   predictions(cursor: LegacyPredictionWhereUniqueInput, distinct: [LegacyPredictionScalarFieldEnum!], orderBy: [LegacyPredictionOrderByWithRelationInput!], skip: Int, take: Int, where: LegacyPredictionWhereInput): [LegacyPrediction!]!
@@ -455,6 +456,7 @@ input ConditionOrderByWithRelationInput {
   displayOrder: SortOrderInput
   endTime: SortOrder
   id: SortOrder
+  nonDecisive: SortOrder
   openInterest: SortOrder
   predictionCount: SortOrder
   predictions: LegacyPredictionOrderByRelationAggregateInput
@@ -485,6 +487,7 @@ enum ConditionScalarFieldEnum {
   displayOrder
   endTime
   id
+  nonDecisive
   openInterest
   predictionCount
   public
@@ -515,6 +518,7 @@ input ConditionWhereInput {
   displayOrder: IntNullableFilter
   endTime: IntFilter
   id: StringFilter
+  nonDecisive: BoolFilter
   openInterest: StringFilter
   predictionCount: IntFilter
   predictions: LegacyPredictionListRelationFilter
@@ -546,6 +550,7 @@ input ConditionWhereUniqueInput {
   displayOrder: IntNullableFilter
   endTime: IntFilter
   id: String
+  nonDecisive: BoolFilter
   openInterest: StringFilter
   predictionCount: IntFilter
   predictions: LegacyPredictionListRelationFilter
