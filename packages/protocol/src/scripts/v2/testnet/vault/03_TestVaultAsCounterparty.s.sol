@@ -357,14 +357,10 @@ contract TestVaultAsCounterparty is Script {
                 params.deadline
             );
 
-        // Step 2: Get the hash that the manager needs to sign
-        // The vault wraps the mint approval hash with the manager address
-        bytes32 vaultApprovalHash =
-            params.vault.getApprovalHash(mintApprovalHash, actors.counterparty);
-
-        // Step 3: Manager signs the vault approval hash
+        // Step 2: Manager signs the mint approval hash directly
+        // (simplified isValidSignature uses raw ECDSA recovery)
         (uint8 v, bytes32 r, bytes32 s) =
-            vm.sign(actors.counterpartyPk, vaultApprovalHash);
+            vm.sign(actors.counterpartyPk, mintApprovalHash);
 
         return abi.encodePacked(r, s, v);
     }
