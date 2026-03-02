@@ -102,7 +102,7 @@ export class AnalyticsResolver {
     const chainId = DEFAULT_CHAIN_ID;
 
     // Fetch snapshots first to get our timestamps
-    const protocolSnapshots = await getProtocolStatsTimeSeries(90);
+    const protocolSnapshots = await getProtocolStatsTimeSeries(90, chainId);
 
     if (protocolSnapshots.length === 0) {
       return [];

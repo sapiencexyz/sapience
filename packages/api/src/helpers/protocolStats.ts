@@ -533,8 +533,11 @@ export async function computeAndStoreProtocolStats(
 /**
  * Get the latest stats snapshot.
  */
-export async function getLatestProtocolStats() {
+export async function getLatestProtocolStats(
+  chainId: number = DEFAULT_CHAIN_ID
+) {
   return prisma.protocolStatsSnapshot.findFirst({
+    where: { chainId },
     orderBy: { timestamp: 'desc' },
   });
 }
@@ -542,12 +545,16 @@ export async function getLatestProtocolStats() {
 /**
  * Get stats time series for the last N days.
  */
-export async function getProtocolStatsTimeSeries(days: number = 90) {
+export async function getProtocolStatsTimeSeries(
+  days: number = 90,
+  chainId: number = DEFAULT_CHAIN_ID
+) {
   const startTimestamp = getUtcMidnightTimestamp(new Date()) - days * 86400;
 
   return prisma.protocolStatsSnapshot.findMany({
     where: {
       timestamp: { gte: startTimestamp },
+      chainId,
     },
     orderBy: { timestamp: 'asc' },
   });
