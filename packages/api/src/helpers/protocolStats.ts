@@ -62,24 +62,53 @@ export async function fetchVaultTVL(
 }
 
 /**
- * Fetch Vault deployed funds.
- * V2 PredictionMarketVault has no "deployed" concept — returns 0.
+ * Fetch vault collateral locked in the escrow: sum of counterpartyCollateral
+ * for unsettled predictions where the vault is the counterparty.
  */
 export async function fetchVaultDeployed(
-  _chainId: number = DEFAULT_CHAIN_ID
+  chainId: number = DEFAULT_CHAIN_ID,
+  beforeTimestamp?: number
 ): Promise<bigint> {
-  return 0n;
+  const vaultAddress =
+    escrowContracts.predictionMarketVault[chainId]?.address;
+  if (!vaultAddress) return 0n;
+
+  const where: {
+    chainId: number;
+    counterparty: string;
+    settled: boolean;
+    onChainCreatedAt?: { lte: number };
+  } = {
+    chainId,
+    counterparty: vaultAddress.toLowerCase(),
+    settled: false,
+  };
+
+  if (beforeTimestamp) {
+    where.onChainCreatedAt = { lte: beforeTimestamp };
+  }
+
+  const predictions = await prisma.prediction.findMany({
+    where,
+    select: { counterpartyCollateral: true },
+  });
+
+  let total = 0n;
+  for (const p of predictions) {
+    total += BigInt(p.counterpartyCollateral);
+  }
+  return total;
 }
 
 /**
- * Fetch Vault deployed funds at a specific block number.
- * V2 PredictionMarketVault has no "deployed" concept — returns 0.
+ * Fetch vault collateral locked in the escrow at a specific point in time.
  */
 export async function fetchVaultDeployedAtBlock(
-  _chainId: number,
-  _blockNumber: bigint
+  chainId: number,
+  _blockNumber: bigint,
+  beforeTimestamp?: number
 ): Promise<bigint> {
-  return 0n;
+  return fetchVaultDeployed(chainId, beforeTimestamp);
 }
 
 /**
@@ -584,7 +613,8 @@ export async function backfillProtocolStats(
       );
       const vaultDeployed = await fetchVaultDeployedAtBlock(
         chainId,
-        blockNumber
+        blockNumber,
+        timestamp
       );
       const escrowBalance = await fetchPredictionMarketTVLAtBlock(
         chainId,
