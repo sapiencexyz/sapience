@@ -62,24 +62,15 @@ function PositionRow({
   const rawPicks = pickConfig?.picks ?? [];
   const picks = toPicks(rawPicks, isPredictorToken, conditionsMap);
 
-  const balance = BigInt(position.balance);
-  const balanceFormatted = parseFloat(formatEther(balance));
+  // Position size = user's deposited collateral (from Prediction records)
+  const positionSizeFormatted = parseFloat(
+    formatEther(BigInt(position.userCollateral || '0'))
+  );
 
-  // Payout if the user's side wins: (balance / sideCollateral) * totalPool
-  const totalPool = pickConfig
-    ? BigInt(pickConfig.totalPredictorCollateral) +
-      BigInt(pickConfig.totalCounterpartyCollateral)
-    : 0n;
-  const sideCollateral = pickConfig
-    ? BigInt(
-        isPredictorToken
-          ? pickConfig.totalPredictorCollateral
-          : pickConfig.totalCounterpartyCollateral
-      )
-    : 0n;
-  const payout =
-    sideCollateral > 0n ? (balance * totalPool) / sideCollateral : 0n;
-  const payoutFormatted = parseFloat(formatEther(payout));
+  // Payout = total collateral in the user's prediction(s)
+  const payoutFormatted = parseFloat(
+    formatEther(BigInt(position.totalPayout || '0'))
+  );
 
   const result = pickConfig?.result ?? 'UNRESOLVED';
   const isResolved = pickConfig?.resolved ?? false;
@@ -90,19 +81,27 @@ function PositionRow({
       (!isPredictorToken && result === 'COUNTERPARTY_WINS') ||
       result === 'NON_DECISIVE');
 
-  // PnL: profit if won (totalPool - positionSize), loss if lost (-positionSize)
+  // PnL: profit if won (payout - positionSize), loss if lost (-positionSize)
   const pnlValue = isResolved
     ? viewerWon
-      ? payoutFormatted - balanceFormatted
-      : -balanceFormatted
+      ? payoutFormatted - positionSizeFormatted
+      : -positionSizeFormatted
     : null;
   const roi =
-    pnlValue !== null && balanceFormatted > 0
-      ? (pnlValue / balanceFormatted) * 100
+    pnlValue !== null && positionSizeFormatted > 0
+      ? (pnlValue / positionSizeFormatted) * 100
       : 0;
 
   return (
     <TableRow>
+      {/* Created */}
+      <TableCell className="whitespace-nowrap">
+        <span className="text-brand-white text-sm">
+          {formatDistanceToNow(new Date(position.createdAt), {
+            addSuffix: true,
+          })}
+        </span>
+      </TableCell>
       <TableCell>
         <div className="flex items-center gap-2">
           <StackedIcons picks={picks} />
@@ -157,7 +156,7 @@ function PositionRow({
       </TableCell>
       <TableCell>
         <NumberDisplay
-          value={balanceFormatted}
+          value={positionSizeFormatted}
           appendedText={collateralSymbol}
           className="text-brand-white font-mono"
         />
@@ -184,7 +183,7 @@ function PositionRow({
             >
               {collateralSymbol}
             </span>
-            {balanceFormatted > 0 && (
+            {positionSizeFormatted > 0 && (
               <span
                 className={`text-[10px] leading-tight tabular-nums font-mono ${pnlValue >= 0 ? 'text-green-600' : 'text-red-600'}`}
               >
@@ -369,29 +368,18 @@ export default function PositionsTable({
   const [sharePosition, setSharePosition] =
     React.useState<PositionBalance | null>(null);
 
-  // Build OG image URL for position sharing with balance overrides
+  // Build OG image URL for position sharing
   const shareImageSrc = React.useMemo(() => {
     if (!sharePosition) return null;
     const { pickConfig, isPredictorToken } = sharePosition;
     const picks = pickConfig?.picks ?? [];
 
-    const balance = BigInt(sharePosition.balance);
-    const totalPool = pickConfig
-      ? BigInt(pickConfig.totalPredictorCollateral) +
-        BigInt(pickConfig.totalCounterpartyCollateral)
-      : 0n;
-    const sideCollateral = pickConfig
-      ? BigInt(
-          isPredictorToken
-            ? pickConfig.totalPredictorCollateral
-            : pickConfig.totalCounterpartyCollateral
-        )
-      : 0n;
-    const payout =
-      sideCollateral > 0n ? (balance * totalPool) / sideCollateral : 0n;
-
-    const wager = parseFloat(formatEther(balance)).toFixed(2);
-    const payoutStr = parseFloat(formatEther(payout)).toFixed(2);
+    const wager = parseFloat(
+      formatEther(BigInt(sharePosition.userCollateral || '0'))
+    ).toFixed(2);
+    const payoutStr = parseFloat(
+      formatEther(BigInt(sharePosition.totalPayout || '0'))
+    ).toFixed(2);
 
     const qp = new URLSearchParams();
     qp.set('wager', wager);
@@ -487,6 +475,7 @@ export default function PositionsTable({
         <Table>
           <TableHeader>
             <TableRow className="hover:!bg-white/[0.03] bg-white/[0.03] border-b border-border/60">
+              <TableHead className="h-auto py-3">Created</TableHead>
               <TableHead className="h-auto py-3">Position</TableHead>
               <TableHead className="h-auto py-3">Position Size</TableHead>
               <TableHead className="h-auto py-3">Payout</TableHead>

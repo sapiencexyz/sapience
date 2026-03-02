@@ -74,6 +74,9 @@ export type PositionBalance = {
   isPredictorToken: boolean;
   holder: string;
   balance: string;
+  userCollateral?: string | null;
+  totalPayout?: string | null;
+  createdAt: string;
   pickConfig?: PickConfigData | null;
 };
 
@@ -259,6 +262,9 @@ const POSITION_BALANCES_QUERY = /* GraphQL */ `
       isPredictorToken
       holder
       balance
+      userCollateral
+      totalPayout
+      createdAt
       pickConfig {
         id
         chainId
@@ -296,6 +302,9 @@ const POSITION_BALANCES_BY_CONDITION_QUERY = /* GraphQL */ `
       isPredictorToken
       holder
       balance
+      userCollateral
+      totalPayout
+      createdAt
       pickConfig {
         id
         chainId
