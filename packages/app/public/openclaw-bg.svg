@@ -1,13 +1,13 @@
 <svg viewBox="0 0 800 450" fill="none" xmlns="http://www.w3.org/2000/svg">
 <defs>
   <radialGradient id="glow" cx="50%" cy="50%" r="35%">
-    <stop offset="0%" stop-color="#6b2020" stop-opacity="0.8"/>
-    <stop offset="50%" stop-color="#1a0a0a" stop-opacity="0.4"/>
+    <stop offset="0%" stop-color="#6b5020" stop-opacity="0.8"/>
+    <stop offset="50%" stop-color="#1a150a" stop-opacity="0.4"/>
     <stop offset="100%" stop-color="#0a0a1a" stop-opacity="0"/>
   </radialGradient>
   <linearGradient id="lobster-gradient" x1="0%" y1="0%" x2="100%" y2="100%">
-    <stop offset="0%" stop-color="#ff4d4d"/>
-    <stop offset="100%" stop-color="#991b1b"/>
+    <stop offset="0%" stop-color="#e9c37e"/>
+    <stop offset="100%" stop-color="#8b6914"/>
   </linearGradient>
 </defs>
 <style>
@@ -17,9 +17,7 @@
   }
   .character { animation: bob 3s ease-in-out infinite; }
 </style>
-<!-- Dark space background -->
-<rect width="800" height="450" fill="#0a0a1a"/>
-<!-- Red glow behind character -->
+<!-- Golden glow behind character -->
 <ellipse cx="400" cy="255" rx="250" ry="180" fill="url(#glow)"/>
 <!-- Stars -->
 <circle cx="45" cy="60" r="1" fill="#ffffff" opacity="0.6"/>
@@ -38,10 +36,10 @@
 <circle cx="770" cy="220" r="1" fill="#ffffff" opacity="0.5"/>
 <circle cx="55" cy="300" r="0.8" fill="#ffffff" opacity="0.3"/>
 <circle cx="740" cy="310" r="0.9" fill="#ffffff" opacity="0.4"/>
-<circle cx="160" cy="150" r="1" fill="#00e5cc" opacity="0.3"/>
-<circle cx="650" cy="160" r="0.8" fill="#00e5cc" opacity="0.25"/>
-<circle cx="300" cy="400" r="0.9" fill="#00e5cc" opacity="0.2"/>
-<circle cx="500" cy="390" r="1" fill="#00e5cc" opacity="0.25"/>
+<circle cx="160" cy="150" r="1" fill="#e9c37e" opacity="0.3"/>
+<circle cx="650" cy="160" r="0.8" fill="#e9c37e" opacity="0.25"/>
+<circle cx="300" cy="400" r="0.9" fill="#e9c37e" opacity="0.2"/>
+<circle cx="500" cy="390" r="1" fill="#e9c37e" opacity="0.25"/>
 <!-- Character (official OpenClaw lobster) -->
 <g class="character">
   <!-- Body -->
@@ -51,12 +49,12 @@
   <!-- Right Claw -->
   <path d="M100 45 C115 40 120 50 115 60 C110 70 100 65 95 55 C92 48 95 45 100 45Z" fill="url(#lobster-gradient)"/>
   <!-- Antenna -->
-  <path d="M45 15 Q35 5 30 8" stroke="#ff4d4d" stroke-width="2" stroke-linecap="round"/>
-  <path d="M75 15 Q85 5 90 8" stroke="#ff4d4d" stroke-width="2" stroke-linecap="round"/>
+  <path d="M45 15 Q35 5 30 8" stroke="#e9c37e" stroke-width="2" stroke-linecap="round"/>
+  <path d="M75 15 Q85 5 90 8" stroke="#e9c37e" stroke-width="2" stroke-linecap="round"/>
   <!-- Eyes -->
   <circle cx="45" cy="35" r="6" fill="#050810"/>
   <circle cx="75" cy="35" r="6" fill="#050810"/>
-  <circle cx="46" cy="34" r="2" fill="#00e5cc"/>
-  <circle cx="76" cy="34" r="2" fill="#00e5cc"/>
+  <circle cx="46" cy="34" r="2" fill="#e9c37e"/>
+  <circle cx="76" cy="34" r="2" fill="#e9c37e"/>
 </g>
 </svg>
