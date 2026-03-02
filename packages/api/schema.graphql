@@ -1063,12 +1063,15 @@ type PnlDataPoint {
 type Position {
   balance: String!
   chainId: Int!
+  createdAt: DateTimeISO!
   holder: String!
   id: Int!
   isPredictorToken: Boolean!
   pickConfig: PickConfiguration
   pickConfigId: String!
   tokenAddress: String!
+  totalPayout: String
+  userCollateral: String
 }
 
 """

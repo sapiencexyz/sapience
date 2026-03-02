@@ -1216,6 +1216,8 @@ export type Position = {
   pickConfig?: Maybe<PickConfiguration>;
   pickConfigId: Scalars['String']['output'];
   tokenAddress: Scalars['String']['output'];
+  totalPayout?: Maybe<Scalars['String']['output']>;
+  userCollateral?: Maybe<Scalars['String']['output']>;
 };
 
 /** Escrow-based prediction record between a predictor and counterparty, with collateral and settlement tracking */

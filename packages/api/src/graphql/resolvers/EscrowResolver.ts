@@ -213,6 +213,15 @@ class PositionType {
   @Field(() => String)
   balance!: string;
 
+  @Field(() => String, { nullable: true })
+  userCollateral?: string | null;
+
+  @Field(() => String, { nullable: true })
+  totalPayout?: string | null;
+
+  @Field(() => Date)
+  createdAt!: Date;
+
   @Field(() => PickConfigurationType, { nullable: true })
   pickConfig?: PickConfigurationType | null;
 }
@@ -714,9 +723,13 @@ export class EscrowResolver {
       },
     });
 
-    // Look up predictionIds for each position's token address
+    // Look up predictionIds and collateral for each position's token address
     const tokenAddresses = rows.map((r) => r.tokenAddress);
     const predictionIdMap = new Map<string, string>();
+    const collateralMap = new Map<
+      string,
+      { userCollateral: bigint; totalPayout: bigint }
+    >();
     if (tokenAddresses.length > 0) {
       const predictions = await prisma.prediction.findMany({
         where: {
@@ -729,23 +742,58 @@ export class EscrowResolver {
           predictionId: true,
           predictorToken: true,
           counterpartyToken: true,
+          predictor: true,
+          counterparty: true,
+          predictorCollateral: true,
+          counterpartyCollateral: true,
         },
       });
       for (const pred of predictions) {
         predictionIdMap.set(pred.predictorToken, pred.predictionId);
         predictionIdMap.set(pred.counterpartyToken, pred.predictionId);
+
+        const predCollateral = BigInt(pred.predictorCollateral);
+        const cpCollateral = BigInt(pred.counterpartyCollateral);
+        const predictionTotal = predCollateral + cpCollateral;
+
+        // Accumulate collateral for predictor side
+        const predictorKey = `${pred.predictorToken}:${pred.predictor}`;
+        const existingPredictor = collateralMap.get(predictorKey) ?? {
+          userCollateral: 0n,
+          totalPayout: 0n,
+        };
+        existingPredictor.userCollateral += predCollateral;
+        existingPredictor.totalPayout += predictionTotal;
+        collateralMap.set(predictorKey, existingPredictor);
+
+        // Accumulate collateral for counterparty side
+        const counterpartyKey = `${pred.counterpartyToken}:${pred.counterparty}`;
+        const existingCounterparty = collateralMap.get(counterpartyKey) ?? {
+          userCollateral: 0n,
+          totalPayout: 0n,
+        };
+        existingCounterparty.userCollateral += cpCollateral;
+        existingCounterparty.totalPayout += predictionTotal;
+        collateralMap.set(counterpartyKey, existingCounterparty);
       }
     }
 
-    return rows.map((r) => ({
-      id: r.id,
-      chainId: r.chainId,
-      tokenAddress: r.tokenAddress,
-      pickConfigId: r.pickConfigId,
-      isPredictorToken: r.isPredictorToken,
-      holder: r.holder,
-      balance: r.balance,
-      pickConfig: r.pickConfiguration
+    return rows.map((r) => {
+      const collateral = collateralMap.get(
+        `${r.tokenAddress}:${r.holder}`
+      );
+      return {
+        id: r.id,
+        chainId: r.chainId,
+        tokenAddress: r.tokenAddress,
+        pickConfigId: r.pickConfigId,
+        isPredictorToken: r.isPredictorToken,
+        holder: r.holder,
+        balance: r.balance,
+        userCollateral: collateral?.userCollateral.toString() ?? null,
+        totalPayout: collateral?.totalPayout.toString() ?? null,
+        createdAt: r.createdAt,
+        pickConfig: r.pickConfiguration
         ? {
             id: r.pickConfiguration.id,
             chainId: r.pickConfiguration.chainId,
@@ -774,7 +822,8 @@ export class EscrowResolver {
             predictionId: predictionIdMap.get(r.tokenAddress) ?? null,
           }
         : null,
-    }));
+      };
+    });
   }
 
   // -------------------------------------------------------------------------
