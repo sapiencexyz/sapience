@@ -81,7 +81,10 @@ export async function fetchVaultDeployed(
       ...(atTimestamp
         ? {
             onChainCreatedAt: { lte: atTimestamp },
-            OR: [{ settled: false }, { settledAt: { gt: atTimestamp } }],
+            OR: [
+              { settled: false },
+              { settled: true, settledAt: { gt: atTimestamp } },
+            ],
           }
         : { settled: false }),
     },
