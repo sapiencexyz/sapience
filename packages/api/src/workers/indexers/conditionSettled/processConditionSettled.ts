@@ -6,6 +6,7 @@ import {
   computeAndStoreMarketTwErrors,
 } from '../../../helpers/scoringService';
 import type { HandlerContext } from './handlerContext';
+import { resolvePickConfigsForCondition } from './resolvePickConfigs';
 
 const CONDITION_SETTLED_EVENT_ABI = [
   {
@@ -44,6 +45,8 @@ export async function processConditionSettled(
 
     const resolvedToYes =
       decoded.args.yesWeight > 0n && decoded.args.noWeight === 0n;
+    const nonDecisive =
+      decoded.args.yesWeight > 0n && decoded.args.noWeight > 0n;
 
     const eventData = {
       eventType: 'ConditionSettled',
@@ -128,9 +131,17 @@ export async function processConditionSettled(
               data: {
                 settled: true,
                 resolvedToYes,
+                nonDecisive,
                 settledAt: Number(block.timestamp),
               },
             });
+
+            // Resolve any pickConfigs whose conditions are now all settled
+            await resolvePickConfigsForCondition(
+              tx,
+              conditionId,
+              Number(block.timestamp)
+            );
           });
           console.log(
             `${tag} Updated Condition ${conditionId} to settled via ConditionSettled`

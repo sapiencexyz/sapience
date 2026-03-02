@@ -185,6 +185,7 @@ model Condition {
   // Resolution status
   settled          Boolean         @default(false)
   resolvedToYes    Boolean         @default(false)
+  nonDecisive      Boolean         @default(false)
   settledAt        Int?
   assertionId      String?         @db.VarChar
   assertionTimestamp Int?
