@@ -63,33 +63,28 @@ export async function fetchVaultTVL(
 
 /**
  * Fetch vault collateral locked in the escrow: sum of counterpartyCollateral
- * for unsettled predictions where the vault is the counterparty.
+ * for predictions that were active at `atTimestamp` (or currently active if omitted)
+ * where the vault is the counterparty.
  */
 export async function fetchVaultDeployed(
   chainId: number = DEFAULT_CHAIN_ID,
-  beforeTimestamp?: number
+  atTimestamp?: number
 ): Promise<bigint> {
   const vaultAddress =
     escrowContracts.predictionMarketVault[chainId]?.address;
   if (!vaultAddress) return 0n;
 
-  const where: {
-    chainId: number;
-    counterparty: string;
-    settled: boolean;
-    onChainCreatedAt?: { lte: number };
-  } = {
-    chainId,
-    counterparty: vaultAddress.toLowerCase(),
-    settled: false,
-  };
-
-  if (beforeTimestamp) {
-    where.onChainCreatedAt = { lte: beforeTimestamp };
-  }
-
   const predictions = await prisma.prediction.findMany({
-    where,
+    where: {
+      chainId,
+      counterparty: vaultAddress.toLowerCase(),
+      ...(atTimestamp
+        ? {
+            onChainCreatedAt: { lte: atTimestamp },
+            OR: [{ settled: false }, { settledAt: { gt: atTimestamp } }],
+          }
+        : { settled: false }),
+    },
     select: { counterpartyCollateral: true },
   });
 
@@ -106,9 +101,9 @@ export async function fetchVaultDeployed(
 export async function fetchVaultDeployedAtBlock(
   chainId: number,
   _blockNumber: bigint,
-  beforeTimestamp?: number
+  atTimestamp?: number
 ): Promise<bigint> {
-  return fetchVaultDeployed(chainId, beforeTimestamp);
+  return fetchVaultDeployed(chainId, atTimestamp);
 }
 
 /**
