@@ -59,6 +59,7 @@ const GET_QUESTIONS = /* GraphQL */ `
           resolver
           settled
           resolvedToYes
+          nonDecisive
           assertionId
           assertionTimestamp
           openInterest
@@ -85,6 +86,7 @@ const GET_QUESTIONS = /* GraphQL */ `
         resolver
         settled
         resolvedToYes
+        nonDecisive
         assertionId
         assertionTimestamp
         openInterest

@@ -40,6 +40,8 @@ interface PredictionFormProps {
   settled?: boolean | null;
   /** The resolution outcome (true = YES, false = NO) */
   resolvedToYes?: boolean | null;
+  /** Whether the resolution was non-decisive (tie) */
+  nonDecisive?: boolean | null;
   /** End time of the market (Unix timestamp in seconds) */
   endTime?: number | null;
 }
@@ -57,6 +59,7 @@ export default function PredictionForm({
   className,
   settled,
   resolvedToYes,
+  nonDecisive,
   endTime,
 }: PredictionFormProps) {
   const [selectedPrediction] = React.useState<boolean | null>(true);
@@ -212,12 +215,14 @@ export default function PredictionForm({
             <Badge
               variant="outline"
               className={`px-2 py-0.5 text-sm font-medium !rounded-md shrink-0 font-mono ${
-                resolvedToYes
-                  ? 'border-yes/40 bg-yes/10 text-yes'
-                  : 'border-no/40 bg-no/10 text-no'
+                nonDecisive
+                  ? 'border-muted-foreground/40 bg-muted/20 text-muted-foreground'
+                  : resolvedToYes
+                    ? 'border-yes/40 bg-yes/10 text-yes'
+                    : 'border-no/40 bg-no/10 text-no'
               }`}
             >
-              {resolvedToYes ? 'YES' : 'NO'}
+              {nonDecisive ? 'TIE' : resolvedToYes ? 'YES' : 'NO'}
             </Badge>
           </div>
         </div>

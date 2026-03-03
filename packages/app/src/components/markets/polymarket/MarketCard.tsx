@@ -249,6 +249,7 @@ function ConditionCard({
               endTime={condition.endTime}
               settled={!!condition.settled}
               resolvedToYes={condition.resolvedToYes}
+              nonDecisive={condition.nonDecisive}
               variant="card"
             />
           ) : (
