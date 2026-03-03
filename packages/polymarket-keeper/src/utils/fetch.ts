@@ -20,8 +20,9 @@ export async function fetchWithRetry(
       // Retry on 429 rate limit
       if (response.status === 429 && attempt < maxRetries) {
         const retryAfter = response.headers.get('Retry-After');
-        const delay = retryAfter
-          ? Number(retryAfter) * 1000
+        const retryAfterMs = retryAfter ? Number(retryAfter) * 1000 : 0;
+        const delay = retryAfterMs > 0
+          ? retryAfterMs
           : baseDelayMs * Math.pow(2, attempt) + Math.random() * 1000;
         console.log(`[Retry] HTTP 429 rate limited, retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxRetries})`);
         await new Promise(resolve => setTimeout(resolve, delay));
