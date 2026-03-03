@@ -8,7 +8,6 @@ import {
   type AuctionStartSigningPayload,
 } from '@sapience/sdk';
 import { canonicalizePicks } from '@sapience/sdk/auction/escrowEncoding';
-// Escrow-only: V1 auction format removed
 import type { Pick } from '@sapience/sdk/types';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
@@ -444,8 +443,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
               predictorNonce: params.predictorNonce,
               predictorDeadline,
               chainId,
-              // Note: no predictorSignature or counterpartyCollateral at auction start
-              // Predictor signs when accepting a bid with specific counterpartyCollateral
+              // Predictor signs when accepting a bid (which includes counterpartyCollateral)
             };
 
             // Send escrow auction start
