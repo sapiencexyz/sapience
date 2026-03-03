@@ -19,12 +19,7 @@ import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { toAuctionWsUrl } from '~/lib/ws';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
-import { buildAuctionStartPayload } from '~/lib/auction/buildAuctionPayload';
 import { canonicalizePicks } from '@sapience/sdk/auction/escrowEncoding';
-import {
-  CHAIN_ID_ETHEREAL,
-  CHAIN_ID_ETHEREAL_TESTNET,
-} from '@sapience/sdk/constants';
 import hub from '~/lib/auction/useAuctionBidsHub';
 import {
   StackedIcons,
@@ -212,56 +207,30 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
 
       setTimeout(async () => {
         try {
-          const outcomes = combo.map((leg) => ({
-            marketId: leg.condition.id,
-            prediction: leg.prediction,
-            resolverAddress: leg.condition.resolver,
+          // Build escrow picks payload
+          const rawPicks = combo.map((leg) => ({
+            conditionResolver: leg.condition.resolver as `0x${string}`,
+            conditionId: (leg.condition.id.startsWith('0x')
+              ? leg.condition.id
+              : `0x${leg.condition.id}`) as `0x${string}`,
+            predictedOutcome: leg.prediction ? 1 : 0,
           }));
+          const picks = canonicalizePicks(rawPicks);
+          const nowSec = Math.floor(Date.now() / 1000);
 
-          const isEscrowChain =
-            chainId === CHAIN_ID_ETHEREAL ||
-            chainId === CHAIN_ID_ETHEREAL_TESTNET;
-
-          let requestPayload: Record<string, unknown>;
-
-          if (isEscrowChain) {
-            // Escrow format: picks array (required by relayer validation)
-            const rawPicks = combo.map((leg) => ({
-              conditionResolver: leg.condition.resolver as `0x${string}`,
-              conditionId: (leg.condition.id.startsWith('0x')
-                ? leg.condition.id
-                : `0x${leg.condition.id}`) as `0x${string}`,
-              predictedOutcome: leg.prediction ? 1 : 0,
-            }));
-            const picks = canonicalizePicks(rawPicks);
-            const nowSec = Math.floor(Date.now() / 1000);
-
-            requestPayload = {
-              picks: picks.map((p) => ({
-                conditionResolver: p.conditionResolver,
-                conditionId: p.conditionId,
-                predictedOutcome: p.predictedOutcome,
-              })),
-              predictorCollateral: PREDICTOR_POSITION_SIZE_WEI,
-              predictor: selectedPredictorAddress,
-              predictorNonce:
-                predictorNonce !== undefined ? Number(predictorNonce) : 0,
-              predictorDeadline: nowSec + 300,
-              chainId: chainId,
-            };
-          } else {
-            // V1 format for non-escrow chains
-            const payload = buildAuctionStartPayload(outcomes, chainId);
-            requestPayload = {
-              wager: PREDICTOR_POSITION_SIZE_WEI,
-              resolver: payload.resolver,
-              predictedOutcomes: payload.predictedOutcomes,
-              taker: selectedPredictorAddress,
-              predictorNonce:
-                predictorNonce !== undefined ? Number(predictorNonce) : 0,
-              chainId: chainId,
-            };
-          }
+          const requestPayload = {
+            picks: picks.map((p) => ({
+              conditionResolver: p.conditionResolver,
+              conditionId: p.conditionId,
+              predictedOutcome: p.predictedOutcome,
+            })),
+            predictorCollateral: PREDICTOR_POSITION_SIZE_WEI,
+            predictor: selectedPredictorAddress,
+            predictorNonce:
+              predictorNonce !== undefined ? Number(predictorNonce) : 0,
+            predictorDeadline: nowSec + 300,
+            chainId: chainId,
+          };
 
           setComboQuotes((prev) =>
             prev.map((q, idx) =>
