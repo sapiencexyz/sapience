@@ -1,0 +1,12 @@
+{
+  "_generated_by": "forge script test/v2/fixtures/GenerateHashFixtures.s.sol -vvv",
+  "_description": "Golden hash values computed by the Solidity contract. If these don't match the SDK, one side has drifted.",
+  "pickConfigId": "0xd3bc63c78070c59b991736c312518576b8e4a6cf794d18afe3165374297ecfb8",
+  "twoPickConfigId": "0x25fea6f1efac8397ed692476c03994b001ed33eb105bef9dcca62a94b2b78be4",
+  "predictionHashNoSponsor": "0xbcf4dce3dc7bd74842274e7b706c6bd69603b9240ff4031d0e05317063c986e7",
+  "predictionHashWithSponsor": "0x31f04f2c132856a72d0b1aa05f54ba9ebf5caef5f058b54aed0b9ca66558e9be",
+  "predictionHashWithSponsorData": "0xfc23042e2ce1b2e8f913b83cd00fb03c639d1e71d2cb67794957b6eb739a3197",
+  "burnHash": "0x66aff1a86fee5fc05de667dc253d480bfefe5a3c3e4f56a9b0e0a07b486d702d",
+  "mintApprovalStructHash": "0xbd9363de7cc261a307fa3255c3b432de0ed67c8610c8f65788f325edb1e3395e",
+  "burnApprovalStructHash": "0x32040dcc663bd987df2cd61d47e9c146b02b29e094fd61fafed1535381c7c87b"
+}
