@@ -140,6 +140,69 @@ describe('cross-language: SDK matches Solidity contract', () => {
     );
     expect(sdkResult).toBe(goldenHashes.burnHash);
   });
+
+  test('MintApproval struct hash matches contract typehash', () => {
+    const predictionHash = goldenHashes.predictionHashNoSponsor as Hex;
+    // Compute the struct hash the same way the contract does:
+    // keccak256(abi.encode(TYPEHASH, predictionHash, signer, collateral, nonce, deadline))
+    const sdkStructHash = keccak256(
+      encodeAbiParameters(
+        [
+          { type: 'bytes32' }, // typehash
+          { type: 'bytes32' }, // predictionHash
+          { type: 'address' }, // signer
+          { type: 'uint256' }, // collateral
+          { type: 'uint256' }, // nonce
+          { type: 'uint256' }, // deadline
+        ],
+        [
+          keccak256(
+            // This string MUST match SignatureValidator.MINT_APPROVAL_TYPEHASH
+            new TextEncoder().encode(
+              'MintApproval(bytes32 predictionHash,address signer,uint256 collateral,uint256 nonce,uint256 deadline)'
+            ) as unknown as Hex
+          ),
+          predictionHash,
+          PREDICTOR,
+          PREDICTOR_COLLATERAL,
+          NONCE,
+          DEADLINE,
+        ]
+      )
+    );
+    expect(sdkStructHash).toBe(goldenHashes.mintApprovalStructHash);
+  });
+
+  test('BurnApproval struct hash matches contract typehash', () => {
+    const burnHashValue = goldenHashes.burnHash as Hex;
+    const sdkStructHash = keccak256(
+      encodeAbiParameters(
+        [
+          { type: 'bytes32' },
+          { type: 'bytes32' },
+          { type: 'address' },
+          { type: 'uint256' },
+          { type: 'uint256' },
+          { type: 'uint256' },
+          { type: 'uint256' },
+        ],
+        [
+          keccak256(
+            new TextEncoder().encode(
+              'BurnApproval(bytes32 burnHash,address signer,uint256 tokenAmount,uint256 payout,uint256 nonce,uint256 deadline)'
+            ) as unknown as Hex
+          ),
+          burnHashValue,
+          PREDICTOR,
+          500000n,
+          1000000n,
+          NONCE,
+          DEADLINE,
+        ]
+      )
+    );
+    expect(sdkStructHash).toBe(goldenHashes.burnApprovalStructHash);
+  });
 });
 
 // ============================================================================
