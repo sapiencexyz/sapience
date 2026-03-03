@@ -15,6 +15,7 @@ export interface ConditionType {
   category?: { id: number; name: string; slug: string } | null;
   settled?: boolean;
   resolvedToYes?: boolean;
+  nonDecisive?: boolean;
   assertionId?: string;
   assertionTimestamp?: number;
   openInterest: string;
@@ -53,6 +54,7 @@ export const GET_CONDITIONS = /* GraphQL */ `
       resolver
       settled
       resolvedToYes
+      nonDecisive
       assertionId
       assertionTimestamp
       openInterest

@@ -58,6 +58,7 @@ type ConditionData = {
   description?: string | null;
   settled?: boolean;
   resolvedToYes?: boolean;
+  nonDecisive?: boolean;
   resolver?: string | null;
   conditionId?: string;
   conditionGroupId?: string;
@@ -328,6 +329,7 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
             description
             settled
             resolvedToYes
+            nonDecisive
             resolver
             category {
               slug
@@ -533,6 +535,7 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
             <ConditionStatus
               settled={condition?.settled}
               resolvedToYes={condition?.resolvedToYes}
+              nonDecisive={condition?.nonDecisive}
               endTime={condition?.endTime}
             />
           );
@@ -563,14 +566,18 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
     let result = attestations || [];
 
     // Filter by resolution status
-    if (filters.status.length > 0 && filters.status.length < 3) {
+    if (filters.status.length > 0 && filters.status.length < 4) {
       result = result.filter((att) => {
         const conditionId = att.conditionId;
-        let status: 'pending' | 'yes' | 'no' = 'pending';
+        let status: 'pending' | 'yes' | 'no' | 'nonDecisive' = 'pending';
         if (conditionId && conditionsMap) {
           const condition = conditionsMap[conditionId.toLowerCase()];
           if (condition?.settled) {
-            status = condition.resolvedToYes ? 'yes' : 'no';
+            status = condition.nonDecisive
+              ? 'nonDecisive'
+              : condition.resolvedToYes
+                ? 'yes'
+                : 'no';
           }
         }
         return filters.status.includes(status);

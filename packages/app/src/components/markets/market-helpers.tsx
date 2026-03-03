@@ -72,6 +72,7 @@ export function groupConditionToConditionType(
     openInterest: gc.openInterest,
     settled: gc.settled,
     resolvedToYes: gc.resolvedToYes,
+    nonDecisive: gc.nonDecisive,
     assertionId: gc.assertionId,
     assertionTimestamp: gc.assertionTimestamp,
     conditionGroupId: gc.conditionGroupId,
@@ -178,7 +179,8 @@ export type ResolutionBadgeStatus =
   | 'endsSoon'
   | 'settled'
   | 'resolvedYes'
-  | 'resolvedNo';
+  | 'resolvedNo'
+  | 'nonDecisive';
 
 export function ResolutionBadge({ status }: { status: ResolutionBadgeStatus }) {
   if (status === 'settled') {
@@ -189,6 +191,18 @@ export function ResolutionBadge({ status }: { status: ResolutionBadgeStatus }) {
           className="px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono border-muted-foreground/30 bg-muted/20 text-muted-foreground"
         >
           SETTLED
+        </Badge>
+      </div>
+    );
+  }
+  if (status === 'nonDecisive') {
+    return (
+      <div className="flex justify-end">
+        <Badge
+          variant="outline"
+          className="px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono border-muted-foreground/40 bg-muted/20 text-muted-foreground"
+        >
+          TIE
         </Badge>
       </div>
     );
@@ -222,12 +236,14 @@ export function EndTimeCell({
   endTime,
   settled,
   resolvedToYes,
+  nonDecisive,
   allSettled,
   variant = 'default',
 }: {
   endTime: number;
   settled: boolean;
   resolvedToYes?: boolean | null;
+  nonDecisive?: boolean | null;
   allSettled?: boolean;
   variant?: 'default' | 'card';
 }) {
@@ -255,7 +271,11 @@ export function EndTimeCell({
     if (allSettled) {
       status = 'settled';
     } else if (settled) {
-      status = resolvedToYes ? 'resolvedYes' : 'resolvedNo';
+      status = nonDecisive
+        ? 'nonDecisive'
+        : resolvedToYes
+          ? 'resolvedYes'
+          : 'resolvedNo';
     } else {
       status = 'endsSoon';
     }

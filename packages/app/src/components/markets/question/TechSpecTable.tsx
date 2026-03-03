@@ -15,6 +15,7 @@ interface TechSpecTableProps {
   endTime?: number | null;
   settled?: boolean | null;
   resolvedToYes?: boolean | null;
+  nonDecisive?: boolean | null;
   resolverAddress?: string | null;
 }
 
@@ -24,6 +25,7 @@ export function TechSpecTable({
   endTime,
   settled,
   resolvedToYes,
+  nonDecisive,
   resolverAddress,
 }: TechSpecTableProps) {
   const marketAddress = predictionMarket[chainId]?.address;
@@ -149,6 +151,7 @@ export function TechSpecTable({
                 endTime={endTime}
                 settled={settled}
                 resolvedToYes={resolvedToYes}
+                nonDecisive={nonDecisive}
               />
               {formatAddress(conditionId)}
               <button
