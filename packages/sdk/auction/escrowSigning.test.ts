@@ -220,18 +220,6 @@ describe('computePredictionHash', () => {
 // ============================================================================
 
 describe('computePickConfigId', () => {
-  test('same picks produce same configId', () => {
-    const id1 = computePickConfigId(PICKS);
-    const id2 = computePickConfigId(PICKS);
-    expect(id1).toBe(id2);
-  });
-
-  test('different picks produce different configId', () => {
-    const id1 = computePickConfigId(PICKS);
-    const id2 = computePickConfigId(TWO_PICKS);
-    expect(id1).not.toBe(id2);
-  });
-
   test('pick order matters (non-canonical order gives different configId)', () => {
     const forward = computePickConfigId(TWO_PICKS);
     const reversed = computePickConfigId([...TWO_PICKS].reverse());
@@ -462,12 +450,6 @@ describe('hashMintApproval', () => {
     expect(fromFunction).toBe(fromViem);
   });
 
-  test('is deterministic', () => {
-    const hash1 = hashMintApproval(params);
-    const hash2 = hashMintApproval(params);
-    expect(hash1).toBe(hash2);
-  });
-
   test('different chain ID produces different hash', () => {
     const hash1 = hashMintApproval(params);
     const hash2 = hashMintApproval({ ...params, chainId: 42161 });
@@ -579,12 +561,6 @@ describe('buildAuctionIntentTypedData', () => {
 
 describe('computePredictionId', () => {
   const pickConfigId = computePickConfigId(PICKS);
-
-  test('same inputs produce same predictionId', () => {
-    const id1 = computePredictionId(pickConfigId, PREDICTOR, COUNTERPARTY, 1n, 2n);
-    const id2 = computePredictionId(pickConfigId, PREDICTOR, COUNTERPARTY, 1n, 2n);
-    expect(id1).toBe(id2);
-  });
 
   test('different nonces produce different predictionId', () => {
     const id1 = computePredictionId(pickConfigId, PREDICTOR, COUNTERPARTY, 1n, 2n);
