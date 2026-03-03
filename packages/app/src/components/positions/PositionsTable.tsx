@@ -11,6 +11,7 @@ import {
   TableRow,
 } from '@sapience/ui/components/ui/table';
 import { Badge } from '@sapience/ui/components/ui/badge';
+import { Button } from '@sapience/ui/components/ui/button';
 import * as React from 'react';
 import EmptyTabState from '~/components/shared/EmptyTabState';
 import NumberDisplay from '~/components/shared/NumberDisplay';
@@ -46,21 +47,34 @@ import {
   isWithinDateRange,
   matchesConditionSearch,
 } from '~/lib/utils/tableFilters';
+import { useEscrowWrite } from '~/hooks/blockchain/useEscrowWrite';
+import { useClaimableAmount } from '~/hooks/blockchain/useEscrowContract';
+import { useSession } from '~/lib/context/SessionContext';
+import { CheckCircle2, Loader2 } from 'lucide-react';
 
 function PositionRow({
   position,
   collateralSymbol,
   conditionsMap,
   onShare,
+  onRefetch,
 }: {
   position: PositionBalance;
   collateralSymbol: string;
   conditionsMap: ConditionsMap;
   onShare: (position: PositionBalance) => void;
+  onRefetch?: () => void;
 }) {
   const { pickConfig, isPredictorToken } = position;
   const rawPicks = pickConfig?.picks ?? [];
   const picks = toPicks(rawPicks, isPredictorToken, conditionsMap);
+  const { effectiveAddress } = useSession();
+
+  // Only show claim button if the connected wallet owns this position
+  const isOwnPosition =
+    effectiveAddress &&
+    position.holder &&
+    effectiveAddress.toLowerCase() === position.holder.toLowerCase();
 
   // Position size = user's deposited collateral (from Prediction records)
   const positionSizeFormatted = parseFloat(
@@ -78,8 +92,12 @@ function PositionRow({
   const viewerWon =
     isResolved &&
     ((isPredictorToken && result === 'PREDICTOR_WINS') ||
-      (!isPredictorToken && result === 'COUNTERPARTY_WINS') ||
-      result === 'NON_DECISIVE');
+      (!isPredictorToken && result === 'COUNTERPARTY_WINS'));
+
+  const viewerLost =
+    isResolved &&
+    ((isPredictorToken && result === 'COUNTERPARTY_WINS') ||
+      (!isPredictorToken && result === 'PREDICTOR_WINS'));
 
   // PnL: profit if won (payout - positionSize), loss if lost (-positionSize)
   const pnlValue = isResolved
@@ -92,16 +110,122 @@ function PositionRow({
       ? (pnlValue / positionSizeFormatted) * 100
       : 0;
 
+  // Claim / redeem state
+  const [isRedeeming, setIsRedeeming] = React.useState(false);
+  const [redeemed, setRedeemed] = React.useState(false);
+  const { redeem } = useEscrowWrite({ chainId: position.chainId });
+
+  const { claimableAmount, isLoading: isLoadingClaimable } = useClaimableAmount(
+    {
+      pickConfigId: pickConfig?.id as `0x${string}`,
+      tokenAddress: position.tokenAddress as Address,
+      amount: BigInt(position.balance),
+      chainId: position.chainId,
+      enabled: isResolved && viewerWon && !!isOwnPosition && BigInt(position.balance) > 0n,
+    }
+  );
+
+  const claimableFormatted = claimableAmount
+    ? parseFloat(formatEther(claimableAmount))
+    : 0;
+
+  const handleClaim = React.useCallback(async () => {
+    if (!position.tokenAddress || BigInt(position.balance) <= 0n) return;
+    setIsRedeeming(true);
+    try {
+      const result = await redeem({
+        positionToken: position.tokenAddress as Address,
+        amount: BigInt(position.balance),
+      });
+      if (result.success) {
+        setRedeemed(true);
+        onRefetch?.();
+      }
+    } finally {
+      setIsRedeeming(false);
+    }
+  }, [position, redeem, onRefetch]);
+
+  // Determine what to show in P/L column
+  const renderPnlCell = () => {
+    // Already redeemed in this session
+    if (redeemed && pnlValue !== null) {
+      return (
+        <div
+          className={`whitespace-nowrap tabular-nums font-mono flex items-baseline gap-1.5 ${pnlValue >= 0 ? 'text-green-500' : 'text-red-500'}`}
+        >
+          <NumberDisplay
+            value={pnlValue}
+            className={`tabular-nums font-mono ${pnlValue >= 0 ? 'text-green-500' : 'text-red-500'}`}
+          />{' '}
+          <span className={pnlValue >= 0 ? 'text-green-500' : 'text-red-500'}>
+            {collateralSymbol}
+          </span>
+          {positionSizeFormatted > 0 && (
+            <span
+              className={`text-[10px] leading-tight tabular-nums font-mono ${pnlValue >= 0 ? 'text-green-500' : 'text-red-500'}`}
+            >
+              {roi >= 0 ? '+' : ''}
+              {Math.round(roi).toLocaleString()}%
+            </span>
+          )}
+        </div>
+      );
+    }
+
+    // Resolved, viewer won, and it's our position → show CLAIM button
+    if (isResolved && viewerWon && isOwnPosition && BigInt(position.balance) > 0n) {
+      return (
+        <Button
+          size="sm"
+          className="font-mono uppercase"
+          onClick={handleClaim}
+          disabled={isRedeeming || isLoadingClaimable}
+        >
+          {isRedeeming ? (
+            <>
+              <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
+              Claiming...
+            </>
+          ) : (
+            <>
+              <CheckCircle2 className="w-3 h-3 mr-1.5" />
+              Claim{' '}
+              {claimableFormatted > 0
+                ? `${claimableFormatted.toFixed(2)} ${collateralSymbol}`
+                : ''}
+            </>
+          )}
+        </Button>
+      );
+    }
+
+    // Resolved, viewer lost → show realized PnL in red
+    if (isResolved && viewerLost) {
+      return (
+        <div className="whitespace-nowrap tabular-nums font-mono flex items-baseline gap-1.5 text-red-500">
+          <NumberDisplay
+            value={-positionSizeFormatted}
+            className="tabular-nums font-mono text-red-500"
+          />{' '}
+          <span className="text-red-500">{collateralSymbol}</span>
+          <span className="text-[10px] leading-tight tabular-nums font-mono text-red-500">
+            -100%
+          </span>
+        </div>
+      );
+    }
+
+    // Not resolved → PENDING
+    return (
+      <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
+        PENDING
+      </span>
+    );
+  };
+
   return (
     <TableRow>
-      {/* Created */}
-      <TableCell className="whitespace-nowrap">
-        <span className="text-brand-white text-sm">
-          {formatDistanceToNow(new Date(position.createdAt), {
-            addSuffix: true,
-          })}
-        </span>
-      </TableCell>
       <TableCell>
         <div className="flex items-center gap-2">
           <StackedIcons picks={picks} />
@@ -168,36 +292,8 @@ function PositionRow({
           className="text-brand-white font-mono"
         />
       </TableCell>
-      {/* Profit/Loss */}
-      <TableCell>
-        {pnlValue !== null ? (
-          <div
-            className={`whitespace-nowrap tabular-nums font-mono flex items-baseline gap-1.5 ${pnlValue >= 0 ? 'text-green-600' : 'text-red-600'}`}
-          >
-            <NumberDisplay
-              value={pnlValue}
-              className={`tabular-nums font-mono ${pnlValue >= 0 ? 'text-green-600' : 'text-red-600'}`}
-            />{' '}
-            <span
-              className={`tabular-nums font-mono ${pnlValue >= 0 ? 'text-green-600' : 'text-red-600'}`}
-            >
-              {collateralSymbol}
-            </span>
-            {positionSizeFormatted > 0 && (
-              <span
-                className={`text-[10px] leading-tight tabular-nums font-mono ${pnlValue >= 0 ? 'text-green-600' : 'text-red-600'}`}
-              >
-                {roi >= 0 ? '+' : ''}
-                {Math.round(roi).toLocaleString()}%
-              </span>
-            )}
-          </div>
-        ) : (
-          <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
-            PENDING
-          </span>
-        )}
-      </TableCell>
+      {/* Profit/Loss → PENDING / CLAIM / Realized PnL */}
+      <TableCell>{renderPnlCell()}</TableCell>
       {/* Ends */}
       <TableCell className="whitespace-nowrap">
         {(() => {
@@ -264,6 +360,7 @@ export default function PositionsTable({
     data: accountPositions,
     isLoading: accountLoading,
     error: accountError,
+    refetch: accountRefetch,
   } = usePositionBalances({
     holder: account,
     chainId,
@@ -274,6 +371,7 @@ export default function PositionsTable({
     data: conditionPositions,
     isLoading: conditionLoading,
     error: conditionError,
+    refetch: conditionRefetch,
   } = usePositionBalancesByConditionId({
     conditionId: !account ? conditionId : undefined,
   });
@@ -281,6 +379,7 @@ export default function PositionsTable({
   const allPositions = account ? accountPositions : conditionPositions;
   const isLoading = account ? accountLoading : conditionLoading;
   const error = account ? accountError : conditionError;
+  const refetch = account ? accountRefetch : conditionRefetch;
 
   // Filter out zero-balance positions (fully redeemed)
   const positions = React.useMemo(
@@ -322,8 +421,7 @@ export default function PositionsTable({
         if (!isResolved) return filters.status.includes('active');
         const viewerWon =
           (p.isPredictorToken && res === 'PREDICTOR_WINS') ||
-          (!p.isPredictorToken && res === 'COUNTERPARTY_WINS') ||
-          res === 'NON_DECISIVE';
+          (!p.isPredictorToken && res === 'COUNTERPARTY_WINS');
         if (viewerWon) return filters.status.includes('won');
         return filters.status.includes('lost');
       });
@@ -475,7 +573,6 @@ export default function PositionsTable({
         <Table>
           <TableHeader>
             <TableRow className="hover:!bg-white/[0.03] bg-white/[0.03] border-b border-border/60">
-              <TableHead className="h-auto py-3">Created</TableHead>
               <TableHead className="h-auto py-3">Position</TableHead>
               <TableHead className="h-auto py-3">Position Size</TableHead>
               <TableHead className="h-auto py-3">Payout</TableHead>
@@ -492,6 +589,7 @@ export default function PositionsTable({
                 collateralSymbol={collateralSymbol}
                 conditionsMap={conditionsMap}
                 onShare={setSharePosition}
+                onRefetch={refetch}
               />
             ))}
           </TableBody>
