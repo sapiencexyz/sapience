@@ -49,6 +49,7 @@ import {
 } from '~/lib/utils/tableFilters';
 import { useEscrowWrite } from '~/hooks/blockchain/useEscrowWrite';
 import { useClaimableAmount } from '~/hooks/blockchain/useEscrowContract';
+import { useSession } from '~/lib/context/SessionContext';
 import { CheckCircle2, Loader2 } from 'lucide-react';
 
 function PositionRow({
@@ -67,6 +68,13 @@ function PositionRow({
   const { pickConfig, isPredictorToken } = position;
   const rawPicks = pickConfig?.picks ?? [];
   const picks = toPicks(rawPicks, isPredictorToken, conditionsMap);
+  const { effectiveAddress } = useSession();
+
+  // Only show claim button if the connected wallet owns this position
+  const isOwnPosition =
+    effectiveAddress &&
+    position.holder &&
+    effectiveAddress.toLowerCase() === position.holder.toLowerCase();
 
   // Position size = user's deposited collateral (from Prediction records)
   const positionSizeFormatted = parseFloat(
@@ -113,7 +121,7 @@ function PositionRow({
       tokenAddress: position.tokenAddress as Address,
       amount: BigInt(position.balance),
       chainId: position.chainId,
-      enabled: isResolved && viewerWon && BigInt(position.balance) > 0n,
+      enabled: isResolved && viewerWon && !!isOwnPosition && BigInt(position.balance) > 0n,
     }
   );
 
@@ -165,8 +173,8 @@ function PositionRow({
       );
     }
 
-    // Resolved, viewer won → show CLAIM button
-    if (isResolved && viewerWon && BigInt(position.balance) > 0n) {
+    // Resolved, viewer won, and it's our position → show CLAIM button
+    if (isResolved && viewerWon && isOwnPosition && BigInt(position.balance) > 0n) {
       return (
         <Button
           size="sm"
