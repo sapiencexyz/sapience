@@ -177,7 +177,7 @@ function PositionRow({
       return (
         <button
           type="button"
-          className="text-brand-white hover:text-brand-white/70 font-mono font-semibold uppercase underline decoration-dotted underline-offset-4 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+          className="text-brand-white hover:text-brand-white/70 tabular-nums font-mono uppercase underline decoration-dotted underline-offset-4 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={handleClaim}
           disabled={isRedeeming || isLoadingClaimable}
         >
