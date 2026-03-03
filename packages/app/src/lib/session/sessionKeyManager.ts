@@ -41,14 +41,14 @@ import { getEntryPoint, KERNEL_V3_1 } from '@zerodev/sdk/constants';
 import {
   predictionMarketEscrowAbi,
   collateralTokenAbi,
-  liquidityVaultAbi,
+  predictionMarketVaultAbi,
 } from '@sapience/sdk/abis';
 import {
   predictionMarket as predictionMarketAddresses,
   predictionMarketEscrow as predictionMarketEscrowAddresses,
   collateralToken as collateralTokenAddresses,
   eas as easAddresses,
-  passiveLiquidityVault as vaultAddresses,
+  predictionMarketVault as vaultAddresses,
 } from '@sapience/sdk/contracts';
 import {
   CHAIN_ID_ETHEREAL,
@@ -690,22 +690,22 @@ export async function createSession(
       // Vault functions for gasless deposits/withdrawals
       {
         target: etherealContracts.vault,
-        abi: liquidityVaultAbi,
+        abi: predictionMarketVaultAbi,
         functionName: 'requestDeposit',
       },
       {
         target: etherealContracts.vault,
-        abi: liquidityVaultAbi,
+        abi: predictionMarketVaultAbi,
         functionName: 'requestWithdrawal',
       },
       {
         target: etherealContracts.vault,
-        abi: liquidityVaultAbi,
+        abi: predictionMarketVaultAbi,
         functionName: 'cancelDeposit',
       },
       {
         target: etherealContracts.vault,
-        abi: liquidityVaultAbi,
+        abi: predictionMarketVaultAbi,
         functionName: 'cancelWithdrawal',
       },
       // Escrow permissions (only if escrow is deployed on this chain)

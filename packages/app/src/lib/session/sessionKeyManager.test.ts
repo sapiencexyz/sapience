@@ -174,7 +174,7 @@ jest.mock('@sapience/sdk/abis', () => ({
   predictionMarketAbi: [],
   predictionMarketEscrowAbi: [],
   collateralTokenAbi: [],
-  liquidityVaultAbi: [],
+  predictionMarketVaultAbi: [],
 }));
 
 jest.mock('@sapience/sdk/contracts', () => ({
@@ -197,7 +197,7 @@ jest.mock('@sapience/sdk/contracts', () => ({
     13374202: { address: '0xEASEtherealTestnet' },
     42161: { address: '0xEASArbitrum' },
   },
-  passiveLiquidityVault: {
+  predictionMarketVault: {
     5064014: { address: '0xVaultEthereal' },
     13374202: { address: '0xVaultEtherealTestnet' },
   },
