@@ -8,7 +8,6 @@ import {
   type AuctionStartSigningPayload,
 } from '@sapience/sdk';
 import { canonicalizePicks } from '@sapience/sdk/auction/escrowEncoding';
-import { CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
 import type { Pick } from '@sapience/sdk/types';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
@@ -444,8 +443,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
               predictorNonce: params.predictorNonce,
               predictorDeadline,
               chainId,
-              // Note: no predictorSignature or counterpartyCollateral at auction start
-              // Predictor signs when accepting a bid with specific counterpartyCollateral
+              // Predictor signs when accepting a bid (which includes counterpartyCollateral)
             };
 
             // Send escrow auction start
@@ -487,55 +485,11 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
             return;
           }
         } else {
-          if (params.chainId === CHAIN_ID_ETHEREAL_TESTNET) {
-            console.error(
-              '[Auction] Escrow picks missing on Ethereal chain — cannot fall through to V1'
-            );
-            inflightRef.current = '';
-            return;
-          }
-          // V1 Auction Start (original logic)
-          log(
-            `Requesting quotes: wager=${params.wager} wei, predictions=${params.predictedOutcomes.length}, predictor=${effectivePredictor.slice(0, 10)}...`
+          console.error(
+            '[Auction] Escrow picks missing — all auctions require escrow format'
           );
-
-          try {
-            const response = await client.sendWithAck<{ auctionId?: string }>(
-              'auction.start',
-              payloadWithSignature,
-              { timeoutMs: 10000 }
-            );
-
-            // Only update state if this is still the latest request
-            if (pendingRequestIdRef.current !== thisRequestId) {
-              log(
-                `Ignoring response for stale request (newer request completed)`
-              );
-              return;
-            }
-
-            const newId = response?.auctionId || null;
-            latestAuctionIdRef.current = newId;
-            loggedStaleAuctionsRef.current.clear();
-            setAuctionId(newId);
-            log(`Auction started: id=${newId}`);
-
-            // Also subscribe to auction updates for this auctionId
-            // This enables receiving escrow bids on the same auction
-            if (newId) {
-              client.send({
-                type: 'auction.subscribe',
-                payload: { auctionId: newId },
-              });
-            }
-          } catch (err) {
-            // Only update state if this is still the latest request
-            if (pendingRequestIdRef.current === thisRequestId) {
-              inflightRef.current = '';
-              pendingRequestIdRef.current = null;
-            }
-            log(`Auction request failed:`, err);
-          }
+          inflightRef.current = '';
+          return;
         }
       }, 400);
     },

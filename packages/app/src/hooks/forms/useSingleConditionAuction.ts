@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { parseUnits, zeroAddress } from 'viem';
 import { useAccount } from 'wagmi';
 import { generateRandomNonce } from '@sapience/sdk';
-import { CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
+import { predictionMarketLZConditionalTokensResolver } from '@sapience/sdk/contracts';
 import { OutcomeSide } from '@sapience/sdk/types';
 import { buildAuctionStartPayload } from '~/lib/auction/buildAuctionPayload';
 import { useSession } from '~/lib/context/SessionContext';
@@ -120,10 +120,14 @@ export function useSingleConditionAuction({
           chainId,
         };
 
-        if (resolverAddress && chainId === CHAIN_ID_ETHEREAL_TESTNET) {
+        const effectiveResolver =
+          resolverAddress ||
+          predictionMarketLZConditionalTokensResolver[chainId]?.address ||
+          null;
+        if (effectiveResolver) {
           params.escrowPicks = [
             {
-              conditionResolver: resolverAddress as `0x${string}`,
+              conditionResolver: effectiveResolver as `0x${string}`,
               conditionId: conditionId as `0x${string}`,
               predictedOutcome: prediction ? OutcomeSide.YES : OutcomeSide.NO,
             },

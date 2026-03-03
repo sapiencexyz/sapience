@@ -19,7 +19,7 @@ import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { toAuctionWsUrl } from '~/lib/ws';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
-import { buildAuctionStartPayload } from '~/lib/auction/buildAuctionPayload';
+import { canonicalizePicks } from '@sapience/sdk/auction/escrowEncoding';
 import hub from '~/lib/auction/useAuctionBidsHub';
 import {
   StackedIcons,
@@ -207,18 +207,28 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
 
       setTimeout(async () => {
         try {
-          const outcomes = combo.map((leg) => ({
-            marketId: leg.condition.id,
-            prediction: leg.prediction,
+          // Build escrow picks payload
+          const rawPicks = combo.map((leg) => ({
+            conditionResolver: leg.condition.resolver as `0x${string}`,
+            conditionId: (leg.condition.id.startsWith('0x')
+              ? leg.condition.id
+              : `0x${leg.condition.id}`) as `0x${string}`,
+            predictedOutcome: leg.prediction ? 1 : 0,
           }));
-          const payload = buildAuctionStartPayload(outcomes, chainId);
+          const picks = canonicalizePicks(rawPicks);
+          const nowSec = Math.floor(Date.now() / 1000);
+
           const requestPayload = {
-            wager: PREDICTOR_POSITION_SIZE_WEI,
-            resolver: payload.resolver,
-            predictedOutcomes: payload.predictedOutcomes,
-            taker: selectedPredictorAddress,
+            picks: picks.map((p) => ({
+              conditionResolver: p.conditionResolver,
+              conditionId: p.conditionId,
+              predictedOutcome: p.predictedOutcome,
+            })),
+            predictorCollateral: PREDICTOR_POSITION_SIZE_WEI,
+            predictor: selectedPredictorAddress,
             predictorNonce:
               predictorNonce !== undefined ? Number(predictorNonce) : 0,
+            predictorDeadline: nowSec + 300,
             chainId: chainId,
           };
 
