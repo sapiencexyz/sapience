@@ -117,9 +117,10 @@ export default function ConnectDialog({
       case 'switching-network':
         return 'SWITCHING NETWORK';
       case 'requesting-approval':
+        return 'ESTABLISHING CONNECTION';
       case 'deploying-account':
       case 'finalizing':
-        return 'ESTABLISHING CONNECTION';
+        return 'FINALIZING CONNECTION';
       default:
         return 'ESTABLISHING CONNECTION';
     }

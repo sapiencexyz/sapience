@@ -734,12 +734,22 @@ export async function createSession(
     `[SessionKeyManager] Setting up Ethereal session on chain ${etherealChainId}...`
   );
 
-  // Switch to Ethereal chain
-  onProgress?.('switching-network');
-  console.debug(
-    `[SessionKeyManager] Switching to Ethereal chain ${etherealChainId}...`
-  );
-  await ownerSigner.switchChain(etherealChainId);
+  // Switch to Ethereal chain (only emit progress if chain switch is actually needed)
+  const currentChainHex = await ownerSigner.provider.request({
+    method: 'eth_chainId',
+  }) as string;
+  const currentChainId = parseInt(currentChainHex, 16);
+  if (currentChainId !== etherealChainId) {
+    onProgress?.('switching-network');
+    console.debug(
+      `[SessionKeyManager] Switching from chain ${currentChainId} to Ethereal chain ${etherealChainId}...`
+    );
+    await ownerSigner.switchChain(etherealChainId);
+  } else {
+    console.debug(
+      `[SessionKeyManager] Already on Ethereal chain ${etherealChainId}, skipping switch`
+    );
+  }
 
   // Create ECDSA validator for owner on Ethereal
   const etherealOwnerValidator = await signerToEcdsaValidator(
