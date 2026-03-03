@@ -355,19 +355,26 @@ export function useEscrowBidSubmission(
           // Sign MintApproval: session mode uses kernel-wrapped signing (ERC-1271
           // validated on-chain via smart account's isValidSignature), wallet mode
           // uses wagmi's signTypedDataAsync.
-          const signParams = {
-            domain: {
-              ...typedData.domain,
-              chainId: Number(typedData.domain.chainId),
-            },
-            types: typedData.types,
-            primaryType: typedData.primaryType,
-            message: typedData.message as Record<string, unknown>,
-          };
           if (isUsingSession && sessionSignTypedData) {
-            counterpartySignature = await sessionSignTypedData(signParams);
+            counterpartySignature = await sessionSignTypedData({
+              domain: {
+                ...typedData.domain,
+                chainId: Number(typedData.domain.chainId),
+              },
+              types: typedData.types,
+              primaryType: typedData.primaryType,
+              message: typedData.message as Record<string, unknown>,
+            });
           } else {
-            counterpartySignature = await signTypedDataAsync(signParams);
+            counterpartySignature = await signTypedDataAsync({
+              domain: {
+                ...typedData.domain,
+                chainId: Number(typedData.domain.chainId),
+              },
+              types: typedData.types,
+              primaryType: typedData.primaryType,
+              message: typedData.message,
+            });
           }
         } catch (e: any) {
           const error =
@@ -387,10 +394,6 @@ export function useEscrowBidSubmission(
       // Send over shared Auction WS (fire and forget - no ack wait)
       const client = getSharedAuctionWsClient(wsUrl);
 
-      // Session key data no longer needed — contract validates via ERC-1271
-      // (isValidSignature on the deployed smart account).
-      const counterpartySessionKeyData: string | undefined = undefined;
-
       const escrowPayload = {
         auctionId,
         counterparty: signerAddress,
@@ -398,7 +401,6 @@ export function useEscrowBidSubmission(
         counterpartyNonce: Number(counterpartyNonce),
         counterpartyDeadline,
         counterpartySignature,
-        ...(counterpartySessionKeyData && { counterpartySessionKeyData }),
       };
       client.send({ type: 'bid.submit', payload: escrowPayload });
 
