@@ -15,7 +15,7 @@ import { collateralToken } from '@sapience/sdk/contracts';
 import { useAccount, useReadContract, useSignTypedData } from 'wagmi';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 import { useSession } from '~/lib/context/SessionContext';
-import { encodeEscrowSessionKeyData } from '~/lib/session/sessionKeyManager';
+
 import type { MintPredictionRequestData } from '~/lib/auction/useAuctionStart';
 import { getPublicClientForChainId } from '~/lib/utils/util';
 import { buildPredictorMintTypedData } from '@sapience/sdk/auction/escrowSigning';
@@ -48,8 +48,6 @@ export function useSubmitPosition({
     effectiveAddress,
     isUsingSession,
     signTypedData: sessionSignTypedData,
-    signTypedDataRaw,
-    escrowSessionKeyApproval,
   } = useSession();
 
   // Read current wUSDe balance on Ethereal to avoid unnecessary wrap/deposit calls
@@ -240,21 +238,15 @@ export function useSubmitPosition({
             message: typedData.message,
           };
 
-          // Use raw session key signing for escrow MintApproval (bypasses kernel wrapping,
-          // contract validates via native session key path in SignatureValidator).
+          // Sign MintApproval: session mode uses kernel-wrapped signing (ERC-1271
+          // validated on-chain via smart account's isValidSignature), wallet mode
+          // uses wagmi's signTypedDataAsync (EOA ecrecover or ERC-1271 fallback).
           const predictorSignature =
-            isUsingSession && signTypedDataRaw
-              ? await signTypedDataRaw(signParams)
+            isUsingSession && sessionSignTypedData
+              ? await sessionSignTypedData(signParams)
               : await signTypedDataAsync(signParams);
 
           filled.predictorSignature = predictorSignature;
-
-          // Include predictor session key data for escrow contract validation
-          if (isUsingSession && escrowSessionKeyApproval) {
-            filled.predictorSessionKeyData = encodeEscrowSessionKeyData(
-              escrowSessionKeyApproval
-            );
-          }
         }
 
         const calls = prepareCalls(filled, freshAllowance);
@@ -299,8 +291,6 @@ export function useSubmitPosition({
       predictionMarketAddress,
       isUsingSession,
       sessionSignTypedData,
-      signTypedDataRaw,
-      escrowSessionKeyApproval,
     ]
   );
 

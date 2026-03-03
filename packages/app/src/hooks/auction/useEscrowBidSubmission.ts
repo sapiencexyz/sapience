@@ -22,7 +22,7 @@ import { type Pick as EscrowPick } from '@sapience/sdk';
 import { getPublicClientForChainId } from '~/lib/utils/util';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
-import { encodeEscrowSessionKeyData } from '~/lib/session/sessionKeyManager';
+
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { toAuctionWsUrl } from '~/lib/ws';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
@@ -99,10 +99,8 @@ export function useEscrowBidSubmission(
   const {
     effectiveAddress,
     signTypedData: sessionSignTypedData,
-    signTypedDataRaw,
     isUsingSession,
     isUsingSmartAccount,
-    escrowSessionKeyApproval,
     chainClients,
   } = useSession();
   const { toast } = useToast();
@@ -354,10 +352,11 @@ export function useEscrowBidSubmission(
         });
 
         try {
-          // Use raw session key signing for escrow MintApproval (bypasses kernel wrapping,
-          // contract validates via native session key path in SignatureValidator).
-          if (isUsingSession && signTypedDataRaw) {
-            counterpartySignature = await signTypedDataRaw({
+          // Sign MintApproval: session mode uses kernel-wrapped signing (ERC-1271
+          // validated on-chain via smart account's isValidSignature), wallet mode
+          // uses wagmi's signTypedDataAsync.
+          if (isUsingSession && sessionSignTypedData) {
+            counterpartySignature = await sessionSignTypedData({
               domain: {
                 ...typedData.domain,
                 chainId: Number(typedData.domain.chainId),
@@ -395,15 +394,6 @@ export function useEscrowBidSubmission(
       // Send over shared Auction WS (fire and forget - no ack wait)
       const client = getSharedAuctionWsClient(wsUrl);
 
-      // Always include session key data when session is active — the contract validates
-      // via native session key path (Option B) instead of ERC-1271.
-      let counterpartySessionKeyData: string | undefined;
-      if (isUsingSession && escrowSessionKeyApproval) {
-        counterpartySessionKeyData = encodeEscrowSessionKeyData(
-          escrowSessionKeyApproval
-        );
-      }
-
       const escrowPayload = {
         auctionId,
         counterparty: signerAddress,
@@ -411,7 +401,6 @@ export function useEscrowBidSubmission(
         counterpartyNonce: Number(counterpartyNonce),
         counterpartyDeadline,
         counterpartySignature,
-        ...(counterpartySessionKeyData && { counterpartySessionKeyData }),
       };
       client.send({ type: 'bid.submit', payload: escrowPayload });
 
@@ -440,8 +429,7 @@ export function useEscrowBidSubmission(
       isUsingSession,
       isUsingSmartAccount,
       sessionSignTypedData,
-      signTypedDataRaw,
-      escrowSessionKeyApproval,
+      sessionSignTypedData,
       chainClients,
       wusdeAddress,
       formatAmount,
