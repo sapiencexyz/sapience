@@ -716,6 +716,16 @@ export async function createSession(
               abi: predictionMarketEscrowAbi,
               functionName: 'mint',
             },
+            {
+              target: etherealContracts.predictionMarketEscrow,
+              abi: predictionMarketEscrowAbi,
+              functionName: 'redeem',
+            },
+            {
+              target: etherealContracts.predictionMarketEscrow,
+              abi: predictionMarketEscrowAbi,
+              functionName: 'settle',
+            },
           ]
         : []),
     ],
