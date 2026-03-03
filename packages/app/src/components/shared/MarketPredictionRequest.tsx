@@ -8,9 +8,11 @@ import { predictionMarketEscrowAbi } from '@sapience/sdk/abis';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
 import {
   DEFAULT_CHAIN_ID,
+  CHAIN_ID_ETHEREAL,
   CHAIN_ID_ETHEREAL_TESTNET,
   PREFERRED_ESTIMATE_QUOTER,
 } from '@sapience/sdk/constants';
+import { predictionMarketLZConditionalTokensResolver } from '@sapience/sdk/contracts';
 import { verifyMakerBidSignature } from '@sapience/sdk';
 import { useAuctionStart, type QuoteBid } from '~/lib/auction/useAuctionStart';
 import {
@@ -318,11 +320,16 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
       const positionSizeWei = parseUnits('1', 18).toString();
       setLastPredictorPositionSizeWei(positionSizeWei);
       const payload = buildAuctionStartPayload(effectiveOutcomes, chainId);
-      const isEscrow =
-        chainId === CHAIN_ID_ETHEREAL_TESTNET && !!resolverAddress;
+      const isEscrowChain =
+        chainId === CHAIN_ID_ETHEREAL_TESTNET || chainId === CHAIN_ID_ETHEREAL;
+      const effectiveResolver =
+        resolverAddress ||
+        predictionMarketLZConditionalTokensResolver[chainId]?.address ||
+        null;
+      const isEscrow = isEscrowChain && !!effectiveResolver;
       const escrowPicks = isEscrow
         ? effectiveOutcomes.map((o) => ({
-            conditionResolver: resolverAddress as `0x${string}`,
+            conditionResolver: effectiveResolver as `0x${string}`,
             conditionId: (o.marketId.startsWith('0x')
               ? o.marketId
               : `0x${o.marketId}`) as `0x${string}`,
@@ -374,11 +381,16 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
         const positionSizeWei = parseUnits('1', 18).toString();
         setLastPredictorPositionSizeWei(positionSizeWei);
         const payload = buildAuctionStartPayload(effectiveOutcomes, chainId);
-        const isEscrow =
-          chainId === CHAIN_ID_ETHEREAL_TESTNET && !!resolverAddress;
+        const isEscrowChain =
+          chainId === CHAIN_ID_ETHEREAL_TESTNET || chainId === CHAIN_ID_ETHEREAL;
+        const effectiveResolver =
+          resolverAddress ||
+          predictionMarketLZConditionalTokensResolver[chainId]?.address ||
+          null;
+        const isEscrow = isEscrowChain && !!effectiveResolver;
         const escrowPicks = isEscrow
           ? effectiveOutcomes.map((o) => ({
-              conditionResolver: resolverAddress as `0x${string}`,
+              conditionResolver: effectiveResolver as `0x${string}`,
               conditionId: (o.marketId.startsWith('0x')
                 ? o.marketId
                 : `0x${o.marketId}`) as `0x${string}`,

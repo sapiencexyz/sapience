@@ -8,7 +8,7 @@ import {
   type AuctionStartSigningPayload,
 } from '@sapience/sdk';
 import { canonicalizePicks } from '@sapience/sdk/auction/escrowEncoding';
-import { CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
+import { CHAIN_ID_ETHEREAL, CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
 import type { Pick } from '@sapience/sdk/types';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
@@ -487,7 +487,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
             return;
           }
         } else {
-          if (params.chainId === CHAIN_ID_ETHEREAL_TESTNET) {
+          if (params.chainId === CHAIN_ID_ETHEREAL_TESTNET || params.chainId === CHAIN_ID_ETHEREAL) {
             console.error(
               '[Auction] Escrow picks missing on Ethereal chain — cannot fall through to V1'
             );
