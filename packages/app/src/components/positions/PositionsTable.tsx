@@ -504,25 +504,23 @@ export default function PositionsTable({
     return `/og/prediction?${qp.toString()}`;
   }, [sharePosition, conditionsMap, collateralSymbol]);
 
-  // Header with leftSlot (tab switcher), optional title, and filters
+  // Header with leftSlot (tab switcher) and inline filters
+  // When leftSlot is provided (profile page), tabs + filters sit on one row (desktop)
+  // and stack on mobile. When no leftSlot (condition page), filters render standalone.
   const headerContent = (
-    <div className="px-4 py-4 border-b border-border/60 flex flex-col gap-4 bg-white/[0.03]">
-      {(leftSlot || showHeaderText) && (
-        <div className="flex items-center gap-4">
-          {leftSlot}
-          <div className="flex-1">
-            {showHeaderText && (
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold">Positions</h3>
-                <Badge variant="outline">
-                  {filteredPositions.length} positions
-                </Badge>
-              </div>
-            )}
-          </div>
+    <div className="px-4 py-4 border-b border-border/60 flex flex-col sm:flex-row sm:items-center gap-4 bg-white/[0.03]">
+      {leftSlot}
+      {showHeaderText && !leftSlot && (
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-semibold">Positions</h3>
+          <Badge variant="outline">
+            {filteredPositions.length} positions
+          </Badge>
         </div>
       )}
-      <PositionsTableFilters filters={filters} onFiltersChange={setFilters} />
+      <div className="flex-1">
+        <PositionsTableFilters filters={filters} onFiltersChange={setFilters} />
+      </div>
     </div>
   );
 
