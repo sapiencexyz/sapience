@@ -11,7 +11,6 @@ import {
   TableRow,
 } from '@sapience/ui/components/ui/table';
 import { Badge } from '@sapience/ui/components/ui/badge';
-import { Button } from '@sapience/ui/components/ui/button';
 import * as React from 'react';
 import EmptyTabState from '~/components/shared/EmptyTabState';
 import NumberDisplay from '~/components/shared/NumberDisplay';
@@ -50,7 +49,7 @@ import {
 import { useEscrowWrite } from '~/hooks/blockchain/useEscrowWrite';
 import { useClaimableAmount } from '~/hooks/blockchain/useEscrowContract';
 import { useSession } from '~/lib/context/SessionContext';
-import { CheckCircle2, Loader2 } from 'lucide-react';
+
 
 function PositionRow({
   position,
@@ -173,30 +172,17 @@ function PositionRow({
       );
     }
 
-    // Resolved, viewer won, and it's our position → show CLAIM button
+    // Resolved, viewer won, and it's our position → show CLAIM link
     if (isResolved && viewerWon && isOwnPosition && BigInt(position.balance) > 0n) {
       return (
-        <Button
-          size="sm"
-          className="font-mono uppercase"
+        <button
+          type="button"
+          className="text-brand-white hover:text-brand-white/70 tabular-nums font-mono uppercase underline decoration-dotted underline-offset-4 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
           onClick={handleClaim}
           disabled={isRedeeming || isLoadingClaimable}
         >
-          {isRedeeming ? (
-            <>
-              <Loader2 className="w-3 h-3 mr-1.5 animate-spin" />
-              Claiming...
-            </>
-          ) : (
-            <>
-              <CheckCircle2 className="w-3 h-3 mr-1.5" />
-              Claim{' '}
-              {claimableFormatted > 0
-                ? `${claimableFormatted.toFixed(2)} ${collateralSymbol}`
-                : ''}
-            </>
-          )}
-        </Button>
+          {isRedeeming ? 'CLAIMING...' : 'CLAIM'}
+        </button>
       );
     }
 
