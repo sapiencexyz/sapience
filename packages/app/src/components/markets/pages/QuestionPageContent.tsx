@@ -75,6 +75,7 @@ export default function QuestionPageContent({
       endTime?: number | null;
       settled?: boolean | null;
       resolvedToYes?: boolean | null;
+      nonDecisive?: boolean | null;
       description?: string | null;
       category?: { slug: string } | null;
       chainId?: number | null;
@@ -96,6 +97,7 @@ export default function QuestionPageContent({
             endTime
             settled
             resolvedToYes
+            nonDecisive
             description
             chainId
             resolver
@@ -123,6 +125,7 @@ export default function QuestionPageContent({
           endTime?: number | null;
           settled?: boolean | null;
           resolvedToYes?: boolean | null;
+          nonDecisive?: boolean | null;
           description?: string | null;
           category?: { slug: string } | null;
           chainId?: number | null;
@@ -462,6 +465,7 @@ export default function QuestionPageContent({
       requestQuotes={requestQuotes}
       settled={data.settled}
       resolvedToYes={data.resolvedToYes}
+      nonDecisive={data.nonDecisive}
       endTime={data.endTime}
     />
   );
@@ -478,6 +482,7 @@ export default function QuestionPageContent({
         endTime={data?.endTime ?? null}
         settled={data?.settled ?? null}
         resolvedToYes={data?.resolvedToYes ?? null}
+        nonDecisive={data?.nonDecisive ?? null}
         resolverAddress={resolverAddress}
       />
     </div>

@@ -5,7 +5,7 @@ import {
   type TableFiltersConfig,
 } from '~/components/shared/TableFilters';
 
-export type ResolutionStatus = 'pending' | 'yes' | 'no';
+export type ResolutionStatus = 'pending' | 'yes' | 'no' | 'nonDecisive';
 export type ForecastsFilterState = TableFilterState<ResolutionStatus>;
 export const getDefaultForecastsFilterState =
   getDefaultFilterState<ResolutionStatus>;
@@ -16,6 +16,7 @@ const FORECASTS_CONFIG: TableFiltersConfig<ResolutionStatus> = {
     { value: 'pending', label: 'Pending' },
     { value: 'yes', label: 'Yes' },
     { value: 'no', label: 'No' },
+    { value: 'nonDecisive', label: 'Tie' },
   ],
   statusPlaceholder: 'Any resolution',
   statusAllLabel: 'All resolutions',

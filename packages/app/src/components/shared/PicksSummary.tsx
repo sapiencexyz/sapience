@@ -36,7 +36,13 @@ export interface PicksContentProps {
 
 function PickForecastCell({ pick }: { pick: Pick }) {
   if (pick.settled) {
-    return <ResolutionBadge settled resolvedToYes={pick.resolvedToYes} />;
+    return (
+      <ResolutionBadge
+        settled
+        resolvedToYes={pick.resolvedToYes}
+        nonDecisive={pick.nonDecisive}
+      />
+    );
   }
 
   return (
@@ -83,7 +89,13 @@ function PickEndsCell({
   }
 
   // Fallback: show resolved status per pick
-  return <ResolutionBadge settled resolvedToYes={pick.resolvedToYes} />;
+  return (
+    <ResolutionBadge
+      settled
+      resolvedToYes={pick.resolvedToYes}
+      nonDecisive={pick.nonDecisive}
+    />
+  );
 }
 
 export function PicksContent({

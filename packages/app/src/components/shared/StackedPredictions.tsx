@@ -41,6 +41,8 @@ export interface Pick {
   settled?: boolean;
   /** If settled, whether it resolved to YES. */
   resolvedToYes?: boolean;
+  /** If settled, whether the outcome was non-decisive (tie). */
+  nonDecisive?: boolean;
 }
 
 interface StackedPredictionsProps {
