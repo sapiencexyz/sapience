@@ -3,6 +3,7 @@ pragma solidity ^0.8.19;
 
 import "forge-std/Script.sol";
 import "src/v2/interfaces/IV2Types.sol";
+import "src/v2/utils/SignatureValidator.sol";
 
 /**
  * @title GenerateHashFixtures
@@ -13,6 +14,8 @@ import "src/v2/interfaces/IV2Types.sol";
  * Then copy the logged JSON into packages/sdk/auction/__fixtures__/escrowHashes.json
  */
 contract GenerateHashFixtures is Script {
+    // Instantiate a concrete SignatureValidator to access its typehashes
+    SignatureValidatorHarness private validator = new SignatureValidatorHarness();
     // Same test addresses as the vitest fixtures (checksummed)
     address constant PREDICTOR = 0x1111111111111111111111111111111111111111;
     address constant COUNTERPARTY = 0x2222222222222222222222222222222222222222;
@@ -29,13 +32,7 @@ contract GenerateHashFixtures is Script {
     bytes32 constant CONDITION_ID_A = 0xabababababababababababababababababababababababababababababababab;
     bytes32 constant CONDITION_ID_B = 0xcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd;
 
-    // Mirror SignatureValidator typehashes
-    bytes32 constant MINT_APPROVAL_TYPEHASH = keccak256(
-        "MintApproval(bytes32 predictionHash,address signer,uint256 collateral,uint256 nonce,uint256 deadline)"
-    );
-    bytes32 constant BURN_APPROVAL_TYPEHASH = keccak256(
-        "BurnApproval(bytes32 burnHash,address signer,uint256 tokenAmount,uint256 payout,uint256 nonce,uint256 deadline)"
-    );
+    // Typehashes imported directly from the contract — no copies
 
     function run() external view {
         // --- pickConfigId (single pick) ---
@@ -116,7 +113,7 @@ contract GenerateHashFixtures is Script {
         // --- MintApproval struct hash (for EIP-712) ---
         bytes32 mintStructHash = keccak256(
             abi.encode(
-                MINT_APPROVAL_TYPEHASH,
+                validator.MINT_APPROVAL_TYPEHASH(),
                 predictionHashNoSponsor,
                 PREDICTOR,
                 PREDICTOR_COLLATERAL,
@@ -128,7 +125,7 @@ contract GenerateHashFixtures is Script {
         // --- BurnApproval struct hash ---
         bytes32 burnStructHash = keccak256(
             abi.encode(
-                BURN_APPROVAL_TYPEHASH,
+                validator.BURN_APPROVAL_TYPEHASH(),
                 burnHash,
                 PREDICTOR,
                 uint256(500000),
@@ -158,4 +155,11 @@ contract GenerateHashFixtures is Script {
         console.log("    \"%s\"", vm.toString(burnStructHash));
         console.log("}");
     }
+}
+
+/**
+ * @notice Concrete implementation of SignatureValidator for accessing public constants
+ */
+contract SignatureValidatorHarness is SignatureValidator {
+    constructor() {}
 }
