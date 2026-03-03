@@ -565,8 +565,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
       setSessionCreationStep(null);
       setSessionError(null);
 
-      const etherealChainId =
-        params.etherealChainId ?? DEFAULT_CHAIN_ID;
+      const etherealChainId = params.etherealChainId ?? DEFAULT_CHAIN_ID;
 
       try {
         const provider = (await connector.getProvider()) as EIP1193Provider;

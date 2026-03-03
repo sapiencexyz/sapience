@@ -136,7 +136,11 @@ export function useSapienceWriteContract({
       if (!isUsingSession) return false;
       if (!sessionConfig) return false;
       if (Date.now() > sessionConfig.expiresAt) return false;
-      if ((chainId === ethereal.id || chainId === DEFAULT_CHAIN_ID) && chainClients.ethereal) return true;
+      if (
+        (chainId === ethereal.id || chainId === DEFAULT_CHAIN_ID) &&
+        chainClients.ethereal
+      )
+        return true;
       // For Arbitrum, we can use session even if it doesn't exist yet (lazy creation)
       if (chainId === arbitrum.id) return true;
       return false;
@@ -157,7 +161,8 @@ export function useSapienceWriteContract({
   // Get the session client for a chain
   const getSessionClient = useCallback(
     (chainId: number) => {
-      if (chainId === ethereal.id || chainId === DEFAULT_CHAIN_ID) return chainClients.ethereal;
+      if (chainId === ethereal.id || chainId === DEFAULT_CHAIN_ID)
+        return chainClients.ethereal;
       if (chainId === arbitrum.id) return chainClients.arbitrum;
       return null;
     },

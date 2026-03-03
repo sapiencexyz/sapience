@@ -1,8 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import {
-  fetchProtocolStats,
-  type ProtocolStat,
-} from '@sapience/sdk/queries';
+import { fetchProtocolStats, type ProtocolStat } from '@sapience/sdk/queries';
 
 const CACHE_TIME_MS = 60 * 1000;
 

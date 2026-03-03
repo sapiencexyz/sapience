@@ -55,7 +55,12 @@ jest.mock('@sapience/sdk/contracts', () => ({
 
 jest.mock('@sapience/sdk/auction/escrowSigning', () => ({
   buildPredictorMintTypedData: jest.fn().mockReturnValue({
-    domain: { name: 'Test', version: '1', chainId: 5064014, verifyingContract: '0xMarket' },
+    domain: {
+      name: 'Test',
+      version: '1',
+      chainId: 5064014,
+      verifyingContract: '0xMarket',
+    },
     types: { MintApproval: [] },
     primaryType: 'MintApproval',
     message: {},

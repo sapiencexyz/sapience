@@ -747,7 +747,7 @@ export async function createSession(
   // Switch to Ethereal chain (only emit progress if chain switch is actually needed)
   const currentChainHex = await ownerSigner.provider.request({
     method: 'eth_chainId',
-  }) as string;
+  });
   const currentChainId = parseInt(currentChainHex, 16);
   if (currentChainId !== etherealChainId) {
     onProgress?.('switching-network');

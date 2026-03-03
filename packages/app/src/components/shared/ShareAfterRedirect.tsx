@@ -149,7 +149,14 @@ export default function ShareAfterRedirect({ address }: { address: Address }) {
     }, 1000);
 
     return () => clearInterval(timer);
-  }, [lowerAddress, currentAnchor, forecasts, readIntent, toOgUrl, clearIntent]);
+  }, [
+    lowerAddress,
+    currentAnchor,
+    forecasts,
+    readIntent,
+    toOgUrl,
+    clearIntent,
+  ]);
 
   if (!imageSrc) return null;
 

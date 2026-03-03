@@ -290,14 +290,19 @@ const VaultsPageContent = () => {
             }}
           >
             {(() => {
-              if (pendingRequest && !pendingRequest.processed) return 'Request Pending';
-              if (isVaultPending && pendingAction === 'deposit') return 'Processing...';
+              if (pendingRequest && !pendingRequest.processed)
+                return 'Request Pending';
+              if (isVaultPending && pendingAction === 'deposit')
+                return 'Processing...';
               if (vaultData?.paused) return 'Vault Paused';
               if (isConnected && !isWhitelisted) return 'Request Early Access';
               if (isInteractionDelayActive) return 'Cooldown in progress';
-              if (depositAmount && exceedsVaultCapacity) return 'Exceeds Vault Capacity';
-              if (quoteSignatureValid === false) return 'Waiting for Price Quote';
-              if (!pricePerShare || pricePerShare === '0') return 'Cannot connect to vault';
+              if (depositAmount && exceedsVaultCapacity)
+                return 'Exceeds Vault Capacity';
+              if (quoteSignatureValid === false)
+                return 'Waiting for Price Quote';
+              if (!pricePerShare || pricePerShare === '0')
+                return 'Cannot connect to vault';
               if (requiresApproval) return 'Approve & Deposit';
               return 'Submit Deposit';
             })()}
@@ -428,12 +433,15 @@ const VaultsPageContent = () => {
             }}
           >
             {(() => {
-              if (pendingRequest && !pendingRequest.processed) return 'Request Pending';
-              if (isVaultPending && pendingAction === 'withdraw') return 'Processing...';
+              if (pendingRequest && !pendingRequest.processed)
+                return 'Request Pending';
+              if (isVaultPending && pendingAction === 'withdraw')
+                return 'Processing...';
               if (vaultData?.paused) return 'Vault Paused';
               if (withdrawExceedsShareBalance) return 'Insufficient Balance';
               if (isInteractionDelayActive) return 'Cooldown in progress';
-              if (!pricePerShare || pricePerShare === '0') return 'Cannot connect to vault';
+              if (!pricePerShare || pricePerShare === '0')
+                return 'Cannot connect to vault';
               return 'Request Withdrawal';
             })()}
           </Button>
@@ -459,7 +467,12 @@ const VaultsPageContent = () => {
 
   const tvlDisplay = useMemo(() => {
     const num = Number(formatAssetAmount(tvlWei));
-    return Number.isFinite(num) ? num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00';
+    return Number.isFinite(num)
+      ? num.toLocaleString('en-US', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })
+      : '0.00';
   }, [tvlWei, formatAssetAmount]);
 
   const VAULT_CAPACITY_WEI = parseUnits(DEPOSIT_CAP.toString(), assetDecimals);
@@ -485,7 +498,12 @@ const VaultsPageContent = () => {
 
   const deployedDisplay = useMemo(() => {
     const num = Number(formatAssetAmount(deployedWei));
-    return Number.isFinite(num) ? num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : '0.00';
+    return Number.isFinite(num)
+      ? num.toLocaleString('en-US', {
+          minimumFractionDigits: 2,
+          maximumFractionDigits: 2,
+        })
+      : '0.00';
   }, [deployedWei, formatAssetAmount]);
 
   const deployedPercentOfCap = useMemo(() => {
@@ -521,7 +539,10 @@ const VaultsPageContent = () => {
 
     const fmt = (n: number) =>
       Number.isFinite(n)
-        ? n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+        ? n.toLocaleString('en-US', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+          })
         : '0.00';
 
     return {
@@ -705,7 +726,11 @@ const VaultsPageContent = () => {
                                     {pendingRequest.isDeposit ? (
                                       <>
                                         <NumberDisplay
-                                          value={Number(formatAssetAmount(pendingRequest.assets))}
+                                          value={Number(
+                                            formatAssetAmount(
+                                              pendingRequest.assets
+                                            )
+                                          )}
                                           decimals={2}
                                         />{' '}
                                         {collateralSymbol}

@@ -195,9 +195,12 @@ const AuctionBidsDialog: React.FC<Props> = ({
                   })();
 
                   // Per-bid counterparty collateral
-                  const bidCounterpartyCollateralNum = bid?.counterpartyCollateral
-                    ? parseFloat(formatEther(BigInt(bid.counterpartyCollateral)))
-                    : 0;
+                  const bidCounterpartyCollateralNum =
+                    bid?.counterpartyCollateral
+                      ? parseFloat(
+                          formatEther(BigInt(bid.counterpartyCollateral))
+                        )
+                      : 0;
 
                   // Calculate total pool using per-bid counterparty collateral
                   const totalPoolNum = (() => {

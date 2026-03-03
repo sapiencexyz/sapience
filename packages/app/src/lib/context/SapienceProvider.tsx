@@ -72,7 +72,7 @@ export const SapienceProvider: React.FC<{ children: React.ReactNode }> = ({
     retry: 1,
   });
 
-    return (
+  return (
     <SapienceContext.Provider
       value={{
         permitData,

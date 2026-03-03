@@ -89,9 +89,7 @@ async function fetchProfitRank(address: string): Promise<{
     (a, b) => parseFloat(b.totalPnL) - parseFloat(a.totalPnL)
   );
   const addressLc = address.toLowerCase();
-  const idx = sorted.findIndex(
-    (e) => e.address.toLowerCase() === addressLc
-  );
+  const idx = sorted.findIndex((e) => e.address.toLowerCase() === addressLc);
   const entry = idx >= 0 ? sorted[idx] : null;
 
   return {

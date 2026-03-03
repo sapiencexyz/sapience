@@ -50,7 +50,6 @@ import { useEscrowWrite } from '~/hooks/blockchain/useEscrowWrite';
 import { useClaimableAmount } from '~/hooks/blockchain/useEscrowContract';
 import { useSession } from '~/lib/context/SessionContext';
 
-
 function PositionRow({
   position,
   collateralSymbol,
@@ -114,19 +113,17 @@ function PositionRow({
   const [redeemed, setRedeemed] = React.useState(false);
   const { redeem } = useEscrowWrite({ chainId: position.chainId });
 
-  const { claimableAmount, isLoading: isLoadingClaimable } = useClaimableAmount(
-    {
-      pickConfigId: pickConfig?.id as `0x${string}`,
-      tokenAddress: position.tokenAddress as Address,
-      amount: BigInt(position.balance),
-      chainId: position.chainId,
-      enabled: isResolved && viewerWon && !!isOwnPosition && BigInt(position.balance) > 0n,
-    }
-  );
-
-  const claimableFormatted = claimableAmount
-    ? parseFloat(formatEther(claimableAmount))
-    : 0;
+  const { isLoading: isLoadingClaimable } = useClaimableAmount({
+    pickConfigId: pickConfig?.id as `0x${string}`,
+    tokenAddress: position.tokenAddress as Address,
+    amount: BigInt(position.balance),
+    chainId: position.chainId,
+    enabled:
+      isResolved &&
+      viewerWon &&
+      !!isOwnPosition &&
+      BigInt(position.balance) > 0n,
+  });
 
   const handleClaim = React.useCallback(async () => {
     if (!position.tokenAddress || BigInt(position.balance) <= 0n) return;
@@ -173,7 +170,12 @@ function PositionRow({
     }
 
     // Resolved, viewer won, and it's our position → show CLAIM link
-    if (isResolved && viewerWon && isOwnPosition && BigInt(position.balance) > 0n) {
+    if (
+      isResolved &&
+      viewerWon &&
+      isOwnPosition &&
+      BigInt(position.balance) > 0n
+    ) {
       return (
         <button
           type="button"
@@ -414,10 +416,7 @@ export default function PositionsTable({
     }
 
     // Filter by position size range
-    if (
-      filters.valueRange[0] > 0 ||
-      filters.valueRange[1] < Infinity
-    ) {
+    if (filters.valueRange[0] > 0 || filters.valueRange[1] < Infinity) {
       result = result.filter((p) => {
         const balanceEth = parseFloat(formatEther(BigInt(p.balance)));
         return (
@@ -428,10 +427,7 @@ export default function PositionsTable({
     }
 
     // Filter by date range (end time relative to now)
-    if (
-      filters.dateRange[0] > -Infinity ||
-      filters.dateRange[1] < Infinity
-    ) {
+    if (filters.dateRange[0] > -Infinity || filters.dateRange[1] < Infinity) {
       result = result.filter((p) => {
         const rawPicks = p.pickConfig?.picks ?? [];
         const endsAt = Math.max(
@@ -499,9 +495,7 @@ export default function PositionsTable({
       {showHeaderText && !leftSlot && (
         <div className="flex items-center justify-between">
           <h3 className="text-lg font-semibold">Positions</h3>
-          <Badge variant="outline">
-            {filteredPositions.length} positions
-          </Badge>
+          <Badge variant="outline">{filteredPositions.length} positions</Badge>
         </div>
       )}
       <div className="flex-1">

@@ -811,11 +811,7 @@ const CreatePositionFormInner = ({
     markPositionIndexed();
     clearPositionForm();
     clearSelections();
-  }, [
-    markPositionIndexed,
-    clearPositionForm,
-    clearSelections,
-  ]);
+  }, [markPositionIndexed, clearPositionForm, clearSelections]);
 
   const contentProps = {
     formMethods: formMethods as unknown as UseFormReturn<{

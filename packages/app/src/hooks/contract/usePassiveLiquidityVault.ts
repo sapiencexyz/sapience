@@ -2,7 +2,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Address } from 'viem';
 import { erc20Abi, verifyMessage } from 'viem';
 import type { Abi } from 'abitype';
-import { predictionMarketVault, collateralToken } from '@sapience/sdk/contracts';
+import {
+  predictionMarketVault,
+  collateralToken,
+} from '@sapience/sdk/contracts';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import {
   predictionMarketVaultAbi,
@@ -372,12 +375,7 @@ export function usePassiveLiquidityVault(
         args: call.args as any,
       });
     },
-    [
-      assetDecimals,
-      pricePerShareDecimal,
-      writeVaultContract,
-      VAULT_ADDRESS,
-    ]
+    [assetDecimals, pricePerShareDecimal, writeVaultContract, VAULT_ADDRESS]
   );
 
   const cancelDeposit = useCallback(

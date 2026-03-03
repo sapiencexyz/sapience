@@ -473,26 +473,19 @@ export default function ActivityTable({
     }
 
     // Filter by payout range
-    if (
-      filters.valueRange[0] > 0 ||
-      filters.valueRange[1] < Infinity
-    ) {
+    if (filters.valueRange[0] > 0 || filters.valueRange[1] < Infinity) {
       result = result.filter(({ prediction }) => {
         const totalEth =
           Number(formatEther(BigInt(prediction.predictorCollateral))) +
           Number(formatEther(BigInt(prediction.counterpartyCollateral)));
         return (
-          totalEth >= filters.valueRange[0] &&
-          totalEth <= filters.valueRange[1]
+          totalEth >= filters.valueRange[0] && totalEth <= filters.valueRange[1]
         );
       });
     }
 
     // Filter by date range
-    if (
-      filters.dateRange[0] > -Infinity ||
-      filters.dateRange[1] < Infinity
-    ) {
+    if (filters.dateRange[0] > -Infinity || filters.dateRange[1] < Infinity) {
       result = result.filter(({ prediction }) => {
         const timestampMs = prediction.collateralDepositedAt
           ? prediction.collateralDepositedAt * 1000

@@ -97,8 +97,7 @@ export default function SecondaryTradesTable({
                   rel="noopener noreferrer"
                   className="font-mono text-xs text-blue-500 hover:underline"
                 >
-                  {trade.txHash.slice(0, 6)}…
-                  {trade.txHash.slice(-4)}
+                  {trade.txHash.slice(0, 6)}…{trade.txHash.slice(-4)}
                 </a>
               </TableCell>
             </TableRow>

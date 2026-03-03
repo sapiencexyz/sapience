@@ -66,7 +66,9 @@ export function useSubmitPrediction({
       _condition: `0x${string}`
     ) => {
       try {
-        const finalPredictionBigInt = BigInt(Math.round(parseFloat(predictionInput) * 1e18));
+        const finalPredictionBigInt = BigInt(
+          Math.round(parseFloat(predictionInput) * 1e18)
+        );
 
         return encodeAbiParameters(
           parseAbiParameters(

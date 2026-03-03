@@ -19,9 +19,25 @@ export type SecondaryTrade = {
 };
 
 const TRADES_BY_SELLER_QUERY = /* GraphQL */ `
-  query TradesBySeller($seller: String!, $chainId: Int, $take: Int, $skip: Int) {
+  query TradesBySeller(
+    $seller: String!
+    $chainId: Int
+    $take: Int
+    $skip: Int
+  ) {
     trades(seller: $seller, chainId: $chainId, take: $take, skip: $skip) {
-      id tradeHash chainId token collateral seller buyer tokenAmount price txHash blockNumber executedAt
+      id
+      tradeHash
+      chainId
+      token
+      collateral
+      seller
+      buyer
+      tokenAmount
+      price
+      txHash
+      blockNumber
+      executedAt
     }
   }
 `;
@@ -29,7 +45,18 @@ const TRADES_BY_SELLER_QUERY = /* GraphQL */ `
 const TRADES_BY_BUYER_QUERY = /* GraphQL */ `
   query TradesByBuyer($buyer: String!, $chainId: Int, $take: Int, $skip: Int) {
     trades(buyer: $buyer, chainId: $chainId, take: $take, skip: $skip) {
-      id tradeHash chainId token collateral seller buyer tokenAmount price txHash blockNumber executedAt
+      id
+      tradeHash
+      chainId
+      token
+      collateral
+      seller
+      buyer
+      tokenAmount
+      price
+      txHash
+      blockNumber
+      executedAt
     }
   }
 `;
@@ -37,7 +64,18 @@ const TRADES_BY_BUYER_QUERY = /* GraphQL */ `
 const TRADE_QUERY = /* GraphQL */ `
   query Trade($id: String!) {
     trade(id: $id) {
-      id tradeHash chainId token collateral seller buyer tokenAmount price txHash blockNumber executedAt
+      id
+      tradeHash
+      chainId
+      token
+      collateral
+      seller
+      buyer
+      tokenAmount
+      price
+      txHash
+      blockNumber
+      executedAt
     }
   }
 `;
@@ -61,15 +99,24 @@ export function useSecondaryTradesByAddress(params: {
     queryFn: async () => {
       const [sellResp, buyResp] = await Promise.all([
         graphqlRequest<{ trades: SecondaryTrade[] }>(TRADES_BY_SELLER_QUERY, {
-          seller: address, chainId: chainId ?? null, take, skip,
+          seller: address,
+          chainId: chainId ?? null,
+          take,
+          skip,
         }),
         graphqlRequest<{ trades: SecondaryTrade[] }>(TRADES_BY_BUYER_QUERY, {
-          buyer: address, chainId: chainId ?? null, take, skip,
+          buyer: address,
+          chainId: chainId ?? null,
+          take,
+          skip,
         }),
       ]);
       const seen = new Set<number>();
       const merged: SecondaryTrade[] = [];
-      for (const t of [...(sellResp?.trades ?? []), ...(buyResp?.trades ?? [])]) {
+      for (const t of [
+        ...(sellResp?.trades ?? []),
+        ...(buyResp?.trades ?? []),
+      ]) {
         if (!seen.has(t.id)) {
           seen.add(t.id);
           merged.push(t);
