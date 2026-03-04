@@ -221,7 +221,7 @@ export function prepareMintCalls(
     counterparty: mintData.taker,
     predictorNonce: makerNonceBigInt,
     counterpartyNonce: BigInt(mintData.takerClaimedNonce ?? 0),
-    predictorDeadline: BigInt(mintData.takerDeadline), // TODO: separate predictor deadline
+    predictorDeadline: BigInt(mintData.makerDeadline ?? mintData.takerDeadline),
     counterpartyDeadline: BigInt(mintData.takerDeadline),
     predictorSignature: (mintData.predictorSignature || '0x') as Hex,
     counterpartySignature: mintData.takerSignature,
