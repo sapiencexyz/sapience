@@ -7,6 +7,11 @@ import SecondaryMarketIndexer from './workers/indexers/secondaryMarketIndexer';
 import PositionTokenTransferIndexer from './workers/indexers/positionTokenTransferIndexer';
 import ConditionSettledIndexer from './workers/indexers/conditionSettledIndexer';
 import CollateralTransferIndexer from './workers/indexers/collateralTransferIndexer';
+import {
+  conditionalTokensConditionResolver,
+  pythConditionResolver,
+  manualConditionResolver,
+} from '@sapience/sdk/contracts';
 
 // Environment variable to control whether V2 indexers are enabled
 const ENABLE_ESCROW_INDEXERS = process.env.ENABLE_ESCROW_INDEXERS === 'true';
@@ -29,11 +34,27 @@ const buildIndexers = (): { [key: string]: IIndexer } => {
     indexers['transfer-ethereal-testnet'] = new PositionTokenTransferIndexer(
       13374202
     );
-    indexers['condition-settled-ethereal'] = new ConditionSettledIndexer(
-      5064014
-    ); // Ethereal mainnet
-    indexers['condition-settled-ethereal-testnet'] =
-      new ConditionSettledIndexer(13374202); // Ethereal testnet
+    // Ethereal mainnet — watch CT resolver (Polymarket) + Pyth resolver
+    if (conditionalTokensConditionResolver[5064014]?.address) {
+      indexers['condition-settled-ct-ethereal'] = new ConditionSettledIndexer(
+        5064014,
+        conditionalTokensConditionResolver[5064014].address as `0x${string}`
+      );
+    }
+    if (pythConditionResolver[5064014]?.address) {
+      indexers['condition-settled-pyth-ethereal'] = new ConditionSettledIndexer(
+        5064014,
+        pythConditionResolver[5064014].address as `0x${string}`
+      );
+    }
+    // Ethereal testnet — manual resolver only (for testing)
+    if (manualConditionResolver[13374202]?.address) {
+      indexers['condition-settled-manual-testnet'] =
+        new ConditionSettledIndexer(
+          13374202,
+          manualConditionResolver[13374202].address as `0x${string}`
+        );
+    }
     indexers['collateral-transfer-ethereal'] = new CollateralTransferIndexer(
       5064014
     ); // wUSDe transfers

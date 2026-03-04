@@ -9,7 +9,6 @@ import {
 } from 'viem';
 import Sentry from '../../instrument';
 import { IIndexer } from '../../interfaces';
-import { manualConditionResolver } from '@sapience/sdk/contracts';
 import { processConditionSettled } from './conditionSettled/processConditionSettled';
 import type { HandlerContext } from './conditionSettled/handlerContext';
 
@@ -22,7 +21,8 @@ const CONDITION_SETTLED_TOPIC = keccak256(
 
 /**
  * V2 Condition Settled Indexer
- * Indexes ConditionSettled events from the ManualConditionResolver contract.
+ * Indexes ConditionSettled events from any resolver contract.
+ * Pass the resolver address explicitly — one indexer instance per resolver.
  */
 class ConditionSettledIndexer implements IIndexer {
   public client: PublicClient;
@@ -33,21 +33,13 @@ class ConditionSettledIndexer implements IIndexer {
   private pollingInterval: NodeJS.Timeout | null = null;
   private lastProcessedBlock: bigint = 0n;
 
-  constructor(chainId: number) {
+  constructor(chainId: number, resolverAddress: `0x${string}`) {
     this.chainId = chainId;
     this.client = getProviderForChain(chainId);
-
-    const contractEntry =
-      manualConditionResolver[chainId as keyof typeof manualConditionResolver];
-    if (!contractEntry?.address) {
-      throw new Error(
-        `ManualConditionResolver contract not deployed on chain ${chainId}. Available chains: ${Object.keys(manualConditionResolver).join(', ')}`
-      );
-    }
-    this.contractAddress = contractEntry.address as `0x${string}`;
+    this.contractAddress = resolverAddress;
 
     console.log(
-      `[ConditionSettledIndexer:${chainId}] Initialized with contract ${this.contractAddress}`
+      `[ConditionSettledIndexer:${chainId}] Initialized with resolver ${this.contractAddress}`
     );
   }
 
