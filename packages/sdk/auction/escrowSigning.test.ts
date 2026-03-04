@@ -20,6 +20,7 @@ import {
   getAddress,
   hashTypedData,
   keccak256,
+  toHex,
   zeroAddress,
 } from 'viem';
 
@@ -65,11 +66,14 @@ const CHAIN_ID = 13374202; // Ethereal testnet
 const RESOLVER_A = getAddress('0xaAaAaAaaAaAaAaaAaAAAAAAAAaaaAaAaAaaAaaAa');
 const RESOLVER_B = getAddress('0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB');
 
+// Note: predictedOutcome maps to IV2Types.OutcomeSide enum in Solidity:
+// YES = 0, NO = 1. If the enum order ever changes, these fixtures and
+// the Forge script (GenerateHashFixtures.s.sol) must both be updated.
 const PICKS: Pick[] = [
   {
     conditionResolver: RESOLVER_A,
     conditionId: ('0x' + 'ab'.repeat(32)) as Hex,
-    predictedOutcome: 1,
+    predictedOutcome: 1, // OutcomeSide.NO
   },
 ];
 
@@ -156,12 +160,8 @@ describe('cross-language: SDK matches Solidity contract', () => {
           { type: 'uint256' }, // deadline
         ],
         [
-          keccak256(
-            // This string MUST match SignatureValidator.MINT_APPROVAL_TYPEHASH
-            new TextEncoder().encode(
-              'MintApproval(bytes32 predictionHash,address signer,uint256 collateral,uint256 nonce,uint256 deadline)'
-            ) as unknown as Hex
-          ),
+          // This string MUST match SignatureValidator.MINT_APPROVAL_TYPEHASH
+          keccak256(toHex('MintApproval(bytes32 predictionHash,address signer,uint256 collateral,uint256 nonce,uint256 deadline)')),
           predictionHash,
           PREDICTOR,
           PREDICTOR_COLLATERAL,
@@ -187,11 +187,7 @@ describe('cross-language: SDK matches Solidity contract', () => {
           { type: 'uint256' },
         ],
         [
-          keccak256(
-            new TextEncoder().encode(
-              'BurnApproval(bytes32 burnHash,address signer,uint256 tokenAmount,uint256 payout,uint256 nonce,uint256 deadline)'
-            ) as unknown as Hex
-          ),
+          keccak256(toHex('BurnApproval(bytes32 burnHash,address signer,uint256 tokenAmount,uint256 payout,uint256 nonce,uint256 deadline)')),
           burnHashValue,
           PREDICTOR,
           500000n,
@@ -339,6 +335,9 @@ describe('computePredictionHash', () => {
 // ============================================================================
 
 describe('computePickConfigId', () => {
+  // Note: the contract does NOT canonicalize picks — it hashes them in the order
+  // received. canonicalizePicks() is an SDK-side responsibility. These tests verify
+  // that ordering affects the hash (so the caller must canonicalize before submitting).
   test('pick order matters (non-canonical order gives different configId)', () => {
     const forward = computePickConfigId(TWO_PICKS);
     const reversed = computePickConfigId([...TWO_PICKS].reverse());
