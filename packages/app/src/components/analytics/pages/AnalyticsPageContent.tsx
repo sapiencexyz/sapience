@@ -194,7 +194,7 @@ function AnalyticsPageContent(): React.ReactElement {
       return {
         timestamp: point.timestamp,
         openInterest: parseFloat(point.openInterest) / 1e18,
-        totalBalance: vaultBalance + vaultDeployed + escrowBalance,
+        totalBalance: vaultBalance + escrowBalance,
         vaultBalance,
         vaultDeployed,
         escrowBalance,
@@ -270,12 +270,7 @@ function AnalyticsPageContent(): React.ReactElement {
                           Protocol Vault Reserve
                         </span>
                         <span className="font-mono whitespace-nowrap text-xl">
-                          {formatNumber(
-                            String(
-                              BigInt(summary?.vaultBalance || '0') +
-                                BigInt(summary?.vaultDeployed || '0')
-                            )
-                          )}{' '}
+                          {formatNumber(summary?.vaultBalance || '0')}{' '}
                           {collateralSymbol}
                         </span>
                       </div>
@@ -293,7 +288,6 @@ function AnalyticsPageContent(): React.ReactElement {
                     {formatNumber(
                       String(
                         BigInt(summary?.vaultBalance || '0') +
-                          BigInt(summary?.vaultDeployed || '0') +
                           BigInt(summary?.escrowBalance || '0')
                       )
                     )}{' '}
