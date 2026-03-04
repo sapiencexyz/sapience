@@ -905,7 +905,7 @@ describe('vault ERC-1271 double-wrap signing', () => {
   test('Approve typehash matches SignatureProcessor.APPROVE_TYPEHASH', () => {
     // keccak256("Approve(bytes32 messageHash,address owner)")
     const typehash = keccak256(toHex('Approve(bytes32 messageHash,address owner)'));
-    // Known constant — if SignatureProcessor changes this, test must be updated
-    expect(typehash).toBe('0xb693ad06a35730842d0b135dae665cf18a1d9dde3c5f1152bcb67b7bac1a9f2d');
+    // Pulled from Forge fixture — SignatureProcessor.APPROVE_TYPEHASH
+    expect(typehash).toBe(goldenHashes.approveTypehash);
   });
 });

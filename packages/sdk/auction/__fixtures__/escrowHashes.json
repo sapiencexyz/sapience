@@ -11,6 +11,7 @@
   "burnApprovalStructHash": "0x32040dcc663bd987df2cd61d47e9c146b02b29e094fd61fafed1535381c7c87b",
   "mintPermission": "0xfdf81848136595c31bb5f76217767372bc4bf906663038eb38381131ea27ecba",
   "burnPermission": "0x04c6a47ae7910ef8b295215a97e8495a9eaf57b7b05bfd8bf951edb3fd4a16a3",
+  "approveTypehash": "0xb693ad06a35730842d0b135dae665cf18a1d9dde3c5f1152bcb67b7bac1a9f2d",
   "mintApprovalDigest": "0xefa51ac6406d5687b4e9a9e84ba2a4c4fd307fc91651ee90df0d58e17ada34f8",
   "burnApprovalDigest": "0x027e2f29a9a221c3117cb23611b783facd0281517b995ca594739949337941b0",
   "domainChainId": 31337,

@@ -4,6 +4,7 @@ pragma solidity ^0.8.19;
 import "forge-std/Script.sol";
 import "src/v2/interfaces/IV2Types.sol";
 import "src/v2/utils/SignatureValidator.sol";
+import "src/v2/utils/SignatureProcessor.sol";
 
 /**
  * @title GenerateHashFixtures
@@ -14,8 +15,9 @@ import "src/v2/utils/SignatureValidator.sol";
  * Then copy the logged JSON into packages/sdk/auction/__fixtures__/escrowHashes.json
  */
 contract GenerateHashFixtures is Script {
-    // Instantiate a concrete SignatureValidator to access its typehashes
+    // Instantiate concrete harnesses to access public constants
     SignatureValidatorHarness private validator = new SignatureValidatorHarness();
+    SignatureProcessorHarness private processor = new SignatureProcessorHarness();
     // Same test addresses as the vitest fixtures (checksummed)
     address constant PREDICTOR = 0x1111111111111111111111111111111111111111;
     address constant COUNTERPARTY = 0x2222222222222222222222222222222222222222;
@@ -139,6 +141,9 @@ contract GenerateHashFixtures is Script {
         bytes32 mintPermission = validator.MINT_PERMISSION();
         bytes32 burnPermission = validator.BURN_PERMISSION();
 
+        // --- Vault SignatureProcessor constants (catches #118) ---
+        bytes32 approveTypehash = processor.APPROVE_TYPEHASH();
+
         // --- Full _hashTypedDataV4 for MintApproval (includes EIP-712 domain separator) ---
         // Uses the harness's domain: name="PredictionMarketEscrow", version="1"
         // Note: chainId and verifyingContract come from the harness deployment context,
@@ -170,6 +175,8 @@ contract GenerateHashFixtures is Script {
         console.log("    \"%s\",", vm.toString(mintPermission));
         console.log("  \"burnPermission\":");
         console.log("    \"%s\",", vm.toString(burnPermission));
+        console.log("  \"approveTypehash\":");
+        console.log("    \"%s\",", vm.toString(approveTypehash));
         console.log("  \"mintApprovalDigest\":");
         console.log("    \"%s\",", vm.toString(mintApprovalDigest));
         console.log("  \"burnApprovalDigest\":");
@@ -185,6 +192,10 @@ contract GenerateHashFixtures is Script {
 /**
  * @notice Concrete implementation of SignatureValidator for accessing public constants
  */
+contract SignatureProcessorHarness is SignatureProcessor {
+    constructor() {}
+}
+
 contract SignatureValidatorHarness is SignatureValidator {
     constructor() {}
 
