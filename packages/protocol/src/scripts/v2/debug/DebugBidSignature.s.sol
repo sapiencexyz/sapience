@@ -18,25 +18,30 @@ contract DebugBidSignature is Script {
     address constant ESCROW = 0x8730eE1194Cd03A14deA9975e2bafD4C8b6019F1;
 
     // Addresses
-    address constant PREDICTOR_SMART_ACCOUNT = 0x5aab6F438Af9289798eEcBf83C06f62abdb529B9;
-    address constant COUNTERPARTY_EOA = 0xd8e6Af4901719176F0e2c89dEfAc30C12Ea6aB4B;
+    address constant PREDICTOR_SMART_ACCOUNT =
+        0x5aab6F438Af9289798eEcBf83C06f62abdb529B9;
+    address constant COUNTERPARTY_EOA =
+        0xd8e6Af4901719176F0e2c89dEfAc30C12Ea6aB4B;
 
     // Collateral amounts (from debug logs)
-    uint256 constant PREDICTOR_COLLATERAL = 6300000000000000; // 0.0063 USDe
-    uint256 constant COUNTERPARTY_COLLATERAL = 10000000000000000; // 0.01 USDe
+    uint256 constant PREDICTOR_COLLATERAL = 6_300_000_000_000_000; // 0.0063 USDe
+    uint256 constant COUNTERPARTY_COLLATERAL = 10_000_000_000_000_000; // 0.01 USDe
 
     // PickConfigId from logs
-    bytes32 constant PICK_CONFIG_ID = 0xcbb669689508534f93fb2a1dd73f67764194db20cf968f17e10b5f8522b093c0;
+    bytes32 constant PICK_CONFIG_ID =
+        0xcbb669689508534f93fb2a1dd73f67764194db20cf968f17e10b5f8522b093c0;
 
     // Counterparty signature (from bid)
-    bytes constant COUNTERPARTY_SIGNATURE = hex"a4dc33e39523605261ece688048cbf6d7326e4efedb53473c7dccb5a23be5c2c3e2d23cca5758dc734b8a2440f4b63a698bbb1dc1b4ede446bc38e215cb4a2ba1b";
+    bytes constant COUNTERPARTY_SIGNATURE =
+        hex"a4dc33e39523605261ece688048cbf6d7326e4efedb53473c7dccb5a23be5c2c3e2d23cca5758dc734b8a2440f4b63a698bbb1dc1b4ede446bc38e215cb4a2ba1b";
 
     // Counterparty's nonce and deadline
     uint256 constant COUNTERPARTY_NONCE = 5;
-    uint256 constant COUNTERPARTY_DEADLINE = 1770232931;
+    uint256 constant COUNTERPARTY_DEADLINE = 1_770_232_931;
 
     // Contract's expected predictionHash
-    bytes32 constant EXPECTED_PREDICTION_HASH = 0x47270fbc48899f8885112dd1a17c5511d0c730643d8f038621374493ce01a733;
+    bytes32 constant EXPECTED_PREDICTION_HASH =
+        0x47270fbc48899f8885112dd1a17c5511d0c730643d8f038621374493ce01a733;
 
     // ========== END KNOWN VALUES ==========
 
@@ -62,7 +67,10 @@ contract DebugBidSignature is Script {
         console.log("  counterparty:", COUNTERPARTY_EOA);
         console.log("  => predictionHash:", vm.toString(predictionHash));
         console.log("  Expected:", vm.toString(EXPECTED_PREDICTION_HASH));
-        console.log("  Match:", predictionHash == EXPECTED_PREDICTION_HASH ? "YES" : "NO");
+        console.log(
+            "  Match:",
+            predictionHash == EXPECTED_PREDICTION_HASH ? "YES" : "NO"
+        );
         console.log("");
 
         // Step 2: Get the MintApproval hash from contract
@@ -84,7 +92,8 @@ contract DebugBidSignature is Script {
         console.log("");
 
         // Step 3: Recover signer from signature
-        address recovered = ECDSA.recover(mintApprovalHash, COUNTERPARTY_SIGNATURE);
+        address recovered =
+            ECDSA.recover(mintApprovalHash, COUNTERPARTY_SIGNATURE);
 
         console.log("Step 3: Recover signer from counterparty signature");
         console.log("  Recovered:", recovered);
@@ -93,7 +102,9 @@ contract DebugBidSignature is Script {
         console.log("");
 
         if (recovered != COUNTERPARTY_EOA) {
-            console.log("=== SIGNATURE MISMATCH - Testing alternative values ===");
+            console.log(
+                "=== SIGNATURE MISMATCH - Testing alternative values ==="
+            );
             console.log("");
 
             // Test with swapped collateral
@@ -101,7 +112,7 @@ contract DebugBidSignature is Script {
                 "Swapped collateral (counterparty=predictor, predictor=counterparty)",
                 PICK_CONFIG_ID,
                 COUNTERPARTY_COLLATERAL, // swap
-                PREDICTOR_COLLATERAL,    // swap
+                PREDICTOR_COLLATERAL, // swap
                 PREDICTOR_SMART_ACCOUNT,
                 COUNTERPARTY_EOA
             );
@@ -126,7 +137,7 @@ contract DebugBidSignature is Script {
                 "signer collateral = predictorCollateral",
                 EXPECTED_PREDICTION_HASH,
                 COUNTERPARTY_EOA,
-                PREDICTOR_COLLATERAL,  // use predictor wager as signer's wager
+                PREDICTOR_COLLATERAL, // use predictor wager as signer's wager
                 COUNTERPARTY_NONCE,
                 COUNTERPARTY_DEADLINE
             );
@@ -138,7 +149,7 @@ contract DebugBidSignature is Script {
                 PREDICTOR_COLLATERAL,
                 COUNTERPARTY_COLLATERAL,
                 PREDICTOR_SMART_ACCOUNT,
-                address(0)  // zero address
+                address(0) // zero address
             );
 
             // Test if the predictor address was the owner EOA instead of SmartAccount
@@ -148,13 +159,16 @@ contract DebugBidSignature is Script {
                 PICK_CONFIG_ID,
                 PREDICTOR_COLLATERAL,
                 COUNTERPARTY_COLLATERAL,
-                OWNER_EOA,  // owner EOA
+                OWNER_EOA, // owner EOA
                 COUNTERPARTY_EOA
             );
         }
     }
 
-    function _testAlternativeNonce(string memory description, uint256 nonce) internal view {
+    function _testAlternativeNonce(string memory description, uint256 nonce)
+        internal
+        view
+    {
         bytes32 altMintApprovalHash = _getMintApprovalHash(
             EXPECTED_PREDICTION_HASH,
             COUNTERPARTY_EOA,
@@ -162,10 +176,14 @@ contract DebugBidSignature is Script {
             nonce,
             COUNTERPARTY_DEADLINE
         );
-        address altRecovered = ECDSA.recover(altMintApprovalHash, COUNTERPARTY_SIGNATURE);
+        address altRecovered =
+            ECDSA.recover(altMintApprovalHash, COUNTERPARTY_SIGNATURE);
         console.log("Test nonce:", description);
         console.log("  Recovered:", altRecovered);
-        console.log("  Match:", altRecovered == COUNTERPARTY_EOA ? "*** FOUND IT! ***" : "no");
+        console.log(
+            "  Match:",
+            altRecovered == COUNTERPARTY_EOA ? "*** FOUND IT! ***" : "no"
+        );
         console.log("");
     }
 
@@ -178,16 +196,16 @@ contract DebugBidSignature is Script {
         uint256 deadline
     ) internal view {
         bytes32 altMintApprovalHash = _getMintApprovalHash(
-            predictionHash,
-            signer,
-            collateral,
-            nonce,
-            deadline
+            predictionHash, signer, collateral, nonce, deadline
         );
-        address altRecovered = ECDSA.recover(altMintApprovalHash, COUNTERPARTY_SIGNATURE);
+        address altRecovered =
+            ECDSA.recover(altMintApprovalHash, COUNTERPARTY_SIGNATURE);
         console.log("Test MintApproval:", description);
         console.log("  Recovered:", altRecovered);
-        console.log("  Match:", altRecovered == COUNTERPARTY_EOA ? "*** FOUND IT! ***" : "no");
+        console.log(
+            "  Match:",
+            altRecovered == COUNTERPARTY_EOA ? "*** FOUND IT! ***" : "no"
+        );
         console.log("");
     }
 
@@ -215,12 +233,16 @@ contract DebugBidSignature is Script {
             COUNTERPARTY_DEADLINE
         );
 
-        address altRecovered = ECDSA.recover(altMintApprovalHash, COUNTERPARTY_SIGNATURE);
+        address altRecovered =
+            ECDSA.recover(altMintApprovalHash, COUNTERPARTY_SIGNATURE);
 
         console.log("Test:", description);
         console.log("  predictionHash:", vm.toString(altPredictionHash));
         console.log("  Recovered:", altRecovered);
-        console.log("  Match:", altRecovered == COUNTERPARTY_EOA ? "*** FOUND IT! ***" : "no");
+        console.log(
+            "  Match:",
+            altRecovered == COUNTERPARTY_EOA ? "*** FOUND IT! ***" : "no"
+        );
         console.log("");
     }
 
@@ -231,15 +253,17 @@ contract DebugBidSignature is Script {
         address predictor,
         address counterparty
     ) internal pure returns (bytes32) {
-        return keccak256(abi.encode(
-            pickConfigId,
-            predictorCollateral,
-            counterpartyCollateral,
-            predictor,
-            counterparty,
-            address(0),
-            ""
-        ));
+        return keccak256(
+            abi.encode(
+                pickConfigId,
+                predictorCollateral,
+                counterpartyCollateral,
+                predictor,
+                counterparty,
+                address(0),
+                ""
+            )
+        );
     }
 
     function _getMintApprovalHash(

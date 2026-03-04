@@ -16,8 +16,6 @@ interface IMintSponsor {
     /// @notice Fund the predictor's collateral for a mint
     /// @param escrow The escrow contract address to transfer collateral to
     /// @param request The full mint request (predictor, counterparty, collateral, picks, etc.)
-    function fundMint(
-        address escrow,
-        IV2Types.MintRequest calldata request
-    ) external;
+    function fundMint(address escrow, IV2Types.MintRequest calldata request)
+        external;
 }

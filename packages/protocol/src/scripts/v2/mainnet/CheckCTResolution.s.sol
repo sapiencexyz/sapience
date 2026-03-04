@@ -21,8 +21,7 @@ import { IConditionalTokensConditionResolver } from
 ///   CONDITION_ID                   - The conditionId to check
 contract CheckCTResolution is Script {
     function run() external view {
-        address resolverAddr =
-            vm.envAddress("CT_CONDITION_RESOLVER_ADDRESS");
+        address resolverAddr = vm.envAddress("CT_CONDITION_RESOLVER_ADDRESS");
         bytes32 conditionId = vm.envBytes32("CONDITION_ID");
 
         ConditionalTokensConditionResolver resolver =

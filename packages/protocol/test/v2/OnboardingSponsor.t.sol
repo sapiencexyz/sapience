@@ -54,8 +54,11 @@ contract OnboardingSponsorTest is Test {
 
         // Deploy core infra
         collateralToken = new MockERC20("WUSDe", "WUSDe", 18);
-        PredictionMarketTokenFactory tokenFactory = new PredictionMarketTokenFactory(owner);
-        market = new PredictionMarketEscrow(address(collateralToken), owner, address(tokenFactory));
+        PredictionMarketTokenFactory tokenFactory =
+            new PredictionMarketTokenFactory(owner);
+        market = new PredictionMarketEscrow(
+            address(collateralToken), owner, address(tokenFactory)
+        );
         vm.prank(owner);
         tokenFactory.setDeployer(address(market));
 
@@ -70,8 +73,8 @@ contract OnboardingSponsorTest is Test {
         sponsor = new OnboardingSponsor(
             address(market),
             address(collateralToken),
-            counterparty,           // required counterparty (vault-bot)
-            MAX_ENTRY_PRICE_BPS,    // 0.70 max entry price
+            counterparty, // required counterparty (vault-bot)
+            MAX_ENTRY_PRICE_BPS, // 0.70 max entry price
             MATCH_LIMIT,
             owner
         );
@@ -154,10 +157,20 @@ contract OnboardingSponsorTest is Test {
         request.predictorDeadline = deadline;
         request.counterpartyDeadline = deadline;
         request.predictorSignature = _signApproval(
-            predictionHash, predictor, PREDICTOR_COLLATERAL, pNonce, deadline, predictorPk
+            predictionHash,
+            predictor,
+            PREDICTOR_COLLATERAL,
+            pNonce,
+            deadline,
+            predictorPk
         );
         request.counterpartySignature = _signApproval(
-            predictionHash, counterparty, COUNTERPARTY_COLLATERAL, cNonce, deadline, counterpartyPk
+            predictionHash,
+            counterparty,
+            COUNTERPARTY_COLLATERAL,
+            cNonce,
+            deadline,
+            counterpartyPk
         );
         request.refCode = REF_CODE;
         request.predictorSessionKeyData = "";
@@ -181,20 +194,36 @@ contract OnboardingSponsorTest is Test {
         uint256 predictorBalBefore = collateralToken.balanceOf(predictor);
         uint256 sponsorBalBefore = collateralToken.balanceOf(address(sponsor));
 
-        IV2Types.MintRequest memory request = _buildMintRequest(picks, address(sponsor));
-        (bytes32 predictionId, address predictorToken, address counterpartyToken) = market.mint(request);
+        IV2Types.MintRequest memory request =
+            _buildMintRequest(picks, address(sponsor));
+        (
+            bytes32 predictionId,
+            address predictorToken,
+            address counterpartyToken
+        ) = market.mint(request);
 
         // Predictor balance unchanged — sponsor paid
         assertEq(collateralToken.balanceOf(predictor), predictorBalBefore);
-        assertEq(collateralToken.balanceOf(address(sponsor)), sponsorBalBefore - PREDICTOR_COLLATERAL);
+        assertEq(
+            collateralToken.balanceOf(address(sponsor)),
+            sponsorBalBefore - PREDICTOR_COLLATERAL
+        );
 
         // Budget decremented
-        assertEq(sponsor.remainingBudget(predictor), BUDGET - PREDICTOR_COLLATERAL);
+        assertEq(
+            sponsor.remainingBudget(predictor), BUDGET - PREDICTOR_COLLATERAL
+        );
 
         // Both sides got tokens
         uint256 totalCollateral = PREDICTOR_COLLATERAL + COUNTERPARTY_COLLATERAL;
-        assertEq(IPredictionMarketToken(predictorToken).balanceOf(predictor), totalCollateral);
-        assertEq(IPredictionMarketToken(counterpartyToken).balanceOf(counterparty), totalCollateral);
+        assertEq(
+            IPredictionMarketToken(predictorToken).balanceOf(predictor),
+            totalCollateral
+        );
+        assertEq(
+            IPredictionMarketToken(counterpartyToken).balanceOf(counterparty),
+            totalCollateral
+        );
 
         // 3. Resolve condition — predictor wins
         vm.prank(settler);
@@ -203,7 +232,9 @@ contract OnboardingSponsorTest is Test {
 
         // 4. Redeem — predictor gets all collateral
         vm.prank(predictor);
-        IPredictionMarketToken(predictorToken).approve(address(market), totalCollateral);
+        IPredictionMarketToken(predictorToken).approve(
+            address(market), totalCollateral
+        );
 
         vm.prank(predictor);
         market.redeem(predictorToken, totalCollateral, REF_CODE);
@@ -225,8 +256,13 @@ contract OnboardingSponsorTest is Test {
 
         uint256 counterpartyBalBefore = collateralToken.balanceOf(counterparty);
 
-        IV2Types.MintRequest memory request = _buildMintRequest(picks, address(sponsor));
-        (bytes32 predictionId, address predictorToken, address counterpartyToken) = market.mint(request);
+        IV2Types.MintRequest memory request =
+            _buildMintRequest(picks, address(sponsor));
+        (
+            bytes32 predictionId,
+            address predictorToken,
+            address counterpartyToken
+        ) = market.mint(request);
 
         uint256 totalCollateral = PREDICTOR_COLLATERAL + COUNTERPARTY_COLLATERAL;
 
@@ -237,7 +273,9 @@ contract OnboardingSponsorTest is Test {
 
         // Counterparty redeems
         vm.prank(counterparty);
-        IPredictionMarketToken(counterpartyToken).approve(address(market), totalCollateral);
+        IPredictionMarketToken(counterpartyToken).approve(
+            address(market), totalCollateral
+        );
 
         vm.prank(counterparty);
         market.redeem(counterpartyToken, totalCollateral, REF_CODE);
@@ -259,14 +297,16 @@ contract OnboardingSponsorTest is Test {
 
         // Mint 3 times
         for (uint256 i = 0; i < 3; i++) {
-            IV2Types.MintRequest memory request = _buildMintRequest(picks, address(sponsor));
+            IV2Types.MintRequest memory request =
+                _buildMintRequest(picks, address(sponsor));
             market.mint(request);
         }
 
         assertEq(sponsor.remainingBudget(predictor), 0);
 
         // 4th mint should fail
-        IV2Types.MintRequest memory request4 = _buildMintRequest(picks, address(sponsor));
+        IV2Types.MintRequest memory request4 =
+            _buildMintRequest(picks, address(sponsor));
         vm.expectRevert(OnboardingSponsor.BudgetExceeded.selector);
         market.mint(request4);
     }
@@ -285,7 +325,15 @@ contract OnboardingSponsorTest is Test {
         bytes32 pickConfigId = keccak256(abi.encode(picks));
         uint256 bigCollateral = 2e18;
         bytes32 predictionHash = keccak256(
-            abi.encode(pickConfigId, bigCollateral, COUNTERPARTY_COLLATERAL, predictor, counterparty, address(sponsor), "")
+            abi.encode(
+                pickConfigId,
+                bigCollateral,
+                COUNTERPARTY_COLLATERAL,
+                predictor,
+                counterparty,
+                address(sponsor),
+                ""
+            )
         );
 
         uint256 pNonce = _freshNonce();
@@ -302,8 +350,22 @@ contract OnboardingSponsorTest is Test {
         request.counterpartyNonce = cNonce;
         request.predictorDeadline = deadline;
         request.counterpartyDeadline = deadline;
-        request.predictorSignature = _signApproval(predictionHash, predictor, bigCollateral, pNonce, deadline, predictorPk);
-        request.counterpartySignature = _signApproval(predictionHash, counterparty, COUNTERPARTY_COLLATERAL, cNonce, deadline, counterpartyPk);
+        request.predictorSignature = _signApproval(
+            predictionHash,
+            predictor,
+            bigCollateral,
+            pNonce,
+            deadline,
+            predictorPk
+        );
+        request.counterpartySignature = _signApproval(
+            predictionHash,
+            counterparty,
+            COUNTERPARTY_COLLATERAL,
+            cNonce,
+            deadline,
+            counterpartyPk
+        );
         request.refCode = REF_CODE;
         request.predictorSponsor = address(sponsor);
         request.predictorSponsorData = "";
@@ -319,7 +381,8 @@ contract OnboardingSponsorTest is Test {
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = _createPick(conditionId, IV2Types.OutcomeSide.YES);
 
-        IV2Types.MintRequest memory request = _buildMintRequest(picks, address(sponsor));
+        IV2Types.MintRequest memory request =
+            _buildMintRequest(picks, address(sponsor));
 
         vm.expectRevert(OnboardingSponsor.NoBudget.selector);
         market.mint(request);
@@ -333,11 +396,15 @@ contract OnboardingSponsorTest is Test {
 
         uint256 predictorBalBefore = collateralToken.balanceOf(predictor);
 
-        IV2Types.MintRequest memory request = _buildMintRequest(picks, address(0));
+        IV2Types.MintRequest memory request =
+            _buildMintRequest(picks, address(0));
         market.mint(request);
 
         // Predictor self-funded
-        assertEq(collateralToken.balanceOf(predictor), predictorBalBefore - PREDICTOR_COLLATERAL);
+        assertEq(
+            collateralToken.balanceOf(predictor),
+            predictorBalBefore - PREDICTOR_COLLATERAL
+        );
     }
 
     // ============ Unit: Budget manager ============
@@ -428,7 +495,7 @@ contract OnboardingSponsorTest is Test {
     function test_receiveNative() public {
         vm.deal(eve, 1 ether);
         vm.prank(eve);
-        (bool success,) = address(sponsor).call{value: 1 ether}("");
+        (bool success,) = address(sponsor).call{ value: 1 ether }("");
         assertTrue(success);
         assertEq(address(sponsor).balance, 1 ether);
     }
@@ -445,7 +512,15 @@ contract OnboardingSponsorTest is Test {
         // Build request with eve as counterparty (not the required vault-bot)
         bytes32 pickConfigId = keccak256(abi.encode(picks));
         bytes32 predictionHash = keccak256(
-            abi.encode(pickConfigId, PREDICTOR_COLLATERAL, COUNTERPARTY_COLLATERAL, predictor, eve, address(sponsor), "")
+            abi.encode(
+                pickConfigId,
+                PREDICTOR_COLLATERAL,
+                COUNTERPARTY_COLLATERAL,
+                predictor,
+                eve,
+                address(sponsor),
+                ""
+            )
         );
 
         uint256 evePk = 6;
@@ -467,8 +542,22 @@ contract OnboardingSponsorTest is Test {
         request.counterpartyNonce = eNonce;
         request.predictorDeadline = deadline;
         request.counterpartyDeadline = deadline;
-        request.predictorSignature = _signApproval(predictionHash, predictor, PREDICTOR_COLLATERAL, pNonce, deadline, predictorPk);
-        request.counterpartySignature = _signApproval(predictionHash, eve, COUNTERPARTY_COLLATERAL, eNonce, deadline, evePk);
+        request.predictorSignature = _signApproval(
+            predictionHash,
+            predictor,
+            PREDICTOR_COLLATERAL,
+            pNonce,
+            deadline,
+            predictorPk
+        );
+        request.counterpartySignature = _signApproval(
+            predictionHash,
+            eve,
+            COUNTERPARTY_COLLATERAL,
+            eNonce,
+            deadline,
+            evePk
+        );
         request.refCode = REF_CODE;
         request.predictorSponsor = address(sponsor);
         request.predictorSponsorData = "";
@@ -496,7 +585,15 @@ contract OnboardingSponsorTest is Test {
 
         bytes32 pickConfigId = keccak256(abi.encode(picks));
         bytes32 predictionHash = keccak256(
-            abi.encode(pickConfigId, highPredictorCollateral, lowCounterpartyCollateral, predictor, counterparty, address(sponsor), "")
+            abi.encode(
+                pickConfigId,
+                highPredictorCollateral,
+                lowCounterpartyCollateral,
+                predictor,
+                counterparty,
+                address(sponsor),
+                ""
+            )
         );
 
         uint256 pNonce = _freshNonce();
@@ -513,8 +610,22 @@ contract OnboardingSponsorTest is Test {
         request.counterpartyNonce = cNonce;
         request.predictorDeadline = deadline;
         request.counterpartyDeadline = deadline;
-        request.predictorSignature = _signApproval(predictionHash, predictor, highPredictorCollateral, pNonce, deadline, predictorPk);
-        request.counterpartySignature = _signApproval(predictionHash, counterparty, lowCounterpartyCollateral, cNonce, deadline, counterpartyPk);
+        request.predictorSignature = _signApproval(
+            predictionHash,
+            predictor,
+            highPredictorCollateral,
+            pNonce,
+            deadline,
+            predictorPk
+        );
+        request.counterpartySignature = _signApproval(
+            predictionHash,
+            counterparty,
+            lowCounterpartyCollateral,
+            cNonce,
+            deadline,
+            counterpartyPk
+        );
         request.refCode = REF_CODE;
         request.predictorSponsor = address(sponsor);
         request.predictorSponsorData = "";
@@ -536,7 +647,15 @@ contract OnboardingSponsorTest is Test {
 
         bytes32 pickConfigId = keccak256(abi.encode(picks));
         bytes32 predictionHash = keccak256(
-            abi.encode(pickConfigId, predCol, ctrCol, predictor, counterparty, address(sponsor), "")
+            abi.encode(
+                pickConfigId,
+                predCol,
+                ctrCol,
+                predictor,
+                counterparty,
+                address(sponsor),
+                ""
+            )
         );
 
         uint256 pNonce = _freshNonce();
@@ -553,8 +672,17 @@ contract OnboardingSponsorTest is Test {
         request.counterpartyNonce = cNonce;
         request.predictorDeadline = deadline;
         request.counterpartyDeadline = deadline;
-        request.predictorSignature = _signApproval(predictionHash, predictor, predCol, pNonce, deadline, predictorPk);
-        request.counterpartySignature = _signApproval(predictionHash, counterparty, ctrCol, cNonce, deadline, counterpartyPk);
+        request.predictorSignature = _signApproval(
+            predictionHash, predictor, predCol, pNonce, deadline, predictorPk
+        );
+        request.counterpartySignature = _signApproval(
+            predictionHash,
+            counterparty,
+            ctrCol,
+            cNonce,
+            deadline,
+            counterpartyPk
+        );
         request.refCode = REF_CODE;
         request.predictorSponsor = address(sponsor);
         request.predictorSponsorData = "";

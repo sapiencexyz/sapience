@@ -4,9 +4,11 @@ pragma solidity ^0.8.19;
 import "forge-std/Test.sol";
 
 import "../../../src/legacy/predictionMarket/resolvers/PythResolver.sol";
-import "../../../src/legacy/predictionMarket/interfaces/IPredictionMarketResolver.sol";
+import
+    "../../../src/legacy/predictionMarket/interfaces/IPredictionMarketResolver.sol";
 import "../../../src/legacy/predictionMarket/resolvers/pythLazer/IPythLazer.sol";
-import "../../../src/legacy/predictionMarket/resolvers/pythLazer/PythLazerStructs.sol";
+import
+    "../../../src/legacy/predictionMarket/resolvers/pythLazer/PythLazerStructs.sol";
 
 contract MockPythLazer is IPythLazer {
     uint256 internal fee;
@@ -19,9 +21,11 @@ contract MockPythLazer is IPythLazer {
         return fee;
     }
 
-    function verifyUpdate(
-        bytes calldata update
-    ) external payable returns (bytes calldata payload, address signer) {
+    function verifyUpdate(bytes calldata update)
+        external
+        payable
+        returns (bytes calldata payload, address signer)
+    {
         require(msg.value >= fee, "fee");
         payload = update; // for unit tests, treat `update` as already-verified payload bytes
         signer = address(0xBEEF);
@@ -55,8 +59,8 @@ contract PythResolverTest is Test {
         bool overWinsOnTie,
         bool prediction
     ) internal pure returns (bytes memory) {
-        PythResolver.BinaryOptionOutcome[]
-            memory outcomes = new PythResolver.BinaryOptionOutcome[](1);
+        PythResolver.BinaryOptionOutcome[] memory outcomes =
+            new PythResolver.BinaryOptionOutcome[](1);
         outcomes[0] = PythResolver.BinaryOptionOutcome({
             priceId: priceId,
             endTime: endTime,
@@ -83,7 +87,7 @@ contract PythResolverTest is Test {
 
         // Properties: Price (0) int64, Exponent (4) int16
         updateData[0] = abi.encodePacked(
-            bytes4(uint32(2479346549)),
+            bytes4(uint32(2_479_346_549)),
             bytes8(timestampUs),
             bytes1(uint8(PythLazerStructs.Channel.FixedRate50)),
             bytes1(uint8(1)), // feedsLen
@@ -99,22 +103,23 @@ contract PythResolverTest is Test {
     function test_validatePredictionMarkets_success() public view {
         // Pyth Lazer feed ids are uint32 values encoded into bytes32 (high bits zero).
         bytes32 priceId = bytes32(uint256(1));
-        bytes memory encoded = _encodeOutcome(priceId, 2000, 100, -8, true, true);
+        bytes memory encoded =
+            _encodeOutcome(priceId, 2000, 100, -8, true, true);
 
-        (bool isValid, IPredictionMarketResolver.Error err) = resolver
-            .validatePredictionMarkets(encoded);
+        (bool isValid, IPredictionMarketResolver.Error err) =
+            resolver.validatePredictionMarkets(encoded);
         assertTrue(isValid);
         assertEq(
-            uint256(err),
-            uint256(IPredictionMarketResolver.Error.NO_ERROR)
+            uint256(err), uint256(IPredictionMarketResolver.Error.NO_ERROR)
         );
     }
 
     function test_validatePredictionMarkets_invalidPriceId() public view {
-        bytes memory encoded = _encodeOutcome(bytes32(0), 2000, 100, -8, true, true);
+        bytes memory encoded =
+            _encodeOutcome(bytes32(0), 2000, 100, -8, true, true);
 
-        (bool isValid, IPredictionMarketResolver.Error err) = resolver
-            .validatePredictionMarkets(encoded);
+        (bool isValid, IPredictionMarketResolver.Error err) =
+            resolver.validatePredictionMarkets(encoded);
         assertFalse(isValid);
         assertEq(
             uint256(err),
@@ -122,20 +127,17 @@ contract PythResolverTest is Test {
         );
     }
 
-    function test_validatePredictionMarkets_rejectsNonUint32PriceId() public view {
+    function test_validatePredictionMarkets_rejectsNonUint32PriceId()
+        public
+        view
+    {
         // High bits set -> not a uint32 feed id.
         bytes32 badPriceId = bytes32(uint256(type(uint32).max) + 1);
-        bytes memory encoded = _encodeOutcome(
-            badPriceId,
-            2000,
-            100,
-            -8,
-            true,
-            true
-        );
+        bytes memory encoded =
+            _encodeOutcome(badPriceId, 2000, 100, -8, true, true);
 
-        (bool isValid, IPredictionMarketResolver.Error err) = resolver
-            .validatePredictionMarkets(encoded);
+        (bool isValid, IPredictionMarketResolver.Error err) =
+            resolver.validatePredictionMarkets(encoded);
         assertFalse(isValid);
         assertEq(
             uint256(err),
@@ -146,10 +148,11 @@ contract PythResolverTest is Test {
     function test_validatePredictionMarkets_marketNotOpened() public {
         vm.warp(3000);
         bytes32 priceId = bytes32(uint256(1));
-        bytes memory encoded = _encodeOutcome(priceId, 2000, 100, -8, true, true);
+        bytes memory encoded =
+            _encodeOutcome(priceId, 2000, 100, -8, true, true);
 
-        (bool isValid, IPredictionMarketResolver.Error err) = resolver
-            .validatePredictionMarkets(encoded);
+        (bool isValid, IPredictionMarketResolver.Error err) =
+            resolver.validatePredictionMarkets(encoded);
         assertFalse(isValid);
         assertEq(
             uint256(err),
@@ -159,7 +162,8 @@ contract PythResolverTest is Test {
 
     function test_getPredictionResolution_unsettled() public view {
         bytes32 priceId = bytes32(uint256(1));
-        bytes memory encoded = _encodeOutcome(priceId, 2000, 100, -8, true, true);
+        bytes memory encoded =
+            _encodeOutcome(priceId, 2000, 100, -8, true, true);
 
         (
             bool isResolved,
@@ -185,26 +189,20 @@ contract PythResolverTest is Test {
         bytes[] memory updateData = _updateData(priceId, 150, expo, endTime);
         PythResolver.BinaryOptionMarket memory market = PythResolver
             .BinaryOptionMarket({
-                priceId: priceId,
-                endTime: endTime,
-                strikePrice: strike,
-                strikeExpo: expo,
-                overWinsOnTie: true
-            });
+            priceId: priceId,
+            endTime: endTime,
+            strikePrice: strike,
+            strikeExpo: expo,
+            overWinsOnTie: true
+        });
 
         (, bool resolvedToOver) = resolver.settleMarket(market, updateData);
         assertTrue(resolvedToOver);
 
         // Maker predicts over -> win
         {
-            bytes memory encodedWin = _encodeOutcome(
-                priceId,
-                endTime,
-                strike,
-                expo,
-                true,
-                true
-            );
+            bytes memory encodedWin =
+                _encodeOutcome(priceId, endTime, strike, expo, true, true);
             (
                 bool isResolved,
                 IPredictionMarketResolver.Error err,
@@ -212,22 +210,15 @@ contract PythResolverTest is Test {
             ) = resolver.getPredictionResolution(encodedWin);
             assertTrue(isResolved);
             assertEq(
-                uint256(err),
-                uint256(IPredictionMarketResolver.Error.NO_ERROR)
+                uint256(err), uint256(IPredictionMarketResolver.Error.NO_ERROR)
             );
             assertTrue(parlaySuccess);
         }
 
         // Maker predicts under -> lose
         {
-            bytes memory encodedLose = _encodeOutcome(
-                priceId,
-                endTime,
-                strike,
-                expo,
-                true,
-                false
-            );
+            bytes memory encodedLose =
+                _encodeOutcome(priceId, endTime, strike, expo, true, false);
             (
                 bool isResolved,
                 IPredictionMarketResolver.Error err,
@@ -235,8 +226,7 @@ contract PythResolverTest is Test {
             ) = resolver.getPredictionResolution(encodedLose);
             assertTrue(isResolved);
             assertEq(
-                uint256(err),
-                uint256(IPredictionMarketResolver.Error.NO_ERROR)
+                uint256(err), uint256(IPredictionMarketResolver.Error.NO_ERROR)
             );
             assertFalse(parlaySuccess);
         }
@@ -252,14 +242,14 @@ contract PythResolverTest is Test {
         bytes[] memory updateData = _updateData(priceId, 150, expo, endTime);
         PythResolver.BinaryOptionMarket memory market = PythResolver
             .BinaryOptionMarket({
-                priceId: priceId,
-                endTime: endTime,
-                strikePrice: 100,
-                strikeExpo: expo,
-                overWinsOnTie: true
-            });
+            priceId: priceId,
+            endTime: endTime,
+            strikePrice: 100,
+            strikeExpo: expo,
+            overWinsOnTie: true
+        });
 
-        (bytes32 marketId, ) = resolver.settleMarket(market, updateData);
+        (bytes32 marketId,) = resolver.settleMarket(market, updateData);
 
         // Keep locals small to avoid stack-too-deep in tests
         (
@@ -287,26 +277,20 @@ contract PythResolverTest is Test {
         bytes[] memory updateData = _updateData(priceId, strike, expo, endTime); // price == strike
         PythResolver.BinaryOptionMarket memory market = PythResolver
             .BinaryOptionMarket({
-                priceId: priceId,
-                endTime: endTime,
-                strikePrice: strike,
-                strikeExpo: expo,
-                overWinsOnTie: true
-            });
+            priceId: priceId,
+            endTime: endTime,
+            strikePrice: strike,
+            strikeExpo: expo,
+            overWinsOnTie: true
+        });
 
         (, bool resolvedToOver) = resolver.settleMarket(market, updateData);
         assertTrue(resolvedToOver);
 
         // Maker predicts over should win
-        bytes memory encoded = _encodeOutcome(
-            priceId,
-            endTime,
-            strike,
-            expo,
-            true,
-            true
-        );
-        (, , bool parlaySuccess) = resolver.getPredictionResolution(encoded);
+        bytes memory encoded =
+            _encodeOutcome(priceId, endTime, strike, expo, true, true);
+        (,, bool parlaySuccess) = resolver.getPredictionResolution(encoded);
         assertTrue(parlaySuccess);
     }
 
@@ -321,26 +305,20 @@ contract PythResolverTest is Test {
         bytes[] memory updateData = _updateData(priceId, strike, expo, endTime); // price == strike
         PythResolver.BinaryOptionMarket memory market = PythResolver
             .BinaryOptionMarket({
-                priceId: priceId,
-                endTime: endTime,
-                strikePrice: strike,
-                strikeExpo: expo,
-                overWinsOnTie: false
-            });
+            priceId: priceId,
+            endTime: endTime,
+            strikePrice: strike,
+            strikeExpo: expo,
+            overWinsOnTie: false
+        });
 
         (, bool resolvedToOver) = resolver.settleMarket(market, updateData);
         assertFalse(resolvedToOver);
 
         // Maker predicts over should lose
-        bytes memory encoded = _encodeOutcome(
-            priceId,
-            endTime,
-            strike,
-            expo,
-            false,
-            true
-        );
-        (, , bool parlaySuccess) = resolver.getPredictionResolution(encoded);
+        bytes memory encoded =
+            _encodeOutcome(priceId, endTime, strike, expo, false, true);
+        (,, bool parlaySuccess) = resolver.getPredictionResolution(encoded);
         assertFalse(parlaySuccess);
     }
 
@@ -353,18 +331,16 @@ contract PythResolverTest is Test {
         bytes[] memory updateData = _updateData(priceId, 150, -8, endTime);
         PythResolver.BinaryOptionMarket memory market = PythResolver
             .BinaryOptionMarket({
-                priceId: priceId,
-                endTime: endTime,
-                strikePrice: 100,
-                strikeExpo: -6,
-                overWinsOnTie: true
-            });
+            priceId: priceId,
+            endTime: endTime,
+            strikePrice: 100,
+            strikeExpo: -6,
+            overWinsOnTie: true
+        });
 
         vm.expectRevert(
             abi.encodeWithSelector(
-                PythResolver.StrikeExpoMismatch.selector,
-                int32(-6),
-                int32(-8)
+                PythResolver.StrikeExpoMismatch.selector, int32(-6), int32(-8)
             )
         );
         resolver.settleMarket(market, updateData);
@@ -381,18 +357,20 @@ contract PythResolverTest is Test {
         bytes[] memory updateData = _updateData(priceId, 150, expo, endTime + 1);
         PythResolver.BinaryOptionMarket memory market = PythResolver
             .BinaryOptionMarket({
-                priceId: priceId,
-                endTime: endTime,
-                strikePrice: 100,
-                strikeExpo: expo,
-                overWinsOnTie: true
-            });
+            priceId: priceId,
+            endTime: endTime,
+            strikePrice: 100,
+            strikeExpo: expo,
+            overWinsOnTie: true
+        });
 
         vm.expectRevert(PythResolver.InvalidMarketData.selector);
         resolver.settleMarket(market, updateData);
     }
 
-    function test_settleMarket_revertOnZeroPrice_missingByUpstreamSemantics() public {
+    function test_settleMarket_revertOnZeroPrice_missingByUpstreamSemantics()
+        public
+    {
         bytes32 priceId = bytes32(uint256(1));
         uint64 endTime = 2000;
         int32 expo = -8;
@@ -404,16 +382,14 @@ contract PythResolverTest is Test {
         bytes[] memory updateData = _updateData(priceId, 0, expo, endTime);
         PythResolver.BinaryOptionMarket memory market = PythResolver
             .BinaryOptionMarket({
-                priceId: priceId,
-                endTime: endTime,
-                strikePrice: 1, // any positive strike
-                strikeExpo: expo,
-                overWinsOnTie: true
-            });
+            priceId: priceId,
+            endTime: endTime,
+            strikePrice: 1, // any positive strike
+            strikeExpo: expo,
+            overWinsOnTie: true
+        });
 
         vm.expectRevert("Price is not present for the timestamp");
         resolver.settleMarket(market, updateData);
     }
 }
-
-

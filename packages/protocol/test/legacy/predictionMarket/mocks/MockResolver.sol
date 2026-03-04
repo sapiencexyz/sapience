@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "../../../../src/legacy/predictionMarket/interfaces/IPredictionMarketResolver.sol";
-import "../../../../src/legacy/predictionMarket/interfaces/IPredictionStructs.sol";
+import
+    "../../../../src/legacy/predictionMarket/interfaces/IPredictionMarketResolver.sol";
+import
+    "../../../../src/legacy/predictionMarket/interfaces/IPredictionStructs.sol";
 
 contract MockResolver is IPredictionMarketResolver {
     bool public shouldValidate = true;
@@ -23,21 +25,29 @@ contract MockResolver is IPredictionMarketResolver {
         validationError = _error;
     }
 
-    function setResolutionResult(bool _isResolved, Error _error, bool _parlaySuccess) external {
+    function setResolutionResult(
+        bool _isResolved,
+        Error _error,
+        bool _parlaySuccess
+    ) external {
         shouldValidate = _isResolved;
         resolutionError = _error;
         parlaySuccess = _parlaySuccess;
     }
 
-    function validatePredictionMarkets(
-        bytes calldata
-    ) external view returns (bool, Error) {
+    function validatePredictionMarkets(bytes calldata)
+        external
+        view
+        returns (bool, Error)
+    {
         return (shouldValidate, validationError);
     }
 
-    function getPredictionResolution(
-        bytes calldata
-    ) external view returns (bool, Error, bool) {
+    function getPredictionResolution(bytes calldata)
+        external
+        view
+        returns (bool, Error, bool)
+    {
         return (shouldValidate, resolutionError, parlaySuccess);
     }
 }

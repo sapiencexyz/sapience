@@ -54,9 +54,7 @@ contract SetDVN_CTResolver is Script {
         address[] memory optionalDVNs = new address[](0);
 
         UlnConfig memory ulnConfig = UlnConfig({
-            confirmations: uint64(
-                vm.envOr("ULN_CONFIRMATIONS", uint256(15))
-            ),
+            confirmations: uint64(vm.envOr("ULN_CONFIRMATIONS", uint256(15))),
             requiredDVNCount: 2,
             optionalDVNCount: 0,
             optionalDVNThreshold: 0,
@@ -65,13 +63,10 @@ contract SetDVN_CTResolver is Script {
         });
 
         SetConfigParam[] memory params = new SetConfigParam[](1);
-        params[0] = SetConfigParam(
-            remoteEid, ULN_CONFIG_TYPE, abi.encode(ulnConfig)
-        );
+        params[0] =
+            SetConfigParam(remoteEid, ULN_CONFIG_TYPE, abi.encode(ulnConfig));
 
-        ILayerZeroEndpointV2(endpoint).setConfig(
-            resolver, receiveLib, params
-        );
+        ILayerZeroEndpointV2(endpoint).setConfig(resolver, receiveLib, params);
         console.log("Receive DVN config set (2 DVNs)");
 
         vm.stopBroadcast();

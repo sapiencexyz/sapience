@@ -19,12 +19,16 @@ interface IEscrowDebug {
         bytes32 permissionsHash,
         uint256 chainId
     ) external view returns (bytes32);
-    function computePickConfigId(IV2Types.Pick[] calldata picks) external pure returns (bytes32);
+    function computePickConfigId(IV2Types.Pick[] calldata picks)
+        external
+        pure
+        returns (bytes32);
 }
 
 contract DebugV2Hashes is Script {
     function run() external view {
-        IEscrowDebug escrow = IEscrowDebug(0x8730eE1194Cd03A14deA9975e2bafD4C8b6019F1);
+        IEscrowDebug escrow =
+            IEscrowDebug(0x8730eE1194Cd03A14deA9975e2bafD4C8b6019F1);
 
         // Build picks array
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](2);
@@ -47,35 +51,48 @@ contract DebugV2Hashes is Script {
         // Addresses and amounts
         address predictor = 0x5aab6F438Af9289798eEcBf83C06f62abdb529B9;
         address counterparty = 0xd8e6Af4901719176F0e2c89dEfAc30C12Ea6aB4B;
-        uint256 predictorCollateral = 7100000000000000;
-        uint256 counterpartyCollateral = 10000000000000000;
+        uint256 predictorCollateral = 7_100_000_000_000_000;
+        uint256 counterpartyCollateral = 10_000_000_000_000_000;
 
         // Compute prediction hash (same as contract)
         bytes32 predictionHash = keccak256(
-            abi.encode(pickConfigId, predictorCollateral, counterpartyCollateral, predictor, counterparty, address(0), "")
+            abi.encode(
+                pickConfigId,
+                predictorCollateral,
+                counterpartyCollateral,
+                predictor,
+                counterparty,
+                address(0),
+                ""
+            )
         );
         console.log("\n=== Prediction Hash ===");
         console.logBytes32(predictionHash);
 
         // Predictor mint approval hash
         bytes32 predictorHash = escrow.getMintApprovalHash(
-            predictionHash, predictor, predictorCollateral, 0, 1770219190
+            predictionHash, predictor, predictorCollateral, 0, 1_770_219_190
         );
         console.log("\n=== Predictor Mint Approval Hash ===");
         console.logBytes32(predictorHash);
 
         // Counterparty mint approval hash
         bytes32 counterpartyHash = escrow.getMintApprovalHash(
-            predictionHash, counterparty, counterpartyCollateral, 5, 1770218941
+            predictionHash,
+            counterparty,
+            counterpartyCollateral,
+            5,
+            1_770_218_941
         );
         console.log("\n=== Counterparty Mint Approval Hash ===");
         console.logBytes32(counterpartyHash);
 
         // Session key approval hash
         address sessionKey = 0xBbB00443e1bB97c8f89e5343E78645dF439c971a;
-        bytes32 permissionsHash = 0xd9762d852ca8dc23710c3bf3bca341b66f778a0c94cc060f0463687e9c260e9c;
-        uint256 validUntil = 1770823613;
-        uint256 sessionChainId = 13374202;
+        bytes32 permissionsHash =
+            0xd9762d852ca8dc23710c3bf3bca341b66f778a0c94cc060f0463687e9c260e9c;
+        uint256 validUntil = 1_770_823_613;
+        uint256 sessionChainId = 13_374_202;
 
         bytes32 sessionHash = escrow.getSessionKeyApprovalHash(
             sessionKey, predictor, validUntil, permissionsHash, sessionChainId

@@ -7,7 +7,9 @@ pragma solidity ^0.8.22;
  */
 interface IFeeManagement {
     // Custom errors
-    error InvalidThresholdValues(uint256 warningThreshold, uint256 criticalThreshold);
+    error InvalidThresholdValues(
+        uint256 warningThreshold, uint256 criticalThreshold
+    );
     error InsufficientETHBalance(uint256 requiredFee, uint256 availableBalance);
 
     // Events
@@ -15,8 +17,7 @@ interface IFeeManagement {
     event GasReserveCritical(uint256 currentBalance);
     event LzReceiveCostUpdated(uint128 lzReceiveCost);
     event GasThresholdsUpdated(
-        uint256 warningGasThreshold,
-        uint256 criticalGasThreshold
+        uint256 warningGasThreshold, uint256 criticalGasThreshold
     );
 
     // Functions
@@ -27,4 +28,4 @@ interface IFeeManagement {
     ) external;
     function getLzReceiveCost() external view returns (uint128);
     function getGasThresholds() external view returns (uint256, uint256);
-} 
+}

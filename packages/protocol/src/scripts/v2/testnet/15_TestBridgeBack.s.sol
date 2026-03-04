@@ -33,7 +33,9 @@ contract TestBridgeBack is Script {
         if (!isDeployed) {
             console.log("");
             console.log("ERROR: Bridged token not yet deployed on SM Network!");
-            console.log("This means the bridge from PM Network -> SM Network has not completed.");
+            console.log(
+                "This means the bridge from PM Network -> SM Network has not completed."
+            );
             console.log("");
             console.log("Please:");
             console.log("1. Check if bridge was initiated on PM Network");

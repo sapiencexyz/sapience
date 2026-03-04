@@ -99,7 +99,13 @@ contract PredictionMarketEscrowIntegrationTest is Test {
         bytes32 pickConfigId = keccak256(abi.encode(picks));
         bytes32 predictionHash = keccak256(
             abi.encode(
-                pickConfigId, pCollateral, cCollateral, predictor, counterparty, address(0), ""
+                pickConfigId,
+                pCollateral,
+                cCollateral,
+                predictor,
+                counterparty,
+                address(0),
+                ""
             )
         );
 
@@ -654,8 +660,9 @@ contract PredictionMarketEscrowIntegrationTest is Test {
         market.mint(request2);
         Vm.Log[] memory logs = vm.getRecordedLogs();
 
-        bytes32 pickConfigCreatedSelector =
-            keccak256("PickConfigCreated(bytes32,address,address,(address,bytes32,uint8)[])");
+        bytes32 pickConfigCreatedSelector = keccak256(
+            "PickConfigCreated(bytes32,address,address,(address,bytes32,uint8)[])"
+        );
 
         for (uint256 i = 0; i < logs.length; i++) {
             assertTrue(
@@ -686,16 +693,14 @@ contract PredictionMarketEscrowIntegrationTest is Test {
             _createMintRequest(picks, pCollateral, cCollateral);
 
         vm.recordLogs();
-        (
-            ,
-            address predictorToken,
-            address counterpartyToken
-        ) = market.mint(request);
+        (, address predictorToken, address counterpartyToken) =
+            market.mint(request);
         Vm.Log[] memory logs = vm.getRecordedLogs();
 
         // Find the PickConfigCreated event
-        bytes32 pickConfigCreatedSelector =
-            keccak256("PickConfigCreated(bytes32,address,address,(address,bytes32,uint8)[])");
+        bytes32 pickConfigCreatedSelector = keccak256(
+            "PickConfigCreated(bytes32,address,address,(address,bytes32,uint8)[])"
+        );
 
         bool found = false;
         for (uint256 i = 0; i < logs.length; i++) {
@@ -707,7 +712,9 @@ contract PredictionMarketEscrowIntegrationTest is Test {
                 (
                     address emittedPredictorToken,
                     address emittedCounterpartyToken,
-                ) = abi.decode(logs[i].data, (address, address, IV2Types.Pick[]));
+                ) = abi.decode(
+                    logs[i].data, (address, address, IV2Types.Pick[])
+                );
                 assertEq(emittedPredictorToken, predictorToken);
                 assertEq(emittedCounterpartyToken, counterpartyToken);
                 break;
@@ -761,7 +768,9 @@ contract PredictionMarketEscrowIntegrationTest is Test {
     /**
      * @notice Test: Second mint with same picks emits PredictionCreated with same pickConfigId
      */
-    function test_emit_PredictionCreated_samePickConfigIdOnSecondMint() public {
+    function test_emit_PredictionCreated_samePickConfigIdOnSecondMint()
+        public
+    {
         bytes32 conditionId = keccak256("event-test-same-config");
 
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);

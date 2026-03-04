@@ -18,8 +18,7 @@ contract DeployPythConditionResolver is Script {
 
         vm.startBroadcast(vm.envUint("PM_NETWORK_DEPLOYER_PRIVATE_KEY"));
 
-        PythConditionResolver resolver =
-            new PythConditionResolver(pythLazer);
+        PythConditionResolver resolver = new PythConditionResolver(pythLazer);
 
         vm.stopBroadcast();
 
@@ -28,8 +27,6 @@ contract DeployPythConditionResolver is Script {
         console.log("PythConditionResolver:", address(resolver));
         console.log("");
         console.log("Add to .env:");
-        console.log(
-            "PYTH_CONDITION_RESOLVER_ADDRESS=", address(resolver)
-        );
+        console.log("PYTH_CONDITION_RESOLVER_ADDRESS=", address(resolver));
     }
 }

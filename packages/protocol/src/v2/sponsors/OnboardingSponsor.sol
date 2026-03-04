@@ -37,7 +37,9 @@ contract OnboardingSponsor is IMintSponsor, Ownable {
 
     // ============ Events ============
 
-    event Sponsored(address indexed predictor, uint256 collateral, address indexed escrow);
+    event Sponsored(
+        address indexed predictor, uint256 collateral, address indexed escrow
+    );
     event BudgetSet(address indexed beneficiary, uint256 allocated);
     event BudgetManagerSet(address indexed manager);
     event MatchLimitSet(uint256 matchLimit);
@@ -57,7 +59,7 @@ contract OnboardingSponsor is IMintSponsor, Ownable {
     // ============ Constants ============
 
     /// @notice Basis points denominator (100% = 10000)
-    uint256 public constant BPS = 10000;
+    uint256 public constant BPS = 10_000;
 
     // ============ State ============
 
@@ -140,7 +142,11 @@ contract OnboardingSponsor is IMintSponsor, Ownable {
     // ============ View ============
 
     /// @notice Remaining sponsorship budget for a beneficiary
-    function remainingBudget(address beneficiary) external view returns (uint256) {
+    function remainingBudget(address beneficiary)
+        external
+        view
+        returns (uint256)
+    {
         Budget storage b = budgets[beneficiary];
         return b.allocated > b.used ? b.allocated - b.used : 0;
     }
@@ -160,7 +166,9 @@ contract OnboardingSponsor is IMintSponsor, Ownable {
         uint256[] calldata allocations
     ) external {
         _checkBudgetManager();
-        if (beneficiaries.length != allocations.length) revert ArrayLengthMismatch();
+        if (beneficiaries.length != allocations.length) {
+            revert ArrayLengthMismatch();
+        }
         for (uint256 i = 0; i < beneficiaries.length; i++) {
             budgets[beneficiaries[i]].allocated = allocations[i];
             emit BudgetSet(beneficiaries[i], allocations[i]);
@@ -182,20 +190,26 @@ contract OnboardingSponsor is IMintSponsor, Ownable {
     }
 
     /// @notice Sweep ERC20 tokens
-    function sweepToken(IERC20 token, address to, uint256 amount) external onlyOwner {
+    function sweepToken(IERC20 token, address to, uint256 amount)
+        external
+        onlyOwner
+    {
         token.safeTransfer(to, amount);
     }
 
     /// @notice Sweep native gas tokens
-    function sweepNative(address payable to, uint256 amount) external onlyOwner {
-        (bool success,) = to.call{value: amount}("");
+    function sweepNative(address payable to, uint256 amount)
+        external
+        onlyOwner
+    {
+        (bool success,) = to.call{ value: amount }("");
         if (!success) revert NativeTransferFailed();
     }
 
     // ============ Funding ============
 
     /// @notice Accept native gas token deposits
-    receive() external payable {}
+    receive() external payable { }
 
     // ============ Internal ============
 

@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {ILayerZeroBridge} from "../../../bridge/interfaces/ILayerZeroBridge.sol";
-import {BridgeTypes} from "../../../bridge/BridgeTypes.sol";
+import { ILayerZeroBridge } from
+    "../../../bridge/interfaces/ILayerZeroBridge.sol";
+import { BridgeTypes } from "../../../bridge/BridgeTypes.sol";
 
 /**
  * @title IPredictionMarketLZResolverUmaSide
@@ -27,10 +28,17 @@ interface IPredictionMarketLZResolverUmaSide is ILayerZeroBridge {
 
     // Events
     event OptimisticOracleV3Updated(address indexed optimisticOracleV3);
-    event ConfigUpdated(address indexed bondCurrency, uint256 bondAmount, uint64 assertionLiveness, address indexed updater);
+    event ConfigUpdated(
+        address indexed bondCurrency,
+        uint256 bondAmount,
+        uint64 assertionLiveness,
+        address indexed updater
+    );
     event AsserterApproved(address indexed asserter);
     event AsserterRevoked(address indexed asserter);
-    event OwnerWithdrewBond(address indexed token, uint256 amount, address indexed to);
+    event OwnerWithdrewBond(
+        address indexed token, uint256 amount, address indexed to
+    );
     event MarketSubmittedToUMA(
         bytes32 indexed marketId,
         bytes32 indexed assertionId,
@@ -45,8 +53,7 @@ interface IPredictionMarketLZResolverUmaSide is ILayerZeroBridge {
         bool assertedTruthfully
     );
     event MarketDisputedFromUMA(
-        bytes32 indexed marketId,
-        bytes32 indexed assertionId
+        bytes32 indexed marketId, bytes32 indexed assertionId
     );
 
     // Functions
@@ -63,7 +70,10 @@ interface IPredictionMarketLZResolverUmaSide is ILayerZeroBridge {
     // Asserter management
     function approveAsserter(address asserter) external;
     function revokeAsserter(address asserter) external;
-    function isAsserterApproved(address asserter) external view returns (bool);
+    function isAsserterApproved(address asserter)
+        external
+        view
+        returns (bool);
 
     // Owner bond withdrawal (for stuck tokens)
     function withdrawBond(address token, uint256 amount, address to) external;

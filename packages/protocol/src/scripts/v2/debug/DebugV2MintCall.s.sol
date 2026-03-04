@@ -29,8 +29,8 @@ contract DebugV2MintCall is Script {
         // First, simulate deposit + approve as the SmartAccount
         // This mimics what the UserOp batch would do
 
-        uint256 predictorCollateral = 5100000000000000; // 0.0051 USDe
-        uint256 counterpartyCollateral = 10000000000000000; // 0.01 USDe
+        uint256 predictorCollateral = 5_100_000_000_000_000; // 0.0051 USDe
+        uint256 counterpartyCollateral = 10_000_000_000_000_000; // 0.01 USDe
 
         console.log("\n--- Step 1: Check SmartAccount native balance ---");
         uint256 nativeBalance = PREDICTOR.balance;
@@ -46,7 +46,7 @@ contract DebugV2MintCall is Script {
         vm.startPrank(PREDICTOR);
 
         console.log("\n--- Step 2: Wrap native USDe to wUSDe ---");
-        (bool wrapSuccess,) = WUSDE.call{value: predictorCollateral}(
+        (bool wrapSuccess,) = WUSDE.call{ value: predictorCollateral }(
             abi.encodeWithSignature("deposit()")
         );
         console.log("Wrap success:", wrapSuccess);
@@ -93,8 +93,8 @@ contract DebugV2MintCall is Script {
             counterparty: COUNTERPARTY,
             predictorNonce: 0,
             counterpartyNonce: 5,
-            predictorDeadline: 1770245065,
-            counterpartyDeadline: 1770244820,
+            predictorDeadline: 1_770_245_065,
+            counterpartyDeadline: 1_770_244_820,
             // Signatures from the UserOp (these are the actual signed values)
             predictorSignature: hex"2ac66c1c21c162205492d1301ff7fa9f2a12f4c0ba6180ec348b23fce1260d0611f75f17db745f26c83c043145ea5f5e69535f766f6af9805f1d0a752ccc71121b",
             counterpartySignature: hex"fd5a39994413e7b4e51537f5dc783f636f3f7da9d2d2db1a51c8268d60d5d0f825fd4a6f5b4c2863d831aa7589b302b61c5c771a85a314dd0b3137a0b9c88e701b",

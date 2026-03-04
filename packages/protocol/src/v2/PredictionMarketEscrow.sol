@@ -147,8 +147,8 @@ contract PredictionMarketEscrow is
         }
 
         // Calculate remaining dust
-        uint256 totalCollateral = config.totalPredictorCollateral
-            + config.totalCounterpartyCollateral;
+        uint256 totalCollateral =
+            config.totalPredictorCollateral + config.totalCounterpartyCollateral;
         uint256 totalClaimed = config.claimedPredictorCollateral
             + config.claimedCounterpartyCollateral;
         uint256 dust = totalCollateral - totalClaimed;
@@ -219,7 +219,8 @@ contract PredictionMarketEscrow is
         );
 
         // Validate predictor signature (EOA or session key)
-        if (!_validatePartySignature(
+        if (
+            !_validatePartySignature(
                 predictionHash,
                 request.predictor,
                 request.predictorCollateral,
@@ -227,11 +228,13 @@ contract PredictionMarketEscrow is
                 request.predictorDeadline,
                 request.predictorSignature,
                 request.predictorSessionKeyData
-            )) {
+            )
+        ) {
             revert InvalidSignature();
         }
         // Validate counterparty signature (EOA or session key)
-        if (!_validatePartySignature(
+        if (
+            !_validatePartySignature(
                 predictionHash,
                 request.counterparty,
                 request.counterpartyCollateral,
@@ -239,7 +242,8 @@ contract PredictionMarketEscrow is
                 request.counterpartyDeadline,
                 request.counterpartySignature,
                 request.counterpartySessionKeyData
-            )) {
+            )
+        ) {
             revert InvalidSignature();
         }
 
@@ -306,8 +310,9 @@ contract PredictionMarketEscrow is
         // Transfer collateral from both parties
         if (request.predictorSponsor != address(0)) {
             uint256 balBefore = collateralToken.balanceOf(address(this));
-            IMintSponsor(request.predictorSponsor)
-                .fundMint(address(this), request);
+            IMintSponsor(request.predictorSponsor).fundMint(
+                address(this), request
+            );
             if (
                 collateralToken.balanceOf(address(this))
                     < balBefore + request.predictorCollateral
@@ -329,10 +334,12 @@ contract PredictionMarketEscrow is
         // C-1: Mint tokens proportional to total collateral on the prediction.
         // Each token represents a 1:1 claim on collateral, making fungibility safe
         // regardless of the odds at which any individual prediction was placed.
-        IPredictionMarketToken(predictorToken)
-            .mint(request.predictor, totalCollateral);
-        IPredictionMarketToken(counterpartyToken)
-            .mint(request.counterparty, totalCollateral);
+        IPredictionMarketToken(predictorToken).mint(
+            request.predictor, totalCollateral
+        );
+        IPredictionMarketToken(counterpartyToken).mint(
+            request.counterparty, totalCollateral
+        );
 
         // Update pick configuration totals
         IV2Types.PickConfiguration storage config =
@@ -382,7 +389,10 @@ contract PredictionMarketEscrow is
     }
 
     /// @inheritdoc IPredictionMarketEscrow
-    function burn(IV2Types.BurnRequest calldata request) external nonReentrant {
+    function burn(IV2Types.BurnRequest calldata request)
+        external
+        nonReentrant
+    {
         // Validate token amounts
         if (
             request.predictorTokenAmount == 0
@@ -400,17 +410,17 @@ contract PredictionMarketEscrow is
         {
             IV2Types.PickConfiguration storage _config =
                 _pickConfigurations[request.pickConfigId];
-            uint256 predictorCollateralBacking = _config.totalPredictorTokensMinted
-                > 0
-                ? (request.predictorTokenAmount
-                        * _config.totalPredictorCollateral)
+            uint256 predictorCollateralBacking = _config
+                .totalPredictorTokensMinted > 0
+                ? (request.predictorTokenAmount * _config.totalPredictorCollateral)
                     / _config.totalPredictorTokensMinted
                 : 0;
-            uint256 counterpartyCollateralBacking = _config.totalCounterpartyTokensMinted
-                > 0
-                ? (request.counterpartyTokenAmount
-                        * _config.totalCounterpartyCollateral)
-                    / _config.totalCounterpartyTokensMinted
+            uint256 counterpartyCollateralBacking = _config
+                .totalCounterpartyTokensMinted > 0
+                ? (
+                    request.counterpartyTokenAmount
+                        * _config.totalCounterpartyCollateral
+                ) / _config.totalCounterpartyTokensMinted
                 : 0;
             if (
                 request.predictorPayout + request.counterpartyPayout
@@ -447,7 +457,8 @@ contract PredictionMarketEscrow is
         );
 
         // Validate predictor signature
-        if (!_validateBurnPartySignature(
+        if (
+            !_validateBurnPartySignature(
                 burnHash,
                 request.predictorHolder,
                 request.predictorTokenAmount,
@@ -456,11 +467,13 @@ contract PredictionMarketEscrow is
                 request.predictorDeadline,
                 request.predictorSignature,
                 request.predictorSessionKeyData
-            )) {
+            )
+        ) {
             revert InvalidSignature();
         }
         // Validate counterparty signature
-        if (!_validateBurnPartySignature(
+        if (
+            !_validateBurnPartySignature(
                 burnHash,
                 request.counterpartyHolder,
                 request.counterpartyTokenAmount,
@@ -469,7 +482,8 @@ contract PredictionMarketEscrow is
                 request.counterpartyDeadline,
                 request.counterpartySignature,
                 request.counterpartySessionKeyData
-            )) {
+            )
+        ) {
             revert InvalidSignature();
         }
 
@@ -488,12 +502,14 @@ contract PredictionMarketEscrow is
         IV2Types.PickConfiguration storage config
     ) internal {
         // Burn predictor tokens from holder
-        IPredictionMarketToken(tokenPair.predictorToken)
-            .burn(request.predictorHolder, request.predictorTokenAmount);
+        IPredictionMarketToken(tokenPair.predictorToken).burn(
+            request.predictorHolder, request.predictorTokenAmount
+        );
 
         // Burn counterparty tokens from holder
-        IPredictionMarketToken(tokenPair.counterpartyToken)
-            .burn(request.counterpartyHolder, request.counterpartyTokenAmount);
+        IPredictionMarketToken(tokenPair.counterpartyToken).burn(
+            request.counterpartyHolder, request.counterpartyTokenAmount
+        );
 
         // Update collateral tracking proportionally (compute before decrementing tokens)
         uint256 predictorCollateralReturned = config.totalPredictorTokensMinted
@@ -501,10 +517,9 @@ contract PredictionMarketEscrow is
             ? (request.predictorTokenAmount * config.totalPredictorCollateral)
                 / config.totalPredictorTokensMinted
             : 0;
-        uint256 counterpartyCollateralReturned = config.totalCounterpartyTokensMinted
-            > 0
-            ? (request.counterpartyTokenAmount
-                    * config.totalCounterpartyCollateral)
+        uint256 counterpartyCollateralReturned = config
+            .totalCounterpartyTokensMinted > 0
+            ? (request.counterpartyTokenAmount * config.totalCounterpartyCollateral)
                 / config.totalCounterpartyTokensMinted
             : 0;
         config.totalPredictorCollateral -= predictorCollateralReturned;
@@ -574,7 +589,8 @@ contract PredictionMarketEscrow is
         _escrowRecords[predictionId].settled = true;
 
         // Calculate claimable amounts for this prediction's contribution
-        (uint256 predictorClaimable, uint256 counterpartyClaimable) = _calculateClaimableForPrediction(
+        (uint256 predictorClaimable, uint256 counterpartyClaimable) =
+        _calculateClaimableForPrediction(
             config.result,
             prediction.predictorCollateral,
             prediction.counterpartyCollateral
@@ -916,12 +932,9 @@ contract PredictionMarketEscrow is
     function _validatePicks(IV2Types.Pick[] calldata picks) internal view {
         for (uint256 i = 0; i < picks.length; i++) {
             // Check condition is valid with try/catch to prevent DoS
-            try IConditionResolver(picks[i].conditionResolver)
-            .isValidCondition{ gas: RESOLVER_GAS_LIMIT }(
-                picks[i].conditionId
-            ) returns (
-                bool isValid
-            ) {
+            try IConditionResolver(picks[i].conditionResolver).isValidCondition{
+                gas: RESOLVER_GAS_LIMIT
+            }(picks[i].conditionId) returns (bool isValid) {
                 if (!isValid) {
                     revert InvalidPicks();
                 }
@@ -995,8 +1008,8 @@ contract PredictionMarketEscrow is
         uint256 totalCounterpartyCollateral,
         bool isPredictor
     ) internal pure returns (uint256 claimablePool) {
-        uint256 totalCollateral = totalPredictorCollateral
-            + totalCounterpartyCollateral;
+        uint256 totalCollateral =
+            totalPredictorCollateral + totalCounterpartyCollateral;
 
         if (result == IV2Types.SettlementResult.PREDICTOR_WINS) {
             claimablePool = isPredictor ? totalCollateral : 0;
@@ -1056,10 +1069,9 @@ contract PredictionMarketEscrow is
         // Single batch call to resolver with try/catch to prevent DoS
         bool[] memory resolved;
         IV2Types.OutcomeVector[] memory outcomes;
-        try IConditionResolver(resolver)
-        .getResolutions{ gas: RESOLVER_GAS_LIMIT }(
-            conditionIds
-        ) returns (
+        try IConditionResolver(resolver).getResolutions{
+            gas: RESOLVER_GAS_LIMIT
+        }(conditionIds) returns (
             bool[] memory _resolved, IV2Types.OutcomeVector[] memory _outcomes
         ) {
             resolved = _resolved;
@@ -1098,10 +1110,9 @@ contract PredictionMarketEscrow is
             // Call resolver with try/catch to prevent DoS from malicious resolvers
             bool isResolved;
             IV2Types.OutcomeVector memory outcome;
-            try IConditionResolver(pick.conditionResolver)
-            .getResolution{ gas: RESOLVER_GAS_LIMIT }(
-                pick.conditionId
-            ) returns (
+            try IConditionResolver(pick.conditionResolver).getResolution{
+                gas: RESOLVER_GAS_LIMIT
+            }(pick.conditionId) returns (
                 bool _isResolved, IV2Types.OutcomeVector memory _outcome
             ) {
                 isResolved = _isResolved;

@@ -2,8 +2,7 @@
 pragma solidity ^0.8.19;
 
 import { Script, console } from "forge-std/Script.sol";
-import { SecondaryMarketEscrow } from
-    "../../../v2/SecondaryMarketEscrow.sol";
+import { SecondaryMarketEscrow } from "../../../v2/SecondaryMarketEscrow.sol";
 
 /// @title Deploy SecondaryMarketEscrow on PM Network (Mainnet)
 /// @notice Deploys the atomic OTC swap contract on Ethereal mainnet

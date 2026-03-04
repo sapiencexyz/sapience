@@ -964,8 +964,7 @@ contract PredictionMarketEscrowBurnTest is Test {
             remainingTokens
         );
         assertEq(
-            IPredictionMarketToken(tp.counterpartyToken)
-                .balanceOf(counterparty),
+            IPredictionMarketToken(tp.counterpartyToken).balanceOf(counterparty),
             remainingTokens
         );
 
@@ -1000,8 +999,9 @@ contract PredictionMarketEscrowBurnTest is Test {
 
         // Transfer counterparty tokens to predictor so same address holds both
         vm.prank(counterparty);
-        IPredictionMarketToken(counterpartyToken)
-            .transfer(predictor, TOTAL_COLLATERAL);
+        IPredictionMarketToken(counterpartyToken).transfer(
+            predictor, TOTAL_COLLATERAL
+        );
 
         // Same address burns both sides — needs two DIFFERENT nonces with bitmap
         uint256 predictorNonce = _freshNonce();
@@ -1083,8 +1083,9 @@ contract PredictionMarketEscrowBurnTest is Test {
 
         // Transfer all predictor tokens to thirdParty
         vm.prank(predictor);
-        IPredictionMarketToken(predictorToken)
-            .transfer(thirdParty, TOTAL_COLLATERAL);
+        IPredictionMarketToken(predictorToken).transfer(
+            thirdParty, TOTAL_COLLATERAL
+        );
 
         // ThirdParty (now holding predictor tokens) burns with counterparty
         IV2Types.BurnRequest memory req = _createBurnRequest(

@@ -43,8 +43,8 @@ contract DebugV2SignatureValidation is Script {
         console.log("pickConfigId:");
         console.logBytes32(pickConfigId);
 
-        uint256 predictorCollateral = 5100000000000000;
-        uint256 counterpartyCollateral = 10000000000000000;
+        uint256 predictorCollateral = 5_100_000_000_000_000;
+        uint256 counterpartyCollateral = 10_000_000_000_000_000;
 
         // Compute predictionHash (same as contract)
         bytes32 predictionHash = keccak256(
@@ -67,7 +67,7 @@ contract DebugV2SignatureValidation is Script {
             COUNTERPARTY,
             counterpartyCollateral,
             5, // counterpartyNonce
-            1770244820 // counterpartyDeadline
+            1_770_244_820 // counterpartyDeadline
         );
         console.log("Contract's counterparty MintApprovalHash:");
         console.logBytes32(contractCounterpartyHash);
@@ -78,15 +78,17 @@ contract DebugV2SignatureValidation is Script {
             PREDICTOR,
             predictorCollateral,
             0, // predictorNonce
-            1770245065 // predictorDeadline
+            1_770_245_065 // predictorDeadline
         );
         console.log("Contract's predictor MintApprovalHash:");
         console.logBytes32(contractPredictorHash);
 
         // Decode the session key data to see what values are in it
-        bytes memory sessionKeyData = hex"00000000000000000000000083236e9d2170ffe24fb620c81aacef049116da54000000000000000000000000efa0e8aa84a713f6a6d4de8cc761fe86c5957d7200000000000000000000000000000000000000000000000000000000698d04c8d9762d852ca8dc23710c3bf3bca341b66f778a0c94cc060f0463687e9c260e9c0000000000000000000000000000000000000000000000000000000000cc12fa00000000000000000000000000000000000000000000000000000000000000c00000000000000000000000000000000000000000000000000000000000000041e716031e242e506e7faa4eb96f1909e7dd0696ac3be5cc73fbfdd4c89bce525a74c92b749ee63f11732d3da4777d50ddb910b7d66e8c446ce0ee3cc55e3d685d1b00000000000000000000000000000000000000000000000000000000000000";
+        bytes memory sessionKeyData =
+            hex"00000000000000000000000083236e9d2170ffe24fb620c81aacef049116da54000000000000000000000000efa0e8aa84a713f6a6d4de8cc761fe86c5957d7200000000000000000000000000000000000000000000000000000000698d04c8d9762d852ca8dc23710c3bf3bca341b66f778a0c94cc060f0463687e9c260e9c0000000000000000000000000000000000000000000000000000000000cc12fa00000000000000000000000000000000000000000000000000000000000000c00000000000000000000000000000000000000000000000000000000000000041e716031e242e506e7faa4eb96f1909e7dd0696ac3be5cc73fbfdd4c89bce525a74c92b749ee63f11732d3da4777d50ddb910b7d66e8c446ce0ee3cc55e3d685d1b00000000000000000000000000000000000000000000000000000000000000";
 
-        IV2Types.SessionKeyData memory skData = abi.decode(sessionKeyData, (IV2Types.SessionKeyData));
+        IV2Types.SessionKeyData memory skData =
+            abi.decode(sessionKeyData, (IV2Types.SessionKeyData));
         console.log("\nDecoded SessionKeyData:");
         console.log("  sessionKey:", skData.sessionKey);
         console.log("  owner:", skData.owner);
@@ -134,5 +136,8 @@ contract DebugV2SignatureValidation is Script {
 }
 
 interface IZeroDevAccountFactory {
-    function getAccountAddress(address owner, uint256 index) external view returns (address);
+    function getAccountAddress(address owner, uint256 index)
+        external
+        view
+        returns (address);
 }

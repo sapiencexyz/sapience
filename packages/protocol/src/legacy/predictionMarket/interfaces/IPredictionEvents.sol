@@ -10,15 +10,17 @@ import "./IPredictionStructs.sol";
 interface IPredictionEvents {
     // ============ Events ============
 
+    // delta paid by taker to reach the payout amount
+    // total payout to the winner,
     event PredictionMinted(
         address indexed maker,
         address indexed taker,
         bytes encodedPredictedOutcomes,
         uint256 makerNftTokenId,
         uint256 takerNftTokenId,
-        uint256 makerCollateral, // locked in the pool from maker
-        uint256 takerCollateral, // delta paid by taker to reach the payout amount
-        uint256 totalCollateral, // total payout to the winner,
+        uint256 makerCollateral,
+        uint256 takerCollateral,
+        uint256 totalCollateral,
         bytes32 refCode
     );
 

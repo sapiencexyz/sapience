@@ -114,13 +114,21 @@ contract MintPredictionMarketTokens is Script {
         uint256 predictorBal = collateral.balanceOf(actors.predictor);
         uint256 counterpartyBal = collateral.balanceOf(actors.counterparty);
 
-        if (predictorBal < PREDICTOR_COLLATERAL || counterpartyBal < COUNTERPARTY_COLLATERAL) {
+        if (
+            predictorBal < PREDICTOR_COLLATERAL
+                || counterpartyBal < COUNTERPARTY_COLLATERAL
+        ) {
             vm.startBroadcast(actors.deployerPk);
             if (predictorBal < PREDICTOR_COLLATERAL) {
-                collateral.transfer(actors.predictor, PREDICTOR_COLLATERAL - predictorBal);
+                collateral.transfer(
+                    actors.predictor, PREDICTOR_COLLATERAL - predictorBal
+                );
             }
             if (counterpartyBal < COUNTERPARTY_COLLATERAL) {
-                collateral.transfer(actors.counterparty, COUNTERPARTY_COLLATERAL - counterpartyBal);
+                collateral.transfer(
+                    actors.counterparty,
+                    COUNTERPARTY_COLLATERAL - counterpartyBal
+                );
             }
             vm.stopBroadcast();
         }

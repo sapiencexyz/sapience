@@ -59,9 +59,7 @@ contract SetDVN_CTReader is Script {
         address[] memory optionalDVNs = new address[](0);
 
         UlnConfig memory ulnConfig = UlnConfig({
-            confirmations: uint64(
-                vm.envOr("ULN_CONFIRMATIONS", uint256(15))
-            ),
+            confirmations: uint64(vm.envOr("ULN_CONFIRMATIONS", uint256(15))),
             requiredDVNCount: 2,
             optionalDVNCount: 0,
             optionalDVNThreshold: 0,
@@ -70,16 +68,13 @@ contract SetDVN_CTReader is Script {
         });
 
         ExecutorConfig memory execConfig = ExecutorConfig({
-            maxMessageSize: uint32(
-                vm.envOr("MAX_MESSAGE_SIZE", uint256(10_000))
-            ),
+            maxMessageSize: uint32(vm.envOr("MAX_MESSAGE_SIZE", uint256(10_000))),
             executor: executor
         });
 
         SetConfigParam[] memory params = new SetConfigParam[](2);
-        params[0] = SetConfigParam(
-            remoteEid, ULN_CONFIG_TYPE, abi.encode(ulnConfig)
-        );
+        params[0] =
+            SetConfigParam(remoteEid, ULN_CONFIG_TYPE, abi.encode(ulnConfig));
         params[1] = SetConfigParam(
             remoteEid, EXECUTOR_CONFIG_TYPE, abi.encode(execConfig)
         );

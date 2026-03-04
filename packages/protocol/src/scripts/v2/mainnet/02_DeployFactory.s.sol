@@ -2,9 +2,8 @@
 pragma solidity ^0.8.19;
 
 import { Script, console } from "forge-std/Script.sol";
-import {
-    PredictionMarketTokenFactory
-} from "../../../v2/PredictionMarketTokenFactory.sol";
+import { PredictionMarketTokenFactory } from
+    "../../../v2/PredictionMarketTokenFactory.sol";
 
 /// @title Deploy PredictionMarketTokenFactory on PM Network (Mainnet)
 /// @notice Deploy factory on Ethereal mainnet using CREATE2 for deterministic address
@@ -69,7 +68,9 @@ contract DeployFactory is Script {
         console.log("Add to .env:");
         console.log("FACTORY_ADDRESS=", predicted);
         console.log("");
-        console.log("IMPORTANT: Deploy on SM Network with same DEPLOYER_ADDRESS");
+        console.log(
+            "IMPORTANT: Deploy on SM Network with same DEPLOYER_ADDRESS"
+        );
         console.log("to get the same factory address on both chains.");
     }
 

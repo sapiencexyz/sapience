@@ -176,15 +176,14 @@ contract PredictionMarketEscrowAudit is Test {
             address counterpartyToken
         )
     {
-        IV2Types.MintRequest memory req =
-            _buildMintRequest(
-                predictor,
-                predictorPk,
-                predictorCollateral,
-                counterparty,
-                counterpartyPk,
-                counterpartyCollateral
-            );
+        IV2Types.MintRequest memory req = _buildMintRequest(
+            predictor,
+            predictorPk,
+            predictorCollateral,
+            counterparty,
+            counterpartyPk,
+            counterpartyCollateral
+        );
         return escrow.mint(req);
     }
 

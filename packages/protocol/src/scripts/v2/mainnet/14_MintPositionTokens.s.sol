@@ -227,14 +227,13 @@ contract MintPredictionMarketTokens is Script {
         uint256 collateral,
         uint256 nonce
     ) internal view returns (bytes memory) {
-        bytes32 approvalHash = params.market
-            .getMintApprovalHash(
-                params.predictionHash,
-                actors.predictor,
-                collateral,
-                nonce,
-                params.deadline
-            );
+        bytes32 approvalHash = params.market.getMintApprovalHash(
+            params.predictionHash,
+            actors.predictor,
+            collateral,
+            nonce,
+            params.deadline
+        );
         (uint8 v, bytes32 r, bytes32 s) =
             vm.sign(actors.predictorPk, approvalHash);
         return abi.encodePacked(r, s, v);
@@ -246,14 +245,13 @@ contract MintPredictionMarketTokens is Script {
         uint256 collateral,
         uint256 nonce
     ) internal view returns (bytes memory) {
-        bytes32 approvalHash = params.market
-            .getMintApprovalHash(
-                params.predictionHash,
-                actors.counterparty,
-                collateral,
-                nonce,
-                params.deadline
-            );
+        bytes32 approvalHash = params.market.getMintApprovalHash(
+            params.predictionHash,
+            actors.counterparty,
+            collateral,
+            nonce,
+            params.deadline
+        );
         (uint8 v, bytes32 r, bytes32 s) =
             vm.sign(actors.counterpartyPk, approvalHash);
         return abi.encodePacked(r, s, v);

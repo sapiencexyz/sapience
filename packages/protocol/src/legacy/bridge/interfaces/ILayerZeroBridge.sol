@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.22;
 
-import {BridgeTypes} from "../BridgeTypes.sol";
+import { BridgeTypes } from "../BridgeTypes.sol";
 
 /**
  * @title ILayerZeroBridge
@@ -18,9 +18,8 @@ interface ILayerZeroBridge {
     event BridgeConfigUpdated(BridgeTypes.BridgeConfig config);
 
     // Common functions
-    function setBridgeConfig(
-        BridgeTypes.BridgeConfig calldata _config
-    ) external;
+    function setBridgeConfig(BridgeTypes.BridgeConfig calldata _config)
+        external;
     function getBridgeConfig()
         external
         view

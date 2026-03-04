@@ -11,24 +11,18 @@ import { LZTypes } from "../../../v2/resolvers/shared/LZTypes.sol";
 contract ConfigureCTReader is Script {
     function run() external {
         address readerAddr = vm.envAddress("CT_READER_ADDRESS");
-        address resolverAddr =
-            vm.envAddress("CT_CONDITION_RESOLVER_ADDRESS");
-        uint32 etherealEid =
-            uint32(vm.envUint("PM_NETWORK_LZ_EID"));
+        address resolverAddr = vm.envAddress("CT_CONDITION_RESOLVER_ADDRESS");
+        uint32 etherealEid = uint32(vm.envUint("PM_NETWORK_LZ_EID"));
 
         ConditionalTokensReader reader =
             ConditionalTokensReader(payable(readerAddr));
 
-        console.log(
-            "=== Configure CT Reader (Polygon) ==="
-        );
+        console.log("=== Configure CT Reader (Polygon) ===");
         console.log("Reader:", readerAddr);
         console.log("Resolver (Ethereal):", resolverAddr);
         console.log("Ethereal LZ EID:", etherealEid);
 
-        vm.startBroadcast(
-            vm.envUint("POLYGON_DEPLOYER_PRIVATE_KEY")
-        );
+        vm.startBroadcast(vm.envUint("POLYGON_DEPLOYER_PRIVATE_KEY"));
 
         // Set bridge config
         reader.setBridgeConfig(

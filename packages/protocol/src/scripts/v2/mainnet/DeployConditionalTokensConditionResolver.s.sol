@@ -28,20 +28,12 @@ contract DeployConditionalTokensConditionResolver is Script {
 
         console.log("");
         console.log("=== Deployed ===");
-        console.log(
-            "ConditionalTokensConditionResolver:", address(resolver)
-        );
+        console.log("ConditionalTokensConditionResolver:", address(resolver));
         console.log("");
         console.log("Add to .env:");
-        console.log(
-            "CT_CONDITION_RESOLVER_ADDRESS=", address(resolver)
-        );
+        console.log("CT_CONDITION_RESOLVER_ADDRESS=", address(resolver));
         console.log("");
-        console.log(
-            "Next: Deploy ConditionalTokensReader on Polygon,"
-        );
-        console.log(
-            "then run ConfigureCTBridge to wire both sides together."
-        );
+        console.log("Next: Deploy ConditionalTokensReader on Polygon,");
+        console.log("then run ConfigureCTBridge to wire both sides together.");
     }
 }

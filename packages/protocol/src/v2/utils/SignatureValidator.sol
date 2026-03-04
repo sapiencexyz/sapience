@@ -47,8 +47,7 @@ abstract contract SignatureValidator is EIP712 {
     IAccountFactory public accountFactory;
 
     /// @notice Revoked session keys: owner => sessionKey => revokedAt timestamp
-    mapping(address => mapping(address => uint256)) internal
-        _revokedSessionKeys;
+    mapping(address => mapping(address => uint256)) internal _revokedSessionKeys;
 
     /// @notice Emitted when the account factory is updated
     event AccountFactoryUpdated(
@@ -135,9 +134,11 @@ abstract contract SignatureValidator is EIP712 {
         );
 
         bytes32 hash = _hashTypedDataV4(structHash);
-        (address recoveredSigner, ECDSA.RecoverError err,) = ECDSA.tryRecover(hash, signature);
+        (address recoveredSigner, ECDSA.RecoverError err,) =
+            ECDSA.tryRecover(hash, signature);
 
-        if (err != ECDSA.RecoverError.NoError || recoveredSigner == address(0)) {
+        if (err != ECDSA.RecoverError.NoError || recoveredSigner == address(0))
+        {
             return false;
         }
 
@@ -163,9 +164,7 @@ abstract contract SignatureValidator is EIP712 {
         }
         try IERC1271(signer).isValidSignature{ gas: EIP1271_GAS_LIMIT }(
             hash, signature
-        ) returns (
-            bytes4 magicValue
-        ) {
+        ) returns (bytes4 magicValue) {
             return magicValue == IERC1271.isValidSignature.selector;
         } catch {
             return false;
@@ -193,9 +192,11 @@ abstract contract SignatureValidator is EIP712 {
         }
 
         // Try ECDSA first (for EOAs)
-        if (_isApprovalValid(
+        if (
+            _isApprovalValid(
                 predictionHash, signer, collateral, nonce, deadline, signature
-            )) {
+            )
+        ) {
             return true;
         }
 
@@ -280,9 +281,11 @@ abstract contract SignatureValidator is EIP712 {
         );
 
         bytes32 hash = _hashTypedDataV4(structHash);
-        (address recoveredSigner, ECDSA.RecoverError err,) = ECDSA.tryRecover(hash, signature);
+        (address recoveredSigner, ECDSA.RecoverError err,) =
+            ECDSA.tryRecover(hash, signature);
 
-        if (err != ECDSA.RecoverError.NoError || recoveredSigner == address(0)) {
+        if (err != ECDSA.RecoverError.NoError || recoveredSigner == address(0))
+        {
             return false;
         }
 
@@ -312,7 +315,8 @@ abstract contract SignatureValidator is EIP712 {
         }
 
         // Try ECDSA first (for EOAs)
-        if (_isBurnApprovalValid(
+        if (
+            _isBurnApprovalValid(
                 burnHash,
                 signer,
                 tokenAmount,
@@ -320,7 +324,8 @@ abstract contract SignatureValidator is EIP712 {
                 nonce,
                 deadline,
                 signature
-            )) {
+            )
+        ) {
             return true;
         }
 
@@ -374,9 +379,8 @@ abstract contract SignatureValidator is EIP712 {
 
         // Check if session key has been revoked
         if (
-            _revokedSessionKeys[
-                    sessionApproval.owner
-                ][sessionApproval.sessionKey] > 0
+            _revokedSessionKeys[sessionApproval.owner][sessionApproval
+                .sessionKey] > 0
         ) {
             return false;
         }
@@ -536,9 +540,8 @@ abstract contract SignatureValidator is EIP712 {
 
         // Check if session key has been revoked
         if (
-            _revokedSessionKeys[
-                    sessionApproval.owner
-                ][sessionApproval.sessionKey] > 0
+            _revokedSessionKeys[sessionApproval.owner][sessionApproval
+                .sessionKey] > 0
         ) {
             return false;
         }

@@ -261,8 +261,8 @@ contract PredictionMarketEscrowDustAudit is Test {
         IV2Types.PickConfiguration memory config = escrow.getPickConfiguration(
             escrow.getPickConfigIdFromToken(predToken)
         );
-        uint256 totalCollateral = config.totalPredictorCollateral
-            + config.totalCounterpartyCollateral;
+        uint256 totalCollateral =
+            config.totalPredictorCollateral + config.totalCounterpartyCollateral;
         uint256 totalClaimed = config.claimedPredictorCollateral
             + config.claimedCounterpartyCollateral;
         uint256 dust = totalCollateral - totalClaimed;

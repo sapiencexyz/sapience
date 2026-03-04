@@ -1,31 +1,23 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {
-    TestHelperOz5
-} from "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
-import {
-    PredictionMarketBridge
-} from "../../src/v2/bridge/PredictionMarketBridge.sol";
-import {
-    PredictionMarketBridgeRemote
-} from "../../src/v2/bridge/PredictionMarketBridgeRemote.sol";
-import {
-    PredictionMarketTokenFactory
-} from "../../src/v2/PredictionMarketTokenFactory.sol";
+import { TestHelperOz5 } from
+    "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
+import { PredictionMarketBridge } from
+    "../../src/v2/bridge/PredictionMarketBridge.sol";
+import { PredictionMarketBridgeRemote } from
+    "../../src/v2/bridge/PredictionMarketBridgeRemote.sol";
+import { PredictionMarketTokenFactory } from
+    "../../src/v2/PredictionMarketTokenFactory.sol";
 import { PredictionMarketToken } from "../../src/v2/PredictionMarketToken.sol";
-import {
-    IPredictionMarketBridge
-} from "../../src/v2/bridge/interfaces/IPredictionMarketBridge.sol";
-import {
-    IPredictionMarketBridgeRemote
-} from "../../src/v2/bridge/interfaces/IPredictionMarketBridgeRemote.sol";
-import {
-    IPredictionMarketBridgeBase
-} from "../../src/v2/bridge/interfaces/IPredictionMarketBridgeBase.sol";
-import {
-    IPredictionMarketToken
-} from "../../src/v2/interfaces/IPredictionMarketToken.sol";
+import { IPredictionMarketBridge } from
+    "../../src/v2/bridge/interfaces/IPredictionMarketBridge.sol";
+import { IPredictionMarketBridgeRemote } from
+    "../../src/v2/bridge/interfaces/IPredictionMarketBridgeRemote.sol";
+import { IPredictionMarketBridgeBase } from
+    "../../src/v2/bridge/interfaces/IPredictionMarketBridgeBase.sol";
+import { IPredictionMarketToken } from
+    "../../src/v2/interfaces/IPredictionMarketToken.sol";
 import { MessagingFee } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 import "forge-std/Test.sol";
 
@@ -112,7 +104,8 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
                         owner,
                         address(etherealFactory)
                     )
-                ))
+                )
+            )
         );
 
         // Deploy Arbitrum bridge with factory
@@ -399,8 +392,9 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
 
         // Approve and bridge back
         vm.prank(user);
-        PredictionMarketToken(bridgedToken)
-            .approve(address(arbitrumBridge), amount);
+        PredictionMarketToken(bridgedToken).approve(
+            address(arbitrumBridge), amount
+        );
 
         MessagingFee memory backFee =
             arbitrumBridge.quoteBridge(bridgedToken, amount);
@@ -413,8 +407,9 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
         // Bridged tokens should be escrowed (NOT burned yet)
         assertEq(PredictionMarketToken(bridgedToken).balanceOf(user), 0);
         assertEq(
-            PredictionMarketToken(bridgedToken)
-                .balanceOf(address(arbitrumBridge)),
+            PredictionMarketToken(bridgedToken).balanceOf(
+                address(arbitrumBridge)
+            ),
             amount
         );
         assertEq(arbitrumBridge.getEscrowedBalance(bridgedToken), amount);
@@ -465,8 +460,9 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
 
         // Bridge back partial amount
         vm.prank(user);
-        PredictionMarketToken(bridgedToken)
-            .approve(address(arbitrumBridge), bridgeBackAmount);
+        PredictionMarketToken(bridgedToken).approve(
+            address(arbitrumBridge), bridgeBackAmount
+        );
 
         MessagingFee memory backFee =
             arbitrumBridge.quoteBridge(bridgedToken, bridgeBackAmount);
@@ -616,8 +612,9 @@ contract PredictionMarketBridgeTest is TestHelperOz5 {
 
         // Initiate bridge back
         vm.prank(user);
-        PredictionMarketToken(bridgedToken)
-            .approve(address(arbitrumBridge), amount);
+        PredictionMarketToken(bridgedToken).approve(
+            address(arbitrumBridge), amount
+        );
 
         MessagingFee memory backFee =
             arbitrumBridge.quoteBridge(bridgedToken, amount);

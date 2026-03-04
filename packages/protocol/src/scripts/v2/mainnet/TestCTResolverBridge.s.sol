@@ -48,7 +48,10 @@ contract TestCTResolverBridge is Script {
         // Check if the condition can be resolved
         bool canRequest = reader.canRequestResolution(conditionId);
         console.log("Can request resolution:", canRequest);
-        require(canRequest, "Condition cannot be resolved (not binary, not resolved on CT, or invalid)");
+        require(
+            canRequest,
+            "Condition cannot be resolved (not binary, not resolved on CT, or invalid)"
+        );
 
         // Read condition data from Gnosis CT
         IConditionalTokensReader.ConditionData memory data =

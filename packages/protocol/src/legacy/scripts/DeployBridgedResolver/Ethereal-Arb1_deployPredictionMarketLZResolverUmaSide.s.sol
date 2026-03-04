@@ -2,7 +2,8 @@
 pragma solidity ^0.8.22;
 
 import "forge-std/Script.sol";
-import {PredictionMarketLZResolverUmaSide} from "../../predictionMarket/resolvers/PredictionMarketLZResolverUmaSide.sol";
+import { PredictionMarketLZResolverUmaSide } from
+    "../../predictionMarket/resolvers/PredictionMarketLZResolverUmaSide.sol";
 
 // UMA side is on Arbitrum One
 // Deploy this UMA-side resolver on Arbitrum One (sends LZ messages to PM side)
@@ -15,7 +16,8 @@ contract DeployPredictionMarketLZResolverUmaSide is Script {
 
         address bondCurrency = vm.envAddress("UMA_BOND_TOKEN");
         uint256 bondAmount = vm.envUint("UMA_BOND_AMOUNT");
-        uint64 assertionLiveness = uint64(vm.envOr("UMA_ASSERTION_LIVENESS", uint256(3600)));
+        uint64 assertionLiveness =
+            uint64(vm.envOr("UMA_ASSERTION_LIVENESS", uint256(3600)));
 
         vm.startBroadcast(vm.envUint("ARB_PRIVATE_KEY"));
         PredictionMarketLZResolverUmaSide resolver = new PredictionMarketLZResolverUmaSide(
@@ -30,9 +32,8 @@ contract DeployPredictionMarketLZResolverUmaSide is Script {
         );
         vm.stopBroadcast();
 
-        console.log("PredictionMarketLZResolverUmaSide deployed to:", address(resolver));
+        console.log(
+            "PredictionMarketLZResolverUmaSide deployed to:", address(resolver)
+        );
     }
 }
-
-
-

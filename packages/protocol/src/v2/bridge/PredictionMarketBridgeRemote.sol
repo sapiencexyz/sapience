@@ -304,8 +304,9 @@ contract PredictionMarketBridgeRemote is
 
             // Now burn the escrowed tokens
             _escrowedBalances[pending.token] -= pending.amount;
-            IPredictionMarketToken(pending.token)
-                .burn(address(this), pending.amount);
+            IPredictionMarketToken(pending.token).burn(
+                address(this), pending.amount
+            );
 
             emit BridgeCompleted(bridgeId);
         }

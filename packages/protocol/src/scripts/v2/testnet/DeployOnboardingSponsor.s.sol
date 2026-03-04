@@ -37,8 +37,14 @@ contract DeployOnboardingSponsor is Script {
 
         vm.startBroadcast(vm.envUint("PM_NETWORK_DEPLOYER_PRIVATE_KEY"));
 
-        OnboardingSponsor sponsor =
-            new OnboardingSponsor(escrow, collateralToken, requiredCounterparty, maxEntryPriceBps, matchLimit, deployer);
+        OnboardingSponsor sponsor = new OnboardingSponsor(
+            escrow,
+            collateralToken,
+            requiredCounterparty,
+            maxEntryPriceBps,
+            matchLimit,
+            deployer
+        );
 
         // Set budget manager if provided
         address budgetManager = vm.envOr("BUDGET_MANAGER", address(0));
@@ -55,7 +61,11 @@ contract DeployOnboardingSponsor is Script {
         console.log("");
         console.log("Next steps:");
         console.log("  1. Fund the contract with collateral tokens");
-        console.log("  2. Set budget manager (if not set above): sponsor.setBudgetManager(apiSigner)");
-        console.log("  3. API signer calls setBudget(user, amount) when user enters invite code");
+        console.log(
+            "  2. Set budget manager (if not set above): sponsor.setBudgetManager(apiSigner)"
+        );
+        console.log(
+            "  3. API signer calls setBudget(user, amount) when user enters invite code"
+        );
     }
 }

@@ -2,12 +2,16 @@
 pragma solidity ^0.8.22;
 
 import "forge-std/Script.sol";
-import {PredictionMarketLZResolver} from "../../predictionMarket/resolvers/PredictionMarketLZResolver.sol";
-import {BridgeTypes} from "../../bridge/BridgeTypes.sol";
+import { PredictionMarketLZResolver } from
+    "../../predictionMarket/resolvers/PredictionMarketLZResolver.sol";
+import { BridgeTypes } from "../../bridge/BridgeTypes.sol";
 
-import { ILayerZeroEndpointV2 } from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
-import { SetConfigParam } from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/IMessageLibManager.sol";
-import { UlnConfig } from "@layerzerolabs/lz-evm-messagelib-v2/contracts/uln/UlnBase.sol";
+import { ILayerZeroEndpointV2 } from
+    "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
+import { SetConfigParam } from
+    "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/IMessageLibManager.sol";
+import { UlnConfig } from
+    "@layerzerolabs/lz-evm-messagelib-v2/contracts/uln/UlnBase.sol";
 
 // Configure the PM-side LZ resolver on Ethereal to trust UMA-side peer and set gas params
 contract SetDVNredictionMarketLZResolverPMSide is Script {
@@ -28,8 +32,8 @@ contract SetDVNredictionMarketLZResolverPMSide is Script {
         uint32 umaSideEid = uint32(vm.envUint("UMA_SIDE_EID"));
         uint32 pmSideEid = uint32(vm.envUint("PM_SIDE_EID"));
 
-        uint32 AEid = umaSideEid;         // Source chain EID (Arbitrum)
-        uint32 BEid = pmSideEid;         // Destination chain EID (Ethereal)
+        uint32 AEid = umaSideEid; // Source chain EID (Arbitrum)
+        uint32 BEid = pmSideEid; // Destination chain EID (Ethereal)
         uint32 gracePeriod = uint32(vm.envOr("GRACE_PERIOD", uint256(0))); // Grace period for library switch
 
         // Library addresses
@@ -37,25 +41,24 @@ contract SetDVNredictionMarketLZResolverPMSide is Script {
         address receiveLib = vm.envAddress("ETHEREAL_RECEIVE_LIB");
 
         address endpoint = vm.envAddress("ETHEREAL_LZ_ENDPOINT");
-        address oapp = pmLzResolver;         // OApp on Chain B
-        uint32 eid = AEid;      // Endpoint ID for Chain A
-
+        address oapp = pmLzResolver; // OApp on Chain B
+        uint32 eid = AEid; // Endpoint ID for Chain A
 
         vm.startBroadcast(vm.envUint("ETHEREAL_PRIVATE_KEY"));
 
         // Set send library for outbound messages
         ILayerZeroEndpointV2(endpoint).setSendLibrary(
-            oapp,    // OApp address
-            AEid,  // Destination chain EID
-            sendLib  // SendUln302 address
+            oapp, // OApp address
+            AEid, // Destination chain EID
+            sendLib // SendUln302 address
         );
 
         // Set receive library for inbound messages
         ILayerZeroEndpointV2(endpoint).setReceiveLibrary(
-            oapp,        // OApp address
-            AEid,      // Source chain EID
-            receiveLib,  // ReceiveUln302 address
-            gracePeriod  // Grace period for library switch
+            oapp, // OApp address
+            AEid, // Source chain EID
+            receiveLib, // ReceiveUln302 address
+            gracePeriod // Grace period for library switch
         );
 
         /// @notice UlnConfig controls verification threshold for incoming messages from A to B
@@ -67,13 +70,13 @@ contract SetDVNredictionMarketLZResolverPMSide is Script {
         requiredDVNs[0] = vm.envAddress("ETHEREAL_DVN");
         address[] memory optionalDVNs = new address[](0);
         UlnConfig memory uln = UlnConfig({
-            confirmations:      uint64(vm.envOr("ULN_CONFIRMATIONS", uint256(20))),                                       // min block confirmations from source (A)
-            requiredDVNCount:   uint8(vm.envOr("REQUIRED_DVN_COUNT", uint256(1))),                                        // required DVNs for message acceptance
-            optionalDVNCount:   type(uint8).max,                          // optional DVNs count
-            optionalDVNThreshold: 0,                                      // optional DVN threshold
-            requiredDVNs:       requiredDVNs, // sorted required DVNs
-            optionalDVNs:       optionalDVNs                                        // no optional DVNs
-        });
+            confirmations: uint64(vm.envOr("ULN_CONFIRMATIONS", uint256(20))), // min block confirmations from source (A)
+            requiredDVNCount: uint8(vm.envOr("REQUIRED_DVN_COUNT", uint256(1))), // required DVNs for message acceptance
+            optionalDVNCount: type(uint8).max, // optional DVNs count
+            optionalDVNThreshold: 0, // optional DVN threshold
+            requiredDVNs: requiredDVNs, // sorted required DVNs
+            optionalDVNs: optionalDVNs // no optional DVNs
+         });
 
         bytes memory encodedUln = abi.encode(uln);
 
@@ -84,5 +87,3 @@ contract SetDVNredictionMarketLZResolverPMSide is Script {
         vm.stopBroadcast();
     }
 }
-
-

@@ -24,5 +24,3 @@ library PythStructs {
         Price emaPrice;
     }
 }
-
-

@@ -2,8 +2,10 @@
 pragma solidity ^0.8.19;
 
 import "../interfaces/IPredictionMarketResolver.sol";
-import { OptimisticOracleV3Interface } from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
-import { OptimisticOracleV3CallbackRecipientInterface } from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3CallbackRecipientInterface.sol";
+import { OptimisticOracleV3Interface } from
+    "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
+import { OptimisticOracleV3CallbackRecipientInterface } from
+    "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3CallbackRecipientInterface.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -53,9 +55,7 @@ contract PredictionMarketUmaResolver is
         uint256 submissionTime
     );
     event AssertionDisputed(
-        bytes32 marketId,
-        bytes32 assertionId,
-        uint256 disputeTime
+        bytes32 marketId, bytes32 assertionId, uint256 disputeTime
     );
     event AssertionResolved(
         bytes32 marketId,
@@ -117,18 +117,20 @@ contract PredictionMarketUmaResolver is
     mapping(bytes32 => UMASettlement) public umaSettlements;
 
     // ============ Resolver Functions ============
-    function validatePredictionMarkets(
-        bytes calldata encodedPredictedOutcomes
-    ) external view returns (bool isValid, Error error) {
+    function validatePredictionMarkets(bytes calldata encodedPredictedOutcomes)
+        external
+        view
+        returns (bool isValid, Error error)
+    {
         isValid = true;
         error = Error.NO_ERROR;
-        PredictedOutcome[] memory predictedOutcomes = decodePredictionOutcomes(
-            encodedPredictedOutcomes
-        );
+        PredictedOutcome[] memory predictedOutcomes =
+            decodePredictionOutcomes(encodedPredictedOutcomes);
 
         if (predictedOutcomes.length == 0) revert MustHaveAtLeastOneMarket();
-        if (predictedOutcomes.length > config.maxPredictionMarkets)
+        if (predictedOutcomes.length > config.maxPredictionMarkets) {
             revert TooManyMarkets();
+        }
 
         for (uint256 i = 0; i < predictedOutcomes.length; i++) {
             bytes32 currentMarketId = predictedOutcomes[i].marketId;
@@ -141,12 +143,13 @@ contract PredictionMarketUmaResolver is
         return (isValid, error);
     }
 
-    function getPredictionResolution(
-        bytes calldata encodedPredictedOutcomes
-    ) external view returns (bool isResolved, Error error, bool parlaySuccess) {
-        PredictedOutcome[] memory predictedOutcomes = decodePredictionOutcomes(
-            encodedPredictedOutcomes
-        );
+    function getPredictionResolution(bytes calldata encodedPredictedOutcomes)
+        external
+        view
+        returns (bool isResolved, Error error, bool parlaySuccess)
+    {
+        PredictedOutcome[] memory predictedOutcomes =
+            decodePredictionOutcomes(encodedPredictedOutcomes);
         parlaySuccess = true;
         isResolved = true;
         error = Error.NO_ERROR;
@@ -157,8 +160,7 @@ contract PredictionMarketUmaResolver is
             error = Error.MUST_HAVE_AT_LEAST_ONE_MARKET;
             return (isResolved, error, parlaySuccess);
         }
-        if (predictedOutcomes.length > config.maxPredictionMarkets)
-        {
+        if (predictedOutcomes.length > config.maxPredictionMarkets) {
             isResolved = false;
             error = Error.TOO_MANY_MARKETS;
             return (isResolved, error, parlaySuccess);
@@ -211,9 +213,11 @@ contract PredictionMarketUmaResolver is
         return abi.encode(predictedOutcomes);
     }
 
-    function decodePredictionOutcomes(
-        bytes calldata encodedPredictedOutcomes
-    ) public pure returns (PredictedOutcome[] memory) {
+    function decodePredictionOutcomes(bytes calldata encodedPredictedOutcomes)
+        public
+        pure
+        returns (PredictedOutcome[] memory)
+    {
         return abi.decode(encodedPredictedOutcomes, (PredictedOutcome[]));
     }
 
@@ -243,11 +247,7 @@ contract PredictionMarketUmaResolver is
                 assertionId: bytes32(0)
             });
             emit MarketWrapped(
-                msg.sender,
-                marketId,
-                claim,
-                endTime,
-                block.timestamp
+                msg.sender, marketId, claim, endTime, block.timestamp
             );
 
             // If not bytes32(0), Market already wrapped. Might be a re-submit of the same assertion in case it was disputed, or the weird InvalidMarketId.
@@ -268,23 +268,18 @@ contract PredictionMarketUmaResolver is
         }
 
         IERC20 bondCurrency = IERC20(config.bondCurrency);
-        OptimisticOracleV3Interface optimisticOracleV3 = OptimisticOracleV3Interface(
-                address(config.optimisticOracleV3)
-            );
+        OptimisticOracleV3Interface optimisticOracleV3 =
+            OptimisticOracleV3Interface(address(config.optimisticOracleV3));
 
-        uint256 minUMABond = optimisticOracleV3.getMinimumBond(
-            config.bondCurrency
-        );
-        uint256 effectiveBondAmount = config.bondAmount < minUMABond
-            ? minUMABond
-            : config.bondAmount;
+        uint256 minUMABond =
+            optimisticOracleV3.getMinimumBond(config.bondCurrency);
+        uint256 effectiveBondAmount =
+            config.bondAmount < minUMABond ? minUMABond : config.bondAmount;
 
         // Get the bond currency (with protection against tokens with fees on transfer)
         uint256 initialBalance = bondCurrency.balanceOf(address(this));
         bondCurrency.safeTransferFrom(
-            msg.sender,
-            address(this),
-            effectiveBondAmount
+            msg.sender, address(this), effectiveBondAmount
         );
         uint256 finalBalance = bondCurrency.balanceOf(address(this));
         if (initialBalance + effectiveBondAmount != finalBalance) {
@@ -299,8 +294,7 @@ contract PredictionMarketUmaResolver is
 
         // Approve the bond currency to the Optimistic Oracle V3
         bondCurrency.forceApprove(
-            address(config.optimisticOracleV3),
-            effectiveBondAmount
+            address(config.optimisticOracleV3), effectiveBondAmount
         );
 
         // Get the "false" claim
@@ -315,7 +309,7 @@ contract PredictionMarketUmaResolver is
             config.assertionLiveness,
             bondCurrency,
             effectiveBondAmount,
-            bytes32('ASSERT_TRUTH2'),
+            bytes32("ASSERT_TRUTH2"),
             bytes32(0)
         );
 
@@ -330,11 +324,7 @@ contract PredictionMarketUmaResolver is
         });
 
         emit AssertionSubmitted(
-            msg.sender,
-            marketId,
-            assertionId,
-            resolvedToYes,
-            block.timestamp
+            msg.sender, marketId, assertionId, resolvedToYes, block.timestamp
         );
     }
 
