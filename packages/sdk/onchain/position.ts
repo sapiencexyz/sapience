@@ -100,6 +100,8 @@ export interface MintPredictionRequestDataLike {
   makerNonce?: string | number | bigint;
   takerSignature: `0x${string}`;
   takerDeadline: string | number | bigint;
+  /** Predictor's deadline (unix seconds) */
+  makerDeadline: string | number | bigint;
   refCode: `0x${string}`;
   // Escrow-specific fields
   escrowPicks?: Array<{
@@ -237,7 +239,7 @@ export function prepareMintCalls(
       counterparty: mintData.taker,
       predictorNonce: makerNonceBigInt,
       counterpartyNonce: BigInt(mintData.takerClaimedNonce ?? 0),
-      predictorDeadline: BigInt(mintData.takerDeadline), // TODO: separate predictor deadline
+      predictorDeadline: BigInt(mintData.makerDeadline),
       counterpartyDeadline: BigInt(mintData.takerDeadline),
       predictorSignature: (mintData.predictorSignature || '0x') as Hex,
       counterpartySignature: mintData.takerSignature,

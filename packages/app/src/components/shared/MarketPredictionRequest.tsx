@@ -339,6 +339,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
         predictor: selectedPredictorAddress,
         predictorNonce:
           predictorNonce !== undefined ? Number(predictorNonce) : 0,
+        predictorDeadline: Math.floor(Date.now() / 1000) + 300, // 5 min
         chainId: chainId,
         ...(escrowPicks && { escrowPicks }),
       };
@@ -397,6 +398,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
           predictor: selectedPredictorAddress,
           predictorNonce:
             predictorNonce !== undefined ? Number(predictorNonce) : 0,
+          predictorDeadline: Math.floor(Date.now() / 1000) + 300, // 5 min
           chainId: chainId,
           ...(escrowPicks && { escrowPicks }),
         };

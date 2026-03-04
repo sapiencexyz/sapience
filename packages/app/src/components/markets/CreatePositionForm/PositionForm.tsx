@@ -484,6 +484,7 @@ export default function PositionForm({
           predictedOutcomes: payload.predictedOutcomes,
           predictor: selectedPredictorAddressRef.current,
           predictorNonce: freshNonce !== undefined ? Number(freshNonce) : 0,
+          predictorDeadline: Math.floor(Date.now() / 1000) + 300, // 5 min
           chainId: chainId,
         };
 

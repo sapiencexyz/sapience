@@ -116,6 +116,7 @@ export function useSingleConditionAuction({
           predictedOutcomes: payload.predictedOutcomes,
           predictor: selectedTakerAddress,
           predictorNonce: Number(generateRandomNonce()),
+          predictorDeadline: Math.floor(Date.now() / 1000) + 300, // 5 min
           chainId,
         };
 
