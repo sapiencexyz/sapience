@@ -14,7 +14,6 @@ import type {
 import {
   addSecondaryListing,
   getSecondaryListing,
-  removeSecondaryListing,
   addSecondaryBid,
   getSecondaryBids,
 } from './secondaryMarketRegistry';

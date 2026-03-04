@@ -2,7 +2,7 @@
  * Escrow Validation Helpers for Relayer
  */
 
-import type { AuctionRFQPayload, AuctionRequestPayload, BidPayload } from './escrowTypes';
+import type { AuctionRFQPayload, BidPayload } from './escrowTypes';
 import { computePickConfigId } from '@sapience/sdk/auction/escrowEncoding';
 import type { Pick } from '@sapience/sdk/types';
 import type { Address, Hex } from 'viem';

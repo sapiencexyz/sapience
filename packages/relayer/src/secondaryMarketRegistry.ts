@@ -14,7 +14,6 @@ const listings = new Map<string, SecondaryListingRecord>();
 /** Track used seller nonces to prevent replays: seller address → set of nonces */
 const usedSellerNonces = new Map<string, Set<number>>();
 
-const DEFAULT_TTL_MS = 5 * 60_000; // 5 minutes
 const MAX_TTL_MS = 30 * 60_000; // 30 minutes
 
 /**

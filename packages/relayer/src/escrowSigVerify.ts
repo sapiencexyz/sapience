@@ -10,7 +10,6 @@ import {
   type Hex,
 } from 'viem';
 import {
-  buildPredictorMintTypedData,
   buildCounterpartyMintTypedData,
 } from '@sapience/sdk/auction/escrowSigning';
 import type { Pick } from '@sapience/sdk/types';
