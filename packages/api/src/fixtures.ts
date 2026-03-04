@@ -28,6 +28,9 @@ const buildIndexers = (): { [key: string]: IIndexer } => {
       // ── Production (Ethereal mainnet) ──
       indexers['escrow-prediction-market-ethereal'] =
         new PredictionMarketEscrowIndexer(5064014);
+      indexers['secondary-market-ethereal'] = new SecondaryMarketIndexer(
+        5064014
+      );
       indexers['transfer-ethereal'] = new PositionTokenTransferIndexer(5064014);
       indexers['collateral-transfer-ethereal'] = new CollateralTransferIndexer(
         5064014
