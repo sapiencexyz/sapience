@@ -366,6 +366,32 @@ export type Close = {
   txHash: Scalars['String']['output'];
 };
 
+export type CollateralBalanceSnapshotType = {
+  __typename?: 'CollateralBalanceSnapshotType';
+  atBlock: Scalars['Int']['output'];
+  balance: Scalars['String']['output'];
+  weekIndex: Scalars['Int']['output'];
+};
+
+export type CollateralBalanceType = {
+  __typename?: 'CollateralBalanceType';
+  address: Scalars['String']['output'];
+  atBlock?: Maybe<Scalars['Int']['output']>;
+  balance: Scalars['String']['output'];
+  chainId: Scalars['Int']['output'];
+};
+
+export type CollateralTransferType = {
+  __typename?: 'CollateralTransferType';
+  blockNumber: Scalars['Int']['output'];
+  chainId: Scalars['Int']['output'];
+  from: Scalars['String']['output'];
+  id: Scalars['Int']['output'];
+  to: Scalars['String']['output'];
+  transactionHash: Scalars['String']['output'];
+  value: Scalars['String']['output'];
+};
+
 export type Condition = {
   __typename?: 'Condition';
   _count?: Maybe<ConditionCount>;
@@ -1313,6 +1339,9 @@ export type Query = {
   claims: Array<Claim>;
   /** Paginated list of position close (burn) records, filterable by address, pick config, and chain */
   closes: Array<Close>;
+  collateralBalance: CollateralBalanceType;
+  collateralBalanceHistory: Array<CollateralBalanceSnapshotType>;
+  collateralTransfers: Array<CollateralTransferType>;
   condition?: Maybe<Condition>;
   conditionGroup?: Maybe<ConditionGroup>;
   conditionGroups: Array<ConditionGroup>;
@@ -1432,6 +1461,29 @@ export type QueryClosesArgs = {
   pickConfigId?: InputMaybe<Scalars['String']['input']>;
   skip?: Scalars['Int']['input'];
   take?: Scalars['Int']['input'];
+};
+
+
+export type QueryCollateralBalanceArgs = {
+  address: Scalars['String']['input'];
+  atBlock?: InputMaybe<Scalars['Int']['input']>;
+  chainId?: Scalars['Int']['input'];
+};
+
+
+export type QueryCollateralBalanceHistoryArgs = {
+  address: Scalars['String']['input'];
+  chainId?: Scalars['Int']['input'];
+  currentBlock: Scalars['Int']['input'];
+  weeks?: Scalars['Int']['input'];
+};
+
+
+export type QueryCollateralTransfersArgs = {
+  address: Scalars['String']['input'];
+  chainId?: Scalars['Int']['input'];
+  limit?: Scalars['Int']['input'];
+  offset?: Scalars['Int']['input'];
 };
 
 

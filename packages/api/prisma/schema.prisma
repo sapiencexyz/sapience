@@ -668,3 +668,22 @@ model SecondaryTrade {
   @@index([executedAt], map: "IDX_secondary_trade_executed_at")
   @@map("secondary_trade")
 }
+
+/// Indexed wUSDe (collateral token) Transfer events on Ethereal for historical balance queries
+model CollateralTransfer {
+  id              Int      @id @default(autoincrement())
+  createdAt       DateTime @default(now()) @db.Timestamp(6)
+  chainId         Int
+  blockNumber     Int
+  transactionHash String   @db.VarChar
+  logIndex        Int
+  from            String   @db.VarChar
+  to              String   @db.VarChar
+  value           String   @db.VarChar  // Amount in wei
+
+  @@unique([chainId, transactionHash, logIndex])
+  @@index([chainId, from], map: "IDX_collateral_transfer_from")
+  @@index([chainId, to], map: "IDX_collateral_transfer_to")
+  @@index([chainId, blockNumber], map: "IDX_collateral_transfer_block")
+  @@map("collateral_transfer")
+}

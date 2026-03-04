@@ -106,6 +106,7 @@ export const collateralToken: ChainAddressMap = {
   },
   5064014: {
     address: '0xB6fC4B1BFF391e5F6b4a3D2C7Bda1FeE3524692D',
+    blockCreated: 18537,
     legacy: [] as const,
   },
   13374202: {

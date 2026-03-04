@@ -6,6 +6,7 @@ import PredictionMarketEscrowIndexer from './workers/indexers/predictionMarketEs
 import SecondaryMarketIndexer from './workers/indexers/secondaryMarketIndexer';
 import PositionTokenTransferIndexer from './workers/indexers/positionTokenTransferIndexer';
 import ConditionSettledIndexer from './workers/indexers/conditionSettledIndexer';
+import CollateralTransferIndexer from './workers/indexers/collateralTransferIndexer';
 
 // Environment variable to control whether V2 indexers are enabled
 const ENABLE_ESCROW_INDEXERS = process.env.ENABLE_ESCROW_INDEXERS === 'true';
@@ -33,6 +34,9 @@ const buildIndexers = (): { [key: string]: IIndexer } => {
     ); // Ethereal mainnet
     indexers['condition-settled-ethereal-testnet'] =
       new ConditionSettledIndexer(13374202); // Ethereal testnet
+    indexers['collateral-transfer-ethereal'] = new CollateralTransferIndexer(
+      5064014
+    ); // wUSDe transfers
     console.log('[Indexers] V2 indexers enabled');
   } else {
     console.log(

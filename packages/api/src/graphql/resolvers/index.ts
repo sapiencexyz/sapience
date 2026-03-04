@@ -7,3 +7,4 @@ export { VolumeResolver } from './VolumeResolver';
 export { QuestionsResolver } from './QuestionsResolver';
 export { TradeResolver } from './TradeResolver';
 export { TimeSeriesResolver } from './TimeSeriesResolver';
+export { CollateralBalanceResolver } from './CollateralBalanceResolver';

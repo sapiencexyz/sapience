@@ -315,6 +315,29 @@ type Close {
   txHash: String!
 }
 
+type CollateralBalanceSnapshotType {
+  atBlock: Int!
+  balance: String!
+  index: Int!
+}
+
+type CollateralBalanceType {
+  address: String!
+  atBlock: Int
+  balance: String!
+  chainId: Int!
+}
+
+type CollateralTransferType {
+  blockNumber: Int!
+  chainId: Int!
+  from: String!
+  id: Int!
+  to: String!
+  transactionHash: String!
+  value: String!
+}
+
 type Condition {
   _count: ConditionCount
   assertionId: String
@@ -1198,6 +1221,9 @@ type Query {
   Paginated list of position close (burn) records, filterable by address, pick config, and chain
   """
   closes(address: String, chainId: Int, pickConfigId: String, skip: Int! = 0, take: Int! = 50): [Close!]!
+  collateralBalance(address: String!, atBlock: Int, chainId: Int! = 5064014): CollateralBalanceType!
+  collateralBalanceHistory(address: String!, chainId: Int! = 5064014, count: Int! = 12, currentBlock: Int, intervalHours: Int! = 168): [CollateralBalanceSnapshotType!]!
+  collateralTransfers(address: String!, chainId: Int! = 5064014, limit: Int! = 100, offset: Int! = 0): [CollateralTransferType!]!
   condition(where: ConditionWhereUniqueInput!): Condition
   conditionGroup(where: ConditionGroupWhereUniqueInput!): ConditionGroup
   conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]!
