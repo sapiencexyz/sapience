@@ -1,14 +1,24 @@
 #!/usr/bin/env node
 /// <reference types="node" />
 /**
- * Settle conditions on ManualConditionResolver (v2 protocol)
+ * Settle conditions on v2 protocol resolvers
  *
- * This script:
- * 1. Queries Sapience API for unsettled conditions that have ended
- * 2. Checks if each condition is already settled on the ManualConditionResolver (Ethereal testnet)
- * 3. Checks if each condition is resolved on Polymarket (via ConditionalTokensReader on Polygon)
- * 4. Falls back to Polymarket REST APIs for voided markets
- * 5. Writes the outcome to the ManualConditionResolver via settleCondition()
+ * Supports two modes based on NODE_ENV:
+ *
+ * STAGING (NODE_ENV !== 'production'):
+ *   Uses ManualConditionResolver on Ethereal testnet.
+ *   1. Queries Sapience API for unsettled conditions that have ended
+ *   2. Checks if each condition is already settled on ManualConditionResolver
+ *   3. Checks if each condition is resolved on Polymarket (via ConditionalTokensReader on Polygon)
+ *   4. Falls back to Polymarket REST APIs for voided markets
+ *   5. Writes the outcome to ManualConditionResolver via settleCondition()
+ *
+ * PRODUCTION (NODE_ENV === 'production'):
+ *   Uses ConditionalTokensConditionResolver on Ethereal mainnet via LayerZero bridging.
+ *   1. Queries Sapience API for unsettled conditions that have ended
+ *   2. Checks if each condition is already settled on ConditionalTokensConditionResolver
+ *   3. Checks if each condition is resolved on Polymarket (via ConditionalTokensReader on Polygon)
+ *   4. Triggers LayerZero resolution bridging by calling requestResolution on Polygon
  *
  * Usage:
  *   tsx scripts/settle-v2.ts --dry-run
@@ -21,11 +31,12 @@
  *   --help         Show this help message
  *
  * Environment Variables (can be set in .env file):
+ *   NODE_ENV                 'production' for LZ bridging, anything else for manual settlement
  *   POLYGON_RPC_URL          Polygon RPC URL (required)
  *   ADMIN_PRIVATE_KEY        Private key for signing transactions (required for --execute)
  *   SAPIENCE_API_URL         Sapience GraphQL API URL (default: https://api.sapience.xyz)
- *   V2_RESOLVER_ADDRESS      ManualConditionResolver address on Ethereal testnet
- *   V2_CHAIN_ID              Ethereal testnet chain ID
+ *   V2_RESOLVER_ADDRESS      Resolver address override
+ *   CHAIN_ID                 Ethereal chain ID override
  */
 
 import 'dotenv/config';
@@ -51,19 +62,30 @@ import { confirmProductionAccess } from '../src/utils/index.js';
 import {
   manualConditionResolver,
   conditionalTokensReader,
-} from '@sapience/sdk/contracts';
+  conditionalTokensConditionResolver,
+} from '@sapience/sdk';
+
+// ============ Environment ============
+
+const isProduction = process.env.NODE_ENV === 'production';
 
 // ============ Constants ============
 
-// Ethereal testnet chain ID
-const V2_CHAIN_ID = Number(process.env.CHAIN_ID || '13374202');
+// Chain ID — production: Ethereal mainnet, staging: Ethereal testnet
+const V2_CHAIN_ID = Number(
+  process.env.CHAIN_ID || (isProduction ? '5064014' : '13374202')
+);
 
-// ManualConditionResolver on Ethereal (env override or SDK address for chain)
+// Resolver address — production: ConditionalTokensConditionResolver, staging: ManualConditionResolver
 const V2_RESOLVER_ADDRESS = (process.env.V2_RESOLVER_ADDRESS ||
-  manualConditionResolver[V2_CHAIN_ID]?.address) as Address;
+  (isProduction
+    ? conditionalTokensConditionResolver[V2_CHAIN_ID]?.address
+    : manualConditionResolver[V2_CHAIN_ID]?.address)) as Address;
 
-// Ethereal testnet RPC
-const ETHEREAL_TESTNET_RPC = 'https://rpc.etherealtest.net';
+// Ethereal RPC — production: mainnet, staging: testnet
+const ETHEREAL_RPC = isProduction
+  ? 'https://rpc.ethereal.trade'
+  : 'https://rpc.etherealtest.net';
 
 // ConditionalTokensReader contract on Polygon
 const CONDITIONAL_TOKENS_READER_ADDRESS = (process.env
@@ -79,17 +101,19 @@ const CLOB_API_URL = 'https://clob.polymarket.com';
 
 // ============ Chain Definition ============
 
-const etherealTestnet = defineChain({
+const etherealChain = defineChain({
   id: V2_CHAIN_ID,
-  name: 'Ethereal Testnet',
+  name: isProduction ? 'Ethereal' : 'Ethereal Testnet',
   nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
   rpcUrls: {
-    default: { http: [ETHEREAL_TESTNET_RPC] },
+    default: { http: [ETHEREAL_RPC] },
   },
   blockExplorers: {
     default: {
-      name: 'Ethereal Testnet Explorer',
-      url: 'https://explorer.etherealtest.net',
+      name: isProduction ? 'Ethereal Explorer' : 'Ethereal Testnet Explorer',
+      url: isProduction
+        ? 'https://explorer.ethereal.trade'
+        : 'https://explorer.etherealtest.net',
     },
   },
 });
@@ -161,6 +185,29 @@ const conditionalTokensReaderAbi = [
       },
     ],
   },
+  {
+    type: 'function',
+    name: 'quoteResolution',
+    stateMutability: 'view',
+    inputs: [{ name: 'conditionId', type: 'bytes32' }],
+    outputs: [
+      {
+        name: 'fee',
+        type: 'tuple',
+        components: [
+          { name: 'nativeFee', type: 'uint256' },
+          { name: 'lzTokenFee', type: 'uint256' },
+        ],
+      },
+    ],
+  },
+  {
+    type: 'function',
+    name: 'requestResolution',
+    stateMutability: 'payable',
+    inputs: [{ name: 'conditionId', type: 'bytes32' }],
+    outputs: [],
+  },
 ] as const;
 
 // ManualConditionResolver (Ethereal testnet) — settles conditions with outcome vectors
@@ -221,8 +268,12 @@ function showHelp(): void {
   console.log(`
 Usage: tsx scripts/settle-v2.ts [options]
 
-Settles conditions on ManualConditionResolver (v2 protocol) by reading
-resolution data from Polymarket on Polygon.
+Settles conditions on v2 protocol resolvers by reading resolution data
+from Polymarket on Polygon.
+
+Modes (controlled by NODE_ENV):
+  staging (default)    Settles via ManualConditionResolver on Ethereal testnet
+  production           Bridges via ConditionalTokensReader → ConditionalTokensConditionResolver (LayerZero)
 
 Options:
   --dry-run      Check conditions without sending transactions (default)
@@ -231,18 +282,19 @@ Options:
   --help, -h     Show this help message
 
 Environment Variables:
-  POLYGON_RPC_URL          Polygon RPC URL (required)
-  ADMIN_PRIVATE_KEY        Private key for signing transactions (required for --execute)
-  SAPIENCE_API_URL         Sapience GraphQL API URL (default: https://api.sapience.xyz)
-  V2_RESOLVER_ADDRESS      ManualConditionResolver address (default: from SDK for V2_CHAIN_ID)
-  V2_CHAIN_ID              Ethereal testnet chain ID (default: 13374202)
+  NODE_ENV               'production' for LZ bridging, anything else for manual settlement
+  POLYGON_RPC_URL        Polygon RPC URL (required)
+  ADMIN_PRIVATE_KEY      Private key for signing transactions (required for --execute)
+  SAPIENCE_API_URL       Sapience GraphQL API URL (default: https://api.sapience.xyz)
+  V2_RESOLVER_ADDRESS    Resolver address override (default: from SDK for chain)
+  CHAIN_ID               Ethereal chain ID override (default: 5064014 prod, 13374202 staging)
 
 Examples:
-  # Dry run - check which conditions can be settled
+  # Staging dry run
   tsx scripts/settle-v2.ts --dry-run
 
-  # Execute settlements
-  POLYGON_RPC_URL=https://polygon-rpc.com ADMIN_PRIVATE_KEY=0x... \\
+  # Production execute (LZ bridging)
+  NODE_ENV=production POLYGON_RPC_URL=https://polygon-rpc.com ADMIN_PRIVATE_KEY=0x... \\
     tsx scripts/settle-v2.ts --execute --wait
 `);
 }
@@ -463,8 +515,11 @@ async function checkAndSettleCondition(
   const conditionId = condition.id as Hex;
 
   try {
-    // Step 1: Check if already settled on ManualConditionResolver
-    console.log(`[${conditionId}] Checking ManualConditionResolver...`);
+    // Step 1: Check if already settled on resolver
+    const resolverName = isProduction
+      ? 'ConditionalTokensConditionResolver'
+      : 'ManualConditionResolver';
+    console.log(`[${conditionId}] Checking ${resolverName}...`);
     const [isResolved] = await etherealClient.readContract({
       address: V2_RESOLVER_ADDRESS,
       abi: manualConditionResolverAbi,
@@ -473,7 +528,7 @@ async function checkAndSettleCondition(
     });
 
     if (isResolved) {
-      console.log(`[${conditionId}] Already settled on ManualConditionResolver`);
+      console.log(`[${conditionId}] Already settled on ${resolverName}`);
       return {
         conditionId,
         alreadyResolved: true,
@@ -492,40 +547,12 @@ async function checkAndSettleCondition(
       args: [conditionId],
     });
 
-    let outcome: OutcomeVector | undefined;
-
-    if (canResolve) {
-      // Read the full resolution data from Polygon
-      console.log(`[${conditionId}] Reading resolution data from Polygon...`);
-      const conditionData = await polygonClient.readContract({
-        address: CONDITIONAL_TOKENS_READER_ADDRESS,
-        abi: conditionalTokensReaderAbi,
-        functionName: 'getConditionResolution',
-        args: [conditionId],
-      });
-
-      outcome = payoutsToOutcomeVector(
-        conditionData.yesPayout,
-        conditionData.noPayout
-      );
-      console.log(
-        `[${conditionId}] Polygon outcome: ${outcomeToString(outcome)} (yes=${conditionData.yesPayout}, no=${conditionData.noPayout}, denom=${conditionData.payoutDenominator})`
-      );
-    } else {
-      // Step 3: Fallback — check Polymarket APIs for voided markets
-      console.log(
-        `[${conditionId}] Not resolved on-chain, checking Polymarket APIs...`
-      );
-      const isClosedOnApi = await checkPolymarketApiResolution(conditionId);
-
-      if (isClosedOnApi) {
-        // Voided market — settle as tie
-        outcome = { yesWeight: 1n, noWeight: 1n };
+    if (isProduction) {
+      // ===== PRODUCTION: LayerZero bridging via ConditionalTokensReader =====
+      if (!canResolve) {
         console.log(
-          `[${conditionId}] Market voided/closed on Polymarket API, settling as TIE`
+          `[${conditionId}] Not resolved on Polygon yet, skipping`
         );
-      } else {
-        console.log(`[${conditionId}] Not resolved anywhere yet, skipping`);
         return {
           conditionId,
           alreadyResolved: false,
@@ -534,87 +561,223 @@ async function checkAndSettleCondition(
           settled: false,
         };
       }
-    }
 
-    // Settle the condition on ManualConditionResolver
-    if (options.dryRun) {
+      if (options.dryRun) {
+        console.log(
+          `[${conditionId}] DRY RUN — would call requestResolution (LZ bridge)`
+        );
+        return {
+          conditionId,
+          alreadyResolved: false,
+          resolvedOnPolygon: true,
+          resolvedViaApi: false,
+          settled: false,
+        };
+      }
+
+      if (!walletClient) {
+        return {
+          conditionId,
+          alreadyResolved: false,
+          resolvedOnPolygon: true,
+          resolvedViaApi: false,
+          settled: false,
+          error: 'No wallet client (missing ADMIN_PRIVATE_KEY)',
+        };
+      }
+
+      // Quote LayerZero fee
+      console.log(`[${conditionId}] Getting LayerZero fee quote...`);
+      const fee = await polygonClient.readContract({
+        address: CONDITIONAL_TOKENS_READER_ADDRESS,
+        abi: conditionalTokensReaderAbi,
+        functionName: 'quoteResolution',
+        args: [conditionId],
+      });
+      const nativeFee = fee.nativeFee;
       console.log(
-        `[${conditionId}] DRY RUN — would call settleCondition(${outcomeToString(outcome)})`
+        `[${conditionId}] LayerZero fee: ${formatEther(nativeFee)} POL`
       );
+
+      // Send requestResolution on Polygon (triggers LZ bridge to Ethereal)
+      console.log(`[${conditionId}] Sending requestResolution...`);
+      const estimatedGas = await polygonClient.estimateContractGas({
+        address: CONDITIONAL_TOKENS_READER_ADDRESS,
+        abi: conditionalTokensReaderAbi,
+        functionName: 'requestResolution',
+        args: [conditionId],
+        value: nativeFee,
+        account: walletClient.account,
+      });
+      const gasLimit = (estimatedGas * 130n) / 100n;
+      console.log(
+        `[${conditionId}] Estimated gas: ${estimatedGas}, using limit: ${gasLimit}`
+      );
+
+      const hash = await walletClient.writeContract({
+        address: CONDITIONAL_TOKENS_READER_ADDRESS,
+        abi: conditionalTokensReaderAbi,
+        functionName: 'requestResolution',
+        args: [conditionId],
+        value: nativeFee,
+        gas: gasLimit,
+      });
+
+      console.log(`[${conditionId}] Transaction sent: ${hash}`);
+
+      if (options.wait) {
+        console.log(`[${conditionId}] Waiting for confirmation...`);
+        const receipt = await polygonClient.waitForTransactionReceipt({
+          hash,
+        });
+        console.log(
+          `[${conditionId}] Confirmed in block ${receipt.blockNumber}`
+        );
+      }
+
+      return {
+        conditionId,
+        alreadyResolved: false,
+        resolvedOnPolygon: true,
+        resolvedViaApi: false,
+        settled: true,
+        txHash: hash,
+      };
+    } else {
+      // ===== STAGING: ManualConditionResolver direct settlement =====
+      let outcome: OutcomeVector | undefined;
+
+      if (canResolve) {
+        // Read the full resolution data from Polygon
+        console.log(
+          `[${conditionId}] Reading resolution data from Polygon...`
+        );
+        const conditionData = await polygonClient.readContract({
+          address: CONDITIONAL_TOKENS_READER_ADDRESS,
+          abi: conditionalTokensReaderAbi,
+          functionName: 'getConditionResolution',
+          args: [conditionId],
+        });
+
+        outcome = payoutsToOutcomeVector(
+          conditionData.yesPayout,
+          conditionData.noPayout
+        );
+        console.log(
+          `[${conditionId}] Polygon outcome: ${outcomeToString(outcome)} (yes=${conditionData.yesPayout}, no=${conditionData.noPayout}, denom=${conditionData.payoutDenominator})`
+        );
+      } else {
+        // Fallback — check Polymarket APIs for voided markets
+        console.log(
+          `[${conditionId}] Not resolved on-chain, checking Polymarket APIs...`
+        );
+        const isClosedOnApi =
+          await checkPolymarketApiResolution(conditionId);
+
+        if (isClosedOnApi) {
+          // Voided market — settle as tie
+          outcome = { yesWeight: 1n, noWeight: 1n };
+          console.log(
+            `[${conditionId}] Market voided/closed on Polymarket API, settling as TIE`
+          );
+        } else {
+          console.log(
+            `[${conditionId}] Not resolved anywhere yet, skipping`
+          );
+          return {
+            conditionId,
+            alreadyResolved: false,
+            resolvedOnPolygon: false,
+            resolvedViaApi: false,
+            settled: false,
+          };
+        }
+      }
+
+      // Settle the condition on ManualConditionResolver
+      if (options.dryRun) {
+        console.log(
+          `[${conditionId}] DRY RUN — would call settleCondition(${outcomeToString(outcome)})`
+        );
+        return {
+          conditionId,
+          alreadyResolved: false,
+          resolvedOnPolygon: canResolve,
+          resolvedViaApi: !canResolve,
+          settled: false,
+          outcome,
+        };
+      }
+
+      if (!walletClient) {
+        return {
+          conditionId,
+          alreadyResolved: false,
+          resolvedOnPolygon: canResolve,
+          resolvedViaApi: !canResolve,
+          settled: false,
+          outcome,
+          error: 'No wallet client (missing ADMIN_PRIVATE_KEY)',
+        };
+      }
+
+      console.log(
+        `[${conditionId}] Settling condition as ${outcomeToString(outcome)}...`
+      );
+
+      const outcomeArg = {
+        yesWeight: outcome.yesWeight,
+        noWeight: outcome.noWeight,
+      } as const;
+
+      const estimatedGas = await etherealClient.estimateContractGas({
+        address: V2_RESOLVER_ADDRESS,
+        abi: manualConditionResolverAbi,
+        functionName: 'settleCondition' as const,
+        args: [conditionId, outcomeArg] as readonly [
+          `0x${string}`,
+          typeof outcomeArg,
+        ],
+        account: walletClient.account,
+      });
+      const gasLimit = (estimatedGas * 130n) / 100n;
+      console.log(
+        `[${conditionId}] Estimated gas: ${estimatedGas}, using limit: ${gasLimit}`
+      );
+
+      const hash = await walletClient.writeContract({
+        address: V2_RESOLVER_ADDRESS,
+        abi: manualConditionResolverAbi,
+        functionName: 'settleCondition' as const,
+        args: [conditionId, outcomeArg] as readonly [
+          `0x${string}`,
+          typeof outcomeArg,
+        ],
+        gas: gasLimit,
+      });
+
+      console.log(`[${conditionId}] Transaction sent: ${hash}`);
+
+      if (options.wait) {
+        console.log(`[${conditionId}] Waiting for confirmation...`);
+        const receipt = await etherealClient.waitForTransactionReceipt({
+          hash,
+        });
+        console.log(
+          `[${conditionId}] Confirmed in block ${receipt.blockNumber}`
+        );
+      }
+
       return {
         conditionId,
         alreadyResolved: false,
         resolvedOnPolygon: canResolve,
         resolvedViaApi: !canResolve,
-        settled: false,
+        settled: true,
         outcome,
+        txHash: hash,
       };
     }
-
-    if (!walletClient) {
-      return {
-        conditionId,
-        alreadyResolved: false,
-        resolvedOnPolygon: canResolve,
-        resolvedViaApi: !canResolve,
-        settled: false,
-        outcome,
-        error: 'No wallet client (missing ADMIN_PRIVATE_KEY)',
-      };
-    }
-
-    console.log(
-      `[${conditionId}] Settling condition as ${outcomeToString(outcome)}...`
-    );
-
-    const outcomeArg = {
-      yesWeight: outcome.yesWeight,
-      noWeight: outcome.noWeight,
-    } as const;
-
-    const estimatedGas = await etherealClient.estimateContractGas({
-      address: V2_RESOLVER_ADDRESS,
-      abi: manualConditionResolverAbi,
-      functionName: 'settleCondition' as const,
-      args: [conditionId, outcomeArg] as readonly [
-        `0x${string}`,
-        typeof outcomeArg,
-      ],
-      account: walletClient.account,
-    });
-    const gasLimit = (estimatedGas * 130n) / 100n;
-    console.log(
-      `[${conditionId}] Estimated gas: ${estimatedGas}, using limit: ${gasLimit}`
-    );
-
-    const hash = await walletClient.writeContract({
-      address: V2_RESOLVER_ADDRESS,
-      abi: manualConditionResolverAbi,
-      functionName: 'settleCondition' as const,
-      args: [conditionId, outcomeArg] as readonly [
-        `0x${string}`,
-        typeof outcomeArg,
-      ],
-      gas: gasLimit,
-    });
-
-    console.log(`[${conditionId}] Transaction sent: ${hash}`);
-
-    if (options.wait) {
-      console.log(`[${conditionId}] Waiting for confirmation...`);
-      const receipt = await etherealClient.waitForTransactionReceipt({ hash });
-      console.log(`[${conditionId}] Confirmed in block ${receipt.blockNumber}`);
-    }
-
-    return {
-      conditionId,
-      alreadyResolved: false,
-      resolvedOnPolygon: canResolve,
-      resolvedViaApi: !canResolve,
-      settled: true,
-      outcome,
-      txHash: hash,
-    };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     return {
@@ -659,6 +822,9 @@ async function main() {
     process.exit(1);
   }
 
+  const mode = isProduction ? 'production' : 'staging';
+  console.log(`Mode: ${mode}`);
+
   // Confirm production access if pointing to production
   await confirmProductionAccess(process.env.SAPIENCE_API_URL);
 
@@ -668,21 +834,17 @@ async function main() {
     transport: http(polygonRpcUrl),
   });
 
-  // Ethereal testnet client — read ManualConditionResolver
+  // Ethereal client — read resolver state
   const etherealClient = createPublicClient({
-    chain: etherealTestnet,
-    transport: http(ETHEREAL_TESTNET_RPC),
+    chain: etherealChain,
+    transport: http(ETHEREAL_RPC),
   });
 
   console.log(
-    `Ethereal testnet client connected (chain ${V2_CHAIN_ID}, resolver ${V2_RESOLVER_ADDRESS})`
+    `Ethereal client connected (chain ${V2_CHAIN_ID}, resolver ${V2_RESOLVER_ADDRESS})`
   );
 
-  let walletClient: WalletClient<
-    Transport,
-    typeof etherealTestnet,
-    Account
-  > | null = null;
+  let walletClient: WalletClient<Transport, Chain, Account> | null = null;
 
   if (privateKey) {
     const formattedKey = privateKey.startsWith('0x')
@@ -690,19 +852,35 @@ async function main() {
       : `0x${privateKey}`;
     const account = privateKeyToAccount(formattedKey as Hex);
 
-    walletClient = createWalletClient({
-      account,
-      chain: etherealTestnet,
-      transport: http(ETHEREAL_TESTNET_RPC),
-    });
+    if (isProduction) {
+      // Production: wallet on Polygon for requestResolution (LZ bridging)
+      walletClient = createWalletClient({
+        account,
+        chain: polygon,
+        transport: http(polygonRpcUrl),
+      });
 
-    // Check wallet balance on Ethereal testnet
-    const balance = await etherealClient.getBalance({
-      address: account.address,
-    });
-    console.log(
-      `Wallet ${account.address} balance: ${formatEther(balance)} ETH (Ethereal testnet)`
-    );
+      const balance = await polygonClient.getBalance({
+        address: account.address,
+      });
+      console.log(
+        `Wallet ${account.address} balance: ${formatEther(balance)} POL (Polygon)`
+      );
+    } else {
+      // Staging: wallet on Ethereal for settleCondition
+      walletClient = createWalletClient({
+        account,
+        chain: etherealChain,
+        transport: http(ETHEREAL_RPC),
+      });
+
+      const balance = await etherealClient.getBalance({
+        address: account.address,
+      });
+      console.log(
+        `Wallet ${account.address} balance: ${formatEther(balance)} ETH (Ethereal)`
+      );
+    }
   }
 
   try {
