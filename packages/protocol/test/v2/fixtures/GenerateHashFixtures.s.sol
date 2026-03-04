@@ -11,7 +11,7 @@ import "src/v2/utils/SignatureProcessor.sol";
  * @notice Generates golden hash fixtures from the REAL contract encoding logic.
  *         Output is consumed by the SDK's vitest suite to verify TypeScript ↔ Solidity parity.
  *
- * Run: forge script test/v2/fixtures/GenerateHashFixtures.s.sol -vvv
+ * Run: forge script test/v2/fixtures/GenerateHashFixtures.s.sol --tc GenerateHashFixtures --via-ir -vvv
  * Then copy the logged JSON into packages/sdk/auction/__fixtures__/escrowHashes.json
  */
 contract GenerateHashFixtures is Script {
@@ -20,6 +20,7 @@ contract GenerateHashFixtures is Script {
         new SignatureValidatorHarness();
     SignatureProcessorHarness private processor =
         new SignatureProcessorHarness();
+
     // Same test addresses as the vitest fixtures (checksummed)
     address constant PREDICTOR = 0x1111111111111111111111111111111111111111;
     address constant COUNTERPARTY = 0x2222222222222222222222222222222222222222;
@@ -39,19 +40,19 @@ contract GenerateHashFixtures is Script {
     bytes32 constant CONDITION_ID_B =
         0xcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd;
 
-    // Typehashes imported directly from the contract — no copies
+    // --- Internal helpers to avoid stack-too-deep in run() ---
 
-    function run() external view {
-        // --- pickConfigId (single pick) ---
+    function _singlePickConfigId() internal pure returns (bytes32) {
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = IV2Types.Pick({
             conditionResolver: RESOLVER_A,
             conditionId: CONDITION_ID_A,
             predictedOutcome: IV2Types.OutcomeSide.NO
         });
-        bytes32 pickConfigId = keccak256(abi.encode(picks));
+        return keccak256(abi.encode(picks));
+    }
 
-        // --- pickConfigId (two picks) ---
+    function _twoPickConfigId() internal pure returns (bytes32) {
         IV2Types.Pick[] memory twoPicks = new IV2Types.Pick[](2);
         twoPicks[0] = IV2Types.Pick({
             conditionResolver: RESOLVER_A,
@@ -63,77 +64,67 @@ contract GenerateHashFixtures is Script {
             conditionId: CONDITION_ID_B,
             predictedOutcome: IV2Types.OutcomeSide.YES
         });
-        bytes32 twoPickConfigId = keccak256(abi.encode(twoPicks));
+        return keccak256(abi.encode(twoPicks));
+    }
 
-        // --- predictionHash (no sponsor) ---
-        bytes32 predictionHashNoSponsor = keccak256(
+    function _predictionHash(
+        bytes32 pickConfigId,
+        address sponsor,
+        bytes memory sponsorData
+    ) internal pure returns (bytes32) {
+        return keccak256(
             abi.encode(
                 pickConfigId,
                 PREDICTOR_COLLATERAL,
                 COUNTERPARTY_COLLATERAL,
                 PREDICTOR,
                 COUNTERPARTY,
-                address(0),
-                bytes("")
+                sponsor,
+                sponsorData
             )
         );
+    }
 
-        // --- predictionHash (with sponsor) ---
-        bytes32 predictionHashWithSponsor = keccak256(
+    function _burnHash(bytes32 pickConfigId) internal pure returns (bytes32) {
+        return keccak256(
             abi.encode(
                 pickConfigId,
-                PREDICTOR_COLLATERAL,
-                COUNTERPARTY_COLLATERAL,
+                uint256(500_000),
+                uint256(500_000),
                 PREDICTOR,
                 COUNTERPARTY,
-                SPONSOR,
-                bytes("")
+                uint256(1_000_000),
+                uint256(0)
             )
         );
+    }
 
-        // --- predictionHash (with sponsor + data) ---
-        bytes32 predictionHashWithSponsorData = keccak256(
-            abi.encode(
-                pickConfigId,
-                PREDICTOR_COLLATERAL,
-                COUNTERPARTY_COLLATERAL,
-                PREDICTOR,
-                COUNTERPARTY,
-                SPONSOR,
-                bytes(hex"1234")
-            )
-        );
-
-        // --- burnHash ---
-        bytes32 burnHash = keccak256(
-            abi.encode(
-                pickConfigId,
-                uint256(500_000), // predictorTokenAmount
-                uint256(500_000), // counterpartyTokenAmount
-                PREDICTOR, // predictorHolder
-                COUNTERPARTY, // counterpartyHolder
-                uint256(1_000_000), // predictorPayout
-                uint256(0) // counterpartyPayout
-            )
-        );
-
-        // --- MintApproval struct hash (for EIP-712) ---
-        bytes32 mintStructHash = keccak256(
+    function _mintStructHash(bytes32 predictionHash)
+        internal
+        view
+        returns (bytes32)
+    {
+        return keccak256(
             abi.encode(
                 validator.MINT_APPROVAL_TYPEHASH(),
-                predictionHashNoSponsor,
+                predictionHash,
                 PREDICTOR,
                 PREDICTOR_COLLATERAL,
                 NONCE,
                 DEADLINE
             )
         );
+    }
 
-        // --- BurnApproval struct hash ---
-        bytes32 burnStructHash = keccak256(
+    function _burnStructHash(bytes32 burnHashVal)
+        internal
+        view
+        returns (bytes32)
+    {
+        return keccak256(
             abi.encode(
                 validator.BURN_APPROVAL_TYPEHASH(),
-                burnHash,
+                burnHashVal,
                 PREDICTOR,
                 uint256(500_000),
                 uint256(1_000_000),
@@ -141,66 +132,118 @@ contract GenerateHashFixtures is Script {
                 DEADLINE
             )
         );
+    }
 
-        // --- Permission hashes (catches #1156: keccak256("V2_MINT") vs keccak256("MINT")) ---
-        bytes32 mintPermission = validator.MINT_PERMISSION();
-        bytes32 burnPermission = validator.BURN_PERMISSION();
+    function run() external view {
+        bytes32 pickConfigId = _singlePickConfigId();
+        bytes32 twoPickConfigId = _twoPickConfigId();
+        bytes32 predictionHashNoSponsor =
+            _predictionHash(pickConfigId, address(0), bytes(""));
+        bytes32 predictionHashWithSponsor =
+            _predictionHash(pickConfigId, SPONSOR, bytes(""));
+        bytes32 predictionHashWithSponsorData =
+            _predictionHash(pickConfigId, SPONSOR, bytes(hex"1234"));
+        bytes32 burnHashVal = _burnHash(pickConfigId);
+        bytes32 mintStructHashVal = _mintStructHash(predictionHashNoSponsor);
+        bytes32 burnStructHashVal = _burnStructHash(burnHashVal);
 
-        // --- Vault SignatureProcessor constants (catches #118) ---
-        bytes32 approveTypehash = processor.APPROVE_TYPEHASH();
+        _logJson(
+            pickConfigId,
+            twoPickConfigId,
+            predictionHashNoSponsor,
+            predictionHashWithSponsor,
+            predictionHashWithSponsorData,
+            burnHashVal,
+            mintStructHashVal,
+            burnStructHashVal
+        );
+    }
 
-        // --- Full _hashTypedDataV4 for MintApproval (includes EIP-712 domain separator) ---
-        // Uses the harness's domain: name="PredictionMarketEscrow", version="1"
-        // Note: chainId and verifyingContract come from the harness deployment context,
-        // so we output the domain separator separately for the SDK to reconstruct.
-        bytes32 mintApprovalDigest = validator.hashTypedDataV4(mintStructHash);
-
-        // --- Full _hashTypedDataV4 for BurnApproval ---
-        bytes32 burnApprovalDigest = validator.hashTypedDataV4(burnStructHash);
-
-        // --- Output as JSON ---
+    function _logJson(
+        bytes32 pickConfigId,
+        bytes32 twoPickConfigId,
+        bytes32 predictionHashNoSponsor,
+        bytes32 predictionHashWithSponsor,
+        bytes32 predictionHashWithSponsorData,
+        bytes32 burnHashVal,
+        bytes32 mintStructHashVal,
+        bytes32 burnStructHashVal
+    ) internal view {
         console.log("{");
-        console.log("  \"pickConfigId\":");
-        console.log("    \"%s\",", vm.toString(pickConfigId));
-        console.log("  \"twoPickConfigId\":");
-        console.log("    \"%s\",", vm.toString(twoPickConfigId));
-        console.log("  \"predictionHashNoSponsor\":");
-        console.log("    \"%s\",", vm.toString(predictionHashNoSponsor));
-        console.log("  \"predictionHashWithSponsor\":");
-        console.log("    \"%s\",", vm.toString(predictionHashWithSponsor));
-        console.log("  \"predictionHashWithSponsorData\":");
-        console.log("    \"%s\",", vm.toString(predictionHashWithSponsorData));
-        console.log("  \"burnHash\":");
-        console.log("    \"%s\",", vm.toString(burnHash));
-        console.log("  \"mintApprovalStructHash\":");
-        console.log("    \"%s\",", vm.toString(mintStructHash));
-        console.log("  \"burnApprovalStructHash\":");
-        console.log("    \"%s\",", vm.toString(burnStructHash));
-        console.log("  \"mintPermission\":");
-        console.log("    \"%s\",", vm.toString(mintPermission));
-        console.log("  \"burnPermission\":");
-        console.log("    \"%s\",", vm.toString(burnPermission));
-        console.log("  \"approveTypehash\":");
-        console.log("    \"%s\",", vm.toString(approveTypehash));
-        console.log("  \"mintApprovalDigest\":");
-        console.log("    \"%s\",", vm.toString(mintApprovalDigest));
-        console.log("  \"burnApprovalDigest\":");
-        console.log("    \"%s\",", vm.toString(burnApprovalDigest));
-        console.log("  \"domainChainId\":");
-        console.log("    %s,", vm.toString(block.chainid));
-        console.log("  \"domainVerifyingContract\":");
-        console.log("    \"%s\"", vm.toString(address(validator)));
+        console.log(
+            "  \"pickConfigId\":\n    \"%s\",", vm.toString(pickConfigId)
+        );
+        console.log(
+            "  \"twoPickConfigId\":\n    \"%s\",", vm.toString(twoPickConfigId)
+        );
+        console.log(
+            "  \"predictionHashNoSponsor\":\n    \"%s\",",
+            vm.toString(predictionHashNoSponsor)
+        );
+        console.log(
+            "  \"predictionHashWithSponsor\":\n    \"%s\",",
+            vm.toString(predictionHashWithSponsor)
+        );
+        console.log(
+            "  \"predictionHashWithSponsorData\":\n    \"%s\",",
+            vm.toString(predictionHashWithSponsorData)
+        );
+        console.log("  \"burnHash\":\n    \"%s\",", vm.toString(burnHashVal));
+        console.log(
+            "  \"mintApprovalStructHash\":\n    \"%s\",",
+            vm.toString(mintStructHashVal)
+        );
+        console.log(
+            "  \"burnApprovalStructHash\":\n    \"%s\",",
+            vm.toString(burnStructHashVal)
+        );
+
+        _logJsonPart2(mintStructHashVal, burnStructHashVal);
+    }
+
+    function _logJsonPart2(bytes32 mintStructHashVal, bytes32 burnStructHashVal)
+        internal
+        view
+    {
+        console.log(
+            "  \"mintPermission\":\n    \"%s\",",
+            vm.toString(validator.MINT_PERMISSION())
+        );
+        console.log(
+            "  \"burnPermission\":\n    \"%s\",",
+            vm.toString(validator.BURN_PERMISSION())
+        );
+        console.log(
+            "  \"approveTypehash\":\n    \"%s\",",
+            vm.toString(processor.APPROVE_TYPEHASH())
+        );
+        console.log(
+            "  \"mintApprovalDigest\":\n    \"%s\",",
+            vm.toString(validator.hashTypedDataV4(mintStructHashVal))
+        );
+        console.log(
+            "  \"burnApprovalDigest\":\n    \"%s\",",
+            vm.toString(validator.hashTypedDataV4(burnStructHashVal))
+        );
+        console.log("  \"domainChainId\":\n    %s,", vm.toString(block.chainid));
+        console.log(
+            "  \"domainVerifyingContract\":\n    \"%s\"",
+            vm.toString(address(validator))
+        );
         console.log("}");
     }
 }
 
 /**
- * @notice Concrete implementation of SignatureValidator for accessing public constants
+ * @notice Concrete implementation of SignatureProcessor for accessing APPROVE_TYPEHASH
  */
 contract SignatureProcessorHarness is SignatureProcessor {
     constructor() { }
 }
 
+/**
+ * @notice Concrete implementation of SignatureValidator for accessing public constants
+ */
 contract SignatureValidatorHarness is SignatureValidator {
     constructor() { }
 
