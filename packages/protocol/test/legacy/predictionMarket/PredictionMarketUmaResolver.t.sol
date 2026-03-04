@@ -2,10 +2,8 @@
 pragma solidity ^0.8.19;
 
 import "forge-std/Test.sol";
-import
-    "../../../src/legacy/predictionMarket/resolvers/PredictionMarketUmaResolver.sol";
-import
-    "../../../src/legacy/predictionMarket/interfaces/IPredictionMarketResolver.sol";
+import "../../../src/legacy/predictionMarket/resolvers/PredictionMarketUmaResolver.sol";
+import "../../../src/legacy/predictionMarket/interfaces/IPredictionMarketResolver.sol";
 import "./mocks/MockERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -89,13 +87,13 @@ contract PredictionMarketUmaResolverTest is Test {
 
         // Create resolver settings
         PredictionMarketUmaResolver.Settings memory settings =
-        PredictionMarketUmaResolver.Settings({
-            maxPredictionMarkets: MAX_PREDICTION_MARKETS,
-            optimisticOracleV3: address(mockOptimisticOracleV3),
-            bondCurrency: address(bondCurrency),
-            bondAmount: BOND_AMOUNT,
-            assertionLiveness: ASSERTION_LIVENESS
-        });
+            PredictionMarketUmaResolver.Settings({
+                maxPredictionMarkets: MAX_PREDICTION_MARKETS,
+                optimisticOracleV3: address(mockOptimisticOracleV3),
+                bondCurrency: address(bondCurrency),
+                bondAmount: BOND_AMOUNT,
+                assertionLiveness: ASSERTION_LIVENESS
+            });
 
         // Create approved addresses arrays
         address[] memory approvedAsserters = new address[](1);
@@ -116,13 +114,13 @@ contract PredictionMarketUmaResolverTest is Test {
 
     function test_constructor_validParameters() public {
         PredictionMarketUmaResolver.Settings memory settings =
-        PredictionMarketUmaResolver.Settings({
-            maxPredictionMarkets: 5,
-            optimisticOracleV3: address(mockOptimisticOracleV3),
-            bondCurrency: address(bondCurrency),
-            bondAmount: 2 ether,
-            assertionLiveness: 7200
-        });
+            PredictionMarketUmaResolver.Settings({
+                maxPredictionMarkets: 5,
+                optimisticOracleV3: address(mockOptimisticOracleV3),
+                bondCurrency: address(bondCurrency),
+                bondAmount: 2 ether,
+                assertionLiveness: 7200
+            });
 
         address[] memory approvedAsserters = new address[](2);
         approvedAsserters[0] = makeAddr("asserter1");
@@ -200,17 +198,18 @@ contract PredictionMarketUmaResolverTest is Test {
         // Verify assertion was submitted
         (
             bytes32 returnedMarketId,
-            bool assertionSubmitted,
-            ,
-            ,
+            bool assertionSubmitted,,,
             bytes32 assertionId
         ) = resolver.wrappedMarkets(marketId);
         assertTrue(assertionId != bytes32(0));
         assertTrue(assertionSubmitted);
 
         // Verify UMA settlement was created
-        (bytes32 settlementMarketId, bool resolvedToYes, uint256 submissionTime)
-        = resolver.umaSettlements(assertionId);
+        (
+            bytes32 settlementMarketId,
+            bool resolvedToYes,
+            uint256 submissionTime
+        ) = resolver.umaSettlements(assertionId);
         assertEq(settlementMarketId, marketId);
         assertTrue(resolvedToYes);
         assertEq(submissionTime, block.timestamp);
@@ -287,13 +286,13 @@ contract PredictionMarketUmaResolverTest is Test {
         bondCurrency.mint(poorAsserter, BOND_AMOUNT / 2); // Only half the required amount
 
         PredictionMarketUmaResolver.Settings memory settings =
-        PredictionMarketUmaResolver.Settings({
-            maxPredictionMarkets: MAX_PREDICTION_MARKETS,
-            optimisticOracleV3: address(mockOptimisticOracleV3),
-            bondCurrency: address(bondCurrency),
-            bondAmount: BOND_AMOUNT,
-            assertionLiveness: ASSERTION_LIVENESS
-        });
+            PredictionMarketUmaResolver.Settings({
+                maxPredictionMarkets: MAX_PREDICTION_MARKETS,
+                optimisticOracleV3: address(mockOptimisticOracleV3),
+                bondCurrency: address(bondCurrency),
+                bondAmount: BOND_AMOUNT,
+                assertionLiveness: ASSERTION_LIVENESS
+            });
 
         address[] memory approvedAsserters = new address[](1);
         approvedAsserters[0] = poorAsserter;
@@ -476,8 +475,7 @@ contract PredictionMarketUmaResolverTest is Test {
         PredictionMarketUmaResolver.PredictedOutcome[] memory outcomes =
             new PredictionMarketUmaResolver.PredictedOutcome[](1);
         outcomes[0] = PredictionMarketUmaResolver.PredictedOutcome({
-            marketId: marketId,
-            prediction: true
+            marketId: marketId, prediction: true
         });
 
         bytes memory encodedOutcomes = abi.encode(outcomes);
@@ -526,8 +524,7 @@ contract PredictionMarketUmaResolverTest is Test {
         PredictionMarketUmaResolver.PredictedOutcome[] memory outcomes =
             new PredictionMarketUmaResolver.PredictedOutcome[](1);
         outcomes[0] = PredictionMarketUmaResolver.PredictedOutcome({
-            marketId: invalidMarketId,
-            prediction: true
+            marketId: invalidMarketId, prediction: true
         });
 
         bytes memory encodedOutcomes = abi.encode(outcomes);
@@ -548,8 +545,7 @@ contract PredictionMarketUmaResolverTest is Test {
         PredictionMarketUmaResolver.PredictedOutcome[] memory outcomes =
             new PredictionMarketUmaResolver.PredictedOutcome[](1);
         outcomes[0] = PredictionMarketUmaResolver.PredictedOutcome({
-            marketId: marketId,
-            prediction: true
+            marketId: marketId, prediction: true
         });
 
         bytes memory encodedOutcomes = abi.encode(outcomes);
@@ -584,7 +580,7 @@ contract PredictionMarketUmaResolverTest is Test {
         outcomes[0] = PredictionMarketUmaResolver.PredictedOutcome({
             marketId: marketId,
             prediction: true // Correct prediction
-         });
+        });
 
         bytes memory encodedOutcomes = abi.encode(outcomes);
 
@@ -621,7 +617,7 @@ contract PredictionMarketUmaResolverTest is Test {
         outcomes[0] = PredictionMarketUmaResolver.PredictedOutcome({
             marketId: marketId,
             prediction: false // Wrong prediction
-         });
+        });
 
         bytes memory encodedOutcomes = abi.encode(outcomes);
 
@@ -650,8 +646,7 @@ contract PredictionMarketUmaResolverTest is Test {
         PredictionMarketUmaResolver.PredictedOutcome[] memory outcomes =
             new PredictionMarketUmaResolver.PredictedOutcome[](1);
         outcomes[0] = PredictionMarketUmaResolver.PredictedOutcome({
-            marketId: marketId,
-            prediction: true
+            marketId: marketId, prediction: true
         });
 
         bytes memory encodedOutcomes = abi.encode(outcomes);
@@ -704,13 +699,12 @@ contract PredictionMarketUmaResolverTest is Test {
         PredictionMarketUmaResolver.PredictedOutcome[] memory outcomes =
             new PredictionMarketUmaResolver.PredictedOutcome[](2);
         outcomes[0] = PredictionMarketUmaResolver.PredictedOutcome({
-            marketId: marketIdUnsettled,
-            prediction: true
+            marketId: marketIdUnsettled, prediction: true
         });
         outcomes[1] = PredictionMarketUmaResolver.PredictedOutcome({
             marketId: marketIdSettled,
             prediction: false // Wrong prediction against settled YES
-         });
+        });
 
         bytes memory encodedOutcomes = abi.encode(outcomes);
 
@@ -735,12 +729,10 @@ contract PredictionMarketUmaResolverTest is Test {
         PredictionMarketUmaResolver.PredictedOutcome[] memory outcomes =
             new PredictionMarketUmaResolver.PredictedOutcome[](2);
         outcomes[0] = PredictionMarketUmaResolver.PredictedOutcome({
-            marketId: keccak256("market1"),
-            prediction: true
+            marketId: keccak256("market1"), prediction: true
         });
         outcomes[1] = PredictionMarketUmaResolver.PredictedOutcome({
-            marketId: keccak256("market2"),
-            prediction: false
+            marketId: keccak256("market2"), prediction: false
         });
 
         bytes memory encoded = resolver.encodePredictionOutcomes(outcomes);
@@ -760,8 +752,7 @@ contract PredictionMarketUmaResolverTest is Test {
         PredictionMarketUmaResolver.PredictedOutcome[] memory outcomes =
             new PredictionMarketUmaResolver.PredictedOutcome[](1);
         outcomes[0] = PredictionMarketUmaResolver.PredictedOutcome({
-            marketId: marketId,
-            prediction: true
+            marketId: marketId, prediction: true
         });
 
         bytes memory encoded = abi.encode(outcomes);
@@ -797,12 +788,10 @@ contract PredictionMarketUmaResolverTest is Test {
         PredictionMarketUmaResolver.PredictedOutcome[] memory outcomes =
             new PredictionMarketUmaResolver.PredictedOutcome[](2);
         outcomes[0] = PredictionMarketUmaResolver.PredictedOutcome({
-            marketId: marketId1,
-            prediction: true
+            marketId: marketId1, prediction: true
         });
         outcomes[1] = PredictionMarketUmaResolver.PredictedOutcome({
-            marketId: marketId2,
-            prediction: false
+            marketId: marketId2, prediction: false
         });
 
         bytes memory encodedOutcomes = abi.encode(outcomes);
@@ -848,12 +837,10 @@ contract PredictionMarketUmaResolverTest is Test {
         PredictionMarketUmaResolver.PredictedOutcome[] memory outcomes =
             new PredictionMarketUmaResolver.PredictedOutcome[](2);
         outcomes[0] = PredictionMarketUmaResolver.PredictedOutcome({
-            marketId: marketId1,
-            prediction: true
+            marketId: marketId1, prediction: true
         });
         outcomes[1] = PredictionMarketUmaResolver.PredictedOutcome({
-            marketId: marketId2,
-            prediction: false
+            marketId: marketId2, prediction: false
         });
 
         bytes memory encodedOutcomes = abi.encode(outcomes);
@@ -894,8 +881,7 @@ contract PredictionMarketUmaResolverTest is Test {
         PredictionMarketUmaResolver.PredictedOutcome[] memory outcomes =
             new PredictionMarketUmaResolver.PredictedOutcome[](1);
         outcomes[0] = PredictionMarketUmaResolver.PredictedOutcome({
-            marketId: bytes32(0),
-            prediction: true
+            marketId: bytes32(0), prediction: true
         });
 
         bytes memory encodedOutcomes = abi.encode(outcomes);

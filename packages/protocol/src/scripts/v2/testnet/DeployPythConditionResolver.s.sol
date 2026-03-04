@@ -2,8 +2,9 @@
 pragma solidity ^0.8.19;
 
 import { Script, console } from "forge-std/Script.sol";
-import { PythConditionResolver } from
-    "../../../v2/resolvers/pyth/PythConditionResolver.sol";
+import {
+    PythConditionResolver
+} from "../../../v2/resolvers/pyth/PythConditionResolver.sol";
 
 /// @title Deploy PythConditionResolver
 /// @notice Deploys a PythConditionResolver on PM Network (Ethereal testnet)

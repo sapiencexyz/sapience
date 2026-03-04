@@ -161,7 +161,9 @@ contract PassiveLiquidityVault is
         string memory _name,
         string memory _symbol
     ) ERC20(_name, _symbol) Ownable(msg.sender) {
-        if (asset_ == address(0)) revert InvalidAsset(asset_);
+        if (asset_ == address(0)) {
+            revert InvalidAsset(asset_);
+        }
         if (_manager == address(0)) revert InvalidManager(_manager);
 
         _asset = IERC20(asset_);
@@ -954,7 +956,12 @@ contract PassiveLiquidityVault is
         address, /* from */
         uint256, /* tokenId */
         bytes calldata /* data */
-    ) external pure override returns (bytes4) {
+    )
+        external
+        pure
+        override
+        returns (bytes4)
+    {
         return IERC721Receiver.onERC721Received.selector;
     }
 }

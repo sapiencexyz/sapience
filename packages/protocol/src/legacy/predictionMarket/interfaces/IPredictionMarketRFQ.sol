@@ -23,8 +23,8 @@ interface IPredictionMarketRFQ {
      * @param mintPredictionRequestData Struct containing the mint prediction request data
      */
     function mint(
-        IPredictionStructs.MintPredictionRequestData calldata
-            mintPredictionRequestData
+        IPredictionStructs
+                .MintPredictionRequestData calldata mintPredictionRequestData
     ) external returns (uint256 makerNftTokenId, uint256 takerNftTokenId);
 
     /**

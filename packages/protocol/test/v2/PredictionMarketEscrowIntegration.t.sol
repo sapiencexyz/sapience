@@ -768,9 +768,7 @@ contract PredictionMarketEscrowIntegrationTest is Test {
     /**
      * @notice Test: Second mint with same picks emits PredictionCreated with same pickConfigId
      */
-    function test_emit_PredictionCreated_samePickConfigIdOnSecondMint()
-        public
-    {
+    function test_emit_PredictionCreated_samePickConfigIdOnSecondMint() public {
         bytes32 conditionId = keccak256("event-test-same-config");
 
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);

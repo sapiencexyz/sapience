@@ -1,11 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import { ReentrancyGuard } from
-    "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {
+    ReentrancyGuard
+} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
-import { IPredictionMarketResolver } from
-    "../interfaces/IPredictionMarketResolver.sol";
+import {
+    IPredictionMarketResolver
+} from "../interfaces/IPredictionMarketResolver.sol";
 import { IPythLazer } from "./pythLazer/IPythLazer.sol";
 import { PythLazerLib } from "./pythLazer/PythLazerLib.sol";
 import { PythLazerLibBytes } from "./pythLazer/PythLazerLibBytes.sol";
@@ -101,8 +103,9 @@ contract PythResolver is IPredictionMarketResolver, ReentrancyGuard {
             uint64 publishTimeMicros
         )
     {
-        PythLazerStructs.Update memory u =
-            PythLazerLibBytes.parseUpdateFromPayloadBytes(payload);
+        PythLazerStructs.Update memory u = PythLazerLibBytes.parseUpdateFromPayloadBytes(
+                payload
+            );
 
         // Payload header timestamp is microseconds.
         publishTimeMicros = u.timestamp;
@@ -171,8 +174,8 @@ contract PythResolver is IPredictionMarketResolver, ReentrancyGuard {
         view
         returns (bool isResolved, Error error, bool parlaySuccess)
     {
-        BinaryOptionOutcome[] memory outcomes =
-            decodePredictionOutcomes(encodedPredictedOutcomes);
+        BinaryOptionOutcome[] memory
+            outcomes = decodePredictionOutcomes(encodedPredictedOutcomes);
 
         parlaySuccess = true;
         isResolved = true;
@@ -234,7 +237,9 @@ contract PythResolver is IPredictionMarketResolver, ReentrancyGuard {
         nonReentrant
         returns (bytes32 marketId, bool resolvedToOver)
     {
-        if (market.priceId == bytes32(0)) revert InvalidMarketData();
+        if (market.priceId == bytes32(0)) {
+            revert InvalidMarketData();
+        }
         // Ensure priceId cannot alias multiple distinct markets onto the same uint32 feed id.
         // (We encode the uint32 feed id in the low bits of bytes32.)
         uint32 feedId = _asFeedId(market.priceId);

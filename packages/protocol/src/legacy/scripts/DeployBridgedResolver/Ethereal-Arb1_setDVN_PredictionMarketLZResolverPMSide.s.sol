@@ -2,16 +2,20 @@
 pragma solidity ^0.8.22;
 
 import "forge-std/Script.sol";
-import { PredictionMarketLZResolver } from
-    "../../predictionMarket/resolvers/PredictionMarketLZResolver.sol";
+import {
+    PredictionMarketLZResolver
+} from "../../predictionMarket/resolvers/PredictionMarketLZResolver.sol";
 import { BridgeTypes } from "../../bridge/BridgeTypes.sol";
 
-import { ILayerZeroEndpointV2 } from
-    "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
-import { SetConfigParam } from
-    "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/IMessageLibManager.sol";
-import { UlnConfig } from
-    "@layerzerolabs/lz-evm-messagelib-v2/contracts/uln/UlnBase.sol";
+import {
+    ILayerZeroEndpointV2
+} from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
+import {
+    SetConfigParam
+} from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/IMessageLibManager.sol";
+import {
+    UlnConfig
+} from "@layerzerolabs/lz-evm-messagelib-v2/contracts/uln/UlnBase.sol";
 
 // Configure the PM-side LZ resolver on Ethereal to trust UMA-side peer and set gas params
 contract SetDVNredictionMarketLZResolverPMSide is Script {
@@ -47,19 +51,21 @@ contract SetDVNredictionMarketLZResolverPMSide is Script {
         vm.startBroadcast(vm.envUint("ETHEREAL_PRIVATE_KEY"));
 
         // Set send library for outbound messages
-        ILayerZeroEndpointV2(endpoint).setSendLibrary(
-            oapp, // OApp address
-            AEid, // Destination chain EID
-            sendLib // SendUln302 address
-        );
+        ILayerZeroEndpointV2(endpoint)
+            .setSendLibrary(
+                oapp, // OApp address
+                AEid, // Destination chain EID
+                sendLib // SendUln302 address
+            );
 
         // Set receive library for inbound messages
-        ILayerZeroEndpointV2(endpoint).setReceiveLibrary(
-            oapp, // OApp address
-            AEid, // Source chain EID
-            receiveLib, // ReceiveUln302 address
-            gracePeriod // Grace period for library switch
-        );
+        ILayerZeroEndpointV2(endpoint)
+            .setReceiveLibrary(
+                oapp, // OApp address
+                AEid, // Source chain EID
+                receiveLib, // ReceiveUln302 address
+                gracePeriod // Grace period for library switch
+            );
 
         /// @notice UlnConfig controls verification threshold for incoming messages from A to B
         /// @notice Receive config enforces these settings have been applied to the DVNs for messages received from A
@@ -76,7 +82,7 @@ contract SetDVNredictionMarketLZResolverPMSide is Script {
             optionalDVNThreshold: 0, // optional DVN threshold
             requiredDVNs: requiredDVNs, // sorted required DVNs
             optionalDVNs: optionalDVNs // no optional DVNs
-         });
+        });
 
         bytes memory encodedUln = abi.encode(uln);
 

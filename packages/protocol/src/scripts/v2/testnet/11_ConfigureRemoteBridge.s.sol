@@ -2,12 +2,15 @@
 pragma solidity ^0.8.19;
 
 import { Script, console } from "forge-std/Script.sol";
-import { PredictionMarketBridgeRemote } from
-    "../../../v2/bridge/PredictionMarketBridgeRemote.sol";
-import { PredictionMarketTokenFactory } from
-    "../../../v2/PredictionMarketTokenFactory.sol";
-import { IPredictionMarketBridgeBase } from
-    "../../../v2/bridge/interfaces/IPredictionMarketBridgeBase.sol";
+import {
+    PredictionMarketBridgeRemote
+} from "../../../v2/bridge/PredictionMarketBridgeRemote.sol";
+import {
+    PredictionMarketTokenFactory
+} from "../../../v2/PredictionMarketTokenFactory.sol";
+import {
+    IPredictionMarketBridgeBase
+} from "../../../v2/bridge/interfaces/IPredictionMarketBridgeBase.sol";
 
 /// @title Configure SM Network Bridge
 /// @notice Configure bridge on SM Network with Ethereal settings

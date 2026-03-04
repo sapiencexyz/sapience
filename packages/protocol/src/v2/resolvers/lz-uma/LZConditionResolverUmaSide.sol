@@ -7,19 +7,25 @@ import {
     MessagingFee,
     MessagingReceipt
 } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
-import { OptionsBuilder } from
-    "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
-import { ReentrancyGuard } from
-    "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {
+    OptionsBuilder
+} from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
+import {
+    ReentrancyGuard
+} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { SafeERC20 } from
-    "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { OptimisticOracleV3Interface } from
-    "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
-import { OptimisticOracleV3CallbackRecipientInterface } from
-    "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3CallbackRecipientInterface.sol";
-import { ILZConditionResolverUmaSide } from
-    "./interfaces/ILZConditionResolverUmaSide.sol";
+import {
+    SafeERC20
+} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {
+    OptimisticOracleV3Interface
+} from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
+import {
+    OptimisticOracleV3CallbackRecipientInterface
+} from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3CallbackRecipientInterface.sol";
+import {
+    ILZConditionResolverUmaSide
+} from "./interfaces/ILZConditionResolverUmaSide.sol";
 import { LZTypes } from "../shared/LZTypes.sol";
 import { LZETHManagement } from "./LZETHManagement.sol";
 
@@ -125,11 +131,7 @@ contract LZConditionResolverUmaSide is
     }
 
     /// @notice Check if an asserter is approved
-    function isAsserterApproved(address asserter)
-        external
-        view
-        returns (bool)
-    {
+    function isAsserterApproved(address asserter) external view returns (bool) {
         return _approvedAsserters[asserter];
     }
 
@@ -298,8 +300,9 @@ contract LZConditionResolverUmaSide is
         bool resolvedToYes,
         bool assertedTruthfully
     ) internal {
-        bytes memory payload =
-            abi.encode(conditionId, resolvedToYes, assertedTruthfully);
+        bytes memory payload = abi.encode(
+            conditionId, resolvedToYes, assertedTruthfully
+        );
         bytes memory message = abi.encode(CMD_CONDITION_RESOLVED, payload);
 
         bytes memory options = OptionsBuilder.newOptions()

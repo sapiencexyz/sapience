@@ -2,8 +2,9 @@
 pragma solidity ^0.8.19;
 
 import { Script, console } from "forge-std/Script.sol";
-import { PredictionMarketTokenFactory } from
-    "../../../v2/PredictionMarketTokenFactory.sol";
+import {
+    PredictionMarketTokenFactory
+} from "../../../v2/PredictionMarketTokenFactory.sol";
 
 /// @title Deploy PredictionMarketTokenFactory on SM Network (Mainnet)
 /// @notice Deploy factory on Arbitrum mainnet using CREATE2 for deterministic address

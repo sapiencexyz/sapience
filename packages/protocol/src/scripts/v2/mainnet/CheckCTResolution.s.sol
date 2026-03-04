@@ -2,10 +2,12 @@
 pragma solidity ^0.8.19;
 
 import { Script, console } from "forge-std/Script.sol";
-import { ConditionalTokensConditionResolver } from
-    "../../../v2/resolvers/conditionalTokens/ConditionalTokensConditionResolver.sol";
-import { IConditionalTokensConditionResolver } from
-    "../../../v2/resolvers/conditionalTokens/interfaces/IConditionalTokensConditionResolver.sol";
+import {
+    ConditionalTokensConditionResolver
+} from "../../../v2/resolvers/conditionalTokens/ConditionalTokensConditionResolver.sol";
+import {
+    IConditionalTokensConditionResolver
+} from "../../../v2/resolvers/conditionalTokens/interfaces/IConditionalTokensConditionResolver.sol";
 
 /// @title Check CT Resolution on Ethereal
 /// @notice Reads the condition state on ConditionalTokensConditionResolver after

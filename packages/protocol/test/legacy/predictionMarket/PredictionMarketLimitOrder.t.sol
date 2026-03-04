@@ -4,8 +4,7 @@ pragma solidity ^0.8.19;
 import "forge-std/Test.sol";
 import "../../../src/legacy/predictionMarket/PredictionMarket.sol";
 import "../../../src/legacy/predictionMarket/interfaces/IPredictionStructs.sol";
-import
-    "../../../src/legacy/predictionMarket/interfaces/IPredictionMarketResolver.sol";
+import "../../../src/legacy/predictionMarket/interfaces/IPredictionMarketResolver.sol";
 import "./mocks/MockERC20.sol";
 import "./mocks/MockResolver.sol";
 

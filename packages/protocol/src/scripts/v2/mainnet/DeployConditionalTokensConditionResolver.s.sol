@@ -2,8 +2,9 @@
 pragma solidity ^0.8.19;
 
 import { Script, console } from "forge-std/Script.sol";
-import { ConditionalTokensConditionResolver } from
-    "../../../v2/resolvers/conditionalTokens/ConditionalTokensConditionResolver.sol";
+import {
+    ConditionalTokensConditionResolver
+} from "../../../v2/resolvers/conditionalTokens/ConditionalTokensConditionResolver.sol";
 
 /// @title Deploy ConditionalTokensConditionResolver (Mainnet)
 /// @notice Deploys ConditionalTokensConditionResolver on Ethereal mainnet

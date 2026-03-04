@@ -2,15 +2,17 @@
 pragma solidity ^0.8.19;
 
 import { Script, console } from "forge-std/Script.sol";
-import { ZeroDevKernelAccountFactory } from
-    "../../../v2/utils/ZeroDevKernelAccountFactory.sol";
+import {
+    ZeroDevKernelAccountFactory
+} from "../../../v2/utils/ZeroDevKernelAccountFactory.sol";
 import { PredictionMarketEscrow } from "../../../v2/PredictionMarketEscrow.sol";
 
 /// @title Deploy ZeroDev Account Factory
 /// @notice Deploys wrapper and configures it on PredictionMarketEscrow
 contract DeployAccountFactory is Script {
     // ZeroDev Kernel V3.1 addresses (same on all chains)
-    address constant KERNEL_FACTORY = 0xaac5D4240AF87249B3f71BC8E4A2cae074A3E419;
+    address constant KERNEL_FACTORY =
+        0xaac5D4240AF87249B3f71BC8E4A2cae074A3E419;
     address constant ECDSA_VALIDATOR =
         0x845ADb2C711129d4f3966735eD98a9F09fC4cE57;
 

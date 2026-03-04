@@ -12,7 +12,7 @@ import { IV2Types } from "../../../v2/interfaces/IV2Types.sol";
 contract MintPredictionMarketTokens is Script {
     // Collateral amounts (different for predictor and counterparty)
     uint256 constant PREDICTOR_COLLATERAL = 0.001 ether;
-    uint256 constant COUNTERPARTY_COLLATERAL = 0.00033 ether;
+    uint256 constant COUNTERPARTY_COLLATERAL = 0.000_33 ether;
 
     // Bundle parameters to avoid stack too deep
     struct Actors {

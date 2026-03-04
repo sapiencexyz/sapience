@@ -2,8 +2,9 @@
 pragma solidity ^0.8.22;
 
 import "forge-std/Script.sol";
-import { PredictionMarketLZResolverUmaSide } from
-    "../../predictionMarket/resolvers/PredictionMarketLZResolverUmaSide.sol";
+import {
+    PredictionMarketLZResolverUmaSide
+} from "../../predictionMarket/resolvers/PredictionMarketLZResolverUmaSide.sol";
 
 // UMA side is on Arbitrum One
 // Deploy this UMA-side resolver on Arbitrum One (sends LZ messages to PM side)

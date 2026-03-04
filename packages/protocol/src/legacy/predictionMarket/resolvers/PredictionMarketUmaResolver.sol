@@ -2,10 +2,12 @@
 pragma solidity ^0.8.19;
 
 import "../interfaces/IPredictionMarketResolver.sol";
-import { OptimisticOracleV3Interface } from
-    "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
-import { OptimisticOracleV3CallbackRecipientInterface } from
-    "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3CallbackRecipientInterface.sol";
+import {
+    OptimisticOracleV3Interface
+} from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3Interface.sol";
+import {
+    OptimisticOracleV3CallbackRecipientInterface
+} from "@uma/core/contracts/optimistic-oracle-v3/interfaces/OptimisticOracleV3CallbackRecipientInterface.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
@@ -148,8 +150,10 @@ contract PredictionMarketUmaResolver is
         view
         returns (bool isResolved, Error error, bool parlaySuccess)
     {
-        PredictedOutcome[] memory predictedOutcomes =
-            decodePredictionOutcomes(encodedPredictedOutcomes);
+        PredictedOutcome[] memory
+            predictedOutcomes = decodePredictionOutcomes(
+            encodedPredictedOutcomes
+        );
         parlaySuccess = true;
         isResolved = true;
         error = Error.NO_ERROR;
@@ -207,9 +211,11 @@ contract PredictionMarketUmaResolver is
     }
 
     // ============ Prediction Outcomes Encoding and Decoding Functions ============
-    function encodePredictionOutcomes(
-        PredictedOutcome[] calldata predictedOutcomes
-    ) external pure returns (bytes memory) {
+    function encodePredictionOutcomes(PredictedOutcome[] calldata predictedOutcomes)
+        external
+        pure
+        returns (bytes memory)
+    {
         return abi.encode(predictedOutcomes);
     }
 

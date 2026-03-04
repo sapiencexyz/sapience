@@ -6,8 +6,9 @@ import {
     Origin,
     MessagingFee
 } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
-import { ReentrancyGuard } from
-    "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {
+    ReentrancyGuard
+} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { ILZConditionResolver } from "./interfaces/ILZConditionResolver.sol";
 import { IConditionResolver } from "../../interfaces/IConditionResolver.sol";
 import { IV2Types } from "../../interfaces/IV2Types.sol";

@@ -4,8 +4,7 @@ pragma solidity ^0.8.19;
 import "forge-std/Test.sol";
 import "../../../src/legacy/predictionMarket/PredictionMarket.sol";
 import "../../../src/legacy/predictionMarket/interfaces/IPredictionStructs.sol";
-import
-    "../../../src/legacy/predictionMarket/interfaces/IPredictionMarketResolver.sol";
+import "../../../src/legacy/predictionMarket/interfaces/IPredictionMarketResolver.sol";
 import "../../../src/legacy/vault/PassiveLiquidityVault.sol";
 import "../../../src/legacy/vault/interfaces/IPassiveLiquidityVault.sol";
 import "./mocks/MockERC20.sol";
@@ -121,18 +120,18 @@ contract PredictionMarketERC1271Test is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(5, approvalHash);
 
         IPredictionStructs.MintPredictionRequestData memory request =
-        IPredictionStructs.MintPredictionRequestData({
-            encodedPredictedOutcomes: ENCODED_OUTCOMES,
-            resolver: address(mockResolver),
-            makerCollateral: MAKER_COLLATERAL,
-            takerCollateral: TAKER_COLLATERAL,
-            maker: maker,
-            taker: initialTaker,
-            makerNonce: 0,
-            takerSignature: abi.encodePacked(r, s, v),
-            takerDeadline: block.timestamp + 1 hours,
-            refCode: keccak256("initial-setup")
-        });
+            IPredictionStructs.MintPredictionRequestData({
+                encodedPredictedOutcomes: ENCODED_OUTCOMES,
+                resolver: address(mockResolver),
+                makerCollateral: MAKER_COLLATERAL,
+                takerCollateral: TAKER_COLLATERAL,
+                maker: maker,
+                taker: initialTaker,
+                makerNonce: 0,
+                takerSignature: abi.encodePacked(r, s, v),
+                takerDeadline: block.timestamp + 1 hours,
+                refCode: keccak256("initial-setup")
+            });
 
         vm.prank(maker);
         predictionMarket.mint(request);
@@ -456,18 +455,18 @@ contract PredictionMarketERC1271Test is Test {
             vm.sign(MANAGER_PRIVATE_KEY, approvalHash2);
 
         IPredictionStructs.MintPredictionRequestData memory request2 =
-        IPredictionStructs.MintPredictionRequestData({
-            encodedPredictedOutcomes: ENCODED_OUTCOMES,
-            resolver: address(mockResolver),
-            makerCollateral: MAKER_COLLATERAL,
-            takerCollateral: TAKER_COLLATERAL,
-            maker: maker,
-            taker: address(vault),
-            makerNonce: currentNonce,
-            takerSignature: abi.encodePacked(r, s, v),
-            takerDeadline: block.timestamp + 1 hours,
-            refCode: REF_CODE
-        });
+            IPredictionStructs.MintPredictionRequestData({
+                encodedPredictedOutcomes: ENCODED_OUTCOMES,
+                resolver: address(mockResolver),
+                makerCollateral: MAKER_COLLATERAL,
+                takerCollateral: TAKER_COLLATERAL,
+                maker: maker,
+                taker: address(vault),
+                makerNonce: currentNonce,
+                takerSignature: abi.encodePacked(r, s, v),
+                takerDeadline: block.timestamp + 1 hours,
+                refCode: REF_CODE
+            });
 
         vm.prank(maker);
         (uint256 makerNftTokenId2, uint256 takerNftTokenId2) =
@@ -502,14 +501,14 @@ contract PredictionMarketERC1271Test is Test {
         collateralToken.approve(address(predictionMarket), type(uint256).max);
 
         IPredictionStructs.OrderRequestData memory orderRequest =
-        IPredictionStructs.OrderRequestData({
-            encodedPredictedOutcomes: ENCODED_OUTCOMES,
-            resolver: address(mockResolver),
-            makerCollateral: MAKER_COLLATERAL,
-            takerCollateral: TAKER_COLLATERAL,
-            orderDeadline: block.timestamp + 1 hours,
-            refCode: REF_CODE
-        });
+            IPredictionStructs.OrderRequestData({
+                encodedPredictedOutcomes: ENCODED_OUTCOMES,
+                resolver: address(mockResolver),
+                makerCollateral: MAKER_COLLATERAL,
+                takerCollateral: TAKER_COLLATERAL,
+                orderDeadline: block.timestamp + 1 hours,
+                refCode: REF_CODE
+            });
 
         uint256 orderId = predictionMarket.placeOrder(orderRequest);
         vm.stopPrank();
@@ -534,8 +533,9 @@ contract PredictionMarketERC1271Test is Test {
 
     // ============ Manager Change Tests ============
 
-    function test_mint_withVaultAsTaker_afterManagerChange_oldManagerSignatureFails(
-    ) public {
+    function test_mint_withVaultAsTaker_afterManagerChange_oldManagerSignatureFails()
+        public
+    {
         IPredictionStructs.MintPredictionRequestData memory request =
             _createMintRequestWithVaultAsTaker();
 
@@ -550,8 +550,9 @@ contract PredictionMarketERC1271Test is Test {
         predictionMarket.mint(request);
     }
 
-    function test_mint_withVaultAsTaker_afterManagerChange_newManagerSignatureSucceeds(
-    ) public {
+    function test_mint_withVaultAsTaker_afterManagerChange_newManagerSignatureSucceeds()
+        public
+    {
         // Change vault manager
         uint256 newManagerKey = 999;
         address newManager = vm.addr(newManagerKey);
@@ -578,18 +579,18 @@ contract PredictionMarketERC1271Test is Test {
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(newManagerKey, approvalHash);
 
         IPredictionStructs.MintPredictionRequestData memory request =
-        IPredictionStructs.MintPredictionRequestData({
-            encodedPredictedOutcomes: ENCODED_OUTCOMES,
-            resolver: address(mockResolver),
-            makerCollateral: MAKER_COLLATERAL,
-            takerCollateral: TAKER_COLLATERAL,
-            maker: maker,
-            taker: address(vault),
-            makerNonce: currentNonce,
-            takerSignature: abi.encodePacked(r, s, v),
-            takerDeadline: block.timestamp + 1 hours,
-            refCode: REF_CODE
-        });
+            IPredictionStructs.MintPredictionRequestData({
+                encodedPredictedOutcomes: ENCODED_OUTCOMES,
+                resolver: address(mockResolver),
+                makerCollateral: MAKER_COLLATERAL,
+                takerCollateral: TAKER_COLLATERAL,
+                maker: maker,
+                taker: address(vault),
+                makerNonce: currentNonce,
+                takerSignature: abi.encodePacked(r, s, v),
+                takerDeadline: block.timestamp + 1 hours,
+                refCode: REF_CODE
+            });
 
         // Should succeed with new manager's signature
         vm.prank(maker);
@@ -602,8 +603,9 @@ contract PredictionMarketERC1271Test is Test {
 
     // ============ PassiveLiquidityVault.isValidSignature View Tests ============
 
-    function test_isValidSignature_validManagerSignature_returnsCorrectMagicValue(
-    ) public {
+    function test_isValidSignature_validManagerSignature_returnsCorrectMagicValue()
+        public
+    {
         bytes32 testMessage = keccak256("test message");
 
         // Sign with manager's key using vault's EIP-712 domain
@@ -667,9 +669,7 @@ contract PredictionMarketERC1271Test is Test {
         vault.isValidSignature(testMessage, malformedSignature);
     }
 
-    function test_isValidSignature_afterManagerChange_oldManagerFails()
-        public
-    {
+    function test_isValidSignature_afterManagerChange_oldManagerFails() public {
         bytes32 testMessage = keccak256("test message");
 
         // Sign with old manager
@@ -722,8 +722,9 @@ contract PredictionMarketERC1271Test is Test {
         vault.isValidSignature(testMessage, emptySignature);
     }
 
-    function test_isValidSignature_differentMessage_sameSignature_returnsInvalidValue(
-    ) public {
+    function test_isValidSignature_differentMessage_sameSignature_returnsInvalidValue()
+        public
+    {
         bytes32 message1 = keccak256("message 1");
         bytes32 message2 = keccak256("message 2");
 
