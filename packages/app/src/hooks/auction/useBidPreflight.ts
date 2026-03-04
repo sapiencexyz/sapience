@@ -3,10 +3,12 @@
 import { useCallback, useMemo } from 'react';
 import { useReadContracts } from 'wagmi';
 import { formatUnits } from 'viem';
-import { predictionMarket } from '@sapience/sdk/contracts';
-import { predictionMarketAbi } from '@sapience/sdk';
+import {
+  predictionMarketEscrow,
+  collateralToken,
+} from '@sapience/sdk/contracts';
 import erc20Abi from '@sapience/sdk/queries/abis/erc20abi.json';
-import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useChainValidation } from '~/hooks/blockchain/useChainValidation';
 import { useCollateralBalance } from '~/hooks/blockchain/useCollateralBalance';
 import { useCurrentAddress } from '~/hooks/blockchain/useCurrentAddress';
@@ -65,7 +67,8 @@ export function useBidPreflight(
 ): UseBidPreflightResult {
   const { onError, onLoading } = options;
   const { currentAddress } = useCurrentAddress();
-  const chainId = CHAIN_ID_ETHEREAL;
+  // TODO: Get chainId from context/props when supporting multiple chains
+  const chainId = DEFAULT_CHAIN_ID;
 
   const {
     balance,
@@ -84,34 +87,15 @@ export function useBidPreflight(
     onLoading,
   });
 
-  // Get PredictionMarket address for the current chain
-  const SPENDER_ADDRESS = predictionMarket[chainId]?.address as
+  // Spender is always PredictionMarketEscrow
+  const SPENDER_ADDRESS = predictionMarketEscrow[chainId]?.address as
     | `0x${string}`
     | undefined;
 
-  // Read collateral token address from PredictionMarket contract config
-  const predictionMarketConfigRead = useReadContracts({
-    contracts: SPENDER_ADDRESS
-      ? [
-          {
-            address: SPENDER_ADDRESS,
-            abi: predictionMarketAbi,
-            functionName: 'getConfig',
-            chainId: chainId,
-          },
-        ]
-      : [],
-    query: { enabled: !!SPENDER_ADDRESS },
-  });
-
-  const COLLATERAL_ADDRESS: `0x${string}` | undefined = useMemo(() => {
-    const item = predictionMarketConfigRead.data?.[0];
-    if (item && item.status === 'success') {
-      const cfg = item.result as { collateralToken: `0x${string}` };
-      return cfg?.collateralToken;
-    }
-    return undefined;
-  }, [predictionMarketConfigRead.data]);
+  // Collateral token address from SDK
+  const COLLATERAL_ADDRESS = collateralToken[chainId]?.address as
+    | `0x${string}`
+    | undefined;
 
   // Read allowance for connected address -> PredictionMarket
   const allowanceRead = useReadContracts({
@@ -145,10 +129,7 @@ export function useBidPreflight(
     }
   }, [allowanceRead.data, tokenDecimals]);
 
-  const isLoading =
-    isBalanceLoading ||
-    predictionMarketConfigRead.isLoading ||
-    allowanceRead.isLoading;
+  const isLoading = isBalanceLoading || allowanceRead.isLoading;
 
   const refetch = useCallback(() => {
     refetchBalance();

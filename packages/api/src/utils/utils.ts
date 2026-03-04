@@ -6,7 +6,7 @@ import {
   webSocket,
   type Transport,
 } from 'viem';
-import { cannon, arbitrum } from 'viem/chains';
+import { arbitrum } from 'viem/chains';
 import dotenv from 'dotenv';
 import { fromRoot } from './fromRoot';
 import * as viem from 'viem';
@@ -29,9 +29,28 @@ export const etherealChain: viem.Chain = {
   },
 };
 
+export const etherealTestnetChain: viem.Chain = {
+  id: 13374202,
+  name: 'Ethereal Testnet',
+  nativeCurrency: {
+    name: 'Ethena USDe',
+    symbol: 'USDe',
+    decimals: 18,
+  },
+  rpcUrls: {
+    default: {
+      http: [
+        process.env.CHAIN_13374202_RPC_URL || 'https://rpc.etherealtest.net/',
+      ],
+    },
+    public: { http: ['https://rpc.etherealtest.net/'] },
+  },
+};
+
 export const chains: viem.Chain[] = [
   ...Object.values(viemChains),
   etherealChain,
+  etherealTestnetChain,
 ];
 
 // Load environment variables
@@ -63,7 +82,20 @@ const createChainClient = (
   useLocalhost = false
 ) => {
   if (chain.id === 5064014) {
-    const rpcUrl = 'https://rpc.ethereal.trade';
+    const rpcUrl =
+      process.env.CHAIN_5064014_RPC_URL || 'https://rpc.ethereal.trade';
+    return createPublicClient({
+      chain,
+      transport: http(rpcUrl),
+      batch: {
+        multicall: true,
+      },
+    });
+  }
+
+  if (chain.id === 13374202) {
+    const rpcUrl =
+      process.env.CHAIN_13374202_RPC_URL || 'https://rpc.etherealtest.net/';
     return createPublicClient({
       chain,
       transport: http(rpcUrl),
@@ -85,7 +117,6 @@ const createChainClient = (
   });
 };
 
-export const cannonPublicClient = createChainClient(cannon, 'cannon', true);
 export const arbitrumPublicClient = createChainClient(
   arbitrum,
   'arbitrum-mainnet'
@@ -99,14 +130,14 @@ export function getProviderForChain(chainId: number): PublicClient {
   let newClient: PublicClient;
 
   switch (chainId) {
-    case 13370:
-      newClient = cannonPublicClient;
-      break;
     case 42161:
       newClient = arbitrumPublicClient as PublicClient;
       break;
     case 5064014:
       newClient = createChainClient(etherealChain, 'ethereal');
+      break;
+    case 13374202:
+      newClient = createChainClient(etherealTestnetChain, 'ethereal-testnet');
       break;
     default:
       throw new Error(`Unsupported chain ID: ${chainId}`);

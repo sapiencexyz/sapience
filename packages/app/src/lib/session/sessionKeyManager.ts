@@ -5,6 +5,11 @@ import {
   keccak256,
   parseAbi,
   slice,
+  toHex,
+  encodeAbiParameters,
+  encodeFunctionData,
+  recoverTypedDataAddress,
+  hashTypedData,
   type Address,
   type Hex,
   type Chain,
@@ -28,35 +33,55 @@ import { toECDSASigner } from '@zerodev/permissions/signers';
 import {
   toCallPolicy,
   toTimestampPolicy,
+  toSignatureCallerPolicy,
   CallPolicyVersion,
   ParamCondition,
 } from '@zerodev/permissions/policies';
 import { getEntryPoint, KERNEL_V3_1 } from '@zerodev/sdk/constants';
 import {
-  predictionMarketAbi,
+  predictionMarketEscrowAbi,
   collateralTokenAbi,
-  liquidityVaultAbi,
+  predictionMarketVaultAbi,
 } from '@sapience/sdk/abis';
 import {
   predictionMarket as predictionMarketAddresses,
+  predictionMarketEscrow as predictionMarketEscrowAddresses,
   collateralToken as collateralTokenAddresses,
   eas as easAddresses,
-  passiveLiquidityVault as vaultAddresses,
+  predictionMarketVault as vaultAddresses,
 } from '@sapience/sdk/contracts';
 import {
   CHAIN_ID_ETHEREAL,
+  DEFAULT_CHAIN_ID,
+  CHAIN_ID_ETHEREAL_TESTNET,
   CHAIN_ID_ARBITRUM,
   etherealChain,
+  etherealTestnetChain,
 } from '@sapience/sdk/constants';
 
 // Re-export etherealChain as 'ethereal' for backward compatibility
 export { etherealChain as ethereal };
 
-const WUSDE_ADDRESS_ETHEREAL =
-  collateralTokenAddresses[CHAIN_ID_ETHEREAL].address;
-const PREDICTION_MARKET_ETHEREAL =
-  predictionMarketAddresses[CHAIN_ID_ETHEREAL].address;
-const VAULT_ETHEREAL = vaultAddresses[CHAIN_ID_ETHEREAL].address;
+// Contract addresses - resolved dynamically based on chainId
+function getEtherealContractAddresses(chainId: number) {
+  const effectiveChainId =
+    chainId === CHAIN_ID_ETHEREAL_TESTNET
+      ? CHAIN_ID_ETHEREAL_TESTNET
+      : DEFAULT_CHAIN_ID;
+  // Get escrow address, but only use it if it's not the zero address (not deployed)
+  const escrowAddress =
+    predictionMarketEscrowAddresses[effectiveChainId]?.address;
+  const isEscrowDeployed =
+    escrowAddress &&
+    escrowAddress !== '0x0000000000000000000000000000000000000000';
+  return {
+    wusde: collateralTokenAddresses[effectiveChainId].address,
+    predictionMarket: predictionMarketAddresses[effectiveChainId].address,
+    predictionMarketEscrow: isEscrowDeployed ? escrowAddress : undefined,
+    vault: vaultAddresses[effectiveChainId].address,
+  };
+}
+
 const EAS_ARBITRUM = easAddresses[CHAIN_ID_ARBITRUM].address;
 
 const WUSDE_ABI = parseAbi([
@@ -146,6 +171,10 @@ function getZeroDevUrls(chainId: number): {
       bundler: process.env.NEXT_PUBLIC_ZERODEV_BUNDLER_URL_ETHEREAL,
       paymaster: process.env.NEXT_PUBLIC_ZERODEV_PAYMASTER_URL_ETHEREAL,
     },
+    [etherealTestnetChain.id]: {
+      bundler: process.env.NEXT_PUBLIC_ZERODEV_BUNDLER_URL_ETHEREAL_TESTNET,
+      paymaster: process.env.NEXT_PUBLIC_ZERODEV_PAYMASTER_URL_ETHEREAL_TESTNET,
+    },
     [arbitrum.id]: {
       bundler: process.env.NEXT_PUBLIC_ZERODEV_BUNDLER_URL_ARBITRUM,
       paymaster: process.env.NEXT_PUBLIC_ZERODEV_PAYMASTER_URL_ARBITRUM,
@@ -194,6 +223,44 @@ export interface EnableTypedData {
   };
 }
 
+// Escrow Session Key Approval data for PredictionMarketEscrow
+// This is a separate approval from ZeroDev's enable signature
+export interface EscrowSessionKeyApproval {
+  sessionKey: Address;
+  owner: Address;
+  smartAccount: Address;
+  validUntil: number; // Unix timestamp in seconds
+  permissionsHash: Hex; // bytes32
+  chainId: number;
+  ownerSignature: Hex;
+}
+
+// Escrow Session Key Approval domain and types (matches SignatureValidator.sol)
+const ESCROW_SESSION_KEY_APPROVAL_DOMAIN = {
+  name: 'PredictionMarketEscrow',
+  version: '1',
+} as const;
+
+// EIP712Domain type - explicitly included for wallet compatibility
+// Some wallets (like Rabby on custom chains) need this to properly recognize EIP-712 format
+const EIP712_DOMAIN_TYPE = [
+  { name: 'name', type: 'string' },
+  { name: 'version', type: 'string' },
+  { name: 'chainId', type: 'uint256' },
+  { name: 'verifyingContract', type: 'address' },
+] as const;
+
+const ESCROW_SESSION_KEY_APPROVAL_TYPES = {
+  EIP712Domain: EIP712_DOMAIN_TYPE,
+  SessionKeyApproval: [
+    { name: 'sessionKey', type: 'address' },
+    { name: 'smartAccount', type: 'address' },
+    { name: 'validUntil', type: 'uint256' },
+    { name: 'permissionsHash', type: 'bytes32' },
+    { name: 'chainId', type: 'uint256' },
+  ],
+} as const;
+
 // Serialized session for localStorage
 // We store ZeroDev approval strings which embed owner's EIP-712 signature
 export interface SerializedSession {
@@ -210,6 +277,11 @@ export interface SerializedSession {
   // This allows the relayer to verify the enable signature without reconstructing typed data
   etherealEnableTypedData?: EnableTypedData;
   arbitrumEnableTypedData?: EnableTypedData;
+  // Which Ethereal chain was used (mainnet or testnet)
+  etherealChainId?: number;
+  // Escrow Session Key Approval for PredictionMarketEscrow
+  // This is a separate EIP-712 signature from the owner authorizing session key for escrow mints
+  escrowSessionKeyApproval?: EscrowSessionKeyApproval;
 }
 
 // Session result with chain clients
@@ -219,6 +291,13 @@ export interface SessionResult {
   arbitrumClient: KernelAccountClient | null; // null until first EAS attestation
   serialized: SerializedSession;
 }
+
+// Progress steps reported during session creation
+export type SessionCreationStep =
+  | 'switching-network'
+  | 'requesting-approval'
+  | 'deploying-account'
+  | 'finalizing';
 
 // Owner signer interface (what we get from connected wallet)
 // The provider should be an EIP-1193 compatible Ethereum provider
@@ -261,31 +340,271 @@ export async function getSmartAccountAddress(
   return account.address;
 }
 
-// Public clients are created once and reused
-function getPublicClients() {
-  const etherealPublicClient = createPublicClient({
-    transport: http(etherealChain.rpcUrls.default.http[0]),
-    chain: etherealChain,
+/**
+ * @deprecated No longer used — session keys are validated via ERC-1271 on the smart account.
+ * Kept temporarily for reference during migration. Remove after staging validates.
+ */
+async function _signEscrowSessionKeyApproval(
+  ownerSigner: OwnerSigner,
+  sessionKeyAddress: Address,
+  smartAccountAddress: Address,
+  validUntilSeconds: number,
+  chainId: number,
+  verifyingContract: Address
+): Promise<EscrowSessionKeyApproval> {
+  // Compute a permissions hash (we use a simple hash of "V2_MINT" permission)
+  // In practice, this could be more specific to the exact permissions granted
+  const permissionsHash = keccak256(toHex('MINT')); // must match SignatureValidator.MINT_PERMISSION
+
+  // For eth_signTypedData_v4, uint256 values should be hex strings when JSON serialized
+  const typedData = {
+    domain: {
+      ...ESCROW_SESSION_KEY_APPROVAL_DOMAIN,
+      chainId,
+      verifyingContract,
+    },
+    types: ESCROW_SESSION_KEY_APPROVAL_TYPES,
+    primaryType: 'SessionKeyApproval' as const,
+    message: {
+      sessionKey: sessionKeyAddress,
+      smartAccount: smartAccountAddress,
+      validUntil: String(validUntilSeconds), // uint256 as string for JSON serialization
+      permissionsHash,
+      chainId: String(chainId), // uint256 as string for JSON serialization
+    },
+  };
+
+  console.debug(
+    '[SessionKeyManager] Requesting escrow session key approval signature...'
+  );
+  console.debug('[SessionKeyManager] Escrow approval typed data:', {
+    domain: typedData.domain,
+    types: typedData.types,
+    primaryType: typedData.primaryType,
+    message: typedData.message,
+  });
+  console.debug(
+    '[SessionKeyManager] Escrow approval JSON:',
+    JSON.stringify(typedData, null, 2)
+  );
+
+  // Sign using the owner's wallet (via EIP-1193 provider)
+  const signature = await ownerSigner.provider.request({
+    method: 'eth_signTypedData_v4',
+    params: [ownerSigner.address, JSON.stringify(typedData)],
   });
 
-  const arbitrumPublicClient = createPublicClient({
+  console.debug('[SessionKeyManager] Escrow session key approval signed');
+  console.debug('[SessionKeyManager] Escrow approval signature:', signature);
+  console.debug('[SessionKeyManager] Signature r:', signature.slice(0, 66));
+  console.debug(
+    '[SessionKeyManager] Signature s:',
+    '0x' + signature.slice(66, 130)
+  );
+  console.debug(
+    '[SessionKeyManager] Signature v:',
+    '0x' + signature.slice(130, 132)
+  );
+
+  // Verify the signature recovers to the owner address
+  try {
+    const recoveredAddress = await recoverTypedDataAddress({
+      domain: {
+        ...typedData.domain,
+        chainId: BigInt(typedData.domain.chainId),
+      },
+      types: typedData.types,
+      primaryType: typedData.primaryType,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      message: typedData.message as any,
+      signature: signature,
+    });
+    console.debug(
+      '[SessionKeyManager] Recovered signer from signature:',
+      recoveredAddress
+    );
+    console.debug('[SessionKeyManager] Expected owner:', ownerSigner.address);
+    console.debug(
+      '[SessionKeyManager] Signature valid:',
+      recoveredAddress.toLowerCase() === ownerSigner.address.toLowerCase()
+    );
+
+    if (recoveredAddress.toLowerCase() !== ownerSigner.address.toLowerCase()) {
+      console.error(
+        '[SessionKeyManager] ⚠️ SIGNATURE MISMATCH! The recovered signer does not match the owner!'
+      );
+      console.error(
+        '[SessionKeyManager] This will cause escrow session key validation to fail on-chain.'
+      );
+      // Also compute and log the hash for debugging
+      const typedDataHash = hashTypedData({
+        domain: {
+          ...typedData.domain,
+          chainId: BigInt(typedData.domain.chainId),
+        },
+        types: typedData.types,
+        primaryType: typedData.primaryType,
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        message: typedData.message as any,
+      });
+      console.debug('[SessionKeyManager] TypedData hash:', typedDataHash);
+    }
+  } catch (verifyError) {
+    console.warn(
+      '[SessionKeyManager] Could not verify signature:',
+      verifyError
+    );
+  }
+
+  return {
+    sessionKey: sessionKeyAddress,
+    owner: ownerSigner.address,
+    smartAccount: smartAccountAddress,
+    validUntil: validUntilSeconds,
+    permissionsHash,
+    chainId,
+    ownerSignature: signature,
+  };
+}
+
+/**
+ * Encode EscrowSessionKeyApproval to ABI-encoded bytes for contract consumption.
+ * Matches the SessionKeyData struct layout (NOT SignatureValidator.SessionKeyApproval):
+ *   (sessionKey, owner, validUntil, permissionsHash, chainId, ownerSignature)
+ * Note: smartAccount is NOT included - the contract gets it from the MintRequest.predictor field
+ */
+export function encodeEscrowSessionKeyData(
+  approval: EscrowSessionKeyApproval
+): Hex {
+  // Encode the struct fields as a tuple
+  const innerEncoding = encodeAbiParameters(
+    [
+      { name: 'sessionKey', type: 'address' },
+      { name: 'owner', type: 'address' },
+      { name: 'validUntil', type: 'uint256' },
+      { name: 'permissionsHash', type: 'bytes32' },
+      { name: 'chainId', type: 'uint256' },
+      { name: 'ownerSignature', type: 'bytes' },
+    ],
+    [
+      approval.sessionKey,
+      approval.owner,
+      BigInt(approval.validUntil),
+      approval.permissionsHash,
+      BigInt(approval.chainId),
+      approval.ownerSignature,
+    ]
+  );
+
+  // Solidity's abi.decode(data, (StructWithDynamicTypes)) expects a leading offset pointer
+  // The offset is 0x20 (32 bytes) pointing to where the actual struct data begins
+  const offsetPointer =
+    '0000000000000000000000000000000000000000000000000000000000000020';
+  return `0x${offsetPointer}${innerEncoding.slice(2)}` as Hex;
+}
+
+// ABI for accountFactory verification
+const ACCOUNT_FACTORY_ABI = parseAbi([
+  'function getAccountAddress(address owner, uint256 index) view returns (address)',
+]);
+
+// ABI for escrow accountFactory getter
+const ESCROW_ACCOUNT_FACTORY_ABI = parseAbi([
+  'function accountFactory() view returns (address)',
+]);
+
+/**
+ * Verify that the accountFactory returns the expected smart account address.
+ * This is useful for debugging session key validation issues.
+ */
+export async function verifyAccountFactoryMapping(
+  chainId: number,
+  escrowAddress: Address,
+  ownerAddress: Address,
+  expectedSmartAccount: Address
+): Promise<{
+  accountFactoryAddress: Address;
+  derivedAccountIndex0: Address;
+  derivedAccountIndex1: Address;
+  matchesIndex0: boolean;
+  matchesIndex1: boolean;
+}> {
+  const publicClient = getEtherealPublicClient(chainId);
+
+  // Get the accountFactory address from the escrow contract
+  const accountFactoryAddress = await publicClient.readContract({
+    address: escrowAddress,
+    abi: ESCROW_ACCOUNT_FACTORY_ABI,
+    functionName: 'accountFactory',
+  });
+
+  // Get derived addresses for index 0 and 1
+  const derivedAccountIndex0 = await publicClient.readContract({
+    address: accountFactoryAddress,
+    abi: ACCOUNT_FACTORY_ABI,
+    functionName: 'getAccountAddress',
+    args: [ownerAddress, 0n],
+  });
+
+  const derivedAccountIndex1 = await publicClient.readContract({
+    address: accountFactoryAddress,
+    abi: ACCOUNT_FACTORY_ABI,
+    functionName: 'getAccountAddress',
+    args: [ownerAddress, 1n],
+  });
+
+  return {
+    accountFactoryAddress,
+    derivedAccountIndex0,
+    derivedAccountIndex1,
+    matchesIndex0:
+      derivedAccountIndex0.toLowerCase() === expectedSmartAccount.toLowerCase(),
+    matchesIndex1:
+      derivedAccountIndex1.toLowerCase() === expectedSmartAccount.toLowerCase(),
+  };
+}
+
+/**
+ * Get the Ethereal chain config based on chainId.
+ */
+function getEtherealChain(chainId: number): Chain {
+  return chainId === CHAIN_ID_ETHEREAL_TESTNET
+    ? etherealTestnetChain
+    : etherealChain;
+}
+
+// Public clients - Arbitrum is static, Ethereal is created based on chainId
+function getArbitrumPublicClient() {
+  return createPublicClient({
     transport: http(
       process.env.NEXT_PUBLIC_RPC_URL || 'https://arb1.arbitrum.io/rpc'
     ),
     chain: arbitrum,
   });
+}
 
-  return { etherealPublicClient, arbitrumPublicClient };
+function getEtherealPublicClient(chainId: number) {
+  const chain = getEtherealChain(chainId);
+  return createPublicClient({
+    transport: http(chain.rpcUrls.default.http[0]),
+    chain,
+  });
 }
 
 /**
  * Create a new session with time-limited permissions.
  * Uses ZeroDev's serializePermissionAccount to capture owner's EIP-712 approval.
  * Only creates Ethereal session on login - Arbitrum session is created lazily.
+ *
+ * @param ownerSigner - The owner's wallet signer
+ * @param durationHours - Session duration in hours
+ * @param etherealChainId - Which Ethereal chain to use (mainnet or testnet). Defaults to mainnet.
  */
 export async function createSession(
   ownerSigner: OwnerSigner,
-  durationHours: number
+  durationHours: number,
+  etherealChainId: number = DEFAULT_CHAIN_ID,
+  onProgress?: (step: SessionCreationStep) => void
 ): Promise<SessionResult> {
   console.debug('[SessionKeyManager] Creating new session...');
 
@@ -307,20 +626,37 @@ export async function createSession(
   const expiresAt = Date.now() + durationHours * 60 * 60 * 1000;
 
   // Time bounds for session validity
+  // Set validAfter to 0 to avoid clock skew issues between client and blockchain
+  // (Ethereal testnet can be 30+ minutes behind real-world time)
+  // Security is maintained by validUntil which sets the upper bound
   const nowInSeconds = Math.floor(Date.now() / 1000);
   const validUntilInSeconds = nowInSeconds + durationHours * 60 * 60;
 
   console.debug(
-    `[SessionKeyManager] Timestamp policy: validAfter=${nowInSeconds}, validUntil=${validUntilInSeconds}`
+    `[SessionKeyManager] Timestamp policy: validAfter=0, validUntil=${validUntilInSeconds}`
   );
 
   const timestampPolicy = toTimestampPolicy({
-    validAfter: nowInSeconds,
+    validAfter: 0,
     validUntil: validUntilInSeconds,
   });
 
-  // Get public clients
-  const { etherealPublicClient } = getPublicClients();
+  // Get the selected Ethereal chain and public client
+  const selectedEtherealChain = getEtherealChain(etherealChainId);
+  const etherealPublicClient = getEtherealPublicClient(etherealChainId);
+
+  // Get contract addresses for the selected chain
+  const etherealContracts = getEtherealContractAddresses(etherealChainId);
+
+  console.debug(
+    `[SessionKeyManager] Using Ethereal chain: ${selectedEtherealChain.name} (${etherealChainId})`
+  );
+  console.debug(`[SessionKeyManager] Contract addresses:`, {
+    wusde: etherealContracts.wusde,
+    predictionMarket: etherealContracts.predictionMarket,
+    predictionMarketEscrow: etherealContracts.predictionMarketEscrow,
+    vault: etherealContracts.vault,
+  });
 
   // Note: CallPolicy computes permissionHash from (callType, target, selector) only,
   // NOT including args. So we CANNOT have two permissions for the same target+function.
@@ -329,59 +665,69 @@ export async function createSession(
     policyVersion: CallPolicyVersion.V0_0_4,
     permissions: [
       {
-        target: WUSDE_ADDRESS_ETHEREAL,
+        target: etherealContracts.wusde,
         abi: WUSDE_ABI,
         functionName: 'deposit',
+        // Allow sending native USDe value for wrapping (up to 1M USDe)
+        valueLimit: BigInt(1e24), // 1,000,000 * 1e18
       },
       {
-        // Single approve permission using ONE_OF to allow both PredictionMarket and Vault
-        target: WUSDE_ADDRESS_ETHEREAL,
+        // Single approve permission using ONE_OF to allow Vault and Escrow
+        target: etherealContracts.wusde,
         abi: collateralTokenAbi,
         functionName: 'approve',
         args: [
           {
             condition: ParamCondition.ONE_OF,
-            value: [PREDICTION_MARKET_ETHEREAL, VAULT_ETHEREAL],
+            value: [
+              etherealContracts.vault,
+              etherealContracts.predictionMarketEscrow,
+            ].filter(Boolean) as Address[],
           },
           null,
         ],
       },
-      {
-        target: PREDICTION_MARKET_ETHEREAL,
-        abi: predictionMarketAbi,
-        functionName: 'mint',
-      },
-      {
-        target: PREDICTION_MARKET_ETHEREAL,
-        abi: predictionMarketAbi,
-        functionName: 'burn',
-      },
-      {
-        target: PREDICTION_MARKET_ETHEREAL,
-        abi: predictionMarketAbi,
-        functionName: 'consolidatePrediction',
-      },
       // Vault functions for gasless deposits/withdrawals
       {
-        target: VAULT_ETHEREAL,
-        abi: liquidityVaultAbi,
+        target: etherealContracts.vault,
+        abi: predictionMarketVaultAbi,
         functionName: 'requestDeposit',
       },
       {
-        target: VAULT_ETHEREAL,
-        abi: liquidityVaultAbi,
+        target: etherealContracts.vault,
+        abi: predictionMarketVaultAbi,
         functionName: 'requestWithdrawal',
       },
       {
-        target: VAULT_ETHEREAL,
-        abi: liquidityVaultAbi,
+        target: etherealContracts.vault,
+        abi: predictionMarketVaultAbi,
         functionName: 'cancelDeposit',
       },
       {
-        target: VAULT_ETHEREAL,
-        abi: liquidityVaultAbi,
+        target: etherealContracts.vault,
+        abi: predictionMarketVaultAbi,
         functionName: 'cancelWithdrawal',
       },
+      // Escrow permissions (only if escrow is deployed on this chain)
+      ...(etherealContracts.predictionMarketEscrow
+        ? [
+            {
+              target: etherealContracts.predictionMarketEscrow,
+              abi: predictionMarketEscrowAbi,
+              functionName: 'mint',
+            },
+            {
+              target: etherealContracts.predictionMarketEscrow,
+              abi: predictionMarketEscrowAbi,
+              functionName: 'redeem',
+            },
+            {
+              target: etherealContracts.predictionMarketEscrow,
+              abi: predictionMarketEscrowAbi,
+              functionName: 'settle',
+            },
+          ]
+        : []),
     ],
   });
 
@@ -389,16 +735,31 @@ export async function createSession(
   const { serializePermissionAccount } = await import('@zerodev/permissions');
 
   // Validate Ethereal bundler/paymaster URLs (will throw if not configured)
-  getZeroDevUrls(etherealChain.id);
+  getZeroDevUrls(etherealChainId);
 
   let etherealEnableTypedData: EnableTypedData | undefined;
 
   // --- ETHEREAL CHAIN SETUP (required) ---
-  console.debug('[SessionKeyManager] Setting up Ethereal session...');
+  console.debug(
+    `[SessionKeyManager] Setting up Ethereal session on chain ${etherealChainId}...`
+  );
 
-  // Switch to Ethereal chain
-  console.debug('[SessionKeyManager] Switching to Ethereal chain...');
-  await ownerSigner.switchChain(etherealChain.id);
+  // Switch to Ethereal chain (only emit progress if chain switch is actually needed)
+  const currentChainHex = await ownerSigner.provider.request({
+    method: 'eth_chainId',
+  });
+  const currentChainId = parseInt(currentChainHex, 16);
+  if (currentChainId !== etherealChainId) {
+    onProgress?.('switching-network');
+    console.debug(
+      `[SessionKeyManager] Switching from chain ${currentChainId} to Ethereal chain ${etherealChainId}...`
+    );
+    await ownerSigner.switchChain(etherealChainId);
+  } else {
+    console.debug(
+      `[SessionKeyManager] Already on Ethereal chain ${etherealChainId}, skipping switch`
+    );
+  }
 
   // Create ECDSA validator for owner on Ethereal
   const etherealOwnerValidator = await signerToEcdsaValidator(
@@ -426,13 +787,20 @@ export async function createSession(
     etherealPermissionId
   );
 
-  // Create permission plugin for Ethereal with call policy and timestamp policy
+  // Signature caller policy: allows the escrow contract to call isValidSignature()
+  // on the smart account (ERC-1271 verification for session key signatures)
+  const escrowAddress = etherealContracts.predictionMarketEscrow;
+  const signatureCallerPolicy = toSignatureCallerPolicy({
+    allowedCallers: [escrowAddress].filter(Boolean) as Address[],
+  });
+
+  // Create permission plugin for Ethereal with call, timestamp, and signature caller policies
   const etherealPermissionPlugin = await toPermissionValidator(
     etherealPublicClient,
     {
       entryPoint: ENTRY_POINT,
       signer: sessionKeySigner,
-      policies: [etherealCallPolicy, timestampPolicy],
+      policies: [etherealCallPolicy, timestampPolicy, signatureCallerPolicy],
       kernelVersion: KERNEL_VERSION,
       permissionId: etherealPermissionId,
     }
@@ -478,6 +846,7 @@ export async function createSession(
   }
 
   // Serialize Ethereal account (triggers EIP-712 signature)
+  onProgress?.('requesting-approval');
   console.debug(
     '[SessionKeyManager] Requesting owner approval for Ethereal session key...'
   );
@@ -487,12 +856,66 @@ export async function createSession(
   );
 
   // Create Ethereal client
-  const etherealClient = createChainClient(etherealChain, etherealAccount);
+  const etherealClient = createChainClient(
+    selectedEtherealChain,
+    etherealAccount
+  );
 
   console.debug('[SessionKeyManager] Owner approval obtained, session created');
   console.debug(
     '[SessionKeyManager] Arbitrum session will be created lazily on first EAS attestation'
   );
+
+  onProgress?.('deploying-account');
+  // Deploy the smart account on-chain via a deployment UserOp if not already deployed.
+  // This ensures ERC-1271 isValidSignature works on the first mint (the escrow
+  // contract checks signer.code.length > 0 before attempting ERC-1271 fallback).
+  // We use approve(vault, 0) as the callData because a raw no-op (0x) is not in
+  // the session key's CallPolicy and would cause an AA23 paymaster revert.
+  const etherealPublicClientForDeploy =
+    getEtherealPublicClient(etherealChainId);
+  const deployedCode = await etherealPublicClientForDeploy.getCode({
+    address: smartAccountAddress,
+  });
+  if (!deployedCode || deployedCode === '0x') {
+    console.debug(
+      '[SessionKeyManager] Smart account not deployed, sending deployment UserOp...'
+    );
+    try {
+      const deployStart = Date.now();
+      // Send a harmless approve(vault, 0) UserOp — the bundler will include
+      // initCode to deploy the smart account as part of this operation.
+      // approve(vault, 0) is within the session key's CallPolicy permissions
+      // and is effectively a no-op (approving zero amount).
+      const deployOpHash = await etherealClient.sendUserOperation({
+        callData: await etherealAccount.encodeCalls([
+          {
+            to: etherealContracts.wusde,
+            data: encodeFunctionData({
+              abi: collateralTokenAbi,
+              functionName: 'approve',
+              args: [etherealContracts.vault, BigInt(0)],
+            }),
+            value: BigInt(0),
+          },
+        ]),
+      });
+      console.debug(
+        `[SessionKeyManager] Smart account deployment UserOp sent in ${Date.now() - deployStart}ms, hash: ${deployOpHash}`
+      );
+    } catch (e) {
+      console.warn('[SessionKeyManager] Failed to deploy smart account:', e);
+      // Non-fatal — session still works with Path B (native session key validation)
+    }
+  } else {
+    console.debug('[SessionKeyManager] Smart account already deployed');
+  }
+
+  onProgress?.('finalizing');
+  // Note: escrow session key approval (Option B) has been removed.
+  // Contract now validates session signatures via ERC-1271 (isValidSignature)
+  // on the deployed smart account. This eliminates the second wallet popup
+  // during session creation.
 
   const config: SessionConfig = {
     durationHours,
@@ -509,6 +932,7 @@ export async function createSession(
     etherealApproval,
     // Arbitrum approval not set - will be created lazily
     etherealEnableTypedData,
+    etherealChainId,
   };
 
   return {
@@ -553,7 +977,7 @@ export async function createArbitrumSession(
   });
 
   // Get Arbitrum public client
-  const { arbitrumPublicClient } = getPublicClients();
+  const arbitrumPublicClient = getArbitrumPublicClient();
 
   // Validate Arbitrum bundler/paymaster URLs (will throw if not configured)
   getZeroDevUrls(arbitrum.id);
@@ -673,8 +1097,15 @@ export async function restoreSession(
 
   const config: SessionConfig = serialized.config;
 
-  // Get public clients
-  const { etherealPublicClient, arbitrumPublicClient } = getPublicClients();
+  // Determine which Ethereal chain was used (default to mainnet for backwards compatibility)
+  const etherealChainId = serialized.etherealChainId ?? DEFAULT_CHAIN_ID;
+  const selectedEtherealChain = getEtherealChain(etherealChainId);
+  const etherealPublicClient = getEtherealPublicClient(etherealChainId);
+  const arbitrumPublicClient = getArbitrumPublicClient();
+
+  console.debug(
+    `[SessionKeyManager] Restoring session for Ethereal chain ${etherealChainId}`
+  );
 
   // Recreate session key signer from stored private key
   const sessionKeyAccount = privateKeyToAccount(serialized.sessionPrivateKey);
@@ -682,8 +1113,32 @@ export async function restoreSession(
     signer: sessionKeyAccount,
   });
 
+  // Validate escrow session key approval matches the session key (if present)
+  if (serialized.escrowSessionKeyApproval) {
+    const derivedAddress = sessionKeyAccount.address.toLowerCase();
+    const storedAddress =
+      serialized.escrowSessionKeyApproval.sessionKey.toLowerCase();
+    if (derivedAddress !== storedAddress) {
+      console.error(
+        '[SessionKeyManager] Escrow session key mismatch detected!',
+        {
+          derivedFromPrivateKey: sessionKeyAccount.address,
+          storedInEscrowApproval:
+            serialized.escrowSessionKeyApproval.sessionKey,
+        }
+      );
+      // Clear the corrupted session and throw - user must create a new session
+      clearSession();
+      throw new Error(
+        'Session key mismatch detected. The stored escrow approval has a different session key. ' +
+          'Please create a new session.'
+      );
+    }
+    console.debug('[SessionKeyManager] Escrow session key validation passed');
+  }
+
   // Restore Ethereal session (required)
-  getZeroDevUrls(etherealChain.id); // Will throw if not configured
+  getZeroDevUrls(etherealChainId); // Will throw if not configured
   const etherealAccount = await deserializePermissionAccount(
     etherealPublicClient,
     ENTRY_POINT,
@@ -691,12 +1146,54 @@ export async function restoreSession(
     serialized.etherealApproval,
     sessionKeySigner
   );
-  const etherealClient = createChainClient(etherealChain, etherealAccount);
+  const etherealClient = createChainClient(
+    selectedEtherealChain,
+    etherealAccount
+  );
   console.debug('[SessionKeyManager] Ethereal session restored');
+
+  // Ensure the smart account is deployed (may not be if session was created
+  // before deployment logic was added, or if the deploy UserOp failed).
+  const deployedCode = await etherealPublicClient.getCode({
+    address: etherealAccount.address,
+  });
+  if (!deployedCode || deployedCode === '0x') {
+    console.debug(
+      '[SessionKeyManager] Smart account not deployed, deploying on restore...'
+    );
+    try {
+      // Use approve(vault, 0) as a harmless call within CallPolicy permissions.
+      // A raw no-op (0x) would cause AA23 paymaster revert since it's not in the
+      // session key's CallPolicy. The bundler includes initCode to deploy the account.
+      const restoreContracts = getEtherealContractAddresses(etherealChainId);
+      const deployOpHash = await etherealClient.sendUserOperation({
+        callData: await etherealAccount.encodeCalls([
+          {
+            to: restoreContracts.wusde,
+            data: encodeFunctionData({
+              abi: collateralTokenAbi,
+              functionName: 'approve',
+              args: [restoreContracts.vault, BigInt(0)],
+            }),
+            value: BigInt(0),
+          },
+        ]),
+      });
+      console.debug(
+        `[SessionKeyManager] Smart account deployed on restore, hash: ${deployOpHash}`
+      );
+    } catch (e) {
+      console.warn(
+        '[SessionKeyManager] Failed to deploy smart account on restore:',
+        e
+      );
+    }
+  }
 
   // Restore Arbitrum session (optional - may not exist yet)
   let arbitrumClient: KernelAccountClient | null = null;
   if (serialized.arbitrumApproval) {
+    getZeroDevUrls(arbitrum.id); // Will throw if not configured
     const arbitrumAccount = await deserializePermissionAccount(
       arbitrumPublicClient,
       ENTRY_POINT,
@@ -786,6 +1283,35 @@ export const SESSION_STORAGE_KEY = 'sapience:session';
  */
 export function saveSession(serialized: SerializedSession): void {
   if (typeof window === 'undefined') return;
+
+  // Validate session key consistency before saving
+  const derivedAddress = privateKeyToAccount(
+    serialized.sessionPrivateKey
+  ).address;
+  if (serialized.escrowSessionKeyApproval) {
+    if (
+      derivedAddress.toLowerCase() !==
+      serialized.escrowSessionKeyApproval.sessionKey.toLowerCase()
+    ) {
+      console.error(
+        '[SessionKeyManager] CRITICAL: Attempted to save session with mismatched keys!',
+        {
+          derivedFromPrivateKey: derivedAddress,
+          inEscrowApproval: serialized.escrowSessionKeyApproval.sessionKey,
+        }
+      );
+      throw new Error(
+        'Cannot save session: session key mismatch between private key and escrow approval'
+      );
+    }
+  }
+
+  console.debug('[SessionKeyManager] Saving session', {
+    sessionKeyAddress: derivedAddress,
+    smartAccount: serialized.config.smartAccountAddress,
+    hasEscrowApproval: !!serialized.escrowSessionKeyApproval,
+  });
+
   localStorage.setItem(SESSION_STORAGE_KEY, JSON.stringify(serialized));
 }
 
@@ -848,10 +1374,16 @@ export async function executeSudoTransaction(
   );
 
   // Get the appropriate chain config and public client
-  const chain = chainId === etherealChain.id ? etherealChain : arbitrum;
-  const { etherealPublicClient, arbitrumPublicClient } = getPublicClients();
-  const publicClient =
-    chainId === etherealChain.id ? etherealPublicClient : arbitrumPublicClient;
+  // Support Ethereal mainnet, Ethereal testnet, and Arbitrum
+  let chain: Chain;
+  let publicClient;
+  if (chainId === CHAIN_ID_ETHEREAL || chainId === CHAIN_ID_ETHEREAL_TESTNET) {
+    chain = getEtherealChain(chainId);
+    publicClient = getEtherealPublicClient(chainId);
+  } else {
+    chain = arbitrum;
+    publicClient = getArbitrumPublicClient();
+  }
 
   // Switch to the correct chain
   console.debug(`[SessionKeyManager] Switching to chain ${chainId}...`);

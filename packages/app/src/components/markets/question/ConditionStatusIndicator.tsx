@@ -12,6 +12,7 @@ interface ConditionStatusIndicatorProps {
   endTime?: number | null;
   settled?: boolean | null;
   resolvedToYes?: boolean | null;
+  nonDecisive?: boolean | null;
 }
 
 function ResolutionBadge({ resolvedToYes }: { resolvedToYes: boolean }) {
@@ -33,17 +34,27 @@ export function ConditionStatusIndicator({
   endTime,
   settled,
   resolvedToYes,
+  nonDecisive,
 }: ConditionStatusIndicatorProps) {
   const nowSec = Math.floor(Date.now() / 1000);
   const hasEnded = typeof endTime === 'number' ? endTime <= nowSec : false;
 
-  const state: 'pending' | 'resolvedYes' | 'resolvedNo' | 'active' = (() => {
+  const state:
+    | 'pending'
+    | 'resolvedYes'
+    | 'resolvedNo'
+    | 'nonDecisive'
+    | 'active' = (() => {
     if (!hasEnded) return 'active';
     if (!settled) return 'pending';
+    if (nonDecisive) return 'nonDecisive';
     return resolvedToYes ? 'resolvedYes' : 'resolvedNo';
   })();
 
-  const isResolved = state === 'resolvedYes' || state === 'resolvedNo';
+  const isResolved =
+    state === 'resolvedYes' ||
+    state === 'resolvedNo' ||
+    state === 'nonDecisive';
 
   const circle = (() => {
     const base =
@@ -68,6 +79,12 @@ export function ConditionStatusIndicator({
             <span className="relative h-[14px] w-[14px] rounded-full border border-no/50 bg-no/25" />
           </span>
         );
+      case 'nonDecisive':
+        return (
+          <span className={base}>
+            <span className="relative h-[14px] w-[14px] rounded-full border border-muted-foreground/50 bg-muted/25" />
+          </span>
+        );
       case 'active':
       default:
         return (
@@ -81,6 +98,7 @@ export function ConditionStatusIndicator({
   const tooltipContent = (() => {
     if (!hasEnded) return 'Active';
     if (!settled) return 'Resolution Pending';
+    if (nonDecisive) return 'Tie';
     return <ResolutionBadge resolvedToYes={!!resolvedToYes} />;
   })();
 

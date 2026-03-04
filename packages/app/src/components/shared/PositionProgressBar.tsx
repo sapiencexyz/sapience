@@ -11,6 +11,7 @@ import {
   PositionStage,
   type PositionProgressState,
 } from '~/types/positionProgress';
+import { getExplorerUrl } from '~/lib/utils/util';
 
 interface PositionProgressBarProps {
   progressState: PositionProgressState;
@@ -274,7 +275,7 @@ export default function PositionProgressBar({
                     {' '}
                     Use the{' '}
                     <a
-                      href={`https://explorer.ethereal.trade/address/${userAddress}?tab=token_transfers`}
+                      href={`${getExplorerUrl()}/address/${userAddress}?tab=token_transfers`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="text-[hsl(var(--accent-gold))] hover:underline"

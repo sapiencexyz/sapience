@@ -29,7 +29,7 @@ import {
   DialogTitle,
 } from '@sapience/ui/components/ui/dialog';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
-import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { isAddress, getAddress } from 'viem';
 import { getDeterministicCategoryColor } from '~/lib/theme/categoryPalette';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
@@ -50,7 +50,7 @@ const PAGES = [
 /** Lightweight query — only fetches the fields the command palette needs */
 const SEARCH_QUESTIONS = /* GraphQL */ `
   query CommandMenuSearch($take: Int!, $chainId: Int, $search: String) {
-    questionsSorted(
+    questions(
       take: $take
       skip: 0
       chainId: $chainId
@@ -121,17 +121,17 @@ function useCommandMenuSearch(search: string | undefined, enabled: boolean) {
     queryKey: ['commandMenuSearch', search],
     queryFn: async () => {
       const data = await graphqlRequest<{
-        questionsSorted: QuestionResult[];
+        questions: QuestionResult[];
       }>(SEARCH_QUESTIONS, {
         // Overfetch 3x: groups expand into multiple rows, and we re-sort
         // client-side to prefer future markets over expired ones
         take: MAX_RESULTS * 3,
-        chainId: CHAIN_ID_ETHEREAL,
+        chainId: DEFAULT_CHAIN_ID,
         search: search?.trim() || null,
       });
 
       const nowSec = Math.floor(Date.now() / 1000);
-      return (data.questionsSorted ?? [])
+      return (data.questions ?? [])
         .flatMap((q) => {
           if (q.questionType === 'condition' && q.condition) {
             return [q.condition];

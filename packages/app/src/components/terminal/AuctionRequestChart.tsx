@@ -14,10 +14,10 @@ const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 type Props = {
   bids: AuctionBid[];
   refreshMs?: number;
-  takerWager: string | null;
+  predictorCollateral: string | null;
   collateralAssetTicker: string;
   maxEndTimeSec?: number;
-  taker?: string | null;
+  predictor?: string | null;
   hasMultipleConditions?: boolean;
   tokenDecimals: number;
   invalidBidCount?: number;
@@ -26,10 +26,10 @@ type Props = {
 const AuctionRequestChart: React.FC<Props> = ({
   bids,
   refreshMs = 90,
-  takerWager,
+  predictorCollateral,
   collateralAssetTicker,
   maxEndTimeSec: _maxEndTimeSec,
-  taker,
+  predictor,
   hasMultipleConditions,
   tokenDecimals,
   invalidBidCount = 0,
@@ -63,19 +63,19 @@ const AuctionRequestChart: React.FC<Props> = ({
     };
   }, [bids]);
 
-  const takerAmountDisplay = (() => {
+  const predictorAmountDisplay = (() => {
     try {
       return Number(
-        formatUnits(BigInt(String(takerWager ?? '0')), tokenDecimals)
+        formatUnits(BigInt(String(predictorCollateral ?? '0')), tokenDecimals)
       );
     } catch {
       return 0;
     }
   })();
 
-  const normalizedTaker = taker?.toLowerCase();
+  const normalizedPredictor = predictor?.toLowerCase();
   const showRequester =
-    !!normalizedTaker && normalizedTaker !== ZERO_ADDRESS.toLowerCase();
+    !!normalizedPredictor && normalizedPredictor !== ZERO_ADDRESS.toLowerCase();
 
   return (
     <div className="md:col-span-2 h-full min-h-0 flex flex-col">
@@ -95,8 +95,8 @@ const AuctionRequestChart: React.FC<Props> = ({
       <div className="flex items-center justify-between text-xs mb-2">
         <div className="flex flex-wrap items-center gap-x-1 gap-y-1 min-w-0">
           <span className="font-mono text-brand-white">
-            {Number.isFinite(takerAmountDisplay)
-              ? takerAmountDisplay.toLocaleString(undefined, {
+            {Number.isFinite(predictorAmountDisplay)
+              ? predictorAmountDisplay.toLocaleString(undefined, {
                   minimumFractionDigits: 2,
                   maximumFractionDigits: 2,
                 })
@@ -109,13 +109,13 @@ const AuctionRequestChart: React.FC<Props> = ({
               <span className="text-muted-foreground">from</span>
               <div className="inline-flex items-center gap-1 min-w-0">
                 <EnsAvatar
-                  address={taker || ''}
+                  address={predictor || ''}
                   className="w-4 h-4 rounded-sm ring-1 ring-border/50 shrink-0"
                   width={16}
                   height={16}
                 />
                 <div className="min-w-0">
-                  <AddressDisplay address={taker || ''} compact />
+                  <AddressDisplay address={predictor || ''} compact />
                 </div>
               </div>
             </div>
@@ -135,8 +135,8 @@ const AuctionRequestChart: React.FC<Props> = ({
           bids={displayBids}
           continuous
           refreshMs={refreshMs}
-          takerWager={takerWager}
-          taker={taker}
+          predictorCollateral={predictorCollateral}
+          predictor={predictor}
           collateralAssetTicker={collateralAssetTicker}
         />
       </div>

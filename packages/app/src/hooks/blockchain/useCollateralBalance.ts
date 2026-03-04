@@ -4,9 +4,8 @@ import { erc20Abi, formatUnits } from 'viem';
 import {
   COLLATERAL_SYMBOLS,
   CHAIN_ID_ETHEREAL,
-  CHAIN_ID_ETHEREAL_TESTNET,
   DEFAULT_CHAIN_ID,
-  ETHEREAL_WUSDE_ADDRESS,
+  CHAIN_ID_ETHEREAL_TESTNET,
 } from '@sapience/sdk/constants';
 import { collateralToken } from '@sapience/sdk/contracts';
 
@@ -21,6 +20,10 @@ interface UseCollateralBalanceProps {
 
 interface UseCollateralBalanceResult {
   rawBalance: bigint | undefined;
+  /** Raw native USDe balance in wei (only on Ethereal) */
+  rawNativeBalance: bigint;
+  /** Raw wrapped USDe balance in wei (only on Ethereal) */
+  rawWrappedBalance: bigint;
   balance: number;
   /** Native USDe balance (only on Ethereal) */
   nativeBalance: number;
@@ -60,6 +63,9 @@ export function useCollateralBalance({
     },
   });
 
+  // Collateral token address for the active chain (WUSDe on Ethereal, ERC-20 elsewhere)
+  const collateralAssetAddress = collateralToken[effectiveChainId]?.address;
+
   // --- Ethereal: WUSDe (wrapped) balance ---
   const {
     data: wusdeBalance,
@@ -67,7 +73,7 @@ export function useCollateralBalance({
     refetch: refetchWusde,
   } = useReadContract({
     abi: erc20Abi,
-    address: ETHEREAL_WUSDE_ADDRESS,
+    address: collateralAssetAddress,
     functionName: 'balanceOf',
     args: address ? [address] : undefined,
     chainId: effectiveChainId,
@@ -76,9 +82,6 @@ export function useCollateralBalance({
       refetchInterval: 5000,
     },
   });
-
-  // --- Non-Ethereal: ERC-20 collateral balance ---
-  const collateralAssetAddress = collateralToken[effectiveChainId]?.address;
 
   const {
     data: erc20Balance,
@@ -122,6 +125,8 @@ export function useCollateralBalance({
 
       return {
         rawBalance: rawTotal,
+        rawNativeBalance: rawNative,
+        rawWrappedBalance: rawWrapped,
         balance: totalNum,
         nativeBalance: nativeNum,
         wrappedBalance: wrappedNum,
@@ -135,6 +140,8 @@ export function useCollateralBalance({
 
     return {
       rawBalance: erc20Balance ? raw : undefined,
+      rawNativeBalance: 0n,
+      rawWrappedBalance: 0n,
       balance: num,
       nativeBalance: 0,
       wrappedBalance: 0,
@@ -144,6 +151,8 @@ export function useCollateralBalance({
 
   return {
     rawBalance: result.rawBalance,
+    rawNativeBalance: result.rawNativeBalance,
+    rawWrappedBalance: result.rawWrappedBalance,
     balance: result.balance,
     nativeBalance: result.nativeBalance,
     wrappedBalance: result.wrappedBalance,

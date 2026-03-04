@@ -1,11 +1,13 @@
-import { decodeAbiParameters } from 'viem';
+import { decodeAbiParameters, type Address } from 'viem';
 import {
   pythResolver,
   umaResolver,
   lzPMResolver,
   lzUmaResolver,
   predictionMarketLZConditionalTokensResolver,
+  manualConditionResolver,
 } from '@sapience/sdk/contracts';
+import type { Pick, OutcomeSide } from '@sapience/sdk/types';
 
 export type UmaDecodedOutcome = {
   kind: 'uma';
@@ -43,6 +45,8 @@ const UMA_RESOLVER_SET = new Set<string>(
     ...Object.values(predictionMarketLZConditionalTokensResolver).map(
       (v) => v?.address
     ),
+    // Escrow resolvers that use the same encoding format as UMA
+    ...Object.values(manualConditionResolver).map((v) => v?.address),
   ]
     .filter(Boolean)
     .map((a) => String(a).toLowerCase())
@@ -170,4 +174,31 @@ export function formatUnixSecondsToLocalInput(value: bigint): string {
   return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(
     d.getDate()
   )}T${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+
+/**
+ * Convert decoded auction outcomes to Pick[] format
+ * Used for escrow signing which requires the picks array structure
+ */
+export function decodedOutcomesToPicks(
+  decoded: DecodedOutcomes,
+  resolverAddress: Address
+): Pick[] {
+  if (decoded.kind === 'uma') {
+    return decoded.outcomes.map((o) => ({
+      conditionResolver: resolverAddress,
+      conditionId: o.marketId,
+      // YES = 1, NO = 0 in OutcomeSide enum
+      predictedOutcome: (o.prediction ? 1 : 0) as OutcomeSide,
+    }));
+  }
+
+  // Pyth outcomes don't map directly to escrow picks in the same way
+  // For now, return empty - Pyth uses different resolver logic
+  if (decoded.kind === 'pyth') {
+    console.warn('Pyth outcomes not yet supported for pick conversion');
+    return [];
+  }
+
+  return [];
 }

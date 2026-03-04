@@ -2,7 +2,6 @@ import { useCallback, useState } from 'react';
 import { encodeAbiParameters, parseAbiParameters, type Hash } from 'viem';
 import { useAccount } from 'wagmi';
 
-import { MarketGroupClassification } from '../../lib/types';
 import { SCHEMA_UID } from '~/lib/constants';
 import { EAS_ATTEST_ABI, getEASContractAddress } from '~/hooks/contract/EAS';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
@@ -12,7 +11,6 @@ import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteCon
 const ARBITRUM_CHAIN_ID = 42161;
 
 interface UseSubmitPredictionProps {
-  marketClassification: MarketGroupClassification;
   submissionValue: string; // Value from the form - probability 0-100 (will be converted to D18)
   comment?: string;
   onSuccess?: () => void;
@@ -21,7 +19,6 @@ interface UseSubmitPredictionProps {
 }
 
 export function useSubmitPrediction({
-  marketClassification,
   submissionValue,
   comment = '',
   onSuccess,
@@ -64,45 +61,14 @@ export function useSubmitPrediction({
   const encodeSchemaData = useCallback(
     (
       predictionInput: string,
-      classification: MarketGroupClassification,
       _comment: string,
       _resolver: `0x${string}`,
       _condition: `0x${string}`
     ) => {
       try {
-        let finalPredictionBigInt: bigint;
-
-        switch (classification) {
-          case MarketGroupClassification.NUMERIC: {
-            const inputNum = parseFloat(predictionInput);
-            if (Number.isNaN(inputNum) || inputNum < 0) {
-              throw new Error(
-                'Numeric prediction input must be a valid non-negative number.'
-              );
-            }
-            // D18 format: value * 10^18
-            finalPredictionBigInt = BigInt(Math.round(inputNum * 1e18));
-            break;
-          }
-          case MarketGroupClassification.YES_NO:
-            // predictionInput is probability 0-100, convert to D18
-            finalPredictionBigInt = BigInt(
-              Math.round(parseFloat(predictionInput) * 1e18)
-            );
-            break;
-          case MarketGroupClassification.MULTIPLE_CHOICE:
-            // predictionInput is probability 0-100, convert to D18
-            finalPredictionBigInt = BigInt(
-              Math.round(parseFloat(predictionInput) * 1e18)
-            );
-            break;
-          default: {
-            const _exhaustiveCheck: never = classification;
-            throw new Error(
-              `Unsupported market classification for encoding: ${_exhaustiveCheck}`
-            );
-          }
-        }
+        const finalPredictionBigInt = BigInt(
+          Math.round(parseFloat(predictionInput) * 1e18)
+        );
 
         return encodeAbiParameters(
           parseAbiParameters(
@@ -112,13 +78,6 @@ export function useSubmitPrediction({
         );
       } catch (error) {
         console.error('Error encoding schema data:', error);
-        if (
-          error instanceof Error &&
-          (error.message.includes('Numeric prediction input must be') ||
-            error.message.includes('Unsupported market category'))
-        ) {
-          throw error;
-        }
         throw new Error('Failed to encode prediction data');
       }
     },
@@ -136,7 +95,6 @@ export function useSubmitPrediction({
       }
       const encodedData = encodeSchemaData(
         submissionValue,
-        marketClassification,
         comment,
         resolver,
         condition
@@ -170,7 +128,6 @@ export function useSubmitPrediction({
     }
   }, [
     address,
-    marketClassification,
     submissionValue,
     comment,
     resolver,

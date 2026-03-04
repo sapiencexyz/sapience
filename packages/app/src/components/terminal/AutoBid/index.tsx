@@ -2,11 +2,13 @@
 
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useAccount, useReadContracts } from 'wagmi';
+import { useAccount } from 'wagmi';
 import { formatUnits } from 'viem';
-import { predictionMarket } from '@sapience/sdk/contracts';
-import { predictionMarketAbi } from '@sapience/sdk';
-import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import {
+  predictionMarketEscrow,
+  collateralToken,
+} from '@sapience/sdk/contracts';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useConditions } from '~/hooks/graphql/useConditions';
 import { useTokenApproval } from '~/hooks/contract/useTokenApproval';
 import { useCollateralBalance } from '~/hooks/blockchain/useCollateralBalance';
@@ -14,7 +16,7 @@ import { useApprovalDialog } from '~/components/terminal/ApprovalDialogContext';
 import { useTerminalLogs } from '~/components/terminal/TerminalLogsContext';
 import { useAuctionRelayerFeed } from '~/lib/auction/useAuctionRelayerFeed';
 import { useRestrictedJurisdiction } from '~/hooks/useRestrictedJurisdiction';
-import { useBidSubmission } from '~/hooks/auction';
+import { useEscrowBidSubmission } from '~/hooks/auction';
 import type { MultiSelectItem } from '~/components/terminal/filters/MultiSelect';
 
 import type { AutoBidProps, Order, OrderDraft } from './types';
@@ -36,7 +38,7 @@ const MAX_DISPLAY_ALLOWANCE = 10n ** 27n; // 1 billion tokens (10^9) with 18 dec
 
 const AutoBid: React.FC<AutoBidProps> = () => {
   const { address } = useAccount();
-  const chainId = CHAIN_ID_ETHEREAL;
+  const chainId = DEFAULT_CHAIN_ID;
   const { messages: auctionMessages } = useAuctionRelayerFeed();
   const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
 
@@ -51,33 +53,15 @@ const AutoBid: React.FC<AutoBidProps> = () => {
     enabled: Boolean(address),
   });
 
-  const SPENDER_ADDRESS = predictionMarket[chainId]?.address as
+  // Always use PredictionMarketEscrow
+  const SPENDER_ADDRESS = predictionMarketEscrow[chainId]?.address as
     | `0x${string}`
     | undefined;
 
-  // Read collateral token address from PredictionMarket contract config
-  const predictionMarketConfigRead = useReadContracts({
-    contracts: SPENDER_ADDRESS
-      ? [
-          {
-            address: SPENDER_ADDRESS,
-            abi: predictionMarketAbi,
-            functionName: 'getConfig',
-            chainId: chainId,
-          },
-        ]
-      : [],
-    query: { enabled: !!SPENDER_ADDRESS },
-  });
-
-  const COLLATERAL_ADDRESS: `0x${string}` | undefined = useMemo(() => {
-    const item = predictionMarketConfigRead.data?.[0];
-    if (item && item.status === 'success') {
-      const cfg = item.result as { collateralToken: `0x${string}` };
-      return cfg?.collateralToken;
-    }
-    return undefined;
-  }, [predictionMarketConfigRead.data]);
+  // Collateral token address from SDK
+  const COLLATERAL_ADDRESS = collateralToken[chainId]?.address as
+    | `0x${string}`
+    | undefined;
 
   const { openApproval } = useApprovalDialog();
   const [spenderAddressInput] = useState<string>(
@@ -165,7 +149,7 @@ const AutoBid: React.FC<AutoBidProps> = () => {
   const { logs, pushLogEntry, setOrderLabelById } = useTerminalLogs();
 
   // Bid submission hook for auto-bid signing and WebSocket submission
-  const { submitBid } = useBidSubmission();
+  const { submitBid } = useEscrowBidSubmission();
 
   // Ref to hold current orderIndexMap to avoid circular dependency
   // (logOrderEvent is passed to useAutoBidOrders which returns orderIndexMap)
@@ -315,7 +299,7 @@ const AutoBid: React.FC<AutoBidProps> = () => {
     [createDraftFromOrder]
   );
 
-  const _handleCreateOrder = useCallback(() => {
+  const handleCreateOrder = useCallback(() => {
     setInitialDraft({
       durationValue: '',
       strategy: 'conditions',
@@ -398,6 +382,7 @@ const AutoBid: React.FC<AutoBidProps> = () => {
             describeAutoPauseStatus={describeAutoPauseStatus}
             onToggleStatus={toggleOrderStatus}
             onEdit={handleEdit}
+            onCreateOrder={handleCreateOrder}
           />
 
           <LogsPanel logs={logs} orderLabelById={orderLabelById} />

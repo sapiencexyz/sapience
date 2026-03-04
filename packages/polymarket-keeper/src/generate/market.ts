@@ -8,25 +8,7 @@ import {
   runPipeline,
   printPipelineStats,
   MARKET_FILTERS,
-  // matchesAlwaysIncludePatterns,
 } from './pipeline';
-
-// Re-export for backward compatibility
-// export { matchesAlwaysIncludePatterns };
-
-// /**
-//  * Check if a market should always be included regardless of volume
-//  */
-// export function shouldAlwaysInclude(market: PolymarketMarket): boolean {
-//   return matchesAlwaysIncludePatterns(market.question || '');
-// }
-
-// /**
-//  * Check if a condition should always be included regardless of category
-//  */
-// export function shouldAlwaysIncludeCondition(condition: SapienceCondition): boolean {
-//   return matchesAlwaysIncludePatterns(condition.question || '');
-// }
 
 /**
  * Fetch markets that end soonest (for --ending-soon mode)

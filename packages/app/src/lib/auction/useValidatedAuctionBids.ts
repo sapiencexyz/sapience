@@ -7,6 +7,7 @@ import {
   type SimulateBidMintOptions,
   type SimulateBidResult,
   type ExecutionMode,
+  type BidData,
 } from '~/lib/auction/simulateBidMint';
 
 export type ValidationStatus = 'pending' | 'valid' | 'invalid';
@@ -19,9 +20,9 @@ export type ValidatedAuctionBid = AuctionBid & {
 export interface UseValidatedAuctionBidsOptions {
   chainId: number;
   predictionMarketAddress?: `0x${string}`;
-  takerAddress?: `0x${string}`;
-  takerWager?: string;
-  takerNonce?: number;
+  predictorAddress?: `0x${string}`;
+  predictorCollateral?: string;
+  predictorNonce?: number;
   encodedPredictedOutcomes?: `0x${string}`;
   resolver?: `0x${string}`;
   collateralTokenAddress?: `0x${string}`;
@@ -71,9 +72,9 @@ export function useValidatedAuctionBids(
   const {
     chainId,
     predictionMarketAddress,
-    takerAddress,
-    takerWager,
-    takerNonce,
+    predictorAddress,
+    predictorCollateral,
+    predictorNonce,
     encodedPredictedOutcomes,
     resolver,
     collateralTokenAddress,
@@ -99,9 +100,9 @@ export function useValidatedAuctionBids(
     return (
       enabled &&
       !!predictionMarketAddress &&
-      !!takerAddress &&
-      !!takerWager &&
-      takerNonce !== undefined &&
+      !!predictorAddress &&
+      !!predictorCollateral &&
+      predictorNonce !== undefined &&
       !!encodedPredictedOutcomes &&
       !!resolver &&
       !!collateralTokenAddress
@@ -109,9 +110,9 @@ export function useValidatedAuctionBids(
   }, [
     enabled,
     predictionMarketAddress,
-    takerAddress,
-    takerWager,
-    takerNonce,
+    predictorAddress,
+    predictorCollateral,
+    predictorNonce,
     encodedPredictedOutcomes,
     resolver,
     collateralTokenAddress,
@@ -123,7 +124,7 @@ export function useValidatedAuctionBids(
 
     // Find bids that haven't been validated yet (use ref to avoid re-running on state updates)
     const newBids = rawBids.filter((bid) => {
-      const signature = bid.makerSignature;
+      const signature = bid.counterpartySignature;
       return (
         !validatedSignaturesRef.current.has(signature) &&
         !validatingRef.current.has(signature)
@@ -134,16 +135,17 @@ export function useValidatedAuctionBids(
 
     // Mark bids as being validated
     for (const bid of newBids) {
-      validatingRef.current.add(bid.makerSignature);
+      validatingRef.current.add(bid.counterpartySignature);
     }
     setIsValidating(true);
 
+    // Remap app predictor* names to SDK takerAddress/takerCollateral/takerNonce
     const simulationOptions: SimulateBidMintOptions = {
       chainId,
       predictionMarketAddress: predictionMarketAddress!,
-      takerAddress: takerAddress!,
-      takerWager: takerWager!,
-      takerNonce: takerNonce!,
+      takerAddress: predictorAddress!,
+      takerCollateral: predictorCollateral!,
+      takerNonce: predictorNonce!,
       encodedPredictedOutcomes: encodedPredictedOutcomes!,
       resolver: resolver!,
       collateralTokenAddress: collateralTokenAddress!,
@@ -156,26 +158,37 @@ export function useValidatedAuctionBids(
     let cancelled = false;
 
     // Validate all new bids using shared function
+    // Map AuctionBid → SDK BidData at the boundary (SDK uses maker* field names)
+    const bidDataArray: BidData[] = newBids.map((bid) => ({
+      maker: bid.counterparty,
+      makerCollateral: bid.counterpartyCollateral,
+      makerDeadline: bid.counterpartyDeadline,
+      makerSignature: bid.counterpartySignature,
+      makerNonce: bid.counterpartyNonce,
+    }));
+
     const runValidation = async () => {
       const validated = await validateBidsWithSimulation(
-        newBids,
+        bidDataArray,
         simulationOptions
       );
 
       // Skip state updates if cancelled (unmounted or deps changed)
       if (cancelled) return;
 
-      // Update state with new results
+      // Update state with new results — use index to map back to original bids
       setValidationResults((prev) => {
         const updated = new Map(prev);
-        for (const { bid, validationStatus, validationError } of validated) {
+        for (let i = 0; i < validated.length; i++) {
+          const { validationStatus, validationError } = validated[i];
+          const originalBid = newBids[i];
           const result: SimulateBidResult = {
             isValid: validationStatus === 'valid',
             error: validationError,
           };
-          updated.set(bid.makerSignature, result);
-          validatedSignaturesRef.current.add(bid.makerSignature);
-          validatingRef.current.delete(bid.makerSignature);
+          updated.set(originalBid.counterpartySignature, result);
+          validatedSignaturesRef.current.add(originalBid.counterpartySignature);
+          validatingRef.current.delete(originalBid.counterpartySignature);
         }
         return updated;
       });
@@ -193,9 +206,9 @@ export function useValidatedAuctionBids(
     canValidate,
     chainId,
     predictionMarketAddress,
-    takerAddress,
-    takerWager,
-    takerNonce,
+    predictorAddress,
+    predictorCollateral,
+    predictorNonce,
     encodedPredictedOutcomes,
     resolver,
     collateralTokenAddress,
@@ -207,7 +220,9 @@ export function useValidatedAuctionBids(
   // Clean up validation results for bids that are no longer in rawBids
   // This prevents unbounded memory growth when running indefinitely
   useEffect(() => {
-    const currentSignatures = new Set(rawBids.map((b) => b.makerSignature));
+    const currentSignatures = new Set(
+      rawBids.map((b) => b.counterpartySignature)
+    );
 
     // Clean up validatedSignaturesRef
     for (const sig of validatedSignaturesRef.current) {
@@ -242,15 +257,18 @@ export function useValidatedAuctionBids(
   const validatedBids = useMemo((): ValidatedAuctionBid[] => {
     return rawBids.map((bid): ValidatedAuctionBid => {
       // Filter out zero address bids immediately
-      if (!bid.maker || bid.maker.toLowerCase() === ZERO_ADDRESS) {
+      if (
+        !bid.counterparty ||
+        bid.counterparty.toLowerCase() === ZERO_ADDRESS
+      ) {
         return {
           ...bid,
           validationStatus: 'invalid',
-          validationError: 'Missing maker (zero address)',
+          validationError: 'Missing counterparty (zero address)',
         };
       }
 
-      const result = validationResults.get(bid.makerSignature);
+      const result = validationResults.get(bid.counterpartySignature);
 
       if (!result) {
         // Not validated yet
@@ -276,7 +294,7 @@ export function useValidatedAuctionBids(
       // Must be valid status
       if (bid.validationStatus !== 'valid') return false;
       // Must not be expired
-      const deadlineSec = Number(bid.makerDeadline || 0);
+      const deadlineSec = Number(bid.counterpartyDeadline || 0);
       if (!Number.isFinite(deadlineSec) || deadlineSec <= 0) return false;
       return deadlineSec * 1000 > nowMs;
     });

@@ -1,6 +1,5 @@
 import { renderHook, act } from '@testing-library/react';
 import { useSubmitPrediction } from './useSubmitPrediction';
-import { MarketGroupClassification } from '../../lib/types';
 
 const mockUseAccount = jest.fn().mockReturnValue({ address: '0xUserAddress' });
 jest.mock('wagmi', () => ({
@@ -40,7 +39,6 @@ jest.mock('~/lib/constants', () => ({
 }));
 
 const DEFAULT_PROPS = {
-  marketClassification: MarketGroupClassification.YES_NO,
   submissionValue: '75',
   comment: 'test comment',
   resolver: '0xResolver' as `0x${string}`,
@@ -110,11 +108,10 @@ describe('useSubmitPrediction', () => {
     expect(result.current.attestationError).toBe('tx failed');
   });
 
-  it('NUMERIC classification calls encodeAbiParameters correctly', async () => {
+  it('encodes prediction value as D18 bigint', async () => {
     const { result } = renderHook(() =>
       useSubmitPrediction({
         ...DEFAULT_PROPS,
-        marketClassification: MarketGroupClassification.NUMERIC,
         submissionValue: '42.5',
       })
     );
@@ -135,11 +132,10 @@ describe('useSubmitPrediction', () => {
     );
   });
 
-  it('MULTIPLE_CHOICE classification works', async () => {
+  it('different submission value works', async () => {
     const { result } = renderHook(() =>
       useSubmitPrediction({
         ...DEFAULT_PROPS,
-        marketClassification: MarketGroupClassification.MULTIPLE_CHOICE,
         submissionValue: '60',
       })
     );
@@ -160,13 +156,10 @@ describe('useSubmitPrediction', () => {
     );
   });
 
-  it('negative numeric input sets error', async () => {
-    const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
-
+  it('negative numeric input still submits (no client-side validation)', async () => {
     const { result } = renderHook(() =>
       useSubmitPrediction({
         ...DEFAULT_PROPS,
-        marketClassification: MarketGroupClassification.NUMERIC,
         submissionValue: '-5',
       })
     );
@@ -175,8 +168,9 @@ describe('useSubmitPrediction', () => {
       await result.current.submitPrediction();
     });
 
-    expect(result.current.attestationError).toBeTruthy();
-    spy.mockRestore();
+    // Negative values are encoded and submitted without client-side validation
+    expect(result.current.attestationError).toBeNull();
+    expect(mockWriteContract).toHaveBeenCalled();
   });
 
   it('resetAttestationStatus clears error and success', async () => {

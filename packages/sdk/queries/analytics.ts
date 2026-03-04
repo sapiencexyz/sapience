@@ -1,7 +1,7 @@
 import { graphqlRequest } from './client/graphqlClient';
 
 export interface ProtocolStat {
-  timestamp: string;
+  timestamp: number;
   cumulativeVolume: string;
   openInterest: string;
   vaultBalance: string;
@@ -14,11 +14,8 @@ export interface ProtocolStat {
   vaultDeposits: string;
   vaultWithdrawals: string;
   vaultAirdropGains: string;
-}
-
-export interface DailyVolume {
-  timestamp: string;
-  volume: string;
+  dailyPnL: string;
+  dailyVolume: string;
 }
 
 const GET_PROTOCOL_STATS = /* GraphQL */ `
@@ -37,15 +34,8 @@ const GET_PROTOCOL_STATS = /* GraphQL */ `
       vaultDeposits
       vaultWithdrawals
       vaultAirdropGains
-    }
-  }
-`;
-
-const GET_DAILY_VOLUMES = /* GraphQL */ `
-  query DailyVolumes {
-    dailyVolumes {
-      timestamp
-      volume
+      dailyPnL
+      dailyVolume
     }
   }
 `;
@@ -55,11 +45,4 @@ export async function fetchProtocolStats(): Promise<ProtocolStat[]> {
     protocolStats: ProtocolStat[];
   }>(GET_PROTOCOL_STATS);
   return data?.protocolStats ?? [];
-}
-
-export async function fetchDailyVolumes(): Promise<DailyVolume[]> {
-  const data = await graphqlRequest<{
-    dailyVolumes: DailyVolume[];
-  }>(GET_DAILY_VOLUMES);
-  return data?.dailyVolumes ?? [];
 }

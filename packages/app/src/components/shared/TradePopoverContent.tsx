@@ -8,7 +8,7 @@ import PercentChance from '~/components/shared/PercentChance';
 type TradePopoverContentProps = {
   leftAddress: string;
   rightAddress: string;
-  takerAmountEth: number;
+  counterpartyAmountEth: number;
   totalAmountEth: number;
   percent?: number;
   ticker: string;
@@ -19,15 +19,15 @@ type TradePopoverContentProps = {
 const TradePopoverContent: React.FC<TradePopoverContentProps> = ({
   leftAddress,
   rightAddress: _rightAddress,
-  takerAmountEth,
+  counterpartyAmountEth,
   totalAmountEth,
   percent,
   ticker,
   timeLabel,
   timeNode,
 }) => {
-  const takerStr = Number.isFinite(takerAmountEth)
-    ? takerAmountEth.toLocaleString(undefined, {
+  const counterpartyStr = Number.isFinite(counterpartyAmountEth)
+    ? counterpartyAmountEth.toLocaleString(undefined, {
         minimumFractionDigits: 2,
         maximumFractionDigits: 2,
       })
@@ -44,7 +44,7 @@ const TradePopoverContent: React.FC<TradePopoverContentProps> = ({
       {/* Line 1: x for payout y */}
       <div className="text-sm">
         <span className="font-mono font-normal text-brand-white">
-          {takerStr} {ticker}
+          {counterpartyStr} {ticker}
         </span>{' '}
         <span className="text-muted-foreground">for payout</span>{' '}
         <span className="font-mono font-normal text-brand-white">

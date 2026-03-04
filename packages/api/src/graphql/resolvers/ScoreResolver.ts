@@ -11,10 +11,13 @@ import {
 import prisma from '../../db';
 import { TtlCache } from '../../utils/ttlCache';
 
-@ObjectType()
+@ObjectType('ForecasterScore', {
+  description:
+    'Accuracy score for a forecaster, aggregated across all scored markets',
+})
 class ForecasterScoreType {
   @Field(() => String)
-  attester!: string;
+  address!: string;
 
   @Field(() => Int)
   numScored!: number;
@@ -32,10 +35,12 @@ class ForecasterScoreType {
   accuracyScore!: number;
 }
 
-@ObjectType()
+@ObjectType('AccuracyRank', {
+  description: 'Accuracy rank for an address on the forecasting leaderboard',
+})
 class AccuracyRankType {
   @Field(() => String)
-  attester!: string;
+  address!: string;
 
   @Field(() => Float)
   accuracyScore!: number;
@@ -55,12 +60,47 @@ export class ScoreResolver {
     maxSize: 5000,
   });
 
-  @Query(() => ForecasterScoreType, { nullable: true })
+  // Cache for the full leaderboard aggregation (shared by accuracyLeaderboard + accountAccuracyRank)
+  private static leaderboardCache = new TtlCache<
+    string,
+    { attester: string; accuracyScore: number }[]
+  >({
+    ttlMs: 60_000,
+    maxSize: 1,
+  });
+
+  private static async getLeaderboardScores(): Promise<
+    { attester: string; accuracyScore: number }[]
+  > {
+    const cached = ScoreResolver.leaderboardCache.get('leaderboard');
+    if (cached) return cached;
+
+    const agg = await prisma.attesterMarketTwError.groupBy({
+      by: ['attester'],
+      _avg: { twError: true },
+    });
+
+    const scores = agg
+      .map((row) => ({
+        attester: (row.attester as string).toLowerCase(),
+        accuracyScore: (row._avg.twError as number | null) ?? 0,
+      }))
+      .sort((a, b) => b.accuracyScore - a.accuracyScore);
+
+    ScoreResolver.leaderboardCache.set('leaderboard', scores);
+    return scores;
+  }
+
+  @Query(() => ForecasterScoreType, {
+    nullable: true,
+    description:
+      'Accuracy score for a single forecaster address, or null if no scored attestations exist',
+  })
   @Directive('@cacheControl(maxAge: 60)')
-  async forecasterScore(
-    @Arg('attester', () => String) attester: string
+  async accountAccuracy(
+    @Arg('address', () => String) address: string
   ): Promise<ForecasterScoreType | null> {
-    const a = attester.toLowerCase();
+    const a = address.toLowerCase();
 
     // Aggregate accuracy scores across markets for this attester
     // twError now stores accuracy scores directly (higher is better)
@@ -79,7 +119,7 @@ export class ScoreResolver {
     const accuracyScore = sumTimeWeightedError / numTimeWeighted;
 
     return {
-      attester: a,
+      address: a,
       numScored: 0,
       sumErrorSquared: 0,
       numTimeWeighted,
@@ -88,66 +128,46 @@ export class ScoreResolver {
     };
   }
 
-  @Query(() => [ForecasterScoreType])
+  @Query(() => [ForecasterScoreType], {
+    description: 'Top forecasters ranked by accuracy score',
+  })
   @Directive('@cacheControl(maxAge: 60)')
-  async topForecasters(
+  async accuracyLeaderboard(
     @Arg('limit', () => Int, { defaultValue: 10 }) limit: number
   ): Promise<ForecasterScoreType[]> {
     const capped = Math.max(1, Math.min(limit, 100));
 
-    // twError now stores accuracy scores directly (higher is better)
-    const agg = await prisma.attesterMarketTwError.groupBy({
-      by: ['attester'],
-      _avg: { twError: true },
-    });
+    const scores = await ScoreResolver.getLeaderboardScores();
 
-    const results = agg.map((row) => {
-      // twError stores (1 - brierScore) * tau, so avg is the accuracy score
-      const score = (row._avg.twError as number | null) ?? 0;
-      return {
-        attester: (row.attester as string).toLowerCase(),
-        numScored: 0,
-        sumErrorSquared: 0,
-        numTimeWeighted: 0,
-        sumTimeWeightedError: 0,
-        accuracyScore: score,
-      } as ForecasterScoreType;
-    });
-
-    results.sort((a, b) => b.accuracyScore - a.accuracyScore);
-    return results.slice(0, capped);
+    return scores.slice(0, capped).map((s) => ({
+      address: s.attester,
+      numScored: 0,
+      sumErrorSquared: 0,
+      numTimeWeighted: 0,
+      sumTimeWeightedError: 0,
+      accuracyScore: s.accuracyScore,
+    }));
   }
 
-  @Query(() => AccuracyRankType)
+  @Query(() => AccuracyRankType, {
+    description:
+      'Accuracy rank and score for a single address relative to all forecasters',
+  })
   @Directive('@cacheControl(maxAge: 60)')
-  async accuracyRankByAddress(
-    @Arg('attester', () => String) attester: string
+  async accountAccuracyRank(
+    @Arg('address', () => String) address: string
   ): Promise<AccuracyRankType> {
-    const target = attester.toLowerCase();
+    const target = address.toLowerCase();
 
-    // twError now stores accuracy scores directly (higher is better)
-    const agg = await prisma.attesterMarketTwError.groupBy({
-      by: ['attester'],
-      _avg: { twError: true },
-    });
+    const scores = await ScoreResolver.getLeaderboardScores();
 
-    const scores = agg.map((row) => {
-      // twError stores (1 - brierScore) * tau, so avg is the accuracy score
-      const accuracyScore = (row._avg.twError as number | null) ?? 0;
-      return {
-        attester: (row.attester as string).toLowerCase(),
-        accuracyScore,
-      };
-    });
-
-    scores.sort((x, y) => y.accuracyScore - x.accuracyScore);
     const totalForecasters = scores.length;
     const idx = scores.findIndex((s) => s.attester === target);
     const rank = idx >= 0 ? idx + 1 : null;
     const accuracyScore = idx >= 0 ? scores[idx].accuracyScore : 0;
 
     return {
-      attester: target,
+      address: target,
       accuracyScore,
       rank,
       totalForecasters,

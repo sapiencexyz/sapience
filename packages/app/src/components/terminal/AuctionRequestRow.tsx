@@ -9,17 +9,19 @@ import { type UiTransaction } from '~/components/markets/DataDrawer/TransactionC
 import { useValidatedAuctionBids } from '~/lib/auction/useValidatedAuctionBids';
 import AuctionRequestInfo from '~/components/terminal/AuctionRequestInfo';
 import AuctionRequestChart from '~/components/terminal/AuctionRequestChart';
-import { useAccount, useReadContract, useReadContracts } from 'wagmi';
-import { predictionMarket, collateralToken } from '@sapience/sdk/contracts';
+import { useAccount, useReadContract } from 'wagmi';
+import {
+  predictionMarketEscrow,
+  collateralToken,
+} from '@sapience/sdk/contracts';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
-import { DEFAULT_CHAIN_ID, CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
-import { predictionMarketAbi } from '@sapience/sdk';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import erc20Abi from '@sapience/sdk/queries/abis/erc20abi.json';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useConditionsByIds } from '~/hooks/graphql/useConditionsByIds';
 import { useApprovalDialog } from '~/components/terminal/ApprovalDialogContext';
 import { useTerminalLogsOptional } from '~/components/terminal/TerminalLogsContext';
-import { useBidPreflight, useBidSubmission } from '~/hooks/auction';
+import { useBidPreflight, useEscrowBidSubmission } from '~/hooks/auction';
 import PercentChance from '~/components/shared/PercentChance';
 import { decodeAuctionPredictedOutcomes } from '~/lib/auction/decodePredictedOutcomes';
 
@@ -27,36 +29,42 @@ type Props = {
   uiTx: UiTransaction;
   predictionsContent: React.ReactNode;
   auctionId: string | null;
-  takerWager: string | null;
-  taker: string | null;
+  predictorCollateral: string | null;
+  predictor: string | null;
   resolver: string | null;
   predictedOutcomes: string[];
-  takerNonce: number | null;
   collateralAssetTicker: string;
   onTogglePin?: (auctionId: string | null) => void;
   isPinned?: boolean;
   isExpanded?: boolean;
   onToggleExpanded?: (auctionId: string | null) => void;
+  /** Escrow picks array */
+  escrowPicks?: Array<{
+    conditionResolver: string;
+    conditionId: string;
+    predictedOutcome: number;
+  }>;
 };
 
 const AuctionRequestRow: React.FC<Props> = ({
-  uiTx,
+  uiTx: _uiTx,
   predictionsContent,
   auctionId,
-  takerWager,
-  taker,
+  predictorCollateral,
+  predictor,
   resolver,
   predictedOutcomes,
-  takerNonce,
   collateralAssetTicker,
   onTogglePin,
   isPinned,
   isExpanded: isExpandedProp,
   onToggleExpanded,
+  escrowPicks,
 }) => {
   const { address } = useAccount();
   const { openConnectDialog } = useConnectDialog();
-  const chainId = CHAIN_ID_ETHEREAL;
+  // TODO: Get chainId from context/props when supporting multiple chains
+  const chainId = DEFAULT_CHAIN_ID;
   const { toast } = useToast();
   const { openApproval } = useApprovalDialog();
   const terminalLogs = useTerminalLogsOptional();
@@ -73,7 +81,7 @@ const AuctionRequestRow: React.FC<Props> = ({
   });
 
   // Use shared bid submission hook for signing and WebSocket submission
-  const { submitBid: submitBidToWs } = useBidSubmission({
+  const { submitBid: submitBidToWs } = useEscrowBidSubmission({
     onSignatureRejected: (error) => {
       toast({
         title: 'Signature rejected',
@@ -81,33 +89,11 @@ const AuctionRequestRow: React.FC<Props> = ({
       });
     },
   });
-  // Resolve collateral token from PredictionMarket config (fallback to default constant)
-  const PREDICTION_MARKET_ADDRESS = predictionMarket[chainId]?.address;
-  const predictionMarketConfigRead = useReadContracts({
-    contracts: PREDICTION_MARKET_ADDRESS
-      ? [
-          {
-            address: PREDICTION_MARKET_ADDRESS,
-            abi: predictionMarketAbi,
-            functionName: 'getConfig',
-            chainId: chainId,
-          },
-        ]
-      : [],
-    query: { enabled: !!PREDICTION_MARKET_ADDRESS },
-  });
-  const COLLATERAL_ADDRESS = useMemo(() => {
-    const item = predictionMarketConfigRead.data?.[0];
-    if (item && item.status === 'success') {
-      try {
-        const cfg = item.result as { collateralToken: `0x${string}` };
-        if (cfg?.collateralToken) return cfg.collateralToken;
-      } catch {
-        /* noop */
-      }
-    }
-    return collateralToken[DEFAULT_CHAIN_ID]?.address;
-  }, [predictionMarketConfigRead.data]);
+  // Always use PredictionMarketEscrow
+  const PREDICTION_MARKET_ADDRESS = predictionMarketEscrow[chainId]?.address;
+  const COLLATERAL_ADDRESS =
+    collateralToken[chainId]?.address ??
+    collateralToken[DEFAULT_CHAIN_ID]?.address;
   // Read token decimals
   const { data: tokenDecimalsData } = useReadContract({
     abi: erc20Abi,
@@ -125,18 +111,7 @@ const AuctionRequestRow: React.FC<Props> = ({
       return 18;
     }
   }, [tokenDecimalsData]);
-  // Read taker nonce on-chain for the provided taker address
-  const { data: takerNonceOnChain, refetch: refetchTakerNonce } =
-    useReadContract({
-      address: PREDICTION_MARKET_ADDRESS,
-      abi: predictionMarketAbi,
-      functionName: 'nonces',
-      args: typeof taker === 'string' ? [taker as `0x${string}`] : undefined,
-      chainId: chainId,
-      query: {
-        enabled: Boolean(PREDICTION_MARKET_ADDRESS && taker),
-      },
-    });
+  // Predictor nonce no longer needed — escrow counterparty uses their own nonce
 
   // Use controlled expanded state if provided, otherwise fall back to local state
   const [localExpanded, setLocalExpanded] = useState(false);
@@ -149,9 +124,8 @@ const AuctionRequestRow: React.FC<Props> = ({
     {
       chainId,
       predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
-      takerAddress: taker as `0x${string}` | undefined,
-      takerWager: takerWager ?? undefined,
-      takerNonce: takerNonce ?? undefined,
+      predictorAddress: predictor as `0x${string}` | undefined,
+      predictorCollateral: predictorCollateral ?? undefined,
       encodedPredictedOutcomes: predictedOutcomes?.[0] as
         | `0x${string}`
         | undefined,
@@ -173,33 +147,33 @@ const AuctionRequestRow: React.FC<Props> = ({
       if (!Array.isArray(validBids) || validBids.length === 0) return null;
       const best = validBids.reduce((prev, curr) => {
         try {
-          const currVal = BigInt(String(curr?.makerWager ?? '0'));
-          const prevVal = BigInt(String(prev?.makerWager ?? '0'));
+          const currVal = BigInt(String(curr?.counterpartyCollateral ?? '0'));
+          const prevVal = BigInt(String(prev?.counterpartyCollateral ?? '0'));
           return currVal > prevVal ? curr : prev;
         } catch {
           return prev;
         }
       }, validBids[0]);
-      const makerBid = (() => {
+      const counterpartyBid = (() => {
         try {
-          return BigInt(String(best?.makerWager ?? '0'));
+          return BigInt(String(best?.counterpartyCollateral ?? '0'));
         } catch {
           return 0n;
         }
       })();
       const requester = (() => {
         try {
-          return BigInt(String(takerWager ?? '0'));
+          return BigInt(String(predictorCollateral ?? '0'));
         } catch {
           return 0n;
         }
       })();
-      const total = makerBid + requester;
+      const total = counterpartyBid + requester;
 
       let bidDisplay = '—';
       let payoutDisplay = '—';
       try {
-        const bidNum = Number(formatEther(makerBid));
+        const bidNum = Number(formatEther(counterpartyBid));
         if (Number.isFinite(bidNum)) {
           bidDisplay = bidNum.toLocaleString(undefined, {
             minimumFractionDigits: 2,
@@ -224,7 +198,7 @@ const AuctionRequestRow: React.FC<Props> = ({
       let pct: number | null = null;
       try {
         if (total > 0n) {
-          const pctTimes100 = Number((makerBid * 10000n) / total);
+          const pctTimes100 = Number((counterpartyBid * 10000n) / total);
           pct = Math.round(pctTimes100 / 100);
         }
       } catch {
@@ -238,12 +212,12 @@ const AuctionRequestRow: React.FC<Props> = ({
     } catch {
       return null;
     }
-  }, [validBids, takerWager]);
+  }, [validBids, predictorCollateral]);
 
-  const takerWagerDisplay = useMemo(() => {
+  const predictorCollateralDisplay = useMemo(() => {
     try {
-      if (!takerWager) return null;
-      const requester = BigInt(String(takerWager));
+      if (!predictorCollateral) return null;
+      const requester = BigInt(String(predictorCollateral));
       const requesterNum = Number(formatEther(requester));
       if (!Number.isFinite(requesterNum)) return null;
       return requesterNum.toLocaleString(undefined, {
@@ -253,7 +227,7 @@ const AuctionRequestRow: React.FC<Props> = ({
     } catch {
       return null;
     }
-  }, [takerWager]);
+  }, [predictorCollateral]);
 
   const summaryWrapperClass =
     'text-[11px] sm:text-xs whitespace-nowrap flex-shrink-0 flex items-center gap-2 text-muted-foreground';
@@ -262,8 +236,8 @@ const AuctionRequestRow: React.FC<Props> = ({
     ? bestBidSummary.bidDisplay === '—'
       ? '—'
       : `${bestBidSummary.bidDisplay} ${collateralAssetTicker}`
-    : takerWagerDisplay
-      ? `${takerWagerDisplay} ${collateralAssetTicker}`
+    : predictorCollateralDisplay
+      ? `${predictorCollateralDisplay} ${collateralAssetTicker}`
       : '—';
   const secondaryAmountText = bestBidSummary
     ? bestBidSummary.payoutDisplay === '—'
@@ -364,8 +338,8 @@ const AuctionRequestRow: React.FC<Props> = ({
           return;
         }
         // Ensure connected wallet FIRST
-        const maker = address;
-        if (!maker) {
+        const counterparty = address;
+        if (!counterparty) {
           openConnectDialog();
           return;
         }
@@ -375,11 +349,11 @@ const AuctionRequestRow: React.FC<Props> = ({
           ? tokenDecimals
           : 18;
         const amountNum = Number(data.amount || '0');
-        const makerWagerWei = parseUnits(
+        const counterpartyCollateralWei = parseUnits(
           String(data.amount || '0'),
           decimalsToUse
         );
-        if (makerWagerWei <= 0n) {
+        if (counterpartyCollateralWei <= 0n) {
           toast({
             title: 'Invalid amount',
             description: 'Enter a valid bid amount greater than 0.',
@@ -429,45 +403,30 @@ const AuctionRequestRow: React.FC<Props> = ({
         }
 
         // Ensure essential auction context (after preflight checks)
-        const encodedPredicted =
-          Array.isArray(predictedOutcomes) && predictedOutcomes[0]
-            ? (predictedOutcomes[0] as `0x${string}`)
-            : undefined;
+        const hasEscrowPicks =
+          Array.isArray(escrowPicks) && escrowPicks.length > 0;
         const resolverAddr =
           typeof resolver === 'string' ? resolver : undefined;
-        const takerWagerWei = (() => {
+        const predictorCollateralWei = (() => {
           try {
-            return BigInt(String(takerWager ?? '0'));
+            return BigInt(String(predictorCollateral ?? '0'));
           } catch {
             return 0n;
           }
         })();
-        // Resolve maker nonce: prefer feed-provided, fall back to on-chain
-        let takerNonceVal: number | undefined =
-          typeof takerNonce === 'number' ? takerNonce : undefined;
-        if (takerNonceVal === undefined) {
-          try {
-            const fresh = await Promise.resolve(refetchTakerNonce?.());
-            const raw = fresh?.data ?? takerNonceOnChain;
-            const n = Number(raw);
-            if (Number.isFinite(n)) takerNonceVal = n;
-          } catch {
-            /* noop */
-          }
-        }
+
         if (
-          !encodedPredicted ||
+          !hasEscrowPicks ||
           !resolverAddr ||
-          takerNonceVal === undefined ||
-          takerWagerWei <= 0n ||
-          !taker
+          predictorCollateralWei <= 0n ||
+          !predictor
         ) {
           const missing: string[] = [];
-          if (!encodedPredicted) missing.push('predicted outcomes');
+          if (!hasEscrowPicks) missing.push('escrow picks');
           if (!resolverAddr) missing.push('resolver');
-          if (takerNonceVal === undefined) missing.push('maker nonce');
-          if (takerWagerWei <= 0n) missing.push('taker position size');
-          if (!taker) missing.push('taker');
+          if (predictorCollateralWei <= 0n)
+            missing.push('predictor position size');
+          if (!predictor) missing.push('predictor');
           toast({
             title: 'Request not ready',
             description:
@@ -479,22 +438,20 @@ const AuctionRequestRow: React.FC<Props> = ({
           return;
         }
 
-        // Use shared bid submission hook for signing and WebSocket
         const result = await submitBidToWs({
           auctionId,
-          makerWager: makerWagerWei,
-          takerWager: takerWagerWei,
-          predictedOutcomes: [encodedPredicted],
+          counterpartyCollateral: counterpartyCollateralWei,
+          predictorCollateral: predictorCollateralWei,
           resolver: resolverAddr as `0x${string}`,
-          taker: taker as `0x${string}`,
-          takerNonce: takerNonceVal,
+          predictor: predictor as `0x${string}`,
           expirySeconds: data.expirySeconds,
           maxEndTimeSec: maxEndTimeSec ?? undefined,
+          escrowPicks: escrowPicks ?? [],
         });
 
         if (result.success) {
-          // Calculate total payout (makerWager + takerWager)
-          const totalWei = makerWagerWei + takerWagerWei;
+          // Calculate total payout (counterpartyCollateral + predictorCollateral)
+          const totalWei = counterpartyCollateralWei + predictorCollateralWei;
           const decimalsForFormat = Number.isFinite(tokenDecimals)
             ? tokenDecimals
             : 18;
@@ -514,8 +471,8 @@ const AuctionRequestRow: React.FC<Props> = ({
             collateralSymbol: collateralAssetTicker,
             meta: {
               auctionId,
-              makerWager: makerWagerWei.toString(),
-              takerWager: takerWagerWei.toString(),
+              counterpartyCollateral: counterpartyCollateralWei.toString(),
+              predictorCollateral: predictorCollateralWei.toString(),
             },
           });
           toast({
@@ -549,10 +506,10 @@ const AuctionRequestRow: React.FC<Props> = ({
     [
       auctionId,
       predictedOutcomes,
-      taker,
+      predictor,
       resolver,
-      takerWager,
-      takerNonce,
+      predictorCollateral,
+
       address,
       openConnectDialog,
       runPreflight,
@@ -563,8 +520,8 @@ const AuctionRequestRow: React.FC<Props> = ({
       openApproval,
       tokenDecimals,
       maxEndTimeSec,
-      refetchTakerNonce,
-      takerNonceOnChain,
+
+      escrowPicks,
     ]
   );
 
@@ -675,24 +632,20 @@ const AuctionRequestRow: React.FC<Props> = ({
           >
             <AuctionRequestChart
               bids={validBids}
-              takerWager={takerWager}
+              predictorCollateral={predictorCollateral}
               collateralAssetTicker={collateralAssetTicker}
               maxEndTimeSec={maxEndTimeSec ?? undefined}
-              taker={taker}
+              predictor={predictor}
               hasMultipleConditions={conditionIds.length > 1}
               tokenDecimals={tokenDecimals}
               invalidBidCount={invalidBidCount}
             />
             <AuctionRequestInfo
-              uiTx={uiTx}
               bids={validBids}
-              takerWager={takerWager}
+              predictorCollateral={predictorCollateral}
               collateralAssetTicker={collateralAssetTicker}
               maxEndTimeSec={maxEndTimeSec ?? undefined}
               onSubmit={submitBid}
-              taker={taker}
-              resolver={resolver}
-              predictedOutcomes={predictedOutcomes}
             />
           </motion.div>
         ) : null}

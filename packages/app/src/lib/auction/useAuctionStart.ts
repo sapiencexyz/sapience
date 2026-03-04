@@ -1,42 +1,58 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useSignMessage } from 'wagmi';
-import {
-  createAuctionStartSiweMessage,
-  extractSiweDomainAndUri,
-  type AuctionStartSigningPayload,
-} from '@sapience/sdk';
+import { useAccount } from 'wagmi';
+import { canonicalizePicks } from '@sapience/sdk/auction/escrowEncoding';
+import type { Pick } from '@sapience/sdk/types';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
 import { toAuctionWsUrl } from '~/lib/ws';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 import {
   logAuction,
-  logAuctionWarn,
   formatBidForLog,
 } from '~/lib/auction/bidLogger';
 
 export interface AuctionParams {
-  wager: string; // wei string - taker's position size
+  wager: string; // wei string - predictor's position size
   resolver: string; // contract address for market validation
   predictedOutcomes: string[]; // Array of bytes strings that the resolver validates/understands
-  taker: `0x${string}`; // taker EOA address
-  takerNonce: number; // nonce for the taker
+  predictor: `0x${string}`; // predictor EOA address
+  predictorNonce: number; // nonce for the predictor
   chainId: number; // chain ID for the auction (e.g., 42161 for Arbitrum)
+  // Escrow auction fields (optional)
+  counterpartyCollateral?: string; // wei string - counterparty's collateral for escrow auctions
+  escrowPicks?: Array<{
+    conditionResolver: `0x${string}`;
+    conditionId: `0x${string}`;
+    predictedOutcome: number;
+  }>;
 }
 
 export interface QuoteBid {
   auctionId: string;
-  maker: string;
-  makerWager: string; // wei
-  makerDeadline: number; // unix seconds
-  makerSignature: string; // Maker's bid signature
-  makerNonce: number; // nonce for the maker
+  counterparty: string;
+  counterpartyCollateral: string; // wei
+  counterpartyDeadline: number; // unix seconds
+  counterpartySignature: string; // Counterparty's bid signature
+  counterpartyNonce: number; // nonce for the counterparty
   /** Client-side validity marker for UI display/filtering */
   validationStatus?: 'pending' | 'valid' | 'invalid';
   /** Optional reason when validationStatus === 'invalid' */
   validationError?: string;
+  /** Escrow: Session key data for counterparty (base64 encoded) */
+  counterpartySessionKeyData?: string;
+}
+
+// Escrow bid fields (counterparty = bidder in escrow terminology)
+export interface EscrowQuoteBid {
+  auctionId: string;
+  counterparty: string;
+  counterpartyCollateral: string; // wei
+  counterpartyDeadline: number; // unix seconds
+  counterpartySignature: string; // Counterparty's bid signature
+  counterpartyNonce: number; // nonce for the counterparty
+  counterpartySessionKeyData?: string;
 }
 
 // Struct shape expected by PredictionMarket.mint()
@@ -58,6 +74,23 @@ export interface MintPredictionRequestData {
   // For validation: the nonce the bidder (contract taker) claimed when signing
   // This is embedded in their signature and must match their on-chain nonce
   takerClaimedNonce?: number;
+  // Escrow picks array (used directly instead of decoding from encodedPredictedOutcomes)
+  // This ensures the predictor signs the exact same picks the counterparty signed
+  escrowPicks?: Array<{
+    conditionResolver: `0x${string}`;
+    conditionId: `0x${string}`;
+    predictedOutcome: number;
+  }>;
+  // Escrow: Session key data for counterparty (base64 encoded)
+  counterpartySessionKeyData?: string;
+  // Escrow: Session key data for predictor (ABI-encoded)
+  predictorSessionKeyData?: string;
+  // Predictor's EIP-712 MintApproval signature (populated at submit time for escrow mints)
+  predictorSignature?: `0x${string}`;
+  // Sponsorship: OnboardingSponsor contract address (address(0) = self-funded)
+  predictorSponsor?: `0x${string}`;
+  // Sponsorship: opaque data passed to sponsor's fundMint (empty bytes if unused)
+  predictorSponsorData?: `0x${string}`;
 }
 
 function jsonStableStringify(value: unknown): string {
@@ -84,19 +117,38 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
   const shouldLog = !options?.disableLogging;
   // Create conditional log functions to avoid noisy logs from forecast-only components
   const log = shouldLog ? logAuction : () => {};
-  const logWarn = shouldLog ? logAuctionWarn : () => {};
   const [auctionId, setAuctionId] = useState<string | null>(null);
   const [bids, setBids] = useState<QuoteBid[]>([]);
   const inflightRef = useRef<string>('');
   // `apiBaseUrl` is the auction relayer base URL (http(s), typically includes `/auction`)
   const { apiBaseUrl } = useSettings();
-  const { signMessageAsync } = useSignMessage();
+  const { address: walletAddress } = useAccount();
   const {
     etherealSessionApproval,
     signMessage: sessionSignMessage,
     effectiveAddress,
     isUsingSmartAccount,
   } = useSession();
+
+  // Stable refs for session state — read at call time, don't trigger requestQuotes recreation
+  const effectiveAddressRef = useRef(effectiveAddress);
+  const etherealSessionApprovalRef = useRef(etherealSessionApproval);
+  const sessionSignMessageRef = useRef(sessionSignMessage);
+  const isUsingSmartAccountRef = useRef(isUsingSmartAccount);
+
+  useEffect(() => {
+    effectiveAddressRef.current = effectiveAddress;
+  }, [effectiveAddress]);
+  useEffect(() => {
+    etherealSessionApprovalRef.current = etherealSessionApproval;
+  }, [etherealSessionApproval]);
+  useEffect(() => {
+    sessionSignMessageRef.current = sessionSignMessage;
+  }, [sessionSignMessage]);
+  useEffect(() => {
+    isUsingSmartAccountRef.current = isUsingSmartAccount;
+  }, [isUsingSmartAccount]);
+
   const relayerBase = useMemo(() => {
     if (apiBaseUrl && apiBaseUrl.length > 0) return apiBaseUrl;
     const explicitRelayer = process.env.NEXT_PUBLIC_FOIL_RELAYER_URL;
@@ -141,12 +193,16 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
         const data = msg as { type?: string; payload?: any };
 
         if (data?.type === 'auction.bids') {
-          const rawBids = Array.isArray(data.payload?.bids)
-            ? (data.payload.bids as any[])
-            : [];
-          // Only accept bids for OUR auction id
-          const targetAuctionId: string | null =
-            rawBids.length > 0 ? rawBids[0]?.auctionId || null : null;
+          const targetAuctionId =
+            (data.payload?.auctionId as string | undefined) ||
+            (Array.isArray(data.payload?.bids) && data.payload.bids.length > 0
+              ? data.payload.bids[0]?.auctionId
+              : null) ||
+            null;
+
+          log(
+            `[handleMessage] auction.bids received: target=${targetAuctionId?.slice(0, 8)}, current=${latestAuctionIdRef.current?.slice(0, 8)}, bidCount=${Array.isArray(data.payload?.bids) ? data.payload.bids.length : 0}`
+          );
 
           if (!targetAuctionId) return;
           // Filter: only process if this is for our current auction
@@ -162,31 +218,43 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
             return;
           }
 
-          log(
-            `Received batch of ${rawBids.length} bid(s) for auction ${targetAuctionId}`
-          );
-          rawBids.forEach((b) => {
-            log(`  - ${formatBidForLog(b)}`);
-          });
+          const rawBids = Array.isArray(data.payload?.bids)
+            ? (data.payload.bids as any[])
+            : [];
+
           const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
           const normalized: QuoteBid[] = rawBids
             .map((b): QuoteBid | null => {
               try {
                 return {
-                  auctionId: b.auctionId || latestAuctionIdRef.current || '',
-                  maker: b.maker || ZERO_ADDRESS,
-                  makerWager: b.makerWager || '0',
-                  makerDeadline: b.makerDeadline || 0,
-                  makerSignature: b.makerSignature || '0x',
-                  makerNonce: b.makerNonce || 0,
-                };
+                  auctionId: b.auctionId || targetAuctionId,
+                  counterparty: b.counterparty || ZERO_ADDRESS,
+                  counterpartyCollateral: b.counterpartyCollateral || '0',
+                  counterpartyDeadline: b.counterpartyDeadline || 0,
+                  counterpartySignature: b.counterpartySignature || '0x',
+                  counterpartyNonce: b.counterpartyNonce || 0,
+                  // Store escrow-specific fields for later use in mint request
+                  counterpartySessionKeyData: b.counterpartySessionKeyData,
+                } as QuoteBid;
               } catch {
                 return null;
               }
             })
             .filter((b): b is QuoteBid => b !== null);
+          // Set bids BEFORE logging so logging errors can never block state updates
           setBids(normalized);
+          log(
+            `Received batch of ${rawBids.length} bid(s) for auction ${targetAuctionId}`
+          );
+          try {
+            rawBids.forEach((b) => {
+              log(`  - ${formatBidForLog(b)}`);
+            });
+          } catch {
+            // Never let logging errors block bid processing
+          }
         }
+
         // auction.ack handled via sendWithAck
         // auction.started is handled elsewhere (noop here)
       } catch {
@@ -206,19 +274,25 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
   const requestQuotes = useCallback(
     (
       params: AuctionParams | null,
-      options?: { forceRefresh?: boolean; requireSignature?: boolean }
+      options?: { forceRefresh?: boolean }
     ) => {
       if (!params || !wsUrl) return;
 
-      // Use effectiveAddress from session context if available, otherwise use params.taker
-      const effectiveTaker = effectiveAddress ?? params.taker;
+      // Determine if we'll use session signing or wallet signing
+      // Session signing: use smart account address as predictor
+      // Wallet signing: use wallet address as predictor (signature must match predictor for verification)
+      const willUseSessionSigning =
+        isUsingSmartAccountRef.current && !!sessionSignMessageRef.current;
+      const effectivePredictor = willUseSessionSigning
+        ? (effectiveAddressRef.current ?? params.predictor)
+        : (walletAddress ?? params.predictor);
 
       const requestPayload = {
         wager: params.wager,
         resolver: params.resolver,
         predictedOutcomes: params.predictedOutcomes,
-        taker: effectiveTaker,
-        takerNonce: params.takerNonce,
+        taker: effectivePredictor,
+        takerNonce: params.predictorNonce,
         chainId: params.chainId,
       };
 
@@ -241,71 +315,12 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
         const thisRequestId = crypto.randomUUID();
         pendingRequestIdRef.current = thisRequestId;
 
-        // Generate SIWE signature for the auction request if required
-        let takerSignature: string | undefined;
-        let takerSignedAt: string | undefined;
-        const requireSignature = options?.requireSignature ?? true; // Default to true to ask for signature as default behavior
-
-        if (requireSignature) {
-          try {
-            const { domain, uri } = extractSiweDomainAndUri(wsUrl);
-            const issuedAt = new Date().toISOString();
-
-            const signingPayload: AuctionStartSigningPayload = {
-              wager: params.wager,
-              predictedOutcomes: params.predictedOutcomes,
-              resolver: params.resolver,
-              taker: effectiveTaker,
-              takerNonce: params.takerNonce,
-              chainId: params.chainId,
-            };
-            const message = createAuctionStartSiweMessage(
-              signingPayload,
-              domain,
-              uri,
-              issuedAt
-            );
-
-            // Use session key signing when using smart account (no wallet popup)
-            // Otherwise fall back to owner's wallet signing
-            if (isUsingSmartAccount && sessionSignMessage) {
-              takerSignature = await sessionSignMessage(message);
-            } else {
-              takerSignature = await signMessageAsync({ message });
-            }
-            takerSignedAt = issuedAt;
-          } catch (signError) {
-            // If signature is required and fails, log and return early
-            logWarn('Failed to sign auction request:', signError);
-            // Clear pending request since we're aborting
-            if (pendingRequestIdRef.current === thisRequestId) {
-              pendingRequestIdRef.current = null;
-            }
-            return;
-          }
-        }
-
-        // Check if a newer request was made while we were signing
+        // Check if a newer request was made while we were waiting
         // If so, abort this request to avoid race conditions
         if (pendingRequestIdRef.current !== thisRequestId) {
           log('Aborting stale request (newer request in progress)');
           return;
         }
-
-        // Build final payload with signature and session data
-        const payloadWithSignature: Record<string, unknown> = {
-          ...requestPayload,
-          ...(takerSignature && takerSignedAt
-            ? { takerSignature, takerSignedAt }
-            : {}),
-          // Add session approval data for smart account authentication (only when using smart account)
-          ...(isUsingSmartAccount && etherealSessionApproval
-            ? {
-                sessionApproval: etherealSessionApproval.approval,
-                sessionTypedData: etherealSessionApproval.typedData,
-              }
-            : {}),
-        };
 
         // Update inflight tracking and clear bids for new request
         // NOTE: We intentionally do NOT clear latestAuctionIdRef here.
@@ -315,58 +330,97 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
         // new auction ID from the server.
         inflightRef.current = key;
         setBids([]);
-        // Store params with effectiveTaker so buildMintRequestDataFromBid uses the correct address
+        // Store params with effectivePredictor so buildMintRequestDataFromBid uses the correct address
         // (smart account address when session is active, otherwise EOA)
-        lastAuctionRef.current = { ...params, taker: effectiveTaker };
-        setCurrentAuctionParams({ ...params, taker: effectiveTaker });
+        lastAuctionRef.current = { ...params, predictor: effectivePredictor };
+        setCurrentAuctionParams({ ...params, predictor: effectivePredictor });
 
-        log(
-          `Requesting quotes: wager=${params.wager} wei, predictions=${params.predictedOutcomes.length}, taker=${effectiveTaker.slice(0, 10)}...`
-        );
+        // Check if this is an escrow auction (has escrowPicks)
+        const isEscrowAuction =
+          params.escrowPicks && params.escrowPicks.length > 0;
 
-        // Use sendWithAck for proper request/response correlation
-        // Server echoes back the request ID, allowing parallel requests
-        try {
-          const response = await client.sendWithAck<{ auctionId?: string }>(
-            'auction.start',
-            payloadWithSignature,
-            { timeoutMs: 10000 }
-          );
+        if (isEscrowAuction) {
+          // Escrow Auction Start - no signature needed at start time
+          // Predictor signs when accepting a specific bid (which includes counterpartyCollateral)
+          try {
+            const chainId = params.chainId;
 
-          // Only update state if this is still the latest request
-          // A newer request may have been made while we were awaiting
-          if (pendingRequestIdRef.current !== thisRequestId) {
+            // Convert escrowPicks to Pick[] and canonicalize
+            const rawPicks: Pick[] = params.escrowPicks!.map((p) => ({
+              conditionResolver: p.conditionResolver,
+              conditionId: p.conditionId,
+              predictedOutcome: p.predictedOutcome,
+            }));
+            const picks = canonicalizePicks(rawPicks);
+
+            // Calculate deadline (5 minutes from now)
+            const nowSec = Math.floor(Date.now() / 1000);
+            const predictorDeadline = nowSec + 300;
+
+            // Build escrow auction payload - no signature at start time
+            // Counterparty will specify their collateral in their bid
+            const escrowPayload = {
+              picks: picks.map((p) => ({
+                conditionResolver: p.conditionResolver,
+                conditionId: p.conditionId,
+                predictedOutcome: p.predictedOutcome,
+              })),
+              predictorCollateral: params.wager,
+              predictor: effectivePredictor,
+              predictorNonce: params.predictorNonce,
+              predictorDeadline,
+              chainId,
+              // Predictor signs when accepting a bid (which includes counterpartyCollateral)
+            };
+
+            // Send escrow auction start
+            const escrowResponse = await client.sendWithAck<{
+              auctionId?: string;
+              error?: string;
+            }>('auction.start', escrowPayload, { timeoutMs: 10000 });
+
+            if (escrowResponse?.error) {
+              console.error(
+                '[Escrow Auction] Start failed:',
+                escrowResponse.error
+              );
+              inflightRef.current = '';
+              return;
+            }
+
+            const newId = escrowResponse?.auctionId || null;
+            latestAuctionIdRef.current = newId;
+            loggedStaleAuctionsRef.current.clear();
+            setAuctionId(newId);
             log(
-              `Ignoring response for stale request (newer request completed)`
+              `[escrow] Auction started: id=${newId?.slice(0, 8)}, latestRef=${latestAuctionIdRef.current?.slice(0, 8)}, escrowPicks=${params.escrowPicks?.length}`
             );
+
+            // Subscribe to escrow auction updates
+            if (newId) {
+              client.send({
+                type: 'auction.subscribe',
+                payload: { auctionId: newId },
+              });
+            }
+
+            inflightRef.current = '';
+            return;
+          } catch (escrowError) {
+            console.error('[Escrow Auction] Start error:', escrowError);
+            inflightRef.current = '';
             return;
           }
-
-          const newId = response?.auctionId || null;
-          latestAuctionIdRef.current = newId;
-          // Clear logged stale auctions when a new auction starts
-          loggedStaleAuctionsRef.current.clear();
-          setAuctionId(newId);
-          log(`Auction started: id=${newId}`);
-        } catch (err) {
-          // Only update state if this is still the latest request
-          if (pendingRequestIdRef.current === thisRequestId) {
-            // On timeout or error, clear inflight but keep params for retry
-            inflightRef.current = '';
-            pendingRequestIdRef.current = null;
-          }
-          log(`Auction request failed:`, err);
+        } else {
+          console.error(
+            '[Auction] Escrow picks missing — all auctions require escrow format'
+          );
+          inflightRef.current = '';
+          return;
         }
       }, 400);
     },
-    [
-      wsUrl,
-      signMessageAsync,
-      isUsingSmartAccount,
-      effectiveAddress,
-      etherealSessionApproval,
-      sessionSignMessage,
-    ]
+    [wsUrl, walletAddress]
   );
 
   const acceptBid = useCallback(
@@ -421,21 +475,26 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
 
       const ZERO_BYTES32 = `0x${'0'.repeat(64)}`;
 
-      // Contract field names map BID (API) roles to contract roles:
-      // Contract "maker" = API "taker" (auction creator)
-      // Contract "taker" = API "maker" (bidder)
+      // Contract field names map roles to contract struct:
+      // Contract "maker" = predictor (auction creator)
+      // Contract "taker" = counterparty (bidder)
+      const bid = args.selectedBid;
       return {
         encodedPredictedOutcomes: predictedOutcomes[0],
         resolver,
         makerCollateral: auction.wager,
-        takerCollateral: args.selectedBid.makerWager,
-        maker: auction.taker,
-        taker: args.selectedBid.maker as `0x${string}`,
-        takerSignature: args.selectedBid.makerSignature as `0x${string}`,
-        takerDeadline: String(args.selectedBid.makerDeadline),
+        takerCollateral: bid.counterpartyCollateral,
+        maker: auction.predictor,
+        taker: bid.counterparty as `0x${string}`,
+        takerSignature: bid.counterpartySignature as `0x${string}`,
+        takerDeadline: String(bid.counterpartyDeadline),
         refCode: (args.refCode ?? ZERO_BYTES32) as `0x${string}`,
-        makerNonce: String(auction.takerNonce),
-        takerClaimedNonce: args.selectedBid.makerNonce,
+        makerNonce: String(auction.predictorNonce),
+        takerClaimedNonce: bid.counterpartyNonce,
+        // Escrow fields: include picks array if available
+        escrowPicks: auction.escrowPicks,
+        // Escrow fields: include counterparty session key data from bid
+        counterpartySessionKeyData: bid.counterpartySessionKeyData,
       };
     },
     [auctionId]

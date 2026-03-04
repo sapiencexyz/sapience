@@ -1,25 +1,28 @@
-import { Field, Int, Float, ObjectType, Directive } from 'type-graphql';
+import { Field, Int, ObjectType, Directive } from 'type-graphql';
 
 @Directive('@cacheControl(maxAge: 60)')
-@ObjectType()
+@ObjectType('ProfitEntry', {
+  description:
+    'Aggregated profit/loss entry for a single address across all positions',
+})
 export class AggregatedProfitEntryType {
   @Field(() => String)
-  owner!: string;
+  address!: string;
 
-  // Total realized profit in USD-equivalent (assumes $1 per token)
-  @Field(() => Float)
-  totalPnL!: number;
+  @Field(() => String)
+  totalPnL!: string;
 }
 
 @Directive('@cacheControl(maxAge: 60)')
-@ObjectType()
+@ObjectType('ProfitRank', {
+  description: 'Profit rank and total PnL for an address on the leaderboard',
+})
 export class ProfitRankType {
   @Field(() => String)
-  owner!: string;
+  address!: string;
 
-  // Total realized profit in USD-equivalent (assumes $1 per token)
-  @Field(() => Float)
-  totalPnL!: number;
+  @Field(() => String)
+  totalPnL!: string;
 
   // 1-based rank in the global leaderboard; null if not ranked (e.g., zero activity)
   @Field(() => Int, { nullable: true })

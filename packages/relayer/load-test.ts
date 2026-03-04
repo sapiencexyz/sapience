@@ -179,7 +179,7 @@ async function createBidSubmitMessage(
   const payload: BidPayload = {
     auctionId,
     maker,
-    makerWager: '1000000000000000000',
+    makerCollateral: '1000000000000000000',
     makerDeadline: Math.floor(Date.now() / 1000) + 3600, // 1 hour from now
     makerNonce: messageId,
     makerSignature: '0x', // Placeholder
@@ -202,7 +202,7 @@ async function createBidSubmitMessage(
       resolver: auction.resolver as `0x${string}`,
       taker: auction.taker as `0x${string}`,
     },
-    makerWager: BigInt(payload.makerWager),
+    makerCollateral: BigInt(payload.makerCollateral),
     makerDeadline: payload.makerDeadline,
     chainId: PREDICTION_MARKET_CHAIN_ID,
     verifyingContract: PREDICTION_MARKET_ADDRESS,

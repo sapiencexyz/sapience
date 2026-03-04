@@ -1,6 +1,6 @@
 'use client';
 
-import { CHAIN_ID_ETHEREAL, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import { Card, CardContent } from '@sapience/ui/components/ui/card';
 import {
   Popover,
@@ -20,10 +20,7 @@ import {
   ComposedChart,
   Bar,
 } from 'recharts';
-import {
-  useProtocolStats,
-  useDailyVolumes,
-} from '~/hooks/graphql/useAnalytics';
+import { useProtocolStats } from '~/hooks/graphql/useAnalytics';
 import Loader from '~/components/shared/Loader';
 import PeriodFilter, {
   type Period,
@@ -113,8 +110,8 @@ function ChartTooltip({
 
   // Format timestamp (Unix seconds) to date string
   let dateLabel = '';
-  if (label) {
-    const date = new Date(parseInt(label, 10) * 1000);
+  if (label != null) {
+    const date = new Date(Number(label) * 1000);
     const months = [
       'Jan',
       'Feb',
@@ -144,9 +141,9 @@ function ChartTooltip({
   );
 }
 
-function formatTimestampTick(value: string): string {
+function formatTimestampTick(value: number): string {
   // Parse Unix timestamp (seconds) to date
-  const date = new Date(parseInt(value, 10) * 1000);
+  const date = new Date(value * 1000);
   return `${date.getUTCMonth() + 1}/${date.getUTCDate()}`;
 }
 
@@ -158,18 +155,18 @@ const CHART_AXIS_STYLE = {
 
 const CHART_MARGIN = { top: 10, right: 0, left: 0, bottom: 0 };
 
-function filterDataByPeriod<T extends { timestamp: string }>(
+function filterDataByPeriod<T extends { timestamp: number }>(
   data: T[],
   period: Period
 ): T[] {
   const days = PERIOD_DAYS[period];
   if (days === Infinity) return data;
   const cutoff = Math.floor(Date.now() / 1000) - days * 24 * 60 * 60;
-  return data.filter((item) => parseInt(item.timestamp, 10) >= cutoff);
+  return data.filter((item) => item.timestamp >= cutoff);
 }
 
 function AnalyticsPageContent(): React.ReactElement {
-  const collateralSymbol = COLLATERAL_SYMBOLS[CHAIN_ID_ETHEREAL] || 'USDe';
+  const collateralSymbol = COLLATERAL_SYMBOLS[DEFAULT_CHAIN_ID] || 'USDe';
 
   // Period states for each chart
   const [volumePeriod, setVolumePeriod] = useState<Period>('3M');
@@ -179,7 +176,6 @@ function AnalyticsPageContent(): React.ReactElement {
 
   // Fetch protocol stats and daily volumes
   const { data: protocolStats, isLoading: statsLoading } = useProtocolStats();
-  const { data: dailyVolumes, isLoading: volumesLoading } = useDailyVolumes();
 
   // Get summary from the last protocol stat
   const summary = useMemo(() => {
@@ -198,7 +194,7 @@ function AnalyticsPageContent(): React.ReactElement {
       return {
         timestamp: point.timestamp,
         openInterest: parseFloat(point.openInterest) / 1e18,
-        totalBalance: vaultBalance + vaultDeployed + escrowBalance,
+        totalBalance: vaultBalance + escrowBalance,
         vaultBalance,
         vaultDeployed,
         escrowBalance,
@@ -206,15 +202,13 @@ function AnalyticsPageContent(): React.ReactElement {
     });
   }, [protocolStats]);
 
-  // Prepare chart data for daily volumes
   const volumeChartData = useMemo(() => {
-    if (!dailyVolumes) return [];
-
-    return dailyVolumes.map((point) => ({
+    if (!protocolStats) return [];
+    return protocolStats.map((point) => ({
       timestamp: point.timestamp,
-      volume: parseFloat(point.volume) / 1e18,
+      volume: parseFloat(point.dailyVolume) / 1e18,
     }));
-  }, [dailyVolumes]);
+  }, [protocolStats]);
 
   // Filter chart data based on selected periods
   const filteredVolumeData = useMemo(
@@ -232,7 +226,7 @@ function AnalyticsPageContent(): React.ReactElement {
     [statsChartData, tvlPeriod]
   );
 
-  const isLoading = statsLoading || volumesLoading;
+  const isLoading = statsLoading;
 
   return (
     <div className="relative">
@@ -276,12 +270,7 @@ function AnalyticsPageContent(): React.ReactElement {
                           Protocol Vault Reserve
                         </span>
                         <span className="font-mono whitespace-nowrap text-xl">
-                          {formatNumber(
-                            String(
-                              BigInt(summary?.vaultBalance || '0') +
-                                BigInt(summary?.vaultDeployed || '0')
-                            )
-                          )}{' '}
+                          {formatNumber(summary?.vaultBalance || '0')}{' '}
                           {collateralSymbol}
                         </span>
                       </div>
@@ -299,7 +288,6 @@ function AnalyticsPageContent(): React.ReactElement {
                     {formatNumber(
                       String(
                         BigInt(summary?.vaultBalance || '0') +
-                          BigInt(summary?.vaultDeployed || '0') +
                           BigInt(summary?.escrowBalance || '0')
                       )
                     )}{' '}

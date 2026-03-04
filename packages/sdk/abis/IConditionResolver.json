@@ -1,0 +1,112 @@
+[
+  {
+    "type": "function",
+    "name": "getResolution",
+    "inputs": [
+      {
+        "name": "conditionId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "isResolved",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "outcome",
+        "type": "tuple",
+        "internalType": "struct IV2Types.OutcomeVector",
+        "components": [
+          {
+            "name": "yesWeight",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "noWeight",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getResolutions",
+    "inputs": [
+      {
+        "name": "conditionIds",
+        "type": "bytes32[]",
+        "internalType": "bytes32[]"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "isResolved",
+        "type": "bool[]",
+        "internalType": "bool[]"
+      },
+      {
+        "name": "outcomes",
+        "type": "tuple[]",
+        "internalType": "struct IV2Types.OutcomeVector[]",
+        "components": [
+          {
+            "name": "yesWeight",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "noWeight",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "isFinalized",
+    "inputs": [
+      {
+        "name": "conditionId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "isFinalized",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "isValidCondition",
+    "inputs": [
+      {
+        "name": "conditionId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "isValid",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  }
+]

@@ -3,7 +3,7 @@ import { parseUnits, zeroAddress } from 'viem';
 import { createAuctionWs } from '@sapience/sdk/relayer/auctionWs';
 import {
   PREFERRED_ESTIMATE_QUOTER,
-  CHAIN_ID_ETHEREAL,
+  DEFAULT_CHAIN_ID,
 } from '@sapience/sdk/constants';
 import { buildAuctionStartPayload } from '~/lib/auction/buildAuctionPayload';
 import {
@@ -215,7 +215,7 @@ const ESTIMATE_TIMEOUT_MS = 5000;
 async function fetchEstimate(conditionId: string): Promise<number | null> {
   const { resolver, predictedOutcomes } = buildAuctionStartPayload(
     [{ marketId: conditionId, prediction: true }],
-    CHAIN_ID_ETHEREAL
+    DEFAULT_CHAIN_ID
   );
 
   return new Promise<number | null>((resolve) => {
@@ -241,14 +241,16 @@ async function fetchEstimate(conditionId: string): Promise<number | null> {
               predictedOutcomes,
               taker: zeroAddress,
               takerNonce: 0,
-              chainId: CHAIN_ID_ETHEREAL,
+              chainId: DEFAULT_CHAIN_ID,
             },
           };
           client.send(JSON.stringify(msg));
         },
         onMessage: (msg: {
           type?: string;
-          payload?: { bids?: Array<{ maker?: string; makerWager?: string }> };
+          payload?: {
+            bids?: Array<{ maker?: string; makerCollateral?: string }>;
+          };
         }) => {
           if (settled) return;
           if (msg?.type !== 'auction.bids') return;
@@ -266,14 +268,16 @@ async function fetchEstimate(conditionId: string): Promise<number | null> {
           clearTimeout(timeout);
           client.close();
 
-          const takerWager = BigInt(parseUnits('1', 18).toString());
-          const makerWager = BigInt(String(quoterBid.makerWager || '0'));
-          const denom = takerWager + makerWager;
+          const takerCollateral = BigInt(parseUnits('1', 18).toString());
+          const makerCollateral = BigInt(
+            String(quoterBid.makerCollateral || '0')
+          );
+          const denom = takerCollateral + makerCollateral;
           if (denom === 0n) {
             resolve(null);
             return;
           }
-          const prob = Number(takerWager) / Number(denom);
+          const prob = Number(takerCollateral) / Number(denom);
           const clamped = Math.max(0, Math.min(1, prob));
           resolve(clamped);
         },

@@ -13,6 +13,7 @@ import { useAccount, useSwitchChain } from 'wagmi';
 import type { Address, EIP1193Provider, Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import type { KernelAccountClient } from '@zerodev/sdk';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import {
   createSession,
   createArbitrumSession,
@@ -25,6 +26,8 @@ import {
   type OwnerSigner,
   type EnableTypedData,
   type SerializedSession,
+  type EscrowSessionKeyApproval,
+  type SessionCreationStep,
 } from '~/lib/session/sessionKeyManager';
 
 /**
@@ -128,12 +131,16 @@ interface SessionContextValue {
   chainClients: ChainClients;
 
   // Session actions
-  startSession: (params: { durationHours: number }) => Promise<void>;
+  startSession: (params: {
+    durationHours: number;
+    etherealChainId?: number;
+  }) => Promise<void>;
   endSession: () => void;
 
   // Status
   isStartingSession: boolean;
   isRestoringSession: boolean;
+  sessionCreationStep: SessionCreationStep | null;
   sessionError: Error | null;
 
   // Time remaining in milliseconds
@@ -178,6 +185,15 @@ interface SessionContextValue {
   isCreatingArbitrumSession: boolean;
   // Returns the created/existing client directly to avoid race conditions with state updates
   createArbitrumSessionIfNeeded: () => Promise<KernelAccountClient | null>;
+
+  // The Ethereal chain ID the session was created for (mainnet or testnet)
+  etherealChainId: number | null;
+
+  // Escrow Session Key Approval for PredictionMarketEscrow
+  escrowSessionKeyApproval: EscrowSessionKeyApproval | null;
+
+  // Raw session key signing (bypasses kernel wrapping) for escrow approval signatures
+  signTypedDataRaw: ((params: SignTypedDataParams) => Promise<Hex>) | null;
 }
 
 const SessionContext = createContext<SessionContextValue | null>(null);
@@ -222,6 +238,8 @@ export function SessionProvider({ children }: SessionProviderProps) {
   // Status state
   const [isStartingSession, setIsStartingSession] = useState(false);
   const [isRestoringSession, setIsRestoringSession] = useState(false);
+  const [sessionCreationStep, setSessionCreationStep] =
+    useState<SessionCreationStep | null>(null);
   const [sessionError, setSessionError] = useState<Error | null>(null);
 
   // Smart account address state
@@ -290,6 +308,10 @@ export function SessionProvider({ children }: SessionProviderProps) {
   const [etherealSessionApproval, setEtherealSessionApproval] =
     useState<SessionApprovalData | null>(null);
 
+  // Escrow Session Key Approval for PredictionMarketEscrow
+  const [escrowSessionKeyApproval, setEscrowSessionKeyApproval] =
+    useState<EscrowSessionKeyApproval | null>(null);
+
   // Lazy Arbitrum session creation state
   const [isCreatingArbitrumSession, setIsCreatingArbitrumSession] =
     useState(false);
@@ -351,8 +373,23 @@ export function SessionProvider({ children }: SessionProviderProps) {
     [sessionPrivateKey]
   );
 
-  // Sign typed data with session key
+  // Sign typed data through the KernelAccountClient (ERC-1271 compatible)
+  // The smart account's isValidSignature() can verify these signatures on-chain
   const signTypedData = useCallback(
+    async (params: SignTypedDataParams): Promise<Hex> => {
+      const client = chainClients.ethereal;
+      if (!client) {
+        throw new Error('No active session');
+      }
+      return client.signTypedData(params as any);
+    },
+    [chainClients.ethereal]
+  );
+
+  // Sign typed data directly with the raw session key (plain ECDSA, no kernel wrapping).
+  // Used for escrow MintApproval signatures that go through the contract's native
+  // session key validation path (Option B in SignatureValidator).
+  const signTypedDataRaw = useCallback(
     async (params: SignTypedDataParams): Promise<Hex> => {
       if (!sessionPrivateKey) {
         throw new Error('No active session');
@@ -434,6 +471,8 @@ export function SessionProvider({ children }: SessionProviderProps) {
         const approvalData = extractSessionApprovalData(stored);
         setArbitrumSessionApproval(approvalData.arbitrum);
         setEtherealSessionApproval(approvalData.ethereal);
+        // Restore escrow session key approval if available (legacy sessions)
+        // escrowSessionKeyApproval removed — contract validates via ERC-1271
         setIsSessionActive(true);
         setTimeRemainingMs(result.config.expiresAt - Date.now());
       } catch (error) {
@@ -479,6 +518,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
     setSerializedSession(null);
     setArbitrumSessionApproval(null);
     setEtherealSessionApproval(null);
+    setEscrowSessionKeyApproval(null);
     setTimeRemainingMs(0);
     clearSession();
     console.debug('[SessionContext] Session cleared');
@@ -516,13 +556,16 @@ export function SessionProvider({ children }: SessionProviderProps) {
 
   // Start a new session
   const startSession = useCallback(
-    async (params: { durationHours: number }) => {
+    async (params: { durationHours: number; etherealChainId?: number }) => {
       if (!walletAddress || !connector) {
         throw new Error('No wallet connected');
       }
 
       setIsStartingSession(true);
+      setSessionCreationStep(null);
       setSessionError(null);
+
+      const etherealChainId = params.etherealChainId ?? DEFAULT_CHAIN_ID;
 
       try {
         const provider = (await connector.getProvider()) as EIP1193Provider;
@@ -532,7 +575,12 @@ export function SessionProvider({ children }: SessionProviderProps) {
           switchChain: createChainSwitcher(switchChainAsync),
         };
 
-        const result = await createSession(ownerSigner, params.durationHours);
+        const result = await createSession(
+          ownerSigner,
+          params.durationHours,
+          etherealChainId,
+          setSessionCreationStep
+        );
 
         // Save to localStorage
         saveSession(result.serialized);
@@ -551,6 +599,8 @@ export function SessionProvider({ children }: SessionProviderProps) {
         const approvalData = extractSessionApprovalData(result.serialized);
         setArbitrumSessionApproval(approvalData.arbitrum);
         setEtherealSessionApproval(approvalData.ethereal);
+        // Set escrow session key approval if available (legacy sessions)
+        // escrowSessionKeyApproval removed — contract validates via ERC-1271
         setIsSessionActive(true);
         setTimeRemainingMs(result.config.expiresAt - Date.now());
         console.debug(
@@ -565,6 +615,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
         throw error;
       } finally {
         setIsStartingSession(false);
+        setSessionCreationStep(null);
       }
     },
     [walletAddress, connector, switchChainAsync]
@@ -693,6 +744,9 @@ export function SessionProvider({ children }: SessionProviderProps) {
     arbitrumSessionApproval || chainClients.arbitrum
   );
 
+  // Compute etherealChainId from serialized session
+  const etherealChainId = serializedSession?.etherealChainId ?? null;
+
   const value = useMemo(
     () => ({
       isSessionActive,
@@ -702,6 +756,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
       endSession,
       isStartingSession,
       isRestoringSession,
+      sessionCreationStep,
       sessionError,
       timeRemainingMs,
       smartAccountAddress,
@@ -712,13 +767,16 @@ export function SessionProvider({ children }: SessionProviderProps) {
       isUsingSession,
       effectiveAddress,
       signMessage: sessionPrivateKey ? signMessage : null,
-      signTypedData: sessionPrivateKey ? signTypedData : null,
+      signTypedData: chainClients.ethereal ? signTypedData : null,
+      signTypedDataRaw: sessionPrivateKey ? signTypedDataRaw : null,
       sessionKeyAddress,
       etherealSessionApproval,
       arbitrumSessionApproval,
       hasArbitrumSession,
       isCreatingArbitrumSession,
       createArbitrumSessionIfNeeded,
+      etherealChainId,
+      escrowSessionKeyApproval,
     }),
     [
       isSessionActive,
@@ -728,6 +786,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
       endSession,
       isStartingSession,
       isRestoringSession,
+      sessionCreationStep,
       sessionError,
       timeRemainingMs,
       smartAccountAddress,
@@ -740,12 +799,15 @@ export function SessionProvider({ children }: SessionProviderProps) {
       sessionPrivateKey,
       signMessage,
       signTypedData,
+      signTypedDataRaw,
       sessionKeyAddress,
       etherealSessionApproval,
       arbitrumSessionApproval,
       hasArbitrumSession,
       isCreatingArbitrumSession,
       createArbitrumSessionIfNeeded,
+      etherealChainId,
+      escrowSessionKeyApproval,
     ]
   );
 

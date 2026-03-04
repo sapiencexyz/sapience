@@ -1,7 +1,6 @@
-  import 'reflect-metadata';
+import 'reflect-metadata';
 import { initializeDataSource } from './db';
 import { expressMiddleware } from '@as-integrations/express4';
-import { createLoaders } from './graphql/loaders';
 import { app } from './app';
 import { createServer } from 'http';
 import { createChatWebSocketServer } from './websocket/chat';
@@ -37,6 +36,16 @@ const startServer = async () => {
 
   const apolloServer = await initializeApolloServer();
 
+  // Health check endpoint — verifies DB connectivity for load balancers
+  app.get('/health', async (_req, res) => {
+    try {
+      await prisma.$queryRaw`SELECT 1`;
+      res.status(200).json({ status: 'ok' });
+    } catch {
+      res.status(503).json({ status: 'unhealthy' });
+    }
+  });
+
   // Concurrency limiter — shed load when too many GraphQL operations are in-flight.
   // Returns 503 instantly instead of letting requests queue behind saturated connections.
   const maxConcurrent = config.GRAPHQL_MAX_CONCURRENT_OPERATIONS;
@@ -46,8 +55,19 @@ const startServer = async () => {
   app.use(
     '/graphql',
     // Concurrency limiter — must be first to reject before any work
-    (_req: Request, res: Response, next: NextFunction) => {
+    (req: Request, res: Response, next: NextFunction) => {
       if (activeOperations >= maxConcurrent) {
+        const ip =
+          (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+          req.socket.remoteAddress ||
+          'unknown';
+        console.warn(
+          `[Server] 503 load shed: ${activeOperations}/${maxConcurrent} active, ip=${ip}, path=${req.path}`
+        );
+        Sentry.captureMessage(
+          `Load shedding: ${activeOperations} active operations (max ${maxConcurrent})`,
+          { level: 'warning', extra: { ip, path: req.path, activeOperations } }
+        );
         res.status(503).json({
           errors: [
             {
@@ -80,7 +100,6 @@ const startServer = async () => {
     },
     expressMiddleware(apolloServer, {
       context: async () => ({
-        loaders: createLoaders(),
         prisma,
       }),
     })
@@ -156,6 +175,18 @@ const startServer = async () => {
       console.log(`Auction WebSocket endpoint proxied at /auction`);
     }
   });
+
+  // Graceful shutdown — drain in-flight requests before exiting
+  const shutdown = async () => {
+    console.log('[Server] Shutting down gracefully...');
+    httpServer.close(() => {
+      console.log('[Server] HTTP server closed');
+      prisma.$disconnect().then(() => process.exit(0));
+    });
+    setTimeout(() => process.exit(1), 10_000);
+  };
+  process.on('SIGTERM', shutdown);
+  process.on('SIGINT', shutdown);
 
   // Only set up Sentry error handling in production
   if (config.isProd) {

@@ -2,8 +2,9 @@ import { graphqlRequest } from './client/graphqlClient';
 import type { ConditionType } from './conditions';
 import type { ConditionGroupType } from './conditionGroups';
 
-export type SortField = 'openInterest' | 'endTime';
+export type SortField = 'openInterest' | 'endTime' | 'createdAt' | 'predictionCount';
 export type SortDirection = 'asc' | 'desc';
+export type ResolutionStatusValue = 'all' | 'unresolved' | 'resolvedYes' | 'resolvedNo';
 
 export interface QuestionType {
   questionType: 'group' | 'condition';
@@ -11,19 +12,19 @@ export interface QuestionType {
   condition?: ConditionType | null;
 }
 
-const GET_QUESTIONS_SORTED = /* GraphQL */ `
-  query QuestionsSorted(
+const GET_QUESTIONS = /* GraphQL */ `
+  query Questions(
     $take: Int!
     $skip: Int!
     $chainId: Int
-    $sortField: String!
-    $sortDirection: String!
+    $sortField: QuestionSortField!
+    $sortDirection: SortOrder!
     $search: String
     $categorySlugs: [String!]
     $minEndTime: Int
-    $resolutionStatus: String
+    $resolutionStatus: ResolutionStatus
   ) {
-    questionsSorted(
+    questions(
       take: $take
       skip: $skip
       chainId: $chainId
@@ -58,6 +59,7 @@ const GET_QUESTIONS_SORTED = /* GraphQL */ `
           resolver
           settled
           resolvedToYes
+          nonDecisive
           assertionId
           assertionTimestamp
           openInterest
@@ -84,6 +86,7 @@ const GET_QUESTIONS_SORTED = /* GraphQL */ `
         resolver
         settled
         resolvedToYes
+        nonDecisive
         assertionId
         assertionTimestamp
         openInterest
@@ -102,8 +105,8 @@ export interface FetchQuestionsSortedParams {
   take: number;
   skip: number;
   chainId?: number;
-  sortField: string;
-  sortDirection: string;
+  sortField: SortField;
+  sortDirection: SortDirection;
   search?: string;
   categorySlugs?: string[];
   minEndTime?: number;
@@ -114,7 +117,7 @@ export async function fetchQuestionsSorted(
   params: FetchQuestionsSortedParams
 ): Promise<QuestionType[]> {
   type QuestionsQueryResult = {
-    questionsSorted: QuestionType[];
+    questions: QuestionType[];
   };
   const variables = {
     take: params.take,
@@ -129,9 +132,9 @@ export async function fetchQuestionsSorted(
   };
 
   const data = await graphqlRequest<QuestionsQueryResult>(
-    GET_QUESTIONS_SORTED,
+    GET_QUESTIONS,
     variables
   );
 
-  return data.questionsSorted ?? [];
+  return data.questions ?? [];
 }

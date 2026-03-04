@@ -81,7 +81,8 @@ export function useAuctionRelayerFeed(options?: {
         });
 
         // Persist auction.started messages in a separate ref that survives state resets
-        if (type === 'auction.started' && channel) {
+        const isAuctionStarted = type === 'auction.started';
+        if (isAuctionStarted && channel) {
           const existing = persistedStartedRef.current.get(channel);
           // Only store if newer or first time
           if (!existing || existing.time < entry.time) {
@@ -91,7 +92,7 @@ export function useAuctionRelayerFeed(options?: {
         }
 
         // Auto-subscribe to auction channel when an auction starts
-        if (type === 'auction.started') {
+        if (isAuctionStarted) {
           const subscribeAuctionId =
             (msg?.payload?.auctionId as string) ||
             (msg?.auctionId as string) ||

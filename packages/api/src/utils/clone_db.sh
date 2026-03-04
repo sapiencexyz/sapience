@@ -4,7 +4,7 @@
 # Define tables that should be filtered by timestamp
 TIMESTAMP_FILTER_TABLES=()
 # Reset environment variables if they are already set
-unset DB_HOST DB_NAME DB_NAME_LOCAL DB_USER DB_PASSWORD LOCAL_USER BACKUP_DIR
+unset DB_HOST DB_PORT DB_NAME DB_NAME_LOCAL DB_USER DB_PASSWORD LOCAL_USER BACKUP_DIR
 
 # Parse command line arguments
 SKIP_IF_EXISTS=false
@@ -70,6 +70,7 @@ if [ -f ".env" ]; then
 else
     echo "ERROR: .env file not found. Please create a .env file with the following variables:"
     echo "DB_HOST=your_host"
+    echo "DB_PORT=your_port (optional, defaults to 5432)"
     echo "DB_NAME=your_database_name"
     echo "DB_NAME_LOCAL=your_local_database_name"
     echo "DB_USER=your_username"
@@ -85,6 +86,9 @@ if [ -z "$DB_HOST" ] || [ -z "$DB_NAME" ] || [ -z "$DB_NAME_LOCAL" ] || [ -z "$D
     echo "DB_HOST, DB_NAME, DB_NAME_LOCAL, DB_USER, DB_PASSWORD, LOCAL_USER, BACKUP_DIR"
     exit 1
 fi
+
+# Default port to 5432 if not set
+DB_PORT="${DB_PORT:-5432}"
 
 echo "BACKUP_DIR: $BACKUP_DIR"
 
@@ -125,12 +129,12 @@ fi
 
 # Export database schema only (no data), including indices and constraints
 echo "Exporting database schema, indices, and constraints (no data)..."
-PGSSLMODE=require PGPASSWORD=$DB_PASSWORD pg_dump -C --no-owner --no-acl --no-comments --schema-only -U $DB_USER -h $DB_HOST -d $DB_NAME \
+PGSSLMODE=require PGPASSWORD=$DB_PASSWORD pg_dump -C --no-owner --no-acl --no-comments --schema-only -U $DB_USER -h $DB_HOST -p $DB_PORT -d $DB_NAME \
   -f complete_dump.sql  --exclude-table-data="*_seq" -v
 
 # Extract constraints to add back later
 echo "Extracting constraints for later addition..."
-PGSSLMODE=require PGPASSWORD=$DB_PASSWORD pg_dump -C --no-owner --no-acl --no-comments --schema-only -U $DB_USER -h $DB_HOST -d $DB_NAME \
+PGSSLMODE=require PGPASSWORD=$DB_PASSWORD pg_dump -C --no-owner --no-acl --no-comments --schema-only -U $DB_USER -h $DB_HOST -p $DB_PORT -d $DB_NAME \
   --exclude-table-data="*_seq" | awk '/^(ALTER TABLE|CREATE UNIQUE INDEX|CREATE INDEX)/ { 
       line = $0; 
       while (!match(line, /;$/)) { 
@@ -191,14 +195,14 @@ echo "Fetching filtered data for tables..."
 
 # Get list of tables with timestamp columns and their data types
 echo "Identifying tables with timestamp columns and their types..."
-TIMESTAMP_TABLES_INFO=$(PGSSLMODE=require PGPASSWORD=$DB_PASSWORD psql -U $DB_USER -h $DB_HOST -d $DB_NAME -t -c "
+TIMESTAMP_TABLES_INFO=$(PGSSLMODE=require PGPASSWORD=$DB_PASSWORD psql -U $DB_USER -h $DB_HOST -p $DB_PORT -d $DB_NAME -t -c "
 SELECT table_name, data_type 
 FROM information_schema.columns 
 WHERE column_name = 'timestamp' 
     AND table_schema = 'public'
 ORDER BY table_name;" | awk -F'|' 'NF {gsub(/^[ \t]+|[ \t]+$/, "", $1); gsub(/^[ \t]+|[ \t]+$/, "", $2); print $1 "|" $2}')
 
-ALL_TABLES=$(PGSSLMODE=require PGPASSWORD=$DB_PASSWORD psql -U $DB_USER -h $DB_HOST -d $DB_NAME -t -c "
+ALL_TABLES=$(PGSSLMODE=require PGPASSWORD=$DB_PASSWORD psql -U $DB_USER -h $DB_HOST -p $DB_PORT -d $DB_NAME -t -c "
 SELECT DISTINCT table_name 
 FROM information_schema.tables 
 WHERE table_schema = 'public' 
@@ -256,12 +260,12 @@ while IFS='|' read -r table data_type; do
         
         # Export data with timestamp filtering
         if [ -n "$TIMESTAMP_WHERE" ]; then
-            PGSSLMODE=require PGPASSWORD=$DB_PASSWORD psql -U $DB_USER -h $DB_HOST -d $DB_NAME -c "
+            PGSSLMODE=require PGPASSWORD=$DB_PASSWORD psql -U $DB_USER -h $DB_HOST -p $DB_PORT -d $DB_NAME -c "
                 COPY (SELECT * FROM public.\"$table\" $TIMESTAMP_WHERE) TO STDOUT;
             " --csv >> complete_dump.sql
         else
             # No timestamp filter, get all data
-            PGSSLMODE=require PGPASSWORD=$DB_PASSWORD psql -U $DB_USER -h $DB_HOST -d $DB_NAME -c "
+            PGSSLMODE=require PGPASSWORD=$DB_PASSWORD psql -U $DB_USER -h $DB_HOST -p $DB_PORT -d $DB_NAME -c "
                 COPY public.\"$table\" TO STDOUT;
             " --csv >> complete_dump.sql
         fi
@@ -286,7 +290,7 @@ for table in $ALL_TABLES; do
             echo "\\copy public.\"$table\" FROM stdin;" >> complete_dump.sql
             
             # Export all data
-            PGSSLMODE=require PGPASSWORD=$DB_PASSWORD psql -U $DB_USER -h $DB_HOST -d $DB_NAME -c "
+            PGSSLMODE=require PGPASSWORD=$DB_PASSWORD psql -U $DB_USER -h $DB_HOST -p $DB_PORT -d $DB_NAME -c "
                 COPY public.\"$table\" TO STDOUT;
             " --csv >> complete_dump.sql
             

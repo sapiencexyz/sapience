@@ -27,6 +27,7 @@ export const config = cleanEnv(process.env, {
   WS_IDLE_TIMEOUT_MS: num({ default: 300_000 }), // 5 minutes
   WS_MAX_CONNECTIONS: num({ default: 1000 }),
   WS_ALLOWED_ORIGINS: str({ default: '' }), // Comma-separated list, empty = allow all
+  DEFAULT_VAULT_MANAGER: str({ default: '' }), // Fallback manager address if vault contract not deployed
 });
 
 export const isProd = config.NODE_ENV === 'production';

@@ -143,12 +143,12 @@ export function createValidationError(
 export function verifyMakerBid(params: {
   auctionId: string;
   maker: string;
-  makerWager: string;
+  makerCollateral: string;
   makerDeadline: number;
   makerSignature: string;
 }): { ok: boolean; reason?: string } {
   try {
-    const { auctionId, maker, makerWager, makerDeadline, makerSignature } =
+    const { auctionId, maker, makerCollateral, makerDeadline, makerSignature } =
       params;
     if (!auctionId || typeof auctionId !== 'string') {
       return { ok: false, reason: 'invalid_auction_id' };
@@ -156,8 +156,8 @@ export function verifyMakerBid(params: {
     if (typeof maker !== 'string' || !/^0x[a-fA-F0-9]{40}$/.test(maker)) {
       return { ok: false, reason: 'invalid_maker' };
     }
-    if (!makerWager || BigInt(makerWager) <= 0n) {
-      return { ok: false, reason: 'invalid_maker_wager' };
+    if (!makerCollateral || BigInt(makerCollateral) <= 0n) {
+      return { ok: false, reason: 'invalid_maker_collateral' };
     }
     if (
       typeof makerDeadline !== 'number' ||

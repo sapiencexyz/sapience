@@ -10,6 +10,7 @@ import {
 } from 'react';
 import { z } from 'zod';
 import { fetchConditionsByIds } from '~/hooks/graphql/fetchConditionsByIds';
+import { DEFAULT_POSITION_SIZE } from '~/lib/utils/positionFormUtils';
 
 // localStorage key for position selections persistence
 const STORAGE_KEY_SELECTIONS = 'sapience:position-selections';
@@ -23,9 +24,13 @@ function loadFromStorage<T>(key: string, fallback: T): T {
     return fallback;
   }
 }
-import type { MarketGroupClassification } from '~/lib/types';
-import { MarketGroupClassification as MarketGroupClassificationEnum } from '~/lib/types';
-import { createPositionDefaults } from '~/lib/utils/positionFormUtils';
+import type { Address, Hex } from 'viem';
+import type { Pick as EscrowPick } from '@sapience/sdk/types';
+import { OutcomeSide } from '@sapience/sdk/types';
+import {
+  computePickConfigId,
+  canonicalizePicks,
+} from '@sapience/sdk/auction/escrowEncoding';
 
 // Updated CreatePositionEntry type based on requirements
 interface CreatePositionEntry {
@@ -36,7 +41,6 @@ interface CreatePositionEntry {
   question: string;
   chainId: number; // Add chainId to identify which chain the market is on
   positionSize?: string; // Store default position size
-  marketClassification?: MarketGroupClassification; // Store classification for better form handling
 }
 
 // Lightweight position selection for OTC conditions (no on-chain market data)
@@ -65,14 +69,6 @@ const positionSelectionSchema = z.object({
 
 const positionSelectionsSchema = z.array(positionSelectionSchema);
 
-// Interface for market data with position
-interface PositionWithMarketData {
-  position: CreatePositionEntry;
-  marketClassification: MarketGroupClassification | undefined;
-  isLoading: boolean;
-  error: boolean | null;
-}
-
 interface CreatePositionContextType {
   // Separate lists: single positions (on-chain) and position selections (RFQ conditions)
   createPositionEntries: CreatePositionEntry[]; // legacy alias to singlePositions for backward compat
@@ -89,8 +85,11 @@ interface CreatePositionContextType {
   openPopover: () => void;
   isPopoverOpen: boolean;
   setIsPopoverOpen: (open: boolean) => void;
-  // New properties for market data
-  positionsWithMarketData: PositionWithMarketData[];
+  // Escrow protocol helpers
+  /** Convert current selections to Pick[] array */
+  getPicks: () => EscrowPick[];
+  /** Compute pickConfigId from current selections */
+  getPickConfigId: () => Hex | null;
 }
 
 export const CreatePositionContext = createContext<
@@ -198,49 +197,29 @@ export const CreatePositionProvider = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Spot market functionality removed - positionsWithMarketData is empty
-  const positionsWithMarketData: PositionWithMarketData[] = singlePositions.map(
-    (position) => ({
-      position,
-      marketClassification: position.marketClassification,
-      isLoading: false,
-      error: null,
-    })
-  );
-
   const addPosition = useCallback(
     (position: Omit<CreatePositionEntry, 'id'>) => {
-      // Create intelligent defaults based on market classification
-      const defaults = createPositionDefaults(position.marketClassification);
+      // Dedup: treat same marketAddress as a single logical position
+      const existingIndex = singlePositions.findIndex(
+        (p) => p.marketAddress === position.marketAddress
+      );
 
-      // Special handling for YES/NO: treat the question as a single logical position
-      if (
-        position.marketClassification === MarketGroupClassificationEnum.YES_NO
-      ) {
-        const existingYesNoIndex = singlePositions.findIndex(
-          (p) =>
-            p.marketAddress === position.marketAddress &&
-            p.marketClassification === MarketGroupClassificationEnum.YES_NO
+      if (existingIndex !== -1) {
+        setSinglePositions((prev) =>
+          prev.map((p, index) =>
+            index === existingIndex
+              ? {
+                  ...p,
+                  prediction: position.prediction,
+                  marketId: position.marketId,
+                  question: position.question,
+                  positionSize: p.positionSize || DEFAULT_POSITION_SIZE,
+                }
+              : p
+          )
         );
-
-        if (existingYesNoIndex !== -1) {
-          setSinglePositions((prev) =>
-            prev.map((p, index) =>
-              index === existingYesNoIndex
-                ? {
-                    ...p,
-                    prediction: position.prediction,
-                    marketId: position.marketId,
-                    question: position.question,
-                    marketClassification: position.marketClassification,
-                    positionSize: p.positionSize || defaults.positionSize,
-                  }
-                : p
-            )
-          );
-          setIsPopoverOpen(true);
-          return;
-        }
+        setIsPopoverOpen(true);
+        return;
       }
 
       // Check if a position with the same marketAddress and marketId already exists
@@ -258,8 +237,7 @@ export const CreatePositionProvider = ({
                   ...p,
                   prediction: position.prediction,
                   question: position.question,
-                  marketClassification: position.marketClassification,
-                  positionSize: p.positionSize || defaults.positionSize,
+                  positionSize: p.positionSize || DEFAULT_POSITION_SIZE,
                 }
               : p
           )
@@ -269,8 +247,8 @@ export const CreatePositionProvider = ({
         const enhancedPosition: CreatePositionEntry = {
           ...position,
           id,
-          positionSize: position.positionSize || defaults.positionSize,
-          prediction: position.prediction ?? defaults.prediction ?? false,
+          positionSize: position.positionSize || DEFAULT_POSITION_SIZE,
+          prediction: position.prediction ?? false,
         };
         setSinglePositions((prev) => [...prev, enhancedPosition]);
       }
@@ -334,6 +312,26 @@ export const CreatePositionProvider = ({
     setSelections([]);
   }, []);
 
+  // Escrow helpers: convert selections to Pick[] array
+  const getPicks = useCallback((): EscrowPick[] => {
+    return canonicalizePicks(
+      selections
+        .filter((s) => s.resolverAddress) // Only include selections with resolver address
+        .map((s) => ({
+          conditionResolver: s.resolverAddress as Address,
+          conditionId: s.conditionId as Hex,
+          predictedOutcome: s.prediction ? OutcomeSide.YES : OutcomeSide.NO,
+        }))
+    );
+  }, [selections]);
+
+  // Escrow helper: compute pickConfigId from current selections
+  const getPickConfigId = useCallback((): Hex | null => {
+    const picks = getPicks();
+    if (picks.length === 0) return null;
+    return computePickConfigId(picks);
+  }, [getPicks]);
+
   const value: CreatePositionContextType = {
     createPositionEntries: singlePositions,
     singlePositions,
@@ -348,7 +346,8 @@ export const CreatePositionProvider = ({
     openPopover,
     isPopoverOpen,
     setIsPopoverOpen,
-    positionsWithMarketData,
+    getPicks,
+    getPickConfigId,
   };
 
   return (

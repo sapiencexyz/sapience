@@ -1,11 +1,11 @@
-import { Resolver, Query, Arg, Directive } from 'type-graphql';
+import { Resolver, Query, Arg, Int, Directive } from 'type-graphql';
 import { PnLType } from '../types/PnLType';
 import {
   AggregatedProfitEntryType,
   ProfitRankType,
 } from '../types/AggregatedProfitTypes';
 import { TtlCache } from '../../utils/ttlCache';
-import { calculatePositionPnL } from '../../helpers/positionPnL';
+import { calculateCombinedPositionPnL } from '../../helpers/positionPnL';
 
 const DEFAULT_DECIMALS = 18;
 
@@ -19,45 +19,66 @@ export class PnLResolver {
     maxSize: 10,
   });
 
-  @Query(() => [AggregatedProfitEntryType])
+  @Query(() => [AggregatedProfitEntryType], {
+    description:
+      'Profit leaderboard — addresses ranked by total PnL across all positions',
+  })
   @Directive('@cacheControl(maxAge: 60)')
-  async allTimeProfitLeaderboard(): Promise<AggregatedProfitEntryType[]> {
-    const cacheKey = 'allTimeProfitLeaderboard:v3';
+  async profitLeaderboard(
+    @Arg('limit', () => Int, { defaultValue: 10 }) limit: number,
+    @Arg('skip', () => Int, { defaultValue: 0 }) skip: number
+  ): Promise<AggregatedProfitEntryType[]> {
+    // Cache key includes v5 to invalidate old cache after field renames
+    const cacheKey = 'profitLeaderboard:v5';
     const existing = PnLResolver.leaderboardCache.get(cacheKey);
-    if (existing) return existing;
+    if (existing) {
+      const cappedLimit = Math.max(1, Math.min(limit, 100));
+      return existing.slice(skip, skip + cappedLimit);
+    }
 
-    const positionPnL = await calculatePositionPnL();
+    // Use combined legacy + escrow P&L calculation
+    const positionPnL = await calculateCombinedPositionPnL();
 
     const aggregated = new Map<string, number>();
 
     for (const r of positionPnL) {
-      const owner = r.owner.toLowerCase();
+      const addr = r.owner.toLowerCase();
       const divisor = Math.pow(10, DEFAULT_DECIMALS);
       const val = parseFloat(r.totalPnL) / divisor;
       if (!Number.isFinite(val)) continue;
-      aggregated.set(owner, (aggregated.get(owner) || 0) + val);
+      aggregated.set(addr, (aggregated.get(addr) || 0) + val);
     }
 
     const entries = Array.from(aggregated.entries())
-      .map(([owner, totalPnL]) => ({ owner, totalPnL }))
-      .sort((a, b) => b.totalPnL - a.totalPnL);
+      .map(([address, pnl]) => ({ address, totalPnL: pnl.toFixed(18) }))
+      .sort((a, b) => parseFloat(b.totalPnL) - parseFloat(a.totalPnL));
 
     PnLResolver.leaderboardCache.set(cacheKey, entries);
-    return entries;
+    const cappedLimit = Math.max(1, Math.min(limit, 100));
+    return entries.slice(skip, skip + cappedLimit);
   }
 
-  @Query(() => ProfitRankType)
+  @Query(() => ProfitRankType, {
+    description:
+      'Profit rank and total PnL for a single address relative to all participants',
+  })
   @Directive('@cacheControl(maxAge: 60)')
-  async profitRankByAddress(
-    @Arg('owner', () => String) owner: string
+  async accountProfitRank(
+    @Arg('address', () => String) address: string
   ): Promise<ProfitRankType> {
-    const leaderboard = await this.allTimeProfitLeaderboard();
-    const lc = owner.toLowerCase();
-    const totalParticipants = leaderboard.length;
-    const idx = leaderboard.findIndex((e) => e.owner === lc);
-    const rank = idx >= 0 ? idx + 1 : null;
-    const totalPnL = leaderboard.find((e) => e.owner === lc)?.totalPnL || 0;
+    // Ensure cache is populated (call with minimal args to trigger cache fill)
+    await this.profitLeaderboard(1, 0);
 
-    return { owner: lc, totalPnL, rank, totalParticipants };
+    // Access the full cached array to search across all participants
+    const cacheKey = 'profitLeaderboard:v5';
+    const fullLeaderboard = PnLResolver.leaderboardCache.get(cacheKey) || [];
+    const lc = address.toLowerCase();
+    const totalParticipants = fullLeaderboard.length;
+    const idx = fullLeaderboard.findIndex((e) => e.address === lc);
+    const rank = idx >= 0 ? idx + 1 : null;
+    const totalPnL =
+      fullLeaderboard.find((e) => e.address === lc)?.totalPnL || '0';
+
+    return { address: lc, totalPnL, rank, totalParticipants };
   }
 }

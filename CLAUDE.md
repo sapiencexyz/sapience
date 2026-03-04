@@ -4,7 +4,7 @@ Sapience is a pnpm monorepo (Node ≥ 20.14, pnpm 9.x). Run `pnpm install` to se
 
 **Packages:** `api` (TypeGraphQL + Prisma), `app` (Next.js 14), `sdk` (shared TS library), `ui` (component library), `relayer` (WebSocket service), `protocol` (Solidity/Foundry), `polymarket-keeper` (cron scripts), `docs` (Vocs).
 
-For deeper context on a specific package, check for a package-level `AGENTS.md` (e.g. `packages/api/AGENTS.md`).
+For deeper context on a specific package, check for a package-level `AGENTS.md` and `CLAUDE.md` (e.g. `packages/api/AGENTS.md`).
 
 ## Quick local check
 ```bash
@@ -41,5 +41,5 @@ Prettier config is shared at the repo root (`.prettierrc.json`). ESLint configs 
 - **SDK is a build dependency.** If you change SDK types, rebuild it before checking other packages.
 - **`prisma:generate` before API compilation.** The generated Prisma client is not committed.
 - **`schema.graphql` and `graphql.ts` are generated files** — never edit directly, use bash commands to regenerate.
-- **Protocol tests need `forge build --ast`** before `cannon test`. Use `pnpm --filter protocol run test` which handles this.
+- **Protocol tests need `forge build --ast`** before `forge test`. Use `pnpm --filter protocol run test` which handles this.
 - **App uses Next.js** — `type-check` catches things `lint` doesn't and vice versa. Run both.

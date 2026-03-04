@@ -32,11 +32,13 @@ import {
 import {
   PnLResolver,
   ScoreResolver,
-  PositionResolver,
+  EscrowResolver,
   AnalyticsResolver,
   ConditionResolver,
   VolumeResolver,
   QuestionsResolver,
+  TradeResolver,
+  TimeSeriesResolver,
   CollateralBalanceResolver,
 } from './resolvers';
 
@@ -63,11 +65,13 @@ export const initializeApolloServer = async () => {
     .concat([
       PnLResolver,
       ScoreResolver,
-      PositionResolver,
+      EscrowResolver,
       AnalyticsResolver,
       ConditionResolver,
       VolumeResolver,
       QuestionsResolver,
+      TradeResolver,
+      TimeSeriesResolver,
       CollateralBalanceResolver,
     ]);
   const schema = await buildSchema({
@@ -138,7 +142,9 @@ export const initializeApolloServer = async () => {
                 schema,
                 query: document,
                 variables: request.variables ?? {},
-                estimators: createComplexityEstimators(config.GRAPHQL_MAX_LIST_SIZE),
+                estimators: createComplexityEstimators(
+                  config.GRAPHQL_MAX_LIST_SIZE
+                ),
               });
 
               if (config.isDev) {

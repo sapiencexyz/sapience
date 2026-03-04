@@ -219,6 +219,8 @@ function ConditionCard({
                   onPrediction={handlePrediction}
                   inline
                   requestLabel="Request"
+                  chainId={condition.chainId}
+                  resolverAddress={condition.resolver}
                   className="[&_.font-mono]:font-display [&_.font-mono]:font-semibold [&_.font-mono]:text-[9px] [&_button]:font-display [&_button]:font-semibold [&_button]:text-[9px] [&_button]:text-royal-500 [&_.animate-pulse]:font-display [&_.animate-pulse]:font-semibold [&_.animate-pulse]:text-[8px] [&_.animate-pulse]:text-royal-400"
                 />
               </div>
@@ -247,6 +249,7 @@ function ConditionCard({
               endTime={condition.endTime}
               settled={!!condition.settled}
               resolvedToYes={condition.resolvedToYes}
+              nonDecisive={condition.nonDecisive}
               variant="card"
             />
           ) : (

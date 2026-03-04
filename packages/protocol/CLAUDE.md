@@ -4,83 +4,161 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Foil Protocol is a decentralized marketplace for onchain computing resources, specifically focused on prediction markets. The protocol uses Solidity smart contracts built with Foundry framework and deployed using Cannon CLI.
+Sapience Protocol is a decentralized prediction market protocol with fungible prediction pools using a parimutuel model and cross-chain bridge support.
 
 ## Commands
 
 ### Development
 ```bash
-pnpm dev                    # Start local development with Anvil on port 8545
-pnpm test                   # Run all tests using Cannon and Forge
+pnpm test                   # Run all tests using Forge
 pnpm docgen                 # Generate documentation with Forge
-```
-
-### Deployment
-```bash
-pnpm deploy:sepolia         # Deploy to Sepolia testnet
-pnpm deploy:base           # Deploy to Base mainnet
-pnpm simulate-deploy:sepolia # Dry-run deployment on Sepolia
-pnpm simulate-deploy:base   # Dry-run deployment on Base
-
-# Manual cannon deployment (example from README)
-pnpm cannon build deployments/tomls/base-mainnet/foil-with-factory.toml --chain-id 8453 --wipe --dry-run --impersonate-all
 ```
 
 ### Testing Individual Files
 ```bash
 # Run specific test file
-forge test --match-path test/market/modules/LiquidityModule/CreateLiquidityPosition.t.sol -vvv
+forge test --match-path test/v2/PredictionMarketEscrow.t.sol -vvv
 
 # Run specific test function
 forge test --match-test test_revertWhen_invalidEpoch -vvv
 ```
 
-## Architecture
-
-### Module System
-The protocol uses a diamond-like modular architecture where functionality is split into separate modules combined via a router pattern:
-
-- **ConfigurationModule**: Market initialization, epoch creation, ownership
-- **LiquidityModule**: LP position management (create, increase, decrease)
-- **TradeModule**: Trading operations
-- **SettlementModule**: Core settlement functionality
-- **UMASettlementModule**: UMA Optimistic Oracle V3 integration
-- **ViewsModule**: Read-only view functions
-- **NftModule**: ERC721 position NFTs
-
-### Storage Pattern
-Uses diamond storage pattern with deterministic slots:
-```solidity
-bytes32 slot = keccak256("foil.gas.market");
+### Linting and Formatting
+```bash
+pnpm lint # lint solidity source files
+pnpm fmt  # format solidity source files
 ```
 
-Key storage contracts:
-- `Market.sol`: Core market configuration and state
-- `Position.sol`: Position data (trades and liquidity)
-- `Epoch.sol`: Time-bound trading periods with Uniswap V3 pools
-- `Debt.sol`: Borrowing and collateral tracking
+## Directory Structure
 
-### Virtual Token System
-- Each epoch has virtual tokens (vETH and vGAS) representing long/short positions
-- Tokens are minted/burned for trades and liquidity provision
-- Integrated with Uniswap V3 for price discovery
+```
+src/
+├── v2/                  # Main protocol
+│   ├── bridge/          # Position token bridge (Ethereal <-> Arbitrum)
+│   ├── interfaces/      # V2 interfaces and types
+│   ├── resolvers/       # Condition resolvers (pyth/, lz-uma/, conditionalTokens/, mocks/)
+│   ├── sponsors/        # Mint sponsors (OnboardingSponsor)
+│   ├── utils/           # Signature validation, account factory
+│   ├── vault/           # PredictionMarketVault (LP deposits/withdrawals)
+│   ├── PredictionMarketEscrow.sol   # Core escrow: mint, burn, settle, redeem
+│   ├── PredictionMarketToken.sol    # ERC20 position token
+│   ├── PredictionMarketTokenFactory.sol  # CREATE3 factory for deterministic addresses
+│   ├── SecondaryMarketEscrow.sol    # Atomic OTC swap for position tokens
+│   └── v2.md            # Detailed specification
+├── legacy/              # Legacy v1 contracts
+│   ├── predictionMarket/
+│   ├── bridge/
+│   ├── vault/
+│   ├── external/
+│   └── scripts/
+└── scripts/
+    └── v2/              # V2 deployment scripts
+```
 
-### Settlement Flow
-1. Epochs run for a predetermined period
-2. After epoch ends, UMA oracle submits settlement price
-3. Positions can be settled based on final price
-4. Special handling for fee collectors and liquidations
+## Contract Verification
 
-### Deployment Configuration
-Cannon deployment system using TOML files in `deployments/tomls/`:
-- `cannonfile.dev.toml`: Local development
-- `cannonfile.test.toml`: Test configuration
-- `cannonfile.sepolia.toml`: Sepolia testnet
-- `cannonfile.base.blobs.toml`: Base mainnet with blob storage
+**Polygon (Polygonscan):**
+```bash
+forge verify-contract \
+  $CONTRACT_ADDRESS \
+  $CONTRACT_PATH \
+  --chain-id 137 \
+  --constructor-args $CONSTRUCTOR_ARGS \
+  --etherscan-api-key $POLYGONSCAN_API_KEY
+```
+
+**Ethereal (Blockscout):**
+```bash
+# IMPORTANT: Ethereal uses Blockscout - always include these flags
+forge verify-contract \
+  $CONTRACT_ADDRESS \
+  $CONTRACT_PATH \
+  --chain-id 5066318 \
+  --constructor-args $CONSTRUCTOR_ARGS \
+  --verifier blockscout \
+  --verifier-url https://explorer.ethereal.trade/api/
+```
+
+**Note**: For Ethereal, you must always use `--verifier blockscout --verifier-url https://explorer.ethereal.trade/api/` when using `forge verify-contract` or `forge script` with `--verify`.
+
+## Architecture
+
+See `src/v2/v2.md` for the complete specification.
+
+### Core Concepts
+
+- **Pick**: A single prediction (conditionResolver, conditionId, predictedOutcome)
+- **Pick Configuration**: Set of picks that share fungible tokens, identified by `pickConfigId = keccak256(picks)`
+- **Prediction**: Individual prediction with unique `predictionId = keccak256(pickConfigId, predictor, counterparty, nonce)`
+- **Position Tokens**: ERC20 tokens representing shares in the collateral pool (1:1 ratio with collateral)
+
+### Parimutuel Model
+
+Users with the same picks share fungible tokens. Both sides of a mint receive tokens equal to the prediction's total collateral (predictor + counterparty). This bakes the odds into the token amount, keeping tokens fungible regardless of the odds at which each prediction was placed. Winner side gets all collateral proportionally to tokens held.
+
+### Main Contracts
+
+- **PredictionMarketEscrow.sol**: Core escrow handling mint, burn, settle, redeem. Uses bitmap nonces (Permit2-style) and supports session keys with revocation
+- **PredictionMarketToken.sol**: ERC20 position token with pickConfigId and isPredictorToken metadata
+- **PredictionMarketTokenFactory.sol**: CREATE3 factory for deterministic token addresses across chains
+- **SecondaryMarketEscrow.sol**: Permissionless atomic OTC swap for position tokens (no ownership, no funds at rest)
+- **PredictionMarketVault.sol**: Passive liquidity vault for LP deposits/withdrawals with request-based flow
+- **OnboardingSponsor.sol**: Funds predictor collateral during mint, gated by per-user budgets
+- **IConditionResolver**: Interface for condition resolution returning `OutcomeVector [yesWeight, noWeight]`
+
+### Condition Resolvers
+
+Located in `src/v2/resolvers/`:
+- **PythConditionResolver** (`pyth/`): Pyth oracle-based resolution
+- **ManualConditionResolver** (`mocks/`): Admin-controlled resolution
+- **LZConditionResolver** (`lz-uma/`): Cross-chain resolution via LayerZero (Ethereal side)
+- **LZConditionResolverUmaSide** (`lz-uma/`): UMA oracle side for cross-chain resolution
+- **ConditionalTokensConditionResolver** (`conditionalTokens/`): Gnosis conditional tokens integration
+- **ConditionalTokensReader** (`conditionalTokens/`): Reads Gnosis CT payouts and sends to Ethereal via LZ
+
+### Resolution Flow
+
+1. Condition resolvers return `OutcomeVector [yesWeight, noWeight]`
+   - `[1,0]` = YES wins, `[0,1]` = NO wins, `[1,1]` = tie
+2. PredictionMarketEscrow applies prediction logic:
+   - All picks match predicted outcome -> PREDICTOR_WINS
+   - Any pick decisively against -> COUNTERPARTY_WINS
+   - Any non-decisive pick -> NON_DECISIVE (tie)
+
+### Bridge (Position Token Bridge)
+
+Bridges position tokens between Ethereal and Arbitrum using LayerZero with two-phase commit (ACK).
+
+**Architecture:**
+```
+PredictionMarketBridgeBase (abstract)
+├── PredictionMarketBridge (Ethereal - source chain)
+└── PredictionMarketBridgeRemote (Arbitrum - remote chain)
+```
+
+**Key Features:**
+- Unified interface: `bridge()`, `retry()` on both chains
+- Permissionless retry after 1 hour delay
+- Idempotent processing prevents double-mint/release
+- CREATE3 for deterministic token addresses across chains
+- Automatic token deployment on first bridge
+
+**Contracts:**
+- `PredictionMarketBridgeBase.sol`: Abstract base with shared logic
+- `PredictionMarketBridge.sol`: Ethereal side (escrow, release)
+- `PredictionMarketBridgeRemote.sol`: Arbitrum side (mint, burn)
+- `PredictionMarketTokenFactory.sol`: CREATE3 factory for deterministic addresses
+- `PredictionMarketToken.sol`: Same ERC20 deployed on remote chain with bridge as mint/burn authority
+
+## Rules
+
+- All tests must pass before commit
+- Run lint and format before commit
+- To run lint and format, execute `pnpm format && pnpm lint` inside protocol package folder
 
 ## Key Dependencies
-- **@synthetixio/core-contracts**: Core infrastructure patterns
-- **@uma/core**: Optimistic Oracle V3 for price discovery
-- **@openzeppelin/contracts**: Standard implementations
-- **@layerzerolabs**: Cross-chain messaging (oapp-evm, lz-evm-protocol-v2)
-- **cannon-std**: Deployment and testing utilities
+
+- **@openzeppelin/contracts**: Standard implementations (ERC20, access control, security)
+- **@layerzerolabs/oapp-evm**: Cross-chain messaging via LayerZero
+- **solady**: CREATE3 for deterministic cross-chain token deployment
+- **@uma/core**: UMA Optimistic Oracle integration for condition resolution

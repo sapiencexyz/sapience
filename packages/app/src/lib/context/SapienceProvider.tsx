@@ -8,8 +8,6 @@ import { useQuery } from '@tanstack/react-query';
 import type React from 'react';
 import { createContext, useContext } from 'react';
 
-// import InstallDialog from '~/components/InstallDialog';
-
 // Define the type based on the API response
 interface PermitResponse {
   permitted: boolean;
@@ -32,8 +30,6 @@ const SapienceContext = createContext<SapienceContextType | undefined>(
 export const SapienceProvider: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => {
-  // const [isInstallDialogOpen, setIsInstallDialogOpen] = useState(false);
-
   // Permit/geofence check – use the edge route as the single source of truth.
   const {
     data: permitData,
@@ -76,33 +72,6 @@ export const SapienceProvider: React.FC<{ children: React.ReactNode }> = ({
     retry: 1,
   });
 
-  /*
-  // Handle InstallDialog visibility
-  useEffect(() => {
-    const alreadyShown = localStorage.getItem(LOCAL_STORAGE_KEY);
-    if (alreadyShown) {
-      return;
-    }
-
-    // Check if we're on mobile and not in standalone mode
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    const isStandalone = window.matchMedia(
-      '(display-mode: standalone)'
-    ).matches;
-
-    if (isMobile && !isStandalone) {
-      setIsInstallDialogOpen(true);
-    }
-  }, []);
-
-  const handleInstallDialogClose = (open: boolean) => {
-    if (!open) {
-      // Only set when closing the dialog
-      localStorage.setItem(LOCAL_STORAGE_KEY, 'true');
-    }
-    setIsInstallDialogOpen(open);
-  };
-*/
   return (
     <SapienceContext.Provider
       value={{
@@ -113,10 +82,6 @@ export const SapienceProvider: React.FC<{ children: React.ReactNode }> = ({
       }}
     >
       {children}
-      {/* <InstallDialog
-        isOpen={isInstallDialogOpen}
-        onOpenChange={handleInstallDialogClose}
-      /> */}
     </SapienceContext.Provider>
   );
 };

@@ -26,10 +26,8 @@ import {
 } from 'viem';
 import { Input } from '@sapience/ui/components/ui/input';
 import { useToast } from '@sapience/ui/hooks/use-toast';
-import {
-  CHAIN_ID_ETHEREAL,
-  ETHEREAL_WUSDE_ADDRESS,
-} from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { collateralToken } from '@sapience/sdk/contracts';
 import { useCollateralBalance } from '~/hooks/blockchain/useCollateralBalance';
 import { useSession } from '~/lib/context/SessionContext';
 import {
@@ -40,6 +38,13 @@ import { STARGATE_DEPOSIT_URL } from '~/lib/constants';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import { useSwitchChain } from 'wagmi';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@sapience/ui/components/ui/tooltip';
+import { useSponsorStatus } from '~/hooks/sponsorship/useSponsorStatus';
+import { formatUnits } from 'viem';
 
 const WUSDE_ABI = parseAbi([
   'function deposit() payable',
@@ -72,7 +77,8 @@ export default function CollateralBalanceButton({
   buttonClassName,
 }: CollateralBalanceButtonProps) {
   const { address: eoaAddress, connector } = useAccount();
-  const chainId = CHAIN_ID_ETHEREAL;
+  const chainId = DEFAULT_CHAIN_ID;
+  const wusdeAddress = collateralToken[chainId]?.address;
 
   // Get smart account address and mode from session context
   const { smartAccountAddress, isCalculatingAddress, isUsingSmartAccount } =
@@ -83,6 +89,7 @@ export default function CollateralBalanceButton({
     balance: eoaBalance,
     nativeBalance: eoaNativeBalance,
     wrappedBalance: eoaWrappedBalance,
+    rawWrappedBalance: rawEoaWrappedBalance,
     symbol,
     refetch: refetchEoaBalance,
   } = useCollateralBalance({
@@ -102,6 +109,12 @@ export default function CollateralBalanceButton({
     chainId,
     enabled: Boolean(smartAccountAddress),
   });
+
+  // Sponsorship budget
+  const { isSponsored, remainingBudget } = useSponsorStatus();
+  const sponsorBudgetFormatted = isSponsored
+    ? formatUnits(remainingBudget, 18)
+    : '0';
 
   const [isGetUsdeOpen, setIsGetUsdeOpen] = useState(false);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
@@ -163,7 +176,7 @@ export default function CollateralBalanceButton({
 
     try {
       // Switch to Ethereal chain first
-      await switchChainAsync({ chainId: CHAIN_ID_ETHEREAL });
+      await switchChainAsync({ chainId: DEFAULT_CHAIN_ID });
 
       setTransferStatus('Preparing transaction...');
 
@@ -171,31 +184,37 @@ export default function CollateralBalanceButton({
       const calls: { to: `0x${string}`; data: `0x${string}`; value: bigint }[] =
         [];
 
+      // Compute amounts in wei using raw BigInts to avoid float precision loss
+      const transferAmountWei = parseEther(transferAmount || '0');
+      const fromWrappedWei =
+        transferAmountWei <= rawEoaWrappedBalance
+          ? transferAmountWei
+          : rawEoaWrappedBalance;
+      const fromNativeWei = transferAmountWei - fromWrappedWei;
+
       // If we need to wrap native USDe, add wrap call first
-      if (fromNative > 0) {
-        const wrapAmount = parseEther(fromNative.toString());
+      if (fromNativeWei > 0n) {
         const wrapData = encodeFunctionData({
           abi: WUSDE_ABI,
           functionName: 'deposit',
         });
 
         calls.push({
-          to: ETHEREAL_WUSDE_ADDRESS,
+          to: wusdeAddress,
           data: wrapData,
-          value: wrapAmount,
+          value: fromNativeWei,
         });
       }
 
       // Add transfer call (transfer the full requested amount as wUSDe)
-      const transferAmount = parseEther(transferAmountNum.toString());
       const transferData = encodeFunctionData({
         abi: WUSDE_ABI,
         functionName: 'transfer',
-        args: [smartAccountAddress, transferAmount],
+        args: [smartAccountAddress, transferAmountWei],
       });
 
       calls.push({
-        to: ETHEREAL_WUSDE_ADDRESS,
+        to: wusdeAddress,
         data: transferData,
         value: 0n,
       });
@@ -206,7 +225,7 @@ export default function CollateralBalanceButton({
 
       // Execute batched calls with experimental fallback for wallets like Rabby
       await sendCallsAsync({
-        chainId: CHAIN_ID_ETHEREAL,
+        chainId: DEFAULT_CHAIN_ID,
         calls,
         // Enable fallback for wallets that don't support EIP-5792
         experimental_fallback: true,
@@ -290,7 +309,7 @@ export default function CollateralBalanceButton({
       // This is a single call that can be sponsored by the paymaster
       const calls: { to: Address; data: Hex; value: bigint }[] = [
         {
-          to: ETHEREAL_WUSDE_ADDRESS,
+          to: wusdeAddress,
           data: encodeFunctionData({
             abi: WUSDE_ABI,
             functionName: 'transfer',
@@ -313,7 +332,7 @@ export default function CollateralBalanceButton({
       setWithdrawStatus('Confirm in wallet...');
 
       // Execute via sudo transaction (requires wallet signature)
-      await executeSudoTransaction(ownerSigner, calls, CHAIN_ID_ETHEREAL);
+      await executeSudoTransaction(ownerSigner, calls, DEFAULT_CHAIN_ID);
 
       setWithdrawStatus('');
       toast({
@@ -380,6 +399,12 @@ export default function CollateralBalanceButton({
                 <span className="relative top-[1px] xl:top-0 text-sm font-normal">
                   {formatDollarLikeBalance(displayedBalance)} {symbol}
                 </span>
+                {isSponsored && (
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-ethena opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-ethena" />
+                  </span>
+                )}
               </div>
             </div>
           </HoverCardTrigger>
@@ -407,6 +432,27 @@ export default function CollateralBalanceButton({
                     {formatDollarLikeBalance(displayedBalance)} {symbol}
                   </p>
                 </div>
+                {isSponsored && (
+                  <div className="w-full rounded-md border border-ethena/30 bg-ethena/10 px-3 py-2 text-xs">
+                    <div className="flex items-center gap-1.5 text-ethena font-medium">
+                      <span>
+                        {sponsorBudgetFormatted} {symbol} sponsorship available
+                      </span>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Info className="h-3.5 w-3.5 text-ethena/60 cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent
+                          side="top"
+                          className="max-w-[220px] text-xs"
+                        >
+                          Available for positions quoted &lt;70% chance against
+                          the vault.
+                        </TooltipContent>
+                      </Tooltip>
+                    </div>
+                  </div>
+                )}
                 <Button
                   size="sm"
                   className="gap-2 w-full"

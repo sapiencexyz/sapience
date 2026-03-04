@@ -1,5 +1,19 @@
 # Sapience Protocol
 
-See [deployments](https://usecannon.com/packages/sapience)
+## Build
 
-`pnpm cannon build deployments/tomls/base-mainnet/foil-with-factory.toml --chain-id 8453 --wipe --dry-run --impersonate-all`
+```shell
+forge build
+```
+
+## Test
+
+```shell
+forge test
+```
+
+## Format
+
+```shell
+forge fmt
+```

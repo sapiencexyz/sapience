@@ -86,9 +86,9 @@ router.post(
 );
 
 router.post(
-  '/prediction-market',
+  '/condition-settled',
   handleAsyncErrors(async (req, res) => {
-    const { chainId, startTimestamp, endTimestamp, clearExisting } = req.body;
+    const { chainId, startTimestamp, endTimestamp } = req.body;
 
     const parsedChainId = parseInt(chainId);
     if (!chainId || isNaN(parsedChainId)) {
@@ -112,19 +112,18 @@ router.post(
       return;
     }
 
-    const startCommand = `pnpm run start:reindex-prediction-market ${parsedChainId} ${startTimestamp || 'undefined'} ${endTimestamp || 'undefined'} ${clearExisting === true || clearExisting === 'true'}`;
+    const startCommand = `pnpm run start:reindex-condition-settled ${parsedChainId} ${startTimestamp || 'undefined'} ${endTimestamp || 'undefined'}`;
 
     const params = JSON.stringify({
       chainId: parsedChainId,
       startTimestamp,
       endTimestamp,
-      clearExisting,
     });
     try {
       const result = await executeLocalReindex(startCommand);
       await prisma.backgroundJob.create({
         data: {
-          command: 'reindex-prediction-market',
+          command: 'reindex-condition-settled',
           status: result.status,
           params,
         },
@@ -133,7 +132,7 @@ router.post(
     } catch (error: unknown) {
       await prisma.backgroundJob.create({
         data: {
-          command: 'reindex-prediction-market',
+          command: 'reindex-condition-settled',
           status: 'failed',
           params,
         },

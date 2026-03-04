@@ -7,15 +7,15 @@ import { useTerminalLogs } from '~/components/terminal/TerminalLogsContext';
 import { useRouter } from 'next/navigation';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 
-const RECENT_POSITIONS_QUERY = /* GraphQL */ `
-  query RecentCounterpartyPositions(
+const RECENT_PREDICTIONS_QUERY = /* GraphQL */ `
+  query RecentCounterpartyPredictions(
     $address: String!
     $take: Int
     $skip: Int
-    $orderBy: String
-    $orderDirection: String
+    $orderBy: PredictionSortField
+    $orderDirection: SortOrder
   ) {
-    positions(
+    predictions(
       address: $address
       take: $take
       skip: $skip
@@ -23,28 +23,30 @@ const RECENT_POSITIONS_QUERY = /* GraphQL */ `
       orderDirection: $orderDirection
     ) {
       id
+      predictionId
       chainId
-      mintedAt
       predictor
       counterparty
       marketAddress
-      counterpartyNftTokenId
+      createTxHash
+      createdAt
     }
   }
 `;
 
-type Position = {
+type Prediction = {
   id: number;
+  predictionId: string;
   chainId: number;
-  mintedAt: number;
   predictor: string;
   counterparty: string;
   marketAddress: string;
-  counterpartyNftTokenId: string;
+  createTxHash: string;
+  createdAt: string;
 };
 
-type PositionsQueryResponse = {
-  positions: Position[];
+type PredictionsQueryResponse = {
+  predictions: Prediction[];
 };
 
 export function useTradeSettledNotifications() {
@@ -53,60 +55,62 @@ export function useTradeSettledNotifications() {
   const { toast } = useToast();
   const router = useRouter();
 
-  // Track the latest mintedAt timestamp we've processed
-  const latestMintedAtRef = useRef<number>(Math.floor(Date.now() / 1000));
+  // Track the latest createdAt timestamp we've processed
+  const latestCreatedAtRef = useRef<number>(Math.floor(Date.now() / 1000));
 
-  const { data: positions } = useQuery({
-    queryKey: ['recentCounterpartyPositions', address],
+  const { data: predictions } = useQuery({
+    queryKey: ['recentCounterpartyPredictions', address],
     queryFn: async () => {
       if (!address) return [];
-      const result = await graphqlRequest<PositionsQueryResponse>(
-        RECENT_POSITIONS_QUERY,
+      const result = await graphqlRequest<PredictionsQueryResponse>(
+        RECENT_PREDICTIONS_QUERY,
         {
           address: address.toLowerCase(),
           take: 10,
           skip: 0,
-          orderBy: 'mintedAt',
+          orderBy: 'CREATED_AT',
           orderDirection: 'desc',
         }
       );
-      return result.positions;
+      return result.predictions;
     },
     enabled: !!address,
     refetchInterval: 3000, // Poll every 3 seconds
   });
 
   useEffect(() => {
-    if (!positions || !address) return;
+    if (!predictions || !address) return;
 
     const addressLower = address.toLowerCase();
-    let maxMintedAt = latestMintedAtRef.current;
+    let maxCreatedAt = latestCreatedAtRef.current;
 
-    for (const pos of positions) {
-      // Skip if position is older than or equal to when we last processed
-      if (pos.mintedAt <= latestMintedAtRef.current) continue;
+    for (const pred of predictions) {
+      const createdAtTs = Math.floor(new Date(pred.createdAt).getTime() / 1000);
+
+      // Skip if prediction is older than or equal to when we last processed
+      if (createdAtTs <= latestCreatedAtRef.current) continue;
 
       // Ensure user is counterparty (not predictor)
-      if (pos.counterparty.toLowerCase() !== addressLower) continue;
-      if (pos.predictor.toLowerCase() === addressLower) continue;
+      if (pred.counterparty?.toLowerCase() !== addressLower) continue;
+      if (pred.predictor.toLowerCase() === addressLower) continue;
 
-      // Track the newest position we've seen
-      if (pos.mintedAt > maxMintedAt) {
-        maxMintedAt = pos.mintedAt;
+      // Track the newest prediction we've seen
+      if (createdAtTs > maxCreatedAt) {
+        maxCreatedAt = createdAtTs;
       }
 
       // Format predictor address for display
-      const truncatedPredictor = `${pos.predictor.slice(0, 6)}...${pos.predictor.slice(-4)}`;
-      const shareUrl = `/positions/${pos.marketAddress}/${pos.counterpartyNftTokenId}`;
+      const truncatedPredictor = `${pred.predictor.slice(0, 6)}...${pred.predictor.slice(-4)}`;
+      const shareUrl = `/predictions/${pred.predictionId}`;
 
       // Push log entry
       pushLogEntry({
         kind: 'match',
         severity: 'success',
-        message: `Trade #${pos.id} was completed with ${truncatedPredictor}`,
+        message: `Trade #${pred.id} was completed with ${truncatedPredictor}`,
         meta: {
-          positionId: pos.id,
-          predictor: pos.predictor,
+          positionId: pred.id,
+          predictor: pred.predictor,
         },
       });
 
@@ -116,7 +120,7 @@ export function useTradeSettledNotifications() {
         description: (
           <div className="flex flex-col gap-4">
             <span>
-              Position #{pos.id} was completed with {truncatedPredictor}
+              Prediction #{pred.id} was completed with {truncatedPredictor}
             </span>
             <ToastAction
               altText="View position"
@@ -132,6 +136,6 @@ export function useTradeSettledNotifications() {
     }
 
     // Update the timestamp cutoff after processing
-    latestMintedAtRef.current = maxMintedAt;
-  }, [positions, address, pushLogEntry, toast, router]);
+    latestCreatedAtRef.current = maxCreatedAt;
+  }, [predictions, address, pushLogEntry, toast, router]);
 }

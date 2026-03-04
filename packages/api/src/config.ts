@@ -10,7 +10,7 @@ dotEnvConfig({ path: fromRoot('.env') });
  */
 export const config = cleanEnv(process.env, {
   NODE_ENV: str({
-    choices: ['development', 'production', 'test'],
+    choices: ['development', 'staging', 'production', 'test'],
     default: 'development',
   }),
   RATE_LIMIT_WINDOW_MS: num({
@@ -49,7 +49,7 @@ export const config = cleanEnv(process.env, {
     desc: 'Max Prisma connection pool size',
   }),
   GRAPHQL_MAX_CONCURRENT_OPERATIONS: num({
-    default: 15,
+    default: 50,
     desc: 'Max concurrent GraphQL operations before shedding load with 503',
   }),
   // x402 payment integration

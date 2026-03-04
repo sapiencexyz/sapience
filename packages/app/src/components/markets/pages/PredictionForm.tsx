@@ -27,14 +27,12 @@ interface PredictionFormProps {
   chainId: number;
   /** Collateral decimals (default 18) */
   collateralDecimals?: number;
-  /** PredictionMarket contract address */
-  predictionMarketAddress?: `0x${string}`;
   /** Bids from useAuctionStart */
   bids: QuoteBid[];
   /** Request quotes function from useAuctionStart */
   requestQuotes?: (
     params: AuctionParams | null,
-    options?: { forceRefresh?: boolean; requireSignature?: boolean }
+    options?: { forceRefresh?: boolean }
   ) => void;
   /** Optional className for the container */
   className?: string;
@@ -42,6 +40,8 @@ interface PredictionFormProps {
   settled?: boolean | null;
   /** The resolution outcome (true = YES, false = NO) */
   resolvedToYes?: boolean | null;
+  /** Whether the resolution was non-decisive (tie) */
+  nonDecisive?: boolean | null;
   /** End time of the market (Unix timestamp in seconds) */
   endTime?: number | null;
 }
@@ -54,12 +54,12 @@ export default function PredictionForm({
   resolverAddress,
   chainId,
   collateralDecimals = 18,
-  predictionMarketAddress,
   bids,
   requestQuotes,
   className,
   settled,
   resolvedToYes,
+  nonDecisive,
   endTime,
 }: PredictionFormProps) {
   const [selectedPrediction] = React.useState<boolean | null>(true);
@@ -80,9 +80,9 @@ export default function PredictionForm({
     positionSize,
     chainId,
     collateralDecimals,
-    predictionMarketAddress,
     bids,
     requestQuotes,
+    resolverAddress,
   });
 
   // Track which prediction direction the current bestBid corresponds to
@@ -99,7 +99,6 @@ export default function PredictionForm({
   // Derive current forecast from best bid odds
   // Always shows probability of Yes resolution
   const currentForecast = useMemo(() => {
-    // Don't show forecast if bid is stale (from different prediction direction)
     if (
       !bestBid ||
       (bidPredictionRef.current !== null &&
@@ -108,12 +107,12 @@ export default function PredictionForm({
       return null;
 
     try {
-      const makerWagerWei = BigInt(bestBid.makerWager);
+      const counterpartyCollateralWei = BigInt(bestBid.counterpartyCollateral);
       const userPositionSizeNum = parseFloat(positionSize || '0');
-      const makerWagerNum = Number(
-        formatUnits(makerWagerWei, collateralDecimals)
+      const counterpartyCollateralNum = Number(
+        formatUnits(counterpartyCollateralWei, collateralDecimals)
       );
-      const totalPayout = userPositionSizeNum + makerWagerNum;
+      const totalPayout = userPositionSizeNum + counterpartyCollateralNum;
 
       if (totalPayout <= 0) return null;
 
@@ -201,7 +200,7 @@ export default function PredictionForm({
 
   // Handle request bids
   const handleRequestBids = useCallback(() => {
-    triggerQuoteRequest({ forceRefresh: true, requireSignature: false });
+    triggerQuoteRequest({ forceRefresh: true });
   }, [triggerQuoteRequest]);
 
   return (
@@ -216,12 +215,14 @@ export default function PredictionForm({
             <Badge
               variant="outline"
               className={`px-2 py-0.5 text-sm font-medium !rounded-md shrink-0 font-mono ${
-                resolvedToYes
-                  ? 'border-yes/40 bg-yes/10 text-yes'
-                  : 'border-no/40 bg-no/10 text-no'
+                nonDecisive
+                  ? 'border-muted-foreground/40 bg-muted/20 text-muted-foreground'
+                  : resolvedToYes
+                    ? 'border-yes/40 bg-yes/10 text-yes'
+                    : 'border-no/40 bg-no/10 text-no'
               }`}
             >
-              {resolvedToYes ? 'YES' : 'NO'}
+              {nonDecisive ? 'TIE' : resolvedToYes ? 'YES' : 'NO'}
             </Badge>
           </div>
         </div>

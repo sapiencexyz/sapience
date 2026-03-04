@@ -8,7 +8,7 @@ import type {
   SimulateBidResult,
   BidData,
   ValidationStatus,
-  ValidatedBid,
+  LegacyValidatedBid,
   SimulateBidMintOptions,
 } from '@sapience/sdk';
 import { getPublicClientForChainId } from '~/lib/utils/util';
@@ -23,7 +23,7 @@ export type {
   SimulateBidResult,
   BidData,
   ValidationStatus,
-  ValidatedBid,
+  LegacyValidatedBid,
   SimulateBidMintOptions,
 };
 
@@ -61,7 +61,7 @@ export async function simulateBidMint(
     chainId,
     predictionMarketAddress,
     takerAddress,
-    takerWager,
+    takerCollateral,
     takerNonce,
     encodedPredictedOutcomes,
     resolver,
@@ -70,7 +70,7 @@ export async function simulateBidMint(
     smartAccountAddress,
   } = options;
 
-  const makerCollateralWei = BigInt(takerWager);
+  const makerCollateralWei = BigInt(takerCollateral);
 
   // Determine the address to use as msg.sender in simulation
   // For smart account modes, use the smart account address
@@ -86,7 +86,7 @@ export async function simulateBidMint(
     `Using state-override simulation for ${executionMode} mode (${simulationAddress.slice(0, 10)}...)`
   );
 
-  const takerCollateralWei = BigInt(bid.makerWager);
+  const takerCollateralWei = BigInt(bid.makerCollateral);
 
   // Build the MintPredictionRequestData struct
   // Contract field names:
@@ -112,34 +112,9 @@ export async function simulateBidMint(
 
   const publicClient = getPublicClientForChainId(chainId);
 
-  // Pre-simulation nonce validation: check if the taker's nonce matches on-chain
-  // This catches stale nonces early with a clear error message
-  // Note: nonces are tracked per smart account address, not EOA
-  try {
-    const actualNonce = await publicClient.readContract({
-      address: predictionMarketAddress,
-      abi: predictionMarketAbi,
-      functionName: 'nonces',
-      args: [simulationAddress],
-    });
-
-    if (actualNonce !== BigInt(takerNonce)) {
-      logBidValidationWarn(
-        `Nonce mismatch for taker ${simulationAddress.slice(0, 10)}: expected ${takerNonce}, actual ${actualNonce}`
-      );
-      return {
-        isValid: false,
-        error: `Taker nonce stale (expected ${takerNonce}, actual ${actualNonce})`,
-      };
-    }
-  } catch (nonceErr) {
-    // If we can't read the nonce, log but continue with simulation
-    // The simulation itself will catch any nonce errors
-    logBidValidationWarn(
-      `Failed to pre-check nonce for ${simulationAddress.slice(0, 10)}:`,
-      nonceErr
-    );
-  }
+  // Note: No pre-simulation nonce validation — bitmap nonces (Permit2-style)
+  // don't have a sequential nonces() function. The simulation itself will
+  // catch any nonce-related errors (e.g., nonce already used).
 
   // Build state overrides using SDK helper
   const stateOverride = buildSimulationStateOverride({
@@ -182,16 +157,16 @@ export async function simulateBidMint(
  *
  * @param bids - Array of bid data from the API
  * @param options - Auction context and contract addresses
- * @returns Promise<ValidatedBid<T>[]> - Array of bids with validation status
+ * @returns Promise<LegacyValidatedBid<T>[]> - Array of bids with validation status
  */
 export async function validateBidsWithSimulation<T extends BidData>(
   bids: T[],
   options: SimulateBidMintOptions
-): Promise<ValidatedBid<T>[]> {
+): Promise<LegacyValidatedBid<T>[]> {
   logBidValidation(`Validating batch of ${bids.length} bids...`);
 
   const results = await Promise.all(
-    bids.map(async (bid): Promise<ValidatedBid<T>> => {
+    bids.map(async (bid): Promise<LegacyValidatedBid<T>> => {
       try {
         const result = await simulateBidMint(bid, options);
         return {

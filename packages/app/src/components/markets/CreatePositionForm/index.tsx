@@ -38,8 +38,8 @@ import {
 import { useForm, useWatch, type UseFormReturn } from 'react-hook-form';
 import { z } from 'zod';
 
-import { predictionMarketAbi } from '@sapience/sdk';
-import { predictionMarket } from '@sapience/sdk/contracts';
+import { predictionMarketEscrowAbi } from '@sapience/sdk/abis';
+import { predictionMarketEscrow } from '@sapience/sdk/contracts';
 import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import type { Address } from 'viem';
@@ -52,25 +52,19 @@ import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 import { CreatePositionFormContent } from '~/components/markets/CreatePositionForm/CreatePositionFormContent';
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import { useSubmitPosition } from '~/hooks/forms/useSubmitPosition';
+import { useSponsorStatus } from '~/hooks/sponsorship/useSponsorStatus';
 import { usePositionProgress } from '~/hooks/forms/usePositionProgress';
-import { useUserPositions } from '~/hooks/graphql/useUserPositions';
 import { useAuctionStart, type QuoteBid } from '~/lib/auction/useAuctionStart';
-import {
-  validateBidsWithSimulation,
-  type ExecutionMode,
-} from '~/lib/auction/simulateBidMint';
+
 import { logPositionForm } from '~/lib/auction/bidLogger';
-import { MarketGroupClassification } from '~/lib/types';
 import {
   DEFAULT_POSITION_SIZE,
-  getDefaultFormPredictionValue,
   getMaxPositionSize,
   getBestDisplayBid,
   calculatePayout,
   YES_SQRT_PRICE_X96,
 } from '~/lib/utils/positionFormUtils';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
-import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import {
   CollateralBalanceProvider,
   useCollateralBalanceContext,
@@ -160,21 +154,16 @@ const CreatePositionFormInner = ({
     clearPositionForm,
     selections,
     clearSelections,
-    positionsWithMarketData,
+    getPicks,
   } = useCreatePositionContext();
 
   const isCompact = useIsBelow(1024);
   const { hasConnectedWallet } = useConnectedWallet();
   const { openConnectDialog } = useConnectDialog();
   const { address } = useAccount();
-  const {
-    effectiveAddress,
-    isUsingSmartAccount,
-    smartAccountAddress,
-    isSessionActive,
-  } = useSession();
+  const { effectiveAddress } = useSession();
   const { toast } = useToast();
-  const chainId = CHAIN_ID_ETHEREAL;
+  const chainId = DEFAULT_CHAIN_ID;
 
   // Preview card dialog state (for "View Card" in SHARE dropdown)
   const [showPreviewCard, setShowPreviewCard] = useState(false);
@@ -221,7 +210,6 @@ const CreatePositionFormInner = ({
     positionSize: string;
     payout?: string;
     symbol: string;
-    lastNftId?: string;
   } | null>(null);
 
   // Position progress tracking for benchmarking and UI
@@ -238,21 +226,6 @@ const CreatePositionFormInner = ({
     [chainId, createPositionEntries]
   );
 
-  // effectiveAddress from session context is used for position queries
-
-  // Get latest NFT ID from positions for tracking
-  // Always call hook unconditionally to maintain hook order
-  const { data: userPositions, refetch: refetchUserPositions } =
-    useUserPositions({
-      address: effectiveAddress
-        ? String(effectiveAddress).toLowerCase()
-        : undefined,
-      chainId: positionChainId,
-      take: 1, // Only need the latest one
-      orderBy: 'mintedAt',
-      orderDirection: 'desc',
-    });
-
   const {
     bids: rawBids,
     requestQuotes,
@@ -260,19 +233,27 @@ const CreatePositionFormInner = ({
     currentAuctionParams,
   } = useAuctionStart();
 
-  // PredictionMarket address via centralized mapping (use positionChainId)
-  const PREDICTION_MARKET_ADDRESS = predictionMarket[positionChainId]?.address;
+  // Always use PredictionMarketEscrow
+  const PREDICTION_MARKET_ADDRESS =
+    predictionMarketEscrow[positionChainId]?.address;
+
+  // Sponsorship status
+  const {
+    isSponsored,
+    sponsorAddress,
+    refetch: refetchSponsor,
+  } = useSponsorStatus();
 
   // State for validated bids (async validation checks market maker balance/allowance)
   const [bids, setBids] = useState<QuoteBid[]>([]);
 
-  // Fetch PredictionMarket configuration
+  // Fetch collateral token address from PredictionMarketEscrow
   const predictionMarketConfigRead = useReadContracts({
     contracts: [
       {
         address: PREDICTION_MARKET_ADDRESS,
-        abi: predictionMarketAbi,
-        functionName: 'getConfig',
+        abi: predictionMarketEscrowAbi,
+        functionName: 'collateralToken',
         chainId: positionChainId,
       },
     ],
@@ -284,133 +265,35 @@ const CreatePositionFormInner = ({
   const collateralToken: Address | undefined = useMemo(() => {
     const item = predictionMarketConfigRead.data?.[0];
     if (item?.status === 'success') {
-      return (item.result as { collateralToken: Address })?.collateralToken;
+      return item.result as Address;
     }
     return undefined;
   }, [predictionMarketConfigRead.data]);
 
-  // Determine execution mode for bid validation (mirrors useSapienceWriteContract logic)
-  // - 'eoa': User in wallet mode (isUsingSmartAccount = false)
-  // - 'session': Smart account with active session
-  // - 'owner': Smart account without active session
-  // Note: This affects which address is used as msg.sender in state-override simulation
-  const validationExecutionMode: ExecutionMode = useMemo(() => {
-    if (!isUsingSmartAccount) return 'eoa';
-    return isSessionActive ? 'session' : 'owner';
-  }, [isUsingSmartAccount, isSessionActive]);
-
-  // Async validation of bids - validates by simulating the mint transaction
-  // This catches all contract errors: signature, nonce, expiry, insufficient funds/allowance, etc.
+  // Escrow bids are marked as valid directly — no V1 mint simulation needed
   useEffect(() => {
+    logPositionForm(
+      `[validation] rawBids=${rawBids.length}, hasParams=${!!currentAuctionParams}, hasMarket=${!!PREDICTION_MARKET_ADDRESS}`
+    );
+
     if (rawBids.length === 0) {
       setBids([]);
       return;
     }
 
-    // Need auction params and prediction market address for simulation
-    if (!currentAuctionParams || !PREDICTION_MARKET_ADDRESS) {
-      // Can't validate yet, show bids as pending
-      logPositionForm(
-        `Received ${rawBids.length} raw bid(s), marking as pending (missing auction params or market address)`
-      );
-      setBids(
-        rawBids.map((b) => ({
-          ...b,
-          validationStatus: 'pending' as const,
-        }))
-      );
-      return;
-    }
+    logPositionForm(
+      `Received ${rawBids.length} escrow bid(s), marking as valid. First bid: counterparty=${rawBids[0]?.counterparty?.slice(0, 10)}, collateral=${rawBids[0]?.counterpartyCollateral}, deadline=${rawBids[0]?.counterpartyDeadline}`
+    );
+    setBids(
+      rawBids.map((b) => ({
+        ...b,
+        validationStatus: 'valid' as const,
+      }))
+    );
+  }, [rawBids, currentAuctionParams, PREDICTION_MARKET_ADDRESS]);
 
-    const { taker, wager, takerNonce, predictedOutcomes, resolver, chainId } =
-      currentAuctionParams;
-
-    // Need all auction context to simulate
-    if (
-      !taker ||
-      !wager ||
-      takerNonce === undefined ||
-      !predictedOutcomes?.[0] ||
-      !resolver ||
-      !collateralToken
-    ) {
-      logPositionForm(
-        `Received ${rawBids.length} raw bid(s), marking as pending (incomplete auction context)`
-      );
-      setBids(
-        rawBids.map((b) => ({
-          ...b,
-          validationStatus: 'pending' as const,
-        }))
-      );
-      return;
-    }
-
-    let cancelled = false;
-
-    const runValidation = async () => {
-      logPositionForm(
-        `Starting validation pipeline for ${rawBids.length} bid(s) (mode: ${validationExecutionMode})...`
-      );
-      const validated = await validateBidsWithSimulation(rawBids, {
-        chainId,
-        predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
-        takerAddress: taker,
-        takerWager: wager,
-        takerNonce,
-        encodedPredictedOutcomes: predictedOutcomes[0] as `0x${string}`,
-        resolver: resolver as `0x${string}`,
-        collateralTokenAddress: collateralToken,
-        // Execution context for smart account path
-        executionMode: validationExecutionMode,
-        smartAccountAddress: isUsingSmartAccount
-          ? (smartAccountAddress ?? undefined)
-          : undefined,
-      });
-
-      if (!cancelled) {
-        const validCount = validated.filter(
-          (v) => v.validationStatus === 'valid'
-        ).length;
-        const invalidCount = validated.filter(
-          (v) => v.validationStatus === 'invalid'
-        ).length;
-        logPositionForm(
-          `Validation pipeline complete: ${validCount} valid, ${invalidCount} invalid`
-        );
-        setBids(
-          validated.map(({ bid, validationStatus, validationError }) => ({
-            ...bid,
-            validationStatus,
-            validationError,
-          }))
-        );
-      }
-    };
-
-    runValidation();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [
-    rawBids,
-    currentAuctionParams,
-    PREDICTION_MARKET_ADDRESS,
-    collateralToken,
-    // Execution context dependencies
-    validationExecutionMode,
-    isUsingSmartAccount,
-    smartAccountAddress,
-  ]);
-
-  const minCollateralRaw: bigint | undefined = useMemo(() => {
-    const item = predictionMarketConfigRead.data?.[0];
-    if (item?.status === 'success') {
-      return (item.result as { minCollateral: bigint })?.minCollateral;
-    }
-    return undefined;
-  }, [predictionMarketConfigRead.data]);
+  // Escrow doesn't have a minCollateral concept
+  const minCollateralRaw: bigint | undefined = undefined;
 
   // Check if we're on an Ethereal chain
   const isEtherealChain = COLLATERAL_SYMBOLS[positionChainId] === 'USDe';
@@ -548,47 +431,25 @@ const CreatePositionFormInner = ({
     return {
       positions: Object.fromEntries(
         createPositionEntries.map((position) => {
-          // Use stored market classification for smart defaults
-          const classification =
-            position.marketClassification || MarketGroupClassification.NUMERIC;
-
-          // Start with helper default (handles YES/NO and multichoice)
-          let predictionValue = getDefaultFormPredictionValue(
-            classification,
-            position.prediction,
-            position.marketId
-          );
-
-          // For numeric markets, leave blank to let the numeric input compute/display a midpoint locally
-          // For YES/NO, use default sqrt price
-          if (!predictionValue) {
-            if (classification === MarketGroupClassification.NUMERIC) {
-              predictionValue = '';
-            } else if (classification === MarketGroupClassification.YES_NO) {
-              predictionValue = YES_SQRT_PRICE_X96;
-            }
-          }
+          // All positions are YES/NO — use sqrtPriceX96 based on prediction
+          const predictionValue = position.prediction
+            ? YES_SQRT_PRICE_X96
+            : '0';
 
           const positionSizeVal =
             position.positionSize || DEFAULT_POSITION_SIZE;
-
-          const isFlipped =
-            classification === MarketGroupClassification.MULTIPLE_CHOICE
-              ? !position.prediction
-              : undefined;
 
           return [
             position.id,
             {
               predictionValue,
               positionSize: positionSizeVal,
-              isFlipped,
             },
           ];
         })
       ),
     };
-  }, [createPositionEntries, positionsWithMarketData]);
+  }, [createPositionEntries]);
 
   // Single form for both individual and position modes
   const formMethods = useForm<{
@@ -604,17 +465,8 @@ const CreatePositionFormInner = ({
       ...generateFormValues,
       positionSize: '',
       limitAmount:
-        positionsWithMarketData.filter(
-          (p) => p.marketClassification !== MarketGroupClassification.NUMERIC
-        ).length > 0
-          ? 10 *
-            Math.pow(
-              2,
-              positionsWithMarketData.filter(
-                (p) =>
-                  p.marketClassification !== MarketGroupClassification.NUMERIC
-              ).length
-            )
+        createPositionEntries.length > 0
+          ? 10 * Math.pow(2, createPositionEntries.length)
           : 2,
     },
     mode: 'onChange',
@@ -703,42 +555,17 @@ const CreatePositionFormInner = ({
       >) || {}),
     };
 
-    // For YES/NO positions, always reflect the latest clicked selection (position.prediction)
-    positionsWithMarketData.forEach((p) => {
-      if (p.marketClassification === MarketGroupClassification.YES_NO) {
-        const id = p.position.id;
-        if (defaults?.[id]?.predictionValue) {
-          mergedPositions[id] = {
-            predictionValue: defaults[id].predictionValue,
-            positionSize:
-              current?.positions?.[id]?.positionSize ||
-              defaults?.[id]?.positionSize ||
-              DEFAULT_POSITION_SIZE,
-            // Preserve isFlipped if it exists (not used for YES/NO but safe to keep)
-            isFlipped: (current?.positions?.[id] as { isFlipped?: boolean })
-              ?.isFlipped,
-          } as {
-            predictionValue: string;
-            positionSize: string;
-            isFlipped?: boolean;
-          };
-        }
-      }
-      if (
-        p.marketClassification === MarketGroupClassification.MULTIPLE_CHOICE
-      ) {
-        const id = p.position.id;
-        const existing = mergedPositions[id];
-        if (existing) {
-          mergedPositions[id] = {
-            ...existing,
-            // Force isFlipped based on latest position.prediction from market components
-            isFlipped:
-              typeof p.position.prediction === 'boolean'
-                ? !p.position.prediction
-                : existing.isFlipped,
-          };
-        }
+    // For all positions, reflect the latest clicked selection (position.prediction)
+    createPositionEntries.forEach((position) => {
+      const id = position.id;
+      if (defaults?.[id]?.predictionValue) {
+        mergedPositions[id] = {
+          predictionValue: defaults[id].predictionValue,
+          positionSize:
+            current?.positions?.[id]?.positionSize ||
+            defaults?.[id]?.positionSize ||
+            DEFAULT_POSITION_SIZE,
+        };
       }
     });
 
@@ -753,7 +580,7 @@ const CreatePositionFormInner = ({
         keepTouched: true,
       }
     );
-  }, [formMethods, generateFormValues, positionsWithMarketData]);
+  }, [formMethods, generateFormValues, createPositionEntries]);
 
   // Note: Minimum position size validation is now handled in PositionForm
 
@@ -762,9 +589,7 @@ const CreatePositionFormInner = ({
   useEffect(() => {
     const currentPositionSize =
       formMethods.getValues('positionSize') || DEFAULT_POSITION_SIZE;
-    const listLength = positionsWithMarketData.filter(
-      (p) => p.marketClassification !== MarketGroupClassification.NUMERIC
-    ).length;
+    const listLength = createPositionEntries.length;
 
     if (listLength > 0) {
       const minimumPayout =
@@ -775,7 +600,7 @@ const CreatePositionFormInner = ({
         { shouldValidate: true }
       );
     }
-  }, [positionsWithMarketData, formMethods]);
+  }, [createPositionEntries, formMethods]);
 
   // Use the position submission hook
   // Note: Share dialog is handled locally in this component
@@ -792,6 +617,8 @@ const CreatePositionFormInner = ({
     onSuccess: () => {
       clearPositionForm();
       setIsPopoverOpen(false);
+      // Refetch sponsor budget (it decreases after a sponsored mint)
+      refetchSponsor();
     },
     onProgressUpdate: {
       onTxSending: startSubmission,
@@ -810,7 +637,7 @@ const CreatePositionFormInner = ({
     // Validate the bid hasn't expired
     const nowSec = Math.floor(Date.now() / 1000);
 
-    if (bid.makerDeadline <= nowSec) {
+    if (bid.counterpartyDeadline <= nowSec) {
       toast({
         title: 'Bid expired',
         description: 'The bid has expired. Please wait for new bids.',
@@ -841,23 +668,6 @@ const CreatePositionFormInner = ({
               (limitAmount !== undefined ? String(limitAmount) : undefined);
           }
 
-          // Get lastNftId from current positions (sync)
-          let lastNftId: string | undefined = undefined;
-          if (userPositions && userPositions.length > 0) {
-            const latestPosition = userPositions.reduce((latest, current) => {
-              try {
-                const latestNftId = BigInt(latest.predictorNftTokenId || '0');
-                const currentNftId = BigInt(current.predictorNftTokenId || '0');
-                return currentNftId > latestNftId ? current : latest;
-              } catch {
-                return latest;
-              }
-            }, userPositions[0]);
-            if (latestPosition?.predictorNftTokenId) {
-              lastNftId = latestPosition.predictorNftTokenId;
-            }
-          }
-
           const dialogData = {
             picks: selections.map((s) => ({
               conditionId: s.conditionId,
@@ -867,7 +677,6 @@ const CreatePositionFormInner = ({
             positionSize: submittedPositionSize,
             payout,
             symbol: collateralSymbol || 'testUSDe',
-            lastNftId,
           };
 
           // Open share dialog immediately with position form data
@@ -876,6 +685,23 @@ const CreatePositionFormInner = ({
 
           // Close the popover/drawer
           setIsPopoverOpen(false);
+
+          // Add picks directly from selections (ensures exact match with counterparty signature)
+          const escrowPicks = getPicks();
+          if (escrowPicks.length > 0) {
+            mintReq.escrowPicks = escrowPicks.map((p) => ({
+              conditionResolver: p.conditionResolver,
+              conditionId: p.conditionId,
+              predictedOutcome: p.predictedOutcome,
+            }));
+          }
+
+          // Wire sponsorship: if user has a sponsor budget, pass the sponsor address
+          // so the escrow contract calls fundMint instead of pulling from user's wallet
+          if (isSponsored && sponsorAddress) {
+            mintReq.predictorSponsor = sponsorAddress;
+            mintReq.predictorSponsorData = '0x';
+          }
 
           // Submit the mint request to PredictionMarket
           submitPosition(mintReq);
@@ -931,7 +757,7 @@ const CreatePositionFormInner = ({
       qp.set('symbol', shareDialogData.symbol);
     }
 
-    return `/og/position?${qp.toString()}`;
+    return `/og/prediction?${qp.toString()}`;
   }, [shareDialogData, effectiveAddress]);
 
   // Build OG image URL for the preview card (drafted position, not yet submitted)
@@ -956,7 +782,7 @@ const CreatePositionFormInner = ({
       if (payout) qp.set('payout', payout);
     }
 
-    return `/og/position?${qp.toString()}`;
+    return `/og/prediction?${qp.toString()}`;
   }, [
     selections,
     effectiveAddress,
@@ -980,19 +806,12 @@ const CreatePositionFormInner = ({
     [clearPositionForm, clearSelections, resetProgress]
   );
 
-  // Handle position indexed - mark complete, clear form, and refetch positions for accurate lastNftId on next trade
+  // Handle position indexed - mark complete, clear form
   const handlePositionIndexed = useCallback(() => {
     markPositionIndexed();
     clearPositionForm();
     clearSelections();
-    // Refetch positions so next trade has correct lastNftId
-    refetchUserPositions();
-  }, [
-    markPositionIndexed,
-    clearPositionForm,
-    clearSelections,
-    refetchUserPositions,
-  ]);
+  }, [markPositionIndexed, clearPositionForm, clearSelections]);
 
   const contentProps = {
     formMethods: formMethods as unknown as UseFormReturn<{
@@ -1026,10 +845,9 @@ const CreatePositionFormInner = ({
       open={showShareDialog}
       onOpenChange={handleShareDialogClose}
       title="Trade Submitted"
-      trackPosition={true}
-      lastNftId={shareDialogData?.lastNftId}
+      trackPrediction={true}
       progressState={progressState}
-      onPositionIndexed={handlePositionIndexed}
+      onPredictionIndexed={handlePositionIndexed}
     />
   );
 

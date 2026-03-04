@@ -39,21 +39,24 @@ import { type MultiSelectItem } from '~/components/terminal/filters/MultiSelect'
 import { useConditionsByIds } from '~/hooks/graphql/useConditionsByIds';
 import Loader from '~/components/shared/Loader';
 import { useReadContracts } from 'wagmi';
-import { predictionMarket } from '@sapience/sdk/contracts';
-import { predictionMarketAbi } from '@sapience/sdk';
+import { collateralToken } from '@sapience/sdk/contracts';
 import bidsHub from '~/lib/auction/useAuctionBidsHub';
-import { CHAIN_ID_ETHEREAL, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { toAuctionWsUrl } from '~/lib/ws';
 
 /** Shape of auction.started message data payload */
 interface AuctionStartedData {
   auctionId?: string;
-  taker?: string;
-  takerSignature?: string;
-  wager?: string;
+  predictor?: string;
+  predictorCollateral?: string;
   resolver?: string;
   predictedOutcomes?: string[];
+  picks?: Array<{
+    conditionResolver?: string;
+    conditionId?: string;
+    predictedOutcome?: number;
+  }>;
 }
 
 // Defined outside TerminalPageContent to prevent remounting on parent re-renders
@@ -64,7 +67,7 @@ const TradeNotifications = () => {
 
 const TerminalPageContent: React.FC = () => {
   const { messages } = useAuctionRelayerFeed({ observeVaultQuotes: false });
-  const chainId = CHAIN_ID_ETHEREAL;
+  const chainId = DEFAULT_CHAIN_ID;
   const collateralAssetTicker = COLLATERAL_SYMBOLS[chainId] || 'testUSDe';
 
   // Ensure bids hub is connected regardless of whether any rows are rendered.
@@ -134,7 +137,11 @@ const TerminalPageContent: React.FC = () => {
 
   const auctionAndBidMessages = useMemo(() => {
     return displayMessages.filter(
-      (m) => m.type === 'auction.started' || m.type === 'auction.bids'
+      (m) =>
+        m.type === 'auction.started' ||
+        m.type === 'v2.auction.started' ||
+        m.type === 'auction.bids' ||
+        m.type === 'v2.auction.bids'
     );
   }, [displayMessages]);
 
@@ -148,7 +155,7 @@ const TerminalPageContent: React.FC = () => {
     );
   }, []);
 
-  // Cached decoder for predicted outcomes keyed by auctionId + makerNonce
+  // Cached decoder for predicted outcomes keyed by auctionId + predictorNonce
   // Stores { data, accessedAt } for time-based LRU pruning
   const decodeCacheRef = useRef<
     Map<
@@ -197,9 +204,10 @@ const TerminalPageContent: React.FC = () => {
         }
       | { kind: 'unknown'; data: [] } => {
       try {
-        if (m?.type !== 'auction.started') return { kind: 'unknown', data: [] };
+        if (m?.type !== 'auction.started' && m?.type !== 'v2.auction.started')
+          return { kind: 'unknown', data: [] };
         const cacheKey = `${getAuctionId(m) || 'unknown'}:${String(
-          m?.data?.makerNonce ?? 'n'
+          m?.data?.predictorNonce ?? 'n'
         )}`;
         const cached = decodeCacheRef.current.get(cacheKey);
         if (cached) {
@@ -256,7 +264,7 @@ const TerminalPageContent: React.FC = () => {
       const t = Number((m as any)?.time || 0);
       const prev = lastActivity.get(id) || 0;
       if (t > prev) lastActivity.set(id, t);
-      if (m.type === 'auction.started') {
+      if (m.type === 'auction.started' || m.type === 'v2.auction.started') {
         const prevStarted = latestStarted.get(id);
         if (!prevStarted || Number(prevStarted?.time || 0) < t) {
           latestStarted.set(id, m);
@@ -290,7 +298,23 @@ const TerminalPageContent: React.FC = () => {
     const set = new Set<string>();
     try {
       for (const m of auctionAndBidMessages) {
-        if (m.type !== 'auction.started') continue;
+        if (m.type !== 'auction.started' && m.type !== 'v2.auction.started')
+          continue;
+
+        // Escrow auctions have picks[] with conditionId directly
+        const picks = (m as any)?.data?.picks as
+          | Array<{ conditionId?: string }>
+          | undefined;
+        if (Array.isArray(picks) && picks.length > 0) {
+          for (const p of picks) {
+            if (p.conditionId && typeof p.conditionId === 'string') {
+              set.add(p.conditionId);
+            }
+          }
+          continue;
+        }
+
+        // V1 auctions use resolver + predictedOutcomes
         const decoded = decodeAuctionPredictedOutcomes({
           resolver:
             (m as any)?.data?.resolver ?? (m as any)?.data?.payload?.resolver,
@@ -312,11 +336,12 @@ const TerminalPageContent: React.FC = () => {
   const uniqueAddresses = useMemo(() => {
     const set = new Set<string>();
     for (const m of auctionAndBidMessages) {
-      if (m.type !== 'auction.started') continue;
+      if (m.type !== 'auction.started' && m.type !== 'v2.auction.started')
+        continue;
       const auctionData = m.data as AuctionStartedData | undefined;
-      const taker = auctionData?.taker;
-      if (taker && typeof taker === 'string') {
-        set.add(taker);
+      const addr = auctionData?.predictor;
+      if (addr && typeof addr === 'string') {
+        set.add(addr);
       }
     }
     return Array.from(set).sort();
@@ -333,10 +358,13 @@ const TerminalPageContent: React.FC = () => {
   // LRU-style capped at 2000 entries to prevent unbounded growth while being generous
   const CONDITION_CACHE_MAX = 2000;
   const stickyConditionMapRef = useRef<Map<string, any>>(new Map());
+  const [conditionMapTick, setConditionMapTick] = useState(0);
   useEffect(() => {
     try {
+      let changed = false;
       for (const c of conditions || []) {
         if (c && typeof c.id === 'string') {
+          if (!stickyConditionMapRef.current.has(c.id)) changed = true;
           // Delete and re-add to update LRU order (Maps maintain insertion order)
           stickyConditionMapRef.current.delete(c.id);
           stickyConditionMapRef.current.set(c.id, c);
@@ -351,10 +379,13 @@ const TerminalPageContent: React.FC = () => {
           break;
         }
       }
+      // Force re-render when new conditions are added to the map
+      if (changed) setConditionMapTick((t) => (t + 1) % 1_000_000);
     } catch {
       /* noop */
     }
   }, [conditions]);
+  void conditionMapTick;
   const renderConditionMap = stickyConditionMapRef.current;
 
   // Render rows only after the first conditions request completes (success or error); do not hide again on refetches
@@ -369,8 +400,44 @@ const TerminalPageContent: React.FC = () => {
 
   function renderPredictionsCell(m: { type: string; data: any }) {
     try {
-      if (m.type !== 'auction.started')
+      if (m.type !== 'auction.started' && m.type !== 'v2.auction.started')
         return <span className="text-muted-foreground">—</span>;
+
+      // Escrow auctions: picks[] with conditionId directly
+      const escrowPicks = (m.data as AuctionStartedData)?.picks;
+      if (Array.isArray(escrowPicks) && escrowPicks.length > 0) {
+        const allResolved = escrowPicks.every(
+          (p) => p.conditionId && renderConditionMap.has(p.conditionId)
+        );
+        if (!allResolved) {
+          if (conditionsError) return null;
+          return <Loader className="w-4 h-4" />;
+        }
+        if (!hasLoadedConditionsOnce) return null;
+        const picks: Pick[] = escrowPicks.map((p) => {
+          const cond = renderConditionMap.get(p.conditionId!);
+          return {
+            question: cond?.question ?? String(p.conditionId),
+            // Escrow predictedOutcome: 0 = Yes, 1 = No (from the predictor's perspective)
+            // In terminal view we show counterparty perspective (inverted)
+            choice:
+              p.predictedOutcome === 0 ? ('No' as const) : ('Yes' as const),
+            conditionId: String(p.conditionId),
+            categorySlug: cond?.category?.slug ?? null,
+          };
+        });
+        return (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.14, ease: 'easeOut' }}
+          >
+            <StackedPredictions picks={picks} className="max-w-full" />
+          </motion.div>
+        );
+      }
+
+      // V1 auctions: decode from resolver + predictedOutcomes
       const decoded = getDecodedPredictedOutcomes(m as any);
 
       // If we can't decode any legs, show bytecode payload only if request errored or completed
@@ -449,7 +516,7 @@ const TerminalPageContent: React.FC = () => {
           animate={{ opacity: 1 }}
           transition={{ duration: 0.14, ease: 'easeOut' }}
         >
-          <StackedPredictions legs={picks} className="max-w-full" />
+          <StackedPredictions picks={picks} className="max-w-full" />
         </motion.div>
       );
     } catch {
@@ -457,30 +524,10 @@ const TerminalPageContent: React.FC = () => {
     }
   }
 
-  // Fetch PredictionMarket config to get collateral token, then read ERC20 decimals
-  const PREDICTION_MARKET_ADDRESS = predictionMarket[chainId]?.address;
-  const predictionMarketConfigRead = useReadContracts({
-    contracts: PREDICTION_MARKET_ADDRESS
-      ? [
-          {
-            address: PREDICTION_MARKET_ADDRESS,
-            abi: predictionMarketAbi,
-            functionName: 'getConfig',
-            chainId: chainId,
-          },
-        ]
-      : [],
-    query: { enabled: !!PREDICTION_MARKET_ADDRESS },
-  });
-
-  const collateralTokenAddress: `0x${string}` | undefined = useMemo(() => {
-    const item = predictionMarketConfigRead.data?.[0];
-    if (item && item.status === 'success') {
-      const cfg = item.result as { collateralToken: `0x${string}` };
-      return cfg?.collateralToken;
-    }
-    return undefined;
-  }, [predictionMarketConfigRead.data]);
+  // Use collateral token address directly from SDK constants
+  const collateralTokenAddress: `0x${string}` | undefined = collateralToken[
+    chainId
+  ]?.address as `0x${string}` | undefined;
 
   const erc20MetaRead = useReadContracts({
     contracts: collateralTokenAddress
@@ -614,20 +661,21 @@ const TerminalPageContent: React.FC = () => {
       const auctionData = row.m?.data as AuctionStartedData | undefined;
       if (selectedAddresses.length > 0) {
         if (
-          !auctionData?.taker ||
-          !selectedAddresses.includes(auctionData.taker)
+          !auctionData?.predictor ||
+          !selectedAddresses.includes(auctionData.predictor)
         )
           return false;
       }
 
-      // Check signed filter
-      const isSigned =
-        !!auctionData?.takerSignature && auctionData.takerSignature !== '0x';
+      // Check signed filter (escrow auctions are always signed)
+      const isSigned = true;
       if (signedFilter === 'signed' && !isSigned) return false;
       if (signedFilter === 'unsigned' && isSigned) return false;
 
       try {
-        const positionSizeWei = BigInt(String(auctionData?.wager ?? '0'));
+        const positionSizeWei = BigInt(
+          String(auctionData?.predictorCollateral ?? '0')
+        );
         const bidsCount = bidsCountByAuction.get(row.id) ?? 0;
         // Check bids range
         if (bidsCount < bidsRangeNum[0]) return false;
@@ -794,38 +842,38 @@ const TerminalPageContent: React.FC = () => {
 
   function toUiTx(m: { time: number; type: string; data: any }): UiTransaction {
     const createdAt = new Date(m.time).toISOString();
-    if (m.type === 'auction.started') {
-      const maker = (m as any)?.data?.maker || '';
-      const wager = (m as any)?.data?.wager || '0';
+    if (m.type === 'auction.started' || m.type === 'v2.auction.started') {
+      const predictor = (m as any)?.data?.predictor || '';
+      const predictorCollateral = (m as any)?.data?.predictorCollateral || '0';
       return {
         id: m.time,
         type: 'FORECAST',
         createdAt,
-        collateral: String(wager || '0'),
-        position: { owner: maker },
+        collateral: String(predictorCollateral || '0'),
+        position: { owner: predictor },
       } as UiTransaction;
     }
-    if (m.type === 'auction.bids') {
+    if (m.type === 'auction.bids' || m.type === 'v2.auction.bids') {
       const bids = Array.isArray((m as any)?.data?.bids)
         ? ((m as any).data.bids as unknown as any[])
         : [];
       const top = bids.reduce((best, b) => {
         try {
-          const cur = BigInt(String(b?.makerWager ?? '0'));
-          const bestVal = BigInt(String(best?.makerWager ?? '0'));
+          const cur = BigInt(String(b?.counterpartyCollateral ?? '0'));
+          const bestVal = BigInt(String(best?.counterpartyCollateral ?? '0'));
           return cur > bestVal ? b : best;
         } catch {
           return best;
         }
       }, bids[0] || null);
-      const taker = top?.taker || '';
-      const makerWager = top?.makerWager || '0';
+      const counterparty = top?.counterparty || '';
+      const counterpartyCollateral = top?.counterpartyCollateral || '0';
       return {
         id: m.time,
         type: 'FORECAST',
         createdAt,
-        collateral: String(makerWager || '0'),
-        position: { owner: taker },
+        collateral: String(counterpartyCollateral || '0'),
+        position: { owner: counterparty },
       } as UiTransaction;
     }
     return {
@@ -995,24 +1043,31 @@ const TerminalPageContent: React.FC = () => {
                                   uiTx={toUiTx(m)}
                                   predictionsContent={renderPredictionsCell(m)}
                                   auctionId={auctionId}
-                                  takerWager={String(m?.data?.wager ?? '0')}
-                                  taker={m?.data?.taker || null}
-                                  resolver={m?.data?.resolver || null}
+                                  predictorCollateral={String(
+                                    m?.data?.predictorCollateral ?? '0'
+                                  )}
+                                  predictor={m?.data?.predictor || null}
+                                  resolver={
+                                    m?.data?.resolver ||
+                                    (Array.isArray(m?.data?.picks) &&
+                                      m?.data?.picks[0]?.conditionResolver) ||
+                                    null
+                                  }
                                   predictedOutcomes={
                                     Array.isArray(m?.data?.predictedOutcomes)
                                       ? (m?.data?.predictedOutcomes as string[])
                                       : []
                                   }
-                                  takerNonce={(() => {
-                                    const raw = m?.data?.takerNonce;
-                                    const n = Number(raw);
-                                    return Number.isFinite(n) ? n : null;
-                                  })()}
                                   collateralAssetTicker={collateralAssetTicker}
                                   onTogglePin={togglePin}
                                   isPinned={true}
                                   isExpanded={expandedAuctions.has(auctionId)}
                                   onToggleExpanded={toggleExpanded}
+                                  escrowPicks={
+                                    Array.isArray(m?.data?.picks)
+                                      ? m?.data?.picks
+                                      : undefined
+                                  }
                                 />
                               </div>
                             );
@@ -1049,9 +1104,17 @@ const TerminalPageContent: React.FC = () => {
                                         m
                                       )}
                                       auctionId={auctionId}
-                                      takerWager={String(m?.data?.wager ?? '0')}
-                                      taker={m?.data?.taker || null}
-                                      resolver={m?.data?.resolver || null}
+                                      predictorCollateral={String(
+                                        m?.data?.predictorCollateral ?? '0'
+                                      )}
+                                      predictor={m?.data?.predictor || null}
+                                      resolver={
+                                        m?.data?.resolver ||
+                                        (Array.isArray(m?.data?.picks) &&
+                                          m?.data?.picks[0]
+                                            ?.conditionResolver) ||
+                                        null
+                                      }
                                       predictedOutcomes={
                                         Array.isArray(
                                           m?.data?.predictedOutcomes
@@ -1060,11 +1123,6 @@ const TerminalPageContent: React.FC = () => {
                                               ?.predictedOutcomes as string[])
                                           : []
                                       }
-                                      takerNonce={(() => {
-                                        const raw = m?.data?.takerNonce;
-                                        const n = Number(raw);
-                                        return Number.isFinite(n) ? n : null;
-                                      })()}
                                       collateralAssetTicker={
                                         collateralAssetTicker
                                       }
@@ -1074,6 +1132,11 @@ const TerminalPageContent: React.FC = () => {
                                         auctionId
                                       )}
                                       onToggleExpanded={toggleExpanded}
+                                      escrowPicks={
+                                        Array.isArray(m?.data?.picks)
+                                          ? m?.data?.picks
+                                          : undefined
+                                      }
                                     />
                                   )}
                                 </div>

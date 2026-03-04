@@ -21,7 +21,7 @@ export interface AuctionStartLike {
 
 export function buildMakerBidTypedData(args: {
   auction: AuctionStartLike;
-  makerWager: bigint;
+  makerCollateral: bigint;
   // Accept bigint for timestamp to avoid precision issues; number remains supported
   makerDeadline: bigint | number;
   chainId: number;
@@ -57,7 +57,7 @@ export function buildMakerBidTypedData(args: {
     ],
     [
       encodedPredictedOutcomes,
-      args.makerWager,
+      args.makerCollateral,
       typeof args.auction.wager === 'bigint' ? args.auction.wager : BigInt(args.auction.wager),
       args.auction.resolver,
       args.auction.taker,
@@ -125,7 +125,7 @@ export async function signMakerBid(args: {
  * and comparing it to the claimed maker address.
  *
  * @param args.auction - The auction parameters (wager, predictedOutcomes, resolver, taker)
- * @param args.bid - The bid parameters (maker, makerWager, makerDeadline, makerSignature, makerNonce)
+ * @param args.bid - The bid parameters (maker, makerCollateral, makerDeadline, makerSignature, makerNonce)
  * @param args.chainId - Chain ID for the auction
  * @returns Object with `valid` boolean and optional `recoveredAddress` or `error`
  */
@@ -133,7 +133,7 @@ export async function verifyMakerBidSignature(args: {
   auction: AuctionStartLike;
   bid: {
     maker: Address;
-    makerWager: bigint | string;
+    makerCollateral: bigint | string;
     makerDeadline: bigint | number;
     makerSignature: Hex;
     makerNonce: bigint | number;
@@ -146,7 +146,7 @@ export async function verifyMakerBidSignature(args: {
     // Build the typed data that should have been signed
     const typedData = buildMakerBidTypedData({
       auction,
-      makerWager: typeof bid.makerWager === 'bigint' ? bid.makerWager : BigInt(bid.makerWager),
+      makerCollateral: typeof bid.makerCollateral === 'bigint' ? bid.makerCollateral : BigInt(bid.makerCollateral),
       makerDeadline: bid.makerDeadline,
       chainId,
       verifyingContract: getAddress(bid.maker), // Domain uses maker as verifyingContract
@@ -199,7 +199,7 @@ export interface AuctionStartSigningPayload {
  * The takerSignature and takerSignedAt fields are optional for price discovery,
  * but required when submitting a quote request that needs signature verification.
  */
-export interface AuctionRequestPayload {
+export interface LegacyAuctionRequestPayload {
   wager: string; // wei string
   predictedOutcomes: string[]; // Array of bytes strings that the resolver validates/understands
   resolver: string; // contract address for market validation

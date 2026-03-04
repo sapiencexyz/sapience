@@ -6,20 +6,71 @@ import {
   Resolver,
   Arg,
   Ctx,
+  Directive,
+  registerEnumType,
 } from 'type-graphql';
-import { ConditionGroup, Condition } from '@generated/type-graphql';
+import { ConditionGroup, Condition, SortOrder } from '@generated/type-graphql';
 import { getPrismaFromContext } from '@generated/type-graphql/helpers';
 import { Prisma } from '../../../generated/prisma';
 import type { ApolloContext } from '../startApolloServer';
+
+// ============================================================================
+// Enums
+// ============================================================================
+
+/** Whether a question item is a group of conditions or a single condition. */
+export enum QuestionItemType {
+  group = 'group',
+  condition = 'condition',
+}
+
+registerEnumType(QuestionItemType, {
+  name: 'QuestionItemType',
+  description:
+    'Whether a question is a group of related conditions or a single condition',
+});
+
+/** Fields available for sorting the questions list. */
+export enum QuestionSortField {
+  openInterest = 'openInterest',
+  endTime = 'endTime',
+  createdAt = 'createdAt',
+  predictionCount = 'predictionCount',
+}
+
+registerEnumType(QuestionSortField, {
+  name: 'QuestionSortField',
+  description: 'Field to sort questions by',
+});
+
+/** Resolution status filter for questions. */
+export enum ResolutionStatus {
+  all = 'all',
+  unresolved = 'unresolved',
+  resolvedYes = 'resolvedYes',
+  resolvedNo = 'resolvedNo',
+}
+
+registerEnumType(ResolutionStatus, {
+  name: 'ResolutionStatus',
+  description: 'Filter questions by their resolution status',
+});
+
+// ============================================================================
+// Types
+// ============================================================================
 
 /**
  * Wrapper type for questions that can be either a condition group or an ungrouped condition.
  * This allows returning a single sorted list where groups and conditions are interleaved
  * based on their sort value (openInterest or endTime).
  */
-@ObjectType()
+@ObjectType({
+  description:
+    'A question item — either a group of related conditions or a single ungrouped condition',
+})
 export class Question {
-  @Field(() => String)
+  @Field(() => QuestionItemType)
   questionType!: 'group' | 'condition';
 
   @Field(() => ConditionGroup, { nullable: true })
@@ -44,46 +95,36 @@ export class Question {
  */
 @Resolver()
 export class QuestionsResolver {
-  @Query(() => [Question], { nullable: false })
-  async questionsSorted(
+  @Query(() => [Question], {
+    nullable: false,
+    description:
+      'Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field',
+  })
+  @Directive('@cacheControl(maxAge: 30)')
+  async questions(
     @Ctx() ctx: ApolloContext,
-    @Arg('take', () => Int) take: number,
-    @Arg('skip', () => Int) skip: number,
+    @Arg('take', () => Int, { defaultValue: 50 }) take: number,
+    @Arg('skip', () => Int, { defaultValue: 0 }) skip: number,
     @Arg('chainId', () => Int, { nullable: true }) chainId: number | null,
-    @Arg('sortField', () => String, { nullable: true })
-    sortField: string | null,
-    @Arg('sortDirection', () => String) sortDirection: string,
+    @Arg('sortField', () => QuestionSortField, { nullable: true })
+    sortField: QuestionSortField | null,
+    @Arg('sortDirection', () => SortOrder, { defaultValue: SortOrder.desc })
+    sortDirection: SortOrder,
     @Arg('search', () => String, { nullable: true }) search: string | null,
     @Arg('categorySlugs', () => [String], { nullable: true })
     categorySlugs: string[] | null,
     @Arg('minEndTime', () => Int, { nullable: true })
     minEndTime: number | null,
-    @Arg('resolutionStatus', () => String, { nullable: true })
-    resolutionStatus: string | null
+    @Arg('resolutionStatus', () => ResolutionStatus, { nullable: true })
+    resolutionStatus: ResolutionStatus | null
   ): Promise<Question[]> {
     const prisma = getPrismaFromContext(ctx);
 
-    // Validate sort field - throw if invalid, default to 'endTime' if not provided
-    const validSortFields = [
-      'openInterest',
-      'endTime',
-      'createdAt',
-      'predictionCount',
-    ] as const;
-    type ValidSortField = (typeof validSortFields)[number];
-    let sanitizedSortField: ValidSortField;
-    if (sortField === null || sortField === undefined) {
-      sanitizedSortField = 'endTime';
-    } else if (validSortFields.includes(sortField as ValidSortField)) {
-      sanitizedSortField = sortField as ValidSortField;
-    } else {
-      throw new Error(
-        `Invalid sortField: "${sortField}". Must be one of: ${validSortFields.join(', ')}`
-      );
-    }
+    // Default sort field to endTime when not provided (enum validation handled by GraphQL)
+    const sanitizedSortField = sortField ?? QuestionSortField.endTime;
 
-    // Validate and sanitize sort direction - only allow 'ASC' or 'DESC'
-    const dir = sortDirection === 'asc' ? 'ASC' : 'DESC';
+    // Map enum to SQL direction
+    const dir = sortDirection === SortOrder.asc ? 'ASC' : 'DESC';
 
     // Bounds checking for defense-in-depth
     const boundedTake = Math.max(1, Math.min(take, 100));
@@ -97,13 +138,13 @@ export class QuestionsResolver {
 
     // Build resolution status SQL filter
     const resolvedFilter = (() => {
-      if (resolutionStatus && resolutionStatus !== 'all') {
+      if (resolutionStatus && resolutionStatus !== ResolutionStatus.all) {
         switch (resolutionStatus) {
-          case 'unresolved':
+          case ResolutionStatus.unresolved:
             return Prisma.sql`AND c.settled = false`;
-          case 'resolvedYes':
+          case ResolutionStatus.resolvedYes:
             return Prisma.sql`AND c.settled = true AND c."resolvedToYes" = true`;
-          case 'resolvedNo':
+          case ResolutionStatus.resolvedNo:
             return Prisma.sql`AND c.settled = true AND c."resolvedToYes" = false`;
           default:
             return Prisma.empty;
@@ -148,11 +189,11 @@ export class QuestionsResolver {
           cg.id as group_id,
           NULL::text as condition_id,
           ${
-            sanitizedSortField === 'openInterest'
+            sanitizedSortField === QuestionSortField.openInterest
               ? Prisma.sql`COALESCE(SUM(c."openInterest"::numeric), 0)::text`
-              : sanitizedSortField === 'predictionCount'
+              : sanitizedSortField === QuestionSortField.predictionCount
                 ? Prisma.sql`COALESCE(SUM(c."predictionCount"), 0)::text`
-                : sanitizedSortField === 'createdAt'
+                : sanitizedSortField === QuestionSortField.createdAt
                   ? Prisma.sql`COALESCE(FLOOR(EXTRACT(EPOCH FROM MAX(c."createdAt")))::bigint, 0)::text`
                   : Prisma.sql`COALESCE(MAX(c."endTime"), 0)::text`
           } as sort_value,
@@ -183,11 +224,11 @@ export class QuestionsResolver {
           NULL::integer as group_id,
           c.id as condition_id,
           ${
-            sanitizedSortField === 'openInterest'
+            sanitizedSortField === QuestionSortField.openInterest
               ? Prisma.sql`COALESCE(c."openInterest"::numeric, 0)::text`
-              : sanitizedSortField === 'predictionCount'
+              : sanitizedSortField === QuestionSortField.predictionCount
                 ? Prisma.sql`c."predictionCount"::text`
-                : sanitizedSortField === 'createdAt'
+                : sanitizedSortField === QuestionSortField.createdAt
                   ? Prisma.sql`COALESCE(FLOOR(EXTRACT(EPOCH FROM c."createdAt"))::bigint, 0)::text`
                   : Prisma.sql`COALESCE(c."endTime", 2147483647)::text`
           } as sort_value,
@@ -221,11 +262,11 @@ export class QuestionsResolver {
           NULL::integer as group_id,
           c.id as condition_id,
           ${
-            sanitizedSortField === 'openInterest'
+            sanitizedSortField === QuestionSortField.openInterest
               ? Prisma.sql`COALESCE(c."openInterest"::numeric, 0)::text`
-              : sanitizedSortField === 'predictionCount'
+              : sanitizedSortField === QuestionSortField.predictionCount
                 ? Prisma.sql`c."predictionCount"::text`
-                : sanitizedSortField === 'createdAt'
+                : sanitizedSortField === QuestionSortField.createdAt
                   ? Prisma.sql`COALESCE(FLOOR(EXTRACT(EPOCH FROM c."createdAt"))::bigint, 0)::text`
                   : Prisma.sql`COALESCE(c."endTime", 2147483647)::text`
           } as sort_value,
@@ -284,13 +325,13 @@ export class QuestionsResolver {
     // Apply the same filters to nested conditions that we used in the SQL query
     // Build Prisma where clause for nested conditions (mirrors SQL filter)
     const resolvedPrismaFilter = (() => {
-      if (resolutionStatus && resolutionStatus !== 'all') {
+      if (resolutionStatus && resolutionStatus !== ResolutionStatus.all) {
         switch (resolutionStatus) {
-          case 'unresolved':
+          case ResolutionStatus.unresolved:
             return { settled: false };
-          case 'resolvedYes':
+          case ResolutionStatus.resolvedYes:
             return { settled: true, resolvedToYes: true };
-          case 'resolvedNo':
+          case ResolutionStatus.resolvedNo:
             return { settled: true, resolvedToYes: false };
           default:
             return {};
@@ -354,7 +395,7 @@ export class QuestionsResolver {
         const group = groupMap.get(item.group_id);
         if (group) {
           result.push({
-            questionType: 'group',
+            questionType: QuestionItemType.group,
             group: {
               ...group,
               conditions: group.condition, // Map Prisma 'condition' to GraphQL 'conditions'
@@ -367,7 +408,7 @@ export class QuestionsResolver {
         const condition = conditionMap.get(item.condition_id);
         if (condition) {
           result.push({
-            questionType: 'condition',
+            questionType: QuestionItemType.condition,
             group: null,
             condition: condition as Condition,
             predictionCount: Number(item.prediction_count),

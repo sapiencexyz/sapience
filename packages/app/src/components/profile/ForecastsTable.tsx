@@ -40,6 +40,7 @@ import {
 } from '~/components/profile/ForecastsTableFilters';
 import { useUserForecasts } from '~/hooks/graphql/useForecasts';
 import { SCHEMA_UID } from '~/lib/constants';
+import { isWithinDateRange } from '~/lib/utils/tableFilters';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import { getDeterministicCategoryColor } from '~/lib/theme/categoryPalette';
 import ConditionStatus from '~/components/shared/ConditionStatus';
@@ -57,6 +58,7 @@ type ConditionData = {
   description?: string | null;
   settled?: boolean;
   resolvedToYes?: boolean;
+  nonDecisive?: boolean;
   resolver?: string | null;
   conditionId?: string;
   conditionGroupId?: string;
@@ -327,6 +329,7 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
             description
             settled
             resolvedToYes
+            nonDecisive
             resolver
             category {
               slug
@@ -532,6 +535,7 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
             <ConditionStatus
               settled={condition?.settled}
               resolvedToYes={condition?.resolvedToYes}
+              nonDecisive={condition?.nonDecisive}
               endTime={condition?.endTime}
             />
           );
@@ -562,46 +566,40 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
     let result = attestations || [];
 
     // Filter by resolution status
-    if (
-      filters.resolutionStatus.length > 0 &&
-      filters.resolutionStatus.length < 3
-    ) {
+    if (filters.status.length > 0 && filters.status.length < 4) {
       result = result.filter((att) => {
         const conditionId = att.conditionId;
-        let status: 'pending' | 'yes' | 'no' = 'pending';
+        let status: 'pending' | 'yes' | 'no' | 'nonDecisive' = 'pending';
         if (conditionId && conditionsMap) {
           const condition = conditionsMap[conditionId.toLowerCase()];
           if (condition?.settled) {
-            status = condition.resolvedToYes ? 'yes' : 'no';
+            status = condition.nonDecisive
+              ? 'nonDecisive'
+              : condition.resolvedToYes
+                ? 'yes'
+                : 'no';
           }
         }
-        return filters.resolutionStatus.includes(status);
+        return filters.status.includes(status);
       });
     }
 
     // Filter by probability range
-    if (filters.probabilityRange[0] > 0 || filters.probabilityRange[1] < 100) {
+    if (filters.valueRange[0] > 0 || filters.valueRange[1] < 100) {
       result = result.filter((att) => {
         const percentage = d18ToPercentage(att.value);
         return (
-          percentage >= filters.probabilityRange[0] &&
-          percentage <= filters.probabilityRange[1]
+          percentage >= filters.valueRange[0] &&
+          percentage <= filters.valueRange[1]
         );
       });
     }
 
     // Filter by date range (days from now based on forecast creation time)
     if (filters.dateRange[0] > -Infinity || filters.dateRange[1] < Infinity) {
-      const nowMs = Date.now();
       result = result.filter((att) => {
         const createdMs = Number(att.rawTime) * 1000;
-        const daysAgo = (nowMs - createdMs) / (1000 * 60 * 60 * 24);
-        // For forecasts: negative days = created in the past (e.g., -30 = created 30 days ago)
-        const daysFromNow = -daysAgo;
-        return (
-          daysFromNow >= filters.dateRange[0] &&
-          daysFromNow <= filters.dateRange[1]
-        );
+        return isWithinDateRange(createdMs, filters.dateRange);
       });
     }
 
@@ -710,7 +708,7 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
         <>
           <div className="overflow-hidden bg-brand-black relative">
             <Table className="w-full table-auto">
-              <TableHeader className="hidden xl:table-header-group text-sm font-medium text-brand-white">
+              <TableHeader className="hidden xl:table-header-group text-sm font-medium text-muted-foreground">
                 {table.getHeaderGroups().map((headerGroup) => (
                   <TableRow
                     key={headerGroup.id}

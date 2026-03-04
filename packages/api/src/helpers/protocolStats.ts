@@ -1,10 +1,10 @@
 import { erc20Abi, formatUnits } from 'viem';
 import prisma from '../db';
-import { PositionStatus } from '../../generated/prisma';
+import { LegacyPositionStatus } from '../../generated/prisma';
 import { getProviderForChain, getBlockByTimestamp } from '../utils/utils';
-import { contracts } from '@sapience/sdk/contracts';
-import { liquidityVaultAbi } from '@sapience/sdk/abis';
-import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import { contracts, escrowContracts } from '@sapience/sdk/contracts';
+import { predictionMarketVaultAbi } from '@sapience/sdk/abis';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 
 interface VaultPnLResult {
   realizedPnL: bigint;
@@ -35,14 +35,14 @@ interface ProtocolStatsData {
 }
 
 /**
- * Fetch Vault balance: wUSDe.balanceOf(vault) only (excludes deployed funds).
+ * Fetch Vault balance: collateral.balanceOf(vault)
  */
 export async function fetchVaultTVL(
-  chainId: number = CHAIN_ID_ETHEREAL
+  chainId: number = DEFAULT_CHAIN_ID
 ): Promise<bigint> {
   const client = getProviderForChain(chainId);
 
-  const vaultAddress = contracts.passiveLiquidityVault[chainId]?.address;
+  const vaultAddress = escrowContracts.predictionMarketVault[chainId]?.address;
   const collateralAddress = contracts.collateralToken[chainId]?.address;
 
   if (!vaultAddress || !collateralAddress) {
@@ -51,72 +51,72 @@ export async function fetchVaultTVL(
     );
   }
 
-  const wUsdeBalance = await client.readContract({
+  const balance = await client.readContract({
     address: collateralAddress,
     abi: erc20Abi,
     functionName: 'balanceOf',
     args: [vaultAddress],
   });
 
-  return wUsdeBalance;
+  return balance;
 }
 
 /**
- * Fetch Vault deployed funds: vault.totalDeployed()
+ * Fetch vault collateral locked in the escrow: sum of counterpartyCollateral
+ * for predictions that were active at `atTimestamp` (or currently active if omitted)
+ * where the vault is the counterparty.
  */
 export async function fetchVaultDeployed(
-  chainId: number = CHAIN_ID_ETHEREAL
+  chainId: number = DEFAULT_CHAIN_ID,
+  atTimestamp?: number
 ): Promise<bigint> {
-  const client = getProviderForChain(chainId);
-  const vaultAddress = contracts.passiveLiquidityVault[chainId]?.address;
+  const vaultAddress =
+    escrowContracts.predictionMarketVault[chainId]?.address;
+  if (!vaultAddress) return 0n;
 
-  if (!vaultAddress) {
-    throw new Error(`Vault not configured for chain ${chainId}`);
+  const predictions = await prisma.prediction.findMany({
+    where: {
+      chainId,
+      counterparty: vaultAddress.toLowerCase(),
+      ...(atTimestamp
+        ? {
+            onChainCreatedAt: { lte: atTimestamp },
+            OR: [
+              { settled: false },
+              { settled: true, settledAt: { gt: atTimestamp } },
+            ],
+          }
+        : { settled: false }),
+    },
+    select: { counterpartyCollateral: true },
+  });
+
+  let total = 0n;
+  for (const p of predictions) {
+    total += BigInt(p.counterpartyCollateral);
   }
-
-  const totalDeployed = (await client.readContract({
-    address: vaultAddress,
-    abi: liquidityVaultAbi,
-    functionName: 'totalDeployed',
-    args: [],
-  })) as bigint;
-
-  return totalDeployed;
+  return total;
 }
 
 /**
- * Fetch Vault deployed funds at a specific block number.
+ * Fetch vault collateral locked in the escrow at a specific point in time.
  */
 export async function fetchVaultDeployedAtBlock(
   chainId: number,
-  blockNumber: bigint
+  _blockNumber: bigint,
+  atTimestamp?: number
 ): Promise<bigint> {
-  const client = getProviderForChain(chainId);
-  const vaultAddress = contracts.passiveLiquidityVault[chainId]?.address;
-
-  if (!vaultAddress) {
-    throw new Error(`Vault not configured for chain ${chainId}`);
-  }
-
-  const totalDeployed = (await client.readContract({
-    address: vaultAddress,
-    abi: liquidityVaultAbi,
-    functionName: 'totalDeployed',
-    args: [],
-    blockNumber,
-  })) as bigint;
-
-  return totalDeployed;
+  return fetchVaultDeployed(chainId, atTimestamp);
 }
 
 /**
- * Fetch Vault available assets: vault.availableAssets() (excludes pending deposits)
+ * Fetch Vault available assets: vault.availableAssets()
  */
 export async function fetchVaultAvailableAssets(
-  chainId: number = CHAIN_ID_ETHEREAL
+  chainId: number = DEFAULT_CHAIN_ID
 ): Promise<bigint> {
   const client = getProviderForChain(chainId);
-  const vaultAddress = contracts.passiveLiquidityVault[chainId]?.address;
+  const vaultAddress = escrowContracts.predictionMarketVault[chainId]?.address;
 
   if (!vaultAddress) {
     throw new Error(`Vault not configured for chain ${chainId}`);
@@ -124,7 +124,7 @@ export async function fetchVaultAvailableAssets(
 
   const availableAssets = (await client.readContract({
     address: vaultAddress,
-    abi: liquidityVaultAbi,
+    abi: predictionMarketVaultAbi,
     functionName: 'availableAssets',
     args: [],
   })) as bigint;
@@ -140,7 +140,7 @@ export async function fetchVaultAvailableAssetsAtBlock(
   blockNumber: bigint
 ): Promise<bigint> {
   const client = getProviderForChain(chainId);
-  const vaultAddress = contracts.passiveLiquidityVault[chainId]?.address;
+  const vaultAddress = escrowContracts.predictionMarketVault[chainId]?.address;
 
   if (!vaultAddress) {
     throw new Error(`Vault not configured for chain ${chainId}`);
@@ -148,7 +148,7 @@ export async function fetchVaultAvailableAssetsAtBlock(
 
   const availableAssets = (await client.readContract({
     address: vaultAddress,
-    abi: liquidityVaultAbi,
+    abi: predictionMarketVaultAbi,
     functionName: 'availableAssets',
     args: [],
     blockNumber,
@@ -158,30 +158,31 @@ export async function fetchVaultAvailableAssetsAtBlock(
 }
 
 /**
- * Fetch PredictionMarket TVL: wUSDe.balanceOf(predictionMarket)
+ * Fetch Escrow TVL: collateral.balanceOf(predictionMarketEscrow)
  */
 export async function fetchPredictionMarketTVL(
-  chainId: number = CHAIN_ID_ETHEREAL
+  chainId: number = DEFAULT_CHAIN_ID
 ): Promise<bigint> {
   const client = getProviderForChain(chainId);
 
-  const pmAddress = contracts.predictionMarket[chainId]?.address;
+  const escrowAddress =
+    escrowContracts.predictionMarketEscrow[chainId]?.address;
   const collateralAddress = contracts.collateralToken[chainId]?.address;
 
-  if (!pmAddress || !collateralAddress) {
+  if (!escrowAddress || !collateralAddress) {
     throw new Error(
-      `PredictionMarket or collateral token not configured for chain ${chainId}`
+      `PredictionMarketEscrow or collateral token not configured for chain ${chainId}`
     );
   }
 
-  const wUsdeBalance = await client.readContract({
+  const balance = await client.readContract({
     address: collateralAddress,
     abi: erc20Abi,
     functionName: 'balanceOf',
-    args: [pmAddress],
+    args: [escrowAddress],
   });
 
-  return wUsdeBalance;
+  return balance;
 }
 
 /**
@@ -193,7 +194,7 @@ export async function fetchVaultTVLAtBlock(
 ): Promise<bigint> {
   const client = getProviderForChain(chainId);
 
-  const vaultAddress = contracts.passiveLiquidityVault[chainId]?.address;
+  const vaultAddress = escrowContracts.predictionMarketVault[chainId]?.address;
   const collateralAddress = contracts.collateralToken[chainId]?.address;
 
   if (!vaultAddress || !collateralAddress) {
@@ -202,7 +203,7 @@ export async function fetchVaultTVLAtBlock(
     );
   }
 
-  const wUsdeBalance = await client.readContract({
+  const balance = await client.readContract({
     address: collateralAddress,
     abi: erc20Abi,
     functionName: 'balanceOf',
@@ -210,11 +211,11 @@ export async function fetchVaultTVLAtBlock(
     blockNumber,
   });
 
-  return wUsdeBalance;
+  return balance;
 }
 
 /**
- * Fetch PredictionMarket TVL at a specific block number (for historical queries).
+ * Fetch Escrow TVL at a specific block number (for historical queries).
  */
 export async function fetchPredictionMarketTVLAtBlock(
   chainId: number,
@@ -222,24 +223,25 @@ export async function fetchPredictionMarketTVLAtBlock(
 ): Promise<bigint> {
   const client = getProviderForChain(chainId);
 
-  const pmAddress = contracts.predictionMarket[chainId]?.address;
+  const escrowAddress =
+    escrowContracts.predictionMarketEscrow[chainId]?.address;
   const collateralAddress = contracts.collateralToken[chainId]?.address;
 
-  if (!pmAddress || !collateralAddress) {
+  if (!escrowAddress || !collateralAddress) {
     throw new Error(
-      `PredictionMarket or collateral token not configured for chain ${chainId}`
+      `PredictionMarketEscrow or collateral token not configured for chain ${chainId}`
     );
   }
 
-  const wUsdeBalance = await client.readContract({
+  const balance = await client.readContract({
     address: collateralAddress,
     abi: erc20Abi,
     functionName: 'balanceOf',
-    args: [pmAddress],
+    args: [escrowAddress],
     blockNumber,
   });
 
-  return wUsdeBalance;
+  return balance;
 }
 
 /**
@@ -249,7 +251,8 @@ async function calculateVaultPnL(
   chainId: number,
   beforeTimestamp?: number
 ): Promise<VaultPnLResult> {
-  const vaultAddress = contracts.passiveLiquidityVault[chainId]?.address;
+  const vaultAddress =
+    escrowContracts.predictionMarketVault[chainId]?.address;
   if (!vaultAddress) {
     return {
       realizedPnL: 0n,
@@ -262,13 +265,15 @@ async function calculateVaultPnL(
   const vaultAddressLower = vaultAddress.toLowerCase();
 
   const whereClause: {
-    status: { in: PositionStatus[] };
+    status: { in: LegacyPositionStatus[] };
     predictorWon: { not: null };
     chainId: number;
     settledAt?: { lte: number };
     OR: Array<{ predictor: string } | { counterparty: string }>;
   } = {
-    status: { in: [PositionStatus.settled, PositionStatus.consolidated] },
+    status: {
+      in: [LegacyPositionStatus.settled, LegacyPositionStatus.consolidated],
+    },
     predictorWon: { not: null },
     chainId,
     OR: [{ predictor: vaultAddressLower }, { counterparty: vaultAddressLower }],
@@ -278,7 +283,9 @@ async function calculateVaultPnL(
     whereClause.settledAt = { lte: beforeTimestamp };
   }
 
-  const positions = await prisma.position.findMany({ where: whereClause });
+  const positions = await prisma.legacyPosition.findMany({
+    where: whereClause,
+  });
 
   // Get mint events for collateral breakdown
   const mintTimestamps = Array.from(
@@ -458,7 +465,7 @@ async function upsertProtocolStatsSnapshot(
  * Main function to compute and store daily protocol stats snapshot.
  */
 export async function computeAndStoreProtocolStats(
-  chainId: number = CHAIN_ID_ETHEREAL
+  chainId: number = DEFAULT_CHAIN_ID
 ): Promise<void> {
   console.log(
     `[ProtocolStats] Starting stats computation for chain ${chainId}`
@@ -529,8 +536,11 @@ export async function computeAndStoreProtocolStats(
 /**
  * Get the latest stats snapshot.
  */
-export async function getLatestProtocolStats() {
+export async function getLatestProtocolStats(
+  chainId: number = DEFAULT_CHAIN_ID
+) {
   return prisma.protocolStatsSnapshot.findFirst({
+    where: { chainId },
     orderBy: { timestamp: 'desc' },
   });
 }
@@ -538,12 +548,16 @@ export async function getLatestProtocolStats() {
 /**
  * Get stats time series for the last N days.
  */
-export async function getProtocolStatsTimeSeries(days: number = 90) {
+export async function getProtocolStatsTimeSeries(
+  days: number = 90,
+  chainId: number = DEFAULT_CHAIN_ID
+) {
   const startTimestamp = getUtcMidnightTimestamp(new Date()) - days * 86400;
 
   return prisma.protocolStatsSnapshot.findMany({
     where: {
       timestamp: { gte: startTimestamp },
+      chainId,
     },
     orderBy: { timestamp: 'asc' },
   });
@@ -553,7 +567,7 @@ export async function getProtocolStatsTimeSeries(days: number = 90) {
  * Backfill historical protocol stats by querying on-chain state at past blocks.
  */
 export async function backfillProtocolStats(
-  chainId: number = CHAIN_ID_ETHEREAL,
+  chainId: number = DEFAULT_CHAIN_ID,
   days: number = 90
 ): Promise<void> {
   const client = getProviderForChain(chainId);
@@ -597,7 +611,8 @@ export async function backfillProtocolStats(
       );
       const vaultDeployed = await fetchVaultDeployedAtBlock(
         chainId,
-        blockNumber
+        blockNumber,
+        timestamp
       );
       const escrowBalance = await fetchPredictionMarketTVLAtBlock(
         chainId,

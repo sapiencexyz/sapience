@@ -6,13 +6,11 @@
  * @module onchain/position
  */
 
-import { encodeFunctionData, erc20Abi, parseAbi } from 'viem';
-import type { Address } from 'viem';
-import { predictionMarketAbi } from '../abis';
-import { CHAIN_ID_ETHEREAL } from '../constants/chain';
-
-/** wUSDe contract address on Ethereal */
-const WUSDE_ADDRESS: Address = '0xB6fC4B1BFF391e5F6b4a3D2C7Bda1FeE3524692D';
+import { encodeFunctionData, erc20Abi, parseAbi, zeroAddress } from 'viem';
+import type { Address, Hex } from 'viem';
+import { predictionMarketAbi, predictionMarketEscrowAbi } from '../abis';
+import { CHAIN_ID_ETHEREAL, CHAIN_ID_ETHEREAL_TESTNET } from '../constants/chain';
+import { collateralToken } from '../contracts/addresses';
 
 const WUSDE_ABI = parseAbi([
   'function deposit() payable',
@@ -103,6 +101,23 @@ export interface MintPredictionRequestDataLike {
   takerSignature: `0x${string}`;
   takerDeadline: string | number | bigint;
   refCode: `0x${string}`;
+  // Escrow-specific fields
+  escrowPicks?: Array<{
+    conditionResolver: `0x${string}`;
+    conditionId: `0x${string}`;
+    predictedOutcome: number;
+  }>;
+  /** Counterparty nonce (escrow: bidder's nonce from their signature) */
+  takerClaimedNonce?: number | bigint;
+  /** Predictor session key data (base64 encoded, empty if EOA) */
+  predictorSessionKeyData?: string;
+  /** Counterparty session key data (base64 encoded, empty if EOA) */
+  counterpartySessionKeyData?: string;
+  /** Predictor's EIP-712 MintApproval signature (required for escrow mints) */
+  predictorSignature?: `0x${string}`;
+  // Sponsorship fields
+  predictorSponsor?: `0x${string}`;
+  predictorSponsorData?: `0x${string}`;
 }
 
 export interface PrepareMintCallsParams {
@@ -114,13 +129,19 @@ export interface PrepareMintCallsParams {
   currentWusdeBalance?: bigint;
   /** Current allowance to prediction market (used to skip approve) */
   currentAllowance?: bigint;
+  /** Whether this is an escrow chain (uses PredictionMarketEscrow ABI) */
+  isEscrowChain?: boolean;
 }
 
 /**
  * Build the batched calls array for a position mint:
  *   1. (optional) Wrap native USDe → wUSDe
- *   2. (optional) Approve wUSDe → PredictionMarket
- *   3. PredictionMarket.mint(...)
+ *   2. (optional) Approve wUSDe → PredictionMarket (skipped when fully sponsored)
+ *   3. PredictionMarket.mint(...) or PredictionMarketEscrow.mint(...)
+ *
+ * Supports both legacy (V1) and escrow mint paths.
+ * When `mintData.escrowPicks` is present OR `isEscrowChain` is true, uses the
+ * escrow MintRequest struct which includes picks, session key data, and sponsorship fields.
  */
 export function prepareMintCalls(
   params: PrepareMintCallsParams
@@ -132,6 +153,7 @@ export function prepareMintCalls(
     chainId,
     currentWusdeBalance,
     currentAllowance,
+    isEscrowChain,
   } = params;
 
   const calls: { to: Address; data: `0x${string}`; value?: bigint }[] = [];
@@ -143,8 +165,20 @@ export function prepareMintCalls(
     throw new Error('Invalid collateral amounts');
   }
 
+  // Determine if this mint is sponsored (sponsor pays predictor's collateral)
+  const isSponsored =
+    !!mintData.predictorSponsor &&
+    mintData.predictorSponsor !== zeroAddress;
+
+  // Determine if this is an escrow mint
+  const useEscrow =
+    isEscrowChain || (mintData.escrowPicks && mintData.escrowPicks.length > 0);
+
   // 1. Wrap if on Ethereal and wUSDe balance is insufficient
-  if (chainId === CHAIN_ID_ETHEREAL) {
+  // Skip wrap when fully sponsored (sponsor pays, not user)
+  const isEthereal = chainId === CHAIN_ID_ETHEREAL || chainId === CHAIN_ID_ETHEREAL_TESTNET;
+  if (isEthereal && !isSponsored) {
+    const wusdeAddress = collateralToken[chainId]?.address ?? collateralToken[CHAIN_ID_ETHEREAL]?.address;
     const wrappedBal =
       typeof currentWusdeBalance === 'bigint' ? currentWusdeBalance : 0n;
     const amountToWrap =
@@ -152,7 +186,7 @@ export function prepareMintCalls(
 
     if (amountToWrap > 0n) {
       calls.push({
-        to: WUSDE_ADDRESS,
+        to: wusdeAddress!,
         data: encodeFunctionData({
           abi: WUSDE_ABI,
           functionName: 'deposit',
@@ -162,17 +196,19 @@ export function prepareMintCalls(
     }
   }
 
-  // 2. Approve if needed
-  const effectiveAllowance = currentAllowance ?? 0n;
-  if (effectiveAllowance < makerCollateralWei) {
-    calls.push({
-      to: collateralTokenAddress,
-      data: encodeFunctionData({
-        abi: erc20Abi,
-        functionName: 'approve',
-        args: [predictionMarketAddress, makerCollateralWei],
-      }),
-    });
+  // 2. Approve if needed (skip when sponsored — sponsor transfers, not user)
+  if (!isSponsored) {
+    const effectiveAllowance = currentAllowance ?? 0n;
+    if (effectiveAllowance < makerCollateralWei) {
+      calls.push({
+        to: collateralTokenAddress,
+        data: encodeFunctionData({
+          abi: erc20Abi,
+          functionName: 'approve',
+          args: [predictionMarketAddress, makerCollateralWei],
+        }),
+      });
+    }
   }
 
   // 3. Mint call
@@ -181,27 +217,73 @@ export function prepareMintCalls(
     throw new Error('Missing maker nonce');
   }
 
-  const mintPredictionRequestData = {
-    encodedPredictedOutcomes: mintData.encodedPredictedOutcomes,
-    resolver: mintData.resolver,
-    makerCollateral: makerCollateralWei,
-    takerCollateral: takerCollateralWei,
-    maker: mintData.maker,
-    taker: mintData.taker,
-    makerNonce: makerNonceBigInt,
-    takerSignature: mintData.takerSignature,
-    takerDeadline: BigInt(mintData.takerDeadline),
-    refCode: mintData.refCode,
-  };
+  if (useEscrow) {
+    // Escrow MintRequest struct
+    const picks = (mintData.escrowPicks || []).map((p) => ({
+      conditionResolver: p.conditionResolver,
+      conditionId: p.conditionId,
+      predictedOutcome: p.predictedOutcome,
+    }));
 
-  calls.push({
-    to: predictionMarketAddress,
-    data: encodeFunctionData({
-      abi: predictionMarketAbi,
-      functionName: 'mint',
-      args: [mintPredictionRequestData],
-    }),
-  });
+    if (picks.length === 0) {
+      throw new Error('Escrow mint requires picks');
+    }
+
+    const escrowMintRequest = {
+      picks,
+      predictorCollateral: makerCollateralWei,
+      counterpartyCollateral: takerCollateralWei,
+      predictor: mintData.maker,
+      counterparty: mintData.taker,
+      predictorNonce: makerNonceBigInt,
+      counterpartyNonce: BigInt(mintData.takerClaimedNonce ?? 0),
+      predictorDeadline: BigInt(mintData.takerDeadline), // TODO: separate predictor deadline
+      counterpartyDeadline: BigInt(mintData.takerDeadline),
+      predictorSignature: (mintData.predictorSignature || '0x') as Hex,
+      counterpartySignature: mintData.takerSignature,
+      refCode: mintData.refCode,
+      predictorSessionKeyData: (mintData.predictorSessionKeyData
+        ? mintData.predictorSessionKeyData
+        : '0x') as Hex,
+      counterpartySessionKeyData: (mintData.counterpartySessionKeyData
+        ? mintData.counterpartySessionKeyData
+        : '0x') as Hex,
+      predictorSponsor: (mintData.predictorSponsor ?? zeroAddress) as Address,
+      predictorSponsorData: (mintData.predictorSponsorData ?? '0x') as Hex,
+    };
+
+    calls.push({
+      to: predictionMarketAddress,
+      data: encodeFunctionData({
+        abi: predictionMarketEscrowAbi,
+        functionName: 'mint',
+        args: [escrowMintRequest],
+      }),
+    });
+  } else {
+    // Legacy V1 mint struct
+    const mintPredictionRequestData = {
+      encodedPredictedOutcomes: mintData.encodedPredictedOutcomes,
+      resolver: mintData.resolver,
+      makerCollateral: makerCollateralWei,
+      takerCollateral: takerCollateralWei,
+      maker: mintData.maker,
+      taker: mintData.taker,
+      makerNonce: makerNonceBigInt,
+      takerSignature: mintData.takerSignature,
+      takerDeadline: BigInt(mintData.takerDeadline),
+      refCode: mintData.refCode,
+    };
+
+    calls.push({
+      to: predictionMarketAddress,
+      data: encodeFunctionData({
+        abi: predictionMarketAbi,
+        functionName: 'mint',
+        args: [mintPredictionRequestData],
+      }),
+    });
+  }
 
   return calls;
 }

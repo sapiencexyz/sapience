@@ -2,29 +2,32 @@ import { formatUnits } from 'viem';
 
 /**
  * Format a bid for logging output.
- * Returns a string like: "maker=0x5678..., positionSize=15.5, expires in 45s, nonce=12"
+ * Returns a string like: "counterparty=0x5678..., positionSize=15.5, expires in 45s, nonce=12"
  */
 export function formatBidForLog(
   bid: {
-    maker: string;
-    makerWager: string;
-    makerDeadline: number;
-    makerNonce?: number;
+    counterparty?: string;
+    counterpartyCollateral?: string;
+    counterpartyDeadline?: number;
+    counterpartyNonce?: number;
   },
   decimals = 18
 ): string {
-  const makerShort = `${bid.maker.slice(0, 8)}...`;
+  const addr = bid.counterparty || '(unknown)';
+  const addrShort = addr.length > 8 ? `${addr.slice(0, 8)}...` : addr;
+  const collateral = bid.counterpartyCollateral || '0';
   let positionSizeFormatted: string;
   try {
-    positionSizeFormatted = formatUnits(BigInt(bid.makerWager), decimals);
+    positionSizeFormatted = formatUnits(BigInt(collateral), decimals);
   } catch {
-    positionSizeFormatted = bid.makerWager;
+    positionSizeFormatted = collateral;
   }
+  const deadline = bid.counterpartyDeadline || 0;
   const nowSec = Math.floor(Date.now() / 1000);
-  const expiresIn = Math.max(0, bid.makerDeadline - nowSec);
-  const nonceStr =
-    bid.makerNonce !== undefined ? `, nonce=${bid.makerNonce}` : '';
-  return `maker=${makerShort}, positionSize=${positionSizeFormatted}, expires in ${expiresIn}s${nonceStr}`;
+  const expiresIn = Math.max(0, deadline - nowSec);
+  const nonce = bid.counterpartyNonce;
+  const nonceStr = nonce !== undefined ? `, nonce=${nonce}` : '';
+  return `counterparty=${addrShort}, positionSize=${positionSizeFormatted}, expires in ${expiresIn}s${nonceStr}`;
 }
 
 /**

@@ -1,12 +1,12 @@
 import { graphqlRequest } from './client/graphqlClient';
 
 export interface AggregatedLeaderboardEntry {
-  owner: string;
-  totalPnL: number;
+  address: string;
+  totalPnL: string;
 }
 
 export type ForecasterScore = {
-  attester: string;
+  address: string;
   numScored: number;
   sumErrorSquared: number;
   numTimeWeighted: number;
@@ -21,24 +21,24 @@ export interface ForecasterRankResult {
 }
 
 export interface UserProfitRankResult {
-  totalPnL: number;
+  totalPnL: string;
   rank: number | null;
   totalParticipants: number;
 }
 
-const GET_ALL_TIME_PROFIT_LEADERBOARD = /* GraphQL */ `
-  query AllTimeProfitLeaderboard {
-    allTimeProfitLeaderboard {
-      owner
+const GET_PROFIT_LEADERBOARD = /* GraphQL */ `
+  query ProfitLeaderboard($limit: Int, $skip: Int) {
+    profitLeaderboard(limit: $limit, skip: $skip) {
+      address
       totalPnL
     }
   }
 `;
 
-const GET_TOP_FORECASTERS = /* GraphQL */ `
-  query TopForecasters($limit: Int!) {
-    topForecasters(limit: $limit) {
-      attester
+const GET_ACCURACY_LEADERBOARD = /* GraphQL */ `
+  query AccuracyLeaderboard($limit: Int!) {
+    accuracyLeaderboard(limit: $limit) {
+      address
       numScored
       sumErrorSquared
       numTimeWeighted
@@ -48,10 +48,10 @@ const GET_TOP_FORECASTERS = /* GraphQL */ `
   }
 `;
 
-const GET_ACCURACY_RANK = /* GraphQL */ `
-  query AccuracyRankByAddress($attester: String!) {
-    accuracyRankByAddress(attester: $attester) {
-      attester
+const GET_ACCOUNT_ACCURACY_RANK = /* GraphQL */ `
+  query AccountAccuracyRank($address: String!) {
+    accountAccuracyRank(address: $address) {
+      address
       accuracyScore
       rank
       totalForecasters
@@ -61,33 +61,33 @@ const GET_ACCURACY_RANK = /* GraphQL */ `
 
 export async function fetchLeaderboard(): Promise<AggregatedLeaderboardEntry[]> {
   const data = await graphqlRequest<{
-    allTimeProfitLeaderboard: AggregatedLeaderboardEntry[];
-  }>(GET_ALL_TIME_PROFIT_LEADERBOARD);
-  return (data?.allTimeProfitLeaderboard || []).slice(0, 100);
+    profitLeaderboard: AggregatedLeaderboardEntry[];
+  }>(GET_PROFIT_LEADERBOARD);
+  return (data?.profitLeaderboard || []).slice(0, 100);
 }
 
 export async function fetchAccuracyLeaderboard(
   limit = 10
 ): Promise<ForecasterScore[]> {
-  const data = await graphqlRequest<{ topForecasters: ForecasterScore[] }>(
-    GET_TOP_FORECASTERS,
+  const data = await graphqlRequest<{ accuracyLeaderboard: ForecasterScore[] }>(
+    GET_ACCURACY_LEADERBOARD,
     { limit }
   );
-  return data.topForecasters || [];
+  return data.accuracyLeaderboard || [];
 }
 
 export async function fetchForecasterRank(
-  attester: string
+  address: string
 ): Promise<ForecasterRankResult> {
-  const a = attester.toLowerCase();
+  const a = address.toLowerCase();
   const data = await graphqlRequest<{
-    accuracyRankByAddress: {
+    accountAccuracyRank: {
       accuracyScore: number;
       rank: number | null;
       totalForecasters: number;
     };
-  }>(GET_ACCURACY_RANK, { attester: a });
-  const r = data?.accuracyRankByAddress;
+  }>(GET_ACCOUNT_ACCURACY_RANK, { address: a });
+  const r = data?.accountAccuracyRank;
   if (!r) return { accuracyScore: null, rank: null, totalForecasters: 0 };
   return {
     accuracyScore: r.accuracyScore ?? 0,
@@ -102,23 +102,25 @@ export async function fetchUserProfitRank(
   const addressLc = ownerAddress.toLowerCase();
 
   const data = await graphqlRequest<{
-    allTimeProfitLeaderboard: Array<{
-      owner: string;
-      totalPnL: number;
+    profitLeaderboard: Array<{
+      address: string;
+      totalPnL: string;
     }>;
-  }>(GET_ALL_TIME_PROFIT_LEADERBOARD);
+  }>(GET_PROFIT_LEADERBOARD, { limit: 100 });
 
-  const entries = data?.allTimeProfitLeaderboard || [];
-  const sortedEntries = entries.sort((a, b) => b.totalPnL - a.totalPnL);
+  const entries = data?.profitLeaderboard || [];
+  const sortedEntries = entries.sort(
+    (a, b) => parseFloat(b.totalPnL) - parseFloat(a.totalPnL)
+  );
 
   const totalParticipants = sortedEntries.length;
   const index = sortedEntries.findIndex(
-    (e) => e.owner.toLowerCase() === addressLc
+    (e) => e.address.toLowerCase() === addressLc
   );
   const userEntry = sortedEntries.find(
-    (e) => e.owner.toLowerCase() === addressLc
+    (e) => e.address.toLowerCase() === addressLc
   );
-  const totalPnL = userEntry?.totalPnL || 0;
+  const totalPnL = userEntry?.totalPnL || '0';
   const rank = index >= 0 ? index + 1 : null;
 
   return { totalPnL, rank, totalParticipants };

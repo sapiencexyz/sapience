@@ -3,7 +3,6 @@
 import {
   createPublicClient,
   createWalletClient,
-  decodeAbiParameters,
   getAddress,
   hexToBytes,
   http,
@@ -19,16 +18,13 @@ import { contracts } from '../contracts/addresses';
 import { getPythMarketId } from '../auction/encoding';
 
 /**
- * Settle PythResolver markets referenced by Sapience positions.
+ * Settle PythResolver conditions referenced by Sapience predictions.
  *
  * Selection rule:
- * - Discover candidate positions by looking at Conditions whose `resolver` equals the PythResolver address.
- * - Fetch positions for those conditions (GraphQL `positionsByConditionId`).
- *
- * Why we still need onchain reads:
- * - The DB does NOT persist strike/expo/overWinsOnTie for Pyth legs.
- * - We read `PredictionMarket.getPrediction(tokenId)` to retrieve `encodedPredictedOutcomes`,
- *   decode legs, then call `PythResolver.settleMarket`.
+ * - Discover candidate conditions whose `resolver` equals the PythResolver address.
+ * - Parse market parameters from the condition's `description` field
+ *   (format: PYTH_LAZER|priceId=...|endTime=...|strikePrice=...|strikeExpo=...|overWinsOnTie=...).
+ * - Call `settleCondition` on the resolver with a Pyth Lazer price update.
  *
  * Safe by default: dry-run unless you pass `--execute`.
  *
@@ -66,8 +62,6 @@ type Args = {
   pythToken?: string;
   pythBaseUrl: string;
   maxConditions: number;
-  maxPositionsPerCondition: number;
-  positionStatus?: string;
   fetchUpdates: boolean;
   pythDebug: boolean;
   dryRun: boolean;
@@ -126,8 +120,6 @@ function parseArgs(argv: string[]): Args {
   const pythBaseUrl = get('pyth-base-url') ?? 'https://pyth-lazer.dourolabs.app';
 
   const maxConditions = Number(get('max-conditions') ?? '200');
-  const maxPositionsPerCondition = Number(get('max-positions') ?? '200');
-  const positionStatus = get('position-status') ?? 'active';
   const fetchUpdates = !has('no-fetch-updates');
   const pythDebug = has('pyth-debug');
 
@@ -141,10 +133,6 @@ function parseArgs(argv: string[]): Args {
     pythToken,
     pythBaseUrl,
     maxConditions: Number.isFinite(maxConditions) ? maxConditions : 200,
-    maxPositionsPerCondition: Number.isFinite(maxPositionsPerCondition)
-      ? maxPositionsPerCondition
-      : 200,
-    positionStatus: positionStatus === 'any' ? undefined : positionStatus,
     fetchUpdates,
     pythDebug,
     dryRun: has('dry-run') || !has('execute'),
@@ -182,6 +170,8 @@ const CONDITIONS_QUERY = /* GraphQL */ `
       endTime
       chainId
       resolver
+      description
+      settled
     }
   }
 `;
@@ -195,66 +185,7 @@ const PYTH_DEBUG_CONDITIONS_QUERY = /* GraphQL */ `
       resolver
       claimStatement
       question
-    }
-  }
-`;
-
-const POSITIONS_BY_CONDITION_QUERY = /* GraphQL */ `
-  query PositionsByCondition(
-    $conditionId: String!
-    $take: Int!
-    $skip: Int!
-    $chainId: Int
-    $status: String
-  ) {
-    positionsByConditionId(
-      conditionId: $conditionId
-      take: $take
-      skip: $skip
-      chainId: $chainId
-      status: $status
-    ) {
-      id
-      chainId
-      marketAddress
-      predictorNftTokenId
-      counterpartyNftTokenId
-      status
-      endsAt
-    }
-  }
-`;
-
-const CONDITION_WITH_PREDICTIONS_DEBUG_QUERY = /* GraphQL */ `
-  query ConditionDebug($id: String!) {
-    condition(where: { id: $id }) {
-      id
-      endTime
-      chainId
-      resolver
-      claimStatement
-      question
-      predictions(take: 20) {
-        id
-        chainId
-        outcomeYes
-        position {
-          id
-          chainId
-          status
-          endsAt
-          marketAddress
-          predictorNftTokenId
-          counterpartyNftTokenId
-        }
-        limitOrder {
-          id
-          chainId
-          status
-          orderId
-          marketAddress
-        }
-      }
+      description
     }
   }
 `;
@@ -264,50 +195,14 @@ type ConditionRow = {
   endTime: number;
   chainId: number;
   resolver?: string | null;
+  description?: string | null;
+  settled?: boolean;
 };
 
 type DebugConditionRow = ConditionRow & {
   claimStatement: string;
   question: string;
 };
-
-type PositionRow = {
-  id: number;
-  chainId: number;
-  marketAddress: string;
-  predictorNftTokenId: string;
-  counterpartyNftTokenId: string;
-  status: 'active' | 'settled' | 'consolidated';
-  endsAt?: number | null;
-};
-
-const predictionMarketAbi = [
-  {
-    type: 'function',
-    name: 'getPrediction',
-    stateMutability: 'view',
-    inputs: [{ name: 'tokenId', type: 'uint256' }],
-    outputs: [
-      {
-        name: 'predictionData',
-        type: 'tuple',
-        components: [
-          { name: 'predictionId', type: 'uint256' },
-          { name: 'makerNftTokenId', type: 'uint256' },
-          { name: 'takerNftTokenId', type: 'uint256' },
-          { name: 'makerCollateral', type: 'uint256' },
-          { name: 'takerCollateral', type: 'uint256' },
-          { name: 'encodedPredictedOutcomes', type: 'bytes' },
-          { name: 'resolver', type: 'address' },
-          { name: 'maker', type: 'address' },
-          { name: 'taker', type: 'address' },
-          { name: 'settled', type: 'bool' },
-          { name: 'makerWon', type: 'bool' },
-        ],
-      },
-    ],
-  },
-] as const;
 
 const pythResolverAbi = [
   {
@@ -332,7 +227,7 @@ const pythResolverAbi = [
   },
   {
     type: 'function',
-    name: 'settleMarket',
+    name: 'settleCondition',
     stateMutability: 'payable',
     inputs: [
       {
@@ -349,7 +244,7 @@ const pythResolverAbi = [
       { name: 'updateData', type: 'bytes[]' },
     ],
     outputs: [
-      { name: 'marketId', type: 'bytes32' },
+      { name: 'conditionId', type: 'bytes32' },
       { name: 'resolvedToOver', type: 'bool' },
     ],
   },
@@ -375,72 +270,34 @@ const pythLazerAbi = [
   },
 ] as const;
 
-type DecodedOutcome = {
+type Market = {
   priceId: Hex;
   endTime: bigint;
   strikePrice: bigint;
   strikeExpo: number;
   overWinsOnTie: boolean;
-  prediction: boolean;
 };
 
-type Market = Omit<DecodedOutcome, 'prediction'>;
-
-function decodeOutcomes(encoded: Hex): DecodedOutcome[] {
-  const [outcomesRaw] = decodeAbiParameters(
-    [
-      {
-        type: 'tuple[]',
-        components: [
-          { name: 'priceId', type: 'bytes32' },
-          { name: 'endTime', type: 'uint64' },
-          { name: 'strikePrice', type: 'int64' },
-          { name: 'strikeExpo', type: 'int32' },
-          { name: 'overWinsOnTie', type: 'bool' },
-          { name: 'prediction', type: 'bool' },
-        ],
-      },
-    ],
-    encoded
-  ) as unknown as [unknown];
-
-  if (!Array.isArray(outcomesRaw)) {
-    throw new Error('decoded_outcomes_not_array');
+/**
+ * Parse market parameters from a Condition's description field.
+ * Format: PYTH_LAZER|priceId=0x...|endTime=123|strikePrice=456|strikeExpo=-6|overWinsOnTie=1|strikeDecimal=...
+ */
+function parseMarketFromDescription(description: string): Market | null {
+  if (!description.startsWith('PYTH_LAZER')) return null;
+  const params: Record<string, string> = {};
+  for (const part of description.split('|')) {
+    const eq = part.indexOf('=');
+    if (eq > 0) params[part.slice(0, eq)] = part.slice(eq + 1);
   }
-
-  // viem may decode tuple[] as an array of arrays OR an array of objects (named components).
-  const first = outcomesRaw[0] as unknown;
-  if (Array.isArray(first)) {
-    return (outcomesRaw as Array<unknown[]>).map((row) => {
-      const [priceId, endTime, strikePrice, strikeExpo, overWinsOnTie, prediction] =
-        row as [Hex, bigint, bigint, number, boolean, boolean];
-      return {
-        priceId,
-        endTime,
-        strikePrice,
-        strikeExpo: Number(strikeExpo),
-        overWinsOnTie,
-        prediction,
-      };
-    });
-  }
-
-  return (outcomesRaw as Array<Record<string, unknown>>).map((row) => {
-    const priceId = row.priceId as Hex;
-    const endTime = row.endTime as bigint;
-    const strikePrice = row.strikePrice as bigint;
-    const strikeExpo = row.strikeExpo as number;
-    const overWinsOnTie = row.overWinsOnTie as boolean;
-    const prediction = row.prediction as boolean;
-    return {
-      priceId,
-      endTime,
-      strikePrice,
-      strikeExpo: Number(strikeExpo),
-      overWinsOnTie,
-      prediction,
-    };
-  });
+  if (!params.priceId || !params.endTime || !params.strikePrice || !params.strikeExpo) return null;
+  const priceId = (params.priceId.startsWith('0x') ? params.priceId : `0x${params.priceId}`) as Hex;
+  return {
+    priceId,
+    endTime: BigInt(params.endTime),
+    strikePrice: BigInt(params.strikePrice),
+    strikeExpo: Number(params.strikeExpo),
+    overWinsOnTie: params.overWinsOnTie === '1',
+  };
 }
 
 function decodeFeedIdFromPriceId(priceId: Hex): number | null {
@@ -818,7 +675,6 @@ async function main() {
   console.log('[settle:pyth] chainId=', args.chainId);
   console.log('[settle:pyth] pythResolver=', args.pythResolver);
   console.log('[settle:pyth] conditionResolver(filter)=', args.conditionResolver);
-  console.log('[settle:pyth] positionStatus(filter)=', args.positionStatus ?? '(any)');
   console.log('[settle:pyth] fetchUpdates=', args.fetchUpdates, 'pythDebug=', args.pythDebug);
   console.log('[settle:pyth] dryRun=', args.dryRun, 'wait=', args.wait);
 
@@ -852,7 +708,7 @@ async function main() {
   console.log('[settle:pyth] pythLazer=', pythLazer);
   console.log('[settle:pyth] verification_fee=', verificationFee.toString());
 
-  // 1) Find ended conditions whose resolver is this PythResolver.
+  // 1) Find ended, unsettled conditions whose resolver is this PythResolver.
   const conditions: ConditionRow[] = [];
   for (let skip = 0; conditions.length < args.maxConditions; skip += 50) {
     const take = Math.min(50, args.maxConditions - conditions.length);
@@ -863,6 +719,7 @@ async function main() {
         where: {
           chainId: { equals: args.chainId },
           endTime: { lte: nowSec },
+          settled: { equals: false },
           resolver: { equals: args.conditionResolver, mode: 'insensitive' },
         },
         take,
@@ -873,7 +730,7 @@ async function main() {
     conditions.push(...data.conditions);
   }
 
-  console.log('[settle:pyth] ended resolver-matched conditions=', conditions.length);
+  console.log('[settle:pyth] ended unsettled resolver-matched conditions=', conditions.length);
 
   // If we found none, print a small debug sample to help diagnose DB/indexer mismatch.
   if (conditions.length === 0) {
@@ -905,30 +762,12 @@ async function main() {
           const label =
             r.question?.trim()?.length > 0 ? r.question.trim() : r.claimStatement;
           console.log(
-            `  - condition=${r.id} endTime=${r.endTime} resolver=${r.resolver ?? 'null'} label=${label}`
+            `  - condition=${r.id} endTime=${r.endTime} resolver=${r.resolver ?? 'null'} settled=${r.settled ?? 'unknown'} label=${label}`
           );
         }
         console.log(
           '[settle:pyth][debug] If these resolvers are NOT the PythResolver address, rerun with `--condition-resolver <that-address>`.'
         );
-
-        // Also show whether the condition has Positions or only LimitOrders.
-        const first = rows[0];
-        if (first?.id) {
-          const dbg2 = await gql<{ condition: any }>(
-            args.graphqlUrl,
-            CONDITION_WITH_PREDICTIONS_DEBUG_QUERY,
-            { id: first.id }
-          );
-          const c = dbg2.condition;
-          if (c) {
-            const posCount = (c.predictions ?? []).filter((p: any) => !!p.position).length;
-            const loCount = (c.predictions ?? []).filter((p: any) => !!p.limitOrder).length;
-            console.log(
-              `[settle:pyth][debug] condition=${c.id} predictions=${(c.predictions ?? []).length} withPosition=${posCount} withLimitOrder=${loCount}`
-            );
-          }
-        }
       }
     } catch (e) {
       console.log(
@@ -938,71 +777,29 @@ async function main() {
     }
   }
 
-  // 2) For each condition, pull active positions.
-  const positions: PositionRow[] = [];
-  for (const c of conditions) {
-    const data = await gql<{ positionsByConditionId: PositionRow[] }>(
-      args.graphqlUrl,
-      POSITIONS_BY_CONDITION_QUERY,
-      {
-        conditionId: c.id,
-        take: args.maxPositionsPerCondition,
-        skip: 0,
-        chainId: args.chainId,
-        status: args.positionStatus ?? null,
-      }
-    );
-    for (const p of data.positionsByConditionId) {
-      if (p.endsAt && p.endsAt > nowSec) continue;
-      positions.push(p);
-    }
-  }
-
-  const uniquePositionKeys = new Set<string>();
-  const uniquePositions = positions.filter((p) => {
-    const k = `${p.chainId}:${p.marketAddress.toLowerCase()}:${p.predictorNftTokenId}`;
-    if (uniquePositionKeys.has(k)) return false;
-    uniquePositionKeys.add(k);
-    return true;
-  });
-
-  console.log('[settle:pyth] candidate positions=', uniquePositions.length);
-
-  // 3) Read onchain `encodedPredictedOutcomes` and build unique market list.
+  // 2) Parse market parameters from each condition's description field.
   const marketsById = new Map<Hex, Market>();
-  for (const p of uniquePositions) {
-    const marketAddress = getAddress(p.marketAddress as Address);
-    const tokenId = BigInt(p.predictorNftTokenId);
-
-    const pred = (await publicClient.readContract({
-      address: marketAddress,
-      abi: predictionMarketAbi,
-      functionName: 'getPrediction',
-      args: [tokenId],
-    })) as any;
-
-    if (pred.settled) continue;
-    const predResolver = getAddress(pred.resolver as Address);
-    if (predResolver.toLowerCase() !== args.pythResolver.toLowerCase()) continue;
-
-    const encoded = pred.encodedPredictedOutcomes as Hex;
-    const decoded = decodeOutcomes(encoded);
-    for (const o of decoded) {
-      const market: Market = {
-        priceId: o.priceId,
-        endTime: o.endTime,
-        strikePrice: o.strikePrice,
-        strikeExpo: o.strikeExpo,
-        overWinsOnTie: o.overWinsOnTie,
-      };
-      const marketId = getPythMarketId(market);
-      marketsById.set(marketId, market);
+  let skippedNoDescription = 0;
+  for (const c of conditions) {
+    if (!c.description) {
+      skippedNoDescription++;
+      continue;
     }
+    const market = parseMarketFromDescription(c.description);
+    if (!market) {
+      skippedNoDescription++;
+      continue;
+    }
+    const marketId = getPythMarketId(market);
+    marketsById.set(marketId, market);
   }
 
+  if (skippedNoDescription > 0) {
+    console.log(`[settle:pyth] skipped ${skippedNoDescription} conditions without parseable PYTH_LAZER description`);
+  }
   console.log('[settle:pyth] unique markets=', marketsById.size);
 
-  // 4) Settle each market if not already settled in the resolver.
+  // 3) Settle each market if not already settled in the resolver.
   let attempted = 0;
   let submitted = 0;
 
@@ -1101,7 +898,7 @@ async function main() {
 
     if (args.dryRun) {
       console.log(
-        '[settle:pyth] dry-run: would call settleMarket (value=',
+        '[settle:pyth] dry-run: would call settleCondition (value=',
         verificationFee.toString(),
         ')'
       );
@@ -1112,7 +909,7 @@ async function main() {
     const hash = await walletClient.writeContract({
       address: args.pythResolver,
       abi: pythResolverAbi,
-      functionName: 'settleMarket',
+      functionName: 'settleCondition',
       args: [market, [blob]],
       value: verificationFee,
     });

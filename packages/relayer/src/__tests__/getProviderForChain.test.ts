@@ -1,12 +1,12 @@
 import { describe, it, expect } from 'vitest';
+import { getProviderForChain } from '../utils/getProviderForChain';
 import {
-  getProviderForChain,
-  getChainById,
+  getChainConfig,
   etherealChain,
-} from '../utils/getProviderForChain';
+} from '@sapience/sdk/constants';
 
 describe('getProviderForChain', () => {
-  const supportedChainIds = [13370, 5064014];
+  const supportedChainIds = [5064014];
 
   it.each(supportedChainIds)(
     'returns a PublicClient for chain ID %i',
@@ -19,7 +19,7 @@ describe('getProviderForChain', () => {
   );
 
   it('throws for unsupported chain ID', () => {
-    expect(() => getProviderForChain(999)).toThrow('Unsupported chain ID: 999');
+    expect(() => getProviderForChain(999)).toThrow('Unsupported chain');
   });
 
   describe('Caching', () => {
@@ -30,36 +30,29 @@ describe('getProviderForChain', () => {
     });
 
     it('returns different instances for different chain IDs', () => {
-      const clientCannon = getProviderForChain(13370);
       const clientEthereal = getProviderForChain(5064014);
-      expect(clientCannon).not.toBe(clientEthereal);
+      const clientEtherealTestnet = getProviderForChain(13374202);
+      expect(clientEthereal).not.toBe(clientEtherealTestnet);
     });
   });
 });
 
-describe('getChainById', () => {
-  it('returns chain definition for cannon (13370)', () => {
-    const chain = getChainById(13370);
+describe('SDK chain config', () => {
+  it('getChainConfig returns chain for ethereal (5064014)', () => {
+    const chain = getChainConfig(5064014);
     expect(chain).toBeDefined();
-    expect(chain!.id).toBe(13370);
+    expect(chain.id).toBe(5064014);
   });
 
-  it('returns chain definition for ethereal (5064014)', () => {
-    const chain = getChainById(5064014);
-    expect(chain).toBeDefined();
-    expect(chain!.id).toBe(5064014);
-  });
-
-  it('returns undefined for unknown chain ID', () => {
-    const chain = getChainById(99999);
-    expect(chain).toBeUndefined();
+  it('getChainConfig throws for unknown chain ID', () => {
+    expect(() => getChainConfig(99999)).toThrow('Unsupported chain');
   });
 });
 
 describe('Custom chain definitions', () => {
   it('etherealChain has id 5064014', () => {
     expect(etherealChain.id).toBe(5064014);
-    expect(etherealChain.name).toBe('EtherealChain');
+    expect(etherealChain.name).toBe('Ethereal');
     expect(etherealChain.nativeCurrency.symbol).toBe('USDe');
   });
 });

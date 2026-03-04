@@ -36,42 +36,10 @@ export interface AuctionRequestPayload {
   sessionTypedData?: EnableTypedData; // EIP-712 typed data for enable signature verification (session key is extracted from validatorData)
 }
 
-export interface BidQuote {
-  makerDeadline: number; // unix seconds
-}
-
-export interface BidFillRawTx {
-  rawSignedTx: HexString; // RLP
-}
-
-export interface BidFillCallData {
-  callData: {
-    to: string;
-    data: HexString;
-    gas?: string;
-    maxFeePerGas?: string;
-    maxPriorityFeePerGas?: string;
-    nonce?: string;
-  };
-  signature?: {
-    r: HexString;
-    s: HexString;
-    v: number;
-  };
-}
-
-export interface MintParlayData {
-  taker: string; // EOA
-  takerWager: string; // wei string
-  takerSignature: string; // Taker's signature allowing this specific bid
-}
-
-export type BidFill = BidFillRawTx | BidFillCallData | MintParlayData;
-
 export interface BidPayload {
   auctionId: string;
   maker: string; // Maker's EOA or smart account address (0x...) - the bidding party
-  makerWager: string; // wei string
+  makerCollateral: string; // wei string
   makerDeadline: number; // unix seconds
   makerSignature: string; // Maker's signature authorizing this specific bid over the typed payload
   makerNonce: number; // nonce for the maker (bidding party)

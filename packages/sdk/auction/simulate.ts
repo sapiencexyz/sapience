@@ -61,7 +61,7 @@ export interface SimulateBidResult {
 /** Bid data from the API (bidder/market maker). */
 export interface BidData {
   maker: string;
-  makerWager: string;
+  makerCollateral: string;
   makerDeadline: number;
   makerSignature: string;
   makerNonce: number;
@@ -69,7 +69,7 @@ export interface BidData {
 
 export type ValidationStatus = 'pending' | 'valid' | 'invalid';
 
-export interface ValidatedBid<T extends BidData> {
+export interface LegacyValidatedBid<T extends BidData> {
   bid: T;
   validationStatus: ValidationStatus;
   validationError?: string;
@@ -82,7 +82,7 @@ export interface SimulateBidMintOptions {
   chainId: number;
   predictionMarketAddress: `0x${string}`;
   takerAddress: `0x${string}`;
-  takerWager: string;
+  takerCollateral: string;
   takerNonce: number;
   encodedPredictedOutcomes: `0x${string}`;
   resolver: `0x${string}`;

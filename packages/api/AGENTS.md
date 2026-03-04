@@ -42,10 +42,9 @@ Reindex/backfill helpers (`start:reindex-*`, `start:backfill-accuracy`) are CLIs
 - `codegen.ts` – GraphQL Code Generator configuration.
 
 ## Deployment
-- Render configuration lives in `render.yaml`. The `web-service` entry deploys the API by installing pnpm 9, running `render-build-sdk.sh`, and starting `pnpm --filter @sapience/api start:service`.
-- One Render worker supports background processing:
-  - `background-worker` runs the same build steps, executes `pnpm --filter @sapience/api prisma:generate`, then starts `pnpm --filter @sapience/api start:worker`.
-- All services share the managed Postgres instance (`DATABASE_URL` provided via Render environment variables) and deploy from the `main` branch of the GitHub repo.
+- Railway deploys the API and worker as separate services. Both share the same build command (install deps, build SDK, `prisma:generate`) with different start commands (`start:service` vs `start:worker`).
+- `DATABASE_URL` is provided via Railway environment variables.
+- Two environments: **testing** (deploys from a WIP branch) and **production** (deploys from `main`).
 
 ## Agent Tips
 - Run `prisma:setup` before tests or local servers to avoid missing migrations or generated clients.

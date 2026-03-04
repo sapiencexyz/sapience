@@ -16,18 +16,18 @@ interface PositionPrediction {
 }
 
 export default function PositionPredictionsList({
-  legs,
+  picks,
   className,
   layout = 'column',
   maxWidthClass,
 }: {
-  legs: PositionPrediction[];
+  picks: PositionPrediction[];
   className?: string;
   layout?: 'row' | 'column';
   // Optional max width utility classes, e.g. "max-w-[320px]"
   maxWidthClass?: string;
 }) {
-  if (!legs || legs.length === 0) {
+  if (!picks || picks.length === 0) {
     return null;
   }
 
@@ -69,8 +69,8 @@ export default function PositionPredictionsList({
           className={`${maxWidthClass ?? 'max-w-[320px]'} overflow-x-auto`}
         >
           <div className="flex items-center gap-4 md:gap-5 whitespace-nowrap pr-6">
-            {legs.map((leg, idx) => {
-              const text = leg.question || leg.conditionId || '';
+            {picks.map((pick, idx) => {
+              const text = pick.question || pick.conditionId || '';
               const isHexId = /^0x[0-9a-fA-F]{64}$/.test(String(text));
               return (
                 <div
@@ -110,12 +110,12 @@ export default function PositionPredictionsList({
                   <Badge
                     variant="outline"
                     className={
-                      leg.choice === 'Yes'
+                      pick.choice === 'Yes'
                         ? 'px-1.5 py-0.5 text-xs font-medium border-green-500/40 bg-green-500/10 text-green-600 shrink-0'
                         : 'px-1.5 py-0.5 text-xs font-medium border-red-500/40 bg-red-500/10 text-red-600 shrink-0'
                     }
                   >
-                    {leg.choice}
+                    {pick.choice}
                   </Badge>
                 </div>
               );
@@ -124,8 +124,8 @@ export default function PositionPredictionsList({
         </div>
       ) : (
         <div className="space-y-1">
-          {legs.map((leg, idx) => {
-            const text = leg.question || leg.conditionId || '';
+          {picks.map((pick, idx) => {
+            const text = pick.question || pick.conditionId || '';
             const isHexId = /^0x[0-9a-fA-F]{64}$/.test(String(text));
             return (
               <div key={idx} className="text-sm flex items-center gap-2">
@@ -160,12 +160,12 @@ export default function PositionPredictionsList({
                 <Badge
                   variant="outline"
                   className={
-                    leg.choice === 'Yes'
+                    pick.choice === 'Yes'
                       ? 'px-1.5 py-0.5 text-xs font-medium border-green-500/40 bg-green-500/10 text-green-600 shrink-0'
                       : 'px-1.5 py-0.5 text-xs font-medium border-red-500/40 bg-red-500/10 text-red-600 shrink-0'
                   }
                 >
-                  {leg.choice}
+                  {pick.choice}
                 </Badge>
               </div>
             );

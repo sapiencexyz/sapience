@@ -7,9 +7,11 @@ import { Badge } from '@sapience/ui/components/ui/badge';
 export default function ResolutionBadge({
   settled,
   resolvedToYes,
+  nonDecisive,
 }: {
   settled: boolean;
   resolvedToYes?: boolean;
+  nonDecisive?: boolean;
 }) {
   if (!settled) {
     return (
@@ -18,6 +20,17 @@ export default function ResolutionBadge({
         className="px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono border-muted-foreground/30 bg-muted/20 text-muted-foreground"
       >
         RESOLUTION PENDING
+      </Badge>
+    );
+  }
+
+  if (nonDecisive) {
+    return (
+      <Badge
+        variant="outline"
+        className="px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono border-muted-foreground/40 bg-muted/20 text-muted-foreground"
+      >
+        TIE
       </Badge>
     );
   }

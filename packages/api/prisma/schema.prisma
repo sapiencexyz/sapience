@@ -185,6 +185,7 @@ model Condition {
   // Resolution status
   settled          Boolean         @default(false)
   resolvedToYes    Boolean         @default(false)
+  nonDecisive      Boolean         @default(false)
   settledAt        Int?
   assertionId      String?         @db.VarChar
   assertionTimestamp Int?
@@ -194,8 +195,8 @@ model Condition {
   conditionGroup   ConditionGroup? @relation(fields: [conditionGroupId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   displayOrder     Int?            // Order within group, null when not in a group
 
-  // Normalized predictions
-  predictions    Prediction[]
+  // Legacy normalized predictions
+  predictions    LegacyPrediction[]
 
   // Attestations referencing this condition
   attestations   Attestation[]
@@ -227,7 +228,7 @@ model ConditionGroup {
   @@map("condition_group")
 }
 
-model Prediction {
+model LegacyPrediction {
   id          Int       @id @default(autoincrement())
   createdAt   DateTime  @default(now()) @db.Timestamp(6)
 
@@ -237,7 +238,7 @@ model Prediction {
 
   // Exactly one of these should be set; enforced in application logic
   positionId   Int?
-  position     Position?   @relation(fields: [positionId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  position     LegacyPosition?   @relation(fields: [positionId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   limitOrderId Int?
   limitOrder   LimitOrder?  @relation(fields: [limitOrderId], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -256,8 +257,8 @@ model Prediction {
   @@map("prediction")
 }
 
-/// Position model to store on-chain prediction positions
-model Position {
+/// Legacy position model (NFT-based, V1)
+model LegacyPosition {
   id               Int       @id @default(autoincrement())
   createdAt        DateTime  @default(now()) @db.Timestamp(6)
 
@@ -274,7 +275,7 @@ model Position {
   refCode          String?   @db.VarChar
 
   // Status
-  status           PositionStatus @default(active)
+  status           LegacyPositionStatus @default(active)
   /// True when the predictor's submitted outcomes were correct (previously makerWon)
   predictorWon     Boolean?
   mintedAt         Int
@@ -284,18 +285,23 @@ model Position {
   endsAt           Int?
 
   // Normalized predictions
-  predictions   Prediction[]
+  predictions   LegacyPrediction[]
 
   @@index([predictor], map: "IDX_position_predictor")
   @@index([counterparty], map: "IDX_position_counterparty")
   @@index([chainId, marketAddress], map: "IDX_position_chain_market")
+  @@index([mintedAt], map: "IDX_position_minted_at")
+  @@index([settledAt], map: "IDX_position_settled_at")
+  @@index([status], map: "IDX_position_status")
   @@map("position")
 }
 
-enum PositionStatus {
+enum LegacyPositionStatus {
   active
   settled
   consolidated
+
+  @@map("PositionStatus")
 }
 
 
@@ -332,8 +338,8 @@ model LimitOrder {
   cancelledTxHash   String?   @db.VarChar
   
   // Normalized predictions
-  predictions    Prediction[]
-  
+  predictions    LegacyPrediction[]
+
   @@unique([chainId, marketAddress, orderId], map: "UQ_limit_order_chain_market_id")
   @@index([predictor], map: "IDX_limit_order_predictor")
   @@index([chainId, status], map: "IDX_limit_order_chain_status")
@@ -449,6 +455,218 @@ model VaultFlowEvent {
   @@index([chainId, timestamp])
   @@index([eventType])
   @@map("vault_flow_event")
+}
+
+// ───────────────────────────────────────────────
+// Prediction Market Models (current system)
+// ───────────────────────────────────────────────
+
+enum SettlementResult {
+  UNRESOLVED
+  PREDICTOR_WINS
+  COUNTERPARTY_WINS
+  NON_DECISIVE
+
+  @@map("V2SettlementResult")
+}
+
+/// Tracks the indexer's last-processed block per chain + contract
+model IndexerState {
+  id               Int      @id @default(autoincrement())
+  createdAt        DateTime @default(now()) @db.Timestamp(6)
+  updatedAt        DateTime @updatedAt @db.Timestamp(6)
+  chainId          Int
+  marketAddress    String   @db.VarChar
+  lastIndexedBlock Int
+  lastIndexedAt    DateTime @default(now()) @db.Timestamp(6)
+
+  @@unique([chainId, marketAddress])
+}
+
+/// A prediction (position) created on-chain via PredictionMarketEscrow
+model Prediction {
+  id                     Int       @id @default(autoincrement())
+  createdAt              DateTime  @default(now()) @db.Timestamp(6)
+
+  predictionId           String    @unique @db.VarChar
+  chainId                Int
+  marketAddress          String    @db.VarChar
+  predictor              String    @db.VarChar
+  counterparty           String    @db.VarChar
+  predictorToken         String    @db.VarChar
+  counterpartyToken      String    @db.VarChar
+  predictorCollateral    String    @db.VarChar
+  counterpartyCollateral String    @db.VarChar
+  onChainCreatedAt       Int
+  createTxHash           String    @db.VarChar
+  refCode                String?   @db.VarChar
+
+  // Settlement
+  settled                Boolean   @default(false)
+  settledAt              Int?
+  settleTxHash           String?   @db.VarChar
+  result                 SettlementResult @default(UNRESOLVED)
+  predictorClaimable     String?   @db.VarChar
+  counterpartyClaimable  String?   @db.VarChar
+
+  // Collateral deposit tracking
+  collateralDeposited    String?   @db.VarChar
+  collateralDepositedAt  Int?
+
+  @@index([chainId, marketAddress], map: "IDX_prediction_chain_market")
+  @@index([predictor], map: "IDX_prediction_predictor")
+  @@index([counterparty], map: "IDX_prediction_counterparty")
+  @@index([settled], map: "IDX_prediction_settled")
+  @@index([onChainCreatedAt], map: "IDX_prediction_created_at")
+  @@index([settledAt], map: "IDX_prediction_settled_at")
+  @@index([predictorToken], map: "IDX_prediction_predictor_token")
+  @@index([counterpartyToken], map: "IDX_prediction_counterparty_token")
+}
+
+// TODO: Rename Prisma model Picks → PickConfiguration (requires migration with @@map)
+/// A pick configuration (group of picks that define a combined position)
+model Picks {
+  id                           String    @id @db.VarChar
+  createdAt                    DateTime  @default(now()) @db.Timestamp(6)
+
+  chainId                      Int
+  marketAddress                String    @db.VarChar
+  totalPredictorCollateral     String    @default("0") @db.VarChar
+  totalCounterpartyCollateral  String    @default("0") @db.VarChar
+  claimedPredictorCollateral   String    @default("0") @db.VarChar
+  claimedCounterpartyCollateral String   @default("0") @db.VarChar
+  resolved                     Boolean   @default(false)
+  result                       SettlementResult @default(UNRESOLVED)
+  resolvedAt                   Int?
+  predictorToken               String?   @db.VarChar
+  counterpartyToken            String?   @db.VarChar
+  endsAt                       Int?
+  fullyRedeemed                Boolean   @default(false)
+
+  picks                        Pick[]
+  positionBalances             Position[]
+
+  @@index([chainId, marketAddress], map: "IDX_pick_config_chain_market")
+  @@index([resolved], map: "IDX_pick_config_resolved")
+  @@index([fullyRedeemed], map: "IDX_pick_config_fully_redeemed")
+}
+
+/// Individual pick within a pick configuration
+model Pick {
+  id                  Int      @id @default(autoincrement())
+  createdAt           DateTime @default(now()) @db.Timestamp(6)
+
+  pickConfigId        String   @db.VarChar
+  pickConfiguration   Picks    @relation(fields: [pickConfigId], references: [id], onDelete: Cascade)
+
+  conditionResolver   String   @db.VarChar
+  conditionId         String   @db.VarChar
+  predictedOutcome    Int
+
+  @@index([pickConfigId], map: "IDX_pick_config_id")
+  @@index([conditionId], map: "IDX_pick_condition_id")
+}
+
+/// Token balance tracking for positions
+model Position {
+  id               Int      @id @default(autoincrement())
+  createdAt        DateTime @default(now()) @db.Timestamp(6)
+  updatedAt        DateTime @updatedAt @db.Timestamp(6)
+
+  chainId          Int
+  tokenAddress     String   @db.VarChar
+  pickConfigId     String   @db.VarChar
+  pickConfiguration Picks   @relation(fields: [pickConfigId], references: [id], onDelete: Cascade)
+  isPredictorToken Boolean
+  holder           String   @db.VarChar
+  balance          String   @db.VarChar
+
+  @@unique([chainId, tokenAddress, holder], map: "UQ_position_balance")
+  @@index([holder], map: "IDX_position_balance_holder")
+  @@index([pickConfigId], map: "IDX_position_balance_pick_config")
+  @@index([tokenAddress], map: "IDX_position_token_address")
+}
+
+/// Record of token claims (early exit via redeem)
+model Claim {
+  id              Int      @id @default(autoincrement())
+  createdAt       DateTime @default(now()) @db.Timestamp(6)
+
+  chainId         Int
+  marketAddress   String   @db.VarChar
+  predictionId    String   @db.VarChar
+  holder          String   @db.VarChar
+  positionToken   String   @db.VarChar
+  tokensBurned    String   @db.VarChar
+  collateralPaid  String   @db.VarChar
+  redeemedAt      Int
+  txHash          String   @db.VarChar
+  refCode         String?  @db.VarChar
+
+  @@index([chainId, marketAddress], map: "IDX_claim_chain_market")
+  @@index([holder], map: "IDX_claim_holder")
+  @@index([predictionId], map: "IDX_claim_prediction")
+  @@index([redeemedAt], map: "IDX_claim_redeemed_at")
+}
+
+/// Record of position closes (settled exits)
+model Close {
+  id                       Int      @id @default(autoincrement())
+  createdAt                DateTime @default(now()) @db.Timestamp(6)
+
+  chainId                  Int
+  marketAddress            String   @db.VarChar
+  pickConfigId             String   @db.VarChar
+  predictorHolder          String   @db.VarChar
+  counterpartyHolder       String   @db.VarChar
+  predictorTokensBurned    String   @db.VarChar
+  counterpartyTokensBurned String   @db.VarChar
+  predictorPayout          String   @db.VarChar
+  counterpartyPayout       String   @db.VarChar
+  burnedAt                 Int
+  txHash                   String   @db.VarChar
+  refCode                  String?  @db.VarChar
+
+  @@index([chainId, marketAddress], map: "IDX_close_chain_market")
+  @@index([pickConfigId], map: "IDX_close_pick_config")
+  @@index([predictorHolder], map: "IDX_close_predictor")
+  @@index([counterpartyHolder], map: "IDX_close_counterparty")
+  @@index([burnedAt], map: "IDX_close_burned_at")
+}
+
+/// Indexer state for SecondaryMarketEscrow contract
+model SecondaryIndexerState {
+  chainId          Int      @id
+  contractAddress  String   @db.VarChar
+  lastIndexedBlock Int
+  lastIndexedAt    DateTime @default(now()) @db.Timestamp(6)
+
+  @@map("secondary_indexer_state")
+}
+
+/// A secondary market trade executed on-chain via SecondaryMarketEscrow
+model SecondaryTrade {
+  id          Int       @id @default(autoincrement())
+  createdAt   DateTime  @default(now()) @db.Timestamp(6)
+  chainId     Int
+  tradeHash   String    @unique @db.VarChar
+  seller      String    @db.VarChar
+  buyer       String    @db.VarChar
+  token       String    @db.VarChar
+  collateral  String    @db.VarChar
+  tokenAmount String    @db.VarChar
+  price       String    @db.VarChar
+  refCode     String?   @db.VarChar
+  executedAt  Int
+  txHash      String    @db.VarChar
+  blockNumber Int
+
+  @@index([chainId], map: "IDX_secondary_trade_chain")
+  @@index([seller], map: "IDX_secondary_trade_seller")
+  @@index([buyer], map: "IDX_secondary_trade_buyer")
+  @@index([token], map: "IDX_secondary_trade_token")
+  @@index([executedAt], map: "IDX_secondary_trade_executed_at")
+  @@map("secondary_trade")
 }
 
 /// Indexed wUSDe (collateral token) Transfer events on Ethereal for historical balance queries

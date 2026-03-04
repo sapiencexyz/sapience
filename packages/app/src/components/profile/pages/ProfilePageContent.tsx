@@ -9,38 +9,30 @@ import {
   TabsContent,
   TabsTrigger,
 } from '@sapience/ui/components/ui/tabs';
-import { Telescope, ArrowLeftRightIcon } from 'lucide-react';
+import { Telescope, ArrowLeftRightIcon, Activity } from 'lucide-react';
 import SegmentedTabsList from '~/components/shared/SegmentedTabsList';
 import ProfileHeader from '~/components/profile/ProfileHeader';
 import ForecastsTable from '~/components/profile/ForecastsTable';
 import PositionsTable from '~/components/positions/PositionsTable';
+import ActivityTable from '~/components/positions/ActivityTable';
 import { useForecasts } from '~/hooks/graphql/useForecasts';
-import { useUserPositions } from '~/hooks/graphql/useUserPositions';
 import { SCHEMA_UID } from '~/lib/constants';
 import ProfileQuickMetrics from '~/components/profile/ProfileQuickMetrics';
 import ShareAfterRedirect from '~/components/shared/ShareAfterRedirect';
-import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 
-const TAB_VALUES = ['positions', 'forecasts'] as const;
+const TAB_VALUES = ['positions', 'forecasts', 'activity'] as const;
 type TabValue = (typeof TAB_VALUES)[number];
 
 const ProfilePageContent = () => {
   const params = useParams();
   const address = (params.address as string).toLowerCase() as Address;
-  const chainId = CHAIN_ID_ETHEREAL;
 
   const { data: attestations, isLoading: forecastsLoading } = useForecasts({
     attesterAddress: address,
     schemaId: SCHEMA_UID,
   });
 
-  // Positions for this profile address, filtered by chainId
-  const { data: positions, isLoading: positionsLoading } = useUserPositions({
-    address: String(address),
-    chainId,
-  });
-
-  const allLoaded = !forecastsLoading && !positionsLoading;
+  const allLoaded = !forecastsLoading;
 
   const [hasLoadedOnce, setHasLoadedOnce] = useState(false);
 
@@ -107,6 +99,13 @@ const ProfilePageContent = () => {
         <Telescope className="h-4 w-4 mr-2" />
         Forecasts
       </TabsTrigger>
+      <TabsTrigger
+        className="justify-center flex-1 md:flex-none"
+        value="activity"
+      >
+        <Activity className="h-4 w-4 mr-2" />
+        Activity
+      </TabsTrigger>
     </SegmentedTabsList>
   );
 
@@ -119,7 +118,7 @@ const ProfilePageContent = () => {
           <ProfileQuickMetrics
             address={address}
             forecastsCount={attestations?.length ?? 0}
-            positions={positions ?? []}
+            positions={[]}
           />
         ) : null}
       </div>
@@ -139,7 +138,6 @@ const ProfilePageContent = () => {
               <PositionsTable
                 account={address}
                 showHeaderText={false}
-                chainId={chainId}
                 leftSlot={tabSwitcher}
               />
             </TabsContent>
@@ -149,6 +147,10 @@ const ProfilePageContent = () => {
                 attesterAddress={address}
                 leftSlot={tabSwitcher}
               />
+            </TabsContent>
+
+            <TabsContent value="activity" className="mt-0">
+              <ActivityTable account={address} leftSlot={tabSwitcher} />
             </TabsContent>
           </div>
         </Tabs>

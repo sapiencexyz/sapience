@@ -24,7 +24,7 @@ interface ShareDialogProps {
   trigger?: React.ReactNode;
   imagePath?: string; // defaults to OG position path for now
   title?: string; // dialog title
-  legs?: Array<{ question: string; choice: string }>;
+  picks?: Array<{ question: string; choice: string }>;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
   forecastUid?: string; // For forecast share URLs (/forecast/{uid})
@@ -44,19 +44,19 @@ export default function ShareDialog({
   owner,
   extraParams,
   trigger,
-  imagePath = '/og/position',
+  imagePath = '/og/prediction',
   title = 'Share',
   open: controlledOpen,
   onOpenChange,
-  legs,
+  picks,
   forecastUid,
 }: ShareDialogProps) {
   const queryString = useMemo(() => {
     const sp = new URLSearchParams();
 
-    // If nftId and marketAddress are provided and we're using /og/position, use them
+    // If nftId and marketAddress are provided and we're using /og/prediction, use them
     // This allows the edge endpoint to query the API for position data
-    if (nftId && marketAddress && imagePath === '/og/position') {
+    if (nftId && marketAddress && imagePath === '/og/prediction') {
       sp.set('nftId', String(nftId));
       sp.set('marketAddress', String(marketAddress));
       return sp.toString();
@@ -81,10 +81,10 @@ export default function ShareDialog({
     if (symbol) sp.set('symbol', symbol);
     if (positionId != null) sp.set('pid', String(positionId));
     if (owner) sp.set('addr', owner);
-    if (legs) {
-      for (const leg of legs) {
-        const q = (leg?.question ?? '').toString().replace(/\|/g, ' ').trim();
-        const c = (leg?.choice ?? '').toString().replace(/\|/g, ' ').trim();
+    if (picks) {
+      for (const pick of picks) {
+        const q = (pick?.question ?? '').toString().replace(/\|/g, ' ').trim();
+        const c = (pick?.choice ?? '').toString().replace(/\|/g, ' ').trim();
         if (q && c) sp.append('leg', `${q}|${c}`);
       }
     }
@@ -110,7 +110,7 @@ export default function ShareDialog({
     marketAddress,
     owner,
     extraParams,
-    legs,
+    picks,
     imagePath,
     forecastUid,
   ]);

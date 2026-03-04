@@ -1,0 +1,449 @@
+[
+  {
+    "type": "constructor",
+    "inputs": [
+      {
+        "name": "_pythLazer",
+        "type": "address",
+        "internalType": "address"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
+    "name": "getConditionId",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "tuple",
+        "internalType": "struct PythConditionResolver.BinaryOptionMarket",
+        "components": [
+          {
+            "name": "priceId",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "endTime",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "strikePrice",
+            "type": "int64",
+            "internalType": "int64"
+          },
+          {
+            "name": "strikeExpo",
+            "type": "int32",
+            "internalType": "int32"
+          },
+          {
+            "name": "overWinsOnTie",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ]
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "stateMutability": "pure"
+  },
+  {
+    "type": "function",
+    "name": "getResolution",
+    "inputs": [
+      {
+        "name": "conditionId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "isResolved",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "outcome",
+        "type": "tuple",
+        "internalType": "struct IV2Types.OutcomeVector",
+        "components": [
+          {
+            "name": "yesWeight",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "noWeight",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getResolutions",
+    "inputs": [
+      {
+        "name": "conditionIds",
+        "type": "bytes32[]",
+        "internalType": "bytes32[]"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "isResolved",
+        "type": "bool[]",
+        "internalType": "bool[]"
+      },
+      {
+        "name": "outcomes",
+        "type": "tuple[]",
+        "internalType": "struct IV2Types.OutcomeVector[]",
+        "components": [
+          {
+            "name": "yesWeight",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "noWeight",
+            "type": "uint256",
+            "internalType": "uint256"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "getSettlement",
+    "inputs": [
+      {
+        "name": "conditionId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "tuple",
+        "internalType": "struct PythConditionResolver.MarketSettlement",
+        "components": [
+          {
+            "name": "settled",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "resolvedToOver",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "benchmarkPrice",
+            "type": "int64",
+            "internalType": "int64"
+          },
+          {
+            "name": "benchmarkExpo",
+            "type": "int32",
+            "internalType": "int32"
+          },
+          {
+            "name": "publishTime",
+            "type": "uint64",
+            "internalType": "uint64"
+          }
+        ]
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "isFinalized",
+    "inputs": [
+      {
+        "name": "conditionId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "isValidCondition",
+    "inputs": [
+      {
+        "name": "conditionId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "pure"
+  },
+  {
+    "type": "function",
+    "name": "pythLazer",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "",
+        "type": "address",
+        "internalType": "contract IPythLazer"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "settleCondition",
+    "inputs": [
+      {
+        "name": "market",
+        "type": "tuple",
+        "internalType": "struct PythConditionResolver.BinaryOptionMarket",
+        "components": [
+          {
+            "name": "priceId",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "endTime",
+            "type": "uint64",
+            "internalType": "uint64"
+          },
+          {
+            "name": "strikePrice",
+            "type": "int64",
+            "internalType": "int64"
+          },
+          {
+            "name": "strikeExpo",
+            "type": "int32",
+            "internalType": "int32"
+          },
+          {
+            "name": "overWinsOnTie",
+            "type": "bool",
+            "internalType": "bool"
+          }
+        ]
+      },
+      {
+        "name": "updateData",
+        "type": "bytes[]",
+        "internalType": "bytes[]"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "conditionId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      },
+      {
+        "name": "resolvedToOver",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "payable"
+  },
+  {
+    "type": "function",
+    "name": "settlements",
+    "inputs": [
+      {
+        "name": "",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "settled",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "resolvedToOver",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "benchmarkPrice",
+        "type": "int64",
+        "internalType": "int64"
+      },
+      {
+        "name": "benchmarkExpo",
+        "type": "int32",
+        "internalType": "int32"
+      },
+      {
+        "name": "publishTime",
+        "type": "uint64",
+        "internalType": "uint64"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "event",
+    "name": "MarketSettled",
+    "inputs": [
+      {
+        "name": "conditionId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "priceId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      },
+      {
+        "name": "endTime",
+        "type": "uint64",
+        "indexed": true,
+        "internalType": "uint64"
+      },
+      {
+        "name": "resolvedToOver",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      },
+      {
+        "name": "benchmarkPrice",
+        "type": "int64",
+        "indexed": false,
+        "internalType": "int64"
+      },
+      {
+        "name": "benchmarkExpo",
+        "type": "int32",
+        "indexed": false,
+        "internalType": "int32"
+      },
+      {
+        "name": "publishTime",
+        "type": "uint64",
+        "indexed": false,
+        "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "error",
+    "name": "InsufficientUpdateFee",
+    "inputs": [
+      {
+        "name": "required",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "provided",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "InvalidMagic",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidMarketData",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "InvalidMarketSessionValue",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MarketAlreadySettled",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "MarketNotEnded",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "PayloadHasExtraBytes",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "ReentrancyGuardReentrantCall",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "RefundFailed",
+    "inputs": []
+  },
+  {
+    "type": "error",
+    "name": "StrikeExpoMismatch",
+    "inputs": [
+      {
+        "name": "strikeExpo",
+        "type": "int32",
+        "internalType": "int32"
+      },
+      {
+        "name": "priceExpo",
+        "type": "int32",
+        "internalType": "int32"
+      }
+    ]
+  },
+  {
+    "type": "error",
+    "name": "UnknownProperty",
+    "inputs": []
+  }
+]

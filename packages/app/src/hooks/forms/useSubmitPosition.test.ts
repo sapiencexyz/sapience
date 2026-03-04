@@ -11,6 +11,9 @@ const mockUseReadContract = jest.fn().mockReturnValue({
 jest.mock('wagmi', () => ({
   useAccount: (...args: unknown[]) => mockUseAccount(...args),
   useReadContract: (...args: unknown[]) => mockUseReadContract(...args),
+  useSignTypedData: () => ({
+    signTypedDataAsync: jest.fn().mockResolvedValue('0xMockSignature'),
+  }),
   erc20Abi: [],
 }));
 
@@ -21,16 +24,15 @@ jest.mock('viem', () => ({
   parseAbi: jest.fn().mockReturnValue([]),
 }));
 
-const mockPrepareMintCalls = jest
-  .fn()
-  .mockReturnValue([
-    {
-      to: '0xMarket' as `0x${string}`,
-      data: '0xEncodedCalldata' as `0x${string}`,
-    },
-  ]);
+const mockPrepareMintCalls = jest.fn().mockReturnValue([
+  {
+    to: '0xMarket' as `0x${string}`,
+    data: '0xEncodedCalldata' as `0x${string}`,
+  },
+]);
 jest.mock('@sapience/sdk', () => ({
   predictionMarketAbi: [],
+  generateRandomNonce: () => BigInt(12345),
   toBigIntSafe: (value: string | number | bigint | undefined) => {
     if (value === undefined) return undefined;
     return BigInt(value);
@@ -41,7 +43,32 @@ jest.mock('@sapience/sdk', () => ({
 
 jest.mock('@sapience/sdk/constants', () => ({
   CHAIN_ID_ETHEREAL: 5064014,
-  ETHEREAL_WUSDE_ADDRESS: '0xWUSDe',
+  CHAIN_ID_ETHEREAL_TESTNET: 13374202,
+}));
+
+jest.mock('@sapience/sdk/contracts', () => ({
+  collateralToken: {
+    5064014: { address: '0xCollateralEthereal' },
+    42161: { address: '0xCollateralArbitrum' },
+  },
+}));
+
+jest.mock('@sapience/sdk/auction/escrowSigning', () => ({
+  buildPredictorMintTypedData: jest.fn().mockReturnValue({
+    domain: {
+      name: 'Test',
+      version: '1',
+      chainId: 5064014,
+      verifyingContract: '0xMarket',
+    },
+    types: { MintApproval: [] },
+    primaryType: 'MintApproval',
+    message: {},
+  }),
+}));
+
+jest.mock('~/lib/session/sessionKeyManager', () => ({
+  encodeEscrowSessionKeyData: jest.fn().mockReturnValue('0xSessionKeyData'),
 }));
 
 const mockSendCalls = jest.fn();
@@ -171,39 +198,29 @@ describe('useSubmitPosition', () => {
     });
   });
 
-  it('sets error when on-chain nonce differs from provided nonce', async () => {
-    // refetchMakerNonce returns a different nonce than what mintData provides
-    mockUseReadContract.mockReturnValue({
-      data: 0n,
-      isLoading: false,
-      refetch: jest.fn().mockResolvedValue({ data: 5n }), // on-chain nonce is 5
-    });
-
+  it('uses provided auction nonce directly without on-chain check', async () => {
     const mintData: MintPredictionRequestData = {
       ...VALID_MINT_DATA,
-      makerNonce: 0n, // but we're sending nonce 0
+      makerNonce: 42n,
     };
 
     const { result } = renderHook(() => useSubmitPosition(DEFAULT_PROPS));
 
-    act(() => {
-      result.current.submitPosition(mintData);
+    await act(async () => {
+      await result.current.submitPosition(mintData);
     });
 
-    await waitFor(() => {
-      expect(result.current.error).toContain('nonce');
-    });
+    // Should submit without error - no on-chain nonce comparison
+    expect(mockSendCalls).toHaveBeenCalled();
+    expect(result.current.error).toBeNull();
   });
 
-  it('retries once with fresh nonce on InvalidMakerNonce for non-auction submissions', async () => {
-    // First sendCalls fails with InvalidMakerNonce, second succeeds
-    mockSendCalls
-      .mockRejectedValueOnce(new Error('InvalidMakerNonce'))
-      .mockResolvedValueOnce(undefined);
+  it('sets error when sendCalls fails with InvalidMakerNonce (no retry with random nonces)', async () => {
+    mockSendCalls.mockRejectedValueOnce(new Error('InvalidMakerNonce'));
 
     const mintData: MintPredictionRequestData = {
       ...VALID_MINT_DATA,
-      // no makerNonce → non-auction submission, hook will fetch nonce
+      // no makerNonce → non-auction submission, hook generates random nonce
     };
     delete (mintData as Partial<MintPredictionRequestData>).makerNonce;
 
@@ -213,11 +230,12 @@ describe('useSubmitPosition', () => {
       await result.current.submitPosition(mintData);
     });
 
-    // Should have retried: sendCalls called twice
-    expect(mockSendCalls).toHaveBeenCalledTimes(2);
+    // With random bitmap nonces, no retry logic — error is surfaced
+    expect(mockSendCalls).toHaveBeenCalledTimes(1);
+    expect(result.current.error).toContain('InvalidMakerNonce');
   });
 
-  it('does not retry InvalidMakerNonce when auction-provided nonce is present', async () => {
+  it('sets error when sendCalls fails with auction-provided nonce', async () => {
     mockSendCalls.mockRejectedValue(new Error('InvalidMakerNonce'));
 
     const mintData: MintPredictionRequestData = {
@@ -227,15 +245,13 @@ describe('useSubmitPosition', () => {
 
     const { result } = renderHook(() => useSubmitPosition(DEFAULT_PROPS));
 
-    act(() => {
-      result.current.submitPosition(mintData);
+    await act(async () => {
+      await result.current.submitPosition(mintData);
     });
 
-    // Should NOT retry - only called once
-    await waitFor(() => {
-      expect(mockSendCalls).toHaveBeenCalledTimes(1);
-      expect(result.current.error).toContain('stale');
-    });
+    // Should not retry - only called once, error is surfaced
+    expect(mockSendCalls).toHaveBeenCalledTimes(1);
+    expect(result.current.error).toContain('InvalidMakerNonce');
   });
 
   it('onSuccess callback sets success and clears error', () => {

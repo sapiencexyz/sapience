@@ -14,17 +14,25 @@ import ResolutionBadge from '~/components/shared/ResolutionBadge';
 export default function ConditionStatus({
   settled,
   resolvedToYes,
+  nonDecisive,
   endTime,
 }: {
   settled?: boolean;
   resolvedToYes?: boolean;
+  nonDecisive?: boolean;
   /** Unix timestamp in seconds */
   endTime?: number | null;
 }) {
   const nowMs = useSecondTick();
 
   if (settled) {
-    return <ResolutionBadge settled resolvedToYes={resolvedToYes} />;
+    return (
+      <ResolutionBadge
+        settled
+        resolvedToYes={resolvedToYes}
+        nonDecisive={nonDecisive}
+      />
+    );
   }
 
   if (!endTime) {

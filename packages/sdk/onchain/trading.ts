@@ -12,26 +12,21 @@ import {
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { collateralToken, predictionMarket } from '../contracts/addresses';
-import { CHAIN_ID_ETHEREAL } from '../constants/chain';
-import { ETHEREAL_WUSDE_ADDRESS } from '../constants/addresses';
+import {
+  CHAIN_ID_ETHEREAL,
+  DEFAULT_CHAIN_ID,
+  etherealChain,
+  getRpcUrl,
+} from '../constants/chain';
+import { getCollateralAddress } from '../constants/addresses';
 
 type Hex = `0x${string}`;
 
-// Ethereal chain definition (trading chain)
-export const tradingChain: Chain = {
-  id: CHAIN_ID_ETHEREAL,
-  name: 'Ethereal',
-  nativeCurrency: { name: 'USDe', symbol: 'USDe', decimals: 18 },
-  rpcUrls: {
-    default: { http: ['https://rpc.ethereal.trade'] },
-  },
-  blockExplorers: {
-    default: { name: 'Ethereal Explorer', url: 'https://explorer.ethereal.trade' },
-  },
-};
+/** @deprecated Import `etherealChain` from `@sapience/sdk/constants` instead. */
+export const tradingChain: Chain = etherealChain;
 
-// Default trading RPC URL
-export const TRADING_RPC_URL = 'https://rpc.ethereal.trade';
+/** @deprecated Use `getRpcUrl(CHAIN_ID_ETHEREAL)` instead. */
+export const TRADING_RPC_URL = getRpcUrl(CHAIN_ID_ETHEREAL);
 
 // WUSDe ABI for wrap/unwrap operations
 const WUSDE_ABI = parseAbi([
@@ -79,11 +74,12 @@ export function createTradingWalletClient(
  */
 export async function getWUSDEBalance(
   address: Hex,
-  rpcUrl?: string
+  rpcUrl?: string,
+  chainId: number = DEFAULT_CHAIN_ID
 ): Promise<bigint> {
   const client = createTradingPublicClient(rpcUrl);
   const balance = await client.readContract({
-    address: ETHEREAL_WUSDE_ADDRESS,
+    address: getCollateralAddress(chainId),
     abi: WUSDE_ABI,
     functionName: 'balanceOf',
     args: [address],
@@ -110,8 +106,9 @@ export async function wrapUSDe(args: {
   privateKey: Hex;
   amount: bigint;
   rpcUrl?: string;
+  chainId?: number;
 }): Promise<{ hash: Hex }> {
-  const { privateKey, amount, rpcUrl } = args;
+  const { privateKey, amount, rpcUrl, chainId = DEFAULT_CHAIN_ID } = args;
   
   if (amount <= 0n) {
     throw new Error('Amount must be greater than 0');
@@ -120,7 +117,7 @@ export async function wrapUSDe(args: {
   const walletClient = createTradingWalletClient(privateKey, rpcUrl);
   
   const hash = await walletClient.sendTransaction({
-    to: ETHEREAL_WUSDE_ADDRESS,
+    to: getCollateralAddress(chainId),
     data: encodeFunctionData({
       abi: WUSDE_ABI,
       functionName: 'deposit',
@@ -139,8 +136,9 @@ export async function unwrapUSDe(args: {
   privateKey: Hex;
   amount: bigint;
   rpcUrl?: string;
+  chainId?: number;
 }): Promise<{ hash: Hex }> {
-  const { privateKey, amount, rpcUrl } = args;
+  const { privateKey, amount, rpcUrl, chainId = DEFAULT_CHAIN_ID } = args;
   
   if (amount <= 0n) {
     throw new Error('Amount must be greater than 0');
@@ -149,7 +147,7 @@ export async function unwrapUSDe(args: {
   const walletClient = createTradingWalletClient(privateKey, rpcUrl);
   
   const hash = await walletClient.sendTransaction({
-    to: ETHEREAL_WUSDE_ADDRESS,
+    to: getCollateralAddress(chainId),
     data: encodeFunctionData({
       abi: WUSDE_ABI,
       functionName: 'withdraw',
@@ -168,12 +166,13 @@ export async function getWUSDEAllowance(args: {
   owner: Hex;
   spender: Hex;
   rpcUrl?: string;
+  chainId?: number;
 }): Promise<bigint> {
-  const { owner, spender, rpcUrl } = args;
+  const { owner, spender, rpcUrl, chainId = DEFAULT_CHAIN_ID } = args;
   const publicClient = createTradingPublicClient(rpcUrl);
   
   const allowance = await publicClient.readContract({
-    address: ETHEREAL_WUSDE_ADDRESS,
+    address: getCollateralAddress(chainId),
     abi: ERC20_ABI,
     functionName: 'allowance',
     args: [owner, spender],
@@ -209,14 +208,15 @@ export async function prepareForTrade(args: {
   collateralAmount: bigint;
   spender?: Hex;
   rpcUrl?: string;
+  chainId?: number;
 }): Promise<{
   ready: boolean;
   wrapTxHash?: Hex;
   approvalTxHash?: Hex;
   wusdBalance: bigint;
 }> {
-  const { privateKey, collateralAmount, rpcUrl } = args;
-  const spender = args.spender || (predictionMarket[CHAIN_ID_ETHEREAL]?.address as Hex);
+  const { privateKey, collateralAmount, rpcUrl, chainId = DEFAULT_CHAIN_ID } = args;
+  const spender = args.spender || (predictionMarket[chainId]?.address ?? predictionMarket[CHAIN_ID_ETHEREAL]?.address) as Hex;
   
   if (!spender) {
     throw new Error('No spender address provided and no default PredictionMarket address found');
@@ -230,7 +230,7 @@ export async function prepareForTrade(args: {
   let approvalTxHash: Hex | undefined;
 
   // Step 1: Check existing WUSDe balance and only wrap the additional amount needed
-  const currentWUSDEBalance = await getWUSDEBalance(account.address, rpcUrl);
+  const currentWUSDEBalance = await getWUSDEBalance(account.address, rpcUrl, chainId);
   const amountToWrap = collateralAmount > currentWUSDEBalance 
     ? collateralAmount - currentWUSDEBalance 
     : 0n;
@@ -248,6 +248,7 @@ export async function prepareForTrade(args: {
       privateKey,
       amount: amountToWrap,
       rpcUrl,
+      chainId,
     });
     wrapTxHash = hash;
     
@@ -260,12 +261,13 @@ export async function prepareForTrade(args: {
     owner: account.address,
     spender,
     rpcUrl,
+    chainId,
   });
 
   if (currentAllowance < collateralAmount) {
     // Approve the exact amount needed (or could use max approval for convenience)
     const hash = await walletClient.writeContract({
-      address: ETHEREAL_WUSDE_ADDRESS,
+      address: getCollateralAddress(chainId),
       abi: ERC20_ABI,
       functionName: 'approve',
       args: [spender, collateralAmount],
@@ -277,7 +279,7 @@ export async function prepareForTrade(args: {
   }
 
   // Get final WUSDe balance for reference
-  const wusdBalance = await getWUSDEBalance(account.address, rpcUrl);
+  const wusdBalance = await getWUSDEBalance(account.address, rpcUrl, chainId);
 
   return {
     ready: true,

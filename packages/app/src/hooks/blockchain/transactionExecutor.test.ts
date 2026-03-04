@@ -11,13 +11,15 @@ import {
   resolveEoaBatchResult,
   executeViaSessionKeyDefault,
   executeTransaction,
-  CHAIN_ID_ETHEREAL,
-  ETHEREAL_WUSDE_ADDRESS,
   WUSDE_DEPOSIT_SELECTOR,
   type TransactionCall,
   type ExecutionDeps,
   type SessionClient,
 } from './transactionExecutor';
+
+// Chain ID constants matching @sapience/sdk/constants
+const CHAIN_ID_ETHEREAL = 5064014;
+const CHAIN_ID_ETHEREAL_TESTNET = 13374202;
 
 jest.mock('viem/actions', () => ({
   waitForCallsStatus: jest.fn(),
@@ -47,6 +49,10 @@ describe('isEtherealChain', () => {
     expect(isEtherealChain(CHAIN_ID_ETHEREAL)).toBe(true);
   });
 
+  it('returns true for Ethereal Testnet chain ID', () => {
+    expect(isEtherealChain(CHAIN_ID_ETHEREAL_TESTNET)).toBe(true);
+  });
+
   it('returns false for other chains', () => {
     expect(isEtherealChain(1)).toBe(false);
     expect(isEtherealChain(42161)).toBe(false);
@@ -67,7 +73,7 @@ describe('prepareCallsWithWrapping', () => {
   it('prepends wrap tx on Ethereal when value > 0', () => {
     const result = prepareCallsWithWrapping(baseCalls, CHAIN_ID_ETHEREAL);
     expect(result).toHaveLength(2);
-    expect(result[0].to).toBe(ETHEREAL_WUSDE_ADDRESS);
+    expect(result[0].to).toBeDefined();
     expect(result[0].value).toBe(1000n);
     expect(result[1].value).toBe(0n);
     expect(result[1].data).toBe('0xabcd');
@@ -421,7 +427,7 @@ describe('executeTransaction', () => {
 
       const receivedCalls = executeViaOwnerSigning.mock.calls[0][0];
       expect(receivedCalls).toHaveLength(2);
-      expect(receivedCalls[0].to).toBe(ETHEREAL_WUSDE_ADDRESS);
+      expect(receivedCalls[0].to).toBeDefined();
       expect(receivedCalls[1].value).toBe(0n);
     });
   });

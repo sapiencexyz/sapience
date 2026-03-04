@@ -120,7 +120,9 @@ const corsOptions: cors.CorsOptions = {
       /^https?:\/\/([a-zA-Z0-9-]+\.)*foil\.xyz$/.test(origin) ||
       /^https?:\/\/([a-zA-Z0-9-]+\.)*sapience\.xyz$/.test(origin) ||
       /^https?:\/\/(app|docs)\.vercel\.app$/.test(origin) || // production Vercel
-      /^https?:\/\/(app|docs)-git-[a-z0-9-]+-sapiencexyz\.vercel\.app$/.test(origin) || // preview deploys
+      /^https?:\/\/(app|docs)-git-[a-z0-9-]+-sapiencexyz\.vercel\.app$/.test(
+        origin
+      ) || // preview deploys
       /^https?:\/\/localhost(:\d+)?$/.test(origin) // Allow localhost with optional port
     ) {
       callback(null, true);
@@ -138,7 +140,11 @@ const corsOptions: cors.CorsOptions = {
     'x-admin-signature-timestamp',
     'Payment-Signature', // x402 payment header
   ],
-  exposedHeaders: ['PAYMENT-REQUIRED', 'PAYMENT-RESPONSE', 'X-PAYMENT-RESPONSE'],
+  exposedHeaders: [
+    'PAYMENT-REQUIRED',
+    'PAYMENT-RESPONSE',
+    'X-PAYMENT-RESPONSE',
+  ],
 };
 
 // ─── Middleware setup ────────────────────────────────────────────────────────
@@ -226,7 +232,10 @@ export function setupMiddleware(app: Express) {
       // Process payment if either:
       // 1. Free tier exceeded (req.requiresPayment=true) OR
       // 2. Request has payment header (even if under free tier)
-      if ((req as Request & { requiresPayment?: boolean }).requiresPayment || hasPaymentHeader) {
+      if (
+        (req as Request & { requiresPayment?: boolean }).requiresPayment ||
+        hasPaymentHeader
+      ) {
         try {
           // x402 middleware handles both cases:
           // - No payment header → sends 402 directly (callback never called)
@@ -248,12 +257,14 @@ export function setupMiddleware(app: Express) {
     });
   } else {
     // Simple rate limiting - no payment path, just reject with 429
-    app.use(rateLimit({
-      windowMs: config.RATE_LIMIT_WINDOW_MS,
-      max: config.FREE_TIER_RATE_LIMIT,
-      standardHeaders: true,
-      legacyHeaders: false,
-    }));
+    app.use(
+      rateLimit({
+        windowMs: config.RATE_LIMIT_WINDOW_MS,
+        max: config.FREE_TIER_RATE_LIMIT,
+        standardHeaders: true,
+        legacyHeaders: false,
+      })
+    );
 
     console.log('[x402] Tiered rate limiting disabled (X402_PAY_TO not set)');
   }

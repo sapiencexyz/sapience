@@ -4,13 +4,13 @@ import * as React from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { parseUnits, zeroAddress } from 'viem';
 import { useAccount, useReadContract } from 'wagmi';
-import { predictionMarketAbi } from '@sapience/sdk';
-import { predictionMarket } from '@sapience/sdk/contracts';
+import { predictionMarketEscrowAbi } from '@sapience/sdk/abis';
+import { predictionMarketEscrow } from '@sapience/sdk/contracts';
 import {
   DEFAULT_CHAIN_ID,
-  CHAIN_ID_ETHEREAL,
   PREFERRED_ESTIMATE_QUOTER,
 } from '@sapience/sdk/constants';
+import { predictionMarketLZConditionalTokensResolver } from '@sapience/sdk/contracts';
 import { verifyMakerBidSignature } from '@sapience/sdk';
 import { useAuctionStart, type QuoteBid } from '~/lib/auction/useAuctionStart';
 import {
@@ -38,6 +38,8 @@ interface MarketPredictionRequestProps {
   prefetchedProbability?: number | null;
   skipViewportCheck?: boolean;
   requestLabel?: string;
+  chainId?: number;
+  resolverAddress?: string | null;
 }
 
 // Custom comparator for React.memo: ignore onPrediction identity changes
@@ -56,6 +58,8 @@ function arePropsEqual(
   if (prev.skipViewportCheck !== next.skipViewportCheck) return false;
   if (prev.className !== next.className) return false;
   if (prev.requestLabel !== next.requestLabel) return false;
+  if (prev.chainId !== next.chainId) return false;
+  if (prev.resolverAddress !== next.resolverAddress) return false;
 
   // Lightweight outcomes comparison (length + marketIds)
   const pO = prev.outcomes;
@@ -84,6 +88,8 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
   prefetchedProbability = null,
   skipViewportCheck = false,
   requestLabel = 'Request',
+  chainId: chainIdProp,
+  resolverAddress,
 }) => {
   // Store onPrediction in a ref so we can call the latest version without
   // depending on its identity (avoids rerenders when parent passes new lambdas).
@@ -95,7 +101,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
     number | null
   >(() => (prefetchedProbability != null ? prefetchedProbability : null));
   const [isRequesting, setIsRequesting] = React.useState<boolean>(false);
-  const [lastTakerPositionSizeWei, setLastTakerPositionSizeWei] =
+  const [lastPredictorPositionSizeWei, setLastPredictorPositionSizeWei] =
     React.useState<string | null>(null);
   const [queuedRequest, setQueuedRequest] = React.useState<boolean>(false);
   // Store auction params for signature verification
@@ -103,20 +109,19 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
     wager: string;
     predictedOutcomes: string[];
     resolver: string;
-    taker: string;
-    takerNonce: number;
+    predictor: string;
+    predictorNonce: number;
     chainId: number;
   } | null>(null);
 
-  const { address: takerAddress } = useAccount();
+  const { address: predictorAddress } = useAccount();
   // Disable logging for forecast-only components to avoid noisy console output
   const { requestQuotes, bids } = useAuctionStart({ disableLogging: true });
-  const chainId = CHAIN_ID_ETHEREAL;
+  const chainId = chainIdProp ?? DEFAULT_CHAIN_ID;
   const PREDICTION_MARKET_ADDRESS =
-    predictionMarket[chainId]?.address ||
-    predictionMarket[DEFAULT_CHAIN_ID]?.address;
+    predictionMarketEscrow[chainId]?.address ||
+    predictionMarketEscrow[DEFAULT_CHAIN_ID]?.address;
 
-  const eagerlyRequestedRef = React.useRef<boolean>(false);
   const eagerJitterMsRef = React.useRef<number>(
     Math.floor(Math.random() * 301)
   );
@@ -124,6 +129,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
   // Track viewport visibility to trigger eager load only when visible
   const rootRef = React.useRef<HTMLDivElement | null>(null);
   const [isInViewport, setIsInViewport] = React.useState<boolean>(false);
+  const eagerlyRequestedRef = React.useRef<boolean>(false);
 
   React.useEffect(() => {
     if (!eager) return;
@@ -156,7 +162,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
   }, [eager, skipViewportCheck]);
 
   // Prefer connected wallet address; fall back to zero address
-  const selectedTakerAddress = takerAddress || zeroAddress;
+  const selectedPredictorAddress = predictorAddress || zeroAddress;
 
   // If we have a prefetched probability (e.g., fetched offscreen), set it and
   // skip further requests.
@@ -167,13 +173,15 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
     setQueuedRequest(false);
   }, [prefetchedProbability]);
 
-  const { data: takerNonce } = useReadContract({
+  const { data: predictorNonce } = useReadContract({
     address: PREDICTION_MARKET_ADDRESS,
-    abi: predictionMarketAbi,
-    functionName: 'nonces',
-    args: selectedTakerAddress ? [selectedTakerAddress] : undefined,
+    abi: predictionMarketEscrowAbi,
+    functionName: 'getNonce',
+    args: selectedPredictorAddress ? [selectedPredictorAddress] : undefined,
     chainId: chainId,
-    query: { enabled: !!selectedTakerAddress && !!PREDICTION_MARKET_ADDRESS },
+    query: {
+      enabled: !!selectedPredictorAddress && !!PREDICTION_MARKET_ADDRESS,
+    },
   });
 
   // unified via PercentChance component
@@ -185,7 +193,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
     const processBids = async () => {
       try {
         const nowMs = Date.now();
-        const isAnonymousUser = selectedTakerAddress === zeroAddress;
+        const isAnonymousUser = selectedPredictorAddress === zeroAddress;
 
         let filteredBids: QuoteBid[];
 
@@ -195,27 +203,30 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
 
           const trustedBotBids = bids.filter(
             (b) =>
-              b.maker?.toLowerCase() === PREFERRED_ESTIMATE_QUOTER.toLowerCase()
+              b.counterparty?.toLowerCase() ===
+              PREFERRED_ESTIMATE_QUOTER.toLowerCase()
           );
 
           // Verify each bid's signature
           const verifiedBids: QuoteBid[] = [];
           for (const bid of trustedBotBids) {
             try {
+              // SDK verifyMakerBidSignature uses contract naming (maker/taker)
+              // Map from app naming: predictor → taker, counterparty → maker
               const result = await verifyMakerBidSignature({
                 auction: {
                   wager: lastAuctionParams.wager,
                   predictedOutcomes:
                     lastAuctionParams.predictedOutcomes as `0x${string}`[],
                   resolver: lastAuctionParams.resolver as `0x${string}`,
-                  taker: lastAuctionParams.taker as `0x${string}`,
+                  taker: lastAuctionParams.predictor as `0x${string}`,
                 },
                 bid: {
-                  maker: bid.maker as `0x${string}`,
-                  makerWager: bid.makerWager,
-                  makerDeadline: bid.makerDeadline,
-                  makerSignature: bid.makerSignature as `0x${string}`,
-                  makerNonce: lastAuctionParams.takerNonce,
+                  maker: bid.counterparty as `0x${string}`,
+                  makerCollateral: bid.counterpartyCollateral,
+                  makerDeadline: bid.counterpartyDeadline,
+                  makerSignature: bid.counterpartySignature as `0x${string}`,
+                  makerNonce: lastAuctionParams.predictorNonce,
                 },
                 chainId: lastAuctionParams.chainId,
               });
@@ -235,7 +246,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
 
         const valid = filteredBids.filter((b) => {
           try {
-            const dl = Number(b?.makerDeadline || 0);
+            const dl = Number(b?.counterpartyDeadline || 0);
             return Number.isFinite(dl) ? dl * 1000 > nowMs : true;
           } catch {
             return true;
@@ -244,7 +255,8 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
         const list = valid.length > 0 ? valid : filteredBids;
         const best = list.reduce((bestBid, cur) => {
           try {
-            return BigInt(cur.makerWager) > BigInt(bestBid.makerWager)
+            return BigInt(cur.counterpartyCollateral) >
+              BigInt(bestBid.counterpartyCollateral)
               ? cur
               : bestBid;
           } catch {
@@ -252,10 +264,14 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
           }
         }, list[0]);
 
-        const taker = BigInt(String(lastTakerPositionSizeWei || '0'));
-        const maker = BigInt(String(best?.makerWager || '0'));
-        const denom = maker + taker;
-        const prob = denom > 0n ? Number(taker) / Number(denom) : 0.5;
+        const predictorWei = BigInt(
+          String(lastPredictorPositionSizeWei || '0')
+        );
+        const counterpartyWei = BigInt(
+          String(best?.counterpartyCollateral || '0')
+        );
+        const denom = counterpartyWei + predictorWei;
+        const prob = denom > 0n ? Number(predictorWei) / Number(denom) : 0.5;
         const clamped = Math.max(0, Math.min(1, prob));
         setRequestedPrediction(clamped);
         onPredictionRef.current?.(clamped);
@@ -271,8 +287,8 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
   }, [
     bids,
     isRequesting,
-    lastTakerPositionSizeWei,
-    selectedTakerAddress,
+    lastPredictorPositionSizeWei,
+    selectedPredictorAddress,
     lastAuctionParams,
   ]);
 
@@ -298,22 +314,37 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
   React.useEffect(() => {
     if (!queuedRequest) return;
     if (!isRequesting) return;
-    if (effectiveOutcomes.length === 0 || !selectedTakerAddress) return;
+    if (effectiveOutcomes.length === 0 || !selectedPredictorAddress) return;
     try {
       const positionSizeWei = parseUnits('1', 18).toString();
-      setLastTakerPositionSizeWei(positionSizeWei);
+      setLastPredictorPositionSizeWei(positionSizeWei);
       const payload = buildAuctionStartPayload(effectiveOutcomes, chainId);
+      const effectiveResolver =
+        resolverAddress ||
+        predictionMarketLZConditionalTokensResolver[chainId]?.address ||
+        null;
+      const escrowPicks = effectiveResolver
+        ? effectiveOutcomes.map((o) => ({
+            conditionResolver: effectiveResolver as `0x${string}`,
+            conditionId: (o.marketId.startsWith('0x')
+              ? o.marketId
+              : `0x${o.marketId}`) as `0x${string}`,
+            predictedOutcome: o.prediction ? 1 : 0,
+          }))
+        : undefined;
       const auctionParams = {
         wager: positionSizeWei,
         resolver: payload.resolver,
         predictedOutcomes: payload.predictedOutcomes,
-        taker: selectedTakerAddress,
-        takerNonce: takerNonce !== undefined ? Number(takerNonce) : 0,
+        predictor: selectedPredictorAddress,
+        predictorNonce:
+          predictorNonce !== undefined ? Number(predictorNonce) : 0,
         chainId: chainId,
+        ...(escrowPicks && { escrowPicks }),
       };
       setLastAuctionParams(auctionParams);
       const send = () => {
-        requestQuotes(auctionParams, { requireSignature: false });
+        requestQuotes(auctionParams);
         setQueuedRequest(false);
       };
       // Add a small jitter to reduce simultaneous opens across instances
@@ -327,8 +358,8 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
     queuedRequest,
     isRequesting,
     effectiveOutcomes,
-    selectedTakerAddress,
-    takerNonce,
+    selectedPredictorAddress,
+    predictorNonce,
     requestQuotes,
     chainId,
   ]);
@@ -339,24 +370,39 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
     setRequestedPrediction(null);
     setIsRequesting(true);
     try {
-      // If outcomes aren't ready or no taker address yet -> queue
-      if (effectiveOutcomes.length === 0 || !selectedTakerAddress) {
+      // If outcomes aren't ready or no predictor address yet -> queue
+      if (effectiveOutcomes.length === 0 || !selectedPredictorAddress) {
         setQueuedRequest(true);
       } else {
         const positionSizeWei = parseUnits('1', 18).toString();
-        setLastTakerPositionSizeWei(positionSizeWei);
+        setLastPredictorPositionSizeWei(positionSizeWei);
         const payload = buildAuctionStartPayload(effectiveOutcomes, chainId);
+        const effectiveResolver =
+          resolverAddress ||
+          predictionMarketLZConditionalTokensResolver[chainId]?.address ||
+          null;
+        const escrowPicks = effectiveResolver
+          ? effectiveOutcomes.map((o) => ({
+              conditionResolver: effectiveResolver as `0x${string}`,
+              conditionId: (o.marketId.startsWith('0x')
+                ? o.marketId
+                : `0x${o.marketId}`) as `0x${string}`,
+              predictedOutcome: o.prediction ? 1 : 0,
+            }))
+          : undefined;
         const auctionParams = {
           wager: positionSizeWei,
           resolver: payload.resolver,
           predictedOutcomes: payload.predictedOutcomes,
-          taker: selectedTakerAddress,
-          takerNonce: takerNonce !== undefined ? Number(takerNonce) : 0,
+          predictor: selectedPredictorAddress,
+          predictorNonce:
+            predictorNonce !== undefined ? Number(predictorNonce) : 0,
           chainId: chainId,
+          ...(escrowPicks && { escrowPicks }),
         };
         setLastAuctionParams(auctionParams);
         const send = () => {
-          requestQuotes(auctionParams, { requireSignature: false });
+          requestQuotes(auctionParams);
         };
         // Jitter send to avoid concurrency clobbering
         const jitter = eager ? eagerJitterMsRef.current : 0;
@@ -371,30 +417,31 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
     }
   }, [
     effectiveOutcomes,
-    selectedTakerAddress,
-    takerNonce,
+    selectedPredictorAddress,
+    predictorNonce,
     requestQuotes,
     isRequesting,
     eager,
     chainId,
   ]);
 
-  // Only fire eager once both taker address and outcomes are ready
+  // Auto-fire eager request once component scrolls into view
   React.useEffect(() => {
     if (!eager) return;
     if (prefetchedProbability != null) return;
     if (eagerlyRequestedRef.current) return;
     if (!isInViewport) return;
-    if (!selectedTakerAddress) return;
+    if (!selectedPredictorAddress) return;
     if (effectiveOutcomes.length === 0) return;
     eagerlyRequestedRef.current = true;
     handleRequestPrediction();
   }, [
     eager,
     isInViewport,
-    selectedTakerAddress,
+    selectedPredictorAddress,
     effectiveOutcomes.length,
     handleRequestPrediction,
+    prefetchedProbability,
   ]);
 
   return (
