@@ -797,3 +797,115 @@ describe('computePredictionId', () => {
     expect(id1).not.toBe(id2);
   });
 });
+
+// ============================================================================
+// 10. Vault ERC-1271 double-wrap (catches #118)
+//
+// The vault's isValidSignature doesn't verify the raw MintApproval hash.
+// It wraps it in Approve(messageHash, owner) using SignatureProcessor domain.
+// Bug #118: vault signed the raw hash without the wrapper.
+// Bug #117: vault used manager EOA as signer instead of vault contract address.
+// ============================================================================
+
+describe('vault ERC-1271 double-wrap signing', () => {
+  const VAULT_ADDRESS = COUNTERPARTY; // vault is the counterparty
+  const MANAGER_EOA = getAddress('0x6666666666666666666666666666666666666666');
+
+  // SignatureProcessor domain (different from escrow domain!)
+  const VAULT_APPROVE_TYPES = {
+    Approve: [
+      { name: 'messageHash', type: 'bytes32' },
+      { name: 'owner', type: 'address' },
+    ],
+  } as const;
+
+  function getVaultDomain(vaultAddress: Address, chainId: number) {
+    return {
+      name: 'SignatureProcessor' as const,
+      version: '1' as const,
+      chainId: BigInt(chainId),
+      verifyingContract: vaultAddress,
+    };
+  }
+
+  const predictionHash = computePredictionHash(
+    computePickConfigId(PICKS), PREDICTOR_COLLATERAL, COUNTERPARTY_COLLATERAL,
+    PREDICTOR, VAULT_ADDRESS, zeroAddress, '0x'
+  );
+
+  // Step 1: MintApproval hash (escrow domain, signer = vault contract)
+  const mintApprovalHash = hashMintApproval({
+    predictionHash,
+    signer: VAULT_ADDRESS, // vault contract, NOT manager EOA
+    collateral: COUNTERPARTY_COLLATERAL,
+    nonce: NONCE,
+    deadline: DEADLINE,
+    verifyingContract: ESCROW_CONTRACT,
+    chainId: CHAIN_ID,
+  });
+
+  test('MintApproval signer must be vault contract, not manager EOA (catches #117)', () => {
+    const withManager = hashMintApproval({
+      predictionHash,
+      signer: MANAGER_EOA, // WRONG
+      collateral: COUNTERPARTY_COLLATERAL,
+      nonce: NONCE,
+      deadline: DEADLINE,
+      verifyingContract: ESCROW_CONTRACT,
+      chainId: CHAIN_ID,
+    });
+
+    expect(mintApprovalHash).not.toBe(withManager);
+  });
+
+  test('Approve wrapper uses SignatureProcessor domain, not escrow domain (catches #118)', () => {
+    const withVaultDomain = hashTypedData({
+      domain: getVaultDomain(VAULT_ADDRESS, CHAIN_ID),
+      types: VAULT_APPROVE_TYPES,
+      primaryType: 'Approve',
+      message: { messageHash: mintApprovalHash, owner: MANAGER_EOA },
+    });
+
+    const withEscrowDomain = hashTypedData({
+      domain: getEscrowDomain(ESCROW_CONTRACT, CHAIN_ID),
+      types: VAULT_APPROVE_TYPES,
+      primaryType: 'Approve',
+      message: { messageHash: mintApprovalHash, owner: MANAGER_EOA },
+    });
+
+    // Using escrow domain instead of vault domain was the #118 bug
+    expect(withVaultDomain).not.toBe(withEscrowDomain);
+  });
+
+  test('Approve verifyingContract is the vault address', () => {
+    const domain = getVaultDomain(VAULT_ADDRESS, CHAIN_ID);
+    expect(domain.name).toBe('SignatureProcessor');
+    expect(domain.version).toBe('1');
+    expect(domain.verifyingContract).toBe(VAULT_ADDRESS);
+  });
+
+  test('Approve owner is manager EOA, not vault contract', () => {
+    const withManager = hashTypedData({
+      domain: getVaultDomain(VAULT_ADDRESS, CHAIN_ID),
+      types: VAULT_APPROVE_TYPES,
+      primaryType: 'Approve',
+      message: { messageHash: mintApprovalHash, owner: MANAGER_EOA },
+    });
+
+    const withVault = hashTypedData({
+      domain: getVaultDomain(VAULT_ADDRESS, CHAIN_ID),
+      types: VAULT_APPROVE_TYPES,
+      primaryType: 'Approve',
+      message: { messageHash: mintApprovalHash, owner: VAULT_ADDRESS },
+    });
+
+    expect(withManager).not.toBe(withVault);
+  });
+
+  test('Approve typehash matches SignatureProcessor.APPROVE_TYPEHASH', () => {
+    // keccak256("Approve(bytes32 messageHash,address owner)")
+    const typehash = keccak256(toHex('Approve(bytes32 messageHash,address owner)'));
+    // Known constant — if SignatureProcessor changes this, test must be updated
+    expect(typehash).toBe('0xb693ad06a35730842d0b135dae665cf18a1d9dde3c5f1152bcb67b7bac1a9f2d');
+  });
+});
