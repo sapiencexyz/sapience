@@ -16,23 +16,28 @@ import "src/v2/utils/SignatureProcessor.sol";
  */
 contract GenerateHashFixtures is Script {
     // Instantiate concrete harnesses to access public constants
-    SignatureValidatorHarness private validator = new SignatureValidatorHarness();
-    SignatureProcessorHarness private processor = new SignatureProcessorHarness();
+    SignatureValidatorHarness private validator =
+        new SignatureValidatorHarness();
+    SignatureProcessorHarness private processor =
+        new SignatureProcessorHarness();
     // Same test addresses as the vitest fixtures (checksummed)
     address constant PREDICTOR = 0x1111111111111111111111111111111111111111;
     address constant COUNTERPARTY = 0x2222222222222222222222222222222222222222;
-    address constant ESCROW_CONTRACT = 0x3333333333333333333333333333333333333333;
+    address constant ESCROW_CONTRACT =
+        0x3333333333333333333333333333333333333333;
     address constant SPONSOR = 0x4444444444444444444444444444444444444444;
     address constant RESOLVER_A = 0xaAaAaAaaAaAaAaaAaAAAAAAAAaaaAaAaAaaAaaAa;
     address constant RESOLVER_B = 0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB;
 
-    uint256 constant PREDICTOR_COLLATERAL = 1000000;
-    uint256 constant COUNTERPARTY_COLLATERAL = 1000000;
+    uint256 constant PREDICTOR_COLLATERAL = 1_000_000;
+    uint256 constant COUNTERPARTY_COLLATERAL = 1_000_000;
     uint256 constant NONCE = 42;
-    uint256 constant DEADLINE = 1700000000;
+    uint256 constant DEADLINE = 1_700_000_000;
 
-    bytes32 constant CONDITION_ID_A = 0xabababababababababababababababababababababababababababababababab;
-    bytes32 constant CONDITION_ID_B = 0xcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd;
+    bytes32 constant CONDITION_ID_A =
+        0xabababababababababababababababababababababababababababababababab;
+    bytes32 constant CONDITION_ID_B =
+        0xcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcdcd;
 
     // Typehashes imported directly from the contract — no copies
 
@@ -103,12 +108,12 @@ contract GenerateHashFixtures is Script {
         bytes32 burnHash = keccak256(
             abi.encode(
                 pickConfigId,
-                uint256(500000),  // predictorTokenAmount
-                uint256(500000),  // counterpartyTokenAmount
-                PREDICTOR,        // predictorHolder
-                COUNTERPARTY,     // counterpartyHolder
-                uint256(1000000), // predictorPayout
-                uint256(0)        // counterpartyPayout
+                uint256(500_000), // predictorTokenAmount
+                uint256(500_000), // counterpartyTokenAmount
+                PREDICTOR, // predictorHolder
+                COUNTERPARTY, // counterpartyHolder
+                uint256(1_000_000), // predictorPayout
+                uint256(0) // counterpartyPayout
             )
         );
 
@@ -130,8 +135,8 @@ contract GenerateHashFixtures is Script {
                 validator.BURN_APPROVAL_TYPEHASH(),
                 burnHash,
                 PREDICTOR,
-                uint256(500000),
-                uint256(1000000),
+                uint256(500_000),
+                uint256(1_000_000),
                 NONCE,
                 DEADLINE
             )
@@ -193,14 +198,18 @@ contract GenerateHashFixtures is Script {
  * @notice Concrete implementation of SignatureValidator for accessing public constants
  */
 contract SignatureProcessorHarness is SignatureProcessor {
-    constructor() {}
+    constructor() { }
 }
 
 contract SignatureValidatorHarness is SignatureValidator {
-    constructor() {}
+    constructor() { }
 
     /// @notice Expose internal _hashTypedDataV4 for fixture generation
-    function hashTypedDataV4(bytes32 structHash) external view returns (bytes32) {
+    function hashTypedDataV4(bytes32 structHash)
+        external
+        view
+        returns (bytes32)
+    {
         return _hashTypedDataV4(structHash);
     }
 }
