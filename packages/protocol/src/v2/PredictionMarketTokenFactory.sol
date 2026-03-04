@@ -47,9 +47,9 @@ contract PredictionMarketTokenFactory is
             CREATE3.predictDeterministicAddress(salt, address(this)).code.length
                 > 0
         ) {
-            revert TokenAlreadyExists(
-                CREATE3.predictDeterministicAddress(salt, address(this))
-            );
+            revert TokenAlreadyExists(CREATE3.predictDeterministicAddress(
+                    salt, address(this)
+                ));
         }
 
         // Deploy using CREATE3

@@ -263,7 +263,8 @@ library PythLazerLibBytes {
                     }
                 } else if (
                     prop
-                        == PythLazerStructs.PriceFeedProperty.FundingRateInterval
+                        == PythLazerStructs.PriceFeedProperty
+                        .FundingRateInterval
                 ) {
                     uint8 exists = _readU8(payload, pos);
                     pos += 1;

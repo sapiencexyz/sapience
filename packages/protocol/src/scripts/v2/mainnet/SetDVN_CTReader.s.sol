@@ -2,14 +2,18 @@
 pragma solidity ^0.8.19;
 
 import { Script, console } from "forge-std/Script.sol";
-import { ILayerZeroEndpointV2 } from
-    "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
-import { SetConfigParam } from
-    "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/IMessageLibManager.sol";
-import { UlnConfig } from
-    "@layerzerolabs/lz-evm-messagelib-v2/contracts/uln/UlnBase.sol";
-import { ExecutorConfig } from
-    "@layerzerolabs/lz-evm-messagelib-v2/contracts/SendLibBase.sol";
+import {
+    ILayerZeroEndpointV2
+} from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
+import {
+    SetConfigParam
+} from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/IMessageLibManager.sol";
+import {
+    UlnConfig
+} from "@layerzerolabs/lz-evm-messagelib-v2/contracts/uln/UlnBase.sol";
+import {
+    ExecutorConfig
+} from "@layerzerolabs/lz-evm-messagelib-v2/contracts/SendLibBase.sol";
 
 /// @title Set DVN Configuration for ConditionalTokensReader (Polygon)
 /// @notice Configures SendLib, DVN, and Executor for the CT Reader on Polygon.
@@ -49,9 +53,8 @@ contract SetDVN_CTReader is Script {
         vm.startBroadcast(vm.envUint("POLYGON_DEPLOYER_PRIVATE_KEY"));
 
         // 1. Set send library
-        ILayerZeroEndpointV2(endpoint).setSendLibrary(
-            reader, remoteEid, sendLib
-        );
+        ILayerZeroEndpointV2(endpoint)
+            .setSendLibrary(reader, remoteEid, sendLib);
         console.log("Send library set");
 
         // 2. Set send ULN config (DVN + executor for outgoing messages to Ethereal)
@@ -68,7 +71,9 @@ contract SetDVN_CTReader is Script {
         });
 
         ExecutorConfig memory execConfig = ExecutorConfig({
-            maxMessageSize: uint32(vm.envOr("MAX_MESSAGE_SIZE", uint256(10_000))),
+            maxMessageSize: uint32(
+                vm.envOr("MAX_MESSAGE_SIZE", uint256(10_000))
+            ),
             executor: executor
         });
 

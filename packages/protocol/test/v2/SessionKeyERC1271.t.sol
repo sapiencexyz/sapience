@@ -369,7 +369,8 @@ contract SessionKeyERC1271Test is Test {
         internal
         returns (IV2Types.BurnRequest memory request)
     {
-        uint256 totalTokens = PREDICTOR_COLLATERAL + COUNTERPARTY_COLLATERAL;
+        uint256 totalTokens =
+            PREDICTOR_COLLATERAL + COUNTERPARTY_COLLATERAL;
 
         bytes32 burnHash = keccak256(
             abi.encode(
@@ -428,7 +429,8 @@ contract SessionKeyERC1271Test is Test {
         address smartAccount,
         bytes32 permissionsHash
     ) internal view returns (bytes memory) {
-        uint256 validUntil = block.timestamp + SESSION_DURATION;
+        uint256 validUntil =
+            block.timestamp + SESSION_DURATION;
 
         bytes32 sessionApprovalHash = market.getSessionKeyApprovalHash(
             skAddr, smartAccount, validUntil, permissionsHash, block.chainid

@@ -2,8 +2,9 @@
 pragma solidity ^0.8.19;
 
 import { Script, console } from "forge-std/Script.sol";
-import { ConditionalTokensConditionResolver } from
-    "../../../v2/resolvers/conditionalTokens/ConditionalTokensConditionResolver.sol";
+import {
+    ConditionalTokensConditionResolver
+} from "../../../v2/resolvers/conditionalTokens/ConditionalTokensConditionResolver.sol";
 import { LZTypes } from "../../../v2/resolvers/shared/LZTypes.sol";
 
 /// @title Configure ConditionalTokensConditionResolver (Mainnet)
@@ -27,8 +28,7 @@ contract ConfigureCTResolver is Script {
         // Set bridge config
         resolver.setBridgeConfig(
             LZTypes.BridgeConfig({
-                remoteEid: polygonEid,
-                remoteBridge: readerAddr
+                remoteEid: polygonEid, remoteBridge: readerAddr
             })
         );
 

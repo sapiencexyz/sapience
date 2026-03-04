@@ -4,8 +4,7 @@ pragma solidity ^0.8.19;
 import "forge-std/Test.sol";
 import "../../../src/legacy/predictionMarket/PredictionMarket.sol";
 import "../../../src/legacy/predictionMarket/interfaces/IPredictionStructs.sol";
-import
-    "../../../src/legacy/predictionMarket/interfaces/IPredictionMarketResolver.sol";
+import "../../../src/legacy/predictionMarket/interfaces/IPredictionMarketResolver.sol";
 import "../../../src/legacy/vault/PassiveLiquidityVault.sol";
 import "../../../src/legacy/vault/interfaces/IPassiveLiquidityVault.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
@@ -285,8 +284,9 @@ contract PredictionMarketTransferRestrictionsTest is Test {
         assertEq(predictionMarket.ownerOf(takerNftTokenId), taker);
     }
 
-    function test_safeTransferMakerNft_withData_toPassiveLiquidityVault_reverts(
-    ) public {
+    function test_safeTransferMakerNft_withData_toPassiveLiquidityVault_reverts()
+        public
+    {
         // Verify initial ownership
         assertEq(predictionMarket.ownerOf(makerNftTokenId), maker);
 
@@ -473,12 +473,10 @@ contract MockPassiveLiquidityVault is ERC165, IPassiveLiquidityVault {
 
     function requestDeposit(uint256 assets, uint256 expectedShares)
         external
-        pure
-    { }
+        pure { }
     function requestWithdrawal(uint256 shares, uint256 expectedAssets)
         external
-        pure
-    { }
+        pure { }
     function cancelWithdrawal() external pure { }
     function cancelDeposit() external pure { }
     function emergencyWithdraw(uint256 shares) external pure { }
@@ -488,8 +486,7 @@ contract MockPassiveLiquidityVault is ERC165, IPassiveLiquidityVault {
     function batchProcessWithdrawal(address[] calldata) external pure { }
     function approveFundsUsage(address protocol, uint256 amount)
         external
-        pure
-    { }
+        pure { }
     function cleanInactiveProtocols() external pure { }
 
     function getActiveProtocolsCount() external pure returns (uint256) {
@@ -511,7 +508,6 @@ contract MockPassiveLiquidityVault is ERC165, IPassiveLiquidityVault {
     function getAvailableShares(address) external view returns (uint256) {
         return 0;
     }
-
     function setManager(address) external pure { }
     function setMaxUtilizationRate(uint256) external pure { }
     function setExpirationTime(uint256) external pure { }

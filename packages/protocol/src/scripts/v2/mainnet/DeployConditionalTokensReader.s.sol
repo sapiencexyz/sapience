@@ -2,10 +2,12 @@
 pragma solidity ^0.8.19;
 
 import { Script, console } from "forge-std/Script.sol";
-import { ConditionalTokensReader } from
-    "../../../v2/resolvers/conditionalTokens/ConditionalTokensReader.sol";
-import { IConditionalTokensReader } from
-    "../../../v2/resolvers/conditionalTokens/interfaces/IConditionalTokensReader.sol";
+import {
+    ConditionalTokensReader
+} from "../../../v2/resolvers/conditionalTokens/ConditionalTokensReader.sol";
+import {
+    IConditionalTokensReader
+} from "../../../v2/resolvers/conditionalTokens/interfaces/IConditionalTokensReader.sol";
 
 /// @title Deploy ConditionalTokensReader (Mainnet)
 /// @notice Deploys ConditionalTokensReader on Polygon mainnet

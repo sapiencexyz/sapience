@@ -161,7 +161,9 @@ contract PassiveLiquidityVault is
         string memory _name,
         string memory _symbol
     ) ERC20(_name, _symbol) Ownable(msg.sender) {
-        if (asset_ == address(0)) revert InvalidAsset(asset_);
+        if (asset_ == address(0)) {
+            revert InvalidAsset(asset_);
+        }
         if (_manager == address(0)) revert InvalidManager(_manager);
 
         _asset = IERC20(asset_);
@@ -659,8 +661,9 @@ contract PassiveLiquidityVault is
         uint256 vaultBalance = _getAvailableAssets();
         if (vaultBalance == 0) revert InsufficientAvailableAssets(shares, 0);
 
-        uint256 withdrawAmount =
-            Math.mulDiv(shares, vaultBalance, totalShares, Math.Rounding.Floor);
+        uint256 withdrawAmount = Math.mulDiv(
+            shares, vaultBalance, totalShares, Math.Rounding.Floor
+        );
 
         // Ensure we don't withdraw more than available
         if (withdrawAmount > vaultBalance) {
@@ -950,11 +953,19 @@ contract PassiveLiquidityVault is
      * @return bytes4 Returns `IERC721Receiver.onERC721Received.selector` to confirm the token transfer
      */
     function onERC721Received(
-        address, /* operator */
-        address, /* from */
-        uint256, /* tokenId */
+        address,
+        /* operator */
+        address,
+        /* from */
+        uint256,
+        /* tokenId */
         bytes calldata /* data */
-    ) external pure override returns (bytes4) {
+    )
+        external
+        pure
+        override
+        returns (bytes4)
+    {
         return IERC721Receiver.onERC721Received.selector;
     }
 }

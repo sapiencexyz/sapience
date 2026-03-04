@@ -265,18 +265,16 @@ library PythLazerLib {
                         _setPresent(
                             feed,
                             uint8(
-                                PythLazerStructs
-                                    .PriceFeedProperty
-                                    .PublisherCount
+                                PythLazerStructs.PriceFeedProperty
+                                .PublisherCount
                             )
                         );
                     } else {
                         _setApplicableButMissing(
                             feed,
                             uint8(
-                                PythLazerStructs
-                                    .PriceFeedProperty
-                                    .PublisherCount
+                                PythLazerStructs.PriceFeedProperty
+                                .PublisherCount
                             )
                         );
                     }
@@ -344,18 +342,16 @@ library PythLazerLib {
                         _setPresent(
                             feed,
                             uint8(
-                                PythLazerStructs
-                                    .PriceFeedProperty
-                                    .FundingTimestamp
+                                PythLazerStructs.PriceFeedProperty
+                                .FundingTimestamp
                             )
                         );
                     } else {
                         _setApplicableButMissing(
                             feed,
                             uint8(
-                                PythLazerStructs
-                                    .PriceFeedProperty
-                                    .FundingTimestamp
+                                PythLazerStructs.PriceFeedProperty
+                                .FundingTimestamp
                             )
                         );
                     }
@@ -363,7 +359,8 @@ library PythLazerLib {
                     // Funding Rate Interval Property
                 } else if (
                     property
-                        == PythLazerStructs.PriceFeedProperty.FundingRateInterval
+                        == PythLazerStructs.PriceFeedProperty
+                        .FundingRateInterval
                 ) {
                     uint8 exists;
                     (exists, pos) = parseFeedValueUint8(payload, pos);
@@ -373,18 +370,16 @@ library PythLazerLib {
                         _setPresent(
                             feed,
                             uint8(
-                                PythLazerStructs
-                                    .PriceFeedProperty
-                                    .FundingRateInterval
+                                PythLazerStructs.PriceFeedProperty
+                                .FundingRateInterval
                             )
                         );
                     } else {
                         _setApplicableButMissing(
                             feed,
                             uint8(
-                                PythLazerStructs
-                                    .PriceFeedProperty
-                                    .FundingRateInterval
+                                PythLazerStructs.PriceFeedProperty
+                                .FundingRateInterval
                             )
                         );
                     }

@@ -107,7 +107,10 @@ contract OnboardingSponsor is IMintSponsor, Ownable {
     function fundMint(
         address, /* escrow_ */
         IV2Types.MintRequest calldata request
-    ) external override {
+    )
+        external
+        override
+    {
         if (msg.sender != escrow) revert UnauthorizedEscrow();
 
         // Enforce required counterparty (prevents self-dealing)

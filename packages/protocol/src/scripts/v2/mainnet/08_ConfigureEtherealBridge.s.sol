@@ -2,10 +2,12 @@
 pragma solidity ^0.8.19;
 
 import { Script, console } from "forge-std/Script.sol";
-import { PredictionMarketBridge } from
-    "../../../v2/bridge/PredictionMarketBridge.sol";
-import { IPredictionMarketBridgeBase } from
-    "../../../v2/bridge/interfaces/IPredictionMarketBridgeBase.sol";
+import {
+    PredictionMarketBridge
+} from "../../../v2/bridge/PredictionMarketBridge.sol";
+import {
+    IPredictionMarketBridgeBase
+} from "../../../v2/bridge/interfaces/IPredictionMarketBridgeBase.sol";
 
 /// @title Configure PM Network Bridge (Mainnet)
 /// @notice Configure bridge on PM Network (Ethereal mainnet) with remote settings

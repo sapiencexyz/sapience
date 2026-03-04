@@ -6,14 +6,17 @@ import {
     Origin,
     MessagingFee
 } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
-import { ReentrancyGuard } from
-    "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
-import { IPredictionMarketLZResolver } from
-    "./interfaces/IPredictionMarketLZResolver.sol";
+import {
+    ReentrancyGuard
+} from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
+import {
+    IPredictionMarketLZResolver
+} from "./interfaces/IPredictionMarketLZResolver.sol";
 import { Encoder } from "../../bridge/cmdEncoder.sol";
 import { BridgeTypes } from "../../bridge/BridgeTypes.sol";
-import { OptionsBuilder } from
-    "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
+import {
+    OptionsBuilder
+} from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
 import { ETHManagement } from "../../bridge/abstract/ETHManagement.sol";
 
 /**
@@ -122,8 +125,10 @@ contract PredictionMarketLZResolver is
         view
         returns (bool isResolved, Error error, bool parlaySuccess)
     {
-        PredictedOutcome[] memory predictedOutcomes =
-            decodePredictionOutcomes(encodedPredictedOutcomes);
+        PredictedOutcome[] memory
+            predictedOutcomes = decodePredictionOutcomes(
+            encodedPredictedOutcomes
+        );
         parlaySuccess = true;
         isResolved = true;
         error = Error.NO_ERROR;
@@ -177,9 +182,11 @@ contract PredictionMarketLZResolver is
     }
 
     // ============ Prediction Outcomes Encoding and Decoding Functions ============
-    function encodePredictionOutcomes(
-        PredictedOutcome[] calldata predictedOutcomes
-    ) external pure returns (bytes memory) {
+    function encodePredictionOutcomes(PredictedOutcome[] calldata predictedOutcomes)
+        external
+        pure
+        returns (bytes memory)
+    {
         return abi.encode(predictedOutcomes);
     }
 

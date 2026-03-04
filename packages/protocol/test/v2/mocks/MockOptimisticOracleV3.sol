@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import { LZConditionResolverUmaSide } from
-    "../../../src/v2/resolvers/lz-uma/LZConditionResolverUmaSide.sol";
+import {
+    LZConditionResolverUmaSide
+} from "../../../src/v2/resolvers/lz-uma/LZConditionResolverUmaSide.sol";
 
 /// @title MockOptimisticOracleV3
 /// @notice Mock OptimisticOracleV3 for v2 LZ resolver testing
@@ -42,18 +43,16 @@ contract MockOptimisticOracleV3 {
         external
     {
         if (_resolver != address(0)) {
-            LZConditionResolverUmaSide(_resolver).assertionResolvedCallback(
-                assertionId, assertedTruthfully
-            );
+            LZConditionResolverUmaSide(_resolver)
+                .assertionResolvedCallback(assertionId, assertedTruthfully);
         }
     }
 
     /// @notice Simulate disputing an assertion
     function disputeAssertion(bytes32 assertionId) external {
         if (_resolver != address(0)) {
-            LZConditionResolverUmaSide(_resolver).assertionDisputedCallback(
-                assertionId
-            );
+            LZConditionResolverUmaSide(_resolver)
+                .assertionDisputedCallback(assertionId);
         }
     }
 

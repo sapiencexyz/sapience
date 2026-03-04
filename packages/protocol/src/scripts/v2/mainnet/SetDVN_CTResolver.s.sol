@@ -2,12 +2,15 @@
 pragma solidity ^0.8.19;
 
 import { Script, console } from "forge-std/Script.sol";
-import { ILayerZeroEndpointV2 } from
-    "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
-import { SetConfigParam } from
-    "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/IMessageLibManager.sol";
-import { UlnConfig } from
-    "@layerzerolabs/lz-evm-messagelib-v2/contracts/uln/UlnBase.sol";
+import {
+    ILayerZeroEndpointV2
+} from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/ILayerZeroEndpointV2.sol";
+import {
+    SetConfigParam
+} from "@layerzerolabs/lz-evm-protocol-v2/contracts/interfaces/IMessageLibManager.sol";
+import {
+    UlnConfig
+} from "@layerzerolabs/lz-evm-messagelib-v2/contracts/uln/UlnBase.sol";
 
 /// @title Set DVN Configuration for ConditionalTokensConditionResolver (Ethereal)
 /// @notice Configures ReceiveLib and DVN for the CT Resolver on Ethereal.
@@ -44,9 +47,8 @@ contract SetDVN_CTResolver is Script {
 
         // 1. Set receive library
         uint32 gracePeriod = uint32(vm.envOr("GRACE_PERIOD", uint256(0)));
-        ILayerZeroEndpointV2(endpoint).setReceiveLibrary(
-            resolver, remoteEid, receiveLib, gracePeriod
-        );
+        ILayerZeroEndpointV2(endpoint)
+            .setReceiveLibrary(resolver, remoteEid, receiveLib, gracePeriod);
         console.log("Receive library set");
 
         // 2. Set receive ULN config (DVN for incoming messages from Polygon)
