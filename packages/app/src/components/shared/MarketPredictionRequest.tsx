@@ -128,7 +128,8 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
 
   // Track viewport visibility to trigger eager load only when visible
   const rootRef = React.useRef<HTMLDivElement | null>(null);
-  const [_isInViewport, setIsInViewport] = React.useState<boolean>(false);
+  const [isInViewport, setIsInViewport] = React.useState<boolean>(false);
+  const eagerlyRequestedRef = React.useRef<boolean>(false);
 
   React.useEffect(() => {
     if (!eager) return;
@@ -422,6 +423,25 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
     isRequesting,
     eager,
     chainId,
+  ]);
+
+  // Auto-fire eager request once component scrolls into view
+  React.useEffect(() => {
+    if (!eager) return;
+    if (prefetchedProbability != null) return;
+    if (eagerlyRequestedRef.current) return;
+    if (!isInViewport) return;
+    if (!selectedPredictorAddress) return;
+    if (effectiveOutcomes.length === 0) return;
+    eagerlyRequestedRef.current = true;
+    handleRequestPrediction();
+  }, [
+    eager,
+    isInViewport,
+    selectedPredictorAddress,
+    effectiveOutcomes.length,
+    handleRequestPrediction,
+    prefetchedProbability,
   ]);
 
   return (
