@@ -1,4 +1,7 @@
-import { manualConditionResolver } from '@sapience/sdk/contracts';
+import {
+  manualConditionResolver,
+  conditionalTokensConditionResolver,
+} from '@sapience/sdk/contracts';
 
 /**
  * Configuration constants
@@ -8,13 +11,19 @@ import { manualConditionResolver } from '@sapience/sdk/contracts';
 export const ADMIN_AUTHENTICATE_MSG =
   'Sign this message to authenticate for admin actions.';
 
+// Environment mode
+const isProduction = process.env.NODE_ENV === 'production';
+
 // Chain ID — configurable via env var, defaults to Ethereal mainnet
 export const CHAIN_ID = Number(process.env.CHAIN_ID || '5064014');
 
-// Resolver address — configurable via env var, defaults to ManualConditionResolver for CHAIN_ID
+// Resolver address — configurable via env var
+// Production: ConditionalTokensConditionResolver (LZ bridging from Polygon)
+// Staging: ManualConditionResolver (direct admin settlement)
 export const RESOLVER_ADDRESS = (process.env.RESOLVER_ADDRESS ||
-  // predictionMarketLZConditionalTokensResolver[CHAIN_ID]?.address ||
-  manualConditionResolver[CHAIN_ID]?.address ||
+  (isProduction
+    ? conditionalTokensConditionResolver[CHAIN_ID]?.address
+    : manualConditionResolver[CHAIN_ID]?.address) ||
   '') as `0x${string}`;
 
 export const DEFAULT_SAPIENCE_API_URL = 'https://api.sapience.xyz';
