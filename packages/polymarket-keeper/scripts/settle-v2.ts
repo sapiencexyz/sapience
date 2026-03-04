@@ -63,7 +63,7 @@ import {
   manualConditionResolver,
   conditionalTokensReader,
   conditionalTokensConditionResolver,
-} from '@sapience/sdk/contracts';
+} from '@sapience/sdk';
 
 // ============ Environment ============
 

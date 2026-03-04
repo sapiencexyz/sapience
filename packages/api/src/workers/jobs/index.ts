@@ -82,17 +82,18 @@ export async function handleJobCommand(argv: string[]): Promise<boolean> {
     }
     case 'reindexConditionSettled': {
       const chainId = parseInt(argv[3], 10);
+      const resolverAddress = argv[4] as `0x${string}`;
       const startTimestamp =
-        argv[4] !== 'undefined' ? parseInt(argv[4], 10) : undefined;
-      const endTimestamp =
         argv[5] !== 'undefined' ? parseInt(argv[5], 10) : undefined;
-      if (isNaN(chainId)) {
+      const endTimestamp =
+        argv[6] !== 'undefined' ? parseInt(argv[6], 10) : undefined;
+      if (isNaN(chainId) || !resolverAddress?.startsWith('0x')) {
         console.error(
-          'Invalid arguments. Usage: tsx src/workers/worker.ts reindexConditionSettled <chainId> [startTimestamp] [endTimestamp]'
+          'Invalid arguments. Usage: tsx src/workers/worker.ts reindexConditionSettled <chainId> <resolverAddress> [startTimestamp] [endTimestamp]'
         );
         process.exit(1);
       }
-      await reindexConditionSettled(chainId, startTimestamp, endTimestamp);
+      await reindexConditionSettled(chainId, resolverAddress, startTimestamp, endTimestamp);
       console.log('Done reindexing condition settled events');
       process.exit(0);
       return true;

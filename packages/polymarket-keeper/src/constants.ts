@@ -1,7 +1,7 @@
 import {
   manualConditionResolver,
   conditionalTokensConditionResolver,
-} from '@sapience/sdk/contracts';
+} from '@sapience/sdk';
 
 /**
  * Configuration constants
