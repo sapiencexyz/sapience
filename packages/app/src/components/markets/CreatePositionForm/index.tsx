@@ -806,6 +806,14 @@ const CreatePositionFormInner = ({
     [clearPositionForm, clearSelections, resetProgress]
   );
 
+  // Close share dialog on mint error so it doesn't stick around
+  useEffect(() => {
+    if (positionError && showShareDialog) {
+      setShowShareDialog(false);
+      resetProgress();
+    }
+  }, [positionError, showShareDialog, resetProgress]);
+
   // Handle position indexed - mark complete, clear form
   const handlePositionIndexed = useCallback(() => {
     markPositionIndexed();
