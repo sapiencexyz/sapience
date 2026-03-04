@@ -15,6 +15,7 @@ import {
 
 // Environment variable to control whether V2 indexers are enabled
 const ENABLE_ESCROW_INDEXERS = process.env.ENABLE_ESCROW_INDEXERS === 'true';
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
 // Build indexers object based on environment configuration
 const buildIndexers = (): { [key: string]: IIndexer } => {
@@ -23,42 +24,51 @@ const buildIndexers = (): { [key: string]: IIndexer } => {
   indexers['attestation-prediction-market'] = new EASPredictionIndexer(42161);
 
   if (ENABLE_ESCROW_INDEXERS) {
-    indexers['escrow-prediction-market-ethereal'] =
-      new PredictionMarketEscrowIndexer(5064014); // Ethereal mainnet
-    indexers['escrow-prediction-market-ethereal-testnet'] =
-      new PredictionMarketEscrowIndexer(13374202); // Ethereal testnet
-    indexers['secondary-market-ethereal-testnet'] = new SecondaryMarketIndexer(
-      13374202
-    ); // Ethereal testnet (Secondary)
-    indexers['transfer-ethereal'] = new PositionTokenTransferIndexer(5064014);
-    indexers['transfer-ethereal-testnet'] = new PositionTokenTransferIndexer(
-      13374202
-    );
-    // Ethereal mainnet — watch CT resolver (Polymarket) + Pyth resolver
-    if (conditionalTokensConditionResolver[5064014]?.address) {
-      indexers['condition-settled-ct-ethereal'] = new ConditionSettledIndexer(
-        5064014,
-        conditionalTokensConditionResolver[5064014].address as `0x${string}`
+    if (IS_PRODUCTION) {
+      // ── Production (Ethereal mainnet) ──
+      indexers['escrow-prediction-market-ethereal'] =
+        new PredictionMarketEscrowIndexer(5064014);
+      indexers['transfer-ethereal'] = new PositionTokenTransferIndexer(5064014);
+      indexers['collateral-transfer-ethereal'] = new CollateralTransferIndexer(
+        5064014
       );
-    }
-    if (pythConditionResolver[5064014]?.address) {
-      indexers['condition-settled-pyth-ethereal'] = new ConditionSettledIndexer(
-        5064014,
-        pythConditionResolver[5064014].address as `0x${string}`
-      );
-    }
-    // Ethereal testnet — manual resolver only (for testing)
-    if (manualConditionResolver[13374202]?.address) {
-      indexers['condition-settled-manual-testnet'] =
-        new ConditionSettledIndexer(
-          13374202,
-          manualConditionResolver[13374202].address as `0x${string}`
+
+      // Settlement indexers — CT (Polymarket) + Pyth resolvers
+      if (conditionalTokensConditionResolver[5064014]?.address) {
+        indexers['condition-settled-ct-ethereal'] = new ConditionSettledIndexer(
+          5064014,
+          conditionalTokensConditionResolver[5064014].address as `0x${string}`
         );
+      }
+      if (pythConditionResolver[5064014]?.address) {
+        indexers['condition-settled-pyth-ethereal'] =
+          new ConditionSettledIndexer(
+            5064014,
+            pythConditionResolver[5064014].address as `0x${string}`
+          );
+      }
+
+      console.log('[Indexers] Production V2 indexers enabled (mainnet)');
+    } else {
+      // ── Non-production (Ethereal testnet) ──
+      indexers['escrow-prediction-market-ethereal-testnet'] =
+        new PredictionMarketEscrowIndexer(13374202);
+      indexers['secondary-market-ethereal-testnet'] =
+        new SecondaryMarketIndexer(13374202);
+      indexers['transfer-ethereal-testnet'] =
+        new PositionTokenTransferIndexer(13374202);
+
+      // Settlement indexer — manual resolver for testing
+      if (manualConditionResolver[13374202]?.address) {
+        indexers['condition-settled-manual-testnet'] =
+          new ConditionSettledIndexer(
+            13374202,
+            manualConditionResolver[13374202].address as `0x${string}`
+          );
+      }
+
+      console.log('[Indexers] Non-production V2 indexers enabled (testnet)');
     }
-    indexers['collateral-transfer-ethereal'] = new CollateralTransferIndexer(
-      5064014
-    ); // wUSDe transfers
-    console.log('[Indexers] V2 indexers enabled');
   } else {
     console.log(
       '[Indexers] V2 indexers disabled (ENABLE_ESCROW_INDEXERS=false)'
