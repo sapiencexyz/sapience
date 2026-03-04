@@ -32,7 +32,7 @@ interface PredictionFormProps {
   /** Request quotes function from useAuctionStart */
   requestQuotes?: (
     params: AuctionParams | null,
-    options?: { forceRefresh?: boolean; requireSignature?: boolean }
+    options?: { forceRefresh?: boolean }
   ) => void;
   /** Optional className for the container */
   className?: string;
@@ -200,7 +200,7 @@ export default function PredictionForm({
 
   // Handle request bids
   const handleRequestBids = useCallback(() => {
-    triggerQuoteRequest({ forceRefresh: true, requireSignature: false });
+    triggerQuoteRequest({ forceRefresh: true });
   }, [triggerQuoteRequest]);
 
   return (

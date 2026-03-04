@@ -19,7 +19,7 @@ interface UseSingleConditionAuctionProps {
   bids: QuoteBid[];
   requestQuotes?: (
     params: AuctionParams | null,
-    options?: { forceRefresh?: boolean; requireSignature?: boolean }
+    options?: { forceRefresh?: boolean }
   ) => void;
   resolverAddress?: string | null;
 }
@@ -28,7 +28,6 @@ interface UseSingleConditionAuctionReturn {
   bestBid: QuoteBid | null;
   triggerQuoteRequest: (options?: {
     forceRefresh?: boolean;
-    requireSignature?: boolean;
   }) => void;
   isWaitingForBids: boolean;
   showRequestBidsButton: boolean;
@@ -97,7 +96,7 @@ export function useSingleConditionAuction({
     lastQuoteRequestMs != null && nowMs - lastQuoteRequestMs < 6000;
 
   const triggerQuoteRequest = useCallback(
-    (options?: { forceRefresh?: boolean; requireSignature?: boolean }) => {
+    (options?: { forceRefresh?: boolean }) => {
       if (!requestQuotes) return;
       if (!selectedTakerAddressRef.current) return;
       if (!conditionId || prediction === null) return;
@@ -134,7 +133,7 @@ export function useSingleConditionAuction({
           ];
         }
 
-        requestQuotes(params, { requireSignature: false, ...options });
+        requestQuotes(params, options);
         setLastQuoteRequestMs(Date.now());
       } catch {
         // parseUnits may throw on invalid input

@@ -1,12 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useAccount, useSignMessage, useSignTypedData } from 'wagmi';
-import {
-  createAuctionStartSiweMessage,
-  extractSiweDomainAndUri,
-  type AuctionStartSigningPayload,
-} from '@sapience/sdk';
+import { useAccount } from 'wagmi';
 import { canonicalizePicks } from '@sapience/sdk/auction/escrowEncoding';
 import type { Pick } from '@sapience/sdk/types';
 import { useSettings } from '~/lib/context/SettingsContext';
@@ -15,7 +10,6 @@ import { toAuctionWsUrl } from '~/lib/ws';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 import {
   logAuction,
-  logAuctionWarn,
   formatBidForLog,
 } from '~/lib/auction/bidLogger';
 
@@ -123,14 +117,11 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
   const shouldLog = !options?.disableLogging;
   // Create conditional log functions to avoid noisy logs from forecast-only components
   const log = shouldLog ? logAuction : () => {};
-  const logWarn = shouldLog ? logAuctionWarn : () => {};
   const [auctionId, setAuctionId] = useState<string | null>(null);
   const [bids, setBids] = useState<QuoteBid[]>([]);
   const inflightRef = useRef<string>('');
   // `apiBaseUrl` is the auction relayer base URL (http(s), typically includes `/auction`)
   const { apiBaseUrl } = useSettings();
-  const { signMessageAsync } = useSignMessage();
-  const { signTypedDataAsync } = useSignTypedData();
   const { address: walletAddress } = useAccount();
   const {
     etherealSessionApproval,
@@ -283,7 +274,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
   const requestQuotes = useCallback(
     (
       params: AuctionParams | null,
-      options?: { forceRefresh?: boolean; requireSignature?: boolean }
+      options?: { forceRefresh?: boolean }
     ) => {
       if (!params || !wsUrl) return;
 
@@ -324,76 +315,12 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
         const thisRequestId = crypto.randomUUID();
         pendingRequestIdRef.current = thisRequestId;
 
-        // Generate SIWE signature for the auction request if required
-        let predictorSignature: string | undefined;
-        let predictorSignedAt: string | undefined;
-        const requireSignature = options?.requireSignature ?? true; // Default to true to ask for signature as default behavior
-
-        if (requireSignature) {
-          try {
-            const { domain, uri } = extractSiweDomainAndUri(wsUrl);
-            const issuedAt = new Date().toISOString();
-
-            const signingPayload: AuctionStartSigningPayload = {
-              wager: params.wager,
-              predictedOutcomes: params.predictedOutcomes,
-              resolver: params.resolver,
-              taker: effectivePredictor,
-              takerNonce: params.predictorNonce,
-              chainId: params.chainId,
-            };
-            const message = createAuctionStartSiweMessage(
-              signingPayload,
-              domain,
-              uri,
-              issuedAt
-            );
-
-            // Use session key signing when using smart account with active session
-            // Otherwise fall back to owner's wallet signing
-            if (willUseSessionSigning) {
-              predictorSignature =
-                await sessionSignMessageRef.current!(message);
-            } else {
-              predictorSignature = await signMessageAsync({ message });
-            }
-            predictorSignedAt = issuedAt;
-          } catch (signError) {
-            // If signature is required and fails, log and return early
-            logWarn('Failed to sign auction request:', signError);
-            // Clear pending request since we're aborting
-            if (pendingRequestIdRef.current === thisRequestId) {
-              pendingRequestIdRef.current = null;
-            }
-            return;
-          }
-        }
-
-        // Check if a newer request was made while we were signing
+        // Check if a newer request was made while we were waiting
         // If so, abort this request to avoid race conditions
         if (pendingRequestIdRef.current !== thisRequestId) {
           log('Aborting stale request (newer request in progress)');
           return;
         }
-
-        // Build final payload with signature and session data
-        const payloadWithSignature: Record<string, unknown> = {
-          ...requestPayload,
-          ...(predictorSignature && predictorSignedAt
-            ? {
-                takerSignature: predictorSignature,
-                takerSignedAt: predictorSignedAt,
-              }
-            : {}),
-          // Add session approval data ONLY when actually using session signing
-          // This tells the relayer to verify via smart account (EIP-1271) vs EOA (ecrecover)
-          ...(willUseSessionSigning && etherealSessionApprovalRef.current
-            ? {
-                sessionApproval: etherealSessionApprovalRef.current.approval,
-                sessionTypedData: etherealSessionApprovalRef.current.typedData,
-              }
-            : {}),
-        };
 
         // Update inflight tracking and clear bids for new request
         // NOTE: We intentionally do NOT clear latestAuctionIdRef here.
@@ -493,7 +420,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
         }
       }, 400);
     },
-    [wsUrl, signMessageAsync, signTypedDataAsync, walletAddress]
+    [wsUrl, walletAddress]
   );
 
   const acceptBid = useCallback(

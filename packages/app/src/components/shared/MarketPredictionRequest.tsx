@@ -343,7 +343,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
       };
       setLastAuctionParams(auctionParams);
       const send = () => {
-        requestQuotes(auctionParams, { requireSignature: false });
+        requestQuotes(auctionParams);
         setQueuedRequest(false);
       };
       // Add a small jitter to reduce simultaneous opens across instances
@@ -401,7 +401,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
         };
         setLastAuctionParams(auctionParams);
         const send = () => {
-          requestQuotes(auctionParams, { requireSignature: false });
+          requestQuotes(auctionParams);
         };
         // Jitter send to avoid concurrency clobbering
         const jitter = eager ? eagerJitterMsRef.current : 0;

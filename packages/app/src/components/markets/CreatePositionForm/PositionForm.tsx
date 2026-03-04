@@ -67,7 +67,7 @@ interface PositionFormProps {
   bids?: QuoteBid[];
   requestQuotes?: (
     params: AuctionParams | null,
-    options?: { forceRefresh?: boolean; requireSignature?: boolean }
+    options?: { forceRefresh?: boolean }
   ) => void;
   // Collateral token configuration from useSubmitPosition hook
   collateralToken?: `0x${string}`;
@@ -401,7 +401,6 @@ export default function PositionForm({
   const triggerAuctionRequest = useCallback(
     async (options?: {
       forceRefresh?: boolean;
-      requireSignature?: boolean;
     }) => {
       // Prevent multiple concurrent auction requests
       if (auctionRequestInFlightRef.current) {
@@ -506,7 +505,6 @@ export default function PositionForm({
 
         requestQuotesRef.current(params, {
           forceRefresh: options?.forceRefresh,
-          requireSignature: options?.requireSignature,
         });
         setLastQuoteRequestMs(Date.now());
         // Set the request key to match incoming bids to this configuration
@@ -557,9 +555,8 @@ export default function PositionForm({
     logPositionForm('Requesting bids (manual)');
     triggerAuctionRequest({
       forceRefresh: true,
-      requireSignature: hasConnectedWallet,
     });
-  }, [triggerAuctionRequest, hasConnectedWallet]);
+  }, [triggerAuctionRequest]);
 
   // Auto-initiate auction when content (predictions/position size) changes
   // We debounce this to avoid spamming the auction endpoint while the user is typing
@@ -596,7 +593,6 @@ export default function PositionForm({
       logPositionForm('Requesting bids (auto)');
       triggerAuctionRequest({
         forceRefresh: true,
-        requireSignature: hasConnectedWallet,
       });
     }, 300);
 
