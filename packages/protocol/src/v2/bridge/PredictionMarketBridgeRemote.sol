@@ -3,10 +3,12 @@ pragma solidity ^0.8.19;
 
 import { MessagingFee } from "@layerzerolabs/oapp-evm/contracts/oapp/OApp.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { SafeERC20 } from
-    "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import { OptionsBuilder } from
-    "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
+import {
+    SafeERC20
+} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {
+    OptionsBuilder
+} from "@layerzerolabs/oapp-evm/contracts/oapp/libs/OptionsBuilder.sol";
 import "./PredictionMarketBridgeBase.sol";
 import "./interfaces/IPredictionMarketBridgeRemote.sol";
 import "../interfaces/IPredictionMarketTokenFactory.sol";
@@ -280,9 +282,7 @@ contract PredictionMarketBridgeRemote is
 
         // Track minted tokens (for audit trail)
         _mintedBridges[bridgeId] = MintedBridge({
-            token: remoteToken,
-            recipient: recipient,
-            amount: amount
+            token: remoteToken, recipient: recipient, amount: amount
         });
 
         emit BridgeProcessed(bridgeId, false);
@@ -304,9 +304,8 @@ contract PredictionMarketBridgeRemote is
 
             // Now burn the escrowed tokens
             _escrowedBalances[pending.token] -= pending.amount;
-            IPredictionMarketToken(pending.token).burn(
-                address(this), pending.amount
-            );
+            IPredictionMarketToken(pending.token)
+                .burn(address(this), pending.amount);
 
             emit BridgeCompleted(bridgeId);
         }

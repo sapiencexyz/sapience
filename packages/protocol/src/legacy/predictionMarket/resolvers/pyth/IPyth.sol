@@ -22,3 +22,4 @@ interface IPyth {
         uint64 maxPublishTime
     ) external payable returns (PythStructs.PriceFeed[] memory priceFeeds);
 }
+

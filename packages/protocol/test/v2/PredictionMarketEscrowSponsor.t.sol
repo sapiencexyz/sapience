@@ -266,8 +266,9 @@ contract PredictionMarketEscrowSponsorTest is Test {
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = _createPick(conditionId1, IV2Types.OutcomeSide.YES);
 
-        IV2Types.MintRequest memory request =
-            _createSponsoredMintRequest(picks, address(underfundingSponsor), "");
+        IV2Types.MintRequest memory request = _createSponsoredMintRequest(
+            picks, address(underfundingSponsor), ""
+        );
 
         vm.expectRevert(IPredictionMarketEscrow.SponsorUnderfunded.selector);
         market.mint(request);

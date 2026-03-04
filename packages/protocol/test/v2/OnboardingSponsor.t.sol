@@ -232,9 +232,8 @@ contract OnboardingSponsorTest is Test {
 
         // 4. Redeem — predictor gets all collateral
         vm.prank(predictor);
-        IPredictionMarketToken(predictorToken).approve(
-            address(market), totalCollateral
-        );
+        IPredictionMarketToken(predictorToken)
+            .approve(address(market), totalCollateral);
 
         vm.prank(predictor);
         market.redeem(predictorToken, totalCollateral, REF_CODE);
@@ -273,9 +272,8 @@ contract OnboardingSponsorTest is Test {
 
         // Counterparty redeems
         vm.prank(counterparty);
-        IPredictionMarketToken(counterpartyToken).approve(
-            address(market), totalCollateral
-        );
+        IPredictionMarketToken(counterpartyToken)
+            .approve(address(market), totalCollateral);
 
         vm.prank(counterparty);
         market.redeem(counterpartyToken, totalCollateral, REF_CODE);

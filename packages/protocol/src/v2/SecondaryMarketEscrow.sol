@@ -83,10 +83,7 @@ contract SecondaryMarketEscrow is
     // ============ External Functions ============
 
     /// @inheritdoc ISecondaryMarketEscrow
-    function executeTrade(TradeRequest calldata request)
-        external
-        nonReentrant
-    {
+    function executeTrade(TradeRequest calldata request) external nonReentrant {
         // Validate basic parameters
         if (request.tokenAmount == 0 || request.price == 0) {
             revert ZeroAmount();
@@ -108,29 +105,25 @@ contract SecondaryMarketEscrow is
         );
 
         // Validate seller signature
-        if (
-            !_validatePartySignature(
+        if (!_validatePartySignature(
                 tradeHash,
                 request.seller,
                 request.sellerNonce,
                 request.sellerDeadline,
                 request.sellerSignature,
                 request.sellerSessionKeyData
-            )
-        ) {
+            )) {
             revert InvalidSignature();
         }
         // Validate buyer signature
-        if (
-            !_validatePartySignature(
+        if (!_validatePartySignature(
                 tradeHash,
                 request.buyer,
                 request.buyerNonce,
                 request.buyerDeadline,
                 request.buyerSignature,
                 request.buyerSessionKeyData
-            )
-        ) {
+            )) {
             revert InvalidSignature();
         }
 
@@ -140,14 +133,14 @@ contract SecondaryMarketEscrow is
 
         // Execute atomic swap
         // 1. Transfer position tokens from seller to buyer
-        IERC20(request.token).safeTransferFrom(
-            request.seller, request.buyer, request.tokenAmount
-        );
+        IERC20(request.token)
+            .safeTransferFrom(
+                request.seller, request.buyer, request.tokenAmount
+            );
 
         // 2. Transfer collateral from buyer to seller
-        IERC20(request.collateral).safeTransferFrom(
-            request.buyer, request.seller, request.price
-        );
+        IERC20(request.collateral)
+            .safeTransferFrom(request.buyer, request.seller, request.price);
 
         emit TradeExecuted(
             tradeHash,
@@ -306,9 +299,9 @@ contract SecondaryMarketEscrow is
         }
 
         // Try ECDSA first (for EOAs)
-        if (
-            _isTradeApprovalValid(tradeHash, signer, nonce, deadline, signature)
-        ) {
+        if (_isTradeApprovalValid(
+                tradeHash, signer, nonce, deadline, signature
+            )) {
             return true;
         }
 
@@ -337,7 +330,9 @@ contract SecondaryMarketEscrow is
         }
         try IERC1271(signer).isValidSignature{ gas: EIP1271_GAS_LIMIT }(
             hash, signature
-        ) returns (bytes4 magicValue) {
+        ) returns (
+            bytes4 magicValue
+        ) {
             return magicValue == IERC1271.isValidSignature.selector;
         } catch {
             return false;

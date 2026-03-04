@@ -2,8 +2,9 @@
 pragma solidity ^0.8.19;
 
 import { Script, console } from "forge-std/Script.sol";
-import { PredictionMarketBridge } from
-    "../../../v2/bridge/PredictionMarketBridge.sol";
+import {
+    PredictionMarketBridge
+} from "../../../v2/bridge/PredictionMarketBridge.sol";
 
 /// @title Deploy PredictionMarketBridge (Mainnet)
 /// @notice Deploy bridge on PM Network (Ethereal mainnet - source chain)

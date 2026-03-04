@@ -1,8 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import { PredictionMarketLZResolverUmaSide } from
-    "../../../../src/legacy/predictionMarket/resolvers/PredictionMarketLZResolverUmaSide.sol";
+import {
+    PredictionMarketLZResolverUmaSide
+} from "../../../../src/legacy/predictionMarket/resolvers/PredictionMarketLZResolverUmaSide.sol";
 
 /**
  * @title MockOptimisticOracleV3ForPMResolver
@@ -66,7 +67,8 @@ contract MockOptimisticOracleV3ForPMResolver {
         bytes memory claim,
         address asserter,
         address callbackRecipient,
-        address, /* escalationManager */
+        address,
+        /* escalationManager */
         uint64 liveness,
         address currency,
         uint256 bond,
@@ -99,7 +101,9 @@ contract MockOptimisticOracleV3ForPMResolver {
         return assertionId;
     }
 
-    function getAssertion(bytes32 /* assertionId */ )
+    function getAssertion(
+        bytes32 /* assertionId */
+    )
         external
         pure
         returns (bytes memory)
@@ -107,9 +111,12 @@ contract MockOptimisticOracleV3ForPMResolver {
         return "";
     }
 
-    function syncUmaParams(bytes32, /* identifier */ address /* currency */ )
-        external
-    {
+    function syncUmaParams(
+        bytes32,
+        /* identifier */
+        address /* currency */
+    )
+        external {
         // Mock implementation
     }
 
@@ -117,3 +124,4 @@ contract MockOptimisticOracleV3ForPMResolver {
         return 0.1 ether; // Mock minimum bond
     }
 }
+

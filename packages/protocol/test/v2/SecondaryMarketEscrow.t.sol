@@ -131,8 +131,9 @@ contract SecondaryMarketEscrowTest is Test {
         uint256 deadline,
         uint256 pk
     ) internal view returns (bytes memory) {
-        bytes32 approvalHash =
-            escrow.getTradeApprovalHash(tradeHash, signer, nonce, deadline);
+        bytes32 approvalHash = escrow.getTradeApprovalHash(
+            tradeHash, signer, nonce, deadline
+        );
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk, approvalHash);
         return abi.encodePacked(r, s, v);
     }
@@ -486,8 +487,9 @@ contract SecondaryMarketEscrowTest is Test {
         request.sellerSignature = _signTradeApproval(
             tradeHash, seller, sNonce, expiredDeadline, sellerPk
         );
-        request.buyerSignature =
-            _signTradeApproval(tradeHash, buyer, bNonce, validDeadline, buyerPk);
+        request.buyerSignature = _signTradeApproval(
+            tradeHash, buyer, bNonce, validDeadline, buyerPk
+        );
         request.refCode = REF_CODE;
         request.sellerSessionKeyData = "";
         request.buyerSessionKeyData = "";
@@ -623,9 +625,14 @@ contract SecondaryMarketEscrowTest is Test {
         positionToken.approve(address(escrow), type(uint256).max);
 
         ISecondaryMarketEscrow.TradeRequest memory request =
-        _createTradeRequestWith(
-            address(smartSeller), buyer, TOKEN_AMOUNT, PRICE, sellerPk, buyerPk
-        );
+            _createTradeRequestWith(
+                address(smartSeller),
+                buyer,
+                TOKEN_AMOUNT,
+                PRICE,
+                sellerPk,
+                buyerPk
+            );
 
         uint256 smartSellerPosBefore =
             positionToken.balanceOf(address(smartSeller));
@@ -650,9 +657,14 @@ contract SecondaryMarketEscrowTest is Test {
         collateralToken.approve(address(escrow), type(uint256).max);
 
         ISecondaryMarketEscrow.TradeRequest memory request =
-        _createTradeRequestWith(
-            seller, address(smartBuyer), TOKEN_AMOUNT, PRICE, sellerPk, buyerPk
-        );
+            _createTradeRequestWith(
+                seller,
+                address(smartBuyer),
+                TOKEN_AMOUNT,
+                PRICE,
+                sellerPk,
+                buyerPk
+            );
 
         escrow.executeTrade(request);
 
@@ -675,14 +687,14 @@ contract SecondaryMarketEscrowTest is Test {
         collateralToken.approve(address(escrow), type(uint256).max);
 
         ISecondaryMarketEscrow.TradeRequest memory request =
-        _createTradeRequestWith(
-            address(smartSeller),
-            address(smartBuyer),
-            TOKEN_AMOUNT,
-            PRICE,
-            sellerPk,
-            buyerPk
-        );
+            _createTradeRequestWith(
+                address(smartSeller),
+                address(smartBuyer),
+                TOKEN_AMOUNT,
+                PRICE,
+                sellerPk,
+                buyerPk
+            );
 
         escrow.executeTrade(request);
 
@@ -782,7 +794,6 @@ contract SecondaryMarketEscrowSessionKeyTest is Test {
     function _freshNonce() internal returns (uint256) {
         return _nextNonce++;
     }
-
     uint256 public buyerPk;
     address public buyer;
     address public smartAccount;
@@ -838,8 +849,9 @@ contract SecondaryMarketEscrowSessionKeyTest is Test {
         uint256 deadline,
         uint256 pk
     ) internal view returns (bytes memory) {
-        bytes32 approvalHash =
-            escrow.getTradeApprovalHash(tradeHash, signer, nonce, deadline);
+        bytes32 approvalHash = escrow.getTradeApprovalHash(
+            tradeHash, signer, nonce, deadline
+        );
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk, approvalHash);
         return abi.encodePacked(r, s, v);
     }

@@ -250,7 +250,7 @@ contract PredictionMarketVault is
         if (
             lastUserInteractionTimestamp[msg.sender] > 0
                 && lastUserInteractionTimestamp[msg.sender]
-                    + withdrawalInteractionDelay > block.timestamp
+                        + withdrawalInteractionDelay > block.timestamp
         ) revert InteractionDelayNotExpired();
 
         PendingRequest storage request = pendingRequests[msg.sender];
@@ -291,7 +291,7 @@ contract PredictionMarketVault is
         if (
             lastUserInteractionTimestamp[msg.sender] > 0
                 && lastUserInteractionTimestamp[msg.sender]
-                    + depositInteractionDelay > block.timestamp
+                        + depositInteractionDelay > block.timestamp
         ) revert InteractionDelayNotExpired();
         PendingRequest storage request = pendingRequests[msg.sender];
         if (request.user == msg.sender && !request.processed) {
@@ -703,9 +703,12 @@ contract PredictionMarketVault is
             bytes32 pickConfigId
         ) {
             // Try to get claimable amount from the market
-            try IPredictionMarketInfo(predictionMarket).getClaimableAmount(
-                pickConfigId, positionToken, balance
-            ) returns (uint256 amount) {
+            try IPredictionMarketInfo(predictionMarket)
+                .getClaimableAmount(
+                    pickConfigId, positionToken, balance
+                ) returns (
+                uint256 amount
+            ) {
                 claimableValue = amount;
             } catch {
                 // Market call failed, claimable value unknown

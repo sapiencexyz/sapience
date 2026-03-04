@@ -2,8 +2,9 @@
 pragma solidity ^0.8.22;
 
 import "forge-std/Script.sol";
-import { PredictionMarketLZResolver } from
-    "../../predictionMarket/resolvers/PredictionMarketLZResolver.sol";
+import {
+    PredictionMarketLZResolver
+} from "../../predictionMarket/resolvers/PredictionMarketLZResolver.sol";
 import { BridgeTypes } from "../../bridge/BridgeTypes.sol";
 
 // Configure the PM-side LZ resolver on Ethereal to trust UMA-side peer and set gas params
@@ -28,11 +29,11 @@ contract ConfigurePredictionMarketLZResolver is Script {
 
         resolver.setBridgeConfig(
             BridgeTypes.BridgeConfig({
-                remoteEid: umaSideEid,
-                remoteBridge: umaSideResolver
+                remoteEid: umaSideEid, remoteBridge: umaSideResolver
             })
         );
 
         vm.stopBroadcast();
     }
 }
+

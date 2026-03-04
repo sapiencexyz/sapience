@@ -344,11 +344,7 @@ contract SessionKeyRevocationTest is Test {
         return abi.encodePacked(r, s, v);
     }
 
-    function _createTradeSessionKeyData()
-        internal
-        view
-        returns (bytes memory)
-    {
+    function _createTradeSessionKeyData() internal view returns (bytes memory) {
         uint256 validUntil = block.timestamp + 1 days;
         bytes32 permissionsHash = keccak256("TRADE");
 

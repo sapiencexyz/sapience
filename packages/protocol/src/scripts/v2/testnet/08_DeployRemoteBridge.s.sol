@@ -2,8 +2,9 @@
 pragma solidity ^0.8.19;
 
 import { Script, console } from "forge-std/Script.sol";
-import { PredictionMarketBridgeRemote } from
-    "../../../v2/bridge/PredictionMarketBridgeRemote.sol";
+import {
+    PredictionMarketBridgeRemote
+} from "../../../v2/bridge/PredictionMarketBridgeRemote.sol";
 
 /// @title Deploy PredictionMarketBridgeRemote
 /// @notice Deploy bridge on SM Network Sepolia (remote chain)

@@ -1,14 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import { TestHelperOz5 } from
-    "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
-import { LZConditionResolverUmaSide } from
-    "../../src/v2/resolvers/lz-uma/LZConditionResolverUmaSide.sol";
-import { LZConditionResolver } from
-    "../../src/v2/resolvers/lz-uma/LZConditionResolver.sol";
-import { ILZConditionResolverUmaSide } from
-    "../../src/v2/resolvers/lz-uma/interfaces/ILZConditionResolverUmaSide.sol";
+import {
+    TestHelperOz5
+} from "@layerzerolabs/test-devtools-evm-foundry/contracts/TestHelperOz5.sol";
+import {
+    LZConditionResolverUmaSide
+} from "../../src/v2/resolvers/lz-uma/LZConditionResolverUmaSide.sol";
+import {
+    LZConditionResolver
+} from "../../src/v2/resolvers/lz-uma/LZConditionResolver.sol";
+import {
+    ILZConditionResolverUmaSide
+} from "../../src/v2/resolvers/lz-uma/interfaces/ILZConditionResolverUmaSide.sol";
 import { LZTypes } from "../../src/v2/resolvers/shared/LZTypes.sol";
 import { MockOptimisticOracleV3 } from "./mocks/MockOptimisticOracleV3.sol";
 import { MockERC20 } from "./mocks/MockERC20.sol";
@@ -91,8 +95,7 @@ contract LZConditionResolverUmaSideTest is TestHelperOz5 {
 
         // Deploy UMA-side resolver
         umaResolver = LZConditionResolverUmaSide(
-            payable(
-                _deployOApp(
+            payable(_deployOApp(
                     type(LZConditionResolverUmaSide).creationCode,
                     abi.encode(
                         address(endpoints[umaEid]),
@@ -104,18 +107,15 @@ contract LZConditionResolverUmaSideTest is TestHelperOz5 {
                             assertionLiveness: ASSERTION_LIVENESS
                         })
                     )
-                )
-            )
+                ))
         );
 
         // Deploy PM-side resolver
         pmResolver = LZConditionResolver(
-            payable(
-                _deployOApp(
+            payable(_deployOApp(
                     type(LZConditionResolver).creationCode,
                     abi.encode(address(endpoints[pmEid]), owner)
-                )
-            )
+                ))
         );
 
         // Wire OApps
@@ -130,14 +130,12 @@ contract LZConditionResolverUmaSideTest is TestHelperOz5 {
         // Configure bridge
         umaResolver.setBridgeConfig(
             LZTypes.BridgeConfig({
-                remoteEid: pmEid,
-                remoteBridge: address(pmResolver)
+                remoteEid: pmEid, remoteBridge: address(pmResolver)
             })
         );
         pmResolver.setBridgeConfig(
             LZTypes.BridgeConfig({
-                remoteEid: umaEid,
-                remoteBridge: address(umaResolver)
+                remoteEid: umaEid, remoteBridge: address(umaResolver)
             })
         );
 
@@ -180,8 +178,7 @@ contract LZConditionResolverUmaSideTest is TestHelperOz5 {
 
     function test_setBridgeConfig_success() public {
         LZTypes.BridgeConfig memory newConfig = LZTypes.BridgeConfig({
-            remoteEid: 999,
-            remoteBridge: address(0x1234)
+            remoteEid: 999, remoteBridge: address(0x1234)
         });
 
         vm.expectEmit(false, false, false, true);
@@ -196,11 +193,11 @@ contract LZConditionResolverUmaSideTest is TestHelperOz5 {
     function test_setConfig_success() public {
         address newBondCurrency = address(0xBEEF);
         ILZConditionResolverUmaSide.Settings memory newConfig =
-        ILZConditionResolverUmaSide.Settings({
-            bondCurrency: newBondCurrency,
-            bondAmount: 2 ether,
-            assertionLiveness: 7200
-        });
+            ILZConditionResolverUmaSide.Settings({
+                bondCurrency: newBondCurrency,
+                bondAmount: 2 ether,
+                assertionLiveness: 7200
+            });
 
         vm.expectEmit(true, false, false, true);
         emit ConfigUpdated(newBondCurrency, 2 ether, 7200);
@@ -234,9 +231,7 @@ contract LZConditionResolverUmaSideTest is TestHelperOz5 {
         vm.expectRevert();
         umaResolver.setConfig(
             ILZConditionResolverUmaSide.Settings({
-                bondCurrency: address(0x1),
-                bondAmount: 1,
-                assertionLiveness: 1
+                bondCurrency: address(0x1), bondAmount: 1, assertionLiveness: 1
             })
         );
 
@@ -359,8 +354,7 @@ contract LZConditionResolverUmaSideTest is TestHelperOz5 {
     function test_submitAssertion_revertIfInsufficientBond() public {
         // Create new resolver without bond funding
         LZConditionResolverUmaSide newResolver = LZConditionResolverUmaSide(
-            payable(
-                _deployOApp(
+            payable(_deployOApp(
                     type(LZConditionResolverUmaSide).creationCode,
                     abi.encode(
                         address(endpoints[umaEid]),
@@ -372,8 +366,7 @@ contract LZConditionResolverUmaSideTest is TestHelperOz5 {
                             assertionLiveness: ASSERTION_LIVENESS
                         })
                     )
-                )
-            )
+                ))
         );
 
         newResolver.approveAsserter(asserter);
