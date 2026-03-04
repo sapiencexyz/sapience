@@ -202,6 +202,117 @@ describe('cross-language: SDK matches Solidity contract', () => {
 });
 
 // ============================================================================
+// 0b. Permission hashes (catches #1156: keccak256("V2_MINT") vs keccak256("MINT"))
+// ============================================================================
+
+describe('cross-language: permission constants', () => {
+  test('MINT_PERMISSION matches contract keccak256("MINT")', () => {
+    const sdkMintPermission = keccak256(toHex('MINT'));
+    expect(sdkMintPermission).toBe(goldenHashes.mintPermission);
+  });
+
+  test('BURN_PERMISSION matches contract keccak256("BURN")', () => {
+    const sdkBurnPermission = keccak256(toHex('BURN'));
+    expect(sdkBurnPermission).toBe(goldenHashes.burnPermission);
+  });
+
+  test('MINT_PERMISSION is NOT keccak256("V2_MINT") (regression for #1156)', () => {
+    const wrongPermission = keccak256(toHex('V2_MINT'));
+    expect(wrongPermission).not.toBe(goldenHashes.mintPermission);
+  });
+});
+
+// ============================================================================
+// 0c. Full EIP-712 digest (_hashTypedDataV4) with domain separator
+// ============================================================================
+
+describe('cross-language: full EIP-712 digest with domain', () => {
+  // The Forge fixture runs with chainId=31337 (Anvil default) and the
+  // harness contract's deployed address. We reconstruct the same domain
+  // to verify the SDK's hashMintApproval/hashBurnApproval produce
+  // identical digests when given the same domain parameters.
+  const fixtureChainId = goldenHashes.domainChainId;
+  const fixtureContract = goldenHashes.domainVerifyingContract as Address;
+
+  test('hashMintApproval matches contract _hashTypedDataV4', () => {
+    const sdkDigest = hashMintApproval({
+      predictionHash: goldenHashes.predictionHashNoSponsor as Hex,
+      signer: PREDICTOR,
+      collateral: PREDICTOR_COLLATERAL,
+      nonce: NONCE,
+      deadline: DEADLINE,
+      verifyingContract: fixtureContract,
+      chainId: fixtureChainId,
+    });
+    expect(sdkDigest).toBe(goldenHashes.mintApprovalDigest);
+  });
+
+  test('hashBurnApproval matches contract _hashTypedDataV4', () => {
+    const sdkDigest = hashBurnApproval({
+      burnHash: goldenHashes.burnHash as Hex,
+      signer: PREDICTOR,
+      tokenAmount: 500000n,
+      payout: 1000000n,
+      nonce: NONCE,
+      deadline: DEADLINE,
+      verifyingContract: fixtureContract,
+      chainId: fixtureChainId,
+    });
+    expect(sdkDigest).toBe(goldenHashes.burnApprovalDigest);
+  });
+
+  test('different chainId produces different digest (domain drift)', () => {
+    const digest1 = hashMintApproval({
+      predictionHash: goldenHashes.predictionHashNoSponsor as Hex,
+      signer: PREDICTOR,
+      collateral: PREDICTOR_COLLATERAL,
+      nonce: NONCE,
+      deadline: DEADLINE,
+      verifyingContract: fixtureContract,
+      chainId: fixtureChainId,
+    });
+    const digest2 = hashMintApproval({
+      predictionHash: goldenHashes.predictionHashNoSponsor as Hex,
+      signer: PREDICTOR,
+      collateral: PREDICTOR_COLLATERAL,
+      nonce: NONCE,
+      deadline: DEADLINE,
+      verifyingContract: fixtureContract,
+      chainId: 42161, // Arbitrum mainnet
+    });
+    expect(digest1).not.toBe(digest2);
+  });
+
+  test('different verifyingContract produces different digest (domain drift)', () => {
+    const digest1 = hashMintApproval({
+      predictionHash: goldenHashes.predictionHashNoSponsor as Hex,
+      signer: PREDICTOR,
+      collateral: PREDICTOR_COLLATERAL,
+      nonce: NONCE,
+      deadline: DEADLINE,
+      verifyingContract: fixtureContract,
+      chainId: fixtureChainId,
+    });
+    const digest2 = hashMintApproval({
+      predictionHash: goldenHashes.predictionHashNoSponsor as Hex,
+      signer: PREDICTOR,
+      collateral: PREDICTOR_COLLATERAL,
+      nonce: NONCE,
+      deadline: DEADLINE,
+      verifyingContract: getAddress('0x5555555555555555555555555555555555555555'),
+      chainId: fixtureChainId,
+    });
+    expect(digest1).not.toBe(digest2);
+  });
+
+  test('domain name and version are correct', () => {
+    const domain = getEscrowDomain(fixtureContract, fixtureChainId);
+    expect(domain.name).toBe('PredictionMarketEscrow');
+    expect(domain.version).toBe('1');
+  });
+});
+
+// ============================================================================
 // 1. predictionHash — field completeness
 // ============================================================================
 

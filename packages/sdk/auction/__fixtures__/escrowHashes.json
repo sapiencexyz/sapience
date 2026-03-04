@@ -1,5 +1,5 @@
 {
-  "_generated_by": "forge script test/v2/fixtures/GenerateHashFixtures.s.sol -vvv",
+  "_generated_by": "forge script test/v2/fixtures/GenerateHashFixtures.s.sol --tc GenerateHashFixtures --via-ir -vvv",
   "_description": "Golden hash values computed by the Solidity contract. If these don't match the SDK, one side has drifted.",
   "pickConfigId": "0xd3bc63c78070c59b991736c312518576b8e4a6cf794d18afe3165374297ecfb8",
   "twoPickConfigId": "0x25fea6f1efac8397ed692476c03994b001ed33eb105bef9dcca62a94b2b78be4",
@@ -8,5 +8,11 @@
   "predictionHashWithSponsorData": "0xfc23042e2ce1b2e8f913b83cd00fb03c639d1e71d2cb67794957b6eb739a3197",
   "burnHash": "0x66aff1a86fee5fc05de667dc253d480bfefe5a3c3e4f56a9b0e0a07b486d702d",
   "mintApprovalStructHash": "0xbd9363de7cc261a307fa3255c3b432de0ed67c8610c8f65788f325edb1e3395e",
-  "burnApprovalStructHash": "0x32040dcc663bd987df2cd61d47e9c146b02b29e094fd61fafed1535381c7c87b"
+  "burnApprovalStructHash": "0x32040dcc663bd987df2cd61d47e9c146b02b29e094fd61fafed1535381c7c87b",
+  "mintPermission": "0xfdf81848136595c31bb5f76217767372bc4bf906663038eb38381131ea27ecba",
+  "burnPermission": "0x04c6a47ae7910ef8b295215a97e8495a9eaf57b7b05bfd8bf951edb3fd4a16a3",
+  "mintApprovalDigest": "0xefa51ac6406d5687b4e9a9e84ba2a4c4fd307fc91651ee90df0d58e17ada34f8",
+  "burnApprovalDigest": "0x027e2f29a9a221c3117cb23611b783facd0281517b995ca594739949337941b0",
+  "domainChainId": 31337,
+  "domainVerifyingContract": "0x5aAdFB43eF8dAF45DD80F4676345b7676f1D70e3"
 }

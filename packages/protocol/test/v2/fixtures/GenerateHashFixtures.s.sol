@@ -135,6 +135,19 @@ contract GenerateHashFixtures is Script {
             )
         );
 
+        // --- Permission hashes (catches #1156: keccak256("V2_MINT") vs keccak256("MINT")) ---
+        bytes32 mintPermission = validator.MINT_PERMISSION();
+        bytes32 burnPermission = validator.BURN_PERMISSION();
+
+        // --- Full _hashTypedDataV4 for MintApproval (includes EIP-712 domain separator) ---
+        // Uses the harness's domain: name="PredictionMarketEscrow", version="1"
+        // Note: chainId and verifyingContract come from the harness deployment context,
+        // so we output the domain separator separately for the SDK to reconstruct.
+        bytes32 mintApprovalDigest = validator.hashTypedDataV4(mintStructHash);
+
+        // --- Full _hashTypedDataV4 for BurnApproval ---
+        bytes32 burnApprovalDigest = validator.hashTypedDataV4(burnStructHash);
+
         // --- Output as JSON ---
         console.log("{");
         console.log("  \"pickConfigId\":");
@@ -152,7 +165,19 @@ contract GenerateHashFixtures is Script {
         console.log("  \"mintApprovalStructHash\":");
         console.log("    \"%s\",", vm.toString(mintStructHash));
         console.log("  \"burnApprovalStructHash\":");
-        console.log("    \"%s\"", vm.toString(burnStructHash));
+        console.log("    \"%s\",", vm.toString(burnStructHash));
+        console.log("  \"mintPermission\":");
+        console.log("    \"%s\",", vm.toString(mintPermission));
+        console.log("  \"burnPermission\":");
+        console.log("    \"%s\",", vm.toString(burnPermission));
+        console.log("  \"mintApprovalDigest\":");
+        console.log("    \"%s\",", vm.toString(mintApprovalDigest));
+        console.log("  \"burnApprovalDigest\":");
+        console.log("    \"%s\",", vm.toString(burnApprovalDigest));
+        console.log("  \"domainChainId\":");
+        console.log("    %s,", vm.toString(block.chainid));
+        console.log("  \"domainVerifyingContract\":");
+        console.log("    \"%s\"", vm.toString(address(validator)));
         console.log("}");
     }
 }
@@ -162,4 +187,9 @@ contract GenerateHashFixtures is Script {
  */
 contract SignatureValidatorHarness is SignatureValidator {
     constructor() {}
+
+    /// @notice Expose internal _hashTypedDataV4 for fixture generation
+    function hashTypedDataV4(bytes32 structHash) external view returns (bytes32) {
+        return _hashTypedDataV4(structHash);
+    }
 }
