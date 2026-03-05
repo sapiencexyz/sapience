@@ -399,9 +399,7 @@ export default function PositionForm({
   const totalPredictionCount = selections.length + pythPredictions.length;
 
   const triggerAuctionRequest = useCallback(
-    async (options?: {
-      forceRefresh?: boolean;
-    }) => {
+    async (options?: { forceRefresh?: boolean }) => {
       // Prevent multiple concurrent auction requests
       if (auctionRequestInFlightRef.current) {
         return;

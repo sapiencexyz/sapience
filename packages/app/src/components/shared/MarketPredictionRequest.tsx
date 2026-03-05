@@ -12,7 +12,6 @@ import {
 } from '@sapience/sdk/constants';
 import { OutcomeSide } from '@sapience/sdk/types';
 import { predictionMarketLZConditionalTokensResolver } from '@sapience/sdk/contracts';
-import { verifyMakerBidSignature } from '@sapience/sdk';
 import { useAuctionStart, type QuoteBid } from '~/lib/auction/useAuctionStart';
 import {
   buildAuctionStartPayload,
@@ -105,15 +104,6 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
   const [lastPredictorPositionSizeWei, setLastPredictorPositionSizeWei] =
     React.useState<string | null>(null);
   const [queuedRequest, setQueuedRequest] = React.useState<boolean>(false);
-  // Store auction params for signature verification
-  const [lastAuctionParams, setLastAuctionParams] = React.useState<{
-    wager: string;
-    predictedOutcomes: string[];
-    resolver: string;
-    predictor: string;
-    predictorNonce: number;
-    chainId: number;
-  } | null>(null);
 
   const { address: predictorAddress } = useAccount();
   // Disable logging for forecast-only components to avoid noisy console output
@@ -191,7 +181,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
     if (!isRequesting) return;
     if (!bids || bids.length === 0) return;
 
-    const processBids = async () => {
+    const processBids = () => {
       try {
         const nowMs = Date.now();
         const isAnonymousUser = selectedPredictorAddress === zeroAddress;
@@ -199,46 +189,12 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
         let filteredBids: QuoteBid[];
 
         if (isAnonymousUser) {
-          // For anonymous users, verify signatures from trusted bot
-          if (!lastAuctionParams) return;
-
-          const trustedBotBids = bids.filter(
+          // For anonymous users, only accept bids from trusted quoter bot
+          filteredBids = bids.filter(
             (b) =>
               b.counterparty?.toLowerCase() ===
               PREFERRED_ESTIMATE_QUOTER.toLowerCase()
           );
-
-          // Verify each bid's signature
-          const verifiedBids: QuoteBid[] = [];
-          for (const bid of trustedBotBids) {
-            try {
-              // SDK verifyMakerBidSignature uses contract naming (maker/taker)
-              // Map from app naming: predictor → taker, counterparty → maker
-              const result = await verifyMakerBidSignature({
-                auction: {
-                  wager: lastAuctionParams.wager,
-                  predictedOutcomes:
-                    lastAuctionParams.predictedOutcomes as `0x${string}`[],
-                  resolver: lastAuctionParams.resolver as `0x${string}`,
-                  taker: lastAuctionParams.predictor as `0x${string}`,
-                },
-                bid: {
-                  maker: bid.counterparty as `0x${string}`,
-                  makerCollateral: bid.counterpartyCollateral,
-                  makerDeadline: bid.counterpartyDeadline,
-                  makerSignature: bid.counterpartySignature as `0x${string}`,
-                  makerNonce: lastAuctionParams.predictorNonce,
-                },
-                chainId: lastAuctionParams.chainId,
-              });
-              if (result.valid) {
-                verifiedBids.push(bid);
-              }
-            } catch {
-              // Skip bids that fail verification
-            }
-          }
-          filteredBids = verifiedBids;
         } else {
           filteredBids = bids;
         }
@@ -290,7 +246,6 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
     isRequesting,
     lastPredictorPositionSizeWei,
     selectedPredictorAddress,
-    lastAuctionParams,
   ]);
 
   // Fallback: if no bids arrive within a reasonable time window, stop requesting
@@ -343,7 +298,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
         chainId: chainId,
         ...(escrowPicks && { escrowPicks }),
       };
-      setLastAuctionParams(auctionParams);
+
       const send = () => {
         requestQuotes(auctionParams);
         setQueuedRequest(false);
@@ -401,7 +356,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
           chainId: chainId,
           ...(escrowPicks && { escrowPicks }),
         };
-        setLastAuctionParams(auctionParams);
+
         const send = () => {
           requestQuotes(auctionParams);
         };

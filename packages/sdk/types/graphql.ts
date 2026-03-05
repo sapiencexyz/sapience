@@ -370,7 +370,7 @@ export type CollateralBalanceSnapshotType = {
   __typename?: 'CollateralBalanceSnapshotType';
   atBlock: Scalars['Int']['output'];
   balance: Scalars['String']['output'];
-  weekIndex: Scalars['Int']['output'];
+  index: Scalars['Int']['output'];
 };
 
 export type CollateralBalanceType = {
@@ -409,6 +409,7 @@ export type Condition = {
   displayOrder?: Maybe<Scalars['Int']['output']>;
   endTime: Scalars['Int']['output'];
   id: Scalars['String']['output'];
+  nonDecisive: Scalars['Boolean']['output'];
   openInterest: Scalars['String']['output'];
   predictionCount: Scalars['Int']['output'];
   predictions: Array<LegacyPrediction>;
@@ -594,6 +595,7 @@ export type ConditionOrderByWithRelationInput = {
   displayOrder?: InputMaybe<SortOrderInput>;
   endTime?: InputMaybe<SortOrder>;
   id?: InputMaybe<SortOrder>;
+  nonDecisive?: InputMaybe<SortOrder>;
   openInterest?: InputMaybe<SortOrder>;
   predictionCount?: InputMaybe<SortOrder>;
   predictions?: InputMaybe<LegacyPredictionOrderByRelationAggregateInput>;
@@ -624,6 +626,7 @@ export type ConditionScalarFieldEnum =
   | 'displayOrder'
   | 'endTime'
   | 'id'
+  | 'nonDecisive'
   | 'openInterest'
   | 'predictionCount'
   | 'public'
@@ -653,6 +656,7 @@ export type ConditionWhereInput = {
   displayOrder?: InputMaybe<IntNullableFilter>;
   endTime?: InputMaybe<IntFilter>;
   id?: InputMaybe<StringFilter>;
+  nonDecisive?: InputMaybe<BoolFilter>;
   openInterest?: InputMaybe<StringFilter>;
   predictionCount?: InputMaybe<IntFilter>;
   predictions?: InputMaybe<LegacyPredictionListRelationFilter>;
@@ -684,6 +688,7 @@ export type ConditionWhereUniqueInput = {
   displayOrder?: InputMaybe<IntNullableFilter>;
   endTime?: InputMaybe<IntFilter>;
   id?: InputMaybe<Scalars['String']['input']>;
+  nonDecisive?: InputMaybe<BoolFilter>;
   openInterest?: InputMaybe<StringFilter>;
   predictionCount?: InputMaybe<IntFilter>;
   predictions?: InputMaybe<LegacyPredictionListRelationFilter>;
@@ -1236,6 +1241,7 @@ export type Position = {
   __typename?: 'Position';
   balance: Scalars['String']['output'];
   chainId: Scalars['Int']['output'];
+  createdAt: Scalars['DateTimeISO']['output'];
   holder: Scalars['String']['output'];
   id: Scalars['Int']['output'];
   isPredictorToken: Scalars['Boolean']['output'];
@@ -1474,8 +1480,9 @@ export type QueryCollateralBalanceArgs = {
 export type QueryCollateralBalanceHistoryArgs = {
   address: Scalars['String']['input'];
   chainId?: Scalars['Int']['input'];
-  currentBlock: Scalars['Int']['input'];
-  weeks?: Scalars['Int']['input'];
+  count?: Scalars['Int']['input'];
+  currentBlock?: InputMaybe<Scalars['Int']['input']>;
+  intervalHours?: Scalars['Int']['input'];
 };
 
 
@@ -1724,6 +1731,7 @@ export type ReferralCodeWhereInput = {
 /** Filter questions by their resolution status */
 export type ResolutionStatus =
   | 'all'
+  | 'resolved'
   | 'resolvedNo'
   | 'resolvedYes'
   | 'unresolved';

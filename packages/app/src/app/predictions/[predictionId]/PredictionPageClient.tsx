@@ -44,7 +44,10 @@ export default function PredictionPageClient({
     const condition = conditionsMap.get(pick.conditionId);
     return {
       question: condition?.question || condition?.shortName || pick.conditionId,
-      choice: (pick.predictedOutcome as OutcomeSide) === OutcomeSide.YES ? 'YES' : 'NO',
+      choice:
+        (pick.predictedOutcome as OutcomeSide) === OutcomeSide.YES
+          ? 'YES'
+          : 'NO',
       conditionId: pick.conditionId,
       categorySlug: condition?.category?.slug ?? null,
       endTime: condition?.endTime ?? null,

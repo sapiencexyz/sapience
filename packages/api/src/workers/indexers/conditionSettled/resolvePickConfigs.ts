@@ -1,8 +1,6 @@
 import type { PrismaClient } from '../../../../generated/prisma';
 
-type TxClient = Parameters<
-  Parameters<PrismaClient['$transaction']>[0]
->[0];
+type TxClient = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
 
 interface ConditionOutcome {
   id: string;

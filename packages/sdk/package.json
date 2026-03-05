@@ -1,6 +1,6 @@
 {
   "name": "@sapience/sdk",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "license": "MIT",
   "private": false,
   "sideEffects": false,
@@ -16,11 +16,6 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.mjs",
       "require": "./dist/index.js"
-    },
-    "./auction/signing": {
-      "types": "./dist/auction/signing.d.ts",
-      "import": "./dist/auction/signing.mjs",
-      "require": "./dist/auction/signing.js"
     },
     "./auction/encoding": {
       "types": "./dist/auction/encoding.d.ts",
@@ -41,11 +36,6 @@
       "types": "./dist/auction/secondarySigning.d.ts",
       "import": "./dist/auction/secondarySigning.mjs",
       "require": "./dist/auction/secondarySigning.js"
-    },
-    "./relayer/auctionWs": {
-      "types": "./dist/relayer/auctionWs.d.ts",
-      "import": "./dist/relayer/auctionWs.mjs",
-      "require": "./dist/relayer/auctionWs.js"
     },
     "./relayer/escrowAuctionWs": {
       "types": "./dist/relayer/escrowAuctionWs.d.ts",
@@ -107,19 +97,19 @@
   },
   "scripts": {
     "prepare": "pnpm run build:lib",
-    "dev": "tsup index.ts auction/signing.ts auction/encoding.ts auction/escrowEncoding.ts auction/escrowSigning.ts auction/secondarySigning.ts relayer/auctionWs.ts relayer/escrowAuctionWs.ts abis/index.ts constants/index.ts contracts/index.ts contracts/addresses.ts queries/index.ts queries/client/graphqlClient.ts types/index.ts types/escrow.ts types/secondary.ts types/graphql.ts session/index.ts --format cjs,esm --dts --watch",
-    "build:lib": "tsup index.ts auction/signing.ts auction/encoding.ts auction/escrowEncoding.ts auction/escrowSigning.ts auction/secondarySigning.ts relayer/auctionWs.ts relayer/escrowAuctionWs.ts abis/index.ts constants/index.ts contracts/index.ts contracts/addresses.ts queries/index.ts queries/client/graphqlClient.ts types/index.ts types/escrow.ts types/secondary.ts types/graphql.ts session/index.ts --format cjs,esm --dts --tsconfig tsconfig.build.json",
+    "dev": "tsup index.ts auction/encoding.ts auction/escrowEncoding.ts auction/escrowSigning.ts auction/secondarySigning.ts relayer/escrowAuctionWs.ts abis/index.ts constants/index.ts contracts/index.ts contracts/addresses.ts queries/index.ts queries/client/graphqlClient.ts types/index.ts types/escrow.ts types/secondary.ts types/graphql.ts session/index.ts --format cjs,esm --dts --watch",
+    "build:lib": "tsup index.ts auction/encoding.ts auction/escrowEncoding.ts auction/escrowSigning.ts auction/secondarySigning.ts relayer/escrowAuctionWs.ts abis/index.ts constants/index.ts contracts/index.ts contracts/addresses.ts queries/index.ts queries/client/graphqlClient.ts types/index.ts types/escrow.ts types/secondary.ts types/graphql.ts session/index.ts --format cjs,esm --dts --tsconfig tsconfig.build.json",
     "build": "pnpm run build:lib",
     "lint": "eslint . --quiet",
     "type-check": "tsc --noEmit",
     "settle:pyth": "tsx scripts/settlePythMarkets.ts",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "test": "vitest run"
   },
   "dependencies": {
     "abitype": "1.0.8",
-    "graphql-request": "7.2.0",
-    "zod": "3.25.1"
+    "graphql-request": "7.2.0"
   },
   "peerDependenciesMeta": {
     "ws": {
@@ -129,6 +119,15 @@
       "optional": true
     },
     "@zerodev/ecdsa-validator": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
+    },
+    "@tanstack/react-query": {
       "optional": true
     }
   },
@@ -146,16 +145,15 @@
     "typescript": "5.8.3",
     "typescript-eslint": "8.21.0",
     "viem": "2.23.5",
-    "wagmi": "2.14.16"
+    "wagmi": "2.14.16",
+    "vitest": "^3.0.0"
   },
   "peerDependencies": {
     "@tanstack/react-query": "5.x",
     "@zerodev/ecdsa-validator": "5.3.3",
     "@zerodev/sdk": "5.4.5",
-    "lucide-react": "0.461.0",
     "react": ">=18 || 19",
     "react-dom": ">=18 || 19",
-    "react-hook-form": "7.53.0",
     "viem": "2.23.5",
     "wagmi": "2.14.16",
     "ws": "8.18.0"

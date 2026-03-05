@@ -1,8 +1,39 @@
 import { Router } from 'express';
 import { handleAsyncErrors } from '../helpers/handleAsyncErrors';
 import prisma from '../db';
+import {
+  conditionalTokensConditionResolver,
+  pythConditionResolver,
+  manualConditionResolver,
+} from '@sapience/sdk/contracts';
 
 const router = Router();
+
+const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+
+/**
+ * Returns all resolver addresses that the condition-settled indexer
+ * watches for a given chain. Mirrors the logic in fixtures.ts.
+ */
+function getResolverAddressesForChain(chainId: number): `0x${string}`[] {
+  const addresses: `0x${string}`[] = [];
+  const zero = '0x0000000000000000000000000000000000000000';
+
+  if (IS_PRODUCTION) {
+    // Production: CT + Pyth resolvers on mainnet
+    const ct = conditionalTokensConditionResolver[chainId]?.address;
+    if (ct && ct !== zero) addresses.push(ct as `0x${string}`);
+
+    const pyth = pythConditionResolver[chainId]?.address;
+    if (pyth && pyth !== zero) addresses.push(pyth as `0x${string}`);
+  } else {
+    // Non-production: manual resolver on testnet
+    const manual = manualConditionResolver[chainId]?.address;
+    if (manual && manual !== zero) addresses.push(manual as `0x${string}`);
+  }
+
+  return addresses;
+}
 
 const ETH_ADDRESS_RE = /^0x[a-fA-F0-9]{40}$/;
 const SAFE_STRING_RE = /^[a-zA-Z0-9_\-.:x]+$/;
@@ -112,23 +143,36 @@ router.post(
       return;
     }
 
-    const startCommand = `pnpm run start:reindex-condition-settled ${parsedChainId} ${startTimestamp || 'undefined'} ${endTimestamp || 'undefined'}`;
+    const resolverAddresses = getResolverAddressesForChain(parsedChainId);
+    if (resolverAddresses.length === 0) {
+      res.status(400).json({
+        error: `No resolver addresses configured for chain ${parsedChainId}`,
+      });
+      return;
+    }
 
     const params = JSON.stringify({
       chainId: parsedChainId,
+      resolverAddresses,
       startTimestamp,
       endTimestamp,
     });
+
     try {
-      const result = await executeLocalReindex(startCommand);
+      const results = [];
+      for (const resolverAddress of resolverAddresses) {
+        const startCommand = `pnpm run start:reindex-condition-settled ${parsedChainId} ${resolverAddress} ${startTimestamp || 'undefined'} ${endTimestamp || 'undefined'}`;
+        results.push(await executeLocalReindex(startCommand));
+      }
+
       await prisma.backgroundJob.create({
         data: {
           command: 'reindex-condition-settled',
-          status: result.status,
+          status: 'completed',
           params,
         },
       });
-      res.json({ success: true, job: result });
+      res.json({ success: true, jobs: results });
     } catch (error: unknown) {
       await prisma.backgroundJob.create({
         data: {

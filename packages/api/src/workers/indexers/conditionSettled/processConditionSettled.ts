@@ -155,7 +155,10 @@ export async function processConditionSettled(
                 resolverAddress,
                 condition.id
               );
-              await computeAndStoreMarketTwErrors(resolverAddress, condition.id);
+              await computeAndStoreMarketTwErrors(
+                resolverAddress,
+                condition.id
+              );
               console.log(
                 `${tag} Scored forecasts and computed TW errors for ${conditionId}`
               );
@@ -193,10 +196,7 @@ export async function processConditionSettled(
       `${tag} Processed ConditionSettled: conditionId=${conditionId}, resolvedToYes=${resolvedToYes}, settler=${decoded.args.settler}`
     );
   } catch (error) {
-    console.error(
-      `${tag} Error processing ConditionSettled:`,
-      error
-    );
+    console.error(`${tag} Error processing ConditionSettled:`, error);
     Sentry.captureException(error);
   }
 }
