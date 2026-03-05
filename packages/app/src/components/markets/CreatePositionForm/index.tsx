@@ -687,9 +687,9 @@ const CreatePositionFormInner = ({
           setIsPopoverOpen(false);
 
           // Add picks directly from selections (ensures exact match with counterparty signature)
-          const escrowPicks = getPicks();
-          if (escrowPicks.length > 0) {
-            mintReq.escrowPicks = escrowPicks.map((p) => ({
+          const picks = getPicks();
+          if (picks.length > 0) {
+            mintReq.picks = picks.map((p) => ({
               conditionResolver: p.conditionResolver,
               conditionId: p.conditionId,
               predictedOutcome: p.predictedOutcome,

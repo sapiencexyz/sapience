@@ -3,6 +3,7 @@
  */
 
 import type { PolymarketMarket } from '../types';
+import { MAX_END_DATE_DAYS } from '../constants';
 import { fetchWithRetry } from '../utils';
 import {
   runPipeline,
@@ -18,8 +19,8 @@ import {
 export async function fetchEndingSoonestMarkets(): Promise<PolymarketMarket[]> {
   // Minimum end time: current time + 1 minute (ISO format for API)
   let currentMinEndDate = new Date(Date.now() + 60 * 1000).toISOString();
-  // Maximum end time: current time + 7 days
-  const maxEndDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+  // Maximum end time: current time + MAX_END_DATE_DAYS
+  const maxEndDate = new Date(Date.now() + MAX_END_DATE_DAYS * 24 * 60 * 60 * 1000);
 
   const allMarkets: PolymarketMarket[] = [];
   const seenConditionIds = new Set<string>(); // Track seen markets to deduplicate

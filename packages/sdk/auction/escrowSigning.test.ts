@@ -66,7 +66,7 @@ const CHAIN_ID = 13374202; // Ethereal testnet
 const RESOLVER_A = getAddress('0xaAaAaAaaAaAaAaaAaAAAAAAAAaaaAaAaAaaAaaAa');
 const RESOLVER_B = getAddress('0xbBbBBBBbbBBBbbbBbbBbbbbBBbBbbbbBbBbbBBbB');
 
-// Note: predictedOutcome maps to IV2Types.OutcomeSide enum in Solidity:
+// Note: predictedOutcome maps to OutcomeSide enum in Solidity:
 // YES = 0, NO = 1. If the enum order ever changes, these fixtures and
 // the Forge script (GenerateHashFixtures.s.sol) must both be updated.
 const PICKS: Pick[] = [

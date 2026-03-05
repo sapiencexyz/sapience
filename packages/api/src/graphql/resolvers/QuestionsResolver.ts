@@ -47,6 +47,7 @@ registerEnumType(QuestionSortField, {
 export enum ResolutionStatus {
   all = 'all',
   unresolved = 'unresolved',
+  resolved = 'resolved',
   resolvedYes = 'resolvedYes',
   resolvedNo = 'resolvedNo',
 }
@@ -142,6 +143,8 @@ export class QuestionsResolver {
         switch (resolutionStatus) {
           case ResolutionStatus.unresolved:
             return Prisma.sql`AND c.settled = false`;
+          case ResolutionStatus.resolved:
+            return Prisma.sql`AND c.settled = true`;
           case ResolutionStatus.resolvedYes:
             return Prisma.sql`AND c.settled = true AND c."resolvedToYes" = true`;
           case ResolutionStatus.resolvedNo:
@@ -329,6 +332,8 @@ export class QuestionsResolver {
         switch (resolutionStatus) {
           case ResolutionStatus.unresolved:
             return { settled: false };
+          case ResolutionStatus.resolved:
+            return { settled: true };
           case ResolutionStatus.resolvedYes:
             return { settled: true, resolvedToYes: true };
           case ResolutionStatus.resolvedNo:
