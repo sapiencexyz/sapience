@@ -252,7 +252,7 @@ async function main() {
         skippedCount++;
         continue;
       }
-      const similarMarkets = [`https://polymarket.com#${slug}`];
+      const similarMarkets = [`https://polymarket.com#${slug}`]; // No event slug available, fallback
 
       if (options.dryRun) {
         console.log(`[DRY RUN] Would update "${group.name}" (id: ${group.id}) with:`);
@@ -271,7 +271,7 @@ async function main() {
       continue;
     }
 
-    const similarMarkets = [`https://polymarket.com#${eventSlug}`];
+    const similarMarkets = [`https://polymarket.com/event/${eventSlug}#${market.slug}`];
 
     if (options.dryRun) {
       console.log(`[DRY RUN] Would update "${group.name}" (id: ${group.id}) with:`);
