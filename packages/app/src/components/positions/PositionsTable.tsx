@@ -20,6 +20,7 @@ import CountdownCell from '~/components/shared/CountdownCell';
 import { formatDistanceToNow } from 'date-fns';
 import { toPicks, type ConditionsMap } from '~/components/positions/toPickLegs';
 import { COLLATERAL_SYMBOLS, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { OutcomeSide } from '@sapience/sdk/types';
 import {
   usePositionBalances,
   usePositionBalancesByConditionId,
@@ -474,10 +475,10 @@ export default function PositionsTable({
       const question =
         condition?.question ?? condition?.shortName ?? pick.conditionId;
       const choice = isPredictorToken
-        ? pick.predictedOutcome === 1
+        ? (pick.predictedOutcome as OutcomeSide) === OutcomeSide.YES
           ? 'Yes'
           : 'No'
-        : pick.predictedOutcome === 1
+        : (pick.predictedOutcome as OutcomeSide) === OutcomeSide.YES
           ? 'No'
           : 'Yes';
       qp.append('leg', `${question}|${choice}`);
