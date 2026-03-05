@@ -16,7 +16,7 @@ export class VolumeResolver {
   ): Promise<string> {
     const addr = address.toLowerCase();
 
-    // V1 legacy positions + V2 predictions aggregated per address
+    // Legacy positions + escrow predictions aggregated per address
     // Addresses are stored lowercase by indexers, so no LOWER() needed
     const [result] = await prisma.$queryRaw<VolumeRow[]>`
       SELECT COALESCE(SUM(vol), 0)::TEXT as total

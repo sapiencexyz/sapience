@@ -1,6 +1,6 @@
 import type { Abi } from 'abitype';
 
-// Legacy (v1) ABIs
+// Deprecated ABIs
 import PredictionMarket from './PredictionMarket.json';
 import LiquidityVault from './LiquidityVault.json';
 import UMAResolver from './UMAResolver.json';
@@ -23,29 +23,27 @@ import PredictionMarketTokenFactory from './PredictionMarketTokenFactory.json';
 import SecondaryMarketEscrow from './SecondaryMarketEscrow.json';
 import OnboardingSponsor from './OnboardingSponsor.json';
 
-// Legacy (V1) exports - use escrow equivalents for new code
+// Deprecated — use escrow equivalents
 
-/** @deprecated Use `predictionMarketEscrowAbi` for escrow protocol */
+/** @deprecated Use `predictionMarketEscrowAbi` */
 export const predictionMarketAbi: Abi = (PredictionMarket as { abi: Abi }).abi;
 
-/** @deprecated Use `predictionMarketVaultAbi` for escrow protocol */
+/** @deprecated Use `predictionMarketVaultAbi` */
 export const liquidityVaultAbi: Abi = (LiquidityVault as { abi: Abi }).abi;
 
-/** @deprecated V1 resolver - use `lzConditionResolverAbi` for escrow protocol */
+/** @deprecated Use `lzConditionResolverAbi` */
 export const umaResolverAbi: Abi = (UMAResolver as { abi: Abi }).abi;
 
 export const collateralTokenAbi: Abi = (CollateralToken as { abi: Abi }).abi;
 
-/** @deprecated V1 resolver - use `lzConditionResolverAbi` for escrow protocol */
+/** @deprecated Use `lzConditionResolverAbi` */
 export const lzResolverAbi: Abi = (LZResolver as { abi: Abi }).abi;
 
-/** @deprecated V1 resolver - use `lzConditionResolverAbi` for escrow protocol */
+/** @deprecated Use `lzConditionResolverAbi` */
 export const lzResolverUmaSideAbi: Abi = (LZResolverUmaSide as { abi: Abi }).abi;
 
-/** @deprecated V1 resolver - use `lzConditionResolverAbi` for escrow protocol */
+/** @deprecated Use `lzConditionResolverAbi` */
 export const lzConditionalTokenResolverAbi: Abi = LZConditionalTokenResolver as Abi;
-
-// Escrow exports — ABIs are plain arrays from forge build output
 export const predictionMarketEscrowAbi = PredictionMarketEscrow as Abi;
 export const predictionMarketTokenAbi = PredictionMarketToken as Abi;
 export const predictionMarketVaultAbi = PredictionMarketVault as Abi;

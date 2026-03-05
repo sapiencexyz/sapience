@@ -423,13 +423,17 @@ function getUtcMidnightTimestamp(date: Date): number {
 async function upsertProtocolStatsSnapshot(
   timestamp: number,
   chainId: number,
+  vaultAddress: string,
   data: ProtocolStatsData
 ): Promise<void> {
   await prisma.protocolStatsSnapshot.upsert({
-    where: { timestamp },
+    where: {
+      chainId_vaultAddress_timestamp: { chainId, vaultAddress, timestamp },
+    },
     create: {
       timestamp,
       chainId,
+      vaultAddress,
       vaultBalance: data.vaultBalance.toString(),
       vaultAvailableAssets: data.vaultAvailableAssets.toString(),
       vaultDeployed: data.vaultDeployed.toString(),
@@ -444,7 +448,6 @@ async function upsertProtocolStatsSnapshot(
       vaultCollateralLost: data.vaultCollateralLost.toString(),
     },
     update: {
-      chainId,
       vaultBalance: data.vaultBalance.toString(),
       vaultAvailableAssets: data.vaultAvailableAssets.toString(),
       vaultDeployed: data.vaultDeployed.toString(),
@@ -467,8 +470,12 @@ async function upsertProtocolStatsSnapshot(
 export async function computeAndStoreProtocolStats(
   chainId: number = DEFAULT_CHAIN_ID
 ): Promise<void> {
+  const vaultAddress = (
+    escrowContracts.predictionMarketVault[chainId]?.address ?? ''
+  ).toLowerCase();
+
   console.log(
-    `[ProtocolStats] Starting stats computation for chain ${chainId}`
+    `[ProtocolStats] Starting stats computation for chain ${chainId}, vault ${vaultAddress}`
   );
 
   // Use current timestamp for flexible snapshot frequency
@@ -515,7 +522,7 @@ export async function computeAndStoreProtocolStats(
     `[ProtocolStats] Airdrop gains: ${formatUnits(airdropGains, 18)} USDe`
   );
 
-  await upsertProtocolStatsSnapshot(timestamp, chainId, {
+  await upsertProtocolStatsSnapshot(timestamp, chainId, vaultAddress, {
     vaultBalance,
     vaultAvailableAssets,
     vaultDeployed,
@@ -537,10 +544,11 @@ export async function computeAndStoreProtocolStats(
  * Get the latest stats snapshot.
  */
 export async function getLatestProtocolStats(
-  chainId: number = DEFAULT_CHAIN_ID
+  chainId: number = DEFAULT_CHAIN_ID,
+  vaultAddress?: string
 ) {
   return prisma.protocolStatsSnapshot.findFirst({
-    where: { chainId },
+    where: { chainId, ...(vaultAddress ? { vaultAddress } : {}) },
     orderBy: { timestamp: 'desc' },
   });
 }
@@ -550,7 +558,8 @@ export async function getLatestProtocolStats(
  */
 export async function getProtocolStatsTimeSeries(
   days: number = 90,
-  chainId: number = DEFAULT_CHAIN_ID
+  chainId: number = DEFAULT_CHAIN_ID,
+  vaultAddress?: string
 ) {
   const startTimestamp = getUtcMidnightTimestamp(new Date()) - days * 86400;
 
@@ -558,6 +567,7 @@ export async function getProtocolStatsTimeSeries(
     where: {
       timestamp: { gte: startTimestamp },
       chainId,
+      ...(vaultAddress ? { vaultAddress } : {}),
     },
     orderBy: { timestamp: 'asc' },
   });
@@ -571,9 +581,12 @@ export async function backfillProtocolStats(
   days: number = 90
 ): Promise<void> {
   const client = getProviderForChain(chainId);
+  const vaultAddress = (
+    escrowContracts.predictionMarketVault[chainId]?.address ?? ''
+  ).toLowerCase();
 
   console.log(
-    `[ProtocolStats] Starting backfill for ${days} days on chain ${chainId}`
+    `[ProtocolStats] Starting backfill for ${days} days on chain ${chainId}, vault ${vaultAddress}`
   );
 
   const todayMidnight = getUtcMidnightTimestamp(new Date());
@@ -634,7 +647,7 @@ export async function backfillProtocolStats(
           ? actualTotalAssets - expectedTotalAssets
           : 0n;
 
-      await upsertProtocolStatsSnapshot(timestamp, chainId, {
+      await upsertProtocolStatsSnapshot(timestamp, chainId, vaultAddress, {
         vaultBalance,
         vaultAvailableAssets,
         vaultDeployed,

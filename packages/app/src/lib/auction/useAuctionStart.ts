@@ -55,13 +55,11 @@ export interface EscrowQuoteBid {
   counterpartySessionKeyData?: string;
 }
 
-// Struct shape expected by PredictionMarket.mint()
+// Struct shape expected by PredictionMarketEscrow.mint()
 // @dev notice that this interface follows contract field names, not API field names
 // Contract "maker" = API "taker" (auction creator)
 // Contract "taker" = API "maker" (bidder)
 export interface MintPredictionRequestData {
-  encodedPredictedOutcomes: `0x${string}`; // single bytes per contract
-  resolver: `0x${string}`;
   makerCollateral: string; // wei
   takerCollateral: string; // wei
   maker: `0x${string}`;
@@ -74,16 +72,15 @@ export interface MintPredictionRequestData {
   // For validation: the nonce the bidder (contract taker) claimed when signing
   // This is embedded in their signature and must match their on-chain nonce
   takerClaimedNonce?: number;
-  // Escrow picks array (used directly instead of decoding from encodedPredictedOutcomes)
-  // This ensures the predictor signs the exact same picks the counterparty signed
-  escrowPicks?: Array<{
+  // Picks array — the predictor signs the exact same picks the counterparty signed
+  picks: Array<{
     conditionResolver: `0x${string}`;
     conditionId: `0x${string}`;
     predictedOutcome: number;
   }>;
-  // Escrow: Session key data for counterparty (base64 encoded)
+  // Session key data for counterparty (base64 encoded)
   counterpartySessionKeyData?: string;
-  // Escrow: Session key data for predictor (ABI-encoded)
+  // Session key data for predictor (ABI-encoded)
   predictorSessionKeyData?: string;
   // Predictor's EIP-712 MintApproval signature (populated at submit time for escrow mints)
   predictorSignature?: `0x${string}`;
@@ -461,9 +458,8 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
       const auction = lastAuctionRef.current;
       if (!auction) return null;
 
-      const resolver = auction.resolver as `0x${string}`;
-      const predictedOutcomes = auction.predictedOutcomes as `0x${string}`[];
-      if (!resolver || predictedOutcomes.length === 0) return null;
+      const picks = auction.escrowPicks;
+      if (!picks || picks.length === 0) return null;
 
       // Validate bid is from the current auction to avoid stale nonce errors
       if (args.selectedBid.auctionId !== auctionId) {
@@ -480,8 +476,6 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
       // Contract "taker" = counterparty (bidder)
       const bid = args.selectedBid;
       return {
-        encodedPredictedOutcomes: predictedOutcomes[0],
-        resolver,
         makerCollateral: auction.wager,
         takerCollateral: bid.counterpartyCollateral,
         maker: auction.predictor,
@@ -491,9 +485,11 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
         refCode: (args.refCode ?? ZERO_BYTES32) as `0x${string}`,
         makerNonce: String(auction.predictorNonce),
         takerClaimedNonce: bid.counterpartyNonce,
-        // Escrow fields: include picks array if available
-        escrowPicks: auction.escrowPicks,
-        // Escrow fields: include counterparty session key data from bid
+        picks: picks.map((p) => ({
+          conditionResolver: p.conditionResolver,
+          conditionId: p.conditionId,
+          predictedOutcome: p.predictedOutcome,
+        })),
         counterpartySessionKeyData: bid.counterpartySessionKeyData,
       };
     },
