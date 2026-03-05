@@ -37,9 +37,7 @@ export async function reindexConditionSettled(
         `[ConditionSettled Reindex] Successfully completed for chain ${chainId}`
       );
     } else {
-      console.error(
-        `[ConditionSettled Reindex] Failed for chain ${chainId}`
-      );
+      console.error(`[ConditionSettled Reindex] Failed for chain ${chainId}`);
     }
 
     return result;

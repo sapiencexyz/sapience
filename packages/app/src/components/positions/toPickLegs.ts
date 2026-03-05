@@ -24,10 +24,10 @@ export function toPicks(
     return {
       question: condition?.question ?? condition?.shortName ?? pick.conditionId,
       choice: isPredictorSide
-        ? pick.predictedOutcome === OutcomeSide.YES
+        ? (pick.predictedOutcome as OutcomeSide) === OutcomeSide.YES
           ? 'Yes'
           : 'No'
-        : pick.predictedOutcome === OutcomeSide.YES
+        : (pick.predictedOutcome as OutcomeSide) === OutcomeSide.YES
           ? 'No'
           : 'Yes',
       conditionId: pick.conditionId,

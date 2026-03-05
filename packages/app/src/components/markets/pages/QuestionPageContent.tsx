@@ -195,7 +195,8 @@ export default function QuestionPageContent({
           );
           if (!currentPick) return null;
 
-          const predictorPrediction = currentPick.predictedOutcome === OutcomeSide.YES;
+          const predictorPrediction =
+            (currentPick.predictedOutcome as OutcomeSide) === OutcomeSide.YES;
 
           // Other picks become combined predictions
           const otherPicks = picks.filter(
@@ -206,7 +207,8 @@ export default function QuestionPageContent({
               ? otherPicks.map((p) => ({
                   conditionId: p.conditionId,
                   question: p.conditionId,
-                  prediction: p.predictedOutcome === OutcomeSide.YES,
+                  prediction:
+                    (p.predictedOutcome as OutcomeSide) === OutcomeSide.YES,
                 }))
               : undefined;
 

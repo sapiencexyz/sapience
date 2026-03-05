@@ -356,7 +356,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
           chainId: chainId,
           ...(escrowPicks && { escrowPicks }),
         };
-  
+
         const send = () => {
           requestQuotes(auctionParams);
         };

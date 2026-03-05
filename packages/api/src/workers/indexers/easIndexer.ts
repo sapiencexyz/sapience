@@ -587,7 +587,10 @@ class EASPredictionIndexer implements IIndexer {
         this.isWatching = false;
       });
     } catch (error) {
-      console.error(`[EASPredictionIndexer:${this.chainId}] Error setting up watcher:`, error);
+      console.error(
+        `[EASPredictionIndexer:${this.chainId}] Error setting up watcher:`,
+        error
+      );
       this.isWatching = false;
       Sentry.withScope((scope: Sentry.Scope) => {
         scope.setExtra('chainId', this.chainId);
