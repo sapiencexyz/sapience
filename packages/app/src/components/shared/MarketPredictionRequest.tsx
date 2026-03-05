@@ -143,15 +143,18 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
   const retryCountRef = React.useRef(0);
   const MAX_RETRIES = 1;
 
-  // Track viewport visibility to trigger eager load only when visible
+  // Track viewport visibility — keeps observing so we know when a row
+  // scrolls out of view (used by the queue to skip off-screen requests).
   const rootRef = React.useRef<HTMLDivElement | null>(null);
   const [isInViewport, setIsInViewport] = React.useState<boolean>(false);
+  const isInViewportRef = React.useRef(false);
   const eagerlyRequestedRef = React.useRef<boolean>(false);
 
   React.useEffect(() => {
     if (!eager) return;
     if (skipViewportCheck) {
       setIsInViewport(true);
+      isInViewportRef.current = true;
       return;
     }
     const target = rootRef.current;
@@ -162,17 +165,17 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
       observer = new IntersectionObserver(
         (entries) => {
           const entry = entries[0];
-          if (entry?.isIntersecting) {
-            setIsInViewport(true);
-            observer?.disconnect();
+          if (entry) {
+            setIsInViewport(entry.isIntersecting);
+            isInViewportRef.current = entry.isIntersecting;
           }
         },
         { root: null, rootMargin: '0px', threshold: 0.01 }
       );
       observer.observe(target);
     } catch {
-      // If IntersectionObserver is unavailable, fall back to allowing eager
       setIsInViewport(true);
+      isInViewportRef.current = true;
     }
 
     return () => observer?.disconnect();
@@ -420,6 +423,11 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
   // Auto-fire eager request once component scrolls into view.
   // Shows "Requesting..." immediately, then staggers the actual auction start
   // through a global queue to avoid overwhelming the quoter service.
+  // If the row scrolls out of view before the queue processes it, the request
+  // is skipped and state is reset so it re-triggers when scrolled back.
+  const sendAuctionRequestRef = React.useRef(sendAuctionRequest);
+  sendAuctionRequestRef.current = sendAuctionRequest;
+
   React.useEffect(() => {
     if (!eager) return;
     if (prefetchedProbability != null) return;
@@ -433,13 +441,20 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
     setRequestedPrediction(null);
     retryCountRef.current = 0;
     // Stagger the actual auction start through the queue
-    enqueueEagerRequest(sendAuctionRequest);
+    enqueueEagerRequest(() => {
+      if (!isInViewportRef.current) {
+        // Row scrolled out of view — skip and allow re-trigger later
+        eagerlyRequestedRef.current = false;
+        setIsRequesting(false);
+        return;
+      }
+      sendAuctionRequestRef.current();
+    });
   }, [
     eager,
     isInViewport,
     selectedPredictorAddress,
     effectiveOutcomes.length,
-    sendAuctionRequest,
     prefetchedProbability,
   ]);
 
