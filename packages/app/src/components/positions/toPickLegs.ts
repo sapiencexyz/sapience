@@ -1,3 +1,4 @@
+import { OutcomeSide } from '@sapience/sdk/types';
 import type { PickData } from '~/hooks/graphql/usePositions';
 import type { Pick } from '~/components/shared/StackedPredictions';
 
@@ -23,10 +24,10 @@ export function toPicks(
     return {
       question: condition?.question ?? condition?.shortName ?? pick.conditionId,
       choice: isPredictorSide
-        ? pick.predictedOutcome === 1
+        ? (pick.predictedOutcome as OutcomeSide) === OutcomeSide.YES
           ? 'Yes'
           : 'No'
-        : pick.predictedOutcome === 1
+        : (pick.predictedOutcome as OutcomeSide) === OutcomeSide.YES
           ? 'No'
           : 'Yes',
       conditionId: pick.conditionId,
