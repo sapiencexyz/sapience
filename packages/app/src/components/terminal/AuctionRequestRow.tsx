@@ -6,7 +6,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { parseUnits, formatEther, formatUnits } from 'viem';
 import { Pin, ChevronDown } from 'lucide-react';
 import { type UiTransaction } from '~/components/markets/DataDrawer/TransactionCells';
-import { useValidatedAuctionBids } from '~/lib/auction/useValidatedAuctionBids';
+import { useAuctionBids } from '~/lib/auction/useAuctionBids';
 import AuctionRequestInfo from '~/components/terminal/AuctionRequestInfo';
 import AuctionRequestChart from '~/components/terminal/AuctionRequestChart';
 import { useAccount, useReadContract } from 'wagmi';
@@ -117,22 +117,9 @@ const AuctionRequestRow: React.FC<Props> = ({
   const [localExpanded, setLocalExpanded] = useState(false);
   const isExpanded = isExpandedProp ?? localExpanded;
 
-  // Use validated auction bids - validates bids by simulating mint transactions
-  // Only run validation when the row is expanded to save RPC calls
-  const { validBids, invalidBidCount, totalBidCount } = useValidatedAuctionBids(
-    auctionId,
-    {
-      chainId,
-      predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
-      predictorAddress: predictor as `0x${string}` | undefined,
-      predictorCollateral: predictorCollateral ?? undefined,
-      encodedPredictedOutcomes: predictedOutcomes?.[0] as
-        | `0x${string}`
-        | undefined,
-      resolver: resolver as `0x${string}` | undefined,
-      enabled: isExpanded,
-    }
-  );
+  const { bids: validBids } = useAuctionBids(auctionId);
+  const invalidBidCount = 0;
+  const totalBidCount = validBids.length;
   const [highlightNewBid, setHighlightNewBid] = useState(false);
   const numBids = totalBidCount;
   const bidsLabel = useMemo(

@@ -106,8 +106,6 @@ const DEFAULT_PROPS = {
 };
 
 const VALID_MINT_DATA: MintPredictionRequestData = {
-  encodedPredictedOutcomes: '0xABCD' as `0x${string}`,
-  resolver: '0xResolver' as `0x${string}`,
   makerCollateral: '1000000000000000000', // 1e18
   takerCollateral: '2000000000000000000', // 2e18
   maker: '0xUserAddress' as `0x${string}`,
@@ -116,6 +114,13 @@ const VALID_MINT_DATA: MintPredictionRequestData = {
   takerDeadline: '9999999999',
   refCode:
     '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`,
+  picks: [
+    {
+      conditionResolver: '0xResolver' as `0x${string}`,
+      conditionId: '0xABCD' as `0x${string}`,
+      predictedOutcome: 1,
+    },
+  ],
 };
 
 describe('useSubmitPosition', () => {
