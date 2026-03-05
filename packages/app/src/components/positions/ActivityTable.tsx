@@ -414,7 +414,7 @@ export default function ActivityTable({
   }, [positions]);
 
   // Enrich predictions with pickConfig data
-  // Prefer pickConfig from the prediction query (V2), fall back to tokenMap lookup
+  // Prefer pickConfig from the prediction query, fall back to tokenMap lookup
   const enrichedPredictions = React.useMemo(() => {
     const display =
       !account && predictions.length > take

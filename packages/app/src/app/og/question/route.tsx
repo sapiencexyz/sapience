@@ -1,11 +1,12 @@
 import { ImageResponse } from 'next/og';
 import { parseUnits, zeroAddress } from 'viem';
-import { createAuctionWs } from '@sapience/sdk/relayer/auctionWs';
+import { createEscrowAuctionWs } from '@sapience/sdk/relayer/escrowAuctionWs';
 import {
   PREFERRED_ESTIMATE_QUOTER,
   DEFAULT_CHAIN_ID,
 } from '@sapience/sdk/constants';
-import { buildAuctionStartPayload } from '~/lib/auction/buildAuctionPayload';
+import { predictionMarketLZConditionalTokensResolver } from '@sapience/sdk/contracts';
+import { canonicalizePicks } from '@sapience/sdk/auction/escrowEncoding';
 import {
   og,
   WIDTH,
@@ -209,14 +210,28 @@ const ESTIMATE_TIMEOUT_MS = 5000;
 
 /**
  * Opens a short-lived WS connection to the auction relayer, sends an anonymous
- * auction.start, and waits for a bid from PREFERRED_ESTIMATE_QUOTER.
+ * escrow auction.start, and waits for a bid from PREFERRED_ESTIMATE_QUOTER.
  * Returns probability (0-1) or null on timeout/error.
  */
 async function fetchEstimate(conditionId: string): Promise<number | null> {
-  const { resolver, predictedOutcomes } = buildAuctionStartPayload(
-    [{ marketId: conditionId, prediction: true }],
-    DEFAULT_CHAIN_ID
-  );
+  const resolverAddress =
+    predictionMarketLZConditionalTokensResolver[DEFAULT_CHAIN_ID]?.address;
+  if (!resolverAddress) return null;
+
+  const formattedConditionId = (
+    conditionId.startsWith('0x') ? conditionId : `0x${conditionId}`
+  ) as `0x${string}`;
+
+  const picks = canonicalizePicks([
+    {
+      conditionResolver: resolverAddress,
+      conditionId: formattedConditionId,
+      predictedOutcome: 1, // YES
+    },
+  ]);
+
+  const predictorCollateral = parseUnits('1', 18).toString();
+  const nowSec = Math.floor(Date.now() / 1000);
 
   return new Promise<number | null>((resolve) => {
     let settled = false;
@@ -228,39 +243,33 @@ async function fetchEstimate(conditionId: string): Promise<number | null> {
       resolve(null);
     }, ESTIMATE_TIMEOUT_MS);
 
-    const client = createAuctionWs(
+    const client = createEscrowAuctionWs(
       RELAYER_WS_URL,
       {
         onOpen: () => {
-          const msg = {
-            id: crypto.randomUUID(),
-            type: 'auction.start',
-            payload: {
-              wager: parseUnits('1', 18).toString(),
-              resolver,
-              predictedOutcomes,
-              taker: zeroAddress,
-              takerNonce: 0,
-              chainId: DEFAULT_CHAIN_ID,
-            },
-          };
-          client.send(JSON.stringify(msg));
+          client.startAuction({
+            picks: picks.map((p) => ({
+              conditionResolver: p.conditionResolver,
+              conditionId: p.conditionId,
+              predictedOutcome: p.predictedOutcome,
+            })),
+            predictorCollateral,
+            predictor: zeroAddress,
+            predictorNonce: 0,
+            predictorDeadline: nowSec + 300,
+            chainId: DEFAULT_CHAIN_ID,
+          });
         },
-        onMessage: (msg: {
-          type?: string;
-          payload?: {
-            bids?: Array<{ maker?: string; makerCollateral?: string }>;
-          };
-        }) => {
+        onAuctionBids: (payload) => {
           if (settled) return;
-          if (msg?.type !== 'auction.bids') return;
 
-          const bids = msg.payload?.bids;
+          const bids = payload?.bids;
           if (!Array.isArray(bids)) return;
 
           const quoterBid = bids.find(
             (b) =>
-              b.maker?.toLowerCase() === PREFERRED_ESTIMATE_QUOTER.toLowerCase()
+              b.counterparty?.toLowerCase() ===
+              PREFERRED_ESTIMATE_QUOTER.toLowerCase()
           );
           if (!quoterBid) return;
 
@@ -268,16 +277,16 @@ async function fetchEstimate(conditionId: string): Promise<number | null> {
           clearTimeout(timeout);
           client.close();
 
-          const takerCollateral = BigInt(parseUnits('1', 18).toString());
-          const makerCollateral = BigInt(
-            String(quoterBid.makerCollateral || '0')
+          const predictorColl = BigInt(predictorCollateral);
+          const counterpartyColl = BigInt(
+            String((quoterBid as any).counterpartyCollateral || '0')
           );
-          const denom = takerCollateral + makerCollateral;
+          const denom = predictorColl + counterpartyColl;
           if (denom === 0n) {
             resolve(null);
             return;
           }
-          const prob = Number(takerCollateral) / Number(denom);
+          const prob = Number(predictorColl) / Number(denom);
           const clamped = Math.max(0, Math.min(1, prob));
           resolve(clamped);
         },
