@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 /// <reference types="node" />
 /**
- * Settle conditions on v2 protocol resolvers
+ * Settle conditions on escrow protocol resolvers
  *
  * Supports two modes based on NODE_ENV:
  *
@@ -21,8 +21,8 @@
  *   4. Triggers LayerZero resolution bridging by calling requestResolution on Polygon
  *
  * Usage:
- *   tsx scripts/settle-v2.ts --dry-run
- *   tsx scripts/settle-v2.ts --execute
+ *   tsx scripts/settle-escrow.ts --dry-run
+ *   tsx scripts/settle-escrow.ts --execute
  *
  * Options:
  *   --dry-run      Check conditions without sending transactions (default)
@@ -35,7 +35,7 @@
  *   POLYGON_RPC_URL          Polygon RPC URL (required)
  *   ADMIN_PRIVATE_KEY        Private key for signing transactions (required for --execute)
  *   SAPIENCE_API_URL         Sapience GraphQL API URL (default: https://api.sapience.xyz)
- *   V2_RESOLVER_ADDRESS      Resolver address override
+ *   RESOLVER_ADDRESS         Resolver address override
  *   CHAIN_ID                 Ethereal chain ID override
  */
 
@@ -72,15 +72,15 @@ const isProduction = process.env.NODE_ENV === 'production';
 // ============ Constants ============
 
 // Chain ID — production: Ethereal mainnet, staging: Ethereal testnet
-const V2_CHAIN_ID = Number(
+const RESOLVER_CHAIN_ID = Number(
   process.env.CHAIN_ID || (isProduction ? '5064014' : '13374202')
 );
 
 // Resolver address — production: ConditionalTokensConditionResolver, staging: ManualConditionResolver
-const V2_RESOLVER_ADDRESS = (process.env.V2_RESOLVER_ADDRESS ||
+const RESOLVER_ADDRESS = (process.env.RESOLVER_ADDRESS ||
   (isProduction
-    ? conditionalTokensConditionResolver[V2_CHAIN_ID]?.address
-    : manualConditionResolver[V2_CHAIN_ID]?.address)) as Address;
+    ? conditionalTokensConditionResolver[RESOLVER_CHAIN_ID]?.address
+    : manualConditionResolver[RESOLVER_CHAIN_ID]?.address)) as Address;
 
 // Ethereal RPC — production: mainnet, staging: testnet
 const ETHEREAL_RPC = isProduction
@@ -102,7 +102,7 @@ const CLOB_API_URL = 'https://clob.polymarket.com';
 // ============ Chain Definition ============
 
 const etherealChain = defineChain({
-  id: V2_CHAIN_ID,
+  id: RESOLVER_CHAIN_ID,
   name: isProduction ? 'Ethereal' : 'Ethereal Testnet',
   nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
   rpcUrls: {
@@ -266,9 +266,9 @@ function parseArgs(): CLIOptions {
 
 function showHelp(): void {
   console.log(`
-Usage: tsx scripts/settle-v2.ts [options]
+Usage: tsx scripts/settle-escrow.ts [options]
 
-Settles conditions on v2 protocol resolvers by reading resolution data
+Settles conditions on escrow protocol resolvers by reading resolution data
 from Polymarket on Polygon.
 
 Modes (controlled by NODE_ENV):
@@ -286,16 +286,16 @@ Environment Variables:
   POLYGON_RPC_URL        Polygon RPC URL (required)
   ADMIN_PRIVATE_KEY      Private key for signing transactions (required for --execute)
   SAPIENCE_API_URL       Sapience GraphQL API URL (default: https://api.sapience.xyz)
-  V2_RESOLVER_ADDRESS    Resolver address override (default: from SDK for chain)
+  RESOLVER_ADDRESS       Resolver address override (default: from SDK for chain)
   CHAIN_ID               Ethereal chain ID override (default: 5064014 prod, 13374202 staging)
 
 Examples:
   # Staging dry run
-  tsx scripts/settle-v2.ts --dry-run
+  tsx scripts/settle-escrow.ts --dry-run
 
   # Production execute (LZ bridging)
   NODE_ENV=production POLYGON_RPC_URL=https://polygon-rpc.com ADMIN_PRIVATE_KEY=0x... \\
-    tsx scripts/settle-v2.ts --execute --wait
+    tsx scripts/settle-escrow.ts --execute --wait
 `);
 }
 
@@ -521,7 +521,7 @@ async function checkAndSettleCondition(
       : 'ManualConditionResolver';
     console.log(`[${conditionId}] Checking ${resolverName}...`);
     const [isResolved] = await etherealClient.readContract({
-      address: V2_RESOLVER_ADDRESS,
+      address: RESOLVER_ADDRESS,
       abi: manualConditionResolverAbi,
       functionName: 'getResolution',
       args: [conditionId],
@@ -731,7 +731,7 @@ async function checkAndSettleCondition(
       } as const;
 
       const estimatedGas = await etherealClient.estimateContractGas({
-        address: V2_RESOLVER_ADDRESS,
+        address: RESOLVER_ADDRESS,
         abi: manualConditionResolverAbi,
         functionName: 'settleCondition' as const,
         args: [conditionId, outcomeArg] as readonly [
@@ -746,7 +746,7 @@ async function checkAndSettleCondition(
       );
 
       const hash = await walletClient.writeContract({
-        address: V2_RESOLVER_ADDRESS,
+        address: RESOLVER_ADDRESS,
         abi: manualConditionResolverAbi,
         functionName: 'settleCondition' as const,
         args: [conditionId, outcomeArg] as readonly [
@@ -841,7 +841,7 @@ async function main() {
   });
 
   console.log(
-    `Ethereal client connected (chain ${V2_CHAIN_ID}, resolver ${V2_RESOLVER_ADDRESS})`
+    `Ethereal client connected (chain ${RESOLVER_CHAIN_ID}, resolver ${RESOLVER_ADDRESS})`
   );
 
   let walletClient: WalletClient<Transport, Chain, Account> | null = null;
