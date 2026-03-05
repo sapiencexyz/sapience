@@ -27,6 +27,30 @@ const FADE_VARIANTS = {
 const FADE_TRANSITION_FAST = { duration: 0.2, ease: 'easeOut' } as const;
 const FADE_TRANSITION_SLOW = { duration: 0.22, ease: 'easeOut' } as const;
 
+// ---------------------------------------------------------------------------
+// Global eager-request queue — staggers auction starts so the quoter service
+// isn't overwhelmed when many rows scroll into view at once.
+// ---------------------------------------------------------------------------
+const EAGER_STAGGER_MS = 250;
+const eagerQueue: Array<() => void> = [];
+let eagerDraining = false;
+
+function drainEagerQueue() {
+  if (eagerQueue.length === 0) {
+    eagerDraining = false;
+    return;
+  }
+  eagerDraining = true;
+  const next = eagerQueue.shift()!;
+  next();
+  setTimeout(drainEagerQueue, EAGER_STAGGER_MS);
+}
+
+function enqueueEagerRequest(fn: () => void) {
+  eagerQueue.push(fn);
+  if (!eagerDraining) drainEagerQueue();
+}
+
 interface MarketPredictionRequestProps {
   conditionId?: string;
   outcomes?: PredictedOutcomeInputStub[];
@@ -106,16 +130,18 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
   const [queuedRequest, setQueuedRequest] = React.useState<boolean>(false);
 
   const { address: predictorAddress } = useAccount();
-  // Disable logging for forecast-only components to avoid noisy console output
   const { requestQuotes, bids } = useAuctionStart({ disableLogging: true });
   const chainId = chainIdProp ?? DEFAULT_CHAIN_ID;
   const PREDICTION_MARKET_ADDRESS =
     predictionMarketEscrow[chainId]?.address ||
     predictionMarketEscrow[DEFAULT_CHAIN_ID]?.address;
 
-  const eagerJitterMsRef = React.useRef<number>(
-    Math.floor(Math.random() * 301)
-  );
+  // Auto-retry: store last auction params so the fallback timer can retry
+  const lastAuctionParamsRef = React.useRef<Parameters<typeof requestQuotes>[0]>(null);
+  const requestQuotesRef = React.useRef(requestQuotes);
+  requestQuotesRef.current = requestQuotes;
+  const retryCountRef = React.useRef(0);
+  const MAX_RETRIES = 1;
 
   // Track viewport visibility to trigger eager load only when visible
   const rootRef = React.useRef<HTMLDivElement | null>(null);
@@ -251,14 +277,25 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
     selectedPredictorAddress,
   ]);
 
-  // Fallback: if no bids arrive within a reasonable time window, stop requesting
+  // Fallback: if no bids arrive quickly, retry once before giving up.
+  // First attempt gets 5s, retry gets 10s, then show "Request" link.
   React.useEffect(() => {
     if (!isRequesting) return;
-    const timeoutMs = 15000;
+    const timeoutMs = retryCountRef.current === 0 ? 5000 : 10000;
     const timeout = window.setTimeout(() => {
       if (requestedPrediction == null && (!bids || bids.length === 0)) {
-        setIsRequesting(false);
-        setQueuedRequest(false);
+        if (
+          retryCountRef.current < MAX_RETRIES &&
+          lastAuctionParamsRef.current
+        ) {
+          retryCountRef.current += 1;
+          requestQuotesRef.current(lastAuctionParamsRef.current, {
+            forceRefresh: true,
+          });
+        } else {
+          setIsRequesting(false);
+          setQueuedRequest(false);
+        }
       }
     }, timeoutMs);
     return () => window.clearTimeout(timeout);
@@ -328,6 +365,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
     if (isRequesting) return;
     setRequestedPrediction(null);
     setIsRequesting(true);
+    retryCountRef.current = 0;
     try {
       // If outcomes aren't ready or no predictor address yet -> queue
       if (effectiveOutcomes.length === 0 || !selectedPredictorAddress) {
@@ -360,16 +398,9 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
           ...(escrowPicks && { escrowPicks }),
         };
 
-        const send = () => {
-          requestQuotes(auctionParams);
-        };
-        // Jitter send to avoid concurrency clobbering
-        const jitter = eager ? eagerJitterMsRef.current : 0;
-        if (jitter > 0) {
-          window.setTimeout(send, jitter);
-        } else {
-          send();
-        }
+        lastAuctionParamsRef.current = auctionParams;
+
+        requestQuotes(auctionParams);
       }
     } catch {
       setIsRequesting(false);
@@ -380,11 +411,11 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
     predictorNonce,
     requestQuotes,
     isRequesting,
-    eager,
     chainId,
   ]);
 
-  // Auto-fire eager request once component scrolls into view
+  // Auto-fire eager request once component scrolls into view.
+  // Uses a global queue to stagger starts and avoid overwhelming the quoter.
   React.useEffect(() => {
     if (!eager) return;
     if (prefetchedProbability != null) return;
@@ -393,7 +424,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
     if (!selectedPredictorAddress) return;
     if (effectiveOutcomes.length === 0) return;
     eagerlyRequestedRef.current = true;
-    handleRequestPrediction();
+    enqueueEagerRequest(handleRequestPrediction);
   }, [
     eager,
     isInViewport,

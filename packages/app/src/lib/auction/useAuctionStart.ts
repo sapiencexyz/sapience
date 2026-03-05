@@ -300,18 +300,12 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
       debounceTimer.current = window.setTimeout(async () => {
         const client = getSharedAuctionWsClient(wsUrl);
 
-        // Generate a unique request ID to track this specific request
-        // This prevents race conditions where a newer request's response
-        // would be overwritten by an older request completing later
+        // Generate a unique request ID to track this specific request.
+        // After async work (sendWithAck), we check whether this ID is still
+        // current — if a newer request was made while we were awaiting, we
+        // discard the stale result instead of overwriting newer state.
         const thisRequestId = crypto.randomUUID();
         pendingRequestIdRef.current = thisRequestId;
-
-        // Check if a newer request was made while we were waiting
-        // If so, abort this request to avoid race conditions
-        if (pendingRequestIdRef.current !== thisRequestId) {
-          log('Aborting stale request (newer request in progress)');
-          return;
-        }
 
         // Update inflight tracking and clear bids for new request
         // NOTE: We intentionally do NOT clear latestAuctionIdRef here.
@@ -379,6 +373,13 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
               return;
             }
 
+            // A newer request superseded this one while we were awaiting —
+            // discard the result so we don't overwrite the newer auction state.
+            if (pendingRequestIdRef.current !== thisRequestId) {
+              inflightRef.current = '';
+              return;
+            }
+
             const newId = escrowResponse?.auctionId || null;
             latestAuctionIdRef.current = newId;
             loggedStaleAuctionsRef.current.clear();
@@ -398,7 +399,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
             inflightRef.current = '';
             return;
           } catch (escrowError) {
-            console.error('[Escrow Auction] Start error:', escrowError);
+            console.error('[auction] Start error:', escrowError);
             inflightRef.current = '';
             return;
           }
