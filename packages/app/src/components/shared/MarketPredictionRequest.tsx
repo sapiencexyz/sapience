@@ -199,6 +199,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
           filteredBids = bids;
         }
 
+        // No usable bids yet — keep waiting for the trusted quoter to respond.
         if (filteredBids.length === 0) return;
 
         const valid = filteredBids.filter((b) => {
@@ -235,9 +236,11 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
       } catch {
         setRequestedPrediction(0.5);
         onPredictionRef.current?.(0.5);
-      } finally {
-        setIsRequesting(false);
       }
+      // Only clear requesting state when we actually produced a result
+      // (success or catch fallback). The early return for empty filteredBids
+      // must NOT clear it — the trusted quoter may still respond.
+      setIsRequesting(false);
     };
 
     processBids();
