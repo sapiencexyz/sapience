@@ -93,7 +93,12 @@ export async function handleJobCommand(argv: string[]): Promise<boolean> {
         );
         process.exit(1);
       }
-      await reindexConditionSettled(chainId, resolverAddress, startTimestamp, endTimestamp);
+      await reindexConditionSettled(
+        chainId,
+        resolverAddress,
+        startTimestamp,
+        endTimestamp
+      );
       console.log('Done reindexing condition settled events');
       process.exit(0);
       return true;

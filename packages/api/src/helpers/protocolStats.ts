@@ -70,8 +70,7 @@ export async function fetchVaultDeployed(
   chainId: number = DEFAULT_CHAIN_ID,
   atTimestamp?: number
 ): Promise<bigint> {
-  const vaultAddress =
-    escrowContracts.predictionMarketVault[chainId]?.address;
+  const vaultAddress = escrowContracts.predictionMarketVault[chainId]?.address;
   if (!vaultAddress) return 0n;
 
   const predictions = await prisma.prediction.findMany({
@@ -251,8 +250,7 @@ async function calculateVaultPnL(
   chainId: number,
   beforeTimestamp?: number
 ): Promise<VaultPnLResult> {
-  const vaultAddress =
-    escrowContracts.predictionMarketVault[chainId]?.address;
+  const vaultAddress = escrowContracts.predictionMarketVault[chainId]?.address;
   if (!vaultAddress) {
     return {
       realizedPnL: 0n,

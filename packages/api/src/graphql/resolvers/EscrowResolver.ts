@@ -779,9 +779,7 @@ export class EscrowResolver {
     }
 
     return rows.map((r) => {
-      const collateral = collateralMap.get(
-        `${r.tokenAddress}:${r.holder}`
-      );
+      const collateral = collateralMap.get(`${r.tokenAddress}:${r.holder}`);
       return {
         id: r.id,
         chainId: r.chainId,
@@ -794,34 +792,34 @@ export class EscrowResolver {
         totalPayout: collateral?.totalPayout.toString() ?? null,
         createdAt: r.createdAt,
         pickConfig: r.pickConfiguration
-        ? {
-            id: r.pickConfiguration.id,
-            chainId: r.pickConfiguration.chainId,
-            marketAddress: r.pickConfiguration.marketAddress,
-            totalPredictorCollateral:
-              r.pickConfiguration.totalPredictorCollateral,
-            totalCounterpartyCollateral:
-              r.pickConfiguration.totalCounterpartyCollateral,
-            claimedPredictorCollateral:
-              r.pickConfiguration.claimedPredictorCollateral,
-            claimedCounterpartyCollateral:
-              r.pickConfiguration.claimedCounterpartyCollateral,
-            resolved: r.pickConfiguration.resolved,
-            result: r.pickConfiguration.result,
-            resolvedAt: r.pickConfiguration.resolvedAt ?? null,
-            predictorToken: r.pickConfiguration.predictorToken ?? null,
-            counterpartyToken: r.pickConfiguration.counterpartyToken ?? null,
-            endsAt: r.pickConfiguration.endsAt ?? null,
-            picks: r.pickConfiguration.picks.map((p) => ({
-              id: p.id,
-              pickConfigId: p.pickConfigId,
-              conditionResolver: p.conditionResolver,
-              conditionId: p.conditionId,
-              predictedOutcome: p.predictedOutcome,
-            })),
-            predictionId: predictionIdMap.get(r.tokenAddress) ?? null,
-          }
-        : null,
+          ? {
+              id: r.pickConfiguration.id,
+              chainId: r.pickConfiguration.chainId,
+              marketAddress: r.pickConfiguration.marketAddress,
+              totalPredictorCollateral:
+                r.pickConfiguration.totalPredictorCollateral,
+              totalCounterpartyCollateral:
+                r.pickConfiguration.totalCounterpartyCollateral,
+              claimedPredictorCollateral:
+                r.pickConfiguration.claimedPredictorCollateral,
+              claimedCounterpartyCollateral:
+                r.pickConfiguration.claimedCounterpartyCollateral,
+              resolved: r.pickConfiguration.resolved,
+              result: r.pickConfiguration.result,
+              resolvedAt: r.pickConfiguration.resolvedAt ?? null,
+              predictorToken: r.pickConfiguration.predictorToken ?? null,
+              counterpartyToken: r.pickConfiguration.counterpartyToken ?? null,
+              endsAt: r.pickConfiguration.endsAt ?? null,
+              picks: r.pickConfiguration.picks.map((p) => ({
+                id: p.id,
+                pickConfigId: p.pickConfigId,
+                conditionResolver: p.conditionResolver,
+                conditionId: p.conditionId,
+                predictedOutcome: p.predictedOutcome,
+              })),
+              predictionId: predictionIdMap.get(r.tokenAddress) ?? null,
+            }
+          : null,
       };
     });
   }

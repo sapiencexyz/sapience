@@ -302,10 +302,10 @@ function SharePredictionDialog({
       const question =
         condition?.question ?? condition?.shortName ?? pick.conditionId;
       const choice = isPredictorSide
-        ? pick.predictedOutcome === OutcomeSide.YES
+        ? (pick.predictedOutcome as OutcomeSide) === OutcomeSide.YES
           ? 'Yes'
           : 'No'
-        : pick.predictedOutcome === OutcomeSide.YES
+        : (pick.predictedOutcome as OutcomeSide) === OutcomeSide.YES
           ? 'No'
           : 'Yes';
       qp.append('leg', `${question}|${choice}`);
