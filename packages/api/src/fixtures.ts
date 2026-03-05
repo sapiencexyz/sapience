@@ -58,8 +58,9 @@ const buildIndexers = (): { [key: string]: IIndexer } => {
         new PredictionMarketEscrowIndexer(13374202);
       indexers['secondary-market-ethereal-testnet'] =
         new SecondaryMarketIndexer(13374202);
-      indexers['transfer-ethereal-testnet'] =
-        new PositionTokenTransferIndexer(13374202);
+      indexers['transfer-ethereal-testnet'] = new PositionTokenTransferIndexer(
+        13374202
+      );
 
       // Settlement indexer — manual resolver for testing
       if (manualConditionResolver[13374202]?.address) {
@@ -70,7 +71,9 @@ const buildIndexers = (): { [key: string]: IIndexer } => {
           );
       }
 
-      console.log('[Indexers] Non-production escrow indexers enabled (testnet)');
+      console.log(
+        '[Indexers] Non-production escrow indexers enabled (testnet)'
+      );
     }
   } else {
     console.log(

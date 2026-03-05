@@ -111,7 +111,10 @@ class SecondaryMarketIndexer implements IIndexer {
 
       return true;
     } catch (error) {
-      console.error(`[SecondaryMarketIndexer:${this.chainId}] Error indexing blocks:`, error);
+      console.error(
+        `[SecondaryMarketIndexer:${this.chainId}] Error indexing blocks:`,
+        error
+      );
       Sentry.captureException(error);
       throw error;
     }
@@ -162,7 +165,9 @@ class SecondaryMarketIndexer implements IIndexer {
 
   async watchBlocksForResource(resourceSlug: string): Promise<void> {
     if (this.isWatching) {
-      console.log(`[SecondaryMarketIndexer:${this.chainId}] Already watching ${resourceSlug}`);
+      console.log(
+        `[SecondaryMarketIndexer:${this.chainId}] Already watching ${resourceSlug}`
+      );
       return;
     }
 
@@ -173,7 +178,9 @@ class SecondaryMarketIndexer implements IIndexer {
     this.isWatching = true;
 
     this.sigintHandler = () => {
-      console.log(`[SecondaryMarketIndexer:${this.chainId}] Received SIGINT, stopping...`);
+      console.log(
+        `[SecondaryMarketIndexer:${this.chainId}] Received SIGINT, stopping...`
+      );
       this.stop();
       process.exit(0);
     };
@@ -266,7 +273,10 @@ class SecondaryMarketIndexer implements IIndexer {
           });
         }
       } catch (error) {
-        console.error(`[SecondaryMarketIndexer:${this.chainId}] Polling error:`, error);
+        console.error(
+          `[SecondaryMarketIndexer:${this.chainId}] Polling error:`,
+          error
+        );
         Sentry.captureException(error);
       }
     };
@@ -310,7 +320,10 @@ class SecondaryMarketIndexer implements IIndexer {
         );
       }
     } catch (error) {
-      console.error(`[SecondaryMarketIndexer:${this.chainId}] Error processing log:`, error);
+      console.error(
+        `[SecondaryMarketIndexer:${this.chainId}] Error processing log:`,
+        error
+      );
       Sentry.captureException(error);
     }
   }
@@ -346,7 +359,9 @@ class SecondaryMarketIndexer implements IIndexer {
       update: {},
     });
 
-    console.log(`[SecondaryMarketIndexer:${this.chainId}] Indexed trade ${tradeHashLower}`);
+    console.log(
+      `[SecondaryMarketIndexer:${this.chainId}] Indexed trade ${tradeHashLower}`
+    );
   }
 }
 

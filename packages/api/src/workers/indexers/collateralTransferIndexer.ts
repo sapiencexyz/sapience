@@ -133,8 +133,7 @@ class CollateralTransferIndexer implements IIndexer {
   ): Promise<void> {
     const records = logs
       .filter(
-        (log) =>
-          log.args.from && log.args.to && log.args.value !== undefined
+        (log) => log.args.from && log.args.to && log.args.value !== undefined
       )
       .map((log) => ({
         chainId: this.chainId,

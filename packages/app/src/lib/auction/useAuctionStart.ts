@@ -8,10 +8,7 @@ import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
 import { toAuctionWsUrl } from '~/lib/ws';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
-import {
-  logAuction,
-  formatBidForLog,
-} from '~/lib/auction/bidLogger';
+import { logAuction, formatBidForLog } from '~/lib/auction/bidLogger';
 
 export interface AuctionParams {
   wager: string; // wei string - predictor's position size
@@ -269,10 +266,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
   // Debounced send of auction.start when params change
   const debounceTimer = useRef<number | null>(null);
   const requestQuotes = useCallback(
-    (
-      params: AuctionParams | null,
-      options?: { forceRefresh?: boolean }
-    ) => {
+    (params: AuctionParams | null, options?: { forceRefresh?: boolean }) => {
       if (!params || !wsUrl) return;
 
       // Determine if we'll use session signing or wallet signing

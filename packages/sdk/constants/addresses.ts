@@ -4,7 +4,7 @@ import { DEFAULT_CHAIN_ID, CHAIN_ID_ETHEREAL } from './chain';
 
 // address of anonymous quoter bot
 export const PREFERRED_ESTIMATE_QUOTER =
-  '0x29e1D43CCc51B9916C89FCf54EDd7Cc9B9Db856d' as const;
+  '0xe02eD37D0458c8999943CbE6D1c9DB597f3EE572' as const;
 
 /**
  * Get the WUSDe/collateral token address for a given chain.
