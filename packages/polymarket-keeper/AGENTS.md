@@ -8,7 +8,7 @@
 
 ## Overview
 Manages Sapience conditions from Polymarket markets:
-- **Generate**: Fetches markets ending within 7 days, submits to Sapience API
+- **Generate**: Fetches markets settling within 21 days, submits to Sapience API
 - **Settle**: Bridges resolution data from Polymarket via LayerZero
 
 ## Commands
