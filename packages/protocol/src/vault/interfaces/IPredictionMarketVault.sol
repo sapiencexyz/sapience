@@ -3,6 +3,7 @@ pragma solidity ^0.8.22;
 
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "@openzeppelin/contracts/utils/introspection/IERC165.sol";
+import "../../interfaces/IV2Types.sol";
 
 /**
  * @title IPredictionMarketVault
@@ -97,8 +98,15 @@ interface IPredictionMarketVault is IERC1271, IERC165 {
         bytes32 refCode
     ) external returns (uint256 payout);
 
-    // redeemFromEscrow and burnFromEscrow are defined in the implementation
-    // with concrete types from IPredictionMarketEscrow and IV2Types
+    /**
+     * @notice Participate in a burn (mutual cancel) on PredictionMarketEscrow
+     * @param escrow Address of the PredictionMarketEscrow contract
+     * @param request The burn request struct (both parties must have signed)
+     */
+    function burnFromEscrow(
+        address escrow,
+        IV2Types.BurnRequest calldata request
+    ) external;
 
     // ============ View Functions ============
 
