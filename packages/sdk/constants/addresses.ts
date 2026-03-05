@@ -2,9 +2,9 @@ import type { Address } from 'viem';
 import { collateralToken } from '../contracts/addresses';
 import { DEFAULT_CHAIN_ID, CHAIN_ID_ETHEREAL } from './chain';
 
-// address of anonymous quoter bot
+// address of the estimator bot (vault) used to show quotes to anonymous users
 export const PREFERRED_ESTIMATE_QUOTER =
-  '0xe02eD37D0458c8999943CbE6D1c9DB597f3EE572' as const;
+  '0x5704dB4b2c068d74Fde25257106a7029463f812E' as const;
 
 /**
  * Get the WUSDe/collateral token address for a given chain.
