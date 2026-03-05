@@ -12,6 +12,7 @@ import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "../utils/SignatureProcessor.sol";
 import "./interfaces/IPredictionMarketVault.sol";
+import "../interfaces/IPredictionMarketEscrow.sol";
 
 /// @dev Minimal interface for querying prediction market token info
 interface IPredictionMarketTokenInfo {
@@ -26,8 +27,6 @@ interface IPredictionMarketInfo {
         uint256 tokenAmount
     ) external view returns (uint256);
 }
-
-import "../interfaces/IPredictionMarketEscrow.sol";
 
 /**
  * @title PredictionMarketVault
