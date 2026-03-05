@@ -190,6 +190,24 @@ function PositionRow({
       );
     }
 
+    // Resolved, viewer won, viewing someone else's profile → show green PnL (no claim button)
+    if (isResolved && viewerWon) {
+      return (
+        <div className="whitespace-nowrap tabular-nums font-mono flex items-baseline gap-1.5 text-green-500">
+          <NumberDisplay
+            value={pnlValue ?? 0}
+            className="tabular-nums font-mono text-green-500"
+          />{' '}
+          <span className="text-green-500">{collateralSymbol}</span>
+          {positionSizeFormatted > 0 && (
+            <span className="text-[10px] leading-tight tabular-nums font-mono text-green-500">
+              +{Math.round(roi).toLocaleString()}%
+            </span>
+          )}
+        </div>
+      );
+    }
+
     // Resolved, viewer lost → show realized PnL in red
     if (isResolved && viewerLost) {
       return (
