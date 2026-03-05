@@ -106,11 +106,11 @@ const ConditionGroupsTab = ({
     isLoading,
     error: conditionGroupsError,
     refetch,
-  } = useConditionGroups({ take: 500, includeEmptyGroups: true });
+  } = useConditionGroups({ take: 100, includeEmptyGroups: true });
 
   // Get all conditions for the manage conditions dialog
   const { data: allConditions } = useConditions({
-    take: 1000,
+    take: 100,
     chainId: currentChainId,
   });
 
