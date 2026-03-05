@@ -137,9 +137,7 @@ const TerminalPageContent: React.FC = () => {
 
   const auctionAndBidMessages = useMemo(() => {
     return displayMessages.filter(
-      (m) =>
-        m.type === 'auction.started' ||
-        m.type === 'auction.bids'
+      (m) => m.type === 'auction.started' || m.type === 'auction.bids'
     );
   }, [displayMessages]);
 
@@ -202,8 +200,7 @@ const TerminalPageContent: React.FC = () => {
         }
       | { kind: 'unknown'; data: [] } => {
       try {
-        if (m?.type !== 'auction.started')
-          return { kind: 'unknown', data: [] };
+        if (m?.type !== 'auction.started') return { kind: 'unknown', data: [] };
         const cacheKey = `${getAuctionId(m) || 'unknown'}:${String(
           m?.data?.predictorNonce ?? 'n'
         )}`;
@@ -296,8 +293,7 @@ const TerminalPageContent: React.FC = () => {
     const set = new Set<string>();
     try {
       for (const m of auctionAndBidMessages) {
-        if (m.type !== 'auction.started')
-          continue;
+        if (m.type !== 'auction.started') continue;
 
         // Escrow auctions have picks[] with conditionId directly
         const picks = (m as any)?.data?.picks as
@@ -334,8 +330,7 @@ const TerminalPageContent: React.FC = () => {
   const uniqueAddresses = useMemo(() => {
     const set = new Set<string>();
     for (const m of auctionAndBidMessages) {
-      if (m.type !== 'auction.started')
-        continue;
+      if (m.type !== 'auction.started') continue;
       const auctionData = m.data as AuctionStartedData | undefined;
       const addr = auctionData?.predictor;
       if (addr && typeof addr === 'string') {

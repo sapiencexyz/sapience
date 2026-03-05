@@ -372,7 +372,10 @@ class PredictionMarketEscrowIndexer implements IIndexer {
           });
         }
       } catch (error) {
-        console.error(`[PredictionMarketEscrowIndexer:${this.chainId}] Polling error:`, error);
+        console.error(
+          `[PredictionMarketEscrowIndexer:${this.chainId}] Polling error:`,
+          error
+        );
         Sentry.captureException(error);
       }
     };

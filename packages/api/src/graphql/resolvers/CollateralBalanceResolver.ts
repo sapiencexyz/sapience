@@ -102,8 +102,10 @@ export class CollateralBalanceResolver {
   @Query(() => [CollateralBalanceSnapshotType])
   async collateralBalanceHistory(
     @Arg('address', () => String) address: string,
-    @Arg('currentBlock', () => Int, { nullable: true }) currentBlock: number | null,
-    @Arg('intervalHours', () => Int, { defaultValue: 168 }) intervalHours: number,
+    @Arg('currentBlock', () => Int, { nullable: true })
+    currentBlock: number | null,
+    @Arg('intervalHours', () => Int, { defaultValue: 168 })
+    intervalHours: number,
     @Arg('count', () => Int, { defaultValue: 12 }) count: number,
     @Arg('chainId', () => Int, { defaultValue: 5064014 }) chainId: number
   ): Promise<CollateralBalanceSnapshotType[]> {

@@ -179,7 +179,9 @@ class ConditionSettledIndexer implements IIndexer {
     this.isWatching = true;
 
     this.sigintHandler = () => {
-      console.log(`[ConditionSettledIndexer:${this.chainId}] Received SIGINT, stopping...`);
+      console.log(
+        `[ConditionSettledIndexer:${this.chainId}] Received SIGINT, stopping...`
+      );
       this.stop();
       process.exit(0);
     };
@@ -257,7 +259,10 @@ class ConditionSettledIndexer implements IIndexer {
           await this.persistIndexerState(Number(currentBlock));
         }
       } catch (error) {
-        console.error(`[ConditionSettledIndexer:${this.chainId}] Polling error:`, error);
+        console.error(
+          `[ConditionSettledIndexer:${this.chainId}] Polling error:`,
+          error
+        );
         Sentry.captureException(error);
       }
     };

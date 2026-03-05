@@ -76,7 +76,10 @@ class PositionTokenTransferIndexer implements IIndexer {
       try {
         await this.pollCycle();
       } catch (error) {
-        console.error(`[TransferIndexer:${this.chainId}] Poll cycle error:`, error);
+        console.error(
+          `[TransferIndexer:${this.chainId}] Poll cycle error:`,
+          error
+        );
         Sentry.captureException(error);
       }
     };

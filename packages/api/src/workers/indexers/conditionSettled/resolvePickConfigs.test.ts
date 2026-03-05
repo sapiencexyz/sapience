@@ -7,11 +7,7 @@ import {
 // --- computeSettlementResult tests ---
 
 describe('computeSettlementResult', () => {
-  const cond = (
-    id: string,
-    resolvedToYes: boolean,
-    nonDecisive = false
-  ) => ({
+  const cond = (id: string, resolvedToYes: boolean, nonDecisive = false) => ({
     id,
     settled: true,
     resolvedToYes,
@@ -88,7 +84,12 @@ describe('computeSettlementResult', () => {
     const picks = [{ conditionId: 'c1', predictedOutcome: 1 }];
     const map = new Map<
       string,
-      { id: string; settled: boolean; resolvedToYes: boolean; nonDecisive: boolean }
+      {
+        id: string;
+        settled: boolean;
+        resolvedToYes: boolean;
+        nonDecisive: boolean;
+      }
     >();
     expect(computeSettlementResult(picks, map)).toBeNull();
   });
@@ -134,7 +135,12 @@ describe('resolvePickConfigsForCondition', () => {
       condition: {
         findMany: vi.fn().mockResolvedValue([
           { id: 'c1', settled: true, resolvedToYes: true, nonDecisive: false },
-          { id: 'c2', settled: false, resolvedToYes: false, nonDecisive: false },
+          {
+            id: 'c2',
+            settled: false,
+            resolvedToYes: false,
+            nonDecisive: false,
+          },
         ]),
       },
     });
