@@ -7,6 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { predictionMarketEscrowAbi } from '@sapience/sdk/abis';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { OutcomeSide } from '@sapience/sdk/types';
 import PercentChance from '~/components/shared/PercentChance';
 import { Table, TableBody, TableCell } from '@sapience/ui/components/ui/table';
 import { Button } from '@sapience/ui/components/ui/button';
@@ -213,7 +214,7 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
             conditionId: (leg.condition.id.startsWith('0x')
               ? leg.condition.id
               : `0x${leg.condition.id}`) as `0x${string}`,
-            predictedOutcome: leg.prediction ? 1 : 0,
+            predictedOutcome: leg.prediction ? OutcomeSide.YES : OutcomeSide.NO,
           }));
           const picks = canonicalizePicks(rawPicks);
           const nowSec = Math.floor(Date.now() / 1000);

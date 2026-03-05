@@ -122,7 +122,8 @@ export function computeSettlementResult(
     }
 
     // Check if pick matches actual outcome
-    const predictedYes = pick.predictedOutcome === 1;
+    // OutcomeSide: YES = 0, NO = 1 (matches IV2Types.sol)
+    const predictedYes = pick.predictedOutcome === 0;
     if (predictedYes !== cond.resolvedToYes) {
       return 'COUNTERPARTY_WINS';
     }

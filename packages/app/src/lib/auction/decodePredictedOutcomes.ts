@@ -7,7 +7,8 @@ import {
   predictionMarketLZConditionalTokensResolver,
   manualConditionResolver,
 } from '@sapience/sdk/contracts';
-import type { Pick, OutcomeSide } from '@sapience/sdk/types';
+import { OutcomeSide } from '@sapience/sdk/types';
+import type { Pick } from '@sapience/sdk/types';
 
 export type UmaDecodedOutcome = {
   kind: 'uma';
@@ -188,8 +189,7 @@ export function decodedOutcomesToPicks(
     return decoded.outcomes.map((o) => ({
       conditionResolver: resolverAddress,
       conditionId: o.marketId,
-      // YES = 1, NO = 0 in OutcomeSide enum
-      predictedOutcome: (o.prediction ? 1 : 0) as OutcomeSide,
+      predictedOutcome: o.prediction ? OutcomeSide.YES : OutcomeSide.NO,
     }));
   }
 

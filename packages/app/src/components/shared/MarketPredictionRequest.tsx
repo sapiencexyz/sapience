@@ -10,6 +10,7 @@ import {
   DEFAULT_CHAIN_ID,
   PREFERRED_ESTIMATE_QUOTER,
 } from '@sapience/sdk/constants';
+import { OutcomeSide } from '@sapience/sdk/types';
 import { predictionMarketLZConditionalTokensResolver } from '@sapience/sdk/contracts';
 import { useAuctionStart, type QuoteBid } from '~/lib/auction/useAuctionStart';
 import {
@@ -284,7 +285,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
             conditionId: (o.marketId.startsWith('0x')
               ? o.marketId
               : `0x${o.marketId}`) as `0x${string}`,
-            predictedOutcome: o.prediction ? 1 : 0,
+            predictedOutcome: o.prediction ? OutcomeSide.YES : OutcomeSide.NO,
           }))
         : undefined;
       const auctionParams = {
@@ -342,7 +343,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
               conditionId: (o.marketId.startsWith('0x')
                 ? o.marketId
                 : `0x${o.marketId}`) as `0x${string}`,
-              predictedOutcome: o.prediction ? 1 : 0,
+              predictedOutcome: o.prediction ? OutcomeSide.YES : OutcomeSide.NO,
             }))
           : undefined;
         const auctionParams = {

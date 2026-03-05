@@ -1,4 +1,5 @@
 import { ImageResponse } from 'next/og';
+import { OutcomeSide } from '@sapience/sdk/types';
 import {
   og,
   WIDTH,
@@ -104,12 +105,12 @@ export async function GET(req: Request) {
               const condition = conditionsMap.get(pick.conditionId);
               const question =
                 condition?.question || condition?.shortName || pick.conditionId;
-              const choice = pick.predictedOutcome === 1 ? 'Yes' : 'No';
+              const choice = pick.predictedOutcome === OutcomeSide.YES ? 'Yes' : 'No';
 
               // Determine resolution status per leg
               let resolution: ResolutionStatus | null = null;
               if (condition?.settled) {
-                const predictedYes = pick.predictedOutcome === 1;
+                const predictedYes = pick.predictedOutcome === OutcomeSide.YES;
                 const resolvedToYes = condition.resolvedToYes ?? false;
                 const correct = predictedYes === resolvedToYes;
                 resolution = correct ? 'correct' : 'incorrect';
