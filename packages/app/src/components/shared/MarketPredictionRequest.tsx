@@ -360,6 +360,50 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
     chainId,
   ]);
 
+  // Core logic: build params and send the auction request.
+  // Separated so the eager queue can call it without the isRequesting guard.
+  const sendAuctionRequest = React.useCallback(() => {
+    if (effectiveOutcomes.length === 0 || !selectedPredictorAddress) {
+      setQueuedRequest(true);
+      return;
+    }
+    const positionSizeWei = parseUnits('1', 18).toString();
+    setLastPredictorPositionSizeWei(positionSizeWei);
+    const payload = buildAuctionStartPayload(effectiveOutcomes, chainId);
+    const effectiveResolver =
+      resolverAddress ||
+      predictionMarketLZConditionalTokensResolver[chainId]?.address ||
+      null;
+    const escrowPicks = effectiveResolver
+      ? effectiveOutcomes.map((o) => ({
+          conditionResolver: effectiveResolver as `0x${string}`,
+          conditionId: (o.marketId.startsWith('0x')
+            ? o.marketId
+            : `0x${o.marketId}`) as `0x${string}`,
+          predictedOutcome: o.prediction ? OutcomeSide.YES : OutcomeSide.NO,
+        }))
+      : undefined;
+    const auctionParams = {
+      wager: positionSizeWei,
+      resolver: payload.resolver,
+      predictedOutcomes: payload.predictedOutcomes,
+      predictor: selectedPredictorAddress,
+      predictorNonce:
+        predictorNonce !== undefined ? Number(predictorNonce) : 0,
+      chainId: chainId,
+      ...(escrowPicks && { escrowPicks }),
+    };
+
+    lastAuctionParamsRef.current = auctionParams;
+    requestQuotes(auctionParams);
+  }, [
+    effectiveOutcomes,
+    selectedPredictorAddress,
+    predictorNonce,
+    requestQuotes,
+    chainId,
+  ]);
+
   const handleRequestPrediction = React.useCallback(() => {
     if (prefetchedProbability != null) return;
     if (isRequesting) return;
@@ -367,55 +411,15 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
     setIsRequesting(true);
     retryCountRef.current = 0;
     try {
-      // If outcomes aren't ready or no predictor address yet -> queue
-      if (effectiveOutcomes.length === 0 || !selectedPredictorAddress) {
-        setQueuedRequest(true);
-      } else {
-        const positionSizeWei = parseUnits('1', 18).toString();
-        setLastPredictorPositionSizeWei(positionSizeWei);
-        const payload = buildAuctionStartPayload(effectiveOutcomes, chainId);
-        const effectiveResolver =
-          resolverAddress ||
-          predictionMarketLZConditionalTokensResolver[chainId]?.address ||
-          null;
-        const escrowPicks = effectiveResolver
-          ? effectiveOutcomes.map((o) => ({
-              conditionResolver: effectiveResolver as `0x${string}`,
-              conditionId: (o.marketId.startsWith('0x')
-                ? o.marketId
-                : `0x${o.marketId}`) as `0x${string}`,
-              predictedOutcome: o.prediction ? OutcomeSide.YES : OutcomeSide.NO,
-            }))
-          : undefined;
-        const auctionParams = {
-          wager: positionSizeWei,
-          resolver: payload.resolver,
-          predictedOutcomes: payload.predictedOutcomes,
-          predictor: selectedPredictorAddress,
-          predictorNonce:
-            predictorNonce !== undefined ? Number(predictorNonce) : 0,
-          chainId: chainId,
-          ...(escrowPicks && { escrowPicks }),
-        };
-
-        lastAuctionParamsRef.current = auctionParams;
-
-        requestQuotes(auctionParams);
-      }
+      sendAuctionRequest();
     } catch {
       setIsRequesting(false);
     }
-  }, [
-    effectiveOutcomes,
-    selectedPredictorAddress,
-    predictorNonce,
-    requestQuotes,
-    isRequesting,
-    chainId,
-  ]);
+  }, [isRequesting, sendAuctionRequest, prefetchedProbability]);
 
   // Auto-fire eager request once component scrolls into view.
-  // Uses a global queue to stagger starts and avoid overwhelming the quoter.
+  // Shows "Requesting..." immediately, then staggers the actual auction start
+  // through a global queue to avoid overwhelming the quoter service.
   React.useEffect(() => {
     if (!eager) return;
     if (prefetchedProbability != null) return;
@@ -424,13 +428,18 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
     if (!selectedPredictorAddress) return;
     if (effectiveOutcomes.length === 0) return;
     eagerlyRequestedRef.current = true;
-    enqueueEagerRequest(handleRequestPrediction);
+    // Show loading state immediately so the UI feels responsive
+    setIsRequesting(true);
+    setRequestedPrediction(null);
+    retryCountRef.current = 0;
+    // Stagger the actual auction start through the queue
+    enqueueEagerRequest(sendAuctionRequest);
   }, [
     eager,
     isInViewport,
     selectedPredictorAddress,
     effectiveOutcomes.length,
-    handleRequestPrediction,
+    sendAuctionRequest,
     prefetchedProbability,
   ]);
 
