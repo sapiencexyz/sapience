@@ -14,34 +14,36 @@ describe('computeSettlementResult', () => {
     nonDecisive,
   });
 
+  // OutcomeSide: YES = 0, NO = 1 (matches IV2Types.sol)
+
   it('returns PREDICTOR_WINS when single pick predicted YES and condition resolved YES', () => {
-    const picks = [{ conditionId: 'c1', predictedOutcome: 1 }];
+    const picks = [{ conditionId: 'c1', predictedOutcome: 0 }];
     const map = new Map([['c1', cond('c1', true)]]);
     expect(computeSettlementResult(picks, map)).toBe('PREDICTOR_WINS');
   });
 
   it('returns PREDICTOR_WINS when single pick predicted NO and condition resolved NO', () => {
-    const picks = [{ conditionId: 'c1', predictedOutcome: 0 }];
+    const picks = [{ conditionId: 'c1', predictedOutcome: 1 }];
     const map = new Map([['c1', cond('c1', false)]]);
     expect(computeSettlementResult(picks, map)).toBe('PREDICTOR_WINS');
   });
 
   it('returns COUNTERPARTY_WINS when single pick predicted YES but condition resolved NO', () => {
-    const picks = [{ conditionId: 'c1', predictedOutcome: 1 }];
+    const picks = [{ conditionId: 'c1', predictedOutcome: 0 }];
     const map = new Map([['c1', cond('c1', false)]]);
     expect(computeSettlementResult(picks, map)).toBe('COUNTERPARTY_WINS');
   });
 
   it('returns COUNTERPARTY_WINS when single pick predicted NO but condition resolved YES', () => {
-    const picks = [{ conditionId: 'c1', predictedOutcome: 0 }];
+    const picks = [{ conditionId: 'c1', predictedOutcome: 1 }];
     const map = new Map([['c1', cond('c1', true)]]);
     expect(computeSettlementResult(picks, map)).toBe('COUNTERPARTY_WINS');
   });
 
   it('returns PREDICTOR_WINS when all multi-picks are correct', () => {
     const picks = [
-      { conditionId: 'c1', predictedOutcome: 1 },
-      { conditionId: 'c2', predictedOutcome: 0 },
+      { conditionId: 'c1', predictedOutcome: 0 },
+      { conditionId: 'c2', predictedOutcome: 1 },
     ];
     const map = new Map([
       ['c1', cond('c1', true)],
@@ -52,8 +54,8 @@ describe('computeSettlementResult', () => {
 
   it('returns COUNTERPARTY_WINS when one of multi-picks is wrong', () => {
     const picks = [
-      { conditionId: 'c1', predictedOutcome: 1 },
-      { conditionId: 'c2', predictedOutcome: 1 },
+      { conditionId: 'c1', predictedOutcome: 0 },
+      { conditionId: 'c2', predictedOutcome: 0 },
     ];
     const map = new Map([
       ['c1', cond('c1', true)],
@@ -63,15 +65,15 @@ describe('computeSettlementResult', () => {
   });
 
   it('returns COUNTERPARTY_WINS when condition is non-decisive (tie)', () => {
-    const picks = [{ conditionId: 'c1', predictedOutcome: 1 }];
+    const picks = [{ conditionId: 'c1', predictedOutcome: 0 }];
     const map = new Map([['c1', cond('c1', false, true)]]);
     expect(computeSettlementResult(picks, map)).toBe('COUNTERPARTY_WINS');
   });
 
   it('returns COUNTERPARTY_WINS when any condition is non-decisive even if others match', () => {
     const picks = [
-      { conditionId: 'c1', predictedOutcome: 1 },
-      { conditionId: 'c2', predictedOutcome: 0 },
+      { conditionId: 'c1', predictedOutcome: 0 },
+      { conditionId: 'c2', predictedOutcome: 1 },
     ];
     const map = new Map([
       ['c1', cond('c1', true)],
@@ -156,8 +158,8 @@ describe('resolvePickConfigsForCondition', () => {
           {
             id: 'pc1',
             picks: [
-              { conditionId: 'c1', predictedOutcome: 1 },
-              { conditionId: 'c2', predictedOutcome: 0 },
+              { conditionId: 'c1', predictedOutcome: 0 },
+              { conditionId: 'c2', predictedOutcome: 1 },
             ],
           },
         ]),
