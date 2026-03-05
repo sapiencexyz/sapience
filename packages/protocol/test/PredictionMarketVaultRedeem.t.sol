@@ -247,4 +247,116 @@ contract PredictionMarketVaultRedeemTest is Test {
         vm.expectRevert();
         vault.redeemFromEscrow(address(0), address(1), 100, REF_CODE);
     }
+
+    // ============ Burn Tests ============
+
+    function test_burnFromEscrow_mutualCancel() public {
+        // Mint prediction with vault as counterparty
+        IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
+        picks[0] = IV2Types.Pick({
+            conditionResolver: address(resolver),
+            conditionId: conditionId1,
+            predictedOutcome: IV2Types.OutcomeSide.YES
+        });
+
+        (bytes32 predictionId, address predictorToken, address counterpartyToken) =
+            _mintWithVaultAsCounterparty(picks);
+
+        bytes32 pickConfigId = keccak256(abi.encode(picks));
+
+        // Both sides agree to cancel — each gets their own collateral back
+        uint256 pNonce = _freshNonce();
+        uint256 cNonce = _freshNonce();
+        uint256 deadline = block.timestamp + 1 hours;
+
+        // Each side receives TOTAL_COLLATERAL position tokens at mint
+        bytes32 burnHash = keccak256(
+            abi.encode(
+                pickConfigId,
+                TOTAL_COLLATERAL,      // predictorTokenAmount (all predictor tokens)
+                TOTAL_COLLATERAL,      // counterpartyTokenAmount (all counterparty tokens)
+                predictor,
+                address(vault),
+                PREDICTOR_COLLATERAL,  // predictorPayout (gets own collateral back)
+                COUNTERPARTY_COLLATERAL // counterpartyPayout (gets own collateral back)
+            )
+        );
+
+        // Predictor signs burn approval (EOA — direct ECDSA)
+        bytes memory predictorBurnSig;
+        {
+            bytes32 predictorBurnApprovalHash = market.getBurnApprovalHash(
+                burnHash, predictor, TOTAL_COLLATERAL, PREDICTOR_COLLATERAL, pNonce, deadline
+            );
+            (uint8 v, bytes32 r, bytes32 s) = vm.sign(predictorPk, predictorBurnApprovalHash);
+            predictorBurnSig = abi.encodePacked(r, s, v);
+        }
+
+        // Vault signs burn approval (ERC-1271 — manager signs via vault's isValidSignature)
+        bytes memory vaultBurnSig;
+        {
+            bytes32 vaultBurnApprovalHash = market.getBurnApprovalHash(
+                burnHash, address(vault), TOTAL_COLLATERAL, COUNTERPARTY_COLLATERAL, cNonce, deadline
+            );
+            vaultBurnSig = _signVaultApproval(vaultBurnApprovalHash);
+        }
+
+        IV2Types.BurnRequest memory burnRequest;
+        burnRequest.pickConfigId = pickConfigId;
+        burnRequest.predictorTokenAmount = TOTAL_COLLATERAL;
+        burnRequest.counterpartyTokenAmount = TOTAL_COLLATERAL;
+        burnRequest.predictorHolder = predictor;
+        burnRequest.counterpartyHolder = address(vault);
+        burnRequest.predictorPayout = PREDICTOR_COLLATERAL;
+        burnRequest.counterpartyPayout = COUNTERPARTY_COLLATERAL;
+        burnRequest.predictorNonce = pNonce;
+        burnRequest.counterpartyNonce = cNonce;
+        burnRequest.predictorDeadline = deadline;
+        burnRequest.counterpartyDeadline = deadline;
+        burnRequest.predictorSignature = predictorBurnSig;
+        burnRequest.counterpartySignature = vaultBurnSig;
+        burnRequest.refCode = REF_CODE;
+        burnRequest.predictorSessionKeyData = "";
+        burnRequest.counterpartySessionKeyData = "";
+
+        // Record balances before
+        uint256 predictorBefore = collateralToken.balanceOf(predictor);
+        uint256 vaultBefore = collateralToken.balanceOf(address(vault));
+
+        // Manager calls burnFromEscrow
+        vm.prank(manager);
+        vault.burnFromEscrow(address(market), burnRequest);
+
+        // Predictor gets their collateral back
+        assertEq(
+            collateralToken.balanceOf(predictor),
+            predictorBefore + PREDICTOR_COLLATERAL,
+            "Predictor should get collateral back"
+        );
+
+        // Vault gets its collateral back
+        assertEq(
+            collateralToken.balanceOf(address(vault)),
+            vaultBefore + COUNTERPARTY_COLLATERAL,
+            "Vault should get collateral back"
+        );
+
+        // Position tokens should be burned
+        assertEq(IERC20(predictorToken).balanceOf(predictor), 0, "Predictor tokens burned");
+        assertEq(IERC20(counterpartyToken).balanceOf(address(vault)), 0, "Vault tokens burned");
+    }
+
+    function test_burnFromEscrow_onlyManager() public {
+        IV2Types.BurnRequest memory emptyRequest;
+        vm.prank(predictor);
+        vm.expectRevert();
+        vault.burnFromEscrow(address(market), emptyRequest);
+    }
+
+    function test_burnFromEscrow_revertZeroEscrow() public {
+        IV2Types.BurnRequest memory emptyRequest;
+        vm.prank(manager);
+        vm.expectRevert();
+        vault.burnFromEscrow(address(0), emptyRequest);
+    }
 }
