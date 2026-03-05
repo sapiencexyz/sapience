@@ -453,10 +453,9 @@ const VaultsPageContent = () => {
   const tvlWei = vaultData?.totalLiquidValue ?? 0n;
 
   const deployedWei = useMemo(() => {
-    const total = vaultData?.totalLiquidValue ?? 0n;
-    const available = vaultData?.availableAssets ?? 0n;
-    return total > available ? total - available : 0n;
-  }, [vaultData]);
+    const lastStat = protocolStats?.[protocolStats.length - 1];
+    return lastStat?.vaultDeployed ? BigInt(lastStat.vaultDeployed) : 0n;
+  }, [protocolStats]);
 
   const utilizationPercent = useMemo(() => {
     if (tvlWei <= 0n) return 0;
