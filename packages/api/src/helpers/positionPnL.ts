@@ -340,24 +340,24 @@ export async function calculateCombinedPositionPnL(): Promise<
       FROM position
       WHERE status IN ('settled', 'consolidated') AND "predictorWon" IS NOT NULL
       UNION ALL
-      -- V2 Claims: holder redeems settled prediction
+      -- Claims: holder redeems settled prediction
       -- Note: Claim.predictionId stores pickConfigId, so we use tokensBurned as cost basis
       -- (position tokens are minted 1:1 with collateral)
       SELECT cl.holder AS address,
         CAST(cl."collateralPaid" AS DECIMAL) - CAST(cl."tokensBurned" AS DECIMAL) AS pnl
       FROM "Claim" cl
       UNION ALL
-      -- V2 Closes: predictor payout
+      -- Closes: predictor payout
       SELECT c."predictorHolder" AS address,
         CAST(c."predictorPayout" AS DECIMAL) - CAST(c."predictorTokensBurned" AS DECIMAL) AS pnl
       FROM "Close" c
       UNION ALL
-      -- V2 Closes: counterparty payout
+      -- Closes: counterparty payout
       SELECT c."counterpartyHolder" AS address,
         CAST(c."counterpartyPayout" AS DECIMAL) - CAST(c."counterpartyTokensBurned" AS DECIMAL) AS pnl
       FROM "Close" c
       UNION ALL
-      -- V2 Unclaimed settled: predictor side (exclude already-claimed)
+      -- Unclaimed settled: predictor side (exclude already-claimed)
       -- Match claims by positionToken since Claim.predictionId stores pickConfigId
       SELECT p.predictor AS address,
         CAST(COALESCE(p."predictorClaimable", '0') AS DECIMAL) - CAST(p."predictorCollateral" AS DECIMAL) AS pnl
@@ -368,7 +368,7 @@ export async function calculateCombinedPositionPnL(): Promise<
           WHERE c."positionToken" = p."predictorToken" AND c.holder = p.predictor
         )
       UNION ALL
-      -- V2 Unclaimed settled: counterparty side (exclude already-claimed)
+      -- Unclaimed settled: counterparty side (exclude already-claimed)
       SELECT p.counterparty AS address,
         CAST(COALESCE(p."counterpartyClaimable", '0') AS DECIMAL) - CAST(p."counterpartyCollateral" AS DECIMAL) AS pnl
       FROM "Prediction" p
