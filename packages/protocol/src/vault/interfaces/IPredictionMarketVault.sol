@@ -82,6 +82,24 @@ interface IPredictionMarketVault is IERC1271, IERC165 {
      */
     function approveFundsUsage(address protocol, uint256 amount) external;
 
+    /**
+     * @notice Redeem winning position tokens from PredictionMarketEscrow
+     * @param escrow Address of the PredictionMarketEscrow contract
+     * @param positionToken Address of the position token to redeem
+     * @param amount Amount of position tokens to redeem
+     * @param refCode Referral code
+     * @return payout Amount of collateral received
+     */
+    function redeemFromEscrow(
+        address escrow,
+        address positionToken,
+        uint256 amount,
+        bytes32 refCode
+    ) external returns (uint256 payout);
+
+    // redeemFromEscrow and burnFromEscrow are defined in the implementation
+    // with concrete types from IPredictionMarketEscrow and IV2Types
+
     // ============ View Functions ============
 
     function getLockedShares(address user) external view returns (uint256);
