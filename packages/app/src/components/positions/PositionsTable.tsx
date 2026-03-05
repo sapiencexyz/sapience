@@ -36,6 +36,7 @@ import CounterpartyBadge from '~/components/shared/CounterpartyBadge';
 import { getCategoryIcon } from '~/lib/theme/categoryIcons';
 import { getCategoryStyle } from '~/lib/utils/categoryStyle';
 import { PredictionChoiceBadge } from '@sapience/ui';
+import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
 import OgShareDialogBase from '~/components/shared/OgShareDialog';
 import {
   PositionsTableFilters,
@@ -246,9 +247,19 @@ function PositionRow({
                         >
                           <CategoryIcon className="h-3 w-3 text-white/80" />
                         </div>
-                        <span className="text-sm flex-1 min-w-0 font-mono truncate">
-                          {pick.question}
-                        </span>
+                        {pick.conditionId ? (
+                          <ConditionTitleLink
+                            conditionId={pick.conditionId}
+                            resolverAddress={pick.resolverAddress ?? undefined}
+                            title={pick.question}
+                            clampLines={1}
+                            className="text-sm flex-1 min-w-0"
+                          />
+                        ) : (
+                          <span className="text-sm flex-1 min-w-0 font-mono truncate">
+                            {pick.question}
+                          </span>
+                        )}
                         <PredictionChoiceBadge
                           choice={String(pick.choice).toUpperCase()}
                         />
