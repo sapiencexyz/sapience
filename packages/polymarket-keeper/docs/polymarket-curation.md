@@ -8,52 +8,48 @@ Sapience doesn't list every market from Polymarket. Instead, an automated pipeli
 
 **At a glance, a market must:**
 
-- End within the next **7 days**
+- Settle within the next **21 days**
 - Be a **binary** (Yes/No) market
-- Have at least **$50,000 in trading volume** and **$1,000 in liquidity** — unless it covers a key topic (see [Always-Include](#step-5-always-include-override) below)
+- Have at least **$10,000 in trading volume** and **$1,000 in liquidity** — unless it covers a key topic (see [Always-Include](#step-4-always-include-override) below)
 - Not be a **crypto** market (with some exceptions)
 - Not already exist on Sapience
 
 ### Steps
 
-1. Fetch active markets from Polymarket (ending within 7 days)
+1. Fetch active markets from Polymarket (settling within 21 days)
 2. Keep only binary (Yes/No) markets
-3. Group markets by event
-4. Filter by volume & liquidity thresholds
-5. Always-include override for key topics
-6. Exclude crypto category (with exceptions)
-7. Skip markets already on Sapience
-8. Enrich with short names & categories
-9. Submit to Sapience
+3. Filter by volume & liquidity thresholds (with always-include override)
+4. Exclude crypto category (with always-include exception)
+5. Skip markets already on Sapience
+6. Enrich with short names & categories
+7. Submit to Sapience
 
 ## Step 1: Fetching Markets
 
-The keeper pulls all **active, open** markets from Polymarket that are **ending within the next 7 days**, starting with the soonest. This keeps Sapience focused on near-term, resolvable questions.
+The keeper pulls all **active, open** markets from Polymarket that are **settling within the next 21 days**, starting with the soonest. This keeps Sapience focused on near-term, resolvable questions.
 
 ## Step 2: Binary Markets Only
 
 Only markets with **exactly 2 outcomes** are kept (e.g. "Yes" / "No", or two named options like "Lakers" / "Celtics"). Markets with 3 or more outcomes are discarded — Sapience's forecasting interface is built around binary questions.
 
-## Step 3: Grouping by Event
+## Step 3: Volume & Liquidity Filters
 
-Markets are grouped by their parent **event** on Polymarket. For example, several player-prop markets under the same NBA game would be grouped together. Markets without a parent event are treated as standalone questions.
-
-## Step 4: Volume & Liquidity Filters
-
-A market (or group) must pass **both** of these thresholds to be included:
+A market must pass **both** of these thresholds to be included:
 
 | Threshold | Minimum |
 |-----------|---------|
-| **Trading volume** | $50,000 |
+| **Trading volume** | $10,000 |
 | **Liquidity** | $1,000 |
 
-For grouped markets, the group passes if **at least one market** in it meets both thresholds.
+Markets with an event are each treated as their own group. A market passes if it meets both thresholds.
 
 These thresholds ensure only markets with real trading activity and sufficient depth make it through. Thinly traded or illiquid markets are excluded.
 
-## Step 5: Always-Include Override
+### Step 4: Always-Include Override
 
 Some topics are important enough that their markets should **always** appear on Sapience, even if they haven't hit the volume/liquidity thresholds yet (e.g. a newly created market that hasn't had time to accumulate trades).
+
+The volume & liquidity filter is applied as a **union** with the always-include filter: a market passes if it meets the thresholds **OR** matches an always-include pattern.
 
 A market is always included if its question mentions any of these:
 
@@ -66,17 +62,17 @@ A market is always included if its question mentions any of these:
 
 These patterns are checked case-insensitively. The idea is that markets about major economic indicators and benchmark asset prices are always worth surfacing, regardless of how much trading activity they've seen so far.
 
-## Step 6: Crypto Exclusion
+## Step 5: Crypto Exclusion
 
 Markets categorized as **crypto** are excluded by default. Polymarket has a very large number of crypto-related markets, and including all of them would overwhelm the feed with price-target questions.
 
-**Exception:** Crypto markets that match an always-include pattern (like the daily BTC/ETH price markets above) still get through. This way, the most broadly relevant crypto markets are kept while the long tail is filtered out.
+**Exception:** Crypto markets that match an always-include pattern (like the daily BTC/ETH price markets above) still get through. The crypto exclusion and always-include filters are applied as a union, so always-include markets bypass the crypto filter.
 
-## Step 7: Skip Existing Markets
+## Step 6: Skip Existing Markets
 
-Markets that already exist on Sapience are skipped. No duplicates.
+Markets that already exist on Sapience are skipped. This check happens before enrichment so that existing markets also skip the LLM call.
 
-## Step 8: Enrichment (Short Names & Categories)
+## Step 7: Enrichment (Short Names & Categories)
 
 Each market that passes all filters is enriched with two pieces of metadata before being listed:
 
