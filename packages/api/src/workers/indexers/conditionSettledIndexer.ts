@@ -20,7 +20,7 @@ const CONDITION_SETTLED_TOPIC = keccak256(
 );
 
 /**
- * V2 Condition Settled Indexer
+ * Condition Settled Indexer
  * Indexes ConditionSettled events from any resolver contract.
  * Pass the resolver address explicitly — one indexer instance per resolver.
  */
