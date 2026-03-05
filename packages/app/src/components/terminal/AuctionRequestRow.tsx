@@ -10,10 +10,7 @@ import { useAuctionBids } from '~/lib/auction/useAuctionBids';
 import AuctionRequestInfo from '~/components/terminal/AuctionRequestInfo';
 import AuctionRequestChart from '~/components/terminal/AuctionRequestChart';
 import { useAccount, useReadContract } from 'wagmi';
-import {
-  predictionMarketEscrow,
-  collateralToken,
-} from '@sapience/sdk/contracts';
+import { collateralToken } from '@sapience/sdk/contracts';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import erc20Abi from '@sapience/sdk/queries/abis/erc20abi.json';
@@ -89,8 +86,6 @@ const AuctionRequestRow: React.FC<Props> = ({
       });
     },
   });
-  // Always use PredictionMarketEscrow
-  const PREDICTION_MARKET_ADDRESS = predictionMarketEscrow[chainId]?.address;
   const COLLATERAL_ADDRESS =
     collateralToken[chainId]?.address ??
     collateralToken[DEFAULT_CHAIN_ID]?.address;

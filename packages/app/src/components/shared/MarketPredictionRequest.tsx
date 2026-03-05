@@ -180,7 +180,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
     if (!isRequesting) return;
     if (!bids || bids.length === 0) return;
 
-    const processBids = async () => {
+    const processBids = () => {
       try {
         const nowMs = Date.now();
         const isAnonymousUser = selectedPredictorAddress === zeroAddress;
