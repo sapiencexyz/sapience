@@ -11,21 +11,29 @@ import { resolvePickConfigsForCondition } from './resolvePickConfigs';
 const CONDITION_SETTLED_EVENT_ABI = [
   {
     type: 'event',
-    name: 'ConditionSettled',
+    name: 'ConditionResolved',
     inputs: [
       { name: 'conditionId', type: 'bytes32', indexed: true },
-      { name: 'yesWeight', type: 'uint256', indexed: false },
-      { name: 'noWeight', type: 'uint256', indexed: false },
-      { name: 'settler', type: 'address', indexed: true },
+      { name: 'invalid', type: 'bool', indexed: false },
+      { name: 'nonDecisive', type: 'bool', indexed: false },
+      { name: 'resolvedToYes', type: 'bool', indexed: false },
+      { name: 'payoutDenominator', type: 'uint256', indexed: false },
+      { name: 'noPayout', type: 'uint256', indexed: false },
+      { name: 'yesPayout', type: 'uint256', indexed: false },
+      { name: 'timestamp', type: 'uint256', indexed: false },
     ],
   },
 ] as const;
 
 interface ConditionSettledEvent {
   conditionId: string;
-  yesWeight: bigint;
-  noWeight: bigint;
-  settler: string;
+  invalid: boolean;
+  nonDecisive: boolean;
+  resolvedToYes: boolean;
+  payoutDenominator: bigint;
+  noPayout: bigint;
+  yesPayout: bigint;
+  timestamp: bigint;
 }
 
 export async function processConditionSettled(
@@ -43,18 +51,18 @@ export async function processConditionSettled(
 
     const conditionId = decoded.args.conditionId.toLowerCase();
 
-    const resolvedToYes =
-      decoded.args.yesWeight > 0n && decoded.args.noWeight === 0n;
-    const nonDecisive =
-      decoded.args.yesWeight > 0n && decoded.args.noWeight > 0n;
+    const { invalid, nonDecisive, resolvedToYes } = decoded.args;
 
     const eventData = {
-      eventType: 'ConditionSettled',
+      eventType: 'ConditionResolved',
       conditionId,
-      yesWeight: decoded.args.yesWeight.toString(),
-      noWeight: decoded.args.noWeight.toString(),
-      settler: decoded.args.settler,
+      invalid,
+      nonDecisive,
       resolvedToYes,
+      payoutDenominator: decoded.args.payoutDenominator.toString(),
+      noPayout: decoded.args.noPayout.toString(),
+      yesPayout: decoded.args.yesPayout.toString(),
+      timestamp: decoded.args.timestamp.toString(),
       blockNumber: Number(log.blockNumber),
       transactionHash: log.transactionHash,
       logIndex: log.logIndex,
@@ -193,7 +201,7 @@ export async function processConditionSettled(
     }
 
     console.log(
-      `${tag} Processed ConditionSettled: conditionId=${conditionId}, resolvedToYes=${resolvedToYes}, settler=${decoded.args.settler}`
+      `${tag} Processed ConditionResolved: conditionId=${conditionId}, resolvedToYes=${resolvedToYes}, invalid=${invalid}, nonDecisive=${nonDecisive}`
     );
   } catch (error) {
     console.error(`${tag} Error processing ConditionSettled:`, error);
