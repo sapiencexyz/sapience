@@ -33,6 +33,7 @@ interface IPredictionMarketEscrow {
     error ResolverCallFailed(address resolver, bytes32 conditionId);
     error PickConfigAlreadyResolved();
     error InvalidBurnAmounts();
+    error AsymmetricBurn();
     error SponsorUnderfunded();
 
     // ============ External Functions ============

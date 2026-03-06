@@ -391,12 +391,29 @@ contract PredictionMarketEscrow is
             revert ZeroAmount();
         }
 
+        // Enforce symmetric burn: both sides must burn the same fraction of
+        // their outstanding supply. Without this check an attacker can burn
+        // almost all of the eventual losing side while burning dust of the
+        // winning side, draining the loser-side collateral before settlement
+        // and leaving honest winners underpaid at redemption.
+        // Uses cross-multiplication to avoid division and rounding issues:
+        //   predictorAmount / totalPredictor == counterpartyAmount / totalCounterparty
+        //   ⟹ predictorAmount * totalCounterparty == counterpartyAmount * totalPredictor
+        {
+            IV2Types.PickConfiguration storage _config =
+                _pickConfigurations[request.pickConfigId];
+            if (
+                request.predictorTokenAmount
+                    * _config.totalCounterpartyTokensMinted
+                    != request.counterpartyTokenAmount
+                        * _config.totalPredictorTokensMinted
+            ) {
+                revert AsymmetricBurn();
+            }
+        }
+
         // Validate conservation: total payout must not exceed the collateral
-        // backing the burned tokens. With proportional minting, each token's
-        // collateral value = (tokenAmount / totalTokensMinted) * totalCollateral.
-        // For a mutual cancel, both parties agree on the split — we just ensure
-        // they don't extract more than exists. The collateral backing is computed
-        // from the predictor side's proportion (both sides have equal token counts).
+        // backing the burned tokens.
         {
             IV2Types.PickConfiguration storage _config =
                 _pickConfigurations[request.pickConfigId];

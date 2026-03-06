@@ -745,56 +745,21 @@ contract PredictionMarketEscrowBurnTest is Test {
     function test_burn_revertIfPayoutSumNotEqualTokenSum() public {
         (bytes32 pickConfigId,,) = _mintDefault();
 
-        // Payout sum (200) != token sum (250)
-        bytes32 burnHash = keccak256(
-            abi.encode(
-                pickConfigId,
-                PREDICTOR_COLLATERAL,
-                COUNTERPARTY_COLLATERAL,
-                predictor,
-                counterparty,
-                uint256(100e18),
-                uint256(100e18)
-            )
-        );
+        // Use equal token amounts (symmetric) but excessive payouts
+        // Total collateral is 250e18, requesting 300e18 back
+        uint256 equalTokens = TOTAL_COLLATERAL;
 
-        uint256 pNonce = _freshNonce();
-        uint256 cNonce = _freshNonce();
-        uint256 deadline = block.timestamp + 1 hours;
-
-        IV2Types.BurnRequest memory req;
-        req.pickConfigId = pickConfigId;
-        req.predictorTokenAmount = PREDICTOR_COLLATERAL;
-        req.counterpartyTokenAmount = COUNTERPARTY_COLLATERAL;
-        req.predictorHolder = predictor;
-        req.counterpartyHolder = counterparty;
-        req.predictorPayout = 100e18;
-        req.counterpartyPayout = 100e18;
-        req.predictorNonce = pNonce;
-        req.counterpartyNonce = cNonce;
-        req.predictorDeadline = deadline;
-        req.counterpartyDeadline = deadline;
-        req.predictorSignature = _signBurnApproval(
-            burnHash,
+        IV2Types.BurnRequest memory req = _createBurnRequest(
+            pickConfigId,
+            equalTokens,
+            equalTokens,
             predictor,
-            PREDICTOR_COLLATERAL,
-            100e18,
-            pNonce,
-            deadline,
-            predictorPk
-        );
-        req.counterpartySignature = _signBurnApproval(
-            burnHash,
             counterparty,
-            COUNTERPARTY_COLLATERAL,
-            100e18,
-            cNonce,
-            deadline,
+            200e18,  // predictor wants 200
+            100e18,  // counterparty wants 100 — total 300 > 250 backing
+            predictorPk,
             counterpartyPk
         );
-        req.refCode = REF_CODE;
-        req.predictorSessionKeyData = "";
-        req.counterpartySessionKeyData = "";
 
         vm.expectRevert(IPredictionMarketEscrow.InvalidBurnAmounts.selector);
         market.burn(req);
@@ -1121,5 +1086,151 @@ contract PredictionMarketEscrowBurnTest is Test {
             collateralToken.balanceOf(counterparty),
             counterpartyBalBefore + COUNTERPARTY_COLLATERAL
         );
+    }
+
+    // ============ Asymmetric Burn Attack Tests ============
+
+    /// @notice Demonstrates the attack vector: asymmetric burn drains the
+    ///         eventual winner pool. This test should REVERT with AsymmetricBurn
+    ///         after the fix is applied.
+    function test_burn_asymmetricDustWinnerTokenReverts() public {
+        IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
+        picks[0] = _createPick(conditionId1, IV2Types.OutcomeSide.YES);
+
+        (bytes32 predictionId,,) = _mintPrediction(picks);
+        IV2Types.Prediction memory pred = market.getPrediction(predictionId);
+        bytes32 pickConfigId = pred.pickConfigId;
+        IV2Types.TokenPair memory tokenPair = market.getTokenPair(pickConfigId);
+        address predictorToken = tokenPair.predictorToken;
+        address counterpartyToken = tokenPair.counterpartyToken;
+
+        uint256 dustWinnerTokens = 1;
+
+        // Attacker acquires dust of predictor tokens + all counterparty tokens
+        vm.prank(predictor);
+        IPredictionMarketToken(predictorToken).transfer(
+            thirdParty, dustWinnerTokens
+        );
+        vm.prank(counterparty);
+        IPredictionMarketToken(counterpartyToken).transfer(
+            thirdParty, TOTAL_COLLATERAL
+        );
+
+        // Attempt asymmetric burn — should revert
+        IV2Types.BurnRequest memory req = _createBurnRequest(
+            pickConfigId,
+            dustWinnerTokens,
+            TOTAL_COLLATERAL,
+            thirdParty,
+            thirdParty,
+            0,
+            COUNTERPARTY_COLLATERAL,
+            thirdPartyPk,
+            thirdPartyPk
+        );
+
+        vm.expectRevert(
+            IPredictionMarketEscrow.AsymmetricBurn.selector
+        );
+        market.burn(req);
+    }
+
+    /// @notice Symmetric burn still works: equal fractions from both sides
+    function test_burn_symmetricBurnStillWorks() public {
+        IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
+        picks[0] = _createPick(conditionId1, IV2Types.OutcomeSide.YES);
+
+        (bytes32 predictionId,,) = _mintPrediction(picks);
+        IV2Types.Prediction memory pred = market.getPrediction(predictionId);
+        bytes32 pickConfigId = pred.pickConfigId;
+        IV2Types.TokenPair memory tokenPair = market.getTokenPair(pickConfigId);
+        address predictorToken = tokenPair.predictorToken;
+        address counterpartyToken = tokenPair.counterpartyToken;
+
+        // Third party acquires equal amounts of both sides (50% each)
+        uint256 halfSupply = TOTAL_COLLATERAL / 2;
+        vm.prank(predictor);
+        IPredictionMarketToken(predictorToken).transfer(thirdParty, halfSupply);
+        vm.prank(counterparty);
+        IPredictionMarketToken(counterpartyToken).transfer(
+            thirdParty, halfSupply
+        );
+
+        // Proportional payout: 50% of each side's collateral
+        uint256 predictorPayout = PREDICTOR_COLLATERAL / 2;
+        uint256 counterpartyPayout = COUNTERPARTY_COLLATERAL / 2;
+
+        IV2Types.BurnRequest memory req = _createBurnRequest(
+            pickConfigId,
+            halfSupply,
+            halfSupply,
+            thirdParty,
+            thirdParty,
+            predictorPayout,
+            counterpartyPayout,
+            thirdPartyPk,
+            thirdPartyPk
+        );
+
+        uint256 balBefore = collateralToken.balanceOf(thirdParty);
+        market.burn(req);
+        uint256 balAfter = collateralToken.balanceOf(thirdParty);
+
+        assertEq(balAfter - balBefore, predictorPayout + counterpartyPayout);
+
+        // Verify pool is still proportionally correct for remaining holders
+        IV2Types.PickConfiguration memory postConfig =
+            market.getPickConfiguration(pickConfigId);
+        assertEq(
+            postConfig.totalPredictorTokensMinted,
+            TOTAL_COLLATERAL - halfSupply
+        );
+        assertEq(
+            postConfig.totalCounterpartyTokensMinted,
+            TOTAL_COLLATERAL - halfSupply
+        );
+    }
+
+    /// @notice Even a small asymmetry should revert
+    function test_burn_slightAsymmetryReverts() public {
+        IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
+        picks[0] = _createPick(conditionId1, IV2Types.OutcomeSide.YES);
+
+        (bytes32 predictionId,,) = _mintPrediction(picks);
+        IV2Types.Prediction memory pred = market.getPrediction(predictionId);
+        bytes32 pickConfigId = pred.pickConfigId;
+        IV2Types.TokenPair memory tokenPair = market.getTokenPair(pickConfigId);
+        address predictorToken = tokenPair.predictorToken;
+        address counterpartyToken = tokenPair.counterpartyToken;
+
+        // Acquire slightly different amounts
+        uint256 predictorAmount = 100e18;
+        uint256 counterpartyAmount = 100e18 + 1; // off by 1 wei
+
+        vm.prank(predictor);
+        IPredictionMarketToken(predictorToken).transfer(
+            thirdParty, predictorAmount
+        );
+        vm.prank(counterparty);
+        IPredictionMarketToken(counterpartyToken).transfer(
+            thirdParty, counterpartyAmount
+        );
+
+        IV2Types.BurnRequest memory req = _createBurnRequest(
+            pickConfigId,
+            predictorAmount,
+            counterpartyAmount,
+            thirdParty,
+            thirdParty,
+            0,
+            0,
+            thirdPartyPk,
+            thirdPartyPk
+        );
+
+        vm.expectRevert(
+            IPredictionMarketEscrow.AsymmetricBurn.selector
+        );
+        market.burn(req);
     }
 }
