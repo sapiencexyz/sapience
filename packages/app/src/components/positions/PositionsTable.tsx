@@ -194,11 +194,13 @@ function PositionRow({
       return (
         <button
           type="button"
-          className="text-brand-white hover:text-brand-white/70 tabular-nums font-mono uppercase underline decoration-dotted underline-offset-4 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+          className={`btn-get-access inline-flex items-center justify-center rounded-md h-9 text-sm text-brand-black hover:text-white font-semibold border-0 transition-colors duration-400 font-mono uppercase whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed ${isRedeeming ? 'px-4 tracking-normal' : 'px-5 tracking-widest'}`}
           onClick={handleClaim}
           disabled={isRedeeming || isLoadingClaimable}
         >
-          {isRedeeming ? 'CLAIMING...' : 'CLAIM'}
+          <span className="relative z-10">
+            {isRedeeming ? 'Claiming...' : 'CLAIM'}
+          </span>
         </button>
       );
     }
