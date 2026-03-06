@@ -2,12 +2,11 @@ import prisma from '../../db';
 import { initializeDataSource } from '../../db';
 import { getProviderForChain } from '../../utils/utils';
 import { parseAbiItem } from 'viem';
-import { predictionMarketEscrow } from '@sapience/sdk/contracts';
 
 const TRANSFER_EVENT = parseAbiItem(
   'event Transfer(address indexed from, address indexed to, uint256 value)'
 );
-const BLOCK_BATCH_SIZE = 100;
+const BLOCK_BATCH_SIZE = 1000;
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 const INDEXER_STATE_KEY = 'v2-transfer-indexer';
 
@@ -27,7 +26,7 @@ export async function reindexTransfers(
 
   const client = getProviderForChain(chainId);
 
-  // Build the watch list from Picks table
+  // Build the watch list from Picks table (include all configs, even fullyRedeemed)
   const configs = await prisma.picks.findMany({
     where: {
       chainId,
@@ -77,24 +76,17 @@ export async function reindexTransfers(
     `[reindexTransfers] Watching ${tokenAddresses.length} token addresses from ${configs.length} pick configs`
   );
 
-  // Determine start block
+  // Determine start block: use explicit fromBlock, or default to ~7 days ago
   let startBlock: bigint;
   if (fromBlock !== undefined) {
     startBlock = BigInt(fromBlock);
   } else {
-    // Find the earliest Prediction creation block by looking at the IndexerState
-    const contractEntry = predictionMarketEscrow[chainId];
-    const blockCreated = BigInt(contractEntry?.blockCreated || 0);
-    if (blockCreated > 0n) {
-      startBlock = blockCreated;
-    } else {
-      // Fallback: scan from 1000 blocks ago
-      const current = await client.getBlockNumber();
-      startBlock = current > 1000n ? current - 1000n : 0n;
-      console.log(
-        `[reindexTransfers] No blockCreated configured, defaulting to block ${startBlock}`
-      );
-    }
+    const current = await client.getBlockNumber();
+    const sevenDaysOfBlocks = BigInt(7 * 24 * 3600) / 2n;
+    startBlock = current > sevenDaysOfBlocks ? current - sevenDaysOfBlocks : 0n;
+    console.log(
+      `[reindexTransfers] No fromBlock specified, defaulting to ~7 days ago (block ${startBlock})`
+    );
   }
 
   const currentBlock = await client.getBlockNumber();
@@ -102,7 +94,29 @@ export async function reindexTransfers(
     `[reindexTransfers] Reindexing transfers from block ${startBlock} to ${currentBlock}`
   );
 
+  // Load already-processed events for dedup (keyed by txHash:logIndex)
+  console.log('[reindexTransfers] Loading existing events for dedup...');
+  const existingEvents = await prisma.event.findMany({
+    where: {
+      logData: { path: ['source'], equals: 'PositionTokenTransfer' },
+    },
+    select: { transactionHash: true, logIndex: true },
+  });
+  const processedSet = new Set(
+    existingEvents.map((e) => `${e.transactionHash}:${e.logIndex}`)
+  );
+  console.log(
+    `[reindexTransfers] Loaded ${processedSet.size} already-processed events for dedup`
+  );
+
+  const blockTimestamps = new Map<bigint, bigint>();
   let transferCount = 0;
+  let skippedCount = 0;
+  const totalBatches = Number(
+    (currentBlock - startBlock + BigInt(BLOCK_BATCH_SIZE) - 1n) /
+      BigInt(BLOCK_BATCH_SIZE)
+  );
+  let batchIndex = 0;
 
   for (
     let start = startBlock;
@@ -114,12 +128,25 @@ export async function reindexTransfers(
         ? currentBlock
         : start + BigInt(BLOCK_BATCH_SIZE) - 1n;
 
+    batchIndex++;
+    if (batchIndex % 10 === 0 || batchIndex === 1) {
+      console.log(
+        `[reindexTransfers] Processing batch ${batchIndex}/${totalBatches} (blocks ${start}..${end})`
+      );
+    }
+
     const logs = await client.getLogs({
       address: tokenAddresses,
       event: TRANSFER_EVENT,
       fromBlock: start,
       toBlock: end,
     });
+
+    if (logs.length > 0) {
+      console.log(
+        `[reindexTransfers] Found ${logs.length} events in blocks ${start}..${end}`
+      );
+    }
 
     for (const log of logs) {
       const { from, to, value } = log.args;
@@ -129,14 +156,22 @@ export async function reindexTransfers(
       const toLower = to.toLowerCase();
       const tokenAddress = log.address.toLowerCase();
 
-      // Skip mints and burns — handled by escrow indexer / backfill
-      if (fromLower === ZERO_ADDRESS || toLower === ZERO_ADDRESS) continue;
+      // Skip mints — handled by escrow indexer on PredictionCreated
+      if (fromLower === ZERO_ADDRESS) continue;
       if (value === 0n) continue;
+
+      // Dedup: skip events already processed by the live indexer
+      const eventKey = `${log.transactionHash}:${log.logIndex}`;
+      if (processedSet.has(eventKey)) {
+        skippedCount++;
+        continue;
+      }
 
       const info = tokenInfoMap.get(tokenAddress);
       if (!info) continue;
 
       const valueStr = value.toString();
+      const isBurn = toLower === ZERO_ADDRESS;
 
       // Decrement sender balance
       await prisma.$executeRaw`
@@ -147,16 +182,44 @@ export async function reindexTransfers(
           AND holder = ${fromLower}
       `;
 
-      // Upsert receiver balance
-      await prisma.$executeRaw`
-        INSERT INTO "Position" ("chainId", "tokenAddress", "pickConfigId", "isPredictorToken", holder, balance, "createdAt", "updatedAt")
-        VALUES (${chainId}, ${tokenAddress}, ${info.pickConfigId}, ${info.isPredictorToken}, ${toLower}, ${valueStr}, NOW(), NOW())
-        ON CONFLICT ("chainId", "tokenAddress", holder)
-        DO UPDATE SET balance = ("Position".balance::NUMERIC + ${valueStr}::NUMERIC)::TEXT, "updatedAt" = NOW()
-      `;
+      // Upsert receiver balance (skip for burns — no recipient)
+      if (!isBurn) {
+        await prisma.$executeRaw`
+          INSERT INTO "Position" ("chainId", "tokenAddress", "pickConfigId", "isPredictorToken", holder, balance, "createdAt", "updatedAt")
+          VALUES (${chainId}, ${tokenAddress}, ${info.pickConfigId}, ${info.isPredictorToken}, ${toLower}, ${valueStr}, NOW(), NOW())
+          ON CONFLICT ("chainId", "tokenAddress", holder)
+          DO UPDATE SET balance = ("Position".balance::NUMERIC + ${valueStr}::NUMERIC)::TEXT, "updatedAt" = NOW()
+        `;
+      }
+
+      // Record event for future dedup
+      const blockNum = log.blockNumber ?? 0n;
+      if (!blockTimestamps.has(blockNum)) {
+        const block = await client.getBlock({ blockNumber: blockNum });
+        blockTimestamps.set(blockNum, block.timestamp);
+      }
+      await prisma.event.create({
+        data: {
+          blockNumber: Number(blockNum),
+          transactionHash: log.transactionHash || '',
+          timestamp: blockTimestamps.get(blockNum)!,
+          logIndex: log.logIndex || 0,
+          logData: {
+            source: 'PositionTokenTransfer',
+            chainId,
+            eventName: isBurn ? 'Burn' : 'Transfer',
+            args: {
+              from: fromLower,
+              to: toLower,
+              value: valueStr,
+              tokenAddress,
+            },
+          },
+        },
+      });
 
       console.log(
-        `[reindexTransfers] Transfer ${tokenAddress}: ${fromLower} -> ${toLower} amount=${valueStr}`
+        `[reindexTransfers] ${isBurn ? 'Burn' : 'Transfer'} ${tokenAddress}: ${fromLower} -> ${toLower} amount=${valueStr} block=${blockNum} tx=${log.transactionHash}`
       );
       transferCount++;
     }
@@ -174,7 +237,7 @@ export async function reindexTransfers(
   });
 
   console.log(
-    `[reindexTransfers] Done. Processed ${transferCount} transfers. Cursor set to block ${currentBlock}.`
+    `[reindexTransfers] Done. Processed ${transferCount} transfers, skipped ${skippedCount} (already indexed). Cursor set to block ${currentBlock}.`
   );
   return true;
 }
