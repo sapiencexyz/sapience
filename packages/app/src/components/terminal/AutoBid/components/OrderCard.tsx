@@ -48,7 +48,9 @@ const OrderCard: React.FC<OrderCardProps> = ({
     const categorySlug = conditionCategoryMap[selection.id] ?? undefined;
     const Icon = getCategoryIcon(categorySlug);
     const color = getCategoryStyle(categorySlug)?.color;
-    const label = conditionLabelById[selection.id] ?? selection.id;
+    const isUnknown = !conditionLabelById[selection.id];
+    const label = conditionLabelById[selection.id]
+      ?? `Unknown condition (${selection.id.slice(0, 8)}…)`;
 
     return (
       <div
@@ -69,7 +71,10 @@ const OrderCard: React.FC<OrderCardProps> = ({
             }}
           />
         </span>
-        <span className="font-mono text-xs text-brand-white leading-tight flex-1 min-w-0 break-words">
+        <span className={cn(
+          "font-mono text-xs leading-tight flex-1 min-w-0 break-words",
+          isUnknown ? "text-muted-foreground italic" : "text-brand-white"
+        )}>
           {label}
         </span>
         <span

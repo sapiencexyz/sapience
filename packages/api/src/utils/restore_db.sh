@@ -109,9 +109,13 @@ psql -U $LOCAL_USER -c "DROP DATABASE IF EXISTS temp_connection_db;"
 psql -U $LOCAL_USER -c "CREATE DATABASE $DB_NAME_LOCAL;"
 psql -U $LOCAL_USER -c "CREATE DATABASE temp_connection_db;"
 
-# Step 2: Restore the database
-echo "Restoring database to local server..."
-psql -U $LOCAL_USER -d $DB_NAME_LOCAL -f $BACKUP_DIR/complete_dump.sql
+# Step 2: Restore the database with triggers disabled to avoid trigger errors during COPY
+echo "Restoring database to local server (triggers disabled)..."
+psql -U $LOCAL_USER -d $DB_NAME_LOCAL <<RESTORE
+SET session_replication_role = 'replica';
+\i $BACKUP_DIR/complete_dump.sql
+SET session_replication_role = 'origin';
+RESTORE
 
 # Step 3: Manually reset sequences to match current data
 echo "Manually resetting sequences..."
@@ -124,7 +128,7 @@ BEGIN
     SELECT
       table_name,
       column_name,
-      pg_get_serial_sequence(table_name, column_name) as seq_name
+      pg_get_serial_sequence('"' || table_name || '"', column_name) as seq_name
     FROM
       information_schema.columns
     WHERE
@@ -133,8 +137,8 @@ BEGIN
   ) LOOP
     IF r.seq_name IS NOT NULL THEN
       EXECUTE format(
-        'SELECT setval(%L, COALESCE((SELECT MAX(%I) FROM %I.%I), 1))',
-        r.seq_name, r.column_name, 'public', r.table_name
+        'SELECT setval(%L, COALESCE((SELECT MAX(%I) FROM public.%I), 1))',
+        r.seq_name, r.column_name, r.table_name
       );
     END IF;
   END LOOP;
