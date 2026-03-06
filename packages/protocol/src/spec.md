@@ -25,10 +25,11 @@
 - Resolution uses a vector of two integer values: \[yesWeight, noWeight\]
 - Interpretation: \(P(YES) = yesWeight / (yesWeight + noWeight)\) and \(P(NO) = noWeight / (yesWeight + noWeight)\)
 - Usual case is decisive YES/NO. Non-decisive vectors (e.g. ties) are supported even if not expected from initial resolvers.
-- Examples: 
+- A non-decisive outcome (anything other than pure [1,0] or [0,1]) counts against the predictor at the prediction level.
+- Examples:
   - condition resolved to YES, resulting vector is [1,0]
   - condition resolved to NO, resulting vector is [0,1]
-  - unresolved for yes/no, resulting vector shows a distribution or balance of yes/no, i.e. tie in a match, resulting vector is [1,1]. Not used at this time (future proof feature).
+  - non-decisive (e.g. tie), resulting vector is [1,1]. At the prediction level this results in the counterparty winning.
 
 ### Pick encoding (high level)
 - The protocol should treat `conditionId` as an opaque `bytes32` value whose meaning and encoding/decoding is defined by the `conditionResolver`.
@@ -46,15 +47,14 @@
 
 ### Prediction resolution
 - Prediction resolution is performed by the meta resolver.
-- A prediction can resolve in favor of predictor, counterparty, or become non-decisive (future proof).
-- Decisive prediction semantics (current intended behavior):
+- A prediction resolves in favor of either predictor or counterparty.
+- Prediction semantics:
   - If ALL picks resolve decisively and match the predicted outcomes, the winner is the predictor
   - If ANY pick resolves decisively against the predicted outcomes, the winner is the counterparty
-- Non-decisive semantics (future proof):
-  - If ALL picks are resolved, but ANY pick is not decisive (i.e. not a pure \[1,0] or \[0,1]), the prediction becomes non-decisive (tie / weighted outcome).
+  - If ANY pick is non-decisive (i.e. not a pure \[1,0] or \[0,1]), the counterparty wins
 - Payout:
-  - Decisive: winner takes PredictorCollateral + CounterpartyCollateral
-  - Non-decisive (tie): each party receives their original collateral (predictor receives PredictorCollateral, counterparty receives CounterpartyCollateral)
+  - Winner takes PredictorCollateral + CounterpartyCollateral
+  - The predictor must get every pick right to win; any loss or indecisive result means the counterparty wins
 
 ### Resolver
 - Condition resolver: external contract that resolves a single condition to an outcome vector.
@@ -198,8 +198,7 @@ After burning `p` predictor tokens and `c` counterparty tokens (with payouts `pp
 - Resolves the pick configuration (once per pickConfigId, shared across predictions)
 - Marks the individual prediction as settled
 - Assigns collateral value to tokens based on the pool for that pickConfig:
-  - Decisive: all collateral in the pool becomes claimable by winner token holders proportionally
-  - Non-decisive (tie): each side's token is claimable for their proportional share of their original collateral (future proof)
+  - All collateral in the pool becomes claimable by the winning side's token holders proportionally
 
 ### Collect winnings (Redeem)
 - Redemption happens on Ethereal network
@@ -224,7 +223,7 @@ After burning `p` predictor tokens and `c` counterparty tokens (with payouts `pp
   - Both sign EIP-712 messages agreeing on amounts and payout split
   - Conservation enforced: total payout equals total tokens burned
 - Settle prediction:
-  - Meta resolver determines outcome (decisive vs non-decisive)
+  - Meta resolver determines outcome (predictor wins or counterparty wins)
   - Pick configuration is resolved once (shared across all predictions with same picks)
   - Each prediction is marked as settled individually
 - Redeem:
@@ -233,7 +232,7 @@ After burning `p` predictor tokens and `c` counterparty tokens (with payouts `pp
 ### Invariants / assumptions (high level)
 - Escrow must be fully collateralized: total redeemable value across both tokens equals PredictorCollateral + CounterpartyCollateral (except any explicit fees, if introduced).
 - Resolution must be deterministic for a given prediction definition (same picks + same resolvers ⇒ same result).
-- Non-decisive outcomes are future-proof; initial deployment is expected to mostly use pure \[1,0] and \[0,1].
+- Non-decisive condition outcomes (anything other than pure \[1,0] or \[0,1]) result in the counterparty winning the prediction. Initial deployment is expected to mostly use pure \[1,0] and \[0,1].
 
 ### SecondaryMarketEscrow (Atomic OTC Swap)
 
