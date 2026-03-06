@@ -92,7 +92,7 @@ export default function PositionCard({
   const isResolved = pickConfig?.resolved ?? false;
   const result = pickConfig?.result ?? 'UNRESOLVED';
 
-  const { redeem } = useEscrowWrite({ chainId: position.chainId });
+  const { redeem, settle } = useEscrowWrite({ chainId: position.chainId });
 
   // Determine if this position is a winner
   const isWinner =
@@ -131,6 +131,17 @@ export default function PositionCard({
 
     setIsRedeeming(true);
     try {
+      // Settle the prediction first (resolves the pick config on-chain)
+      const predictionId = pickConfig?.predictionId;
+      if (predictionId) {
+        const settleResult = await settle({
+          predictionId: predictionId as `0x${string}`,
+        });
+        if (!settleResult.success) {
+          console.log('settle() did not succeed (may already be settled), attempting redeem...');
+        }
+      }
+
       const result = await redeem({
         positionToken: position.tokenAddress as Address,
         amount: BigInt(position.balance),
@@ -141,7 +152,7 @@ export default function PositionCard({
     } finally {
       setIsRedeeming(false);
     }
-  }, [position.tokenAddress, position.balance, redeem, onRefetch]);
+  }, [position.tokenAddress, position.balance, pickConfig, redeem, settle, onRefetch]);
 
   return (
     <Card className="overflow-hidden">
