@@ -1191,6 +1191,59 @@ contract PredictionMarketEscrowBurnTest is Test {
         );
     }
 
+    /// @notice View helper returns correct symmetric amount
+    function test_getSymmetricBurnAmount() public {
+        IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
+        picks[0] = _createPick(conditionId1, IV2Types.OutcomeSide.YES);
+
+        (bytes32 predictionId,,) = _mintPrediction(picks);
+        IV2Types.Prediction memory pred = market.getPrediction(predictionId);
+        bytes32 pickConfigId = pred.pickConfigId;
+
+        // Both sides have TOTAL_COLLATERAL tokens, so ratio is 1:1
+        uint256 counterpartAmount = market.getSymmetricBurnAmount(
+            pickConfigId, 100e18, true
+        );
+        assertEq(counterpartAmount, 100e18);
+
+        // Reverse direction
+        uint256 predictorAmount = market.getSymmetricBurnAmount(
+            pickConfigId, 50e18, false
+        );
+        assertEq(predictorAmount, 50e18);
+    }
+
+    /// @notice View helper works after partial burn changes supply ratio
+    function test_getSymmetricBurnAmount_afterPartialBurn() public {
+        IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
+        picks[0] = _createPick(conditionId1, IV2Types.OutcomeSide.YES);
+
+        (bytes32 predictionId,,) = _mintPrediction(picks);
+        IV2Types.Prediction memory pred = market.getPrediction(predictionId);
+        bytes32 pickConfigId = pred.pickConfigId;
+
+        // Burn half of each side symmetrically first
+        uint256 halfSupply = TOTAL_COLLATERAL / 2;
+        IV2Types.BurnRequest memory req = _createBurnRequest(
+            pickConfigId,
+            halfSupply,
+            halfSupply,
+            predictor,
+            counterparty,
+            PREDICTOR_COLLATERAL / 2,
+            COUNTERPARTY_COLLATERAL / 2,
+            predictorPk,
+            counterpartyPk
+        );
+        market.burn(req);
+
+        // Remaining supply is still 1:1, helper should reflect that
+        uint256 counterpartAmount = market.getSymmetricBurnAmount(
+            pickConfigId, 50e18, true
+        );
+        assertEq(counterpartAmount, 50e18);
+    }
+
     /// @notice Even a small asymmetry should revert
     function test_burn_slightAsymmetryReverts() public {
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);

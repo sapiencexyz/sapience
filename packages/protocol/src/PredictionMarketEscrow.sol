@@ -695,6 +695,31 @@ contract PredictionMarketEscrow is
     // ============ View Functions ============
 
     /// @inheritdoc IPredictionMarketEscrow
+    function getSymmetricBurnAmount(
+        bytes32 pickConfigId,
+        uint256 tokenAmount,
+        bool isPredictor
+    ) external view returns (uint256 counterpartAmount) {
+        IV2Types.PickConfiguration storage config =
+            _pickConfigurations[pickConfigId];
+
+        if (isPredictor) {
+            // Given predictor amount, compute required counterparty amount
+            // predictorAmount * totalCounterparty == counterpartyAmount * totalPredictor
+            if (config.totalPredictorTokensMinted == 0) return 0;
+            counterpartAmount = (tokenAmount
+                * config.totalCounterpartyTokensMinted)
+                / config.totalPredictorTokensMinted;
+        } else {
+            // Given counterparty amount, compute required predictor amount
+            if (config.totalCounterpartyTokensMinted == 0) return 0;
+            counterpartAmount = (tokenAmount
+                * config.totalPredictorTokensMinted)
+                / config.totalCounterpartyTokensMinted;
+        }
+    }
+
+    /// @inheritdoc IPredictionMarketEscrow
     function getPrediction(bytes32 predictionId)
         external
         view

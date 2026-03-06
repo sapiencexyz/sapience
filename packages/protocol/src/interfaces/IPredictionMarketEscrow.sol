@@ -144,6 +144,19 @@ interface IPredictionMarketEscrow {
         view
         returns (IV2Types.Pick[] memory picks);
 
+    /// @notice Calculate the required counterparty token amount for a symmetric
+    ///         burn given a predictor token amount, or vice versa.
+    /// @param pickConfigId The pick configuration identifier
+    /// @param tokenAmount The known token amount (for one side)
+    /// @param isPredictor True if tokenAmount is the predictor side amount,
+    ///        false if it is the counterparty side amount
+    /// @return counterpartAmount The required amount for the other side
+    function getSymmetricBurnAmount(
+        bytes32 pickConfigId,
+        uint256 tokenAmount,
+        bool isPredictor
+    ) external view returns (uint256 counterpartAmount);
+
     /// @notice Compute the pick configuration ID for a set of picks
     /// @param picks The array of picks
     /// @return pickConfigId The computed pick configuration identifier
