@@ -89,19 +89,19 @@ function PositionRow({
   const result = pickConfig?.result ?? 'UNRESOLVED';
   const isResolved = pickConfig?.resolved ?? false;
 
-  const viewerWon =
+  const holderWon =
     isResolved &&
     ((isPredictorToken && result === 'PREDICTOR_WINS') ||
       (!isPredictorToken && result === 'COUNTERPARTY_WINS'));
 
-  const viewerLost =
+  const holderLost =
     isResolved &&
     ((isPredictorToken && result === 'COUNTERPARTY_WINS') ||
       (!isPredictorToken && result === 'PREDICTOR_WINS'));
 
   // PnL: profit if won (payout - positionSize), loss if lost (-positionSize)
   const pnlValue = isResolved
-    ? viewerWon
+    ? holderWon
       ? payoutFormatted - positionSizeFormatted
       : -positionSizeFormatted
     : null;
@@ -122,7 +122,7 @@ function PositionRow({
     chainId: position.chainId,
     enabled:
       isResolved &&
-      viewerWon &&
+      holderWon &&
       !!isOwnPosition &&
       BigInt(position.balance) > 0n,
   });
@@ -177,7 +177,7 @@ function PositionRow({
     // Resolved, viewer won, and it's our position → show CLAIM link
     if (
       isResolved &&
-      viewerWon &&
+      holderWon &&
       isOwnPosition &&
       BigInt(position.balance) > 0n
     ) {
@@ -196,7 +196,7 @@ function PositionRow({
     }
 
     // Resolved, viewer won, viewing someone else's profile → show green PnL (no claim button)
-    if (isResolved && viewerWon) {
+    if (isResolved && holderWon) {
       return (
         <div className="whitespace-nowrap tabular-nums font-mono flex items-baseline gap-1.5 text-green-500">
           <NumberDisplay
@@ -214,7 +214,7 @@ function PositionRow({
     }
 
     // Resolved, viewer lost → show realized PnL in red
-    if (isResolved && viewerLost) {
+    if (isResolved && holderLost) {
       return (
         <div className="whitespace-nowrap tabular-nums font-mono flex items-baseline gap-1.5 text-red-500">
           <NumberDisplay
@@ -442,10 +442,10 @@ export default function PositionsTable({
         const res = p.pickConfig?.result ?? 'UNRESOLVED';
         const isResolved = p.pickConfig?.resolved ?? false;
         if (!isResolved) return filters.status.includes('active');
-        const viewerWon =
+        const holderWon =
           (p.isPredictorToken && res === 'PREDICTOR_WINS') ||
           (!p.isPredictorToken && res === 'COUNTERPARTY_WINS');
-        if (viewerWon) return filters.status.includes('won');
+        if (holderWon) return filters.status.includes('won');
         return filters.status.includes('lost');
       });
     }
