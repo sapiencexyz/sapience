@@ -113,7 +113,7 @@ function PositionRow({
   // Claim / redeem state
   const [isRedeeming, setIsRedeeming] = React.useState(false);
   const [redeemed, setRedeemed] = React.useState(false);
-  const { redeem, settle } = useEscrowWrite({ chainId: position.chainId });
+  const { settleAndRedeem } = useEscrowWrite({ chainId: position.chainId });
 
   const { isLoading: isLoadingClaimable } = useClaimableAmount({
     pickConfigId: pickConfig?.id as `0x${string}`,
@@ -129,22 +129,12 @@ function PositionRow({
 
   const handleClaim = React.useCallback(async () => {
     if (!position.tokenAddress || BigInt(position.balance) <= 0n) return;
+    const predictionId = pickConfig?.predictionId;
+    if (!predictionId) return;
     setIsRedeeming(true);
     try {
-      // Settle the prediction first (resolves the pick config on-chain)
-      // This is a no-op if already settled, and required before redeem()
-      const predictionId = pickConfig?.predictionId;
-      if (predictionId) {
-        const settleResult = await settle({
-          predictionId: predictionId as `0x${string}`,
-        });
-        if (!settleResult.success) {
-          // settle() may fail if already settled — that's fine, continue to redeem
-          console.log('settle() did not succeed (may already be settled), attempting redeem...');
-        }
-      }
-
-      const result = await redeem({
+      const result = await settleAndRedeem({
+        predictionId: predictionId as `0x${string}`,
         positionToken: position.tokenAddress as Address,
         amount: BigInt(position.balance),
       });
@@ -155,7 +145,7 @@ function PositionRow({
     } finally {
       setIsRedeeming(false);
     }
-  }, [position, pickConfig, redeem, settle, onRefetch]);
+  }, [position, pickConfig, settleAndRedeem, onRefetch]);
 
   // Determine what to show in P/L column
   const renderPnlCell = () => {
