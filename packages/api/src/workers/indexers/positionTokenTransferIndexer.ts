@@ -5,10 +5,14 @@ import Sentry from '../../instrument';
 import { IIndexer } from '../../interfaces';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
 
-const BLOCK_BATCH_SIZE = 100;
+const BLOCK_BATCH_SIZE = 1000;
 const POLLING_INTERVAL_MS = 10_000;
 const INDEXER_STATE_KEY = 'v2-transfer-indexer';
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
+
+// Deploy date for predictionMarketEscrow (2026-02-26T00:00:00Z) used as
+// fallback when blockCreated is not set in the SDK contract config.
+const APPROXIMATE_DEPLOY_TIMESTAMP = 1772082000n;
 
 const TRANSFER_EVENT = parseAbiItem(
   'event Transfer(address indexed from, address indexed to, uint256 value)'
@@ -173,9 +177,10 @@ class PositionTokenTransferIndexer implements IIndexer {
           watchList.tokenInfoMap
         );
       }
-    }
 
-    await this.setLastIndexedBlock(Number(currentBlock));
+      // Persist watermark after each batch so a crash doesn't replay everything
+      await this.setLastIndexedBlock(Number(end));
+    }
   }
 
   private async processTransfer(
@@ -209,14 +214,27 @@ class PositionTokenTransferIndexer implements IIndexer {
 
     const valueStr = value.toString();
     const isBurn = toLower === ZERO_ADDRESS;
+    const txHash = log.transactionHash || '';
+    const logIdx = log.logIndex || 0;
+
+    // Idempotency: skip if we already recorded this exact event
+    const existing = await prisma.event.findFirst({
+      where: {
+        transactionHash: txHash,
+        logIndex: logIdx,
+        logData: { path: ['source'], equals: 'PositionTokenTransfer' },
+      },
+      select: { id: true },
+    });
+    if (existing) return;
 
     // Record raw event
     await prisma.event.create({
       data: {
         blockNumber: Number(log.blockNumber || 0),
-        transactionHash: log.transactionHash || '',
+        transactionHash: txHash,
         timestamp: blockTimestamp,
-        logIndex: log.logIndex || 0,
+        logIndex: logIdx,
         logData: {
           source: 'PositionTokenTransfer',
           chainId: this.chainId,
@@ -306,9 +324,35 @@ class PositionTokenTransferIndexer implements IIndexer {
     const key = `${INDEXER_STATE_KEY}:${this.chainId}`;
     const row = await prisma.keyValueStore.findUnique({ where: { key } });
     if (row) return BigInt(row.value);
-    return this.blockCreated > 0n
-      ? this.blockCreated - 1n
-      : await this.client.getBlockNumber();
+
+    if (this.blockCreated > 0n) return this.blockCreated - 1n;
+
+    // No blockCreated in SDK config — binary search for the deploy date
+    const startBlock = await this.findBlockByTimestamp(APPROXIMATE_DEPLOY_TIMESTAMP);
+    console.log(
+      `[TransferIndexer:${this.chainId}] No cursor found, estimated deploy block ${startBlock}`
+    );
+    return startBlock > 0n ? startBlock - 1n : 0n;
+  }
+
+  /**
+   * Binary search for the first block whose timestamp is >= the target.
+   */
+  private async findBlockByTimestamp(targetTimestamp: bigint): Promise<bigint> {
+    let lo = 0n;
+    let hi = await this.client.getBlockNumber();
+
+    while (lo < hi) {
+      const mid = lo + (hi - lo) / 2n;
+      const block = await this.client.getBlock({ blockNumber: mid });
+      if (block.timestamp < targetTimestamp) {
+        lo = mid + 1n;
+      } else {
+        hi = mid;
+      }
+    }
+
+    return lo;
   }
 
   private async setLastIndexedBlock(block: number): Promise<void> {
