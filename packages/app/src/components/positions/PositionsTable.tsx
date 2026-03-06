@@ -404,11 +404,7 @@ export default function PositionsTable({
   const error = account ? accountError : conditionError;
   const refetch = account ? accountRefetch : conditionRefetch;
 
-  // Filter out zero-balance positions (fully redeemed)
-  const positions = React.useMemo(
-    () => allPositions.filter((p) => BigInt(p.balance) > 0n),
-    [allPositions]
-  );
+  const positions = allPositions;
 
   // Collect all unique conditionIds to fetch category data
   const conditionIds = React.useMemo(() => {
@@ -453,7 +449,7 @@ export default function PositionsTable({
     // Filter by position size range
     if (filters.valueRange[0] > 0 || filters.valueRange[1] < Infinity) {
       result = result.filter((p) => {
-        const balanceEth = parseFloat(formatEther(BigInt(p.balance)));
+        const balanceEth = parseFloat(formatEther(BigInt(p.userCollateral || p.balance)));
         return (
           balanceEth >= filters.valueRange[0] &&
           balanceEth <= filters.valueRange[1]
