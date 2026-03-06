@@ -18,7 +18,11 @@ import Loader from '~/components/shared/Loader';
 
 import CountdownCell from '~/components/shared/CountdownCell';
 import { formatDistanceToNow } from 'date-fns';
-import { toPicks, type ConditionsMap } from '~/components/positions/toPickLegs';
+import {
+  toPicks,
+  computeResultFromConditions,
+  type ConditionsMap,
+} from '~/components/positions/toPickLegs';
 import { COLLATERAL_SYMBOLS, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { OutcomeSide } from '@sapience/sdk/types';
 import {
@@ -86,8 +90,15 @@ function PositionRow({
     formatEther(BigInt(position.totalPayout || '0'))
   );
 
-  const result = pickConfig?.result ?? 'UNRESOLVED';
-  const isResolved = pickConfig?.resolved ?? false;
+  // Use on-chain result if resolved, otherwise compute from individual conditions
+  const onChainResolved = pickConfig?.resolved ?? false;
+  const computed = !onChainResolved
+    ? computeResultFromConditions(rawPicks, conditionsMap)
+    : null;
+  const result = onChainResolved
+    ? (pickConfig?.result ?? 'UNRESOLVED')
+    : (computed?.result ?? 'UNRESOLVED');
+  const isResolved = onChainResolved || result !== 'UNRESOLVED';
 
   const holderWon =
     isResolved &&
@@ -432,12 +443,20 @@ export default function PositionsTable({
       });
     }
 
-    // Filter by status
+    // Filter by status (using per-condition resolution for early results)
     if (filters.status.length > 0 && filters.status.length < 3) {
       result = result.filter((p) => {
-        const res = p.pickConfig?.result ?? 'UNRESOLVED';
-        const isResolved = p.pickConfig?.resolved ?? false;
-        if (!isResolved) return filters.status.includes('active');
+        const onChainResolved = p.pickConfig?.resolved ?? false;
+        const picks = p.pickConfig?.picks ?? [];
+        const computed = !onChainResolved
+          ? computeResultFromConditions(picks, conditionsMap)
+          : null;
+        const res = onChainResolved
+          ? (p.pickConfig?.result ?? 'UNRESOLVED')
+          : (computed?.result ?? 'UNRESOLVED');
+        const resolved = onChainResolved || res !== 'UNRESOLVED';
+
+        if (!resolved) return filters.status.includes('active');
         const holderWon =
           (p.isPredictorToken && res === 'PREDICTOR_WINS') ||
           (!p.isPredictorToken && res === 'COUNTERPARTY_WINS');
