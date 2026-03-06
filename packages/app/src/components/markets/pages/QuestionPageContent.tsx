@@ -23,6 +23,7 @@ import {
   Telescope,
 } from 'lucide-react';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { OutcomeSide } from '@sapience/sdk/types';
 import { formatEther } from 'viem';
 import EndTimeDisplay from '~/components/shared/EndTimeDisplay';
 import SafeMarkdown from '~/components/shared/SafeMarkdown';
@@ -194,8 +195,8 @@ export default function QuestionPageContent({
           );
           if (!currentPick) return null;
 
-          // Predictor predicted YES if predictedOutcome === 1
-          const predictorPrediction = currentPick.predictedOutcome === 1;
+          const predictorPrediction =
+            (currentPick.predictedOutcome as OutcomeSide) === OutcomeSide.YES;
 
           // Other picks become combined predictions
           const otherPicks = picks.filter(
@@ -206,7 +207,8 @@ export default function QuestionPageContent({
               ? otherPicks.map((p) => ({
                   conditionId: p.conditionId,
                   question: p.conditionId,
-                  prediction: p.predictedOutcome === 1,
+                  prediction:
+                    (p.predictedOutcome as OutcomeSide) === OutcomeSide.YES,
                 }))
               : undefined;
 

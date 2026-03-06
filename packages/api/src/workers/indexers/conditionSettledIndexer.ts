@@ -16,11 +16,11 @@ const BLOCK_BATCH_SIZE = 100;
 const POLLING_INTERVAL_MS = 10_000;
 
 const CONDITION_SETTLED_TOPIC = keccak256(
-  toHex('ConditionSettled(bytes32,uint256,uint256,address)')
+  toHex('ConditionResolved(bytes32,bool,bool,bool,uint256,uint256,uint256,uint256)')
 );
 
 /**
- * V2 Condition Settled Indexer
+ * Condition Settled Indexer
  * Indexes ConditionSettled events from any resolver contract.
  * Pass the resolver address explicitly — one indexer instance per resolver.
  */
@@ -179,7 +179,9 @@ class ConditionSettledIndexer implements IIndexer {
     this.isWatching = true;
 
     this.sigintHandler = () => {
-      console.log(`[ConditionSettledIndexer:${this.chainId}] Received SIGINT, stopping...`);
+      console.log(
+        `[ConditionSettledIndexer:${this.chainId}] Received SIGINT, stopping...`
+      );
       this.stop();
       process.exit(0);
     };
@@ -257,7 +259,10 @@ class ConditionSettledIndexer implements IIndexer {
           await this.persistIndexerState(Number(currentBlock));
         }
       } catch (error) {
-        console.error(`[ConditionSettledIndexer:${this.chainId}] Polling error:`, error);
+        console.error(
+          `[ConditionSettledIndexer:${this.chainId}] Polling error:`,
+          error
+        );
         Sentry.captureException(error);
       }
     };

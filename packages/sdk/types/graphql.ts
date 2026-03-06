@@ -1731,6 +1731,7 @@ export type ReferralCodeWhereInput = {
 /** Filter questions by their resolution status */
 export type ResolutionStatus =
   | 'all'
+  | 'resolved'
   | 'resolvedNo'
   | 'resolvedYes'
   | 'unresolved';

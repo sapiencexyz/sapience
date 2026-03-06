@@ -20,6 +20,7 @@ import CountdownCell from '~/components/shared/CountdownCell';
 import { formatDistanceToNow } from 'date-fns';
 import { toPicks, type ConditionsMap } from '~/components/positions/toPickLegs';
 import { COLLATERAL_SYMBOLS, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { OutcomeSide } from '@sapience/sdk/types';
 import {
   usePositionBalances,
   usePositionBalancesByConditionId,
@@ -36,6 +37,7 @@ import CounterpartyBadge from '~/components/shared/CounterpartyBadge';
 import { getCategoryIcon } from '~/lib/theme/categoryIcons';
 import { getCategoryStyle } from '~/lib/utils/categoryStyle';
 import { PredictionChoiceBadge } from '@sapience/ui';
+import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
 import OgShareDialogBase from '~/components/shared/OgShareDialog';
 import {
   PositionsTableFilters,
@@ -111,7 +113,7 @@ function PositionRow({
   // Claim / redeem state
   const [isRedeeming, setIsRedeeming] = React.useState(false);
   const [redeemed, setRedeemed] = React.useState(false);
-  const { redeem } = useEscrowWrite({ chainId: position.chainId });
+  const { redeem, settle } = useEscrowWrite({ chainId: position.chainId });
 
   const { isLoading: isLoadingClaimable } = useClaimableAmount({
     pickConfigId: pickConfig?.id as `0x${string}`,
@@ -129,6 +131,19 @@ function PositionRow({
     if (!position.tokenAddress || BigInt(position.balance) <= 0n) return;
     setIsRedeeming(true);
     try {
+      // Settle the prediction first (resolves the pick config on-chain)
+      // This is a no-op if already settled, and required before redeem()
+      const predictionId = pickConfig?.predictionId;
+      if (predictionId) {
+        const settleResult = await settle({
+          predictionId: predictionId as `0x${string}`,
+        });
+        if (!settleResult.success) {
+          // settle() may fail if already settled — that's fine, continue to redeem
+          console.log('settle() did not succeed (may already be settled), attempting redeem...');
+        }
+      }
+
       const result = await redeem({
         positionToken: position.tokenAddress as Address,
         amount: BigInt(position.balance),
@@ -140,7 +155,7 @@ function PositionRow({
     } finally {
       setIsRedeeming(false);
     }
-  }, [position, redeem, onRefetch]);
+  }, [position, pickConfig, redeem, settle, onRefetch]);
 
   // Determine what to show in P/L column
   const renderPnlCell = () => {
@@ -179,11 +194,13 @@ function PositionRow({
       return (
         <button
           type="button"
-          className="text-brand-white hover:text-brand-white/70 tabular-nums font-mono uppercase underline decoration-dotted underline-offset-4 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+          className={`btn-get-access inline-flex items-center justify-center rounded-md h-9 text-sm text-brand-black hover:text-white font-semibold border-0 transition-colors duration-400 font-mono uppercase whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed ${isRedeeming ? 'px-4 tracking-normal' : 'px-5 tracking-widest'}`}
           onClick={handleClaim}
           disabled={isRedeeming || isLoadingClaimable}
         >
-          {isRedeeming ? 'CLAIMING...' : 'CLAIM'}
+          <span className="relative z-10">
+            {isRedeeming ? 'Claiming...' : 'CLAIM'}
+          </span>
         </button>
       );
     }
@@ -246,9 +263,19 @@ function PositionRow({
                         >
                           <CategoryIcon className="h-3 w-3 text-white/80" />
                         </div>
-                        <span className="text-sm flex-1 min-w-0 font-mono truncate">
-                          {pick.question}
-                        </span>
+                        {pick.conditionId ? (
+                          <ConditionTitleLink
+                            conditionId={pick.conditionId}
+                            resolverAddress={pick.resolverAddress ?? undefined}
+                            title={pick.question}
+                            clampLines={1}
+                            className="text-sm flex-1 min-w-0"
+                          />
+                        ) : (
+                          <span className="text-sm flex-1 min-w-0 font-mono truncate">
+                            {pick.question}
+                          </span>
+                        )}
                         <PredictionChoiceBadge
                           choice={String(pick.choice).toUpperCase()}
                         />
@@ -474,10 +501,10 @@ export default function PositionsTable({
       const question =
         condition?.question ?? condition?.shortName ?? pick.conditionId;
       const choice = isPredictorToken
-        ? pick.predictedOutcome === 1
+        ? (pick.predictedOutcome as OutcomeSide) === OutcomeSide.YES
           ? 'Yes'
           : 'No'
-        : pick.predictedOutcome === 1
+        : (pick.predictedOutcome as OutcomeSide) === OutcomeSide.YES
           ? 'No'
           : 'Yes';
       qp.append('leg', `${question}|${choice}`);

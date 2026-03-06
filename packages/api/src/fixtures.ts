@@ -13,7 +13,7 @@ import {
   manualConditionResolver,
 } from '@sapience/sdk/contracts';
 
-// Environment variable to control whether V2 indexers are enabled
+// Environment variable to control whether escrow indexers are enabled
 const ENABLE_ESCROW_INDEXERS = process.env.ENABLE_ESCROW_INDEXERS === 'true';
 const IS_PRODUCTION = process.env.NODE_ENV === 'production';
 
@@ -51,15 +51,16 @@ const buildIndexers = (): { [key: string]: IIndexer } => {
           );
       }
 
-      console.log('[Indexers] Production V2 indexers enabled (mainnet)');
+      console.log('[Indexers] Production escrow indexers enabled (mainnet)');
     } else {
       // ── Non-production (Ethereal testnet) ──
       indexers['escrow-prediction-market-ethereal-testnet'] =
         new PredictionMarketEscrowIndexer(13374202);
       indexers['secondary-market-ethereal-testnet'] =
         new SecondaryMarketIndexer(13374202);
-      indexers['transfer-ethereal-testnet'] =
-        new PositionTokenTransferIndexer(13374202);
+      indexers['transfer-ethereal-testnet'] = new PositionTokenTransferIndexer(
+        13374202
+      );
 
       // Settlement indexer — manual resolver for testing
       if (manualConditionResolver[13374202]?.address) {
@@ -70,11 +71,13 @@ const buildIndexers = (): { [key: string]: IIndexer } => {
           );
       }
 
-      console.log('[Indexers] Non-production V2 indexers enabled (testnet)');
+      console.log(
+        '[Indexers] Non-production escrow indexers enabled (testnet)'
+      );
     }
   } else {
     console.log(
-      '[Indexers] V2 indexers disabled (ENABLE_ESCROW_INDEXERS=false)'
+      '[Indexers] Escrow indexers disabled (ENABLE_ESCROW_INDEXERS=false)'
     );
   }
 

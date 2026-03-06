@@ -7,6 +7,7 @@ import {
   Resolver,
 } from 'type-graphql';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { escrowContracts } from '@sapience/sdk/contracts';
 import prisma from '../../db';
 import { getProtocolStatsTimeSeries } from '../../helpers/protocolStats';
 
@@ -100,9 +101,16 @@ export class AnalyticsResolver {
   @Directive('@cacheControl(maxAge: 120)')
   async protocolStats(): Promise<ProtocolStat[]> {
     const chainId = DEFAULT_CHAIN_ID;
+    const vaultAddress = (
+      escrowContracts.predictionMarketVault[chainId]?.address ?? ''
+    ).toLowerCase();
 
     // Fetch snapshots first to get our timestamps
-    const protocolSnapshots = await getProtocolStatsTimeSeries(90, chainId);
+    const protocolSnapshots = await getProtocolStatsTimeSeries(
+      90,
+      chainId,
+      vaultAddress
+    );
 
     if (protocolSnapshots.length === 0) {
       return [];
@@ -113,7 +121,7 @@ export class AnalyticsResolver {
 
     // Fetch volume and OI data at snapshot timestamps in parallel
     const [cumulativeVolumes, openInterests] = await Promise.all([
-      // Cumulative volume up to each snapshot timestamp (V1 legacy + V2 predictions)
+      // Cumulative volume up to each snapshot timestamp (legacy + escrow predictions)
       prisma.$queryRaw<CumulativeVolumeRow[]>`
         SELECT
           ts.timestamp,
@@ -133,7 +141,7 @@ export class AnalyticsResolver {
         GROUP BY ts.timestamp
         ORDER BY ts.timestamp
       `,
-      // Open interest at each snapshot timestamp (V1 legacy + V2 predictions)
+      // Open interest at each snapshot timestamp (legacy + escrow predictions)
       prisma.$queryRaw<DailyOIRow[]>`
         SELECT
           ts.timestamp,

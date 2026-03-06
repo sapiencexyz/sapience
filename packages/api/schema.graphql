@@ -1371,6 +1371,7 @@ input ReferralCodeWhereInput {
 """Filter questions by their resolution status"""
 enum ResolutionStatus {
   all
+  resolved
   resolvedNo
   resolvedYes
   unresolved

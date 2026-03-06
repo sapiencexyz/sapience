@@ -372,7 +372,10 @@ class PredictionMarketEscrowIndexer implements IIndexer {
           });
         }
       } catch (error) {
-        console.error(`[PredictionMarketEscrowIndexer:${this.chainId}] Polling error:`, error);
+        console.error(
+          `[PredictionMarketEscrowIndexer:${this.chainId}] Polling error:`,
+          error
+        );
         Sentry.captureException(error);
       }
     };
@@ -413,6 +416,27 @@ class PredictionMarketEscrowIndexer implements IIndexer {
       }
 
       const eventName = decoded.eventName as unknown as string;
+
+      // Record raw event
+      await prisma.event.create({
+        data: {
+          blockNumber: Number(log.blockNumber || 0),
+          transactionHash: log.transactionHash || '',
+          timestamp: BigInt(block.timestamp),
+          logIndex: log.logIndex || 0,
+          logData: {
+            source: 'PredictionMarketEscrow',
+            chainId: this.chainId,
+            eventName,
+            args: JSON.parse(
+              JSON.stringify(decoded.args, (_key, value) =>
+                typeof value === 'bigint' ? value.toString() : value
+              )
+            ),
+          },
+        },
+      });
+
       switch (eventName) {
         case 'PredictionCreated':
           await this.processPredictionCreated(
@@ -764,6 +788,9 @@ class PredictionMarketEscrowIndexer implements IIndexer {
       },
     });
 
+    // Position balance decrement is handled by the PositionTokenTransferIndexer
+    // via the ERC20 Transfer(holder, 0x0, amount) burn event.
+
     // Check if fully redeemed — look up pick config from the redeemed token
     await this.checkFullyRedeemed(event.positionToken.toLowerCase());
 
@@ -844,6 +871,9 @@ class PredictionMarketEscrowIndexer implements IIndexer {
         refCode: event.refCode !== ZERO_BYTES32 ? event.refCode : null,
       },
     });
+
+    // Position balance decrements are handled by the PositionTokenTransferIndexer
+    // via the ERC20 Transfer(holder, 0x0, amount) burn events.
 
     // Decrement open interest by the collateral released in this close
     const closeCollateral = (

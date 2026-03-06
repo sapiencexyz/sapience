@@ -6,7 +6,11 @@ import { useAccount, useReadContract } from 'wagmi';
 import { motion, AnimatePresence } from 'framer-motion';
 import { predictionMarketEscrowAbi } from '@sapience/sdk/abis';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import {
+  DEFAULT_CHAIN_ID,
+  PREFERRED_ESTIMATE_QUOTER,
+} from '@sapience/sdk/constants';
+import { OutcomeSide } from '@sapience/sdk/types';
 import PercentChance from '~/components/shared/PercentChance';
 import { Table, TableBody, TableCell } from '@sapience/ui/components/ui/table';
 import { Button } from '@sapience/ui/components/ui/button';
@@ -213,7 +217,7 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
             conditionId: (leg.condition.id.startsWith('0x')
               ? leg.condition.id
               : `0x${leg.condition.id}`) as `0x${string}`,
-            predictedOutcome: leg.prediction ? 1 : 0,
+            predictedOutcome: leg.prediction ? OutcomeSide.YES : OutcomeSide.NO,
           }));
           const picks = canonicalizePicks(rawPicks);
           const nowSec = Math.floor(Date.now() / 1000);
@@ -294,8 +298,19 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
     setComboQuotes((prev) =>
       prev.map((q) => {
         if (!q.auctionId) return q;
-        const bids = hub.bidsByAuctionId.get(q.auctionId);
-        if (!bids || bids.length === 0) return q;
+        const allBids = hub.bidsByAuctionId.get(q.auctionId);
+        if (!allBids || allBids.length === 0) return q;
+
+        // For anonymous users, only accept bids from the trusted quoter
+        const isAnonymousUser = selectedPredictorAddress === ZERO_ADDRESS;
+        const bids = isAnonymousUser
+          ? allBids.filter(
+              (b) =>
+                b.counterparty?.toLowerCase() ===
+                PREFERRED_ESTIMATE_QUOTER.toLowerCase()
+            )
+          : allBids;
+        if (bids.length === 0) return q;
 
         const nowMs = Date.now();
         const valid = bids.filter((b) => {
@@ -325,7 +340,7 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
         };
       })
     );
-  }, [hubTick]);
+  }, [hubTick, selectedPredictorAddress]);
 
   // Lock combos when all received OR (timeout passed AND at least 1 received)
   React.useEffect(() => {
@@ -502,7 +517,14 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
                                     payout
                                   </span>
                                   <span className="text-brand-white font-medium font-mono ml-1">
-                                    {(1 / (1 - probability)).toFixed(2)} USDe
+                                    {(1 / (1 - probability)).toLocaleString(
+                                      undefined,
+                                      {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2,
+                                      }
+                                    )}{' '}
+                                    USDe
                                   </span>
                                 </>
                               ) : status === 'error' ? (
@@ -592,7 +614,14 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
                                 implied by 1 USDe for payout
                               </span>
                               <span className="text-brand-white font-medium font-mono ml-1">
-                                {(1 / (1 - probability)).toFixed(2)} USDe
+                                {(1 / (1 - probability)).toLocaleString(
+                                  undefined,
+                                  {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                  }
+                                )}{' '}
+                                USDe
                               </span>
                             </div>
                           ) : status === 'error' ? (

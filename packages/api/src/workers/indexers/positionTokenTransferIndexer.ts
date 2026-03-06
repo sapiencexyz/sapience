@@ -1,6 +1,6 @@
 import prisma from '../../db';
 import { getProviderForChain } from '../../utils/utils';
-import { type PublicClient, parseAbiItem } from 'viem';
+import { type PublicClient, type Log, parseAbiItem } from 'viem';
 import Sentry from '../../instrument';
 import { IIndexer } from '../../interfaces';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
@@ -21,10 +21,12 @@ interface TokenInfo {
 
 /**
  * Indexes ERC20 Transfer events on position tokens (predictorToken / counterpartyToken)
- * to keep Position balances up to date when users transfer tokens between wallets.
+ * to keep Position balances up to date for transfers and burns.
  *
- * Mints (from=0x0) and burns (to=0x0) are skipped — those are handled by the
- * PredictionMarketEscrowIndexer on PredictionCreated / TokensRedeemed / PositionsBurned.
+ * Mints (from=0x0) are skipped — those are handled by the
+ * PredictionMarketEscrowIndexer on PredictionCreated.
+ * Burns (to=0x0) are handled here — they decrement the holder's balance
+ * when tokens are burned during redeem or secondary market close.
  */
 class PositionTokenTransferIndexer implements IIndexer {
   public client: PublicClient;
@@ -76,7 +78,10 @@ class PositionTokenTransferIndexer implements IIndexer {
       try {
         await this.pollCycle();
       } catch (error) {
-        console.error(`[TransferIndexer:${this.chainId}] Poll cycle error:`, error);
+        console.error(
+          `[TransferIndexer:${this.chainId}] Poll cycle error:`,
+          error
+        );
         Sentry.captureException(error);
       }
     };
@@ -128,14 +133,27 @@ class PositionTokenTransferIndexer implements IIndexer {
         toBlock: end,
       });
 
+      // Cache block timestamps to avoid redundant RPC calls
+      const blockTimestamps = new Map<bigint, bigint>();
+
       for (const log of logs) {
         const { from, to, value } = log.args;
         if (!from || !to || value === undefined) continue;
+
+        const blockNum = log.blockNumber ?? 0n;
+        if (!blockTimestamps.has(blockNum)) {
+          const block = await this.client.getBlock({
+            blockNumber: blockNum,
+          });
+          blockTimestamps.set(blockNum, block.timestamp);
+        }
+
         await this.processTransfer(
-          log.address,
+          log,
           from,
           to,
           value,
+          blockTimestamps.get(blockNum)!,
           watchList.tokenInfoMap
         );
       }
@@ -145,24 +163,42 @@ class PositionTokenTransferIndexer implements IIndexer {
   }
 
   private async processTransfer(
-    logAddress: `0x${string}`,
+    log: Log,
     from: `0x${string}`,
     to: `0x${string}`,
     value: bigint,
+    blockTimestamp: bigint,
     tokenInfoMap: Map<string, TokenInfo>
   ): Promise<void> {
     const fromLower = from.toLowerCase();
     const toLower = to.toLowerCase();
-    const tokenAddress = logAddress.toLowerCase();
+    const tokenAddress = log.address.toLowerCase();
 
-    // Skip mints and burns — handled by the escrow indexer
-    if (fromLower === ZERO_ADDRESS || toLower === ZERO_ADDRESS) return;
+    // Skip mints — handled by the escrow indexer on PredictionCreated
+    if (fromLower === ZERO_ADDRESS) return;
     if (value === 0n) return;
 
     const info = tokenInfoMap.get(tokenAddress);
     if (!info) return;
 
     const valueStr = value.toString();
+    const isBurn = toLower === ZERO_ADDRESS;
+
+    // Record raw event
+    await prisma.event.create({
+      data: {
+        blockNumber: Number(log.blockNumber || 0),
+        transactionHash: log.transactionHash || '',
+        timestamp: blockTimestamp,
+        logIndex: log.logIndex || 0,
+        logData: {
+          source: 'PositionTokenTransfer',
+          chainId: this.chainId,
+          eventName: isBurn ? 'Burn' : 'Transfer',
+          args: { from: fromLower, to: toLower, value: valueStr, tokenAddress },
+        },
+      },
+    });
 
     // Decrement sender balance
     await prisma.$executeRaw`
@@ -173,16 +209,18 @@ class PositionTokenTransferIndexer implements IIndexer {
         AND holder = ${fromLower}
     `;
 
-    // Upsert receiver balance (they may not have a row yet)
-    await prisma.$executeRaw`
-      INSERT INTO "Position" ("chainId", "tokenAddress", "pickConfigId", "isPredictorToken", holder, balance, "createdAt", "updatedAt")
-      VALUES (${this.chainId}, ${tokenAddress}, ${info.pickConfigId}, ${info.isPredictorToken}, ${toLower}, ${valueStr}, NOW(), NOW())
-      ON CONFLICT ("chainId", "tokenAddress", holder)
-      DO UPDATE SET balance = ("Position".balance::NUMERIC + ${valueStr}::NUMERIC)::TEXT, "updatedAt" = NOW()
-    `;
+    // Upsert receiver balance (skip for burns — no recipient)
+    if (!isBurn) {
+      await prisma.$executeRaw`
+        INSERT INTO "Position" ("chainId", "tokenAddress", "pickConfigId", "isPredictorToken", holder, balance, "createdAt", "updatedAt")
+        VALUES (${this.chainId}, ${tokenAddress}, ${info.pickConfigId}, ${info.isPredictorToken}, ${toLower}, ${valueStr}, NOW(), NOW())
+        ON CONFLICT ("chainId", "tokenAddress", holder)
+        DO UPDATE SET balance = ("Position".balance::NUMERIC + ${valueStr}::NUMERIC)::TEXT, "updatedAt" = NOW()
+      `;
+    }
 
     console.log(
-      `[TransferIndexer:${this.chainId}] Transfer ${tokenAddress}: ${fromLower} -> ${toLower} amount=${valueStr}`
+      `[TransferIndexer:${this.chainId}] ${isBurn ? 'Burn' : 'Transfer'} ${tokenAddress}: ${fromLower} -> ${toLower} amount=${valueStr}`
     );
   }
 

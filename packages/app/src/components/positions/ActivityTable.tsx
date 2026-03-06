@@ -19,6 +19,7 @@ import CountdownCell from '~/components/shared/CountdownCell';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import { COLLATERAL_SYMBOLS, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { OutcomeSide } from '@sapience/sdk/types';
 import {
   usePredictions,
   usePredictionsByConditionId,
@@ -301,10 +302,10 @@ function SharePredictionDialog({
       const question =
         condition?.question ?? condition?.shortName ?? pick.conditionId;
       const choice = isPredictorSide
-        ? pick.predictedOutcome === 1
+        ? (pick.predictedOutcome as OutcomeSide) === OutcomeSide.YES
           ? 'Yes'
           : 'No'
-        : pick.predictedOutcome === 1
+        : (pick.predictedOutcome as OutcomeSide) === OutcomeSide.YES
           ? 'No'
           : 'Yes';
       qp.append('leg', `${question}|${choice}`);
@@ -414,7 +415,7 @@ export default function ActivityTable({
   }, [positions]);
 
   // Enrich predictions with pickConfig data
-  // Prefer pickConfig from the prediction query (V2), fall back to tokenMap lookup
+  // Prefer pickConfig from the prediction query, fall back to tokenMap lookup
   const enrichedPredictions = React.useMemo(() => {
     const display =
       !account && predictions.length > take

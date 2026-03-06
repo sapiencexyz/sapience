@@ -1,6 +1,7 @@
 'use client';
 
 import { formatEther } from 'viem';
+import { OutcomeSide } from '@sapience/sdk/types';
 import { PicksContent } from '~/components/shared/PicksSummary';
 import PositionSummary from '~/components/positions/PositionSummary';
 import type {
@@ -43,7 +44,10 @@ export default function PredictionPageClient({
     const condition = conditionsMap.get(pick.conditionId);
     return {
       question: condition?.question || condition?.shortName || pick.conditionId,
-      choice: pick.predictedOutcome === 1 ? 'YES' : 'NO',
+      choice:
+        (pick.predictedOutcome as OutcomeSide) === OutcomeSide.YES
+          ? 'YES'
+          : 'NO',
       conditionId: pick.conditionId,
       categorySlug: condition?.category?.slug ?? null,
       endTime: condition?.endTime ?? null,

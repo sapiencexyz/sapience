@@ -135,7 +135,6 @@ export function useSubmitPosition({
         currentWusdeBalance:
           typeof currentWusdeBalance === 'bigint' ? currentWusdeBalance : 0n,
         currentAllowance: freshAllowance ?? currentAllowance ?? 0n,
-        isEscrowChain: true,
       });
     },
     [
@@ -207,8 +206,8 @@ export function useSubmitPosition({
         );
 
         // Sign predictor's MintApproval for escrow mints
-        if (filled.escrowPicks && filled.escrowPicks.length > 0) {
-          const picks: EscrowPick[] = filled.escrowPicks.map((p) => ({
+        if (filled.picks && filled.picks.length > 0) {
+          const picks: EscrowPick[] = filled.picks.map((p) => ({
             conditionResolver: p.conditionResolver,
             conditionId: p.conditionId,
             predictedOutcome: p.predictedOutcome,

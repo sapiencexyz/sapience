@@ -186,7 +186,7 @@ const RFQTab = ({
     isLoading,
     refetch,
   } = useConditions({
-    take: 500,
+    take: 100,
     // When 'all' is selected, don't pass chainId to get all chains
     ...(chainFilter !== 'all' ? { chainId: Number(chainFilter) } : {}),
     filters: {
