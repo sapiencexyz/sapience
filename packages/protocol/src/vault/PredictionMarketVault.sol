@@ -12,6 +12,7 @@ import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "@openzeppelin/contracts/utils/introspection/ERC165.sol";
 import "../utils/SignatureProcessor.sol";
 import "./interfaces/IPredictionMarketVault.sol";
+import "../interfaces/IPredictionMarketEscrow.sol";
 
 /// @dev Minimal interface for querying prediction market token info
 interface IPredictionMarketTokenInfo {
@@ -734,6 +735,65 @@ contract PredictionMarketVault is
     {
         liquidAssets = _getAvailableAssets();
         unconfirmedDeposits = unconfirmedAssets;
+    }
+
+    // ============ Escrow Redeem / Burn ============
+
+    /// @notice Emitted when the vault redeems winning position tokens from escrow
+    event EscrowRedeemed(
+        address indexed escrow,
+        address indexed positionToken,
+        uint256 amount,
+        uint256 payout,
+        bytes32 refCode
+    );
+
+    /// @notice Emitted when the vault participates in a burn (mutual cancel) on escrow
+    event EscrowBurned(address indexed escrow, bytes32 indexed pickConfigId);
+
+    /**
+     * @notice Redeem winning position tokens from PredictionMarketEscrow
+     * @param escrow Address of the PredictionMarketEscrow contract
+     * @param positionToken Address of the position token to redeem
+     * @param amount Amount of position tokens to redeem
+     * @param refCode Referral code
+     * @return payout Amount of collateral received
+     * @dev The vault holds position tokens as counterparty. After settlement,
+     *      the manager calls this to convert winning tokens back to collateral.
+     */
+    function redeemFromEscrow(
+        address escrow,
+        address positionToken,
+        uint256 amount,
+        bytes32 refCode
+    ) external onlyManager nonReentrant returns (uint256 payout) {
+        if (escrow == address(0)) revert InvalidProtocol(escrow);
+        if (amount == 0) revert InvalidAmount(amount);
+
+        payout = IPredictionMarketEscrow(escrow).redeem(
+            positionToken, amount, refCode
+        );
+
+        emit EscrowRedeemed(escrow, positionToken, amount, payout, refCode);
+    }
+
+    /**
+     * @notice Participate in a burn (mutual cancel) on PredictionMarketEscrow
+     * @param escrow Address of the PredictionMarketEscrow contract
+     * @param request The burn request struct (both parties must have signed)
+     * @dev Used when both predictor and vault agree to cancel a prediction
+     *      before settlement. The vault's position tokens are burned and
+     *      collateral is returned according to the agreed split.
+     */
+    function burnFromEscrow(
+        address escrow,
+        IV2Types.BurnRequest calldata request
+    ) external onlyManager nonReentrant {
+        if (escrow == address(0)) revert InvalidProtocol(escrow);
+
+        IPredictionMarketEscrow(escrow).burn(request);
+
+        emit EscrowBurned(escrow, request.pickConfigId);
     }
 
     // ============ Admin Functions ============
