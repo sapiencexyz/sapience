@@ -107,11 +107,21 @@ class PositionTokenTransferIndexer implements IIndexer {
 
   private async pollCycle(): Promise<void> {
     const watchList = await this.loadWatchList();
-    if (watchList.tokenAddresses.length === 0) return;
+    if (watchList.tokenAddresses.length === 0) {
+      console.log(
+        `[TransferIndexer:${this.chainId}] No tokens to watch (all pickConfigs fullyRedeemed or none exist)`
+      );
+      return;
+    }
 
     const lastBlock = await this.getLastIndexedBlock();
     const currentBlock = await this.client.getBlockNumber();
     if (currentBlock <= lastBlock) return;
+
+    const blocksToProcess = currentBlock - lastBlock;
+    console.log(
+      `[TransferIndexer:${this.chainId}] Processing blocks ${lastBlock + 1n}..${currentBlock} (${blocksToProcess} blocks, watching ${watchList.tokenAddresses.length} tokens)`
+    );
 
     const fromBlock = lastBlock + 1n;
 
@@ -132,6 +142,12 @@ class PositionTokenTransferIndexer implements IIndexer {
         fromBlock: start,
         toBlock: end,
       });
+
+      if (logs.length > 0) {
+        console.log(
+          `[TransferIndexer:${this.chainId}] Found ${logs.length} Transfer events in blocks ${start}..${end}`
+        );
+      }
 
       // Cache block timestamps to avoid redundant RPC calls
       const blockTimestamps = new Map<bigint, bigint>();
@@ -175,11 +191,21 @@ class PositionTokenTransferIndexer implements IIndexer {
     const tokenAddress = log.address.toLowerCase();
 
     // Skip mints — handled by the escrow indexer on PredictionCreated
-    if (fromLower === ZERO_ADDRESS) return;
+    if (fromLower === ZERO_ADDRESS) {
+      console.log(
+        `[TransferIndexer:${this.chainId}] Skipping mint event for ${tokenAddress} (to=${toLower}, value=${value})`
+      );
+      return;
+    }
     if (value === 0n) return;
 
     const info = tokenInfoMap.get(tokenAddress);
-    if (!info) return;
+    if (!info) {
+      console.warn(
+        `[TransferIndexer:${this.chainId}] Unknown token ${tokenAddress} not in watch list, skipping`
+      );
+      return;
+    }
 
     const valueStr = value.toString();
     const isBurn = toLower === ZERO_ADDRESS;
@@ -201,13 +227,18 @@ class PositionTokenTransferIndexer implements IIndexer {
     });
 
     // Decrement sender balance
-    await prisma.$executeRaw`
+    const rowsUpdated = await prisma.$executeRaw`
       UPDATE "Position"
       SET balance = (balance::NUMERIC - ${valueStr}::NUMERIC)::TEXT, "updatedAt" = NOW()
       WHERE "chainId" = ${this.chainId}
         AND "tokenAddress" = ${tokenAddress}
         AND holder = ${fromLower}
     `;
+    if (rowsUpdated === 0) {
+      console.warn(
+        `[TransferIndexer:${this.chainId}] No Position row found to decrement for holder=${fromLower} token=${tokenAddress} (tx=${log.transactionHash})`
+      );
+    }
 
     // Upsert receiver balance (skip for burns — no recipient)
     if (!isBurn) {
@@ -220,7 +251,7 @@ class PositionTokenTransferIndexer implements IIndexer {
     }
 
     console.log(
-      `[TransferIndexer:${this.chainId}] ${isBurn ? 'Burn' : 'Transfer'} ${tokenAddress}: ${fromLower} -> ${toLower} amount=${valueStr}`
+      `[TransferIndexer:${this.chainId}] ${isBurn ? 'Burn' : 'Transfer'} ${tokenAddress}: ${fromLower} -> ${toLower} amount=${valueStr} pickConfig=${info.pickConfigId} block=${log.blockNumber} tx=${log.transactionHash}`
     );
   }
 
