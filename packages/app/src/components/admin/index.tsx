@@ -27,6 +27,7 @@ import ConditionGroupsTab from './ConditionGroupsTab';
 import ReferralCodesTab from './ReferralCodesTab';
 import ReindexConditionSettledForm from './ReindexConditionSettledForm';
 import BackfillProtocolStatsForm from './BackfillProtocolStatsForm';
+import ReindexPositionBalancesForm from './ReindexPositionBalancesForm';
 import { useAdminApi } from '~/hooks/useAdminApi';
 import { useSettings } from '~/lib/context/SettingsContext';
 
@@ -125,6 +126,8 @@ const Admin = () => {
   const [conditionSettledReindexOpen, setConditionSettledReindexOpen] =
     useState(false);
   const [protocolStatsBackfillOpen, setProtocolStatsBackfillOpen] =
+    useState(false);
+  const [positionBalancesReindexOpen, setPositionBalancesReindexOpen] =
     useState(false);
   const { adminBaseUrl, setAdminBaseUrl, defaults } = useSettings();
   const [adminDialogOpen, setAdminDialogOpen] = useState(false);
@@ -231,6 +234,22 @@ const Admin = () => {
                 <DialogTitle>Backfill Protocol Stats</DialogTitle>
               </DialogHeader>
               <BackfillProtocolStatsForm />
+            </DialogContent>
+          </Dialog>
+          <Dialog
+            open={positionBalancesReindexOpen}
+            onOpenChange={setPositionBalancesReindexOpen}
+          >
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                Reindex Position Balances
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-sm">
+              <DialogHeader>
+                <DialogTitle>Reindex Position Balances</DialogTitle>
+              </DialogHeader>
+              <ReindexPositionBalancesForm />
             </DialogContent>
           </Dialog>
           <Dialog

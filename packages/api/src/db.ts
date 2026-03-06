@@ -17,7 +17,11 @@ if (!dbUrl.searchParams.has('pool_timeout')) {
 // Create Prisma client with appropriate logging and query timeout
 const prisma = new PrismaClient({
   datasourceUrl: dbUrl.toString(),
-  log: config.isProd ? ['query', 'info', 'warn', 'error'] : ['warn', 'error'],
+  log: config.isProd
+    ? config.DATABASE_URL.includes('localhost')
+      ? (['info', 'warn', 'error'] as const)
+      : (['query', 'info', 'warn', 'error'] as const)
+    : (['warn', 'error'] as const),
   transactionOptions: {
     maxWait: config.PRISMA_QUERY_TIMEOUT_MS,
     timeout: config.PRISMA_QUERY_TIMEOUT_MS,
