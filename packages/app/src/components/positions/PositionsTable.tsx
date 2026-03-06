@@ -113,7 +113,7 @@ function PositionRow({
   // Claim / redeem state
   const [isRedeeming, setIsRedeeming] = React.useState(false);
   const [redeemed, setRedeemed] = React.useState(false);
-  const { redeem } = useEscrowWrite({ chainId: position.chainId });
+  const { redeem, settle } = useEscrowWrite({ chainId: position.chainId });
 
   const { isLoading: isLoadingClaimable } = useClaimableAmount({
     pickConfigId: pickConfig?.id as `0x${string}`,
@@ -131,6 +131,19 @@ function PositionRow({
     if (!position.tokenAddress || BigInt(position.balance) <= 0n) return;
     setIsRedeeming(true);
     try {
+      // Settle the prediction first (resolves the pick config on-chain)
+      // This is a no-op if already settled, and required before redeem()
+      const predictionId = pickConfig?.predictionId;
+      if (predictionId) {
+        const settleResult = await settle({
+          predictionId: predictionId as `0x${string}`,
+        });
+        if (!settleResult.success) {
+          // settle() may fail if already settled — that's fine, continue to redeem
+          console.log('settle() did not succeed (may already be settled), attempting redeem...');
+        }
+      }
+
       const result = await redeem({
         positionToken: position.tokenAddress as Address,
         amount: BigInt(position.balance),
@@ -142,7 +155,7 @@ function PositionRow({
     } finally {
       setIsRedeeming(false);
     }
-  }, [position, redeem, onRefetch]);
+  }, [position, pickConfig, redeem, settle, onRefetch]);
 
   // Determine what to show in P/L column
   const renderPnlCell = () => {
@@ -181,11 +194,13 @@ function PositionRow({
       return (
         <button
           type="button"
-          className="text-brand-white hover:text-brand-white/70 tabular-nums font-mono uppercase underline decoration-dotted underline-offset-4 transition-colors cursor-pointer whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+          className={`btn-get-access inline-flex items-center justify-center rounded-md h-9 text-sm text-brand-black hover:text-white font-semibold border-0 transition-colors duration-400 font-mono uppercase whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed ${isRedeeming ? 'px-4 tracking-normal' : 'px-5 tracking-widest'}`}
           onClick={handleClaim}
           disabled={isRedeeming || isLoadingClaimable}
         >
-          {isRedeeming ? 'CLAIMING...' : 'CLAIM'}
+          <span className="relative z-10">
+            {isRedeeming ? 'Claiming...' : 'CLAIM'}
+          </span>
         </button>
       );
     }

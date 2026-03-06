@@ -9,16 +9,17 @@ allowed-tools: Bash(gh *), Bash(git *)
 
 ## Steps
 
-0. If there are uncommited files, commit them, adding an appropriate commit message of a short to medium length.
-1. Lint and build the affected packages. API build might fail because of Sentry misconfiguration - ignore that. Otherwise, try to lint and build everything.
-2. Run the tests. If those fail - stop the execution of the following steps and propose steps to resolve the issue. 
-2. Get the current branch name with `git rev-parse --abbrev-ref HEAD`
-3. Push the branch: `git push -u origin "$BRANCH"`
-4. Check if a PR already exists: `gh pr list --head "$BRANCH" --json number,url --jq '.[0]'`
-5. If no PR exists:
+0. Parse the branch to which you should open a PR from the arguments. Pull latest for that branch before doing anything. Ask user whether to open a new branch from this branch or to continue from the branch on which the user is currently sitting.
+1. If there are uncommited files, commit them, adding an appropriate commit message of a short to medium length.
+2. Lint and build the affected packages. API build might fail because of Sentry misconfiguration - ignore that. Otherwise, try to lint and build everything.
+3. Run the tests. If those fail - stop the execution of the following steps and propose steps to resolve the issue. 
+4. Get the current branch name with `git rev-parse --abbrev-ref HEAD`
+5. Push the branch: `git push -u origin "$BRANCH"`
+6. Check if a PR already exists: `gh pr list --head "$BRANCH" --json number,url --jq '.[0]'`
+7. If no PR exists:
    - Run `git diff main...HEAD` and `git log main..HEAD --oneline` to understand ALL changes on the branch
    - Create a PR with `gh pr create` using a descriptive title and body based on the actual changes
-6. If a PR already exists:
+8. If a PR already exists:
    - Print the existing PR URL
 ## PR format
 

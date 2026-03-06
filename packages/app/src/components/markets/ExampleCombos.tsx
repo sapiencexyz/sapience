@@ -517,7 +517,14 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
                                     payout
                                   </span>
                                   <span className="text-brand-white font-medium font-mono ml-1">
-                                    {(1 / (1 - probability)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDe
+                                    {(1 / (1 - probability)).toLocaleString(
+                                      undefined,
+                                      {
+                                        minimumFractionDigits: 2,
+                                        maximumFractionDigits: 2,
+                                      }
+                                    )}{' '}
+                                    USDe
                                   </span>
                                 </>
                               ) : status === 'error' ? (
@@ -607,7 +614,14 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
                                 implied by 1 USDe for payout
                               </span>
                               <span className="text-brand-white font-medium font-mono ml-1">
-                                {(1 / (1 - probability)).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} USDe
+                                {(1 / (1 - probability)).toLocaleString(
+                                  undefined,
+                                  {
+                                    minimumFractionDigits: 2,
+                                    maximumFractionDigits: 2,
+                                  }
+                                )}{' '}
+                                USDe
                               </span>
                             </div>
                           ) : status === 'error' ? (
