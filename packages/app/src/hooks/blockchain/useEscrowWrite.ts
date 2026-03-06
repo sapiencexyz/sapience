@@ -145,7 +145,6 @@ export function useEscrowWrite(params: { chainId?: number } = {}) {
         args: [positionToken, amount, refCode],
       });
 
-      successRef.current = false;
       await sendCalls({
         chainId,
         calls: [
@@ -153,7 +152,7 @@ export function useEscrowWrite(params: { chainId?: number } = {}) {
           { to: contractAddress, data: redeemData },
         ],
       });
-      return { success: successRef.current };
+      return { success: true };
     },
     [contractAddress, chainId, sendCalls]
   );
