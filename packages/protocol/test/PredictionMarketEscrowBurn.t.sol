@@ -1244,6 +1244,145 @@ contract PredictionMarketEscrowBurnTest is Test {
         assertEq(counterpartAmount, 50e18);
     }
 
+    /// @notice Multiple mints with different collateral ratios on the same
+    ///         pickConfig, then partial symmetric burn — verify collateral
+    ///         accounting is conserved and remaining holders get fair payouts.
+    ///         This is a regression guard: if anything changes in the burn or
+    ///         redeem math, this test will catch it.
+    function test_burn_multiMintDifferentRatios_partialBurn_conserved() public {
+        IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
+        picks[0] = _createPick(conditionId1, IV2Types.OutcomeSide.YES);
+
+        // Mint 1: 100 predictor + 150 counterparty = 250 tokens each side
+        (bytes32 predictionId1,,) = _mintPrediction(picks);
+        IV2Types.Prediction memory pred1 = market.getPrediction(predictionId1);
+        bytes32 pickConfigId = pred1.pickConfigId;
+
+        // Mint 2: different ratio — 200 predictor + 50 counterparty = 250 tokens each
+        uint256 mint2PredictorColl = 200e18;
+        uint256 mint2CounterpartyColl = 50e18;
+        {
+            IV2Types.Pick[] memory picks2 = new IV2Types.Pick[](1);
+            picks2[0] = _createPick(conditionId1, IV2Types.OutcomeSide.YES);
+
+            bytes32 pickConfigId2 = keccak256(abi.encode(picks2));
+            bytes32 predictionHash2 = keccak256(
+                abi.encode(
+                    pickConfigId2,
+                    mint2PredictorColl,
+                    mint2CounterpartyColl,
+                    predictor,
+                    counterparty,
+                    address(0),
+                    ""
+                )
+            );
+
+            uint256 pNonce = _freshNonce();
+            uint256 cNonce = _freshNonce();
+            uint256 deadline = block.timestamp + 1 hours;
+
+            IV2Types.MintRequest memory mintReq;
+            mintReq.picks = picks2;
+            mintReq.predictorCollateral = mint2PredictorColl;
+            mintReq.counterpartyCollateral = mint2CounterpartyColl;
+            mintReq.predictor = predictor;
+            mintReq.counterparty = counterparty;
+            mintReq.predictorNonce = pNonce;
+            mintReq.counterpartyNonce = cNonce;
+            mintReq.predictorDeadline = deadline;
+            mintReq.counterpartyDeadline = deadline;
+            mintReq.predictorSignature = _signMintApproval(
+                predictionHash2, predictor, mint2PredictorColl, pNonce, deadline, predictorPk
+            );
+            mintReq.counterpartySignature = _signMintApproval(
+                predictionHash2, counterparty, mint2CounterpartyColl, cNonce, deadline, counterpartyPk
+            );
+            mintReq.refCode = REF_CODE;
+
+            market.mint(mintReq);
+        }
+
+        // Post-state: 500 tokens each side
+        // totalPredictorCollateral = 100 + 200 = 300
+        // totalCounterpartyCollateral = 150 + 50 = 200
+        IV2Types.PickConfiguration memory configBefore =
+            market.getPickConfiguration(pickConfigId);
+        assertEq(configBefore.totalPredictorTokensMinted, 500e18, "pre-burn predictor tokens");
+        assertEq(configBefore.totalCounterpartyTokensMinted, 500e18, "pre-burn cp tokens");
+        assertEq(configBefore.totalPredictorCollateral, 300e18, "pre-burn predictor coll");
+        assertEq(configBefore.totalCounterpartyCollateral, 200e18, "pre-burn cp coll");
+
+        // Partial symmetric burn: burn 250 tokens from each side (50%)
+        uint256 burnAmount = 250e18;
+        // Expected collateral returned: 50% of each pool
+        uint256 expectedPredictorCollReturned = 150e18; // 50% of 300
+        uint256 expectedCounterpartyCollReturned = 100e18; // 50% of 200
+
+        IV2Types.BurnRequest memory req = _createBurnRequest(
+            pickConfigId,
+            burnAmount,
+            burnAmount,
+            predictor,
+            counterparty,
+            expectedPredictorCollReturned,
+            expectedCounterpartyCollReturned,
+            predictorPk,
+            counterpartyPk
+        );
+
+        uint256 predictorBalBefore = collateralToken.balanceOf(predictor);
+        uint256 counterpartyBalBefore = collateralToken.balanceOf(counterparty);
+
+        market.burn(req);
+
+        // Verify payouts
+        assertEq(
+            collateralToken.balanceOf(predictor),
+            predictorBalBefore + expectedPredictorCollReturned,
+            "predictor payout"
+        );
+        assertEq(
+            collateralToken.balanceOf(counterparty),
+            counterpartyBalBefore + expectedCounterpartyCollReturned,
+            "counterparty payout"
+        );
+
+        // Verify remaining pool is exactly 50% of original
+        IV2Types.PickConfiguration memory configAfter =
+            market.getPickConfiguration(pickConfigId);
+        assertEq(configAfter.totalPredictorTokensMinted, 250e18, "post-burn predictor tokens");
+        assertEq(configAfter.totalCounterpartyTokensMinted, 250e18, "post-burn cp tokens");
+        assertEq(configAfter.totalPredictorCollateral, 150e18, "post-burn predictor coll");
+        assertEq(configAfter.totalCounterpartyCollateral, 100e18, "post-burn cp coll");
+
+        // Settle and verify remaining holders get correct payouts
+        vm.prank(settler);
+        resolver.settleCondition(conditionId1, IV2Types.OutcomeVector(1, 0));
+        market.settle(predictionId1, REF_CODE);
+
+        IV2Types.TokenPair memory tp = market.getTokenPair(pickConfigId);
+
+        // Predictor wins — claimable pool = 150 + 100 = 250 (both sides remaining)
+        uint256 remainingPredictorTokens =
+            IPredictionMarketToken(tp.predictorToken).balanceOf(predictor);
+        assertEq(remainingPredictorTokens, 250e18, "remaining predictor tokens");
+
+        uint256 predictorRedeemBefore = collateralToken.balanceOf(predictor);
+        vm.prank(predictor);
+        uint256 payout = market.redeem(
+            tp.predictorToken, remainingPredictorTokens, REF_CODE
+        );
+
+        // Winner gets ALL remaining collateral (150 + 100 = 250)
+        assertEq(payout, 250e18, "winner total payout");
+        assertEq(
+            collateralToken.balanceOf(predictor),
+            predictorRedeemBefore + 250e18,
+            "winner final balance"
+        );
+    }
+
     /// @notice Even a small asymmetry should revert
     function test_burn_slightAsymmetryReverts() public {
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
