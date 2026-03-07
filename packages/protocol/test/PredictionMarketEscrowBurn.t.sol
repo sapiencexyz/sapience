@@ -755,8 +755,8 @@ contract PredictionMarketEscrowBurnTest is Test {
             equalTokens,
             predictor,
             counterparty,
-            200e18,  // predictor wants 200
-            100e18,  // counterparty wants 100 — total 300 > 250 backing
+            200e18, // predictor wants 200
+            100e18, // counterparty wants 100 — total 300 > 250 backing
             predictorPk,
             counterpartyPk
         );
@@ -1108,13 +1108,11 @@ contract PredictionMarketEscrowBurnTest is Test {
 
         // Attacker acquires dust of predictor tokens + all counterparty tokens
         vm.prank(predictor);
-        IPredictionMarketToken(predictorToken).transfer(
-            thirdParty, dustWinnerTokens
-        );
+        IPredictionMarketToken(predictorToken)
+            .transfer(thirdParty, dustWinnerTokens);
         vm.prank(counterparty);
-        IPredictionMarketToken(counterpartyToken).transfer(
-            thirdParty, TOTAL_COLLATERAL
-        );
+        IPredictionMarketToken(counterpartyToken)
+            .transfer(thirdParty, TOTAL_COLLATERAL);
 
         // Attempt asymmetric burn — should revert
         IV2Types.BurnRequest memory req = _createBurnRequest(
@@ -1129,9 +1127,7 @@ contract PredictionMarketEscrowBurnTest is Test {
             thirdPartyPk
         );
 
-        vm.expectRevert(
-            IPredictionMarketEscrow.AsymmetricBurn.selector
-        );
+        vm.expectRevert(IPredictionMarketEscrow.AsymmetricBurn.selector);
         market.burn(req);
     }
 
@@ -1152,9 +1148,8 @@ contract PredictionMarketEscrowBurnTest is Test {
         vm.prank(predictor);
         IPredictionMarketToken(predictorToken).transfer(thirdParty, halfSupply);
         vm.prank(counterparty);
-        IPredictionMarketToken(counterpartyToken).transfer(
-            thirdParty, halfSupply
-        );
+        IPredictionMarketToken(counterpartyToken)
+            .transfer(thirdParty, halfSupply);
 
         // Proportional payout: 50% of each side's collateral
         uint256 predictorPayout = PREDICTOR_COLLATERAL / 2;
@@ -1182,8 +1177,7 @@ contract PredictionMarketEscrowBurnTest is Test {
         IV2Types.PickConfiguration memory postConfig =
             market.getPickConfiguration(pickConfigId);
         assertEq(
-            postConfig.totalPredictorTokensMinted,
-            TOTAL_COLLATERAL - halfSupply
+            postConfig.totalPredictorTokensMinted, TOTAL_COLLATERAL - halfSupply
         );
         assertEq(
             postConfig.totalCounterpartyTokensMinted,
@@ -1201,15 +1195,13 @@ contract PredictionMarketEscrowBurnTest is Test {
         bytes32 pickConfigId = pred.pickConfigId;
 
         // Both sides have TOTAL_COLLATERAL tokens, so ratio is 1:1
-        uint256 counterpartAmount = market.getSymmetricBurnAmount(
-            pickConfigId, 100e18, true
-        );
+        uint256 counterpartAmount =
+            market.getSymmetricBurnAmount(pickConfigId, 100e18, true);
         assertEq(counterpartAmount, 100e18);
 
         // Reverse direction
-        uint256 predictorAmount = market.getSymmetricBurnAmount(
-            pickConfigId, 50e18, false
-        );
+        uint256 predictorAmount =
+            market.getSymmetricBurnAmount(pickConfigId, 50e18, false);
         assertEq(predictorAmount, 50e18);
     }
 
@@ -1238,9 +1230,8 @@ contract PredictionMarketEscrowBurnTest is Test {
         market.burn(req);
 
         // Remaining supply is still 1:1, helper should reflect that
-        uint256 counterpartAmount = market.getSymmetricBurnAmount(
-            pickConfigId, 50e18, true
-        );
+        uint256 counterpartAmount =
+            market.getSymmetricBurnAmount(pickConfigId, 50e18, true);
         assertEq(counterpartAmount, 50e18);
     }
 
@@ -1293,10 +1284,20 @@ contract PredictionMarketEscrowBurnTest is Test {
             mintReq.predictorDeadline = deadline;
             mintReq.counterpartyDeadline = deadline;
             mintReq.predictorSignature = _signMintApproval(
-                predictionHash2, predictor, mint2PredictorColl, pNonce, deadline, predictorPk
+                predictionHash2,
+                predictor,
+                mint2PredictorColl,
+                pNonce,
+                deadline,
+                predictorPk
             );
             mintReq.counterpartySignature = _signMintApproval(
-                predictionHash2, counterparty, mint2CounterpartyColl, cNonce, deadline, counterpartyPk
+                predictionHash2,
+                counterparty,
+                mint2CounterpartyColl,
+                cNonce,
+                deadline,
+                counterpartyPk
             );
             mintReq.refCode = REF_CODE;
 
@@ -1308,10 +1309,24 @@ contract PredictionMarketEscrowBurnTest is Test {
         // totalCounterpartyCollateral = 150 + 50 = 200
         IV2Types.PickConfiguration memory configBefore =
             market.getPickConfiguration(pickConfigId);
-        assertEq(configBefore.totalPredictorTokensMinted, 500e18, "pre-burn predictor tokens");
-        assertEq(configBefore.totalCounterpartyTokensMinted, 500e18, "pre-burn cp tokens");
-        assertEq(configBefore.totalPredictorCollateral, 300e18, "pre-burn predictor coll");
-        assertEq(configBefore.totalCounterpartyCollateral, 200e18, "pre-burn cp coll");
+        assertEq(
+            configBefore.totalPredictorTokensMinted,
+            500e18,
+            "pre-burn predictor tokens"
+        );
+        assertEq(
+            configBefore.totalCounterpartyTokensMinted,
+            500e18,
+            "pre-burn cp tokens"
+        );
+        assertEq(
+            configBefore.totalPredictorCollateral,
+            300e18,
+            "pre-burn predictor coll"
+        );
+        assertEq(
+            configBefore.totalCounterpartyCollateral, 200e18, "pre-burn cp coll"
+        );
 
         // Partial symmetric burn: burn 250 tokens from each side (50%)
         uint256 burnAmount = 250e18;
@@ -1351,10 +1366,24 @@ contract PredictionMarketEscrowBurnTest is Test {
         // Verify remaining pool is exactly 50% of original
         IV2Types.PickConfiguration memory configAfter =
             market.getPickConfiguration(pickConfigId);
-        assertEq(configAfter.totalPredictorTokensMinted, 250e18, "post-burn predictor tokens");
-        assertEq(configAfter.totalCounterpartyTokensMinted, 250e18, "post-burn cp tokens");
-        assertEq(configAfter.totalPredictorCollateral, 150e18, "post-burn predictor coll");
-        assertEq(configAfter.totalCounterpartyCollateral, 100e18, "post-burn cp coll");
+        assertEq(
+            configAfter.totalPredictorTokensMinted,
+            250e18,
+            "post-burn predictor tokens"
+        );
+        assertEq(
+            configAfter.totalCounterpartyTokensMinted,
+            250e18,
+            "post-burn cp tokens"
+        );
+        assertEq(
+            configAfter.totalPredictorCollateral,
+            150e18,
+            "post-burn predictor coll"
+        );
+        assertEq(
+            configAfter.totalCounterpartyCollateral, 100e18, "post-burn cp coll"
+        );
 
         // Settle and verify remaining holders get correct payouts
         vm.prank(settler);
@@ -1400,13 +1429,11 @@ contract PredictionMarketEscrowBurnTest is Test {
         uint256 counterpartyAmount = 100e18 + 1; // off by 1 wei
 
         vm.prank(predictor);
-        IPredictionMarketToken(predictorToken).transfer(
-            thirdParty, predictorAmount
-        );
+        IPredictionMarketToken(predictorToken)
+            .transfer(thirdParty, predictorAmount);
         vm.prank(counterparty);
-        IPredictionMarketToken(counterpartyToken).transfer(
-            thirdParty, counterpartyAmount
-        );
+        IPredictionMarketToken(counterpartyToken)
+            .transfer(thirdParty, counterpartyAmount);
 
         IV2Types.BurnRequest memory req = _createBurnRequest(
             pickConfigId,
@@ -1420,9 +1447,7 @@ contract PredictionMarketEscrowBurnTest is Test {
             thirdPartyPk
         );
 
-        vm.expectRevert(
-            IPredictionMarketEscrow.AsymmetricBurn.selector
-        );
+        vm.expectRevert(IPredictionMarketEscrow.AsymmetricBurn.selector);
         market.burn(req);
     }
 }

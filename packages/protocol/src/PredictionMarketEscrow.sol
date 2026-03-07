@@ -404,7 +404,7 @@ contract PredictionMarketEscrow is
                 _pickConfigurations[request.pickConfigId];
             if (
                 request.predictorTokenAmount
-                    * _config.totalCounterpartyTokensMinted
+                        * _config.totalCounterpartyTokensMinted
                     != request.counterpartyTokenAmount
                         * _config.totalPredictorTokensMinted
             ) {
@@ -707,14 +707,14 @@ contract PredictionMarketEscrow is
             // Given predictor amount, compute required counterparty amount
             // predictorAmount * totalCounterparty == counterpartyAmount * totalPredictor
             if (config.totalPredictorTokensMinted == 0) return 0;
-            counterpartAmount = (tokenAmount
-                * config.totalCounterpartyTokensMinted)
-                / config.totalPredictorTokensMinted;
+            counterpartAmount =
+                (tokenAmount * config.totalCounterpartyTokensMinted)
+                    / config.totalPredictorTokensMinted;
         } else {
             // Given counterparty amount, compute required predictor amount
             if (config.totalCounterpartyTokensMinted == 0) return 0;
             counterpartAmount = (tokenAmount
-                * config.totalPredictorTokensMinted)
+                    * config.totalPredictorTokensMinted)
                 / config.totalCounterpartyTokensMinted;
         }
     }
