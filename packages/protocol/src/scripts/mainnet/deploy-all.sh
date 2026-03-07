@@ -6,7 +6,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROTOCOL_DIR="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
+PROTOCOL_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 ENV_FILE="$SCRIPT_DIR/.env"
 DEPLOYMENTS_FILE="$SCRIPT_DIR/deployments.json"
 
@@ -534,6 +534,126 @@ configure_dvn_phase3b() {
     log_success "Phase 3b complete: DVN and libraries configured"
 }
 
+# Upgrade Escrow: redeploy factory + escrow + bridges + sponsor
+# Reuses existing resolver, collateral token, and DVN/LZ config
+# Requires a new FACTORY_SALT to avoid CREATE2 collision with old factory
+upgrade_escrow() {
+    log_info "=== Upgrade Escrow: Redeploy with symmetric burn fix ==="
+    log_warn "This redeploys: Factory (both chains), Escrow, Bridges, AccountFactory, OnboardingSponsor"
+    log_warn "Reuses: Resolver, Collateral Token"
+    log_warn "Old contracts remain active for settle/redeem of existing markets"
+
+    # Require a new factory salt to avoid CREATE2 collision
+    if [ -z "${FACTORY_SALT:-}" ]; then
+        log_error "FACTORY_SALT is required for upgrade (e.g. keccak256 of 'sapience-prediction-market-token-factory-v2'))"
+        log_error "Set it in .env or pass as: FACTORY_SALT=0x... $0 upgrade-escrow"
+        exit 1
+    fi
+
+    # Phase 1: Ethereal - Factory + Escrow + Bridge + AccountFactory
+    log_info "--- Phase 1: Ethereal (PM Network) ---"
+    check_env PM_NETWORK_DEPLOYER_PRIVATE_KEY PM_NETWORK_DEPLOYER_ADDRESS PM_NETWORK_RPC_URL \
+              COLLATERAL_TOKEN_ADDRESS RESOLVER_ADDRESS PM_NETWORK_LZ_ENDPOINT || exit 1
+    set_deployer_pm
+
+    # 02. Deploy NEW Factory on PM Network
+    run_script "src/scripts/mainnet/02_DeployFactory.s.sol:DeployFactory" "$PM_NETWORK_RPC_URL" "Deploying NEW PredictionMarketTokenFactory on PM Network"
+    local addr=$(extract_address "$LAST_OUTPUT" "FACTORY_ADDRESS=")
+    if [ -n "$addr" ]; then
+        update_env "FACTORY_ADDRESS" "$addr"
+        update_deployment "pmNetwork" "PredictionMarketTokenFactory" "$addr"
+    fi
+
+    # 03. Deploy NEW Escrow (uses new factory)
+    run_script "src/scripts/mainnet/03_DeployPredictionMarket.s.sol:DeployPredictionMarket" "$PM_NETWORK_RPC_URL" "Deploying NEW PredictionMarketEscrow on PM Network"
+    addr=$(extract_address "$LAST_OUTPUT" "PREDICTION_MARKET_ADDRESS=")
+    if [ -n "$addr" ]; then
+        update_env "PREDICTION_MARKET_ADDRESS" "$addr"
+        update_deployment "pmNetwork" "PredictionMarketEscrow" "$addr"
+    fi
+
+    # 04. Configure Factory (set new escrow as deployer)
+    run_script_no_verify "src/scripts/mainnet/04_ConfigureFactory.s.sol:ConfigureFactory" "$PM_NETWORK_RPC_URL" "Configuring NEW Factory (set escrow as deployer)"
+
+    # 05. Deploy NEW Bridge on PM Network
+    run_script "src/scripts/mainnet/05_DeployEtherealBridge.s.sol:DeployEtherealBridge" "$PM_NETWORK_RPC_URL" "Deploying NEW PredictionMarketBridge on PM Network"
+    addr=$(extract_address "$LAST_OUTPUT" "PM_NETWORK_BRIDGE_ADDRESS=")
+    if [ -n "$addr" ]; then
+        update_env "PM_NETWORK_BRIDGE_ADDRESS" "$addr"
+        update_deployment "pmNetwork" "PredictionMarketBridge" "$addr"
+    fi
+
+    # Configure existing AccountFactory on new Escrow
+    check_env ACCOUNT_FACTORY_ADDRESS || exit 1
+    log_info "Configuring existing AccountFactory ($ACCOUNT_FACTORY_ADDRESS) on new Escrow"
+    cd "$PROTOCOL_DIR"
+    local af_output
+    af_output=$(cast send "$PREDICTION_MARKET_ADDRESS" \
+        "setAccountFactory(address)" "$ACCOUNT_FACTORY_ADDRESS" \
+        --private-key "$PM_NETWORK_DEPLOYER_PRIVATE_KEY" \
+        --rpc-url "$PM_NETWORK_RPC_URL" 2>&1) || {
+        log_error "Failed to set AccountFactory on new Escrow"
+        echo "$af_output"
+        exit 1
+    }
+    log_success "AccountFactory configured on new Escrow"
+
+    log_success "Phase 1 complete: Ethereal infrastructure upgraded"
+
+    # Phase 2: Arbitrum - Factory + Bridge
+    log_info "--- Phase 2: Arbitrum (SM Network) ---"
+    check_env SM_NETWORK_DEPLOYER_PRIVATE_KEY SM_NETWORK_DEPLOYER_ADDRESS SM_NETWORK_RPC_URL SM_NETWORK_LZ_ENDPOINT || exit 1
+    set_deployer_sm
+
+    # 06. Deploy NEW Factory on SM Network (same salt → same address as PM)
+    run_script "src/scripts/mainnet/06_DeployFactorySM.s.sol:DeployFactorySM" "$SM_NETWORK_RPC_URL" "Deploying NEW PredictionMarketTokenFactory on SM Network"
+    addr=$(extract_address "$LAST_OUTPUT" "FACTORY_ADDRESS=")
+    if [ -n "$addr" ]; then
+        update_env "FACTORY_ADDRESS" "$addr"
+        update_deployment "smNetwork" "PredictionMarketTokenFactory" "$addr"
+    fi
+
+    # 07. Deploy NEW SM Network Bridge
+    run_script "src/scripts/mainnet/07_DeployRemoteBridge.s.sol:DeployRemoteBridge" "$SM_NETWORK_RPC_URL" "Deploying NEW PredictionMarketBridgeRemote on SM Network"
+    addr=$(extract_address "$LAST_OUTPUT" "SM_NETWORK_BRIDGE_ADDRESS=")
+    if [ -n "$addr" ]; then
+        update_env "SM_NETWORK_BRIDGE_ADDRESS" "$addr"
+        update_deployment "smNetwork" "PredictionMarketBridgeRemote" "$addr"
+    fi
+
+    log_success "Phase 2 complete: Arbitrum infrastructure upgraded"
+
+    # Phase 3: Configure bridges
+    log_info "--- Phase 3: Configure Bridges ---"
+    configure_bridges_phase3
+
+    # Phase 3b: Configure DVN
+    log_info "--- Phase 3b: Configure DVN ---"
+    configure_dvn_phase3b
+
+    # Deploy OnboardingSponsor if env vars are available
+    if [ -n "${REQUIRED_COUNTERPARTY:-}" ] && [ -n "${MAX_ENTRY_PRICE_BPS:-}" ]; then
+        log_info "--- Deploy OnboardingSponsor ---"
+        set_deployer_pm
+        run_script "src/scripts/mainnet/DeployOnboardingSponsor.s.sol:DeployOnboardingSponsor" "$PM_NETWORK_RPC_URL" "Deploying NEW OnboardingSponsor"
+        addr=$(extract_address "$LAST_OUTPUT" "OnboardingSponsor:")
+        if [ -n "$addr" ]; then
+            update_env "ONBOARDING_SPONSOR_ADDRESS" "$addr"
+            update_deployment "pmNetwork" "OnboardingSponsor" "$addr"
+        fi
+    else
+        log_warn "Skipping OnboardingSponsor (set REQUIRED_COUNTERPARTY and MAX_ENTRY_PRICE_BPS to deploy)"
+    fi
+
+    check_status
+
+    echo ""
+    log_success "=== Upgrade complete ==="
+    log_info "Old contracts remain active for settle/redeem of existing markets"
+    log_info "New contracts handle all new markets going forward"
+    log_warn "Remember to update PREDICTION_MARKET_ADDRESS in the API/app config"
+}
+
 # Configure PM Network only
 configure_pm_only() {
     log_info "=== Configure PM Network Bridge (Ethereal) ==="
@@ -916,6 +1036,7 @@ usage() {
     echo "Deployment Commands:"
     echo "  all                   Run full deployment (phases 1-3b)"
     echo "  all-with-collateral   Run full deployment with test collateral (for testing)"
+    echo "  upgrade-escrow        Redeploy factory+escrow+bridges (requires new FACTORY_SALT)"
     echo "  collateral            Deploy test collateral token (optional, for testing)"
     echo "  phase1, deploy-pm     Deploy Ethereal infrastructure"
     echo "  phase2, deploy-sm     Deploy Arbitrum infrastructure"
@@ -1055,6 +1176,9 @@ main() {
             ;;
         phase3b)
             configure_dvn_phase3b
+            ;;
+        upgrade-escrow)
+            upgrade_escrow
             ;;
         deploy-pm)
             deploy_ethereal_phase1
