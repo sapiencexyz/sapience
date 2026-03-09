@@ -4,7 +4,7 @@
 # Define tables that should be filtered by timestamp
 TIMESTAMP_FILTER_TABLES=()
 # Reset environment variables if they are already set
-unset DB_HOST DB_PORT DB_NAME DB_NAME_LOCAL DB_USER DB_PASSWORD LOCAL_USER BACKUP_DIR DATABASE_URL
+unset DB_HOST DB_PORT DB_NAME DB_NAME_LOCAL DB_USER DB_PASSWORD LOCAL_USER BACKUP_DIR
 
 # Parse command line arguments
 SKIP_IF_EXISTS=false
