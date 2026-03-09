@@ -829,9 +829,7 @@ contract PredictionMarketEscrowIntegrationTest is Test {
      * The predictor needs ALL legs to win, so one decisive loss should be enough
      * for COUNTERPARTY_WINS even if other legs are still unresolved.
      */
-    function test_fullFlow_twoPicks_earlyCounterpartyWin_oneLegLost()
-        public
-    {
+    function test_fullFlow_twoPicks_earlyCounterpartyWin_oneLegLost() public {
         bytes32 condition1 = keccak256("early-settle-leg-1");
         bytes32 condition2 = keccak256("early-settle-leg-2");
 
@@ -888,9 +886,7 @@ contract PredictionMarketEscrowIntegrationTest is Test {
      * @notice Test: Counterparty can claim when one leg resolves as a tie (non-decisive)
      * while other legs are still unresolved.
      */
-    function test_fullFlow_twoPicks_earlyCounterpartyWin_oneLegTie()
-        public
-    {
+    function test_fullFlow_twoPicks_earlyCounterpartyWin_oneLegTie() public {
         bytes32 condition1 = keccak256("early-tie-leg-1");
         bytes32 condition2 = keccak256("early-tie-leg-2");
 
@@ -980,7 +976,9 @@ contract PredictionMarketEscrowIntegrationTest is Test {
         resolver.settleCondition(first, IV2Types.OutcomeVector(1, 0)); // YES - predictor wins this pick
 
         // Should revert — predictor needs both legs, one is still unresolved
-        vm.expectRevert(IPredictionMarketEscrow.PredictionNotResolvable.selector);
+        vm.expectRevert(
+            IPredictionMarketEscrow.PredictionNotResolvable.selector
+        );
         market.settle(predictionId, REF_CODE);
     }
 
@@ -1012,16 +1010,16 @@ contract PredictionMarketEscrowIntegrationTest is Test {
         (bytes32 predictionId,,) = market.mint(request);
 
         // Neither condition settled
-        vm.expectRevert(IPredictionMarketEscrow.PredictionNotResolvable.selector);
+        vm.expectRevert(
+            IPredictionMarketEscrow.PredictionNotResolvable.selector
+        );
         market.settle(predictionId, REF_CODE);
     }
 
     /**
      * @notice Test: 3-leg parlay — one leg lost, two unresolved, counterparty wins early
      */
-    function test_fullFlow_threePicks_earlyCounterpartyWin_oneLegLost()
-        public
-    {
+    function test_fullFlow_threePicks_earlyCounterpartyWin_oneLegLost() public {
         bytes32 condition1 = keccak256("three-leg-1");
         bytes32 condition2 = keccak256("three-leg-2");
         bytes32 condition3 = keccak256("three-leg-3");
@@ -1032,9 +1030,15 @@ contract PredictionMarketEscrowIntegrationTest is Test {
         sorted[1] = condition2;
         sorted[2] = condition3;
         // Simple bubble sort for 3 elements
-        if (sorted[0] > sorted[1]) (sorted[0], sorted[1]) = (sorted[1], sorted[0]);
-        if (sorted[1] > sorted[2]) (sorted[1], sorted[2]) = (sorted[2], sorted[1]);
-        if (sorted[0] > sorted[1]) (sorted[0], sorted[1]) = (sorted[1], sorted[0]);
+        if (sorted[0] > sorted[1]) {
+            (sorted[0], sorted[1]) = (sorted[1], sorted[0]);
+        }
+        if (sorted[1] > sorted[2]) {
+            (sorted[1], sorted[2]) = (sorted[2], sorted[1]);
+        }
+        if (sorted[0] > sorted[1]) {
+            (sorted[0], sorted[1]) = (sorted[1], sorted[0]);
+        }
 
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](3);
         picks[0] = IV2Types.Pick({
@@ -1125,9 +1129,8 @@ contract PredictionMarketEscrowIntegrationTest is Test {
         // Settle only the second pick's condition — predictor loses
         // First pick's condition remains unresolved
         vm.prank(settler);
-        ManualConditionResolver(secondResolver).settleCondition(
-            secondCondition, IV2Types.OutcomeVector(0, 1)
-        );
+        ManualConditionResolver(secondResolver)
+            .settleCondition(secondCondition, IV2Types.OutcomeVector(0, 1));
 
         // Should settle via _resolveIndividual path
         market.settle(predictionId, REF_CODE);
@@ -1184,12 +1187,13 @@ contract PredictionMarketEscrowIntegrationTest is Test {
 
         // Settle first pick's condition — predictor wins this one
         vm.prank(settler);
-        ManualConditionResolver(firstResolver).settleCondition(
-            firstCondition, IV2Types.OutcomeVector(1, 0)
-        );
+        ManualConditionResolver(firstResolver)
+            .settleCondition(firstCondition, IV2Types.OutcomeVector(1, 0));
 
         // Should revert — second leg still unresolved
-        vm.expectRevert(IPredictionMarketEscrow.PredictionNotResolvable.selector);
+        vm.expectRevert(
+            IPredictionMarketEscrow.PredictionNotResolvable.selector
+        );
         market.settle(predictionId, REF_CODE);
     }
 }
