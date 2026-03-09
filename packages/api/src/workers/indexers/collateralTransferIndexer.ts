@@ -131,6 +131,22 @@ class CollateralTransferIndexer implements IIndexer {
       blockNumber: bigint | null;
     }>
   ): Promise<void> {
+    // Collect unique block numbers and fetch their timestamps
+    const uniqueBlocks = [
+      ...new Set(
+        logs
+          .map((log) => log.blockNumber)
+          .filter((bn): bn is bigint => bn !== null)
+      ),
+    ];
+    const blockTimestamps = new Map<bigint, Date>();
+    await Promise.all(
+      uniqueBlocks.map(async (blockNumber) => {
+        const block = await this.client.getBlock({ blockNumber });
+        blockTimestamps.set(blockNumber, new Date(Number(block.timestamp) * 1000));
+      })
+    );
+
     const records = logs
       .filter(
         (log) => log.args.from && log.args.to && log.args.value !== undefined
@@ -138,6 +154,8 @@ class CollateralTransferIndexer implements IIndexer {
       .map((log) => ({
         chainId: this.chainId,
         blockNumber: Number(log.blockNumber ?? 0),
+        timestamp:
+          blockTimestamps.get(log.blockNumber!) ?? new Date(0),
         transactionHash: log.transactionHash,
         logIndex: log.logIndex ?? 0,
         from: log.args.from!.toLowerCase(),
