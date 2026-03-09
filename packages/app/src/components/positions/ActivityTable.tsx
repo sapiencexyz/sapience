@@ -232,7 +232,7 @@ function ActivityRow({
             Result
           </div>
           {!isSettled && endsAtSec > 0 && endsAtMs > Date.now() ? (
-            <CountdownCell endTime={endsAtSec} prefix="ENDS " />
+            <CountdownCell endTime={endsAtSec} />
           ) : !isSettled ? (
             <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
               Pending

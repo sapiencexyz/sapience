@@ -16,7 +16,7 @@ import { useSecondTick } from '~/hooks/useSecondTick';
  *
  * @param endTime  Unix timestamp in **seconds**
  */
-export default function CountdownCell({ endTime, prefix }: { endTime: number; prefix?: string }) {
+export default function CountdownCell({ endTime }: { endTime: number }) {
   const nowMs = useSecondTick();
 
   const endMs = endTime * 1000;
@@ -41,7 +41,7 @@ export default function CountdownCell({ endTime, prefix }: { endTime: number; pr
           <span
             className={`whitespace-nowrap tabular-nums cursor-default ${isPast ? 'text-muted-foreground' : 'font-mono text-brand-white'}`}
           >
-            {prefix && !isPast ? `${prefix}${formatCountdown(diff)}` : formatCountdown(diff)}
+            {formatCountdown(diff)}
           </span>
         </TooltipTrigger>
         <TooltipContent>
