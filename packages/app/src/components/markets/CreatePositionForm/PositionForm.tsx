@@ -569,8 +569,8 @@ export default function PositionForm({
     // Skip this check for logged-out users since they can't have balance-related errors
     if (hasConnectedWallet && hasFormErrors) return;
 
-    // Must have at least one prediction
-    const hasPredictions = selections.length > 0 || pythPredictions.length > 0;
+    // Must have at least two UMA predictions (parlay) or at least one Pyth prediction
+    const hasPredictions = selections.length >= 2 || pythPredictions.length > 0;
     if (!hasPredictions) return;
 
     // Must have a valid position size
