@@ -264,7 +264,7 @@ export async function verifySessionApproval(
       // EIP-712 domain binding alone is insufficient — any EOA can sign with
       // verifyingContract set to an arbitrary address. We must derive the
       // expected smart account from the recovered owner and compare.
-      const expectedSmartAccount = await computeSmartAccountAddress(recoveredOwner);
+      const expectedSmartAccount = await computeSmartAccountAddress(recoveredOwner, approval.chainId);
       if (expectedSmartAccount.toLowerCase() !== claimedAccountAddress.toLowerCase()) {
         console.warn('[SessionAuth] Smart account ownership mismatch:', {
           recoveredOwner,
