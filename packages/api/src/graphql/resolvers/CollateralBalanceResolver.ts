@@ -40,6 +40,9 @@ class CollateralTransferType {
   @Field(() => Int)
   blockNumber!: number;
 
+  @Field(() => Date)
+  timestamp!: Date;
+
   @Field(() => String)
   transactionHash!: string;
 
