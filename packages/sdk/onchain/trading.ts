@@ -11,7 +11,7 @@ import {
   type Account,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { collateralToken, predictionMarket } from '../contracts/addresses';
+import { collateralToken, predictionMarketEscrow } from '../contracts/addresses';
 import {
   CHAIN_ID_ETHEREAL,
   DEFAULT_CHAIN_ID,
@@ -21,12 +21,6 @@ import {
 import { getCollateralAddress } from '../constants/addresses';
 
 type Hex = `0x${string}`;
-
-/** @deprecated Import `etherealChain` from `@sapience/sdk/constants` instead. */
-export const tradingChain: Chain = etherealChain;
-
-/** @deprecated Use `getRpcUrl(CHAIN_ID_ETHEREAL)` instead. */
-export const TRADING_RPC_URL = getRpcUrl(CHAIN_ID_ETHEREAL);
 
 // WUSDe ABI for wrap/unwrap operations
 const WUSDE_ABI = parseAbi([
@@ -49,8 +43,8 @@ export function createTradingPublicClient(
   rpcUrl?: string
 ): PublicClient<Transport, Chain> {
   return createPublicClient({
-    chain: tradingChain,
-    transport: http(rpcUrl || TRADING_RPC_URL),
+    chain: etherealChain,
+    transport: http(rpcUrl || getRpcUrl(CHAIN_ID_ETHEREAL)),
   });
 }
 
@@ -64,8 +58,8 @@ export function createTradingWalletClient(
   const account = privateKeyToAccount(privateKey);
   return createWalletClient({
     account,
-    chain: tradingChain,
-    transport: http(rpcUrl || TRADING_RPC_URL),
+    chain: etherealChain,
+    transport: http(rpcUrl || getRpcUrl(CHAIN_ID_ETHEREAL)),
   });
 }
 
@@ -216,7 +210,7 @@ export async function prepareForTrade(args: {
   wusdBalance: bigint;
 }> {
   const { privateKey, collateralAmount, rpcUrl, chainId = DEFAULT_CHAIN_ID } = args;
-  const spender = args.spender || (predictionMarket[chainId]?.address ?? predictionMarket[CHAIN_ID_ETHEREAL]?.address) as Hex;
+  const spender = args.spender || (predictionMarketEscrow[chainId]?.address ?? predictionMarketEscrow[CHAIN_ID_ETHEREAL]?.address) as Hex;
   
   if (!spender) {
     throw new Error('No spender address provided and no default PredictionMarket address found');

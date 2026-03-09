@@ -26,9 +26,7 @@ interface UseSingleConditionAuctionProps {
 
 interface UseSingleConditionAuctionReturn {
   bestBid: QuoteBid | null;
-  triggerQuoteRequest: (options?: {
-    forceRefresh?: boolean;
-  }) => void;
+  triggerQuoteRequest: (options?: { forceRefresh?: boolean }) => void;
   isWaitingForBids: boolean;
   showRequestBidsButton: boolean;
   allBidsExpired: boolean;

@@ -189,7 +189,7 @@ export async function queryAccountPnl(
       ) gs
     ),
     pnl_events AS (
-      -- V2 Claims: account redeems settled prediction
+      -- Claims: account redeems settled prediction
       SELECT
         cl."redeemedAt" AS event_ts,
         CAST(cl."collateralPaid" AS DECIMAL) - CAST(
@@ -202,7 +202,7 @@ export async function queryAccountPnl(
       WHERE cl.holder = ${addr}
         AND cl."redeemedAt" >= ${fromEpoch} AND cl."redeemedAt" <= ${toEpoch}
       UNION ALL
-      -- V2 Closes: position settlement
+      -- Closes: position settlement
       SELECT
         c."burnedAt" AS event_ts,
         CASE
