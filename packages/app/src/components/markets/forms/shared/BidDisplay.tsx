@@ -191,7 +191,7 @@ export default function BidDisplay({
       case 'active':
         return {
           text: 'SUBMIT PREDICTION',
-          disabled: isSubmitDisabled,
+          disabled: isSubmitDisabled || showAddPredictionsHint,
           // Pass the exact bid being displayed to ensure what user sees is what gets submitted
           onClick: () => bestBid && onSubmit(bestBid),
           type: 'button' as const,
@@ -227,7 +227,7 @@ export default function BidDisplay({
           text: showRequestBidsButton
             ? 'INITIATE AUCTION'
             : 'WAITING FOR BIDS...',
-          disabled: !showRequestBidsButton || hasFormErrors,
+          disabled: !showRequestBidsButton || hasFormErrors || showAddPredictionsHint,
           onClick: onRequestBids,
           type: 'button' as const,
         };
@@ -241,7 +241,7 @@ export default function BidDisplay({
       className={`text-center ${payoutTakesSpace ? '' : 'relative'} ${className ?? ''}`}
     >
       {/* Payout Display - takes up space when payoutTakesSpace is true, otherwise positioned absolutely */}
-      {uiState === 'active' && bestBid && (
+      {uiState === 'active' && bestBid && !showAddPredictionsHint && (
         <div
           className={`mt-4 mb-4 ${payoutTakesSpace ? '' : 'absolute left-0 right-0 top-0 z-10'}`}
         >
@@ -334,7 +334,7 @@ export default function BidDisplay({
       )}
 
       {/* Logged-out user with valid bid - show as estimate with connect prompt */}
-      {uiState === 'logged-out-with-bid' && bestBid && (
+      {uiState === 'logged-out-with-bid' && bestBid && !showAddPredictionsHint && (
         <div
           className={`mt-4 mb-4 ${payoutTakesSpace ? '' : 'absolute left-0 right-0 top-0 z-10'}`}
         >
@@ -380,8 +380,7 @@ export default function BidDisplay({
       )}
 
       {/* Show "Add more predictions" hint for single-pick positions */}
-      {((uiState === 'idle' && !estimateBid) || uiState === 'pending') &&
-        showAddPredictionsHint && (
+      {showAddPredictionsHint && (
           <div className="mt-4 mb-4">
             <div className="rounded-md border border-border bg-muted/30 px-4 py-2.5 w-full">
               <div className="flex items-center justify-center gap-2 min-h-[41px]">
@@ -452,7 +451,7 @@ export default function BidDisplay({
           </div>
         </div>
       )}
-      {uiState === 'idle' && estimateBid && estimateTotal && (
+      {uiState === 'idle' && estimateBid && estimateTotal && !showAddPredictionsHint && (
         <div
           className={`mt-4 mb-4 ${payoutTakesSpace ? '' : 'absolute left-0 right-0 top-0 z-10'}`}
         >
