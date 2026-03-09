@@ -5,10 +5,14 @@ import Sentry from '../../instrument';
 import { IIndexer } from '../../interfaces';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
 
-const BLOCK_BATCH_SIZE = 100;
+const BLOCK_BATCH_SIZE = 1000;
 const POLLING_INTERVAL_MS = 10_000;
 const INDEXER_STATE_KEY = 'v2-transfer-indexer';
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
+
+// Deploy date for predictionMarketEscrow (2026-02-26T00:00:00Z) used as
+// fallback when blockCreated is not set in the SDK contract config.
+const APPROXIMATE_DEPLOY_TIMESTAMP = 1772082000n;
 
 const TRANSFER_EVENT = parseAbiItem(
   'event Transfer(address indexed from, address indexed to, uint256 value)'
@@ -107,11 +111,21 @@ class PositionTokenTransferIndexer implements IIndexer {
 
   private async pollCycle(): Promise<void> {
     const watchList = await this.loadWatchList();
-    if (watchList.tokenAddresses.length === 0) return;
+    if (watchList.tokenAddresses.length === 0) {
+      console.log(
+        `[TransferIndexer:${this.chainId}] No tokens to watch (all pickConfigs fullyRedeemed or none exist)`
+      );
+      return;
+    }
 
     const lastBlock = await this.getLastIndexedBlock();
     const currentBlock = await this.client.getBlockNumber();
     if (currentBlock <= lastBlock) return;
+
+    const blocksToProcess = currentBlock - lastBlock;
+    console.log(
+      `[TransferIndexer:${this.chainId}] Processing blocks ${lastBlock + 1n}..${currentBlock} (${blocksToProcess} blocks, watching ${watchList.tokenAddresses.length} tokens)`
+    );
 
     const fromBlock = lastBlock + 1n;
 
@@ -132,6 +146,12 @@ class PositionTokenTransferIndexer implements IIndexer {
         fromBlock: start,
         toBlock: end,
       });
+
+      if (logs.length > 0) {
+        console.log(
+          `[TransferIndexer:${this.chainId}] Found ${logs.length} Transfer events in blocks ${start}..${end}`
+        );
+      }
 
       // Cache block timestamps to avoid redundant RPC calls
       const blockTimestamps = new Map<bigint, bigint>();
@@ -157,9 +177,10 @@ class PositionTokenTransferIndexer implements IIndexer {
           watchList.tokenInfoMap
         );
       }
-    }
 
-    await this.setLastIndexedBlock(Number(currentBlock));
+      // Persist watermark after each batch so a crash doesn't replay everything
+      await this.setLastIndexedBlock(Number(end));
+    }
   }
 
   private async processTransfer(
@@ -175,22 +196,45 @@ class PositionTokenTransferIndexer implements IIndexer {
     const tokenAddress = log.address.toLowerCase();
 
     // Skip mints — handled by the escrow indexer on PredictionCreated
-    if (fromLower === ZERO_ADDRESS) return;
+    if (fromLower === ZERO_ADDRESS) {
+      console.log(
+        `[TransferIndexer:${this.chainId}] Skipping mint event for ${tokenAddress} (to=${toLower}, value=${value})`
+      );
+      return;
+    }
     if (value === 0n) return;
 
     const info = tokenInfoMap.get(tokenAddress);
-    if (!info) return;
+    if (!info) {
+      console.warn(
+        `[TransferIndexer:${this.chainId}] Unknown token ${tokenAddress} not in watch list, skipping`
+      );
+      return;
+    }
 
     const valueStr = value.toString();
     const isBurn = toLower === ZERO_ADDRESS;
+    const txHash = log.transactionHash || '';
+    const logIdx = log.logIndex || 0;
+
+    // Idempotency: skip if we already recorded this exact event
+    const existing = await prisma.event.findFirst({
+      where: {
+        transactionHash: txHash,
+        logIndex: logIdx,
+        logData: { path: ['source'], equals: 'PositionTokenTransfer' },
+      },
+      select: { id: true },
+    });
+    if (existing) return;
 
     // Record raw event
     await prisma.event.create({
       data: {
         blockNumber: Number(log.blockNumber || 0),
-        transactionHash: log.transactionHash || '',
+        transactionHash: txHash,
         timestamp: blockTimestamp,
-        logIndex: log.logIndex || 0,
+        logIndex: logIdx,
         logData: {
           source: 'PositionTokenTransfer',
           chainId: this.chainId,
@@ -201,13 +245,18 @@ class PositionTokenTransferIndexer implements IIndexer {
     });
 
     // Decrement sender balance
-    await prisma.$executeRaw`
+    const rowsUpdated = await prisma.$executeRaw`
       UPDATE "Position"
       SET balance = (balance::NUMERIC - ${valueStr}::NUMERIC)::TEXT, "updatedAt" = NOW()
       WHERE "chainId" = ${this.chainId}
         AND "tokenAddress" = ${tokenAddress}
         AND holder = ${fromLower}
     `;
+    if (rowsUpdated === 0) {
+      console.warn(
+        `[TransferIndexer:${this.chainId}] No Position row found to decrement for holder=${fromLower} token=${tokenAddress} (tx=${log.transactionHash})`
+      );
+    }
 
     // Upsert receiver balance (skip for burns — no recipient)
     if (!isBurn) {
@@ -220,7 +269,7 @@ class PositionTokenTransferIndexer implements IIndexer {
     }
 
     console.log(
-      `[TransferIndexer:${this.chainId}] ${isBurn ? 'Burn' : 'Transfer'} ${tokenAddress}: ${fromLower} -> ${toLower} amount=${valueStr}`
+      `[TransferIndexer:${this.chainId}] ${isBurn ? 'Burn' : 'Transfer'} ${tokenAddress}: ${fromLower} -> ${toLower} amount=${valueStr} pickConfig=${info.pickConfigId} block=${log.blockNumber} tx=${log.transactionHash}`
     );
   }
 
@@ -275,9 +324,35 @@ class PositionTokenTransferIndexer implements IIndexer {
     const key = `${INDEXER_STATE_KEY}:${this.chainId}`;
     const row = await prisma.keyValueStore.findUnique({ where: { key } });
     if (row) return BigInt(row.value);
-    return this.blockCreated > 0n
-      ? this.blockCreated - 1n
-      : await this.client.getBlockNumber();
+
+    if (this.blockCreated > 0n) return this.blockCreated - 1n;
+
+    // No blockCreated in SDK config — binary search for the deploy date
+    const startBlock = await this.findBlockByTimestamp(APPROXIMATE_DEPLOY_TIMESTAMP);
+    console.log(
+      `[TransferIndexer:${this.chainId}] No cursor found, estimated deploy block ${startBlock}`
+    );
+    return startBlock > 0n ? startBlock - 1n : 0n;
+  }
+
+  /**
+   * Binary search for the first block whose timestamp is >= the target.
+   */
+  private async findBlockByTimestamp(targetTimestamp: bigint): Promise<bigint> {
+    let lo = 0n;
+    let hi = await this.client.getBlockNumber();
+
+    while (lo < hi) {
+      const mid = lo + (hi - lo) / 2n;
+      const block = await this.client.getBlock({ blockNumber: mid });
+      if (block.timestamp < targetTimestamp) {
+        lo = mid + 1n;
+      } else {
+        hi = mid;
+      }
+    }
+
+    return lo;
   }
 
   private async setLastIndexedBlock(block: number): Promise<void> {

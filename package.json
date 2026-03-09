@@ -23,6 +23,7 @@
     "start:compute-stats": "pnpm --filter api run start:compute-stats",
     "start:backfill-stats": "pnpm --filter api run start:backfill-stats",
     "start:reindex-condition-settled": "pnpm --filter api run start:reindex-condition-settled",
+    "start:reindex-transfers": "pnpm --filter api run start:reindex-transfers",
     "check": "pnpm --filter @sapience/sdk run build:lib && pnpm --filter @sapience/api run prisma:generate && pnpm -r run lint && pnpm -r --filter=!protocol run type-check && pnpm -r --filter=!protocol run test",
     "format:check": "pnpm -r run format:check"
   },

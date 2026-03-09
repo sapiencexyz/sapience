@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useRef } from 'react';
-import { type Address, type Hex } from 'viem';
+import { type Address, type Hex, encodeFunctionData } from 'viem';
 import { predictionMarketEscrowAbi } from '@sapience/sdk/abis';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
@@ -42,7 +42,7 @@ export function useEscrowWrite(params: { chainId?: number } = {}) {
 
   const successRef = useRef(false);
 
-  const { writeContract, isPending } = useSapienceWriteContract({
+  const { writeContract, sendCalls, isPending } = useSapienceWriteContract({
     disableAutoRedirect: true,
     fallbackErrorMessage: 'Transaction failed',
     onTxHash: () => {
@@ -120,9 +120,47 @@ export function useEscrowWrite(params: { chainId?: number } = {}) {
     [contractAddress, chainId, writeContract]
   );
 
+  const settleAndRedeem = useCallback(
+    async (params: {
+      predictionId: Hex;
+      positionToken: Address;
+      amount: bigint;
+      refCode?: Hex;
+    }): Promise<EscrowWriteResult> => {
+      if (!contractAddress) {
+        return { success: false, error: 'Escrow contract not available' };
+      }
+
+      const { predictionId, positionToken, amount, refCode = ZERO_BYTES32 } = params;
+
+      const settleData = encodeFunctionData({
+        abi: predictionMarketEscrowAbi,
+        functionName: 'settle',
+        args: [predictionId, refCode],
+      });
+
+      const redeemData = encodeFunctionData({
+        abi: predictionMarketEscrowAbi,
+        functionName: 'redeem',
+        args: [positionToken, amount, refCode],
+      });
+
+      await sendCalls({
+        chainId,
+        calls: [
+          { to: contractAddress, data: settleData },
+          { to: contractAddress, data: redeemData },
+        ],
+      });
+      return { success: true };
+    },
+    [contractAddress, chainId, sendCalls]
+  );
+
   return {
     settle,
     redeem,
+    settleAndRedeem,
     burn,
     contractAddress,
     chainId,

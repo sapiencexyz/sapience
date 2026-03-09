@@ -18,7 +18,11 @@ import Loader from '~/components/shared/Loader';
 
 import CountdownCell from '~/components/shared/CountdownCell';
 import { formatDistanceToNow } from 'date-fns';
-import { toPicks, type ConditionsMap } from '~/components/positions/toPickLegs';
+import {
+  toPicks,
+  computeResultFromConditions,
+  type ConditionsMap,
+} from '~/components/positions/toPickLegs';
 import { COLLATERAL_SYMBOLS, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { OutcomeSide } from '@sapience/sdk/types';
 import {
@@ -86,22 +90,29 @@ function PositionRow({
     formatEther(BigInt(position.totalPayout || '0'))
   );
 
-  const result = pickConfig?.result ?? 'UNRESOLVED';
-  const isResolved = pickConfig?.resolved ?? false;
+  // Use on-chain result if resolved, otherwise compute from individual conditions
+  const onChainResolved = pickConfig?.resolved ?? false;
+  const computed = !onChainResolved
+    ? computeResultFromConditions(rawPicks, conditionsMap)
+    : null;
+  const result = onChainResolved
+    ? (pickConfig?.result ?? 'UNRESOLVED')
+    : (computed?.result ?? 'UNRESOLVED');
+  const isResolved = onChainResolved || result !== 'UNRESOLVED';
 
-  const viewerWon =
+  const holderWon =
     isResolved &&
     ((isPredictorToken && result === 'PREDICTOR_WINS') ||
       (!isPredictorToken && result === 'COUNTERPARTY_WINS'));
 
-  const viewerLost =
+  const holderLost =
     isResolved &&
     ((isPredictorToken && result === 'COUNTERPARTY_WINS') ||
       (!isPredictorToken && result === 'PREDICTOR_WINS'));
 
   // PnL: profit if won (payout - positionSize), loss if lost (-positionSize)
   const pnlValue = isResolved
-    ? viewerWon
+    ? holderWon
       ? payoutFormatted - positionSizeFormatted
       : -positionSizeFormatted
     : null;
@@ -113,7 +124,7 @@ function PositionRow({
   // Claim / redeem state
   const [isRedeeming, setIsRedeeming] = React.useState(false);
   const [redeemed, setRedeemed] = React.useState(false);
-  const { redeem, settle } = useEscrowWrite({ chainId: position.chainId });
+  const { settleAndRedeem } = useEscrowWrite({ chainId: position.chainId });
 
   const { isLoading: isLoadingClaimable } = useClaimableAmount({
     pickConfigId: pickConfig?.id as `0x${string}`,
@@ -122,29 +133,19 @@ function PositionRow({
     chainId: position.chainId,
     enabled:
       isResolved &&
-      viewerWon &&
+      holderWon &&
       !!isOwnPosition &&
       BigInt(position.balance) > 0n,
   });
 
   const handleClaim = React.useCallback(async () => {
     if (!position.tokenAddress || BigInt(position.balance) <= 0n) return;
+    const predictionId = pickConfig?.predictionId;
+    if (!predictionId) return;
     setIsRedeeming(true);
     try {
-      // Settle the prediction first (resolves the pick config on-chain)
-      // This is a no-op if already settled, and required before redeem()
-      const predictionId = pickConfig?.predictionId;
-      if (predictionId) {
-        const settleResult = await settle({
-          predictionId: predictionId as `0x${string}`,
-        });
-        if (!settleResult.success) {
-          // settle() may fail if already settled — that's fine, continue to redeem
-          console.log('settle() did not succeed (may already be settled), attempting redeem...');
-        }
-      }
-
-      const result = await redeem({
+      const result = await settleAndRedeem({
+        predictionId: predictionId as `0x${string}`,
         positionToken: position.tokenAddress as Address,
         amount: BigInt(position.balance),
       });
@@ -155,7 +156,7 @@ function PositionRow({
     } finally {
       setIsRedeeming(false);
     }
-  }, [position, pickConfig, redeem, settle, onRefetch]);
+  }, [position, pickConfig, settleAndRedeem, onRefetch]);
 
   // Determine what to show in P/L column
   const renderPnlCell = () => {
@@ -187,7 +188,7 @@ function PositionRow({
     // Resolved, viewer won, and it's our position → show CLAIM link
     if (
       isResolved &&
-      viewerWon &&
+      holderWon &&
       isOwnPosition &&
       BigInt(position.balance) > 0n
     ) {
@@ -205,8 +206,26 @@ function PositionRow({
       );
     }
 
+    // Resolved, viewer won, viewing someone else's profile → show green PnL (no claim button)
+    if (isResolved && holderWon) {
+      return (
+        <div className="whitespace-nowrap tabular-nums font-mono flex items-baseline gap-1.5 text-green-500">
+          <NumberDisplay
+            value={pnlValue ?? 0}
+            className="tabular-nums font-mono text-green-500"
+          />{' '}
+          <span className="text-green-500">{collateralSymbol}</span>
+          {positionSizeFormatted > 0 && (
+            <span className="text-[10px] leading-tight tabular-nums font-mono text-green-500">
+              +{Math.round(roi).toLocaleString()}%
+            </span>
+          )}
+        </div>
+      );
+    }
+
     // Resolved, viewer lost → show realized PnL in red
-    if (isResolved && viewerLost) {
+    if (isResolved && holderLost) {
       return (
         <div className="whitespace-nowrap tabular-nums font-mono flex items-baseline gap-1.5 text-red-500">
           <NumberDisplay
@@ -396,11 +415,7 @@ export default function PositionsTable({
   const error = account ? accountError : conditionError;
   const refetch = account ? accountRefetch : conditionRefetch;
 
-  // Filter out zero-balance positions (fully redeemed)
-  const positions = React.useMemo(
-    () => allPositions.filter((p) => BigInt(p.balance) > 0n),
-    [allPositions]
-  );
+  const positions = allPositions;
 
   // Collect all unique conditionIds to fetch category data
   const conditionIds = React.useMemo(() => {
@@ -428,16 +443,24 @@ export default function PositionsTable({
       });
     }
 
-    // Filter by status
+    // Filter by status (using per-condition resolution for early results)
     if (filters.status.length > 0 && filters.status.length < 3) {
       result = result.filter((p) => {
-        const res = p.pickConfig?.result ?? 'UNRESOLVED';
-        const isResolved = p.pickConfig?.resolved ?? false;
-        if (!isResolved) return filters.status.includes('active');
-        const viewerWon =
+        const onChainResolved = p.pickConfig?.resolved ?? false;
+        const picks = p.pickConfig?.picks ?? [];
+        const computed = !onChainResolved
+          ? computeResultFromConditions(picks, conditionsMap)
+          : null;
+        const res = onChainResolved
+          ? (p.pickConfig?.result ?? 'UNRESOLVED')
+          : (computed?.result ?? 'UNRESOLVED');
+        const resolved = onChainResolved || res !== 'UNRESOLVED';
+
+        if (!resolved) return filters.status.includes('active');
+        const holderWon =
           (p.isPredictorToken && res === 'PREDICTOR_WINS') ||
           (!p.isPredictorToken && res === 'COUNTERPARTY_WINS');
-        if (viewerWon) return filters.status.includes('won');
+        if (holderWon) return filters.status.includes('won');
         return filters.status.includes('lost');
       });
     }
@@ -445,7 +468,7 @@ export default function PositionsTable({
     // Filter by position size range
     if (filters.valueRange[0] > 0 || filters.valueRange[1] < Infinity) {
       result = result.filter((p) => {
-        const balanceEth = parseFloat(formatEther(BigInt(p.balance)));
+        const balanceEth = parseFloat(formatEther(BigInt(p.userCollateral || p.balance)));
         return (
           balanceEth >= filters.valueRange[0] &&
           balanceEth <= filters.valueRange[1]
