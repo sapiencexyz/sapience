@@ -21,6 +21,9 @@ export default typescriptPlugin.config(
       'dist/**',
       'node_modules/**',
       'storybook-static/**',
+      // Test files are excluded from tsconfig.json and handled by vitest, not ESLint.
+      '**/*.test.ts',
+      '**/*.spec.ts',
       // Not part of the TS build surface area (and may not be included in the project service).
       'hooks/**',
       'scripts/**',

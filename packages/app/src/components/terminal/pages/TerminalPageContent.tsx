@@ -137,11 +137,7 @@ const TerminalPageContent: React.FC = () => {
 
   const auctionAndBidMessages = useMemo(() => {
     return displayMessages.filter(
-      (m) =>
-        m.type === 'auction.started' ||
-        m.type === 'v2.auction.started' ||
-        m.type === 'auction.bids' ||
-        m.type === 'v2.auction.bids'
+      (m) => m.type === 'auction.started' || m.type === 'auction.bids'
     );
   }, [displayMessages]);
 
@@ -204,8 +200,7 @@ const TerminalPageContent: React.FC = () => {
         }
       | { kind: 'unknown'; data: [] } => {
       try {
-        if (m?.type !== 'auction.started' && m?.type !== 'v2.auction.started')
-          return { kind: 'unknown', data: [] };
+        if (m?.type !== 'auction.started') return { kind: 'unknown', data: [] };
         const cacheKey = `${getAuctionId(m) || 'unknown'}:${String(
           m?.data?.predictorNonce ?? 'n'
         )}`;
@@ -264,7 +259,7 @@ const TerminalPageContent: React.FC = () => {
       const t = Number((m as any)?.time || 0);
       const prev = lastActivity.get(id) || 0;
       if (t > prev) lastActivity.set(id, t);
-      if (m.type === 'auction.started' || m.type === 'v2.auction.started') {
+      if (m.type === 'auction.started') {
         const prevStarted = latestStarted.get(id);
         if (!prevStarted || Number(prevStarted?.time || 0) < t) {
           latestStarted.set(id, m);
@@ -298,8 +293,7 @@ const TerminalPageContent: React.FC = () => {
     const set = new Set<string>();
     try {
       for (const m of auctionAndBidMessages) {
-        if (m.type !== 'auction.started' && m.type !== 'v2.auction.started')
-          continue;
+        if (m.type !== 'auction.started') continue;
 
         // Escrow auctions have picks[] with conditionId directly
         const picks = (m as any)?.data?.picks as
@@ -336,8 +330,7 @@ const TerminalPageContent: React.FC = () => {
   const uniqueAddresses = useMemo(() => {
     const set = new Set<string>();
     for (const m of auctionAndBidMessages) {
-      if (m.type !== 'auction.started' && m.type !== 'v2.auction.started')
-        continue;
+      if (m.type !== 'auction.started') continue;
       const auctionData = m.data as AuctionStartedData | undefined;
       const addr = auctionData?.predictor;
       if (addr && typeof addr === 'string') {
@@ -400,7 +393,7 @@ const TerminalPageContent: React.FC = () => {
 
   function renderPredictionsCell(m: { type: string; data: any }) {
     try {
-      if (m.type !== 'auction.started' && m.type !== 'v2.auction.started')
+      if (m.type !== 'auction.started')
         return <span className="text-muted-foreground">—</span>;
 
       // Escrow auctions: picks[] with conditionId directly
@@ -842,7 +835,7 @@ const TerminalPageContent: React.FC = () => {
 
   function toUiTx(m: { time: number; type: string; data: any }): UiTransaction {
     const createdAt = new Date(m.time).toISOString();
-    if (m.type === 'auction.started' || m.type === 'v2.auction.started') {
+    if (m.type === 'auction.started') {
       const predictor = (m as any)?.data?.predictor || '';
       const predictorCollateral = (m as any)?.data?.predictorCollateral || '0';
       return {
@@ -853,7 +846,7 @@ const TerminalPageContent: React.FC = () => {
         position: { owner: predictor },
       } as UiTransaction;
     }
-    if (m.type === 'auction.bids' || m.type === 'v2.auction.bids') {
+    if (m.type === 'auction.bids') {
       const bids = Array.isArray((m as any)?.data?.bids)
         ? ((m as any).data.bids as unknown as any[])
         : [];

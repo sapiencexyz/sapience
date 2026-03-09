@@ -407,8 +407,9 @@ model ProtocolStatsSnapshot {
   createdAt     DateTime @default(now()) @db.Timestamp(6)
 
   /// Unix timestamp of the snapshot (UTC midnight, seconds since epoch)
-  timestamp     Int      @unique(map: "UQ_protocol_stats_snapshot_timestamp")
+  timestamp     Int
   chainId       Int      @default(5064014)
+  vaultAddress  String   @default("") @db.VarChar
 
   /// Vault balance: wUSDe.balanceOf(vault) only, excludes deployed funds (in wei)
   vaultBalance  String   @db.VarChar
@@ -432,6 +433,7 @@ model ProtocolStatsSnapshot {
   vaultCollateralWon    String   @default("0") @db.VarChar
   vaultCollateralLost   String   @default("0") @db.VarChar
 
+  @@unique([chainId, vaultAddress, timestamp], map: "UQ_protocol_stats_snapshot_chain_vault_timestamp")
   @@index([timestamp], map: "IDX_protocol_stats_snapshot_timestamp")
   @@index([chainId])
   @@map("protocol_stats_snapshot")
@@ -675,6 +677,7 @@ model CollateralTransfer {
   createdAt       DateTime @default(now()) @db.Timestamp(6)
   chainId         Int
   blockNumber     Int
+  timestamp       DateTime @db.Timestamp(6)
   transactionHash String   @db.VarChar
   logIndex        Int
   from            String   @db.VarChar

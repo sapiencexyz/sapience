@@ -10,6 +10,7 @@ export interface ContractAddressEntry {
 
 export type ChainAddressMap = Record<ChainId, ContractAddressEntry>;
 
+/** @deprecated Pre-escrow contract. Use `predictionMarketEscrow` instead. */
 export const predictionMarket: ChainAddressMap = {
   42161: {
     address: '0xb04841cad1147675505816e2ec5c915430857b40',
@@ -84,21 +85,6 @@ export const pythResolver: ChainAddressMap = {
   },
 } as const;
 
-export const passiveLiquidityVault: ChainAddressMap = {
-  42161: {
-    address: '0xcc1c64e849395d31d059a4bd19391af64d8855d7',
-    legacy: [] as const,
-  },
-  5064014: {
-    address: '0x5c1d4feD296d2637205Ac132CE3e030F5d94d026',
-    legacy: [] as const,
-  },
-  13374202: {
-    address: '0xADf3C8D4B159FdA439E3C0e519DEc3C93DE0a4c3',
-    legacy: ['0xb52883b935796Ef6d881B22B4fA9d46a374905D7'] as const,
-  },
-} as const;
-
 export const collateralToken: ChainAddressMap = {
   42161: {
     address: '0xfeb8c4d5efbaff6e928ea090bc660c363f883dba',
@@ -130,19 +116,15 @@ export const eas: ChainAddressMap = {
   },
 } as const;
 
-// ============================================
-// Escrow Contract Addresses
-// ============================================
-
 /**
  * PredictionMarketEscrow
  * Core escrow contract handling mint, settle, redeem, burn
  */
 export const predictionMarketEscrow: ChainAddressMap = {
   5064014: {
-    // Ethereal mainnet — deployed 2026-02-26
-    address: '0x23C765fcE26aDbA3A1e0790d548410367D5A3487',
-    legacy: [] as const,
+    // Ethereal mainnet — redeployed 2026-03-06 (symmetric burn fix)
+    address: '0xC18ed3483733d4e15516c2Fe101fF20B61e88A55',
+    legacy: ['0x23C765fcE26aDbA3A1e0790d548410367D5A3487'] as const,
   },
   13374202: {
     // Ethereal testnet — deployed 2026-02-26
@@ -163,9 +145,9 @@ export const predictionMarketEscrow: ChainAddressMap = {
  */
 export const predictionMarketVault: ChainAddressMap = {
   5064014: {
-    // Ethereal mainnet — deployed 2026-02-26
-    address: '0x5704dB4b2c068d74Fde25257106a7029463f812E',
-    legacy: [] as const,
+    // Ethereal mainnet — deployed 2026-03-05
+    address: '0x0f246fBd64f6FE57544aAB16A31e1E3F59257723',
+    legacy: ['0x5704dB4b2c068d74Fde25257106a7029463f812E'] as const,
   },
   13374202: {
     // Ethereal testnet — deployed 2026-02-18
@@ -260,9 +242,9 @@ export const lzConditionResolver: ChainAddressMap = {
  */
 export const predictionMarketBridge: ChainAddressMap = {
   5064014: {
-    // Ethereal mainnet — deployed 2026-02-26
-    address: '0xf3a0026Bd8Bf3B3ca41177C93b99F97dfB657506',
-    legacy: [] as const,
+    // Ethereal mainnet — redeployed 2026-03-06 (symmetric burn fix)
+    address: '0x7Ac66f19Cb9B4540A0aF02eeA406f413138D659A',
+    legacy: ['0xf3a0026Bd8Bf3B3ca41177C93b99F97dfB657506'] as const,
   },
   13374202: {
     // Ethereal testnet — deployed 2026-02-26
@@ -282,9 +264,9 @@ export const predictionMarketBridge: ChainAddressMap = {
  */
 export const predictionMarketBridgeRemote: ChainAddressMap = {
   42161: {
-    // Arbitrum mainnet — deployed 2026-02-26
-    address: '0x136700DBA1cCC2eDd16aB0bf439bd6b65574F99f',
-    legacy: [] as const,
+    // Arbitrum mainnet — redeployed 2026-03-06 (symmetric burn fix)
+    address: '0x49FD85a1Bf0C449A516Bf2a45d6106Bef7150aD5',
+    legacy: ['0x136700DBA1cCC2eDd16aB0bf439bd6b65574F99f'] as const,
   },
   421614: {
     // Arbitrum Sepolia testnet — deployed 2026-02-26
@@ -304,14 +286,14 @@ export const predictionMarketBridgeRemote: ChainAddressMap = {
  */
 export const predictionMarketTokenFactory: ChainAddressMap = {
   5064014: {
-    // Ethereal mainnet — deployed 2026-02-26 (CREATE2 deterministic, same address on both chains)
-    address: '0x82b1b600DaCFcff4Cc1e3bD02c542222597e5Fe2',
-    legacy: [] as const,
+    // Ethereal mainnet — redeployed 2026-03-06 (CREATE2 deterministic, same address on both chains)
+    address: '0xe51f86ff77388c108Aa77A629b82713FF5233FE2',
+    legacy: ['0x82b1b600DaCFcff4Cc1e3bD02c542222597e5Fe2'] as const,
   },
   42161: {
-    // Arbitrum mainnet — deployed 2026-02-26 (CREATE2 deterministic, same address on both chains)
-    address: '0x82b1b600DaCFcff4Cc1e3bD02c542222597e5Fe2',
-    legacy: [] as const,
+    // Arbitrum mainnet — redeployed 2026-03-06 (CREATE2 deterministic, same address on both chains)
+    address: '0xe51f86ff77388c108Aa77A629b82713FF5233FE2',
+    legacy: ['0x82b1b600DaCFcff4Cc1e3bD02c542222597e5Fe2'] as const,
   },
   13374202: {
     // Ethereal testnet — deployed 2026-02-26 (CREATE2 deterministic, same address on both chains)
@@ -335,9 +317,8 @@ export const predictionMarketTokenFactory: ChainAddressMap = {
 } as const;
 
 /**
- * SecondaryMarketEscrow (V2)
+ * SecondaryMarketEscrow
  * Atomic OTC swap for position tokens
- * Deployed: 0x0c12a974E7741135a8431458705Ae16dDa41aA85 (Ethereal testnet)
  */
 export const secondaryMarketEscrow: ChainAddressMap = {
   5064014: {
@@ -372,7 +353,7 @@ export const onboardingSponsor: ChainAddressMap = {
   },
 } as const;
 
-// Legacy exports
+/** @deprecated Use individual contract exports instead. */
 export const contracts = {
   predictionMarket,
   predictionMarketLZConditionalTokensResolver,
@@ -380,12 +361,10 @@ export const contracts = {
   lzPMResolver,
   lzUmaResolver,
   pythResolver,
-  passiveLiquidityVault,
   collateralToken,
   eas,
 };
 
-// Escrow exports
 export const escrowContracts = {
   predictionMarketEscrow,
   predictionMarketVault,

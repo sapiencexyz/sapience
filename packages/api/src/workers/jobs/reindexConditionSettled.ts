@@ -4,18 +4,19 @@ import ConditionSettledIndexer from '../indexers/conditionSettledIndexer';
 
 export async function reindexConditionSettled(
   chainId: number,
+  resolverAddress: `0x${string}`,
   startTimestamp?: number,
   endTimestamp?: number
 ) {
   try {
     console.log(
-      `[ConditionSettled Reindex] Reindexing on chain ${chainId} from ${startTimestamp ? new Date(startTimestamp * 1000).toISOString() : '2 days ago'} to ${endTimestamp ? new Date(endTimestamp * 1000).toISOString() : 'now'}`
+      `[ConditionSettled Reindex] Reindexing on chain ${chainId} resolver ${resolverAddress} from ${startTimestamp ? new Date(startTimestamp * 1000).toISOString() : '2 days ago'} to ${endTimestamp ? new Date(endTimestamp * 1000).toISOString() : 'now'}`
     );
 
     await initializeDataSource();
 
     const resourceSlug = 'condition-settled';
-    const indexer = new ConditionSettledIndexer(chainId);
+    const indexer = new ConditionSettledIndexer(chainId, resolverAddress);
 
     const startTime =
       startTimestamp || Math.floor(Date.now() / 1000) - 2 * 24 * 60 * 60;
@@ -36,9 +37,7 @@ export async function reindexConditionSettled(
         `[ConditionSettled Reindex] Successfully completed for chain ${chainId}`
       );
     } else {
-      console.error(
-        `[ConditionSettled Reindex] Failed for chain ${chainId}`
-      );
+      console.error(`[ConditionSettled Reindex] Failed for chain ${chainId}`);
     }
 
     return result;

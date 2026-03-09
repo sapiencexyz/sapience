@@ -17,7 +17,7 @@ pnpm docgen                 # Generate documentation with Forge
 ### Testing Individual Files
 ```bash
 # Run specific test file
-forge test --match-path test/v2/PredictionMarketEscrow.t.sol -vvv
+forge test --match-path test/PredictionMarketEscrow.t.sol -vvv
 
 # Run specific test function
 forge test --match-test test_revertWhen_invalidEpoch -vvv
@@ -33,26 +33,25 @@ pnpm fmt  # format solidity source files
 
 ```
 src/
-├── v2/                  # Main protocol
-│   ├── bridge/          # Position token bridge (Ethereal <-> Arbitrum)
-│   ├── interfaces/      # V2 interfaces and types
-│   ├── resolvers/       # Condition resolvers (pyth/, lz-uma/, conditionalTokens/, mocks/)
-│   ├── sponsors/        # Mint sponsors (OnboardingSponsor)
-│   ├── utils/           # Signature validation, account factory
-│   ├── vault/           # PredictionMarketVault (LP deposits/withdrawals)
-│   ├── PredictionMarketEscrow.sol   # Core escrow: mint, burn, settle, redeem
-│   ├── PredictionMarketToken.sol    # ERC20 position token
-│   ├── PredictionMarketTokenFactory.sol  # CREATE3 factory for deterministic addresses
-│   ├── SecondaryMarketEscrow.sol    # Atomic OTC swap for position tokens
-│   └── v2.md            # Detailed specification
-├── legacy/              # Legacy v1 contracts
-│   ├── predictionMarket/
-│   ├── bridge/
-│   ├── vault/
-│   ├── external/
-│   └── scripts/
+├── bridge/              # Position token bridge (Ethereal <-> Arbitrum)
+├── interfaces/          # Interfaces and types
+├── resolvers/           # Condition resolvers (pyth/, lz-uma/, conditionalTokens/, mocks/)
+├── sponsors/            # Mint sponsors (OnboardingSponsor)
+├── utils/               # Signature validation, account factory
+├── vault/               # PredictionMarketVault (LP deposits/withdrawals)
+├── PredictionMarketEscrow.sol       # Core escrow: mint, burn, settle, redeem
+├── PredictionMarketToken.sol        # ERC20 position token
+├── PredictionMarketTokenFactory.sol # CREATE3 factory for deterministic addresses
+├── SecondaryMarketEscrow.sol        # Atomic OTC swap for position tokens
 └── scripts/
-    └── v2/              # V2 deployment scripts
+    ├── debug/           # Debug scripts
+    ├── mainnet/         # Mainnet deployment scripts
+    └── testnet/         # Testnet deployment scripts
+test/
+├── fixtures/            # Hash fixture generation for SDK golden tests
+├── mocks/               # Mock contracts for testing
+├── vault/               # Vault-specific tests
+└── *.t.sol              # Test files
 ```
 
 ## Contract Verification
@@ -83,7 +82,7 @@ forge verify-contract \
 
 ## Architecture
 
-See `src/v2/v2.md` for the complete specification.
+See `src/spec.md` for the complete specification.
 
 ### Core Concepts
 
@@ -108,7 +107,7 @@ Users with the same picks share fungible tokens. Both sides of a mint receive to
 
 ### Condition Resolvers
 
-Located in `src/v2/resolvers/`:
+Located in `src/resolvers/`:
 - **PythConditionResolver** (`pyth/`): Pyth oracle-based resolution
 - **ManualConditionResolver** (`mocks/`): Admin-controlled resolution
 - **LZConditionResolver** (`lz-uma/`): Cross-chain resolution via LayerZero (Ethereal side)
