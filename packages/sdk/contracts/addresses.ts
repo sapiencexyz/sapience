@@ -122,9 +122,9 @@ export const eas: ChainAddressMap = {
  */
 export const predictionMarketEscrow: ChainAddressMap = {
   5064014: {
-    // Ethereal mainnet — deployed 2026-02-26
-    address: '0x23C765fcE26aDbA3A1e0790d548410367D5A3487',
-    legacy: [] as const,
+    // Ethereal mainnet — redeployed 2026-03-06 (symmetric burn fix)
+    address: '0xC18ed3483733d4e15516c2Fe101fF20B61e88A55',
+    legacy: ['0x23C765fcE26aDbA3A1e0790d548410367D5A3487'] as const,
   },
   13374202: {
     // Ethereal testnet — deployed 2026-02-26
@@ -242,9 +242,9 @@ export const lzConditionResolver: ChainAddressMap = {
  */
 export const predictionMarketBridge: ChainAddressMap = {
   5064014: {
-    // Ethereal mainnet — deployed 2026-02-26
-    address: '0xf3a0026Bd8Bf3B3ca41177C93b99F97dfB657506',
-    legacy: [] as const,
+    // Ethereal mainnet — redeployed 2026-03-06 (symmetric burn fix)
+    address: '0x7Ac66f19Cb9B4540A0aF02eeA406f413138D659A',
+    legacy: ['0xf3a0026Bd8Bf3B3ca41177C93b99F97dfB657506'] as const,
   },
   13374202: {
     // Ethereal testnet — deployed 2026-02-26
@@ -264,9 +264,9 @@ export const predictionMarketBridge: ChainAddressMap = {
  */
 export const predictionMarketBridgeRemote: ChainAddressMap = {
   42161: {
-    // Arbitrum mainnet — deployed 2026-02-26
-    address: '0x136700DBA1cCC2eDd16aB0bf439bd6b65574F99f',
-    legacy: [] as const,
+    // Arbitrum mainnet — redeployed 2026-03-06 (symmetric burn fix)
+    address: '0x49FD85a1Bf0C449A516Bf2a45d6106Bef7150aD5',
+    legacy: ['0x136700DBA1cCC2eDd16aB0bf439bd6b65574F99f'] as const,
   },
   421614: {
     // Arbitrum Sepolia testnet — deployed 2026-02-26
@@ -286,14 +286,14 @@ export const predictionMarketBridgeRemote: ChainAddressMap = {
  */
 export const predictionMarketTokenFactory: ChainAddressMap = {
   5064014: {
-    // Ethereal mainnet — deployed 2026-02-26 (CREATE2 deterministic, same address on both chains)
-    address: '0x82b1b600DaCFcff4Cc1e3bD02c542222597e5Fe2',
-    legacy: [] as const,
+    // Ethereal mainnet — redeployed 2026-03-06 (CREATE2 deterministic, same address on both chains)
+    address: '0xe51f86ff77388c108Aa77A629b82713FF5233FE2',
+    legacy: ['0x82b1b600DaCFcff4Cc1e3bD02c542222597e5Fe2'] as const,
   },
   42161: {
-    // Arbitrum mainnet — deployed 2026-02-26 (CREATE2 deterministic, same address on both chains)
-    address: '0x82b1b600DaCFcff4Cc1e3bD02c542222597e5Fe2',
-    legacy: [] as const,
+    // Arbitrum mainnet — redeployed 2026-03-06 (CREATE2 deterministic, same address on both chains)
+    address: '0xe51f86ff77388c108Aa77A629b82713FF5233FE2',
+    legacy: ['0x82b1b600DaCFcff4Cc1e3bD02c542222597e5Fe2'] as const,
   },
   13374202: {
     // Ethereal testnet — deployed 2026-02-26 (CREATE2 deterministic, same address on both chains)

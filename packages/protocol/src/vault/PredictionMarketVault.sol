@@ -770,9 +770,8 @@ contract PredictionMarketVault is
         if (escrow == address(0)) revert InvalidProtocol(escrow);
         if (amount == 0) revert InvalidAmount(amount);
 
-        payout = IPredictionMarketEscrow(escrow).redeem(
-            positionToken, amount, refCode
-        );
+        payout = IPredictionMarketEscrow(escrow)
+            .redeem(positionToken, amount, refCode);
 
         emit EscrowRedeemed(escrow, positionToken, amount, payout, refCode);
     }
