@@ -877,4 +877,63 @@ contract PredictionMarketEscrowIntegrationTest is Test {
             market.redeem(counterpartyToken, totalCollateral, REF_CODE);
         assertEq(payout, totalCollateral);
     }
+
+    /**
+     * @notice Test: Counterparty can claim when one leg resolves as a tie (non-decisive)
+     * while other legs are still unresolved.
+     */
+    function test_fullFlow_twoPicks_earlyCounterpartyWin_oneLegTie()
+        public
+    {
+        bytes32 condition1 = keccak256("early-tie-leg-1");
+        bytes32 condition2 = keccak256("early-tie-leg-2");
+
+        // Sort conditions for canonical order
+        (bytes32 first, bytes32 second) = condition1 < condition2
+            ? (condition1, condition2)
+            : (condition2, condition1);
+
+        IV2Types.Pick[] memory picks = new IV2Types.Pick[](2);
+        picks[0] = IV2Types.Pick({
+            conditionResolver: address(resolver),
+            conditionId: first,
+            predictedOutcome: IV2Types.OutcomeSide.YES
+        });
+        picks[1] = IV2Types.Pick({
+            conditionResolver: address(resolver),
+            conditionId: second,
+            predictedOutcome: IV2Types.OutcomeSide.YES
+        });
+
+        uint256 pCollateral = 500e18;
+        uint256 cCollateral = 1000e18;
+        IV2Types.MintRequest memory request =
+            _createMintRequest(picks, pCollateral, cCollateral);
+        (bytes32 predictionId,, address counterpartyToken) =
+            market.mint(request);
+
+        // Only settle the SECOND condition as a TIE (non-decisive)
+        // The first condition remains unresolved
+        vm.prank(settler);
+        resolver.settleCondition(second, IV2Types.OutcomeVector(1, 1)); // TIE
+
+        // Should settle as COUNTERPARTY_WINS even with first leg unresolved
+        market.settle(predictionId, REF_CODE);
+
+        IV2Types.Prediction memory prediction =
+            market.getPrediction(predictionId);
+        IV2Types.PickConfiguration memory config =
+            market.getPickConfiguration(prediction.pickConfigId);
+        assertEq(
+            uint256(config.result),
+            uint256(IV2Types.SettlementResult.COUNTERPARTY_WINS)
+        );
+
+        // Counterparty gets all
+        uint256 totalCollateral = pCollateral + cCollateral;
+        vm.prank(counterparty);
+        uint256 payout =
+            market.redeem(counterpartyToken, totalCollateral, REF_CODE);
+        assertEq(payout, totalCollateral);
+    }
 }
