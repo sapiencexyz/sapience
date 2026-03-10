@@ -24,6 +24,7 @@ export interface AuctionParams {
     conditionId: `0x${string}`;
     predictedOutcome: number;
   }>;
+  predictorDeadline?: number; // unix seconds — computed internally at auction start
 }
 
 export interface QuoteBid {
@@ -64,7 +65,8 @@ export interface MintPredictionRequestData {
   // Optional here; the submit hook will fetch and inject the correct nonce
   makerNonce?: string | bigint;
   takerSignature: `0x${string}`; // taker approval for this prediction (off-chain)
-  takerDeadline: string; // unix seconds (uint256 string)
+  takerDeadline: string; // unix seconds (uint256 string) — counterparty's deadline
+  makerDeadline: string; // unix seconds (uint256 string) — predictor's deadline from auction start
   refCode: `0x${string}`; // bytes32
   // For validation: the nonce the bidder (contract taker) claimed when signing
   // This is embedded in their signature and must match their on-chain nonce
@@ -393,9 +395,15 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
       }));
       const picks = canonicalizePicks(rawPicks);
 
-      // Calculate deadline (5 minutes from now)
+      // Calculate deadline (30 seconds from now)
       const nowSec = Math.floor(Date.now() / 1000);
-      const predictorDeadline = nowSec + 300;
+      const predictorDeadline = nowSec + 30;
+
+      // Store predictorDeadline on the auction ref so buildMintRequestDataFromBid can access it
+      lastAuctionRef.current = {
+        ...lastAuctionRef.current,
+        predictorDeadline,
+      };
 
       const escrowPayload = {
         picks: picks.map((p) => ({
@@ -498,6 +506,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
         taker: bid.counterparty as `0x${string}`,
         takerSignature: bid.counterpartySignature as `0x${string}`,
         takerDeadline: String(bid.counterpartyDeadline),
+        makerDeadline: String(auction.predictorDeadline),
         refCode: (args.refCode ?? ZERO_BYTES32) as `0x${string}`,
         makerNonce: String(auction.predictorNonce),
         takerClaimedNonce: bid.counterpartyNonce,
