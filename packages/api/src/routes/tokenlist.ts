@@ -35,9 +35,7 @@ interface TokenEntry {
   tags: string[];
   extensions: {
     pickConfigId: string;
-    resolved: boolean;
     result: string;
-    predictedOutcome: string;
     sapience: true;
   };
 }
@@ -140,9 +138,6 @@ async function buildTokenList(): Promise<string> {
 
     const counterpartySymbol = `${predictorSymbol}-counterparty`;
 
-    // Predictor outcome string for extensions
-    const outcomeStr = conditionParts.map((p) => p.outcome).join('+');
-
     const sides: Array<{
       address: string;
       tag: string;
@@ -174,9 +169,7 @@ async function buildTokenList(): Promise<string> {
           tags: [side.tag],
           extensions: {
             pickConfigId: pc.id,
-            resolved: pc.resolved,
             result: pc.result,
-            predictedOutcome: outcomeStr,
             sapience: true,
           },
         });

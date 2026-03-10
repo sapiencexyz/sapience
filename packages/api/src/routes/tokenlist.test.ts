@@ -245,9 +245,7 @@ describe('tokenlist', () => {
 
       expect(token.extensions).toEqual({
         pickConfigId: 'pc-1',
-        resolved: true,
         result: 'PREDICTOR_WINS',
-        predictedOutcome: 'Yes',
         sapience: true,
       });
       expect(token.decimals).toBe(18);
