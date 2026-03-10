@@ -98,7 +98,7 @@ export interface MintPredictionRequestDataLike {
   makerNonce?: string | number | bigint;
   takerSignature: `0x${string}`;
   takerDeadline: string | number | bigint;
-  makerDeadline?: string | number | bigint;
+  makerDeadline: string | number | bigint;
   refCode: `0x${string}`;
   picks: Array<{
     conditionResolver: `0x${string}`;
@@ -222,7 +222,7 @@ export function prepareMintCalls(
     counterparty: mintData.taker,
     predictorNonce: makerNonceBigInt,
     counterpartyNonce: BigInt(mintData.takerClaimedNonce ?? 0),
-    predictorDeadline: BigInt(mintData.makerDeadline ?? mintData.takerDeadline),
+    predictorDeadline: BigInt(mintData.makerDeadline),
     counterpartyDeadline: BigInt(mintData.takerDeadline),
     predictorSignature: (mintData.predictorSignature || '0x') as Hex,
     counterpartySignature: mintData.takerSignature,
