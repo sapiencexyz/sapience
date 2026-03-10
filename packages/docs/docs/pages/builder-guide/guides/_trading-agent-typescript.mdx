@@ -54,15 +54,15 @@ import {
   CHAIN_ID_ETHEREAL,
   createAuctionWs,
   submitTransaction,
-  contracts,
+  escrowContracts,
   prepareForTrade,
 } from '@sapience/sdk';
 
 // Configuration - Ethereal chain (5064014)
 const RPC_URL = 'https://rpc.ethereal.trade';
 const WS_URL = 'wss://relayer.sapience.xyz/auction';
-const RESOLVER = contracts.lzPMResolver[CHAIN_ID_ETHEREAL].address;
-const PREDICTION_MARKET = contracts.predictionMarket[CHAIN_ID_ETHEREAL].address;
+const RESOLVER = escrowContracts.pythConditionResolver[CHAIN_ID_ETHEREAL].address;
+const PREDICTION_MARKET = escrowContracts.predictionMarketEscrow[CHAIN_ID_ETHEREAL].address;
 const POSITION_SIZE = '1000000000000000000'; // 1 WUSDe (18 decimals)
 
 const account = privateKeyToAccount(process.env.PRIVATE_KEY as Hex);
