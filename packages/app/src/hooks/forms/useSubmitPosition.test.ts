@@ -37,7 +37,7 @@ jest.mock('@sapience/sdk', () => ({
     if (value === undefined) return undefined;
     return BigInt(value);
   },
-  validateCounterpartyFunds: jest.fn().mockResolvedValue(undefined),
+  validateTakerFunds: jest.fn().mockResolvedValue(undefined),
   prepareMintCalls: (...args: unknown[]) => mockPrepareMintCalls(...args),
 }));
 
@@ -106,13 +106,13 @@ const DEFAULT_PROPS = {
 };
 
 const VALID_MINT_DATA: MintPredictionRequestData = {
-  predictorCollateral: '1000000000000000000', // 1e18
-  counterpartyCollateral: '2000000000000000000', // 2e18
-  predictor: '0xUserAddress' as `0x${string}`,
-  counterparty: '0xBidder' as `0x${string}`,
-  counterpartySignature: '0xSig' as `0x${string}`,
-  counterpartyDeadline: '9999999999',
-  predictorDeadline: '9999999999',
+  makerCollateral: '1000000000000000000', // 1e18
+  takerCollateral: '2000000000000000000', // 2e18
+  maker: '0xUserAddress' as `0x${string}`,
+  taker: '0xBidder' as `0x${string}`,
+  takerSignature: '0xSig' as `0x${string}`,
+  takerDeadline: '9999999999',
+  makerDeadline: '9999999999',
   refCode:
     '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`,
   picks: [
@@ -128,14 +128,14 @@ describe('useSubmitPosition', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     mockSendCalls.mockResolvedValue(undefined);
-    // Default: predictorNonce query returns 0n, refetch returns 0n
+    // Default: makerNonce query returns 0n, refetch returns 0n
     mockUseReadContract.mockReturnValue({
       data: 0n,
       isLoading: false,
       refetch: jest.fn().mockResolvedValue({ data: 0n }),
     });
     mockUseAccount.mockReturnValue({ address: '0xUserAddress' });
-    // Mock counterparty validation - return enough balance/allowance
+    // Mock taker validation - return enough balance/allowance
     mockReadContract.mockResolvedValue(999999999999999999999n);
   });
 
@@ -163,7 +163,7 @@ describe('useSubmitPosition', () => {
   it('submitPosition happy path calls sendCalls with batch of calls', async () => {
     const mintData: MintPredictionRequestData = {
       ...VALID_MINT_DATA,
-      predictorNonce: 0n,
+      makerNonce: 0n,
     };
 
     const { result } = renderHook(() => useSubmitPosition(DEFAULT_PROPS));
@@ -186,11 +186,11 @@ describe('useSubmitPosition', () => {
     expect(result.current.error).toBeNull();
   });
 
-  it('sets error when predictor !== effectiveAddress (address mismatch)', async () => {
+  it('sets error when maker !== effectiveAddress (address mismatch)', async () => {
     const mintData: MintPredictionRequestData = {
       ...VALID_MINT_DATA,
-      predictor: '0xDifferentAddress' as `0x${string}`,
-      predictorNonce: 0n,
+      maker: '0xDifferentAddress' as `0x${string}`,
+      makerNonce: 0n,
     };
 
     const { result } = renderHook(() => useSubmitPosition(DEFAULT_PROPS));
@@ -207,7 +207,7 @@ describe('useSubmitPosition', () => {
   it('uses provided auction nonce directly without on-chain check', async () => {
     const mintData: MintPredictionRequestData = {
       ...VALID_MINT_DATA,
-      predictorNonce: 42n,
+      makerNonce: 42n,
     };
 
     const { result } = renderHook(() => useSubmitPosition(DEFAULT_PROPS));
@@ -226,9 +226,9 @@ describe('useSubmitPosition', () => {
 
     const mintData: MintPredictionRequestData = {
       ...VALID_MINT_DATA,
-      // no predictorNonce → non-auction submission, hook generates random nonce
+      // no makerNonce → non-auction submission, hook generates random nonce
     };
-    delete (mintData as Partial<MintPredictionRequestData>).predictorNonce;
+    delete (mintData as Partial<MintPredictionRequestData>).makerNonce;
 
     const { result } = renderHook(() => useSubmitPosition(DEFAULT_PROPS));
 
@@ -246,7 +246,7 @@ describe('useSubmitPosition', () => {
 
     const mintData: MintPredictionRequestData = {
       ...VALID_MINT_DATA,
-      predictorNonce: 0n, // auction-provided nonce
+      makerNonce: 0n, // auction-provided nonce
     };
 
     const { result } = renderHook(() => useSubmitPosition(DEFAULT_PROPS));
@@ -290,7 +290,7 @@ describe('useSubmitPosition', () => {
 
     const mintData: MintPredictionRequestData = {
       ...VALID_MINT_DATA,
-      predictorNonce: 0n,
+      makerNonce: 0n,
     };
 
     await act(async () => {
@@ -307,7 +307,7 @@ describe('useSubmitPosition', () => {
 
     const mintData: MintPredictionRequestData = {
       ...VALID_MINT_DATA,
-      predictorNonce: 0n,
+      makerNonce: 0n,
     };
 
     await act(async () => {

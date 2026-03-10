@@ -29,14 +29,14 @@ export function toBigIntSafe(
 }
 
 /**
- * Validate that a counterparty (bidder / market-maker) has sufficient on-chain balance
+ * Validate that a taker (bidder / market-maker) has sufficient on-chain balance
  * and allowance to cover the collateral.
  *
  * @throws Error with a user-facing message when funds are insufficient.
  */
-export async function validateCounterpartyFunds(
-  counterpartyAddress: `0x${string}` | undefined,
-  counterpartyCollateralWei: bigint,
+export async function validateTakerFunds(
+  takerAddress: `0x${string}` | undefined,
+  takerCollateralWei: bigint,
   collateralTokenAddress: `0x${string}`,
   predictionMarketAddress: `0x${string}`,
   publicClient: {
@@ -48,29 +48,29 @@ export async function validateCounterpartyFunds(
     }) => Promise<unknown>;
   }
 ): Promise<void> {
-  if (!counterpartyAddress || !collateralTokenAddress || !predictionMarketAddress) {
+  if (!takerAddress || !collateralTokenAddress || !predictionMarketAddress) {
     return;
   }
 
   try {
-    const [counterpartyAllowance, counterpartyBalance] = (await Promise.all([
+    const [takerAllowance, takerBalance] = (await Promise.all([
       publicClient.readContract({
         address: collateralTokenAddress,
         abi: erc20Abi,
         functionName: 'allowance',
-        args: [counterpartyAddress, predictionMarketAddress],
+        args: [takerAddress, predictionMarketAddress],
       }),
       publicClient.readContract({
         address: collateralTokenAddress,
         abi: erc20Abi,
         functionName: 'balanceOf',
-        args: [counterpartyAddress],
+        args: [takerAddress],
       }),
     ])) as [bigint, bigint];
 
     if (
-      counterpartyAllowance < counterpartyCollateralWei ||
-      counterpartyBalance < counterpartyCollateralWei
+      takerAllowance < takerCollateralWei ||
+      takerBalance < takerCollateralWei
     ) {
       throw new Error(
         'This bid is no longer valid. The market maker has insufficient funds. Please request new bids.'
@@ -91,14 +91,14 @@ export async function validateCounterpartyFunds(
  * The hook's full type may have additional fields.
  */
 export interface MintPredictionRequestDataLike {
-  predictorCollateral: string | bigint;
-  counterpartyCollateral: string | bigint;
-  predictor: `0x${string}`;
-  counterparty: `0x${string}`;
-  predictorNonce?: string | number | bigint;
-  counterpartySignature: `0x${string}`;
-  counterpartyDeadline: string | number | bigint;
-  predictorDeadline: string | number | bigint;
+  makerCollateral: string | bigint;
+  takerCollateral: string | bigint;
+  maker: `0x${string}`;
+  taker: `0x${string}`;
+  makerNonce?: string | number | bigint;
+  takerSignature: `0x${string}`;
+  takerDeadline: string | number | bigint;
+  makerDeadline: string | number | bigint;
   refCode: `0x${string}`;
   picks: Array<{
     conditionResolver: `0x${string}`;
@@ -106,7 +106,7 @@ export interface MintPredictionRequestDataLike {
     predictedOutcome: number;
   }>;
   /** Counterparty nonce (bidder's nonce from their signature) */
-  counterpartyClaimedNonce?: number | bigint;
+  takerClaimedNonce?: number | bigint;
   /** Predictor session key data (base64 encoded, empty if EOA) */
   predictorSessionKeyData?: string;
   /** Counterparty session key data (base64 encoded, empty if EOA) */
@@ -149,10 +149,10 @@ export function prepareMintCalls(
 
   const calls: { to: Address; data: `0x${string}`; value?: bigint }[] = [];
 
-  const predictorCollateralWei = BigInt(mintData.predictorCollateral);
-  const counterpartyCollateralWei = BigInt(mintData.counterpartyCollateral);
+  const makerCollateralWei = BigInt(mintData.makerCollateral);
+  const takerCollateralWei = BigInt(mintData.takerCollateral);
 
-  if (predictorCollateralWei <= 0n || counterpartyCollateralWei <= 0n) {
+  if (makerCollateralWei <= 0n || takerCollateralWei <= 0n) {
     throw new Error('Invalid collateral amounts');
   }
 
@@ -169,7 +169,7 @@ export function prepareMintCalls(
     const wrappedBal =
       typeof currentWusdeBalance === 'bigint' ? currentWusdeBalance : 0n;
     const amountToWrap =
-      predictorCollateralWei > wrappedBal ? predictorCollateralWei - wrappedBal : 0n;
+      makerCollateralWei > wrappedBal ? makerCollateralWei - wrappedBal : 0n;
 
     if (amountToWrap > 0n) {
       calls.push({
@@ -186,22 +186,22 @@ export function prepareMintCalls(
   // 2. Approve if needed (skip when sponsored — sponsor transfers, not user)
   if (!isSponsored) {
     const effectiveAllowance = currentAllowance ?? 0n;
-    if (effectiveAllowance < predictorCollateralWei) {
+    if (effectiveAllowance < makerCollateralWei) {
       calls.push({
         to: collateralTokenAddress,
         data: encodeFunctionData({
           abi: erc20Abi,
           functionName: 'approve',
-          args: [predictionMarketAddress, predictorCollateralWei],
+          args: [predictionMarketAddress, makerCollateralWei],
         }),
       });
     }
   }
 
   // 3. Mint call
-  const predictorNonceBigInt = toBigIntSafe(mintData.predictorNonce);
-  if (predictorNonceBigInt === undefined) {
-    throw new Error('Missing predictor nonce');
+  const makerNonceBigInt = toBigIntSafe(mintData.makerNonce);
+  if (makerNonceBigInt === undefined) {
+    throw new Error('Missing maker nonce');
   }
 
   const picks = mintData.picks.map((p) => ({
@@ -216,16 +216,16 @@ export function prepareMintCalls(
 
   const mintRequest = {
     picks,
-    predictorCollateral: predictorCollateralWei,
-    counterpartyCollateral: counterpartyCollateralWei,
-    predictor: mintData.predictor,
-    counterparty: mintData.counterparty,
-    predictorNonce: predictorNonceBigInt,
-    counterpartyNonce: BigInt(mintData.counterpartyClaimedNonce ?? 0),
-    predictorDeadline: BigInt(mintData.predictorDeadline),
-    counterpartyDeadline: BigInt(mintData.counterpartyDeadline),
+    predictorCollateral: makerCollateralWei,
+    counterpartyCollateral: takerCollateralWei,
+    predictor: mintData.maker,
+    counterparty: mintData.taker,
+    predictorNonce: makerNonceBigInt,
+    counterpartyNonce: BigInt(mintData.takerClaimedNonce ?? 0),
+    predictorDeadline: BigInt(mintData.makerDeadline),
+    counterpartyDeadline: BigInt(mintData.takerDeadline),
     predictorSignature: (mintData.predictorSignature || '0x') as Hex,
-    counterpartySignature: mintData.counterpartySignature,
+    counterpartySignature: mintData.takerSignature,
     refCode: mintData.refCode,
     predictorSessionKeyData: (mintData.predictorSessionKeyData
       ? mintData.predictorSessionKeyData
