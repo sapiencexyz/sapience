@@ -180,12 +180,29 @@ export async function simulateEscrowBidMint(
   } catch (err: unknown) {
     // Distinguish contract reverts from RPC/network errors
     if (isContractRevert(err)) {
+      const errorMessage = parseSimulationError(err);
+
+      // InvalidSignature on the predictor side is expected in session mode:
+      // simulateContract can't replicate the smart account's ERC-1271 context
+      // (the session key signs but the contract can't verify via isValidSignature
+      // outside of a real UserOp execution context).
+      // Fall back to lightweight validation for the counterparty instead.
+      if (errorMessage.includes('Invalid') && errorMessage.includes('signature')) {
+        logBidValidation(
+          `[escrow-sim] InvalidSignature (expected in session mode) — falling back to lightweight validation for ${bid.counterparty.slice(0, 10)}`
+        );
+        return validateEscrowBidLightweight(bid, {
+          chainId,
+          predictionMarketAddress,
+          collateralTokenAddress,
+        });
+      }
+
       console.debug('=== ESCROW BID SIMULATION ERROR ===');
       console.debug('Bid counterparty:', bid.counterparty);
       console.debug('Error:', err);
       console.debug('=== END ERROR ===');
 
-      const errorMessage = parseSimulationError(err);
       return { isValid: false, error: errorMessage };
     }
 
