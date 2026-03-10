@@ -31,7 +31,11 @@ import {
 import { useConditionsByIds } from '~/hooks/graphql/useConditionsByIds';
 import OgShareDialogBase from '~/components/shared/OgShareDialog';
 import PredictionDialog from '~/components/positions/PredictionDialog';
-import { toPicks, type ConditionsMap } from '~/components/positions/toPickLegs';
+import {
+  toPicks,
+  computeResultFromConditions,
+  type ConditionsMap,
+} from '~/components/positions/toPickLegs';
 import {
   ActivityTableFilters,
   getDefaultActivityFilterState,
@@ -90,9 +94,12 @@ function ActivityRow({
   );
   const totalEth = predictorEth + counterpartyEth;
 
-  // Result
-  const isSettled = prediction.settled;
-  const result = prediction.result;
+  // Result: use on-chain result if settled, otherwise compute from individual conditions
+  const computed = !prediction.settled
+    ? computeResultFromConditions(rawPicks, conditionsMap)
+    : null;
+  const isSettled = prediction.settled || (computed?.result !== 'UNRESOLVED');
+  const result = prediction.settled ? prediction.result : (computed?.result ?? 'UNRESOLVED');
   const predictorWon = result === 'PREDICTOR_WINS';
   const counterpartyWon = result === 'COUNTERPARTY_WINS';
 
@@ -225,7 +232,9 @@ function ActivityRow({
             Result
           </div>
           {!isSettled && endsAtSec > 0 && endsAtMs > Date.now() ? (
-            <CountdownCell endTime={endsAtSec} />
+            <span className="whitespace-nowrap tabular-nums font-mono text-brand-white">
+              ENDS <CountdownCell endTime={endsAtSec} />
+            </span>
           ) : !isSettled ? (
             <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
               Pending
@@ -461,13 +470,22 @@ export default function ActivityTable({
       });
     }
 
-    // Filter by status
+    // Filter by status (using per-condition resolution for early results)
     if (filters.status.length > 0 && filters.status.length < 3) {
-      result = result.filter(({ prediction }) => {
-        if (!prediction.settled) return filters.status.includes('pending');
-        if (prediction.result === 'PREDICTOR_WINS')
+      result = result.filter(({ prediction, pickConfig }) => {
+        const picks = pickConfig?.picks ?? [];
+        const computed = !prediction.settled
+          ? computeResultFromConditions(picks, conditionsMap)
+          : null;
+        const effectiveResult = prediction.settled
+          ? prediction.result
+          : (computed?.result ?? 'UNRESOLVED');
+
+        if (effectiveResult === 'UNRESOLVED')
+          return filters.status.includes('pending');
+        if (effectiveResult === 'PREDICTOR_WINS')
           return filters.status.includes('predictor_won');
-        if (prediction.result === 'COUNTERPARTY_WINS')
+        if (effectiveResult === 'COUNTERPARTY_WINS')
           return filters.status.includes('counterparty_won');
         return filters.status.includes('pending');
       });

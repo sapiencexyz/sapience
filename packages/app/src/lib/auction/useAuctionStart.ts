@@ -24,6 +24,7 @@ export interface AuctionParams {
     conditionId: `0x${string}`;
     predictedOutcome: number;
   }>;
+  predictorDeadline?: number; // unix seconds — computed internally at auction start
 }
 
 export interface QuoteBid {
@@ -53,22 +54,20 @@ export interface EscrowQuoteBid {
 }
 
 // Struct shape expected by PredictionMarketEscrow.mint()
-// @dev notice that this interface follows contract field names, not API field names
-// Contract "maker" = API "taker" (auction creator)
-// Contract "taker" = API "maker" (bidder)
 export interface MintPredictionRequestData {
-  makerCollateral: string; // wei
-  takerCollateral: string; // wei
-  maker: `0x${string}`;
-  taker: `0x${string}`;
+  predictorCollateral: string; // wei
+  counterpartyCollateral: string; // wei
+  predictor: `0x${string}`;
+  counterparty: `0x${string}`;
   // Optional here; the submit hook will fetch and inject the correct nonce
-  makerNonce?: string | bigint;
-  takerSignature: `0x${string}`; // taker approval for this prediction (off-chain)
-  takerDeadline: string; // unix seconds (uint256 string)
+  predictorNonce?: string | bigint;
+  counterpartySignature: `0x${string}`; // counterparty approval for this prediction (off-chain)
+  counterpartyDeadline: string; // unix seconds (uint256 string)
+  predictorDeadline: string; // unix seconds (uint256 string) — from auction start
   refCode: `0x${string}`; // bytes32
-  // For validation: the nonce the bidder (contract taker) claimed when signing
+  // The nonce the counterparty (bidder) claimed when signing
   // This is embedded in their signature and must match their on-chain nonce
-  takerClaimedNonce?: number;
+  counterpartyClaimedNonce?: number;
   // Picks array — the predictor signs the exact same picks the counterparty signed
   picks: Array<{
     conditionResolver: `0x${string}`;
@@ -169,23 +168,88 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
   // Track which stale auction IDs we've already logged to reduce noise
   // (ExampleCombos creates multiple auctions that trigger stale bid warnings)
   const loggedStaleAuctionsRef = useRef<Set<string>>(new Set());
-  // Track the current pending request to handle race conditions
-  // When a new request is made, we generate a unique ID. Only the response
-  // matching the latest request ID will update the auction state.
-  const pendingRequestIdRef = useRef<string | null>(null);
+  // Correlation ID for the latest auction.start message we sent.
+  // Used by handleMessage to match ack responses to this hook instance
+  // (each instance gets its own ID, so shared-WS cross-talk is filtered out).
+  const sentMessageIdRef = useRef<string | null>(null);
+  // Manual ack timeout (replaces sendWithAck's internal timeout)
+  const ackTimeoutRef = useRef<number | null>(null);
+  // Buffer bids that arrive before the auction.ack (fast quoter race).
+  // Keyed by auctionId so we can replay them once the ack arrives.
+  const pendingBidsRef = useRef<Map<string, QuoteBid[]>>(new Map());
   const [currentAuctionParams, setCurrentAuctionParams] =
     useState<AuctionParams | null>(null);
 
-  // Set up message listener on the shared client for bids only
-  // auction.ack is handled via sendWithAck for proper request/response correlation
+  // Set up message listener on the shared client for bids AND ack responses.
+  // Acks are matched by the correlation ID we stored in sentMessageIdRef,
+  // so each hook instance only processes its own ack (shared WS is filtered).
   useEffect(() => {
     if (!wsUrl) return;
     const client = getSharedAuctionWsClient(wsUrl);
 
     const handleMessage = (msg: unknown) => {
       try {
-        const data = msg as { type?: string; payload?: any };
+        const data = msg as {
+          type?: string;
+          id?: string;
+          payload?: any;
+        };
 
+        // ---------------------------------------------------------------
+        // Handle ack response for our pending auction.start
+        // This runs synchronously in the onmessage callback, so
+        // latestAuctionIdRef is set BEFORE any subsequent bid message
+        // fires — eliminates the bids-before-ack race entirely.
+        // ---------------------------------------------------------------
+        const msgId = String(data?.id || data?.payload?.id || '');
+        if (msgId && msgId === sentMessageIdRef.current) {
+          sentMessageIdRef.current = null;
+          if (ackTimeoutRef.current) {
+            window.clearTimeout(ackTimeoutRef.current);
+            ackTimeoutRef.current = null;
+          }
+
+          if (data?.payload?.error) {
+            console.error('[Escrow Auction] Start failed:', data.payload.error);
+            inflightRef.current = '';
+            pendingBidsRef.current.clear();
+            return;
+          }
+
+          const newId = (data?.payload?.auctionId as string) || null;
+          latestAuctionIdRef.current = newId;
+          loggedStaleAuctionsRef.current.clear();
+          setAuctionId(newId);
+
+          // Replay bids that arrived before this ack (fast quoter race)
+          if (newId && pendingBidsRef.current.has(newId)) {
+            const buffered = pendingBidsRef.current.get(newId)!;
+            log(
+              `Replayed ${buffered.length} buffered bid(s) for auction ${newId.slice(0, 8)}`
+            );
+            setBids(buffered);
+          }
+          pendingBidsRef.current.clear();
+
+          log(
+            `[escrow] Auction started: id=${newId?.slice(0, 8)}, latestRef=${latestAuctionIdRef.current?.slice(0, 8)}`
+          );
+
+          // Subscribe to auction updates
+          if (newId) {
+            client.send({
+              type: 'auction.subscribe',
+              payload: { auctionId: newId },
+            });
+          }
+
+          inflightRef.current = '';
+          return;
+        }
+
+        // ---------------------------------------------------------------
+        // Handle auction.bids
+        // ---------------------------------------------------------------
         if (data?.type === 'auction.bids') {
           const targetAuctionId =
             (data.payload?.auctionId as string | undefined) ||
@@ -199,18 +263,6 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
           );
 
           if (!targetAuctionId) return;
-          // Filter: only process if this is for our current auction
-          if (targetAuctionId !== latestAuctionIdRef.current) {
-            // Only log once per stale auction ID to reduce noise
-            // (ExampleCombos creates multiple auctions that would spam logs)
-            if (!loggedStaleAuctionsRef.current.has(targetAuctionId)) {
-              loggedStaleAuctionsRef.current.add(targetAuctionId);
-              log(
-                `Ignoring bids for stale auction ${targetAuctionId} (current: ${latestAuctionIdRef.current})`
-              );
-            }
-            return;
-          }
 
           const rawBids = Array.isArray(data.payload?.bids)
             ? (data.payload.bids as any[])
@@ -227,7 +279,6 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
                   counterpartyDeadline: b.counterpartyDeadline || 0,
                   counterpartySignature: b.counterpartySignature || '0x',
                   counterpartyNonce: b.counterpartyNonce || 0,
-                  // Store escrow-specific fields for later use in mint request
                   counterpartySessionKeyData: b.counterpartySessionKeyData,
                 } as QuoteBid;
               } catch {
@@ -235,7 +286,21 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
               }
             })
             .filter((b): b is QuoteBid => b !== null);
-          // Set bids BEFORE logging so logging errors can never block state updates
+
+          // Filter: only process bids for our current auction.
+          // If we're waiting for an ack, buffer them for replay.
+          if (targetAuctionId !== latestAuctionIdRef.current) {
+            if (sentMessageIdRef.current) {
+              pendingBidsRef.current.set(targetAuctionId, normalized);
+            } else if (!loggedStaleAuctionsRef.current.has(targetAuctionId)) {
+              loggedStaleAuctionsRef.current.add(targetAuctionId);
+              log(
+                `Ignoring bids for stale auction ${targetAuctionId} (current: ${latestAuctionIdRef.current})`
+              );
+            }
+            return;
+          }
+
           setBids(normalized);
           log(
             `Received batch of ${rawBids.length} bid(s) for auction ${targetAuctionId}`
@@ -248,9 +313,6 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
             // Never let logging errors block bid processing
           }
         }
-
-        // auction.ack handled via sendWithAck
-        // auction.started is handled elsewhere (noop here)
       } catch {
         // ignore
       }
@@ -263,8 +325,6 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
     };
   }, [wsUrl]);
 
-  // Debounced send of auction.start when params change
-  const debounceTimer = useRef<number | null>(null);
   const requestQuotes = useCallback(
     (params: AuctionParams | null, options?: { forceRefresh?: boolean }) => {
       if (!params || !wsUrl) return;
@@ -282,8 +342,8 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
         wager: params.wager,
         resolver: params.resolver,
         predictedOutcomes: params.predictedOutcomes,
-        taker: effectivePredictor,
-        takerNonce: params.predictorNonce,
+        predictor: effectivePredictor,
+        predictorNonce: params.predictorNonce,
         chainId: params.chainId,
       };
 
@@ -296,120 +356,87 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
       // Clear inflight key when forcing refresh to allow the new request
       if (options?.forceRefresh) inflightRef.current = '';
 
-      if (debounceTimer.current) window.clearTimeout(debounceTimer.current);
-      debounceTimer.current = window.setTimeout(async () => {
-        const client = getSharedAuctionWsClient(wsUrl);
+      const client = getSharedAuctionWsClient(wsUrl);
 
-        // Generate a unique request ID to track this specific request
-        // This prevents race conditions where a newer request's response
-        // would be overwritten by an older request completing later
-        const thisRequestId = crypto.randomUUID();
-        pendingRequestIdRef.current = thisRequestId;
+      // Update inflight tracking and clear bids for new request
+      // Clear latestAuctionIdRef so bids from the previous auction are rejected.
+      // New-auction bids arriving before the ack are buffered in pendingBidsRef
+      // (keyed by auctionId) and replayed once the ack sets the new ID.
+      inflightRef.current = key;
+      latestAuctionIdRef.current = null;
+      setBids([]);
+      pendingBidsRef.current.clear();
+      // Store params with effectivePredictor so buildMintRequestDataFromBid uses the correct address
+      lastAuctionRef.current = { ...params, predictor: effectivePredictor };
+      setCurrentAuctionParams({ ...params, predictor: effectivePredictor });
 
-        // Check if a newer request was made while we were waiting
-        // If so, abort this request to avoid race conditions
-        if (pendingRequestIdRef.current !== thisRequestId) {
-          log('Aborting stale request (newer request in progress)');
-          return;
-        }
+      // Check if this is an escrow auction (has escrowPicks)
+      const isEscrowAuction =
+        params.escrowPicks && params.escrowPicks.length > 0;
 
-        // Update inflight tracking and clear bids for new request
-        // NOTE: We intentionally do NOT clear latestAuctionIdRef here.
-        // Setting it to null would cause bids for the current auction to be
-        // rejected as "stale" while we wait for the server response.
-        // Instead, we only update latestAuctionIdRef when we receive the
-        // new auction ID from the server.
-        inflightRef.current = key;
-        setBids([]);
-        // Store params with effectivePredictor so buildMintRequestDataFromBid uses the correct address
-        // (smart account address when session is active, otherwise EOA)
-        lastAuctionRef.current = { ...params, predictor: effectivePredictor };
-        setCurrentAuctionParams({ ...params, predictor: effectivePredictor });
+      if (!isEscrowAuction) {
+        console.error(
+          '[Auction] Escrow picks missing — all auctions require escrow format'
+        );
+        inflightRef.current = '';
+        return;
+      }
 
-        // Check if this is an escrow auction (has escrowPicks)
-        const isEscrowAuction =
-          params.escrowPicks && params.escrowPicks.length > 0;
+      const chainId = params.chainId;
 
-        if (isEscrowAuction) {
-          // Escrow Auction Start - no signature needed at start time
-          // Predictor signs when accepting a specific bid (which includes counterpartyCollateral)
-          try {
-            const chainId = params.chainId;
+      // Convert escrowPicks to Pick[] and canonicalize
+      const rawPicks: Pick[] = params.escrowPicks!.map((p) => ({
+        conditionResolver: p.conditionResolver,
+        conditionId: p.conditionId,
+        predictedOutcome: p.predictedOutcome,
+      }));
+      const picks = canonicalizePicks(rawPicks);
 
-            // Convert escrowPicks to Pick[] and canonicalize
-            const rawPicks: Pick[] = params.escrowPicks!.map((p) => ({
-              conditionResolver: p.conditionResolver,
-              conditionId: p.conditionId,
-              predictedOutcome: p.predictedOutcome,
-            }));
-            const picks = canonicalizePicks(rawPicks);
+      // Calculate deadline (30 seconds from now)
+      const nowSec = Math.floor(Date.now() / 1000);
+      const predictorDeadline = nowSec + 30;
 
-            // Calculate deadline (5 minutes from now)
-            const nowSec = Math.floor(Date.now() / 1000);
-            const predictorDeadline = nowSec + 300;
+      // Store predictorDeadline on the auction ref so buildMintRequestDataFromBid can access it
+      lastAuctionRef.current = {
+        ...lastAuctionRef.current,
+        predictorDeadline,
+      };
 
-            // Build escrow auction payload - no signature at start time
-            // Counterparty will specify their collateral in their bid
-            const escrowPayload = {
-              picks: picks.map((p) => ({
-                conditionResolver: p.conditionResolver,
-                conditionId: p.conditionId,
-                predictedOutcome: p.predictedOutcome,
-              })),
-              predictorCollateral: params.wager,
-              predictor: effectivePredictor,
-              predictorNonce: params.predictorNonce,
-              predictorDeadline,
-              chainId,
-              // Predictor signs when accepting a bid (which includes counterpartyCollateral)
-            };
+      const escrowPayload = {
+        picks: picks.map((p) => ({
+          conditionResolver: p.conditionResolver,
+          conditionId: p.conditionId,
+          predictedOutcome: p.predictedOutcome,
+        })),
+        predictorCollateral: params.wager,
+        predictor: effectivePredictor,
+        predictorNonce: params.predictorNonce,
+        predictorDeadline,
+        chainId,
+      };
 
-            // Send escrow auction start
-            const escrowResponse = await client.sendWithAck<{
-              auctionId?: string;
-              error?: string;
-            }>('auction.start', escrowPayload, { timeoutMs: 10000 });
+      // Generate a correlation ID and send via client.send() instead of
+      // sendWithAck(). The ack is handled synchronously in handleMessage
+      // (matched by this ID), which eliminates the microtask race where
+      // bids arrive before the ack sets latestAuctionIdRef.
+      const messageId = crypto.randomUUID();
+      sentMessageIdRef.current = messageId;
 
-            if (escrowResponse?.error) {
-              console.error(
-                '[Escrow Auction] Start failed:',
-                escrowResponse.error
-              );
-              inflightRef.current = '';
-              return;
-            }
+      client.send({
+        id: messageId,
+        type: 'auction.start',
+        payload: { ...escrowPayload, id: messageId },
+      });
 
-            const newId = escrowResponse?.auctionId || null;
-            latestAuctionIdRef.current = newId;
-            loggedStaleAuctionsRef.current.clear();
-            setAuctionId(newId);
-            log(
-              `[escrow] Auction started: id=${newId?.slice(0, 8)}, latestRef=${latestAuctionIdRef.current?.slice(0, 8)}, escrowPicks=${params.escrowPicks?.length}`
-            );
-
-            // Subscribe to escrow auction updates
-            if (newId) {
-              client.send({
-                type: 'auction.subscribe',
-                payload: { auctionId: newId },
-              });
-            }
-
-            inflightRef.current = '';
-            return;
-          } catch (escrowError) {
-            console.error('[Escrow Auction] Start error:', escrowError);
-            inflightRef.current = '';
-            return;
-          }
-        } else {
-          console.error(
-            '[Auction] Escrow picks missing — all auctions require escrow format'
-          );
-          inflightRef.current = '';
-          return;
-        }
-      }, 400);
+      // Manual ack timeout — if the relayer doesn't respond, clean up
+      if (ackTimeoutRef.current) window.clearTimeout(ackTimeoutRef.current);
+      ackTimeoutRef.current = window.setTimeout(() => {
+        if (sentMessageIdRef.current !== messageId) return;
+        sentMessageIdRef.current = null;
+        log('[auction] ack timeout — no response from relayer');
+        pendingBidsRef.current.clear();
+        inflightRef.current = '';
+      }, 10_000);
     },
     [wsUrl, walletAddress]
   );
@@ -439,7 +466,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
 
   useEffect(
     () => () => {
-      if (debounceTimer.current) window.clearTimeout(debounceTimer.current);
+      if (ackTimeoutRef.current) window.clearTimeout(ackTimeoutRef.current);
     },
     []
   );
@@ -465,20 +492,18 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
 
       const ZERO_BYTES32 = `0x${'0'.repeat(64)}`;
 
-      // Contract field names map roles to contract struct:
-      // Contract "maker" = predictor (auction creator)
-      // Contract "taker" = counterparty (bidder)
       const bid = args.selectedBid;
       return {
-        makerCollateral: auction.wager,
-        takerCollateral: bid.counterpartyCollateral,
-        maker: auction.predictor,
-        taker: bid.counterparty as `0x${string}`,
-        takerSignature: bid.counterpartySignature as `0x${string}`,
-        takerDeadline: String(bid.counterpartyDeadline),
+        predictorCollateral: auction.wager,
+        counterpartyCollateral: bid.counterpartyCollateral,
+        predictor: auction.predictor,
+        counterparty: bid.counterparty as `0x${string}`,
+        counterpartySignature: bid.counterpartySignature as `0x${string}`,
+        counterpartyDeadline: String(bid.counterpartyDeadline),
+        predictorDeadline: String(auction.predictorDeadline),
         refCode: (args.refCode ?? ZERO_BYTES32) as `0x${string}`,
-        makerNonce: String(auction.predictorNonce),
-        takerClaimedNonce: bid.counterpartyNonce,
+        predictorNonce: String(auction.predictorNonce),
+        counterpartyClaimedNonce: bid.counterpartyNonce,
         picks: picks.map((p) => ({
           conditionResolver: p.conditionResolver,
           conditionId: p.conditionId,

@@ -496,7 +496,8 @@ const OrderBuilderDialog: React.FC<OrderBuilderDialogProps> = ({
                   <ul className="mt-1 space-y-2">
                     {draft.conditionSelections.map((selection) => {
                       const label =
-                        conditionLabelById[selection.id] ?? selection.id;
+                        conditionLabelById[selection.id]
+                          ?? `Unknown condition (${selection.id.slice(0, 8)}…)`;
                       const slug = conditionCategoryMap[selection.id] ?? null;
                       const Icon = getCategoryIcon(slug ?? undefined);
                       const color = getCategoryStyle(slug)?.color;

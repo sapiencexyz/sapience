@@ -25,7 +25,10 @@ import {
   type WriteContractParams,
   type SessionClient,
 } from './transactionExecutor';
-import { handleViemError } from '~/utils/blockchain/handleViemError';
+import {
+  handleViemError,
+  isSessionPolicyError,
+} from '~/utils/blockchain/handleViemError';
 import { useChainValidation } from '~/hooks/blockchain/useChainValidation';
 import { useMonitorTxStatus } from '~/hooks/blockchain/useMonitorTxStatus';
 import { CreatePositionContext } from '~/lib/context/CreatePositionContext';
@@ -125,6 +128,7 @@ export function useSapienceWriteContract({
     sessionConfig,
     hasArbitrumSession,
     createArbitrumSessionIfNeeded,
+    endSession,
   } = useSession();
 
   // Check if session can handle a specific chain
@@ -388,6 +392,35 @@ export function useSapienceWriteContract({
     }
   }, [createArbitrumSessionIfNeeded]);
 
+  /** Handle catch errors from writeContract / sendCalls — detects stale session keys */
+  const handleCatchError = useCallback(
+    (error: unknown, label: string) => {
+      setIsSubmitting(false);
+      if (isSessionPolicyError(error)) {
+        console.warn(
+          `[${label}] Session key policy mismatch — clearing stale session`,
+          error
+        );
+        endSession();
+        toast({
+          title: 'Session Expired',
+          description: 'Please start a new session.',
+          duration: 8000,
+          variant: 'destructive',
+        });
+      } else {
+        toast({
+          title: 'Transaction Failed',
+          description: handleViemError(error, fallbackErrorMessage),
+          duration: 5000,
+          variant: 'destructive',
+        });
+      }
+      onError?.(error as Error);
+    },
+    [endSession, toast, fallbackErrorMessage, onError]
+  );
+
   // Custom write contract function that handles chain validation
   const sapienceWriteContract = useCallback(
     async (...args: Parameters<typeof writeContractAsync>) => {
@@ -440,14 +473,7 @@ export function useSapienceWriteContract({
 
         completeTransaction(result.hash);
       } catch (error) {
-        setIsSubmitting(false);
-        toast({
-          title: 'Transaction Failed',
-          description: handleViemError(error, fallbackErrorMessage),
-          duration: 5000,
-          variant: 'destructive',
-        });
-        onError?.(error as Error);
+        handleCatchError(error, 'WriteContract');
       }
     },
     [
@@ -458,6 +484,7 @@ export function useSapienceWriteContract({
       toast,
       fallbackErrorMessage,
       onError,
+      endSession,
       completeTransaction,
       getExecutionPathForChain,
       getSessionClient,
@@ -540,14 +567,7 @@ export function useSapienceWriteContract({
         }
         completeTransaction(finalHash);
       } catch (error) {
-        setIsSubmitting(false);
-        toast({
-          title: 'Transaction Failed',
-          description: handleViemError(error, fallbackErrorMessage),
-          duration: 5000,
-          variant: 'destructive',
-        });
-        onError?.(error as Error);
+        handleCatchError(error, 'SendCalls');
       }
     },
     [
@@ -558,6 +578,7 @@ export function useSapienceWriteContract({
       toast,
       fallbackErrorMessage,
       onError,
+      endSession,
       getExecutionPathForChain,
       getSessionClient,
       needsArbitrumSession,

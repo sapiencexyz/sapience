@@ -109,6 +109,7 @@ export const CONDITIONS_BY_IDS_QUERY = `
       endTime
       settled
       resolvedToYes
+      nonDecisive
       resolver
       category { slug }
     }
@@ -159,6 +160,7 @@ export interface ConditionData {
   endTime?: number | null;
   settled?: boolean;
   resolvedToYes?: boolean;
+  nonDecisive?: boolean;
   resolver?: string | null;
   category?: { slug?: string | null } | null;
 }

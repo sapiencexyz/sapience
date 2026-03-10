@@ -210,6 +210,9 @@ type ConditionById = {
   endTime?: number | null;
   resolver?: string | null;
   category?: { slug?: string | null } | null;
+  settled?: boolean;
+  resolvedToYes?: boolean;
+  nonDecisive?: boolean;
 };
 
 const CONDITIONS_BY_IDS_QUERY = /* GraphQL */ `
@@ -220,6 +223,9 @@ const CONDITIONS_BY_IDS_QUERY = /* GraphQL */ `
       question
       endTime
       resolver
+      settled
+      resolvedToYes
+      nonDecisive
       category {
         slug
       }

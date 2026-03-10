@@ -9,6 +9,7 @@ import type {
   ConditionData,
 } from '~/app/og/_prediction-helpers';
 import type { Pick } from '~/components/shared/StackedPredictions';
+import { computeResultFromConditions } from '~/components/positions/toPickLegs';
 
 function formatCollateral(wei?: string): number {
   if (!wei) return 0;
@@ -53,6 +54,7 @@ export default function PredictionPageClient({
       endTime: condition?.endTime ?? null,
       settled: condition?.settled ?? false,
       resolvedToYes: condition?.resolvedToYes ?? false,
+      nonDecisive: condition?.nonDecisive,
       resolverAddress: condition?.resolver ?? null,
     };
   });
@@ -72,8 +74,15 @@ export default function PredictionPageClient({
       return endTime ? Math.max(max, endTime * 1000) : max;
     }, 0) || null;
 
-  const isSettled = serverPrediction.settled;
-  const result = serverPrediction.result;
+  // Compute result from individual conditions when prediction not yet settled on-chain
+  const computed = !serverPrediction.settled
+    ? computeResultFromConditions(picks, conditionsMap as Parameters<typeof computeResultFromConditions>[1])
+    : null;
+  const isSettled =
+    serverPrediction.settled || (computed?.result !== 'UNRESOLVED');
+  const result = serverPrediction.settled
+    ? serverPrediction.result
+    : (computed?.result ?? 'UNRESOLVED');
   const predictorWon = result === 'PREDICTOR_WINS';
   const positionWon = isSettled && (predictorWon || result === 'NON_DECISIVE');
 
