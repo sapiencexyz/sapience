@@ -10,6 +10,7 @@ import {
   validateEscrowBidLightweight,
 } from '~/lib/auction/simulateEscrowBidMint';
 import { logBidValidation } from '~/lib/auction/bidLogger';
+import { PREFERRED_ESTIMATE_QUOTER } from '@sapience/sdk/constants';
 
 export type ValidationStatus = 'pending' | 'valid' | 'invalid';
 
@@ -139,9 +140,14 @@ export function useValidatedEscrowBids(
   useEffect(() => {
     if (!canValidate || rawBids.length === 0) return;
 
-    // Find bids not yet validated or in-flight
+    // Find bids not yet validated or in-flight (skip estimator — deadline=1, never executable)
     const newBids = rawBids.filter((bid) => {
       const sig = bid.counterpartySignature;
+      if (
+        bid.counterparty?.toLowerCase() === PREFERRED_ESTIMATE_QUOTER.toLowerCase()
+      ) {
+        return false;
+      }
       return (
         !validatedSignaturesRef.current.has(sig) &&
         !validatingRef.current.has(sig)
@@ -267,6 +273,16 @@ export function useValidatedEscrowBids(
   // Build validated bids with status
   const validatedBids = useMemo((): QuoteBid[] => {
     return rawBids.map((bid): QuoteBid => {
+      // Skip validation for estimator bids — they use deadline=1 (non-executable, display only)
+      if (
+        bid.counterparty?.toLowerCase() === PREFERRED_ESTIMATE_QUOTER.toLowerCase()
+      ) {
+        return {
+          ...bid,
+          validationStatus: 'valid' as const,
+        };
+      }
+
       // Filter zero address immediately
       if (
         !bid.counterparty ||
