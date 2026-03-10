@@ -6,8 +6,8 @@ import {
   type Hex,
   type TypedDataDomain,
 } from 'viem';
-import type { Pick, MintRequest, BurnRequest } from '../types/escrow';
-import { computePickConfigId } from './escrowEncoding';
+import type { Pick, MintRequest, BurnRequest, PickJson, BidPayload } from '../types/escrow';
+import { computePickConfigId, jsonToPicks } from './escrowEncoding';
 
 // ============================================================================
 // EIP-712 Domain & Types
@@ -434,6 +434,81 @@ export function buildCounterpartyBurnTypedData(params: {
     verifyingContract: params.verifyingContract,
     chainId: params.chainId,
   });
+}
+
+// ============================================================================
+// Counterparty Bid Creation (sign + build BidPayload)
+// ============================================================================
+
+/**
+ * Create a signed counterparty bid for an escrow auction.
+ *
+ * Encapsulates the full flow: build EIP-712 typed data, sign it, and return
+ * a ready-to-submit BidPayload. Used by market makers and tests.
+ */
+export async function createCounterpartyBid(params: {
+  auction: { auctionId: string; picks: PickJson[]; predictorCollateral: string; predictor: string };
+  counterparty: Address;
+  counterpartyCollateral: bigint;
+  verifyingContract: Address;
+  chainId: number;
+  signTypedData: (args: {
+    domain: { name: string; version: string; chainId: number; verifyingContract: Address };
+    types: typeof MINT_APPROVAL_TYPES;
+    primaryType: 'MintApproval';
+    message: {
+      predictionHash: Hex;
+      signer: Address;
+      collateral: bigint;
+      nonce: bigint;
+      deadline: bigint;
+    };
+  }) => Promise<Hex>;
+  deadlineSeconds?: number;
+  nonce?: bigint;
+  predictorSponsor?: Address;
+  predictorSponsorData?: Hex;
+}): Promise<BidPayload> {
+  const counterpartyDeadline = BigInt(
+    Math.floor(Date.now() / 1000) + (params.deadlineSeconds ?? 3600)
+  );
+  const counterpartyNonce = params.nonce ?? 0n;
+
+  const typedData = buildCounterpartyMintTypedData({
+    picks: jsonToPicks(params.auction.picks),
+    predictorCollateral: BigInt(params.auction.predictorCollateral),
+    counterpartyCollateral: params.counterpartyCollateral,
+    predictor: params.auction.predictor as Address,
+    counterparty: params.counterparty,
+    counterpartyNonce,
+    counterpartyDeadline,
+    predictorSponsor: params.predictorSponsor ?? ('0x0000000000000000000000000000000000000000' as Address),
+    predictorSponsorData: params.predictorSponsorData ?? '0x',
+    verifyingContract: params.verifyingContract,
+    chainId: params.chainId,
+  });
+
+  const counterpartySignature = await params.signTypedData({
+    domain: {
+      ...typedData.domain,
+      name: typedData.domain.name!,
+      version: typedData.domain.version!,
+      chainId: Number(typedData.domain.chainId),
+      verifyingContract: typedData.domain.verifyingContract! as Address,
+    },
+    types: typedData.types,
+    primaryType: typedData.primaryType,
+    message: typedData.message,
+  });
+
+  return {
+    auctionId: params.auction.auctionId,
+    counterparty: params.counterparty,
+    counterpartyCollateral: params.counterpartyCollateral.toString(),
+    counterpartyNonce: Number(counterpartyNonce),
+    counterpartyDeadline: Number(counterpartyDeadline),
+    counterpartySignature,
+  };
 }
 
 // ============================================================================

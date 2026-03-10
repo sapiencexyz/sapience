@@ -84,9 +84,7 @@ const sdk = await loadSdk();
 type ContractsMap = typeof import('@sapience/sdk/contracts').contracts;
 type PrepareForTrade = typeof import('@sapience/sdk/onchain/trading').prepareForTrade;
 // Escrow types
-type BuildCounterpartyMintTypedData = typeof import('@sapience/sdk/auction/escrowSigning').buildCounterpartyMintTypedData;
-type ComputePredictionHashFromPicks = typeof import('@sapience/sdk/auction/escrowSigning').computePredictionHashFromPicks;
-type Pick = import('@sapience/sdk/types').Pick;
+type CreateCounterpartyBid = typeof import('@sapience/sdk/auction/escrowSigning').createCounterpartyBid;
 type OutcomeSideType = import('@sapience/sdk/types').OutcomeSide;
 type AuctionDetails = import('@sapience/sdk/types').AuctionDetails;
 type PickJson = import('@sapience/sdk/types').PickJson;
@@ -94,8 +92,7 @@ type PickJson = import('@sapience/sdk/types').PickJson;
 const addressBook = sdk.contracts as ContractsMap;
 const prepareForTrade = sdk.prepareForTrade as PrepareForTrade | undefined;
 // Escrow signing utilities
-const buildCounterpartyMintTypedData = sdk.buildCounterpartyMintTypedData as BuildCounterpartyMintTypedData | undefined;
-const computePredictionHashFromPicks = sdk.computePredictionHashFromPicks as ComputePredictionHashFromPicks | undefined;
+const createCounterpartyBid = sdk.createCounterpartyBid as CreateCounterpartyBid | undefined;
 // OutcomeSide enum values (matching SDK)
 const OutcomeSide = { YES: 0, NO: 1 } as const;
 
@@ -169,17 +166,6 @@ async function getConditionsByIds(ids: string[]): Promise<Map<string, { shortNam
     out.set(id, cached);
   }
   return out;
-}
-
-/**
- * Convert PickJson array to typed Pick array
- */
-function convertPicksFromJson(picks: PickJson[]): Pick[] {
-  return picks.map((p) => ({
-    conditionResolver: p.conditionResolver as Address,
-    conditionId: p.conditionId as Hex,
-    predictedOutcome: p.predictedOutcome as 0 | 1,
-  }));
 }
 
 /**
@@ -266,7 +252,7 @@ async function prepareCollateral() {
 }
 
 function start() {
-  if (!VERIFYING_CONTRACT || !buildCounterpartyMintTypedData) {
+  if (!VERIFYING_CONTRACT || !createCounterpartyBid) {
     logger.error('Cannot start: PredictionMarketEscrow contract address or escrow signing not available');
     return;
   }
@@ -337,44 +323,17 @@ function start() {
           return;
         }
 
-        const counterpartyDeadline = BigInt(Math.floor(Date.now() / 1000) + DEADLINE_SECONDS);
-        const counterpartyNonce = 0n;
-
-        // Build typed data for counterparty signature
-        const typedData = buildCounterpartyMintTypedData!({
-          picks: convertPicksFromJson(auction.picks),
-          predictorCollateral,
-          counterpartyCollateral: BID_AMOUNT,
-          predictor: auction.predictor as Address,
+        const bidPayload = await createCounterpartyBid!({
+          auction,
           counterparty: MAKER,
-          counterpartyNonce,
-          counterpartyDeadline,
+          counterpartyCollateral: BID_AMOUNT,
           verifyingContract: VERIFYING_CONTRACT!,
           chainId: CHAIN_ID,
+          signTypedData: account.signTypedData,
+          deadlineSeconds: DEADLINE_SECONDS,
         });
 
-        // Sign the typed data
-        const counterpartySignature = await account.signTypedData({
-          domain: {
-            ...typedData.domain,
-            chainId: Number(typedData.domain.chainId),
-          },
-          types: typedData.types,
-          primaryType: typedData.primaryType,
-          message: typedData.message,
-        });
-
-        const bid = {
-          type: 'bid.submit',
-          payload: {
-            auctionId,
-            counterparty: MAKER,
-            counterpartyCollateral: BID_AMOUNT.toString(),
-            counterpartyNonce: Number(counterpartyNonce),
-            counterpartyDeadline: Number(counterpartyDeadline),
-            counterpartySignature,
-          },
-        };
+        const bid = { type: 'bid.submit', payload: bidPayload };
 
         logger.info(`📤 Sending bid ${fmt.value(BID_AMOUNT_DEC)} on ${fmt.id(auctionId)}`);
         ws.send(JSON.stringify(bid), (err?: Error) => {
