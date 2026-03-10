@@ -32,20 +32,21 @@ export function handleViemError(
  * current contract addresses (e.g. after an escrow redeploy). The session
  * must be re-created to pick up the new addresses.
  *
- * - AA23: account validation reverted
- * - 0x59d52e40: CallViolatesParamRule()
+ * We require both conditions:
+ * - AA23 (account validation reverted) — the bundler rejection code
+ * - CallViolatesParamRule / 0x59d52e40 — the specific revert reason
+ *
+ * AA23 alone is too broad (any validation failure), and the revert selector
+ * alone could appear in non-bundler contexts. Together they're precise.
  */
-const SESSION_POLICY_ERROR_PATTERNS = [
-  'CallViolatesParamRule',
-  'AA23',
-  '0x59d52e40',
-] as const;
+const REVERT_PATTERNS = ['CallViolatesParamRule', '0x59d52e40'] as const;
 
 /** Returns true if the error indicates a stale session key policy. */
 export function isSessionPolicyError(error: unknown): boolean {
   const message =
     error instanceof Error ? error.message : String(error ?? '');
-  return SESSION_POLICY_ERROR_PATTERNS.some((pattern) =>
-    message.includes(pattern)
+  return (
+    message.includes('AA23') &&
+    REVERT_PATTERNS.some((pattern) => message.includes(pattern))
   );
 }
