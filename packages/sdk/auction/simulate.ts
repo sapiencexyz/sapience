@@ -103,6 +103,7 @@ export function parseSimulationError(err: unknown): string {
   const msg = err.message;
 
   const mappings: [string, string][] = [
+    ['InvalidSignature', 'Invalid signature'],
     ['InvalidTakerSignature', 'Invalid bid signature'],
     ['TakerDeadlineExpired', 'Bid has expired'],
     ['InvalidMakerNonce', 'Nonce already used'],

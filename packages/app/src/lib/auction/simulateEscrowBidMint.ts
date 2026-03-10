@@ -187,7 +187,12 @@ export async function simulateEscrowBidMint(
       // (the session key signs but the contract can't verify via isValidSignature
       // outside of a real UserOp execution context).
       // Fall back to lightweight validation for the counterparty instead.
-      if (errorMessage.includes('Invalid') && errorMessage.includes('signature')) {
+      // Check both the parsed message AND the raw error for InvalidSignature
+      const rawMessage = err instanceof Error ? err.message : '';
+      const isInvalidSignature =
+        rawMessage.includes('InvalidSignature') ||
+        (errorMessage.includes('Invalid') && errorMessage.includes('signature'));
+      if (isInvalidSignature) {
         logBidValidation(
           `[escrow-sim] InvalidSignature (expected in session mode) — falling back to lightweight validation for ${bid.counterparty.slice(0, 10)}`
         );
