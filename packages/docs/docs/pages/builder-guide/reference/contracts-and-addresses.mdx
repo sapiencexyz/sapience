@@ -12,39 +12,87 @@ npm install @sapience/sdk
 ```
 
 ```typescript
-import { contracts } from '@sapience/sdk/contracts';
-import { predictionMarketAbi, liquidityVaultAbi } from '@sapience/sdk/abis';
+import { escrowContracts, collateralToken } from '@sapience/sdk/contracts';
 
-const escrow = contracts.predictionMarket[5064014].address;
-const vault  = contracts.passiveLiquidityVault[5064014].address;
+const escrow = escrowContracts.predictionMarketEscrow[5064014].address;
+const vault  = escrowContracts.predictionMarketVault[5064014].address;
 ```
+
+:::note
+The source of truth for contract addresses is [`packages/sdk/contracts/addresses.ts`](https://github.com/sapiencexyz/sapience/blob/main/packages/sdk/contracts/addresses.ts). Check there for the latest deployed addresses.
+:::
 
 ## Supported Chains
 
 | Chain             | ID         | Explorer                                       | Usage                          |
 | ----------------- | ---------- | ---------------------------------------------- | ------------------------------ |
 | Ethereal          | `5064014`  | [explorer.ethereal.trade](https://explorer.ethereal.trade)                   | Primary chain for markets & vaults |
-| Ethereal Testnet  | `13374202` | [testnet-explorer.ethereal.trade](https://testnet-explorer.ethereal.trade)   | Escrow contracts               |
-| Arbitrum          | `42161`    | [arbiscan.io](https://arbiscan.io)             | EAS attestations (forecasts)   |
+| Ethereal Testnet  | `13374202` | [testnet-explorer.ethereal.trade](https://testnet-explorer.ethereal.trade)   | Testnet contracts              |
+| Arbitrum          | `42161`    | [arbiscan.io](https://arbiscan.io)             | Bridge remote, EAS attestations |
+| Polygon           | `137`      | [polygonscan.com](https://polygonscan.com)     | ConditionalTokensReader (LZ source) |
 
 ## Ethereal Mainnet
 
+### Core
+
 | Contract                | Address | SDK key |
 | ----------------------- | ------- | ------- |
-| PredictionMarketEscrow  | [`0xAcD757322df2A1A0B3283c851380f3cFd4882cB4`](https://explorer.ethereal.trade/address/0xAcD757322df2A1A0B3283c851380f3cFd4882cB4) | `predictionMarket` |
-| PolymarketResolver      | [`0xdC1Fa830aD1de01f1EF603749f48bD73384286BE`](https://explorer.ethereal.trade/address/0xdC1Fa830aD1de01f1EF603749f48bD73384286BE) | `predictionMarketLZConditionalTokensResolver` |
-| PredictionMarketVault   | [`0x5c1d4feD296d2637205Ac132CE3e030F5d94d026`](https://explorer.ethereal.trade/address/0x5c1d4feD296d2637205Ac132CE3e030F5d94d026) | `passiveLiquidityVault` |
+| PredictionMarketEscrow  | [`0x243022eBf5d66741499d76555CADFDE51e101e03`](https://explorer.ethereal.trade/address/0x243022eBf5d66741499d76555CADFDE51e101e03) | `escrowContracts.predictionMarketEscrow` |
+| PredictionMarketVault   | [`0x0f246fBd64f6FE57544aAB16A31e1E3F59257723`](https://explorer.ethereal.trade/address/0x0f246fBd64f6FE57544aAB16A31e1E3F59257723) | `escrowContracts.predictionMarketVault` |
+| SecondaryMarketEscrow   | [`0xc46C3140D2c776f83Cf908B3b93f20165e294064`](https://explorer.ethereal.trade/address/0xc46C3140D2c776f83Cf908B3b93f20165e294064) | `escrowContracts.secondaryMarketEscrow` |
+| OnboardingSponsor       | [`0x4DDB0fD9be45c3F86aF25B661a0e18403DB0602d`](https://explorer.ethereal.trade/address/0x4DDB0fD9be45c3F86aF25B661a0e18403DB0602d) | `escrowContracts.onboardingSponsor` |
+| Collateral (wUSDe)      | [`0xB6fC4B1BFF391e5F6b4a3D2C7Bda1FeE3524692D`](https://explorer.ethereal.trade/address/0xB6fC4B1BFF391e5F6b4a3D2C7Bda1FeE3524692D) | `collateralToken` |
+
+### Resolvers
+
+| Contract                          | Address | SDK key |
+| --------------------------------- | ------- | ------- |
+| PythConditionResolver             | [`0x6399F6397701e4213BBaEf9f7a15EF31C9c329E1`](https://explorer.ethereal.trade/address/0x6399F6397701e4213BBaEf9f7a15EF31C9c329E1) | `escrowContracts.pythConditionResolver` |
+| ConditionalTokensConditionResolver| [`0x130598b7334901077cA5369b098Fd47F042CdcC9`](https://explorer.ethereal.trade/address/0x130598b7334901077cA5369b098Fd47F042CdcC9) | `escrowContracts.conditionalTokensConditionResolver` |
+| ManualConditionResolver           | [`0xAdFcDD47f8E09D5Cc00B25d2bbC3A8fdc3Ad4674`](https://explorer.ethereal.trade/address/0xAdFcDD47f8E09D5Cc00B25d2bbC3A8fdc3Ad4674) | `escrowContracts.manualConditionResolver` |
+
+### Bridge
+
+| Contract                    | Address | SDK key |
+| --------------------------- | ------- | ------- |
+| PredictionMarketBridge      | [`0x6660a7AC974BDc06b54B82842088821407A67c03`](https://explorer.ethereal.trade/address/0x6660a7AC974BDc06b54B82842088821407A67c03) | `escrowContracts.predictionMarketBridge` |
+| PredictionMarketTokenFactory| [`0xD838d19E910Dc4d235B1A7548BF86B08F9b1241D`](https://explorer.ethereal.trade/address/0xD838d19E910Dc4d235B1A7548BF86B08F9b1241D) | `escrowContracts.predictionMarketTokenFactory` |
 
 ## Ethereal Testnet
 
+### Core
+
 | Contract                | Address | SDK key |
 | ----------------------- | ------- | ------- |
-| PredictionMarketEscrow  | [`0x7b00088CA92d4f11F305CC61758De3580a730f39`](https://testnet-explorer.ethereal.trade/address/0x7b00088CA92d4f11F305CC61758De3580a730f39) | `predictionMarket` |
-| PolymarketResolver      | [`0x2A97702591ACCbF330c6c813C46DE287653eb645`](https://testnet-explorer.ethereal.trade/address/0x2A97702591ACCbF330c6c813C46DE287653eb645) | `lzPMResolver` |
-| PredictionMarketVault   | [`0xb52883b935796Ef6d881B22B4fA9d46a374905D7`](https://testnet-explorer.ethereal.trade/address/0xb52883b935796Ef6d881B22B4fA9d46a374905D7) | `passiveLiquidityVault` |
+| PredictionMarketEscrow  | [`0x3025C4E3087f33Ac04D78eE34f35D4d003c2D642`](https://testnet-explorer.ethereal.trade/address/0x3025C4E3087f33Ac04D78eE34f35D4d003c2D642) | `escrowContracts.predictionMarketEscrow` |
+| PredictionMarketVault   | [`0xADf3C8D4B159FdA439E3C0e519DEc3C93DE0a4c3`](https://testnet-explorer.ethereal.trade/address/0xADf3C8D4B159FdA439E3C0e519DEc3C93DE0a4c3) | `escrowContracts.predictionMarketVault` |
+| SecondaryMarketEscrow   | [`0x16222940184Aad2E806529C963531e36c13875cF`](https://testnet-explorer.ethereal.trade/address/0x16222940184Aad2E806529C963531e36c13875cF) | `escrowContracts.secondaryMarketEscrow` |
+| Collateral (wUSDe)      | [`0xb7ae43711d85c23dc862c85b9c95a64dc6351f90`](https://testnet-explorer.ethereal.trade/address/0xb7ae43711d85c23dc862c85b9c95a64dc6351f90) | `collateralToken` |
 
-## Arbitrum — EAS (Forecasts)
+### Resolvers
 
-| Contract | Address | SDK key |
-| -------- | ------- | ------- |
-| EAS      | [`0xbD75f629A22Dc1ceD33dDA0b68c546A1c035c458`](https://arbiscan.io/address/0xbD75f629A22Dc1ceD33dDA0b68c546A1c035c458) | `eas` |
+| Contract                | Address | SDK key |
+| ----------------------- | ------- | ------- |
+| PythConditionResolver   | [`0xe29568D2ec56dD25D62f05eF28f7EC7C1C899D7c`](https://testnet-explorer.ethereal.trade/address/0xe29568D2ec56dD25D62f05eF28f7EC7C1C899D7c) | `escrowContracts.pythConditionResolver` |
+| ManualConditionResolver | [`0x9f0fA333e634b9E11CbcA0fC16123912b941F7Bd`](https://testnet-explorer.ethereal.trade/address/0x9f0fA333e634b9E11CbcA0fC16123912b941F7Bd) | `escrowContracts.manualConditionResolver` |
+
+### Bridge
+
+| Contract                    | Address | SDK key |
+| --------------------------- | ------- | ------- |
+| PredictionMarketBridge      | [`0xAf0c78547018F9e2e515e6Fc0064DD091f3dDE38`](https://testnet-explorer.ethereal.trade/address/0xAf0c78547018F9e2e515e6Fc0064DD091f3dDE38) | `escrowContracts.predictionMarketBridge` |
+| PredictionMarketTokenFactory| [`0x9924518205391c0443fA565327108afB3E100b51`](https://testnet-explorer.ethereal.trade/address/0x9924518205391c0443fA565327108afB3E100b51) | `escrowContracts.predictionMarketTokenFactory` |
+
+## Arbitrum
+
+| Contract                       | Address | SDK key |
+| ------------------------------ | ------- | ------- |
+| PredictionMarketBridgeRemote   | [`0x5BdAb642A8e5d2B1eaba93456eDc2F11FAecb0b7`](https://arbiscan.io/address/0x5BdAb642A8e5d2B1eaba93456eDc2F11FAecb0b7) | `escrowContracts.predictionMarketBridgeRemote` |
+| PredictionMarketTokenFactory   | [`0xD838d19E910Dc4d235B1A7548BF86B08F9b1241D`](https://arbiscan.io/address/0xD838d19E910Dc4d235B1A7548BF86B08F9b1241D) | `escrowContracts.predictionMarketTokenFactory` |
+| EAS                            | [`0xbD75f629A22Dc1ceD33dDA0b68c546A1c035c458`](https://arbiscan.io/address/0xbD75f629A22Dc1ceD33dDA0b68c546A1c035c458) | `eas` |
+
+## Polygon
+
+| Contract                | Address | SDK key |
+| ----------------------- | ------- | ------- |
+| ConditionalTokensReader | [`0x882288A664e29aEBC654Fa9679697d23716fcCD1`](https://polygonscan.com/address/0x882288A664e29aEBC654Fa9679697d23716fcCD1) | `escrowContracts.conditionalTokensReader` |
