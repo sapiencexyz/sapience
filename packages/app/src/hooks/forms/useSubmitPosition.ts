@@ -4,7 +4,7 @@ import { erc20Abi } from 'viem';
 import {
   generateRandomNonce,
   toBigIntSafe,
-  validateCounterpartyFunds,
+  validateTakerFunds,
   prepareMintCalls,
 } from '@sapience/sdk';
 import {
@@ -165,22 +165,22 @@ export function useSubmitPosition({
         // Determine nonce value - use auction-provided nonce if available,
         // otherwise generate a random bitmap nonce (Permit2-style)
         let nonceValue: bigint;
-        if (mintData.predictorNonce !== undefined) {
+        if (mintData.makerNonce !== undefined) {
           nonceValue =
-            toBigIntSafe(mintData.predictorNonce) ?? generateRandomNonce();
+            toBigIntSafe(mintData.makerNonce) ?? generateRandomNonce();
         } else {
           nonceValue = generateRandomNonce();
         }
 
         const filled: MintPredictionRequestData = {
           ...mintData,
-          predictorNonce: nonceValue,
+          makerNonce: nonceValue,
         };
 
         // Verify the predictor address matches the current effective address
         // The counterparty signature was signed by the bidder referencing the predictor address
         // This check must be unconditional to catch session state changes between auction start and submission
-        if (filled.predictor?.toLowerCase() !== effectiveAddress?.toLowerCase()) {
+        if (filled.maker?.toLowerCase() !== effectiveAddress?.toLowerCase()) {
           throw new Error(
             'Address mismatch: the auction was started with a different account. ' +
               'Please request new bids.'
@@ -197,9 +197,9 @@ export function useSubmitPosition({
         }
 
         // Safety net: Check counterparty's allowance and balance
-        await validateCounterpartyFunds(
-          filled.counterparty,
-          BigInt(filled.counterpartyCollateral),
+        await validateTakerFunds(
+          filled.taker,
+          BigInt(filled.takerCollateral),
           collateralTokenAddress,
           predictionMarketAddress,
           publicClient
@@ -215,12 +215,12 @@ export function useSubmitPosition({
 
           const typedData = buildPredictorMintTypedData({
             picks,
-            predictorCollateral: BigInt(filled.predictorCollateral),
-            counterpartyCollateral: BigInt(filled.counterpartyCollateral),
-            predictor: filled.predictor,
-            counterparty: filled.counterparty,
+            predictorCollateral: BigInt(filled.makerCollateral),
+            counterpartyCollateral: BigInt(filled.takerCollateral),
+            predictor: filled.maker,
+            counterparty: filled.taker,
             predictorNonce: nonceValue,
-            predictorDeadline: BigInt(filled.predictorDeadline),
+            predictorDeadline: BigInt(filled.makerDeadline),
             predictorSponsor: '0x0000000000000000000000000000000000000000',
             predictorSponsorData: '0x',
             verifyingContract: predictionMarketAddress,
