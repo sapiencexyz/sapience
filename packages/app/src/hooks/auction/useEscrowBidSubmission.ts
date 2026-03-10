@@ -5,7 +5,7 @@
  * Uses MintApproval EIP-712 format from PredictionMarketEscrow.
  */
 import { useCallback, useMemo } from 'react';
-import { useAccount, useSignTypedData } from 'wagmi';
+import { useAccount, useChainId, useSignTypedData } from 'wagmi';
 import { parseUnits, formatUnits, type Address } from 'viem';
 import {
   predictionMarketEscrow,
@@ -93,8 +93,8 @@ export function useEscrowBidSubmission(
   const { onSignatureRejected } = options;
   const { address } = useAccount();
   const { signTypedDataAsync } = useSignTypedData();
-  // TODO: Get chainId from context/props when supporting multiple chains
-  const chainId = DEFAULT_CHAIN_ID;
+  const walletChainId = useChainId();
+  const chainId = walletChainId ?? DEFAULT_CHAIN_ID;
   const { apiBaseUrl } = useSettings();
   const {
     effectiveAddress,

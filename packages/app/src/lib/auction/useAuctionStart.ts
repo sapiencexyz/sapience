@@ -360,10 +360,11 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
       const client = getSharedAuctionWsClient(wsUrl);
 
       // Update inflight tracking and clear bids for new request
-      // NOTE: We intentionally do NOT clear latestAuctionIdRef here.
-      // Setting it to null would cause bids for the current auction to be
-      // rejected as "stale" while we wait for the server response.
+      // Clear latestAuctionIdRef so bids from the previous auction are rejected.
+      // New-auction bids arriving before the ack are buffered in pendingBidsRef
+      // (keyed by auctionId) and replayed once the ack sets the new ID.
       inflightRef.current = key;
+      latestAuctionIdRef.current = null;
       setBids([]);
       pendingBidsRef.current.clear();
       // Store params with effectivePredictor so buildMintRequestDataFromBid uses the correct address

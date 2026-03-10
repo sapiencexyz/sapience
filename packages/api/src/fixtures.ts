@@ -61,6 +61,8 @@ const buildIndexers = (): { [key: string]: IIndexer } => {
       indexers['transfer-ethereal-testnet'] = new PositionTokenTransferIndexer(
         13374202
       );
+      indexers['collateral-transfer-ethereal-testnet'] =
+        new CollateralTransferIndexer(13374202);
 
       // Settlement indexer — manual resolver for testing
       if (manualConditionResolver[13374202]?.address) {
