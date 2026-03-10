@@ -9,6 +9,11 @@ const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const MAX_TOKENS = 10_000;
 const MAX_RESPONSE_BYTES = 5 * 1024 * 1024; // 5MB
 
+// Only include tokens using the ConditionalTokens resolver (Polymarket-style)
+// Lowercase for comparison
+const CT_RESOLVER =
+  '0x130598b7334901077ca5369b098fd47f042cdcc9'.toLowerCase();
+
 interface CachedResponse {
   body: string;
   etag: string;
@@ -28,21 +33,18 @@ interface TokenEntry {
     pickConfigId: string;
     resolved: boolean;
     result: string;
+    predictedOutcome: string;
     sapience: true;
   };
 }
 
-function truncateName(name: string, suffix: string): string {
-  const maxLen = 64;
-  const full = `${name} ${suffix}`;
-  if (full.length <= maxLen) return full;
-  // Truncate name part to fit suffix
-  const available = maxLen - suffix.length - 4; // 4 for "... "
-  return `${name.slice(0, available)}... ${suffix}`;
+function truncateName(name: string, maxLen = 64): string {
+  if (name.length <= maxLen) return name;
+  return name.slice(0, maxLen - 3) + '...';
 }
 
 async function buildTokenList(): Promise<string> {
-  // Fetch pick configs with their picks
+  // Fetch pick configs that use the CT resolver, with their picks
   const pickConfigs = await prisma.picks.findMany({
     where: {
       AND: [
@@ -52,15 +54,26 @@ async function buildTokenList(): Promise<string> {
     },
     include: {
       picks: {
-        select: { conditionId: true },
+        select: {
+          conditionId: true,
+          conditionResolver: true,
+          predictedOutcome: true,
+        },
       },
     },
     orderBy: { createdAt: 'desc' },
   });
 
+  // Filter to only configs where ALL picks use the CT resolver
+  const ctConfigs = pickConfigs.filter((pc) =>
+    pc.picks.every(
+      (pick) => pick.conditionResolver.toLowerCase() === CT_RESOLVER
+    )
+  );
+
   // Collect all unique condition IDs
   const conditionIds = new Set<string>();
-  for (const pc of pickConfigs) {
+  for (const pc of ctConfigs) {
     for (const pick of pc.picks) {
       conditionIds.add(pick.conditionId);
     }
@@ -76,67 +89,105 @@ async function buildTokenList(): Promise<string> {
   // Build token entries
   const tokens: TokenEntry[] = [];
 
-  for (const pc of pickConfigs) {
-    // Build human-readable name from conditions
-    const conditionNames = pc.picks
-      .map((pick) => {
-        const cond = conditionMap.get(pick.conditionId);
-        if (!cond) return null;
-        return cond.shortName || cond.question;
-      })
-      .filter(Boolean);
+  for (const pc of ctConfigs) {
+    // Build names from conditions
+    // For single-pick configs: use the condition directly
+    // For multi-pick (parlay): join condition names
+    const conditionParts: Array<{
+      name: string;
+      shortName: string;
+      outcome: string;
+    }> = [];
 
-    const baseName =
-      conditionNames.length > 0 ? conditionNames.join(' + ') : pc.id;
+    for (const pick of pc.picks) {
+      const cond = conditionMap.get(pick.conditionId);
+      if (!cond) continue;
+      // predictedOutcome: 0 = YES, 1 = NO
+      const outcome = pick.predictedOutcome === 0 ? 'Yes' : 'No';
+      conditionParts.push({
+        name: cond.question,
+        shortName: cond.shortName || cond.question,
+        outcome,
+      });
+    }
 
-    // Extract first 4 bytes (8 hex chars) from pickConfigId after 0x prefix
-    const hexSuffix = pc.id.startsWith('0x')
-      ? pc.id.slice(2, 10)
-      : pc.id.slice(0, 8);
+    if (conditionParts.length === 0) continue;
+
+    // Token name = condition question(s) with predicted outcome
+    // e.g. "Will BTC hit 100k? — Yes" or "Will BTC hit 100k? — Yes + Will ETH hit 10k? — No"
+    const predictorName =
+      conditionParts.length === 1
+        ? `${conditionParts[0].name} — ${conditionParts[0].outcome}`
+        : conditionParts
+            .map((p) => `${p.name} — ${p.outcome}`)
+            .join(' + ');
+
+    // Counterparty name = same but with (Counterparty) appended
+    const counterpartyName =
+      conditionParts.length === 1
+        ? `${conditionParts[0].name} — ${conditionParts[0].outcome} (Counterparty)`
+        : conditionParts
+            .map((p) => `${p.name} — ${p.outcome}`)
+            .join(' + ') + ' (Counterparty)';
+
+    // Symbol = shortName-based with outcome
+    // e.g. "BTC-100k-Yes" or "BTC-100k-Yes-counterparty"
+    const predictorSymbol =
+      conditionParts.length === 1
+        ? `${conditionParts[0].shortName}-${conditionParts[0].outcome}`
+        : conditionParts
+            .map((p) => `${p.shortName}-${p.outcome}`)
+            .join('+');
+
+    const counterpartySymbol = `${predictorSymbol}-counterparty`;
+
+    // Predictor outcome string for extensions
+    const outcomeStr = conditionParts.map((p) => p.outcome).join('+');
 
     const sides: Array<{
       address: string;
       tag: string;
-      prefix: string;
-      suffix: string;
+      name: string;
+      symbol: string;
+      isCounterparty: boolean;
     }> = [
       {
         address: pc.predictorToken!,
         tag: 'predictor',
-        prefix: 'PRD',
-        suffix: '— Yes',
+        name: truncateName(predictorName),
+        symbol: truncateName(predictorSymbol, 20),
+        isCounterparty: false,
       },
       {
         address: pc.counterpartyToken!,
         tag: 'counterparty',
-        prefix: 'CTR',
-        suffix: '— No',
+        name: truncateName(counterpartyName),
+        symbol: truncateName(counterpartySymbol, 20),
+        isCounterparty: true,
       },
     ];
 
     for (const side of sides) {
-      const name = truncateName(baseName, side.suffix);
-      const symbol = `${side.prefix}-${hexSuffix}`;
-
       for (const chainId of CHAIN_IDS) {
         tokens.push({
           chainId,
           address: side.address,
-          name,
-          symbol,
+          name: side.name,
+          symbol: side.symbol,
           decimals: 18,
           tags: [side.tag],
           extensions: {
             pickConfigId: pc.id,
             resolved: pc.resolved,
             result: pc.result,
+            predictedOutcome: outcomeStr,
             sapience: true,
           },
         });
       }
     }
 
-    // Safety cap: stop if we've hit the limit
+    // Safety cap
     if (tokens.length >= MAX_TOKENS) {
       tokens.length = MAX_TOKENS;
       break;
@@ -157,13 +208,12 @@ async function buildTokenList(): Promise<string> {
 
   let json = JSON.stringify(tokenList);
 
-  // Response size cap: truncate token list if too large
+  // Response size cap
   if (Buffer.byteLength(json, 'utf8') > MAX_RESPONSE_BYTES) {
     while (
       tokenList.tokens.length > 0 &&
       Buffer.byteLength(json, 'utf8') > MAX_RESPONSE_BYTES
     ) {
-      // Remove last 100 tokens at a time for efficiency
       tokenList.tokens.splice(-Math.min(100, tokenList.tokens.length));
       tokenList.version.patch = tokenList.tokens.length;
       json = JSON.stringify(tokenList);
@@ -176,7 +226,6 @@ async function buildTokenList(): Promise<string> {
 // GET /tokenlist.json
 router.get('/tokenlist.json', async (_req: Request, res: Response) => {
   try {
-    // Check if client has a cached version
     const ifNoneMatch = _req.headers['if-none-match'];
 
     // Check in-memory cache
@@ -197,7 +246,6 @@ router.get('/tokenlist.json', async (_req: Request, res: Response) => {
     const body = await buildTokenList();
     const etag = `"${createHash('md5').update(body).digest('hex')}"`;
 
-    // Update cache
     cache = { body, etag, createdAt: now };
 
     if (ifNoneMatch && ifNoneMatch === etag) {
