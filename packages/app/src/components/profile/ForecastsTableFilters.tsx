@@ -16,7 +16,7 @@ const FORECASTS_CONFIG: TableFiltersConfig<ResolutionStatus> = {
     { value: 'pending', label: 'Pending' },
     { value: 'yes', label: 'Yes' },
     { value: 'no', label: 'No' },
-    { value: 'nonDecisive', label: 'Tie' },
+    { value: 'nonDecisive', label: 'Indecisive' },
   ],
   statusPlaceholder: 'Any resolution',
   statusAllLabel: 'All resolutions',
