@@ -236,6 +236,21 @@ describe('Idle Timeout', () => {
 });
 
 describe('Connection Limit', () => {
+  // Temporarily raise idle timeout so connections don't expire during setup.
+  // config.WS_IDLE_TIMEOUT_MS is read at connection time, so this works.
+  let savedIdleTimeout: number;
+
+  beforeAll(async () => {
+    const configModule = await import('../config');
+    savedIdleTimeout = configModule.config.WS_IDLE_TIMEOUT_MS;
+    (configModule.config as Record<string, unknown>).WS_IDLE_TIMEOUT_MS = 10_000;
+  });
+
+  afterAll(async () => {
+    const configModule = await import('../config');
+    (configModule.config as Record<string, unknown>).WS_IDLE_TIMEOUT_MS = savedIdleTimeout;
+  });
+
   it('accepts up to WS_MAX_CONNECTIONS', async () => {
     const clients: WebSocket[] = [];
     for (let i = 0; i < 3; i++) {
@@ -246,64 +261,43 @@ describe('Connection Limit', () => {
   });
 
   it('rejects with code 1008 "connection_limit_exceeded" beyond limit', async () => {
-    // Fill up to max (3), keeping them alive with periodic pings to prevent idle timeout
-    // (idle timeout is 400ms in test config, so we ping every 100ms)
+    // Fill up to max (3)
     const clients: WebSocket[] = [];
-    const keepAlive = setInterval(() => {
-      for (const ws of clients) {
-        if (ws.readyState === WebSocket.OPEN) ws.ping();
-      }
-    }, 100);
-
-    try {
-      for (let i = 0; i < 3; i++) {
-        clients.push(await createClient());
-      }
-
-      // 4th connection should be rejected
-      const ws4 = new WebSocket(`ws://localhost:${serverPort}/auction`);
-      openClients.push(ws4);
-      const closePromise = waitForClose(ws4);
-
-      const { code, reason } = await closePromise;
-      expect(code).toBe(1008);
-      expect(reason).toBe('connection_limit_exceeded');
-    } finally {
-      clearInterval(keepAlive);
+    for (let i = 0; i < 3; i++) {
+      clients.push(await createClient());
     }
+
+    // 4th connection should be rejected
+    const ws4 = new WebSocket(`ws://localhost:${serverPort}/auction`);
+    openClients.push(ws4);
+    const closePromise = waitForClose(ws4);
+
+    const { code, reason } = await closePromise;
+    expect(code).toBe(1008);
+    expect(reason).toBe('connection_limit_exceeded');
   });
 
   it('allows new connections after disconnect', async () => {
-    // Fill up to max (3), keeping them alive with periodic pings to prevent idle timeout
+    // Fill up to max (3)
     const clients: WebSocket[] = [];
-    const keepAlive = setInterval(() => {
-      for (const ws of clients) {
-        if (ws.readyState === WebSocket.OPEN) ws.ping();
-      }
-    }, 100);
-
-    try {
-      for (let i = 0; i < 3; i++) {
-        clients.push(await createClient());
-      }
-
-      // Close one connection
-      const closedClient = clients[0];
-      const closePromise = new Promise<void>((resolve) => {
-        closedClient.on('close', () => resolve());
-      });
-      closedClient.close();
-      await closePromise;
-
-      // Give the server a moment to process the close
-      await new Promise((r) => setTimeout(r, 50));
-
-      // New connection should succeed
-      const newClient = await createClient();
-      expect(newClient.readyState).toBe(WebSocket.OPEN);
-    } finally {
-      clearInterval(keepAlive);
+    for (let i = 0; i < 3; i++) {
+      clients.push(await createClient());
     }
+
+    // Close one connection
+    const closedClient = clients[0];
+    const closePromise = new Promise<void>((resolve) => {
+      closedClient.on('close', () => resolve());
+    });
+    closedClient.close();
+    await closePromise;
+
+    // Give the server a moment to process the close
+    await new Promise((r) => setTimeout(r, 50));
+
+    // New connection should succeed
+    const newClient = await createClient();
+    expect(newClient.readyState).toBe(WebSocket.OPEN);
   });
 });
 
