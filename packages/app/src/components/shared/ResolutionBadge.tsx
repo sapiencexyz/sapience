@@ -30,7 +30,7 @@ export default function ResolutionBadge({
         variant="outline"
         className="px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono border-muted-foreground/40 bg-muted/20 text-muted-foreground"
       >
-        TIE
+        INDECISIVE
       </Badge>
     );
   }

@@ -6,6 +6,7 @@ import {
   pythConditionResolver,
   manualConditionResolver,
 } from '@sapience/sdk/contracts';
+import { getProviderForChain } from '../utils/utils';
 
 const router = Router();
 
@@ -221,6 +222,86 @@ router.post(
     } catch (error: unknown) {
       await prisma.backgroundJob.create({
         data: { command: 'backfill-stats', status: 'failed', params },
+      });
+      if (error instanceof Error) {
+        res.status(500).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: 'An unknown error occurred' });
+      }
+    }
+  })
+);
+
+router.post(
+  '/position-balances',
+  handleAsyncErrors(async (req, res) => {
+    const { chainId, fromBlock, days } = req.body;
+
+    const parsedChainId = parseInt(chainId);
+    if (!chainId || isNaN(parsedChainId)) {
+      res.status(400).json({ error: 'Valid chainId is required' });
+      return;
+    }
+    if (fromBlock !== undefined && isNaN(parseInt(fromBlock))) {
+      res.status(400).json({ error: 'fromBlock must be a number' });
+      return;
+    }
+    if (days !== undefined && (isNaN(parseInt(days)) || parseInt(days) <= 0)) {
+      res.status(400).json({ error: 'days must be a positive integer' });
+      return;
+    }
+
+    // Resolve fromBlock: explicit fromBlock > days-based binary search > omit (let job decide)
+    let resolvedFromBlock: number | undefined = fromBlock
+      ? parseInt(fromBlock)
+      : undefined;
+
+    if (!resolvedFromBlock && days) {
+      const client = getProviderForChain(parsedChainId);
+      const targetTimestamp = BigInt(
+        Math.floor(Date.now() / 1000) - parseInt(days) * 86400
+      );
+      const currentBlock = await client.getBlockNumber();
+
+      // Binary search for the block closest to targetTimestamp
+      let lo = 0n;
+      let hi = currentBlock;
+      while (lo < hi) {
+        const mid = (lo + hi) / 2n;
+        const block = await client.getBlock({ blockNumber: mid });
+        if (block.timestamp < targetTimestamp) {
+          lo = mid + 1n;
+        } else {
+          hi = mid;
+        }
+      }
+      resolvedFromBlock = Number(lo);
+      console.log(
+        `[reindex/position-balances] Resolved ${days} days ago to block ${resolvedFromBlock}`
+      );
+    }
+
+    const startCommand =
+      `pnpm run start:reindex-transfers ${parsedChainId} ${resolvedFromBlock || ''}`.trim();
+
+    const params = JSON.stringify({
+      chainId: parsedChainId,
+      fromBlock: resolvedFromBlock,
+      days: days ? parseInt(days) : undefined,
+    });
+    try {
+      const result = await executeLocalReindex(startCommand);
+      await prisma.backgroundJob.create({
+        data: {
+          command: 'reindex-transfers',
+          status: result.status,
+          params,
+        },
+      });
+      res.json({ success: true, job: result });
+    } catch (error: unknown) {
+      await prisma.backgroundJob.create({
+        data: { command: 'reindex-transfers', status: 'failed', params },
       });
       if (error instanceof Error) {
         res.status(500).json({ error: error.message });
