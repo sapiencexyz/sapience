@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useMemo } from 'react';
-import { useReadContracts } from 'wagmi';
+import { useChainId, useReadContracts } from 'wagmi';
 import { formatUnits } from 'viem';
 import {
   predictionMarketEscrow,
@@ -67,8 +67,8 @@ export function useBidPreflight(
 ): UseBidPreflightResult {
   const { onError, onLoading } = options;
   const { currentAddress } = useCurrentAddress();
-  // TODO: Get chainId from context/props when supporting multiple chains
-  const chainId = DEFAULT_CHAIN_ID;
+  const walletChainId = useChainId();
+  const chainId = walletChainId ?? DEFAULT_CHAIN_ID;
 
   const {
     balance,

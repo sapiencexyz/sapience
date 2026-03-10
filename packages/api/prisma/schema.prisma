@@ -677,6 +677,7 @@ model CollateralTransfer {
   createdAt       DateTime @default(now()) @db.Timestamp(6)
   chainId         Int
   blockNumber     Int
+  timestamp       DateTime @db.Timestamp(6)
   transactionHash String   @db.VarChar
   logIndex        Int
   from            String   @db.VarChar

@@ -131,19 +131,50 @@ class CollateralTransferIndexer implements IIndexer {
       blockNumber: bigint | null;
     }>
   ): Promise<void> {
+    // Collect unique block numbers and fetch their timestamps (chunked to avoid RPC fan-out)
+    const uniqueBlocks = [
+      ...new Set(
+        logs
+          .map((log) => log.blockNumber)
+          .filter((bn): bn is bigint => bn !== null)
+      ),
+    ];
+    const blockTimestamps = new Map<bigint, Date>();
+    const CHUNK_SIZE = 20;
+    for (let i = 0; i < uniqueBlocks.length; i += CHUNK_SIZE) {
+      const chunk = uniqueBlocks.slice(i, i + CHUNK_SIZE);
+      await Promise.all(
+        chunk.map(async (blockNumber) => {
+          const block = await this.client.getBlock({ blockNumber });
+          blockTimestamps.set(blockNumber, new Date(Number(block.timestamp) * 1000));
+        })
+      );
+    }
+
     const records = logs
       .filter(
         (log) => log.args.from && log.args.to && log.args.value !== undefined
       )
-      .map((log) => ({
+      .map((log) => {
+        const timestamp = log.blockNumber != null
+          ? blockTimestamps.get(log.blockNumber)
+          : undefined;
+        if (!timestamp) {
+          console.warn(
+            `[collateralTransferIndexer] Missing block timestamp for block ${log.blockNumber}, tx ${log.transactionHash}`
+          );
+        }
+        return {
         chainId: this.chainId,
         blockNumber: Number(log.blockNumber ?? 0),
+        timestamp: timestamp ?? new Date(),
         transactionHash: log.transactionHash,
         logIndex: log.logIndex ?? 0,
         from: log.args.from!.toLowerCase(),
         to: log.args.to!.toLowerCase(),
         value: log.args.value!.toString(),
-      }));
+        };
+      });
 
     if (records.length === 0) return;
 
