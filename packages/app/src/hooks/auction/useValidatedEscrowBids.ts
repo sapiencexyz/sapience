@@ -298,9 +298,11 @@ export function useValidatedEscrowBids(
       const result = validationResults.get(bid.counterpartySignature);
 
       if (!result) {
+        // Optimistic: show bids as valid immediately while validation runs in background.
+        // If validation fails, the bid will flip to 'invalid' on the next render.
         return {
           ...bid,
-          validationStatus: canValidate ? 'pending' : 'valid',
+          validationStatus: 'valid' as const,
         };
       }
 
