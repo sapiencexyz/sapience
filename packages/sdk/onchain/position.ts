@@ -98,6 +98,7 @@ export interface MintPredictionRequestDataLike {
   makerNonce?: string | number | bigint;
   takerSignature: `0x${string}`;
   takerDeadline: string | number | bigint;
+  makerDeadline?: string | number | bigint;
   refCode: `0x${string}`;
   picks: Array<{
     conditionResolver: `0x${string}`;

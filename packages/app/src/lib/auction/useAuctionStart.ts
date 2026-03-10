@@ -394,9 +394,9 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
       }));
       const picks = canonicalizePicks(rawPicks);
 
-      // Calculate deadline (5 minutes from now)
+      // Calculate deadline (30 seconds from now)
       const nowSec = Math.floor(Date.now() / 1000);
-      const predictorDeadline = nowSec + 300;
+      const predictorDeadline = nowSec + 30;
 
       const escrowPayload = {
         picks: picks.map((p) => ({
