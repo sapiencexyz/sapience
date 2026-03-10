@@ -98,7 +98,7 @@ export function ConditionStatusIndicator({
   const tooltipContent = (() => {
     if (!hasEnded) return 'Active';
     if (!settled) return 'Resolution Pending';
-    if (nonDecisive) return 'Tie';
+    if (nonDecisive) return 'Indecisive';
     return <ResolutionBadge resolvedToYes={!!resolvedToYes} />;
   })();
 
