@@ -24,6 +24,7 @@ export interface AuctionParams {
     conditionId: `0x${string}`;
     predictedOutcome: number;
   }>;
+  predictorDeadline?: number; // unix seconds — computed internally at auction start
 }
 
 export interface QuoteBid {
@@ -397,6 +398,12 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
       // Calculate deadline (30 seconds from now)
       const nowSec = Math.floor(Date.now() / 1000);
       const predictorDeadline = nowSec + 30;
+
+      // Store predictorDeadline on the auction ref so buildMintRequestDataFromBid can access it
+      lastAuctionRef.current = {
+        ...lastAuctionRef.current,
+        predictorDeadline,
+      };
 
       const escrowPayload = {
         picks: picks.map((p) => ({

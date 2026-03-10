@@ -112,6 +112,7 @@ const VALID_MINT_DATA: MintPredictionRequestData = {
   taker: '0xBidder' as `0x${string}`,
   takerSignature: '0xSig' as `0x${string}`,
   takerDeadline: '9999999999',
+  makerDeadline: '9999999999',
   refCode:
     '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`,
   picks: [
