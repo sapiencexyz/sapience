@@ -246,10 +246,12 @@ describe('Connection Limit', () => {
   });
 
   it('rejects with code 1008 "connection_limit_exceeded" beyond limit', async () => {
-    // Fill up to max (3)
+    // Fill up to max (3), keeping them alive with pings to prevent idle timeout
     const clients: WebSocket[] = [];
     for (let i = 0; i < 3; i++) {
-      clients.push(await createClient());
+      const ws = await createClient();
+      clients.push(ws);
+      ws.ping();
     }
 
     // 4th connection should be rejected
@@ -263,10 +265,12 @@ describe('Connection Limit', () => {
   });
 
   it('allows new connections after disconnect', async () => {
-    // Fill up to max (3)
+    // Fill up to max (3), keeping them alive with pings to prevent idle timeout
     const clients: WebSocket[] = [];
     for (let i = 0; i < 3; i++) {
-      clients.push(await createClient());
+      const ws = await createClient();
+      clients.push(ws);
+      ws.ping();
     }
 
     // Close one connection
