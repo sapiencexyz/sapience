@@ -70,7 +70,8 @@ Where `tradeHash = keccak256(abi.encode(token, collateral, seller, buyer, tokenA
 ## SDK Helpers
 
 All imported from `@sapience/sdk/auction/escrowSigning`:
-- `buildAuctionIntentTypedData()` — taker's relayer auth
+- `createCounterpartyBid()` — **high-level**: builds typed data, signs, and returns a ready-to-submit `BidPayload`
+- `buildAuctionIntentTypedData()` — predictor's relayer auth
 - `buildPredictorMintTypedData()` — predictor's on-chain MintApproval
 - `buildCounterpartyMintTypedData()` — counterparty's on-chain MintApproval
 - `buildPredictorBurnTypedData()` — predictor holder's BurnApproval

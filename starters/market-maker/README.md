@@ -59,4 +59,5 @@ On Ethereal, the native token is USDe but prediction market contracts expect WUS
 
 - Amounts assume 18 decimals (USDe-style).
 - Collateral is prepared per-bid using `prepareForTrade`.
-- Code is intentionally simple and centralized in `src/index.ts` for easy hacking. Shared pieces (like EIP-712 signing) live in `@sapience/sdk`.
+- Bid signing uses `createCounterpartyBid()` from `@sapience/sdk/auction/escrowSigning`, which handles EIP-712 typed data construction, prediction hash computation, and signing in one call.
+- Code is intentionally simple and centralized in `src/index.ts` for easy hacking.

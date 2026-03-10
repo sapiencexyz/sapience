@@ -105,46 +105,37 @@ This function:
 
 ### Core Bid Submission Code
 
-The starter uses the SDK's signing helpers:
+The starter uses the SDK's `createCounterpartyBid` helper, which handles EIP-712 typed data construction and signing in one call:
 
 ```typescript
-import { buildMakerBidTypedData, signMakerBid } from '@sapience/sdk/auction';
+import { createCounterpartyBid } from '@sapience/sdk/auction/escrowSigning';
+import { parseEther } from 'viem';
+import { privateKeyToAccount } from 'viem/accounts';
 
-// Build EIP-712 typed data for the bid
-const { domain, types, primaryType, message } = buildMakerBidTypedData({
-  auction: {
-    taker: auction.taker,
-    resolver: auction.resolver,
-    predictedOutcomes: auction.predictedOutcomes,
-    wager: auction.wager,
-  },
-  makerWager: parseEther(BID_AMOUNT),
-  makerDeadline: Math.floor(Date.now() / 1000) + DEADLINE_SECONDS,
+const account = privateKeyToAccount(PRIVATE_KEY);
+
+// Create and sign a bid in one step
+const bidPayload = await createCounterpartyBid({
+  auction,                          // AuctionDetails from auction.started
+  counterparty: account.address,
+  counterpartyCollateral: parseEther(BID_AMOUNT),
+  verifyingContract: ESCROW_CONTRACT,
   chainId: CHAIN_ID,
-  verifyingContract: PREDICTION_MARKET_ADDRESS,
-  maker: YOUR_ADDRESS,
-  makerNonce: BigInt(auction.takerNonce ?? 0),
-});
-
-// Sign the bid
-const signature = await signMakerBid({ 
-  privateKey, domain, types, primaryType, message 
+  signTypedData: account.signTypedData,
+  deadlineSeconds: DEADLINE_SECONDS,
 });
 
 // Submit to relayer
-ws.send(JSON.stringify({
-  type: 'bid.submit',
-  payload: { auctionId, maker, makerWager, makerDeadline, makerSignature, makerNonce },
-}));
+ws.send(JSON.stringify({ type: 'bid.submit', payload: bidPayload }));
 ```
 
 ### Customize Your Strategy
 
 The starter is intentionally simple. Extend it by:
 
-- **Sizing bids dynamically** based on `auction.wager` or market conditions
-- **Filtering by market** using decoded `predictedOutcomes` to target specific topics
-- **Adding risk limits** like max total exposure or per-taker rate limits
+- **Sizing bids dynamically** based on `auction.predictorCollateral` or market conditions
+- **Filtering by market** using `auction.picks` to target specific conditions
+- **Adding risk limits** like max total exposure or per-counterparty rate limits
 - **Integrating forecasts** to price bids based on your probability estimates
 
 ### Resources
