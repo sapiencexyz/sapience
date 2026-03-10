@@ -54,23 +54,20 @@ export interface EscrowQuoteBid {
 }
 
 // Struct shape expected by PredictionMarketEscrow.mint()
-// @dev notice that this interface follows contract field names, not API field names
-// Contract "maker" = API "taker" (auction creator)
-// Contract "taker" = API "maker" (bidder)
 export interface MintPredictionRequestData {
-  makerCollateral: string; // wei
-  takerCollateral: string; // wei
-  maker: `0x${string}`;
-  taker: `0x${string}`;
+  predictorCollateral: string; // wei
+  counterpartyCollateral: string; // wei
+  predictor: `0x${string}`;
+  counterparty: `0x${string}`;
   // Optional here; the submit hook will fetch and inject the correct nonce
-  makerNonce?: string | bigint;
-  takerSignature: `0x${string}`; // taker approval for this prediction (off-chain)
-  takerDeadline: string; // unix seconds (uint256 string) — counterparty's deadline
-  makerDeadline: string; // unix seconds (uint256 string) — predictor's deadline from auction start
+  predictorNonce?: string | bigint;
+  counterpartySignature: `0x${string}`; // counterparty approval for this prediction (off-chain)
+  counterpartyDeadline: string; // unix seconds (uint256 string)
+  predictorDeadline: string; // unix seconds (uint256 string) — from auction start
   refCode: `0x${string}`; // bytes32
-  // For validation: the nonce the bidder (contract taker) claimed when signing
+  // The nonce the counterparty (bidder) claimed when signing
   // This is embedded in their signature and must match their on-chain nonce
-  takerClaimedNonce?: number;
+  counterpartyClaimedNonce?: number;
   // Picks array — the predictor signs the exact same picks the counterparty signed
   picks: Array<{
     conditionResolver: `0x${string}`;
@@ -495,21 +492,18 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
 
       const ZERO_BYTES32 = `0x${'0'.repeat(64)}`;
 
-      // Contract field names map roles to contract struct:
-      // Contract "maker" = predictor (auction creator)
-      // Contract "taker" = counterparty (bidder)
       const bid = args.selectedBid;
       return {
-        makerCollateral: auction.wager,
-        takerCollateral: bid.counterpartyCollateral,
-        maker: auction.predictor,
-        taker: bid.counterparty as `0x${string}`,
-        takerSignature: bid.counterpartySignature as `0x${string}`,
-        takerDeadline: String(bid.counterpartyDeadline),
-        makerDeadline: String(auction.predictorDeadline),
+        predictorCollateral: auction.wager,
+        counterpartyCollateral: bid.counterpartyCollateral,
+        predictor: auction.predictor,
+        counterparty: bid.counterparty as `0x${string}`,
+        counterpartySignature: bid.counterpartySignature as `0x${string}`,
+        counterpartyDeadline: String(bid.counterpartyDeadline),
+        predictorDeadline: String(auction.predictorDeadline),
         refCode: (args.refCode ?? ZERO_BYTES32) as `0x${string}`,
-        makerNonce: String(auction.predictorNonce),
-        takerClaimedNonce: bid.counterpartyNonce,
+        predictorNonce: String(auction.predictorNonce),
+        counterpartyClaimedNonce: bid.counterpartyNonce,
         picks: picks.map((p) => ({
           conditionResolver: p.conditionResolver,
           conditionId: p.conditionId,
