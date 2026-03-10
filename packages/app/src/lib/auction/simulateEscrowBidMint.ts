@@ -319,16 +319,27 @@ function mergeStateOverrides(
 
 /**
  * Check if an error is a contract revert (vs RPC/network error).
+ *
+ * Viem throws typed error classes with a `name` property for contract reverts.
+ * We check `name` first (reliable), then fall back to message keywords.
  */
 function isContractRevert(err: unknown): boolean {
   if (!(err instanceof Error)) return false;
+
+  // Viem error class names (set via BaseError)
+  const name = (err as { name?: string }).name ?? '';
+  if (
+    name === 'ContractFunctionExecutionError' ||
+    name === 'ContractFunctionRevertedError' ||
+    name === 'ContractFunctionZeroDataError'
+  ) {
+    return true;
+  }
+
+  // Fallback: check message for revert keywords
   const msg = err.message;
   return (
-    msg.includes('revert') ||
     msg.includes('execution reverted') ||
-    msg.includes('ContractFunctionExecutionError') ||
-    msg.includes('ContractFunctionRevertedError') ||
-    // Custom error selectors (0x + 8 hex chars)
-    /0x[a-fA-F0-9]{8}/.test(msg)
+    msg.includes('revert')
   );
 }
