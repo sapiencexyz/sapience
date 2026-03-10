@@ -96,7 +96,10 @@ export function useValidatedEscrowBids(
       return false;
     // Session mode needs predictor info + picks
     if (isSessionMode) {
-      return !!predictorAddress && !!predictorCollateral && !!picks && picks.length > 0;
+      return !!predictorAddress
+        && predictorAddress.toLowerCase() !== ZERO_ADDRESS
+        && !!predictorCollateral
+        && !!picks && picks.length > 0;
     }
     // EOA mode just needs addresses
     return true;
