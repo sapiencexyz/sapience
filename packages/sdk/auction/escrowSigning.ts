@@ -8,6 +8,7 @@ import {
 } from 'viem';
 import type { Pick, MintRequest, BurnRequest, PickJson, BidPayload } from '../types/escrow';
 import { computePickConfigId, jsonToPicks } from './escrowEncoding';
+import { generateRandomNonce } from '../onchain/escrow';
 
 // ============================================================================
 // EIP-712 Domain & Types
@@ -472,7 +473,7 @@ export async function createCounterpartyBid(params: {
   const counterpartyDeadline = BigInt(
     Math.floor(Date.now() / 1000) + (params.deadlineSeconds ?? 3600)
   );
-  const counterpartyNonce = params.nonce ?? 0n;
+  const counterpartyNonce = params.nonce ?? generateRandomNonce();
 
   const typedData = buildCounterpartyMintTypedData({
     picks: jsonToPicks(params.auction.picks),
