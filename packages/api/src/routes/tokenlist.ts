@@ -1,18 +1,22 @@
 import { Request, Response, Router } from 'express';
 import { createHash } from 'crypto';
+import { conditionalTokensConditionResolver } from '@sapience/sdk/contracts';
+import {
+  CHAIN_ID_ARBITRUM,
+  CHAIN_ID_ETHEREAL,
+} from '@sapience/sdk/constants';
 import prisma from '../db';
 
 const router = Router();
 
-const CHAIN_IDS = [42161, 5064014]; // Arbitrum, Ethereal
+const CHAIN_IDS = [CHAIN_ID_ARBITRUM, CHAIN_ID_ETHEREAL];
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const MAX_TOKENS = 10_000;
 const MAX_RESPONSE_BYTES = 5 * 1024 * 1024; // 5MB
 
 // Only include tokens using the ConditionalTokens resolver (Polymarket-style)
-// Lowercase for comparison
 const CT_RESOLVER =
-  '0x130598b7334901077ca5369b098fd47f042cdcc9'.toLowerCase();
+  conditionalTokensConditionResolver[CHAIN_ID_ETHEREAL].address.toLowerCase();
 
 interface CachedResponse {
   body: string;
@@ -37,8 +41,6 @@ interface TokenEntry {
     sapience: true;
   };
 }
-
-
 
 async function buildTokenList(): Promise<string> {
   // Fetch pick configs that use the CT resolver, with their picks
@@ -146,21 +148,18 @@ async function buildTokenList(): Promise<string> {
       tag: string;
       name: string;
       symbol: string;
-      isCounterparty: boolean;
     }> = [
       {
         address: pc.predictorToken!,
         tag: 'predictor',
         name: predictorName,
         symbol: predictorSymbol,
-        isCounterparty: false,
       },
       {
         address: pc.counterpartyToken!,
         tag: 'counterparty',
         name: counterpartyName,
         symbol: counterpartySymbol,
-        isCounterparty: true,
       },
     ];
 
@@ -191,14 +190,21 @@ async function buildTokenList(): Promise<string> {
     }
   }
 
+  const now = new Date();
+  // version.patch = YYYYMMDD as an integer
+  const datePatch =
+    now.getUTCFullYear() * 10000 +
+    (now.getUTCMonth() + 1) * 100 +
+    now.getUTCDate();
+
   const tokenList = {
     name: 'Sapience Position Tokens',
     logoURI: 'https://sapience.xyz/favicon.ico',
-    timestamp: new Date().toISOString(),
+    timestamp: now.toISOString(),
     version: {
       major: 1,
       minor: 0,
-      patch: tokens.length,
+      patch: datePatch,
     },
     tokens,
   };
@@ -212,7 +218,6 @@ async function buildTokenList(): Promise<string> {
       Buffer.byteLength(json, 'utf8') > MAX_RESPONSE_BYTES
     ) {
       tokenList.tokens.splice(-Math.min(100, tokenList.tokens.length));
-      tokenList.version.patch = tokenList.tokens.length;
       json = JSON.stringify(tokenList);
     }
   }
@@ -260,4 +265,8 @@ router.get('/tokenlist.json', async (_req: Request, res: Response) => {
   }
 });
 
-export { router };
+function resetCache() {
+  cache = null;
+}
+
+export { router, buildTokenList, resetCache, CACHE_TTL_MS, MAX_TOKENS, MAX_RESPONSE_BYTES, CT_RESOLVER };
