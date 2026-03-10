@@ -4,13 +4,16 @@ pragma solidity ^0.8.19;
 import { Script, console } from "forge-std/Script.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SecondaryMarketEscrow } from "../../SecondaryMarketEscrow.sol";
-import { ISecondaryMarketEscrow } from "../../interfaces/ISecondaryMarketEscrow.sol";
+import {
+    ISecondaryMarketEscrow
+} from "../../interfaces/ISecondaryMarketEscrow.sol";
 
 /// @title Test Secondary Market Trade (Mainnet)
 /// @notice Execute an atomic OTC swap via SecondaryMarketEscrow
 /// @dev Seller (COUNTERPARTY) sells position tokens to Buyer (PREDICTOR) for wUSDe
 contract TestSecondaryMarketTrade is Script {
-    address constant SECONDARY_MARKET_ESCROW = 0xc46C3140D2c776f83Cf908B3b93f20165e294064;
+    address constant SECONDARY_MARKET_ESCROW =
+        0xc46C3140D2c776f83Cf908B3b93f20165e294064;
     address constant COLLATERAL = 0xB6fC4B1BFF391e5F6b4a3D2C7Bda1FeE3524692D;
 
     struct Actors {
@@ -33,7 +36,8 @@ contract TestSecondaryMarketTrade is Script {
         Actors memory actors = _loadActors();
         TradeParams memory params = _loadTradeParams();
 
-        SecondaryMarketEscrow escrow = SecondaryMarketEscrow(SECONDARY_MARKET_ESCROW);
+        SecondaryMarketEscrow escrow =
+            SecondaryMarketEscrow(SECONDARY_MARKET_ESCROW);
 
         _logSetup(actors, params);
         _logBalancesBefore(actors, params);
@@ -51,12 +55,27 @@ contract TestSecondaryMarketTrade is Script {
         );
 
         // Sign trade approvals
-        bytes memory sellerSig = _sign(escrow, tradeHash, actors.seller, params.sellerNonce, params.deadline, actors.sellerPk);
-        bytes memory buyerSig = _sign(escrow, tradeHash, actors.buyer, params.buyerNonce, params.deadline, actors.buyerPk);
+        bytes memory sellerSig = _sign(
+            escrow,
+            tradeHash,
+            actors.seller,
+            params.sellerNonce,
+            params.deadline,
+            actors.sellerPk
+        );
+        bytes memory buyerSig = _sign(
+            escrow,
+            tradeHash,
+            actors.buyer,
+            params.buyerNonce,
+            params.deadline,
+            actors.buyerPk
+        );
 
         // Seller approves escrow to spend position tokens
         vm.startBroadcast(actors.sellerPk);
-        IERC20(params.positionToken).approve(SECONDARY_MARKET_ESCROW, params.tokenAmount);
+        IERC20(params.positionToken)
+            .approve(SECONDARY_MARKET_ESCROW, params.tokenAmount);
         vm.stopBroadcast();
 
         // Buyer approves escrow to spend wUSDe
@@ -65,7 +84,8 @@ contract TestSecondaryMarketTrade is Script {
         vm.stopBroadcast();
 
         // Execute trade
-        ISecondaryMarketEscrow.TradeRequest memory request = _buildRequest(actors, params, sellerSig, buyerSig);
+        ISecondaryMarketEscrow.TradeRequest memory request =
+            _buildRequest(actors, params, sellerSig, buyerSig);
 
         vm.startBroadcast(actors.buyerPk);
         escrow.executeTrade(request);
@@ -83,10 +103,14 @@ contract TestSecondaryMarketTrade is Script {
 
     function _loadTradeParams() internal view returns (TradeParams memory p) {
         p.positionToken = vm.envAddress("POSITION_TOKEN");
-        p.tokenAmount = vm.envOr("TOKEN_AMOUNT", uint256(5000000000000000));
-        p.price = vm.envOr("PRICE", uint256(1000000000000000));
-        p.sellerNonce = uint256(keccak256(abi.encode(block.timestamp, "seller", block.prevrandao)));
-        p.buyerNonce = uint256(keccak256(abi.encode(block.timestamp, "buyer", block.prevrandao)));
+        p.tokenAmount = vm.envOr("TOKEN_AMOUNT", uint256(5_000_000_000_000_000));
+        p.price = vm.envOr("PRICE", uint256(1_000_000_000_000_000));
+        p.sellerNonce = uint256(
+            keccak256(abi.encode(block.timestamp, "seller", block.prevrandao))
+        );
+        p.buyerNonce = uint256(
+            keccak256(abi.encode(block.timestamp, "buyer", block.prevrandao))
+        );
         p.deadline = block.timestamp + 1 hours;
     }
 
@@ -98,7 +122,9 @@ contract TestSecondaryMarketTrade is Script {
         uint256 deadline,
         uint256 pk
     ) internal view returns (bytes memory) {
-        bytes32 h = escrow.getTradeApprovalHash(tradeHash, signer, nonce, deadline);
+        bytes32 h = escrow.getTradeApprovalHash(
+            tradeHash, signer, nonce, deadline
+        );
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk, h);
         return abi.encodePacked(r, s, v);
     }
@@ -137,18 +163,32 @@ contract TestSecondaryMarketTrade is Script {
         console.log("Price (wUSDe):", p.price);
     }
 
-    function _logBalancesBefore(Actors memory a, TradeParams memory p) internal view {
+    function _logBalancesBefore(Actors memory a, TradeParams memory p)
+        internal
+        view
+    {
         console.log("");
         console.log("--- Balances Before ---");
-        console.log("Seller position tokens:", IERC20(p.positionToken).balanceOf(a.seller));
+        console.log(
+            "Seller position tokens:",
+            IERC20(p.positionToken).balanceOf(a.seller)
+        );
         console.log("Buyer wUSDe:", IERC20(COLLATERAL).balanceOf(a.buyer));
     }
 
-    function _logBalancesAfter(Actors memory a, TradeParams memory p) internal view {
+    function _logBalancesAfter(Actors memory a, TradeParams memory p)
+        internal
+        view
+    {
         console.log("");
         console.log("--- Balances After ---");
-        console.log("Seller position tokens:", IERC20(p.positionToken).balanceOf(a.seller));
-        console.log("Buyer position tokens:", IERC20(p.positionToken).balanceOf(a.buyer));
+        console.log(
+            "Seller position tokens:",
+            IERC20(p.positionToken).balanceOf(a.seller)
+        );
+        console.log(
+            "Buyer position tokens:", IERC20(p.positionToken).balanceOf(a.buyer)
+        );
         console.log("Seller wUSDe:", IERC20(COLLATERAL).balanceOf(a.seller));
         console.log("Buyer wUSDe:", IERC20(COLLATERAL).balanceOf(a.buyer));
         console.log("");
