@@ -1112,10 +1112,13 @@ contract PredictionMarketEscrow is
             return (false, IV2Types.SettlementResult.UNRESOLVED);
         }
 
-        // Process results
+        // Process results — a single decisive loss is enough for COUNTERPARTY_WINS
+        // even if other picks are still unresolved (predictor needs ALL legs)
+        bool hasUnresolved = false;
         for (uint256 i = 0; i < numPicks; i++) {
             if (!resolved[i]) {
-                return (false, IV2Types.SettlementResult.UNRESOLVED);
+                hasUnresolved = true;
+                continue;
             }
 
             (bool isLoss, bool isNonDecisive) =
@@ -1123,6 +1126,10 @@ contract PredictionMarketEscrow is
             if (isLoss || isNonDecisive) {
                 return (true, IV2Types.SettlementResult.COUNTERPARTY_WINS);
             }
+        }
+
+        if (hasUnresolved) {
+            return (false, IV2Types.SettlementResult.UNRESOLVED);
         }
 
         return (true, IV2Types.SettlementResult.PREDICTOR_WINS);
@@ -1134,6 +1141,9 @@ contract PredictionMarketEscrow is
         view
         returns (bool canResolve, IV2Types.SettlementResult result)
     {
+        // A single decisive loss is enough for COUNTERPARTY_WINS
+        // even if other picks are still unresolved (predictor needs ALL legs)
+        bool hasUnresolved = false;
         for (uint256 i = 0; i < numPicks; i++) {
             IV2Types.Pick storage pick = picks[i];
 
@@ -1150,11 +1160,13 @@ contract PredictionMarketEscrow is
                 outcome = _outcome;
             } catch {
                 // Resolver call failed - treat as unresolved
-                return (false, IV2Types.SettlementResult.UNRESOLVED);
+                hasUnresolved = true;
+                continue;
             }
 
             if (!isResolved) {
-                return (false, IV2Types.SettlementResult.UNRESOLVED);
+                hasUnresolved = true;
+                continue;
             }
 
             (bool isLoss, bool isNonDecisive) =
@@ -1162,6 +1174,10 @@ contract PredictionMarketEscrow is
             if (isLoss || isNonDecisive) {
                 return (true, IV2Types.SettlementResult.COUNTERPARTY_WINS);
             }
+        }
+
+        if (hasUnresolved) {
+            return (false, IV2Types.SettlementResult.UNRESOLVED);
         }
 
         return (true, IV2Types.SettlementResult.PREDICTOR_WINS);

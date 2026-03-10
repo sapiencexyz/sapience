@@ -222,7 +222,7 @@ export default function PredictionForm({
                     : 'border-no/40 bg-no/10 text-no'
               }`}
             >
-              {nonDecisive ? 'TIE' : resolvedToYes ? 'YES' : 'NO'}
+              {nonDecisive ? 'INDECISIVE' : resolvedToYes ? 'YES' : 'NO'}
             </Badge>
           </div>
         </div>
