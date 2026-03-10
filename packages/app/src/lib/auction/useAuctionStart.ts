@@ -342,8 +342,8 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
         wager: params.wager,
         resolver: params.resolver,
         predictedOutcomes: params.predictedOutcomes,
-        taker: effectivePredictor,
-        takerNonce: params.predictorNonce,
+        predictor: effectivePredictor,
+        predictorNonce: params.predictorNonce,
         chainId: params.chainId,
       };
 
