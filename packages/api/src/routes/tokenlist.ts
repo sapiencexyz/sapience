@@ -38,10 +38,7 @@ interface TokenEntry {
   };
 }
 
-function truncateName(name: string, maxLen = 64): string {
-  if (name.length <= maxLen) return name;
-  return name.slice(0, maxLen - 3) + '...';
-}
+
 
 async function buildTokenList(): Promise<string> {
   // Fetch pick configs that use the CT resolver, with their picks
@@ -154,15 +151,15 @@ async function buildTokenList(): Promise<string> {
       {
         address: pc.predictorToken!,
         tag: 'predictor',
-        name: truncateName(predictorName),
-        symbol: truncateName(predictorSymbol, 20),
+        name: predictorName,
+        symbol: predictorSymbol,
         isCounterparty: false,
       },
       {
         address: pc.counterpartyToken!,
         tag: 'counterparty',
-        name: truncateName(counterpartyName),
-        symbol: truncateName(counterpartySymbol, 20),
+        name: counterpartyName,
+        symbol: counterpartySymbol,
         isCounterparty: true,
       },
     ];
