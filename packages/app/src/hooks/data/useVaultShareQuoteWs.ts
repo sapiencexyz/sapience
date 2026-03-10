@@ -106,20 +106,26 @@ export function useVaultShareQuoteWs(
             p.chainId === chainId &&
             p.vaultAddress?.toLowerCase() === vaultAddress.toLowerCase()
           ) {
-            const newQuote = {
-              vaultCollateralPerShare: String(p.vaultCollateralPerShare),
-              updatedAtMs: p.timestamp,
-              source: 'ws' as const,
-              raw: p,
-            };
-            // Store as last valid quote if it's not '0'
-            if (
-              p.vaultCollateralPerShare &&
-              p.vaultCollateralPerShare !== '0'
-            ) {
-              lastValidQuoteRef.current = newQuote;
-            }
-            setQuote(newQuote);
+            setQuote((prev) => {
+              // Monotonic freshness: reject stale replays
+              if (prev.source === 'ws' && p.timestamp <= prev.updatedAtMs) {
+                return prev;
+              }
+              const newQuote: VaultShareWsQuote = {
+                vaultCollateralPerShare: String(p.vaultCollateralPerShare),
+                updatedAtMs: p.timestamp,
+                source: 'ws' as const,
+                raw: p,
+              };
+              // Store as last valid quote if it's not '0'
+              if (
+                p.vaultCollateralPerShare &&
+                p.vaultCollateralPerShare !== '0'
+              ) {
+                lastValidQuoteRef.current = newQuote;
+              }
+              return newQuote;
+            });
           }
         }
       } catch (error) {
