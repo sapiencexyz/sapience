@@ -54,6 +54,7 @@ export default function PredictionPageClient({
       endTime: condition?.endTime ?? null,
       settled: condition?.settled ?? false,
       resolvedToYes: condition?.resolvedToYes ?? false,
+      nonDecisive: condition?.nonDecisive,
       resolverAddress: condition?.resolver ?? null,
     };
   });
