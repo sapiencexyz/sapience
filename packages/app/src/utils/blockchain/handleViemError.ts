@@ -24,3 +24,28 @@ export function handleViemError(
   if (error instanceof Error) return error.message;
   return String(error);
 }
+
+/**
+ * Session key policy errors from ZeroDev smart accounts.
+ *
+ * These occur when the session key's permission policy doesn't match the
+ * current contract addresses (e.g. after an escrow redeploy). The session
+ * must be re-created to pick up the new addresses.
+ *
+ * - AA23: account validation reverted
+ * - 0x59d52e40: CallViolatesParamRule()
+ */
+const SESSION_POLICY_ERROR_PATTERNS = [
+  'CallViolatesParamRule',
+  'AA23',
+  '0x59d52e40',
+] as const;
+
+/** Returns true if the error indicates a stale session key policy. */
+export function isSessionPolicyError(error: unknown): boolean {
+  const message =
+    error instanceof Error ? error.message : String(error ?? '');
+  return SESSION_POLICY_ERROR_PATTERNS.some((pattern) =>
+    message.includes(pattern)
+  );
+}

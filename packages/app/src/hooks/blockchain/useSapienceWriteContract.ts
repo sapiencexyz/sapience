@@ -25,7 +25,10 @@ import {
   type WriteContractParams,
   type SessionClient,
 } from './transactionExecutor';
-import { handleViemError } from '~/utils/blockchain/handleViemError';
+import {
+  handleViemError,
+  isSessionPolicyError,
+} from '~/utils/blockchain/handleViemError';
 import { useChainValidation } from '~/hooks/blockchain/useChainValidation';
 import { useMonitorTxStatus } from '~/hooks/blockchain/useMonitorTxStatus';
 import { CreatePositionContext } from '~/lib/context/CreatePositionContext';
@@ -125,6 +128,7 @@ export function useSapienceWriteContract({
     sessionConfig,
     hasArbitrumSession,
     createArbitrumSessionIfNeeded,
+    endSession,
   } = useSession();
 
   // Check if session can handle a specific chain
@@ -441,12 +445,27 @@ export function useSapienceWriteContract({
         completeTransaction(result.hash);
       } catch (error) {
         setIsSubmitting(false);
-        toast({
-          title: 'Transaction Failed',
-          description: handleViemError(error, fallbackErrorMessage),
-          duration: 5000,
-          variant: 'destructive',
-        });
+        if (isSessionPolicyError(error)) {
+          console.warn(
+            '[WriteContract] Session key policy mismatch — clearing stale session',
+            error
+          );
+          endSession();
+          toast({
+            title: 'Session Expired',
+            description:
+              'Contract addresses have changed. Please start a new session.',
+            duration: 8000,
+            variant: 'destructive',
+          });
+        } else {
+          toast({
+            title: 'Transaction Failed',
+            description: handleViemError(error, fallbackErrorMessage),
+            duration: 5000,
+            variant: 'destructive',
+          });
+        }
         onError?.(error as Error);
       }
     },
@@ -458,6 +477,7 @@ export function useSapienceWriteContract({
       toast,
       fallbackErrorMessage,
       onError,
+      endSession,
       completeTransaction,
       getExecutionPathForChain,
       getSessionClient,
@@ -541,12 +561,27 @@ export function useSapienceWriteContract({
         completeTransaction(finalHash);
       } catch (error) {
         setIsSubmitting(false);
-        toast({
-          title: 'Transaction Failed',
-          description: handleViemError(error, fallbackErrorMessage),
-          duration: 5000,
-          variant: 'destructive',
-        });
+        if (isSessionPolicyError(error)) {
+          console.warn(
+            '[SendCalls] Session key policy mismatch — clearing stale session',
+            error
+          );
+          endSession();
+          toast({
+            title: 'Session Expired',
+            description:
+              'Contract addresses have changed. Please start a new session.',
+            duration: 8000,
+            variant: 'destructive',
+          });
+        } else {
+          toast({
+            title: 'Transaction Failed',
+            description: handleViemError(error, fallbackErrorMessage),
+            duration: 5000,
+            variant: 'destructive',
+          });
+        }
         onError?.(error as Error);
       }
     },
@@ -558,6 +593,7 @@ export function useSapienceWriteContract({
       toast,
       fallbackErrorMessage,
       onError,
+      endSession,
       getExecutionPathForChain,
       getSessionClient,
       needsArbitrumSession,
