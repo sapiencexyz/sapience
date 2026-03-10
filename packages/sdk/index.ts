@@ -8,6 +8,7 @@ export * from './onchain/trading';
 export * from './onchain/vault';
 export * from './onchain/approval';
 export * from './onchain/position';
+export * from './onchain/secondaryTrade';
 export * from './onchain/escrow';
 
 export * from './auction/encoding';

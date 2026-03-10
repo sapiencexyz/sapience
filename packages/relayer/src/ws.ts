@@ -39,6 +39,9 @@ import {
   handleSecondaryBidSubmit,
   handleSecondarySubscribe,
   handleSecondaryUnsubscribe,
+  handleSecondaryFeedSubscribe,
+  handleSecondaryFeedUnsubscribe,
+  handleSecondaryListingsRequest,
   unsubscribeFromAllSecondary,
 } from './secondaryMarketHandlers';
 
@@ -842,6 +845,21 @@ export function createAuctionWebSocketServer() {
         }
         if (secondaryMsg.type === 'secondary.auction.unsubscribe') {
           handleSecondaryUnsubscribe(ws, secondaryMsg.payload);
+          trackDuration(msgType, startTime);
+          return;
+        }
+        if (msgType === 'secondary.feed.subscribe') {
+          handleSecondaryFeedSubscribe(ws);
+          trackDuration(msgType, startTime);
+          return;
+        }
+        if (msgType === 'secondary.feed.unsubscribe') {
+          handleSecondaryFeedUnsubscribe(ws);
+          trackDuration(msgType, startTime);
+          return;
+        }
+        if (msgType === 'secondary.listings.request') {
+          handleSecondaryListingsRequest(ws);
           trackDuration(msgType, startTime);
           return;
         }
