@@ -415,7 +415,19 @@ export default function PositionsTable({
   const error = account ? accountError : conditionError;
   const refetch = account ? accountRefetch : conditionRefetch;
 
-  const positions = allPositions;
+  // Hide zero-balance positions that haven't settled yet (no resolution data).
+  // These are positions where the user burned/transferred tokens before settlement.
+  // Keep 0-balance positions that ARE settled (post-burn with actual PnL).
+  const positions = React.useMemo(
+    () =>
+      allPositions.filter((p) => {
+        const hasZeroBalance = BigInt(p.balance) === 0n;
+        const isSettled = p.pickConfig?.resolved === true;
+        // Hide only if zero balance AND not settled
+        return !(hasZeroBalance && !isSettled);
+      }),
+    [allPositions]
+  );
 
   // Collect all unique conditionIds to fetch category data
   const conditionIds = React.useMemo(() => {
