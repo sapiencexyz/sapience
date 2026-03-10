@@ -13,6 +13,7 @@ import { useAccount, useReadContract } from 'wagmi';
 import { collateralToken } from '@sapience/sdk/contracts';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { useChainId } from 'wagmi';
 import erc20Abi from '@sapience/sdk/queries/abis/erc20abi.json';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useConditionsByIds } from '~/hooks/graphql/useConditionsByIds';
@@ -60,8 +61,8 @@ const AuctionRequestRow: React.FC<Props> = ({
 }) => {
   const { address } = useAccount();
   const { openConnectDialog } = useConnectDialog();
-  // TODO: Get chainId from context/props when supporting multiple chains
-  const chainId = DEFAULT_CHAIN_ID;
+  const walletChainId = useChainId();
+  const chainId = walletChainId ?? DEFAULT_CHAIN_ID;
   const { toast } = useToast();
   const { openApproval } = useApprovalDialog();
   const terminalLogs = useTerminalLogsOptional();
