@@ -14,7 +14,7 @@ const prisma = dbModule.default as unknown as {
   condition: { findMany: ReturnType<typeof vi.fn> };
 };
 
-import { buildTokenList, resetCache, CT_RESOLVER } from './tokenlist';
+import { buildTokenList, resetCache, CT_RESOLVER, MAX_NAME_LENGTH, MAX_SYMBOL_LENGTH } from './tokenlist';
 
 // Helper to build a pick config fixture
 function makePickConfig(overrides: Record<string, unknown> = {}) {
@@ -61,7 +61,8 @@ describe('tokenlist', () => {
 
       expect(list.name).toBe('Sapience Position Tokens');
       expect(list.version.major).toBe(1);
-      expect(list.version.minor).toBe(0);
+      expect(list.version.minor).toBeGreaterThan(0);
+      expect(list.version.minor).toBeLessThan(65536);
       expect(list.timestamp).toBeTruthy();
       expect(list.tokens).toBeInstanceOf(Array);
     });
@@ -251,18 +252,37 @@ describe('tokenlist', () => {
       expect(token.decimals).toBe(18);
     });
 
-    it('sets version.patch to YYYYMMDD date stamp', async () => {
+    it('sets version fields within uint16 range', async () => {
       prisma.picks.findMany.mockResolvedValue([makePickConfig()]);
       prisma.condition.findMany.mockResolvedValue([makeCondition()]);
 
       const list = JSON.parse(await buildTokenList());
 
+      expect(list.version.major).toBe(1);
+      // minor = MMDD (max 1231)
       const now = new Date();
-      const expected =
-        now.getUTCFullYear() * 10000 +
-        (now.getUTCMonth() + 1) * 100 +
-        now.getUTCDate();
-      expect(list.version.patch).toBe(expected);
+      const expectedMinor =
+        (now.getUTCMonth() + 1) * 100 + now.getUTCDate();
+      expect(list.version.minor).toBe(expectedMinor);
+      expect(list.version.minor).toBeLessThan(65536);
+      // patch = token count
+      expect(list.version.patch).toBe(list.tokens.length);
+      expect(list.version.patch).toBeLessThan(65536);
+    });
+
+    it('truncates long names and symbols', async () => {
+      const longQuestion = 'A'.repeat(120);
+      const longShortName = 'S'.repeat(90);
+      prisma.picks.findMany.mockResolvedValue([makePickConfig()]);
+      prisma.condition.findMany.mockResolvedValue([
+        makeCondition({ question: longQuestion, shortName: longShortName }),
+      ]);
+
+      const list = JSON.parse(await buildTokenList());
+      for (const token of list.tokens) {
+        expect(token.name.length).toBeLessThanOrEqual(MAX_NAME_LENGTH);
+        expect(token.symbol.length).toBeLessThanOrEqual(MAX_SYMBOL_LENGTH);
+      }
     });
   });
 });

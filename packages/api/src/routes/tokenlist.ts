@@ -26,6 +26,13 @@ const CHAIN_IDS = [CHAIN_ID_ARBITRUM, CHAIN_ID_ETHEREAL];
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const MAX_TOKENS = 10_000;
 const MAX_RESPONSE_BYTES = 5 * 1024 * 1024; // 5MB
+const MAX_NAME_LENGTH = 100; // CowSwap / @uniswap/token-lists schema limit
+const MAX_SYMBOL_LENGTH = 80; // CowSwap patches the default 20 → 80
+
+function truncate(str: string, max: number): string {
+  if (str.length <= max) return str;
+  return str.slice(0, max - 3) + '...';
+}
 
 // Only include tokens using the ConditionalTokens resolver (Polymarket-style)
 const CT_RESOLVER =
@@ -176,8 +183,8 @@ async function buildTokenList(): Promise<string> {
         tokens.push({
           chainId,
           address: side.address,
-          name: side.name,
-          symbol: side.symbol,
+          name: truncate(side.name, MAX_NAME_LENGTH),
+          symbol: truncate(side.symbol, MAX_SYMBOL_LENGTH),
           decimals: 18,
           tags: [side.tag],
           extensions: {
@@ -197,11 +204,10 @@ async function buildTokenList(): Promise<string> {
   }
 
   const now = new Date();
-  // version.patch = YYYYMMDD as an integer
-  const datePatch =
-    now.getUTCFullYear() * 10000 +
-    (now.getUTCMonth() + 1) * 100 +
-    now.getUTCDate();
+  // Each version field must be < 65536 per @uniswap/token-lists schema.
+  // Encode date as minor = MMDD, patch = token count.
+  const dateMinor =
+    (now.getUTCMonth() + 1) * 100 + now.getUTCDate();
 
   const tokenList = {
     name: 'Sapience Position Tokens',
@@ -209,8 +215,8 @@ async function buildTokenList(): Promise<string> {
     timestamp: now.toISOString(),
     version: {
       major: 1,
-      minor: 0,
-      patch: datePatch,
+      minor: dateMinor,
+      patch: tokens.length,
     },
     tokens,
   };
@@ -275,4 +281,4 @@ function resetCache() {
   cache = null;
 }
 
-export { router, buildTokenList, resetCache, CACHE_TTL_MS, MAX_TOKENS, MAX_RESPONSE_BYTES, CT_RESOLVER };
+export { router, buildTokenList, resetCache, CACHE_TTL_MS, MAX_TOKENS, MAX_RESPONSE_BYTES, MAX_NAME_LENGTH, MAX_SYMBOL_LENGTH, CT_RESOLVER };
