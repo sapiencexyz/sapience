@@ -117,6 +117,9 @@ export default function PositionForm({
   // Whether the user has clicked "Use" to activate sponsorship for the current auction.
   // Reset whenever bids are cleared (position size, selections, or wallet change).
   const [sponsorshipActivated, setSponsorshipActivated] = useState(false);
+  // True while we're waiting for a re-quoted bid after activating sponsorship.
+  // Prevents the user from submitting the stale (unsponsored) bid.
+  const [awaitingSponsoredBid, setAwaitingSponsoredBid] = useState(false);
   // State for managing bid clearing when position size/selections change (for animations)
   // IMPORTANT: do NOT seed from `bids` prop.
   // `bids` comes from a shared auction hook and may contain leftover quotes from
@@ -227,6 +230,7 @@ export default function PositionForm({
       setValidBids([]);
       setStickyEstimateBid(null);
       setSponsorshipActivated(false);
+      setAwaitingSponsoredBid(false);
       setLastQuoteRequestMs(null); // Reset cooldown when position size changes
       currentRequestKeyRef.current = null; // Ignore incoming bids for old configuration
       prevPositionSizeRef.current = positionSizeValue || '';
@@ -244,6 +248,7 @@ export default function PositionForm({
       setValidBids([]);
       setStickyEstimateBid(null);
       setSponsorshipActivated(false);
+      setAwaitingSponsoredBid(false);
       setLastQuoteRequestMs(null);
       currentRequestKeyRef.current = null;
       prevHasConnectedWalletRef.current = hasConnectedWallet;
@@ -257,6 +262,7 @@ export default function PositionForm({
       setValidBids([]);
       setStickyEstimateBid(null);
       setSponsorshipActivated(false);
+      setAwaitingSponsoredBid(false);
       setLastQuoteRequestMs(null); // Reset cooldown when selections change
       currentRequestKeyRef.current = null; // Ignore incoming bids for old configuration
       prevPredictionsKeyRef.current = predictionsKey;
@@ -285,6 +291,7 @@ export default function PositionForm({
         );
       }
       setValidBids(bids);
+      setAwaitingSponsoredBid(false);
     } else if (bids.length > 0) {
       logPositionForm(
         `[accept] REJECTED: key mismatch. ref=${currentRequestKeyRef.current?.slice(0, 40)}, current=${currentRequestKey.slice(0, 40)}`
@@ -877,6 +884,7 @@ export default function PositionForm({
                         type="button"
                         onClick={() => {
                           setSponsorshipActivated(true);
+                          setAwaitingSponsoredBid(true);
                           triggerAuctionRequest({
                             forceRefresh: true,
                             withSponsor: true,
@@ -914,7 +922,7 @@ export default function PositionForm({
               onRequestBids={handleRequestBids}
               isSubmitting={isSubmitting}
               onSubmit={onSubmit}
-              isSubmitDisabled={isPermitLoading || isRestricted}
+              isSubmitDisabled={isPermitLoading || isRestricted || awaitingSponsoredBid}
               enableRainbowHover={isRainbowHoverEnabled}
               hintMounted={hintMounted}
               disclaimerMounted={disclaimerMounted}
