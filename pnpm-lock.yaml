@@ -191,6 +191,9 @@ importers:
 
   packages/app:
     dependencies:
+      '@cowprotocol/widget-lib':
+        specifier: 0.22.3
+        version: 0.22.3
       '@hookform/resolvers':
         specifier: 3.9.0
         version: 3.9.0(react-hook-form@7.53.0(react@19.1.0))
@@ -1146,6 +1149,18 @@ packages:
 
   '@corex/deepmerge@4.0.43':
     resolution: {integrity: sha512-N8uEMrMPL0cu/bdboEWpQYb/0i2K5Qn8eCsxzOmxSggJbbQte7ljMRoXm917AbntqTGOzdTu+vP3KOOzoC70HQ==}
+
+  '@cowprotocol/events@2.1.0':
+    resolution: {integrity: sha512-6Z13zutTToSjRriA1sW8F96fZJQe2Np1YfbbM8Iylfy7+YOM6bDUkmfzfe5rlZxNkmwMRe2qOYilsXcYzP2zPw==}
+
+  '@cowprotocol/iframe-transport@1.2.0':
+    resolution: {integrity: sha512-M7LfVHoiCm4I+q0pRGYW7pLf81D1XhZxno8EkYHFUOcThor/ir7R4eN2QTygw3BtFF9Ll4e7G+p6WRdO+RgbxQ==}
+
+  '@cowprotocol/types@2.1.1':
+    resolution: {integrity: sha512-F7VcDZg12+M2X7WMvWP4yGcl2ammVgfvtKsUEfl9IWSE42UhbElzSsUpBYR1clE5Gz/l11UsA/F6YRtEAGgYjw==}
+
+  '@cowprotocol/widget-lib@0.22.3':
+    resolution: {integrity: sha512-VMMC9ul/VmPZi6lH6rpiZ2cnMIVMsxl+vWyN1gzOhPDXED0rek5eRdNOrndz5ALXuKSZYFLsGWAJMfsA+6DRug==}
 
   '@cspotcode/source-map-support@0.8.1':
     resolution: {integrity: sha512-IchNf6dN4tHoMFIn/7OE8LWZ19Y6q/67Bmf6vnGREv8RSbBVb9LPJxEcnwrcwX6ixSvaiGoomAUvu4YSxXrVgw==}
@@ -16701,6 +16716,19 @@ snapshots:
   '@colors/colors@1.6.0': {}
 
   '@corex/deepmerge@4.0.43': {}
+
+  '@cowprotocol/events@2.1.0':
+    dependencies:
+      '@cowprotocol/types': 2.1.1
+
+  '@cowprotocol/iframe-transport@1.2.0': {}
+
+  '@cowprotocol/types@2.1.1': {}
+
+  '@cowprotocol/widget-lib@0.22.3':
+    dependencies:
+      '@cowprotocol/events': 2.1.0
+      '@cowprotocol/iframe-transport': 1.2.0
 
   '@cspotcode/source-map-support@0.8.1':
     dependencies:
