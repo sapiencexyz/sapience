@@ -57,7 +57,10 @@ export class PnlDataPoint {
   cumulativePnl!: string;
 }
 
-@ObjectType({ description: 'Time-bucketed prediction count data point' })
+@ObjectType({
+  description:
+    'Time-bucketed prediction count with outcome breakdown, bucketed by creation time',
+})
 export class PredictionCountDataPoint {
   @Field(() => Int, {
     description: 'Unix epoch timestamp (seconds) for the start of this bucket',
@@ -65,19 +68,9 @@ export class PredictionCountDataPoint {
   timestamp!: number;
 
   @Field(() => Int, {
-    description: 'Number of predictions created in this bucket',
+    description: 'Total predictions created in this bucket',
   })
-  count!: number;
-}
-
-@ObjectType({
-  description: 'Time-bucketed prediction outcomes (won/lost/pending)',
-})
-export class PredictionOutcomesDataPoint {
-  @Field(() => Int, {
-    description: 'Unix epoch timestamp (seconds) for the start of this bucket',
-  })
-  timestamp!: number;
+  total!: number;
 
   @Field(() => Int, { description: 'Predictions won in this bucket' })
   won!: number;
@@ -89,6 +82,11 @@ export class PredictionOutcomesDataPoint {
     description: 'Predictions still pending in this bucket',
   })
   pending!: number;
+
+  @Field(() => Int, {
+    description: 'Predictions settled as non-decisive in this bucket',
+  })
+  nonDecisive!: number;
 }
 
 @ObjectType({

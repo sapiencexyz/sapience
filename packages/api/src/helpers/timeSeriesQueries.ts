@@ -12,7 +12,6 @@ import type {
   PnlDataPoint,
   BalanceDataPoint,
   PredictionCountDataPoint,
-  PredictionOutcomesDataPoint,
 } from '../graphql/types/TimeSeriesTypes';
 
 // ─── Bucket limits per interval ───────────────────────────────────────────────
@@ -89,6 +88,15 @@ interface BalanceRow {
   timestamp: bigint;
   deployed_collateral: string;
   claimable_collateral: string;
+}
+
+interface PredictionCountRow {
+  timestamp: bigint;
+  total: bigint;
+  won: bigint;
+  lost: bigint;
+  pending: bigint;
+  non_decisive: bigint;
 }
 
 // ─── Account Volume ──────────────────────────────────────────────────────────
@@ -351,11 +359,8 @@ export async function queryAccountBalance(
 }
 
 // ─── Account Prediction Count ────────────────────────────────────────────────
-
-interface PredictionCountRow {
-  timestamp: bigint;
-  count: bigint;
-}
+// Single query returning total count + outcome breakdown, all bucketed by
+// creation time (mintedAt / onChainCreatedAt) to match accountVolume semantics.
 
 export async function queryAccountPredictionCount(
   address: string,
@@ -382,19 +387,55 @@ export async function queryAccountPredictionCount(
       ) gs
     ),
     all_predictions AS (
-      SELECT "mintedAt" AS created_ts
-      FROM position
-      WHERE (predictor = ${addr} OR counterparty = ${addr})
-        AND "mintedAt" >= ${fromEpoch} AND "mintedAt" <= ${toEpoch}
-      UNION ALL
-      SELECT "onChainCreatedAt" AS created_ts
+      -- V2 Prediction table
+      SELECT
+        "onChainCreatedAt" AS created_ts,
+        CASE
+          WHEN settled = true AND (
+            (predictor = ${addr} AND result = 'PREDICTOR_WINS')
+            OR (counterparty = ${addr} AND result = 'COUNTERPARTY_WINS')
+          ) THEN 1 ELSE 0
+        END AS won,
+        CASE
+          WHEN settled = true AND (
+            (predictor = ${addr} AND result = 'COUNTERPARTY_WINS')
+            OR (counterparty = ${addr} AND result = 'PREDICTOR_WINS')
+          ) THEN 1 ELSE 0
+        END AS lost,
+        CASE WHEN settled = false THEN 1 ELSE 0 END AS pending,
+        CASE WHEN settled = true AND result = 'NON_DECISIVE' THEN 1 ELSE 0 END AS non_decisive
       FROM "Prediction"
       WHERE (predictor = ${addr} OR counterparty = ${addr})
         AND "onChainCreatedAt" >= ${fromEpoch} AND "onChainCreatedAt" <= ${toEpoch}
+      UNION ALL
+      -- V1 position table
+      SELECT
+        "mintedAt" AS created_ts,
+        CASE
+          WHEN "settledAt" IS NOT NULL AND (
+            (predictor = ${addr} AND "predictorWon" = true)
+            OR (counterparty = ${addr} AND "predictorWon" = false)
+          ) THEN 1 ELSE 0
+        END AS won,
+        CASE
+          WHEN "settledAt" IS NOT NULL AND (
+            (predictor = ${addr} AND "predictorWon" = false)
+            OR (counterparty = ${addr} AND "predictorWon" = true)
+          ) THEN 1 ELSE 0
+        END AS lost,
+        CASE WHEN "settledAt" IS NULL THEN 1 ELSE 0 END AS pending,
+        CASE WHEN "settledAt" IS NOT NULL AND "predictorWon" IS NULL THEN 1 ELSE 0 END AS non_decisive
+      FROM position
+      WHERE (predictor = ${addr} OR counterparty = ${addr})
+        AND "mintedAt" >= ${fromEpoch} AND "mintedAt" <= ${toEpoch}
     )
     SELECT
       b.bucket_epoch AS timestamp,
-      COALESCE(COUNT(p.created_ts), 0)::BIGINT AS count
+      COALESCE(COUNT(p.created_ts), 0)::BIGINT AS total,
+      COALESCE(SUM(p.won), 0)::BIGINT AS won,
+      COALESCE(SUM(p.lost), 0)::BIGINT AS lost,
+      COALESCE(SUM(p.pending), 0)::BIGINT AS pending,
+      COALESCE(SUM(p.non_decisive), 0)::BIGINT AS non_decisive
     FROM buckets b
     LEFT JOIN all_predictions p ON p.created_ts >= b.bucket_epoch AND p.created_ts < b.next_epoch
     GROUP BY b.bucket_epoch
@@ -403,120 +444,11 @@ export async function queryAccountPredictionCount(
 
   return rows.map((row) => ({
     timestamp: Number(row.timestamp),
-    count: Number(row.count),
-  }));
-}
-
-// ─── Account Prediction Outcomes ─────────────────────────────────────────────
-
-interface PredictionOutcomesRow {
-  timestamp: bigint;
-  won: bigint;
-  lost: bigint;
-  pending: bigint;
-}
-
-export async function queryAccountPredictionOutcomes(
-  address: string,
-  interval: TimeInterval,
-  from?: Date,
-  to?: Date
-): Promise<PredictionOutcomesDataPoint[]> {
-  const { fromEpoch, toEpoch, pgTrunc, pgStep } = resolveDefaults(
-    interval,
-    from,
-    to
-  );
-  const addr = address.toLowerCase();
-
-  const rows = await prisma.$queryRaw<PredictionOutcomesRow[]>`
-    WITH buckets AS (
-      SELECT
-        EXTRACT(EPOCH FROM gs)::BIGINT AS bucket_epoch,
-        EXTRACT(EPOCH FROM gs + ${Prisma.raw(`'${pgStep}'::INTERVAL`)})::BIGINT AS next_epoch
-      FROM generate_series(
-        DATE_TRUNC(${Prisma.raw(`'${pgTrunc}'`)}, TO_TIMESTAMP(${fromEpoch})),
-        TO_TIMESTAMP(${toEpoch}),
-        ${Prisma.raw(`'${pgStep}'::INTERVAL`)}
-      ) gs
-    ),
-    outcome_events AS (
-      -- V2 Prediction table: settled predictions bucketed by settledAt
-      SELECT
-        "settledAt" AS event_ts,
-        CASE
-          WHEN (predictor = ${addr} AND result = 'PREDICTOR_WINS')
-            OR (counterparty = ${addr} AND result = 'COUNTERPARTY_WINS')
-          THEN 1 ELSE 0
-        END AS won,
-        CASE
-          WHEN (predictor = ${addr} AND result = 'COUNTERPARTY_WINS')
-            OR (counterparty = ${addr} AND result = 'PREDICTOR_WINS')
-          THEN 1 ELSE 0
-        END AS lost,
-        0 AS pending
-      FROM "Prediction"
-      WHERE (predictor = ${addr} OR counterparty = ${addr})
-        AND settled = true
-        AND "settledAt" >= ${fromEpoch} AND "settledAt" <= ${toEpoch}
-      UNION ALL
-      -- V2 Prediction table: pending predictions bucketed by onChainCreatedAt
-      SELECT
-        "onChainCreatedAt" AS event_ts,
-        0 AS won,
-        0 AS lost,
-        1 AS pending
-      FROM "Prediction"
-      WHERE (predictor = ${addr} OR counterparty = ${addr})
-        AND settled = false
-        AND "onChainCreatedAt" >= ${fromEpoch} AND "onChainCreatedAt" <= ${toEpoch}
-      UNION ALL
-      -- V1 position table: settled positions bucketed by settledAt
-      SELECT
-        "settledAt" AS event_ts,
-        CASE
-          WHEN (predictor = ${addr} AND "predictorWon" = true)
-            OR (counterparty = ${addr} AND "predictorWon" = false)
-          THEN 1 ELSE 0
-        END AS won,
-        CASE
-          WHEN (predictor = ${addr} AND "predictorWon" = false)
-            OR (counterparty = ${addr} AND "predictorWon" = true)
-          THEN 1 ELSE 0
-        END AS lost,
-        0 AS pending
-      FROM position
-      WHERE (predictor = ${addr} OR counterparty = ${addr})
-        AND "settledAt" IS NOT NULL
-        AND "settledAt" >= ${fromEpoch} AND "settledAt" <= ${toEpoch}
-      UNION ALL
-      -- V1 position table: pending positions bucketed by mintedAt
-      SELECT
-        "mintedAt" AS event_ts,
-        0 AS won,
-        0 AS lost,
-        1 AS pending
-      FROM position
-      WHERE (predictor = ${addr} OR counterparty = ${addr})
-        AND "settledAt" IS NULL
-        AND "mintedAt" >= ${fromEpoch} AND "mintedAt" <= ${toEpoch}
-    )
-    SELECT
-      b.bucket_epoch AS timestamp,
-      COALESCE(SUM(e.won), 0)::BIGINT AS won,
-      COALESCE(SUM(e.lost), 0)::BIGINT AS lost,
-      COALESCE(SUM(e.pending), 0)::BIGINT AS pending
-    FROM buckets b
-    LEFT JOIN outcome_events e ON e.event_ts >= b.bucket_epoch AND e.event_ts < b.next_epoch
-    GROUP BY b.bucket_epoch
-    ORDER BY b.bucket_epoch
-  `;
-
-  return rows.map((row) => ({
-    timestamp: Number(row.timestamp),
+    total: Number(row.total),
     won: Number(row.won),
     lost: Number(row.lost),
     pending: Number(row.pending),
+    nonDecisive: Number(row.non_decisive),
   }));
 }
 

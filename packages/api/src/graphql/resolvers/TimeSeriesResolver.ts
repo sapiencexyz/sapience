@@ -5,7 +5,6 @@ import {
   PnlDataPoint,
   BalanceDataPoint,
   PredictionCountDataPoint,
-  PredictionOutcomesDataPoint,
 } from '../types/TimeSeriesTypes';
 import {
   queryAccountVolume,
@@ -13,7 +12,6 @@ import {
   queryAccountBalance,
   queryProtocolVolume,
   queryAccountPredictionCount,
-  queryAccountPredictionOutcomes,
 } from '../../helpers/timeSeriesQueries';
 
 @Resolver()
@@ -60,7 +58,8 @@ export class TimeSeriesResolver {
   }
 
   @Query(() => [PredictionCountDataPoint], {
-    description: 'Time-bucketed prediction count for a single address',
+    description:
+      'Time-bucketed prediction count with outcome breakdown for a single address, bucketed by creation time',
   })
   @Directive('@cacheControl(maxAge: 60)')
   async accountPredictionCount(
@@ -70,20 +69,6 @@ export class TimeSeriesResolver {
     @Arg('to', () => Date, { nullable: true }) to?: Date
   ): Promise<PredictionCountDataPoint[]> {
     return queryAccountPredictionCount(address, interval, from, to);
-  }
-
-  @Query(() => [PredictionOutcomesDataPoint], {
-    description:
-      'Time-bucketed prediction outcomes (won/lost/pending) for a single address',
-  })
-  @Directive('@cacheControl(maxAge: 60)')
-  async accountPredictionOutcomes(
-    @Arg('address', () => String) address: string,
-    @Arg('interval', () => TimeInterval) interval: TimeInterval,
-    @Arg('from', () => Date, { nullable: true }) from?: Date,
-    @Arg('to', () => Date, { nullable: true }) to?: Date
-  ): Promise<PredictionOutcomesDataPoint[]> {
-    return queryAccountPredictionOutcomes(address, interval, from, to);
   }
 
   @Query(() => [VolumeDataPoint], {

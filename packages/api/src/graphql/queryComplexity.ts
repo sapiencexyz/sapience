@@ -576,6 +576,7 @@ export function createComplexityEstimators(
       if (fieldName === 'accountVolume') return 1000;
       if (fieldName === 'accountPnl') return 1500;
       if (fieldName === 'accountBalance') return 2000;
+      if (fieldName === 'accountPredictionCount') return 1000;
       if (fieldName === 'protocolVolume') return 1500;
       // Full-table groupBy aggregates (no cache)
       if (fieldName === 'accuracyLeaderboard') return 1500;
