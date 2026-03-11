@@ -1,12 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
-import {
-  useAccount,
-  useChainId,
-  useSignTypedData,
-  useWriteContract,
-} from 'wagmi';
+import { useAccount, useChainId, useSignTypedData } from 'wagmi';
 import { erc20Abi, type Address, type Hex } from 'viem';
 import { buildBuyerTradeApproval } from '@sapience/sdk/auction/secondarySigning';
 import type { SecondaryBidPayload } from '@sapience/sdk/types/secondary';
@@ -20,6 +15,8 @@ import { toAuctionWsUrl } from '~/lib/ws';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 import { generateRandomNonce } from '@sapience/sdk';
 import { getPublicClientForChainId } from '~/lib/utils/util';
+import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
+import { encodeEscrowSessionKeyData } from '~/lib/session/sessionKeyManager';
 
 export interface SecondaryBidParams {
   /** Auction ID to bid on */
@@ -67,12 +64,17 @@ export function useSecondaryBid(options: UseSecondaryBidOptions = {}) {
   const { signTypedDataAsync } = useSignTypedData();
   const {
     effectiveAddress,
-    signTypedData: sessionSignTypedData,
+    signTypedDataRaw: sessionSignTypedDataRaw,
     isUsingSession,
+    tradeSessionKeyApproval,
   } = useSession();
   const { apiBaseUrl } = useSettings();
 
-  const { writeContractAsync } = useWriteContract();
+  // Use sapienceWriteContract for approval — routes through session key when active
+  const { writeContract: sapienceWriteContract } = useSapienceWriteContract({
+    disableSuccessToast: true,
+    disableAutoRedirect: true,
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const wsUrl = useMemo(() => toAuctionWsUrl(apiBaseUrl), [apiBaseUrl]);
@@ -101,10 +103,8 @@ export function useSecondaryBid(options: UseSecondaryBidOptions = {}) {
         deadlineSeconds = 1800,
       } = params;
 
-      // Secondary market bids always use the EOA wallet address.
-      // Session key signing is not used for bids — the EOA signs directly
-      // and the on-chain contract verifies the EOA signature.
-      const buyerAddress = address;
+      // Use Smart Account address when session is active, EOA otherwise
+      const buyerAddress = isUsingSession ? effectiveAddress : address;
 
       if (!buyerAddress) {
         return { success: false, error: 'Wallet not connected' };
@@ -141,7 +141,7 @@ export function useSecondaryBid(options: UseSecondaryBidOptions = {}) {
 
         if (currentAllowance < price) {
           setIsSubmitting(true);
-          await writeContractAsync({
+          await sapienceWriteContract({
             address: collateralAddress,
             abi: erc20Abi,
             functionName: 'approve',
@@ -178,16 +178,30 @@ export function useSecondaryBid(options: UseSecondaryBidOptions = {}) {
       setIsSubmitting(true);
       let buyerSignature: Hex;
       try {
-        // Always sign with EOA wallet for secondary market bids
-        buyerSignature = await signTypedDataAsync({
-          domain: {
-            ...typedData.domain,
-            chainId: Number(typedData.domain.chainId),
-          },
-          types: typedData.types,
-          primaryType: typedData.primaryType,
-          message: typedData.message,
-        });
+        if (isUsingSession && sessionSignTypedDataRaw) {
+          // Session mode: raw ECDSA sign with session key (no kernel wrapping).
+          // The contract does ECDSA.recover() so it needs a raw 65-byte signature.
+          buyerSignature = await sessionSignTypedDataRaw({
+            domain: {
+              ...typedData.domain,
+              chainId: Number(typedData.domain.chainId),
+            },
+            types: typedData.types,
+            primaryType: typedData.primaryType,
+            message: typedData.message,
+          });
+        } else {
+          // EOA mode: sign with wallet
+          buyerSignature = await signTypedDataAsync({
+            domain: {
+              ...typedData.domain,
+              chainId: Number(typedData.domain.chainId),
+            },
+            types: typedData.types,
+            primaryType: typedData.primaryType,
+            message: typedData.message,
+          });
+        }
       } catch (e: any) {
         setIsSubmitting(false);
         const error =
@@ -199,6 +213,14 @@ export function useSecondaryBid(options: UseSecondaryBidOptions = {}) {
         };
       }
 
+      // Build buyerSessionKeyData for on-chain session key verification
+      let buyerSessionKeyData: string | undefined;
+      if (isUsingSession && tradeSessionKeyApproval) {
+        buyerSessionKeyData = encodeEscrowSessionKeyData(
+          tradeSessionKeyApproval
+        );
+      }
+
       // Submit bid via WS
       const payload: SecondaryBidPayload = {
         auctionId,
@@ -207,6 +229,7 @@ export function useSecondaryBid(options: UseSecondaryBidOptions = {}) {
         buyerNonce: Number(nonce),
         buyerDeadline: Number(buyerDeadline),
         buyerSignature,
+        buyerSessionKeyData,
       };
 
       try {
@@ -235,10 +258,11 @@ export function useSecondaryBid(options: UseSecondaryBidOptions = {}) {
       collateralAddress,
       wsUrl,
       publicClient,
-      writeContractAsync,
+      sapienceWriteContract,
       signTypedDataAsync,
-      sessionSignTypedData,
+      sessionSignTypedDataRaw,
       isUsingSession,
+      tradeSessionKeyApproval,
       onSignatureRejected,
       onBidSubmitted,
     ]

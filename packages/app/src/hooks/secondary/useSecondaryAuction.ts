@@ -50,7 +50,7 @@ export function useSecondaryAuctionStart(
   const { signTypedDataAsync } = useSignTypedData();
   const {
     effectiveAddress,
-    signTypedData: sessionSignTypedData,
+    signTypedDataRaw: sessionSignTypedDataRaw,
     isUsingSession,
   } = useSession();
   const { apiBaseUrl } = useSettings();
@@ -79,8 +79,8 @@ export function useSecondaryAuctionStart(
         refCode,
       } = params;
 
-      // Secondary market always uses EOA wallet address for signing
-      const sellerAddr = address;
+      // Use Smart Account address when session is active, EOA otherwise
+      const sellerAddr = isUsingSession ? effectiveAddress : address;
       if (!sellerAddr) {
         return { success: false, error: 'Wallet not connected' };
       }
@@ -125,16 +125,29 @@ export function useSecondaryAuctionStart(
       setIsSubmitting(true);
       let sellerSignature: Hex;
       try {
-        // Always sign with EOA wallet for secondary market listings
-        sellerSignature = await signTypedDataAsync({
-          domain: {
-            ...typedData.domain,
-            chainId: Number(typedData.domain.chainId),
-          },
-          types: typedData.types,
-          primaryType: typedData.primaryType,
-          message: typedData.message,
-        });
+        if (isUsingSession && sessionSignTypedDataRaw) {
+          // Session mode: sign with session key (no wallet prompt)
+          sellerSignature = await sessionSignTypedDataRaw({
+            domain: {
+              ...typedData.domain,
+              chainId: Number(typedData.domain.chainId),
+            },
+            types: typedData.types,
+            primaryType: typedData.primaryType,
+            message: typedData.message,
+          });
+        } else {
+          // EOA mode: sign with wallet
+          sellerSignature = await signTypedDataAsync({
+            domain: {
+              ...typedData.domain,
+              chainId: Number(typedData.domain.chainId),
+            },
+            types: typedData.types,
+            primaryType: typedData.primaryType,
+            message: typedData.message,
+          });
+        }
       } catch (e: unknown) {
         setIsSubmitting(false);
         const error = e instanceof Error ? e : new Error(String(e));
@@ -225,7 +238,7 @@ export function useSecondaryAuctionStart(
       collateralAddress,
       wsUrl,
       signTypedDataAsync,
-      sessionSignTypedData,
+      sessionSignTypedDataRaw,
       isUsingSession,
       onSignatureRejected,
       onAuctionCreated,

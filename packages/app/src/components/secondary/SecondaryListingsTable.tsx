@@ -22,6 +22,7 @@ import BidOnListingDialog from '~/components/secondary/BidOnListingDialog';
 import AcceptBidDialog from '~/components/secondary/AcceptBidDialog';
 import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import { useAccount } from 'wagmi';
+import { useSession } from '~/lib/context/SessionContext';
 
 interface SecondaryListingsTableProps {
   chainId: number;
@@ -31,6 +32,7 @@ export default function SecondaryListingsTable({
   chainId,
 }: SecondaryListingsTableProps) {
   const { address } = useAccount();
+  const { effectiveAddress, smartAccountAddress } = useSession();
   const { listings, isConnected, subscribeToBids } = useSecondaryFeed({
     enabled: true,
   });
@@ -38,18 +40,30 @@ export default function SecondaryListingsTable({
 
   // Auto-subscribe to bids for user's own listings (track already-subscribed to avoid loops)
   const subscribedRef = React.useRef<Set<string>>(new Set());
+  const isMyAddress = React.useCallback(
+    (addr: string) => {
+      const lower = addr.toLowerCase();
+      return (
+        address?.toLowerCase() === lower ||
+        effectiveAddress?.toLowerCase() === lower ||
+        smartAccountAddress?.toLowerCase() === lower
+      );
+    },
+    [address, effectiveAddress, smartAccountAddress]
+  );
+
   React.useEffect(() => {
-    if (!address) return;
+    if (!address && !effectiveAddress) return;
     for (const listing of listings) {
       if (
-        listing.seller.toLowerCase() === address.toLowerCase() &&
+        isMyAddress(listing.seller) &&
         !subscribedRef.current.has(listing.auctionId)
       ) {
         subscribedRef.current.add(listing.auctionId);
         subscribeToBids(listing.auctionId);
       }
     }
-  }, [listings, address, subscribeToBids]);
+  }, [listings, address, effectiveAddress, isMyAddress, subscribeToBids]);
 
   if (!isConnected) {
     return <Loader />;
@@ -80,8 +94,7 @@ export default function SecondaryListingsTable({
           const minPrice = parseFloat(formatEther(BigInt(listing.minPrice)));
           const deadline = new Date(listing.sellerDeadline * 1000);
           const isExpired = deadline < new Date();
-          const isMine =
-            address && listing.seller.toLowerCase() === address.toLowerCase();
+          const isMine = isMyAddress(listing.seller);
 
           return (
             <TableRow
