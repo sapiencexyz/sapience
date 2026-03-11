@@ -34,6 +34,7 @@ interface CreatePositionFormContentProps {
   pythPredictions?: PythPrediction[];
   onRemovePythPrediction?: (id: string) => void;
   onClearPythPredictions?: () => void;
+  hideHeader?: boolean;
 }
 
 export function CreatePositionFormContent({
@@ -52,6 +53,7 @@ export function CreatePositionFormContent({
   pythPredictions = [],
   onRemovePythPrediction,
   onClearPythPredictions,
+  hideHeader,
 }: CreatePositionFormContentProps): React.ReactElement {
   const { selections, clearSelections } = useCreatePositionContext();
   const hasItems = selections.length > 0 || pythPredictions.length > 0;
@@ -63,7 +65,7 @@ export function CreatePositionFormContent({
 
   return (
     <div className="w-full h-full flex flex-col">
-      {hasItems && (
+      {!hideHeader && hasItems && (
         <div className="relative px-4 pt-2 pb-2 lg:hidden">
           <div className="flex items-center justify-between">
             <h3 className="eyebrow text-foreground font-sans">

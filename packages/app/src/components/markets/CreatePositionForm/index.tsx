@@ -924,7 +924,7 @@ const CreatePositionFormInner = ({
             <div
               className={`${createPositionEntries.length === 0 ? 'pt-0 pb-4' : 'p-0'} h-full flex flex-col min-h-0`}
             >
-              <CreatePositionFormContent {...contentProps} />
+              <CreatePositionFormContent {...contentProps} hideHeader />
             </div>
           </DrawerContent>
         </Drawer>
