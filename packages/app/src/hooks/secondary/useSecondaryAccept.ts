@@ -16,6 +16,7 @@ import { generateRandomNonce } from '@sapience/sdk';
 import { useSession } from '~/lib/context/SessionContext';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 import { getPublicClientForChainId } from '~/lib/utils/util';
+import { encodeEscrowSessionKeyData } from '~/lib/session/sessionKeyManager';
 import type { SecondaryValidatedBid } from '@sapience/sdk/types/secondary';
 
 export interface AcceptBidParams {
@@ -45,11 +46,9 @@ interface UseSecondaryAcceptOptions {
  * Hook for sellers to accept a bid on their secondary market listing.
  *
  * Flow:
- * 1. Seller re-signs TradeApproval with the actual buyer address
- * 2. Checks position token allowance → approve if needed
- * 3. Calls SecondaryMarketEscrow.executeTrade() with both signatures
- *
- * Same pattern as predictor calling mint() after accepting a counterparty bid.
+ * 1. Seller signs TradeApproval with session key (auto) or EOA wallet
+ * 2. Position token approve via owner signing (forceOwnerPath — dynamic contract)
+ * 3. executeTrade via session key with sellerSessionKeyData for on-chain verification
  */
 export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
   const {
@@ -65,8 +64,9 @@ export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
   const { signTypedDataAsync } = useSignTypedData();
   const {
     effectiveAddress,
-    signTypedData: sessionSignTypedData,
+    signTypedDataRaw: sessionSignTypedDataRaw,
     isUsingSession,
+    tradeSessionKeyApproval,
   } = useSession();
 
   const [isAccepting, setIsAccepting] = useState(false);
@@ -84,6 +84,10 @@ export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
     [chainId]
   );
 
+  // Both approve + executeTrade via owner signing in a single batch.
+  // Owner signing bypasses ZeroDev paymaster CallPolicy validation
+  // which rejects session key UserOps for executeTrade. The contract verifies signatures
+  // internally using the sellerSessionKeyData/buyerSessionKeyData.
   const { sendCalls, isPending: isTxPending } = useSapienceWriteContract({
     onSuccess: () => {
       setIsAccepting(false);
@@ -96,13 +100,14 @@ export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
     successMessage: 'Secondary market trade executed successfully!',
     redirectPage: 'profile',
     redirectProfileAnchor: 'positions',
+    forceOwnerPath: true,
   });
 
   const acceptBid = useCallback(
     async (params: AcceptBidParams): Promise<AcceptBidResult> => {
       const { token, tokenAmount, bid, refCode } = params;
-      // Secondary market always uses EOA wallet address for signing
-      const sellerAddress = address;
+      // Use Smart Account address when session is active, EOA otherwise
+      const sellerAddress = isUsingSession ? effectiveAddress : address;
 
       if (!sellerAddress) {
         return { success: false, error: 'Wallet not connected' };
@@ -120,7 +125,7 @@ export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
       setIsAccepting(true);
 
       try {
-        // 1. Seller re-signs with the actual buyer address
+        // 1. Seller signs TradeApproval
         const sellerNonce = generateRandomNonce();
         const nowSec = Math.floor(Date.now() / 1000);
         const sellerDeadline = BigInt(nowSec + 300); // 5 min to submit tx
@@ -140,16 +145,30 @@ export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
 
         let sellerSignature: Hex;
         try {
-          // Always sign with EOA wallet for secondary market
-          sellerSignature = await signTypedDataAsync({
-            domain: {
-              ...typedData.domain,
-              chainId: Number(typedData.domain.chainId),
-            },
-            types: typedData.types,
-            primaryType: typedData.primaryType,
-            message: typedData.message,
-          });
+          if (isUsingSession && sessionSignTypedDataRaw) {
+            // Session mode: raw ECDSA sign with session key (no kernel wrapping).
+            // The contract does ECDSA.recover() so it needs a raw 65-byte signature.
+            sellerSignature = await sessionSignTypedDataRaw({
+              domain: {
+                ...typedData.domain,
+                chainId: Number(typedData.domain.chainId),
+              },
+              types: typedData.types,
+              primaryType: typedData.primaryType,
+              message: typedData.message,
+            });
+          } else {
+            // EOA mode: sign with wallet
+            sellerSignature = await signTypedDataAsync({
+              domain: {
+                ...typedData.domain,
+                chainId: Number(typedData.domain.chainId),
+              },
+              types: typedData.types,
+              primaryType: typedData.primaryType,
+              message: typedData.message,
+            });
+          }
         } catch (e: any) {
           setIsAccepting(false);
           const error =
@@ -161,7 +180,7 @@ export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
           };
         }
 
-        // 2. Check current position token allowance
+        // 2. Check position token allowance (used to decide if approve is needed in batch)
         let currentAllowance = 0n;
         try {
           currentAllowance = (await publicClient.readContract({
@@ -171,10 +190,19 @@ export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
             args: [sellerAddress, escrowAddress],
           })) as bigint;
         } catch {
-          // Continue — will include approve call
+          // Continue — will include approve in batch
         }
 
-        // 3. Build trade params
+        // 3. Build sellerSessionKeyData for on-chain session key verification
+        // When using session, the contract needs the SessionKeyData struct to verify
+        // the session key signature via TRADE_PERMISSION (not EIP-1271).
+        let sellerSessionKeyData: Hex = '0x';
+        if (isUsingSession && tradeSessionKeyApproval) {
+          sellerSessionKeyData =
+            encodeEscrowSessionKeyData(tradeSessionKeyApproval);
+        }
+
+        // 4. Build trade params
         const tradeParams: ExecuteTradeParams = {
           token,
           collateral: collateralAddress,
@@ -189,10 +217,11 @@ export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
           sellerSignature,
           buyerSignature: bid.buyerSignature as Hex,
           refCode: refCode ?? (('0x' + '00'.repeat(32)) as Hex),
+          sellerSessionKeyData,
           buyerSessionKeyData: (bid.buyerSessionKeyData as Hex) ?? '0x',
         };
 
-        // 4. Build batched calls (approve + executeTrade)
+        // 5. Build approve (if needed) + executeTrade as a single batch
         const calls = prepareExecuteTradeCalls({
           trade: tradeParams,
           escrowAddress,
@@ -200,7 +229,7 @@ export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
           approveFor: 'seller',
         });
 
-        // 5. Submit via sendCalls (handles session keys, chain switching, etc.)
+        // 6. Submit batch via owner signing (one wallet prompt)
         await sendCalls({ calls, chainId });
 
         return { success: true };
@@ -222,8 +251,9 @@ export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
       collateralAddress,
       publicClient,
       signTypedDataAsync,
-      sessionSignTypedData,
+      sessionSignTypedDataRaw,
       isUsingSession,
+      tradeSessionKeyApproval,
       sendCalls,
       onSuccess,
       onError,

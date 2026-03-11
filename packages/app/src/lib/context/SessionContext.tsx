@@ -192,6 +192,9 @@ interface SessionContextValue {
   // Escrow Session Key Approval for PredictionMarketEscrow
   escrowSessionKeyApproval: EscrowSessionKeyApproval | null;
 
+  // Trade Session Key Approval for SecondaryMarketEscrow (TRADE_PERMISSION)
+  tradeSessionKeyApproval: EscrowSessionKeyApproval | null;
+
   // Raw session key signing (bypasses kernel wrapping) for escrow approval signatures
   signTypedDataRaw: ((params: SignTypedDataParams) => Promise<Hex>) | null;
 }
@@ -310,6 +313,9 @@ export function SessionProvider({ children }: SessionProviderProps) {
 
   // Escrow Session Key Approval for PredictionMarketEscrow
   const [escrowSessionKeyApproval, setEscrowSessionKeyApproval] =
+    useState<EscrowSessionKeyApproval | null>(null);
+  // Trade Session Key Approval for SecondaryMarketEscrow
+  const [tradeSessionKeyApproval, setTradeSessionKeyApproval] =
     useState<EscrowSessionKeyApproval | null>(null);
 
   // Lazy Arbitrum session creation state
@@ -473,6 +479,10 @@ export function SessionProvider({ children }: SessionProviderProps) {
         setEtherealSessionApproval(approvalData.ethereal);
         // Restore escrow session key approval if available (legacy sessions)
         // escrowSessionKeyApproval removed — contract validates via ERC-1271
+        // Restore trade session key approval for secondary market
+        if (stored.tradeSessionKeyApproval) {
+          setTradeSessionKeyApproval(stored.tradeSessionKeyApproval);
+        }
         setIsSessionActive(true);
         setTimeRemainingMs(result.config.expiresAt - Date.now());
       } catch (error) {
@@ -519,6 +529,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
     setArbitrumSessionApproval(null);
     setEtherealSessionApproval(null);
     setEscrowSessionKeyApproval(null);
+    setTradeSessionKeyApproval(null);
     setTimeRemainingMs(0);
     clearSession();
     console.debug('[SessionContext] Session cleared');
@@ -601,6 +612,10 @@ export function SessionProvider({ children }: SessionProviderProps) {
         setEtherealSessionApproval(approvalData.ethereal);
         // Set escrow session key approval if available (legacy sessions)
         // escrowSessionKeyApproval removed — contract validates via ERC-1271
+        // Set trade session key approval for secondary market
+        if (result.serialized.tradeSessionKeyApproval) {
+          setTradeSessionKeyApproval(result.serialized.tradeSessionKeyApproval);
+        }
         setIsSessionActive(true);
         setTimeRemainingMs(result.config.expiresAt - Date.now());
         console.debug(
@@ -777,6 +792,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
       createArbitrumSessionIfNeeded,
       etherealChainId,
       escrowSessionKeyApproval,
+      tradeSessionKeyApproval,
     }),
     [
       isSessionActive,
@@ -808,6 +824,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
       createArbitrumSessionIfNeeded,
       etherealChainId,
       escrowSessionKeyApproval,
+      tradeSessionKeyApproval,
     ]
   );
 

@@ -54,6 +54,7 @@ import {
 } from '~/lib/utils/tableFilters';
 import { useEscrowWrite } from '~/hooks/blockchain/useEscrowWrite';
 import { useClaimableAmount } from '~/hooks/blockchain/useEscrowContract';
+import { useAccount } from 'wagmi';
 import { useSession } from '~/lib/context/SessionContext';
 import SellPositionDialog from '~/components/secondary/SellPositionDialog';
 
@@ -73,13 +74,16 @@ function PositionRow({
   const { pickConfig, isPredictorToken } = position;
   const rawPicks = pickConfig?.picks ?? [];
   const picks = toPicks(rawPicks, isPredictorToken, conditionsMap);
-  const { effectiveAddress } = useSession();
+  const { effectiveAddress, smartAccountAddress } = useSession();
+  const { address: walletAddress } = useAccount();
 
-  // Only show claim button if the connected wallet owns this position
+  // Show action buttons if the connected wallet (EOA or Smart Account) owns this position
+  const holderLower = position.holder?.toLowerCase();
   const isOwnPosition =
-    effectiveAddress &&
-    position.holder &&
-    effectiveAddress.toLowerCase() === position.holder.toLowerCase();
+    !!holderLower &&
+    (effectiveAddress?.toLowerCase() === holderLower ||
+      smartAccountAddress?.toLowerCase() === holderLower ||
+      walletAddress?.toLowerCase() === holderLower);
 
   // Position size = user's deposited collateral (from Prediction records)
   const positionSizeFormatted = parseFloat(

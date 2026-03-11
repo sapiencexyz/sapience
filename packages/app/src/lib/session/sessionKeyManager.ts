@@ -40,12 +40,14 @@ import {
 import { getEntryPoint, KERNEL_V3_1 } from '@zerodev/sdk/constants';
 import {
   predictionMarketEscrowAbi,
+  secondaryMarketEscrowAbi,
   collateralTokenAbi,
   predictionMarketVaultAbi,
 } from '@sapience/sdk/abis';
 import {
   predictionMarket as predictionMarketAddresses,
   predictionMarketEscrow as predictionMarketEscrowAddresses,
+  secondaryMarketEscrow as secondaryMarketEscrowAddresses,
   collateralToken as collateralTokenAddresses,
   eas as easAddresses,
   predictionMarketVault as vaultAddresses,
@@ -74,10 +76,18 @@ function getEtherealContractAddresses(chainId: number) {
   const isEscrowDeployed =
     escrowAddress &&
     escrowAddress !== '0x0000000000000000000000000000000000000000';
+  const secondaryEscrowAddress =
+    secondaryMarketEscrowAddresses[effectiveChainId]?.address;
+  const isSecondaryEscrowDeployed =
+    secondaryEscrowAddress &&
+    secondaryEscrowAddress !== '0x0000000000000000000000000000000000000000';
   return {
     wusde: collateralTokenAddresses[effectiveChainId].address,
     predictionMarket: predictionMarketAddresses[effectiveChainId].address,
     predictionMarketEscrow: isEscrowDeployed ? escrowAddress : undefined,
+    secondaryMarketEscrow: isSecondaryEscrowDeployed
+      ? secondaryEscrowAddress
+      : undefined,
     vault: vaultAddresses[effectiveChainId].address,
   };
 }
@@ -241,6 +251,12 @@ const ESCROW_SESSION_KEY_APPROVAL_DOMAIN = {
   version: '1',
 } as const;
 
+// Secondary Market Escrow domain (matches SecondaryMarketEscrow.sol)
+const SECONDARY_ESCROW_APPROVAL_DOMAIN = {
+  name: 'SecondaryMarketEscrow',
+  version: '1',
+} as const;
+
 // EIP712Domain type - explicitly included for wallet compatibility
 // Some wallets (like Rabby on custom chains) need this to properly recognize EIP-712 format
 const EIP712_DOMAIN_TYPE = [
@@ -282,6 +298,9 @@ export interface SerializedSession {
   // Escrow Session Key Approval for PredictionMarketEscrow
   // This is a separate EIP-712 signature from the owner authorizing session key for escrow mints
   escrowSessionKeyApproval?: EscrowSessionKeyApproval;
+  // Trade Session Key Approval for SecondaryMarketEscrow
+  // Authorizes the session key with TRADE_PERMISSION for secondary market trades
+  tradeSessionKeyApproval?: EscrowSessionKeyApproval;
 }
 
 // Session result with chain clients
@@ -455,6 +474,59 @@ async function _signEscrowSessionKeyApproval(
       verifyError
     );
   }
+
+  return {
+    sessionKey: sessionKeyAddress,
+    owner: ownerSigner.address,
+    smartAccount: smartAccountAddress,
+    validUntil: validUntilSeconds,
+    permissionsHash,
+    chainId,
+    ownerSignature: signature,
+  };
+}
+
+/**
+ * Sign a TRADE_PERMISSION session key approval for SecondaryMarketEscrow.
+ * The owner authorizes the session key to sign TradeApprovals.
+ */
+async function _signTradeSessionKeyApproval(
+  ownerSigner: OwnerSigner,
+  sessionKeyAddress: Address,
+  smartAccountAddress: Address,
+  validUntilSeconds: number,
+  chainId: number,
+  verifyingContract: Address
+): Promise<EscrowSessionKeyApproval> {
+  const permissionsHash = keccak256(toHex('TRADE')); // must match SecondaryMarketEscrow.TRADE_PERMISSION
+
+  const typedData = {
+    domain: {
+      ...SECONDARY_ESCROW_APPROVAL_DOMAIN,
+      chainId,
+      verifyingContract,
+    },
+    types: ESCROW_SESSION_KEY_APPROVAL_TYPES,
+    primaryType: 'SessionKeyApproval' as const,
+    message: {
+      sessionKey: sessionKeyAddress,
+      smartAccount: smartAccountAddress,
+      validUntil: String(validUntilSeconds),
+      permissionsHash,
+      chainId: String(chainId),
+    },
+  };
+
+  console.debug(
+    '[SessionKeyManager] Requesting trade session key approval signature...'
+  );
+
+  const signature = await ownerSigner.provider.request({
+    method: 'eth_signTypedData_v4',
+    params: [ownerSigner.address, JSON.stringify(typedData)],
+  });
+
+  console.debug('[SessionKeyManager] Trade session key approval signed');
 
   return {
     sessionKey: sessionKeyAddress,
@@ -682,6 +754,7 @@ export async function createSession(
             value: [
               etherealContracts.vault,
               etherealContracts.predictionMarketEscrow,
+              etherealContracts.secondaryMarketEscrow,
             ].filter(Boolean) as Address[],
           },
           null,
@@ -725,6 +798,16 @@ export async function createSession(
               target: etherealContracts.predictionMarketEscrow,
               abi: predictionMarketEscrowAbi,
               functionName: 'settle',
+            },
+          ]
+        : []),
+      // Secondary market escrow permissions (only if deployed)
+      ...(etherealContracts.secondaryMarketEscrow
+        ? [
+            {
+              target: etherealContracts.secondaryMarketEscrow,
+              abi: secondaryMarketEscrowAbi,
+              functionName: 'executeTrade',
             },
           ]
         : []),
@@ -787,11 +870,13 @@ export async function createSession(
     etherealPermissionId
   );
 
-  // Signature caller policy: allows the escrow contract to call isValidSignature()
+  // Signature caller policy: allows escrow contracts to call isValidSignature()
   // on the smart account (ERC-1271 verification for session key signatures)
-  const escrowAddress = etherealContracts.predictionMarketEscrow;
   const signatureCallerPolicy = toSignatureCallerPolicy({
-    allowedCallers: [escrowAddress].filter(Boolean) as Address[],
+    allowedCallers: [
+      etherealContracts.predictionMarketEscrow,
+      etherealContracts.secondaryMarketEscrow,
+    ].filter(Boolean) as Address[],
   });
 
   // Create permission plugin for Ethereal with call, timestamp, and signature caller policies
@@ -912,10 +997,28 @@ export async function createSession(
   }
 
   onProgress?.('finalizing');
-  // Note: escrow session key approval (Option B) has been removed.
-  // Contract now validates session signatures via ERC-1271 (isValidSignature)
-  // on the deployed smart account. This eliminates the second wallet popup
-  // during session creation.
+
+  // Sign TRADE_PERMISSION approval for SecondaryMarketEscrow (if deployed).
+  // This authorizes the session key to sign TradeApprovals for secondary market trades.
+  let tradeSessionKeyApproval: EscrowSessionKeyApproval | undefined;
+  if (etherealContracts.secondaryMarketEscrow) {
+    try {
+      tradeSessionKeyApproval = await _signTradeSessionKeyApproval(
+        ownerSigner,
+        sessionKeyAccount.address,
+        smartAccountAddress,
+        validUntilInSeconds,
+        etherealChainId,
+        etherealContracts.secondaryMarketEscrow
+      );
+    } catch (e) {
+      console.warn(
+        '[SessionKeyManager] Failed to sign trade approval (non-fatal):',
+        e
+      );
+      // Non-fatal — secondary market won't work but primary market still does
+    }
+  }
 
   const config: SessionConfig = {
     durationHours,
@@ -933,6 +1036,7 @@ export async function createSession(
     // Arbitrum approval not set - will be created lazily
     etherealEnableTypedData,
     etherealChainId,
+    tradeSessionKeyApproval,
   };
 
   return {

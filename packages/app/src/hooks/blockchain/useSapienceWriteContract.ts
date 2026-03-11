@@ -98,6 +98,12 @@ interface useSapienceWriteContractProps {
    * Called after on-chain receipt is confirmed.
    */
   onReceiptConfirmed?: () => void;
+  /**
+   * Force owner signing path even when a session key is active.
+   * Use this for calls to contracts not in the session key's CallPolicy
+   * (e.g. dynamic position token approvals).
+   */
+  forceOwnerPath?: boolean;
 }
 
 export function useSapienceWriteContract({
@@ -113,6 +119,7 @@ export function useSapienceWriteContract({
   onTxSending,
   onTxSent,
   onReceiptConfirmed,
+  forceOwnerPath = false,
 }: useSapienceWriteContractProps) {
   const { data: client } = useConnectorClient();
   const { address: wagmiAddress, connector } = useAccount();
@@ -175,9 +182,11 @@ export function useSapienceWriteContract({
 
   // Determine execution path for a given chain
   const getExecutionPathForChain = useCallback(
-    (chainId: number) =>
-      getExecutionPath(isUsingSmartAccount, canUseSessionForChain(chainId)),
-    [isUsingSmartAccount, canUseSessionForChain]
+    (chainId: number) => {
+      if (forceOwnerPath && isUsingSmartAccount) return 'owner' as const;
+      return getExecutionPath(isUsingSmartAccount, canUseSessionForChain(chainId));
+    },
+    [isUsingSmartAccount, canUseSessionForChain, forceOwnerPath]
   );
 
   // Create chain switcher for owner signer
