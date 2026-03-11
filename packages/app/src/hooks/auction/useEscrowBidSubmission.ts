@@ -6,7 +6,7 @@
  */
 import { useCallback, useMemo } from 'react';
 import { useAccount, useSignTypedData } from 'wagmi';
-import { parseUnits, formatUnits, type Address } from 'viem';
+import { parseUnits, formatUnits, zeroAddress, type Address } from 'viem';
 import {
   predictionMarketEscrow,
   collateralToken as collateralTokenAddresses,
@@ -27,6 +27,7 @@ import { useToast } from '@sapience/ui/hooks/use-toast';
 import { toAuctionWsUrl } from '~/lib/ws';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 import { generateRandomNonce } from '@sapience/sdk';
+import { validateAuctionForBidder } from '~/lib/auction/simulateEscrowBidMint';
 
 export type EscrowBidSubmissionParams = {
   auctionId: string;
@@ -192,6 +193,22 @@ export function useEscrowBidSubmission(
 
       if (!wsUrl) {
         return { success: false, error: 'Realtime connection not configured' };
+      }
+
+      // Validate predictor's auction before signing (check their balance/allowance)
+      const auctionValidation = await validateAuctionForBidder({
+        chainId,
+        predictionMarketAddress: verifyingContract,
+        collateralTokenAddress: (wusdeAddress ?? zeroAddress) as Address,
+        predictorAddress: predictor,
+        predictorCollateral: predictorCollateral.toString(),
+      });
+
+      if (!auctionValidation.isValid) {
+        return {
+          success: false,
+          error: auctionValidation.error ?? 'Predictor cannot fund this auction',
+        };
       }
 
       // Calculate deadline with optional clamping

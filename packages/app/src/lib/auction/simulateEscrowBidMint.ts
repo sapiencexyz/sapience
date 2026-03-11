@@ -221,6 +221,72 @@ export async function simulateEscrowBidMint(
   }
 }
 
+// ─── Bidder-side: Validate predictor's auction before bidding ────────────────
+
+export interface ValidateAuctionForBidderOptions {
+  chainId: number;
+  predictionMarketAddress: Address;
+  collateralTokenAddress: Address;
+  predictorAddress: Address;
+  predictorCollateral: string; // wei
+}
+
+/**
+ * Validates a predictor's auction from the bidder's perspective before submitting a bid.
+ *
+ * Checks that the predictor can actually fund the mint:
+ * - Predictor has sufficient collateral balance
+ * - Predictor has approved the escrow contract
+ *
+ * This prevents bidders (terminal + AutoBid) from wasting gas on auctions
+ * that will revert on-chain due to insufficient predictor funds.
+ */
+export async function validateAuctionForBidder(
+  options: ValidateAuctionForBidderOptions
+): Promise<SimulateBidResult> {
+  const {
+    chainId,
+    predictionMarketAddress,
+    collateralTokenAddress,
+    predictorAddress,
+    predictorCollateral,
+  } = options;
+
+  const predictorCollateralWei = BigInt(predictorCollateral);
+
+  logBidValidation(
+    `[auction-validate] Checking predictor ${predictorAddress.slice(0, 10)}... has ${predictorCollateral} wei collateral`
+  );
+
+  try {
+    const publicClient = getPublicClientForChainId(chainId);
+    await validateTakerFunds(
+      predictorAddress,
+      predictorCollateralWei,
+      collateralTokenAddress,
+      predictionMarketAddress,
+      publicClient
+    );
+
+    return { isValid: true };
+  } catch (err) {
+    if (err instanceof Error && err.message.includes('market maker')) {
+      logBidValidation(
+        `[auction-validate] Predictor ${predictorAddress.slice(0, 10)}... insufficient funds — skipping bid`
+      );
+      return { isValid: false, error: `Predictor ${err.message}` };
+    }
+
+    // RPC error — don't block the bid
+    logBidValidationWarn(
+      '[auction-validate] RPC error, allowing bid:',
+      predictorAddress.slice(0, 10),
+      err
+    );
+    return { isValid: true };
+  }
+}
+
 // ─── EOA mode: Lightweight validation ───────────────────────────────────────
 
 /**
