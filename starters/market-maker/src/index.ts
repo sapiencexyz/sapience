@@ -349,6 +349,8 @@ function start() {
           counterparty: MAKER,
           counterpartyNonce,
           counterpartyDeadline,
+          predictorSponsor: (auction.predictorSponsor ?? '0x0000000000000000000000000000000000000000') as Address,
+          predictorSponsorData: (auction.predictorSponsorData ?? '0x') as `0x${string}`,
           verifyingContract: VERIFYING_CONTRACT!,
           chainId: CHAIN_ID,
         });

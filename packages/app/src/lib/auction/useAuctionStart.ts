@@ -25,6 +25,9 @@ export interface AuctionParams {
     predictedOutcome: number;
   }>;
   predictorDeadline?: number; // unix seconds — computed internally at auction start
+  // Sponsorship fields (threaded to counterparty so their signature includes the sponsor)
+  predictorSponsor?: `0x${string}`;
+  predictorSponsorData?: `0x${string}`;
 }
 
 export interface QuoteBid {
@@ -402,7 +405,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
         predictorDeadline,
       };
 
-      const escrowPayload = {
+      const escrowPayload: Record<string, unknown> = {
         picks: picks.map((p) => ({
           conditionResolver: p.conditionResolver,
           conditionId: p.conditionId,
@@ -414,6 +417,10 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
         predictorDeadline,
         chainId,
       };
+      if (params.predictorSponsor) {
+        escrowPayload.predictorSponsor = params.predictorSponsor;
+        escrowPayload.predictorSponsorData = params.predictorSponsorData ?? '0x';
+      }
 
       // Generate a correlation ID and send via client.send() instead of
       // sendWithAck(). The ack is handled synchronously in handleMessage

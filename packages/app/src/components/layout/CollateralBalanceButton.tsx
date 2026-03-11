@@ -15,7 +15,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@sapience/ui/components/ui/dialog';
-import { ArrowRight, Info } from 'lucide-react';
+import { ArrowRight, Gift, Info } from 'lucide-react';
 import {
   parseEther,
   encodeFunctionData,
@@ -400,9 +400,9 @@ export default function CollateralBalanceButton({
                   {formatDollarLikeBalance(displayedBalance)} {symbol}
                 </span>
                 {isSponsored && (
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-ethena opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-ethena" />
+                  <span className="relative flex h-4 w-4">
+                    <Gift className="absolute inline-flex h-full w-full text-ethena animate-ping opacity-75" />
+                    <Gift className="relative inline-flex h-4 w-4 text-ethena" />
                   </span>
                 )}
               </div>
@@ -435,6 +435,7 @@ export default function CollateralBalanceButton({
                 {isSponsored && (
                   <div className="w-full rounded-md border border-ethena/30 bg-ethena/10 px-3 py-2 text-xs">
                     <div className="flex items-center gap-1.5 text-ethena font-medium">
+                      <Gift className="h-3.5 w-3.5 flex-shrink-0" />
                       <span>
                         {sponsorBudgetFormatted} {symbol} sponsorship available
                       </span>
@@ -444,7 +445,7 @@ export default function CollateralBalanceButton({
                         </TooltipTrigger>
                         <TooltipContent
                           side="top"
-                          className="max-w-[220px] text-xs"
+                          className="max-w-[220px] text-xs text-center"
                         >
                           Available for positions quoted &lt;70% chance against
                           the vault.

@@ -7,6 +7,11 @@ import {
   DialogTitle,
 } from '@sapience/ui/components/ui/dialog';
 import { Gift, Info } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@sapience/ui/components/ui/tooltip';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FormProvider, type UseFormReturn, useWatch } from 'react-hook-form';
@@ -46,7 +51,7 @@ import {
 import { logPositionForm, formatBidForLog } from '~/lib/auction/bidLogger';
 import {
   useSponsorStatus,
-  isEntryPriceEligible,
+  checkSponsorEligibility,
 } from '~/hooks/sponsorship/useSponsorStatus';
 import { formatUnits } from 'viem';
 
@@ -129,7 +134,14 @@ export default function PositionForm({
   } = useSession();
 
   // Sponsorship status
-  const { isSponsored, remainingBudget, maxEntryPriceBps } = useSponsorStatus();
+  const {
+    isSponsored,
+    sponsorAddress,
+    remainingBudget,
+    maxEntryPriceBps,
+    matchLimit,
+    requiredCounterparty,
+  } = useSponsorStatus();
 
   // Determine the actual predictor address based on signing method
   // This MUST match the logic in useAuctionStart.requestQuotes
@@ -485,6 +497,12 @@ export default function PositionForm({
           chainId: chainId,
         };
 
+        // Thread sponsor so the counterparty signs with the correct predictorSponsor
+        if (isSponsored && sponsorAddress) {
+          params.predictorSponsor = sponsorAddress;
+          params.predictorSponsorData = '0x';
+        }
+
         // Add escrowPicks for conditional token selections to trigger escrow auction
         if (hasUma && !hasPyth) {
           const escrowPicks = getPicks();
@@ -544,6 +562,8 @@ export default function PositionForm({
       chainId,
       predictionsKey,
       getPicks,
+      isSponsored,
+      sponsorAddress,
     ]
   );
 
@@ -774,11 +794,10 @@ export default function PositionForm({
             />
           </div>
 
-          {/* Sponsorship indicator */}
+          {/* Sponsorship indicator — only shown when eligible */}
           {isSponsored &&
             (() => {
               const activeBid = bestBid ?? stickyEstimateBid;
-              // User's collateral = positionSize (what they typed), vault's collateral = bid.counterpartyCollateral
               const decimals = collateralDecimals ?? 18;
               const userCollateral = positionSizeValue
                 ? parseUnits(positionSizeValue, decimals)
@@ -786,43 +805,59 @@ export default function PositionForm({
               const vaultCollateral = activeBid
                 ? BigInt(activeBid.counterpartyCollateral)
                 : 0n;
-              const bidEligible =
-                !activeBid || !userCollateral
-                  ? true // No bid or no size yet — show as available
-                  : isEntryPriceEligible(
-                      userCollateral,
-                      vaultCollateral,
-                      maxEntryPriceBps
-                    );
-              const sponsorAmountFormatted = formatUnits(remainingBudget, 18);
+
+              if (remainingBudget === 0n || userCollateral === 0n) return null;
+
+              const withinBudget = userCollateral <= remainingBudget;
+              const budgetDisplay = Number(formatUnits(remainingBudget, decimals)).toFixed(2);
+              const positionDisplay = Number(formatUnits(userCollateral, decimals)).toFixed(2);
+
+              // Both states require a bid: "sponsored" needs the entry price
+              // ratio check, and "over budget" still needs counterparty/price
+              // eligibility before we surface the hint.
+              if (!activeBid) return null;
+
+              // Run eligibility checks (counterparty, entry price, match
+              // limit) — budget check is bypassed so the "over budget" hint
+              // can still appear.
+              const { eligible: bidEligible } = checkSponsorEligibility({
+                predictorCollateral: userCollateral,
+                counterpartyCollateral: vaultCollateral,
+                bidCounterparty: activeBid.counterparty,
+                requiredCounterparty,
+                maxEntryPriceBps,
+                matchLimit,
+                remainingBudget: userCollateral,
+              });
+              if (!bidEligible) return null;
 
               return (
-                <div
-                  className={`mt-3 rounded-lg border px-3 py-2.5 text-sm ${
-                    bidEligible
-                      ? 'border-ethena/30 bg-ethena/5'
-                      : 'border-muted/30 bg-muted/5 opacity-60'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <Gift
-                      className={`h-4 w-4 flex-shrink-0 ${bidEligible ? 'text-ethena' : 'text-muted-foreground'}`}
-                    />
-                    <div className="flex-1">
-                      <p
-                        className={`font-medium ${bidEligible ? 'text-ethena' : 'text-muted-foreground'}`}
-                      >
-                        {bidEligible
-                          ? `${sponsorAmountFormatted} ${collateralSymbol} sponsored`
-                          : 'Sponsorship unavailable at this price'}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {bidEligible
-                          ? `You pay ${collateralSymbol} 0 — the sponsor covers your side of this prediction.`
-                          : `Only available for positions priced below ${Number(maxEntryPriceBps) / 100}%.`}
+                <div className="mt-5 rounded-lg border px-3 py-2.5 text-sm border-ethena/30 bg-ethena/5">
+                  {withinBudget ? (
+                    <div className="flex items-center gap-2">
+                      <Gift className="h-4 w-4 flex-shrink-0 text-ethena" />
+                      <p className="font-medium text-ethena">
+                        {positionDisplay} {collateralSymbol} sponsored
+                        <span className="font-normal text-muted-foreground ml-3">
+                          You pay 0 {collateralSymbol}
+                        </span>
                       </p>
                     </div>
-                  </div>
+                  ) : (
+                    <div className="flex flex-col gap-1">
+                      <div className="flex items-center gap-2">
+                        <Gift className="h-4 w-4 flex-shrink-0 text-ethena" />
+                        <p className="font-medium text-ethena">
+                          {budgetDisplay} {collateralSymbol} sponsorship
+                          available
+                        </p>
+                      </div>
+                      <p className="text-xs text-muted-foreground ml-6">
+                        Reduce position to {budgetDisplay} {collateralSymbol} to
+                        use it
+                      </p>
+                    </div>
+                  )}
                 </div>
               );
             })()}
