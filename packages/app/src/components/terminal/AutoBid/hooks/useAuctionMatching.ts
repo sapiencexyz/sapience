@@ -20,7 +20,7 @@ import type {
 const MAX_AUCTION_CACHE_SIZE = 200;
 const MAX_PROCESSED_BIDS_SIZE = 500;
 const MAX_PROCESSED_MESSAGES = 1200;
-const BID_EXPIRY_SECONDS = 60;
+const BID_EXPIRY_SECONDS = 30;
 
 /** Cached auction context from auction.started messages */
 type AuctionContext = {

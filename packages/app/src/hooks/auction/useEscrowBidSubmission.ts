@@ -5,7 +5,7 @@
  * Uses MintApproval EIP-712 format from PredictionMarketEscrow.
  */
 import { useCallback, useMemo } from 'react';
-import { useAccount, useSignTypedData } from 'wagmi';
+import { useAccount, useChainId, useSignTypedData } from 'wagmi';
 import { parseUnits, formatUnits, zeroAddress, type Address } from 'viem';
 import {
   predictionMarketEscrow,
@@ -27,7 +27,7 @@ import { useToast } from '@sapience/ui/hooks/use-toast';
 import { toAuctionWsUrl } from '~/lib/ws';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 import { generateRandomNonce } from '@sapience/sdk';
-import { validateAuctionForBidder } from '~/lib/auction/simulateEscrowBidMint';
+import { validateCounterpartyFunds } from '@sapience/sdk/onchain/position';
 
 export type EscrowBidSubmissionParams = {
   auctionId: string;
@@ -94,8 +94,8 @@ export function useEscrowBidSubmission(
   const { onSignatureRejected } = options;
   const { address } = useAccount();
   const { signTypedDataAsync } = useSignTypedData();
-  // TODO: Get chainId from context/props when supporting multiple chains
-  const chainId = DEFAULT_CHAIN_ID;
+  const walletChainId = useChainId();
+  const chainId = walletChainId ?? DEFAULT_CHAIN_ID;
   const { apiBaseUrl } = useSettings();
   const {
     effectiveAddress,
@@ -195,20 +195,24 @@ export function useEscrowBidSubmission(
         return { success: false, error: 'Realtime connection not configured' };
       }
 
-      // Validate predictor's auction before signing (check their balance/allowance)
-      const auctionValidation = await validateAuctionForBidder({
-        chainId,
-        predictionMarketAddress: verifyingContract,
-        collateralTokenAddress: (wusdeAddress ?? zeroAddress) as Address,
-        predictorAddress: predictor,
-        predictorCollateral: predictorCollateral.toString(),
-      });
-
-      if (!auctionValidation.isValid) {
-        return {
-          success: false,
-          error: auctionValidation.error ?? 'Predictor cannot fund this auction',
-        };
+      // Validate predictor can fund the mint before we sign (avoid wasting signature on dead auction)
+      try {
+        const publicClient = getPublicClientForChainId(chainId);
+        await validateCounterpartyFunds(
+          predictor,
+          predictorCollateral,
+          (wusdeAddress ?? zeroAddress) as Address,
+          verifyingContract,
+          publicClient
+        );
+      } catch (err) {
+        if (err instanceof Error && err.message.includes('market maker')) {
+          return {
+            success: false,
+            error: `Predictor cannot fund this auction`,
+          };
+        }
+        // RPC error — don't block the bid
       }
 
       // Calculate deadline with optional clamping
