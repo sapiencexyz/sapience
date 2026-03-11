@@ -120,6 +120,19 @@ export default function PositionForm({
   // True while we're waiting for a re-quoted bid after activating sponsorship.
   // Prevents the user from submitting the stale (unsponsored) bid.
   const [awaitingSponsoredBid, setAwaitingSponsoredBid] = useState(false);
+  // Timeout: if awaitingSponsoredBid stays true for 10s (no sponsored bid arrived),
+  // reset sponsorship state and restart the auction without sponsor.
+  useEffect(() => {
+    if (!awaitingSponsoredBid) return;
+    const timer = window.setTimeout(() => {
+      logPositionForm('[sponsorship] Timed out waiting for sponsored bid — restarting auction');
+      setAwaitingSponsoredBid(false);
+      setSponsorshipActivated(false);
+      triggerAuctionRequest({ forceRefresh: true });
+    }, 10_000);
+    return () => window.clearTimeout(timer);
+  }, [awaitingSponsoredBid, triggerAuctionRequest]);
+
   // State for managing bid clearing when position size/selections change (for animations)
   // IMPORTANT: do NOT seed from `bids` prop.
   // `bids` comes from a shared auction hook and may contain leftover quotes from

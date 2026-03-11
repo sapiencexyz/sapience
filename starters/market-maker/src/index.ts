@@ -103,15 +103,16 @@ const OutcomeSide = { YES: 0, NO: 1 } as const;
 const VERIFYING_CONTRACT = (process.env.VERIFYING_CONTRACT || (addressBook.predictionMarketEscrow as any)?.[CHAIN_ID]?.address) as Address | undefined;
 const COLLATERAL_TOKEN = (process.env.COLLATERAL_TOKEN || (addressBook.collateralToken as any)[CHAIN_ID]?.address) as Address;
 
-// Sponsor allowlist: only sign with sponsor addresses the operator trusts.
-// Untrusted sponsors could grief via reverts in fundMint or have unexpected side effects.
-// When a requested sponsor is not on this list, the market maker signs with 0x0 (self-funded).
-const SPONSOR_ALLOWLIST: Set<string> = new Set(
-  (process.env.SPONSOR_ALLOWLIST || '')
-    .split(',')
-    .map((a) => a.trim().toLowerCase())
-    .filter((a) => a.length > 0)
-);
+// Sponsor allowlist: controls which sponsor addresses the market maker trusts.
+// - When SPONSOR_ALLOWLIST is set: only those addresses are accepted (explicit restriction).
+// - When SPONSOR_ALLOWLIST is not set / empty: ALL sponsors are accepted (permissive default).
+// Untrusted sponsors could grief via reverts in fundMint — set an allowlist to restrict.
+const SPONSOR_ALLOWLIST: Set<string> | null = (() => {
+  const raw = (process.env.SPONSOR_ALLOWLIST || '').trim();
+  if (!raw) return null; // null = allow all sponsors
+  const addresses = raw.split(',').map((a) => a.trim().toLowerCase()).filter((a) => a.length > 0);
+  return addresses.length > 0 ? new Set(addresses) : null;
+})();
 
 const BID_AMOUNT_DEC = process.env.BID_AMOUNT || '0.01';
 const MIN_MAKER_WAGER_DEC = process.env.MIN_MAKER_POSITION_SIZE || '10';
@@ -357,6 +358,7 @@ function start() {
         const requestedSponsor = (auction.predictorSponsor ?? ZERO_ADDRESS_FULL).toLowerCase();
         const effectiveSponsor: Address = (
           requestedSponsor === ZERO_ADDRESS_FULL ||
+          !SPONSOR_ALLOWLIST ||
           SPONSOR_ALLOWLIST.has(requestedSponsor)
         )
           ? requestedSponsor as Address
