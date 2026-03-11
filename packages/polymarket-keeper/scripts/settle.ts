@@ -45,13 +45,14 @@ import { polygon } from 'viem/chains';
 import { fetchWithRetry } from '../src/utils/fetch.js';
 import { RESOLVER_ADDRESS, CHAIN_ID } from '../src/constants.js';
 import { conditionalTokensReader } from '@sapience/sdk/contracts/addresses';
+import { CHAIN_ID_POLYGON } from '@sapience/sdk/constants';
 
 // ============ Constants ============
 
 // ConditionalTokensReader contract on Polygon
 const CONDITIONAL_TOKENS_READER_ADDRESS = (process.env
   .CONDITIONAL_TOKENS_READER_ADDRESS ||
-  conditionalTokensReader[137]?.address ||
+  conditionalTokensReader[CHAIN_ID_POLYGON]?.address ||
   '') as Address;
 
 // Default Sapience API URL

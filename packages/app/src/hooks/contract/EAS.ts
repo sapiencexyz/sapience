@@ -1,12 +1,7 @@
 import { eas } from '@sapience/sdk/contracts/addresses';
+import { CHAIN_ID_ARBITRUM } from '@sapience/sdk/constants';
 
-export const getEASContractAddress = (chainId: number) => {
-  const entry = eas[chainId as keyof typeof eas];
-  if (!entry) {
-    throw new Error(`EAS contract address not found for chainId: ${chainId}`);
-  }
-  return entry.address;
-};
+export const EAS_CONTRACT_ADDRESS = eas[CHAIN_ID_ARBITRUM].address;
 
 export const EAS_ATTEST_ABI = [
   {
