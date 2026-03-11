@@ -416,7 +416,7 @@ Track cross-chain messages: https://layerzeroscan.com/
 
 ## Contract Addresses
 
-After deployment, all contract addresses are maintained in `@sapience/sdk/contracts/addresses`. Import from the SDK rather than hardcoding addresses:
+After deployment, update the contract addresses in `@sapience/sdk/contracts/addresses` — that file is the single source of truth. Other packages import from there:
 
 ```typescript
 import {
