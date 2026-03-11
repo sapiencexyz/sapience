@@ -318,7 +318,7 @@ export async function verifyEscrowCounterpartySignature(
       signature,
     });
 
-    const expectedSmartAccount = await computeSmartAccountAddress(recoveredOwner);
+    const expectedSmartAccount = await computeSmartAccountAddress(recoveredOwner, auction.chainId);
 
     if (expectedSmartAccount.toLowerCase() === counterpartyAddress.toLowerCase()) {
       if (process.env.NODE_ENV !== 'production') {
@@ -485,7 +485,7 @@ export async function verifyAuctionIntentSignature(
       signature,
     });
 
-    const expectedSmartAccount = await computeSmartAccountAddress(recoveredOwner);
+    const expectedSmartAccount = await computeSmartAccountAddress(recoveredOwner, payload.chainId);
 
     if (expectedSmartAccount.toLowerCase() === predictorAddress) {
       if (process.env.NODE_ENV !== 'production') {
