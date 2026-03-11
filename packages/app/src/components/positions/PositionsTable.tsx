@@ -55,6 +55,7 @@ import {
 import { useEscrowWrite } from '~/hooks/blockchain/useEscrowWrite';
 import { useClaimableAmount } from '~/hooks/blockchain/useEscrowContract';
 import { useSession } from '~/lib/context/SessionContext';
+import SellPositionDialog from '~/components/secondary/SellPositionDialog';
 
 function PositionRow({
   position,
@@ -361,15 +362,32 @@ function PositionRow({
           );
         })()}
       </TableCell>
-      {/* Share */}
+      {/* Actions */}
       <TableCell className="text-right">
-        <button
-          type="button"
-          className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
-          onClick={() => onShare(position)}
-        >
-          Share
-        </button>
+        <div className="flex items-center justify-end gap-2">
+          {!isResolved && isOwnPosition && BigInt(position.balance) > 0n && (
+            <SellPositionDialog
+              position={position}
+              collateralSymbol={collateralSymbol}
+              chainId={position.chainId}
+              onSuccess={onRefetch}
+            >
+              <button
+                type="button"
+                className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm font-medium bg-background hover:bg-accent hover:text-accent-foreground border-border transition-colors"
+              >
+                Sell
+              </button>
+            </SellPositionDialog>
+          )}
+          <button
+            type="button"
+            className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
+            onClick={() => onShare(position)}
+          >
+            Share
+          </button>
+        </div>
       </TableCell>
     </TableRow>
   );
