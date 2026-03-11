@@ -51,12 +51,15 @@ interface CachedResponse {
 
 let cache: CachedResponse | null = null;
 
+const TOKEN_LOGO_URI = 'https://sapience.xyz/favicon.ico';
+
 interface TokenEntry {
   chainId: number;
   address: string;
   name: string;
   symbol: string;
   decimals: number;
+  logoURI: string;
   tags: string[];
   extensions: {
     pickConfigId: string;
@@ -171,13 +174,13 @@ async function buildTokenList(): Promise<string> {
     }> = [
       {
         address: pc.predictorToken!,
-        tag: 'predict',
+        tag: 'Predictor',
         name: predictorName,
         symbol: predictorSymbol,
       },
       {
         address: pc.counterpartyToken!,
-        tag: 'cpty',
+        tag: 'Counter',
         name: counterpartyName,
         symbol: counterpartySymbol,
       },
@@ -191,6 +194,7 @@ async function buildTokenList(): Promise<string> {
           name: truncate(side.name, MAX_NAME_LENGTH),
           symbol: truncate(sanitizeSymbol(side.symbol), MAX_SYMBOL_LENGTH),
           decimals: 18,
+          logoURI: TOKEN_LOGO_URI,
           tags: [side.tag],
           extensions: {
             pickConfigId: pc.id,
@@ -215,7 +219,7 @@ async function buildTokenList(): Promise<string> {
     (now.getUTCMonth() + 1) * 100 + now.getUTCDate();
 
   const tokenList = {
-    name: 'Sapience Position Tokens',
+    name: 'Sapience Tokens',
     logoURI: 'https://sapience.xyz/favicon.ico',
     timestamp: now.toISOString(),
     version: {

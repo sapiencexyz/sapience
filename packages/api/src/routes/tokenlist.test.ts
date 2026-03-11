@@ -59,7 +59,7 @@ describe('tokenlist', () => {
       const json = await buildTokenList();
       const list = JSON.parse(json);
 
-      expect(list.name).toBe('Sapience Position Tokens');
+      expect(list.name).toBe('Sapience Tokens');
       expect(list.version.major).toBe(1);
       expect(list.version.minor).toBeGreaterThan(0);
       expect(list.version.minor).toBeLessThan(65536);
@@ -81,8 +81,8 @@ describe('tokenlist', () => {
       expect(chainIds).toContain(5064014);
 
       const tags = list.tokens.map((t: { tags: string[] }) => t.tags[0]);
-      expect(tags.filter((t: string) => t === 'predict')).toHaveLength(2);
-      expect(tags.filter((t: string) => t === 'cpty')).toHaveLength(2);
+      expect(tags.filter((t: string) => t === 'Predictor')).toHaveLength(2);
+      expect(tags.filter((t: string) => t === 'Counter')).toHaveLength(2);
     });
 
     it('builds correct name and symbol for single-pick config', async () => {
@@ -92,10 +92,10 @@ describe('tokenlist', () => {
       const list = JSON.parse(await buildTokenList());
 
       const predictor = list.tokens.find(
-        (t: { tags: string[] }) => t.tags[0] === 'predict'
+        (t: { tags: string[] }) => t.tags[0] === 'Predictor'
       );
       const counterparty = list.tokens.find(
-        (t: { tags: string[] }) => t.tags[0] === 'cpty'
+        (t: { tags: string[] }) => t.tags[0] === 'Counter'
       );
 
       expect(predictor.name).toBe('Will BTC hit 100k? — Yes');
@@ -123,7 +123,7 @@ describe('tokenlist', () => {
 
       const list = JSON.parse(await buildTokenList());
       const predictor = list.tokens.find(
-        (t: { tags: string[] }) => t.tags[0] === 'predict'
+        (t: { tags: string[] }) => t.tags[0] === 'Predictor'
       );
 
       expect(predictor.name).toBe('Will BTC hit 100k? — No');
@@ -158,10 +158,10 @@ describe('tokenlist', () => {
 
       const list = JSON.parse(await buildTokenList());
       const predictor = list.tokens.find(
-        (t: { tags: string[] }) => t.tags[0] === 'predict'
+        (t: { tags: string[] }) => t.tags[0] === 'Predictor'
       );
       const counterparty = list.tokens.find(
-        (t: { tags: string[] }) => t.tags[0] === 'cpty'
+        (t: { tags: string[] }) => t.tags[0] === 'Counter'
       );
 
       expect(predictor.name).toBe(
@@ -183,7 +183,7 @@ describe('tokenlist', () => {
 
       const list = JSON.parse(await buildTokenList());
       const predictor = list.tokens.find(
-        (t: { tags: string[] }) => t.tags[0] === 'predict'
+        (t: { tags: string[] }) => t.tags[0] === 'Predictor'
       );
 
       expect(predictor.symbol).toBe('Will BTC hit 100k?-Yes');
@@ -278,7 +278,7 @@ describe('tokenlist', () => {
 
       const list = JSON.parse(await buildTokenList());
       const predictor = list.tokens.find(
-        (t: { tags: string[] }) => t.tags[0] === 'predict'
+        (t: { tags: string[] }) => t.tags[0] === 'Predictor'
       );
 
       expect(predictor.symbol).toBe('GOOGL $300-Yes');
