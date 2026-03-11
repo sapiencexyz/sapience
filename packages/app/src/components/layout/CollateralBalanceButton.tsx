@@ -16,6 +16,7 @@ import {
   DialogTitle,
 } from '@sapience/ui/components/ui/dialog';
 import { ArrowRight, Gift, Info } from 'lucide-react';
+import SponsorshipBadge from '~/components/shared/SponsorshipBadge';
 import {
   parseEther,
   encodeFunctionData,
@@ -399,12 +400,7 @@ export default function CollateralBalanceButton({
                 <span className="relative top-[1px] xl:top-0 text-sm font-normal">
                   {formatDollarLikeBalance(displayedBalance)} {symbol}
                 </span>
-                {isSponsored && (
-                  <span className="relative flex h-4 w-4">
-                    <Gift className="absolute inline-flex h-full w-full text-ethena animate-ping opacity-75" />
-                    <Gift className="relative inline-flex h-4 w-4 text-ethena" />
-                  </span>
-                )}
+                {isSponsored && <SponsorshipBadge />}
               </div>
             </div>
           </HoverCardTrigger>

@@ -6,7 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@sapience/ui/components/ui/dialog';
-import { Gift, Info } from 'lucide-react';
+import { Info } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FormProvider, type UseFormReturn, useWatch } from 'react-hook-form';
@@ -44,11 +44,9 @@ import {
   type UmaPrediction,
 } from '@sapience/ui';
 import { logPositionForm, formatBidForLog } from '~/lib/auction/bidLogger';
-import {
-  useSponsorStatus,
-  checkSponsorEligibility,
-} from '~/hooks/sponsorship/useSponsorStatus';
-import { formatUnits } from 'viem';
+import { useSponsorStatus } from '~/hooks/sponsorship/useSponsorStatus';
+import { useSponsorshipActivation } from '~/hooks/sponsorship/useSponsorshipActivation';
+import SponsorshipIndicator from './SponsorshipIndicator';
 
 interface PositionFormProps {
   methods: UseFormReturn<{
@@ -114,25 +112,6 @@ export default function PositionForm({
   const [stickyEstimateBid, setStickyEstimateBid] = useState<QuoteBid | null>(
     null
   );
-  // Whether the user has clicked "Use" to activate sponsorship for the current auction.
-  // Reset whenever bids are cleared (position size, selections, or wallet change).
-  const [sponsorshipActivated, setSponsorshipActivated] = useState(false);
-  // True while we're waiting for a re-quoted bid after activating sponsorship.
-  // Prevents the user from submitting the stale (unsponsored) bid.
-  const [awaitingSponsoredBid, setAwaitingSponsoredBid] = useState(false);
-  // Timeout: if awaitingSponsoredBid stays true for 10s (no sponsored bid arrived),
-  // reset sponsorship state and restart the auction without sponsor.
-  useEffect(() => {
-    if (!awaitingSponsoredBid) return;
-    const timer = window.setTimeout(() => {
-      logPositionForm('[sponsorship] Timed out waiting for sponsored bid — restarting auction');
-      setAwaitingSponsoredBid(false);
-      setSponsorshipActivated(false);
-      triggerAuctionRequest({ forceRefresh: true });
-    }, 10_000);
-    return () => window.clearTimeout(timer);
-  }, [awaitingSponsoredBid, triggerAuctionRequest]);
-
   // State for managing bid clearing when position size/selections change (for animations)
   // IMPORTANT: do NOT seed from `bids` prop.
   // `bids` comes from a shared auction hook and may contain leftover quotes from
@@ -156,6 +135,20 @@ export default function PositionForm({
     matchLimit,
     requiredCounterparty,
   } = useSponsorStatus();
+
+  // Sponsorship activation state machine (timeout, reset, activate).
+  // Callbacks are ref-ified inside the hook so triggerAuctionRequest (defined below) resolves at call-time.
+  const triggerAuctionRequestRef = useRef<(opts?: { forceRefresh?: boolean; withSponsor?: boolean }) => void>(() => {});
+  const {
+    sponsorshipActivated,
+    awaitingSponsoredBid,
+    activateSponsor,
+    clearAwaiting,
+    resetSponsor,
+  } = useSponsorshipActivation({
+    onActivate: () => triggerAuctionRequestRef.current({ forceRefresh: true, withSponsor: true }),
+    onTimeout: () => triggerAuctionRequestRef.current({ forceRefresh: true }),
+  });
 
   // Determine the actual predictor address based on signing method
   // This MUST match the logic in useAuctionStart.requestQuotes
@@ -242,8 +235,7 @@ export default function PositionForm({
       );
       setValidBids([]);
       setStickyEstimateBid(null);
-      setSponsorshipActivated(false);
-      setAwaitingSponsoredBid(false);
+      resetSponsor();
       setLastQuoteRequestMs(null); // Reset cooldown when position size changes
       currentRequestKeyRef.current = null; // Ignore incoming bids for old configuration
       prevPositionSizeRef.current = positionSizeValue || '';
@@ -260,8 +252,7 @@ export default function PositionForm({
       );
       setValidBids([]);
       setStickyEstimateBid(null);
-      setSponsorshipActivated(false);
-      setAwaitingSponsoredBid(false);
+      resetSponsor();
       setLastQuoteRequestMs(null);
       currentRequestKeyRef.current = null;
       prevHasConnectedWalletRef.current = hasConnectedWallet;
@@ -274,8 +265,7 @@ export default function PositionForm({
       logPositionForm('Predictions changed, clearing bids');
       setValidBids([]);
       setStickyEstimateBid(null);
-      setSponsorshipActivated(false);
-      setAwaitingSponsoredBid(false);
+      resetSponsor();
       setLastQuoteRequestMs(null); // Reset cooldown when selections change
       currentRequestKeyRef.current = null; // Ignore incoming bids for old configuration
       prevPredictionsKeyRef.current = predictionsKey;
@@ -304,7 +294,7 @@ export default function PositionForm({
         );
       }
       setValidBids(bids);
-      setAwaitingSponsoredBid(false);
+      clearAwaiting();
     } else if (bids.length > 0) {
       logPositionForm(
         `[accept] REJECTED: key mismatch. ref=${currentRequestKeyRef.current?.slice(0, 40)}, current=${currentRequestKey.slice(0, 40)}`
@@ -589,6 +579,9 @@ export default function PositionForm({
     ]
   );
 
+  // Keep ref in sync so the sponsorship hook can call triggerAuctionRequest
+  useEffect(() => { triggerAuctionRequestRef.current = triggerAuctionRequest; }, [triggerAuctionRequest]);
+
   // Handler for "Initiate Auction" button - works for all users
   // Logged-out users get unsigned auctions that display as estimates
   const handleRequestBids = useCallback(() => {
@@ -817,107 +810,22 @@ export default function PositionForm({
           </div>
 
           {/* Sponsorship indicator — two-step: show eligibility first, activate on click */}
-          {isSponsored &&
-            (() => {
-              if (!bestBid) return null;
-
-              const decimals = collateralDecimals ?? 18;
-              const userCollateral = positionSizeValue
-                ? parseUnits(positionSizeValue, decimals)
-                : 0n;
-              const vaultCollateral = BigInt(bestBid.counterpartyCollateral);
-
-              if (remainingBudget === 0n || userCollateral === 0n) return null;
-
-              const withinBudget = userCollateral <= remainingBudget;
-              const budgetDisplay = Number(formatUnits(remainingBudget, decimals)).toFixed(2);
-              const positionDisplay = Number(formatUnits(userCollateral, decimals)).toFixed(2);
-
-              // Run eligibility checks (counterparty, entry price, match
-              // limit) — budget check is bypassed so the "over budget" hint
-              // can still appear.
-              const { eligible: bidEligible } = checkSponsorEligibility({
-                predictorCollateral: userCollateral,
-                counterpartyCollateral: vaultCollateral,
-                bidCounterparty: bestBid.counterparty,
-                requiredCounterparty,
-                maxEntryPriceBps,
-                matchLimit,
-                remainingBudget: userCollateral,
-              });
-              if (!bidEligible) return null;
-
-              // Already activated — show confirmed sponsored state
-              if (sponsorshipActivated) {
-                return (
-                  <div className="mt-5 rounded-lg border px-3 py-2.5 text-sm border-ethena/30 bg-ethena/5">
-                    {withinBudget ? (
-                      <div className="flex items-center gap-2">
-                        <Gift className="h-4 w-4 flex-shrink-0 text-ethena" />
-                        <p className="font-medium text-ethena">
-                          {positionDisplay} {collateralSymbol} sponsored
-                          <span className="font-normal text-muted-foreground ml-3">
-                            You pay 0 {collateralSymbol}
-                          </span>
-                        </p>
-                      </div>
-                    ) : (
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center gap-2">
-                          <Gift className="h-4 w-4 flex-shrink-0 text-ethena" />
-                          <p className="font-medium text-ethena">
-                            {budgetDisplay} {collateralSymbol} sponsorship
-                            available
-                          </p>
-                        </div>
-                        <p className="text-xs text-muted-foreground ml-6">
-                          Reduce position to {budgetDisplay} {collateralSymbol}{' '}
-                          to use it
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                );
-              }
-
-              // Not yet activated — show "Use" button so user opts in
-              return (
-                <div className="mt-5 rounded-lg border px-3 py-2.5 text-sm border-ethena/30 bg-ethena/5">
-                  <div className="flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2">
-                      <Gift className="h-4 w-4 flex-shrink-0 text-ethena" />
-                      <p className="font-medium text-ethena">
-                        {withinBudget
-                          ? `${positionDisplay} ${collateralSymbol} sponsorship available`
-                          : `${budgetDisplay} ${collateralSymbol} sponsorship available`}
-                      </p>
-                    </div>
-                    {withinBudget && (
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSponsorshipActivated(true);
-                          setAwaitingSponsoredBid(true);
-                          triggerAuctionRequest({
-                            forceRefresh: true,
-                            withSponsor: true,
-                          });
-                        }}
-                        className="shrink-0 rounded-md bg-ethena/20 px-3 py-1 text-xs font-semibold text-ethena hover:bg-ethena/30 transition-colors"
-                      >
-                        Use
-                      </button>
-                    )}
-                  </div>
-                  {!withinBudget && (
-                    <p className="text-xs text-muted-foreground ml-6 mt-1">
-                      Reduce position to {budgetDisplay} {collateralSymbol} to
-                      use it
-                    </p>
-                  )}
-                </div>
-              );
-            })()}
+          <SponsorshipIndicator
+            isSponsored={isSponsored}
+            sponsorAddress={sponsorAddress}
+            remainingBudget={remainingBudget}
+            maxEntryPriceBps={maxEntryPriceBps}
+            matchLimit={matchLimit}
+            requiredCounterparty={requiredCounterparty}
+            bestBid={bestBid}
+            stickyEstimateBid={stickyEstimateBid}
+            positionSizeValue={positionSizeValue || ''}
+            collateralDecimals={collateralDecimals}
+            collateralSymbol={collateralSymbol}
+            sponsorshipActivated={sponsorshipActivated}
+            awaitingSponsoredBid={awaitingSponsoredBid}
+            onActivate={activateSponsor}
+          />
 
           <div className="mt-5 space-y-1">
             <RestrictedJurisdictionBanner
