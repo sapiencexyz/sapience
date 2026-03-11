@@ -34,6 +34,11 @@ function truncate(str: string, max: number): string {
   return str.slice(0, max - 3) + '...';
 }
 
+// CowSwap validates symbols against ^[^<>]+$ — strip angle brackets
+function sanitizeSymbol(str: string): string {
+  return str.replace(/[<>]/g, '');
+}
+
 // Only include tokens using the ConditionalTokens resolver (Polymarket-style)
 const CT_RESOLVER =
   conditionalTokensConditionResolver[CHAIN_ID_ETHEREAL].address.toLowerCase();
@@ -166,13 +171,13 @@ async function buildTokenList(): Promise<string> {
     }> = [
       {
         address: pc.predictorToken!,
-        tag: 'predictor',
+        tag: 'predict',
         name: predictorName,
         symbol: predictorSymbol,
       },
       {
         address: pc.counterpartyToken!,
-        tag: 'counterparty',
+        tag: 'cpty',
         name: counterpartyName,
         symbol: counterpartySymbol,
       },
@@ -184,7 +189,7 @@ async function buildTokenList(): Promise<string> {
           chainId,
           address: side.address,
           name: truncate(side.name, MAX_NAME_LENGTH),
-          symbol: truncate(side.symbol, MAX_SYMBOL_LENGTH),
+          symbol: truncate(sanitizeSymbol(side.symbol), MAX_SYMBOL_LENGTH),
           decimals: 18,
           tags: [side.tag],
           extensions: {

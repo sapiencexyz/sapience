@@ -81,8 +81,8 @@ describe('tokenlist', () => {
       expect(chainIds).toContain(5064014);
 
       const tags = list.tokens.map((t: { tags: string[] }) => t.tags[0]);
-      expect(tags.filter((t: string) => t === 'predictor')).toHaveLength(2);
-      expect(tags.filter((t: string) => t === 'counterparty')).toHaveLength(2);
+      expect(tags.filter((t: string) => t === 'predict')).toHaveLength(2);
+      expect(tags.filter((t: string) => t === 'cpty')).toHaveLength(2);
     });
 
     it('builds correct name and symbol for single-pick config', async () => {
@@ -92,10 +92,10 @@ describe('tokenlist', () => {
       const list = JSON.parse(await buildTokenList());
 
       const predictor = list.tokens.find(
-        (t: { tags: string[] }) => t.tags[0] === 'predictor'
+        (t: { tags: string[] }) => t.tags[0] === 'predict'
       );
       const counterparty = list.tokens.find(
-        (t: { tags: string[] }) => t.tags[0] === 'counterparty'
+        (t: { tags: string[] }) => t.tags[0] === 'cpty'
       );
 
       expect(predictor.name).toBe('Will BTC hit 100k? — Yes');
@@ -123,7 +123,7 @@ describe('tokenlist', () => {
 
       const list = JSON.parse(await buildTokenList());
       const predictor = list.tokens.find(
-        (t: { tags: string[] }) => t.tags[0] === 'predictor'
+        (t: { tags: string[] }) => t.tags[0] === 'predict'
       );
 
       expect(predictor.name).toBe('Will BTC hit 100k? — No');
@@ -158,10 +158,10 @@ describe('tokenlist', () => {
 
       const list = JSON.parse(await buildTokenList());
       const predictor = list.tokens.find(
-        (t: { tags: string[] }) => t.tags[0] === 'predictor'
+        (t: { tags: string[] }) => t.tags[0] === 'predict'
       );
       const counterparty = list.tokens.find(
-        (t: { tags: string[] }) => t.tags[0] === 'counterparty'
+        (t: { tags: string[] }) => t.tags[0] === 'cpty'
       );
 
       expect(predictor.name).toBe(
@@ -183,7 +183,7 @@ describe('tokenlist', () => {
 
       const list = JSON.parse(await buildTokenList());
       const predictor = list.tokens.find(
-        (t: { tags: string[] }) => t.tags[0] === 'predictor'
+        (t: { tags: string[] }) => t.tags[0] === 'predict'
       );
 
       expect(predictor.symbol).toBe('Will BTC hit 100k?-Yes');
@@ -268,6 +268,33 @@ describe('tokenlist', () => {
       // patch = token count
       expect(list.version.patch).toBe(list.tokens.length);
       expect(list.version.patch).toBeLessThan(65536);
+    });
+
+    it('strips angle brackets from symbols', async () => {
+      prisma.picks.findMany.mockResolvedValue([makePickConfig()]);
+      prisma.condition.findMany.mockResolvedValue([
+        makeCondition({ shortName: 'GOOGL >$300' }),
+      ]);
+
+      const list = JSON.parse(await buildTokenList());
+      const predictor = list.tokens.find(
+        (t: { tags: string[] }) => t.tags[0] === 'predict'
+      );
+
+      expect(predictor.symbol).toBe('GOOGL $300-Yes');
+      expect(predictor.symbol).not.toMatch(/[<>]/);
+    });
+
+    it('uses short tag names (max 10 chars)', async () => {
+      prisma.picks.findMany.mockResolvedValue([makePickConfig()]);
+      prisma.condition.findMany.mockResolvedValue([makeCondition()]);
+
+      const list = JSON.parse(await buildTokenList());
+      for (const token of list.tokens) {
+        for (const tag of token.tags) {
+          expect(tag.length).toBeLessThanOrEqual(10);
+        }
+      }
     });
 
     it('truncates long names and symbols', async () => {
