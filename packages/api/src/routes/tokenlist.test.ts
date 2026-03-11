@@ -67,22 +67,22 @@ describe('tokenlist', () => {
       expect(list.tokens).toBeInstanceOf(Array);
     });
 
-    it('creates entries for both chains and both sides', async () => {
+    it('creates entries for Arbitrum only, both sides', async () => {
       prisma.picks.findMany.mockResolvedValue([makePickConfig()]);
       prisma.condition.findMany.mockResolvedValue([makeCondition()]);
 
       const list = JSON.parse(await buildTokenList());
 
-      // 2 sides (predictor + counterparty) × 2 chains = 4 tokens
-      expect(list.tokens).toHaveLength(4);
+      // 2 sides (predictor + counterparty) × 1 chain (Arbitrum) = 2 tokens
+      expect(list.tokens).toHaveLength(2);
 
       const chainIds = list.tokens.map((t: { chainId: number }) => t.chainId);
       expect(chainIds).toContain(42161);
-      expect(chainIds).toContain(5064014);
+      expect(chainIds).not.toContain(5064014);
 
       const tags = list.tokens.map((t: { tags: string[] }) => t.tags[0]);
-      expect(tags.filter((t: string) => t === 'predict')).toHaveLength(2);
-      expect(tags.filter((t: string) => t === 'cpty')).toHaveLength(2);
+      expect(tags.filter((t: string) => t === 'predict')).toHaveLength(1);
+      expect(tags.filter((t: string) => t === 'cpty')).toHaveLength(1);
     });
 
     it('builds correct name and symbol for single-pick config', async () => {
@@ -207,8 +207,8 @@ describe('tokenlist', () => {
 
       const list = JSON.parse(await buildTokenList());
 
-      // Only pc-1 passes CT filter → 4 tokens (2 sides × 2 chains)
-      expect(list.tokens).toHaveLength(4);
+      // Only pc-1 passes CT filter → 2 tokens (2 sides × 1 chain)
+      expect(list.tokens).toHaveLength(2);
       expect(
         list.tokens.every(
           (t: { extensions: { pickConfigId: string } }) =>

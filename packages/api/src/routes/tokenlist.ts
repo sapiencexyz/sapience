@@ -22,7 +22,7 @@ router.use('/tokenlist.json', (_req, res, next) => {
   next();
 });
 
-const CHAIN_IDS = [CHAIN_ID_ARBITRUM, CHAIN_ID_ETHEREAL];
+const CHAIN_IDS = [CHAIN_ID_ARBITRUM];
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const MAX_TOKENS = 10_000;
 const MAX_RESPONSE_BYTES = 5 * 1024 * 1024; // 5MB
@@ -66,12 +66,13 @@ interface TokenEntry {
 }
 
 async function buildTokenList(): Promise<string> {
-  // Fetch pick configs that use the CT resolver, with their picks
+  // Fetch unresolved pick configs (mirrors /markets default filter)
   const pickConfigs = await prisma.picks.findMany({
     where: {
       AND: [
         { predictorToken: { not: null } },
         { counterpartyToken: { not: null } },
+        { result: 'UNRESOLVED' },
       ],
     },
     include: {
