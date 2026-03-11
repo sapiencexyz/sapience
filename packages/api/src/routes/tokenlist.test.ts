@@ -149,7 +149,7 @@ describe('tokenlist', () => {
       expect(list.version.patch).toBeLessThan(65536);
     });
 
-    it('strips angle brackets from symbols', async () => {
+    it('replaces angle brackets in symbols with unicode equivalents', async () => {
       prisma.condition.findMany.mockResolvedValue([
         makeCondition({ shortName: 'GOOGL >$300' }),
       ]);
@@ -159,8 +159,22 @@ describe('tokenlist', () => {
         (t: { name: string }) => t.name.endsWith('Yes')
       );
 
-      expect(yes.symbol).toBe('GOOGL $300-Yes');
+      expect(yes.symbol).toBe('GOOGL ›$300-Yes');
       expect(yes.symbol).not.toMatch(/[<>]/);
+    });
+
+    it('replaces angle brackets in names with unicode equivalents', async () => {
+      prisma.condition.findMany.mockResolvedValue([
+        makeCondition({ question: 'Will Elon Musk post <40 tweets?' }),
+      ]);
+
+      const list = JSON.parse(await buildTokenList());
+      const yes = list.tokens.find(
+        (t: { name: string }) => t.name.endsWith('Yes')
+      );
+
+      expect(yes.name).not.toMatch(/[<>]/);
+      expect(yes.name).toContain('‹40 tweets');
     });
 
     it('uses category name as tag', async () => {

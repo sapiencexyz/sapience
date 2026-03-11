@@ -40,9 +40,9 @@ function truncate(str: string, max: number): string {
   return str.slice(0, max - 3) + '...';
 }
 
-// CowSwap validates symbols against ^[^<>]+$ — strip angle brackets
-function sanitizeSymbol(str: string): string {
-  return str.replace(/[<>]/g, '');
+// CowSwap validates names and symbols against ^[^<>]+$ — use unicode equivalents
+function sanitizeAngleBrackets(str: string): string {
+  return str.replace(/</g, '‹').replace(/>/g, '›');
 }
 
 // CowSwap validates tags against ^[\w]+$ with max 10 chars
@@ -138,8 +138,8 @@ async function buildTokenList(): Promise<string> {
       tokens.push({
         chainId: CHAIN_ID,
         address: pair.predictorToken,
-        name: truncate(name, MAX_NAME_LENGTH),
-        symbol: truncate(sanitizeSymbol(symbol), MAX_SYMBOL_LENGTH),
+        name: truncate(sanitizeAngleBrackets(name), MAX_NAME_LENGTH),
+        symbol: truncate(sanitizeAngleBrackets(symbol), MAX_SYMBOL_LENGTH),
         decimals: 18,
         logoURI: TOKEN_LOGO_URI,
         tags: cond.category ? [sanitizeTag(cond.category.name)] : [],
