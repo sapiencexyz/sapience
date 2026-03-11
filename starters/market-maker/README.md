@@ -24,9 +24,9 @@ PRIVATE_KEY=__YOUR_PRIVATE_KEY__
 # Optional: RPC URL (defaults to https://rpc.ethereal.trade)
 # RPC_URL=https://rpc.ethereal.trade
 
-# Optional: Addresses (defaults resolved from SDK)
-# VERIFYING_CONTRACT=0xAcD757322df2A1A0B3283c851380f3cFd4882cB4
-# COLLATERAL_TOKEN=0xB6fC4B1BFF391e5F6b4a3D2C7Bda1FeE3524692D
+# Optional: Override contract addresses (defaults resolved from @sapience/sdk)
+# VERIFYING_CONTRACT=0x...
+# COLLATERAL_TOKEN=0x...
 
 # Strategy
 BID_AMOUNT=0.01

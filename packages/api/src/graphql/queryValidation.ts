@@ -56,7 +56,12 @@ export function validateQuery(
           if (value !== undefined && value > maxListSize) {
             throw new GraphQLError(
               `Argument "${arg.name.value}" exceeds maximum allowed value of ${maxListSize} (got ${value})`,
-              { extensions: { code: 'PAGINATION_LIMIT_EXCEEDED' } }
+              {
+                extensions: {
+                  code: 'PAGINATION_LIMIT_EXCEEDED',
+                  http: { status: 400 },
+                },
+              }
             );
           }
         }
@@ -72,7 +77,12 @@ export function validateQuery(
         if (count > maxFieldAliases) {
           throw new GraphQLError(
             `Field "${fieldName}" is used ${count} times, exceeding the maximum of ${maxFieldAliases} aliases per field`,
-            { extensions: { code: 'FIELD_ALIAS_LIMIT_EXCEEDED' } }
+            {
+              extensions: {
+                code: 'FIELD_ALIAS_LIMIT_EXCEEDED',
+                http: { status: 400 },
+              },
+            }
           );
         }
       }
