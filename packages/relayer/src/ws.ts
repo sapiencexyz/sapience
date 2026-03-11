@@ -597,14 +597,6 @@ export function createAuctionWebSocketServer() {
               signedBy: p.signedBy.toLowerCase(),
               signature: p.signature,
             };
-            const existing = latestVaultQuoteByKey.get(key);
-            if (existing && normalized.timestamp <= existing.timestamp) {
-              vaultQuotesPublished.inc({ status: 'error' });
-              errorsTotal.inc({ type: 'validation', message_type: 'vault_quote.publish' });
-              sendVaultAck(ws, { error: 'stale_replay' }, 'stale_replay');
-              trackDuration(msgType, startTime);
-              return;
-            }
             latestVaultQuoteByKey.set(key, normalized);
             vaultQuotesPublished.inc({ status: 'success' });
             broadcastToVaultSubscribers(key, {
