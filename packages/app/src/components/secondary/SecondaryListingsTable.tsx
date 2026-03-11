@@ -32,16 +32,20 @@ export default function SecondaryListingsTable({
 }: SecondaryListingsTableProps) {
   const { address } = useAccount();
   const { listings, isConnected, subscribeToBids } = useSecondaryFeed({
-    chainId,
     enabled: true,
   });
   const collateralSymbol = COLLATERAL_SYMBOLS[chainId] ?? 'COLLATERAL';
 
-  // Auto-subscribe to bids for user's own listings
+  // Auto-subscribe to bids for user's own listings (track already-subscribed to avoid loops)
+  const subscribedRef = React.useRef<Set<string>>(new Set());
   React.useEffect(() => {
     if (!address) return;
     for (const listing of listings) {
-      if (listing.seller.toLowerCase() === address.toLowerCase()) {
+      if (
+        listing.seller.toLowerCase() === address.toLowerCase() &&
+        !subscribedRef.current.has(listing.auctionId)
+      ) {
+        subscribedRef.current.add(listing.auctionId);
         subscribeToBids(listing.auctionId);
       }
     }
@@ -72,17 +76,12 @@ export default function SecondaryListingsTable({
       </TableHeader>
       <TableBody>
         {listings.map((listing) => {
-          const amount = parseFloat(
-            formatEther(BigInt(listing.tokenAmount))
-          );
-          const minPrice = parseFloat(
-            formatEther(BigInt(listing.minPrice))
-          );
+          const amount = parseFloat(formatEther(BigInt(listing.tokenAmount)));
+          const minPrice = parseFloat(formatEther(BigInt(listing.minPrice)));
           const deadline = new Date(listing.sellerDeadline * 1000);
           const isExpired = deadline < new Date();
           const isMine =
-            address &&
-            listing.seller.toLowerCase() === address.toLowerCase();
+            address && listing.seller.toLowerCase() === address.toLowerCase();
 
           return (
             <TableRow
@@ -112,9 +111,7 @@ export default function SecondaryListingsTable({
                 )}
               </TableCell>
               <TableCell>
-                <Badge
-                  variant={listing.bidCount > 0 ? 'default' : 'secondary'}
-                >
+                <Badge variant={listing.bidCount > 0 ? 'default' : 'secondary'}>
                   {listing.bidCount}
                 </Badge>
               </TableCell>
@@ -134,7 +131,6 @@ export default function SecondaryListingsTable({
                   <AcceptBidDialog
                     listing={listing}
                     collateralSymbol={collateralSymbol}
-                    chainId={chainId}
                   >
                     <Button
                       size="sm"
@@ -150,7 +146,6 @@ export default function SecondaryListingsTable({
                   <BidOnListingDialog
                     listing={listing}
                     collateralSymbol={collateralSymbol}
-                    chainId={chainId}
                   >
                     <Button size="sm" disabled={isExpired}>
                       <ShoppingCart className="w-3 h-3 mr-1" />

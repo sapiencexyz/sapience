@@ -1,20 +1,25 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
-import { useAccount, useSignTypedData } from 'wagmi';
-import { type Address, type Hex } from 'viem';
+import {
+  useAccount,
+  useChainId,
+  useSignTypedData,
+  useWriteContract,
+} from 'wagmi';
+import { erc20Abi, type Address, type Hex } from 'viem';
 import { buildBuyerTradeApproval } from '@sapience/sdk/auction/secondarySigning';
 import type { SecondaryBidPayload } from '@sapience/sdk/types/secondary';
 import {
   secondaryMarketEscrow,
   collateralToken,
 } from '@sapience/sdk/contracts';
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
 import { toAuctionWsUrl } from '~/lib/ws';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 import { generateRandomNonce } from '@sapience/sdk';
+import { getPublicClientForChainId } from '~/lib/utils/util';
 
 export interface SecondaryBidParams {
   /** Auction ID to bid on */
@@ -56,7 +61,8 @@ export function useSecondaryBid(options: UseSecondaryBidOptions = {}) {
     onBidSubmitted,
   } = options;
 
-  const chainId = overrideChainId ?? DEFAULT_CHAIN_ID;
+  const walletChainId = useChainId();
+  const chainId = overrideChainId ?? walletChainId;
   const { address } = useAccount();
   const { signTypedDataAsync } = useSignTypedData();
   const {
@@ -66,6 +72,7 @@ export function useSecondaryBid(options: UseSecondaryBidOptions = {}) {
   } = useSession();
   const { apiBaseUrl } = useSettings();
 
+  const { writeContractAsync } = useWriteContract();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const wsUrl = useMemo(() => toAuctionWsUrl(apiBaseUrl), [apiBaseUrl]);
@@ -78,6 +85,11 @@ export function useSecondaryBid(options: UseSecondaryBidOptions = {}) {
     | Address
     | undefined;
 
+  const publicClient = useMemo(
+    () => getPublicClientForChainId(chainId),
+    [chainId]
+  );
+
   const submitBid = useCallback(
     async (params: SecondaryBidParams): Promise<SecondaryBidResult> => {
       const {
@@ -89,7 +101,10 @@ export function useSecondaryBid(options: UseSecondaryBidOptions = {}) {
         deadlineSeconds = 1800,
       } = params;
 
-      const buyerAddress = effectiveAddress;
+      // Secondary market bids always use the EOA wallet address.
+      // Session key signing is not used for bids — the EOA signs directly
+      // and the on-chain contract verifies the EOA signature.
+      const buyerAddress = address;
 
       if (!buyerAddress) {
         return { success: false, error: 'Wallet not connected' };
@@ -110,11 +125,41 @@ export function useSecondaryBid(options: UseSecondaryBidOptions = {}) {
         return { success: false, error: 'Price must be greater than 0' };
       }
 
+      // Check buyer's collateral allowance and approve if needed
+      try {
+        let currentAllowance = 0n;
+        try {
+          currentAllowance = (await publicClient.readContract({
+            address: collateralAddress,
+            abi: erc20Abi,
+            functionName: 'allowance',
+            args: [buyerAddress, verifyingContract],
+          })) as bigint;
+        } catch {
+          // Continue — will do approve
+        }
+
+        if (currentAllowance < price) {
+          setIsSubmitting(true);
+          await writeContractAsync({
+            address: collateralAddress,
+            abi: erc20Abi,
+            functionName: 'approve',
+            args: [verifyingContract, price],
+            chainId,
+          });
+        }
+      } catch (e: any) {
+        setIsSubmitting(false);
+        return {
+          success: false,
+          error: `Collateral approval failed: ${e?.message || 'Unknown error'}`,
+        };
+      }
+
       const nonce = generateRandomNonce();
       const nowSec = Math.floor(Date.now() / 1000);
-      const buyerDeadline = BigInt(
-        nowSec + Math.max(60, deadlineSeconds)
-      );
+      const buyerDeadline = BigInt(nowSec + Math.max(60, deadlineSeconds));
 
       // Build typed data for buyer's TradeApproval
       const typedData = buildBuyerTradeApproval({
@@ -133,27 +178,16 @@ export function useSecondaryBid(options: UseSecondaryBidOptions = {}) {
       setIsSubmitting(true);
       let buyerSignature: Hex;
       try {
-        if (isUsingSession && sessionSignTypedData) {
-          buyerSignature = await sessionSignTypedData({
-            domain: {
-              ...typedData.domain,
-              chainId: Number(typedData.domain.chainId),
-            },
-            types: typedData.types,
-            primaryType: typedData.primaryType,
-            message: typedData.message as Record<string, unknown>,
-          });
-        } else {
-          buyerSignature = await signTypedDataAsync({
-            domain: {
-              ...typedData.domain,
-              chainId: Number(typedData.domain.chainId),
-            },
-            types: typedData.types,
-            primaryType: typedData.primaryType,
-            message: typedData.message,
-          });
-        }
+        // Always sign with EOA wallet for secondary market bids
+        buyerSignature = await signTypedDataAsync({
+          domain: {
+            ...typedData.domain,
+            chainId: Number(typedData.domain.chainId),
+          },
+          types: typedData.types,
+          primaryType: typedData.primaryType,
+          message: typedData.message,
+        });
       } catch (e: any) {
         setIsSubmitting(false);
         const error =
@@ -200,6 +234,8 @@ export function useSecondaryBid(options: UseSecondaryBidOptions = {}) {
       verifyingContract,
       collateralAddress,
       wsUrl,
+      publicClient,
+      writeContractAsync,
       signTypedDataAsync,
       sessionSignTypedData,
       isUsingSession,

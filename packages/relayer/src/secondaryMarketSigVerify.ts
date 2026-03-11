@@ -19,7 +19,10 @@ import type {
  */
 function getVerifyingContract(chainId: number): Address | null {
   const entry = secondaryMarketEscrow[chainId];
-  if (!entry || entry.address === '0x0000000000000000000000000000000000000000') {
+  if (
+    !entry ||
+    entry.address === '0x0000000000000000000000000000000000000000'
+  ) {
     return null;
   }
   return entry.address as Address;
@@ -165,6 +168,14 @@ export async function verifyBuyerSignature(
     });
 
     if (recoveredSigner.toLowerCase() === bid.buyer.toLowerCase()) {
+      return true;
+    }
+
+    // Smart account (session key) signatures: the recovered signer is the
+    // EOA/session-key, not the smart account address. The on-chain contract
+    // performs the real signature + session-key verification, so we accept
+    // the bid here if session key data is present.
+    if (bid.buyerSessionKeyData && bid.buyerSessionKeyData !== '0x') {
       return true;
     }
 

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
-import { useAccount, useSignTypedData } from 'wagmi';
+import { useAccount, useChainId, useSignTypedData } from 'wagmi';
 import { type Address, type Hex } from 'viem';
 import { buildSellerTradeApproval } from '@sapience/sdk/auction/secondarySigning';
 import type { SecondaryAuctionRequestPayload } from '@sapience/sdk/types/secondary';
@@ -9,11 +9,11 @@ import {
   secondaryMarketEscrow,
   collateralToken,
 } from '@sapience/sdk/contracts';
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { toAuctionWsUrl } from '~/lib/ws';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 import { generateRandomNonce } from '@sapience/sdk';
+import { useSession } from '~/lib/context/SessionContext';
 
 export interface SecondaryAuctionStartParams {
   token: Address;
@@ -44,9 +44,15 @@ export function useSecondaryAuctionStart(
     onAuctionCreated,
   } = options;
 
-  const chainId = overrideChainId ?? DEFAULT_CHAIN_ID;
+  const walletChainId = useChainId();
+  const chainId = overrideChainId ?? walletChainId;
   const { address } = useAccount();
   const { signTypedDataAsync } = useSignTypedData();
+  const {
+    effectiveAddress,
+    signTypedData: sessionSignTypedData,
+    isUsingSession,
+  } = useSession();
   const { apiBaseUrl } = useSettings();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -73,7 +79,9 @@ export function useSecondaryAuctionStart(
         refCode,
       } = params;
 
-      if (!address) {
+      // Secondary market always uses EOA wallet address for signing
+      const sellerAddr = address;
+      if (!sellerAddr) {
         return { success: false, error: 'Wallet not connected' };
       }
       if (!verifyingContract) {
@@ -104,7 +112,7 @@ export function useSecondaryAuctionStart(
       const typedData = buildSellerTradeApproval({
         token,
         collateral: collateralAddress,
-        seller: address,
+        seller: sellerAddr,
         buyer: '0x0000000000000000000000000000000000000000' as Address,
         tokenAmount,
         price: minPrice,
@@ -117,6 +125,7 @@ export function useSecondaryAuctionStart(
       setIsSubmitting(true);
       let sellerSignature: Hex;
       try {
+        // Always sign with EOA wallet for secondary market listings
         sellerSignature = await signTypedDataAsync({
           domain: {
             ...typedData.domain,
@@ -142,7 +151,7 @@ export function useSecondaryAuctionStart(
         collateral: collateralAddress,
         tokenAmount: tokenAmount.toString(),
         minPrice: minPrice.toString(),
-        seller: address,
+        seller: sellerAddr,
         sellerNonce: Number(nonce),
         sellerDeadline: Number(sellerDeadline),
         sellerSignature,
@@ -165,9 +174,18 @@ export function useSecondaryAuctionStart(
           const removeListener = client.addMessageListener((msg: unknown) => {
             const data = msg as {
               type?: string;
-              payload?: { auctionId?: string; error?: string };
+              payload?: {
+                auctionId?: string;
+                error?: string;
+                subscribed?: boolean;
+                unsubscribed?: boolean;
+              };
             };
-            if (data?.type === 'secondary.auction.ack') {
+            // Only match auction start acks (with auctionId or error), not feed subscribe acks
+            if (
+              data?.type === 'secondary.auction.ack' &&
+              (data.payload?.auctionId || data.payload?.error)
+            ) {
               clearTimeout(timeout);
               removeListener();
               resolve(data.payload ?? {});
@@ -202,11 +220,14 @@ export function useSecondaryAuctionStart(
     },
     [
       address,
+      effectiveAddress,
       chainId,
       verifyingContract,
       collateralAddress,
       wsUrl,
       signTypedDataAsync,
+      sessionSignTypedData,
+      isUsingSession,
       onSignatureRejected,
       onAuctionCreated,
     ]

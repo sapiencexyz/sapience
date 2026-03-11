@@ -20,7 +20,6 @@ import type { SecondaryListing } from '~/hooks/secondary/useSecondaryFeed';
 interface BidOnListingDialogProps {
   listing: SecondaryListing;
   collateralSymbol: string;
-  chainId: number;
   onSuccess?: () => void;
   children: React.ReactNode;
 }
@@ -28,16 +27,16 @@ interface BidOnListingDialogProps {
 export default function BidOnListingDialog({
   listing,
   collateralSymbol,
-  chainId,
   onSuccess,
   children,
 }: BidOnListingDialogProps) {
   const [open, setOpen] = React.useState(false);
-  const [price, setPrice] = React.useState(formatEther(BigInt(listing.minPrice)));
+  const [price, setPrice] = React.useState(
+    formatEther(BigInt(listing.minPrice))
+  );
   const [error, setError] = React.useState<string | null>(null);
 
   const { submitBid, isSubmitting } = useSecondaryBid({
-    chainId,
     onSignatureRejected: (err) => setError(err.message),
     onBidSubmitted: () => {
       setOpen(false);
@@ -114,9 +113,7 @@ export default function BidOnListingDialog({
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
-            <Label htmlFor="bidPrice">
-              Your Offer ({collateralSymbol})
-            </Label>
+            <Label htmlFor="bidPrice">Your Offer ({collateralSymbol})</Label>
             <Input
               id="bidPrice"
               type="text"
@@ -143,7 +140,7 @@ export default function BidOnListingDialog({
             {isSubmitting ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Signing…
+                Approving & Signing…
               </>
             ) : (
               'Submit Bid'

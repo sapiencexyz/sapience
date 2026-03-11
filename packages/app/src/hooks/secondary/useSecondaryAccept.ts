@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
-import { useAccount, useSignTypedData } from 'wagmi';
+import { useAccount, useChainId, useSignTypedData } from 'wagmi';
 import { erc20Abi, type Address, type Hex } from 'viem';
 import { buildSellerTradeApproval } from '@sapience/sdk/auction/secondarySigning';
 import {
@@ -12,7 +12,6 @@ import {
   secondaryMarketEscrow,
   collateralToken,
 } from '@sapience/sdk/contracts';
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { generateRandomNonce } from '@sapience/sdk';
 import { useSession } from '~/lib/context/SessionContext';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
@@ -60,7 +59,8 @@ export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
     onSignatureRejected,
   } = options;
 
-  const chainId = overrideChainId ?? DEFAULT_CHAIN_ID;
+  const walletChainId = useChainId();
+  const chainId = overrideChainId ?? walletChainId;
   const { address } = useAccount();
   const { signTypedDataAsync } = useSignTypedData();
   const {
@@ -101,7 +101,8 @@ export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
   const acceptBid = useCallback(
     async (params: AcceptBidParams): Promise<AcceptBidResult> => {
       const { token, tokenAmount, bid, refCode } = params;
-      const sellerAddress = effectiveAddress;
+      // Secondary market always uses EOA wallet address for signing
+      const sellerAddress = address;
 
       if (!sellerAddress) {
         return { success: false, error: 'Wallet not connected' };
@@ -139,27 +140,16 @@ export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
 
         let sellerSignature: Hex;
         try {
-          if (isUsingSession && sessionSignTypedData) {
-            sellerSignature = await sessionSignTypedData({
-              domain: {
-                ...typedData.domain,
-                chainId: Number(typedData.domain.chainId),
-              },
-              types: typedData.types,
-              primaryType: typedData.primaryType,
-              message: typedData.message as Record<string, unknown>,
-            });
-          } else {
-            sellerSignature = await signTypedDataAsync({
-              domain: {
-                ...typedData.domain,
-                chainId: Number(typedData.domain.chainId),
-              },
-              types: typedData.types,
-              primaryType: typedData.primaryType,
-              message: typedData.message,
-            });
-          }
+          // Always sign with EOA wallet for secondary market
+          sellerSignature = await signTypedDataAsync({
+            domain: {
+              ...typedData.domain,
+              chainId: Number(typedData.domain.chainId),
+            },
+            types: typedData.types,
+            primaryType: typedData.primaryType,
+            message: typedData.message,
+          });
         } catch (e: any) {
           setIsAccepting(false);
           const error =
@@ -198,7 +188,7 @@ export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
           buyerDeadline: BigInt(bid.buyerDeadline),
           sellerSignature,
           buyerSignature: bid.buyerSignature as Hex,
-          refCode: refCode ?? ('0x' + '00'.repeat(32)) as Hex,
+          refCode: refCode ?? (('0x' + '00'.repeat(32)) as Hex),
           buyerSessionKeyData: (bid.buyerSessionKeyData as Hex) ?? '0x',
         };
 
@@ -211,7 +201,7 @@ export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
         });
 
         // 5. Submit via sendCalls (handles session keys, chain switching, etc.)
-        await sendCalls({ calls });
+        await sendCalls({ calls, chainId });
 
         return { success: true };
       } catch (e: any) {

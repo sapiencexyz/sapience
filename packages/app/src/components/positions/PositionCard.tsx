@@ -144,7 +144,13 @@ export default function PositionCard({
     } finally {
       setIsRedeeming(false);
     }
-  }, [position.tokenAddress, position.balance, pickConfig, settleAndRedeem, onRefetch]);
+  }, [
+    position.tokenAddress,
+    position.balance,
+    pickConfig,
+    settleAndRedeem,
+    onRefetch,
+  ]);
 
   return (
     <Card className="overflow-hidden">
@@ -258,7 +264,6 @@ export default function PositionCard({
             collateralSymbol={
               COLLATERAL_SYMBOLS[position.chainId] ?? collateralSymbol
             }
-            chainId={position.chainId}
             onSuccess={onRefetch}
           >
             <Button variant="outline" className="w-full">
