@@ -1,13 +1,13 @@
 import { createPublicClient, http, type Address } from 'viem';
-import { arbitrum } from 'viem/chains';
 import { createKernelAccount, addressToEmptyAccount } from '@zerodev/sdk';
 import { signerToEcdsaValidator } from '@zerodev/ecdsa-validator';
 import { getEntryPoint, KERNEL_V3_1 } from '@zerodev/sdk/constants';
+import { getChainConfig, DEFAULT_CHAIN_ID } from '../constants/chain';
 
 const ENTRY_POINT = getEntryPoint('0.7');
 const KERNEL_VERSION = KERNEL_V3_1;
 
-// Cache for computed smart account addresses
+// Cache for computed smart account addresses (keyed by owner+chainId)
 const smartAccountCache = new Map<string, Address>();
 
 /**
@@ -15,16 +15,17 @@ const smartAccountCache = new Map<string, Address>();
  * Uses ZeroDev Kernel V3.1 with ECDSA validator.
  * This is a pure computation (no on-chain state needed for counterfactual addresses).
  */
-export async function computeSmartAccountAddress(ownerAddress: Address): Promise<Address> {
-  const cacheKey = ownerAddress.toLowerCase();
+export async function computeSmartAccountAddress(ownerAddress: Address, chainId: number = DEFAULT_CHAIN_ID): Promise<Address> {
+  const cacheKey = `${ownerAddress.toLowerCase()}-${chainId}`;
   const cached = smartAccountCache.get(cacheKey);
   if (cached) {
     return cached;
   }
 
+  const chain = getChainConfig(chainId);
   const publicClient = createPublicClient({
-    transport: http(process.env.ARBITRUM_RPC_URL || 'https://arb1.arbitrum.io/rpc'),
-    chain: arbitrum,
+    transport: http(chain.rpcUrls.default.http[0]),
+    chain,
   });
 
   const emptyAccount = addressToEmptyAccount(ownerAddress);

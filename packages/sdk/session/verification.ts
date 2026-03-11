@@ -5,6 +5,7 @@ import {
   type Address,
   type Hex,
 } from 'viem';
+import { computeSmartAccountAddress } from './smartAccount';
 
 // ValidatorData structure constants
 const FLAG_BYTES = 2;
@@ -259,12 +260,19 @@ export async function verifySessionApproval(
         return { valid: false, error: 'invalid_validator_data' };
       }
 
-      // Security model (no RPC needed):
-      // 1. The enableSignature is valid over typed data with verifyingContract = smart account
-      // 2. EIP-712 domain binding ensures the signature is specific to that verifyingContract
-      // 3. We already verified verifyingContract matches the claimed account address above
-      // 4. The session key is extracted from cryptographically signed validatorData
-      // 5. For chat auth, we prove session key possession for the claimed account
+      // Verify the recovered owner actually owns the claimed smart account.
+      // EIP-712 domain binding alone is insufficient — any EOA can sign with
+      // verifyingContract set to an arbitrary address. We must derive the
+      // expected smart account from the recovered owner and compare.
+      const expectedSmartAccount = await computeSmartAccountAddress(recoveredOwner, approval.chainId);
+      if (expectedSmartAccount.toLowerCase() !== claimedAccountAddress.toLowerCase()) {
+        console.warn('[SessionAuth] Smart account ownership mismatch:', {
+          recoveredOwner,
+          expectedSmartAccount,
+          claimedAccountAddress,
+        });
+        return { valid: false, error: 'smart_account_ownership_mismatch' };
+      }
 
       if (process.env.NODE_ENV !== 'production') {
         console.debug('[SessionAuth] Session approval verified, owner:', recoveredOwner, 'sessionKey:', sessionKeyAddress);

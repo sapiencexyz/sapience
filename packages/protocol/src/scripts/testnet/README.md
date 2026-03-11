@@ -290,13 +290,17 @@ Use LayerZero Scan to track messages:
 - Bridge flow: Ethereal (escrow) -> Arbitrum (mint) -> Ethereal (release)
 - ACK mechanism ensures atomic bridging
 
-## Contract Addresses (fill after deployment)
+## Contract Addresses
 
-| Contract | Chain | Address |
-|----------|-------|---------|
-| CollateralToken | Ethereal | |
-| ManualConditionResolver | Ethereal | |
-| PredictionMarketEscrow | Ethereal | |
-| PredictionMarketTokenFactory | Arbitrum | |
-| PredictionMarketBridge | Ethereal | |
-| PredictionMarketBridgeRemote | Arbitrum | |
+After deployment, update the contract addresses in `@sapience/sdk/contracts/addresses` — that file is the single source of truth. Other packages import from there:
+
+```typescript
+import {
+  predictionMarketEscrow,
+  manualConditionResolver,
+  predictionMarketBridge,
+  predictionMarketBridgeRemote,
+  predictionMarketTokenFactory,
+  collateralToken,
+} from '@sapience/sdk/contracts/addresses';
+```
