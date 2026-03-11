@@ -487,7 +487,7 @@ const CreatePositionFormInner = ({
   // The counterparty signed with whatever sponsor was in the auction request, so
   // validation must match exactly.
   const auctionHasSponsor = !!currentAuctionParams?.predictorSponsor;
-  const auctionSponsorAddress = currentAuctionParams?.predictorSponsor as Address | undefined;
+  const auctionSponsorAddress = currentAuctionParams?.predictorSponsor;
 
   // Validate escrow bids: session mode uses full simulation, EOA mode uses lightweight checks
   const { validatedBids: bids } = useValidatedEscrowBids(
