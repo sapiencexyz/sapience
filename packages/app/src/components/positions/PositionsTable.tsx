@@ -369,7 +369,6 @@ function PositionRow({
             <SellPositionDialog
               position={position}
               collateralSymbol={collateralSymbol}
-              chainId={position.chainId}
               onSuccess={onRefetch}
             >
               <button

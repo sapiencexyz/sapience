@@ -68,7 +68,7 @@ export function useSecondaryFeed(options: UseSecondaryFeedOptions = {}) {
       }
 
       if (data?.type === 'secondary.auction.started') {
-        const details = data.payload as SecondaryAuctionDetails;
+        const details = data.payload;
         if (chainId && details.chainId !== chainId) return;
         setListings((prev) => {
           const next = new Map(prev);
@@ -125,11 +125,17 @@ export function useSecondaryFeed(options: UseSecondaryFeedOptions = {}) {
 
     const client = getSharedAuctionWsClient(wsUrl);
 
-    // Request snapshot of current listings
-    client.send({ type: 'secondary.listings.request' });
+    const subscribe = () => {
+      // Request snapshot of current listings
+      client.send({ type: 'secondary.listings.request' });
+      // Subscribe to live feed
+      client.send({ type: 'secondary.feed.subscribe' });
+    };
 
-    // Subscribe to live feed
-    client.send({ type: 'secondary.feed.subscribe' });
+    subscribe();
+
+    // Re-subscribe when WS reconnects (server-side state is lost on disconnect)
+    const removeReconnectListener = client.addReconnectListener(subscribe);
 
     const removeListener = client.addMessageListener(handleMessage);
     removeListenerRef.current = removeListener;
@@ -137,6 +143,7 @@ export function useSecondaryFeed(options: UseSecondaryFeedOptions = {}) {
 
     return () => {
       removeListener();
+      removeReconnectListener();
       removeListenerRef.current = null;
       // Unsubscribe from global feed
       try {

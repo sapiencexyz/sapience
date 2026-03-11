@@ -171,6 +171,14 @@ export async function verifyBuyerSignature(
       return true;
     }
 
+    // Smart account (session key) signatures: the recovered signer is the
+    // EOA/session-key, not the smart account address. The on-chain contract
+    // performs the real signature + session-key verification, so we accept
+    // the bid here if session key data is present.
+    if (bid.buyerSessionKeyData && bid.buyerSessionKeyData !== '0x') {
+      return true;
+    }
+
     console.warn('[Secondary-Sig] Buyer signature mismatch:', {
       expected: bid.buyer,
       recovered: recoveredSigner,

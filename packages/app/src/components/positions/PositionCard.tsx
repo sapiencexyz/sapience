@@ -269,7 +269,6 @@ export default function PositionCard({
             collateralSymbol={
               COLLATERAL_SYMBOLS[position.chainId] ?? collateralSymbol
             }
-            chainId={position.chainId}
             onSuccess={onRefetch}
           >
             <Button variant="outline" className="w-full">

@@ -20,7 +20,6 @@ import type { SecondaryListing } from '~/hooks/secondary/useSecondaryFeed';
 interface AcceptBidDialogProps {
   listing: SecondaryListing;
   collateralSymbol: string;
-  chainId: number;
   onSuccess?: () => void;
   children: React.ReactNode;
 }
@@ -28,7 +27,6 @@ interface AcceptBidDialogProps {
 export default function AcceptBidDialog({
   listing,
   collateralSymbol,
-  chainId,
   onSuccess,
   children,
 }: AcceptBidDialogProps) {
@@ -38,7 +36,6 @@ export default function AcceptBidDialog({
     React.useState<SecondaryValidatedBid | null>(null);
 
   const { acceptBid, isAccepting } = useSecondaryAccept({
-    chainId,
     onSignatureRejected: (err) => setError(err.message),
     onSuccess: () => {
       setOpen(false);
