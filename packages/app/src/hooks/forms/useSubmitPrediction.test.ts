@@ -30,7 +30,7 @@ jest.mock('~/hooks/blockchain/useSapienceWriteContract', () => ({
 }));
 
 jest.mock('~/hooks/contract/EAS', () => ({
-  getEASContractAddress: () => '0xEASContract',
+  EAS_CONTRACT_ADDRESS: '0xEASContract',
   EAS_ATTEST_ABI: [{ name: 'attest', type: 'function' }],
 }));
 

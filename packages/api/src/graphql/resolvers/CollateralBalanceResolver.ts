@@ -27,6 +27,9 @@ class CollateralBalanceSnapshotType {
 
   @Field(() => String)
   balance!: string;
+
+  @Field(() => Date, { nullable: true })
+  timestamp?: Date;
 }
 
 @ObjectType()
@@ -131,11 +134,14 @@ export class CollateralBalanceResolver {
 
     const results = await Promise.all(
       boundaries.map(async (block, i) => {
-        const result = await prisma.$queryRaw<[{ balance: bigint }]>`
+        const result = await prisma.$queryRaw<
+          [{ balance: bigint; timestamp: Date | null }]
+        >`
           SELECT
             COALESCE(SUM(CASE WHEN "to" = ${addr} THEN "value"::NUMERIC ELSE 0 END), 0) -
             COALESCE(SUM(CASE WHEN "from" = ${addr} THEN "value"::NUMERIC ELSE 0 END), 0)
-            AS balance
+            AS balance,
+            MAX("timestamp") AS timestamp
           FROM collateral_transfer
           WHERE "chainId" = ${chainId}
             AND ("from" = ${addr} OR "to" = ${addr})
@@ -145,6 +151,7 @@ export class CollateralBalanceResolver {
           index: i,
           atBlock: block,
           balance: (result[0]?.balance ?? 0n).toString(),
+          timestamp: result[0]?.timestamp ?? undefined,
         };
       })
     );

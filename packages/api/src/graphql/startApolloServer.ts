@@ -180,7 +180,10 @@ export const initializeApolloServer = async () => {
                 }
 
                 throw new GraphQLError(errorMessage, {
-                  extensions: { code: 'QUERY_COMPLEXITY_EXCEEDED' },
+                  extensions: {
+                    code: 'QUERY_COMPLEXITY_EXCEEDED',
+                    http: { status: 400 },
+                  },
                 });
               }
             },

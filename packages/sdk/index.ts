@@ -9,6 +9,7 @@ export * from './onchain/vault';
 export * from './onchain/approval';
 export * from './onchain/position';
 export * from './onchain/escrow';
+export * from './onchain/tokenAddress';
 
 export * from './auction/encoding';
 export * from './auction/escrowEncoding';

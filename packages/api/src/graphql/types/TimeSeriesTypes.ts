@@ -59,6 +59,38 @@ export class PnlDataPoint {
 
 @ObjectType({
   description:
+    'Time-bucketed prediction count with outcome breakdown, bucketed by creation time',
+})
+export class PredictionCountDataPoint {
+  @Field(() => Int, {
+    description: 'Unix epoch timestamp (seconds) for the start of this bucket',
+  })
+  timestamp!: number;
+
+  @Field(() => Int, {
+    description: 'Total predictions created in this bucket',
+  })
+  total!: number;
+
+  @Field(() => Int, { description: 'Predictions won in this bucket' })
+  won!: number;
+
+  @Field(() => Int, { description: 'Predictions lost in this bucket' })
+  lost!: number;
+
+  @Field(() => Int, {
+    description: 'Predictions still pending in this bucket',
+  })
+  pending!: number;
+
+  @Field(() => Int, {
+    description: 'Predictions settled as non-decisive in this bucket',
+  })
+  nonDecisive!: number;
+}
+
+@ObjectType({
+  description:
     'Time-bucketed balance snapshot showing deployed and claimable collateral',
 })
 export class BalanceDataPoint {

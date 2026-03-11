@@ -62,7 +62,7 @@ const encoded = encodePythBinaryOptionOutcomes([{
 
 - **Outcome logic**: Over wins if `benchmarkPrice >= strikePrice` (when `overWinsOnTie=true`) or `benchmarkPrice > strikePrice` (when `overWinsOnTie=false`)
 - **Settlement is permissionless**: Anyone can settle by calling `PythConditionResolver.settleCondition(market, updateData)` with Pyth Lazer verified price update data at the exact `endTime`
-- **Resolver address**: `pythConditionResolver[CHAIN_ID_ETHEREAL].address` = `0x6399F6397701e4213BBaEf9f7a15EF31C9c329E1`
+- **Resolver address**: Import from SDK — `pythConditionResolver[CHAIN_ID_ETHEREAL].address` (see `@sapience/sdk/contracts/addresses`)
 - **ABI**: `pythConditionResolverAbi` from `@sapience/sdk/abis`
 
 ## Getting Pyth Lazer updateData
