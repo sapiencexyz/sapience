@@ -41,7 +41,7 @@ SM_NETWORK_RPC_URL=https://arb1.arbitrum.io/rpc
 SM_NETWORK_LZ_ENDPOINT=0x1a44076050125825900e736c501f859c50fE728c
 SM_NETWORK_LZ_EID=30110
 
-# Collateral Token (existing mainnet token - e.g., USDC, WUSDe)
+# Collateral Token (canonical address in @sapience/sdk/contracts/addresses)
 COLLATERAL_TOKEN_ADDRESS=0x...
 
 # LayerZero Library and DVN Configuration (2 DVNs required for production)
@@ -414,12 +414,16 @@ Track cross-chain messages: https://layerzeroscan.com/
    - **Ethereal (PM Network)**: Uses Blockscout at `https://explorer.ethereal.trade`. No API key needed. The deploy script automatically uses `--verifier blockscout --verifier-url https://explorer.ethereal.trade/api/`.
    - **Arbitrum (SM Network)**: Uses Arbiscan. Set `SM_NETWORK_ETHERSCAN_API_KEY` for verification.
 
-## Contract Addresses (fill after deployment)
+## Contract Addresses
 
-| Contract | Chain | Address |
-|----------|-------|---------|
-| ManualConditionResolver | Ethereal | |
-| PredictionMarketEscrow | Ethereal | |
-| PredictionMarketTokenFactory | Arbitrum | |
-| PredictionMarketBridge | Ethereal | |
-| PredictionMarketBridgeRemote | Arbitrum | |
+After deployment, all contract addresses are maintained in `@sapience/sdk/contracts/addresses`. Import from the SDK rather than hardcoding addresses:
+
+```typescript
+import {
+  predictionMarketEscrow,
+  manualConditionResolver,
+  predictionMarketBridge,
+  predictionMarketBridgeRemote,
+  predictionMarketTokenFactory,
+} from '@sapience/sdk/contracts/addresses';
+```
