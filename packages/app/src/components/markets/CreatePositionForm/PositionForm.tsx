@@ -797,14 +797,16 @@ export default function PositionForm({
           {/* Sponsorship indicator — only shown when eligible */}
           {isSponsored &&
             (() => {
-              const activeBid = bestBid ?? stickyEstimateBid;
+              // Only use the live auction bid — the sticky estimate may have
+              // a different counterparty or odds that don't reflect the
+              // current auction, so we can't validate eligibility against it.
+              if (!bestBid) return null;
+
               const decimals = collateralDecimals ?? 18;
               const userCollateral = positionSizeValue
                 ? parseUnits(positionSizeValue, decimals)
                 : 0n;
-              const vaultCollateral = activeBid
-                ? BigInt(activeBid.counterpartyCollateral)
-                : 0n;
+              const vaultCollateral = BigInt(bestBid.counterpartyCollateral);
 
               if (remainingBudget === 0n || userCollateral === 0n) return null;
 
@@ -812,18 +814,13 @@ export default function PositionForm({
               const budgetDisplay = Number(formatUnits(remainingBudget, decimals)).toFixed(2);
               const positionDisplay = Number(formatUnits(userCollateral, decimals)).toFixed(2);
 
-              // Both states require a bid: "sponsored" needs the entry price
-              // ratio check, and "over budget" still needs counterparty/price
-              // eligibility before we surface the hint.
-              if (!activeBid) return null;
-
               // Run eligibility checks (counterparty, entry price, match
               // limit) — budget check is bypassed so the "over budget" hint
               // can still appear.
               const { eligible: bidEligible } = checkSponsorEligibility({
                 predictorCollateral: userCollateral,
                 counterpartyCollateral: vaultCollateral,
-                bidCounterparty: activeBid.counterparty,
+                bidCounterparty: bestBid.counterparty,
                 requiredCounterparty,
                 maxEntryPriceBps,
                 matchLimit,
