@@ -43,7 +43,7 @@ import { predictionMarketEscrow } from '@sapience/sdk/contracts';
 import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import type { Address } from 'viem';
-import { erc20Abi, formatUnits } from 'viem';
+import { erc20Abi, formatUnits, parseUnits } from 'viem';
 import { useAccount, useReadContracts } from 'wagmi';
 import { useSession } from '~/lib/context/SessionContext';
 import { createPositionSizeSchema } from '~/components/markets/forms/inputs/PositionSizeInput';
@@ -56,7 +56,7 @@ import { useSponsorStatus } from '~/hooks/sponsorship/useSponsorStatus';
 import { usePositionProgress } from '~/hooks/forms/usePositionProgress';
 import { useAuctionStart, type QuoteBid } from '~/lib/auction/useAuctionStart';
 
-import { logPositionForm } from '~/lib/auction/bidLogger';
+import { useValidatedEscrowBids } from '~/hooks/auction/useValidatedEscrowBids';
 import {
   DEFAULT_POSITION_SIZE,
   getMaxPositionSize,
@@ -161,7 +161,11 @@ const CreatePositionFormInner = ({
   const { hasConnectedWallet } = useConnectedWallet();
   const { openConnectDialog } = useConnectDialog();
   const { address } = useAccount();
-  const { effectiveAddress } = useSession();
+  const {
+    effectiveAddress,
+    signTypedData: sessionSignTypedData,
+    isUsingSession,
+  } = useSession();
   const { toast } = useToast();
   const chainId = DEFAULT_CHAIN_ID;
 
@@ -230,7 +234,6 @@ const CreatePositionFormInner = ({
     bids: rawBids,
     requestQuotes,
     buildMintRequestDataFromBid,
-    currentAuctionParams,
   } = useAuctionStart();
 
   // Always use PredictionMarketEscrow
@@ -243,9 +246,6 @@ const CreatePositionFormInner = ({
     sponsorAddress,
     refetch: refetchSponsor,
   } = useSponsorStatus();
-
-  // State for validated bids (async validation checks market maker balance/allowance)
-  const [bids, setBids] = useState<QuoteBid[]>([]);
 
   // Fetch collateral token address from PredictionMarketEscrow
   const predictionMarketConfigRead = useReadContracts({
@@ -269,28 +269,6 @@ const CreatePositionFormInner = ({
     }
     return undefined;
   }, [predictionMarketConfigRead.data]);
-
-  // Escrow bids are marked as valid directly — no V1 mint simulation needed
-  useEffect(() => {
-    logPositionForm(
-      `[validation] rawBids=${rawBids.length}, hasParams=${!!currentAuctionParams}, hasMarket=${!!PREDICTION_MARKET_ADDRESS}`
-    );
-
-    if (rawBids.length === 0) {
-      setBids([]);
-      return;
-    }
-
-    logPositionForm(
-      `Received ${rawBids.length} escrow bid(s), marking as valid. First bid: counterparty=${rawBids[0]?.counterparty?.slice(0, 10)}, collateral=${rawBids[0]?.counterpartyCollateral}, deadline=${rawBids[0]?.counterpartyDeadline}`
-    );
-    setBids(
-      rawBids.map((b) => ({
-        ...b,
-        validationStatus: 'valid' as const,
-      }))
-    );
-  }, [rawBids, currentAuctionParams, PREDICTION_MARKET_ADDRESS]);
 
   // Escrow doesn't have a minCollateral concept
   const minCollateralRaw: bigint | undefined = undefined;
@@ -486,6 +464,44 @@ const CreatePositionFormInner = ({
       formMethods.trigger('positionSize');
     }
   }, [userBalance, watchedPositionSize, formMethods]);
+
+  // Compute predictorCollateral in wei for bid validation
+  const predictorCollateralWei = useMemo(() => {
+    if (!watchedPositionSize || collateralDecimals === undefined)
+      return undefined;
+    try {
+      return parseUnits(watchedPositionSize, collateralDecimals).toString();
+    } catch {
+      return undefined;
+    }
+  }, [watchedPositionSize, collateralDecimals]);
+
+  // Compute picks for bid validation (memoized to avoid re-renders)
+  const validationPicks = useMemo(() => {
+    try {
+      const picks = getPicks();
+      return picks.length > 0 ? picks : undefined;
+    } catch {
+      return undefined;
+    }
+  }, [getPicks]);
+
+  // Validate escrow bids: session mode uses full simulation, EOA mode uses lightweight checks
+  const { validatedBids: bids } = useValidatedEscrowBids(
+    rawBids,
+    {
+      chainId: positionChainId,
+      predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
+      collateralTokenAddress: collateralToken,
+      predictorAddress: effectiveAddress as Address | undefined,
+      predictorCollateral: predictorCollateralWei,
+      picks: validationPicks,
+      isSponsored,
+      sponsorAddress: sponsorAddress ?? undefined,
+      signPredictorApproval: isUsingSession ? sessionSignTypedData : null,
+      enabled: true,
+    }
+  );
 
   // Reset initialization when effective address changes (e.g., session activates)
   useEffect(() => {
