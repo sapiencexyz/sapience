@@ -58,7 +58,7 @@ export function resolveDefaults(
   if (bucketCount > max) {
     throw new GraphQLError(
       `Too many buckets (${bucketCount}). Maximum for ${interval} interval is ${max}. Narrow the date range or use a larger interval.`,
-      { extensions: { code: 'BAD_USER_INPUT' } }
+      { extensions: { code: 'BAD_USER_INPUT', http: { status: 400 } } }
     );
   }
 
