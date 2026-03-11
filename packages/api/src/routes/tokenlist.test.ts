@@ -3,44 +3,25 @@ import * as dbModule from '../db';
 
 vi.mock('../db', () => {
   const prisma = {
-    picks: { findMany: vi.fn() },
     condition: { findMany: vi.fn() },
   };
   return { default: prisma, __esModule: true };
 });
 
 const prisma = dbModule.default as unknown as {
-  picks: { findMany: ReturnType<typeof vi.fn> };
   condition: { findMany: ReturnType<typeof vi.fn> };
 };
 
-import { buildTokenList, resetCache, CT_RESOLVER, MAX_NAME_LENGTH, MAX_SYMBOL_LENGTH } from './tokenlist';
+import { buildTokenList, resetCache, MAX_NAME_LENGTH, MAX_SYMBOL_LENGTH } from './tokenlist';
 
-// Helper to build a pick config fixture
-function makePickConfig(overrides: Record<string, unknown> = {}) {
-  return {
-    id: 'pc-1',
-    predictorToken: '0xPREDICTOR',
-    counterpartyToken: '0xCOUNTERPARTY',
-    resolved: false,
-    result: 'UNRESOLVED',
-    createdAt: new Date(),
-    picks: [
-      {
-        conditionId: 'cond-1',
-        conditionResolver: CT_RESOLVER,
-        predictedOutcome: 0,
-      },
-    ],
-    ...overrides,
-  };
-}
-
+// Helper to build a condition fixture
 function makeCondition(overrides: Record<string, unknown> = {}) {
   return {
-    id: 'cond-1',
+    id: '0xabc123' + '0'.repeat(58), // 66-char hex conditionId
     question: 'Will BTC hit 100k?',
     shortName: 'BTC-100k',
+    openInterest: '1000000000000000000', // 1e18
+    category: { name: 'Crypto' },
     ...overrides,
   };
 }
@@ -53,7 +34,6 @@ describe('tokenlist', () => {
 
   describe('buildTokenList', () => {
     it('returns valid token list JSON with correct structure', async () => {
-      prisma.picks.findMany.mockResolvedValue([makePickConfig()]);
       prisma.condition.findMany.mockResolvedValue([makeCondition()]);
 
       const json = await buildTokenList();
@@ -67,167 +47,69 @@ describe('tokenlist', () => {
       expect(list.tokens).toBeInstanceOf(Array);
     });
 
-    it('creates entries for both chains and both sides', async () => {
-      prisma.picks.findMany.mockResolvedValue([makePickConfig()]);
+    it('creates YES and NO entries for each condition on Arbitrum', async () => {
       prisma.condition.findMany.mockResolvedValue([makeCondition()]);
 
       const list = JSON.parse(await buildTokenList());
 
-      // 2 sides (predictor + counterparty) × 2 chains = 4 tokens
-      expect(list.tokens).toHaveLength(4);
+      // 2 outcomes (Yes + No) per condition
+      expect(list.tokens).toHaveLength(2);
 
       const chainIds = list.tokens.map((t: { chainId: number }) => t.chainId);
-      expect(chainIds).toContain(42161);
-      expect(chainIds).toContain(5064014);
+      expect(chainIds).toEqual([42161, 42161]);
 
-      const tags = list.tokens.map((t: { tags: string[] }) => t.tags[0]);
-      expect(tags.filter((t: string) => t === 'Predictor')).toHaveLength(2);
-      expect(tags.filter((t: string) => t === 'Counter')).toHaveLength(2);
+      // Both tokens tagged with category name
+      for (const token of list.tokens) {
+        expect(token.tags).toEqual(['Crypto']);
+      }
     });
 
-    it('builds correct name and symbol for single-pick config', async () => {
-      prisma.picks.findMany.mockResolvedValue([makePickConfig()]);
+    it('builds correct name and symbol for Yes/No outcomes', async () => {
       prisma.condition.findMany.mockResolvedValue([makeCondition()]);
 
       const list = JSON.parse(await buildTokenList());
 
-      const predictor = list.tokens.find(
-        (t: { tags: string[] }) => t.tags[0] === 'Predictor'
+      const yes = list.tokens.find(
+        (t: { name: string }) => t.name.endsWith('Yes')
       );
-      const counterparty = list.tokens.find(
-        (t: { tags: string[] }) => t.tags[0] === 'Counter'
+      const no = list.tokens.find(
+        (t: { name: string }) => t.name.endsWith('No')
       );
 
-      expect(predictor.name).toBe('Will BTC hit 100k? — Yes');
-      expect(predictor.symbol).toBe('BTC-100k-Yes');
+      expect(yes.name).toBe('Will BTC hit 100k? — Yes');
+      expect(yes.symbol).toBe('BTC-100k-Yes');
 
-      expect(counterparty.name).toBe(
-        'Will BTC hit 100k? — Yes (Counterparty)'
-      );
-      expect(counterparty.symbol).toBe('BTC-100k-Yes-counterparty');
+      expect(no.name).toBe('Will BTC hit 100k? — No');
+      expect(no.symbol).toBe('BTC-100k-No');
     });
 
-    it('uses "No" outcome when predictedOutcome is 1', async () => {
-      prisma.picks.findMany.mockResolvedValue([
-        makePickConfig({
-          picks: [
-            {
-              conditionId: 'cond-1',
-              conditionResolver: CT_RESOLVER,
-              predictedOutcome: 1,
-            },
-          ],
-        }),
-      ]);
+    it('computes deterministic token addresses', async () => {
       prisma.condition.findMany.mockResolvedValue([makeCondition()]);
 
       const list = JSON.parse(await buildTokenList());
-      const predictor = list.tokens.find(
-        (t: { tags: string[] }) => t.tags[0] === 'Predictor'
-      );
 
-      expect(predictor.name).toBe('Will BTC hit 100k? — No');
-      expect(predictor.symbol).toBe('BTC-100k-No');
-    });
+      for (const token of list.tokens) {
+        expect(token.address).toMatch(/^0x[0-9a-fA-F]{40}$/);
+      }
 
-    it('builds correct name/symbol for parlay (multi-pick) config', async () => {
-      prisma.picks.findMany.mockResolvedValue([
-        makePickConfig({
-          picks: [
-            {
-              conditionId: 'cond-1',
-              conditionResolver: CT_RESOLVER,
-              predictedOutcome: 0,
-            },
-            {
-              conditionId: 'cond-2',
-              conditionResolver: CT_RESOLVER,
-              predictedOutcome: 1,
-            },
-          ],
-        }),
-      ]);
-      prisma.condition.findMany.mockResolvedValue([
-        makeCondition(),
-        makeCondition({
-          id: 'cond-2',
-          question: 'Will ETH hit 10k?',
-          shortName: 'ETH-10k',
-        }),
-      ]);
-
-      const list = JSON.parse(await buildTokenList());
-      const predictor = list.tokens.find(
-        (t: { tags: string[] }) => t.tags[0] === 'Predictor'
-      );
-      const counterparty = list.tokens.find(
-        (t: { tags: string[] }) => t.tags[0] === 'Counter'
-      );
-
-      expect(predictor.name).toBe(
-        'Will BTC hit 100k? — Yes + Will ETH hit 10k? — No'
-      );
-      expect(predictor.symbol).toBe('BTC-100k-Yes+ETH-10k-No');
-
-      expect(counterparty.name).toBe(
-        'Will BTC hit 100k? — Yes + Will ETH hit 10k? — No (Counterparty)'
-      );
-      expect(counterparty.symbol).toBe('BTC-100k-Yes+ETH-10k-No-counterparty');
+      // Yes and No should have different addresses
+      expect(list.tokens[0].address).not.toBe(list.tokens[1].address);
     });
 
     it('falls back to question when shortName is missing', async () => {
-      prisma.picks.findMany.mockResolvedValue([makePickConfig()]);
       prisma.condition.findMany.mockResolvedValue([
         makeCondition({ shortName: null }),
       ]);
 
       const list = JSON.parse(await buildTokenList());
-      const predictor = list.tokens.find(
-        (t: { tags: string[] }) => t.tags[0] === 'Predictor'
+      const yes = list.tokens.find(
+        (t: { name: string }) => t.name.endsWith('Yes')
       );
 
-      expect(predictor.symbol).toBe('Will BTC hit 100k?-Yes');
+      expect(yes.symbol).toBe('Will BTC hit 100k?-Yes');
     });
 
-    it('filters out configs that do not use the CT resolver', async () => {
-      prisma.picks.findMany.mockResolvedValue([
-        makePickConfig(),
-        makePickConfig({
-          id: 'pc-non-ct',
-          picks: [
-            {
-              conditionId: 'cond-1',
-              conditionResolver: '0xOTHER_RESOLVER',
-              predictedOutcome: 0,
-            },
-          ],
-        }),
-      ]);
-      prisma.condition.findMany.mockResolvedValue([makeCondition()]);
-
-      const list = JSON.parse(await buildTokenList());
-
-      // Only pc-1 passes CT filter → 4 tokens (2 sides × 2 chains)
-      expect(list.tokens).toHaveLength(4);
-      expect(
-        list.tokens.every(
-          (t: { extensions: { pickConfigId: string } }) =>
-            t.extensions.pickConfigId === 'pc-1'
-        )
-      ).toBe(true);
-    });
-
-    it('skips pick configs where condition is missing', async () => {
-      prisma.picks.findMany.mockResolvedValue([makePickConfig()]);
-      prisma.condition.findMany.mockResolvedValue([]); // no conditions found
-
-      const list = JSON.parse(await buildTokenList());
-
-      expect(list.tokens).toHaveLength(0);
-    });
-
-    it('returns empty token list when no pick configs exist', async () => {
-      prisma.picks.findMany.mockResolvedValue([]);
+    it('returns empty token list when no conditions exist', async () => {
       prisma.condition.findMany.mockResolvedValue([]);
 
       const list = JSON.parse(await buildTokenList());
@@ -235,72 +117,90 @@ describe('tokenlist', () => {
       expect(list.tokens).toHaveLength(0);
     });
 
-    it('sets extensions correctly', async () => {
-      prisma.picks.findMany.mockResolvedValue([
-        makePickConfig({ resolved: true, result: 'PREDICTOR_WINS' }),
+    it('sets extensions with conditionId', async () => {
+      const condId = '0xabc123' + '0'.repeat(58);
+      prisma.condition.findMany.mockResolvedValue([
+        makeCondition({ id: condId }),
       ]);
-      prisma.condition.findMany.mockResolvedValue([makeCondition()]);
 
       const list = JSON.parse(await buildTokenList());
       const token = list.tokens[0];
 
       expect(token.extensions).toEqual({
-        pickConfigId: 'pc-1',
-        result: 'PREDICTOR_WINS',
+        conditionId: condId,
         sapience: true,
       });
       expect(token.decimals).toBe(18);
+      expect(token.logoURI).toBe('https://sapience.xyz/favicon.ico');
     });
 
     it('sets version fields within uint16 range', async () => {
-      prisma.picks.findMany.mockResolvedValue([makePickConfig()]);
       prisma.condition.findMany.mockResolvedValue([makeCondition()]);
 
       const list = JSON.parse(await buildTokenList());
 
       expect(list.version.major).toBe(1);
-      // minor = MMDD (max 1231)
       const now = new Date();
       const expectedMinor =
         (now.getUTCMonth() + 1) * 100 + now.getUTCDate();
       expect(list.version.minor).toBe(expectedMinor);
       expect(list.version.minor).toBeLessThan(65536);
-      // patch = token count
       expect(list.version.patch).toBe(list.tokens.length);
       expect(list.version.patch).toBeLessThan(65536);
     });
 
     it('strips angle brackets from symbols', async () => {
-      prisma.picks.findMany.mockResolvedValue([makePickConfig()]);
       prisma.condition.findMany.mockResolvedValue([
         makeCondition({ shortName: 'GOOGL >$300' }),
       ]);
 
       const list = JSON.parse(await buildTokenList());
-      const predictor = list.tokens.find(
-        (t: { tags: string[] }) => t.tags[0] === 'Predictor'
+      const yes = list.tokens.find(
+        (t: { name: string }) => t.name.endsWith('Yes')
       );
 
-      expect(predictor.symbol).toBe('GOOGL $300-Yes');
-      expect(predictor.symbol).not.toMatch(/[<>]/);
+      expect(yes.symbol).toBe('GOOGL $300-Yes');
+      expect(yes.symbol).not.toMatch(/[<>]/);
     });
 
-    it('uses short tag names (max 10 chars)', async () => {
-      prisma.picks.findMany.mockResolvedValue([makePickConfig()]);
-      prisma.condition.findMany.mockResolvedValue([makeCondition()]);
+    it('uses category name as tag', async () => {
+      prisma.condition.findMany.mockResolvedValue([
+        makeCondition({ category: { name: 'Crypto' } }),
+      ]);
 
       const list = JSON.parse(await buildTokenList());
       for (const token of list.tokens) {
-        for (const tag of token.tags) {
-          expect(tag.length).toBeLessThanOrEqual(10);
-        }
+        expect(token.tags).toEqual(['Crypto']);
+      }
+    });
+
+    it('omits tags when category is null', async () => {
+      prisma.condition.findMany.mockResolvedValue([
+        makeCondition({ category: null }),
+      ]);
+
+      const list = JSON.parse(await buildTokenList());
+      for (const token of list.tokens) {
+        expect(token.tags).toEqual([]);
+      }
+    });
+
+    it('sanitizes and truncates tag names (max 10 chars, alphanumeric)', async () => {
+      prisma.condition.findMany.mockResolvedValue([
+        makeCondition({ category: { name: 'US Politics & More' } }),
+      ]);
+
+      const list = JSON.parse(await buildTokenList());
+      for (const token of list.tokens) {
+        expect(token.tags[0]).toBe('USPolitics');
+        expect(token.tags[0].length).toBeLessThanOrEqual(10);
+        expect(token.tags[0]).toMatch(/^[\w]+$/);
       }
     });
 
     it('truncates long names and symbols', async () => {
       const longQuestion = 'A'.repeat(120);
       const longShortName = 'S'.repeat(90);
-      prisma.picks.findMany.mockResolvedValue([makePickConfig()]);
       prisma.condition.findMany.mockResolvedValue([
         makeCondition({ question: longQuestion, shortName: longShortName }),
       ]);
@@ -310,6 +210,24 @@ describe('tokenlist', () => {
         expect(token.name.length).toBeLessThanOrEqual(MAX_NAME_LENGTH);
         expect(token.symbol.length).toBeLessThanOrEqual(MAX_SYMBOL_LENGTH);
       }
+    });
+
+    it('handles multiple conditions in order', async () => {
+      prisma.condition.findMany.mockResolvedValue([
+        makeCondition({ id: '0x' + '1'.repeat(64), question: 'Q1', shortName: 'Q1' }),
+        makeCondition({ id: '0x' + '2'.repeat(64), question: 'Q2', shortName: 'Q2' }),
+      ]);
+
+      const list = JSON.parse(await buildTokenList());
+
+      // 2 conditions × 2 outcomes = 4 tokens
+      expect(list.tokens).toHaveLength(4);
+
+      // First condition's tokens come first
+      expect(list.tokens[0].name).toContain('Q1');
+      expect(list.tokens[1].name).toContain('Q1');
+      expect(list.tokens[2].name).toContain('Q2');
+      expect(list.tokens[3].name).toContain('Q2');
     });
   });
 });

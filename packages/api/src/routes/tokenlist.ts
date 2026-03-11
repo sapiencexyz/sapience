@@ -5,6 +5,12 @@ import {
   CHAIN_ID_ARBITRUM,
   CHAIN_ID_ETHEREAL,
 } from '@sapience/sdk/constants';
+import {
+  computePickConfigId,
+  predictTokenPair,
+  getTokenFactoryAddress,
+} from '@sapience/sdk';
+import type { Address, Hex } from 'viem';
 import prisma from '../db';
 
 const router = Router();
@@ -22,7 +28,7 @@ router.use('/tokenlist.json', (_req, res, next) => {
   next();
 });
 
-const CHAIN_IDS = [CHAIN_ID_ARBITRUM, CHAIN_ID_ETHEREAL];
+const CHAIN_ID = CHAIN_ID_ARBITRUM;
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 const MAX_TOKENS = 10_000;
 const MAX_RESPONSE_BYTES = 5 * 1024 * 1024; // 5MB
@@ -39,9 +45,17 @@ function sanitizeSymbol(str: string): string {
   return str.replace(/[<>]/g, '');
 }
 
-// Only include tokens using the ConditionalTokens resolver (Polymarket-style)
+// CowSwap validates tags against ^[\w]+$ with max 10 chars
+function sanitizeTag(str: string): string {
+  return str.replace(/[^\w]/g, '').slice(0, 10);
+}
+
+// CT resolver address (deployed on Ethereal, used for pick encoding)
 const CT_RESOLVER =
   conditionalTokensConditionResolver[CHAIN_ID_ETHEREAL].address.toLowerCase();
+
+// Token factory for deterministic address prediction
+const TOKEN_FACTORY = getTokenFactoryAddress(CHAIN_ID)!;
 
 interface CachedResponse {
   body: string;
@@ -62,154 +76,83 @@ interface TokenEntry {
   logoURI: string;
   tags: string[];
   extensions: {
-    pickConfigId: string;
-    result: string;
+    conditionId: string;
     sapience: true;
   };
 }
 
 async function buildTokenList(): Promise<string> {
-  // Fetch pick configs that use the CT resolver, with their picks
-  const pickConfigs = await prisma.picks.findMany({
-    where: {
-      AND: [
-        { predictorToken: { not: null } },
-        { counterpartyToken: { not: null } },
-      ],
-    },
-    include: {
-      picks: {
-        select: {
-          conditionId: true,
-          conditionResolver: true,
-          predictedOutcome: true,
-        },
-      },
-    },
-    orderBy: { createdAt: 'desc' },
-  });
+  const nowSec = Math.floor(Date.now() / 1000);
 
-  // Filter to only configs where ALL picks use the CT resolver
-  const ctConfigs = pickConfigs.filter((pc) =>
-    pc.picks.every(
-      (pick) => pick.conditionResolver.toLowerCase() === CT_RESOLVER
-    )
-  );
-
-  // Collect all unique condition IDs
-  const conditionIds = new Set<string>();
-  for (const pc of ctConfigs) {
-    for (const pick of pc.picks) {
-      conditionIds.add(pick.conditionId);
-    }
-  }
-
-  // Batch fetch conditions
+  // Fetch conditions matching /markets default view:
+  // - public, unsettled, not dead (OI=0 + past endTime)
+  // - sorted by openInterest DESC
   const conditions = await prisma.condition.findMany({
-    where: { id: { in: Array.from(conditionIds) } },
-    select: { id: true, question: true, shortName: true },
+    where: {
+      public: true,
+      settled: false,
+      NOT: { openInterest: '0', endTime: { lt: nowSec } },
+    },
+    select: {
+      id: true,
+      question: true,
+      shortName: true,
+      openInterest: true,
+      category: { select: { name: true } },
+    },
   });
-  const conditionMap = new Map(conditions.map((c) => [c.id, c]));
 
-  // Build token entries
+  // Sort by openInterest DESC (mirrors /markets default sort)
+  // openInterest is stored as a varchar, so we sort numerically in JS
+  conditions.sort((a, b) => {
+    const oiA = BigInt(a.openInterest);
+    const oiB = BigInt(b.openInterest);
+    if (oiB > oiA) return 1;
+    if (oiB < oiA) return -1;
+    return 0;
+  });
+
+  // Build token entries — for each condition, compute YES/NO token addresses
   const tokens: TokenEntry[] = [];
+  const resolverAddress = CT_RESOLVER as Address;
 
-  for (const pc of ctConfigs) {
-    // Build names from conditions
-    // For single-pick configs: use the condition directly
-    // For multi-pick (parlay): join condition names
-    const conditionParts: Array<{
-      name: string;
-      shortName: string;
-      outcome: string;
-    }> = [];
+  for (const cond of conditions) {
+    for (const outcome of [0, 1] as const) {
+      const outcomeLabel = outcome === 0 ? 'Yes' : 'No';
 
-    for (const pick of pc.picks) {
-      const cond = conditionMap.get(pick.conditionId);
-      if (!cond) continue;
-      // predictedOutcome: 0 = YES, 1 = NO
-      const outcome = pick.predictedOutcome === 0 ? 'Yes' : 'No';
-      conditionParts.push({
-        name: cond.question,
-        shortName: cond.shortName || cond.question,
-        outcome,
+      // Compute deterministic pickConfigId for this single-condition pick
+      const pickConfigId = computePickConfigId([
+        {
+          conditionResolver: resolverAddress,
+          conditionId: cond.id as Hex,
+          predictedOutcome: outcome,
+        },
+      ]);
+
+      // Predict token addresses via CREATE3 (no RPC call)
+      const pair = predictTokenPair(pickConfigId, TOKEN_FACTORY);
+
+      const name = `${cond.question} — ${outcomeLabel}`;
+      const symbol = `${cond.shortName || cond.question}-${outcomeLabel}`;
+
+      tokens.push({
+        chainId: CHAIN_ID,
+        address: pair.predictorToken,
+        name: truncate(name, MAX_NAME_LENGTH),
+        symbol: truncate(sanitizeSymbol(symbol), MAX_SYMBOL_LENGTH),
+        decimals: 18,
+        logoURI: TOKEN_LOGO_URI,
+        tags: cond.category ? [sanitizeTag(cond.category.name)] : [],
+        extensions: {
+          conditionId: cond.id,
+          sapience: true,
+        },
       });
+
+      // Safety cap
+      if (tokens.length >= MAX_TOKENS) break;
     }
-
-    if (conditionParts.length === 0) continue;
-
-    // Token name = condition question(s) with predicted outcome
-    // e.g. "Will BTC hit 100k? — Yes" or "Will BTC hit 100k? — Yes + Will ETH hit 10k? — No"
-    const predictorName =
-      conditionParts.length === 1
-        ? `${conditionParts[0].name} — ${conditionParts[0].outcome}`
-        : conditionParts
-            .map((p) => `${p.name} — ${p.outcome}`)
-            .join(' + ');
-
-    // Counterparty name = same but with (Counterparty) appended
-    const counterpartyName =
-      conditionParts.length === 1
-        ? `${conditionParts[0].name} — ${conditionParts[0].outcome} (Counterparty)`
-        : conditionParts
-            .map((p) => `${p.name} — ${p.outcome}`)
-            .join(' + ') + ' (Counterparty)';
-
-    // Symbol = shortName-based with outcome
-    // e.g. "BTC-100k-Yes" or "BTC-100k-Yes-counterparty"
-    const predictorSymbol =
-      conditionParts.length === 1
-        ? `${conditionParts[0].shortName}-${conditionParts[0].outcome}`
-        : conditionParts
-            .map((p) => `${p.shortName}-${p.outcome}`)
-            .join('+');
-
-    const counterpartySymbol = `${predictorSymbol}-counterparty`;
-
-    const sides: Array<{
-      address: string;
-      tag: string;
-      name: string;
-      symbol: string;
-    }> = [
-      {
-        address: pc.predictorToken!,
-        tag: 'Predictor',
-        name: predictorName,
-        symbol: predictorSymbol,
-      },
-      {
-        address: pc.counterpartyToken!,
-        tag: 'Counter',
-        name: counterpartyName,
-        symbol: counterpartySymbol,
-      },
-    ];
-
-    for (const side of sides) {
-      for (const chainId of CHAIN_IDS) {
-        tokens.push({
-          chainId,
-          address: side.address,
-          name: truncate(side.name, MAX_NAME_LENGTH),
-          symbol: truncate(sanitizeSymbol(side.symbol), MAX_SYMBOL_LENGTH),
-          decimals: 18,
-          logoURI: TOKEN_LOGO_URI,
-          tags: [side.tag],
-          extensions: {
-            pickConfigId: pc.id,
-            result: pc.result,
-            sapience: true,
-          },
-        });
-      }
-    }
-
-    // Safety cap
-    if (tokens.length >= MAX_TOKENS) {
-      tokens.length = MAX_TOKENS;
-      break;
-    }
+    if (tokens.length >= MAX_TOKENS) break;
   }
 
   const now = new Date();
@@ -225,7 +168,7 @@ async function buildTokenList(): Promise<string> {
     version: {
       major: 1,
       minor: dateMinor,
-      patch: tokens.length,
+      patch: Math.min(tokens.length, 65535),
     },
     tokens,
   };
