@@ -3,9 +3,10 @@
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import dynamic from 'next/dynamic';
 import Link from 'next/link';
-import { formatUnits, parseUnits, isAddress } from 'viem';
+import { formatUnits, parseUnits } from 'viem';
 import { useAccount, useSwitchChain, useBalance } from 'wagmi';
-import { ArrowDownUp } from 'lucide-react';
+import { ArrowLeftRight } from 'lucide-react';
+import Image from 'next/image';
 
 const CowSwapEmbed = dynamic(
   () =>
@@ -13,16 +14,13 @@ const CowSwapEmbed = dynamic(
   { ssr: false }
 );
 
-import { Button } from '@sapience/ui/components/ui/button';
 import {
   Tabs,
   TabsContent,
   TabsTrigger,
 } from '@sapience/ui/components/ui/tabs';
 import SegmentedTabsList from '~/components/shared/SegmentedTabsList';
-import { Card, CardContent } from '@sapience/ui/components/ui/card';
 import { Input } from '@sapience/ui/components/ui/input';
-import { Label } from '@sapience/ui/components/ui/label';
 import {
   Select,
   SelectContent,
@@ -37,16 +35,25 @@ import {
 
 import { useCurrentAddress } from '~/hooks/blockchain/useCurrentAddress';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
+import { useSession } from '~/lib/context/SessionContext';
 import {
   usePositionBalances,
   type PositionBalance,
 } from '~/hooks/graphql/usePositions';
+import { useConditionsByIds } from '~/hooks/graphql/useConditionsByIds';
 import {
   useBridgeQuote,
   useBridgeApproval,
   useBridgeExecute,
   usePendingBridges,
 } from '~/hooks/bridge/useBridge';
+import {
+  StackedIcons,
+  StackedPredictionsTitle,
+} from '~/components/shared/StackedPredictions';
+import { toPicks } from '~/components/positions/toPickLegs';
+import type { ConditionsMap } from '~/components/positions/toPickLegs';
+import CounterpartyBadge from '~/components/shared/CounterpartyBadge';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -84,6 +91,54 @@ function formatBalance(balance: string, decimals = 18): string {
 }
 
 // ---------------------------------------------------------------------------
+// Chain icon components
+// ---------------------------------------------------------------------------
+
+function ArbitrumIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      className={className}
+      width="20"
+      height="20"
+      viewBox="0 0 40 40"
+      fill="none"
+      xmlns="http://www.w3.org/2000/svg"
+    >
+      <path
+        d="M21.84 17.32L25.52 11.36L32.44 22.16L32.46 24.82L32.42 11.7C32.38 11.14 32.06 10.64 31.58 10.36L20.84 4.2C20.36 3.94 19.76 3.94 19.28 4.18L8.42 10.36C7.94 10.64 7.62 11.14 7.58 11.7L7.56 24.66L14.38 13.92C15.18 12.54 17.06 12.08 19.02 12.14L20.52 12.18L9.18 30.76L10.5 31.52L21.98 12.2L26.78 12.18L15.14 31.72L19.62 34.3L20 34.52L20.4 34.3L31.62 27.96L28.56 29.72L21.84 17.32Z"
+        fill="white"
+      />
+      <path
+        d="M28.56 29.72L31.62 27.96L32.46 24.82L32.44 22.16L25.52 11.36L21.84 17.32L28.56 29.72Z"
+        fill="white"
+        fillOpacity="0.6"
+      />
+      <path
+        d="M7.56 27.38L9.18 30.76L20.52 12.18L19.02 12.14C17.06 12.08 15.18 12.54 14.38 13.92L7.56 24.66V27.38Z"
+        fill="white"
+        fillOpacity="0.6"
+      />
+    </svg>
+  );
+}
+
+function EtherealIcon() {
+  return (
+    <Image
+      src="/ethereal-logomark.svg"
+      alt="Ethereal"
+      width={20}
+      height={20}
+    />
+  );
+}
+
+function ChainIcon({ chainId }: { chainId: number }) {
+  if (chainId === CHAIN_ID_ARBITRUM) return <ArbitrumIcon />;
+  return <EtherealIcon />;
+}
+
+// ---------------------------------------------------------------------------
 // Swap section – embedded CowSwap widget for Arbitrum position tokens
 // ---------------------------------------------------------------------------
 function SwapSection() {
@@ -98,6 +153,7 @@ function BridgeSection() {
   const { address: walletAddress, chain: walletChain } = useAccount();
   const { switchChainAsync } = useSwitchChain();
   const { openConnectDialog } = useConnectDialog();
+  const { smartAccountAddress } = useSession();
 
   // Direction
   const [fromChainId, setFromChainId] = useState<number>(CHAIN_ID_ETHEREAL);
@@ -107,7 +163,9 @@ function BridgeSection() {
   // Token selection
   const [selectedTokenAddress, setSelectedTokenAddress] = useState<string>('');
   const [amountInput, setAmountInput] = useState('');
-  const [recipientInput, setRecipientInput] = useState('');
+
+  // Recipient toggle: when bridging to Ethereal, choose smart account vs EOA
+  const [sendToEoa, setSendToEoa] = useState(false);
 
   // Load positions on from chain
   const { data: positions, isLoading: isLoadingPositions } =
@@ -121,6 +179,20 @@ function BridgeSection() {
     () => positions.filter((p) => BigInt(p.balance) > 0n),
     [positions]
   );
+
+  // Collect all condition IDs for category icon stacks
+  const conditionIds = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          availablePositions.flatMap(
+            (p) => p.pickConfig?.picks.map((pk) => pk.conditionId) ?? []
+          )
+        )
+      ),
+    [availablePositions]
+  );
+  const { map: conditionsMap } = useConditionsByIds(conditionIds);
 
   // Selected position
   const selectedPosition = useMemo(
@@ -138,13 +210,15 @@ function BridgeSection() {
     }
   }, [amountInput]);
 
-  // Recipient — defaults to EOA wallet address, not smart account
+  // Recipient logic:
+  // - To Ethereal: smart account by default, EOA if toggled
+  // - To Arbitrum: always EOA wallet
   const recipient = useMemo(() => {
-    if (recipientInput && isAddress(recipientInput)) {
-      return recipientInput as `0x${string}`;
+    if (toChainId === CHAIN_ID_ETHEREAL && !sendToEoa && smartAccountAddress) {
+      return smartAccountAddress;
     }
     return walletAddress as `0x${string}` | undefined;
-  }, [recipientInput, walletAddress]);
+  }, [toChainId, sendToEoa, smartAccountAddress, walletAddress]);
 
   // Quote
   const {
@@ -284,237 +358,278 @@ function BridgeSection() {
 
   return (
     <>
-      <Card>
-        <CardContent className="space-y-5 pt-6">
-          {/* Chain selectors */}
-          <div className="flex items-end gap-3">
-            <div className="flex-1 space-y-1.5">
-              <Label className="text-xs text-muted-foreground">From</Label>
-              <Select
-                value={String(fromChainId)}
-                onValueChange={(v) => {
-                  setFromChainId(Number(v));
-                  setSelectedTokenAddress('');
-                  setAmountInput('');
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {CHAINS.map((c) => (
-                    <SelectItem key={c.id} value={String(c.id)}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <Button
-              variant="outline"
-              size="icon"
-              className="mb-0.5 shrink-0"
-              onClick={handleSwapDirection}
-              title="Swap direction"
-            >
-              <ArrowDownUp className="h-4 w-4" />
-            </Button>
-
-            <div className="flex-1 space-y-1.5">
-              <Label className="text-xs text-muted-foreground">To</Label>
-              <div className="flex h-10 items-center rounded-md border bg-muted px-3 text-sm">
-                {getChainName(toChainId)}
-              </div>
+      <div className="overflow-hidden rounded-[25px] bg-bridge-card p-5 space-y-4">
+        {/* Chain direction row */}
+        <div className="flex items-end gap-2">
+          <div className="flex-1 space-y-1.5">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-white/40">
+              From
+            </span>
+            <div className="flex h-10 items-center gap-2 rounded-xl bg-bridge-input px-3 text-sm font-medium text-white">
+              <ChainIcon chainId={fromChainId} />
+              {getChainName(fromChainId)}
             </div>
           </div>
 
-          {/* Token selector */}
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">
-              Position Token
-            </Label>
-            <Select
-              value={selectedTokenAddress}
-              onValueChange={(v) => {
-                setSelectedTokenAddress(v);
-                setAmountInput('');
-              }}
-              disabled={!isConnected || isLoadingPositions}
-            >
-              <SelectTrigger>
-                <SelectValue
-                  placeholder={
-                    isLoadingPositions
-                      ? 'Loading positions…'
-                      : availablePositions.length === 0
-                        ? 'No positions on this chain'
-                        : 'Select a position token'
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {availablePositions.map((pos) => (
-                  <SelectItem key={pos.tokenAddress} value={pos.tokenAddress}>
-                    <span className="flex items-center gap-2">
-                      <span>{formatTokenLabel(pos)}</span>
-                      <span className="text-xs text-muted-foreground">
-                        ({formatBalance(pos.balance)})
+          <button
+            type="button"
+            onClick={handleSwapDirection}
+            title="Swap direction"
+            className="mb-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-bridge-swap-button transition-colors hover:brightness-125"
+          >
+            <ArrowLeftRight className="h-3.5 w-3.5 text-accent-gold" />
+          </button>
+
+          <div className="flex-1 space-y-1.5">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-white/40">
+              To
+            </span>
+            <div className="flex h-10 items-center gap-2 rounded-xl bg-bridge-input px-3 text-sm font-medium text-white">
+              <ChainIcon chainId={toChainId} />
+              {getChainName(toChainId)}
+            </div>
+          </div>
+        </div>
+
+        {/* Recipient toggle — only when bridging to Ethereal */}
+        {toChainId === CHAIN_ID_ETHEREAL &&
+          isConnected &&
+          smartAccountAddress && (
+            <div className="space-y-1.5">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-white/40">
+                Recipient
+              </span>
+              <div className="flex items-center gap-1 rounded-xl bg-bridge-input p-1">
+                <button
+                  type="button"
+                  onClick={() => setSendToEoa(false)}
+                  className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                    !sendToEoa
+                      ? 'bg-bridge-accent text-bridge-card'
+                      : 'text-white/50 hover:text-white/70'
+                  }`}
+                >
+                  Smart Account
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSendToEoa(true)}
+                  className={`flex-1 rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors ${
+                    sendToEoa
+                      ? 'bg-bridge-accent text-bridge-card'
+                      : 'text-white/50 hover:text-white/70'
+                  }`}
+                >
+                  EOA
+                </button>
+              </div>
+              {recipient && (
+                <p className="text-[11px] text-white/40 pl-1 font-mono">
+                  {recipient.slice(0, 6)}…{recipient.slice(-4)}
+                </p>
+              )}
+            </div>
+          )}
+
+        {/* Token selector */}
+        <div className="space-y-1.5">
+          <span className="text-[10px] font-semibold uppercase tracking-wider text-white/40">
+            Position Token
+          </span>
+          <Select
+            value={selectedTokenAddress}
+            onValueChange={(v) => {
+              setSelectedTokenAddress(v);
+              setAmountInput('');
+            }}
+            disabled={!isConnected || isLoadingPositions}
+          >
+            <SelectTrigger className="border-none text-white rounded-xl h-10 bg-bridge-input">
+              <SelectValue
+                placeholder={
+                  isLoadingPositions
+                    ? 'Loading positions…'
+                    : availablePositions.length === 0
+                      ? 'No positions on this chain'
+                      : 'Select a position token'
+                }
+              />
+            </SelectTrigger>
+            <SelectContent className="border-none rounded-xl bg-bridge-input min-w-[340px]">
+              {availablePositions.map((pos) => {
+                const picks = pos.pickConfig?.picks
+                  ? toPicks(
+                      pos.pickConfig.picks,
+                      pos.isPredictorToken,
+                      conditionsMap as ConditionsMap
+                    )
+                  : [];
+                return (
+                  <SelectItem key={pos.tokenAddress} value={pos.tokenAddress} className="pl-2 [&>span]:w-full">
+                    <span className="flex w-full items-center gap-3">
+                      <span className="flex items-center gap-2 min-w-0 flex-1">
+                        {picks.length > 0 ? (
+                          <>
+                            <StackedIcons picks={picks} />
+                            <StackedPredictionsTitle
+                              picks={picks}
+                              maxWidthClass="max-w-[200px]"
+                            />
+                            {!pos.isPredictorToken && <CounterpartyBadge />}
+                          </>
+                        ) : (
+                          <>
+                            <span
+                              className={`inline-block h-2 w-2 shrink-0 rounded-full ${
+                                pos.isPredictorToken
+                                  ? 'bg-green-500'
+                                  : 'bg-red-500'
+                              }`}
+                            />
+                            <span className="text-white truncate">
+                              {formatTokenLabel(pos)}
+                            </span>
+                          </>
+                        )}
+                      </span>
+                      <span className="text-sm font-mono text-white shrink-0 tabular-nums ml-6">
+                        {formatBalance(pos.balance)}
                       </span>
                     </span>
                   </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+                );
+              })}
+            </SelectContent>
+          </Select>
+        </div>
 
-          {/* Amount input */}
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <Label className="text-xs text-muted-foreground">Amount</Label>
-              {selectedPosition && (
-                <span className="text-xs text-muted-foreground">
-                  Balance: {formatBalance(selectedPosition.balance)}
-                </span>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <Input
-                type="text"
-                inputMode="decimal"
-                placeholder="0.0"
-                value={amountInput}
-                onChange={(e) => {
-                  // Allow only valid decimal input
-                  const val = e.target.value;
-                  if (/^[0-9]*\.?[0-9]*$/.test(val)) {
-                    setAmountInput(val);
-                  }
-                }}
-                disabled={!selectedTokenAddress}
-                className={amountExceedsBalance ? 'border-destructive' : ''}
-              />
-              <Button
-                variant="outline"
-                size="sm"
+        {/* Amount input */}
+        <div className="space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-white/40">
+              Amount
+            </span>
+            {selectedPosition && (
+              <span className="text-xs text-white/40">
+                Balance: {formatBalance(selectedPosition.balance)}
+              </span>
+            )}
+          </div>
+          <Input
+            type="text"
+            inputMode="decimal"
+            placeholder="0.0"
+            value={amountInput}
+            onChange={(e) => {
+              const val = e.target.value;
+              if (/^[0-9]*\.?[0-9]*$/.test(val)) {
+                setAmountInput(val);
+              }
+            }}
+            disabled={!selectedTokenAddress}
+            className="border-none text-lg text-white rounded-xl h-12 pr-16 bg-bridge-input"
+            endAdornment={
+              <button
+                type="button"
                 onClick={handleMax}
                 disabled={!selectedPosition}
-                className="shrink-0"
+                className="mr-3 text-xs font-semibold text-accent-gold transition-opacity disabled:opacity-30"
               >
-                Max
-              </Button>
-            </div>
-            {amountExceedsBalance && (
-              <p className="text-xs text-destructive">
-                Amount exceeds available balance
-              </p>
-            )}
+                MAX
+              </button>
+            }
+          />
+          {amountExceedsBalance && (
+            <p className="text-xs text-destructive">
+              Amount exceeds available balance
+            </p>
+          )}
+        </div>
+
+        {/* Fee display */}
+        {nativeFeeFormatted && (
+          <div className="flex items-center justify-between rounded-xl bg-bridge-input px-3 py-2.5 text-sm">
+            <span className="text-white/40">LayerZero Fee</span>
+            <span className="text-bridge-accent">
+              {parseFloat(nativeFeeFormatted).toLocaleString(undefined, {
+                maximumSignificantDigits: 6,
+              })}{' '}
+              {getChainNativeCurrency(fromChainId)}
+            </span>
           </div>
+        )}
 
-          {/* Recipient — defaults to EOA address */}
-          <div className="space-y-1.5">
-            <Label className="text-xs text-muted-foreground">
-              Recipient (defaults to your EOA wallet)
-            </Label>
-            <Input
-              type="text"
-              placeholder={walletAddress ?? '0x…'}
-              value={recipientInput}
-              onChange={(e) => setRecipientInput(e.target.value)}
-            />
-            {walletAddress && !recipientInput && (
-              <p className="text-xs text-muted-foreground">
-                Sending to: {walletAddress.slice(0, 6)}…{walletAddress.slice(-4)}
-              </p>
-            )}
-            {recipientInput && !isAddress(recipientInput) && (
-              <p className="text-xs text-destructive">
-                Invalid address
-              </p>
-            )}
+        {/* Insufficient native balance warning */}
+        {insufficientNativeBalance && nativeFeeFormatted && (
+          <div className="rounded-xl bg-destructive/10 px-3 py-2 text-sm text-destructive">
+            Insufficient {getChainNativeCurrency(fromChainId)} to cover the
+            LayerZero fee ({parseFloat(nativeFeeFormatted).toLocaleString(
+              undefined,
+              { maximumSignificantDigits: 6 }
+            )}{' '}
+            {getChainNativeCurrency(fromChainId)} required)
           </div>
+        )}
 
-          {/* Fee display */}
-          {nativeFeeFormatted && (
-            <div className="flex items-center justify-between rounded-md bg-muted px-3 py-2 text-sm">
-              <span className="text-muted-foreground">LayerZero Fee</span>
-              <span>
-                {parseFloat(nativeFeeFormatted).toLocaleString(undefined, {
-                  maximumSignificantDigits: 6,
-                })}{' '}
-                {getChainNativeCurrency(fromChainId)}
-              </span>
-            </div>
-          )}
+        {/* Bridge button */}
+        <button
+          type="button"
+          className={`w-full rounded-xl py-3.5 text-base font-semibold transition-colors ${
+            isButtonDisabled
+              ? 'bg-bridge-swap-button text-white/30 cursor-not-allowed'
+              : 'bg-bridge-accent text-bridge-card cursor-pointer'
+          }`}
+          disabled={isButtonDisabled}
+          onClick={() => {
+            if (!isConnected) {
+              openConnectDialog();
+              return;
+            }
+            handleBridge();
+          }}
+        >
+          {getButtonText()}
+        </button>
 
-          {/* Insufficient native balance warning */}
-          {insufficientNativeBalance && nativeFeeFormatted && (
-            <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              Insufficient {getChainNativeCurrency(fromChainId)} to cover the
-              LayerZero fee ({parseFloat(nativeFeeFormatted).toLocaleString(
-                undefined,
-                { maximumSignificantDigits: 6 }
-              )}{' '}
-              {getChainNativeCurrency(fromChainId)} required)
-            </div>
-          )}
+        {bridgeSuccess && (
+          <div className="rounded-xl bg-green-500/10 p-3 text-center text-sm text-green-400">
+            Bridge transaction submitted! Your tokens will arrive on{' '}
+            {getChainName(toChainId)} shortly.
+          </div>
+        )}
 
-          {/* Bridge button */}
-          <Button
-            className="w-full"
-            size="lg"
-            disabled={isButtonDisabled}
-            onClick={() => {
-              if (!isConnected) {
-                openConnectDialog();
-                return;
-              }
-              handleBridge();
-            }}
-          >
-            {getButtonText()}
-          </Button>
-
-          {bridgeSuccess && (
-            <div className="rounded-md bg-green-500/10 p-3 text-center text-sm text-green-600 dark:text-green-400">
-              Bridge transaction submitted! Your tokens will arrive on{' '}
-              {getChainName(toChainId)} shortly.
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        {/* Powered by LayerZero — inside card */}
+        <p className="pt-1 text-center text-[10px] text-white/25">
+          Powered by LayerZero
+        </p>
+      </div>
 
       {/* Pending bridges */}
       {isConnected && pendingFromSource.length > 0 && (
-        <Card className="mt-6">
-          <CardContent className="pt-6">
-            <h2 className="mb-3 text-lg font-semibold">Pending Bridges</h2>
-            <p className="mb-2 text-xs text-muted-foreground">
-              From {getChainName(fromChainId)} — {pendingFromSource.length}{' '}
-              pending
-            </p>
-            <div className="space-y-2">
-              {pendingFromSource.map((id) => (
-                <div
-                  key={id}
-                  className="flex items-center justify-between rounded-md border px-3 py-2 text-xs font-mono"
-                >
-                  <span className="truncate" title={id}>
-                    {id.slice(0, 10)}…{id.slice(-8)}
-                  </span>
-                  <span className="ml-2 shrink-0 rounded bg-yellow-500/20 px-2 py-0.5 text-yellow-600 dark:text-yellow-400">
-                    Pending
-                  </span>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        <div className="mt-4 overflow-hidden rounded-[25px] bg-bridge-card p-5">
+          <h2 className="mb-3 text-base font-semibold text-white">
+            Pending Bridges
+          </h2>
+          <p className="mb-2 text-xs text-white/40">
+            From {getChainName(fromChainId)} — {pendingFromSource.length} pending
+          </p>
+          <div className="space-y-2">
+            {pendingFromSource.map((id) => (
+              <div
+                key={id}
+                className="flex items-center justify-between rounded-xl bg-bridge-input border border-white/[0.08] px-3 py-2 text-xs font-mono"
+              >
+                <span className="truncate text-white" title={id}>
+                  {id.slice(0, 10)}…{id.slice(-8)}
+                </span>
+                <span className="ml-2 shrink-0 rounded-lg bg-yellow-500/20 px-2 py-0.5 text-yellow-400">
+                  Pending
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
       )}
-
-      <p className="mt-4 text-center text-xs text-muted-foreground">
-        Powered by LayerZero
-      </p>
     </>
   );
 }
