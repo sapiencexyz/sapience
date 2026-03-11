@@ -703,3 +703,199 @@ describe('Cleanup on disconnect', () => {
     expect(ack.payload.ok).toBe(true);
   });
 });
+
+describe('vault_quote.publish monotonic freshness (bug 68630)', () => {
+  beforeAll(() => {
+    mockReadContract.mockResolvedValue(AUTHORIZED_SIGNER);
+    mockVerifyMessage.mockResolvedValue(true);
+  });
+
+  it('rejects a replayed quote with an older timestamp (stale_replay)', async () => {
+    const publisher = await createClient();
+
+    // Use a unique vault so we don't collide with other tests' cached quotes
+    const uniqueVault = '0xREPLAY000000000000000000000000000000001';
+    const now = Date.now();
+
+    // Publish a fresh quote
+    const firstAck = (await sendAndWait(
+      publisher,
+      {
+        type: 'vault_quote.publish',
+        payload: makeValidPublishPayload({
+          vaultAddress: uniqueVault,
+          timestamp: now,
+        }),
+      },
+      'vault_quote.ack'
+    )) as { payload: { ok?: boolean; error?: string } };
+
+    expect(firstAck.payload.ok).toBe(true);
+
+    // Attempt to replay an older quote for the same vault
+    const replayAck = (await sendAndWait(
+      publisher,
+      {
+        type: 'vault_quote.publish',
+        payload: makeValidPublishPayload({
+          vaultAddress: uniqueVault,
+          timestamp: now - 1000, // 1 second older
+        }),
+      },
+      'vault_quote.ack'
+    )) as { payload: { ok?: boolean; error?: string } };
+
+    expect(replayAck.payload.error).toBe('stale_replay');
+  });
+
+  it('rejects a replayed quote with the same timestamp (stale_replay)', async () => {
+    const publisher = await createClient();
+
+    const uniqueVault = '0xREPLAY000000000000000000000000000000002';
+    const now = Date.now();
+
+    // Publish first
+    const firstAck = (await sendAndWait(
+      publisher,
+      {
+        type: 'vault_quote.publish',
+        payload: makeValidPublishPayload({
+          vaultAddress: uniqueVault,
+          timestamp: now,
+        }),
+      },
+      'vault_quote.ack'
+    )) as { payload: { ok?: boolean; error?: string } };
+
+    expect(firstAck.payload.ok).toBe(true);
+
+    // Replay with exact same timestamp
+    const replayAck = (await sendAndWait(
+      publisher,
+      {
+        type: 'vault_quote.publish',
+        payload: makeValidPublishPayload({
+          vaultAddress: uniqueVault,
+          timestamp: now, // same timestamp
+        }),
+      },
+      'vault_quote.ack'
+    )) as { payload: { ok?: boolean; error?: string } };
+
+    expect(replayAck.payload.error).toBe('stale_replay');
+  });
+
+  it('accepts a newer quote after a previous one', async () => {
+    const publisher = await createClient();
+    const subscriber = await createClient();
+
+    const uniqueVault = '0xREPLAY000000000000000000000000000000003';
+    const now = Date.now();
+
+    // Subscribe to get updates
+    await sendAndWait(
+      subscriber,
+      {
+        type: 'vault_quote.subscribe',
+        payload: { chainId: CHAIN_ID, vaultAddress: uniqueVault },
+      },
+      'vault_quote.ack'
+    );
+
+    // Collect all updates during the test window
+    const updates = collectMessages(subscriber, 'vault_quote.update', 2000);
+
+    // Publish first quote
+    await sendAndWait(
+      publisher,
+      {
+        type: 'vault_quote.publish',
+        payload: makeValidPublishPayload({
+          vaultAddress: uniqueVault,
+          timestamp: now,
+          vaultCollateralPerShare: '1.000000',
+        }),
+      },
+      'vault_quote.ack'
+    );
+
+    // Small delay to ensure ordering
+    await new Promise((r) => setTimeout(r, 100));
+
+    // Publish a newer quote — should succeed
+    const newerAck = (await sendAndWait(
+      publisher,
+      {
+        type: 'vault_quote.publish',
+        payload: makeValidPublishPayload({
+          vaultAddress: uniqueVault,
+          timestamp: now + 1000, // 1 second newer
+          vaultCollateralPerShare: '1.100000',
+        }),
+      },
+      'vault_quote.ack'
+    )) as { payload: { ok?: boolean; error?: string } };
+
+    expect(newerAck.payload.ok).toBe(true);
+
+    // Subscriber should receive both updates
+    const allUpdates = (await updates) as Array<{
+      type: string;
+      payload: { vaultCollateralPerShare: string };
+    }>;
+    expect(allUpdates.length).toBeGreaterThanOrEqual(2);
+    expect(allUpdates.some((u) => u.payload.vaultCollateralPerShare === '1.100000')).toBe(true);
+  });
+
+  it('does not broadcast a replayed quote to subscribers', async () => {
+    const publisher = await createClient();
+    const subscriber = await createClient();
+
+    const uniqueVault = '0xREPLAY000000000000000000000000000000004';
+    const now = Date.now();
+
+    // Subscribe
+    await sendAndWait(
+      subscriber,
+      {
+        type: 'vault_quote.subscribe',
+        payload: { chainId: CHAIN_ID, vaultAddress: uniqueVault },
+      },
+      'vault_quote.ack'
+    );
+
+    // Publish first (valid) quote
+    publisher.send(
+      JSON.stringify({
+        type: 'vault_quote.publish',
+        payload: makeValidPublishPayload({
+          vaultAddress: uniqueVault,
+          timestamp: now,
+          vaultCollateralPerShare: '2.000000',
+        }),
+      })
+    );
+
+    // Subscriber gets first update
+    await waitForMessage(subscriber, 'vault_quote.update');
+
+    // Now replay an older quote — should be rejected
+    publisher.send(
+      JSON.stringify({
+        type: 'vault_quote.publish',
+        payload: makeValidPublishPayload({
+          vaultAddress: uniqueVault,
+          timestamp: now - 5000,
+          vaultCollateralPerShare: '0.500000', // attacker tries to set a worse price
+        }),
+      })
+    );
+
+    // Collect messages for a short window — subscriber should NOT receive the stale quote
+    const messages = await collectMessages(subscriber, 'vault_quote.update', 300);
+    const staleUpdate = (messages as Array<{ payload: { vaultCollateralPerShare: string } }>)
+      .find((m) => m.payload.vaultCollateralPerShare === '0.500000');
+
+    expect(staleUpdate).toBeUndefined();
+  });
+});
