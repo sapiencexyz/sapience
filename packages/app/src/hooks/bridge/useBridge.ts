@@ -1,8 +1,8 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
-import { useReadContract } from 'wagmi';
-import { formatEther, parseUnits, zeroAddress } from 'viem';
+import { useReadContract, useWriteContract as useWagmiWriteContract, useSwitchChain, useAccount } from 'wagmi';
+import { formatEther, zeroAddress } from 'viem';
 import erc20ABI from '@sapience/sdk/queries/abis/erc20abi.json';
 import {
   predictionMarketBridge,
@@ -82,6 +82,19 @@ export function useBridgeQuote({
   };
 }
 
+const ERC20_APPROVE_ABI = [
+  {
+    name: 'approve',
+    type: 'function',
+    stateMutability: 'nonpayable',
+    inputs: [
+      { name: 'spender', type: 'address' },
+      { name: 'amount', type: 'uint256' },
+    ],
+    outputs: [{ name: '', type: 'bool' }],
+  },
+] as const;
+
 export function useBridgeApproval({
   tokenAddress,
   amount,
@@ -95,6 +108,8 @@ export function useBridgeApproval({
 }) {
   const { currentAddress, isConnected } = useCurrentAddress();
   const { address: bridgeAddress } = getBridgeConfig(fromChainId);
+  const { chain: walletChain } = useAccount();
+  const { switchChainAsync } = useSwitchChain();
 
   const {
     data: allowance,
@@ -124,37 +139,36 @@ export function useBridgeApproval({
 
   const [isApproving, setIsApproving] = useState(false);
 
+  // Use raw wagmi writeContract for approve — position tokens are dynamically
+  // deployed addresses that can't be enumerated in session key permissions,
+  // so this requires owner (wallet) signing.
   const {
-    writeContract: sapienceWriteContract,
+    writeContractAsync,
     isPending: isWritePending,
-  } = useSapienceWriteContract({
-    onSuccess: () => {
-      setIsApproving(false);
-      refetchAllowance();
-    },
-    onError: () => {
-      setIsApproving(false);
-    },
-    successMessage: 'Token approval successful',
-    fallbackErrorMessage: 'Token approval failed',
-    disableAutoRedirect: true,
-  });
+  } = useWagmiWriteContract();
 
   const approve = useCallback(async () => {
     if (!tokenAddress || !bridgeAddress || !amount) return;
     setIsApproving(true);
     try {
-      await sapienceWriteContract({
-        abi: erc20ABI,
+      // Ensure wallet is on the correct chain before approving
+      if (walletChain?.id !== fromChainId) {
+        await switchChainAsync({ chainId: fromChainId });
+      }
+      await writeContractAsync({
+        abi: ERC20_APPROVE_ABI,
         address: tokenAddress,
         functionName: 'approve',
         args: [bridgeAddress, amount],
         chainId: fromChainId,
       });
+      refetchAllowance();
     } catch {
+      // approval failed or user rejected
+    } finally {
       setIsApproving(false);
     }
-  }, [tokenAddress, bridgeAddress, amount, fromChainId, sapienceWriteContract]);
+  }, [tokenAddress, bridgeAddress, amount, fromChainId, walletChain?.id, switchChainAsync, writeContractAsync, refetchAllowance]);
 
   return {
     hasAllowance,

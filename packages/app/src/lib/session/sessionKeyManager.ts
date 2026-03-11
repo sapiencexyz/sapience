@@ -42,6 +42,7 @@ import {
   secondaryMarketEscrowAbi,
   collateralTokenAbi,
   predictionMarketVaultAbi,
+  predictionMarketBridgeAbi,
 } from '@sapience/sdk/abis';
 import {
   predictionMarketEscrow as predictionMarketEscrowAddresses,
@@ -49,6 +50,7 @@ import {
   collateralToken as collateralTokenAddresses,
   eas as easAddresses,
   predictionMarketVault as vaultAddresses,
+  predictionMarketBridge as predictionMarketBridgeAddresses,
 } from '@sapience/sdk/contracts';
 import {
   CHAIN_ID_ETHEREAL,
@@ -87,6 +89,7 @@ function getEtherealContractAddresses(chainId: number) {
       ? secondaryEscrowAddress
       : undefined,
     vault: vaultAddresses[effectiveChainId].address,
+    bridge: predictionMarketBridgeAddresses[effectiveChainId]?.address,
   };
 }
 
@@ -787,6 +790,18 @@ export async function createSession(
               target: etherealContracts.secondaryMarketEscrow,
               abi: secondaryMarketEscrowAbi,
               functionName: 'executeTrade',
+            },
+          ]
+        : []),
+      // Bridge permissions (only if bridge is deployed on this chain)
+      ...(etherealContracts.bridge
+        ? [
+            {
+              target: etherealContracts.bridge,
+              abi: predictionMarketBridgeAbi,
+              functionName: 'bridge',
+              // Allow sending native value for LayerZero fees (up to 1 ETH worth)
+              valueLimit: BigInt(1e18),
             },
           ]
         : []),

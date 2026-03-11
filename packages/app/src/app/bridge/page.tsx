@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback, useEffect } from 'react';
 import { formatEther, formatUnits, parseUnits, isAddress } from 'viem';
-import { useAccount } from 'wagmi';
+import { useAccount, useSwitchChain, useBalance } from 'wagmi';
 import { ArrowDownUp } from 'lucide-react';
 
 import { Button } from '@sapience/ui/components/ui/button';
@@ -68,7 +68,8 @@ function formatBalance(balance: string, decimals = 18): string {
 
 export default function BridgePage() {
   const { currentAddress, isConnected } = useCurrentAddress();
-  const { address: walletAddress } = useAccount();
+  const { address: walletAddress, chain: walletChain } = useAccount();
+  const { switchChainAsync } = useSwitchChain();
   const { openConnectDialog } = useConnectDialog();
 
   // Direction
@@ -152,6 +153,18 @@ export default function BridgePage() {
   const { bridgeIds: pendingFromSource, isLoading: isLoadingPending } =
     usePendingBridges({ fromChainId, enabled: isConnected });
 
+  // Native balance for LZ fee check
+  const { data: nativeBalance } = useBalance({
+    address: walletAddress,
+    chainId: fromChainId,
+    query: { enabled: isConnected && !!walletAddress },
+  });
+
+  const insufficientNativeBalance = useMemo(() => {
+    if (!nativeFee || !nativeBalance) return false;
+    return nativeBalance.value < nativeFee;
+  }, [nativeFee, nativeBalance]);
+
   // Swap direction
   const handleSwapDirection = useCallback(() => {
     setFromChainId(toChainId);
@@ -201,6 +214,16 @@ export default function BridgePage() {
   const handleBridge = async () => {
     if (!canBridge || !nativeFee || !recipient) return;
 
+    // Ensure wallet is on the correct source chain
+    if (walletChain?.id !== fromChainId) {
+      try {
+        await switchChainAsync({ chainId: fromChainId });
+      } catch {
+        // User rejected chain switch
+      }
+      return; // Let user click again after chain switch
+    }
+
     if (!hasAllowance) {
       await approve();
       // Approval will trigger refetchAllowance, user clicks again for bridge
@@ -221,6 +244,9 @@ export default function BridgePage() {
     if (!selectedTokenAddress) return 'Select a Token';
     if (!amountInput || !parsedAmount || parsedAmount === 0n) return 'Enter Amount';
     if (amountExceedsBalance) return 'Insufficient Balance';
+    if (insufficientNativeBalance)
+      return `Insufficient ${getChainNativeCurrency(fromChainId)} for Fee`;
+    if (walletChain?.id !== fromChainId) return `Switch to ${getChainName(fromChainId)}`;
     if (isQuoting) return 'Getting Quote…';
     if (isApproving) return 'Approving…';
     if (isBridging) return 'Bridging…';
@@ -228,11 +254,14 @@ export default function BridgePage() {
     return 'Bridge';
   };
 
+  // Allow clicking for connect wallet and chain switching even when canBridge is false
+  const needsChainSwitch = isConnected && walletChain?.id !== fromChainId && canBridge;
   const isButtonDisabled =
-    (!isConnected ? false : !canBridge) ||
+    (!isConnected ? false : needsChainSwitch ? false : !canBridge) ||
     isApproving ||
     isBridging ||
-    amountExceedsBalance;
+    amountExceedsBalance ||
+    insufficientNativeBalance;
 
   return (
     <div className="mx-auto max-w-lg px-4 py-8">
@@ -397,6 +426,18 @@ export default function BridgePage() {
                 })}{' '}
                 {getChainNativeCurrency(fromChainId)}
               </span>
+            </div>
+          )}
+
+          {/* Insufficient native balance warning */}
+          {insufficientNativeBalance && nativeFeeFormatted && (
+            <div className="rounded-md bg-destructive/10 px-3 py-2 text-sm text-destructive">
+              Insufficient {getChainNativeCurrency(fromChainId)} to cover the
+              LayerZero fee ({parseFloat(nativeFeeFormatted).toLocaleString(
+                undefined,
+                { maximumSignificantDigits: 6 }
+              )}{' '}
+              {getChainNativeCurrency(fromChainId)} required)
             </div>
           )}
 
