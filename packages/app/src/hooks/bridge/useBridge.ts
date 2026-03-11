@@ -13,7 +13,6 @@ import {
   predictionMarketBridgeRemoteAbi,
 } from '@sapience/sdk/abis';
 import { CHAIN_ID_ETHEREAL, CHAIN_ID_ARBITRUM } from '@sapience/sdk/constants';
-import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 import { useCurrentAddress } from '~/hooks/blockchain/useCurrentAddress';
 
 const ZERO_BYTES32 =
@@ -185,24 +184,17 @@ export function useBridgeExecute({
   fromChainId: number;
 }) {
   const { address: bridgeAddress, abi } = getBridgeConfig(fromChainId);
+  const { chain: walletChain } = useAccount();
+  const { switchChainAsync } = useSwitchChain();
   const [isBridging, setIsBridging] = useState(false);
   const [bridgeSuccess, setBridgeSuccess] = useState(false);
 
+  // Use raw wagmi writeContract — bridging is cross-chain with msg.value,
+  // so it must go through the EOA wallet directly.
   const {
-    writeContract: sapienceWriteContract,
+    writeContractAsync,
     isPending: isWritePending,
-  } = useSapienceWriteContract({
-    onSuccess: () => {
-      setIsBridging(false);
-      setBridgeSuccess(true);
-    },
-    onError: () => {
-      setIsBridging(false);
-    },
-    successMessage: 'Bridge transaction submitted! Tokens will arrive on the destination chain shortly.',
-    fallbackErrorMessage: 'Bridge transaction failed',
-    disableAutoRedirect: true,
-  });
+  } = useWagmiWriteContract();
 
   const bridge = useCallback(
     async ({
@@ -220,7 +212,11 @@ export function useBridgeExecute({
       setIsBridging(true);
       setBridgeSuccess(false);
       try {
-        await sapienceWriteContract({
+        // Ensure wallet is on the correct chain before bridging
+        if (walletChain?.id !== fromChainId) {
+          await switchChainAsync({ chainId: fromChainId });
+        }
+        await writeContractAsync({
           address: bridgeAddress,
           abi,
           functionName: 'bridge',
@@ -228,11 +224,13 @@ export function useBridgeExecute({
           value: nativeFee,
           chainId: fromChainId,
         });
+        setIsBridging(false);
+        setBridgeSuccess(true);
       } catch {
         setIsBridging(false);
       }
     },
-    [bridgeAddress, abi, fromChainId, sapienceWriteContract]
+    [bridgeAddress, abi, fromChainId, walletChain?.id, switchChainAsync, writeContractAsync]
   );
 
   return {
