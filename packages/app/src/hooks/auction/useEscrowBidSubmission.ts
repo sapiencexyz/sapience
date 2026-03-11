@@ -201,7 +201,7 @@ export function useEscrowBidSubmission(
         await validateCounterpartyFunds(
           predictor,
           predictorCollateral,
-          (wusdeAddress ?? zeroAddress) as Address,
+          wusdeAddress ?? zeroAddress,
           verifyingContract,
           publicClient
         );
