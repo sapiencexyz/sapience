@@ -4,6 +4,8 @@ import { useState, useMemo, useCallback, useEffect } from 'react';
 import { formatEther, formatUnits, parseUnits, isAddress } from 'viem';
 import { useAccount, useSwitchChain, useBalance } from 'wagmi';
 import { ArrowDownUp } from 'lucide-react';
+import { CowSwapWidget } from '@cowprotocol/widget-react';
+import { CowSwapWidgetParams, TradeType } from '@cowprotocol/widget-lib';
 
 import { Button } from '@sapience/ui/components/ui/button';
 import { Card, CardContent } from '@sapience/ui/components/ui/card';
@@ -66,7 +68,40 @@ function formatBalance(balance: string, decimals = 18): string {
   }
 }
 
-export default function BridgePage() {
+// ---------------------------------------------------------------------------
+// CowSwap widget params for Arbitrum swaps
+// ---------------------------------------------------------------------------
+const cowSwapParams: CowSwapWidgetParams = {
+  appCode: 'Sapience',
+  width: '100%',
+  height: '640px',
+  chainId: 42161, // Arbitrum
+  tradeType: TradeType.SWAP,
+  sell: { asset: '' },
+  buy: { asset: 'USDC' },
+  theme: 'dark',
+};
+
+// ---------------------------------------------------------------------------
+// Swap section – CowSwap iframe widget
+// ---------------------------------------------------------------------------
+function SwapSection() {
+  return (
+    <Card>
+      <CardContent className="space-y-4 pt-6">
+        <p className="text-sm text-muted-foreground">
+          Swap your bridged position tokens for popular tokens on Arbitrum.
+        </p>
+        <CowSwapWidget params={cowSwapParams} />
+      </CardContent>
+    </Card>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Bridge section – existing bridge functionality
+// ---------------------------------------------------------------------------
+function BridgeSection() {
   const { currentAddress, isConnected } = useCurrentAddress();
   const { address: walletAddress, chain: walletChain } = useAccount();
   const { switchChainAsync } = useSwitchChain();
@@ -264,13 +299,7 @@ export default function BridgePage() {
     insufficientNativeBalance;
 
   return (
-    <div className="mx-auto max-w-lg px-4 py-8">
-      <h1 className="mb-6 text-2xl font-bold">Bridge Position Tokens</h1>
-      <p className="mb-6 text-sm text-muted-foreground">
-        Bridge your prediction market position tokens between Ethereal and
-        Arbitrum via LayerZero.
-      </p>
-
+    <>
       <Card>
         <CardContent className="space-y-5 pt-6">
           {/* Chain selectors */}
@@ -493,6 +522,51 @@ export default function BridgePage() {
           </CardContent>
         </Card>
       )}
+    </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Main page with tab switcher
+// ---------------------------------------------------------------------------
+type Tab = 'bridge' | 'swap';
+
+export default function SwapPage() {
+  const [tab, setTab] = useState<Tab>('bridge');
+
+  return (
+    <div className="mx-auto max-w-lg px-4 py-8">
+      <h1 className="mb-2 text-2xl font-bold">Swap</h1>
+      <p className="mb-6 text-sm text-muted-foreground">
+        Bridge position tokens between chains, or swap them for popular tokens
+        on Arbitrum.
+      </p>
+
+      {/* Tab buttons */}
+      <div className="mb-4 flex gap-2">
+        <button
+          onClick={() => setTab('bridge')}
+          className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+            tab === 'bridge'
+              ? 'bg-primary text-primary-foreground'
+              : 'bg-muted text-muted-foreground hover:bg-muted/80'
+          }`}
+        >
+          Bridge
+        </button>
+        <button
+          onClick={() => setTab('swap')}
+          className={`rounded-md px-4 py-2 text-sm font-medium transition-colors ${
+            tab === 'swap'
+              ? 'bg-primary text-primary-foreground'
+              : 'bg-muted text-muted-foreground hover:bg-muted/80'
+          }`}
+        >
+          Swap
+        </button>
+      </div>
+
+      {tab === 'bridge' ? <BridgeSection /> : <SwapSection />}
     </div>
   );
 }
