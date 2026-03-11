@@ -30,7 +30,7 @@ router.use('/tokenlist.json', (_req, res, next) => {
 
 const CHAIN_ID = CHAIN_ID_ARBITRUM;
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
-const MAX_TOKENS = 10_000;
+const MAX_TOKENS = 900;
 const MAX_RESPONSE_BYTES = 5 * 1024 * 1024; // 5MB
 const MAX_NAME_LENGTH = 100; // CowSwap / @uniswap/token-lists schema limit
 const MAX_SYMBOL_LENGTH = 80; // CowSwap patches the default 20 → 80
