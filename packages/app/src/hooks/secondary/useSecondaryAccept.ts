@@ -16,7 +16,6 @@ import { generateRandomNonce } from '@sapience/sdk';
 import { useSession } from '~/lib/context/SessionContext';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 import { getPublicClientForChainId } from '~/lib/utils/util';
-import { encodeEscrowSessionKeyData } from '~/lib/session/sessionKeyManager';
 import type { SecondaryValidatedBid } from '@sapience/sdk/types/secondary';
 
 export interface AcceptBidParams {
@@ -64,9 +63,8 @@ export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
   const { signTypedDataAsync } = useSignTypedData();
   const {
     effectiveAddress,
-    signTypedDataRaw: sessionSignTypedDataRaw,
+    signTypedData: sessionSignTypedData,
     isUsingSession,
-    tradeSessionKeyApproval,
   } = useSession();
 
   const [isAccepting, setIsAccepting] = useState(false);
@@ -145,17 +143,19 @@ export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
 
         let sellerSignature: Hex;
         try {
-          if (isUsingSession && sessionSignTypedDataRaw) {
-            // Session mode: raw ECDSA sign with session key (no kernel wrapping).
-            // The contract does ECDSA.recover() so it needs a raw 65-byte signature.
-            sellerSignature = await sessionSignTypedDataRaw({
+          if (isUsingSession && sessionSignTypedData) {
+            // Session mode: kernel-wrapped signing (EIP-1271 path).
+            // The contract calls isValidSignature() on the smart account,
+            // which validates via the kernel permission plugin. No separate
+            // TRADE_PERMISSION approval needed — one signature at session creation.
+            sellerSignature = await sessionSignTypedData({
               domain: {
                 ...typedData.domain,
                 chainId: Number(typedData.domain.chainId),
               },
               types: typedData.types,
               primaryType: typedData.primaryType,
-              message: typedData.message,
+              message: typedData.message as Record<string, unknown>,
             });
           } else {
             // EOA mode: sign with wallet
@@ -193,14 +193,9 @@ export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
           // Continue — will include approve in batch
         }
 
-        // 3. Build sellerSessionKeyData for on-chain session key verification
-        // When using session, the contract needs the SessionKeyData struct to verify
-        // the session key signature via TRADE_PERMISSION (not EIP-1271).
-        let sellerSessionKeyData: Hex = '0x';
-        if (isUsingSession && tradeSessionKeyApproval) {
-          sellerSessionKeyData =
-            encodeEscrowSessionKeyData(tradeSessionKeyApproval);
-        }
+        // 3. No sellerSessionKeyData needed — using EIP-1271 (Tier 2).
+        // The kernel-wrapped signature is verified via isValidSignature()
+        // on the smart account. sellerSessionKeyData stays empty ('0x').
 
         // 4. Build trade params
         const tradeParams: ExecuteTradeParams = {
@@ -217,7 +212,7 @@ export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
           sellerSignature,
           buyerSignature: bid.buyerSignature as Hex,
           refCode: refCode ?? (('0x' + '00'.repeat(32)) as Hex),
-          sellerSessionKeyData,
+          sellerSessionKeyData: '0x' as Hex,
           buyerSessionKeyData: (bid.buyerSessionKeyData as Hex) ?? '0x',
         };
 
@@ -251,9 +246,8 @@ export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
       collateralAddress,
       publicClient,
       signTypedDataAsync,
-      sessionSignTypedDataRaw,
+      sessionSignTypedData,
       isUsingSession,
-      tradeSessionKeyApproval,
       sendCalls,
       onSuccess,
       onError,

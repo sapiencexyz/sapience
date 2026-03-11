@@ -16,7 +16,7 @@ import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 import { generateRandomNonce } from '@sapience/sdk';
 import { getPublicClientForChainId } from '~/lib/utils/util';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
-import { encodeEscrowSessionKeyData } from '~/lib/session/sessionKeyManager';
+
 
 export interface SecondaryBidParams {
   /** Auction ID to bid on */
@@ -64,9 +64,7 @@ export function useSecondaryBid(options: UseSecondaryBidOptions = {}) {
   const { signTypedDataAsync } = useSignTypedData();
   const {
     effectiveAddress,
-    signTypedDataRaw: sessionSignTypedDataRaw,
     isUsingSession,
-    tradeSessionKeyApproval,
   } = useSession();
   const { apiBaseUrl } = useSettings();
 
@@ -178,30 +176,16 @@ export function useSecondaryBid(options: UseSecondaryBidOptions = {}) {
       setIsSubmitting(true);
       let buyerSignature: Hex;
       try {
-        if (isUsingSession && sessionSignTypedDataRaw) {
-          // Session mode: raw ECDSA sign with session key (no kernel wrapping).
-          // The contract does ECDSA.recover() so it needs a raw 65-byte signature.
-          buyerSignature = await sessionSignTypedDataRaw({
-            domain: {
-              ...typedData.domain,
-              chainId: Number(typedData.domain.chainId),
-            },
-            types: typedData.types,
-            primaryType: typedData.primaryType,
-            message: typedData.message,
-          });
-        } else {
-          // EOA mode: sign with wallet
-          buyerSignature = await signTypedDataAsync({
-            domain: {
-              ...typedData.domain,
-              chainId: Number(typedData.domain.chainId),
-            },
-            types: typedData.types,
-            primaryType: typedData.primaryType,
-            message: typedData.message,
-          });
-        }
+        // Always sign with EOA wallet for secondary market bids
+        buyerSignature = await signTypedDataAsync({
+          domain: {
+            ...typedData.domain,
+            chainId: Number(typedData.domain.chainId),
+          },
+          types: typedData.types,
+          primaryType: typedData.primaryType,
+          message: typedData.message,
+        });
       } catch (e: any) {
         setIsSubmitting(false);
         const error =
@@ -213,14 +197,8 @@ export function useSecondaryBid(options: UseSecondaryBidOptions = {}) {
         };
       }
 
-      // Build buyerSessionKeyData for on-chain session key verification
-      let buyerSessionKeyData: string | undefined;
-      if (isUsingSession && tradeSessionKeyApproval) {
-        buyerSessionKeyData =
-          encodeEscrowSessionKeyData(tradeSessionKeyApproval);
-      }
-
       // Submit bid via WS
+      // No buyerSessionKeyData needed — buyer always signs with EOA wallet
       const payload: SecondaryBidPayload = {
         auctionId,
         buyer: buyerAddress,
@@ -228,7 +206,6 @@ export function useSecondaryBid(options: UseSecondaryBidOptions = {}) {
         buyerNonce: Number(nonce),
         buyerDeadline: Number(buyerDeadline),
         buyerSignature,
-        buyerSessionKeyData,
       };
 
       try {
@@ -259,9 +236,9 @@ export function useSecondaryBid(options: UseSecondaryBidOptions = {}) {
       publicClient,
       sapienceWriteContract,
       signTypedDataAsync,
-      sessionSignTypedDataRaw,
+
       isUsingSession,
-      tradeSessionKeyApproval,
+
       onSignatureRejected,
       onBidSubmitted,
     ]
