@@ -1,13 +1,11 @@
-const EAS_CONTRACTS = {
-  42161: '0xbD75f629A22Dc1ceD33dDA0b68c546A1c035c458', // Arbitrum
-} as const;
+import { eas } from '@sapience/sdk/contracts/addresses';
 
 export const getEASContractAddress = (chainId: number) => {
-  const address = EAS_CONTRACTS[chainId as keyof typeof EAS_CONTRACTS];
-  if (!address) {
+  const entry = eas[chainId as keyof typeof eas];
+  if (!entry) {
     throw new Error(`EAS contract address not found for chainId: ${chainId}`);
   }
-  return address;
+  return entry.address;
 };
 
 export const EAS_ATTEST_ABI = [

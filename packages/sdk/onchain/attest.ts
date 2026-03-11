@@ -1,6 +1,8 @@
 import { encodeAbiParameters, encodeFunctionData, parseAbiParameters } from 'viem';
 import type { Address } from 'viem';
 import { submitTransaction } from './tx';
+import { eas } from '../contracts/addresses';
+import { CHAIN_ID_ARBITRUM } from '../constants/chain';
 
 type Hex = `0x${string}`;
 
@@ -16,8 +18,8 @@ export function probability(value: number): Probability {
 }
 
 // EAS contract on Arbitrum
-const EAS_ADDRESS_ARBITRUM: Address = '0xbD75f629A22Dc1ceD33dDA0b68c546A1c035c458';
-const ARBITRUM_CHAIN_ID = 42161;
+const EAS_ADDRESS_ARBITRUM: Address = eas[CHAIN_ID_ARBITRUM].address as Address;
+const ARBITRUM_CHAIN_ID = CHAIN_ID_ARBITRUM;
 
 // EAS schema id for forecast attestations
 // Schema: address resolver, bytes condition, uint256 forecast, string comment

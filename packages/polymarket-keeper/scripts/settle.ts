@@ -44,13 +44,15 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { polygon } from 'viem/chains';
 import { fetchWithRetry } from '../src/utils/fetch.js';
 import { RESOLVER_ADDRESS, CHAIN_ID } from '../src/constants.js';
+import { conditionalTokensReader } from '@sapience/sdk/contracts/addresses';
 
 // ============ Constants ============
 
 // ConditionalTokensReader contract on Polygon
 const CONDITIONAL_TOKENS_READER_ADDRESS = (process.env
   .CONDITIONAL_TOKENS_READER_ADDRESS ||
-  '0x882288A664e29aEBC654Fa9679697d23716fcCD1') as Address;
+  conditionalTokensReader[137]?.address ||
+  '') as Address;
 
 // Default Sapience API URL
 const DEFAULT_SAPIENCE_API_URL = 'https://api.sapience.xyz/graphql';
