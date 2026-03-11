@@ -136,20 +136,20 @@ async function buildTokenList(): Promise<string> {
     if (conditionParts.length === 0) continue;
 
     // Token name = condition question(s) with predicted outcome
-    // e.g. "Will BTC hit 100k? — Yes" or "Will BTC hit 100k? — Yes + Will ETH hit 10k? — No"
+    // e.g. "Will BTC hit 100k? Yes" or "Will BTC hit 100k? Yes + Will ETH hit 10k? No"
     const predictorName =
       conditionParts.length === 1
-        ? `${conditionParts[0].name} — ${conditionParts[0].outcome}`
+        ? `${conditionParts[0].name} ${conditionParts[0].outcome}`
         : conditionParts
-            .map((p) => `${p.name} — ${p.outcome}`)
+            .map((p) => `${p.name} ${p.outcome}`)
             .join(' + ');
 
     // Counterparty name = same but with (Counterparty) appended
     const counterpartyName =
       conditionParts.length === 1
-        ? `${conditionParts[0].name} — ${conditionParts[0].outcome} (Counterparty)`
+        ? `${conditionParts[0].name} ${conditionParts[0].outcome} (Counterparty)`
         : conditionParts
-            .map((p) => `${p.name} — ${p.outcome}`)
+            .map((p) => `${p.name} ${p.outcome}`)
             .join(' + ') + ' (Counterparty)';
 
     // Symbol = shortName-based with outcome

@@ -98,11 +98,11 @@ describe('tokenlist', () => {
         (t: { tags: string[] }) => t.tags[0] === 'cpty'
       );
 
-      expect(predictor.name).toBe('Will BTC hit 100k? — Yes');
+      expect(predictor.name).toBe('Will BTC hit 100k? Yes');
       expect(predictor.symbol).toBe('BTC-100k-Yes');
 
       expect(counterparty.name).toBe(
-        'Will BTC hit 100k? — Yes (Counterparty)'
+        'Will BTC hit 100k? Yes (Counterparty)'
       );
       expect(counterparty.symbol).toBe('BTC-100k-Yes-counterparty');
     });
@@ -126,7 +126,7 @@ describe('tokenlist', () => {
         (t: { tags: string[] }) => t.tags[0] === 'predict'
       );
 
-      expect(predictor.name).toBe('Will BTC hit 100k? — No');
+      expect(predictor.name).toBe('Will BTC hit 100k? No');
       expect(predictor.symbol).toBe('BTC-100k-No');
     });
 
@@ -165,12 +165,12 @@ describe('tokenlist', () => {
       );
 
       expect(predictor.name).toBe(
-        'Will BTC hit 100k? — Yes + Will ETH hit 10k? — No'
+        'Will BTC hit 100k? Yes + Will ETH hit 10k? No'
       );
       expect(predictor.symbol).toBe('BTC-100k-Yes+ETH-10k-No');
 
       expect(counterparty.name).toBe(
-        'Will BTC hit 100k? — Yes + Will ETH hit 10k? — No (Counterparty)'
+        'Will BTC hit 100k? Yes + Will ETH hit 10k? No (Counterparty)'
       );
       expect(counterparty.symbol).toBe('BTC-100k-Yes+ETH-10k-No-counterparty');
     });
