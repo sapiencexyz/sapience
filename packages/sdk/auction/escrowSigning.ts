@@ -2,6 +2,7 @@ import {
   encodeAbiParameters,
   hashTypedData,
   keccak256,
+  zeroAddress,
   type Address,
   type Hex,
   type TypedDataDomain,
@@ -297,8 +298,8 @@ export function buildPredictorMintTypedData(params: {
   counterparty: Address;
   predictorNonce: bigint;
   predictorDeadline: bigint;
-  predictorSponsor: Address;
-  predictorSponsorData: Hex;
+  predictorSponsor?: Address;
+  predictorSponsorData?: Hex;
   verifyingContract: Address;
   chainId: number;
 }) {
@@ -308,8 +309,8 @@ export function buildPredictorMintTypedData(params: {
     params.counterpartyCollateral,
     params.predictor,
     params.counterparty,
-    params.predictorSponsor,
-    params.predictorSponsorData
+    params.predictorSponsor ?? zeroAddress,
+    params.predictorSponsorData ?? '0x',
   );
 
   return buildMintApprovalTypedData({
@@ -334,8 +335,8 @@ export function buildCounterpartyMintTypedData(params: {
   counterparty: Address;
   counterpartyNonce: bigint;
   counterpartyDeadline: bigint;
-  predictorSponsor: Address;
-  predictorSponsorData: Hex;
+  predictorSponsor?: Address;
+  predictorSponsorData?: Hex;
   verifyingContract: Address;
   chainId: number;
 }) {
@@ -345,8 +346,8 @@ export function buildCounterpartyMintTypedData(params: {
     params.counterpartyCollateral,
     params.predictor,
     params.counterparty,
-    params.predictorSponsor,
-    params.predictorSponsorData
+    params.predictorSponsor ?? zeroAddress,
+    params.predictorSponsorData ?? '0x',
   );
 
   return buildMintApprovalTypedData({

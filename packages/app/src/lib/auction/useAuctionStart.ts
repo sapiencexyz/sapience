@@ -517,6 +517,8 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
           predictedOutcome: p.predictedOutcome,
         })),
         counterpartySessionKeyData: bid.counterpartySessionKeyData,
+        predictorSponsor: auction.predictorSponsor,
+        predictorSponsorData: auction.predictorSponsorData,
       };
     },
     [auctionId]
