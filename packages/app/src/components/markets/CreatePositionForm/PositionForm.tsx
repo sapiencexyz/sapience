@@ -6,7 +6,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@sapience/ui/components/ui/dialog';
-import { Gift, Info } from 'lucide-react';
+import { Info } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FormProvider, type UseFormReturn, useWatch } from 'react-hook-form';
@@ -44,11 +44,9 @@ import {
   type UmaPrediction,
 } from '@sapience/ui';
 import { logPositionForm, formatBidForLog } from '~/lib/auction/bidLogger';
-import {
-  useSponsorStatus,
-  isEntryPriceEligible,
-} from '~/hooks/sponsorship/useSponsorStatus';
-import { formatUnits } from 'viem';
+import { useSponsorStatus } from '~/hooks/sponsorship/useSponsorStatus';
+import { useSponsorshipActivation } from '~/hooks/sponsorship/useSponsorshipActivation';
+import SponsorshipIndicator from './SponsorshipIndicator';
 
 interface PositionFormProps {
   methods: UseFormReturn<{
@@ -129,7 +127,28 @@ export default function PositionForm({
   } = useSession();
 
   // Sponsorship status
-  const { isSponsored, remainingBudget, maxEntryPriceBps } = useSponsorStatus();
+  const {
+    isSponsored,
+    sponsorAddress,
+    remainingBudget,
+    maxEntryPriceBps,
+    matchLimit,
+    requiredCounterparty,
+  } = useSponsorStatus();
+
+  // Sponsorship activation state machine (timeout, reset, activate).
+  // Callbacks are ref-ified inside the hook so triggerAuctionRequest (defined below) resolves at call-time.
+  const triggerAuctionRequestRef = useRef<(opts?: { forceRefresh?: boolean; withSponsor?: boolean }) => void>(() => {});
+  const {
+    sponsorshipActivated,
+    awaitingSponsoredBid,
+    activateSponsor,
+    clearAwaiting,
+    resetSponsor,
+  } = useSponsorshipActivation({
+    onActivate: () => triggerAuctionRequestRef.current({ forceRefresh: true, withSponsor: true }),
+    onTimeout: () => triggerAuctionRequestRef.current({ forceRefresh: true }),
+  });
 
   // Determine the actual predictor address based on signing method
   // This MUST match the logic in useAuctionStart.requestQuotes
@@ -216,6 +235,7 @@ export default function PositionForm({
       );
       setValidBids([]);
       setStickyEstimateBid(null);
+      resetSponsor();
       setLastQuoteRequestMs(null); // Reset cooldown when position size changes
       currentRequestKeyRef.current = null; // Ignore incoming bids for old configuration
       prevPositionSizeRef.current = positionSizeValue || '';
@@ -232,6 +252,7 @@ export default function PositionForm({
       );
       setValidBids([]);
       setStickyEstimateBid(null);
+      resetSponsor();
       setLastQuoteRequestMs(null);
       currentRequestKeyRef.current = null;
       prevHasConnectedWalletRef.current = hasConnectedWallet;
@@ -244,6 +265,7 @@ export default function PositionForm({
       logPositionForm('Predictions changed, clearing bids');
       setValidBids([]);
       setStickyEstimateBid(null);
+      resetSponsor();
       setLastQuoteRequestMs(null); // Reset cooldown when selections change
       currentRequestKeyRef.current = null; // Ignore incoming bids for old configuration
       prevPredictionsKeyRef.current = predictionsKey;
@@ -272,6 +294,7 @@ export default function PositionForm({
         );
       }
       setValidBids(bids);
+      clearAwaiting();
     } else if (bids.length > 0) {
       logPositionForm(
         `[accept] REJECTED: key mismatch. ref=${currentRequestKeyRef.current?.slice(0, 40)}, current=${currentRequestKey.slice(0, 40)}`
@@ -399,7 +422,7 @@ export default function PositionForm({
   const totalPredictionCount = selections.length + pythPredictions.length;
 
   const triggerAuctionRequest = useCallback(
-    async (options?: { forceRefresh?: boolean }) => {
+    async (options?: { forceRefresh?: boolean; withSponsor?: boolean }) => {
       // Prevent multiple concurrent auction requests
       if (auctionRequestInFlightRef.current) {
         return;
@@ -485,6 +508,14 @@ export default function PositionForm({
           chainId: chainId,
         };
 
+        // Only thread sponsor when the user explicitly activates sponsorship.
+        // Initial quotes are always unsponored so the bid is usable for self-funded
+        // mints; if the bid qualifies, the user clicks "Use" to re-request with sponsor.
+        if (options?.withSponsor && sponsorAddress) {
+          params.predictorSponsor = sponsorAddress;
+          params.predictorSponsorData = '0x';
+        }
+
         // Add escrowPicks for conditional token selections to trigger escrow auction
         if (hasUma && !hasPyth) {
           const escrowPicks = getPicks();
@@ -544,8 +575,12 @@ export default function PositionForm({
       chainId,
       predictionsKey,
       getPicks,
+      sponsorAddress,
     ]
   );
+
+  // Keep ref in sync so the sponsorship hook can call triggerAuctionRequest
+  useEffect(() => { triggerAuctionRequestRef.current = triggerAuctionRequest; }, [triggerAuctionRequest]);
 
   // Handler for "Initiate Auction" button - works for all users
   // Logged-out users get unsigned auctions that display as estimates
@@ -774,58 +809,23 @@ export default function PositionForm({
             />
           </div>
 
-          {/* Sponsorship indicator */}
-          {isSponsored &&
-            (() => {
-              const activeBid = bestBid ?? stickyEstimateBid;
-              // User's collateral = positionSize (what they typed), vault's collateral = bid.counterpartyCollateral
-              const decimals = collateralDecimals ?? 18;
-              const userCollateral = positionSizeValue
-                ? parseUnits(positionSizeValue, decimals)
-                : 0n;
-              const vaultCollateral = activeBid
-                ? BigInt(activeBid.counterpartyCollateral)
-                : 0n;
-              const bidEligible =
-                !activeBid || !userCollateral
-                  ? true // No bid or no size yet — show as available
-                  : isEntryPriceEligible(
-                      userCollateral,
-                      vaultCollateral,
-                      maxEntryPriceBps
-                    );
-              const sponsorAmountFormatted = formatUnits(remainingBudget, 18);
-
-              return (
-                <div
-                  className={`mt-3 rounded-lg border px-3 py-2.5 text-sm ${
-                    bidEligible
-                      ? 'border-ethena/30 bg-ethena/5'
-                      : 'border-muted/30 bg-muted/5 opacity-60'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <Gift
-                      className={`h-4 w-4 flex-shrink-0 ${bidEligible ? 'text-ethena' : 'text-muted-foreground'}`}
-                    />
-                    <div className="flex-1">
-                      <p
-                        className={`font-medium ${bidEligible ? 'text-ethena' : 'text-muted-foreground'}`}
-                      >
-                        {bidEligible
-                          ? `${sponsorAmountFormatted} ${collateralSymbol} sponsored`
-                          : 'Sponsorship unavailable at this price'}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {bidEligible
-                          ? `You pay ${collateralSymbol} 0 — the sponsor covers your side of this prediction.`
-                          : `Only available for positions priced below ${Number(maxEntryPriceBps) / 100}%.`}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
+          {/* Sponsorship indicator — two-step: show eligibility first, activate on click */}
+          <SponsorshipIndicator
+            isSponsored={isSponsored}
+            sponsorAddress={sponsorAddress}
+            remainingBudget={remainingBudget}
+            maxEntryPriceBps={maxEntryPriceBps}
+            matchLimit={matchLimit}
+            requiredCounterparty={requiredCounterparty}
+            bestBid={bestBid}
+            stickyEstimateBid={stickyEstimateBid}
+            positionSizeValue={positionSizeValue || ''}
+            collateralDecimals={collateralDecimals}
+            collateralSymbol={collateralSymbol}
+            sponsorshipActivated={sponsorshipActivated}
+            awaitingSponsoredBid={awaitingSponsoredBid}
+            onActivate={activateSponsor}
+          />
 
           <div className="mt-5 space-y-1">
             <RestrictedJurisdictionBanner
@@ -843,7 +843,7 @@ export default function PositionForm({
               onRequestBids={handleRequestBids}
               isSubmitting={isSubmitting}
               onSubmit={onSubmit}
-              isSubmitDisabled={isPermitLoading || isRestricted}
+              isSubmitDisabled={isPermitLoading || isRestricted || awaitingSponsoredBid}
               enableRainbowHover={isRainbowHoverEnabled}
               hintMounted={hintMounted}
               disclaimerMounted={disclaimerMounted}
