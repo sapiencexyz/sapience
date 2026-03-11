@@ -103,6 +103,16 @@ const OutcomeSide = { YES: 0, NO: 1 } as const;
 const VERIFYING_CONTRACT = (process.env.VERIFYING_CONTRACT || (addressBook.predictionMarketEscrow as any)?.[CHAIN_ID]?.address) as Address | undefined;
 const COLLATERAL_TOKEN = (process.env.COLLATERAL_TOKEN || (addressBook.collateralToken as any)[CHAIN_ID]?.address) as Address;
 
+// Sponsor allowlist: only sign with sponsor addresses the operator trusts.
+// Untrusted sponsors could grief via reverts in fundMint or have unexpected side effects.
+// When a requested sponsor is not on this list, the market maker signs with 0x0 (self-funded).
+const SPONSOR_ALLOWLIST: Set<string> = new Set(
+  (process.env.SPONSOR_ALLOWLIST || '')
+    .split(',')
+    .map((a) => a.trim().toLowerCase())
+    .filter((a) => a.length > 0)
+);
+
 const BID_AMOUNT_DEC = process.env.BID_AMOUNT || '0.01';
 const MIN_MAKER_WAGER_DEC = process.env.MIN_MAKER_POSITION_SIZE || '10';
 const DEADLINE_SECONDS = Number(process.env.DEADLINE_SECONDS || '60');
@@ -340,6 +350,22 @@ function start() {
         const counterpartyDeadline = BigInt(Math.floor(Date.now() / 1000) + DEADLINE_SECONDS);
         const counterpartyNonce = 0n;
 
+        // Validate sponsor against allowlist. If the predictor requests an
+        // unknown sponsor, sign with 0x0 (self-funded) rather than blindly
+        // trusting an arbitrary contract that could grief via reverts.
+        const ZERO_ADDRESS_FULL = '0x0000000000000000000000000000000000000000';
+        const requestedSponsor = (auction.predictorSponsor ?? ZERO_ADDRESS_FULL).toLowerCase();
+        const effectiveSponsor: Address = (
+          requestedSponsor === ZERO_ADDRESS_FULL ||
+          SPONSOR_ALLOWLIST.has(requestedSponsor)
+        )
+          ? requestedSponsor as Address
+          : ZERO_ADDRESS_FULL as Address;
+
+        if (requestedSponsor !== ZERO_ADDRESS_FULL && effectiveSponsor === ZERO_ADDRESS_FULL) {
+          logger.warn(`⚠️  Sponsor ${formatAddress(requestedSponsor)} not in allowlist — signing as self-funded`);
+        }
+
         // Build typed data for counterparty signature
         const typedData = buildCounterpartyMintTypedData!({
           picks: convertPicksFromJson(auction.picks),
@@ -349,8 +375,10 @@ function start() {
           counterparty: MAKER,
           counterpartyNonce,
           counterpartyDeadline,
-          predictorSponsor: (auction.predictorSponsor ?? '0x0000000000000000000000000000000000000000') as Address,
-          predictorSponsorData: (auction.predictorSponsorData ?? '0x') as `0x${string}`,
+          predictorSponsor: effectiveSponsor,
+          predictorSponsorData: effectiveSponsor !== ZERO_ADDRESS_FULL
+            ? (auction.predictorSponsorData ?? '0x') as `0x${string}`
+            : '0x' as `0x${string}`,
           verifyingContract: VERIFYING_CONTRACT!,
           chainId: CHAIN_ID,
         });

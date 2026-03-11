@@ -7,11 +7,6 @@ import {
   DialogTitle,
 } from '@sapience/ui/components/ui/dialog';
 import { Gift, Info } from 'lucide-react';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@sapience/ui/components/ui/tooltip';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FormProvider, type UseFormReturn, useWatch } from 'react-hook-form';
@@ -119,6 +114,9 @@ export default function PositionForm({
   const [stickyEstimateBid, setStickyEstimateBid] = useState<QuoteBid | null>(
     null
   );
+  // Whether the user has clicked "Use" to activate sponsorship for the current auction.
+  // Reset whenever bids are cleared (position size, selections, or wallet change).
+  const [sponsorshipActivated, setSponsorshipActivated] = useState(false);
   // State for managing bid clearing when position size/selections change (for animations)
   // IMPORTANT: do NOT seed from `bids` prop.
   // `bids` comes from a shared auction hook and may contain leftover quotes from
@@ -228,6 +226,7 @@ export default function PositionForm({
       );
       setValidBids([]);
       setStickyEstimateBid(null);
+      setSponsorshipActivated(false);
       setLastQuoteRequestMs(null); // Reset cooldown when position size changes
       currentRequestKeyRef.current = null; // Ignore incoming bids for old configuration
       prevPositionSizeRef.current = positionSizeValue || '';
@@ -244,6 +243,7 @@ export default function PositionForm({
       );
       setValidBids([]);
       setStickyEstimateBid(null);
+      setSponsorshipActivated(false);
       setLastQuoteRequestMs(null);
       currentRequestKeyRef.current = null;
       prevHasConnectedWalletRef.current = hasConnectedWallet;
@@ -256,6 +256,7 @@ export default function PositionForm({
       logPositionForm('Predictions changed, clearing bids');
       setValidBids([]);
       setStickyEstimateBid(null);
+      setSponsorshipActivated(false);
       setLastQuoteRequestMs(null); // Reset cooldown when selections change
       currentRequestKeyRef.current = null; // Ignore incoming bids for old configuration
       prevPredictionsKeyRef.current = predictionsKey;
@@ -411,7 +412,7 @@ export default function PositionForm({
   const totalPredictionCount = selections.length + pythPredictions.length;
 
   const triggerAuctionRequest = useCallback(
-    async (options?: { forceRefresh?: boolean }) => {
+    async (options?: { forceRefresh?: boolean; withSponsor?: boolean }) => {
       // Prevent multiple concurrent auction requests
       if (auctionRequestInFlightRef.current) {
         return;
@@ -497,8 +498,10 @@ export default function PositionForm({
           chainId: chainId,
         };
 
-        // Thread sponsor so the counterparty signs with the correct predictorSponsor
-        if (isSponsored && sponsorAddress) {
+        // Only thread sponsor when the user explicitly activates sponsorship.
+        // Initial quotes are always unsponored so the bid is usable for self-funded
+        // mints; if the bid qualifies, the user clicks "Use" to re-request with sponsor.
+        if (options?.withSponsor && sponsorAddress) {
           params.predictorSponsor = sponsorAddress;
           params.predictorSponsorData = '0x';
         }
@@ -562,7 +565,6 @@ export default function PositionForm({
       chainId,
       predictionsKey,
       getPicks,
-      isSponsored,
       sponsorAddress,
     ]
   );
@@ -794,12 +796,9 @@ export default function PositionForm({
             />
           </div>
 
-          {/* Sponsorship indicator — only shown when eligible */}
+          {/* Sponsorship indicator — two-step: show eligibility first, activate on click */}
           {isSponsored &&
             (() => {
-              // Only use the live auction bid — the sticky estimate may have
-              // a different counterparty or odds that don't reflect the
-              // current auction, so we can't validate eligibility against it.
               if (!bestBid) return null;
 
               const decimals = collateralDecimals ?? 18;
@@ -828,32 +827,72 @@ export default function PositionForm({
               });
               if (!bidEligible) return null;
 
-              return (
-                <div className="mt-5 rounded-lg border px-3 py-2.5 text-sm border-ethena/30 bg-ethena/5">
-                  {withinBudget ? (
-                    <div className="flex items-center gap-2">
-                      <Gift className="h-4 w-4 flex-shrink-0 text-ethena" />
-                      <p className="font-medium text-ethena">
-                        {positionDisplay} {collateralSymbol} sponsored
-                        <span className="font-normal text-muted-foreground ml-3">
-                          You pay 0 {collateralSymbol}
-                        </span>
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="flex flex-col gap-1">
+              // Already activated — show confirmed sponsored state
+              if (sponsorshipActivated) {
+                return (
+                  <div className="mt-5 rounded-lg border px-3 py-2.5 text-sm border-ethena/30 bg-ethena/5">
+                    {withinBudget ? (
                       <div className="flex items-center gap-2">
                         <Gift className="h-4 w-4 flex-shrink-0 text-ethena" />
                         <p className="font-medium text-ethena">
-                          {budgetDisplay} {collateralSymbol} sponsorship
-                          available
+                          {positionDisplay} {collateralSymbol} sponsored
+                          <span className="font-normal text-muted-foreground ml-3">
+                            You pay 0 {collateralSymbol}
+                          </span>
                         </p>
                       </div>
-                      <p className="text-xs text-muted-foreground ml-6">
-                        Reduce position to {budgetDisplay} {collateralSymbol} to
-                        use it
+                    ) : (
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                          <Gift className="h-4 w-4 flex-shrink-0 text-ethena" />
+                          <p className="font-medium text-ethena">
+                            {budgetDisplay} {collateralSymbol} sponsorship
+                            available
+                          </p>
+                        </div>
+                        <p className="text-xs text-muted-foreground ml-6">
+                          Reduce position to {budgetDisplay} {collateralSymbol}{' '}
+                          to use it
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
+              // Not yet activated — show "Use" button so user opts in
+              return (
+                <div className="mt-5 rounded-lg border px-3 py-2.5 text-sm border-ethena/30 bg-ethena/5">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <Gift className="h-4 w-4 flex-shrink-0 text-ethena" />
+                      <p className="font-medium text-ethena">
+                        {withinBudget
+                          ? `${positionDisplay} ${collateralSymbol} sponsorship available`
+                          : `${budgetDisplay} ${collateralSymbol} sponsorship available`}
                       </p>
                     </div>
+                    {withinBudget && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSponsorshipActivated(true);
+                          triggerAuctionRequest({
+                            forceRefresh: true,
+                            withSponsor: true,
+                          });
+                        }}
+                        className="shrink-0 rounded-md bg-ethena/20 px-3 py-1 text-xs font-semibold text-ethena hover:bg-ethena/30 transition-colors"
+                      >
+                        Use
+                      </button>
+                    )}
+                  </div>
+                  {!withinBudget && (
+                    <p className="text-xs text-muted-foreground ml-6 mt-1">
+                      Reduce position to {budgetDisplay} {collateralSymbol} to
+                      use it
+                    </p>
                   )}
                 </div>
               );

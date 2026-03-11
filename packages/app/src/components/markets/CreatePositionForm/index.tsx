@@ -234,18 +234,15 @@ const CreatePositionFormInner = ({
     bids: rawBids,
     requestQuotes,
     buildMintRequestDataFromBid,
+    currentAuctionParams,
   } = useAuctionStart();
 
   // Always use PredictionMarketEscrow
   const PREDICTION_MARKET_ADDRESS =
     predictionMarketEscrow[positionChainId]?.address;
 
-  // Sponsorship status
-  const {
-    isSponsored,
-    sponsorAddress,
-    refetch: refetchSponsor,
-  } = useSponsorStatus();
+  // Sponsorship: only need refetch here to update budget after a mint
+  const { refetch: refetchSponsor } = useSponsorStatus();
 
   // Fetch collateral token address from PredictionMarketEscrow
   const predictionMarketConfigRead = useReadContracts({
@@ -486,6 +483,12 @@ const CreatePositionFormInner = ({
     }
   }, [getPicks]);
 
+  // Derive sponsor status from the actual auction params (not from user eligibility).
+  // The counterparty signed with whatever sponsor was in the auction request, so
+  // validation must match exactly.
+  const auctionHasSponsor = !!currentAuctionParams?.predictorSponsor;
+  const auctionSponsorAddress = currentAuctionParams?.predictorSponsor as Address | undefined;
+
   // Validate escrow bids: session mode uses full simulation, EOA mode uses lightweight checks
   const { validatedBids: bids } = useValidatedEscrowBids(
     rawBids,
@@ -496,8 +499,8 @@ const CreatePositionFormInner = ({
       predictorAddress: effectiveAddress as Address | undefined,
       predictorCollateral: predictorCollateralWei,
       picks: validationPicks,
-      isSponsored,
-      sponsorAddress: sponsorAddress ?? undefined,
+      isSponsored: auctionHasSponsor,
+      sponsorAddress: auctionSponsorAddress,
       signPredictorApproval: isUsingSession ? sessionSignTypedData : null,
       enabled: true,
     }
@@ -712,12 +715,9 @@ const CreatePositionFormInner = ({
             }));
           }
 
-          // Wire sponsorship: if user has a sponsor budget, pass the sponsor address
-          // so the escrow contract calls fundMint instead of pulling from user's wallet
-          if (isSponsored && sponsorAddress) {
-            mintReq.predictorSponsor = sponsorAddress;
-            mintReq.predictorSponsorData = '0x';
-          }
+          // Sponsorship: predictorSponsor is already set by buildMintRequestDataFromBid
+          // from the auction params (threaded when user clicked "Use" on the sponsor indicator).
+          // No manual override needed — it must match what the counterparty signed over.
 
           // Submit the mint request to PredictionMarket
           submitPosition(mintReq);
