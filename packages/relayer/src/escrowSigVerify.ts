@@ -13,8 +13,8 @@ import {
   type Hex,
 } from 'viem';
 import {
-  buildCounterpartyMintTypedData,
   verifyAuctionIntentSignature as sdkVerifyAuctionIntentSignature,
+  verifyCounterpartyMintSignature as sdkVerifyCounterpartyMintSignature,
 } from '@sapience/sdk/auction/escrowSigning';
 import type { Pick } from '@sapience/sdk/types';
 import type { AuctionRFQPayload, BidPayload } from './escrowTypes';
@@ -70,74 +70,37 @@ export async function verifyEscrowCounterpartySignature(
     return false;
   }
 
-  try {
-    const picks = convertPicks(auction.picks);
+  const picks = convertPicks(auction.picks);
 
-    // Build the typed data that should have been signed
-    // counterpartyCollateral comes from the bid (counterparty decides their wager)
-    const rawTypedData = buildCounterpartyMintTypedData({
-      picks,
-      predictorCollateral: BigInt(auction.predictorCollateral),
-      counterpartyCollateral: BigInt(bid.counterpartyCollateral),
-      predictor: auction.predictor as Address,
-      counterparty: bid.counterparty as Address,
-      counterpartyNonce: BigInt(bid.counterpartyNonce),
-      counterpartyDeadline: BigInt(bid.counterpartyDeadline),
-      predictorSponsor: (auction.predictorSponsor ?? '0x0000000000000000000000000000000000000000') as Address,
-      predictorSponsorData: (auction.predictorSponsorData ?? '0x') as Hex,
-      verifyingContract,
-      chainId: auction.chainId,
-    });
+  // Delegate to SDK verification (escrow session key + EOA + smart account owner)
+  const result = await sdkVerifyCounterpartyMintSignature({
+    picks,
+    predictorCollateral: BigInt(auction.predictorCollateral),
+    counterpartyCollateral: BigInt(bid.counterpartyCollateral),
+    predictor: auction.predictor as Address,
+    counterparty: bid.counterparty as Address,
+    counterpartyNonce: BigInt(bid.counterpartyNonce),
+    counterpartyDeadline: BigInt(bid.counterpartyDeadline),
+    counterpartySignature: bid.counterpartySignature as Hex,
+    counterpartySessionKeyData: bid.counterpartySessionKeyData,
+    predictorSponsor: (auction.predictorSponsor ?? '0x0000000000000000000000000000000000000000') as Address,
+    predictorSponsorData: (auction.predictorSponsorData ?? '0x') as Hex,
+    verifyingContract,
+    chainId: auction.chainId,
+    resolveSmartAccountAddress: computeSmartAccountAddress,
+  });
 
-    // Convert chainId to number for viem
-    const typedData = convertTypedDataForViem(rawTypedData);
-
-    const counterpartyAddress = bid.counterparty.toLowerCase() as Address;
-    const signature = bid.counterpartySignature as Hex;
-
-    // Path 1: Try direct EOA verification
-    try {
-      const recoveredSigner = await recoverTypedDataAddress({
-        ...typedData,
-        signature,
-      });
-
-      if (recoveredSigner.toLowerCase() === counterpartyAddress.toLowerCase()) {
-        if (process.env.NODE_ENV !== 'production') {
-          console.debug('[Escrow-Sig] Valid counterparty EOA signature');
-        }
-        return true;
-      }
-    } catch {
-      // Continue to smart account check
+  if (result.valid) {
+    if (process.env.NODE_ENV !== 'production') {
+      console.debug('[Escrow-Sig] Valid counterparty signature, recovered:', result.recoveredAddress);
     }
-
-    // Path 2: Recover signer and verify they own the smart account
-    const recoveredOwner = await recoverTypedDataAddress({
-      ...typedData,
-      signature,
-    });
-
-    const expectedSmartAccount = await computeSmartAccountAddress(recoveredOwner, auction.chainId);
-
-    if (expectedSmartAccount.toLowerCase() === counterpartyAddress.toLowerCase()) {
-      if (process.env.NODE_ENV !== 'production') {
-        console.debug(
-          '[Escrow-Sig] Valid counterparty smart account owner signature, owner:',
-          recoveredOwner
-        );
-      }
-      return true;
-    }
-
-    console.warn(
-      '[Escrow-Sig] Counterparty signature verification failed: recovered signer does not match'
-    );
-    return false;
-  } catch (error) {
-    console.error('[Escrow-Sig] Counterparty verification error:', error);
-    return false;
+    return true;
   }
+
+  console.warn(
+    '[Escrow-Sig] Counterparty signature verification failed: recovered signer does not match'
+  );
+  return false;
 }
 
 // ============================================================================

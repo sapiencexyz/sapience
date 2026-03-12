@@ -699,3 +699,110 @@ export async function verifyAuctionIntentSignature(params: {
     return { valid: false };
   }
 }
+
+/**
+ * Verify the counterparty's MintApproval EIP-712 signature.
+ *
+ * Supports three verification paths (mirrors `verifyAuctionIntentSignature`):
+ * 1. **Escrow session key** — if `counterpartySessionKeyData` is ABI-encoded hex,
+ *    verifies the owner approved the session key, then checks the mint signature
+ *    was produced by that session key.
+ * 2. **EOA** — recovers the signer and checks it matches the counterparty address.
+ * 3. **Smart account owner** — if an optional `resolveSmartAccountAddress` callback
+ *    is provided, checks whether the recovered signer's derived smart account matches
+ *    the counterparty.
+ *
+ * @returns `{ valid, recoveredAddress }` — `recoveredAddress` is the EOA that
+ *   produced the signature.
+ */
+export async function verifyCounterpartyMintSignature(params: {
+  picks: Pick[];
+  predictorCollateral: bigint;
+  counterpartyCollateral: bigint;
+  predictor: Address;
+  counterparty: Address;
+  counterpartyNonce: bigint;
+  counterpartyDeadline: bigint;
+  counterpartySignature: Hex;
+  counterpartySessionKeyData?: string;
+  predictorSponsor?: Address;
+  predictorSponsorData?: Hex;
+  verifyingContract: Address;
+  chainId: number;
+  /** Optional: resolve an EOA to its deterministic smart account address (e.g. ZeroDev Kernel). */
+  resolveSmartAccountAddress?: (ownerAddress: Address, chainId: number) => Promise<Address>;
+}): Promise<{ valid: boolean; recoveredAddress?: Address }> {
+  try {
+    const rawTypedData = buildCounterpartyMintTypedData({
+      picks: params.picks,
+      predictorCollateral: params.predictorCollateral,
+      counterpartyCollateral: params.counterpartyCollateral,
+      predictor: params.predictor,
+      counterparty: params.counterparty,
+      counterpartyNonce: params.counterpartyNonce,
+      counterpartyDeadline: params.counterpartyDeadline,
+      predictorSponsor: params.predictorSponsor,
+      predictorSponsorData: params.predictorSponsorData,
+      verifyingContract: params.verifyingContract,
+      chainId: params.chainId,
+    });
+
+    // Convert bigint chainId to number for viem's recoverTypedDataAddress
+    const typedData = {
+      ...rawTypedData,
+      domain: {
+        ...rawTypedData.domain,
+        chainId: Number(rawTypedData.domain.chainId),
+      },
+    };
+
+    const counterpartyAddress = params.counterparty.toLowerCase();
+
+    // Path 1: Escrow session key (ABI-encoded hex)
+    if (params.counterpartySessionKeyData?.startsWith('0x')) {
+      const escrowSessionData = decodeEscrowSessionKeyData(params.counterpartySessionKeyData);
+      if (escrowSessionData) {
+        const escrowResult = await verifyEscrowSessionKey(
+          escrowSessionData,
+          counterpartyAddress as Address,
+          params.verifyingContract
+        );
+
+        if (escrowResult.valid && escrowResult.sessionKeyAddress) {
+          const recoveredSigner = await recoverTypedDataAddress({
+            ...typedData,
+            signature: params.counterpartySignature,
+          });
+
+          if (recoveredSigner.toLowerCase() === escrowResult.sessionKeyAddress.toLowerCase()) {
+            return { valid: true, recoveredAddress: recoveredSigner };
+          }
+        }
+        // Fall through to EOA/smart account paths
+      }
+    }
+
+    // Path 2: Direct EOA verification
+    const recovered = await recoverTypedDataAddress({
+      ...typedData,
+      signature: params.counterpartySignature,
+    });
+
+    if (recovered.toLowerCase() === counterpartyAddress) {
+      return { valid: true, recoveredAddress: recovered };
+    }
+
+    // Path 3: Smart account owner — recovered EOA owns the smart account
+    if (params.resolveSmartAccountAddress) {
+      const expectedSmartAccount = await params.resolveSmartAccountAddress(recovered, params.chainId);
+      if (expectedSmartAccount.toLowerCase() === counterpartyAddress) {
+        return { valid: true, recoveredAddress: recovered };
+      }
+    }
+
+    return { valid: false, recoveredAddress: recovered };
+  } catch (e) {
+    console.debug('[escrowSigning] Counterparty mint signature verification error:', e);
+    return { valid: false };
+  }
+}
