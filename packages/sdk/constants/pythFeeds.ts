@@ -23,8 +23,11 @@ export interface PythFeed {
 export const PYTH_FEEDS: PythFeed[] = [
   { lazerId: 1, name: 'BTC', hermesId: 'e62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43' },
   { lazerId: 2, name: 'ETH', hermesId: 'ff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace' },
-  { lazerId: 6, name: 'SOL', hermesId: 'ef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d' },
   { lazerId: 85, name: 'ENA', hermesId: 'b7910ba7322db020416fcac28b48c01212fd9cc8fbcbaf7d30477ed8605f6bd4' },
+  { lazerId: 657, name: 'OIL', hermesId: '925ca92ff005ae943c158e3563f59698ce7e75c5a8c8dd43303a0a154887b3e6' },
+  { lazerId: 2391, name: 'GOLD', hermesId: 'b9f33a89ac0ae219f25b66b0a9e9ae32ae498dfad9f6d30ab96654372e431640' },
+  { lazerId: 1398, name: 'SPY', hermesId: '05d590e94e9f51abe18ed0421bc302995673156750e914ac1600583fe2e03f99' },
+  { lazerId: 1435, name: 'TSLA', hermesId: '713631e41c06db404e6a5d029f3eebfd5b885c59dce4a19f337c024e26584e26' },
 ];
 
 /** Lazer feed ID → Hermes hex price ID */
