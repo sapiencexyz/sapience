@@ -20,6 +20,12 @@ vi.mock('viem', async (importOriginal) => {
   };
 });
 
+// Mock computeSmartAccountAddress so we can control the ownership check
+const mockComputeSmartAccountAddress = vi.fn();
+vi.mock('./smartAccount', () => ({
+  computeSmartAccountAddress: (...args: unknown[]) => mockComputeSmartAccountAddress(...args),
+}));
+
 import {
   verifySessionApproval,
   parseZeroDevApproval,
@@ -109,6 +115,7 @@ describe('verifySessionApproval', () => {
 
   test('accepts valid approval where recovered owner matches claimed account', async () => {
     mockRecoverTypedDataAddress.mockResolvedValue(OWNER_ADDRESS);
+    mockComputeSmartAccountAddress.mockReturnValue(SMART_ACCOUNT_ADDRESS);
 
     const result = await verifySessionApproval(
       makeApprovalPayload(SMART_ACCOUNT_ADDRESS),
@@ -230,5 +237,51 @@ describe('extractSessionKeyFromValidatorData', () => {
 
   test('returns null for empty validatorData', () => {
     expect(extractSessionKeyFromValidatorData(EMPTY_VALIDATOR_DATA)).toBeNull();
+  });
+});
+
+describe('verifySessionApproval — smart account ownership', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  test('rejects when recovered owner does not own claimed smart account', async () => {
+    const DIFFERENT_ADDRESS = '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' as Address;
+    mockRecoverTypedDataAddress.mockResolvedValue(OWNER_ADDRESS);
+    mockComputeSmartAccountAddress.mockReturnValue(DIFFERENT_ADDRESS);
+
+    const result = await verifySessionApproval(
+      makeApprovalPayload(SMART_ACCOUNT_ADDRESS),
+      SMART_ACCOUNT_ADDRESS
+    );
+
+    expect(result.valid).toBe(false);
+    expect(result.error).toBe('smart_account_ownership_mismatch');
+  });
+
+  test('accepts when recovered owner owns claimed smart account', async () => {
+    mockRecoverTypedDataAddress.mockResolvedValue(OWNER_ADDRESS);
+    mockComputeSmartAccountAddress.mockReturnValue(SMART_ACCOUNT_ADDRESS);
+
+    const result = await verifySessionApproval(
+      makeApprovalPayload(SMART_ACCOUNT_ADDRESS),
+      SMART_ACCOUNT_ADDRESS
+    );
+
+    expect(result.valid).toBe(true);
+    expect(result.ownerAddress).toBe(OWNER_ADDRESS);
+  });
+
+  test('ownership check always runs (not gated by DI)', async () => {
+    mockRecoverTypedDataAddress.mockResolvedValue(OWNER_ADDRESS);
+    mockComputeSmartAccountAddress.mockReturnValue(SMART_ACCOUNT_ADDRESS);
+
+    // Call without any third arg — ownership check should still run
+    await verifySessionApproval(
+      makeApprovalPayload(SMART_ACCOUNT_ADDRESS),
+      SMART_ACCOUNT_ADDRESS
+    );
+
+    expect(mockComputeSmartAccountAddress).toHaveBeenCalledWith(OWNER_ADDRESS);
   });
 });

@@ -20,7 +20,6 @@ import type { Pick } from '@sapience/sdk/types';
 import type { AuctionRFQPayload, BidPayload } from './escrowTypes';
 import {
   verifySessionApproval,
-  computeSmartAccountAddress,
   type SessionApprovalPayload,
 } from './sessionAuth';
 
@@ -87,7 +86,6 @@ export async function verifyEscrowCounterpartySignature(
     predictorSponsorData: (auction.predictorSponsorData ?? '0x') as Hex,
     verifyingContract,
     chainId: auction.chainId,
-    resolveSmartAccountAddress: computeSmartAccountAddress,
   });
 
   if (result.valid) {
@@ -111,7 +109,6 @@ export async function verifyEscrowCounterpartySignature(
       const sessionResult = await verifySessionApproval(
         sessionApprovalPayload,
         counterpartyAddress,
-        computeSmartAccountAddress,
       );
 
       if (sessionResult.valid && sessionResult.sessionKeyAddress) {
@@ -197,7 +194,6 @@ export async function verifyAuctionIntentSignature(
     predictorSessionKeyData: payload.predictorSessionKeyData,
     verifyingContract,
     chainId: payload.chainId,
-    resolveSmartAccountAddress: computeSmartAccountAddress,
   });
 
   if (result.valid) {
@@ -232,7 +228,6 @@ export async function verifyAuctionIntentSignature(
       const sessionResult = await verifySessionApproval(
         sessionApprovalPayload,
         predictorAddress,
-        computeSmartAccountAddress,
       );
 
       if (sessionResult.valid && sessionResult.sessionKeyAddress) {
