@@ -13,6 +13,7 @@ const sponsorAbi = parseAbi([
   'function remainingBudget(address) view returns (uint256)',
   'function requiredCounterparty() view returns (address)',
   'function maxEntryPriceBps() view returns (uint256)',
+  'function matchLimit() view returns (uint256)',
   'function BPS() view returns (uint256)',
 ]);
 
@@ -50,6 +51,12 @@ export function useSponsorStatus() {
         functionName: 'maxEntryPriceBps',
         chainId: DEFAULT_CHAIN_ID,
       },
+      {
+        address: SPONSOR_ADDRESS!,
+        abi: sponsorAbi,
+        functionName: 'matchLimit',
+        chainId: DEFAULT_CHAIN_ID,
+      },
     ],
     query: {
       enabled,
@@ -61,6 +68,7 @@ export function useSponsorStatus() {
   const remainingBudget = (data?.[0]?.result as bigint) ?? 0n;
   const requiredCounterparty = (data?.[1]?.result as Address) ?? null;
   const maxEntryPriceBps = (data?.[2]?.result as bigint) ?? 0n;
+  const matchLimit = (data?.[3]?.result as bigint) ?? 0n;
 
   return {
     /** Whether the user has an active sponsorship budget > 0 */
@@ -73,6 +81,8 @@ export function useSponsorStatus() {
     requiredCounterparty,
     /** Max entry price in basis points (e.g. 7000 = 0.70) */
     maxEntryPriceBps,
+    /** Max predictor collateral per mint in wei (0 = no limit) */
+    matchLimit,
     /** Whether sponsorship is configured (env var set) */
     sponsorshipEnabled: !!SPONSOR_ADDRESS,
     /** Loading state */
@@ -85,19 +95,57 @@ export function useSponsorStatus() {
 }
 
 /**
- * Check whether a given entry price qualifies for sponsorship.
- * @param predictorCollateral - predictor's collateral amount
- * @param counterpartyCollateral - counterparty's collateral amount
- * @param maxBps - max entry price in basis points from the contract
- * @returns true if the entry price is at or below the cap
+ * Check all on-chain sponsorship eligibility criteria for a given bid.
+ * Mirrors the checks in `OnboardingSponsor.fundMint`.
  */
-export function isEntryPriceEligible(
-  predictorCollateral: bigint,
-  counterpartyCollateral: bigint,
-  maxBps: bigint
-): boolean {
-  if (predictorCollateral === 0n || counterpartyCollateral === 0n) return false;
-  const total = predictorCollateral + counterpartyCollateral;
-  const entryBps = (predictorCollateral * 10000n) / total;
-  return entryBps <= maxBps;
+export function checkSponsorEligibility(params: {
+  predictorCollateral: bigint;
+  counterpartyCollateral: bigint;
+  bidCounterparty: string;
+  requiredCounterparty: Address | null;
+  maxEntryPriceBps: bigint;
+  matchLimit: bigint;
+  remainingBudget: bigint;
+}): { eligible: boolean; reason: string | null } {
+  const {
+    predictorCollateral,
+    counterpartyCollateral,
+    bidCounterparty,
+    requiredCounterparty,
+    maxEntryPriceBps,
+    matchLimit,
+    remainingBudget,
+  } = params;
+
+  // 1. Counterparty match
+  if (
+    requiredCounterparty &&
+    bidCounterparty.toLowerCase() !== requiredCounterparty.toLowerCase()
+  ) {
+    return { eligible: false, reason: 'Bid counterparty does not match the required counterparty.' };
+  }
+
+  // 2. Entry price cap
+  if (predictorCollateral > 0n && counterpartyCollateral > 0n) {
+    const total = predictorCollateral + counterpartyCollateral;
+    const entryBps = (predictorCollateral * 10000n) / total;
+    if (entryBps > maxEntryPriceBps) {
+      return {
+        eligible: false,
+        reason: `Only available for positions priced below ${Number(maxEntryPriceBps) / 100}%.`,
+      };
+    }
+  }
+
+  // 3. Match limit
+  if (matchLimit > 0n && predictorCollateral > matchLimit) {
+    return { eligible: false, reason: 'Position size exceeds the sponsored match limit.' };
+  }
+
+  // 4. Budget sufficient
+  if (predictorCollateral > 0n && predictorCollateral > remainingBudget) {
+    return { eligible: false, reason: 'Sponsorship budget is insufficient for this position size.' };
+  }
+
+  return { eligible: true, reason: null };
 }
