@@ -1,0 +1,774 @@
+import React from 'react';
+import { render, act, fireEvent } from '@testing-library/react';
+import type { UseFormReturn } from 'react-hook-form';
+
+// ---------------------------------------------------------------------------
+// Mocks — hoisted above component import
+// ---------------------------------------------------------------------------
+
+// wagmi
+const mockUseAccount = jest.fn();
+jest.mock('wagmi', () => ({
+  useAccount: () => mockUseAccount(),
+  useReadContract: () => ({ data: undefined, isLoading: false }),
+}));
+
+// useConnectedWallet
+const mockUseConnectedWallet = jest.fn();
+jest.mock('~/hooks/useConnectedWallet', () => ({
+  useConnectedWallet: () => mockUseConnectedWallet(),
+}));
+
+// SessionContext
+const mockUseSession = jest.fn();
+jest.mock('~/lib/context/SessionContext', () => ({
+  useSession: () => mockUseSession(),
+}));
+
+// CreatePositionContext
+const mockUseCreatePositionContext = jest.fn();
+jest.mock('~/lib/context/CreatePositionContext', () => ({
+  useCreatePositionContext: () => mockUseCreatePositionContext(),
+}));
+
+// CollateralBalanceContext
+const mockUseCollateralBalanceContext = jest.fn();
+jest.mock('~/lib/context/CollateralBalanceContext', () => ({
+  useCollateralBalanceContext: () => mockUseCollateralBalanceContext(),
+}));
+
+// ConnectDialogContext
+jest.mock('~/lib/context/ConnectDialogContext', () => ({
+  useConnectDialog: () => ({ openConnectDialog: jest.fn() }),
+}));
+
+// SapienceProvider (for useRestrictedJurisdiction)
+jest.mock('~/lib/context/SapienceProvider', () => ({
+  useSapience: () => ({
+    permitData: { permitted: true },
+    isPermitLoading: false,
+    permitError: null,
+  }),
+}));
+
+// SponsorStatus
+jest.mock('~/hooks/sponsorship/useSponsorStatus', () => ({
+  useSponsorStatus: () => ({
+    isSponsored: false,
+    sponsorAddress: null,
+    remainingBudget: 0n,
+    maxEntryPriceBps: 0n,
+    matchLimit: 0n,
+    requiredCounterparty: null,
+  }),
+}));
+
+// SponsorshipActivation
+jest.mock('~/hooks/sponsorship/useSponsorshipActivation', () => ({
+  useSponsorshipActivation: () => ({
+    sponsorshipActivated: false,
+    awaitingSponsoredBid: false,
+    activateSponsor: jest.fn(),
+    clearAwaiting: jest.fn(),
+    resetSponsor: jest.fn(),
+  }),
+}));
+
+// toast
+jest.mock('@sapience/ui/hooks/use-toast', () => ({
+  useToast: () => ({ toast: jest.fn() }),
+}));
+
+// SDK
+jest.mock('@sapience/sdk', () => ({
+  generateRandomNonce: () => BigInt(12345),
+  COLLATERAL_SYMBOLS: {},
+  encodePythBinaryOptionOutcomes: jest.fn(),
+  encodePolymarketPredictedOutcomes: jest.fn(),
+  getPythMarketId: jest.fn(),
+}));
+
+jest.mock('@sapience/sdk/constants', () => ({
+  COLLATERAL_SYMBOLS: { 42161: 'USDe' },
+  CHAIN_ID_ETHEREAL: 5064014,
+  CHAIN_ID_ETHEREAL_TESTNET: 13374202,
+  DEFAULT_CHAIN_ID: 42161,
+}));
+
+jest.mock('@sapience/sdk/contracts', () => ({
+  umaResolver: {},
+  pythResolver: {},
+  pythConditionResolver: {},
+  predictionMarketLZConditionalTokensResolver: {},
+  collateralToken: { 42161: { address: '0xCollateral' } },
+}));
+
+// buildAuctionPayload — return minimal valid payloads
+jest.mock('~/lib/auction/buildAuctionPayload', () => ({
+  buildAuctionStartPayload: jest.fn().mockReturnValue({
+    resolver: '0xResolver',
+    predictedOutcomes: '0x01',
+  }),
+  buildPythAuctionStartPayload: jest.fn().mockReturnValue({
+    resolver: '0xPythResolver',
+    predictedOutcomes: '0x02',
+    escrowPicks: [],
+  }),
+}));
+
+// bidLogger — silence logs in tests
+jest.mock('~/lib/auction/bidLogger', () => ({
+  logPositionForm: jest.fn(),
+  formatBidForLog: jest.fn().mockReturnValue('mock-bid-log'),
+}));
+
+// Stub heavy child components to keep tests fast
+jest.mock('~/components/markets/forms', () => ({
+  PositionSizeInput: () => <div data-testid="position-size-input" />,
+}));
+
+jest.mock('~/components/markets/forms/shared/BidDisplay', () => {
+  const BidDisplay = (props: Record<string, unknown>) => (
+    <div
+      data-testid="bid-display"
+      data-show-request-bids-button={String(props.showRequestBidsButton)}
+      data-show-add-predictions-hint={String(props.showAddPredictionsHint)}
+      data-is-auction-pending={String(props.isAuctionPending)}
+    >
+      <button
+        data-testid="initiate-auction-btn"
+        onClick={props.onRequestBids as () => void}
+      />
+    </div>
+  );
+  BidDisplay.displayName = 'BidDisplay';
+  return { __esModule: true, default: BidDisplay };
+});
+
+jest.mock('~/components/markets/ConditionTitleLink', () => {
+  const ConditionTitleLink = () => <span data-testid="condition-title-link" />;
+  ConditionTitleLink.displayName = 'ConditionTitleLink';
+  return { __esModule: true, default: ConditionTitleLink };
+});
+
+jest.mock('~/components/shared/RestrictedJurisdictionBanner', () => {
+  const Banner = () => null;
+  Banner.displayName = 'RestrictedJurisdictionBanner';
+  return { __esModule: true, default: Banner };
+});
+
+jest.mock('../SponsorshipIndicator', () => {
+  const SI = () => null;
+  SI.displayName = 'SponsorshipIndicator';
+  return { __esModule: true, default: SI };
+});
+
+// lucide-react
+jest.mock('lucide-react', () => ({
+  Info: () => <span data-testid="info-icon" />,
+}));
+
+// framer-motion — passthrough
+jest.mock('framer-motion', () => ({
+  AnimatePresence: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
+  motion: new Proxy(
+    {},
+    {
+      get: (_target, prop) => {
+        if (typeof prop === 'string') {
+          return React.forwardRef(
+            (
+              p: Record<string, unknown> & { children?: React.ReactNode },
+              ref: React.Ref<HTMLElement>
+            ) => React.createElement(prop, { ...p, ref })
+          );
+        }
+        return undefined;
+      },
+    }
+  ),
+}));
+
+// viem — only what we need
+jest.mock('viem', () => ({
+  parseUnits: (value: string, decimals: number) =>
+    BigInt(Math.round(Number(value) * 10 ** decimals)),
+  formatUnits: (value: bigint, decimals: number) =>
+    (Number(value) / 10 ** decimals).toString(),
+}));
+
+// @sapience/ui — stub UI components used by PositionForm
+jest.mock('@sapience/ui', () => ({
+  PythPredictionListItem: () => <div data-testid="pyth-prediction-list-item" />,
+  UmaPredictionListItem: ({
+    prediction,
+  }: {
+    prediction: { id: string };
+  }) => <div data-testid={`uma-prediction-${prediction.id}`} />,
+}));
+
+jest.mock('@sapience/ui/components/ui/dialog', () => ({
+  Dialog: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+  DialogContent: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
+  DialogHeader: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
+  DialogTitle: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
+}));
+
+jest.mock('~/lib/theme/categoryIcons', () => ({
+  getCategoryIcon: () => () => <span data-testid="category-icon" />,
+}));
+
+jest.mock('~/lib/utils/categoryStyle', () => ({
+  getCategoryStyle: () => ({ color: '#fff' }),
+  getColorWithAlpha: () => 'rgba(255,255,255,0.1)',
+}));
+
+jest.mock('~/lib/utils/positionFormUtils', () => ({
+  getMaxPositionSize: (balance: number) => balance,
+}));
+
+// ---------------------------------------------------------------------------
+// Imports (after mocks)
+// ---------------------------------------------------------------------------
+import PositionForm from '../PositionForm';
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+function makeSelection(overrides: Record<string, unknown> = {}) {
+  return {
+    id: 'sel-1',
+    conditionId: '0xCondition1',
+    question: 'Will X happen?',
+    prediction: true,
+    categorySlug: 'crypto',
+    resolverAddress: '0xResolver1',
+    ...overrides,
+  };
+}
+
+function makeFormMethods(
+  positionSize = '10',
+  errors: Record<string, unknown> = {}
+): UseFormReturn<{
+  positionSize: string;
+  limitAmount: string | number;
+  positions: Record<string, { predictionValue: string; positionSize: string; isFlipped?: boolean }>;
+}> {
+  const watchValues: Record<string, string> = { positionSize };
+  return {
+    control: { _subjects: {} } as unknown as UseFormReturn['control'],
+    formState: { errors } as unknown as UseFormReturn['formState'],
+    getValues: ((name?: string) =>
+      name ? watchValues[name] : watchValues) as UseFormReturn['getValues'],
+    // useWatch is module-mocked below, so these aren't directly called
+  } as unknown as UseFormReturn<{
+    positionSize: string;
+    limitAmount: string | number;
+    positions: Record<string, { predictionValue: string; positionSize: string; isFlipped?: boolean }>;
+  }>;
+}
+
+// react-hook-form: mock useWatch to return positionSize
+let mockPositionSize = '10';
+jest.mock('react-hook-form', () => {
+  const actual = jest.requireActual('react-hook-form');
+  return {
+    ...actual,
+    useWatch: () => mockPositionSize,
+    FormProvider: ({ children }: { children: React.ReactNode }) => (
+      <>{children}</>
+    ),
+  };
+});
+
+// Default mock values
+function setDefaults() {
+  mockPositionSize = '10';
+  mockUseAccount.mockReturnValue({ address: '0xUser1' });
+  mockUseConnectedWallet.mockReturnValue({ hasConnectedWallet: true, ready: true, connectedWallet: { address: '0xUser1' } });
+  mockUseSession.mockReturnValue({
+    effectiveAddress: '0xSmartAccount',
+    isUsingSmartAccount: true,
+    signMessage: jest.fn(), // willUseSessionSigning = true
+  });
+  mockUseCreatePositionContext.mockReturnValue({
+    selections: [makeSelection(), makeSelection({ id: 'sel-2', conditionId: '0xCondition2' })],
+    removeSelection: jest.fn(),
+    getPicks: () => [
+      { conditionResolver: '0xResolver1', conditionId: '0xCondition1', predictedOutcome: 1 },
+      { conditionResolver: '0xResolver1', conditionId: '0xCondition2', predictedOutcome: 1 },
+    ],
+  });
+  mockUseCollateralBalanceContext.mockReturnValue({
+    balance: 100,
+    isLoading: false,
+  });
+}
+
+// ---------------------------------------------------------------------------
+// Tests
+// ---------------------------------------------------------------------------
+describe('PositionForm', () => {
+  let mockRequestQuotes: jest.Mock;
+
+  beforeEach(() => {
+    jest.useFakeTimers();
+    setDefaults();
+    mockRequestQuotes = jest.fn();
+  });
+
+  afterEach(() => {
+    jest.useRealTimers();
+    jest.restoreAllMocks();
+  });
+
+  function renderForm(overrides: Record<string, unknown> = {}) {
+    return render(
+      <PositionForm
+        methods={makeFormMethods()}
+        onSubmit={jest.fn()}
+        isSubmitting={false}
+        chainId={42161}
+        requestQuotes={mockRequestQuotes}
+        collateralDecimals={18}
+        {...overrides}
+      />
+    );
+  }
+
+  // =========================================================================
+  // A. Auto-trigger behavior (session mode)
+  // =========================================================================
+  describe('A. Auto-trigger (session mode)', () => {
+    beforeEach(() => {
+      // willUseSessionSigning = true (default from setDefaults)
+    });
+
+    it('auto-fires auction after 300ms debounce when predictions + position size valid', async () => {
+      renderForm();
+      expect(mockRequestQuotes).not.toHaveBeenCalled();
+
+      // triggerAuctionRequest is async (awaits refetchTakerNonce) so flush microtasks too
+      await act(async () => {
+        jest.advanceTimersByTime(300);
+      });
+
+      expect(mockRequestQuotes).toHaveBeenCalledTimes(1);
+    });
+
+    it('does NOT fire when position size is 0', () => {
+      mockPositionSize = '0';
+      renderForm();
+
+      act(() => {
+        jest.advanceTimersByTime(500);
+      });
+
+      expect(mockRequestQuotes).not.toHaveBeenCalled();
+    });
+
+    it('does NOT fire when position size exceeds balance', () => {
+      mockPositionSize = '200';
+      mockUseCollateralBalanceContext.mockReturnValue({ balance: 100, isLoading: false });
+      renderForm();
+
+      act(() => {
+        jest.advanceTimersByTime(500);
+      });
+
+      expect(mockRequestQuotes).not.toHaveBeenCalled();
+    });
+
+    it('does NOT fire when form has errors', () => {
+      renderForm({ methods: makeFormMethods('10', { positionSize: { message: 'too large' } }) });
+
+      act(() => {
+        jest.advanceTimersByTime(500);
+      });
+
+      expect(mockRequestQuotes).not.toHaveBeenCalled();
+    });
+
+    it('does NOT fire when balance is still loading', () => {
+      mockUseCollateralBalanceContext.mockReturnValue({ balance: 0, isLoading: true });
+      renderForm();
+
+      act(() => {
+        jest.advanceTimersByTime(500);
+      });
+
+      expect(mockRequestQuotes).not.toHaveBeenCalled();
+    });
+
+    it('does NOT fire when there are no predictions', () => {
+      mockUseCreatePositionContext.mockReturnValue({
+        selections: [],
+        removeSelection: jest.fn(),
+        getPicks: () => [],
+      });
+      renderForm();
+
+      act(() => {
+        jest.advanceTimersByTime(500);
+      });
+
+      expect(mockRequestQuotes).not.toHaveBeenCalled();
+    });
+  });
+
+  // =========================================================================
+  // B. Manual-trigger behavior (non-session mode)
+  // =========================================================================
+  describe('B. Manual-trigger (non-session mode)', () => {
+    beforeEach(() => {
+      // Connected wallet, no session signing → manual mode
+      mockUseSession.mockReturnValue({
+        effectiveAddress: null,
+        isUsingSmartAccount: false,
+        signMessage: null,
+      });
+    });
+
+    it('does NOT auto-fire on form changes', () => {
+      renderForm();
+
+      act(() => {
+        jest.advanceTimersByTime(500);
+      });
+
+      expect(mockRequestQuotes).not.toHaveBeenCalled();
+    });
+
+    it('calls requestQuotes when INITIATE AUCTION is clicked', async () => {
+      const { getByTestId } = renderForm();
+
+      act(() => {
+        jest.advanceTimersByTime(500);
+      });
+
+      expect(mockRequestQuotes).not.toHaveBeenCalled();
+
+      // Click the INITIATE AUCTION button
+      await act(async () => {
+        fireEvent.click(getByTestId('initiate-auction-btn'));
+      });
+
+      expect(mockRequestQuotes).toHaveBeenCalledTimes(1);
+    });
+
+    it('shows showRequestBidsButton=true (INITIATE AUCTION button) since no auction was auto-fired', () => {
+      const { getByTestId } = renderForm();
+
+      act(() => {
+        jest.advanceTimersByTime(500);
+      });
+
+      const bidDisplay = getByTestId('bid-display');
+      expect(bidDisplay.dataset.showRequestBidsButton).toBe('true');
+    });
+  });
+
+  // =========================================================================
+  // C. Logged-out behavior
+  // =========================================================================
+  describe('C. Logged-out (auto-logged-out mode)', () => {
+    beforeEach(() => {
+      mockUseConnectedWallet.mockReturnValue({
+        hasConnectedWallet: false,
+        ready: true,
+        connectedWallet: undefined,
+      });
+      mockUseAccount.mockReturnValue({ address: undefined });
+      mockUseSession.mockReturnValue({
+        effectiveAddress: null,
+        isUsingSmartAccount: false,
+        signMessage: null,
+      });
+    });
+
+    it('auto-fires auction for estimate display', async () => {
+      renderForm();
+
+      await act(async () => {
+        jest.advanceTimersByTime(300);
+      });
+
+      expect(mockRequestQuotes).toHaveBeenCalledTimes(1);
+    });
+
+    it('fires even when position size exceeds "balance" (logged-out has no balance)', async () => {
+      mockPositionSize = '999999';
+      renderForm();
+
+      await act(async () => {
+        jest.advanceTimersByTime(300);
+      });
+
+      expect(mockRequestQuotes).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // =========================================================================
+  // D. Single-prediction hint behavior
+  // =========================================================================
+  describe('D. Single-prediction hint', () => {
+    beforeEach(() => {
+      mockUseCreatePositionContext.mockReturnValue({
+        selections: [makeSelection()],
+        removeSelection: jest.fn(),
+        getPicks: () => [
+          {
+            conditionResolver: '0xResolver1',
+            conditionId: '0xCondition1',
+            predictedOutcome: 1,
+          },
+        ],
+      });
+    });
+
+    it('shows showAddPredictionsHint when 1 selection and no bestBid/stickyEstimate', () => {
+      const { getByTestId } = renderForm();
+
+      act(() => {
+        jest.advanceTimersByTime(300);
+      });
+
+      const bidDisplay = getByTestId('bid-display');
+      expect(bidDisplay.dataset.showAddPredictionsHint).toBe('true');
+    });
+
+    it('still fires auction silently with 1 selection', async () => {
+      renderForm();
+
+      await act(async () => {
+        jest.advanceTimersByTime(300);
+      });
+
+      expect(mockRequestQuotes).toHaveBeenCalledTimes(1);
+    });
+
+    it('hides hint when bestBid arrives', async () => {
+      const validBid = {
+        counterparty: '0xMaker',
+        counterpartyCollateral: '5000000000000000000',
+        counterpartyDeadline: Math.floor(Date.now() / 1000) + 60,
+        counterpartyNonce: 1,
+        validationStatus: 'valid' as const,
+        counterpartySignature: '0xSig',
+        counterpartyChainId: 42161,
+        predictorCollateral: '10000000000000000000',
+      };
+
+      // Render with no bids initially
+      const { getByTestId, rerender } = renderForm();
+
+      // Fire auto-auction so currentRequestKeyRef is set (enables bid acceptance)
+      await act(async () => {
+        jest.advanceTimersByTime(300);
+      });
+
+      // Hint shown before bids arrive
+      expect(getByTestId('bid-display').dataset.showAddPredictionsHint).toBe(
+        'true'
+      );
+
+      // Now rerender with a valid bid (stable reference)
+      const bidsWithValid = [validBid];
+      await act(async () => {
+        rerender(
+          <PositionForm
+            methods={makeFormMethods()}
+            onSubmit={jest.fn()}
+            isSubmitting={false}
+            chainId={42161}
+            requestQuotes={mockRequestQuotes}
+            collateralDecimals={18}
+            bids={bidsWithValid}
+          />
+        );
+      });
+
+      // Advance for the 1s interval tick (nowMs update to check expiration)
+      await act(async () => {
+        jest.advanceTimersByTime(100);
+      });
+
+      expect(getByTestId('bid-display').dataset.showAddPredictionsHint).toBe(
+        'false'
+      );
+    });
+
+    it('hides hint when stickyEstimateBid arrives', async () => {
+      const estimateBid = {
+        counterparty: '0xMaker',
+        counterpartyCollateral: '5000000000000000000',
+        counterpartyDeadline: Math.floor(Date.now() / 1000) + 60,
+        counterpartyNonce: 1,
+        validationStatus: 'invalid' as const,
+        counterpartySignature: '0xSig',
+        counterpartyChainId: 42161,
+        predictorCollateral: '10000000000000000000',
+      };
+
+      // Render with no bids initially
+      const { getByTestId, rerender } = renderForm();
+
+      // Fire auto-auction so currentRequestKeyRef is set (enables bid acceptance)
+      await act(async () => {
+        jest.advanceTimersByTime(300);
+      });
+
+      expect(getByTestId('bid-display').dataset.showAddPredictionsHint).toBe(
+        'true'
+      );
+
+      // Rerender with an estimate bid (stable reference; only invalid bid → becomes stickyEstimate)
+      const bidsWithEstimate = [estimateBid];
+      await act(async () => {
+        rerender(
+          <PositionForm
+            methods={makeFormMethods()}
+            onSubmit={jest.fn()}
+            isSubmitting={false}
+            chainId={42161}
+            requestQuotes={mockRequestQuotes}
+            collateralDecimals={18}
+            bids={bidsWithEstimate}
+          />
+        );
+      });
+
+      await act(async () => {
+        jest.advanceTimersByTime(100);
+      });
+
+      // After the fix, hint should hide when stickyEstimateBid is present
+      expect(getByTestId('bid-display').dataset.showAddPredictionsHint).toBe(
+        'false'
+      );
+    });
+  });
+
+  // =========================================================================
+  // E. Mode-switching clears bids
+  // =========================================================================
+  describe('E. Mode-switching clears bids', () => {
+    it('clears bids when switching from auto (session) to manual (EOA)', async () => {
+      const validBid = {
+        counterparty: '0xMaker',
+        counterpartyCollateral: '5000000000000000000',
+        counterpartyDeadline: Math.floor(Date.now() / 1000) + 60,
+        counterpartyNonce: 1,
+        validationStatus: 'valid' as const,
+        counterpartySignature: '0xSig',
+        counterpartyChainId: 42161,
+        predictorCollateral: '10000000000000000000',
+      };
+
+      // Start in auto mode (session signing) and get a bid
+      const bidsWithValid = [validBid];
+      const { getByTestId, rerender } = renderForm({ bids: bidsWithValid });
+
+      // Fire auction and accept bid
+      await act(async () => {
+        jest.advanceTimersByTime(300);
+      });
+
+      // Bid should be accepted — showRequestBidsButton should be false
+      // (recentlyRequested is true after auto-fire)
+      expect(getByTestId('bid-display').dataset.showRequestBidsButton).toBe('false');
+
+      // Switch to EOA mode (manual) — simulate session ending
+      mockUseSession.mockReturnValue({
+        effectiveAddress: null,
+        isUsingSmartAccount: false,
+        signMessage: null,
+      });
+
+      await act(async () => {
+        rerender(
+          <PositionForm
+            methods={makeFormMethods()}
+            onSubmit={jest.fn()}
+            isSubmitting={false}
+            chainId={42161}
+            requestQuotes={mockRequestQuotes}
+            collateralDecimals={18}
+            bids={bidsWithValid}
+          />
+        );
+      });
+
+      await act(async () => {
+        jest.advanceTimersByTime(100);
+      });
+
+      // After mode switch, bids should be cleared — showRequestBidsButton=true
+      expect(getByTestId('bid-display').dataset.showRequestBidsButton).toBe('true');
+    });
+
+    it('clears bids when switching from manual (EOA) to auto (session)', async () => {
+      // Start in manual mode (EOA)
+      mockUseSession.mockReturnValue({
+        effectiveAddress: null,
+        isUsingSmartAccount: false,
+        signMessage: null,
+      });
+
+      const { getByTestId, rerender } = renderForm();
+
+      // Manually fire auction
+      await act(async () => {
+        fireEvent.click(getByTestId('initiate-auction-btn'));
+      });
+
+      expect(mockRequestQuotes).toHaveBeenCalledTimes(1);
+
+      // Clear the in-flight guard (500ms cooldown inside triggerAuctionRequest)
+      await act(async () => {
+        jest.advanceTimersByTime(500);
+      });
+
+      // Switch to session mode — simulate session starting
+      mockUseSession.mockReturnValue({
+        effectiveAddress: '0xSmartAccount',
+        isUsingSmartAccount: true,
+        signMessage: jest.fn(),
+      });
+
+      const prevCallCount = mockRequestQuotes.mock.calls.length;
+
+      await act(async () => {
+        rerender(
+          <PositionForm
+            methods={makeFormMethods()}
+            onSubmit={jest.fn()}
+            isSubmitting={false}
+            chainId={42161}
+            requestQuotes={mockRequestQuotes}
+            collateralDecimals={18}
+          />
+        );
+      });
+
+      // Immediately after mode switch, bids are cleared — showRequestBidsButton=true
+      expect(getByTestId('bid-display').dataset.showRequestBidsButton).toBe('true');
+
+      // After 300ms debounce, auto mode re-fires a fresh auction
+      await act(async () => {
+        jest.advanceTimersByTime(300);
+      });
+
+      expect(mockRequestQuotes).toHaveBeenCalledTimes(prevCallCount + 1);
+    });
+  });
+});

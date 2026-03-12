@@ -144,7 +144,13 @@ export default function PositionCard({
     } finally {
       setIsRedeeming(false);
     }
-  }, [position.tokenAddress, position.balance, pickConfig, settleAndRedeem, onRefetch]);
+  }, [
+    position.tokenAddress,
+    position.balance,
+    pickConfig,
+    settleAndRedeem,
+    onRefetch,
+  ]);
 
   return (
     <Card className="overflow-hidden">

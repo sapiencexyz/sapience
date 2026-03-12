@@ -7,9 +7,11 @@ import {
 } from 'viem';
 import type { Abi } from 'abitype';
 import type { Address } from 'viem';
+import { collateralToken } from '../contracts/addresses';
+import { CHAIN_ID_ETHEREAL } from '../constants/chain';
 
 export const VAULT_WUSDE_ADDRESS: Address =
-  '0xB6fC4B1BFF391e5F6b4a3D2C7Bda1FeE3524692D';
+  collateralToken[CHAIN_ID_ETHEREAL].address as Address;
 
 export const ZERO_ADDRESS: Address =
   '0x0000000000000000000000000000000000000000';

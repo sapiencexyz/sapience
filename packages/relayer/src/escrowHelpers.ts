@@ -29,7 +29,7 @@ export function validateEscrowAuctionRequest(
     if (!pick.conditionResolver || !/^0x[a-fA-F0-9]{40}$/.test(pick.conditionResolver)) {
       return { valid: false, error: `Invalid conditionResolver in pick ${i}` };
     }
-    if (!pick.conditionId || !/^0x[a-fA-F0-9]{64}$/.test(pick.conditionId)) {
+    if (!pick.conditionId || !/^0x[a-fA-F0-9]+$/.test(pick.conditionId) || pick.conditionId.length < 66) {
       return { valid: false, error: `Invalid conditionId in pick ${i}` };
     }
     if (pick.predictedOutcome !== 0 && pick.predictedOutcome !== 1) {

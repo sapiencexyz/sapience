@@ -43,8 +43,7 @@ const REVERT_PATTERNS = ['CallViolatesParamRule', '0x59d52e40'] as const;
 
 /** Returns true if the error indicates a stale session key policy. */
 export function isSessionPolicyError(error: unknown): boolean {
-  const message =
-    error instanceof Error ? error.message : String(error ?? '');
+  const message = error instanceof Error ? error.message : String(error ?? '');
   return (
     message.includes('AA23') &&
     REVERT_PATTERNS.some((pattern) => message.includes(pattern))

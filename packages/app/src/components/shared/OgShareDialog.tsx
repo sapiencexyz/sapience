@@ -129,7 +129,10 @@ export default function OgShareDialogBase({
 
     const minTimestamp = predictionOpenTimestampRef.current || Date.now();
 
-    const checkPredictions = (preds: Prediction[], _source: string): boolean => {
+    const checkPredictions = (
+      preds: Prediction[],
+      _source: string
+    ): boolean => {
       if (!preds || preds.length === 0) {
         return false;
       }
@@ -140,7 +143,8 @@ export default function OgShareDialogBase({
         // If expected picks are provided, verify the prediction's picks match
         if (expectedPicks && expectedPicks.length > 0) {
           const predPicks = p.pickConfig?.picks;
-          if (!predPicks || predPicks.length !== expectedPicks.length) return false;
+          if (!predPicks || predPicks.length !== expectedPicks.length)
+            return false;
           const predPickSet = new Set(
             predPicks.map((pk) => `${pk.conditionId}:${pk.predictedOutcome}`)
           );

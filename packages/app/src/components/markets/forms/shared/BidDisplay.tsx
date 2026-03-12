@@ -227,7 +227,8 @@ export default function BidDisplay({
           text: showRequestBidsButton
             ? 'INITIATE AUCTION'
             : 'WAITING FOR BIDS...',
-          disabled: !showRequestBidsButton || hasFormErrors || showAddPredictionsHint,
+          disabled:
+            !showRequestBidsButton || hasFormErrors || showAddPredictionsHint,
           onClick: onRequestBids,
           type: 'button' as const,
         };
@@ -334,92 +335,94 @@ export default function BidDisplay({
       )}
 
       {/* Logged-out user with valid bid - show as estimate with connect prompt */}
-      {uiState === 'logged-out-with-bid' && bestBid && !showAddPredictionsHint && (
-        <div
-          className={`mt-4 mb-4 ${payoutTakesSpace ? '' : 'absolute left-0 right-0 top-0 z-10'}`}
-        >
-          <div className="rounded-md border border-muted-foreground/30 bg-muted/30 px-4 py-2.5 w-full">
-            <div className="flex items-center min-h-[40px]">
-              <span className="inline-flex items-center gap-2 whitespace-nowrap font-mono">
-                <span className="font-light text-muted-foreground uppercase tracking-wider">
-                  ESTIMATED PAYOUT
+      {uiState === 'logged-out-with-bid' &&
+        bestBid &&
+        !showAddPredictionsHint && (
+          <div
+            className={`mt-4 mb-4 ${payoutTakesSpace ? '' : 'absolute left-0 right-0 top-0 z-10'}`}
+          >
+            <div className="rounded-md border border-muted-foreground/30 bg-muted/30 px-4 py-2.5 w-full">
+              <div className="flex items-center min-h-[40px]">
+                <span className="inline-flex items-center gap-2 whitespace-nowrap font-mono">
+                  <span className="font-light text-muted-foreground uppercase tracking-wider">
+                    ESTIMATED PAYOUT
+                  </span>
+                  <span className="text-muted-foreground font-semibold whitespace-nowrap">
+                    {`${humanTotal} ${collateralSymbol}`}
+                  </span>
                 </span>
-                <span className="text-muted-foreground font-semibold whitespace-nowrap">
-                  {`${humanTotal} ${collateralSymbol}`}
-                </span>
+              </div>
+            </div>
+            {/* Listening for bids hint row */}
+            <div className="flex items-center justify-between mt-3 px-1 text-xs">
+              <span
+                className="text-muted-foreground"
+                style={{
+                  background:
+                    'linear-gradient(90deg, currentColor 0%, currentColor 40%, rgba(255,255,255,0.9) 50%, currentColor 60%, currentColor 100%)',
+                  backgroundSize: '200% 100%',
+                  WebkitBackgroundClip: 'text',
+                  backgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  animation: 'shimmer 2s linear infinite',
+                }}
+              >
+                Listening for bids...
               </span>
+              <button
+                type="button"
+                onClick={onRequestBids}
+                className="text-[10px] text-muted-foreground hover:opacity-80 transition-opacity"
+              >
+                <span className="font-mono uppercase tracking-wide border-b border-dotted border-current">
+                  Restart auction
+                </span>
+              </button>
             </div>
           </div>
-          {/* Listening for bids hint row */}
-          <div className="flex items-center justify-between mt-3 px-1 text-xs">
-            <span
-              className="text-muted-foreground"
-              style={{
-                background:
-                  'linear-gradient(90deg, currentColor 0%, currentColor 40%, rgba(255,255,255,0.9) 50%, currentColor 60%, currentColor 100%)',
-                backgroundSize: '200% 100%',
-                WebkitBackgroundClip: 'text',
-                backgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                animation: 'shimmer 2s linear infinite',
-              }}
-            >
-              Listening for bids...
-            </span>
-            <button
-              type="button"
-              onClick={onRequestBids}
-              className="text-[10px] text-muted-foreground hover:opacity-80 transition-opacity"
-            >
-              <span className="font-mono uppercase tracking-wide border-b border-dotted border-current">
-                Restart auction
-              </span>
-            </button>
-          </div>
-        </div>
-      )}
+        )}
 
       {/* Show "Add more predictions" hint for single-pick positions */}
       {showAddPredictionsHint && (
-          <div className="mt-4 mb-4">
-            <div className="rounded-md border border-border bg-muted/30 px-4 py-2.5 w-full">
-              <div className="flex items-center justify-center gap-2 min-h-[41px]">
-                <Info className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm text-muted-foreground font-mono uppercase tracking-wider">
-                  Add more predictions for bids
-                </span>
-              </div>
+        <div className="mt-4 mb-4">
+          <div className="rounded-md border border-border bg-muted/30 px-4 py-2.5 w-full">
+            <div className="flex items-center justify-center gap-2 min-h-[41px]">
+              <Info className="h-4 w-4 text-muted-foreground" />
+              <span className="text-sm text-muted-foreground font-mono uppercase tracking-wider">
+                Add more predictions for bids
+              </span>
             </div>
-            {/* Listening for bids row - inside hint container to match payout spacing */}
-            {uiState === 'pending' && (
-              <div className="flex items-center justify-between mt-2 px-1 text-xs">
-                <span
-                  className="text-muted-foreground"
-                  style={{
-                    background:
-                      'linear-gradient(90deg, currentColor 0%, currentColor 40%, rgba(255,255,255,0.9) 50%, currentColor 60%, currentColor 100%)',
-                    backgroundSize: '200% 100%',
-                    WebkitBackgroundClip: 'text',
-                    backgroundClip: 'text',
-                    WebkitTextFillColor: 'transparent',
-                    animation: 'shimmer 2s linear infinite',
-                  }}
-                >
-                  Listening for bids...
-                </span>
-                <button
-                  type="button"
-                  onClick={onRequestBids}
-                  className="text-[10px] text-muted-foreground hover:opacity-80 transition-opacity"
-                >
-                  <span className="font-mono uppercase tracking-wide border-b border-dotted border-current">
-                    Restart auction
-                  </span>
-                </button>
-              </div>
-            )}
           </div>
-        )}
+          {/* Listening for bids row - inside hint container to match payout spacing */}
+          {uiState === 'pending' && (
+            <div className="flex items-center justify-between mt-2 px-1 text-xs">
+              <span
+                className="text-muted-foreground"
+                style={{
+                  background:
+                    'linear-gradient(90deg, currentColor 0%, currentColor 40%, rgba(255,255,255,0.9) 50%, currentColor 60%, currentColor 100%)',
+                  backgroundSize: '200% 100%',
+                  WebkitBackgroundClip: 'text',
+                  backgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  animation: 'shimmer 2s linear infinite',
+                }}
+              >
+                Listening for bids...
+              </span>
+              <button
+                type="button"
+                onClick={onRequestBids}
+                className="text-[10px] text-muted-foreground hover:opacity-80 transition-opacity"
+              >
+                <span className="font-mono uppercase tracking-wide border-b border-dotted border-current">
+                  Restart auction
+                </span>
+              </button>
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Show "Listening for bids..." when pending but no hint (multi-pick) */}
       {uiState === 'pending' && !showAddPredictionsHint && (
@@ -451,50 +454,53 @@ export default function BidDisplay({
           </div>
         </div>
       )}
-      {uiState === 'idle' && estimateBid && estimateTotal && !showAddPredictionsHint && (
-        <div
-          className={`mt-4 mb-4 ${payoutTakesSpace ? '' : 'absolute left-0 right-0 top-0 z-10'}`}
-        >
-          <div className="rounded-md border border-muted-foreground/30 bg-muted/30 px-4 py-2.5 w-full">
-            <div className="flex items-center min-h-[40px]">
-              <span className="inline-flex items-center gap-2 whitespace-nowrap font-mono">
-                <span className="font-light text-muted-foreground uppercase tracking-wider">
-                  ESTIMATED PAYOUT
+      {uiState === 'idle' &&
+        estimateBid &&
+        estimateTotal &&
+        !showAddPredictionsHint && (
+          <div
+            className={`mt-4 mb-4 ${payoutTakesSpace ? '' : 'absolute left-0 right-0 top-0 z-10'}`}
+          >
+            <div className="rounded-md border border-muted-foreground/30 bg-muted/30 px-4 py-2.5 w-full">
+              <div className="flex items-center min-h-[40px]">
+                <span className="inline-flex items-center gap-2 whitespace-nowrap font-mono">
+                  <span className="font-light text-muted-foreground uppercase tracking-wider">
+                    ESTIMATED PAYOUT
+                  </span>
+                  <span className="text-muted-foreground font-semibold whitespace-nowrap">
+                    {`${estimateTotal} ${collateralSymbol}`}
+                  </span>
                 </span>
-                <span className="text-muted-foreground font-semibold whitespace-nowrap">
-                  {`${estimateTotal} ${collateralSymbol}`}
-                </span>
+              </div>
+            </div>
+            {/* Listening for bids hint row - shown while waiting for valid bids */}
+            <div className="flex items-center justify-between mt-3 px-1 text-xs">
+              <span
+                className="text-muted-foreground"
+                style={{
+                  background:
+                    'linear-gradient(90deg, currentColor 0%, currentColor 40%, rgba(255,255,255,0.9) 50%, currentColor 60%, currentColor 100%)',
+                  backgroundSize: '200% 100%',
+                  WebkitBackgroundClip: 'text',
+                  backgroundClip: 'text',
+                  WebkitTextFillColor: 'transparent',
+                  animation: 'shimmer 2s linear infinite',
+                }}
+              >
+                Listening for bids...
               </span>
+              <button
+                type="button"
+                onClick={onRequestBids}
+                className="text-[10px] text-muted-foreground hover:opacity-80 transition-opacity"
+              >
+                <span className="font-mono uppercase tracking-wide border-b border-dotted border-current">
+                  Restart auction
+                </span>
+              </button>
             </div>
           </div>
-          {/* Listening for bids hint row - shown while waiting for valid bids */}
-          <div className="flex items-center justify-between mt-3 px-1 text-xs">
-            <span
-              className="text-muted-foreground"
-              style={{
-                background:
-                  'linear-gradient(90deg, currentColor 0%, currentColor 40%, rgba(255,255,255,0.9) 50%, currentColor 60%, currentColor 100%)',
-                backgroundSize: '200% 100%',
-                WebkitBackgroundClip: 'text',
-                backgroundClip: 'text',
-                WebkitTextFillColor: 'transparent',
-                animation: 'shimmer 2s linear infinite',
-              }}
-            >
-              Listening for bids...
-            </span>
-            <button
-              type="button"
-              onClick={onRequestBids}
-              className="text-[10px] text-muted-foreground hover:opacity-80 transition-opacity"
-            >
-              <span className="font-mono uppercase tracking-wide border-b border-dotted border-current">
-                Restart auction
-              </span>
-            </button>
-          </div>
-        </div>
-      )}
+        )}
 
       {/* Submit / Request Bids Button */}
       <Button

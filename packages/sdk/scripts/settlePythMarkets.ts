@@ -15,7 +15,7 @@ import {
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { contracts } from '../contracts/addresses';
-import { getPythMarketId } from '../auction/encoding';
+import { getPythMarketHash } from '../auction/encoding';
 
 /**
  * Settle PythResolver conditions referenced by Sapience predictions.
@@ -790,7 +790,7 @@ async function main() {
       skippedNoDescription++;
       continue;
     }
-    const marketId = getPythMarketId(market);
+    const marketId = getPythMarketHash(market);
     marketsById.set(marketId, market);
   }
 

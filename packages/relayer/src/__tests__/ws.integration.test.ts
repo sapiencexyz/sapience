@@ -4,6 +4,9 @@ import WebSocket from 'ws';
 import { createAuctionWebSocketServer } from '../ws';
 import { privateKeyToAccount, generatePrivateKey } from 'viem/accounts';
 import type { AuctionRFQPayload, BidPayload } from '../escrowTypes';
+import { buildAuctionIntentTypedData } from '@sapience/sdk/auction/escrowSigning';
+import { predictionMarketEscrow } from '@sapience/sdk/contracts/addresses';
+import type { Address, Hex } from 'viem';
 
 // Test server setup
 let httpServer: Server;
@@ -63,16 +66,48 @@ const TEST_PICK = {
   predictedOutcome: 0 as const,
 };
 
-// Helper to create a valid escrow auction RFQ payload
-function createAuctionRFQ(): AuctionRFQPayload {
-  return {
-    picks: [TEST_PICK],
-    predictorCollateral: '1000000000000000000',
+const TEST_CHAIN_ID = 5064014;
+const TEST_ESCROW_ADDRESS = predictionMarketEscrow[TEST_CHAIN_ID]?.address as Address;
+
+// Helper to create a valid escrow auction RFQ payload with a real intent signature
+async function createAuctionRFQ(): Promise<AuctionRFQPayload> {
+  const nonce = Math.floor(Math.random() * 1000000);
+  const deadline = Math.floor(Date.now() / 1000) + 3600;
+  const collateral = '1000000000000000000';
+
+  const picks = [TEST_PICK];
+  const sdkPicks = picks.map((p) => ({
+    conditionResolver: p.conditionResolver as Address,
+    conditionId: p.conditionId as Hex,
+    predictedOutcome: p.predictedOutcome,
+  }));
+
+  // Build & sign the AuctionIntent EIP-712 typed data
+  const typedData = buildAuctionIntentTypedData({
+    picks: sdkPicks,
     predictor: predictorAccount.address,
-    predictorNonce: Math.floor(Math.random() * 1000000),
-    predictorDeadline: Math.floor(Date.now() / 1000) + 3600,
-    intentSignature: '0x' + 'aa'.repeat(65),
-    chainId: 5064014,
+    predictorCollateral: BigInt(collateral),
+    predictorNonce: BigInt(nonce),
+    predictorDeadline: BigInt(deadline),
+    verifyingContract: TEST_ESCROW_ADDRESS,
+    chainId: TEST_CHAIN_ID,
+  });
+
+  const intentSignature = await predictorAccount.signTypedData({
+    domain: { ...typedData.domain, chainId: Number(typedData.domain.chainId) },
+    types: typedData.types,
+    primaryType: typedData.primaryType,
+    message: typedData.message,
+  });
+
+  return {
+    picks,
+    predictorCollateral: collateral,
+    predictor: predictorAccount.address,
+    predictorNonce: nonce,
+    predictorDeadline: deadline,
+    intentSignature,
+    chainId: TEST_CHAIN_ID,
   };
 }
 
@@ -144,7 +179,7 @@ describe('WebSocket Connection Lifecycle', () => {
 describe('auction.start Handler', () => {
   it('returns auction.ack with auctionId for valid auction', async () => {
     const ws = await createClient();
-    const auction = createAuctionRFQ();
+    const auction = await createAuctionRFQ();
 
     const response = await sendAndWait(
       ws,
@@ -162,7 +197,7 @@ describe('auction.start Handler', () => {
 
   it('returns auction.ack with auctionId for auction with intentSignature', async () => {
     const ws = await createClient();
-    const auction = createAuctionRFQ();
+    const auction = await createAuctionRFQ();
 
     const response = await sendAndWait(
       ws,
@@ -179,7 +214,7 @@ describe('auction.start Handler', () => {
 
   it('returns auction.ack with error for missing picks', async () => {
     const ws = await createClient();
-    const auction = { ...createAuctionRFQ(), picks: [] };
+    const auction = { ...(await createAuctionRFQ()), picks: [] };
 
     const response = await sendAndWait(
       ws,
@@ -196,7 +231,7 @@ describe('auction.start Handler', () => {
   it('broadcasts auction.started to all connected clients', async () => {
     const ws1 = await createClient();
     const ws2 = await createClient();
-    const auction = createAuctionRFQ();
+    const auction = await createAuctionRFQ();
 
     // Set up listener on ws2 before ws1 sends auction
     const broadcastPromise = waitForMessage(ws2, 'auction.started');
@@ -216,7 +251,7 @@ describe('auction.start Handler', () => {
 describe('auction.subscribe Handler', () => {
   it('returns auction.ack with subscribed:true for valid auctionId', async () => {
     const ws = await createClient();
-    const auction = createAuctionRFQ();
+    const auction = await createAuctionRFQ();
 
     // First create an auction
     const ackResponse = await sendAndWait(
@@ -258,7 +293,7 @@ describe('auction.subscribe Handler', () => {
 describe('auction.unsubscribe Handler', () => {
   it('returns auction.ack with unsubscribed:true for valid auctionId', async () => {
     const ws = await createClient();
-    const auction = createAuctionRFQ();
+    const auction = await createAuctionRFQ();
 
     // Create and subscribe to auction
     const ackResponse = await sendAndWait(
@@ -299,7 +334,7 @@ describe('auction.unsubscribe Handler', () => {
 describe('bid.submit Handler', () => {
   it('returns bid.ack with empty payload for valid bid', async () => {
     const ws = await createClient();
-    const auction = createAuctionRFQ();
+    const auction = await createAuctionRFQ();
 
     // Create auction first
     const ackResponse = await sendAndWait(
@@ -342,7 +377,7 @@ describe('bid.submit Handler', () => {
 
   it('returns bid.ack with error for expired counterpartyDeadline', async () => {
     const ws = await createClient();
-    const auction = createAuctionRFQ();
+    const auction = await createAuctionRFQ();
 
     // Create auction
     const ackResponse = await sendAndWait(
@@ -371,7 +406,7 @@ describe('bid.submit Handler', () => {
   it('broadcasts auction.bids to subscribed clients after successful bid', async () => {
     const wsCreator = await createClient();
     const wsBidder = await createClient();
-    const auction = createAuctionRFQ();
+    const auction = await createAuctionRFQ();
 
     // Create auction (creator is auto-subscribed)
     const ackResponse = await sendAndWait(
@@ -436,7 +471,7 @@ describe('Invalid Messages', () => {
 describe('Multiple Bids', () => {
   it('accumulates multiple bids for same auction', async () => {
     const ws = await createClient();
-    const auction = createAuctionRFQ();
+    const auction = await createAuctionRFQ();
 
     // Create auction
     const ackResponse = await sendAndWait(
@@ -473,7 +508,7 @@ describe('Subscription Behavior', () => {
   it('receives auction.bids after subscribing to existing auction', async () => {
     const wsCreator = await createClient();
     const wsSubscriber = await createClient();
-    const auction = createAuctionRFQ();
+    const auction = await createAuctionRFQ();
 
     // Create auction
     const ackResponse = await sendAndWait(

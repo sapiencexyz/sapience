@@ -480,7 +480,9 @@ export default function PositionsTable({
     // Filter by position size range
     if (filters.valueRange[0] > 0 || filters.valueRange[1] < Infinity) {
       result = result.filter((p) => {
-        const balanceEth = parseFloat(formatEther(BigInt(p.userCollateral || p.balance)));
+        const balanceEth = parseFloat(
+          formatEther(BigInt(p.userCollateral || p.balance))
+        );
         return (
           balanceEth >= filters.valueRange[0] &&
           balanceEth <= filters.valueRange[1]
