@@ -156,7 +156,7 @@ export async function groupMarkets(
       title: group.title,
       description: groupDescription,
       categorySlug: condition.categorySlug,
-      similarMarkets: [`https://polymarket.com/event/${group.eventSlug}#${market.slug}`],
+      similarMarkets: [`https://polymarket.com#${group.eventSlug}`],
       conditions: [condition],
     });
   }

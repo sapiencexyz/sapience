@@ -18,10 +18,9 @@ export function parseOutcomes(outcomes: string[] | string): string[] {
 }
 
 export function getPolymarketUrl(market: PolymarketMarket): string {
-  const eventSlug = market.events?.[0]?.slug;
-  if (eventSlug) {
-    return `https://polymarket.com/event/${eventSlug}#${market.slug}`;
-  }
+  // Simple reference URL with slug
+  // Note: Polymarket URLs vary by market type (event, sports, etc.)
+  // so we just provide a reference with the slug identifier
   return `https://polymarket.com#${market.slug}`;
 }
 
