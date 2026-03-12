@@ -97,10 +97,13 @@ export function useValidatedEscrowBids(
       return false;
     // Session mode needs predictor info + picks
     if (isSessionMode) {
-      return !!predictorAddress
-        && predictorAddress.toLowerCase() !== ZERO_ADDRESS
-        && !!predictorCollateral
-        && !!picks && picks.length > 0;
+      return (
+        !!predictorAddress &&
+        predictorAddress.toLowerCase() !== ZERO_ADDRESS &&
+        !!predictorCollateral &&
+        !!picks &&
+        picks.length > 0
+      );
     }
     // EOA mode just needs addresses
     return true;
@@ -144,7 +147,8 @@ export function useValidatedEscrowBids(
     const newBids = rawBids.filter((bid) => {
       const sig = bid.counterpartySignature;
       if (
-        bid.counterparty?.toLowerCase() === PREFERRED_ESTIMATE_QUOTER.toLowerCase()
+        bid.counterparty?.toLowerCase() ===
+        PREFERRED_ESTIMATE_QUOTER.toLowerCase()
       ) {
         return false;
       }
@@ -275,7 +279,8 @@ export function useValidatedEscrowBids(
     return rawBids.map((bid): QuoteBid => {
       // Skip validation for estimator bids — they use deadline=1 (non-executable, display only)
       if (
-        bid.counterparty?.toLowerCase() === PREFERRED_ESTIMATE_QUOTER.toLowerCase()
+        bid.counterparty?.toLowerCase() ===
+        PREFERRED_ESTIMATE_QUOTER.toLowerCase()
       ) {
         return {
           ...bid,
