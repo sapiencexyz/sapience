@@ -435,17 +435,6 @@ export default function PositionForm({
       const hasUma = selections.length > 0;
       const hasPyth = pythPredictions.length > 0;
 
-      // Auctions accept a single resolver per request; we can't mix UMA + Pyth in one auction today.
-      if (hasUma && hasPyth) {
-        toast({
-          title: "Can't mix UMA + Pyth in one auction",
-          description:
-            'Auctions use a single resolver per request. Please submit UMA-only or Pyth-only to request bids.',
-          variant: 'destructive',
-          duration: 6000,
-        });
-        return;
-      }
       if (!hasUma && !hasPyth) {
         return;
       }
