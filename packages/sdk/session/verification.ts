@@ -216,10 +216,6 @@ export async function verifySessionApproval(
       return { valid: false, error: 'verifying_contract_mismatch' };
     }
 
-    if (process.env.NODE_ENV !== 'production') {
-      console.debug('[SessionAuth] Using provided typed data for verification');
-    }
-
     const typedDataForVerification = {
       domain: {
         name: approval.typedData.domain.name,
@@ -276,10 +272,6 @@ export async function verifySessionApproval(
           });
           return { valid: false, error: 'smart_account_ownership_mismatch' };
         }
-      }
-
-      if (process.env.NODE_ENV !== 'production') {
-        console.debug('[SessionAuth] Session approval verified, owner:', recoveredOwner, 'sessionKey:', sessionKeyAddress);
       }
 
       return { valid: true, ownerAddress: recoveredOwner, sessionKeyAddress };
