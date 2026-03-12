@@ -114,6 +114,7 @@ const MAX_BID = parseEther(MAX_BID_DEC);
 const VOLATILITY = Number(process.env.VOLATILITY || '0.80');
 const MIN_CP_WIN_PROB = Number(process.env.MIN_CP_WIN_PROB || '0.05');
 
+// Set SKIP_INTENT_VERIFICATION=true to accept unsigned auctions (not recommended)
 const SKIP_INTENT_VERIFICATION = (process.env.SKIP_INTENT_VERIFICATION || '').toLowerCase() === 'true';
 
 const MIN_MAKER_WAGER = parseEther(MIN_MAKER_WAGER_DEC);

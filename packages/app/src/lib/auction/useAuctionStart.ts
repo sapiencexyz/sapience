@@ -441,10 +441,17 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
       }
 
       // Sign AuctionIntent EIP-712 typed data to prove predictor identity
-      // Skip signing when no wallet is connected and no session is active
-      // (anonymous users get unsigned estimate requests, like MarketPredictionRequest)
       const verifyingContract = predictionMarketEscrow[chainId]?.address as Address | undefined;
       const canSign = walletAddress || (isUsingSessionRef.current && sessionSignTypedDataRawRef.current);
+
+      if (!shouldSignIntent) {
+        log('[auction] Intent signing disabled (skipIntentSigning=true)');
+      } else if (!verifyingContract) {
+        log(`[auction] Intent signing skipped: no verifying contract for chainId=${chainId}`);
+      } else if (!canSign) {
+        log(`[auction] Intent signing skipped: canSign=false (wallet=${!!walletAddress}, isUsingSession=${isUsingSessionRef.current}, hasSessionSigner=${!!sessionSignTypedDataRawRef.current})`);
+      }
+
       if (shouldSignIntent && verifyingContract && canSign) {
         try {
           const intentTypedData = buildAuctionIntentTypedData({
@@ -464,9 +471,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
 
           let intentSignature: Hex;
           if (isUsingSessionRef.current && sessionSignTypedDataRawRef.current) {
-            // Use raw session key ECDSA signature (not kernel-wrapped) for
-            // relayer-only verification. Include session approval so the
-            // relayer can verify the session key is authorized.
+            log('[auction] Signing intent with session key');
             intentSignature = await sessionSignTypedDataRawRef.current({
               domain: viemDomain,
               types: intentTypedData.types,
@@ -474,14 +479,13 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
               message: intentTypedData.message as Record<string, unknown>,
             });
             if (etherealSessionApprovalRef.current) {
-              // Send full session approval (approval + typedData) so the
-              // relayer can verify the session key via verifySessionApproval
               escrowPayload.predictorSessionKeyData = JSON.stringify({
                 approval: etherealSessionApprovalRef.current.approval,
                 typedData: etherealSessionApprovalRef.current.typedData,
               });
             }
           } else {
+            log('[auction] Signing intent with wallet');
             intentSignature = await signTypedDataAsync({
               domain: viemDomain,
               types: intentTypedData.types,
@@ -491,6 +495,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
           }
 
           escrowPayload.intentSignature = intentSignature;
+          log(`[auction] Intent signed: ${intentSignature.slice(0, 20)}...`);
         } catch (e) {
           log(`[auction] Intent signing failed: ${e instanceof Error ? e.message : String(e)}`);
           inflightRef.current = '';
@@ -504,6 +509,8 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
       // bids arrive before the ack sets latestAuctionIdRef.
       const messageId = crypto.randomUUID();
       sentMessageIdRef.current = messageId;
+
+      log(`[auction] Sending auction.start: keys=${Object.keys(escrowPayload).join(',')}, hasIntentSig=${!!escrowPayload.intentSignature}, hasSessionKeyData=${!!escrowPayload.predictorSessionKeyData}`);
 
       client.send({
         id: messageId,
