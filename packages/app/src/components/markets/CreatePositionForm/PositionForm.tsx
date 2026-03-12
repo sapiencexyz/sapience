@@ -604,8 +604,8 @@ export default function PositionForm({
     // Skip this check for logged-out users since they can't have balance-related errors
     if (hasConnectedWallet && hasFormErrors) return;
 
-    // Must have at least two UMA predictions (parlay) or at least one Pyth prediction
-    const hasPredictions = selections.length >= 2 || pythPredictions.length > 0;
+    // Must have at least one UMA prediction or at least one Pyth prediction
+    const hasPredictions = selections.length >= 1 || pythPredictions.length > 0;
     if (!hasPredictions) return;
 
     // Must have a valid position size
@@ -850,7 +850,7 @@ export default function PositionForm({
               allBids={validBids}
               predictorPositionSizeWei={predictorPositionSizeWei}
               predictorAddress={selectedPredictorAddress}
-              showAddPredictionsHint={selections.length === 1}
+              showAddPredictionsHint={selections.length === 1 && !bestBid}
               isAuctionPending={recentlyRequested && !bestBid}
               hasFormErrors={hasFormErrors}
               isLoggedOut={!hasConnectedWallet}
