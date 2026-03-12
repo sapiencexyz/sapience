@@ -129,8 +129,8 @@ export default function CreateAuctionForm({
       ) {
         return `Pick ${i + 1}: Invalid condition resolver address`;
       }
-      if (!pick.conditionId || !/^0x[a-fA-F0-9]{64}$/.test(pick.conditionId)) {
-        return `Pick ${i + 1}: Invalid condition ID (must be 32-byte hex)`;
+      if (!pick.conditionId || !/^0x[a-fA-F0-9]+$/.test(pick.conditionId) || pick.conditionId.length < 66) {
+        return `Pick ${i + 1}: Invalid condition ID (must be at least 32-byte hex)`;
       }
     }
 
