@@ -257,6 +257,8 @@ export interface AuctionDetails {
   predictor: string;
   predictorNonce: number;
   predictorDeadline: number;
+  intentSignature?: string; // EIP-712 AuctionIntent — proves identity + intent
+  predictorSessionKeyData?: string; // ZeroDev/escrow session approval
   chainId: number;
   createdAt: string; // ISO timestamp
   predictorSponsor?: string; // Sponsor contract address (address(0) = self-funded)

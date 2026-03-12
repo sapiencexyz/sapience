@@ -57,8 +57,12 @@ export default function SponsorshipIndicator({
   if (remainingBudget === 0n || userCollateral === 0n) return null;
 
   const withinBudget = userCollateral <= remainingBudget;
-  const budgetDisplay = Number(formatUnits(remainingBudget, decimals)).toFixed(2);
-  const positionDisplay = Number(formatUnits(userCollateral, decimals)).toFixed(2);
+  const budgetDisplay = Number(formatUnits(remainingBudget, decimals)).toFixed(
+    2
+  );
+  const positionDisplay = Number(formatUnits(userCollateral, decimals)).toFixed(
+    2
+  );
 
   // Run eligibility checks (counterparty, entry price, match limit) —
   // budget check is bypassed so the "over budget" hint can still appear.

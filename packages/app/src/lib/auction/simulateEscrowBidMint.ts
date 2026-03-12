@@ -1,5 +1,5 @@
 import type { Address, Hex } from 'viem';
-import { recoverTypedDataAddress, zeroAddress } from 'viem';
+import { verifyTypedData, zeroAddress } from 'viem';
 import { predictionMarketEscrowAbi } from '@sapience/sdk/abis';
 import {
   buildCounterpartyMintTypedData,
@@ -188,57 +188,59 @@ export async function simulateEscrowBidMint(
       const rawMessage = err instanceof Error ? err.message : '';
       const isInvalidSignature =
         rawMessage.includes('InvalidSignature') ||
-        (errorMessage.includes('Invalid') && errorMessage.includes('signature'));
+        (errorMessage.includes('Invalid') &&
+          errorMessage.includes('signature'));
       if (isInvalidSignature) {
-        // InvalidSignature is expected for the PREDICTOR in session mode —
-        // simulateContract can't replicate the smart account's ERC-1271 context.
-        // But it could also mean the COUNTERPARTY sig is genuinely bad.
-        // For EOA counterparties (no session key data), verify their sig
-        // off-chain to disambiguate before falling through.
-        if (!bid.counterpartySessionKeyData) {
-          try {
-            const counterpartyTypedData = buildCounterpartyMintTypedData({
-              picks,
-              predictorCollateral: predictorCollateralWei,
-              counterpartyCollateral: counterpartyCollateralWei,
-              predictor: predictorAddress,
-              counterparty,
-              counterpartyNonce: BigInt(bid.counterpartyNonce),
-              counterpartyDeadline: BigInt(bid.counterpartyDeadline),
-              predictorSponsor,
-              predictorSponsorData,
-              verifyingContract: predictionMarketAddress,
-              chainId,
-            });
-            const recoveredSigner = await recoverTypedDataAddress({
-              domain: {
-                ...counterpartyTypedData.domain,
-                chainId: Number(counterpartyTypedData.domain.chainId),
-              },
-              types: counterpartyTypedData.types,
-              primaryType: counterpartyTypedData.primaryType,
-              message: counterpartyTypedData.message,
-              signature: bid.counterpartySignature as Hex,
-            });
-            if (recoveredSigner.toLowerCase() !== counterparty.toLowerCase()) {
-              logBidValidation(
-                `[escrow-sim] InvalidSignature — counterparty EOA sig mismatch (recovered=${recoveredSigner.slice(0, 10)}, expected=${counterparty.slice(0, 10)})`
-              );
-              return { isValid: false, error: 'Counterparty signature is invalid' };
-            }
-          } catch {
-            // recoverTypedDataAddress failed — unusual for EOA, log and fall through
-            logBidValidationWarn(
-              `[escrow-sim] Could not recover counterparty signer for ${counterparty.slice(0, 10)}, falling through to lightweight validation`
-            );
-          }
+        // InvalidSignature is expected in session mode: simulateContract can't
+        // replicate the predictor's smart account ERC-1271 context.
+        //
+        // Try to verify the counterparty sig off-chain. If ecrecover doesn't
+        // match, the counterparty may be a smart contract (e.g. a vault) with
+        // its own isValidSignature — the on-chain mint will verify it properly,
+        // so fall back to lightweight checks either way.
+        let counterpartySigVerified = false;
+        try {
+          const counterpartyTypedData = buildCounterpartyMintTypedData({
+            picks,
+            predictorCollateral: predictorCollateralWei,
+            counterpartyCollateral: counterpartyCollateralWei,
+            predictor: predictorAddress,
+            counterparty,
+            counterpartyNonce: BigInt(bid.counterpartyNonce),
+            counterpartyDeadline: BigInt(bid.counterpartyDeadline),
+            predictorSponsor,
+            predictorSponsorData,
+            verifyingContract: predictionMarketAddress,
+            chainId,
+          });
+          counterpartySigVerified = await verifyTypedData({
+            address: counterparty,
+            domain: {
+              ...counterpartyTypedData.domain,
+              chainId: Number(counterpartyTypedData.domain.chainId),
+            },
+            types: counterpartyTypedData.types,
+            primaryType: counterpartyTypedData.primaryType,
+            message: counterpartyTypedData.message,
+            signature: bid.counterpartySignature as Hex,
+          });
+        } catch {
+          // ecrecover failed (malformed sig or smart account) — not fatal
         }
 
-        // Either counterparty uses a smart account (can't verify ERC-1271 client-side),
-        // or the EOA sig checked out — InvalidSignature was from the predictor (expected).
-        logBidValidation(
-          `[escrow-sim] InvalidSignature (expected in session mode) — falling back to lightweight validation for ${bid.counterparty.slice(0, 10)}`
-        );
+        if (counterpartySigVerified) {
+          console.log(
+            `[escrow-sim] InvalidSignature (predictor expected), counterparty EOA sig verified — lightweight fallback for ${counterparty.slice(0, 10)}`
+          );
+        } else {
+          // Counterparty is likely a smart contract (vault) whose signature
+          // can only be verified on-chain via isValidSignature. Fall through
+          // to lightweight checks (deadline/nonce/balance).
+          console.log(
+            `[escrow-sim] InvalidSignature — counterparty sig not EOA-verifiable (likely smart contract/vault) — lightweight fallback for ${counterparty.slice(0, 10)}`
+          );
+        }
+
         return validateEscrowBidLightweight(bid, {
           chainId,
           predictionMarketAddress,
@@ -319,10 +321,7 @@ export async function validateEscrowBidLightweight(
     return { isValid: true };
   } catch (err) {
     // validateCounterpartyFunds throws with 'market maker' message on insufficient funds
-    if (
-      err instanceof Error &&
-      err.message.includes('market maker')
-    ) {
+    if (err instanceof Error && err.message.includes('market maker')) {
       logBidValidation(
         `[escrow-lightweight] Bid from ${counterparty.slice(0, 10)}... insufficient funds`
       );
@@ -403,8 +402,5 @@ function isContractRevert(err: unknown): boolean {
 
   // Fallback: check message for revert keywords
   const msg = err.message;
-  return (
-    msg.includes('execution reverted') ||
-    msg.includes('revert')
-  );
+  return msg.includes('execution reverted') || msg.includes('revert');
 }

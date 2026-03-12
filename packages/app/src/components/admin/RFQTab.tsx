@@ -1328,8 +1328,7 @@ const RFQTab = ({
               <DateTimePicker
                 value={endTime}
                 onChange={setEndTime}
-                min={Math.floor(Date.now() / 1000)}
-                disabled={Boolean(editingId)}
+                min={editingId ? endTime : Math.floor(Date.now() / 1000)}
               />
             </div>
             <div className="space-y-2">

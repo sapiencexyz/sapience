@@ -944,4 +944,7 @@ async function main() {
 }
 
 // Run
-main();
+import { logSeparator } from '../src/utils/log.js';
+
+logSeparator('polymarket-keeper:settle-escrow', 'START');
+main().finally(() => logSeparator('polymarket-keeper:settle-escrow', 'END'));

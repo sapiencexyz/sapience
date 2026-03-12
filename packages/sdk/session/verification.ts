@@ -5,7 +5,6 @@ import {
   type Address,
   type Hex,
 } from 'viem';
-import { computeSmartAccountAddress } from './smartAccount';
 
 // ValidatorData structure constants
 const FLAG_BYTES = 2;
@@ -167,7 +166,8 @@ export interface SessionApprovalPayload {
  */
 export async function verifySessionApproval(
   approval: SessionApprovalPayload,
-  claimedAccountAddress: Address
+  claimedAccountAddress: Address,
+  resolveSmartAccountAddress?: (ownerAddress: Address, chainId: number) => Promise<Address>,
 ): Promise<{ valid: boolean; ownerAddress?: Address; sessionKeyAddress?: Address; error?: string }> {
   try {
     // Parse the ZeroDev approval
@@ -216,10 +216,6 @@ export async function verifySessionApproval(
       return { valid: false, error: 'verifying_contract_mismatch' };
     }
 
-    if (process.env.NODE_ENV !== 'production') {
-      console.debug('[SessionAuth] Using provided typed data for verification');
-    }
-
     const typedDataForVerification = {
       domain: {
         name: approval.typedData.domain.name,
@@ -264,18 +260,18 @@ export async function verifySessionApproval(
       // EIP-712 domain binding alone is insufficient — any EOA can sign with
       // verifyingContract set to an arbitrary address. We must derive the
       // expected smart account from the recovered owner and compare.
-      const expectedSmartAccount = await computeSmartAccountAddress(recoveredOwner, approval.chainId);
-      if (expectedSmartAccount.toLowerCase() !== claimedAccountAddress.toLowerCase()) {
-        console.warn('[SessionAuth] Smart account ownership mismatch:', {
-          recoveredOwner,
-          expectedSmartAccount,
-          claimedAccountAddress,
-        });
-        return { valid: false, error: 'smart_account_ownership_mismatch' };
-      }
-
-      if (process.env.NODE_ENV !== 'production') {
-        console.debug('[SessionAuth] Session approval verified, owner:', recoveredOwner, 'sessionKey:', sessionKeyAddress);
+      // This check requires @zerodev/ecdsa-validator (server-only) so callers
+      // must inject the resolver to enable it. Client-side callers skip this.
+      if (resolveSmartAccountAddress) {
+        const expectedSmartAccount = await resolveSmartAccountAddress(recoveredOwner, approval.chainId);
+        if (expectedSmartAccount.toLowerCase() !== claimedAccountAddress.toLowerCase()) {
+          console.warn('[SessionAuth] Smart account ownership mismatch:', {
+            recoveredOwner,
+            expectedSmartAccount,
+            claimedAccountAddress,
+          });
+          return { valid: false, error: 'smart_account_ownership_mismatch' };
+        }
       }
 
       return { valid: true, ownerAddress: recoveredOwner, sessionKeyAddress };

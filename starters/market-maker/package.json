@@ -11,10 +11,10 @@
     "prestart": "npm run build"
   },
   "dependencies": {
-    "@sapience/sdk": "^0.1.0",
-    "dotenv": "^16.4.5",
-    "viem": "2.23.5",
-    "ws": "^8.18.0"
+    "@sapience/sdk": "file:../../packages/sdk",
+    "dotenv": "^16.6.1",
+    "viem": "^2.23.5",
+    "ws": "^8.19.0"
   },
   "devDependencies": {
     "@types/node": "^24.9.2",

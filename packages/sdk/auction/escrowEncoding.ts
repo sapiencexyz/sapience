@@ -9,6 +9,29 @@ import type { Pick, PickJson, OutcomeSide } from '../types/escrow';
 // ============================================================================
 // Pick Encoding
 // ============================================================================
+//
+// ## conditionId: transport vs on-chain representation
+//
+// The on-chain Pick struct uses `bytes32 conditionId`. For UMA/Polymarket
+// resolvers this is a native bytes32 (e.g. a market ID). For Pyth resolvers
+// the conditionId is `keccak256(abi.encode(priceId, endTime, strikePrice,
+// strikeExpo, overWinsOnTie))` — see PythConditionResolver.getConditionId().
+//
+// Over the wire (WebSocket transport), Pyth picks carry the *raw* ABI
+// encoding as conditionId (produced by `getPythMarketId`) so that receivers
+// (relayer, market makers, terminal UI) can decode the market parameters
+// without an extra lookup. This raw encoding is 160 bytes (320 hex chars),
+// NOT a valid bytes32.
+//
+// Anywhere we need bytes32 (on-chain ABI encoding, EIP-712 signing), we
+// compact long conditionIds via `keccak256(conditionId)`. This matches the
+// on-chain hash. See `formatPicksForEncoding` and `buildAuctionIntentTypedData`.
+//
+// TODO: Consider changing EIP-712 AUCTION_INTENT_TYPES to use `bytes` instead
+// of `bytes32` for conditionId, which would let EIP-712's native hashing
+// handle this and remove the manual compaction step. This is a coordinated
+// change (app + relayer must deploy together).
+//
 
 /**
  * ABI parameters for encoding a Pick struct
@@ -44,7 +67,13 @@ function formatPicksForEncoding(
 }> {
   return picks.map((pick) => ({
     conditionResolver: pick.conditionResolver,
-    conditionId: pick.conditionId,
+    // On-chain Pick struct uses bytes32 conditionId. If the transport-layer
+    // conditionId is longer (e.g. Pyth raw ABI encoding), hash it to bytes32
+    // to match the on-chain representation (PythConditionResolver.getConditionId).
+    conditionId:
+      pick.conditionId.length > 66 // 66 = "0x" + 64 hex chars
+        ? keccak256(pick.conditionId)
+        : pick.conditionId,
     predictedOutcome: pick.predictedOutcome,
   }));
 }
@@ -194,10 +223,11 @@ export function isValidPick(pick: unknown): pick is Pick {
     return false;
   }
 
-  // Check conditionId is valid bytes32 format
+  // Check conditionId is valid hex (bytes32 or longer for e.g. Pyth raw encoding)
   if (
     typeof p.conditionId !== 'string' ||
-    !/^0x[a-fA-F0-9]{64}$/.test(p.conditionId)
+    !/^0x[a-fA-F0-9]+$/.test(p.conditionId) ||
+    p.conditionId.length < 66
   ) {
     return false;
   }

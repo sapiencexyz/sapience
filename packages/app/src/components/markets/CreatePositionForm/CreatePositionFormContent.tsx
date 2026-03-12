@@ -1,6 +1,14 @@
 'use client';
 import { type UseFormReturn } from 'react-hook-form';
 import { Button, type PythPrediction } from '@sapience/ui';
+import { Share2, X } from 'lucide-react';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@sapience/ui/components/ui/dropdown-menu';
+import { ImageIcon, Link2 } from 'lucide-react';
 
 import PositionForm from './PositionForm';
 import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
@@ -34,6 +42,8 @@ interface CreatePositionFormContentProps {
   pythPredictions?: PythPrediction[];
   onRemovePythPrediction?: (id: string) => void;
   onClearPythPredictions?: () => void;
+  onViewCard?: () => void;
+  onCopyLink?: () => void;
 }
 
 export function CreatePositionFormContent({
@@ -52,6 +62,8 @@ export function CreatePositionFormContent({
   pythPredictions = [],
   onRemovePythPrediction,
   onClearPythPredictions,
+  onViewCard,
+  onCopyLink,
 }: CreatePositionFormContentProps): React.ReactElement {
   const { selections, clearSelections } = useCreatePositionContext();
   const hasItems = selections.length > 0 || pythPredictions.length > 0;
@@ -69,15 +81,46 @@ export function CreatePositionFormContent({
             <h3 className="eyebrow text-foreground font-sans">
               Take a Position
             </h3>
-            <Button
-              variant="ghost"
-              size="xs"
-              className="uppercase font-mono tracking-wide text-muted-foreground hover:text-foreground hover:bg-transparent h-6 px-1.5 py-0 relative -top-0.5"
-              onClick={handleClear}
-              title="Reset"
-            >
-              CLEAR
-            </Button>
+            <div className="flex items-center gap-1">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="xs"
+                    className="uppercase font-mono tracking-wide text-muted-foreground hover:text-foreground hover:bg-transparent h-6 px-1.5 py-0 flex items-center gap-1"
+                  >
+                    <Share2 className="h-2 w-2" />
+                    SHARE
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem
+                    className="group cursor-pointer flex items-center gap-2"
+                    onClick={onViewCard}
+                  >
+                    <ImageIcon className="h-4 w-4 opacity-75 group-hover:opacity-100" />
+                    <span>View Card</span>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="group cursor-pointer flex items-center gap-2"
+                    onClick={onCopyLink}
+                  >
+                    <Link2 className="h-4 w-4 opacity-75 group-hover:opacity-100" />
+                    <span>Copy Link</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+              <Button
+                variant="ghost"
+                size="xs"
+                className="uppercase font-mono tracking-wide text-muted-foreground hover:text-foreground hover:bg-transparent h-6 px-1.5 py-0 flex items-center gap-1"
+                onClick={handleClear}
+                title="Reset"
+              >
+                <X className="h-3.5 w-3.5" />
+                CLEAR
+              </Button>
+            </div>
           </div>
         </div>
       )}
