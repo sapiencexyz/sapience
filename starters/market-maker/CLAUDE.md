@@ -1,5 +1,11 @@
 # Market Maker Starter
 
+> **Important:** The built-in strategies (Pyth Black-Scholes, Polymarket Gamma) are
+> intentionally simple starting points to demonstrate the strategy interface. They
+> lack risk management, position tracking, inventory limits, and many other features
+> you would want before running with real capital. Treat them as scaffolding to build
+> on, not production-ready pricing logic.
+
 A standalone auction market maker bot. Lives in `starters/market-maker/`, separate from the main monorepo packages.
 
 ## Build & Run
@@ -29,7 +35,7 @@ The market maker imports from these SDK subpaths:
 - `@sapience/sdk/constants` — chain IDs, chain configs, collateral addresses
 - `@sapience/sdk/contracts/addresses` — resolver addresses, escrow contract addresses
 - `@sapience/sdk/queries` — `fetchConditionsByIdsQuery`, `ConditionById` type
-- `@sapience/sdk/auction/encoding` — `parsePythMarketFromDescription`, `decodePythLazerFeedId`
+- `@sapience/sdk/auction/encoding` — `decodePythMarketId`, `decodePythLazerFeedId`
 - `@sapience/sdk/auction/escrowSigning` — `buildCounterpartyMintTypedData`
 - `@sapience/sdk/relayer/escrowAuctionWs` — `createEscrowAuctionWs`, `buildBidPayload`
 

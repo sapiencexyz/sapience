@@ -1,6 +1,13 @@
 // ============================================================================
 // Polymarket Strategy — prices markets settled by the ConditionalTokensResolver
 //
+// THIS IS A STARTING POINT, NOT A PRODUCTION-READY STRATEGY.
+// It naively uses the Gamma API mid-price as fair value with no additional
+// modeling. Before deploying with real capital you should consider adding:
+// CLOB order-book depth analysis for tighter spreads, liquidity-weighted
+// fair value estimation, position and inventory tracking, per-market
+// exposure limits, and staleness detection for the upstream price feed.
+//
 // How it works:
 //   1. Extracts the Polymarket slug from the condition's similarMarkets field
 //      (format: "https://polymarket.com#slug")

@@ -1,6 +1,13 @@
 // ============================================================================
 // Pyth Strategy — prices binary option markets settled by the PythConditionResolver
 //
+// THIS IS A STARTING POINT, NOT A PRODUCTION-READY STRATEGY.
+// It uses a single-parameter Black-Scholes model with a static volatility
+// assumption and no risk management. Before deploying with real capital you
+// should consider adding: a vol surface or realized-vol estimator, position
+// and inventory tracking, per-market exposure limits, dynamic edge sizing,
+// and correlation-aware pricing for parlays.
+//
 // How it works:
 //   1. Decodes market params (strike, expiry, feed) directly from the conditionId
 //      (which is raw ABI-encoded, not hashed)

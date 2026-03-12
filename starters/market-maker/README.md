@@ -2,6 +2,13 @@
 
 A pluggable auction market maker that connects to the Sapience relayer and dynamically quotes prediction market auctions using pricing strategies.
 
+> **Note:** The built-in strategies are simple starting points designed to demonstrate
+> the strategy interface and get you up and running quickly. They use basic models
+> (single-parameter Black-Scholes for Pyth, raw Gamma API mid-price for Polymarket)
+> and do not include risk management, position sizing, inventory tracking, exposure
+> limits, or correlation handling. You should build on top of these foundations with
+> your own pricing logic and risk controls before deploying with real capital.
+
 **Built-in strategies:**
 
 - **Pyth** — prices binary option markets (over/under) using Black-Scholes with live spot prices from Pyth Hermes
