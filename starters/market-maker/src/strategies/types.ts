@@ -25,7 +25,7 @@ export interface Strategy {
    * Compute the fair probability that the condition resolves YES (outcome index 0).
    * Returns a number in [0, 1], or null if unable to price.
    */
-  getYesProbability(conditionId: string, meta: ConditionById): Promise<number | null>;
+  getYesProbability(conditionId: string, meta: ConditionById | null): Promise<number | null>;
 }
 
 export type { ConditionById };

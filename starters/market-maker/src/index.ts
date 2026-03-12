@@ -16,6 +16,7 @@ import {
 import { fetchConditionsByIdsQuery, type ConditionById } from '@sapience/sdk/queries';
 import { buildCounterpartyMintTypedData } from '@sapience/sdk/auction/escrowSigning';
 import { createEscrowAuctionWs, buildBidPayload } from '@sapience/sdk/relayer/escrowAuctionWs';
+import { decodePythMarketId, decodePythLazerFeedId } from '@sapience/sdk/auction/encoding';
 import type { Pick, AuctionDetails, PickJson } from '@sapience/sdk/types';
 
 // Local imports
@@ -116,6 +117,21 @@ const MAKER = account?.address as Address | undefined;
 
 // OutcomeSide enum values (matching SDK)
 const OutcomeSide = { YES: 0, NO: 1 } as const;
+
+/** Human-readable label for a conditionId (decodes Pyth market params if applicable) */
+const LAZER_FEED_NAMES: Record<number, string> = { 1: 'BTC', 2: 'ETH', 6: 'SOL' };
+
+function formatConditionId(conditionId: string): string {
+  const market = decodePythMarketId(conditionId as Hex);
+  if (market) {
+    const feedId = decodePythLazerFeedId(market.priceId);
+    const feedName = feedId !== null ? (LAZER_FEED_NAMES[feedId] ?? `feed#${feedId}`) : market.priceId.slice(0, 10);
+    const strike = Number(market.strikePrice) * Math.pow(10, market.strikeExpo);
+    const expiry = new Date(Number(market.endTime) * 1000).toISOString().slice(0, 16);
+    return `${feedName} ${market.overWinsOnTie ? '≥' : '>'} ${strike} by ${expiry}`;
+  }
+  return conditionId.slice(0, 10);
+}
 
 // ============================================================================
 // Pricing strategies — resolver address → strategy
@@ -267,15 +283,13 @@ async function computeQuote(
 
     let yesProbability: number | null = null;
     if (!strategy) {
-      logger.warn(`  leg ${pick.conditionId.slice(0, 10)}: no strategy for resolver ${formatAddress(pick.conditionResolver)}`);
-    } else if (!meta) {
-      logger.warn(`  leg ${pick.conditionId.slice(0, 10)}: condition metadata not found`);
+      logger.warn(`  leg ${formatConditionId(pick.conditionId)}: no strategy for resolver ${formatAddress(pick.conditionResolver)}`);
     } else {
-      yesProbability = await strategy.getYesProbability(pick.conditionId, meta);
+      yesProbability = await strategy.getYesProbability(pick.conditionId, meta ?? null);
       if (yesProbability === null) {
-        const urls = meta.similarMarkets ?? [];
+        const urls = meta?.similarMarkets ?? [];
         const slug = urls.find(u => u.includes('polymarket.com'))?.split('#')[1];
-        logger.warn(`  leg ${pick.conditionId.slice(0, 10)}: ${strategy.name} returned null${slug ? ` (slug: ${slug})` : urls.length > 0 ? ` (similarMarkets: ${urls.join(', ')})` : ' (no similarMarkets)'}`);
+        logger.warn(`  leg ${formatConditionId(pick.conditionId)}: ${strategy.name} returned null${slug ? ` (slug: ${slug})` : urls.length > 0 ? ` (similarMarkets: ${urls.join(', ')})` : ''}`);
       }
     }
 
@@ -360,7 +374,7 @@ async function handleAuction(auction: AuctionDetails, submitBid: (payload: Retur
   const legLines = picks
     .map((p) => {
       const c = idToCond.get(p.conditionId);
-      const name = (c?.shortName && String(c.shortName).trim()) || (c?.question && String(c.question).trim()) || p.conditionId.slice(0, 10);
+      const name = (c?.shortName && String(c.shortName).trim()) || (c?.question && String(c.question).trim()) || formatConditionId(p.conditionId);
       const yn = p.predictedOutcome === OutcomeSide.YES ? fmt.yes('Yes') : fmt.no('No');
       const prob = quote.legProbs.get(p.conditionId);
       const probLabel = prob !== null && prob !== undefined

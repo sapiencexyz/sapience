@@ -26,12 +26,9 @@ import type { Strategy, ConditionById } from './types.js';
  * Override via PYTH_FEED_MAP env: "2:e62d...,3:ff61...,7:ef0d..."
  */
 const DEFAULT_FEED_MAP: Record<number, string> = {
-  2: 'e62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43', // BTC/USD
-  3: 'ff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace', // ETH/USD
-  4: '925ca92ff005ae943c158e3563f59698ce7e75c5a8c8dd43303a0a154887b3e6', // USOILSPOT/USD
-  5: '765d2ba906dbc32ca17cc11f5310a89e9ee1f6420508c63861f2f8ba4ee34bb2', // XAU/USD
-  6: '19e09bb805456ada3979a7d1cbb4b6d63babc3a0f8e8a9509f68afa5c4c11cd5', // SPY/USD
-  7: '16dad506d7db8da01c87581c87ca897a012a153557d4d578c3b9c9e1bc0632f1', // TSLA/USD
+  1: 'e62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43', // BTC/USD (Lazer 1)
+  2: 'ff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace', // ETH/USD (Lazer 2)
+  6: 'ef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d', // SOL/USD (Lazer 6)
 };
 
 export class PythStrategy implements Strategy {
@@ -82,15 +79,22 @@ export class PythStrategy implements Strategy {
 
     const now = Date.now() / 1000;
     const timeToExpiry = Number(market.endTime) - now;
-    if (timeToExpiry <= 0) return null; // Already expired, can't price
+    if (timeToExpiry <= 0) {
+      console.warn(`[Pyth] Market expired (endTime=${market.endTime}, now=${Math.floor(now)})`);
+      return null;
+    }
 
     const currentPrice = await this.fetchPrice(feedId);
-    if (currentPrice === null) return null;
+    if (currentPrice === null) {
+      console.warn(`[Pyth] Failed to fetch price for feed ${feedId}`);
+      return null;
+    }
 
     const strike = Number(market.strikePrice) * Math.pow(10, market.strikeExpo);
     const T = timeToExpiry / (365.25 * 24 * 3600); // years
-
-    return computeOverProbability(currentPrice, strike, T, this.volatility);
+    const prob = computeOverProbability(currentPrice, strike, T, this.volatility);
+    console.log(`[Pyth] feed=${feedId} spot=${currentPrice} strike=${strike} T=${(T * 365.25 * 24 * 60).toFixed(1)}min P(over)=${(prob * 100).toFixed(1)}%`);
+    return prob;
   }
 
   private async fetchPrice(feedId: number): Promise<number | null> {
@@ -109,19 +113,26 @@ export class PythStrategy implements Strategy {
       const resp = await fetch(
         `https://hermes.pyth.network/v2/updates/price/latest?ids[]=${hermesId}`,
       );
-      if (!resp.ok) return null;
+      if (!resp.ok) {
+        console.warn(`[Pyth] Hermes HTTP ${resp.status} for feed ${feedId}`);
+        return null;
+      }
 
       const data = (await resp.json()) as {
         parsed?: { price: { price: string; expo: number } }[];
       };
       const entry = data?.parsed?.[0];
-      if (!entry) return null;
+      if (!entry) {
+        console.warn(`[Pyth] Hermes returned no parsed data for feed ${feedId}`);
+        return null;
+      }
 
       const price =
         Number(entry.price.price) * Math.pow(10, entry.price.expo);
       this.priceCache.set(feedId, { price, timestamp: Date.now() });
       return price;
-    } catch {
+    } catch (e) {
+      console.warn(`[Pyth] Hermes fetch error for feed ${feedId}:`, e);
       return null;
     }
   }

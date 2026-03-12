@@ -42,8 +42,10 @@ export class PolymarketStrategy implements Strategy {
    */
   async getYesProbability(
     conditionId: string,
-    meta: ConditionById,
+    meta: ConditionById | null,
   ): Promise<number | null> {
+    if (!meta) return null; // Polymarket needs condition metadata for the slug
+
     const cached = this.priceCache.get(conditionId);
     if (cached && Date.now() - cached.timestamp < this.cacheTTL) {
       return cached.yesPrice;
