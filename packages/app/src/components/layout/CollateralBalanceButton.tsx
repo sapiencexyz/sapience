@@ -114,8 +114,8 @@ export default function CollateralBalanceButton({
   // Sponsorship budget
   const { isSponsored, remainingBudget } = useSponsorStatus();
   const sponsorBudgetFormatted = isSponsored
-    ? formatUnits(remainingBudget, 18)
-    : '0';
+    ? formatDollarLikeBalance(formatUnits(remainingBudget, 18))
+    : '0.00';
 
   const [isGetUsdeOpen, setIsGetUsdeOpen] = useState(false);
   const [isWithdrawOpen, setIsWithdrawOpen] = useState(false);
