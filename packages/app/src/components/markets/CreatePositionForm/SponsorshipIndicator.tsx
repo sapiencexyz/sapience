@@ -19,7 +19,7 @@ interface SponsorshipIndicatorProps {
   collateralDecimals: number | undefined;
   collateralSymbol: string;
   sponsorshipActivated: boolean;
-  awaitingSponsoredBid: boolean;
+  awaitingSponsoredBid?: boolean;
   /** Called when user clicks "Use" to activate sponsorship */
   onActivate: () => void;
 }

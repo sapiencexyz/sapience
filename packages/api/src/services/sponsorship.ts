@@ -209,18 +209,22 @@ export async function getRemainingBudget(
 
   const { publicClient } = getClients(config);
 
+  // Derive the smart account address — the sponsor contract tracks
+  // budgets by smart account address, not raw EOA.
+  const smartAccount = computeSmartAccountAddress(beneficiary);
+
   try {
     const remaining = (await publicClient.readContract({
       address: config.sponsorAddress,
       abi: SPONSOR_ABI,
       functionName: 'remainingBudget',
-      args: [beneficiary],
+      args: [smartAccount],
     })) as bigint;
 
     return remaining;
   } catch (err) {
     console.error(
-      `[sponsorship] Failed to read budget for ${beneficiary}:`,
+      `[sponsorship] Failed to read budget for ${smartAccount} (EOA ${beneficiary}):`,
       err
     );
     return null;

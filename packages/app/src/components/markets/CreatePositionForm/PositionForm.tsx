@@ -28,8 +28,6 @@ import {
   buildPythAuctionStartPayload,
 } from '~/lib/auction/buildAuctionPayload';
 import type { AuctionParams, QuoteBid } from '~/lib/auction/useAuctionStart';
-
-const EMPTY_BIDS: QuoteBid[] = [];
 import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
 import { useRestrictedJurisdiction } from '~/hooks/useRestrictedJurisdiction';
@@ -50,6 +48,8 @@ import { getAuctionTriggerMode } from '~/lib/auction/auctionTriggerMode';
 import { useSponsorStatus } from '~/hooks/sponsorship/useSponsorStatus';
 import { useSponsorshipActivation } from '~/hooks/sponsorship/useSponsorshipActivation';
 import SponsorshipIndicator from './SponsorshipIndicator';
+
+const EMPTY_BIDS: QuoteBid[] = [];
 
 interface PositionFormProps {
   methods: UseFormReturn<{

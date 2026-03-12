@@ -95,15 +95,29 @@ export async function verifyEscrowCounterpartySignature(
     return true;
   }
 
-  // Fallback: ZeroDev session key (base64 JSON format)
+  // Fallback: ZeroDev session key (base64 JSON format or JSON with typedData)
   if (bid.counterpartySessionKeyData && !bid.counterpartySessionKeyData.startsWith('0x')) {
     try {
       const counterpartyAddress = bid.counterparty.toLowerCase() as Address;
 
+      // Parse session key data — may be a JSON object with {approval, typedData}
+      // or a raw base64 approval string
+      let approvalStr = bid.counterpartySessionKeyData;
+      let typedData: SessionApprovalPayload['typedData'] = undefined;
+      try {
+        const parsed = JSON.parse(bid.counterpartySessionKeyData);
+        if (parsed && typeof parsed === 'object' && parsed.approval) {
+          approvalStr = parsed.approval;
+          typedData = parsed.typedData ?? undefined;
+        }
+      } catch {
+        // Not JSON — treat as raw base64 approval string
+      }
+
       const sessionApprovalPayload: SessionApprovalPayload = {
-        approval: bid.counterpartySessionKeyData,
+        approval: approvalStr,
         chainId: auction.chainId,
-        typedData: undefined,
+        typedData,
       };
 
       const sessionResult = await verifySessionApproval(
