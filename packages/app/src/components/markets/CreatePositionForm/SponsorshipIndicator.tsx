@@ -37,19 +37,22 @@ export default function SponsorshipIndicator({
   matchLimit,
   requiredCounterparty,
   bestBid,
+  stickyEstimateBid,
   positionSizeValue,
   collateralDecimals,
   collateralSymbol,
   sponsorshipActivated,
   onActivate,
 }: SponsorshipIndicatorProps) {
-  if (!isSponsored || !bestBid) return null;
+  // Use bestBid if available, otherwise fall back to estimate bid
+  const displayBid = bestBid || stickyEstimateBid;
+  if (!isSponsored || !displayBid) return null;
 
   const decimals = collateralDecimals ?? 18;
   const userCollateral = positionSizeValue
     ? parseUnits(positionSizeValue, decimals)
     : 0n;
-  const vaultCollateral = BigInt(bestBid.counterpartyCollateral);
+  const vaultCollateral = BigInt(displayBid.counterpartyCollateral);
 
   if (remainingBudget === 0n || userCollateral === 0n) return null;
 
@@ -62,7 +65,7 @@ export default function SponsorshipIndicator({
   const { eligible: bidEligible } = checkSponsorEligibility({
     predictorCollateral: userCollateral,
     counterpartyCollateral: vaultCollateral,
-    bidCounterparty: bestBid.counterparty,
+    bidCounterparty: displayBid.counterparty,
     requiredCounterparty,
     maxEntryPriceBps,
     matchLimit,

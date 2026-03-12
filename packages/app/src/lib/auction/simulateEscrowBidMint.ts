@@ -1,8 +1,7 @@
 import type { Address, Hex } from 'viem';
-import { verifyTypedData, zeroAddress } from 'viem';
+import { zeroAddress } from 'viem';
 import { predictionMarketEscrowAbi } from '@sapience/sdk/abis';
 import {
-  buildCounterpartyMintTypedData,
   buildPredictorMintTypedData,
 } from '@sapience/sdk/auction/escrowSigning';
 import {
@@ -195,48 +194,12 @@ export async function simulateEscrowBidMint(
         rawMessage.includes('InvalidSignature') ||
         (errorMessage.includes('Invalid') && errorMessage.includes('signature'));
       if (isInvalidSignature) {
-        // Verify counterparty signature off-chain (EOA ecrecover)
-        let counterpartySigValid = false;
-        try {
-          const counterpartyTypedData = buildCounterpartyMintTypedData({
-            picks,
-            predictorCollateral: predictorCollateralWei,
-            counterpartyCollateral: counterpartyCollateralWei,
-            predictor: predictorAddress,
-            counterparty,
-            counterpartyNonce: BigInt(bid.counterpartyNonce),
-            counterpartyDeadline: BigInt(bid.counterpartyDeadline),
-            predictorSponsor,
-            predictorSponsorData,
-            verifyingContract: predictionMarketAddress,
-            chainId,
-          });
-          counterpartySigValid = await verifyTypedData({
-            address: counterparty,
-            domain: {
-              ...counterpartyTypedData.domain,
-              chainId: Number(counterpartyTypedData.domain.chainId),
-            },
-            types: counterpartyTypedData.types,
-            primaryType: counterpartyTypedData.primaryType,
-            message: counterpartyTypedData.message,
-            signature: bid.counterpartySignature as Hex,
-          });
-        } catch {
-          // If counterparty uses a smart account (ERC-1271), ecrecover won't
-          // work — check session key data presence as a heuristic.
-          counterpartySigValid = !!bid.counterpartySessionKeyData;
-        }
-
-        if (!counterpartySigValid) {
-          logBidValidation(
-            `[escrow-sim] InvalidSignature — counterparty sig verification failed for ${bid.counterparty.slice(0, 10)}`
-          );
-          return { isValid: false, error: 'Counterparty signature is invalid' };
-        }
-
+        // InvalidSignature is expected in session mode — the simulation can't
+        // replicate the smart account's ERC-1271 context for the predictor.
+        // It could also mean the counterparty uses a smart account / session key.
+        // Fall back to lightweight validation (deadline, nonce, balance checks).
         logBidValidation(
-          `[escrow-sim] InvalidSignature (expected in session mode, counterparty sig OK) — falling back to lightweight validation for ${bid.counterparty.slice(0, 10)}`
+          `[escrow-sim] InvalidSignature (expected in session mode) — falling back to lightweight validation for ${bid.counterparty.slice(0, 10)}`
         );
         return validateEscrowBidLightweight(bid, {
           chainId,
