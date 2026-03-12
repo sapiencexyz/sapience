@@ -1,5 +1,6 @@
 import {
   encodeAbiParameters,
+  decodeAbiParameters,
   keccak256,
   type Hex,
 } from 'viem';
@@ -44,21 +45,23 @@ export type PythBinaryOptionOutcome = PythBinaryOptionMarket & {
   prediction: boolean; // true = Over, false = Under
 };
 
+const PYTH_MARKET_ABI_PARAMS = [
+  { type: 'bytes32' },
+  { type: 'uint64' },
+  { type: 'int64' },
+  { type: 'int32' },
+  { type: 'bool' },
+] as const;
+
 /**
- * Mirrors `PythResolver.getMarketId`:
- * `keccak256(abi.encode(priceId,endTime,strikePrice,strikeExpo,overWinsOnTie))`.
+ * Returns a decodable `conditionId` for a Pyth binary option market:
+ * `abi.encode(priceId, endTime, strikePrice, strikeExpo, overWinsOnTie)`.
  *
- * See `PythResolver.sol` in protocol.
+ * This is a raw ABI encoding (no hash) so consumers can decode the fields.
  */
 export function getPythMarketId(market: PythBinaryOptionMarket): Hex {
-  const encoded = encodeAbiParameters(
-    [
-      { type: 'bytes32' },
-      { type: 'uint64' },
-      { type: 'int64' },
-      { type: 'int32' },
-      { type: 'bool' },
-    ],
+  return encodeAbiParameters(
+    PYTH_MARKET_ABI_PARAMS,
     [
       market.priceId,
       market.endTime,
@@ -67,7 +70,33 @@ export function getPythMarketId(market: PythBinaryOptionMarket): Hex {
       market.overWinsOnTie,
     ]
   );
-  return keccak256(encoded);
+}
+
+/**
+ * Returns the on-chain `marketId` used by `PythResolver.settlements`:
+ * `keccak256(abi.encode(priceId, endTime, strikePrice, strikeExpo, overWinsOnTie))`.
+ */
+export function getPythMarketHash(market: PythBinaryOptionMarket): Hex {
+  return keccak256(getPythMarketId(market));
+}
+
+/**
+ * Decode a Pyth conditionId (raw ABI-encoded market params) back into fields.
+ */
+export function decodePythMarketId(conditionId: Hex): PythBinaryOptionMarket | null {
+  try {
+    const [priceId, endTime, strikePrice, strikeExpo, overWinsOnTie] =
+      decodeAbiParameters(PYTH_MARKET_ABI_PARAMS, conditionId);
+    return {
+      priceId: priceId as Hex,
+      endTime,
+      strikePrice,
+      strikeExpo,
+      overWinsOnTie,
+    };
+  } catch {
+    return null;
+  }
 }
 
 export function encodePythBinaryOptionOutcomes(

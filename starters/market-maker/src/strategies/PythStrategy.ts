@@ -2,7 +2,8 @@
 // Pyth Strategy — prices binary option markets settled by the PythConditionResolver
 //
 // How it works:
-//   1. Parses market params (strike, expiry, feed) from the condition description
+//   1. Decodes market params (strike, expiry, feed) directly from the conditionId
+//      (which is raw ABI-encoded, not hashed)
 //   2. Fetches the current spot price from Pyth's Hermes REST API
 //   3. Computes P(Over) using a Black-Scholes digital option model
 //
@@ -14,9 +15,10 @@
 // ============================================================================
 
 import {
-  parsePythMarketFromDescription,
+  decodePythMarketId,
   decodePythLazerFeedId,
 } from '@sapience/sdk/auction/encoding';
+import type { Hex } from 'viem';
 import type { Strategy, ConditionById } from './types.js';
 
 /**
@@ -62,14 +64,21 @@ export class PythStrategy implements Strategy {
   }
 
   async getYesProbability(
-    _conditionId: string,
-    meta: ConditionById,
+    conditionId: string,
+    _meta: ConditionById,
   ): Promise<number | null> {
-    const market = parsePythMarketFromDescription(meta.description ?? '');
-    if (!market) return null;
+    // conditionId is raw ABI-encoded market params (not hashed)
+    const market = decodePythMarketId(conditionId as Hex);
+    if (!market) {
+      console.warn(`[Pyth] Failed to decode conditionId ${conditionId.slice(0, 18)}...`);
+      return null;
+    }
 
     const feedId = decodePythLazerFeedId(market.priceId);
-    if (feedId === null) return null;
+    if (feedId === null) {
+      console.warn(`[Pyth] Unknown feed priceId ${market.priceId.slice(0, 18)}...`);
+      return null;
+    }
 
     const now = Date.now() / 1000;
     const timeToExpiry = Number(market.endTime) - now;
@@ -91,7 +100,10 @@ export class PythStrategy implements Strategy {
     }
 
     const hermesId = this.feedMap[feedId];
-    if (!hermesId) return null;
+    if (!hermesId) {
+      console.warn(`[Pyth] No Hermes mapping for feed ${feedId}`);
+      return null;
+    }
 
     try {
       const resp = await fetch(

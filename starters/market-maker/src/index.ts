@@ -332,6 +332,9 @@ function convertPicksFromJson(picks: PickJson[]): Pick[] {
 async function handleAuction(auction: AuctionDetails, submitBid: (payload: ReturnType<typeof buildBidPayload>) => boolean) {
   const auctionId = auction.auctionId;
   const predictorCollateral = BigInt(auction.predictorCollateral || '0');
+  const picks = (auction.picks || []) as PickJson[];
+  const resolvers = [...new Set(picks.map((p) => formatAddress(p.conditionResolver)))].join(', ');
+  logger.info(`${color('⚡', ANSI.dim)} ${fmt.id(auctionId.slice(0, 8))} ${color(`${picks.length} leg(s), resolvers: ${resolvers}, collateral: ${formatEther(predictorCollateral)}`, ANSI.dim)}`);
 
   // Ignore auctions on different chains
   if (auction.chainId && auction.chainId !== CHAIN_ID) {
@@ -346,7 +349,6 @@ async function handleAuction(auction: AuctionDetails, submitBid: (payload: Retur
   }
 
   // ---- Dynamic quoting via strategies ----
-  const picks = (auction.picks || []) as PickJson[];
   const quote = await computeQuote(auction);
   if (!quote) {
     logger.warn(`Skipping auction ${auctionId}: no strategy could price any leg`);
