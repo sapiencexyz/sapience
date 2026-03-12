@@ -269,6 +269,23 @@ export default function PositionForm({
     }
   }, [hasConnectedWallet]);
 
+  // Clear bids when trigger mode changes (e.g. switching between EOA and Smart Account)
+  // Old bids were generated for a different predictor address
+  const prevTriggerModeRef = useRef(triggerMode);
+  useEffect(() => {
+    if (prevTriggerModeRef.current !== triggerMode) {
+      logPositionForm(
+        `Trigger mode changed from ${prevTriggerModeRef.current} to ${triggerMode}, clearing bids`
+      );
+      setValidBids([]);
+      setStickyEstimateBid(null);
+      resetSponsor();
+      setLastQuoteRequestMs(null);
+      currentRequestKeyRef.current = null;
+      prevTriggerModeRef.current = triggerMode;
+    }
+  }, [triggerMode]);
+
   // Clear bids when selections change (prediction flipped, added, or removed) (for animations)
   useEffect(() => {
     if (prevPredictionsKeyRef.current !== predictionsKey) {

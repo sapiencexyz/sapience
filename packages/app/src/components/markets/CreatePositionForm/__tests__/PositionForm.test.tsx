@@ -657,4 +657,118 @@ describe('PositionForm', () => {
       );
     });
   });
+
+  // =========================================================================
+  // E. Mode-switching clears bids
+  // =========================================================================
+  describe('E. Mode-switching clears bids', () => {
+    it('clears bids when switching from auto (session) to manual (EOA)', async () => {
+      const validBid = {
+        counterparty: '0xMaker',
+        counterpartyCollateral: '5000000000000000000',
+        counterpartyDeadline: Math.floor(Date.now() / 1000) + 60,
+        counterpartyNonce: 1,
+        validationStatus: 'valid' as const,
+        counterpartySignature: '0xSig',
+        counterpartyChainId: 42161,
+        predictorCollateral: '10000000000000000000',
+      };
+
+      // Start in auto mode (session signing) and get a bid
+      const bidsWithValid = [validBid];
+      const { getByTestId, rerender } = renderForm({ bids: bidsWithValid });
+
+      // Fire auction and accept bid
+      await act(async () => {
+        jest.advanceTimersByTime(300);
+      });
+
+      // Bid should be accepted — showRequestBidsButton should be false
+      // (recentlyRequested is true after auto-fire)
+      expect(getByTestId('bid-display').dataset.showRequestBidsButton).toBe('false');
+
+      // Switch to EOA mode (manual) — simulate session ending
+      mockUseSession.mockReturnValue({
+        effectiveAddress: null,
+        isUsingSmartAccount: false,
+        signMessage: null,
+      });
+
+      await act(async () => {
+        rerender(
+          <PositionForm
+            methods={makeFormMethods()}
+            onSubmit={jest.fn()}
+            isSubmitting={false}
+            chainId={42161}
+            requestQuotes={mockRequestQuotes}
+            collateralDecimals={18}
+            bids={bidsWithValid}
+          />
+        );
+      });
+
+      await act(async () => {
+        jest.advanceTimersByTime(100);
+      });
+
+      // After mode switch, bids should be cleared — showRequestBidsButton=true
+      expect(getByTestId('bid-display').dataset.showRequestBidsButton).toBe('true');
+    });
+
+    it('clears bids when switching from manual (EOA) to auto (session)', async () => {
+      // Start in manual mode (EOA)
+      mockUseSession.mockReturnValue({
+        effectiveAddress: null,
+        isUsingSmartAccount: false,
+        signMessage: null,
+      });
+
+      const { getByTestId, rerender } = renderForm();
+
+      // Manually fire auction
+      await act(async () => {
+        fireEvent.click(getByTestId('initiate-auction-btn'));
+      });
+
+      expect(mockRequestQuotes).toHaveBeenCalledTimes(1);
+
+      // Clear the in-flight guard (500ms cooldown inside triggerAuctionRequest)
+      await act(async () => {
+        jest.advanceTimersByTime(500);
+      });
+
+      // Switch to session mode — simulate session starting
+      mockUseSession.mockReturnValue({
+        effectiveAddress: '0xSmartAccount',
+        isUsingSmartAccount: true,
+        signMessage: jest.fn(),
+      });
+
+      const prevCallCount = mockRequestQuotes.mock.calls.length;
+
+      await act(async () => {
+        rerender(
+          <PositionForm
+            methods={makeFormMethods()}
+            onSubmit={jest.fn()}
+            isSubmitting={false}
+            chainId={42161}
+            requestQuotes={mockRequestQuotes}
+            collateralDecimals={18}
+          />
+        );
+      });
+
+      // Immediately after mode switch, bids are cleared — showRequestBidsButton=true
+      expect(getByTestId('bid-display').dataset.showRequestBidsButton).toBe('true');
+
+      // After 300ms debounce, auto mode re-fires a fresh auction
+      await act(async () => {
+        jest.advanceTimersByTime(300);
+      });
+
+      expect(mockRequestQuotes).toHaveBeenCalledTimes(prevCallCount + 1);
+    });
+  });
 });
