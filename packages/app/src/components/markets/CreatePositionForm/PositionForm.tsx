@@ -28,6 +28,8 @@ import {
   buildPythAuctionStartPayload,
 } from '~/lib/auction/buildAuctionPayload';
 import type { AuctionParams, QuoteBid } from '~/lib/auction/useAuctionStart';
+
+const EMPTY_BIDS: QuoteBid[] = [];
 import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
 import { useRestrictedJurisdiction } from '~/hooks/useRestrictedJurisdiction';
@@ -85,7 +87,7 @@ export default function PositionForm({
   isSubmitting,
   error,
   chainId = 42161,
-  bids = [],
+  bids = EMPTY_BIDS,
   requestQuotes,
   collateralToken,
   collateralSymbol: collateralSymbolProp,

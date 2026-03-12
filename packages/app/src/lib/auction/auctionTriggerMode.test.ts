@@ -1,7 +1,4 @@
-import {
-  getAuctionTriggerMode,
-  shouldCancelOnFormChange,
-} from './auctionTriggerMode';
+import { getAuctionTriggerMode } from './auctionTriggerMode';
 
 describe('getAuctionTriggerMode', () => {
   it('returns "auto" when session signing is active and wallet is connected', () => {
@@ -20,19 +17,5 @@ describe('getAuctionTriggerMode', () => {
     // willUseSessionSigning shouldn't be true without a wallet, but if it is,
     // disconnected state takes priority
     expect(getAuctionTriggerMode(true, false)).toBe('auto-logged-out');
-  });
-});
-
-describe('shouldCancelOnFormChange', () => {
-  it('returns true for manual mode', () => {
-    expect(shouldCancelOnFormChange('manual')).toBe(true);
-  });
-
-  it('returns false for auto mode', () => {
-    expect(shouldCancelOnFormChange('auto')).toBe(false);
-  });
-
-  it('returns false for auto-logged-out mode', () => {
-    expect(shouldCancelOnFormChange('auto-logged-out')).toBe(false);
   });
 });

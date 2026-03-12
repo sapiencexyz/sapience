@@ -16,6 +16,3 @@ export function getAuctionTriggerMode(
   return 'manual';
 }
 
-export function shouldCancelOnFormChange(mode: AuctionTriggerMode): boolean {
-  return mode === 'manual';
-}

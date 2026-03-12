@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, act } from '@testing-library/react';
+import { render, act, fireEvent } from '@testing-library/react';
 import type { UseFormReturn } from 'react-hook-form';
 
 // ---------------------------------------------------------------------------
@@ -134,7 +134,12 @@ jest.mock('~/components/markets/forms/shared/BidDisplay', () => {
       data-show-request-bids-button={String(props.showRequestBidsButton)}
       data-show-add-predictions-hint={String(props.showAddPredictionsHint)}
       data-is-auction-pending={String(props.isAuctionPending)}
-    />
+    >
+      <button
+        data-testid="initiate-auction-btn"
+        onClick={props.onRequestBids as () => void}
+      />
+    </div>
   );
   BidDisplay.displayName = 'BidDisplay';
   return { __esModule: true, default: BidDisplay };
@@ -312,9 +317,6 @@ function setDefaults() {
 // ---------------------------------------------------------------------------
 // Tests
 // ---------------------------------------------------------------------------
-// Stable empty array to avoid infinite re-render from `bids = []` default
-const EMPTY_BIDS: never[] = [];
-
 describe('PositionForm', () => {
   let mockRequestQuotes: jest.Mock;
 
@@ -338,7 +340,6 @@ describe('PositionForm', () => {
         chainId={42161}
         requestQuotes={mockRequestQuotes}
         collateralDecimals={18}
-        bids={EMPTY_BIDS}
         {...overrides}
       />
     );
@@ -445,6 +446,23 @@ describe('PositionForm', () => {
       });
 
       expect(mockRequestQuotes).not.toHaveBeenCalled();
+    });
+
+    it('calls requestQuotes when INITIATE AUCTION is clicked', async () => {
+      const { getByTestId } = renderForm();
+
+      act(() => {
+        jest.advanceTimersByTime(500);
+      });
+
+      expect(mockRequestQuotes).not.toHaveBeenCalled();
+
+      // Click the INITIATE AUCTION button
+      await act(async () => {
+        fireEvent.click(getByTestId('initiate-auction-btn'));
+      });
+
+      expect(mockRequestQuotes).toHaveBeenCalledTimes(1);
     });
 
     it('shows showRequestBidsButton=true (INITIATE AUCTION button) since no auction was auto-fired', () => {
