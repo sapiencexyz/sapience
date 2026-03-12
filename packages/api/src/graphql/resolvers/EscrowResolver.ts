@@ -709,6 +709,17 @@ export class EscrowResolver {
       where.pickConfigId = pickConfigIdLower;
     }
 
+    // Hide zero-balance positions that are not yet settled (no resolution).
+    // These are positions where the user burned/transferred tokens before
+    // settlement — they show "0.00 USDe" with "PENDING" PnL.
+    // Keep zero-balance positions that ARE settled (post-burn with PnL data).
+    where.NOT = {
+      balance: '0',
+      pickConfiguration: {
+        resolved: false,
+      },
+    };
+
     const rows = await prisma.position.findMany({
       where,
       orderBy: { updatedAt: 'desc' },
