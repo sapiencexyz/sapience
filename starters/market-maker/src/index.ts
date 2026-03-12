@@ -17,6 +17,7 @@ import { fetchConditionsByIdsQuery, type ConditionById } from '@sapience/sdk/que
 import { buildCounterpartyMintTypedData, verifyAuctionIntentSignature } from '@sapience/sdk/auction/escrowSigning';
 import { createEscrowAuctionWs, buildBidPayload } from '@sapience/sdk/relayer/escrowAuctionWs';
 import { decodePythMarketId, decodePythLazerFeedId } from '@sapience/sdk/auction/encoding';
+import { PYTH_FEED_NAMES } from '@sapience/sdk/constants';
 import type { Pick, AuctionDetails, PickJson } from '@sapience/sdk/types';
 
 // Local imports
@@ -121,13 +122,11 @@ const MAKER = account?.address as Address | undefined;
 const OutcomeSide = { YES: 0, NO: 1 } as const;
 
 /** Human-readable label for a conditionId (decodes Pyth market params if applicable) */
-const LAZER_FEED_NAMES: Record<number, string> = { 1: 'BTC', 2: 'ETH', 6: 'SOL' };
-
 function formatConditionId(conditionId: string): string {
   const market = decodePythMarketId(conditionId as Hex);
   if (market) {
     const feedId = decodePythLazerFeedId(market.priceId);
-    const feedName = feedId !== null ? (LAZER_FEED_NAMES[feedId] ?? `feed#${feedId}`) : market.priceId.slice(0, 10);
+    const feedName = feedId !== null ? (PYTH_FEED_NAMES[feedId] ?? `feed#${feedId}`) : market.priceId.slice(0, 10);
     const strike = Number(market.strikePrice) * Math.pow(10, market.strikeExpo);
     const expiry = new Date(Number(market.endTime) * 1000).toISOString().slice(0, 16);
     return `${feedName} ${market.overWinsOnTie ? '≥' : '>'} ${strike} by ${expiry}`;
