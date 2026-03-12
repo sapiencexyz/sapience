@@ -2,7 +2,6 @@
 
 import * as React from 'react';
 import { Calendar, ChevronsUpDown, Loader2, Timer } from 'lucide-react';
-import { PYTH_FEEDS } from '@sapience/sdk/constants';
 import { z } from 'zod';
 
 import { cn } from '../lib/utils';
@@ -19,9 +18,21 @@ import { Input } from './ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
 
+export type FeaturedFeed = {
+  /** Pyth Lazer integer feed ID */
+  lazerId: number;
+  /** Pyth symbol (e.g. "Crypto.BTC/USD") */
+  symbol: string;
+};
+
 export type CreatePythPredictionFormProps = {
   className?: string;
   disabled?: boolean;
+  /**
+   * Featured feeds shown in the dropdown before the full Pyth list loads.
+   * Typically passed from the SDK's PYTH_FEEDS constant.
+   */
+  featuredFeeds?: FeaturedFeed[];
   /**
    * This form is Lazer-only: `priceId` is a Pyth Lazer uint32 feed id (represented as a number
    * string, e.g. "1"). We still use Hermes behind the scenes to fetch a latest reference price.
@@ -102,13 +113,6 @@ async function fetchPythProFeeds(signal: AbortSignal): Promise<PythProFeedRow[]>
       expo: f.exponent,
     }));
 }
-
-/** Supported feeds from SDK — shown instantly before the full Pyth list loads. */
-const DEFAULT_LAZER_FEEDS: PythProFeedRow[] = PYTH_FEEDS.map((f) => ({
-  id: f.lazerId,
-  symbol: f.symbol,
-  expo: -8, // placeholder; overwritten when the full API list loads
-}));
 
 let cachedLazerFeeds: PythProFeedRow[] | null = null;
 let inflightLazerFeeds: Promise<PythProFeedRow[]> | null = null;
@@ -713,6 +717,7 @@ async function fetchHermesPriceFeeds(
 export function CreatePythPredictionForm({
   className,
   disabled,
+  featuredFeeds,
   onPick,
 }: CreatePythPredictionFormProps) {
   const [priceId, setPriceId] = React.useState<string>('');
@@ -848,17 +853,24 @@ export function CreatePythPredictionForm({
     const q = lazerQuery.trim().toLowerCase();
     const list = lazerFeeds;
     if (!q) {
-      // Show supported feeds instantly (no network fetch needed).
-      // If the full list has loaded, use it to get accurate exponents/descriptions;
-      // otherwise fall back to the SDK-seeded defaults.
-      if (list.length > 0) {
-        const byId = new Map(list.map((f) => [f.id, f]));
-        const out = PYTH_FEEDS
-          .map((f) => byId.get(f.lazerId))
-          .filter((f): f is PythProFeedRow => !!f);
-        if (out.length > 0) return out;
+      // Show featured feeds when query is empty.
+      if (featuredFeeds && featuredFeeds.length > 0) {
+        // If the full list has loaded, match by ID for accurate exponents/descriptions.
+        if (list.length > 0) {
+          const byId = new Map(list.map((f) => [f.id, f]));
+          const out = featuredFeeds
+            .map((f) => byId.get(f.lazerId))
+            .filter((f): f is PythProFeedRow => !!f);
+          if (out.length > 0) return out;
+        }
+        // Fall back to placeholder rows from the prop.
+        return featuredFeeds.map((f) => ({
+          id: f.lazerId,
+          symbol: f.symbol,
+          expo: -8,
+        }));
       }
-      return DEFAULT_LAZER_FEEDS;
+      return list.slice(0, 25);
     }
 
     // Support comma/space separated terms (same UX as Pyth Developer Hub).
@@ -892,7 +904,7 @@ export function CreatePythPredictionForm({
 
     const other = [...otherMatches.values()].sort((a, b) => a.id - b.id);
     return [...exactIdMatches, ...other].slice(0, 50);
-  }, [lazerFeeds, lazerOpen, lazerQuery]);
+  }, [featuredFeeds, lazerFeeds, lazerOpen, lazerQuery]);
 
   const targetPrice = React.useMemo(() => {
     const n = Number(targetPriceDisplay);
@@ -1047,7 +1059,7 @@ export function CreatePythPredictionForm({
                       <CommandGroup>
                         {filteredLazerFeeds.map((f) => {
                           const label = f.symbol || `Feed #${f.id}`;
-                          const sub = f.description || `ID ${f.id} • expo ${f.expo}`;
+                          const sub = ('description' in f ? String(f.description) : '') || `ID ${f.id} • expo ${f.expo}`;
                           return (
                             <CommandItem
                               key={f.id}

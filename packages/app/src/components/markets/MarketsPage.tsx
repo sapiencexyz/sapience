@@ -5,6 +5,7 @@ import {
   type CreatePythPredictionFormValues,
   type PythPrediction,
 } from '@sapience/ui';
+import { PYTH_FEEDS } from '@sapience/sdk/constants';
 import { useIsBelow } from '@sapience/ui/hooks/use-mobile';
 import { motion } from 'framer-motion';
 import Image from 'next/image';
@@ -338,7 +339,7 @@ const MarketsPage = () => {
                   Predict Prices
                 </h2>
               </div>
-              <CreatePythPredictionForm onPick={handlePythPick} />
+              <CreatePythPredictionForm featuredFeeds={PYTH_FEEDS} onPick={handlePythPick} />
               <hr className="gold-hr mt-6 -mb-2" />
             </div>
           )}
