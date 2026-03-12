@@ -3,11 +3,14 @@ const nextConfig = {
   reactStrictMode: true,
   productionBrowserSourceMaps: false,
   transpilePackages: ['@sapience/ui'],
+  // @zerodev/ecdsa-validator requires permissionless@0.1.x but 0.2.x is installed;
+  // externalize for server bundles so Node resolves them at runtime.
+  serverExternalPackages: ['@zerodev/ecdsa-validator', '@zerodev/sdk'],
   eslint: {
     dirs: ['src'],
   },
   // Because we import the 403.html file in middleware.ts, we need to tell webpack to treat it as an asset.
-  webpack: (config) => {
+  webpack: (config, { isServer }) => {
     config.module.rules.push({
       test: /\.html$/,
       type: 'asset/source',
@@ -15,6 +18,11 @@ const nextConfig = {
     // pino-pretty is an optional dep that pino tries to require at runtime;
     // mark it as external so webpack doesn't fail the build.
     config.externals = [...(config.externals || []), 'pino-pretty'];
+    // @zerodev packages are only used by the relayer/API for smart account verification;
+    // stub them out to avoid permissionless@0.1.x/0.2.x version conflict.
+    config.resolve.alias['@zerodev/ecdsa-validator'] = false;
+    config.resolve.alias['@zerodev/sdk'] = false;
+    config.resolve.alias['@zerodev/sdk/constants'] = false;
     return config;
   },
   async headers() {
