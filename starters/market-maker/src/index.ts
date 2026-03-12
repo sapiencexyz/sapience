@@ -432,7 +432,7 @@ async function handleAuction(auction: AuctionDetails, submitBid: (payload: Retur
 
   if (!account || !MAKER) {
     logger.info([
-      `📋 Bid ${fmt.value(`${bidDec} USDe`)} to win ${fmt.value(`${winDec} USDe`)} (${fmt.yes(`${theyLose}%`)} chance they lose), against:`,
+      `📋 Bid ${fmt.value(`${bidDec} USDe`)} to win ${fmt.value(`${winDec} USDe`)} (implies ${fmt.yes(`${theyLose}%`)} chance they lose), against:`,
       legLines,
       fmt.bullet(color('dry run — no PRIVATE_KEY', ANSI.dim)),
     ].join('\n') + capped);
@@ -492,7 +492,7 @@ async function handleAuction(auction: AuctionDetails, submitBid: (payload: Retur
   });
 
   logger.info([
-    `📤 Bid ${fmt.value(`${bidDec} USDe`)} to win ${fmt.value(`${winDec} USDe`)} (${fmt.yes(`${theyLose}%`)} chance they lose), against:`,
+    `📤 Bid ${fmt.value(`${bidDec} USDe`)} to win ${fmt.value(`${winDec} USDe`)} (implies ${fmt.yes(`${theyLose}%`)} chance they lose), against:`,
     legLines,
   ].join('\n'));
   const sent = submitBid(payload);
