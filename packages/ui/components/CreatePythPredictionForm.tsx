@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { ChevronsUpDown } from 'lucide-react';
+import { Calendar, ChevronsUpDown, Timer } from 'lucide-react';
 import { z } from 'zod';
 
 import { cn } from '../lib/utils';
@@ -53,7 +53,15 @@ export type CreatePythPredictionFormValues = {
   dateTimeLocal: string;
 };
 
-type DateTimePreset = '' | '15m' | '1h' | '1w' | 'custom';
+type DateTimePreset = '' | '5m' | '1h' | '1w' | 'custom' | 'relative';
+
+type RelativeUnit = 'minutes' | 'hours' | 'days';
+
+function addRelativeTime(now: Date, amount: number, unit: RelativeUnit): Date {
+  if (unit === 'hours') return addMinutes(now, amount * 60);
+  if (unit === 'days') return addDays(now, amount);
+  return addMinutes(now, amount);
+}
 
 type PythProFeedRow = {
   id: number; // Pyth Pro ID (feed id)
@@ -173,22 +181,27 @@ function DateTimeSelector({
   value,
   onChange,
   onPresetChange,
+  onRelativeParamsChange,
 }: {
   disabled?: boolean;
   value: string;
   onChange: (next: string) => void;
   onPresetChange?: (preset: DateTimePreset) => void;
+  onRelativeParamsChange?: (amount: string, unit: RelativeUnit) => void;
 }) {
   const [preset, setPreset] = React.useState<DateTimePreset>('');
   const [customValue, setCustomValue] = React.useState<string>('');
   const [customOpen, setCustomOpen] = React.useState<boolean>(false);
+  const [relativeOpen, setRelativeOpen] = React.useState<boolean>(false);
+  const [relativeAmount, setRelativeAmount] = React.useState<string>('10');
+  const [relativeUnit, setRelativeUnit] = React.useState<RelativeUnit>('minutes');
 
-  // Default to +15m on first mount (only when no value is set yet).
+  // Default to +5m on first mount (only when no value is set yet).
   React.useEffect(() => {
     if (disabled) return;
     if (value) return;
-    setPreset('15m');
-    onPresetChange?.('15m');
+    setPreset('5m');
+    onPresetChange?.('5m');
     onChange(formatDateTimeLocalInputValue(addMinutes(new Date(), 15)));
     // Intentionally run once on mount; don't depend on `value` or `onChange` to avoid
     // re-applying the default after user interaction.
@@ -202,6 +215,7 @@ function DateTimeSelector({
         setPreset('');
         onPresetChange?.('');
         setCustomOpen(false);
+        setRelativeOpen(false);
         onChange('');
         return;
       }
@@ -211,6 +225,7 @@ function DateTimeSelector({
 
       if (nextPreset === 'custom') {
         setCustomOpen(true);
+        setRelativeOpen(false);
         const nextCustom =
           customValue ||
           value ||
@@ -220,52 +235,160 @@ function DateTimeSelector({
         return;
       }
 
+      if (nextPreset === 'relative') {
+        setRelativeOpen(true);
+        setCustomOpen(false);
+        const amt = Number(relativeAmount);
+        if (Number.isFinite(amt) && amt > 0) {
+          onChange(formatDateTimeLocalInputValue(addRelativeTime(new Date(), amt, relativeUnit)));
+        }
+        return;
+      }
+
       if (nextPreset === '') {
         setCustomOpen(false);
+        setRelativeOpen(false);
         onChange('');
         return;
       }
 
       setCustomOpen(false);
+      setRelativeOpen(false);
       const now = new Date();
       const next =
-        nextPreset === '15m'
-          ? formatDateTimeLocalInputValue(addMinutes(now, 15))
+        nextPreset === '5m'
+          ? formatDateTimeLocalInputValue(addMinutes(now, 5))
           : nextPreset === '1h'
             ? formatDateTimeLocalInputValue(addMinutes(now, 60))
             : formatDateTimeLocalInputValue(addDays(now, 7));
 
       onChange(next);
     },
-    [customValue, onChange, preset, value]
+    [customValue, onChange, preset, relativeAmount, relativeUnit, value]
   );
 
   const isCustom = preset === 'custom';
   const presetBtnBase =
-    'h-9 px-2 md:px-4 font-mono font-medium transition-all duration-200 ease-in-out select-none rounded-md border whitespace-nowrap tracking-wider uppercase text-sm disabled:opacity-50 flex-1 md:flex-none text-center';
+    'h-9 px-2 md:px-3 font-mono font-medium transition-all duration-200 ease-in-out select-none rounded-md border whitespace-nowrap tracking-wider uppercase text-sm disabled:opacity-50 flex-1 text-center';
 
   return (
-    <div className="flex flex-wrap items-center gap-x-3 gap-y-2 w-full">
+    <div className="flex flex-wrap md:flex-nowrap items-center gap-x-3 gap-y-2 w-full">
       <span className="text-base md:text-lg text-muted-foreground whitespace-nowrap">
         {isCustom ? 'at' : 'in'}
       </span>
 
-      <div className="flex flex-wrap items-center gap-2 flex-1 w-full md:w-auto">
+      <div className="flex flex-wrap md:flex-nowrap items-center gap-2 flex-1 w-full md:w-auto">
         {(
           [
-            { id: '15m', label: '15m', aria: 'In 15 minutes' },
+            { id: '5m', label: '5m', aria: 'In 5 minutes' },
             { id: '1h', label: '1h', aria: 'In 1 hour' },
             { id: '1w', label: '1w', aria: 'In a week' },
+            { id: 'relative', label: 'relative', aria: 'Relative time' },
             { id: 'custom', label: 'custom', aria: 'Custom time' },
           ] as const
         ).map((opt) => {
           const active = preset === opt.id;
+          const isIconBtn = opt.id === 'relative' || opt.id === 'custom';
           const cls =
             presetBtnBase +
+            (isIconBtn ? ' flex-none' : '') +
             ' ' +
             (active
               ? 'bg-brand-white text-brand-black border-brand-white'
               : 'bg-brand-white/10 text-brand-white/70 hover:bg-brand-white/15 border-brand-white/20');
+
+          if (opt.id === 'relative') {
+            return (
+              <Popover
+                key={opt.id}
+                open={relativeOpen}
+                onOpenChange={(v) => setRelativeOpen(v)}
+              >
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    onClick={() => applyPreset('relative')}
+                    aria-pressed={active}
+                    aria-label={opt.aria}
+                    title="Relative time"
+                    disabled={disabled}
+                    className={cls}
+                  >
+                    <Timer className="h-4 w-4" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent
+                  onOpenAutoFocus={(e) => e.preventDefault()}
+                  className="w-auto p-2 bg-brand-black text-brand-white border border-brand-white/20 font-mono"
+                  align="start"
+                >
+                  <div className="flex items-center gap-1.5">
+                    <Input
+                      type="number"
+                      inputMode="numeric"
+                      min="1"
+                      value={relativeAmount}
+                      onChange={(e) => {
+                        const next = e.target.value;
+                        setRelativeAmount(next);
+                        const amt = Number(next);
+                        if (Number.isFinite(amt) && amt > 0) {
+                          setPreset('relative');
+                          onPresetChange?.('relative');
+                          onRelativeParamsChange?.(next, relativeUnit);
+                          onChange(formatDateTimeLocalInputValue(addRelativeTime(new Date(), amt, relativeUnit)));
+                        }
+                      }}
+                      disabled={disabled}
+                      aria-label="Relative time amount"
+                      className="h-8 w-[52px] bg-transparent border-brand-white/20 text-foreground text-center text-sm"
+                    />
+                    <ToggleGroup
+                      type="single"
+                      value={relativeUnit}
+                      onValueChange={(v) => {
+                        if (!v) return;
+                        const unit = v as RelativeUnit;
+                        setRelativeUnit(unit);
+                        const amt = Number(relativeAmount);
+                        if (Number.isFinite(amt) && amt > 0) {
+                          setPreset('relative');
+                          onPresetChange?.('relative');
+                          onRelativeParamsChange?.(relativeAmount, unit);
+                          onChange(formatDateTimeLocalInputValue(addRelativeTime(new Date(), amt, unit)));
+                        }
+                      }}
+                      disabled={disabled}
+                      className="bg-transparent gap-0.5"
+                      aria-label="Relative time unit"
+                    >
+                      <ToggleGroupItem
+                        value="minutes"
+                        aria-label="Minutes"
+                        className="h-8 px-2 font-mono text-xs data-[state=on]:bg-brand-white data-[state=on]:text-brand-black border border-brand-white/20 bg-transparent text-brand-white/70"
+                      >
+                        min
+                      </ToggleGroupItem>
+                      <ToggleGroupItem
+                        value="hours"
+                        aria-label="Hours"
+                        className="h-8 px-2 font-mono text-xs data-[state=on]:bg-brand-white data-[state=on]:text-brand-black border border-brand-white/20 bg-transparent text-brand-white/70"
+                      >
+                        hr
+                      </ToggleGroupItem>
+                      <ToggleGroupItem
+                        value="days"
+                        aria-label="Days"
+                        className="h-8 px-2 font-mono text-xs data-[state=on]:bg-brand-white data-[state=on]:text-brand-black border border-brand-white/20 bg-transparent text-brand-white/70"
+                      >
+                        day
+                      </ToggleGroupItem>
+                    </ToggleGroup>
+                  </div>
+                </PopoverContent>
+              </Popover>
+            );
+          }
 
           if (opt.id === 'custom') {
             const { date: selectedDate, time: selectedTime } =
@@ -287,7 +410,7 @@ function DateTimeSelector({
                     disabled={disabled}
                     className={cls}
                   >
-                    {opt.label}
+                    <Calendar className="h-4 w-4" />
                   </button>
                 </PopoverTrigger>
                 <PopoverContent
@@ -613,6 +736,13 @@ export function CreatePythPredictionForm({
     React.useState<string>('');
   const [dateTimeLocal, setDateTimeLocal] = React.useState<string>('');
   const [dateTimePreset, setDateTimePreset] = React.useState<DateTimePreset>('');
+  const [parentRelativeAmount, setParentRelativeAmount] = React.useState<string>('10');
+  const [parentRelativeUnit, setParentRelativeUnit] = React.useState<RelativeUnit>('minutes');
+
+  const handleRelativeParamsChange = React.useCallback((amount: string, unit: RelativeUnit) => {
+    setParentRelativeAmount(amount);
+    setParentRelativeUnit(unit);
+  }, []);
 
   // Once a Lazer feed is selected (and we know its human symbol), use Hermes to
   // fetch a current reference price and populate the Price input (rounded to 2dp).
@@ -778,13 +908,20 @@ export function CreatePythPredictionForm({
     if (isPickDisabled) return;
     if (typeof priceExpo !== 'number') return;
     const computedDateTimeLocal =
-      dateTimePreset === '15m'
-        ? formatDateTimeLocalInputValue(addMinutes(new Date(), 15))
+      dateTimePreset === '5m'
+        ? formatDateTimeLocalInputValue(addMinutes(new Date(), 5))
         : dateTimePreset === '1h'
           ? formatDateTimeLocalInputValue(addMinutes(new Date(), 60))
           : dateTimePreset === '1w'
             ? formatDateTimeLocalInputValue(addDays(new Date(), 7))
-            : dateTimeLocal;
+            : dateTimePreset === 'relative'
+              ? (() => {
+                  const amt = Number(parentRelativeAmount);
+                  return Number.isFinite(amt) && amt > 0
+                    ? formatDateTimeLocalInputValue(addRelativeTime(new Date(), amt, parentRelativeUnit))
+                    : dateTimeLocal;
+                })()
+              : dateTimeLocal;
 
     // Keep UI in sync when using presets (so the displayed time matches the submitted one).
     if (computedDateTimeLocal && computedDateTimeLocal !== dateTimeLocal) {
@@ -819,6 +956,8 @@ export function CreatePythPredictionForm({
     direction,
     isPickDisabled,
     onPick,
+    parentRelativeAmount,
+    parentRelativeUnit,
     priceExpo,
     targetPriceRaw,
     targetPriceFullPrecision,
@@ -964,7 +1103,7 @@ export function CreatePythPredictionForm({
               </ToggleGroupItem>
             </ToggleGroup>
 
-            <div className="relative flex-1 md:flex-none md:w-[180px] min-w-[140px] sm:min-w-[160px] md:min-w-[180px]">
+            <div className="relative flex-1 md:flex-none md:w-[140px] min-w-[100px] sm:min-w-[120px] md:min-w-[140px]">
               <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                 $
               </span>
@@ -989,12 +1128,13 @@ export function CreatePythPredictionForm({
             </div>
           </div>
 
-          <div className="basis-full md:basis-auto w-full md:w-auto flex-1 min-w-[220px] md:min-w-0">
+          <div className="basis-full md:basis-auto w-full md:w-auto flex-1 min-w-0">
             <DateTimeSelector
               disabled={disabled}
               value={dateTimeLocal}
               onChange={setDateTimeLocal}
               onPresetChange={setDateTimePreset}
+              onRelativeParamsChange={handleRelativeParamsChange}
             />
           </div>
 
@@ -1002,7 +1142,7 @@ export function CreatePythPredictionForm({
             type="submit"
             disabled={isPickDisabled}
             variant="default"
-            className="tracking-wider font-mono text-base md:text-sm px-4 h-12 md:h-9 bg-brand-white text-brand-black shrink-0 ml-0 md:ml-2 w-full md:w-auto basis-full md:basis-auto mt-2 md:mt-0"
+            className="tracking-wider font-mono text-base md:text-sm px-4 h-12 md:h-9 bg-brand-white text-brand-black shrink-0 ml-0 md:ml-4 w-full md:w-auto basis-full md:basis-auto mt-2 md:mt-0"
           >
             PICK
           </Button>
