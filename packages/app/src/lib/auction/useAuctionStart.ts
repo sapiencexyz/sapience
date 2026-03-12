@@ -419,7 +419,8 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
       };
       if (params.predictorSponsor) {
         escrowPayload.predictorSponsor = params.predictorSponsor;
-        escrowPayload.predictorSponsorData = params.predictorSponsorData ?? '0x';
+        escrowPayload.predictorSponsorData =
+          params.predictorSponsorData ?? '0x';
       }
 
       // Generate a correlation ID and send via client.send() instead of

@@ -29,15 +29,21 @@ export function useSponsorshipActivation({
 
   // Keep callbacks in refs so effects/callbacks don't re-trigger on every render
   const onActivateRef = useRef(onActivate);
-  useEffect(() => { onActivateRef.current = onActivate; }, [onActivate]);
+  useEffect(() => {
+    onActivateRef.current = onActivate;
+  }, [onActivate]);
   const onTimeoutRef = useRef(onTimeout);
-  useEffect(() => { onTimeoutRef.current = onTimeout; }, [onTimeout]);
+  useEffect(() => {
+    onTimeoutRef.current = onTimeout;
+  }, [onTimeout]);
 
   // Timeout: if awaitingSponsoredBid stays true for 10s, reset and restart
   useEffect(() => {
     if (!awaitingSponsoredBid) return;
     const timer = window.setTimeout(() => {
-      logPositionForm('[sponsorship] Timed out waiting for sponsored bid — restarting auction');
+      logPositionForm(
+        '[sponsorship] Timed out waiting for sponsored bid — restarting auction'
+      );
       setSponsorshipActivated(false);
       setAwaitingSponsoredBid(false);
       onTimeoutRef.current();

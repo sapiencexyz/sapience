@@ -193,7 +193,8 @@ export async function simulateEscrowBidMint(
       const rawMessage = err instanceof Error ? err.message : '';
       const isInvalidSignature =
         rawMessage.includes('InvalidSignature') ||
-        (errorMessage.includes('Invalid') && errorMessage.includes('signature'));
+        (errorMessage.includes('Invalid') &&
+          errorMessage.includes('signature'));
       if (isInvalidSignature) {
         // Verify counterparty signature off-chain (EOA ecrecover)
         let counterpartySigValid = false;
@@ -318,10 +319,7 @@ export async function validateEscrowBidLightweight(
     return { isValid: true };
   } catch (err) {
     // validateCounterpartyFunds throws with 'market maker' message on insufficient funds
-    if (
-      err instanceof Error &&
-      err.message.includes('market maker')
-    ) {
+    if (err instanceof Error && err.message.includes('market maker')) {
       logBidValidation(
         `[escrow-lightweight] Bid from ${counterparty.slice(0, 10)}... insufficient funds`
       );
@@ -402,8 +400,5 @@ function isContractRevert(err: unknown): boolean {
 
   // Fallback: check message for revert keywords
   const msg = err.message;
-  return (
-    msg.includes('execution reverted') ||
-    msg.includes('revert')
-  );
+  return msg.includes('execution reverted') || msg.includes('revert');
 }
