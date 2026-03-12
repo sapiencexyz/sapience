@@ -185,19 +185,20 @@ export async function simulateEscrowBidMint(
     if (isContractRevert(err)) {
       const errorMessage = parseSimulationError(err);
 
-      // InvalidSignature is expected for the PREDICTOR in session mode:
-      // simulateContract can't replicate the smart account's ERC-1271 context.
-      // But it could also mean the COUNTERPARTY signature is wrong (real bug).
-      // Verify the counterparty sig off-chain first — only fall back to
-      // lightweight validation if the counterparty sig is actually valid.
       const rawMessage = err instanceof Error ? err.message : '';
       const isInvalidSignature =
         rawMessage.includes('InvalidSignature') ||
         (errorMessage.includes('Invalid') &&
           errorMessage.includes('signature'));
       if (isInvalidSignature) {
-        // Verify counterparty signature off-chain (EOA ecrecover)
-        let counterpartySigValid = false;
+        // InvalidSignature is expected in session mode: simulateContract can't
+        // replicate the predictor's smart account ERC-1271 context.
+        //
+        // Try to verify the counterparty sig off-chain. If ecrecover doesn't
+        // match, the counterparty may be a smart contract (e.g. a vault) with
+        // its own isValidSignature — the on-chain mint will verify it properly,
+        // so fall back to lightweight checks either way.
+        let counterpartySigVerified = false;
         try {
           const counterpartyTypedData = buildCounterpartyMintTypedData({
             picks,
@@ -212,7 +213,7 @@ export async function simulateEscrowBidMint(
             verifyingContract: predictionMarketAddress,
             chainId,
           });
-          counterpartySigValid = await verifyTypedData({
+          counterpartySigVerified = await verifyTypedData({
             address: counterparty,
             domain: {
               ...counterpartyTypedData.domain,
@@ -224,21 +225,22 @@ export async function simulateEscrowBidMint(
             signature: bid.counterpartySignature as Hex,
           });
         } catch {
-          // If counterparty uses a smart account (ERC-1271), ecrecover won't
-          // work — check session key data presence as a heuristic.
-          counterpartySigValid = !!bid.counterpartySessionKeyData;
+          // ecrecover failed (malformed sig or smart account) — not fatal
         }
 
-        if (!counterpartySigValid) {
-          logBidValidation(
-            `[escrow-sim] InvalidSignature — counterparty sig verification failed for ${bid.counterparty.slice(0, 10)}`
+        if (counterpartySigVerified) {
+          console.log(
+            `[escrow-sim] InvalidSignature (predictor expected), counterparty EOA sig verified — lightweight fallback for ${counterparty.slice(0, 10)}`
           );
-          return { isValid: false, error: 'Counterparty signature is invalid' };
+        } else {
+          // Counterparty is likely a smart contract (vault) whose signature
+          // can only be verified on-chain via isValidSignature. Fall through
+          // to lightweight checks (deadline/nonce/balance).
+          console.log(
+            `[escrow-sim] InvalidSignature — counterparty sig not EOA-verifiable (likely smart contract/vault) — lightweight fallback for ${counterparty.slice(0, 10)}`
+          );
         }
 
-        logBidValidation(
-          `[escrow-sim] InvalidSignature (expected in session mode, counterparty sig OK) — falling back to lightweight validation for ${bid.counterparty.slice(0, 10)}`
-        );
         return validateEscrowBidLightweight(bid, {
           chainId,
           predictionMarketAddress,
