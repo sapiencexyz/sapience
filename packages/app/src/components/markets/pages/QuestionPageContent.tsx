@@ -451,7 +451,7 @@ export default function QuestionPageContent({
   }, [scatterData, forecastScatterData, data?.endTime]);
 
   // Disable logging - only CreatePositionForm should log auction activity
-  const { bids, requestQuotes } = useAuctionStart({ disableLogging: true });
+  const { bids, requestQuotes } = useAuctionStart({ disableLogging: true, skipIntentSigning: true });
   if (isLoading) {
     return (
       <div

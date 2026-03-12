@@ -24,7 +24,9 @@ import {
   decodeAuctionPredictedOutcomes,
   formatPythPriceDecimalFromInt,
   formatUnixSecondsToLocalInput,
+  PYTH_RESOLVER_SET,
 } from '~/lib/auction/decodePredictedOutcomes';
+import { decodePythMarketId } from '@sapience/sdk';
 import { usePythFeedLabel } from '~/lib/pyth/usePythFeedLabel';
 
 import CategoryFilter from '~/components/terminal/filters/CategoryFilter';
@@ -297,11 +299,14 @@ const TerminalPageContent: React.FC = () => {
 
         // Escrow auctions have picks[] with conditionId directly
         const picks = (m as any)?.data?.picks as
-          | Array<{ conditionId?: string }>
+          | Array<{ conditionId?: string; conditionResolver?: string }>
           | undefined;
         if (Array.isArray(picks) && picks.length > 0) {
           for (const p of picks) {
             if (p.conditionId && typeof p.conditionId === 'string') {
+              // Skip Pyth picks — they encode market params, not DB condition IDs
+              const resolver = p.conditionResolver?.toLowerCase?.() ?? '';
+              if (PYTH_RESOLVER_SET.has(resolver)) continue;
               set.add(p.conditionId);
             }
           }
@@ -399,6 +404,33 @@ const TerminalPageContent: React.FC = () => {
       // Escrow auctions: picks[] with conditionId directly
       const escrowPicks = (m.data as AuctionStartedData)?.picks;
       if (Array.isArray(escrowPicks) && escrowPicks.length > 0) {
+        // Check if first pick uses a Pyth resolver — render via PythPredictionsCell
+        const firstResolver =
+          escrowPicks[0]?.conditionResolver?.toLowerCase?.() ?? '';
+        if (
+          PYTH_RESOLVER_SET.has(firstResolver) &&
+          escrowPicks[0]?.conditionId
+        ) {
+          try {
+            const decoded = decodePythMarketId(
+              escrowPicks[0].conditionId as `0x${string}`
+            );
+            if (!decoded) return null;
+            return (
+              <PythPredictionsCell
+                first={{
+                  ...decoded,
+                  // predictedOutcome 1 = Over (maker), 0 = Under
+                  prediction: escrowPicks[0].predictedOutcome === 1,
+                }}
+              />
+            );
+          } catch {
+            return null;
+          }
+        }
+
+        // Non-Pyth escrow: look up condition names from DB
         const allResolved = escrowPicks.every(
           (p) => p.conditionId && renderConditionMap.has(p.conditionId)
         );
@@ -618,23 +650,43 @@ const TerminalPageContent: React.FC = () => {
       // Pinned rows bypass filters entirely
       if (row.pinned) return true;
 
-      const decoded = getDecodedPredictedOutcomes(row.m);
-      const legConditionIds =
-        decoded.kind === 'uma'
-          ? decoded.data.map((l) => String(l.marketId))
-          : [];
-      const legCategorySlugs = (() => {
-        if (decoded.kind === 'uma') {
-          return decoded.data.map((l) => {
-            const cond = renderConditionMap.get(String(l.marketId));
-            return cond?.category?.slug ?? null;
-          });
-        }
-        if (decoded.kind === 'pyth') {
-          return ['prices'] as const;
-        }
-        return [];
-      })();
+      // Detect Pyth escrow auctions early — they don't have DB conditions
+      const auctionDataForFilter = row.m?.data as
+        | AuctionStartedData
+        | undefined;
+      const escrowPicksForFilter = auctionDataForFilter?.picks;
+      const isPythEscrow =
+        Array.isArray(escrowPicksForFilter) &&
+        escrowPicksForFilter.length > 0 &&
+        PYTH_RESOLVER_SET.has(
+          escrowPicksForFilter[0]?.conditionResolver?.toLowerCase?.() ?? ''
+        );
+
+      let legConditionIds: string[] = [];
+      let legCategorySlugs: (string | null)[] = [];
+
+      if (isPythEscrow) {
+        // Pyth escrow — category is always 'prices', no DB condition IDs
+        legCategorySlugs = ['prices'];
+      } else {
+        const decoded = getDecodedPredictedOutcomes(row.m);
+        legConditionIds =
+          decoded.kind === 'uma'
+            ? decoded.data.map((l) => String(l.marketId))
+            : [];
+        legCategorySlugs = (() => {
+          if (decoded.kind === 'uma') {
+            return decoded.data.map((l) => {
+              const cond = renderConditionMap.get(String(l.marketId));
+              return cond?.category?.slug ?? null;
+            });
+          }
+          if (decoded.kind === 'pyth') {
+            return ['prices'] as const;
+          }
+          return [] as (string | null)[];
+        })();
+      }
 
       const matchesCategory =
         selectedCategorySlugs.length === 0 ||

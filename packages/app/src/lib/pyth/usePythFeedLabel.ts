@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { PYTH_FEED_NAMES } from '@sapience/sdk/constants';
 
 type LazerFeedRow = {
   pyth_lazer_id?: unknown;
@@ -122,7 +123,9 @@ async function loadLazerFeedMap(): Promise<Map<number, string>> {
 
 export function getPythFeedLabelSync(priceId: string): string | null {
   const lazerId = extractLazerIdMaybe(priceId);
-  if (typeof lazerId === 'number') return cachedLazerMap?.get(lazerId) ?? null;
+  if (typeof lazerId === 'number') {
+    return cachedLazerMap?.get(lazerId) ?? PYTH_FEED_NAMES[lazerId] ?? null;
+  }
   return null;
 }
 

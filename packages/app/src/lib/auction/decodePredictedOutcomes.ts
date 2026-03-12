@@ -1,6 +1,7 @@
 import { decodeAbiParameters, type Address } from 'viem';
 import {
   pythResolver,
+  pythConditionResolver,
   umaResolver,
   lzPMResolver,
   lzUmaResolver,
@@ -53,9 +54,11 @@ const UMA_RESOLVER_SET = new Set<string>(
     .map((a) => String(a).toLowerCase())
 );
 
-const PYTH_RESOLVER_SET = new Set<string>(
-  Object.values(pythResolver)
-    .map((v) => v?.address)
+export const PYTH_RESOLVER_SET = new Set<string>(
+  [
+    ...Object.values(pythResolver).map((v) => v?.address),
+    ...Object.values(pythConditionResolver).map((v) => v?.address),
+  ]
     .filter(Boolean)
     .map((a) => String(a).toLowerCase())
 );

@@ -10,6 +10,8 @@ import {
   getEscrowAuctionDetails,
 } from './escrowRegistry';
 import { validateEscrowAuctionRequest, validateEscrowBid } from './escrowHelpers';
+import { verifyAuctionIntentSignature } from './escrowSigVerify';
+import { predictionMarketEscrow } from '@sapience/sdk/contracts/addresses';
 import {
   activeConnections,
   connectionsTotal,
@@ -651,6 +653,39 @@ export function createAuctionWebSocketServer() {
             return;
           }
 
+          // Verify intent signature if present
+          if (payload.intentSignature) {
+            const escrowAddr = predictionMarketEscrow[payload.chainId]?.address;
+            if (!escrowAddr) {
+              errorsTotal.inc({ type: 'validation', message_type: 'auction.start' });
+              console.warn(
+                `[Relayer] auction.start rejected: unknown chainId ${payload.chainId}`
+              );
+              send(ws, {
+                type: 'auction.ack',
+                payload: { auctionId: '', error: 'unknown_chain_id' },
+              });
+              trackDuration(msgType, startTime);
+              return;
+            }
+
+            const intentValid = await verifyAuctionIntentSignature(
+              payload,
+              escrowAddr as `0x${string}`
+            );
+            if (!intentValid) {
+              errorsTotal.inc({ type: 'validation', message_type: 'auction.start' });
+              console.warn(
+                `[Relayer] auction.start rejected: invalid intent signature from ${payload.predictor?.slice(0, 10)}`
+              );
+              send(ws, {
+                type: 'auction.ack',
+                payload: { auctionId: '', error: 'invalid_intent_signature' },
+              });
+              trackDuration(msgType, startTime);
+              return;
+            }
+          }
 
           const auctionId = upsertEscrowAuction(payload);
           pendingAuctionId = auctionId;

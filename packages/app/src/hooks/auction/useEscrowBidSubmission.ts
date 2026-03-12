@@ -6,7 +6,7 @@
  */
 import { useCallback, useMemo } from 'react';
 import { useAccount, useChainId, useSignTypedData } from 'wagmi';
-import { parseUnits, formatUnits, type Address } from 'viem';
+import { parseUnits, formatUnits, zeroAddress, type Address } from 'viem';
 import {
   predictionMarketEscrow,
   collateralToken as collateralTokenAddresses,
@@ -27,6 +27,7 @@ import { useToast } from '@sapience/ui/hooks/use-toast';
 import { toAuctionWsUrl } from '~/lib/ws';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 import { generateRandomNonce } from '@sapience/sdk';
+import { validateCounterpartyFunds } from '@sapience/sdk/onchain/position';
 
 export type EscrowBidSubmissionParams = {
   auctionId: string;
@@ -192,6 +193,26 @@ export function useEscrowBidSubmission(
 
       if (!wsUrl) {
         return { success: false, error: 'Realtime connection not configured' };
+      }
+
+      // Validate predictor can fund the mint before we sign (avoid wasting signature on dead auction)
+      try {
+        const publicClient = getPublicClientForChainId(chainId);
+        await validateCounterpartyFunds(
+          predictor,
+          predictorCollateral,
+          wusdeAddress ?? zeroAddress,
+          verifyingContract,
+          publicClient
+        );
+      } catch (err) {
+        if (err instanceof Error && err.message.includes('market maker')) {
+          return {
+            success: false,
+            error: `Predictor cannot fund this auction`,
+          };
+        }
+        // RPC error — don't block the bid
       }
 
       // Calculate deadline with optional clamping

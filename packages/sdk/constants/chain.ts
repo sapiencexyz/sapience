@@ -1,6 +1,7 @@
 import type { Chain } from 'viem';
 
 export const CHAIN_ID_ARBITRUM = 42161 as const;
+export const CHAIN_ID_POLYGON = 137 as const;
 export const CHAIN_ID_ETHEREAL = 5064014 as const;
 export const CHAIN_ID_ETHEREAL_TESTNET = 13374202 as const;
 

@@ -110,8 +110,18 @@ export function getEscrowAuctionDetails(
     predictor: rec.auction.predictor,
     predictorNonce: rec.auction.predictorNonce,
     predictorDeadline: rec.auction.predictorDeadline,
+    ...(rec.auction.intentSignature && {
+      intentSignature: rec.auction.intentSignature,
+    }),
+    ...(rec.auction.predictorSessionKeyData && {
+      predictorSessionKeyData: rec.auction.predictorSessionKeyData,
+    }),
     chainId: rec.auction.chainId,
     createdAt: new Date(rec.deadlineMs - 60_000).toISOString(), // Approximate creation time
+    ...(rec.auction.predictorSponsor && {
+      predictorSponsor: rec.auction.predictorSponsor,
+      predictorSponsorData: rec.auction.predictorSponsorData ?? '0x',
+    }),
   };
 }
 

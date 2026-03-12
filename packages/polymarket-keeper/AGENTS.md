@@ -9,12 +9,15 @@
 ## Overview
 Manages Sapience conditions from Polymarket markets:
 - **Generate**: Fetches markets settling within 21 days, submits to Sapience API
+- **Relist**: Fetches markets with past end dates still traded on Polymarket, creates/extends conditions with endTime = now + 7 days
 - **Settle**: Bridges resolution data from Polymarket via LayerZero
 
 ## Commands
 ```bash
 pnpm --filter @sapience/polymarket-keeper generate:dry-run  # Test generation
 pnpm --filter @sapience/polymarket-keeper generate          # Submit to API
+pnpm --filter @sapience/polymarket-keeper relist:dry-run     # Test relisting
+pnpm --filter @sapience/polymarket-keeper relist             # Relist to API
 pnpm --filter @sapience/polymarket-keeper settle:dry-run    # Check settlements
 pnpm --filter @sapience/polymarket-keeper settle:execute:wait  # Execute settlements
 pnpm --filter @sapience/polymarket-keeper start             # Run both
