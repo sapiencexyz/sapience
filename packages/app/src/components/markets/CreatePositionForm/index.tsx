@@ -490,21 +490,18 @@ const CreatePositionFormInner = ({
   const auctionSponsorAddress = currentAuctionParams?.predictorSponsor;
 
   // Validate escrow bids: session mode uses full simulation, EOA mode uses lightweight checks
-  const { validatedBids: bids } = useValidatedEscrowBids(
-    rawBids,
-    {
-      chainId: positionChainId,
-      predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
-      collateralTokenAddress: collateralToken,
-      predictorAddress: effectiveAddress as Address | undefined,
-      predictorCollateral: predictorCollateralWei,
-      picks: validationPicks,
-      isSponsored: auctionHasSponsor,
-      sponsorAddress: auctionSponsorAddress,
-      signPredictorApproval: isUsingSession ? sessionSignTypedData : null,
-      enabled: true,
-    }
-  );
+  const { validatedBids: bids } = useValidatedEscrowBids(rawBids, {
+    chainId: positionChainId,
+    predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
+    collateralTokenAddress: collateralToken,
+    predictorAddress: effectiveAddress as Address | undefined,
+    predictorCollateral: predictorCollateralWei,
+    picks: validationPicks,
+    isSponsored: auctionHasSponsor,
+    sponsorAddress: auctionSponsorAddress,
+    signPredictorApproval: isUsingSession ? sessionSignTypedData : null,
+    enabled: true,
+  });
 
   // Reset initialization when effective address changes (e.g., session activates)
   useEffect(() => {

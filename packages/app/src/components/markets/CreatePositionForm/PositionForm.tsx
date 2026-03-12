@@ -138,7 +138,9 @@ export default function PositionForm({
 
   // Sponsorship activation state machine (timeout, reset, activate).
   // Callbacks are ref-ified inside the hook so triggerAuctionRequest (defined below) resolves at call-time.
-  const triggerAuctionRequestRef = useRef<(opts?: { forceRefresh?: boolean; withSponsor?: boolean }) => void>(() => {});
+  const triggerAuctionRequestRef = useRef<
+    (opts?: { forceRefresh?: boolean; withSponsor?: boolean }) => void
+  >(() => {});
   const {
     sponsorshipActivated,
     awaitingSponsoredBid,
@@ -146,7 +148,11 @@ export default function PositionForm({
     clearAwaiting,
     resetSponsor,
   } = useSponsorshipActivation({
-    onActivate: () => triggerAuctionRequestRef.current({ forceRefresh: true, withSponsor: true }),
+    onActivate: () =>
+      triggerAuctionRequestRef.current({
+        forceRefresh: true,
+        withSponsor: true,
+      }),
     onTimeout: () => triggerAuctionRequestRef.current({ forceRefresh: true }),
   });
 
@@ -467,11 +473,13 @@ export default function PositionForm({
           decimals
         ).toString();
 
-        let pythEscrowPicks: Array<{
-          conditionResolver: `0x${string}`;
-          conditionId: `0x${string}`;
-          predictedOutcome: number;
-        }> | undefined;
+        let pythEscrowPicks:
+          | Array<{
+              conditionResolver: `0x${string}`;
+              conditionId: `0x${string}`;
+              predictedOutcome: number;
+            }>
+          | undefined;
 
         const payload = hasPyth
           ? (() => {
@@ -581,7 +589,9 @@ export default function PositionForm({
   );
 
   // Keep ref in sync so the sponsorship hook can call triggerAuctionRequest
-  useEffect(() => { triggerAuctionRequestRef.current = triggerAuctionRequest; }, [triggerAuctionRequest]);
+  useEffect(() => {
+    triggerAuctionRequestRef.current = triggerAuctionRequest;
+  }, [triggerAuctionRequest]);
 
   // Handler for "Initiate Auction" button - works for all users
   // Logged-out users get unsigned auctions that display as estimates
@@ -844,7 +854,9 @@ export default function PositionForm({
               onRequestBids={handleRequestBids}
               isSubmitting={isSubmitting}
               onSubmit={onSubmit}
-              isSubmitDisabled={isPermitLoading || isRestricted || awaitingSponsoredBid}
+              isSubmitDisabled={
+                isPermitLoading || isRestricted || awaitingSponsoredBid
+              }
               enableRainbowHover={isRainbowHoverEnabled}
               hintMounted={hintMounted}
               disclaimerMounted={disclaimerMounted}

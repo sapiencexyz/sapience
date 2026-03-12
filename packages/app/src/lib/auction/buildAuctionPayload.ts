@@ -249,8 +249,8 @@ export function buildPythAuctionStartPayload(
   const normalized = normalizePythOutcomes(outcomes);
   const encoded = encodePythBinaryOptionOutcomes(normalized);
 
-  const conditionResolverAddress = (pythConditionResolver[targetChainId]?.address ??
-    resolver) as `0x${string}`;
+  const conditionResolverAddress =
+    pythConditionResolver[targetChainId]?.address ?? resolver;
 
   const escrowPicks = normalized.map((o) => ({
     conditionResolver: conditionResolverAddress,
