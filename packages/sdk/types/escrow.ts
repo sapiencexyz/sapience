@@ -259,6 +259,8 @@ export interface AuctionDetails {
   predictorDeadline: number;
   chainId: number;
   createdAt: string; // ISO timestamp
+  predictorSponsor?: string; // Sponsor contract address (address(0) = self-funded)
+  predictorSponsorData?: string; // Opaque data passed to sponsor's fundMint
 }
 
 /** Bid that has been validated */

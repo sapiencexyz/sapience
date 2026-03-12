@@ -47,6 +47,10 @@ export const ALWAYS_INCLUDE_PATTERNS = [
   /price of Ethereum.+on \w+ \d+/i, // "Will the price of Ethereum be above... on January 28?"
 ];
 
+// Relist configuration
+export const RELIST_LOOKBACK_DAYS = 30;
+export const RELIST_FORWARD_DAYS = 7;
+
 // LLM Configuration
 export const LLM_ENABLED = process.env.LLM_ENABLED === 'true';
 export const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || '';
