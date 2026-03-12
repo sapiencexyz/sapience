@@ -1,4 +1,5 @@
 import {
+  decodeAbiParameters,
   encodeAbiParameters,
   keccak256,
   type Hex,
@@ -75,6 +76,30 @@ export function getPythMarketId(market: PythBinaryOptionMarket): Hex {
  */
 export function getPythMarketHash(market: PythBinaryOptionMarket): Hex {
   return keccak256(getPythMarketId(market));
+}
+
+/**
+ * Decode a `conditionId` produced by `getPythMarketId` back into its fields.
+ */
+export function decodePythMarketId(encoded: Hex): PythBinaryOptionMarket {
+  const [priceId, endTime, strikePrice, strikeExpo, overWinsOnTie] =
+    decodeAbiParameters(
+      [
+        { type: 'bytes32' },
+        { type: 'uint64' },
+        { type: 'int64' },
+        { type: 'int32' },
+        { type: 'bool' },
+      ],
+      encoded
+    );
+  return {
+    priceId,
+    endTime,
+    strikePrice: BigInt(strikePrice),
+    strikeExpo: Number(strikeExpo),
+    overWinsOnTie,
+  };
 }
 
 export function encodePythBinaryOptionOutcomes(
