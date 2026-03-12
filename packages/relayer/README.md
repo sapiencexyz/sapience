@@ -127,6 +127,8 @@ Server responds with `vault_quote.ack` and `vault_quote.update` messages.
 
 ```typescript
 import { createEscrowAuctionWs, buildAuctionRequest } from '@sapience/sdk/relayer/escrowAuctionWs';
+import { pythConditionResolver } from '@sapience/sdk/contracts/addresses';
+import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 
 const client = createEscrowAuctionWs('wss://relayer.sapience.xyz/auction', {
   onAuctionAck: ({ auctionId }) => console.log('Auction created:', auctionId),
@@ -137,7 +139,7 @@ const client = createEscrowAuctionWs('wss://relayer.sapience.xyz/auction', {
 client.startAuction({
   picks: [
     {
-      conditionResolver: '0xdC1Fa830aD1de01f1EF603749f48bD73384286BE',
+      conditionResolver: pythConditionResolver[CHAIN_ID_ETHEREAL].address,
       conditionId: '0x...',
       predictedOutcome: 0, // YES
     },
@@ -148,7 +150,7 @@ client.startAuction({
   predictorNonce: 1,
   predictorDeadline: Math.floor(Date.now() / 1000) + 300,
   predictorSignature: '0x...', // EIP-712 signature
-  chainId: 5064014,
+  chainId: CHAIN_ID_ETHEREAL,
 });
 ```
 

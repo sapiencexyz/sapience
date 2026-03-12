@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parse } from 'graphql';
+import { parse, GraphQLError } from 'graphql';
 import { validateQuery } from './queryValidation.js';
 
 describe('queryValidation', () => {
@@ -184,6 +184,39 @@ describe('queryValidation', () => {
         users(take: 100) { id name }
       }`);
       expect(() => validateQuery(query, defaultOptions)).not.toThrow();
+    });
+  });
+
+  describe('HTTP status codes', () => {
+    it('returns 400 for pagination limit exceeded', () => {
+      const query = parse(`{ items(take: 500) { id } }`);
+      try {
+        validateQuery(query, defaultOptions);
+        expect.unreachable('should have thrown');
+      } catch (err) {
+        expect(err).toBeInstanceOf(GraphQLError);
+        const gqlErr = err as GraphQLError;
+        expect(gqlErr.extensions?.code).toBe('PAGINATION_LIMIT_EXCEEDED');
+        expect((gqlErr.extensions?.http as { status: number })?.status).toBe(400);
+      }
+    });
+
+    it('returns 400 for field alias limit exceeded', () => {
+      const query = parse(`{
+        a1: items { id }
+        a2: items { id }
+        a3: items { id }
+        a4: items { id }
+      }`);
+      try {
+        validateQuery(query, { ...defaultOptions, maxFieldAliases: 3 });
+        expect.unreachable('should have thrown');
+      } catch (err) {
+        expect(err).toBeInstanceOf(GraphQLError);
+        const gqlErr = err as GraphQLError;
+        expect(gqlErr.extensions?.code).toBe('FIELD_ALIAS_LIMIT_EXCEEDED');
+        expect((gqlErr.extensions?.http as { status: number })?.status).toBe(400);
+      }
     });
   });
 });

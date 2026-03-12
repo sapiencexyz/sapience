@@ -380,3 +380,37 @@ export const escrowContracts = {
   predictionMarketTokenFactory,
 };
 
+// ============================================================================
+// Resolver Helpers
+// ============================================================================
+
+export type ResolverType = 'pyth' | 'conditionalTokens' | 'lzConditionalTokens' | 'manual' | 'lz';
+
+const RESOLVER_MAP: Record<ResolverType, ChainAddressMap> = {
+  pyth: pythConditionResolver,
+  conditionalTokens: conditionalTokensConditionResolver,
+  lzConditionalTokens: predictionMarketLZConditionalTokensResolver,
+  manual: manualConditionResolver,
+  lz: lzConditionResolver,
+};
+
+/** Get the deployed resolver address for a given type and chain. */
+export function getResolverAddress(
+  type: ResolverType,
+  chainId: number,
+): Address | undefined {
+  return RESOLVER_MAP[type]?.[chainId]?.address;
+}
+
+/** Identify the resolver type from an on-chain address. */
+export function identifyResolver(
+  address: string,
+  chainId: number,
+): ResolverType | null {
+  const lower = address.toLowerCase();
+  for (const [type, map] of Object.entries(RESOLVER_MAP) as [ResolverType, ChainAddressMap][]) {
+    if (map[chainId]?.address.toLowerCase() === lower) return type;
+  }
+  return null;
+}
+
