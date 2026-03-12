@@ -37,9 +37,7 @@ import {
   CallPolicyVersion,
   ParamCondition,
 } from '@zerodev/permissions/policies';
-// KERNEL_V3_1 and getEntryPoint are hardcoded below to avoid a production crash:
-// next.config.js stubs @zerodev/sdk for client bundles, but these top-level
-// constants would be undefined/crash when the module is loaded browser-side.
+import { getEntryPoint, KERNEL_V3_1 } from '@zerodev/sdk/constants';
 import {
   predictionMarketEscrowAbi,
   collateralTokenAbi,
@@ -97,11 +95,8 @@ const EAS_ABI = parseAbi([
 ]);
 
 // ZeroDev constants
-const ENTRY_POINT = {
-  address: '0x0000000071727De22E5E9d8BAf0edAc6f37da032' as const,
-  version: '0.7' as const,
-};
-const KERNEL_VERSION = '0.3.1';
+const ENTRY_POINT = getEntryPoint('0.7');
+const KERNEL_VERSION = KERNEL_V3_1;
 
 /**
  * Strip the `parameters` field from userOp objects in RPC requests.

@@ -2,11 +2,10 @@ import { createPublicClient, http, type Address } from 'viem';
 import { arbitrum } from 'viem/chains';
 import { createKernelAccount, addressToEmptyAccount } from '@zerodev/sdk';
 import { signerToEcdsaValidator } from '@zerodev/ecdsa-validator';
-const ENTRY_POINT = {
-  address: '0x0000000071727De22E5E9d8BAf0edAc6f37da032' as const,
-  version: '0.7' as const,
-};
-const KERNEL_VERSION = '0.3.1' as const;
+import { getEntryPoint, KERNEL_V3_1 } from '@zerodev/sdk/constants';
+
+const ENTRY_POINT = getEntryPoint('0.7');
+const KERNEL_VERSION = KERNEL_V3_1;
 
 // Cache for computed smart account addresses (keyed by owner address only —
 // the address is deterministic via CREATE2 and chain-independent).

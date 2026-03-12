@@ -18,11 +18,6 @@ const nextConfig = {
     // pino-pretty is an optional dep that pino tries to require at runtime;
     // mark it as external so webpack doesn't fail the build.
     config.externals = [...(config.externals || []), 'pino-pretty'];
-    // @zerodev packages are only used by the relayer/API for smart account verification;
-    // stub them out to avoid permissionless@0.1.x/0.2.x version conflict.
-    config.resolve.alias['@zerodev/ecdsa-validator'] = false;
-    config.resolve.alias['@zerodev/sdk'] = false;
-    config.resolve.alias['@zerodev/sdk/constants'] = false;
     return config;
   },
   async headers() {
