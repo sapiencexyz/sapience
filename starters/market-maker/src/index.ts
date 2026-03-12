@@ -100,9 +100,6 @@ const SPONSOR_ALLOWLIST: Set<string> | null = (() => {
   return addresses.length > 0 ? new Set(addresses) : null;
 })();
 
-// Require predictor intent signature (default: true — skip unsigned auctions)
-const REQUIRE_INTENT_SIGNATURE = (process.env.REQUIRE_INTENT_SIGNATURE || 'true').toLowerCase() !== 'false';
-
 // Bidding parameters
 const MIN_MAKER_WAGER_DEC = process.env.MIN_MAKER_POSITION_SIZE || '1';
 const DEADLINE_SECONDS = Number(process.env.DEADLINE_SECONDS || '60');
@@ -114,6 +111,7 @@ const MAX_BID = parseEther(MAX_BID_DEC);
 const VOLATILITY = Number(process.env.VOLATILITY || '0.80');
 const MIN_CP_WIN_PROB = Number(process.env.MIN_CP_WIN_PROB || '0.05');
 
+// Set SKIP_INTENT_VERIFICATION=true to accept unsigned auctions (not recommended)
 const SKIP_INTENT_VERIFICATION = (process.env.SKIP_INTENT_VERIFICATION || '').toLowerCase() === 'true';
 
 const MIN_MAKER_WAGER = parseEther(MIN_MAKER_WAGER_DEC);
@@ -365,12 +363,6 @@ async function handleAuction(auction: AuctionDetails, submitBid: (payload: Retur
   }
 
   logger.info(`${color('⚡', ANSI.dim)} ${fmt.id(auctionId.slice(0, 8))} ${color(`${picks.length} leg(s), resolvers: ${resolvers}, collateral: ${formatEther(predictorCollateral)}`, ANSI.dim)}`);
-
-  // Ignore unsigned auctions (no predictor intent signature)
-  if (REQUIRE_INTENT_SIGNATURE && !auction.intentSignature) {
-    logger.warn(`Skipping auction ${auctionId}: no intent signature`);
-    return;
-  }
 
   // Ignore auctions on different chains
   if (auction.chainId && auction.chainId !== CHAIN_ID) {

@@ -110,7 +110,8 @@ export async function verifyEscrowCounterpartySignature(
 
       const sessionResult = await verifySessionApproval(
         sessionApprovalPayload,
-        counterpartyAddress
+        counterpartyAddress,
+        computeSmartAccountAddress,
       );
 
       if (sessionResult.valid && sessionResult.sessionKeyAddress) {
@@ -230,7 +231,8 @@ export async function verifyAuctionIntentSignature(
 
       const sessionResult = await verifySessionApproval(
         sessionApprovalPayload,
-        predictorAddress
+        predictorAddress,
+        computeSmartAccountAddress,
       );
 
       if (sessionResult.valid && sessionResult.sessionKeyAddress) {

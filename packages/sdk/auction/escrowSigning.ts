@@ -716,7 +716,8 @@ export async function verifyAuctionIntentSignature(params: {
 
         const sessionResult = await verifySessionApproval(
           { approval: approvalStr, chainId: params.chainId, typedData: sessionTypedData },
-          predictorAddress as Address
+          predictorAddress as Address,
+          params.resolveSmartAccountAddress,
         );
 
         if (sessionResult.valid && sessionResult.sessionKeyAddress) {
