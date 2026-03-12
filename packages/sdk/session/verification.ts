@@ -5,6 +5,7 @@ import {
   type Address,
   type Hex,
 } from 'viem';
+import { computeSmartAccountAddress } from './smartAccount';
 
 // ValidatorData structure constants
 const FLAG_BYTES = 2;
@@ -167,7 +168,6 @@ export interface SessionApprovalPayload {
 export async function verifySessionApproval(
   approval: SessionApprovalPayload,
   claimedAccountAddress: Address,
-  resolveSmartAccountAddress?: (ownerAddress: Address, chainId: number) => Promise<Address>,
 ): Promise<{ valid: boolean; ownerAddress?: Address; sessionKeyAddress?: Address; error?: string }> {
   try {
     // Parse the ZeroDev approval
@@ -260,18 +260,14 @@ export async function verifySessionApproval(
       // EIP-712 domain binding alone is insufficient — any EOA can sign with
       // verifyingContract set to an arbitrary address. We must derive the
       // expected smart account from the recovered owner and compare.
-      // This check requires @zerodev/ecdsa-validator (server-only) so callers
-      // must inject the resolver to enable it. Client-side callers skip this.
-      if (resolveSmartAccountAddress) {
-        const expectedSmartAccount = await resolveSmartAccountAddress(recoveredOwner, approval.chainId);
-        if (expectedSmartAccount.toLowerCase() !== claimedAccountAddress.toLowerCase()) {
-          console.warn('[SessionAuth] Smart account ownership mismatch:', {
-            recoveredOwner,
-            expectedSmartAccount,
-            claimedAccountAddress,
-          });
-          return { valid: false, error: 'smart_account_ownership_mismatch' };
-        }
+      const expectedSmartAccount = computeSmartAccountAddress(recoveredOwner);
+      if (expectedSmartAccount.toLowerCase() !== claimedAccountAddress.toLowerCase()) {
+        console.warn('[SessionAuth] Smart account ownership mismatch:', {
+          recoveredOwner,
+          expectedSmartAccount,
+          claimedAccountAddress,
+        });
+        return { valid: false, error: 'smart_account_ownership_mismatch' };
       }
 
       return { valid: true, ownerAddress: recoveredOwner, sessionKeyAddress };
