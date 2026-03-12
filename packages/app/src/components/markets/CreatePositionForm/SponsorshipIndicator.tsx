@@ -19,7 +19,7 @@ interface SponsorshipIndicatorProps {
   collateralDecimals: number | undefined;
   collateralSymbol: string;
   sponsorshipActivated: boolean;
-  awaitingSponsoredBid: boolean;
+  awaitingSponsoredBid?: boolean;
   /** Called when user clicks "Use" to activate sponsorship */
   onActivate: () => void;
 }
@@ -37,19 +37,22 @@ export default function SponsorshipIndicator({
   matchLimit,
   requiredCounterparty,
   bestBid,
+  stickyEstimateBid,
   positionSizeValue,
   collateralDecimals,
   collateralSymbol,
   sponsorshipActivated,
   onActivate,
 }: SponsorshipIndicatorProps) {
-  if (!isSponsored || !bestBid) return null;
+  // Use bestBid if available, otherwise fall back to estimate bid
+  const displayBid = bestBid || stickyEstimateBid;
+  if (!isSponsored || !displayBid) return null;
 
   const decimals = collateralDecimals ?? 18;
   const userCollateral = positionSizeValue
     ? parseUnits(positionSizeValue, decimals)
     : 0n;
-  const vaultCollateral = BigInt(bestBid.counterpartyCollateral);
+  const vaultCollateral = BigInt(displayBid.counterpartyCollateral);
 
   if (remainingBudget === 0n || userCollateral === 0n) return null;
 
@@ -66,7 +69,7 @@ export default function SponsorshipIndicator({
   const { eligible: bidEligible } = checkSponsorEligibility({
     predictorCollateral: userCollateral,
     counterpartyCollateral: vaultCollateral,
-    bidCounterparty: bestBid.counterparty,
+    bidCounterparty: displayBid.counterparty,
     requiredCounterparty,
     maxEntryPriceBps,
     matchLimit,
@@ -79,25 +82,22 @@ export default function SponsorshipIndicator({
     return (
       <div className="mt-5 rounded-lg border px-3 py-2.5 text-sm border-ethena/30 bg-ethena/5">
         {withinBudget ? (
-          <div className="flex items-center gap-2">
-            <Gift className="h-4 w-4 flex-shrink-0 text-ethena" />
-            <p className="font-medium text-ethena">
-              {positionDisplay} {collateralSymbol} sponsored
-              <span className="font-normal text-muted-foreground ml-3">
-                You pay 0 {collateralSymbol}
-              </span>
-            </p>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-1">
+          <div className="flex items-center justify-between gap-2">
             <div className="flex items-center gap-2">
               <Gift className="h-4 w-4 flex-shrink-0 text-ethena" />
               <p className="font-medium text-ethena">
-                {budgetDisplay} {collateralSymbol} sponsorship available
+                {positionDisplay} {collateralSymbol} sponsored
               </p>
             </div>
-            <p className="text-xs text-muted-foreground ml-6">
-              Reduce position to {budgetDisplay} {collateralSymbol} to use it
+            <span className="font-normal text-muted-foreground shrink-0">
+              You pay 0 {collateralSymbol}
+            </span>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2">
+            <Gift className="h-4 w-4 flex-shrink-0 text-ethena" />
+            <p className="font-medium text-ethena">
+              Reduce size to {budgetDisplay} {collateralSymbol} for sponsorship
             </p>
           </div>
         )}
@@ -114,24 +114,19 @@ export default function SponsorshipIndicator({
           <p className="font-medium text-ethena">
             {withinBudget
               ? `${positionDisplay} ${collateralSymbol} sponsorship available`
-              : `${budgetDisplay} ${collateralSymbol} sponsorship available`}
+              : `Reduce size to ${budgetDisplay} ${collateralSymbol} for sponsorship`}
           </p>
         </div>
         {withinBudget && (
           <button
             type="button"
             onClick={onActivate}
-            className="shrink-0 rounded-md bg-ethena/20 px-3 py-1 text-xs font-semibold text-ethena hover:bg-ethena/30 transition-colors"
+            className="btn-get-access shrink-0 rounded-md px-3 py-1 text-xs font-semibold font-mono uppercase text-brand-black hover:text-white border-0 transition-colors duration-400"
           >
-            Use
+            <span className="relative z-10">Use</span>
           </button>
         )}
       </div>
-      {!withinBudget && (
-        <p className="text-xs text-muted-foreground ml-6 mt-1">
-          Reduce position to {budgetDisplay} {collateralSymbol} to use it
-        </p>
-      )}
     </div>
   );
 }

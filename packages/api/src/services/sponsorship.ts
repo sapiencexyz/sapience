@@ -9,6 +9,7 @@ import {
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { etherealTestnetChain, etherealChain } from '../utils/utils';
+import { computeSmartAccountAddress } from '@sapience/sdk/session';
 import * as Sentry from '@sentry/node';
 
 // OnboardingSponsor ABI — only the functions we need
@@ -124,17 +125,24 @@ export async function grantSponsorshipBudget(
   const { walletClient, publicClient } = getClients(config);
 
   try {
+    // Derive the smart account address from the EOA — the sponsor contract
+    // tracks budgets by smart account address, not raw EOA.
+    const smartAccount = computeSmartAccountAddress(beneficiary);
+    console.log(
+      `[sponsorship] Derived smart account ${smartAccount} for EOA ${beneficiary}`
+    );
+
     // Check if user already has a budget
     const existing = (await publicClient.readContract({
       address: config.sponsorAddress,
       abi: SPONSOR_ABI,
       functionName: 'remainingBudget',
-      args: [beneficiary],
+      args: [smartAccount],
     })) as bigint;
 
     if (existing > 0n) {
       console.log(
-        `[sponsorship] ${beneficiary} already has budget: ${existing}`
+        `[sponsorship] ${smartAccount} (EOA ${beneficiary}) already has budget: ${existing}`
       );
       return null;
     }
@@ -146,29 +154,31 @@ export async function grantSponsorshipBudget(
       address: config.sponsorAddress,
       abi: SPONSOR_ABI,
       functionName: 'setBudget',
-      args: [beneficiary, config.budgetPerUser!],
+      args: [smartAccount, config.budgetPerUser!],
       chain,
       account,
     });
 
-    console.log(`[sponsorship] setBudget tx sent for ${beneficiary}: ${hash}`);
+    console.log(
+      `[sponsorship] setBudget tx sent for ${smartAccount} (EOA ${beneficiary}): ${hash}`
+    );
 
     // Wait for confirmation (fire-and-forget style — don't block the claim response)
     publicClient
       .waitForTransactionReceipt({ hash })
       .then((receipt) => {
         console.log(
-          `[sponsorship] setBudget confirmed for ${beneficiary} in block ${receipt.blockNumber}`
+          `[sponsorship] setBudget confirmed for ${smartAccount} (EOA ${beneficiary}) in block ${receipt.blockNumber}`
         );
       })
       .catch((err) => {
         console.error(
-          `[sponsorship] setBudget confirmation failed for ${beneficiary}:`,
+          `[sponsorship] setBudget confirmation failed for ${smartAccount} (EOA ${beneficiary}):`,
           err
         );
         Sentry.captureException(err, {
           tags: { service: 'sponsorship' },
-          extra: { beneficiary, hash },
+          extra: { beneficiary, smartAccount, hash },
         });
       });
 
@@ -199,18 +209,22 @@ export async function getRemainingBudget(
 
   const { publicClient } = getClients(config);
 
+  // Derive the smart account address — the sponsor contract tracks
+  // budgets by smart account address, not raw EOA.
+  const smartAccount = computeSmartAccountAddress(beneficiary);
+
   try {
     const remaining = (await publicClient.readContract({
       address: config.sponsorAddress,
       abi: SPONSOR_ABI,
       functionName: 'remainingBudget',
-      args: [beneficiary],
+      args: [smartAccount],
     })) as bigint;
 
     return remaining;
   } catch (err) {
     console.error(
-      `[sponsorship] Failed to read budget for ${beneficiary}:`,
+      `[sponsorship] Failed to read budget for ${smartAccount} (EOA ${beneficiary}):`,
       err
     );
     return null;
