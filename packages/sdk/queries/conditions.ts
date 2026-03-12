@@ -207,6 +207,7 @@ type ConditionById = {
   id: string;
   shortName?: string | null;
   question?: string | null;
+  description?: string | null;
   endTime?: number | null;
   resolver?: string | null;
   category?: { slug?: string | null } | null;
@@ -221,6 +222,7 @@ const CONDITIONS_BY_IDS_QUERY = /* GraphQL */ `
       id
       shortName
       question
+      description
       endTime
       resolver
       settled
