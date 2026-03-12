@@ -1,7 +1,8 @@
 import type { Address, Hex } from 'viem';
-import { zeroAddress } from 'viem';
+import { recoverTypedDataAddress, zeroAddress } from 'viem';
 import { predictionMarketEscrowAbi } from '@sapience/sdk/abis';
 import {
+  buildCounterpartyMintTypedData,
   buildPredictorMintTypedData,
 } from '@sapience/sdk/auction/escrowSigning';
 import {
@@ -184,20 +185,57 @@ export async function simulateEscrowBidMint(
     if (isContractRevert(err)) {
       const errorMessage = parseSimulationError(err);
 
-      // InvalidSignature is expected for the PREDICTOR in session mode:
-      // simulateContract can't replicate the smart account's ERC-1271 context.
-      // But it could also mean the COUNTERPARTY signature is wrong (real bug).
-      // Verify the counterparty sig off-chain first — only fall back to
-      // lightweight validation if the counterparty sig is actually valid.
       const rawMessage = err instanceof Error ? err.message : '';
       const isInvalidSignature =
         rawMessage.includes('InvalidSignature') ||
         (errorMessage.includes('Invalid') && errorMessage.includes('signature'));
       if (isInvalidSignature) {
-        // InvalidSignature is expected in session mode — the simulation can't
-        // replicate the smart account's ERC-1271 context for the predictor.
-        // It could also mean the counterparty uses a smart account / session key.
-        // Fall back to lightweight validation (deadline, nonce, balance checks).
+        // InvalidSignature is expected for the PREDICTOR in session mode —
+        // simulateContract can't replicate the smart account's ERC-1271 context.
+        // But it could also mean the COUNTERPARTY sig is genuinely bad.
+        // For EOA counterparties (no session key data), verify their sig
+        // off-chain to disambiguate before falling through.
+        if (!bid.counterpartySessionKeyData) {
+          try {
+            const counterpartyTypedData = buildCounterpartyMintTypedData({
+              picks,
+              predictorCollateral: predictorCollateralWei,
+              counterpartyCollateral: counterpartyCollateralWei,
+              predictor: predictorAddress,
+              counterparty,
+              counterpartyNonce: BigInt(bid.counterpartyNonce),
+              counterpartyDeadline: BigInt(bid.counterpartyDeadline),
+              predictorSponsor,
+              predictorSponsorData,
+              verifyingContract: predictionMarketAddress,
+              chainId,
+            });
+            const recoveredSigner = await recoverTypedDataAddress({
+              domain: {
+                ...counterpartyTypedData.domain,
+                chainId: Number(counterpartyTypedData.domain.chainId),
+              },
+              types: counterpartyTypedData.types,
+              primaryType: counterpartyTypedData.primaryType,
+              message: counterpartyTypedData.message,
+              signature: bid.counterpartySignature as Hex,
+            });
+            if (recoveredSigner.toLowerCase() !== counterparty.toLowerCase()) {
+              logBidValidation(
+                `[escrow-sim] InvalidSignature — counterparty EOA sig mismatch (recovered=${recoveredSigner.slice(0, 10)}, expected=${counterparty.slice(0, 10)})`
+              );
+              return { isValid: false, error: 'Counterparty signature is invalid' };
+            }
+          } catch {
+            // recoverTypedDataAddress failed — unusual for EOA, log and fall through
+            logBidValidationWarn(
+              `[escrow-sim] Could not recover counterparty signer for ${counterparty.slice(0, 10)}, falling through to lightweight validation`
+            );
+          }
+        }
+
+        // Either counterparty uses a smart account (can't verify ERC-1271 client-side),
+        // or the EOA sig checked out — InvalidSignature was from the predictor (expected).
         logBidValidation(
           `[escrow-sim] InvalidSignature (expected in session mode) — falling back to lightweight validation for ${bid.counterparty.slice(0, 10)}`
         );
