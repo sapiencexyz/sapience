@@ -15,6 +15,7 @@ import {
   verifySessionApproval,
   type SessionApprovalPayload,
 } from '../session/verification';
+import { computeSmartAccountAddress } from '../session/smartAccount';
 
 // ============================================================================
 // EIP-712 Domain & Types
@@ -607,14 +608,14 @@ async function verifyEscrowSessionKey(
 /**
  * Verify the predictor's AuctionIntent EIP-712 signature.
  *
- * Supports three verification paths:
+ * Supports four verification paths:
  * 1. **Escrow session key** — if `predictorSessionKeyData` is ABI-encoded hex,
  *    verifies the owner approved the session key, then checks the intent signature
  *    was produced by that session key.
  * 2. **EOA** — recovers the signer and checks it matches the predictor address.
- * 3. **Smart account owner** — if an optional `resolveSmartAccountAddress` callback
- *    is provided, checks whether the recovered signer's derived smart account matches
- *    the predictor.
+ * 3. **Smart account owner** — checks whether the recovered signer's derived
+ *    smart account matches the predictor (pure CREATE2, no RPC).
+ * 4. **ZeroDev session key** — JSON with approval + typedData.
  *
  * @returns `{ valid, recoveredAddress }` — `recoveredAddress` is the EOA that
  *   produced the signature, useful for callers that want to handle the smart account
@@ -630,8 +631,6 @@ export async function verifyAuctionIntentSignature(params: {
   predictorSessionKeyData?: string;
   verifyingContract: Address;
   chainId: number;
-  /** Optional: resolve an EOA to its deterministic smart account address (e.g. ZeroDev Kernel). */
-  resolveSmartAccountAddress?: (ownerAddress: Address, chainId: number) => Promise<Address>;
 }): Promise<{ valid: boolean; recoveredAddress?: Address }> {
   try {
     const rawTypedData = buildAuctionIntentTypedData({
@@ -690,8 +689,8 @@ export async function verifyAuctionIntentSignature(params: {
     }
 
     // Path 3: Smart account owner — recovered EOA owns the smart account
-    if (params.resolveSmartAccountAddress) {
-      const expectedSmartAccount = await params.resolveSmartAccountAddress(recovered, params.chainId);
+    {
+      const expectedSmartAccount = computeSmartAccountAddress(recovered);
       if (expectedSmartAccount.toLowerCase() === predictorAddress) {
         return { valid: true, recoveredAddress: recovered };
       }
@@ -717,7 +716,6 @@ export async function verifyAuctionIntentSignature(params: {
         const sessionResult = await verifySessionApproval(
           { approval: approvalStr, chainId: params.chainId, typedData: sessionTypedData },
           predictorAddress as Address,
-          params.resolveSmartAccountAddress,
         );
 
         if (sessionResult.valid && sessionResult.sessionKeyAddress) {
@@ -745,9 +743,8 @@ export async function verifyAuctionIntentSignature(params: {
  *    verifies the owner approved the session key, then checks the mint signature
  *    was produced by that session key.
  * 2. **EOA** — recovers the signer and checks it matches the counterparty address.
- * 3. **Smart account owner** — if an optional `resolveSmartAccountAddress` callback
- *    is provided, checks whether the recovered signer's derived smart account matches
- *    the counterparty.
+ * 3. **Smart account owner** — checks whether the recovered signer's derived
+ *    smart account matches the counterparty (pure CREATE2, no RPC).
  *
  * @returns `{ valid, recoveredAddress }` — `recoveredAddress` is the EOA that
  *   produced the signature.
@@ -766,8 +763,6 @@ export async function verifyCounterpartyMintSignature(params: {
   predictorSponsorData?: Hex;
   verifyingContract: Address;
   chainId: number;
-  /** Optional: resolve an EOA to its deterministic smart account address (e.g. ZeroDev Kernel). */
-  resolveSmartAccountAddress?: (ownerAddress: Address, chainId: number) => Promise<Address>;
 }): Promise<{ valid: boolean; recoveredAddress?: Address }> {
   try {
     const rawTypedData = buildCounterpartyMintTypedData({
@@ -830,8 +825,8 @@ export async function verifyCounterpartyMintSignature(params: {
     }
 
     // Path 3: Smart account owner — recovered EOA owns the smart account
-    if (params.resolveSmartAccountAddress) {
-      const expectedSmartAccount = await params.resolveSmartAccountAddress(recovered, params.chainId);
+    {
+      const expectedSmartAccount = computeSmartAccountAddress(recovered);
       if (expectedSmartAccount.toLowerCase() === counterpartyAddress) {
         return { valid: true, recoveredAddress: recovered };
       }

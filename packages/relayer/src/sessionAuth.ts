@@ -5,10 +5,8 @@ export {
   parseZeroDevApproval,
   verifySessionApproval,
   extractApprovalForTransport,
+  computeSmartAccountAddress,
   type ParsedApproval,
   type EnableTypedData,
   type SessionApprovalPayload,
 } from '@sapience/sdk/session';
-
-// Imported directly to avoid pulling @zerodev/ecdsa-validator into client bundles
-export { computeSmartAccountAddress } from '@sapience/sdk/session/smartAccount';
