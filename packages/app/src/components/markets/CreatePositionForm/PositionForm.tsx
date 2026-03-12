@@ -435,17 +435,6 @@ export default function PositionForm({
       const hasUma = selections.length > 0;
       const hasPyth = pythPredictions.length > 0;
 
-      // Auctions accept a single resolver per request; we can't mix UMA + Pyth in one auction today.
-      if (hasUma && hasPyth) {
-        toast({
-          title: "Can't mix UMA + Pyth in one auction",
-          description:
-            'Auctions use a single resolver per request. Please submit UMA-only or Pyth-only to request bids.',
-          variant: 'destructive',
-          duration: 6000,
-        });
-        return;
-      }
       if (!hasUma && !hasPyth) {
         return;
       }
@@ -478,18 +467,28 @@ export default function PositionForm({
           decimals
         ).toString();
 
+        let pythEscrowPicks: Array<{
+          conditionResolver: `0x${string}`;
+          conditionId: `0x${string}`;
+          predictedOutcome: number;
+        }> | undefined;
+
         const payload = hasPyth
-          ? buildPythAuctionStartPayload(
-              pythPredictions.map((p) => ({
-                priceId: p.priceId,
-                direction: p.direction,
-                targetPrice: p.targetPrice,
-                targetPriceRaw: p.targetPriceRaw,
-                priceExpo: p.priceExpo,
-                dateTimeLocal: p.dateTimeLocal,
-              })),
-              chainId
-            )
+          ? (() => {
+              const p = buildPythAuctionStartPayload(
+                pythPredictions.map((pp) => ({
+                  priceId: pp.priceId,
+                  direction: pp.direction,
+                  targetPrice: pp.targetPrice,
+                  targetPriceRaw: pp.targetPriceRaw,
+                  priceExpo: pp.priceExpo,
+                  dateTimeLocal: pp.dateTimeLocal,
+                })),
+                chainId
+              );
+              pythEscrowPicks = p.escrowPicks;
+              return p;
+            })()
           : buildAuctionStartPayload(
               selections.map((s) => ({
                 marketId: s.conditionId || '0',
@@ -516,8 +515,10 @@ export default function PositionForm({
           params.predictorSponsorData = '0x';
         }
 
-        // Add escrowPicks for conditional token selections to trigger escrow auction
-        if (hasUma && !hasPyth) {
+        // Build escrowPicks — required for all auction types
+        if (hasPyth && pythEscrowPicks) {
+          params.escrowPicks = pythEscrowPicks;
+        } else if (hasUma) {
           const escrowPicks = getPicks();
           if (escrowPicks.length > 0) {
             params.escrowPicks = escrowPicks;

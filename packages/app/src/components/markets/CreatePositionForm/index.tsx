@@ -852,6 +852,8 @@ const CreatePositionFormInner = ({
     pythPredictions,
     onRemovePythPrediction,
     onClearPythPredictions,
+    onViewCard: () => setShowPreviewCard(true),
+    onCopyLink: handleCopyLink,
   };
 
   // Share dialog component - rendered independently of layout
@@ -908,18 +910,8 @@ const CreatePositionFormInner = ({
               } as CSSProperties
             }
           >
-            <DrawerHeader className="pb-0 flex items-center justify-between">
+            <DrawerHeader className="pb-0">
               <DrawerTitle className="text-left"></DrawerTitle>
-              <ShareClearBar
-                visible={selections.length > 0 || pythPredictions.length > 0}
-                onViewCard={() => setShowPreviewCard(true)}
-                onCopyLink={handleCopyLink}
-                onClear={() => {
-                  clearSelections();
-                  clearPositionForm();
-                  onClearPythPredictions?.();
-                }}
-              />
             </DrawerHeader>
             <div
               className={`${createPositionEntries.length === 0 ? 'pt-0 pb-4' : 'p-0'} h-full flex flex-col min-h-0`}

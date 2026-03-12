@@ -11,9 +11,11 @@ import {
 import {
   encodePythBinaryOptionOutcomes,
   encodePolymarketPredictedOutcomes,
+  getPythMarketId,
   type PythBinaryOptionOutcome,
   type PolymarketPredictedOutcome,
 } from '@sapience/sdk';
+import { pythConditionResolver } from '@sapience/sdk/contracts';
 
 export interface PredictedOutcomeInputStub {
   marketId: string; // The id from API (already encoded claim:endTime)
@@ -227,7 +229,15 @@ export function buildAuctionStartPayload(
 export function buildPythAuctionStartPayload(
   outcomes: PythOutcomeInputStub[],
   chainId?: number
-): { resolver: `0x${string}`; predictedOutcomes: `0x${string}`[] } {
+): {
+  resolver: `0x${string}`;
+  predictedOutcomes: `0x${string}`[];
+  escrowPicks: Array<{
+    conditionResolver: `0x${string}`;
+    conditionId: `0x${string}`;
+    predictedOutcome: number;
+  }>;
+} {
   const targetChainId = chainId || DEFAULT_CHAIN_ID;
   const resolverAddress = pythResolver[targetChainId]?.address as
     | `0x${string}`
@@ -236,8 +246,17 @@ export function buildPythAuctionStartPayload(
     resolverAddress ||
     ('0x0000000000000000000000000000000000000000' as `0x${string}`);
 
-  const encoded = encodePythBinaryOptionOutcomes(
-    normalizePythOutcomes(outcomes)
-  );
-  return { resolver, predictedOutcomes: [encoded] };
+  const normalized = normalizePythOutcomes(outcomes);
+  const encoded = encodePythBinaryOptionOutcomes(normalized);
+
+  const conditionResolverAddress = (pythConditionResolver[targetChainId]?.address ??
+    resolver) as `0x${string}`;
+
+  const escrowPicks = normalized.map((o) => ({
+    conditionResolver: conditionResolverAddress,
+    conditionId: getPythMarketId(o),
+    predictedOutcome: o.prediction ? 1 : 0,
+  }));
+
+  return { resolver, predictedOutcomes: [encoded], escrowPicks };
 }

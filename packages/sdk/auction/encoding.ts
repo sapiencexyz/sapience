@@ -45,13 +45,13 @@ export type PythBinaryOptionOutcome = PythBinaryOptionMarket & {
 };
 
 /**
- * Mirrors `PythResolver.getMarketId`:
- * `keccak256(abi.encode(priceId,endTime,strikePrice,strikeExpo,overWinsOnTie))`.
+ * Returns a decodable `conditionId` for a Pyth binary option market:
+ * `abi.encode(priceId, endTime, strikePrice, strikeExpo, overWinsOnTie)`.
  *
- * See `PythResolver.sol` in protocol.
+ * This is a raw ABI encoding (no hash) so consumers can decode the fields.
  */
 export function getPythMarketId(market: PythBinaryOptionMarket): Hex {
-  const encoded = encodeAbiParameters(
+  return encodeAbiParameters(
     [
       { type: 'bytes32' },
       { type: 'uint64' },
@@ -67,7 +67,14 @@ export function getPythMarketId(market: PythBinaryOptionMarket): Hex {
       market.overWinsOnTie,
     ]
   );
-  return keccak256(encoded);
+}
+
+/**
+ * Returns the on-chain `marketId` used by `PythResolver.settlements`:
+ * `keccak256(abi.encode(priceId, endTime, strikePrice, strikeExpo, overWinsOnTie))`.
+ */
+export function getPythMarketHash(market: PythBinaryOptionMarket): Hex {
+  return keccak256(getPythMarketId(market));
 }
 
 export function encodePythBinaryOptionOutcomes(
