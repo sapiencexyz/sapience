@@ -99,18 +99,16 @@ const SPONSOR_ALLOWLIST: Set<string> | null = (() => {
 })();
 
 // Bidding parameters
-const BID_AMOUNT_DEC = process.env.BID_AMOUNT || '0.01';
-const MIN_MAKER_WAGER_DEC = process.env.MIN_MAKER_POSITION_SIZE || '10';
+const MIN_MAKER_WAGER_DEC = process.env.MIN_MAKER_POSITION_SIZE || '1';
 const DEADLINE_SECONDS = Number(process.env.DEADLINE_SECONDS || '60');
 
 // Strategy pricing parameters
 const EDGE_BPS = Number(process.env.EDGE_BPS || '200');
-const MAX_BID_DEC = process.env.MAX_BID_AMOUNT || '1.0';
+const MAX_BID_DEC = process.env.MAX_BID_AMOUNT || '100';
 const MAX_BID = parseEther(MAX_BID_DEC);
 const VOLATILITY = Number(process.env.VOLATILITY || '0.80');
 const MIN_CP_WIN_PROB = Number(process.env.MIN_CP_WIN_PROB || '0.05');
 
-const BID_AMOUNT = parseEther(BID_AMOUNT_DEC); // Fallback for unpriced auctions
 const MIN_MAKER_WAGER = parseEther(MIN_MAKER_WAGER_DEC);
 
 const account = PRIVATE_KEY_HEX ? privateKeyToAccount(PRIVATE_KEY_HEX) : undefined;
@@ -126,9 +124,11 @@ const OutcomeSide = { YES: 0, NO: 1 } as const;
 const pythResolverAddr = (
   process.env.PYTH_RESOLVER_ADDRESS || getResolverAddress('pyth', CHAIN_ID) || ''
 ).toLowerCase();
-const ctResolverAddr = (
-  process.env.CT_RESOLVER_ADDRESS || getResolverAddress('conditionalTokens', CHAIN_ID) || ''
-).toLowerCase();
+const ctResolverAddrs = [
+  process.env.CT_RESOLVER_ADDRESS,
+  getResolverAddress('conditionalTokens', CHAIN_ID),
+  getResolverAddress('lzConditionalTokens', CHAIN_ID),
+].filter((a): a is string => !!a).map((a) => a.toLowerCase());
 
 const strategies: Strategy[] = [
   ...(pythResolverAddr ? [new PythStrategy({
@@ -136,8 +136,8 @@ const strategies: Strategy[] = [
     volatility: VOLATILITY,
     feedMapOverride: process.env.PYTH_FEED_MAP,
   })] : []),
-  ...(ctResolverAddr ? [new PolymarketStrategy({
-    resolverAddresses: [ctResolverAddr],
+  ...(ctResolverAddrs.length > 0 ? [new PolymarketStrategy({
+    resolverAddresses: ctResolverAddrs,
   })] : []),
 ];
 
@@ -201,7 +201,7 @@ async function prepareCollateral() {
       logger.info('📦 Using prepareForTrade for Ethereal (wrap USDe -> WUSDe + approve)');
       const result = await prepareForTrade({
         privateKey: PRIVATE_KEY_HEX,
-        collateralAmount: BID_AMOUNT,
+        collateralAmount: MAX_BID,
         spender: VERIFYING_CONTRACT,
         rpcUrl: RPC_URL,
       });
@@ -250,7 +250,7 @@ async function prepareCollateral() {
 
 async function computeQuote(
   auction: AuctionDetails,
-): Promise<{ bidAmount: bigint; counterpartyWinProb: number } | null> {
+): Promise<{ bidAmount: bigint; fairBid: bigint; counterpartyWinProb: number; legProbs: Map<string, number | null> } | null> {
   const picks = (auction.picks || []) as PickJson[];
   if (picks.length === 0) return null;
 
@@ -258,24 +258,44 @@ async function computeQuote(
   const metas = await getConditionsByIds(conditionIds);
 
   let predictorWinProb = 1;
+  let pricedLegs = 0;
+  const legProbs = new Map<string, number | null>();
 
   for (const pick of picks) {
     const strategy = strategies.find((s) => s.matchesResolver(pick.conditionResolver));
-    if (!strategy) return null;
-
     const meta = metas.get(pick.conditionId);
-    if (!meta) return null;
 
-    const yesProbability = await strategy.getYesProbability(pick.conditionId, meta);
-    if (yesProbability === null) return null;
+    let yesProbability: number | null = null;
+    if (!strategy) {
+      logger.warn(`  leg ${pick.conditionId.slice(0, 10)}: no strategy for resolver ${formatAddress(pick.conditionResolver)}`);
+    } else if (!meta) {
+      logger.warn(`  leg ${pick.conditionId.slice(0, 10)}: condition metadata not found`);
+    } else {
+      yesProbability = await strategy.getYesProbability(pick.conditionId, meta);
+      if (yesProbability === null) {
+        const urls = meta.similarMarkets ?? [];
+        const slug = urls.find(u => u.includes('polymarket.com'))?.split('#')[1];
+        logger.warn(`  leg ${pick.conditionId.slice(0, 10)}: ${strategy.name} returned null${slug ? ` (slug: ${slug})` : urls.length > 0 ? ` (similarMarkets: ${urls.join(', ')})` : ' (no similarMarkets)'}`);
+      }
+    }
 
+    if (yesProbability === null) {
+      legProbs.set(pick.conditionId, null);
+      continue;
+    }
+
+    pricedLegs++;
     const pickSuccessProb =
       pick.predictedOutcome === OutcomeSide.YES
         ? yesProbability
         : 1 - yesProbability;
 
+    legProbs.set(pick.conditionId, pickSuccessProb);
     predictorWinProb *= pickSuccessProb;
   }
+
+  // Need at least one priced leg to have any edge
+  if (pricedLegs === 0) return null;
 
   const counterpartyWinProb = 1 - predictorWinProb;
   if (counterpartyWinProb < MIN_CP_WIN_PROB) return null;
@@ -289,11 +309,12 @@ async function computeQuote(
     (Number(predictorCollateral) * counterpartyWinProb) / predictorWinProb;
   const bidFloat = fairBidFloat * (1 - EDGE_BPS / 10_000);
 
-  let bidAmount = BigInt(Math.floor(Math.max(0, bidFloat)));
+  const fairBid = BigInt(Math.floor(Math.max(0, bidFloat)));
+  let bidAmount = fairBid;
   if (bidAmount > MAX_BID) bidAmount = MAX_BID;
   if (bidAmount <= 0n) return null;
 
-  return { bidAmount, counterpartyWinProb };
+  return { bidAmount, fairBid, counterpartyWinProb, legProbs };
 }
 
 // ============================================================================
@@ -313,44 +334,57 @@ async function handleAuction(auction: AuctionDetails, submitBid: (payload: Retur
   const predictorCollateral = BigInt(auction.predictorCollateral || '0');
 
   // Ignore auctions on different chains
-  if (auction.chainId && auction.chainId !== CHAIN_ID) return;
-
-  // Ignore auctions below minimum wager
-  if (predictorCollateral < MIN_MAKER_WAGER) return;
-
-  // Log auction with picks
-  try {
-    const picks = (auction.picks || []) as PickJson[];
-    const idToCond = await getConditionsByIds(picks.map((p) => p.conditionId));
-    const legLines = picks
-      .map((p) => {
-        const c = idToCond.get(p.conditionId);
-        const name = (c?.shortName && String(c.shortName).trim()) || (c?.question && String(c.question).trim()) || p.conditionId.slice(0, 10);
-        const yn = p.predictedOutcome === OutcomeSide.YES ? fmt.yes('Yes') : fmt.no('No');
-        return fmt.bullet(`${name}: ${yn}`);
-      })
-      .join('\n');
-    logger.info([`🎯 Auction started ${fmt.id(auctionId)}`, legLines].join('\n'));
-  } catch {
-    logger.info(`🎯 Auction started ${fmt.id(auctionId)}`);
+  if (auction.chainId && auction.chainId !== CHAIN_ID) {
+    logger.warn(`Skipping auction ${auctionId}: wrong chain ${auction.chainId}`);
+    return;
   }
 
-  if (!account || !MAKER) {
-    logger.info(`Would bid on auction ${auctionId} but skipping: PRIVATE_KEY not set`);
+  // Ignore auctions below minimum wager
+  if (predictorCollateral < MIN_MAKER_WAGER) {
+    logger.warn(`Skipping auction ${auctionId}: collateral ${formatEther(predictorCollateral)} below min ${MIN_MAKER_WAGER_DEC}`);
     return;
   }
 
   // ---- Dynamic quoting via strategies ----
+  const picks = (auction.picks || []) as PickJson[];
   const quote = await computeQuote(auction);
-  let counterpartyCollateral: bigint;
-  let bidLabel: string;
+  if (!quote) {
+    logger.warn(`Skipping auction ${auctionId}: no strategy could price any leg`);
+    return;
+  }
 
-  if (quote) {
-    counterpartyCollateral = quote.bidAmount;
-    bidLabel = `${formatEther(quote.bidAmount)} (${(quote.counterpartyWinProb * 100).toFixed(1)}% cp-win)`;
-  } else {
-    counterpartyCollateral = BID_AMOUNT;
-    bidLabel = `${BID_AMOUNT_DEC} (fixed)`;
+  // Build leg lines with per-leg probabilities
+  const idToCond = await getConditionsByIds(picks.map((p) => p.conditionId));
+  const legLines = picks
+    .map((p) => {
+      const c = idToCond.get(p.conditionId);
+      const name = (c?.shortName && String(c.shortName).trim()) || (c?.question && String(c.question).trim()) || p.conditionId.slice(0, 10);
+      const yn = p.predictedOutcome === OutcomeSide.YES ? fmt.yes('Yes') : fmt.no('No');
+      const prob = quote.legProbs.get(p.conditionId);
+      const probLabel = prob !== null && prob !== undefined
+        ? color(` ${(prob * 100).toFixed(0)}%`, ANSI.dim)
+        : color(' unpriced', ANSI.dim);
+      return fmt.bullet(`${name}: ${yn}${probLabel}`);
+    })
+    .join('\n');
+
+  const counterpartyCollateral = quote.bidAmount;
+  const bidDec = formatEther(counterpartyCollateral);
+  const totalPayout = counterpartyCollateral + predictorCollateral;
+  const winDec = formatEther(totalPayout);
+  const theyLose = (quote.counterpartyWinProb * 100).toFixed(1);
+  const fairDec = formatEther(quote.fairBid);
+  const capped = quote.bidAmount < quote.fairBid
+    ? `\n  ${color(`↳ fair bid: ${fairDec} USDe, capped at ${MAX_BID_DEC}`, ANSI.dim)}`
+    : '';
+
+  if (!account || !MAKER) {
+    logger.info([
+      `📋 Bid ${fmt.value(`${bidDec} USDe`)} to win ${fmt.value(`${winDec} USDe`)} (${fmt.yes(`${theyLose}%`)} chance they lose), against:`,
+      legLines,
+      fmt.bullet(color('dry run — no PRIVATE_KEY', ANSI.dim)),
+    ].join('\n') + capped);
+    return;
   }
 
   const counterpartyDeadline = BigInt(Math.floor(Date.now() / 1000) + DEADLINE_SECONDS);
@@ -405,7 +439,10 @@ async function handleAuction(auction: AuctionDetails, submitBid: (payload: Retur
     counterpartySignature,
   });
 
-  logger.info(`📤 Sending bid ${fmt.value(bidLabel)} on ${fmt.id(auctionId)}`);
+  logger.info([
+    `📤 Bid ${fmt.value(`${bidDec} USDe`)} to win ${fmt.value(`${winDec} USDe`)} (${fmt.yes(`${theyLose}%`)} chance they lose), against:`,
+    legLines,
+  ].join('\n'));
   const sent = submitBid(payload);
   if (!sent) logger.error('⛔️ Bid send failed: not connected');
   else logger.success('📨 Bid sent');
@@ -429,7 +466,6 @@ function start() {
       logger.info([
         '📊 Market maker configuration:',
         fmt.bullet(fmt.field('Chain', fmt.value(`${CHAIN_NAME} (${CHAIN_ID})`))),
-        fmt.bullet(fmt.field('Fallback bid', fmt.value(`${BID_AMOUNT_DEC}`))),
         fmt.bullet(fmt.field('Max bid', fmt.value(`${MAX_BID_DEC}`))),
         fmt.bullet(fmt.field('Edge', fmt.value(`${EDGE_BPS} bps`))),
         fmt.bullet(fmt.field('Volatility', fmt.value(`${(VOLATILITY * 100).toFixed(0)}%`))),

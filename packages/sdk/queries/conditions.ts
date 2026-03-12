@@ -210,6 +210,7 @@ type ConditionById = {
   description?: string | null;
   endTime?: number | null;
   resolver?: string | null;
+  similarMarkets?: string[];
   category?: { slug?: string | null } | null;
   settled?: boolean;
   resolvedToYes?: boolean;
@@ -225,6 +226,7 @@ const CONDITIONS_BY_IDS_QUERY = /* GraphQL */ `
       description
       endTime
       resolver
+      similarMarkets
       settled
       resolvedToYes
       nonDecisive

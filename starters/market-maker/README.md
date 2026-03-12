@@ -47,7 +47,6 @@ All config is via environment variables. See [`env.example`](./env.example) for 
 | `MAX_BID_AMOUNT` | `1.0` | Maximum bid in ether units |
 | `VOLATILITY` | `0.80` | Annualized vol for Pyth Black-Scholes pricing |
 | `MIN_CP_WIN_PROB` | `0.05` | Skip if counterparty win probability below this |
-| `BID_AMOUNT` | `0.01` | Fallback bid when no strategy can price the auction |
 
 ### Filtering
 

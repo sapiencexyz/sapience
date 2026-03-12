@@ -384,11 +384,12 @@ export const escrowContracts = {
 // Resolver Helpers
 // ============================================================================
 
-export type ResolverType = 'pyth' | 'conditionalTokens' | 'manual' | 'lz';
+export type ResolverType = 'pyth' | 'conditionalTokens' | 'lzConditionalTokens' | 'manual' | 'lz';
 
 const RESOLVER_MAP: Record<ResolverType, ChainAddressMap> = {
   pyth: pythConditionResolver,
   conditionalTokens: conditionalTokensConditionResolver,
+  lzConditionalTokens: predictionMarketLZConditionalTokensResolver,
   manual: manualConditionResolver,
   lz: lzConditionResolver,
 };
