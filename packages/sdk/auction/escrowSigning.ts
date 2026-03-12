@@ -473,7 +473,11 @@ export function buildAuctionIntentTypedData(params: {
     message: {
       picks: params.picks.map((p) => ({
         conditionResolver: p.conditionResolver,
-        conditionId: p.conditionId,
+        // EIP-712 type is bytes32; hash long conditionIds (e.g. Pyth raw encoding)
+        conditionId:
+          p.conditionId.length > 66
+            ? keccak256(p.conditionId)
+            : p.conditionId,
         predictedOutcome: p.predictedOutcome,
       })),
       predictor: params.predictor,
