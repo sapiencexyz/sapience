@@ -5,7 +5,6 @@ import {
   type Address,
   type Hex,
 } from 'viem';
-import { computeSmartAccountAddress } from './smartAccount';
 
 // ValidatorData structure constants
 const FLAG_BYTES = 2;
@@ -264,6 +263,8 @@ export async function verifySessionApproval(
       // EIP-712 domain binding alone is insufficient — any EOA can sign with
       // verifyingContract set to an arbitrary address. We must derive the
       // expected smart account from the recovered owner and compare.
+      // Dynamic import to avoid pulling @zerodev/ecdsa-validator into client bundles
+      const { computeSmartAccountAddress } = await import('./smartAccount');
       const expectedSmartAccount = await computeSmartAccountAddress(recoveredOwner, approval.chainId);
       if (expectedSmartAccount.toLowerCase() !== claimedAccountAddress.toLowerCase()) {
         console.warn('[SessionAuth] Smart account ownership mismatch:', {

@@ -54,8 +54,9 @@ export function useAuctionStart(options: UseAuctionStartOptions = {}) {
   const { apiBaseUrl } = useSettings();
   const {
     effectiveAddress,
-    signTypedData: sessionSignTypedData,
+    signTypedDataRaw: sessionSignTypedDataRaw,
     isUsingSession,
+    etherealSessionApproval,
   } = useSession();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -130,10 +131,14 @@ export function useAuctionStart(options: UseAuctionStartOptions = {}) {
 
       setIsSubmitting(true);
       let intentSignature: Hex;
+      // Track whether we used a session key so we can include session data in payload
+      let usedSessionKey = false;
       try {
-        // When session is active, sign with session key (no wallet popup)
-        if (isUsingSession && sessionSignTypedData) {
-          intentSignature = await sessionSignTypedData({
+        // When session is active, sign with raw session key (standard ECDSA)
+        // for relayer-only verification. Kernel-wrapped signatures can't be
+        // recovered by recoverTypedDataAddress on the relayer.
+        if (isUsingSession && sessionSignTypedDataRaw) {
+          intentSignature = await sessionSignTypedDataRaw({
             domain: {
               ...intentTypedData.domain,
               chainId: Number(intentTypedData.domain.chainId),
@@ -142,6 +147,7 @@ export function useAuctionStart(options: UseAuctionStartOptions = {}) {
             primaryType: intentTypedData.primaryType,
             message: intentTypedData.message as Record<string, unknown>,
           });
+          usedSessionKey = true;
         } else {
           intentSignature = await signTypedDataAsync({
             domain: {
@@ -183,6 +189,16 @@ export function useAuctionStart(options: UseAuctionStartOptions = {}) {
         intentSignature,
         chainId,
         refCode: refCode ?? undefined,
+        // Include full session approval (approval + typedData) so relayer can
+        // verify the session key via verifySessionApproval
+        ...(usedSessionKey && etherealSessionApproval
+          ? {
+              predictorSessionKeyData: JSON.stringify({
+                approval: etherealSessionApproval.approval,
+                typedData: etherealSessionApproval.typedData,
+              }),
+            }
+          : {}),
       };
 
       // Send auction start message
@@ -279,8 +295,9 @@ export function useAuctionStart(options: UseAuctionStartOptions = {}) {
       verifyingContract,
       wsUrl,
       signTypedDataAsync,
-      sessionSignTypedData,
+      sessionSignTypedDataRaw,
       isUsingSession,
+      etherealSessionApproval,
       onSignatureRejected,
       onAuctionCreated,
     ]

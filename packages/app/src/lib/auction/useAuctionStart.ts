@@ -1,8 +1,11 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useAccount } from 'wagmi';
+import { useAccount, useSignTypedData } from 'wagmi';
+import type { Address, Hex } from 'viem';
 import { canonicalizePicks } from '@sapience/sdk/auction/escrowEncoding';
+import { buildAuctionIntentTypedData } from '@sapience/sdk/auction/escrowSigning';
+import { predictionMarketEscrow } from '@sapience/sdk/contracts';
 import type { Pick } from '@sapience/sdk/types';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
@@ -107,10 +110,13 @@ function jsonStableStringify(value: unknown): string {
 export interface UseAuctionStartOptions {
   /** Disable logging for this hook instance (use for forecast-only components) */
   disableLogging?: boolean;
+  /** Skip intent signature signing (use for estimate-only / forecast components) */
+  skipIntentSigning?: boolean;
 }
 
 export function useAuctionStart(options?: UseAuctionStartOptions) {
   const shouldLog = !options?.disableLogging;
+  const shouldSignIntent = !options?.skipIntentSigning;
   // Create conditional log functions to avoid noisy logs from forecast-only components
   const log = shouldLog ? logAuction : () => {};
   const [auctionId, setAuctionId] = useState<string | null>(null);
@@ -122,15 +128,20 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
   const {
     etherealSessionApproval,
     signMessage: sessionSignMessage,
+    signTypedDataRaw: sessionSignTypedDataRaw,
     effectiveAddress,
     isUsingSmartAccount,
+    isUsingSession,
   } = useSession();
+  const { signTypedDataAsync } = useSignTypedData();
 
   // Stable refs for session state — read at call time, don't trigger requestQuotes recreation
   const effectiveAddressRef = useRef(effectiveAddress);
   const etherealSessionApprovalRef = useRef(etherealSessionApproval);
   const sessionSignMessageRef = useRef(sessionSignMessage);
+  const sessionSignTypedDataRawRef = useRef(sessionSignTypedDataRaw);
   const isUsingSmartAccountRef = useRef(isUsingSmartAccount);
+  const isUsingSessionRef = useRef(isUsingSession);
 
   useEffect(() => {
     effectiveAddressRef.current = effectiveAddress;
@@ -142,8 +153,14 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
     sessionSignMessageRef.current = sessionSignMessage;
   }, [sessionSignMessage]);
   useEffect(() => {
+    sessionSignTypedDataRawRef.current = sessionSignTypedDataRaw;
+  }, [sessionSignTypedDataRaw]);
+  useEffect(() => {
     isUsingSmartAccountRef.current = isUsingSmartAccount;
   }, [isUsingSmartAccount]);
+  useEffect(() => {
+    isUsingSessionRef.current = isUsingSession;
+  }, [isUsingSession]);
 
   const relayerBase = useMemo(() => {
     if (apiBaseUrl && apiBaseUrl.length > 0) return apiBaseUrl;
@@ -329,7 +346,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
   }, [wsUrl]);
 
   const requestQuotes = useCallback(
-    (params: AuctionParams | null, options?: { forceRefresh?: boolean }) => {
+    async (params: AuctionParams | null, options?: { forceRefresh?: boolean }) => {
       if (!params || !wsUrl) return;
 
       // Determine if we'll use session signing or wallet signing
@@ -423,6 +440,64 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
           params.predictorSponsorData ?? '0x';
       }
 
+      // Sign AuctionIntent EIP-712 typed data to prove predictor identity
+      // Skip signing when no wallet is connected and no session is active
+      // (anonymous users get unsigned estimate requests, like MarketPredictionRequest)
+      const verifyingContract = predictionMarketEscrow[chainId]?.address as Address | undefined;
+      const canSign = walletAddress || (isUsingSessionRef.current && sessionSignTypedDataRawRef.current);
+      if (shouldSignIntent && verifyingContract && canSign) {
+        try {
+          const intentTypedData = buildAuctionIntentTypedData({
+            picks,
+            predictor: effectivePredictor,
+            predictorCollateral: BigInt(params.wager),
+            predictorNonce: BigInt(params.predictorNonce),
+            predictorDeadline: BigInt(predictorDeadline),
+            verifyingContract,
+            chainId,
+          });
+
+          const viemDomain = {
+            ...intentTypedData.domain,
+            chainId: Number(intentTypedData.domain.chainId),
+          };
+
+          let intentSignature: Hex;
+          if (isUsingSessionRef.current && sessionSignTypedDataRawRef.current) {
+            // Use raw session key ECDSA signature (not kernel-wrapped) for
+            // relayer-only verification. Include session approval so the
+            // relayer can verify the session key is authorized.
+            intentSignature = await sessionSignTypedDataRawRef.current({
+              domain: viemDomain,
+              types: intentTypedData.types,
+              primaryType: intentTypedData.primaryType,
+              message: intentTypedData.message as Record<string, unknown>,
+            });
+            if (etherealSessionApprovalRef.current) {
+              // Send full session approval (approval + typedData) so the
+              // relayer can verify the session key via verifySessionApproval
+              escrowPayload.predictorSessionKeyData = JSON.stringify({
+                approval: etherealSessionApprovalRef.current.approval,
+                typedData: etherealSessionApprovalRef.current.typedData,
+              });
+            }
+          } else {
+            intentSignature = await signTypedDataAsync({
+              domain: viemDomain,
+              types: intentTypedData.types,
+              primaryType: intentTypedData.primaryType,
+              message: intentTypedData.message,
+            });
+          }
+
+          escrowPayload.intentSignature = intentSignature;
+        } catch (e) {
+          log(`[auction] Intent signing failed: ${e instanceof Error ? e.message : String(e)}`);
+          inflightRef.current = '';
+          return;
+        }
+      }
+
       // Generate a correlation ID and send via client.send() instead of
       // sendWithAck(). The ack is handled synchronously in handleMessage
       // (matched by this ID), which eliminates the microtask race where
@@ -446,7 +521,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
         inflightRef.current = '';
       }, 10_000);
     },
-    [wsUrl, walletAddress]
+    [wsUrl, walletAddress, signTypedDataAsync]
   );
 
   const acceptBid = useCallback(

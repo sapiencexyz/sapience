@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { Calendar, ChevronsUpDown, Timer } from 'lucide-react';
+import { Calendar, ChevronsUpDown, Loader2, Timer } from 'lucide-react';
 import { z } from 'zod';
 
 import { cn } from '../lib/utils';
@@ -101,6 +101,17 @@ async function fetchPythProFeeds(signal: AbortSignal): Promise<PythProFeedRow[]>
       expo: f.exponent,
     }));
 }
+
+/** Popular feeds hardcoded so the picker renders instantly before the full list loads. */
+const DEFAULT_LAZER_FEEDS: PythProFeedRow[] = [
+  { id: 1, symbol: 'Crypto.BTC/USD', description: 'BITCOIN / US DOLLAR', expo: -8 },
+  { id: 2, symbol: 'Crypto.ETH/USD', description: 'ETHEREUM / US DOLLAR', expo: -8 },
+  { id: 85, symbol: 'Crypto.ENA/USD', description: 'ETHENA / US DOLLAR', expo: -8 },
+  { id: 346, symbol: 'Metal.XAU/USD', description: 'GOLD / US DOLLAR', expo: -3 },
+  { id: 657, symbol: 'Commodities.USOILSPOT', description: 'WTI LIGHT SWEET CRUDE OIL CFD', expo: -5 },
+  { id: 1398, symbol: 'Equity.US.SPY/USD', description: 'SPY / US DOLLAR', expo: -5 },
+  { id: 1435, symbol: 'Equity.US.TSLA/USD', description: 'TESLA INC / US DOLLAR', expo: -5 },
+];
 
 let cachedLazerFeeds: PythProFeedRow[] | null = null;
 let inflightLazerFeeds: Promise<PythProFeedRow[]> | null = null;
@@ -840,21 +851,8 @@ export function CreatePythPredictionForm({
     const q = lazerQuery.trim().toLowerCase();
     const list = lazerFeeds;
     if (!q) {
-      // Match the pre-change UX: show a few "popular" defaults when the query is empty.
-      const wantedSymbols = ['Crypto.BTC/USD', 'Crypto.ETH/USD', 'Crypto.ENA/USD'];
-      const out: PythProFeedRow[] = [];
-      const bySymbol = new Map<string, PythProFeedRow>();
-      for (const f of list) {
-        const sym = (f.symbol ?? '').toLowerCase();
-        if (sym) bySymbol.set(sym, f);
-      }
-      for (const sym of wantedSymbols) {
-        const hit = bySymbol.get(sym.toLowerCase());
-        if (hit) out.push(hit);
-      }
-      // Fallback: if exact symbols aren’t present (e.g. ENA missing), show first items by id.
-      if (out.length === 0) return list.slice(0, 25);
-      return out;
+      // Show hardcoded defaults instantly (no network fetch needed).
+      return DEFAULT_LAZER_FEEDS;
     }
 
     // Support comma/space separated terms (same UX as Pyth Developer Hub).
@@ -1123,8 +1121,17 @@ export function CreatePythPredictionForm({
                 placeholder="Price"
                 disabled={disabled}
                 aria-label="Target price"
-                className="h-9 w-full bg-transparent border-brand-white/20 text-foreground placeholder:text-muted-foreground pl-7"
+                className="h-9 w-full bg-transparent border-brand-white/20 text-foreground placeholder:text-muted-foreground pl-7 pr-8"
               />
+              {isLoadingLatestPrice && (
+                <span className="pointer-events-none absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center justify-center h-3.5 w-3.5">
+                  <Loader2
+                    className="h-3.5 w-3.5 text-muted-foreground"
+                    style={{ animation: 'spinner-rotate 1s linear infinite' }}
+                  />
+                  <style>{`@keyframes spinner-rotate { to { transform: rotate(360deg) } }`}</style>
+                </span>
+              )}
             </div>
           </div>
 

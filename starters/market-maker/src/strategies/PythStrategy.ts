@@ -35,7 +35,11 @@ import type { Strategy, ConditionById } from './types.js';
 const DEFAULT_FEED_MAP: Record<number, string> = {
   1: 'e62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43', // BTC/USD (Lazer 1)
   2: 'ff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace', // ETH/USD (Lazer 2)
-  6: 'ef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d', // SOL/USD (Lazer 6)
+  85: 'b7910ba7322db020416fcac28b48c01212fd9cc8fbcbaf7d30477ed8605f6bd4', // ENA/USD (Lazer 85)
+  346: '765d2ba906dbc32ca17cc11f5310a89e9ee1f6420508c63861f2f8ba4ee34bb2', // XAU/USD (Lazer 346)
+  657: '925ca92ff005ae943c158e3563f59698ce7e75c5a8c8dd43303a0a154887b3e6', // USOILSPOT/USD (Lazer 657)
+  1398: '19e09bb805456ada3979a7d1cbb4b6d63babc3a0f8e8a9509f68afa5c4c11cd5', // SPY/USD (Lazer 1398)
+  1435: '16dad506d7db8da01c87581c87ca897a012a153557d4d578c3b9c9e1bc0632f1', // TSLA/USD (Lazer 1435)
 };
 
 export class PythStrategy implements Strategy {

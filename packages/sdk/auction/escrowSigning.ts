@@ -11,6 +11,10 @@ import {
 } from 'viem';
 import type { Pick, MintRequest, BurnRequest } from '../types/escrow';
 import { computePickConfigId } from './escrowEncoding';
+import {
+  verifySessionApproval,
+  type SessionApprovalPayload,
+} from '../session/verification';
 
 // ============================================================================
 // EIP-712 Domain & Types
@@ -690,6 +694,38 @@ export async function verifyAuctionIntentSignature(params: {
       const expectedSmartAccount = await params.resolveSmartAccountAddress(recovered, params.chainId);
       if (expectedSmartAccount.toLowerCase() === predictorAddress) {
         return { valid: true, recoveredAddress: recovered };
+      }
+    }
+
+    // Path 4: ZeroDev session key (JSON with approval + typedData)
+    // The session key signs with raw ECDSA; the approval proves the owner
+    // authorized this session key for the predictor's smart account.
+    if (params.predictorSessionKeyData && !params.predictorSessionKeyData.startsWith('0x')) {
+      try {
+        let approvalStr = params.predictorSessionKeyData;
+        let sessionTypedData: SessionApprovalPayload['typedData'] = undefined;
+        try {
+          const parsed = JSON.parse(params.predictorSessionKeyData);
+          if (parsed && typeof parsed === 'object' && parsed.approval) {
+            approvalStr = parsed.approval;
+            sessionTypedData = parsed.typedData ?? undefined;
+          }
+        } catch {
+          // Not JSON — treat as raw base64 approval string
+        }
+
+        const sessionResult = await verifySessionApproval(
+          { approval: approvalStr, chainId: params.chainId, typedData: sessionTypedData },
+          predictorAddress as Address
+        );
+
+        if (sessionResult.valid && sessionResult.sessionKeyAddress) {
+          if (recovered.toLowerCase() === sessionResult.sessionKeyAddress.toLowerCase()) {
+            return { valid: true, recoveredAddress: recovered };
+          }
+        }
+      } catch {
+        // Session verification failed — fall through
       }
     }
 

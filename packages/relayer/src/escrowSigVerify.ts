@@ -203,13 +203,27 @@ export async function verifyAuctionIntentSignature(
     return true;
   }
 
-  // Fallback: ZeroDev session key (base64 JSON format)
+  // Fallback: ZeroDev session key (base64 JSON format or JSON with typedData)
   if (payload.predictorSessionKeyData && !payload.predictorSessionKeyData.startsWith('0x')) {
     try {
+      // Parse session key data — may be a JSON object with {approval, typedData}
+      // or a raw base64 approval string
+      let approvalStr = payload.predictorSessionKeyData;
+      let typedData: SessionApprovalPayload['typedData'] = undefined;
+      try {
+        const parsed = JSON.parse(payload.predictorSessionKeyData);
+        if (parsed && typeof parsed === 'object' && parsed.approval) {
+          approvalStr = parsed.approval;
+          typedData = parsed.typedData ?? undefined;
+        }
+      } catch {
+        // Not JSON — treat as raw base64 approval string
+      }
+
       const sessionApprovalPayload: SessionApprovalPayload = {
-        approval: payload.predictorSessionKeyData,
+        approval: approvalStr,
         chainId: payload.chainId,
-        typedData: undefined,
+        typedData,
       };
 
       const predictorAddress = payload.predictor.toLowerCase() as Address;
