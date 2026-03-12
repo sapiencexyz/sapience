@@ -180,7 +180,9 @@ export function useSubmitPosition({
         // Verify the predictor address matches the current effective address
         // The counterparty signature was signed by the bidder referencing the predictor address
         // This check must be unconditional to catch session state changes between auction start and submission
-        if (filled.predictor?.toLowerCase() !== effectiveAddress?.toLowerCase()) {
+        if (
+          filled.predictor?.toLowerCase() !== effectiveAddress?.toLowerCase()
+        ) {
           throw new Error(
             'Address mismatch: the auction was started with a different account. ' +
               'Please request new bids.'
@@ -221,7 +223,9 @@ export function useSubmitPosition({
             counterparty: filled.counterparty,
             predictorNonce: nonceValue,
             predictorDeadline: BigInt(filled.predictorDeadline),
-            predictorSponsor: filled.predictorSponsor ?? '0x0000000000000000000000000000000000000000',
+            predictorSponsor:
+              filled.predictorSponsor ??
+              '0x0000000000000000000000000000000000000000',
             predictorSponsorData: filled.predictorSponsorData ?? '0x',
             verifyingContract: predictionMarketAddress,
             chainId,

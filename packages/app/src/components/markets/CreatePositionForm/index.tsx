@@ -490,21 +490,18 @@ const CreatePositionFormInner = ({
   const auctionSponsorAddress = currentAuctionParams?.predictorSponsor;
 
   // Validate escrow bids: session mode uses full simulation, EOA mode uses lightweight checks
-  const { validatedBids: bids } = useValidatedEscrowBids(
-    rawBids,
-    {
-      chainId: positionChainId,
-      predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
-      collateralTokenAddress: collateralToken,
-      predictorAddress: effectiveAddress as Address | undefined,
-      predictorCollateral: predictorCollateralWei,
-      picks: validationPicks,
-      isSponsored: auctionHasSponsor,
-      sponsorAddress: auctionSponsorAddress,
-      signPredictorApproval: isUsingSession ? sessionSignTypedData : null,
-      enabled: true,
-    }
-  );
+  const { validatedBids: bids } = useValidatedEscrowBids(rawBids, {
+    chainId: positionChainId,
+    predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
+    collateralTokenAddress: collateralToken,
+    predictorAddress: effectiveAddress as Address | undefined,
+    predictorCollateral: predictorCollateralWei,
+    picks: validationPicks,
+    isSponsored: auctionHasSponsor,
+    sponsorAddress: auctionSponsorAddress,
+    signPredictorApproval: isUsingSession ? sessionSignTypedData : null,
+    enabled: true,
+  });
 
   // Reset initialization when effective address changes (e.g., session activates)
   useEffect(() => {
@@ -852,6 +849,8 @@ const CreatePositionFormInner = ({
     pythPredictions,
     onRemovePythPrediction,
     onClearPythPredictions,
+    onViewCard: () => setShowPreviewCard(true),
+    onCopyLink: handleCopyLink,
   };
 
   // Share dialog component - rendered independently of layout
@@ -908,18 +907,8 @@ const CreatePositionFormInner = ({
               } as CSSProperties
             }
           >
-            <DrawerHeader className="pb-0 flex items-center justify-between">
+            <DrawerHeader className="pb-0">
               <DrawerTitle className="text-left"></DrawerTitle>
-              <ShareClearBar
-                visible={selections.length > 0 || pythPredictions.length > 0}
-                onViewCard={() => setShowPreviewCard(true)}
-                onCopyLink={handleCopyLink}
-                onClear={() => {
-                  clearSelections();
-                  clearPositionForm();
-                  onClearPythPredictions?.();
-                }}
-              />
             </DrawerHeader>
             <div
               className={`${createPositionEntries.length === 0 ? 'pt-0 pb-4' : 'p-0'} h-full flex flex-col min-h-0`}

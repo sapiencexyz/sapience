@@ -131,7 +131,12 @@ export function useEscrowWrite(params: { chainId?: number } = {}) {
         return { success: false, error: 'Escrow contract not available' };
       }
 
-      const { predictionId, positionToken, amount, refCode = ZERO_BYTES32 } = params;
+      const {
+        predictionId,
+        positionToken,
+        amount,
+        refCode = ZERO_BYTES32,
+      } = params;
 
       const settleData = encodeFunctionData({
         abi: predictionMarketEscrowAbi,

@@ -76,10 +76,13 @@ export default function PredictionPageClient({
 
   // Compute result from individual conditions when prediction not yet settled on-chain
   const computed = !serverPrediction.settled
-    ? computeResultFromConditions(picks, conditionsMap as Parameters<typeof computeResultFromConditions>[1])
+    ? computeResultFromConditions(
+        picks,
+        conditionsMap as Parameters<typeof computeResultFromConditions>[1]
+      )
     : null;
   const isSettled =
-    serverPrediction.settled || (computed?.result !== 'UNRESOLVED');
+    serverPrediction.settled || computed?.result !== 'UNRESOLVED';
   const result = serverPrediction.settled
     ? serverPrediction.result
     : (computed?.result ?? 'UNRESOLVED');
