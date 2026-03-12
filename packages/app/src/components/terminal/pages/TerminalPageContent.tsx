@@ -415,6 +415,7 @@ const TerminalPageContent: React.FC = () => {
             const decoded = decodePythMarketId(
               escrowPicks[0].conditionId as `0x${string}`
             );
+            if (!decoded) return null;
             return (
               <PythPredictionsCell
                 first={{
