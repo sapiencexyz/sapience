@@ -25,22 +25,9 @@ import {
   decodePythMarketId,
   decodePythLazerFeedId,
 } from '@sapience/sdk/auction/encoding';
+import { PYTH_FEED_HERMES_MAP } from '@sapience/sdk/constants';
 import type { Hex } from 'viem';
 import type { Strategy, ConditionById } from './types.js';
-
-/**
- * Pyth Lazer feed ID → Pyth Hermes price ID mapping.
- * Override via PYTH_FEED_MAP env: "2:e62d...,3:ff61...,7:ef0d..."
- */
-const DEFAULT_FEED_MAP: Record<number, string> = {
-  1: 'e62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43', // BTC/USD (Lazer 1)
-  2: 'ff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace', // ETH/USD (Lazer 2)
-  85: 'b7910ba7322db020416fcac28b48c01212fd9cc8fbcbaf7d30477ed8605f6bd4', // ENA/USD (Lazer 85)
-  346: '765d2ba906dbc32ca17cc11f5310a89e9ee1f6420508c63861f2f8ba4ee34bb2', // XAU/USD (Lazer 346)
-  657: '925ca92ff005ae943c158e3563f59698ce7e75c5a8c8dd43303a0a154887b3e6', // USOILSPOT/USD (Lazer 657)
-  1398: '19e09bb805456ada3979a7d1cbb4b6d63babc3a0f8e8a9509f68afa5c4c11cd5', // SPY/USD (Lazer 1398)
-  1435: '16dad506d7db8da01c87581c87ca897a012a153557d4d578c3b9c9e1bc0632f1', // TSLA/USD (Lazer 1435)
-};
 
 export class PythStrategy implements Strategy {
   readonly name = 'Pyth';
@@ -57,7 +44,7 @@ export class PythStrategy implements Strategy {
   }) {
     this.resolverAddresses = new Set(opts.resolverAddresses.map((a) => a.toLowerCase()));
     this.volatility = opts.volatility ?? 0.8;
-    this.feedMap = { ...DEFAULT_FEED_MAP };
+    this.feedMap = { ...PYTH_FEED_HERMES_MAP };
 
     if (opts.feedMapOverride) {
       for (const entry of opts.feedMapOverride.split(',')) {

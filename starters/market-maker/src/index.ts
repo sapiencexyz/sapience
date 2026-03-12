@@ -17,6 +17,7 @@ import { fetchConditionsByIdsQuery, type ConditionById } from '@sapience/sdk/que
 import { buildCounterpartyMintTypedData, verifyAuctionIntentSignature } from '@sapience/sdk/auction/escrowSigning';
 import { createEscrowAuctionWs, buildBidPayload } from '@sapience/sdk/relayer/escrowAuctionWs';
 import { decodePythMarketId, decodePythLazerFeedId } from '@sapience/sdk/auction/encoding';
+import { PYTH_FEED_NAMES } from '@sapience/sdk/constants';
 import type { Pick, AuctionDetails, PickJson } from '@sapience/sdk/types';
 
 // Local imports
@@ -99,6 +100,9 @@ const SPONSOR_ALLOWLIST: Set<string> | null = (() => {
   return addresses.length > 0 ? new Set(addresses) : null;
 })();
 
+// Require predictor intent signature (default: true — skip unsigned auctions)
+const REQUIRE_INTENT_SIGNATURE = (process.env.REQUIRE_INTENT_SIGNATURE || 'true').toLowerCase() !== 'false';
+
 // Bidding parameters
 const MIN_MAKER_WAGER_DEC = process.env.MIN_MAKER_POSITION_SIZE || '1';
 const DEADLINE_SECONDS = Number(process.env.DEADLINE_SECONDS || '60');
@@ -121,13 +125,11 @@ const MAKER = account?.address as Address | undefined;
 const OutcomeSide = { YES: 0, NO: 1 } as const;
 
 /** Human-readable label for a conditionId (decodes Pyth market params if applicable) */
-const LAZER_FEED_NAMES: Record<number, string> = { 1: 'BTC', 2: 'ETH', 6: 'SOL' };
-
 function formatConditionId(conditionId: string): string {
   const market = decodePythMarketId(conditionId as Hex);
   if (market) {
     const feedId = decodePythLazerFeedId(market.priceId);
-    const feedName = feedId !== null ? (LAZER_FEED_NAMES[feedId] ?? `feed#${feedId}`) : market.priceId.slice(0, 10);
+    const feedName = feedId !== null ? (PYTH_FEED_NAMES[feedId] ?? `feed#${feedId}`) : market.priceId.slice(0, 10);
     const strike = Number(market.strikePrice) * Math.pow(10, market.strikeExpo);
     const expiry = new Date(Number(market.endTime) * 1000).toISOString().slice(0, 16);
     return `${feedName} ${market.overWinsOnTie ? '≥' : '>'} ${strike} by ${expiry}`;
@@ -363,6 +365,12 @@ async function handleAuction(auction: AuctionDetails, submitBid: (payload: Retur
   }
 
   logger.info(`${color('⚡', ANSI.dim)} ${fmt.id(auctionId.slice(0, 8))} ${color(`${picks.length} leg(s), resolvers: ${resolvers}, collateral: ${formatEther(predictorCollateral)}`, ANSI.dim)}`);
+
+  // Ignore unsigned auctions (no predictor intent signature)
+  if (REQUIRE_INTENT_SIGNATURE && !auction.intentSignature) {
+    logger.warn(`Skipping auction ${auctionId}: no intent signature`);
+    return;
+  }
 
   // Ignore auctions on different chains
   if (auction.chainId && auction.chainId !== CHAIN_ID) {

@@ -18,9 +18,21 @@ import { Input } from './ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from './ui/popover';
 import { ToggleGroup, ToggleGroupItem } from './ui/toggle-group';
 
+export type FeaturedFeed = {
+  /** Pyth Lazer integer feed ID */
+  lazerId: number;
+  /** Pyth symbol (e.g. "Crypto.BTC/USD") */
+  symbol: string;
+};
+
 export type CreatePythPredictionFormProps = {
   className?: string;
   disabled?: boolean;
+  /**
+   * Featured feeds shown in the dropdown before the full Pyth list loads.
+   * Typically passed from the SDK's PYTH_FEEDS constant.
+   */
+  featuredFeeds?: FeaturedFeed[];
   /**
    * This form is Lazer-only: `priceId` is a Pyth Lazer uint32 feed id (represented as a number
    * string, e.g. "1"). We still use Hermes behind the scenes to fetch a latest reference price.
@@ -101,17 +113,6 @@ async function fetchPythProFeeds(signal: AbortSignal): Promise<PythProFeedRow[]>
       expo: f.exponent,
     }));
 }
-
-/** Popular feeds hardcoded so the picker renders instantly before the full list loads. */
-const DEFAULT_LAZER_FEEDS: PythProFeedRow[] = [
-  { id: 1, symbol: 'Crypto.BTC/USD', description: 'BITCOIN / US DOLLAR', expo: -8 },
-  { id: 2, symbol: 'Crypto.ETH/USD', description: 'ETHEREUM / US DOLLAR', expo: -8 },
-  { id: 85, symbol: 'Crypto.ENA/USD', description: 'ETHENA / US DOLLAR', expo: -8 },
-  { id: 346, symbol: 'Metal.XAU/USD', description: 'GOLD / US DOLLAR', expo: -3 },
-  { id: 657, symbol: 'Commodities.USOILSPOT', description: 'WTI LIGHT SWEET CRUDE OIL CFD', expo: -5 },
-  { id: 1398, symbol: 'Equity.US.SPY/USD', description: 'SPY / US DOLLAR', expo: -5 },
-  { id: 1435, symbol: 'Equity.US.TSLA/USD', description: 'TESLA INC / US DOLLAR', expo: -5 },
-];
 
 let cachedLazerFeeds: PythProFeedRow[] | null = null;
 let inflightLazerFeeds: Promise<PythProFeedRow[]> | null = null;
@@ -716,6 +717,7 @@ async function fetchHermesPriceFeeds(
 export function CreatePythPredictionForm({
   className,
   disabled,
+  featuredFeeds,
   onPick,
 }: CreatePythPredictionFormProps) {
   const [priceId, setPriceId] = React.useState<string>('');
@@ -851,8 +853,24 @@ export function CreatePythPredictionForm({
     const q = lazerQuery.trim().toLowerCase();
     const list = lazerFeeds;
     if (!q) {
-      // Show hardcoded defaults instantly (no network fetch needed).
-      return DEFAULT_LAZER_FEEDS;
+      // Show featured feeds when query is empty.
+      if (featuredFeeds && featuredFeeds.length > 0) {
+        // If the full list has loaded, match by ID for accurate exponents/descriptions.
+        if (list.length > 0) {
+          const byId = new Map(list.map((f) => [f.id, f]));
+          const out = featuredFeeds
+            .map((f) => byId.get(f.lazerId))
+            .filter((f): f is PythProFeedRow => !!f);
+          if (out.length > 0) return out;
+        }
+        // Fall back to placeholder rows from the prop.
+        return featuredFeeds.map((f) => ({
+          id: f.lazerId,
+          symbol: f.symbol,
+          expo: -8,
+        }));
+      }
+      return list.slice(0, 25);
     }
 
     // Support comma/space separated terms (same UX as Pyth Developer Hub).
@@ -886,7 +904,7 @@ export function CreatePythPredictionForm({
 
     const other = [...otherMatches.values()].sort((a, b) => a.id - b.id);
     return [...exactIdMatches, ...other].slice(0, 50);
-  }, [lazerFeeds, lazerOpen, lazerQuery]);
+  }, [featuredFeeds, lazerFeeds, lazerOpen, lazerQuery]);
 
   const targetPrice = React.useMemo(() => {
     const n = Number(targetPriceDisplay);
@@ -1041,7 +1059,7 @@ export function CreatePythPredictionForm({
                       <CommandGroup>
                         {filteredLazerFeeds.map((f) => {
                           const label = f.symbol || `Feed #${f.id}`;
-                          const sub = f.description || `ID ${f.id} • expo ${f.expo}`;
+                          const sub = ('description' in f ? String(f.description) : '') || `ID ${f.id} • expo ${f.expo}`;
                           return (
                             <CommandItem
                               key={f.id}
