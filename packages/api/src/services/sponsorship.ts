@@ -127,10 +127,7 @@ export async function grantSponsorshipBudget(
   try {
     // Derive the smart account address from the EOA — the sponsor contract
     // tracks budgets by smart account address, not raw EOA.
-    const smartAccount = await computeSmartAccountAddress(
-      beneficiary,
-      config.chainId
-    );
+    const smartAccount = computeSmartAccountAddress(beneficiary);
     console.log(
       `[sponsorship] Derived smart account ${smartAccount} for EOA ${beneficiary}`
     );
