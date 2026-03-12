@@ -97,6 +97,63 @@ export async function verifyEscrowCounterpartySignature(
     return true;
   }
 
+  // Fallback: ZeroDev session key (base64 JSON format)
+  if (bid.counterpartySessionKeyData && !bid.counterpartySessionKeyData.startsWith('0x')) {
+    try {
+      const counterpartyAddress = bid.counterparty.toLowerCase() as Address;
+
+      const sessionApprovalPayload: SessionApprovalPayload = {
+        approval: bid.counterpartySessionKeyData,
+        chainId: auction.chainId,
+        typedData: undefined,
+      };
+
+      const sessionResult = await verifySessionApproval(
+        sessionApprovalPayload,
+        counterpartyAddress
+      );
+
+      if (sessionResult.valid && sessionResult.sessionKeyAddress) {
+        const { buildCounterpartyMintTypedData } = await import(
+          '@sapience/sdk/auction/escrowSigning'
+        );
+
+        const rawTypedData = buildCounterpartyMintTypedData({
+          picks,
+          predictorCollateral: BigInt(auction.predictorCollateral),
+          counterpartyCollateral: BigInt(bid.counterpartyCollateral),
+          predictor: auction.predictor as Address,
+          counterparty: bid.counterparty as Address,
+          counterpartyNonce: BigInt(bid.counterpartyNonce),
+          counterpartyDeadline: BigInt(bid.counterpartyDeadline),
+          predictorSponsor: (auction.predictorSponsor ?? '0x0000000000000000000000000000000000000000') as Address,
+          predictorSponsorData: (auction.predictorSponsorData ?? '0x') as Hex,
+          verifyingContract,
+          chainId: auction.chainId,
+        });
+
+        const typedData = convertTypedDataForViem(rawTypedData);
+
+        const recoveredSigner = await recoverTypedDataAddress({
+          ...typedData,
+          signature: bid.counterpartySignature as Hex,
+        });
+
+        if (recoveredSigner.toLowerCase() === sessionResult.sessionKeyAddress.toLowerCase()) {
+          if (process.env.NODE_ENV !== 'production') {
+            console.debug(
+              '[Escrow-Sig] Valid counterparty ZeroDev session approval for account:',
+              counterpartyAddress
+            );
+          }
+          return true;
+        }
+      }
+    } catch (error) {
+      console.error('[Escrow-Sig] ZeroDev counterparty session key verification error:', error);
+    }
+  }
+
   console.warn(
     '[Escrow-Sig] Counterparty signature verification failed: recovered signer does not match'
   );
