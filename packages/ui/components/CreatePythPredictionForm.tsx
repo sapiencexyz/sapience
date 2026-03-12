@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { Calendar, ChevronsUpDown, Loader2, Timer } from 'lucide-react';
+import { PYTH_FEEDS } from '@sapience/sdk/constants';
 import { z } from 'zod';
 
 import { cn } from '../lib/utils';
@@ -102,16 +103,12 @@ async function fetchPythProFeeds(signal: AbortSignal): Promise<PythProFeedRow[]>
     }));
 }
 
-/** Popular feeds hardcoded so the picker renders instantly before the full list loads. */
-const DEFAULT_LAZER_FEEDS: PythProFeedRow[] = [
-  { id: 1, symbol: 'Crypto.BTC/USD', description: 'BITCOIN / US DOLLAR', expo: -8 },
-  { id: 2, symbol: 'Crypto.ETH/USD', description: 'ETHEREUM / US DOLLAR', expo: -8 },
-  { id: 85, symbol: 'Crypto.ENA/USD', description: 'ETHENA / US DOLLAR', expo: -8 },
-  { id: 346, symbol: 'Metal.XAU/USD', description: 'GOLD / US DOLLAR', expo: -3 },
-  { id: 657, symbol: 'Commodities.USOILSPOT', description: 'WTI LIGHT SWEET CRUDE OIL CFD', expo: -5 },
-  { id: 1398, symbol: 'Equity.US.SPY/USD', description: 'SPY / US DOLLAR', expo: -5 },
-  { id: 1435, symbol: 'Equity.US.TSLA/USD', description: 'TESLA INC / US DOLLAR', expo: -5 },
-];
+/** Supported feeds from SDK — shown instantly before the full Pyth list loads. */
+const DEFAULT_LAZER_FEEDS: PythProFeedRow[] = PYTH_FEEDS.map((f) => ({
+  id: f.lazerId,
+  symbol: f.symbol,
+  expo: -8, // placeholder; overwritten when the full API list loads
+}));
 
 let cachedLazerFeeds: PythProFeedRow[] | null = null;
 let inflightLazerFeeds: Promise<PythProFeedRow[]> | null = null;
@@ -851,7 +848,16 @@ export function CreatePythPredictionForm({
     const q = lazerQuery.trim().toLowerCase();
     const list = lazerFeeds;
     if (!q) {
-      // Show hardcoded defaults instantly (no network fetch needed).
+      // Show supported feeds instantly (no network fetch needed).
+      // If the full list has loaded, use it to get accurate exponents/descriptions;
+      // otherwise fall back to the SDK-seeded defaults.
+      if (list.length > 0) {
+        const byId = new Map(list.map((f) => [f.id, f]));
+        const out = PYTH_FEEDS
+          .map((f) => byId.get(f.lazerId))
+          .filter((f): f is PythProFeedRow => !!f);
+        if (out.length > 0) return out;
+      }
       return DEFAULT_LAZER_FEEDS;
     }
 
