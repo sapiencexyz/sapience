@@ -246,7 +246,7 @@ const CreatePositionFormInner = ({
   const PREDICTION_MARKET_ADDRESS =
     predictionMarketEscrow[positionChainId]?.address;
 
-  // Sponsorship: only need refetch here to update budget after a mint
+  // Sponsorship: refetch after mint to update budget display
   const { refetch: refetchSponsor } = useSponsorStatus();
 
   // Fetch collateral token address from PredictionMarketEscrow
@@ -641,8 +641,8 @@ const CreatePositionFormInner = ({
     onSuccess: () => {
       clearPositionForm();
       setIsPopoverOpen(false);
-      // Refetch sponsor budget (it decreases after a sponsored mint)
-      refetchSponsor();
+      // Delayed refetch to allow on-chain state to settle after mint
+      setTimeout(() => refetchSponsor(), 5000);
     },
     onProgressUpdate: {
       onTxSending: startSubmission,

@@ -61,6 +61,7 @@ export function useSponsorStatus() {
     query: {
       enabled,
       staleTime: 30_000,
+      refetchInterval: 30_000,
       refetchOnWindowFocus: true,
     },
   });
