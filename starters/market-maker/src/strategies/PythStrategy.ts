@@ -25,18 +25,9 @@ import {
   decodePythMarketId,
   decodePythLazerFeedId,
 } from '@sapience/sdk/auction/encoding';
+import { PYTH_FEED_HERMES_MAP } from '@sapience/sdk/constants';
 import type { Hex } from 'viem';
 import type { Strategy, ConditionById } from './types.js';
-
-/**
- * Pyth Lazer feed ID → Pyth Hermes price ID mapping.
- * Override via PYTH_FEED_MAP env: "2:e62d...,3:ff61...,7:ef0d..."
- */
-const DEFAULT_FEED_MAP: Record<number, string> = {
-  1: 'e62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43', // BTC/USD (Lazer 1)
-  2: 'ff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace', // ETH/USD (Lazer 2)
-  6: 'ef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d', // SOL/USD (Lazer 6)
-};
 
 export class PythStrategy implements Strategy {
   readonly name = 'Pyth';
@@ -53,7 +44,7 @@ export class PythStrategy implements Strategy {
   }) {
     this.resolverAddresses = new Set(opts.resolverAddresses.map((a) => a.toLowerCase()));
     this.volatility = opts.volatility ?? 0.8;
-    this.feedMap = { ...DEFAULT_FEED_MAP };
+    this.feedMap = { ...PYTH_FEED_HERMES_MAP };
 
     if (opts.feedMapOverride) {
       for (const entry of opts.feedMapOverride.split(',')) {

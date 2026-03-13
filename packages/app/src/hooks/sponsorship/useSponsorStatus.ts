@@ -122,7 +122,10 @@ export function checkSponsorEligibility(params: {
     requiredCounterparty &&
     bidCounterparty.toLowerCase() !== requiredCounterparty.toLowerCase()
   ) {
-    return { eligible: false, reason: 'Bid counterparty does not match the required counterparty.' };
+    return {
+      eligible: false,
+      reason: 'Bid counterparty does not match the required counterparty.',
+    };
   }
 
   // 2. Entry price cap
@@ -139,12 +142,18 @@ export function checkSponsorEligibility(params: {
 
   // 3. Match limit
   if (matchLimit > 0n && predictorCollateral > matchLimit) {
-    return { eligible: false, reason: 'Position size exceeds the sponsored match limit.' };
+    return {
+      eligible: false,
+      reason: 'Position size exceeds the sponsored match limit.',
+    };
   }
 
   // 4. Budget sufficient
   if (predictorCollateral > 0n && predictorCollateral > remainingBudget) {
-    return { eligible: false, reason: 'Sponsorship budget is insufficient for this position size.' };
+    return {
+      eligible: false,
+      reason: 'Sponsorship budget is insufficient for this position size.',
+    };
   }
 
   return { eligible: true, reason: null };

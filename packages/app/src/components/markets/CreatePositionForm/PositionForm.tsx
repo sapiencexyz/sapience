@@ -44,9 +44,12 @@ import {
   type UmaPrediction,
 } from '@sapience/ui';
 import { logPositionForm, formatBidForLog } from '~/lib/auction/bidLogger';
+import { getAuctionTriggerMode } from '~/lib/auction/auctionTriggerMode';
 import { useSponsorStatus } from '~/hooks/sponsorship/useSponsorStatus';
 import { useSponsorshipActivation } from '~/hooks/sponsorship/useSponsorshipActivation';
 import SponsorshipIndicator from './SponsorshipIndicator';
+
+const EMPTY_BIDS: QuoteBid[] = [];
 
 interface PositionFormProps {
   methods: UseFormReturn<{
@@ -84,7 +87,7 @@ export default function PositionForm({
   isSubmitting,
   error,
   chainId = 42161,
-  bids = [],
+  bids = EMPTY_BIDS,
   requestQuotes,
   collateralToken,
   collateralSymbol: collateralSymbolProp,
@@ -138,7 +141,9 @@ export default function PositionForm({
 
   // Sponsorship activation state machine (timeout, reset, activate).
   // Callbacks are ref-ified inside the hook so triggerAuctionRequest (defined below) resolves at call-time.
-  const triggerAuctionRequestRef = useRef<(opts?: { forceRefresh?: boolean; withSponsor?: boolean }) => void>(() => {});
+  const triggerAuctionRequestRef = useRef<
+    (opts?: { forceRefresh?: boolean; withSponsor?: boolean }) => void
+  >(() => {});
   const {
     sponsorshipActivated,
     awaitingSponsoredBid,
@@ -146,7 +151,11 @@ export default function PositionForm({
     clearAwaiting,
     resetSponsor,
   } = useSponsorshipActivation({
-    onActivate: () => triggerAuctionRequestRef.current({ forceRefresh: true, withSponsor: true }),
+    onActivate: () =>
+      triggerAuctionRequestRef.current({
+        forceRefresh: true,
+        withSponsor: true,
+      }),
     onTimeout: () => triggerAuctionRequestRef.current({ forceRefresh: true }),
   });
 
@@ -156,6 +165,7 @@ export default function PositionForm({
   // - Otherwise (signing with wallet): use predictorAddress (wallet)
   const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
   const willUseSessionSigning = isUsingSmartAccount && !!sessionSignMessage;
+  const triggerMode = getAuctionTriggerMode(willUseSessionSigning, hasConnectedWallet);
   const selectedPredictorAddress = willUseSessionSigning
     ? (effectiveAddress ?? predictorAddress ?? ZERO_ADDRESS)
     : (predictorAddress ?? ZERO_ADDRESS);
@@ -258,6 +268,23 @@ export default function PositionForm({
       prevHasConnectedWalletRef.current = hasConnectedWallet;
     }
   }, [hasConnectedWallet]);
+
+  // Clear bids when trigger mode changes (e.g. switching between EOA and Smart Account)
+  // Old bids were generated for a different predictor address
+  const prevTriggerModeRef = useRef(triggerMode);
+  useEffect(() => {
+    if (prevTriggerModeRef.current !== triggerMode) {
+      logPositionForm(
+        `Trigger mode changed from ${prevTriggerModeRef.current} to ${triggerMode}, clearing bids`
+      );
+      setValidBids([]);
+      setStickyEstimateBid(null);
+      resetSponsor();
+      setLastQuoteRequestMs(null);
+      currentRequestKeyRef.current = null;
+      prevTriggerModeRef.current = triggerMode;
+    }
+  }, [triggerMode]);
 
   // Clear bids when selections change (prediction flipped, added, or removed) (for animations)
   useEffect(() => {
@@ -435,17 +462,6 @@ export default function PositionForm({
       const hasUma = selections.length > 0;
       const hasPyth = pythPredictions.length > 0;
 
-      // Auctions accept a single resolver per request; we can't mix UMA + Pyth in one auction today.
-      if (hasUma && hasPyth) {
-        toast({
-          title: "Can't mix UMA + Pyth in one auction",
-          description:
-            'Auctions use a single resolver per request. Please submit UMA-only or Pyth-only to request bids.',
-          variant: 'destructive',
-          duration: 6000,
-        });
-        return;
-      }
       if (!hasUma && !hasPyth) {
         return;
       }
@@ -478,18 +494,30 @@ export default function PositionForm({
           decimals
         ).toString();
 
+        let pythEscrowPicks:
+          | Array<{
+              conditionResolver: `0x${string}`;
+              conditionId: `0x${string}`;
+              predictedOutcome: number;
+            }>
+          | undefined;
+
         const payload = hasPyth
-          ? buildPythAuctionStartPayload(
-              pythPredictions.map((p) => ({
-                priceId: p.priceId,
-                direction: p.direction,
-                targetPrice: p.targetPrice,
-                targetPriceRaw: p.targetPriceRaw,
-                priceExpo: p.priceExpo,
-                dateTimeLocal: p.dateTimeLocal,
-              })),
-              chainId
-            )
+          ? (() => {
+              const p = buildPythAuctionStartPayload(
+                pythPredictions.map((pp) => ({
+                  priceId: pp.priceId,
+                  direction: pp.direction,
+                  targetPrice: pp.targetPrice,
+                  targetPriceRaw: pp.targetPriceRaw,
+                  priceExpo: pp.priceExpo,
+                  dateTimeLocal: pp.dateTimeLocal,
+                })),
+                chainId
+              );
+              pythEscrowPicks = p.escrowPicks;
+              return p;
+            })()
           : buildAuctionStartPayload(
               selections.map((s) => ({
                 marketId: s.conditionId || '0',
@@ -516,8 +544,10 @@ export default function PositionForm({
           params.predictorSponsorData = '0x';
         }
 
-        // Add escrowPicks for conditional token selections to trigger escrow auction
-        if (hasUma && !hasPyth) {
+        // Build escrowPicks — required for all auction types
+        if (hasPyth && pythEscrowPicks) {
+          params.escrowPicks = pythEscrowPicks;
+        } else if (hasUma) {
           const escrowPicks = getPicks();
           if (escrowPicks.length > 0) {
             params.escrowPicks = escrowPicks;
@@ -580,7 +610,9 @@ export default function PositionForm({
   );
 
   // Keep ref in sync so the sponsorship hook can call triggerAuctionRequest
-  useEffect(() => { triggerAuctionRequestRef.current = triggerAuctionRequest; }, [triggerAuctionRequest]);
+  useEffect(() => {
+    triggerAuctionRequestRef.current = triggerAuctionRequest;
+  }, [triggerAuctionRequest]);
 
   // Handler for "Initiate Auction" button - works for all users
   // Logged-out users get unsigned auctions that display as estimates
@@ -593,28 +625,30 @@ export default function PositionForm({
 
   // Auto-initiate auction when content (predictions/position size) changes
   // We debounce this to avoid spamming the auction endpoint while the user is typing
-  // Auto-trigger for all users - logged-out users get unsigned auctions with estimates
+  // In 'manual' mode (non-session connected wallet), skip auto-trigger entirely —
+  // the user must click "INITIATE AUCTION" to start the auction.
   const autoAuctionDebounceRef = useRef<number | undefined>(undefined);
   useEffect(() => {
-    // Wait for balance to load before triggering for logged-in users
-    // Skip balance loading check for logged-out users (they have no balance to load)
-    if (hasConnectedWallet && isBalanceLoading) return;
+    // Manual mode: don't auto-fire, require explicit user action
+    if (triggerMode === 'manual') return;
 
-    // Don't auto-trigger if there are form errors (e.g., position size exceeds balance)
-    // Skip this check for logged-out users since they can't have balance-related errors
-    if (hasConnectedWallet && hasFormErrors) return;
+    // Wait for balance to load before triggering (auto mode only)
+    if (triggerMode === 'auto' && isBalanceLoading) return;
 
-    // Must have at least two UMA predictions (parlay) or at least one Pyth prediction
-    const hasPredictions = selections.length >= 2 || pythPredictions.length > 0;
+    // Don't auto-trigger if there are form errors (auto mode only)
+    if (triggerMode === 'auto' && hasFormErrors) return;
+
+    // Must have at least one UMA prediction or at least one Pyth prediction
+    const hasPredictions = selections.length >= 1 || pythPredictions.length > 0;
     if (!hasPredictions) return;
 
     // Must have a valid position size
     const sizeNum = Number(positionSizeValue || '0');
     if (sizeNum <= 0 || Number.isNaN(sizeNum)) return;
 
-    // Don't auto-trigger if position size exceeds user's balance (only for logged-in users)
+    // Don't auto-trigger if position size exceeds user's balance (auto mode only)
     // Logged-out users can enter any position size to see estimates
-    if (hasConnectedWallet && sizeNum > userBalance) return;
+    if (triggerMode === 'auto' && sizeNum > userBalance) return;
 
     // Clear previous debounce timer
     if (autoAuctionDebounceRef.current !== undefined) {
@@ -635,7 +669,7 @@ export default function PositionForm({
       }
     };
   }, [
-    hasConnectedWallet,
+    triggerMode,
     isBalanceLoading,
     hasFormErrors,
     predictionsKey,
@@ -843,14 +877,16 @@ export default function PositionForm({
               onRequestBids={handleRequestBids}
               isSubmitting={isSubmitting}
               onSubmit={onSubmit}
-              isSubmitDisabled={isPermitLoading || isRestricted || awaitingSponsoredBid}
+              isSubmitDisabled={
+                isPermitLoading || isRestricted || awaitingSponsoredBid
+              }
               enableRainbowHover={isRainbowHoverEnabled}
               hintMounted={hintMounted}
               disclaimerMounted={disclaimerMounted}
               allBids={validBids}
               predictorPositionSizeWei={predictorPositionSizeWei}
               predictorAddress={selectedPredictorAddress}
-              showAddPredictionsHint={selections.length === 1}
+              showAddPredictionsHint={selections.length === 1 && !bestBid && !stickyEstimateBid}
               isAuctionPending={recentlyRequested && !bestBid}
               hasFormErrors={hasFormErrors}
               isLoggedOut={!hasConnectedWallet}

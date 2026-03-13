@@ -1,12 +1,12 @@
 /**
- * One-off script to backfill similarMarkets for conditionGroups
+ * One-off script to backfill similarMarkets for individual conditions
  *
- * For each group with at least one condition, fetches the event slug from Polymarket API
- * using the first condition's conditionId, and updates the similarMarkets URL.
+ * For each condition across all groups, fetches the event slug from Polymarket API
+ * using the condition's conditionHash, and updates the condition's similarMarkets URL.
  *
  * Usage:
- *   npx tsx backfill-similar-markets.ts --dry-run
- *   npx tsx backfill-similar-markets.ts --execute
+ *   npx tsx backfill-condition-similar-markets.ts --dry-run
+ *   npx tsx backfill-condition-similar-markets.ts --execute
  */
 
 import 'dotenv/config';
@@ -17,13 +17,14 @@ import { DEFAULT_SAPIENCE_API_URL } from '../src/constants';
 const SAPIENCE_API_URL = process.env.SAPIENCE_API_URL || DEFAULT_SAPIENCE_API_URL;
 
 interface Condition {
-  id: string;
+  id: string; // conditionHash (0x-prefixed 32-byte hex)
+  question: string;
+  similarMarkets: string[];
 }
 
 interface ConditionGroup {
   id: number;
   name: string;
-  similarMarkets: string[];
   condition: Condition[];
 }
 
@@ -41,10 +42,8 @@ interface CLIOptions {
 
 function parseArgs(): CLIOptions {
   const args = process.argv.slice(2);
-
   const hasArg = (name: string): boolean =>
     args.includes(`--${name}`) || args.some(a => a.startsWith(`--${name}=`));
-
   return {
     dryRun: hasArg('dry-run') || !hasArg('execute'),
     execute: hasArg('execute'),
@@ -54,13 +53,13 @@ function parseArgs(): CLIOptions {
 
 function showHelp(): void {
   console.log(`
-Usage: npx tsx backfill-similar-markets.ts [options]
+Usage: npx tsx backfill-condition-similar-markets.ts [options]
 
-Backfills similarMarkets for conditionGroups by fetching event slugs from Polymarket API.
+Backfills similarMarkets for individual conditions by fetching event slugs from Polymarket API.
 
 Options:
   --dry-run      Show what would be updated without making changes (default)
-  --execute      Actually update the groups
+  --execute      Actually update the conditions
   --help, -h     Show this help message
 
 Environment Variables:
@@ -74,7 +73,6 @@ async function fetchAllGroups(
   privateKey: `0x${string}`
 ): Promise<ConditionGroup[]> {
   const authHeaders = await getAdminAuthHeaders(privateKey);
-
   const response = await fetchWithRetry(`${apiUrl}/admin/conditionGroups`, {
     method: 'GET',
     headers: {
@@ -82,11 +80,9 @@ async function fetchAllGroups(
       ...authHeaders,
     },
   });
-
   if (!response.ok) {
     throw new Error(`Failed to fetch groups: HTTP ${response.status}`);
   }
-
   return response.json();
 }
 
@@ -96,11 +92,7 @@ async function fetchMarketFromGammaApi(conditionId: string): Promise<PolymarketM
     const response = await fetchWithRetry(url, {
       headers: { 'Accept': 'application/json' },
     });
-
-    if (!response.ok) {
-      return null;
-    }
-
+    if (!response.ok) return null;
     const markets: PolymarketMarket[] = await response.json();
     return markets[0] || null;
   } catch {
@@ -114,14 +106,8 @@ async function fetchMarketFromClobApi(conditionId: string): Promise<PolymarketMa
     const response = await fetchWithRetry(url, {
       headers: { 'Accept': 'application/json' },
     });
-
-    if (!response.ok) {
-      return null;
-    }
-
+    if (!response.ok) return null;
     const market = await response.json();
-    // CLOB API returns a single market object, not an array
-    // Map CLOB fields to our expected structure
     return {
       conditionId: market.condition_id || conditionId,
       slug: market.market_slug || '',
@@ -133,32 +119,21 @@ async function fetchMarketFromClobApi(conditionId: string): Promise<PolymarketMa
 }
 
 async function fetchMarketByConditionId(conditionId: string): Promise<PolymarketMarket | null> {
-  // Try Gamma API first
   const gammaResult = await fetchMarketFromGammaApi(conditionId);
-  if (gammaResult) {
-    return gammaResult;
-  }
-
-  // Fallback to CLOB API
-  const clobResult = await fetchMarketFromClobApi(conditionId);
-  if (clobResult) {
-    return clobResult;
-  }
-
-  return null;
+  if (gammaResult) return gammaResult;
+  return fetchMarketFromClobApi(conditionId);
 }
 
-async function updateGroupSimilarMarkets(
+async function updateConditionSimilarMarkets(
   apiUrl: string,
   privateKey: `0x${string}`,
-  groupId: number,
-  groupName: string,
+  conditionHash: string,
+  question: string,
   similarMarkets: string[]
 ): Promise<boolean> {
   try {
     const authHeaders = await getAdminAuthHeaders(privateKey);
-
-    const response = await fetchWithRetry(`${apiUrl}/admin/conditionGroups/${groupId}`, {
+    const response = await fetchWithRetry(`${apiUrl}/admin/conditions/${conditionHash}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
@@ -166,17 +141,15 @@ async function updateGroupSimilarMarkets(
       },
       body: JSON.stringify({ similarMarkets }),
     });
-
     if (response.ok) {
-      console.log(`[OK] Updated "${groupName}" (id: ${groupId}) with ${similarMarkets.length} similar markets`);
+      console.log(`[OK] Updated "${question.slice(0, 60)}" (${conditionHash.slice(0, 10)}...)`);
       return true;
     }
-
     const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
-    console.error(`[FAIL] Update failed for "${groupName}": HTTP ${response.status}: ${errorData.message || response.statusText}`);
+    console.error(`[FAIL] Update failed for "${question.slice(0, 60)}": HTTP ${response.status}: ${errorData.message || response.statusText}`);
     return false;
   } catch (error) {
-    console.error(`[FAIL] Update error for "${groupName}": ${error instanceof Error ? error.message : String(error)}`);
+    console.error(`[FAIL] Update error for "${question.slice(0, 60)}": ${error instanceof Error ? error.message : String(error)}`);
     return false;
   }
 }
@@ -199,86 +172,68 @@ async function main() {
   console.log(`Mode: ${options.dryRun ? 'DRY RUN' : 'EXECUTE'}`);
   console.log('');
 
-  // Confirm production access if pointing to production without NODE_ENV=production
   await confirmProductionAccess(SAPIENCE_API_URL);
 
-  // Fetch all groups with their conditions
   console.log('Fetching all condition groups...');
   const groups = await fetchAllGroups(SAPIENCE_API_URL, privateKey);
   console.log(`Found ${groups.length} groups`);
+
+  // Collect all conditions across all groups (deduplicated by conditionHash)
+  const seen = new Set<string>();
+  const conditions: Condition[] = [];
+  for (const group of groups) {
+    for (const condition of group.condition) {
+      if (!seen.has(condition.id)) {
+        seen.add(condition.id);
+        conditions.push(condition);
+      }
+    }
+  }
+
+  console.log(`Found ${conditions.length} unique conditions`);
   console.log('');
 
-  // Find groups with at least one condition
-  const groupsToProcess = groups.filter(g => g.condition && g.condition.length > 0);
-
-  console.log(`Found ${groupsToProcess.length} groups to process`);
-  console.log('');
-
-  if (groupsToProcess.length === 0) {
+  if (conditions.length === 0) {
     console.log('Nothing to do.');
     return;
   }
 
-  // Process each group - fetch event slug from Polymarket
   let successCount = 0;
   let failCount = 0;
   let skippedCount = 0;
 
-  for (const group of groupsToProcess) {
-    // Use first condition to look up the event
-    const firstConditionId = group.condition[0].id;
+  for (const condition of conditions) {
+    console.log(`Processing "${condition.question.slice(0, 60)}" (${condition.id.slice(0, 10)}...)...`);
 
-    console.log(`Processing "${group.name}" (condition: ${firstConditionId})...`);
-
-    const market = await fetchMarketByConditionId(firstConditionId);
+    const market = await fetchMarketByConditionId(condition.id);
 
     if (!market) {
-      console.log(`[SKIP] Could not fetch market data for "${group.name}"`);
+      console.log(`[SKIP] Could not fetch market data`);
       skippedCount++;
       continue;
     }
 
-    // Extract event slug
     const eventSlug = market.events?.[0]?.slug;
 
-    if (!eventSlug) {
-      // Fallback to market slug if no event slug
-      const slug = market.slug;
-      if (!slug) {
-        console.log(`[SKIP] No event or market slug found for "${group.name}"`);
-        skippedCount++;
-        continue;
-      }
-      const similarMarkets = [`https://polymarket.com#${slug}`]; // No event slug available, fallback
-
-      if (options.dryRun) {
-        console.log(`[DRY RUN] Would update "${group.name}" (id: ${group.id}) with:`);
-        console.log(`  - ${similarMarkets[0]} (market slug fallback)`);
-      } else {
-        const ok = await updateGroupSimilarMarkets(
-          SAPIENCE_API_URL,
-          privateKey,
-          group.id,
-          group.name,
-          similarMarkets
-        );
-        if (ok) successCount++;
-        else failCount++;
-      }
+    let similarMarkets: string[];
+    if (eventSlug) {
+      similarMarkets = [`https://polymarket.com/event/${eventSlug}#${market.slug}`];
+    } else if (market.slug) {
+      similarMarkets = [`https://polymarket.com#${market.slug}`];
+    } else {
+      console.log(`[SKIP] No event or market slug found`);
+      skippedCount++;
       continue;
     }
 
-    const similarMarkets = [`https://polymarket.com/event/${eventSlug}#${market.slug}`];
-
     if (options.dryRun) {
-      console.log(`[DRY RUN] Would update "${group.name}" (id: ${group.id}) with:`);
-      console.log(`  - ${similarMarkets[0]}`);
+      console.log(`[DRY RUN] Would update with: ${similarMarkets[0]}`);
     } else {
-      const ok = await updateGroupSimilarMarkets(
+      const ok = await updateConditionSimilarMarkets(
         SAPIENCE_API_URL,
         privateKey,
-        group.id,
-        group.name,
+        condition.id,
+        condition.question,
         similarMarkets
       );
       if (ok) successCount++;
@@ -286,10 +241,9 @@ async function main() {
     }
   }
 
-  // Summary
   console.log('');
   if (options.dryRun) {
-    console.log(`Summary: ${groupsToProcess.length - skippedCount} groups would be updated, ${skippedCount} skipped`);
+    console.log(`Summary: ${conditions.length - skippedCount} conditions would be updated, ${skippedCount} skipped`);
   } else {
     console.log(`Summary: ${successCount} updated, ${failCount} failed, ${skippedCount} skipped`);
   }

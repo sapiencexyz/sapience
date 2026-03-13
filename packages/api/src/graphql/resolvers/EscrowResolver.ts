@@ -669,7 +669,10 @@ export class EscrowResolver {
     @Arg('take', () => Int, { defaultValue: 50 }) take: number = 50,
     @Arg('skip', () => Int, { defaultValue: 0 }) skip: number = 0,
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number,
-    @Arg('pickConfigId', () => String, { nullable: true }) pickConfigId?: string
+    @Arg('pickConfigId', () => String, { nullable: true }) pickConfigId?: string,
+    @Arg('settled', () => Boolean, { nullable: true }) settled?: boolean,
+    @Arg('result', () => SettlementResult, { nullable: true })
+    result?: SettlementResult
   ): Promise<PositionType[]> {
     const cappedTake = Math.max(1, Math.min(take, 100));
     const holderLower = holder?.toLowerCase();
@@ -708,6 +711,29 @@ export class EscrowResolver {
     if (pickConfigIdLower && !conditionId) {
       where.pickConfigId = pickConfigIdLower;
     }
+    if (settled !== undefined && settled !== null) {
+      where.pickConfiguration = {
+        ...((where.pickConfiguration as Prisma.PicksWhereInput) ?? {}),
+        resolved: settled,
+      };
+    }
+    if (result) {
+      where.pickConfiguration = {
+        ...((where.pickConfiguration as Prisma.PicksWhereInput) ?? {}),
+        result: result as unknown as Prisma.EnumSettlementResultFilter,
+      };
+    }
+
+    // Hide zero-balance positions that are not yet settled (no resolution).
+    // These are positions where the user burned/transferred tokens before
+    // settlement — they show "0.00 USDe" with "PENDING" PnL.
+    // Keep zero-balance positions that ARE settled (post-burn with PnL data).
+    where.NOT = {
+      balance: '0',
+      pickConfiguration: {
+        resolved: false,
+      },
+    };
 
     const rows = await prisma.position.findMany({
       where,
