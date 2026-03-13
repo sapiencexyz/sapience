@@ -53,7 +53,9 @@ const tabsTriggerVariants = cva(
   }
 );
 
-type TabsTriggerProps = React.ComponentPropsWithoutRef<typeof TabsPrimitive.Trigger> &
+type TabsTriggerProps = React.ComponentPropsWithoutRef<
+  typeof TabsPrimitive.Trigger
+> &
   VariantProps<typeof tabsTriggerVariants>;
 
 const TabsTrigger = React.forwardRef<

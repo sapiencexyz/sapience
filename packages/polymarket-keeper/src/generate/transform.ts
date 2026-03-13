@@ -59,7 +59,9 @@ export function transformMatchQuestion(market: PolymarketMarket): string {
 
   // "X vs. Y: O/U X.X" or "X vs. Y: 1H O/U X.X" - Over/Under totals
   // e.g., "Jazz vs. Bulls: O/U 244.5" -> "Will Jazz vs Bulls total be over 244.5?"
-  const ouMatch = market.question.match(/^(.+?)\s+vs\.?\s+(.+?):\s+(?:(1H|2H|1Q|2Q|3Q|4Q)\s+)?O\/U\s+(\d+(?:\.\d+)?)$/i);
+  const ouMatch = market.question.match(
+    /^(.+?)\s+vs\.?\s+(.+?):\s+(?:(1H|2H|1Q|2Q|3Q|4Q)\s+)?O\/U\s+(\d+(?:\.\d+)?)$/i
+  );
   if (ouMatch) {
     const [, team1, team2, period, total] = ouMatch;
     const periodText = period ? `${period} ` : '';
@@ -70,7 +72,9 @@ export function transformMatchQuestion(market: PolymarketMarket): string {
 
   // "Player: Stat Over X.X" - Player props
   // e.g., "Coby White: Points Over 20.5" -> "Will Coby White score over 20.5 points?"
-  const playerPropMatch = market.question.match(/^(.+?):\s+(Points|Rebounds|Assists|Steals|Blocks|Turnovers|3-Pointers|Fantasy Points)\s+Over\s+(\d+(?:\.\d+)?)$/i);
+  const playerPropMatch = market.question.match(
+    /^(.+?):\s+(Points|Rebounds|Assists|Steals|Blocks|Turnovers|3-Pointers|Fantasy Points)\s+Over\s+(\d+(?:\.\d+)?)$/i
+  );
   if (playerPropMatch) {
     const [, player, stat, value] = playerPropMatch;
     const statLower = stat.toLowerCase();
@@ -79,44 +83,60 @@ export function transformMatchQuestion(market: PolymarketMarket): string {
     else if (statLower === 'assists') verb = 'record';
     else if (statLower === 'rebounds') verb = 'grab';
     const transformed = `Will ${player} ${verb} over ${value} ${statLower}?`;
-    console.log(`[Transform Player Prop] "${market.question}" -> "${transformed}"`);
+    console.log(
+      `[Transform Player Prop] "${market.question}" -> "${transformed}"`
+    );
     return transformed;
   }
 
   // "Total Rounds Over/Under X.X" - eSports round totals
   // e.g., "Total Rounds Over/Under 45.5" -> "Will total rounds be over 45.5?"
-  const totalRoundsMatch = market.question.match(/^Total\s+Rounds\s+Over\/Under\s+(\d+(?:\.\d+)?)$/i);
+  const totalRoundsMatch = market.question.match(
+    /^Total\s+Rounds\s+Over\/Under\s+(\d+(?:\.\d+)?)$/i
+  );
   if (totalRoundsMatch) {
     const [, total] = totalRoundsMatch;
     const transformed = `Will total rounds be over ${total}?`;
-    console.log(`[Transform Total Rounds] "${market.question}" -> "${transformed}"`);
+    console.log(
+      `[Transform Total Rounds] "${market.question}" -> "${transformed}"`
+    );
     return transformed;
   }
 
   // "Games Total: O/U X.X" - eSports games total
   // e.g., "Games Total: O/U 2.5" -> "Will total games be over 2.5?"
-  const gamesTotalMatch = market.question.match(/^Games\s+Total:\s+O\/U\s+(\d+(?:\.\d+)?)$/i);
+  const gamesTotalMatch = market.question.match(
+    /^Games\s+Total:\s+O\/U\s+(\d+(?:\.\d+)?)$/i
+  );
   if (gamesTotalMatch) {
     const [, total] = gamesTotalMatch;
     const transformed = `Will total games be over ${total}?`;
-    console.log(`[Transform Games Total] "${market.question}" -> "${transformed}"`);
+    console.log(
+      `[Transform Games Total] "${market.question}" -> "${transformed}"`
+    );
     return transformed;
   }
 
   // "X to win N maps?" - eSports maps
   // e.g., "Vitality to win 1 maps?" -> "Will Vitality win at least 1 map?"
-  const mapsWinMatch = market.question.match(/^(.+?)\s+to\s+win\s+(\d+)\s+maps?\?$/i);
+  const mapsWinMatch = market.question.match(
+    /^(.+?)\s+to\s+win\s+(\d+)\s+maps?\?$/i
+  );
   if (mapsWinMatch) {
     const [, team, count] = mapsWinMatch;
     const mapWord = count === '1' ? 'map' : 'maps';
     const transformed = `Will ${team} win at least ${count} ${mapWord}?`;
-    console.log(`[Transform Maps Win] "${market.question}" -> "${transformed}"`);
+    console.log(
+      `[Transform Maps Win] "${market.question}" -> "${transformed}"`
+    );
     return transformed;
   }
 
   // "X vs. Y: Both Teams to Score" - Soccer BTTS
   // e.g., "RB Leipzig vs. SC Freiburg: Both Teams to Score" -> "Will both RB Leipzig and SC Freiburg score?"
-  const bttsMatch = market.question.match(/^(.+?)\s+vs\.?\s+(.+?):\s+Both\s+Teams\s+to\s+Score$/i);
+  const bttsMatch = market.question.match(
+    /^(.+?)\s+vs\.?\s+(.+?):\s+Both\s+Teams\s+to\s+Score$/i
+  );
   if (bttsMatch) {
     const [, team1, team2] = bttsMatch;
     const transformed = `Will both ${team1} and ${team2} score?`;
@@ -127,7 +147,9 @@ export function transformMatchQuestion(market: PolymarketMarket): string {
   // "X Up or Down - Date" or "X Up or Down on Date?" - Price movement
   // e.g., "Solana Up or Down - January 14, 2PM ET" -> "Will Solana go up on January 14, 2PM ET?"
   // e.g., "S&P 500 (SPX) Up or Down on January 14?" -> "Will S&P 500 (SPX) go up on January 14?"
-  const upDownMatch = market.question.match(/^(.+?)\s+Up\s+or\s+Down\s+(?:-\s+|on\s+)(.+?)(?:\?)?$/i);
+  const upDownMatch = market.question.match(
+    /^(.+?)\s+Up\s+or\s+Down\s+(?:-\s+|on\s+)(.+?)(?:\?)?$/i
+  );
   if (upDownMatch) {
     const [, asset, dateTime] = upDownMatch;
     const transformed = `Will ${asset} go up on ${dateTime}?`;
@@ -140,12 +162,17 @@ export function transformMatchQuestion(market: PolymarketMarket): string {
   // Skip if outcomes are standard Yes/No or Over/Under (not team names)
   // These remaining patterns require team name outcomes
   const standardOutcomes = ['Yes', 'No', 'Over', 'Under', 'Up', 'Down'];
-  if (standardOutcomes.includes(outcomes[0]) || standardOutcomes.includes(outcomes[1])) {
+  if (
+    standardOutcomes.includes(outcomes[0]) ||
+    standardOutcomes.includes(outcomes[1])
+  ) {
     return market.question;
   }
 
   // Detect spread markets: "1H Spread: Team (-X.5)" or "Spread: Team (-X.5)"
-  const spreadMatch = market.question.match(/^(?:(\S+)\s+)?Spread:\s*.+?\s*\(([+-]?\d+(?:\.\d+)?)\)$/i);
+  const spreadMatch = market.question.match(
+    /^(?:(\S+)\s+)?Spread:\s*.+?\s*\(([+-]?\d+(?:\.\d+)?)\)$/i
+  );
   if (spreadMatch) {
     const [, prefix, spread] = spreadMatch;
     const context = prefix ? ` (${prefix})` : '';
@@ -155,29 +182,42 @@ export function transformMatchQuestion(market: PolymarketMarket): string {
   }
 
   // Detect handicap markets: "Map Handicap: Team (-X.5)", "Game Handicap: Team (-X.5)", or "Handicap: Team (-X.5)"
-  const handicapMatch = market.question.match(/^(?:(\S+)\s+)?(?:Map\s+|Game\s+)?Handicap:\s*.+?\s*\(([+-]?\d+(?:\.\d+)?)\)$/i);
+  const handicapMatch = market.question.match(
+    /^(?:(\S+)\s+)?(?:Map\s+|Game\s+)?Handicap:\s*.+?\s*\(([+-]?\d+(?:\.\d+)?)\)$/i
+  );
   if (handicapMatch) {
     const [, prefix, handicap] = handicapMatch;
     // Extract handicap type (Map/Game) from original question for context
-    const handicapTypeMatch = market.question.match(/^(?:(\S+)\s+)?(Map|Game)\s+Handicap:/i);
-    const handicapType = handicapTypeMatch ? handicapTypeMatch[2].toLowerCase() : '';
+    const handicapTypeMatch = market.question.match(
+      /^(?:(\S+)\s+)?(Map|Game)\s+Handicap:/i
+    );
+    const handicapType = handicapTypeMatch
+      ? handicapTypeMatch[2].toLowerCase()
+      : '';
     const contextParts: string[] = [];
     if (prefix) contextParts.push(prefix);
     if (handicapType) contextParts.push(handicapType);
-    const context = contextParts.length > 0 ? ` (${contextParts.join(', ')})` : '';
+    const context =
+      contextParts.length > 0 ? ` (${contextParts.join(', ')})` : '';
     const transformed = `${outcomes[0]} covers ${handicap} handicap vs ${outcomes[1]}?${context}`;
-    console.log(`[Transform Handicap] "${market.question}" -> "${transformed}"`);
+    console.log(
+      `[Transform Handicap] "${market.question}" -> "${transformed}"`
+    );
     return transformed;
   }
 
   // Detect "Series [Team] [Type] Handicap ([+-]X.X)" pattern
   // e.g., "Series Natus Vincere Rounds Handicap (-10.5)" -> "Will Natus Vincere cover the -10.5 rounds handicap vs [opponent]?"
   // e.g., "Series Team Maps Handicap (-2.5)" -> "Will Team cover the -2.5 maps handicap vs [opponent]?"
-  const seriesHandicapMatch = market.question.match(/^Series\s+(.+?)\s+(\w+)\s+Handicap\s+\(([+-]?\d+(?:\.\d+)?)\)$/i);
+  const seriesHandicapMatch = market.question.match(
+    /^Series\s+(.+?)\s+(\w+)\s+Handicap\s+\(([+-]?\d+(?:\.\d+)?)\)$/i
+  );
   if (seriesHandicapMatch) {
     const [, team, handicapType, handicap] = seriesHandicapMatch;
     const transformed = `Will ${team} cover the ${handicap} ${handicapType.toLowerCase()} handicap vs ${outcomes[1]}?`;
-    console.log(`[Transform Series Handicap] "${market.question}" -> "${transformed}"`);
+    console.log(
+      `[Transform Series Handicap] "${market.question}" -> "${transformed}"`
+    );
     return transformed;
   }
 
@@ -210,7 +250,8 @@ export function transformMatchQuestion(market: PolymarketMarket): string {
   if (dashSuffix) contextParts.push(dashSuffix);
   if (colonSuffix) contextParts.push(colonSuffix);
 
-  const context = contextParts.length > 0 ? ` (${contextParts.join(', ')})` : '';
+  const context =
+    contextParts.length > 0 ? ` (${contextParts.join(', ')})` : '';
 
   // Log transformation for debugging
   const transformed = `${outcomes[0]} beats ${outcomes[1]}?${context}`;

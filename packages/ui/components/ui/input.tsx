@@ -31,7 +31,11 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(
       <div className="relative flex items-center w-full">
         <input
           type={type}
-          className={cn(inputVariants({ inputSize }), 'file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground', className)}
+          className={cn(
+            inputVariants({ inputSize }),
+            'file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground',
+            className
+          )}
           ref={ref}
           {...props}
         />

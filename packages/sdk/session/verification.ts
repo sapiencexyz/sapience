@@ -12,7 +12,8 @@ const FLAG_BYTES = 2;
 const SIGNER_CONTRACT_BYTES = 20;
 const ADDRESS_BYTES = 20;
 const HEX_PREFIX_LENGTH = 2; // '0x'
-const MIN_SIGNER_PART_LENGTH = HEX_PREFIX_LENGTH + (FLAG_BYTES + SIGNER_CONTRACT_BYTES + ADDRESS_BYTES) * 2; // 86
+const MIN_SIGNER_PART_LENGTH =
+  HEX_PREFIX_LENGTH + (FLAG_BYTES + SIGNER_CONTRACT_BYTES + ADDRESS_BYTES) * 2; // 86
 
 /**
  * Extracts the session key address from ZeroDev's validatorData.
@@ -24,7 +25,9 @@ const MIN_SIGNER_PART_LENGTH = HEX_PREFIX_LENGTH + (FLAG_BYTES + SIGNER_CONTRACT
  * @param validatorData - The hex-encoded validatorData from the Enable typed data
  * @returns The session key address, or null if extraction fails
  */
-export function extractSessionKeyFromValidatorData(validatorData: Hex): Address | null {
+export function extractSessionKeyFromValidatorData(
+  validatorData: Hex
+): Address | null {
   try {
     const [policyAndSignerData] = decodeAbiParameters(
       [{ name: 'policyAndSignerData', type: 'bytes[]' }],
@@ -40,18 +43,25 @@ export function extractSessionKeyFromValidatorData(validatorData: Hex): Address 
     const signerPart = policyAndSignerData[policyAndSignerData.length - 1];
 
     if (signerPart.length < MIN_SIGNER_PART_LENGTH) {
-      console.warn('[SessionAuth] Signer part too short to contain session key');
+      console.warn(
+        '[SessionAuth] Signer part too short to contain session key'
+      );
       return null;
     }
 
     // Extract session key address: skip flag + signerContract
-    const sessionKeyStartHex = HEX_PREFIX_LENGTH + (FLAG_BYTES + SIGNER_CONTRACT_BYTES) * 2; // 46
+    const sessionKeyStartHex =
+      HEX_PREFIX_LENGTH + (FLAG_BYTES + SIGNER_CONTRACT_BYTES) * 2; // 46
     const sessionKeyEndHex = sessionKeyStartHex + ADDRESS_BYTES * 2; // 86
-    const sessionKeyHex = '0x' + signerPart.slice(sessionKeyStartHex, sessionKeyEndHex);
+    const sessionKeyHex =
+      '0x' + signerPart.slice(sessionKeyStartHex, sessionKeyEndHex);
 
     return sessionKeyHex.toLowerCase() as Address;
   } catch (error) {
-    console.error('[SessionAuth] Failed to extract session key from validatorData:', error);
+    console.error(
+      '[SessionAuth] Failed to extract session key from validatorData:',
+      error
+    );
     return null;
   }
 }
@@ -77,14 +87,20 @@ export interface ParsedApproval {
  * Parses a ZeroDev serialized permission account.
  * Returns null if parsing fails.
  */
-export function parseZeroDevApproval(serializedApproval: string): ParsedApproval | null {
+export function parseZeroDevApproval(
+  serializedApproval: string
+): ParsedApproval | null {
   try {
     // ZeroDev uses base64-encoded JSON
-    const jsonString = Buffer.from(serializedApproval, 'base64').toString('utf-8');
+    const jsonString = Buffer.from(serializedApproval, 'base64').toString(
+      'utf-8'
+    );
     const params = JSON.parse(jsonString);
 
     if (!params.enableSignature || !params.accountParams?.accountAddress) {
-      console.warn('[SessionAuth] Missing enableSignature or accountAddress in approval');
+      console.warn(
+        '[SessionAuth] Missing enableSignature or accountAddress in approval'
+      );
       return null;
     }
 
@@ -167,8 +183,13 @@ export interface SessionApprovalPayload {
  */
 export async function verifySessionApproval(
   approval: SessionApprovalPayload,
-  claimedAccountAddress: Address,
-): Promise<{ valid: boolean; ownerAddress?: Address; sessionKeyAddress?: Address; error?: string }> {
+  claimedAccountAddress: Address
+): Promise<{
+  valid: boolean;
+  ownerAddress?: Address;
+  sessionKeyAddress?: Address;
+  error?: string;
+}> {
   try {
     // Parse the ZeroDev approval
     const parsed = parseZeroDevApproval(approval.approval);
@@ -177,7 +198,10 @@ export async function verifySessionApproval(
     }
 
     // Verify the account address matches
-    if (parsed.accountAddress.toLowerCase() !== claimedAccountAddress.toLowerCase()) {
+    if (
+      parsed.accountAddress.toLowerCase() !==
+      claimedAccountAddress.toLowerCase()
+    ) {
       console.warn('[SessionAuth] Account address mismatch:', {
         approval: parsed.accountAddress,
         claimed: claimedAccountAddress,
@@ -194,7 +218,9 @@ export async function verifySessionApproval(
     // Without the original typed data captured during session creation,
     // we cannot reliably verify the enable signature.
     if (!approval.typedData) {
-      console.warn('[SessionAuth] Typed data required for session authentication');
+      console.warn(
+        '[SessionAuth] Typed data required for session authentication'
+      );
       return { valid: false, error: 'typed_data_required' };
     }
 
@@ -208,7 +234,10 @@ export async function verifySessionApproval(
     }
 
     // Validate verifyingContract matches the claimed account address
-    if (approval.typedData.domain.verifyingContract.toLowerCase() !== claimedAccountAddress.toLowerCase()) {
+    if (
+      approval.typedData.domain.verifyingContract.toLowerCase() !==
+      claimedAccountAddress.toLowerCase()
+    ) {
       console.warn('[SessionAuth] Verifying contract mismatch:', {
         verifyingContract: approval.typedData.domain.verifyingContract,
         claimedAccount: claimedAccountAddress,
@@ -221,10 +250,14 @@ export async function verifySessionApproval(
         name: approval.typedData.domain.name,
         version: approval.typedData.domain.version,
         chainId: approval.typedData.domain.chainId,
-        verifyingContract: approval.typedData.domain.verifyingContract as Address,
+        verifyingContract: approval.typedData.domain
+          .verifyingContract as Address,
       },
       types: {
-        Enable: [...approval.typedData.types.Enable] as { name: string; type: string }[],
+        Enable: [...approval.typedData.types.Enable] as {
+          name: string;
+          type: string;
+        }[],
       },
       primaryType: approval.typedData.primaryType,
       message: {
@@ -252,7 +285,9 @@ export async function verifySessionApproval(
       );
 
       if (!sessionKeyAddress) {
-        console.warn('[SessionAuth] Failed to extract session key from validatorData');
+        console.warn(
+          '[SessionAuth] Failed to extract session key from validatorData'
+        );
         return { valid: false, error: 'invalid_validator_data' };
       }
 
@@ -261,7 +296,10 @@ export async function verifySessionApproval(
       // verifyingContract set to an arbitrary address. We must derive the
       // expected smart account from the recovered owner and compare.
       const expectedSmartAccount = computeSmartAccountAddress(recoveredOwner);
-      if (expectedSmartAccount.toLowerCase() !== claimedAccountAddress.toLowerCase()) {
+      if (
+        expectedSmartAccount.toLowerCase() !==
+        claimedAccountAddress.toLowerCase()
+      ) {
         console.warn('[SessionAuth] Smart account ownership mismatch:', {
           recoveredOwner,
           expectedSmartAccount,
@@ -287,9 +325,13 @@ export async function verifySessionApproval(
  * Extracts just the essential fields from a ZeroDev approval for API transport.
  * This removes the session private key to avoid exposure.
  */
-export function extractApprovalForTransport(serializedApproval: string): string | null {
+export function extractApprovalForTransport(
+  serializedApproval: string
+): string | null {
   try {
-    const jsonString = Buffer.from(serializedApproval, 'base64').toString('utf-8');
+    const jsonString = Buffer.from(serializedApproval, 'base64').toString(
+      'utf-8'
+    );
     const params = JSON.parse(jsonString);
 
     // Remove the private key before transport

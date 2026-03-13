@@ -17,4 +17,3 @@ export * from './auction/escrowSigning';
 export * from './auction/secondarySigning';
 
 export * from './relayer/escrowAuctionWs';
-

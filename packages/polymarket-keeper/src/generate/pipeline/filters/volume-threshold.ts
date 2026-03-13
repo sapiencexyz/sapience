@@ -22,7 +22,7 @@ export class VolumeThresholdFilter implements Filter<MarketGroup> {
 
     for (const group of groups) {
       const hasHighVolume = group.markets.some(
-        m => parseFloat(m.volume || '0') >= MIN_VOLUME_THRESHOLD
+        (m) => parseFloat(m.volume || '0') >= MIN_VOLUME_THRESHOLD
       );
 
       if (hasHighVolume) {

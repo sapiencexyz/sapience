@@ -5,7 +5,12 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { fetchWithRetry } from '../utils';
-import type { MarketEnrichmentInput, MarketEnrichmentOutput, CategoryOutput, ShortNameOnlyOutput } from './types';
+import type {
+  MarketEnrichmentInput,
+  MarketEnrichmentOutput,
+  CategoryOutput,
+  ShortNameOnlyOutput,
+} from './types';
 import {
   buildCategoryPrompt,
   buildShortNameOnlyPrompt,
@@ -48,7 +53,9 @@ function logLLMResponse(
   }
 
   const timestamp = new Date().toISOString();
-  const marketList = markets.map((m) => `  - ${m.conditionId}: ${m.question}`).join('\n');
+  const marketList = markets
+    .map((m) => `  - ${m.conditionId}: ${m.question}`)
+    .join('\n');
   const logEntry = `=== ${timestamp} | ${type.toUpperCase()} REQUEST (${markets.length} markets) ===
 Markets:
 ${marketList}
@@ -79,7 +86,9 @@ export async function callOpenRouterForCategory(
   const model = config.model || DEFAULT_MODEL;
 
   console.log(`[LLM] Calling OpenRouter (category only) with model: ${model}`);
-  console.log(`[LLM] Request: ${markets.length} markets, prompt length: ${prompt.length} chars`);
+  console.log(
+    `[LLM] Request: ${markets.length} markets, prompt length: ${prompt.length} chars`
+  );
 
   const response = await fetchWithRetry(
     OPENROUTER_API_URL,
@@ -125,10 +134,14 @@ export async function callOpenRouterForCategory(
 
   // Check for truncation
   if (finishReason === 'length') {
-    console.warn(`[LLM] WARNING: Response was truncated (hit token limit). Consider reducing batch size.`);
+    console.warn(
+      `[LLM] WARNING: Response was truncated (hit token limit). Consider reducing batch size.`
+    );
   }
 
-  console.log(`[LLM] Raw response (${content.length} chars, finish_reason: ${finishReason}):\n${content}`);
+  console.log(
+    `[LLM] Raw response (${content.length} chars, finish_reason: ${finishReason}):\n${content}`
+  );
 
   // Log to file
   logLLMResponse('category', markets, content);
@@ -150,7 +163,9 @@ export async function callOpenRouterForShortNameOnly(
   const model = config.model || DEFAULT_MODEL;
 
   console.log(`[LLM] Calling OpenRouter (shortName only) with model: ${model}`);
-  console.log(`[LLM] Request: ${markets.length} markets, prompt length: ${prompt.length} chars`);
+  console.log(
+    `[LLM] Request: ${markets.length} markets, prompt length: ${prompt.length} chars`
+  );
 
   const response = await fetchWithRetry(
     OPENROUTER_API_URL,
@@ -196,10 +211,14 @@ export async function callOpenRouterForShortNameOnly(
 
   // Check for truncation
   if (finishReason === 'length') {
-    console.warn(`[LLM] WARNING: Response was truncated (hit token limit). Consider reducing batch size.`);
+    console.warn(
+      `[LLM] WARNING: Response was truncated (hit token limit). Consider reducing batch size.`
+    );
   }
 
-  console.log(`[LLM] Raw response (${content.length} chars, finish_reason: ${finishReason}):\n${content}`);
+  console.log(
+    `[LLM] Raw response (${content.length} chars, finish_reason: ${finishReason}):\n${content}`
+  );
 
   // Log to file
   logLLMResponse('shortName', markets, content);
@@ -220,8 +239,12 @@ export async function callOpenRouterForBoth(
   const prompt = buildBothPrompt(markets);
   const model = config.model || DEFAULT_MODEL;
 
-  console.log(`[LLM] Calling OpenRouter (category + shortName) with model: ${model}`);
-  console.log(`[LLM] Request: ${markets.length} markets, prompt length: ${prompt.length} chars`);
+  console.log(
+    `[LLM] Calling OpenRouter (category + shortName) with model: ${model}`
+  );
+  console.log(
+    `[LLM] Request: ${markets.length} markets, prompt length: ${prompt.length} chars`
+  );
 
   const response = await fetchWithRetry(
     OPENROUTER_API_URL,
@@ -267,10 +290,14 @@ export async function callOpenRouterForBoth(
 
   // Check for truncation
   if (finishReason === 'length') {
-    console.warn(`[LLM] WARNING: Response was truncated (hit token limit). Consider reducing batch size.`);
+    console.warn(
+      `[LLM] WARNING: Response was truncated (hit token limit). Consider reducing batch size.`
+    );
   }
 
-  console.log(`[LLM] Raw response (${content.length} chars, finish_reason: ${finishReason}):\n${content}`);
+  console.log(
+    `[LLM] Raw response (${content.length} chars, finish_reason: ${finishReason}):\n${content}`
+  );
 
   // Log to file
   logLLMResponse('shortName', markets, content);
@@ -336,7 +363,9 @@ function findClosestConditionId(id: string, validIds: string[]): string | null {
   }
 
   if (bestMatch) {
-    console.log(`[LLM] Fuzzy matched "${id.slice(0, 15)}..." to "${bestMatch.slice(0, 15)}..." (distance: ${bestDistance})`);
+    console.log(
+      `[LLM] Fuzzy matched "${id.slice(0, 15)}..." to "${bestMatch.slice(0, 15)}..." (distance: ${bestDistance})`
+    );
   }
 
   return bestMatch;
@@ -345,7 +374,10 @@ function findClosestConditionId(id: string, validIds: string[]): string | null {
 /**
  * Parse category-only response (id,category)
  */
-function parseCategoryResponse(content: string, markets: MarketEnrichmentInput[]): CategoryOutput[] {
+function parseCategoryResponse(
+  content: string,
+  markets: MarketEnrichmentInput[]
+): CategoryOutput[] {
   const marketMap = new Map(markets.map((m) => [m.conditionId, m]));
   const validIds = markets.map((m) => m.conditionId);
   const results: CategoryOutput[] = [];
@@ -358,7 +390,11 @@ function parseCategoryResponse(content: string, markets: MarketEnrichmentInput[]
 
   for (const line of lines) {
     // Skip markdown code blocks or headers
-    if (line.startsWith('```') || line.startsWith('id,') || line.startsWith('<')) {
+    if (
+      line.startsWith('```') ||
+      line.startsWith('id,') ||
+      line.startsWith('<')
+    ) {
       continue;
     }
 
@@ -385,7 +421,9 @@ function parseCategoryResponse(content: string, markets: MarketEnrichmentInput[]
       ? (cat as SapienceCategorySlug)
       : 'geopolitics';
 
-    console.log(`[LLM]   "${market.question.slice(0, 50)}..." -> cat: ${category}`);
+    console.log(
+      `[LLM]   "${market.question.slice(0, 50)}..." -> cat: ${category}`
+    );
 
     results.push({
       conditionId: id,
@@ -406,7 +444,9 @@ function parseCategoryResponse(content: string, markets: MarketEnrichmentInput[]
         ? (cat as SapienceCategorySlug)
         : 'geopolitics';
 
-      console.log(`[LLM]   "${market.question.slice(0, 50)}..." -> cat: ${category} (fuzzy)`);
+      console.log(
+        `[LLM]   "${market.question.slice(0, 50)}..." -> cat: ${category} (fuzzy)`
+      );
 
       results.push({
         conditionId: matchedId,
@@ -417,9 +457,13 @@ function parseCategoryResponse(content: string, markets: MarketEnrichmentInput[]
   }
 
   // Check for still missing markets
-  const stillMissingIds = markets.filter((m) => !foundIds.has(m.conditionId)).map((m) => m.conditionId.slice(0, 10));
+  const stillMissingIds = markets
+    .filter((m) => !foundIds.has(m.conditionId))
+    .map((m) => m.conditionId.slice(0, 10));
   if (stillMissingIds.length > 0) {
-    console.warn(`[LLM] Warning: ${stillMissingIds.length} markets missing from response: ${stillMissingIds.join(', ')}...`);
+    console.warn(
+      `[LLM] Warning: ${stillMissingIds.length} markets missing from response: ${stillMissingIds.join(', ')}...`
+    );
   }
 
   return results;
@@ -428,7 +472,10 @@ function parseCategoryResponse(content: string, markets: MarketEnrichmentInput[]
 /**
  * Parse short-name-only response (id,shortName)
  */
-function parseShortNameOnlyResponse(content: string, markets: MarketEnrichmentInput[]): ShortNameOnlyOutput[] {
+function parseShortNameOnlyResponse(
+  content: string,
+  markets: MarketEnrichmentInput[]
+): ShortNameOnlyOutput[] {
   const marketMap = new Map(markets.map((m) => [m.conditionId, m]));
   const validIds = markets.map((m) => m.conditionId);
   const results: ShortNameOnlyOutput[] = [];
@@ -441,7 +488,11 @@ function parseShortNameOnlyResponse(content: string, markets: MarketEnrichmentIn
 
   for (const line of lines) {
     // Skip markdown code blocks or headers
-    if (line.startsWith('```') || line.startsWith('id,') || line.startsWith('<')) {
+    if (
+      line.startsWith('```') ||
+      line.startsWith('id,') ||
+      line.startsWith('<')
+    ) {
       continue;
     }
 
@@ -466,7 +517,9 @@ function parseShortNameOnlyResponse(content: string, markets: MarketEnrichmentIn
     const market = marketMap.get(id)!;
     const shortName = ensureQuestionMark(name || market.question);
 
-    console.log(`[LLM]   "${market.question.slice(0, 50)}..." -> name: "${shortName}"`);
+    console.log(
+      `[LLM]   "${market.question.slice(0, 50)}..." -> name: "${shortName}"`
+    );
 
     results.push({
       conditionId: id,
@@ -485,7 +538,9 @@ function parseShortNameOnlyResponse(content: string, markets: MarketEnrichmentIn
       const market = marketMap.get(matchedId)!;
       const shortName = ensureQuestionMark(name || market.question);
 
-      console.log(`[LLM]   "${market.question.slice(0, 50)}..." -> name: "${shortName}" (fuzzy)`);
+      console.log(
+        `[LLM]   "${market.question.slice(0, 50)}..." -> name: "${shortName}" (fuzzy)`
+      );
 
       results.push({
         conditionId: matchedId,
@@ -496,9 +551,13 @@ function parseShortNameOnlyResponse(content: string, markets: MarketEnrichmentIn
   }
 
   // Check for still missing markets
-  const stillMissingIds = markets.filter((m) => !foundIds.has(m.conditionId)).map((m) => m.conditionId.slice(0, 10));
+  const stillMissingIds = markets
+    .filter((m) => !foundIds.has(m.conditionId))
+    .map((m) => m.conditionId.slice(0, 10));
   if (stillMissingIds.length > 0) {
-    console.warn(`[LLM] Warning: ${stillMissingIds.length} markets missing from response: ${stillMissingIds.join(', ')}...`);
+    console.warn(
+      `[LLM] Warning: ${stillMissingIds.length} markets missing from response: ${stillMissingIds.join(', ')}...`
+    );
   }
 
   return results;
@@ -507,7 +566,10 @@ function parseShortNameOnlyResponse(content: string, markets: MarketEnrichmentIn
 /**
  * Parse full response (id,category,shortName)
  */
-function parseBothResponse(content: string, markets: MarketEnrichmentInput[]): MarketEnrichmentOutput[] {
+function parseBothResponse(
+  content: string,
+  markets: MarketEnrichmentInput[]
+): MarketEnrichmentOutput[] {
   const marketMap = new Map(markets.map((m) => [m.conditionId, m]));
   const validIds = markets.map((m) => m.conditionId);
   const results: MarketEnrichmentOutput[] = [];
@@ -520,7 +582,11 @@ function parseBothResponse(content: string, markets: MarketEnrichmentInput[]): M
 
   for (const line of lines) {
     // Skip markdown code blocks or headers
-    if (line.startsWith('```') || line.startsWith('id,') || line.startsWith('<')) {
+    if (
+      line.startsWith('```') ||
+      line.startsWith('id,') ||
+      line.startsWith('<')
+    ) {
       continue;
     }
 
@@ -552,7 +618,9 @@ function parseBothResponse(content: string, markets: MarketEnrichmentInput[]): M
 
     const shortName = ensureQuestionMark(name || market.question);
 
-    console.log(`[LLM]   "${market.question.slice(0, 50)}..." -> cat: ${category}, name: "${shortName}"`);
+    console.log(
+      `[LLM]   "${market.question.slice(0, 50)}..." -> cat: ${category}, name: "${shortName}"`
+    );
 
     results.push({
       conditionId: id,
@@ -576,7 +644,9 @@ function parseBothResponse(content: string, markets: MarketEnrichmentInput[]): M
 
       const shortName = ensureQuestionMark(name || market.question);
 
-      console.log(`[LLM]   "${market.question.slice(0, 50)}..." -> cat: ${category}, name: "${shortName}" (fuzzy)`);
+      console.log(
+        `[LLM]   "${market.question.slice(0, 50)}..." -> cat: ${category}, name: "${shortName}" (fuzzy)`
+      );
 
       results.push({
         conditionId: matchedId,
@@ -588,9 +658,13 @@ function parseBothResponse(content: string, markets: MarketEnrichmentInput[]): M
   }
 
   // Check for still missing markets
-  const stillMissingIds = markets.filter((m) => !foundIds.has(m.conditionId)).map((m) => m.conditionId.slice(0, 10));
+  const stillMissingIds = markets
+    .filter((m) => !foundIds.has(m.conditionId))
+    .map((m) => m.conditionId.slice(0, 10));
   if (stillMissingIds.length > 0) {
-    console.warn(`[LLM] Warning: ${stillMissingIds.length} markets missing from response: ${stillMissingIds.join(', ')}...`);
+    console.warn(
+      `[LLM] Warning: ${stillMissingIds.length} markets missing from response: ${stillMissingIds.join(', ')}...`
+    );
   }
 
   return results;

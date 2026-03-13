@@ -42,8 +42,17 @@ interface UseMarketProps {
   abi: Abi;
 }
 
-export function useMarket({ marketAddress, marketId, abi }: UseMarketProps): UseMarketResult {
-  const { data, isLoading, isError, error: contractError } = useReadContract({
+export function useMarket({
+  marketAddress,
+  marketId,
+  abi,
+}: UseMarketProps): UseMarketResult {
+  const {
+    data,
+    isLoading,
+    isError,
+    error: contractError,
+  } = useReadContract({
     address: marketAddress,
     abi,
     chainId: 5064014,
@@ -55,6 +64,10 @@ export function useMarket({ marketAddress, marketId, abi }: UseMarketProps): Use
   const marketData = result?.[0];
   const marketGroupParams = result?.[1];
 
-  return { marketData, marketGroupParams, isLoading, error: isError ? contractError : null };
+  return {
+    marketData,
+    marketGroupParams,
+    isLoading,
+    error: isError ? contractError : null,
+  };
 }
-

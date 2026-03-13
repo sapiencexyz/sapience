@@ -24,7 +24,8 @@ export const INIT_CODE_HASH: Hex =
   '0x85d96aa1c9a65886d094915d76ccae85f14027a02c1647dde659f869460f03e6';
 
 /** ZeroDev ECDSA validator address for Kernel >=0.3.1. */
-export const ECDSA_VALIDATOR: Address = '0x845ADb2C711129d4f3966735eD98a9F09fC4cE57';
+export const ECDSA_VALIDATOR: Address =
+  '0x845ADb2C711129d4f3966735eD98a9F09fC4cE57';
 
 /** VALIDATOR_TYPE.SECONDARY from @zerodev/sdk/constants. */
 export const VALIDATOR_TYPE_SECONDARY: Hex = '0x01';

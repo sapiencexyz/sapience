@@ -56,7 +56,9 @@ export async function checkExistingConditions(
       }
     }
 
-    console.log(`[API] Found ${existingIds.size}/${conditionIds.length} conditions already exist`);
+    console.log(
+      `[API] Found ${existingIds.size}/${conditionIds.length} conditions already exist`
+    );
     return existingIds;
   } catch (error) {
     console.warn(`[API] Error checking existing conditions: ${error}`);

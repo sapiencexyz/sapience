@@ -1,10 +1,7 @@
 import { Request, Response, Router } from 'express';
 import { createHash } from 'crypto';
 import { conditionalTokensConditionResolver } from '@sapience/sdk/contracts';
-import {
-  CHAIN_ID_ARBITRUM,
-  CHAIN_ID_ETHEREAL,
-} from '@sapience/sdk/constants';
+import { CHAIN_ID_ARBITRUM, CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import {
   computePickConfigId,
   predictTokenPair,
@@ -158,8 +155,7 @@ async function buildTokenList(): Promise<string> {
   const now = new Date();
   // Each version field must be < 65536 per @uniswap/token-lists schema.
   // Encode date as minor = MMDD, patch = token count.
-  const dateMinor =
-    (now.getUTCMonth() + 1) * 100 + now.getUTCDate();
+  const dateMinor = (now.getUTCMonth() + 1) * 100 + now.getUTCDate();
 
   const tokenList = {
     name: 'Sapience Tokens',
@@ -233,4 +229,14 @@ function resetCache() {
   cache = null;
 }
 
-export { router, buildTokenList, resetCache, CACHE_TTL_MS, MAX_TOKENS, MAX_RESPONSE_BYTES, MAX_NAME_LENGTH, MAX_SYMBOL_LENGTH, CT_RESOLVER };
+export {
+  router,
+  buildTokenList,
+  resetCache,
+  CACHE_TTL_MS,
+  MAX_TOKENS,
+  MAX_RESPONSE_BYTES,
+  MAX_NAME_LENGTH,
+  MAX_SYMBOL_LENGTH,
+  CT_RESOLVER,
+};

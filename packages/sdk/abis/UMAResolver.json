@@ -627,9 +627,7 @@
       "bondAmount": "500000000",
       "assertionLiveness": "600"
     },
-    [
-      "0xdb5Af497A73620d881561eDb508012A5f84e9BA2"
-    ]
+    ["0xdb5Af497A73620d881561eDb508012A5f84e9BA2"]
   ],
   "linkedLibraries": {},
   "deployTxnHash": "0xcbc8d23fbfaa2cfe41c2e9e5c64d16ab67daeacc6d8ca1c555e19ca569afdf71",

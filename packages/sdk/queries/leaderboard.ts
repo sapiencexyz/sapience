@@ -59,7 +59,9 @@ const GET_ACCOUNT_ACCURACY_RANK = /* GraphQL */ `
   }
 `;
 
-export async function fetchLeaderboard(): Promise<AggregatedLeaderboardEntry[]> {
+export async function fetchLeaderboard(): Promise<
+  AggregatedLeaderboardEntry[]
+> {
   const data = await graphqlRequest<{
     profitLeaderboard: AggregatedLeaderboardEntry[];
   }>(GET_PROFIT_LEADERBOARD);

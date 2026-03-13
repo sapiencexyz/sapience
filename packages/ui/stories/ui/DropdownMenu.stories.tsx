@@ -1,5 +1,5 @@
-import type { Meta, StoryObj } from "@storybook/react-webpack5";
-import { useState } from "react";
+import type { Meta, StoryObj } from '@storybook/react-webpack5';
+import { useState } from 'react';
 import {
   ChevronDown,
   Copy,
@@ -9,7 +9,7 @@ import {
   Trash2,
   User,
   Users,
-} from "lucide-react";
+} from 'lucide-react';
 import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
@@ -25,19 +25,19 @@ import {
   DropdownMenuSubContent,
   DropdownMenuSubTrigger,
   DropdownMenuTrigger,
-} from "../../components/ui/dropdown-menu";
-import { Button } from "../../components/ui/button";
+} from '../../components/ui/dropdown-menu';
+import { Button } from '../../components/ui/button';
 
 const meta: Meta<typeof DropdownMenu> = {
-  title: "UI/DropdownMenu",
+  title: 'UI/DropdownMenu',
   component: DropdownMenu,
   parameters: {
-    layout: "centered",
+    layout: 'centered',
   },
-  tags: ["autodocs"],
+  tags: ['autodocs'],
   argTypes: {
     open: {
-      control: { type: "boolean" },
+      control: { type: 'boolean' },
     },
   },
 };
@@ -158,7 +158,7 @@ export const WithCheckboxes: Story = {
 
 export const WithRadioGroup: Story = {
   render: () => {
-    const [sortBy, setSortBy] = useState("name");
+    const [sortBy, setSortBy] = useState('name');
 
     return (
       <DropdownMenu>

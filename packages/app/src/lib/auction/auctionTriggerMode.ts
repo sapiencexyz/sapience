@@ -15,4 +15,3 @@ export function getAuctionTriggerMode(
   if (willUseSessionSigning) return 'auto';
   return 'manual';
 }
-

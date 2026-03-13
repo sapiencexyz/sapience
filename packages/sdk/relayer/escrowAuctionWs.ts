@@ -85,7 +85,8 @@ export function createEscrowAuctionWs(
 
   function scheduleReconnect() {
     if (stopped) return;
-    if (options.maxRetries !== undefined && retries >= options.maxRetries) return;
+    if (options.maxRetries !== undefined && retries >= options.maxRetries)
+      return;
     const delay = Math.min(30000, 1000 * 2 ** Math.min(6, retries++));
     reconnectTimer = setTimeout(connect, delay);
   }
@@ -296,4 +297,3 @@ export function buildBidPayload(params: {
     counterpartySessionKeyData: params.counterpartySessionKeyData,
   };
 }
-

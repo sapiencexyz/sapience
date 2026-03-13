@@ -1,4 +1,12 @@
-import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from 'vitest';
+import {
+  describe,
+  it,
+  expect,
+  beforeAll,
+  afterAll,
+  afterEach,
+  vi,
+} from 'vitest';
 
 // Mock config with small values for testability
 vi.mock('../config', () => ({
@@ -40,7 +48,9 @@ function createClient(options?: { origin?: string }): Promise<WebSocket> {
     if (options?.origin) {
       headers['origin'] = options.origin;
     }
-    const ws = new WebSocket(`ws://localhost:${serverPort}/auction`, { headers });
+    const ws = new WebSocket(`ws://localhost:${serverPort}/auction`, {
+      headers,
+    });
     ws.on('open', () => {
       openClients.push(ws);
       resolve(ws);
@@ -49,7 +59,10 @@ function createClient(options?: { origin?: string }): Promise<WebSocket> {
   });
 }
 
-function waitForClose(ws: WebSocket, timeout = 3000): Promise<{ code: number; reason: string }> {
+function waitForClose(
+  ws: WebSocket,
+  timeout = 3000
+): Promise<{ code: number; reason: string }> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(
       () => reject(new Error('Timeout waiting for close')),
@@ -62,10 +75,15 @@ function waitForClose(ws: WebSocket, timeout = 3000): Promise<{ code: number; re
   });
 }
 
-function waitForMessage(ws: WebSocket, expectedType: string, timeout = 3000): Promise<unknown> {
+function waitForMessage(
+  ws: WebSocket,
+  expectedType: string,
+  timeout = 3000
+): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(
-      () => reject(new Error(`Timeout waiting for message type: ${expectedType}`)),
+      () =>
+        reject(new Error(`Timeout waiting for message type: ${expectedType}`)),
       timeout
     );
     const handler = (data: WebSocket.RawData) => {
@@ -102,7 +120,10 @@ beforeAll(async () => {
 afterEach(() => {
   // Close all tracked clients
   for (const ws of openClients) {
-    if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
+    if (
+      ws.readyState === WebSocket.OPEN ||
+      ws.readyState === WebSocket.CONNECTING
+    ) {
       ws.close();
     }
   }
@@ -130,7 +151,7 @@ describe('Rate Limiting', () => {
     }
 
     // The last ping should still get a pong
-    const response = await waitForMessage(ws, 'pong') as { type: string };
+    const response = (await waitForMessage(ws, 'pong')) as { type: string };
     expect(response.type).toBe('pong');
   });
 
@@ -170,7 +191,7 @@ describe('Rate Limiting', () => {
 
     // Should be able to send again after rate window reset
     ws.send(JSON.stringify({ type: 'ping' }));
-    const response = await waitForMessage(ws, 'pong') as { type: string };
+    const response = (await waitForMessage(ws, 'pong')) as { type: string };
     expect(response.type).toBe('pong');
   });
 });
@@ -212,7 +233,7 @@ describe('Idle Timeout', () => {
     // Send again at ~200ms after last message
     await new Promise((r) => setTimeout(r, 200));
     ws.send(JSON.stringify({ type: 'ping' }));
-    const response = await waitForMessage(ws, 'pong') as { type: string };
+    const response = (await waitForMessage(ws, 'pong')) as { type: string };
     expect(response.type).toBe('pong');
 
     // The connection should still be open (not idle-timed-out at the original 400ms mark)

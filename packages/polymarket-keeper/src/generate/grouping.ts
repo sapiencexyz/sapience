@@ -11,7 +11,13 @@ import type {
   SapienceOutput,
   SapienceCategorySlug,
 } from '../types';
-import { CHAIN_ID, LLM_ENABLED, OPENROUTER_API_KEY, LLM_MODEL, DEFAULT_SAPIENCE_API_URL } from '../constants';
+import {
+  CHAIN_ID,
+  LLM_ENABLED,
+  OPENROUTER_API_KEY,
+  LLM_MODEL,
+  DEFAULT_SAPIENCE_API_URL,
+} from '../constants';
 import { inferSapienceCategorySlug } from './category';
 import { transformMatchQuestion, getPolymarketUrl } from './transform';
 import { enrichMarketsWithLLM, type MarketEnrichmentOutput } from '../llm';
@@ -28,11 +34,16 @@ import {
 /**
  * Compute group category by majority vote from its conditions
  */
-export function computeGroupCategory(conditions: SapienceCondition[]): SapienceCategorySlug {
+export function computeGroupCategory(
+  conditions: SapienceCondition[]
+): SapienceCategorySlug {
   const counts = new Map<SapienceCategorySlug, number>();
 
   for (const condition of conditions) {
-    counts.set(condition.categorySlug, (counts.get(condition.categorySlug) || 0) + 1);
+    counts.set(
+      condition.categorySlug,
+      (counts.get(condition.categorySlug) || 0) + 1
+    );
   }
 
   // Find category with most votes
@@ -58,13 +69,13 @@ export function transformToSapienceCondition(
   const question = transformMatchQuestion(market);
 
   return {
-    conditionHash: market.conditionId,  // Use Polymarket's conditionId directly
+    conditionHash: market.conditionId, // Use Polymarket's conditionId directly
     question,
-    shortName: enrichment?.shortName || question,  // Use LLM shortName or fallback to question
+    shortName: enrichment?.shortName || question, // Use LLM shortName or fallback to question
     endDate: market.endDate,
     description: market.description || '',
     similarMarkets: [getPolymarketUrl(market)],
-    categorySlug: enrichment?.category || inferSapienceCategorySlug(market),  // Use LLM category or fallback
+    categorySlug: enrichment?.category || inferSapienceCategorySlug(market), // Use LLM category or fallback
     chainId: CHAIN_ID,
     groupTitle,
   };
@@ -111,12 +122,12 @@ export async function groupMarkets(
 
   // Collect all markets for processing
   const allFilteredMarkets = [
-    ...filteredGroups.map(g => g.markets[0]),
+    ...filteredGroups.map((g) => g.markets[0]),
     ...filteredUngrouped,
   ];
 
   // Check which conditions already exist (to skip LLM for them)
-  const allConditionIds = allFilteredMarkets.map(m => m.conditionId);
+  const allConditionIds = allFilteredMarkets.map((m) => m.conditionId);
   const existingIds = await checkExistingConditions(apiUrl, allConditionIds);
 
   // Apply LLM pre-filter pipeline to separate new vs existing markets
@@ -135,8 +146,12 @@ export async function groupMarkets(
   });
 
   // Filter out existing markets from groups and ungrouped (no need to submit them)
-  const newGroups = filteredGroups.filter(g => !existingIds.has(g.markets[0].conditionId));
-  const newUngrouped = filteredUngrouped.filter(m => !existingIds.has(m.conditionId));
+  const newGroups = filteredGroups.filter(
+    (g) => !existingIds.has(g.markets[0].conditionId)
+  );
+  const newUngrouped = filteredUngrouped.filter(
+    (m) => !existingIds.has(m.conditionId)
+  );
 
   // Transform single-market groups to SapienceConditionGroup[]
   const conditionGroups: SapienceConditionGroup[] = [];
@@ -144,13 +159,18 @@ export async function groupMarkets(
   for (const group of newGroups) {
     const market = group.markets[0]; // Each group has exactly 1 market now
     const enrichment = enrichments.get(market.conditionId);
-    const condition = transformToSapienceCondition(market, group.title, enrichment);
+    const condition = transformToSapienceCondition(
+      market,
+      group.title,
+      enrichment
+    );
 
     // Use event description if available, otherwise use market's description
     const event = market.events?.[0];
-    const groupDescription = event?.description?.split('\n')[0] ||
-                            market.description?.split('\n')[0] ||
-                            group.title;
+    const groupDescription =
+      event?.description?.split('\n')[0] ||
+      market.description?.split('\n')[0] ||
+      group.title;
 
     conditionGroups.push({
       title: group.title,
@@ -162,12 +182,14 @@ export async function groupMarkets(
   }
 
   // Create ungrouped conditions from markets without events
-  const ungroupedConditions = newUngrouped.map(m =>
+  const ungroupedConditions = newUngrouped.map((m) =>
     transformToSapienceCondition(m, undefined, enrichments.get(m.conditionId))
   );
 
   // Count total conditions after filtering
-  const totalConditions = conditionGroups.reduce((sum, g) => sum + g.conditions.length, 0) + ungroupedConditions.length;
+  const totalConditions =
+    conditionGroups.reduce((sum, g) => sum + g.conditions.length, 0) +
+    ungroupedConditions.length;
 
   return {
     metadata: {
@@ -182,7 +204,10 @@ export async function groupMarkets(
   };
 }
 
-export function exportJSON(data: SapienceOutput, filename: string = 'sapience-conditions.json'): void {
+export function exportJSON(
+  data: SapienceOutput,
+  filename: string = 'sapience-conditions.json'
+): void {
   const outputPath = join(process.cwd(), filename);
   writeFileSync(outputPath, JSON.stringify(data, null, 2));
   console.log(`Exported to ${outputPath}`);

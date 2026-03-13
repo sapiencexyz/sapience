@@ -15,14 +15,16 @@ vi.mock('viem', async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>;
   return {
     ...actual,
-    recoverTypedDataAddress: (...args: unknown[]) => mockRecoverTypedDataAddress(...args),
+    recoverTypedDataAddress: (...args: unknown[]) =>
+      mockRecoverTypedDataAddress(...args),
   };
 });
 
 // Mock computeSmartAccountAddress
 const mockComputeSmartAccountAddress = vi.fn();
 vi.mock('../session/smartAccount', () => ({
-  computeSmartAccountAddress: (...args: unknown[]) => mockComputeSmartAccountAddress(...args),
+  computeSmartAccountAddress: (...args: unknown[]) =>
+    mockComputeSmartAccountAddress(...args),
 }));
 
 import {
@@ -35,15 +37,23 @@ import {
 const OWNER_EOA = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' as Address;
 const PREDICTOR_SA = '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' as Address;
 const COUNTERPARTY_SA = '0xcccccccccccccccccccccccccccccccccccccccc' as Address;
-const UNRELATED_ADDRESS = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' as Address;
-const VERIFYING_CONTRACT = '0x1111111111111111111111111111111111111111' as Address;
+const UNRELATED_ADDRESS =
+  '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' as Address;
+const VERIFYING_CONTRACT =
+  '0x1111111111111111111111111111111111111111' as Address;
 const CHAIN_ID = 42161;
 const DUMMY_SIG = '0xdeadbeef' as Hex;
-const CONDITION_RESOLVER = '0x2222222222222222222222222222222222222222' as Address;
-const CONDITION_ID = '0x0000000000000000000000000000000000000000000000000000000000000001' as Hex;
+const CONDITION_RESOLVER =
+  '0x2222222222222222222222222222222222222222' as Address;
+const CONDITION_ID =
+  '0x0000000000000000000000000000000000000000000000000000000000000001' as Hex;
 
 const TEST_PICKS = [
-  { conditionResolver: CONDITION_RESOLVER, conditionId: CONDITION_ID, predictedOutcome: 1 },
+  {
+    conditionResolver: CONDITION_RESOLVER,
+    conditionId: CONDITION_ID,
+    predictedOutcome: 1,
+  },
 ];
 
 // --- Tests ---

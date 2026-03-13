@@ -78,6 +78,3 @@ export default typescriptPlugin.config(
     },
   }
 );
-
-
-

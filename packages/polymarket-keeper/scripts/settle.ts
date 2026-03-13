@@ -135,7 +135,7 @@ function parseArgs(): CLIOptions {
   const args = process.argv.slice(2);
 
   const hasArg = (name: string): boolean =>
-    args.includes(`--${name}`) || args.some(a => a.startsWith(`--${name}=`));
+    args.includes(`--${name}`) || args.some((a) => a.startsWith(`--${name}=`));
 
   return {
     dryRun: hasArg('dry-run') || !hasArg('execute'),
@@ -212,7 +212,7 @@ async function fetchConditionsPage(
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'Accept': 'application/json',
+      Accept: 'application/json',
     },
     body: JSON.stringify({
       query: UNRESOLVED_CONDITIONS_QUERY,
@@ -229,31 +229,39 @@ async function fetchConditionsPage(
     }
     throw new Error(
       `GraphQL request failed: ${response.status} ${response.statusText}\n` +
-      `URL: ${apiUrl}\n` +
-      `Response: ${errorBody.slice(0, 500)}`
+        `URL: ${apiUrl}\n` +
+        `Response: ${errorBody.slice(0, 500)}`
     );
   }
 
   let result: GraphQLResponse<ConditionsQueryResponse>;
   try {
-    result = await response.json() as GraphQLResponse<ConditionsQueryResponse>;
+    result =
+      (await response.json()) as GraphQLResponse<ConditionsQueryResponse>;
   } catch {
-    const text = await response.clone().text().catch(() => '(could not read body)');
+    const text = await response
+      .clone()
+      .text()
+      .catch(() => '(could not read body)');
     throw new Error(
       `Failed to parse GraphQL response as JSON\n` +
-      `URL: ${apiUrl}\n` +
-      `Response: ${text.slice(0, 500)}`
+        `URL: ${apiUrl}\n` +
+        `Response: ${text.slice(0, 500)}`
     );
   }
 
   if (result.errors?.length) {
-    throw new Error(`GraphQL errors: ${result.errors.map(e => e.message).join('; ')}`);
+    throw new Error(
+      `GraphQL errors: ${result.errors.map((e) => e.message).join('; ')}`
+    );
   }
 
   return result.data?.conditions ?? [];
 }
 
-async function fetchUnresolvedConditions(apiUrl: string): Promise<SapienceCondition[]> {
+async function fetchUnresolvedConditions(
+  apiUrl: string
+): Promise<SapienceCondition[]> {
   const nowTimestamp = Math.floor(Date.now() / 1000);
   const allConditions: SapienceCondition[] = [];
   let skip = 0;
@@ -262,7 +270,12 @@ async function fetchUnresolvedConditions(apiUrl: string): Promise<SapienceCondit
 
   while (true) {
     // Fetch one extra to check if there's a next page
-    const page = await fetchConditionsPage(apiUrl, nowTimestamp, CONDITIONS_PAGE_SIZE + 1, skip);
+    const page = await fetchConditionsPage(
+      apiUrl,
+      nowTimestamp,
+      CONDITIONS_PAGE_SIZE + 1,
+      skip
+    );
 
     const hasMore = page.length > CONDITIONS_PAGE_SIZE;
     const pageConditions = hasMore ? page.slice(0, CONDITIONS_PAGE_SIZE) : page;
@@ -313,8 +326,15 @@ async function checkAndSettleCondition(
         functionName: 'getConditionResolution',
         args: [conditionId],
       });
-      console.log(`[${conditionId}] Already resolved on Ethereal (resolvedToYes=${resolvedToYes})`);
-      return { conditionId, alreadyResolved: true, canResolve: false, settled: false };
+      console.log(
+        `[${conditionId}] Already resolved on Ethereal (resolvedToYes=${resolvedToYes})`
+      );
+      return {
+        conditionId,
+        alreadyResolved: true,
+        canResolve: false,
+        settled: false,
+      };
     } catch {
       // Revert means not yet resolved on Ethereal — proceed with Polygon check
     }
@@ -330,7 +350,12 @@ async function checkAndSettleCondition(
 
     if (!canResolve) {
       console.log(`[${conditionId}] Not resolved on Polymarket yet`);
-      return { conditionId, alreadyResolved: false, canResolve: false, settled: false };
+      return {
+        conditionId,
+        alreadyResolved: false,
+        canResolve: false,
+        settled: false,
+      };
     }
 
     // Get the LayerZero fee quote
@@ -343,15 +368,28 @@ async function checkAndSettleCondition(
     });
 
     const nativeFee = fee.nativeFee;
-    console.log(`[${conditionId}] LayerZero fee: ${formatEther(nativeFee)} POL`);
+    console.log(
+      `[${conditionId}] LayerZero fee: ${formatEther(nativeFee)} POL`
+    );
 
     if (options.dryRun) {
       console.log(`[${conditionId}] DRY RUN - would call requestResolution`);
-      return { conditionId, alreadyResolved: false, canResolve: true, settled: false };
+      return {
+        conditionId,
+        alreadyResolved: false,
+        canResolve: true,
+        settled: false,
+      };
     }
 
     if (!walletClient) {
-      return { conditionId, alreadyResolved: false, canResolve: true, settled: false, error: 'No wallet client (missing ADMIN_PRIVATE_KEY)' };
+      return {
+        conditionId,
+        alreadyResolved: false,
+        canResolve: true,
+        settled: false,
+        error: 'No wallet client (missing ADMIN_PRIVATE_KEY)',
+      };
     }
 
     // Execute the settlement
@@ -365,7 +403,9 @@ async function checkAndSettleCondition(
       account: walletClient.account,
     });
     const gasLimit = (estimatedGas * 130n) / 100n; // Add 30% buffer
-    console.log(`[${conditionId}] Estimated gas: ${estimatedGas}, using limit: ${gasLimit}`);
+    console.log(
+      `[${conditionId}] Estimated gas: ${estimatedGas}, using limit: ${gasLimit}`
+    );
 
     console.log(`[${conditionId}] Sending requestResolution transaction...`);
     const hash = await walletClient.writeContract({
@@ -385,11 +425,22 @@ async function checkAndSettleCondition(
       console.log(`[${conditionId}] Confirmed in block ${receipt.blockNumber}`);
     }
 
-    return { conditionId, alreadyResolved: false, canResolve: true, settled: true, txHash: hash };
-
+    return {
+      conditionId,
+      alreadyResolved: false,
+      canResolve: true,
+      settled: true,
+      txHash: hash,
+    };
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    return { conditionId, alreadyResolved: false, canResolve: false, settled: false, error: errorMessage };
+    return {
+      conditionId,
+      alreadyResolved: false,
+      canResolve: false,
+      settled: false,
+      error: errorMessage,
+    };
   }
 }
 
@@ -418,7 +469,9 @@ async function main() {
   }
 
   if (options.execute && !privateKey) {
-    console.error('ADMIN_PRIVATE_KEY environment variable is required for --execute mode');
+    console.error(
+      'ADMIN_PRIVATE_KEY environment variable is required for --execute mode'
+    );
     process.exit(1);
   }
 
@@ -433,12 +486,17 @@ async function main() {
   const etherealClient = createPublicClient({
     transport: http('https://rpc.ethereal.trade'),
   });
-  console.log(`Ethereal client connected (chain ${CHAIN_ID}, resolver ${RESOLVER_ADDRESS})`);
+  console.log(
+    `Ethereal client connected (chain ${CHAIN_ID}, resolver ${RESOLVER_ADDRESS})`
+  );
 
-  let walletClient: WalletClient<Transport, typeof polygon, Account> | null = null;
+  let walletClient: WalletClient<Transport, typeof polygon, Account> | null =
+    null;
 
   if (privateKey) {
-    const formattedKey = privateKey.startsWith('0x') ? privateKey : `0x${privateKey}`;
+    const formattedKey = privateKey.startsWith('0x')
+      ? privateKey
+      : `0x${privateKey}`;
     const account = privateKeyToAccount(formattedKey as Hex);
 
     walletClient = createWalletClient({
@@ -449,7 +507,9 @@ async function main() {
 
     // Check wallet balance
     const balance = await publicClient.getBalance({ address: account.address });
-    console.log(`Wallet ${account.address} balance: ${formatEther(balance)} POL`);
+    console.log(
+      `Wallet ${account.address} balance: ${formatEther(balance)} POL`
+    );
   }
 
   try {
@@ -460,7 +520,9 @@ async function main() {
       return;
     }
 
-    console.log(`Processing ${conditions.length} conditions with open interest or forecasts (mode: ${options.dryRun ? 'dry-run' : 'execute'})`);
+    console.log(
+      `Processing ${conditions.length} conditions with open interest or forecasts (mode: ${options.dryRun ? 'dry-run' : 'execute'})`
+    );
 
     const results = {
       total: conditions.length,
@@ -496,8 +558,9 @@ async function main() {
     }
 
     // Summary
-    console.log(`Summary: ${results.total} processed, ${results.alreadyResolved} already resolved on Ethereal, ${results.canResolve} resolvable, ${results.settled} settled, ${results.skipped} skipped, ${results.errors} errors`);
-
+    console.log(
+      `Summary: ${results.total} processed, ${results.alreadyResolved} already resolved on Ethereal, ${results.canResolve} resolvable, ${results.settled} settled, ${results.skipped} skipped, ${results.errors} errors`
+    );
   } catch (error) {
     console.error('Error:', error);
     process.exit(1);

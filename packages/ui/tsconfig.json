@@ -19,7 +19,11 @@
     "strictNullChecks": true
   },
   "include": ["**/*"],
-  "exclude": ["node_modules", "dist", "storybook-static", "**/*.test.*", "**/*.spec.*"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "storybook-static",
+    "**/*.test.*",
+    "**/*.spec.*"
+  ]
 }
-
-

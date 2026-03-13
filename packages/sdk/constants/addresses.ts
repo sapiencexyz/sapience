@@ -10,6 +10,9 @@ export const PREFERRED_ESTIMATE_QUOTER =
  * Get the WUSDe/collateral token address for a given chain.
  * Falls back to Ethereal mainnet address if chain not found.
  */
-export function getCollateralAddress(chainId: number = DEFAULT_CHAIN_ID): Address {
-  return (collateralToken[chainId]?.address ?? collateralToken[CHAIN_ID_ETHEREAL]?.address) as Address;
+export function getCollateralAddress(
+  chainId: number = DEFAULT_CHAIN_ID
+): Address {
+  return (collateralToken[chainId]?.address ??
+    collateralToken[CHAIN_ID_ETHEREAL]?.address) as Address;
 }

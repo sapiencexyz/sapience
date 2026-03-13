@@ -290,7 +290,10 @@ export type ServerToClientMessage =
     }
   | { type: 'bid.ack'; payload: { bidId?: string; error?: string } }
   | { type: 'auction.started'; payload: AuctionDetails }
-  | { type: 'auction.bids'; payload: { auctionId: string; bids: ValidatedBid[] } }
+  | {
+      type: 'auction.bids';
+      payload: { auctionId: string; bids: ValidatedBid[] };
+    }
   | {
       type: 'auction.filled';
       payload: {

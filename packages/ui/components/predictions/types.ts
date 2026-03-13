@@ -24,5 +24,3 @@ export type PythPredictionLeg = {
 };
 
 export type PredictionLeg = UmaPredictionLeg | PythPredictionLeg;
-
-

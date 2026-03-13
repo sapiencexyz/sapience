@@ -10,8 +10,8 @@ import type { Address } from 'viem';
 import { collateralToken } from '../contracts/addresses';
 import { CHAIN_ID_ETHEREAL } from '../constants/chain';
 
-export const VAULT_WUSDE_ADDRESS: Address =
-  collateralToken[CHAIN_ID_ETHEREAL].address as Address;
+export const VAULT_WUSDE_ADDRESS: Address = collateralToken[CHAIN_ID_ETHEREAL]
+  .address as Address;
 
 export const ZERO_ADDRESS: Address =
   '0x0000000000000000000000000000000000000000';
@@ -89,9 +89,7 @@ export function buildDepositCalls(
     decimals
   );
   const expectedSharesWei =
-    ppsScaled === 0n
-      ? 0n
-      : (amountWei * 10n ** BigInt(decimals)) / ppsScaled;
+    ppsScaled === 0n ? 0n : (amountWei * 10n ** BigInt(decimals)) / ppsScaled;
 
   const requestDepositCalldata = encodeFunctionData({
     abi: vaultAbi,

@@ -2,7 +2,11 @@
  * Sapience API submission logic
  */
 
-import type { SapienceCondition, SapienceConditionGroup, SapienceOutput } from '../types';
+import type {
+  SapienceCondition,
+  SapienceConditionGroup,
+  SapienceOutput,
+} from '../types';
 import { RESOLVER_ADDRESS } from '../constants';
 import { fetchWithRetry, getAdminAuthHeaders } from '../utils';
 import {
@@ -17,7 +21,7 @@ import {
  * Delay between API submissions to avoid rate limiting
  */
 const SUBMISSION_DELAY_MS = 300;
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * Convert ISO date string to Unix timestamp (seconds)
@@ -59,7 +63,9 @@ export async function submitConditionGroup(
       return { success: true, error: 'Already exists (skipped)' };
     }
 
-    const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+    const errorData = await response
+      .json()
+      .catch(() => ({ message: 'Unknown error' }));
     const errorMsg = `HTTP ${response.status}: ${errorData.message || response.statusText}`;
     console.error(`[Group] "${group.title}" submission failed: ${errorMsg}`);
     return { success: false, error: errorMsg };
@@ -116,13 +122,19 @@ export async function submitCondition(
     let errorData = { message: 'Unknown error' };
     try {
       errorData = JSON.parse(responseText);
-    } catch { /* ignore parse errors */ }
+    } catch {
+      /* ignore parse errors */
+    }
     const errorMsg = `HTTP ${response.status}: ${errorData.message || response.statusText}`;
-    console.error(`[Condition] ${condition.question} submission failed: ${errorMsg}`);
+    console.error(
+      `[Condition] ${condition.question} submission failed: ${errorMsg}`
+    );
     return { success: false, error: errorMsg };
   } catch (error) {
     const errorMsg = error instanceof Error ? error.message : String(error);
-    console.error(`[Condition] ${condition.question} submission error: ${errorMsg}`);
+    console.error(
+      `[Condition] ${condition.question} submission error: ${errorMsg}`
+    );
     return { success: false, error: errorMsg };
   }
 }
@@ -142,7 +154,7 @@ export function printDryRun(data: SapienceOutput): void {
 
   // For conditions, we need to filter each group's conditions and ungrouped
   const allConditions = [
-    ...data.groups.flatMap(g => g.conditions),
+    ...data.groups.flatMap((g) => g.conditions),
     ...data.ungroupedConditions,
   ];
   const { output: includedConditions, stats: conditionStats } = runPipeline(
@@ -156,9 +168,11 @@ export function printDryRun(data: SapienceOutput): void {
   printPipelineStats(conditionStats, 'Conditions');
 
   // Count unique group titles
-  const uniqueGroupTitles = new Set(includedGroups.map(g => g.title));
+  const uniqueGroupTitles = new Set(includedGroups.map((g) => g.title));
 
-  console.log(`Would submit ${includedConditions.length} conditions across ${uniqueGroupTitles.size} unique groups\n`);
+  console.log(
+    `Would submit ${includedConditions.length} conditions across ${uniqueGroupTitles.size} unique groups\n`
+  );
 
   // Print groups (deduplicated by title for display)
   if (includedGroups.length > 0) {
@@ -170,15 +184,24 @@ export function printDryRun(data: SapienceOutput): void {
 
       // Count conditions for this group title across all groups with same title
       const conditionsForGroup = includedGroups
-        .filter(g => g.title === group.title)
-        .flatMap(g => g.conditions);
-      const { output: groupConditions } = runPipeline(conditionsForGroup, API_CONDITION_FILTERS);
+        .filter((g) => g.title === group.title)
+        .flatMap((g) => g.conditions);
+      const { output: groupConditions } = runPipeline(
+        conditionsForGroup,
+        API_CONDITION_FILTERS
+      );
 
-      console.log(`  [${group.categorySlug}] "${group.title}" (${groupConditions.length} conditions)`);
+      console.log(
+        `  [${group.categorySlug}] "${group.title}" (${groupConditions.length} conditions)`
+      );
       for (const condition of groupConditions) {
         const endDate = new Date(condition.endDate).toLocaleString();
-        console.log(`    - ${condition.question.slice(0, 60)}${condition.question.length > 60 ? '...' : ''}`);
-        console.log(`      End: ${endDate} | Hash: ${condition.conditionHash.slice(0, 10)}...`);
+        console.log(
+          `    - ${condition.question.slice(0, 60)}${condition.question.length > 60 ? '...' : ''}`
+        );
+        console.log(
+          `      End: ${endDate} | Hash: ${condition.conditionHash.slice(0, 10)}...`
+        );
       }
     }
     console.log('');
@@ -194,18 +217,25 @@ export function printDryRun(data: SapienceOutput): void {
     console.log('Ungrouped conditions to create:');
     for (const condition of includedUngrouped) {
       const endDate = new Date(condition.endDate).toLocaleString();
-      console.log(`  [${condition.categorySlug}] ${condition.question.slice(0, 60)}${condition.question.length > 60 ? '...' : ''}`);
-      console.log(`    End: ${endDate} | Hash: ${condition.conditionHash.slice(0, 10)}...`);
+      console.log(
+        `  [${condition.categorySlug}] ${condition.question.slice(0, 60)}${condition.question.length > 60 ? '...' : ''}`
+      );
+      console.log(
+        `    End: ${endDate} | Hash: ${condition.conditionHash.slice(0, 10)}...`
+      );
     }
     console.log('');
   }
 
   // Print skipped crypto
   const skippedCryptoGroups = data.groups.length - includedGroups.length;
-  const skippedCryptoConditions = allConditions.length - includedConditions.length;
+  const skippedCryptoConditions =
+    allConditions.length - includedConditions.length;
 
   if (skippedCryptoGroups > 0 || skippedCryptoConditions > 0) {
-    console.log(`Would skip: ${skippedCryptoGroups} crypto groups, ${skippedCryptoConditions} crypto conditions`);
+    console.log(
+      `Would skip: ${skippedCryptoGroups} crypto groups, ${skippedCryptoConditions} crypto conditions`
+    );
   }
 
   console.log('\n========== END DRY RUN ==========\n');
@@ -267,18 +297,25 @@ export async function submitToAPI(
       group.conditions,
       API_CONDITION_FILTERS
     );
-    cryptoConditionsSkipped += group.conditions.length - includedConditions.length;
+    cryptoConditionsSkipped +=
+      group.conditions.length - includedConditions.length;
 
     // Always submit conditions (they link to group via groupName field)
     for (const condition of includedConditions) {
-      const conditionResult = await submitCondition(apiUrl, privateKey, condition);
+      const conditionResult = await submitCondition(
+        apiUrl,
+        privateKey,
+        condition
+      );
 
       if (conditionResult.success) {
         if (conditionResult.error) {
           conditionsSkipped++;
         } else {
           conditionsCreated++;
-          console.log(`[API] Created condition: "${condition.question.slice(0, 50)}${condition.question.length > 50 ? '...' : ''}"`);
+          console.log(
+            `[API] Created condition: "${condition.question.slice(0, 50)}${condition.question.length > 50 ? '...' : ''}"`
+          );
         }
       } else {
         conditionsFailed++;
@@ -292,16 +329,23 @@ export async function submitToAPI(
     data.ungroupedConditions,
     API_CONDITION_FILTERS
   );
-  cryptoConditionsSkipped += data.ungroupedConditions.length - includedUngrouped.length;
+  cryptoConditionsSkipped +=
+    data.ungroupedConditions.length - includedUngrouped.length;
 
   for (const condition of includedUngrouped) {
-    const conditionResult = await submitCondition(apiUrl, privateKey, condition);
+    const conditionResult = await submitCondition(
+      apiUrl,
+      privateKey,
+      condition
+    );
     if (conditionResult.success) {
       if (conditionResult.error) {
         conditionsSkipped++;
       } else {
         conditionsCreated++;
-        console.log(`[API] Created condition: "${condition.question.slice(0, 50)}${condition.question.length > 50 ? '...' : ''}" (ungrouped)`);
+        console.log(
+          `[API] Created condition: "${condition.question.slice(0, 50)}${condition.question.length > 50 ? '...' : ''}" (ungrouped)`
+        );
       }
     } else {
       conditionsFailed++;
@@ -311,9 +355,15 @@ export async function submitToAPI(
 
   // Final summary
   const uniqueGroupsSubmitted = submittedGroupTitles.size;
-  console.log(`Groups: ${uniqueGroupsSubmitted} unique (${groupsCreated} created, ${groupsSkipped} already existed, ${groupsFailed} failed)`);
-  console.log(`Conditions: ${conditionsCreated} created, ${conditionsSkipped} skipped, ${conditionsFailed} failed`);
+  console.log(
+    `Groups: ${uniqueGroupsSubmitted} unique (${groupsCreated} created, ${groupsSkipped} already existed, ${groupsFailed} failed)`
+  );
+  console.log(
+    `Conditions: ${conditionsCreated} created, ${conditionsSkipped} skipped, ${conditionsFailed} failed`
+  );
   if (cryptoGroupsSkipped > 0 || cryptoConditionsSkipped > 0) {
-    console.log(`Crypto skipped: ${cryptoGroupsSkipped} groups, ${cryptoConditionsSkipped} conditions`);
+    console.log(
+      `Crypto skipped: ${cryptoGroupsSkipped} groups, ${cryptoConditionsSkipped} conditions`
+    );
   }
 }

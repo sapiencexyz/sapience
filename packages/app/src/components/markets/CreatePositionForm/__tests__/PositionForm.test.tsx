@@ -202,11 +202,9 @@ jest.mock('viem', () => ({
 // @sapience/ui — stub UI components used by PositionForm
 jest.mock('@sapience/ui', () => ({
   PythPredictionListItem: () => <div data-testid="pyth-prediction-list-item" />,
-  UmaPredictionListItem: ({
-    prediction,
-  }: {
-    prediction: { id: string };
-  }) => <div data-testid={`uma-prediction-${prediction.id}`} />,
+  UmaPredictionListItem: ({ prediction }: { prediction: { id: string } }) => (
+    <div data-testid={`uma-prediction-${prediction.id}`} />
+  ),
 }));
 
 jest.mock('@sapience/ui/components/ui/dialog', () => ({
@@ -217,9 +215,7 @@ jest.mock('@sapience/ui/components/ui/dialog', () => ({
   DialogHeader: ({ children }: { children: React.ReactNode }) => (
     <>{children}</>
   ),
-  DialogTitle: ({ children }: { children: React.ReactNode }) => (
-    <>{children}</>
-  ),
+  DialogTitle: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
 jest.mock('~/lib/theme/categoryIcons', () => ({
@@ -261,7 +257,10 @@ function makeFormMethods(
 ): UseFormReturn<{
   positionSize: string;
   limitAmount: string | number;
-  positions: Record<string, { predictionValue: string; positionSize: string; isFlipped?: boolean }>;
+  positions: Record<
+    string,
+    { predictionValue: string; positionSize: string; isFlipped?: boolean }
+  >;
 }> {
   const watchValues: Record<string, string> = { positionSize };
   return {
@@ -273,7 +272,10 @@ function makeFormMethods(
   } as unknown as UseFormReturn<{
     positionSize: string;
     limitAmount: string | number;
-    positions: Record<string, { predictionValue: string; positionSize: string; isFlipped?: boolean }>;
+    positions: Record<
+      string,
+      { predictionValue: string; positionSize: string; isFlipped?: boolean }
+    >;
   }>;
 }
 
@@ -294,18 +296,33 @@ jest.mock('react-hook-form', () => {
 function setDefaults() {
   mockPositionSize = '10';
   mockUseAccount.mockReturnValue({ address: '0xUser1' });
-  mockUseConnectedWallet.mockReturnValue({ hasConnectedWallet: true, ready: true, connectedWallet: { address: '0xUser1' } });
+  mockUseConnectedWallet.mockReturnValue({
+    hasConnectedWallet: true,
+    ready: true,
+    connectedWallet: { address: '0xUser1' },
+  });
   mockUseSession.mockReturnValue({
     effectiveAddress: '0xSmartAccount',
     isUsingSmartAccount: true,
     signMessage: jest.fn(), // willUseSessionSigning = true
   });
   mockUseCreatePositionContext.mockReturnValue({
-    selections: [makeSelection(), makeSelection({ id: 'sel-2', conditionId: '0xCondition2' })],
+    selections: [
+      makeSelection(),
+      makeSelection({ id: 'sel-2', conditionId: '0xCondition2' }),
+    ],
     removeSelection: jest.fn(),
     getPicks: () => [
-      { conditionResolver: '0xResolver1', conditionId: '0xCondition1', predictedOutcome: 1 },
-      { conditionResolver: '0xResolver1', conditionId: '0xCondition2', predictedOutcome: 1 },
+      {
+        conditionResolver: '0xResolver1',
+        conditionId: '0xCondition1',
+        predictedOutcome: 1,
+      },
+      {
+        conditionResolver: '0xResolver1',
+        conditionId: '0xCondition2',
+        predictedOutcome: 1,
+      },
     ],
   });
   mockUseCollateralBalanceContext.mockReturnValue({
@@ -378,7 +395,10 @@ describe('PositionForm', () => {
 
     it('does NOT fire when position size exceeds balance', () => {
       mockPositionSize = '200';
-      mockUseCollateralBalanceContext.mockReturnValue({ balance: 100, isLoading: false });
+      mockUseCollateralBalanceContext.mockReturnValue({
+        balance: 100,
+        isLoading: false,
+      });
       renderForm();
 
       act(() => {
@@ -389,7 +409,11 @@ describe('PositionForm', () => {
     });
 
     it('does NOT fire when form has errors', () => {
-      renderForm({ methods: makeFormMethods('10', { positionSize: { message: 'too large' } }) });
+      renderForm({
+        methods: makeFormMethods('10', {
+          positionSize: { message: 'too large' },
+        }),
+      });
 
       act(() => {
         jest.advanceTimersByTime(500);
@@ -399,7 +423,10 @@ describe('PositionForm', () => {
     });
 
     it('does NOT fire when balance is still loading', () => {
-      mockUseCollateralBalanceContext.mockReturnValue({ balance: 0, isLoading: true });
+      mockUseCollateralBalanceContext.mockReturnValue({
+        balance: 0,
+        isLoading: true,
+      });
       renderForm();
 
       act(() => {
@@ -685,7 +712,9 @@ describe('PositionForm', () => {
 
       // Bid should be accepted — showRequestBidsButton should be false
       // (recentlyRequested is true after auto-fire)
-      expect(getByTestId('bid-display').dataset.showRequestBidsButton).toBe('false');
+      expect(getByTestId('bid-display').dataset.showRequestBidsButton).toBe(
+        'false'
+      );
 
       // Switch to EOA mode (manual) — simulate session ending
       mockUseSession.mockReturnValue({
@@ -713,7 +742,9 @@ describe('PositionForm', () => {
       });
 
       // After mode switch, bids should be cleared — showRequestBidsButton=true
-      expect(getByTestId('bid-display').dataset.showRequestBidsButton).toBe('true');
+      expect(getByTestId('bid-display').dataset.showRequestBidsButton).toBe(
+        'true'
+      );
     });
 
     it('clears bids when switching from manual (EOA) to auto (session)', async () => {
@@ -761,7 +792,9 @@ describe('PositionForm', () => {
       });
 
       // Immediately after mode switch, bids are cleared — showRequestBidsButton=true
-      expect(getByTestId('bid-display').dataset.showRequestBidsButton).toBe('true');
+      expect(getByTestId('bid-display').dataset.showRequestBidsButton).toBe(
+        'true'
+      );
 
       // After 300ms debounce, auto mode re-fires a fresh auction
       await act(async () => {

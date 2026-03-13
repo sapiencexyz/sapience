@@ -1,4 +1,8 @@
-import { encodeAbiParameters, encodeFunctionData, parseAbiParameters } from 'viem';
+import {
+  encodeAbiParameters,
+  encodeFunctionData,
+  parseAbiParameters,
+} from 'viem';
 import type { Address } from 'viem';
 import { submitTransaction } from './tx';
 import { eas } from '../contracts/addresses';
@@ -58,7 +62,8 @@ const EAS_ABI = [
 ] as const;
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as Address;
-const ZERO_BYTES32 = '0x0000000000000000000000000000000000000000000000000000000000000000' as Hex;
+const ZERO_BYTES32 =
+  '0x0000000000000000000000000000000000000000000000000000000000000000' as Hex;
 
 /**
  * Convert probability (0-100) to D18 format
@@ -88,7 +93,7 @@ export function buildForecastCalldata(
   resolver: Address,
   condition: Hex,
   prob: number,
-  comment?: string,
+  comment?: string
 ): ForecastCalldata {
   if (prob < 0 || prob > 100) {
     throw new Error(`Probability must be between 0 and 100, got ${prob}`);
@@ -102,14 +107,9 @@ export function buildForecastCalldata(
 
   const encodedData = encodeAbiParameters(
     parseAbiParameters(
-      'address resolver, bytes condition, uint256 forecast, string comment',
+      'address resolver, bytes condition, uint256 forecast, string comment'
     ),
-    [
-      resolver,
-      condition,
-      probabilityToD18(prob),
-      truncatedComment,
-    ],
+    [resolver, condition, probabilityToD18(prob), truncatedComment]
   );
 
   const attestationRequest = {
@@ -174,7 +174,7 @@ export async function submitForecast(args: {
     args.resolver,
     args.condition,
     args.probability,
-    args.comment,
+    args.comment
   );
 
   const rpc = args.rpc || 'https://arb1.arbitrum.io/rpc';
@@ -187,4 +187,3 @@ export async function submitForecast(args: {
 
   return { hash, calldata };
 }
-

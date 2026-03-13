@@ -1,25 +1,25 @@
-import type { Meta, StoryObj } from "@storybook/react-webpack5";
-import { useState } from "react";
-import type { DateRange as DateRangeType } from "react-day-picker";
-import { Calendar } from "../../components/ui/calendar";
+import type { Meta, StoryObj } from '@storybook/react-webpack5';
+import { useState } from 'react';
+import type { DateRange as DateRangeType } from 'react-day-picker';
+import { Calendar } from '../../components/ui/calendar';
 
 const meta: Meta<typeof Calendar> = {
-  title: "UI/Calendar",
+  title: 'UI/Calendar',
   component: Calendar,
   parameters: {
-    layout: "centered",
+    layout: 'centered',
   },
-  tags: ["autodocs"],
+  tags: ['autodocs'],
   argTypes: {
     mode: {
-      control: { type: "select" },
-      options: ["single", "multiple", "range"],
+      control: { type: 'select' },
+      options: ['single', 'multiple', 'range'],
     },
     showOutsideDays: {
-      control: { type: "boolean" },
+      control: { type: 'boolean' },
     },
     disabled: {
-      control: { type: "object" },
+      control: { type: 'object' },
     },
   },
 };
@@ -38,7 +38,7 @@ export const WithDateSelection: Story = {
     return (
       <div className="space-y-4">
         <div className="text-sm text-muted-foreground">
-          Selected: {date ? date.toDateString() : "No date selected"}
+          Selected: {date ? date.toDateString() : 'No date selected'}
         </div>
         <Calendar
           mode="single"
@@ -83,14 +83,14 @@ export const DateRange: Story = {
           {dateRange?.from ? (
             dateRange.to ? (
               <>
-                From: {dateRange.from.toDateString()} - To:{" "}
+                From: {dateRange.from.toDateString()} - To:{' '}
                 {dateRange.to.toDateString()}
               </>
             ) : (
               `From: ${dateRange.from.toDateString()}`
             )
           ) : (
-            "No date range selected"
+            'No date range selected'
           )}
         </div>
         <Calendar
@@ -117,7 +117,7 @@ export const WithDisabledDates: Story = {
     return (
       <div className="space-y-4">
         <div className="text-sm text-muted-foreground">
-          Selected: {date ? date.toDateString() : "No date selected"}
+          Selected: {date ? date.toDateString() : 'No date selected'}
         </div>
         <Calendar
           mode="single"
@@ -142,9 +142,9 @@ export const CustomStyling: Story = {
     <Calendar
       className="rounded-lg border-2 border-blue-200 bg-blue-50"
       classNames={{
-        day: "hover:bg-blue-100 focus:bg-blue-100",
-        day_selected: "bg-blue-500 text-white hover:bg-blue-600",
-        day_today: "bg-blue-200 text-blue-900",
+        day: 'hover:bg-blue-100 focus:bg-blue-100',
+        day_selected: 'bg-blue-500 text-white hover:bg-blue-600',
+        day_today: 'bg-blue-200 text-blue-900',
       }}
     />
   ),
@@ -179,19 +179,19 @@ export const Compact: Story = {
     <Calendar
       className="rounded-md border"
       classNames={{
-        months: "flex flex-col space-y-2",
-        month: "space-y-2",
-        caption: "flex justify-center pt-1 relative items-center",
-        caption_label: "text-xs font-medium",
-        nav: "space-x-1 flex items-center",
-        nav_button: "h-6 w-6 bg-transparent p-0 opacity-50 hover:opacity-100",
-        table: "w-full border-collapse space-y-1",
-        head_row: "flex",
+        months: 'flex flex-col space-y-2',
+        month: 'space-y-2',
+        caption: 'flex justify-center pt-1 relative items-center',
+        caption_label: 'text-xs font-medium',
+        nav: 'space-x-1 flex items-center',
+        nav_button: 'h-6 w-6 bg-transparent p-0 opacity-50 hover:opacity-100',
+        table: 'w-full border-collapse space-y-1',
+        head_row: 'flex',
         head_cell:
-          "text-muted-foreground rounded-md w-7 font-normal text-[0.7rem]",
-        row: "flex w-full mt-1",
-        cell: "h-7 w-7 text-center text-xs p-0 relative",
-        day: "h-7 w-7 p-0 font-normal aria-selected:opacity-100",
+          'text-muted-foreground rounded-md w-7 font-normal text-[0.7rem]',
+        row: 'flex w-full mt-1',
+        cell: 'h-7 w-7 text-center text-xs p-0 relative',
+        day: 'h-7 w-7 p-0 font-normal aria-selected:opacity-100',
       }}
     />
   ),

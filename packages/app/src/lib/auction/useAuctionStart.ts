@@ -346,7 +346,10 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
   }, [wsUrl]);
 
   const requestQuotes = useCallback(
-    async (params: AuctionParams | null, options?: { forceRefresh?: boolean }) => {
+    async (
+      params: AuctionParams | null,
+      options?: { forceRefresh?: boolean }
+    ) => {
       if (!params || !wsUrl) return;
 
       // Determine if we'll use session signing or wallet signing
@@ -441,15 +444,23 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
       }
 
       // Sign AuctionIntent EIP-712 typed data to prove predictor identity
-      const verifyingContract = predictionMarketEscrow[chainId]?.address as Address | undefined;
-      const canSign = walletAddress || (isUsingSessionRef.current && sessionSignTypedDataRawRef.current);
+      const verifyingContract = predictionMarketEscrow[chainId]?.address as
+        | Address
+        | undefined;
+      const canSign =
+        walletAddress ||
+        (isUsingSessionRef.current && sessionSignTypedDataRawRef.current);
 
       if (!shouldSignIntent) {
         log('[auction] Intent signing disabled (skipIntentSigning=true)');
       } else if (!verifyingContract) {
-        log(`[auction] Intent signing skipped: no verifying contract for chainId=${chainId}`);
+        log(
+          `[auction] Intent signing skipped: no verifying contract for chainId=${chainId}`
+        );
       } else if (!canSign) {
-        log(`[auction] Intent signing skipped: canSign=false (wallet=${!!walletAddress}, isUsingSession=${isUsingSessionRef.current}, hasSessionSigner=${!!sessionSignTypedDataRawRef.current})`);
+        log(
+          `[auction] Intent signing skipped: canSign=false (wallet=${!!walletAddress}, isUsingSession=${isUsingSessionRef.current}, hasSessionSigner=${!!sessionSignTypedDataRawRef.current})`
+        );
       }
 
       if (shouldSignIntent && verifyingContract && canSign) {
@@ -497,7 +508,9 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
           escrowPayload.intentSignature = intentSignature;
           log(`[auction] Intent signed: ${intentSignature.slice(0, 20)}...`);
         } catch (e) {
-          log(`[auction] Intent signing failed: ${e instanceof Error ? e.message : String(e)}`);
+          log(
+            `[auction] Intent signing failed: ${e instanceof Error ? e.message : String(e)}`
+          );
           inflightRef.current = '';
           return;
         }
@@ -510,7 +523,9 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
       const messageId = crypto.randomUUID();
       sentMessageIdRef.current = messageId;
 
-      log(`[auction] Sending auction.start: keys=${Object.keys(escrowPayload).join(',')}, hasIntentSig=${!!escrowPayload.intentSignature}, hasSessionKeyData=${!!escrowPayload.predictorSessionKeyData}`);
+      log(
+        `[auction] Sending auction.start: keys=${Object.keys(escrowPayload).join(',')}, hasIntentSig=${!!escrowPayload.intentSignature}, hasSessionKeyData=${!!escrowPayload.predictorSessionKeyData}`
+      );
 
       client.send({
         id: messageId,

@@ -550,9 +550,7 @@ async function checkAndSettleCondition(
     if (isProduction) {
       // ===== PRODUCTION: LayerZero bridging via ConditionalTokensReader =====
       if (!canResolve) {
-        console.log(
-          `[${conditionId}] Not resolved on Polygon yet, skipping`
-        );
+        console.log(`[${conditionId}] Not resolved on Polygon yet, skipping`);
         return {
           conditionId,
           alreadyResolved: false,
@@ -649,9 +647,7 @@ async function checkAndSettleCondition(
 
       if (canResolve) {
         // Read the full resolution data from Polygon
-        console.log(
-          `[${conditionId}] Reading resolution data from Polygon...`
-        );
+        console.log(`[${conditionId}] Reading resolution data from Polygon...`);
         const conditionData = await polygonClient.readContract({
           address: CONDITIONAL_TOKENS_READER_ADDRESS,
           abi: conditionalTokensReaderAbi,
@@ -671,8 +667,7 @@ async function checkAndSettleCondition(
         console.log(
           `[${conditionId}] Not resolved on-chain, checking Polymarket APIs...`
         );
-        const isClosedOnApi =
-          await checkPolymarketApiResolution(conditionId);
+        const isClosedOnApi = await checkPolymarketApiResolution(conditionId);
 
         if (isClosedOnApi) {
           // Voided market — settle as tie
@@ -681,9 +676,7 @@ async function checkAndSettleCondition(
             `[${conditionId}] Market voided/closed on Polymarket API, settling as TIE`
           );
         } else {
-          console.log(
-            `[${conditionId}] Not resolved anywhere yet, skipping`
-          );
+          console.log(`[${conditionId}] Not resolved anywhere yet, skipping`);
           return {
             conditionId,
             alreadyResolved: false,

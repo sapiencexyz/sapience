@@ -1,7 +1,7 @@
-import type { Meta, StoryObj } from "@storybook/react-webpack5";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
+import type { Meta, StoryObj } from '@storybook/react-webpack5';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import * as z from 'zod';
 import {
   Form,
   FormControl,
@@ -10,30 +10,30 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-} from "../../components/ui/form";
-import { Input } from "../../components/ui/input";
-import { Label } from "../../components/ui/label";
+} from '../../components/ui/form';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
 import {
   Select,
   SelectContent,
   SelectItem,
   SelectTrigger,
   SelectValue,
-} from "../../components/ui/select";
-import Slider from "../../components/ui/slider";
-import { Switch } from "../../components/ui/switch";
-import { Button } from "../../components/ui/button";
+} from '../../components/ui/select';
+import Slider from '../../components/ui/slider';
+import { Switch } from '../../components/ui/switch';
+import { Button } from '../../components/ui/button';
 
 // Form validation schema
 const formSchema = z.object({
   username: z.string().min(2, {
-    message: "Username must be at least 2 characters.",
+    message: 'Username must be at least 2 characters.',
   }),
   email: z.string().email({
-    message: "Please enter a valid email address.",
+    message: 'Please enter a valid email address.',
   }),
   framework: z.string({
-    required_error: "Please select a framework.",
+    required_error: 'Please select a framework.',
   }),
   notifications: z.boolean().default(false),
   volume: z.number().min(0).max(100),
@@ -42,12 +42,12 @@ const formSchema = z.object({
 type FormData = z.infer<typeof formSchema>;
 
 const meta: Meta<typeof Form> = {
-  title: "UI/Form",
+  title: 'UI/Form',
   component: Form,
   parameters: {
-    layout: "centered",
+    layout: 'centered',
   },
-  tags: ["autodocs"],
+  tags: ['autodocs'],
 };
 
 export default meta;
@@ -215,9 +215,9 @@ export const CompleteForm: Story = {
     const form = useForm<FormData>({
       resolver: zodResolver(formSchema),
       defaultValues: {
-        username: "",
-        email: "",
-        framework: "",
+        username: '',
+        email: '',
+        framework: '',
         notifications: false,
         volume: 50,
       },
