@@ -87,7 +87,7 @@ contract ConditionalTokensConditionResolver is
         returns (bool isResolved, IV2Types.OutcomeVector memory outcome)
     {
         (bytes32 rawId, uint256 deadline) = _unpackConditionId(conditionId);
-        return _getResolutionWithDeadline(conditions[rawId], deadline);
+        return _getResolution(conditions[rawId], deadline);
     }
 
     /// @inheritdoc IConditionResolver
@@ -107,7 +107,7 @@ contract ConditionalTokensConditionResolver is
             (bytes32 rawId, uint256 deadline) =
                 _unpackConditionId(conditionIds[i]);
             (resolved[i], outcomes[i]) =
-                _getResolutionWithDeadline(conditions[rawId], deadline);
+                _getResolution(conditions[rawId], deadline);
         }
     }
 
@@ -214,12 +214,12 @@ contract ConditionalTokensConditionResolver is
         }
     }
 
-    /// @dev Get resolution for a condition state, applying deadline logic
+    /// @dev Get resolution for a condition state, with optional deadline
     /// @param condition The cached condition state
     /// @param deadline The deadline timestamp (0 = no deadline)
     /// @return isResolved Whether the condition should be treated as resolved
     /// @return outcome The outcome vector
-    function _getResolutionWithDeadline(
+    function _getResolution(
         ConditionState memory condition,
         uint256 deadline
     )
@@ -227,28 +227,12 @@ contract ConditionalTokensConditionResolver is
         view
         returns (bool isResolved, IV2Types.OutcomeVector memory outcome)
     {
-        // If settled normally, use standard resolution logic
-        if (condition.settled && !condition.invalid) {
-            return _getResolution(condition);
-        }
-
-        // If not settled and we have a deadline that has passed, return indecisive
-        if (deadline > 0 && block.timestamp > deadline) {
-            return (true, IV2Types.OutcomeVector(1, 1));
-        }
-
-        // Not settled, no deadline or deadline not reached
-        return _getResolution(condition);
-    }
-
-    /// @dev Get resolution for a condition state (original logic, no deadline)
-    function _getResolution(ConditionState memory condition)
-        internal
-        pure
-        returns (bool isResolved, IV2Types.OutcomeVector memory outcome)
-    {
         // Not resolved if: not settled, or marked as invalid
         if (!condition.settled || condition.invalid) {
+            // Deadline passed while unresolved → indecisive
+            if (deadline > 0 && block.timestamp > deadline) {
+                return (true, IV2Types.OutcomeVector(1, 1));
+            }
             return (false, IV2Types.OutcomeVector(0, 0));
         }
 
