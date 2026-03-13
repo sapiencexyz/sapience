@@ -669,7 +669,10 @@ export class EscrowResolver {
     @Arg('take', () => Int, { defaultValue: 50 }) take: number = 50,
     @Arg('skip', () => Int, { defaultValue: 0 }) skip: number = 0,
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number,
-    @Arg('pickConfigId', () => String, { nullable: true }) pickConfigId?: string
+    @Arg('pickConfigId', () => String, { nullable: true }) pickConfigId?: string,
+    @Arg('settled', () => Boolean, { nullable: true }) settled?: boolean,
+    @Arg('result', () => SettlementResult, { nullable: true })
+    result?: SettlementResult
   ): Promise<PositionType[]> {
     const cappedTake = Math.max(1, Math.min(take, 100));
     const holderLower = holder?.toLowerCase();
@@ -707,6 +710,18 @@ export class EscrowResolver {
     }
     if (pickConfigIdLower && !conditionId) {
       where.pickConfigId = pickConfigIdLower;
+    }
+    if (settled !== undefined && settled !== null) {
+      where.pickConfiguration = {
+        ...((where.pickConfiguration as Prisma.PicksWhereInput) ?? {}),
+        resolved: settled,
+      };
+    }
+    if (result) {
+      where.pickConfiguration = {
+        ...((where.pickConfiguration as Prisma.PicksWhereInput) ?? {}),
+        result: result as unknown as Prisma.EnumSettlementResultFilter,
+      };
     }
 
     // Hide zero-balance positions that are not yet settled (no resolution).
