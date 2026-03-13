@@ -1,3 +1,4 @@
+import { vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useVaultShareQuoteWs } from '../useVaultShareQuoteWs';
 
@@ -5,9 +6,9 @@ import { useVaultShareQuoteWs } from '../useVaultShareQuoteWs';
 
 let messageListeners: Array<(msg: unknown) => void> = [];
 let openListeners: Array<() => void> = [];
-const mockSend = jest.fn();
+const mockSend = vi.fn();
 
-jest.mock('~/lib/ws/AuctionWsClient', () => ({
+vi.mock('~/lib/ws/AuctionWsClient', () => ({
   getSharedAuctionWsClient: () => ({
     send: mockSend,
     addMessageListener: (fn: (msg: unknown) => void) => {
@@ -25,11 +26,11 @@ jest.mock('~/lib/ws/AuctionWsClient', () => ({
   }),
 }));
 
-jest.mock('~/lib/ws', () => ({
+vi.mock('~/lib/ws', () => ({
   toAuctionWsUrl: (base: string) => `wss://mock/${base}`,
 }));
 
-jest.mock('~/lib/context/SettingsContext', () => ({
+vi.mock('~/lib/context/SettingsContext', () => ({
   useSettings: () => ({ apiBaseUrl: 'https://api.test' }),
 }));
 
