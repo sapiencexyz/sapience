@@ -864,7 +864,7 @@ contract PredictionMarketEscrow is
     }
 
     /// @inheritdoc IPredictionMarketEscrow
-    function validateMintSignature(
+    function verifyMintPartySignature(
         bytes32 predictionHash,
         address signer,
         uint256 collateral,
@@ -885,7 +885,7 @@ contract PredictionMarketEscrow is
     }
 
     /// @inheritdoc IPredictionMarketEscrow
-    function validateBurnSignature(
+    function verifyBurnPartySignature(
         bytes32 burnHash,
         address signer,
         uint256 tokenAmount,

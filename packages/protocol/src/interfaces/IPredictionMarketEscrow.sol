@@ -175,7 +175,7 @@ interface IPredictionMarketEscrow {
     /// @param signature The EIP-712 signature
     /// @param sessionKeyData ABI-encoded SessionKeyData (empty if EOA)
     /// @return isValid True if the signature is valid
-    function validateMintSignature(
+    function verifyMintPartySignature(
         bytes32 predictionHash,
         address signer,
         uint256 collateral,
@@ -195,7 +195,7 @@ interface IPredictionMarketEscrow {
     /// @param signature The EIP-712 signature
     /// @param sessionKeyData ABI-encoded SessionKeyData (empty if EOA)
     /// @return isValid True if the signature is valid
-    function validateBurnSignature(
+    function verifyBurnPartySignature(
         bytes32 burnHash,
         address signer,
         uint256 tokenAmount,
