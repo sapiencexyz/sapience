@@ -1270,7 +1270,7 @@ type Query {
   """
   Paginated list of token position balances, filterable by holder, condition, chain, or pick config
   """
-  positions(chainId: Int, conditionId: String, holder: String, pickConfigId: String, skip: Int! = 0, take: Int! = 50): [Position!]!
+  positions(chainId: Int, conditionId: String, holder: String, pickConfigId: String, result: SettlementResult, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Position!]!
 
   """Look up a single prediction by its on-chain prediction ID"""
   prediction(id: String!): Prediction
