@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import express from 'express';
+import type { Request, Response, NextFunction } from 'express';
 import request from 'supertest';
 
 // ---------------------------------------------------------------------------
@@ -36,11 +37,13 @@ vi.mock('../services/sponsorship', () => ({
 }));
 
 vi.mock('../middleware', () => ({
-  adminAuth: (_req: any, _res: any, next: any) => next(),
+  adminAuth: (_req: Request, _res: Response, next: NextFunction) => next(),
 }));
 
 vi.mock('../helpers', () => ({
-  hashReferralCode: vi.fn().mockReturnValue(('0x' + 'ab'.repeat(32)) as `0x${string}`),
+  hashReferralCode: vi
+    .fn()
+    .mockReturnValue(('0x' + 'ab'.repeat(32)) as `0x${string}`),
 }));
 
 // ---------------------------------------------------------------------------
@@ -50,8 +53,12 @@ vi.mock('../helpers', () => ({
 import { recoverMessageAddress } from 'viem';
 import { grantSponsorshipBudget } from '../services/sponsorship';
 
-const mockRecoverMessageAddress = recoverMessageAddress as ReturnType<typeof vi.fn>;
-const mockGrantSponsorshipBudget = grantSponsorshipBudget as ReturnType<typeof vi.fn>;
+const mockRecoverMessageAddress = recoverMessageAddress as ReturnType<
+  typeof vi.fn
+>;
+const mockGrantSponsorshipBudget = grantSponsorshipBudget as ReturnType<
+  typeof vi.fn
+>;
 
 // ---------------------------------------------------------------------------
 // Set up Express app with the router under test
@@ -105,9 +112,11 @@ describe('POST /referrals/code', () => {
   it('returns 401 when signature is invalid', async () => {
     mockRecoverMessageAddress.mockResolvedValue('0xDIFFERENTADDRESS');
 
-    const res = await request(app)
-      .post('/referrals/code')
-      .send({ walletAddress: WALLET, codePlaintext: 'CODE1', signature: VALID_SIG });
+    const res = await request(app).post('/referrals/code').send({
+      walletAddress: WALLET,
+      codePlaintext: 'CODE1',
+      signature: VALID_SIG,
+    });
 
     expect(res.status).toBe(401);
     expect(res.body.message).toMatch(/invalid signature/i);
@@ -117,9 +126,11 @@ describe('POST /referrals/code', () => {
     mockRecoverMessageAddress.mockResolvedValue(WALLET);
     mockPrisma.legacyPosition.findMany.mockResolvedValue([]);
 
-    const res = await request(app)
-      .post('/referrals/code')
-      .send({ walletAddress: WALLET, codePlaintext: 'CODE1', signature: VALID_SIG });
+    const res = await request(app).post('/referrals/code').send({
+      walletAddress: WALLET,
+      codePlaintext: 'CODE1',
+      signature: VALID_SIG,
+    });
 
     expect(res.status).toBe(403);
     expect(res.body.message).toMatch(/insufficient trading volume/i);
@@ -127,7 +138,9 @@ describe('POST /referrals/code', () => {
 
   it('returns 200 idempotently when user already owns the hash', async () => {
     mockRecoverMessageAddress.mockResolvedValue(WALLET);
-    mockPrisma.legacyPosition.findMany.mockResolvedValue(highVolumePositions(WALLET));
+    mockPrisma.legacyPosition.findMany.mockResolvedValue(
+      highVolumePositions(WALLET)
+    );
     mockPrisma.referralCode.findFirst.mockResolvedValue({
       codeHash: CODE_HASH,
       createdBy: WALLET.toLowerCase(),
@@ -135,9 +148,11 @@ describe('POST /referrals/code', () => {
       creatorType: 'user',
     });
 
-    const res = await request(app)
-      .post('/referrals/code')
-      .send({ walletAddress: WALLET, codePlaintext: 'CODE1', signature: VALID_SIG });
+    const res = await request(app).post('/referrals/code').send({
+      walletAddress: WALLET,
+      codePlaintext: 'CODE1',
+      signature: VALID_SIG,
+    });
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({
@@ -149,7 +164,9 @@ describe('POST /referrals/code', () => {
 
   it('returns 400 when a different user already owns the hash', async () => {
     mockRecoverMessageAddress.mockResolvedValue(WALLET);
-    mockPrisma.legacyPosition.findMany.mockResolvedValue(highVolumePositions(WALLET));
+    mockPrisma.legacyPosition.findMany.mockResolvedValue(
+      highVolumePositions(WALLET)
+    );
     mockPrisma.referralCode.findFirst.mockResolvedValue({
       codeHash: CODE_HASH,
       createdBy: OTHER_WALLET.toLowerCase(),
@@ -157,9 +174,11 @@ describe('POST /referrals/code', () => {
       creatorType: 'user',
     });
 
-    const res = await request(app)
-      .post('/referrals/code')
-      .send({ walletAddress: WALLET, codePlaintext: 'CODE1', signature: VALID_SIG });
+    const res = await request(app).post('/referrals/code').send({
+      walletAddress: WALLET,
+      codePlaintext: 'CODE1',
+      signature: VALID_SIG,
+    });
 
     expect(res.status).toBe(400);
     expect(res.body.message).toMatch(/choose a different code/i);
@@ -167,7 +186,9 @@ describe('POST /referrals/code', () => {
 
   it('updates existing user code and returns 200', async () => {
     mockRecoverMessageAddress.mockResolvedValue(WALLET);
-    mockPrisma.legacyPosition.findMany.mockResolvedValue(highVolumePositions(WALLET));
+    mockPrisma.legacyPosition.findMany.mockResolvedValue(
+      highVolumePositions(WALLET)
+    );
 
     // No hash collision
     mockPrisma.referralCode.findFirst
@@ -187,9 +208,11 @@ describe('POST /referrals/code', () => {
       creatorType: 'user',
     });
 
-    const res = await request(app)
-      .post('/referrals/code')
-      .send({ walletAddress: WALLET, codePlaintext: 'NEWCODE', signature: VALID_SIG });
+    const res = await request(app).post('/referrals/code').send({
+      walletAddress: WALLET,
+      codePlaintext: 'NEWCODE',
+      signature: VALID_SIG,
+    });
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({
@@ -198,13 +221,18 @@ describe('POST /referrals/code', () => {
       creatorType: 'user',
     });
     expect(mockPrisma.referralCode.update).toHaveBeenCalledWith(
-      expect.objectContaining({ where: { id: 42 }, data: { codeHash: CODE_HASH } }),
+      expect.objectContaining({
+        where: { id: 42 },
+        data: { codeHash: CODE_HASH },
+      })
     );
   });
 
   it('creates a new code with maxClaims=5 and creatorType=user', async () => {
     mockRecoverMessageAddress.mockResolvedValue(WALLET);
-    mockPrisma.legacyPosition.findMany.mockResolvedValue(highVolumePositions(WALLET));
+    mockPrisma.legacyPosition.findMany.mockResolvedValue(
+      highVolumePositions(WALLET)
+    );
     mockPrisma.referralCode.findFirst.mockResolvedValue(null); // no collision, no existing
     mockPrisma.referralCode.create.mockResolvedValue({
       codeHash: CODE_HASH,
@@ -212,9 +240,11 @@ describe('POST /referrals/code', () => {
       creatorType: 'user',
     });
 
-    const res = await request(app)
-      .post('/referrals/code')
-      .send({ walletAddress: WALLET, codePlaintext: 'FRESH', signature: VALID_SIG });
+    const res = await request(app).post('/referrals/code').send({
+      walletAddress: WALLET,
+      codePlaintext: 'FRESH',
+      signature: VALID_SIG,
+    });
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({
@@ -249,9 +279,11 @@ describe('POST /referrals/claim', () => {
   it('returns 401 when signature is invalid', async () => {
     mockRecoverMessageAddress.mockResolvedValue('0xDIFFERENTADDRESS');
 
-    const res = await request(app)
-      .post('/referrals/claim')
-      .send({ walletAddress: WALLET, codePlaintext: 'CODE1', signature: VALID_SIG });
+    const res = await request(app).post('/referrals/claim').send({
+      walletAddress: WALLET,
+      codePlaintext: 'CODE1',
+      signature: VALID_SIG,
+    });
 
     expect(res.status).toBe(401);
     expect(res.body.message).toMatch(/could not be verified/i);
@@ -269,9 +301,11 @@ describe('POST /referrals/claim', () => {
       creatorType: 'user',
     });
 
-    const res = await request(app)
-      .post('/referrals/claim')
-      .send({ walletAddress: WALLET, codePlaintext: 'CODE1', signature: VALID_SIG });
+    const res = await request(app).post('/referrals/claim').send({
+      walletAddress: WALLET,
+      codePlaintext: 'CODE1',
+      signature: VALID_SIG,
+    });
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ allowed: true, codeId: 7, creatorType: 'user' });
@@ -288,9 +322,11 @@ describe('POST /referrals/claim', () => {
       codeHash: CODE_HASH,
     });
 
-    const res = await request(app)
-      .post('/referrals/claim')
-      .send({ walletAddress: WALLET, codePlaintext: 'CODE1', signature: VALID_SIG });
+    const res = await request(app).post('/referrals/claim').send({
+      walletAddress: WALLET,
+      codePlaintext: 'CODE1',
+      signature: VALID_SIG,
+    });
 
     expect(res.status).toBe(409);
     expect(res.body.message).toMatch(/already claimed/i);
@@ -301,9 +337,11 @@ describe('POST /referrals/claim', () => {
     mockPrisma.user.findUnique.mockResolvedValue(null);
     mockPrisma.referralCode.findFirst.mockResolvedValue(null);
 
-    const res = await request(app)
-      .post('/referrals/claim')
-      .send({ walletAddress: WALLET, codePlaintext: 'BADCODE', signature: VALID_SIG });
+    const res = await request(app).post('/referrals/claim').send({
+      walletAddress: WALLET,
+      codePlaintext: 'BADCODE',
+      signature: VALID_SIG,
+    });
 
     expect(res.status).toBe(404);
     expect(res.body.message).toMatch(/not found/i);
@@ -322,9 +360,11 @@ describe('POST /referrals/claim', () => {
       _count: { claimedBy: 0 },
     });
 
-    const res = await request(app)
-      .post('/referrals/claim')
-      .send({ walletAddress: WALLET, codePlaintext: 'CODE1', signature: VALID_SIG });
+    const res = await request(app).post('/referrals/claim').send({
+      walletAddress: WALLET,
+      codePlaintext: 'CODE1',
+      signature: VALID_SIG,
+    });
 
     expect(res.status).toBe(403);
     expect(res.body.message).toMatch(/deactivated/i);
@@ -343,9 +383,11 @@ describe('POST /referrals/claim', () => {
       _count: { claimedBy: 0 },
     });
 
-    const res = await request(app)
-      .post('/referrals/claim')
-      .send({ walletAddress: WALLET, codePlaintext: 'CODE1', signature: VALID_SIG });
+    const res = await request(app).post('/referrals/claim').send({
+      walletAddress: WALLET,
+      codePlaintext: 'CODE1',
+      signature: VALID_SIG,
+    });
 
     expect(res.status).toBe(403);
     expect(res.body.message).toMatch(/expired/i);
@@ -364,9 +406,11 @@ describe('POST /referrals/claim', () => {
       _count: { claimedBy: 5 },
     });
 
-    const res = await request(app)
-      .post('/referrals/claim')
-      .send({ walletAddress: WALLET, codePlaintext: 'CODE1', signature: VALID_SIG });
+    const res = await request(app).post('/referrals/claim').send({
+      walletAddress: WALLET,
+      codePlaintext: 'CODE1',
+      signature: VALID_SIG,
+    });
 
     expect(res.status).toBe(403);
     expect(res.body.message).toMatch(/claim limit/i);
@@ -385,9 +429,11 @@ describe('POST /referrals/claim', () => {
       _count: { claimedBy: 0 },
     });
 
-    const res = await request(app)
-      .post('/referrals/claim')
-      .send({ walletAddress: WALLET, codePlaintext: 'CODE1', signature: VALID_SIG });
+    const res = await request(app).post('/referrals/claim').send({
+      walletAddress: WALLET,
+      codePlaintext: 'CODE1',
+      signature: VALID_SIG,
+    });
 
     expect(res.status).toBe(400);
     expect(res.body.message).toMatch(/own invite code/i);
@@ -408,9 +454,11 @@ describe('POST /referrals/claim', () => {
     mockPrisma.user.upsert.mockResolvedValue({});
     mockGrantSponsorshipBudget.mockResolvedValue('0xmocktxhash');
 
-    const res = await request(app)
-      .post('/referrals/claim')
-      .send({ walletAddress: WALLET, codePlaintext: 'CODE1', signature: VALID_SIG });
+    const res = await request(app).post('/referrals/claim').send({
+      walletAddress: WALLET,
+      codePlaintext: 'CODE1',
+      signature: VALID_SIG,
+    });
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ allowed: true, sponsorTxHash: '0xmocktxhash' });
@@ -419,7 +467,7 @@ describe('POST /referrals/claim', () => {
         where: { address: WALLET.toLowerCase() },
         create: expect.objectContaining({ referredByCodeId: 1 }),
         update: expect.objectContaining({ referredByCodeId: 1 }),
-      }),
+      })
     );
   });
 
@@ -438,9 +486,11 @@ describe('POST /referrals/claim', () => {
     mockPrisma.user.upsert.mockResolvedValue({});
     mockGrantSponsorshipBudget.mockRejectedValue(new Error('chain down'));
 
-    const res = await request(app)
-      .post('/referrals/claim')
-      .send({ walletAddress: WALLET, codePlaintext: 'CODE1', signature: VALID_SIG });
+    const res = await request(app).post('/referrals/claim').send({
+      walletAddress: WALLET,
+      codePlaintext: 'CODE1',
+      signature: VALID_SIG,
+    });
 
     expect(res.status).toBe(200);
     expect(res.body).toEqual({ allowed: true });

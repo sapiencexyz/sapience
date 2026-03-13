@@ -397,9 +397,8 @@ export function useEscrowBidSubmission(
               message: typedData.message,
             });
           }
-        } catch (e: any) {
-          const error =
-            e instanceof Error ? e : new Error(String(e?.message || e));
+        } catch (e: unknown) {
+          const error = e instanceof Error ? e : new Error(String(e));
           onSignatureRejected?.(error);
           return {
             success: false,

@@ -1,5 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import type { Block } from 'viem';
 
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 
@@ -14,7 +14,10 @@ vi.mock('../../../db', () => ({ default: mockPrisma }));
 vi.mock('../../../instrument', () => ({
   default: {
     captureException: vi.fn(),
-    withScope: vi.fn((fn: any) => fn({ setExtra: vi.fn() })),
+    withScope: vi.fn(
+      (fn: (scope: { setExtra: ReturnType<typeof vi.fn> }) => void) =>
+        fn({ setExtra: vi.fn() })
+    ),
   },
 }));
 vi.mock('../../../utils/utils', () => ({
@@ -62,8 +65,7 @@ import { encodeAbiParameters } from 'viem';
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
-const MOCK_UID =
-  '0x' + 'aa'.repeat(32);
+const MOCK_UID = '0x' + 'aa'.repeat(32);
 const MOCK_SCHEMA_ID =
   '0x7df55bcec6eb3b17b25c503cc318a36d33b0a9bbc2d6bc0d9788f9bd61980d49';
 const MOCK_ATTESTER = '0x1111111111111111111111111111111111111111';
@@ -104,11 +106,12 @@ const MOCK_BLOCK = {
   number: 50n,
   timestamp: 1700000000n,
   hash: '0x' + '00'.repeat(32),
-} as any;
+} as unknown as Block;
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
 describe('EASPredictionIndexer', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let EASPredictionIndexer: any;
 
   beforeEach(async () => {
@@ -137,7 +140,7 @@ describe('EASPredictionIndexer', () => {
     indexer.client = {
       getLogs: vi.fn().mockResolvedValue([]),
       getBlock: vi.fn().mockResolvedValue(MOCK_BLOCK),
-    } as any;
+    };
 
     const result = await indexer.indexBlocks('test', [50]);
 
@@ -153,7 +156,7 @@ describe('EASPredictionIndexer', () => {
       read: {
         getAttestation: vi.fn().mockResolvedValue(null),
       },
-    } as any;
+    };
 
     const event = makeMockEvent();
     await indexer['storeForecastAttestation'](event);
@@ -177,7 +180,7 @@ describe('EASPredictionIndexer', () => {
           data: encodedData,
         }),
       },
-    } as any;
+    };
 
     const event = makeMockEvent();
     await indexer['storeForecastAttestation'](event);
@@ -201,11 +204,9 @@ describe('EASPredictionIndexer', () => {
 
     indexer['easContract'] = {
       read: {
-        getAttestation: vi
-          .fn()
-          .mockRejectedValue(new Error('RPC failure')),
+        getAttestation: vi.fn().mockRejectedValue(new Error('RPC failure')),
       },
-    } as any;
+    };
 
     const event = makeMockEvent();
     await indexer['storeForecastAttestation'](event);
@@ -229,7 +230,7 @@ describe('EASPredictionIndexer', () => {
           data: encodedData,
         }),
       },
-    } as any;
+    };
 
     const event = makeMockEvent();
     await indexer['storeForecastAttestation'](event);

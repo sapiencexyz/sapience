@@ -197,13 +197,13 @@ export function parsePendingRequest(
         return null;
       return { user, isDeposit, shares, assets, timestamp, processed };
     }
-    const r = raw as any;
+    const r = raw as Record<string, unknown>;
     const candidate: PendingRequestDetails = {
       user: r.user as Address,
       isDeposit: Boolean(r.isDeposit),
-      shares: BigInt(r.shares ?? 0n),
-      assets: BigInt(r.assets ?? 0n),
-      timestamp: BigInt(r.timestamp ?? 0n),
+      shares: BigInt((r.shares as bigint | number | string) ?? 0n),
+      assets: BigInt((r.assets as bigint | number | string) ?? 0n),
+      timestamp: BigInt((r.timestamp as bigint | number | string) ?? 0n),
       processed: Boolean(r.processed),
     };
     if (

@@ -35,6 +35,14 @@ import { getCategoryStyle } from '~/lib/utils/categoryStyle';
 import { formatPercentChance } from '~/lib/format/percentChance';
 import type { PredictionData, ForecastData } from './types';
 
+/** Props passed by Recharts to custom scatter shape renderers */
+interface ScatterShapeProps {
+  cx: number;
+  cy: number;
+  payload: PredictionData;
+  [key: string]: unknown;
+}
+
 const Loader = dynamic(() => import('~/components/shared/Loader'), {
   ssr: false,
   loading: () => <div className="w-8 h-8" />,
@@ -458,7 +466,8 @@ export function PredictionScatterChart({
             name="Predictions"
             data={scatterData}
             fill="hsl(var(--ethena))"
-            shape={(props: any) => {
+            shape={(rawProps: unknown) => {
+              const props = rawProps as ScatterShapeProps;
               const { cx, cy, payload } = props;
               // Scale position size to radius: min 4px, max 20px
               // Use actual position size range from data
@@ -484,7 +493,7 @@ export function PredictionScatterChart({
                   : minR; // Fallback if range is 0
 
               // Check if this is a combined prediction (multi-leg position)
-              if (payload?.combinedPredictions?.length > 0) {
+              if ((payload?.combinedPredictions?.length ?? 0) > 0) {
                 // Render horizontal line with gradient ray
                 const width = radius * 2.5;
                 const lineWidth = width * 2;
@@ -503,7 +512,7 @@ export function PredictionScatterChart({
                         clearTimeout(tooltipTimeoutRef.current);
                         tooltipTimeoutRef.current = null;
                       }
-                      setHoveredPoint(payload as PredictionData);
+                      setHoveredPoint(payload);
                     }}
                     onMouseLeave={() => {
                       // Delay clearing to allow moving to tooltip
@@ -665,7 +674,7 @@ export function PredictionScatterChart({
                       clearTimeout(tooltipTimeoutRef.current);
                       tooltipTimeoutRef.current = null;
                     }
-                    setHoveredPoint(payload as PredictionData);
+                    setHoveredPoint(payload);
                   }}
                   onMouseLeave={() => {
                     // Delay clearing to allow moving to tooltip
@@ -684,7 +693,8 @@ export function PredictionScatterChart({
             name="Comments"
             data={commentScatterData}
             fill="hsl(var(--brand-white))"
-            shape={(props: any) => {
+            shape={(rawProps: unknown) => {
+              const props = rawProps as ScatterShapeProps;
               const { cx, cy, payload } = props;
               const size = 6;
               const isHovered =
@@ -715,7 +725,7 @@ export function PredictionScatterChart({
                       setHoveredComment({
                         x: cx,
                         y: cy,
-                        data: payload as PredictionData,
+                        data: payload,
                       });
                     }
                   }}
@@ -731,7 +741,8 @@ export function PredictionScatterChart({
             name="Forecasts"
             data={forecastScatterData}
             fill="hsl(var(--brand-white))"
-            shape={(props: any) => {
+            shape={(rawProps: unknown) => {
+              const props = rawProps as ScatterShapeProps;
               const { cx, cy, payload } = props;
               const radius = 2;
               const isHovered =

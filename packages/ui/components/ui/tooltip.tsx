@@ -94,7 +94,9 @@ const TooltipTrigger = React.forwardRef<
     return (
       <PopoverPrimitive.Trigger
         ref={ref as unknown as React.Ref<HTMLButtonElement>}
-        {...(props as any)}
+        {...(props as React.ComponentPropsWithoutRef<
+          typeof PopoverPrimitive.Trigger
+        >)}
       >
         {children}
       </PopoverPrimitive.Trigger>
@@ -126,8 +128,8 @@ const TooltipContent = React.forwardRef<
       <PopoverPrimitive.Portal>
         <PopoverPrimitive.Content
           ref={ref as unknown as React.Ref<HTMLDivElement>}
-          side={side as any}
-          align={align as any}
+          side={side}
+          align={align}
           sideOffset={sideOffset}
           collisionPadding={8}
           className={cn(
@@ -137,9 +139,11 @@ const TooltipContent = React.forwardRef<
           )}
           style={{
             maxWidth: 'min(88dvw, 280px)',
-            ...(props as any)?.style,
+            ...props.style,
           }}
-          {...(props as any)}
+          {...(props as React.ComponentPropsWithoutRef<
+            typeof PopoverPrimitive.Content
+          >)}
         />
       </PopoverPrimitive.Portal>
     );

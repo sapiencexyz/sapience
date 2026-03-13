@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { encodeAbiParameters, encodeEventTopics } from 'viem';
+import { encodeAbiParameters, encodeEventTopics, type Block } from 'viem';
 
 // --- Mocks ---
 
@@ -50,9 +50,7 @@ const CONDITION_RESOLVED_ABI = [
   },
 ];
 
-function makeConditionSettledLog(
-  overrides: Partial<{ address: string }> = {}
-) {
+function makeConditionSettledLog(overrides: Partial<{ address: string }> = {}) {
   const topics = encodeEventTopics({
     abi: CONDITION_RESOLVED_ABI,
     eventName: 'ConditionResolved',
@@ -86,7 +84,7 @@ function makeConditionSettledLog(
   };
 }
 
-const MOCK_BLOCK = { number: 50n, timestamp: 1700000000n } as any;
+const MOCK_BLOCK = { number: 50n, timestamp: 1700000000n } as unknown as Block;
 const MOCK_CTX: HandlerContext = {
   chainId: 42161,
   contractAddress: '0x1234567890123456789012345678901234567890',
@@ -99,14 +97,20 @@ beforeEach(() => {
   // Default: no duplicate events
   mockPrisma.event.findFirst.mockResolvedValue(null);
   // Default: $transaction executes the callback with mockPrisma
-  mockPrisma.$transaction.mockImplementation(async (fn: any) => fn(mockPrisma));
+  mockPrisma.$transaction.mockImplementation(
+    async (fn: (prisma: typeof mockPrisma) => unknown) => fn(mockPrisma)
+  );
 });
 
 describe('processConditionSettled', () => {
   it('skips processing when a duplicate event already exists', async () => {
     mockPrisma.event.findFirst.mockResolvedValue({ id: 'existing-event' });
 
-    await processConditionSettled(MOCK_CTX, makeConditionSettledLog(), MOCK_BLOCK);
+    await processConditionSettled(
+      MOCK_CTX,
+      makeConditionSettledLog(),
+      MOCK_BLOCK
+    );
 
     expect(mockPrisma.event.findFirst).toHaveBeenCalled();
     expect(mockPrisma.condition.findUnique).not.toHaveBeenCalled();
@@ -121,7 +125,11 @@ describe('processConditionSettled', () => {
       resolver: resolverAddress,
     });
 
-    await processConditionSettled(MOCK_CTX, makeConditionSettledLog(), MOCK_BLOCK);
+    await processConditionSettled(
+      MOCK_CTX,
+      makeConditionSettledLog(),
+      MOCK_BLOCK
+    );
 
     // Should use a transaction
     expect(mockPrisma.$transaction).toHaveBeenCalledOnce();
@@ -163,7 +171,11 @@ describe('processConditionSettled', () => {
       resolver: differentResolver,
     });
 
-    await processConditionSettled(MOCK_CTX, makeConditionSettledLog(), MOCK_BLOCK);
+    await processConditionSettled(
+      MOCK_CTX,
+      makeConditionSettledLog(),
+      MOCK_BLOCK
+    );
 
     // Should NOT use a transaction (event created directly)
     expect(mockPrisma.$transaction).not.toHaveBeenCalled();
@@ -179,7 +191,11 @@ describe('processConditionSettled', () => {
     mockPrisma.condition.findUnique.mockResolvedValue(null);
     const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
 
-    await processConditionSettled(MOCK_CTX, makeConditionSettledLog(), MOCK_BLOCK);
+    await processConditionSettled(
+      MOCK_CTX,
+      makeConditionSettledLog(),
+      MOCK_BLOCK
+    );
 
     // Should create the event directly (no transaction)
     expect(mockPrisma.$transaction).not.toHaveBeenCalled();
@@ -226,7 +242,11 @@ describe('processConditionSettled', () => {
       resolver: null,
     });
 
-    await processConditionSettled(MOCK_CTX, makeConditionSettledLog(), MOCK_BLOCK);
+    await processConditionSettled(
+      MOCK_CTX,
+      makeConditionSettledLog(),
+      MOCK_BLOCK
+    );
 
     // Should use a transaction and update condition
     expect(mockPrisma.$transaction).toHaveBeenCalledOnce();
@@ -248,7 +268,11 @@ describe('processConditionSettled', () => {
       resolver: '0x1234567890123456789012345678901234567890',
     });
 
-    await processConditionSettled(MOCK_CTX, makeConditionSettledLog(), MOCK_BLOCK);
+    await processConditionSettled(
+      MOCK_CTX,
+      makeConditionSettledLog(),
+      MOCK_BLOCK
+    );
 
     // resolvePickConfigsForCondition should be called with the tx proxy (mockPrisma),
     // the condition ID, and the block timestamp

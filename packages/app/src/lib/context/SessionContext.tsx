@@ -61,14 +61,36 @@ function extractApprovalForTransport(
   }
 }
 
-function stripAbisFromPolicies(permissionParams: any): typeof permissionParams {
+interface PolicyPermission {
+  abi?: unknown;
+  [key: string]: unknown;
+}
+
+interface PolicyParams {
+  permissions?: PolicyPermission[];
+  [key: string]: unknown;
+}
+
+interface Policy {
+  policyParams?: PolicyParams;
+  [key: string]: unknown;
+}
+
+interface PermissionParams {
+  policies?: Policy[];
+  [key: string]: unknown;
+}
+
+function stripAbisFromPolicies(
+  permissionParams: PermissionParams
+): PermissionParams {
   if (!permissionParams?.policies) {
     return permissionParams;
   }
 
   return {
     ...permissionParams,
-    policies: permissionParams.policies.map((policy: any) => {
+    policies: permissionParams.policies.map((policy) => {
       if (!policy.policyParams?.permissions) {
         return policy;
       }
@@ -76,7 +98,7 @@ function stripAbisFromPolicies(permissionParams: any): typeof permissionParams {
         ...policy,
         policyParams: {
           ...policy.policyParams,
-          permissions: policy.policyParams.permissions.map((perm: any) => {
+          permissions: policy.policyParams.permissions.map((perm) => {
             const { abi: _abi, ...permWithoutAbi } = perm;
             return permWithoutAbi;
           }),
@@ -381,7 +403,9 @@ export function SessionProvider({ children }: SessionProviderProps) {
       if (!client) {
         throw new Error('No active session');
       }
-      return client.signTypedData(params as any);
+      return client.signTypedData(
+        params as Parameters<typeof client.signTypedData>[0]
+      );
     },
     [chainClients.ethereal]
   );
@@ -395,7 +419,9 @@ export function SessionProvider({ children }: SessionProviderProps) {
         throw new Error('No active session');
       }
       const account = privateKeyToAccount(sessionPrivateKey);
-      return account.signTypedData(params as any);
+      return account.signTypedData(
+        params as Parameters<typeof account.signTypedData>[0]
+      );
     },
     [sessionPrivateKey]
   );

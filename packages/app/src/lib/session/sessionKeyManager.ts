@@ -407,6 +407,14 @@ async function _signEscrowSessionKeyApproval(
   );
 
   // Verify the signature recovers to the owner address
+  // Build a verification message with bigint values matching the EIP-712 types
+  const verificationMessage = {
+    sessionKey: typedData.message.sessionKey,
+    smartAccount: typedData.message.smartAccount,
+    validUntil: BigInt(typedData.message.validUntil),
+    permissionsHash: typedData.message.permissionsHash,
+    chainId: BigInt(typedData.message.chainId),
+  };
   try {
     const recoveredAddress = await recoverTypedDataAddress({
       domain: {
@@ -415,8 +423,7 @@ async function _signEscrowSessionKeyApproval(
       },
       types: typedData.types,
       primaryType: typedData.primaryType,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      message: typedData.message as any,
+      message: verificationMessage,
       signature: signature,
     });
     console.debug(
@@ -444,8 +451,7 @@ async function _signEscrowSessionKeyApproval(
         },
         types: typedData.types,
         primaryType: typedData.primaryType,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        message: typedData.message as any,
+        message: verificationMessage,
       });
       console.debug('[SessionKeyManager] TypedData hash:', typedDataHash);
     }

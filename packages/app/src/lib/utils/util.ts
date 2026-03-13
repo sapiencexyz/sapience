@@ -24,11 +24,14 @@ export const mainnetClient = createPublicClient({
 // etherealChain and etherealTestnetChain imported from @sapience/sdk/constants
 
 // Use unknown to avoid structural type incompatibilities across different viem instances
-const publicClientCache: Map<number, unknown> = new Map();
+const publicClientCache: Map<
+  number,
+  ReturnType<typeof createPublicClient>
+> = new Map();
 
 export function getPublicClientForChainId(chainId: number) {
   const cached = publicClientCache.get(chainId);
-  if (cached) return cached as any;
+  if (cached) return cached;
 
   // Handle Ethereal chains specifically since they're not in viem/chains
   if (chainId === CHAIN_ID_ETHEREAL || chainId === CHAIN_ID_ETHEREAL_TESTNET) {
@@ -50,23 +53,13 @@ export function getPublicClientForChainId(chainId: number) {
     return client;
   }
 
-  if (chainId === CHAIN_ID_ETHEREAL_TESTNET) {
-    // Allow per-chain override via NEXT_PUBLIC_RPC_<CHAINID>
-    const envKey = `NEXT_PUBLIC_RPC_${chainId}` as keyof NodeJS.ProcessEnv;
-    const envUrl = process.env[envKey as string];
-    const rpcUrl = envUrl || 'https://rpc.etherealtest.net';
-
-    const client = createPublicClient({
-      chain: etherealTestnetChain,
-      transport: http(rpcUrl),
-    });
-    publicClientCache.set(chainId, client);
-    return client;
-  }
-
   const chainObj = Object.values(chains).find(
-    (c: any) => c?.id === chainId
-  ) as any;
+    (c) =>
+      typeof c === 'object' &&
+      c !== null &&
+      'id' in c &&
+      (c as { id: number }).id === chainId
+  );
 
   // Allow per-chain override via NEXT_PUBLIC_RPC_<CHAINID>
   const envKey = `NEXT_PUBLIC_RPC_${chainId}` as keyof NodeJS.ProcessEnv;
@@ -74,11 +67,14 @@ export function getPublicClientForChainId(chainId: number) {
 
   const defaultUrl =
     envUrl ||
-    chainObj?.rpcUrls?.public?.http?.[0] ||
+    chainObj?.rpcUrls?.default?.http?.[0] ||
     (chainId === 1 ? 'https://ethereum-rpc.publicnode.com' : undefined);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- viem chain union type too complex for strict cache typing
   const client = createPublicClient({
-    chain: chainObj ?? mainnet,
+    chain: (chainObj ?? mainnet) as Parameters<
+      typeof createPublicClient
+    >[0]['chain'],
     transport: defaultUrl ? http(defaultUrl) : http(),
   });
   publicClientCache.set(chainId, client);

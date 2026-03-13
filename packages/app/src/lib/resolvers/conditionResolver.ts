@@ -41,16 +41,12 @@ export function inferResolverKind(
 ): ResolverKind {
   const addr = normalizeAddress(resolverAddress);
   if (!addr) return 'unknown';
-  if (findChainIdForAddress(addr, lzPMResolver as any) != null) return 'lzPM';
-  if (findChainIdForAddress(addr, lzUmaResolver as any) != null) return 'lzUma';
-  if (findChainIdForAddress(addr, umaResolver as any) != null) return 'uma';
-  if (findChainIdForAddress(addr, pythResolver as any) != null) return 'pyth';
-  if (findChainIdForAddress(addr, pythConditionResolver as any) != null)
-    return 'pyth';
-  if (
-    findChainIdForAddress(addr, conditionalTokensConditionResolver as any) !=
-    null
-  )
+  if (findChainIdForAddress(addr, lzPMResolver) != null) return 'lzPM';
+  if (findChainIdForAddress(addr, lzUmaResolver) != null) return 'lzUma';
+  if (findChainIdForAddress(addr, umaResolver) != null) return 'uma';
+  if (findChainIdForAddress(addr, pythResolver) != null) return 'pyth';
+  if (findChainIdForAddress(addr, pythConditionResolver) != null) return 'pyth';
+  if (findChainIdForAddress(addr, conditionalTokensConditionResolver) != null)
     return 'conditionalTokens';
   return 'unknown';
 }
@@ -65,28 +61,25 @@ export function inferChainIdFromResolverAddress(
   const addr = normalizeAddress(resolverAddress);
   if (!addr) return DEFAULT_CHAIN_ID;
 
-  const lzPmChain = findChainIdForAddress(addr, lzPMResolver as any);
+  const lzPmChain = findChainIdForAddress(addr, lzPMResolver);
   if (lzPmChain != null) return lzPmChain;
 
-  const pythChain = findChainIdForAddress(addr, pythResolver as any);
+  const pythChain = findChainIdForAddress(addr, pythResolver);
   if (pythChain != null) return pythChain;
 
-  const pythCondChain = findChainIdForAddress(
-    addr,
-    pythConditionResolver as any
-  );
+  const pythCondChain = findChainIdForAddress(addr, pythConditionResolver);
   if (pythCondChain != null) return pythCondChain;
 
   const ctChain = findChainIdForAddress(
     addr,
-    conditionalTokensConditionResolver as any
+    conditionalTokensConditionResolver
   );
   if (ctChain != null) return ctChain;
 
-  const lzUmaChain = findChainIdForAddress(addr, lzUmaResolver as any);
+  const lzUmaChain = findChainIdForAddress(addr, lzUmaResolver);
   if (lzUmaChain != null) return lzUmaChain;
 
-  const umaChain = findChainIdForAddress(addr, umaResolver as any);
+  const umaChain = findChainIdForAddress(addr, umaResolver);
   if (umaChain != null) return umaChain;
 
   // Unknown resolver → follow app default.
@@ -107,10 +100,10 @@ export function getConditionResolverAddress(opts: {
   if (fromCondition) return fromCondition;
   const chainId = opts.conditionChainId ?? DEFAULT_CHAIN_ID;
   return (
-    (lzPMResolver as any)[chainId]?.address ??
-    (lzUmaResolver as any)[chainId]?.address ??
-    (umaResolver as any)[chainId]?.address ??
-    (pythResolver as any)[chainId]?.address
+    lzPMResolver[chainId]?.address ??
+    lzUmaResolver[chainId]?.address ??
+    umaResolver[chainId]?.address ??
+    pythResolver[chainId]?.address
   );
 }
 
@@ -127,17 +120,13 @@ export function getAdminSettlementTarget(opts: {
   if (kind === 'conditionalTokens') return null;
 
   if (kind === 'lzPM') {
-    const arb = (lzUmaResolver as any)[CHAIN_ID_ARBITRUM]?.address as
-      | Address
-      | undefined;
+    const arb = lzUmaResolver[CHAIN_ID_ARBITRUM]?.address;
     return arb ? { chainId: CHAIN_ID_ARBITRUM, resolverAddress: arb } : null;
   }
 
   // If already UMA/lzUma, settle on Arbitrum (forecasting/EAS chain).
   if (kind === 'lzUma' || kind === 'uma') {
-    const arb = (lzUmaResolver as any)[CHAIN_ID_ARBITRUM]?.address as
-      | Address
-      | undefined;
+    const arb = lzUmaResolver[CHAIN_ID_ARBITRUM]?.address;
     return arb ? { chainId: CHAIN_ID_ARBITRUM, resolverAddress: arb } : null;
   }
 

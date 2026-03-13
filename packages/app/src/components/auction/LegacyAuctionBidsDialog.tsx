@@ -11,7 +11,10 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@sapience/ui/components/ui/dialog';
-import { TransactionAmountCell } from '~/components/markets/DataDrawer/TransactionCells';
+import {
+  TransactionAmountCell,
+  type UiTransaction,
+} from '~/components/markets/DataDrawer/TransactionCells';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import { useAuctionBids } from '~/lib/auction/useAuctionBids';
@@ -125,7 +128,7 @@ const AuctionBidsDialog: React.FC<Props> = ({
                     createdAt: new Date().toISOString(),
                     collateral: String(b?.counterpartyCollateral || '0'),
                     position: { owner: b?.counterparty || '' },
-                  } as any;
+                  } as UiTransaction;
                   const uiTxPayout = {
                     ...uiTxAmount,
                     collateral: payoutStr,

@@ -61,7 +61,7 @@ describe('computeSmartAccountAddress (pure CREATE2)', () => {
     expect(typeof result).toBe('string');
     expect(result).toMatch(/^0x[0-9a-fA-F]{40}$/);
     // Double-check it's not a thenable
-    expect((result as any).then).toBeUndefined();
+    expect((result as unknown as Record<string, unknown>).then).toBeUndefined();
   });
 
   test('is deterministic — same input produces same output', () => {

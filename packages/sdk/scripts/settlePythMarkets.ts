@@ -493,8 +493,14 @@ async function recoverSignerFromLazerUpdate(
   }
 }
 
+/** Loose shape of Pyth Lazer JSON responses for type-safe property access. */
+interface PythEvmResponse {
+  evm?: { data?: unknown; encoding?: unknown };
+  data?: { evm?: { data?: unknown; encoding?: unknown } };
+}
+
 function extractEvmBlobFromJson(json: unknown): { blob: Hex; source: string } {
-  const j = json as any;
+  const j = json as PythEvmResponse;
 
   // Common shapes observed across similar services:
   // - { evm: { data: "0x..", encoding: "hex" } }
@@ -679,8 +685,8 @@ async function fetchPythLazerEvmUpdateBlob(args: {
         const text = await res.text();
         if (args.debug && !res.ok) {
           const channel =
-            typeof (body as any)?.channel === 'string'
-              ? String((body as any).channel)
+            'channel' in body && typeof body.channel === 'string'
+              ? body.channel
               : '(none)';
           console.log(
             `[settle:pyth][pyth-debug] ${res.status} auth=${v.label} channel=${channel} url=${v.url} resp=${text.slice(0, 200)} req=${JSON.stringify(
@@ -713,9 +719,9 @@ async function fetchPythLazerEvmUpdateBlob(args: {
   }
 
   throw new Error(
-    `Failed to fetch Pyth Lazer evm blob for feedId=${args.feedId} endTimeSec=${args.endTimeSec} timestampUs=${timestampUsNum}: ${String(
-      (lastErr as any)?.message ?? lastErr
-    )}${
+    `Failed to fetch Pyth Lazer evm blob for feedId=${args.feedId} endTimeSec=${args.endTimeSec} timestampUs=${timestampUsNum}: ${
+      lastErr instanceof Error ? lastErr.message : String(lastErr)
+    }${
       lastAttempt
         ? ` (lastAttempt auth=${lastAttempt.auth} url=${lastAttempt.url} body=${JSON.stringify(
             lastBody
@@ -845,7 +851,7 @@ async function main() {
     } catch (e) {
       console.log(
         '[settle:pyth][debug] Failed to fetch debug PYTH conditions:',
-        String((e as any)?.message ?? e)
+        e instanceof Error ? e.message : String(e)
       );
     }
   }
@@ -917,9 +923,9 @@ async function main() {
       });
     } catch (e) {
       console.warn(
-        `[settle:pyth] skip market (failed to fetch update): market=${marketId} feedId=${feedId} endTime=${endTimeSec} reason=${String(
-          (e as any)?.message ?? e
-        )}`
+        `[settle:pyth] skip market (failed to fetch update): market=${marketId} feedId=${feedId} endTime=${endTimeSec} reason=${
+          e instanceof Error ? e.message : String(e)
+        }`
       );
       continue;
     }
@@ -968,9 +974,9 @@ async function main() {
     } catch (e) {
       const recovered = await recoverSignerFromLazerUpdate(blob);
       console.warn(
-        `[settle:pyth] skip market (update preflight failed): market=${marketId} recoveredSigner=${recovered ?? 'unknown'} reason=${String(
-          (e as any)?.message ?? e
-        )}`
+        `[settle:pyth] skip market (update preflight failed): market=${marketId} recoveredSigner=${recovered ?? 'unknown'} reason=${
+          e instanceof Error ? e.message : String(e)
+        }`
       );
       continue;
     }
