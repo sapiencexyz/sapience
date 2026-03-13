@@ -31,7 +31,7 @@
     "dotenv": "16.4.5",
     "envalid": "8.1.1",
     "prom-client": "15.1.3",
-    "viem": "2.21.49",
+    "viem": "2.47.2",
     "ws": "8.18.3"
   },
   "devDependencies": {

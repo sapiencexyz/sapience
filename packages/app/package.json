@@ -54,8 +54,8 @@
     "remark-breaks": "4.0.0",
     "remark-gfm": "4.0.1",
     "tailwind-merge": "2.5.4",
-    "viem": "2.33.3",
-    "wagmi": "2.16.1",
+    "viem": "2.47.2",
+    "wagmi": "2.19.5",
     "zod": "3.25.1"
   },
   "devDependencies": {
