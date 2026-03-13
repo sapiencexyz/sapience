@@ -728,43 +728,34 @@ export class EscrowResolver {
       };
     }
 
-    // Won/lost filter: combines position side (isPredictorToken) with settlement result
+    // Won/lost filter: combines position side (isPredictorToken) with settlement result.
+    // Extract pickConfiguration conditions built above so they apply consistently
+    // inside each OR branch without relying on spread-and-overwrite ordering.
     if (holderWon !== undefined && holderWon !== null) {
-      if (holderWon) {
-        where.OR = [
-          {
-            isPredictorToken: true,
-            pickConfiguration: {
-              ...((where.pickConfiguration as Prisma.PicksWhereInput) ?? {}),
-              result: 'PREDICTOR_WINS' as unknown as Prisma.EnumSettlementResultFilter,
-            },
+      const basePc = (where.pickConfiguration as Prisma.PicksWhereInput) ?? {};
+      // Remove top-level pickConfiguration; it will live inside the OR branches
+      delete where.pickConfiguration;
+
+      const [winResult, loseResult] = holderWon
+        ? ['PREDICTOR_WINS', 'COUNTERPARTY_WINS']
+        : ['COUNTERPARTY_WINS', 'PREDICTOR_WINS'];
+
+      where.OR = [
+        {
+          isPredictorToken: true,
+          pickConfiguration: {
+            ...basePc,
+            result: winResult as unknown as Prisma.EnumSettlementResultFilter,
           },
-          {
-            isPredictorToken: false,
-            pickConfiguration: {
-              ...((where.pickConfiguration as Prisma.PicksWhereInput) ?? {}),
-              result: 'COUNTERPARTY_WINS' as unknown as Prisma.EnumSettlementResultFilter,
-            },
+        },
+        {
+          isPredictorToken: false,
+          pickConfiguration: {
+            ...basePc,
+            result: loseResult as unknown as Prisma.EnumSettlementResultFilter,
           },
-        ];
-      } else {
-        where.OR = [
-          {
-            isPredictorToken: true,
-            pickConfiguration: {
-              ...((where.pickConfiguration as Prisma.PicksWhereInput) ?? {}),
-              result: 'COUNTERPARTY_WINS' as unknown as Prisma.EnumSettlementResultFilter,
-            },
-          },
-          {
-            isPredictorToken: false,
-            pickConfiguration: {
-              ...((where.pickConfiguration as Prisma.PicksWhereInput) ?? {}),
-              result: 'PREDICTOR_WINS' as unknown as Prisma.EnumSettlementResultFilter,
-            },
-          },
-        ];
-      }
+        },
+      ];
     }
 
     // Collateral range filter: pre-query pickConfigIds where holder's collateral is in range
@@ -845,18 +836,16 @@ export class EscrowResolver {
 
       if (pc) {
         for (const pred of pc.predictions) {
-          if (predictorToken) {
-            predictionId = pred.predictionId;
-          }
-
           const predCollateral = BigInt(pred.predictorCollateral);
           const cpCollateral = BigInt(pred.counterpartyCollateral);
           const predictionTotal = predCollateral + cpCollateral;
 
           if (r.isPredictorToken && pred.predictor === r.holder) {
+            predictionId = pred.predictionId;
             userCollateral += predCollateral;
             totalPayout += predictionTotal;
           } else if (!r.isPredictorToken && pred.counterparty === r.holder) {
+            predictionId = pred.predictionId;
             userCollateral += cpCollateral;
             totalPayout += predictionTotal;
           }
