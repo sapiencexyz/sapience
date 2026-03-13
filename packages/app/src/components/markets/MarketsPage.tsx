@@ -339,7 +339,10 @@ const MarketsPage = () => {
                   Predict Prices
                 </h2>
               </div>
-              <CreatePythPredictionForm featuredFeeds={PYTH_FEEDS} onPick={handlePythPick} />
+              <CreatePythPredictionForm
+                featuredFeeds={PYTH_FEEDS}
+                onPick={handlePythPick}
+              />
               <hr className="gold-hr mt-6 -mb-2" />
             </div>
           )}

@@ -9,7 +9,10 @@ import {
   getEscrowBids,
   getEscrowAuctionDetails,
 } from './escrowRegistry';
-import { validateEscrowAuctionRequest, validateEscrowBid } from './escrowHelpers';
+import {
+  validateEscrowAuctionRequest,
+  validateEscrowBid,
+} from './escrowHelpers';
 import { verifyAuctionIntentSignature } from './escrowSigVerify';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts/addresses';
 import {
@@ -63,7 +66,10 @@ function logTiming(
   const now = Date.now();
   const delta = now - startTime;
   const extraStr = extra
-    ? ' ' + Object.entries(extra).map(([k, v]) => `${k}=${v}`).join(' ')
+    ? ' ' +
+      Object.entries(extra)
+        .map(([k, v]) => `${k}=${v}`)
+        .join(' ')
     : '';
   console.log(
     `[TIMING] auction=${auctionId.slice(0, 8)} step=${step} ts=${now} delta=${delta}ms${extraStr}`
@@ -157,7 +163,7 @@ const RATE_LIMIT_MAX_MESSAGES = config.RATE_LIMIT_MAX_MESSAGES;
 
 export function createAuctionWebSocketServer() {
   const wss = new WebSocketServer({ noServer: true });
-  
+
   // Track active connections for connection limit
   let activeConnectionCount = 0;
 
@@ -266,7 +272,10 @@ export function createAuctionWebSocketServer() {
         messagesSent.inc({ type: 'vault_quote.ack' });
       }
     } catch (err) {
-      console.error(`[Relayer] Failed to send vault_quote.ack (${context}):`, err);
+      console.error(
+        `[Relayer] Failed to send vault_quote.ack (${context}):`,
+        err
+      );
     }
   }
   function broadcastToVaultObservers(message: unknown): number {
@@ -346,7 +355,9 @@ export function createAuctionWebSocketServer() {
     // Origin validation (if configured)
     if (config.WS_ALLOWED_ORIGINS) {
       const origin = req.headers.origin;
-      const allowedOrigins = config.WS_ALLOWED_ORIGINS.split(',').map(o => o.trim());
+      const allowedOrigins = config.WS_ALLOWED_ORIGINS.split(',').map((o) =>
+        o.trim()
+      );
       if (!origin || !allowedOrigins.includes(origin)) {
         console.warn(`[Relayer] Origin validation failed: ${origin}`);
         ws.close(1008, 'origin_not_allowed');
@@ -437,9 +448,7 @@ export function createAuctionWebSocketServer() {
         }
         return;
       }
-      const msg = safeParse<
-        ClientToServerMessage | { type?: string }
-      >(data);
+      const msg = safeParse<ClientToServerMessage | { type?: string }>(data);
       if (!msg || typeof msg !== 'object') {
         messagesReceived.inc({ type: 'invalid' });
         errorsTotal.inc({ type: 'validation', message_type: 'unknown' });
@@ -483,7 +492,11 @@ export function createAuctionWebSocketServer() {
             (msg as unknown as { payload?: SubscribePayload })?.payload ||
             ({} as SubscribePayload);
           if (!chainId || !vaultAddress) {
-            sendVaultAck(ws, { error: 'invalid_subscribe' }, 'invalid_subscribe');
+            sendVaultAck(
+              ws,
+              { error: 'invalid_subscribe' },
+              'invalid_subscribe'
+            );
             return;
           }
           const key = makeVaultKey(chainId, vaultAddress);
@@ -544,7 +557,10 @@ export function createAuctionWebSocketServer() {
               !p.signature
             ) {
               vaultQuotesPublished.inc({ status: 'error' });
-              errorsTotal.inc({ type: 'validation', message_type: 'vault_quote.publish' });
+              errorsTotal.inc({
+                type: 'validation',
+                message_type: 'vault_quote.publish',
+              });
               sendVaultAck(ws, { error: 'invalid_payload' }, 'invalid_payload');
               trackDuration(msgType, startTime);
               return;
@@ -552,7 +568,10 @@ export function createAuctionWebSocketServer() {
             // anti-replay window (5 minutes)
             if (Math.abs(Date.now() - p.timestamp) > 5 * 60 * 1000) {
               vaultQuotesPublished.inc({ status: 'error' });
-              errorsTotal.inc({ type: 'validation', message_type: 'vault_quote.publish' });
+              errorsTotal.inc({
+                type: 'validation',
+                message_type: 'vault_quote.publish',
+              });
               sendVaultAck(ws, { error: 'stale_timestamp' }, 'stale_timestamp');
               trackDuration(msgType, startTime);
               return;
@@ -568,7 +587,10 @@ export function createAuctionWebSocketServer() {
               );
               allowed = { signers, fetchedAt: Date.now() };
               // Evict oldest entry if cache is full
-              if (vaultSignerCache.size >= SIGNER_CACHE_MAX_SIZE && !vaultSignerCache.has(key)) {
+              if (
+                vaultSignerCache.size >= SIGNER_CACHE_MAX_SIZE &&
+                !vaultSignerCache.has(key)
+              ) {
                 const oldestKey = vaultSignerCache.keys().next().value;
                 if (oldestKey) vaultSignerCache.delete(oldestKey);
               }
@@ -586,8 +608,15 @@ export function createAuctionWebSocketServer() {
             }
             if (!allowed!.signers.has(p.signedBy.toLowerCase())) {
               vaultQuotesPublished.inc({ status: 'unauthorized' });
-              errorsTotal.inc({ type: 'authorization', message_type: 'vault_quote.publish' });
-              sendVaultAck(ws, { error: 'unauthorized_signer' }, 'unauthorized_signer');
+              errorsTotal.inc({
+                type: 'authorization',
+                message_type: 'vault_quote.publish',
+              });
+              sendVaultAck(
+                ws,
+                { error: 'unauthorized_signer' },
+                'unauthorized_signer'
+              );
               trackDuration(msgType, startTime);
               return;
             }
@@ -612,14 +641,17 @@ export function createAuctionWebSocketServer() {
             });
           } catch (err) {
             vaultQuotesPublished.inc({ status: 'error' });
-            errorsTotal.inc({ type: 'internal_error', message_type: 'vault_quote.publish' });
+            errorsTotal.inc({
+              type: 'internal_error',
+              message_type: 'vault_quote.publish',
+            });
             sendVaultAck(
               ws,
               { error: (err as Error).message || 'internal_error' },
               'internal_error'
             );
           }
-          
+
           trackDuration(msgType, startTime);
           return;
         }
@@ -641,13 +673,19 @@ export function createAuctionWebSocketServer() {
           // Validate auction request structure
           const validation = validateEscrowAuctionRequest(payload);
           if (!validation.valid) {
-            errorsTotal.inc({ type: 'validation', message_type: 'auction.start' });
+            errorsTotal.inc({
+              type: 'validation',
+              message_type: 'auction.start',
+            });
             console.warn(
               `[Relayer] auction.start rejected: ${validation.error}`
             );
             send(ws, {
               type: 'auction.ack',
-              payload: { auctionId: '', error: validation.error || 'invalid_payload' },
+              payload: {
+                auctionId: '',
+                error: validation.error || 'invalid_payload',
+              },
             });
             trackDuration(msgType, startTime);
             return;
@@ -657,7 +695,10 @@ export function createAuctionWebSocketServer() {
           if (payload.intentSignature) {
             const escrowAddr = predictionMarketEscrow[payload.chainId]?.address;
             if (!escrowAddr) {
-              errorsTotal.inc({ type: 'validation', message_type: 'auction.start' });
+              errorsTotal.inc({
+                type: 'validation',
+                message_type: 'auction.start',
+              });
               console.warn(
                 `[Relayer] auction.start rejected: unknown chainId ${payload.chainId}`
               );
@@ -674,7 +715,10 @@ export function createAuctionWebSocketServer() {
               escrowAddr as `0x${string}`
             );
             if (!intentValid) {
-              errorsTotal.inc({ type: 'validation', message_type: 'auction.start' });
+              errorsTotal.inc({
+                type: 'validation',
+                message_type: 'auction.start',
+              });
               console.warn(
                 `[Relayer] auction.start rejected: invalid intent signature from ${payload.predictor?.slice(0, 10)}`
               );
@@ -715,7 +759,9 @@ export function createAuctionWebSocketServer() {
             wss.clients.forEach((client) => {
               if (client.readyState === WebSocket.OPEN) client.send(requested);
             });
-            logTiming(auctionId, 'broadcast', auctionStartTime, { bots: botCount });
+            logTiming(auctionId, 'broadcast', auctionStartTime, {
+              bots: botCount,
+            });
           }
 
           // Immediately stream current bids if any
@@ -841,7 +887,8 @@ export function createAuctionWebSocketServer() {
             type: 'auction.bids',
             payload: { auctionId: bid.auctionId, bids: currentBids },
           };
-          const subscriberCount = auctionSubscriptions.get(bid.auctionId)?.size || 0;
+          const subscriberCount =
+            auctionSubscriptions.get(bid.auctionId)?.size || 0;
           broadcastToAuctionSubscribers(
             bid.auctionId,
             broadcastPayload,
@@ -858,8 +905,12 @@ export function createAuctionWebSocketServer() {
       }
 
       // Handle Secondary Market messages
-      if (isSecondaryClientMessage(msg) && (msg as { type: string }).type.startsWith('secondary.')) {
-        const secondaryMsg = msg as import('@sapience/sdk/types/secondary').SecondaryClientToServerMessage;
+      if (
+        isSecondaryClientMessage(msg) &&
+        (msg as { type: string }).type.startsWith('secondary.')
+      ) {
+        const secondaryMsg =
+          msg as import('@sapience/sdk/types/secondary').SecondaryClientToServerMessage;
         if (secondaryMsg.type === 'secondary.auction.start') {
           await handleSecondaryAuctionStart(ws, secondaryMsg.payload);
           trackDuration(msgType, startTime);
@@ -936,4 +987,3 @@ export function createAuctionWebSocketServer() {
 
   return wss;
 }
-

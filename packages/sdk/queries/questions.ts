@@ -2,9 +2,17 @@ import { graphqlRequest } from './client/graphqlClient';
 import type { ConditionType } from './conditions';
 import type { ConditionGroupType } from './conditionGroups';
 
-export type SortField = 'openInterest' | 'endTime' | 'createdAt' | 'predictionCount';
+export type SortField =
+  | 'openInterest'
+  | 'endTime'
+  | 'createdAt'
+  | 'predictionCount';
 export type SortDirection = 'asc' | 'desc';
-export type ResolutionStatusValue = 'all' | 'unresolved' | 'resolvedYes' | 'resolvedNo';
+export type ResolutionStatusValue =
+  | 'all'
+  | 'unresolved'
+  | 'resolvedYes'
+  | 'resolvedNo';
 
 export interface QuestionType {
   questionType: 'group' | 'condition';

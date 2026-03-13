@@ -52,14 +52,15 @@ import type { Pick } from '../types/escrow';
 // These come from the REAL Solidity contract. If the SDK disagrees, we have a bug.
 import goldenHashes from './__fixtures__/escrowHashes.json';
 
-
 // ============================================================================
 // Test Fixtures
 // ============================================================================
 
 const PREDICTOR = getAddress('0x1111111111111111111111111111111111111111');
 const COUNTERPARTY = getAddress('0x2222222222222222222222222222222222222222');
-const ESCROW_CONTRACT = getAddress('0x3333333333333333333333333333333333333333');
+const ESCROW_CONTRACT = getAddress(
+  '0x3333333333333333333333333333333333333333'
+);
 const SPONSOR = getAddress('0x4444444444444444444444444444444444444444');
 const CHAIN_ID = 13374202; // Ethereal testnet
 
@@ -113,8 +114,13 @@ describe('cross-language: SDK matches Solidity contract', () => {
   test('predictionHash without sponsor', () => {
     const pickConfigId = computePickConfigId(PICKS);
     const sdkResult = computePredictionHash(
-      pickConfigId, PREDICTOR_COLLATERAL, COUNTERPARTY_COLLATERAL,
-      PREDICTOR, COUNTERPARTY, zeroAddress, '0x'
+      pickConfigId,
+      PREDICTOR_COLLATERAL,
+      COUNTERPARTY_COLLATERAL,
+      PREDICTOR,
+      COUNTERPARTY,
+      zeroAddress,
+      '0x'
     );
     expect(sdkResult).toBe(goldenHashes.predictionHashNoSponsor);
   });
@@ -122,8 +128,13 @@ describe('cross-language: SDK matches Solidity contract', () => {
   test('predictionHash with sponsor (catches #1153)', () => {
     const pickConfigId = computePickConfigId(PICKS);
     const sdkResult = computePredictionHash(
-      pickConfigId, PREDICTOR_COLLATERAL, COUNTERPARTY_COLLATERAL,
-      PREDICTOR, COUNTERPARTY, SPONSOR, '0x'
+      pickConfigId,
+      PREDICTOR_COLLATERAL,
+      COUNTERPARTY_COLLATERAL,
+      PREDICTOR,
+      COUNTERPARTY,
+      SPONSOR,
+      '0x'
     );
     expect(sdkResult).toBe(goldenHashes.predictionHashWithSponsor);
   });
@@ -131,8 +142,13 @@ describe('cross-language: SDK matches Solidity contract', () => {
   test('predictionHash with sponsor + data', () => {
     const pickConfigId = computePickConfigId(PICKS);
     const sdkResult = computePredictionHash(
-      pickConfigId, PREDICTOR_COLLATERAL, COUNTERPARTY_COLLATERAL,
-      PREDICTOR, COUNTERPARTY, SPONSOR, '0x1234'
+      pickConfigId,
+      PREDICTOR_COLLATERAL,
+      COUNTERPARTY_COLLATERAL,
+      PREDICTOR,
+      COUNTERPARTY,
+      SPONSOR,
+      '0x1234'
     );
     expect(sdkResult).toBe(goldenHashes.predictionHashWithSponsorData);
   });
@@ -140,7 +156,13 @@ describe('cross-language: SDK matches Solidity contract', () => {
   test('burnHash', () => {
     const pickConfigId = computePickConfigId(PICKS);
     const sdkResult = computeBurnHash(
-      pickConfigId, 500000n, 500000n, PREDICTOR, COUNTERPARTY, 1000000n, 0n
+      pickConfigId,
+      500000n,
+      500000n,
+      PREDICTOR,
+      COUNTERPARTY,
+      1000000n,
+      0n
     );
     expect(sdkResult).toBe(goldenHashes.burnHash);
   });
@@ -161,7 +183,11 @@ describe('cross-language: SDK matches Solidity contract', () => {
         ],
         [
           // This string MUST match SignatureValidator.MINT_APPROVAL_TYPEHASH
-          keccak256(toHex('MintApproval(bytes32 predictionHash,address signer,uint256 collateral,uint256 nonce,uint256 deadline)')),
+          keccak256(
+            toHex(
+              'MintApproval(bytes32 predictionHash,address signer,uint256 collateral,uint256 nonce,uint256 deadline)'
+            )
+          ),
           predictionHash,
           PREDICTOR,
           PREDICTOR_COLLATERAL,
@@ -187,7 +213,11 @@ describe('cross-language: SDK matches Solidity contract', () => {
           { type: 'uint256' },
         ],
         [
-          keccak256(toHex('BurnApproval(bytes32 burnHash,address signer,uint256 tokenAmount,uint256 payout,uint256 nonce,uint256 deadline)')),
+          keccak256(
+            toHex(
+              'BurnApproval(bytes32 burnHash,address signer,uint256 tokenAmount,uint256 payout,uint256 nonce,uint256 deadline)'
+            )
+          ),
           burnHashValue,
           PREDICTOR,
           500000n,
@@ -299,7 +329,9 @@ describe('cross-language: full EIP-712 digest with domain', () => {
       collateral: PREDICTOR_COLLATERAL,
       nonce: NONCE,
       deadline: DEADLINE,
-      verifyingContract: getAddress('0x5555555555555555555555555555555555555555'),
+      verifyingContract: getAddress(
+        '0x5555555555555555555555555555555555555555'
+      ),
       chainId: fixtureChainId,
     });
     expect(digest1).not.toBe(digest2);
@@ -408,21 +440,77 @@ describe('computePredictionHash', () => {
   });
 
   test('changing predictor changes the hash', () => {
-    const hash1 = computePredictionHash(pickConfigId, PREDICTOR_COLLATERAL, COUNTERPARTY_COLLATERAL, PREDICTOR, COUNTERPARTY, zeroAddress, '0x');
-    const hash2 = computePredictionHash(pickConfigId, PREDICTOR_COLLATERAL, COUNTERPARTY_COLLATERAL, COUNTERPARTY, COUNTERPARTY, zeroAddress, '0x');
+    const hash1 = computePredictionHash(
+      pickConfigId,
+      PREDICTOR_COLLATERAL,
+      COUNTERPARTY_COLLATERAL,
+      PREDICTOR,
+      COUNTERPARTY,
+      zeroAddress,
+      '0x'
+    );
+    const hash2 = computePredictionHash(
+      pickConfigId,
+      PREDICTOR_COLLATERAL,
+      COUNTERPARTY_COLLATERAL,
+      COUNTERPARTY,
+      COUNTERPARTY,
+      zeroAddress,
+      '0x'
+    );
     expect(hash1).not.toBe(hash2);
   });
 
   test('changing counterparty changes the hash', () => {
-    const hash1 = computePredictionHash(pickConfigId, PREDICTOR_COLLATERAL, COUNTERPARTY_COLLATERAL, PREDICTOR, COUNTERPARTY, zeroAddress, '0x');
-    const hash2 = computePredictionHash(pickConfigId, PREDICTOR_COLLATERAL, COUNTERPARTY_COLLATERAL, PREDICTOR, PREDICTOR, zeroAddress, '0x');
+    const hash1 = computePredictionHash(
+      pickConfigId,
+      PREDICTOR_COLLATERAL,
+      COUNTERPARTY_COLLATERAL,
+      PREDICTOR,
+      COUNTERPARTY,
+      zeroAddress,
+      '0x'
+    );
+    const hash2 = computePredictionHash(
+      pickConfigId,
+      PREDICTOR_COLLATERAL,
+      COUNTERPARTY_COLLATERAL,
+      PREDICTOR,
+      PREDICTOR,
+      zeroAddress,
+      '0x'
+    );
     expect(hash1).not.toBe(hash2);
   });
 
   test('changing collateral amounts changes the hash', () => {
-    const hash1 = computePredictionHash(pickConfigId, 1000000n, 1000000n, PREDICTOR, COUNTERPARTY, zeroAddress, '0x');
-    const hash2 = computePredictionHash(pickConfigId, 2000000n, 1000000n, PREDICTOR, COUNTERPARTY, zeroAddress, '0x');
-    const hash3 = computePredictionHash(pickConfigId, 1000000n, 2000000n, PREDICTOR, COUNTERPARTY, zeroAddress, '0x');
+    const hash1 = computePredictionHash(
+      pickConfigId,
+      1000000n,
+      1000000n,
+      PREDICTOR,
+      COUNTERPARTY,
+      zeroAddress,
+      '0x'
+    );
+    const hash2 = computePredictionHash(
+      pickConfigId,
+      2000000n,
+      1000000n,
+      PREDICTOR,
+      COUNTERPARTY,
+      zeroAddress,
+      '0x'
+    );
+    const hash3 = computePredictionHash(
+      pickConfigId,
+      1000000n,
+      2000000n,
+      PREDICTOR,
+      COUNTERPARTY,
+      zeroAddress,
+      '0x'
+    );
     expect(hash1).not.toBe(hash2);
     expect(hash1).not.toBe(hash3);
     expect(hash2).not.toBe(hash3);
@@ -430,12 +518,22 @@ describe('computePredictionHash', () => {
 
   test('computePredictionHashFromPicks matches computePredictionHash', () => {
     const fromPicks = computePredictionHashFromPicks(
-      PICKS, PREDICTOR_COLLATERAL, COUNTERPARTY_COLLATERAL,
-      PREDICTOR, COUNTERPARTY, zeroAddress, '0x'
+      PICKS,
+      PREDICTOR_COLLATERAL,
+      COUNTERPARTY_COLLATERAL,
+      PREDICTOR,
+      COUNTERPARTY,
+      zeroAddress,
+      '0x'
     );
     const fromConfigId = computePredictionHash(
-      pickConfigId, PREDICTOR_COLLATERAL, COUNTERPARTY_COLLATERAL,
-      PREDICTOR, COUNTERPARTY, zeroAddress, '0x'
+      pickConfigId,
+      PREDICTOR_COLLATERAL,
+      COUNTERPARTY_COLLATERAL,
+      PREDICTOR,
+      COUNTERPARTY,
+      zeroAddress,
+      '0x'
     );
     expect(fromPicks).toBe(fromConfigId);
   });
@@ -458,7 +556,9 @@ describe('computePickConfigId', () => {
 
   test('canonicalized picks always produce the same configId regardless of input order', () => {
     const canonical1 = computePickConfigId(canonicalizePicks(TWO_PICKS));
-    const canonical2 = computePickConfigId(canonicalizePicks([...TWO_PICKS].reverse()));
+    const canonical2 = computePickConfigId(
+      canonicalizePicks([...TWO_PICKS].reverse())
+    );
     expect(canonical1).toBe(canonical2);
   });
 });
@@ -487,21 +587,65 @@ describe('computeBurnHash', () => {
     );
 
     const actual = computeBurnHash(
-      pickConfigId, 500000n, 500000n, PREDICTOR, COUNTERPARTY, 1000000n, 0n
+      pickConfigId,
+      500000n,
+      500000n,
+      PREDICTOR,
+      COUNTERPARTY,
+      1000000n,
+      0n
     );
 
     expect(actual).toBe(expected);
   });
 
   test('changing any field changes the hash', () => {
-    const base = computeBurnHash(pickConfigId, 500000n, 500000n, PREDICTOR, COUNTERPARTY, 1000000n, 0n);
+    const base = computeBurnHash(
+      pickConfigId,
+      500000n,
+      500000n,
+      PREDICTOR,
+      COUNTERPARTY,
+      1000000n,
+      0n
+    );
 
     // Different token amounts
-    expect(computeBurnHash(pickConfigId, 600000n, 500000n, PREDICTOR, COUNTERPARTY, 1000000n, 0n)).not.toBe(base);
+    expect(
+      computeBurnHash(
+        pickConfigId,
+        600000n,
+        500000n,
+        PREDICTOR,
+        COUNTERPARTY,
+        1000000n,
+        0n
+      )
+    ).not.toBe(base);
     // Different holders
-    expect(computeBurnHash(pickConfigId, 500000n, 500000n, COUNTERPARTY, COUNTERPARTY, 1000000n, 0n)).not.toBe(base);
+    expect(
+      computeBurnHash(
+        pickConfigId,
+        500000n,
+        500000n,
+        COUNTERPARTY,
+        COUNTERPARTY,
+        1000000n,
+        0n
+      )
+    ).not.toBe(base);
     // Different payouts
-    expect(computeBurnHash(pickConfigId, 500000n, 500000n, PREDICTOR, COUNTERPARTY, 500000n, 500000n)).not.toBe(base);
+    expect(
+      computeBurnHash(
+        pickConfigId,
+        500000n,
+        500000n,
+        PREDICTOR,
+        COUNTERPARTY,
+        500000n,
+        500000n
+      )
+    ).not.toBe(base);
   });
 });
 
@@ -511,8 +655,13 @@ describe('computeBurnHash', () => {
 
 describe('buildMintApprovalTypedData', () => {
   const predictionHash = computePredictionHash(
-    computePickConfigId(PICKS), PREDICTOR_COLLATERAL, COUNTERPARTY_COLLATERAL,
-    PREDICTOR, COUNTERPARTY, zeroAddress, '0x'
+    computePickConfigId(PICKS),
+    PREDICTOR_COLLATERAL,
+    COUNTERPARTY_COLLATERAL,
+    PREDICTOR,
+    COUNTERPARTY,
+    zeroAddress,
+    '0x'
   );
 
   test('domain matches contract config', () => {
@@ -553,11 +702,23 @@ describe('buildMintApprovalTypedData', () => {
   test('type fields match MINT_APPROVAL_TYPEHASH structure', () => {
     // These must match SignatureValidator.MINT_APPROVAL_TYPEHASH:
     // keccak256("MintApproval(bytes32 predictionHash,address signer,uint256 collateral,uint256 nonce,uint256 deadline)")
-    const fieldNames = MINT_APPROVAL_TYPES.MintApproval.map(f => f.name);
-    expect(fieldNames).toEqual(['predictionHash', 'signer', 'collateral', 'nonce', 'deadline']);
+    const fieldNames = MINT_APPROVAL_TYPES.MintApproval.map((f) => f.name);
+    expect(fieldNames).toEqual([
+      'predictionHash',
+      'signer',
+      'collateral',
+      'nonce',
+      'deadline',
+    ]);
 
-    const fieldTypes = MINT_APPROVAL_TYPES.MintApproval.map(f => f.type);
-    expect(fieldTypes).toEqual(['bytes32', 'address', 'uint256', 'uint256', 'uint256']);
+    const fieldTypes = MINT_APPROVAL_TYPES.MintApproval.map((f) => f.type);
+    expect(fieldTypes).toEqual([
+      'bytes32',
+      'address',
+      'uint256',
+      'uint256',
+      'uint256',
+    ]);
   });
 });
 
@@ -634,10 +795,14 @@ describe('signer assignment', () => {
     });
 
     // Both sides must agree on the predictionHash
-    expect(predictorTyped.message.predictionHash).toBe(counterpartyTyped.message.predictionHash);
+    expect(predictorTyped.message.predictionHash).toBe(
+      counterpartyTyped.message.predictionHash
+    );
 
     // But they sign with different signers
-    expect(predictorTyped.message.signer).not.toBe(counterpartyTyped.message.signer);
+    expect(predictorTyped.message.signer).not.toBe(
+      counterpartyTyped.message.signer
+    );
   });
 });
 
@@ -647,8 +812,13 @@ describe('signer assignment', () => {
 
 describe('hashMintApproval', () => {
   const predictionHash = computePredictionHash(
-    computePickConfigId(PICKS), PREDICTOR_COLLATERAL, COUNTERPARTY_COLLATERAL,
-    PREDICTOR, COUNTERPARTY, zeroAddress, '0x'
+    computePickConfigId(PICKS),
+    PREDICTOR_COLLATERAL,
+    COUNTERPARTY_COLLATERAL,
+    PREDICTOR,
+    COUNTERPARTY,
+    zeroAddress,
+    '0x'
   );
 
   const params = {
@@ -689,7 +859,9 @@ describe('hashMintApproval', () => {
     const hash1 = hashMintApproval(params);
     const hash2 = hashMintApproval({
       ...params,
-      verifyingContract: getAddress('0x5555555555555555555555555555555555555555'),
+      verifyingContract: getAddress(
+        '0x5555555555555555555555555555555555555555'
+      ),
     });
     expect(hash1).not.toBe(hash2);
   });
@@ -701,16 +873,38 @@ describe('hashMintApproval', () => {
 
 describe('BurnApproval', () => {
   test('type fields match BURN_APPROVAL_TYPEHASH structure', () => {
-    const fieldNames = BURN_APPROVAL_TYPES.BurnApproval.map(f => f.name);
-    expect(fieldNames).toEqual(['burnHash', 'signer', 'tokenAmount', 'payout', 'nonce', 'deadline']);
+    const fieldNames = BURN_APPROVAL_TYPES.BurnApproval.map((f) => f.name);
+    expect(fieldNames).toEqual([
+      'burnHash',
+      'signer',
+      'tokenAmount',
+      'payout',
+      'nonce',
+      'deadline',
+    ]);
 
-    const fieldTypes = BURN_APPROVAL_TYPES.BurnApproval.map(f => f.type);
-    expect(fieldTypes).toEqual(['bytes32', 'address', 'uint256', 'uint256', 'uint256', 'uint256']);
+    const fieldTypes = BURN_APPROVAL_TYPES.BurnApproval.map((f) => f.type);
+    expect(fieldTypes).toEqual([
+      'bytes32',
+      'address',
+      'uint256',
+      'uint256',
+      'uint256',
+      'uint256',
+    ]);
   });
 
   test('hashBurnApproval matches viem hashTypedData', () => {
     const pickConfigId = computePickConfigId(PICKS);
-    const burnHash = computeBurnHash(pickConfigId, 500000n, 500000n, PREDICTOR, COUNTERPARTY, 1000000n, 0n);
+    const burnHash = computeBurnHash(
+      pickConfigId,
+      500000n,
+      500000n,
+      PREDICTOR,
+      COUNTERPARTY,
+      1000000n,
+      0n
+    );
 
     const params = {
       burnHash,
@@ -779,8 +973,12 @@ describe('buildAuctionIntentTypedData', () => {
     });
 
     expect(typed.message.picks).toHaveLength(2);
-    expect(typed.message.picks[0].conditionResolver).toBe(TWO_PICKS[0].conditionResolver);
-    expect(typed.message.picks[1].conditionResolver).toBe(TWO_PICKS[1].conditionResolver);
+    expect(typed.message.picks[0].conditionResolver).toBe(
+      TWO_PICKS[0].conditionResolver
+    );
+    expect(typed.message.picks[1].conditionResolver).toBe(
+      TWO_PICKS[1].conditionResolver
+    );
   });
 });
 
@@ -792,8 +990,20 @@ describe('computePredictionId', () => {
   const pickConfigId = computePickConfigId(PICKS);
 
   test('different nonces produce different predictionId', () => {
-    const id1 = computePredictionId(pickConfigId, PREDICTOR, COUNTERPARTY, 1n, 2n);
-    const id2 = computePredictionId(pickConfigId, PREDICTOR, COUNTERPARTY, 3n, 2n);
+    const id1 = computePredictionId(
+      pickConfigId,
+      PREDICTOR,
+      COUNTERPARTY,
+      1n,
+      2n
+    );
+    const id2 = computePredictionId(
+      pickConfigId,
+      PREDICTOR,
+      COUNTERPARTY,
+      3n,
+      2n
+    );
     expect(id1).not.toBe(id2);
   });
 });
@@ -829,8 +1039,13 @@ describe('vault ERC-1271 double-wrap signing', () => {
   }
 
   const predictionHash = computePredictionHash(
-    computePickConfigId(PICKS), PREDICTOR_COLLATERAL, COUNTERPARTY_COLLATERAL,
-    PREDICTOR, VAULT_ADDRESS, zeroAddress, '0x'
+    computePickConfigId(PICKS),
+    PREDICTOR_COLLATERAL,
+    COUNTERPARTY_COLLATERAL,
+    PREDICTOR,
+    VAULT_ADDRESS,
+    zeroAddress,
+    '0x'
   );
 
   // Step 1: MintApproval hash (escrow domain, signer = vault contract)
@@ -904,7 +1119,9 @@ describe('vault ERC-1271 double-wrap signing', () => {
 
   test('Approve typehash matches SignatureProcessor.APPROVE_TYPEHASH', () => {
     // keccak256("Approve(bytes32 messageHash,address owner)")
-    const typehash = keccak256(toHex('Approve(bytes32 messageHash,address owner)'));
+    const typehash = keccak256(
+      toHex('Approve(bytes32 messageHash,address owner)')
+    );
     // Pulled from Forge fixture — SignatureProcessor.APPROVE_TYPEHASH
     expect(typehash).toBe(goldenHashes.approveTypehash);
   });

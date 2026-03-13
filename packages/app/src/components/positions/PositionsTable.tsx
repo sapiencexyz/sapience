@@ -389,6 +389,18 @@ export default function PositionsTable({
     getDefaultPositionsFilterState
   );
 
+  // Derive server-side `settled` filter from status selection.
+  // Only 'active' → settled=false; only 'won'/'lost' → settled=true; mixed → undefined
+  const serverSettled = React.useMemo(() => {
+    const s = filters.status;
+    if (s.length === 0 || s.length === 3) return undefined;
+    const hasActive = s.includes('active');
+    const hasResolved = s.includes('won') || s.includes('lost');
+    if (hasActive && !hasResolved) return false;
+    if (hasResolved && !hasActive) return true;
+    return undefined;
+  }, [filters.status]);
+
   // Fetch position balances for this user
   const {
     data: accountPositions,
@@ -398,6 +410,7 @@ export default function PositionsTable({
   } = usePositionBalances({
     holder: account,
     chainId,
+    settled: serverSettled,
   });
 
   // Fetch position balances for a condition (all holders)
@@ -408,26 +421,13 @@ export default function PositionsTable({
     refetch: conditionRefetch,
   } = usePositionBalancesByConditionId({
     conditionId: !account ? conditionId : undefined,
+    settled: serverSettled,
   });
 
-  const allPositions = account ? accountPositions : conditionPositions;
+  const positions = account ? accountPositions : conditionPositions;
   const isLoading = account ? accountLoading : conditionLoading;
   const error = account ? accountError : conditionError;
   const refetch = account ? accountRefetch : conditionRefetch;
-
-  // Hide zero-balance positions that haven't settled yet (no resolution data).
-  // These are positions where the user burned/transferred tokens before settlement.
-  // Keep 0-balance positions that ARE settled (post-burn with actual PnL).
-  const positions = React.useMemo(
-    () =>
-      allPositions.filter((p) => {
-        const hasZeroBalance = BigInt(p.balance) === 0n;
-        const isSettled = p.pickConfig?.resolved === true;
-        // Hide only if zero balance AND not settled
-        return !(hasZeroBalance && !isSettled);
-      }),
-    [allPositions]
-  );
 
   // Collect all unique conditionIds to fetch category data
   const conditionIds = React.useMemo(() => {

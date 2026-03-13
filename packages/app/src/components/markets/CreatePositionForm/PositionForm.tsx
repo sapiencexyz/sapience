@@ -165,7 +165,10 @@ export default function PositionForm({
   // - Otherwise (signing with wallet): use predictorAddress (wallet)
   const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
   const willUseSessionSigning = isUsingSmartAccount && !!sessionSignMessage;
-  const triggerMode = getAuctionTriggerMode(willUseSessionSigning, hasConnectedWallet);
+  const triggerMode = getAuctionTriggerMode(
+    willUseSessionSigning,
+    hasConnectedWallet
+  );
   const selectedPredictorAddress = willUseSessionSigning
     ? (effectiveAddress ?? predictorAddress ?? ZERO_ADDRESS)
     : (predictorAddress ?? ZERO_ADDRESS);
@@ -886,7 +889,9 @@ export default function PositionForm({
               allBids={validBids}
               predictorPositionSizeWei={predictorPositionSizeWei}
               predictorAddress={selectedPredictorAddress}
-              showAddPredictionsHint={selections.length === 1 && !bestBid && !stickyEstimateBid}
+              showAddPredictionsHint={
+                selections.length === 1 && !bestBid && !stickyEstimateBid
+              }
               isAuctionPending={recentlyRequested && !bestBid}
               hasFormErrors={hasFormErrors}
               isLoggedOut={!hasConnectedWallet}

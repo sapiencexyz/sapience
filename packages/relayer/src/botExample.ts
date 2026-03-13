@@ -18,7 +18,9 @@ const WS_URL =
 
 // Polymarket LZ resolver address for Ethereal
 const POLYMARKET_RESOLVER =
-  predictionMarketLZConditionalTokensResolver[DEFAULT_CHAIN_ID]?.address?.toLowerCase();
+  predictionMarketLZConditionalTokensResolver[
+    DEFAULT_CHAIN_ID
+  ]?.address?.toLowerCase();
 
 console.log('[BOT] Env FOIL_RELAYER_BASE =', process.env.FOIL_RELAYER_BASE);
 console.log('[BOT] Connecting to', WS_URL);
@@ -187,4 +189,3 @@ ws.on('close', (code, reason) => {
     console.log(`[BOT] ws closed code=${code}`);
   }
 });
-

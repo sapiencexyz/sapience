@@ -6,5 +6,3 @@ export const useSapienceAbi = (): { abi: Abi } => {
   const abi: Abi = sapience.abi as Abi;
   return { abi };
 };
-
-

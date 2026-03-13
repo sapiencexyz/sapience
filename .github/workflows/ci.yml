@@ -94,7 +94,9 @@ jobs:
             packages/*/node_modules
           key: ${{ runner.os }}-modules-${{ github.sha }}
       - run: pnpm --filter @sapience/sdk run build:lib
-      - run: pnpm --filter @sapience/api run prisma:generate
+      - run: pnpm --filter @sapience/api run generate-types
+      - name: Verify generated files are up to date
+        run: git diff --exit-code packages/api/schema.graphql packages/sdk/types/graphql.ts
       - run: pnpm --filter @sapience/api run compile
       - run: pnpm --filter @sapience/api run test -- --run
 
@@ -116,6 +118,7 @@ jobs:
       - run: pnpm --filter @sapience/sdk run build:lib
       - run: pnpm --filter @sapience/api run prisma:generate
       - run: pnpm --filter @sapience/api run lint
+      - run: pnpm --filter @sapience/api run type-check
 
   lint-typecheck-app:
     needs: [changes, install]

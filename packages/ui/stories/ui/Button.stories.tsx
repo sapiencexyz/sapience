@@ -1,28 +1,28 @@
-import type { Meta, StoryObj } from "@storybook/react-webpack5";
-import { Button } from "../../components/ui/button";
+import type { Meta, StoryObj } from '@storybook/react-webpack5';
+import { Button } from '../../components/ui/button';
 
 const meta: Meta<typeof Button> = {
-  title: "UI/Button",
+  title: 'UI/Button',
   component: Button,
   parameters: {
-    layout: "centered",
+    layout: 'centered',
   },
-  tags: ["autodocs"],
+  tags: ['autodocs'],
   argTypes: {
     variant: {
-      control: { type: "select" },
+      control: { type: 'select' },
       options: [
-        "default",
-        "destructive",
-        "outline",
-        "secondary",
-        "ghost",
-        "link",
+        'default',
+        'destructive',
+        'outline',
+        'secondary',
+        'ghost',
+        'link',
       ],
     },
     size: {
-      control: { type: "select" },
-      options: ["default", "sm", "xs", "lg", "icon"],
+      control: { type: 'select' },
+      options: ['default', 'sm', 'xs', 'lg', 'icon'],
     },
   },
 };
@@ -32,7 +32,7 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   args: {
-    children: "Button",
+    children: 'Button',
   },
 };
 
@@ -64,6 +64,6 @@ export const AllSizes: Story = {
 export const Disabled: Story = {
   args: {
     disabled: true,
-    children: "Disabled",
+    children: 'Disabled',
   },
 };
