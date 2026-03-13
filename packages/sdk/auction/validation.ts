@@ -52,9 +52,8 @@ const ERC1271_MAGIC = '0x1626ba7e';
 /**
  * Minimum conditionId length: "0x" + 64 hex chars = 66 (a bytes32).
  * Longer values are valid — Pyth picks carry the full raw ABI encoding
- * (160 bytes / 322 hex chars) over the wire so receivers can decode market
- * parameters locally. The SDK hashes these to bytes32 via keccak256() before
- * ABI encoding or EIP-712 signing (see formatPicksForEncoding in escrowEncoding.ts).
+ * (160 bytes / 322 hex chars), CT resolvers may include a deadline (64 bytes).
+ * conditionId is passed as-is to the on-chain bytes field (no hashing).
  */
 const MIN_CONDITION_ID_LENGTH = 66; // bytes32 = 0x + 64 hex chars
 
