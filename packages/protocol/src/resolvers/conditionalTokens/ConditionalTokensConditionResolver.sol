@@ -21,6 +21,10 @@ import { LZTypes } from "../shared/LZTypes.sol";
 /// @notice Resolver that receives ConditionalTokens resolution data via LayerZero
 /// @dev Implements IConditionResolver and caches binary YES/NO outcomes for conditionIds.
 ///      Receives resolution data from ConditionalTokensReader on Polygon.
+///      Supports variable-length conditionId: 32 bytes = raw conditionId,
+///      >32 bytes = bytes32 conditionId + uint256 deadline timestamp.
+///      If a deadline is present and the condition is unresolved past the deadline,
+///      the resolver returns "indecisive" (tie) instead of "unresolved".
 contract ConditionalTokensConditionResolver is
     OAppReceiver,
     ReentrancyGuard,
@@ -62,25 +66,28 @@ contract ConditionalTokensConditionResolver is
     // ============ IConditionResolver Implementation ============
 
     /// @inheritdoc IConditionResolver
-    function isValidCondition(bytes32 conditionId)
+    function isValidCondition(bytes calldata conditionId)
         external
         pure
         returns (bool)
     {
-        return conditionId != bytes32(0);
+        if (conditionId.length < 32) return false;
+        bytes32 rawId = bytes32(conditionId[:32]);
+        return rawId != bytes32(0);
     }
 
     /// @inheritdoc IConditionResolver
-    function getResolution(bytes32 conditionId)
+    function getResolution(bytes calldata conditionId)
         external
         view
         returns (bool isResolved, IV2Types.OutcomeVector memory outcome)
     {
-        return _getResolution(conditions[conditionId]);
+        (bytes32 rawId, uint256 deadline) = _unpackConditionId(conditionId);
+        return _getResolutionWithDeadline(conditions[rawId], deadline);
     }
 
     /// @inheritdoc IConditionResolver
-    function getResolutions(bytes32[] calldata conditionIds)
+    function getResolutions(bytes[] calldata conditionIds)
         external
         view
         returns (
@@ -93,14 +100,21 @@ contract ConditionalTokensConditionResolver is
         outcomes = new IV2Types.OutcomeVector[](length);
 
         for (uint256 i = 0; i < length; i++) {
+            (bytes32 rawId, uint256 deadline) =
+                _unpackConditionId(conditionIds[i]);
             (resolved[i], outcomes[i]) =
-                _getResolution(conditions[conditionIds[i]]);
+                _getResolutionWithDeadline(conditions[rawId], deadline);
         }
     }
 
     /// @inheritdoc IConditionResolver
-    function isFinalized(bytes32 conditionId) external view returns (bool) {
-        ConditionState memory condition = conditions[conditionId];
+    function isFinalized(bytes calldata conditionId)
+        external
+        view
+        returns (bool)
+    {
+        bytes32 rawId = bytes32(conditionId[:32]);
+        ConditionState memory condition = conditions[rawId];
         return condition.settled && !condition.invalid;
     }
 
@@ -175,7 +189,53 @@ contract ConditionalTokensConditionResolver is
 
     // ============ Internal Functions ============
 
-    /// @dev Get resolution for a condition state
+    /// @dev Unpack a variable-length conditionId into raw bytes32 + optional deadline
+    /// @param conditionId The variable-length condition identifier
+    /// @return rawId The 32-byte condition identifier
+    /// @return deadline The deadline timestamp (0 if not present)
+    function _unpackConditionId(bytes calldata conditionId)
+        internal
+        pure
+        returns (bytes32 rawId, uint256 deadline)
+    {
+        require(conditionId.length >= 32, "conditionId too short");
+        rawId = bytes32(conditionId[:32]);
+
+        if (conditionId.length > 32) {
+            // Remaining bytes encode the deadline timestamp
+            deadline = abi.decode(conditionId[32:], (uint256));
+        }
+        // else deadline = 0 (no deadline)
+    }
+
+    /// @dev Get resolution for a condition state, applying deadline logic
+    /// @param condition The cached condition state
+    /// @param deadline The deadline timestamp (0 = no deadline)
+    /// @return isResolved Whether the condition should be treated as resolved
+    /// @return outcome The outcome vector
+    function _getResolutionWithDeadline(
+        ConditionState memory condition,
+        uint256 deadline
+    )
+        internal
+        view
+        returns (bool isResolved, IV2Types.OutcomeVector memory outcome)
+    {
+        // If settled normally, use standard resolution logic
+        if (condition.settled && !condition.invalid) {
+            return _getResolution(condition);
+        }
+
+        // If not settled and we have a deadline that has passed, return indecisive
+        if (deadline > 0 && block.timestamp > deadline) {
+            return (true, IV2Types.OutcomeVector(1, 1));
+        }
+
+        // Not settled, no deadline or deadline not reached
+        return _getResolution(condition);
+    }
+
+    /// @dev Get resolution for a condition state (original logic, no deadline)
     function _getResolution(ConditionState memory condition)
         internal
         pure

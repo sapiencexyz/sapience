@@ -120,26 +120,29 @@ contract ManualConditionResolver is IConditionResolver, Ownable {
     // ============ IConditionResolver Implementation ============
 
     /// @inheritdoc IConditionResolver
-    function isValidCondition(bytes32 conditionId)
+    function isValidCondition(bytes calldata conditionId)
         external
         pure
         returns (bool)
     {
-        return conditionId != bytes32(0);
+        if (conditionId.length < 32) return false;
+        bytes32 rawId = bytes32(conditionId[:32]);
+        return rawId != bytes32(0);
     }
 
     /// @inheritdoc IConditionResolver
-    function getResolution(bytes32 conditionId)
+    function getResolution(bytes calldata conditionId)
         external
         view
         returns (bool resolved, IV2Types.OutcomeVector memory outcome)
     {
-        resolved = isSettled[conditionId];
-        outcome = _outcomes[conditionId];
+        bytes32 rawId = bytes32(conditionId[:32]);
+        resolved = isSettled[rawId];
+        outcome = _outcomes[rawId];
     }
 
     /// @inheritdoc IConditionResolver
-    function getResolutions(bytes32[] calldata conditionIds)
+    function getResolutions(bytes[] calldata conditionIds)
         external
         view
         returns (
@@ -152,14 +155,20 @@ contract ManualConditionResolver is IConditionResolver, Ownable {
         outcomes = new IV2Types.OutcomeVector[](length);
 
         for (uint256 i = 0; i < length; i++) {
-            resolved[i] = isSettled[conditionIds[i]];
-            outcomes[i] = _outcomes[conditionIds[i]];
+            bytes32 rawId = bytes32(conditionIds[i][:32]);
+            resolved[i] = isSettled[rawId];
+            outcomes[i] = _outcomes[rawId];
         }
     }
 
     /// @inheritdoc IConditionResolver
-    function isFinalized(bytes32 conditionId) external view returns (bool) {
-        return isSettled[conditionId];
+    function isFinalized(bytes calldata conditionId)
+        external
+        view
+        returns (bool)
+    {
+        bytes32 rawId = bytes32(conditionId[:32]);
+        return isSettled[rawId];
     }
 
     // ============ View Functions ============
