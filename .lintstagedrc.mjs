@@ -30,9 +30,9 @@ export default {
     `prettier --write ${files.join(' ')}`,
   ],
 
-  // Polymarket Keeper
-  'packages/polymarket-keeper/src/**/*.{js,ts}': (files) => [
-    `cd packages/polymarket-keeper && npx eslint --fix --quiet ${files.join(' ')}`,
+  // Market Keeper
+  'packages/market-keeper/src/**/*.{js,ts}': (files) => [
+    `cd packages/market-keeper && npx eslint --fix --quiet ${files.join(' ')}`,
     `prettier --write ${files.join(' ')}`,
   ],
 

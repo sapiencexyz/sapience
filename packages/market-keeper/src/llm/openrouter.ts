@@ -98,7 +98,7 @@ export async function callOpenRouterForCategory(
         'Content-Type': 'application/json',
         Authorization: `Bearer ${config.apiKey}`,
         'HTTP-Referer': 'https://sapience.xyz',
-        'X-Title': 'polymarket-keeper',
+        'X-Title': 'market-keeper',
       },
       body: JSON.stringify({
         model,
@@ -175,7 +175,7 @@ export async function callOpenRouterForShortNameOnly(
         'Content-Type': 'application/json',
         Authorization: `Bearer ${config.apiKey}`,
         'HTTP-Referer': 'https://sapience.xyz',
-        'X-Title': 'polymarket-keeper',
+        'X-Title': 'market-keeper',
       },
       body: JSON.stringify({
         model,
@@ -254,7 +254,7 @@ export async function callOpenRouterForBoth(
         'Content-Type': 'application/json',
         Authorization: `Bearer ${config.apiKey}`,
         'HTTP-Referer': 'https://sapience.xyz',
-        'X-Title': 'polymarket-keeper',
+        'X-Title': 'market-keeper',
       },
       body: JSON.stringify({
         model,

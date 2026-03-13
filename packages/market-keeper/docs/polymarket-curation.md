@@ -36,10 +36,10 @@ Only markets with **exactly 2 outcomes** are kept (e.g. "Yes" / "No", or two nam
 
 A market must pass **both** of these thresholds to be included:
 
-| Threshold | Minimum |
-|-----------|---------|
+| Threshold          | Minimum |
+| ------------------ | ------- |
 | **Trading volume** | $10,000 |
-| **Liquidity** | $1,000 |
+| **Liquidity**      | $1,000  |
 
 Markets with an event are each treated as their own group. A market passes if it meets both thresholds.
 
@@ -53,12 +53,12 @@ The volume & liquidity filter is applied as a **union** with the always-include 
 
 A market is always included if its question mentions any of these:
 
-| Topic | What it matches | Example market |
-|-------|----------------|----------------|
-| **Federal Reserve** | "fed", "federal reserve" | *"Will the Fed cut rates in March?"* |
-| **S&P 500** | "S&P 500", "SPX" | *"Will the S&P 500 close above 5,000?"* |
-| **Daily Bitcoin price** | "price of Bitcoin... on [date]" | *"Will the price of Bitcoin be above $100,000 on March 1?"* |
-| **Daily Ethereum price** | "price of Ethereum... on [date]" | *"Will the price of Ethereum be above $4,000 on March 1?"* |
+| Topic                    | What it matches                  | Example market                                              |
+| ------------------------ | -------------------------------- | ----------------------------------------------------------- |
+| **Federal Reserve**      | "fed", "federal reserve"         | _"Will the Fed cut rates in March?"_                        |
+| **S&P 500**              | "S&P 500", "SPX"                 | _"Will the S&P 500 close above 5,000?"_                     |
+| **Daily Bitcoin price**  | "price of Bitcoin... on [date]"  | _"Will the price of Bitcoin be above $100,000 on March 1?"_ |
+| **Daily Ethereum price** | "price of Ethereum... on [date]" | _"Will the price of Ethereum be above $4,000 on March 1?"_  |
 
 These patterns are checked case-insensitively. The idea is that markets about major economic indicators and benchmark asset prices are always worth surfacing, regardless of how much trading activity they've seen so far.
 
@@ -80,15 +80,15 @@ Each market that passes all filters is enriched with two pieces of metadata befo
 
 Every market is assigned to one of these categories:
 
-| Category | Examples |
-|----------|----------|
-| Sports | NBA, NFL, soccer, eSports |
-| Crypto | Bitcoin, Ethereum, DeFi |
-| Weather | Temperature, hurricanes, climate |
-| Tech & Science | AI, SpaceX, NASA |
-| Economy & Finance | Fed rates, S&P 500, GDP |
-| Geopolitics | Elections, wars, policy |
-| Culture | Oscars, tweets, entertainment |
+| Category          | Examples                         |
+| ----------------- | -------------------------------- |
+| Sports            | NBA, NFL, soccer, eSports        |
+| Crypto            | Bitcoin, Ethereum, DeFi          |
+| Weather           | Temperature, hurricanes, climate |
+| Tech & Science    | AI, SpaceX, NASA                 |
+| Economy & Finance | Fed rates, S&P 500, GDP          |
+| Geopolitics       | Elections, wars, policy          |
+| Culture           | Oscars, tweets, entertainment    |
 
 Categories are inferred from keywords in the market question and metadata. When keywords aren't enough, an LLM classifies the market.
 
@@ -96,12 +96,12 @@ Categories are inferred from keywords in the market question and metadata. When 
 
 Markets get a concise display label so they're easy to scan. For example:
 
-| Full question | Short name |
-|--------------|------------|
-| *"Will the price of Bitcoin be above $100,000?"* | BTC >$100k |
-| *"Lakers vs. Celtics: O/U 224.5"* | LAL/BOS O224.5 |
-| *"Will the Fed cut rates in January?"* | Fed cut Jan |
-| *"LeBron James: Points Over 25.5"* | James O25.5pts |
+| Full question                                    | Short name     |
+| ------------------------------------------------ | -------------- |
+| _"Will the price of Bitcoin be above $100,000?"_ | BTC >$100k     |
+| _"Lakers vs. Celtics: O/U 224.5"_                | LAL/BOS O224.5 |
+| _"Will the Fed cut rates in January?"_           | Fed cut Jan    |
+| _"LeBron James: Points Over 25.5"_               | James O25.5pts |
 
 Short names are generated from pattern rules first, with an LLM as a fallback for markets that don't match any pattern.
 

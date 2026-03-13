@@ -15,5 +15,5 @@
 import { main } from '../src/relist/index.js';
 import { logSeparator } from '../src/utils/log.js';
 
-logSeparator('polymarket-keeper:relist', 'START');
-main().finally(() => logSeparator('polymarket-keeper:relist', 'END'));
+logSeparator('market-keeper:relist', 'START');
+main().finally(() => logSeparator('market-keeper:relist', 'END'));

@@ -939,5 +939,5 @@ async function main() {
 // Run
 import { logSeparator } from '../src/utils/log.js';
 
-logSeparator('polymarket-keeper:settle-escrow', 'START');
-main().finally(() => logSeparator('polymarket-keeper:settle-escrow', 'END'));
+logSeparator('market-keeper:settle-escrow', 'START');
+main().finally(() => logSeparator('market-keeper:settle-escrow', 'END'));
