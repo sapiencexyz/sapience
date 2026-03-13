@@ -2,15 +2,9 @@ import { cleanEnv, str, num } from 'envalid';
 import { config as dotEnvConfig } from 'dotenv';
 import { fromRoot } from './utils/fromRoot';
 
-dotEnvConfig({ path: fromRoot('.env') });
-
-/**
- * Define all API environment variables here. By avoiding direct process.env access elsewhere,
- * we keep configuration centralized and make required variables easy to audit.
- */
-export const config = cleanEnv(process.env, {
+const validators = {
   NODE_ENV: str({
-    choices: ['development', 'staging', 'production', 'test'],
+    choices: ['development', 'staging', 'production', 'test'] as const,
     default: 'development',
   }),
   RATE_LIMIT_WINDOW_MS: num({
@@ -74,4 +68,27 @@ export const config = cleanEnv(process.env, {
     default: 400,
     desc: 'Hard rate limit (max requests per minute even with payment)',
   }),
+};
+
+type Config = Readonly<ReturnType<typeof cleanEnv<typeof validators>>>;
+
+let _config: Config | undefined;
+
+function createConfig(): Config {
+  dotEnvConfig({ path: fromRoot('.env') });
+  return cleanEnv(process.env, validators);
+}
+
+/**
+ * Lazily-validated environment config.
+ *
+ * Env vars are validated on first property access, not at import time.
+ * This allows build-time scripts (e.g. emit-schema) to import modules
+ * that transitively depend on config without needing real env vars.
+ */
+export const config: Config = new Proxy({} as Config, {
+  get(_, prop) {
+    if (!_config) _config = createConfig();
+    return Reflect.get(_config, prop);
+  },
 });
