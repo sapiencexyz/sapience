@@ -218,11 +218,14 @@ export function isValidPick(pick: unknown): pick is Pick {
     return false;
   }
 
-  // Check conditionId is valid hex (bytes32 or longer for e.g. Pyth raw encoding)
+  // Check conditionId is valid hex — must be at least bytes32 (66 chars = "0x" + 64).
+  // Longer values are valid: Pyth picks carry the full raw ABI encoding
+  // (160 bytes / 322 hex chars) over the wire. The SDK hashes these to
+  // bytes32 via keccak256() before ABI encoding (see formatPicksForEncoding).
   if (
     typeof p.conditionId !== 'string' ||
     !/^0x[a-fA-F0-9]+$/.test(p.conditionId) ||
-    p.conditionId.length < 66
+    p.conditionId.length < 66 // bytes32 minimum
   ) {
     return false;
   }

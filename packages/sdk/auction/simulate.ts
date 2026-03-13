@@ -204,3 +204,78 @@ export function buildSimulationStateOverride(params: {
     },
   ];
 }
+
+// ─── State Override Merging ───────────────────────────────────────────────────
+
+type StateOverrideEntry = {
+  address: `0x${string}`;
+  balance?: bigint;
+  stateDiff?: Array<{ slot: `0x${string}`; value: `0x${string}` }>;
+};
+
+/**
+ * Merge two state override arrays, combining stateDiff entries for
+ * the same address (the collateral token will appear in both when
+ * building overrides for predictor and counterparty).
+ *
+ * Note: stateDiff entries are concatenated, not deduplicated by slot.
+ * In practice, predictor and counterparty have different addresses so
+ * their Solady balance/allowance slots are always distinct even when
+ * they share the same collateral token address.
+ */
+export function mergeStateOverrides(
+  a: StateOverrideEntry[],
+  b: StateOverrideEntry[]
+): StateOverrideEntry[] {
+  const map = new Map<string, StateOverrideEntry>();
+
+  for (const entry of [...a, ...b]) {
+    const key = entry.address.toLowerCase();
+    const existing = map.get(key);
+    if (existing) {
+      // Merge: keep higher balance, concat stateDiff
+      existing.balance =
+        existing.balance && entry.balance
+          ? existing.balance > entry.balance
+            ? existing.balance
+            : entry.balance
+          : existing.balance || entry.balance;
+      if (entry.stateDiff) {
+        existing.stateDiff = [
+          ...(existing.stateDiff || []),
+          ...entry.stateDiff,
+        ];
+      }
+    } else {
+      map.set(key, { ...entry });
+    }
+  }
+
+  return Array.from(map.values());
+}
+
+// ─── Error Classification ────────────────────────────────────────────────────
+
+/**
+ * Check if an error is a contract revert (vs RPC/network error).
+ *
+ * Viem throws typed error classes with a `name` property for contract reverts.
+ * We check `name` first (reliable), then fall back to message keywords.
+ */
+export function isContractRevert(err: unknown): boolean {
+  if (!(err instanceof Error)) return false;
+
+  // Viem error class names (set via BaseError)
+  const name = (err as { name?: string }).name ?? '';
+  if (
+    name === 'ContractFunctionExecutionError' ||
+    name === 'ContractFunctionRevertedError' ||
+    name === 'ContractFunctionZeroDataError'
+  ) {
+    return true;
+  }
+
+  // Fallback: check message for revert keywords
+  const msg = err.message;
+  return msg.includes('execution reverted') || msg.includes('revert');
+}
