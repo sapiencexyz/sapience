@@ -320,6 +320,19 @@ describe('validateAuctionRFQ', () => {
     expect(result.status).toBe('valid');
   });
 
+  test('signed payload + requireSignature=false → still valid (flag does not break signed payloads)', async () => {
+    const { payload } = await makeSignedAuctionRFQ();
+    const result = await validateAuctionRFQ(payload, {
+      verifyingContract: VERIFYING_CONTRACT,
+      chainId: CHAIN_ID,
+      requireSignature: false,
+    });
+
+    // When requireSignature=false, the signature is not checked at all —
+    // the payload passes on field validation alone
+    expect(result.status).toBe('valid');
+  });
+
   test('bad signature → invalid', async () => {
     const payload = makeAuctionRFQ({
       intentSignature:
@@ -669,6 +682,23 @@ describe('validateVaultQuote', () => {
     expect(result.status).toBe('invalid');
     if (result.status === 'invalid') {
       expect(result.code).toBe('EXPIRED_DEADLINE');
+    }
+  });
+
+  test('future timestamp beyond window → invalid', async () => {
+    const result = await validateVaultQuote({
+      vaultAddress: VERIFYING_CONTRACT,
+      chainId: CHAIN_ID,
+      timestamp: Date.now() + 10 * 60 * 1000, // 10 min in the future
+      vaultCollateralPerShare: '1.0',
+      signedBy: VERIFYING_CONTRACT,
+      signature: '0xdead',
+    });
+
+    expect(result.status).toBe('invalid');
+    if (result.status === 'invalid') {
+      expect(result.code).toBe('EXPIRED_DEADLINE');
+      expect(result.reason).toContain('outside acceptable window');
     }
   });
 

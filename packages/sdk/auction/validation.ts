@@ -9,7 +9,6 @@
 
 import type { Address, Hex, PublicClient } from 'viem';
 import type { AuctionRFQPayload, BidPayload, PickJson } from '../types/escrow';
-import { isValidPicksArray } from './escrowEncoding';
 import {
   verifyAuctionIntentSignature,
   verifyCounterpartyMintSignature,
@@ -58,6 +57,12 @@ function isValidSignatureFormat(sig: unknown): sig is string {
   return typeof sig === 'string' && sig.startsWith('0x') && sig.length >= 10;
 }
 
+/**
+ * Validates a pick in JSON/transport form (string fields).
+ * Separate from `isValidPick` in escrowEncoding.ts which validates SDK-typed
+ * picks (Address/Hex fields). This function operates on the wire format
+ * (PickJson) that arrives over WebSocket before type casting.
+ */
 function isValidPickJson(pick: unknown): pick is PickJson {
   if (typeof pick !== 'object' || pick === null) return false;
   const p = pick as Record<string, unknown>;
@@ -581,6 +586,9 @@ export async function validateBidOnChain(
     const { validateCounterpartyFunds } = await import('../onchain/position');
 
     // 1. Counterparty nonce freshness
+    // NOTE: isNonceUsed creates its own PublicClient internally rather than
+    // accepting opts.publicClient. This is a known inefficiency — a future
+    // refactor of isNonceUsed to accept an optional client param would fix it.
     const nonceUsed = await isNonceUsed(
       bid.counterparty as Address,
       BigInt(bid.counterpartyNonce),
@@ -619,7 +627,10 @@ export async function validateBidOnChain(
 
     return { status: 'valid' };
   } catch (err) {
-    // validateCounterpartyFunds throws with 'market maker' message on insufficient funds
+    // validateCounterpartyFunds (position.ts) throws with a message containing
+    // 'market maker' on insufficient funds. This string coupling matches the
+    // existing app behavior in simulateEscrowBidMint.ts. A future refactor
+    // should introduce a typed error class in position.ts instead.
     if (err instanceof Error && err.message.includes('market maker')) {
       return {
         status: 'invalid',

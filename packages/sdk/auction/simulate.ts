@@ -217,6 +217,11 @@ type StateOverrideEntry = {
  * Merge two state override arrays, combining stateDiff entries for
  * the same address (the collateral token will appear in both when
  * building overrides for predictor and counterparty).
+ *
+ * Note: stateDiff entries are concatenated, not deduplicated by slot.
+ * In practice, predictor and counterparty have different addresses so
+ * their Solady balance/allowance slots are always distinct even when
+ * they share the same collateral token address.
  */
 export function mergeStateOverrides(
   a: StateOverrideEntry[],
