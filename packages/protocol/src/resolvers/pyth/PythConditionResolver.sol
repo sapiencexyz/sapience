@@ -75,9 +75,8 @@ contract PythConditionResolver is IConditionResolver, ReentrancyGuard {
         // conditionId must be a valid abi.encode of BinaryOptionMarket fields
         // abi.encode(bytes32, uint64, int64, int32, bool) = 5 × 32 = 160 bytes
         if (conditionId.length != 160) return false;
-        (bytes32 priceId,,,,) = abi.decode(
-            conditionId, (bytes32, uint64, int64, int32, bool)
-        );
+        (bytes32 priceId,,,,) =
+            abi.decode(conditionId, (bytes32, uint64, int64, int32, bool));
         return priceId != bytes32(0);
     }
 

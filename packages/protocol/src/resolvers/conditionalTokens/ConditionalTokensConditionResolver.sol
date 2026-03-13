@@ -219,10 +219,7 @@ contract ConditionalTokensConditionResolver is
     /// @param deadline The deadline timestamp (0 = no deadline)
     /// @return isResolved Whether the condition should be treated as resolved
     /// @return outcome The outcome vector
-    function _getResolution(
-        ConditionState memory condition,
-        uint256 deadline
-    )
+    function _getResolution(ConditionState memory condition, uint256 deadline)
         internal
         view
         returns (bool isResolved, IV2Types.OutcomeVector memory outcome)

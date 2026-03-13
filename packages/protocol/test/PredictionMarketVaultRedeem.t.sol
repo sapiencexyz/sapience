@@ -30,7 +30,8 @@ contract PredictionMarketVaultRedeemTest is Test {
         PREDICTOR_COLLATERAL + COUNTERPARTY_COLLATERAL;
     bytes32 public constant REF_CODE = keccak256("test-ref-code");
 
-    bytes32 public conditionId1;
+    bytes32 public rawConditionId1;
+    bytes public conditionId1;
 
     uint256 private _nextNonce = 1;
 
@@ -65,7 +66,8 @@ contract PredictionMarketVaultRedeemTest is Test {
         vm.prank(owner);
         resolver.approveSettler(settler);
 
-        conditionId1 = keccak256(abi.encode("condition-1"));
+        rawConditionId1 = keccak256(abi.encode("condition-1"));
+        conditionId1 = abi.encode(rawConditionId1);
 
         // Fund predictor
         collateralToken.mint(predictor, 10_000e18);
@@ -219,7 +221,7 @@ contract PredictionMarketVaultRedeemTest is Test {
 
         // Settle: counterparty (vault) wins — predictor predicted YES, outcome is NO
         vm.prank(settler);
-        resolver.settleCondition(conditionId1, IV2Types.OutcomeVector(0, 1));
+        resolver.settleCondition(rawConditionId1, IV2Types.OutcomeVector(0, 1));
 
         market.settle(predictionId, REF_CODE);
 

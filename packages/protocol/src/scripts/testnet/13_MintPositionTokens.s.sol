@@ -101,7 +101,7 @@ contract MintPredictionMarketTokens is Script {
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = IV2Types.Pick({
             conditionResolver: resolverAddr,
-            conditionId: conditionId,
+            conditionId: abi.encode(conditionId),
             predictedOutcome: IV2Types.OutcomeSide.YES
         });
         pickConfigId = keccak256(abi.encode(picks));

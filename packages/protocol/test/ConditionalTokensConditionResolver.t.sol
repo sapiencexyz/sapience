@@ -146,23 +146,23 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
     // ============ IConditionResolver Tests ============
 
     function test_isValidCondition_valid() public view {
-        assertTrue(pmResolver.isValidCondition(CONDITION_ID_1));
+        assertTrue(pmResolver.isValidCondition(abi.encode(CONDITION_ID_1)));
     }
 
     function test_isValidCondition_invalid() public view {
-        assertFalse(pmResolver.isValidCondition(bytes32(0)));
+        assertFalse(pmResolver.isValidCondition(abi.encode(bytes32(0))));
     }
 
     function test_getResolution_notSettled() public view {
         (bool isResolved, IV2Types.OutcomeVector memory outcome) =
-            pmResolver.getResolution(CONDITION_ID_1);
+            pmResolver.getResolution(abi.encode(CONDITION_ID_1));
         assertFalse(isResolved);
         assertEq(outcome.yesWeight, 0);
         assertEq(outcome.noWeight, 0);
     }
 
     function test_isFinalized_notSettled() public view {
-        assertFalse(pmResolver.isFinalized(CONDITION_ID_1));
+        assertFalse(pmResolver.isFinalized(abi.encode(CONDITION_ID_1)));
     }
 
     // ============ LayerZero Message Tests ============
@@ -182,12 +182,12 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
             bytes("")
         );
 
-        assertTrue(pmResolver.isFinalized(CONDITION_ID_1));
+        assertTrue(pmResolver.isFinalized(abi.encode(CONDITION_ID_1)));
         assertTrue(pmResolver.isConditionSettled(CONDITION_ID_1));
         assertFalse(pmResolver.isConditionInvalid(CONDITION_ID_1));
 
         (bool isResolved, IV2Types.OutcomeVector memory outcome) =
-            pmResolver.getResolution(CONDITION_ID_1);
+            pmResolver.getResolution(abi.encode(CONDITION_ID_1));
         assertTrue(isResolved);
         assertEq(outcome.yesWeight, 1);
         assertEq(outcome.noWeight, 0);
@@ -208,7 +208,7 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
         );
 
         (bool isResolved, IV2Types.OutcomeVector memory outcome) =
-            pmResolver.getResolution(CONDITION_ID_1);
+            pmResolver.getResolution(abi.encode(CONDITION_ID_1));
         assertTrue(isResolved);
         assertEq(outcome.yesWeight, 0);
         assertEq(outcome.noWeight, 1);
@@ -229,7 +229,7 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
             bytes("")
         );
 
-        assertFalse(pmResolver.isFinalized(CONDITION_ID_1));
+        assertFalse(pmResolver.isFinalized(abi.encode(CONDITION_ID_1)));
         assertFalse(pmResolver.isConditionSettled(CONDITION_ID_1));
         assertFalse(pmResolver.isConditionInvalid(CONDITION_ID_1));
     }
@@ -250,13 +250,13 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
         );
 
         // Tie is now valid and non-decisive
-        assertTrue(pmResolver.isFinalized(CONDITION_ID_1));
+        assertTrue(pmResolver.isFinalized(abi.encode(CONDITION_ID_1)));
         assertTrue(pmResolver.isConditionSettled(CONDITION_ID_1));
         assertFalse(pmResolver.isConditionInvalid(CONDITION_ID_1));
 
         // getResolution should return [1,1] for non-decisive
         (bool isResolved, IV2Types.OutcomeVector memory outcome) =
-            pmResolver.getResolution(CONDITION_ID_1);
+            pmResolver.getResolution(abi.encode(CONDITION_ID_1));
         assertTrue(isResolved);
         assertEq(outcome.yesWeight, 1);
         assertEq(outcome.noWeight, 1);
@@ -317,7 +317,7 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
 
         // Should still be YES
         (bool isResolved, IV2Types.OutcomeVector memory outcome) =
-            pmResolver.getResolution(CONDITION_ID_1);
+            pmResolver.getResolution(abi.encode(CONDITION_ID_1));
         assertTrue(isResolved);
         assertEq(outcome.yesWeight, 1);
         assertEq(outcome.noWeight, 0);
@@ -403,10 +403,10 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
         );
 
         // Query batch
-        bytes32[] memory conditionIds = new bytes32[](3);
-        conditionIds[0] = CONDITION_ID_1;
-        conditionIds[1] = CONDITION_ID_2;
-        conditionIds[2] = CONDITION_ID_3; // Not settled
+        bytes[] memory conditionIds = new bytes[](3);
+        conditionIds[0] = abi.encode(CONDITION_ID_1);
+        conditionIds[1] = abi.encode(CONDITION_ID_2);
+        conditionIds[2] = abi.encode(CONDITION_ID_3); // Not settled
 
         (bool[] memory resolved, IV2Types.OutcomeVector[] memory outcomes) =
             pmResolver.getResolutions(conditionIds);
@@ -467,10 +467,10 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
         );
 
         // Query batch
-        bytes32[] memory conditionIds = new bytes32[](3);
-        conditionIds[0] = CONDITION_ID_1;
-        conditionIds[1] = CONDITION_ID_2;
-        conditionIds[2] = CONDITION_ID_3;
+        bytes[] memory conditionIds = new bytes[](3);
+        conditionIds[0] = abi.encode(CONDITION_ID_1);
+        conditionIds[1] = abi.encode(CONDITION_ID_2);
+        conditionIds[2] = abi.encode(CONDITION_ID_3);
 
         (bool[] memory resolved, IV2Types.OutcomeVector[] memory outcomes) =
             pmResolver.getResolutions(conditionIds);
