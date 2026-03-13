@@ -3,13 +3,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Address, Hex } from 'viem';
 import type { SimulateBidResult } from '@sapience/sdk/auction/simulate';
+import {
+  simulateBidMint,
+  simulateBidMintLightweight,
+} from '@sapience/sdk/auction/simulate';
 import type { Pick } from '@sapience/sdk/types';
 import type { QuoteBid } from '~/lib/auction/useAuctionStart';
-import {
-  simulateEscrowBidMint,
-  validateEscrowBidLightweight,
-} from '~/lib/auction/simulateEscrowBidMint';
 import { logBidValidation } from '~/lib/auction/bidLogger';
+import { getPublicClientForChainId } from '~/lib/utils/util';
 import { PREFERRED_ESTIMATE_QUOTER } from '@sapience/sdk/constants';
 
 export type ValidationStatus = 'pending' | 'valid' | 'invalid';
@@ -175,7 +176,7 @@ export function useValidatedEscrowBids(
             let result: SimulateBidResult;
 
             if (signPredictorApproval) {
-              result = await simulateEscrowBidMint(bid, {
+              result = await simulateBidMint(bid, {
                 chainId,
                 predictionMarketAddress: predictionMarketAddress!,
                 collateralTokenAddress: collateralTokenAddress!,
@@ -186,13 +187,15 @@ export function useValidatedEscrowBids(
                   isSponsored && sponsorAddress ? sponsorAddress : undefined,
                 predictorSponsorData:
                   isSponsored && sponsorAddress ? '0x' : undefined,
+                publicClient: getPublicClientForChainId(chainId),
                 signPredictorApproval,
               });
             } else {
-              result = await validateEscrowBidLightweight(bid, {
+              result = await simulateBidMintLightweight(bid, {
                 chainId,
                 predictionMarketAddress: predictionMarketAddress!,
                 collateralTokenAddress: collateralTokenAddress!,
+                publicClient: getPublicClientForChainId(chainId),
               });
             }
 

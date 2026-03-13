@@ -1,11 +1,14 @@
 /**
  * Tests for simulation utility functions.
  *
- * Covers mergeStateOverrides and isContractRevert — pure utility functions
- * that are being moved from the app to the SDK.
+ * Covers:
+ * - Pure utility functions (mergeStateOverrides, isContractRevert, etc.)
+ * - simulateBidMint (Tier 3: full mint simulation)
+ * - simulateBidMintLightweight (Tier 2: on-chain state checks, SimulateBidResult interface)
  */
 
-import { describe, test, expect } from 'vitest';
+import { describe, test, expect, vi, beforeEach, type Mock } from 'vitest';
+import type { Address, Hex } from 'viem';
 import {
   mergeStateOverrides,
   isContractRevert,
@@ -13,6 +16,10 @@ import {
   buildSimulationStateOverride,
   getSoladyBalanceSlot,
   getSoladyAllowanceSlot,
+  simulateBidMint,
+  simulateBidMintLightweight,
+  type SimulateBidInput,
+  type SimulateBidMintOpts,
 } from '../simulate';
 
 // ─── mergeStateOverrides ──────────────────────────────────────────────────────
@@ -268,5 +275,315 @@ describe('getSoladyAllowanceSlot', () => {
     expect(getSoladyAllowanceSlot(owner, spender1)).not.toBe(
       getSoladyAllowanceSlot(owner, spender2)
     );
+  });
+});
+
+// ─── simulateBidMintLightweight ─────────────────────────────────────────────
+
+// Mock the on-chain modules used by simulateBidMintLightweight
+vi.mock('../../onchain/escrow', () => ({
+  isNonceUsed: vi.fn(),
+  createEscrowPublicClient: vi.fn(() => ({
+    readContract: vi.fn(),
+  })),
+  generateRandomNonce: vi.fn(() => 12345n),
+}));
+
+vi.mock('../../onchain/position', () => ({
+  validateCounterpartyFunds: vi.fn(),
+}));
+
+// Mock the modules used by simulateBidMint
+vi.mock('../../abis', () => ({
+  predictionMarketEscrowAbi: [{ type: 'function', name: 'mint' }],
+}));
+
+vi.mock('../escrowSigning', () => ({
+  buildPredictorMintTypedData: vi.fn(() => ({
+    domain: { name: 'Test', chainId: 42161n },
+    types: { MintApproval: [] },
+    primaryType: 'MintApproval',
+    message: { predictionHash: '0x' + 'ab'.repeat(32) },
+  })),
+  buildCounterpartyMintTypedData: vi.fn(() => ({
+    domain: { name: 'Test', chainId: 42161n },
+    types: { MintApproval: [] },
+    primaryType: 'MintApproval',
+    message: { predictionHash: '0x' + 'cd'.repeat(32) },
+  })),
+}));
+
+const PREDICTOR = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' as Address;
+const COUNTERPARTY = '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' as Address;
+const MARKET = '0xcccccccccccccccccccccccccccccccccccccccc' as Address;
+const COLLATERAL_TOKEN =
+  '0xdddddddddddddddddddddddddddddddddddddddd' as Address;
+
+function makeBid(overrides: Partial<SimulateBidInput> = {}): SimulateBidInput {
+  return {
+    counterparty: COUNTERPARTY,
+    counterpartyCollateral: '1000000',
+    counterpartyNonce: 1,
+    counterpartyDeadline: Math.floor(Date.now() / 1000) + 3600,
+    counterpartySignature: '0x' + 'aa'.repeat(65),
+    ...overrides,
+  };
+}
+
+describe('simulateBidMintLightweight', () => {
+  let mockIsNonceUsed: Mock;
+  let mockValidateCounterpartyFunds: Mock;
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    const escrow = await import('../../onchain/escrow');
+    const position = await import('../../onchain/position');
+    mockIsNonceUsed = escrow.isNonceUsed as Mock;
+    mockValidateCounterpartyFunds = position.validateCounterpartyFunds as Mock;
+  });
+
+  test('expired deadline → invalid', async () => {
+    const bid = makeBid({ counterpartyDeadline: 1000 }); // in the past
+    const result = await simulateBidMintLightweight(bid, {
+      chainId: 42161,
+      predictionMarketAddress: MARKET,
+      collateralTokenAddress: COLLATERAL_TOKEN,
+    });
+    expect(result).toEqual({ isValid: false, error: 'Bid has expired' });
+    expect(mockIsNonceUsed).not.toHaveBeenCalled();
+  });
+
+  test('used nonce → invalid', async () => {
+    mockIsNonceUsed.mockResolvedValue(true);
+    const result = await simulateBidMintLightweight(makeBid(), {
+      chainId: 42161,
+      predictionMarketAddress: MARKET,
+      collateralTokenAddress: COLLATERAL_TOKEN,
+    });
+    expect(result).toEqual({
+      isValid: false,
+      error: 'Bidder nonce is stale',
+    });
+  });
+
+  test('insufficient funds → invalid with error message', async () => {
+    mockIsNonceUsed.mockResolvedValue(false);
+    mockValidateCounterpartyFunds.mockRejectedValue(
+      new Error('market maker has insufficient balance')
+    );
+    const result = await simulateBidMintLightweight(makeBid(), {
+      chainId: 42161,
+      predictionMarketAddress: MARKET,
+      collateralTokenAddress: COLLATERAL_TOKEN,
+    });
+    expect(result.isValid).toBe(false);
+    expect(result.error).toContain('market maker');
+  });
+
+  test('RPC error + failOpen=true (default) → valid', async () => {
+    mockIsNonceUsed.mockRejectedValue(new Error('network timeout'));
+    const result = await simulateBidMintLightweight(makeBid(), {
+      chainId: 42161,
+      predictionMarketAddress: MARKET,
+      collateralTokenAddress: COLLATERAL_TOKEN,
+    });
+    expect(result).toEqual({ isValid: true });
+  });
+
+  test('RPC error + failOpen=false → invalid', async () => {
+    mockIsNonceUsed.mockRejectedValue(new Error('network timeout'));
+    const result = await simulateBidMintLightweight(makeBid(), {
+      chainId: 42161,
+      predictionMarketAddress: MARKET,
+      collateralTokenAddress: COLLATERAL_TOKEN,
+      failOpen: false,
+    });
+    expect(result.isValid).toBe(false);
+    expect(result.error).toContain('RPC error');
+  });
+
+  test('valid bid → { isValid: true }', async () => {
+    mockIsNonceUsed.mockResolvedValue(false);
+    mockValidateCounterpartyFunds.mockResolvedValue(undefined);
+    const result = await simulateBidMintLightweight(makeBid(), {
+      chainId: 42161,
+      predictionMarketAddress: MARKET,
+      collateralTokenAddress: COLLATERAL_TOKEN,
+    });
+    expect(result).toEqual({ isValid: true });
+  });
+
+  test('accepts optional publicClient', async () => {
+    mockIsNonceUsed.mockResolvedValue(false);
+    mockValidateCounterpartyFunds.mockResolvedValue(undefined);
+    const mockClient = { readContract: vi.fn() };
+    const result = await simulateBidMintLightweight(makeBid(), {
+      chainId: 42161,
+      predictionMarketAddress: MARKET,
+      collateralTokenAddress: COLLATERAL_TOKEN,
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      publicClient: mockClient as any,
+    });
+    expect(result).toEqual({ isValid: true });
+    // When publicClient is provided, it should be used instead of creating one
+    expect(mockValidateCounterpartyFunds).toHaveBeenCalledWith(
+      COUNTERPARTY,
+      expect.any(BigInt),
+      COLLATERAL_TOKEN,
+      MARKET,
+      mockClient
+    );
+  });
+});
+
+// ─── simulateBidMint ─────────────────────────────────────────────────────────
+
+describe('simulateBidMint', () => {
+  const mockSignPredictorApproval = vi.fn<[], Promise<Hex>>();
+  let mockSimulateContract: Mock;
+  let mockPublicClient: { simulateContract: Mock; readContract: Mock };
+
+  function makeOpts(
+    overrides: Partial<SimulateBidMintOpts> = {}
+  ): SimulateBidMintOpts {
+    return {
+      chainId: 42161,
+      predictionMarketAddress: MARKET,
+      collateralTokenAddress: COLLATERAL_TOKEN,
+      predictorAddress: PREDICTOR,
+      predictorCollateral: '2000000',
+      picks: [
+        {
+          conditionResolver: MARKET,
+          conditionId: ('0x' + 'ab'.repeat(32)) as Hex,
+          predictedOutcome: 1,
+        },
+      ],
+      publicClient:
+        mockPublicClient as unknown as SimulateBidMintOpts['publicClient'],
+      signPredictorApproval: mockSignPredictorApproval,
+      ...overrides,
+    };
+  }
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockSimulateContract = vi.fn();
+    mockPublicClient = {
+      simulateContract: mockSimulateContract,
+      readContract: vi.fn(),
+    };
+    mockSignPredictorApproval.mockResolvedValue(
+      ('0x' + 'ee'.repeat(65)) as Hex
+    );
+  });
+
+  test('successful simulation → { isValid: true }', async () => {
+    mockSimulateContract.mockResolvedValue({ result: undefined });
+
+    const result = await simulateBidMint(makeBid(), makeOpts());
+    expect(result).toEqual({ isValid: true });
+    expect(mockSignPredictorApproval).toHaveBeenCalledOnce();
+    expect(mockSimulateContract).toHaveBeenCalledOnce();
+  });
+
+  test('contract revert (non-InvalidSignature) → { isValid: false, error }', async () => {
+    const err = new Error('CollateralBelowMinimum');
+    err.name = 'ContractFunctionRevertedError';
+    mockSimulateContract.mockRejectedValue(err);
+
+    const result = await simulateBidMint(makeBid(), makeOpts());
+    expect(result.isValid).toBe(false);
+    expect(result.error).toBe('Collateral below minimum');
+  });
+
+  test('InvalidSignature revert → falls back to lightweight checks', async () => {
+    const err = new Error('InvalidSignature()');
+    err.name = 'ContractFunctionRevertedError';
+    mockSimulateContract.mockRejectedValue(err);
+
+    // Mock lightweight fallback deps
+    const escrow = await import('../../onchain/escrow');
+    const position = await import('../../onchain/position');
+    (escrow.isNonceUsed as Mock).mockResolvedValue(false);
+    (position.validateCounterpartyFunds as Mock).mockResolvedValue(undefined);
+
+    const result = await simulateBidMint(makeBid(), makeOpts());
+    expect(result).toEqual({ isValid: true });
+    // Lightweight checks were called
+    expect(escrow.isNonceUsed).toHaveBeenCalled();
+  });
+
+  test('InvalidSignature + expired deadline in fallback → invalid', async () => {
+    const err = new Error('InvalidSignature()');
+    err.name = 'ContractFunctionRevertedError';
+    mockSimulateContract.mockRejectedValue(err);
+
+    const bid = makeBid({ counterpartyDeadline: 1000 }); // expired
+    const result = await simulateBidMint(bid, makeOpts());
+    expect(result).toEqual({ isValid: false, error: 'Bid has expired' });
+  });
+
+  test('InvalidSignature + used nonce in fallback → invalid', async () => {
+    const err = new Error('InvalidSignature()');
+    err.name = 'ContractFunctionRevertedError';
+    mockSimulateContract.mockRejectedValue(err);
+
+    const escrow = await import('../../onchain/escrow');
+    (escrow.isNonceUsed as Mock).mockResolvedValue(true);
+
+    const result = await simulateBidMint(makeBid(), makeOpts());
+    expect(result).toEqual({
+      isValid: false,
+      error: 'Bidder nonce is stale',
+    });
+  });
+
+  test('RPC/network error + failOpen=true (default) → valid', async () => {
+    const err = new Error('network timeout');
+    mockSimulateContract.mockRejectedValue(err);
+
+    const result = await simulateBidMint(makeBid(), makeOpts());
+    expect(result).toEqual({ isValid: true });
+  });
+
+  test('RPC/network error + failOpen=false → invalid', async () => {
+    const err = new Error('network timeout');
+    mockSimulateContract.mockRejectedValue(err);
+
+    const result = await simulateBidMint(
+      makeBid(),
+      makeOpts({ failOpen: false })
+    );
+    expect(result.isValid).toBe(false);
+    expect(result.error).toContain('RPC error');
+  });
+
+  test('signPredictorApproval is called with typed data', async () => {
+    mockSimulateContract.mockResolvedValue({ result: undefined });
+
+    await simulateBidMint(makeBid(), makeOpts());
+
+    expect(mockSignPredictorApproval).toHaveBeenCalledWith(
+      expect.objectContaining({
+        domain: expect.any(Object),
+        types: expect.any(Object),
+        primaryType: expect.any(String),
+        message: expect.any(Object),
+      })
+    );
+  });
+
+  test('state overrides are built for both predictor and counterparty', async () => {
+    mockSimulateContract.mockResolvedValue({ result: undefined });
+
+    await simulateBidMint(makeBid(), makeOpts());
+
+    // simulateContract should be called with stateOverride
+    const callArgs = mockSimulateContract.mock.calls[0][0];
+    expect(callArgs.stateOverride).toBeDefined();
+    // Should have entries for both predictor and counterparty gas +
+    // collateral token overrides (merged)
+    expect(callArgs.stateOverride.length).toBeGreaterThanOrEqual(2);
   });
 });

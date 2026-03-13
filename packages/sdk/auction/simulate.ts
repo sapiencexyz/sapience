@@ -1,14 +1,15 @@
 /**
- * Pure bid simulation utilities for auction validation.
+ * Bid simulation utilities for auction validation.
  *
- * Extracted from packages/app/src/lib/auction/simulateBidMint.ts
- * Storage slot helpers and types are pure; the actual simulation function
- * remains in the app because it depends on app-specific RPC client setup.
+ * Contains both pure helpers (storage slots, error parsing, state overrides)
+ * and the full mint simulation function (`simulateBidMint`).
  *
  * @module auction/simulate
  */
 
-import { concat, keccak256, toHex } from 'viem';
+import type { Address, Hex, PublicClient } from 'viem';
+import { concat, keccak256, toHex, verifyTypedData, zeroAddress } from 'viem';
+import type { Pick } from '../types/escrow';
 
 // ─── Solady ERC20 Storage Slot Helpers ───────────────────────────────────────
 
@@ -278,4 +279,329 @@ export function isContractRevert(err: unknown): boolean {
   // Fallback: check message for revert keywords
   const msg = err.message;
   return msg.includes('execution reverted') || msg.includes('revert');
+}
+
+// ─── Tier 3: Full Mint Simulation ──────────────────────────────────────────
+
+/** Bid fields required for simulation. */
+export interface SimulateBidInput {
+  counterparty: string;
+  counterpartyCollateral: string;
+  counterpartyNonce: number;
+  counterpartyDeadline: number;
+  counterpartySignature: string;
+  counterpartySessionKeyData?: string;
+}
+
+/** Options for `simulateBidMint`. */
+export interface SimulateBidMintOpts {
+  chainId: number;
+  predictionMarketAddress: Address;
+  collateralTokenAddress: Address;
+  predictorAddress: Address;
+  predictorCollateral: string; // wei
+  picks: Pick[];
+  predictorSponsor?: Address;
+  predictorSponsorData?: Hex;
+  publicClient: PublicClient;
+  /** Signs the predictor's MintApproval typed data (session key, non-interactive). */
+  signPredictorApproval: (params: {
+    domain: {
+      name?: string;
+      version?: string;
+      chainId?: number;
+      verifyingContract?: Address;
+    };
+    types: Record<
+      string,
+      readonly { readonly name: string; readonly type: string }[]
+    >;
+    primaryType: string;
+    message: Record<string, unknown>;
+  }) => Promise<Hex>;
+  /** When true (default), RPC/network errors return { isValid: true }. */
+  failOpen?: boolean;
+}
+
+/**
+ * Tier 3: Full mint simulation.
+ *
+ * Simulates PredictionMarketEscrow.mint() with state overrides for both
+ * predictor and counterparty balance/allowance. On InvalidSignature revert
+ * (expected in session mode — simulateContract can't replicate predictor's
+ * smart account ERC-1271 context), falls back to Tier 2 on-chain checks.
+ */
+export async function simulateBidMint(
+  bid: SimulateBidInput,
+  opts: SimulateBidMintOpts
+): Promise<SimulateBidResult> {
+  const {
+    chainId,
+    predictionMarketAddress,
+    collateralTokenAddress,
+    predictorAddress,
+    predictorCollateral,
+    picks,
+    predictorSponsor = zeroAddress,
+    predictorSponsorData = '0x' as Hex,
+    publicClient,
+    signPredictorApproval,
+    failOpen = true,
+  } = opts;
+
+  // Dynamic imports to avoid circular dependencies
+  const [
+    { predictionMarketEscrowAbi },
+    { buildPredictorMintTypedData, buildCounterpartyMintTypedData },
+    { generateRandomNonce },
+  ] = await Promise.all([
+    import('../abis'),
+    import('./escrowSigning'),
+    import('../onchain/escrow'),
+  ]);
+
+  const predictorCollateralWei = BigInt(predictorCollateral);
+  const counterpartyCollateralWei = BigInt(bid.counterpartyCollateral);
+  const counterparty = bid.counterparty as Address;
+
+  // Generate a fresh nonce and deadline for simulation-only predictor signature
+  const predictorNonce = generateRandomNonce();
+  const predictorDeadline = BigInt(Math.floor(Date.now() / 1000) + 300);
+
+  try {
+    // 1. Build predictor's MintApproval typed data
+    const typedData = buildPredictorMintTypedData({
+      picks,
+      predictorCollateral: predictorCollateralWei,
+      counterpartyCollateral: counterpartyCollateralWei,
+      predictor: predictorAddress,
+      counterparty,
+      predictorNonce,
+      predictorDeadline,
+      predictorSponsor,
+      predictorSponsorData,
+      verifyingContract: predictionMarketAddress,
+      chainId,
+    });
+
+    // 2. Sign via session key (non-interactive)
+    const predictorSignature = await signPredictorApproval({
+      domain: {
+        ...typedData.domain,
+        chainId: Number(typedData.domain.chainId),
+      },
+      types: typedData.types,
+      primaryType: typedData.primaryType,
+      message: typedData.message,
+    });
+
+    // 3. Build the full escrow MintRequest struct
+    const ZERO_BYTES32: Hex = `0x${'0'.repeat(64)}`;
+    const mintRequest = {
+      picks: picks.map((p) => ({
+        conditionResolver: p.conditionResolver,
+        conditionId: p.conditionId,
+        predictedOutcome: p.predictedOutcome,
+      })),
+      predictorCollateral: predictorCollateralWei,
+      counterpartyCollateral: counterpartyCollateralWei,
+      predictor: predictorAddress,
+      counterparty,
+      predictorNonce,
+      counterpartyNonce: BigInt(bid.counterpartyNonce),
+      predictorDeadline,
+      counterpartyDeadline: BigInt(bid.counterpartyDeadline),
+      predictorSignature,
+      counterpartySignature: bid.counterpartySignature as Hex,
+      refCode: ZERO_BYTES32,
+      predictorSessionKeyData: '0x' as Hex,
+      counterpartySessionKeyData: (bid.counterpartySessionKeyData ||
+        '0x') as Hex,
+      predictorSponsor,
+      predictorSponsorData,
+    };
+
+    // 4. Build state overrides for BOTH predictor and counterparty
+    const predictorOverrides = buildSimulationStateOverride({
+      simulationAddress: predictorAddress,
+      collateralTokenAddress,
+      predictionMarketAddress,
+      makerCollateralWei: predictorCollateralWei,
+    });
+
+    const counterpartyOverrides = buildSimulationStateOverride({
+      simulationAddress: counterparty,
+      collateralTokenAddress,
+      predictionMarketAddress,
+      makerCollateralWei: counterpartyCollateralWei,
+    });
+
+    const stateOverride = mergeStateOverrides(
+      predictorOverrides,
+      counterpartyOverrides
+    );
+
+    // 5. Simulate the mint call
+    await publicClient.simulateContract({
+      address: predictionMarketAddress,
+      abi: predictionMarketEscrowAbi,
+      functionName: 'mint',
+      args: [mintRequest],
+      account: predictorAddress,
+      stateOverride,
+    });
+
+    return { isValid: true };
+  } catch (err: unknown) {
+    // Distinguish contract reverts from RPC/network errors
+    if (isContractRevert(err)) {
+      const errorMessage = parseSimulationError(err);
+
+      const rawMessage = err instanceof Error ? err.message : '';
+      const isInvalidSig =
+        rawMessage.includes('InvalidSignature') ||
+        (errorMessage.includes('Invalid') &&
+          errorMessage.includes('signature'));
+
+      if (isInvalidSig) {
+        // InvalidSignature is expected in session mode: simulateContract can't
+        // replicate the predictor's smart account ERC-1271 context.
+        //
+        // Try to verify the counterparty sig off-chain. If ecrecover doesn't
+        // match, the counterparty may be a smart contract (e.g. a vault) with
+        // its own isValidSignature — the on-chain mint will verify it properly,
+        // so fall back to lightweight checks either way.
+        try {
+          const counterpartyTypedData = buildCounterpartyMintTypedData({
+            picks,
+            predictorCollateral: predictorCollateralWei,
+            counterpartyCollateral: counterpartyCollateralWei,
+            predictor: predictorAddress,
+            counterparty,
+            counterpartyNonce: BigInt(bid.counterpartyNonce),
+            counterpartyDeadline: BigInt(bid.counterpartyDeadline),
+            predictorSponsor,
+            predictorSponsorData,
+            verifyingContract: predictionMarketAddress,
+            chainId,
+          });
+          await verifyTypedData({
+            address: counterparty,
+            domain: {
+              ...counterpartyTypedData.domain,
+              chainId: Number(counterpartyTypedData.domain.chainId),
+            },
+            types: counterpartyTypedData.types,
+            primaryType: counterpartyTypedData.primaryType,
+            message: counterpartyTypedData.message,
+            signature: bid.counterpartySignature as Hex,
+          });
+        } catch {
+          // ecrecover failed (malformed sig or smart account) — not fatal,
+          // fall through to lightweight checks
+        }
+
+        // Fall back to Tier 2 lightweight checks (deadline/nonce/balance)
+        return simulateBidMintLightweight(bid, {
+          chainId,
+          predictionMarketAddress,
+          collateralTokenAddress,
+          failOpen,
+        });
+      }
+
+      return { isValid: false, error: errorMessage };
+    }
+
+    // RPC/network error — configurable via failOpen
+    if (failOpen) {
+      return { isValid: true };
+    }
+    return {
+      isValid: false,
+      error: `RPC error: ${err instanceof Error ? err.message.slice(0, 200) : 'Unknown'}`,
+    };
+  }
+}
+
+// ─── Lightweight Validation (Tier 2, SimulateBidResult interface) ────────
+
+/**
+ * Lightweight on-chain validation returning SimulateBidResult.
+ *
+ * Checks deadline expiry, nonce usage, and balance/allowance.
+ * Used as a fallback from `simulateBidMint` on InvalidSignature revert,
+ * and as the primary validation path in EOA mode.
+ *
+ * On RPC errors, configurable via `failOpen` (default true = treat as valid).
+ */
+export async function simulateBidMintLightweight(
+  bid: {
+    counterparty: string;
+    counterpartyCollateral: string;
+    counterpartyNonce: number;
+    counterpartyDeadline: number;
+  },
+  opts: {
+    chainId: number;
+    predictionMarketAddress: Address;
+    collateralTokenAddress: Address;
+    publicClient?: PublicClient;
+    failOpen?: boolean;
+  }
+): Promise<SimulateBidResult> {
+  const failOpen = opts.failOpen ?? true;
+  const counterparty = bid.counterparty as Address;
+  const counterpartyCollateralWei = BigInt(bid.counterpartyCollateral);
+
+  // 1. Check deadline expiry
+  const nowSec = Math.floor(Date.now() / 1000);
+  if (bid.counterpartyDeadline <= nowSec) {
+    return { isValid: false, error: 'Bid has expired' };
+  }
+
+  try {
+    // Dynamic imports to avoid circular dependency
+    const { isNonceUsed, createEscrowPublicClient } = await import(
+      '../onchain/escrow'
+    );
+    const { validateCounterpartyFunds } = await import('../onchain/position');
+
+    // 2. Check counterparty nonce
+    const nonceUsed = await isNonceUsed(
+      counterparty,
+      BigInt(bid.counterpartyNonce),
+      { chainId: opts.chainId, marketAddress: opts.predictionMarketAddress }
+    );
+    if (nonceUsed) {
+      return { isValid: false, error: 'Bidder nonce is stale' };
+    }
+
+    // 3. Check counterparty balance/allowance
+    const client =
+      opts.publicClient ?? createEscrowPublicClient(undefined, opts.chainId);
+    await validateCounterpartyFunds(
+      counterparty,
+      counterpartyCollateralWei,
+      opts.collateralTokenAddress,
+      opts.predictionMarketAddress,
+      client
+    );
+
+    return { isValid: true };
+  } catch (err) {
+    // validateCounterpartyFunds throws with 'market maker' message on insufficient funds
+    if (err instanceof Error && err.message.includes('market maker')) {
+      return { isValid: false, error: err.message };
+    }
+
+    // RPC/network error
+    if (failOpen) {
+      return { isValid: true };
+    }
+    return {
+      isValid: false,
+      error: `RPC error: ${err instanceof Error ? err.message.slice(0, 200) : 'Unknown'}`,
+    };
+  }
 }
