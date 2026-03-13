@@ -33,6 +33,7 @@
     "test:websocket": "tsx test-websocket-connection.ts",
     "test:x402": "tsx src/scripts/testX402Payment.ts",
     "test:rate-limiting": "tsx src/scripts/testRateLimiting.ts",
+    "emit-schema": "pnpm run prisma:generate && tsx src/scripts/emitSchema.ts",
     "generate-types": "graphql-codegen --config codegen.ts",
     "sentry:sourcemaps": "sentry-cli sourcemaps inject --org foil --project data ./dist && sentry-cli sourcemaps upload --org foil --project data ./dist",
     "lint": "eslint src --quiet",
