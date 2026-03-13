@@ -25,11 +25,15 @@
     "start:reindex-condition-settled": "pnpm --filter api run start:reindex-condition-settled",
     "start:reindex-transfers": "pnpm --filter api run start:reindex-transfers",
     "check": "pnpm --filter @sapience/sdk run build:lib && pnpm --filter @sapience/api run prisma:generate && pnpm -r run lint && pnpm -r --filter=!protocol run type-check && pnpm -r --filter=!protocol run test",
-    "format:check": "pnpm -r run format:check"
+    "format:check": "pnpm -r run format:check",
+    "prepare": "husky"
   },
   "keywords": [],
   "devDependencies": {
-    "concurrently": "8.2.2"
+    "concurrently": "8.2.2",
+    "husky": "9.1.7",
+    "lint-staged": "16.3.3",
+    "prettier": "3.3.3"
   },
   "engines": {
     "node": ">=20.14.x",

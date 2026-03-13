@@ -12,7 +12,12 @@ const prisma = dbModule.default as unknown as {
   condition: { findMany: ReturnType<typeof vi.fn> };
 };
 
-import { buildTokenList, resetCache, MAX_NAME_LENGTH, MAX_SYMBOL_LENGTH } from './tokenlist';
+import {
+  buildTokenList,
+  resetCache,
+  MAX_NAME_LENGTH,
+  MAX_SYMBOL_LENGTH,
+} from './tokenlist';
 
 // Helper to build a condition fixture
 function makeCondition(overrides: Record<string, unknown> = {}) {
@@ -69,11 +74,11 @@ describe('tokenlist', () => {
 
       const list = JSON.parse(await buildTokenList());
 
-      const yes = list.tokens.find(
-        (t: { name: string }) => t.name.endsWith('Yes')
+      const yes = list.tokens.find((t: { name: string }) =>
+        t.name.endsWith('Yes')
       );
-      const no = list.tokens.find(
-        (t: { name: string }) => t.name.endsWith('No')
+      const no = list.tokens.find((t: { name: string }) =>
+        t.name.endsWith('No')
       );
 
       expect(yes.name).toBe('Will BTC hit 100k? — Yes');
@@ -102,8 +107,8 @@ describe('tokenlist', () => {
       ]);
 
       const list = JSON.parse(await buildTokenList());
-      const yes = list.tokens.find(
-        (t: { name: string }) => t.name.endsWith('Yes')
+      const yes = list.tokens.find((t: { name: string }) =>
+        t.name.endsWith('Yes')
       );
 
       expect(yes.symbol).toBe('Will BTC hit 100k?-Yes');
@@ -141,8 +146,7 @@ describe('tokenlist', () => {
 
       expect(list.version.major).toBe(1);
       const now = new Date();
-      const expectedMinor =
-        (now.getUTCMonth() + 1) * 100 + now.getUTCDate();
+      const expectedMinor = (now.getUTCMonth() + 1) * 100 + now.getUTCDate();
       expect(list.version.minor).toBe(expectedMinor);
       expect(list.version.minor).toBeLessThan(65536);
       expect(list.version.patch).toBe(list.tokens.length);
@@ -155,8 +159,8 @@ describe('tokenlist', () => {
       ]);
 
       const list = JSON.parse(await buildTokenList());
-      const yes = list.tokens.find(
-        (t: { name: string }) => t.name.endsWith('Yes')
+      const yes = list.tokens.find((t: { name: string }) =>
+        t.name.endsWith('Yes')
       );
 
       expect(yes.symbol).toBe('GOOGL ›$300-Yes');
@@ -169,8 +173,8 @@ describe('tokenlist', () => {
       ]);
 
       const list = JSON.parse(await buildTokenList());
-      const yes = list.tokens.find(
-        (t: { name: string }) => t.name.endsWith('Yes')
+      const yes = list.tokens.find((t: { name: string }) =>
+        t.name.endsWith('Yes')
       );
 
       expect(yes.name).not.toMatch(/[<>]/);
@@ -228,8 +232,16 @@ describe('tokenlist', () => {
 
     it('handles multiple conditions in order', async () => {
       prisma.condition.findMany.mockResolvedValue([
-        makeCondition({ id: '0x' + '1'.repeat(64), question: 'Q1', shortName: 'Q1' }),
-        makeCondition({ id: '0x' + '2'.repeat(64), question: 'Q2', shortName: 'Q2' }),
+        makeCondition({
+          id: '0x' + '1'.repeat(64),
+          question: 'Q1',
+          shortName: 'Q1',
+        }),
+        makeCondition({
+          id: '0x' + '2'.repeat(64),
+          question: 'Q2',
+          shortName: 'Q2',
+        }),
       ]);
 
       const list = JSON.parse(await buildTokenList());

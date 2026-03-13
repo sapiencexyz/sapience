@@ -3,10 +3,7 @@
  * Stores and manages escrow auctions and bids
  */
 
-import type {
-  AuctionRFQPayload,
-  ValidatedBid,
-} from '@sapience/sdk/types';
+import type { AuctionRFQPayload, ValidatedBid } from '@sapience/sdk/types';
 import type { EscrowAuctionRecord, BidPayload } from './escrowTypes';
 import { validateEscrowBid } from './escrowHelpers';
 import { computeEscrowPickConfigId } from './escrowHelpers';
@@ -40,7 +37,9 @@ export function upsertEscrowAuction(auction: AuctionRFQPayload): string {
 /**
  * Get an escrow auction by ID
  */
-export function getEscrowAuction(auctionId: string): EscrowAuctionRecord | undefined {
+export function getEscrowAuction(
+  auctionId: string
+): EscrowAuctionRecord | undefined {
   const rec = escrowAuctions.get(auctionId);
   if (!rec) return undefined;
   if (Date.now() > rec.deadlineMs) {

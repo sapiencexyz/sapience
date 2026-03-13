@@ -40,10 +40,12 @@ export const collateralTokenAbi: Abi = (CollateralToken as { abi: Abi }).abi;
 export const lzResolverAbi: Abi = (LZResolver as { abi: Abi }).abi;
 
 /** @deprecated Use `lzConditionResolverAbi` */
-export const lzResolverUmaSideAbi: Abi = (LZResolverUmaSide as { abi: Abi }).abi;
+export const lzResolverUmaSideAbi: Abi = (LZResolverUmaSide as { abi: Abi })
+  .abi;
 
 /** @deprecated Use `lzConditionResolverAbi` */
-export const lzConditionalTokenResolverAbi: Abi = LZConditionalTokenResolver as Abi;
+export const lzConditionalTokenResolverAbi: Abi =
+  LZConditionalTokenResolver as Abi;
 export const predictionMarketEscrowAbi = PredictionMarketEscrow as Abi;
 export const predictionMarketTokenAbi = PredictionMarketToken as Abi;
 export const predictionMarketVaultAbi = PredictionMarketVault as Abi;
@@ -52,7 +54,9 @@ export const manualConditionResolverAbi = ManualConditionResolver as Abi;
 export const lzConditionResolverAbi = LZConditionResolver as Abi;
 export const conditionResolverAbi = IConditionResolver as Abi;
 export const predictionMarketBridgeAbi = PredictionMarketBridge as Abi;
-export const predictionMarketBridgeRemoteAbi = PredictionMarketBridgeRemote as Abi;
-export const predictionMarketTokenFactoryAbi = PredictionMarketTokenFactory as Abi;
+export const predictionMarketBridgeRemoteAbi =
+  PredictionMarketBridgeRemote as Abi;
+export const predictionMarketTokenFactoryAbi =
+  PredictionMarketTokenFactory as Abi;
 export const secondaryMarketEscrowAbi = SecondaryMarketEscrow as Abi;
 export const onboardingSponsorAbi = OnboardingSponsor as Abi;

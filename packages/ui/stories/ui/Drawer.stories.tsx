@@ -1,12 +1,12 @@
-import type { Meta, StoryObj } from "@storybook/react-webpack5";
-import { useState } from "react";
+import type { Meta, StoryObj } from '@storybook/react-webpack5';
+import { useState } from 'react';
 import {
   Settings as SettingsIcon,
   User,
   Mail,
   CreditCard,
   Bell,
-} from "lucide-react";
+} from 'lucide-react';
 import {
   Drawer,
   DrawerClose,
@@ -16,24 +16,24 @@ import {
   DrawerHeader,
   DrawerTitle,
   DrawerTrigger,
-} from "../../components/ui/drawer";
-import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
-import { Label } from "../../components/ui/label";
+} from '../../components/ui/drawer';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
 
 const meta: Meta<typeof Drawer> = {
-  title: "UI/Drawer",
+  title: 'UI/Drawer',
   component: Drawer,
   parameters: {
-    layout: "centered",
+    layout: 'centered',
   },
-  tags: ["autodocs"],
+  tags: ['autodocs'],
   argTypes: {
     open: {
-      control: { type: "boolean" },
+      control: { type: 'boolean' },
     },
     shouldScaleBackground: {
-      control: { type: "boolean" },
+      control: { type: 'boolean' },
     },
   },
 };
@@ -236,9 +236,9 @@ export const Controlled: Story = {
               <DrawerHeader>
                 <DrawerTitle>Controlled Drawer</DrawerTitle>
                 <DrawerDescription>
-                  This drawer is controlled by React state. The open state is:{" "}
+                  This drawer is controlled by React state. The open state is:{' '}
                   <span className="font-semibold">
-                    {open ? "Open" : "Closed"}
+                    {open ? 'Open' : 'Closed'}
                   </span>
                 </DrawerDescription>
               </DrawerHeader>

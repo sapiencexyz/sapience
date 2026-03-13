@@ -122,7 +122,10 @@ export function parseSimulationError(err: unknown): string {
       'TakerCollateralMustBeGreaterThanZero',
       'Taker collateral must be greater than zero',
     ],
-    ['InvalidMarketsAccordingToResolver', 'Invalid markets according to resolver'],
+    [
+      'InvalidMarketsAccordingToResolver',
+      'Invalid markets according to resolver',
+    ],
     ['InvalidEncodedPredictedOutcomes', 'Invalid encoded predicted outcomes'],
     ['MakerIsNotCaller', 'Simulation error: msg.sender mismatch'],
   ];

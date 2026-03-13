@@ -25,8 +25,7 @@ const config: StorybookConfig = {
   webpackFinal: async (config) => {
     // Ensure Tailwind content globs include ui paths for Storybook build
     return config;
-  }
+  },
 };
 
 export default config;
-

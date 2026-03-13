@@ -317,7 +317,7 @@ export function buildPredictorMintTypedData(params: {
     params.predictor,
     params.counterparty,
     params.predictorSponsor ?? zeroAddress,
-    params.predictorSponsorData ?? '0x',
+    params.predictorSponsorData ?? '0x'
   );
 
   return buildMintApprovalTypedData({
@@ -354,7 +354,7 @@ export function buildCounterpartyMintTypedData(params: {
     params.predictor,
     params.counterparty,
     params.predictorSponsor ?? zeroAddress,
-    params.predictorSponsorData ?? '0x',
+    params.predictorSponsorData ?? '0x'
   );
 
   return buildMintApprovalTypedData({
@@ -466,7 +466,11 @@ export function buildAuctionIntentTypedData(params: {
   types: typeof AUCTION_INTENT_TYPES;
   primaryType: 'AuctionIntent';
   message: {
-    picks: { conditionResolver: Address; conditionId: Hex; predictedOutcome: number }[];
+    picks: {
+      conditionResolver: Address;
+      conditionId: Hex;
+      predictedOutcome: number;
+    }[];
     predictor: Address;
     predictorCollateral: bigint;
     predictorNonce: bigint;
@@ -482,9 +486,7 @@ export function buildAuctionIntentTypedData(params: {
         conditionResolver: p.conditionResolver,
         // EIP-712 type is bytes32; hash long conditionIds (e.g. Pyth raw encoding)
         conditionId:
-          p.conditionId.length > 66
-            ? keccak256(p.conditionId)
-            : p.conditionId,
+          p.conditionId.length > 66 ? keccak256(p.conditionId) : p.conditionId,
         predictedOutcome: p.predictedOutcome,
       })),
       predictor: params.predictor,
@@ -517,7 +519,9 @@ interface DecodedEscrowSessionKeyData {
  * Decode escrow SessionKeyData from ABI-encoded hex bytes.
  * Format: 32-byte offset pointer + struct fields.
  */
-function decodeEscrowSessionKeyData(data: string): DecodedEscrowSessionKeyData | null {
+function decodeEscrowSessionKeyData(
+  data: string
+): DecodedEscrowSessionKeyData | null {
   try {
     if (!data.startsWith('0x') || data.length < 66) return null;
 
@@ -545,7 +549,10 @@ function decodeEscrowSessionKeyData(data: string): DecodedEscrowSessionKeyData |
       ownerSignature: decoded[5] as Hex,
     };
   } catch (e) {
-    console.debug('[escrowSigning] Failed to decode escrow session key data:', e);
+    console.debug(
+      '[escrowSigning] Failed to decode escrow session key data:',
+      e
+    );
     return null;
   }
 }
@@ -656,7 +663,9 @@ export async function verifyAuctionIntentSignature(params: {
 
     // Path 1: Escrow session key (ABI-encoded hex)
     if (params.predictorSessionKeyData?.startsWith('0x')) {
-      const escrowSessionData = decodeEscrowSessionKeyData(params.predictorSessionKeyData);
+      const escrowSessionData = decodeEscrowSessionKeyData(
+        params.predictorSessionKeyData
+      );
       if (escrowSessionData) {
         const escrowResult = await verifyEscrowSessionKey(
           escrowSessionData,
@@ -670,7 +679,10 @@ export async function verifyAuctionIntentSignature(params: {
             signature: params.intentSignature,
           });
 
-          if (recoveredSigner.toLowerCase() === escrowResult.sessionKeyAddress.toLowerCase()) {
+          if (
+            recoveredSigner.toLowerCase() ===
+            escrowResult.sessionKeyAddress.toLowerCase()
+          ) {
             return { valid: true, recoveredAddress: recoveredSigner };
           }
         }
@@ -699,7 +711,10 @@ export async function verifyAuctionIntentSignature(params: {
     // Path 4: ZeroDev session key (JSON with approval + typedData)
     // The session key signs with raw ECDSA; the approval proves the owner
     // authorized this session key for the predictor's smart account.
-    if (params.predictorSessionKeyData && !params.predictorSessionKeyData.startsWith('0x')) {
+    if (
+      params.predictorSessionKeyData &&
+      !params.predictorSessionKeyData.startsWith('0x')
+    ) {
       try {
         let approvalStr = params.predictorSessionKeyData;
         let sessionTypedData: SessionApprovalPayload['typedData'] = undefined;
@@ -714,12 +729,19 @@ export async function verifyAuctionIntentSignature(params: {
         }
 
         const sessionResult = await verifySessionApproval(
-          { approval: approvalStr, chainId: params.chainId, typedData: sessionTypedData },
-          predictorAddress as Address,
+          {
+            approval: approvalStr,
+            chainId: params.chainId,
+            typedData: sessionTypedData,
+          },
+          predictorAddress as Address
         );
 
         if (sessionResult.valid && sessionResult.sessionKeyAddress) {
-          if (recovered.toLowerCase() === sessionResult.sessionKeyAddress.toLowerCase()) {
+          if (
+            recovered.toLowerCase() ===
+            sessionResult.sessionKeyAddress.toLowerCase()
+          ) {
             return { valid: true, recoveredAddress: recovered };
           }
         }
@@ -792,7 +814,9 @@ export async function verifyCounterpartyMintSignature(params: {
 
     // Path 1: Escrow session key (ABI-encoded hex)
     if (params.counterpartySessionKeyData?.startsWith('0x')) {
-      const escrowSessionData = decodeEscrowSessionKeyData(params.counterpartySessionKeyData);
+      const escrowSessionData = decodeEscrowSessionKeyData(
+        params.counterpartySessionKeyData
+      );
       if (escrowSessionData) {
         const escrowResult = await verifyEscrowSessionKey(
           escrowSessionData,
@@ -806,7 +830,10 @@ export async function verifyCounterpartyMintSignature(params: {
             signature: params.counterpartySignature,
           });
 
-          if (recoveredSigner.toLowerCase() === escrowResult.sessionKeyAddress.toLowerCase()) {
+          if (
+            recoveredSigner.toLowerCase() ===
+            escrowResult.sessionKeyAddress.toLowerCase()
+          ) {
             return { valid: true, recoveredAddress: recoveredSigner };
           }
         }
@@ -834,7 +861,10 @@ export async function verifyCounterpartyMintSignature(params: {
 
     return { valid: false, recoveredAddress: recovered };
   } catch (e) {
-    console.debug('[escrowSigning] Counterparty mint signature verification error:', e);
+    console.debug(
+      '[escrowSigning] Counterparty mint signature verification error:',
+      e
+    );
     return { valid: false };
   }
 }

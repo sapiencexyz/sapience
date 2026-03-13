@@ -18,7 +18,8 @@ const validBid: BidPayload = {
   maker: '0x1234567890123456789012345678901234567890',
   makerCollateral: '500000000000000000',
   makerDeadline: Math.floor(Date.now() / 1000) + 3600, // 1 hour from now
-  makerSignature: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1b',
+  makerSignature:
+    '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1b',
   makerNonce: 1,
 };
 

@@ -8,6 +8,7 @@ const nextConfig = {
   serverExternalPackages: ['@zerodev/ecdsa-validator', '@zerodev/sdk'],
   eslint: {
     dirs: ['src'],
+    ignoreDuringBuilds: true,
   },
   // Because we import the 403.html file in middleware.ts, we need to tell webpack to treat it as an asset.
   webpack: (config, { isServer }) => {

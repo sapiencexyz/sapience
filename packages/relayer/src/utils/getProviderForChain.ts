@@ -1,9 +1,4 @@
-import {
-  type PublicClient,
-  type Chain,
-  createPublicClient,
-  http,
-} from 'viem';
+import { type PublicClient, type Chain, createPublicClient, http } from 'viem';
 import {
   CHAIN_ID_ETHEREAL,
   CHAIN_ID_ETHEREAL_TESTNET,
@@ -53,4 +48,3 @@ export function getProviderForChain(chainId: number): PublicClient {
 
   return newClient;
 }
-

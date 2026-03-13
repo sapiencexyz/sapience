@@ -1,9 +1,4 @@
-import {
-  encodeAbiParameters,
-  keccak256,
-  type Address,
-  type Hex,
-} from 'viem';
+import { encodeAbiParameters, keccak256, type Address, type Hex } from 'viem';
 import type { Pick, PickJson, OutcomeSide } from '../types/escrow';
 
 // ============================================================================
@@ -58,9 +53,7 @@ const PICKS_ARRAY_TYPE = {
  * Encode an array of picks for ABI encoding
  * Internal helper that formats picks for encodeAbiParameters
  */
-function formatPicksForEncoding(
-  picks: Pick[]
-): Array<{
+function formatPicksForEncoding(picks: Pick[]): Array<{
   conditionResolver: Address;
   conditionId: Hex;
   predictedOutcome: number;
@@ -204,7 +197,9 @@ export function canonicalizePicks(picks: Pick[]): Pick[] {
     if (resolverCmp !== 0) return resolverCmp;
 
     // Then by conditionId
-    return a.conditionId.toLowerCase().localeCompare(b.conditionId.toLowerCase());
+    return a.conditionId
+      .toLowerCase()
+      .localeCompare(b.conditionId.toLowerCase());
   });
 }
 
@@ -233,7 +228,10 @@ export function isValidPick(pick: unknown): pick is Pick {
   }
 
   // Check predictedOutcome is 0 or 1
-  if (typeof p.predictedOutcome !== 'number' || (p.predictedOutcome !== 0 && p.predictedOutcome !== 1)) {
+  if (
+    typeof p.predictedOutcome !== 'number' ||
+    (p.predictedOutcome !== 0 && p.predictedOutcome !== 1)
+  ) {
     return false;
   }
 

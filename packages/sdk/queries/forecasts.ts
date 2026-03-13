@@ -100,7 +100,11 @@ export interface FetchForecastsParams {
 }
 
 function buildAttestationFilters(params: FetchForecastsParams) {
-  const { schemaId = DEFAULT_SCHEMA_UID, attesterAddress, conditionId } = params;
+  const {
+    schemaId = DEFAULT_SCHEMA_UID,
+    attesterAddress,
+    conditionId,
+  } = params;
 
   let normalizedAttesterAddress = attesterAddress;
   if (attesterAddress) {
