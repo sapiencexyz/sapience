@@ -39,9 +39,21 @@ Prettier config is shared at the repo root (`.prettierrc.json`). ESLint configs 
 1. `pnpm --filter @sapience/sdk run build:lib` — SDK must build first; app, api, and relayer import from it
 2. `pnpm --filter @sapience/api run prisma:generate` — required before API compilation (generated client is not committed)
 
+## Regenerating GraphQL types
+After changing any GraphQL resolver (args, fields, types), run:
+```bash
+pnpm --filter @sapience/api run generate-types
+```
+This runs three steps in sequence: `prisma:generate` → `emit-schema` (writes `schema.graphql`) → `graphql-codegen` (writes `packages/sdk/types/graphql.ts`). No database connection is needed — config and Prisma are lazily initialized so build-time scripts can import resolvers without triggering env validation.
+
+If you also changed SDK types, rebuild the SDK afterward:
+```bash
+pnpm --filter @sapience/sdk run build:lib
+```
+
 ## Common footguns
 - **SDK is a build dependency.** If you change SDK types, rebuild it before checking other packages.
 - **`prisma:generate` before API compilation.** The generated Prisma client is not committed.
-- **`schema.graphql` and `graphql.ts` are generated files** — never edit directly, use bash commands to regenerate.
+- **`schema.graphql` and `graphql.ts` are generated files** — never edit directly; run `generate-types` to regenerate.
 - **Protocol tests need `forge build --ast`** before `forge test`. Use `pnpm --filter protocol run test` which handles this.
 - **App uses Next.js** — `type-check` catches things `lint` doesn't and vice versa. Run both.
