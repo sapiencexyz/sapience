@@ -199,13 +199,13 @@ contract ConditionalTokensConditionResolver is
         returns (bytes32 rawId, uint256 deadline)
     {
         require(conditionId.length >= 32, "conditionId too short");
-        rawId = bytes32(conditionId[:32]);
 
-        if (conditionId.length > 32) {
-            // Remaining bytes encode the deadline timestamp
-            deadline = abi.decode(conditionId[32:], (uint256));
+        if (conditionId.length == 32) {
+            rawId = abi.decode(conditionId, (bytes32));
+            // deadline = 0 (no deadline)
+        } else {
+            (rawId, deadline) = abi.decode(conditionId, (bytes32, uint256));
         }
-        // else deadline = 0 (no deadline)
     }
 
     /// @dev Get resolution for a condition state, applying deadline logic
