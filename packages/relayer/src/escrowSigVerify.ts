@@ -7,11 +7,7 @@
  * ZeroDev session key support and smart account address resolution.
  */
 
-import {
-  recoverTypedDataAddress,
-  type Address,
-  type Hex,
-} from 'viem';
+import { recoverTypedDataAddress, type Address, type Hex } from 'viem';
 import {
   verifyAuctionIntentSignature as sdkVerifyAuctionIntentSignature,
   verifyCounterpartyMintSignature as sdkVerifyCounterpartyMintSignature,
@@ -37,9 +33,9 @@ function convertPicks(picks: AuctionRFQPayload['picks']): Pick[] {
 /**
  * Convert typed data with bigint chainId to number for viem compatibility
  */
-function convertTypedDataForViem<T extends { domain: { chainId?: bigint | number } }>(
-  typedData: T
-): T & { domain: { chainId?: number } } {
+function convertTypedDataForViem<
+  T extends { domain: { chainId?: bigint | number } },
+>(typedData: T): T & { domain: { chainId?: number } } {
   return {
     ...typedData,
     domain: {
@@ -82,7 +78,8 @@ export async function verifyEscrowCounterpartySignature(
     counterpartyDeadline: BigInt(bid.counterpartyDeadline),
     counterpartySignature: bid.counterpartySignature as Hex,
     counterpartySessionKeyData: bid.counterpartySessionKeyData,
-    predictorSponsor: (auction.predictorSponsor ?? '0x0000000000000000000000000000000000000000') as Address,
+    predictorSponsor: (auction.predictorSponsor ??
+      '0x0000000000000000000000000000000000000000') as Address,
     predictorSponsorData: (auction.predictorSponsorData ?? '0x') as Hex,
     verifyingContract,
     chainId: auction.chainId,
@@ -90,13 +87,19 @@ export async function verifyEscrowCounterpartySignature(
 
   if (result.valid) {
     if (process.env.NODE_ENV !== 'production') {
-      console.debug('[Escrow-Sig] Valid counterparty signature, recovered:', result.recoveredAddress);
+      console.debug(
+        '[Escrow-Sig] Valid counterparty signature, recovered:',
+        result.recoveredAddress
+      );
     }
     return true;
   }
 
   // Fallback: ZeroDev session key (base64 JSON format or JSON with typedData)
-  if (bid.counterpartySessionKeyData && !bid.counterpartySessionKeyData.startsWith('0x')) {
+  if (
+    bid.counterpartySessionKeyData &&
+    !bid.counterpartySessionKeyData.startsWith('0x')
+  ) {
     try {
       const counterpartyAddress = bid.counterparty.toLowerCase() as Address;
 
@@ -122,7 +125,7 @@ export async function verifyEscrowCounterpartySignature(
 
       const sessionResult = await verifySessionApproval(
         sessionApprovalPayload,
-        counterpartyAddress,
+        counterpartyAddress
       );
 
       if (sessionResult.valid && sessionResult.sessionKeyAddress) {
@@ -138,7 +141,8 @@ export async function verifyEscrowCounterpartySignature(
           counterparty: bid.counterparty as Address,
           counterpartyNonce: BigInt(bid.counterpartyNonce),
           counterpartyDeadline: BigInt(bid.counterpartyDeadline),
-          predictorSponsor: (auction.predictorSponsor ?? '0x0000000000000000000000000000000000000000') as Address,
+          predictorSponsor: (auction.predictorSponsor ??
+            '0x0000000000000000000000000000000000000000') as Address,
           predictorSponsorData: (auction.predictorSponsorData ?? '0x') as Hex,
           verifyingContract,
           chainId: auction.chainId,
@@ -151,7 +155,10 @@ export async function verifyEscrowCounterpartySignature(
           signature: bid.counterpartySignature as Hex,
         });
 
-        if (recoveredSigner.toLowerCase() === sessionResult.sessionKeyAddress.toLowerCase()) {
+        if (
+          recoveredSigner.toLowerCase() ===
+          sessionResult.sessionKeyAddress.toLowerCase()
+        ) {
           if (process.env.NODE_ENV !== 'production') {
             console.debug(
               '[Escrow-Sig] Valid counterparty ZeroDev session approval for account:',
@@ -162,7 +169,10 @@ export async function verifyEscrowCounterpartySignature(
         }
       }
     } catch (error) {
-      console.error('[Escrow-Sig] ZeroDev counterparty session key verification error:', error);
+      console.error(
+        '[Escrow-Sig] ZeroDev counterparty session key verification error:',
+        error
+      );
     }
   }
 
@@ -215,7 +225,10 @@ export async function verifyAuctionIntentSignature(
   }
 
   // Fallback: ZeroDev session key (base64 JSON format or JSON with typedData)
-  if (payload.predictorSessionKeyData && !payload.predictorSessionKeyData.startsWith('0x')) {
+  if (
+    payload.predictorSessionKeyData &&
+    !payload.predictorSessionKeyData.startsWith('0x')
+  ) {
     try {
       // Parse session key data — may be a JSON object with {approval, typedData}
       // or a raw base64 approval string
@@ -241,7 +254,7 @@ export async function verifyAuctionIntentSignature(
 
       const sessionResult = await verifySessionApproval(
         sessionApprovalPayload,
-        predictorAddress,
+        predictorAddress
       );
 
       if (sessionResult.valid && sessionResult.sessionKeyAddress) {
@@ -266,7 +279,10 @@ export async function verifyAuctionIntentSignature(
           signature: payload.intentSignature as Hex,
         });
 
-        if (recoveredSigner.toLowerCase() === sessionResult.sessionKeyAddress.toLowerCase()) {
+        if (
+          recoveredSigner.toLowerCase() ===
+          sessionResult.sessionKeyAddress.toLowerCase()
+        ) {
           if (process.env.NODE_ENV !== 'production') {
             console.debug(
               '[Escrow-Sig] Valid predictor intent ZeroDev session approval for account:',
@@ -277,7 +293,10 @@ export async function verifyAuctionIntentSignature(
         }
       }
     } catch (error) {
-      console.error('[Escrow-Sig] ZeroDev session key verification error:', error);
+      console.error(
+        '[Escrow-Sig] ZeroDev session key verification error:',
+        error
+      );
     }
   }
 

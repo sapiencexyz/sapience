@@ -3,7 +3,11 @@
  * (Fed, S&P 500, Bitcoin/Ethereum daily price markets)
  */
 
-import type { PolymarketMarket, SapienceCondition, SapienceConditionGroup } from '../../../types';
+import type {
+  PolymarketMarket,
+  SapienceCondition,
+  SapienceConditionGroup,
+} from '../../../types';
 import type { Filter, FilterResult } from '../types';
 import { ALWAYS_INCLUDE_PATTERNS } from '../../../constants';
 import type { MarketGroup } from './volume-threshold';
@@ -12,7 +16,7 @@ import type { MarketGroup } from './volume-threshold';
  * Check if a question matches always-include patterns
  */
 export function matchesAlwaysIncludePatterns(question: string): boolean {
-  return ALWAYS_INCLUDE_PATTERNS.some(pattern => pattern.test(question));
+  return ALWAYS_INCLUDE_PATTERNS.some((pattern) => pattern.test(question));
 }
 
 /**
@@ -21,15 +25,16 @@ export function matchesAlwaysIncludePatterns(question: string): boolean {
  */
 export class AlwaysIncludeGroupFilter implements Filter<MarketGroup> {
   name = 'always-include-groups';
-  description = 'Keep groups matching Fed/S&P/BTC/ETH patterns regardless of volume';
+  description =
+    'Keep groups matching Fed/S&P/BTC/ETH patterns regardless of volume';
 
   apply(groups: MarketGroup[]): FilterResult<MarketGroup> {
     const kept: MarketGroup[] = [];
     const removed: MarketGroup[] = [];
 
     for (const group of groups) {
-      const hasAlwaysInclude = group.markets.some(
-        m => matchesAlwaysIncludePatterns(m.question || '')
+      const hasAlwaysInclude = group.markets.some((m) =>
+        matchesAlwaysIncludePatterns(m.question || '')
       );
 
       if (hasAlwaysInclude) {
@@ -48,7 +53,8 @@ export class AlwaysIncludeGroupFilter implements Filter<MarketGroup> {
  */
 export class AlwaysIncludeMarketFilter implements Filter<PolymarketMarket> {
   name = 'always-include-markets';
-  description = 'Keep markets matching Fed/S&P/BTC/ETH patterns regardless of volume';
+  description =
+    'Keep markets matching Fed/S&P/BTC/ETH patterns regardless of volume';
 
   apply(markets: PolymarketMarket[]): FilterResult<PolymarketMarket> {
     const kept: PolymarketMarket[] = [];
@@ -92,17 +98,21 @@ export class AlwaysIncludeConditionFilter implements Filter<SapienceCondition> {
 /**
  * Filter for condition groups: keep groups where at least one condition matches always-include patterns
  */
-export class AlwaysIncludeConditionGroupFilter implements Filter<SapienceConditionGroup> {
+export class AlwaysIncludeConditionGroupFilter
+  implements Filter<SapienceConditionGroup>
+{
   name = 'always-include-condition-groups';
   description = 'Keep groups with Fed/S&P/BTC/ETH conditions';
 
-  apply(groups: SapienceConditionGroup[]): FilterResult<SapienceConditionGroup> {
+  apply(
+    groups: SapienceConditionGroup[]
+  ): FilterResult<SapienceConditionGroup> {
     const kept: SapienceConditionGroup[] = [];
     const removed: SapienceConditionGroup[] = [];
 
     for (const group of groups) {
-      const hasAlwaysInclude = group.conditions.some(
-        c => matchesAlwaysIncludePatterns(c.question || '')
+      const hasAlwaysInclude = group.conditions.some((c) =>
+        matchesAlwaysIncludePatterns(c.question || '')
       );
 
       if (hasAlwaysInclude) {

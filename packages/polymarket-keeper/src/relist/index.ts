@@ -57,7 +57,7 @@ Environment Variables (required for API submission):
 // ============ EndTime Extension ============
 
 const SUBMISSION_DELAY_MS = 300;
-const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
  * Extend endTime on an existing condition via PUT /admin/conditions/:id
@@ -71,20 +71,25 @@ async function extendConditionEndTime(
   try {
     const authHeaders = await getAdminAuthHeaders(privateKey);
 
-    const response = await fetchWithRetry(`${apiUrl}/admin/conditions/${conditionId}`, {
-      method: 'PUT',
-      headers: {
-        'Content-Type': 'application/json',
-        ...authHeaders,
-      },
-      body: JSON.stringify({ endTime: newEndTimeUnix }),
-    });
+    const response = await fetchWithRetry(
+      `${apiUrl}/admin/conditions/${conditionId}`,
+      {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          ...authHeaders,
+        },
+        body: JSON.stringify({ endTime: newEndTimeUnix }),
+      }
+    );
 
     if (response.ok) {
       return { success: true };
     }
 
-    const errorData = await response.json().catch(() => ({ message: 'Unknown error' }));
+    const errorData = await response
+      .json()
+      .catch(() => ({ message: 'Unknown error' }));
     const errorMsg = `HTTP ${response.status}: ${errorData.message || response.statusText}`;
     return { success: false, error: errorMsg };
   } catch (error) {
@@ -130,46 +135,71 @@ export async function main() {
     }
 
     // 2. Compute new endDate (now + RELIST_FORWARD_DAYS)
-    const newEndDate = new Date(Date.now() + RELIST_FORWARD_DAYS * 24 * 60 * 60 * 1000);
+    const newEndDate = new Date(
+      Date.now() + RELIST_FORWARD_DAYS * 24 * 60 * 60 * 1000
+    );
     const newEndDateISO = newEndDate.toISOString();
     const newEndTimeUnix = Math.floor(newEndDate.getTime() / 1000);
 
     log(`[Relist] New endDate for all markets: ${newEndDateISO}`);
 
     // 3. Check which markets already exist in Sapience
-    const allConditionIds = markets.map(m => m.conditionId);
+    const allConditionIds = markets.map((m) => m.conditionId);
     const existingIds = await checkExistingConditions(apiUrl, allConditionIds);
 
-    log(`[Relist] ${existingIds.size} already listed, ${markets.length - existingIds.size} new`);
+    log(
+      `[Relist] ${existingIds.size} already listed, ${markets.length - existingIds.size} new`
+    );
 
     // 4. Extend endTime for existing conditions
-    if (existingIds.size > 0 && hasAPICredentials && privateKey && !options.dryRun) {
-      log(`[Relist] Extending endTime for ${existingIds.size} existing conditions...`);
+    if (
+      existingIds.size > 0 &&
+      hasAPICredentials &&
+      privateKey &&
+      !options.dryRun
+    ) {
+      log(
+        `[Relist] Extending endTime for ${existingIds.size} existing conditions...`
+      );
       let extended = 0;
       let skipped = 0;
       let failed = 0;
 
       for (const conditionId of existingIds) {
-        const result = await extendConditionEndTime(apiUrl, privateKey, conditionId, newEndTimeUnix);
+        const result = await extendConditionEndTime(
+          apiUrl,
+          privateKey,
+          conditionId,
+          newEndTimeUnix
+        );
         if (result.success) {
           extended++;
           log(`[Relist] Extended endTime: ${conditionId}...`);
-        } else if (result.error?.includes('settled') || result.error?.includes('shortened')) {
+        } else if (
+          result.error?.includes('settled') ||
+          result.error?.includes('shortened')
+        ) {
           skipped++;
         } else {
           failed++;
-          logError(`[Relist] Failed to extend ${conditionId}...: ${result.error}`);
+          logError(
+            `[Relist] Failed to extend ${conditionId}...: ${result.error}`
+          );
         }
         await delay(SUBMISSION_DELAY_MS);
       }
 
-      log(`[Relist] EndTime extension: ${extended} extended, ${skipped} skipped, ${failed} failed`);
+      log(
+        `[Relist] EndTime extension: ${extended} extended, ${skipped} skipped, ${failed} failed`
+      );
     } else if (existingIds.size > 0 && options.dryRun) {
-      log(`[Relist] DRY RUN: Would extend endTime for ${existingIds.size} existing conditions to ${newEndDateISO}`);
+      log(
+        `[Relist] DRY RUN: Would extend endTime for ${existingIds.size} existing conditions to ${newEndDateISO}`
+      );
     }
 
     // 5. Override endDate for new market submissions
-    const newMarkets = markets.filter(m => !existingIds.has(m.conditionId));
+    const newMarkets = markets.filter((m) => !existingIds.has(m.conditionId));
 
     if (newMarkets.length === 0) {
       log('[Relist] No new markets to create');
@@ -184,7 +214,9 @@ export async function main() {
     // 6. Process through existing pipeline (grouping, LLM enrichment, etc.)
     const sapienceData = await groupMarkets(newMarkets, apiUrl);
 
-    log(`[Relist] ${sapienceData.metadata.totalConditions} new conditions to create`);
+    log(
+      `[Relist] ${sapienceData.metadata.totalConditions} new conditions to create`
+    );
 
     exportJSON(sapienceData, 'sapience-relist-conditions.json');
 
@@ -197,7 +229,6 @@ export async function main() {
     if (hasAPICredentials && apiUrl && privateKey) {
       await submitToAPI(apiUrl, privateKey, sapienceData);
     }
-
   } catch (error) {
     logError('Error:', error);
     process.exit(1);

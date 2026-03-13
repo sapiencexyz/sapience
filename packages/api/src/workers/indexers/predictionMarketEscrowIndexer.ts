@@ -608,7 +608,8 @@ class PredictionMarketEscrowIndexer implements IIndexer {
       return {
         pickConfigId,
         predictorMinted: predictionOnChain.predictorTokensMinted.toString(),
-        counterpartyMinted: predictionOnChain.counterpartyTokensMinted.toString(),
+        counterpartyMinted:
+          predictionOnChain.counterpartyTokensMinted.toString(),
         picksOnChain,
       };
     } catch (error) {
@@ -629,7 +630,8 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     event: PredictionCreatedEvent,
     data: NonNullable<Awaited<ReturnType<typeof this.readPickConfigData>>>
   ): Promise<void> {
-    const { pickConfigId, predictorMinted, counterpartyMinted, picksOnChain } = data;
+    const { pickConfigId, predictorMinted, counterpartyMinted, picksOnChain } =
+      data;
     const predictorToken = event.predictorToken.toLowerCase();
     const counterpartyToken = event.counterpartyToken.toLowerCase();
     const predictorCollateralStr = event.predictorCollateral.toString();

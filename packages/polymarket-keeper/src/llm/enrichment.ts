@@ -3,10 +3,18 @@
  */
 
 import type { PolymarketMarket } from '../types';
-import type { MarketEnrichmentInput, MarketEnrichmentOutput, EnrichmentResult } from './types';
+import type {
+  MarketEnrichmentInput,
+  MarketEnrichmentOutput,
+  EnrichmentResult,
+} from './types';
 import { inferSapienceCategorySlug } from '../generate/category';
 import { inferShortName } from '../generate/shortName';
-import { callOpenRouterForCategory, callOpenRouterForShortNameOnly, callOpenRouterForBoth } from './openrouter';
+import {
+  callOpenRouterForCategory,
+  callOpenRouterForShortNameOnly,
+  callOpenRouterForBoth,
+} from './openrouter';
 import { parseOutcomes } from '../generate/transform';
 
 // Reduced batch size to avoid token limits with free models
@@ -15,7 +23,9 @@ const LLM_BATCH_SIZE = 10;
 // In-memory cache for current run
 const enrichmentCache = new Map<string, MarketEnrichmentOutput>();
 
-export function marketToEnrichmentInput(market: PolymarketMarket): MarketEnrichmentInput {
+export function marketToEnrichmentInput(
+  market: PolymarketMarket
+): MarketEnrichmentInput {
   return {
     conditionId: market.conditionId,
     question: market.question,
@@ -26,7 +36,9 @@ export function marketToEnrichmentInput(market: PolymarketMarket): MarketEnrichm
   };
 }
 
-export function getFallbackEnrichment(market: PolymarketMarket): MarketEnrichmentOutput {
+export function getFallbackEnrichment(
+  market: PolymarketMarket
+): MarketEnrichmentOutput {
   const category = inferSapienceCategorySlug(market);
   return {
     conditionId: market.conditionId,
@@ -54,7 +66,10 @@ export async function enrichMarkets(
   const needsCategoryOnly: PolymarketMarket[] = [];
   const needsShortNameOnly: PolymarketMarket[] = [];
   const needsBoth: PolymarketMarket[] = [];
-  const deterministicData = new Map<string, { shortName: string | null; category: string }>();
+  const deterministicData = new Map<
+    string,
+    { shortName: string | null; category: string }
+  >();
 
   for (const market of markets) {
     const cached = enrichmentCache.get(market.conditionId);
@@ -116,11 +131,16 @@ export async function enrichMarkets(
 
     for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
       const batch = batches[batchIndex];
-      console.log(`[LLM] Processing category batch ${batchIndex + 1}/${batches.length} (${batch.length} markets)`);
+      console.log(
+        `[LLM] Processing category batch ${batchIndex + 1}/${batches.length} (${batch.length} markets)`
+      );
 
       try {
         const inputs = batch.map(marketToEnrichmentInput);
-        const categoryOutputs = await callOpenRouterForCategory(inputs, { apiKey, model });
+        const categoryOutputs = await callOpenRouterForCategory(inputs, {
+          apiKey,
+          model,
+        });
 
         for (const output of categoryOutputs) {
           const data = deterministicData.get(output.conditionId)!;
@@ -139,13 +159,17 @@ export async function enrichMarkets(
             const fallback = getFallbackEnrichment(market);
             results.set(market.conditionId, fallback);
             usedFallback = true;
-            console.log(`[LLM] Missing in category response, using fallback for: ${market.conditionId}`);
+            console.log(
+              `[LLM] Missing in category response, using fallback for: ${market.conditionId}`
+            );
           }
         }
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
         errors.push(`Category batch ${batchIndex + 1} failed: ${errorMsg}`);
-        console.error(`[LLM] Category batch ${batchIndex + 1} failed, using fallback: ${errorMsg}`);
+        console.error(
+          `[LLM] Category batch ${batchIndex + 1} failed, using fallback: ${errorMsg}`
+        );
 
         for (const market of batch) {
           if (!results.has(market.conditionId)) {
@@ -166,11 +190,16 @@ export async function enrichMarkets(
 
     for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
       const batch = batches[batchIndex];
-      console.log(`[LLM] Processing shortName-only batch ${batchIndex + 1}/${batches.length} (${batch.length} markets)`);
+      console.log(
+        `[LLM] Processing shortName-only batch ${batchIndex + 1}/${batches.length} (${batch.length} markets)`
+      );
 
       try {
         const inputs = batch.map(marketToEnrichmentInput);
-        const shortNameOutputs = await callOpenRouterForShortNameOnly(inputs, { apiKey, model });
+        const shortNameOutputs = await callOpenRouterForShortNameOnly(inputs, {
+          apiKey,
+          model,
+        });
 
         for (const output of shortNameOutputs) {
           const data = deterministicData.get(output.conditionId)!;
@@ -189,13 +218,19 @@ export async function enrichMarkets(
             const fallback = getFallbackEnrichment(market);
             results.set(market.conditionId, fallback);
             usedFallback = true;
-            console.log(`[LLM] Missing in shortName-only response, using fallback for: ${market.conditionId}`);
+            console.log(
+              `[LLM] Missing in shortName-only response, using fallback for: ${market.conditionId}`
+            );
           }
         }
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
-        errors.push(`ShortName-only batch ${batchIndex + 1} failed: ${errorMsg}`);
-        console.error(`[LLM] ShortName-only batch ${batchIndex + 1} failed, using fallback: ${errorMsg}`);
+        errors.push(
+          `ShortName-only batch ${batchIndex + 1} failed: ${errorMsg}`
+        );
+        console.error(
+          `[LLM] ShortName-only batch ${batchIndex + 1} failed, using fallback: ${errorMsg}`
+        );
 
         for (const market of batch) {
           if (!results.has(market.conditionId)) {
@@ -216,7 +251,9 @@ export async function enrichMarkets(
 
     for (let batchIndex = 0; batchIndex < batches.length; batchIndex++) {
       const batch = batches[batchIndex];
-      console.log(`[LLM] Processing both batch ${batchIndex + 1}/${batches.length} (${batch.length} markets)`);
+      console.log(
+        `[LLM] Processing both batch ${batchIndex + 1}/${batches.length} (${batch.length} markets)`
+      );
 
       try {
         const inputs = batch.map(marketToEnrichmentInput);
@@ -233,13 +270,17 @@ export async function enrichMarkets(
             const fallback = getFallbackEnrichment(market);
             results.set(market.conditionId, fallback);
             usedFallback = true;
-            console.log(`[LLM] Missing in both response, using fallback for: ${market.conditionId}`);
+            console.log(
+              `[LLM] Missing in both response, using fallback for: ${market.conditionId}`
+            );
           }
         }
       } catch (error) {
         const errorMsg = error instanceof Error ? error.message : String(error);
         errors.push(`Both batch ${batchIndex + 1} failed: ${errorMsg}`);
-        console.error(`[LLM] Both batch ${batchIndex + 1} failed, using fallback: ${errorMsg}`);
+        console.error(
+          `[LLM] Both batch ${batchIndex + 1} failed, using fallback: ${errorMsg}`
+        );
 
         for (const market of batch) {
           if (!results.has(market.conditionId)) {
@@ -285,9 +326,13 @@ export async function enrichMarketsWithLLM(
   const result = await enrichMarkets(markets, options.apiKey, options.model);
 
   if (result.usedFallback) {
-    console.log(`[LLM] Warning: Used fallback for some markets. Errors: ${result.errors.join(', ')}`);
+    console.log(
+      `[LLM] Warning: Used fallback for some markets. Errors: ${result.errors.join(', ')}`
+    );
   }
 
-  console.log(`[LLM] Enriched ${result.results.size} markets (${result.errors.length} errors)`);
+  console.log(
+    `[LLM] Enriched ${result.results.size} markets (${result.errors.length} errors)`
+  );
   return result.results;
 }

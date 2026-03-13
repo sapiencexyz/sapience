@@ -74,21 +74,13 @@ export function predictTokenPair(
 ): { predictorToken: Address; counterpartyToken: Address } {
   return {
     predictorToken: predictTokenAddress(pickConfigId, true, factoryAddress),
-    counterpartyToken: predictTokenAddress(
-      pickConfigId,
-      false,
-      factoryAddress
-    ),
+    counterpartyToken: predictTokenAddress(pickConfigId, false, factoryAddress),
   };
 }
 
 /**
  * Get the token factory address for a chain.
  */
-export function getTokenFactoryAddress(
-  chainId: number
-): Address | undefined {
-  return predictionMarketTokenFactory[chainId]?.address as
-    | Address
-    | undefined;
+export function getTokenFactoryAddress(chainId: number): Address | undefined {
+  return predictionMarketTokenFactory[chainId]?.address as Address | undefined;
 }

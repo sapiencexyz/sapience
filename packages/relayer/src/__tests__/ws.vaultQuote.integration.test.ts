@@ -1,4 +1,12 @@
-import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from 'vitest';
+import {
+  describe,
+  it,
+  expect,
+  beforeAll,
+  afterAll,
+  afterEach,
+  vi,
+} from 'vitest';
 
 // Use vi.hoisted so mock fns are available before vi.mock factories run
 const { mockReadContract, mockVerifyMessage } = vi.hoisted(() => ({
@@ -56,7 +64,8 @@ function waitForMessage(
 ): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(
-      () => reject(new Error(`Timeout waiting for message type: ${expectedType}`)),
+      () =>
+        reject(new Error(`Timeout waiting for message type: ${expectedType}`)),
       timeout
     );
     const handler = (data: WebSocket.RawData) => {
@@ -388,7 +397,9 @@ describe('vault_quote.publish', () => {
     const ws = await createClient();
 
     // Return a different address as the vault manager
-    mockReadContract.mockResolvedValue('0x9999999999999999999999999999999999999999');
+    mockReadContract.mockResolvedValue(
+      '0x9999999999999999999999999999999999999999'
+    );
     mockVerifyMessage.mockResolvedValue(true);
 
     // Use a unique vault address so we don't hit a cached signer set from previous tests

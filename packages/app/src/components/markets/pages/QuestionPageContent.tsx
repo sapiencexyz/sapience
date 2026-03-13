@@ -162,9 +162,7 @@ export default function QuestionPageContent({
 
   const polymarketUrl = useMemo(() => {
     if (!isPolymarketResolver || !data?.similarMarkets) return null;
-    const pm = data.similarMarkets.find((u) =>
-      u.includes('polymarket.com')
-    );
+    const pm = data.similarMarkets.find((u) => u.includes('polymarket.com'));
     if (!pm) return null;
     // Handle both formats: full URL with /event/ path, or legacy #slug-only
     try {
@@ -451,7 +449,10 @@ export default function QuestionPageContent({
   }, [scatterData, forecastScatterData, data?.endTime]);
 
   // Disable logging - only CreatePositionForm should log auction activity
-  const { bids, requestQuotes } = useAuctionStart({ disableLogging: true, skipIntentSigning: true });
+  const { bids, requestQuotes } = useAuctionStart({
+    disableLogging: true,
+    skipIntentSigning: true,
+  });
   if (isLoading) {
     return (
       <div

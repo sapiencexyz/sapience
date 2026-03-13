@@ -35,7 +35,9 @@ export class NonCryptoGroupFilter implements Filter<SapienceConditionGroup> {
   name = 'non-crypto-groups';
   description = 'Keep non-crypto groups';
 
-  apply(groups: SapienceConditionGroup[]): FilterResult<SapienceConditionGroup> {
+  apply(
+    groups: SapienceConditionGroup[]
+  ): FilterResult<SapienceConditionGroup> {
     const kept: SapienceConditionGroup[] = [];
     const removed: SapienceConditionGroup[] = [];
 

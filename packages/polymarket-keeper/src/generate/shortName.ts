@@ -284,7 +284,9 @@ export function inferShortName(market: PolymarketMarket): string | null {
     !standardOutcomes.includes(outcomes[1]);
 
   if (hasTeamOutcomes) {
-    const vsMatch = question.match(/^(?:.+?:\s+)?(.+?)\s+vs\.?\s+(.+?)(?:\s*[-:].+)?$/i);
+    const vsMatch = question.match(
+      /^(?:.+?:\s+)?(.+?)\s+vs\.?\s+(.+?)(?:\s*[-:].+)?$/i
+    );
     if (vsMatch) {
       const abbrev1 = getTeamAbbreviation(outcomes[0]);
       const abbrev2 = getTeamAbbreviation(outcomes[1]);
@@ -293,7 +295,9 @@ export function inferShortName(market: PolymarketMarket): string | null {
   }
 
   // Rule 5: Both Teams to Score - "X vs. Y: Both Teams to Score"
-  const bttsMatch = question.match(/^(.+?)\s+vs\.?\s+(.+?):\s+Both\s+Teams\s+to\s+Score$/i);
+  const bttsMatch = question.match(
+    /^(.+?)\s+vs\.?\s+(.+?):\s+Both\s+Teams\s+to\s+Score$/i
+  );
   if (bttsMatch) {
     const [, team1, team2] = bttsMatch;
     const abbrev1 = getTeamAbbreviation(team1);
@@ -320,7 +324,9 @@ export function inferShortName(market: PolymarketMarket): string | null {
   }
 
   // Rule 8: Price movement - "Asset Up or Down - Date" or "Asset Up or Down on Date?"
-  const priceMatch = question.match(/^(.+?)\s+Up\s+or\s+Down\s+(?:-\s+|on\s+)(.+?)(?:\?)?$/i);
+  const priceMatch = question.match(
+    /^(.+?)\s+Up\s+or\s+Down\s+(?:-\s+|on\s+)(.+?)(?:\?)?$/i
+  );
   if (priceMatch) {
     const [, asset, dateStr] = priceMatch;
     const abbrev = getAssetAbbreviation(asset);
@@ -353,7 +359,8 @@ export function inferShortName(market: PolymarketMarket): string | null {
   );
   if (fedMatch) {
     const [, , action, period] = fedMatch;
-    const actionAbbrev = action.toLowerCase() === 'raise' ? 'hike' : action.toLowerCase();
+    const actionAbbrev =
+      action.toLowerCase() === 'raise' ? 'hike' : action.toLowerCase();
     const dateAbbrev = formatDateExpression(period);
     return `Fed ${actionAbbrev} ${dateAbbrev}`;
   }
@@ -364,7 +371,9 @@ export function inferShortName(market: PolymarketMarket): string | null {
   );
   if (cryptoThresholdMatch) {
     const [, asset, comparison, value, dateStr] = cryptoThresholdMatch;
-    const abbrev = getAssetAbbreviation(asset.charAt(0).toUpperCase() + asset.slice(1));
+    const abbrev = getAssetAbbreviation(
+      asset.charAt(0).toUpperCase() + asset.slice(1)
+    );
     const symbol = comparison === 'above' || comparison === 'over' ? '>' : '<';
     const dateSuffix = dateStr ? ` ${formatDateExpression(dateStr)}` : '';
     return `${abbrev} ${symbol}$${value}${dateSuffix}`;
@@ -388,7 +397,10 @@ export function inferShortName(market: PolymarketMarket): string | null {
   if (priceAboveBelowMatch) {
     const [, asset, comparison, value, dateStr] = priceAboveBelowMatch;
     const abbrev = getAssetAbbreviation(asset);
-    const symbol = comparison.includes('above') || comparison.includes('greater') ? '>' : '<';
+    const symbol =
+      comparison.includes('above') || comparison.includes('greater')
+        ? '>'
+        : '<';
     const dateSuffix = dateStr ? ` ${formatDateExpression(dateStr)}` : '';
     return `${abbrev} ${symbol}$${value}${dateSuffix}`;
   }

@@ -9,7 +9,10 @@
 import { encodeFunctionData, erc20Abi, parseAbi, zeroAddress } from 'viem';
 import type { Address, Hex } from 'viem';
 import { predictionMarketEscrowAbi } from '../abis';
-import { CHAIN_ID_ETHEREAL, CHAIN_ID_ETHEREAL_TESTNET } from '../constants/chain';
+import {
+  CHAIN_ID_ETHEREAL,
+  CHAIN_ID_ETHEREAL_TESTNET,
+} from '../constants/chain';
 import { collateralToken } from '../contracts/addresses';
 
 const WUSDE_ABI = parseAbi([
@@ -48,7 +51,11 @@ export async function validateCounterpartyFunds(
     }) => Promise<unknown>;
   }
 ): Promise<void> {
-  if (!counterpartyAddress || !collateralTokenAddress || !predictionMarketAddress) {
+  if (
+    !counterpartyAddress ||
+    !collateralTokenAddress ||
+    !predictionMarketAddress
+  ) {
     return;
   }
 
@@ -158,18 +165,22 @@ export function prepareMintCalls(
 
   // Determine if this mint is sponsored (sponsor pays predictor's collateral)
   const isSponsored =
-    !!mintData.predictorSponsor &&
-    mintData.predictorSponsor !== zeroAddress;
+    !!mintData.predictorSponsor && mintData.predictorSponsor !== zeroAddress;
 
   // 1. Wrap if on Ethereal and wUSDe balance is insufficient
   // Skip wrap when fully sponsored (sponsor pays, not user)
-  const isEthereal = chainId === CHAIN_ID_ETHEREAL || chainId === CHAIN_ID_ETHEREAL_TESTNET;
+  const isEthereal =
+    chainId === CHAIN_ID_ETHEREAL || chainId === CHAIN_ID_ETHEREAL_TESTNET;
   if (isEthereal && !isSponsored) {
-    const wusdeAddress = collateralToken[chainId]?.address ?? collateralToken[CHAIN_ID_ETHEREAL]?.address;
+    const wusdeAddress =
+      collateralToken[chainId]?.address ??
+      collateralToken[CHAIN_ID_ETHEREAL]?.address;
     const wrappedBal =
       typeof currentWusdeBalance === 'bigint' ? currentWusdeBalance : 0n;
     const amountToWrap =
-      predictorCollateralWei > wrappedBal ? predictorCollateralWei - wrappedBal : 0n;
+      predictorCollateralWei > wrappedBal
+        ? predictorCollateralWei - wrappedBal
+        : 0n;
 
     if (amountToWrap > 0n) {
       calls.push({

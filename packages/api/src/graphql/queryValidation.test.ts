@@ -197,7 +197,9 @@ describe('queryValidation', () => {
         expect(err).toBeInstanceOf(GraphQLError);
         const gqlErr = err as GraphQLError;
         expect(gqlErr.extensions?.code).toBe('PAGINATION_LIMIT_EXCEEDED');
-        expect((gqlErr.extensions?.http as { status: number })?.status).toBe(400);
+        expect((gqlErr.extensions?.http as { status: number })?.status).toBe(
+          400
+        );
       }
     });
 
@@ -215,7 +217,9 @@ describe('queryValidation', () => {
         expect(err).toBeInstanceOf(GraphQLError);
         const gqlErr = err as GraphQLError;
         expect(gqlErr.extensions?.code).toBe('FIELD_ALIAS_LIMIT_EXCEEDED');
-        expect((gqlErr.extensions?.http as { status: number })?.status).toBe(400);
+        expect((gqlErr.extensions?.http as { status: number })?.status).toBe(
+          400
+        );
       }
     });
   });

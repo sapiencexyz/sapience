@@ -33,8 +33,7 @@ function createListing(
     seller: '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     sellerNonce: Math.floor(Math.random() * 1_000_000),
     sellerDeadline: futureDeadline,
-    sellerSignature:
-      '0x' + 'ab'.repeat(65),
+    sellerSignature: '0x' + 'ab'.repeat(65),
     chainId: 13374202,
     ...overrides,
   };
@@ -177,10 +176,7 @@ describe('SecondaryMarketRegistry', () => {
         })
       );
       expect(
-        isSellerNonceUsed(
-          '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
-          50
-        )
+        isSellerNonceUsed('0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 50)
       ).toBe(true);
     });
   });

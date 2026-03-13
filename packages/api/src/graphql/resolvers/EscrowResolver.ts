@@ -669,7 +669,8 @@ export class EscrowResolver {
     @Arg('take', () => Int, { defaultValue: 50 }) take: number = 50,
     @Arg('skip', () => Int, { defaultValue: 0 }) skip: number = 0,
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number,
-    @Arg('pickConfigId', () => String, { nullable: true }) pickConfigId?: string,
+    @Arg('pickConfigId', () => String, { nullable: true })
+    pickConfigId?: string,
     @Arg('settled', () => Boolean, { nullable: true }) settled?: boolean,
     @Arg('result', () => SettlementResult, { nullable: true })
     result?: SettlementResult

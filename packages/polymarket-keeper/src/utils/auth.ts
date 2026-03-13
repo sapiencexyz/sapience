@@ -29,7 +29,9 @@ export async function getAdminAuthHeaders(privateKey: `0x${string}`): Promise<{
  * Validate and format a private key
  * Returns undefined if no key provided, throws if invalid
  */
-export function validatePrivateKey(rawPrivateKey: string | undefined): `0x${string}` | undefined {
+export function validatePrivateKey(
+  rawPrivateKey: string | undefined
+): `0x${string}` | undefined {
   if (!rawPrivateKey) {
     return undefined;
   }
@@ -42,5 +44,7 @@ export function validatePrivateKey(rawPrivateKey: string | undefined): `0x${stri
     return formattedKey as `0x${string}`;
   }
 
-  throw new Error('ADMIN_PRIVATE_KEY is invalid (must be 64 hex chars, optionally 0x-prefixed)');
+  throw new Error(
+    'ADMIN_PRIVATE_KEY is invalid (must be 64 hex chars, optionally 0x-prefixed)'
+  );
 }

@@ -106,6 +106,7 @@
     "build:lib": "tsup index.ts auction/encoding.ts auction/escrowEncoding.ts auction/escrowSigning.ts auction/simulate.ts auction/secondarySigning.ts relayer/escrowAuctionWs.ts abis/index.ts constants/index.ts contracts/index.ts contracts/addresses.ts queries/index.ts queries/client/graphqlClient.ts types/index.ts types/escrow.ts types/secondary.ts types/graphql.ts session/index.ts --format cjs,esm --dts --tsconfig tsconfig.build.json",
     "build": "pnpm run build:lib",
     "lint": "eslint . --quiet",
+    "lint:fix": "eslint . --fix --quiet && pnpm format",
     "type-check": "tsc --noEmit",
     "settle:pyth": "tsx scripts/settlePythMarkets.ts",
     "format": "prettier --write .",
@@ -145,13 +146,14 @@
     "@zerodev/sdk": "5.4.5",
     "eslint": "9.31.0",
     "eslint-plugin-import": "2.32.0",
+    "prettier": "3.3.3",
     "tsup": "8.5.0",
     "tsx": "4.19.2",
     "typescript": "5.8.3",
     "typescript-eslint": "8.21.0",
     "viem": "2.23.5",
     "wagmi": "2.14.16",
-    "vitest": "^3.0.0"
+    "vitest": "3.0.0"
   },
   "peerDependencies": {
     "@tanstack/react-query": "5.x",

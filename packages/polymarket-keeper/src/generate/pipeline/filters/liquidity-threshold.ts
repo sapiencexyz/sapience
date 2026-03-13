@@ -17,7 +17,7 @@ export class LiquidityThresholdFilter implements Filter<MarketGroup> {
 
     for (const group of groups) {
       const hasHighLiquidity = group.markets.some(
-        m => parseFloat(m.liquidity || '0') >= MIN_LIQUIDITY_THRESHOLD
+        (m) => parseFloat(m.liquidity || '0') >= MIN_LIQUIDITY_THRESHOLD
       );
 
       if (hasHighLiquidity) {
@@ -34,7 +34,9 @@ export class LiquidityThresholdFilter implements Filter<MarketGroup> {
 /**
  * Filter for ungrouped markets (individual markets, not groups)
  */
-export class MarketLiquidityThresholdFilter implements Filter<PolymarketMarket> {
+export class MarketLiquidityThresholdFilter
+  implements Filter<PolymarketMarket>
+{
   name = 'market-liquidity-threshold';
   description = `Keep markets with liquidity >= $${MIN_LIQUIDITY_THRESHOLD.toLocaleString()}`;
 

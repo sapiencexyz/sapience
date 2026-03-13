@@ -5,7 +5,11 @@
 import type { PolymarketMarket } from '../types';
 import { RELIST_LOOKBACK_DAYS } from '../constants';
 import { fetchWithRetry } from '../utils';
-import { runPipeline, printPipelineStats, MARKET_FILTERS } from '../generate/pipeline';
+import {
+  runPipeline,
+  printPipelineStats,
+  MARKET_FILTERS,
+} from '../generate/pipeline';
 
 const PAGE_SIZE = 500;
 
@@ -15,7 +19,9 @@ const PAGE_SIZE = 500;
  */
 export async function fetchPastEndDateMarkets(): Promise<PolymarketMarket[]> {
   const now = new Date();
-  const minEndDate = new Date(now.getTime() - RELIST_LOOKBACK_DAYS * 24 * 60 * 60 * 1000);
+  const minEndDate = new Date(
+    now.getTime() - RELIST_LOOKBACK_DAYS * 24 * 60 * 60 * 1000
+  );
 
   const allMarkets: PolymarketMarket[] = [];
   const seenConditionIds = new Set<string>();
@@ -44,8 +50,11 @@ export async function fetchPastEndDateMarkets(): Promise<PolymarketMarket[]> {
       console.error(
         `[Polymarket API] Failed to fetch past-endDate markets: HTTP ${response.status} ${response.statusText}`
       );
-      if (errorBody) console.error(`[Polymarket API] Response body: ${errorBody}`);
-      throw new Error(`Polymarket API error: ${response.status} ${response.statusText}`);
+      if (errorBody)
+        console.error(`[Polymarket API] Response body: ${errorBody}`);
+      throw new Error(
+        `Polymarket API error: ${response.status} ${response.statusText}`
+      );
     }
 
     const markets: PolymarketMarket[] = await response.json();
@@ -55,7 +64,9 @@ export async function fetchPastEndDateMarkets(): Promise<PolymarketMarket[]> {
       break;
     }
 
-    console.log(`[Relist] Page ${pageCount}: Fetched ${markets.length} markets`);
+    console.log(
+      `[Relist] Page ${pageCount}: Fetched ${markets.length} markets`
+    );
 
     // Deduplicate and filter out archived markets (client-side safety net)
     let newMarketsCount = 0;
@@ -85,9 +96,13 @@ export async function fetchPastEndDateMarkets(): Promise<PolymarketMarket[]> {
   );
 
   // Apply market filters pipeline (binary markets filter)
-  const { output: filteredMarkets, stats } = runPipeline(allMarkets, MARKET_FILTERS, {
-    verbose: false,
-  });
+  const { output: filteredMarkets, stats } = runPipeline(
+    allMarkets,
+    MARKET_FILTERS,
+    {
+      verbose: false,
+    }
+  );
 
   printPipelineStats(stats, 'Relist Market Pipeline');
 

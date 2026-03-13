@@ -29,7 +29,11 @@ function createClient(): Promise<WebSocket> {
 }
 
 // Helper to wait for a specific message type
-function waitForMessage(ws: WebSocket, expectedType: string, timeout = 5000): Promise<unknown> {
+function waitForMessage(
+  ws: WebSocket,
+  expectedType: string,
+  timeout = 5000
+): Promise<unknown> {
   return new Promise((resolve, reject) => {
     const timer = setTimeout(() => {
       reject(new Error(`Timeout waiting for message type: ${expectedType}`));
@@ -67,7 +71,8 @@ const TEST_PICK = {
 };
 
 const TEST_CHAIN_ID = 5064014;
-const TEST_ESCROW_ADDRESS = predictionMarketEscrow[TEST_CHAIN_ID]?.address as Address;
+const TEST_ESCROW_ADDRESS = predictionMarketEscrow[TEST_CHAIN_ID]
+  ?.address as Address;
 
 // Helper to create a valid escrow auction RFQ payload with a real intent signature
 async function createAuctionRFQ(): Promise<AuctionRFQPayload> {
@@ -169,7 +174,9 @@ describe('WebSocket Connection Lifecycle', () => {
   it('responds with pong when ping message is received', async () => {
     const ws = await createClient();
 
-    const response = await sendAndWait(ws, { type: 'ping' }, 'pong') as { type: string };
+    const response = (await sendAndWait(ws, { type: 'ping' }, 'pong')) as {
+      type: string;
+    };
     expect(response.type).toBe('pong');
 
     ws.close();
@@ -181,11 +188,11 @@ describe('auction.start Handler', () => {
     const ws = await createClient();
     const auction = await createAuctionRFQ();
 
-    const response = await sendAndWait(
+    const response = (await sendAndWait(
       ws,
       { type: 'auction.start', payload: auction },
       'auction.ack'
-    ) as { type: string; payload: { auctionId?: string; error?: string } };
+    )) as { type: string; payload: { auctionId?: string; error?: string } };
 
     expect(response.type).toBe('auction.ack');
     expect(response.payload.auctionId).toBeDefined();
@@ -199,11 +206,11 @@ describe('auction.start Handler', () => {
     const ws = await createClient();
     const auction = await createAuctionRFQ();
 
-    const response = await sendAndWait(
+    const response = (await sendAndWait(
       ws,
       { type: 'auction.start', payload: auction },
       'auction.ack'
-    ) as { type: string; payload: { auctionId?: string; error?: string } };
+    )) as { type: string; payload: { auctionId?: string; error?: string } };
 
     expect(response.type).toBe('auction.ack');
     expect(response.payload.auctionId).toBeDefined();
@@ -216,11 +223,11 @@ describe('auction.start Handler', () => {
     const ws = await createClient();
     const auction = { ...(await createAuctionRFQ()), picks: [] };
 
-    const response = await sendAndWait(
+    const response = (await sendAndWait(
       ws,
       { type: 'auction.start', payload: auction },
       'auction.ack'
-    ) as { type: string; payload: { auctionId?: string; error?: string } };
+    )) as { type: string; payload: { auctionId?: string; error?: string } };
 
     expect(response.type).toBe('auction.ack');
     expect(response.payload.error).toBeDefined();
@@ -239,7 +246,10 @@ describe('auction.start Handler', () => {
     // Send auction from ws1
     ws1.send(JSON.stringify({ type: 'auction.start', payload: auction }));
 
-    const broadcast = await broadcastPromise as { type: string; payload: { auctionId: string; predictorCollateral?: string } };
+    const broadcast = (await broadcastPromise) as {
+      type: string;
+      payload: { auctionId: string; predictorCollateral?: string };
+    };
     expect(broadcast.type).toBe('auction.started');
     expect(broadcast.payload.auctionId).toBeDefined();
 
@@ -254,20 +264,20 @@ describe('auction.subscribe Handler', () => {
     const auction = await createAuctionRFQ();
 
     // First create an auction
-    const ackResponse = await sendAndWait(
+    const ackResponse = (await sendAndWait(
       ws,
       { type: 'auction.start', payload: auction },
       'auction.ack'
-    ) as { payload: { auctionId: string } };
+    )) as { payload: { auctionId: string } };
 
     const auctionId = ackResponse.payload.auctionId;
 
     // Then subscribe to it
-    const subResponse = await sendAndWait(
+    const subResponse = (await sendAndWait(
       ws,
       { type: 'auction.subscribe', payload: { auctionId } },
       'auction.ack'
-    ) as { type: string; payload: { subscribed?: boolean; error?: string } };
+    )) as { type: string; payload: { subscribed?: boolean; error?: string } };
 
     expect(subResponse.payload.subscribed).toBe(true);
     expect(subResponse.payload.error).toBeUndefined();
@@ -278,11 +288,11 @@ describe('auction.subscribe Handler', () => {
   it('returns auction.ack with error for missing auctionId', async () => {
     const ws = await createClient();
 
-    const response = await sendAndWait(
+    const response = (await sendAndWait(
       ws,
       { type: 'auction.subscribe', payload: { auctionId: '' } },
       'auction.ack'
-    ) as { type: string; payload: { error?: string } };
+    )) as { type: string; payload: { error?: string } };
 
     expect(response.payload.error).toBe('missing_auction_id');
 
@@ -296,20 +306,20 @@ describe('auction.unsubscribe Handler', () => {
     const auction = await createAuctionRFQ();
 
     // Create and subscribe to auction
-    const ackResponse = await sendAndWait(
+    const ackResponse = (await sendAndWait(
       ws,
       { type: 'auction.start', payload: auction },
       'auction.ack'
-    ) as { payload: { auctionId: string } };
+    )) as { payload: { auctionId: string } };
 
     const auctionId = ackResponse.payload.auctionId;
 
     // Unsubscribe
-    const unsubResponse = await sendAndWait(
+    const unsubResponse = (await sendAndWait(
       ws,
       { type: 'auction.unsubscribe', payload: { auctionId } },
       'auction.ack'
-    ) as { type: string; payload: { unsubscribed?: boolean; error?: string } };
+    )) as { type: string; payload: { unsubscribed?: boolean; error?: string } };
 
     expect(unsubResponse.payload.unsubscribed).toBe(true);
 
@@ -319,11 +329,11 @@ describe('auction.unsubscribe Handler', () => {
   it('returns auction.ack with error for missing auctionId', async () => {
     const ws = await createClient();
 
-    const response = await sendAndWait(
+    const response = (await sendAndWait(
       ws,
       { type: 'auction.unsubscribe', payload: { auctionId: '' } },
       'auction.ack'
-    ) as { type: string; payload: { error?: string } };
+    )) as { type: string; payload: { error?: string } };
 
     expect(response.payload.error).toBe('missing_auction_id');
 
@@ -337,21 +347,21 @@ describe('bid.submit Handler', () => {
     const auction = await createAuctionRFQ();
 
     // Create auction first
-    const ackResponse = await sendAndWait(
+    const ackResponse = (await sendAndWait(
       ws,
       { type: 'auction.start', payload: auction },
       'auction.ack'
-    ) as { payload: { auctionId: string } };
+    )) as { payload: { auctionId: string } };
 
     const auctionId = ackResponse.payload.auctionId;
     const bid = createValidBid(auctionId);
 
     // Submit bid
-    const bidResponse = await sendAndWait(
+    const bidResponse = (await sendAndWait(
       ws,
       { type: 'bid.submit', payload: bid },
       'bid.ack'
-    ) as { type: string; payload: { error?: string } };
+    )) as { type: string; payload: { error?: string } };
 
     expect(bidResponse.type).toBe('bid.ack');
     expect(bidResponse.payload.error).toBeUndefined();
@@ -363,11 +373,11 @@ describe('bid.submit Handler', () => {
     const ws = await createClient();
     const bid = createValidBid('non-existent-auction-id');
 
-    const response = await sendAndWait(
+    const response = (await sendAndWait(
       ws,
       { type: 'bid.submit', payload: bid },
       'bid.ack'
-    ) as { type: string; payload: { error?: string } };
+    )) as { type: string; payload: { error?: string } };
 
     expect(response.type).toBe('bid.ack');
     expect(response.payload.error).toBe('auction_not_found_or_expired');
@@ -380,11 +390,11 @@ describe('bid.submit Handler', () => {
     const auction = await createAuctionRFQ();
 
     // Create auction
-    const ackResponse = await sendAndWait(
+    const ackResponse = (await sendAndWait(
       ws,
       { type: 'auction.start', payload: auction },
       'auction.ack'
-    ) as { payload: { auctionId: string } };
+    )) as { payload: { auctionId: string } };
 
     const auctionId = ackResponse.payload.auctionId;
     const bid = {
@@ -392,13 +402,15 @@ describe('bid.submit Handler', () => {
       counterpartyDeadline: Math.floor(Date.now() / 1000) - 100, // Expired
     };
 
-    const response = await sendAndWait(
+    const response = (await sendAndWait(
       ws,
       { type: 'bid.submit', payload: bid },
       'bid.ack'
-    ) as { type: string; payload: { error?: string } };
+    )) as { type: string; payload: { error?: string } };
 
-    expect(response.payload.error).toBe('counterpartyDeadline must be in the future');
+    expect(response.payload.error).toBe(
+      'counterpartyDeadline must be in the future'
+    );
 
     ws.close();
   });
@@ -409,11 +421,11 @@ describe('bid.submit Handler', () => {
     const auction = await createAuctionRFQ();
 
     // Create auction (creator is auto-subscribed)
-    const ackResponse = await sendAndWait(
+    const ackResponse = (await sendAndWait(
       wsCreator,
       { type: 'auction.start', payload: auction },
       'auction.ack'
-    ) as { payload: { auctionId: string } };
+    )) as { payload: { auctionId: string } };
 
     const auctionId = ackResponse.payload.auctionId;
 
@@ -425,7 +437,10 @@ describe('bid.submit Handler', () => {
     wsBidder.send(JSON.stringify({ type: 'bid.submit', payload: bid }));
 
     // Creator should receive auction.bids broadcast
-    const bidsMessage = await bidsPromise as { type: string; payload: { auctionId: string; bids: BidPayload[] } };
+    const bidsMessage = (await bidsPromise) as {
+      type: string;
+      payload: { auctionId: string; bids: BidPayload[] };
+    };
     expect(bidsMessage.type).toBe('auction.bids');
     expect(bidsMessage.payload.auctionId).toBe(auctionId);
     expect(bidsMessage.payload.bids).toHaveLength(1);
@@ -446,7 +461,9 @@ describe('Invalid Messages', () => {
     // Wait a bit, then verify connection is still open by sending valid message
     await new Promise((resolve) => setTimeout(resolve, 100));
 
-    const response = await sendAndWait(ws, { type: 'ping' }, 'pong') as { type: string };
+    const response = (await sendAndWait(ws, { type: 'ping' }, 'pong')) as {
+      type: string;
+    };
     expect(response.type).toBe('pong');
 
     ws.close();
@@ -461,7 +478,9 @@ describe('Invalid Messages', () => {
     // Wait a bit, then verify connection is still open
     await new Promise((resolve) => setTimeout(resolve, 100));
 
-    const response = await sendAndWait(ws, { type: 'ping' }, 'pong') as { type: string };
+    const response = (await sendAndWait(ws, { type: 'ping' }, 'pong')) as {
+      type: string;
+    };
     expect(response.type).toBe('pong');
 
     ws.close();
@@ -474,11 +493,11 @@ describe('Multiple Bids', () => {
     const auction = await createAuctionRFQ();
 
     // Create auction
-    const ackResponse = await sendAndWait(
+    const ackResponse = (await sendAndWait(
       ws,
       { type: 'auction.start', payload: auction },
       'auction.ack'
-    ) as { payload: { auctionId: string } };
+    )) as { payload: { auctionId: string } };
 
     const auctionId = ackResponse.payload.auctionId;
 
@@ -497,7 +516,9 @@ describe('Multiple Bids', () => {
     const bidsPromise = waitForMessage(ws, 'auction.bids');
     ws.send(JSON.stringify({ type: 'bid.submit', payload: bid2 }));
 
-    const bidsMessage = await bidsPromise as { payload: { bids: BidPayload[] } };
+    const bidsMessage = (await bidsPromise) as {
+      payload: { bids: BidPayload[] };
+    };
     expect(bidsMessage.payload.bids.length).toBeGreaterThanOrEqual(2);
 
     ws.close();
@@ -511,21 +532,31 @@ describe('Subscription Behavior', () => {
     const auction = await createAuctionRFQ();
 
     // Create auction
-    const ackResponse = await sendAndWait(
+    const ackResponse = (await sendAndWait(
       wsCreator,
       { type: 'auction.start', payload: auction },
       'auction.ack'
-    ) as { payload: { auctionId: string } };
+    )) as { payload: { auctionId: string } };
 
     const auctionId = ackResponse.payload.auctionId;
 
     // Submit a bid first
     const bid = createValidBid(auctionId);
-    await sendAndWait(wsCreator, { type: 'bid.submit', payload: bid }, 'bid.ack');
+    await sendAndWait(
+      wsCreator,
+      { type: 'bid.submit', payload: bid },
+      'bid.ack'
+    );
 
     // Now subscriber joins and subscribes - should receive current bids
-    const bidsPromise = waitForMessage(wsSubscriber, 'auction.bids', 2000).catch(() => null);
-    wsSubscriber.send(JSON.stringify({ type: 'auction.subscribe', payload: { auctionId } }));
+    const bidsPromise = waitForMessage(
+      wsSubscriber,
+      'auction.bids',
+      2000
+    ).catch(() => null);
+    wsSubscriber.send(
+      JSON.stringify({ type: 'auction.subscribe', payload: { auctionId } })
+    );
 
     // Wait for auction.ack (subscription confirmation)
     await waitForMessage(wsSubscriber, 'auction.ack');

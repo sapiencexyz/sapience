@@ -123,4 +123,3 @@ export const subscriptionsActive = new Gauge({
 export async function getMetrics(): Promise<string> {
   return register.metrics();
 }
-

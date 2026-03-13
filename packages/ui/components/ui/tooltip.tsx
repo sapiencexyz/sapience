@@ -18,7 +18,8 @@ function useIsCoarsePointer(): boolean {
       const hasTouch =
         (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0) ||
         (typeof window !== 'undefined' &&
-          'ontouchstart' in (window as unknown as { ontouchstart?: unknown })) ||
+          'ontouchstart' in
+            (window as unknown as { ontouchstart?: unknown })) ||
         (typeof window !== 'undefined' &&
           window.matchMedia &&
           window.matchMedia('(pointer: coarse)').matches);
@@ -58,7 +59,11 @@ const Tooltip = ({
   const variant: TooltipVariant = usePopover ? 'popover' : 'tooltip';
 
   const root = usePopover ? (
-    <PopoverPrimitive.Root open={open} defaultOpen={defaultOpen} onOpenChange={onOpenChange}>
+    <PopoverPrimitive.Root
+      open={open}
+      defaultOpen={defaultOpen}
+      onOpenChange={onOpenChange}
+    >
       {children}
     </PopoverPrimitive.Root>
   ) : (
@@ -73,7 +78,9 @@ const Tooltip = ({
   );
 
   return (
-    <TooltipVariantContext.Provider value={variant}>{root}</TooltipVariantContext.Provider>
+    <TooltipVariantContext.Provider value={variant}>
+      {root}
+    </TooltipVariantContext.Provider>
   );
 };
 
@@ -85,7 +92,10 @@ const TooltipTrigger = React.forwardRef<
 
   if (variant === 'popover') {
     return (
-      <PopoverPrimitive.Trigger ref={ref as unknown as React.Ref<HTMLButtonElement>} {...(props as any)}>
+      <PopoverPrimitive.Trigger
+        ref={ref as unknown as React.Ref<HTMLButtonElement>}
+        {...(props as any)}
+      >
         {children}
       </PopoverPrimitive.Trigger>
     );

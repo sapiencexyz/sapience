@@ -35,13 +35,19 @@ async function promptConfirmation(message: string): Promise<boolean> {
  * Call this at the start of any script that writes to the API.
  * Exits the process if user declines.
  */
-export async function confirmProductionAccess(apiUrl: string = DEFAULT_SAPIENCE_API_URL): Promise<void> {
+export async function confirmProductionAccess(
+  apiUrl: string = DEFAULT_SAPIENCE_API_URL
+): Promise<void> {
   const nodeEnv = process.env.NODE_ENV;
   const isProduction = isProductionUrl(apiUrl);
 
   if (isProduction && nodeEnv !== 'production') {
-    console.warn('\n⚠️  WARNING: You are about to access PRODUCTION (api.sapience.xyz)');
-    console.warn(`   but NODE_ENV is "${nodeEnv || 'undefined'}" (not "production")\n`);
+    console.warn(
+      '\n⚠️  WARNING: You are about to access PRODUCTION (api.sapience.xyz)'
+    );
+    console.warn(
+      `   but NODE_ENV is "${nodeEnv || 'undefined'}" (not "production")\n`
+    );
 
     const confirmed = await promptConfirmation('Do you want to continue?');
 

@@ -45,7 +45,9 @@ Respond with CSV format only (no header, no markdown):
 /**
  * Build prompt for short-name-only enrichment (when category is already determined)
  */
-export function buildShortNameOnlyPrompt(markets: MarketEnrichmentInput[]): string {
+export function buildShortNameOnlyPrompt(
+  markets: MarketEnrichmentInput[]
+): string {
   const marketsJson = markets.map((m) => ({
     id: m.conditionId,
     q: m.question,

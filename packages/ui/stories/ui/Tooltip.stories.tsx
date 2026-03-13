@@ -1,25 +1,25 @@
-import type { Meta, StoryObj } from "@storybook/react-webpack5";
-import * as React from "react";
-import { Info, HelpCircle, AlertCircle, CheckCircle } from "lucide-react";
+import type { Meta, StoryObj } from '@storybook/react-webpack5';
+import * as React from 'react';
+import { Info, HelpCircle, AlertCircle, CheckCircle } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
-} from "../../components/ui/tooltip";
-import { Button } from "../../components/ui/button";
-import { Badge } from "../../components/ui/badge";
+} from '../../components/ui/tooltip';
+import { Button } from '../../components/ui/button';
+import { Badge } from '../../components/ui/badge';
 
 const meta: Meta<typeof Tooltip> = {
-  title: "UI / Tooltip",
+  title: 'UI / Tooltip',
   component: Tooltip,
   parameters: {
-    layout: "centered",
+    layout: 'centered',
   },
-  tags: ["autodocs"],
+  tags: ['autodocs'],
   argTypes: {
     delayDuration: {
-      control: { type: "number" },
+      control: { type: 'number' },
     },
   },
 };

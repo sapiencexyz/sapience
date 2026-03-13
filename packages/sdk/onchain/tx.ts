@@ -15,8 +15,8 @@ export async function simulateTransaction(args: {
       typeof args.tx.value === 'bigint'
         ? (args.tx.value as bigint)
         : args.tx.value
-        ? parseEther(args.tx.value)
-        : undefined,
+          ? parseEther(args.tx.value)
+          : undefined,
   } as any);
   return { result };
 }
@@ -28,7 +28,8 @@ export async function submitTransaction(args: {
   tx: { to: Hex; data?: Hex; value?: bigint | string };
 }): Promise<{ hash: Hex }> {
   const account =
-    args.account || (args.privateKey ? privateKeyToAccount(args.privateKey) : undefined);
+    args.account ||
+    (args.privateKey ? privateKeyToAccount(args.privateKey) : undefined);
   if (!account) throw new Error('Missing account or privateKey');
   const client = createWalletClient({ account, transport: http(args.rpc) });
   const hash = await client.sendTransaction({
@@ -38,10 +39,8 @@ export async function submitTransaction(args: {
       typeof args.tx.value === 'bigint'
         ? (args.tx.value as bigint)
         : args.tx.value
-        ? parseEther(args.tx.value)
-        : undefined,
+          ? parseEther(args.tx.value)
+          : undefined,
   } as any);
   return { hash };
 }
-
-

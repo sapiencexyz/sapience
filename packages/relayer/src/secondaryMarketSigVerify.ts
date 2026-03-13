@@ -19,7 +19,10 @@ import type {
  */
 function getVerifyingContract(chainId: number): Address | null {
   const entry = secondaryMarketEscrow[chainId];
-  if (!entry || entry.address === '0x0000000000000000000000000000000000000000') {
+  if (
+    !entry ||
+    entry.address === '0x0000000000000000000000000000000000000000'
+  ) {
     return null;
   }
   return entry.address as Address;

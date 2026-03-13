@@ -14,7 +14,9 @@ export type PolymarketPredictedOutcome = {
   prediction: boolean; // true = YES, false = NO
 };
 
-export function encodePolymarketPredictedOutcomes(outcomes: PolymarketPredictedOutcome[]): Hex {
+export function encodePolymarketPredictedOutcomes(
+  outcomes: PolymarketPredictedOutcome[]
+): Hex {
   return encodeAbiParameters(
     [
       {
@@ -60,16 +62,13 @@ const PYTH_MARKET_ABI_PARAMS = [
  * This is a raw ABI encoding (no hash) so consumers can decode the fields.
  */
 export function getPythMarketId(market: PythBinaryOptionMarket): Hex {
-  return encodeAbiParameters(
-    PYTH_MARKET_ABI_PARAMS,
-    [
-      market.priceId,
-      market.endTime,
-      market.strikePrice,
-      market.strikeExpo,
-      market.overWinsOnTie,
-    ]
-  );
+  return encodeAbiParameters(PYTH_MARKET_ABI_PARAMS, [
+    market.priceId,
+    market.endTime,
+    market.strikePrice,
+    market.strikeExpo,
+    market.overWinsOnTie,
+  ]);
 }
 
 /**
@@ -83,7 +82,9 @@ export function getPythMarketHash(market: PythBinaryOptionMarket): Hex {
 /**
  * Decode a Pyth conditionId (raw ABI-encoded market params) back into fields.
  */
-export function decodePythMarketId(conditionId: Hex): PythBinaryOptionMarket | null {
+export function decodePythMarketId(
+  conditionId: Hex
+): PythBinaryOptionMarket | null {
   try {
     const [priceId, endTime, strikePrice, strikeExpo, overWinsOnTie] =
       decodeAbiParameters(PYTH_MARKET_ABI_PARAMS, conditionId);
@@ -132,7 +133,7 @@ export function encodePythBinaryOptionOutcomes(
  * Returns null if the description doesn't match the expected format.
  */
 export function parsePythMarketFromDescription(
-  description: string,
+  description: string
 ): PythBinaryOptionMarket | null {
   if (!description.startsWith('PYTH_LAZER')) return null;
 

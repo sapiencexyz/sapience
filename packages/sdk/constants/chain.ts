@@ -13,8 +13,7 @@ export const CHAIN_ID_ETHEREAL_TESTNET = 13374202 as const;
  */
 export const DEFAULT_CHAIN_ID: number =
   Number(
-    process.env.NEXT_PUBLIC_DEFAULT_CHAIN_ID ||
-    process.env.DEFAULT_CHAIN_ID
+    process.env.NEXT_PUBLIC_DEFAULT_CHAIN_ID || process.env.DEFAULT_CHAIN_ID
   ) || CHAIN_ID_ETHEREAL;
 
 export const COLLATERAL_SYMBOLS: Record<number, string> = {

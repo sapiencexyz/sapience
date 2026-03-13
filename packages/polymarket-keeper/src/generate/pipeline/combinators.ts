@@ -15,8 +15,8 @@ export class UnionFilter<T> implements Filter<T> {
   description: string;
 
   constructor(private filters: Filter<T>[]) {
-    this.name = filters.map(f => f.name).join('-or-');
-    this.description = `Keep items matching: ${filters.map(f => f.name).join(' OR ')}`;
+    this.name = filters.map((f) => f.name).join('-or-');
+    this.description = `Keep items matching: ${filters.map((f) => f.name).join(' OR ')}`;
   }
 
   apply(items: T[]): FilterResult<T> {
@@ -25,7 +25,9 @@ export class UnionFilter<T> implements Filter<T> {
 
     for (const item of items) {
       // Keep if ANY filter would keep this item
-      const wouldKeep = this.filters.some(f => f.apply([item]).kept.length > 0);
+      const wouldKeep = this.filters.some(
+        (f) => f.apply([item]).kept.length > 0
+      );
       if (wouldKeep) {
         kept.push(item);
       } else {
@@ -48,8 +50,8 @@ export class IntersectionFilter<T> implements Filter<T> {
   description: string;
 
   constructor(private filters: Filter<T>[]) {
-    this.name = filters.map(f => f.name).join('-and-');
-    this.description = `Keep items matching: ${filters.map(f => f.name).join(' AND ')}`;
+    this.name = filters.map((f) => f.name).join('-and-');
+    this.description = `Keep items matching: ${filters.map((f) => f.name).join(' AND ')}`;
   }
 
   apply(items: T[]): FilterResult<T> {
@@ -58,7 +60,9 @@ export class IntersectionFilter<T> implements Filter<T> {
 
     for (const item of items) {
       // Keep if ALL filters would keep this item
-      const wouldKeep = this.filters.every(f => f.apply([item]).kept.length > 0);
+      const wouldKeep = this.filters.every(
+        (f) => f.apply([item]).kept.length > 0
+      );
       if (wouldKeep) {
         kept.push(item);
       } else {

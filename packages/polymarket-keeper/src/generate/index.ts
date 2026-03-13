@@ -101,7 +101,6 @@ export async function main() {
     if (hasAPICredentials && apiUrl && privateKey) {
       await submitToAPI(apiUrl, privateKey, sapienceData);
     }
-
   } catch (error) {
     console.error('Error:', error);
     process.exit(1);

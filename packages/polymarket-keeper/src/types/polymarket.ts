@@ -12,8 +12,8 @@ export interface PolymarketMarket {
   endDate: string;
   description: string;
   slug: string;
-  marketSlug?: string;  // Alternative slug field
-  url?: string;  // Direct URL from API
+  marketSlug?: string; // Alternative slug field
+  url?: string; // Direct URL from API
   category?: string;
   questionID?: string;
   sportsMarketType?: string;

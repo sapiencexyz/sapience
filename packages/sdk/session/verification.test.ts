@@ -16,14 +16,16 @@ vi.mock('viem', async (importOriginal) => {
   const actual = (await importOriginal()) as Record<string, unknown>;
   return {
     ...actual,
-    recoverTypedDataAddress: (...args: unknown[]) => mockRecoverTypedDataAddress(...args),
+    recoverTypedDataAddress: (...args: unknown[]) =>
+      mockRecoverTypedDataAddress(...args),
   };
 });
 
 // Mock computeSmartAccountAddress so we can control the ownership check
 const mockComputeSmartAccountAddress = vi.fn();
 vi.mock('./smartAccount', () => ({
-  computeSmartAccountAddress: (...args: unknown[]) => mockComputeSmartAccountAddress(...args),
+  computeSmartAccountAddress: (...args: unknown[]) =>
+    mockComputeSmartAccountAddress(...args),
 }));
 
 import {
@@ -37,18 +39,22 @@ import {
 // --- Test fixtures ---
 
 const OWNER_ADDRESS = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' as Address;
-const SMART_ACCOUNT_ADDRESS = '0xcccccccccccccccccccccccccccccccccccccccc' as Address;
-const SESSION_KEY_ADDRESS = '0xdddddddddddddddddddddddddddddddddddddddd' as Address;
+const SMART_ACCOUNT_ADDRESS =
+  '0xcccccccccccccccccccccccccccccccccccccccc' as Address;
+const SESSION_KEY_ADDRESS =
+  '0xdddddddddddddddddddddddddddddddddddddddd' as Address;
 
 const CHAIN_ID = 42161; // Arbitrum
 
 // Pre-computed ABI-encoded bytes[] containing one element:
 // flag(0x0001) + signerContract(zero address) + sessionKey(SESSION_KEY_ADDRESS)
 // Generated via: encodeAbiParameters([{type:'bytes[]'}], [['0x0001' + '00'.repeat(20) + 'dd'.repeat(20)]])
-const VALID_VALIDATOR_DATA: Hex = '0x000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000002a00010000000000000000000000000000000000000000dddddddddddddddddddddddddddddddddddddddd00000000000000000000000000000000000000000000';
+const VALID_VALIDATOR_DATA: Hex =
+  '0x000000000000000000000000000000000000000000000000000000000000002000000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000020000000000000000000000000000000000000000000000000000000000000002a00010000000000000000000000000000000000000000dddddddddddddddddddddddddddddddddddddddd00000000000000000000000000000000000000000000';
 
 // Pre-computed empty bytes[] — encodeAbiParameters([{type:'bytes[]'}], [[]])
-const EMPTY_VALIDATOR_DATA: Hex = '0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000';
+const EMPTY_VALIDATOR_DATA: Hex =
+  '0x00000000000000000000000000000000000000000000000000000000000000200000000000000000000000000000000000000000000000000000000000000000';
 
 function makeTypedData(overrides?: Partial<EnableTypedData>): EnableTypedData {
   return {
@@ -86,7 +92,10 @@ function makeSerializedApproval(accountAddress: Address): string {
     enableSignature: '0xdeadbeefdeadbeef',
     accountParams: { accountAddress },
     permissionParams: { permissionId: '0x00000000' },
-    action: { selector: '0x00000000', address: '0x0000000000000000000000000000000000000000' },
+    action: {
+      selector: '0x00000000',
+      address: '0x0000000000000000000000000000000000000000',
+    },
     kernelVersion: '0.3.1',
     validatorData: VALID_VALIDATOR_DATA,
     hookData: '0x',
@@ -128,7 +137,8 @@ describe('verifySessionApproval', () => {
   });
 
   test('rejects when claimed account does not match approval accountAddress', async () => {
-    const otherAccount = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' as Address;
+    const otherAccount =
+      '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' as Address;
 
     const result = await verifySessionApproval(
       makeApprovalPayload(SMART_ACCOUNT_ADDRESS),
@@ -140,7 +150,8 @@ describe('verifySessionApproval', () => {
   });
 
   test('rejects when verifyingContract does not match claimed account', async () => {
-    const victimAccount = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' as Address;
+    const victimAccount =
+      '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' as Address;
 
     const payload = makeApprovalPayload(victimAccount, {
       typedData: makeTypedData({
@@ -195,7 +206,9 @@ describe('verifySessionApproval', () => {
   });
 
   test('rejects when signature recovery fails', async () => {
-    mockRecoverTypedDataAddress.mockRejectedValue(new Error('invalid signature'));
+    mockRecoverTypedDataAddress.mockRejectedValue(
+      new Error('invalid signature')
+    );
 
     const result = await verifySessionApproval(
       makeApprovalPayload(SMART_ACCOUNT_ADDRESS),
@@ -246,7 +259,8 @@ describe('verifySessionApproval — smart account ownership', () => {
   });
 
   test('rejects when recovered owner does not own claimed smart account', async () => {
-    const DIFFERENT_ADDRESS = '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' as Address;
+    const DIFFERENT_ADDRESS =
+      '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' as Address;
     mockRecoverTypedDataAddress.mockResolvedValue(OWNER_ADDRESS);
     mockComputeSmartAccountAddress.mockReturnValue(DIFFERENT_ADDRESS);
 
