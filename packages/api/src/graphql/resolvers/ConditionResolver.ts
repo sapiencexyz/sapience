@@ -24,7 +24,6 @@ import {
 import type { ApolloContext } from '../startApolloServer';
 import prisma from '../../db';
 import { PredictionType } from './EscrowResolver';
-import { batchLoadPickConfigs } from '../helpers/batchLoadPickConfigs';
 
 /**
  * Custom Condition resolver that defaults to hiding private conditions (public: false).
@@ -177,68 +176,70 @@ export class ConditionResolver {
     const pickConfigIds = matchingPicks.map((p) => p.pickConfigId);
     if (pickConfigIds.length === 0) return [];
 
-    // Get token pairs from PickConfigurations
-    const pickConfigs = await prisma.picks.findMany({
-      where: { id: { in: pickConfigIds } },
-      select: { predictorToken: true, counterpartyToken: true },
-    });
-
-    // Build AND filters per pick config — both tokens must match to avoid false positives
-    const tokenPairFilters = pickConfigs
-      .filter((pc) => pc.predictorToken && pc.counterpartyToken)
-      .map((pc) => ({
-        predictorToken: pc.predictorToken!,
-        counterpartyToken: pc.counterpartyToken!,
-      }));
-    if (tokenPairFilters.length === 0) return [];
-
-    // Query Prediction table by token pairs (AND within each pair, OR across pairs)
+    // Query predictions directly by pickConfigId FK
     const rows = await prisma.prediction.findMany({
       where: {
-        OR: tokenPairFilters,
+        pickConfigId: { in: pickConfigIds },
       },
       orderBy: { createdAt: 'desc' },
       take: cappedTake,
       skip,
+      include: {
+        pickConfiguration: {
+          include: { picks: true },
+        },
+      },
     });
 
-    // Batch-load pickConfigs for mapping
-    const allTokenAddresses = new Set<string>();
-    for (const r of rows) {
-      if (r.predictorToken) allTokenAddresses.add(r.predictorToken);
-      if (r.counterpartyToken) allTokenAddresses.add(r.counterpartyToken);
-    }
-
-    const tokenToPickConfig = await batchLoadPickConfigs(
-      Array.from(allTokenAddresses)
-    );
-
-    return rows.map((r) => ({
-      id: r.id,
-      predictionId: r.predictionId,
-      chainId: r.chainId,
-      marketAddress: r.marketAddress,
-      predictor: r.predictor,
-      counterparty: r.counterparty,
-      predictorToken: r.predictorToken,
-      counterpartyToken: r.counterpartyToken,
-      predictorCollateral: r.predictorCollateral,
-      counterpartyCollateral: r.counterpartyCollateral,
-      collateralDeposited: r.collateralDeposited ?? null,
-      collateralDepositedAt: r.collateralDepositedAt ?? null,
-      settled: r.settled,
-      settledAt: r.settledAt ?? null,
-      result: r.result,
-      predictorClaimable: r.predictorClaimable ?? null,
-      counterpartyClaimable: r.counterpartyClaimable ?? null,
-      createdAt: r.createdAt,
-      createTxHash: r.createTxHash,
-      settleTxHash: r.settleTxHash ?? null,
-      refCode: r.refCode ?? null,
-      pickConfig:
-        tokenToPickConfig.get(r.predictorToken) ??
-        tokenToPickConfig.get(r.counterpartyToken) ??
-        null,
-    }));
+    return rows.map((r) => {
+      const pc = r.pickConfiguration;
+      return {
+        id: r.id,
+        predictionId: r.predictionId,
+        chainId: r.chainId,
+        marketAddress: r.marketAddress,
+        predictor: r.predictor,
+        counterparty: r.counterparty,
+        predictorToken: pc?.predictorToken ?? '',
+        counterpartyToken: pc?.counterpartyToken ?? '',
+        predictorCollateral: r.predictorCollateral,
+        counterpartyCollateral: r.counterpartyCollateral,
+        collateralDeposited: r.collateralDeposited ?? null,
+        collateralDepositedAt: r.collateralDepositedAt ?? null,
+        settled: r.settled,
+        settledAt: r.settledAt ?? null,
+        result: r.result,
+        predictorClaimable: r.predictorClaimable ?? null,
+        counterpartyClaimable: r.counterpartyClaimable ?? null,
+        createdAt: r.createdAt,
+        createTxHash: r.createTxHash,
+        settleTxHash: r.settleTxHash ?? null,
+        refCode: r.refCode ?? null,
+        pickConfig: pc
+          ? {
+              id: pc.id,
+              chainId: pc.chainId,
+              marketAddress: pc.marketAddress,
+              totalPredictorCollateral: pc.totalPredictorCollateral,
+              totalCounterpartyCollateral: pc.totalCounterpartyCollateral,
+              claimedPredictorCollateral: pc.claimedPredictorCollateral,
+              claimedCounterpartyCollateral: pc.claimedCounterpartyCollateral,
+              resolved: pc.resolved,
+              result: pc.result,
+              resolvedAt: pc.resolvedAt ?? null,
+              predictorToken: pc.predictorToken ?? null,
+              counterpartyToken: pc.counterpartyToken ?? null,
+              endsAt: pc.endsAt ?? null,
+              picks: pc.picks.map((p) => ({
+                id: p.id,
+                pickConfigId: p.pickConfigId,
+                conditionResolver: p.conditionResolver,
+                conditionId: p.conditionId,
+                predictedOutcome: p.predictedOutcome,
+              })),
+            }
+          : null,
+      };
+    });
   }
 }

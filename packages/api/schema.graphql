@@ -1268,9 +1268,9 @@ type Query {
   pickConfigurations(chainId: Int, resolved: Boolean, result: SettlementResult, skip: Int! = 0, take: Int! = 50): [PickConfiguration!]!
 
   """
-  Paginated list of token position balances, filterable by holder, condition, chain, or pick config
+  Paginated list of token position balances, filterable by holder, condition, chain, pick config, settlement, date range, collateral range, and won/lost status
   """
-  positions(chainId: Int, conditionId: String, holder: String, pickConfigId: String, result: SettlementResult, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Position!]!
+  positions(chainId: Int, collateralMax: String, collateralMin: String, conditionId: String, endsAtMax: Int, endsAtMin: Int, holder: String, holderWon: Boolean, pickConfigId: String, result: SettlementResult, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Position!]!
 
   """Look up a single prediction by its on-chain prediction ID"""
   prediction(id: String!): Prediction
