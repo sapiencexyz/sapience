@@ -12,6 +12,64 @@ import { SortOrder } from '@generated/type-graphql';
 import prisma from '../../db';
 
 // ============================================================================
+// Helpers
+// ============================================================================
+
+/** Prisma shape of a Picks row with its Pick[] children included. */
+type PicksWithPicks = {
+  id: string;
+  chainId: number;
+  marketAddress: string;
+  totalPredictorCollateral: string;
+  totalCounterpartyCollateral: string;
+  claimedPredictorCollateral: string;
+  claimedCounterpartyCollateral: string;
+  resolved: boolean;
+  result: string;
+  resolvedAt: number | null;
+  predictorToken: string | null;
+  counterpartyToken: string | null;
+  endsAt: number | null;
+  picks: {
+    id: number;
+    pickConfigId: string;
+    conditionResolver: string;
+    conditionId: string;
+    predictedOutcome: number;
+  }[];
+};
+
+/** Map a Prisma Picks (with picks included) to the GraphQL PickConfigurationType shape. */
+export function mapPickConfig(
+  pc: PicksWithPicks,
+  extra?: { predictionId?: string | null }
+): PickConfigurationType {
+  return {
+    id: pc.id,
+    chainId: pc.chainId,
+    marketAddress: pc.marketAddress,
+    totalPredictorCollateral: pc.totalPredictorCollateral,
+    totalCounterpartyCollateral: pc.totalCounterpartyCollateral,
+    claimedPredictorCollateral: pc.claimedPredictorCollateral,
+    claimedCounterpartyCollateral: pc.claimedCounterpartyCollateral,
+    resolved: pc.resolved,
+    result: pc.result,
+    resolvedAt: pc.resolvedAt ?? null,
+    predictorToken: pc.predictorToken ?? null,
+    counterpartyToken: pc.counterpartyToken ?? null,
+    endsAt: pc.endsAt ?? null,
+    picks: pc.picks.map((p) => ({
+      id: p.id,
+      pickConfigId: p.pickConfigId,
+      conditionResolver: p.conditionResolver,
+      conditionId: p.conditionId,
+      predictedOutcome: p.predictedOutcome,
+    })),
+    ...extra,
+  };
+}
+
+// ============================================================================
 // Enums
 // ============================================================================
 
@@ -412,56 +470,30 @@ export class EscrowResolver {
       },
     });
 
-    return rows.map((r) => {
-      const pc = r.pickConfiguration;
-      return {
-        id: r.id,
-        predictionId: r.predictionId,
-        chainId: r.chainId,
-        marketAddress: r.marketAddress,
-        predictor: r.predictor,
-        counterparty: r.counterparty,
-        predictorToken: pc?.predictorToken ?? '',
-        counterpartyToken: pc?.counterpartyToken ?? '',
-        predictorCollateral: r.predictorCollateral,
-        counterpartyCollateral: r.counterpartyCollateral,
-        collateralDeposited: r.collateralDeposited ?? null,
-        collateralDepositedAt: r.collateralDepositedAt ?? null,
-        settled: r.settled,
-        settledAt: r.settledAt ?? null,
-        result: r.result,
-        predictorClaimable: r.predictorClaimable ?? null,
-        counterpartyClaimable: r.counterpartyClaimable ?? null,
-        createdAt: r.createdAt,
-        createTxHash: r.createTxHash,
-        settleTxHash: r.settleTxHash ?? null,
-        refCode: r.refCode ?? null,
-        pickConfig: pc
-          ? {
-              id: pc.id,
-              chainId: pc.chainId,
-              marketAddress: pc.marketAddress,
-              totalPredictorCollateral: pc.totalPredictorCollateral,
-              totalCounterpartyCollateral: pc.totalCounterpartyCollateral,
-              claimedPredictorCollateral: pc.claimedPredictorCollateral,
-              claimedCounterpartyCollateral: pc.claimedCounterpartyCollateral,
-              resolved: pc.resolved,
-              result: pc.result,
-              resolvedAt: pc.resolvedAt ?? null,
-              predictorToken: pc.predictorToken ?? null,
-              counterpartyToken: pc.counterpartyToken ?? null,
-              endsAt: pc.endsAt ?? null,
-              picks: pc.picks.map((p) => ({
-                id: p.id,
-                pickConfigId: p.pickConfigId,
-                conditionResolver: p.conditionResolver,
-                conditionId: p.conditionId,
-                predictedOutcome: p.predictedOutcome,
-              })),
-            }
-          : null,
-      };
-    });
+    return rows.map((r) => ({
+      id: r.id,
+      predictionId: r.predictionId,
+      chainId: r.chainId,
+      marketAddress: r.marketAddress,
+      predictor: r.predictor,
+      counterparty: r.counterparty,
+      predictorToken: r.pickConfiguration?.predictorToken ?? '',
+      counterpartyToken: r.pickConfiguration?.counterpartyToken ?? '',
+      predictorCollateral: r.predictorCollateral,
+      counterpartyCollateral: r.counterpartyCollateral,
+      collateralDeposited: r.collateralDeposited ?? null,
+      collateralDepositedAt: r.collateralDepositedAt ?? null,
+      settled: r.settled,
+      settledAt: r.settledAt ?? null,
+      result: r.result,
+      predictorClaimable: r.predictorClaimable ?? null,
+      counterpartyClaimable: r.counterpartyClaimable ?? null,
+      createdAt: r.createdAt,
+      createTxHash: r.createTxHash,
+      settleTxHash: r.settleTxHash ?? null,
+      refCode: r.refCode ?? null,
+      pickConfig: r.pickConfiguration ? mapPickConfig(r.pickConfiguration) : null,
+    }));
   }
 
   @Query(() => PredictionType, {
@@ -484,8 +516,6 @@ export class EscrowResolver {
 
     if (!r) return null;
 
-    const pc = r.pickConfiguration;
-
     return {
       id: r.id,
       predictionId: r.predictionId,
@@ -493,8 +523,8 @@ export class EscrowResolver {
       marketAddress: r.marketAddress,
       predictor: r.predictor,
       counterparty: r.counterparty,
-      predictorToken: pc?.predictorToken ?? '',
-      counterpartyToken: pc?.counterpartyToken ?? '',
+      predictorToken: r.pickConfiguration?.predictorToken ?? '',
+      counterpartyToken: r.pickConfiguration?.counterpartyToken ?? '',
       predictorCollateral: r.predictorCollateral,
       counterpartyCollateral: r.counterpartyCollateral,
       collateralDeposited: r.collateralDeposited ?? null,
@@ -508,29 +538,8 @@ export class EscrowResolver {
       createTxHash: r.createTxHash,
       settleTxHash: r.settleTxHash ?? null,
       refCode: r.refCode ?? null,
-      pickConfig: pc
-        ? {
-            id: pc.id,
-            chainId: pc.chainId,
-            marketAddress: pc.marketAddress,
-            totalPredictorCollateral: pc.totalPredictorCollateral,
-            totalCounterpartyCollateral: pc.totalCounterpartyCollateral,
-            claimedPredictorCollateral: pc.claimedPredictorCollateral,
-            claimedCounterpartyCollateral: pc.claimedCounterpartyCollateral,
-            resolved: pc.resolved,
-            result: pc.result,
-            resolvedAt: pc.resolvedAt ?? null,
-            predictorToken: pc.predictorToken ?? null,
-            counterpartyToken: pc.counterpartyToken ?? null,
-            endsAt: pc.endsAt ?? null,
-            picks: pc.picks.map((p) => ({
-              id: p.id,
-              pickConfigId: p.pickConfigId,
-              conditionResolver: p.conditionResolver,
-              conditionId: p.conditionId,
-              predictedOutcome: p.predictedOutcome,
-            })),
-          }
+      pickConfig: r.pickConfiguration
+        ? mapPickConfig(r.pickConfiguration)
         : null,
     };
   }
@@ -574,28 +583,7 @@ export class EscrowResolver {
       },
     });
 
-    return rows.map((r) => ({
-      id: r.id,
-      chainId: r.chainId,
-      marketAddress: r.marketAddress,
-      totalPredictorCollateral: r.totalPredictorCollateral,
-      totalCounterpartyCollateral: r.totalCounterpartyCollateral,
-      claimedPredictorCollateral: r.claimedPredictorCollateral,
-      claimedCounterpartyCollateral: r.claimedCounterpartyCollateral,
-      resolved: r.resolved,
-      result: r.result,
-      resolvedAt: r.resolvedAt ?? null,
-      predictorToken: r.predictorToken ?? null,
-      counterpartyToken: r.counterpartyToken ?? null,
-      endsAt: r.endsAt ?? null,
-      picks: r.picks.map((p) => ({
-        id: p.id,
-        pickConfigId: p.pickConfigId,
-        conditionResolver: p.conditionResolver,
-        conditionId: p.conditionId,
-        predictedOutcome: p.predictedOutcome,
-      })),
-    }));
+    return rows.map((r) => mapPickConfig(r));
   }
 
   @Query(() => PickConfigurationType, {
@@ -616,28 +604,7 @@ export class EscrowResolver {
 
     if (!r) return null;
 
-    return {
-      id: r.id,
-      chainId: r.chainId,
-      marketAddress: r.marketAddress,
-      totalPredictorCollateral: r.totalPredictorCollateral,
-      totalCounterpartyCollateral: r.totalCounterpartyCollateral,
-      claimedPredictorCollateral: r.claimedPredictorCollateral,
-      claimedCounterpartyCollateral: r.claimedCounterpartyCollateral,
-      resolved: r.resolved,
-      result: r.result,
-      resolvedAt: r.resolvedAt ?? null,
-      predictorToken: r.predictorToken ?? null,
-      counterpartyToken: r.counterpartyToken ?? null,
-      endsAt: r.endsAt ?? null,
-      picks: r.picks.map((p) => ({
-        id: p.id,
-        pickConfigId: p.pickConfigId,
-        conditionResolver: p.conditionResolver,
-        conditionId: p.conditionId,
-        predictedOutcome: p.predictedOutcome,
-      })),
-    };
+    return mapPickConfig(r);
   }
 
   // -------------------------------------------------------------------------
@@ -826,8 +793,6 @@ export class EscrowResolver {
 
     return rows.map((r) => {
       const pc = r.pickConfiguration;
-      const predictorToken = pc?.predictorToken ?? '';
-      const counterpartyToken = pc?.counterpartyToken ?? '';
 
       // Compute collateral from predictions included via pickConfiguration
       let userCollateral = 0n;
@@ -863,31 +828,7 @@ export class EscrowResolver {
         userCollateral: userCollateral > 0n ? userCollateral.toString() : null,
         totalPayout: totalPayout > 0n ? totalPayout.toString() : null,
         createdAt: r.createdAt,
-        pickConfig: pc
-          ? {
-              id: pc.id,
-              chainId: pc.chainId,
-              marketAddress: pc.marketAddress,
-              totalPredictorCollateral: pc.totalPredictorCollateral,
-              totalCounterpartyCollateral: pc.totalCounterpartyCollateral,
-              claimedPredictorCollateral: pc.claimedPredictorCollateral,
-              claimedCounterpartyCollateral: pc.claimedCounterpartyCollateral,
-              resolved: pc.resolved,
-              result: pc.result,
-              resolvedAt: pc.resolvedAt ?? null,
-              predictorToken: predictorToken || null,
-              counterpartyToken: counterpartyToken || null,
-              endsAt: pc.endsAt ?? null,
-              picks: pc.picks.map((p) => ({
-                id: p.id,
-                pickConfigId: p.pickConfigId,
-                conditionResolver: p.conditionResolver,
-                conditionId: p.conditionId,
-                predictedOutcome: p.predictedOutcome,
-              })),
-              predictionId,
-            }
-          : null,
+        pickConfig: pc ? mapPickConfig(pc, { predictionId }) : null,
       };
     });
   }
