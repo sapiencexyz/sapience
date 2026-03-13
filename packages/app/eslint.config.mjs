@@ -86,7 +86,7 @@ export default typescriptPlugin.config(
       
       // TypeScript rules
       "@typescript-eslint/no-unused-vars": [
-        "warn",
+        "error",
         {
           "args": "all",
           "argsIgnorePattern": "^_",
