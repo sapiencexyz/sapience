@@ -83,7 +83,7 @@
     "type-graphql": "2.0.0-rc.2",
     "typegraphql-prisma": "0.28.0",
     "typescript": "5.8.3",
-    "viem": "2.21.49",
+    "viem": "2.47.2",
     "ws": "8.18.3",
     "zod": "3.25.76"
   },
@@ -106,7 +106,7 @@
     "vitest": "2.1.9"
   },
   "engines": {
-    "node": ">=24.11.0 <25.0.0",
+    "node": ">=20.14.x",
     "pnpm": "9.x"
   }
 }

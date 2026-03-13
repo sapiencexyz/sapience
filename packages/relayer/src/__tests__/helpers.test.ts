@@ -215,9 +215,9 @@ describe('verifyMakerBid', () => {
     });
 
     it('returns ok: false for undefined auctionId', () => {
-      // @ts-expect-error - testing invalid input
       const result = verifyMakerBid({
         ...validBidParams,
+        // @ts-expect-error - testing invalid input
         auctionId: undefined,
       });
       expect(result.ok).toBe(false);
@@ -354,8 +354,8 @@ describe('createMintParlayRequestData', () => {
   });
 
   it('throws Error for null auction', () => {
-    // @ts-expect-error - testing invalid input
     expect(() =>
+      // @ts-expect-error - testing invalid input
       createMintParlayRequestData(null, validAuction.taker, '100')
     ).toThrow();
   });

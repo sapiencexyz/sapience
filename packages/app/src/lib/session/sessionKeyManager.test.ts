@@ -4,6 +4,7 @@
  * Tests the core session management functions with fully mocked ZeroDev SDK.
  */
 
+import { vi } from 'vitest';
 import type { Address, Hex } from 'viem';
 
 // Mock environment variables
@@ -11,43 +12,88 @@ const mockProjectId = 'test-project-id';
 process.env.NEXT_PUBLIC_ZERODEV_PROJECT_ID = mockProjectId;
 process.env.NEXT_PUBLIC_RPC_URL = 'https://mock-rpc.test';
 
-// Mock addresses
-const mockOwnerAddress =
-  '0x1234567890123456789012345678901234567890' as Address;
-const mockSmartAccountAddress =
-  '0xabcdef1234567890abcdef1234567890abcdef12' as Address;
-const mockSessionKeyAddress =
-  '0x9876543210987654321098765432109876543210' as Address;
-const mockPrivateKey =
-  '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef' as Hex;
+// Hoisted mock values — available inside vi.mock() factories
+const {
+  mockOwnerAddress,
+  mockSmartAccountAddress,
+  mockSessionKeyAddress,
+  mockPrivateKey,
+  mockKernelAccount,
+  mockKernelClient,
+} = vi.hoisted(() => {
+  const mockSmartAccountAddress =
+    '0xabcdef1234567890abcdef1234567890abcdef12' as `0x${string}`;
+  const mockSessionKeyAddress =
+    '0x9876543210987654321098765432109876543210' as `0x${string}`;
+  return {
+    mockOwnerAddress:
+      '0x1234567890123456789012345678901234567890' as `0x${string}`,
+    mockSmartAccountAddress,
+    mockSessionKeyAddress,
+    mockPrivateKey:
+      '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef' as `0x${string}`,
+    mockKernelAccount: {
+      address: mockSmartAccountAddress,
+      kernelPluginManager: {
+        getPluginsEnableTypedData: vi.fn(() =>
+          Promise.resolve({
+            domain: {
+              name: 'Kernel',
+              version: '0.3.1',
+              chainId: 5064014,
+              verifyingContract: mockSmartAccountAddress,
+            },
+            types: {
+              Enable: [{ name: 'validationId', type: 'bytes21' }],
+            },
+            primaryType: 'Enable',
+            message: {
+              validationId: '0x123',
+              nonce: 0,
+              hook: '0x0000000000000000000000000000000000000000',
+              validatorData: '0x',
+              hookData: '0x',
+              selectorData: '0x',
+            },
+          })
+        ),
+      },
+      encodeCalls: vi.fn(),
+    },
+    mockKernelClient: {
+      sendUserOperation: vi.fn(),
+      waitForUserOperationReceipt: vi.fn(),
+    },
+  };
+});
 
 // Mock viem
-jest.mock('viem', () => ({
-  createPublicClient: jest.fn(() => ({
+vi.mock('viem', () => ({
+  createPublicClient: vi.fn(() => ({
     chain: { id: 42161 },
-    getCode: jest.fn().mockResolvedValue('0x1234'),
+    getCode: vi.fn().mockResolvedValue('0x1234'),
   })),
-  http: jest.fn((url: string) => ({ url })),
-  keccak256: jest.fn(() => '0x' + '1'.repeat(64)),
-  parseAbi: jest.fn((abi: string[]) => abi),
-  slice: jest.fn(() => '0x12345678'),
-  toHex: jest.fn((val: unknown) => '0x' + String(val)),
-  encodeAbiParameters: jest.fn(() => '0xencoded'),
-  encodeFunctionData: jest.fn(() => '0xencodedFn'),
-  recoverTypedDataAddress: jest.fn().mockResolvedValue(mockSessionKeyAddress),
-  hashTypedData: jest.fn(() => '0x' + '2'.repeat(64)),
+  http: vi.fn((url: string) => ({ url })),
+  keccak256: vi.fn(() => '0x' + '1'.repeat(64)),
+  parseAbi: vi.fn((abi: string[]) => abi),
+  slice: vi.fn(() => '0x12345678'),
+  toHex: vi.fn((val: unknown) => '0x' + String(val)),
+  encodeAbiParameters: vi.fn(() => '0xencoded'),
+  encodeFunctionData: vi.fn(() => '0xencodedFn'),
+  recoverTypedDataAddress: vi.fn().mockResolvedValue(mockSessionKeyAddress),
+  hashTypedData: vi.fn(() => '0x' + '2'.repeat(64)),
 }));
 
-jest.mock('viem/accounts', () => ({
-  generatePrivateKey: jest.fn(() => mockPrivateKey),
-  privateKeyToAccount: jest.fn(() => ({
+vi.mock('viem/accounts', () => ({
+  generatePrivateKey: vi.fn(() => mockPrivateKey),
+  privateKeyToAccount: vi.fn(() => ({
     address: mockSessionKeyAddress,
-    signMessage: jest.fn(),
-    signTypedData: jest.fn(),
+    signMessage: vi.fn(),
+    signTypedData: vi.fn(),
   })),
 }));
 
-jest.mock('viem/chains', () => ({
+vi.mock('viem/chains', () => ({
   arbitrum: {
     id: 42161,
     name: 'Arbitrum One',
@@ -59,54 +105,20 @@ jest.mock('viem/chains', () => ({
 }));
 
 // Mock @zerodev/sdk
-const mockKernelAccount = {
-  address: mockSmartAccountAddress,
-  kernelPluginManager: {
-    getPluginsEnableTypedData: jest.fn(() =>
-      Promise.resolve({
-        domain: {
-          name: 'Kernel',
-          version: '0.3.1',
-          chainId: 5064014,
-          verifyingContract: mockSmartAccountAddress,
-        },
-        types: {
-          Enable: [{ name: 'validationId', type: 'bytes21' }],
-        },
-        primaryType: 'Enable',
-        message: {
-          validationId: '0x123',
-          nonce: 0,
-          hook: '0x0000000000000000000000000000000000000000',
-          validatorData: '0x',
-          hookData: '0x',
-          selectorData: '0x',
-        },
-      })
-    ),
-  },
-  encodeCalls: jest.fn(),
-};
-
-const mockKernelClient = {
-  sendUserOperation: jest.fn(),
-  waitForUserOperationReceipt: jest.fn(),
-};
-
-jest.mock('@zerodev/sdk', () => ({
-  createKernelAccount: jest.fn(() => Promise.resolve(mockKernelAccount)),
-  createKernelAccountClient: jest.fn(() => mockKernelClient),
-  createZeroDevPaymasterClient: jest.fn(() => ({
-    sponsorUserOperation: jest.fn(),
+vi.mock('@zerodev/sdk', () => ({
+  createKernelAccount: vi.fn(() => Promise.resolve(mockKernelAccount)),
+  createKernelAccountClient: vi.fn(() => mockKernelClient),
+  createZeroDevPaymasterClient: vi.fn(() => ({
+    sponsorUserOperation: vi.fn(),
   })),
-  addressToEmptyAccount: jest.fn((address: Address) => ({
+  addressToEmptyAccount: vi.fn((address: `0x${string}`) => ({
     address,
     type: 'local',
   })),
 }));
 
-jest.mock('@zerodev/sdk/constants', () => ({
-  getEntryPoint: jest.fn(() => ({
+vi.mock('@zerodev/sdk/constants', () => ({
+  getEntryPoint: vi.fn(() => ({
     address: '0x0000000071727De22E5E9d8BAf0edAc6f37da032',
     version: '0.7',
   })),
@@ -114,8 +126,8 @@ jest.mock('@zerodev/sdk/constants', () => ({
 }));
 
 // Mock @zerodev/ecdsa-validator
-jest.mock('@zerodev/ecdsa-validator', () => ({
-  signerToEcdsaValidator: jest.fn(() =>
+vi.mock('@zerodev/ecdsa-validator', () => ({
+  signerToEcdsaValidator: vi.fn(() =>
     Promise.resolve({
       address: '0xvalidator',
       type: 'ecdsa',
@@ -124,23 +136,21 @@ jest.mock('@zerodev/ecdsa-validator', () => ({
 }));
 
 // Mock @zerodev/permissions
-jest.mock('@zerodev/permissions', () => ({
-  toPermissionValidator: jest.fn(() =>
+vi.mock('@zerodev/permissions', () => ({
+  toPermissionValidator: vi.fn(() =>
     Promise.resolve({
       address: '0xpermissionValidator',
       type: 'permission',
     })
   ),
-  deserializePermissionAccount: jest.fn(() =>
-    Promise.resolve(mockKernelAccount)
-  ),
-  serializePermissionAccount: jest.fn(() =>
+  deserializePermissionAccount: vi.fn(() => Promise.resolve(mockKernelAccount)),
+  serializePermissionAccount: vi.fn(() =>
     Promise.resolve('mock-approval-string')
   ),
 }));
 
-jest.mock('@zerodev/permissions/signers', () => ({
-  toECDSASigner: jest.fn(() =>
+vi.mock('@zerodev/permissions/signers', () => ({
+  toECDSASigner: vi.fn(() =>
     Promise.resolve({
       address: mockSessionKeyAddress,
       type: 'ecdsa-signer',
@@ -148,17 +158,17 @@ jest.mock('@zerodev/permissions/signers', () => ({
   ),
 }));
 
-jest.mock('@zerodev/permissions/policies', () => ({
-  toCallPolicy: jest.fn(() => ({
+vi.mock('@zerodev/permissions/policies', () => ({
+  toCallPolicy: vi.fn(() => ({
     type: 'call-policy',
     permissions: [],
   })),
-  toTimestampPolicy: jest.fn(() => ({
+  toTimestampPolicy: vi.fn(() => ({
     type: 'timestamp-policy',
     validAfter: 0,
     validUntil: 0,
   })),
-  toSignatureCallerPolicy: jest.fn(() => ({
+  toSignatureCallerPolicy: vi.fn(() => ({
     type: 'signature-caller-policy',
   })),
   CallPolicyVersion: {
@@ -170,14 +180,14 @@ jest.mock('@zerodev/permissions/policies', () => ({
 }));
 
 // Mock @sapience/sdk
-jest.mock('@sapience/sdk/abis', () => ({
+vi.mock('@sapience/sdk/abis', () => ({
   predictionMarketAbi: [],
   predictionMarketEscrowAbi: [],
   collateralTokenAbi: [],
   predictionMarketVaultAbi: [],
 }));
 
-jest.mock('@sapience/sdk/contracts', () => ({
+vi.mock('@sapience/sdk/contracts', () => ({
   predictionMarket: {
     5064014: { address: '0xPredictionMarketEthereal' },
     13374202: { address: '0xPredictionMarketEtherealTestnet' },
@@ -203,7 +213,7 @@ jest.mock('@sapience/sdk/contracts', () => ({
   },
 }));
 
-jest.mock('@sapience/sdk/constants', () => ({
+vi.mock('@sapience/sdk/constants', () => ({
   CHAIN_ID_ETHEREAL: 5064014,
   CHAIN_ID_ETHEREAL_TESTNET: 13374202,
   CHAIN_ID_ARBITRUM: 42161,
@@ -257,21 +267,21 @@ describe('sessionKeyManager', () => {
   const localStorageMock = (() => {
     let store: Record<string, string> = {};
     return {
-      getItem: jest.fn((key: string) => store[key] || null),
-      setItem: jest.fn((key: string, value: string) => {
+      getItem: vi.fn((key: string) => store[key] || null),
+      setItem: vi.fn((key: string, value: string) => {
         store[key] = value;
       }),
-      removeItem: jest.fn((key: string) => {
+      removeItem: vi.fn((key: string) => {
         delete store[key];
       }),
-      clear: jest.fn(() => {
+      clear: vi.fn(() => {
         store = {};
       }),
     };
   })();
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     localStorageMock.clear();
     Object.defineProperty(window, 'localStorage', {
       value: localStorageMock,
@@ -302,8 +312,8 @@ describe('sessionKeyManager', () => {
   describe('createSession', () => {
     const mockOwnerSigner: OwnerSigner = {
       address: mockOwnerAddress,
-      provider: { request: jest.fn() },
-      switchChain: jest.fn(),
+      provider: { request: vi.fn() },
+      switchChain: vi.fn(),
     };
 
     it('creates session with correct expiration', async () => {
