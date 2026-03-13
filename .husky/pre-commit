@@ -1,0 +1,6 @@
+#!/bin/sh
+
+# Run lint-staged on the app package if any app files are staged
+if git diff --cached --name-only | grep -q '^packages/app/'; then
+  cd packages/app && npx lint-staged
+fi
