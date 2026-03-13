@@ -1,6 +1,6 @@
 # Market Enrichment: Short Names & Categories
 
-This document details how the polymarket-keeper generates **short names** and **categories** for prediction markets. The system uses a hybrid approach combining deterministic pattern matching with LLM-based inference.
+This document details how the market-keeper generates **short names** and **categories** for prediction markets. The system uses a hybrid approach combining deterministic pattern matching with LLM-based inference.
 
 ## Table of Contents
 
@@ -57,6 +57,7 @@ This document details how the polymarket-keeper generates **short names** and **
 ```
 
 **Key Files:**
+
 - `src/llm/enrichment.ts` - Main orchestration logic
 - `src/llm/prompts.ts` - LLM prompt templates
 - `src/llm/openrouter.ts` - OpenRouter API client & response parsing
@@ -69,14 +70,15 @@ This document details how the polymarket-keeper generates **short names** and **
 
 The enrichment system processes markets in **four categories** to minimize LLM API calls:
 
-| Category | Short Name | Category | LLM Call |
-|----------|------------|----------|----------|
-| Fully Deterministic | ✅ Pattern match | ✅ Keyword match | None |
-| Needs Category Only | ✅ Pattern match | ❌ Unknown | Category-only prompt |
-| Needs Short Name Only | ❌ No pattern | ✅ Keyword match | ShortName-only prompt |
-| Needs Both | ❌ No pattern | ❌ Unknown | Full prompt |
+| Category              | Short Name       | Category         | LLM Call              |
+| --------------------- | ---------------- | ---------------- | --------------------- |
+| Fully Deterministic   | ✅ Pattern match | ✅ Keyword match | None                  |
+| Needs Category Only   | ✅ Pattern match | ❌ Unknown       | Category-only prompt  |
+| Needs Short Name Only | ❌ No pattern    | ✅ Keyword match | ShortName-only prompt |
+| Needs Both            | ❌ No pattern    | ❌ Unknown       | Full prompt           |
 
 **Example log output:**
+
 ```
 [LLM] Split: 45 fully deterministic, 12 need LLM category, 8 need LLM shortName, 25 need LLM both
 ```
@@ -90,11 +92,13 @@ The enrichment system processes markets in **four categories** to minimize LLM A
 **File:** `src/generate/category.ts`
 
 Categories are inferred using **keyword matching** against:
+
 - Market question
 - Market slug
 - Event series slug/title
 
 **Valid Categories:**
+
 ```typescript
 type SapienceCategorySlug =
   | 'crypto'
@@ -108,15 +112,15 @@ type SapienceCategorySlug =
 
 **Keyword Patterns (in priority order):**
 
-| Category | Keywords/Patterns |
-|----------|-------------------|
-| `sports` | `sportsMarketType` field set, or keywords: `pga`, `nba`, `nfl`, `nhl`, `mlb`, `epl`, `premier-league`, `uefa`, `fifa`, `world-cup`, `super-bowl`, `playoff`, `championship`, `valorant`, `league-of-legends`, team names, etc. |
-| `crypto` | `bitcoin`, `btc`, `ethereum`, `eth`, `solana`, `sol`, `xrp`, `crypto`, `blockchain`, `defi`, `nft`, `token`, `coin` |
-| `weather` | `weather`, `temperature`, `hottest`, `coldest`, `hurricane`, `tornado`, `flood`, `drought`, `climate` |
-| `tech-science` | `ai`, `artificial-intelligence`, `chatgpt`, `openai`, `tech`, `nasa`, `space`, `spacex`, `tesla`, `apple`, `google`, `microsoft` |
-| `economy-finance` | `stock`, `s&p`, `spx`, `dow`, `nasdaq`, `fed`, `federal-reserve`, `interest-rate`, `inflation`, `gdp`, `economy` |
-| `geopolitics` | `election`, `president`, `senate`, `congress`, `vote`, `republican`, `democrat`, `war`, `military`, `nato`, `ukraine`, `russia` |
-| `culture` | `oscar`, `emmy`, `grammy`, `movie`, `music`, `celebrity`, `netflix`, `tweet`, `elon-musk`, `twitter` |
+| Category          | Keywords/Patterns                                                                                                                                                                                                              |
+| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| `sports`          | `sportsMarketType` field set, or keywords: `pga`, `nba`, `nfl`, `nhl`, `mlb`, `epl`, `premier-league`, `uefa`, `fifa`, `world-cup`, `super-bowl`, `playoff`, `championship`, `valorant`, `league-of-legends`, team names, etc. |
+| `crypto`          | `bitcoin`, `btc`, `ethereum`, `eth`, `solana`, `sol`, `xrp`, `crypto`, `blockchain`, `defi`, `nft`, `token`, `coin`                                                                                                            |
+| `weather`         | `weather`, `temperature`, `hottest`, `coldest`, `hurricane`, `tornado`, `flood`, `drought`, `climate`                                                                                                                          |
+| `tech-science`    | `ai`, `artificial-intelligence`, `chatgpt`, `openai`, `tech`, `nasa`, `space`, `spacex`, `tesla`, `apple`, `google`, `microsoft`                                                                                               |
+| `economy-finance` | `stock`, `s&p`, `spx`, `dow`, `nasdaq`, `fed`, `federal-reserve`, `interest-rate`, `inflation`, `gdp`, `economy`                                                                                                               |
+| `geopolitics`     | `election`, `president`, `senate`, `congress`, `vote`, `republican`, `democrat`, `war`, `military`, `nato`, `ukraine`, `russia`                                                                                                |
+| `culture`         | `oscar`, `emmy`, `grammy`, `movie`, `music`, `celebrity`, `netflix`, `tweet`, `elon-musk`, `twitter`                                                                                                                           |
 
 **If no keywords match:** Returns `'unknown'` → triggers LLM categorization.
 
@@ -131,6 +135,7 @@ Short names are generated using **16 regex-based rules**. Returns `null` if no p
 #### Abbreviation Lookups
 
 **Team Abbreviations (112+ teams):**
+
 ```typescript
 const TEAM_ABBREVIATIONS = {
   // NBA
@@ -145,6 +150,7 @@ const TEAM_ABBREVIATIONS = {
 ```
 
 **Asset Abbreviations:**
+
 ```typescript
 const ASSET_ABBREVIATIONS = {
   Bitcoin: 'BTC', Ethereum: 'ETH', Solana: 'SOL',
@@ -153,37 +159,43 @@ const ASSET_ABBREVIATIONS = {
 ```
 
 **Stat Abbreviations:**
+
 ```typescript
 const STAT_ABBREVIATIONS = {
-  points: 'pts', rebounds: 'reb', assists: 'ast',
-  steals: 'stl', blocks: 'blk', '3-pointers': '3pts'
+  points: 'pts',
+  rebounds: 'reb',
+  assists: 'ast',
+  steals: 'stl',
+  blocks: 'blk',
+  '3-pointers': '3pts',
 };
 ```
 
 #### Pattern Rules
 
-| # | Pattern | Example Input | Example Output |
-|---|---------|---------------|----------------|
-| 1 | Player props | `LeBron James: Points Over 25.5` | `James O25.5pts` |
-| 2 | Over/Under totals | `Lakers vs. Celtics: O/U 224.5` | `LAL/BOS O224.5` |
-| 3 | Spread markets | `Spread: Lakers (-3.5)` | `LAL -3.5` |
-| 4 | Team matchups | `Lakers vs. Celtics` (outcomes: `["Lakers", "Celtics"]`) | `LAL win vs BOS` |
-| 5 | Both Teams Score | `Man City vs. Arsenal: Both Teams to Score` | `BTTS MNC/ARS` |
-| 6 | eSports maps | `Vitality to win 2 maps?` | `VIT 2+ maps` |
-| 7 | Handicap | `Map Handicap: NaVi (-1.5)` | `NAVI -1.5` |
-| 8 | Price movement | `Bitcoin Up or Down - January 15` | `BTC up Jan15` |
-| 9 | Elon tweets (topic) | `Will Elon tweet about Dogecoin?` | `Elon tweets DOGE` |
-| 10 | Elon tweets (count) | `Elon tweets 50+ times January 20?` | `Elon 50+ Jan20` |
-| 11 | Fed rates | `Fed rate cut January?` | `Fed cut Jan` |
-| 12 | Crypto thresholds | `Bitcoin above $100,000?` | `BTC >$100,000` |
-| 13 | Price between | `Will the price of SOL be between $200 and $250?` | `SOL $200-250` |
-| 14 | Price above/below | `Will the price of ETH be above $5000?` | `ETH >$5000` |
-| 15 | Crypto reach/dip | `Will Bitcoin reach $150,000?` | `BTC reach $150,000` |
-| 16 | Team totals | `Lakers Team Total: O/U 112.5` | `LAL Total O112.5` |
-| 17 | Temperature | `Will global temperature increase by 1.5C in March?` | `Temp +1.5C Mar` |
+| #   | Pattern             | Example Input                                            | Example Output       |
+| --- | ------------------- | -------------------------------------------------------- | -------------------- |
+| 1   | Player props        | `LeBron James: Points Over 25.5`                         | `James O25.5pts`     |
+| 2   | Over/Under totals   | `Lakers vs. Celtics: O/U 224.5`                          | `LAL/BOS O224.5`     |
+| 3   | Spread markets      | `Spread: Lakers (-3.5)`                                  | `LAL -3.5`           |
+| 4   | Team matchups       | `Lakers vs. Celtics` (outcomes: `["Lakers", "Celtics"]`) | `LAL win vs BOS`     |
+| 5   | Both Teams Score    | `Man City vs. Arsenal: Both Teams to Score`              | `BTTS MNC/ARS`       |
+| 6   | eSports maps        | `Vitality to win 2 maps?`                                | `VIT 2+ maps`        |
+| 7   | Handicap            | `Map Handicap: NaVi (-1.5)`                              | `NAVI -1.5`          |
+| 8   | Price movement      | `Bitcoin Up or Down - January 15`                        | `BTC up Jan15`       |
+| 9   | Elon tweets (topic) | `Will Elon tweet about Dogecoin?`                        | `Elon tweets DOGE`   |
+| 10  | Elon tweets (count) | `Elon tweets 50+ times January 20?`                      | `Elon 50+ Jan20`     |
+| 11  | Fed rates           | `Fed rate cut January?`                                  | `Fed cut Jan`        |
+| 12  | Crypto thresholds   | `Bitcoin above $100,000?`                                | `BTC >$100,000`      |
+| 13  | Price between       | `Will the price of SOL be between $200 and $250?`        | `SOL $200-250`       |
+| 14  | Price above/below   | `Will the price of ETH be above $5000?`                  | `ETH >$5000`         |
+| 15  | Crypto reach/dip    | `Will Bitcoin reach $150,000?`                           | `BTC reach $150,000` |
+| 16  | Team totals         | `Lakers Team Total: O/U 112.5`                           | `LAL Total O112.5`   |
+| 17  | Temperature         | `Will global temperature increase by 1.5C in March?`     | `Temp +1.5C Mar`     |
 
 **Unknown Team Fallback:**
 If a team isn't in the lookup table, abbreviation is generated:
+
 1. If name ≤3 chars → use as-is uppercase
 2. If starts with vowel → first 3 letters uppercase
 3. Otherwise → first 3 consonants uppercase
@@ -200,6 +212,7 @@ If a team isn't in the lookup table, abbreviation is generated:
 **Default Model:** `openai/gpt-4o-mini`
 
 **Parameters:**
+
 ```typescript
 {
   temperature: 0.1,      // Low for consistency
@@ -219,11 +232,13 @@ The system uses three specialized prompts depending on what's needed:
 #### 1. Category-Only Prompt
 
 **System Prompt:**
+
 ```
 You are a prediction market categorization assistant. Respond only with CSV lines: id,category. No markdown, no headers. NEVER shorten or truncate IDs.
 ```
 
 **User Prompt Template:**
+
 ```
 Categorize these prediction markets.
 
@@ -248,11 +263,13 @@ Respond with CSV format only (no header, no markdown):
 #### 2. Short-Name-Only Prompt
 
 **System Prompt:**
+
 ```
 You are a prediction market short name generator. Respond only with CSV lines: id,shortName. No markdown, no headers. NEVER shorten or truncate IDs.
 ```
 
 **User Prompt Template:**
+
 ```
 Generate short names for these prediction markets.
 
@@ -296,11 +313,13 @@ Respond with CSV format only (no header, no markdown):
 Used when a market has **neither** a deterministic short name **nor** a known category.
 
 **System Prompt:**
+
 ```
 You are a prediction market categorization assistant. Respond only with CSV lines: id,category,shortName. No markdown, no headers. NEVER shorten or truncate IDs.
 ```
 
 **User Prompt Template (Complete):**
+
 ```
 Categorize prediction markets and generate short names.
 
@@ -399,6 +418,7 @@ Respond with CSV format only (no header, no markdown):
 ```
 
 **Example Response:**
+
 ```
 0x1234567890abcdef...,crypto,BTC >$100k 2024
 0xabcdef1234567890...,sports,LAL wins vs BOS
@@ -412,8 +432,9 @@ Respond with CSV format only (no header, no markdown):
 Responses are parsed with a **three-pass strategy** to handle LLM inconsistencies:
 
 #### Pass 1: Exact ID Matching
+
 ```typescript
-const marketMap = new Map(markets.map(m => [m.conditionId, m]));
+const marketMap = new Map(markets.map((m) => [m.conditionId, m]));
 for (const line of lines) {
   const [id, ...rest] = line.split(',');
   if (marketMap.has(id)) {
@@ -455,7 +476,9 @@ Any markets not found in the LLM response get **deterministic fallback** enrichm
 When LLM is disabled or fails:
 
 ```typescript
-function getFallbackEnrichment(market: PolymarketMarket): MarketEnrichmentOutput {
+function getFallbackEnrichment(
+  market: PolymarketMarket
+): MarketEnrichmentOutput {
   const category = inferSapienceCategorySlug(market);
   return {
     conditionId: market.conditionId,
@@ -467,6 +490,7 @@ function getFallbackEnrichment(market: PolymarketMarket): MarketEnrichmentOutput
 ```
 
 **Fallback triggers:**
+
 1. `LLM_ENABLED=false`
 2. No `OPENROUTER_API_KEY` provided
 3. API error (after 3 retries)
@@ -479,15 +503,16 @@ function getFallbackEnrichment(market: PolymarketMarket): MarketEnrichmentOutput
 
 **Environment Variables:**
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `LLM_ENABLED` | Enable/disable LLM enrichment | `true` |
-| `OPENROUTER_API_KEY` | API key for OpenRouter | (required for LLM) |
-| `LLM_MODEL` | Model to use | `openai/gpt-4o-mini` |
+| Variable             | Description                   | Default              |
+| -------------------- | ----------------------------- | -------------------- |
+| `LLM_ENABLED`        | Enable/disable LLM enrichment | `true`               |
+| `OPENROUTER_API_KEY` | API key for OpenRouter        | (required for LLM)   |
+| `LLM_MODEL`          | Model to use                  | `openai/gpt-4o-mini` |
 
 **Logging:**
 
 In non-production environments, LLM requests/responses are logged to `llm-markets.log`:
+
 ```
 === 2024-01-15T10:30:00.000Z | CATEGORY REQUEST (10 markets) ===
 Markets:

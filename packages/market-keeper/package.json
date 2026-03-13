@@ -1,5 +1,5 @@
 {
-  "name": "@sapience/polymarket-keeper",
+  "name": "@sapience/market-keeper",
   "version": "1.0.0",
   "private": true,
   "license": "MIT",

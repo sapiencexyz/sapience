@@ -3,6 +3,7 @@
 This document captures the context agents need when working in the Sapience monorepo. Keep it in sync as workflows evolve so future automation can ramp up quickly.
 
 ## Project Snapshot
+
 - Workspace manager: `pnpm` (Node >= 20.14, pnpm 9.x). Install everything with `pnpm install`.
 - Monorepo packages:
   - `packages/protocol` – Solidity smart contracts for the Sapience protocol (see `packages/protocol/CLAUDE.md` for a deeper contract-specific brief).
@@ -10,10 +11,11 @@ This document captures the context agents need when working in the Sapience mono
   - `packages/app` – Next.js 14 product app consuming the SDK and API.
   - `packages/sdk` – Shared TypeScript SDK (ABIs, hooks, UI kit, GraphQL helpers) built via `tsup` and Storybook.
   - `packages/docs` – Documentation portal powered by Vocs.
-  - `packages/polymarket-keeper` – Cron scripts for managing Sapience conditions from Polymarket markets.
+  - `packages/market-keeper` – Cron scripts for managing Sapience conditions from Polymarket markets.
 - Backend services deploy on Railway with per-service build/start commands (see `railway.toml` and the Railway dashboard).
 
 ## Core Commands
+
 Run from repo root unless noted.
 
 ```bash
@@ -25,12 +27,14 @@ pnpm run test --recursive    # run package tests (delegates to package scripts)
 ```
 
 Package-specific highlights:
+
 - Protocol: `pnpm --filter protocol run test` (Forge).
 - API: `pnpm --filter @sapience/api run prisma:setup` before local runs; use `vitest` (`test`/`test:watch`) and `tsx` CLIs (e.g., `start:reindex-*`).
 - SDK: build with `pnpm --filter @sapience/sdk run build:lib`; Storybook lives at `packages/sdk`.
 - App: standard Next.js commands (`dev`, `build`, `lint`, `type-check`).
 
 ## Environment Notes
+
 - Services expect a Postgres connection string in `DATABASE_URL` (see `railway.toml` and the Railway dashboard for deployment wiring).
 - Sentry is integrated across app/API; ensure auth tokens are available when building with sourcemap uploads.
 - The API relies on generated Prisma client and GraphQL types (`prisma:generate`, `generate-types`). These run automatically in most scripts but double-check when editing schemas.
@@ -49,6 +53,7 @@ CI uses path-filtered jobs — only packages with changed files are checked. All
 SDK changes also trigger API, App, and Relayer checks (they depend on it). UI changes trigger App checks.
 
 ### Dependency chain
+
 ```
 protocol (standalone — Foundry)
 sdk (standalone — tsup)
@@ -60,16 +65,19 @@ ui (standalone)
 ```
 
 ## Testing & Quality
+
 - Prefer package-level lint/format commands (`lint`, `lint:fix`, `format`) instead of manual `eslint` invocations.
 - For contract work, use Foundry's targeted flags (`forge test --match-path …`).
 - Frontend tests use Jest (`pnpm --filter @sapience/app run test`) and Playwright for E2E (`test:e2e`).
 - Keep Storybook snapshots current when touching shared UI (`pnpm --filter @sapience/sdk run build-storybook`).
 
 ## Deployment & Ops
+
 - Backend services are deployed on Railway (see `railway.toml`). Two environments exist: **testing** (deploys from a WIP branch) and **production** (deploys from `main`). Each service has its own build and start commands configured in the Railway dashboard.
 - Contracts deploy via Forge scripts targeting Ethereal/Arbitrum.
 
 ## Agent Tips
+
 - Check for package-local docs (e.g., `packages/protocol/CLAUDE.md`) before duplicating guidance.
 - Respect existing formatting tools (Prettier, Forge fmt, etc.) and run relevant checks before submitting changes.
 - When adding new scripts or workflows, update this file and any package-specific READMEs to keep automated collaboration smooth.

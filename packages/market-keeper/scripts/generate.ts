@@ -22,5 +22,5 @@
 import { main } from '../src/generate/index.js';
 import { logSeparator } from '../src/utils/log.js';
 
-logSeparator('polymarket-keeper:generate', 'START');
-main().finally(() => logSeparator('polymarket-keeper:generate', 'END'));
+logSeparator('market-keeper:generate', 'START');
+main().finally(() => logSeparator('market-keeper:generate', 'END'));
