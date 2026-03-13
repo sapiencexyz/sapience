@@ -51,6 +51,7 @@
       "elliptic": "6.6.1",
       "protobufjs": "7.2.5",
       "zod": "3.25.76",
+      "porto>zod": "4.3.6",
       "graphql": "16.12.0",
       "viem": "2.47.2",
       "wagmi": "2.19.5"
