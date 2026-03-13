@@ -49,6 +49,15 @@ export function isActionable(
 /** ERC-1271 magic value */
 const ERC1271_MAGIC = '0x1626ba7e';
 
+/**
+ * Minimum conditionId length: "0x" + 64 hex chars = 66 (a bytes32).
+ * Longer values are valid — Pyth picks carry the full raw ABI encoding
+ * (160 bytes / 322 hex chars) over the wire so receivers can decode market
+ * parameters locally. The SDK hashes these to bytes32 via keccak256() before
+ * ABI encoding or EIP-712 signing (see formatPicksForEncoding in escrowEncoding.ts).
+ */
+const MIN_CONDITION_ID_LENGTH = 66; // bytes32 = 0x + 64 hex chars
+
 function isValidAddress(addr: unknown): addr is string {
   return typeof addr === 'string' && /^0x[a-fA-F0-9]{40}$/.test(addr);
 }
@@ -74,7 +83,7 @@ function isValidPickJson(pick: unknown): pick is PickJson {
   if (
     typeof p.conditionId !== 'string' ||
     !/^0x[a-fA-F0-9]+$/.test(p.conditionId) ||
-    p.conditionId.length < 66
+    p.conditionId.length < MIN_CONDITION_ID_LENGTH
   )
     return false;
   if (
