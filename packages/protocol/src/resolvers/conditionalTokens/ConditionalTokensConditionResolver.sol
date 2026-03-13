@@ -30,6 +30,9 @@ contract ConditionalTokensConditionResolver is
     ReentrancyGuard,
     IConditionalTokensConditionResolver
 {
+    // ============ Errors ============
+    error InvalidConditionIdLength();
+
     // ============ Constants ============
     uint16 private constant CMD_RESOLUTION_RESPONSE = 10;
 
@@ -71,7 +74,8 @@ contract ConditionalTokensConditionResolver is
         pure
         returns (bool)
     {
-        if (conditionId.length < 32) return false;
+        // Must be exactly 32 bytes (raw conditionId) or 64 bytes (conditionId + uint256 deadline)
+        if (conditionId.length != 32 && conditionId.length != 64) return false;
         bytes32 rawId = bytes32(conditionId[:32]);
         return rawId != bytes32(0);
     }
@@ -198,7 +202,9 @@ contract ConditionalTokensConditionResolver is
         pure
         returns (bytes32 rawId, uint256 deadline)
     {
-        require(conditionId.length >= 32, "conditionId too short");
+        if (conditionId.length != 32 && conditionId.length != 64) {
+            revert InvalidConditionIdLength();
+        }
 
         if (conditionId.length == 32) {
             rawId = abi.decode(conditionId, (bytes32));
