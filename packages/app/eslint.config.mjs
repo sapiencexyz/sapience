@@ -94,7 +94,7 @@ export default typescriptPlugin.config(
           "caughtErrorsIgnorePattern": "^_"
         }
       ],  
-      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/naming-convention': 'off',
       '@typescript-eslint/no-shadow': 'warn',
       '@typescript-eslint/ban-types': 'off',

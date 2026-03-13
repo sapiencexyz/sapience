@@ -9,8 +9,28 @@ import {
   ToastProvider,
   ToastTitle,
   ToastViewport,
+  type ToastProps,
 } from '../../components/ui/toast';
 import { Button } from '../../components/ui/button';
+
+interface ToastItemProps {
+  title?: React.ReactNode;
+  description?: React.ReactNode;
+  action?: React.ReactElement;
+  variant?: ToastProps['variant'];
+  duration?: number;
+}
+
+interface ToastItem extends ToastItemProps {
+  id: string;
+  open: boolean;
+}
+
+interface ToastHandle {
+  id: string;
+  dismiss: () => void;
+  update: (updates: Partial<ToastItem>) => void;
+}
 
 const meta: Meta<typeof Toast> = {
   title: 'UI/Toast',
@@ -44,19 +64,23 @@ const ToastWrapper = ({ children }: { children: React.ReactNode }) => {
 const InteractiveToastWrapper = ({
   children,
 }: {
-  children: ({ toast }: { toast: (props: any) => any }) => React.ReactNode;
+  children: ({
+    toast,
+  }: {
+    toast: (props: ToastItemProps) => ToastHandle;
+  }) => React.ReactNode;
 }) => {
-  const [toasts, setToasts] = React.useState<any[]>([]);
+  const [toasts, setToasts] = React.useState<ToastItem[]>([]);
 
-  const toast = React.useCallback((props: any) => {
+  const toast = React.useCallback((props: ToastItemProps): ToastHandle => {
     const id = Math.random().toString(36).substr(2, 9);
-    const newToast = { ...props, id, open: true };
+    const newToast: ToastItem = { ...props, id, open: true };
     setToasts((prev) => [newToast, ...prev]);
 
     return {
       id,
       dismiss: () => setToasts((prev) => prev.filter((t) => t.id !== id)),
-      update: (updates: any) =>
+      update: (updates: Partial<ToastItem>) =>
         setToasts((prev) =>
           prev.map((t) => (t.id === id ? { ...t, ...updates } : t))
         ),

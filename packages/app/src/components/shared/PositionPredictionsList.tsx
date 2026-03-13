@@ -51,7 +51,7 @@ export default function PositionPredictionsList({
     const onScroll = () => update();
     const onResize = () => update();
     el.addEventListener('scroll', onScroll, { passive: true });
-    window.addEventListener('resize', onResize, { passive: true } as any);
+    window.addEventListener('resize', onResize, { passive: true });
     return () => {
       el.removeEventListener('scroll', onScroll);
       window.removeEventListener('resize', onResize);

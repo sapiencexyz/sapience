@@ -112,7 +112,7 @@ function parseEnsAvatarCaip(
   return { chainId, standard, contract, tokenId };
 }
 
-async function fetchJson<T = any>(url: string): Promise<T | null> {
+async function fetchJson<T = unknown>(url: string): Promise<T | null> {
   try {
     const res = await fetch(url, {
       cache: 'force-cache',
@@ -153,7 +153,7 @@ async function resolveNftImageUrl(
       args: [caip.tokenId],
     });
     const resolved = toHttpFromIpfs(tokenUri);
-    const metadata = await fetchJson<any>(resolved);
+    const metadata = await fetchJson<{ image?: string }>(resolved);
     const image = toHttpFromIpfs(String(metadata?.image || ''));
     return image || null;
   }
@@ -174,7 +174,7 @@ async function resolveNftImageUrl(
   });
   uri = replaceIdTemplate(uri, caip.tokenId);
   const resolved = toHttpFromIpfs(uri);
-  const metadata = await fetchJson<any>(resolved);
+  const metadata = await fetchJson<{ image?: string }>(resolved);
   const image = toHttpFromIpfs(String(metadata?.image || ''));
   return image || null;
 }

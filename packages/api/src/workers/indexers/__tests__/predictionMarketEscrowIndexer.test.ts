@@ -1,6 +1,11 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { encodeAbiParameters, encodeEventTopics, keccak256, toHex } from 'viem';
+import {
+  encodeAbiParameters,
+  encodeEventTopics,
+  keccak256,
+  toHex,
+  type Block,
+} from 'viem';
 
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 
@@ -142,10 +147,12 @@ const MOCK_BLOCK = {
   number: 50n,
   timestamp: 1700000000n,
   hash: '0x' + '00'.repeat(32),
-} as any;
+} as unknown as Block;
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function makeLog(topics: any, data: `0x${string}`) {
+function makeLog(
+  topics: readonly (`0x${string}` | `0x${string}`[] | null)[],
+  data: `0x${string}`
+) {
   return {
     address: CONTRACT_ADDRESS as `0x${string}`,
     blockHash: ('0x' + '00'.repeat(32)) as `0x${string}`,
@@ -153,7 +160,7 @@ function makeLog(topics: any, data: `0x${string}`) {
     data,
     logIndex: 0,
     removed: false,
-    topics: topics as [`0x${string}`, ...`0x${string}`[]],
+    topics: topics as unknown as [`0x${string}`, ...`0x${string}`[]],
     transactionHash: ('0x' + 'ab'.repeat(32)) as `0x${string}`,
     transactionIndex: 0,
   };
@@ -277,6 +284,7 @@ function makePositionsBurnedLog() {
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
 describe('PredictionMarketEscrowIndexer', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let PredictionMarketEscrowIndexer: any;
 
   beforeEach(async () => {
@@ -297,9 +305,10 @@ describe('PredictionMarketEscrowIndexer', () => {
     mockPrisma.indexerState.findFirst.mockResolvedValue(null);
     mockPrisma.indexerState.upsert.mockResolvedValue({});
     mockPrisma.$executeRaw.mockResolvedValue(1);
-    mockPrisma.$transaction.mockImplementation(async (fn: any) => {
-      if (typeof fn === 'function') return fn(mockPrisma);
-      return Promise.all(fn);
+    mockPrisma.$transaction.mockImplementation(async (fn: unknown) => {
+      if (typeof fn === 'function')
+        return (fn as (prisma: typeof mockPrisma) => unknown)(mockPrisma);
+      return Promise.all(fn as Promise<unknown>[]);
     });
 
     const mod = await import('../predictionMarketEscrowIndexer');
@@ -436,9 +445,7 @@ describe('PredictionMarketEscrowIndexer', () => {
         counterpartyCollateral: '2000000000000000000',
         pickConfigId: PICK_CONFIG_ID.toLowerCase(),
       });
-      mockPrisma.pick.findMany.mockResolvedValue([
-        { conditionId: 'cond-1' },
-      ]);
+      mockPrisma.pick.findMany.mockResolvedValue([{ conditionId: 'cond-1' }]);
 
       indexer.client = {
         getLogs: vi.fn().mockResolvedValue([log]),

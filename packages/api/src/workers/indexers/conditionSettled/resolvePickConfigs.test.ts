@@ -109,8 +109,7 @@ function createMockTx(overrides: Record<string, unknown> = {}) {
       findMany: vi.fn().mockResolvedValue([]),
     },
     ...overrides,
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  } as any;
+  } as unknown as Parameters<typeof resolvePickConfigsForCondition>[0];
 }
 
 describe('resolvePickConfigsForCondition', () => {

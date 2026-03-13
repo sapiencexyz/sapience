@@ -165,10 +165,9 @@ export function useBidSubmission(options: UseBidSubmissionOptions = {}) {
           primaryType: typedData.primaryType,
           message: typedData.message,
         });
-      } catch (e: any) {
+      } catch (e: unknown) {
         setIsSubmitting(false);
-        const error =
-          e instanceof Error ? e : new Error(String(e?.message || e));
+        const error = e instanceof Error ? e : new Error(String(e));
         onSignatureRejected?.(error);
         return {
           success: false,
@@ -244,11 +243,11 @@ export function useBidSubmission(options: UseBidSubmissionOptions = {}) {
         }
 
         return { success: false, error: 'Failed to submit bid' };
-      } catch (e: any) {
+      } catch (e: unknown) {
         setIsSubmitting(false);
         return {
           success: false,
-          error: `Failed to submit bid: ${e?.message || 'Unknown error'}`,
+          error: `Failed to submit bid: ${e instanceof Error ? e.message : 'Unknown error'}`,
         };
       }
     },
