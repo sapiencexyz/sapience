@@ -371,6 +371,35 @@ function findClosestConditionId(id: string, validIds: string[]): string | null {
   return bestMatch;
 }
 
+// Regex to match a hex condition ID (0x + 64 hex chars) at the start of a line
+const CONDITION_ID_RE = /^(0x[a-fA-F0-9]{64})/;
+
+/**
+ * Split a line into condition ID + remaining content.
+ * Tries comma-separated first, then falls back to space-separated
+ * using the known hex ID format.
+ */
+function splitIdFromRest(line: string): { id: string; rest: string } | null {
+  const firstComma = line.indexOf(',');
+  if (firstComma !== -1) {
+    return {
+      id: line.slice(0, firstComma).trim(),
+      rest: line.slice(firstComma + 1).trim(),
+    };
+  }
+
+  // Fallback: match hex condition ID followed by whitespace
+  const match = line.match(CONDITION_ID_RE);
+  if (match) {
+    const rest = line.slice(match[1].length).trim();
+    if (rest.length > 0) {
+      return { id: match[1], rest };
+    }
+  }
+
+  return null;
+}
+
 /**
  * Parse category-only response (id,category)
  */
@@ -398,16 +427,14 @@ function parseCategoryResponse(
       continue;
     }
 
-    // Parse CSV: id,category
-    const firstComma = line.indexOf(',');
-    if (firstComma === -1) {
+    // Parse id,category (CSV or space-separated fallback)
+    const parsed = splitIdFromRest(line);
+    if (!parsed) {
       console.warn(`[LLM] Skipping malformed line: ${line.slice(0, 50)}...`);
       continue;
     }
 
-    const id = line.slice(0, firstComma).trim();
-    const cat = line.slice(firstComma + 1).trim();
-    parsedLines.push({ id, cat });
+    parsedLines.push({ id: parsed.id, cat: parsed.rest });
   }
 
   // Second pass: match exact IDs
@@ -496,16 +523,14 @@ function parseShortNameOnlyResponse(
       continue;
     }
 
-    // Parse CSV: id,shortName
-    const firstComma = line.indexOf(',');
-    if (firstComma === -1) {
+    // Parse id,shortName (CSV or space-separated fallback)
+    const parsed = splitIdFromRest(line);
+    if (!parsed) {
       console.warn(`[LLM] Skipping malformed line: ${line.slice(0, 50)}...`);
       continue;
     }
 
-    const id = line.slice(0, firstComma).trim();
-    const name = line.slice(firstComma + 1).trim();
-    parsedLines.push({ id, name });
+    parsedLines.push({ id: parsed.id, name: parsed.rest });
   }
 
   // Second pass: match exact IDs
@@ -590,19 +615,36 @@ function parseBothResponse(
       continue;
     }
 
-    // Parse CSV: id,category,shortName (shortName may contain commas, so split carefully)
+    // Parse id,category,shortName (CSV or space-separated fallback)
     const firstComma = line.indexOf(',');
-    const secondComma = line.indexOf(',', firstComma + 1);
+    const secondComma =
+      firstComma !== -1 ? line.indexOf(',', firstComma + 1) : -1;
 
-    if (firstComma === -1 || secondComma === -1) {
-      console.warn(`[LLM] Skipping malformed line: ${line.slice(0, 50)}...`);
-      continue;
+    if (firstComma !== -1 && secondComma !== -1) {
+      // Standard CSV: id,category,shortName
+      const id = line.slice(0, firstComma).trim();
+      const cat = line.slice(firstComma + 1, secondComma).trim();
+      const name = line.slice(secondComma + 1).trim();
+      parsedLines.push({ id, cat, name });
+    } else {
+      // Fallback: space-separated — id category rest-is-shortName
+      const match = line.match(CONDITION_ID_RE);
+      if (match) {
+        const rest = line.slice(match[1].length).trim();
+        const spaceIdx = rest.indexOf(' ');
+        if (spaceIdx !== -1) {
+          const cat = rest.slice(0, spaceIdx).trim();
+          const name = rest.slice(spaceIdx + 1).trim();
+          parsedLines.push({ id: match[1], cat, name });
+        } else {
+          console.warn(
+            `[LLM] Skipping malformed line: ${line.slice(0, 50)}...`
+          );
+        }
+      } else {
+        console.warn(`[LLM] Skipping malformed line: ${line.slice(0, 50)}...`);
+      }
     }
-
-    const id = line.slice(0, firstComma).trim();
-    const cat = line.slice(firstComma + 1, secondComma).trim();
-    const name = line.slice(secondComma + 1).trim();
-    parsedLines.push({ id, cat, name });
   }
 
   // Second pass: match exact IDs
