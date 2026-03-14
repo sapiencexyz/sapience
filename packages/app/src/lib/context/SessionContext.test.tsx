@@ -25,6 +25,7 @@ const mockUseSwitchChain = vi.fn();
 vi.mock('wagmi', () => ({
   useAccount: () => mockUseAccount(),
   useSwitchChain: () => mockUseSwitchChain(),
+  useWriteContract: () => ({ writeContractAsync: vi.fn() }),
 }));
 
 // Mock viem
