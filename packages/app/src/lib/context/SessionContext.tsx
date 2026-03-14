@@ -9,11 +9,15 @@ import {
   useMemo,
   type ReactNode,
 } from 'react';
-import { useAccount, useSwitchChain } from 'wagmi';
+import { useAccount, useSwitchChain, useWriteContract } from 'wagmi';
 import type { Address, EIP1193Provider, Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import type { KernelAccountClient } from '@zerodev/sdk';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import {
+  predictionMarketEscrow,
+  secondaryMarketEscrow,
+} from '@sapience/sdk/contracts/addresses';
 import {
   createSession,
   createArbitrumSession,
@@ -218,6 +222,21 @@ interface SessionContextValue {
   signTypedDataRaw: ((params: SignTypedDataParams) => Promise<Hex>) | null;
 }
 
+/**
+ * ABI fragment for revokeSessionKey(address) — shared by both escrow contracts.
+ */
+const revokeSessionKeyAbi = [
+  {
+    type: 'function' as const,
+    name: 'revokeSessionKey' as const,
+    inputs: [
+      { name: 'sessionKey' as const, type: 'address' as const, internalType: 'address' as const },
+    ],
+    outputs: [],
+    stateMutability: 'nonpayable' as const,
+  },
+];
+
 const SessionContext = createContext<SessionContextValue | null>(null);
 
 interface SessionProviderProps {
@@ -246,6 +265,7 @@ function createChainSwitcher(
 export function SessionProvider({ children }: SessionProviderProps) {
   const { address: walletAddress, connector } = useAccount();
   const { switchChainAsync } = useSwitchChain();
+  const { writeContractAsync } = useWriteContract();
 
   // Session state
   const [isSessionActive, setIsSessionActive] = useState(false);
@@ -647,10 +667,51 @@ export function SessionProvider({ children }: SessionProviderProps) {
     [walletAddress, connector, switchChainAsync]
   );
 
-  // End the current session
+  // Attempt on-chain session key revocation on both escrow contracts.
+  // Fire-and-forget: failures are logged but never block local cleanup.
+  const revokeSessionKeyOnChain = useCallback(
+    (sessionKey: Address, chainId: number) => {
+      const pmEscrow = predictionMarketEscrow[chainId];
+      const smEscrow = secondaryMarketEscrow[chainId];
+
+      const revoke = (contractAddress: Address, label: string) =>
+        writeContractAsync({
+          address: contractAddress,
+          abi: revokeSessionKeyAbi,
+          functionName: 'revokeSessionKey',
+          args: [sessionKey],
+          chainId,
+        }).catch((err) => {
+          console.warn(
+            `[SessionContext] Failed to revoke session key on ${label}:`,
+            err
+          );
+        });
+
+      const calls: Promise<unknown>[] = [];
+      if (pmEscrow?.address) calls.push(revoke(pmEscrow.address, 'PredictionMarketEscrow'));
+      if (smEscrow?.address) calls.push(revoke(smEscrow.address, 'SecondaryMarketEscrow'));
+
+      if (calls.length > 0) {
+        void Promise.allSettled(calls);
+      }
+    },
+    [writeContractAsync]
+  );
+
+  // End the current session — attempts on-chain revocation then clears local state.
   const endSession = useCallback(() => {
+    // Attempt on-chain revocation if session is active with a known session key
+    if (isSessionActive && sessionKeyAddress && serializedSession?.etherealChainId) {
+      try {
+        revokeSessionKeyOnChain(sessionKeyAddress, serializedSession.etherealChainId);
+      } catch (err) {
+        console.warn('[SessionContext] On-chain revocation initiation failed:', err);
+      }
+    }
+    // Always clear local state regardless of revocation outcome
     endSessionInternal();
-  }, [endSessionInternal]);
+  }, [endSessionInternal, isSessionActive, sessionKeyAddress, serializedSession, revokeSessionKeyOnChain]);
 
   // Create Arbitrum session lazily (on first EAS attestation)
   // Returns the client directly to avoid race conditions with state updates
