@@ -65,6 +65,14 @@ export function addEscrowBid(
   const rec = getEscrowAuction(auctionId);
   if (!rec) return undefined;
 
+  // Reject duplicate bids by counterparty signature
+  if (
+    bid.counterpartySignature &&
+    rec.bids.some((b) => b.counterpartySignature === bid.counterpartySignature)
+  ) {
+    return undefined;
+  }
+
   const validated: ValidatedBid = {
     auctionId,
     counterparty: bid.counterparty,
