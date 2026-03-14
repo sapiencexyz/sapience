@@ -13,6 +13,7 @@ const {
   mockUseSession,
   mockUseCreatePositionContext,
   mockUseCollateralBalanceContext,
+  mockUseSapience,
   mockState,
 } = vi.hoisted(() => ({
   mockUseAccount: vi.fn(),
@@ -20,6 +21,7 @@ const {
   mockUseSession: vi.fn(),
   mockUseCreatePositionContext: vi.fn(),
   mockUseCollateralBalanceContext: vi.fn(),
+  mockUseSapience: vi.fn(),
   mockState: { positionSize: '10' },
 }));
 
@@ -56,11 +58,7 @@ vi.mock('~/lib/context/ConnectDialogContext', () => ({
 
 // SapienceProvider (for useRestrictedJurisdiction)
 vi.mock('~/lib/context/SapienceProvider', () => ({
-  useSapience: () => ({
-    permitData: { permitted: true },
-    isPermitLoading: false,
-    permitError: null,
-  }),
+  useSapience: () => mockUseSapience(),
 }));
 
 // SponsorStatus
@@ -153,6 +151,7 @@ vi.mock('~/components/markets/forms/shared/BidDisplay', () => {
         (props.estimateBid as { counterparty?: string } | null)?.counterparty ??
         ''
       }
+      data-is-submit-disabled={String(props.isSubmitDisabled)}
     >
       <button
         data-testid="initiate-auction-btn"
@@ -171,7 +170,9 @@ vi.mock('~/components/markets/ConditionTitleLink', () => {
 });
 
 vi.mock('~/components/shared/RestrictedJurisdictionBanner', () => {
-  const Banner = () => null;
+  const Banner = (props: Record<string, unknown>) => (
+    <div data-testid="restricted-banner" data-show={String(props.show)} />
+  );
   Banner.displayName = 'RestrictedJurisdictionBanner';
   return { __esModule: true, default: Banner };
 });
@@ -342,6 +343,11 @@ function setDefaults() {
   mockUseCollateralBalanceContext.mockReturnValue({
     balance: 100,
     isLoading: false,
+  });
+  mockUseSapience.mockReturnValue({
+    permitData: { permitted: true },
+    isPermitLoading: false,
+    permitError: null,
   });
 }
 
@@ -1061,6 +1067,47 @@ describe('PositionForm', () => {
       });
 
       expect(mockRequestQuotes).toHaveBeenCalledTimes(prevCallCount + 1);
+    });
+  });
+
+  // =========================================================================
+  // G. Geofence enforcement
+  // =========================================================================
+  describe('G. Geofence enforcement', () => {
+    it('shows banner and disables submit when jurisdiction is restricted', () => {
+      mockUseSapience.mockReturnValue({
+        permitData: { permitted: false },
+        isPermitLoading: false,
+        permitError: null,
+      });
+
+      const { getByTestId } = renderForm();
+
+      // Banner should be visible
+      const banner = getByTestId('restricted-banner');
+      expect(banner.dataset.show).toBe('true');
+
+      // BidDisplay should have isSubmitDisabled=true
+      const bidDisplay = getByTestId('bid-display');
+      expect(bidDisplay.dataset.isSubmitDisabled).toBe('true');
+    });
+
+    it('disables submit while permit is loading', () => {
+      mockUseSapience.mockReturnValue({
+        permitData: null,
+        isPermitLoading: true,
+        permitError: null,
+      });
+
+      const { getByTestId } = renderForm();
+
+      // Banner should NOT be shown while loading
+      const banner = getByTestId('restricted-banner');
+      expect(banner.dataset.show).toBe('false');
+
+      // BidDisplay should still have isSubmitDisabled=true (loading blocks submit)
+      const bidDisplay = getByTestId('bid-display');
+      expect(bidDisplay.dataset.isSubmitDisabled).toBe('true');
     });
   });
 });
