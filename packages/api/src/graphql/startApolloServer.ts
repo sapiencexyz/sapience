@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { buildSchema } from 'type-graphql';
+import { buildSchema, type NonEmptyArray } from 'type-graphql';
 import { relationResolvers } from '@generated/type-graphql';
 import { prisma } from './resolvers/GeneratedResolvers';
 import { SharedSchema } from './sharedSchema';
@@ -75,8 +75,8 @@ export const initializeApolloServer = async () => {
       CollateralBalanceResolver,
     ]);
   const schema = await buildSchema({
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    resolvers: allResolvers as any,
+    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type -- type-graphql's buildSchema API requires NonEmptyArray<Function>
+    resolvers: allResolvers as NonEmptyArray<Function>,
     validate: false,
     emitSchemaFile: true,
   });

@@ -26,7 +26,7 @@ export const createGraphQLClient = () =>
 
 export async function graphqlRequest<T>(
   query: string,
-  variables?: Record<string, any>
+  variables?: Record<string, unknown>
 ): Promise<T> {
   try {
     const client = createGraphQLClient();
@@ -39,7 +39,7 @@ export async function graphqlRequest<T>(
 
 export async function typedGraphqlRequest<
   TQuery,
-  TVariables extends Record<string, any> = Record<string, never>,
+  TVariables extends Record<string, unknown> = Record<string, never>,
 >(query: string, variables?: TVariables): Promise<TQuery> {
   try {
     const client = createGraphQLClient();

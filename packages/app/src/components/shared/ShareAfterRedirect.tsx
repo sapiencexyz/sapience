@@ -14,7 +14,7 @@ type ShareIntentStored = {
   address: string;
   anchor: 'forecasts';
   clientTimestamp: number;
-  og?: { imagePath: string; params?: Record<string, any> };
+  og?: { imagePath: string; params?: Record<string, string> };
 };
 
 export default function ShareAfterRedirect({ address }: { address: Address }) {

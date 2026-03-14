@@ -212,7 +212,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
         const data = msg as {
           type?: string;
           id?: string;
-          payload?: any;
+          payload?: Record<string, unknown>;
         };
 
         // ---------------------------------------------------------------
@@ -285,7 +285,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
           if (!targetAuctionId) return;
 
           const rawBids = Array.isArray(data.payload?.bids)
-            ? (data.payload.bids as any[])
+            ? (data.payload.bids as Array<Record<string, unknown>>)
             : [];
 
           const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';

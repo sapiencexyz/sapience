@@ -177,7 +177,7 @@ export const decodePredictedOutcomes = (
       encoded
     ) as unknown;
     const decodedArr = Array.isArray(decodedUnknown)
-      ? ((decodedUnknown as any)[0] as Array<{
+      ? (decodedUnknown[0] as Array<{
           marketId: `0x${string}`;
           prediction: boolean;
         }>)

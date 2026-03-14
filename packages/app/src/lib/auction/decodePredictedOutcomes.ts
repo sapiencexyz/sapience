@@ -95,7 +95,7 @@ export function decodeAuctionPredictedOutcomes(params: {
         encoded
       ) as unknown;
       const decodedArr = Array.isArray(decodedUnknown)
-        ? ((decodedUnknown as any)[0] as Array<{
+        ? (decodedUnknown[0] as Array<{
             priceId: `0x${string}`;
             endTime: bigint;
             strikePrice: bigint;
@@ -130,7 +130,7 @@ export function decodeAuctionPredictedOutcomes(params: {
         encoded
       ) as unknown;
       const decodedArr = Array.isArray(decodedUnknown)
-        ? ((decodedUnknown as any)[0] as Array<{
+        ? (decodedUnknown[0] as Array<{
             marketId: `0x${string}`;
             prediction: boolean;
           }>)

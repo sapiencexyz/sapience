@@ -1,24 +1,25 @@
+import { vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useSubmitPrediction } from './useSubmitPrediction';
 
-const mockUseAccount = jest.fn().mockReturnValue({ address: '0xUserAddress' });
-jest.mock('wagmi', () => ({
+const mockUseAccount = vi.fn().mockReturnValue({ address: '0xUserAddress' });
+vi.mock('wagmi', () => ({
   useAccount: (...args: unknown[]) => mockUseAccount(...args),
 }));
 
 // Mock viem to avoid jsdom issues with encoding
-const mockEncodeAbiParameters = jest.fn().mockReturnValue('0xEncodedData');
-const mockParseAbiParameters = jest.fn().mockReturnValue([]);
-jest.mock('viem', () => ({
+const mockEncodeAbiParameters = vi.fn().mockReturnValue('0xEncodedData');
+const mockParseAbiParameters = vi.fn().mockReturnValue([]);
+vi.mock('viem', () => ({
   encodeAbiParameters: (...args: unknown[]) => mockEncodeAbiParameters(...args),
   parseAbiParameters: (...args: unknown[]) => mockParseAbiParameters(...args),
 }));
 
-const mockWriteContract = jest.fn();
-const mockReset = jest.fn();
+const mockWriteContract = vi.fn();
+const mockReset = vi.fn();
 let capturedCallbacks: Record<string, (...args: unknown[]) => void> = {};
 
-jest.mock('~/hooks/blockchain/useSapienceWriteContract', () => ({
+vi.mock('~/hooks/blockchain/useSapienceWriteContract', () => ({
   useSapienceWriteContract: (opts: Record<string, unknown>) => {
     capturedCallbacks = opts as Record<string, (...args: unknown[]) => void>;
     return {
@@ -29,12 +30,12 @@ jest.mock('~/hooks/blockchain/useSapienceWriteContract', () => ({
   },
 }));
 
-jest.mock('~/hooks/contract/EAS', () => ({
+vi.mock('~/hooks/contract/EAS', () => ({
   EAS_CONTRACT_ADDRESS: '0xEASContract',
   EAS_ATTEST_ABI: [{ name: 'attest', type: 'function' }],
 }));
 
-jest.mock('~/lib/constants', () => ({
+vi.mock('~/lib/constants', () => ({
   SCHEMA_UID: '0xSchemaUID',
 }));
 
@@ -47,7 +48,7 @@ const DEFAULT_PROPS = {
 
 describe('useSubmitPrediction', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockWriteContract.mockResolvedValue(undefined);
     mockUseAccount.mockReturnValue({ address: '0xUserAddress' });
   });
@@ -83,7 +84,7 @@ describe('useSubmitPrediction', () => {
   });
 
   it('onSuccess callback sets attestationSuccess and calls external onSuccess', () => {
-    const onSuccess = jest.fn();
+    const onSuccess = vi.fn();
     const { result } = renderHook(() =>
       useSubmitPrediction({ ...DEFAULT_PROPS, onSuccess })
     );

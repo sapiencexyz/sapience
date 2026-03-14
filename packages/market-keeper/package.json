@@ -29,7 +29,7 @@
   "dependencies": {
     "@sapience/sdk": "workspace:*",
     "dotenv": "16.4.5",
-    "viem": "2.21.49"
+    "viem": "2.47.2"
   },
   "devDependencies": {
     "tsx": "4.19.2",

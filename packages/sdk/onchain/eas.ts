@@ -112,9 +112,7 @@ export async function buildAttestationCalldata(
   });
 
   // EAS addresses live in contracts/addresses.ts for consistency with the repo
-  const easAddress = (contracts as any).eas?.[chainId]?.address as
-    | Address
-    | undefined;
+  const easAddress = contracts.eas?.[chainId]?.address as Address | undefined;
   if (!easAddress) {
     return null;
   }
