@@ -14,7 +14,6 @@ interface SponsorshipIndicatorProps {
   matchLimit: bigint;
   requiredCounterparty: Address | null;
   bestBid: QuoteBid | null;
-  stickyEstimateBid: QuoteBid | null;
   positionSizeValue: string;
   collateralDecimals: number | undefined;
   collateralSymbol: string;
@@ -37,15 +36,16 @@ export default function SponsorshipIndicator({
   matchLimit,
   requiredCounterparty,
   bestBid,
-  stickyEstimateBid,
   positionSizeValue,
   collateralDecimals,
   collateralSymbol,
   sponsorshipActivated,
   onActivate,
 }: SponsorshipIndicatorProps) {
-  // Use bestBid if available, otherwise fall back to estimate bid
-  const displayBid = bestBid || stickyEstimateBid;
+  // Only show sponsorship when we have an executable bid (bestBid) from the
+  // correct counterparty at an eligible price. Estimate bids (deadline=1) are
+  // display-only and can't be submitted, so they shouldn't trigger the notice.
+  const displayBid = bestBid;
   if (!isSponsored || !displayBid) return null;
 
   const decimals = collateralDecimals ?? 18;
