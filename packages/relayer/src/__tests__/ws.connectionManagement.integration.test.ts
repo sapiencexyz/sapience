@@ -252,23 +252,77 @@ describe('Idle Timeout', () => {
 });
 
 describe('Connection Limit', () => {
-  // Increase idle timeout so it can't race with sequential connection creation in slow CI.
-  // The server reads config.WS_IDLE_TIMEOUT_MS at connection time, so this takes effect
-  // for all connections created within this describe block.
+  // Isolated server with no idle timeout — eliminates timing dependencies entirely.
+  // Each describe gets a fresh activeConnectionCount, so no stale state from other tests.
+  let limitHttpServer: Server;
+  let limitWss: ReturnType<typeof createAuctionWebSocketServer>;
+  let limitPort: number;
+  const limitClients: WebSocket[] = [];
+
   beforeAll(async () => {
     const configModule = await import('../config');
-    (configModule.config as Record<string, unknown>).WS_IDLE_TIMEOUT_MS = 30000;
+    (configModule.config as Record<string, unknown>).WS_IDLE_TIMEOUT_MS =
+      600000;
+
+    limitHttpServer = createServer();
+    limitWss = createAuctionWebSocketServer();
+
+    limitHttpServer.on('upgrade', (request, socket, head) => {
+      limitWss.handleUpgrade(request, socket, head, (ws) => {
+        limitWss.emit('connection', ws, request);
+      });
+    });
+
+    await new Promise<void>((resolve) => {
+      limitHttpServer.listen(0, () => {
+        const addr = limitHttpServer.address();
+        limitPort = typeof addr === 'object' && addr ? addr.port : 0;
+        resolve();
+      });
+    });
+  });
+
+  afterEach(() => {
+    for (const ws of limitClients) {
+      if (
+        ws.readyState === WebSocket.OPEN ||
+        ws.readyState === WebSocket.CONNECTING
+      ) {
+        ws.close();
+      }
+    }
+    limitClients.length = 0;
   });
 
   afterAll(async () => {
     const configModule = await import('../config');
     (configModule.config as Record<string, unknown>).WS_IDLE_TIMEOUT_MS = 2000;
+
+    for (const client of limitWss.clients) {
+      client.close();
+    }
+    await new Promise<void>((resolve) => {
+      limitWss.close(() => {
+        limitHttpServer.close(() => resolve());
+      });
+    });
   });
+
+  function connectToLimitServer(): Promise<WebSocket> {
+    return new Promise((resolve, reject) => {
+      const ws = new WebSocket(`ws://localhost:${limitPort}/auction`);
+      ws.on('open', () => {
+        limitClients.push(ws);
+        resolve(ws);
+      });
+      ws.on('error', reject);
+    });
+  }
 
   it('accepts up to WS_MAX_CONNECTIONS', async () => {
     const clients: WebSocket[] = [];
     for (let i = 0; i < 3; i++) {
-      const ws = await createClient();
+      const ws = await connectToLimitServer();
       clients.push(ws);
       expect(ws.readyState).toBe(WebSocket.OPEN);
     }
@@ -276,14 +330,13 @@ describe('Connection Limit', () => {
 
   it('rejects with code 1008 "connection_limit_exceeded" beyond limit', async () => {
     // Fill up to max (3)
-    const clients: WebSocket[] = [];
     for (let i = 0; i < 3; i++) {
-      clients.push(await createClient());
+      await connectToLimitServer();
     }
 
     // 4th connection should be rejected
-    const ws4 = new WebSocket(`ws://localhost:${serverPort}/auction`);
-    openClients.push(ws4);
+    const ws4 = new WebSocket(`ws://localhost:${limitPort}/auction`);
+    limitClients.push(ws4);
     const closePromise = waitForClose(ws4);
 
     const { code, reason } = await closePromise;
@@ -295,10 +348,10 @@ describe('Connection Limit', () => {
     // Fill up to max (3)
     const clients: WebSocket[] = [];
     for (let i = 0; i < 3; i++) {
-      clients.push(await createClient());
+      clients.push(await connectToLimitServer());
     }
 
-    // Close one connection
+    // Close one connection and wait for server to process it
     const closedClient = clients[0];
     const closePromise = new Promise<void>((resolve) => {
       closedClient.on('close', () => resolve());
@@ -310,7 +363,7 @@ describe('Connection Limit', () => {
     await new Promise((r) => setTimeout(r, 50));
 
     // New connection should succeed
-    const newClient = await createClient();
+    const newClient = await connectToLimitServer();
     expect(newClient.readyState).toBe(WebSocket.OPEN);
   });
 });
