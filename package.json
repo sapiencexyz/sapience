@@ -36,7 +36,7 @@
     "prettier": "3.3.3"
   },
   "engines": {
-    "node": ">=20.14.x",
+    "node": ">=22.x",
     "pnpm": "9.x"
   },
   "resolutions": {
