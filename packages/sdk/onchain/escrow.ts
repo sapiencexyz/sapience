@@ -9,7 +9,11 @@ import {
   type Transport,
 } from 'viem';
 import { predictionMarketEscrow } from '../contracts/addresses';
-import { CHAIN_ID_ETHEREAL, getChainConfig, getRpcUrl } from '../constants/chain';
+import {
+  CHAIN_ID_ETHEREAL,
+  getChainConfig,
+  getRpcUrl,
+} from '../constants/chain';
 import type {
   Prediction,
   PickConfiguration,
@@ -97,7 +101,8 @@ export async function getPrediction(
 ): Promise<Prediction> {
   const chainId = options?.chainId ?? CHAIN_ID_ETHEREAL;
   const marketAddress = options?.marketAddress ?? getMarketAddress(chainId);
-  if (!marketAddress) throw new Error(`No escrow market address for chain ${chainId}`);
+  if (!marketAddress)
+    throw new Error(`No escrow market address for chain ${chainId}`);
 
   const client = createEscrowPublicClient(options?.rpcUrl, chainId);
   const result = await client.readContract({
@@ -133,7 +138,8 @@ export async function getPickConfiguration(
 ): Promise<PickConfiguration> {
   const chainId = options?.chainId ?? CHAIN_ID_ETHEREAL;
   const marketAddress = options?.marketAddress ?? getMarketAddress(chainId);
-  if (!marketAddress) throw new Error(`No escrow market address for chain ${chainId}`);
+  if (!marketAddress)
+    throw new Error(`No escrow market address for chain ${chainId}`);
 
   const client = createEscrowPublicClient(options?.rpcUrl, chainId);
   const result = await client.readContract({
@@ -167,7 +173,8 @@ export async function getTokenPair(
 ): Promise<TokenPair> {
   const chainId = options?.chainId ?? CHAIN_ID_ETHEREAL;
   const marketAddress = options?.marketAddress ?? getMarketAddress(chainId);
-  if (!marketAddress) throw new Error(`No escrow market address for chain ${chainId}`);
+  if (!marketAddress)
+    throw new Error(`No escrow market address for chain ${chainId}`);
 
   const client = createEscrowPublicClient(options?.rpcUrl, chainId);
   const result = await client.readContract({
@@ -196,7 +203,8 @@ export async function getPicks(
 ): Promise<Pick[]> {
   const chainId = options?.chainId ?? CHAIN_ID_ETHEREAL;
   const marketAddress = options?.marketAddress ?? getMarketAddress(chainId);
-  if (!marketAddress) throw new Error(`No escrow market address for chain ${chainId}`);
+  if (!marketAddress)
+    throw new Error(`No escrow market address for chain ${chainId}`);
 
   const client = createEscrowPublicClient(options?.rpcUrl, chainId);
   const result = await client.readContract({
@@ -226,7 +234,8 @@ export async function getEscrowRecord(
 ): Promise<EscrowRecord> {
   const chainId = options?.chainId ?? CHAIN_ID_ETHEREAL;
   const marketAddress = options?.marketAddress ?? getMarketAddress(chainId);
-  if (!marketAddress) throw new Error(`No escrow market address for chain ${chainId}`);
+  if (!marketAddress)
+    throw new Error(`No escrow market address for chain ${chainId}`);
 
   const client = createEscrowPublicClient(options?.rpcUrl, chainId);
   const result = await client.readContract({
@@ -278,7 +287,8 @@ export async function isNonceUsed(
 ): Promise<boolean> {
   const chainId = options?.chainId ?? CHAIN_ID_ETHEREAL;
   const marketAddress = options?.marketAddress ?? getMarketAddress(chainId);
-  if (!marketAddress) throw new Error(`No escrow market address for chain ${chainId}`);
+  if (!marketAddress)
+    throw new Error(`No escrow market address for chain ${chainId}`);
 
   const client = createEscrowPublicClient(options?.rpcUrl, chainId);
   return await client.readContract({
@@ -302,7 +312,8 @@ export async function canSettle(
 ): Promise<boolean> {
   const chainId = options?.chainId ?? CHAIN_ID_ETHEREAL;
   const marketAddress = options?.marketAddress ?? getMarketAddress(chainId);
-  if (!marketAddress) throw new Error(`No escrow market address for chain ${chainId}`);
+  if (!marketAddress)
+    throw new Error(`No escrow market address for chain ${chainId}`);
 
   const client = createEscrowPublicClient(options?.rpcUrl, chainId);
   return await client.readContract({
@@ -328,7 +339,8 @@ export async function getClaimableAmount(
 ): Promise<bigint> {
   const chainId = options?.chainId ?? CHAIN_ID_ETHEREAL;
   const marketAddress = options?.marketAddress ?? getMarketAddress(chainId);
-  if (!marketAddress) throw new Error(`No escrow market address for chain ${chainId}`);
+  if (!marketAddress)
+    throw new Error(`No escrow market address for chain ${chainId}`);
 
   const client = createEscrowPublicClient(options?.rpcUrl, chainId);
   return await client.readContract({
@@ -356,7 +368,8 @@ export async function isPositionToken(
 ): Promise<boolean> {
   const chainId = options?.chainId ?? CHAIN_ID_ETHEREAL;
   const marketAddress = options?.marketAddress ?? getMarketAddress(chainId);
-  if (!marketAddress) throw new Error(`No escrow market address for chain ${chainId}`);
+  if (!marketAddress)
+    throw new Error(`No escrow market address for chain ${chainId}`);
 
   const client = createEscrowPublicClient(options?.rpcUrl, chainId);
   return await client.readContract({
@@ -380,7 +393,8 @@ export async function isPredictorToken(
 ): Promise<boolean> {
   const chainId = options?.chainId ?? CHAIN_ID_ETHEREAL;
   const marketAddress = options?.marketAddress ?? getMarketAddress(chainId);
-  if (!marketAddress) throw new Error(`No escrow market address for chain ${chainId}`);
+  if (!marketAddress)
+    throw new Error(`No escrow market address for chain ${chainId}`);
 
   const client = createEscrowPublicClient(options?.rpcUrl, chainId);
   return await client.readContract({
@@ -404,7 +418,8 @@ export async function getPickConfigIdFromToken(
 ): Promise<Hex> {
   const chainId = options?.chainId ?? CHAIN_ID_ETHEREAL;
   const marketAddress = options?.marketAddress ?? getMarketAddress(chainId);
-  if (!marketAddress) throw new Error(`No escrow market address for chain ${chainId}`);
+  if (!marketAddress)
+    throw new Error(`No escrow market address for chain ${chainId}`);
 
   const client = createEscrowPublicClient(options?.rpcUrl, chainId);
   return await client.readContract({
@@ -425,7 +440,8 @@ export async function getCollateralToken(options?: {
 }): Promise<Address> {
   const chainId = options?.chainId ?? CHAIN_ID_ETHEREAL;
   const marketAddress = options?.marketAddress ?? getMarketAddress(chainId);
-  if (!marketAddress) throw new Error(`No escrow market address for chain ${chainId}`);
+  if (!marketAddress)
+    throw new Error(`No escrow market address for chain ${chainId}`);
 
   const client = createEscrowPublicClient(options?.rpcUrl, chainId);
   return await client.readContract({
@@ -529,7 +545,8 @@ export async function getFullPositionDetails(
 }> {
   const chainId = options?.chainId ?? CHAIN_ID_ETHEREAL;
   const marketAddress = options?.marketAddress ?? getMarketAddress(chainId);
-  if (!marketAddress) throw new Error(`No escrow market address for chain ${chainId}`);
+  if (!marketAddress)
+    throw new Error(`No escrow market address for chain ${chainId}`);
 
   const client = createEscrowPublicClient(options?.rpcUrl, chainId);
 
@@ -537,30 +554,34 @@ export async function getFullPositionDetails(
   const prediction = await getPrediction(predictionId, options);
 
   // Use multicall for efficiency
-  const [pickConfigResult, tokenPairResult, canSettleResult] = await client.multicall({
-    contracts: [
-      {
-        address: marketAddress,
-        abi: PREDICTION_MARKET_ESCROW_ABI,
-        functionName: 'getPickConfiguration',
-        args: [prediction.pickConfigId],
-      },
-      {
-        address: marketAddress,
-        abi: PREDICTION_MARKET_ESCROW_ABI,
-        functionName: 'getTokenPair',
-        args: [prediction.pickConfigId],
-      },
-      {
-        address: marketAddress,
-        abi: PREDICTION_MARKET_ESCROW_ABI,
-        functionName: 'canSettle',
-        args: [predictionId],
-      },
-    ],
-  });
+  const [pickConfigResult, tokenPairResult, canSettleResult] =
+    await client.multicall({
+      contracts: [
+        {
+          address: marketAddress,
+          abi: PREDICTION_MARKET_ESCROW_ABI,
+          functionName: 'getPickConfiguration',
+          args: [prediction.pickConfigId],
+        },
+        {
+          address: marketAddress,
+          abi: PREDICTION_MARKET_ESCROW_ABI,
+          functionName: 'getTokenPair',
+          args: [prediction.pickConfigId],
+        },
+        {
+          address: marketAddress,
+          abi: PREDICTION_MARKET_ESCROW_ABI,
+          functionName: 'canSettle',
+          args: [predictionId],
+        },
+      ],
+    });
 
-  if (pickConfigResult.status !== 'success' || tokenPairResult.status !== 'success') {
+  if (
+    pickConfigResult.status !== 'success' ||
+    tokenPairResult.status !== 'success'
+  ) {
     throw new Error('Failed to fetch position details');
   }
 
@@ -583,29 +604,37 @@ export async function getFullPositionDetails(
   };
 
   // Get token balances
-  const [predictorBalanceResult, counterpartyBalanceResult] = await client.multicall({
-    contracts: [
-      {
-        address: tokenPair.predictorToken,
-        abi: ERC20_ABI,
-        functionName: 'balanceOf',
-        args: [account],
-      },
-      {
-        address: tokenPair.counterpartyToken,
-        abi: ERC20_ABI,
-        functionName: 'balanceOf',
-        args: [account],
-      },
-    ],
-  });
+  const [predictorBalanceResult, counterpartyBalanceResult] =
+    await client.multicall({
+      contracts: [
+        {
+          address: tokenPair.predictorToken,
+          abi: ERC20_ABI,
+          functionName: 'balanceOf',
+          args: [account],
+        },
+        {
+          address: tokenPair.counterpartyToken,
+          abi: ERC20_ABI,
+          functionName: 'balanceOf',
+          args: [account],
+        },
+      ],
+    });
 
   return {
     prediction,
     pickConfig,
     tokenPair,
-    predictorBalance: predictorBalanceResult.status === 'success' ? predictorBalanceResult.result : 0n,
-    counterpartyBalance: counterpartyBalanceResult.status === 'success' ? counterpartyBalanceResult.result : 0n,
-    canSettle: canSettleResult.status === 'success' ? canSettleResult.result : false,
+    predictorBalance:
+      predictorBalanceResult.status === 'success'
+        ? predictorBalanceResult.result
+        : 0n,
+    counterpartyBalance:
+      counterpartyBalanceResult.status === 'success'
+        ? counterpartyBalanceResult.result
+        : 0n,
+    canSettle:
+      canSettleResult.status === 'success' ? canSettleResult.result : false,
   };
 }

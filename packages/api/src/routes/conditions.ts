@@ -263,14 +263,14 @@ router.put('/:id', async (req: Request, res: Response) => {
       if (endTimeInt !== existing.endTime) {
         // Allow forward extension only (new > existing), reject shortening
         if (existing.settled) {
-          return res
-            .status(400)
-            .json({ message: 'endTime cannot be changed on a settled condition' });
+          return res.status(400).json({
+            message: 'endTime cannot be changed on a settled condition',
+          });
         }
         if (existing.endTime !== null && endTimeInt < existing.endTime) {
-          return res
-            .status(400)
-            .json({ message: 'endTime can only be extended forward, not shortened' });
+          return res.status(400).json({
+            message: 'endTime can only be extended forward, not shortened',
+          });
         }
         newEndTime = endTimeInt;
       }

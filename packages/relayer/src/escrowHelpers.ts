@@ -19,17 +19,28 @@ export function validateEscrowAuctionRequest(
   payload: AuctionRFQPayload
 ): ValidationResult {
   // Validate picks array
-  if (!payload.picks || !Array.isArray(payload.picks) || payload.picks.length === 0) {
+  if (
+    !payload.picks ||
+    !Array.isArray(payload.picks) ||
+    payload.picks.length === 0
+  ) {
     return { valid: false, error: 'Invalid or empty picks array' };
   }
 
   // Validate each pick
   for (let i = 0; i < payload.picks.length; i++) {
     const pick = payload.picks[i];
-    if (!pick.conditionResolver || !/^0x[a-fA-F0-9]{40}$/.test(pick.conditionResolver)) {
+    if (
+      !pick.conditionResolver ||
+      !/^0x[a-fA-F0-9]{40}$/.test(pick.conditionResolver)
+    ) {
       return { valid: false, error: `Invalid conditionResolver in pick ${i}` };
     }
-    if (!pick.conditionId || !/^0x[a-fA-F0-9]+$/.test(pick.conditionId) || pick.conditionId.length < 66) {
+    if (
+      !pick.conditionId ||
+      !/^0x[a-fA-F0-9]+$/.test(pick.conditionId) ||
+      pick.conditionId.length < 66
+    ) {
       return { valid: false, error: `Invalid conditionId in pick ${i}` };
     }
     if (pick.predictedOutcome !== 0 && pick.predictedOutcome !== 1) {
@@ -114,7 +125,10 @@ export function validateEscrowBid(
   }
 
   // Validate counterpartyCollateral (wei string)
-  if (!bid.counterpartyCollateral || typeof bid.counterpartyCollateral !== 'string') {
+  if (
+    !bid.counterpartyCollateral ||
+    typeof bid.counterpartyCollateral !== 'string'
+  ) {
     return { valid: false, error: 'Missing counterpartyCollateral' };
   }
   try {
@@ -141,7 +155,10 @@ export function validateEscrowBid(
     !Number.isFinite(bid.counterpartyDeadline) ||
     bid.counterpartyDeadline <= Math.floor(Date.now() / 1000)
   ) {
-    return { valid: false, error: 'counterpartyDeadline must be in the future' };
+    return {
+      valid: false,
+      error: 'counterpartyDeadline must be in the future',
+    };
   }
 
   // Validate signature format
@@ -160,7 +177,9 @@ export function validateEscrowBid(
 /**
  * Compute pickConfigId from picks array
  */
-export function computeEscrowPickConfigId(picks: AuctionRFQPayload['picks']): string {
+export function computeEscrowPickConfigId(
+  picks: AuctionRFQPayload['picks']
+): string {
   const sdkPicks: Pick[] = picks.map((p) => ({
     conditionResolver: p.conditionResolver as Address,
     conditionId: p.conditionId as Hex,

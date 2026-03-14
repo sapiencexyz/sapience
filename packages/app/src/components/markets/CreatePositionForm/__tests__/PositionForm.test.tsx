@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import React from 'react';
 import { render, act, fireEvent } from '@testing-library/react';
 import type { UseFormReturn } from 'react-hook-form';
@@ -6,44 +7,55 @@ import type { UseFormReturn } from 'react-hook-form';
 // Mocks — hoisted above component import
 // ---------------------------------------------------------------------------
 
+const {
+  mockUseAccount,
+  mockUseConnectedWallet,
+  mockUseSession,
+  mockUseCreatePositionContext,
+  mockUseCollateralBalanceContext,
+  mockState,
+} = vi.hoisted(() => ({
+  mockUseAccount: vi.fn(),
+  mockUseConnectedWallet: vi.fn(),
+  mockUseSession: vi.fn(),
+  mockUseCreatePositionContext: vi.fn(),
+  mockUseCollateralBalanceContext: vi.fn(),
+  mockState: { positionSize: '10' },
+}));
+
 // wagmi
-const mockUseAccount = jest.fn();
-jest.mock('wagmi', () => ({
+vi.mock('wagmi', () => ({
   useAccount: () => mockUseAccount(),
   useReadContract: () => ({ data: undefined, isLoading: false }),
 }));
 
 // useConnectedWallet
-const mockUseConnectedWallet = jest.fn();
-jest.mock('~/hooks/useConnectedWallet', () => ({
+vi.mock('~/hooks/useConnectedWallet', () => ({
   useConnectedWallet: () => mockUseConnectedWallet(),
 }));
 
 // SessionContext
-const mockUseSession = jest.fn();
-jest.mock('~/lib/context/SessionContext', () => ({
+vi.mock('~/lib/context/SessionContext', () => ({
   useSession: () => mockUseSession(),
 }));
 
 // CreatePositionContext
-const mockUseCreatePositionContext = jest.fn();
-jest.mock('~/lib/context/CreatePositionContext', () => ({
+vi.mock('~/lib/context/CreatePositionContext', () => ({
   useCreatePositionContext: () => mockUseCreatePositionContext(),
 }));
 
 // CollateralBalanceContext
-const mockUseCollateralBalanceContext = jest.fn();
-jest.mock('~/lib/context/CollateralBalanceContext', () => ({
+vi.mock('~/lib/context/CollateralBalanceContext', () => ({
   useCollateralBalanceContext: () => mockUseCollateralBalanceContext(),
 }));
 
 // ConnectDialogContext
-jest.mock('~/lib/context/ConnectDialogContext', () => ({
-  useConnectDialog: () => ({ openConnectDialog: jest.fn() }),
+vi.mock('~/lib/context/ConnectDialogContext', () => ({
+  useConnectDialog: () => ({ openConnectDialog: vi.fn() }),
 }));
 
 // SapienceProvider (for useRestrictedJurisdiction)
-jest.mock('~/lib/context/SapienceProvider', () => ({
+vi.mock('~/lib/context/SapienceProvider', () => ({
   useSapience: () => ({
     permitData: { permitted: true },
     isPermitLoading: false,
@@ -52,7 +64,7 @@ jest.mock('~/lib/context/SapienceProvider', () => ({
 }));
 
 // SponsorStatus
-jest.mock('~/hooks/sponsorship/useSponsorStatus', () => ({
+vi.mock('~/hooks/sponsorship/useSponsorStatus', () => ({
   useSponsorStatus: () => ({
     isSponsored: false,
     sponsorAddress: null,
@@ -64,38 +76,38 @@ jest.mock('~/hooks/sponsorship/useSponsorStatus', () => ({
 }));
 
 // SponsorshipActivation
-jest.mock('~/hooks/sponsorship/useSponsorshipActivation', () => ({
+vi.mock('~/hooks/sponsorship/useSponsorshipActivation', () => ({
   useSponsorshipActivation: () => ({
     sponsorshipActivated: false,
     awaitingSponsoredBid: false,
-    activateSponsor: jest.fn(),
-    clearAwaiting: jest.fn(),
-    resetSponsor: jest.fn(),
+    activateSponsor: vi.fn(),
+    clearAwaiting: vi.fn(),
+    resetSponsor: vi.fn(),
   }),
 }));
 
 // toast
-jest.mock('@sapience/ui/hooks/use-toast', () => ({
-  useToast: () => ({ toast: jest.fn() }),
+vi.mock('@sapience/ui/hooks/use-toast', () => ({
+  useToast: () => ({ toast: vi.fn() }),
 }));
 
 // SDK
-jest.mock('@sapience/sdk', () => ({
+vi.mock('@sapience/sdk', () => ({
   generateRandomNonce: () => BigInt(12345),
   COLLATERAL_SYMBOLS: {},
-  encodePythBinaryOptionOutcomes: jest.fn(),
-  encodePolymarketPredictedOutcomes: jest.fn(),
-  getPythMarketId: jest.fn(),
+  encodePythBinaryOptionOutcomes: vi.fn(),
+  encodePolymarketPredictedOutcomes: vi.fn(),
+  getPythMarketId: vi.fn(),
 }));
 
-jest.mock('@sapience/sdk/constants', () => ({
+vi.mock('@sapience/sdk/constants', () => ({
   COLLATERAL_SYMBOLS: { 42161: 'USDe' },
   CHAIN_ID_ETHEREAL: 5064014,
   CHAIN_ID_ETHEREAL_TESTNET: 13374202,
   DEFAULT_CHAIN_ID: 42161,
 }));
 
-jest.mock('@sapience/sdk/contracts', () => ({
+vi.mock('@sapience/sdk/contracts', () => ({
   umaResolver: {},
   pythResolver: {},
   pythConditionResolver: {},
@@ -104,12 +116,12 @@ jest.mock('@sapience/sdk/contracts', () => ({
 }));
 
 // buildAuctionPayload — return minimal valid payloads
-jest.mock('~/lib/auction/buildAuctionPayload', () => ({
-  buildAuctionStartPayload: jest.fn().mockReturnValue({
+vi.mock('~/lib/auction/buildAuctionPayload', () => ({
+  buildAuctionStartPayload: vi.fn().mockReturnValue({
     resolver: '0xResolver',
     predictedOutcomes: '0x01',
   }),
-  buildPythAuctionStartPayload: jest.fn().mockReturnValue({
+  buildPythAuctionStartPayload: vi.fn().mockReturnValue({
     resolver: '0xPythResolver',
     predictedOutcomes: '0x02',
     escrowPicks: [],
@@ -117,17 +129,17 @@ jest.mock('~/lib/auction/buildAuctionPayload', () => ({
 }));
 
 // bidLogger — silence logs in tests
-jest.mock('~/lib/auction/bidLogger', () => ({
-  logPositionForm: jest.fn(),
-  formatBidForLog: jest.fn().mockReturnValue('mock-bid-log'),
+vi.mock('~/lib/auction/bidLogger', () => ({
+  logPositionForm: vi.fn(),
+  formatBidForLog: vi.fn().mockReturnValue('mock-bid-log'),
 }));
 
 // Stub heavy child components to keep tests fast
-jest.mock('~/components/markets/forms', () => ({
+vi.mock('~/components/markets/forms', () => ({
   PositionSizeInput: () => <div data-testid="position-size-input" />,
 }));
 
-jest.mock('~/components/markets/forms/shared/BidDisplay', () => {
+vi.mock('~/components/markets/forms/shared/BidDisplay', () => {
   const BidDisplay = (props: Record<string, unknown>) => (
     <div
       data-testid="bid-display"
@@ -145,31 +157,31 @@ jest.mock('~/components/markets/forms/shared/BidDisplay', () => {
   return { __esModule: true, default: BidDisplay };
 });
 
-jest.mock('~/components/markets/ConditionTitleLink', () => {
+vi.mock('~/components/markets/ConditionTitleLink', () => {
   const ConditionTitleLink = () => <span data-testid="condition-title-link" />;
   ConditionTitleLink.displayName = 'ConditionTitleLink';
   return { __esModule: true, default: ConditionTitleLink };
 });
 
-jest.mock('~/components/shared/RestrictedJurisdictionBanner', () => {
+vi.mock('~/components/shared/RestrictedJurisdictionBanner', () => {
   const Banner = () => null;
   Banner.displayName = 'RestrictedJurisdictionBanner';
   return { __esModule: true, default: Banner };
 });
 
-jest.mock('../SponsorshipIndicator', () => {
+vi.mock('../SponsorshipIndicator', () => {
   const SI = () => null;
   SI.displayName = 'SponsorshipIndicator';
   return { __esModule: true, default: SI };
 });
 
 // lucide-react
-jest.mock('lucide-react', () => ({
+vi.mock('lucide-react', () => ({
   Info: () => <span data-testid="info-icon" />,
 }));
 
 // framer-motion — passthrough
-jest.mock('framer-motion', () => ({
+vi.mock('framer-motion', () => ({
   AnimatePresence: ({ children }: { children: React.ReactNode }) => (
     <>{children}</>
   ),
@@ -192,7 +204,7 @@ jest.mock('framer-motion', () => ({
 }));
 
 // viem — only what we need
-jest.mock('viem', () => ({
+vi.mock('viem', () => ({
   parseUnits: (value: string, decimals: number) =>
     BigInt(Math.round(Number(value) * 10 ** decimals)),
   formatUnits: (value: bigint, decimals: number) =>
@@ -200,16 +212,14 @@ jest.mock('viem', () => ({
 }));
 
 // @sapience/ui — stub UI components used by PositionForm
-jest.mock('@sapience/ui', () => ({
+vi.mock('@sapience/ui', () => ({
   PythPredictionListItem: () => <div data-testid="pyth-prediction-list-item" />,
-  UmaPredictionListItem: ({
-    prediction,
-  }: {
-    prediction: { id: string };
-  }) => <div data-testid={`uma-prediction-${prediction.id}`} />,
+  UmaPredictionListItem: ({ prediction }: { prediction: { id: string } }) => (
+    <div data-testid={`uma-prediction-${prediction.id}`} />
+  ),
 }));
 
-jest.mock('@sapience/ui/components/ui/dialog', () => ({
+vi.mock('@sapience/ui/components/ui/dialog', () => ({
   Dialog: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   DialogContent: ({ children }: { children: React.ReactNode }) => (
     <>{children}</>
@@ -217,21 +227,19 @@ jest.mock('@sapience/ui/components/ui/dialog', () => ({
   DialogHeader: ({ children }: { children: React.ReactNode }) => (
     <>{children}</>
   ),
-  DialogTitle: ({ children }: { children: React.ReactNode }) => (
-    <>{children}</>
-  ),
+  DialogTitle: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
-jest.mock('~/lib/theme/categoryIcons', () => ({
+vi.mock('~/lib/theme/categoryIcons', () => ({
   getCategoryIcon: () => () => <span data-testid="category-icon" />,
 }));
 
-jest.mock('~/lib/utils/categoryStyle', () => ({
+vi.mock('~/lib/utils/categoryStyle', () => ({
   getCategoryStyle: () => ({ color: '#fff' }),
   getColorWithAlpha: () => 'rgba(255,255,255,0.1)',
 }));
 
-jest.mock('~/lib/utils/positionFormUtils', () => ({
+vi.mock('~/lib/utils/positionFormUtils', () => ({
   getMaxPositionSize: (balance: number) => balance,
 }));
 
@@ -261,7 +269,10 @@ function makeFormMethods(
 ): UseFormReturn<{
   positionSize: string;
   limitAmount: string | number;
-  positions: Record<string, { predictionValue: string; positionSize: string; isFlipped?: boolean }>;
+  positions: Record<
+    string,
+    { predictionValue: string; positionSize: string; isFlipped?: boolean }
+  >;
 }> {
   const watchValues: Record<string, string> = { positionSize };
   return {
@@ -273,39 +284,52 @@ function makeFormMethods(
   } as unknown as UseFormReturn<{
     positionSize: string;
     limitAmount: string | number;
-    positions: Record<string, { predictionValue: string; positionSize: string; isFlipped?: boolean }>;
+    positions: Record<
+      string,
+      { predictionValue: string; positionSize: string; isFlipped?: boolean }
+    >;
   }>;
 }
 
 // react-hook-form: mock useWatch to return positionSize
-let mockPositionSize = '10';
-jest.mock('react-hook-form', () => {
-  const actual = jest.requireActual('react-hook-form');
-  return {
-    ...actual,
-    useWatch: () => mockPositionSize,
-    FormProvider: ({ children }: { children: React.ReactNode }) => (
-      <>{children}</>
-    ),
-  };
-});
+vi.mock('react-hook-form', () => ({
+  useWatch: () => mockState.positionSize,
+  FormProvider: ({ children }: { children: React.ReactNode }) => (
+    <>{children}</>
+  ),
+}));
 
 // Default mock values
 function setDefaults() {
-  mockPositionSize = '10';
+  mockState.positionSize = '10';
   mockUseAccount.mockReturnValue({ address: '0xUser1' });
-  mockUseConnectedWallet.mockReturnValue({ hasConnectedWallet: true, ready: true, connectedWallet: { address: '0xUser1' } });
+  mockUseConnectedWallet.mockReturnValue({
+    hasConnectedWallet: true,
+    ready: true,
+    connectedWallet: { address: '0xUser1' },
+  });
   mockUseSession.mockReturnValue({
     effectiveAddress: '0xSmartAccount',
     isUsingSmartAccount: true,
-    signMessage: jest.fn(), // willUseSessionSigning = true
+    signMessage: vi.fn(), // willUseSessionSigning = true
   });
   mockUseCreatePositionContext.mockReturnValue({
-    selections: [makeSelection(), makeSelection({ id: 'sel-2', conditionId: '0xCondition2' })],
-    removeSelection: jest.fn(),
+    selections: [
+      makeSelection(),
+      makeSelection({ id: 'sel-2', conditionId: '0xCondition2' }),
+    ],
+    removeSelection: vi.fn(),
     getPicks: () => [
-      { conditionResolver: '0xResolver1', conditionId: '0xCondition1', predictedOutcome: 1 },
-      { conditionResolver: '0xResolver1', conditionId: '0xCondition2', predictedOutcome: 1 },
+      {
+        conditionResolver: '0xResolver1',
+        conditionId: '0xCondition1',
+        predictedOutcome: 1,
+      },
+      {
+        conditionResolver: '0xResolver1',
+        conditionId: '0xCondition2',
+        predictedOutcome: 1,
+      },
     ],
   });
   mockUseCollateralBalanceContext.mockReturnValue({
@@ -318,24 +342,24 @@ function setDefaults() {
 // Tests
 // ---------------------------------------------------------------------------
 describe('PositionForm', () => {
-  let mockRequestQuotes: jest.Mock;
+  let mockRequestQuotes: Mock;
 
   beforeEach(() => {
-    jest.useFakeTimers();
+    vi.useFakeTimers();
     setDefaults();
-    mockRequestQuotes = jest.fn();
+    mockRequestQuotes = vi.fn();
   });
 
   afterEach(() => {
-    jest.useRealTimers();
-    jest.restoreAllMocks();
+    vi.useRealTimers();
+    vi.clearAllMocks();
   });
 
   function renderForm(overrides: Record<string, unknown> = {}) {
     return render(
       <PositionForm
         methods={makeFormMethods()}
-        onSubmit={jest.fn()}
+        onSubmit={vi.fn()}
         isSubmitting={false}
         chainId={42161}
         requestQuotes={mockRequestQuotes}
@@ -359,51 +383,61 @@ describe('PositionForm', () => {
 
       // triggerAuctionRequest is async (awaits refetchTakerNonce) so flush microtasks too
       await act(async () => {
-        jest.advanceTimersByTime(300);
+        vi.advanceTimersByTime(300);
       });
 
       expect(mockRequestQuotes).toHaveBeenCalledTimes(1);
     });
 
     it('does NOT fire when position size is 0', () => {
-      mockPositionSize = '0';
+      mockState.positionSize = '0';
       renderForm();
 
       act(() => {
-        jest.advanceTimersByTime(500);
+        vi.advanceTimersByTime(500);
       });
 
       expect(mockRequestQuotes).not.toHaveBeenCalled();
     });
 
     it('does NOT fire when position size exceeds balance', () => {
-      mockPositionSize = '200';
-      mockUseCollateralBalanceContext.mockReturnValue({ balance: 100, isLoading: false });
+      mockState.positionSize = '200';
+      mockUseCollateralBalanceContext.mockReturnValue({
+        balance: 100,
+        isLoading: false,
+      });
       renderForm();
 
       act(() => {
-        jest.advanceTimersByTime(500);
+        vi.advanceTimersByTime(500);
       });
 
       expect(mockRequestQuotes).not.toHaveBeenCalled();
     });
 
     it('does NOT fire when form has errors', () => {
-      renderForm({ methods: makeFormMethods('10', { positionSize: { message: 'too large' } }) });
+      renderForm({
+        methods: makeFormMethods('10', {
+          positionSize: { message: 'too large' },
+        }),
+      });
 
       act(() => {
-        jest.advanceTimersByTime(500);
+        vi.advanceTimersByTime(500);
       });
 
       expect(mockRequestQuotes).not.toHaveBeenCalled();
     });
 
     it('does NOT fire when balance is still loading', () => {
-      mockUseCollateralBalanceContext.mockReturnValue({ balance: 0, isLoading: true });
+      mockUseCollateralBalanceContext.mockReturnValue({
+        balance: 0,
+        isLoading: true,
+      });
       renderForm();
 
       act(() => {
-        jest.advanceTimersByTime(500);
+        vi.advanceTimersByTime(500);
       });
 
       expect(mockRequestQuotes).not.toHaveBeenCalled();
@@ -412,13 +446,13 @@ describe('PositionForm', () => {
     it('does NOT fire when there are no predictions', () => {
       mockUseCreatePositionContext.mockReturnValue({
         selections: [],
-        removeSelection: jest.fn(),
+        removeSelection: vi.fn(),
         getPicks: () => [],
       });
       renderForm();
 
       act(() => {
-        jest.advanceTimersByTime(500);
+        vi.advanceTimersByTime(500);
       });
 
       expect(mockRequestQuotes).not.toHaveBeenCalled();
@@ -442,7 +476,7 @@ describe('PositionForm', () => {
       renderForm();
 
       act(() => {
-        jest.advanceTimersByTime(500);
+        vi.advanceTimersByTime(500);
       });
 
       expect(mockRequestQuotes).not.toHaveBeenCalled();
@@ -452,7 +486,7 @@ describe('PositionForm', () => {
       const { getByTestId } = renderForm();
 
       act(() => {
-        jest.advanceTimersByTime(500);
+        vi.advanceTimersByTime(500);
       });
 
       expect(mockRequestQuotes).not.toHaveBeenCalled();
@@ -469,7 +503,7 @@ describe('PositionForm', () => {
       const { getByTestId } = renderForm();
 
       act(() => {
-        jest.advanceTimersByTime(500);
+        vi.advanceTimersByTime(500);
       });
 
       const bidDisplay = getByTestId('bid-display');
@@ -499,18 +533,18 @@ describe('PositionForm', () => {
       renderForm();
 
       await act(async () => {
-        jest.advanceTimersByTime(300);
+        vi.advanceTimersByTime(300);
       });
 
       expect(mockRequestQuotes).toHaveBeenCalledTimes(1);
     });
 
     it('fires even when position size exceeds "balance" (logged-out has no balance)', async () => {
-      mockPositionSize = '999999';
+      mockState.positionSize = '999999';
       renderForm();
 
       await act(async () => {
-        jest.advanceTimersByTime(300);
+        vi.advanceTimersByTime(300);
       });
 
       expect(mockRequestQuotes).toHaveBeenCalledTimes(1);
@@ -524,7 +558,7 @@ describe('PositionForm', () => {
     beforeEach(() => {
       mockUseCreatePositionContext.mockReturnValue({
         selections: [makeSelection()],
-        removeSelection: jest.fn(),
+        removeSelection: vi.fn(),
         getPicks: () => [
           {
             conditionResolver: '0xResolver1',
@@ -539,7 +573,7 @@ describe('PositionForm', () => {
       const { getByTestId } = renderForm();
 
       act(() => {
-        jest.advanceTimersByTime(300);
+        vi.advanceTimersByTime(300);
       });
 
       const bidDisplay = getByTestId('bid-display');
@@ -550,7 +584,7 @@ describe('PositionForm', () => {
       renderForm();
 
       await act(async () => {
-        jest.advanceTimersByTime(300);
+        vi.advanceTimersByTime(300);
       });
 
       expect(mockRequestQuotes).toHaveBeenCalledTimes(1);
@@ -573,7 +607,7 @@ describe('PositionForm', () => {
 
       // Fire auto-auction so currentRequestKeyRef is set (enables bid acceptance)
       await act(async () => {
-        jest.advanceTimersByTime(300);
+        vi.advanceTimersByTime(300);
       });
 
       // Hint shown before bids arrive
@@ -587,7 +621,7 @@ describe('PositionForm', () => {
         rerender(
           <PositionForm
             methods={makeFormMethods()}
-            onSubmit={jest.fn()}
+            onSubmit={vi.fn()}
             isSubmitting={false}
             chainId={42161}
             requestQuotes={mockRequestQuotes}
@@ -599,7 +633,7 @@ describe('PositionForm', () => {
 
       // Advance for the 1s interval tick (nowMs update to check expiration)
       await act(async () => {
-        jest.advanceTimersByTime(100);
+        vi.advanceTimersByTime(100);
       });
 
       expect(getByTestId('bid-display').dataset.showAddPredictionsHint).toBe(
@@ -624,7 +658,7 @@ describe('PositionForm', () => {
 
       // Fire auto-auction so currentRequestKeyRef is set (enables bid acceptance)
       await act(async () => {
-        jest.advanceTimersByTime(300);
+        vi.advanceTimersByTime(300);
       });
 
       expect(getByTestId('bid-display').dataset.showAddPredictionsHint).toBe(
@@ -637,7 +671,7 @@ describe('PositionForm', () => {
         rerender(
           <PositionForm
             methods={makeFormMethods()}
-            onSubmit={jest.fn()}
+            onSubmit={vi.fn()}
             isSubmitting={false}
             chainId={42161}
             requestQuotes={mockRequestQuotes}
@@ -648,7 +682,7 @@ describe('PositionForm', () => {
       });
 
       await act(async () => {
-        jest.advanceTimersByTime(100);
+        vi.advanceTimersByTime(100);
       });
 
       // After the fix, hint should hide when stickyEstimateBid is present
@@ -680,12 +714,14 @@ describe('PositionForm', () => {
 
       // Fire auction and accept bid
       await act(async () => {
-        jest.advanceTimersByTime(300);
+        vi.advanceTimersByTime(300);
       });
 
       // Bid should be accepted — showRequestBidsButton should be false
       // (recentlyRequested is true after auto-fire)
-      expect(getByTestId('bid-display').dataset.showRequestBidsButton).toBe('false');
+      expect(getByTestId('bid-display').dataset.showRequestBidsButton).toBe(
+        'false'
+      );
 
       // Switch to EOA mode (manual) — simulate session ending
       mockUseSession.mockReturnValue({
@@ -698,7 +734,7 @@ describe('PositionForm', () => {
         rerender(
           <PositionForm
             methods={makeFormMethods()}
-            onSubmit={jest.fn()}
+            onSubmit={vi.fn()}
             isSubmitting={false}
             chainId={42161}
             requestQuotes={mockRequestQuotes}
@@ -709,11 +745,13 @@ describe('PositionForm', () => {
       });
 
       await act(async () => {
-        jest.advanceTimersByTime(100);
+        vi.advanceTimersByTime(100);
       });
 
       // After mode switch, bids should be cleared — showRequestBidsButton=true
-      expect(getByTestId('bid-display').dataset.showRequestBidsButton).toBe('true');
+      expect(getByTestId('bid-display').dataset.showRequestBidsButton).toBe(
+        'true'
+      );
     });
 
     it('clears bids when switching from manual (EOA) to auto (session)', async () => {
@@ -735,14 +773,14 @@ describe('PositionForm', () => {
 
       // Clear the in-flight guard (500ms cooldown inside triggerAuctionRequest)
       await act(async () => {
-        jest.advanceTimersByTime(500);
+        vi.advanceTimersByTime(500);
       });
 
       // Switch to session mode — simulate session starting
       mockUseSession.mockReturnValue({
         effectiveAddress: '0xSmartAccount',
         isUsingSmartAccount: true,
-        signMessage: jest.fn(),
+        signMessage: vi.fn(),
       });
 
       const prevCallCount = mockRequestQuotes.mock.calls.length;
@@ -751,7 +789,7 @@ describe('PositionForm', () => {
         rerender(
           <PositionForm
             methods={makeFormMethods()}
-            onSubmit={jest.fn()}
+            onSubmit={vi.fn()}
             isSubmitting={false}
             chainId={42161}
             requestQuotes={mockRequestQuotes}
@@ -761,11 +799,13 @@ describe('PositionForm', () => {
       });
 
       // Immediately after mode switch, bids are cleared — showRequestBidsButton=true
-      expect(getByTestId('bid-display').dataset.showRequestBidsButton).toBe('true');
+      expect(getByTestId('bid-display').dataset.showRequestBidsButton).toBe(
+        'true'
+      );
 
       // After 300ms debounce, auto mode re-fires a fresh auction
       await act(async () => {
-        jest.advanceTimersByTime(300);
+        vi.advanceTimersByTime(300);
       });
 
       expect(mockRequestQuotes).toHaveBeenCalledTimes(prevCallCount + 1);

@@ -23,7 +23,7 @@ const PayoutLine: React.FC<Props> = ({
   label = 'Payout',
   asInline = false,
 }) => {
-  const Container: any = asInline ? 'span' : 'div';
+  const Container: React.ElementType = asInline ? 'span' : 'div';
   const isFiniteNumber = Number.isFinite(value as number);
   return (
     <Container

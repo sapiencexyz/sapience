@@ -10,8 +10,8 @@ import type { Address } from 'viem';
 import { collateralToken } from '../contracts/addresses';
 import { CHAIN_ID_ETHEREAL } from '../constants/chain';
 
-export const VAULT_WUSDE_ADDRESS: Address =
-  collateralToken[CHAIN_ID_ETHEREAL].address as Address;
+export const VAULT_WUSDE_ADDRESS: Address = collateralToken[CHAIN_ID_ETHEREAL]
+  .address as Address;
 
 export const ZERO_ADDRESS: Address =
   '0x0000000000000000000000000000000000000000';
@@ -89,9 +89,7 @@ export function buildDepositCalls(
     decimals
   );
   const expectedSharesWei =
-    ppsScaled === 0n
-      ? 0n
-      : (amountWei * 10n ** BigInt(decimals)) / ppsScaled;
+    ppsScaled === 0n ? 0n : (amountWei * 10n ** BigInt(decimals)) / ppsScaled;
 
   const requestDepositCalldata = encodeFunctionData({
     abi: vaultAbi,
@@ -199,13 +197,13 @@ export function parsePendingRequest(
         return null;
       return { user, isDeposit, shares, assets, timestamp, processed };
     }
-    const r = raw as any;
+    const r = raw as Record<string, unknown>;
     const candidate: PendingRequestDetails = {
       user: r.user as Address,
       isDeposit: Boolean(r.isDeposit),
-      shares: BigInt(r.shares ?? 0n),
-      assets: BigInt(r.assets ?? 0n),
-      timestamp: BigInt(r.timestamp ?? 0n),
+      shares: BigInt((r.shares as bigint | number | string) ?? 0n),
+      assets: BigInt((r.assets as bigint | number | string) ?? 0n),
+      timestamp: BigInt((r.timestamp as bigint | number | string) ?? 0n),
       processed: Boolean(r.processed),
     };
     if (

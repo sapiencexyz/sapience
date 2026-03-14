@@ -111,8 +111,7 @@ describe('queryAccountPredictionCount', () => {
     // parameterized value.
     const allValues = callArgs.slice(1);
     const hasLowercasedAddr = allValues.some(
-      (v: unknown) =>
-        v === '0xabcdef1234567890abcdef1234567890abcdef12'
+      (v: unknown) => v === '0xabcdef1234567890abcdef1234567890abcdef12'
     );
     expect(hasLowercasedAddr).toBe(true);
   });

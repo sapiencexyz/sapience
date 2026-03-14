@@ -1,32 +1,33 @@
+import { vi } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useTokenApproval } from './useTokenApproval';
 
-const mockUseReadContract = jest.fn();
-jest.mock('wagmi', () => ({
+const mockUseReadContract = vi.fn();
+vi.mock('wagmi', () => ({
   useReadContract: (...args: unknown[]) => mockUseReadContract(...args),
 }));
 
-jest.mock('viem', () => ({
+vi.mock('viem', () => ({
   parseUnits: (value: string, decimals: number) =>
     BigInt(Math.round(Number(value) * 10 ** decimals)),
   zeroAddress: '0x0000000000000000000000000000000000000000',
 }));
 
-jest.mock('@sapience/sdk/queries/abis/erc20abi.json', () => [], {
-  virtual: true,
-});
-jest.mock('@sapience/sdk', () => ({
+vi.mock('@sapience/sdk/queries/abis/erc20abi.json', () => ({
+  default: [],
+}));
+vi.mock('@sapience/sdk', () => ({
   parseAmountToBigInt: (value: string | undefined, decimals: number = 18) => {
     if (!value) return 0n;
     return BigInt(Math.round(Number(value) * 10 ** decimals));
   },
 }));
 
-const mockWriteContract = jest.fn();
-const mockResetWrite = jest.fn();
+const mockWriteContract = vi.fn();
+const mockResetWrite = vi.fn();
 let capturedCallbacks: Record<string, (...args: unknown[]) => void> = {};
 
-jest.mock('~/hooks/blockchain/useSapienceWriteContract', () => ({
+vi.mock('~/hooks/blockchain/useSapienceWriteContract', () => ({
   useSapienceWriteContract: (opts: Record<string, unknown>) => {
     capturedCallbacks = opts as Record<string, (...args: unknown[]) => void>;
     return {
@@ -37,7 +38,7 @@ jest.mock('~/hooks/blockchain/useSapienceWriteContract', () => ({
   },
 }));
 
-jest.mock('~/hooks/blockchain/useCurrentAddress', () => ({
+vi.mock('~/hooks/blockchain/useCurrentAddress', () => ({
   useCurrentAddress: () => ({
     currentAddress: '0xUser' as `0x${string}`,
     isConnected: true,
@@ -49,11 +50,11 @@ const SPENDER = '0xSpender' as `0x${string}`;
 
 describe('useTokenApproval', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockUseReadContract.mockReturnValue({
       data: undefined,
       isLoading: false,
-      refetch: jest.fn(),
+      refetch: vi.fn(),
     });
     mockWriteContract.mockResolvedValue(undefined);
   });
@@ -62,7 +63,7 @@ describe('useTokenApproval', () => {
     mockUseReadContract.mockReturnValue({
       data: 2000000000000000000n, // 2e18
       isLoading: false,
-      refetch: jest.fn(),
+      refetch: vi.fn(),
     });
 
     const { result } = renderHook(() =>
@@ -81,7 +82,7 @@ describe('useTokenApproval', () => {
     mockUseReadContract.mockReturnValue({
       data: 500000000000000000n, // 0.5e18
       isLoading: false,
-      refetch: jest.fn(),
+      refetch: vi.fn(),
     });
 
     const { result } = renderHook(() =>
@@ -112,7 +113,7 @@ describe('useTokenApproval', () => {
     mockUseReadContract.mockReturnValue({
       data: 0n,
       isLoading: false,
-      refetch: jest.fn(),
+      refetch: vi.fn(),
     });
 
     const { result } = renderHook(() =>
@@ -165,7 +166,7 @@ describe('useTokenApproval', () => {
 
   it('approve() sets error when amount is 0', async () => {
     // Suppress expected console.error from the hook
-    const spy = jest.spyOn(console, 'error').mockImplementation(() => {});
+    const spy = vi.spyOn(console, 'error').mockImplementation(() => {});
 
     const { result } = renderHook(() =>
       useTokenApproval({
@@ -293,7 +294,7 @@ describe('useTokenApproval', () => {
     mockUseReadContract.mockReturnValue({
       data: 0n,
       isLoading: false,
-      refetch: jest.fn(),
+      refetch: vi.fn(),
     });
 
     const { result } = renderHook(() =>

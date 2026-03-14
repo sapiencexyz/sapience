@@ -253,8 +253,8 @@ const PREDICTION_QUERY = /* GraphQL */ `
 `;
 
 const POSITION_BALANCES_QUERY = /* GraphQL */ `
-  query Positions($holder: String!, $chainId: Int) {
-    positions(holder: $holder, chainId: $chainId) {
+  query Positions($holder: String!, $chainId: Int, $settled: Boolean) {
+    positions(holder: $holder, chainId: $chainId, settled: $settled) {
       id
       chainId
       tokenAddress
@@ -293,8 +293,18 @@ const POSITION_BALANCES_QUERY = /* GraphQL */ `
 `;
 
 const POSITION_BALANCES_BY_CONDITION_QUERY = /* GraphQL */ `
-  query PositionsByCondition($conditionId: String!, $take: Int, $skip: Int) {
-    positions(conditionId: $conditionId, take: $take, skip: $skip) {
+  query PositionsByCondition(
+    $conditionId: String!
+    $take: Int
+    $skip: Int
+    $settled: Boolean
+  ) {
+    positions(
+      conditionId: $conditionId
+      take: $take
+      skip: $skip
+      settled: $settled
+    ) {
       id
       chainId
       tokenAddress
@@ -402,12 +412,13 @@ export function usePredictions(params: {
 export function usePositionBalances(params: {
   holder?: string;
   chainId?: number;
+  settled?: boolean;
 }) {
-  const { holder, chainId } = params;
+  const { holder, chainId, settled } = params;
   const enabled = Boolean(holder);
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ['positionBalances', holder, chainId],
+    queryKey: ['positionBalances', holder, chainId, settled],
     enabled,
     staleTime: 30_000,
     gcTime: 5 * 60 * 1000,
@@ -419,6 +430,7 @@ export function usePositionBalances(params: {
       }>(POSITION_BALANCES_QUERY, {
         holder,
         chainId: chainId ?? null,
+        settled: settled ?? null,
       });
       return resp?.positions ?? [];
     },
@@ -439,12 +451,13 @@ export function usePositionBalancesByConditionId(params: {
   conditionId?: string;
   take?: number;
   skip?: number;
+  settled?: boolean;
 }) {
-  const { conditionId, take = 100, skip = 0 } = params;
+  const { conditionId, take = 100, skip = 0, settled } = params;
   const enabled = Boolean(conditionId);
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ['positionBalancesByCondition', conditionId, take, skip],
+    queryKey: ['positionBalancesByCondition', conditionId, take, skip, settled],
     enabled,
     staleTime: 30_000,
     gcTime: 5 * 60 * 1000,
@@ -457,6 +470,7 @@ export function usePositionBalancesByConditionId(params: {
         conditionId,
         take,
         skip,
+        settled: settled ?? null,
       });
       return resp?.positions ?? [];
     },

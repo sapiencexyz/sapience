@@ -376,9 +376,9 @@ export default function OgShareDialogBase({
                       const blob = await res.blob();
                       if (
                         navigator.clipboard &&
-                        (window as any).ClipboardItem
+                        typeof ClipboardItem !== 'undefined'
                       ) {
-                        const item = new (window as any).ClipboardItem({
+                        const item = new ClipboardItem({
                           [blob.type]: blob,
                         });
                         await navigator.clipboard.write([item]);
@@ -433,9 +433,9 @@ export default function OgShareDialogBase({
                   variant="outline"
                   onClick={async () => {
                     const shareUrl = buildShareUrl();
-                    if ((navigator as any).share) {
+                    if (navigator.share) {
                       try {
-                        await (navigator as any).share({ url: shareUrl });
+                        await navigator.share({ url: shareUrl });
                         return;
                       } catch {
                         // fallthrough

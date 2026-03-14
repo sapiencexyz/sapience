@@ -1,5 +1,5 @@
-import type { Meta, StoryObj } from "@storybook/react-webpack5";
-import { useState } from "react";
+import type { Meta, StoryObj } from '@storybook/react-webpack5';
+import { useState } from 'react';
 import {
   Calendar,
   Command as CommandIcon,
@@ -14,7 +14,7 @@ import {
   Settings,
   User,
   Users,
-} from "lucide-react";
+} from 'lucide-react';
 import {
   Command,
   CommandDialog,
@@ -25,19 +25,19 @@ import {
   CommandList,
   CommandSeparator,
   CommandShortcut,
-} from "../../components/ui/command";
-import { Button } from "../../components/ui/button";
+} from '../../components/ui/command';
+import { Button } from '../../components/ui/button';
 
 const meta: Meta<typeof Command> = {
-  title: "UI/Command",
+  title: 'UI/Command',
   component: Command,
   parameters: {
-    layout: "centered",
+    layout: 'centered',
   },
-  tags: ["autodocs"],
+  tags: ['autodocs'],
   argTypes: {
     className: {
-      control: { type: "text" },
+      control: { type: 'text' },
     },
   },
 };
@@ -169,27 +169,27 @@ export const WithIcons: Story = {
 
 export const Interactive: Story = {
   render: () => {
-    const [selectedValue, setSelectedValue] = useState<string>("");
+    const [selectedValue, setSelectedValue] = useState<string>('');
 
     return (
       <div className="space-y-4">
         <div className="text-sm text-muted-foreground">
-          Selected: {selectedValue || "None"}
+          Selected: {selectedValue || 'None'}
         </div>
         <Command className="rounded-lg border shadow-md">
           <CommandInput placeholder="Type a command or search..." />
           <CommandList>
             <CommandEmpty>No results found.</CommandEmpty>
             <CommandGroup heading="Suggestions">
-              <CommandItem onSelect={() => setSelectedValue("Calendar")}>
+              <CommandItem onSelect={() => setSelectedValue('Calendar')}>
                 <Calendar className="mr-2 h-4 w-4" />
                 <span>Calendar</span>
               </CommandItem>
-              <CommandItem onSelect={() => setSelectedValue("Search Emails")}>
+              <CommandItem onSelect={() => setSelectedValue('Search Emails')}>
                 <File className="mr-2 h-4 w-4" />
                 <span>Search Emails</span>
               </CommandItem>
-              <CommandItem onSelect={() => setSelectedValue("Add User")}>
+              <CommandItem onSelect={() => setSelectedValue('Add User')}>
                 <Users className="mr-2 h-4 w-4" />
                 <span>Add User</span>
               </CommandItem>

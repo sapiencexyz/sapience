@@ -1,9 +1,4 @@
-import {
-  encodeAbiParameters,
-  keccak256,
-  type Address,
-  type Hex,
-} from 'viem';
+import { encodeAbiParameters, keccak256, type Address, type Hex } from 'viem';
 import type { Pick, PickJson, OutcomeSide } from '../types/escrow';
 
 // ============================================================================
@@ -58,9 +53,7 @@ const PICKS_ARRAY_TYPE = {
  * Encode an array of picks for ABI encoding
  * Internal helper that formats picks for encodeAbiParameters
  */
-function formatPicksForEncoding(
-  picks: Pick[]
-): Array<{
+function formatPicksForEncoding(picks: Pick[]): Array<{
   conditionResolver: Address;
   conditionId: Hex;
   predictedOutcome: number;
@@ -204,7 +197,9 @@ export function canonicalizePicks(picks: Pick[]): Pick[] {
     if (resolverCmp !== 0) return resolverCmp;
 
     // Then by conditionId
-    return a.conditionId.toLowerCase().localeCompare(b.conditionId.toLowerCase());
+    return a.conditionId
+      .toLowerCase()
+      .localeCompare(b.conditionId.toLowerCase());
   });
 }
 
@@ -223,17 +218,23 @@ export function isValidPick(pick: unknown): pick is Pick {
     return false;
   }
 
-  // Check conditionId is valid hex (bytes32 or longer for e.g. Pyth raw encoding)
+  // Check conditionId is valid hex — must be at least bytes32 (66 chars = "0x" + 64).
+  // Longer values are valid: Pyth picks carry the full raw ABI encoding
+  // (160 bytes / 322 hex chars) over the wire. The SDK hashes these to
+  // bytes32 via keccak256() before ABI encoding (see formatPicksForEncoding).
   if (
     typeof p.conditionId !== 'string' ||
     !/^0x[a-fA-F0-9]+$/.test(p.conditionId) ||
-    p.conditionId.length < 66
+    p.conditionId.length < 66 // bytes32 minimum
   ) {
     return false;
   }
 
   // Check predictedOutcome is 0 or 1
-  if (typeof p.predictedOutcome !== 'number' || (p.predictedOutcome !== 0 && p.predictedOutcome !== 1)) {
+  if (
+    typeof p.predictedOutcome !== 'number' ||
+    (p.predictedOutcome !== 0 && p.predictedOutcome !== 1)
+  ) {
     return false;
   }
 

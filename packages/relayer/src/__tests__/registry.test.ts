@@ -18,7 +18,8 @@ const createValidBid = (auctionId: string): BidPayload => ({
   maker: '0x1234567890123456789012345678901234567890',
   makerCollateral: '500000000000000000',
   makerDeadline: Math.floor(Date.now() / 1000) + 3600, // 1 hour from now
-  makerSignature: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1b',
+  makerSignature:
+    '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1b',
   makerNonce: 1,
 });
 
@@ -26,7 +27,9 @@ describe('upsertAuction', () => {
   it('returns a valid UUID format auctionId', () => {
     const auctionId = upsertAuction(validAuction);
     // UUID v4 format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-    expect(auctionId).toMatch(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i);
+    expect(auctionId).toMatch(
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+    );
   });
 
   it('allows auction to be retrievable immediately after creation', () => {

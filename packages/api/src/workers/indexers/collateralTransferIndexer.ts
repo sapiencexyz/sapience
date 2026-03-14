@@ -146,7 +146,10 @@ class CollateralTransferIndexer implements IIndexer {
       await Promise.all(
         chunk.map(async (blockNumber) => {
           const block = await this.client.getBlock({ blockNumber });
-          blockTimestamps.set(blockNumber, new Date(Number(block.timestamp) * 1000));
+          blockTimestamps.set(
+            blockNumber,
+            new Date(Number(block.timestamp) * 1000)
+          );
         })
       );
     }
@@ -156,23 +159,24 @@ class CollateralTransferIndexer implements IIndexer {
         (log) => log.args.from && log.args.to && log.args.value !== undefined
       )
       .map((log) => {
-        const timestamp = log.blockNumber != null
-          ? blockTimestamps.get(log.blockNumber)
-          : undefined;
+        const timestamp =
+          log.blockNumber != null
+            ? blockTimestamps.get(log.blockNumber)
+            : undefined;
         if (!timestamp) {
           console.warn(
             `[collateralTransferIndexer] Missing block timestamp for block ${log.blockNumber}, tx ${log.transactionHash}`
           );
         }
         return {
-        chainId: this.chainId,
-        blockNumber: Number(log.blockNumber ?? 0),
-        timestamp: timestamp ?? new Date(),
-        transactionHash: log.transactionHash,
-        logIndex: log.logIndex ?? 0,
-        from: log.args.from!.toLowerCase(),
-        to: log.args.to!.toLowerCase(),
-        value: log.args.value!.toString(),
+          chainId: this.chainId,
+          blockNumber: Number(log.blockNumber ?? 0),
+          timestamp: timestamp ?? new Date(),
+          transactionHash: log.transactionHash,
+          logIndex: log.logIndex ?? 0,
+          from: log.args.from!.toLowerCase(),
+          to: log.args.to!.toLowerCase(),
+          value: log.args.value!.toString(),
         };
       });
 

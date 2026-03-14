@@ -30,8 +30,8 @@ export function PythOracleMark({
     try {
       const ok =
         typeof CSS !== 'undefined' &&
-        (CSS.supports('mask-image', 'url(\"\")') ||
-          CSS.supports('-webkit-mask-image', 'url(\"\")'));
+        (CSS.supports('mask-image', 'url("")') ||
+          CSS.supports('-webkit-mask-image', 'url("")'));
       setCanMask(!!ok);
     } catch {
       setCanMask(false);
@@ -61,5 +61,3 @@ export function PythOracleMark({
 
   return <img src={src} alt={alt} className={className} style={style} />;
 }
-
-

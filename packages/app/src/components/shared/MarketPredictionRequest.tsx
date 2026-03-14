@@ -105,7 +105,10 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
     React.useState<string | null>(null);
 
   const { address: predictorAddress } = useAccount();
-  const { requestQuotes, bids } = useAuctionStart({ disableLogging: true, skipIntentSigning: true });
+  const { requestQuotes, bids } = useAuctionStart({
+    disableLogging: true,
+    skipIntentSigning: true,
+  });
   const chainId = chainIdProp ?? DEFAULT_CHAIN_ID;
   const PREDICTION_MARKET_ADDRESS =
     predictionMarketEscrow[chainId]?.address ||

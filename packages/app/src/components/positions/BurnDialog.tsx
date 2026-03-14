@@ -198,8 +198,8 @@ export default function BurnDialog({
       } else {
         setError(result.error || 'Burn failed');
       }
-    } catch (err: any) {
-      setError(err?.message || 'Failed to execute burn');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to execute burn');
     } finally {
       setIsSubmitting(false);
     }

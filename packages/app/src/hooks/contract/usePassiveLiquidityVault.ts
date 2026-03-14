@@ -371,9 +371,9 @@ export function usePassiveLiquidityVault(
         chainId,
         address: call.address,
         abi: call.abi,
-        functionName: call.functionName as any,
-        args: call.args as any,
-      });
+        functionName: call.functionName,
+        args: call.args,
+      } as Parameters<typeof writeVaultContract>[0]);
     },
     [assetDecimals, pricePerShareDecimal, writeVaultContract, VAULT_ADDRESS]
   );
@@ -384,9 +384,9 @@ export function usePassiveLiquidityVault(
         chainId,
         address: VAULT_ADDRESS,
         abi: VAULT_ABI,
-        functionName: 'cancelDeposit' as any,
+        functionName: 'cancelDeposit',
         args: [],
-      });
+      } as Parameters<typeof writeVaultContract>[0]);
     },
     [VAULT_ADDRESS, writeVaultContract]
   );
@@ -397,9 +397,9 @@ export function usePassiveLiquidityVault(
         chainId,
         address: VAULT_ADDRESS,
         abi: VAULT_ABI,
-        functionName: 'cancelWithdrawal' as any,
+        functionName: 'cancelWithdrawal',
         args: [],
-      });
+      } as Parameters<typeof writeVaultContract>[0]);
     },
     [VAULT_ADDRESS, writeVaultContract]
   );

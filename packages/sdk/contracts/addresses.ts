@@ -59,8 +59,7 @@ export const lzUmaResolver: ChainAddressMap = {
   421614: {
     address: '0x26DB702647e56B230E15687bFbC48b526E131dAe',
     legacy: [] as const,
-  }
-
+  },
 } as const;
 
 /**
@@ -124,7 +123,10 @@ export const predictionMarketEscrow: ChainAddressMap = {
   5064014: {
     // Ethereal mainnet — redeployed 2026-03-09 (early counterparty settlement fix)
     address: '0x243022eBf5d66741499d76555CADFDE51e101e03',
-    legacy: ['0xC18ed3483733d4e15516c2Fe101fF20B61e88A55', '0x23C765fcE26aDbA3A1e0790d548410367D5A3487'] as const,
+    legacy: [
+      '0xC18ed3483733d4e15516c2Fe101fF20B61e88A55',
+      '0x23C765fcE26aDbA3A1e0790d548410367D5A3487',
+    ] as const,
   },
   13374202: {
     // Ethereal testnet — deployed 2026-02-26
@@ -228,7 +230,7 @@ export const lzConditionResolver: ChainAddressMap = {
     // Ethereal mainnet - TODO: deploy
     address: '0x0000000000000000000000000000000000000000',
     legacy: [] as const,
-  }, 
+  },
   13374202: {
     // Ethereal testnet - TODO: deploy
     address: '0x0000000000000000000000000000000000000000',
@@ -244,7 +246,10 @@ export const predictionMarketBridge: ChainAddressMap = {
   5064014: {
     // Ethereal mainnet — redeployed 2026-03-09 (early counterparty settlement fix)
     address: '0x6660a7AC974BDc06b54B82842088821407A67c03',
-    legacy: ['0x7Ac66f19Cb9B4540A0aF02eeA406f413138D659A', '0xf3a0026Bd8Bf3B3ca41177C93b99F97dfB657506'] as const,
+    legacy: [
+      '0x7Ac66f19Cb9B4540A0aF02eeA406f413138D659A',
+      '0xf3a0026Bd8Bf3B3ca41177C93b99F97dfB657506',
+    ] as const,
   },
   13374202: {
     // Ethereal testnet — deployed 2026-02-26
@@ -266,7 +271,10 @@ export const predictionMarketBridgeRemote: ChainAddressMap = {
   42161: {
     // Arbitrum mainnet — redeployed 2026-03-09 (early counterparty settlement fix)
     address: '0x5BdAb642A8e5d2B1eaba93456eDc2F11FAecb0b7',
-    legacy: ['0x49FD85a1Bf0C449A516Bf2a45d6106Bef7150aD5', '0x136700DBA1cCC2eDd16aB0bf439bd6b65574F99f'] as const,
+    legacy: [
+      '0x49FD85a1Bf0C449A516Bf2a45d6106Bef7150aD5',
+      '0x136700DBA1cCC2eDd16aB0bf439bd6b65574F99f',
+    ] as const,
   },
   421614: {
     // Arbitrum Sepolia testnet — deployed 2026-02-26
@@ -288,12 +296,18 @@ export const predictionMarketTokenFactory: ChainAddressMap = {
   5064014: {
     // Ethereal mainnet — redeployed 2026-03-09 (CREATE2 deterministic, same address on both chains)
     address: '0xD838d19E910Dc4d235B1A7548BF86B08F9b1241D',
-    legacy: ['0xe51f86ff77388c108Aa77A629b82713FF5233FE2', '0x82b1b600DaCFcff4Cc1e3bD02c542222597e5Fe2'] as const,
+    legacy: [
+      '0xe51f86ff77388c108Aa77A629b82713FF5233FE2',
+      '0x82b1b600DaCFcff4Cc1e3bD02c542222597e5Fe2',
+    ] as const,
   },
   42161: {
     // Arbitrum mainnet — redeployed 2026-03-09 (CREATE2 deterministic, same address on both chains)
     address: '0xD838d19E910Dc4d235B1A7548BF86B08F9b1241D',
-    legacy: ['0xe51f86ff77388c108Aa77A629b82713FF5233FE2', '0x82b1b600DaCFcff4Cc1e3bD02c542222597e5Fe2'] as const,
+    legacy: [
+      '0xe51f86ff77388c108Aa77A629b82713FF5233FE2',
+      '0x82b1b600DaCFcff4Cc1e3bD02c542222597e5Fe2',
+    ] as const,
   },
   13374202: {
     // Ethereal testnet — deployed 2026-02-26 (CREATE2 deterministic, same address on both chains)
@@ -384,7 +398,12 @@ export const escrowContracts = {
 // Resolver Helpers
 // ============================================================================
 
-export type ResolverType = 'pyth' | 'conditionalTokens' | 'lzConditionalTokens' | 'manual' | 'lz';
+export type ResolverType =
+  | 'pyth'
+  | 'conditionalTokens'
+  | 'lzConditionalTokens'
+  | 'manual'
+  | 'lz';
 
 const RESOLVER_MAP: Record<ResolverType, ChainAddressMap> = {
   pyth: pythConditionResolver,
@@ -397,7 +416,7 @@ const RESOLVER_MAP: Record<ResolverType, ChainAddressMap> = {
 /** Get the deployed resolver address for a given type and chain. */
 export function getResolverAddress(
   type: ResolverType,
-  chainId: number,
+  chainId: number
 ): Address | undefined {
   return RESOLVER_MAP[type]?.[chainId]?.address;
 }
@@ -405,12 +424,14 @@ export function getResolverAddress(
 /** Identify the resolver type from an on-chain address. */
 export function identifyResolver(
   address: string,
-  chainId: number,
+  chainId: number
 ): ResolverType | null {
   const lower = address.toLowerCase();
-  for (const [type, map] of Object.entries(RESOLVER_MAP) as [ResolverType, ChainAddressMap][]) {
+  for (const [type, map] of Object.entries(RESOLVER_MAP) as [
+    ResolverType,
+    ChainAddressMap,
+  ][]) {
     if (map[chainId]?.address.toLowerCase() === lower) return type;
   }
   return null;
 }
-

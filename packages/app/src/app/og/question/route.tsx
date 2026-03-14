@@ -279,7 +279,10 @@ async function fetchEstimate(conditionId: string): Promise<number | null> {
 
           const predictorColl = BigInt(predictorCollateral);
           const counterpartyColl = BigInt(
-            String((quoterBid as any).counterpartyCollateral || '0')
+            String(
+              (quoterBid as Record<string, unknown>).counterpartyCollateral ||
+                '0'
+            )
           );
           const denom = predictorColl + counterpartyColl;
           if (denom === 0n) {

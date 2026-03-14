@@ -93,7 +93,9 @@ const pythProSchema = z.array(
   })
 );
 
-async function fetchPythProFeeds(signal: AbortSignal): Promise<PythProFeedRow[]> {
+async function fetchPythProFeeds(
+  signal: AbortSignal
+): Promise<PythProFeedRow[]> {
   // Matches upstream Pyth Developer Hub implementation:
   // https://raw.githubusercontent.com/pyth-network/pyth-crosschain/refs/heads/main/apps/developer-hub/src/components/PriceFeedIdsProTable/index.tsx
   const res = await fetch(
@@ -177,9 +179,9 @@ function getLocalTimeZoneLabel(): string {
         : undefined;
     const parts =
       typeof Intl !== 'undefined' && 'DateTimeFormat' in Intl
-        ? Intl.DateTimeFormat(undefined, { timeZoneName: 'short' }).formatToParts(
-            new Date()
-          )
+        ? Intl.DateTimeFormat(undefined, {
+            timeZoneName: 'short',
+          }).formatToParts(new Date())
         : [];
     const abbr = parts.find((p) => p.type === 'timeZoneName')?.value;
     return abbr ? `Local (${abbr})` : tz ? `Local (${tz})` : 'Local';
@@ -206,7 +208,8 @@ function DateTimeSelector({
   const [customOpen, setCustomOpen] = React.useState<boolean>(false);
   const [relativeOpen, setRelativeOpen] = React.useState<boolean>(false);
   const [relativeAmount, setRelativeAmount] = React.useState<string>('10');
-  const [relativeUnit, setRelativeUnit] = React.useState<RelativeUnit>('minutes');
+  const [relativeUnit, setRelativeUnit] =
+    React.useState<RelativeUnit>('minutes');
 
   // Default to +5m on first mount (only when no value is set yet).
   React.useEffect(() => {
@@ -252,7 +255,11 @@ function DateTimeSelector({
         setCustomOpen(false);
         const amt = Number(relativeAmount);
         if (Number.isFinite(amt) && amt > 0) {
-          onChange(formatDateTimeLocalInputValue(addRelativeTime(new Date(), amt, relativeUnit)));
+          onChange(
+            formatDateTimeLocalInputValue(
+              addRelativeTime(new Date(), amt, relativeUnit)
+            )
+          );
         }
         return;
       }
@@ -348,7 +355,11 @@ function DateTimeSelector({
                           setPreset('relative');
                           onPresetChange?.('relative');
                           onRelativeParamsChange?.(next, relativeUnit);
-                          onChange(formatDateTimeLocalInputValue(addRelativeTime(new Date(), amt, relativeUnit)));
+                          onChange(
+                            formatDateTimeLocalInputValue(
+                              addRelativeTime(new Date(), amt, relativeUnit)
+                            )
+                          );
                         }
                       }}
                       disabled={disabled}
@@ -367,7 +378,11 @@ function DateTimeSelector({
                           setPreset('relative');
                           onPresetChange?.('relative');
                           onRelativeParamsChange?.(relativeAmount, unit);
-                          onChange(formatDateTimeLocalInputValue(addRelativeTime(new Date(), amt, unit)));
+                          onChange(
+                            formatDateTimeLocalInputValue(
+                              addRelativeTime(new Date(), amt, unit)
+                            )
+                          );
                         }
                       }}
                       disabled={disabled}
@@ -469,7 +484,8 @@ function DateTimeSelector({
                               Number.isFinite(hh) ? hh : 12,
                               Number.isFinite(min) ? min : 0
                             );
-                            const nextValue = formatDateTimeLocalInputValue(next);
+                            const nextValue =
+                              formatDateTimeLocalInputValue(next);
                             setCustomValue(nextValue);
                             onPresetChange?.('custom');
                             onChange(nextValue);
@@ -614,7 +630,9 @@ type HermesLatestPrice = {
   publishTime?: number;
 };
 
-function normalizeHermesLatestPrice(payload: unknown): HermesLatestPrice | null {
+function normalizeHermesLatestPrice(
+  payload: unknown
+): HermesLatestPrice | null {
   // Try to find a first "price feed update" object in a few known shapes.
   let candidate: unknown = payload;
 
@@ -711,7 +729,9 @@ async function fetchHermesPriceFeeds(
     }
   }
 
-  throw lastError instanceof Error ? lastError : new Error('Hermes fetch failed');
+  throw lastError instanceof Error
+    ? lastError
+    : new Error('Hermes fetch failed');
 }
 
 export function CreatePythPredictionForm({
@@ -738,24 +758,32 @@ export function CreatePythPredictionForm({
   );
   const [lazerOpen, setLazerOpen] = React.useState<boolean>(false);
   const [lazerQuery, setLazerQuery] = React.useState<string>('');
-  const [lazerSelectedLabel, setLazerSelectedLabel] = React.useState<string>('');
+  const [lazerSelectedLabel, setLazerSelectedLabel] =
+    React.useState<string>('');
 
   const [direction, setDirection] =
     React.useState<CreatePythPredictionDirection>('over');
   // `targetPriceDisplay` drives the input UI; `targetPriceRaw` preserves full precision for tooltips.
-  const [targetPriceDisplay, setTargetPriceDisplay] = React.useState<string>('');
+  const [targetPriceDisplay, setTargetPriceDisplay] =
+    React.useState<string>('');
   const [targetPriceRaw, setTargetPriceRaw] = React.useState<string>('');
   const [targetPriceFullPrecision, setTargetPriceFullPrecision] =
     React.useState<string>('');
   const [dateTimeLocal, setDateTimeLocal] = React.useState<string>('');
-  const [dateTimePreset, setDateTimePreset] = React.useState<DateTimePreset>('');
-  const [parentRelativeAmount, setParentRelativeAmount] = React.useState<string>('10');
-  const [parentRelativeUnit, setParentRelativeUnit] = React.useState<RelativeUnit>('minutes');
+  const [dateTimePreset, setDateTimePreset] =
+    React.useState<DateTimePreset>('');
+  const [parentRelativeAmount, setParentRelativeAmount] =
+    React.useState<string>('10');
+  const [parentRelativeUnit, setParentRelativeUnit] =
+    React.useState<RelativeUnit>('minutes');
 
-  const handleRelativeParamsChange = React.useCallback((amount: string, unit: RelativeUnit) => {
-    setParentRelativeAmount(amount);
-    setParentRelativeUnit(unit);
-  }, []);
+  const handleRelativeParamsChange = React.useCallback(
+    (amount: string, unit: RelativeUnit) => {
+      setParentRelativeAmount(amount);
+      setParentRelativeUnit(unit);
+    },
+    []
+  );
 
   // Once a Lazer feed is selected (and we know its human symbol), use Hermes to
   // fetch a current reference price and populate the Price input (rounded to 2dp).
@@ -839,7 +867,9 @@ export function CreatePythPredictionForm({
       } catch (e) {
         if (ac.signal.aborted) return;
         setLazerFeeds([]);
-        setLazerFeedsError(e instanceof Error ? e.message : 'Failed to load feeds');
+        setLazerFeedsError(
+          e instanceof Error ? e.message : 'Failed to load feeds'
+        );
       } finally {
         if (!ac.signal.aborted) setIsLoadingLazerFeeds(false);
       }
@@ -895,7 +925,8 @@ export function CreatePythPredictionForm({
       for (const item of list) {
         if (!matchesTerm(item, term)) continue;
         if (isNumeric(term) && String(item.id) === term) {
-          if (!exactIdMatches.some((m) => m.id === item.id)) exactIdMatches.push(item);
+          if (!exactIdMatches.some((m) => m.id === item.id))
+            exactIdMatches.push(item);
         } else if (!exactIdMatches.some((m) => m.id === item.id)) {
           otherMatches.set(item.id, item);
         }
@@ -934,7 +965,9 @@ export function CreatePythPredictionForm({
               ? (() => {
                   const amt = Number(parentRelativeAmount);
                   return Number.isFinite(amt) && amt > 0
-                    ? formatDateTimeLocalInputValue(addRelativeTime(new Date(), amt, parentRelativeUnit))
+                    ? formatDateTimeLocalInputValue(
+                        addRelativeTime(new Date(), amt, parentRelativeUnit)
+                      )
                     : dateTimeLocal;
                 })()
               : dateTimeLocal;
@@ -1024,7 +1057,9 @@ export function CreatePythPredictionForm({
                     ensureLazerFeedsLoaded();
                   }}
                   placeholder={
-                    lazerSelectedLabel ? lazerSelectedLabel : 'Select Price Feed'
+                    lazerSelectedLabel
+                      ? lazerSelectedLabel
+                      : 'Select Price Feed'
                   }
                   disabled={disabled}
                   aria-label="Search Pyth Pro feeds"
@@ -1032,7 +1067,10 @@ export function CreatePythPredictionForm({
                 />
                 <ChevronsUpDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none" />
                 <PopoverTrigger asChild>
-                  <div className="absolute inset-0 pointer-events-none" aria-hidden />
+                  <div
+                    className="absolute inset-0 pointer-events-none"
+                    aria-hidden
+                  />
                 </PopoverTrigger>
               </div>
 
@@ -1044,7 +1082,9 @@ export function CreatePythPredictionForm({
                 <Command>
                   <CommandList>
                     {isLoadingLazerFeeds ? (
-                      <div className="py-3 px-3 text-sm opacity-75">Loading…</div>
+                      <div className="py-3 px-3 text-sm opacity-75">
+                        Loading…
+                      </div>
                     ) : lazerFeedsError ? (
                       <div className="py-3 px-3 text-sm text-red-400">
                         {lazerFeedsError}
@@ -1059,7 +1099,9 @@ export function CreatePythPredictionForm({
                       <CommandGroup>
                         {filteredLazerFeeds.map((f) => {
                           const label = f.symbol || `Feed #${f.id}`;
-                          const sub = ('description' in f ? String(f.description) : '') || `ID ${f.id} • expo ${f.expo}`;
+                          const sub =
+                            ('description' in f ? String(f.description) : '') ||
+                            `ID ${f.id} • expo ${f.expo}`;
                           return (
                             <CommandItem
                               key={f.id}
@@ -1176,5 +1218,3 @@ export function CreatePythPredictionForm({
     </div>
   );
 }
-
-

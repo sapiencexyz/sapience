@@ -7,6 +7,7 @@ import { fetchConditionsByIds } from '~/hooks/graphql/fetchConditionsByIds';
 import { AddressDisplay } from './AddressDisplay';
 import Loader from './Loader';
 import { useInfiniteForecasts } from '~/hooks/graphql/useForecasts';
+import type { FormattedAttestation } from '@sapience/sdk/queries';
 import { SCHEMA_UID } from '~/lib/constants';
 import { d18ToPercentage } from '~/lib/utils/util';
 import { formatRelativeTime } from '~/lib/utils/timeUtils';
@@ -73,7 +74,7 @@ interface CommentsProps {
 }
 
 // Helper to extract decoded data from attestation
-function getDecodedDataFromAttestation(att: any): {
+function getDecodedDataFromAttestation(att: FormattedAttestation): {
   prediction: bigint;
   commentText: string;
 } {
@@ -85,7 +86,7 @@ function getDecodedDataFromAttestation(att: any): {
 
 // Helper to parse EAS attestation data to Comment type
 function attestationToComment(
-  att: any,
+  att: FormattedAttestation,
   conditionsMap: Record<string, ConditionData> | undefined,
   isConditionsLoading: boolean
 ): Comment {
@@ -395,10 +396,7 @@ const Comments = ({
                               }
 
                               return (
-                                <Badge
-                                  variant={variant as any}
-                                  className={className}
-                                >
+                                <Badge variant={variant} className={className}>
                                   {comment.prediction}
                                 </Badge>
                               );

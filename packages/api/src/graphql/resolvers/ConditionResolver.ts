@@ -23,8 +23,7 @@ import {
 } from '@generated/type-graphql/helpers';
 import type { ApolloContext } from '../startApolloServer';
 import prisma from '../../db';
-import { PredictionType } from './EscrowResolver';
-import { batchLoadPickConfigs } from '../helpers/batchLoadPickConfigs';
+import { PredictionType, mapPickConfig } from './EscrowResolver';
 
 /**
  * Custom Condition resolver that defaults to hiding private conditions (public: false).
@@ -177,41 +176,20 @@ export class ConditionResolver {
     const pickConfigIds = matchingPicks.map((p) => p.pickConfigId);
     if (pickConfigIds.length === 0) return [];
 
-    // Get token pairs from PickConfigurations
-    const pickConfigs = await prisma.picks.findMany({
-      where: { id: { in: pickConfigIds } },
-      select: { predictorToken: true, counterpartyToken: true },
-    });
-
-    // Build AND filters per pick config — both tokens must match to avoid false positives
-    const tokenPairFilters = pickConfigs
-      .filter((pc) => pc.predictorToken && pc.counterpartyToken)
-      .map((pc) => ({
-        predictorToken: pc.predictorToken!,
-        counterpartyToken: pc.counterpartyToken!,
-      }));
-    if (tokenPairFilters.length === 0) return [];
-
-    // Query Prediction table by token pairs (AND within each pair, OR across pairs)
+    // Query predictions directly by pickConfigId FK
     const rows = await prisma.prediction.findMany({
       where: {
-        OR: tokenPairFilters,
+        pickConfigId: { in: pickConfigIds },
       },
       orderBy: { createdAt: 'desc' },
       take: cappedTake,
       skip,
+      include: {
+        pickConfiguration: {
+          include: { picks: true },
+        },
+      },
     });
-
-    // Batch-load pickConfigs for mapping
-    const allTokenAddresses = new Set<string>();
-    for (const r of rows) {
-      if (r.predictorToken) allTokenAddresses.add(r.predictorToken);
-      if (r.counterpartyToken) allTokenAddresses.add(r.counterpartyToken);
-    }
-
-    const tokenToPickConfig = await batchLoadPickConfigs(
-      Array.from(allTokenAddresses)
-    );
 
     return rows.map((r) => ({
       id: r.id,
@@ -220,8 +198,8 @@ export class ConditionResolver {
       marketAddress: r.marketAddress,
       predictor: r.predictor,
       counterparty: r.counterparty,
-      predictorToken: r.predictorToken,
-      counterpartyToken: r.counterpartyToken,
+      predictorToken: r.pickConfiguration?.predictorToken ?? '',
+      counterpartyToken: r.pickConfiguration?.counterpartyToken ?? '',
       predictorCollateral: r.predictorCollateral,
       counterpartyCollateral: r.counterpartyCollateral,
       collateralDeposited: r.collateralDeposited ?? null,
@@ -235,10 +213,7 @@ export class ConditionResolver {
       createTxHash: r.createTxHash,
       settleTxHash: r.settleTxHash ?? null,
       refCode: r.refCode ?? null,
-      pickConfig:
-        tokenToPickConfig.get(r.predictorToken) ??
-        tokenToPickConfig.get(r.counterpartyToken) ??
-        null,
+      pickConfig: r.pickConfiguration ? mapPickConfig(r.pickConfiguration) : null,
     }));
   }
 }

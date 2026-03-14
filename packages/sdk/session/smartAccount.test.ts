@@ -9,7 +9,10 @@ import {
 } from './smartAccount';
 
 // ZeroDev SDK constants (devDependency oracle)
-import { KernelVersionToAddressesMap, VALIDATOR_TYPE } from '@zerodev/sdk/constants';
+import {
+  KernelVersionToAddressesMap,
+  VALIDATOR_TYPE,
+} from '@zerodev/sdk/constants';
 import { kernelVersionRangeToValidator } from '@zerodev/ecdsa-validator/constants';
 
 // ---------------------------------------------------------------------------
@@ -40,12 +43,16 @@ describe('computeSmartAccountAddress (pure CREATE2)', () => {
 
   test('matches known golden value for EOA #2', () => {
     const result = computeSmartAccountAddress(EOA_2);
-    expect(result.toLowerCase()).toBe('0x0dC21370FA530e615e9090Aa1e5171973804d234'.toLowerCase());
+    expect(result.toLowerCase()).toBe(
+      '0x0dC21370FA530e615e9090Aa1e5171973804d234'.toLowerCase()
+    );
   });
 
   test('matches known golden value for EOA #3', () => {
     const result = computeSmartAccountAddress(EOA_3);
-    expect(result.toLowerCase()).toBe('0xBD8FD5dE34791a8BeefB4286F0eEb2AF934Ef944'.toLowerCase());
+    expect(result.toLowerCase()).toBe(
+      '0xBD8FD5dE34791a8BeefB4286F0eEb2AF934Ef944'.toLowerCase()
+    );
   });
 
   test('returns Address, not Promise (sync)', () => {
@@ -54,7 +61,7 @@ describe('computeSmartAccountAddress (pure CREATE2)', () => {
     expect(typeof result).toBe('string');
     expect(result).toMatch(/^0x[0-9a-fA-F]{40}$/);
     // Double-check it's not a thenable
-    expect((result as any).then).toBeUndefined();
+    expect((result as unknown as Record<string, unknown>).then).toBeUndefined();
   });
 
   test('is deterministic — same input produces same output', () => {

@@ -15,4 +15,3 @@ export * from './components/PythPredictionListItem';
 export * from './components/UmaPredictionListItem';
 export * from './components/predictions/types';
 export * from './components/predictions/PredictionChoiceBadge';
-

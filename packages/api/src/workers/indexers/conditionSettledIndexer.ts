@@ -16,7 +16,9 @@ const BLOCK_BATCH_SIZE = 100;
 const POLLING_INTERVAL_MS = 10_000;
 
 const CONDITION_SETTLED_TOPIC = keccak256(
-  toHex('ConditionResolved(bytes32,bool,bool,bool,uint256,uint256,uint256,uint256)')
+  toHex(
+    'ConditionResolved(bytes32,bool,bool,bool,uint256,uint256,uint256,uint256)'
+  )
 );
 
 /**

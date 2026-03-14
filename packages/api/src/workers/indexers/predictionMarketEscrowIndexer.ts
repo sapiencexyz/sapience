@@ -525,7 +525,12 @@ class PredictionMarketEscrowIndexer implements IIndexer {
 
     // Wrap all DB writes in a transaction so partial state can't persist
     await prisma.$transaction(async (tx) => {
-      // Create prediction record
+      // Write pick config first (ensures Picks record exists for FK)
+      if (onChainData) {
+        await this.writePickConfigAndBalances(tx, event, onChainData);
+      }
+
+      // Create prediction record with direct FK to pick config
       await tx.prediction.create({
         data: {
           predictionId: predictionIdLower,
@@ -533,20 +538,14 @@ class PredictionMarketEscrowIndexer implements IIndexer {
           marketAddress: this.contractAddress.toLowerCase(),
           predictor: event.predictor.toLowerCase(),
           counterparty: event.counterparty.toLowerCase(),
-          predictorToken: event.predictorToken.toLowerCase(),
-          counterpartyToken: event.counterpartyToken.toLowerCase(),
           predictorCollateral: event.predictorCollateral.toString(),
           counterpartyCollateral: event.counterpartyCollateral.toString(),
           onChainCreatedAt: timestamp,
           createTxHash: log.transactionHash || '',
           refCode: event.refCode !== ZERO_BYTES32 ? event.refCode : null,
+          pickConfigId: onChainData?.pickConfigId ?? null,
         },
       });
-
-      // Populate picks, positions, and open interest
-      if (onChainData) {
-        await this.writePickConfigAndBalances(tx, event, onChainData);
-      }
     });
 
     console.log(
@@ -608,7 +607,8 @@ class PredictionMarketEscrowIndexer implements IIndexer {
       return {
         pickConfigId,
         predictorMinted: predictionOnChain.predictorTokensMinted.toString(),
-        counterpartyMinted: predictionOnChain.counterpartyTokensMinted.toString(),
+        counterpartyMinted:
+          predictionOnChain.counterpartyTokensMinted.toString(),
         picksOnChain,
       };
     } catch (error) {
@@ -629,7 +629,8 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     event: PredictionCreatedEvent,
     data: NonNullable<Awaited<ReturnType<typeof this.readPickConfigData>>>
   ): Promise<void> {
-    const { pickConfigId, predictorMinted, counterpartyMinted, picksOnChain } = data;
+    const { pickConfigId, predictorMinted, counterpartyMinted, picksOnChain } =
+      data;
     const predictorToken = event.predictorToken.toLowerCase();
     const counterpartyToken = event.counterpartyToken.toLowerCase();
     const predictorCollateralStr = event.predictorCollateral.toString();
@@ -764,14 +765,9 @@ class PredictionMarketEscrowIndexer implements IIndexer {
           BigInt(pred.predictorCollateral) + BigInt(pred.counterpartyCollateral)
         ).toString();
 
-        const tokenAddresses = [pred.predictorToken, pred.counterpartyToken];
-        const position = await tx.position.findFirst({
-          where: { tokenAddress: { in: tokenAddresses } },
-          select: { pickConfigId: true },
-        });
-        if (position) {
+        if (pred.pickConfigId) {
           const picks = await tx.pick.findMany({
-            where: { pickConfigId: position.pickConfigId },
+            where: { pickConfigId: pred.pickConfigId },
             select: { conditionId: true },
           });
           for (const pick of picks) {

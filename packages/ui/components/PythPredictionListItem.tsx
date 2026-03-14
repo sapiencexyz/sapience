@@ -99,21 +99,24 @@ export function PythPredictionListItem({
     const future = diffMs >= 0;
     const absSec = Math.max(0, Math.round(Math.abs(diffMs) / 1000));
 
-    const units: Array<{ unit: Intl.RelativeTimeFormatUnit; seconds: number }> = [
-      { unit: 'year', seconds: 365 * 24 * 60 * 60 },
-      { unit: 'month', seconds: 30 * 24 * 60 * 60 },
-      { unit: 'week', seconds: 7 * 24 * 60 * 60 },
-      { unit: 'day', seconds: 24 * 60 * 60 },
-      { unit: 'hour', seconds: 60 * 60 },
-      { unit: 'minute', seconds: 60 },
-    ];
+    const units: Array<{ unit: Intl.RelativeTimeFormatUnit; seconds: number }> =
+      [
+        { unit: 'year', seconds: 365 * 24 * 60 * 60 },
+        { unit: 'month', seconds: 30 * 24 * 60 * 60 },
+        { unit: 'week', seconds: 7 * 24 * 60 * 60 },
+        { unit: 'day', seconds: 24 * 60 * 60 },
+        { unit: 'hour', seconds: 60 * 60 },
+        { unit: 'minute', seconds: 60 },
+      ];
 
     const rtf = new Intl.RelativeTimeFormat(undefined, { numeric: 'always' });
 
     for (const u of units) {
       if (absSec >= u.seconds) {
         const value = Math.round(absSec / u.seconds);
-        return rtf.format(future ? value : -value, u.unit).replace(/^in\s+/i, 'in ');
+        return rtf
+          .format(future ? value : -value, u.unit)
+          .replace(/^in\s+/i, 'in ');
       }
     }
 
@@ -179,7 +182,8 @@ export function PythPredictionListItem({
                 </div>
               </TooltipTrigger>
               <TooltipContent className="text-xs">
-                <span className="text-muted-foreground">Oracle:</span>{'  '}
+                <span className="text-muted-foreground">Oracle:</span>
+                {'  '}
                 <span className="font-mono">PYTH</span>
               </TooltipContent>
             </Tooltip>
@@ -221,11 +225,7 @@ export function PythPredictionListItem({
                     </TooltipContent>
                   </Tooltip>
                 </TooltipProvider>{' '}
-                {isFuture ? (
-                  <>
-                    in{' '}
-                  </>
-                ) : null}
+                {isFuture ? <>in </> : null}
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -271,11 +271,7 @@ export function PythPredictionListItem({
                       </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>{' '}
-                  {isFuture ? (
-                    <>
-                      in{' '}
-                    </>
-                  ) : null}
+                  {isFuture ? <>in </> : null}
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
@@ -308,5 +304,3 @@ export function PythPredictionListItem({
     </div>
   );
 }
-
-

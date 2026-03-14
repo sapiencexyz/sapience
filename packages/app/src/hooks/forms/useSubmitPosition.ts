@@ -271,7 +271,7 @@ export function useSubmitPosition({
 
         await attempt();
         setIsProcessing(false);
-      } catch (err: any) {
+      } catch (err: unknown) {
         const errorMessage =
           err instanceof Error
             ? err.message
