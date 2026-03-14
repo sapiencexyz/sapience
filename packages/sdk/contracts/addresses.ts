@@ -166,9 +166,9 @@ export const predictionMarketVault: ChainAddressMap = {
  */
 export const pythConditionResolver: ChainAddressMap = {
   5064014: {
-    // Ethereal mainnet — deployed 2026-02-28
-    address: '0x6399F6397701e4213BBaEf9f7a15EF31C9c329E1',
-    legacy: [] as const,
+    // Ethereal mainnet — redeployed 2026-03-13
+    address: '0x3384de2a15e8D767a36f09f6e67F41C9fa8C6B1f',
+    legacy: ['0x6399F6397701e4213BBaEf9f7a15EF31C9c329E1'] as const,
   },
   13374202: {
     // Ethereal testnet — deployed 2026-02-28
@@ -183,9 +183,9 @@ export const pythConditionResolver: ChainAddressMap = {
  */
 export const conditionalTokensConditionResolver: ChainAddressMap = {
   5064014: {
-    // Ethereal mainnet — deployed 2026-02-28
-    address: '0x130598b7334901077cA5369b098Fd47F042CdcC9',
-    legacy: [] as const,
+    // Ethereal mainnet — redeployed 2026-03-13
+    address: '0x19e34DB5bef20EF0613854c3670cD809DEFf4035',
+    legacy: ['0x130598b7334901077cA5369b098Fd47F042CdcC9'] as const,
   },
 } as const;
 
@@ -208,13 +208,17 @@ export const conditionalTokensReader: ChainAddressMap = {
 export const manualConditionResolver: ChainAddressMap = {
   5064014: {
     // Ethereal mainnet — redeployed 2026-03-13
-    address: '0x07a93E42afBCf747B8a9180e61b890888eF813F4',
-    legacy: ['0xAdFcDD47f8E09D5Cc00B25d2bbC3A8fdc3Ad4674'] as const,
+    address: '0x3791b6B4B80c1aDEeb37350F63825E43722a3573',
+    legacy: [
+      '0x07a93E42afBCf747B8a9180e61b890888eF813F4',
+      '0xAdFcDD47f8E09D5Cc00B25d2bbC3A8fdc3Ad4674',
+    ] as const,
   },
   13374202: {
     // Ethereal testnet — redeployed 2026-03-13
-    address: '0x5fa66D9021490BC7479B33D226C70Dd3C91AF399',
+    address: '0xa5ec46b834aC33ec68e30E7dDeedbbbD4f461784',
     legacy: [
+      '0x5fa66D9021490BC7479B33D226C70Dd3C91AF399',
       '0x9f0fA333e634b9E11CbcA0fC16123912b941F7Bd',
       '0x31C51d3a6e01a9F15144429ebc71E8815157a0aD',
       '0xAE41b42dC5d9a98C53c7A91c44523173300c1f31',
