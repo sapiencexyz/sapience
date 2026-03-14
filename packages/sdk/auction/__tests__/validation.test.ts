@@ -461,10 +461,11 @@ describe('validateBid', () => {
     }
   });
 
-  test('wrong-signer EOA signature → invalid (ecrecover succeeds but wrong address)', async () => {
+  test('wrong-signer EOA signature without publicClient → unverified (could be smart contract signer)', async () => {
     const auction = makeAuctionRFQ();
     // Sign with a different key than the counterparty — ecrecover will succeed
-    // but recover a different address, proving the signature is bad
+    // but recover a different address. Without a publicClient we can't rule out
+    // ERC-1271 / wrapped signing schemes, so this is 'unverified' not 'invalid'.
     const wrongKey = generatePrivateKey();
     const wrongAccount = privateKeyToAccount(wrongKey);
 
@@ -502,9 +503,9 @@ describe('validateBid', () => {
       }
     );
 
-    expect(result.status).toBe('invalid');
-    if (result.status === 'invalid') {
-      expect(result.code).toBe('INVALID_SIGNATURE');
+    expect(result.status).toBe('unverified');
+    if (result.status === 'unverified') {
+      expect(result.code).toBe('SIGNATURE_UNVERIFIABLE');
     }
   });
 
