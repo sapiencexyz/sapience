@@ -7,29 +7,51 @@ import type { ClientConnection, SubscriptionManager } from './types';
 export class InMemorySubscriptionManager implements SubscriptionManager {
   private topics = new Map<string, Set<ClientConnection>>();
 
-  subscribe(topic: string, client: ClientConnection): void {
+  /** Returns true if the client was newly added (false if already subscribed). */
+  subscribe(topic: string, client: ClientConnection): boolean {
     let set = this.topics.get(topic);
     if (!set) {
       set = new Set();
       this.topics.set(topic, set);
     }
+    if (set.has(client)) return false;
     set.add(client);
+    return true;
   }
 
-  unsubscribe(topic: string, client: ClientConnection): void {
+  /** Returns true if the client was actually removed. */
+  unsubscribe(topic: string, client: ClientConnection): boolean {
     const set = this.topics.get(topic);
-    if (!set) return;
-    set.delete(client);
+    if (!set) return false;
+    const removed = set.delete(client);
     if (set.size === 0) this.topics.delete(topic);
+    return removed;
   }
 
-  unsubscribeAll(client: ClientConnection): void {
+  /** Remove client from all topics. Returns the number of topics removed from. */
+  unsubscribeAll(client: ClientConnection): number {
+    let count = 0;
     for (const [topic, set] of this.topics.entries()) {
       if (set.has(client)) {
         set.delete(client);
+        count++;
         if (set.size === 0) this.topics.delete(topic);
       }
     }
+    return count;
+  }
+
+  /** Remove client from all topics matching a prefix. Returns the number of topics removed from. */
+  unsubscribeByPrefix(prefix: string, client: ClientConnection): number {
+    let count = 0;
+    for (const [topic, set] of this.topics.entries()) {
+      if (topic.startsWith(prefix) && set.has(client)) {
+        set.delete(client);
+        count++;
+        if (set.size === 0) this.topics.delete(topic);
+      }
+    }
+    return count;
   }
 
   broadcast(topic: string, msg: unknown): number {

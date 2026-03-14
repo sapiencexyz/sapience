@@ -64,18 +64,6 @@ function safeParse<T = unknown>(data: RawData): T | null {
   }
 }
 
-function send(
-  ws: WebSocket,
-  message: { type: string; payload?: unknown }
-): void {
-  try {
-    ws.send(JSON.stringify(message));
-    messagesSent.inc({ type: message.type });
-  } catch (err) {
-    console.error('[Relayer] Failed to send message:', err);
-  }
-}
-
 function trackDuration(msgType: string, startTime: number): void {
   const duration = (Date.now() - startTime) / 1000;
   messageProcessingDuration.observe({ type: msgType }, duration);
@@ -133,7 +121,9 @@ export function createAuctionWebSocketServer() {
     activeConnections.inc();
     connectionsTotal.inc();
 
-    const client = createWsClientConnection(ws);
+    const client = createWsClientConnection(ws, {
+      onSend: (msgType) => messagesSent.inc({ type: msgType }),
+    });
     connectionMap.set(ws, client);
     allClients.add(client);
 
@@ -209,7 +199,7 @@ export function createAuctionWebSocketServer() {
 
       // JSON-level ping/pong
       if (msgType === 'ping') {
-        send(ws, { type: 'pong' });
+        client.send({ type: 'pong' });
         trackDuration(msgType, startTime);
         return;
       }
@@ -346,9 +336,15 @@ export function createAuctionWebSocketServer() {
         `[Relayer] Socket closed from ${ip} code=${code} reason=${reasonStr}`
       );
 
-      // Clean up all subscriptions for this client
-      subs.unsubscribeAll(client);
-      subscriptionsActive.dec({ subscription_type: 'auction' });
+      // Clean up subscriptions by type so metrics are properly decremented
+      const auctionUnsubs = subs.unsubscribeByPrefix('auction:', client);
+      for (let i = 0; i < auctionUnsubs; i++) {
+        subscriptionsActive.dec({ subscription_type: 'auction' });
+      }
+      const vaultUnsubs = subs.unsubscribeByPrefix('vault:', client);
+      for (let i = 0; i < vaultUnsubs; i++) {
+        subscriptionsActive.dec({ subscription_type: 'vault' });
+      }
 
       allClients.delete(client);
       connectionMap.delete(ws);

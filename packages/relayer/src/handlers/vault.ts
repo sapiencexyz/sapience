@@ -105,7 +105,11 @@ function sendVaultAck(
   client: ClientConnection,
   payload: { ok?: boolean; error?: string }
 ): void {
-  client.send({ type: 'vault_quote.ack', payload });
+  try {
+    client.send({ type: 'vault_quote.ack', payload });
+  } catch (err) {
+    console.error('[Relayer] Failed to send vault_quote.ack:', err);
+  }
 }
 
 // ============================================================================
@@ -141,8 +145,8 @@ export function handleVaultSubscribe(
   }
 
   const key = makeVaultKey(chainId, vaultAddress);
-  subs.subscribe(`vault:${key}`, client);
-  subscriptionsActive.inc({ subscription_type: 'vault' });
+  const isNew = subs.subscribe(`vault:${key}`, client);
+  if (isNew) subscriptionsActive.inc({ subscription_type: 'vault' });
 
   // Send latest cached quote if available
   const latest = latestVaultQuoteByKey.get(key);
@@ -173,8 +177,8 @@ export function handleVaultUnsubscribe(
   if (!chainId || !vaultAddress) return;
 
   const key = makeVaultKey(chainId, vaultAddress);
-  subs.unsubscribe(`vault:${key}`, client);
-  subscriptionsActive.dec({ subscription_type: 'vault' });
+  const wasRemoved = subs.unsubscribe(`vault:${key}`, client);
+  if (wasRemoved) subscriptionsActive.dec({ subscription_type: 'vault' });
   sendVaultAck(client, { ok: true });
 }
 
@@ -183,119 +187,117 @@ export async function handleVaultQuotePublish(
   payload: PublishVaultQuotePayload | undefined,
   subs: SubscriptionManager
 ): Promise<void> {
-  if (
-    !payload ||
-    !payload.vaultAddress ||
-    !payload.chainId ||
-    payload.timestamp == null ||
-    payload.vaultCollateralPerShare == null ||
-    !payload.signedBy ||
-    !payload.signature
-  ) {
-    vaultQuotesPublished.inc({ status: 'error' });
-    errorsTotal.inc({
-      type: 'validation',
-      message_type: 'vault_quote.publish',
-    });
-    sendVaultAck(client, { error: 'invalid_payload' });
-    return;
-  }
-
-  // Anti-replay window (5 minutes)
-  if (Math.abs(Date.now() - payload.timestamp) > 5 * 60 * 1000) {
-    vaultQuotesPublished.inc({ status: 'error' });
-    errorsTotal.inc({
-      type: 'validation',
-      message_type: 'vault_quote.publish',
-    });
-    sendVaultAck(client, { error: 'stale_timestamp' });
-    return;
-  }
-
-  const key = makeVaultKey(payload.chainId, payload.vaultAddress);
-
-  // Check authorized signers (with cache)
-  let allowed = vaultSignerCache.get(key);
-  const cacheFresh =
-    allowed && Date.now() - allowed.fetchedAt < SIGNER_CACHE_TTL_MS;
-  if (!cacheFresh) {
-    const signers = await fetchAuthorizedVaultSigners(
-      payload.chainId,
-      payload.vaultAddress
-    );
-    allowed = { signers, fetchedAt: Date.now() };
+  try {
     if (
-      vaultSignerCache.size >= SIGNER_CACHE_MAX_SIZE &&
-      !vaultSignerCache.has(key)
+      !payload ||
+      !payload.vaultAddress ||
+      !payload.chainId ||
+      payload.timestamp == null ||
+      payload.vaultCollateralPerShare == null ||
+      !payload.signedBy ||
+      !payload.signature
     ) {
-      const oldestKey = vaultSignerCache.keys().next().value;
-      if (oldestKey) vaultSignerCache.delete(oldestKey);
+      vaultQuotesPublished.inc({ status: 'error' });
+      errorsTotal.inc({
+        type: 'validation',
+        message_type: 'vault_quote.publish',
+      });
+      sendVaultAck(client, { error: 'invalid_payload' });
+      return;
     }
-    vaultSignerCache.set(key, allowed);
-  }
 
-  // Verify signature
-  const canonical = buildVaultCanonicalMessage(payload);
-  const ok = await verifyMessage({
-    address: payload.signedBy.toLowerCase() as `0x${string}`,
-    message: canonical,
-    signature: payload.signature as `0x${string}`,
-  });
-  if (!ok) {
-    sendVaultAck(client, { error: 'bad_signature' });
-    return;
-  }
+    // Anti-replay window (5 minutes)
+    if (Math.abs(Date.now() - payload.timestamp) > 5 * 60 * 1000) {
+      vaultQuotesPublished.inc({ status: 'error' });
+      errorsTotal.inc({
+        type: 'validation',
+        message_type: 'vault_quote.publish',
+      });
+      sendVaultAck(client, { error: 'stale_timestamp' });
+      return;
+    }
 
-  // Check authorization
-  if (!allowed!.signers.has(payload.signedBy.toLowerCase())) {
-    vaultQuotesPublished.inc({ status: 'unauthorized' });
+    const key = makeVaultKey(payload.chainId, payload.vaultAddress);
+
+    // Check authorized signers (with cache)
+    let allowed = vaultSignerCache.get(key);
+    const cacheFresh =
+      allowed && Date.now() - allowed.fetchedAt < SIGNER_CACHE_TTL_MS;
+    if (!cacheFresh) {
+      const signers = await fetchAuthorizedVaultSigners(
+        payload.chainId,
+        payload.vaultAddress
+      );
+      allowed = { signers, fetchedAt: Date.now() };
+      if (
+        vaultSignerCache.size >= SIGNER_CACHE_MAX_SIZE &&
+        !vaultSignerCache.has(key)
+      ) {
+        const oldestKey = vaultSignerCache.keys().next().value;
+        if (oldestKey) vaultSignerCache.delete(oldestKey);
+      }
+      vaultSignerCache.set(key, allowed);
+    }
+
+    // Verify signature
+    const canonical = buildVaultCanonicalMessage(payload);
+    const ok = await verifyMessage({
+      address: payload.signedBy.toLowerCase() as `0x${string}`,
+      message: canonical,
+      signature: payload.signature as `0x${string}`,
+    });
+    if (!ok) {
+      sendVaultAck(client, { error: 'bad_signature' });
+      return;
+    }
+
+    // Check authorization
+    if (!allowed!.signers.has(payload.signedBy.toLowerCase())) {
+      vaultQuotesPublished.inc({ status: 'unauthorized' });
+      errorsTotal.inc({
+        type: 'authorization',
+        message_type: 'vault_quote.publish',
+      });
+      sendVaultAck(client, { error: 'unauthorized_signer' });
+      return;
+    }
+
+    // Normalize and store
+    const normalized: PublishVaultQuotePayload = {
+      chainId: payload.chainId,
+      vaultAddress: payload.vaultAddress.toLowerCase(),
+      vaultCollateralPerShare: String(payload.vaultCollateralPerShare),
+      timestamp: payload.timestamp,
+      signedBy: payload.signedBy.toLowerCase(),
+      signature: payload.signature,
+    };
+    latestVaultQuoteByKey.set(key, normalized);
+
+    vaultQuotesPublished.inc({ status: 'success' });
+
+    // Broadcast to vault subscribers
+    subs.broadcast(`vault:${key}`, {
+      type: 'vault_quote.update',
+      payload: normalized,
+    });
+
+    sendVaultAck(client, { ok: true });
+
+    // Broadcast to observers
+    subs.broadcast('vault:observers', {
+      type: 'vault_quote.update',
+      payload: normalized,
+    });
+  } catch (err) {
+    vaultQuotesPublished.inc({ status: 'error' });
     errorsTotal.inc({
-      type: 'authorization',
+      type: 'internal_error',
       message_type: 'vault_quote.publish',
     });
-    sendVaultAck(client, { error: 'unauthorized_signer' });
-    return;
+    sendVaultAck(client, {
+      error: (err as Error).message || 'internal_error',
+    });
   }
-
-  // Normalize and store
-  const normalized: PublishVaultQuotePayload = {
-    chainId: payload.chainId,
-    vaultAddress: payload.vaultAddress.toLowerCase(),
-    vaultCollateralPerShare: String(payload.vaultCollateralPerShare),
-    timestamp: payload.timestamp,
-    signedBy: payload.signedBy.toLowerCase(),
-    signature: payload.signature,
-  };
-  latestVaultQuoteByKey.set(key, normalized);
-
-  vaultQuotesPublished.inc({ status: 'success' });
-
-  // Broadcast to vault subscribers
-  subs.broadcast(`vault:${key}`, {
-    type: 'vault_quote.update',
-    payload: normalized,
-  });
-
-  sendVaultAck(client, { ok: true });
-
-  // Broadcast to observers
-  subs.broadcast('vault:observers', {
-    type: 'vault_quote.update',
-    payload: normalized,
-  });
-}
-
-/**
- * Clean up all vault subscriptions for a disconnecting client.
- * Returns the number of vault subscriptions removed.
- */
-export function cleanupVaultSubscriptions(
-  client: ClientConnection,
-  subs: SubscriptionManager
-): void {
-  // SubscriptionManager.unsubscribeAll handles this across all topics
-  // (called from the main ws.ts close handler)
-  // Vault observers are also a subscription topic, so they're cleaned up too.
 }
 
 /**

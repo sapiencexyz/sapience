@@ -2,7 +2,10 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { InMemorySubscriptionManager } from '../transport/subscriptions';
 import type { ClientConnection } from '../transport/types';
 
-function mockClient(id = crypto.randomUUID(), open = true): ClientConnection {
+function mockClient(
+  id: string = crypto.randomUUID(),
+  open = true
+): ClientConnection {
   return {
     id,
     send: vi.fn(),
@@ -142,5 +145,66 @@ describe('InMemorySubscriptionManager', () => {
     subs.unsubscribe('topic:cleanup', client);
     // Internal: topic should be removed (subscriberCount returns 0)
     expect(subs.subscriberCount('topic:cleanup')).toBe(0);
+  });
+
+  // Return value tests
+  it('subscribe returns true for new subscription, false for duplicate', () => {
+    const client = mockClient();
+    expect(subs.subscribe('topic:1', client)).toBe(true);
+    expect(subs.subscribe('topic:1', client)).toBe(false);
+  });
+
+  it('unsubscribe returns true when removed, false when not found', () => {
+    const client = mockClient();
+    subs.subscribe('topic:1', client);
+    expect(subs.unsubscribe('topic:1', client)).toBe(true);
+    expect(subs.unsubscribe('topic:1', client)).toBe(false);
+  });
+
+  it('unsubscribeAll returns count of topics removed from', () => {
+    const client = mockClient();
+    subs.subscribe('auction:aaa', client);
+    subs.subscribe('auction:bbb', client);
+    subs.subscribe('vault:xxx', client);
+
+    const count = subs.unsubscribeAll(client);
+    expect(count).toBe(3);
+  });
+
+  it('unsubscribeAll returns 0 when client has no subscriptions', () => {
+    const client = mockClient();
+    expect(subs.unsubscribeAll(client)).toBe(0);
+  });
+
+  // unsubscribeByPrefix tests
+  it('unsubscribeByPrefix removes only matching topics', () => {
+    const client = mockClient();
+    subs.subscribe('auction:aaa', client);
+    subs.subscribe('auction:bbb', client);
+    subs.subscribe('vault:xxx', client);
+    subs.subscribe('vault:yyy', client);
+
+    const removed = subs.unsubscribeByPrefix('vault:', client);
+    expect(removed).toBe(2);
+    expect(subs.subscriberCount('auction:aaa')).toBe(1);
+    expect(subs.subscriberCount('auction:bbb')).toBe(1);
+    expect(subs.subscriberCount('vault:xxx')).toBe(0);
+    expect(subs.subscriberCount('vault:yyy')).toBe(0);
+  });
+
+  it('unsubscribeByPrefix returns 0 when no topics match', () => {
+    const client = mockClient();
+    subs.subscribe('auction:aaa', client);
+    expect(subs.unsubscribeByPrefix('vault:', client)).toBe(0);
+  });
+
+  it('unsubscribeByPrefix does not affect other clients', () => {
+    const c1 = mockClient('c1');
+    const c2 = mockClient('c2');
+    subs.subscribe('vault:xxx', c1);
+    subs.subscribe('vault:xxx', c2);
+
+    subs.unsubscribeByPrefix('vault:', c1);
+    expect(subs.subscriberCount('vault:xxx')).toBe(1);
   });
 });
