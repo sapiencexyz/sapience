@@ -92,8 +92,8 @@
     "inputs": [
       {
         "name": "conditionId",
-        "type": "bytes32",
-        "internalType": "bytes32"
+        "type": "bytes",
+        "internalType": "bytes"
       }
     ],
     "outputs": [
@@ -128,8 +128,8 @@
     "inputs": [
       {
         "name": "conditionIds",
-        "type": "bytes32[]",
-        "internalType": "bytes32[]"
+        "type": "bytes[]",
+        "internalType": "bytes[]"
       }
     ],
     "outputs": [
@@ -164,8 +164,8 @@
     "inputs": [
       {
         "name": "conditionId",
-        "type": "bytes32",
-        "internalType": "bytes32"
+        "type": "bytes",
+        "internalType": "bytes"
       }
     ],
     "outputs": [
@@ -202,8 +202,8 @@
     "inputs": [
       {
         "name": "conditionId",
-        "type": "bytes32",
-        "internalType": "bytes32"
+        "type": "bytes",
+        "internalType": "bytes"
       }
     ],
     "outputs": [
