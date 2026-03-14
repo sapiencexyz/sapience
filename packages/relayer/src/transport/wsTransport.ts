@@ -14,21 +14,25 @@ export function createWsClientConnection(
   return {
     id,
     send(msg: unknown) {
-      if (ws.readyState === WebSocket.OPEN) {
-        const data = typeof msg === 'string' ? msg : JSON.stringify(msg);
-        ws.send(data);
-        // Fire onSend hook — extract message type for metrics
-        if (hooks?.onSend) {
-          try {
-            const parsed = typeof msg === 'string' ? JSON.parse(msg) : msg;
-            const msgType =
-              parsed && typeof parsed === 'object' && 'type' in parsed
-                ? String((parsed as { type: unknown }).type)
-                : 'unknown';
-            hooks.onSend(msgType);
-          } catch {
-            hooks.onSend('unknown');
-          }
+      if (ws.readyState !== WebSocket.OPEN) {
+        console.warn(
+          `[Relayer] Attempted to send on non-OPEN socket (state=${ws.readyState})`
+        );
+        return;
+      }
+      const data = typeof msg === 'string' ? msg : JSON.stringify(msg);
+      ws.send(data);
+      // Fire onSend hook — extract message type for metrics
+      if (hooks?.onSend) {
+        try {
+          const parsed = typeof msg === 'string' ? JSON.parse(msg) : msg;
+          const msgType =
+            parsed && typeof parsed === 'object' && 'type' in parsed
+              ? String((parsed as { type: unknown }).type)
+              : 'unknown';
+          hooks.onSend(msgType);
+        } catch {
+          hooks.onSend('unknown');
         }
       }
     },
