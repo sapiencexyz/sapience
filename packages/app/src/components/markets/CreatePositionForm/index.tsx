@@ -166,11 +166,7 @@ const CreatePositionFormInner = ({
   const { hasConnectedWallet } = useConnectedWallet();
   const { openConnectDialog } = useConnectDialog();
   const { address } = useAccount();
-  const {
-    effectiveAddress,
-    signTypedData: sessionSignTypedData,
-    isUsingSession,
-  } = useSession();
+  const { effectiveAddress } = useSession();
   const { toast } = useToast();
   const chainId = DEFAULT_CHAIN_ID;
 
