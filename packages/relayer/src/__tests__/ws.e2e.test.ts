@@ -153,6 +153,16 @@ describe('Relayer E2E Auction Lifecycle', () => {
         privateKeyToAccount(generatePrivateKey()),
       ];
 
+      // Collect all auction.bids messages on the predictor before submitting
+      const collectedBids: ValidatedBid[][] = [];
+      const collector = (data: WebSocket.RawData) => {
+        const msg = JSON.parse(data.toString());
+        if (msg.type === 'auction.bids') {
+          collectedBids.push(msg.payload.bids);
+        }
+      };
+      predictor.on('message', collector);
+
       // Each maker submits a bid with different collateral
       for (let i = 0; i < 3; i++) {
         const collateral = `${(i + 1) * 500000000000000000}`;
@@ -175,22 +185,13 @@ describe('Relayer E2E Auction Lifecycle', () => {
         expect(ack.payload.error).toBeUndefined();
       }
 
-      // Predictor receives auction.bids after each bid; the last one has all 3
-      // Drain messages until we find one with 3 bids
-      const finalBids = (await waitForMessage(predictor, 'auction.bids')) as {
-        payload: { auctionId: string; bids: ValidatedBid[] };
-      };
+      // Allow broadcasts to arrive
+      await new Promise((r) => setTimeout(r, 100));
+      predictor.off('message', collector);
 
-      // There may be intermediate auction.bids messages — keep reading until 3
-      let bids = finalBids.payload.bids;
-      while (bids.length < 3) {
-        const next = (await waitForMessage(predictor, 'auction.bids')) as {
-          payload: { bids: ValidatedBid[] };
-        };
-        bids = next.payload.bids;
-      }
-
-      expect(bids).toHaveLength(3);
+      // The last broadcast should have all 3 bids accumulated
+      const lastBatch = collectedBids[collectedBids.length - 1];
+      expect(lastBatch).toHaveLength(3);
     });
   });
 
