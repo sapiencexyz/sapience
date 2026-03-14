@@ -252,14 +252,15 @@ describe('Idle Timeout', () => {
 });
 
 describe('Connection Limit', () => {
-  // Isolated server with no idle timeout — eliminates timing dependencies entirely.
-  // Each describe gets a fresh activeConnectionCount, so no stale state from other tests.
+  // Fresh server per test — guarantees activeConnectionCount starts at 0.
+  // Using beforeAll/afterEach caused stale counts because ws.close() is async
+  // and the server may not have decremented before the next test starts.
   let limitHttpServer: Server;
   let limitWss: ReturnType<typeof createAuctionWebSocketServer>;
   let limitPort: number;
   const limitClients: WebSocket[] = [];
 
-  beforeAll(async () => {
+  beforeEach(async () => {
     const configModule = await import('../config');
     (configModule.config as Record<string, unknown>).WS_IDLE_TIMEOUT_MS =
       600000;
@@ -282,7 +283,7 @@ describe('Connection Limit', () => {
     });
   });
 
-  afterEach(() => {
+  afterEach(async () => {
     for (const ws of limitClients) {
       if (
         ws.readyState === WebSocket.OPEN ||
@@ -292,11 +293,6 @@ describe('Connection Limit', () => {
       }
     }
     limitClients.length = 0;
-  });
-
-  afterAll(async () => {
-    const configModule = await import('../config');
-    (configModule.config as Record<string, unknown>).WS_IDLE_TIMEOUT_MS = 2000;
 
     for (const client of limitWss.clients) {
       client.close();
@@ -306,6 +302,11 @@ describe('Connection Limit', () => {
         limitHttpServer.close(() => resolve());
       });
     });
+  });
+
+  afterAll(async () => {
+    const configModule = await import('../config');
+    (configModule.config as Record<string, unknown>).WS_IDLE_TIMEOUT_MS = 2000;
   });
 
   function connectToLimitServer(): Promise<WebSocket> {
