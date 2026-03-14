@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef } from 'react';
 import { parseUnits, formatUnits } from 'viem';
+import type { Address } from 'viem';
 import type { Order } from '../types';
 import type { PushLogEntryParams } from '~/components/terminal/TerminalLogsContext';
 import {
@@ -15,6 +16,9 @@ import type {
   EscrowBidSubmissionParams,
   EscrowBidSubmissionResult,
 } from '~/hooks/auction/useEscrowBidSubmission';
+import { validateBid } from '@sapience/sdk/auction/validation';
+import { predictionMarketEscrow } from '@sapience/sdk/contracts';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 
 /** Shape of the data payload from auction WebSocket messages */
 interface AuctionMessageData {
@@ -601,20 +605,83 @@ export function useAuctionMatching({
           },
         });
         if (!readiness.blocked) {
-          // Fire and forget - dedupe key is marked on successful signature
-          void triggerAutoBidSubmission({
-            order: matched.order,
-            source: 'copy_trade',
-            auctionId,
-            auctionContext: cachedContext,
-            copyBidContext: {
-              copiedBidCollateral: String(
+          // Validate the copied bid before outbidding (anti-spoofing)
+          const verifyingContract = predictionMarketEscrow[DEFAULT_CHAIN_ID]
+            ?.address as Address | undefined;
+          if (verifyingContract && signature && cachedContext.escrowPicks) {
+            const bidPayload = {
+              auctionId: auctionId!,
+              counterparty: counterpartyAddr,
+              counterpartyCollateral: String(
                 bidRecord?.counterpartyCollateral ?? '0'
               ),
-              increment: matched.order.increment ?? 1,
-            },
-            dedupeKey: bidDedupeKey,
-          });
+              counterpartyNonce: Number(bidRecord?.counterpartyNonce ?? 0),
+              counterpartyDeadline: Number(
+                bidRecord?.counterpartyDeadline ?? 0
+              ),
+              counterpartySignature: signature,
+            };
+            // Tier 1 offline validation — no RPC needed, fast
+            void validateBid(
+              bidPayload,
+              {
+                picks: cachedContext.escrowPicks,
+                predictorCollateral: cachedContext.predictorCollateral,
+                predictor: cachedContext.predictor,
+                chainId: DEFAULT_CHAIN_ID,
+              },
+              {
+                verifyingContract,
+                chainId: DEFAULT_CHAIN_ID,
+              }
+            ).then((bidResult) => {
+              if (bidResult.status === 'invalid') {
+                pushLogEntry({
+                  kind: 'system',
+                  message: `${tag} skipped outbid — copied bid is invalid: ${bidResult.reason}`,
+                  severity: 'warning',
+                  meta: {
+                    orderId: matched.order.id,
+                    labelSnapshot: formatOrderLabelSnapshot(tag),
+                    formattedPrefix: tag,
+                    verb: 'bid',
+                    highlight: `skipped, copied bid invalid`,
+                  },
+                  dedupeKey: `spoofcheck:${bidDedupeKey}`,
+                });
+                return;
+              }
+              // Valid or unverified — proceed with outbid
+              void triggerAutoBidSubmission({
+                order: matched.order,
+                source: 'copy_trade',
+                auctionId,
+                auctionContext: cachedContext,
+                copyBidContext: {
+                  copiedBidCollateral: String(
+                    bidRecord?.counterpartyCollateral ?? '0'
+                  ),
+                  increment: matched.order.increment ?? 1,
+                },
+                dedupeKey: bidDedupeKey,
+              });
+            });
+          } else {
+            // No verifying contract or missing data — proceed without validation
+            void triggerAutoBidSubmission({
+              order: matched.order,
+              source: 'copy_trade',
+              auctionId,
+              auctionContext: cachedContext,
+              copyBidContext: {
+                copiedBidCollateral: String(
+                  bidRecord?.counterpartyCollateral ?? '0'
+                ),
+                increment: matched.order.increment ?? 1,
+              },
+              dedupeKey: bidDedupeKey,
+            });
+          }
         }
       });
     },
