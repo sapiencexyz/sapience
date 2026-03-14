@@ -6,7 +6,7 @@
  */
 
 import { describe, test, expect, vi, beforeEach } from 'vitest';
-import type { Address, Hex, PublicClient } from 'viem';
+import type { Address, PublicClient } from 'viem';
 import {
   preprocessBids,
   getValidBids,

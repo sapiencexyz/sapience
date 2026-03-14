@@ -111,6 +111,9 @@ export function useAuctionMatching({
   // when the same bid appears in multiple auction.bids messages
   const processedBidsRef = useRef<Set<string>>(new Set());
   const processedBidsQueueRef = useRef<string[]>([]);
+  // Track bids currently undergoing async validation to prevent duplicate submissions
+  // during the validation window (separate from processedBidsRef which is permanent)
+  const validatingBidsRef = useRef<Set<string>>(new Set());
 
   const evaluateAutoBidReadiness = useCallback(
     (details: {
@@ -567,8 +570,11 @@ export function useAuctionMatching({
         // when the same bid appears in multiple auction.bids messages
         const bidDedupeKey = `${matched.order.id}:${auctionId}:${signature ?? `${counterpartyAddr}:${bidRecord?.counterpartyCollateral ?? '0'}`}`;
 
-        // Skip if we've already processed this exact bid for this order
-        if (processedBidsRef.current.has(bidDedupeKey)) {
+        // Skip if we've already processed or are currently validating this bid
+        if (
+          processedBidsRef.current.has(bidDedupeKey) ||
+          validatingBidsRef.current.has(bidDedupeKey)
+        ) {
           return;
         }
 
@@ -605,14 +611,13 @@ export function useAuctionMatching({
           },
         });
         if (!readiness.blocked) {
-          // Mark as in-progress immediately to prevent duplicate submissions
-          // during async validation (race condition protection)
-          markBidProcessed(bidDedupeKey);
-
           // Validate the copied bid before outbidding (anti-spoofing)
           const verifyingContract = predictionMarketEscrow[DEFAULT_CHAIN_ID]
             ?.address as Address | undefined;
           if (verifyingContract && signature && cachedContext.escrowPicks) {
+            // Mark as in-flight to prevent duplicate submissions during async validation
+            validatingBidsRef.current.add(bidDedupeKey);
+
             const bidPayload = {
               auctionId: auctionId!,
               counterparty: counterpartyAddr,
@@ -626,7 +631,7 @@ export function useAuctionMatching({
               counterpartySignature: signature,
             };
             // Tier 1 offline validation — no RPC needed, fast
-            void validateBid(
+            validateBid(
               bidPayload,
               {
                 picks: cachedContext.escrowPicks,
@@ -638,38 +643,46 @@ export function useAuctionMatching({
                 verifyingContract,
                 chainId: DEFAULT_CHAIN_ID,
               }
-            ).then((bidResult) => {
-              if (bidResult.status === 'invalid') {
-                pushLogEntry({
-                  kind: 'system',
-                  message: `${tag} skipped outbid — copied bid is invalid: ${bidResult.reason}`,
-                  severity: 'warning',
-                  meta: {
-                    orderId: matched.order.id,
-                    labelSnapshot: formatOrderLabelSnapshot(tag),
-                    formattedPrefix: tag,
-                    verb: 'bid',
-                    highlight: `skipped, copied bid invalid`,
+            )
+              .then((bidResult) => {
+                if (bidResult.status === 'invalid') {
+                  // Invalid bid — mark permanently so we never retry
+                  markBidProcessed(bidDedupeKey);
+                  pushLogEntry({
+                    kind: 'system',
+                    message: `${tag} skipped outbid — copied bid is invalid: ${bidResult.reason}`,
+                    severity: 'warning',
+                    meta: {
+                      orderId: matched.order.id,
+                      labelSnapshot: formatOrderLabelSnapshot(tag),
+                      formattedPrefix: tag,
+                      verb: 'bid',
+                      highlight: `skipped, copied bid invalid`,
+                    },
+                    dedupeKey: `spoofcheck:${bidDedupeKey}`,
+                  });
+                  return;
+                }
+                // Valid or unverified — proceed with outbid
+                // dedupeKey passed to triggerAutoBidSubmission marks as processed on successful signature
+                void triggerAutoBidSubmission({
+                  order: matched.order,
+                  source: 'copy_trade',
+                  auctionId,
+                  auctionContext: cachedContext,
+                  copyBidContext: {
+                    copiedBidCollateral: String(
+                      bidRecord?.counterpartyCollateral ?? '0'
+                    ),
+                    increment: matched.order.increment ?? 1,
                   },
-                  dedupeKey: `spoofcheck:${bidDedupeKey}`,
+                  dedupeKey: bidDedupeKey,
                 });
-                return;
-              }
-              // Valid or unverified — proceed with outbid
-              void triggerAutoBidSubmission({
-                order: matched.order,
-                source: 'copy_trade',
-                auctionId,
-                auctionContext: cachedContext,
-                copyBidContext: {
-                  copiedBidCollateral: String(
-                    bidRecord?.counterpartyCollateral ?? '0'
-                  ),
-                  increment: matched.order.increment ?? 1,
-                },
-                dedupeKey: bidDedupeKey,
+              })
+              .catch(() => {
+                // Validation threw — remove from in-flight so it can be retried
+                validatingBidsRef.current.delete(bidDedupeKey);
               });
-            });
           } else {
             // No verifying contract or missing data — proceed without validation
             void triggerAutoBidSubmission({

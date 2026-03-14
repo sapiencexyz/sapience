@@ -103,7 +103,7 @@ export async function preprocessBids<T extends BidPayload>(
             bid,
             validationStatus: 'unverified',
             validationError: 'Validation threw an unexpected error',
-            validationCode: 'VALIDATION_ERROR' as ValidationErrorCode,
+            validationCode: 'VALIDATION_ERROR',
           };
         }
       })
