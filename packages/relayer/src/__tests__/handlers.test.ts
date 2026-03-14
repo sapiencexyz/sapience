@@ -400,6 +400,17 @@ describe('Escrow Handlers', () => {
         })
       );
     });
+
+    it('does not decrement metric when client was not subscribed', () => {
+      const client = mockClient();
+      const subs = mockSubs();
+      vi.mocked(subs.unsubscribe).mockReturnValue(false);
+
+      handleAuctionUnsubscribe(client, 'abc-123', subs);
+
+      expect(subs.unsubscribe).toHaveBeenCalledWith('auction:abc-123', client);
+      expect(subscriptionsActive.dec).not.toHaveBeenCalled();
+    });
   });
 
   describe('handleBidSubmit', () => {

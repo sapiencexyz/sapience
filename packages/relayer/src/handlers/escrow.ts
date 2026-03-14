@@ -181,8 +181,8 @@ export function handleAuctionUnsubscribe(
   subs: SubscriptionManager
 ): void {
   if (typeof auctionId === 'string' && auctionId.length > 0) {
-    subs.unsubscribe(`auction:${auctionId}`, client);
-    subscriptionsActive.dec({ subscription_type: 'auction' });
+    const wasRemoved = subs.unsubscribe(`auction:${auctionId}`, client);
+    if (wasRemoved) subscriptionsActive.dec({ subscription_type: 'auction' });
     client.send({
       type: 'auction.ack',
       payload: { auctionId, unsubscribed: true },
