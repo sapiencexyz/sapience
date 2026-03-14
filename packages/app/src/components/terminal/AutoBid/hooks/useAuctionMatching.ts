@@ -1,6 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { parseUnits, formatUnits } from 'viem';
-import type { Address } from 'viem';
+import { parseUnits, formatUnits, type PublicClient } from 'viem';
 import type { Order } from '../types';
 import type { PushLogEntryParams } from '~/components/terminal/TerminalLogsContext';
 import {
@@ -16,9 +15,8 @@ import type {
   EscrowBidSubmissionParams,
   EscrowBidSubmissionResult,
 } from '~/hooks/auction/useEscrowBidSubmission';
-import { validateBid } from '@sapience/sdk/auction/validation';
-import { predictionMarketEscrow } from '@sapience/sdk/contracts';
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { validateBidFull } from '@sapience/sdk/auction/validation';
+import { getPublicClientForChainId } from '~/lib/utils/util';
 
 /** Shape of the data payload from auction WebSocket messages */
 interface AuctionMessageData {
@@ -83,6 +81,9 @@ type UseAuctionMatchingParams = {
   submitBid: (
     params: EscrowBidSubmissionParams
   ) => Promise<EscrowBidSubmissionResult>;
+  predictionMarketAddress?: `0x${string}`;
+  collateralTokenAddress?: `0x${string}`;
+  chainId: number;
 };
 
 export function useAuctionMatching({
@@ -99,6 +100,9 @@ export function useAuctionMatching({
   auctionMessages,
   formatCollateralAmount,
   submitBid,
+  predictionMarketAddress,
+  collateralTokenAddress,
+  chainId,
 }: UseAuctionMatchingParams) {
   const processedMessageIdsRef = useRef<Set<number>>(new Set());
   const processedMessageQueueRef = useRef<number[]>([]);
@@ -612,9 +616,12 @@ export function useAuctionMatching({
         });
         if (!readiness.blocked) {
           // Validate the copied bid before outbidding (anti-spoofing)
-          const verifyingContract = predictionMarketEscrow[DEFAULT_CHAIN_ID]
-            ?.address as Address | undefined;
-          if (verifyingContract && signature && cachedContext.escrowPicks) {
+          if (
+            predictionMarketAddress &&
+            collateralTokenAddress &&
+            signature &&
+            cachedContext.escrowPicks
+          ) {
             // Mark as in-flight to prevent duplicate submissions during async validation
             validatingBidsRef.current.add(bidDedupeKey);
 
@@ -630,18 +637,23 @@ export function useAuctionMatching({
               ),
               counterpartySignature: signature,
             };
-            // Tier 1 offline validation — no RPC needed, fast
-            validateBid(
+            // Tier 1 + Tier 2 validation — signature + on-chain state
+            validateBidFull(
               bidPayload,
               {
                 picks: cachedContext.escrowPicks,
                 predictorCollateral: cachedContext.predictorCollateral,
                 predictor: cachedContext.predictor,
-                chainId: DEFAULT_CHAIN_ID,
+                chainId,
               },
               {
-                verifyingContract,
-                chainId: DEFAULT_CHAIN_ID,
+                verifyingContract: predictionMarketAddress,
+                chainId,
+                predictionMarketAddress,
+                collateralTokenAddress,
+                publicClient: getPublicClientForChainId(
+                  chainId
+                ) as PublicClient,
               }
             )
               .then((bidResult) => {
@@ -703,10 +715,13 @@ export function useAuctionMatching({
       });
     },
     [
+      chainId,
+      collateralTokenAddress,
       evaluateAutoBidReadiness,
       getOrderIndex,
       markBidProcessed,
       orders,
+      predictionMarketAddress,
       pushLogEntry,
       tokenDecimals,
       triggerAutoBidSubmission,

@@ -29,10 +29,6 @@ vi.mock('~/lib/utils/util', () => ({
     mockGetPublicClientForChainId(...args),
 }));
 
-vi.mock('@sapience/sdk/constants', () => ({
-  PREFERRED_ESTIMATE_QUOTER: MOCK_ESTIMATOR_ADDRESS,
-}));
-
 // ---- helpers ----
 
 /**
@@ -165,9 +161,9 @@ describe('usePreprocessedBids', () => {
     expect(result.current.excludedBidCount).toBe(2);
   });
 
-  // ---- 3. Estimator bid filtering ----
+  // ---- 3. Estimator bids go through normal validation ----
 
-  it('marks estimator bids as valid without calling validateBidFull', async () => {
+  it('validates estimator bids through validateBidFull like any other bid', async () => {
     const estimatorBid = makeBid({
       counterparty: MOCK_ESTIMATOR_ADDRESS,
       counterpartySignature: '0xestimator',
@@ -179,17 +175,67 @@ describe('usePreprocessedBids', () => {
 
     await flush();
 
-    // Estimator bid should be valid
-    const estBid = result.current.processedBids.find(
-      (b) => b.counterpartySignature === '0xestimator'
+    // Both bids should have been validated
+    expect(mockValidateBidFull).toHaveBeenCalledTimes(2);
+    const validatedSigs = mockValidateBidFull.mock.calls.map(
+      (call: unknown[]) =>
+        (call[0] as { counterpartySignature: string }).counterpartySignature
     );
-    expect(estBid?.validationStatus).toBe('valid');
+    expect(validatedSigs).toContain('0xestimator');
+    expect(validatedSigs).toContain('0xnormal');
 
-    // validateBidFull should NOT have been called for the estimator bid
-    expect(mockValidateBidFull).toHaveBeenCalledTimes(1);
-    expect(mockValidateBidFull.mock.calls[0][0].counterpartySignature).toBe(
-      '0xnormal'
+    // Both should be valid (mock returns valid by default)
+    expect(result.current.processedBids).toHaveLength(2);
+    expect(allResolved(result.current.processedBids)).toBe(true);
+  });
+
+  it('excludes estimator bids from validBids when validation fails (e.g. insufficient funds)', async () => {
+    mockValidateBidFull.mockImplementation(
+      async (bid: { counterparty: string }) => {
+        if (bid.counterparty === MOCK_ESTIMATOR_ADDRESS) {
+          return {
+            status: 'invalid',
+            code: 'INSUFFICIENT_BALANCE',
+            reason: 'market maker has insufficient balance',
+          };
+        }
+        return { status: 'valid' };
+      }
     );
+
+    const estimatorBid = makeBid({
+      counterparty: MOCK_ESTIMATOR_ADDRESS,
+      counterpartySignature: '0xestimator_nofunds',
+      counterpartyDeadline: Math.floor(Date.now() / 1000) + 7200,
+    });
+    const normalBid = makeBid({
+      counterpartySignature: '0xnormal_include',
+      counterpartyDeadline: Math.floor(Date.now() / 1000) + 7200,
+    });
+    const bids = [estimatorBid, normalBid];
+
+    const { result } = renderStable(bids);
+
+    await flush();
+
+    // Estimator bid should be invalid in processedBids
+    const estProcessed = result.current.processedBids.find(
+      (b) => b.counterpartySignature === '0xestimator_nofunds'
+    );
+    expect(estProcessed?.validationStatus).toBe('invalid');
+    expect(estProcessed?.validationError).toContain('insufficient balance');
+
+    // Estimator bid should NOT be in validBids
+    const estValid = result.current.validBids.find(
+      (b) => b.counterpartySignature === '0xestimator_nofunds'
+    );
+    expect(estValid).toBeUndefined();
+
+    // Normal bid should still be in validBids
+    const normalValid = result.current.validBids.find(
+      (b) => b.counterpartySignature === '0xnormal_include'
+    );
+    expect(normalValid).toBeDefined();
   });
 
   // ---- 4. Zero-address filtering ----

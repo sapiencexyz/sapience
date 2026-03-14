@@ -56,6 +56,7 @@ interface AuctionMessageData {
   resolver?: string;
   predictedOutcomes?: string[];
   predictorNonce?: number | string;
+  intentSignature?: string;
   picks?: Array<{
     conditionResolver: string;
     conditionId: string;
@@ -737,8 +738,8 @@ const TerminalPageContent: React.FC = () => {
           return false;
       }
 
-      // Check signed filter (escrow auctions are always signed)
-      const isSigned = true;
+      // Check signed filter — signed means predictor provided an EIP-712 intentSignature
+      const isSigned = !!auctionData?.intentSignature;
       if (signedFilter === 'signed' && !isSigned) return false;
       if (signedFilter === 'unsigned' && isSigned) return false;
 
