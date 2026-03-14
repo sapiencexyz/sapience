@@ -243,6 +243,124 @@ describe('preprocessBids', () => {
 
     expect(result[0].bid).toBe(bid);
   });
+
+  test('error isolation: thrown error produces validationCode VALIDATION_ERROR', async () => {
+    mockValidateBidFull.mockRejectedValueOnce(new Error('RPC exploded'));
+
+    const bids = [makeBid()];
+    const result = await preprocessBids(bids, AUCTION_CONTEXT, DEFAULT_OPTS);
+
+    expect(result[0].validationStatus).toBe('unverified');
+    expect(result[0].validationCode).toBe('VALIDATION_ERROR');
+  });
+
+  test('single bid that throws yields one unverified result', async () => {
+    mockValidateBidFull.mockRejectedValueOnce(new Error('network error'));
+
+    const bids = [makeBid({ counterpartySignature: '0xonly' })];
+    const result = await preprocessBids(bids, AUCTION_CONTEXT, DEFAULT_OPTS);
+
+    expect(result).toHaveLength(1);
+    expect(result[0].validationStatus).toBe('unverified');
+  });
+
+  test('all bids throw: all results are unverified, batch still completes', async () => {
+    mockValidateBidFull.mockRejectedValue(new Error('total failure'));
+
+    const bids = Array.from({ length: 4 }, (_, i) =>
+      makeBid({ counterpartySignature: `0xsig${i}` })
+    );
+
+    const result = await preprocessBids(bids, AUCTION_CONTEXT, DEFAULT_OPTS);
+
+    expect(result).toHaveLength(4);
+    expect(result.every((r) => r.validationStatus === 'unverified')).toBe(true);
+  });
+
+  test('default concurrency is 5: no more than 5 concurrent with 10+ bids', async () => {
+    let concurrent = 0;
+    let maxConcurrent = 0;
+
+    mockValidateBidFull.mockImplementation(async () => {
+      concurrent++;
+      maxConcurrent = Math.max(maxConcurrent, concurrent);
+      await new Promise((r) => setTimeout(r, 10));
+      concurrent--;
+      return { status: 'valid' };
+    });
+
+    const bids = Array.from({ length: 12 }, (_, i) =>
+      makeBid({ counterpartySignature: `0xsig${i}` })
+    );
+
+    // No concurrency option — should use the default of 5
+    await preprocessBids(bids, AUCTION_CONTEXT, DEFAULT_OPTS);
+
+    expect(maxConcurrent).toBeLessThanOrEqual(5);
+    expect(mockValidateBidFull).toHaveBeenCalledTimes(12);
+  });
+
+  test('concurrency of 1 processes bids sequentially', async () => {
+    const order: number[] = [];
+    let concurrent = 0;
+    let maxConcurrent = 0;
+
+    mockValidateBidFull.mockImplementation(async (_bid, _ctx, _opts) => {
+      concurrent++;
+      maxConcurrent = Math.max(maxConcurrent, concurrent);
+      order.push(concurrent);
+      await new Promise((r) => setTimeout(r, 5));
+      concurrent--;
+      return { status: 'valid' };
+    });
+
+    const bids = Array.from({ length: 6 }, (_, i) =>
+      makeBid({ counterpartySignature: `0xsig${i}` })
+    );
+
+    await preprocessBids(bids, AUCTION_CONTEXT, {
+      ...DEFAULT_OPTS,
+      concurrency: 1,
+    });
+
+    expect(maxConcurrent).toBe(1);
+    expect(mockValidateBidFull).toHaveBeenCalledTimes(6);
+  });
+
+  test('deduplication keeps first occurrence data', async () => {
+    const firstBid = makeBid({
+      counterpartySignature: '0xdupesig',
+      counterpartyCollateral: '111111111',
+    });
+    const secondBid = makeBid({
+      counterpartySignature: '0xdupesig',
+      counterpartyCollateral: '999999999',
+    });
+
+    const result = await preprocessBids(
+      [firstBid, secondBid],
+      AUCTION_CONTEXT,
+      DEFAULT_OPTS
+    );
+
+    // Only one result after dedup
+    expect(result).toHaveLength(1);
+    // The result's bid is the first occurrence
+    expect(result[0].bid).toBe(firstBid);
+    expect(result[0].bid.counterpartyCollateral).toBe('111111111');
+  });
+
+  test('large batch (50 bids) processes correctly with default concurrency', async () => {
+    const bids = Array.from({ length: 50 }, (_, i) =>
+      makeBid({ counterpartySignature: `0xsig${i}` })
+    );
+
+    const result = await preprocessBids(bids, AUCTION_CONTEXT, DEFAULT_OPTS);
+
+    expect(result).toHaveLength(50);
+    expect(mockValidateBidFull).toHaveBeenCalledTimes(50);
+    expect(result.every((r) => r.validationStatus === 'valid')).toBe(true);
+  });
 });
 
 describe('getValidBids', () => {
@@ -306,5 +424,36 @@ describe('getExcludedBidCount', () => {
     ];
 
     expect(getExcludedBidCount(processed)).toBe(0);
+  });
+});
+
+describe('generic type preservation', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockValidateBidFull.mockResolvedValue({ status: 'valid' });
+  });
+
+  test('ProcessedBid<T> preserves extended BidPayload fields', async () => {
+    interface ExtendedBid extends BidPayload {
+      customScore: number;
+      source: string;
+    }
+
+    const extendedBid: ExtendedBid = {
+      ...makeBid({ counterpartySignature: '0xext1' }),
+      customScore: 42,
+      source: 'market-maker',
+    };
+
+    const result = await preprocessBids<ExtendedBid>(
+      [extendedBid],
+      AUCTION_CONTEXT,
+      DEFAULT_OPTS
+    );
+
+    expect(result).toHaveLength(1);
+    expect(result[0].bid.customScore).toBe(42);
+    expect(result[0].bid.source).toBe('market-maker');
+    expect(result[0].validationStatus).toBe('valid');
   });
 });
