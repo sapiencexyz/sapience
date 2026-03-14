@@ -112,7 +112,8 @@ export default function CollateralBalanceButton({
   });
 
   // Sponsorship budget
-  const { isSponsored, remainingBudget } = useSponsorStatus();
+  const { isSponsored, remainingBudget, isLoading: isSponsorLoading } =
+    useSponsorStatus();
   const sponsorBudgetFormatted = isSponsored
     ? formatDollarLikeBalance(formatUnits(remainingBudget, 18))
     : '0.00';
@@ -368,10 +369,14 @@ export default function CollateralBalanceButton({
     : eoaBalance;
 
   // Show FUND ACCOUNT button when in smart account mode with zero balance (and not still loading)
+  // If the user has a sponsorship, show the balance display with gift icon instead
+  // Also wait for sponsor status to load to avoid flashing "Fund Account"
   const showFundButton =
     isUsingSmartAccount &&
     smartAccountBalance === 0 &&
-    !isSmartAccountBalanceLoading;
+    !isSmartAccountBalanceLoading &&
+    !isSponsored &&
+    !isSponsorLoading;
 
   return (
     <div className={`flex w-fit mx-3 xl:mx-0 mt-0 ${className ?? ''}`}>

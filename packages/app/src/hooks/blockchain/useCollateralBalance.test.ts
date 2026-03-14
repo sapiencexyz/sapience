@@ -1,16 +1,17 @@
+import { vi } from 'vitest';
 import { renderHook } from '@testing-library/react';
 import { useCollateralBalance } from './useCollateralBalance';
 
 // Mock wagmi
-const mockUseReadContract = jest.fn();
-const mockUseBalance = jest.fn();
-jest.mock('wagmi', () => ({
+const mockUseReadContract = vi.fn();
+const mockUseBalance = vi.fn();
+vi.mock('wagmi', () => ({
   useReadContract: (...args: unknown[]) => mockUseReadContract(...args),
   useBalance: (...args: unknown[]) => mockUseBalance(...args),
 }));
 
 // Mock viem - avoid jsdom issues with formatUnits
-jest.mock('viem', () => ({
+vi.mock('viem', () => ({
   erc20Abi: [],
   formatUnits: (value: bigint, decimals: number) => {
     return (Number(value) / 10 ** decimals).toString();
@@ -18,14 +19,14 @@ jest.mock('viem', () => ({
 }));
 
 // Mock SDK constants
-jest.mock('@sapience/sdk/constants', () => ({
+vi.mock('@sapience/sdk/constants', () => ({
   COLLATERAL_SYMBOLS: { 5064014: 'USDe', 13374202: 'USDe', 42161: 'testUSDe' },
   CHAIN_ID_ETHEREAL: 5064014,
   CHAIN_ID_ETHEREAL_TESTNET: 13374202,
   DEFAULT_CHAIN_ID: 5064014,
 }));
 
-jest.mock('@sapience/sdk/contracts', () => ({
+vi.mock('@sapience/sdk/contracts', () => ({
   collateralToken: {
     42161: { address: '0xCollateral42161' },
   },
@@ -37,18 +38,18 @@ function setupDefaults() {
   mockUseBalance.mockReturnValue({
     data: undefined,
     isLoading: false,
-    refetch: jest.fn(),
+    refetch: vi.fn(),
   });
   mockUseReadContract.mockReturnValue({
     data: undefined,
     isLoading: false,
-    refetch: jest.fn(),
+    refetch: vi.fn(),
   });
 }
 
 describe('useCollateralBalance', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     setupDefaults();
   });
 
@@ -82,19 +83,19 @@ describe('useCollateralBalance', () => {
     mockUseBalance.mockReturnValue({
       data: { formatted: '1.5', value: 1500000000000000000n, decimals: 18 },
       isLoading: false,
-      refetch: jest.fn(),
+      refetch: vi.fn(),
     });
     // useReadContract calls: wusde balanceOf, erc20 balanceOf
     mockUseReadContract
       .mockReturnValueOnce({
         data: 2000000000000000000n,
         isLoading: false,
-        refetch: jest.fn(),
+        refetch: vi.fn(),
       }) // wusde balanceOf
       .mockReturnValueOnce({
         data: undefined,
         isLoading: false,
-        refetch: jest.fn(),
+        refetch: vi.fn(),
       }); // erc20 balanceOf (disabled)
 
     const { result } = renderHook(() =>
@@ -109,19 +110,19 @@ describe('useCollateralBalance', () => {
     mockUseBalance.mockReturnValue({
       data: undefined,
       isLoading: false,
-      refetch: jest.fn(),
+      refetch: vi.fn(),
     });
     // useReadContract calls: wusde balanceOf (disabled), erc20 balanceOf
     mockUseReadContract
       .mockReturnValueOnce({
         data: undefined,
         isLoading: false,
-        refetch: jest.fn(),
+        refetch: vi.fn(),
       }) // wusde balanceOf (disabled)
       .mockReturnValueOnce({
         data: 5000000000000000000n,
         isLoading: false,
-        refetch: jest.fn(),
+        refetch: vi.fn(),
       }); // erc20 balanceOf
 
     const { result } = renderHook(() =>
@@ -136,7 +137,7 @@ describe('useCollateralBalance', () => {
     mockUseBalance.mockReturnValue({
       data: undefined,
       isLoading: true,
-      refetch: jest.fn(),
+      refetch: vi.fn(),
     });
 
     const { result } = renderHook(() =>
@@ -150,19 +151,19 @@ describe('useCollateralBalance', () => {
     mockUseBalance.mockReturnValue({
       data: undefined,
       isLoading: false,
-      refetch: jest.fn(),
+      refetch: vi.fn(),
     });
     // useReadContract calls: wusde balanceOf (disabled), erc20 balanceOf (loading)
     mockUseReadContract
       .mockReturnValueOnce({
         data: undefined,
         isLoading: false,
-        refetch: jest.fn(),
+        refetch: vi.fn(),
       }) // wusde balanceOf (disabled)
       .mockReturnValueOnce({
         data: undefined,
         isLoading: true,
-        refetch: jest.fn(),
+        refetch: vi.fn(),
       }); // erc20 balanceOf loading
 
     const { result } = renderHook(() =>
@@ -183,19 +184,19 @@ describe('useCollateralBalance', () => {
     mockUseBalance.mockReturnValue({
       data: { formatted: '1.5', value: 1500000000000000000n, decimals: 18 },
       isLoading: false,
-      refetch: jest.fn(),
+      refetch: vi.fn(),
     });
     // useReadContract calls: wusde balanceOf, erc20 balanceOf
     mockUseReadContract
       .mockReturnValueOnce({
         data: 2000000000000000000n,
         isLoading: false,
-        refetch: jest.fn(),
+        refetch: vi.fn(),
       }) // wusde balanceOf
       .mockReturnValueOnce({
         data: undefined,
         isLoading: false,
-        refetch: jest.fn(),
+        refetch: vi.fn(),
       }); // erc20 balanceOf (disabled)
 
     const { result } = renderHook(() =>
@@ -205,9 +206,9 @@ describe('useCollateralBalance', () => {
   });
 
   it('refetch() calls the correct underlying refetch fns per chain', () => {
-    const refetchNative = jest.fn();
-    const refetchWusde = jest.fn();
-    const refetchErc20 = jest.fn();
+    const refetchNative = vi.fn();
+    const refetchWusde = vi.fn();
+    const refetchErc20 = vi.fn();
 
     // Ethereal chain: refetchNative and refetchWusde should be called
     mockUseBalance.mockReturnValue({
@@ -238,8 +239,8 @@ describe('useCollateralBalance', () => {
   });
 
   it('refetch() calls erc20 refetch on non-Ethereal chain', () => {
-    const refetchNative = jest.fn();
-    const refetchErc20 = jest.fn();
+    const refetchNative = vi.fn();
+    const refetchErc20 = vi.fn();
 
     mockUseBalance.mockReturnValue({
       data: undefined,
@@ -251,7 +252,7 @@ describe('useCollateralBalance', () => {
       .mockReturnValueOnce({
         data: undefined,
         isLoading: false,
-        refetch: jest.fn(),
+        refetch: vi.fn(),
       }) // wusde balanceOf (disabled)
       .mockReturnValueOnce({
         data: undefined,

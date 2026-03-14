@@ -34,12 +34,20 @@ contract DebugV2Hashes is Script {
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](2);
         picks[0] = IV2Types.Pick({
             conditionResolver: 0x514A4321d89Aa47D1b1Dd9E0a3226249E6ef896A,
-            conditionId: 0x989603653056b8f9008bee9e97c0a757697ce0bee0410a8516008e41656037cd,
+            conditionId: abi.encode(
+                bytes32(
+                    0x989603653056b8f9008bee9e97c0a757697ce0bee0410a8516008e41656037cd
+                )
+            ),
             predictedOutcome: IV2Types.OutcomeSide.YES
         });
         picks[1] = IV2Types.Pick({
             conditionResolver: 0x514A4321d89Aa47D1b1Dd9E0a3226249E6ef896A,
-            conditionId: 0xa8cf9bbc27d7def898d24e05d684f2bc95aa563ebf497998cfd5edb5f995a228,
+            conditionId: abi.encode(
+                bytes32(
+                    0xa8cf9bbc27d7def898d24e05d684f2bc95aa563ebf497998cfd5edb5f995a228
+                )
+            ),
             predictedOutcome: IV2Types.OutcomeSide.YES
         });
 

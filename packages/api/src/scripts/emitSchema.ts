@@ -10,7 +10,7 @@
  */
 
 import 'reflect-metadata';
-import { buildSchema } from 'type-graphql';
+import { buildSchema, type NonEmptyArray } from 'type-graphql';
 import { relationResolvers } from '@generated/type-graphql';
 import {
   FindManyAttestationResolver,
@@ -57,8 +57,8 @@ const allResolvers: Function[] = [
 ];
 
 await buildSchema({
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  resolvers: allResolvers as any,
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type -- type-graphql's buildSchema API requires NonEmptyArray<Function>
+  resolvers: allResolvers as NonEmptyArray<Function>,
   validate: false,
   emitSchemaFile: true,
 });

@@ -228,7 +228,7 @@ contract PredictionMarketEscrow is
                 request.predictorSignature,
                 request.predictorSessionKeyData
             )) {
-            revert InvalidSignature();
+            revert InvalidPredictorSignature();
         }
         // Validate counterparty signature (EOA or session key)
         if (!_validatePartySignature(
@@ -240,7 +240,7 @@ contract PredictionMarketEscrow is
                 request.counterpartySignature,
                 request.counterpartySessionKeyData
             )) {
-            revert InvalidSignature();
+            revert InvalidCounterpartSignature();
         }
 
         // Use bitmap nonces (reverts if already used)
@@ -474,7 +474,7 @@ contract PredictionMarketEscrow is
                 request.predictorSignature,
                 request.predictorSessionKeyData
             )) {
-            revert InvalidSignature();
+            revert InvalidPredictorSignature();
         }
         // Validate counterparty signature
         if (!_validateBurnPartySignature(
@@ -487,7 +487,7 @@ contract PredictionMarketEscrow is
                 request.counterpartySignature,
                 request.counterpartySessionKeyData
             )) {
-            revert InvalidSignature();
+            revert InvalidCounterpartSignature();
         }
 
         // Use bitmap nonces (reverts if already used)
@@ -863,6 +863,50 @@ contract PredictionMarketEscrow is
         return _tokenToPickConfig[token];
     }
 
+    /// @inheritdoc IPredictionMarketEscrow
+    function verifyMintPartySignature(
+        bytes32 predictionHash,
+        address signer,
+        uint256 collateral,
+        uint256 nonce,
+        uint256 deadline,
+        bytes calldata signature,
+        bytes calldata sessionKeyData
+    ) external view returns (bool isValid) {
+        return _validatePartySignature(
+            predictionHash,
+            signer,
+            collateral,
+            nonce,
+            deadline,
+            signature,
+            sessionKeyData
+        );
+    }
+
+    /// @inheritdoc IPredictionMarketEscrow
+    function verifyBurnPartySignature(
+        bytes32 burnHash,
+        address signer,
+        uint256 tokenAmount,
+        uint256 payout,
+        uint256 nonce,
+        uint256 deadline,
+        bytes calldata signature,
+        bytes calldata sessionKeyData
+    ) external view returns (bool isValid) {
+        return _validateBurnPartySignature(
+            burnHash,
+            signer,
+            tokenAmount,
+            payout,
+            nonce,
+            deadline,
+            signature,
+            sessionKeyData
+        );
+    }
+
     // ============ Internal: Nonce Management ============
 
     /// @notice Mark a nonce as used (Permit2-style bitmap)
@@ -984,8 +1028,11 @@ contract PredictionMarketEscrow is
                     revert PicksNotCanonical();
                 }
                 if (prev.conditionResolver == curr.conditionResolver) {
-                    if (prev.conditionId >= curr.conditionId) {
-                        if (prev.conditionId == curr.conditionId) {
+                    // Use keccak256 for canonical ordering of variable-length conditionIds
+                    bytes32 prevHash = keccak256(prev.conditionId);
+                    bytes32 currHash = keccak256(curr.conditionId);
+                    if (prevHash >= currHash) {
+                        if (prevHash == currHash) {
                             revert DuplicatePick();
                         }
                         revert PicksNotCanonical();
@@ -1090,7 +1137,7 @@ contract PredictionMarketEscrow is
         returns (bool canResolve, IV2Types.SettlementResult result)
     {
         // Build array of condition IDs
-        bytes32[] memory conditionIds = new bytes32[](numPicks);
+        bytes[] memory conditionIds = new bytes[](numPicks);
         for (uint256 i = 0; i < numPicks; i++) {
             conditionIds[i] = picks[i].conditionId;
         }

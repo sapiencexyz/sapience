@@ -141,7 +141,8 @@ const AuctionBidsChart: React.FC<Props> = ({
               }[];
             };
           }
-          const key = `${String((b as any)?.id ?? (b as any)?.predictorTxHash ?? start)}-${end}`;
+          const bRecord = b as Record<string, unknown>;
+          const key = `${String(bRecord?.id ?? bRecord?.predictorTxHash ?? start)}-${end}`;
           return {
             key,
             start,
@@ -362,12 +363,12 @@ const AuctionBidsChart: React.FC<Props> = ({
             allowDecimals={false}
             height={20}
             tickMargin={6}
-            tick={(props: any) => {
-              const { x, y, payload } = props as {
-                x: number;
-                y: number;
-                payload: { value: number };
-              };
+            tick={(props: {
+              x: number;
+              y: number;
+              payload: { value: number };
+            }) => {
+              const { x, y, payload } = props;
               const v = payload?.value;
               let label = '';
               let textAnchor: 'start' | 'middle' | 'end' = 'middle';

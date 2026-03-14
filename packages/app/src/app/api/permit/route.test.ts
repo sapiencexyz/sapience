@@ -1,10 +1,11 @@
+import { vi } from 'vitest';
 import { GET, OPTIONS } from './route';
 
 describe('api/permit edge route', () => {
   const originalEnv = process.env;
 
   beforeEach(() => {
-    jest.resetModules();
+    vi.resetModules();
     process.env = { ...originalEnv };
   });
 

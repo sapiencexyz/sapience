@@ -87,7 +87,8 @@ contract PredictionMarketEscrowERC1271Test is Test {
         PREDICTOR_COLLATERAL + COUNTERPARTY_COLLATERAL;
     bytes32 public constant REF_CODE = keccak256("test-ref-code");
 
-    bytes32 public conditionId1;
+    bytes32 public rawConditionId1;
+    bytes public conditionId1;
 
     uint256 private _nextNonce = 1;
 
@@ -122,7 +123,8 @@ contract PredictionMarketEscrowERC1271Test is Test {
         resolver.approveSettler(settler);
 
         // Create condition ID
-        conditionId1 = keccak256(abi.encode("condition-1"));
+        rawConditionId1 = keccak256(abi.encode("condition-1"));
+        conditionId1 = abi.encode(rawConditionId1);
 
         // Deploy smart accounts (owned by predictor/counterparty EOAs)
         predictorSmartAccount = new MockSmartAccount(predictor);
@@ -149,11 +151,10 @@ contract PredictionMarketEscrowERC1271Test is Test {
 
     // ============ Helper Functions ============
 
-    function _createPick(bytes32 _conditionId, IV2Types.OutcomeSide _outcome)
-        internal
-        view
-        returns (IV2Types.Pick memory)
-    {
+    function _createPick(
+        bytes memory _conditionId,
+        IV2Types.OutcomeSide _outcome
+    ) internal view returns (IV2Types.Pick memory) {
         return IV2Types.Pick({
             conditionResolver: address(resolver),
             conditionId: _conditionId,
@@ -538,7 +539,9 @@ contract PredictionMarketEscrowERC1271Test is Test {
             counterpartyPk // Wrong key!
         );
 
-        vm.expectRevert(IPredictionMarketEscrow.InvalidSignature.selector);
+        vm.expectRevert(
+            IPredictionMarketEscrow.InvalidPredictorSignature.selector
+        );
         market.mint(request);
     }
 
@@ -605,7 +608,9 @@ contract PredictionMarketEscrowERC1271Test is Test {
         request.predictorSponsorData = "";
 
         // Should fail because the contract doesn't implement EIP-1271
-        vm.expectRevert(IPredictionMarketEscrow.InvalidSignature.selector);
+        vm.expectRevert(
+            IPredictionMarketEscrow.InvalidPredictorSignature.selector
+        );
         market.mint(request);
     }
 
@@ -672,7 +677,9 @@ contract PredictionMarketEscrowERC1271Test is Test {
         request.predictorSponsorData = "";
 
         // Should fail gracefully (catch block in _isEIP1271SignatureValid)
-        vm.expectRevert(IPredictionMarketEscrow.InvalidSignature.selector);
+        vm.expectRevert(
+            IPredictionMarketEscrow.InvalidPredictorSignature.selector
+        );
         market.mint(request);
     }
 
@@ -712,7 +719,7 @@ contract PredictionMarketEscrowERC1271Test is Test {
 
         // Settle condition to YES (predictor wins)
         vm.prank(settler);
-        resolver.settleCondition(conditionId1, IV2Types.OutcomeVector(1, 0));
+        resolver.settleCondition(rawConditionId1, IV2Types.OutcomeVector(1, 0));
 
         // Settle prediction
         market.settle(predictionId, REF_CODE);
@@ -745,7 +752,7 @@ contract PredictionMarketEscrowERC1271Test is Test {
 
         // Settle condition to NO (counterparty wins)
         vm.prank(settler);
-        resolver.settleCondition(conditionId1, IV2Types.OutcomeVector(0, 1));
+        resolver.settleCondition(rawConditionId1, IV2Types.OutcomeVector(0, 1));
 
         // Settle prediction
         market.settle(predictionId, REF_CODE);
@@ -781,7 +788,7 @@ contract PredictionMarketEscrowERC1271Test is Test {
 
         // Settle condition to TIE
         vm.prank(settler);
-        resolver.settleCondition(conditionId1, IV2Types.OutcomeVector(1, 1));
+        resolver.settleCondition(rawConditionId1, IV2Types.OutcomeVector(1, 1));
 
         // Settle prediction
         market.settle(predictionId, REF_CODE);

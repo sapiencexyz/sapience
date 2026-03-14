@@ -296,7 +296,7 @@ export function useSapienceWriteContract({
         onTxHash?.(hash);
         setTxHash(hash);
       } else {
-        onSuccess?.(undefined as any);
+        onSuccess?.(undefined);
       }
 
       if (!disableAutoRedirect) {

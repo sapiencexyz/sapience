@@ -201,7 +201,7 @@ contract PredictionMarketVaultIntegrationTest is Test {
         request.predictorSponsorData = "";
     }
 
-    function _createPick(bytes32 conditionId, IV2Types.OutcomeSide outcome)
+    function _createPick(bytes memory conditionId, IV2Types.OutcomeSide outcome)
         internal
         view
         returns (IV2Types.Pick memory)
@@ -228,7 +228,8 @@ contract PredictionMarketVaultIntegrationTest is Test {
 
         // Create prediction with vault as counterparty
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
-        picks[0] = _createPick(conditionId, IV2Types.OutcomeSide.YES);
+        picks[0] =
+            _createPick(abi.encode(conditionId), IV2Types.OutcomeSide.YES);
 
         IV2Types.MintRequest memory request =
             _createMintRequestWithVaultCounterparty(
@@ -298,7 +299,8 @@ contract PredictionMarketVaultIntegrationTest is Test {
 
         // Create prediction with vault as counterparty
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
-        picks[0] = _createPick(conditionId, IV2Types.OutcomeSide.YES);
+        picks[0] =
+            _createPick(abi.encode(conditionId), IV2Types.OutcomeSide.YES);
 
         IV2Types.MintRequest memory request =
             _createMintRequestWithVaultCounterparty(
@@ -341,7 +343,8 @@ contract PredictionMarketVaultIntegrationTest is Test {
         vault.approveFundsUsage(address(market), COUNTERPARTY_COLLATERAL);
 
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
-        picks[0] = _createPick(conditionId, IV2Types.OutcomeSide.YES);
+        picks[0] =
+            _createPick(abi.encode(conditionId), IV2Types.OutcomeSide.YES);
 
         IV2Types.MintRequest memory request =
             _createMintRequestWithVaultCounterparty(
@@ -401,7 +404,8 @@ contract PredictionMarketVaultIntegrationTest is Test {
 
         // Create first prediction
         IV2Types.Pick[] memory picks1 = new IV2Types.Pick[](1);
-        picks1[0] = _createPick(conditionId1, IV2Types.OutcomeSide.YES);
+        picks1[0] =
+            _createPick(abi.encode(conditionId1), IV2Types.OutcomeSide.YES);
         IV2Types.MintRequest memory request1 =
             _createMintRequestWithVaultCounterparty(
                 picks1, PREDICTOR_COLLATERAL, COUNTERPARTY_COLLATERAL
@@ -411,7 +415,8 @@ contract PredictionMarketVaultIntegrationTest is Test {
 
         // Create second prediction
         IV2Types.Pick[] memory picks2 = new IV2Types.Pick[](1);
-        picks2[0] = _createPick(conditionId2, IV2Types.OutcomeSide.NO);
+        picks2[0] =
+            _createPick(abi.encode(conditionId2), IV2Types.OutcomeSide.NO);
         IV2Types.MintRequest memory request2 =
             _createMintRequestWithVaultCounterparty(
                 picks2, PREDICTOR_COLLATERAL, COUNTERPARTY_COLLATERAL
@@ -454,10 +459,15 @@ contract PredictionMarketVaultIntegrationTest is Test {
         vm.prank(manager);
         vault.approveFundsUsage(address(market), COUNTERPARTY_COLLATERAL);
 
-        // Create multi-pick prediction with 2 picks
+        // Create multi-pick prediction with 2 picks — sort by keccak for canonical order
+        (bytes memory first, bytes memory second) = keccak256(
+                abi.encode(condition1)
+            ) < keccak256(abi.encode(condition2))
+            ? (abi.encode(condition1), abi.encode(condition2))
+            : (abi.encode(condition2), abi.encode(condition1));
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](2);
-        picks[0] = _createPick(condition1, IV2Types.OutcomeSide.YES);
-        picks[1] = _createPick(condition2, IV2Types.OutcomeSide.YES);
+        picks[0] = _createPick(first, IV2Types.OutcomeSide.YES);
+        picks[1] = _createPick(second, IV2Types.OutcomeSide.YES);
 
         IV2Types.MintRequest memory request =
             _createMintRequestWithVaultCounterparty(
@@ -502,7 +512,8 @@ contract PredictionMarketVaultIntegrationTest is Test {
         vault.approveFundsUsage(address(market), COUNTERPARTY_COLLATERAL);
 
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
-        picks[0] = _createPick(conditionId, IV2Types.OutcomeSide.YES);
+        picks[0] =
+            _createPick(abi.encode(conditionId), IV2Types.OutcomeSide.YES);
 
         IV2Types.MintRequest memory request =
             _createMintRequestWithVaultCounterparty(
@@ -557,7 +568,8 @@ contract PredictionMarketVaultIntegrationTest is Test {
         vault.approveFundsUsage(address(market), COUNTERPARTY_COLLATERAL / 2);
 
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
-        picks[0] = _createPick(conditionId, IV2Types.OutcomeSide.YES);
+        picks[0] =
+            _createPick(abi.encode(conditionId), IV2Types.OutcomeSide.YES);
 
         IV2Types.MintRequest memory request =
             _createMintRequestWithVaultCounterparty(
@@ -579,7 +591,8 @@ contract PredictionMarketVaultIntegrationTest is Test {
         vault.approveFundsUsage(address(market), COUNTERPARTY_COLLATERAL);
 
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
-        picks[0] = _createPick(conditionId, IV2Types.OutcomeSide.YES);
+        picks[0] =
+            _createPick(abi.encode(conditionId), IV2Types.OutcomeSide.YES);
 
         IV2Types.MintRequest memory request =
             _createMintRequestWithVaultCounterparty(
@@ -619,7 +632,8 @@ contract PredictionMarketVaultIntegrationTest is Test {
             vault.approveFundsUsage(address(market), COUNTERPARTY_COLLATERAL);
 
             IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
-            picks[0] = _createPick(conditionId, IV2Types.OutcomeSide.YES);
+            picks[0] =
+                _createPick(abi.encode(conditionId), IV2Types.OutcomeSide.YES);
 
             IV2Types.MintRequest memory request =
                 _createMintRequestWithVaultCounterparty(
@@ -646,7 +660,8 @@ contract PredictionMarketVaultIntegrationTest is Test {
         vault.approveFundsUsage(address(market), COUNTERPARTY_COLLATERAL);
 
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
-        picks[0] = _createPick(conditionId, IV2Types.OutcomeSide.YES);
+        picks[0] =
+            _createPick(abi.encode(conditionId), IV2Types.OutcomeSide.YES);
 
         bytes32 pickConfigId = market.computePickConfigId(picks);
         bytes32 predictionHash = keccak256(
@@ -697,7 +712,9 @@ contract PredictionMarketVaultIntegrationTest is Test {
         request.predictorSponsor = address(0);
         request.predictorSponsorData = "";
 
-        vm.expectRevert(IPredictionMarketEscrow.InvalidSignature.selector);
+        vm.expectRevert(
+            IPredictionMarketEscrow.InvalidCounterpartSignature.selector
+        );
         market.mint(request);
     }
 
@@ -714,7 +731,8 @@ contract PredictionMarketVaultIntegrationTest is Test {
         vault.approveFundsUsage(address(market), largecounterpartyCollateral);
 
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
-        picks[0] = _createPick(conditionId, IV2Types.OutcomeSide.YES);
+        picks[0] =
+            _createPick(abi.encode(conditionId), IV2Types.OutcomeSide.YES);
 
         IV2Types.MintRequest memory request =
             _createMintRequestWithVaultCounterparty(

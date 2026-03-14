@@ -35,7 +35,12 @@ import {
   useState,
   type CSSProperties,
 } from 'react';
-import { useForm, useWatch, type UseFormReturn } from 'react-hook-form';
+import {
+  useForm,
+  useWatch,
+  type UseFormReturn,
+  type Resolver,
+} from 'react-hook-form';
 import { z } from 'zod';
 
 import { predictionMarketEscrowAbi } from '@sapience/sdk/abis';
@@ -241,7 +246,7 @@ const CreatePositionFormInner = ({
   const PREDICTION_MARKET_ADDRESS =
     predictionMarketEscrow[positionChainId]?.address;
 
-  // Sponsorship: only need refetch here to update budget after a mint
+  // Sponsorship: refetch after mint to update budget display
   const { refetch: refetchSponsor } = useSponsorStatus();
 
   // Fetch collateral token address from PredictionMarketEscrow
@@ -364,7 +369,7 @@ const CreatePositionFormInner = ({
   }, []);
 
   // Create form schema for position mode
-  const formSchema: z.ZodType<any> = useMemo(() => {
+  const formSchema: z.ZodTypeAny = useMemo(() => {
     const maxAmount = getMaxPositionSize(userBalance, isEtherealFromContext);
     const positionSizeSchema = createPositionSizeSchema(
       minPositionSize,
@@ -391,11 +396,21 @@ const CreatePositionFormInner = ({
   const formSchemaRef = useRef(formSchema);
   formSchemaRef.current = formSchema;
 
+  // Form data shape used by useForm
+  type PositionFormValues = {
+    positions: Record<
+      string,
+      { predictionValue: string; positionSize: string; isFlipped?: boolean }
+    >;
+    positionSize?: string;
+    limitAmount?: string | number;
+  };
+
   // Create a stable resolver that reads from the ref
   // This ensures validation uses the latest schema (with updated userBalance)
-  const dynamicResolver = useCallback(
-    async (data: any, context: any, options: any) => {
-      const resolver = zodResolver(formSchemaRef.current as any);
+  const dynamicResolver = useCallback<Resolver<PositionFormValues>>(
+    async (data, context, options) => {
+      const resolver = zodResolver(formSchemaRef.current);
       return resolver(data, context, options);
     },
     []
@@ -427,14 +442,7 @@ const CreatePositionFormInner = ({
   }, [createPositionEntries]);
 
   // Single form for both individual and position modes
-  const formMethods = useForm<{
-    positions: Record<
-      string,
-      { predictionValue: string; positionSize: string; isFlipped?: boolean }
-    >;
-    positionSize?: string;
-    limitAmount?: string | number;
-  }>({
+  const formMethods = useForm<PositionFormValues>({
     resolver: dynamicResolver,
     defaultValues: {
       ...generateFormValues,
@@ -633,8 +641,8 @@ const CreatePositionFormInner = ({
     onSuccess: () => {
       clearPositionForm();
       setIsPopoverOpen(false);
-      // Refetch sponsor budget (it decreases after a sponsored mint)
-      refetchSponsor();
+      // Delayed refetch to allow on-chain state to settle after mint
+      setTimeout(() => refetchSponsor(), 5000);
     },
     onProgressUpdate: {
       onTxSending: startSubmission,

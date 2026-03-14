@@ -5,27 +5,18 @@ import type { Pick, PickJson, OutcomeSide } from '../types/escrow';
 // Pick Encoding
 // ============================================================================
 //
-// ## conditionId: transport vs on-chain representation
+// ## conditionId: variable-length bytes
 //
-// The on-chain Pick struct uses `bytes32 conditionId`. For UMA/Polymarket
-// resolvers this is a native bytes32 (e.g. a market ID). For Pyth resolvers
-// the conditionId is `keccak256(abi.encode(priceId, endTime, strikePrice,
-// strikeExpo, overWinsOnTie))` — see PythConditionResolver.getConditionId().
+// The on-chain Pick struct uses `bytes conditionId` (variable length).
+// For UMA/Polymarket resolvers this is an abi-encoded bytes32 market ID.
+// For Pyth resolvers the conditionId is `abi.encode(priceId, endTime,
+// strikePrice, strikeExpo, overWinsOnTie)` (160 bytes).
+// For CT resolvers, conditionId may include a deadline timestamp:
+// 32 bytes = raw conditionId, 64 bytes = conditionId + uint256 deadline.
 //
-// Over the wire (WebSocket transport), Pyth picks carry the *raw* ABI
-// encoding as conditionId (produced by `getPythMarketId`) so that receivers
-// (relayer, market makers, terminal UI) can decode the market parameters
-// without an extra lookup. This raw encoding is 160 bytes (320 hex chars),
-// NOT a valid bytes32.
-//
-// Anywhere we need bytes32 (on-chain ABI encoding, EIP-712 signing), we
-// compact long conditionIds via `keccak256(conditionId)`. This matches the
-// on-chain hash. See `formatPicksForEncoding` and `buildAuctionIntentTypedData`.
-//
-// TODO: Consider changing EIP-712 AUCTION_INTENT_TYPES to use `bytes` instead
-// of `bytes32` for conditionId, which would let EIP-712's native hashing
-// handle this and remove the manual compaction step. This is a coordinated
-// change (app + relayer must deploy together).
+// conditionIds are passed as-is to the on-chain Pick struct (no hashing).
+// Canonical ordering of picks compares keccak256(conditionId) to match
+// the on-chain _validatePicks logic.
 //
 
 /**
@@ -36,7 +27,7 @@ const PICK_TUPLE_TYPE = {
   type: 'tuple',
   components: [
     { name: 'conditionResolver', type: 'address' },
-    { name: 'conditionId', type: 'bytes32' },
+    { name: 'conditionId', type: 'bytes' },
     { name: 'predictedOutcome', type: 'uint8' },
   ],
 } as const;
@@ -60,13 +51,8 @@ function formatPicksForEncoding(picks: Pick[]): Array<{
 }> {
   return picks.map((pick) => ({
     conditionResolver: pick.conditionResolver,
-    // On-chain Pick struct uses bytes32 conditionId. If the transport-layer
-    // conditionId is longer (e.g. Pyth raw ABI encoding), hash it to bytes32
-    // to match the on-chain representation (PythConditionResolver.getConditionId).
-    conditionId:
-      pick.conditionId.length > 66 // 66 = "0x" + 64 hex chars
-        ? keccak256(pick.conditionId)
-        : pick.conditionId,
+    // On-chain Pick struct uses bytes conditionId — pass as-is (no hashing)
+    conditionId: pick.conditionId,
     predictedOutcome: pick.predictedOutcome,
   }));
 }
@@ -183,7 +169,7 @@ export function jsonToPicks(json: PickJson[]): Pick[] {
  *
  * Sorts by:
  * 1. conditionResolver (address, ascending)
- * 2. conditionId (bytes32, ascending)
+ * 2. keccak256(conditionId) (ascending)
  *
  * @param picks Array of picks (will not be mutated)
  * @returns New array with picks in canonical order
@@ -196,10 +182,10 @@ export function canonicalizePicks(picks: Pick[]): Pick[] {
       .localeCompare(b.conditionResolver.toLowerCase());
     if (resolverCmp !== 0) return resolverCmp;
 
-    // Then by conditionId
-    return a.conditionId
-      .toLowerCase()
-      .localeCompare(b.conditionId.toLowerCase());
+    // Then by keccak256(conditionId) — matches on-chain canonical ordering
+    const hashA = keccak256(a.conditionId as Hex);
+    const hashB = keccak256(b.conditionId as Hex);
+    return hashA.toLowerCase().localeCompare(hashB.toLowerCase());
   });
 }
 
@@ -218,11 +204,13 @@ export function isValidPick(pick: unknown): pick is Pick {
     return false;
   }
 
-  // Check conditionId is valid hex (bytes32 or longer for e.g. Pyth raw encoding)
+  // Check conditionId is valid hex — must be at least bytes32 (66 chars = "0x" + 64).
+  // Longer values are valid: Pyth picks carry the full raw ABI encoding,
+  // CT resolvers may include a deadline (64 bytes / 130 hex chars).
   if (
     typeof p.conditionId !== 'string' ||
     !/^0x[a-fA-F0-9]+$/.test(p.conditionId) ||
-    p.conditionId.length < 66
+    p.conditionId.length < 66 // bytes32 minimum
   ) {
     return false;
   }

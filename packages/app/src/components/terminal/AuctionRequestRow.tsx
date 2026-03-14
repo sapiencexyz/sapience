@@ -416,7 +416,7 @@ const AuctionRequestRow: React.FC<Props> = ({
               missing.length > 0
                 ? `Missing: ${missing.join(', ')}`
                 : 'Required data not available yet. Please try again.',
-            variant: 'destructive' as any,
+            variant: 'destructive',
           });
           return;
         }
@@ -482,7 +482,7 @@ const AuctionRequestRow: React.FC<Props> = ({
         toast({
           title: 'Bid failed',
           description: 'Unable to submit bid',
-          variant: 'destructive' as any,
+          variant: 'destructive',
         });
       }
     },
