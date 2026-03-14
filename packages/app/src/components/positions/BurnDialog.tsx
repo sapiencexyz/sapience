@@ -36,6 +36,7 @@ interface BurnDialogProps {
   totalCounterpartyCollateral: bigint;
   chainId: number;
   collateralSymbol: string;
+  escrowAddress?: Address;
   onBurnComplete?: () => void;
 }
 
@@ -57,6 +58,7 @@ export default function BurnDialog({
   totalCounterpartyCollateral: _totalCounterpartyCollateral,
   chainId,
   collateralSymbol,
+  escrowAddress,
   onBurnComplete,
 }: BurnDialogProps) {
   const [open, setOpen] = useState(false);
@@ -88,11 +90,12 @@ export default function BurnDialog({
   // Hooks
   useAccount();
   const { signTypedData, effectiveAddress } = useSession();
-  const { burn, isPending } = useEscrowWrite({ chainId });
+  const { burn, isPending } = useEscrowWrite({ chainId, escrowAddress });
 
-  const verifyingContract = predictionMarketEscrow[chainId]?.address as
+  const defaultEscrow = predictionMarketEscrow[chainId]?.address as
     | Address
     | undefined;
+  const verifyingContract = escrowAddress ?? defaultEscrow;
 
   const handleBurn = useCallback(async () => {
     if (!effectiveAddress || !verifyingContract || !signTypedData) {
