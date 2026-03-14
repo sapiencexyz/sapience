@@ -536,18 +536,22 @@ export async function validateBid(
       }
     }
 
-    // No publicClient — we cannot distinguish between a bad EOA signature and
-    // a valid smart-contract signature (e.g. vault Approve wrapper, ERC-1271).
-    // ecrecover may succeed but recover a different address simply because the
-    // signature was produced for different typed data (wrapped signing schemes).
-    // Without ERC-1271 fallback, treat all mismatches as unverified rather than
-    // invalid — the on-chain contract is the ultimate authority.
+    // No publicClient — if we recovered a signer that doesn't match the
+    // counterparty, the signature is provably invalid for an EOA.
+    // Smart-contract wallets (ERC-1271) are handled by the publicClient path
+    // above — without one we reject rather than pass through bad signatures.
+    if (sigResult.recoveredAddress) {
+      return {
+        status: 'invalid',
+        code: 'INVALID_SIGNATURE',
+        reason: `Signature verification failed: recovered address does not match counterparty`,
+      };
+    }
+
     return {
       status: 'unverified',
       code: 'SIGNATURE_UNVERIFIABLE',
-      reason: sigResult.recoveredAddress
-        ? `Signature not verifiable offline (recovered ${sigResult.recoveredAddress}, expected ${bid.counterparty})`
-        : 'Signature could not be verified offline',
+      reason: 'Signature could not be verified offline',
     };
   }
 
