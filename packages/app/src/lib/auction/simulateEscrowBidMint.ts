@@ -187,7 +187,7 @@ export async function simulateEscrowBidMint(
 
       const rawMessage = err instanceof Error ? err.message : '';
       const isInvalidSignature =
-        rawMessage.includes('InvalidSignature') ||
+        /Invalid(Predictor|Counterpart)?Signature/.test(rawMessage) ||
         (errorMessage.includes('Invalid') &&
           errorMessage.includes('signature'));
       if (isInvalidSignature) {

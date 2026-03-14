@@ -1,6 +1,11 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { encodeAbiParameters, encodeEventTopics, keccak256, toHex } from 'viem';
+import {
+  encodeAbiParameters,
+  encodeEventTopics,
+  keccak256,
+  toHex,
+  type Block,
+} from 'viem';
 
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 
@@ -131,11 +136,12 @@ const MOCK_BLOCK = {
   number: 50n,
   timestamp: 1700000000n,
   hash: '0x' + '00'.repeat(32),
-} as any;
+} as unknown as Block;
 
 // ─── Tests ───────────────────────────────────────────────────────────────────
 
 describe('SecondaryMarketIndexer', () => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let SecondaryMarketIndexer: any;
 
   beforeEach(async () => {

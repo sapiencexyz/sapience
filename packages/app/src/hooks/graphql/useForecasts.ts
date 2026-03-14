@@ -64,7 +64,7 @@ export const useForecasts = ({
   const data: FormattedAttestation[] = React.useMemo(() => {
     if (!attestationsData?.attestations) return [];
     return attestationsData.attestations.map((att) =>
-      formatAttestationData(att as any)
+      formatAttestationData(att)
     );
   }, [attestationsData]);
 
@@ -113,7 +113,7 @@ export const useInfiniteForecasts = ({
       if (list.length < pageSize) return undefined;
       const last = list[list.length - 1];
       if (!last) return undefined;
-      return Number((last as any).id);
+      return Number(last.id);
     },
     retry: 3,
     retryDelay: 1000,
@@ -122,7 +122,7 @@ export const useInfiniteForecasts = ({
   const data: FormattedAttestation[] = React.useMemo(() => {
     if (!query.data?.pages) return [];
     return query.data.pages.flatMap((p) =>
-      (p.attestations || []).map((att) => formatAttestationData(att as any))
+      (p.attestations || []).map((att) => formatAttestationData(att))
     );
   }, [query.data]);
 

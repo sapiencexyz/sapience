@@ -37,13 +37,13 @@ const PREDICTION_MARKET_ESCROW_ABI = parseAbi([
   'function isNonceUsed(address account, uint256 nonce) view returns (bool used)',
   'function nonceBitmap(address account, uint256 wordPos) view returns (uint256 word)',
   'function canSettle(bytes32 predictionId) view returns (bool)',
-  'function getPicks(bytes32 pickConfigId) view returns ((address conditionResolver, bytes32 conditionId, uint8 predictedOutcome)[])',
+  'function getPicks(bytes32 pickConfigId) view returns ((address conditionResolver, bytes conditionId, uint8 predictedOutcome)[])',
   'function getEscrowRecord(bytes32 predictionId) view returns ((bytes32 pickConfigId, uint256 totalCollateral, uint256 predictorCollateral, uint256 counterpartyCollateral, uint256 predictorTokensMinted, uint256 counterpartyTokensMinted, bool settled))',
   'function getClaimableAmount(bytes32 pickConfigId, address positionToken, uint256 tokenAmount) view returns (uint256)',
   'function isPositionToken(address token) view returns (bool)',
   'function isPredictorToken(address token) view returns (bool)',
   'function getPickConfigIdFromToken(address token) view returns (bytes32)',
-  'function computePickConfigId((address conditionResolver, bytes32 conditionId, uint8 predictedOutcome)[] picks) pure returns (bytes32)',
+  'function computePickConfigId((address conditionResolver, bytes conditionId, uint8 predictedOutcome)[] picks) pure returns (bytes32)',
   // Immutable state
   'function collateralToken() view returns (address)',
 ]);

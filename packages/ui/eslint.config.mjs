@@ -57,7 +57,7 @@ export default typescriptPlugin.config(
           caughtErrorsIgnorePattern: '^_',
         },
       ],
-      '@typescript-eslint/no-explicit-any': 'warn',
+      '@typescript-eslint/no-explicit-any': 'error',
       '@typescript-eslint/no-misused-promises': 'off',
       '@typescript-eslint/no-floating-promises': 'off',
       '@typescript-eslint/no-unsafe-assignment': 'off',

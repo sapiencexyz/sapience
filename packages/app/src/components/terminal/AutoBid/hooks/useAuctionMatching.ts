@@ -16,6 +16,34 @@ import type {
   EscrowBidSubmissionResult,
 } from '~/hooks/auction/useEscrowBidSubmission';
 
+/** Shape of the data payload from auction WebSocket messages */
+interface AuctionMessageData {
+  resolver?: string;
+  predictor?: string;
+  predictorCollateral?: string;
+  escrowPicks?: Array<{
+    conditionResolver: string;
+    conditionId: string;
+    predictedOutcome: number;
+  }>;
+  payload?: {
+    resolver?: string;
+    predictor?: string;
+    predictorCollateral?: string;
+    escrowPicks?: Array<{
+      conditionResolver: string;
+      conditionId: string;
+      predictedOutcome: number;
+    }>;
+  };
+  [key: string]: unknown;
+}
+
+function asMessageData(data: unknown): AuctionMessageData {
+  if (data && typeof data === 'object') return data as AuctionMessageData;
+  return {} as AuctionMessageData;
+}
+
 // Cache and deduplication limits
 const MAX_AUCTION_CACHE_SIZE = 200;
 const MAX_PROCESSED_BIDS_SIZE = 500;
@@ -499,9 +527,12 @@ export function useAuctionMatching({
       if (normalizedOrders.length === 0) {
         return;
       }
-      bids.forEach((bid: any) => {
+      bids.forEach((bid: unknown) => {
+        const bidRecord = bid as Record<string, unknown> | null;
         const counterpartyRaw =
-          typeof bid?.counterparty === 'string' ? bid.counterparty : null;
+          typeof bidRecord?.counterparty === 'string'
+            ? bidRecord.counterparty
+            : null;
         const counterpartyAddr = normalizeAddress(counterpartyRaw);
         if (!counterpartyAddr) return;
         const matched = normalizedOrders.find(
@@ -509,7 +540,7 @@ export function useAuctionMatching({
         );
         if (!matched) return;
         const auctionId =
-          (typeof bid?.auctionId === 'string' && bid.auctionId) ||
+          (typeof bidRecord?.auctionId === 'string' && bidRecord.auctionId) ||
           entry.channel ||
           null;
 
@@ -524,13 +555,13 @@ export function useAuctionMatching({
         }
 
         const signature =
-          typeof bid?.counterpartySignature === 'string'
-            ? bid.counterpartySignature
+          typeof bidRecord?.counterpartySignature === 'string'
+            ? bidRecord.counterpartySignature
             : null;
 
         // Create a unique key for this bid to prevent duplicate submissions
         // when the same bid appears in multiple auction.bids messages
-        const bidDedupeKey = `${matched.order.id}:${auctionId}:${signature ?? `${counterpartyAddr}:${bid?.counterpartyCollateral ?? '0'}`}`;
+        const bidDedupeKey = `${matched.order.id}:${auctionId}:${signature ?? `${counterpartyAddr}:${bidRecord?.counterpartyCollateral ?? '0'}`}`;
 
         // Skip if we've already processed this exact bid for this order
         if (processedBidsRef.current.has(bidDedupeKey)) {
@@ -547,7 +578,7 @@ export function useAuctionMatching({
         // Calculate the full bid amount for allowance checking (copiedCollateral + increment)
         // This ensures we don't prompt for signature if allowance is insufficient
         const copiedCollateralWei = BigInt(
-          String(bid?.counterpartyCollateral ?? '0')
+          String(bidRecord?.counterpartyCollateral ?? '0')
         );
         let estimatedSpend: number;
         try {
@@ -577,7 +608,9 @@ export function useAuctionMatching({
             auctionId,
             auctionContext: cachedContext,
             copyBidContext: {
-              copiedBidCollateral: String(bid?.counterpartyCollateral ?? '0'),
+              copiedBidCollateral: String(
+                bidRecord?.counterpartyCollateral ?? '0'
+              ),
               increment: matched.order.increment ?? 1,
             },
             dedupeKey: bidDedupeKey,
@@ -608,15 +641,12 @@ export function useAuctionMatching({
       // Extract auction context from auction.started message
       // Escrow uses different field names: predictor, predictorCollateral, predictorNonce
       const auctionId = entry.channel || null;
-      const resolverAddr =
-        (entry?.data as any)?.resolver ??
-        (entry?.data as any)?.payload?.resolver;
-      const predictorAddr =
-        (entry?.data as any)?.predictor ??
-        (entry?.data as any)?.payload?.predictor;
+      const msgData = asMessageData(entry?.data);
+      const resolverAddr = msgData?.resolver ?? msgData?.payload?.resolver;
+      const predictorAddr = msgData?.predictor ?? msgData?.payload?.predictor;
       const predictorCollateralStr =
-        (entry?.data as any)?.predictorCollateral ??
-        (entry?.data as any)?.payload?.predictorCollateral ??
+        msgData?.predictorCollateral ??
+        msgData?.payload?.predictorCollateral ??
         '0';
       const predictedOutcomesArr = Array.isArray(rawPredictions)
         ? (rawPredictions as `0x${string}`[])
@@ -631,8 +661,7 @@ export function useAuctionMatching({
       ) {
         // Extract escrowPicks from auction message if available
         const rawEscrowPicks =
-          (entry?.data as any)?.escrowPicks ??
-          (entry?.data as any)?.payload?.escrowPicks;
+          msgData?.escrowPicks ?? msgData?.payload?.escrowPicks;
         const ctx: AuctionContext = {
           predictedOutcomes: predictedOutcomesArr,
           resolver: resolverAddr as `0x${string}`,
@@ -706,9 +735,10 @@ export function useAuctionMatching({
         if (!readiness.blocked) {
           // Fire and forget - dedupe key is marked on successful signature
           // Extract escrowPicks from the auction message
+          const conditionMsgData = asMessageData(entry?.data);
           const conditionEscrowPicks =
-            (entry?.data as any)?.escrowPicks ??
-            (entry?.data as any)?.payload?.escrowPicks;
+            conditionMsgData?.escrowPicks ??
+            conditionMsgData?.payload?.escrowPicks;
           void triggerAutoBidSubmission({
             order,
             source: 'conditions',

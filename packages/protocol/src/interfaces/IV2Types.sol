@@ -29,7 +29,7 @@ interface IV2Types {
     /// @notice A single pick in a prediction
     struct Pick {
         address conditionResolver; // Contract that resolves this condition
-        bytes32 conditionId; // Opaque identifier, resolver-defined
+        bytes conditionId; // Opaque identifier, resolver-defined (variable length)
         OutcomeSide predictedOutcome; // What the predictor chose
     }
 

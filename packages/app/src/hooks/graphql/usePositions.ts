@@ -293,8 +293,18 @@ const POSITION_BALANCES_QUERY = /* GraphQL */ `
 `;
 
 const POSITION_BALANCES_BY_CONDITION_QUERY = /* GraphQL */ `
-  query PositionsByCondition($conditionId: String!, $take: Int, $skip: Int, $settled: Boolean) {
-    positions(conditionId: $conditionId, take: $take, skip: $skip, settled: $settled) {
+  query PositionsByCondition(
+    $conditionId: String!
+    $take: Int
+    $skip: Int
+    $settled: Boolean
+  ) {
+    positions(
+      conditionId: $conditionId
+      take: $take
+      skip: $skip
+      settled: $settled
+    ) {
       id
       chainId
       tokenAddress

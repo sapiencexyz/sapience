@@ -53,24 +53,27 @@ const SegmentedTabsList: React.FC<SegmentedTabsListProps> = ({
   const enhancedChildren = React.Children.map(children, (child) => {
     if (!React.isValidElement(child)) return child;
     // Merge/append the shared trigger classes to TabsTrigger children
-    const childClassName = (child.props as any)?.className as
-      | string
-      | undefined;
+    const childProps = child.props as Record<string, unknown>;
+    const childClassName =
+      typeof childProps?.className === 'string'
+        ? childProps.className
+        : undefined;
     const mergedClassName = cn(
       'text-sm px-3 h-8 leading-none data-[state=active]:bg-[var(--seg-active)]',
       triggerRadius,
       triggerClassName,
       childClassName
     );
+    const childStyle = (childProps?.style ?? {}) as React.CSSProperties;
     return React.cloneElement(
-      child as React.ReactElement<any>,
+      child as React.ReactElement<Record<string, unknown>>,
       {
         className: mergedClassName,
         style: {
-          ...(child.props as any)?.style,
-          ['--seg-active' as any]: segActiveBg,
-        },
-      } as any
+          ...childStyle,
+          '--seg-active': segActiveBg,
+        } as React.CSSProperties,
+      }
     );
   });
 
@@ -81,7 +84,7 @@ const SegmentedTabsList: React.FC<SegmentedTabsListProps> = ({
         containerRadius,
         className
       )}
-      style={{ ['--seg-bg' as any]: segBg }}
+      style={{ '--seg-bg': segBg } as React.CSSProperties}
       {...rest}
     >
       {enhancedChildren}

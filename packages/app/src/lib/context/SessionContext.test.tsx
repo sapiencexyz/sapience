@@ -4,6 +4,7 @@
  * Tests the React context provider, useSession hook, and utility functions.
  */
 
+import { vi } from 'vitest';
 import { render, screen, waitFor, act } from '@testing-library/react';
 import type { Address, Hex } from 'viem';
 
@@ -18,34 +19,34 @@ const mockPrivateKey =
   '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef' as Hex;
 
 // Mock wagmi hooks
-const mockUseAccount = jest.fn();
-const mockUseSwitchChain = jest.fn();
+const mockUseAccount = vi.fn();
+const mockUseSwitchChain = vi.fn();
 
-jest.mock('wagmi', () => ({
+vi.mock('wagmi', () => ({
   useAccount: () => mockUseAccount(),
   useSwitchChain: () => mockUseSwitchChain(),
 }));
 
 // Mock viem
-jest.mock('viem/accounts', () => ({
-  privateKeyToAccount: jest.fn(() => ({
+vi.mock('viem/accounts', () => ({
+  privateKeyToAccount: vi.fn(() => ({
     address: mockSessionKeyAddress,
-    signMessage: jest.fn(() => Promise.resolve('0xsignature')),
-    signTypedData: jest.fn(() => Promise.resolve('0xsignature')),
+    signMessage: vi.fn(() => Promise.resolve('0xsignature')),
+    signTypedData: vi.fn(() => Promise.resolve('0xsignature')),
   })),
 }));
 
 // Mock session key manager
-const mockCreateSession = jest.fn();
-const mockRestoreSession = jest.fn();
-const mockGetSmartAccountAddress = jest.fn();
-const mockSaveSession = jest.fn();
-const mockLoadSession = jest.fn();
-const mockClearSession = jest.fn();
+const mockCreateSession = vi.fn();
+const mockRestoreSession = vi.fn();
+const mockGetSmartAccountAddress = vi.fn();
+const mockSaveSession = vi.fn();
+const mockLoadSession = vi.fn();
+const mockClearSession = vi.fn();
 
-jest.mock('~/lib/session/sessionKeyManager', () => ({
+vi.mock('~/lib/session/sessionKeyManager', () => ({
   createSession: (...args: unknown[]) => mockCreateSession(...args),
-  createArbitrumSession: jest.fn(),
+  createArbitrumSession: vi.fn(),
   restoreSession: (...args: unknown[]) => mockRestoreSession(...args),
   getSmartAccountAddress: (...args: unknown[]) =>
     mockGetSmartAccountAddress(...args),
@@ -94,8 +95,8 @@ function TestConsumer() {
 
 describe('SessionContext', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
-    jest.useFakeTimers();
+    vi.clearAllMocks();
+    vi.useFakeTimers();
 
     // Default mock implementations
     mockUseAccount.mockReturnValue({
@@ -104,7 +105,7 @@ describe('SessionContext', () => {
     });
 
     mockUseSwitchChain.mockReturnValue({
-      switchChainAsync: jest.fn(),
+      switchChainAsync: vi.fn(),
     });
 
     mockLoadSession.mockReturnValue(null);
@@ -112,7 +113,7 @@ describe('SessionContext', () => {
   });
 
   afterEach(() => {
-    jest.useRealTimers();
+    vi.useRealTimers();
   });
 
   describe('SessionProvider', () => {
@@ -144,7 +145,7 @@ describe('SessionContext', () => {
   describe('useSession hook', () => {
     it('throws error when used outside SessionProvider', () => {
       // Suppress console.error for this test
-      const consoleSpy = jest
+      const consoleSpy = vi
         .spyOn(console, 'error')
         .mockImplementation(() => {});
 
@@ -178,7 +179,7 @@ describe('SessionContext', () => {
     it.skip('calculates address when wallet connects', async () => {
       mockUseAccount.mockReturnValue({
         address: mockWalletAddress,
-        connector: { getProvider: jest.fn() },
+        connector: { getProvider: vi.fn() },
       });
 
       render(
@@ -215,7 +216,7 @@ describe('SessionContext', () => {
       // Start with wallet connected
       mockUseAccount.mockReturnValue({
         address: mockWalletAddress,
-        connector: { getProvider: jest.fn() },
+        connector: { getProvider: vi.fn() },
       });
 
       rerender(
@@ -252,8 +253,8 @@ describe('SessionContext', () => {
 
   describe('startSession', () => {
     it.skip('creates session and updates state', async () => {
-      const mockProvider = { request: jest.fn() };
-      const mockConnector = { getProvider: jest.fn(() => mockProvider) };
+      const mockProvider = { request: vi.fn() };
+      const mockConnector = { getProvider: vi.fn(() => mockProvider) };
 
       mockUseAccount.mockReturnValue({
         address: mockWalletAddress,
@@ -312,8 +313,8 @@ describe('SessionContext', () => {
 
   describe('endSession', () => {
     it.skip('clears session state and localStorage', async () => {
-      const mockProvider = { request: jest.fn() };
-      const mockConnector = { getProvider: jest.fn(() => mockProvider) };
+      const mockProvider = { request: vi.fn() };
+      const mockConnector = { getProvider: vi.fn(() => mockProvider) };
 
       mockUseAccount.mockReturnValue({
         address: mockWalletAddress,
@@ -372,8 +373,8 @@ describe('SessionContext', () => {
 
   describe('session restoration', () => {
     it.skip('restores session from localStorage on mount', async () => {
-      const mockProvider = { request: jest.fn() };
-      const mockConnector = { getProvider: jest.fn(() => mockProvider) };
+      const mockProvider = { request: vi.fn() };
+      const mockConnector = { getProvider: vi.fn(() => mockProvider) };
 
       mockUseAccount.mockReturnValue({
         address: mockWalletAddress,
@@ -417,11 +418,11 @@ describe('SessionContext', () => {
     });
 
     it('clears expired session from localStorage', async () => {
-      jest.useRealTimers(); // Use real timers for this test
+      vi.useRealTimers(); // Use real timers for this test
 
       mockUseAccount.mockReturnValue({
         address: mockWalletAddress,
-        connector: { getProvider: jest.fn() },
+        connector: { getProvider: vi.fn() },
       });
 
       const expiredSession = {

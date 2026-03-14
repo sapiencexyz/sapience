@@ -80,7 +80,7 @@ export const AUCTION_INTENT_TYPES = {
   ],
   Pick: [
     { name: 'conditionResolver', type: 'address' },
-    { name: 'conditionId', type: 'bytes32' },
+    { name: 'conditionId', type: 'bytes' },
     { name: 'predictedOutcome', type: 'uint8' },
   ],
 } as const;
@@ -484,9 +484,8 @@ export function buildAuctionIntentTypedData(params: {
     message: {
       picks: params.picks.map((p) => ({
         conditionResolver: p.conditionResolver,
-        // EIP-712 type is bytes32; hash long conditionIds (e.g. Pyth raw encoding)
-        conditionId:
-          p.conditionId.length > 66 ? keccak256(p.conditionId) : p.conditionId,
+        // EIP-712 type is bytes — pass conditionId as-is
+        conditionId: p.conditionId,
         predictedOutcome: p.predictedOutcome,
       })),
       predictor: params.predictor,

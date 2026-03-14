@@ -150,7 +150,7 @@ export async function fetchForecastsPage(
 ): Promise<AttestationsQueryResponse> {
   const { where } = buildAttestationFilters(params);
 
-  const variables: Record<string, any> = {
+  const variables: Record<string, unknown> = {
     where,
     take: page.take,
     orderBy: [{ time: 'desc' }],

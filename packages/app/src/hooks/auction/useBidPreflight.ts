@@ -104,7 +104,7 @@ export function useBidPreflight(
         ? [
             {
               address: COLLATERAL_ADDRESS,
-              abi: erc20Abi as any,
+              abi: erc20Abi,
               functionName: 'allowance',
               args: [currentAddress, SPENDER_ADDRESS],
               chainId: chainId,

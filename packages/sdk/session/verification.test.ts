@@ -173,7 +173,7 @@ describe('verifySessionApproval', () => {
 
   test('rejects when typedData is missing', async () => {
     const payload = makeApprovalPayload(SMART_ACCOUNT_ADDRESS);
-    delete (payload as any).typedData;
+    delete (payload as Partial<SessionApprovalPayload>).typedData;
 
     const result = await verifySessionApproval(payload, SMART_ACCOUNT_ADDRESS);
 

@@ -52,19 +52,20 @@ function tryParseUint32(value: unknown): number | null {
 }
 
 function tryExtractLazerFeeds(json: unknown): LazerFeedRow[] {
-  const root = json as any;
+  const root = json as Record<string, unknown> | unknown[];
+  const rootObj = root as Record<string, unknown>;
   const candidates: unknown[] = Array.isArray(root)
     ? root
-    : Array.isArray(root?.data)
-      ? root.data
-      : Array.isArray(root?.symbols)
-        ? root.symbols
+    : Array.isArray(rootObj?.data)
+      ? (rootObj.data as unknown[])
+      : Array.isArray(rootObj?.symbols)
+        ? (rootObj.symbols as unknown[])
         : [];
 
   const out: LazerFeedRow[] = [];
   for (const item of candidates) {
     if (!item || typeof item !== 'object') continue;
-    const o = item as any;
+    const o = item as Record<string, unknown>;
     out.push({
       pyth_lazer_id: o.pyth_lazer_id,
       symbol: o.symbol,

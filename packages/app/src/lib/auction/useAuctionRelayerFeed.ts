@@ -57,20 +57,20 @@ export function useAuctionRelayerFeed(options?: {
 
     const offMsg = client.addMessageListener((raw) => {
       try {
-        const msg = raw as any;
+        const msg = raw as Record<string, unknown>;
         const now = Date.now();
         const type = String(msg?.type || 'unknown');
+        const payload = msg?.payload as Record<string, unknown> | undefined;
         const channel =
-          (typeof msg?.payload?.auctionId === 'string' &&
-            (msg.payload.auctionId as string)) ||
-          (typeof msg?.channel === 'string' && (msg.channel as string)) ||
-          (typeof msg?.auctionId === 'string' && (msg.auctionId as string)) ||
+          (typeof payload?.auctionId === 'string' && payload.auctionId) ||
+          (typeof msg?.channel === 'string' && msg.channel) ||
+          (typeof msg?.auctionId === 'string' && msg.auctionId) ||
           null;
         const entry: AuctionFeedMessage = {
           time: now,
           type,
           channel,
-          data: msg?.payload ?? msg,
+          data: payload ?? msg,
         };
         setMessages((prev) => {
           const nowMs = Date.now();
@@ -94,8 +94,8 @@ export function useAuctionRelayerFeed(options?: {
         // Auto-subscribe to auction channel when an auction starts
         if (isAuctionStarted) {
           const subscribeAuctionId =
-            (msg?.payload?.auctionId as string) ||
-            (msg?.auctionId as string) ||
+            (typeof payload?.auctionId === 'string' && payload.auctionId) ||
+            (typeof msg?.auctionId === 'string' && msg.auctionId) ||
             null;
           if (subscribeAuctionId) {
             subscribedAuctionsRef.current.set(subscribeAuctionId, now);

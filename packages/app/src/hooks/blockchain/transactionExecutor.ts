@@ -79,8 +79,10 @@ export interface ExecutionDeps {
   ) => Promise<Hash>;
 
   // EOA path
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- wagmi hook return types use complex generics
   writeContractAsync?: (...args: any[]) => Promise<Hash>;
-  sendCallsAsync?: (...args: any[]) => Promise<SendCallsResult>;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- wagmi hook return types use complex generics
+  sendCallsAsync?: (params: any) => Promise<SendCallsResult>;
   validateAndSwitchChain?: (chainId: number) => Promise<void>;
 
   // Lifecycle callbacks
