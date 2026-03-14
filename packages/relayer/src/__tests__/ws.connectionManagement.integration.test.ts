@@ -267,11 +267,12 @@ describe('Connection Limit', () => {
   });
 
   it('rejects with code 1008 "connection_limit_exceeded" beyond limit', async () => {
-    // Fill up to max (3)
+    // Fill up to max (3), sending pings to keep them alive (idle timeout is 400ms)
     const clients: WebSocket[] = [];
     for (let i = 0; i < 3; i++) {
       clients.push(await createClient());
     }
+    for (const c of clients) c.ping();
 
     // 4th connection should be rejected
     const ws4 = new WebSocket(`ws://localhost:${serverPort}/auction`);
@@ -284,11 +285,12 @@ describe('Connection Limit', () => {
   });
 
   it('allows new connections after disconnect', async () => {
-    // Fill up to max (3)
+    // Fill up to max (3), sending pings to keep them alive
     const clients: WebSocket[] = [];
     for (let i = 0; i < 3; i++) {
       clients.push(await createClient());
     }
+    for (const c of clients) c.ping();
 
     // Close one connection
     const closedClient = clients[0];
