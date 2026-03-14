@@ -7,7 +7,6 @@ import { validateBidFull } from '@sapience/sdk/auction/validation';
 import type { ValidationResult } from '@sapience/sdk/auction/validation';
 import type { AuctionBid } from '~/lib/auction/useAuctionBidsHub';
 import { getPublicClientForChainId } from '~/lib/utils/util';
-import { PREFERRED_ESTIMATE_QUOTER } from '@sapience/sdk/constants';
 
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
@@ -130,12 +129,6 @@ export function usePreprocessedBids(
     if (!canValidate || rawBids.length === 0) return;
 
     const newBids = rawBids.filter((bid) => {
-      // Skip estimator bids (deadline=1, non-executable, display only)
-      if (
-        bid.counterparty?.toLowerCase() ===
-        PREFERRED_ESTIMATE_QUOTER.toLowerCase()
-      )
-        return false;
       // Skip zero-address bids
       if (!bid.counterparty || bid.counterparty.toLowerCase() === ZERO_ADDRESS)
         return false;
@@ -274,13 +267,6 @@ export function usePreprocessedBids(
   // Build processed bids
   const processedBids = useMemo((): PreprocessedBid[] => {
     return rawBids.map((bid): PreprocessedBid => {
-      // Estimator bids are display-only — mark valid without validation
-      if (
-        bid.counterparty?.toLowerCase() ===
-        PREFERRED_ESTIMATE_QUOTER.toLowerCase()
-      ) {
-        return { ...bid, validationStatus: 'valid' };
-      }
       // Zero-address bids are always invalid
       if (
         !bid.counterparty ||

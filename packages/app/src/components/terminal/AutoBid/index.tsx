@@ -244,6 +244,9 @@ const AutoBid: React.FC<AutoBidProps> = () => {
     auctionMessages,
     formatCollateralAmount,
     submitBid,
+    predictionMarketAddress: SPENDER_ADDRESS,
+    collateralTokenAddress: COLLATERAL_ADDRESS,
+    chainId,
   });
 
   const conditionItems = useMemo<MultiSelectItem[]>(() => {
