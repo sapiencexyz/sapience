@@ -238,8 +238,8 @@ describe('Escrow Handlers', () => {
       const details = { auctionId: 'auction-123', picks: [] };
       vi.mocked(getEscrowAuctionDetails).mockReturnValue(details as never);
 
-      const bot1 = mockClient('bot1');
-      const bot2 = mockClient('bot2');
+      const bot1 = mockClient('bot1-0000-0000-0000-000000000000');
+      const bot2 = mockClient('bot2-0000-0000-0000-000000000000');
       const ctx2 = { allClients: () => [bot1, bot2] };
       const client = mockClient();
       const subs = mockSubs();
@@ -480,7 +480,7 @@ describe('Escrow Handlers', () => {
       } as never);
       vi.mocked(validateBid).mockResolvedValue({
         status: 'invalid',
-        code: 'BAD_SIGNATURE',
+        code: 'INVALID_SIGNATURE',
         reason: 'signature_mismatch',
       });
 

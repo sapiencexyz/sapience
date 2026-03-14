@@ -11,7 +11,7 @@ vi.mock('ws', () => {
   };
 });
 
-function mockWs(readyState = WebSocket.OPEN) {
+function mockWs(readyState: number = WebSocket.OPEN) {
   return {
     readyState,
     send: vi.fn(),
@@ -53,14 +53,14 @@ describe('createWsClientConnection', () => {
     });
 
     it('does not send when socket is not OPEN', () => {
-      const ws = mockWs(WebSocket.CLOSED as number);
+      const ws = mockWs(WebSocket.CLOSED);
       const client = createWsClientConnection(ws);
       client.send({ type: 'test' });
       expect(ws.send).not.toHaveBeenCalled();
     });
 
     it('logs warning when socket is not OPEN', () => {
-      const ws = mockWs(WebSocket.CLOSED as number);
+      const ws = mockWs(WebSocket.CLOSED);
       const warnSpy = vi.spyOn(console, 'warn').mockImplementation(() => {});
       const client = createWsClientConnection(ws);
       client.send({ type: 'test' });
@@ -105,7 +105,7 @@ describe('createWsClientConnection', () => {
     });
 
     it('does not fire when socket is not OPEN', () => {
-      const ws = mockWs(WebSocket.CLOSED as number);
+      const ws = mockWs(WebSocket.CLOSED);
       const onSend = vi.fn();
       const client = createWsClientConnection(ws, { onSend });
       client.send({ type: 'test' });
@@ -131,24 +131,23 @@ describe('createWsClientConnection', () => {
 
   describe('isOpen', () => {
     it('returns true when socket is OPEN', () => {
-      const ws = mockWs(WebSocket.OPEN as number);
+      const ws = mockWs(WebSocket.OPEN);
       const client = createWsClientConnection(ws);
       expect(client.isOpen).toBe(true);
     });
 
     it('returns false when socket is CLOSED', () => {
-      const ws = mockWs(WebSocket.CLOSED as number);
+      const ws = mockWs(WebSocket.CLOSED);
       const client = createWsClientConnection(ws);
       expect(client.isOpen).toBe(false);
     });
 
     it('reflects live readyState changes', () => {
-      const ws = mockWs(WebSocket.OPEN as number);
+      const ws = mockWs(WebSocket.OPEN);
       const client = createWsClientConnection(ws);
       expect(client.isOpen).toBe(true);
       // Simulate state change
-      (ws as unknown as { readyState: number }).readyState =
-        WebSocket.CLOSED as number;
+      (ws as unknown as { readyState: number }).readyState = WebSocket.CLOSED;
       expect(client.isOpen).toBe(false);
     });
   });
