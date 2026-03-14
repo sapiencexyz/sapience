@@ -261,6 +261,47 @@ contract ConditionalTokensDeadlineTest is TestHelperOz5 {
         assertEq(o3.noWeight, 0);
     }
 
+    // ============ isFinalized + Deadline ============
+
+    function test_isFinalized_noDeadline_unresolved_false() public view {
+        bytes memory cid = abi.encode(RAW_CONDITION_ID);
+        assertFalse(resolver.isFinalized(cid));
+    }
+
+    function test_isFinalized_noDeadline_settled_true() public {
+        _settleCondition(RAW_CONDITION_ID, 1, 0, 1);
+        bytes memory cid = abi.encode(RAW_CONDITION_ID);
+        assertTrue(resolver.isFinalized(cid));
+    }
+
+    function test_isFinalized_withDeadline_beforeDeadline_unresolved_false()
+        public
+        view
+    {
+        uint256 deadline = block.timestamp + 1 hours;
+        bytes memory cid = abi.encode(RAW_CONDITION_ID, deadline);
+        assertFalse(resolver.isFinalized(cid));
+    }
+
+    function test_isFinalized_withDeadline_pastDeadline_unresolved_true()
+        public
+    {
+        uint256 deadline = block.timestamp + 1 hours;
+        bytes memory cid = abi.encode(RAW_CONDITION_ID, deadline);
+
+        vm.warp(deadline + 1);
+
+        // Past deadline + unresolved → finalized as indecisive
+        assertTrue(resolver.isFinalized(cid));
+    }
+
+    function test_isFinalized_withDeadline_settled_true() public {
+        _settleCondition(RAW_CONDITION_ID, 1, 0, 1);
+        uint256 deadline = block.timestamp + 1 hours;
+        bytes memory cid = abi.encode(RAW_CONDITION_ID, deadline);
+        assertTrue(resolver.isFinalized(cid));
+    }
+
     // ============ Helper ============
 
     function _settleCondition(

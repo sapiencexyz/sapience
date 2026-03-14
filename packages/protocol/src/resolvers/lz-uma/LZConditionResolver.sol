@@ -78,7 +78,7 @@ contract LZConditionResolver is
         pure
         returns (bool)
     {
-        if (conditionId.length < 32) return false;
+        if (conditionId.length != 32) return false;
         bytes32 rawId = bytes32(conditionId[:32]);
         return rawId != bytes32(0);
     }

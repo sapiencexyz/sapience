@@ -117,9 +117,13 @@ contract ConditionalTokensConditionResolver is
         view
         returns (bool)
     {
-        bytes32 rawId = bytes32(conditionId[:32]);
+        (bytes32 rawId, uint256 deadline) = _unpackConditionId(conditionId);
         ConditionState memory condition = conditions[rawId];
-        return condition.settled && !condition.invalid;
+        // Settled normally
+        if (condition.settled && !condition.invalid) return true;
+        // Past deadline and unresolved → finalized as indecisive
+        if (deadline > 0 && block.timestamp > deadline) return true;
+        return false;
     }
 
     // ============ View Functions ============
