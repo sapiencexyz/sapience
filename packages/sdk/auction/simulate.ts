@@ -104,6 +104,8 @@ export function parseSimulationError(err: unknown): string {
 
   const mappings: [string, string][] = [
     ['InvalidSignature', 'Invalid signature'],
+    ['InvalidPredictorSignature', 'Invalid predictor signature'],
+    ['InvalidCounterpartSignature', 'Invalid counterparty signature'],
     ['InvalidTakerSignature', 'Invalid bid signature'],
     ['TakerDeadlineExpired', 'Bid has expired'],
     ['InvalidMakerNonce', 'Nonce already used'],
