@@ -110,8 +110,8 @@ export async function handleAuctionStart(
   logTiming(auctionId, 'created', startTime);
 
   auctionsStarted.inc();
-  subs.subscribe(`auction:${auctionId}`, client);
-  subscriptionsActive.inc({ subscription_type: 'auction' });
+  const isNew = subs.subscribe(`auction:${auctionId}`, client);
+  if (isNew) subscriptionsActive.inc({ subscription_type: 'auction' });
 
   // Echo back request ID for client-side correlation
   const ackPayload: Record<string, unknown> = { auctionId };
@@ -153,8 +153,8 @@ export function handleAuctionSubscribe(
   subs: SubscriptionManager
 ): void {
   if (typeof auctionId === 'string' && auctionId.length > 0) {
-    subs.subscribe(`auction:${auctionId}`, client);
-    subscriptionsActive.inc({ subscription_type: 'auction' });
+    const isNew = subs.subscribe(`auction:${auctionId}`, client);
+    if (isNew) subscriptionsActive.inc({ subscription_type: 'auction' });
     const bids = getEscrowBids(auctionId);
     if (bids.length > 0) {
       client.send({

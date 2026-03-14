@@ -120,7 +120,7 @@ export function handleVaultObserve(
   client: ClientConnection,
   subs: SubscriptionManager
 ): void {
-  subs.subscribe('vault:observers', client);
+  subs.subscribe('observers:vault', client);
   sendVaultAck(client, { ok: true });
 }
 
@@ -128,7 +128,7 @@ export function handleVaultUnobserve(
   client: ClientConnection,
   subs: SubscriptionManager
 ): void {
-  subs.unsubscribe('vault:observers', client);
+  subs.unsubscribe('observers:vault', client);
   sendVaultAck(client, { ok: true });
 }
 
@@ -157,7 +157,7 @@ export function handleVaultSubscribe(
   sendVaultAck(client, { ok: true });
 
   // Notify observers that a vault subscription was requested
-  subs.broadcast('vault:observers', {
+  subs.broadcast('observers:vault', {
     type: 'vault_quote.requested',
     payload: {
       chainId,
@@ -284,7 +284,7 @@ export async function handleVaultQuotePublish(
     sendVaultAck(client, { ok: true });
 
     // Broadcast to observers
-    subs.broadcast('vault:observers', {
+    subs.broadcast('observers:vault', {
       type: 'vault_quote.update',
       payload: normalized,
     });
