@@ -168,6 +168,29 @@ describe('preprocessBids', () => {
     expect(result[2].validationStatus).toBe('unverified');
   });
 
+  test('handles validateBidFull throwing without killing batch', async () => {
+    mockValidateBidFull
+      .mockResolvedValueOnce({ status: 'valid' })
+      .mockRejectedValueOnce(new Error('RPC timeout'))
+      .mockResolvedValueOnce({ status: 'valid' });
+
+    const bids = [
+      makeBid({ counterpartySignature: '0xsig1' }),
+      makeBid({ counterpartySignature: '0xsig2' }),
+      makeBid({ counterpartySignature: '0xsig3' }),
+    ];
+
+    const result = await preprocessBids(bids, AUCTION_CONTEXT, DEFAULT_OPTS);
+
+    expect(result).toHaveLength(3);
+    expect(result[0].validationStatus).toBe('valid');
+    expect(result[1].validationStatus).toBe('unverified');
+    expect(result[1].validationError).toBe(
+      'Validation threw an unexpected error'
+    );
+    expect(result[2].validationStatus).toBe('valid');
+  });
+
   test('respects concurrency limit', async () => {
     let concurrent = 0;
     let maxConcurrent = 0;

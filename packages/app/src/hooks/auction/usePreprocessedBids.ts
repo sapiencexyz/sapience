@@ -7,6 +7,9 @@ import { validateBidFull } from '@sapience/sdk/auction/validation';
 import type { ValidationResult } from '@sapience/sdk/auction/validation';
 import type { AuctionBid } from '~/lib/auction/useAuctionBidsHub';
 import { getPublicClientForChainId } from '~/lib/utils/util';
+import { PREFERRED_ESTIMATE_QUOTER } from '@sapience/sdk/constants';
+
+const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
 // ─── Types ───────────────────────────────────────────────────────────────────
 
@@ -112,8 +115,8 @@ export function usePreprocessedBids(
         (p) => `${p.conditionResolver}:${p.conditionId}:${p.predictedOutcome}`
       )
       .join('|');
-    return `${picksStr}:${predictorCollateral}:${predictor}`;
-  }, [picks, predictorCollateral, predictor]);
+    return `${picksStr}:${predictorCollateral}:${predictor}:${chainId}`;
+  }, [picks, predictorCollateral, predictor, chainId]);
 
   // Clear cache when auction context changes
   useEffect(() => {
@@ -127,6 +130,15 @@ export function usePreprocessedBids(
     if (!canValidate || rawBids.length === 0) return;
 
     const newBids = rawBids.filter((bid) => {
+      // Skip estimator bids (deadline=1, non-executable, display only)
+      if (
+        bid.counterparty?.toLowerCase() ===
+        PREFERRED_ESTIMATE_QUOTER.toLowerCase()
+      )
+        return false;
+      // Skip zero-address bids
+      if (!bid.counterparty || bid.counterparty.toLowerCase() === ZERO_ADDRESS)
+        return false;
       const sig = bid.counterpartySignature;
       return !validatedRef.current.has(sig) && !validatingRef.current.has(sig);
     });
@@ -181,13 +193,17 @@ export function usePreprocessedBids(
               return [
                 bid.counterpartySignature,
                 {
-                  status: result.status === 'valid' ? 'valid' : result.status,
+                  status: result.status,
                   error: result.status !== 'valid' ? result.reason : undefined,
                 },
               ];
             } catch {
-              // Fail-open on unexpected errors
-              return [bid.counterpartySignature, { status: 'valid' }];
+              // Fail to unverified — anti-spoofing context means we shouldn't
+              // trust bids we can't validate
+              return [
+                bid.counterpartySignature,
+                { status: 'unverified' as const, error: 'Validation error' },
+              ];
             }
           }
         )
@@ -257,6 +273,25 @@ export function usePreprocessedBids(
   // Build processed bids
   const processedBids = useMemo((): PreprocessedBid[] => {
     return rawBids.map((bid): PreprocessedBid => {
+      // Estimator bids are display-only — mark valid without validation
+      if (
+        bid.counterparty?.toLowerCase() ===
+        PREFERRED_ESTIMATE_QUOTER.toLowerCase()
+      ) {
+        return { ...bid, validationStatus: 'valid' };
+      }
+      // Zero-address bids are always invalid
+      if (
+        !bid.counterparty ||
+        bid.counterparty.toLowerCase() === ZERO_ADDRESS
+      ) {
+        return {
+          ...bid,
+          validationStatus: 'invalid',
+          validationError: 'Missing counterparty (zero address)',
+        };
+      }
+
       const result = validationResults.get(bid.counterpartySignature);
 
       if (!result) {

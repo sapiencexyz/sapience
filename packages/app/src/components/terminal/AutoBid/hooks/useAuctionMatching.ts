@@ -605,6 +605,10 @@ export function useAuctionMatching({
           },
         });
         if (!readiness.blocked) {
+          // Mark as in-progress immediately to prevent duplicate submissions
+          // during async validation (race condition protection)
+          markBidProcessed(bidDedupeKey);
+
           // Validate the copied bid before outbidding (anti-spoofing)
           const verifyingContract = predictionMarketEscrow[DEFAULT_CHAIN_ID]
             ?.address as Address | undefined;
@@ -688,7 +692,9 @@ export function useAuctionMatching({
     [
       evaluateAutoBidReadiness,
       getOrderIndex,
+      markBidProcessed,
       orders,
+      pushLogEntry,
       tokenDecimals,
       triggerAutoBidSubmission,
     ]

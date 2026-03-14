@@ -88,15 +88,24 @@ export async function preprocessBids<T extends BidPayload>(
     const batch = uniqueBids.slice(i, i + concurrency);
     const batchResults = await Promise.all(
       batch.map(async (bid): Promise<ProcessedBid<T>> => {
-        const result = await validateBidFull(bid, auction, {
-          verifyingContract: opts.verifyingContract,
-          chainId: opts.chainId,
-          predictionMarketAddress: opts.predictionMarketAddress,
-          collateralTokenAddress: opts.collateralTokenAddress,
-          publicClient: opts.publicClient,
-          checkPredictor: opts.checkPredictor,
-        });
-        return mapResult(bid, result);
+        try {
+          const result = await validateBidFull(bid, auction, {
+            verifyingContract: opts.verifyingContract,
+            chainId: opts.chainId,
+            predictionMarketAddress: opts.predictionMarketAddress,
+            collateralTokenAddress: opts.collateralTokenAddress,
+            publicClient: opts.publicClient,
+            checkPredictor: opts.checkPredictor,
+          });
+          return mapResult(bid, result);
+        } catch {
+          return {
+            bid,
+            validationStatus: 'unverified',
+            validationError: 'Validation threw an unexpected error',
+            validationCode: 'VALIDATION_ERROR' as ValidationErrorCode,
+          };
+        }
       })
     );
     results.push(...batchResults);
