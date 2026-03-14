@@ -252,6 +252,19 @@ describe('Idle Timeout', () => {
 });
 
 describe('Connection Limit', () => {
+  // Increase idle timeout so it can't race with sequential connection creation in slow CI.
+  // The server reads config.WS_IDLE_TIMEOUT_MS at connection time, so this takes effect
+  // for all connections created within this describe block.
+  beforeAll(async () => {
+    const configModule = await import('../config');
+    (configModule.config as Record<string, unknown>).WS_IDLE_TIMEOUT_MS = 30000;
+  });
+
+  afterAll(async () => {
+    const configModule = await import('../config');
+    (configModule.config as Record<string, unknown>).WS_IDLE_TIMEOUT_MS = 2000;
+  });
+
   it('accepts up to WS_MAX_CONNECTIONS', async () => {
     const clients: WebSocket[] = [];
     for (let i = 0; i < 3; i++) {
