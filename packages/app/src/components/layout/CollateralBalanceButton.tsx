@@ -112,8 +112,11 @@ export default function CollateralBalanceButton({
   });
 
   // Sponsorship budget
-  const { isSponsored, remainingBudget, isLoading: isSponsorLoading } =
-    useSponsorStatus();
+  const {
+    isSponsored,
+    remainingBudget,
+    isLoading: isSponsorLoading,
+  } = useSponsorStatus();
   const sponsorBudgetFormatted = isSponsored
     ? formatDollarLikeBalance(formatUnits(remainingBudget, 18))
     : '0.00';
