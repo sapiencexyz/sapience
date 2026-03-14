@@ -6,13 +6,18 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { parseUnits, formatEther, formatUnits } from 'viem';
 import { Pin, ChevronDown } from 'lucide-react';
 import { type UiTransaction } from '~/components/markets/DataDrawer/TransactionCells';
-import { useAuctionBids } from '~/lib/auction/useAuctionBids';
+import { useAuctionBids, type AuctionBid } from '~/lib/auction/useAuctionBids';
+import { usePreprocessedBids } from '~/hooks/auction/usePreprocessedBids';
 import AuctionRequestInfo from '~/components/terminal/AuctionRequestInfo';
 import AuctionRequestChart from '~/components/terminal/AuctionRequestChart';
 import { useAccount, useReadContract } from 'wagmi';
-import { collateralToken } from '@sapience/sdk/contracts';
+import {
+  collateralToken,
+  predictionMarketEscrow,
+} from '@sapience/sdk/contracts';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import type { Address } from 'viem';
 import { useChainId } from 'wagmi';
 import erc20Abi from '@sapience/sdk/queries/abis/erc20abi.json';
 import { useToast } from '@sapience/ui/hooks/use-toast';
@@ -113,9 +118,26 @@ const AuctionRequestRow: React.FC<Props> = ({
   const [localExpanded, setLocalExpanded] = useState(false);
   const isExpanded = isExpandedProp ?? localExpanded;
 
-  const { bids: validBids } = useAuctionBids(auctionId);
-  const invalidBidCount = 0;
-  const totalBidCount = validBids.length;
+  const { bids: rawBids } = useAuctionBids(auctionId);
+
+  const escrowAddress = (predictionMarketEscrow[chainId]?.address ??
+    predictionMarketEscrow[DEFAULT_CHAIN_ID]?.address) as Address | undefined;
+
+  const {
+    processedBids,
+    validBids,
+    excludedBidCount: invalidBidCount,
+  } = usePreprocessedBids(rawBids, {
+    picks: escrowPicks,
+    predictor: predictor ?? undefined,
+    predictorCollateral: predictorCollateral ?? undefined,
+    chainId,
+    predictionMarketAddress: escrowAddress,
+    collateralTokenAddress: COLLATERAL_ADDRESS as Address | undefined,
+    enabled: Boolean(auctionId),
+  });
+
+  const totalBidCount = processedBids.length;
   const [highlightNewBid, setHighlightNewBid] = useState(false);
   const numBids = totalBidCount;
   const bidsLabel = useMemo(
@@ -624,7 +646,7 @@ const AuctionRequestRow: React.FC<Props> = ({
               invalidBidCount={invalidBidCount}
             />
             <AuctionRequestInfo
-              bids={validBids}
+              bids={validBids as AuctionBid[]}
               predictorCollateral={predictorCollateral}
               collateralAssetTicker={collateralAssetTicker}
               maxEndTimeSec={maxEndTimeSec ?? undefined}

@@ -40,12 +40,17 @@ export type ValidationErrorCode =
   | 'NONCE_USED'
   | 'INSUFFICIENT_BALANCE'
   | 'INSUFFICIENT_ALLOWANCE'
-  | 'RPC_ERROR';
+  | 'RPC_ERROR'
+  | 'VALIDATION_ERROR';
 
 export type ValidationResult =
   | { status: 'valid'; recoveredSigner?: Address }
   | { status: 'invalid'; code: ValidationErrorCode; reason: string }
-  | { status: 'unverified'; code: 'SIGNATURE_UNVERIFIABLE'; reason: string };
+  | {
+      status: 'unverified';
+      code: 'SIGNATURE_UNVERIFIABLE' | 'VALIDATION_ERROR';
+      reason: string;
+    };
 
 /** Helper — every consumer should use this instead of raw status checks. */
 export function isActionable(
