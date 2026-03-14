@@ -122,15 +122,12 @@ export async function handleAuctionStart(
   // Broadcast auction.started with auction details to all connected clients
   const details = getEscrowAuctionDetails(auctionId);
   if (details) {
-    const msg = JSON.stringify({
-      type: 'auction.started',
-      payload: details,
-    });
+    const broadcastMsg = { type: 'auction.started', payload: details };
     let botCount = 0;
     for (const c of ctx.allClients()) {
       if (c.isOpen) {
         try {
-          c.send(msg);
+          c.send(broadcastMsg);
           botCount++;
         } catch {
           /* skip dead connections */

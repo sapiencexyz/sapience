@@ -174,7 +174,13 @@ export function handleVaultUnsubscribe(
 ): void {
   const chainId = payload?.chainId;
   const vaultAddress = payload?.vaultAddress;
-  if (!chainId || !vaultAddress) return;
+  if (!chainId || !vaultAddress) {
+    console.warn(
+      '[Relayer] vault unsubscribe rejected: missing chainId or vaultAddress'
+    );
+    sendVaultAck(client, { error: 'invalid_unsubscribe' });
+    return;
+  }
 
   const key = makeVaultKey(chainId, vaultAddress);
   const wasRemoved = subs.unsubscribe(`vault:${key}`, client);

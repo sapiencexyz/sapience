@@ -248,10 +248,10 @@ describe('Escrow Handlers', () => {
 
       // All clients should receive the auction.started broadcast
       expect(bot1.send).toHaveBeenCalledWith(
-        expect.stringContaining('auction.started')
+        expect.objectContaining({ type: 'auction.started' })
       );
       expect(bot2.send).toHaveBeenCalledWith(
-        expect.stringContaining('auction.started')
+        expect.objectContaining({ type: 'auction.started' })
       );
     });
 

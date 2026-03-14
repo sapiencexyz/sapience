@@ -21,7 +21,12 @@ export function createWsClientConnection(
         return;
       }
       const data = typeof msg === 'string' ? msg : JSON.stringify(msg);
-      ws.send(data);
+      try {
+        ws.send(data);
+      } catch (err) {
+        console.warn('[Relayer] ws.send() failed:', err);
+        return;
+      }
       // Fire onSend hook — extract message type for metrics
       if (hooks?.onSend) {
         try {
