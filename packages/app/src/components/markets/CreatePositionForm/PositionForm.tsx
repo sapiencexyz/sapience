@@ -18,6 +18,7 @@ import {
   COLLATERAL_SYMBOLS,
   CHAIN_ID_ETHEREAL,
   CHAIN_ID_ETHEREAL_TESTNET,
+  PREFERRED_ESTIMATE_QUOTER,
 } from '@sapience/sdk/constants';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
@@ -342,12 +343,25 @@ export default function PositionForm({
       return { bestBid: null, estimateBid: null };
     }
 
-    // Get non-expired bids
-    const nonExpiredBids = validBids.filter(
+    // Separate estimator bids (vault-bot with deadline=1 sentinel) from regular bids
+    const estimatorBids = validBids.filter(
+      (bid) =>
+        bid.counterparty?.toLowerCase() ===
+          PREFERRED_ESTIMATE_QUOTER.toLowerCase() &&
+        bid.validationStatus === 'valid'
+    );
+    const regularBids = validBids.filter(
+      (bid) =>
+        bid.counterparty?.toLowerCase() !==
+        PREFERRED_ESTIMATE_QUOTER.toLowerCase()
+    );
+
+    // Apply expiry filter only to regular bids (estimator bids use deadline=1 sentinel)
+    const nonExpiredBids = regularBids.filter(
       (bid) => bid.counterpartyDeadline * 1000 > nowMs
     );
 
-    if (nonExpiredBids.length === 0) {
+    if (nonExpiredBids.length === 0 && estimatorBids.length === 0) {
       const resultKey = 'all-expired';
       if (prevFilterResultRef.current !== resultKey) {
         logPositionForm(
@@ -375,18 +389,34 @@ export default function PositionForm({
         : null;
 
     if (validFilteredBids.length === 0) {
-      const resultKey = estimateFromFailed
-        ? `estimate:${estimateFromFailed.counterparty}`
+      // No valid regular bids — fall back to best estimator bid or failed estimate
+      const bestEstimator =
+        estimatorBids.length > 0
+          ? estimatorBids.reduce((acc, current) => {
+              try {
+                return BigInt(current.counterpartyCollateral) >
+                  BigInt(acc.counterpartyCollateral)
+                  ? current
+                  : acc;
+              } catch {
+                return acc;
+              }
+            })
+          : null;
+
+      const estimate = bestEstimator ?? estimateFromFailed;
+      const resultKey = estimate
+        ? `estimate:${estimate.counterparty}`
         : `no-valid:${failedBids.length}`;
       if (prevFilterResultRef.current !== resultKey) {
-        if (estimateFromFailed) {
+        if (estimate) {
           logPositionForm(
-            `Using estimate: ${formatBidForLog(estimateFromFailed, collateralDecimals)}`
+            `Using estimate: ${formatBidForLog(estimate, collateralDecimals)}`
           );
         }
         prevFilterResultRef.current = resultKey;
       }
-      return { bestBid: null, estimateBid: estimateFromFailed };
+      return { bestBid: null, estimateBid: estimate };
     }
 
     // Select the bid with highest counterpartyCollateral (highest payout for user)
@@ -421,8 +451,12 @@ export default function PositionForm({
       return;
     }
     // Clear the sticky estimate when there are no non-expired bids left.
+    // Estimator bids use deadline=1 (sentinel) and should not cause clearing.
     const hasAnyNonExpired = bids.some(
-      (b) => b.counterpartyDeadline * 1000 > nowMs
+      (b) =>
+        b.counterpartyDeadline * 1000 > nowMs ||
+        b.counterparty?.toLowerCase() ===
+          PREFERRED_ESTIMATE_QUOTER.toLowerCase()
     );
     if (!hasAnyNonExpired) setStickyEstimateBid(null);
   }, [bestBid, estimateBid, bids, nowMs]);
@@ -440,8 +474,13 @@ export default function PositionForm({
   const prevEstimateBidRef = useRef<typeof estimateBid>(null);
   useEffect(() => {
     if (estimateBid && !prevEstimateBidRef.current) {
-      // New estimate bid received - restart cooldown
-      setLastQuoteRequestMs(Date.now());
+      // For estimator bids (final answer for logged-out users), don't restart cooldown
+      const isFromEstimator =
+        estimateBid.counterparty?.toLowerCase() ===
+        PREFERRED_ESTIMATE_QUOTER.toLowerCase();
+      if (!isFromEstimator) {
+        setLastQuoteRequestMs(Date.now());
+      }
     }
     prevEstimateBidRef.current = estimateBid;
   }, [estimateBid]);
@@ -892,7 +931,9 @@ export default function PositionForm({
               showAddPredictionsHint={
                 selections.length === 1 && !bestBid && !stickyEstimateBid
               }
-              isAuctionPending={recentlyRequested && !bestBid}
+              isAuctionPending={
+                recentlyRequested && !bestBid && !stickyEstimateBid
+              }
               hasFormErrors={hasFormErrors}
               isLoggedOut={!hasConnectedWallet}
               onConnectClick={openConnectDialog}
