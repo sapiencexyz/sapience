@@ -36,7 +36,8 @@ contract OnboardingSponsorTest is Test {
     uint256 public constant MAX_ENTRY_PRICE_BPS = 7000; // 0.70
     bytes32 public constant REF_CODE = keccak256("invite-code");
 
-    bytes32 public conditionId;
+    bytes32 public rawConditionId;
+    bytes public conditionId;
 
     function _freshNonce() internal returns (uint256) {
         return _nextNonce++;
@@ -67,7 +68,8 @@ contract OnboardingSponsorTest is Test {
         vm.prank(owner);
         resolver.approveSettler(settler);
 
-        conditionId = keccak256(abi.encode("will-eth-hit-10k"));
+        rawConditionId = keccak256(abi.encode("will-eth-hit-10k"));
+        conditionId = abi.encode(rawConditionId);
 
         // Deploy sponsor, pointing at real escrow with vault-bot as required counterparty
         sponsor = new OnboardingSponsor(
@@ -99,11 +101,10 @@ contract OnboardingSponsorTest is Test {
 
     // ============ Helpers ============
 
-    function _createPick(bytes32 _conditionId, IV2Types.OutcomeSide _outcome)
-        internal
-        view
-        returns (IV2Types.Pick memory)
-    {
+    function _createPick(
+        bytes memory _conditionId,
+        IV2Types.OutcomeSide _outcome
+    ) internal view returns (IV2Types.Pick memory) {
         return IV2Types.Pick({
             conditionResolver: address(resolver),
             conditionId: _conditionId,
@@ -227,7 +228,7 @@ contract OnboardingSponsorTest is Test {
 
         // 3. Resolve condition — predictor wins
         vm.prank(settler);
-        resolver.settleCondition(conditionId, IV2Types.OutcomeVector(1, 0));
+        resolver.settleCondition(rawConditionId, IV2Types.OutcomeVector(1, 0));
         market.settle(predictionId, REF_CODE);
 
         // 4. Redeem — predictor gets all collateral
@@ -267,7 +268,7 @@ contract OnboardingSponsorTest is Test {
 
         // Resolve NO — counterparty wins
         vm.prank(settler);
-        resolver.settleCondition(conditionId, IV2Types.OutcomeVector(0, 1));
+        resolver.settleCondition(rawConditionId, IV2Types.OutcomeVector(0, 1));
         market.settle(predictionId, REF_CODE);
 
         // Counterparty redeems

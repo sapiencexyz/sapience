@@ -216,7 +216,7 @@ const manualConditionResolverAbi = [
     type: 'function',
     name: 'getResolution',
     stateMutability: 'view',
-    inputs: [{ name: 'conditionId', type: 'bytes32' }],
+    inputs: [{ name: 'conditionId', type: 'bytes' }],
     outputs: [
       { name: 'resolved', type: 'bool' },
       {

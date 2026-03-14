@@ -12,7 +12,8 @@ import "./IV2Types.sol";
 interface IPredictionMarketEscrow {
     // ============ Errors ============
 
-    error InvalidSignature();
+    error InvalidPredictorSignature();
+    error InvalidCounterpartSignature();
     error ExpiredDeadline();
     error NonceAlreadyUsed();
     error PredictionNotFound();
@@ -30,7 +31,7 @@ interface IPredictionMarketEscrow {
         uint256 predictorSupply, uint256 counterpartySupply
     );
     error NoDustToSweep();
-    error ResolverCallFailed(address resolver, bytes32 conditionId);
+    error ResolverCallFailed(address resolver, bytes conditionId);
     error PickConfigAlreadyResolved();
     error InvalidBurnAmounts();
     error AsymmetricBurn();
@@ -164,4 +165,44 @@ interface IPredictionMarketEscrow {
         external
         pure
         returns (bytes32 pickConfigId);
+
+    /// @notice Validate a party's mint signature off-chain (same logic as on-chain validation)
+    /// @param predictionHash Hash of the prediction parameters
+    /// @param signer Expected signer address
+    /// @param collateral Collateral amount for this signer
+    /// @param nonce Nonce for replay protection
+    /// @param deadline Signature expiration timestamp
+    /// @param signature The EIP-712 signature
+    /// @param sessionKeyData ABI-encoded SessionKeyData (empty if EOA)
+    /// @return isValid True if the signature is valid
+    function verifyMintPartySignature(
+        bytes32 predictionHash,
+        address signer,
+        uint256 collateral,
+        uint256 nonce,
+        uint256 deadline,
+        bytes calldata signature,
+        bytes calldata sessionKeyData
+    ) external view returns (bool isValid);
+
+    /// @notice Validate a party's burn signature off-chain (same logic as on-chain validation)
+    /// @param burnHash Hash of the burn parameters
+    /// @param signer Expected signer address
+    /// @param tokenAmount Token amount for this signer
+    /// @param payout Payout amount for this signer
+    /// @param nonce Nonce for replay protection
+    /// @param deadline Signature expiration timestamp
+    /// @param signature The EIP-712 signature
+    /// @param sessionKeyData ABI-encoded SessionKeyData (empty if EOA)
+    /// @return isValid True if the signature is valid
+    function verifyBurnPartySignature(
+        bytes32 burnHash,
+        address signer,
+        uint256 tokenAmount,
+        uint256 payout,
+        uint256 nonce,
+        uint256 deadline,
+        bytes calldata signature,
+        bytes calldata sessionKeyData
+    ) external view returns (bool isValid);
 }

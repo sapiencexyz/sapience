@@ -118,14 +118,24 @@ const conditionalTokensReaderAbi = [
   },
 ] as const;
 
-// LZConditionalTokensResolver ABI (Ethereal) — getConditionResolution reverts for unresolved conditions
-const lzConditionalTokenResolverAbi = [
+// Resolver ABI (Ethereal) — getResolution returns (resolved, outcome)
+const resolverAbi = [
   {
     type: 'function',
-    name: 'getConditionResolution',
+    name: 'getResolution',
     stateMutability: 'view',
-    inputs: [{ name: 'conditionId', type: 'bytes32' }],
-    outputs: [{ name: 'resolvedToYes', type: 'bool' }],
+    inputs: [{ name: 'conditionId', type: 'bytes' }],
+    outputs: [
+      { name: 'resolved', type: 'bool' },
+      {
+        name: 'outcome',
+        type: 'tuple',
+        components: [
+          { name: 'yesWeight', type: 'uint256' },
+          { name: 'noWeight', type: 'uint256' },
+        ],
+      },
+    ],
   },
 ] as const;
 
@@ -320,21 +330,23 @@ async function checkAndSettleCondition(
     // Check if condition is already resolved on Ethereal
     console.log(`[${conditionId}] Checking if already resolved on Ethereal...`);
     try {
-      const resolvedToYes = await etherealClient.readContract({
+      const [isResolved] = await etherealClient.readContract({
         address: RESOLVER_ADDRESS,
-        abi: lzConditionalTokenResolverAbi,
-        functionName: 'getConditionResolution',
+        abi: resolverAbi,
+        functionName: 'getResolution',
         args: [conditionId],
       });
-      console.log(
-        `[${conditionId}] Already resolved on Ethereal (resolvedToYes=${resolvedToYes})`
-      );
-      return {
-        conditionId,
-        alreadyResolved: true,
-        canResolve: false,
-        settled: false,
-      };
+      if (isResolved) {
+        console.log(
+          `[${conditionId}] Already resolved on Ethereal`
+        );
+        return {
+          conditionId,
+          alreadyResolved: true,
+          canResolve: false,
+          settled: false,
+        };
+      }
     } catch {
       // Revert means not yet resolved on Ethereal — proceed with Polygon check
     }
