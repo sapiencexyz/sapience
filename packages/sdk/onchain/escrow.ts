@@ -283,6 +283,7 @@ export async function isNonceUsed(
     marketAddress?: Address;
     chainId?: number;
     rpcUrl?: string;
+    publicClient?: PublicClient;
   }
 ): Promise<boolean> {
   const chainId = options?.chainId ?? CHAIN_ID_ETHEREAL;
@@ -290,7 +291,8 @@ export async function isNonceUsed(
   if (!marketAddress)
     throw new Error(`No escrow market address for chain ${chainId}`);
 
-  const client = createEscrowPublicClient(options?.rpcUrl, chainId);
+  const client =
+    options?.publicClient ?? createEscrowPublicClient(options?.rpcUrl, chainId);
   return await client.readContract({
     address: marketAddress,
     abi: PREDICTION_MARKET_ESCROW_ABI,

@@ -10,10 +10,9 @@ import {
   getEscrowAuctionDetails,
 } from './escrowRegistry';
 import {
-  validateEscrowAuctionRequest,
-  validateEscrowBid,
-} from './escrowHelpers';
-import { verifyAuctionIntentSignature } from './escrowSigVerify';
+  validateAuctionRFQ,
+  validateBid,
+} from '@sapience/sdk/auction/validation';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts/addresses';
 import {
   activeConnections,
@@ -670,65 +669,47 @@ export function createAuctionWebSocketServer() {
             keys: Object.keys(payload).join(','),
           });
 
-          // Validate auction request structure
-          const validation = validateEscrowAuctionRequest(payload);
-          if (!validation.valid) {
+          // Look up escrow contract address for this chain
+          const escrowAddr = predictionMarketEscrow[payload.chainId]?.address;
+          if (!escrowAddr) {
             errorsTotal.inc({
               type: 'validation',
               message_type: 'auction.start',
             });
             console.warn(
-              `[Relayer] auction.start rejected: ${validation.error}`
+              `[Relayer] auction.start rejected: unknown chainId ${payload.chainId}`
             );
             send(ws, {
               type: 'auction.ack',
-              payload: {
-                auctionId: '',
-                error: validation.error || 'invalid_payload',
-              },
+              payload: { auctionId: '', error: 'unknown_chain_id' },
             });
             trackDuration(msgType, startTime);
             return;
           }
 
-          // Verify intent signature if present
-          if (payload.intentSignature) {
-            const escrowAddr = predictionMarketEscrow[payload.chainId]?.address;
-            if (!escrowAddr) {
-              errorsTotal.inc({
-                type: 'validation',
-                message_type: 'auction.start',
-              });
-              console.warn(
-                `[Relayer] auction.start rejected: unknown chainId ${payload.chainId}`
-              );
-              send(ws, {
-                type: 'auction.ack',
-                payload: { auctionId: '', error: 'unknown_chain_id' },
-              });
-              trackDuration(msgType, startTime);
-              return;
-            }
-
-            const intentValid = await verifyAuctionIntentSignature(
-              payload,
-              escrowAddr as `0x${string}`
+          // Validate auction request structure + intent signature in one call
+          const validation = await validateAuctionRFQ(payload, {
+            verifyingContract: escrowAddr as `0x${string}`,
+            requireSignature: !!payload.intentSignature,
+            maxDeadlineSeconds: 7200,
+          });
+          if (validation.status !== 'valid') {
+            errorsTotal.inc({
+              type: 'validation',
+              message_type: 'auction.start',
+            });
+            console.warn(
+              `[Relayer] auction.start rejected: ${validation.reason}`
             );
-            if (!intentValid) {
-              errorsTotal.inc({
-                type: 'validation',
-                message_type: 'auction.start',
-              });
-              console.warn(
-                `[Relayer] auction.start rejected: invalid intent signature from ${payload.predictor?.slice(0, 10)}`
-              );
-              send(ws, {
-                type: 'auction.ack',
-                payload: { auctionId: '', error: 'invalid_intent_signature' },
-              });
-              trackDuration(msgType, startTime);
-              return;
-            }
+            send(ws, {
+              type: 'auction.ack',
+              payload: {
+                auctionId: '',
+                error: validation.reason || 'invalid_payload',
+              },
+            });
+            trackDuration(msgType, startTime);
+            return;
           }
 
           const auctionId = upsertEscrowAuction(payload);
@@ -846,22 +827,30 @@ export function createAuctionWebSocketServer() {
             return;
           }
 
-          // Validate bid structure
-          const bidValidation = validateEscrowBid(bid, rec.auction);
-          if (!bidValidation.valid) {
+          // Validate bid structure + signature (offline only, no publicClient)
+          const escrowAddr =
+            predictionMarketEscrow[rec.auction.chainId]?.address;
+          const bidValidation = await validateBid(bid, rec.auction, {
+            verifyingContract: escrowAddr as `0x${string}`,
+            chainId: rec.auction.chainId,
+            // No publicClient — relayer does offline verification only.
+            // Unverified bids pass through (relayer is not the authority).
+          });
+          if (bidValidation.status === 'invalid') {
             bidsSubmitted.inc({ status: 'rejected' });
             errorsTotal.inc({ type: 'validation', message_type: 'bid.submit' });
             send(ws, {
               type: 'bid.ack',
-              payload: { error: bidValidation.error || 'invalid_bid' },
+              payload: { error: bidValidation.reason || 'invalid_bid' },
             });
             console.warn(
-              `[Relayer] bid.submit rejected auctionId=${bid.auctionId} reason=${bidValidation.error || 'invalid_bid'}`
+              `[Relayer] bid.submit rejected auctionId=${bid.auctionId} reason=${bidValidation.reason || 'invalid_bid'}`
             );
 
             trackDuration(msgType, startTime);
             return;
           }
+          // 'valid' and 'unverified' both pass through
 
           const validated = addEscrowBid(bid.auctionId, bid);
           if (!validated) {

@@ -7,14 +7,24 @@
  * @module auction/validation
  */
 
-import type { Address, Hex, PublicClient } from 'viem';
+import {
+  verifyMessage,
+  zeroAddress,
+  type Address,
+  type Hex,
+  type PublicClient,
+} from 'viem';
 import type { AuctionRFQPayload, BidPayload, PickJson } from '../types/escrow';
 import {
   verifyAuctionIntentSignature,
   verifyCounterpartyMintSignature,
   buildCounterpartyMintTypedData,
   hashMintApproval,
+  computePredictionHashFromPicks,
 } from './escrowSigning';
+import { predictionMarketEscrowAbi } from '../abis';
+import { isNonceUsed } from '../onchain/escrow';
+import { validateCounterpartyFunds } from '../onchain/position';
 
 // ─── Result Types ─────────────────────────────────────────────────────────────
 
@@ -557,13 +567,20 @@ export interface ValidateBidOnChainOptions {
   publicClient: PublicClient;
   checkPredictor?: boolean; // default true
   failOpen?: boolean; // default true
+  /** Skip on-chain signature verification (default false). */
+  skipSignatureVerification?: boolean;
 }
 
 /**
- * Tier 2: On-chain state validation.
+ * Tier 2: On-chain state + signature validation.
  *
- * Validates nonce freshness + balance + allowance via RPC reads.
- * Does NOT verify signatures — that's Tier 1's job.
+ * Validates counterparty signature via `verifyMintPartySignature()` on-chain
+ * view (definitive for all sig types: EOA, smart account ERC-1271, session key),
+ * plus nonce freshness + balance + allowance via RPC reads.
+ *
+ * This replaces the old Tier 3 (full mint simulation) approach. The protocol's
+ * `verifyMintPartySignature()` view (PR #1322) gives definitive true/false
+ * without needing a `signPredictorApproval` callback or state overrides.
  */
 export async function validateBidOnChain(
   bid: {
@@ -571,12 +588,21 @@ export async function validateBidOnChain(
     counterpartyCollateral: string;
     counterpartyNonce: number;
     counterpartyDeadline: number;
+    counterpartySignature: string;
+    counterpartySessionKeyData?: string;
   },
-  auction: { predictor: string; predictorCollateral: string },
+  auction: {
+    predictor: string;
+    predictorCollateral: string;
+    picks: PickJson[];
+    predictorSponsor?: string;
+    predictorSponsorData?: string;
+  },
   opts: ValidateBidOnChainOptions
 ): Promise<ValidationResult> {
   const failOpen = opts.failOpen ?? true;
   const checkPredictor = opts.checkPredictor ?? true;
+  const skipSigVerification = opts.skipSignatureVerification ?? false;
 
   // Re-check deadline (time may have passed since Tier 1)
   const nowSec = Math.floor(Date.now() / 1000);
@@ -589,20 +615,52 @@ export async function validateBidOnChain(
   }
 
   try {
-    // Dynamic import to avoid circular dependency issues
-    const { isNonceUsed } = await import('../onchain/escrow');
-    const { validateCounterpartyFunds } = await import('../onchain/position');
+    // 1. On-chain signature verification via verifyMintPartySignature()
+    if (!skipSigVerification) {
+      const sdkPicks = picksJsonToSdk(auction.picks);
+      const predictionHash = computePredictionHashFromPicks(
+        sdkPicks,
+        BigInt(auction.predictorCollateral),
+        BigInt(bid.counterpartyCollateral),
+        auction.predictor as Address,
+        bid.counterparty as Address,
+        (auction.predictorSponsor as Address) || zeroAddress,
+        (auction.predictorSponsorData as Hex) || '0x'
+      );
 
-    // 1. Counterparty nonce freshness
-    // NOTE: isNonceUsed creates its own PublicClient internally rather than
-    // accepting opts.publicClient. This is a known inefficiency — a future
-    // refactor of isNonceUsed to accept an optional client param would fix it.
+      const isValid = await opts.publicClient.readContract({
+        address: opts.predictionMarketAddress,
+        abi: predictionMarketEscrowAbi,
+        functionName: 'verifyMintPartySignature',
+        args: [
+          predictionHash,
+          bid.counterparty as Address,
+          BigInt(bid.counterpartyCollateral),
+          BigInt(bid.counterpartyNonce),
+          BigInt(bid.counterpartyDeadline),
+          bid.counterpartySignature as Hex,
+          (bid.counterpartySessionKeyData || '0x') as Hex,
+        ],
+      });
+
+      if (!isValid) {
+        return {
+          status: 'invalid',
+          code: 'INVALID_SIGNATURE',
+          reason:
+            'On-chain signature verification failed (verifyMintPartySignature)',
+        };
+      }
+    }
+
+    // 2. Counterparty nonce freshness
     const nonceUsed = await isNonceUsed(
       bid.counterparty as Address,
       BigInt(bid.counterpartyNonce),
       {
         chainId: opts.chainId,
         marketAddress: opts.predictionMarketAddress,
+        publicClient: opts.publicClient,
       }
     );
     if (nonceUsed) {
@@ -613,7 +671,7 @@ export async function validateBidOnChain(
       };
     }
 
-    // 2. Counterparty balance/allowance
+    // 3. Counterparty balance/allowance
     await validateCounterpartyFunds(
       bid.counterparty as Address,
       BigInt(bid.counterpartyCollateral),
@@ -622,7 +680,7 @@ export async function validateBidOnChain(
       opts.publicClient
     );
 
-    // 3. Predictor solvency (optional)
+    // 4. Predictor solvency (optional)
     if (checkPredictor) {
       await validateCounterpartyFunds(
         auction.predictor as Address,
@@ -636,9 +694,8 @@ export async function validateBidOnChain(
     return { status: 'valid' };
   } catch (err) {
     // validateCounterpartyFunds (position.ts) throws with a message containing
-    // 'market maker' on insufficient funds. This string coupling matches the
-    // existing app behavior in simulateEscrowBidMint.ts. A future refactor
-    // should introduce a typed error class in position.ts instead.
+    // 'market maker' on insufficient funds. A future refactor should introduce
+    // a typed error class in position.ts instead of this string coupling.
     if (err instanceof Error && err.message.includes('market maker')) {
       return {
         status: 'invalid',
@@ -702,14 +759,25 @@ export async function validateBidFull(
     return tier1;
   }
 
-  // Tier 2: on-chain state
-  return validateBidOnChain(bid, auction, {
-    chainId: opts.chainId,
-    predictionMarketAddress: opts.predictionMarketAddress,
-    collateralTokenAddress: opts.collateralTokenAddress,
-    publicClient: opts.publicClient,
-    checkPredictor: opts.checkPredictor,
-  });
+  // Tier 2: on-chain state + signature verification
+  return validateBidOnChain(
+    {
+      counterparty: bid.counterparty,
+      counterpartyCollateral: bid.counterpartyCollateral,
+      counterpartyNonce: bid.counterpartyNonce,
+      counterpartyDeadline: bid.counterpartyDeadline,
+      counterpartySignature: bid.counterpartySignature,
+      counterpartySessionKeyData: bid.counterpartySessionKeyData,
+    },
+    auction,
+    {
+      chainId: opts.chainId,
+      predictionMarketAddress: opts.predictionMarketAddress,
+      collateralTokenAddress: opts.collateralTokenAddress,
+      publicClient: opts.publicClient,
+      checkPredictor: opts.checkPredictor,
+    }
+  );
 }
 
 // ─── validateVaultQuote ───────────────────────────────────────────────────────
@@ -806,7 +874,6 @@ export async function validateVaultQuote(
 
   // Signature verification — canonical message format must match relayer's buildVaultQuoteMessage
   try {
-    const { verifyMessage } = await import('viem');
     const message = [
       'Sapience Vault Share Quote',
       `Vault: ${quote.vaultAddress.toLowerCase()}`,
