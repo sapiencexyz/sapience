@@ -894,7 +894,6 @@ export default function PositionForm({
             matchLimit={matchLimit}
             requiredCounterparty={requiredCounterparty}
             bestBid={bestBid}
-            stickyEstimateBid={stickyEstimateBid}
             positionSizeValue={positionSizeValue || ''}
             collateralDecimals={collateralDecimals}
             collateralSymbol={collateralSymbol}
