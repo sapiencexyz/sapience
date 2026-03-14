@@ -52,7 +52,6 @@ import {
   type WalletClient,
   type Transport,
   type Chain,
-  encodeAbiParameters,
   formatEther,
   defineChain,
 } from 'viem';
@@ -525,7 +524,7 @@ async function checkAndSettleCondition(
       address: RESOLVER_ADDRESS,
       abi: manualConditionResolverAbi,
       functionName: 'getResolution',
-      args: [encodeAbiParameters([{ type: 'bytes32' }], [conditionId])],
+      args: [conditionId],
     });
 
     if (isResolved) {
