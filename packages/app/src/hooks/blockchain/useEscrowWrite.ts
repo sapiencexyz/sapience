@@ -34,11 +34,14 @@ interface BurnRequest {
   counterpartySessionKeyData: Hex;
 }
 
-export function useEscrowWrite(params: { chainId?: number } = {}) {
+export function useEscrowWrite(
+  params: { chainId?: number; escrowAddress?: Address } = {}
+) {
   const chainId = params.chainId ?? DEFAULT_CHAIN_ID;
-  const contractAddress = predictionMarketEscrow[chainId]?.address as
+  const defaultAddress = predictionMarketEscrow[chainId]?.address as
     | Address
     | undefined;
+  const contractAddress = params.escrowAddress ?? defaultAddress;
 
   const successRef = useRef(false);
 

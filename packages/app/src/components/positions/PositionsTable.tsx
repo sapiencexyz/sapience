@@ -124,13 +124,18 @@ function PositionRow({
   // Claim / redeem state
   const [isRedeeming, setIsRedeeming] = React.useState(false);
   const [redeemed, setRedeemed] = React.useState(false);
-  const { settleAndRedeem } = useEscrowWrite({ chainId: position.chainId });
+  const escrowAddress = (pickConfig?.marketAddress as Address) ?? undefined;
+  const { settleAndRedeem } = useEscrowWrite({
+    chainId: position.chainId,
+    escrowAddress,
+  });
 
   const { isLoading: isLoadingClaimable } = useClaimableAmount({
     pickConfigId: pickConfig?.id as `0x${string}`,
     tokenAddress: position.tokenAddress as Address,
     amount: BigInt(position.balance),
     chainId: position.chainId,
+    contractAddress: escrowAddress,
     enabled:
       isResolved &&
       holderWon &&

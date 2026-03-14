@@ -1,16 +1,14 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { Address, Hex } from 'viem';
-import type { SimulateBidResult } from '@sapience/sdk/auction/simulate';
-import type { Pick } from '@sapience/sdk/types';
+import type { Address } from 'viem';
+import type { Pick, PickJson } from '@sapience/sdk/types';
+import type { ValidationResult } from '@sapience/sdk/auction/validation';
+import { validateBidOnChain } from '@sapience/sdk/auction/validation';
 import type { QuoteBid } from '~/lib/auction/useAuctionStart';
-import {
-  simulateEscrowBidMint,
-  validateEscrowBidLightweight,
-} from '~/lib/auction/simulateEscrowBidMint';
 import { logBidValidation } from '~/lib/auction/bidLogger';
 import { PREFERRED_ESTIMATE_QUOTER } from '@sapience/sdk/constants';
+import { getPublicClientForChainId } from '~/lib/utils/util';
 
 export type ValidationStatus = 'pending' | 'valid' | 'invalid';
 
@@ -23,23 +21,6 @@ export interface UseValidatedEscrowBidsOptions {
   picks?: Pick[];
   isSponsored?: boolean;
   sponsorAddress?: Address;
-  /** Session mode signing function. When provided, uses full simulation. Otherwise uses lightweight checks. */
-  signPredictorApproval?:
-    | ((params: {
-        domain: {
-          name?: string;
-          version?: string;
-          chainId?: number;
-          verifyingContract?: Address;
-        };
-        types: Record<
-          string,
-          readonly { readonly name: string; readonly type: string }[]
-        >;
-        primaryType: string;
-        message: Record<string, unknown>;
-      }) => Promise<Hex>)
-    | null;
   enabled?: boolean;
 }
 
@@ -55,9 +36,10 @@ const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 /**
  * Hook that wraps raw QuoteBid[] with escrow bid validation.
  *
- * Mode detection:
- * - If `signPredictorApproval` is provided → session mode (full mint simulation)
- * - Otherwise → EOA mode (lightweight deadline/nonce/balance checks)
+ * Uses unified Tier 2 validation via `validateBidOnChain` from the SDK,
+ * which calls `verifyMintPartySignature()` on-chain for definitive signature
+ * verification plus nonce/balance/allowance checks. No session/EOA
+ * bifurcation — all signature types are handled by the contract view.
  *
  * Deduplication pattern follows useValidatedAuctionBids.ts.
  */
@@ -74,13 +56,12 @@ export function useValidatedEscrowBids(
     picks,
     isSponsored,
     sponsorAddress,
-    signPredictorApproval,
     enabled = true,
   } = options;
 
   // Track validation results by counterpartySignature
   const [validationResults, setValidationResults] = useState<
-    Map<string, SimulateBidResult>
+    Map<string, { isValid: boolean; error?: string }>
   >(new Map());
   const [isValidating, setIsValidating] = useState(false);
 
@@ -88,37 +69,40 @@ export function useValidatedEscrowBids(
   const validatingRef = useRef<Set<string>>(new Set());
   const validatedSignaturesRef = useRef<Set<string>>(new Set());
 
-  // Mode detection
-  const isSessionMode = !!signPredictorApproval;
-
   // Can we validate?
   const canValidate = useMemo(() => {
     if (!enabled || !predictionMarketAddress || !collateralTokenAddress)
       return false;
-    // Session mode needs predictor info + picks
-    if (isSessionMode) {
-      return (
-        !!predictorAddress &&
-        predictorAddress.toLowerCase() !== ZERO_ADDRESS &&
-        !!predictorCollateral &&
-        !!picks &&
-        picks.length > 0
-      );
-    }
-    // EOA mode just needs addresses
-    return true;
+    // Need predictor info + picks for predictionHash computation
+    return (
+      !!predictorAddress &&
+      predictorAddress.toLowerCase() !== ZERO_ADDRESS &&
+      !!predictorCollateral &&
+      !!picks &&
+      picks.length > 0
+    );
   }, [
     enabled,
     predictionMarketAddress,
     collateralTokenAddress,
-    isSessionMode,
     predictorAddress,
     predictorCollateral,
     picks,
   ]);
 
+  // Convert picks to PickJson for SDK validation
+  const picksJson: PickJson[] | undefined = useMemo(
+    () =>
+      picks?.map((p) => ({
+        conditionResolver: p.conditionResolver,
+        conditionId: p.conditionId,
+        predictedOutcome: p.predictedOutcome,
+      })),
+    [picks]
+  );
+
   // Invalidate cached results when picks or predictorCollateral changes
-  // (predictionHash changes, so all previous simulations are stale)
+  // (predictionHash changes, so all previous validations are stale)
   const picksKey = useMemo(
     () =>
       picks
@@ -169,44 +153,59 @@ export function useValidatedEscrowBids(
     let cancelled = false;
 
     const runValidation = async () => {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const publicClient = getPublicClientForChainId(chainId) as any;
       const results = await Promise.all(
-        newBids.map(async (bid): Promise<[string, SimulateBidResult]> => {
-          try {
-            let result: SimulateBidResult;
+        newBids.map(
+          async (
+            bid
+          ): Promise<[string, { isValid: boolean; error?: string }]> => {
+            try {
+              const result: ValidationResult = await validateBidOnChain(
+                {
+                  counterparty: bid.counterparty,
+                  counterpartyCollateral: bid.counterpartyCollateral,
+                  counterpartyNonce: bid.counterpartyNonce,
+                  counterpartyDeadline: bid.counterpartyDeadline,
+                  counterpartySignature: bid.counterpartySignature,
+                  counterpartySessionKeyData: bid.counterpartySessionKeyData,
+                },
+                {
+                  predictor: predictorAddress!,
+                  predictorCollateral: predictorCollateral!,
+                  picks: picksJson!,
+                  predictorSponsor:
+                    isSponsored && sponsorAddress ? sponsorAddress : undefined,
+                  predictorSponsorData:
+                    isSponsored && sponsorAddress ? '0x' : undefined,
+                },
+                {
+                  chainId,
+                  predictionMarketAddress: predictionMarketAddress!,
+                  collateralTokenAddress: collateralTokenAddress!,
+                  publicClient,
+                }
+              );
 
-            if (signPredictorApproval) {
-              result = await simulateEscrowBidMint(bid, {
-                chainId,
-                predictionMarketAddress: predictionMarketAddress!,
-                collateralTokenAddress: collateralTokenAddress!,
-                predictorAddress: predictorAddress!,
-                predictorCollateral: predictorCollateral!,
-                picks: picks!,
-                predictorSponsor:
-                  isSponsored && sponsorAddress ? sponsorAddress : undefined,
-                predictorSponsorData:
-                  isSponsored && sponsorAddress ? '0x' : undefined,
-                signPredictorApproval,
-              });
-            } else {
-              result = await validateEscrowBidLightweight(bid, {
-                chainId,
-                predictionMarketAddress: predictionMarketAddress!,
-                collateralTokenAddress: collateralTokenAddress!,
-              });
+              return [
+                bid.counterpartySignature,
+                {
+                  isValid: result.status === 'valid',
+                  error:
+                    result.status === 'invalid' ? result.reason : undefined,
+                },
+              ];
+            } catch (err) {
+              // Unexpected error — treat as valid (fail-open)
+              const errorMsg =
+                err instanceof Error ? err.message.slice(0, 100) : 'Unknown';
+              logBidValidation(
+                `[escrow-validate] Unexpected error for ${bid.counterpartySignature.slice(0, 10)}: ${errorMsg}`
+              );
+              return [bid.counterpartySignature, { isValid: true }];
             }
-
-            return [bid.counterpartySignature, result];
-          } catch (err) {
-            // Unexpected error — treat as valid
-            const errorMsg =
-              err instanceof Error ? err.message.slice(0, 100) : 'Unknown';
-            logBidValidation(
-              `[escrow-validate] Unexpected error for ${bid.counterpartySignature.slice(0, 10)}: ${errorMsg}`
-            );
-            return [bid.counterpartySignature, { isValid: true }];
           }
-        })
+        )
       );
 
       if (cancelled) return;
@@ -232,16 +231,14 @@ export function useValidatedEscrowBids(
   }, [
     rawBids,
     canValidate,
-    isSessionMode,
     chainId,
     predictionMarketAddress,
     collateralTokenAddress,
     predictorAddress,
     predictorCollateral,
-    picks,
+    picksJson,
     isSponsored,
     sponsorAddress,
-    signPredictorApproval,
   ]);
 
   // Clean up stale entries (bids no longer in rawBids)
@@ -264,7 +261,7 @@ export function useValidatedEscrowBids(
       }
       if (!hasStale) return prev;
 
-      const updated = new Map<string, SimulateBidResult>();
+      const updated = new Map<string, { isValid: boolean; error?: string }>();
       for (const [sig, result] of prev) {
         if (currentSigs.has(sig)) {
           updated.set(sig, result);

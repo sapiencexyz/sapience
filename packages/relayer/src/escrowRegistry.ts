@@ -5,8 +5,9 @@
 
 import type { AuctionRFQPayload, ValidatedBid } from '@sapience/sdk/types';
 import type { EscrowAuctionRecord, BidPayload } from './escrowTypes';
-import { validateEscrowBid } from './escrowHelpers';
-import { computeEscrowPickConfigId } from './escrowHelpers';
+import { computePickConfigId } from '@sapience/sdk/auction/escrowEncoding';
+import type { Pick } from '@sapience/sdk/types';
+import type { Address, Hex } from 'viem';
 
 const escrowAuctions = new Map<string, EscrowAuctionRecord>();
 
@@ -19,7 +20,12 @@ export function upsertEscrowAuction(auction: AuctionRFQPayload): string {
   const deadlineMs = Date.now() + Math.max(5_000, Math.min(ttl, 5 * 60_000));
 
   // Compute pickConfigId from picks
-  const pickConfigId = computeEscrowPickConfigId(auction.picks);
+  const sdkPicks: Pick[] = auction.picks.map((p) => ({
+    conditionResolver: p.conditionResolver as Address,
+    conditionId: p.conditionId as Hex,
+    predictedOutcome: p.predictedOutcome,
+  }));
+  const pickConfigId = computePickConfigId(sdkPicks);
 
   escrowAuctions.set(auctionId, {
     auction: {
@@ -59,10 +65,11 @@ export function addEscrowBid(
   const rec = getEscrowAuction(auctionId);
   if (!rec) return undefined;
 
-  // Validate bid structure
-  const validation = validateEscrowBid(bid, rec.auction);
-  if (!validation.valid) {
-    console.warn(`[EscrowRegistry] Bid validation failed: ${validation.error}`);
+  // Reject duplicate bids by counterparty signature
+  if (
+    bid.counterpartySignature &&
+    rec.bids.some((b) => b.counterpartySignature === bid.counterpartySignature)
+  ) {
     return undefined;
   }
 
