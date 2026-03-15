@@ -93,6 +93,9 @@ export type SecondaryClientToServerMessage =
   | { type: 'secondary.auction.subscribe'; payload: { auctionId: string } }
   | { type: 'secondary.auction.unsubscribe'; payload: { auctionId: string } }
   | { type: 'secondary.bid.submit'; payload: SecondaryBidPayload }
+  | { type: 'secondary.feed.subscribe' }
+  | { type: 'secondary.feed.unsubscribe' }
+  | { type: 'secondary.listings.request' }
   | { type: 'ping' };
 
 // ----- Server to Client Messages -----
@@ -122,6 +125,20 @@ export interface SecondaryValidatedBid {
   receivedAt: string; // ISO timestamp
 }
 
+/** Listing summary returned in listings snapshot */
+export interface SecondaryListingSummary {
+  auctionId: string;
+  token: string;
+  collateral: string;
+  tokenAmount: string;
+  minPrice: string;
+  seller: string;
+  sellerDeadline: number;
+  chainId: number;
+  createdAt: string;
+  bidCount: number;
+}
+
 export type SecondaryServerToClientMessage =
   | {
       type: 'secondary.auction.ack';
@@ -149,6 +166,10 @@ export type SecondaryServerToClientMessage =
   | {
       type: 'secondary.auction.expired';
       payload: { auctionId: string; reason: string };
+    }
+  | {
+      type: 'secondary.listings.snapshot';
+      payload: { listings: SecondaryListingSummary[] };
     }
   | { type: 'pong' }
   | { type: 'error'; payload: { message: string; code?: string } };

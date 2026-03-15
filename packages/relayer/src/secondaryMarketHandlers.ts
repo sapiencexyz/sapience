@@ -14,6 +14,7 @@ import type {
 import {
   addSecondaryListing,
   getSecondaryListing,
+  getAllSecondaryListings,
   addSecondaryBid,
   getSecondaryBids,
 } from './secondaryMarketRegistry';
@@ -287,6 +288,59 @@ export function handleSecondaryUnsubscribe(
       payload: { auctionId: payload.auctionId, unsubscribed: true },
     });
   }
+}
+
+/**
+ * Handle secondary.feed.subscribe — buyer/bot subscribes to all new listings
+ */
+export function handleSecondaryFeedSubscribe(ws: WebSocket): void {
+  globalSubscribers.add(ws);
+
+  sendSecondary(ws, {
+    type: 'secondary.auction.ack',
+    payload: { subscribed: true },
+  });
+
+  console.log(
+    `[Secondary] Global feed subscriber added (total: ${globalSubscribers.size})`
+  );
+}
+
+/**
+ * Handle secondary.feed.unsubscribe — stop receiving global feed
+ */
+export function handleSecondaryFeedUnsubscribe(ws: WebSocket): void {
+  globalSubscribers.delete(ws);
+
+  sendSecondary(ws, {
+    type: 'secondary.auction.ack',
+    payload: { unsubscribed: true },
+  });
+}
+
+/**
+ * Handle secondary.listings.request — return all active (non-expired) listings
+ */
+export function handleSecondaryListingsRequest(ws: WebSocket): void {
+  const listings = getAllSecondaryListings();
+
+  const details = listings.map((rec) => ({
+    auctionId: rec.auctionId,
+    token: rec.auction.token,
+    collateral: rec.auction.collateral,
+    tokenAmount: rec.auction.tokenAmount,
+    minPrice: rec.auction.minPrice,
+    seller: rec.auction.seller,
+    sellerDeadline: rec.auction.sellerDeadline,
+    chainId: rec.auction.chainId,
+    createdAt: rec.createdAt,
+    bidCount: rec.bids.length,
+  }));
+
+  sendSecondary(ws, {
+    type: 'secondary.listings.snapshot',
+    payload: { listings: details },
+  } as SecondaryServerToClientMessage);
 }
 
 /**
