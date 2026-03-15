@@ -212,6 +212,21 @@ describe('isSecondaryClientMessage', () => {
         payload: {},
       })
     ).toBe(true);
+    expect(
+      isSecondaryClientMessage({
+        type: 'secondary.feed.subscribe',
+      })
+    ).toBe(true);
+    expect(
+      isSecondaryClientMessage({
+        type: 'secondary.feed.unsubscribe',
+      })
+    ).toBe(true);
+    expect(
+      isSecondaryClientMessage({
+        type: 'secondary.listings.request',
+      })
+    ).toBe(true);
   });
 
   it('returns false for non-secondary messages', () => {
