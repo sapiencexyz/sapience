@@ -5,6 +5,7 @@ import {
   computeAndStoreMarketTwErrors,
 } from '../../../helpers/scoringService';
 import { resolvePickConfigsForCondition } from './resolvePickConfigs';
+import type { Prisma } from '../../../../generated/prisma';
 import type { Log, Block } from 'viem';
 
 /**
@@ -33,12 +34,18 @@ export async function settleCondition(
     );
   }
 
-  const eventRow = {
-    blockNumber: Number(log.blockNumber),
+  // Capture validated values before the transaction callback so TypeScript
+  // narrowing is preserved (narrowing doesn't cross async boundaries).
+  const eventKey = {
     transactionHash: log.transactionHash,
-    timestamp: BigInt(block.timestamp),
+    blockNumber: Number(log.blockNumber),
     logIndex: log.logIndex,
-    logData: eventData,
+  } as const;
+
+  const eventRow = {
+    ...eventKey,
+    timestamp: BigInt(block.timestamp),
+    logData: eventData as Prisma.InputJsonValue,
   };
 
   // All DB reads and writes happen inside a single transaction to prevent
@@ -46,16 +53,12 @@ export async function settleCondition(
   const settledCondition = await prisma.$transaction(async (tx) => {
     // Dedup check inside the transaction to prevent races
     const existingEvent = await tx.event.findFirst({
-      where: {
-        transactionHash: log.transactionHash,
-        blockNumber: Number(log.blockNumber),
-        logIndex: log.logIndex,
-      },
+      where: eventKey,
     });
 
     if (existingEvent) {
       console.log(
-        `${tag} Skipping duplicate event tx=${log.transactionHash} block=${log.blockNumber} logIndex=${log.logIndex}`
+        `${tag} Skipping duplicate event tx=${eventKey.transactionHash} block=${eventKey.blockNumber} logIndex=${eventKey.logIndex}`
       );
       return null;
     }
