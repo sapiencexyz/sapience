@@ -9,7 +9,10 @@ const mockPrisma = vi.hoisted(() => ({
   $transaction: vi.fn(),
 }));
 
-const mockSentry = vi.hoisted(() => ({ captureException: vi.fn() }));
+const mockSentry = vi.hoisted(() => ({
+  captureException: vi.fn(),
+  captureMessage: vi.fn(),
+}));
 
 vi.mock('../../../../db', () => ({ default: mockPrisma }));
 vi.mock('../../../../instrument', () => ({ default: mockSentry }));
@@ -99,13 +102,15 @@ describe('settleCondition', () => {
   });
 
   describe('duplicate detection', () => {
-    it('skips processing when a duplicate event exists', async () => {
+    it('performs dedup check inside the transaction', async () => {
       mockPrisma.event.findFirst.mockResolvedValue({ id: 'existing' });
 
       await settleCondition(TAG, makeLog(), MOCK_BLOCK, makeInput());
 
+      // Dedup check happens inside the transaction to prevent races
+      expect(mockPrisma.$transaction).toHaveBeenCalledOnce();
       expect(mockPrisma.condition.findUnique).not.toHaveBeenCalled();
-      expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+      expect(mockPrisma.event.create).not.toHaveBeenCalled();
     });
   });
 
@@ -116,8 +121,9 @@ describe('settleCondition', () => {
 
       await settleCondition(TAG, makeLog(), MOCK_BLOCK, makeInput());
 
+      expect(mockPrisma.$transaction).toHaveBeenCalledOnce();
       expect(mockPrisma.event.create).toHaveBeenCalledOnce();
-      expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+      expect(mockPrisma.condition.update).not.toHaveBeenCalled();
       expect(warnSpy).toHaveBeenCalledWith(
         expect.stringContaining('no matching Condition found')
       );
@@ -134,9 +140,33 @@ describe('settleCondition', () => {
 
       await settleCondition(TAG, makeLog(), MOCK_BLOCK, makeInput());
 
+      expect(mockPrisma.$transaction).toHaveBeenCalledOnce();
       expect(mockPrisma.event.create).toHaveBeenCalledOnce();
-      expect(mockPrisma.$transaction).not.toHaveBeenCalled();
       expect(mockPrisma.condition.update).not.toHaveBeenCalled();
+      expect(mockSentry.captureMessage).toHaveBeenCalledWith(
+        expect.stringContaining('Resolver mismatch'),
+        'warning'
+      );
+    });
+
+    it('skips settlement when condition has resolver but event has no source address', async () => {
+      mockPrisma.condition.findUnique.mockResolvedValue({
+        id: CONDITION_ID,
+        resolver: RESOLVER,
+      });
+      const log = makeLog({
+        address: undefined as unknown as `0x${string}`,
+      });
+
+      await settleCondition(TAG, log, MOCK_BLOCK, makeInput());
+
+      expect(mockPrisma.$transaction).toHaveBeenCalledOnce();
+      expect(mockPrisma.event.create).toHaveBeenCalledOnce();
+      expect(mockPrisma.condition.update).not.toHaveBeenCalled();
+      expect(mockSentry.captureMessage).toHaveBeenCalledWith(
+        expect.stringContaining('no source address'),
+        'warning'
+      );
     });
   });
 
@@ -220,7 +250,13 @@ describe('settleCondition', () => {
         expect.any(Error)
       );
       expect(mockSentry.captureException).toHaveBeenCalledWith(
-        expect.any(Error)
+        expect.any(Error),
+        expect.objectContaining({
+          tags: expect.objectContaining({
+            conditionId: CONDITION_ID,
+            resolverAddress: RESOLVER.toLowerCase(),
+          }),
+        })
       );
 
       errorSpy.mockRestore();

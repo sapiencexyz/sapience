@@ -131,9 +131,9 @@ describe('processPythMarketSettled', () => {
     );
 
     expect(mockPrisma.event.findFirst).toHaveBeenCalled();
+    expect(mockPrisma.$transaction).toHaveBeenCalledOnce();
     expect(mockPrisma.condition.findUnique).not.toHaveBeenCalled();
     expect(mockPrisma.event.create).not.toHaveBeenCalled();
-    expect(mockPrisma.$transaction).not.toHaveBeenCalled();
   });
 
   it('updates condition with resolvedToYes=true when resolvedToOver=true', async () => {
@@ -221,7 +221,7 @@ describe('processPythMarketSettled', () => {
       MOCK_BLOCK
     );
 
-    expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+    expect(mockPrisma.$transaction).toHaveBeenCalledOnce();
     expect(mockPrisma.event.create).toHaveBeenCalledOnce();
     expect(mockPrisma.condition.update).not.toHaveBeenCalled();
     expect(scoreSelectedForecastsForSettledMarket).not.toHaveBeenCalled();
@@ -237,7 +237,7 @@ describe('processPythMarketSettled', () => {
       MOCK_BLOCK
     );
 
-    expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+    expect(mockPrisma.$transaction).toHaveBeenCalledOnce();
     expect(mockPrisma.event.create).toHaveBeenCalledOnce();
     expect(mockPrisma.condition.update).not.toHaveBeenCalled();
     expect(warnSpy).toHaveBeenCalledWith(
