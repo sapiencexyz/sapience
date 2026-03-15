@@ -95,6 +95,42 @@ describe('computeSettlementResult', () => {
     >();
     expect(computeSettlementResult(picks, map)).toBeNull();
   });
+
+  // -------------------------------------------------------------------------
+  // Pyth Over/Under settlement mapping
+  //
+  // On-chain PythConditionResolver:
+  //   Over  → payoutNumerators [1,0] → YES = 0
+  //   Under → payoutNumerators [0,1] → NO  = 1
+  //
+  // MarketSettled event:
+  //   resolvedToOver: true  → resolvedToYes: true
+  //   resolvedToOver: false → resolvedToYes: false
+  // -------------------------------------------------------------------------
+
+  it('Pyth Over pick (predictedOutcome=0) wins when resolvedToYes=true (Over won)', () => {
+    const picks = [{ conditionId: 'pyth-1', predictedOutcome: 0 }];
+    const map = new Map([['pyth-1', cond('pyth-1', true)]]);
+    expect(computeSettlementResult(picks, map)).toBe('PREDICTOR_WINS');
+  });
+
+  it('Pyth Over pick (predictedOutcome=0) loses when resolvedToYes=false (Under won)', () => {
+    const picks = [{ conditionId: 'pyth-1', predictedOutcome: 0 }];
+    const map = new Map([['pyth-1', cond('pyth-1', false)]]);
+    expect(computeSettlementResult(picks, map)).toBe('COUNTERPARTY_WINS');
+  });
+
+  it('Pyth Under pick (predictedOutcome=1) wins when resolvedToYes=false (Under won)', () => {
+    const picks = [{ conditionId: 'pyth-1', predictedOutcome: 1 }];
+    const map = new Map([['pyth-1', cond('pyth-1', false)]]);
+    expect(computeSettlementResult(picks, map)).toBe('PREDICTOR_WINS');
+  });
+
+  it('Pyth Under pick (predictedOutcome=1) loses when resolvedToYes=true (Over won)', () => {
+    const picks = [{ conditionId: 'pyth-1', predictedOutcome: 1 }];
+    const map = new Map([['pyth-1', cond('pyth-1', true)]]);
+    expect(computeSettlementResult(picks, map)).toBe('COUNTERPARTY_WINS');
+  });
 });
 
 // --- resolvePickConfigsForCondition tests ---

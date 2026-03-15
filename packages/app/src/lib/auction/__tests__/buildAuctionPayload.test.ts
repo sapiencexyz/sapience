@@ -121,24 +121,24 @@ describe('buildPythAuctionStartPayload — Pyth outcome mapping', () => {
     dateTimeLocal,
   };
 
-  it('direction "over" → predictedOutcome: 1', () => {
+  it('direction "over" → predictedOutcome: 0 (YES)', () => {
     const { escrowPicks } = buildPythAuctionStartPayload(
       [{ ...basePythOutcome, direction: 'over' }],
       CHAIN_ID_ETHEREAL
     );
 
     expect(escrowPicks).toHaveLength(1);
-    expect(escrowPicks[0].predictedOutcome).toBe(1);
+    expect(escrowPicks[0].predictedOutcome).toBe(0);
   });
 
-  it('direction "under" → predictedOutcome: 0', () => {
+  it('direction "under" → predictedOutcome: 1 (NO)', () => {
     const { escrowPicks } = buildPythAuctionStartPayload(
       [{ ...basePythOutcome, direction: 'under' }],
       CHAIN_ID_ETHEREAL
     );
 
     expect(escrowPicks).toHaveLength(1);
-    expect(escrowPicks[0].predictedOutcome).toBe(0);
+    expect(escrowPicks[0].predictedOutcome).toBe(1);
   });
 
   it('mixed directions produce correct outcomes', () => {
@@ -151,7 +151,7 @@ describe('buildPythAuctionStartPayload — Pyth outcome mapping', () => {
     );
 
     expect(escrowPicks).toHaveLength(2);
-    expect(escrowPicks[0].predictedOutcome).toBe(1); // over
-    expect(escrowPicks[1].predictedOutcome).toBe(0); // under
+    expect(escrowPicks[0].predictedOutcome).toBe(0); // over = YES
+    expect(escrowPicks[1].predictedOutcome).toBe(1); // under = NO
   });
 });

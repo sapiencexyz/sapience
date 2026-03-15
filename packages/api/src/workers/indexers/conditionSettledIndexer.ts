@@ -10,6 +10,7 @@ import {
 import Sentry from '../../instrument';
 import { IIndexer } from '../../interfaces';
 import { processConditionSettled } from './conditionSettled/processConditionSettled';
+import { processPythMarketSettled } from './conditionSettled/processPythMarketSettled';
 import type { HandlerContext } from './conditionSettled/handlerContext';
 
 const BLOCK_BATCH_SIZE = 100;
@@ -19,6 +20,10 @@ const CONDITION_SETTLED_TOPIC = keccak256(
   toHex(
     'ConditionResolved(bytes32,bool,bool,bool,uint256,uint256,uint256,uint256)'
   )
+);
+
+const MARKET_SETTLED_TOPIC = keccak256(
+  toHex('MarketSettled(bytes32,bytes32,uint64,bytes,bool,int64,int32,uint64)')
 );
 
 /**
@@ -288,10 +293,12 @@ class ConditionSettledIndexer implements IIndexer {
 
   private async processLog(log: Log, block: Block): Promise<void> {
     try {
-      if (log.topics[0] !== CONDITION_SETTLED_TOPIC) {
-        return;
+      const topic = log.topics[0];
+      if (topic === CONDITION_SETTLED_TOPIC) {
+        await processConditionSettled(this.handlerContext, log, block);
+      } else if (topic === MARKET_SETTLED_TOPIC) {
+        await processPythMarketSettled(this.handlerContext, log, block);
       }
-      await processConditionSettled(this.handlerContext, log, block);
     } catch (error) {
       console.error(
         `[ConditionSettledIndexer:${this.chainId}] Error processing log:`,

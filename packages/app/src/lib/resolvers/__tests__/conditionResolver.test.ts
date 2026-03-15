@@ -5,7 +5,6 @@ import {
   getAdminSettlementTarget,
 } from '../conditionResolver';
 import {
-  pythResolver,
   pythConditionResolver,
   lzPMResolver,
   umaResolver,
@@ -18,10 +17,6 @@ import {
 } from '@sapience/sdk/constants';
 
 describe('inferResolverKind', () => {
-  it('identifies pythResolver address as "pyth"', () => {
-    expect(inferResolverKind(pythResolver[5064014]?.address)).toBe('pyth');
-  });
-
   it('identifies pythConditionResolver address as "pyth"', () => {
     expect(inferResolverKind(pythConditionResolver[5064014]?.address)).toBe(
       'pyth'
@@ -51,7 +46,7 @@ describe('inferResolverKind', () => {
   });
 
   it('is case-insensitive for hex digits', () => {
-    const addr = pythResolver[5064014]!.address;
+    const addr = pythConditionResolver[5064014]!.address;
     const uppercased = '0x' + addr.slice(2).toUpperCase();
     expect(inferResolverKind(uppercased)).toBe('pyth');
   });
@@ -87,7 +82,7 @@ describe('getAdminSettlementTarget', () => {
   it('returns null for Pyth resolver (settles itself)', () => {
     expect(
       getAdminSettlementTarget({
-        conditionResolver: pythResolver[5064014]?.address,
+        conditionResolver: pythConditionResolver[5064014]?.address,
       })
     ).toBeNull();
   });

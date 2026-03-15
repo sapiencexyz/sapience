@@ -36,8 +36,8 @@ export function toPicks(
     if (resolverKind === 'pyth') {
       const decoded = decodePythMarketId(pick.conditionId as `0x${string}`);
 
-      // buildPythAuctionStartPayload convention: over → 1, under → 0
-      const predictorChoseOver = pick.predictedOutcome === 1;
+      // On-chain convention: Over→YES=0, Under→NO=1
+      const predictorChoseOver = pick.predictedOutcome === 0;
       const viewerChoseOver = isPredictorSide
         ? predictorChoseOver
         : !predictorChoseOver;
