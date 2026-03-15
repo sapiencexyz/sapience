@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   validateAuctionForMint,
   verifyMakerBid,
-  createMintParlayRequestData,
+  createMintComboRequestData,
   calculateExpectedPayout,
   validatePayout,
   createValidationError,
@@ -326,9 +326,9 @@ describe('verifyMakerBid', () => {
   });
 });
 
-describe('createMintParlayRequestData', () => {
-  it('returns correctly structured MintParlayRequestData for valid auction', () => {
-    const result = createMintParlayRequestData(
+describe('createMintComboRequestData', () => {
+  it('returns correctly structured MintComboRequestData for valid auction', () => {
+    const result = createMintComboRequestData(
       validAuction,
       validAuction.taker,
       '100'
@@ -345,7 +345,7 @@ describe('createMintParlayRequestData', () => {
   it('throws Error for auction without resolver', () => {
     const auctionWithoutResolver = { ...validAuction, resolver: '' };
     expect(() =>
-      createMintParlayRequestData(
+      createMintComboRequestData(
         auctionWithoutResolver,
         validAuction.taker,
         '100'
@@ -356,14 +356,14 @@ describe('createMintParlayRequestData', () => {
   it('throws Error for null auction', () => {
     expect(() =>
       // @ts-expect-error - testing invalid input
-      createMintParlayRequestData(null, validAuction.taker, '100')
+      createMintComboRequestData(null, validAuction.taker, '100')
     ).toThrow();
   });
 
   it('preserves exact taker and takerCollateral values', () => {
     const customTaker = '0xdeaddeaddeaddeaddeaddeaddeaddeaddeaddead';
     const customCollateral = '999999999999999999';
-    const result = createMintParlayRequestData(
+    const result = createMintComboRequestData(
       validAuction,
       customTaker,
       customCollateral

@@ -262,10 +262,10 @@ describe('Relayer E2E Auction Lifecycle', () => {
   });
 
   // ==========================================================================
-  // 4. Parlay (Multi-Pick)
+  // 4. Combo (Multi-Pick)
   // ==========================================================================
 
-  describe('Parlay (Multi-Pick)', () => {
+  describe('Combo (Multi-Pick)', () => {
     it('4. auction with 2+ picks, maker signs covering all', async () => {
       const predictor = await connect();
 

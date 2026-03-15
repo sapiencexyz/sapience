@@ -1,6 +1,6 @@
 ---
-title: "Auction Relayer API"
-description: "Connect to the real-time WebSocket API to submit and fill prediction market auctions."
+title: 'Auction Relayer API'
+description: 'Connect to the real-time WebSocket API to submit and fill prediction market auctions.'
 ---
 
 # Auction Relayer API
@@ -55,17 +55,19 @@ const ws = new WebSocket('wss://relayer.sapience.xyz/auction');
 
 // Initialize an auction
 ws.on('open', () => {
-  ws.send(JSON.stringify({
-    type: 'auction.start',
-    payload: {
-      taker: '0xRequesterAddress...',
-      wager: '1000000000000000000', // 1 USDe in wei
-      resolver: '0xResolverContract...',
-      predictedOutcomes: ['0xEncodedPick1', '0xEncodedPick2'],
-      takerNonce: 1,
-      chainId: 42161
-    }
-  }));
+  ws.send(
+    JSON.stringify({
+      type: 'auction.start',
+      payload: {
+        taker: '0xRequesterAddress...',
+        wager: '1000000000000000000', // 1 USDe in wei
+        resolver: '0xResolverContract...',
+        predictedOutcomes: ['0xEncodedPick1', '0xEncodedPick2'],
+        takerNonce: 1,
+        chainId: 42161,
+      },
+    })
+  );
 });
 ```
 
@@ -73,9 +75,9 @@ ws.on('open', () => {
 
 ```ts
 import WebSocket from 'ws';
-import { 
-  createAuctionStartSiweMessage, 
-  extractSiweDomainAndUri 
+import {
+  createAuctionStartSiweMessage,
+  extractSiweDomainAndUri,
 } from '@sapience/sdk';
 import { privateKeyToAccount } from 'viem/accounts';
 
@@ -89,43 +91,52 @@ ws.on('open', async () => {
     resolver: '0xResolverContract...',
     predictedOutcomes: ['0xEncodedPick1', '0xEncodedPick2'],
     takerNonce: 1,
-    chainId: 42161
+    chainId: 42161,
   };
 
   // Generate SIWE signature
-  const { domain, uri } = extractSiweDomainAndUri('wss://relayer.sapience.xyz/auction');
+  const { domain, uri } = extractSiweDomainAndUri(
+    'wss://relayer.sapience.xyz/auction'
+  );
   const issuedAt = new Date().toISOString();
   const message = createAuctionStartSiweMessage(payload, domain, uri, issuedAt);
   const signature = await account.signMessage({ message });
 
-  ws.send(JSON.stringify({
-    type: 'auction.start',
-    payload: {
-      ...payload,
-      takerSignature: signature,
-      takerSignedAt: issuedAt
-    }
-  }));
+  ws.send(
+    JSON.stringify({
+      type: 'auction.start',
+      payload: {
+        ...payload,
+        takerSignature: signature,
+        takerSignedAt: issuedAt,
+      },
+    })
+  );
 });
 
 // Listen for bids
 ws.on('message', (data) => {
   const msg = JSON.parse(String(data));
-  
+
   if (msg.type === 'auction.ack') {
     console.log('Auction started:', msg.payload.auctionId);
   }
-  
+
   if (msg.type === 'auction.bids') {
     const bids = msg.payload.bids;
     // Filter out quote-only bids (zero address/signature) and expired bids
-    const actionableBids = bids.filter(b => {
-      return b.maker !== '0x0000000000000000000000000000000000000000' &&
-             b.makerSignature !== '0x0000000000000000000000000000000000000000000000000000000000000000' &&
-             b.makerDeadline > Date.now() / 1000;
+    const actionableBids = bids.filter((b) => {
+      return (
+        b.maker !== '0x0000000000000000000000000000000000000000' &&
+        b.makerSignature !==
+          '0x0000000000000000000000000000000000000000000000000000000000000000' &&
+        b.makerDeadline > Date.now() / 1000
+      );
     });
     // Select best bid by highest makerWager
-    actionableBids.sort((a, b) => BigInt(b.makerWager) > BigInt(a.makerWager) ? 1 : -1);
+    actionableBids.sort((a, b) =>
+      BigInt(b.makerWager) > BigInt(a.makerWager) ? 1 : -1
+    );
     console.log('Best actionable bid:', actionableBids[0]);
   }
 });
@@ -139,11 +150,11 @@ const ws = new WebSocket('wss://relayer.sapience.xyz/auction');
 // Listen for auctions
 ws.on('message', (data) => {
   const msg = JSON.parse(String(data));
-  
+
   if (msg.type === 'auction.started') {
     const auction = msg.payload;
     const now = Math.floor(Date.now() / 1000);
-    
+
     ws.send(JSON.stringify({
       type: 'bid.submit',
       payload: {
@@ -185,6 +196,7 @@ ws.on('message', (data) => {
 If `id` is provided, it will be echoed back in the `auction.ack` response for client-side correlation.
 
 **Signature Requirements:**
+
 - `takerSignature` and `takerSignedAt` are **optional** fields
 - **Unsigned requests**: Used for price discovery/quoting only. Market makers may respond with quote-only bids (see below)
 - **Signed requests**: Required by some market makers (like the vault) to respond with actionable, signed bids that can be executed on-chain
@@ -192,6 +204,7 @@ If `id` is provided, it will be echoed back in the `auction.ack` response for cl
 - Use the SDK's `createAuctionStartSiweMessage` and `extractSiweDomainAndUri` helpers to generate the signature
 
 **Smart Account Authentication:**
+
 - For smart account users (ZeroDev Kernel accounts), the `sessionApproval` and `sessionTypedData` fields enable session-based authentication
 - **Both fields are required together** - `sessionTypedData` must be provided when using `sessionApproval`
 - The `sessionApproval` is a base64-encoded ZeroDev permission account (with private key stripped for security)
@@ -239,12 +252,14 @@ Streamed to auction subscribers:
 ```
 
 **Quote-only vs Actionable Bids:**
+
 - **Quote-only bids**: When `maker` is `0x0000000000000000000000000000000000000000` and `makerSignature` is `0x0000...` (all zeros), this indicates a price quote only, not an actionable bid that can be executed on-chain. These are typically returned in response to unsigned auction requests.
 - **Actionable bids**: When `maker` is a valid address and `makerSignature` is a real signature, the bid can be accepted and executed on-chain. These are returned in response to signed auction requests (required by some market makers like the vault).
 
 ## Validation
 
 **Auction** (`auction.start`):
+
 - `predictedOutcomes` has ≥1 non-empty bytes string
 - `taker` is a valid address
 - `resolver` is provided
@@ -252,6 +267,7 @@ Streamed to auction subscribers:
 - If signature verification fails, the relayer returns `error: 'invalid_signature'` or `error: 'signature_verification_failed'`
 
 **Bid** (`bid.submit`):
+
 - `auctionId` matches an active auction
 - `makerWager` > 0
 - `makerDeadline` is in the future
@@ -268,6 +284,7 @@ The relayer supports ZeroDev Kernel smart accounts with session-based authentica
 The relayer uses a 3-path verification strategy:
 
 1. **Session Approval Path** (for `auction.start` only): If `sessionApproval` and `sessionTypedData` are provided:
+
    - Parse the base64-encoded approval to extract the enable signature
    - Use the provided typed data to recover the owner who authorized the session
    - Compute the expected smart account address from the recovered owner
@@ -353,10 +370,12 @@ This is useful when a secondary client needs to monitor bids for an auction star
 Returned in `auction.ack.payload.error` or `bid.ack.payload.error`:
 
 **Auction errors:**
+
 - `invalid_signature` – Taker signature verification failed
 - `signature_verification_failed` – Error during signature verification process
 
 **Session authentication errors:**
+
 - `typed_data_required` – `sessionTypedData` must be provided when using `sessionApproval`
 - `chain_id_mismatch` – Chain ID in payload doesn't match typed data domain
 - `verifying_contract_mismatch` – Typed data verifyingContract doesn't match claimed address
@@ -364,6 +383,7 @@ Returned in `auction.ack.payload.error` or `bid.ack.payload.error`:
 - `owner_mismatch` – Recovered owner's smart account doesn't match claimed address
 
 **Bid errors:**
+
 - `invalid_payload` – Malformed message structure
 - `auction_not_found_or_expired` – Unknown or expired auction
 - `quote_expired` – `makerDeadline` has passed
@@ -373,6 +393,6 @@ Returned in `auction.ack.payload.error` or `bid.ack.payload.error`:
 
 ## Bid Acceptance
 
-After selecting a bid, the requester constructs a `MintParlayRequestData` struct and calls `mint()` on the PredictionMarket contract. Both parties must have ERC-20 approvals set for the contract to pull their collateral (USDe).
+After selecting a bid, the requester constructs a `MintComboRequestData` struct and calls `mint()` on the PredictionMarket contract. Both parties must have ERC-20 approvals set for the contract to pull their collateral (USDe).
 
 Reference implementation: [`packages/relayer/src/botExample.ts`](https://github.com/sapiencexyz/sapience/blob/main/packages/relayer/src/botExample.ts)

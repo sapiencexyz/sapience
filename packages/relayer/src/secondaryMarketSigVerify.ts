@@ -50,7 +50,7 @@ function convertChainId<T extends { domain: { chainId?: bigint | number } }>(
  * Verify the seller's EIP-712 TradeApproval signature for an auction listing.
  *
  * At listing time the buyer is unknown, so the seller signs a trade hash with
- * buyer = address(0). This matches the approach in the existing v2 auction
+ * buyer = address(0). This matches the approach in the existing auction
  * where the predictor signs before a counterparty is known.
  */
 export async function verifySellerSignature(

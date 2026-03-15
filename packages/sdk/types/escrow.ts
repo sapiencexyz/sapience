@@ -38,7 +38,7 @@ export interface OutcomeVector {
   noWeight: bigint;
 }
 
-/** A single pick in a prediction/parlay */
+/** A single pick in a prediction/combo */
 export interface Pick {
   conditionResolver: Address;
   conditionId: Hex;
