@@ -600,8 +600,9 @@ export async function validateBidOnChain(
   opts: ValidateBidOnChainOptions
 ): Promise<ValidationResult> {
   const failOpen = opts.failOpen ?? true;
-  const checkPredictor = opts.checkPredictor ?? true;
+  const checkPredictor = opts.checkPredictor ?? false;
   const skipSigVerification = opts.skipSignatureVerification ?? false;
+  let sigUnverified = false; // tracks smart-contract sig that couldn't be verified
 
   // Re-check deadline (time may have passed since Tier 1)
   const nowSec = Math.floor(Date.now() / 1000);
@@ -643,12 +644,29 @@ export async function validateBidOnChain(
       });
 
       if (!isValid) {
-        return {
-          status: 'invalid',
-          code: 'INVALID_SIGNATURE',
-          reason:
-            'On-chain signature verification failed (verifyMintPartySignature)',
-        };
+        // Smart contract counterparties (e.g. vaults) use wrapped ERC-1271
+        // signatures that verifyMintPartySignature may not fully support.
+        // Check if the counterparty is a contract — if so, treat as
+        // unverified rather than invalid. The on-chain mint() is the
+        // definitive authority for signature verification.
+        const code = await opts.publicClient.getCode({
+          address: bid.counterparty as Address,
+        });
+        const isContract =
+          code !== undefined && code !== '0x' && code.length > 2;
+
+        if (isContract) {
+          // Smart contract counterparty — don't reject, continue to nonce/balance
+          // checks. The on-chain mint() is the definitive signature authority.
+          sigUnverified = true;
+        } else {
+          return {
+            status: 'invalid',
+            code: 'INVALID_SIGNATURE',
+            reason:
+              'On-chain signature verification failed (verifyMintPartySignature)',
+          };
+        }
       }
     }
 
@@ -708,6 +726,15 @@ export async function validateBidOnChain(
         opts.predictionMarketAddress,
         opts.publicClient
       );
+    }
+
+    if (sigUnverified) {
+      return {
+        status: 'unverified',
+        code: 'SIGNATURE_UNVERIFIABLE',
+        reason:
+          'Smart contract signature could not be verified via verifyMintPartySignature (nonce/balance OK)',
+      };
     }
 
     return { status: 'valid' };
