@@ -18,6 +18,7 @@ export interface UseValidatedEscrowBidsOptions {
   collateralTokenAddress?: Address;
   predictorAddress?: Address;
   predictorCollateral?: string; // wei
+  predictorNonce?: number;
   picks?: Pick[];
   isSponsored?: boolean;
   sponsorAddress?: Address;
@@ -53,6 +54,7 @@ export function useValidatedEscrowBids(
     collateralTokenAddress,
     predictorAddress,
     predictorCollateral,
+    predictorNonce,
     picks,
     isSponsored,
     sponsorAddress,
@@ -173,6 +175,7 @@ export function useValidatedEscrowBids(
                 {
                   predictor: predictorAddress!,
                   predictorCollateral: predictorCollateral!,
+                  predictorNonce,
                   picks: picksJson!,
                   predictorSponsor:
                     isSponsored && sponsorAddress ? sponsorAddress : undefined,

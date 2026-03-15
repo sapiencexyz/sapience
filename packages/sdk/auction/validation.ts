@@ -591,6 +591,7 @@ export async function validateBidOnChain(
   auction: {
     predictor: string;
     predictorCollateral: string;
+    predictorNonce?: number;
     picks: PickJson[];
     predictorSponsor?: string;
     predictorSponsorData?: string;
@@ -666,6 +667,26 @@ export async function validateBidOnChain(
         code: 'NONCE_USED',
         reason: 'Bidder nonce is stale',
       };
+    }
+
+    // 2b. Predictor nonce freshness (when provided)
+    if (auction.predictorNonce != null) {
+      const predictorNonceUsed = await isNonceUsed(
+        auction.predictor as Address,
+        BigInt(auction.predictorNonce),
+        {
+          chainId: opts.chainId,
+          marketAddress: opts.predictionMarketAddress,
+          publicClient: opts.publicClient,
+        }
+      );
+      if (predictorNonceUsed) {
+        return {
+          status: 'invalid',
+          code: 'NONCE_USED',
+          reason: 'Predictor nonce is stale',
+        };
+      }
     }
 
     // 3. Counterparty balance/allowance
