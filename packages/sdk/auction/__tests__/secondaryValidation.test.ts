@@ -563,7 +563,7 @@ describe('validateSecondaryBid', () => {
 
   // ── Price validation ────────────────────────────────────────────────────────
 
-  test('rejects bid price below listing minPrice', async () => {
+  test('rejects bid price below listing minPrice with PRICE_TOO_LOW code', async () => {
     const listing = await makeSignedListing({
       minPrice: '1000000000000000000',
     });
@@ -573,7 +573,7 @@ describe('validateSecondaryBid', () => {
     const result = await validateSecondaryBid(bid, listing, DEFAULT_BID_OPTS);
     expect(result.status).toBe('invalid');
     if (result.status === 'invalid') {
-      expect(result.code).toBe('MISSING_FIELD');
+      expect(result.code).toBe('PRICE_TOO_LOW');
       expect(result.reason).toContain('below minimum');
     }
   });

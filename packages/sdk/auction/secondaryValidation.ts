@@ -284,7 +284,7 @@ export async function validateSecondaryBid(
   // 4. Price >= minPrice
   try {
     if (BigInt(bid.price) < BigInt(listing.minPrice)) {
-      return invalid('MISSING_FIELD', 'Bid price below minimum listing price');
+      return invalid('PRICE_TOO_LOW', 'Bid price below minimum listing price');
     }
   } catch {
     return invalid('MISSING_FIELD', 'Invalid price or minPrice format');

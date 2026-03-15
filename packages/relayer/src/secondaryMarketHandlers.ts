@@ -33,10 +33,6 @@ import {
   getSecondaryBids,
 } from './secondaryMarketRegistry';
 import {
-  verifySellerSignature,
-  verifyBuyerSignature,
-} from './secondaryMarketSigVerify';
-import {
   secondaryListingsStarted,
   secondaryBidsSubmitted,
   errorsTotal,
@@ -103,6 +99,8 @@ export async function handleSecondaryAuctionStart(
 
   // Reject only 'invalid' — pass through both 'valid' and 'unverified'
   // (matching escrow pattern: relayer is not the authority for session key sigs)
+  // SDK validation already handles EIP-712 signature verification for EOA sigs
+  // and returns 'unverified' for session key sigs.
   if (validation.status === 'invalid') {
     errorsTotal.inc({
       type: 'validation',
@@ -111,21 +109,6 @@ export async function handleSecondaryAuctionStart(
     client.send({
       type: 'secondary.auction.ack',
       payload: { error: `${validation.code}: ${validation.reason}` },
-    });
-    return;
-  }
-
-  // Verify seller's EIP-712 signature (EOA sigs verified off-chain;
-  // session key sigs are passed through to on-chain executeTrade)
-  const sigValid = await verifySellerSignature(payload);
-  if (!sigValid) {
-    errorsTotal.inc({
-      type: 'validation',
-      message_type: 'secondary.auction.start',
-    });
-    client.send({
-      type: 'secondary.auction.ack',
-      payload: { error: 'invalid_seller_signature' },
     });
     return;
   }
@@ -215,6 +198,8 @@ export async function handleSecondaryBidSubmit(
   });
 
   // Reject only 'invalid' — pass through both 'valid' and 'unverified'
+  // SDK validation already handles EIP-712 signature verification for EOA sigs
+  // and returns 'unverified' for session key sigs.
   if (validation.status === 'invalid') {
     secondaryBidsSubmitted.inc({ status: 'rejected' });
     errorsTotal.inc({
@@ -224,22 +209,6 @@ export async function handleSecondaryBidSubmit(
     client.send({
       type: 'secondary.bid.ack',
       payload: { error: `${validation.code}: ${validation.reason}` },
-    });
-    return;
-  }
-
-  // Verify buyer's EIP-712 signature (EOA sigs verified off-chain;
-  // session key sigs are passed through to on-chain executeTrade)
-  const sigValid = await verifyBuyerSignature(payload, listing.auction);
-  if (!sigValid) {
-    secondaryBidsSubmitted.inc({ status: 'rejected' });
-    errorsTotal.inc({
-      type: 'validation',
-      message_type: 'secondary.bid.submit',
-    });
-    client.send({
-      type: 'secondary.bid.ack',
-      payload: { error: 'invalid_buyer_signature' },
     });
     return;
   }

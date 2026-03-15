@@ -368,7 +368,7 @@ vi.mock('@sapience/sdk/auction/secondaryValidation', () => ({
   isActionable: (r: { status: string }) => r.status === 'valid',
 }));
 
-// Mock signature verification — handler tests use fake signatures
+// Mock signature verification — kept available for tests that assert it's NOT called
 vi.mock('../secondaryMarketSigVerify', () => ({
   verifySellerSignature: vi.fn().mockResolvedValue(true),
   verifyBuyerSignature: vi.fn().mockResolvedValue(true),
@@ -518,13 +518,11 @@ describe('SecondaryMarketHandlers', () => {
       expect(error!.payload.error).toContain('EXPIRED_DEADLINE');
     });
 
-    it('rejects listing when seller signature verification fails', async () => {
+    it('does not call verifySellerSignature separately (SDK validation covers it)', async () => {
       const { verifySellerSignature } = await import(
         '../secondaryMarketSigVerify'
       );
-      (verifySellerSignature as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-        false
-      );
+      (verifySellerSignature as ReturnType<typeof vi.fn>).mockClear();
 
       const client = createMockClient();
       const subs = createMockSubs();
@@ -532,12 +530,8 @@ describe('SecondaryMarketHandlers', () => {
 
       await handleSecondaryAuctionStart(client, createListing(), subs, ctx);
 
-      const error = client._messages.find(
-        (m: { type: string; payload: { error?: string } }) =>
-          m.type === 'secondary.auction.ack' && m.payload.error
-      ) as { type: string; payload: { error: string } } | undefined;
-      expect(error).toBeDefined();
-      expect(error!.payload.error).toBe('invalid_seller_signature');
+      // Handler should rely on SDK validation, not call verifySellerSignature
+      expect(verifySellerSignature).not.toHaveBeenCalled();
     });
 
     it('allows listing through when validation returns unverified (session key)', async () => {
@@ -678,13 +672,11 @@ describe('SecondaryMarketHandlers', () => {
       expect(error!.payload.error).toContain('INVALID_SIGNATURE');
     });
 
-    it('rejects bid when buyer signature verification fails', async () => {
+    it('does not call verifyBuyerSignature separately (SDK validation covers it)', async () => {
       const { verifyBuyerSignature } = await import(
         '../secondaryMarketSigVerify'
       );
-      (verifyBuyerSignature as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
-        false
-      );
+      (verifyBuyerSignature as ReturnType<typeof vi.fn>).mockClear();
 
       // Create listing first
       const sellerClient = createMockClient();
@@ -692,16 +684,16 @@ describe('SecondaryMarketHandlers', () => {
       const ctx = createMockCtx(sellerClient);
       const listing = createListing();
       await handleSecondaryAuctionStart(sellerClient, listing, subs, ctx);
-      const ack = sellerClient._messages.find(
-        (m: { type: string; payload: { auctionId?: string } }) =>
-          m.type === 'secondary.auction.ack' && m.payload.auctionId
-      ) as { type: string; payload: { auctionId: string } } | undefined;
+      const ack = findMsg(
+        sellerClient._messages,
+        (m) => m.type === 'secondary.auction.ack' && !!m.payload.auctionId
+      );
 
       const buyerClient = createMockClient();
       await handleSecondaryBidSubmit(
         buyerClient,
         {
-          auctionId: ack!.payload.auctionId,
+          auctionId: ack!.payload.auctionId as string,
           buyer: '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
           price: '600000000000000000',
           buyerNonce: 1,
@@ -711,12 +703,15 @@ describe('SecondaryMarketHandlers', () => {
         subs
       );
 
-      const error = buyerClient._messages.find(
-        (m: { type: string; payload: { error?: string } }) =>
-          m.type === 'secondary.bid.ack' && m.payload.error
-      ) as { type: string; payload: { error: string } } | undefined;
-      expect(error).toBeDefined();
-      expect(error!.payload.error).toBe('invalid_buyer_signature');
+      // Handler should rely on SDK validation, not call verifyBuyerSignature
+      expect(verifyBuyerSignature).not.toHaveBeenCalled();
+
+      // Bid should still succeed
+      const bidAck = findMsg(
+        buyerClient._messages,
+        (m) => m.type === 'secondary.bid.ack' && !!m.payload.bidId
+      );
+      expect(bidAck).toBeDefined();
     });
 
     it('allows bid through when validation returns unverified (session key)', async () => {
