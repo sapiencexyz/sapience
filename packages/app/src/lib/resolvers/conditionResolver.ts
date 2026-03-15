@@ -1,9 +1,5 @@
-import { CHAIN_ID_ARBITRUM, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import {
-  lzPMResolver,
-  lzUmaResolver,
-  umaResolver,
-  pythResolver,
   pythConditionResolver,
   conditionalTokensConditionResolver,
 } from '@sapience/sdk/contracts/addresses';
@@ -28,23 +24,13 @@ function findChainIdForAddress(
   return null;
 }
 
-export type ResolverKind =
-  | 'lzPM'
-  | 'lzUma'
-  | 'uma'
-  | 'pyth'
-  | 'conditionalTokens'
-  | 'unknown';
+export type ResolverKind = 'pyth' | 'conditionalTokens' | 'unknown';
 
 export function inferResolverKind(
   resolverAddress?: string | null
 ): ResolverKind {
   const addr = normalizeAddress(resolverAddress);
   if (!addr) return 'unknown';
-  if (findChainIdForAddress(addr, lzPMResolver) != null) return 'lzPM';
-  if (findChainIdForAddress(addr, lzUmaResolver) != null) return 'lzUma';
-  if (findChainIdForAddress(addr, umaResolver) != null) return 'uma';
-  if (findChainIdForAddress(addr, pythResolver) != null) return 'pyth';
   if (findChainIdForAddress(addr, pythConditionResolver) != null) return 'pyth';
   if (findChainIdForAddress(addr, conditionalTokensConditionResolver) != null)
     return 'conditionalTokens';
@@ -61,12 +47,6 @@ export function inferChainIdFromResolverAddress(
   const addr = normalizeAddress(resolverAddress);
   if (!addr) return DEFAULT_CHAIN_ID;
 
-  const lzPmChain = findChainIdForAddress(addr, lzPMResolver);
-  if (lzPmChain != null) return lzPmChain;
-
-  const pythChain = findChainIdForAddress(addr, pythResolver);
-  if (pythChain != null) return pythChain;
-
   const pythCondChain = findChainIdForAddress(addr, pythConditionResolver);
   if (pythCondChain != null) return pythCondChain;
 
@@ -76,60 +56,5 @@ export function inferChainIdFromResolverAddress(
   );
   if (ctChain != null) return ctChain;
 
-  const lzUmaChain = findChainIdForAddress(addr, lzUmaResolver);
-  if (lzUmaChain != null) return lzUmaChain;
-
-  const umaChain = findChainIdForAddress(addr, umaResolver);
-  if (umaChain != null) return umaChain;
-
-  // Unknown resolver → follow app default.
   return DEFAULT_CHAIN_ID;
-}
-
-/**
- * For question URLs / display: prefer the condition's resolver when present,
- * otherwise use the chain's default resolver mapping.
- */
-export function getConditionResolverAddress(opts: {
-  conditionResolver?: string | null;
-  conditionChainId?: number | null;
-}): Address | undefined {
-  const fromCondition = normalizeAddress(
-    opts.conditionResolver
-  ) as Address | null;
-  if (fromCondition) return fromCondition;
-  const chainId = opts.conditionChainId ?? DEFAULT_CHAIN_ID;
-  return (
-    lzPMResolver[chainId]?.address ??
-    lzUmaResolver[chainId]?.address ??
-    umaResolver[chainId]?.address ??
-    pythResolver[chainId]?.address
-  );
-}
-
-/**
- * Admin exception: "bridged" resolution should be settled on Arbitrum.
- *
- * Today we treat any LayerZero PM resolver (Ethereal) as bridged → settle via Arbitrum lzUmaResolver.
- */
-export function getAdminSettlementTarget(opts: {
-  conditionResolver?: string | null;
-}): { chainId: number; resolverAddress: Address } | null {
-  const kind = inferResolverKind(opts.conditionResolver);
-  if (kind === 'pyth') return null;
-  if (kind === 'conditionalTokens') return null;
-
-  if (kind === 'lzPM') {
-    const arb = lzUmaResolver[CHAIN_ID_ARBITRUM]?.address;
-    return arb ? { chainId: CHAIN_ID_ARBITRUM, resolverAddress: arb } : null;
-  }
-
-  // If already UMA/lzUma, settle on Arbitrum (forecasting/EAS chain).
-  if (kind === 'lzUma' || kind === 'uma') {
-    const arb = lzUmaResolver[CHAIN_ID_ARBITRUM]?.address;
-    return arb ? { chainId: CHAIN_ID_ARBITRUM, resolverAddress: arb } : null;
-  }
-
-  // Unknown → default to Ethereal (non-forecasting), but admin settlement likely should not guess.
-  return null;
 }

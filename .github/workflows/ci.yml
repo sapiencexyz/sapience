@@ -211,6 +211,42 @@ jobs:
           key: ${{ runner.os }}-modules-${{ github.sha }}
       - run: pnpm --filter @sapience/relayer run lint
 
+  test-sdk:
+    needs: [changes, install]
+    if: needs.changes.outputs.sdk == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - uses: pnpm/action-setup@v4
+      - uses: actions/cache/restore@v4
+        with:
+          path: |
+            node_modules
+            packages/*/node_modules
+          key: ${{ runner.os }}-modules-${{ github.sha }}
+      - run: pnpm --filter @sapience/sdk run build:lib
+      - run: pnpm --filter @sapience/sdk run test
+
+  test-relayer:
+    needs: [changes, install]
+    if: needs.changes.outputs.relayer == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - uses: pnpm/action-setup@v4
+      - uses: actions/cache/restore@v4
+        with:
+          path: |
+            node_modules
+            packages/*/node_modules
+          key: ${{ runner.os }}-modules-${{ github.sha }}
+      - run: pnpm --filter @sapience/sdk run build:lib
+      - run: pnpm --filter @sapience/relayer run test
+
   test-protocol:
     needs: changes
     if: needs.changes.outputs.protocol == 'true'

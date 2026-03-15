@@ -11,6 +11,7 @@ import { privateKeyToAccount, generatePrivateKey } from 'viem/accounts';
 import {
   validateAuctionRFQ,
   validateBid,
+  validateBidOnChain,
   validateVaultQuote,
   isActionable,
 } from '../validation';
@@ -23,6 +24,20 @@ import type {
   BidPayload,
   PickJson,
 } from '../../types/escrow';
+
+// ─── Mocks for on-chain modules (used by validateBidOnChain) ──────────────────
+
+const mockIsNonceUsed = vi.fn();
+const mockValidateCounterpartyFunds = vi.fn();
+
+vi.mock('../../onchain/escrow', () => ({
+  isNonceUsed: (...args: unknown[]) => mockIsNonceUsed(...args),
+}));
+
+vi.mock('../../onchain/position', () => ({
+  validateCounterpartyFunds: (...args: unknown[]) =>
+    mockValidateCounterpartyFunds(...args),
+}));
 
 // ─── Test fixtures ────────────────────────────────────────────────────────────
 
@@ -446,10 +461,11 @@ describe('validateBid', () => {
     }
   });
 
-  test('wrong-signer EOA signature → invalid (ecrecover succeeds but wrong address)', async () => {
+  test('wrong-signer EOA signature without publicClient → unverified (could be smart contract signer)', async () => {
     const auction = makeAuctionRFQ();
     // Sign with a different key than the counterparty — ecrecover will succeed
-    // but recover a different address, proving the signature is bad
+    // but recover a different address. Without a publicClient we can't rule out
+    // ERC-1271 / wrapped signing schemes, so this is 'unverified' not 'invalid'.
     const wrongKey = generatePrivateKey();
     const wrongAccount = privateKeyToAccount(wrongKey);
 
@@ -487,9 +503,9 @@ describe('validateBid', () => {
       }
     );
 
-    expect(result.status).toBe('invalid');
-    if (result.status === 'invalid') {
-      expect(result.code).toBe('INVALID_SIGNATURE');
+    expect(result.status).toBe('unverified');
+    if (result.status === 'unverified') {
+      expect(result.code).toBe('SIGNATURE_UNVERIFIABLE');
     }
   });
 
@@ -807,5 +823,303 @@ describe('isActionable', () => {
         reason: 'test',
       })
     ).toBe(false);
+  });
+});
+
+// ─── validateBidOnChain ──────────────────────────────────────────────────────
+
+describe('validateBidOnChain', () => {
+  const PREDICTION_MARKET =
+    '0x4444444444444444444444444444444444444444' as Address;
+  const COLLATERAL_TOKEN =
+    '0x5555555555555555555555555555555555555555' as Address;
+
+  function makeBidOnChain(
+    overrides: Partial<{
+      counterparty: string;
+      counterpartyCollateral: string;
+      counterpartyNonce: number;
+      counterpartyDeadline: number;
+      counterpartySignature: string;
+      counterpartySessionKeyData: string;
+    }> = {}
+  ) {
+    const account = privateKeyToAccount(generatePrivateKey());
+    return {
+      counterparty: account.address,
+      counterpartyCollateral: '500000000000000000',
+      counterpartyNonce: 42,
+      counterpartyDeadline: futureDeadline(),
+      counterpartySignature:
+        '0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef1c',
+      ...overrides,
+    };
+  }
+
+  const auctionCtx = {
+    predictor: '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+    predictorCollateral: '1000000000000000000',
+    predictorNonce: 7,
+    picks: TEST_PICKS,
+  };
+
+  let mockPublicClient: { readContract: ReturnType<typeof vi.fn> };
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockPublicClient = {
+      readContract: vi.fn().mockResolvedValue(true),
+    };
+    mockIsNonceUsed.mockResolvedValue(false);
+    mockValidateCounterpartyFunds.mockResolvedValue(undefined);
+  });
+
+  test('valid bid — on-chain sig verification + nonce + funds all pass', async () => {
+    const bid = makeBidOnChain();
+    const result = await validateBidOnChain(bid, auctionCtx, {
+      chainId: CHAIN_ID,
+      predictionMarketAddress: PREDICTION_MARKET,
+      collateralTokenAddress: COLLATERAL_TOKEN,
+      publicClient: mockPublicClient as unknown as PublicClient,
+    });
+
+    expect(result.status).toBe('valid');
+    expect(mockPublicClient.readContract).toHaveBeenCalledWith(
+      expect.objectContaining({
+        functionName: 'verifyMintPartySignature',
+      })
+    );
+    expect(mockIsNonceUsed).toHaveBeenCalled();
+    expect(mockValidateCounterpartyFunds).toHaveBeenCalled();
+  });
+
+  test('invalid signature — verifyMintPartySignature returns false for EOA', async () => {
+    mockPublicClient.readContract.mockResolvedValue(false);
+    // Mock getCode to return '0x' (EOA — no contract code)
+    mockPublicClient.getCode = vi.fn().mockResolvedValue('0x');
+    const bid = makeBidOnChain();
+    const result = await validateBidOnChain(bid, auctionCtx, {
+      chainId: CHAIN_ID,
+      predictionMarketAddress: PREDICTION_MARKET,
+      collateralTokenAddress: COLLATERAL_TOKEN,
+      publicClient: mockPublicClient as unknown as PublicClient,
+    });
+
+    expect(result.status).toBe('invalid');
+    if (result.status === 'invalid') {
+      expect(result.code).toBe('INVALID_SIGNATURE');
+    }
+    // Should not proceed to nonce/balance checks
+    expect(mockIsNonceUsed).not.toHaveBeenCalled();
+  });
+
+  test('unverified signature — verifyMintPartySignature returns false for smart contract counterparty', async () => {
+    mockPublicClient.readContract.mockResolvedValue(false);
+    // Mock getCode to return bytecode (smart contract — e.g. vault)
+    mockPublicClient.getCode = vi.fn().mockResolvedValue('0x6080604052');
+    const bid = makeBidOnChain();
+    const result = await validateBidOnChain(bid, auctionCtx, {
+      chainId: CHAIN_ID,
+      predictionMarketAddress: PREDICTION_MARKET,
+      collateralTokenAddress: COLLATERAL_TOKEN,
+      publicClient: mockPublicClient as unknown as PublicClient,
+    });
+
+    // Smart contract counterparties use wrapped signatures (ERC-1271)
+    // that verifyMintPartySignature may not handle correctly off-chain.
+    // Treat as unverified rather than invalid — the on-chain mint() is the authority.
+    expect(result.status).toBe('unverified');
+    if (result.status === 'unverified') {
+      expect(result.code).toBe('SIGNATURE_UNVERIFIABLE');
+    }
+    // Should still proceed to nonce/balance checks
+    expect(mockIsNonceUsed).toHaveBeenCalled();
+  });
+
+  test('expired deadline → invalid before any RPC calls', async () => {
+    const bid = makeBidOnChain({
+      counterpartyDeadline: Math.floor(Date.now() / 1000) - 100,
+    });
+    const result = await validateBidOnChain(bid, auctionCtx, {
+      chainId: CHAIN_ID,
+      predictionMarketAddress: PREDICTION_MARKET,
+      collateralTokenAddress: COLLATERAL_TOKEN,
+      publicClient: mockPublicClient as unknown as PublicClient,
+    });
+
+    expect(result.status).toBe('invalid');
+    if (result.status === 'invalid') {
+      expect(result.code).toBe('EXPIRED_DEADLINE');
+    }
+    expect(mockPublicClient.readContract).not.toHaveBeenCalled();
+  });
+
+  test('used nonce → invalid', async () => {
+    mockIsNonceUsed.mockResolvedValue(true);
+    const bid = makeBidOnChain();
+    const result = await validateBidOnChain(bid, auctionCtx, {
+      chainId: CHAIN_ID,
+      predictionMarketAddress: PREDICTION_MARKET,
+      collateralTokenAddress: COLLATERAL_TOKEN,
+      publicClient: mockPublicClient as unknown as PublicClient,
+    });
+
+    expect(result.status).toBe('invalid');
+    if (result.status === 'invalid') {
+      expect(result.code).toBe('NONCE_USED');
+    }
+  });
+
+  test('insufficient funds → invalid', async () => {
+    mockValidateCounterpartyFunds.mockRejectedValue(
+      new Error('The market maker has insufficient wUSDe balance')
+    );
+    const bid = makeBidOnChain();
+    const result = await validateBidOnChain(bid, auctionCtx, {
+      chainId: CHAIN_ID,
+      predictionMarketAddress: PREDICTION_MARKET,
+      collateralTokenAddress: COLLATERAL_TOKEN,
+      publicClient: mockPublicClient as unknown as PublicClient,
+    });
+
+    expect(result.status).toBe('invalid');
+    if (result.status === 'invalid') {
+      expect(result.code).toBe('INSUFFICIENT_BALANCE');
+    }
+  });
+
+  test('RPC error + failOpen=true (default) → valid', async () => {
+    mockPublicClient.readContract.mockRejectedValue(
+      new Error('network timeout')
+    );
+    const bid = makeBidOnChain();
+    const result = await validateBidOnChain(bid, auctionCtx, {
+      chainId: CHAIN_ID,
+      predictionMarketAddress: PREDICTION_MARKET,
+      collateralTokenAddress: COLLATERAL_TOKEN,
+      publicClient: mockPublicClient as unknown as PublicClient,
+    });
+
+    expect(result.status).toBe('valid');
+  });
+
+  test('RPC error + failOpen=false → invalid', async () => {
+    mockPublicClient.readContract.mockRejectedValue(
+      new Error('network timeout')
+    );
+    const bid = makeBidOnChain();
+    const result = await validateBidOnChain(bid, auctionCtx, {
+      chainId: CHAIN_ID,
+      predictionMarketAddress: PREDICTION_MARKET,
+      collateralTokenAddress: COLLATERAL_TOKEN,
+      publicClient: mockPublicClient as unknown as PublicClient,
+      failOpen: false,
+    });
+
+    expect(result.status).toBe('invalid');
+    if (result.status === 'invalid') {
+      expect(result.code).toBe('RPC_ERROR');
+    }
+  });
+
+  test('skipSignatureVerification=true → skips readContract', async () => {
+    const bid = makeBidOnChain();
+    const result = await validateBidOnChain(bid, auctionCtx, {
+      chainId: CHAIN_ID,
+      predictionMarketAddress: PREDICTION_MARKET,
+      collateralTokenAddress: COLLATERAL_TOKEN,
+      publicClient: mockPublicClient as unknown as PublicClient,
+      skipSignatureVerification: true,
+    });
+
+    expect(result.status).toBe('valid');
+    expect(mockPublicClient.readContract).not.toHaveBeenCalled();
+    expect(mockIsNonceUsed).toHaveBeenCalled();
+  });
+
+  test('checkPredictor defaults to false — only checks counterparty solvency', async () => {
+    const bid = makeBidOnChain();
+    await validateBidOnChain(bid, auctionCtx, {
+      chainId: CHAIN_ID,
+      predictionMarketAddress: PREDICTION_MARKET,
+      collateralTokenAddress: COLLATERAL_TOKEN,
+      publicClient: mockPublicClient as unknown as PublicClient,
+    });
+
+    // validateCounterpartyFunds should be called once (counterparty only)
+    expect(mockValidateCounterpartyFunds).toHaveBeenCalledTimes(1);
+  });
+
+  test('checkPredictor=true checks both parties', async () => {
+    const bid = makeBidOnChain();
+    await validateBidOnChain(bid, auctionCtx, {
+      chainId: CHAIN_ID,
+      predictionMarketAddress: PREDICTION_MARKET,
+      collateralTokenAddress: COLLATERAL_TOKEN,
+      publicClient: mockPublicClient as unknown as PublicClient,
+      checkPredictor: true,
+    });
+
+    // validateCounterpartyFunds called twice: counterparty + predictor
+    expect(mockValidateCounterpartyFunds).toHaveBeenCalledTimes(2);
+  });
+
+  test('used predictor nonce → invalid', async () => {
+    // First call (counterparty nonce) → not used; second call (predictor nonce) → used
+    mockIsNonceUsed.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    const bid = makeBidOnChain();
+    const result = await validateBidOnChain(bid, auctionCtx, {
+      chainId: CHAIN_ID,
+      predictionMarketAddress: PREDICTION_MARKET,
+      collateralTokenAddress: COLLATERAL_TOKEN,
+      publicClient: mockPublicClient as unknown as PublicClient,
+    });
+
+    expect(result.status).toBe('invalid');
+    if (result.status === 'invalid') {
+      expect(result.code).toBe('NONCE_USED');
+      expect(result.reason).toContain('Predictor');
+    }
+  });
+
+  test('predictor nonce checked with correct address and value', async () => {
+    const bid = makeBidOnChain();
+    await validateBidOnChain(bid, auctionCtx, {
+      chainId: CHAIN_ID,
+      predictionMarketAddress: PREDICTION_MARKET,
+      collateralTokenAddress: COLLATERAL_TOKEN,
+      publicClient: mockPublicClient as unknown as PublicClient,
+    });
+
+    // isNonceUsed should be called for both counterparty and predictor
+    expect(mockIsNonceUsed).toHaveBeenCalledTimes(2);
+    // Second call should be for the predictor
+    expect(mockIsNonceUsed).toHaveBeenCalledWith(
+      auctionCtx.predictor,
+      BigInt(auctionCtx.predictorNonce),
+      expect.objectContaining({
+        chainId: CHAIN_ID,
+        marketAddress: PREDICTION_MARKET,
+      })
+    );
+  });
+
+  test('predictorNonce omitted → skips predictor nonce check', async () => {
+    const auctionWithoutNonce = {
+      predictor: auctionCtx.predictor,
+      predictorCollateral: auctionCtx.predictorCollateral,
+      picks: auctionCtx.picks,
+    };
+    const bid = makeBidOnChain();
+    const result = await validateBidOnChain(bid, auctionWithoutNonce, {
+      chainId: CHAIN_ID,
+      predictionMarketAddress: PREDICTION_MARKET,
+      collateralTokenAddress: COLLATERAL_TOKEN,
+      publicClient: mockPublicClient as unknown as PublicClient,
+    });
+
+    expect(result.status).toBe('valid');
+    // isNonceUsed called only once (counterparty)
+    expect(mockIsNonceUsed).toHaveBeenCalledTimes(1);
   });
 });

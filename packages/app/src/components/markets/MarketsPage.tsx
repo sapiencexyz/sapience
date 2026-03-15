@@ -26,16 +26,9 @@ import {
   type SortDirection,
 } from '~/hooks/graphql/useInfiniteQuestions';
 import { useDebouncedValue } from '~/hooks/useDebouncedValue';
+import { useFeatureFlag } from '~/hooks/useFeatureFlag';
 import { useSessionState } from '~/hooks/useSessionState';
 import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
-
-const PREDICT_PRICES_FLAG_KEY = 'sapience.flags.markets.predictPrices';
-
-function isEnabledFlagValue(raw: string | null): boolean {
-  if (!raw) return false;
-  const normalized = raw.toLowerCase().trim();
-  return normalized === '1' || normalized === 'true';
-}
 
 const MarketsPage = () => {
   const { data: allCategories = [], isLoading: isLoadingCategories } =
@@ -44,59 +37,12 @@ const MarketsPage = () => {
   // Get compact status (needed by callbacks below)
   const isCompact = useIsBelow(1024);
 
-  const [showPredictPrices, setShowPredictPrices] = useState(false);
+  const showPredictPrices = useFeatureFlag(
+    'markets.predictPrices',
+    'predictPrices'
+  );
 
   const { openPopover } = useCreatePositionContext();
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-
-    const readFromStorage = (): boolean => {
-      try {
-        return isEnabledFlagValue(
-          window.localStorage.getItem(PREDICT_PRICES_FLAG_KEY)
-        );
-      } catch {
-        return false;
-      }
-    };
-
-    const clearUrlParam = (url: URL): void => {
-      url.searchParams.delete('predictPrices');
-      window.history.replaceState({}, '', url.toString());
-    };
-
-    try {
-      const url = new URL(window.location.href);
-      const param = url.searchParams.get('predictPrices');
-
-      if (isEnabledFlagValue(param)) {
-        try {
-          window.localStorage.setItem(PREDICT_PRICES_FLAG_KEY, '1');
-        } catch {
-          // Storage unavailable
-        }
-        clearUrlParam(url);
-        setShowPredictPrices(true);
-        return;
-      }
-
-      if (param === '0' || param?.toLowerCase() === 'false') {
-        try {
-          window.localStorage.removeItem(PREDICT_PRICES_FLAG_KEY);
-        } catch {
-          // Storage unavailable
-        }
-        clearUrlParam(url);
-        setShowPredictPrices(false);
-        return;
-      }
-
-      setShowPredictPrices(readFromStorage());
-    } catch {
-      setShowPredictPrices(readFromStorage());
-    }
-  }, []);
 
   // View mode: default is table, ?view=polymarket switches to card grid
   const searchParams = useSearchParams();

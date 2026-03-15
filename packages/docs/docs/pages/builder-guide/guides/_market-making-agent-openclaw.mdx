@@ -1,8 +1,19 @@
 ## OpenClaw Market Making
 
-<div style={{ display: 'flex', gap: '8px', alignItems: 'center', flexWrap: 'wrap', marginBottom: '1rem' }}>
+<div
+  style={{
+    display: 'flex',
+    gap: '8px',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    marginBottom: '1rem',
+  }}
+>
   <a href="https://github.com/openclaw/openclaw">
-    <img alt="OpenClaw on GitHub" src="https://img.shields.io/badge/OpenClaw-openclaw%2Fopenclaw-181717?logo=github" />
+    <img
+      alt="OpenClaw on GitHub"
+      src="https://img.shields.io/badge/OpenClaw-openclaw%2Fopenclaw-181717?logo=github"
+    />
   </a>
 </div>
 
@@ -34,44 +45,55 @@ import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 export const marketMakingAction: Action = {
   name: 'MARKET_MAKING',
   description: 'Respond to auction requests with competitive bids',
-  
+
   async handler(runtime, message, state) {
     const ws = new WebSocket(process.env.SAPIENCE_WS_URL);
-    
+
     ws.onmessage = async (event) => {
       const msg = JSON.parse(event.data);
-      
+
       if (msg.type === 'auction.started') {
         const auction = msg.payload;
-        
+
         // Implement your own evaluation logic here (e.g. compare auction
         // predictions against your forecasts to decide whether to bid)
         const shouldBid = await evaluateAuction(runtime, auction);
-        
+
         if (shouldBid) {
           // Build and sign EIP-712 bid
-          const { domain, types, primaryType, message } = buildMakerBidTypedData({
-            auction,
-            makerWager: BigInt(process.env.BID_AMOUNT),
-            makerDeadline: Math.floor(Date.now() / 1000) + 300,
-            chainId: CHAIN_ID_ETHEREAL,
-            verifyingContract: predictionMarketEscrow[CHAIN_ID_ETHEREAL].address,
-            maker: runtime.getSetting('EVM_PUBLIC_KEY'),
-          });
-          
+          const { domain, types, primaryType, message } =
+            buildMakerBidTypedData({
+              auction,
+              makerWager: BigInt(process.env.BID_AMOUNT),
+              makerDeadline: Math.floor(Date.now() / 1000) + 300,
+              chainId: CHAIN_ID_ETHEREAL,
+              verifyingContract:
+                predictionMarketEscrow[CHAIN_ID_ETHEREAL].address,
+              maker: runtime.getSetting('EVM_PUBLIC_KEY'),
+            });
+
           const signature = await signMakerBid({
             privateKey: runtime.getSetting('EVM_PRIVATE_KEY'),
-            domain, types, primaryType, message,
+            domain,
+            types,
+            primaryType,
+            message,
           });
-          
-          ws.send(JSON.stringify({
-            type: 'bid.submit',
-            payload: { auctionId: auction.auctionId, ...message, makerSignature: signature },
-          }));
+
+          ws.send(
+            JSON.stringify({
+              type: 'bid.submit',
+              payload: {
+                auctionId: auction.auctionId,
+                ...message,
+                makerSignature: signature,
+              },
+            })
+          );
         }
       }
     };
-  }
+  },
 };
 ```
 
@@ -90,7 +112,8 @@ The `PREDICTION_MARKET_ADDRESS` used in the code above comes from the SDK:
 import { predictionMarketEscrow } from '@sapience/sdk/contracts/addresses';
 import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 
-const PREDICTION_MARKET_ADDRESS = predictionMarketEscrow[CHAIN_ID_ETHEREAL].address;
+const PREDICTION_MARKET_ADDRESS =
+  predictionMarketEscrow[CHAIN_ID_ETHEREAL].address;
 ```
 
 ### Strategy Tips

@@ -166,11 +166,7 @@ const CreatePositionFormInner = ({
   const { hasConnectedWallet } = useConnectedWallet();
   const { openConnectDialog } = useConnectDialog();
   const { address } = useAccount();
-  const {
-    effectiveAddress,
-    signTypedData: sessionSignTypedData,
-    isUsingSession,
-  } = useSession();
+  const { effectiveAddress } = useSession();
   const { toast } = useToast();
   const chainId = DEFAULT_CHAIN_ID;
 
@@ -497,17 +493,17 @@ const CreatePositionFormInner = ({
   const auctionHasSponsor = !!currentAuctionParams?.predictorSponsor;
   const auctionSponsorAddress = currentAuctionParams?.predictorSponsor;
 
-  // Validate escrow bids: session mode uses full simulation, EOA mode uses lightweight checks
+  // Validate escrow bids: unified Tier 2 validation (on-chain sig verification + nonce + balance)
   const { validatedBids: bids } = useValidatedEscrowBids(rawBids, {
     chainId: positionChainId,
     predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
     collateralTokenAddress: collateralToken,
     predictorAddress: effectiveAddress as Address | undefined,
     predictorCollateral: predictorCollateralWei,
+    predictorNonce: currentAuctionParams?.predictorNonce,
     picks: validationPicks,
     isSponsored: auctionHasSponsor,
     sponsorAddress: auctionSponsorAddress,
-    signPredictorApproval: isUsingSession ? sessionSignTypedData : null,
     enabled: true,
   });
 

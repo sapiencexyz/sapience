@@ -13,6 +13,7 @@ const {
   mockUseSession,
   mockUseCreatePositionContext,
   mockUseCollateralBalanceContext,
+  mockUseSapience,
   mockState,
 } = vi.hoisted(() => ({
   mockUseAccount: vi.fn(),
@@ -20,6 +21,7 @@ const {
   mockUseSession: vi.fn(),
   mockUseCreatePositionContext: vi.fn(),
   mockUseCollateralBalanceContext: vi.fn(),
+  mockUseSapience: vi.fn(),
   mockState: { positionSize: '10' },
 }));
 
@@ -56,11 +58,7 @@ vi.mock('~/lib/context/ConnectDialogContext', () => ({
 
 // SapienceProvider (for useRestrictedJurisdiction)
 vi.mock('~/lib/context/SapienceProvider', () => ({
-  useSapience: () => ({
-    permitData: { permitted: true },
-    isPermitLoading: false,
-    permitError: null,
-  }),
+  useSapience: () => mockUseSapience(),
 }));
 
 // SponsorStatus
@@ -105,13 +103,12 @@ vi.mock('@sapience/sdk/constants', () => ({
   CHAIN_ID_ETHEREAL: 5064014,
   CHAIN_ID_ETHEREAL_TESTNET: 13374202,
   DEFAULT_CHAIN_ID: 42161,
+  PREFERRED_ESTIMATE_QUOTER: '0xe02eD37D0458c8999943CbE6D1c9DB597f3EE572',
 }));
 
 vi.mock('@sapience/sdk/contracts', () => ({
-  umaResolver: {},
-  pythResolver: {},
   pythConditionResolver: {},
-  predictionMarketLZConditionalTokensResolver: {},
+  conditionalTokensConditionResolver: {},
   collateralToken: { 42161: { address: '0xCollateral' } },
 }));
 
@@ -146,6 +143,13 @@ vi.mock('~/components/markets/forms/shared/BidDisplay', () => {
       data-show-request-bids-button={String(props.showRequestBidsButton)}
       data-show-add-predictions-hint={String(props.showAddPredictionsHint)}
       data-is-auction-pending={String(props.isAuctionPending)}
+      data-has-best-bid={String(!!props.bestBid)}
+      data-has-estimate-bid={String(!!props.estimateBid)}
+      data-estimate-counterparty={
+        (props.estimateBid as { counterparty?: string } | null)?.counterparty ??
+        ''
+      }
+      data-is-submit-disabled={String(props.isSubmitDisabled)}
     >
       <button
         data-testid="initiate-auction-btn"
@@ -164,7 +168,9 @@ vi.mock('~/components/markets/ConditionTitleLink', () => {
 });
 
 vi.mock('~/components/shared/RestrictedJurisdictionBanner', () => {
-  const Banner = () => null;
+  const Banner = (props: Record<string, unknown>) => (
+    <div data-testid="restricted-banner" data-show={String(props.show)} />
+  );
   Banner.displayName = 'RestrictedJurisdictionBanner';
   return { __esModule: true, default: Banner };
 });
@@ -335,6 +341,11 @@ function setDefaults() {
   mockUseCollateralBalanceContext.mockReturnValue({
     balance: 100,
     isLoading: false,
+  });
+  mockUseSapience.mockReturnValue({
+    permitData: { permitted: true },
+    isPermitLoading: false,
+    permitError: null,
   });
 }
 
@@ -693,9 +704,254 @@ describe('PositionForm', () => {
   });
 
   // =========================================================================
-  // E. Mode-switching clears bids
+  // E. Estimator bid behavior (logged-out estimates)
   // =========================================================================
-  describe('E. Mode-switching clears bids', () => {
+  describe('E. Estimator bid behavior', () => {
+    const ESTIMATOR_ADDRESS = '0xe02eD37D0458c8999943CbE6D1c9DB597f3EE572';
+
+    function makeEstimatorBid(overrides: Record<string, unknown> = {}) {
+      return {
+        counterparty: ESTIMATOR_ADDRESS,
+        counterpartyCollateral: '5000000000000000000',
+        counterpartyDeadline: 1, // sentinel value — always "expired" by normal check
+        counterpartyNonce: 1,
+        validationStatus: 'valid' as const,
+        counterpartySignature: '0xSig',
+        counterpartyChainId: 42161,
+        predictorCollateral: '10000000000000000000',
+        ...overrides,
+      };
+    }
+
+    beforeEach(() => {
+      // Logged-out user setup
+      mockUseConnectedWallet.mockReturnValue({
+        hasConnectedWallet: false,
+        ready: true,
+        connectedWallet: undefined,
+      });
+      mockUseAccount.mockReturnValue({ address: undefined });
+      mockUseSession.mockReturnValue({
+        effectiveAddress: null,
+        isUsingSmartAccount: false,
+        signMessage: null,
+      });
+    });
+
+    it('shows estimator bid as estimateBid despite deadline=1', async () => {
+      const estimatorBid = makeEstimatorBid();
+
+      const { getByTestId, rerender } = renderForm();
+
+      // Fire auto-auction so currentRequestKeyRef is set
+      await act(async () => {
+        vi.advanceTimersByTime(300);
+      });
+
+      // Rerender with estimator bid
+      const bidsWithEstimator = [estimatorBid];
+      await act(async () => {
+        rerender(
+          <PositionForm
+            methods={makeFormMethods()}
+            onSubmit={vi.fn()}
+            isSubmitting={false}
+            chainId={42161}
+            requestQuotes={mockRequestQuotes}
+            collateralDecimals={18}
+            bids={bidsWithEstimator}
+          />
+        );
+      });
+
+      await act(async () => {
+        vi.advanceTimersByTime(100);
+      });
+
+      const bidDisplay = getByTestId('bid-display');
+      // Should show as estimate (not best bid)
+      expect(bidDisplay.dataset.hasBestBid).toBe('false');
+      expect(bidDisplay.dataset.hasEstimateBid).toBe('true');
+      expect(bidDisplay.dataset.estimateCounterparty?.toLowerCase()).toBe(
+        ESTIMATOR_ADDRESS.toLowerCase()
+      );
+    });
+
+    it('does not clear sticky estimate when only estimator bids exist', async () => {
+      const estimatorBid = makeEstimatorBid();
+
+      const { getByTestId, rerender } = renderForm();
+
+      // Fire auto-auction so currentRequestKeyRef is set
+      await act(async () => {
+        vi.advanceTimersByTime(300);
+      });
+
+      // Inject estimator bid
+      const bidsWithEstimator = [estimatorBid];
+      await act(async () => {
+        rerender(
+          <PositionForm
+            methods={makeFormMethods()}
+            onSubmit={vi.fn()}
+            isSubmitting={false}
+            chainId={42161}
+            requestQuotes={mockRequestQuotes}
+            collateralDecimals={18}
+            bids={bidsWithEstimator}
+          />
+        );
+      });
+
+      await act(async () => {
+        vi.advanceTimersByTime(100);
+      });
+
+      // Estimate should be present
+      expect(getByTestId('bid-display').dataset.hasEstimateBid).toBe('true');
+
+      // Advance several seconds — sticky estimate should remain because
+      // estimator bids are exempt from expiry clearing
+      await act(async () => {
+        vi.advanceTimersByTime(5000);
+      });
+
+      expect(getByTestId('bid-display').dataset.hasEstimateBid).toBe('true');
+    });
+
+    it('sets isAuctionPending=false when estimator estimate arrives', async () => {
+      const estimatorBid = makeEstimatorBid();
+
+      const { getByTestId, rerender } = renderForm();
+
+      // Fire auto-auction
+      await act(async () => {
+        vi.advanceTimersByTime(300);
+      });
+
+      // While waiting for bids, isAuctionPending should be true
+      expect(getByTestId('bid-display').dataset.isAuctionPending).toBe('true');
+
+      // Inject estimator bid
+      const bidsWithEstimator = [estimatorBid];
+      await act(async () => {
+        rerender(
+          <PositionForm
+            methods={makeFormMethods()}
+            onSubmit={vi.fn()}
+            isSubmitting={false}
+            chainId={42161}
+            requestQuotes={mockRequestQuotes}
+            collateralDecimals={18}
+            bids={bidsWithEstimator}
+          />
+        );
+      });
+
+      await act(async () => {
+        vi.advanceTimersByTime(100);
+      });
+
+      // Now isAuctionPending should be false (stickyEstimateBid is set)
+      expect(getByTestId('bid-display').dataset.isAuctionPending).toBe('false');
+    });
+
+    it('does not restart cooldown for estimator bids', async () => {
+      const estimatorBid = makeEstimatorBid();
+
+      const { getByTestId, rerender } = renderForm();
+
+      // Fire auto-auction (sets lastQuoteRequestMs at fake time ~300)
+      await act(async () => {
+        vi.advanceTimersByTime(300);
+      });
+
+      // Inject estimator bid mid-cooldown
+      const bidsWithEstimator = [estimatorBid];
+      await act(async () => {
+        rerender(
+          <PositionForm
+            methods={makeFormMethods()}
+            onSubmit={vi.fn()}
+            isSubmitting={false}
+            chainId={42161}
+            requestQuotes={mockRequestQuotes}
+            collateralDecimals={18}
+            bids={bidsWithEstimator}
+          />
+        );
+      });
+
+      await act(async () => {
+        vi.advanceTimersByTime(100);
+      });
+
+      // Advance well past the 15s cooldown from the original request.
+      // nowMs updates at 1s interval boundaries, so use generous timing.
+      // If cooldown was NOT restarted by estimator bid, it expires ~15.3s
+      // from time 0. Advance to 17s total to be safe.
+      await act(async () => {
+        vi.advanceTimersByTime(17000);
+      });
+
+      // The original cooldown should have expired (15s from request at ~300ms)
+      // showRequestBidsButton = !bestBid && !recentlyRequested → true
+      expect(getByTestId('bid-display').dataset.showRequestBidsButton).toBe(
+        'true'
+      );
+    });
+
+    it('prefers regular valid bids over estimator bids', async () => {
+      const estimatorBid = makeEstimatorBid();
+      const regularBid = {
+        counterparty: '0xRealMaker',
+        counterpartyCollateral: '8000000000000000000',
+        counterpartyDeadline: Math.floor(Date.now() / 1000) + 60,
+        counterpartyNonce: 1,
+        validationStatus: 'valid' as const,
+        counterpartySignature: '0xSig',
+        counterpartyChainId: 42161,
+        predictorCollateral: '10000000000000000000',
+      };
+
+      const { getByTestId, rerender } = renderForm();
+
+      // Fire auto-auction
+      await act(async () => {
+        vi.advanceTimersByTime(300);
+      });
+
+      // Inject both estimator and regular bids
+      const bothBids = [estimatorBid, regularBid];
+      await act(async () => {
+        rerender(
+          <PositionForm
+            methods={makeFormMethods()}
+            onSubmit={vi.fn()}
+            isSubmitting={false}
+            chainId={42161}
+            requestQuotes={mockRequestQuotes}
+            collateralDecimals={18}
+            bids={bothBids}
+          />
+        );
+      });
+
+      await act(async () => {
+        vi.advanceTimersByTime(100);
+      });
+
+      const bidDisplay = getByTestId('bid-display');
+      // Regular bid wins — shown as bestBid, not estimate
+      expect(bidDisplay.dataset.hasBestBid).toBe('true');
+      expect(bidDisplay.dataset.hasEstimateBid).toBe('false');
+    });
+  });
+
+  // =========================================================================
+  // F. Mode-switching clears bids
+  // =========================================================================
+  describe('F. Mode-switching clears bids', () => {
     it('clears bids when switching from auto (session) to manual (EOA)', async () => {
       const validBid = {
         counterparty: '0xMaker',
@@ -809,6 +1065,47 @@ describe('PositionForm', () => {
       });
 
       expect(mockRequestQuotes).toHaveBeenCalledTimes(prevCallCount + 1);
+    });
+  });
+
+  // =========================================================================
+  // G. Geofence enforcement
+  // =========================================================================
+  describe('G. Geofence enforcement', () => {
+    it('shows banner and disables submit when jurisdiction is restricted', () => {
+      mockUseSapience.mockReturnValue({
+        permitData: { permitted: false },
+        isPermitLoading: false,
+        permitError: null,
+      });
+
+      const { getByTestId } = renderForm();
+
+      // Banner should be visible
+      const banner = getByTestId('restricted-banner');
+      expect(banner.dataset.show).toBe('true');
+
+      // BidDisplay should have isSubmitDisabled=true
+      const bidDisplay = getByTestId('bid-display');
+      expect(bidDisplay.dataset.isSubmitDisabled).toBe('true');
+    });
+
+    it('disables submit while permit is loading', () => {
+      mockUseSapience.mockReturnValue({
+        permitData: null,
+        isPermitLoading: true,
+        permitError: null,
+      });
+
+      const { getByTestId } = renderForm();
+
+      // Banner should NOT be shown while loading
+      const banner = getByTestId('restricted-banner');
+      expect(banner.dataset.show).toBe('false');
+
+      // BidDisplay should still have isSubmitDisabled=true (loading blocks submit)
+      const bidDisplay = getByTestId('bid-display');
+      expect(bidDisplay.dataset.isSubmitDisabled).toBe('true');
     });
   });
 });

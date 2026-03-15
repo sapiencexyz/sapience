@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { parseEther, formatEther, type Address } from 'viem';
+import { useRouter } from 'next/navigation';
 import {
   Dialog,
   DialogContent,
@@ -20,7 +21,7 @@ import {
   SelectValue,
 } from '@sapience/ui/components/ui/select';
 import { Alert, AlertDescription } from '@sapience/ui/components/ui/alert';
-import { Loader2 } from 'lucide-react';
+import { Loader2, CheckCircle } from 'lucide-react';
 import type { PositionBalance } from '~/hooks/graphql/usePositions';
 import { useSecondaryAuctionStart } from '~/hooks/secondary/useSecondaryAuction';
 
@@ -34,7 +35,6 @@ const DEADLINE_OPTIONS = [
 interface SellPositionDialogProps {
   position: PositionBalance;
   collateralSymbol: string;
-  chainId: number;
   onSuccess?: () => void;
   children: React.ReactNode;
 }
@@ -42,26 +42,39 @@ interface SellPositionDialogProps {
 export default function SellPositionDialog({
   position,
   collateralSymbol,
-  chainId,
   onSuccess,
   children,
 }: SellPositionDialogProps) {
+  const router = useRouter();
   const [open, setOpen] = React.useState(false);
-  const [tokenAmount, setTokenAmount] = React.useState(
-    formatEther(BigInt(position.balance))
-  );
+  const [listed, setListed] = React.useState(false);
+  const initialBalance = React.useMemo(() => {
+    try {
+      return formatEther(BigInt(position.balance));
+    } catch {
+      return '0';
+    }
+  }, [position.balance]);
+  const [tokenAmount, setTokenAmount] = React.useState(initialBalance);
   const [minPrice, setMinPrice] = React.useState('');
   const [deadlineSeconds, setDeadlineSeconds] = React.useState('900');
   const [error, setError] = React.useState<string | null>(null);
 
   const { startAuction, isSubmitting } = useSecondaryAuctionStart({
-    chainId,
     onSignatureRejected: (err) => setError(err.message),
     onAuctionCreated: () => {
-      setOpen(false);
+      setListed(true);
       onSuccess?.();
     },
   });
+
+  // Reset state when dialog opens
+  React.useEffect(() => {
+    if (open) {
+      setListed(false);
+      setError(null);
+    }
+  }, [open]);
 
   const handleSubmit = React.useCallback(
     async (e: React.FormEvent) => {
@@ -69,8 +82,16 @@ export default function SellPositionDialog({
       setError(null);
 
       try {
-        const amountWei = parseEther(tokenAmount);
-        const priceWei = parseEther(minPrice);
+        if (!tokenAmount.trim() || !/^\d*\.?\d*$/.test(tokenAmount.trim())) {
+          setError('Please enter a valid token amount');
+          return;
+        }
+        if (!minPrice.trim() || !/^\d*\.?\d*$/.test(minPrice.trim())) {
+          setError('Please enter a valid minimum price');
+          return;
+        }
+        const amountWei = parseEther(tokenAmount.trim());
+        const priceWei = parseEther(minPrice.trim());
 
         if (amountWei <= 0n) {
           setError('Token amount must be greater than 0');
@@ -109,71 +130,97 @@ export default function SellPositionDialog({
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Sell Position Tokens</DialogTitle>
+          <DialogTitle>
+            {listed ? 'Listed for Sale' : 'Sell Position Tokens'}
+          </DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="tokenAmount">Token Amount</Label>
-            <Input
-              id="tokenAmount"
-              type="text"
-              value={tokenAmount}
-              onChange={(e) => setTokenAmount(e.target.value)}
-              placeholder="0.0"
-            />
-            <p className="text-xs text-muted-foreground">
-              Balance: {formatEther(BigInt(position.balance))}
-            </p>
+
+        {listed ? (
+          <div className="space-y-4 py-2">
+            <div className="flex items-center gap-2 text-sm text-green-600">
+              <CheckCircle className="w-5 h-5" />
+              <span>Your position is now listed on the secondary market.</span>
+            </div>
+            <Button
+              className="w-full"
+              onClick={() => {
+                setOpen(false);
+                router.push('/secondary');
+              }}
+            >
+              View on Secondary Market
+            </Button>
           </div>
+        ) : (
+          <form onSubmit={handleSubmit} className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="tokenAmount">Token Amount</Label>
+              <Input
+                id="tokenAmount"
+                type="text"
+                value={tokenAmount}
+                onChange={(e) => setTokenAmount(e.target.value)}
+                placeholder="0.0"
+              />
+              <p className="text-xs text-muted-foreground">
+                Balance: {initialBalance}
+              </p>
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="minPrice">Minimum Price ({collateralSymbol})</Label>
-            <Input
-              id="minPrice"
-              type="text"
-              value={minPrice}
-              onChange={(e) => setMinPrice(e.target.value)}
-              placeholder="0.0"
-            />
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="minPrice">
+                Minimum Price ({collateralSymbol})
+              </Label>
+              <Input
+                id="minPrice"
+                type="text"
+                value={minPrice}
+                onChange={(e) => setMinPrice(e.target.value)}
+                placeholder="0.0"
+              />
+            </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="deadline">Deadline</Label>
-            <Select value={deadlineSeconds} onValueChange={setDeadlineSeconds}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {DEADLINE_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+            <div className="space-y-2">
+              <Label htmlFor="deadline">Deadline</Label>
+              <Select
+                value={deadlineSeconds}
+                onValueChange={setDeadlineSeconds}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {DEADLINE_OPTIONS.map((opt) => (
+                    <SelectItem key={opt.value} value={opt.value}>
+                      {opt.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
 
-          {error && (
-            <Alert variant="destructive">
-              <AlertDescription>{error}</AlertDescription>
-            </Alert>
-          )}
-
-          <Button
-            type="submit"
-            className="w-full"
-            disabled={isSubmitting || !tokenAmount || !minPrice}
-          >
-            {isSubmitting ? (
-              <>
-                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Signing…
-              </>
-            ) : (
-              'List for Sale'
+            {error && (
+              <Alert variant="destructive">
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
             )}
-          </Button>
-        </form>
+
+            <Button
+              type="submit"
+              className="w-full"
+              disabled={isSubmitting || !tokenAmount || !minPrice}
+            >
+              {isSubmitting ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Signing…
+                </>
+              ) : (
+                'List for Sale'
+              )}
+            </Button>
+          </form>
+        )}
       </DialogContent>
     </Dialog>
   );

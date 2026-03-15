@@ -10,80 +10,6 @@ export interface ContractAddressEntry {
 
 export type ChainAddressMap = Record<ChainId, ContractAddressEntry>;
 
-/** @deprecated Pre-escrow contract. Use `predictionMarketEscrow` instead. */
-export const predictionMarket: ChainAddressMap = {
-  42161: {
-    address: '0xb04841cad1147675505816e2ec5c915430857b40',
-    legacy: [] as const,
-  },
-  5064014: {
-    address: '0xAcD757322df2A1A0B3283c851380f3cFd4882cB4',
-    legacy: [] as const,
-  },
-  13374202: {
-    address: '0x7b00088CA92d4f11F305CC61758De3580a730f39',
-    legacy: [] as const,
-  },
-} as const;
-
-export const predictionMarketLZConditionalTokensResolver: ChainAddressMap = {
-  5064014: {
-    address: '0xdC1Fa830aD1de01f1EF603749f48bD73384286BE',
-    legacy: [] as const,
-  },
-} as const;
-
-export const umaResolver: ChainAddressMap = {
-  42161: {
-    address: '0x2cc1311871b9fc7bfcb809c75da4ba25732eafb9',
-    legacy: [] as const,
-  },
-} as const;
-
-export const lzPMResolver: ChainAddressMap = {
-  5064014: {
-    address: '0xd82F211D0d9bE9A73a829A5F1f0e34b02Bf2FB36',
-    legacy: [] as const,
-  },
-  13374202: {
-    address: '0x2A97702591ACCbF330c6c813C46DE287653eb645',
-    legacy: [] as const,
-  },
-} as const;
-
-export const lzUmaResolver: ChainAddressMap = {
-  42161: {
-    address: '0x77Bf3900D79D7Ba4DAEfEb5Ed4D216308dbfbf53',
-    legacy: [] as const,
-  },
-  421614: {
-    address: '0x26DB702647e56B230E15687bFbC48b526E131dAe',
-    legacy: [] as const,
-  },
-} as const;
-
-/**
- * PythResolver
- *
- * NOTE: These are intentionally placeholder addresses so the app can wire the
- * correct resolver selection + encoding. Update them to the real deployed
- * resolver addresses for each chain when available.
- */
-export const pythResolver: ChainAddressMap = {
-  42161: {
-    address: '0x0000000000000000000000000000000000000000',
-    legacy: [] as const,
-  },
-  5064014: {
-    address: '0xD076c9fADC49061920e75b1a3a45642712F90F35',
-    legacy: [] as const,
-  },
-  13374202: {
-    address: '0x0000000000000000000000000000000000000000',
-    legacy: [] as const,
-  },
-} as const;
-
 export const collateralToken: ChainAddressMap = {
   42161: {
     address: '0xfeb8c4d5efbaff6e928ea090bc660c363f883dba',
@@ -229,23 +155,6 @@ export const manualConditionResolver: ChainAddressMap = {
 } as const;
 
 /**
- * LZConditionResolver
- * LayerZero cross-chain condition resolution
- */
-export const lzConditionResolver: ChainAddressMap = {
-  5064014: {
-    // Ethereal mainnet - TODO: deploy
-    address: '0x0000000000000000000000000000000000000000',
-    legacy: [] as const,
-  },
-  13374202: {
-    // Ethereal testnet - TODO: deploy
-    address: '0x0000000000000000000000000000000000000000',
-    legacy: [] as const,
-  },
-} as const;
-
-/**
  * PredictionMarketBridge
  * Bridge contract on source chain (Ethereal)
  */
@@ -382,26 +291,15 @@ export const onboardingSponsor: ChainAddressMap = {
   },
 } as const;
 
-/** @deprecated Use individual contract exports instead. */
 export const contracts = {
-  predictionMarket,
-  predictionMarketLZConditionalTokensResolver,
-  umaResolver,
-  lzPMResolver,
-  lzUmaResolver,
-  pythResolver,
   collateralToken,
   eas,
-};
-
-export const escrowContracts = {
   predictionMarketEscrow,
   predictionMarketVault,
   secondaryMarketEscrow,
   onboardingSponsor,
   pythConditionResolver,
   manualConditionResolver,
-  lzConditionResolver,
   conditionalTokensConditionResolver,
   conditionalTokensReader,
   predictionMarketBridge,
@@ -413,19 +311,12 @@ export const escrowContracts = {
 // Resolver Helpers
 // ============================================================================
 
-export type ResolverType =
-  | 'pyth'
-  | 'conditionalTokens'
-  | 'lzConditionalTokens'
-  | 'manual'
-  | 'lz';
+export type ResolverType = 'pyth' | 'conditionalTokens' | 'manual';
 
 const RESOLVER_MAP: Record<ResolverType, ChainAddressMap> = {
   pyth: pythConditionResolver,
   conditionalTokens: conditionalTokensConditionResolver,
-  lzConditionalTokens: predictionMarketLZConditionalTokensResolver,
   manual: manualConditionResolver,
-  lz: lzConditionResolver,
 };
 
 /** Get the deployed resolver address for a given type and chain. */

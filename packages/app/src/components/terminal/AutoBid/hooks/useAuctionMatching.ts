@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { parseUnits, formatUnits } from 'viem';
+import { parseUnits, formatUnits, type PublicClient } from 'viem';
 import type { Order } from '../types';
 import type { PushLogEntryParams } from '~/components/terminal/TerminalLogsContext';
 import {
@@ -15,6 +15,8 @@ import type {
   EscrowBidSubmissionParams,
   EscrowBidSubmissionResult,
 } from '~/hooks/auction/useEscrowBidSubmission';
+import { validateBidFull } from '@sapience/sdk/auction/validation';
+import { getPublicClientForChainId } from '~/lib/utils/util';
 
 /** Shape of the data payload from auction WebSocket messages */
 interface AuctionMessageData {
@@ -79,6 +81,9 @@ type UseAuctionMatchingParams = {
   submitBid: (
     params: EscrowBidSubmissionParams
   ) => Promise<EscrowBidSubmissionResult>;
+  predictionMarketAddress?: `0x${string}`;
+  collateralTokenAddress?: `0x${string}`;
+  chainId: number;
 };
 
 export function useAuctionMatching({
@@ -95,6 +100,9 @@ export function useAuctionMatching({
   auctionMessages,
   formatCollateralAmount,
   submitBid,
+  predictionMarketAddress,
+  collateralTokenAddress,
+  chainId,
 }: UseAuctionMatchingParams) {
   const processedMessageIdsRef = useRef<Set<number>>(new Set());
   const processedMessageQueueRef = useRef<number[]>([]);
@@ -107,6 +115,9 @@ export function useAuctionMatching({
   // when the same bid appears in multiple auction.bids messages
   const processedBidsRef = useRef<Set<string>>(new Set());
   const processedBidsQueueRef = useRef<string[]>([]);
+  // Track bids currently undergoing async validation to prevent duplicate submissions
+  // during the validation window (separate from processedBidsRef which is permanent)
+  const validatingBidsRef = useRef<Set<string>>(new Set());
 
   const evaluateAutoBidReadiness = useCallback(
     (details: {
@@ -295,7 +306,7 @@ export function useAuctionMatching({
         return;
       }
 
-      const { predictorCollateral, predictor, resolver, escrowPicks } =
+      const { predictorCollateral, predictor, escrowPicks } =
         details.auctionContext;
 
       // Calculate our bid amount (counterpartyCollateral)
@@ -409,10 +420,9 @@ export function useAuctionMatching({
           auctionId: details.auctionId,
           counterpartyCollateral: counterpartyCollateralWei,
           predictorCollateral: BigInt(predictorCollateral || '0'),
-          resolver,
           predictor,
           expirySeconds,
-          escrowPicks: escrowPicks ?? [],
+          picks: escrowPicks ?? [],
         });
 
         const counterpartyAmount = formatCollateralAmount(
@@ -563,8 +573,11 @@ export function useAuctionMatching({
         // when the same bid appears in multiple auction.bids messages
         const bidDedupeKey = `${matched.order.id}:${auctionId}:${signature ?? `${counterpartyAddr}:${bidRecord?.counterpartyCollateral ?? '0'}`}`;
 
-        // Skip if we've already processed this exact bid for this order
-        if (processedBidsRef.current.has(bidDedupeKey)) {
+        // Skip if we've already processed or are currently validating this bid
+        if (
+          processedBidsRef.current.has(bidDedupeKey) ||
+          validatingBidsRef.current.has(bidDedupeKey)
+        ) {
           return;
         }
 
@@ -601,27 +614,114 @@ export function useAuctionMatching({
           },
         });
         if (!readiness.blocked) {
-          // Fire and forget - dedupe key is marked on successful signature
-          void triggerAutoBidSubmission({
-            order: matched.order,
-            source: 'copy_trade',
-            auctionId,
-            auctionContext: cachedContext,
-            copyBidContext: {
-              copiedBidCollateral: String(
+          // Validate the copied bid before outbidding (anti-spoofing)
+          if (
+            predictionMarketAddress &&
+            collateralTokenAddress &&
+            signature &&
+            cachedContext.escrowPicks
+          ) {
+            // Mark as in-flight to prevent duplicate submissions during async validation
+            validatingBidsRef.current.add(bidDedupeKey);
+
+            const bidPayload = {
+              auctionId: auctionId!,
+              counterparty: counterpartyAddr,
+              counterpartyCollateral: String(
                 bidRecord?.counterpartyCollateral ?? '0'
               ),
-              increment: matched.order.increment ?? 1,
-            },
-            dedupeKey: bidDedupeKey,
-          });
+              counterpartyNonce: Number(bidRecord?.counterpartyNonce ?? 0),
+              counterpartyDeadline: Number(
+                bidRecord?.counterpartyDeadline ?? 0
+              ),
+              counterpartySignature: signature,
+            };
+            // Tier 1 + Tier 2 validation — signature + on-chain state
+            validateBidFull(
+              bidPayload,
+              {
+                picks: cachedContext.escrowPicks,
+                predictorCollateral: cachedContext.predictorCollateral,
+                predictor: cachedContext.predictor,
+                chainId,
+              },
+              {
+                verifyingContract: predictionMarketAddress,
+                chainId,
+                predictionMarketAddress,
+                collateralTokenAddress,
+                publicClient: getPublicClientForChainId(
+                  chainId
+                ) as PublicClient,
+              }
+            )
+              .then((bidResult) => {
+                if (bidResult.status === 'invalid') {
+                  // Invalid bid — mark permanently so we never retry
+                  markBidProcessed(bidDedupeKey);
+                  pushLogEntry({
+                    kind: 'system',
+                    message: `${tag} skipped outbid — copied bid is invalid: ${bidResult.reason}`,
+                    severity: 'warning',
+                    meta: {
+                      orderId: matched.order.id,
+                      labelSnapshot: formatOrderLabelSnapshot(tag),
+                      formattedPrefix: tag,
+                      verb: 'bid',
+                      highlight: `skipped, copied bid invalid`,
+                    },
+                    dedupeKey: `spoofcheck:${bidDedupeKey}`,
+                  });
+                  return;
+                }
+                // Valid or unverified — proceed with outbid
+                // dedupeKey passed to triggerAutoBidSubmission marks as processed on successful signature
+                void triggerAutoBidSubmission({
+                  order: matched.order,
+                  source: 'copy_trade',
+                  auctionId,
+                  auctionContext: cachedContext,
+                  copyBidContext: {
+                    copiedBidCollateral: String(
+                      bidRecord?.counterpartyCollateral ?? '0'
+                    ),
+                    increment: matched.order.increment ?? 1,
+                  },
+                  dedupeKey: bidDedupeKey,
+                });
+              })
+              .catch(() => {
+                // Validation threw — remove from in-flight so it can be retried
+                validatingBidsRef.current.delete(bidDedupeKey);
+              });
+          } else {
+            // No verifying contract or missing data — proceed without validation
+            void triggerAutoBidSubmission({
+              order: matched.order,
+              source: 'copy_trade',
+              auctionId,
+              auctionContext: cachedContext,
+              copyBidContext: {
+                copiedBidCollateral: String(
+                  bidRecord?.counterpartyCollateral ?? '0'
+                ),
+                increment: matched.order.increment ?? 1,
+              },
+              dedupeKey: bidDedupeKey,
+            });
+          }
         }
       });
     },
     [
+      chainId,
+      collateralTokenAddress,
       evaluateAutoBidReadiness,
       getOrderIndex,
+      markBidProcessed,
       orders,
+      predictionMarketAddress,
+      pushLogEntry,
       tokenDecimals,
       triggerAutoBidSubmission,
     ]

@@ -14,11 +14,12 @@ import {
   getResolverAddress,
 } from '@sapience/sdk/contracts/addresses';
 import { fetchConditionsByIdsQuery, type ConditionById } from '@sapience/sdk/queries';
-import { buildCounterpartyMintTypedData, verifyAuctionIntentSignature } from '@sapience/sdk/auction/escrowSigning';
+import { buildCounterpartyMintTypedData } from '@sapience/sdk/auction/escrowSigning';
+import { validateAuctionRFQ, validateBid, isActionable } from '@sapience/sdk/auction/validation';
 import { createEscrowAuctionWs, buildBidPayload } from '@sapience/sdk/relayer/escrowAuctionWs';
 import { decodePythMarketId, decodePythLazerFeedId } from '@sapience/sdk/auction/encoding';
 import { PYTH_FEED_NAMES } from '@sapience/sdk/constants';
-import type { Pick, AuctionDetails, PickJson } from '@sapience/sdk/types';
+import { OutcomeSide, type Pick, type AuctionDetails, type PickJson } from '@sapience/sdk/types';
 
 // Local imports
 import { loadSdk } from './sdk.js';
@@ -114,16 +115,12 @@ const MAX_BID = parseEther(MAX_BID_DEC);
 const VOLATILITY = Number(process.env.VOLATILITY || '0.80');
 const MIN_CP_WIN_PROB = Number(process.env.MIN_CP_WIN_PROB || '0.05');
 
-// Set SKIP_INTENT_VERIFICATION=true to accept unsigned auctions (not recommended)
-const SKIP_INTENT_VERIFICATION = (process.env.SKIP_INTENT_VERIFICATION || '').toLowerCase() === 'true';
 
 const MIN_MAKER_WAGER = parseEther(MIN_MAKER_WAGER_DEC);
 
 const account = PRIVATE_KEY_HEX ? privateKeyToAccount(PRIVATE_KEY_HEX) : undefined;
 const MAKER = account?.address as Address | undefined;
 
-// OutcomeSide enum values (matching SDK)
-const OutcomeSide = { YES: 0, NO: 1 } as const;
 
 /** Human-readable label for a conditionId (decodes Pyth market params if applicable) */
 function formatConditionId(conditionId: string): string {
@@ -148,7 +145,6 @@ const pythResolverAddr = (
 const ctResolverAddrs = [
   process.env.CT_RESOLVER_ADDRESS,
   getResolverAddress('conditionalTokens', CHAIN_ID),
-  getResolverAddress('lzConditionalTokens', CHAIN_ID),
 ].filter((a): a is string => !!a).map((a) => a.toLowerCase());
 
 const strategies: Strategy[] = [
@@ -201,7 +197,13 @@ async function getConditionsByIds(ids: string[]): Promise<Map<string, ConditionB
 
 // Load prepareForTrade from SDK (optional — only used for Ethereal USDe wrapping)
 const sdk = await loadSdk();
-type PrepareForTrade = typeof import('@sapience/sdk/onchain/trading').prepareForTrade;
+type PrepareForTrade = (args: {
+  privateKey: Hex;
+  collateralAmount: bigint;
+  spender?: Hex;
+  rpcUrl?: string;
+  chainId?: number;
+}) => Promise<{ ready: boolean; wrapTxHash?: Hex; approvalTxHash?: Hex; wusdBalance: bigint }>;
 const prepareForTrade = sdk.prepareForTrade as PrepareForTrade | undefined;
 
 async function prepareCollateral() {
@@ -348,7 +350,7 @@ function convertPicksFromJson(picks: PickJson[]): Pick[] {
   return picks.map((p) => ({
     conditionResolver: p.conditionResolver as Address,
     conditionId: p.conditionId as Hex,
-    predictedOutcome: p.predictedOutcome as 0 | 1,
+    predictedOutcome: p.predictedOutcome as OutcomeSide,
   }));
 }
 
@@ -359,52 +361,26 @@ async function handleAuction(auction: AuctionDetails, submitBid: (payload: Retur
 
   const resolvers = [...new Set(picks.map((p) => formatAddress(p.conditionResolver)))].join(', ');
 
-  // Skip unsigned auctions early (unsigned = estimate request, not actionable)
-  if (!SKIP_INTENT_VERIFICATION && VERIFYING_CONTRACT && !auction.intentSignature) {
-    logger.info(`${color('⚡', ANSI.dim)} ${fmt.id(auctionId.slice(0, 8))} ${color(`${picks.length} leg(s), resolvers: ${resolvers}, collateral: ${formatEther(predictorCollateral)} — skipped (unsigned estimate request)`, ANSI.dim)}`);
-    return;
-  }
-
   logger.info(`${color('⚡', ANSI.dim)} ${fmt.id(auctionId.slice(0, 8))} ${color(`${picks.length} leg(s), resolvers: ${resolvers}, collateral: ${formatEther(predictorCollateral)}`, ANSI.dim)}`);
 
-  // Ignore unsigned auctions (no predictor intent signature)
-  if (REQUIRE_INTENT_SIGNATURE && !auction.intentSignature) {
-    logger.warn(`Skipping auction ${auctionId}: no intent signature`);
-    return;
+  // Unified auction validation: fields + chain + deadline + intent signature
+  if (VERIFYING_CONTRACT) {
+    const rfqResult = await validateAuctionRFQ(auction, {
+      verifyingContract: VERIFYING_CONTRACT,
+      chainId: CHAIN_ID,
+      requireSignature: REQUIRE_INTENT_SIGNATURE,
+    });
+
+    if (!isActionable(rfqResult)) {
+      logger.warn(`Skipping auction ${auctionId}: ${rfqResult.reason}`);
+      return;
+    }
   }
 
-  // Ignore auctions on different chains
-  if (auction.chainId && auction.chainId !== CHAIN_ID) {
-    logger.warn(`Skipping auction ${auctionId}: wrong chain ${auction.chainId}`);
-    return;
-  }
-
-  // Ignore auctions below minimum wager
+  // Ignore auctions below minimum wager (business logic, not validation)
   if (predictorCollateral < MIN_MAKER_WAGER) {
     logger.warn(`Skipping auction ${auctionId}: collateral ${formatEther(predictorCollateral)} below min ${MIN_MAKER_WAGER_DEC}`);
     return;
-  }
-
-  // Verify predictor's intent signature
-  if (!SKIP_INTENT_VERIFICATION && VERIFYING_CONTRACT) {
-
-    const result = await verifyAuctionIntentSignature({
-      picks: convertPicksFromJson(picks),
-      predictor: auction.predictor as Address,
-      predictorCollateral,
-      predictorNonce: BigInt(auction.predictorNonce),
-      predictorDeadline: BigInt(auction.predictorDeadline),
-      intentSignature: auction.intentSignature as Hex,
-      predictorSessionKeyData: auction.predictorSessionKeyData,
-      verifyingContract: VERIFYING_CONTRACT,
-      chainId: CHAIN_ID,
-    });
-
-    if (!result.valid) {
-      const recovered = result.recoveredAddress ? ` (recovered: ${formatAddress(result.recoveredAddress)})` : '';
-      logger.warn(`Skipping auction ${auctionId}: invalid intent signature from ${formatAddress(auction.predictor)}${recovered}`);
-      return;
-    }
   }
 
   // ---- Dynamic quoting via strategies ----
@@ -500,6 +476,16 @@ async function handleAuction(auction: AuctionDetails, submitBid: (payload: Retur
     counterpartySignature,
   });
 
+  // Self-validate bid before submitting to catch signing/parameter errors locally
+  const bidValidation = await validateBid(payload, auction, {
+    verifyingContract: VERIFYING_CONTRACT!,
+    chainId: CHAIN_ID,
+  });
+  if (!isActionable(bidValidation)) {
+    logger.error(`⛔️ Bid self-validation failed: ${bidValidation.reason}`);
+    return;
+  }
+
   logger.info([
     `📤 Bid ${fmt.value(`${bidDec} USDe`)} to win ${fmt.value(`${winDec} USDe`)} (implies ${fmt.yes(`${theyLose}%`)} chance they lose), against:`,
     legLines,
@@ -533,7 +519,7 @@ function start() {
         fmt.bullet(fmt.field('Min maker wager', fmt.value(`${MIN_MAKER_WAGER_DEC}`))),
         fmt.bullet(fmt.field('Strategies', fmt.value(strategies.map(s => s.name).join(', ') || 'none'))),
         fmt.bullet(fmt.field('Contract', fmt.value(formatAddress(VERIFYING_CONTRACT!)))),
-        fmt.bullet(fmt.field('Verify intent sig', !SKIP_INTENT_VERIFICATION ? fmt.yes('yes') : fmt.no('no'))),
+        fmt.bullet(fmt.field('Verify intent sig', REQUIRE_INTENT_SIGNATURE ? fmt.yes('yes') : fmt.no('no'))),
         MAKER ? fmt.bullet(fmt.field('Maker', fmt.value(formatAddress(MAKER)))) : fmt.bullet(fmt.field('Maker', fmt.no('not configured (dry run)'))),
       ].join('\n'));
     },

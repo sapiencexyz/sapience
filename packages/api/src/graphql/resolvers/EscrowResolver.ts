@@ -492,7 +492,9 @@ export class EscrowResolver {
       createTxHash: r.createTxHash,
       settleTxHash: r.settleTxHash ?? null,
       refCode: r.refCode ?? null,
-      pickConfig: r.pickConfiguration ? mapPickConfig(r.pickConfiguration) : null,
+      pickConfig: r.pickConfiguration
+        ? mapPickConfig(r.pickConfiguration)
+        : null,
     }));
   }
 
@@ -755,9 +757,15 @@ export class EscrowResolver {
       const validPickConfigIds = matchingConfigs.map((r) => r.pickConfigId);
 
       // Intersect with existing pickConfigId filter if present
-      if (where.pickConfigId && typeof where.pickConfigId === 'object' && 'in' in where.pickConfigId) {
+      if (
+        where.pickConfigId &&
+        typeof where.pickConfigId === 'object' &&
+        'in' in where.pickConfigId
+      ) {
         const existing = where.pickConfigId.in as string[];
-        where.pickConfigId = { in: existing.filter((id) => validPickConfigIds.includes(id)) };
+        where.pickConfigId = {
+          in: existing.filter((id) => validPickConfigIds.includes(id)),
+        };
       } else if (where.pickConfigId && typeof where.pickConfigId === 'string') {
         if (!validPickConfigIds.includes(where.pickConfigId)) return [];
       } else {

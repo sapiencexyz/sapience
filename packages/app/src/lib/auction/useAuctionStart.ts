@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAccount, useSignTypedData } from 'wagmi';
-import type { Address, Hex } from 'viem';
-import { canonicalizePicks } from '@sapience/sdk/auction/escrowEncoding';
-import { buildAuctionIntentTypedData } from '@sapience/sdk/auction/escrowSigning';
-import { predictionMarketEscrow } from '@sapience/sdk/contracts';
+import type { Hex } from 'viem';
 import type { Pick } from '@sapience/sdk/types';
+import {
+  prepareAuctionRFQ,
+  type SignableTypedData,
+} from '@sapience/sdk/auction/initiate';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
 import { toAuctionWsUrl } from '~/lib/ws';
@@ -15,14 +16,11 @@ import { logAuction, formatBidForLog } from '~/lib/auction/bidLogger';
 
 export interface AuctionParams {
   wager: string; // wei string - predictor's position size
-  resolver: string; // contract address for market validation
-  predictedOutcomes: string[]; // Array of bytes strings that the resolver validates/understands
   predictor: `0x${string}`; // predictor EOA address
   predictorNonce: number; // nonce for the predictor
   chainId: number; // chain ID for the auction (e.g., 42161 for Arbitrum)
-  // Escrow auction fields (optional)
   counterpartyCollateral?: string; // wei string - counterparty's collateral for escrow auctions
-  escrowPicks?: Array<{
+  picks: Array<{
     conditionResolver: `0x${string}`;
     conditionId: `0x${string}`;
     predictedOutcome: number;
@@ -363,8 +361,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
 
       const requestPayload = {
         wager: params.wager,
-        resolver: params.resolver,
-        predictedOutcomes: params.predictedOutcomes,
+        picks: params.picks,
         predictor: effectivePredictor,
         predictorNonce: params.predictorNonce,
         chainId: params.chainId,
@@ -393,11 +390,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
       lastAuctionRef.current = { ...params, predictor: effectivePredictor };
       setCurrentAuctionParams({ ...params, predictor: effectivePredictor });
 
-      // Check if this is an escrow auction (has escrowPicks)
-      const isEscrowAuction =
-        params.escrowPicks && params.escrowPicks.length > 0;
-
-      if (!isEscrowAuction) {
+      if (!params.picks || params.picks.length === 0) {
         console.error(
           '[Auction] Escrow picks missing — all auctions require escrow format'
         );
@@ -407,114 +400,96 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
 
       const chainId = params.chainId;
 
-      // Convert escrowPicks to Pick[] and canonicalize
-      const rawPicks: Pick[] = params.escrowPicks!.map((p) => ({
-        conditionResolver: p.conditionResolver,
-        conditionId: p.conditionId,
-        predictedOutcome: p.predictedOutcome,
-      }));
-      const picks = canonicalizePicks(rawPicks);
-
-      // Calculate deadline (30 seconds from now)
-      const nowSec = Math.floor(Date.now() / 1000);
-      const predictorDeadline = nowSec + 30;
-
-      // Store predictorDeadline on the auction ref so buildMintRequestDataFromBid can access it
-      lastAuctionRef.current = {
-        ...lastAuctionRef.current,
-        predictorDeadline,
-      };
-
-      const escrowPayload: Record<string, unknown> = {
-        picks: picks.map((p) => ({
-          conditionResolver: p.conditionResolver,
-          conditionId: p.conditionId,
-          predictedOutcome: p.predictedOutcome,
-        })),
-        predictorCollateral: params.wager,
-        predictor: effectivePredictor,
-        predictorNonce: params.predictorNonce,
-        predictorDeadline,
-        chainId,
-      };
-      if (params.predictorSponsor) {
-        escrowPayload.predictorSponsor = params.predictorSponsor;
-        escrowPayload.predictorSponsorData =
-          params.predictorSponsorData ?? '0x';
-      }
-
-      // Sign AuctionIntent EIP-712 typed data to prove predictor identity
-      const verifyingContract = predictionMarketEscrow[chainId]?.address as
-        | Address
-        | undefined;
+      // Build the signed auction payload via SDK
+      // prepareAuctionRFQ handles: pick canonicalization, deadline computation,
+      // EIP-712 typed data building, signing, payload assembly, self-validation.
       const canSign =
         walletAddress ||
         (isUsingSessionRef.current && sessionSignTypedDataRawRef.current);
+      const skipSigning = !shouldSignIntent || !canSign;
 
       if (!shouldSignIntent) {
         log('[auction] Intent signing disabled (skipIntentSigning=true)');
-      } else if (!verifyingContract) {
-        log(
-          `[auction] Intent signing skipped: no verifying contract for chainId=${chainId}`
-        );
       } else if (!canSign) {
         log(
           `[auction] Intent signing skipped: canSign=false (wallet=${!!walletAddress}, isUsingSession=${isUsingSessionRef.current}, hasSessionSigner=${!!sessionSignTypedDataRawRef.current})`
         );
       }
 
-      if (shouldSignIntent && verifyingContract && canSign) {
-        try {
-          const intentTypedData = buildAuctionIntentTypedData({
-            picks,
-            predictor: effectivePredictor,
-            predictorCollateral: BigInt(params.wager),
-            predictorNonce: BigInt(params.predictorNonce),
-            predictorDeadline: BigInt(predictorDeadline),
-            verifyingContract,
-            chainId,
-          });
+      let escrowPayload: Record<string, unknown>;
+      let predictorDeadline: number;
 
-          const viemDomain = {
-            ...intentTypedData.domain,
-            chainId: Number(intentTypedData.domain.chainId),
-          };
-
-          let intentSignature: Hex;
-          if (isUsingSessionRef.current && sessionSignTypedDataRawRef.current) {
-            log('[auction] Signing intent with session key');
-            intentSignature = await sessionSignTypedDataRawRef.current({
-              domain: viemDomain,
-              types: intentTypedData.types,
-              primaryType: intentTypedData.primaryType,
-              message: intentTypedData.message as Record<string, unknown>,
-            });
-            if (etherealSessionApprovalRef.current) {
-              escrowPayload.predictorSessionKeyData = JSON.stringify({
-                approval: etherealSessionApprovalRef.current.approval,
-                typedData: etherealSessionApprovalRef.current.typedData,
+      try {
+        const prepared = await prepareAuctionRFQ({
+          picks: params.picks.map(
+            (p): Pick => ({
+              conditionResolver: p.conditionResolver,
+              conditionId: p.conditionId,
+              predictedOutcome: p.predictedOutcome,
+            })
+          ),
+          predictorCollateral: BigInt(params.wager),
+          predictor: effectivePredictor,
+          chainId,
+          nonce: params.predictorNonce,
+          signIntent: async (typedData: SignableTypedData): Promise<Hex> => {
+            if (
+              isUsingSessionRef.current &&
+              sessionSignTypedDataRawRef.current
+            ) {
+              log('[auction] Signing intent with session key');
+              return sessionSignTypedDataRawRef.current({
+                domain: typedData.domain,
+                types: typedData.types,
+                primaryType: typedData.primaryType,
+                message: typedData.message,
               });
             }
-          } else {
             log('[auction] Signing intent with wallet');
-            intentSignature = await signTypedDataAsync({
-              domain: viemDomain,
-              types: intentTypedData.types,
-              primaryType: intentTypedData.primaryType,
-              message: intentTypedData.message,
+            return signTypedDataAsync({
+              domain: typedData.domain,
+              types: typedData.types,
+              primaryType: typedData.primaryType,
+              message: typedData.message,
             });
-          }
+          },
+          options: {
+            deadlineSeconds: 30,
+            skipIntentSigning: skipSigning,
+            predictorSponsor: params.predictorSponsor,
+            predictorSponsorData: params.predictorSponsorData,
+            sessionKeyData: etherealSessionApprovalRef.current
+              ? JSON.stringify({
+                  approval: etherealSessionApprovalRef.current.approval,
+                  typedData: etherealSessionApprovalRef.current.typedData,
+                })
+              : undefined,
+            // Skip self-validation — the relayer validates on receipt
+            skipSelfValidation: true,
+          },
+        });
 
-          escrowPayload.intentSignature = intentSignature;
-          log(`[auction] Intent signed: ${intentSignature.slice(0, 20)}...`);
-        } catch (e) {
+        escrowPayload = prepared.payload as unknown as Record<string, unknown>;
+        predictorDeadline = prepared.deadline;
+
+        if (prepared.payload.intentSignature) {
           log(
-            `[auction] Intent signing failed: ${e instanceof Error ? e.message : String(e)}`
+            `[auction] Intent signed: ${prepared.payload.intentSignature.slice(0, 20)}...`
           );
-          inflightRef.current = '';
-          return;
         }
+      } catch (e) {
+        log(
+          `[auction] Auction preparation failed: ${e instanceof Error ? e.message : String(e)}`
+        );
+        inflightRef.current = '';
+        return;
       }
+
+      // Store predictorDeadline on the auction ref so buildMintRequestDataFromBid can access it
+      lastAuctionRef.current = {
+        ...lastAuctionRef.current,
+        predictorDeadline,
+      };
 
       // Generate a correlation ID and send via client.send() instead of
       // sendWithAck(). The ack is handled synchronously in handleMessage
@@ -584,7 +559,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
       const auction = lastAuctionRef.current;
       if (!auction) return null;
 
-      const picks = auction.escrowPicks;
+      const picks = auction.picks;
       if (!picks || picks.length === 0) return null;
 
       // Validate bid is from the current auction to avoid stale nonce errors

@@ -18,15 +18,13 @@ import {
   COLLATERAL_SYMBOLS,
   CHAIN_ID_ETHEREAL,
   CHAIN_ID_ETHEREAL_TESTNET,
+  PREFERRED_ESTIMATE_QUOTER,
 } from '@sapience/sdk/constants';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import { PositionSizeInput } from '~/components/markets/forms';
 import BidDisplay from '~/components/markets/forms/shared/BidDisplay';
-import {
-  buildAuctionStartPayload,
-  buildPythAuctionStartPayload,
-} from '~/lib/auction/buildAuctionPayload';
+import { buildPythAuctionStartPayload } from '~/lib/auction/buildAuctionPayload';
 import type { AuctionParams, QuoteBid } from '~/lib/auction/useAuctionStart';
 import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
@@ -342,12 +340,25 @@ export default function PositionForm({
       return { bestBid: null, estimateBid: null };
     }
 
-    // Get non-expired bids
-    const nonExpiredBids = validBids.filter(
+    // Separate estimator bids (vault-bot with deadline=1 sentinel) from regular bids
+    const estimatorBids = validBids.filter(
+      (bid) =>
+        bid.counterparty?.toLowerCase() ===
+          PREFERRED_ESTIMATE_QUOTER.toLowerCase() &&
+        bid.validationStatus === 'valid'
+    );
+    const regularBids = validBids.filter(
+      (bid) =>
+        bid.counterparty?.toLowerCase() !==
+        PREFERRED_ESTIMATE_QUOTER.toLowerCase()
+    );
+
+    // Apply expiry filter only to regular bids (estimator bids use deadline=1 sentinel)
+    const nonExpiredBids = regularBids.filter(
       (bid) => bid.counterpartyDeadline * 1000 > nowMs
     );
 
-    if (nonExpiredBids.length === 0) {
+    if (nonExpiredBids.length === 0 && estimatorBids.length === 0) {
       const resultKey = 'all-expired';
       if (prevFilterResultRef.current !== resultKey) {
         logPositionForm(
@@ -375,18 +386,34 @@ export default function PositionForm({
         : null;
 
     if (validFilteredBids.length === 0) {
-      const resultKey = estimateFromFailed
-        ? `estimate:${estimateFromFailed.counterparty}`
+      // No valid regular bids — fall back to best estimator bid or failed estimate
+      const bestEstimator =
+        estimatorBids.length > 0
+          ? estimatorBids.reduce((acc, current) => {
+              try {
+                return BigInt(current.counterpartyCollateral) >
+                  BigInt(acc.counterpartyCollateral)
+                  ? current
+                  : acc;
+              } catch {
+                return acc;
+              }
+            })
+          : null;
+
+      const estimate = bestEstimator ?? estimateFromFailed;
+      const resultKey = estimate
+        ? `estimate:${estimate.counterparty}`
         : `no-valid:${failedBids.length}`;
       if (prevFilterResultRef.current !== resultKey) {
-        if (estimateFromFailed) {
+        if (estimate) {
           logPositionForm(
-            `Using estimate: ${formatBidForLog(estimateFromFailed, collateralDecimals)}`
+            `Using estimate: ${formatBidForLog(estimate, collateralDecimals)}`
           );
         }
         prevFilterResultRef.current = resultKey;
       }
-      return { bestBid: null, estimateBid: estimateFromFailed };
+      return { bestBid: null, estimateBid: estimate };
     }
 
     // Select the bid with highest counterpartyCollateral (highest payout for user)
@@ -421,8 +448,12 @@ export default function PositionForm({
       return;
     }
     // Clear the sticky estimate when there are no non-expired bids left.
+    // Estimator bids use deadline=1 (sentinel) and should not cause clearing.
     const hasAnyNonExpired = bids.some(
-      (b) => b.counterpartyDeadline * 1000 > nowMs
+      (b) =>
+        b.counterpartyDeadline * 1000 > nowMs ||
+        b.counterparty?.toLowerCase() ===
+          PREFERRED_ESTIMATE_QUOTER.toLowerCase()
     );
     if (!hasAnyNonExpired) setStickyEstimateBid(null);
   }, [bestBid, estimateBid, bids, nowMs]);
@@ -440,8 +471,13 @@ export default function PositionForm({
   const prevEstimateBidRef = useRef<typeof estimateBid>(null);
   useEffect(() => {
     if (estimateBid && !prevEstimateBidRef.current) {
-      // New estimate bid received - restart cooldown
-      setLastQuoteRequestMs(Date.now());
+      // For estimator bids (final answer for logged-out users), don't restart cooldown
+      const isFromEstimator =
+        estimateBid.counterparty?.toLowerCase() ===
+        PREFERRED_ESTIMATE_QUOTER.toLowerCase();
+      if (!isFromEstimator) {
+        setLastQuoteRequestMs(Date.now());
+      }
     }
     prevEstimateBidRef.current = estimateBid;
   }, [estimateBid]);
@@ -505,55 +541,29 @@ export default function PositionForm({
             }>
           | undefined;
 
-        const payload = hasPyth
-          ? (() => {
-              const p = buildPythAuctionStartPayload(
-                pythPredictions.map((pp) => ({
-                  priceId: pp.priceId,
-                  direction: pp.direction,
-                  targetPrice: pp.targetPrice,
-                  targetPriceRaw: pp.targetPriceRaw,
-                  priceExpo: pp.priceExpo,
-                  dateTimeLocal: pp.dateTimeLocal,
-                })),
-                chainId
-              );
-              pythEscrowPicks = p.escrowPicks;
-              return p;
-            })()
-          : buildAuctionStartPayload(
-              selections.map((s) => ({
-                marketId: s.conditionId || '0',
-                prediction: !!s.prediction,
-                resolverAddress: s.resolverAddress,
-              })),
-              chainId
-            );
-
-        const params: AuctionParams = {
-          wager: positionSizeWei,
-          resolver: payload.resolver,
-          predictedOutcomes: payload.predictedOutcomes,
-          predictor: selectedPredictorAddressRef.current,
-          predictorNonce: freshNonce !== undefined ? Number(freshNonce) : 0,
-          chainId: chainId,
-        };
-
-        // Only thread sponsor when the user explicitly activates sponsorship.
-        // Initial quotes are always unsponored so the bid is usable for self-funded
-        // mints; if the bid qualifies, the user clicks "Use" to re-request with sponsor.
-        if (options?.withSponsor && sponsorAddress) {
-          params.predictorSponsor = sponsorAddress;
-          params.predictorSponsorData = '0x';
+        if (hasPyth) {
+          const p = buildPythAuctionStartPayload(
+            pythPredictions.map((pp) => ({
+              priceId: pp.priceId,
+              direction: pp.direction,
+              targetPrice: pp.targetPrice,
+              targetPriceRaw: pp.targetPriceRaw,
+              priceExpo: pp.priceExpo,
+              dateTimeLocal: pp.dateTimeLocal,
+            })),
+            chainId
+          );
+          pythEscrowPicks = p.escrowPicks;
         }
 
-        // Build escrowPicks — required for all auction types
+        // Build picks — required for all auction types
+        let picks: AuctionParams['picks'] = [];
         if (hasPyth && pythEscrowPicks) {
-          params.escrowPicks = pythEscrowPicks;
+          picks = pythEscrowPicks;
         } else if (hasUma) {
-          const escrowPicks = getPicks();
-          if (escrowPicks.length > 0) {
-            params.escrowPicks = escrowPicks;
+          const conditionPicks = getPicks();
+          if (conditionPicks.length > 0) {
+            picks = conditionPicks;
           } else {
             console.warn(
               '[PositionForm] Escrow chain but getPicks() empty',
@@ -565,6 +575,22 @@ export default function PositionForm({
           }
         }
 
+        const params: AuctionParams = {
+          wager: positionSizeWei,
+          predictor: selectedPredictorAddressRef.current,
+          predictorNonce: freshNonce !== undefined ? Number(freshNonce) : 0,
+          chainId: chainId,
+          picks,
+        };
+
+        // Only thread sponsor when the user explicitly activates sponsorship.
+        // Initial quotes are always unsponored so the bid is usable for self-funded
+        // mints; if the bid qualifies, the user clicks "Use" to re-request with sponsor.
+        if (options?.withSponsor && sponsorAddress) {
+          params.predictorSponsor = sponsorAddress;
+          params.predictorSponsorData = '0x';
+        }
+
         requestQuotesRef.current(params, {
           forceRefresh: options?.forceRefresh,
         });
@@ -572,7 +598,7 @@ export default function PositionForm({
         // Set the request key to match incoming bids to this configuration
         currentRequestKeyRef.current = `${predictionsKey}:${positionSizeValue || ''}`;
         logPositionForm(
-          `[triggerAuction] Key set: ${currentRequestKeyRef.current.slice(0, 50)}, picks=${params.escrowPicks?.length ?? 0}`
+          `[triggerAuction] Key set: ${currentRequestKeyRef.current.slice(0, 50)}, picks=${params.picks?.length ?? 0}`
         );
 
         // Clear in-flight flag after a short delay to allow the debounced request to start
@@ -855,7 +881,6 @@ export default function PositionForm({
             matchLimit={matchLimit}
             requiredCounterparty={requiredCounterparty}
             bestBid={bestBid}
-            stickyEstimateBid={stickyEstimateBid}
             positionSizeValue={positionSizeValue || ''}
             collateralDecimals={collateralDecimals}
             collateralSymbol={collateralSymbol}
@@ -892,7 +917,9 @@ export default function PositionForm({
               showAddPredictionsHint={
                 selections.length === 1 && !bestBid && !stickyEstimateBid
               }
-              isAuctionPending={recentlyRequested && !bestBid}
+              isAuctionPending={
+                recentlyRequested && !bestBid && !stickyEstimateBid
+              }
               hasFormErrors={hasFormErrors}
               isLoggedOut={!hasConnectedWallet}
               onConnectClick={openConnectDialog}

@@ -43,6 +43,8 @@ export function isSecondaryClientMessage(
       msgObj.type === 'secondary.auction.subscribe' ||
       msgObj.type === 'secondary.auction.unsubscribe' ||
       msgObj.type === 'secondary.bid.submit' ||
-      msgObj.type === 'ping')
+      msgObj.type === 'secondary.feed.subscribe' ||
+      msgObj.type === 'secondary.feed.unsubscribe' ||
+      msgObj.type === 'secondary.listings.request')
   );
 }

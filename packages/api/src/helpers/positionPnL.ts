@@ -267,8 +267,10 @@ export async function calculatePositionPnL(
   for (const prediction of settledPredictions) {
     const predictor = prediction.predictor.toLowerCase();
     const counterparty = prediction.counterparty.toLowerCase();
-    const predictorToken = prediction.pickConfiguration?.predictorToken?.toLowerCase() ?? '';
-    const counterpartyToken = prediction.pickConfiguration?.counterpartyToken?.toLowerCase() ?? '';
+    const predictorToken =
+      prediction.pickConfiguration?.predictorToken?.toLowerCase() ?? '';
+    const counterpartyToken =
+      prediction.pickConfiguration?.counterpartyToken?.toLowerCase() ?? '';
 
     // Calculate unrealized P&L for predictor (skip if already claimed in step 1)
     if (

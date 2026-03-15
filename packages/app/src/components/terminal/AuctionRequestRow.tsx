@@ -6,13 +6,18 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { parseUnits, formatEther, formatUnits } from 'viem';
 import { Pin, ChevronDown } from 'lucide-react';
 import { type UiTransaction } from '~/components/markets/DataDrawer/TransactionCells';
-import { useAuctionBids } from '~/lib/auction/useAuctionBids';
+import { useAuctionBids, type AuctionBid } from '~/lib/auction/useAuctionBids';
+import { usePreprocessedBids } from '~/hooks/auction/usePreprocessedBids';
 import AuctionRequestInfo from '~/components/terminal/AuctionRequestInfo';
 import AuctionRequestChart from '~/components/terminal/AuctionRequestChart';
 import { useAccount, useReadContract } from 'wagmi';
-import { collateralToken } from '@sapience/sdk/contracts';
+import {
+  collateralToken,
+  predictionMarketEscrow,
+} from '@sapience/sdk/contracts';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import type { Address } from 'viem';
 import { useChainId } from 'wagmi';
 import erc20Abi from '@sapience/sdk/queries/abis/erc20abi.json';
 import { useToast } from '@sapience/ui/hooks/use-toast';
@@ -21,7 +26,7 @@ import { useApprovalDialog } from '~/components/terminal/ApprovalDialogContext';
 import { useTerminalLogsOptional } from '~/components/terminal/TerminalLogsContext';
 import { useBidPreflight, useEscrowBidSubmission } from '~/hooks/auction';
 import PercentChance from '~/components/shared/PercentChance';
-import { decodeAuctionPredictedOutcomes } from '~/lib/auction/decodePredictedOutcomes';
+import { PYTH_RESOLVER_SET } from '~/lib/auction/decodePredictedOutcomes';
 
 type Props = {
   uiTx: UiTransaction;
@@ -29,15 +34,12 @@ type Props = {
   auctionId: string | null;
   predictorCollateral: string | null;
   predictor: string | null;
-  resolver: string | null;
-  predictedOutcomes: string[];
   collateralAssetTicker: string;
   onTogglePin?: (auctionId: string | null) => void;
   isPinned?: boolean;
   isExpanded?: boolean;
   onToggleExpanded?: (auctionId: string | null) => void;
-  /** Escrow picks array */
-  escrowPicks?: Array<{
+  picks?: Array<{
     conditionResolver: string;
     conditionId: string;
     predictedOutcome: number;
@@ -50,14 +52,12 @@ const AuctionRequestRow: React.FC<Props> = ({
   auctionId,
   predictorCollateral,
   predictor,
-  resolver,
-  predictedOutcomes,
   collateralAssetTicker,
   onTogglePin,
   isPinned,
   isExpanded: isExpandedProp,
   onToggleExpanded,
-  escrowPicks,
+  picks,
 }) => {
   const { address } = useAccount();
   const { openConnectDialog } = useConnectDialog();
@@ -113,9 +113,26 @@ const AuctionRequestRow: React.FC<Props> = ({
   const [localExpanded, setLocalExpanded] = useState(false);
   const isExpanded = isExpandedProp ?? localExpanded;
 
-  const { bids: validBids } = useAuctionBids(auctionId);
-  const invalidBidCount = 0;
-  const totalBidCount = validBids.length;
+  const { bids: rawBids } = useAuctionBids(auctionId);
+
+  const escrowAddress = (predictionMarketEscrow[chainId]?.address ??
+    predictionMarketEscrow[DEFAULT_CHAIN_ID]?.address) as Address | undefined;
+
+  const {
+    processedBids,
+    validBids,
+    excludedBidCount: invalidBidCount,
+  } = usePreprocessedBids(rawBids, {
+    picks,
+    predictor: predictor ?? undefined,
+    predictorCollateral: predictorCollateral ?? undefined,
+    chainId,
+    predictionMarketAddress: escrowAddress,
+    collateralTokenAddress: COLLATERAL_ADDRESS as Address | undefined,
+    enabled: Boolean(auctionId),
+  });
+
+  const totalBidCount = processedBids.length;
   const [highlightNewBid, setHighlightNewBid] = useState(false);
   const numBids = totalBidCount;
   const bidsLabel = useMemo(
@@ -263,37 +280,23 @@ const AuctionRequestRow: React.FC<Props> = ({
     };
   }, []);
 
-  // Decode predicted outcomes to extract condition IDs
-  const decodedOutcomes = useMemo(() => {
-    return decodeAuctionPredictedOutcomes({
-      resolver,
-      predictedOutcomes,
-    });
-  }, [resolver, predictedOutcomes]);
-
+  // Extract condition IDs from picks (excluding Pyth picks which don't map to DB conditions)
   const conditionIds = useMemo(() => {
-    try {
-      if (decodedOutcomes.kind !== 'uma') return [] as string[];
-      return decodedOutcomes.outcomes
-        .map((o) => (o?.marketId ? String(o.marketId) : ''))
-        .filter(Boolean);
-    } catch {
-      return [] as string[];
-    }
-  }, [decodedOutcomes]);
+    if (!Array.isArray(picks) || picks.length === 0) return [] as string[];
+    return picks
+      .filter(
+        (p) =>
+          !PYTH_RESOLVER_SET.has(p.conditionResolver?.toLowerCase?.() ?? '')
+      )
+      .map((p) => p.conditionId)
+      .filter(Boolean);
+  }, [picks]);
 
   // Fetch conditions by IDs to get endTime values
   const { list: conditionEnds = [] } = useConditionsByIds(conditionIds);
 
   const maxEndTimeSec = useMemo(() => {
     try {
-      if (decodedOutcomes.kind === 'pyth') {
-        const ends = decodedOutcomes.outcomes
-          .map((o) => Number(o?.endTime ?? 0n))
-          .filter((n) => Number.isFinite(n) && n > 0);
-        if (ends.length === 0) return null;
-        return Math.max(...ends);
-      }
       if (!Array.isArray(conditionEnds) || conditionEnds.length === 0)
         return null;
       const ends = conditionEnds
@@ -304,7 +307,7 @@ const AuctionRequestRow: React.FC<Props> = ({
     } catch {
       return null;
     }
-  }, [conditionEnds, decodedOutcomes]);
+  }, [conditionEnds]);
 
   const submitBid = useCallback(
     async (data: {
@@ -386,10 +389,7 @@ const AuctionRequestRow: React.FC<Props> = ({
         }
 
         // Ensure essential auction context (after preflight checks)
-        const hasEscrowPicks =
-          Array.isArray(escrowPicks) && escrowPicks.length > 0;
-        const resolverAddr =
-          typeof resolver === 'string' ? resolver : undefined;
+        const hasPicks = Array.isArray(picks) && picks.length > 0;
         const predictorCollateralWei = (() => {
           try {
             return BigInt(String(predictorCollateral ?? '0'));
@@ -398,15 +398,9 @@ const AuctionRequestRow: React.FC<Props> = ({
           }
         })();
 
-        if (
-          !hasEscrowPicks ||
-          !resolverAddr ||
-          predictorCollateralWei <= 0n ||
-          !predictor
-        ) {
+        if (!hasPicks || predictorCollateralWei <= 0n || !predictor) {
           const missing: string[] = [];
-          if (!hasEscrowPicks) missing.push('escrow picks');
-          if (!resolverAddr) missing.push('resolver');
+          if (!hasPicks) missing.push('picks');
           if (predictorCollateralWei <= 0n)
             missing.push('predictor position size');
           if (!predictor) missing.push('predictor');
@@ -425,11 +419,10 @@ const AuctionRequestRow: React.FC<Props> = ({
           auctionId,
           counterpartyCollateral: counterpartyCollateralWei,
           predictorCollateral: predictorCollateralWei,
-          resolver: resolverAddr as `0x${string}`,
           predictor: predictor as `0x${string}`,
           expirySeconds: data.expirySeconds,
           maxEndTimeSec: maxEndTimeSec ?? undefined,
-          escrowPicks: escrowPicks ?? [],
+          picks: picks ?? [],
         });
 
         if (result.success) {
@@ -488,11 +481,8 @@ const AuctionRequestRow: React.FC<Props> = ({
     },
     [
       auctionId,
-      predictedOutcomes,
       predictor,
-      resolver,
       predictorCollateral,
-
       address,
       openConnectDialog,
       runPreflight,
@@ -503,8 +493,7 @@ const AuctionRequestRow: React.FC<Props> = ({
       openApproval,
       tokenDecimals,
       maxEndTimeSec,
-
-      escrowPicks,
+      picks,
     ]
   );
 
@@ -624,7 +613,7 @@ const AuctionRequestRow: React.FC<Props> = ({
               invalidBidCount={invalidBidCount}
             />
             <AuctionRequestInfo
-              bids={validBids}
+              bids={validBids as AuctionBid[]}
               predictorCollateral={predictorCollateral}
               collateralAssetTicker={collateralAssetTicker}
               maxEndTimeSec={maxEndTimeSec ?? undefined}

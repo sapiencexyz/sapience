@@ -9,11 +9,15 @@ import {
   useMemo,
   type ReactNode,
 } from 'react';
-import { useAccount, useSwitchChain } from 'wagmi';
+import { useAccount, useSwitchChain, useWriteContract } from 'wagmi';
 import type { Address, EIP1193Provider, Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import type { KernelAccountClient } from '@zerodev/sdk';
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID, CHAIN_ID_ARBITRUM } from '@sapience/sdk/constants';
+import {
+  predictionMarketEscrow,
+  secondaryMarketEscrow,
+} from '@sapience/sdk/contracts/addresses';
 import {
   createSession,
   createArbitrumSession,
@@ -214,9 +218,25 @@ interface SessionContextValue {
   // Escrow Session Key Approval for PredictionMarketEscrow
   escrowSessionKeyApproval: EscrowSessionKeyApproval | null;
 
+  // Trade Session Key Approval for SecondaryMarketEscrow (TRADE_PERMISSION)
+  tradeSessionKeyApproval: EscrowSessionKeyApproval | null;
+
   // Raw session key signing (bypasses kernel wrapping) for escrow approval signatures
   signTypedDataRaw: ((params: SignTypedDataParams) => Promise<Hex>) | null;
 }
+
+/**
+ * ABI fragment for revokeSessionKey(address) — shared by both escrow contracts.
+ */
+const revokeSessionKeyAbi = [
+  {
+    type: 'function',
+    name: 'revokeSessionKey',
+    inputs: [{ name: 'sessionKey', type: 'address', internalType: 'address' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+] as const;
 
 const SessionContext = createContext<SessionContextValue | null>(null);
 
@@ -246,6 +266,7 @@ function createChainSwitcher(
 export function SessionProvider({ children }: SessionProviderProps) {
   const { address: walletAddress, connector } = useAccount();
   const { switchChainAsync } = useSwitchChain();
+  const { writeContractAsync } = useWriteContract();
 
   // Session state
   const [isSessionActive, setIsSessionActive] = useState(false);
@@ -267,7 +288,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
   // Smart account address state
   const [smartAccountAddress, setSmartAccountAddress] =
     useState<Address | null>(null);
-  const [isCalculatingAddress, setIsCalculatingAddress] = useState(false);
+  const [isCalculatingAddress] = useState(false);
 
   // Account mode state - always initialize to default, then sync from localStorage in useEffect
   // This avoids SSR hydration mismatches since server always sees the same initial value
@@ -332,6 +353,9 @@ export function SessionProvider({ children }: SessionProviderProps) {
 
   // Escrow Session Key Approval for PredictionMarketEscrow
   const [escrowSessionKeyApproval, setEscrowSessionKeyApproval] =
+    useState<EscrowSessionKeyApproval | null>(null);
+  // Trade Session Key Approval for SecondaryMarketEscrow
+  const [tradeSessionKeyApproval, setTradeSessionKeyApproval] =
     useState<EscrowSessionKeyApproval | null>(null);
 
   // Lazy Arbitrum session creation state
@@ -426,39 +450,14 @@ export function SessionProvider({ children }: SessionProviderProps) {
     [sessionPrivateKey]
   );
 
-  // Calculate smart account address when wallet connects
+  // Calculate smart account address when wallet connects (synchronous, no RPC)
   useEffect(() => {
     if (!walletAddress) {
       setSmartAccountAddress(null);
       return;
     }
 
-    let cancelled = false;
-
-    const calculateAddress = async () => {
-      setIsCalculatingAddress(true);
-      try {
-        const address = await getSmartAccountAddress(walletAddress);
-        if (!cancelled) {
-          setSmartAccountAddress(address);
-        }
-      } catch (error) {
-        console.error('Failed to calculate smart account address:', error);
-        if (!cancelled) {
-          setSmartAccountAddress(null);
-        }
-      } finally {
-        if (!cancelled) {
-          setIsCalculatingAddress(false);
-        }
-      }
-    };
-
-    void calculateAddress();
-
-    return () => {
-      cancelled = true;
-    };
+    setSmartAccountAddress(getSmartAccountAddress(walletAddress));
   }, [walletAddress]);
 
   // Restore session from localStorage on mount
@@ -499,6 +498,10 @@ export function SessionProvider({ children }: SessionProviderProps) {
         setEtherealSessionApproval(approvalData.ethereal);
         // Restore escrow session key approval if available (legacy sessions)
         // escrowSessionKeyApproval removed — contract validates via ERC-1271
+        // Restore trade session key approval for secondary market
+        if (stored.tradeSessionKeyApproval) {
+          setTradeSessionKeyApproval(stored.tradeSessionKeyApproval);
+        }
         setIsSessionActive(true);
         setTimeRemainingMs(result.config.expiresAt - Date.now());
       } catch (error) {
@@ -545,6 +548,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
     setArbitrumSessionApproval(null);
     setEtherealSessionApproval(null);
     setEscrowSessionKeyApproval(null);
+    setTradeSessionKeyApproval(null);
     setTimeRemainingMs(0);
     clearSession();
     console.debug('[SessionContext] Session cleared');
@@ -627,6 +631,10 @@ export function SessionProvider({ children }: SessionProviderProps) {
         setEtherealSessionApproval(approvalData.ethereal);
         // Set escrow session key approval if available (legacy sessions)
         // escrowSessionKeyApproval removed — contract validates via ERC-1271
+        // Set trade session key approval for secondary market
+        if (result.serialized.tradeSessionKeyApproval) {
+          setTradeSessionKeyApproval(result.serialized.tradeSessionKeyApproval);
+        }
         setIsSessionActive(true);
         setTimeRemainingMs(result.config.expiresAt - Date.now());
         console.debug(
@@ -647,10 +655,65 @@ export function SessionProvider({ children }: SessionProviderProps) {
     [walletAddress, connector, switchChainAsync]
   );
 
-  // End the current session
+  // Attempt on-chain session key revocation on both escrow contracts for a given chain.
+  // Fire-and-forget: failures are logged but never block local cleanup.
+  const revokeSessionKeyOnChain = useCallback(
+    (sessionKey: Address, chainId: number) => {
+      const pmEscrow = predictionMarketEscrow[chainId];
+      const smEscrow = secondaryMarketEscrow[chainId];
+
+      const revoke = (contractAddress: Address, label: string) =>
+        writeContractAsync({
+          address: contractAddress,
+          abi: revokeSessionKeyAbi,
+          functionName: 'revokeSessionKey',
+          args: [sessionKey],
+          chainId,
+        }).catch((err) => {
+          console.warn(
+            `[SessionContext] Failed to revoke session key on ${label}:`,
+            err
+          );
+        });
+
+      const calls: Promise<unknown>[] = [];
+      if (pmEscrow?.address)
+        calls.push(revoke(pmEscrow.address, 'PredictionMarketEscrow'));
+      if (smEscrow?.address)
+        calls.push(revoke(smEscrow.address, 'SecondaryMarketEscrow'));
+
+      if (calls.length > 0) {
+        void Promise.allSettled(calls);
+      }
+    },
+    [writeContractAsync]
+  );
+
+  // End the current session — attempts on-chain revocation then clears local state.
   const endSession = useCallback(() => {
+    if (isSessionActive && sessionKeyAddress) {
+      // Revoke on Ethereal chain
+      if (serializedSession?.etherealChainId) {
+        revokeSessionKeyOnChain(
+          sessionKeyAddress,
+          serializedSession.etherealChainId
+        );
+      }
+      // Revoke on Arbitrum if an Arbitrum session was created
+      if (arbitrumSessionApproval) {
+        revokeSessionKeyOnChain(sessionKeyAddress, CHAIN_ID_ARBITRUM);
+      }
+    }
+    // Always clear local state regardless of revocation outcome
     endSessionInternal();
-  }, [endSessionInternal]);
+  }, [
+    endSessionInternal,
+    isSessionActive,
+    sessionKeyAddress,
+    serializedSession,
+    arbitrumSessionApproval,
+    revokeSessionKeyOnChain,
+  ]);
 
   // Create Arbitrum session lazily (on first EAS attestation)
   // Returns the client directly to avoid race conditions with state updates
@@ -803,6 +866,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
       createArbitrumSessionIfNeeded,
       etherealChainId,
       escrowSessionKeyApproval,
+      tradeSessionKeyApproval,
     }),
     [
       isSessionActive,
@@ -834,6 +898,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
       createArbitrumSessionIfNeeded,
       etherealChainId,
       escrowSessionKeyApproval,
+      tradeSessionKeyApproval,
     ]
   );
 

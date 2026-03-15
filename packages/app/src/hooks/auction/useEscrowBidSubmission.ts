@@ -35,16 +35,14 @@ export type EscrowBidSubmissionParams = {
   counterpartyCollateral: bigint;
   /** Predictor's (auction creator's) position size in wei */
   predictorCollateral: bigint;
-  /** Resolver contract address */
-  resolver: `0x${string}`;
   /** Predictor (auction creator) address */
   predictor: `0x${string}`;
   /** Bid expiry in seconds from now */
   expirySeconds: number;
   /** Optional max end time (seconds since epoch) to clamp expiry */
   maxEndTimeSec?: number;
-  /** Escrow picks for signing */
-  escrowPicks: Array<{
+  /** Picks for signing — each pick has its own conditionResolver */
+  picks: Array<{
     conditionResolver: string;
     conditionId: string;
     predictedOutcome: number;
@@ -152,11 +150,10 @@ export function useEscrowBidSubmission(
         auctionId,
         counterpartyCollateral,
         predictorCollateral,
-        resolver,
         predictor,
         expirySeconds,
         maxEndTimeSec,
-        escrowPicks,
+        picks: escrowPicks,
       } = params;
 
       // Use effectiveAddress from session context (smart account when session active, otherwise EOA)
@@ -176,11 +173,7 @@ export function useEscrowBidSubmission(
       }
 
       if (!escrowPicks || escrowPicks.length === 0) {
-        return { success: false, error: 'Missing escrow picks' };
-      }
-
-      if (!resolver) {
-        return { success: false, error: 'Missing resolver' };
+        return { success: false, error: 'Missing picks' };
       }
 
       if (!predictor) {

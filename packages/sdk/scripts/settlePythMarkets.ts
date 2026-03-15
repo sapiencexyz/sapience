@@ -89,7 +89,7 @@ function parseArgs(argv: string[]): Args {
     throw new Error(`invalid --chain-id (${String(get('chain-id'))})`);
   }
 
-  const resolverFromSdk = contracts.pythResolver?.[chainId]?.address;
+  const resolverFromSdk = contracts.pythConditionResolver?.[chainId]?.address;
   const pythResolverRaw = get('pyth-resolver') ?? resolverFromSdk;
   if (!pythResolverRaw) {
     throw new Error(

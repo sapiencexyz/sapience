@@ -184,6 +184,106 @@
   },
   {
     "type": "function",
+    "name": "burnFromEscrow",
+    "inputs": [
+      {
+        "name": "escrow",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "request",
+        "type": "tuple",
+        "internalType": "struct IV2Types.BurnRequest",
+        "components": [
+          {
+            "name": "pickConfigId",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "predictorTokenAmount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "counterpartyTokenAmount",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "predictorHolder",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "counterpartyHolder",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "name": "predictorPayout",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "counterpartyPayout",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "predictorNonce",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "counterpartyNonce",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "predictorDeadline",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "counterpartyDeadline",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "predictorSignature",
+            "type": "bytes",
+            "internalType": "bytes"
+          },
+          {
+            "name": "counterpartySignature",
+            "type": "bytes",
+            "internalType": "bytes"
+          },
+          {
+            "name": "refCode",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "predictorSessionKeyData",
+            "type": "bytes",
+            "internalType": "bytes"
+          },
+          {
+            "name": "counterpartySessionKeyData",
+            "type": "bytes",
+            "internalType": "bytes"
+          }
+        ]
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "cancelDeposit",
     "inputs": [],
     "outputs": [],
@@ -613,6 +713,40 @@
   },
   {
     "type": "function",
+    "name": "redeemFromEscrow",
+    "inputs": [
+      {
+        "name": "escrow",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "positionToken",
+        "type": "address",
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "refCode",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "payout",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable"
+  },
+  {
+    "type": "function",
     "name": "renounceOwnership",
     "inputs": [],
     "outputs": [],
@@ -928,6 +1062,62 @@
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "EscrowBurned",
+    "inputs": [
+      {
+        "name": "escrow",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "pickConfigId",
+        "type": "bytes32",
+        "indexed": true,
+        "internalType": "bytes32"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "EscrowRedeemed",
+    "inputs": [
+      {
+        "name": "escrow",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "positionToken",
+        "type": "address",
+        "indexed": true,
+        "internalType": "address"
+      },
+      {
+        "name": "amount",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "payout",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "refCode",
+        "type": "bytes32",
+        "indexed": false,
+        "internalType": "bytes32"
       }
     ],
     "anonymous": false

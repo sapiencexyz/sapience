@@ -56,6 +56,7 @@ interface AuctionMessageData {
   resolver?: string;
   predictedOutcomes?: string[];
   predictorNonce?: number | string;
+  intentSignature?: string;
   picks?: Array<{
     conditionResolver: string;
     conditionId: string;
@@ -186,7 +187,7 @@ const TerminalPageContent: React.FC = () => {
       {
         data:
           | {
-              kind: 'uma';
+              kind: 'condition';
               data: Array<{ marketId: `0x${string}`; prediction: boolean }>;
             }
           | {
@@ -211,7 +212,7 @@ const TerminalPageContent: React.FC = () => {
       data: unknown;
     }):
       | {
-          kind: 'uma';
+          kind: 'condition';
           data: Array<{ marketId: `0x${string}`; prediction: boolean }>;
         }
       | {
@@ -243,9 +244,9 @@ const TerminalPageContent: React.FC = () => {
           predictedOutcomes: md?.predictedOutcomes,
         });
         const entry =
-          decoded.kind === 'uma'
+          decoded.kind === 'condition'
             ? {
-                kind: 'uma' as const,
+                kind: 'condition' as const,
                 data: decoded.outcomes.map((o) => ({
                   marketId: o.marketId,
                   prediction: !!o.prediction,
@@ -347,7 +348,7 @@ const TerminalPageContent: React.FC = () => {
           resolver: mData?.resolver ?? mData?.payload?.resolver,
           predictedOutcomes: mData?.predictedOutcomes,
         });
-        if (decoded.kind !== 'uma') continue;
+        if (decoded.kind !== 'condition') continue;
         for (const o of decoded.outcomes || []) {
           const id = o?.marketId as string | undefined;
           if (id && typeof id === 'string') set.add(id);
@@ -693,14 +694,31 @@ const TerminalPageContent: React.FC = () => {
       if (isPythEscrow) {
         // Pyth escrow — category is always 'prices', no DB condition IDs
         legCategorySlugs = ['prices'];
+      } else if (
+        Array.isArray(escrowPicksForFilter) &&
+        escrowPicksForFilter.length > 0
+      ) {
+        // Escrow auction: derive condition IDs and categories from picks
+        legConditionIds = escrowPicksForFilter
+          .filter(
+            (p) =>
+              !PYTH_RESOLVER_SET.has(p.conditionResolver?.toLowerCase?.() ?? '')
+          )
+          .map((p) => p.conditionId)
+          .filter(Boolean);
+        legCategorySlugs = legConditionIds.map((id) => {
+          const cond = renderConditionMap.get(id);
+          return cond?.category?.slug ?? null;
+        });
       } else {
+        // V1 fallback: decode from resolver + predictedOutcomes
         const decoded = getDecodedPredictedOutcomes(row.m);
         legConditionIds =
-          decoded.kind === 'uma'
+          decoded.kind === 'condition'
             ? decoded.data.map((l) => String(l.marketId))
             : [];
         legCategorySlugs = (() => {
-          if (decoded.kind === 'uma') {
+          if (decoded.kind === 'condition') {
             return decoded.data.map((l) => {
               const cond = renderConditionMap.get(String(l.marketId));
               return cond?.category?.slug ?? null;
@@ -737,8 +755,8 @@ const TerminalPageContent: React.FC = () => {
           return false;
       }
 
-      // Check signed filter (escrow auctions are always signed)
-      const isSigned = true;
+      // Check signed filter — signed means predictor provided an EIP-712 intentSignature
+      const isSigned = !!auctionData?.intentSignature;
       if (signedFilter === 'signed' && !isSigned) return false;
       if (signedFilter === 'unsigned' && isSigned) return false;
 
@@ -1121,23 +1139,12 @@ const TerminalPageContent: React.FC = () => {
                                     d?.predictorCollateral ?? '0'
                                   )}
                                   predictor={d?.predictor || null}
-                                  resolver={
-                                    d?.resolver ||
-                                    (Array.isArray(d?.picks) &&
-                                      d?.picks[0]?.conditionResolver) ||
-                                    null
-                                  }
-                                  predictedOutcomes={
-                                    Array.isArray(d?.predictedOutcomes)
-                                      ? d.predictedOutcomes
-                                      : []
-                                  }
                                   collateralAssetTicker={collateralAssetTicker}
                                   onTogglePin={togglePin}
                                   isPinned={true}
                                   isExpanded={expandedAuctions.has(auctionId)}
                                   onToggleExpanded={toggleExpanded}
-                                  escrowPicks={
+                                  picks={
                                     Array.isArray(d?.picks)
                                       ? d?.picks
                                       : undefined
@@ -1183,17 +1190,6 @@ const TerminalPageContent: React.FC = () => {
                                         d?.predictorCollateral ?? '0'
                                       )}
                                       predictor={d?.predictor || null}
-                                      resolver={
-                                        d?.resolver ||
-                                        (Array.isArray(d?.picks) &&
-                                          d?.picks[0]?.conditionResolver) ||
-                                        null
-                                      }
-                                      predictedOutcomes={
-                                        Array.isArray(d?.predictedOutcomes)
-                                          ? d.predictedOutcomes
-                                          : []
-                                      }
                                       collateralAssetTicker={
                                         collateralAssetTicker
                                       }
@@ -1203,7 +1199,7 @@ const TerminalPageContent: React.FC = () => {
                                         auctionId
                                       )}
                                       onToggleExpanded={toggleExpanded}
-                                      escrowPicks={
+                                      picks={
                                         Array.isArray(d?.picks)
                                           ? d?.picks
                                           : undefined

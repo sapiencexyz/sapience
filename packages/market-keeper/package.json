@@ -16,15 +16,20 @@
     "settle-escrow:dry-run": "tsx scripts/settle-escrow.ts --dry-run",
     "settle-escrow:execute": "tsx scripts/settle-escrow.ts --execute",
     "settle-escrow:execute:wait": "tsx scripts/settle-escrow.ts --execute --wait",
+    "settle-pyth": "tsx scripts/settle-pyth.ts",
+    "settle-pyth:dry-run": "tsx scripts/settle-pyth.ts --dry-run",
+    "settle-pyth:execute": "tsx scripts/settle-pyth.ts --execute",
+    "settle-pyth:execute:wait": "tsx scripts/settle-pyth.ts --execute --wait",
     "relist": "tsx scripts/relist.ts",
     "relist:dry-run": "LLM_ENABLED=false tsx scripts/relist.ts --dry-run",
     "start": "node dist/scripts/generate.js && node dist/scripts/settle.js --execute --wait",
-    "start:settle-escrow": "node dist/scripts/generate.js && node dist/scripts/relist.js && node dist/scripts/settle-escrow.js --execute --wait",
+    "start:settle-escrow": "node dist/scripts/generate.js && node dist/scripts/relist.js && node dist/scripts/settle-escrow.js --execute --wait && node dist/scripts/settle-pyth.js --execute --wait",
     "lint": "eslint src --quiet",
     "lint:fix": "eslint src --fix --quiet && pnpm format",
     "format": "prettier --write src scripts",
     "type-check": "tsc --noEmit",
-    "format:check": "prettier --check src scripts"
+    "format:check": "prettier --check src scripts",
+    "test": "vitest run"
   },
   "dependencies": {
     "@sapience/sdk": "workspace:*",
@@ -32,6 +37,7 @@
     "viem": "2.47.2"
   },
   "devDependencies": {
+    "vitest": "3.0.0",
     "tsx": "4.19.2",
     "@eslint/js": "9.18.0",
     "@types/node": "20.17.10",
@@ -43,7 +49,7 @@
     "typescript-eslint": "8.21.0"
   },
   "engines": {
-    "node": ">=20.14.x",
+    "node": ">=22.x",
     "pnpm": "9.x"
   }
 }

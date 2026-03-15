@@ -36,6 +36,7 @@ const conditionId = getPythMarketId({
 ## Outcome Mapping
 
 For Pyth markets, Over maps to YES and Under maps to NO:
+
 - `predictedOutcome: 0` (YES) = **Over** — betting the price will be at or above the strike
 - `predictedOutcome: 1` (NO) = **Under** — betting the price will be below the strike
 
@@ -48,14 +49,16 @@ When building picks for Pyth markets, encode outcomes with:
 ```javascript
 import { encodePythBinaryOptionOutcomes } from '@sapience/sdk/auction/encoding';
 
-const encoded = encodePythBinaryOptionOutcomes([{
-  priceId: '0x...',
-  endTime: 1710000000n,
-  strikePrice: 50000000000n,
-  strikeExpo: -6,
-  overWinsOnTie: true,
-  prediction: true, // true = Over, false = Under
-}]);
+const encoded = encodePythBinaryOptionOutcomes([
+  {
+    priceId: '0x...',
+    endTime: 1710000000n,
+    strikePrice: 50000000000n,
+    strikeExpo: -6,
+    overWinsOnTie: true,
+    prediction: true, // true = Over, false = Under
+  },
+]);
 ```
 
 ## Resolution

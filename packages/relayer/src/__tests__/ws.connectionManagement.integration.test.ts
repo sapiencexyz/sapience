@@ -17,7 +17,7 @@ vi.mock('../config', () => ({
     SENTRY_DSN: '',
     RATE_LIMIT_WINDOW_MS: 500,
     RATE_LIMIT_MAX_MESSAGES: 5,
-    WS_IDLE_TIMEOUT_MS: 400,
+    WS_IDLE_TIMEOUT_MS: 2000,
     WS_MAX_CONNECTIONS: 3,
     WS_ALLOWED_ORIGINS: '',
   },
@@ -181,13 +181,8 @@ describe('Rate Limiting', () => {
     // Wait for last pong
     await waitForMessage(ws, 'pong');
 
-    // Wait for the rate limit window to reset (500ms config + margin).
-    // Send WebSocket-level pings during the wait to keep idle timeout from firing
-    // (idle timeout is 400ms, rate window is 500ms).
-    for (let i = 0; i < 3; i++) {
-      await new Promise((r) => setTimeout(r, 200));
-      ws.ping();
-    }
+    // Wait for the rate limit window to reset (500ms config + margin)
+    await new Promise((r) => setTimeout(r, 600));
 
     // Should be able to send again after rate window reset
     ws.send(JSON.stringify({ type: 'ping' }));
@@ -214,9 +209,9 @@ describe('Message Size', () => {
 describe('Idle Timeout', () => {
   it('closes with code 1008 "idle_timeout" after configured period', async () => {
     const ws = await createClient();
-    const closePromise = waitForClose(ws, 2000);
+    const closePromise = waitForClose(ws, 5000);
 
-    // Do nothing — wait for idle timeout (400ms config + margin)
+    // Do nothing — wait for idle timeout (2000ms config + margin)
     const { code, reason } = await closePromise;
     expect(code).toBe(1008);
     expect(reason).toBe('idle_timeout');
@@ -225,30 +220,30 @@ describe('Idle Timeout', () => {
   it('resets on message activity', async () => {
     const ws = await createClient();
 
-    // Send a message at ~200ms to reset the 400ms idle timer
-    await new Promise((r) => setTimeout(r, 200));
+    // Send a message at ~1000ms to reset the 2000ms idle timer
+    await new Promise((r) => setTimeout(r, 1000));
     ws.send(JSON.stringify({ type: 'ping' }));
     await waitForMessage(ws, 'pong');
 
-    // Send again at ~200ms after last message
-    await new Promise((r) => setTimeout(r, 200));
+    // Send again at ~1000ms after last message
+    await new Promise((r) => setTimeout(r, 1000));
     ws.send(JSON.stringify({ type: 'ping' }));
     const response = (await waitForMessage(ws, 'pong')) as { type: string };
     expect(response.type).toBe('pong');
 
-    // The connection should still be open (not idle-timed-out at the original 400ms mark)
+    // The connection should still be open (not idle-timed-out at the original 2000ms mark)
     expect(ws.readyState).toBe(WebSocket.OPEN);
   });
 
   it('resets on ping frames', async () => {
     const ws = await createClient();
 
-    // Send WebSocket-level ping at ~200ms
-    await new Promise((r) => setTimeout(r, 200));
+    // Send WebSocket-level ping at ~1000ms
+    await new Promise((r) => setTimeout(r, 1000));
     ws.ping();
 
-    // Send another ping at ~200ms later
-    await new Promise((r) => setTimeout(r, 200));
+    // Send another ping at ~1000ms later
+    await new Promise((r) => setTimeout(r, 1000));
     ws.ping();
 
     // Connection should still be open
@@ -257,10 +252,78 @@ describe('Idle Timeout', () => {
 });
 
 describe('Connection Limit', () => {
+  // Fresh server per test — guarantees activeConnectionCount starts at 0.
+  // Using beforeAll/afterEach caused stale counts because ws.close() is async
+  // and the server may not have decremented before the next test starts.
+  let limitHttpServer: Server;
+  let limitWss: ReturnType<typeof createAuctionWebSocketServer>;
+  let limitPort: number;
+  const limitClients: WebSocket[] = [];
+
+  beforeEach(async () => {
+    const configModule = await import('../config');
+    (configModule.config as Record<string, unknown>).WS_IDLE_TIMEOUT_MS =
+      600000;
+
+    limitHttpServer = createServer();
+    limitWss = createAuctionWebSocketServer();
+
+    limitHttpServer.on('upgrade', (request, socket, head) => {
+      limitWss.handleUpgrade(request, socket, head, (ws) => {
+        limitWss.emit('connection', ws, request);
+      });
+    });
+
+    await new Promise<void>((resolve) => {
+      limitHttpServer.listen(0, () => {
+        const addr = limitHttpServer.address();
+        limitPort = typeof addr === 'object' && addr ? addr.port : 0;
+        resolve();
+      });
+    });
+  });
+
+  afterEach(async () => {
+    for (const ws of limitClients) {
+      if (
+        ws.readyState === WebSocket.OPEN ||
+        ws.readyState === WebSocket.CONNECTING
+      ) {
+        ws.close();
+      }
+    }
+    limitClients.length = 0;
+
+    for (const client of limitWss.clients) {
+      client.close();
+    }
+    await new Promise<void>((resolve) => {
+      limitWss.close(() => {
+        limitHttpServer.close(() => resolve());
+      });
+    });
+  });
+
+  afterAll(async () => {
+    const configModule = await import('../config');
+    (configModule.config as Record<string, unknown>).WS_IDLE_TIMEOUT_MS = 2000;
+  });
+
+  function connectToLimitServer(): Promise<WebSocket> {
+    return new Promise((resolve, reject) => {
+      const ws = new WebSocket(`ws://localhost:${limitPort}/auction`);
+      ws.on('open', () => {
+        limitClients.push(ws);
+        resolve(ws);
+      });
+      ws.on('error', reject);
+    });
+  }
+
   it('accepts up to WS_MAX_CONNECTIONS', async () => {
     const clients: WebSocket[] = [];
     for (let i = 0; i < 3; i++) {
-      const ws = await createClient();
+      const ws = await connectToLimitServer();
       clients.push(ws);
       expect(ws.readyState).toBe(WebSocket.OPEN);
     }
@@ -268,14 +331,13 @@ describe('Connection Limit', () => {
 
   it('rejects with code 1008 "connection_limit_exceeded" beyond limit', async () => {
     // Fill up to max (3)
-    const clients: WebSocket[] = [];
     for (let i = 0; i < 3; i++) {
-      clients.push(await createClient());
+      await connectToLimitServer();
     }
 
     // 4th connection should be rejected
-    const ws4 = new WebSocket(`ws://localhost:${serverPort}/auction`);
-    openClients.push(ws4);
+    const ws4 = new WebSocket(`ws://localhost:${limitPort}/auction`);
+    limitClients.push(ws4);
     const closePromise = waitForClose(ws4);
 
     const { code, reason } = await closePromise;
@@ -287,10 +349,10 @@ describe('Connection Limit', () => {
     // Fill up to max (3)
     const clients: WebSocket[] = [];
     for (let i = 0; i < 3; i++) {
-      clients.push(await createClient());
+      clients.push(await connectToLimitServer());
     }
 
-    // Close one connection
+    // Close one connection and wait for server to process it
     const closedClient = clients[0];
     const closePromise = new Promise<void>((resolve) => {
       closedClient.on('close', () => resolve());
@@ -302,7 +364,7 @@ describe('Connection Limit', () => {
     await new Promise((r) => setTimeout(r, 50));
 
     // New connection should succeed
-    const newClient = await createClient();
+    const newClient = await connectToLimitServer();
     expect(newClient.readyState).toBe(WebSocket.OPEN);
   });
 });
