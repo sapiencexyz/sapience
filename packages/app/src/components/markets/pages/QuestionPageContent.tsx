@@ -649,14 +649,14 @@ export default function QuestionPageContent({
               href={polymarketUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="mb-4 inline-flex items-center gap-1.5 text-sm text-brand-white/70 hover:text-brand-white transition-colors"
+              className="mb-4 inline-flex h-9 items-center rounded-full border border-brand-white/20 bg-card px-3.5 text-sm font-medium leading-none text-brand-white hover:opacity-70 transition-opacity"
             >
               <Image
                 src="/polymarket-logomark.png"
                 alt="Polymarket"
                 width={24}
                 height={24}
-                className="h-4 w-4"
+                className="mr-1.5 h-4 w-4"
               />
               View on Polymarket
             </a>
@@ -787,14 +787,14 @@ export default function QuestionPageContent({
               href={polymarketUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="mb-4 inline-flex items-center gap-1.5 text-sm text-brand-white/70 hover:text-brand-white transition-colors"
+              className="mb-4 inline-flex h-9 items-center rounded-full border border-brand-white/20 bg-card px-3.5 text-sm font-medium leading-none text-brand-white hover:opacity-70 transition-opacity"
             >
               <Image
                 src="/polymarket-logomark.png"
                 alt="Polymarket"
                 width={24}
                 height={24}
-                className="h-4 w-4"
+                className="mr-1.5 h-4 w-4"
               />
               View on Polymarket
             </a>
