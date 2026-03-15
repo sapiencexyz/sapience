@@ -1,6 +1,5 @@
 import { decodeAbiParameters, type Address } from 'viem';
 import {
-  pythResolver,
   pythConditionResolver,
   umaResolver,
   lzPMResolver,
@@ -9,6 +8,7 @@ import {
   manualConditionResolver,
 } from '@sapience/sdk/contracts';
 import { OutcomeSide } from '@sapience/sdk/types';
+import { getPythMarketId } from '@sapience/sdk';
 import type { Pick } from '@sapience/sdk/types';
 
 export type UmaDecodedOutcome = {
@@ -55,10 +55,8 @@ const UMA_RESOLVER_SET = new Set<string>(
 );
 
 export const PYTH_RESOLVER_SET = new Set<string>(
-  [
-    ...Object.values(pythResolver).map((v) => v?.address),
-    ...Object.values(pythConditionResolver).map((v) => v?.address),
-  ]
+  Object.values(pythConditionResolver)
+    .map((v) => v?.address)
     .filter(Boolean)
     .map((a) => String(a).toLowerCase())
 );
@@ -196,11 +194,14 @@ export function decodedOutcomesToPicks(
     }));
   }
 
-  // Pyth outcomes don't map directly to escrow picks in the same way
-  // For now, return empty - Pyth uses different resolver logic
   if (decoded.kind === 'pyth') {
-    console.warn('Pyth outcomes not yet supported for pick conversion');
-    return [];
+    return decoded.outcomes.map((o) => ({
+      conditionResolver: resolverAddress,
+      conditionId: getPythMarketId(o),
+      // Pyth convention: over → 1, under → 0 (matches buildPythAuctionStartPayload).
+      // These raw values don't correspond to OutcomeSide.YES/NO semantics.
+      predictedOutcome: (o.prediction ? 1 : 0) as OutcomeSide,
+    }));
   }
 
   return [];
