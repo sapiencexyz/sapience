@@ -893,8 +893,10 @@ describe('validateBidOnChain', () => {
     expect(mockValidateCounterpartyFunds).toHaveBeenCalled();
   });
 
-  test('invalid signature — verifyMintPartySignature returns false', async () => {
+  test('invalid signature — verifyMintPartySignature returns false for EOA', async () => {
     mockPublicClient.readContract.mockResolvedValue(false);
+    // Mock getCode to return '0x' (EOA — no contract code)
+    mockPublicClient.getCode = vi.fn().mockResolvedValue('0x');
     const bid = makeBidOnChain();
     const result = await validateBidOnChain(bid, auctionCtx, {
       chainId: CHAIN_ID,
@@ -909,6 +911,29 @@ describe('validateBidOnChain', () => {
     }
     // Should not proceed to nonce/balance checks
     expect(mockIsNonceUsed).not.toHaveBeenCalled();
+  });
+
+  test('unverified signature — verifyMintPartySignature returns false for smart contract counterparty', async () => {
+    mockPublicClient.readContract.mockResolvedValue(false);
+    // Mock getCode to return bytecode (smart contract — e.g. vault)
+    mockPublicClient.getCode = vi.fn().mockResolvedValue('0x6080604052');
+    const bid = makeBidOnChain();
+    const result = await validateBidOnChain(bid, auctionCtx, {
+      chainId: CHAIN_ID,
+      predictionMarketAddress: PREDICTION_MARKET,
+      collateralTokenAddress: COLLATERAL_TOKEN,
+      publicClient: mockPublicClient as unknown as PublicClient,
+    });
+
+    // Smart contract counterparties use wrapped signatures (ERC-1271)
+    // that verifyMintPartySignature may not handle correctly off-chain.
+    // Treat as unverified rather than invalid — the on-chain mint() is the authority.
+    expect(result.status).toBe('unverified');
+    if (result.status === 'unverified') {
+      expect(result.code).toBe('SIGNATURE_UNVERIFIABLE');
+    }
+    // Should still proceed to nonce/balance checks
+    expect(mockIsNonceUsed).toHaveBeenCalled();
   });
 
   test('expired deadline → invalid before any RPC calls', async () => {
@@ -1012,27 +1037,27 @@ describe('validateBidOnChain', () => {
     expect(mockIsNonceUsed).toHaveBeenCalled();
   });
 
-  test('checkPredictor=false skips predictor solvency check', async () => {
+  test('checkPredictor defaults to false — only checks counterparty solvency', async () => {
     const bid = makeBidOnChain();
     await validateBidOnChain(bid, auctionCtx, {
       chainId: CHAIN_ID,
       predictionMarketAddress: PREDICTION_MARKET,
       collateralTokenAddress: COLLATERAL_TOKEN,
       publicClient: mockPublicClient as unknown as PublicClient,
-      checkPredictor: false,
     });
 
-    // validateCounterpartyFunds should be called once (counterparty only), not twice
+    // validateCounterpartyFunds should be called once (counterparty only)
     expect(mockValidateCounterpartyFunds).toHaveBeenCalledTimes(1);
   });
 
-  test('checkPredictor=true (default) checks both parties', async () => {
+  test('checkPredictor=true checks both parties', async () => {
     const bid = makeBidOnChain();
     await validateBidOnChain(bid, auctionCtx, {
       chainId: CHAIN_ID,
       predictionMarketAddress: PREDICTION_MARKET,
       collateralTokenAddress: COLLATERAL_TOKEN,
       publicClient: mockPublicClient as unknown as PublicClient,
+      checkPredictor: true,
     });
 
     // validateCounterpartyFunds called twice: counterparty + predictor

@@ -6,7 +6,7 @@ import type { Pick, PickJson } from '@sapience/sdk/types';
 import type { ValidationResult } from '@sapience/sdk/auction/validation';
 import { validateBidOnChain } from '@sapience/sdk/auction/validation';
 import type { QuoteBid } from '~/lib/auction/useAuctionStart';
-import { logBidValidation } from '~/lib/auction/bidLogger';
+import { logBidValidation, formatBidForLog } from '~/lib/auction/bidLogger';
 import { PREFERRED_ESTIMATE_QUOTER } from '@sapience/sdk/constants';
 import { getPublicClientForChainId } from '~/lib/utils/util';
 
@@ -146,6 +146,11 @@ export function useValidatedEscrowBids(
 
     if (newBids.length === 0) return;
 
+    logBidValidation(
+      `Validating ${newBids.length} new bid(s):`,
+      newBids.map((b) => formatBidForLog(b))
+    );
+
     // Mark as in-flight
     for (const bid of newBids) {
       validatingRef.current.add(bid.counterpartySignature);
@@ -190,10 +195,19 @@ export function useValidatedEscrowBids(
                 }
               );
 
+              logBidValidation(
+                `Result for ${bid.counterparty?.slice(0, 10)}:`,
+                result.status,
+                result.status !== 'valid'
+                  ? `code=${'code' in result ? result.code : 'n/a'} reason=${'reason' in result ? result.reason : 'n/a'}`
+                  : ''
+              );
+
               return [
                 bid.counterpartySignature,
                 {
-                  isValid: result.status === 'valid',
+                  isValid:
+                    result.status === 'valid' || result.status === 'unverified',
                   error:
                     result.status === 'invalid' ? result.reason : undefined,
                 },
