@@ -39,8 +39,9 @@ validation is the client's responsibility.
 
 - `auction.start` → `validateAuctionRFQ()` (Tier 1 hard gate, offline only)
 - `bid.submit` → `validateBid()` (Tier 1 hard gate, offline only, no `publicClient`)
-  - Provably invalid bids (bad EOA sig, missing fields, expired) → rejected
-  - Unverifiable bids (smart-contract sig, no offline path) → relayed (pass-through)
+  - Provably invalid bids (missing fields, expired, malformed signature) → rejected
+  - Signature mismatches (recovered ≠ counterparty) → relayed as unverified (could be ERC-1271 smart contract)
+  - Valid EOA/smart-account signatures → relayed
 - `vault_quote.publish` → field + timestamp + signature validation + on-chain manager auth check
 
 No `validationStatus` / `validationError` on broadcast bids — the relayer

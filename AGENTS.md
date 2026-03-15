@@ -64,7 +64,56 @@ ui (standalone)
   └── app (depends on ui)
 ```
 
+## Standardized Scripts
+
+Every TypeScript package supports these scripts (run via `pnpm --filter <package> run <script>`):
+
+| Script         | Description                   |
+| -------------- | ----------------------------- |
+| `lint`         | ESLint check                  |
+| `lint:fix`     | ESLint auto-fix + format      |
+| `type-check`   | `tsc --noEmit`                |
+| `format`       | Prettier write                |
+| `format:check` | Prettier check (CI-safe)      |
+| `test`         | Unit tests (where applicable) |
+
+Prettier config is shared at the repo root (`.prettierrc.json`). ESLint configs are per-package (different plugins per environment).
+
+Quick local check (runs everything):
+
+```bash
+pnpm run check    # builds SDK, generates Prisma, lints all, typechecks all, tests all
+```
+
+## Regenerating GraphQL Types
+
+After changing any GraphQL resolver (args, fields, types), run:
+
+```bash
+pnpm --filter @sapience/api run generate-types
+```
+
+This runs three steps in sequence: `prisma:generate` → `emit-schema` (writes `schema.graphql`) → `graphql-codegen` (writes `packages/sdk/types/graphql.ts`). No database connection is needed — config and Prisma are lazily initialized so build-time scripts can import resolvers without triggering env validation.
+
+If you also changed SDK types, rebuild the SDK afterward:
+
+```bash
+pnpm --filter @sapience/sdk run build:lib
+```
+
 ## Testing & Quality
+
+### Test-Driven Development
+
+Write tests before implementation. When adding or changing behavior:
+
+1. Write a failing test that captures the expected behavior
+2. Implement the minimal code to make the test pass
+3. Refactor while keeping tests green
+
+When fixing a bug, first write a test that reproduces it, then fix the code.
+
+### General Guidelines
 
 - Prefer package-level lint/format commands (`lint`, `lint:fix`, `format`) instead of manual `eslint` invocations.
 - For contract work, use Foundry's targeted flags (`forge test --match-path …`).

@@ -388,7 +388,7 @@ describe('Relayer E2E Auction Lifecycle', () => {
       expect(response.payload.error).toBeTruthy();
     });
 
-    it('11. bad bid signature rejected', async () => {
+    it('11. tampered counterparty passes through as unverified (could be smart contract signer)', async () => {
       const predictor = await connect();
       const { auctionId, auction } = await startAuction(predictor);
 
@@ -408,9 +408,10 @@ describe('Relayer E2E Auction Lifecycle', () => {
       );
 
       // Tamper: change the counterparty to a different address.
-      // The signature was made by makerAccount, so ecrecover will recover
-      // makerAccount.address which won't match the new counterparty.
-      // Since recoveredAddress exists but doesn't match, validateBid returns 'invalid'.
+      // Without a publicClient the relayer can't distinguish this from a
+      // valid ERC-1271 smart-contract signature, so validateBid returns
+      // 'unverified' and the relayer passes it through — the on-chain
+      // contract is the ultimate authority on signature validity.
       const differentAddress =
         privateKeyToAccount(generatePrivateKey()).address;
       bid.counterparty = differentAddress;
@@ -420,8 +421,7 @@ describe('Relayer E2E Auction Lifecycle', () => {
         { type: 'bid.submit', payload: bid },
         'bid.ack'
       )) as { payload: { error?: string } };
-      expect(ack.payload.error).toBeTruthy();
-      expect(ack.payload.error).toContain('Signature');
+      expect(ack.payload.error).toBeUndefined();
     });
   });
 

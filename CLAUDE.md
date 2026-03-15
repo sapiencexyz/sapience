@@ -2,58 +2,22 @@
 
 Sapience is a pnpm monorepo (Node ≥ 20.14, pnpm 9.x). Run `pnpm install` to set up.
 
-**Packages:** `api` (TypeGraphQL + Prisma), `app` (Next.js 14), `sdk` (shared TS library), `ui` (component library), `relayer` (WebSocket service), `protocol` (Solidity/Foundry), `market-keeper` (cron scripts), `docs` (Vocs).
+See [`AGENTS.md`](AGENTS.md) for comprehensive project context, commands, CI requirements, and deployment details. Package-level guides exist at `packages/*/AGENTS.md` and `packages/*/CLAUDE.md`.
 
-**Starters:** `starters/market-maker` — a standalone auction market maker bot with pluggable pricing strategies. Has its own `CLAUDE.md`. Not part of the monorepo workspace; run independently from its directory.
+## Test-Driven Development
 
-For deeper context on a specific package, check for a package-level `AGENTS.md` and `CLAUDE.md` (e.g. `packages/api/AGENTS.md`).
+Write tests before implementation. When adding or changing behavior:
 
-## Quick local check
+1. Write a failing test that captures the expected behavior
+2. Implement the minimal code to make the test pass
+3. Refactor while keeping tests green
 
-```bash
-pnpm run check    # builds SDK, generates Prisma, lints all, typechecks all, tests all
-```
-
-Or check only what you touched:
-
-```bash
-pnpm --filter <package> run lint
-pnpm --filter <package> run type-check
-pnpm --filter <package> run test
-pnpm --filter <package> run format:check
-```
-
-## Standardized scripts
-
-Every TypeScript package supports these scripts (run via `pnpm --filter <package> run <script>`):
-
-| Script         | Description                   |
-| -------------- | ----------------------------- |
-| `lint`         | ESLint check                  |
-| `lint:fix`     | ESLint auto-fix + format      |
-| `type-check`   | `tsc --noEmit`                |
-| `format`       | Prettier write                |
-| `format:check` | Prettier check (CI-safe)      |
-| `test`         | Unit tests (where applicable) |
-
-Prettier config is shared at the repo root (`.prettierrc.json`). ESLint configs are per-package (different plugins per environment).
+When fixing a bug, first write a test that reproduces it, then fix the code.
 
 ## Build order matters
 
 1. `pnpm --filter @sapience/sdk run build:lib` — SDK must build first; app, api, and relayer import from it
 2. `pnpm --filter @sapience/api run prisma:generate` — required before API compilation (generated client is not committed)
-
-## Regenerating GraphQL types
-After changing any GraphQL resolver (args, fields, types), run:
-```bash
-pnpm --filter @sapience/api run generate-types
-```
-This runs three steps in sequence: `prisma:generate` → `emit-schema` (writes `schema.graphql`) → `graphql-codegen` (writes `packages/sdk/types/graphql.ts`). No database connection is needed — config and Prisma are lazily initialized so build-time scripts can import resolvers without triggering env validation.
-
-If you also changed SDK types, rebuild the SDK afterward:
-```bash
-pnpm --filter @sapience/sdk run build:lib
-```
 
 ## Common footguns
 
