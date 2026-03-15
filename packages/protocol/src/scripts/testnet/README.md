@@ -9,12 +9,14 @@ This deployment uses real PredictionMarketEscrow to mint position tokens, which 
 ### Contracts Deployed
 
 **On PM Network (Source Chain):**
+
 - CollateralToken (Mock USDC)
 - ManualConditionResolver
 - PredictionMarketEscrow
 - PredictionMarketBridge
 
 **On SM Network (Remote Chain):**
+
 - PredictionMarketTokenFactory
 - PredictionMarketBridgeRemote
 
@@ -160,23 +162,23 @@ forge script src/scripts/testnet/12b_CheckStatus_SMNetwork.s.sol --rpc-url $SM_N
 
 ## Script Summary
 
-| # | Script | Chain | Description |
-|---|--------|-------|-------------|
-| 01 | DeployCollateral | Ethereal | Deploy mock USDC collateral token |
-| 02 | DeployResolver | Ethereal | Deploy ManualConditionResolver |
-| 03 | DeployPredictionMarket | Ethereal | Deploy PredictionMarketEscrow |
-| 04 | DeployFactory | Arbitrum | Deploy PredictionMarketTokenFactory |
-| 05 | DeployEtherealBridge | Ethereal | Deploy PredictionMarketBridge |
-| 06 | DeployRemoteBridge | Arbitrum | Deploy PredictionMarketBridgeRemote |
-| 07 | ConfigureEtherealBridge | Ethereal | Set peer and bridge config |
-| 07b | SetDVN_EtherealBridge | Ethereal | Set SendLib, ReceiveLib, DVN config |
-| 08 | ConfigureRemoteBridge | Arbitrum | Set peer, config, factory deployer |
-| 08b | SetDVN_RemoteBridge | Arbitrum | Set SendLib, ReceiveLib, DVN, Executor |
-| 09 | MintPredictionMarketTokens | Ethereal | Mint tokens (predictor/counterparty collateral) |
-| 10 | TestBridgeToRemote | Ethereal | Predictor bridges tokens to SM Network |
-| 11 | TestBridgeBack | Arbitrum | Predictor bridges tokens back to PM Network |
-| 12a | CheckStatus_PMNetwork | Ethereal | View PM Network deployment status & balances |
-| 12b | CheckStatus_SMNetwork | Arbitrum | View SM Network deployment status & balances |
+| #   | Script                     | Chain    | Description                                     |
+| --- | -------------------------- | -------- | ----------------------------------------------- |
+| 01  | DeployCollateral           | Ethereal | Deploy mock USDC collateral token               |
+| 02  | DeployResolver             | Ethereal | Deploy ManualConditionResolver                  |
+| 03  | DeployPredictionMarket     | Ethereal | Deploy PredictionMarketEscrow                   |
+| 04  | DeployFactory              | Arbitrum | Deploy PredictionMarketTokenFactory             |
+| 05  | DeployEtherealBridge       | Ethereal | Deploy PredictionMarketBridge                   |
+| 06  | DeployRemoteBridge         | Arbitrum | Deploy PredictionMarketBridgeRemote             |
+| 07  | ConfigureEtherealBridge    | Ethereal | Set peer and bridge config                      |
+| 07b | SetDVN_EtherealBridge      | Ethereal | Set SendLib, ReceiveLib, DVN config             |
+| 08  | ConfigureRemoteBridge      | Arbitrum | Set peer, config, factory deployer              |
+| 08b | SetDVN_RemoteBridge        | Arbitrum | Set SendLib, ReceiveLib, DVN, Executor          |
+| 09  | MintPredictionMarketTokens | Ethereal | Mint tokens (predictor/counterparty collateral) |
+| 10  | TestBridgeToRemote         | Ethereal | Predictor bridges tokens to SM Network          |
+| 11  | TestBridgeBack             | Arbitrum | Predictor bridges tokens back to PM Network     |
+| 12a | CheckStatus_PMNetwork      | Ethereal | View PM Network deployment status & balances    |
+| 12b | CheckStatus_SMNetwork      | Arbitrum | View SM Network deployment status & balances    |
 
 ## Automated Deployment
 
@@ -279,6 +281,7 @@ cast send $PM_NETWORK_BRIDGE_ADDRESS "retry(bytes32,bytes32)" $BRIDGE_ID 0x0 --v
 ### Check LayerZero Message Status
 
 Use LayerZero Scan to track messages:
+
 - https://testnet.layerzeroscan.com/
 
 ## Notes
@@ -290,13 +293,17 @@ Use LayerZero Scan to track messages:
 - Bridge flow: Ethereal (escrow) -> Arbitrum (mint) -> Ethereal (release)
 - ACK mechanism ensures atomic bridging
 
-## Contract Addresses (fill after deployment)
+## Contract Addresses
 
-| Contract | Chain | Address |
-|----------|-------|---------|
-| CollateralToken | Ethereal | |
-| ManualConditionResolver | Ethereal | |
-| PredictionMarketEscrow | Ethereal | |
-| PredictionMarketTokenFactory | Arbitrum | |
-| PredictionMarketBridge | Ethereal | |
-| PredictionMarketBridgeRemote | Arbitrum | |
+After deployment, update the contract addresses in `@sapience/sdk/contracts/addresses` — that file is the single source of truth. Other packages import from there:
+
+```typescript
+import {
+  predictionMarketEscrow,
+  manualConditionResolver,
+  predictionMarketBridge,
+  predictionMarketBridgeRemote,
+  predictionMarketTokenFactory,
+  collateralToken,
+} from '@sapience/sdk/contracts/addresses';
+```

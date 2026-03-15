@@ -100,7 +100,11 @@ export interface FetchForecastsParams {
 }
 
 function buildAttestationFilters(params: FetchForecastsParams) {
-  const { schemaId = DEFAULT_SCHEMA_UID, attesterAddress, conditionId } = params;
+  const {
+    schemaId = DEFAULT_SCHEMA_UID,
+    attesterAddress,
+    conditionId,
+  } = params;
 
   let normalizedAttesterAddress = attesterAddress;
   if (attesterAddress) {
@@ -146,7 +150,7 @@ export async function fetchForecastsPage(
 ): Promise<AttestationsQueryResponse> {
   const { where } = buildAttestationFilters(params);
 
-  const variables: Record<string, any> = {
+  const variables: Record<string, unknown> = {
     where,
     take: page.take,
     orderBy: [{ time: 'desc' }],

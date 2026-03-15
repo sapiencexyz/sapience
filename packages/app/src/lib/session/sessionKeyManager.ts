@@ -45,7 +45,6 @@ import {
   predictionMarketVaultAbi,
 } from '@sapience/sdk/abis';
 import {
-  predictionMarket as predictionMarketAddresses,
   predictionMarketEscrow as predictionMarketEscrowAddresses,
   secondaryMarketEscrow as secondaryMarketEscrowAddresses,
   collateralToken as collateralTokenAddresses,
@@ -83,7 +82,6 @@ function getEtherealContractAddresses(chainId: number) {
     secondaryEscrowAddress !== '0x0000000000000000000000000000000000000000';
   return {
     wusde: collateralTokenAddresses[effectiveChainId].address,
-    predictionMarket: predictionMarketAddresses[effectiveChainId].address,
     predictionMarketEscrow: isEscrowDeployed ? escrowAddress : undefined,
     secondaryMarketEscrow: isSecondaryEscrowDeployed
       ? secondaryEscrowAddress
@@ -426,6 +424,14 @@ async function _signEscrowSessionKeyApproval(
   );
 
   // Verify the signature recovers to the owner address
+  // Build a verification message with bigint values matching the EIP-712 types
+  const verificationMessage = {
+    sessionKey: typedData.message.sessionKey,
+    smartAccount: typedData.message.smartAccount,
+    validUntil: BigInt(typedData.message.validUntil),
+    permissionsHash: typedData.message.permissionsHash,
+    chainId: BigInt(typedData.message.chainId),
+  };
   try {
     const recoveredAddress = await recoverTypedDataAddress({
       domain: {
@@ -434,8 +440,7 @@ async function _signEscrowSessionKeyApproval(
       },
       types: typedData.types,
       primaryType: typedData.primaryType,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      message: typedData.message as any,
+      message: verificationMessage,
       signature: signature,
     });
     console.debug(
@@ -463,8 +468,7 @@ async function _signEscrowSessionKeyApproval(
         },
         types: typedData.types,
         primaryType: typedData.primaryType,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        message: typedData.message as any,
+        message: verificationMessage,
       });
       console.debug('[SessionKeyManager] TypedData hash:', typedDataHash);
     }
@@ -725,7 +729,6 @@ export async function createSession(
   );
   console.debug(`[SessionKeyManager] Contract addresses:`, {
     wusde: etherealContracts.wusde,
-    predictionMarket: etherealContracts.predictionMarket,
     predictionMarketEscrow: etherealContracts.predictionMarketEscrow,
     vault: etherealContracts.vault,
   });

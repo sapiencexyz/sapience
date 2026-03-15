@@ -1,6 +1,6 @@
-import type { Meta, StoryObj } from "@storybook/react-webpack5";
-import * as React from "react";
-import { CheckCircle, AlertCircle, Info } from "lucide-react";
+import type { Meta, StoryObj } from '@storybook/react-webpack5';
+import * as React from 'react';
+import { CheckCircle, AlertCircle, Info } from 'lucide-react';
 import {
   Toast,
   ToastAction,
@@ -9,20 +9,40 @@ import {
   ToastProvider,
   ToastTitle,
   ToastViewport,
-} from "../../components/ui/toast";
-import { Button } from "../../components/ui/button";
+  type ToastProps,
+} from '../../components/ui/toast';
+import { Button } from '../../components/ui/button';
+
+interface ToastItemProps {
+  title?: React.ReactNode;
+  description?: React.ReactNode;
+  action?: React.ReactElement;
+  variant?: ToastProps['variant'];
+  duration?: number;
+}
+
+interface ToastItem extends ToastItemProps {
+  id: string;
+  open: boolean;
+}
+
+interface ToastHandle {
+  id: string;
+  dismiss: () => void;
+  update: (updates: Partial<ToastItem>) => void;
+}
 
 const meta: Meta<typeof Toast> = {
-  title: "UI/Toast",
+  title: 'UI/Toast',
   component: Toast,
   parameters: {
-    layout: "centered",
+    layout: 'centered',
   },
-  tags: ["autodocs"],
+  tags: ['autodocs'],
   argTypes: {
     variant: {
-      control: { type: "select" },
-      options: ["default", "destructive"],
+      control: { type: 'select' },
+      options: ['default', 'destructive'],
     },
   },
 };
@@ -44,19 +64,23 @@ const ToastWrapper = ({ children }: { children: React.ReactNode }) => {
 const InteractiveToastWrapper = ({
   children,
 }: {
-  children: ({ toast }: { toast: (props: any) => any }) => React.ReactNode;
+  children: ({
+    toast,
+  }: {
+    toast: (props: ToastItemProps) => ToastHandle;
+  }) => React.ReactNode;
 }) => {
-  const [toasts, setToasts] = React.useState<any[]>([]);
+  const [toasts, setToasts] = React.useState<ToastItem[]>([]);
 
-  const toast = React.useCallback((props: any) => {
+  const toast = React.useCallback((props: ToastItemProps): ToastHandle => {
     const id = Math.random().toString(36).substr(2, 9);
-    const newToast = { ...props, id, open: true };
+    const newToast: ToastItem = { ...props, id, open: true };
     setToasts((prev) => [newToast, ...prev]);
 
     return {
       id,
       dismiss: () => setToasts((prev) => prev.filter((t) => t.id !== id)),
-      update: (updates: any) =>
+      update: (updates: Partial<ToastItem>) =>
         setToasts((prev) =>
           prev.map((t) => (t.id === id ? { ...t, ...updates } : t))
         ),
@@ -272,45 +296,45 @@ export const Interactive: Story = {
         {({ toast }) => {
           const showToast = (
             type:
-              | "default"
-              | "destructive"
-              | "success"
-              | "warning"
-              | "information"
+              | 'default'
+              | 'destructive'
+              | 'success'
+              | 'warning'
+              | 'information'
           ) => {
             switch (type) {
-              case "default":
+              case 'default':
                 toast({
-                  title: "Default Toast",
-                  description: "This is a default toast notification.",
+                  title: 'Default Toast',
+                  description: 'This is a default toast notification.',
                 });
                 break;
-              case "destructive":
+              case 'destructive':
                 toast({
-                  variant: "destructive",
-                  title: "Error",
-                  description: "Something went wrong. Please try again.",
+                  variant: 'destructive',
+                  title: 'Error',
+                  description: 'Something went wrong. Please try again.',
                   action: (
                     <ToastAction altText="Try again">Try again</ToastAction>
                   ),
                 });
                 break;
-              case "success":
+              case 'success':
                 toast({
-                  title: "Success!",
-                  description: "Your action was completed successfully.",
+                  title: 'Success!',
+                  description: 'Your action was completed successfully.',
                 });
                 break;
-              case "warning":
+              case 'warning':
                 toast({
-                  title: "Warning",
-                  description: "Please review your input before proceeding.",
+                  title: 'Warning',
+                  description: 'Please review your input before proceeding.',
                   action: <ToastAction altText="Review">Review</ToastAction>,
                 });
                 break;
-              case "information":
+              case 'information':
                 toast({
-                  title: "Information",
+                  title: 'Information',
                   description: "Here's some useful information for you.",
                   action: (
                     <ToastAction altText="Learn more">Learn more</ToastAction>
@@ -323,23 +347,23 @@ export const Interactive: Story = {
           return (
             <div className="w-[600px] h-[300px] space-y-4">
               <div className="flex flex-wrap gap-2">
-                <Button onClick={() => showToast("default")}>
+                <Button onClick={() => showToast('default')}>
                   Show Default Toast
                 </Button>
                 <Button
-                  onClick={() => showToast("destructive")}
+                  onClick={() => showToast('destructive')}
                   variant="destructive"
                 >
                   Show Error Toast
                 </Button>
-                <Button onClick={() => showToast("success")} variant="outline">
+                <Button onClick={() => showToast('success')} variant="outline">
                   Show Success Toast
                 </Button>
-                <Button onClick={() => showToast("warning")} variant="outline">
+                <Button onClick={() => showToast('warning')} variant="outline">
                   Show Warning Toast
                 </Button>
                 <Button
-                  onClick={() => showToast("information")}
+                  onClick={() => showToast('information')}
                   variant="outline"
                 >
                   Show Info Toast
@@ -364,21 +388,21 @@ export const MultipleToasts: Story = {
         {({ toast }) => {
           const showMultipleToasts = () => {
             toast({
-              title: "First Toast",
-              description: "This is the first toast notification.",
+              title: 'First Toast',
+              description: 'This is the first toast notification.',
             });
 
             setTimeout(() => {
               toast({
-                title: "Second Toast",
-                description: "This is the second toast notification.",
+                title: 'Second Toast',
+                description: 'This is the second toast notification.',
               });
             }, 500);
 
             setTimeout(() => {
               toast({
-                title: "Third Toast",
-                description: "This is the third toast notification.",
+                title: 'Third Toast',
+                description: 'This is the third toast notification.',
               });
             }, 1000);
           };
@@ -404,17 +428,17 @@ export const ToastWithCustomDuration: Story = {
         {({ toast }) => {
           const showPersistentToast = () => {
             toast({
-              title: "Persistent Toast",
+              title: 'Persistent Toast',
               description:
-                "This toast will stay visible until manually dismissed.",
+                'This toast will stay visible until manually dismissed.',
               duration: Infinity, // This makes it persistent
             });
           };
 
           const showQuickToast = () => {
             toast({
-              title: "Quick Toast",
-              description: "This toast will disappear quickly.",
+              title: 'Quick Toast',
+              description: 'This toast will disappear quickly.',
               duration: 2000, // 2 seconds
             });
           };
@@ -448,7 +472,7 @@ export const ToastWithRichContent: Story = {
         {({ toast }) => {
           const showRichToast = () => {
             toast({
-              title: "Rich Content Toast",
+              title: 'Rich Content Toast',
               description: (
                 <div className="space-y-2">
                   <p>This toast contains rich content including:</p>

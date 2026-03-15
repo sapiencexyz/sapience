@@ -10,7 +10,64 @@ import {
 import { Prisma } from '../../../generated/prisma';
 import { SortOrder } from '@generated/type-graphql';
 import prisma from '../../db';
-import { batchLoadPickConfigs } from '../helpers/batchLoadPickConfigs';
+
+// ============================================================================
+// Helpers
+// ============================================================================
+
+/** Prisma shape of a Picks row with its Pick[] children included. */
+type PicksWithPicks = {
+  id: string;
+  chainId: number;
+  marketAddress: string;
+  totalPredictorCollateral: string;
+  totalCounterpartyCollateral: string;
+  claimedPredictorCollateral: string;
+  claimedCounterpartyCollateral: string;
+  resolved: boolean;
+  result: string;
+  resolvedAt: number | null;
+  predictorToken: string | null;
+  counterpartyToken: string | null;
+  endsAt: number | null;
+  picks: {
+    id: number;
+    pickConfigId: string;
+    conditionResolver: string;
+    conditionId: string;
+    predictedOutcome: number;
+  }[];
+};
+
+/** Map a Prisma Picks (with picks included) to the GraphQL PickConfigurationType shape. */
+export function mapPickConfig(
+  pc: PicksWithPicks,
+  extra?: { predictionId?: string | null }
+): PickConfigurationType {
+  return {
+    id: pc.id,
+    chainId: pc.chainId,
+    marketAddress: pc.marketAddress,
+    totalPredictorCollateral: pc.totalPredictorCollateral,
+    totalCounterpartyCollateral: pc.totalCounterpartyCollateral,
+    claimedPredictorCollateral: pc.claimedPredictorCollateral,
+    claimedCounterpartyCollateral: pc.claimedCounterpartyCollateral,
+    resolved: pc.resolved,
+    result: pc.result,
+    resolvedAt: pc.resolvedAt ?? null,
+    predictorToken: pc.predictorToken ?? null,
+    counterpartyToken: pc.counterpartyToken ?? null,
+    endsAt: pc.endsAt ?? null,
+    picks: pc.picks.map((p) => ({
+      id: p.id,
+      pickConfigId: p.pickConfigId,
+      conditionResolver: p.conditionResolver,
+      conditionId: p.conditionId,
+      predictedOutcome: p.predictedOutcome,
+    })),
+    ...extra,
+  };
+}
 
 // ============================================================================
 // Enums
@@ -377,25 +434,7 @@ export class EscrowResolver {
       const pickConfigIds = matchingPicks.map((p) => p.pickConfigId);
       if (pickConfigIds.length === 0) return [];
 
-      const pickConfigs = await prisma.picks.findMany({
-        where: { id: { in: pickConfigIds } },
-        select: { predictorToken: true, counterpartyToken: true },
-      });
-      const tokens = [
-        ...new Set(
-          pickConfigs.flatMap((pc) =>
-            [pc.predictorToken, pc.counterpartyToken].filter(Boolean)
-          )
-        ),
-      ] as string[];
-      if (tokens.length === 0) return [];
-
-      filters.push({
-        OR: [
-          { predictorToken: { in: tokens } },
-          { counterpartyToken: { in: tokens } },
-        ],
-      });
+      filters.push({ pickConfigId: { in: pickConfigIds } });
     }
 
     if (chainId !== undefined && chainId !== null) {
@@ -424,18 +463,12 @@ export class EscrowResolver {
       orderBy: orderByClause,
       take: cappedTake,
       skip,
+      include: {
+        pickConfiguration: {
+          include: { picks: true },
+        },
+      },
     });
-
-    // Batch-load pickConfigs for all predictions by collecting token addresses
-    const allTokenAddresses = new Set<string>();
-    for (const r of rows) {
-      if (r.predictorToken) allTokenAddresses.add(r.predictorToken);
-      if (r.counterpartyToken) allTokenAddresses.add(r.counterpartyToken);
-    }
-
-    const tokenToPickConfig = await batchLoadPickConfigs(
-      Array.from(allTokenAddresses)
-    );
 
     return rows.map((r) => ({
       id: r.id,
@@ -444,8 +477,8 @@ export class EscrowResolver {
       marketAddress: r.marketAddress,
       predictor: r.predictor,
       counterparty: r.counterparty,
-      predictorToken: r.predictorToken,
-      counterpartyToken: r.counterpartyToken,
+      predictorToken: r.pickConfiguration?.predictorToken ?? '',
+      counterpartyToken: r.pickConfiguration?.counterpartyToken ?? '',
       predictorCollateral: r.predictorCollateral,
       counterpartyCollateral: r.counterpartyCollateral,
       collateralDeposited: r.collateralDeposited ?? null,
@@ -459,10 +492,9 @@ export class EscrowResolver {
       createTxHash: r.createTxHash,
       settleTxHash: r.settleTxHash ?? null,
       refCode: r.refCode ?? null,
-      pickConfig:
-        tokenToPickConfig.get(r.predictorToken) ??
-        tokenToPickConfig.get(r.counterpartyToken) ??
-        null,
+      pickConfig: r.pickConfiguration
+        ? mapPickConfig(r.pickConfiguration)
+        : null,
     }));
   }
 
@@ -477,52 +509,14 @@ export class EscrowResolver {
 
     const r = await prisma.prediction.findUnique({
       where: { predictionId: predictionIdLower },
+      include: {
+        pickConfiguration: {
+          include: { picks: true },
+        },
+      },
     });
 
     if (!r) return null;
-
-    // Look up pickConfig via Position matching predictorToken or counterpartyToken
-    let pickConfig: PickConfigurationType | null = null;
-    const tokenAddresses = [r.predictorToken, r.counterpartyToken].filter(
-      Boolean
-    );
-    if (tokenAddresses.length > 0) {
-      const position = await prisma.position.findFirst({
-        where: {
-          tokenAddress: { in: tokenAddresses },
-        },
-        include: {
-          pickConfiguration: {
-            include: { picks: true },
-          },
-        },
-      });
-      if (position?.pickConfiguration) {
-        const pc = position.pickConfiguration;
-        pickConfig = {
-          id: pc.id,
-          chainId: pc.chainId,
-          marketAddress: pc.marketAddress,
-          totalPredictorCollateral: pc.totalPredictorCollateral,
-          totalCounterpartyCollateral: pc.totalCounterpartyCollateral,
-          claimedPredictorCollateral: pc.claimedPredictorCollateral,
-          claimedCounterpartyCollateral: pc.claimedCounterpartyCollateral,
-          resolved: pc.resolved,
-          result: pc.result,
-          resolvedAt: pc.resolvedAt ?? null,
-          predictorToken: pc.predictorToken ?? null,
-          counterpartyToken: pc.counterpartyToken ?? null,
-          endsAt: pc.endsAt ?? null,
-          picks: pc.picks.map((p) => ({
-            id: p.id,
-            pickConfigId: p.pickConfigId,
-            conditionResolver: p.conditionResolver,
-            conditionId: p.conditionId,
-            predictedOutcome: p.predictedOutcome,
-          })),
-        };
-      }
-    }
 
     return {
       id: r.id,
@@ -531,8 +525,8 @@ export class EscrowResolver {
       marketAddress: r.marketAddress,
       predictor: r.predictor,
       counterparty: r.counterparty,
-      predictorToken: r.predictorToken,
-      counterpartyToken: r.counterpartyToken,
+      predictorToken: r.pickConfiguration?.predictorToken ?? '',
+      counterpartyToken: r.pickConfiguration?.counterpartyToken ?? '',
       predictorCollateral: r.predictorCollateral,
       counterpartyCollateral: r.counterpartyCollateral,
       collateralDeposited: r.collateralDeposited ?? null,
@@ -546,7 +540,9 @@ export class EscrowResolver {
       createTxHash: r.createTxHash,
       settleTxHash: r.settleTxHash ?? null,
       refCode: r.refCode ?? null,
-      pickConfig,
+      pickConfig: r.pickConfiguration
+        ? mapPickConfig(r.pickConfiguration)
+        : null,
     };
   }
 
@@ -589,28 +585,7 @@ export class EscrowResolver {
       },
     });
 
-    return rows.map((r) => ({
-      id: r.id,
-      chainId: r.chainId,
-      marketAddress: r.marketAddress,
-      totalPredictorCollateral: r.totalPredictorCollateral,
-      totalCounterpartyCollateral: r.totalCounterpartyCollateral,
-      claimedPredictorCollateral: r.claimedPredictorCollateral,
-      claimedCounterpartyCollateral: r.claimedCounterpartyCollateral,
-      resolved: r.resolved,
-      result: r.result,
-      resolvedAt: r.resolvedAt ?? null,
-      predictorToken: r.predictorToken ?? null,
-      counterpartyToken: r.counterpartyToken ?? null,
-      endsAt: r.endsAt ?? null,
-      picks: r.picks.map((p) => ({
-        id: p.id,
-        pickConfigId: p.pickConfigId,
-        conditionResolver: p.conditionResolver,
-        conditionId: p.conditionId,
-        predictedOutcome: p.predictedOutcome,
-      })),
-    }));
+    return rows.map((r) => mapPickConfig(r));
   }
 
   @Query(() => PickConfigurationType, {
@@ -631,28 +606,7 @@ export class EscrowResolver {
 
     if (!r) return null;
 
-    return {
-      id: r.id,
-      chainId: r.chainId,
-      marketAddress: r.marketAddress,
-      totalPredictorCollateral: r.totalPredictorCollateral,
-      totalCounterpartyCollateral: r.totalCounterpartyCollateral,
-      claimedPredictorCollateral: r.claimedPredictorCollateral,
-      claimedCounterpartyCollateral: r.claimedCounterpartyCollateral,
-      resolved: r.resolved,
-      result: r.result,
-      resolvedAt: r.resolvedAt ?? null,
-      predictorToken: r.predictorToken ?? null,
-      counterpartyToken: r.counterpartyToken ?? null,
-      endsAt: r.endsAt ?? null,
-      picks: r.picks.map((p) => ({
-        id: p.id,
-        pickConfigId: p.pickConfigId,
-        conditionResolver: p.conditionResolver,
-        conditionId: p.conditionId,
-        predictedOutcome: p.predictedOutcome,
-      })),
-    };
+    return mapPickConfig(r);
   }
 
   // -------------------------------------------------------------------------
@@ -661,7 +615,7 @@ export class EscrowResolver {
 
   @Query(() => [PositionType], {
     description:
-      'Paginated list of token position balances, filterable by holder, condition, chain, or pick config',
+      'Paginated list of token position balances, filterable by holder, condition, chain, pick config, settlement, date range, collateral range, and won/lost status',
   })
   async positions(
     @Arg('holder', () => String, { nullable: true }) holder?: string,
@@ -669,7 +623,18 @@ export class EscrowResolver {
     @Arg('take', () => Int, { defaultValue: 50 }) take: number = 50,
     @Arg('skip', () => Int, { defaultValue: 0 }) skip: number = 0,
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number,
-    @Arg('pickConfigId', () => String, { nullable: true }) pickConfigId?: string
+    @Arg('pickConfigId', () => String, { nullable: true })
+    pickConfigId?: string,
+    @Arg('settled', () => Boolean, { nullable: true }) settled?: boolean,
+    @Arg('result', () => SettlementResult, { nullable: true })
+    result?: SettlementResult,
+    @Arg('endsAtMin', () => Int, { nullable: true }) endsAtMin?: number,
+    @Arg('endsAtMax', () => Int, { nullable: true }) endsAtMax?: number,
+    @Arg('holderWon', () => Boolean, { nullable: true }) holderWon?: boolean,
+    @Arg('collateralMin', () => String, { nullable: true })
+    collateralMin?: string,
+    @Arg('collateralMax', () => String, { nullable: true })
+    collateralMax?: string
   ): Promise<PositionType[]> {
     const cappedTake = Math.max(1, Math.min(take, 100));
     const holderLower = holder?.toLowerCase();
@@ -708,6 +673,116 @@ export class EscrowResolver {
     if (pickConfigIdLower && !conditionId) {
       where.pickConfigId = pickConfigIdLower;
     }
+    if (settled !== undefined && settled !== null) {
+      where.pickConfiguration = {
+        ...((where.pickConfiguration as Prisma.PicksWhereInput) ?? {}),
+        resolved: settled,
+      };
+    }
+    if (result) {
+      where.pickConfiguration = {
+        ...((where.pickConfiguration as Prisma.PicksWhereInput) ?? {}),
+        result: result as unknown as Prisma.EnumSettlementResultFilter,
+      };
+    }
+
+    // Date range filter on pickConfiguration.endsAt
+    if (endsAtMin !== undefined || endsAtMax !== undefined) {
+      const endsAtFilter: Record<string, number> = {};
+      if (endsAtMin !== undefined) endsAtFilter.gte = endsAtMin;
+      if (endsAtMax !== undefined) endsAtFilter.lte = endsAtMax;
+      where.pickConfiguration = {
+        ...((where.pickConfiguration as Prisma.PicksWhereInput) ?? {}),
+        endsAt: endsAtFilter,
+      };
+    }
+
+    // Won/lost filter: combines position side (isPredictorToken) with settlement result.
+    // Extract pickConfiguration conditions built above so they apply consistently
+    // inside each OR branch without relying on spread-and-overwrite ordering.
+    if (holderWon !== undefined && holderWon !== null) {
+      const basePc = (where.pickConfiguration as Prisma.PicksWhereInput) ?? {};
+      // Remove top-level pickConfiguration; it will live inside the OR branches
+      delete where.pickConfiguration;
+
+      const [winResult, loseResult] = holderWon
+        ? ['PREDICTOR_WINS', 'COUNTERPARTY_WINS']
+        : ['COUNTERPARTY_WINS', 'PREDICTOR_WINS'];
+
+      where.OR = [
+        {
+          isPredictorToken: true,
+          pickConfiguration: {
+            ...basePc,
+            result: winResult as unknown as Prisma.EnumSettlementResultFilter,
+          },
+        },
+        {
+          isPredictorToken: false,
+          pickConfiguration: {
+            ...basePc,
+            result: loseResult as unknown as Prisma.EnumSettlementResultFilter,
+          },
+        },
+      ];
+    }
+
+    // Collateral range filter: pre-query pickConfigIds where holder's collateral is in range
+    if (holderLower && (collateralMin || collateralMax)) {
+      const minVal = collateralMin ? BigInt(collateralMin) : 0n;
+      const maxVal = collateralMax ? BigInt(collateralMax) : null;
+
+      interface PickConfigRow {
+        pickConfigId: string;
+        is_predictor: boolean;
+      }
+      const matchingConfigs = await prisma.$queryRaw<PickConfigRow[]>`
+        SELECT "pickConfigId", true AS is_predictor
+        FROM "Prediction"
+        WHERE predictor = ${holderLower} AND "pickConfigId" IS NOT NULL
+        GROUP BY "pickConfigId"
+        HAVING SUM(CAST("predictorCollateral" AS DECIMAL)) >= ${minVal.toString()}::DECIMAL
+          ${maxVal !== null ? Prisma.sql`AND SUM(CAST("predictorCollateral" AS DECIMAL)) <= ${maxVal.toString()}::DECIMAL` : Prisma.empty}
+        UNION
+        SELECT "pickConfigId", false AS is_predictor
+        FROM "Prediction"
+        WHERE counterparty = ${holderLower} AND "pickConfigId" IS NOT NULL
+        GROUP BY "pickConfigId"
+        HAVING SUM(CAST("counterpartyCollateral" AS DECIMAL)) >= ${minVal.toString()}::DECIMAL
+          ${maxVal !== null ? Prisma.sql`AND SUM(CAST("counterpartyCollateral" AS DECIMAL)) <= ${maxVal.toString()}::DECIMAL` : Prisma.empty}
+      `;
+
+      if (matchingConfigs.length === 0) return [];
+
+      const validPickConfigIds = matchingConfigs.map((r) => r.pickConfigId);
+
+      // Intersect with existing pickConfigId filter if present
+      if (
+        where.pickConfigId &&
+        typeof where.pickConfigId === 'object' &&
+        'in' in where.pickConfigId
+      ) {
+        const existing = where.pickConfigId.in as string[];
+        where.pickConfigId = {
+          in: existing.filter((id) => validPickConfigIds.includes(id)),
+        };
+      } else if (where.pickConfigId && typeof where.pickConfigId === 'string') {
+        if (!validPickConfigIds.includes(where.pickConfigId)) return [];
+      } else {
+        where.pickConfigId = { in: validPickConfigIds };
+      }
+    }
+
+    // Hide zero-balance positions that are not yet settled (no resolution).
+    // These are positions where the user burned/transferred tokens before
+    // settlement — they show "0.00 USDe" with "PENDING" PnL.
+    // Keep zero-balance positions that ARE settled (post-burn with PnL data).
+    where.NOT = {
+      balance: '0',
+      pickConfiguration: {
+        resolved: false,
+      },
+    };
 
     const rows = await prisma.position.findMany({
       where,
@@ -718,68 +793,38 @@ export class EscrowResolver {
         pickConfiguration: {
           include: {
             picks: true,
+            predictions: true,
           },
         },
       },
     });
 
-    // Look up predictionIds and collateral for each position's token address
-    const tokenAddresses = rows.map((r) => r.tokenAddress);
-    const predictionIdMap = new Map<string, string>();
-    const collateralMap = new Map<
-      string,
-      { userCollateral: bigint; totalPayout: bigint }
-    >();
-    if (tokenAddresses.length > 0) {
-      const predictions = await prisma.prediction.findMany({
-        where: {
-          OR: [
-            { predictorToken: { in: tokenAddresses } },
-            { counterpartyToken: { in: tokenAddresses } },
-          ],
-        },
-        select: {
-          predictionId: true,
-          predictorToken: true,
-          counterpartyToken: true,
-          predictor: true,
-          counterparty: true,
-          predictorCollateral: true,
-          counterpartyCollateral: true,
-        },
-      });
-      for (const pred of predictions) {
-        predictionIdMap.set(pred.predictorToken, pred.predictionId);
-        predictionIdMap.set(pred.counterpartyToken, pred.predictionId);
-
-        const predCollateral = BigInt(pred.predictorCollateral);
-        const cpCollateral = BigInt(pred.counterpartyCollateral);
-        const predictionTotal = predCollateral + cpCollateral;
-
-        // Accumulate collateral for predictor side
-        const predictorKey = `${pred.predictorToken}:${pred.predictor}`;
-        const existingPredictor = collateralMap.get(predictorKey) ?? {
-          userCollateral: 0n,
-          totalPayout: 0n,
-        };
-        existingPredictor.userCollateral += predCollateral;
-        existingPredictor.totalPayout += predictionTotal;
-        collateralMap.set(predictorKey, existingPredictor);
-
-        // Accumulate collateral for counterparty side
-        const counterpartyKey = `${pred.counterpartyToken}:${pred.counterparty}`;
-        const existingCounterparty = collateralMap.get(counterpartyKey) ?? {
-          userCollateral: 0n,
-          totalPayout: 0n,
-        };
-        existingCounterparty.userCollateral += cpCollateral;
-        existingCounterparty.totalPayout += predictionTotal;
-        collateralMap.set(counterpartyKey, existingCounterparty);
-      }
-    }
-
     return rows.map((r) => {
-      const collateral = collateralMap.get(`${r.tokenAddress}:${r.holder}`);
+      const pc = r.pickConfiguration;
+
+      // Compute collateral from predictions included via pickConfiguration
+      let userCollateral = 0n;
+      let totalPayout = 0n;
+      let predictionId: string | null = null;
+
+      if (pc) {
+        for (const pred of pc.predictions) {
+          const predCollateral = BigInt(pred.predictorCollateral);
+          const cpCollateral = BigInt(pred.counterpartyCollateral);
+          const predictionTotal = predCollateral + cpCollateral;
+
+          if (r.isPredictorToken && pred.predictor === r.holder) {
+            predictionId = pred.predictionId;
+            userCollateral += predCollateral;
+            totalPayout += predictionTotal;
+          } else if (!r.isPredictorToken && pred.counterparty === r.holder) {
+            predictionId = pred.predictionId;
+            userCollateral += cpCollateral;
+            totalPayout += predictionTotal;
+          }
+        }
+      }
+
       return {
         id: r.id,
         chainId: r.chainId,
@@ -788,38 +833,10 @@ export class EscrowResolver {
         isPredictorToken: r.isPredictorToken,
         holder: r.holder,
         balance: r.balance,
-        userCollateral: collateral?.userCollateral.toString() ?? null,
-        totalPayout: collateral?.totalPayout.toString() ?? null,
+        userCollateral: userCollateral > 0n ? userCollateral.toString() : null,
+        totalPayout: totalPayout > 0n ? totalPayout.toString() : null,
         createdAt: r.createdAt,
-        pickConfig: r.pickConfiguration
-          ? {
-              id: r.pickConfiguration.id,
-              chainId: r.pickConfiguration.chainId,
-              marketAddress: r.pickConfiguration.marketAddress,
-              totalPredictorCollateral:
-                r.pickConfiguration.totalPredictorCollateral,
-              totalCounterpartyCollateral:
-                r.pickConfiguration.totalCounterpartyCollateral,
-              claimedPredictorCollateral:
-                r.pickConfiguration.claimedPredictorCollateral,
-              claimedCounterpartyCollateral:
-                r.pickConfiguration.claimedCounterpartyCollateral,
-              resolved: r.pickConfiguration.resolved,
-              result: r.pickConfiguration.result,
-              resolvedAt: r.pickConfiguration.resolvedAt ?? null,
-              predictorToken: r.pickConfiguration.predictorToken ?? null,
-              counterpartyToken: r.pickConfiguration.counterpartyToken ?? null,
-              endsAt: r.pickConfiguration.endsAt ?? null,
-              picks: r.pickConfiguration.picks.map((p) => ({
-                id: p.id,
-                pickConfigId: p.pickConfigId,
-                conditionResolver: p.conditionResolver,
-                conditionId: p.conditionId,
-                predictedOutcome: p.predictedOutcome,
-              })),
-              predictionId: predictionIdMap.get(r.tokenAddress) ?? null,
-            }
-          : null,
+        pickConfig: pc ? mapPickConfig(pc, { predictionId }) : null,
       };
     });
   }

@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { PYTH_FEED_NAMES } from '@sapience/sdk/constants';
 
 type LazerFeedRow = {
   pyth_lazer_id?: unknown;
@@ -51,19 +52,20 @@ function tryParseUint32(value: unknown): number | null {
 }
 
 function tryExtractLazerFeeds(json: unknown): LazerFeedRow[] {
-  const root = json as any;
+  const root = json as Record<string, unknown> | unknown[];
+  const rootObj = root as Record<string, unknown>;
   const candidates: unknown[] = Array.isArray(root)
     ? root
-    : Array.isArray(root?.data)
-      ? root.data
-      : Array.isArray(root?.symbols)
-        ? root.symbols
+    : Array.isArray(rootObj?.data)
+      ? (rootObj.data as unknown[])
+      : Array.isArray(rootObj?.symbols)
+        ? (rootObj.symbols as unknown[])
         : [];
 
   const out: LazerFeedRow[] = [];
   for (const item of candidates) {
     if (!item || typeof item !== 'object') continue;
-    const o = item as any;
+    const o = item as Record<string, unknown>;
     out.push({
       pyth_lazer_id: o.pyth_lazer_id,
       symbol: o.symbol,
@@ -122,7 +124,9 @@ async function loadLazerFeedMap(): Promise<Map<number, string>> {
 
 export function getPythFeedLabelSync(priceId: string): string | null {
   const lazerId = extractLazerIdMaybe(priceId);
-  if (typeof lazerId === 'number') return cachedLazerMap?.get(lazerId) ?? null;
+  if (typeof lazerId === 'number') {
+    return cachedLazerMap?.get(lazerId) ?? PYTH_FEED_NAMES[lazerId] ?? null;
+  }
   return null;
 }
 

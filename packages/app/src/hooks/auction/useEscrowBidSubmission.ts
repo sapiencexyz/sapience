@@ -6,7 +6,7 @@
  */
 import { useCallback, useMemo } from 'react';
 import { useAccount, useChainId, useSignTypedData } from 'wagmi';
-import { parseUnits, formatUnits, type Address } from 'viem';
+import { parseUnits, formatUnits, zeroAddress, type Address } from 'viem';
 import {
   predictionMarketEscrow,
   collateralToken as collateralTokenAddresses,
@@ -27,6 +27,7 @@ import { useToast } from '@sapience/ui/hooks/use-toast';
 import { toAuctionWsUrl } from '~/lib/ws';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 import { generateRandomNonce } from '@sapience/sdk';
+import { validateCounterpartyFunds } from '@sapience/sdk/onchain/position';
 
 export type EscrowBidSubmissionParams = {
   auctionId: string;
@@ -34,16 +35,14 @@ export type EscrowBidSubmissionParams = {
   counterpartyCollateral: bigint;
   /** Predictor's (auction creator's) position size in wei */
   predictorCollateral: bigint;
-  /** Resolver contract address */
-  resolver: `0x${string}`;
   /** Predictor (auction creator) address */
   predictor: `0x${string}`;
   /** Bid expiry in seconds from now */
   expirySeconds: number;
   /** Optional max end time (seconds since epoch) to clamp expiry */
   maxEndTimeSec?: number;
-  /** Escrow picks for signing */
-  escrowPicks: Array<{
+  /** Picks for signing — each pick has its own conditionResolver */
+  picks: Array<{
     conditionResolver: string;
     conditionId: string;
     predictedOutcome: number;
@@ -151,11 +150,10 @@ export function useEscrowBidSubmission(
         auctionId,
         counterpartyCollateral,
         predictorCollateral,
-        resolver,
         predictor,
         expirySeconds,
         maxEndTimeSec,
-        escrowPicks,
+        picks: escrowPicks,
       } = params;
 
       // Use effectiveAddress from session context (smart account when session active, otherwise EOA)
@@ -175,11 +173,7 @@ export function useEscrowBidSubmission(
       }
 
       if (!escrowPicks || escrowPicks.length === 0) {
-        return { success: false, error: 'Missing escrow picks' };
-      }
-
-      if (!resolver) {
-        return { success: false, error: 'Missing resolver' };
+        return { success: false, error: 'Missing picks' };
       }
 
       if (!predictor) {
@@ -192,6 +186,26 @@ export function useEscrowBidSubmission(
 
       if (!wsUrl) {
         return { success: false, error: 'Realtime connection not configured' };
+      }
+
+      // Validate predictor can fund the mint before we sign (avoid wasting signature on dead auction)
+      try {
+        const publicClient = getPublicClientForChainId(chainId);
+        await validateCounterpartyFunds(
+          predictor,
+          predictorCollateral,
+          wusdeAddress ?? zeroAddress,
+          verifyingContract,
+          publicClient
+        );
+      } catch (err) {
+        if (err instanceof Error && err.message.includes('market maker')) {
+          return {
+            success: false,
+            error: `Predictor cannot fund this auction`,
+          };
+        }
+        // RPC error — don't block the bid
       }
 
       // Calculate deadline with optional clamping
@@ -376,9 +390,8 @@ export function useEscrowBidSubmission(
               message: typedData.message,
             });
           }
-        } catch (e: any) {
-          const error =
-            e instanceof Error ? e : new Error(String(e?.message || e));
+        } catch (e: unknown) {
+          const error = e instanceof Error ? e : new Error(String(e));
           onSignatureRejected?.(error);
           return {
             success: false,

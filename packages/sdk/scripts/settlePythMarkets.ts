@@ -15,7 +15,7 @@ import {
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { contracts } from '../contracts/addresses';
-import { getPythMarketId } from '../auction/encoding';
+import { getPythMarketHash } from '../auction/encoding';
 
 /**
  * Settle PythResolver conditions referenced by Sapience predictions.
@@ -80,13 +80,16 @@ function parseArgs(argv: string[]): Args {
     argv.includes(`--${name}`) || argv.some((a) => a === `--${name}=true`);
 
   const chainId = Number(
-    get('chain-id') ?? process.env.BOT_CHAIN_ID ?? process.env.CHAIN_ID ?? '5064014'
+    get('chain-id') ??
+      process.env.BOT_CHAIN_ID ??
+      process.env.CHAIN_ID ??
+      '5064014'
   );
   if (!Number.isFinite(chainId) || chainId <= 0) {
     throw new Error(`invalid --chain-id (${String(get('chain-id'))})`);
   }
 
-  const resolverFromSdk = contracts.pythResolver?.[chainId]?.address;
+  const resolverFromSdk = contracts.pythConditionResolver?.[chainId]?.address;
   const pythResolverRaw = get('pyth-resolver') ?? resolverFromSdk;
   if (!pythResolverRaw) {
     throw new Error(
@@ -109,7 +112,9 @@ function parseArgs(argv: string[]): Args {
     'http://localhost:3001/graphql';
 
   const privateKey =
-    get('private-key') ?? process.env.BOT_PRIVATE_KEY ?? process.env.PRIVATE_KEY;
+    get('private-key') ??
+    process.env.BOT_PRIVATE_KEY ??
+    process.env.PRIVATE_KEY;
 
   const pythToken =
     get('pyth-token') ??
@@ -117,7 +122,8 @@ function parseArgs(argv: string[]): Args {
     process.env.PYTH_API_KEY ??
     undefined;
 
-  const pythBaseUrl = get('pyth-base-url') ?? 'https://pyth-lazer.dourolabs.app';
+  const pythBaseUrl =
+    get('pyth-base-url') ?? 'https://pyth-lazer.dourolabs.app';
 
   const maxConditions = Number(get('max-conditions') ?? '200');
   const fetchUpdates = !has('no-fetch-updates');
@@ -164,7 +170,11 @@ async function gql<T>(
 }
 
 const CONDITIONS_QUERY = /* GraphQL */ `
-  query ResolverConditions($where: ConditionWhereInput, $take: Int, $skip: Int) {
+  query ResolverConditions(
+    $where: ConditionWhereInput
+    $take: Int
+    $skip: Int
+  ) {
     conditions(where: $where, take: $take, skip: $skip) {
       id
       endTime
@@ -177,7 +187,11 @@ const CONDITIONS_QUERY = /* GraphQL */ `
 `;
 
 const PYTH_DEBUG_CONDITIONS_QUERY = /* GraphQL */ `
-  query PythDebugConditions($where: ConditionWhereInput, $take: Int, $skip: Int) {
+  query PythDebugConditions(
+    $where: ConditionWhereInput
+    $take: Int
+    $skip: Int
+  ) {
     conditions(where: $where, take: $take, skip: $skip) {
       id
       endTime
@@ -289,8 +303,16 @@ function parseMarketFromDescription(description: string): Market | null {
     const eq = part.indexOf('=');
     if (eq > 0) params[part.slice(0, eq)] = part.slice(eq + 1);
   }
-  if (!params.priceId || !params.endTime || !params.strikePrice || !params.strikeExpo) return null;
-  const priceId = (params.priceId.startsWith('0x') ? params.priceId : `0x${params.priceId}`) as Hex;
+  if (
+    !params.priceId ||
+    !params.endTime ||
+    !params.strikePrice ||
+    !params.strikeExpo
+  )
+    return null;
+  const priceId = (
+    params.priceId.startsWith('0x') ? params.priceId : `0x${params.priceId}`
+  ) as Hex;
   return {
     priceId,
     endTime: BigInt(params.endTime),
@@ -362,10 +384,7 @@ function parseLazerPayload(payloadHex: Hex): ParsedLazerPayload {
   const readU32BE = () => {
     require(4);
     const v =
-      (b[pos]! << 24) |
-      (b[pos + 1]! << 16) |
-      (b[pos + 2]! << 8) |
-      b[pos + 3]!;
+      (b[pos]! << 24) | (b[pos + 1]! << 16) | (b[pos + 2]! << 8) | b[pos + 3]!;
     pos += 4;
     // Ensure unsigned
     return v >>> 0;
@@ -433,14 +452,16 @@ function decodeEvmBinaryToHex(data: string, encoding: string | null): Hex {
   }
   if (encoding === 'base64') {
     const bytes = Buffer.from(data, 'base64');
-    return (`0x${bytes.toString('hex')}`) as Hex;
+    return `0x${bytes.toString('hex')}` as Hex;
   }
   // Fall back: try hex anyway.
   if (isHex(s)) return s as Hex;
   throw new Error(`pyth_evm_blob_unknown_encoding:${encoding}`);
 }
 
-async function recoverSignerFromLazerUpdate(update: Hex): Promise<Address | null> {
+async function recoverSignerFromLazerUpdate(
+  update: Hex
+): Promise<Address | null> {
   try {
     // Layout per fork test + upstream verifier:
     // [0:4] magic
@@ -464,21 +485,32 @@ async function recoverSignerFromLazerUpdate(update: Hex): Promise<Address | null
     const payload = sliceHex(update, payloadStart, payloadEnd);
 
     const hash = keccak256(payload);
-    const signature = (`${r}${s.slice(2)}${v.toString(16).padStart(2, '0')}`) as Hex;
+    const signature =
+      `${r}${s.slice(2)}${v.toString(16).padStart(2, '0')}` as Hex;
     return (await recoverAddress({ hash, signature })) as Address;
   } catch {
     return null;
   }
 }
 
+/** Loose shape of Pyth Lazer JSON responses for type-safe property access. */
+interface PythEvmResponse {
+  evm?: { data?: unknown; encoding?: unknown };
+  data?: { evm?: { data?: unknown; encoding?: unknown } };
+}
+
 function extractEvmBlobFromJson(json: unknown): { blob: Hex; source: string } {
-  const j = json as any;
+  const j = json as PythEvmResponse;
 
   // Common shapes observed across similar services:
   // - { evm: { data: "0x..", encoding: "hex" } }
   // - { evm: { data: ["0x.."], encoding: "hex" } }
   // - { data: { evm: { ... } } }
-  const candidates: Array<{ data: string; encoding: string | null; source: string }> = [];
+  const candidates: Array<{
+    data: string;
+    encoding: string | null;
+    source: string;
+  }> = [];
 
   const pushIfString = (val: unknown, encoding: unknown, source: string) => {
     if (typeof val === 'string') {
@@ -489,7 +521,11 @@ function extractEvmBlobFromJson(json: unknown): { blob: Hex; source: string } {
       });
     }
   };
-  const pushIfStringArray = (val: unknown, encoding: unknown, source: string) => {
+  const pushIfStringArray = (
+    val: unknown,
+    encoding: unknown,
+    source: string
+  ) => {
     if (Array.isArray(val) && val.every((x) => typeof x === 'string')) {
       for (let i = 0; i < val.length; i++) {
         candidates.push({
@@ -504,14 +540,19 @@ function extractEvmBlobFromJson(json: unknown): { blob: Hex; source: string } {
   pushIfString(j?.evm?.data, j?.evm?.encoding, 'evm.data');
   pushIfStringArray(j?.evm?.data, j?.evm?.encoding, 'evm.data');
   pushIfString(j?.data?.evm?.data, j?.data?.evm?.encoding, 'data.evm.data');
-  pushIfStringArray(j?.data?.evm?.data, j?.data?.evm?.encoding, 'data.evm.data');
+  pushIfStringArray(
+    j?.data?.evm?.data,
+    j?.data?.evm?.encoding,
+    'data.evm.data'
+  );
 
   // Fallback: scan all hex strings deep, prefer very long blobs.
   if (candidates.length === 0) {
     const hexes = findHexStringsDeep(json);
     // Filter out likely addresses / small fields.
     const big = [...new Set(hexes)].filter((h) => h.length >= 2 + 200);
-    for (const h of big) candidates.push({ data: h, encoding: 'hex', source: 'deep-scan' });
+    for (const h of big)
+      candidates.push({ data: h, encoding: 'hex', source: 'deep-scan' });
   }
 
   if (candidates.length === 0) {
@@ -523,7 +564,10 @@ function extractEvmBlobFromJson(json: unknown): { blob: Hex; source: string } {
     .map((c) => ({
       ...c,
       // keep original `data` for base64; for hex normalize prefix
-      key: c.encoding === 'base64' ? `b64:${c.data}` : `hex:${c.data.startsWith('0x') ? c.data : `0x${c.data}`}`,
+      key:
+        c.encoding === 'base64'
+          ? `b64:${c.data}`
+          : `hex:${c.data.startsWith('0x') ? c.data : `0x${c.data}`}`,
     }))
     .filter((c) => c.data.length > 0);
   const byKey = new Map<string, (typeof normalized)[number]>();
@@ -531,7 +575,9 @@ function extractEvmBlobFromJson(json: unknown): { blob: Hex; source: string } {
     const prev = byKey.get(c.key);
     if (!prev || c.data.length > prev.data.length) byKey.set(c.key, c);
   }
-  const unique = [...byKey.values()].sort((a, b) => b.data.length - a.data.length);
+  const unique = [...byKey.values()].sort(
+    (a, b) => b.data.length - a.data.length
+  );
 
   const best = unique[0]!;
   const blob = decodeEvmBinaryToHex(best.data, best.encoding);
@@ -552,7 +598,11 @@ async function fetchPythLazerEvmUpdateBlob(args: {
   const timestampUsNum = args.endTimeSec * 1_000_000;
 
   // Per guide: channel should be "real_time", "fixed_rate@200ms", or "fixed_rate@50ms".
-  const channelsToTry = ['fixed_rate@50ms', 'fixed_rate@200ms', 'real_time'] as const;
+  const channelsToTry = [
+    'fixed_rate@50ms',
+    'fixed_rate@200ms',
+    'real_time',
+  ] as const;
 
   const requestBodies: Array<Record<string, unknown>> = [];
   for (const channel of channelsToTry) {
@@ -577,8 +627,12 @@ async function fetchPythLazerEvmUpdateBlob(args: {
   // Try load balancer + instance-pinned fallbacks (pyth-lazer-0/1).
   const urlBases = [base];
   if (base.includes('pyth-lazer.dourolabs.app')) {
-    urlBases.push(base.replace('pyth-lazer.dourolabs.app', 'pyth-lazer-0.dourolabs.app'));
-    urlBases.push(base.replace('pyth-lazer.dourolabs.app', 'pyth-lazer-1.dourolabs.app'));
+    urlBases.push(
+      base.replace('pyth-lazer.dourolabs.app', 'pyth-lazer-0.dourolabs.app')
+    );
+    urlBases.push(
+      base.replace('pyth-lazer.dourolabs.app', 'pyth-lazer-1.dourolabs.app')
+    );
   }
 
   for (const b of urlBases) {
@@ -586,7 +640,10 @@ async function fetchPythLazerEvmUpdateBlob(args: {
     authVariants.push({
       label: 'no-auth',
       url: u.toString(),
-      headers: { 'content-type': 'application/json', accept: 'application/json' },
+      headers: {
+        'content-type': 'application/json',
+        accept: 'application/json',
+      },
     });
     if (args.token) {
       authVariants.push({
@@ -603,7 +660,10 @@ async function fetchPythLazerEvmUpdateBlob(args: {
       authVariants.push({
         label: 'ACCESS_TOKEN query',
         url: uTok.toString(),
-        headers: { 'content-type': 'application/json', accept: 'application/json' },
+        headers: {
+          'content-type': 'application/json',
+          accept: 'application/json',
+        },
       });
     }
   }
@@ -625,7 +685,9 @@ async function fetchPythLazerEvmUpdateBlob(args: {
         const text = await res.text();
         if (args.debug && !res.ok) {
           const channel =
-            typeof (body as any)?.channel === 'string' ? String((body as any).channel) : '(none)';
+            'channel' in body && typeof body.channel === 'string'
+              ? body.channel
+              : '(none)';
           console.log(
             `[settle:pyth][pyth-debug] ${res.status} auth=${v.label} channel=${channel} url=${v.url} resp=${text.slice(0, 200)} req=${JSON.stringify(
               body
@@ -638,7 +700,9 @@ async function fetchPythLazerEvmUpdateBlob(args: {
         try {
           json = JSON.parse(text) as unknown;
         } catch {
-          throw new Error(`Pyth Lazer non-JSON response: ${text.slice(0, 200)}`);
+          throw new Error(
+            `Pyth Lazer non-JSON response: ${text.slice(0, 200)}`
+          );
         }
 
         const { blob, source } = extractEvmBlobFromJson(json);
@@ -655,9 +719,9 @@ async function fetchPythLazerEvmUpdateBlob(args: {
   }
 
   throw new Error(
-    `Failed to fetch Pyth Lazer evm blob for feedId=${args.feedId} endTimeSec=${args.endTimeSec} timestampUs=${timestampUsNum}: ${String(
-      (lastErr as any)?.message ?? lastErr
-    )}${
+    `Failed to fetch Pyth Lazer evm blob for feedId=${args.feedId} endTimeSec=${args.endTimeSec} timestampUs=${timestampUsNum}: ${
+      lastErr instanceof Error ? lastErr.message : String(lastErr)
+    }${
       lastAttempt
         ? ` (lastAttempt auth=${lastAttempt.auth} url=${lastAttempt.url} body=${JSON.stringify(
             lastBody
@@ -674,8 +738,16 @@ async function main() {
   console.log('[settle:pyth] graphql=', args.graphqlUrl);
   console.log('[settle:pyth] chainId=', args.chainId);
   console.log('[settle:pyth] pythResolver=', args.pythResolver);
-  console.log('[settle:pyth] conditionResolver(filter)=', args.conditionResolver);
-  console.log('[settle:pyth] fetchUpdates=', args.fetchUpdates, 'pythDebug=', args.pythDebug);
+  console.log(
+    '[settle:pyth] conditionResolver(filter)=',
+    args.conditionResolver
+  );
+  console.log(
+    '[settle:pyth] fetchUpdates=',
+    args.fetchUpdates,
+    'pythDebug=',
+    args.pythDebug
+  );
   console.log('[settle:pyth] dryRun=', args.dryRun, 'wait=', args.wait);
 
   const publicClient = createPublicClient({ transport: http(args.rpcUrl) });
@@ -683,7 +755,9 @@ async function main() {
     args.dryRun || !args.privateKey
       ? null
       : createWalletClient({
-          account: privateKeyToAccount(`0x${args.privateKey.replace(/^0x/, '')}`),
+          account: privateKeyToAccount(
+            `0x${args.privateKey.replace(/^0x/, '')}`
+          ),
           chain: {
             id: args.chainId,
             name: 'custom',
@@ -730,7 +804,10 @@ async function main() {
     conditions.push(...data.conditions);
   }
 
-  console.log('[settle:pyth] ended unsettled resolver-matched conditions=', conditions.length);
+  console.log(
+    '[settle:pyth] ended unsettled resolver-matched conditions=',
+    conditions.length
+  );
 
   // If we found none, print a small debug sample to help diagnose DB/indexer mismatch.
   if (conditions.length === 0) {
@@ -760,7 +837,9 @@ async function main() {
         );
         for (const r of rows) {
           const label =
-            r.question?.trim()?.length > 0 ? r.question.trim() : r.claimStatement;
+            r.question?.trim()?.length > 0
+              ? r.question.trim()
+              : r.claimStatement;
           console.log(
             `  - condition=${r.id} endTime=${r.endTime} resolver=${r.resolver ?? 'null'} settled=${r.settled ?? 'unknown'} label=${label}`
           );
@@ -772,7 +851,7 @@ async function main() {
     } catch (e) {
       console.log(
         '[settle:pyth][debug] Failed to fetch debug PYTH conditions:',
-        String((e as any)?.message ?? e)
+        e instanceof Error ? e.message : String(e)
       );
     }
   }
@@ -790,12 +869,14 @@ async function main() {
       skippedNoDescription++;
       continue;
     }
-    const marketId = getPythMarketId(market);
+    const marketId = getPythMarketHash(market);
     marketsById.set(marketId, market);
   }
 
   if (skippedNoDescription > 0) {
-    console.log(`[settle:pyth] skipped ${skippedNoDescription} conditions without parseable PYTH_LAZER description`);
+    console.log(
+      `[settle:pyth] skipped ${skippedNoDescription} conditions without parseable PYTH_LAZER description`
+    );
   }
   console.log('[settle:pyth] unique markets=', marketsById.size);
 
@@ -842,9 +923,9 @@ async function main() {
       });
     } catch (e) {
       console.warn(
-        `[settle:pyth] skip market (failed to fetch update): market=${marketId} feedId=${feedId} endTime=${endTimeSec} reason=${String(
-          (e as any)?.message ?? e
-        )}`
+        `[settle:pyth] skip market (failed to fetch update): market=${marketId} feedId=${feedId} endTime=${endTimeSec} reason=${
+          e instanceof Error ? e.message : String(e)
+        }`
       );
       continue;
     }
@@ -878,20 +959,24 @@ async function main() {
         throw new Error('preflight_not_second_aligned');
       }
       if (publishTimeSec !== endTimeSec) {
-        throw new Error(`preflight_publish_time_mismatch:${publishTimeSec}!=${endTimeSec}`);
+        throw new Error(
+          `preflight_publish_time_mismatch:${publishTimeSec}!=${endTimeSec}`
+        );
       }
       if (typeof expo !== 'number') {
         throw new Error('preflight_missing_exponent');
       }
       if (expo !== market.strikeExpo) {
-        throw new Error(`preflight_exponent_mismatch:${expo}!=${market.strikeExpo}`);
+        throw new Error(
+          `preflight_exponent_mismatch:${expo}!=${market.strikeExpo}`
+        );
       }
     } catch (e) {
       const recovered = await recoverSignerFromLazerUpdate(blob);
       console.warn(
-        `[settle:pyth] skip market (update preflight failed): market=${marketId} recoveredSigner=${recovered ?? 'unknown'} reason=${String(
-          (e as any)?.message ?? e
-        )}`
+        `[settle:pyth] skip market (update preflight failed): market=${marketId} recoveredSigner=${recovered ?? 'unknown'} reason=${
+          e instanceof Error ? e.message : String(e)
+        }`
       );
       continue;
     }
@@ -922,7 +1007,12 @@ async function main() {
     }
   }
 
-  console.log('[settle:pyth] done attempted=', attempted, 'submitted=', submitted);
+  console.log(
+    '[settle:pyth] done attempted=',
+    attempted,
+    'submitted=',
+    submitted
+  );
 }
 
 main().catch((e) => {

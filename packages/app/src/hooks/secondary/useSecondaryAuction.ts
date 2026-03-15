@@ -148,10 +148,9 @@ export function useSecondaryAuctionStart(
             message: typedData.message,
           });
         }
-      } catch (e: any) {
+      } catch (e: unknown) {
         setIsSubmitting(false);
-        const error =
-          e instanceof Error ? e : new Error(String(e?.message || e));
+        const error = e instanceof Error ? e : new Error(String(e));
         onSignatureRejected?.(error);
         return {
           success: false,
@@ -223,11 +222,11 @@ export function useSecondaryAuctionStart(
         }
 
         return { success: false, error: 'No auction ID returned' };
-      } catch (e: any) {
+      } catch (e: unknown) {
         setIsSubmitting(false);
         return {
           success: false,
-          error: `Failed to start auction: ${e?.message || 'Unknown error'}`,
+          error: `Failed to start auction: ${e instanceof Error ? e.message : 'Unknown error'}`,
         };
       }
     },

@@ -1,6 +1,6 @@
-import type { Meta, StoryObj } from "@storybook/react-webpack5";
-import { useState } from "react";
-import { ArrowUpDown, MoreHorizontal, Edit, Trash2 } from "lucide-react";
+import type { Meta, StoryObj } from '@storybook/react-webpack5';
+import { useState } from 'react';
+import { ArrowUpDown, MoreHorizontal, Edit, Trash2 } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -10,22 +10,22 @@ import {
   TableHeader,
   TableRow,
   TableFooter,
-} from "../../components/ui/table";
-import { Badge } from "../../components/ui/badge";
-import { Button } from "../../components/ui/button";
-import { Checkbox } from "../../components/ui/checkbox";
-import { Input } from "../../components/ui/input";
+} from '../../components/ui/table';
+import { Badge } from '../../components/ui/badge';
+import { Button } from '../../components/ui/button';
+import { Checkbox } from '../../components/ui/checkbox';
+import { Input } from '../../components/ui/input';
 
 const meta: Meta<typeof Table> = {
-  title: "UI/Table",
+  title: 'UI/Table',
   component: Table,
   parameters: {
-    layout: "centered",
+    layout: 'centered',
   },
-  tags: ["autodocs"],
+  tags: ['autodocs'],
   argTypes: {
     className: {
-      control: { type: "text" },
+      control: { type: 'text' },
     },
   },
 };
@@ -35,77 +35,77 @@ type Story = StoryObj;
 
 const invoices = [
   {
-    invoice: "INV001",
-    paymentStatus: "Paid",
-    totalAmount: "$250.00",
-    paymentMethod: "Credit Card",
+    invoice: 'INV001',
+    paymentStatus: 'Paid',
+    totalAmount: '$250.00',
+    paymentMethod: 'Credit Card',
   },
   {
-    invoice: "INV002",
-    paymentStatus: "Pending",
-    totalAmount: "$150.00",
-    paymentMethod: "PayPal",
+    invoice: 'INV002',
+    paymentStatus: 'Pending',
+    totalAmount: '$150.00',
+    paymentMethod: 'PayPal',
   },
   {
-    invoice: "INV003",
-    paymentStatus: "Unpaid",
-    totalAmount: "$350.00",
-    paymentMethod: "Bank Transfer",
+    invoice: 'INV003',
+    paymentStatus: 'Unpaid',
+    totalAmount: '$350.00',
+    paymentMethod: 'Bank Transfer',
   },
   {
-    invoice: "INV004",
-    paymentStatus: "Paid",
-    totalAmount: "$450.00",
-    paymentMethod: "Credit Card",
+    invoice: 'INV004',
+    paymentStatus: 'Paid',
+    totalAmount: '$450.00',
+    paymentMethod: 'Credit Card',
   },
   {
-    invoice: "INV005",
-    paymentStatus: "Paid",
-    totalAmount: "$550.00",
-    paymentMethod: "PayPal",
+    invoice: 'INV005',
+    paymentStatus: 'Paid',
+    totalAmount: '$550.00',
+    paymentMethod: 'PayPal',
   },
   {
-    invoice: "INV006",
-    paymentStatus: "Pending",
-    totalAmount: "$200.00",
-    paymentMethod: "Bank Transfer",
+    invoice: 'INV006',
+    paymentStatus: 'Pending',
+    totalAmount: '$200.00',
+    paymentMethod: 'Bank Transfer',
   },
   {
-    invoice: "INV007",
-    paymentStatus: "Unpaid",
-    totalAmount: "$300.00",
-    paymentMethod: "Credit Card",
+    invoice: 'INV007',
+    paymentStatus: 'Unpaid',
+    totalAmount: '$300.00',
+    paymentMethod: 'Credit Card',
   },
 ];
 
 const users = [
   {
-    id: "1",
-    name: "John Doe",
-    email: "john@example.com",
-    role: "Admin",
-    status: "Active",
+    id: '1',
+    name: 'John Doe',
+    email: 'john@example.com',
+    role: 'Admin',
+    status: 'Active',
   },
   {
-    id: "2",
-    name: "Jane Smith",
-    email: "jane@example.com",
-    role: "User",
-    status: "Active",
+    id: '2',
+    name: 'Jane Smith',
+    email: 'jane@example.com',
+    role: 'User',
+    status: 'Active',
   },
   {
-    id: "3",
-    name: "Bob Johnson",
-    email: "bob@example.com",
-    role: "User",
-    status: "Inactive",
+    id: '3',
+    name: 'Bob Johnson',
+    email: 'bob@example.com',
+    role: 'User',
+    status: 'Inactive',
   },
   {
-    id: "4",
-    name: "Alice Brown",
-    email: "alice@example.com",
-    role: "Admin",
-    status: "Active",
+    id: '4',
+    name: 'Alice Brown',
+    email: 'alice@example.com',
+    role: 'Admin',
+    status: 'Active',
   },
 ];
 
@@ -128,11 +128,11 @@ export const Default: Story = {
             <TableCell>
               <Badge
                 variant={
-                  invoice.paymentStatus === "Paid"
-                    ? "default"
-                    : invoice.paymentStatus === "Pending"
-                      ? "secondary"
-                      : "destructive"
+                  invoice.paymentStatus === 'Paid'
+                    ? 'default'
+                    : invoice.paymentStatus === 'Pending'
+                      ? 'secondary'
+                      : 'destructive'
                 }
               >
                 {invoice.paymentStatus}
@@ -166,11 +166,11 @@ export const WithFooter: Story = {
             <TableCell>
               <Badge
                 variant={
-                  invoice.paymentStatus === "Paid"
-                    ? "default"
-                    : invoice.paymentStatus === "Pending"
-                      ? "secondary"
-                      : "destructive"
+                  invoice.paymentStatus === 'Paid'
+                    ? 'default'
+                    : invoice.paymentStatus === 'Pending'
+                      ? 'secondary'
+                      : 'destructive'
                 }
               >
                 {invoice.paymentStatus}
@@ -216,13 +216,13 @@ export const WithActions: Story = {
             <TableCell className="font-medium">{user.name}</TableCell>
             <TableCell>{user.email}</TableCell>
             <TableCell>
-              <Badge variant={user.role === "Admin" ? "default" : "secondary"}>
+              <Badge variant={user.role === 'Admin' ? 'default' : 'secondary'}>
                 {user.role}
               </Badge>
             </TableCell>
             <TableCell>
               <Badge
-                variant={user.status === "Active" ? "default" : "destructive"}
+                variant={user.status === 'Active' ? 'default' : 'destructive'}
               >
                 {user.status}
               </Badge>
@@ -243,7 +243,7 @@ export const Sortable: Story = {
   render: () => {
     const [sortConfig, setSortConfig] = useState<{
       key: string;
-      direction: "asc" | "desc";
+      direction: 'asc' | 'desc';
     } | null>(null);
 
     const sortedInvoices = [...invoices].sort((a, b) => {
@@ -252,8 +252,8 @@ export const Sortable: Story = {
       const aValue = a[sortConfig.key as keyof typeof a];
       const bValue = b[sortConfig.key as keyof typeof b];
 
-      if (aValue < bValue) return sortConfig.direction === "asc" ? -1 : 1;
-      if (aValue > bValue) return sortConfig.direction === "asc" ? 1 : -1;
+      if (aValue < bValue) return sortConfig.direction === 'asc' ? -1 : 1;
+      if (aValue > bValue) return sortConfig.direction === 'asc' ? 1 : -1;
       return 0;
     });
 
@@ -262,10 +262,10 @@ export const Sortable: Story = {
         if (current?.key === key) {
           return {
             key,
-            direction: current.direction === "asc" ? "desc" : "asc",
+            direction: current.direction === 'asc' ? 'desc' : 'asc',
           };
         }
-        return { key, direction: "asc" };
+        return { key, direction: 'asc' };
       });
     };
 
@@ -277,7 +277,7 @@ export const Sortable: Story = {
             <TableHead className="w-[100px]">
               <Button
                 variant="ghost"
-                onClick={() => handleSort("invoice")}
+                onClick={() => handleSort('invoice')}
                 className="h-auto p-0 font-medium"
               >
                 Invoice
@@ -287,7 +287,7 @@ export const Sortable: Story = {
             <TableHead>
               <Button
                 variant="ghost"
-                onClick={() => handleSort("paymentStatus")}
+                onClick={() => handleSort('paymentStatus')}
                 className="h-auto p-0 font-medium"
               >
                 Status
@@ -297,7 +297,7 @@ export const Sortable: Story = {
             <TableHead>
               <Button
                 variant="ghost"
-                onClick={() => handleSort("paymentMethod")}
+                onClick={() => handleSort('paymentMethod')}
                 className="h-auto p-0 font-medium"
               >
                 Method
@@ -307,7 +307,7 @@ export const Sortable: Story = {
             <TableHead className="text-right">
               <Button
                 variant="ghost"
-                onClick={() => handleSort("totalAmount")}
+                onClick={() => handleSort('totalAmount')}
                 className="h-auto p-0 font-medium"
               >
                 Amount
@@ -323,11 +323,11 @@ export const Sortable: Story = {
               <TableCell>
                 <Badge
                   variant={
-                    invoice.paymentStatus === "Paid"
-                      ? "default"
-                      : invoice.paymentStatus === "Pending"
-                        ? "secondary"
-                        : "destructive"
+                    invoice.paymentStatus === 'Paid'
+                      ? 'default'
+                      : invoice.paymentStatus === 'Pending'
+                        ? 'secondary'
+                        : 'destructive'
                   }
                 >
                   {invoice.paymentStatus}
@@ -347,7 +347,7 @@ export const Sortable: Story = {
 
 export const WithSearch: Story = {
   render: () => {
-    const [searchTerm, setSearchTerm] = useState("");
+    const [searchTerm, setSearchTerm] = useState('');
 
     const filteredInvoices = invoices.filter(
       (invoice) =>
@@ -382,11 +382,11 @@ export const WithSearch: Story = {
                 <TableCell>
                   <Badge
                     variant={
-                      invoice.paymentStatus === "Paid"
-                        ? "default"
-                        : invoice.paymentStatus === "Pending"
-                          ? "secondary"
-                          : "destructive"
+                      invoice.paymentStatus === 'Paid'
+                        ? 'default'
+                        : invoice.paymentStatus === 'Pending'
+                          ? 'secondary'
+                          : 'destructive'
                     }
                   >
                     {invoice.paymentStatus}
@@ -423,17 +423,17 @@ export const CustomStyling: Story = {
         {invoices.slice(0, 3).map((invoice, index) => (
           <TableRow
             key={invoice.invoice}
-            className={index % 2 === 0 ? "bg-muted/20" : ""}
+            className={index % 2 === 0 ? 'bg-muted/20' : ''}
           >
             <TableCell className="font-medium">{invoice.invoice}</TableCell>
             <TableCell>
               <Badge
                 variant={
-                  invoice.paymentStatus === "Paid"
-                    ? "default"
-                    : invoice.paymentStatus === "Pending"
-                      ? "secondary"
-                      : "destructive"
+                  invoice.paymentStatus === 'Paid'
+                    ? 'default'
+                    : invoice.paymentStatus === 'Pending'
+                      ? 'secondary'
+                      : 'destructive'
                 }
               >
                 {invoice.paymentStatus}
@@ -471,11 +471,11 @@ export const Compact: Story = {
             <TableCell className="py-2">
               <Badge
                 variant={
-                  invoice.paymentStatus === "Paid"
-                    ? "default"
-                    : invoice.paymentStatus === "Pending"
-                      ? "secondary"
-                      : "destructive"
+                  invoice.paymentStatus === 'Paid'
+                    ? 'default'
+                    : invoice.paymentStatus === 'Pending'
+                      ? 'secondary'
+                      : 'destructive'
                 }
                 className="text-xs"
               >
@@ -515,11 +515,11 @@ export const WithRowActions: Story = {
             <TableCell>
               <Badge
                 variant={
-                  invoice.paymentStatus === "Paid"
-                    ? "default"
-                    : invoice.paymentStatus === "Pending"
-                      ? "secondary"
-                      : "destructive"
+                  invoice.paymentStatus === 'Paid'
+                    ? 'default'
+                    : invoice.paymentStatus === 'Pending'
+                      ? 'secondary'
+                      : 'destructive'
                 }
               >
                 {invoice.paymentStatus}

@@ -32,4 +32,3 @@ export const config = cleanEnv(process.env, {
 
 export const isProd = config.NODE_ENV === 'production';
 export const isDev = config.NODE_ENV === 'development';
-

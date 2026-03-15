@@ -32,6 +32,11 @@
       "import": "./dist/auction/escrowSigning.mjs",
       "require": "./dist/auction/escrowSigning.js"
     },
+    "./auction/simulate": {
+      "types": "./dist/auction/simulate.d.ts",
+      "import": "./dist/auction/simulate.mjs",
+      "require": "./dist/auction/simulate.js"
+    },
     "./auction/secondarySigning": {
       "types": "./dist/auction/secondarySigning.d.ts",
       "import": "./dist/auction/secondarySigning.mjs",
@@ -88,6 +93,21 @@
       "import": "./dist/contracts/index.mjs",
       "require": "./dist/contracts/index.js"
     },
+    "./auction/validation": {
+      "types": "./dist/auction/validation.d.ts",
+      "import": "./dist/auction/validation.mjs",
+      "require": "./dist/auction/validation.js"
+    },
+    "./auction/bidPreprocessor": {
+      "types": "./dist/auction/bidPreprocessor.d.ts",
+      "import": "./dist/auction/bidPreprocessor.mjs",
+      "require": "./dist/auction/bidPreprocessor.js"
+    },
+    "./auction/initiate": {
+      "types": "./dist/auction/initiate.d.ts",
+      "import": "./dist/auction/initiate.mjs",
+      "require": "./dist/auction/initiate.js"
+    },
     "./session": {
       "types": "./dist/session/index.d.ts",
       "import": "./dist/session/index.mjs",
@@ -97,10 +117,11 @@
   },
   "scripts": {
     "prepare": "pnpm run build:lib",
-    "dev": "tsup index.ts auction/encoding.ts auction/escrowEncoding.ts auction/escrowSigning.ts auction/secondarySigning.ts relayer/escrowAuctionWs.ts abis/index.ts constants/index.ts contracts/index.ts contracts/addresses.ts queries/index.ts queries/client/graphqlClient.ts types/index.ts types/escrow.ts types/secondary.ts types/graphql.ts session/index.ts --format cjs,esm --dts --watch",
-    "build:lib": "tsup index.ts auction/encoding.ts auction/escrowEncoding.ts auction/escrowSigning.ts auction/secondarySigning.ts relayer/escrowAuctionWs.ts abis/index.ts constants/index.ts contracts/index.ts contracts/addresses.ts queries/index.ts queries/client/graphqlClient.ts types/index.ts types/escrow.ts types/secondary.ts types/graphql.ts session/index.ts --format cjs,esm --dts --tsconfig tsconfig.build.json",
+    "dev": "tsup index.ts auction/encoding.ts auction/escrowEncoding.ts auction/escrowSigning.ts auction/simulate.ts auction/secondarySigning.ts auction/validation.ts auction/bidPreprocessor.ts auction/initiate.ts relayer/escrowAuctionWs.ts abis/index.ts constants/index.ts contracts/index.ts contracts/addresses.ts queries/index.ts queries/client/graphqlClient.ts types/index.ts types/escrow.ts types/secondary.ts types/graphql.ts session/index.ts --format cjs,esm --dts --watch",
+    "build:lib": "tsup index.ts auction/encoding.ts auction/escrowEncoding.ts auction/escrowSigning.ts auction/simulate.ts auction/secondarySigning.ts auction/validation.ts auction/bidPreprocessor.ts auction/initiate.ts relayer/escrowAuctionWs.ts abis/index.ts constants/index.ts contracts/index.ts contracts/addresses.ts queries/index.ts queries/client/graphqlClient.ts types/index.ts types/escrow.ts types/secondary.ts types/graphql.ts session/index.ts --format cjs,esm --dts --tsconfig tsconfig.build.json",
     "build": "pnpm run build:lib",
     "lint": "eslint . --quiet",
+    "lint:fix": "eslint . --fix --quiet && pnpm format",
     "type-check": "tsc --noEmit",
     "settle:pyth": "tsx scripts/settlePythMarkets.ts",
     "format": "prettier --write .",
@@ -140,13 +161,14 @@
     "@zerodev/sdk": "5.4.5",
     "eslint": "9.31.0",
     "eslint-plugin-import": "2.32.0",
+    "prettier": "3.3.3",
     "tsup": "8.5.0",
     "tsx": "4.19.2",
     "typescript": "5.8.3",
     "typescript-eslint": "8.21.0",
-    "viem": "2.23.5",
-    "wagmi": "2.14.16",
-    "vitest": "^3.0.0"
+    "viem": "2.47.2",
+    "wagmi": "2.19.5",
+    "vitest": "3.0.0"
   },
   "peerDependencies": {
     "@tanstack/react-query": "5.x",
@@ -154,12 +176,12 @@
     "@zerodev/sdk": "5.4.5",
     "react": ">=18 || 19",
     "react-dom": ">=18 || 19",
-    "viem": "2.23.5",
-    "wagmi": "2.14.16",
+    "viem": "2.47.2",
+    "wagmi": "2.19.5",
     "ws": "8.18.0"
   },
   "engines": {
-    "node": ">=20.14.x",
+    "node": ">=22.x",
     "pnpm": "9.x"
   }
 }

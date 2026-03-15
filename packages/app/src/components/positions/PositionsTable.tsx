@@ -24,7 +24,6 @@ import {
   type ConditionsMap,
 } from '~/components/positions/toPickLegs';
 import { COLLATERAL_SYMBOLS, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
-import { OutcomeSide } from '@sapience/sdk/types';
 import {
   usePositionBalances,
   usePositionBalancesByConditionId,
@@ -129,13 +128,18 @@ function PositionRow({
   // Claim / redeem state
   const [isRedeeming, setIsRedeeming] = React.useState(false);
   const [redeemed, setRedeemed] = React.useState(false);
-  const { settleAndRedeem } = useEscrowWrite({ chainId: position.chainId });
+  const escrowAddress = (pickConfig?.marketAddress as Address) ?? undefined;
+  const { settleAndRedeem } = useEscrowWrite({
+    chainId: position.chainId,
+    escrowAddress,
+  });
 
   const { isLoading: isLoadingClaimable } = useClaimableAmount({
     pickConfigId: pickConfig?.id as `0x${string}`,
     tokenAddress: position.tokenAddress as Address,
     amount: BigInt(position.balance),
     chainId: position.chainId,
+    contractAddress: escrowAddress,
     enabled:
       isResolved &&
       holderWon &&
@@ -410,6 +414,18 @@ export default function PositionsTable({
     getDefaultPositionsFilterState
   );
 
+  // Derive server-side `settled` filter from status selection.
+  // Only 'active' → settled=false; only 'won'/'lost' → settled=true; mixed → undefined
+  const serverSettled = React.useMemo(() => {
+    const s = filters.status;
+    if (s.length === 0 || s.length === 3) return undefined;
+    const hasActive = s.includes('active');
+    const hasResolved = s.includes('won') || s.includes('lost');
+    if (hasActive && !hasResolved) return false;
+    if (hasResolved && !hasActive) return true;
+    return undefined;
+  }, [filters.status]);
+
   // Fetch position balances for this user
   const {
     data: accountPositions,
@@ -419,6 +435,7 @@ export default function PositionsTable({
   } = usePositionBalances({
     holder: account,
     chainId,
+    settled: serverSettled,
   });
 
   // Fetch position balances for a condition (all holders)
@@ -429,14 +446,13 @@ export default function PositionsTable({
     refetch: conditionRefetch,
   } = usePositionBalancesByConditionId({
     conditionId: !account ? conditionId : undefined,
+    settled: serverSettled,
   });
 
-  const allPositions = account ? accountPositions : conditionPositions;
+  const positions = account ? accountPositions : conditionPositions;
   const isLoading = account ? accountLoading : conditionLoading;
   const error = account ? accountError : conditionError;
   const refetch = account ? accountRefetch : conditionRefetch;
-
-  const positions = allPositions;
 
   // Collect all unique conditionIds to fetch category data
   const conditionIds = React.useMemo(() => {
@@ -525,7 +541,8 @@ export default function PositionsTable({
   const shareImageSrc = React.useMemo(() => {
     if (!sharePosition) return null;
     const { pickConfig, isPredictorToken } = sharePosition;
-    const picks = pickConfig?.picks ?? [];
+    const rawPicks = pickConfig?.picks ?? [];
+    const resolvedPicks = toPicks(rawPicks, isPredictorToken, conditionsMap);
 
     const wager = parseFloat(
       formatEther(BigInt(sharePosition.userCollateral || '0'))
@@ -542,18 +559,8 @@ export default function PositionsTable({
       qp.set('anti', '1');
     }
 
-    for (const pick of picks) {
-      const condition = conditionsMap.get(pick.conditionId);
-      const question =
-        condition?.question ?? condition?.shortName ?? pick.conditionId;
-      const choice = isPredictorToken
-        ? (pick.predictedOutcome as OutcomeSide) === OutcomeSide.YES
-          ? 'Yes'
-          : 'No'
-        : (pick.predictedOutcome as OutcomeSide) === OutcomeSide.YES
-          ? 'No'
-          : 'Yes';
-      qp.append('leg', `${question}|${choice}`);
+    for (const pick of resolvedPicks) {
+      qp.append('leg', `${pick.question}|${pick.choice}`);
     }
 
     return `/og/prediction?${qp.toString()}`;

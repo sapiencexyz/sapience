@@ -328,7 +328,9 @@ class PositionTokenTransferIndexer implements IIndexer {
     if (this.blockCreated > 0n) return this.blockCreated - 1n;
 
     // No blockCreated in SDK config — binary search for the deploy date
-    const startBlock = await this.findBlockByTimestamp(APPROXIMATE_DEPLOY_TIMESTAMP);
+    const startBlock = await this.findBlockByTimestamp(
+      APPROXIMATE_DEPLOY_TIMESTAMP
+    );
     console.log(
       `[TransferIndexer:${this.chainId}] No cursor found, estimated deploy block ${startBlock}`
     );

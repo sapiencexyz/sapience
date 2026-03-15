@@ -11,7 +11,9 @@ export type PredictionChoiceBadgeProps = {
 };
 
 function normalizeChoice(choice: string): PredictionChoice | null {
-  const c = String(choice || '').trim().toUpperCase();
+  const c = String(choice || '')
+    .trim()
+    .toUpperCase();
   if (c === 'YES' || c === 'NO' || c === 'OVER' || c === 'UNDER') return c;
   // Support longer labels like "OVER $123.45" while preserving styling semantics.
   if (c.startsWith('YES')) return 'YES';
@@ -29,12 +31,18 @@ export function PredictionChoiceBadge({
   choice,
   className,
 }: PredictionChoiceBadgeProps) {
-  const rawLabel = String(choice || '').trim().toUpperCase();
+  const rawLabel = String(choice || '')
+    .trim()
+    .toUpperCase();
   const normalized = normalizeChoice(rawLabel);
   const label = rawLabel.length > 0 ? rawLabel : '—';
   const positive = normalized ? isPositive(normalized) : false;
   const compact =
-    normalized !== null && (label === 'YES' || label === 'NO' || label === 'OVER' || label === 'UNDER');
+    normalized !== null &&
+    (label === 'YES' ||
+      label === 'NO' ||
+      label === 'OVER' ||
+      label === 'UNDER');
 
   return (
     <Badge
@@ -54,5 +62,3 @@ export function PredictionChoiceBadge({
     </Badge>
   );
 }
-
-

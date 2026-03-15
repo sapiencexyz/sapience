@@ -83,7 +83,7 @@ contract PredictionMarketEscrowDustAudit is Test {
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = IV2Types.Pick({
             conditionResolver: address(resolver),
-            conditionId: CONDITION_ID,
+            conditionId: abi.encode(CONDITION_ID),
             predictedOutcome: IV2Types.OutcomeSide.YES
         });
         return picks;

@@ -73,7 +73,7 @@ const ConditionForecastForm: React.FC<ConditionForecastFormProps> = ({
   };
 
   return (
-    <FormProvider {...(methods as any)}>
+    <FormProvider {...methods}>
       <form onSubmit={methods.handleSubmit(handleSubmit)} className="space-y-3">
         <YesNoPredict disabled={disabled || isAttesting} />
 

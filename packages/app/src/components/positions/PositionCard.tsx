@@ -92,7 +92,11 @@ export default function PositionCard({
   const isResolved = pickConfig?.resolved ?? false;
   const result = pickConfig?.result ?? 'UNRESOLVED';
 
-  const { settleAndRedeem } = useEscrowWrite({ chainId: position.chainId });
+  const escrowAddress = (pickConfig?.marketAddress as Address) ?? undefined;
+  const { settleAndRedeem } = useEscrowWrite({
+    chainId: position.chainId,
+    escrowAddress,
+  });
 
   // Determine if this position is a winner
   const isWinner =
@@ -108,6 +112,7 @@ export default function PositionCard({
       tokenAddress: position.tokenAddress as Address,
       amount: BigInt(position.balance),
       chainId: position.chainId,
+      contractAddress: escrowAddress,
       enabled: isResolved && BigInt(position.balance) > 0n,
     }
   );

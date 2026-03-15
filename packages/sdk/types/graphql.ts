@@ -371,6 +371,7 @@ export type CollateralBalanceSnapshotType = {
   atBlock: Scalars['Int']['output'];
   balance: Scalars['String']['output'];
   index: Scalars['Int']['output'];
+  timestamp?: Maybe<Scalars['DateTimeISO']['output']>;
 };
 
 export type CollateralBalanceType = {
@@ -387,6 +388,7 @@ export type CollateralTransferType = {
   chainId: Scalars['Int']['output'];
   from: Scalars['String']['output'];
   id: Scalars['Int']['output'];
+  timestamp: Scalars['DateTimeISO']['output'];
   to: Scalars['String']['output'];
   transactionHash: Scalars['String']['output'];
   value: Scalars['String']['output'];
@@ -1279,6 +1281,23 @@ export type Prediction = {
   settledAt?: Maybe<Scalars['Int']['output']>;
 };
 
+/** Time-bucketed prediction count with outcome breakdown, bucketed by creation time */
+export type PredictionCountDataPoint = {
+  __typename?: 'PredictionCountDataPoint';
+  /** Predictions lost in this bucket */
+  lost: Scalars['Int']['output'];
+  /** Predictions settled as non-decisive in this bucket */
+  nonDecisive: Scalars['Int']['output'];
+  /** Predictions still pending in this bucket */
+  pending: Scalars['Int']['output'];
+  /** Unix epoch timestamp (seconds) for the start of this bucket */
+  timestamp: Scalars['Int']['output'];
+  /** Total predictions created in this bucket */
+  total: Scalars['Int']['output'];
+  /** Predictions won in this bucket */
+  won: Scalars['Int']['output'];
+};
+
 /** Field to sort predictions by */
 export type PredictionSortField =
   | 'CREATED_AT'
@@ -1331,6 +1350,8 @@ export type Query = {
   accountBalance: Array<BalanceDataPoint>;
   /** Time-bucketed profit and loss for a single address with cumulative tracking */
   accountPnl: Array<PnlDataPoint>;
+  /** Time-bucketed prediction count with outcome breakdown for a single address, bucketed by creation time */
+  accountPredictionCount: Array<PredictionCountDataPoint>;
   /** Profit rank and total PnL for a single address relative to all participants */
   accountProfitRank: ProfitRank;
   /** Total lifetime trading volume in wei for the given address across all prediction types */
@@ -1356,7 +1377,7 @@ export type Query = {
   pickConfiguration?: Maybe<PickConfiguration>;
   /** Paginated list of pick configurations, filterable by chain, resolution status, and result */
   pickConfigurations: Array<PickConfiguration>;
-  /** Paginated list of token position balances, filterable by holder, condition, chain, or pick config */
+  /** Paginated list of token position balances, filterable by holder, condition, chain, pick config, settlement, date range, collateral range, and won/lost status */
   positions: Array<Position>;
   /** Look up a single prediction by its on-chain prediction ID */
   prediction?: Maybe<Prediction>;
@@ -1402,6 +1423,14 @@ export type QueryAccountBalanceArgs = {
 
 
 export type QueryAccountPnlArgs = {
+  address: Scalars['String']['input'];
+  from?: InputMaybe<Scalars['DateTimeISO']['input']>;
+  interval: TimeInterval;
+  to?: InputMaybe<Scalars['DateTimeISO']['input']>;
+};
+
+
+export type QueryAccountPredictionCountArgs = {
   address: Scalars['String']['input'];
   from?: InputMaybe<Scalars['DateTimeISO']['input']>;
   interval: TimeInterval;
@@ -1540,9 +1569,16 @@ export type QueryPickConfigurationsArgs = {
 
 export type QueryPositionsArgs = {
   chainId?: InputMaybe<Scalars['Int']['input']>;
+  collateralMax?: InputMaybe<Scalars['String']['input']>;
+  collateralMin?: InputMaybe<Scalars['String']['input']>;
   conditionId?: InputMaybe<Scalars['String']['input']>;
+  endsAtMax?: InputMaybe<Scalars['Int']['input']>;
+  endsAtMin?: InputMaybe<Scalars['Int']['input']>;
   holder?: InputMaybe<Scalars['String']['input']>;
+  holderWon?: InputMaybe<Scalars['Boolean']['input']>;
   pickConfigId?: InputMaybe<Scalars['String']['input']>;
+  result?: InputMaybe<SettlementResult>;
+  settled?: InputMaybe<Scalars['Boolean']['input']>;
   skip?: Scalars['Int']['input'];
   take?: Scalars['Int']['input'];
 };

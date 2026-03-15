@@ -1,17 +1,15 @@
 import { decodeAbiParameters, type Address } from 'viem';
 import {
-  pythResolver,
-  umaResolver,
-  lzPMResolver,
-  lzUmaResolver,
-  predictionMarketLZConditionalTokensResolver,
+  pythConditionResolver,
+  conditionalTokensConditionResolver,
   manualConditionResolver,
 } from '@sapience/sdk/contracts';
 import { OutcomeSide } from '@sapience/sdk/types';
+import { getPythMarketId } from '@sapience/sdk';
 import type { Pick } from '@sapience/sdk/types';
 
-export type UmaDecodedOutcome = {
-  kind: 'uma';
+export type ConditionDecodedOutcome = {
+  kind: 'condition';
   marketId: `0x${string}`;
   prediction: boolean;
 };
@@ -27,7 +25,7 @@ export type PythDecodedOutcome = {
 };
 
 export type DecodedOutcomes =
-  | { kind: 'uma'; outcomes: UmaDecodedOutcome[] }
+  | { kind: 'condition'; outcomes: ConditionDecodedOutcome[] }
   | { kind: 'pyth'; outcomes: PythDecodedOutcome[] }
   | { kind: 'unknown'; outcomes: [] };
 
@@ -38,23 +36,17 @@ function normalizeAddress(value: unknown): string | null {
   return s.toLowerCase();
 }
 
-const UMA_RESOLVER_SET = new Set<string>(
+const CONDITION_RESOLVER_SET = new Set<string>(
   [
-    ...Object.values(umaResolver).map((v) => v?.address),
-    ...Object.values(lzPMResolver).map((v) => v?.address),
-    ...Object.values(lzUmaResolver).map((v) => v?.address),
-    ...Object.values(predictionMarketLZConditionalTokensResolver).map(
-      (v) => v?.address
-    ),
-    // Escrow resolvers that use the same encoding format as UMA
+    ...Object.values(conditionalTokensConditionResolver).map((v) => v?.address),
     ...Object.values(manualConditionResolver).map((v) => v?.address),
   ]
     .filter(Boolean)
     .map((a) => String(a).toLowerCase())
 );
 
-const PYTH_RESOLVER_SET = new Set<string>(
-  Object.values(pythResolver)
+export const PYTH_RESOLVER_SET = new Set<string>(
+  Object.values(pythConditionResolver)
     .map((v) => v?.address)
     .filter(Boolean)
     .map((a) => String(a).toLowerCase())
@@ -92,7 +84,7 @@ export function decodeAuctionPredictedOutcomes(params: {
         encoded
       ) as unknown;
       const decodedArr = Array.isArray(decodedUnknown)
-        ? ((decodedUnknown as any)[0] as Array<{
+        ? (decodedUnknown[0] as Array<{
             priceId: `0x${string}`;
             endTime: bigint;
             strikePrice: bigint;
@@ -113,7 +105,7 @@ export function decodeAuctionPredictedOutcomes(params: {
       return { kind: 'pyth', outcomes };
     }
 
-    if (!resolverAddr || UMA_RESOLVER_SET.has(resolverAddr)) {
+    if (!resolverAddr || CONDITION_RESOLVER_SET.has(resolverAddr)) {
       const decodedUnknown = decodeAbiParameters(
         [
           {
@@ -127,17 +119,19 @@ export function decodeAuctionPredictedOutcomes(params: {
         encoded
       ) as unknown;
       const decodedArr = Array.isArray(decodedUnknown)
-        ? ((decodedUnknown as any)[0] as Array<{
+        ? (decodedUnknown[0] as Array<{
             marketId: `0x${string}`;
             prediction: boolean;
           }>)
         : [];
-      const outcomes: UmaDecodedOutcome[] = (decodedArr || []).map((o) => ({
-        kind: 'uma',
-        marketId: o.marketId,
-        prediction: Boolean(o.prediction),
-      }));
-      return { kind: 'uma', outcomes };
+      const outcomes: ConditionDecodedOutcome[] = (decodedArr || []).map(
+        (o) => ({
+          kind: 'condition',
+          marketId: o.marketId,
+          prediction: Boolean(o.prediction),
+        })
+      );
+      return { kind: 'condition', outcomes };
     }
   } catch {
     // fall through
@@ -185,7 +179,7 @@ export function decodedOutcomesToPicks(
   decoded: DecodedOutcomes,
   resolverAddress: Address
 ): Pick[] {
-  if (decoded.kind === 'uma') {
+  if (decoded.kind === 'condition') {
     return decoded.outcomes.map((o) => ({
       conditionResolver: resolverAddress,
       conditionId: o.marketId,
@@ -193,11 +187,13 @@ export function decodedOutcomesToPicks(
     }));
   }
 
-  // Pyth outcomes don't map directly to escrow picks in the same way
-  // For now, return empty - Pyth uses different resolver logic
   if (decoded.kind === 'pyth') {
-    console.warn('Pyth outcomes not yet supported for pick conversion');
-    return [];
+    return decoded.outcomes.map((o) => ({
+      conditionResolver: resolverAddress,
+      conditionId: getPythMarketId(o),
+      // On-chain convention: Over→[1,0]→YES=0, Under→[0,1]→NO=1
+      predictedOutcome: o.prediction ? OutcomeSide.YES : OutcomeSide.NO,
+    }));
   }
 
   return [];

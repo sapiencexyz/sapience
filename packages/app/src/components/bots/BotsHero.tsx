@@ -36,8 +36,7 @@ export default function BotsHero() {
   }, []);
 
   const handleScrollClick = () => {
-    const viewportHeight =
-      (window as any).visualViewport?.height ?? window.innerHeight;
+    const viewportHeight = window.visualViewport?.height ?? window.innerHeight;
     const offset = Math.max(viewportHeight - 100, 0);
     window.scrollBy({ top: offset, behavior: 'smooth' });
   };

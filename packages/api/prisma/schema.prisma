@@ -495,13 +495,15 @@ model Prediction {
   marketAddress          String    @db.VarChar
   predictor              String    @db.VarChar
   counterparty           String    @db.VarChar
-  predictorToken         String    @db.VarChar
-  counterpartyToken      String    @db.VarChar
   predictorCollateral    String    @db.VarChar
   counterpartyCollateral String    @db.VarChar
   onChainCreatedAt       Int
   createTxHash           String    @db.VarChar
   refCode                String?   @db.VarChar
+
+  // Pick configuration FK (nullable for rare RPC-error cases)
+  pickConfigId           String?   @db.VarChar
+  pickConfiguration      Picks?    @relation(fields: [pickConfigId], references: [id])
 
   // Settlement
   settled                Boolean   @default(false)
@@ -521,8 +523,7 @@ model Prediction {
   @@index([settled], map: "IDX_prediction_settled")
   @@index([onChainCreatedAt], map: "IDX_prediction_created_at")
   @@index([settledAt], map: "IDX_prediction_settled_at")
-  @@index([predictorToken], map: "IDX_prediction_predictor_token")
-  @@index([counterpartyToken], map: "IDX_prediction_counterparty_token")
+  @@index([pickConfigId], map: "IDX_prediction_pick_config_id")
 }
 
 // TODO: Rename Prisma model Picks → PickConfiguration (requires migration with @@map)
@@ -547,6 +548,7 @@ model Picks {
 
   picks                        Pick[]
   positionBalances             Position[]
+  predictions                  Prediction[]
 
   @@index([chainId, marketAddress], map: "IDX_pick_config_chain_market")
   @@index([resolved], map: "IDX_pick_config_resolved")

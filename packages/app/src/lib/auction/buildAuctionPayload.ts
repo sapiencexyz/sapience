@@ -1,8 +1,4 @@
-import {
-  pythResolver,
-  umaResolver,
-  predictionMarketLZConditionalTokensResolver,
-} from '@sapience/sdk/contracts';
+import { conditionalTokensConditionResolver } from '@sapience/sdk/contracts';
 import {
   CHAIN_ID_ETHEREAL,
   CHAIN_ID_ETHEREAL_TESTNET,
@@ -11,9 +7,11 @@ import {
 import {
   encodePythBinaryOptionOutcomes,
   encodePolymarketPredictedOutcomes,
+  getPythMarketId,
   type PythBinaryOptionOutcome,
   type PolymarketPredictedOutcome,
 } from '@sapience/sdk';
+import { pythConditionResolver } from '@sapience/sdk/contracts';
 
 export interface PredictedOutcomeInputStub {
   marketId: string; // The id from API (already encoded claim:endTime)
@@ -51,7 +49,7 @@ function normalizePolymarketOutcomes(
   }));
 }
 
-function parseDateTimeLocalToUnixSeconds(value: string): bigint {
+export function parseDateTimeLocalToUnixSeconds(value: string): bigint {
   const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value);
   if (!m) throw new Error('invalid_datetime_local');
   const yyyy = Number(m[1]);
@@ -65,14 +63,14 @@ function parseDateTimeLocalToUnixSeconds(value: string): bigint {
   return BigInt(Math.floor(ms / 1000));
 }
 
-function pow10(n: number): bigint {
+export function pow10(n: number): bigint {
   if (n < 0) throw new Error('pow10_negative');
   let out = 1n;
   for (let i = 0; i < n; i++) out *= 10n;
   return out;
 }
 
-function decimalToScaledBigInt(value: string, scale: number): bigint {
+export function decimalToScaledBigInt(value: string, scale: number): bigint {
   // Returns bigint(round(value * 10^scale)).
   // `value` is a base-10 decimal string (e.g. "123.45").
   const s = value.trim();
@@ -98,7 +96,7 @@ function decimalToScaledBigInt(value: string, scale: number): bigint {
   return r * 2n >= denom ? q + 1n : q;
 }
 
-function normalizePythPriceId(raw: string): `0x${string}` {
+export function normalizePythPriceId(raw: string): `0x${string}` {
   const s = raw.trim();
   if (!s) throw new Error('invalid_price_id');
 
@@ -141,7 +139,7 @@ function normalizePythPriceId(raw: string): `0x${string}` {
   throw new Error('invalid_price_id_length');
 }
 
-function normalizePythOutcomes(
+export function normalizePythOutcomes(
   outcomes: PythOutcomeInputStub[]
 ): PythBinaryOptionOutcome[] {
   return outcomes.map((o) => {
@@ -201,13 +199,10 @@ export function buildAuctionStartPayload(
       targetChainId === CHAIN_ID_ETHEREAL ||
       targetChainId === CHAIN_ID_ETHEREAL_TESTNET
     ) {
-      // Use Polymarket LZ resolver for Ethereal auctions (mainnet or testnet)
       resolverAddress =
-        predictionMarketLZConditionalTokensResolver[targetChainId]?.address;
+        conditionalTokensConditionResolver[targetChainId]?.address;
     } else {
-      resolverAddress = umaResolver[targetChainId]?.address as
-        | `0x${string}`
-        | undefined;
+      resolverAddress = undefined;
     }
   }
 
@@ -227,17 +222,28 @@ export function buildAuctionStartPayload(
 export function buildPythAuctionStartPayload(
   outcomes: PythOutcomeInputStub[],
   chainId?: number
-): { resolver: `0x${string}`; predictedOutcomes: `0x${string}`[] } {
+): {
+  resolver: `0x${string}`;
+  predictedOutcomes: `0x${string}`[];
+  escrowPicks: Array<{
+    conditionResolver: `0x${string}`;
+    conditionId: `0x${string}`;
+    predictedOutcome: number;
+  }>;
+} {
   const targetChainId = chainId || DEFAULT_CHAIN_ID;
-  const resolverAddress = pythResolver[targetChainId]?.address as
-    | `0x${string}`
-    | undefined;
   const resolver: `0x${string}` =
-    resolverAddress ||
+    pythConditionResolver[targetChainId]?.address ??
     ('0x0000000000000000000000000000000000000000' as `0x${string}`);
 
-  const encoded = encodePythBinaryOptionOutcomes(
-    normalizePythOutcomes(outcomes)
-  );
-  return { resolver, predictedOutcomes: [encoded] };
+  const normalized = normalizePythOutcomes(outcomes);
+  const encoded = encodePythBinaryOptionOutcomes(normalized);
+
+  const escrowPicks = normalized.map((o) => ({
+    conditionResolver: resolver,
+    conditionId: getPythMarketId(o),
+    predictedOutcome: o.prediction ? 0 : 1,
+  }));
+
+  return { resolver, predictedOutcomes: [encoded], escrowPicks };
 }

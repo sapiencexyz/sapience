@@ -129,7 +129,10 @@ export default function OgShareDialogBase({
 
     const minTimestamp = predictionOpenTimestampRef.current || Date.now();
 
-    const checkPredictions = (preds: Prediction[], _source: string): boolean => {
+    const checkPredictions = (
+      preds: Prediction[],
+      _source: string
+    ): boolean => {
       if (!preds || preds.length === 0) {
         return false;
       }
@@ -140,7 +143,8 @@ export default function OgShareDialogBase({
         // If expected picks are provided, verify the prediction's picks match
         if (expectedPicks && expectedPicks.length > 0) {
           const predPicks = p.pickConfig?.picks;
-          if (!predPicks || predPicks.length !== expectedPicks.length) return false;
+          if (!predPicks || predPicks.length !== expectedPicks.length)
+            return false;
           const predPickSet = new Set(
             predPicks.map((pk) => `${pk.conditionId}:${pk.predictedOutcome}`)
           );
@@ -372,9 +376,9 @@ export default function OgShareDialogBase({
                       const blob = await res.blob();
                       if (
                         navigator.clipboard &&
-                        (window as any).ClipboardItem
+                        typeof ClipboardItem !== 'undefined'
                       ) {
-                        const item = new (window as any).ClipboardItem({
+                        const item = new ClipboardItem({
                           [blob.type]: blob,
                         });
                         await navigator.clipboard.write([item]);
@@ -429,9 +433,9 @@ export default function OgShareDialogBase({
                   variant="outline"
                   onClick={async () => {
                     const shareUrl = buildShareUrl();
-                    if ((navigator as any).share) {
+                    if (navigator.share) {
                       try {
-                        await (navigator as any).share({ url: shareUrl });
+                        await navigator.share({ url: shareUrl });
                         return;
                       } catch {
                         // fallthrough

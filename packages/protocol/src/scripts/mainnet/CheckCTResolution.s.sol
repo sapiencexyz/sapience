@@ -47,7 +47,7 @@ contract CheckCTResolution is Script {
         console.log("Yes payout:", state.yesPayout);
         console.log("Updated at:", uint256(state.updatedAt));
 
-        bool finalized = resolver.isFinalized(conditionId);
+        bool finalized = resolver.isFinalized(abi.encode(conditionId));
         console.log("");
         if (finalized) {
             console.log("STATUS: FINALIZED");

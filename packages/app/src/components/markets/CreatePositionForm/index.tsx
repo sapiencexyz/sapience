@@ -35,7 +35,12 @@ import {
   useState,
   type CSSProperties,
 } from 'react';
-import { useForm, useWatch, type UseFormReturn } from 'react-hook-form';
+import {
+  useForm,
+  useWatch,
+  type UseFormReturn,
+  type Resolver,
+} from 'react-hook-form';
 import { z } from 'zod';
 
 import { predictionMarketEscrowAbi } from '@sapience/sdk/abis';
@@ -43,7 +48,7 @@ import { predictionMarketEscrow } from '@sapience/sdk/contracts';
 import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import type { Address } from 'viem';
-import { erc20Abi, formatUnits } from 'viem';
+import { erc20Abi, formatUnits, parseUnits } from 'viem';
 import { useAccount, useReadContracts } from 'wagmi';
 import { useSession } from '~/lib/context/SessionContext';
 import { createPositionSizeSchema } from '~/components/markets/forms/inputs/PositionSizeInput';
@@ -56,7 +61,7 @@ import { useSponsorStatus } from '~/hooks/sponsorship/useSponsorStatus';
 import { usePositionProgress } from '~/hooks/forms/usePositionProgress';
 import { useAuctionStart, type QuoteBid } from '~/lib/auction/useAuctionStart';
 
-import { logPositionForm } from '~/lib/auction/bidLogger';
+import { useValidatedEscrowBids } from '~/hooks/auction/useValidatedEscrowBids';
 import {
   DEFAULT_POSITION_SIZE,
   getMaxPositionSize,
@@ -237,15 +242,8 @@ const CreatePositionFormInner = ({
   const PREDICTION_MARKET_ADDRESS =
     predictionMarketEscrow[positionChainId]?.address;
 
-  // Sponsorship status
-  const {
-    isSponsored,
-    sponsorAddress,
-    refetch: refetchSponsor,
-  } = useSponsorStatus();
-
-  // State for validated bids (async validation checks market maker balance/allowance)
-  const [bids, setBids] = useState<QuoteBid[]>([]);
+  // Sponsorship: refetch after mint to update budget display
+  const { refetch: refetchSponsor } = useSponsorStatus();
 
   // Fetch collateral token address from PredictionMarketEscrow
   const predictionMarketConfigRead = useReadContracts({
@@ -269,28 +267,6 @@ const CreatePositionFormInner = ({
     }
     return undefined;
   }, [predictionMarketConfigRead.data]);
-
-  // Escrow bids are marked as valid directly — no V1 mint simulation needed
-  useEffect(() => {
-    logPositionForm(
-      `[validation] rawBids=${rawBids.length}, hasParams=${!!currentAuctionParams}, hasMarket=${!!PREDICTION_MARKET_ADDRESS}`
-    );
-
-    if (rawBids.length === 0) {
-      setBids([]);
-      return;
-    }
-
-    logPositionForm(
-      `Received ${rawBids.length} escrow bid(s), marking as valid. First bid: counterparty=${rawBids[0]?.counterparty?.slice(0, 10)}, collateral=${rawBids[0]?.counterpartyCollateral}, deadline=${rawBids[0]?.counterpartyDeadline}`
-    );
-    setBids(
-      rawBids.map((b) => ({
-        ...b,
-        validationStatus: 'valid' as const,
-      }))
-    );
-  }, [rawBids, currentAuctionParams, PREDICTION_MARKET_ADDRESS]);
 
   // Escrow doesn't have a minCollateral concept
   const minCollateralRaw: bigint | undefined = undefined;
@@ -389,7 +365,7 @@ const CreatePositionFormInner = ({
   }, []);
 
   // Create form schema for position mode
-  const formSchema: z.ZodType<any> = useMemo(() => {
+  const formSchema: z.ZodTypeAny = useMemo(() => {
     const maxAmount = getMaxPositionSize(userBalance, isEtherealFromContext);
     const positionSizeSchema = createPositionSizeSchema(
       minPositionSize,
@@ -416,11 +392,21 @@ const CreatePositionFormInner = ({
   const formSchemaRef = useRef(formSchema);
   formSchemaRef.current = formSchema;
 
+  // Form data shape used by useForm
+  type PositionFormValues = {
+    positions: Record<
+      string,
+      { predictionValue: string; positionSize: string; isFlipped?: boolean }
+    >;
+    positionSize?: string;
+    limitAmount?: string | number;
+  };
+
   // Create a stable resolver that reads from the ref
   // This ensures validation uses the latest schema (with updated userBalance)
-  const dynamicResolver = useCallback(
-    async (data: any, context: any, options: any) => {
-      const resolver = zodResolver(formSchemaRef.current as any);
+  const dynamicResolver = useCallback<Resolver<PositionFormValues>>(
+    async (data, context, options) => {
+      const resolver = zodResolver(formSchemaRef.current);
       return resolver(data, context, options);
     },
     []
@@ -452,14 +438,7 @@ const CreatePositionFormInner = ({
   }, [createPositionEntries]);
 
   // Single form for both individual and position modes
-  const formMethods = useForm<{
-    positions: Record<
-      string,
-      { predictionValue: string; positionSize: string; isFlipped?: boolean }
-    >;
-    positionSize?: string;
-    limitAmount?: string | number;
-  }>({
+  const formMethods = useForm<PositionFormValues>({
     resolver: dynamicResolver,
     defaultValues: {
       ...generateFormValues,
@@ -486,6 +465,47 @@ const CreatePositionFormInner = ({
       formMethods.trigger('positionSize');
     }
   }, [userBalance, watchedPositionSize, formMethods]);
+
+  // Compute predictorCollateral in wei for bid validation
+  const predictorCollateralWei = useMemo(() => {
+    if (!watchedPositionSize || collateralDecimals === undefined)
+      return undefined;
+    try {
+      return parseUnits(watchedPositionSize, collateralDecimals).toString();
+    } catch {
+      return undefined;
+    }
+  }, [watchedPositionSize, collateralDecimals]);
+
+  // Compute picks for bid validation (memoized to avoid re-renders)
+  const validationPicks = useMemo(() => {
+    try {
+      const picks = getPicks();
+      return picks.length > 0 ? picks : undefined;
+    } catch {
+      return undefined;
+    }
+  }, [getPicks]);
+
+  // Derive sponsor status from the actual auction params (not from user eligibility).
+  // The counterparty signed with whatever sponsor was in the auction request, so
+  // validation must match exactly.
+  const auctionHasSponsor = !!currentAuctionParams?.predictorSponsor;
+  const auctionSponsorAddress = currentAuctionParams?.predictorSponsor;
+
+  // Validate escrow bids: unified Tier 2 validation (on-chain sig verification + nonce + balance)
+  const { validatedBids: bids } = useValidatedEscrowBids(rawBids, {
+    chainId: positionChainId,
+    predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
+    collateralTokenAddress: collateralToken,
+    predictorAddress: effectiveAddress as Address | undefined,
+    predictorCollateral: predictorCollateralWei,
+    predictorNonce: currentAuctionParams?.predictorNonce,
+    picks: validationPicks,
+    isSponsored: auctionHasSponsor,
+    sponsorAddress: auctionSponsorAddress,
+    enabled: true,
+  });
 
   // Reset initialization when effective address changes (e.g., session activates)
   useEffect(() => {
@@ -617,8 +637,8 @@ const CreatePositionFormInner = ({
     onSuccess: () => {
       clearPositionForm();
       setIsPopoverOpen(false);
-      // Refetch sponsor budget (it decreases after a sponsored mint)
-      refetchSponsor();
+      // Delayed refetch to allow on-chain state to settle after mint
+      setTimeout(() => refetchSponsor(), 5000);
     },
     onProgressUpdate: {
       onTxSending: startSubmission,
@@ -696,12 +716,9 @@ const CreatePositionFormInner = ({
             }));
           }
 
-          // Wire sponsorship: if user has a sponsor budget, pass the sponsor address
-          // so the escrow contract calls fundMint instead of pulling from user's wallet
-          if (isSponsored && sponsorAddress) {
-            mintReq.predictorSponsor = sponsorAddress;
-            mintReq.predictorSponsorData = '0x';
-          }
+          // Sponsorship: predictorSponsor is already set by buildMintRequestDataFromBid
+          // from the auction params (threaded when user clicked "Use" on the sponsor indicator).
+          // No manual override needed — it must match what the counterparty signed over.
 
           // Submit the mint request to PredictionMarket
           submitPosition(mintReq);
@@ -836,6 +853,8 @@ const CreatePositionFormInner = ({
     pythPredictions,
     onRemovePythPrediction,
     onClearPythPredictions,
+    onViewCard: () => setShowPreviewCard(true),
+    onCopyLink: handleCopyLink,
   };
 
   // Share dialog component - rendered independently of layout
@@ -892,18 +911,8 @@ const CreatePositionFormInner = ({
               } as CSSProperties
             }
           >
-            <DrawerHeader className="pb-0 flex items-center justify-between">
+            <DrawerHeader className="pb-0">
               <DrawerTitle className="text-left"></DrawerTitle>
-              <ShareClearBar
-                visible={selections.length > 0 || pythPredictions.length > 0}
-                onViewCard={() => setShowPreviewCard(true)}
-                onCopyLink={handleCopyLink}
-                onClear={() => {
-                  clearSelections();
-                  clearPositionForm();
-                  onClearPythPredictions?.();
-                }}
-              />
             </DrawerHeader>
             <div
               className={`${createPositionEntries.length === 0 ? 'pt-0 pb-4' : 'p-0'} h-full flex flex-col min-h-0`}

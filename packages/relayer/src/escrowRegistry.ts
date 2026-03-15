@@ -3,13 +3,11 @@
  * Stores and manages escrow auctions and bids
  */
 
-import type {
-  AuctionRFQPayload,
-  ValidatedBid,
-} from '@sapience/sdk/types';
+import type { AuctionRFQPayload, ValidatedBid } from '@sapience/sdk/types';
 import type { EscrowAuctionRecord, BidPayload } from './escrowTypes';
-import { validateEscrowBid } from './escrowHelpers';
-import { computeEscrowPickConfigId } from './escrowHelpers';
+import { computePickConfigId } from '@sapience/sdk/auction/escrowEncoding';
+import type { Pick } from '@sapience/sdk/types';
+import type { Address, Hex } from 'viem';
 
 const escrowAuctions = new Map<string, EscrowAuctionRecord>();
 
@@ -22,7 +20,12 @@ export function upsertEscrowAuction(auction: AuctionRFQPayload): string {
   const deadlineMs = Date.now() + Math.max(5_000, Math.min(ttl, 5 * 60_000));
 
   // Compute pickConfigId from picks
-  const pickConfigId = computeEscrowPickConfigId(auction.picks);
+  const sdkPicks: Pick[] = auction.picks.map((p) => ({
+    conditionResolver: p.conditionResolver as Address,
+    conditionId: p.conditionId as Hex,
+    predictedOutcome: p.predictedOutcome,
+  }));
+  const pickConfigId = computePickConfigId(sdkPicks);
 
   escrowAuctions.set(auctionId, {
     auction: {
@@ -40,7 +43,9 @@ export function upsertEscrowAuction(auction: AuctionRFQPayload): string {
 /**
  * Get an escrow auction by ID
  */
-export function getEscrowAuction(auctionId: string): EscrowAuctionRecord | undefined {
+export function getEscrowAuction(
+  auctionId: string
+): EscrowAuctionRecord | undefined {
   const rec = escrowAuctions.get(auctionId);
   if (!rec) return undefined;
   if (Date.now() > rec.deadlineMs) {
@@ -60,10 +65,11 @@ export function addEscrowBid(
   const rec = getEscrowAuction(auctionId);
   if (!rec) return undefined;
 
-  // Validate bid structure
-  const validation = validateEscrowBid(bid, rec.auction);
-  if (!validation.valid) {
-    console.warn(`[EscrowRegistry] Bid validation failed: ${validation.error}`);
+  // Reject duplicate bids by counterparty signature
+  if (
+    bid.counterpartySignature &&
+    rec.bids.some((b) => b.counterpartySignature === bid.counterpartySignature)
+  ) {
     return undefined;
   }
 
@@ -110,8 +116,18 @@ export function getEscrowAuctionDetails(
     predictor: rec.auction.predictor,
     predictorNonce: rec.auction.predictorNonce,
     predictorDeadline: rec.auction.predictorDeadline,
+    ...(rec.auction.intentSignature && {
+      intentSignature: rec.auction.intentSignature,
+    }),
+    ...(rec.auction.predictorSessionKeyData && {
+      predictorSessionKeyData: rec.auction.predictorSessionKeyData,
+    }),
     chainId: rec.auction.chainId,
     createdAt: new Date(rec.deadlineMs - 60_000).toISOString(), // Approximate creation time
+    ...(rec.auction.predictorSponsor && {
+      predictorSponsor: rec.auction.predictorSponsor,
+      predictorSponsorData: rec.auction.predictorSponsorData ?? '0x',
+    }),
   };
 }
 

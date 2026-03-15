@@ -4,10 +4,7 @@ import Image from 'next/image';
 import { Badge } from '@sapience/ui/components/ui/badge';
 import { Copy, Gavel } from 'lucide-react';
 import { useMemo } from 'react';
-import {
-  UMA_RESOLVER_DISPLAY,
-  POLYMARKET_RESOLVER_DISPLAY,
-} from '~/lib/constants';
+import { POLYMARKET_RESOLVER_DISPLAY } from '~/lib/constants';
 
 interface ResolverBadgeProps {
   resolverAddress: string | null | undefined;
@@ -27,12 +24,6 @@ export function ResolverBadge({
   const resolverInfo = useMemo(() => {
     if (!resolverAddress) return null;
     const normalizedAddress = resolverAddress.toLowerCase();
-    // Find matching resolver info (case-insensitive) - check UMA first, then Polymarket
-    const umaEntry = Object.entries(UMA_RESOLVER_DISPLAY).find(
-      ([address]) => address.toLowerCase() === normalizedAddress
-    );
-    if (umaEntry) return UMA_RESOLVER_DISPLAY[umaEntry[0]];
-
     const polymarketEntry = Object.entries(POLYMARKET_RESOLVER_DISPLAY).find(
       ([address]) => address.toLowerCase() === normalizedAddress
     );

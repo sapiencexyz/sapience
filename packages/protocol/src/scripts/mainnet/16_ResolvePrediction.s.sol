@@ -79,7 +79,7 @@ contract ResolvePrediction is Script {
 
         // Verify resolution
         (bool resolved, IV2Types.OutcomeVector memory storedOutcome) =
-            resolver.getResolution(conditionId);
+            resolver.getResolution(abi.encode(conditionId));
         console.log("");
         console.log("=== Resolution Complete ===");
         console.log("Condition Resolved:", resolved);

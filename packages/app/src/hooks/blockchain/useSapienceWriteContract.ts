@@ -184,7 +184,10 @@ export function useSapienceWriteContract({
   const getExecutionPathForChain = useCallback(
     (chainId: number) => {
       if (forceOwnerPath && isUsingSmartAccount) return 'owner' as const;
-      return getExecutionPath(isUsingSmartAccount, canUseSessionForChain(chainId));
+      return getExecutionPath(
+        isUsingSmartAccount,
+        canUseSessionForChain(chainId)
+      );
     },
     [isUsingSmartAccount, canUseSessionForChain, forceOwnerPath]
   );
@@ -305,7 +308,7 @@ export function useSapienceWriteContract({
         onTxHash?.(hash);
         setTxHash(hash);
       } else {
-        onSuccess?.(undefined as any);
+        onSuccess?.(undefined);
       }
 
       if (!disableAutoRedirect) {

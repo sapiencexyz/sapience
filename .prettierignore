@@ -1,0 +1,10 @@
+dist/
+build/
+.next/
+node_modules/
+pnpm-lock.yaml
+packages/api/src/graphql/types/generated.ts
+packages/api/schema.graphql
+packages/sdk/types/graphql.ts
+packages/protocol/out/
+packages/protocol/cache/

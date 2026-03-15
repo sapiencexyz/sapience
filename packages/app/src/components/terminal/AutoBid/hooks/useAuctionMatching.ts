@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
-import { parseUnits, formatUnits } from 'viem';
+import { parseUnits, formatUnits, type PublicClient } from 'viem';
 import type { Order } from '../types';
 import type { PushLogEntryParams } from '~/components/terminal/TerminalLogsContext';
 import {
@@ -15,6 +15,36 @@ import type {
   EscrowBidSubmissionParams,
   EscrowBidSubmissionResult,
 } from '~/hooks/auction/useEscrowBidSubmission';
+import { validateBidFull } from '@sapience/sdk/auction/validation';
+import { getPublicClientForChainId } from '~/lib/utils/util';
+
+/** Shape of the data payload from auction WebSocket messages */
+interface AuctionMessageData {
+  resolver?: string;
+  predictor?: string;
+  predictorCollateral?: string;
+  escrowPicks?: Array<{
+    conditionResolver: string;
+    conditionId: string;
+    predictedOutcome: number;
+  }>;
+  payload?: {
+    resolver?: string;
+    predictor?: string;
+    predictorCollateral?: string;
+    escrowPicks?: Array<{
+      conditionResolver: string;
+      conditionId: string;
+      predictedOutcome: number;
+    }>;
+  };
+  [key: string]: unknown;
+}
+
+function asMessageData(data: unknown): AuctionMessageData {
+  if (data && typeof data === 'object') return data as AuctionMessageData;
+  return {} as AuctionMessageData;
+}
 
 // Cache and deduplication limits
 const MAX_AUCTION_CACHE_SIZE = 200;
@@ -51,6 +81,9 @@ type UseAuctionMatchingParams = {
   submitBid: (
     params: EscrowBidSubmissionParams
   ) => Promise<EscrowBidSubmissionResult>;
+  predictionMarketAddress?: `0x${string}`;
+  collateralTokenAddress?: `0x${string}`;
+  chainId: number;
 };
 
 export function useAuctionMatching({
@@ -67,6 +100,9 @@ export function useAuctionMatching({
   auctionMessages,
   formatCollateralAmount,
   submitBid,
+  predictionMarketAddress,
+  collateralTokenAddress,
+  chainId,
 }: UseAuctionMatchingParams) {
   const processedMessageIdsRef = useRef<Set<number>>(new Set());
   const processedMessageQueueRef = useRef<number[]>([]);
@@ -79,6 +115,9 @@ export function useAuctionMatching({
   // when the same bid appears in multiple auction.bids messages
   const processedBidsRef = useRef<Set<string>>(new Set());
   const processedBidsQueueRef = useRef<string[]>([]);
+  // Track bids currently undergoing async validation to prevent duplicate submissions
+  // during the validation window (separate from processedBidsRef which is permanent)
+  const validatingBidsRef = useRef<Set<string>>(new Set());
 
   const evaluateAutoBidReadiness = useCallback(
     (details: {
@@ -267,7 +306,7 @@ export function useAuctionMatching({
         return;
       }
 
-      const { predictorCollateral, predictor, resolver, escrowPicks } =
+      const { predictorCollateral, predictor, escrowPicks } =
         details.auctionContext;
 
       // Calculate our bid amount (counterpartyCollateral)
@@ -381,10 +420,9 @@ export function useAuctionMatching({
           auctionId: details.auctionId,
           counterpartyCollateral: counterpartyCollateralWei,
           predictorCollateral: BigInt(predictorCollateral || '0'),
-          resolver,
           predictor,
           expirySeconds,
-          escrowPicks: escrowPicks ?? [],
+          picks: escrowPicks ?? [],
         });
 
         const counterpartyAmount = formatCollateralAmount(
@@ -499,9 +537,12 @@ export function useAuctionMatching({
       if (normalizedOrders.length === 0) {
         return;
       }
-      bids.forEach((bid: any) => {
+      bids.forEach((bid: unknown) => {
+        const bidRecord = bid as Record<string, unknown> | null;
         const counterpartyRaw =
-          typeof bid?.counterparty === 'string' ? bid.counterparty : null;
+          typeof bidRecord?.counterparty === 'string'
+            ? bidRecord.counterparty
+            : null;
         const counterpartyAddr = normalizeAddress(counterpartyRaw);
         if (!counterpartyAddr) return;
         const matched = normalizedOrders.find(
@@ -509,7 +550,7 @@ export function useAuctionMatching({
         );
         if (!matched) return;
         const auctionId =
-          (typeof bid?.auctionId === 'string' && bid.auctionId) ||
+          (typeof bidRecord?.auctionId === 'string' && bidRecord.auctionId) ||
           entry.channel ||
           null;
 
@@ -524,16 +565,19 @@ export function useAuctionMatching({
         }
 
         const signature =
-          typeof bid?.counterpartySignature === 'string'
-            ? bid.counterpartySignature
+          typeof bidRecord?.counterpartySignature === 'string'
+            ? bidRecord.counterpartySignature
             : null;
 
         // Create a unique key for this bid to prevent duplicate submissions
         // when the same bid appears in multiple auction.bids messages
-        const bidDedupeKey = `${matched.order.id}:${auctionId}:${signature ?? `${counterpartyAddr}:${bid?.counterpartyCollateral ?? '0'}`}`;
+        const bidDedupeKey = `${matched.order.id}:${auctionId}:${signature ?? `${counterpartyAddr}:${bidRecord?.counterpartyCollateral ?? '0'}`}`;
 
-        // Skip if we've already processed this exact bid for this order
-        if (processedBidsRef.current.has(bidDedupeKey)) {
+        // Skip if we've already processed or are currently validating this bid
+        if (
+          processedBidsRef.current.has(bidDedupeKey) ||
+          validatingBidsRef.current.has(bidDedupeKey)
+        ) {
           return;
         }
 
@@ -547,7 +591,7 @@ export function useAuctionMatching({
         // Calculate the full bid amount for allowance checking (copiedCollateral + increment)
         // This ensures we don't prompt for signature if allowance is insufficient
         const copiedCollateralWei = BigInt(
-          String(bid?.counterpartyCollateral ?? '0')
+          String(bidRecord?.counterpartyCollateral ?? '0')
         );
         let estimatedSpend: number;
         try {
@@ -570,25 +614,114 @@ export function useAuctionMatching({
           },
         });
         if (!readiness.blocked) {
-          // Fire and forget - dedupe key is marked on successful signature
-          void triggerAutoBidSubmission({
-            order: matched.order,
-            source: 'copy_trade',
-            auctionId,
-            auctionContext: cachedContext,
-            copyBidContext: {
-              copiedBidCollateral: String(bid?.counterpartyCollateral ?? '0'),
-              increment: matched.order.increment ?? 1,
-            },
-            dedupeKey: bidDedupeKey,
-          });
+          // Validate the copied bid before outbidding (anti-spoofing)
+          if (
+            predictionMarketAddress &&
+            collateralTokenAddress &&
+            signature &&
+            cachedContext.escrowPicks
+          ) {
+            // Mark as in-flight to prevent duplicate submissions during async validation
+            validatingBidsRef.current.add(bidDedupeKey);
+
+            const bidPayload = {
+              auctionId: auctionId!,
+              counterparty: counterpartyAddr,
+              counterpartyCollateral: String(
+                bidRecord?.counterpartyCollateral ?? '0'
+              ),
+              counterpartyNonce: Number(bidRecord?.counterpartyNonce ?? 0),
+              counterpartyDeadline: Number(
+                bidRecord?.counterpartyDeadline ?? 0
+              ),
+              counterpartySignature: signature,
+            };
+            // Tier 1 + Tier 2 validation — signature + on-chain state
+            validateBidFull(
+              bidPayload,
+              {
+                picks: cachedContext.escrowPicks,
+                predictorCollateral: cachedContext.predictorCollateral,
+                predictor: cachedContext.predictor,
+                chainId,
+              },
+              {
+                verifyingContract: predictionMarketAddress,
+                chainId,
+                predictionMarketAddress,
+                collateralTokenAddress,
+                publicClient: getPublicClientForChainId(
+                  chainId
+                ) as PublicClient,
+              }
+            )
+              .then((bidResult) => {
+                if (bidResult.status === 'invalid') {
+                  // Invalid bid — mark permanently so we never retry
+                  markBidProcessed(bidDedupeKey);
+                  pushLogEntry({
+                    kind: 'system',
+                    message: `${tag} skipped outbid — copied bid is invalid: ${bidResult.reason}`,
+                    severity: 'warning',
+                    meta: {
+                      orderId: matched.order.id,
+                      labelSnapshot: formatOrderLabelSnapshot(tag),
+                      formattedPrefix: tag,
+                      verb: 'bid',
+                      highlight: `skipped, copied bid invalid`,
+                    },
+                    dedupeKey: `spoofcheck:${bidDedupeKey}`,
+                  });
+                  return;
+                }
+                // Valid or unverified — proceed with outbid
+                // dedupeKey passed to triggerAutoBidSubmission marks as processed on successful signature
+                void triggerAutoBidSubmission({
+                  order: matched.order,
+                  source: 'copy_trade',
+                  auctionId,
+                  auctionContext: cachedContext,
+                  copyBidContext: {
+                    copiedBidCollateral: String(
+                      bidRecord?.counterpartyCollateral ?? '0'
+                    ),
+                    increment: matched.order.increment ?? 1,
+                  },
+                  dedupeKey: bidDedupeKey,
+                });
+              })
+              .catch(() => {
+                // Validation threw — remove from in-flight so it can be retried
+                validatingBidsRef.current.delete(bidDedupeKey);
+              });
+          } else {
+            // No verifying contract or missing data — proceed without validation
+            void triggerAutoBidSubmission({
+              order: matched.order,
+              source: 'copy_trade',
+              auctionId,
+              auctionContext: cachedContext,
+              copyBidContext: {
+                copiedBidCollateral: String(
+                  bidRecord?.counterpartyCollateral ?? '0'
+                ),
+                increment: matched.order.increment ?? 1,
+              },
+              dedupeKey: bidDedupeKey,
+            });
+          }
         }
       });
     },
     [
+      chainId,
+      collateralTokenAddress,
       evaluateAutoBidReadiness,
       getOrderIndex,
+      markBidProcessed,
       orders,
+      predictionMarketAddress,
+      pushLogEntry,
       tokenDecimals,
       triggerAutoBidSubmission,
     ]
@@ -608,15 +741,12 @@ export function useAuctionMatching({
       // Extract auction context from auction.started message
       // Escrow uses different field names: predictor, predictorCollateral, predictorNonce
       const auctionId = entry.channel || null;
-      const resolverAddr =
-        (entry?.data as any)?.resolver ??
-        (entry?.data as any)?.payload?.resolver;
-      const predictorAddr =
-        (entry?.data as any)?.predictor ??
-        (entry?.data as any)?.payload?.predictor;
+      const msgData = asMessageData(entry?.data);
+      const resolverAddr = msgData?.resolver ?? msgData?.payload?.resolver;
+      const predictorAddr = msgData?.predictor ?? msgData?.payload?.predictor;
       const predictorCollateralStr =
-        (entry?.data as any)?.predictorCollateral ??
-        (entry?.data as any)?.payload?.predictorCollateral ??
+        msgData?.predictorCollateral ??
+        msgData?.payload?.predictorCollateral ??
         '0';
       const predictedOutcomesArr = Array.isArray(rawPredictions)
         ? (rawPredictions as `0x${string}`[])
@@ -631,8 +761,7 @@ export function useAuctionMatching({
       ) {
         // Extract escrowPicks from auction message if available
         const rawEscrowPicks =
-          (entry?.data as any)?.escrowPicks ??
-          (entry?.data as any)?.payload?.escrowPicks;
+          msgData?.escrowPicks ?? msgData?.payload?.escrowPicks;
         const ctx: AuctionContext = {
           predictedOutcomes: predictedOutcomesArr,
           resolver: resolverAddr as `0x${string}`,
@@ -706,9 +835,10 @@ export function useAuctionMatching({
         if (!readiness.blocked) {
           // Fire and forget - dedupe key is marked on successful signature
           // Extract escrowPicks from the auction message
+          const conditionMsgData = asMessageData(entry?.data);
           const conditionEscrowPicks =
-            (entry?.data as any)?.escrowPicks ??
-            (entry?.data as any)?.payload?.escrowPicks;
+            conditionMsgData?.escrowPicks ??
+            conditionMsgData?.payload?.escrowPicks;
           void triggerAutoBidSubmission({
             order,
             source: 'conditions',

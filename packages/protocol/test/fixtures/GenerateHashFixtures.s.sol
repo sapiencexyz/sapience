@@ -46,7 +46,7 @@ contract GenerateHashFixtures is Script {
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = IV2Types.Pick({
             conditionResolver: RESOLVER_A,
-            conditionId: CONDITION_ID_A,
+            conditionId: abi.encode(CONDITION_ID_A),
             predictedOutcome: IV2Types.OutcomeSide.NO
         });
         return keccak256(abi.encode(picks));
@@ -56,12 +56,12 @@ contract GenerateHashFixtures is Script {
         IV2Types.Pick[] memory twoPicks = new IV2Types.Pick[](2);
         twoPicks[0] = IV2Types.Pick({
             conditionResolver: RESOLVER_A,
-            conditionId: CONDITION_ID_A,
+            conditionId: abi.encode(CONDITION_ID_A),
             predictedOutcome: IV2Types.OutcomeSide.NO
         });
         twoPicks[1] = IV2Types.Pick({
             conditionResolver: RESOLVER_B,
-            conditionId: CONDITION_ID_B,
+            conditionId: abi.encode(CONDITION_ID_B),
             predictedOutcome: IV2Types.OutcomeSide.YES
         });
         return keccak256(abi.encode(twoPicks));

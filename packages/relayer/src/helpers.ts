@@ -1,10 +1,10 @@
 import type { AuctionRequestPayload } from './types';
 
 /**
- * Helper function to create MintParlayRequestData for the ParlayPool.mint() function
+ * Helper function to create MintComboRequestData for the escrow mint() function
  * This matches the struct defined in the Solidity contract
  */
-export interface MintParlayRequestData {
+export interface MintComboRequestData {
   taker: string;
   predictedOutcomes: string[]; // Array of bytes strings that the resolver validates/understands
   resolver: string;
@@ -14,13 +14,13 @@ export interface MintParlayRequestData {
 }
 
 /**
- * Creates the MintParlayRequestData struct for the ParlayPool.mint() function
+ * Creates the MintComboRequestData struct for the escrow mint() function
  */
-export function createMintParlayRequestData(
+export function createMintComboRequestData(
   auction: AuctionRequestPayload,
   taker: string,
   takerCollateral: string
-): MintParlayRequestData {
+): MintComboRequestData {
   if (!auction.resolver) {
     throw new Error('Auction must have a resolver address');
   }

@@ -11,13 +11,14 @@ import Sentry from '../../instrument';
 import { SchemaEncoder } from '@ethereum-attestation-service/eas-sdk';
 import { IIndexer } from '../../interfaces';
 import { upsertAttestationScoreFromAttestation } from '../../helpers/scoringService';
+import { eas } from '@sapience/sdk/contracts/addresses';
 
 const BLOCK_BATCH_SIZE = 100;
 
-// EAS contract addresses on different chains
-const EAS_CONTRACTS = {
-  42161: '0xbD75f629A22Dc1ceD33dDA0b68c546A1c035c458', // Arbitrum
-} as const;
+// EAS contract addresses from SDK
+const EAS_CONTRACTS = Object.fromEntries(
+  Object.entries(eas).map(([chainId, entry]) => [chainId, entry.address])
+) as Record<number, `0x${string}`>;
 
 const EAS_START_BLOCK = {
   42161: 367337046,

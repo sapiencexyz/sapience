@@ -27,7 +27,10 @@ export interface UiTransaction {
   createdAt: string;
   collateral: string;
   collateralTransfer?: { collateral?: string | null } | null;
-  event?: { transactionHash?: string | null; logData?: any } | null;
+  event?: {
+    transactionHash?: string | null;
+    logData?: Record<string, unknown>;
+  } | null;
   position?: {
     owner?: string | null;
     positionId?: string | number | null;
@@ -72,7 +75,7 @@ export function TransactionTimeCell({ tx }: { tx: UiTransaction }) {
 export function TransactionOwnerCell({ tx }: { tx: UiTransaction }) {
   const lowerType = String(tx.type || '').toLowerCase();
   const normalizedType = lowerType.replace(/[^a-z]/g, '');
-  const eventLog = (tx.event as any)?.logData || {};
+  const eventLog = tx.event?.logData || {};
   const fallbackMaker =
     typeof eventLog?.maker === 'string' ? eventLog.maker : '';
   const owner =
@@ -108,7 +111,11 @@ export function TransactionAmountCell({
   tx: UiTransaction;
   collateralAssetTicker?: string | null;
   attestation?: FormattedAttestation;
-  sortedMarketsForColors?: any[];
+  sortedMarketsForColors?: Array<{
+    marketId?: string | number | null;
+    question?: string;
+    shortName?: string;
+  }>;
   showForecastBadgesInAmount?: boolean;
 }) {
   const collateralRaw =
@@ -194,7 +201,9 @@ export function TransactionAmountCell({
     const position = tx.position || {};
     const optionName = position?.market?.optionName;
     const rawId = position?.market?.marketId;
-    const normalizeId = (id: any): { dec?: number; hex?: string } => {
+    const normalizeId = (
+      id: string | number | null | undefined
+    ): { dec?: number; hex?: string } => {
       if (id == null) return {};
       const s = String(id);
       if (s.startsWith('0x') || s.startsWith('0X')) {
@@ -213,7 +222,7 @@ export function TransactionAmountCell({
     };
     const { dec: positionMarketIdNum } = normalizeId(rawId);
     const findOptionIndex = (): number => {
-      const tryLists: Array<any[]> = [];
+      const tryLists: Array<typeof sortedMarketsForColors & object> = [];
       if (
         Array.isArray(sortedMarketsForColors) &&
         sortedMarketsForColors.length >= 2
@@ -223,24 +232,26 @@ export function TransactionAmountCell({
       for (const list of tryLists) {
         if (positionMarketIdNum != null) {
           const idxById = list.findIndex(
-            (m: any) => Number(m?.marketId) === positionMarketIdNum
+            (m) => Number(m?.marketId) === positionMarketIdNum
           );
           if (idxById >= 0) return idxById;
         }
         if (optionName) {
           const lowerOpt = String(optionName).toLowerCase();
-          const idxByName = list.findIndex((m: any) => {
+          const idxByName = list.findIndex((m) => {
             const cand = (m?.shortName ??
-              m?.optionName ??
-              m?.name ??
+              (m as Record<string, unknown>)?.optionName ??
+              (m as Record<string, unknown>)?.name ??
               '') as string;
             return String(cand).toLowerCase() === lowerOpt;
           });
           if (idxByName >= 0) return idxByName;
         }
       }
-      const marketQuestion = (position?.market as any)?.question || '';
-      const shortName = (position?.market as any)?.shortName || '';
+      const marketQuestion =
+        (position?.market as Record<string, unknown>)?.question || '';
+      const shortName =
+        (position?.market as Record<string, unknown>)?.shortName || '';
       const stableKey = [
         optionName || '',
         shortName || '',
@@ -264,7 +275,7 @@ export function TransactionAmountCell({
     if (!seriesColor) {
       const paletteSize = CHART_SERIES_COLORS.length || 5;
       const fallbackKey = String(
-        (tx.position?.market?.optionName as any) || positionMarketIdNum || ''
+        tx.position?.market?.optionName || positionMarketIdNum || ''
       );
       if (fallbackKey) {
         let hash = 0;

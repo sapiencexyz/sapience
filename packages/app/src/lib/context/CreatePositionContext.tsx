@@ -166,7 +166,7 @@ export const CreatePositionProvider = ({
     localStorage.setItem(STORAGE_KEY_SELECTIONS, JSON.stringify(selections));
   }, [selections]);
 
-  // Remove settled conditions from the bet slip on mount
+  // Remove settled conditions from the prediction slip on mount
   useEffect(() => {
     const conditionIds = selections.map((s) => s.conditionId);
     if (conditionIds.length === 0) return;

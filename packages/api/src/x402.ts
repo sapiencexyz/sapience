@@ -6,7 +6,7 @@
  * Uses dynamic pricing based on GraphQL query complexity.
  */
 import { paymentMiddleware } from '@x402/express';
-import { x402ResourceServer } from '@x402/core/server';
+import { x402ResourceServer, type FacilitatorClient } from '@x402/core/server';
 import { registerExactEvmScheme as registerServerEvmScheme } from '@x402/evm/exact/server';
 import { x402Facilitator } from '@x402/core/facilitator';
 import { registerExactEvmScheme as registerFacilitatorEvmScheme } from '@x402/evm/exact/facilitator';
@@ -248,8 +248,9 @@ function createX402Server() {
 
   // Cast needed: x402Facilitator.getSupported() returns concrete types
   // while FacilitatorClient expects branded `Network` string type
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const server = new x402ResourceServer(localClient as any);
+  const server = new x402ResourceServer(
+    localClient as unknown as FacilitatorClient
+  );
   registerServerEvmScheme(server);
 
   console.log(

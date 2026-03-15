@@ -254,13 +254,25 @@ router.put('/:id', async (req: Request, res: Response) => {
         .json({ message: 'claimStatement cannot be changed' });
     }
 
+    let newEndTime: number | undefined;
     if (typeof endTime !== 'undefined') {
       const endTimeInt = parseInt(String(endTime), 10);
       if (Number.isNaN(endTimeInt)) {
         return res.status(400).json({ message: 'Invalid endTime' });
       }
       if (endTimeInt !== existing.endTime) {
-        return res.status(400).json({ message: 'endTime cannot be changed' });
+        // Allow forward extension only (new > existing), reject shortening
+        if (existing.settled) {
+          return res.status(400).json({
+            message: 'endTime cannot be changed on a settled condition',
+          });
+        }
+        if (existing.endTime !== null && endTimeInt < existing.endTime) {
+          return res.status(400).json({
+            message: 'endTime can only be extended forward, not shortened',
+          });
+        }
+        newEndTime = endTimeInt;
       }
     }
 
@@ -340,6 +352,8 @@ router.put('/:id', async (req: Request, res: Response) => {
                   : [],
               }
             : {}),
+          // Extend endTime if a new forward value was provided
+          ...(newEndTime !== undefined ? { endTime: newEndTime } : {}),
           // Assign to group if groupName was provided
           ...(resolvedGroupId !== undefined
             ? { conditionGroupId: resolvedGroupId, displayOrder: 0 }

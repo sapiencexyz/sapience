@@ -34,7 +34,8 @@ contract PredictionMarketEscrowBurnTest is Test {
         PREDICTOR_COLLATERAL + COUNTERPARTY_COLLATERAL;
     bytes32 public constant REF_CODE = keccak256("test-ref-code");
 
-    bytes32 public conditionId1;
+    bytes32 public rawConditionId1;
+    bytes public conditionId1;
 
     uint256 private _nextNonce = 1;
 
@@ -69,7 +70,8 @@ contract PredictionMarketEscrowBurnTest is Test {
         vm.prank(owner);
         resolver.approveSettler(settler);
 
-        conditionId1 = keccak256(abi.encode("condition-1"));
+        rawConditionId1 = keccak256(abi.encode("condition-1"));
+        conditionId1 = abi.encode(rawConditionId1);
 
         collateralToken.mint(predictor, 10_000e18);
         collateralToken.mint(counterparty, 10_000e18);
@@ -85,11 +87,10 @@ contract PredictionMarketEscrowBurnTest is Test {
 
     // ============ Helpers: Mint ============
 
-    function _createPick(bytes32 _conditionId, IV2Types.OutcomeSide _outcome)
-        internal
-        view
-        returns (IV2Types.Pick memory)
-    {
+    function _createPick(
+        bytes memory _conditionId,
+        IV2Types.OutcomeSide _outcome
+    ) internal view returns (IV2Types.Pick memory) {
         return IV2Types.Pick({
             conditionResolver: address(resolver),
             conditionId: _conditionId,
@@ -610,7 +611,9 @@ contract PredictionMarketEscrowBurnTest is Test {
             bytes32(uint256(1)), bytes32(uint256(2)), uint8(27)
         );
 
-        vm.expectRevert(IPredictionMarketEscrow.InvalidSignature.selector);
+        vm.expectRevert(
+            IPredictionMarketEscrow.InvalidPredictorSignature.selector
+        );
         market.burn(req);
     }
 
@@ -634,7 +637,9 @@ contract PredictionMarketEscrowBurnTest is Test {
             bytes32(uint256(1)), bytes32(uint256(2)), uint8(27)
         );
 
-        vm.expectRevert(IPredictionMarketEscrow.InvalidSignature.selector);
+        vm.expectRevert(
+            IPredictionMarketEscrow.InvalidCounterpartSignature.selector
+        );
         market.burn(req);
     }
 
@@ -656,7 +661,9 @@ contract PredictionMarketEscrowBurnTest is Test {
         // Warp past deadline
         vm.warp(block.timestamp + 2 hours);
 
-        vm.expectRevert(IPredictionMarketEscrow.InvalidSignature.selector);
+        vm.expectRevert(
+            IPredictionMarketEscrow.InvalidPredictorSignature.selector
+        );
         market.burn(req);
     }
 
@@ -678,7 +685,9 @@ contract PredictionMarketEscrowBurnTest is Test {
         // Set wrong nonce
         req.predictorNonce = 999;
 
-        vm.expectRevert(IPredictionMarketEscrow.InvalidSignature.selector);
+        vm.expectRevert(
+            IPredictionMarketEscrow.InvalidPredictorSignature.selector
+        );
         market.burn(req);
     }
 
@@ -700,7 +709,9 @@ contract PredictionMarketEscrowBurnTest is Test {
         // Set wrong counterparty nonce
         req.counterpartyNonce = 999;
 
-        vm.expectRevert(IPredictionMarketEscrow.InvalidSignature.selector);
+        vm.expectRevert(
+            IPredictionMarketEscrow.InvalidCounterpartSignature.selector
+        );
         market.burn(req);
     }
 
@@ -775,7 +786,7 @@ contract PredictionMarketEscrowBurnTest is Test {
 
         // Resolve the condition and settle
         vm.prank(settler);
-        resolver.settleCondition(conditionId1, IV2Types.OutcomeVector(1, 0));
+        resolver.settleCondition(rawConditionId1, IV2Types.OutcomeVector(1, 0));
         market.settle(predictionId, REF_CODE);
 
         // Attempt burn after resolution
@@ -936,7 +947,7 @@ contract PredictionMarketEscrowBurnTest is Test {
 
         // Resolve: predictor wins
         vm.prank(settler);
-        resolver.settleCondition(conditionId1, IV2Types.OutcomeVector(1, 0));
+        resolver.settleCondition(rawConditionId1, IV2Types.OutcomeVector(1, 0));
         market.settle(predictionId, REF_CODE);
 
         // Predictor redeems remaining tokens
@@ -1387,7 +1398,7 @@ contract PredictionMarketEscrowBurnTest is Test {
 
         // Settle and verify remaining holders get correct payouts
         vm.prank(settler);
-        resolver.settleCondition(conditionId1, IV2Types.OutcomeVector(1, 0));
+        resolver.settleCondition(rawConditionId1, IV2Types.OutcomeVector(1, 0));
         market.settle(predictionId1, REF_CODE);
 
         IV2Types.TokenPair memory tp = market.getTokenPair(pickConfigId);

@@ -9,11 +9,15 @@ import {
   useMemo,
   type ReactNode,
 } from 'react';
-import { useAccount, useSwitchChain } from 'wagmi';
+import { useAccount, useSwitchChain, useWriteContract } from 'wagmi';
 import type { Address, EIP1193Provider, Hex } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import type { KernelAccountClient } from '@zerodev/sdk';
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID, CHAIN_ID_ARBITRUM } from '@sapience/sdk/constants';
+import {
+  predictionMarketEscrow,
+  secondaryMarketEscrow,
+} from '@sapience/sdk/contracts/addresses';
 import {
   createSession,
   createArbitrumSession,
@@ -61,14 +65,36 @@ function extractApprovalForTransport(
   }
 }
 
-function stripAbisFromPolicies(permissionParams: any): typeof permissionParams {
+interface PolicyPermission {
+  abi?: unknown;
+  [key: string]: unknown;
+}
+
+interface PolicyParams {
+  permissions?: PolicyPermission[];
+  [key: string]: unknown;
+}
+
+interface Policy {
+  policyParams?: PolicyParams;
+  [key: string]: unknown;
+}
+
+interface PermissionParams {
+  policies?: Policy[];
+  [key: string]: unknown;
+}
+
+function stripAbisFromPolicies(
+  permissionParams: PermissionParams
+): PermissionParams {
   if (!permissionParams?.policies) {
     return permissionParams;
   }
 
   return {
     ...permissionParams,
-    policies: permissionParams.policies.map((policy: any) => {
+    policies: permissionParams.policies.map((policy) => {
       if (!policy.policyParams?.permissions) {
         return policy;
       }
@@ -76,7 +102,7 @@ function stripAbisFromPolicies(permissionParams: any): typeof permissionParams {
         ...policy,
         policyParams: {
           ...policy.policyParams,
-          permissions: policy.policyParams.permissions.map((perm: any) => {
+          permissions: policy.policyParams.permissions.map((perm) => {
             const { abi: _abi, ...permWithoutAbi } = perm;
             return permWithoutAbi;
           }),
@@ -199,6 +225,19 @@ interface SessionContextValue {
   signTypedDataRaw: ((params: SignTypedDataParams) => Promise<Hex>) | null;
 }
 
+/**
+ * ABI fragment for revokeSessionKey(address) — shared by both escrow contracts.
+ */
+const revokeSessionKeyAbi = [
+  {
+    type: 'function',
+    name: 'revokeSessionKey',
+    inputs: [{ name: 'sessionKey', type: 'address', internalType: 'address' }],
+    outputs: [],
+    stateMutability: 'nonpayable',
+  },
+] as const;
+
 const SessionContext = createContext<SessionContextValue | null>(null);
 
 interface SessionProviderProps {
@@ -227,6 +266,7 @@ function createChainSwitcher(
 export function SessionProvider({ children }: SessionProviderProps) {
   const { address: walletAddress, connector } = useAccount();
   const { switchChainAsync } = useSwitchChain();
+  const { writeContractAsync } = useWriteContract();
 
   // Session state
   const [isSessionActive, setIsSessionActive] = useState(false);
@@ -387,7 +427,9 @@ export function SessionProvider({ children }: SessionProviderProps) {
       if (!client) {
         throw new Error('No active session');
       }
-      return client.signTypedData(params as any);
+      return client.signTypedData(
+        params as Parameters<typeof client.signTypedData>[0]
+      );
     },
     [chainClients.ethereal]
   );
@@ -401,7 +443,9 @@ export function SessionProvider({ children }: SessionProviderProps) {
         throw new Error('No active session');
       }
       const account = privateKeyToAccount(sessionPrivateKey);
-      return account.signTypedData(params as any);
+      return account.signTypedData(
+        params as Parameters<typeof account.signTypedData>[0]
+      );
     },
     [sessionPrivateKey]
   );
@@ -636,10 +680,65 @@ export function SessionProvider({ children }: SessionProviderProps) {
     [walletAddress, connector, switchChainAsync]
   );
 
-  // End the current session
+  // Attempt on-chain session key revocation on both escrow contracts for a given chain.
+  // Fire-and-forget: failures are logged but never block local cleanup.
+  const revokeSessionKeyOnChain = useCallback(
+    (sessionKey: Address, chainId: number) => {
+      const pmEscrow = predictionMarketEscrow[chainId];
+      const smEscrow = secondaryMarketEscrow[chainId];
+
+      const revoke = (contractAddress: Address, label: string) =>
+        writeContractAsync({
+          address: contractAddress,
+          abi: revokeSessionKeyAbi,
+          functionName: 'revokeSessionKey',
+          args: [sessionKey],
+          chainId,
+        }).catch((err) => {
+          console.warn(
+            `[SessionContext] Failed to revoke session key on ${label}:`,
+            err
+          );
+        });
+
+      const calls: Promise<unknown>[] = [];
+      if (pmEscrow?.address)
+        calls.push(revoke(pmEscrow.address, 'PredictionMarketEscrow'));
+      if (smEscrow?.address)
+        calls.push(revoke(smEscrow.address, 'SecondaryMarketEscrow'));
+
+      if (calls.length > 0) {
+        void Promise.allSettled(calls);
+      }
+    },
+    [writeContractAsync]
+  );
+
+  // End the current session — attempts on-chain revocation then clears local state.
   const endSession = useCallback(() => {
+    if (isSessionActive && sessionKeyAddress) {
+      // Revoke on Ethereal chain
+      if (serializedSession?.etherealChainId) {
+        revokeSessionKeyOnChain(
+          sessionKeyAddress,
+          serializedSession.etherealChainId
+        );
+      }
+      // Revoke on Arbitrum if an Arbitrum session was created
+      if (arbitrumSessionApproval) {
+        revokeSessionKeyOnChain(sessionKeyAddress, CHAIN_ID_ARBITRUM);
+      }
+    }
+    // Always clear local state regardless of revocation outcome
     endSessionInternal();
-  }, [endSessionInternal]);
+  }, [
+    endSessionInternal,
+    isSessionActive,
+    sessionKeyAddress,
+    serializedSession,
+    arbitrumSessionApproval,
+    revokeSessionKeyOnChain,
+  ]);
 
   // Create Arbitrum session lazily (on first EAS attestation)
   // Returns the client directly to avoid race conditions with state updates

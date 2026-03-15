@@ -6,7 +6,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PROTOCOL_DIR="$(cd "$SCRIPT_DIR/../../../.." && pwd)"
+PROTOCOL_DIR="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 ENV_FILE="$SCRIPT_DIR/.env"
 DEPLOYMENTS_FILE="$SCRIPT_DIR/deployments.json"
 
@@ -613,6 +613,363 @@ check_status() {
     run_script_no_verify "src/scripts/testnet/18_CheckStatus_SMNetwork.s.sol:CheckStatus_SMNetwork" "$SM_NETWORK_RPC_URL" "Checking SM Network status"
 }
 
+# Upgrade Escrow: redeploy factory + escrow + bridges + sponsor
+# Reuses existing resolver, collateral token, and DVN/LZ config
+# Requires a new FACTORY_SALT to avoid CREATE2 collision with old factory
+upgrade_escrow() {
+    log_info "=== Upgrade Escrow: Redeploy with new contracts ==="
+    log_warn "This redeploys: Factory (both chains), Escrow, Bridges, AccountFactory, OnboardingSponsor"
+    log_warn "Reuses: Resolver, Collateral Token"
+    log_warn "Old contracts remain active for settle/redeem of existing markets"
+
+    # Require a new factory salt to avoid CREATE2 collision
+    if [ -z "${FACTORY_SALT:-}" ]; then
+        log_error "FACTORY_SALT is required for upgrade (e.g. keccak256 of 'sapience-prediction-market-token-factory-v5'))"
+        log_error "Set it in .env or pass as: FACTORY_SALT=0x... $0 upgrade-escrow"
+        exit 1
+    fi
+
+    # Phase 1: Ethereal - Factory + Escrow + Bridge + AccountFactory
+    log_info "--- Phase 1: Ethereal (PM Network) ---"
+    check_env PM_NETWORK_DEPLOYER_PRIVATE_KEY PM_NETWORK_DEPLOYER_ADDRESS PM_NETWORK_RPC_URL \
+              COLLATERAL_TOKEN_ADDRESS RESOLVER_ADDRESS PM_NETWORK_LZ_ENDPOINT || exit 1
+    set_deployer_pm
+
+    # Deploy NEW Factory on PM Network
+    run_script "src/scripts/testnet/03_DeployFactory.s.sol:DeployFactory" "$PM_NETWORK_RPC_URL" "Deploying NEW PredictionMarketTokenFactory on PM Network"
+    local addr=$(extract_address "$LAST_OUTPUT" "FACTORY_ADDRESS=")
+    if [ -n "$addr" ]; then
+        update_env "FACTORY_ADDRESS" "$addr"
+        update_deployment "pmNetwork" "PredictionMarketTokenFactory" "$addr"
+    fi
+
+    # Deploy NEW Escrow (uses new factory)
+    run_script "src/scripts/testnet/04_DeployPredictionMarket.s.sol:DeployPredictionMarket" "$PM_NETWORK_RPC_URL" "Deploying NEW PredictionMarketEscrow on PM Network"
+    addr=$(extract_address "$LAST_OUTPUT" "PREDICTION_MARKET_ADDRESS=")
+    if [ -n "$addr" ]; then
+        update_env "PREDICTION_MARKET_ADDRESS" "$addr"
+        update_deployment "pmNetwork" "PredictionMarketEscrow" "$addr"
+    fi
+
+    # Configure Factory (set new escrow as deployer)
+    run_script_no_verify "src/scripts/testnet/05_ConfigureFactory.s.sol:ConfigureFactory" "$PM_NETWORK_RPC_URL" "Configuring NEW Factory (set escrow as deployer)"
+
+    # Deploy NEW Bridge on PM Network
+    run_script "src/scripts/testnet/06_DeployEtherealBridge.s.sol:DeployEtherealBridge" "$PM_NETWORK_RPC_URL" "Deploying NEW PredictionMarketBridge on PM Network"
+    addr=$(extract_address "$LAST_OUTPUT" "PM_NETWORK_BRIDGE_ADDRESS=")
+    if [ -n "$addr" ]; then
+        update_env "PM_NETWORK_BRIDGE_ADDRESS" "$addr"
+        update_deployment "pmNetwork" "PredictionMarketBridge" "$addr"
+    fi
+
+    # Configure existing AccountFactory on new Escrow
+    check_env ACCOUNT_FACTORY_ADDRESS || exit 1
+    log_info "Configuring existing AccountFactory ($ACCOUNT_FACTORY_ADDRESS) on new Escrow"
+    cd "$PROTOCOL_DIR"
+    local af_output
+    af_output=$(cast send "$PREDICTION_MARKET_ADDRESS" \
+        "setAccountFactory(address)" "$ACCOUNT_FACTORY_ADDRESS" \
+        --private-key "$PM_NETWORK_DEPLOYER_PRIVATE_KEY" \
+        --rpc-url "$PM_NETWORK_RPC_URL" 2>&1) || {
+        log_error "Failed to set AccountFactory on new Escrow"
+        echo "$af_output"
+        exit 1
+    }
+    log_success "AccountFactory configured on new Escrow"
+
+    log_success "Phase 1 complete: Ethereal infrastructure upgraded"
+
+    # Phase 2: Arbitrum - Factory + Bridge
+    log_info "--- Phase 2: Arbitrum (SM Network) ---"
+    check_env SM_NETWORK_DEPLOYER_PRIVATE_KEY SM_NETWORK_DEPLOYER_ADDRESS SM_NETWORK_RPC_URL SM_NETWORK_LZ_ENDPOINT || exit 1
+    set_deployer_sm
+
+    # Deploy NEW Factory on SM Network (same salt -> same address as PM)
+    run_script "src/scripts/testnet/07_DeployFactorySM.s.sol:DeployFactorySM" "$SM_NETWORK_RPC_URL" "Deploying NEW PredictionMarketTokenFactory on SM Network"
+    addr=$(extract_address "$LAST_OUTPUT" "FACTORY_ADDRESS=")
+    if [ -n "$addr" ]; then
+        update_env "FACTORY_ADDRESS" "$addr"
+        update_deployment "smNetwork" "PredictionMarketTokenFactory" "$addr"
+    fi
+
+    # Deploy NEW SM Network Bridge
+    run_script "src/scripts/testnet/08_DeployRemoteBridge.s.sol:DeployRemoteBridge" "$SM_NETWORK_RPC_URL" "Deploying NEW PredictionMarketBridgeRemote on SM Network"
+    addr=$(extract_address "$LAST_OUTPUT" "SM_NETWORK_BRIDGE_ADDRESS=")
+    if [ -n "$addr" ]; then
+        update_env "SM_NETWORK_BRIDGE_ADDRESS" "$addr"
+        update_deployment "smNetwork" "PredictionMarketBridgeRemote" "$addr"
+    fi
+
+    log_success "Phase 2 complete: Arbitrum infrastructure upgraded"
+
+    # Phase 3: Configure bridges
+    log_info "--- Phase 3: Configure Bridges ---"
+    configure_bridges_phase3
+
+    # Phase 3b: Configure DVN
+    log_info "--- Phase 3b: Configure DVN ---"
+    configure_dvn_phase3b
+
+    # Deploy OnboardingSponsor if env vars are available
+    if [ -n "${REQUIRED_COUNTERPARTY:-}" ] && [ -n "${MAX_ENTRY_PRICE_BPS:-}" ]; then
+        log_info "--- Deploy OnboardingSponsor ---"
+        set_deployer_pm
+        run_script "src/scripts/testnet/DeployOnboardingSponsor.s.sol:DeployOnboardingSponsor" "$PM_NETWORK_RPC_URL" "Deploying NEW OnboardingSponsor"
+        addr=$(extract_address "$LAST_OUTPUT" "OnboardingSponsor:")
+        if [ -n "$addr" ]; then
+            update_env "ONBOARDING_SPONSOR_ADDRESS" "$addr"
+            update_deployment "pmNetwork" "OnboardingSponsor" "$addr"
+        fi
+    else
+        log_warn "Skipping OnboardingSponsor (set REQUIRED_COUNTERPARTY and MAX_ENTRY_PRICE_BPS to deploy)"
+    fi
+
+    check_status
+
+    echo ""
+    log_success "=== Upgrade complete ==="
+    log_info "Old contracts remain active for settle/redeem of existing markets"
+    log_info "New contracts handle all new markets going forward"
+    log_warn "Remember to update PREDICTION_MARKET_ADDRESS in the API/app config"
+}
+
+# Configure PM Network only
+configure_pm_only() {
+    log_info "=== Configure PM Network Bridge (Ethereal testnet) ==="
+
+    check_env PM_NETWORK_BRIDGE_ADDRESS SM_NETWORK_BRIDGE_ADDRESS \
+              PM_NETWORK_SEND_LIB PM_NETWORK_RECEIVE_LIB PM_NETWORK_DVN || exit 1
+
+    run_script_no_verify "src/scripts/testnet/09_ConfigureEtherealBridge.s.sol:ConfigureEtherealBridge" "$PM_NETWORK_RPC_URL" "Configuring PM Network Bridge"
+    run_script_no_verify "src/scripts/testnet/10_SetDVN_EtherealBridge.s.sol:SetDVN_EtherealBridge" "$PM_NETWORK_RPC_URL" "Setting DVN for PM Network Bridge"
+
+    log_success "PM Network configuration complete"
+}
+
+# Configure SM Network only
+configure_sm_only() {
+    log_info "=== Configure SM Network Bridge (Arbitrum testnet) ==="
+
+    check_env PM_NETWORK_BRIDGE_ADDRESS SM_NETWORK_BRIDGE_ADDRESS \
+              SM_NETWORK_SEND_LIB SM_NETWORK_RECEIVE_LIB SM_NETWORK_DVN SM_NETWORK_EXECUTOR || exit 1
+
+    run_script_no_verify "src/scripts/testnet/11_ConfigureRemoteBridge.s.sol:ConfigureRemoteBridge" "$SM_NETWORK_RPC_URL" "Configuring SM Network Bridge"
+    run_script_no_verify "src/scripts/testnet/12_SetDVN_RemoteBridge.s.sol:SetDVN_RemoteBridge" "$SM_NETWORK_RPC_URL" "Setting DVN for SM Network Bridge"
+
+    log_success "SM Network configuration complete"
+}
+
+# Test: Mint Position Tokens (standalone)
+test_mint() {
+    log_info "=== Test: Mint Position Tokens ==="
+
+    check_env PM_NETWORK_RPC_URL PM_NETWORK_DEPLOYER_PRIVATE_KEY PREDICTION_MARKET_ADDRESS COLLATERAL_TOKEN_ADDRESS RESOLVER_ADDRESS PREDICTOR_PRIVATE_KEY COUNTERPARTY_PRIVATE_KEY || exit 1
+    set_deployer_pm
+
+    run_script_no_verify "src/scripts/testnet/13_MintPositionTokens.s.sol:MintPredictionMarketTokens" "$PM_NETWORK_RPC_URL" "Minting position tokens"
+
+    # Extract and save token addresses
+    local prediction_id=$(echo "$LAST_OUTPUT" | grep "PREDICTION_ID=" | grep -oE '0x[a-fA-F0-9]{64}' | head -1)
+    local predictor_token=$(extract_address "$LAST_OUTPUT" "PREDICTOR_TOKEN_ADDRESS=")
+    local counterparty_token=$(extract_address "$LAST_OUTPUT" "COUNTERPARTY_TOKEN_ADDRESS=")
+    local pick_config_id=$(echo "$LAST_OUTPUT" | grep "PICK_CONFIG_ID=" | grep -oE '0x[a-fA-F0-9]{64}' | head -1)
+    local condition_id=$(echo "$LAST_OUTPUT" | grep "CONDITION_ID=" | grep -oE '0x[a-fA-F0-9]{64}' | head -1)
+
+    [ -n "$prediction_id" ] && update_env "PREDICTION_ID" "$prediction_id"
+    if [ -n "$predictor_token" ]; then
+        update_env "PREDICTOR_TOKEN_ADDRESS" "$predictor_token"
+        update_deployment "pmNetwork" "PredictorToken" "$predictor_token"
+    fi
+    if [ -n "$counterparty_token" ]; then
+        update_env "COUNTERPARTY_TOKEN_ADDRESS" "$counterparty_token"
+        update_deployment "pmNetwork" "CounterpartyToken" "$counterparty_token"
+    fi
+    [ -n "$pick_config_id" ] && update_env "PICK_CONFIG_ID" "$pick_config_id"
+    [ -n "$condition_id" ] && update_env "CONDITION_ID" "$condition_id"
+
+    log_success "Position tokens minted"
+}
+
+# Test: Bridge to Remote (Ethereal -> Arbitrum)
+test_bridge_to_remote() {
+    log_info "=== Test: Bridge to Remote (Ethereal testnet -> Arbitrum testnet) ==="
+
+    check_env PM_NETWORK_RPC_URL PM_NETWORK_BRIDGE_ADDRESS PREDICTOR_TOKEN_ADDRESS PREDICTOR_PRIVATE_KEY || exit 1
+
+    run_script_no_verify "src/scripts/testnet/14_TestBridgeToRemote.s.sol:TestBridgeToRemote" "$PM_NETWORK_RPC_URL" "Bridging tokens to Arbitrum"
+
+    # Extract and save BRIDGE_ID
+    local bridge_id=$(echo "$LAST_OUTPUT" | grep "BRIDGE_ID=" | grep -oE '0x[a-fA-F0-9]{64}' | head -1)
+    [ -n "$bridge_id" ] && update_env "BRIDGE_ID" "$bridge_id"
+
+    log_success "Bridge initiated - check https://testnet.layerzeroscan.com/ for status"
+}
+
+# Test: Resolve Prediction
+test_resolve() {
+    log_info "=== Test: Resolve Prediction ==="
+
+    check_env PM_NETWORK_RPC_URL PM_NETWORK_DEPLOYER_PRIVATE_KEY RESOLVER_ADDRESS CONDITION_ID || exit 1
+
+    local outcome="${OUTCOME:-yes}"
+    log_info "Resolving with outcome: $outcome"
+
+    # Uses mainnet script (no testnet-specific resolve script)
+    run_script_no_verify "src/scripts/mainnet/16_ResolvePrediction.s.sol:ResolvePrediction" "$PM_NETWORK_RPC_URL" "Resolving prediction (outcome: $outcome)"
+
+    log_success "Prediction resolved"
+}
+
+# Test: Bridge Back (Arbitrum -> Ethereal)
+test_bridge_back() {
+    log_info "=== Test: Bridge Back (Arbitrum testnet -> Ethereal testnet) ==="
+
+    check_env SM_NETWORK_RPC_URL SM_NETWORK_BRIDGE_ADDRESS PREDICTOR_PRIVATE_KEY || exit 1
+
+    run_script_no_verify "src/scripts/testnet/15_TestBridgeBack.s.sol:TestBridgeBack" "$SM_NETWORK_RPC_URL" "Bridging tokens back to Ethereal"
+
+    # Extract and save BRIDGE_BACK_ID
+    local bridge_back_id=$(echo "$LAST_OUTPUT" | grep "BRIDGE_BACK_ID=" | grep -oE '0x[a-fA-F0-9]{64}' | head -1)
+    [ -n "$bridge_back_id" ] && update_env "BRIDGE_BACK_ID" "$bridge_back_id"
+
+    log_success "Bridge back initiated - check https://testnet.layerzeroscan.com/ for status"
+}
+
+# Retry: Bridge from PM Network (Ethereal)
+retry_bridge_pm() {
+    log_info "=== Retry Bridge from PM Network (Ethereal testnet) ==="
+
+    check_env PM_NETWORK_RPC_URL PM_NETWORK_BRIDGE_ADDRESS PM_NETWORK_DEPLOYER_PRIVATE_KEY BRIDGE_ID || exit 1
+
+    # Uses mainnet script (no testnet-specific retry script)
+    run_script_no_verify "src/scripts/mainnet/18_RetryBridgePM.s.sol:RetryBridgePM" "$PM_NETWORK_RPC_URL" "Retrying bridge from PM Network"
+
+    log_success "Retry initiated - check https://testnet.layerzeroscan.com/ for status"
+}
+
+# Retry: Bridge from SM Network (Arbitrum)
+retry_bridge_sm() {
+    log_info "=== Retry Bridge from SM Network (Arbitrum testnet) ==="
+
+    check_env SM_NETWORK_RPC_URL SM_NETWORK_BRIDGE_ADDRESS SM_NETWORK_DEPLOYER_PRIVATE_KEY BRIDGE_BACK_ID || exit 1
+
+    # Uses mainnet script (no testnet-specific retry script)
+    run_script_no_verify "src/scripts/mainnet/19_RetryBridgeSM.s.sol:RetryBridgeSM" "$SM_NETWORK_RPC_URL" "Retrying bridge from SM Network"
+
+    log_success "Retry initiated - check https://testnet.layerzeroscan.com/ for status"
+}
+
+# Parse bridge status from cast output
+parse_bridge_status() {
+    local status_num=$1
+    case "$status_num" in
+        0) echo "PENDING" ;;
+        1) echo "COMPLETED" ;;
+        2) echo "REFUNDED" ;;
+        *) echo "UNKNOWN($status_num)" ;;
+    esac
+}
+
+# Check Bridge Status on PM Network (Ethereal)
+check_bridge_pm() {
+    log_info "=== Check Bridge Status on PM Network (Ethereal testnet) ==="
+
+    check_env PM_NETWORK_RPC_URL PM_NETWORK_BRIDGE_ADDRESS BRIDGE_ID || exit 1
+
+    echo ""
+    log_info "Bridge ID: $BRIDGE_ID"
+    log_info "Bridge Contract: $PM_NETWORK_BRIDGE_ADDRESS"
+    echo ""
+
+    # Call getPendingBridge
+    local result
+    result=$(cast call "$PM_NETWORK_BRIDGE_ADDRESS" \
+        "getPendingBridge(bytes32)((address,address,address,uint256,uint64,uint64,uint8))" \
+        "$BRIDGE_ID" \
+        --rpc-url "$PM_NETWORK_RPC_URL" 2>&1)
+
+    if [[ $? -ne 0 ]]; then
+        log_error "Failed to query bridge status"
+        echo "$result"
+        return 1
+    fi
+
+    # Parse the tuple output
+    local token=$(echo "$result" | sed -n 's/.*(\(0x[a-fA-F0-9]*\),.*/\1/p')
+    local sender=$(echo "$result" | cut -d',' -f2 | grep -oE '0x[a-fA-F0-9]{40}')
+    local recipient=$(echo "$result" | cut -d',' -f3 | grep -oE '0x[a-fA-F0-9]{40}')
+    local amount=$(echo "$result" | grep -oE '[0-9]+' | sed -n '1p')
+    local status_num=$(echo "$result" | grep -oE '[0-9]+' | tail -1)
+
+    local status_text=$(parse_bridge_status "$status_num")
+
+    echo "========================================"
+    echo "  Bridge Status (PM Network)"
+    echo "========================================"
+    echo "Token:      $token"
+    echo "Sender:     $sender"
+    echo "Recipient:  $recipient"
+    echo "Amount:     $amount"
+    echo "Status:     $status_text"
+    echo "========================================"
+
+    if [[ "$status_text" == "PENDING" ]]; then
+        log_warn "Bridge is PENDING - waiting for LayerZero delivery or needs retry"
+    elif [[ "$status_text" == "COMPLETED" ]]; then
+        log_success "Bridge is COMPLETED"
+    fi
+}
+
+# Check Bridge Back Status on SM Network (Arbitrum)
+check_bridge_sm() {
+    log_info "=== Check Bridge Back Status on SM Network (Arbitrum testnet) ==="
+
+    check_env SM_NETWORK_RPC_URL SM_NETWORK_BRIDGE_ADDRESS BRIDGE_BACK_ID || exit 1
+
+    echo ""
+    log_info "Bridge Back ID: $BRIDGE_BACK_ID"
+    log_info "Bridge Contract: $SM_NETWORK_BRIDGE_ADDRESS"
+    echo ""
+
+    # Call getPendingBridge
+    local result
+    result=$(cast call "$SM_NETWORK_BRIDGE_ADDRESS" \
+        "getPendingBridge(bytes32)((address,address,address,uint256,uint64,uint64,uint8))" \
+        "$BRIDGE_BACK_ID" \
+        --rpc-url "$SM_NETWORK_RPC_URL" 2>&1)
+
+    if [[ $? -ne 0 ]]; then
+        log_error "Failed to query bridge status"
+        echo "$result"
+        return 1
+    fi
+
+    # Parse the tuple output
+    local token=$(echo "$result" | sed -n 's/.*(\(0x[a-fA-F0-9]*\),.*/\1/p')
+    local sender=$(echo "$result" | cut -d',' -f2 | grep -oE '0x[a-fA-F0-9]{40}')
+    local recipient=$(echo "$result" | cut -d',' -f3 | grep -oE '0x[a-fA-F0-9]{40}')
+    local amount=$(echo "$result" | grep -oE '[0-9]+' | sed -n '1p')
+    local status_num=$(echo "$result" | grep -oE '[0-9]+' | tail -1)
+
+    local status_text=$(parse_bridge_status "$status_num")
+
+    echo "========================================"
+    echo "  Bridge Back Status (SM Network)"
+    echo "========================================"
+    echo "Token:      $token"
+    echo "Sender:     $sender"
+    echo "Recipient:  $recipient"
+    echo "Amount:     $amount"
+    echo "Status:     $status_text"
+    echo "========================================"
+
+    if [[ "$status_text" == "PENDING" ]]; then
+        log_warn "Bridge back is PENDING - waiting for LayerZero delivery or needs retry"
+    elif [[ "$status_text" == "COMPLETED" ]]; then
+        log_success "Bridge back is COMPLETED"
+    fi
+}
+
 # Verify contract on explorer
 verify_contract() {
     local address=$1
@@ -762,12 +1119,15 @@ usage() {
     echo "Deployment Commands:"
     echo "  all                   Run full deployment (phases 1-4, including DVN config)"
     echo "  all-with-collateral   Run full deployment with test collateral (for testing)"
+    echo "  upgrade-escrow        Redeploy factory+escrow+bridges (requires new FACTORY_SALT)"
     echo "  collateral            Deploy test collateral token (optional, for testing)"
     echo "  deploy                Run deployment only (phases 1-3b)"
-    echo "  phase1                Deploy Ethereal infrastructure"
-    echo "  phase2                Deploy Arbitrum infrastructure"
+    echo "  phase1, deploy-pm     Deploy Ethereal infrastructure"
+    echo "  phase2, deploy-sm     Deploy Arbitrum infrastructure"
     echo "  phase3                Configure bridges (basic: peer, config)"
     echo "  phase3b               Configure DVN and libraries"
+    echo "  configure-pm          Configure PM Network bridge only"
+    echo "  configure-sm          Configure SM Network bridge only"
     echo "  phase4                Mint position tokens"
     echo "  phase5                Test bridging"
     echo "  test                  Run bridge test (phases 4-5)"
@@ -784,8 +1144,20 @@ usage() {
     echo "  verify-polygon        Verify contracts on Polygon"
     echo ""
     echo "Test Commands:"
+    echo "  mint                  Mint position tokens for testing"
+    echo "  bridge-to             Bridge tokens from Ethereal to Arbitrum"
+    echo "  resolve               Resolve prediction (set OUTCOME=yes|no|tie)"
+    echo "  bridge-back           Bridge tokens back from Arbitrum to Ethereal"
     echo "  test-ct-bridge        Request CT resolution from Polygon via LayerZero (needs CONDITION_ID)"
     echo "  check-ct-resolution   Check if CT resolution arrived on Ethereal (needs CONDITION_ID)"
+    echo ""
+    echo "Retry Commands:"
+    echo "  retry-pm              Retry a pending bridge from PM Network (uses BRIDGE_ID)"
+    echo "  retry-sm              Retry a pending bridge from SM Network (uses BRIDGE_BACK_ID)"
+    echo ""
+    echo "Status Commands:"
+    echo "  check-bridge          Check BRIDGE_ID status on PM Network (Ethereal)"
+    echo "  check-bridge-back     Check BRIDGE_BACK_ID status on SM Network (Arbitrum)"
     echo ""
     echo "Examples:"
     echo "  $0 all                         # Full deployment with DVN config and mint"
@@ -794,6 +1166,14 @@ usage() {
     echo "  $0 deploy                      # Deploy and configure only (no mint)"
     echo "  $0 phase3b                     # Just configure DVN/libraries"
     echo "  $0 status                      # Check current status"
+    echo "  $0 mint                        # Mint position tokens"
+    echo "  $0 bridge-to                   # Bridge to Arbitrum"
+    echo "  OUTCOME=yes $0 resolve         # Resolve prediction (predictor wins)"
+    echo "  $0 bridge-back                 # Bridge back to Ethereal"
+    echo "  BRIDGE_ID=0x... $0 retry-pm         # Retry bridge from Ethereal"
+    echo "  BRIDGE_BACK_ID=0x... $0 retry-sm    # Retry bridge-back from Arbitrum"
+    echo "  $0 check-bridge                     # Check bridge status on PM Network"
+    echo "  $0 check-bridge-back                # Check bridge-back status on SM Network"
     echo "  $0 verify-pm                   # Verify PM Network contracts"
     echo "  $0 verify-sm                   # Verify SM Network contracts"
     echo ""
@@ -805,6 +1185,9 @@ usage() {
     echo "Required env vars for DVN config:"
     echo "  PM_NETWORK_SEND_LIB, PM_NETWORK_RECEIVE_LIB, PM_NETWORK_DVN"
     echo "  SM_NETWORK_SEND_LIB, SM_NETWORK_RECEIVE_LIB, SM_NETWORK_DVN, SM_NETWORK_EXECUTOR"
+    echo ""
+    echo "Required env vars for testing:"
+    echo "  PREDICTOR_PRIVATE_KEY, COUNTERPARTY_PRIVATE_KEY"
     echo ""
     echo "Required env vars for PythConditionResolver:"
     echo "  PYTH_LAZER_ADDRESS"
@@ -820,8 +1203,13 @@ usage() {
     echo ""
     echo "Optional env vars:"
     echo "  SKIP_VERIFY=1 (skip contract verification during deployment)"
+    echo "  FACTORY_SALT (override default factory CREATE2 salt)"
     echo "  PM_NETWORK_VERIFIER (etherscan or blockscout, default: etherscan)"
     echo "  PM_NETWORK_VERIFIER_URL (custom verifier URL)"
+    echo "  PREDICTOR_COLLATERAL, COUNTERPARTY_COLLATERAL (for testing)"
+    echo "  OUTCOME (yes|no|tie for resolve)"
+    echo "  BRIDGE_ID (for retry-pm command)"
+    echo "  BRIDGE_BACK_ID (for retry-sm command)"
     echo "  PM_ACK_FEE_ESTIMATE (default: 0.0001 ether)"
     echo "  SM_ACK_FEE_ESTIMATE (default: 0.5 ether - Ethereal uses USDe as native token)"
 }
@@ -872,10 +1260,10 @@ main() {
             configure_dvn_phase3b
             check_status
             ;;
-        phase1)
+        phase1|deploy-pm)
             deploy_ethereal_phase1
             ;;
-        phase2)
+        phase2|deploy-sm)
             deploy_arbitrum_phase2
             ;;
         phase3)
@@ -883,6 +1271,15 @@ main() {
             ;;
         phase3b)
             configure_dvn_phase3b
+            ;;
+        upgrade-escrow)
+            upgrade_escrow
+            ;;
+        configure-pm)
+            configure_pm_only
+            ;;
+        configure-sm)
+            configure_sm_only
             ;;
         phase4)
             mint_tokens_phase4
@@ -921,6 +1318,30 @@ main() {
             ;;
         check-ct-resolution)
             check_ct_resolution
+            ;;
+        mint)
+            test_mint
+            ;;
+        bridge-to)
+            test_bridge_to_remote
+            ;;
+        resolve)
+            test_resolve
+            ;;
+        bridge-back)
+            test_bridge_back
+            ;;
+        retry-pm)
+            retry_bridge_pm
+            ;;
+        retry-sm)
+            retry_bridge_sm
+            ;;
+        check-bridge)
+            check_bridge_pm
+            ;;
+        check-bridge-back)
+            check_bridge_sm
             ;;
         help|--help|-h)
             usage

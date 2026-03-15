@@ -4,6 +4,7 @@ import * as React from 'react';
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
+import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@sapience/ui/components/ui/badge';
@@ -31,7 +32,7 @@ import { ResolverBadge } from '~/components/shared/ResolverBadge';
 import Comments, { CommentFilters } from '~/components/shared/Comments';
 import PredictionForm from '~/components/markets/pages/PredictionForm';
 import ConditionForecastForm from '~/components/conditions/ConditionForecastForm';
-import { UMA_RESOLVER_ARBITRUM } from '~/lib/constants';
+import { POLYMARKET_RESOLVER_ADDRESSES } from '~/lib/constants';
 import { FocusAreaBadge } from '~/components/shared/FocusAreaBadge';
 import ResearchAgent from '~/components/markets/ResearchAgent';
 import ActivityTable from '~/components/positions/ActivityTable';
@@ -82,6 +83,7 @@ export default function QuestionPageContent({
       chainId?: number | null;
       resolver?: string | null;
       openInterest?: string | null;
+      similarMarkets?: string[] | null;
     } | null,
     Error
   >({
@@ -103,6 +105,7 @@ export default function QuestionPageContent({
             chainId
             resolver
             openInterest
+            similarMarkets
             category {
               slug
             }
@@ -149,6 +152,25 @@ export default function QuestionPageContent({
   // Use chain/resolver from the condition - no fallbacks
   const chainId = data?.chainId ?? DEFAULT_CHAIN_ID;
   const resolverAddress = data?.resolver ?? undefined;
+
+  const isPolymarketResolver =
+    resolverAddress &&
+    POLYMARKET_RESOLVER_ADDRESSES.has(resolverAddress.toLowerCase());
+
+  const polymarketUrl = useMemo(() => {
+    if (!isPolymarketResolver || !data?.similarMarkets) return null;
+    const pm = data.similarMarkets.find((u) => u.includes('polymarket.com'));
+    if (!pm) return null;
+    // Handle both formats: full URL with /event/ path, or legacy #slug-only
+    try {
+      const parsed = new URL(pm);
+      if (parsed.pathname !== '/') return pm;
+      // Legacy format: https://polymarket.com#slug — not a navigable URL
+      return null;
+    } catch {
+      return null;
+    }
+  }, [isPolymarketResolver, data?.similarMarkets]);
 
   // If the resolver in the URL is wrong, immediately canonicalize to the computed resolver.
   React.useEffect(() => {
@@ -424,7 +446,10 @@ export default function QuestionPageContent({
   }, [scatterData, forecastScatterData, data?.endTime]);
 
   // Disable logging - only CreatePositionForm should log auction activity
-  const { bids, requestQuotes } = useAuctionStart({ disableLogging: true });
+  const { bids, requestQuotes } = useAuctionStart({
+    disableLogging: true,
+    skipIntentSigning: true,
+  });
   if (isLoading) {
     return (
       <div
@@ -589,7 +614,7 @@ export default function QuestionPageContent({
             <div className="p-4 border-b border-border/60">
               <ConditionForecastForm
                 conditionId={conditionId}
-                resolver={UMA_RESOLVER_ARBITRUM}
+                resolver={data.resolver ?? ''}
                 question={data.question || ''}
                 endTime={data.endTime ?? undefined}
                 categorySlug={data.category?.slug}
@@ -619,6 +644,23 @@ export default function QuestionPageContent({
               appearance="brandWhite"
             />
           </div>
+          {polymarketUrl && (
+            <a
+              href={polymarketUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mb-4 inline-flex items-center gap-1.5 text-sm text-brand-white/70 hover:text-brand-white transition-colors"
+            >
+              <Image
+                src="/polymarket-logomark.png"
+                alt="Polymarket"
+                width={24}
+                height={24}
+                className="h-4 w-4"
+              />
+              View on Polymarket
+            </a>
+          )}
           {data.description ? (
             <div className="text-sm leading-relaxed break-words [&_a]:break-all text-brand-white/90">
               <SafeMarkdown
@@ -711,7 +753,7 @@ export default function QuestionPageContent({
             <div className="p-4 border-b border-border/60">
               <ConditionForecastForm
                 conditionId={conditionId}
-                resolver={UMA_RESOLVER_ARBITRUM}
+                resolver={data.resolver ?? ''}
                 question={data.question || ''}
                 endTime={data.endTime ?? undefined}
                 categorySlug={data.category?.slug}
@@ -740,6 +782,23 @@ export default function QuestionPageContent({
               appearance="brandWhite"
             />
           </div>
+          {polymarketUrl && (
+            <a
+              href={polymarketUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mb-4 inline-flex items-center gap-1.5 text-sm text-brand-white/70 hover:text-brand-white transition-colors"
+            >
+              <Image
+                src="/polymarket-logomark.png"
+                alt="Polymarket"
+                width={24}
+                height={24}
+                className="h-4 w-4"
+              />
+              View on Polymarket
+            </a>
+          )}
           {data.description ? (
             <div className="text-sm leading-relaxed break-words [&_a]:break-all text-brand-white/90">
               <SafeMarkdown
