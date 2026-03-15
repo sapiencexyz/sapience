@@ -12,13 +12,13 @@ This codebase implements **ERC-4337 Account Abstraction** with **session keys** 
 
 ERC-4337 introduces **smart contract wallets** (Smart Accounts) to Ethereum without requiring protocol changes. Key concepts:
 
-| Component | Description |
-|-----------|-------------|
-| **Smart Account** | A smart contract that acts as a user's wallet. Can have programmable validation logic. |
-| **UserOperation** | A pseudo-transaction structure that describes an action the smart account should take. |
-| **Bundler** | An off-chain service that collects UserOperations and submits them on-chain as a single transaction. |
-| **Paymaster** | A smart contract that can sponsor gas fees for UserOperations (enabling gasless transactions). |
-| **EntryPoint** | A singleton contract (v0.7 used here) that processes UserOperations. |
+| Component         | Description                                                                                          |
+| ----------------- | ---------------------------------------------------------------------------------------------------- |
+| **Smart Account** | A smart contract that acts as a user's wallet. Can have programmable validation logic.               |
+| **UserOperation** | A pseudo-transaction structure that describes an action the smart account should take.               |
+| **Bundler**       | An off-chain service that collects UserOperations and submits them on-chain as a single transaction. |
+| **Paymaster**     | A smart contract that can sponsor gas fees for UserOperations (enabling gasless transactions).       |
+| **EntryPoint**    | A singleton contract (v0.7 used here) that processes UserOperations.                                 |
 
 ### Kernel Smart Account
 
@@ -70,14 +70,14 @@ ZeroDev's **Kernel** is an ERC-4337 smart account implementation with a **plugin
 
 ### Key Files
 
-| File | Purpose |
-|------|---------|
-| `packages/app/src/lib/session/sessionKeyManager.ts` | Core session creation, restoration, and client management |
-| `packages/app/src/lib/context/SessionContext.tsx` | React context provider for session state across the app |
-| `packages/relayer/src/sessionAuth.ts` | Server-side session approval verification |
-| `packages/relayer/src/smartAccount.ts` | Computes deterministic smart account addresses |
-| `packages/relayer/src/auctionSigVerify.ts` | Verifies auction signatures with session key support |
-| `packages/app/src/hooks/blockchain/useSapienceWriteContract.ts` | Hook for contract writes with session key routing |
+| File                                                            | Purpose                                                   |
+| --------------------------------------------------------------- | --------------------------------------------------------- |
+| `packages/app/src/lib/session/sessionKeyManager.ts`             | Core session creation, restoration, and client management |
+| `packages/app/src/lib/context/SessionContext.tsx`               | React context provider for session state across the app   |
+| `packages/relayer/src/sessionAuth.ts`                           | Server-side session approval verification                 |
+| `packages/relayer/src/smartAccount.ts`                          | Computes deterministic smart account addresses            |
+| `packages/relayer/src/auctionSigVerify.ts`                      | Verifies auction signatures with session key support      |
+| `packages/app/src/hooks/blockchain/useSapienceWriteContract.ts` | Hook for contract writes with session key routing         |
 
 ---
 
@@ -86,12 +86,14 @@ ZeroDev's **Kernel** is an ERC-4337 smart account implementation with a **plugin
 ### Step-by-Step Process
 
 1. **Generate Session Private Key**
+
    ```typescript
    const sessionPrivateKey = generatePrivateKey();
    const sessionKeyAccount = privateKeyToAccount(sessionPrivateKey);
    ```
 
 2. **Create Session Signer**
+
    ```typescript
    const sessionKeySigner = await toECDSASigner({
      signer: sessionKeyAccount,
@@ -99,10 +101,12 @@ ZeroDev's **Kernel** is an ERC-4337 smart account implementation with a **plugin
    ```
 
 3. **Define Policies**
+
    - **Call Policy**: Restricts which contracts/functions can be called
    - **Timestamp Policy**: Enforces `validAfter` and `validUntil` bounds
 
 4. **Create Permission Validator**
+
    ```typescript
    const permissionPlugin = await toPermissionValidator(publicClient, {
      entryPoint: ENTRY_POINT,
@@ -114,11 +118,12 @@ ZeroDev's **Kernel** is an ERC-4337 smart account implementation with a **plugin
    ```
 
 5. **Create Kernel Account with Plugins**
+
    ```typescript
    const account = await createKernelAccount(publicClient, {
      entryPoint: ENTRY_POINT,
      plugins: {
-       sudo: ownerValidator,    // Full owner control
+       sudo: ownerValidator, // Full owner control
        regular: permissionPlugin, // Session key with restrictions
      },
      kernelVersion: KERNEL_V3_1,
@@ -126,10 +131,15 @@ ZeroDev's **Kernel** is an ERC-4337 smart account implementation with a **plugin
    ```
 
 6. **Serialize and Sign**
+
    - Triggers EIP-712 signature from owner
    - Serializes account state for restoration
+
    ```typescript
-   const approval = await serializePermissionAccount(account, sessionPrivateKey);
+   const approval = await serializePermissionAccount(
+     account,
+     sessionPrivateKey
+   );
    ```
 
 7. **Store in localStorage**
@@ -147,6 +157,7 @@ ZeroDev's **Kernel** is an ERC-4337 smart account implementation with a **plugin
 Defines exactly which contract functions the session key can call:
 
 **Ethereal Chain Permissions:**
+
 ```typescript
 const etherealCallPolicy = toCallPolicy({
   policyVersion: CallPolicyVersion.V0_0_4,
@@ -161,29 +172,41 @@ const etherealCallPolicy = toCallPolicy({
         null, // Any amount
       ],
     },
-    { target: PREDICTION_MARKET, abi: predictionMarketAbi, functionName: 'mint' },
-    { target: PREDICTION_MARKET, abi: predictionMarketAbi, functionName: 'burn' },
-    { target: PREDICTION_MARKET, abi: predictionMarketAbi, functionName: 'consolidatePrediction' },
+    {
+      target: PREDICTION_MARKET,
+      abi: predictionMarketEscrowAbi,
+      functionName: 'mint',
+    },
+    {
+      target: PREDICTION_MARKET,
+      abi: predictionMarketEscrowAbi,
+      functionName: 'burn',
+    },
+    {
+      target: PREDICTION_MARKET,
+      abi: predictionMarketEscrowAbi,
+      functionName: 'consolidatePrediction',
+    },
   ],
 });
 ```
 
 **Arbitrum Chain Permissions:**
+
 ```typescript
 const arbitrumCallPolicy = toCallPolicy({
   policyVersion: CallPolicyVersion.V0_0_4,
-  permissions: [
-    { target: EAS_ARBITRUM, abi: EAS_ABI, functionName: 'attest' },
-  ],
+  permissions: [{ target: EAS_ARBITRUM, abi: EAS_ABI, functionName: 'attest' }],
 });
 ```
 
 ### Timestamp Policy
 
 Enforces time-based validity:
+
 ```typescript
 const timestampPolicy = toTimestampPolicy({
-  validAfter: nowInSeconds,           // Unix timestamp - session starts now
+  validAfter: nowInSeconds, // Unix timestamp - session starts now
   validUntil: nowInSeconds + duration, // Unix timestamp - session expires after duration
 });
 ```
@@ -191,6 +214,7 @@ const timestampPolicy = toTimestampPolicy({
 ### Parameter Conditions
 
 The call policy supports parameter constraints:
+
 - `ParamCondition.ONE_OF`: Argument must be one of specified values
 - `null`: Any value allowed for that argument
 
@@ -200,10 +224,10 @@ The call policy supports parameter constraints:
 
 ### Chain Architecture
 
-| Chain | Purpose | Session Creation |
-|-------|---------|------------------|
-| **Ethereal (5064014)** | Primary chain for predictions/auctions | Created immediately on login |
-| **Arbitrum (42161)** | EAS attestations | Created lazily on first attestation |
+| Chain                  | Purpose                                | Session Creation                    |
+| ---------------------- | -------------------------------------- | ----------------------------------- |
+| **Ethereal (5064014)** | Primary chain for predictions/auctions | Created immediately on login        |
+| **Arbitrum (42161)**   | EAS attestations                       | Created lazily on first attestation |
 
 ### Lazy Session Creation
 
@@ -235,7 +259,9 @@ async function createArbitrumSessionIfNeeded() {
 Sessions persist across page reloads via localStorage:
 
 ```typescript
-async function restoreSession(serialized: SerializedSession): Promise<SessionResult> {
+async function restoreSession(
+  serialized: SerializedSession
+): Promise<SessionResult> {
   // Check expiration
   if (Date.now() > serialized.config.expiresAt) {
     throw new Error('Session has expired');
@@ -355,29 +381,29 @@ The enable signature binds the session key to the smart account:
 ```typescript
 interface EnableTypedData {
   domain: {
-    name: string;           // "Kernel"
-    version: string;        // "0.3.1"
-    chainId: number;        // Chain ID
+    name: string; // "Kernel"
+    version: string; // "0.3.1"
+    chainId: number; // Chain ID
     verifyingContract: Address; // Smart account address
   };
   types: {
     Enable: [
-      { name: 'validationId', type: 'bytes21' },
-      { name: 'nonce', type: 'uint32' },
-      { name: 'hook', type: 'address' },
-      { name: 'validatorData', type: 'bytes' },
-      { name: 'hookData', type: 'bytes' },
-      { name: 'selectorData', type: 'bytes' },
+      { name: 'validationId'; type: 'bytes21' },
+      { name: 'nonce'; type: 'uint32' },
+      { name: 'hook'; type: 'address' },
+      { name: 'validatorData'; type: 'bytes' },
+      { name: 'hookData'; type: 'bytes' },
+      { name: 'selectorData'; type: 'bytes' },
     ];
   };
   primaryType: 'Enable';
   message: {
-    validationId: Hex;      // Identifies the permission validator
-    nonce: number;          // Prevents replay attacks
-    hook: Address;          // Optional hook contract
-    validatorData: Hex;     // Contains policies + session key
-    hookData: Hex;          // Hook configuration
-    selectorData: Hex;      // Function selector restrictions
+    validationId: Hex; // Identifies the permission validator
+    nonce: number; // Prevents replay attacks
+    hook: Address; // Optional hook contract
+    validatorData: Hex; // Contains policies + session key
+    hookData: Hex; // Hook configuration
+    selectorData: Hex; // Function selector restrictions
   };
 }
 ```
@@ -392,15 +418,15 @@ interface EnableTypedData {
 interface SerializedSession {
   config: {
     durationHours: number;
-    expiresAt: number;           // Unix timestamp (ms)
-    ownerAddress: Address;       // EOA that owns the smart account
+    expiresAt: number; // Unix timestamp (ms)
+    ownerAddress: Address; // EOA that owns the smart account
     smartAccountAddress: Address; // Kernel smart account
   };
-  sessionPrivateKey: Hex;        // ECDSA private key (stored locally only)
-  sessionKeyAddress: Address;    // Public address of session key
+  sessionPrivateKey: Hex; // ECDSA private key (stored locally only)
+  sessionKeyAddress: Address; // Public address of session key
   createdAt: number;
-  etherealApproval: string;      // Base64 ZeroDev approval (required)
-  arbitrumApproval?: string;     // Base64 ZeroDev approval (lazy)
+  etherealApproval: string; // Base64 ZeroDev approval (required)
+  arbitrumApproval?: string; // Base64 ZeroDev approval (lazy)
   etherealEnableTypedData?: EnableTypedData;
   arbitrumEnableTypedData?: EnableTypedData;
 }
@@ -441,7 +467,10 @@ interface SessionContextValue {
   // State
   isSessionActive: boolean;
   sessionConfig: SessionConfig | null;
-  chainClients: { ethereal: KernelAccountClient | null; arbitrum: KernelAccountClient | null };
+  chainClients: {
+    ethereal: KernelAccountClient | null;
+    arbitrum: KernelAccountClient | null;
+  };
 
   // Actions
   startSession: (params: { durationHours: number }) => Promise<void>;
@@ -505,15 +534,15 @@ ARBITRUM_RPC_URL=https://arb1.arbitrum.io/rpc  # Server-side
 
 ## 12. Security Considerations
 
-| Aspect | Implementation |
-|--------|----------------|
-| **Session Key Storage** | Private key stored only in browser localStorage |
-| **Permission Scoping** | Call policy restricts to specific contracts/functions |
-| **Time Bounding** | Timestamp policy enforces expiration |
-| **Signature Verification** | EIP-712 domain binding prevents cross-account attacks |
+| Aspect                     | Implementation                                             |
+| -------------------------- | ---------------------------------------------------------- |
+| **Session Key Storage**    | Private key stored only in browser localStorage            |
+| **Permission Scoping**     | Call policy restricts to specific contracts/functions      |
+| **Time Bounding**          | Timestamp policy enforces expiration                       |
+| **Signature Verification** | EIP-712 domain binding prevents cross-account attacks      |
 | **Session Key Extraction** | Extracted from signed `validatorData`, not client-provided |
-| **Transport Security** | Private key stripped before sending to relayer |
-| **Unique Permission IDs** | Hash of session key + timestamp prevents collision |
+| **Transport Security**     | Private key stripped before sending to relayer             |
+| **Unique Permission IDs**  | Hash of session key + timestamp prevents collision         |
 
 ---
 
@@ -521,10 +550,10 @@ ARBITRUM_RPC_URL=https://arb1.arbitrum.io/rpc  # Server-side
 
 ```json
 {
-  "@zerodev/sdk": "5.5.7",           // Core smart account creation
+  "@zerodev/sdk": "5.5.7", // Core smart account creation
   "@zerodev/ecdsa-validator": "5.4.9", // ECDSA signature validators
-  "@zerodev/permissions": "5.6.3",     // Permission validators and policies
-  "@zerodev/hooks": "5.3.4"            // React hooks (app package)
+  "@zerodev/permissions": "5.6.3", // Permission validators and policies
+  "@zerodev/hooks": "5.3.4" // React hooks (app package)
 }
 ```
 

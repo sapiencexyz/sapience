@@ -16,14 +16,11 @@ import { logAuction, formatBidForLog } from '~/lib/auction/bidLogger';
 
 export interface AuctionParams {
   wager: string; // wei string - predictor's position size
-  resolver: string; // contract address for market validation
-  predictedOutcomes: string[]; // Array of bytes strings that the resolver validates/understands
   predictor: `0x${string}`; // predictor EOA address
   predictorNonce: number; // nonce for the predictor
   chainId: number; // chain ID for the auction (e.g., 42161 for Arbitrum)
-  // Escrow auction fields (optional)
   counterpartyCollateral?: string; // wei string - counterparty's collateral for escrow auctions
-  escrowPicks?: Array<{
+  picks: Array<{
     conditionResolver: `0x${string}`;
     conditionId: `0x${string}`;
     predictedOutcome: number;
@@ -364,8 +361,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
 
       const requestPayload = {
         wager: params.wager,
-        resolver: params.resolver,
-        predictedOutcomes: params.predictedOutcomes,
+        picks: params.picks,
         predictor: effectivePredictor,
         predictorNonce: params.predictorNonce,
         chainId: params.chainId,
@@ -394,11 +390,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
       lastAuctionRef.current = { ...params, predictor: effectivePredictor };
       setCurrentAuctionParams({ ...params, predictor: effectivePredictor });
 
-      // Check if this is an escrow auction (has escrowPicks)
-      const isEscrowAuction =
-        params.escrowPicks && params.escrowPicks.length > 0;
-
-      if (!isEscrowAuction) {
+      if (!params.picks || params.picks.length === 0) {
         console.error(
           '[Auction] Escrow picks missing — all auctions require escrow format'
         );
@@ -429,7 +421,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
 
       try {
         const prepared = await prepareAuctionRFQ({
-          picks: params.escrowPicks!.map(
+          picks: params.picks.map(
             (p): Pick => ({
               conditionResolver: p.conditionResolver,
               conditionId: p.conditionId,
@@ -567,7 +559,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
       const auction = lastAuctionRef.current;
       if (!auction) return null;
 
-      const picks = auction.escrowPicks;
+      const picks = auction.picks;
       if (!picks || picks.length === 0) return null;
 
       // Validate bid is from the current auction to avoid stale nonce errors

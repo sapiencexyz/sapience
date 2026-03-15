@@ -24,10 +24,7 @@ import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import { PositionSizeInput } from '~/components/markets/forms';
 import BidDisplay from '~/components/markets/forms/shared/BidDisplay';
-import {
-  buildAuctionStartPayload,
-  buildPythAuctionStartPayload,
-} from '~/lib/auction/buildAuctionPayload';
+import { buildPythAuctionStartPayload } from '~/lib/auction/buildAuctionPayload';
 import type { AuctionParams, QuoteBid } from '~/lib/auction/useAuctionStart';
 import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
@@ -544,55 +541,29 @@ export default function PositionForm({
             }>
           | undefined;
 
-        const payload = hasPyth
-          ? (() => {
-              const p = buildPythAuctionStartPayload(
-                pythPredictions.map((pp) => ({
-                  priceId: pp.priceId,
-                  direction: pp.direction,
-                  targetPrice: pp.targetPrice,
-                  targetPriceRaw: pp.targetPriceRaw,
-                  priceExpo: pp.priceExpo,
-                  dateTimeLocal: pp.dateTimeLocal,
-                })),
-                chainId
-              );
-              pythEscrowPicks = p.escrowPicks;
-              return p;
-            })()
-          : buildAuctionStartPayload(
-              selections.map((s) => ({
-                marketId: s.conditionId || '0',
-                prediction: !!s.prediction,
-                resolverAddress: s.resolverAddress,
-              })),
-              chainId
-            );
-
-        const params: AuctionParams = {
-          wager: positionSizeWei,
-          resolver: payload.resolver,
-          predictedOutcomes: payload.predictedOutcomes,
-          predictor: selectedPredictorAddressRef.current,
-          predictorNonce: freshNonce !== undefined ? Number(freshNonce) : 0,
-          chainId: chainId,
-        };
-
-        // Only thread sponsor when the user explicitly activates sponsorship.
-        // Initial quotes are always unsponored so the bid is usable for self-funded
-        // mints; if the bid qualifies, the user clicks "Use" to re-request with sponsor.
-        if (options?.withSponsor && sponsorAddress) {
-          params.predictorSponsor = sponsorAddress;
-          params.predictorSponsorData = '0x';
+        if (hasPyth) {
+          const p = buildPythAuctionStartPayload(
+            pythPredictions.map((pp) => ({
+              priceId: pp.priceId,
+              direction: pp.direction,
+              targetPrice: pp.targetPrice,
+              targetPriceRaw: pp.targetPriceRaw,
+              priceExpo: pp.priceExpo,
+              dateTimeLocal: pp.dateTimeLocal,
+            })),
+            chainId
+          );
+          pythEscrowPicks = p.escrowPicks;
         }
 
-        // Build escrowPicks — required for all auction types
+        // Build picks — required for all auction types
+        let picks: AuctionParams['picks'] = [];
         if (hasPyth && pythEscrowPicks) {
-          params.escrowPicks = pythEscrowPicks;
+          picks = pythEscrowPicks;
         } else if (hasUma) {
-          const escrowPicks = getPicks();
-          if (escrowPicks.length > 0) {
-            params.escrowPicks = escrowPicks;
+          const conditionPicks = getPicks();
+          if (conditionPicks.length > 0) {
+            picks = conditionPicks;
           } else {
             console.warn(
               '[PositionForm] Escrow chain but getPicks() empty',
@@ -604,6 +575,22 @@ export default function PositionForm({
           }
         }
 
+        const params: AuctionParams = {
+          wager: positionSizeWei,
+          predictor: selectedPredictorAddressRef.current,
+          predictorNonce: freshNonce !== undefined ? Number(freshNonce) : 0,
+          chainId: chainId,
+          picks,
+        };
+
+        // Only thread sponsor when the user explicitly activates sponsorship.
+        // Initial quotes are always unsponored so the bid is usable for self-funded
+        // mints; if the bid qualifies, the user clicks "Use" to re-request with sponsor.
+        if (options?.withSponsor && sponsorAddress) {
+          params.predictorSponsor = sponsorAddress;
+          params.predictorSponsorData = '0x';
+        }
+
         requestQuotesRef.current(params, {
           forceRefresh: options?.forceRefresh,
         });
@@ -611,7 +598,7 @@ export default function PositionForm({
         // Set the request key to match incoming bids to this configuration
         currentRequestKeyRef.current = `${predictionsKey}:${positionSizeValue || ''}`;
         logPositionForm(
-          `[triggerAuction] Key set: ${currentRequestKeyRef.current.slice(0, 50)}, picks=${params.escrowPicks?.length ?? 0}`
+          `[triggerAuction] Key set: ${currentRequestKeyRef.current.slice(0, 50)}, picks=${params.picks?.length ?? 0}`
         );
 
         // Clear in-flight flag after a short delay to allow the debounced request to start

@@ -4,10 +4,10 @@ version: 0.4.0
 description: Prediction markets on Ethereal + forecasting on Arbitrum. Use when the user wants to trade prediction market outcomes, submit probability forecasts, check market prices or positions, provide liquidity as a market maker, buy/sell positions on secondary market, or claim winnings. Supports EIP-712 signed auctions via WebSocket and on-chain settlement.
 metadata:
   category: trading
-  emoji: "🎯"
-  api_base: "https://api.sapience.xyz"
-  homepage: "https://sapience.xyz"
-  docs: "https://docs.sapience.xyz"
+  emoji: '🎯'
+  api_base: 'https://api.sapience.xyz'
+  homepage: 'https://sapience.xyz'
+  docs: 'https://docs.sapience.xyz'
 ---
 
 # Sapience
@@ -20,17 +20,17 @@ Prediction markets on Ethereal (chain `5064014`) + forecasting on Arbitrum (chai
 
 ## Quick Reference
 
-| Action | Method | Details |
-|--------|--------|---------|
-| Submit forecast | On-chain (Arbitrum) | `EAS.attest()` — free, ranked on leaderboard |
-| List markets | POST `/graphql` | `questions` query — search, sort, filter |
-| Get positions | POST `/graphql` | `positions` query |
-| Start auction (taker) | WS | `wss://relayer.sapience.xyz/auction` |
-| Submit bid (maker) | WS | `wss://relayer.sapience.xyz/auction` |
-| Sell position (secondary) | WS | `secondary.auction.start` — [details](references/secondary-market.md) |
-| Buy position (secondary) | WS | `secondary.bid.submit` — [details](references/secondary-market.md) |
-| Settle prediction | On-chain (Ethereal) | `PredictionMarketEscrow.settle()` |
-| Claim winnings | On-chain (Ethereal) | `PredictionMarketEscrow.redeem()` |
+| Action                    | Method              | Details                                                               |
+| ------------------------- | ------------------- | --------------------------------------------------------------------- |
+| Submit forecast           | On-chain (Arbitrum) | `EAS.attest()` — free, ranked on leaderboard                          |
+| List markets              | POST `/graphql`     | `questions` query — search, sort, filter                              |
+| Get positions             | POST `/graphql`     | `positions` query                                                     |
+| Start auction (taker)     | WS                  | `wss://relayer.sapience.xyz/auction`                                  |
+| Submit bid (maker)        | WS                  | `wss://relayer.sapience.xyz/auction`                                  |
+| Sell position (secondary) | WS                  | `secondary.auction.start` — [details](references/secondary-market.md) |
+| Buy position (secondary)  | WS                  | `secondary.bid.submit` — [details](references/secondary-market.md)    |
+| Settle prediction         | On-chain (Ethereal) | `PredictionMarketEscrow.settle()`                                     |
+| Claim winnings            | On-chain (Ethereal) | `PredictionMarketEscrow.redeem()`                                     |
 
 ## Setup
 
@@ -51,6 +51,7 @@ You need a wallet (any EOA or smart account) to interact with Sapience. How the 
 Contracts require WUSDe (wrapped USDe). Call `WUSDe.deposit()` with USDe value to wrap, then `WUSDe.approve(escrow, amount)`.
 
 **SDK convenience helper** (if you have a raw private key):
+
 ```javascript
 import { prepareForTrade } from '@sapience/sdk';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts/addresses';
@@ -68,7 +69,7 @@ const { ready, wrapTxHash, approvalTxHash } = await prepareForTrade({
 If the user is new to prediction markets, help them build intuition before risking money:
 
 1. **Explore markets** — Query active markets (`questions` API) and discuss what's interesting.
-2. **Develop a thesis** — For any market: *What's the probability, and why?* Research the question using news, data, base rates, and expert opinions.
+2. **Develop a thesis** — For any market: _What's the probability, and why?_ Research the question using news, data, base rates, and expert opinions.
 3. **Start with forecasts** — Free (~$0.01 gas). Builds a track record and calibration skill. See [Forecasting](#forecasting-arbitrum).
 4. **Compare to market prices** — Check Polymarket prices. Where does the user disagree? A well-reasoned disagreement is an edge.
 5. **Size positions carefully** — Start small. Never risk more than affordable to lose. Think about position sizing relative to confidence.
@@ -81,12 +82,11 @@ All contract addresses from `@sapience/sdk/contracts/addresses`:
 
 ```javascript
 import {
-  predictionMarketEscrow,  // core escrow (mint, settle, redeem)
-  collateralToken,          // WUSDe
-  secondaryMarketEscrow,    // secondary market OTC trades
-  pythConditionResolver,    // Pyth oracle resolver
-  umaResolver,              // UMA resolver (Arbitrum, for forecasting)
-  eas,                      // EAS (Arbitrum, for forecasting)
+  predictionMarketEscrow, // core escrow (mint, settle, redeem)
+  collateralToken, // WUSDe
+  secondaryMarketEscrow, // secondary market OTC trades
+  pythConditionResolver, // Pyth oracle resolver
+  eas, // EAS (Arbitrum, for forecasting)
 } from '@sapience/sdk/contracts/addresses';
 import { CHAIN_ID_ETHEREAL, CHAIN_ID_ARBITRUM } from '@sapience/sdk/constants';
 
@@ -94,15 +94,14 @@ const escrowAddress = predictionMarketEscrow[CHAIN_ID_ETHEREAL].address;
 const wusdeAddress = collateralToken[CHAIN_ID_ETHEREAL].address;
 ```
 
-| Contract | Chain | SDK Key |
-|----------|-------|---------|
-| PredictionMarketEscrow | Ethereal (5064014) | `predictionMarketEscrow` |
-| WUSDe (Collateral) | Ethereal (5064014) | `collateralToken` |
-| SecondaryMarketEscrow | Ethereal (5064014) | `secondaryMarketEscrow` |
-| PythConditionResolver | Ethereal (5064014) | `pythConditionResolver` |
-| PolymarketResolver | Ethereal (5064014) | `predictionMarketLZConditionalTokensResolver` |
-| EAS | Arbitrum (42161) | `eas` |
-| UMA Resolver | Arbitrum (42161) | `umaResolver` |
+| Contract                  | Chain              | SDK Key                              |
+| ------------------------- | ------------------ | ------------------------------------ |
+| PredictionMarketEscrow    | Ethereal (5064014) | `predictionMarketEscrow`             |
+| WUSDe (Collateral)        | Ethereal (5064014) | `collateralToken`                    |
+| SecondaryMarketEscrow     | Ethereal (5064014) | `secondaryMarketEscrow`              |
+| PythConditionResolver     | Ethereal (5064014) | `pythConditionResolver`              |
+| ConditionalTokensResolver | Ethereal (5064014) | `conditionalTokensConditionResolver` |
+| EAS                       | Arbitrum (42161)   | `eas`                                |
 
 Chain helpers: `etherealChain` (full viem Chain object) and `getRpcUrl(chainId)` from `@sapience/sdk/constants`.
 
@@ -128,6 +127,7 @@ curl -X POST https://api.sapience.xyz/graphql \
 ```
 
 **Arguments:**
+
 - `take` (Int, default 50), `skip` (Int, default 0) — pagination
 - `sortField` — `openInterest`, `endTime`, `createdAt`, `predictionCount`
 - `sortDirection` — `asc` or `desc`
@@ -140,6 +140,7 @@ curl -X POST https://api.sapience.xyz/graphql \
 Each condition includes a `resolver` field — use this as `conditionResolver` when building picks.
 
 ### Get Condition Details
+
 ```bash
 curl -X POST https://api.sapience.xyz/graphql \
   -H "Content-Type: application/json" \
@@ -147,6 +148,7 @@ curl -X POST https://api.sapience.xyz/graphql \
 ```
 
 ### Get Positions
+
 ```bash
 curl -X POST https://api.sapience.xyz/graphql \
   -H "Content-Type: application/json" \
@@ -154,6 +156,7 @@ curl -X POST https://api.sapience.xyz/graphql \
 ```
 
 ### Get Predictions
+
 ```bash
 curl -X POST https://api.sapience.xyz/graphql \
   -H "Content-Type: application/json" \
@@ -161,6 +164,7 @@ curl -X POST https://api.sapience.xyz/graphql \
 ```
 
 ### Accuracy Leaderboard
+
 ```bash
 curl -X POST https://api.sapience.xyz/graphql \
   -H "Content-Type: application/json" \
@@ -168,6 +172,7 @@ curl -X POST https://api.sapience.xyz/graphql \
 ```
 
 ### Your Forecasting Rank
+
 ```bash
 curl -X POST https://api.sapience.xyz/graphql \
   -H "Content-Type: application/json" \
@@ -179,22 +184,27 @@ curl -X POST https://api.sapience.xyz/graphql \
 Sapience markets mirror Polymarket. Use `similarMarkets` URLs to get prices.
 
 ### Extract Slug from URL
+
 ```
 https://polymarket.com/event/slug-name#outcome -> slug: "slug-name"
 ```
 
 ### Get Market Data
+
 ```bash
 curl "https://gamma-api.polymarket.com/markets/slug/<slug>"
 ```
+
 Response: `outcomePrices` (YES/NO prices), `outcomes`, `clobTokenIds` (for orderbook).
 
 ### Get Orderbook
+
 ```bash
 curl "https://clob.polymarket.com/book?token_id=<clobTokenId>"
 ```
 
 ### Price History
+
 ```bash
 curl "https://clob.polymarket.com/prices-history?market=<clobTokenId>&startTs=<unix_ts>&fidelity=60"
 ```
@@ -211,23 +221,24 @@ Build calldata and submit with any Arbitrum wallet:
 
 ```javascript
 import { buildForecastCalldata } from '@sapience/sdk';
-import { umaResolver } from '@sapience/sdk/contracts/addresses';
-import { CHAIN_ID_ARBITRUM } from '@sapience/sdk/constants';
+import { pythConditionResolver } from '@sapience/sdk/contracts/addresses';
+import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 
 const calldata = buildForecastCalldata(
-  umaResolver[CHAIN_ID_ARBITRUM].address,  // resolver
-  '0x<conditionId>',                         // condition
-  75,                                         // probability 0-100
-  'Optional reasoning'                        // max 180 chars
+  pythConditionResolver[CHAIN_ID_ETHEREAL].address, // resolver
+  '0x<conditionId>', // condition
+  75, // probability 0-100
+  'Optional reasoning' // max 180 chars
 );
 // calldata.to = EAS contract, calldata.data = encoded attest(), calldata.chainId = 42161
 ```
 
 **Convenience helper** (requires raw private key):
+
 ```javascript
 import { submitForecast } from '@sapience/sdk';
 const { hash } = await submitForecast({
-  resolver: umaResolver[CHAIN_ID_ARBITRUM].address,
+  resolver: pythConditionResolver[CHAIN_ID_ETHEREAL].address,
   condition: '0x<conditionId>',
   probability: 75,
   comment: 'Reasoning here',
@@ -242,6 +253,7 @@ const { hash } = await submitForecast({
 Connect -> sign intent -> start auction -> receive bids -> sign MintApproval -> mint on-chain.
 
 ### 1. Connect
+
 ```javascript
 const ws = new WebSocket('wss://relayer.sapience.xyz/auction');
 ```
@@ -252,9 +264,9 @@ const ws = new WebSocket('wss://relayer.sapience.xyz/auction');
 const picks = [
   {
     conditionResolver: '0x...', // `resolver` field from condition query
-    conditionId: '0x...',       // `id` field from condition query
-    predictedOutcome: 0         // 0 = YES, 1 = NO
-  }
+    conditionId: '0x...', // `id` field from condition query
+    predictedOutcome: 0, // 0 = YES, 1 = NO
+  },
 ];
 // For combos, add more picks to the array
 ```
@@ -279,51 +291,58 @@ const typedData = buildAuctionIntentTypedData({
   predictorNonce: BigInt(Date.now()),
   predictorDeadline: BigInt(Math.floor(Date.now() / 1000) + 300),
   verifyingContract: escrowAddress,
-  chainId: CHAIN_ID_ETHEREAL
+  chainId: CHAIN_ID_ETHEREAL,
 });
 
 const intentSignature = await wallet.signTypedData(typedData);
 ```
 
 ### 4. Send `auction.start`
+
 ```javascript
-ws.send(JSON.stringify({
-  type: 'auction.start',
-  payload: {
-    picks: picks.map(p => ({
-      conditionResolver: p.conditionResolver,
-      conditionId: p.conditionId,
-      predictedOutcome: p.predictedOutcome
-    })),
-    predictorCollateral: '50000000000000000000', // wei string
-    predictor: wallet.address,
-    predictorNonce: nonce,
-    predictorDeadline: deadline,
-    intentSignature: intentSignature,
-    chainId: 5064014
-  }
-}));
+ws.send(
+  JSON.stringify({
+    type: 'auction.start',
+    payload: {
+      picks: picks.map((p) => ({
+        conditionResolver: p.conditionResolver,
+        conditionId: p.conditionId,
+        predictedOutcome: p.predictedOutcome,
+      })),
+      predictorCollateral: '50000000000000000000', // wei string
+      predictor: wallet.address,
+      predictorNonce: nonce,
+      predictorDeadline: deadline,
+      intentSignature: intentSignature,
+      chainId: 5064014,
+    },
+  })
+);
 ```
 
 ### 5. Receive `auction.ack`
+
 ```json
-{"type":"auction.ack","payload":{"auctionId":"abc123"}}
+{ "type": "auction.ack", "payload": { "auctionId": "abc123" } }
 ```
 
 ### 6. Receive `auction.bids`
+
 ```json
 {
   "type": "auction.bids",
   "payload": {
     "auctionId": "abc123",
-    "bids": [{
-      "counterparty": "0x...",
-      "counterpartyCollateral": "25000000000000000000",
-      "counterpartyNonce": 1706800000,
-      "counterpartyDeadline": 1706800060,
-      "counterpartySignature": "0x...",
-      "receivedAt": "2025-01-01T00:00:00.000Z"
-    }]
+    "bids": [
+      {
+        "counterparty": "0x...",
+        "counterpartyCollateral": "25000000000000000000",
+        "counterpartyNonce": 1706800000,
+        "counterpartyDeadline": 1706800060,
+        "counterpartySignature": "0x...",
+        "receivedAt": "2025-01-01T00:00:00.000Z"
+      }
+    ]
   }
 }
 ```
@@ -335,8 +354,17 @@ Select the best bid, sign your `MintApproval`, and call `PredictionMarketEscrow.
 Both taker and maker must have approved the PredictionMarketEscrow contract to spend their WUSDe.
 
 ### 8. Receive `auction.filled` or `auction.expired`
+
 ```json
-{"type":"auction.filled","payload":{"auctionId":"abc123","predictionId":"0x...","pickConfigId":"0x...","transactionHash":"0x..."}}
+{
+  "type": "auction.filled",
+  "payload": {
+    "auctionId": "abc123",
+    "predictionId": "0x...",
+    "pickConfigId": "0x...",
+    "transactionHash": "0x..."
+  }
+}
 ```
 
 SDK helper: `createEscrowAuctionWs()` from `@sapience/sdk/relayer/escrowAuctionWs` handles connection, reconnection, and typed message routing.
@@ -346,17 +374,25 @@ SDK helper: `createEscrowAuctionWs()` from `@sapience/sdk/relayer/escrowAuctionW
 Listen for auctions, sign counterparty MintApproval, submit bids. No auth to listen.
 
 ### 1. Connect
+
 ```javascript
 const ws = new WebSocket('wss://relayer.sapience.xyz/auction');
 ```
 
 ### 2. Receive `auction.started`
+
 ```json
 {
   "type": "auction.started",
   "payload": {
     "auctionId": "abc123",
-    "picks": [{"conditionResolver":"0x...","conditionId":"0x...","predictedOutcome":0}],
+    "picks": [
+      {
+        "conditionResolver": "0x...",
+        "conditionId": "0x...",
+        "predictedOutcome": 0
+      }
+    ],
     "predictorCollateral": "50000000000000000000",
     "predictor": "0x...",
     "predictorNonce": 1706800000,
@@ -386,30 +422,34 @@ const typedData = buildCounterpartyMintTypedData({
   predictorSponsor: '0x0000000000000000000000000000000000000000',
   predictorSponsorData: '0x',
   verifyingContract: predictionMarketEscrow[CHAIN_ID_ETHEREAL].address,
-  chainId: CHAIN_ID_ETHEREAL
+  chainId: CHAIN_ID_ETHEREAL,
 });
 
 const counterpartySignature = await wallet.signTypedData(typedData);
 ```
 
 ### 4. Send `bid.submit`
+
 ```javascript
-ws.send(JSON.stringify({
-  type: 'bid.submit',
-  payload: {
-    auctionId: 'abc123',
-    counterparty: wallet.address,
-    counterpartyCollateral: '25000000000000000000',
-    counterpartyNonce: nonce,
-    counterpartyDeadline: deadline,
-    counterpartySignature: counterpartySignature
-  }
-}));
+ws.send(
+  JSON.stringify({
+    type: 'bid.submit',
+    payload: {
+      auctionId: 'abc123',
+      counterparty: wallet.address,
+      counterpartyCollateral: '25000000000000000000',
+      counterpartyNonce: nonce,
+      counterpartyDeadline: deadline,
+      counterpartySignature: counterpartySignature,
+    },
+  })
+);
 ```
 
 ### 5. Receive `bid.ack`
+
 ```json
-{"type":"bid.ack","payload":{"bidId":"xyz789"}}
+{ "type": "bid.ack", "payload": { "bidId": "xyz789" } }
 ```
 
 On error: `{"type":"bid.ack","payload":{"error":"auction_not_found_or_expired"}}`
@@ -439,24 +479,26 @@ await walletClient.writeContract({
   address: predictionMarketEscrow[CHAIN_ID_ETHEREAL].address,
   abi: predictionMarketEscrowAbi,
   functionName: 'mint',
-  args: [{
-    picks: canonicalPicks,
-    predictorCollateral: 50000000000000000000n,
-    counterpartyCollateral: 25000000000000000000n,
-    predictor: '0x...',
-    counterparty: '0x...',
-    predictorNonce: predictorNonce,
-    counterpartyNonce: counterpartyNonce,
-    predictorDeadline: predictorDeadline,
-    counterpartyDeadline: counterpartyDeadline,
-    predictorSignature: '0x...',
-    counterpartySignature: '0x...',
-    refCode: '0x' + '0'.repeat(64),
-    predictorSessionKeyData: '0x',
-    counterpartySessionKeyData: '0x',
-    predictorSponsor: '0x0000000000000000000000000000000000000000',
-    predictorSponsorData: '0x'
-  }]
+  args: [
+    {
+      picks: canonicalPicks,
+      predictorCollateral: 50000000000000000000n,
+      counterpartyCollateral: 25000000000000000000n,
+      predictor: '0x...',
+      counterparty: '0x...',
+      predictorNonce: predictorNonce,
+      counterpartyNonce: counterpartyNonce,
+      predictorDeadline: predictorDeadline,
+      counterpartyDeadline: counterpartyDeadline,
+      predictorSignature: '0x...',
+      counterpartySignature: '0x...',
+      refCode: '0x' + '0'.repeat(64),
+      predictorSessionKeyData: '0x',
+      counterpartySessionKeyData: '0x',
+      predictorSponsor: '0x0000000000000000000000000000000000000000',
+      predictorSponsorData: '0x',
+    },
+  ],
 });
 ```
 
@@ -489,14 +531,16 @@ Two-step: settle then redeem.
 Use the `positions` query (see [GraphQL Queries](#get-positions)). Find positions where `pickConfig.resolved == false` (eligible to settle) or `pickConfig.resolved == true` with winning tokens (eligible to redeem).
 
 ### 2. Settle
+
 ```javascript
 await walletClient.writeContract({
   address: predictionMarketEscrow[CHAIN_ID_ETHEREAL].address,
   abi: predictionMarketEscrowAbi,
   functionName: 'settle',
-  args: [predictionId, '0x' + '0'.repeat(64)]
+  args: [predictionId, '0x' + '0'.repeat(64)],
 });
 ```
+
 Permissionless — anyone can call. Only needed once per pickConfigId.
 
 ### 3. Determine Winner
@@ -506,30 +550,33 @@ Permissionless — anyone can call. Only needed once per pickConfigId.
 - `result == "NON_DECISIVE"` -> tie, proportional split
 
 ### 4. Redeem
+
 ```javascript
 await walletClient.writeContract({
   address: predictionMarketEscrow[CHAIN_ID_ETHEREAL].address,
   abi: predictionMarketEscrowAbi,
   functionName: 'redeem',
-  args: [positionTokenAddress, amount, '0x' + '0'.repeat(64)]
+  args: [positionTokenAddress, amount, '0x' + '0'.repeat(64)],
 });
 ```
+
 Burns position tokens and returns proportional collateral.
 
 ## Rate Limits
 
-| Endpoint | Limit |
-|----------|-------|
-| GraphQL API | 200 req / 60s per IP |
-| Auction WS | 100 msg / 10s per connection |
-| WS idle timeout | 300s |
-| Max WS message | 64KB |
+| Endpoint        | Limit                        |
+| --------------- | ---------------------------- |
+| GraphQL API     | 200 req / 60s per IP         |
+| Auction WS      | 100 msg / 10s per connection |
+| WS idle timeout | 300s                         |
+| Max WS message  | 64KB                         |
 
 Keep WebSocket alive with periodic pings: `ws.send(JSON.stringify({ type: 'ping' }));` → responds `{"type":"pong"}`
 
 ## Error Handling
 
 **bid.ack errors** (`payload.error`):
+
 - `auction_not_found_or_expired` — Auction ended or invalid auctionId
 - `quote_expired` — counterpartyDeadline passed
 - `invalid_signature` — Signature verification failed
@@ -541,24 +588,26 @@ Keep WebSocket alive with periodic pings: `ws.send(JSON.stringify({ type: 'ping'
 
 ## SDK Import Reference
 
-| Function | Import Path |
-|----------|-------------|
-| `submitForecast`, `buildForecastCalldata`, `prepareForTrade`, `wrapUSDe`, `getWUSDEBalance` | `@sapience/sdk` |
-| `predictionMarketEscrow`, `collateralToken`, `secondaryMarketEscrow`, `pythConditionResolver`, `umaResolver`, `eas` | `@sapience/sdk/contracts/addresses` |
-| `CHAIN_ID_ETHEREAL`, `CHAIN_ID_ARBITRUM`, `etherealChain`, `getRpcUrl` | `@sapience/sdk/constants` |
-| `predictionMarketEscrowAbi`, `secondaryMarketEscrowAbi`, `pythConditionResolverAbi` | `@sapience/sdk/abis` |
-| `canonicalizePicks`, `computePickConfigId` | `@sapience/sdk/auction/escrowEncoding` |
-| `getPythMarketId`, `encodePythBinaryOptionOutcomes` | `@sapience/sdk/auction/encoding` |
-| `buildAuctionIntentTypedData`, `buildPredictorMintTypedData`, `buildCounterpartyMintTypedData` | `@sapience/sdk/auction/escrowSigning` |
-| `buildSellerTradeApproval`, `buildBuyerTradeApproval`, `computeTradeHash` | `@sapience/sdk/auction/secondarySigning` |
-| `createEscrowAuctionWs` | `@sapience/sdk/relayer/escrowAuctionWs` |
+| Function                                                                                                                                   | Import Path                              |
+| ------------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------- |
+| `submitForecast`, `buildForecastCalldata`, `prepareForTrade`, `wrapUSDe`, `getWUSDEBalance`                                                | `@sapience/sdk`                          |
+| `predictionMarketEscrow`, `collateralToken`, `secondaryMarketEscrow`, `pythConditionResolver`, `conditionalTokensConditionResolver`, `eas` | `@sapience/sdk/contracts/addresses`      |
+| `CHAIN_ID_ETHEREAL`, `CHAIN_ID_ARBITRUM`, `etherealChain`, `getRpcUrl`                                                                     | `@sapience/sdk/constants`                |
+| `predictionMarketEscrowAbi`, `secondaryMarketEscrowAbi`, `pythConditionResolverAbi`                                                        | `@sapience/sdk/abis`                     |
+| `canonicalizePicks`, `computePickConfigId`                                                                                                 | `@sapience/sdk/auction/escrowEncoding`   |
+| `getPythMarketId`, `encodePythBinaryOptionOutcomes`                                                                                        | `@sapience/sdk/auction/encoding`         |
+| `buildAuctionIntentTypedData`, `buildPredictorMintTypedData`, `buildCounterpartyMintTypedData`                                             | `@sapience/sdk/auction/escrowSigning`    |
+| `buildSellerTradeApproval`, `buildBuyerTradeApproval`, `computeTradeHash`                                                                  | `@sapience/sdk/auction/secondarySigning` |
+| `createEscrowAuctionWs`                                                                                                                    | `@sapience/sdk/relayer/escrowAuctionWs`  |
 
 ## Troubleshooting
 
 If something isn't working, check for skill updates:
+
 ```bash
 curl -s https://sapience.xyz/SKILL.md | head -3
 ```
+
 Current version: `0.4.0`. If newer exists, re-fetch from `https://sapience.xyz/SKILL.md`.
 
 ## Philosophy

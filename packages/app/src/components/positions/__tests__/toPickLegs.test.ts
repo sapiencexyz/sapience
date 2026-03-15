@@ -400,3 +400,124 @@ describe('computeResultFromConditions — Pyth Over/Under settlement', () => {
     expect(result.result).toBe('COUNTERPARTY_WINS');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Tests — computeResultFromConditions edge cases
+// ---------------------------------------------------------------------------
+
+describe('computeResultFromConditions — edge cases', () => {
+  it('treats missing condition in map as UNRESOLVED', () => {
+    const picks = [
+      { conditionId: 'missing', predictedOutcome: OutcomeSide.YES },
+    ];
+    const conditions = makeConditionsMap([]); // empty map
+    const result = computeResultFromConditions(picks, conditions);
+    expect(result.result).toBe('UNRESOLVED');
+    expect(result.allResolved).toBe(false);
+  });
+
+  it('partial settlement: one resolved win + one missing → UNRESOLVED', () => {
+    const picks = [
+      { conditionId: 'c1', predictedOutcome: OutcomeSide.YES },
+      { conditionId: 'c2', predictedOutcome: OutcomeSide.NO },
+    ];
+    const conditions = makeConditionsMap([
+      ['c1', { settled: true, resolvedToYes: true }],
+      // c2 missing from map entirely
+    ]);
+    const result = computeResultFromConditions(picks, conditions);
+    expect(result.result).toBe('UNRESOLVED');
+    expect(result.allResolved).toBe(false);
+  });
+
+  it('decisive loss short-circuits even with unresolved picks remaining', () => {
+    const picks = [
+      { conditionId: 'c1', predictedOutcome: OutcomeSide.YES },
+      { conditionId: 'c2', predictedOutcome: OutcomeSide.YES },
+    ];
+    const conditions = makeConditionsMap([
+      ['c1', { settled: true, resolvedToYes: false }], // loss
+      // c2 not settled yet
+    ]);
+    const result = computeResultFromConditions(picks, conditions);
+    expect(result.result).toBe('COUNTERPARTY_WINS');
+  });
+
+  it('non-decisive short-circuits even with unresolved picks remaining', () => {
+    const picks = [
+      { conditionId: 'c1', predictedOutcome: OutcomeSide.YES },
+      { conditionId: 'c2', predictedOutcome: OutcomeSide.YES },
+    ];
+    const conditions = makeConditionsMap([
+      ['c1', { settled: true, nonDecisive: true }],
+      ['c2', { settled: false }],
+    ]);
+    const result = computeResultFromConditions(picks, conditions);
+    expect(result.result).toBe('COUNTERPARTY_WINS');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests — toPicks mixed resolver types
+// ---------------------------------------------------------------------------
+
+describe('toPicks — mixed resolver picks', () => {
+  it('handles mixed Pyth + non-Pyth picks in same array', () => {
+    const pythPick = makePickData({ predictedOutcome: 0 }); // Over
+    const conditionPick: PickData = {
+      id: 2,
+      pickConfigId: '0x02',
+      conditionResolver: '0x1234567890123456789012345678901234567890',
+      conditionId: 'cond-rain',
+      predictedOutcome: OutcomeSide.YES,
+    };
+    const map = makeConditionsMap([
+      ['cond-rain', { question: 'Will it rain?' }],
+    ]);
+
+    const result = toPicks([pythPick, conditionPick], true, map);
+    expect(result).toHaveLength(2);
+
+    // First pick: Pyth
+    expect(result[0].source).toBe('pyth');
+    expect(result[0].choice).toBe('Over');
+
+    // Second pick: non-Pyth
+    expect(result[1].source).toBeUndefined();
+    expect(result[1].choice).toBe('Yes');
+    expect(result[1].question).toBe('Will it rain?');
+  });
+
+  it('Pyth counterparty under (predictedOutcome=1) shows "Over"', () => {
+    const pick = makePickData({ predictedOutcome: 1 }); // Under on predictor side
+    const result = toPicks([pick], false, emptyConditionsMap); // counterparty flips
+    expect(result[0].choice).toBe('Over');
+  });
+
+  it('uses shortName when question is null', () => {
+    const pick: PickData = {
+      id: 3,
+      pickConfigId: '0x03',
+      conditionResolver: '0x1234567890123456789012345678901234567890',
+      conditionId: 'cond-short',
+      predictedOutcome: OutcomeSide.YES,
+    };
+    const map = makeConditionsMap([
+      ['cond-short', { question: null, shortName: 'Short question' }],
+    ]);
+    const result = toPicks([pick], true, map);
+    expect(result[0].question).toBe('Short question');
+  });
+
+  it('passes through settled/resolvedToYes/nonDecisive from conditionsMap', () => {
+    const conditionId = makePythConditionId();
+    const pick = makePickData({ conditionId });
+    const map = makeConditionsMap([
+      [conditionId, { settled: true, resolvedToYes: true, nonDecisive: false }],
+    ]);
+    const result = toPicks([pick], true, map);
+    expect(result[0].settled).toBe(true);
+    expect(result[0].resolvedToYes).toBe(true);
+    expect(result[0].nonDecisive).toBe(false);
+  });
+});

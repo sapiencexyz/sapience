@@ -14,7 +14,7 @@ import {
   type Hex,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { contracts, escrowContracts } from '../contracts/addresses';
+import { contracts } from '../contracts/addresses';
 import { getPythMarketHash } from '../auction/encoding';
 
 /**
@@ -89,8 +89,7 @@ function parseArgs(argv: string[]): Args {
     throw new Error(`invalid --chain-id (${String(get('chain-id'))})`);
   }
 
-  const resolverFromSdk =
-    escrowContracts.pythConditionResolver?.[chainId]?.address;
+  const resolverFromSdk = contracts.pythConditionResolver?.[chainId]?.address;
   const pythResolverRaw = get('pyth-resolver') ?? resolverFromSdk;
   if (!pythResolverRaw) {
     throw new Error(

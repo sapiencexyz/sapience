@@ -1,9 +1,11 @@
 import prisma from '../../../db';
+import Sentry from '../../../instrument';
 import {
   scoreSelectedForecastsForSettledMarket,
   computeAndStoreMarketTwErrors,
 } from '../../../helpers/scoringService';
 import { resolvePickConfigsForCondition } from './resolvePickConfigs';
+import type { Prisma } from '../../../../generated/prisma';
 import type { Log, Block } from 'viem';
 
 /**
@@ -26,67 +28,75 @@ export async function settleCondition(
 ): Promise<void> {
   const { conditionId, resolvedToYes, nonDecisive, eventData } = input;
 
+  if (!log.transactionHash || log.blockNumber == null || log.logIndex == null) {
+    throw new Error(
+      `${tag} Log is missing required fields for deduplication (tx=${log.transactionHash}, block=${log.blockNumber}, logIndex=${log.logIndex})`
+    );
+  }
+
+  // Capture validated values before the transaction callback so TypeScript
+  // narrowing is preserved (narrowing doesn't cross async boundaries).
   const eventKey = {
-    transactionHash: log.transactionHash || '',
-    blockNumber: Number(log.blockNumber || 0),
-    logIndex: log.logIndex || 0,
+    transactionHash: log.transactionHash,
+    blockNumber: Number(log.blockNumber),
+    logIndex: log.logIndex,
   } as const;
 
-  // Skip duplicates
-  const existingEvent = await prisma.event.findFirst({
-    where: {
-      transactionHash: eventKey.transactionHash,
-      blockNumber: eventKey.blockNumber,
-      logIndex: eventKey.logIndex,
-    },
-  });
-
-  if (existingEvent) {
-    console.log(
-      `${tag} Skipping duplicate event tx=${eventKey.transactionHash} block=${eventKey.blockNumber} logIndex=${eventKey.logIndex}`
-    );
-    return;
-  }
-
   const eventRow = {
-    blockNumber: Number(log.blockNumber || 0),
-    transactionHash: log.transactionHash || '',
+    ...eventKey,
     timestamp: BigInt(block.timestamp),
-    logIndex: log.logIndex || 0,
-    logData: eventData,
+    logData: eventData as Prisma.InputJsonValue,
   };
 
-  // Update Condition status
-  const condition = await prisma.condition.findUnique({
-    where: { id: conditionId },
-  });
+  // All DB reads and writes happen inside a single transaction to prevent
+  // race conditions between concurrent indexer instances.
+  const settledCondition = await prisma.$transaction(async (tx) => {
+    // Dedup check inside the transaction to prevent races
+    const existingEvent = await tx.event.findFirst({
+      where: eventKey,
+    });
 
-  if (!condition) {
-    await prisma.event.create({ data: eventRow });
-    console.warn(
-      `${tag} Settled but no matching Condition found for conditionId=${conditionId}`
-    );
-    return;
-  }
+    if (existingEvent) {
+      console.log(
+        `${tag} Skipping duplicate event tx=${eventKey.transactionHash} block=${eventKey.blockNumber} logIndex=${eventKey.logIndex}`
+      );
+      return null;
+    }
 
-  const eventSourceAddress = log.address?.toLowerCase();
-  const conditionResolver = condition.resolver?.toLowerCase();
+    const condition = await tx.condition.findUnique({
+      where: { id: conditionId },
+    });
 
-  if (
-    conditionResolver &&
-    eventSourceAddress &&
-    conditionResolver !== eventSourceAddress
-  ) {
-    // Resolver mismatch — create event but skip condition update
-    await prisma.event.create({ data: eventRow });
-    console.log(
-      `${tag} Skipping settlement for ${conditionId}: ` +
-        `event source ${eventSourceAddress} does not match condition resolver ${conditionResolver}`
-    );
-    return;
-  }
+    if (!condition) {
+      await tx.event.create({ data: eventRow });
+      console.warn(
+        `${tag} Settled but no matching Condition found for conditionId=${conditionId}`
+      );
+      return null;
+    }
 
-  await prisma.$transaction(async (tx) => {
+    const eventSourceAddress = log.address?.toLowerCase();
+    const conditionResolver = condition.resolver?.toLowerCase();
+
+    if (conditionResolver) {
+      if (!eventSourceAddress) {
+        await tx.event.create({ data: eventRow });
+        Sentry.captureMessage(
+          `${tag} Settlement event has no source address but condition ${conditionId} expects resolver ${conditionResolver}`,
+          'warning'
+        );
+        return null;
+      }
+      if (conditionResolver !== eventSourceAddress) {
+        await tx.event.create({ data: eventRow });
+        Sentry.captureMessage(
+          `${tag} Resolver mismatch for ${conditionId}: event source ${eventSourceAddress} does not match condition resolver ${conditionResolver}`,
+          'warning'
+        );
+        return null;
+      }
+    }
+
     await tx.event.create({ data: eventRow });
 
     await tx.condition.update({
@@ -105,18 +115,24 @@ export async function settleCondition(
       conditionId,
       Number(block.timestamp)
     );
+
+    return condition;
   });
+
+  if (!settledCondition) return;
+
   console.log(`${tag} Updated Condition ${conditionId} to settled`);
 
-  // Score forecasts and compute TW errors for the accuracy leaderboard
-  const resolverAddress = condition.resolver?.toLowerCase();
+  // Score forecasts outside the transaction — scoring is idempotent and can
+  // be retried independently if it fails.
+  const resolverAddress = settledCondition.resolver?.toLowerCase();
   if (resolverAddress) {
     try {
       await scoreSelectedForecastsForSettledMarket(
         resolverAddress,
-        condition.id
+        settledCondition.id
       );
-      await computeAndStoreMarketTwErrors(resolverAddress, condition.id);
+      await computeAndStoreMarketTwErrors(resolverAddress, settledCondition.id);
       console.log(
         `${tag} Scored forecasts and computed TW errors for ${conditionId}`
       );
@@ -125,6 +141,9 @@ export async function settleCondition(
         `${tag} Error scoring forecasts for ${conditionId}:`,
         scoringError
       );
+      Sentry.captureException(scoringError, {
+        tags: { conditionId, resolverAddress },
+      });
     }
   }
 }

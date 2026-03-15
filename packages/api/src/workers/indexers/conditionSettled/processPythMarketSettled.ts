@@ -41,13 +41,18 @@ export async function processPythMarketSettled(
     const endTime = log.topics[3]; // uint64 (zero-padded to bytes32)
 
     // Non-indexed params from data
+    if (!log.data) {
+      throw new Error(
+        `${tag} MarketSettled event has no data field (tx=${log.transactionHash})`
+      );
+    }
     const [
       conditionIdBytes,
       resolvedToOver,
       benchmarkPrice,
       benchmarkExpo,
       publishTime,
-    ] = decodeAbiParameters(MARKET_SETTLED_DATA_PARAMS, log.data!);
+    ] = decodeAbiParameters(MARKET_SETTLED_DATA_PARAMS, log.data);
 
     // The conditionId from the event is the full ABI-encoded market params.
     // Lowercase hex it for DB lookup (matches how conditions are stored).

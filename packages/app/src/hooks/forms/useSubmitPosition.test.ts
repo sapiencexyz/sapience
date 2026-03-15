@@ -32,7 +32,6 @@ const mockPrepareMintCalls = vi.fn().mockReturnValue([
   },
 ]);
 vi.mock('@sapience/sdk', () => ({
-  predictionMarketAbi: [],
   generateRandomNonce: () => BigInt(12345),
   toBigIntSafe: (value: string | number | bigint | undefined) => {
     if (value === undefined) return undefined;

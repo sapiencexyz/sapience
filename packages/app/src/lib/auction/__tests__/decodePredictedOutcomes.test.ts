@@ -12,7 +12,10 @@ import {
   getPythMarketId,
   type PythBinaryOptionOutcome,
 } from '@sapience/sdk';
-import { pythConditionResolver, umaResolver } from '@sapience/sdk/contracts';
+import {
+  pythConditionResolver,
+  manualConditionResolver,
+} from '@sapience/sdk/contracts';
 import { OutcomeSide } from '@sapience/sdk/types';
 import { parseDateTimeLocalToUnixSeconds } from '../buildAuctionPayload';
 
@@ -22,7 +25,7 @@ import { parseDateTimeLocalToUnixSeconds } from '../buildAuctionPayload';
 
 // Grab a known pyth resolver address for use in tests
 const PYTH_RESOLVER_ADDR = pythConditionResolver[13374202]?.address;
-const UMA_RESOLVER_ADDR = umaResolver[42161]?.address;
+const MANUAL_RESOLVER_ADDR = manualConditionResolver[13374202]?.address;
 
 const ETH_PRICE_ID =
   '0x0000000000000000000000000000000000000000000000000000000000000002' as const;
@@ -134,12 +137,12 @@ describe('decodeAuctionPredictedOutcomes', () => {
     ]);
 
     const result = decodeAuctionPredictedOutcomes({
-      resolver: UMA_RESOLVER_ADDR,
+      resolver: MANUAL_RESOLVER_ADDR,
       predictedOutcomes: [encoded],
     });
 
-    expect(result.kind).toBe('uma');
-    if (result.kind === 'uma') {
+    expect(result.kind).toBe('condition');
+    if (result.kind === 'condition') {
       expect(result.outcomes).toHaveLength(1);
       expect(result.outcomes[0].prediction).toBe(true);
     }
@@ -159,8 +162,8 @@ describe('decodeAuctionPredictedOutcomes', () => {
       predictedOutcomes: [encoded],
     });
 
-    expect(result.kind).toBe('uma');
-    if (result.kind === 'uma') {
+    expect(result.kind).toBe('condition');
+    if (result.kind === 'condition') {
       expect(result.outcomes[0].prediction).toBe(false);
     }
   });
@@ -239,6 +242,126 @@ describe('decodedOutcomesToPicks — Pyth outcomes', () => {
     expect(picks).toHaveLength(2);
     expect(picks[0].predictedOutcome).toBe(0);
     expect(picks[1].predictedOutcome).toBe(1);
+  });
+
+  it('returns empty array for unknown decoded outcomes', () => {
+    const decoded: DecodedOutcomes = { kind: 'unknown', outcomes: [] };
+    const picks = decodedOutcomesToPicks(decoded, PYTH_RESOLVER_ADDR!);
+    expect(picks).toEqual([]);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests — decodedOutcomesToPicks: condition outcomes
+// ---------------------------------------------------------------------------
+
+describe('decodedOutcomesToPicks — condition outcomes', () => {
+  it('maps prediction:true to OutcomeSide.YES and prediction:false to OutcomeSide.NO', () => {
+    const decoded: DecodedOutcomes = {
+      kind: 'condition',
+      outcomes: [
+        {
+          kind: 'condition',
+          marketId: '0xaa' as `0x${string}`,
+          prediction: true,
+        },
+        {
+          kind: 'condition',
+          marketId: '0xbb' as `0x${string}`,
+          prediction: false,
+        },
+      ],
+    };
+    const picks = decodedOutcomesToPicks(decoded, MANUAL_RESOLVER_ADDR!);
+    expect(picks[0].predictedOutcome).toBe(OutcomeSide.YES);
+    expect(picks[1].predictedOutcome).toBe(OutcomeSide.NO);
+  });
+
+  it('uses provided resolver address for all picks', () => {
+    const decoded: DecodedOutcomes = {
+      kind: 'condition',
+      outcomes: [
+        {
+          kind: 'condition',
+          marketId: '0xcc' as `0x${string}`,
+          prediction: true,
+        },
+      ],
+    };
+    const picks = decodedOutcomesToPicks(decoded, MANUAL_RESOLVER_ADDR!);
+    expect(picks[0].conditionResolver).toBe(MANUAL_RESOLVER_ADDR);
+    expect(picks[0].conditionId).toBe('0xcc');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests — on-chain invariant: encode → decode → picks round-trip
+//
+// PythConditionResolver.getResolution():
+//   resolvedToOver=true  → OutcomeVector(1, 0) → YES wins
+//   resolvedToOver=false → OutcomeVector(0, 1) → NO wins
+//
+// PredictionMarketEscrow._evaluatePick():
+//   predictedOutcome==YES && isDecisiveYes → win
+//   predictedOutcome==NO  && isDecisiveNo  → win
+//
+// This test verifies encode → decode → picks produces predictedOutcome
+// values that are consistent with the on-chain resolution convention.
+// ---------------------------------------------------------------------------
+
+describe('on-chain invariant: Pyth encode → decode → picks', () => {
+  it('Over prediction encodes to YES=0, which wins when resolvedToOver=true', () => {
+    // Encode
+    const outcomes: PythBinaryOptionOutcome[] = [
+      {
+        priceId: ETH_PRICE_ID,
+        endTime: END_TIME,
+        strikePrice: STRIKE_PRICE,
+        strikeExpo: STRIKE_EXPO,
+        overWinsOnTie: true,
+        prediction: true, // Over
+      },
+    ];
+    const encoded = encodePythBinaryOptionOutcomes(outcomes);
+
+    // Decode
+    const decoded = decodeAuctionPredictedOutcomes({
+      resolver: PYTH_RESOLVER_ADDR,
+      predictedOutcomes: [encoded],
+    });
+    expect(decoded.kind).toBe('pyth');
+
+    // To picks
+    const picks = decodedOutcomesToPicks(decoded, PYTH_RESOLVER_ADDR!);
+    expect(picks).toHaveLength(1);
+
+    // Over → YES=0: on-chain, when resolvedToOver=true the OutcomeVector
+    // is [1,0] (isDecisiveYes), so predictedOutcome must be YES=0 to win.
+    expect(picks[0].predictedOutcome).toBe(OutcomeSide.YES);
+  });
+
+  it('Under prediction encodes to NO=1, which wins when resolvedToOver=false', () => {
+    const outcomes: PythBinaryOptionOutcome[] = [
+      {
+        priceId: ETH_PRICE_ID,
+        endTime: END_TIME,
+        strikePrice: STRIKE_PRICE,
+        strikeExpo: STRIKE_EXPO,
+        overWinsOnTie: true,
+        prediction: false, // Under
+      },
+    ];
+    const encoded = encodePythBinaryOptionOutcomes(outcomes);
+
+    const decoded = decodeAuctionPredictedOutcomes({
+      resolver: PYTH_RESOLVER_ADDR,
+      predictedOutcomes: [encoded],
+    });
+    const picks = decodedOutcomesToPicks(decoded, PYTH_RESOLVER_ADDR!);
+
+    // Under → NO=1: on-chain, when resolvedToOver=false the OutcomeVector
+    // is [0,1] (isDecisiveNo), so predictedOutcome must be NO=1 to win.
+    expect(picks[0].predictedOutcome).toBe(OutcomeSide.NO);
   });
 });
 

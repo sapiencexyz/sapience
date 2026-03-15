@@ -32,10 +32,7 @@ import { ResolverBadge } from '~/components/shared/ResolverBadge';
 import Comments, { CommentFilters } from '~/components/shared/Comments';
 import PredictionForm from '~/components/markets/pages/PredictionForm';
 import ConditionForecastForm from '~/components/conditions/ConditionForecastForm';
-import {
-  UMA_RESOLVER_ARBITRUM,
-  POLYMARKET_RESOLVER_ADDRESSES,
-} from '~/lib/constants';
+import { POLYMARKET_RESOLVER_ADDRESSES } from '~/lib/constants';
 import { FocusAreaBadge } from '~/components/shared/FocusAreaBadge';
 import ResearchAgent from '~/components/markets/ResearchAgent';
 import ActivityTable from '~/components/positions/ActivityTable';
@@ -617,7 +614,7 @@ export default function QuestionPageContent({
             <div className="p-4 border-b border-border/60">
               <ConditionForecastForm
                 conditionId={conditionId}
-                resolver={UMA_RESOLVER_ARBITRUM}
+                resolver={data.resolver ?? ''}
                 question={data.question || ''}
                 endTime={data.endTime ?? undefined}
                 categorySlug={data.category?.slug}
@@ -756,7 +753,7 @@ export default function QuestionPageContent({
             <div className="p-4 border-b border-border/60">
               <ConditionForecastForm
                 conditionId={conditionId}
-                resolver={UMA_RESOLVER_ARBITRUM}
+                resolver={data.resolver ?? ''}
                 question={data.question || ''}
                 endTime={data.endTime ?? undefined}
                 categorySlug={data.category?.slug}

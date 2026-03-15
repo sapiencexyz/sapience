@@ -113,9 +113,9 @@ describe('processConditionSettled', () => {
     );
 
     expect(mockPrisma.event.findFirst).toHaveBeenCalled();
+    expect(mockPrisma.$transaction).toHaveBeenCalledOnce();
     expect(mockPrisma.condition.findUnique).not.toHaveBeenCalled();
     expect(mockPrisma.event.create).not.toHaveBeenCalled();
-    expect(mockPrisma.$transaction).not.toHaveBeenCalled();
   });
 
   it('updates condition and calls scoring when resolver matches', async () => {
@@ -177,8 +177,8 @@ describe('processConditionSettled', () => {
       MOCK_BLOCK
     );
 
-    // Should NOT use a transaction (event created directly)
-    expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+    // All operations happen inside the transaction
+    expect(mockPrisma.$transaction).toHaveBeenCalledOnce();
     // Should still create the event
     expect(mockPrisma.event.create).toHaveBeenCalledOnce();
     // Should NOT update the condition
@@ -197,8 +197,7 @@ describe('processConditionSettled', () => {
       MOCK_BLOCK
     );
 
-    // Should create the event directly (no transaction)
-    expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+    expect(mockPrisma.$transaction).toHaveBeenCalledOnce();
     expect(mockPrisma.event.create).toHaveBeenCalledOnce();
     expect(mockPrisma.condition.update).not.toHaveBeenCalled();
     expect(warnSpy).toHaveBeenCalledWith(

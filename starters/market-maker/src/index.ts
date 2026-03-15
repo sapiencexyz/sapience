@@ -145,7 +145,6 @@ const pythResolverAddr = (
 const ctResolverAddrs = [
   process.env.CT_RESOLVER_ADDRESS,
   getResolverAddress('conditionalTokens', CHAIN_ID),
-  getResolverAddress('lzConditionalTokens', CHAIN_ID),
 ].filter((a): a is string => !!a).map((a) => a.toLowerCase());
 
 const strategies: Strategy[] = [
