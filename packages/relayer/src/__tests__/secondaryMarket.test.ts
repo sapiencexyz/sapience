@@ -20,8 +20,6 @@ import {
   handleSecondaryAuctionStart,
   handleSecondaryBidSubmit,
   handleSecondaryListingsRequest,
-  handleSecondarySubscribe,
-  handleSecondaryFeedSubscribe,
   type SecondaryHandlerContext,
 } from '../secondaryMarketHandlers';
 
@@ -316,6 +314,19 @@ vi.mock('../secondaryMarketSigVerify', () => ({
   verifyBuyerSignature: vi.fn().mockResolvedValue(true),
 }));
 
+// Typed helper for asserting on captured WS messages
+interface WsMsg {
+  type: string;
+  payload: Record<string, unknown>;
+}
+
+function findMsg(
+  messages: unknown[],
+  predicate: (m: WsMsg) => boolean
+): WsMsg | undefined {
+  return messages.find((m) => predicate(m as WsMsg)) as WsMsg | undefined;
+}
+
 function createMockClient(): ClientConnection {
   const messages: unknown[] = [];
   return {
@@ -377,12 +388,13 @@ describe('SecondaryMarketHandlers', () => {
       await handleSecondaryAuctionStart(client, payload, subs, ctx);
 
       // Should get an ack with auctionId
-      const ack = client._messages.find(
-        (m: any) => m.type === 'secondary.auction.ack' && m.payload.auctionId
-      ) as any;
+      const ack = findMsg(
+        client._messages,
+        (m) => m.type === 'secondary.auction.ack' && !!m.payload.auctionId
+      );
       expect(ack).toBeDefined();
-      expect(ack.payload.auctionId).toMatch(/^[0-9a-f-]{36}$/i);
-      expect(ack.payload.error).toBeUndefined();
+      expect(ack!.payload.auctionId).toMatch(/^[0-9a-f-]{36}$/i);
+      expect(ack!.payload.error).toBeUndefined();
     });
 
     it('broadcasts secondary.auction.started to global feed', async () => {
@@ -394,7 +406,7 @@ describe('SecondaryMarketHandlers', () => {
       await handleSecondaryAuctionStart(client, payload, subs, ctx);
 
       const broadcast = subs._broadcasts.find(
-        (b) => (b.msg as any).type === 'secondary.auction.started'
+        (b) => (b.msg as WsMsg).type === 'secondary.auction.started'
       );
       expect(broadcast).toBeDefined();
       expect(broadcast!.topic).toBe('secondary:global');
@@ -412,11 +424,12 @@ describe('SecondaryMarketHandlers', () => {
       const client2 = createMockClient();
       await handleSecondaryAuctionStart(client2, payload, subs, ctx);
 
-      const error = client2._messages.find(
-        (m: any) => m.type === 'secondary.auction.ack' && m.payload.error
-      ) as any;
+      const error = findMsg(
+        client2._messages,
+        (m) => m.type === 'secondary.auction.ack' && !!m.payload.error
+      );
       expect(error).toBeDefined();
-      expect(error.payload.error).toBe('duplicate_nonce');
+      expect(error!.payload.error).toBe('duplicate_nonce');
     });
 
     it('sends error when validation returns invalid', async () => {
@@ -437,11 +450,12 @@ describe('SecondaryMarketHandlers', () => {
 
       await handleSecondaryAuctionStart(client, createListing(), subs, ctx);
 
-      const error = client._messages.find(
-        (m: any) => m.type === 'secondary.auction.ack' && m.payload.error
-      ) as any;
+      const error = findMsg(
+        client._messages,
+        (m) => m.type === 'secondary.auction.ack' && !!m.payload.error
+      );
       expect(error).toBeDefined();
-      expect(error.payload.error).toContain('EXPIRED_DEADLINE');
+      expect(error!.payload.error).toContain('EXPIRED_DEADLINE');
     });
 
     it('rejects listing when seller signature verification fails', async () => {
@@ -484,11 +498,12 @@ describe('SecondaryMarketHandlers', () => {
 
       await handleSecondaryAuctionStart(client, createListing(), subs, ctx);
 
-      const ack = client._messages.find(
-        (m: any) => m.type === 'secondary.auction.ack' && m.payload.auctionId
-      ) as any;
+      const ack = findMsg(
+        client._messages,
+        (m) => m.type === 'secondary.auction.ack' && !!m.payload.auctionId
+      );
       expect(ack).toBeDefined();
-      expect(ack.payload.error).toBeUndefined();
+      expect(ack!.payload.error).toBeUndefined();
     });
   });
 
@@ -502,10 +517,11 @@ describe('SecondaryMarketHandlers', () => {
       const listing = createListing();
       await handleSecondaryAuctionStart(sellerClient, listing, subs, ctx);
 
-      const ack = sellerClient._messages.find(
-        (m: any) => m.type === 'secondary.auction.ack' && m.payload.auctionId
-      ) as any;
-      const auctionId = ack.payload.auctionId;
+      const ack = findMsg(
+        sellerClient._messages,
+        (m) => m.type === 'secondary.auction.ack' && !!m.payload.auctionId
+      );
+      const auctionId = ack!.payload.auctionId as string;
 
       // Now submit a bid
       const buyerClient = createMockClient();
@@ -521,15 +537,16 @@ describe('SecondaryMarketHandlers', () => {
       await handleSecondaryBidSubmit(buyerClient, bidPayload, subs);
 
       // Buyer gets ack
-      const bidAck = buyerClient._messages.find(
-        (m: any) => m.type === 'secondary.bid.ack' && m.payload.bidId
-      ) as any;
+      const bidAck = findMsg(
+        buyerClient._messages,
+        (m) => m.type === 'secondary.bid.ack' && !!m.payload.bidId
+      );
       expect(bidAck).toBeDefined();
-      expect(bidAck.payload.error).toBeUndefined();
+      expect(bidAck!.payload.error).toBeUndefined();
 
       // Broadcast to auction topic
       const bidBroadcast = subs._broadcasts.find(
-        (b) => (b.msg as any).type === 'secondary.auction.bids'
+        (b) => (b.msg as WsMsg).type === 'secondary.auction.bids'
       );
       expect(bidBroadcast).toBeDefined();
     });
@@ -551,10 +568,11 @@ describe('SecondaryMarketHandlers', () => {
         subs
       );
 
-      const error = client._messages.find(
-        (m: any) => m.type === 'secondary.bid.ack' && m.payload.error
-      ) as any;
-      expect(error.payload.error).toBe('auction_not_found_or_expired');
+      const error = findMsg(
+        client._messages,
+        (m) => m.type === 'secondary.bid.ack' && !!m.payload.error
+      );
+      expect(error!.payload.error).toBe('auction_not_found_or_expired');
     });
 
     it('rejects bid when validation returns invalid', async () => {
@@ -573,15 +591,16 @@ describe('SecondaryMarketHandlers', () => {
       const ctx = createMockCtx(sellerClient);
       const listing = createListing();
       await handleSecondaryAuctionStart(sellerClient, listing, subs, ctx);
-      const ack = sellerClient._messages.find(
-        (m: any) => m.type === 'secondary.auction.ack' && m.payload.auctionId
-      ) as any;
+      const ack = findMsg(
+        sellerClient._messages,
+        (m) => m.type === 'secondary.auction.ack' && !!m.payload.auctionId
+      );
 
       const buyerClient = createMockClient();
       await handleSecondaryBidSubmit(
         buyerClient,
         {
-          auctionId: ack.payload.auctionId,
+          auctionId: ack!.payload.auctionId as string,
           buyer: '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
           price: '600000000000000000',
           buyerNonce: 1,
@@ -591,11 +610,12 @@ describe('SecondaryMarketHandlers', () => {
         subs
       );
 
-      const error = buyerClient._messages.find(
-        (m: any) => m.type === 'secondary.bid.ack' && m.payload.error
-      ) as any;
+      const error = findMsg(
+        buyerClient._messages,
+        (m) => m.type === 'secondary.bid.ack' && !!m.payload.error
+      );
       expect(error).toBeDefined();
-      expect(error.payload.error).toContain('INVALID_SIGNATURE');
+      expect(error!.payload.error).toContain('INVALID_SIGNATURE');
     });
 
     it('rejects bid when buyer signature verification fails', async () => {
@@ -655,15 +675,16 @@ describe('SecondaryMarketHandlers', () => {
       const ctx = createMockCtx(sellerClient);
       const listing = createListing();
       await handleSecondaryAuctionStart(sellerClient, listing, subs, ctx);
-      const ack = sellerClient._messages.find(
-        (m: any) => m.type === 'secondary.auction.ack' && m.payload.auctionId
-      ) as any;
+      const ack = findMsg(
+        sellerClient._messages,
+        (m) => m.type === 'secondary.auction.ack' && !!m.payload.auctionId
+      );
 
       const buyerClient = createMockClient();
       await handleSecondaryBidSubmit(
         buyerClient,
         {
-          auctionId: ack.payload.auctionId,
+          auctionId: ack!.payload.auctionId as string,
           buyer: '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
           price: '600000000000000000',
           buyerNonce: 1,
@@ -673,11 +694,12 @@ describe('SecondaryMarketHandlers', () => {
         subs
       );
 
-      const bidAck = buyerClient._messages.find(
-        (m: any) => m.type === 'secondary.bid.ack' && m.payload.bidId
-      ) as any;
+      const bidAck = findMsg(
+        buyerClient._messages,
+        (m) => m.type === 'secondary.bid.ack' && !!m.payload.bidId
+      );
       expect(bidAck).toBeDefined();
-      expect(bidAck.payload.error).toBeUndefined();
+      expect(bidAck!.payload.error).toBeUndefined();
     });
   });
 
@@ -704,11 +726,12 @@ describe('SecondaryMarketHandlers', () => {
       const reqClient = createMockClient();
       handleSecondaryListingsRequest(reqClient);
 
-      const snapshot = reqClient._messages.find(
-        (m: any) => m.type === 'secondary.listings.snapshot'
-      ) as any;
+      const snapshot = findMsg(
+        reqClient._messages,
+        (m) => m.type === 'secondary.listings.snapshot'
+      );
       expect(snapshot).toBeDefined();
-      expect(snapshot.payload.listings).toHaveLength(2);
+      expect(snapshot!.payload.listings).toHaveLength(2);
     });
   });
 });
