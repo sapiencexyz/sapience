@@ -53,7 +53,7 @@ function normalizePolymarketOutcomes(
   }));
 }
 
-function parseDateTimeLocalToUnixSeconds(value: string): bigint {
+export function parseDateTimeLocalToUnixSeconds(value: string): bigint {
   const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value);
   if (!m) throw new Error('invalid_datetime_local');
   const yyyy = Number(m[1]);
@@ -67,14 +67,14 @@ function parseDateTimeLocalToUnixSeconds(value: string): bigint {
   return BigInt(Math.floor(ms / 1000));
 }
 
-function pow10(n: number): bigint {
+export function pow10(n: number): bigint {
   if (n < 0) throw new Error('pow10_negative');
   let out = 1n;
   for (let i = 0; i < n; i++) out *= 10n;
   return out;
 }
 
-function decimalToScaledBigInt(value: string, scale: number): bigint {
+export function decimalToScaledBigInt(value: string, scale: number): bigint {
   // Returns bigint(round(value * 10^scale)).
   // `value` is a base-10 decimal string (e.g. "123.45").
   const s = value.trim();
@@ -100,7 +100,7 @@ function decimalToScaledBigInt(value: string, scale: number): bigint {
   return r * 2n >= denom ? q + 1n : q;
 }
 
-function normalizePythPriceId(raw: string): `0x${string}` {
+export function normalizePythPriceId(raw: string): `0x${string}` {
   const s = raw.trim();
   if (!s) throw new Error('invalid_price_id');
 
@@ -143,7 +143,7 @@ function normalizePythPriceId(raw: string): `0x${string}` {
   throw new Error('invalid_price_id_length');
 }
 
-function normalizePythOutcomes(
+export function normalizePythOutcomes(
   outcomes: PythOutcomeInputStub[]
 ): PythBinaryOptionOutcome[] {
   return outcomes.map((o) => {
