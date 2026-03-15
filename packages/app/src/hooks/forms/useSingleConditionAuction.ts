@@ -6,7 +6,6 @@ import { useAccount } from 'wagmi';
 import { generateRandomNonce } from '@sapience/sdk';
 import { conditionalTokensConditionResolver } from '@sapience/sdk/contracts';
 import { OutcomeSide } from '@sapience/sdk/types';
-import { buildAuctionStartPayload } from '~/lib/auction/buildAuctionPayload';
 import { useSession } from '~/lib/context/SessionContext';
 import type { AuctionParams, QuoteBid } from '~/lib/auction/useAuctionStart';
 
@@ -106,30 +105,27 @@ export function useSingleConditionAuction({
           positionSizeStr,
           collateralDecimals
         ).toString();
-        const outcomes = [{ marketId: conditionId, prediction }];
-        const payload = buildAuctionStartPayload(outcomes, chainId);
-        const params: AuctionParams = {
-          wager: positionSizeWei,
-          resolver: payload.resolver,
-          predictedOutcomes: payload.predictedOutcomes,
-          predictor: selectedTakerAddress,
-          predictorNonce: Number(generateRandomNonce()),
-          chainId,
-        };
-
         const effectiveResolver =
           resolverAddress ||
           conditionalTokensConditionResolver[chainId]?.address ||
           null;
-        if (effectiveResolver) {
-          params.escrowPicks = [
-            {
-              conditionResolver: effectiveResolver as `0x${string}`,
-              conditionId: conditionId as `0x${string}`,
-              predictedOutcome: prediction ? OutcomeSide.YES : OutcomeSide.NO,
-            },
-          ];
-        }
+        const params: AuctionParams = {
+          wager: positionSizeWei,
+          predictor: selectedTakerAddress,
+          predictorNonce: Number(generateRandomNonce()),
+          chainId,
+          picks: effectiveResolver
+            ? [
+                {
+                  conditionResolver: effectiveResolver as `0x${string}`,
+                  conditionId: conditionId as `0x${string}`,
+                  predictedOutcome: prediction
+                    ? OutcomeSide.YES
+                    : OutcomeSide.NO,
+                },
+              ]
+            : [],
+        };
 
         requestQuotes(params, options);
         setLastQuoteRequestMs(Date.now());

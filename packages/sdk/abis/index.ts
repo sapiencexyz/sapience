@@ -8,7 +8,6 @@ import PredictionMarketToken from './PredictionMarketToken.json';
 import PredictionMarketVault from './PredictionMarketVault.json';
 import PythConditionResolver from './PythConditionResolver.json';
 import ManualConditionResolver from './ManualConditionResolver.json';
-import LZConditionResolver from './LZConditionResolver.json';
 import IConditionResolver from './IConditionResolver.json';
 import PredictionMarketBridge from './PredictionMarketBridge.json';
 import PredictionMarketBridgeRemote from './PredictionMarketBridgeRemote.json';
@@ -23,7 +22,6 @@ export const predictionMarketTokenAbi = PredictionMarketToken as Abi;
 export const predictionMarketVaultAbi = PredictionMarketVault as Abi;
 export const pythConditionResolverAbi = PythConditionResolver as Abi;
 export const manualConditionResolverAbi = ManualConditionResolver as Abi;
-export const lzConditionResolverAbi = LZConditionResolver as Abi;
 export const conditionResolverAbi = IConditionResolver as Abi;
 export const predictionMarketBridgeAbi = PredictionMarketBridge as Abi;
 export const predictionMarketBridgeRemoteAbi =

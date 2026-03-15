@@ -8,8 +8,8 @@ import { OutcomeSide } from '@sapience/sdk/types';
 import { getPythMarketId } from '@sapience/sdk';
 import type { Pick } from '@sapience/sdk/types';
 
-export type UmaDecodedOutcome = {
-  kind: 'uma';
+export type ConditionDecodedOutcome = {
+  kind: 'condition';
   marketId: `0x${string}`;
   prediction: boolean;
 };
@@ -25,7 +25,7 @@ export type PythDecodedOutcome = {
 };
 
 export type DecodedOutcomes =
-  | { kind: 'uma'; outcomes: UmaDecodedOutcome[] }
+  | { kind: 'condition'; outcomes: ConditionDecodedOutcome[] }
   | { kind: 'pyth'; outcomes: PythDecodedOutcome[] }
   | { kind: 'unknown'; outcomes: [] };
 
@@ -124,12 +124,14 @@ export function decodeAuctionPredictedOutcomes(params: {
             prediction: boolean;
           }>)
         : [];
-      const outcomes: UmaDecodedOutcome[] = (decodedArr || []).map((o) => ({
-        kind: 'uma',
-        marketId: o.marketId,
-        prediction: Boolean(o.prediction),
-      }));
-      return { kind: 'uma', outcomes };
+      const outcomes: ConditionDecodedOutcome[] = (decodedArr || []).map(
+        (o) => ({
+          kind: 'condition',
+          marketId: o.marketId,
+          prediction: Boolean(o.prediction),
+        })
+      );
+      return { kind: 'condition', outcomes };
     }
   } catch {
     // fall through
@@ -177,7 +179,7 @@ export function decodedOutcomesToPicks(
   decoded: DecodedOutcomes,
   resolverAddress: Address
 ): Pick[] {
-  if (decoded.kind === 'uma') {
+  if (decoded.kind === 'condition') {
     return decoded.outcomes.map((o) => ({
       conditionResolver: resolverAddress,
       conditionId: o.marketId,

@@ -58,19 +58,3 @@ export function inferChainIdFromResolverAddress(
 
   return DEFAULT_CHAIN_ID;
 }
-
-/**
- * For question URLs / display: prefer the condition's resolver when present,
- * otherwise use the chain's default resolver mapping.
- */
-export function getConditionResolverAddress(opts: {
-  conditionResolver?: string | null;
-  conditionChainId?: number | null;
-}): Address | undefined {
-  const fromCondition = normalizeAddress(
-    opts.conditionResolver
-  ) as Address | null;
-  if (fromCondition) return fromCondition;
-  const chainId = opts.conditionChainId ?? DEFAULT_CHAIN_ID;
-  return pythConditionResolver[chainId]?.address;
-}

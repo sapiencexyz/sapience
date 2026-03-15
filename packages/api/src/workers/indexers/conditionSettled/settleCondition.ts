@@ -1,4 +1,5 @@
 import prisma from '../../../db';
+import Sentry from '../../../instrument';
 import {
   scoreSelectedForecastsForSettledMarket,
   computeAndStoreMarketTwErrors,
@@ -26,10 +27,16 @@ export async function settleCondition(
 ): Promise<void> {
   const { conditionId, resolvedToYes, nonDecisive, eventData } = input;
 
+  if (!log.transactionHash || log.blockNumber == null || log.logIndex == null) {
+    throw new Error(
+      `${tag} Log is missing required fields for deduplication (tx=${log.transactionHash}, block=${log.blockNumber}, logIndex=${log.logIndex})`
+    );
+  }
+
   const eventKey = {
-    transactionHash: log.transactionHash || '',
-    blockNumber: Number(log.blockNumber || 0),
-    logIndex: log.logIndex || 0,
+    transactionHash: log.transactionHash,
+    blockNumber: Number(log.blockNumber),
+    logIndex: log.logIndex,
   } as const;
 
   // Skip duplicates
@@ -49,10 +56,10 @@ export async function settleCondition(
   }
 
   const eventRow = {
-    blockNumber: Number(log.blockNumber || 0),
-    transactionHash: log.transactionHash || '',
+    blockNumber: Number(log.blockNumber),
+    transactionHash: log.transactionHash,
     timestamp: BigInt(block.timestamp),
-    logIndex: log.logIndex || 0,
+    logIndex: log.logIndex,
     logData: eventData,
   };
 
@@ -125,6 +132,7 @@ export async function settleCondition(
         `${tag} Error scoring forecasts for ${conditionId}:`,
         scoringError
       );
+      Sentry.captureException(scoringError);
     }
   }
 }

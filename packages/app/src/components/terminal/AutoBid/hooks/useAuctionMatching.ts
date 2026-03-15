@@ -306,7 +306,7 @@ export function useAuctionMatching({
         return;
       }
 
-      const { predictorCollateral, predictor, resolver, escrowPicks } =
+      const { predictorCollateral, predictor, escrowPicks } =
         details.auctionContext;
 
       // Calculate our bid amount (counterpartyCollateral)
@@ -420,10 +420,9 @@ export function useAuctionMatching({
           auctionId: details.auctionId,
           counterpartyCollateral: counterpartyCollateralWei,
           predictorCollateral: BigInt(predictorCollateral || '0'),
-          resolver,
           predictor,
           expirySeconds,
-          escrowPicks: escrowPicks ?? [],
+          picks: escrowPicks ?? [],
         });
 
         const counterpartyAmount = formatCollateralAmount(

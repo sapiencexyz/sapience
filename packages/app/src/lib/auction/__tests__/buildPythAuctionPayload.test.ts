@@ -219,4 +219,23 @@ describe('buildPythAuctionStartPayload', () => {
     expect(result.predictedOutcomes).toHaveLength(1);
     expect(result.predictedOutcomes[0]).toMatch(/^0x/);
   });
+
+  it('multi-outcome: Over + Under produce correct predictedOutcomes', () => {
+    const result = buildPythAuctionStartPayload([
+      makeStub({ direction: 'over' }),
+      makeStub({ direction: 'under', priceId: '1' }),
+    ]);
+    expect(result.escrowPicks).toHaveLength(2);
+    expect(result.escrowPicks[0].predictedOutcome).toBe(0); // Over = YES
+    expect(result.escrowPicks[1].predictedOutcome).toBe(1); // Under = NO
+  });
+
+  it('each escrowPick has a unique conditionId', () => {
+    const result = buildPythAuctionStartPayload([
+      makeStub({ direction: 'over' }),
+      makeStub({ direction: 'under', priceId: '1' }),
+    ]);
+    const ids = result.escrowPicks.map((p) => p.conditionId);
+    expect(new Set(ids).size).toBe(2);
+  });
 });

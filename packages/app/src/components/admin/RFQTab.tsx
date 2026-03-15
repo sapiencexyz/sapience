@@ -45,7 +45,7 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { useMemo, useState } from 'react';
 import { Copy, Upload, FileText, CheckCircle, XCircle } from 'lucide-react';
 import { formatDistanceToNow, fromUnixTime } from 'date-fns';
-import { useReadContract, useReadContracts } from 'wagmi';
+import { useReadContract } from 'wagmi';
 import { keccak256, concatHex, toHex, isAddress } from 'viem';
 import {
   manualConditionResolver,
@@ -75,8 +75,6 @@ type RFQRow = {
   resolver?: string | null;
   settled?: boolean;
   resolvedToYes?: boolean;
-  assertionId?: string;
-  assertionTimestamp?: number;
   _isSettled?: boolean;
   _hasData?: boolean;
 };
@@ -117,6 +115,22 @@ type RFQTabProps = {
 
 type ConditionFilter = 'all' | 'needs-settlement' | 'upcoming' | 'settled';
 type VisibilityFilter = 'all' | 'public' | 'private';
+
+const WRAPPED_MARKETS_ABI = [
+  {
+    inputs: [{ internalType: 'bytes32', name: '', type: 'bytes32' }],
+    name: 'wrappedMarkets',
+    outputs: [
+      { internalType: 'bytes32', name: 'marketId', type: 'bytes32' },
+      { internalType: 'bool', name: 'assertionSubmitted', type: 'bool' },
+      { internalType: 'bool', name: 'settled', type: 'bool' },
+      { internalType: 'bool', name: 'resolvedToYes', type: 'bool' },
+      { internalType: 'bytes32', name: 'assertionId', type: 'bytes32' },
+    ],
+    stateMutability: 'view',
+    type: 'function',
+  },
+] as const;
 
 const RFQTab = ({
   createOpen,
@@ -189,55 +203,6 @@ const RFQTab = ({
       visibility: visibilityFilter,
     },
   });
-  const umaWrappedMarketAbi = [
-    {
-      inputs: [{ internalType: 'bytes32', name: '', type: 'bytes32' }],
-      name: 'wrappedMarkets',
-      outputs: [
-        { internalType: 'bytes32', name: 'marketId', type: 'bytes32' },
-        { internalType: 'bool', name: 'assertionSubmitted', type: 'bool' },
-        { internalType: 'bool', name: 'settled', type: 'bool' },
-        { internalType: 'bool', name: 'resolvedToYes', type: 'bool' },
-        { internalType: 'bytes32', name: 'assertionId', type: 'bytes32' },
-      ],
-      stateMutability: 'view',
-      type: 'function',
-    },
-  ] as const;
-
-  const settlementStatusContracts = useMemo(() => {
-    return (conditions || []).map((c) => {
-      let marketId: `0x${string}` | undefined;
-      try {
-        if (c.claimStatement && c.endTime) {
-          const claimHex = toHex(c.claimStatement);
-          const colonHex = toHex(':');
-          const endTimeHex = toHex(BigInt(c.endTime), { size: 32 });
-          const packed = concatHex([claimHex, colonHex, endTimeHex]);
-          marketId = keccak256(packed);
-        }
-      } catch {
-        marketId = undefined;
-      }
-
-      const chainId = c.chainId || DEFAULT_CHAIN_ID;
-      const address = pythConditionResolver[chainId]?.address;
-
-      return {
-        address,
-        abi: umaWrappedMarketAbi,
-        functionName: 'wrappedMarkets' as const,
-        args: marketId ? [marketId] : undefined,
-        chainId,
-      };
-    });
-  }, [conditions]);
-
-  const { data: settlementData } = useReadContracts({
-    contracts: settlementStatusContracts,
-    query: { enabled: conditions && conditions.length > 0 },
-  });
-
   // CSV Import state (support controlled or uncontrolled usage)
   const [csvImportOpenInternal, setCsvImportOpenInternal] = useState(false);
   const csvImportOpen = csvImportOpenProp ?? csvImportOpenInternal;
@@ -454,11 +419,13 @@ const RFQTab = ({
     endTime,
     isSettledOverride,
     chainId,
+    resolver,
   }: {
     claimStatement?: string;
     endTime?: number;
     isSettledOverride?: boolean;
     chainId?: number;
+    resolver?: string | null;
   }) {
     const nowSeconds = Math.floor(Date.now() / 1000);
     const isUpcoming = (endTime ?? 0) > nowSeconds;
@@ -478,11 +445,13 @@ const RFQTab = ({
     }
 
     const targetChainId = chainId || DEFAULT_CHAIN_ID;
-    const address = pythConditionResolver[targetChainId]?.address;
+    const address =
+      (resolver as `0x${string}` | undefined) ??
+      pythConditionResolver[targetChainId]?.address;
 
     const { data } = useReadContract({
       address,
-      abi: umaWrappedMarketAbi,
+      abi: WRAPPED_MARKETS_ABI,
       functionName: 'wrappedMarkets',
       args: marketId ? [marketId] : undefined,
       chainId: targetChainId,
@@ -525,6 +494,7 @@ const RFQTab = ({
             endTime={row.original.endTime}
             isSettledOverride={row.original.settled ?? row.original._isSettled}
             chainId={row.original.chainId}
+            resolver={row.original.resolver}
           />
         ),
       },
@@ -777,25 +747,7 @@ const RFQTab = ({
   const rows: RFQRow[] = useMemo(() => {
     const now = Math.floor(Date.now() / 1000);
 
-    const mapped = (conditions || []).map((c, index) => {
-      // Try to get settlement status from DB first (new method)
-      let isSettled = c.settled;
-      let resolvedToYes = c.resolvedToYes;
-
-      // Fallback to contract read if not settled in DB (old method/transition)
-      if (!isSettled) {
-        const settlementResult = settlementData?.[index];
-        if (settlementResult?.status === 'success') {
-          isSettled = Boolean(settlementResult.result?.[2]);
-          if (isSettled) {
-            resolvedToYes = Boolean(settlementResult.result?.[3]);
-          }
-        }
-      }
-
-      const hasData =
-        c.settled || settlementData?.[index]?.status === 'success';
-
+    const mapped = (conditions || []).map((c) => {
       return {
         id: c.id,
         question: c.question,
@@ -809,11 +761,9 @@ const RFQTab = ({
         similarMarketUrls: c.similarMarkets,
         chainId: c.chainId,
         resolver: c.resolver ?? null,
-        resolvedToYes,
-        assertionId: c.assertionId,
-        assertionTimestamp: c.assertionTimestamp,
-        _isSettled: isSettled,
-        _hasData: hasData,
+        resolvedToYes: c.resolvedToYes,
+        _isSettled: c.settled,
+        _hasData: Boolean(c.settled),
       };
     });
 
@@ -842,7 +792,7 @@ const RFQTab = ({
     });
 
     return filtered;
-  }, [conditions, filter, categoryFilter, settlementData]);
+  }, [conditions, filter, categoryFilter]);
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
