@@ -15,11 +15,11 @@ import {
 } from '@sapience/sdk/contracts/addresses';
 import { fetchConditionsByIdsQuery, type ConditionById } from '@sapience/sdk/queries';
 import { buildCounterpartyMintTypedData } from '@sapience/sdk/auction/escrowSigning';
-import { validateAuctionRFQ, isActionable } from '@sapience/sdk/auction/validation';
+import { validateAuctionRFQ, validateBid, isActionable } from '@sapience/sdk/auction/validation';
 import { createEscrowAuctionWs, buildBidPayload } from '@sapience/sdk/relayer/escrowAuctionWs';
 import { decodePythMarketId, decodePythLazerFeedId } from '@sapience/sdk/auction/encoding';
 import { PYTH_FEED_NAMES } from '@sapience/sdk/constants';
-import type { Pick, AuctionDetails, PickJson } from '@sapience/sdk/types';
+import { OutcomeSide, type Pick, type AuctionDetails, type PickJson } from '@sapience/sdk/types';
 
 // Local imports
 import { loadSdk } from './sdk.js';
@@ -121,8 +121,6 @@ const MIN_MAKER_WAGER = parseEther(MIN_MAKER_WAGER_DEC);
 const account = PRIVATE_KEY_HEX ? privateKeyToAccount(PRIVATE_KEY_HEX) : undefined;
 const MAKER = account?.address as Address | undefined;
 
-// OutcomeSide enum values (matching SDK)
-const OutcomeSide = { YES: 0, NO: 1 } as const;
 
 /** Human-readable label for a conditionId (decodes Pyth market params if applicable) */
 function formatConditionId(conditionId: string): string {
@@ -200,7 +198,13 @@ async function getConditionsByIds(ids: string[]): Promise<Map<string, ConditionB
 
 // Load prepareForTrade from SDK (optional — only used for Ethereal USDe wrapping)
 const sdk = await loadSdk();
-type PrepareForTrade = typeof import('@sapience/sdk/onchain/trading').prepareForTrade;
+type PrepareForTrade = (args: {
+  privateKey: Hex;
+  collateralAmount: bigint;
+  spender?: Hex;
+  rpcUrl?: string;
+  chainId?: number;
+}) => Promise<{ ready: boolean; wrapTxHash?: Hex; approvalTxHash?: Hex; wusdBalance: bigint }>;
 const prepareForTrade = sdk.prepareForTrade as PrepareForTrade | undefined;
 
 async function prepareCollateral() {
@@ -347,7 +351,7 @@ function convertPicksFromJson(picks: PickJson[]): Pick[] {
   return picks.map((p) => ({
     conditionResolver: p.conditionResolver as Address,
     conditionId: p.conditionId as Hex,
-    predictedOutcome: p.predictedOutcome as 0 | 1,
+    predictedOutcome: p.predictedOutcome as OutcomeSide,
   }));
 }
 
@@ -472,6 +476,16 @@ async function handleAuction(auction: AuctionDetails, submitBid: (payload: Retur
     counterpartyDeadline: Number(counterpartyDeadline),
     counterpartySignature,
   });
+
+  // Self-validate bid before submitting to catch signing/parameter errors locally
+  const bidValidation = await validateBid(payload, auction, {
+    verifyingContract: VERIFYING_CONTRACT!,
+    chainId: CHAIN_ID,
+  });
+  if (!isActionable(bidValidation)) {
+    logger.error(`⛔️ Bid self-validation failed: ${bidValidation.reason}`);
+    return;
+  }
 
   logger.info([
     `📤 Bid ${fmt.value(`${bidDec} USDe`)} to win ${fmt.value(`${winDec} USDe`)} (implies ${fmt.yes(`${theyLose}%`)} chance they lose), against:`,
