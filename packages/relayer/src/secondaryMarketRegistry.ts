@@ -163,24 +163,27 @@ export function clearSecondaryListings(): void {
   usedBuyerNonces.clear();
 }
 
-// Periodic cleanup of expired listings and stale nonce entries
-setInterval(() => {
+/**
+ * Cleanup expired listings and prune stale nonce entries.
+ * Exported for testing; also runs on a 30-second interval.
+ */
+export function runSecondaryCleanup(): void {
   const now = Date.now();
-  const expiredSellers = new Set<string>();
 
+  // Remove expired listings
   for (const [id, rec] of listings.entries()) {
     if (now > rec.deadlineMs) {
-      expiredSellers.add(rec.auction.seller.toLowerCase());
       listings.delete(id);
     }
   }
 
   // Prune seller nonce entries for sellers with no remaining active listings
-  for (const sellerKey of expiredSellers) {
-    const hasActiveListing = Array.from(listings.values()).some(
-      (rec) => rec.auction.seller.toLowerCase() === sellerKey
-    );
-    if (!hasActiveListing) {
+  const activeSellers = new Set<string>();
+  for (const rec of listings.values()) {
+    activeSellers.add(rec.auction.seller.toLowerCase());
+  }
+  for (const sellerKey of usedSellerNonces.keys()) {
+    if (!activeSellers.has(sellerKey)) {
       usedSellerNonces.delete(sellerKey);
     }
   }
@@ -197,4 +200,7 @@ setInterval(() => {
       usedBuyerNonces.delete(buyerKey);
     }
   }
-}, 30_000).unref?.();
+}
+
+// Periodic cleanup
+setInterval(runSecondaryCleanup, 30_000).unref?.();

@@ -63,7 +63,12 @@ export async function verifySellerSignature(
   // Session key signatures can't be verified off-chain (ECDSA recovery
   // would recover the session key, not the smart account address).
   // On-chain executeTrade() handles full session key verification.
+  // Validate hex format as defense-in-depth (SDK tier-1 also checks this).
   if (payload.sellerSessionKeyData) {
+    if (!/^0x[a-fA-F0-9]+$/.test(payload.sellerSessionKeyData)) {
+      console.warn('[Secondary-Sig] Invalid sellerSessionKeyData hex format');
+      return false;
+    }
     return true;
   }
 
@@ -134,7 +139,12 @@ export async function verifyBuyerSignature(
   }
 
   // Session key signatures: pass through to on-chain verification
+  // Validate hex format as defense-in-depth (SDK tier-1 also checks this).
   if (bid.buyerSessionKeyData) {
+    if (!/^0x[a-fA-F0-9]+$/.test(bid.buyerSessionKeyData)) {
+      console.warn('[Secondary-Sig] Invalid buyerSessionKeyData hex format');
+      return false;
+    }
     return true;
   }
 

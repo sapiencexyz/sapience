@@ -32,11 +32,12 @@ function isValidAddress(addr: unknown): addr is string {
 }
 
 function isValidSignatureFormat(sig: unknown): sig is string {
-  return typeof sig === 'string' && sig.startsWith('0x') && sig.length >= 10;
+  // Compact ECDSA (EIP-2098) = 64 bytes = "0x" + 128 hex = 130 chars minimum
+  return typeof sig === 'string' && sig.startsWith('0x') && sig.length >= 130;
 }
 
 function isValidHex(value: unknown): value is string {
-  return typeof value === 'string' && /^0x[a-fA-F0-9]*$/.test(value);
+  return typeof value === 'string' && /^0x[a-fA-F0-9]+$/.test(value);
 }
 
 function isPositiveWei(value: unknown): boolean {

@@ -9,6 +9,7 @@ import {
   isSellerNonceUsed,
   isBuyerNonceUsed,
   clearSecondaryListings,
+  runSecondaryCleanup,
 } from '../secondaryMarketRegistry';
 import { isSecondaryClientMessage } from '../secondaryMarketTypes';
 import type {
@@ -294,6 +295,65 @@ describe('SecondaryMarketRegistry — nonce atomicity & bid bounds', () => {
       buyer: '0xcccccccccccccccccccccccccccccccccccccccc',
     });
     expect(addSecondaryBid(id, extraBid)).toBe(false);
+  });
+});
+
+// ============================================================================
+// Nonce Cleanup Tests
+// ============================================================================
+
+describe('SecondaryMarketRegistry — nonce cleanup', () => {
+  beforeEach(() => {
+    clearSecondaryListings();
+  });
+
+  it('cleans up seller nonce entries after listing is removed (lazy deletion path)', () => {
+    const listing = createListing({ sellerNonce: 500 });
+    const id = addSecondaryListing(listing)!;
+    expect(id).toBeTruthy();
+    expect(isSellerNonceUsed(listing.seller, 500)).toBe(true);
+
+    // Remove listing (simulates lazy deletion via getSecondaryListing or explicit removal)
+    removeSecondaryListing(id);
+
+    // Nonce still tracked before cleanup runs
+    expect(isSellerNonceUsed(listing.seller, 500)).toBe(true);
+
+    // Run cleanup — should detect seller has no active listings and prune nonces
+    runSecondaryCleanup();
+
+    expect(isSellerNonceUsed(listing.seller, 500)).toBe(false);
+  });
+
+  it('cleans up buyer nonce entries after listing is removed', () => {
+    const id = addSecondaryListing(createListing())!;
+    const bid = createBid(id, { buyerNonce: 888 });
+    expect(addSecondaryBid(id, bid)).toBe(true);
+    expect(isBuyerNonceUsed(bid.buyer, 888)).toBe(true);
+
+    // Remove listing
+    removeSecondaryListing(id);
+
+    // Run cleanup — should detect buyer has no active bids
+    runSecondaryCleanup();
+
+    expect(isBuyerNonceUsed(bid.buyer, 888)).toBe(false);
+  });
+
+  it('preserves nonce entries for sellers with active listings', () => {
+    const listing1 = createListing({ sellerNonce: 100 });
+    const id1 = addSecondaryListing(listing1)!;
+    const listing2 = createListing({ sellerNonce: 101 });
+    addSecondaryListing(listing2);
+
+    // Remove only first listing
+    removeSecondaryListing(id1);
+
+    runSecondaryCleanup();
+
+    // Seller still has listing2, so nonces should be preserved
+    expect(isSellerNonceUsed(listing1.seller, 100)).toBe(true);
+    expect(isSellerNonceUsed(listing2.seller, 101)).toBe(true);
   });
 });
 
