@@ -198,9 +198,8 @@ export function decodedOutcomesToPicks(
     return decoded.outcomes.map((o) => ({
       conditionResolver: resolverAddress,
       conditionId: getPythMarketId(o),
-      // Pyth convention: over → 1, under → 0 (matches buildPythAuctionStartPayload).
-      // These raw values don't correspond to OutcomeSide.YES/NO semantics.
-      predictedOutcome: (o.prediction ? 1 : 0) as OutcomeSide,
+      // On-chain convention: Over→[1,0]→YES=0, Under→[0,1]→NO=1
+      predictedOutcome: o.prediction ? OutcomeSide.YES : OutcomeSide.NO,
     }));
   }
 

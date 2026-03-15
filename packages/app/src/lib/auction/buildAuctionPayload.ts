@@ -248,7 +248,7 @@ export function buildPythAuctionStartPayload(
   const escrowPicks = normalized.map((o) => ({
     conditionResolver: resolver,
     conditionId: getPythMarketId(o),
-    predictedOutcome: o.prediction ? 1 : 0,
+    predictedOutcome: o.prediction ? 0 : 1,
   }));
 
   return { resolver, predictedOutcomes: [encoded], escrowPicks };

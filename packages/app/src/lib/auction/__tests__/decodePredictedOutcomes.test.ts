@@ -191,7 +191,10 @@ describe('decodeAuctionPredictedOutcomes', () => {
 
 describe('decodedOutcomesToPicks — Pyth outcomes', () => {
   it('returns Pick[] with conditionResolver = pythConditionResolver address', () => {
-    const picks = decodedOutcomesToPicks(makePythOutcomes(), PYTH_RESOLVER_ADDR!);
+    const picks = decodedOutcomesToPicks(
+      makePythOutcomes(),
+      PYTH_RESOLVER_ADDR!
+    );
 
     expect(picks).toHaveLength(1);
     expect(picks[0].conditionResolver).toBe(PYTH_RESOLVER_ADDR);
@@ -212,18 +215,18 @@ describe('decodedOutcomesToPicks — Pyth outcomes', () => {
     expect(picks[0].conditionId).toBe(expectedConditionId);
   });
 
-  it('predictedOutcome matches buildPythAuctionStartPayload convention: prediction:true → 1, prediction:false → 0', () => {
+  it('predictedOutcome matches on-chain convention: prediction:true (Over) → 0 (YES), prediction:false (Under) → 1 (NO)', () => {
     const overPicks = decodedOutcomesToPicks(
       makePythOutcomes([{ prediction: true }]),
       PYTH_RESOLVER_ADDR!
     );
-    expect(overPicks[0].predictedOutcome).toBe(1);
+    expect(overPicks[0].predictedOutcome).toBe(0);
 
     const underPicks = decodedOutcomesToPicks(
       makePythOutcomes([{ prediction: false }]),
       PYTH_RESOLVER_ADDR!
     );
-    expect(underPicks[0].predictedOutcome).toBe(0);
+    expect(underPicks[0].predictedOutcome).toBe(1);
   });
 
   it('multi-outcome Pyth picks produce correct array', () => {
@@ -234,8 +237,8 @@ describe('decodedOutcomesToPicks — Pyth outcomes', () => {
 
     const picks = decodedOutcomesToPicks(decoded, PYTH_RESOLVER_ADDR!);
     expect(picks).toHaveLength(2);
-    expect(picks[0].predictedOutcome).toBe(1);
-    expect(picks[1].predictedOutcome).toBe(0);
+    expect(picks[0].predictedOutcome).toBe(0);
+    expect(picks[1].predictedOutcome).toBe(1);
   });
 });
 

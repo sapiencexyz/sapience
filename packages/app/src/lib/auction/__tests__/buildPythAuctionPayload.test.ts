@@ -8,7 +8,7 @@ import {
   buildPythAuctionStartPayload,
   type PythOutcomeInputStub,
 } from '../buildAuctionPayload';
-import { pythResolver, pythConditionResolver } from '@sapience/sdk/contracts';
+import { pythConditionResolver } from '@sapience/sdk/contracts';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 
 describe('normalizePythPriceId', () => {
@@ -188,7 +188,7 @@ describe('normalizePythOutcomes', () => {
 describe('buildPythAuctionStartPayload', () => {
   it('returns correct resolver address for default chain', () => {
     const result = buildPythAuctionStartPayload([makeStub()]);
-    const expectedResolver = pythResolver[DEFAULT_CHAIN_ID]?.address;
+    const expectedResolver = pythConditionResolver[DEFAULT_CHAIN_ID]?.address;
     expect(result.resolver.toLowerCase()).toBe(expectedResolver!.toLowerCase());
   });
 
@@ -200,18 +200,18 @@ describe('buildPythAuctionStartPayload', () => {
     expect(result.escrowPicks[0].conditionResolver).toBe(expectedCondResolver);
   });
 
-  it('sets predictedOutcome 1 for direction "over"', () => {
+  it('sets predictedOutcome 0 (YES) for direction "over"', () => {
     const result = buildPythAuctionStartPayload([
       makeStub({ direction: 'over' }),
     ]);
-    expect(result.escrowPicks[0].predictedOutcome).toBe(1);
+    expect(result.escrowPicks[0].predictedOutcome).toBe(0);
   });
 
-  it('sets predictedOutcome 0 for direction "under"', () => {
+  it('sets predictedOutcome 1 (NO) for direction "under"', () => {
     const result = buildPythAuctionStartPayload([
       makeStub({ direction: 'under' }),
     ]);
-    expect(result.escrowPicks[0].predictedOutcome).toBe(0);
+    expect(result.escrowPicks[0].predictedOutcome).toBe(1);
   });
 
   it('returns encoded predictedOutcomes as hex array', () => {

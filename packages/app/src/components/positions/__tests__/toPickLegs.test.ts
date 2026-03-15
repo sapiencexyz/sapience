@@ -78,7 +78,7 @@ function makePickData(overrides: Partial<PickData> = {}): PickData {
     pickConfigId: '0x01',
     conditionResolver: PYTH_RESOLVER,
     conditionId: makePythConditionId(),
-    predictedOutcome: 1, // over
+    predictedOutcome: 0, // over = YES (on-chain: Over→[1,0]→YES=0)
     ...overrides,
   };
 }
@@ -163,17 +163,17 @@ describe('toPicks — Pyth resolver picks', () => {
   });
 
   it('choice is "Over" or "Under" (not "Yes"/"No")', () => {
-    // Predictor side, predicted over → "Over"
+    // Predictor side, predicted over (0=YES) → "Over"
     const overPicks = toPicks(
-      [makePickData({ predictedOutcome: 1 })],
+      [makePickData({ predictedOutcome: 0 })],
       true,
       emptyConditionsMap
     );
     expect(overPicks[0].choice).toBe('Over');
 
-    // Predictor side, predicted under → "Under"
+    // Predictor side, predicted under (1=NO) → "Under"
     const underPicks = toPicks(
-      [makePickData({ predictedOutcome: 0 })],
+      [makePickData({ predictedOutcome: 1 })],
       true,
       emptyConditionsMap
     );
@@ -181,7 +181,7 @@ describe('toPicks — Pyth resolver picks', () => {
 
     // Counterparty side flips
     const counterOverPicks = toPicks(
-      [makePickData({ predictedOutcome: 1 })],
+      [makePickData({ predictedOutcome: 0 })],
       false,
       emptyConditionsMap
     );
@@ -310,6 +310,91 @@ describe('computeResultFromConditions', () => {
     const conditions = makeConditionsMap([
       ['c1', { settled: true, resolvedToYes: true }],
       ['c2', { settled: true, resolvedToYes: false }],
+    ]);
+    const result = computeResultFromConditions(picks, conditions);
+    expect(result.result).toBe('COUNTERPARTY_WINS');
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests — Pyth settlement: end-to-end encoding → settlement mapping
+//
+// On-chain PythConditionResolver:
+//   Over  → payoutNumerators [1,0] → OutcomeSide.YES = 0
+//   Under → payoutNumerators [0,1] → OutcomeSide.NO  = 1
+//
+// MarketSettled event:
+//   resolvedToOver: true  → resolvedToYes: true  (Over won → YES won)
+//   resolvedToOver: false → resolvedToYes: false (Under won → NO won)
+//
+// These tests verify the full mapping is consistent.
+// ---------------------------------------------------------------------------
+
+describe('computeResultFromConditions — Pyth Over/Under settlement', () => {
+  it('Over pick wins when market resolves to Over (resolvedToYes=true)', () => {
+    // buildPythAuctionStartPayload: Over → predictedOutcome: 0 (YES)
+    // processPythMarketSettled: resolvedToOver=true → resolvedToYes=true
+    const picks = [{ conditionId: 'pyth-1', predictedOutcome: 0 }]; // Over = YES = 0
+    const conditions = makeConditionsMap([
+      ['pyth-1', { settled: true, resolvedToYes: true }], // Over won
+    ]);
+    const result = computeResultFromConditions(picks, conditions);
+    expect(result.result).toBe('PREDICTOR_WINS');
+    expect(result.allResolved).toBe(true);
+  });
+
+  it('Over pick loses when market resolves to Under (resolvedToYes=false)', () => {
+    const picks = [{ conditionId: 'pyth-1', predictedOutcome: 0 }]; // Over = YES = 0
+    const conditions = makeConditionsMap([
+      ['pyth-1', { settled: true, resolvedToYes: false }], // Under won
+    ]);
+    const result = computeResultFromConditions(picks, conditions);
+    expect(result.result).toBe('COUNTERPARTY_WINS');
+  });
+
+  it('Under pick wins when market resolves to Under (resolvedToYes=false)', () => {
+    // buildPythAuctionStartPayload: Under → predictedOutcome: 1 (NO)
+    // processPythMarketSettled: resolvedToOver=false → resolvedToYes=false
+    const picks = [{ conditionId: 'pyth-1', predictedOutcome: 1 }]; // Under = NO = 1
+    const conditions = makeConditionsMap([
+      ['pyth-1', { settled: true, resolvedToYes: false }], // Under won
+    ]);
+    const result = computeResultFromConditions(picks, conditions);
+    expect(result.result).toBe('PREDICTOR_WINS');
+    expect(result.allResolved).toBe(true);
+  });
+
+  it('Under pick loses when market resolves to Over (resolvedToYes=true)', () => {
+    const picks = [{ conditionId: 'pyth-1', predictedOutcome: 1 }]; // Under = NO = 1
+    const conditions = makeConditionsMap([
+      ['pyth-1', { settled: true, resolvedToYes: true }], // Over won
+    ]);
+    const result = computeResultFromConditions(picks, conditions);
+    expect(result.result).toBe('COUNTERPARTY_WINS');
+  });
+
+  it('mixed Pyth parlay: Over+Under both correct → PREDICTOR_WINS', () => {
+    const picks = [
+      { conditionId: 'pyth-eth', predictedOutcome: 0 }, // Over ETH
+      { conditionId: 'pyth-btc', predictedOutcome: 1 }, // Under BTC
+    ];
+    const conditions = makeConditionsMap([
+      ['pyth-eth', { settled: true, resolvedToYes: true }], // ETH Over won
+      ['pyth-btc', { settled: true, resolvedToYes: false }], // BTC Under won
+    ]);
+    const result = computeResultFromConditions(picks, conditions);
+    expect(result.result).toBe('PREDICTOR_WINS');
+    expect(result.allResolved).toBe(true);
+  });
+
+  it('mixed Pyth parlay: one leg wrong → COUNTERPARTY_WINS', () => {
+    const picks = [
+      { conditionId: 'pyth-eth', predictedOutcome: 0 }, // Over ETH
+      { conditionId: 'pyth-btc', predictedOutcome: 0 }, // Over BTC
+    ];
+    const conditions = makeConditionsMap([
+      ['pyth-eth', { settled: true, resolvedToYes: true }], // ETH Over won ✓
+      ['pyth-btc', { settled: true, resolvedToYes: false }], // BTC Under won ✗
     ]);
     const result = computeResultFromConditions(picks, conditions);
     expect(result.result).toBe('COUNTERPARTY_WINS');
