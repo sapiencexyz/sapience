@@ -62,28 +62,6 @@ export const lzUmaResolver: ChainAddressMap = {
   },
 } as const;
 
-/**
- * PythResolver
- *
- * NOTE: These are intentionally placeholder addresses so the app can wire the
- * correct resolver selection + encoding. Update them to the real deployed
- * resolver addresses for each chain when available.
- */
-export const pythResolver: ChainAddressMap = {
-  42161: {
-    address: '0x0000000000000000000000000000000000000000',
-    legacy: [] as const,
-  },
-  5064014: {
-    address: '0xD076c9fADC49061920e75b1a3a45642712F90F35',
-    legacy: [] as const,
-  },
-  13374202: {
-    address: '0x0000000000000000000000000000000000000000',
-    legacy: [] as const,
-  },
-} as const;
-
 export const collateralToken: ChainAddressMap = {
   42161: {
     address: '0xfeb8c4d5efbaff6e928ea090bc660c363f883dba',
@@ -389,7 +367,6 @@ export const contracts = {
   umaResolver,
   lzPMResolver,
   lzUmaResolver,
-  pythResolver,
   collateralToken,
   eas,
 };

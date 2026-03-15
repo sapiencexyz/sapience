@@ -24,7 +24,6 @@ import {
   type ConditionsMap,
 } from '~/components/positions/toPickLegs';
 import { COLLATERAL_SYMBOLS, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
-import { OutcomeSide } from '@sapience/sdk/types';
 import {
   usePositionBalances,
   usePositionBalancesByConditionId,
@@ -521,7 +520,8 @@ export default function PositionsTable({
   const shareImageSrc = React.useMemo(() => {
     if (!sharePosition) return null;
     const { pickConfig, isPredictorToken } = sharePosition;
-    const picks = pickConfig?.picks ?? [];
+    const rawPicks = pickConfig?.picks ?? [];
+    const resolvedPicks = toPicks(rawPicks, isPredictorToken, conditionsMap);
 
     const wager = parseFloat(
       formatEther(BigInt(sharePosition.userCollateral || '0'))
@@ -538,18 +538,8 @@ export default function PositionsTable({
       qp.set('anti', '1');
     }
 
-    for (const pick of picks) {
-      const condition = conditionsMap.get(pick.conditionId);
-      const question =
-        condition?.question ?? condition?.shortName ?? pick.conditionId;
-      const choice = isPredictorToken
-        ? (pick.predictedOutcome as OutcomeSide) === OutcomeSide.YES
-          ? 'Yes'
-          : 'No'
-        : (pick.predictedOutcome as OutcomeSide) === OutcomeSide.YES
-          ? 'No'
-          : 'Yes';
-      qp.append('leg', `${question}|${choice}`);
+    for (const pick of resolvedPicks) {
+      qp.append('leg', `${pick.question}|${pick.choice}`);
     }
 
     return `/og/prediction?${qp.toString()}`;

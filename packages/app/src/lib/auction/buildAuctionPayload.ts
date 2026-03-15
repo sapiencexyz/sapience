@@ -1,5 +1,4 @@
 import {
-  pythResolver,
   umaResolver,
   predictionMarketLZConditionalTokensResolver,
 } from '@sapience/sdk/contracts';
@@ -239,21 +238,15 @@ export function buildPythAuctionStartPayload(
   }>;
 } {
   const targetChainId = chainId || DEFAULT_CHAIN_ID;
-  const resolverAddress = pythResolver[targetChainId]?.address as
-    | `0x${string}`
-    | undefined;
   const resolver: `0x${string}` =
-    resolverAddress ||
+    pythConditionResolver[targetChainId]?.address ??
     ('0x0000000000000000000000000000000000000000' as `0x${string}`);
 
   const normalized = normalizePythOutcomes(outcomes);
   const encoded = encodePythBinaryOptionOutcomes(normalized);
 
-  const conditionResolverAddress =
-    pythConditionResolver[targetChainId]?.address ?? resolver;
-
   const escrowPicks = normalized.map((o) => ({
-    conditionResolver: conditionResolverAddress,
+    conditionResolver: resolver,
     conditionId: getPythMarketId(o),
     predictedOutcome: o.prediction ? 1 : 0,
   }));

@@ -3,7 +3,6 @@ import {
   lzPMResolver,
   lzUmaResolver,
   umaResolver,
-  pythResolver,
   pythConditionResolver,
   conditionalTokensConditionResolver,
 } from '@sapience/sdk/contracts/addresses';
@@ -44,7 +43,6 @@ export function inferResolverKind(
   if (findChainIdForAddress(addr, lzPMResolver) != null) return 'lzPM';
   if (findChainIdForAddress(addr, lzUmaResolver) != null) return 'lzUma';
   if (findChainIdForAddress(addr, umaResolver) != null) return 'uma';
-  if (findChainIdForAddress(addr, pythResolver) != null) return 'pyth';
   if (findChainIdForAddress(addr, pythConditionResolver) != null) return 'pyth';
   if (findChainIdForAddress(addr, conditionalTokensConditionResolver) != null)
     return 'conditionalTokens';
@@ -63,9 +61,6 @@ export function inferChainIdFromResolverAddress(
 
   const lzPmChain = findChainIdForAddress(addr, lzPMResolver);
   if (lzPmChain != null) return lzPmChain;
-
-  const pythChain = findChainIdForAddress(addr, pythResolver);
-  if (pythChain != null) return pythChain;
 
   const pythCondChain = findChainIdForAddress(addr, pythConditionResolver);
   if (pythCondChain != null) return pythCondChain;
@@ -103,7 +98,7 @@ export function getConditionResolverAddress(opts: {
     lzPMResolver[chainId]?.address ??
     lzUmaResolver[chainId]?.address ??
     umaResolver[chainId]?.address ??
-    pythResolver[chainId]?.address
+    pythConditionResolver[chainId]?.address
   );
 }
 

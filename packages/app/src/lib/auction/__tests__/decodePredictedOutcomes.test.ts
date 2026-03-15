@@ -1,20 +1,67 @@
 import { describe, it, expect } from 'vitest';
 import {
   decodeAuctionPredictedOutcomes,
+  decodedOutcomesToPicks,
   formatPythPriceDecimalFromInt,
   formatUnixSecondsToLocalInput,
 } from '../decodePredictedOutcomes';
+import type { DecodedOutcomes } from '../decodePredictedOutcomes';
 import {
   encodePythBinaryOptionOutcomes,
   encodePolymarketPredictedOutcomes,
+  getPythMarketId,
   type PythBinaryOptionOutcome,
 } from '@sapience/sdk';
-import { pythResolver, umaResolver } from '@sapience/sdk/contracts';
+import { pythConditionResolver, umaResolver } from '@sapience/sdk/contracts';
+import { OutcomeSide } from '@sapience/sdk/types';
 import { parseDateTimeLocalToUnixSeconds } from '../buildAuctionPayload';
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
 // Grab a known pyth resolver address for use in tests
-const PYTH_RESOLVER_ADDR = pythResolver[5064014]?.address;
+const PYTH_RESOLVER_ADDR = pythConditionResolver[13374202]?.address;
 const UMA_RESOLVER_ADDR = umaResolver[42161]?.address;
+
+const ETH_PRICE_ID =
+  '0x0000000000000000000000000000000000000000000000000000000000000002' as const;
+
+const STRIKE_PRICE = 250000n;
+const STRIKE_EXPO = -2;
+const END_TIME = 1710428400n;
+
+function makePythOutcomes(
+  overrides?: Partial<{
+    priceId: `0x${string}`;
+    endTime: bigint;
+    strikePrice: bigint;
+    strikeExpo: number;
+    overWinsOnTie: boolean;
+    prediction: boolean;
+  }>[]
+): DecodedOutcomes {
+  const defaults = {
+    priceId: ETH_PRICE_ID,
+    endTime: END_TIME,
+    strikePrice: STRIKE_PRICE,
+    strikeExpo: STRIKE_EXPO,
+    overWinsOnTie: true,
+    prediction: true,
+  };
+  return {
+    kind: 'pyth',
+    outcomes: (overrides ?? [{}]).map((o) => ({
+      kind: 'pyth' as const,
+      ...defaults,
+      ...o,
+    })),
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Tests — decodeAuctionPredictedOutcomes
+// ---------------------------------------------------------------------------
 
 describe('decodeAuctionPredictedOutcomes', () => {
   it('decodes Pyth resolver + valid ABI-encoded data', () => {
@@ -138,6 +185,64 @@ describe('decodeAuctionPredictedOutcomes', () => {
   });
 });
 
+// ---------------------------------------------------------------------------
+// Tests — decodedOutcomesToPicks
+// ---------------------------------------------------------------------------
+
+describe('decodedOutcomesToPicks — Pyth outcomes', () => {
+  it('returns Pick[] with conditionResolver = pythConditionResolver address', () => {
+    const picks = decodedOutcomesToPicks(makePythOutcomes(), PYTH_RESOLVER_ADDR!);
+
+    expect(picks).toHaveLength(1);
+    expect(picks[0].conditionResolver).toBe(PYTH_RESOLVER_ADDR);
+  });
+
+  it('conditionId = getPythMarketId(outcome)', () => {
+    const decoded = makePythOutcomes();
+    const picks = decodedOutcomesToPicks(decoded, PYTH_RESOLVER_ADDR!);
+
+    const expectedConditionId = getPythMarketId({
+      priceId: ETH_PRICE_ID,
+      endTime: END_TIME,
+      strikePrice: STRIKE_PRICE,
+      strikeExpo: STRIKE_EXPO,
+      overWinsOnTie: true,
+    });
+
+    expect(picks[0].conditionId).toBe(expectedConditionId);
+  });
+
+  it('predictedOutcome matches buildPythAuctionStartPayload convention: prediction:true → 1, prediction:false → 0', () => {
+    const overPicks = decodedOutcomesToPicks(
+      makePythOutcomes([{ prediction: true }]),
+      PYTH_RESOLVER_ADDR!
+    );
+    expect(overPicks[0].predictedOutcome).toBe(1);
+
+    const underPicks = decodedOutcomesToPicks(
+      makePythOutcomes([{ prediction: false }]),
+      PYTH_RESOLVER_ADDR!
+    );
+    expect(underPicks[0].predictedOutcome).toBe(0);
+  });
+
+  it('multi-outcome Pyth picks produce correct array', () => {
+    const decoded = makePythOutcomes([
+      { prediction: true, priceId: ETH_PRICE_ID },
+      { prediction: false, strikePrice: 100000n },
+    ]);
+
+    const picks = decodedOutcomesToPicks(decoded, PYTH_RESOLVER_ADDR!);
+    expect(picks).toHaveLength(2);
+    expect(picks[0].predictedOutcome).toBe(1);
+    expect(picks[1].predictedOutcome).toBe(0);
+  });
+});
+
+// ---------------------------------------------------------------------------
+// Tests — formatPythPriceDecimalFromInt
+// ---------------------------------------------------------------------------
+
 describe('formatPythPriceDecimalFromInt', () => {
   it('formats 5000000000000n with expo -8 as "50000"', () => {
     expect(formatPythPriceDecimalFromInt(5000000000000n, -8)).toBe('50000');
@@ -167,6 +272,10 @@ describe('formatPythPriceDecimalFromInt', () => {
     expect(formatPythPriceDecimalFromInt(1200n, -2)).toBe('12');
   });
 });
+
+// ---------------------------------------------------------------------------
+// Tests — formatUnixSecondsToLocalInput
+// ---------------------------------------------------------------------------
 
 describe('formatUnixSecondsToLocalInput', () => {
   it('returns YYYY-MM-DDTHH:MM format', () => {

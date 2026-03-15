@@ -1,6 +1,13 @@
 import { OutcomeSide } from '@sapience/sdk/types';
+import { decodePythMarketId } from '@sapience/sdk';
 import type { PickData } from '~/hooks/graphql/usePositions';
 import type { Pick } from '~/components/shared/StackedPredictions';
+import { inferResolverKind } from '~/lib/resolvers/conditionResolver';
+import {
+  formatPythPriceDecimalFromInt,
+  formatUnixSecondsToLocalInput,
+} from '~/lib/auction/decodePredictedOutcomes';
+import { getPythFeedLabelSync } from '~/lib/pyth/usePythFeedLabel';
 
 export type ConditionsMap = Map<
   string,
@@ -24,6 +31,72 @@ export function toPicks(
 ): Pick[] {
   return picks.map((pick) => {
     const condition = conditionsMap.get(pick.conditionId);
+    const resolverKind = inferResolverKind(pick.conditionResolver);
+
+    if (resolverKind === 'pyth') {
+      const decoded = decodePythMarketId(pick.conditionId as `0x${string}`);
+
+      // buildPythAuctionStartPayload convention: over → 1, under → 0
+      const predictorChoseOver = pick.predictedOutcome === 1;
+      const viewerChoseOver = isPredictorSide
+        ? predictorChoseOver
+        : !predictorChoseOver;
+      const direction: 'over' | 'under' = viewerChoseOver ? 'over' : 'under';
+      const choice = viewerChoseOver ? 'Over' : 'Under';
+
+      if (decoded) {
+        const priceStr = formatPythPriceDecimalFromInt(
+          decoded.strikePrice,
+          decoded.strikeExpo
+        );
+        const feedLabel = getPythFeedLabelSync(decoded.priceId);
+        const question = feedLabel
+          ? `${feedLabel} ${direction === 'over' ? '>' : '<'} $${priceStr}`
+          : pick.conditionId;
+
+        return {
+          question,
+          choice,
+          conditionId: pick.conditionId,
+          resolverAddress:
+            pick.conditionResolver ?? condition?.resolver ?? null,
+          categorySlug: condition?.category?.slug ?? null,
+          endTime: condition?.endTime ?? Number(decoded.endTime),
+          source: 'pyth' as const,
+          pythPrediction: {
+            id: pick.conditionId,
+            priceId: decoded.priceId,
+            priceFeedLabel: feedLabel ?? undefined,
+            direction,
+            targetPrice: Number(priceStr),
+            targetPriceRaw: priceStr,
+            targetPriceFullPrecision: priceStr,
+            priceExpo: decoded.strikeExpo,
+            dateTimeLocal: formatUnixSecondsToLocalInput(decoded.endTime),
+          },
+          settled: condition?.settled,
+          resolvedToYes: condition?.resolvedToYes,
+          nonDecisive: condition?.nonDecisive,
+        };
+      }
+
+      // Decode failed — still mark as Pyth
+      return {
+        question:
+          condition?.question ?? condition?.shortName ?? pick.conditionId,
+        choice,
+        conditionId: pick.conditionId,
+        resolverAddress: pick.conditionResolver ?? condition?.resolver ?? null,
+        categorySlug: condition?.category?.slug ?? null,
+        endTime: condition?.endTime ?? null,
+        source: 'pyth' as const,
+        settled: condition?.settled,
+        resolvedToYes: condition?.resolvedToYes,
+        nonDecisive: condition?.nonDecisive,
+      };
+    }
+
+    // UMA / default path
     return {
       question: condition?.question ?? condition?.shortName ?? pick.conditionId,
       choice: isPredictorSide
