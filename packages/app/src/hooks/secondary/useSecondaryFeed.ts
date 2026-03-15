@@ -9,7 +9,7 @@ import type {
 } from '@sapience/sdk/types/secondary';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { toAuctionWsUrl } from '~/lib/ws';
-import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
+import { getSharedMeshClient } from '~/lib/ws/MeshAuctionClient';
 
 export interface SecondaryListing extends SecondaryAuctionDetails {
   bidCount: number;
@@ -124,7 +124,7 @@ export function useSecondaryFeed(options: UseSecondaryFeedOptions = {}) {
   useEffect(() => {
     if (!enabled || !wsUrl) return;
 
-    const client = getSharedAuctionWsClient(wsUrl);
+    const client = getSharedMeshClient();
 
     const subscribe = () => {
       // Request snapshot of current listings
@@ -183,7 +183,7 @@ export function useSecondaryFeed(options: UseSecondaryFeedOptions = {}) {
   const subscribeToBids = useCallback(
     (auctionId: string) => {
       if (!wsUrl) return;
-      const client = getSharedAuctionWsClient(wsUrl);
+      const client = getSharedMeshClient();
       client.send({
         type: 'secondary.auction.subscribe',
         payload: { auctionId },

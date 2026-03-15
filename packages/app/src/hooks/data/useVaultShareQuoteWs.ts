@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import type { Address } from 'viem';
 import { useSettings } from '../../lib/context/SettingsContext';
 import { toAuctionWsUrl } from '../../lib/ws';
-import { getSharedAuctionWsClient } from '../../lib/ws/AuctionWsClient';
+import { getSharedMeshClient } from '../../lib/ws/MeshAuctionClient';
 
 interface VaultShareWsQuotePayload {
   chainId: number;
@@ -49,7 +49,7 @@ export function useVaultShareQuoteWs(
       return;
     }
 
-    const client = getSharedAuctionWsClient(wsUrl);
+    const client = getSharedMeshClient();
 
     // Restore last valid quote if available to prevent flashing to 0
     if (lastValidQuoteRef.current) {

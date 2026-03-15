@@ -22,7 +22,9 @@
       "@sapience/ui": ["../../ui/index.ts"],
       "@sapience/ui/*": ["../../ui/*"],
       "@sapience/sdk": ["../../sdk/index.ts"],
-      "@sapience/sdk/*": ["../../sdk/*"]
+      "@sapience/sdk/*": ["../../sdk/*"],
+      "@sapience/relay": ["../../relay/src/index.ts"],
+      "@sapience/relay/*": ["../../relay/src/*"]
     },
     "incremental": true,
     "plugins": [

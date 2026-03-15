@@ -19,7 +19,7 @@ import NumberDisplay from '~/components/shared/NumberDisplay';
 import type { AuctionDetails, ValidatedBid } from '@sapience/sdk/types';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { toAuctionWsUrl } from '~/lib/ws';
-import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
+import { getSharedMeshClient } from '~/lib/ws/MeshAuctionClient';
 
 type Props = {
   auctionId: string | null;
@@ -41,7 +41,7 @@ function useAuctionBids(auctionId: string | null) {
       return;
     }
 
-    const client = getSharedAuctionWsClient(wsUrl);
+    const client = getSharedMeshClient();
 
     // Subscribe to auction
     client.send({ type: 'auction.subscribe', payload: { auctionId } });

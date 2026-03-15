@@ -11,7 +11,7 @@ import { OutcomeSide } from '@sapience/sdk/types';
 import { canonicalizePicks } from '@sapience/sdk/auction/escrowEncoding';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { toAuctionWsUrl } from '~/lib/ws';
-import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
+import { getSharedMeshClient } from '~/lib/ws/MeshAuctionClient';
 import hub from '~/lib/auction/useAuctionBidsHub';
 import type { RecentCombo } from '~/hooks/graphql/useRecentCombos';
 
@@ -64,7 +64,7 @@ export function useComboQuotes(combos: RecentCombo[], chainId: number) {
 
       if (force) requestedRef.current.clear();
 
-      const client = getSharedAuctionWsClient(wsUrl);
+      const client = getSharedMeshClient();
       const nowSec = Math.floor(Date.now() / 1000);
 
       for (const combo of combos) {
