@@ -500,6 +500,7 @@ const CreatePositionFormInner = ({
     collateralTokenAddress: collateralToken,
     predictorAddress: effectiveAddress as Address | undefined,
     predictorCollateral: predictorCollateralWei,
+    predictorNonce: currentAuctionParams?.predictorNonce,
     picks: validationPicks,
     isSponsored: auctionHasSponsor,
     sponsorAddress: auctionSponsorAddress,

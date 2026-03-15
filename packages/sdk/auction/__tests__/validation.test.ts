@@ -859,6 +859,7 @@ describe('validateBidOnChain', () => {
   const auctionCtx = {
     predictor: '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     predictorCollateral: '1000000000000000000',
+    predictorNonce: 7,
     picks: TEST_PICKS,
   };
 
@@ -1036,5 +1037,64 @@ describe('validateBidOnChain', () => {
 
     // validateCounterpartyFunds called twice: counterparty + predictor
     expect(mockValidateCounterpartyFunds).toHaveBeenCalledTimes(2);
+  });
+
+  test('used predictor nonce → invalid', async () => {
+    // First call (counterparty nonce) → not used; second call (predictor nonce) → used
+    mockIsNonceUsed.mockResolvedValueOnce(false).mockResolvedValueOnce(true);
+    const bid = makeBidOnChain();
+    const result = await validateBidOnChain(bid, auctionCtx, {
+      chainId: CHAIN_ID,
+      predictionMarketAddress: PREDICTION_MARKET,
+      collateralTokenAddress: COLLATERAL_TOKEN,
+      publicClient: mockPublicClient as unknown as PublicClient,
+    });
+
+    expect(result.status).toBe('invalid');
+    if (result.status === 'invalid') {
+      expect(result.code).toBe('NONCE_USED');
+      expect(result.reason).toContain('Predictor');
+    }
+  });
+
+  test('predictor nonce checked with correct address and value', async () => {
+    const bid = makeBidOnChain();
+    await validateBidOnChain(bid, auctionCtx, {
+      chainId: CHAIN_ID,
+      predictionMarketAddress: PREDICTION_MARKET,
+      collateralTokenAddress: COLLATERAL_TOKEN,
+      publicClient: mockPublicClient as unknown as PublicClient,
+    });
+
+    // isNonceUsed should be called for both counterparty and predictor
+    expect(mockIsNonceUsed).toHaveBeenCalledTimes(2);
+    // Second call should be for the predictor
+    expect(mockIsNonceUsed).toHaveBeenCalledWith(
+      auctionCtx.predictor,
+      BigInt(auctionCtx.predictorNonce),
+      expect.objectContaining({
+        chainId: CHAIN_ID,
+        marketAddress: PREDICTION_MARKET,
+      })
+    );
+  });
+
+  test('predictorNonce omitted → skips predictor nonce check', async () => {
+    const auctionWithoutNonce = {
+      predictor: auctionCtx.predictor,
+      predictorCollateral: auctionCtx.predictorCollateral,
+      picks: auctionCtx.picks,
+    };
+    const bid = makeBidOnChain();
+    const result = await validateBidOnChain(bid, auctionWithoutNonce, {
+      chainId: CHAIN_ID,
+      predictionMarketAddress: PREDICTION_MARKET,
+      collateralTokenAddress: COLLATERAL_TOKEN,
+      publicClient: mockPublicClient as unknown as PublicClient,
+    });
+
+    expect(result.status).toBe('valid');
+    // isNonceUsed called only once (counterparty)
+    expect(mockIsNonceUsed).toHaveBeenCalledTimes(1);
   });
 });
