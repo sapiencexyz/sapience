@@ -13,7 +13,7 @@
   "dependencies": {
     "@sapience/sdk": "file:../../packages/sdk",
     "dotenv": "16.6.1",
-    "viem": "2.23.5",
+    "viem": "2.47.2",
     "ws": "8.19.0"
   },
   "devDependencies": {
