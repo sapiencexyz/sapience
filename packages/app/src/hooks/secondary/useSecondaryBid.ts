@@ -129,12 +129,12 @@ export function useSecondaryBid(options: UseSecondaryBidOptions = {}) {
       try {
         let currentAllowance = 0n;
         try {
-          currentAllowance = (await publicClient.readContract({
+          currentAllowance = await publicClient.readContract({
             address: collateralAddress,
             abi: erc20Abi,
             functionName: 'allowance',
             args: [buyerAddress, verifyingContract],
-          })) as bigint;
+          });
         } catch {
           // Continue — will do approve
         }
@@ -149,11 +149,11 @@ export function useSecondaryBid(options: UseSecondaryBidOptions = {}) {
             chainId,
           });
         }
-      } catch (e: any) {
+      } catch (e: unknown) {
         setIsSubmitting(false);
         return {
           success: false,
-          error: `Collateral approval failed: ${e?.message || 'Unknown error'}`,
+          error: `Collateral approval failed: ${e instanceof Error ? e.message : String(e)}`,
         };
       }
 
@@ -202,10 +202,9 @@ export function useSecondaryBid(options: UseSecondaryBidOptions = {}) {
             message: typedData.message,
           });
         }
-      } catch (e: any) {
+      } catch (e: unknown) {
         setIsSubmitting(false);
-        const error =
-          e instanceof Error ? e : new Error(String(e?.message || e));
+        const error = e instanceof Error ? e : new Error(String(e));
         onSignatureRejected?.(error);
         return {
           success: false,
@@ -243,11 +242,11 @@ export function useSecondaryBid(options: UseSecondaryBidOptions = {}) {
           buyerNonce: nonce,
           buyerDeadline: Number(buyerDeadline),
         };
-      } catch (e: any) {
+      } catch (e: unknown) {
         setIsSubmitting(false);
         return {
           success: false,
-          error: `Failed to submit bid: ${e?.message || 'Unknown error'}`,
+          error: `Failed to submit bid: ${e instanceof Error ? e.message : String(e)}`,
         };
       }
     },

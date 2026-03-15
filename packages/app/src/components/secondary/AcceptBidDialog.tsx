@@ -73,8 +73,12 @@ export default function AcceptBidDialog({
         if (!result.success && result.error) {
           setError(result.error);
         }
-      } catch (err: any) {
-        setError(err?.message || 'Failed to execute trade');
+      } catch (err: unknown) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : String(err) || 'Failed to execute trade'
+        );
       }
     },
     [listing, acceptBid]

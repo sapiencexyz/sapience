@@ -220,7 +220,7 @@ describe('secondaryMarketSigVerify', () => {
 
     it('missing signature returns false', async () => {
       const payload = await createSignedSellerPayload();
-      (payload as any).sellerSignature = undefined;
+      (payload as Record<string, unknown>).sellerSignature = undefined;
       const result = await verifySellerSignature(payload);
       expect(result).toBe(false);
     });
@@ -276,7 +276,7 @@ describe('secondaryMarketSigVerify', () => {
     it('missing buyer signature returns false', async () => {
       const listing = await createSignedSellerPayload();
       const bid = await createSignedBidPayload(listing);
-      (bid as any).buyerSignature = undefined;
+      (bid as Record<string, unknown>).buyerSignature = undefined;
       const result = await verifyBuyerSignature(bid, listing);
       expect(result).toBe(false);
     });

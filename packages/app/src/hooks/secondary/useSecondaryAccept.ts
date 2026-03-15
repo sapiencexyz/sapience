@@ -169,10 +169,9 @@ export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
               message: typedData.message,
             });
           }
-        } catch (e: any) {
+        } catch (e: unknown) {
           setIsAccepting(false);
-          const error =
-            e instanceof Error ? e : new Error(String(e?.message || e));
+          const error = e instanceof Error ? e : new Error(String(e));
           onSignatureRejected?.(error);
           return {
             success: false,
@@ -183,12 +182,12 @@ export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
         // 2. Check position token allowance (used to decide if approve is needed in batch)
         let currentAllowance = 0n;
         try {
-          currentAllowance = (await publicClient.readContract({
+          currentAllowance = await publicClient.readContract({
             address: token,
             abi: erc20Abi,
             functionName: 'allowance',
             args: [sellerAddress, escrowAddress],
-          })) as bigint;
+          });
         } catch {
           // Continue — will include approve in batch
         }
@@ -234,10 +233,9 @@ export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
         await sendCalls({ calls, chainId });
 
         return { success: true };
-      } catch (e: any) {
+      } catch (e: unknown) {
         setIsAccepting(false);
-        const error =
-          e instanceof Error ? e : new Error(String(e?.message || e));
+        const error = e instanceof Error ? e : new Error(String(e));
         onError?.(error);
         return {
           success: false,

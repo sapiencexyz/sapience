@@ -36,6 +36,11 @@ import {
 // Helpers
 // ---------------------------------------------------------------------------
 
+interface WsMessage {
+  type: string;
+  payload: Record<string, unknown>;
+}
+
 const futureDeadline = Math.floor(Date.now() / 1000) + 3600;
 
 function createMockWs(): WebSocket {
@@ -129,11 +134,12 @@ describe('SecondaryMarketHandlers', () => {
       // Seller ws should have received the bids broadcast (second message)
       const sellerMessages = allSent(ws);
       const bidsBroadcast = sellerMessages.find(
-        (m: any) => m.type === 'secondary.auction.bids'
-      ) as any;
+        (m): m is WsMessage =>
+          (m as WsMessage).type === 'secondary.auction.bids'
+      );
       expect(bidsBroadcast).toBeDefined();
-      expect(bidsBroadcast.payload.auctionId).toBe(auctionId);
-      expect(bidsBroadcast.payload.bids).toHaveLength(1);
+      expect(bidsBroadcast!.payload.auctionId).toBe(auctionId);
+      expect(bidsBroadcast!.payload.bids).toHaveLength(1);
     });
 
     it('invalid signature sends error ack', async () => {
@@ -184,7 +190,7 @@ describe('SecondaryMarketHandlers', () => {
       // Global subscriber should receive secondary.auction.started
       const globalMessages = allSent(globalWs);
       expect(globalMessages).toHaveLength(1);
-      const broadcast = globalMessages[0] as any;
+      const broadcast = globalMessages[0] as WsMessage;
       expect(broadcast.type).toBe('secondary.auction.started');
       expect(broadcast.payload.token).toBe(payload.token);
       expect(broadcast.payload.seller).toBe(payload.seller);
@@ -232,11 +238,14 @@ describe('SecondaryMarketHandlers', () => {
       // Watcher should receive bids broadcast
       const watcherMessages = allSent(watcherWs);
       const bidsBroadcast = watcherMessages.find(
-        (m: any) => m.type === 'secondary.auction.bids'
-      ) as any;
+        (m): m is WsMessage =>
+          (m as WsMessage).type === 'secondary.auction.bids'
+      );
       expect(bidsBroadcast).toBeDefined();
-      expect(bidsBroadcast.payload.bids).toHaveLength(1);
-      expect(bidsBroadcast.payload.bids[0].buyer).toBe(bidPayload.buyer);
+      expect(bidsBroadcast!.payload.bids).toHaveLength(1);
+      expect(
+        (bidsBroadcast!.payload.bids as Record<string, unknown>[])[0].buyer
+      ).toBe(bidPayload.buyer);
     });
 
     it('auction not found sends error', async () => {
@@ -325,29 +334,35 @@ describe('SecondaryMarketHandlers', () => {
       const sellerWs = createMockWs();
       const auctionPayload = createAuctionPayload();
       await handleSecondaryAuctionStart(sellerWs, auctionPayload);
-      const auctionId = (parseSent(sellerWs) as any).payload.auctionId;
+      const auctionId = (parseSent(sellerWs) as WsMessage).payload.auctionId;
 
       const buyerWs = createMockWs();
-      await handleSecondaryBidSubmit(buyerWs, createBidPayload(auctionId));
+      await handleSecondaryBidSubmit(
+        buyerWs,
+        createBidPayload(auctionId as string)
+      );
 
       // Now subscribe a new client
       const subWs = createMockWs();
-      handleSecondarySubscribe(subWs, { auctionId });
+      handleSecondarySubscribe(subWs, { auctionId: auctionId as string });
 
       const messages = allSent(subWs);
       // Should receive current bids + subscription ack
       const bidsMsg = messages.find(
-        (m: any) => m.type === 'secondary.auction.bids'
-      ) as any;
+        (m): m is WsMessage =>
+          (m as WsMessage).type === 'secondary.auction.bids'
+      );
       expect(bidsMsg).toBeDefined();
-      expect(bidsMsg.payload.bids).toHaveLength(1);
+      expect(bidsMsg!.payload.bids).toHaveLength(1);
 
       const ackMsg = messages.find(
-        (m: any) => m.type === 'secondary.auction.ack' && m.payload.subscribed
-      ) as any;
+        (m): m is WsMessage =>
+          (m as WsMessage).type === 'secondary.auction.ack' &&
+          Boolean((m as WsMessage).payload.subscribed)
+      );
       expect(ackMsg).toBeDefined();
-      expect(ackMsg.payload.auctionId).toBe(auctionId);
-      expect(ackMsg.payload.subscribed).toBe(true);
+      expect(ackMsg!.payload.auctionId).toBe(auctionId);
+      expect(ackMsg!.payload.subscribed).toBe(true);
     });
 
     it('missing auctionId sends error', () => {
@@ -436,7 +451,7 @@ describe('SecondaryMarketHandlers', () => {
 
       const msg = parseSent(reqWs) as {
         type: string;
-        payload: { listings: any[] };
+        payload: { listings: unknown[] };
       };
       expect(msg.type).toBe('secondary.listings.snapshot');
       expect(msg.payload.listings).toHaveLength(2);
@@ -460,7 +475,8 @@ describe('SecondaryMarketHandlers', () => {
         sellerWs,
         createAuctionPayload({ sellerNonce: 200 })
       );
-      const auctionId = (parseSent(sellerWs) as any).payload.auctionId;
+      const auctionId = (parseSent(sellerWs) as WsMessage).payload
+        .auctionId as string;
       handleSecondarySubscribe(ws, { auctionId });
 
       // Subscribe to global feed

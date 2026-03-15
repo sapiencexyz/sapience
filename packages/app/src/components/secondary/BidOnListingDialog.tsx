@@ -85,8 +85,12 @@ export default function BidOnListingDialog({
         if (!result.success && result.error) {
           setError(result.error);
         }
-      } catch (err: any) {
-        setError(err?.message || 'Failed to submit bid');
+      } catch (err: unknown) {
+        setError(
+          err instanceof Error
+            ? err.message
+            : String(err) || 'Failed to submit bid'
+        );
       }
     },
     [price, listing, collateralSymbol, submitBid]
