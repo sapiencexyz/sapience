@@ -21,7 +21,6 @@ import {
   createKernelAccount,
   createKernelAccountClient,
   createZeroDevPaymasterClient,
-  addressToEmptyAccount, // Still needed for getSmartAccountAddress
   type KernelAccountClient,
 } from '@zerodev/sdk';
 import { signerToEcdsaValidator } from '@zerodev/ecdsa-validator';
@@ -57,6 +56,7 @@ import {
   etherealChain,
   etherealTestnetChain,
 } from '@sapience/sdk/constants';
+import { computeSmartAccountAddress } from '@sapience/sdk/session';
 
 // Re-export etherealChain as 'ethereal' for backward compatibility
 export { etherealChain as ethereal };
@@ -310,32 +310,8 @@ export interface OwnerSigner {
  * Calculate the smart account address for a given owner address.
  * This doesn't require any signatures - just computes the counterfactual address.
  */
-export async function getSmartAccountAddress(
-  ownerAddress: Address
-): Promise<Address> {
-  const publicClient = createPublicClient({
-    transport: http(
-      process.env.NEXT_PUBLIC_RPC_URL || 'https://arb1.arbitrum.io/rpc'
-    ),
-    chain: arbitrum,
-  });
-
-  const emptyAccount = addressToEmptyAccount(ownerAddress);
-  const ecdsaValidator = await signerToEcdsaValidator(publicClient, {
-    signer: emptyAccount,
-    entryPoint: ENTRY_POINT,
-    kernelVersion: KERNEL_VERSION,
-  });
-
-  const account = await createKernelAccount(publicClient, {
-    plugins: {
-      sudo: ecdsaValidator,
-    },
-    entryPoint: ENTRY_POINT,
-    kernelVersion: KERNEL_VERSION,
-  });
-
-  return account.address;
+export function getSmartAccountAddress(ownerAddress: Address): Address {
+  return computeSmartAccountAddress(ownerAddress);
 }
 
 /**
