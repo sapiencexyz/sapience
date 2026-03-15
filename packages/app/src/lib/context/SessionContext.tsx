@@ -285,7 +285,7 @@ export function SessionProvider({ children }: SessionProviderProps) {
   // Smart account address state
   const [smartAccountAddress, setSmartAccountAddress] =
     useState<Address | null>(null);
-  const [isCalculatingAddress, setIsCalculatingAddress] = useState(false);
+  const [isCalculatingAddress] = useState(false);
 
   // Account mode state - always initialize to default, then sync from localStorage in useEffect
   // This avoids SSR hydration mismatches since server always sees the same initial value
@@ -444,39 +444,14 @@ export function SessionProvider({ children }: SessionProviderProps) {
     [sessionPrivateKey]
   );
 
-  // Calculate smart account address when wallet connects
+  // Calculate smart account address when wallet connects (synchronous, no RPC)
   useEffect(() => {
     if (!walletAddress) {
       setSmartAccountAddress(null);
       return;
     }
 
-    let cancelled = false;
-
-    const calculateAddress = async () => {
-      setIsCalculatingAddress(true);
-      try {
-        const address = await getSmartAccountAddress(walletAddress);
-        if (!cancelled) {
-          setSmartAccountAddress(address);
-        }
-      } catch (error) {
-        console.error('Failed to calculate smart account address:', error);
-        if (!cancelled) {
-          setSmartAccountAddress(null);
-        }
-      } finally {
-        if (!cancelled) {
-          setIsCalculatingAddress(false);
-        }
-      }
-    };
-
-    void calculateAddress();
-
-    return () => {
-      cancelled = true;
-    };
+    setSmartAccountAddress(getSmartAccountAddress(walletAddress));
   }, [walletAddress]);
 
   // Restore session from localStorage on mount
