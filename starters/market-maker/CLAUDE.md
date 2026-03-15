@@ -23,7 +23,7 @@ pnpm dev:published # uses published SDK
 
 ## Architecture
 
-- **`src/index.ts`** — entry point. Connects to relayer via SDK's `createEscrowAuctionWs()`, receives auctions, routes picks to strategies, computes parlay quotes, signs and submits bids.
+- **`src/index.ts`** — entry point. Connects to relayer via SDK's `createEscrowAuctionWs()`, receives auctions, routes picks to strategies, computes combo quotes, signs and submits bids.
 - **`src/strategies/types.ts`** — `Strategy` interface. Each strategy implements `matchesResolver()` and `getYesProbability()`.
 - **`src/strategies/PythStrategy.ts`** — prices Pyth binary option markets using Black-Scholes. Fetches spot from Pyth Hermes API. Key params: volatility, feed map.
 - **`src/strategies/PolymarketStrategy.ts`** — prices Conditional Tokens markets using Polymarket Gamma API YES price.
@@ -45,7 +45,7 @@ If you modify SDK types used here, rebuild the SDK before checking this package.
 ## Quoting Math
 
 - Each pick gets P(YES) from its strategy
-- Parlay: `predictorWinProb = Π(pickSuccessProb)`
+- Combo: `predictorWinProb = Π(pickSuccessProb)`
 - Fair bid: `predictorCollateral × P(cp wins) / P(predictor wins)`
 - Applied edge: `bid = fairBid × (1 − EDGE_BPS / 10000)`
 

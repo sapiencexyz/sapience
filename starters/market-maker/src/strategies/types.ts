@@ -4,7 +4,7 @@
 // Every pricing strategy implements this interface. The market maker listener
 // (index.ts) routes each auction pick to a strategy based on the pick's
 // conditionResolver address, then combines individual probabilities into a
-// parlay quote.
+// combo quote.
 //
 // To add a new strategy:
 //   1. Create a new file in this directory (e.g. MyStrategy.ts)

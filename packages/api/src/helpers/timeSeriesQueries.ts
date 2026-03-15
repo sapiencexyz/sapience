@@ -387,7 +387,7 @@ export async function queryAccountPredictionCount(
       ) gs
     ),
     all_predictions AS (
-      -- V2 Prediction table
+      -- Prediction table
       SELECT
         "onChainCreatedAt" AS created_ts,
         CASE

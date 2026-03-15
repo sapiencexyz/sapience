@@ -14,7 +14,7 @@ A pluggable auction market maker that connects to the Sapience relayer and dynam
 - **Pyth** — prices binary option markets (over/under) using Black-Scholes with live spot prices from Pyth Hermes
 - **Polymarket** — prices Conditional Tokens markets using Polymarket's Gamma API YES/NO prices
 
-The bot automatically routes each auction leg to the correct strategy based on the condition resolver address, computes parlay probabilities, and applies a configurable edge.
+The bot automatically routes each auction leg to the correct strategy based on the condition resolver address, computes combo probabilities, and applies a configurable edge.
 
 ## Quick Start
 
@@ -42,41 +42,41 @@ All config is via environment variables. See [`env.example`](./env.example) for 
 
 ### Required
 
-| Variable | Description |
-|---|---|
+| Variable      | Description                                         |
+| ------------- | --------------------------------------------------- |
 | `PRIVATE_KEY` | Hex private key for signing bids (omit for dry-run) |
 
 ### Pricing
 
-| Variable | Default | Description |
-|---|---|---|
-| `EDGE_BPS` | `200` | Edge over fair value in basis points (200 = 2%) |
-| `MAX_BID_AMOUNT` | `1.0` | Maximum bid in ether units |
-| `VOLATILITY` | `0.80` | Annualized vol for Pyth Black-Scholes pricing |
-| `MIN_CP_WIN_PROB` | `0.05` | Skip if counterparty win probability below this |
+| Variable          | Default | Description                                     |
+| ----------------- | ------- | ----------------------------------------------- |
+| `EDGE_BPS`        | `200`   | Edge over fair value in basis points (200 = 2%) |
+| `MAX_BID_AMOUNT`  | `1.0`   | Maximum bid in ether units                      |
+| `VOLATILITY`      | `0.80`  | Annualized vol for Pyth Black-Scholes pricing   |
+| `MIN_CP_WIN_PROB` | `0.05`  | Skip if counterparty win probability below this |
 
 ### Filtering
 
-| Variable | Default | Description |
-|---|---|---|
-| `MIN_MAKER_POSITION_SIZE` | `10` | Ignore auctions with predictor collateral below this |
-| `DEADLINE_SECONDS` | `60` | Bid deadline in seconds from now |
-| `SPONSOR_ALLOWLIST` | _(all)_ | Comma-separated sponsor addresses to accept |
+| Variable                  | Default | Description                                          |
+| ------------------------- | ------- | ---------------------------------------------------- |
+| `MIN_MAKER_POSITION_SIZE` | `10`    | Ignore auctions with predictor collateral below this |
+| `DEADLINE_SECONDS`        | `60`    | Bid deadline in seconds from now                     |
+| `SPONSOR_ALLOWLIST`       | _(all)_ | Comma-separated sponsor addresses to accept          |
 
 ### Network
 
-| Variable | Default | Description |
-|---|---|---|
-| `CHAIN_ID` | `5064014` | Chain ID (default: Ethereal) |
-| `RPC_URL` | _(from SDK)_ | RPC endpoint |
-| `RELAYER_WS_URL` | `wss://relayer.sapience.xyz/auction` | Relayer WebSocket URL |
+| Variable         | Default                              | Description                  |
+| ---------------- | ------------------------------------ | ---------------------------- |
+| `CHAIN_ID`       | `5064014`                            | Chain ID (default: Ethereal) |
+| `RPC_URL`        | _(from SDK)_                         | RPC endpoint                 |
+| `RELAYER_WS_URL` | `wss://relayer.sapience.xyz/auction` | Relayer WebSocket URL        |
 
 ## How It Works
 
 1. **Connect** — opens a WebSocket to the auction relayer using the SDK client
 2. **Receive auction** — relayer broadcasts new auctions with picks (market legs)
 3. **Route picks** — each pick's `conditionResolver` address is matched to a strategy
-4. **Price** — strategies return P(YES) for each leg; the bot multiplies for parlay probability
+4. **Price** — strategies return P(YES) for each leg; the bot multiplies for combo probability
 5. **Quote** — `fairBid = predictorCollateral × P(cp wins) / P(predictor wins) × (1 − edge)`
 6. **Sign & submit** — EIP-712 typed data signature, sent back to relayer
 

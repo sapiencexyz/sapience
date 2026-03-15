@@ -373,7 +373,7 @@ describe('computeResultFromConditions — Pyth Over/Under settlement', () => {
     expect(result.result).toBe('COUNTERPARTY_WINS');
   });
 
-  it('mixed Pyth parlay: Over+Under both correct → PREDICTOR_WINS', () => {
+  it('mixed Pyth combo: Over+Under both correct → PREDICTOR_WINS', () => {
     const picks = [
       { conditionId: 'pyth-eth', predictedOutcome: 0 }, // Over ETH
       { conditionId: 'pyth-btc', predictedOutcome: 1 }, // Under BTC
@@ -387,7 +387,7 @@ describe('computeResultFromConditions — Pyth Over/Under settlement', () => {
     expect(result.allResolved).toBe(true);
   });
 
-  it('mixed Pyth parlay: one leg wrong → COUNTERPARTY_WINS', () => {
+  it('mixed Pyth combo: one leg wrong → COUNTERPARTY_WINS', () => {
     const picks = [
       { conditionId: 'pyth-eth', predictedOutcome: 0 }, // Over ETH
       { conditionId: 'pyth-btc', predictedOutcome: 0 }, // Over BTC
