@@ -34,6 +34,7 @@ type SettingsContextValue = {
   // Appearance settings
   showAmericanOdds: boolean | null;
   connectionDurationHours: number | null;
+  meshRateLimit: number | null;
   setGraphqlEndpoint: (value: string | null) => void;
   setApiBaseUrl: (value: string | null) => void;
   setChatBaseUrl: (value: string | null) => void;
@@ -46,6 +47,7 @@ type SettingsContextValue = {
   setResearchAgentTemperature: (value: number | null) => void;
   setShowAmericanOdds: (value: boolean | null) => void;
   setConnectionDurationHours: (value: number | null) => void;
+  setMeshRateLimit: (value: number | null) => void;
   defaults: {
     graphqlEndpoint: string;
     apiBaseUrl: string;
@@ -58,6 +60,7 @@ type SettingsContextValue = {
     researchAgentTemperature: number;
     showAmericanOdds: boolean;
     connectionDurationHours: number;
+    meshRateLimit: number;
   };
 };
 
@@ -74,6 +77,7 @@ const STORAGE_KEYS = {
   researchAgentTemperature: 'sapience.settings.researchAgentTemperature',
   showAmericanOdds: 'sapience.settings.showAmericanOdds',
   connectionDurationHours: 'sapience.settings.connectionDurationHours',
+  meshRateLimit: 'sapience.settings.meshRateLimit',
 } as const;
 
 export const DEFAULT_CONNECTION_DURATION_HOURS = 24 * 7;
@@ -212,6 +216,9 @@ export const SettingsProvider = ({
   >(null);
   const [connectionDurationHoursOverride, setConnectionDurationHoursOverride] =
     useState<number | null>(null);
+  const [meshRateLimitOverride, setMeshRateLimitOverride] = useState<
+    number | null
+  >(null);
 
   useEffect(() => {
     setMounted(true);
@@ -294,6 +301,15 @@ export const SettingsProvider = ({
         if (Number.isFinite(parsed) && parsed >= 1)
           setConnectionDurationHoursOverride(parsed);
       }
+      const mrl =
+        typeof window !== 'undefined'
+          ? window.localStorage.getItem(STORAGE_KEYS.meshRateLimit)
+          : null;
+      if (mrl) {
+        const parsed = parseInt(mrl, 10);
+        if (Number.isFinite(parsed) && parsed >= 1)
+          setMeshRateLimitOverride(parsed);
+      }
     } catch {
       /* noop */
     }
@@ -313,6 +329,7 @@ export const SettingsProvider = ({
       researchAgentTemperature: 0.7,
       showAmericanOdds: false,
       connectionDurationHours: DEFAULT_CONNECTION_DURATION_HOURS,
+      meshRateLimit: 30,
     }),
     []
   );
@@ -364,6 +381,9 @@ export const SettingsProvider = ({
     : null;
   const connectionDurationHours = mounted
     ? (connectionDurationHoursOverride ?? defaults.connectionDurationHours)
+    : null;
+  const meshRateLimit = mounted
+    ? (meshRateLimitOverride ?? defaults.meshRateLimit)
     : null;
 
   const setGraphqlEndpoint = useCallback((value: string | null) => {
@@ -573,6 +593,23 @@ export const SettingsProvider = ({
     }
   }, []);
 
+  const setMeshRateLimit = useCallback((value: number | null) => {
+    try {
+      if (typeof window === 'undefined') return;
+      if (value == null) {
+        window.localStorage.removeItem(STORAGE_KEYS.meshRateLimit);
+        setMeshRateLimitOverride(null);
+        return;
+      }
+      const clamped = Math.max(1, Math.min(200, Math.floor(Number(value))));
+      if (!Number.isFinite(clamped)) return;
+      window.localStorage.setItem(STORAGE_KEYS.meshRateLimit, String(clamped));
+      setMeshRateLimitOverride(clamped);
+    } catch {
+      /* noop */
+    }
+  }, []);
+
   const value: SettingsContextValue = {
     graphqlEndpoint,
     apiBaseUrl,
@@ -586,6 +623,7 @@ export const SettingsProvider = ({
     researchAgentTemperature,
     showAmericanOdds,
     connectionDurationHours,
+    meshRateLimit,
     setGraphqlEndpoint,
     setApiBaseUrl,
     setChatBaseUrl,
@@ -598,6 +636,7 @@ export const SettingsProvider = ({
     setResearchAgentTemperature,
     setShowAmericanOdds,
     setConnectionDurationHours,
+    setMeshRateLimit,
     defaults,
   };
 

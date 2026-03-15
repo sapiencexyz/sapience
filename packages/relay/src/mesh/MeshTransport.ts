@@ -23,66 +23,54 @@ export class MeshTransport {
   ): Promise<T> {
     return new Promise((resolve, reject) => {
       const timeoutMs = opts?.timeoutMs ?? 5_000;
-      const id =
-        typeof crypto !== 'undefined' && 'randomUUID' in crypto
-          ? crypto.randomUUID()
-          : `${Math.random().toString(36).slice(2)}${Date.now()}`;
 
       const timer = setTimeout(() => {
         unsub();
         reject(new Error('ack_timeout'));
       }, timeoutMs);
 
+      // Register listener before broadcast; msgId is set synchronously
+      // before any async ack can arrive.
+      let msgId: string;
       const unsub = this.mesh.on(`${type}.ack`, (_ackType, ackPayload) => {
         const ack = ackPayload as Record<string, unknown>;
-        if (ack.id === id || (ack as Record<string, unknown>).payload && ((ack as Record<string, unknown>).payload as Record<string, unknown>).id === id) {
+        const nested = ack.payload as Record<string, unknown> | undefined;
+        if (ack.id === msgId || (nested && nested.id === msgId)) {
           clearTimeout(timer);
           unsub();
           resolve(ack as T);
         }
       });
 
-      this.mesh.broadcast(type, { ...payload, id });
+      msgId = this.mesh.broadcast(type, { ...payload });
     });
   }
 
   addMessageListener(cb: (msg: unknown) => void): () => void {
-    return this.mesh.onAny((_type, payload) => {
-      cb(payload);
-    });
+    return this.mesh.onAny((_type, payload) => cb(payload));
   }
 
   addOpenListener(cb: () => void): () => void {
     let wasOpen = false;
     return this.mesh.onPeerCountChange((count) => {
-      if (count > 0 && !wasOpen) {
-        wasOpen = true;
-        cb();
-      } else if (count === 0) {
-        wasOpen = false;
-      }
+      if (count > 0 && !wasOpen) { wasOpen = true; cb(); }
+      else if (count === 0) { wasOpen = false; }
     });
   }
 
   addCloseListener(cb: () => void): () => void {
     let wasOpen = false;
     return this.mesh.onPeerCountChange((count) => {
-      if (count > 0) {
-        wasOpen = true;
-      } else if (count === 0 && wasOpen) {
-        wasOpen = false;
-        cb();
-      }
+      if (count > 0) wasOpen = true;
+      else if (count === 0 && wasOpen) { wasOpen = false; cb(); }
     });
   }
 
   addReconnectListener(_cb: () => void): () => void {
-    // Mesh auto-reconnects internally; no explicit reconnect event
     return () => {};
   }
 
   addErrorListener(_cb: (e: unknown) => void): () => void {
-    // Errors are handled internally by PeerManager
     return () => {};
   }
 }

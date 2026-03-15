@@ -31,6 +31,7 @@ import {
   DEFAULT_CHAIN_ID,
   CHAIN_ID_ETHEREAL_TESTNET,
 } from '@sapience/sdk/constants';
+import { setMeshRateLimit as applyMeshRateLimit } from '~/lib/ws/MeshAuctionClient';
 import Loader from '~/components/shared/Loader';
 import SegmentedTabsList from '~/components/shared/SegmentedTabsList';
 
@@ -173,6 +174,7 @@ const SettingsPageContent = () => {
     researchAgentTemperature,
     showAmericanOdds,
     connectionDurationHours,
+    meshRateLimit,
     setGraphqlEndpoint,
     setApiBaseUrl,
     setChatBaseUrl,
@@ -184,6 +186,7 @@ const SettingsPageContent = () => {
     setResearchAgentTemperature,
     setShowAmericanOdds,
     setConnectionDurationHours,
+    setMeshRateLimit,
     defaults,
   } = useSettings();
   const [mounted, setMounted] = useState(false);
@@ -198,6 +201,7 @@ const SettingsPageContent = () => {
   const [temperatureInput, setTemperatureInput] = useState<number>(0.7);
   const [connectionDurationInput, setConnectionDurationInput] =
     useState<string>(String(DEFAULT_CONNECTION_DURATION_HOURS));
+  const [meshRateLimitInput, setMeshRateLimitInput] = useState<number>(30);
   const [isModelFocused, setIsModelFocused] = useState(false);
   const [activeTab, setActiveTab] = useState<'network' | 'interface' | 'agent'>(
     'network'
@@ -250,6 +254,7 @@ const SettingsPageContent = () => {
     setConnectionDurationInput(
       String(connectionDurationHours ?? defaults.connectionDurationHours)
     );
+    setMeshRateLimitInput(meshRateLimit ?? defaults.meshRateLimit);
     setHydrated(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mounted]);
@@ -535,6 +540,39 @@ const SettingsPageContent = () => {
                           onCheckedChange={(val) => setShowAmericanOdds(val)}
                         />
                       </div>
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label htmlFor="mesh-rate-limit">Mesh Rate Limit</Label>
+                      <div className="relative w-32">
+                        <Input
+                          id="mesh-rate-limit"
+                          type="number"
+                          min={1}
+                          max={200}
+                          className="pr-14"
+                          value={meshRateLimitInput}
+                          onChange={(e) => {
+                            const v = parseInt(e.target.value, 10);
+                            if (Number.isFinite(v)) setMeshRateLimitInput(v);
+                          }}
+                          onBlur={() => {
+                            const clamped = Math.max(
+                              1,
+                              Math.min(200, meshRateLimitInput)
+                            );
+                            setMeshRateLimitInput(clamped);
+                            setMeshRateLimit(clamped);
+                            applyMeshRateLimit(clamped);
+                          }}
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
+                          msg/s
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Max inbound messages per peer per second (1–200)
+                      </p>
                     </div>
                   </div>
                 </CardContent>

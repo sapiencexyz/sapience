@@ -1,47 +1,78 @@
 import { PeerManager } from '../peer/PeerManager';
-import { GossipProtocol } from '../gossip/GossipProtocol';
-import type { GossipConfig } from '../gossip/GossipProtocol';
 
 export interface MeshConfig {
   signalUrl: string;
   maxPeers?: number;
-  gossip?: GossipConfig;
+  /** Max messages to track for dedup. Default 10_000. */
+  maxSeenSize?: number;
+  /** Max age (ms) for seen messages before eviction. Default 120_000 (2 min). */
+  seenTtlMs?: number;
+  /** Max hop count before dropping. Default 10. */
+  maxHops?: number;
+  /** Max inbound messages per peer per second. 0 = unlimited. Default 30. */
+  rateLimitPerSec?: number;
 }
 
 export type MessageHandler = (type: string, payload: unknown) => void;
 
+interface GossipEnvelope {
+  id: string;
+  type: string;
+  payload: unknown;
+  origin: string;
+  hops: number;
+  ts: number;
+}
+
+const PRUNE_INTERVAL_MS = 30_000;
+const BW_WINDOW_MS = 5_000;
+
+function makeId(): string {
+  return typeof crypto !== 'undefined' && 'randomUUID' in crypto
+    ? crypto.randomUUID()
+    : `${Math.random().toString(36).slice(2)}${Date.now()}`;
+}
+
 export class MeshClient {
   private peerManager: PeerManager;
-  private gossip: GossipProtocol;
+  private nodeId = makeId();
   private handlers = new Map<string, Set<MessageHandler>>();
   private allHandlers = new Set<MessageHandler>();
   private peerCountListeners = new Set<(count: number) => void>();
-  private nodeId: string;
+  private bandwidthListeners = new Set<(kbps: number) => void>();
+
+  // Gossip state (was GossipProtocol)
+  private seen = new Map<string, number>();
+  private peerMsgTimestamps = new Map<string, number[]>();
+  private maxSeenSize: number;
+  private seenTtlMs: number;
+  private maxHops: number;
+  private rateLimitPerSec: number;
+  private pruneTimer: ReturnType<typeof setInterval> | null = null;
+
+  // Bandwidth tracking
+  private byteLog: [number, number][] = [];
+  private bwTimer: ReturnType<typeof setInterval> | null = null;
+  private _lastKbps = 0;
 
   constructor(config: MeshConfig) {
-    this.nodeId =
-      typeof crypto !== 'undefined' && 'randomUUID' in crypto
-        ? crypto.randomUUID()
-        : `${Math.random().toString(36).slice(2)}${Date.now()}`;
-
-    this.gossip = new GossipProtocol(this.nodeId, config.gossip);
+    this.maxSeenSize = config.maxSeenSize ?? 10_000;
+    this.seenTtlMs = config.seenTtlMs ?? 120_000;
+    this.maxHops = config.maxHops ?? 10;
+    this.rateLimitPerSec = config.rateLimitPerSec ?? 30;
 
     this.peerManager = new PeerManager(
-      {
-        signalUrl: config.signalUrl,
-        maxPeers: config.maxPeers,
-      },
+      { signalUrl: config.signalUrl, maxPeers: config.maxPeers },
       {
         onPeerConnected: () => {},
         onPeerDisconnected: () => {},
-        onMessage: (_peerId, data) => this.handlePeerMessage(data),
+        onMessage: (peerId, data) => {
+          this.recordBytes(data.length);
+          this.handleIncoming(data, peerId);
+        },
         onPeerCountChanged: (count) => {
           for (const cb of this.peerCountListeners) {
-            try {
-              cb(count);
-            } catch {
-              /* no-op */
-            }
+            try { cb(count); } catch { /* */ }
           }
         },
       }
@@ -50,75 +81,120 @@ export class MeshClient {
 
   connect(): void {
     this.peerManager.connect();
+    this.pruneTimer = setInterval(() => this.prune(), PRUNE_INTERVAL_MS);
+    this.bwTimer = setInterval(() => this.emitBandwidth(), 1_000);
   }
 
   disconnect(): void {
     this.peerManager.disconnect();
-    this.gossip.destroy();
+    if (this.pruneTimer) { clearInterval(this.pruneTimer); this.pruneTimer = null; }
+    if (this.bwTimer) { clearInterval(this.bwTimer); this.bwTimer = null; }
   }
 
-  broadcast(type: string, payload: unknown): void {
-    const msg = this.gossip.createMessage(type, payload);
-    const serialized = this.gossip.serialize(msg);
-    this.peerManager.broadcastToPeers(serialized);
+  /** Broadcast a message to the mesh. Returns the gossip message ID. */
+  broadcast(type: string, payload: unknown): string {
+    const msg: GossipEnvelope = {
+      id: makeId(), type, payload,
+      origin: this.nodeId, hops: 0, ts: Date.now(),
+    };
+    this.seen.set(msg.id, Date.now());
+    const raw = JSON.stringify(msg);
+    this.recordBytes(raw.length);
+    this.peerManager.broadcastToPeers(raw);
+    return msg.id;
   }
 
   on(type: string, handler: MessageHandler): () => void {
     let set = this.handlers.get(type);
-    if (!set) {
-      set = new Set();
-      this.handlers.set(type, set);
-    }
+    if (!set) { set = new Set(); this.handlers.set(type, set); }
     set.add(handler);
-    return () => {
-      set!.delete(handler);
-      if (set!.size === 0) this.handlers.delete(type);
-    };
+    return () => { set!.delete(handler); if (set!.size === 0) this.handlers.delete(type); };
   }
 
   onAny(handler: MessageHandler): () => void {
     this.allHandlers.add(handler);
-    return () => {
-      this.allHandlers.delete(handler);
-    };
+    return () => { this.allHandlers.delete(handler); };
   }
 
-  get peerCount(): number {
-    return this.peerManager.peerCount;
-  }
+  get peerCount(): number { return this.peerManager.peerCount; }
 
   onPeerCountChange(cb: (count: number) => void): () => void {
     this.peerCountListeners.add(cb);
-    return () => {
-      this.peerCountListeners.delete(cb);
-    };
+    return () => { this.peerCountListeners.delete(cb); };
   }
 
-  private handlePeerMessage(data: string): void {
-    const msg = this.gossip.processIncoming(data);
-    if (!msg) return;
+  get bandwidthKbps(): number { return this._lastKbps; }
 
-    // Re-broadcast to other peers
-    const serialized = this.gossip.serialize(msg);
-    this.peerManager.broadcastToPeers(serialized);
+  onBandwidthChange(cb: (kbps: number) => void): () => void {
+    this.bandwidthListeners.add(cb);
+    return () => { this.bandwidthListeners.delete(cb); };
+  }
+
+  setRateLimit(msgsPerSec: number): void {
+    this.rateLimitPerSec = Math.max(0, msgsPerSec);
+  }
+
+  // --- Private: gossip + dedup ---
+
+  private handleIncoming(raw: string, peerId: string): void {
+    let msg: GossipEnvelope;
+    try { msg = JSON.parse(raw) as GossipEnvelope; } catch { return; }
+
+    if (!msg.id || !msg.type) return;
+    if (this.seen.has(msg.id)) return;
+    if (msg.hops >= this.maxHops) return;
+    if (Date.now() - msg.ts > this.seenTtlMs) return;
+
+    // Per-peer rate limit
+    if (this.rateLimitPerSec > 0) {
+      const now = Date.now();
+      let ts = this.peerMsgTimestamps.get(peerId);
+      if (!ts) { ts = []; this.peerMsgTimestamps.set(peerId, ts); }
+      while (ts.length > 0 && now - ts[0] > 1_000) ts.shift();
+      if (ts.length >= this.rateLimitPerSec) return;
+      ts.push(now);
+    }
+
+    this.seen.set(msg.id, Date.now());
+    msg.hops++;
+
+    // Re-broadcast
+    this.peerManager.broadcastToPeers(JSON.stringify(msg));
 
     // Deliver to local handlers
     const typeHandlers = this.handlers.get(msg.type);
     if (typeHandlers) {
-      for (const handler of typeHandlers) {
-        try {
-          handler(msg.type, msg.payload);
-        } catch {
-          /* no-op */
-        }
+      for (const h of typeHandlers) { try { h(msg.type, msg.payload); } catch { /* */ } }
+    }
+    for (const h of this.allHandlers) { try { h(msg.type, msg.payload); } catch { /* */ } }
+  }
+
+  private prune(): void {
+    const now = Date.now();
+    for (const [id, ts] of this.seen) {
+      if (now - ts > this.seenTtlMs) this.seen.delete(id);
+    }
+    if (this.seen.size > this.maxSeenSize) {
+      const sorted = [...this.seen.entries()].sort((a, b) => a[1] - b[1]);
+      for (const [id] of sorted.slice(0, this.seen.size - this.maxSeenSize)) {
+        this.seen.delete(id);
       }
     }
-    for (const handler of this.allHandlers) {
-      try {
-        handler(msg.type, msg.payload);
-      } catch {
-        /* no-op */
-      }
+    for (const [pid, ts] of this.peerMsgTimestamps) {
+      while (ts.length > 0 && now - ts[0] > 1_000) ts.shift();
+      if (ts.length === 0) this.peerMsgTimestamps.delete(pid);
     }
+  }
+
+  // --- Private: bandwidth ---
+
+  private recordBytes(n: number): void { this.byteLog.push([Date.now(), n]); }
+
+  private emitBandwidth(): void {
+    const now = Date.now();
+    while (this.byteLog.length > 0 && now - this.byteLog[0][0] > BW_WINDOW_MS) this.byteLog.shift();
+    const total = this.byteLog.reduce((s, [, b]) => s + b, 0);
+    this._lastKbps = Math.round(((total * 8) / BW_WINDOW_MS) * 10) / 10;
+    for (const cb of this.bandwidthListeners) { try { cb(this._lastKbps); } catch { /* */ } }
   }
 }

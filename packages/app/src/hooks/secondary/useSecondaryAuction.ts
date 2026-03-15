@@ -11,7 +11,7 @@ import {
 } from '@sapience/sdk/contracts';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { toAuctionWsUrl } from '~/lib/ws';
-import { getSharedMeshClient } from '~/lib/ws/MeshAuctionClient';
+import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 import { generateRandomNonce } from '@sapience/sdk';
 import { useSession } from '~/lib/context/SessionContext';
 
@@ -172,7 +172,7 @@ export function useSecondaryAuctionStart(
       };
 
       try {
-        const client = getSharedMeshClient();
+        const client = getSharedAuctionWsClient(wsUrl);
 
         const response = await new Promise<{
           auctionId?: string;

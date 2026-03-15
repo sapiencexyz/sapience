@@ -3,23 +3,25 @@
 import { useState, useEffect } from 'react';
 import {
   onMeshPeerCountChange,
+  onMeshBandwidthChange,
   getMeshPeerCount,
+  getMeshBandwidthKbps,
 } from '~/lib/ws/MeshAuctionClient';
 
-/**
- * Returns current peer count from the relay mesh.
- * Updates reactively when peers connect/disconnect.
- */
 export function usePeerMesh() {
-  const [peerCount, setPeerCount] = useState<number>(getMeshPeerCount());
+  const [peerCount, setPeerCount] = useState(getMeshPeerCount());
+  const [bandwidthKbps, setBandwidthKbps] = useState(getMeshBandwidthKbps());
 
   useEffect(() => {
     setPeerCount(getMeshPeerCount());
-    const unsub = onMeshPeerCountChange((count) => {
-      setPeerCount(count);
-    });
-    return unsub;
+    setBandwidthKbps(getMeshBandwidthKbps());
+    const u1 = onMeshPeerCountChange(setPeerCount);
+    const u2 = onMeshBandwidthChange(setBandwidthKbps);
+    return () => {
+      u1();
+      u2();
+    };
   }, []);
 
-  return { peerCount };
+  return { peerCount, bandwidthKbps };
 }

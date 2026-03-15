@@ -2,8 +2,13 @@
 
 import { usePeerMesh } from '~/hooks/relay/usePeerMesh';
 
+function fmtBw(kbps: number): string {
+  if (kbps >= 1000) return `${(kbps / 1000).toFixed(1)} Mbps`;
+  return `${kbps.toFixed(1)} Kbps`;
+}
+
 export function PeerIndicator() {
-  const { peerCount } = usePeerMesh();
+  const { peerCount, bandwidthKbps } = usePeerMesh();
 
   return (
     <div className="flex items-center gap-1.5 text-xs">
@@ -15,7 +20,13 @@ export function PeerIndicator() {
         }`}
       />
       <span className="text-muted-foreground tabular-nums">
-        {peerCount.toLocaleString()} {peerCount === 1 ? 'peer' : 'peers'}
+        {peerCount} {peerCount === 1 ? 'peer' : 'peers'}
+        {peerCount > 0 && (
+          <span className="text-muted-foreground/60">
+            {' · '}
+            {fmtBw(bandwidthKbps)}
+          </span>
+        )}
       </span>
     </div>
   );

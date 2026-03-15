@@ -12,7 +12,7 @@ import {
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
 import { toAuctionWsUrl } from '~/lib/ws';
-import { getSharedMeshClient } from '~/lib/ws/MeshAuctionClient';
+import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 import { generateRandomNonce } from '@sapience/sdk';
 import { getPublicClientForChainId } from '~/lib/utils/util';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
@@ -232,7 +232,7 @@ export function useSecondaryBid(options: UseSecondaryBidOptions = {}) {
       };
 
       try {
-        const client = getSharedMeshClient();
+        const client = getSharedAuctionWsClient(wsUrl);
         client.send({ type: 'secondary.bid.submit', payload });
         setIsSubmitting(false);
         onBidSubmitted?.(auctionId);

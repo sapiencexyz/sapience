@@ -56,17 +56,19 @@ export class PeerManager {
   }
 
   get peerCount(): number {
-    let count = 0;
-    for (const p of this.peers.values()) {
-      if (p.isOpen) count++;
-    }
-    return count;
+    // Count known peers from the signal server (not just open data channels)
+    return this.knownPeers.size;
   }
 
   broadcastToPeers(data: string): number {
     let sent = 0;
     for (const peer of this.peers.values()) {
       if (peer.send(data)) sent++;
+    }
+    // Fallback: also relay through signal server for peers without direct P2P
+    if (this.signal && this.signal.readyState === WebSocket.OPEN) {
+      this.signal.send(JSON.stringify({ type: 'relay-broadcast', data }));
+      sent = Math.max(sent, this.knownPeers.size);
     }
     return sent;
   }
@@ -134,16 +136,21 @@ export class PeerManager {
       case 'peers': {
         if (msg.yourId) this.myId = msg.yourId;
         for (const id of msg.peers ?? []) {
+          if (id === this.myId) continue;
           this.knownPeers.add(id);
           if (this.peers.size < this.config.maxPeers) {
             this.initiateConnection(id);
           }
         }
+        if (this.knownPeers.size > 0) {
+          this.events.onPeerCountChanged(this.peerCount);
+        }
         break;
       }
       case 'peer-joined': {
-        if (msg.peerId) {
+        if (msg.peerId && msg.peerId !== this.myId) {
           this.knownPeers.add(msg.peerId);
+          this.events.onPeerCountChanged(this.peerCount);
           if (this.peers.size < this.config.maxPeers) {
             this.initiateConnection(msg.peerId);
           }
@@ -153,6 +160,7 @@ export class PeerManager {
       case 'peer-left': {
         if (msg.peerId) {
           this.knownPeers.delete(msg.peerId);
+          this.events.onPeerCountChanged(this.peerCount);
           this.removePeer(msg.peerId);
         }
         break;
@@ -187,20 +195,32 @@ export class PeerManager {
         }
         break;
       }
+      case 'relay-broadcast': {
+        // Received gossip data relayed through the signal server
+        if (msg.from && msg.data) {
+          this.events.onMessage(msg.from, msg.data as string);
+        }
+        break;
+      }
     }
   }
 
   private initiateConnection(peerId: string): void {
     if (this.peers.has(peerId)) return;
+    // Only the peer with the higher ID initiates — eliminates glare entirely
+    if (this.myId && this.myId < peerId) return;
     const peer = this.createPeer(peerId);
     this.peers.set(peerId, peer);
 
     peer
       .createOffer()
       .then((offer) => {
+        if (this.peers.get(peerId) !== peer) return;
         this.sendSignal({ type: 'offer', target: peerId, data: offer });
       })
-      .catch(() => this.removePeer(peerId));
+      .catch(() => {
+        if (this.peers.get(peerId) === peer) this.removePeer(peerId);
+      });
   }
 
   private handleOffer(
@@ -214,9 +234,12 @@ export class PeerManager {
     peer
       .acceptOffer(offer)
       .then((answer) => {
+        if (this.peers.get(fromId) !== peer) return;
         this.sendSignal({ type: 'answer', target: fromId, data: answer });
       })
-      .catch(() => this.removePeer(fromId));
+      .catch(() => {
+        if (this.peers.get(fromId) === peer) this.removePeer(fromId);
+      });
   }
 
   private createPeer(peerId: string): PeerConnection {

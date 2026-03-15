@@ -17,6 +17,8 @@ export class PeerConnection {
   private pc: RTCPeerConnection;
   private dc: RTCDataChannel | null = null;
   private events: PeerConnectionEvents;
+  private hasRemoteDesc = false;
+  private candidateQueue: RTCIceCandidateInit[] = [];
   onIceCandidate: ((candidate: RTCIceCandidateInit) => void) | null = null;
 
   constructor(
@@ -45,10 +47,11 @@ export class PeerConnection {
     dc.onclose = () => this.events.onClose();
     dc.onerror = (e) => this.events.onError(e);
     dc.onmessage = (ev) => this.events.onMessage(String(ev.data));
+    if (dc.readyState === 'open') this.events.onOpen();
   }
 
   async createOffer(): Promise<RTCSessionDescriptionInit> {
-    const dc = this.pc.createDataChannel('sapience-relay', { ordered: false });
+    const dc = this.pc.createDataChannel('sapience-relay', { ordered: true });
     this.setupDataChannel(dc);
     const offer = await this.pc.createOffer();
     await this.pc.setLocalDescription(offer);
@@ -59,6 +62,8 @@ export class PeerConnection {
     offer: RTCSessionDescriptionInit
   ): Promise<RTCSessionDescriptionInit> {
     await this.pc.setRemoteDescription(offer);
+    this.hasRemoteDesc = true;
+    await this.drainCandidateQueue();
     const answer = await this.pc.createAnswer();
     await this.pc.setLocalDescription(answer);
     return answer;
@@ -66,10 +71,26 @@ export class PeerConnection {
 
   async setAnswer(answer: RTCSessionDescriptionInit): Promise<void> {
     await this.pc.setRemoteDescription(answer);
+    this.hasRemoteDesc = true;
+    await this.drainCandidateQueue();
   }
 
   async addIceCandidate(candidate: RTCIceCandidateInit): Promise<void> {
-    await this.pc.addIceCandidate(candidate);
+    if (this.hasRemoteDesc) {
+      await this.pc.addIceCandidate(candidate);
+    } else {
+      // Buffer until remote description is set
+      this.candidateQueue.push(candidate);
+    }
+  }
+
+  private async drainCandidateQueue(): Promise<void> {
+    for (const c of this.candidateQueue) {
+      try {
+        await this.pc.addIceCandidate(c);
+      } catch { /* ignore stale candidates */ }
+    }
+    this.candidateQueue = [];
   }
 
   send(data: string): boolean {
