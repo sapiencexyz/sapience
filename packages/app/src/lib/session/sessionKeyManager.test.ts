@@ -179,6 +179,11 @@ vi.mock('@zerodev/permissions/policies', () => ({
   },
 }));
 
+// Mock @sapience/sdk/session
+vi.mock('@sapience/sdk/session', () => ({
+  computeSmartAccountAddress: vi.fn(() => mockSmartAccountAddress),
+}));
+
 // Mock @sapience/sdk
 vi.mock('@sapience/sdk/abis', () => ({
   predictionMarketEscrowAbi: [],
@@ -284,22 +289,20 @@ describe('sessionKeyManager', () => {
   });
 
   describe('getSmartAccountAddress', () => {
-    it('returns computed smart account address for owner', async () => {
-      const address = await getSmartAccountAddress(mockOwnerAddress);
+    it('returns computed smart account address for owner', () => {
+      const address = getSmartAccountAddress(mockOwnerAddress);
 
       expect(address).toBe(mockSmartAccountAddress);
     });
 
-    it('calls ZeroDev SDK to create kernel account', async () => {
-      const { createKernelAccount } = await import('@zerodev/sdk');
-      const { signerToEcdsaValidator } = await import(
-        '@zerodev/ecdsa-validator'
+    it('calls computeSmartAccountAddress from SDK', async () => {
+      const { computeSmartAccountAddress } = await import(
+        '@sapience/sdk/session'
       );
 
-      await getSmartAccountAddress(mockOwnerAddress);
+      getSmartAccountAddress(mockOwnerAddress);
 
-      expect(signerToEcdsaValidator).toHaveBeenCalled();
-      expect(createKernelAccount).toHaveBeenCalled();
+      expect(computeSmartAccountAddress).toHaveBeenCalledWith(mockOwnerAddress);
     });
   });
 
