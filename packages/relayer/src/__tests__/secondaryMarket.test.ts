@@ -310,6 +310,12 @@ vi.mock('@sapience/sdk/auction/secondaryValidation', () => ({
   isActionable: (r: { status: string }) => r.status === 'valid',
 }));
 
+// Mock signature verification — handler tests use fake signatures
+vi.mock('../secondaryMarketSigVerify', () => ({
+  verifySellerSignature: vi.fn().mockResolvedValue(true),
+  verifyBuyerSignature: vi.fn().mockResolvedValue(true),
+}));
+
 function createMockClient(): ClientConnection {
   const messages: unknown[] = [];
   return {
@@ -436,6 +442,28 @@ describe('SecondaryMarketHandlers', () => {
       ) as any;
       expect(error).toBeDefined();
       expect(error.payload.error).toContain('EXPIRED_DEADLINE');
+    });
+
+    it('rejects listing when seller signature verification fails', async () => {
+      const { verifySellerSignature } = await import(
+        '../secondaryMarketSigVerify'
+      );
+      (verifySellerSignature as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+        false
+      );
+
+      const client = createMockClient();
+      const subs = createMockSubs();
+      const ctx = createMockCtx(client);
+
+      await handleSecondaryAuctionStart(client, createListing(), subs, ctx);
+
+      const error = client._messages.find(
+        (m: { type: string; payload: { error?: string } }) =>
+          m.type === 'secondary.auction.ack' && m.payload.error
+      ) as { type: string; payload: { error: string } } | undefined;
+      expect(error).toBeDefined();
+      expect(error!.payload.error).toBe('invalid_seller_signature');
     });
 
     it('allows listing through when validation returns unverified (session key)', async () => {
@@ -568,6 +596,47 @@ describe('SecondaryMarketHandlers', () => {
       ) as any;
       expect(error).toBeDefined();
       expect(error.payload.error).toContain('INVALID_SIGNATURE');
+    });
+
+    it('rejects bid when buyer signature verification fails', async () => {
+      const { verifyBuyerSignature } = await import(
+        '../secondaryMarketSigVerify'
+      );
+      (verifyBuyerSignature as ReturnType<typeof vi.fn>).mockResolvedValueOnce(
+        false
+      );
+
+      // Create listing first
+      const sellerClient = createMockClient();
+      const subs = createMockSubs();
+      const ctx = createMockCtx(sellerClient);
+      const listing = createListing();
+      await handleSecondaryAuctionStart(sellerClient, listing, subs, ctx);
+      const ack = sellerClient._messages.find(
+        (m: { type: string; payload: { auctionId?: string } }) =>
+          m.type === 'secondary.auction.ack' && m.payload.auctionId
+      ) as { type: string; payload: { auctionId: string } } | undefined;
+
+      const buyerClient = createMockClient();
+      await handleSecondaryBidSubmit(
+        buyerClient,
+        {
+          auctionId: ack!.payload.auctionId,
+          buyer: '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+          price: '600000000000000000',
+          buyerNonce: 1,
+          buyerDeadline: futureDeadline,
+          buyerSignature: '0x' + 'cd'.repeat(65),
+        },
+        subs
+      );
+
+      const error = buyerClient._messages.find(
+        (m: { type: string; payload: { error?: string } }) =>
+          m.type === 'secondary.bid.ack' && m.payload.error
+      ) as { type: string; payload: { error: string } } | undefined;
+      expect(error).toBeDefined();
+      expect(error!.payload.error).toBe('invalid_buyer_signature');
     });
 
     it('allows bid through when validation returns unverified (session key)', async () => {

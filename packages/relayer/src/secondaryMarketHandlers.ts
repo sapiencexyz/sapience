@@ -33,6 +33,10 @@ import {
   getSecondaryBids,
 } from './secondaryMarketRegistry';
 import {
+  verifySellerSignature,
+  verifyBuyerSignature,
+} from './secondaryMarketSigVerify';
+import {
   secondaryListingsStarted,
   secondaryBidsSubmitted,
   errorsTotal,
@@ -107,6 +111,21 @@ export async function handleSecondaryAuctionStart(
     client.send({
       type: 'secondary.auction.ack',
       payload: { error: `${validation.code}: ${validation.reason}` },
+    });
+    return;
+  }
+
+  // Verify seller's EIP-712 signature (EOA sigs verified off-chain;
+  // session key sigs are passed through to on-chain executeTrade)
+  const sigValid = await verifySellerSignature(payload);
+  if (!sigValid) {
+    errorsTotal.inc({
+      type: 'validation',
+      message_type: 'secondary.auction.start',
+    });
+    client.send({
+      type: 'secondary.auction.ack',
+      payload: { error: 'invalid_seller_signature' },
     });
     return;
   }
@@ -205,6 +224,22 @@ export async function handleSecondaryBidSubmit(
     client.send({
       type: 'secondary.bid.ack',
       payload: { error: `${validation.code}: ${validation.reason}` },
+    });
+    return;
+  }
+
+  // Verify buyer's EIP-712 signature (EOA sigs verified off-chain;
+  // session key sigs are passed through to on-chain executeTrade)
+  const sigValid = await verifyBuyerSignature(payload, listing.auction);
+  if (!sigValid) {
+    secondaryBidsSubmitted.inc({ status: 'rejected' });
+    errorsTotal.inc({
+      type: 'validation',
+      message_type: 'secondary.bid.submit',
+    });
+    client.send({
+      type: 'secondary.bid.ack',
+      payload: { error: 'invalid_buyer_signature' },
     });
     return;
   }
