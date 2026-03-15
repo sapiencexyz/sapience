@@ -2,7 +2,13 @@
 
 import { useCallback, useMemo, useState } from 'react';
 import { useAccount, useChainId, useSignTypedData } from 'wagmi';
-import { erc20Abi, type Address, type Hex } from 'viem';
+import {
+  erc20Abi,
+  encodeFunctionData,
+  parseAbi,
+  type Address,
+  type Hex,
+} from 'viem';
 import { buildBuyerTradeApproval } from '@sapience/sdk/auction/secondarySigning';
 import type { SecondaryBidPayload } from '@sapience/sdk/types/secondary';
 import {
@@ -17,6 +23,9 @@ import { generateRandomNonce } from '@sapience/sdk';
 import { getPublicClientForChainId } from '~/lib/utils/util';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 import { encodeEscrowSessionKeyData } from '~/lib/session/sessionKeyManager';
+
+// wUSDe ABI for deposit function (wraps native USDe to wUSDe)
+const WUSDE_DEPOSIT_ABI = parseAbi(['function deposit() payable']);
 
 export interface SecondaryBidParams {
   /** Auction ID to bid on */
@@ -67,6 +76,7 @@ export function useSecondaryBid(options: UseSecondaryBidOptions = {}) {
     signTypedDataRaw: sessionSignTypedDataRaw,
     isUsingSession,
     tradeSessionKeyApproval,
+    chainClients,
   } = useSession();
   const { apiBaseUrl } = useSettings();
 
@@ -125,21 +135,124 @@ export function useSecondaryBid(options: UseSecondaryBidOptions = {}) {
         return { success: false, error: 'Price must be greater than 0' };
       }
 
-      // Check buyer's collateral allowance and approve if needed
+      // Validate seller owns the tokens before we sign (avoid wasting signature on dead listing)
       try {
-        let currentAllowance = 0n;
-        try {
-          currentAllowance = await publicClient.readContract({
+        const sellerBalance = await publicClient.readContract({
+          address: token,
+          abi: erc20Abi,
+          functionName: 'balanceOf',
+          args: [seller],
+        });
+        if (sellerBalance < tokenAmount) {
+          return {
+            success: false,
+            error:
+              'This listing is no longer valid. The seller has insufficient position tokens.',
+          };
+        }
+      } catch {
+        // RPC error — don't block the bid
+      }
+
+      // Check buyer's collateral and approve if needed.
+      // Session/smart-account path: atomic wrap + approve via sendUserOperation
+      // (mirrors useEscrowBidSubmission pattern — wait for receipt before signing).
+      // EOA path: single writeContract approve.
+      try {
+        const [currentBalance, currentAllowance] = await Promise.all([
+          publicClient.readContract({
+            address: collateralAddress,
+            abi: erc20Abi,
+            functionName: 'balanceOf',
+            args: [buyerAddress],
+          }),
+          publicClient.readContract({
             address: collateralAddress,
             abi: erc20Abi,
             functionName: 'allowance',
             args: [buyerAddress, verifyingContract],
-          });
-        } catch {
-          // Continue — will do approve
-        }
+          }),
+        ]).catch(() => [0n, 0n] as [bigint, bigint]);
 
-        if (currentAllowance < price) {
+        const needsMoreCollateral = currentBalance < price;
+        const needsMoreAllowance = currentAllowance < price;
+
+        if (
+          isUsingSession &&
+          chainClients?.ethereal &&
+          (needsMoreCollateral || needsMoreAllowance)
+        ) {
+          // Session path: atomic wrap + approve, wait for confirmation
+          const nativeBalance = await publicClient.getBalance({
+            address: buyerAddress,
+          });
+          const wrapAmount = needsMoreCollateral ? price - currentBalance : 0n;
+
+          if (wrapAmount > 0n && nativeBalance < wrapAmount) {
+            return {
+              success: false,
+              error: `Insufficient USDe in SmartAccount. Need more USDe to cover this bid.`,
+            };
+          }
+
+          const calls: Array<{
+            to: Address;
+            data: `0x${string}`;
+            value: bigint;
+          }> = [];
+
+          if (wrapAmount > 0n) {
+            calls.push({
+              to: collateralAddress,
+              data: encodeFunctionData({
+                abi: WUSDE_DEPOSIT_ABI,
+                functionName: 'deposit',
+              }),
+              value: wrapAmount,
+            });
+          }
+
+          if (needsMoreAllowance) {
+            calls.push({
+              to: collateralAddress,
+              data: encodeFunctionData({
+                abi: erc20Abi,
+                functionName: 'approve',
+                args: [verifyingContract, price],
+              }),
+              value: 0n,
+            });
+          }
+
+          if (calls.length > 0) {
+            setIsSubmitting(true);
+            try {
+              const userOpHash = await chainClients.ethereal.sendUserOperation({
+                calls,
+              });
+              const receipt =
+                await chainClients.ethereal.waitForUserOperationReceipt({
+                  hash: userOpHash,
+                });
+
+              if (!receipt.success) {
+                setIsSubmitting(false);
+                return {
+                  success: false,
+                  error:
+                    'Failed to prepare collateral for bid. Please try again.',
+                };
+              }
+            } catch (prepError) {
+              setIsSubmitting(false);
+              return {
+                success: false,
+                error: `Failed to prepare collateral: ${prepError instanceof Error ? prepError.message : String(prepError)}`,
+              };
+            }
+          }
+        } else if (needsMoreAllowance) {
+          // EOA path: single approve
           setIsSubmitting(true);
           await sapienceWriteContract({
             address: collateralAddress,
@@ -263,6 +376,7 @@ export function useSecondaryBid(options: UseSecondaryBidOptions = {}) {
       sessionSignTypedDataRaw,
       isUsingSession,
       tradeSessionKeyApproval,
+      chainClients,
       onSignatureRejected,
       onBidSubmitted,
     ]

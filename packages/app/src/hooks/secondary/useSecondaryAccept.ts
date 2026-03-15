@@ -179,17 +179,68 @@ export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
           };
         }
 
-        // 2. Check position token allowance (used to decide if approve is needed in batch)
+        // 2. Tier 2: cross-validate both parties' on-chain state before submitting
+        //    Mirrors the normal flow where useSubmitPosition validates the counterparty
+        //    and useEscrowBidSubmission validates the predictor before signing.
+
+        // 2a. Verify seller still owns the position tokens
         let currentAllowance = 0n;
         try {
-          currentAllowance = await publicClient.readContract({
-            address: token,
-            abi: erc20Abi,
-            functionName: 'allowance',
-            args: [sellerAddress, escrowAddress],
-          });
+          const [sellerBalance, sellerAllowance] = await Promise.all([
+            publicClient.readContract({
+              address: token,
+              abi: erc20Abi,
+              functionName: 'balanceOf',
+              args: [sellerAddress],
+            }),
+            publicClient.readContract({
+              address: token,
+              abi: erc20Abi,
+              functionName: 'allowance',
+              args: [sellerAddress, escrowAddress],
+            }),
+          ]);
+          currentAllowance = sellerAllowance;
+
+          if (sellerBalance < tokenAmount) {
+            setIsAccepting(false);
+            return {
+              success: false,
+              error: `Insufficient position token balance. You have ${sellerBalance} but need ${tokenAmount}.`,
+            };
+          }
         } catch {
-          // Continue — will include approve in batch
+          // RPC error — continue, on-chain execution is the final authority
+        }
+
+        // 2b. Verify buyer still has collateral balance + allowance
+        try {
+          const [buyerBalance, buyerAllowance] = await Promise.all([
+            publicClient.readContract({
+              address: collateralAddress,
+              abi: erc20Abi,
+              functionName: 'balanceOf',
+              args: [bid.buyer as Address],
+            }),
+            publicClient.readContract({
+              address: collateralAddress,
+              abi: erc20Abi,
+              functionName: 'allowance',
+              args: [bid.buyer as Address, escrowAddress],
+            }),
+          ]);
+
+          const bidPrice = BigInt(bid.price);
+          if (buyerBalance < bidPrice || buyerAllowance < bidPrice) {
+            setIsAccepting(false);
+            return {
+              success: false,
+              error:
+                'This bid is no longer valid. The buyer has insufficient collateral or allowance. Please wait for a new bid.',
+            };
+          }
+        } catch {
+          // RPC error — continue, on-chain execution is the final authority
         }
 
         // 3. Build sellerSessionKeyData for on-chain session key verification
