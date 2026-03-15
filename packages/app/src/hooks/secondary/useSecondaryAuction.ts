@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useAccount, useChainId, useSignTypedData } from 'wagmi';
 import { type Address, type Hex } from 'viem';
 import { buildSellerTradeApproval } from '@sapience/sdk/auction/secondarySigning';
@@ -56,6 +56,12 @@ export function useSecondaryAuctionStart(
   const { apiBaseUrl } = useSettings();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const mountedRef = useRef(true);
+  useEffect(() => {
+    return () => {
+      mountedRef.current = false;
+    };
+  }, []);
 
   const wsUrl = useMemo(() => toAuctionWsUrl(apiBaseUrl), [apiBaseUrl]);
 
@@ -149,7 +155,7 @@ export function useSecondaryAuctionStart(
           });
         }
       } catch (e: unknown) {
-        setIsSubmitting(false);
+        if (mountedRef.current) setIsSubmitting(false);
         const error = e instanceof Error ? e : new Error(String(e));
         onSignatureRejected?.(error);
         return {
@@ -210,7 +216,7 @@ export function useSecondaryAuctionStart(
           });
         });
 
-        setIsSubmitting(false);
+        if (mountedRef.current) setIsSubmitting(false);
 
         if (response.error) {
           return { success: false, error: response.error };
@@ -223,7 +229,7 @@ export function useSecondaryAuctionStart(
 
         return { success: false, error: 'No auction ID returned' };
       } catch (e: unknown) {
-        setIsSubmitting(false);
+        if (mountedRef.current) setIsSubmitting(false);
         return {
           success: false,
           error: `Failed to start auction: ${e instanceof Error ? e.message : 'Unknown error'}`,

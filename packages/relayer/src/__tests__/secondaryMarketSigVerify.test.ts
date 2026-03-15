@@ -193,17 +193,13 @@ describe('secondaryMarketSigVerify', () => {
       expect(result).toBe(true);
     });
 
-    it('wrong seller address (mismatch) returns false', async () => {
-      // The current implementation only does parameter-level validation
-      // (signature present, deadline valid, chainId known). It does NOT do
-      // on-chain recovery, so a mismatched seller still passes basic checks.
-      // This test documents the current behavior.
+    it('wrong seller address (sig mismatch) returns false', async () => {
+      // Sign as the test account, but claim to be a different seller
       const payload = await createSignedSellerPayload({
         seller: '0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef',
       });
-      // Current impl returns true — on-chain executeTrade does real verification
       const result = await verifySellerSignature(payload);
-      expect(result).toBe(true);
+      expect(result).toBe(false);
     });
 
     it('expired deadline returns false', async () => {
@@ -250,16 +246,13 @@ describe('secondaryMarketSigVerify', () => {
       expect(result).toBe(true);
     });
 
-    it('wrong buyer address returns false', async () => {
-      // Same as seller: the relayer only validates basic params, not recovery.
-      // Different buyer address with valid params still passes.
+    it('wrong buyer address (sig mismatch) returns false', async () => {
       const listing = await createSignedSellerPayload();
       const bid = await createSignedBidPayload(listing, {
         buyer: '0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef',
       });
-      // Current impl returns true — on-chain does real verification
       const result = await verifyBuyerSignature(bid, listing);
-      expect(result).toBe(true);
+      expect(result).toBe(false);
     });
 
     it('expired deadline returns false', async () => {

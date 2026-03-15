@@ -90,6 +90,8 @@ export function useSecondaryFeed(options: UseSecondaryFeedOptions = {}) {
         setListings((prev) => {
           const existing = prev.get(payload.auctionId);
           if (!existing) return prev;
+          // Skip bid updates for listings from other chains
+          if (chainId && existing.chainId !== chainId) return prev;
           const next = new Map(prev);
           next.set(payload.auctionId, {
             ...existing,

@@ -179,6 +179,14 @@ describe('SecondaryMarketRegistry', () => {
         isSellerNonceUsed('0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa', 50)
       ).toBe(true);
     });
+
+    it('clearSecondaryListings also clears nonces', () => {
+      const seller = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+      addSecondaryListing(createListing({ seller, sellerNonce: 77 }));
+      expect(isSellerNonceUsed(seller, 77)).toBe(true);
+      clearSecondaryListings();
+      expect(isSellerNonceUsed(seller, 77)).toBe(false);
+    });
   });
 });
 
