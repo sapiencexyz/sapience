@@ -263,6 +263,41 @@ describe('SecondaryMarketHandlers', () => {
       expect(msg.payload.error).toBe('invalid_buyer_signature');
     });
 
+    it('self-bid (buyer === seller) sends error', async () => {
+      const seller = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+      const auctionId = await setupAuction({ seller });
+
+      const ws = createMockWs();
+      const bidPayload = createBidPayload(auctionId, { buyer: seller });
+      await handleSecondaryBidSubmit(ws, bidPayload);
+
+      const msg = parseSent(ws) as { type: string; payload: { error: string } };
+      expect(msg.type).toBe('secondary.bid.ack');
+      expect(msg.payload.error).toBe('self_bid_not_allowed');
+    });
+
+    it('duplicate buyer nonce on same auction is rejected', async () => {
+      const auctionId = await setupAuction();
+
+      const ws1 = createMockWs();
+      const bidPayload = createBidPayload(auctionId, { buyerNonce: 42 });
+      await handleSecondaryBidSubmit(ws1, bidPayload);
+      expect(parseSent(ws1)).toMatchObject({
+        type: 'secondary.bid.ack',
+        payload: { bidId: expect.any(String) },
+      });
+
+      // Same buyer + same nonce on same auction → rejected
+      const ws2 = createMockWs();
+      await handleSecondaryBidSubmit(ws2, bidPayload);
+      const msg = parseSent(ws2) as {
+        type: string;
+        payload: { error: string };
+      };
+      expect(msg.type).toBe('secondary.bid.ack');
+      expect(msg.payload.error).toBe('duplicate_buyer_nonce');
+    });
+
     it('price below minimum sends error', async () => {
       const auctionId = await setupAuction({
         minPrice: '1000000000000000000', // 1 ETH minimum

@@ -65,6 +65,7 @@ export function useSecondaryFeed(options: UseSecondaryFeedOptions = {}) {
           }
           return next;
         });
+        setIsConnected(true);
       }
 
       if (data?.type === 'secondary.auction.started') {
@@ -139,7 +140,6 @@ export function useSecondaryFeed(options: UseSecondaryFeedOptions = {}) {
 
     const removeListener = client.addMessageListener(handleMessage);
     removeListenerRef.current = removeListener;
-    setIsConnected(true);
 
     return () => {
       removeListener();

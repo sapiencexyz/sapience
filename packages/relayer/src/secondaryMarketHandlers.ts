@@ -201,6 +201,30 @@ export async function handleSecondaryBidSubmit(
     return;
   }
 
+  // Reject self-bids (seller bidding on own listing)
+  if (payload.buyer.toLowerCase() === listing.auction.seller.toLowerCase()) {
+    sendSecondary(ws, {
+      type: 'secondary.bid.ack',
+      payload: { error: 'self_bid_not_allowed' },
+    });
+    return;
+  }
+
+  // Reject duplicate buyer nonce on this auction
+  const existingBids = getSecondaryBids(payload.auctionId);
+  const duplicateNonce = existingBids.some(
+    (b) =>
+      b.buyer.toLowerCase() === payload.buyer.toLowerCase() &&
+      b.buyerNonce === payload.buyerNonce
+  );
+  if (duplicateNonce) {
+    sendSecondary(ws, {
+      type: 'secondary.bid.ack',
+      payload: { error: 'duplicate_buyer_nonce' },
+    });
+    return;
+  }
+
   // Validate price meets minimum
   if (BigInt(payload.price) < BigInt(listing.auction.minPrice)) {
     sendSecondary(ws, {

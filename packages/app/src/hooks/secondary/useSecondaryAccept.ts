@@ -246,6 +246,7 @@ export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
       }
     },
     [
+      address,
       effectiveAddress,
       chainId,
       escrowAddress,

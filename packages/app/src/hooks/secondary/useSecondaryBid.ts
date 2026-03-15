@@ -252,6 +252,7 @@ export function useSecondaryBid(options: UseSecondaryBidOptions = {}) {
       }
     },
     [
+      address,
       effectiveAddress,
       chainId,
       verifyingContract,

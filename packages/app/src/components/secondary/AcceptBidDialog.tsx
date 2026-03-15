@@ -44,8 +44,22 @@ export default function AcceptBidDialog({
     onError: (err) => setError(err.message),
   });
 
+  const handleOpenChange = React.useCallback((nextOpen: boolean) => {
+    setOpen(nextOpen);
+    if (nextOpen) {
+      setError(null);
+      setSelectedBid(null);
+    }
+  }, []);
+
   const handleAccept = React.useCallback(
     async (bid: SecondaryValidatedBid) => {
+      // Re-check deadline at accept time (not just render time)
+      if (bid.buyerDeadline * 1000 < Date.now()) {
+        setError('This bid has expired');
+        return;
+      }
+
       setError(null);
       setSelectedBid(bid);
 
@@ -68,16 +82,21 @@ export default function AcceptBidDialog({
 
   const sortedBids = React.useMemo(
     () =>
-      [...listing.bids].sort((a, b) =>
-        Number(BigInt(b.price) - BigInt(a.price))
-      ),
+      [...listing.bids].sort((a, b) => {
+        const ap = BigInt(a.price);
+        const bp = BigInt(b.price);
+        return bp > ap ? 1 : bp < ap ? -1 : 0;
+      }),
     [listing.bids]
   );
 
-  const tokenAmountDisplay = formatEther(BigInt(listing.tokenAmount));
+  const tokenAmountDisplay = React.useMemo(
+    () => formatEther(BigInt(listing.tokenAmount)),
+    [listing.tokenAmount]
+  );
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="max-w-lg">
         <DialogHeader>

@@ -36,6 +36,17 @@ export default function BidOnListingDialog({
   );
   const [error, setError] = React.useState<string | null>(null);
 
+  const handleOpenChange = React.useCallback(
+    (nextOpen: boolean) => {
+      setOpen(nextOpen);
+      if (nextOpen) {
+        setError(null);
+        setPrice(formatEther(BigInt(listing.minPrice)));
+      }
+    },
+    [listing.minPrice]
+  );
+
   const { submitBid, isSubmitting } = useSecondaryBid({
     onSignatureRejected: (err) => setError(err.message),
     onBidSubmitted: () => {
@@ -85,7 +96,7 @@ export default function BidOnListingDialog({
   const minPriceDisplay = formatEther(BigInt(listing.minPrice));
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent>
         <DialogHeader>
