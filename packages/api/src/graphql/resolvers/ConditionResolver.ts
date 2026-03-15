@@ -213,7 +213,9 @@ export class ConditionResolver {
       createTxHash: r.createTxHash,
       settleTxHash: r.settleTxHash ?? null,
       refCode: r.refCode ?? null,
-      pickConfig: r.pickConfiguration ? mapPickConfig(r.pickConfiguration) : null,
+      pickConfig: r.pickConfiguration
+        ? mapPickConfig(r.pickConfiguration)
+        : null,
     }));
   }
 }

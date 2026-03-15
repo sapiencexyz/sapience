@@ -36,7 +36,9 @@ import {
   handleSecondaryBidSubmit,
   handleSecondarySubscribe,
   handleSecondaryUnsubscribe,
-  unsubscribeFromAllSecondary,
+  handleSecondaryFeedSubscribe,
+  handleSecondaryFeedUnsubscribe,
+  handleSecondaryListingsRequest,
 } from './secondaryMarketHandlers';
 import {
   activeConnections,
@@ -90,7 +92,7 @@ export function createAuctionWebSocketServer() {
   // Track all active client connections for global broadcast
   const allClients = new Set<ClientConnection>();
 
-  const escrowCtx = {
+  const handlerCtx = {
     allClients: () => allClients as Iterable<ClientConnection>,
   };
 
@@ -253,7 +255,7 @@ export function createAuctionWebSocketServer() {
               client,
               msg.payload as AuctionRFQPayload,
               subs,
-              escrowCtx,
+              handlerCtx,
               requestId
             );
             break;
@@ -286,16 +288,30 @@ export function createAuctionWebSocketServer() {
           msg as import('@sapience/sdk/types/secondary').SecondaryClientToServerMessage;
         switch (secondaryMsg.type) {
           case 'secondary.auction.start':
-            await handleSecondaryAuctionStart(ws, secondaryMsg.payload);
+            await handleSecondaryAuctionStart(
+              client,
+              secondaryMsg.payload,
+              subs,
+              handlerCtx
+            );
             break;
           case 'secondary.bid.submit':
-            await handleSecondaryBidSubmit(ws, secondaryMsg.payload);
+            await handleSecondaryBidSubmit(client, secondaryMsg.payload, subs);
             break;
           case 'secondary.auction.subscribe':
-            handleSecondarySubscribe(ws, secondaryMsg.payload);
+            handleSecondarySubscribe(client, secondaryMsg.payload, subs);
             break;
           case 'secondary.auction.unsubscribe':
-            handleSecondaryUnsubscribe(ws, secondaryMsg.payload);
+            handleSecondaryUnsubscribe(client, secondaryMsg.payload, subs);
+            break;
+          case 'secondary.feed.subscribe':
+            handleSecondaryFeedSubscribe(client, subs);
+            break;
+          case 'secondary.feed.unsubscribe':
+            handleSecondaryFeedUnsubscribe(client, subs);
+            break;
+          case 'secondary.listings.request':
+            handleSecondaryListingsRequest(client);
             break;
         }
         trackDuration(msgType, startTime);
@@ -346,11 +362,14 @@ export function createAuctionWebSocketServer() {
         subscriptionsActive.dec({ subscription_type: 'vault' });
       }
 
+      // Clean up secondary market subscriptions via shared sub manager
+      const secondaryUnsubs = subs.unsubscribeByPrefix('secondary:', client);
+      for (let i = 0; i < secondaryUnsubs; i++) {
+        subscriptionsActive.dec({ subscription_type: 'secondary' });
+      }
+
       allClients.delete(client);
       connectionMap.delete(ws);
-
-      // Secondary market still uses raw WebSocket — clean up separately
-      unsubscribeFromAllSecondary(ws);
     });
   });
 

@@ -10,8 +10,8 @@
 
 ---
 
-| 🎯 **Start Trading** | 🤖 **Build an Agent** |
-|:--|:--|
+| 🎯 **Start Trading**                                                                                               | 🤖 **Build an Agent**                                                                                                            |
+| :----------------------------------------------------------------------------------------------------------------- | :------------------------------------------------------------------------------------------------------------------------------- |
 | **[Join Discord](https://discord.gg/sapience)** to get an invite code and start using the app during early access. | Point your AI agent at **[`SKILL.md`](https://sapience.xyz/skills)** — everything it needs to start trading is in that one file. |
 
 ---
@@ -42,14 +42,14 @@ All trading happens on [Ethereal](https://ethereal.trade) using [USDe](https://e
 
 ### Monorepo Structure
 
-| Package | Description |
-|---------|-------------|
-| [`protocol`](packages/protocol) | Solidity smart contracts — PredictionMarket, Vaults, Resolvers |
-| [`sdk`](packages/sdk) | TypeScript SDK — auction helpers, ABI exports, signing utilities |
-| [`api`](packages/api) | Backend — GraphQL API, auction relayer, blockchain indexers |
-| [`app`](packages/app) | Next.js frontend at [sapience.xyz](https://sapience.xyz) |
-| [`ui`](packages/ui) | Shared React component library |
-| [`docs`](packages/docs) | Documentation site at [docs.sapience.xyz](https://docs.sapience.xyz) |
+| Package                         | Description                                                          |
+| ------------------------------- | -------------------------------------------------------------------- |
+| [`protocol`](packages/protocol) | Solidity smart contracts — PredictionMarket, Vaults, Resolvers       |
+| [`sdk`](packages/sdk)           | TypeScript SDK — auction helpers, ABI exports, signing utilities     |
+| [`api`](packages/api)           | Backend — GraphQL API, auction relayer, blockchain indexers          |
+| [`app`](packages/app)           | Next.js frontend at [sapience.xyz](https://sapience.xyz)             |
+| [`ui`](packages/ui)             | Shared React component library                                       |
+| [`docs`](packages/docs)         | Documentation site at [docs.sapience.xyz](https://docs.sapience.xyz) |
 
 ### Quick Start
 
@@ -88,6 +88,10 @@ For deeper dives, see the [Forecasting Agent Guide](https://docs.sapience.xyz/bu
 - **Signatures are verified onchain.** A bid is worthless unless cryptographically signed.
 - **The smart contract is the sole authority.** It holds collateral, validates everything, and distributes winnings.
 - **Vaults are smart contracts.** Managers decide strategy but can't withdraw your funds.
+
+## Bug Bounty
+
+Binary options and secondary market sales are experimental features and are **out of scope** of the bug bounty program.
 
 ## Links
 

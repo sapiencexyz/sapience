@@ -30,9 +30,7 @@ describe('rate limiting with trust proxy (simple mode)', () => {
 
     // Exhaust the limit for IP 1.2.3.4
     for (let i = 0; i < 3; i++) {
-      await request(app)
-        .get('/test')
-        .set('X-Forwarded-For', '1.2.3.4');
+      await request(app).get('/test').set('X-Forwarded-For', '1.2.3.4');
     }
 
     // 1.2.3.4 should now be rate-limited
@@ -140,9 +138,7 @@ describe('tiered rate limiting with trust proxy (x402 mode)', () => {
 
     // Exhaust hard limit for IP 10.0.0.1
     for (let i = 0; i < 5; i++) {
-      await request(app)
-        .get('/test')
-        .set('X-Forwarded-For', '10.0.0.1');
+      await request(app).get('/test').set('X-Forwarded-For', '10.0.0.1');
     }
 
     // 10.0.0.1 should be hard-blocked with 429

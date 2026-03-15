@@ -236,7 +236,6 @@ describe('scoreSelectedForecastsForSettledMarket', () => {
     const secondCall = mockPrisma.attestationScore.update.mock.calls[1][0];
     expect(secondCall.data.errorSquared).toBeCloseTo(0.25, 6);
   });
-
 });
 
 // ---------------------------------------------------------------------------
@@ -319,7 +318,12 @@ describe('computeTimeWeightedForAttesterMarketValue', () => {
     });
     mockOutcome.mockReturnValue(1);
     mockPrisma.attestationScore.findMany.mockResolvedValue([
-      { attestationId: 1, probabilityFloat: 0.8, madeAt: 1000, attester: ATTESTER },
+      {
+        attestationId: 1,
+        probabilityFloat: 0.8,
+        madeAt: 1000,
+        attester: ATTESTER,
+      },
     ]);
 
     const result = await computeTimeWeightedForAttesterMarketValue(
@@ -342,8 +346,18 @@ describe('computeTimeWeightedForAttesterMarketValue', () => {
     });
     mockOutcome.mockReturnValue(1);
     mockPrisma.attestationScore.findMany.mockResolvedValue([
-      { attestationId: 1, probabilityFloat: 0.8, madeAt: 1000, attester: ATTESTER },
-      { attestationId: 2, probabilityFloat: 0.6, madeAt: 1500, attester: ATTESTER },
+      {
+        attestationId: 1,
+        probabilityFloat: 0.8,
+        madeAt: 1000,
+        attester: ATTESTER,
+      },
+      {
+        attestationId: 2,
+        probabilityFloat: 0.6,
+        madeAt: 1500,
+        attester: ATTESTER,
+      },
     ]);
 
     const result = await computeTimeWeightedForAttesterMarketValue(
@@ -364,7 +378,12 @@ describe('computeTimeWeightedForAttesterMarketValue', () => {
     });
     mockOutcome.mockReturnValue(1);
     mockPrisma.attestationScore.findMany.mockResolvedValue([
-      { attestationId: 1, probabilityFloat: 0.9, madeAt: 2000, attester: ATTESTER },
+      {
+        attestationId: 1,
+        probabilityFloat: 0.9,
+        madeAt: 2000,
+        attester: ATTESTER,
+      },
     ]);
 
     const result = await computeTimeWeightedForAttesterMarketValue(
@@ -387,8 +406,18 @@ describe('computeTimeWeightedForAttesterMarketValue', () => {
     });
     mockOutcome.mockReturnValue(1);
     mockPrisma.attestationScore.findMany.mockResolvedValue([
-      { attestationId: 1, probabilityFloat: 0.9, madeAt: 2000, attester: ATTESTER },
-      { attestationId: 2, probabilityFloat: 1.0, madeAt: 1000, attester: ATTESTER },
+      {
+        attestationId: 1,
+        probabilityFloat: 0.9,
+        madeAt: 2000,
+        attester: ATTESTER,
+      },
+      {
+        attestationId: 2,
+        probabilityFloat: 1.0,
+        madeAt: 1000,
+        attester: ATTESTER,
+      },
     ]);
 
     const result = await computeTimeWeightedForAttesterMarketValue(
@@ -594,10 +623,7 @@ describe('computeTimeWeightedForAttestersSummary', () => {
     ]);
     mockOutcome.mockReturnValue(1);
 
-    const result = await computeTimeWeightedForAttestersSummary([
-      '0xA',
-      '0xB',
-    ]);
+    const result = await computeTimeWeightedForAttestersSummary(['0xA', '0xB']);
 
     expect(result.size).toBe(2);
 
@@ -639,10 +665,7 @@ describe('computeTimeWeightedForAttestersSummary', () => {
     ]);
     mockOutcome.mockReturnValue(1);
 
-    const result = await computeTimeWeightedForAttestersSummary([
-      '0xA',
-      '0xB',
-    ]);
+    const result = await computeTimeWeightedForAttestersSummary(['0xA', '0xB']);
 
     expect(result.size).toBe(2);
     expect(result.has('0xa')).toBe(true);

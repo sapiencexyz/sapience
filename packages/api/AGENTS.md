@@ -3,12 +3,14 @@
 This note gives agents the key context needed when working inside `@sapience/api`.
 
 ## Overview
+
 - GraphQL API built with TypeGraphQL (`schema.graphql` + resolvers in `src/`).
 - Prisma ORM (`prisma/schema.prisma`) against Postgres (`DATABASE_URL` required).
 - Background workers handle prediction market indexing, auctions, and Discord notifications.
 - Depends on the shared SDK (`@sapience/sdk`) for contract types, ABIs, and GraphQL helpers.
 
 ## Core Commands
+
 Run from repo root unless stated otherwise.
 
 ```bash
@@ -26,6 +28,7 @@ pnpm --filter @sapience/api run test:watch        # vitest watch
 Reindex/backfill helpers (`start:reindex-*`, `start:backfill-accuracy`) are CLIs run via `tsx src/workers/worker.ts …`.
 
 ## Environment & Tooling
+
 - `.env` should provide `DATABASE_URL`. For local development copy `test-env.example` or configure manually.
 - Codegen:
   - Prisma client: `prisma:generate` (auto-run in `prisma:setup` and most build scripts).
@@ -36,6 +39,7 @@ Reindex/backfill helpers (`start:reindex-*`, `start:backfill-accuracy`) are CLIs
 - **Lazy initialization**: `config.ts` and `db.ts` use Proxy-based lazy init — env vars are validated and PrismaClient is created on first property access, not at import time. This allows build-time scripts to import resolver modules without needing a database or env vars.
 
 ## Folder Layout Highlights
+
 - `src/server.ts` – Express/Apollo entrypoint.
 - `src/workers/` – Background job runner, including `worker.ts` (prediction market and EAS indexing).
 - `prisma/` – Schema, migrations, seeds (`prisma/seed.ts`).
@@ -44,11 +48,13 @@ Reindex/backfill helpers (`start:reindex-*`, `start:backfill-accuracy`) are CLIs
 - `codegen.ts` – GraphQL Code Generator configuration (reads `schema.graphql`, writes `../sdk/types/graphql.ts`).
 
 ## Deployment
+
 - Railway deploys the API and worker as separate services. Both share the same build command (install deps, build SDK, `prisma:generate`) with different start commands (`start:service` vs `start:worker`).
 - `DATABASE_URL` is provided via Railway environment variables.
 - Two environments: **testing** (deploys from a WIP branch) and **production** (deploys from `main`).
 
 ## Agent Tips
+
 - Run `prisma:setup` before tests or local servers to avoid missing migrations or generated clients.
 - When editing GraphQL schema/resolvers, run `generate-types` to refresh TypeScript definitions used by consumers.
 - Keep the SDK built (`pnpm --filter @sapience/sdk run build:lib`) if you modify shared types that the API depends on.

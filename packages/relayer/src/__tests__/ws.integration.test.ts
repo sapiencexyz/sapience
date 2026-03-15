@@ -125,7 +125,8 @@ function createValidBid(auctionId: string): BidPayload {
     counterparty: counterpartyAccount.address,
     counterpartyCollateral: '500000000000000000',
     counterpartyDeadline: Math.floor(Date.now() / 1000) + 3600,
-    counterpartySignature: '0x' + n.toString(16).padStart(2, '0') + 'bb'.repeat(64),
+    counterpartySignature:
+      '0x' + n.toString(16).padStart(2, '0') + 'bb'.repeat(64),
     counterpartyNonce: n,
   };
 }
