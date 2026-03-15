@@ -47,6 +47,9 @@ vi.mock('../../../utils/utils', () => ({
     .fn()
     .mockResolvedValue({ number: 50n, timestamp: 1699999000n }),
 }));
+vi.mock('../../../helpers/discordAlert', () => ({
+  sendPositionAlert: vi.fn(),
+}));
 vi.mock('@sapience/sdk/contracts', () => ({
   predictionMarketEscrow: {
     42161: {

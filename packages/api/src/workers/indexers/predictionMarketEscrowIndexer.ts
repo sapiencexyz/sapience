@@ -9,6 +9,7 @@ import {
   predictionMarketEscrowAbi,
   predictionMarketTokenAbi,
 } from '@sapience/sdk/abis';
+import { sendPositionAlert } from '../../helpers/discordAlert';
 
 type TxClient = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
 
@@ -547,6 +548,53 @@ class PredictionMarketEscrowIndexer implements IIndexer {
         },
       });
     });
+
+    // Send Discord alert — fire-and-forget, deliberately NOT awaited.
+    void (async () => {
+      try {
+        // Look up questions from the picks' conditions
+        const picks = onChainData?.pickConfigId
+          ? await prisma.pick.findMany({
+              where: { pickConfigId: onChainData.pickConfigId },
+              select: { conditionId: true, predictedOutcome: true },
+            })
+          : [];
+        const conditionIds = picks.map((p) => p.conditionId);
+        const conditions = conditionIds.length
+          ? await prisma.condition.findMany({
+              where: { id: { in: conditionIds } },
+              select: { id: true, question: true },
+            })
+          : [];
+        const questionMap = new Map(conditions.map((c) => [c.id, c.question]));
+
+        const totalCollateral = (
+          event.predictorCollateral + event.counterpartyCollateral
+        ).toString();
+
+        sendPositionAlert({
+          predictor: event.predictor,
+          counterparty: event.counterparty,
+          predictorCollateral: event.predictorCollateral.toString(),
+          counterpartyCollateral: event.counterpartyCollateral.toString(),
+          totalCollateral,
+          predictions: picks.map((p) => ({
+            conditionId: p.conditionId,
+            question: questionMap.get(p.conditionId) ?? p.conditionId,
+            outcomeYes: p.predictedOutcome === 1,
+          })),
+          blockTimestamp: timestamp,
+          transactionHash: log.transactionHash || '',
+          chainId: this.chainId,
+          predictionId: predictionIdLower,
+        });
+      } catch (err) {
+        console.error(
+          `[PredictionMarketEscrowIndexer:${this.chainId}] Discord alert failed:`,
+          err
+        );
+      }
+    })();
 
     console.log(
       `[PredictionMarketEscrowIndexer:${this.chainId}] Processed PredictionCreated ${predictionIdLower}`
