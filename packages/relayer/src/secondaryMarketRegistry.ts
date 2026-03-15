@@ -14,7 +14,11 @@ const listings = new Map<string, SecondaryListingRecord>();
 /** Track used seller nonces to prevent replays: seller address → set of nonces */
 const usedSellerNonces = new Map<string, Set<number>>();
 
+/** Track used buyer nonces to prevent replays: buyer address → set of nonces */
+const usedBuyerNonces = new Map<string, Set<number>>();
+
 const MAX_TTL_MS = 30 * 60_000; // 30 minutes
+const MAX_BIDS_PER_AUCTION = 50;
 
 /**
  * Create a new secondary market listing (auction)
@@ -96,7 +100,8 @@ export function getAllSecondaryListings(): SecondaryListingRecord[] {
 }
 
 /**
- * Add a validated bid to a listing
+ * Add a validated bid to a listing.
+ * Rejects duplicate buyer nonces and enforces a per-auction bid cap.
  */
 export function addSecondaryBid(
   auctionId: string,
@@ -104,7 +109,27 @@ export function addSecondaryBid(
 ): boolean {
   const rec = getSecondaryListing(auctionId);
   if (!rec) return false;
+
+  // Enforce per-auction bid cap
+  if (rec.bids.length >= MAX_BIDS_PER_AUCTION) {
+    return false;
+  }
+
+  // Check buyer nonce replay
+  const buyerKey = bid.buyer.toLowerCase();
+  const usedNonces = usedBuyerNonces.get(buyerKey);
+  if (usedNonces?.has(bid.buyerNonce)) {
+    return false;
+  }
+
   rec.bids.push(bid);
+
+  // Record buyer nonce
+  if (!usedBuyerNonces.has(buyerKey)) {
+    usedBuyerNonces.set(buyerKey, new Set());
+  }
+  usedBuyerNonces.get(buyerKey)!.add(bid.buyerNonce);
+
   return true;
 }
 
@@ -128,14 +153,41 @@ export function isSellerNonceUsed(seller: string, nonce: number): boolean {
 export function clearSecondaryListings(): void {
   listings.clear();
   usedSellerNonces.clear();
+  usedBuyerNonces.clear();
 }
 
-// Periodic cleanup of expired listings
+// Periodic cleanup of expired listings and stale nonce entries
 setInterval(() => {
   const now = Date.now();
+  const expiredSellers = new Set<string>();
+
   for (const [id, rec] of listings.entries()) {
     if (now > rec.deadlineMs) {
+      expiredSellers.add(rec.auction.seller.toLowerCase());
       listings.delete(id);
+    }
+  }
+
+  // Prune seller nonce entries for sellers with no remaining active listings
+  for (const sellerKey of expiredSellers) {
+    const hasActiveListing = Array.from(listings.values()).some(
+      (rec) => rec.auction.seller.toLowerCase() === sellerKey
+    );
+    if (!hasActiveListing) {
+      usedSellerNonces.delete(sellerKey);
+    }
+  }
+
+  // Prune buyer nonce entries for buyers with no bids in any active listing
+  const activeBuyers = new Set<string>();
+  for (const rec of listings.values()) {
+    for (const bid of rec.bids) {
+      activeBuyers.add(bid.buyer.toLowerCase());
+    }
+  }
+  for (const buyerKey of usedBuyerNonces.keys()) {
+    if (!activeBuyers.has(buyerKey)) {
+      usedBuyerNonces.delete(buyerKey);
     }
   }
 }, 30_000).unref?.();

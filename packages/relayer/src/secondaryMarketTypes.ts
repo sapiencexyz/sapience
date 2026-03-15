@@ -45,7 +45,6 @@ export function isSecondaryClientMessage(
       msgObj.type === 'secondary.bid.submit' ||
       msgObj.type === 'secondary.feed.subscribe' ||
       msgObj.type === 'secondary.feed.unsubscribe' ||
-      msgObj.type === 'secondary.listings.request' ||
-      msgObj.type === 'ping')
+      msgObj.type === 'secondary.listings.request')
   );
 }

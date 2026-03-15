@@ -45,8 +45,9 @@ export function useSecondaryFeed(options: UseSecondaryFeedOptions = {}) {
 
       if (data?.type === 'secondary.listings.snapshot') {
         const payload = data.payload as { listings: SecondaryListingSummary[] };
-        setListings((prev) => {
-          const next = new Map(prev);
+        setListings(() => {
+          // Replace all listings on snapshot (not merge) to clear stale data after reconnect
+          const next = new Map<string, SecondaryListing>();
           for (const l of payload.listings) {
             if (chainId && l.chainId !== chainId) continue;
             next.set(l.auctionId, {

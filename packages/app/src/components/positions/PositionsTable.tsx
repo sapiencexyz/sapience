@@ -56,6 +56,7 @@ import { useClaimableAmount } from '~/hooks/blockchain/useEscrowContract';
 import { useAccount } from 'wagmi';
 import { useSession } from '~/lib/context/SessionContext';
 import SellPositionDialog from '~/components/secondary/SellPositionDialog';
+import { useFeatureFlag } from '~/hooks/useFeatureFlag';
 
 function PositionRow({
   position,
@@ -63,12 +64,14 @@ function PositionRow({
   conditionsMap,
   onShare,
   onRefetch,
+  showSell,
 }: {
   position: PositionBalance;
   collateralSymbol: string;
   conditionsMap: ConditionsMap;
   onShare: (position: PositionBalance) => void;
   onRefetch?: () => void;
+  showSell: boolean;
 }) {
   const { pickConfig, isPredictorToken } = position;
   const rawPicks = pickConfig?.picks ?? [];
@@ -368,20 +371,23 @@ function PositionRow({
       {/* Actions */}
       <TableCell className="text-right">
         <div className="flex items-center justify-end gap-2">
-          {!isResolved && isOwnPosition && BigInt(position.balance) > 0n && (
-            <SellPositionDialog
-              position={position}
-              collateralSymbol={collateralSymbol}
-              onSuccess={onRefetch}
-            >
-              <button
-                type="button"
-                className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm font-medium bg-background hover:bg-accent hover:text-accent-foreground border-border transition-colors"
+          {showSell &&
+            !isResolved &&
+            isOwnPosition &&
+            BigInt(position.balance) > 0n && (
+              <SellPositionDialog
+                position={position}
+                collateralSymbol={collateralSymbol}
+                onSuccess={onRefetch}
               >
-                Sell
-              </button>
-            </SellPositionDialog>
-          )}
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm font-medium bg-background hover:bg-accent hover:text-accent-foreground border-border transition-colors"
+                >
+                  Sell
+                </button>
+              </SellPositionDialog>
+            )}
           <button
             type="button"
             className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
@@ -408,6 +414,7 @@ export default function PositionsTable({
   chainId?: number;
   leftSlot?: React.ReactNode;
 }) {
+  const showSell = useFeatureFlag('secondaryMarket', 'secondaryMarket');
   const collateralSymbol =
     COLLATERAL_SYMBOLS[chainId || DEFAULT_CHAIN_ID] || 'USDe';
   const [filters, setFilters] = React.useState<PositionsFilterState>(
@@ -648,6 +655,7 @@ export default function PositionsTable({
                 conditionsMap={conditionsMap}
                 onShare={setSharePosition}
                 onRefetch={refetch}
+                showSell={showSell}
               />
             ))}
           </TableBody>

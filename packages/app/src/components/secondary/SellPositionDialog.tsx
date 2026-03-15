@@ -48,9 +48,14 @@ export default function SellPositionDialog({
   const router = useRouter();
   const [open, setOpen] = React.useState(false);
   const [listed, setListed] = React.useState(false);
-  const [tokenAmount, setTokenAmount] = React.useState(
-    formatEther(BigInt(position.balance))
-  );
+  const initialBalance = React.useMemo(() => {
+    try {
+      return formatEther(BigInt(position.balance));
+    } catch {
+      return '0';
+    }
+  }, [position.balance]);
+  const [tokenAmount, setTokenAmount] = React.useState(initialBalance);
   const [minPrice, setMinPrice] = React.useState('');
   const [deadlineSeconds, setDeadlineSeconds] = React.useState('900');
   const [error, setError] = React.useState<string | null>(null);
@@ -77,8 +82,16 @@ export default function SellPositionDialog({
       setError(null);
 
       try {
-        const amountWei = parseEther(tokenAmount);
-        const priceWei = parseEther(minPrice);
+        if (!tokenAmount.trim() || !/^\d*\.?\d*$/.test(tokenAmount.trim())) {
+          setError('Please enter a valid token amount');
+          return;
+        }
+        if (!minPrice.trim() || !/^\d*\.?\d*$/.test(minPrice.trim())) {
+          setError('Please enter a valid minimum price');
+          return;
+        }
+        const amountWei = parseEther(tokenAmount.trim());
+        const priceWei = parseEther(minPrice.trim());
 
         if (amountWei <= 0n) {
           setError('Token amount must be greater than 0');
@@ -150,7 +163,7 @@ export default function SellPositionDialog({
                 placeholder="0.0"
               />
               <p className="text-xs text-muted-foreground">
-                Balance: {formatEther(BigInt(position.balance))}
+                Balance: {initialBalance}
               </p>
             </div>
 

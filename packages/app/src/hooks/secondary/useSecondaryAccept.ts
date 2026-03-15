@@ -198,8 +198,9 @@ export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
         // the session key signature via TRADE_PERMISSION (not EIP-1271).
         let sellerSessionKeyData: Hex = '0x';
         if (isUsingSession && tradeSessionKeyApproval) {
-          sellerSessionKeyData =
-            encodeEscrowSessionKeyData(tradeSessionKeyApproval);
+          sellerSessionKeyData = encodeEscrowSessionKeyData(
+            tradeSessionKeyApproval
+          );
         }
 
         // 4. Build trade params
@@ -245,6 +246,7 @@ export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
       }
     },
     [
+      address,
       effectiveAddress,
       chainId,
       escrowAddress,

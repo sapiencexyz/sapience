@@ -66,15 +66,31 @@ export default function AcceptBidDialog({
     [listing, acceptBid]
   );
 
+  // Reset state when dialog opens
+  React.useEffect(() => {
+    if (open) {
+      setError(null);
+      setSelectedBid(null);
+    }
+  }, [open]);
+
   const sortedBids = React.useMemo(
     () =>
-      [...listing.bids].sort((a, b) =>
-        Number(BigInt(b.price) - BigInt(a.price))
-      ),
+      [...listing.bids].sort((a, b) => {
+        const diff = BigInt(b.price) - BigInt(a.price);
+        return diff > 0n ? 1 : diff < 0n ? -1 : 0;
+      }),
     [listing.bids]
   );
 
-  const tokenAmountDisplay = formatEther(BigInt(listing.tokenAmount));
+  let tokenAmountDisplay: string;
+  let minPriceDisplay: string;
+  try {
+    tokenAmountDisplay = formatEther(BigInt(listing.tokenAmount));
+    minPriceDisplay = formatEther(BigInt(listing.minPrice));
+  } catch {
+    return null; // Malformed listing data — don't render
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -95,7 +111,7 @@ export default function AcceptBidDialog({
           </p>
           <p>Selling: {tokenAmountDisplay} tokens</p>
           <p>
-            Minimum: {formatEther(BigInt(listing.minPrice))} {collateralSymbol}
+            Minimum: {minPriceDisplay} {collateralSymbol}
           </p>
         </div>
 
@@ -106,7 +122,12 @@ export default function AcceptBidDialog({
         ) : (
           <div className="space-y-2 max-h-64 overflow-y-auto">
             {sortedBids.map((bid, i) => {
-              const priceDisplay = formatEther(BigInt(bid.price));
+              let priceDisplay: string;
+              try {
+                priceDisplay = formatEther(BigInt(bid.price));
+              } catch {
+                priceDisplay = '—';
+              }
               const isSelected =
                 selectedBid?.buyerSignature === bid.buyerSignature;
               const deadline = new Date(bid.buyerDeadline * 1000);

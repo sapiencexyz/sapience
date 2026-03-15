@@ -216,8 +216,9 @@ export function useSecondaryBid(options: UseSecondaryBidOptions = {}) {
       // Build buyerSessionKeyData for on-chain session key verification
       let buyerSessionKeyData: string | undefined;
       if (isUsingSession && tradeSessionKeyApproval) {
-        buyerSessionKeyData =
-          encodeEscrowSessionKeyData(tradeSessionKeyApproval);
+        buyerSessionKeyData = encodeEscrowSessionKeyData(
+          tradeSessionKeyApproval
+        );
       }
 
       // Submit bid via WS
@@ -251,6 +252,7 @@ export function useSecondaryBid(options: UseSecondaryBidOptions = {}) {
       }
     },
     [
+      address,
       effectiveAddress,
       chainId,
       verifyingContract,

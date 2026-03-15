@@ -223,7 +223,7 @@ describe('isSecondaryClientMessage', () => {
     expect(isSecondaryClientMessage({})).toBe(false);
   });
 
-  it('returns true for ping (shared message type)', () => {
-    expect(isSecondaryClientMessage({ type: 'ping' })).toBe(true);
+  it('returns false for ping (handled upstream in ws.ts)', () => {
+    expect(isSecondaryClientMessage({ type: 'ping' })).toBe(false);
   });
 });

@@ -31,10 +31,22 @@ export default function BidOnListingDialog({
   children,
 }: BidOnListingDialogProps) {
   const [open, setOpen] = React.useState(false);
-  const [price, setPrice] = React.useState(
-    formatEther(BigInt(listing.minPrice))
-  );
+  const initialPrice = React.useMemo(() => {
+    try {
+      return formatEther(BigInt(listing.minPrice));
+    } catch {
+      return '0';
+    }
+  }, [listing.minPrice]);
+  const [price, setPrice] = React.useState(initialPrice);
   const [error, setError] = React.useState<string | null>(null);
+
+  // Reset state when dialog opens
+  React.useEffect(() => {
+    if (open) {
+      setError(null);
+    }
+  }, [open]);
 
   const { submitBid, isSubmitting } = useSecondaryBid({
     onSignatureRejected: (err) => setError(err.message),
@@ -50,7 +62,11 @@ export default function BidOnListingDialog({
       setError(null);
 
       try {
-        const priceWei = parseEther(price);
+        if (!price.trim() || !/^\d*\.?\d*$/.test(price.trim())) {
+          setError('Please enter a valid number');
+          return;
+        }
+        const priceWei = parseEther(price.trim());
 
         if (priceWei <= 0n) {
           setError('Price must be greater than 0');
@@ -81,8 +97,14 @@ export default function BidOnListingDialog({
     [price, listing, collateralSymbol, submitBid]
   );
 
-  const tokenAmountDisplay = formatEther(BigInt(listing.tokenAmount));
-  const minPriceDisplay = formatEther(BigInt(listing.minPrice));
+  let tokenAmountDisplay: string;
+  let minPriceDisplay: string;
+  try {
+    tokenAmountDisplay = formatEther(BigInt(listing.tokenAmount));
+    minPriceDisplay = formatEther(BigInt(listing.minPrice));
+  } catch {
+    return null; // Malformed listing data
+  }
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>

@@ -90,8 +90,14 @@ export default function SecondaryListingsTable({
       </TableHeader>
       <TableBody>
         {listings.map((listing) => {
-          const amount = parseFloat(formatEther(BigInt(listing.tokenAmount)));
-          const minPrice = parseFloat(formatEther(BigInt(listing.minPrice)));
+          let amount: number;
+          let minPrice: number;
+          try {
+            amount = parseFloat(formatEther(BigInt(listing.tokenAmount)));
+            minPrice = parseFloat(formatEther(BigInt(listing.minPrice)));
+          } catch {
+            return null; // Skip malformed listings
+          }
           const deadline = new Date(listing.sellerDeadline * 1000);
           const isExpired = deadline < new Date();
           const isMine = isMyAddress(listing.seller);
