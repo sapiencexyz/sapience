@@ -54,6 +54,8 @@ import {
 import { useEscrowWrite } from '~/hooks/blockchain/useEscrowWrite';
 import { useClaimableAmount } from '~/hooks/blockchain/useEscrowContract';
 import { useSession } from '~/lib/context/SessionContext';
+import SellPositionDialog from '~/components/secondary/SellPositionDialog';
+import { useFeatureFlag } from '~/hooks/useFeatureFlag';
 
 function PositionRow({
   position,
@@ -61,12 +63,14 @@ function PositionRow({
   conditionsMap,
   onShare,
   onRefetch,
+  showSell,
 }: {
   position: PositionBalance;
   collateralSymbol: string;
   conditionsMap: ConditionsMap;
   onShare: (position: PositionBalance) => void;
   onRefetch?: () => void;
+  showSell?: boolean;
 }) {
   const { pickConfig, isPredictorToken } = position;
   const rawPicks = pickConfig?.picks ?? [];
@@ -360,15 +364,35 @@ function PositionRow({
           );
         })()}
       </TableCell>
-      {/* Share */}
+      {/* Actions */}
       <TableCell className="text-right">
-        <button
-          type="button"
-          className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
-          onClick={() => onShare(position)}
-        >
-          Share
-        </button>
+        <div className="flex items-center justify-end gap-2">
+          {showSell &&
+            !isResolved &&
+            isOwnPosition &&
+            BigInt(position.balance) > 0n && (
+              <SellPositionDialog
+                position={position}
+                collateralSymbol={collateralSymbol}
+                chainId={position.chainId}
+                onSuccess={onRefetch}
+              >
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm font-medium bg-background hover:bg-accent hover:text-accent-foreground border-border transition-colors"
+                >
+                  Sell
+                </button>
+              </SellPositionDialog>
+            )}
+          <button
+            type="button"
+            className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
+            onClick={() => onShare(position)}
+          >
+            Share
+          </button>
+        </div>
       </TableCell>
     </TableRow>
   );
@@ -387,6 +411,10 @@ export default function PositionsTable({
   chainId?: number;
   leftSlot?: React.ReactNode;
 }) {
+  const showSecondaryMarket = useFeatureFlag(
+    'secondaryMarket',
+    'secondaryMarket'
+  );
   const collateralSymbol =
     COLLATERAL_SYMBOLS[chainId || DEFAULT_CHAIN_ID] || 'USDe';
   const [filters, setFilters] = React.useState<PositionsFilterState>(
@@ -627,6 +655,7 @@ export default function PositionsTable({
                 conditionsMap={conditionsMap}
                 onShare={setSharePosition}
                 onRefetch={refetch}
+                showSell={showSecondaryMarket}
               />
             ))}
           </TableBody>
