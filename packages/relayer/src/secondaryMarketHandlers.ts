@@ -3,6 +3,12 @@
  *
  * Pure business logic — receives ClientConnection + SubscriptionManager,
  * never raw WebSocket. Mirrors the escrow handler pattern.
+ *
+ * Uses SDK-level tier 1 validation (validateSecondaryListing / validateSecondaryBid)
+ * following the same pattern as the escrow flow:
+ * - 'invalid' → reject with error
+ * - 'valid' → accept
+ * - 'unverified' → pass through (relayer is not the authority; on-chain is)
  */
 
 import type { ClientConnection, SubscriptionManager } from './transport/types';
@@ -14,16 +20,18 @@ import type {
   SecondaryValidatedBid,
 } from '@sapience/sdk/types/secondary';
 import {
+  validateSecondaryListing,
+  validateSecondaryBid,
+} from '@sapience/sdk/auction/secondaryValidation';
+import { secondaryMarketEscrow } from '@sapience/sdk/contracts/addresses';
+import type { Address } from 'viem';
+import {
   addSecondaryListing,
   getSecondaryListing,
   getAllSecondaryListings,
   addSecondaryBid,
   getSecondaryBids,
 } from './secondaryMarketRegistry';
-import {
-  verifySellerSignature,
-  verifyBuyerSignature,
-} from './secondaryMarketSigVerify';
 import {
   secondaryListingsStarted,
   secondaryBidsSubmitted,
@@ -43,6 +51,15 @@ function auctionTopic(auctionId: string): string {
 }
 
 // ============================================================================
+// Helpers
+// ============================================================================
+
+function getVerifyingContract(chainId: number): Address | undefined {
+  const entry = secondaryMarketEscrow[chainId];
+  return entry?.address as Address | undefined;
+}
+
+// ============================================================================
 // Handlers
 // ============================================================================
 
@@ -58,18 +75,38 @@ export async function handleSecondaryAuctionStart(
   client: ClientConnection,
   payload: SecondaryAuctionRequestPayload,
   subs: SubscriptionManager,
-  ctx: SecondaryHandlerContext
+  _ctx: SecondaryHandlerContext
 ): Promise<void> {
-  // Verify seller signature (real EIP-712 recovery for EOA, passthrough for session keys)
-  const validSig = await verifySellerSignature(payload);
-  if (!validSig) {
+  // Tier 1 validation — field presence, deadline, signature
+  const verifyingContract = getVerifyingContract(payload.chainId);
+  if (!verifyingContract) {
     errorsTotal.inc({
       type: 'validation',
       message_type: 'secondary.auction.start',
     });
     client.send({
       type: 'secondary.auction.ack',
-      payload: { error: 'invalid_seller_signature' },
+      payload: { error: 'unsupported_chain' },
+    });
+    return;
+  }
+
+  const validation = await validateSecondaryListing(payload, {
+    verifyingContract,
+    chainId: payload.chainId,
+    maxDeadlineSeconds: 7200,
+  });
+
+  // Reject only 'invalid' — pass through both 'valid' and 'unverified'
+  // (matching escrow pattern: relayer is not the authority for session key sigs)
+  if (validation.status === 'invalid') {
+    errorsTotal.inc({
+      type: 'validation',
+      message_type: 'secondary.auction.start',
+    });
+    client.send({
+      type: 'secondary.auction.ack',
+      payload: { error: `${validation.code}: ${validation.reason}` },
     });
     return;
   }
@@ -142,9 +179,24 @@ export async function handleSecondaryBidSubmit(
     return;
   }
 
-  // Verify buyer signature (real EIP-712 recovery for EOA, passthrough for session keys)
-  const validSig = await verifyBuyerSignature(payload, listing.auction);
-  if (!validSig) {
+  // Tier 1 validation — field presence, deadline, price, signature
+  const verifyingContract = getVerifyingContract(listing.auction.chainId);
+  if (!verifyingContract) {
+    secondaryBidsSubmitted.inc({ status: 'rejected' });
+    client.send({
+      type: 'secondary.bid.ack',
+      payload: { error: 'unsupported_chain' },
+    });
+    return;
+  }
+
+  const validation = await validateSecondaryBid(payload, listing.auction, {
+    verifyingContract,
+    chainId: listing.auction.chainId,
+  });
+
+  // Reject only 'invalid' — pass through both 'valid' and 'unverified'
+  if (validation.status === 'invalid') {
     secondaryBidsSubmitted.inc({ status: 'rejected' });
     errorsTotal.inc({
       type: 'validation',
@@ -152,17 +204,7 @@ export async function handleSecondaryBidSubmit(
     });
     client.send({
       type: 'secondary.bid.ack',
-      payload: { error: 'invalid_buyer_signature' },
-    });
-    return;
-  }
-
-  // Validate price meets minimum
-  if (BigInt(payload.price) < BigInt(listing.auction.minPrice)) {
-    secondaryBidsSubmitted.inc({ status: 'rejected' });
-    client.send({
-      type: 'secondary.bid.ack',
-      payload: { error: 'price_below_minimum' },
+      payload: { error: `${validation.code}: ${validation.reason}` },
     });
     return;
   }

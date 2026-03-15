@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import {
   addSecondaryListing,
   getSecondaryListing,
@@ -7,6 +7,7 @@ import {
   addSecondaryBid,
   getSecondaryBids,
   isSellerNonceUsed,
+  isBuyerNonceUsed,
   clearSecondaryListings,
 } from '../secondaryMarketRegistry';
 import { isSecondaryClientMessage } from '../secondaryMarketTypes';
@@ -14,6 +15,15 @@ import type {
   SecondaryAuctionRequestPayload,
   SecondaryValidatedBid,
 } from '@sapience/sdk/types/secondary';
+import type { ClientConnection, SubscriptionManager } from '../transport/types';
+import {
+  handleSecondaryAuctionStart,
+  handleSecondaryBidSubmit,
+  handleSecondaryListingsRequest,
+  handleSecondarySubscribe,
+  handleSecondaryFeedSubscribe,
+  type SecondaryHandlerContext,
+} from '../secondaryMarketHandlers';
 
 // ============================================================================
 // Fixtures
@@ -225,5 +235,411 @@ describe('isSecondaryClientMessage', () => {
 
   it('returns false for ping (handled upstream in ws.ts)', () => {
     expect(isSecondaryClientMessage({ type: 'ping' })).toBe(false);
+  });
+});
+
+// ============================================================================
+// Registry: Atomic Nonce + Bid Cap + Buyer Nonce Tests
+// ============================================================================
+
+describe('SecondaryMarketRegistry — nonce atomicity & bid bounds', () => {
+  beforeEach(() => {
+    clearSecondaryListings();
+  });
+
+  it('records seller nonce atomically (nonce is used immediately after addSecondaryListing)', () => {
+    const nonce = 777;
+    const listing = createListing({ sellerNonce: nonce });
+    const id = addSecondaryListing(listing);
+    expect(id).toBeTruthy();
+
+    // Nonce should be used immediately — no window for a concurrent duplicate
+    expect(isSellerNonceUsed(listing.seller, nonce)).toBe(true);
+
+    // Second attempt with same nonce fails
+    expect(
+      addSecondaryListing(createListing({ sellerNonce: nonce }))
+    ).toBeNull();
+  });
+
+  it('records buyer nonce atomically on addSecondaryBid', () => {
+    const id = addSecondaryListing(createListing())!;
+    const bid = createBid(id, { buyerNonce: 42 });
+    expect(addSecondaryBid(id, bid)).toBe(true);
+
+    // Buyer nonce should be recorded
+    expect(isBuyerNonceUsed(bid.buyer, 42)).toBe(true);
+
+    // Duplicate buyer nonce rejected
+    const dup = createBid(id, {
+      buyerNonce: 42,
+      buyer: bid.buyer,
+      buyerSignature: '0x' + 'ee'.repeat(65),
+    });
+    expect(addSecondaryBid(id, dup)).toBe(false);
+  });
+
+  it('enforces MAX_BIDS_PER_AUCTION (50)', () => {
+    const id = addSecondaryListing(createListing())!;
+    for (let i = 0; i < 50; i++) {
+      const bid = createBid(id, {
+        buyerNonce: i + 1000,
+        buyer: `0x${'bb'.repeat(19)}${i.toString(16).padStart(2, '0')}`,
+        buyerSignature: `0x${i.toString(16).padStart(2, '0')}${'cd'.repeat(64)}`,
+      });
+      expect(addSecondaryBid(id, bid)).toBe(true);
+    }
+
+    // 51st should be rejected
+    const extraBid = createBid(id, {
+      buyerNonce: 9999,
+      buyer: '0xcccccccccccccccccccccccccccccccccccccccc',
+    });
+    expect(addSecondaryBid(id, extraBid)).toBe(false);
+  });
+});
+
+// ============================================================================
+// Handler Tests (with mocked validation)
+// ============================================================================
+
+// Mock the SDK validation module
+vi.mock('@sapience/sdk/auction/secondaryValidation', () => ({
+  validateSecondaryListing: vi.fn().mockResolvedValue({ status: 'valid' }),
+  validateSecondaryBid: vi.fn().mockResolvedValue({ status: 'valid' }),
+  isActionable: (r: { status: string }) => r.status === 'valid',
+}));
+
+function createMockClient(): ClientConnection {
+  const messages: unknown[] = [];
+  return {
+    send: (msg: unknown) => messages.push(msg),
+    isOpen: true,
+    id: `test-client-${Math.random().toString(36).slice(2)}`,
+    // Expose captured messages for assertion
+    _messages: messages,
+  } as ClientConnection & { _messages: unknown[] };
+}
+
+function createMockSubs(): SubscriptionManager & {
+  _topics: Map<string, Set<ClientConnection>>;
+  _broadcasts: Array<{ topic: string; msg: unknown }>;
+} {
+  const topics = new Map<string, Set<ClientConnection>>();
+  const broadcasts: Array<{ topic: string; msg: unknown }> = [];
+  return {
+    subscribe: (topic: string, client: ClientConnection) => {
+      if (!topics.has(topic)) topics.set(topic, new Set());
+      const isNew = !topics.get(topic)!.has(client);
+      topics.get(topic)!.add(client);
+      return isNew;
+    },
+    unsubscribe: (topic: string, client: ClientConnection) => {
+      const removed = topics.get(topic)?.delete(client) ?? false;
+      return removed;
+    },
+    broadcast: (topic: string, msg: unknown) => {
+      broadcasts.push({ topic, msg });
+    },
+    subscriberCount: (topic: string) => topics.get(topic)?.size ?? 0,
+    _topics: topics,
+    _broadcasts: broadcasts,
+  };
+}
+
+function createMockCtx(
+  ...clients: ClientConnection[]
+): SecondaryHandlerContext {
+  return {
+    allClients: () => clients,
+  };
+}
+
+describe('SecondaryMarketHandlers', () => {
+  beforeEach(() => {
+    clearSecondaryListings();
+    vi.clearAllMocks();
+  });
+
+  describe('handleSecondaryAuctionStart', () => {
+    it('creates listing and sends ack with auctionId on valid payload', async () => {
+      const client = createMockClient();
+      const subs = createMockSubs();
+      const ctx = createMockCtx(client);
+
+      const payload = createListing();
+      await handleSecondaryAuctionStart(client, payload, subs, ctx);
+
+      // Should get an ack with auctionId
+      const ack = client._messages.find(
+        (m: any) => m.type === 'secondary.auction.ack' && m.payload.auctionId
+      ) as any;
+      expect(ack).toBeDefined();
+      expect(ack.payload.auctionId).toMatch(/^[0-9a-f-]{36}$/i);
+      expect(ack.payload.error).toBeUndefined();
+    });
+
+    it('broadcasts secondary.auction.started to global feed', async () => {
+      const client = createMockClient();
+      const subs = createMockSubs();
+      const ctx = createMockCtx(client);
+
+      const payload = createListing();
+      await handleSecondaryAuctionStart(client, payload, subs, ctx);
+
+      const broadcast = subs._broadcasts.find(
+        (b) => (b.msg as any).type === 'secondary.auction.started'
+      );
+      expect(broadcast).toBeDefined();
+      expect(broadcast!.topic).toBe('secondary:global');
+    });
+
+    it('rejects duplicate seller nonce', async () => {
+      const client = createMockClient();
+      const subs = createMockSubs();
+      const ctx = createMockCtx(client);
+
+      const payload = createListing({ sellerNonce: 42 });
+      await handleSecondaryAuctionStart(client, payload, subs, ctx);
+
+      // Second attempt with same nonce
+      const client2 = createMockClient();
+      await handleSecondaryAuctionStart(client2, payload, subs, ctx);
+
+      const error = client2._messages.find(
+        (m: any) => m.type === 'secondary.auction.ack' && m.payload.error
+      ) as any;
+      expect(error).toBeDefined();
+      expect(error.payload.error).toBe('duplicate_nonce');
+    });
+
+    it('sends error when validation returns invalid', async () => {
+      const { validateSecondaryListing } = await import(
+        '@sapience/sdk/auction/secondaryValidation'
+      );
+      (
+        validateSecondaryListing as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce({
+        status: 'invalid',
+        code: 'EXPIRED_DEADLINE',
+        reason: 'sellerDeadline must be in the future',
+      });
+
+      const client = createMockClient();
+      const subs = createMockSubs();
+      const ctx = createMockCtx(client);
+
+      await handleSecondaryAuctionStart(client, createListing(), subs, ctx);
+
+      const error = client._messages.find(
+        (m: any) => m.type === 'secondary.auction.ack' && m.payload.error
+      ) as any;
+      expect(error).toBeDefined();
+      expect(error.payload.error).toContain('EXPIRED_DEADLINE');
+    });
+
+    it('allows listing through when validation returns unverified (session key)', async () => {
+      const { validateSecondaryListing } = await import(
+        '@sapience/sdk/auction/secondaryValidation'
+      );
+      (
+        validateSecondaryListing as ReturnType<typeof vi.fn>
+      ).mockResolvedValueOnce({
+        status: 'unverified',
+        code: 'SIGNATURE_UNVERIFIABLE',
+        reason: 'session key',
+      });
+
+      const client = createMockClient();
+      const subs = createMockSubs();
+      const ctx = createMockCtx(client);
+
+      await handleSecondaryAuctionStart(client, createListing(), subs, ctx);
+
+      const ack = client._messages.find(
+        (m: any) => m.type === 'secondary.auction.ack' && m.payload.auctionId
+      ) as any;
+      expect(ack).toBeDefined();
+      expect(ack.payload.error).toBeUndefined();
+    });
+  });
+
+  describe('handleSecondaryBidSubmit', () => {
+    it('accepts valid bid and broadcasts to auction subscribers', async () => {
+      // First create a listing
+      const sellerClient = createMockClient();
+      const subs = createMockSubs();
+      const ctx = createMockCtx(sellerClient);
+
+      const listing = createListing();
+      await handleSecondaryAuctionStart(sellerClient, listing, subs, ctx);
+
+      const ack = sellerClient._messages.find(
+        (m: any) => m.type === 'secondary.auction.ack' && m.payload.auctionId
+      ) as any;
+      const auctionId = ack.payload.auctionId;
+
+      // Now submit a bid
+      const buyerClient = createMockClient();
+      const bidPayload = {
+        auctionId,
+        buyer: '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+        price: '600000000000000000',
+        buyerNonce: 1,
+        buyerDeadline: futureDeadline,
+        buyerSignature: '0x' + 'cd'.repeat(65),
+      };
+
+      await handleSecondaryBidSubmit(buyerClient, bidPayload, subs);
+
+      // Buyer gets ack
+      const bidAck = buyerClient._messages.find(
+        (m: any) => m.type === 'secondary.bid.ack' && m.payload.bidId
+      ) as any;
+      expect(bidAck).toBeDefined();
+      expect(bidAck.payload.error).toBeUndefined();
+
+      // Broadcast to auction topic
+      const bidBroadcast = subs._broadcasts.find(
+        (b) => (b.msg as any).type === 'secondary.auction.bids'
+      );
+      expect(bidBroadcast).toBeDefined();
+    });
+
+    it('rejects bid for non-existent auction', async () => {
+      const client = createMockClient();
+      const subs = createMockSubs();
+
+      await handleSecondaryBidSubmit(
+        client,
+        {
+          auctionId: 'non-existent',
+          buyer: '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+          price: '600000000000000000',
+          buyerNonce: 1,
+          buyerDeadline: futureDeadline,
+          buyerSignature: '0x' + 'cd'.repeat(65),
+        },
+        subs
+      );
+
+      const error = client._messages.find(
+        (m: any) => m.type === 'secondary.bid.ack' && m.payload.error
+      ) as any;
+      expect(error.payload.error).toBe('auction_not_found_or_expired');
+    });
+
+    it('rejects bid when validation returns invalid', async () => {
+      const { validateSecondaryBid } = await import(
+        '@sapience/sdk/auction/secondaryValidation'
+      );
+      (validateSecondaryBid as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        status: 'invalid',
+        code: 'INVALID_SIGNATURE',
+        reason: 'signature bad',
+      });
+
+      // Create listing first
+      const sellerClient = createMockClient();
+      const subs = createMockSubs();
+      const ctx = createMockCtx(sellerClient);
+      const listing = createListing();
+      await handleSecondaryAuctionStart(sellerClient, listing, subs, ctx);
+      const ack = sellerClient._messages.find(
+        (m: any) => m.type === 'secondary.auction.ack' && m.payload.auctionId
+      ) as any;
+
+      const buyerClient = createMockClient();
+      await handleSecondaryBidSubmit(
+        buyerClient,
+        {
+          auctionId: ack.payload.auctionId,
+          buyer: '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+          price: '600000000000000000',
+          buyerNonce: 1,
+          buyerDeadline: futureDeadline,
+          buyerSignature: '0x' + 'cd'.repeat(65),
+        },
+        subs
+      );
+
+      const error = buyerClient._messages.find(
+        (m: any) => m.type === 'secondary.bid.ack' && m.payload.error
+      ) as any;
+      expect(error).toBeDefined();
+      expect(error.payload.error).toContain('INVALID_SIGNATURE');
+    });
+
+    it('allows bid through when validation returns unverified (session key)', async () => {
+      const { validateSecondaryBid } = await import(
+        '@sapience/sdk/auction/secondaryValidation'
+      );
+      (validateSecondaryBid as ReturnType<typeof vi.fn>).mockResolvedValueOnce({
+        status: 'unverified',
+        code: 'SIGNATURE_UNVERIFIABLE',
+        reason: 'session key',
+      });
+
+      // Create listing first
+      const sellerClient = createMockClient();
+      const subs = createMockSubs();
+      const ctx = createMockCtx(sellerClient);
+      const listing = createListing();
+      await handleSecondaryAuctionStart(sellerClient, listing, subs, ctx);
+      const ack = sellerClient._messages.find(
+        (m: any) => m.type === 'secondary.auction.ack' && m.payload.auctionId
+      ) as any;
+
+      const buyerClient = createMockClient();
+      await handleSecondaryBidSubmit(
+        buyerClient,
+        {
+          auctionId: ack.payload.auctionId,
+          buyer: '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+          price: '600000000000000000',
+          buyerNonce: 1,
+          buyerDeadline: futureDeadline,
+          buyerSignature: '0x' + 'cd'.repeat(65),
+        },
+        subs
+      );
+
+      const bidAck = buyerClient._messages.find(
+        (m: any) => m.type === 'secondary.bid.ack' && m.payload.bidId
+      ) as any;
+      expect(bidAck).toBeDefined();
+      expect(bidAck.payload.error).toBeUndefined();
+    });
+  });
+
+  describe('handleSecondaryListingsRequest', () => {
+    it('returns all active listings with bid counts', async () => {
+      const client = createMockClient();
+      const subs = createMockSubs();
+      const ctx = createMockCtx(client);
+
+      // Create two listings
+      await handleSecondaryAuctionStart(
+        client,
+        createListing({ sellerNonce: 1 }),
+        subs,
+        ctx
+      );
+      await handleSecondaryAuctionStart(
+        client,
+        createListing({ sellerNonce: 2 }),
+        subs,
+        ctx
+      );
+
+      const reqClient = createMockClient();
+      handleSecondaryListingsRequest(reqClient);
+
+      const snapshot = reqClient._messages.find(
+        (m: any) => m.type === 'secondary.listings.snapshot'
+      ) as any;
+      expect(snapshot).toBeDefined();
+      expect(snapshot.payload.listings).toHaveLength(2);
+    });
   });
 });

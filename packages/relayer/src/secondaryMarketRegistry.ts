@@ -21,18 +21,25 @@ const MAX_TTL_MS = 30 * 60_000; // 30 minutes
 const MAX_BIDS_PER_AUCTION = 50;
 
 /**
- * Create a new secondary market listing (auction)
+ * Create a new secondary market listing (auction).
+ * Nonce check-and-record is atomic — the nonce is added to the used set
+ * before any async work, preventing concurrent duplicates.
  */
 export function addSecondaryListing(
   auction: SecondaryAuctionRequestPayload
 ): string | null {
   const sellerKey = auction.seller.toLowerCase();
 
-  // Check nonce replay
-  const usedNonces = usedSellerNonces.get(sellerKey);
-  if (usedNonces?.has(auction.sellerNonce)) {
+  // Atomic nonce check-and-set: record immediately to prevent race conditions
+  if (!usedSellerNonces.has(sellerKey)) {
+    usedSellerNonces.set(sellerKey, new Set());
+  }
+  const nonceSet = usedSellerNonces.get(sellerKey)!;
+  if (nonceSet.has(auction.sellerNonce)) {
     return null; // nonce already used
   }
+  // Record nonce immediately (before any other work)
+  nonceSet.add(auction.sellerNonce);
 
   const auctionId = crypto.randomUUID();
   const now = Date.now();
@@ -51,12 +58,6 @@ export function addSecondaryListing(
     deadlineMs,
     createdAt: new Date(now).toISOString(),
   });
-
-  // Record nonce
-  if (!usedSellerNonces.has(sellerKey)) {
-    usedSellerNonces.set(sellerKey, new Set());
-  }
-  usedSellerNonces.get(sellerKey)!.add(auction.sellerNonce);
 
   return auctionId;
 }
@@ -102,6 +103,7 @@ export function getAllSecondaryListings(): SecondaryListingRecord[] {
 /**
  * Add a validated bid to a listing.
  * Rejects duplicate buyer nonces and enforces a per-auction bid cap.
+ * Nonce check-and-record is atomic.
  */
 export function addSecondaryBid(
   auctionId: string,
@@ -115,21 +117,19 @@ export function addSecondaryBid(
     return false;
   }
 
-  // Check buyer nonce replay
+  // Atomic buyer nonce check-and-set
   const buyerKey = bid.buyer.toLowerCase();
-  const usedNonces = usedBuyerNonces.get(buyerKey);
-  if (usedNonces?.has(bid.buyerNonce)) {
-    return false;
-  }
-
-  rec.bids.push(bid);
-
-  // Record buyer nonce
   if (!usedBuyerNonces.has(buyerKey)) {
     usedBuyerNonces.set(buyerKey, new Set());
   }
-  usedBuyerNonces.get(buyerKey)!.add(bid.buyerNonce);
+  const nonceSet = usedBuyerNonces.get(buyerKey)!;
+  if (nonceSet.has(bid.buyerNonce)) {
+    return false;
+  }
+  // Record nonce immediately
+  nonceSet.add(bid.buyerNonce);
 
+  rec.bids.push(bid);
   return true;
 }
 
@@ -145,6 +145,13 @@ export function getSecondaryBids(auctionId: string): SecondaryValidatedBid[] {
  */
 export function isSellerNonceUsed(seller: string, nonce: number): boolean {
   return usedSellerNonces.get(seller.toLowerCase())?.has(nonce) ?? false;
+}
+
+/**
+ * Check if a buyer nonce has been used
+ */
+export function isBuyerNonceUsed(buyer: string, nonce: number): boolean {
+  return usedBuyerNonces.get(buyer.toLowerCase())?.has(nonce) ?? false;
 }
 
 /**
