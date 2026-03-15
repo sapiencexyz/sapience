@@ -5,7 +5,20 @@ import type { Address, Hex } from 'viem';
  * TypeScript equivalents of the Solidity types in the PredictionMarketEscrow contract
  */
 
-/** Outcome side for a pick */
+/**
+ * Outcome side for a pick.
+ *
+ * YES = 0, NO = 1. This mirrors the Solidity enum (IV2Types.OutcomeSide)
+ * where values are assigned by declaration order. The ordering is
+ * load-bearing: it is ABI-encoded as uint8, hashed into pickConfigId,
+ * and embedded in EIP-712 signatures. Changing it would break all
+ * existing positions.
+ *
+ * This is an enum rather than a boolean because resolution can be
+ * non-decisive (tie) — the OutcomeVector [1,1] represents a result
+ * where neither YES nor NO wins outright. Using an enum keeps the
+ * prediction side extensible without conflating it with resolution.
+ */
 export enum OutcomeSide {
   YES = 0,
   NO = 1,

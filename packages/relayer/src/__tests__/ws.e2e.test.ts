@@ -97,9 +97,19 @@ describe('Relayer E2E Auction Lifecycle', () => {
       // Maker should receive the auction.started broadcast
       const started = (await startedPromise) as {
         type: string;
-        payload: { auctionId: string };
+        payload: {
+          auctionId: string;
+          picks: { predictedOutcome: number }[];
+        };
       };
       expect(started.payload.auctionId).toBe(auctionId);
+
+      // Verify predictedOutcome is preserved in the broadcast (YES = 0)
+      expect(started.payload.picks).toHaveLength(1);
+      expect(started.payload.picks[0].predictedOutcome).toBe(
+        TEST_PICK.predictedOutcome
+      );
+      expect(started.payload.picks[0].predictedOutcome).toBe(0);
 
       // Maker creates and submits a signed bid
       const makerAccount = privateKeyToAccount(generatePrivateKey());
@@ -277,6 +287,10 @@ describe('Relayer E2E Auction Lifecycle', () => {
       });
 
       expect(auction.picks).toHaveLength(2);
+
+      // Verify predictedOutcome values are preserved (YES=0, NO=1)
+      expect(auction.picks[0].predictedOutcome).toBe(0); // TEST_PICK → YES
+      expect(auction.picks[1].predictedOutcome).toBe(1); // PICK_2 → NO
 
       // Maker signs bid covering both picks
       const maker = await connect();
