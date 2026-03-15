@@ -48,16 +48,13 @@ import { formatDistanceToNow, fromUnixTime } from 'date-fns';
 import { useReadContract, useReadContracts } from 'wagmi';
 import { keccak256, concatHex, toHex, isAddress } from 'viem';
 import {
-  lzUmaResolver,
-  lzPMResolver,
   manualConditionResolver,
   pythConditionResolver,
-  predictionMarketLZConditionalTokensResolver,
+  conditionalTokensConditionResolver,
 } from '@sapience/sdk/contracts';
 import { DEFAULT_CHAIN_ID, CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import DateTimePicker from '../shared/DateTimePicker';
 import DataTable from './data-table';
-import ResolveConditionCell from './ResolveConditionCell';
 import { parseCsv, mapCsv } from '~/lib/utils/csv';
 import { useAdminApi } from '~/hooks/useAdminApi';
 import { useCategories } from '~/hooks/graphql/useCategories';
@@ -161,7 +158,7 @@ const RFQTab = ({
   );
   const [escrowConditionId, setEscrowConditionId] = useState('');
   const [escrowResolverType, setEscrowResolverType] = useState<
-    'manual' | 'pyth' | 'uma-lz' | 'conditional-tokens'
+    'manual' | 'pyth' | 'conditional-tokens'
   >('manual');
   const [escrowChainId, setEscrowChainId] = useState<number>(13374202); // Default to Ethereal Testnet
 
@@ -169,8 +166,7 @@ const RFQTab = ({
   const ESCROW_RESOLVER_MAP = {
     manual: manualConditionResolver,
     pyth: pythConditionResolver,
-    'uma-lz': lzPMResolver,
-    'conditional-tokens': predictionMarketLZConditionalTokensResolver,
+    'conditional-tokens': conditionalTokensConditionResolver,
   };
 
   const getEscrowResolverAddress = (
@@ -225,9 +221,7 @@ const RFQTab = ({
       }
 
       const chainId = c.chainId || DEFAULT_CHAIN_ID;
-      // Use lzPMResolver if available (e.g. Ethereal), otherwise fallback to lzUmaResolver (e.g. Arbitrum)
-      const address =
-        lzPMResolver[chainId]?.address || lzUmaResolver[chainId]?.address;
+      const address = pythConditionResolver[chainId]?.address;
 
       return {
         address,
@@ -484,9 +478,7 @@ const RFQTab = ({
     }
 
     const targetChainId = chainId || DEFAULT_CHAIN_ID;
-    const address =
-      lzPMResolver[targetChainId]?.address ||
-      lzUmaResolver[targetChainId]?.address;
+    const address = pythConditionResolver[targetChainId]?.address;
 
     const { data } = useReadContract({
       address,
@@ -751,14 +743,6 @@ const RFQTab = ({
 
           return (
             <div className="flex items-center gap-2">
-              <ResolveConditionCell
-                marketId={id as `0x${string}`}
-                endTime={original.endTime}
-                claim={original.claimStatement}
-                assertionId={original.assertionId}
-                assertionTimestamp={original.assertionTimestamp}
-                resolver={original.resolver ?? null}
-              />
               <Button
                 variant="secondary"
                 size="sm"
@@ -1385,7 +1369,7 @@ const RFQTab = ({
                     value={escrowResolverType}
                     onValueChange={(v) => {
                       setEscrowResolverType(
-                        v as 'manual' | 'pyth' | 'uma-lz' | 'conditional-tokens'
+                        v as 'manual' | 'pyth' | 'conditional-tokens'
                       );
                       const addr = getEscrowResolverAddress(
                         v as keyof typeof ESCROW_RESOLVER_MAP,
@@ -1400,7 +1384,6 @@ const RFQTab = ({
                     <SelectContent>
                       <SelectItem value="manual">Manual Resolver</SelectItem>
                       <SelectItem value="pyth">Pyth Resolver</SelectItem>
-                      <SelectItem value="uma-lz">UMA-LZ Resolver</SelectItem>
                       <SelectItem value="conditional-tokens">
                         Conditional Tokens Resolver
                       </SelectItem>

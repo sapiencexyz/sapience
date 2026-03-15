@@ -4,7 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { parseUnits, zeroAddress } from 'viem';
 import { useAccount } from 'wagmi';
 import { generateRandomNonce } from '@sapience/sdk';
-import { predictionMarketLZConditionalTokensResolver } from '@sapience/sdk/contracts';
+import { conditionalTokensConditionResolver } from '@sapience/sdk/contracts';
 import { OutcomeSide } from '@sapience/sdk/types';
 import { buildAuctionStartPayload } from '~/lib/auction/buildAuctionPayload';
 import { useSession } from '~/lib/context/SessionContext';
@@ -119,7 +119,7 @@ export function useSingleConditionAuction({
 
         const effectiveResolver =
           resolverAddress ||
-          predictionMarketLZConditionalTokensResolver[chainId]?.address ||
+          conditionalTokensConditionResolver[chainId]?.address ||
           null;
         if (effectiveResolver) {
           params.escrowPicks = [

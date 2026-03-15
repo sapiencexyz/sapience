@@ -107,9 +107,8 @@ vi.mock('@sapience/sdk/constants', () => ({
 }));
 
 vi.mock('@sapience/sdk/contracts', () => ({
-  umaResolver: {},
   pythConditionResolver: {},
-  predictionMarketLZConditionalTokensResolver: {},
+  conditionalTokensConditionResolver: {},
   collateralToken: { 42161: { address: '0xCollateral' } },
 }));
 

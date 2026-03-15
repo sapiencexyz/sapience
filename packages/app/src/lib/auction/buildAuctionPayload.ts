@@ -1,7 +1,4 @@
-import {
-  umaResolver,
-  predictionMarketLZConditionalTokensResolver,
-} from '@sapience/sdk/contracts';
+import { conditionalTokensConditionResolver } from '@sapience/sdk/contracts';
 import {
   CHAIN_ID_ETHEREAL,
   CHAIN_ID_ETHEREAL_TESTNET,
@@ -202,13 +199,10 @@ export function buildAuctionStartPayload(
       targetChainId === CHAIN_ID_ETHEREAL ||
       targetChainId === CHAIN_ID_ETHEREAL_TESTNET
     ) {
-      // Use Polymarket LZ resolver for Ethereal auctions (mainnet or testnet)
       resolverAddress =
-        predictionMarketLZConditionalTokensResolver[targetChainId]?.address;
+        conditionalTokensConditionResolver[targetChainId]?.address;
     } else {
-      resolverAddress = umaResolver[targetChainId]?.address as
-        | `0x${string}`
-        | undefined;
+      resolverAddress = undefined;
     }
   }
 

@@ -181,18 +181,12 @@ vi.mock('@zerodev/permissions/policies', () => ({
 
 // Mock @sapience/sdk
 vi.mock('@sapience/sdk/abis', () => ({
-  predictionMarketAbi: [],
   predictionMarketEscrowAbi: [],
   collateralTokenAbi: [],
   predictionMarketVaultAbi: [],
 }));
 
 vi.mock('@sapience/sdk/contracts', () => ({
-  predictionMarket: {
-    5064014: { address: '0xPredictionMarketEthereal' },
-    13374202: { address: '0xPredictionMarketEtherealTestnet' },
-    42161: { address: '0xPredictionMarketArbitrum' },
-  },
   predictionMarketEscrow: {
     5064014: { address: '0xEscrowEthereal' },
     13374202: { address: '0xEscrowEtherealTestnet' },

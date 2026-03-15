@@ -1,10 +1,7 @@
 import { decodeAbiParameters, type Address } from 'viem';
 import {
   pythConditionResolver,
-  umaResolver,
-  lzPMResolver,
-  lzUmaResolver,
-  predictionMarketLZConditionalTokensResolver,
+  conditionalTokensConditionResolver,
   manualConditionResolver,
 } from '@sapience/sdk/contracts';
 import { OutcomeSide } from '@sapience/sdk/types';
@@ -39,15 +36,9 @@ function normalizeAddress(value: unknown): string | null {
   return s.toLowerCase();
 }
 
-const UMA_RESOLVER_SET = new Set<string>(
+const CONDITION_RESOLVER_SET = new Set<string>(
   [
-    ...Object.values(umaResolver).map((v) => v?.address),
-    ...Object.values(lzPMResolver).map((v) => v?.address),
-    ...Object.values(lzUmaResolver).map((v) => v?.address),
-    ...Object.values(predictionMarketLZConditionalTokensResolver).map(
-      (v) => v?.address
-    ),
-    // Escrow resolvers that use the same encoding format as UMA
+    ...Object.values(conditionalTokensConditionResolver).map((v) => v?.address),
     ...Object.values(manualConditionResolver).map((v) => v?.address),
   ]
     .filter(Boolean)
@@ -114,7 +105,7 @@ export function decodeAuctionPredictedOutcomes(params: {
       return { kind: 'pyth', outcomes };
     }
 
-    if (!resolverAddr || UMA_RESOLVER_SET.has(resolverAddr)) {
+    if (!resolverAddr || CONDITION_RESOLVER_SET.has(resolverAddr)) {
       const decodedUnknown = decodeAbiParameters(
         [
           {

@@ -44,7 +44,6 @@ import {
   predictionMarketVaultAbi,
 } from '@sapience/sdk/abis';
 import {
-  predictionMarket as predictionMarketAddresses,
   predictionMarketEscrow as predictionMarketEscrowAddresses,
   collateralToken as collateralTokenAddresses,
   eas as easAddresses,
@@ -76,7 +75,6 @@ function getEtherealContractAddresses(chainId: number) {
     escrowAddress !== '0x0000000000000000000000000000000000000000';
   return {
     wusde: collateralTokenAddresses[effectiveChainId].address,
-    predictionMarket: predictionMarketAddresses[effectiveChainId].address,
     predictionMarketEscrow: isEscrowDeployed ? escrowAddress : undefined,
     vault: vaultAddresses[effectiveChainId].address,
   };
@@ -659,7 +657,6 @@ export async function createSession(
   );
   console.debug(`[SessionKeyManager] Contract addresses:`, {
     wusde: etherealContracts.wusde,
-    predictionMarket: etherealContracts.predictionMarket,
     predictionMarketEscrow: etherealContracts.predictionMarketEscrow,
     vault: etherealContracts.vault,
   });

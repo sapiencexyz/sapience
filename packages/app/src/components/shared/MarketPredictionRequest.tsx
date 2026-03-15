@@ -11,7 +11,7 @@ import {
   PREFERRED_ESTIMATE_QUOTER,
 } from '@sapience/sdk/constants';
 import { OutcomeSide } from '@sapience/sdk/types';
-import { predictionMarketLZConditionalTokensResolver } from '@sapience/sdk/contracts';
+import { conditionalTokensConditionResolver } from '@sapience/sdk/contracts';
 import { useAuctionStart, type QuoteBid } from '~/lib/auction/useAuctionStart';
 import {
   buildAuctionStartPayload,
@@ -273,7 +273,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
     const payload = buildAuctionStartPayload(effectiveOutcomes, chainId);
     const effectiveResolver =
       resolverAddress ||
-      predictionMarketLZConditionalTokensResolver[chainId]?.address ||
+      conditionalTokensConditionResolver[chainId]?.address ||
       null;
     const escrowPicks = effectiveResolver
       ? effectiveOutcomes.map((o) => ({

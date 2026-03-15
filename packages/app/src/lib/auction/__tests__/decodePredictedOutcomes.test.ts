@@ -12,7 +12,10 @@ import {
   getPythMarketId,
   type PythBinaryOptionOutcome,
 } from '@sapience/sdk';
-import { pythConditionResolver, umaResolver } from '@sapience/sdk/contracts';
+import {
+  pythConditionResolver,
+  manualConditionResolver,
+} from '@sapience/sdk/contracts';
 import { OutcomeSide } from '@sapience/sdk/types';
 import { parseDateTimeLocalToUnixSeconds } from '../buildAuctionPayload';
 
@@ -22,7 +25,7 @@ import { parseDateTimeLocalToUnixSeconds } from '../buildAuctionPayload';
 
 // Grab a known pyth resolver address for use in tests
 const PYTH_RESOLVER_ADDR = pythConditionResolver[13374202]?.address;
-const UMA_RESOLVER_ADDR = umaResolver[42161]?.address;
+const MANUAL_RESOLVER_ADDR = manualConditionResolver[13374202]?.address;
 
 const ETH_PRICE_ID =
   '0x0000000000000000000000000000000000000000000000000000000000000002' as const;
@@ -134,7 +137,7 @@ describe('decodeAuctionPredictedOutcomes', () => {
     ]);
 
     const result = decodeAuctionPredictedOutcomes({
-      resolver: UMA_RESOLVER_ADDR,
+      resolver: MANUAL_RESOLVER_ADDR,
       predictedOutcomes: [encoded],
     });
 

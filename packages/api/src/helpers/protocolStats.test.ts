@@ -36,8 +36,6 @@ vi.mock('@sapience/sdk/contracts', () => ({
     collateralToken: {
       42161: { address: '0xCollateral' },
     },
-  },
-  escrowContracts: {
     predictionMarketEscrow: {
       42161: { address: '0xEscrow' },
     },
