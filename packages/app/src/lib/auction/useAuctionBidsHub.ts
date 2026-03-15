@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { toAuctionWsUrl } from '~/lib/ws';
-import { getSharedMeshClient } from '~/lib/ws/MeshAuctionClient';
+import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 import * as Sentry from '@sentry/nextjs';
 
 /** Time after last bid expires before cleaning up entire auction (ms) */
@@ -31,7 +31,7 @@ interface WsBidsMessage {
 }
 
 class AuctionBidsHub {
-  private client: ReturnType<typeof getSharedMeshClient> | null = null;
+  private client: ReturnType<typeof getSharedAuctionWsClient> | null = null;
   private wsUrl: string | null = null;
   private isOpen = false;
   private listeners = new Set<Listener>();
@@ -50,7 +50,7 @@ class AuctionBidsHub {
 
   private attachClient() {
     if (!this.wsUrl) return;
-    const c = getSharedMeshClient();
+    const c = getSharedAuctionWsClient(this.wsUrl);
     this.client = c;
     const offOpen = c.addOpenListener(() => {
       this.isOpen = true;

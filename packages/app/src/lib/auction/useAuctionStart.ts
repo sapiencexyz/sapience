@@ -11,7 +11,7 @@ import {
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
 import { toAuctionWsUrl } from '~/lib/ws';
-import { getSharedMeshClient } from '~/lib/ws/MeshAuctionClient';
+import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 import { logAuction, formatBidForLog } from '~/lib/auction/bidLogger';
 
 export interface AuctionParams {
@@ -203,7 +203,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
   // so each hook instance only processes its own ack (shared WS is filtered).
   useEffect(() => {
     if (!wsUrl) return;
-    const client = getSharedMeshClient();
+    const client = getSharedAuctionWsClient(wsUrl);
 
     const handleMessage = (msg: unknown) => {
       try {
@@ -376,7 +376,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
       // Clear inflight key when forcing refresh to allow the new request
       if (options?.forceRefresh) inflightRef.current = '';
 
-      const client = getSharedMeshClient();
+      const client = getSharedAuctionWsClient(wsUrl);
 
       // Update inflight tracking and clear bids for new request
       // Clear latestAuctionIdRef so bids from the previous auction are rejected.
@@ -535,7 +535,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
   const notifyOrderCreated = useCallback(
     (requestId: string, txHash?: string) => {
       if (!auctionId || !wsUrl) return;
-      const client = getSharedMeshClient();
+      const client = getSharedAuctionWsClient(wsUrl);
       client.send({
         type: 'order.created',
         payload: { auctionId, requestId, txHash },

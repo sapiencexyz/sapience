@@ -12,7 +12,7 @@ import { generateRandomNonce } from '@sapience/sdk';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { useSession } from '~/lib/context/SessionContext';
 import { toAuctionWsUrl } from '~/lib/ws';
-import { getSharedMeshClient } from '~/lib/ws/MeshAuctionClient';
+import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 
 export interface BidSubmissionParams {
   /** The auction to bid on */
@@ -121,7 +121,7 @@ export function useBidSubmission(options: UseBidSubmissionOptions = {}) {
       // Generate random nonce for bitmap nonce system (Permit2-style)
       const counterpartyNonce = generateRandomNonce();
 
-      const client = getSharedMeshClient();
+      const client = getSharedAuctionWsClient(wsUrl);
 
       // Calculate deadline
       const nowSec = Math.floor(Date.now() / 1000);

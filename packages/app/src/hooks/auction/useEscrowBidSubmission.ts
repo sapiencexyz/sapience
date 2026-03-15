@@ -25,7 +25,7 @@ import { useSession } from '~/lib/context/SessionContext';
 
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { toAuctionWsUrl } from '~/lib/ws';
-import { getSharedMeshClient } from '~/lib/ws/MeshAuctionClient';
+import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 import { generateRandomNonce } from '@sapience/sdk';
 import { validateCounterpartyFunds } from '@sapience/sdk/onchain/position';
 
@@ -405,7 +405,7 @@ export function useEscrowBidSubmission(
       }
 
       // Send over shared Auction WS (fire and forget - no ack wait)
-      const client = getSharedMeshClient();
+      const client = getSharedAuctionWsClient(wsUrl);
 
       const escrowPayload = {
         auctionId,

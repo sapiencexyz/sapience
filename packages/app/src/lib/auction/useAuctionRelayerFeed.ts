@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { toAuctionWsUrl } from '~/lib/ws';
-import { getSharedMeshClient } from '~/lib/ws/MeshAuctionClient';
+import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 import * as Sentry from '@sentry/nextjs';
 
 export type AuctionFeedMessage = {
@@ -38,7 +38,7 @@ export function useAuctionRelayerFeed(options?: {
 
   useEffect(() => {
     if (!wsUrl) return;
-    const client = getSharedMeshClient();
+    const client = getSharedAuctionWsClient(wsUrl);
     // Observe vault quotes (queued until open)
     if (observeVaultQuotes) client.send({ type: 'vault_quote.observe' });
 
@@ -157,7 +157,7 @@ export function useAuctionRelayerFeed(options?: {
   // Handle dynamic toggling of observer after connection is established
   useEffect(() => {
     if (!wsUrl) return;
-    const client = getSharedMeshClient();
+    const client = getSharedAuctionWsClient(wsUrl);
     client.send({
       type: observeVaultQuotes
         ? 'vault_quote.observe'

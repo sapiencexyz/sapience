@@ -482,6 +482,39 @@ const SettingsPageContent = () => {
                         to send and receive signed messages
                       </p>
                     </div>
+
+                    <div className="grid gap-2">
+                      <Label htmlFor="mesh-rate-limit">Mesh Rate Limit</Label>
+                      <div className="relative w-32">
+                        <Input
+                          id="mesh-rate-limit"
+                          type="number"
+                          min={1}
+                          max={200}
+                          className="pr-14"
+                          value={meshRateLimitInput}
+                          onChange={(e) => {
+                            const v = parseInt(e.target.value, 10);
+                            if (Number.isFinite(v)) setMeshRateLimitInput(v);
+                          }}
+                          onBlur={() => {
+                            const clamped = Math.max(
+                              1,
+                              Math.min(200, meshRateLimitInput)
+                            );
+                            setMeshRateLimitInput(clamped);
+                            setMeshRateLimit(clamped);
+                            applyMeshRateLimit(clamped);
+                          }}
+                        />
+                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
+                          msg/s
+                        </span>
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Max inbound messages per peer per second (1–200)
+                      </p>
+                    </div>
                   </div>
                 </CardContent>
               </Card>
@@ -540,39 +573,6 @@ const SettingsPageContent = () => {
                           onCheckedChange={(val) => setShowAmericanOdds(val)}
                         />
                       </div>
-                    </div>
-
-                    <div className="grid gap-2">
-                      <Label htmlFor="mesh-rate-limit">Mesh Rate Limit</Label>
-                      <div className="relative w-32">
-                        <Input
-                          id="mesh-rate-limit"
-                          type="number"
-                          min={1}
-                          max={200}
-                          className="pr-14"
-                          value={meshRateLimitInput}
-                          onChange={(e) => {
-                            const v = parseInt(e.target.value, 10);
-                            if (Number.isFinite(v)) setMeshRateLimitInput(v);
-                          }}
-                          onBlur={() => {
-                            const clamped = Math.max(
-                              1,
-                              Math.min(200, meshRateLimitInput)
-                            );
-                            setMeshRateLimitInput(clamped);
-                            setMeshRateLimit(clamped);
-                            applyMeshRateLimit(clamped);
-                          }}
-                        />
-                        <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
-                          msg/s
-                        </span>
-                      </div>
-                      <p className="text-xs text-muted-foreground">
-                        Max inbound messages per peer per second (1–200)
-                      </p>
                     </div>
                   </div>
                 </CardContent>
