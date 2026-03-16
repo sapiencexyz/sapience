@@ -25,26 +25,7 @@ function shouldMesh(msg: Record<string, unknown>): boolean {
   return MESH_TYPES.has(msg.type as string);
 }
 
-/** Dedup recent message IDs seen from both WS and mesh. */
-const seen = new Map<string, number>();
 const SEEN_TTL = 30_000;
-
-function dedup(msg: Record<string, unknown>): boolean {
-  const id =
-    (msg.id as string) ??
-    ((msg.payload as Record<string, unknown> | undefined)?.id as string);
-  if (!id) return true; // no ID to dedup on, let it through
-  const now = Date.now();
-  if (seen.has(id)) return false;
-  seen.set(id, now);
-  // Lazy prune
-  if (seen.size > 1000) {
-    for (const [k, ts] of seen) {
-      if (now - ts > SEEN_TTL) seen.delete(k);
-    }
-  }
-  return true;
-}
 
 function getValidationContext(): GossipValidationContext {
   const escrow = predictionMarketEscrow[DEFAULT_CHAIN_ID];
@@ -56,10 +37,17 @@ function getValidationContext(): GossipValidationContext {
   };
 }
 
+/**
+ * Wraps ReconnectingWebSocketClient with mesh dual-delivery.
+ * Uses composition instead of monkey-patching — delegates send/listen
+ * to both the WS client and the mesh transport.
+ */
 class AuctionWsClient {
   private client: ReconnectingWebSocketClient | null = null;
   private url: string | null = null;
-  private patched = false;
+
+  /** Dedup recent message IDs seen from both WS and mesh. */
+  private seen = new Map<string, number>();
 
   setUrl(url: string | null) {
     if (this.url === url) return;
@@ -72,75 +60,120 @@ class AuctionWsClient {
         staleCloseMs: 60_000,
         debug: !!process.env.NEXT_PUBLIC_DEBUG_WS,
       });
-      this.patchForMesh();
     } else {
       this.client.setUrl(url);
     }
   }
 
-  ensure(url: string | null) {
-    this.setUrl(url);
+  private ensureClient(): ReconnectingWebSocketClient {
     if (!this.client) throw new Error('AuctionWsClient not initialized');
     return this.client;
   }
 
-  private patchForMesh() {
-    if (!this.client || this.patched) return;
-    this.patched = true;
-
-    // Outbound: also gossip auction/bid messages via mesh
-    const origSend = this.client.send.bind(this.client);
-    this.client.send = (msg: Record<string, unknown> & { id?: string }) => {
-      origSend(msg);
-      if (shouldMesh(msg)) {
-        try {
-          getSharedMeshClient().send(msg);
-        } catch {
-          /* */
-        }
+  /** Send to both WS relayer and mesh (for eligible message types). */
+  send(msg: Record<string, unknown> & { id?: string }): void {
+    this.ensureClient().send(msg);
+    if (shouldMesh(msg)) {
+      try {
+        getSharedMeshClient().send(msg);
+      } catch {
+        /* mesh unavailable */
       }
-    };
+    }
+  }
 
-    // Inbound: also deliver mesh messages to WS message listeners.
-    // Patch addMessageListener so each listener also gets mesh messages.
-    const origAddMsgListener = this.client.addMessageListener.bind(this.client);
-    this.client.addMessageListener = (cb: (msg: unknown) => void) => {
-      const unsubWs = origAddMsgListener((msg: unknown) => {
+  /** Delegates to the WS client's sendWithAck (mesh does not support ack). */
+  sendWithAck<T = unknown>(
+    type: string,
+    payload: Record<string, unknown>,
+    opts?: { timeoutMs?: number }
+  ): Promise<T> {
+    return this.ensureClient().sendWithAck<T>(type, payload, opts);
+  }
+
+  /**
+   * Registers a message listener that receives from both WS and mesh.
+   * Mesh messages are validated (structural + crypto) and deduped before delivery.
+   */
+  addMessageListener(cb: (msg: unknown) => void): () => void {
+    const client = this.ensureClient();
+
+    const unsubWs = client.addMessageListener((msg: unknown) => {
+      const data = msg as Record<string, unknown>;
+      if (shouldMesh(data)) this.dedup(data); // mark as seen from WS
+      cb(msg);
+    });
+
+    const unsubMesh = getSharedMeshClient().addMessageListener(
+      (msg: unknown) => {
         const data = msg as Record<string, unknown>;
-        if (shouldMesh(data)) dedup(data); // mark as seen from WS
-        cb(msg);
-      });
-      const unsubMesh = getSharedMeshClient().addMessageListener(
-        (msg: unknown) => {
-          const data = msg as Record<string, unknown>;
-          if (!shouldMesh(data)) return;
-          if (!isValidGossipPayload(data.type as string, data)) return;
-          // Async crypto validation before dedup and delivery
-          validateGossipPayloadAsync(
-            data.type as string,
-            data,
-            getValidationContext()
-          )
-            .then((valid) => {
-              if (!valid) return;
-              if (!dedup(data)) return;
-              cb(msg);
-            })
-            .catch(() => {
-              // Validation error → drop silently
-            });
-        }
-      );
-      return () => {
-        unsubMesh();
-        return unsubWs();
-      };
+        if (!shouldMesh(data)) return;
+        if (!isValidGossipPayload(data.type as string, data)) return;
+        validateGossipPayloadAsync(
+          data.type as string,
+          data,
+          getValidationContext()
+        )
+          .then((valid) => {
+            if (!valid) return;
+            if (!this.dedup(data)) return;
+            cb(msg);
+          })
+          .catch(() => {
+            /* validation error → drop silently */
+          });
+      }
+    );
+
+    return () => {
+      unsubMesh();
+      unsubWs();
     };
+  }
+
+  addOpenListener(cb: () => void): () => void {
+    return this.ensureClient().addOpenListener(cb);
+  }
+
+  addCloseListener(cb: () => void): () => void {
+    return this.ensureClient().addCloseListener(cb);
+  }
+
+  addReconnectListener(cb: () => void): () => void {
+    return this.ensureClient().addReconnectListener(cb);
+  }
+
+  addErrorListener(cb: (e: unknown) => void): () => void {
+    return this.ensureClient().addErrorListener(cb);
+  }
+
+  /**
+   * Returns true if the message is new, false if already seen.
+   * Always prunes expired entries regardless of map size.
+   */
+  private dedup(msg: Record<string, unknown>): boolean {
+    const id =
+      (msg.id as string) ??
+      ((msg.payload as Record<string, unknown> | undefined)?.id as string);
+    if (!id) return true; // no ID to dedup on, let it through
+    const now = Date.now();
+
+    // Prune expired entries
+    for (const [k, ts] of this.seen) {
+      if (now - ts > SEEN_TTL) this.seen.delete(k);
+    }
+
+    if (this.seen.has(id)) return false;
+    this.seen.set(id, now);
+    return true;
   }
 }
 
 const shared = new AuctionWsClient();
 
-export function getSharedAuctionWsClient(wsUrl: string | null) {
-  return shared.ensure(wsUrl);
+export function getSharedAuctionWsClient(
+  wsUrl: string | null
+): AuctionWsClient {
+  shared.setUrl(wsUrl);
+  return shared;
 }

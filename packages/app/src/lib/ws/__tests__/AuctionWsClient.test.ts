@@ -250,6 +250,7 @@ describe('AuctionWsClient dual-receive (inbound)', () => {
 
 describe('AuctionWsClient deduplication', () => {
   beforeEach(() => {
+    vi.useFakeTimers();
     meshSent.length = 0;
     meshListeners.length = 0;
     mockMeshTransport.send.mockClear();
@@ -259,6 +260,7 @@ describe('AuctionWsClient deduplication', () => {
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.restoreAllMocks();
   });
 
@@ -286,7 +288,37 @@ describe('AuctionWsClient deduplication', () => {
 
     // Second delivery of same ID from mesh — should be deduped
     deliverFromMesh(msg);
-    await new Promise((r) => setTimeout(r, 50));
+    await vi.advanceTimersByTimeAsync(50);
     expect(received).toHaveLength(1);
+  });
+
+  it('expires dedup entries after SEEN_TTL even when map is small', async () => {
+    const client = getSharedAuctionWsClient('ws://localhost:9999');
+    const received: unknown[] = [];
+    client.addMessageListener((msg) => received.push(msg));
+
+    const msg = {
+      id: 'ttl-expire-1',
+      type: 'auction.bids',
+      auctionId: 'a1',
+      bids: [
+        {
+          auctionId: 'a1',
+          counterparty: '0x1234567890123456789012345678901234567890',
+          counterpartyCollateral: '100',
+        },
+      ],
+    };
+
+    // First delivery — accepted
+    deliverFromMesh(msg);
+    await vi.waitFor(() => expect(received).toHaveLength(1));
+
+    // Advance past SEEN_TTL (30s)
+    vi.advanceTimersByTime(31_000);
+
+    // Same ID should be accepted again after TTL expiry
+    deliverFromMesh(msg);
+    await vi.waitFor(() => expect(received).toHaveLength(2));
   });
 });

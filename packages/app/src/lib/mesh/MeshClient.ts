@@ -15,6 +15,8 @@ export interface MeshConfig {
   maxMessageSize?: number;
   /** Max peers to forward to per rebroadcast. 0 = all. Default 0. */
   maxFanout?: number;
+  /** Enable verbose console logging. Default false. */
+  debug?: boolean;
 }
 
 export type MessageHandler = (type: string, payload: unknown) => void;
@@ -74,7 +76,11 @@ export class MeshClient {
     this.maxFanout = config.maxFanout ?? 0;
 
     this.peerManager = new PeerManager(
-      { signalUrl: config.signalUrl, maxPeers: config.maxPeers },
+      {
+        signalUrl: config.signalUrl,
+        maxPeers: config.maxPeers,
+        debug: config.debug,
+      },
       {
         onPeerConnected: () => {
           this.sharePeers();
