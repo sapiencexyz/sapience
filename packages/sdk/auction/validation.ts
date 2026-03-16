@@ -25,6 +25,7 @@ import {
 import { predictionMarketEscrowAbi } from '../abis';
 import { isNonceUsed } from '../onchain/escrow';
 import { validateCounterpartyFunds } from '../onchain/position';
+import { isValidAddress, isValidSignatureFormat } from './validationUtils';
 
 // ─── Result Types ─────────────────────────────────────────────────────────────
 
@@ -72,14 +73,6 @@ const ERC1271_MAGIC = '0x1626ba7e';
  * conditionId is passed as-is to the on-chain bytes field (no hashing).
  */
 const MIN_CONDITION_ID_LENGTH = 66; // bytes32 = 0x + 64 hex chars
-
-function isValidAddress(addr: unknown): addr is string {
-  return typeof addr === 'string' && /^0x[a-fA-F0-9]{40}$/.test(addr);
-}
-
-function isValidSignatureFormat(sig: unknown): sig is string {
-  return typeof sig === 'string' && sig.startsWith('0x') && sig.length >= 10;
-}
 
 /**
  * Validates a pick in JSON/transport form (string fields).

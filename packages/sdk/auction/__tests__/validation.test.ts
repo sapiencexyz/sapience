@@ -528,7 +528,8 @@ describe('validateBid', () => {
   test('verifySignature=false skips signature check', async () => {
     const auction = makeAuctionRFQ();
     const { bid } = await makeSignedBid(auction, {
-      counterpartySignature: '0xdeadbeef00',
+      counterpartySignature:
+        '0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef1c',
     });
 
     const result = await validateBid(bid, auction, {

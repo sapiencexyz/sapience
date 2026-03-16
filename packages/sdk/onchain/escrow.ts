@@ -23,6 +23,7 @@ import type {
   OutcomeSide,
   SettlementResult,
 } from '../types/escrow';
+import { ERC20_ABI } from './sharedAbis';
 
 // ============================================================================
 // ABI Definitions
@@ -46,16 +47,6 @@ const PREDICTION_MARKET_ESCROW_ABI = parseAbi([
   'function computePickConfigId((address conditionResolver, bytes conditionId, uint8 predictedOutcome)[] picks) pure returns (bytes32)',
   // Immutable state
   'function collateralToken() view returns (address)',
-]);
-
-/** ERC20 ABI for position token balance/allowance checks */
-const ERC20_ABI = parseAbi([
-  'function balanceOf(address account) view returns (uint256)',
-  'function allowance(address owner, address spender) view returns (uint256)',
-  'function totalSupply() view returns (uint256)',
-  'function decimals() view returns (uint8)',
-  'function symbol() view returns (string)',
-  'function name() view returns (string)',
 ]);
 
 // ============================================================================

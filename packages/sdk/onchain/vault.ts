@@ -4,6 +4,7 @@ import {
   encodeFunctionData,
   parseAbi,
   erc20Abi,
+  zeroAddress,
 } from 'viem';
 import type { Abi } from 'abitype';
 import type { Address } from 'viem';
@@ -13,8 +14,8 @@ import { CHAIN_ID_ETHEREAL } from '../constants/chain';
 export const VAULT_WUSDE_ADDRESS: Address = collateralToken[CHAIN_ID_ETHEREAL]
   .address as Address;
 
-export const ZERO_ADDRESS: Address =
-  '0x0000000000000000000000000000000000000000';
+/** @deprecated Use `zeroAddress` from 'viem' directly */
+export const ZERO_ADDRESS: Address = zeroAddress;
 
 export const VAULT_ASSET_DECIMALS = 18;
 
@@ -193,7 +194,7 @@ export function parsePendingRequest(
         boolean,
         boolean,
       ];
-      if (!user || user.toLowerCase() === ZERO_ADDRESS.toLowerCase())
+      if (!user || user.toLowerCase() === zeroAddress.toLowerCase())
         return null;
       return { user, isDeposit, shares, assets, timestamp, processed };
     }
@@ -208,7 +209,7 @@ export function parsePendingRequest(
     };
     if (
       !candidate.user ||
-      candidate.user.toLowerCase() === ZERO_ADDRESS.toLowerCase()
+      candidate.user.toLowerCase() === zeroAddress.toLowerCase()
     )
       return null;
     return candidate;
