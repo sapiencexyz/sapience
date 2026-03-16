@@ -10,6 +10,7 @@ export interface ConditionType {
   claimStatement: string;
   description: string;
   similarMarkets: string[];
+  tags?: string[];
   chainId: number;
   resolver?: string | null;
   category?: { id: number; name: string; slug: string } | null;

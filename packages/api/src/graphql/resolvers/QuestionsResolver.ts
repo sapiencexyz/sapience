@@ -210,7 +210,19 @@ export class QuestionsResolver {
           ${minEndTime != null ? Prisma.sql`AND c."endTime" >= ${minEndTime}` : Prisma.empty}
           ${deadMarketFilter}
         WHERE NOT EXISTS (SELECT 1 FROM expired_groups eg WHERE eg.id = cg.id)
-          ${boundedSearch ? Prisma.sql`AND cg.name ILIKE ${'%' + boundedSearch + '%'}` : Prisma.empty}
+          ${
+            boundedSearch
+              ? Prisma.sql`AND (
+                  cg.name ILIKE ${'%' + boundedSearch + '%'}
+                  OR EXISTS (
+                    SELECT 1 FROM condition c_tag
+                    WHERE c_tag."conditionGroupId" = cg.id
+                      AND c_tag.public = true
+                      AND EXISTS (SELECT 1 FROM unnest(c_tag.tags) AS t WHERE t ILIKE ${'%' + boundedSearch + '%'})
+                  )
+                )`
+              : Prisma.empty
+          }
           ${
             boundedCategorySlugs?.length
               ? Prisma.sql`AND cg."categoryId" IN (SELECT id FROM category WHERE slug = ANY(${boundedCategorySlugs}::text[]))`
@@ -246,7 +258,7 @@ export class QuestionsResolver {
           ${deadMarketFilter}
           ${
             boundedSearch
-              ? Prisma.sql`AND (c.question ILIKE ${'%' + boundedSearch + '%'} OR c."shortName" ILIKE ${'%' + boundedSearch + '%'})`
+              ? Prisma.sql`AND (c.question ILIKE ${'%' + boundedSearch + '%'} OR c."shortName" ILIKE ${'%' + boundedSearch + '%'} OR EXISTS (SELECT 1 FROM unnest(c.tags) AS t WHERE t ILIKE ${'%' + boundedSearch + '%'}))`
               : Prisma.empty
           }
           ${
@@ -284,7 +296,7 @@ export class QuestionsResolver {
           ${minEndTime != null ? Prisma.sql`AND c."endTime" >= ${minEndTime}` : Prisma.empty}
           ${
             boundedSearch
-              ? Prisma.sql`AND (c.question ILIKE ${'%' + boundedSearch + '%'} OR c."shortName" ILIKE ${'%' + boundedSearch + '%'})`
+              ? Prisma.sql`AND (c.question ILIKE ${'%' + boundedSearch + '%'} OR c."shortName" ILIKE ${'%' + boundedSearch + '%'} OR EXISTS (SELECT 1 FROM unnest(c.tags) AS t WHERE t ILIKE ${'%' + boundedSearch + '%'}))`
               : Prisma.empty
           }
           ${

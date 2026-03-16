@@ -33,6 +33,7 @@ router.post('/', async (req: Request, res: Response) => {
       chainId,
       groupName,
       resolver,
+      tags,
     } = req.body as {
       conditionHash?: string;
       question?: string;
@@ -47,6 +48,7 @@ router.post('/', async (req: Request, res: Response) => {
       chainId?: number;
       groupName?: string;
       resolver?: string;
+      tags?: string[];
     };
 
     // Validate conditionHash if provided (must be 0x-prefixed 32-byte hex)
@@ -149,6 +151,16 @@ router.post('/', async (req: Request, res: Response) => {
         .json({ message: 'similarMarkets must be HTTP(S) URLs' });
     }
 
+    // Validate tags if provided
+    if (
+      typeof tags !== 'undefined' &&
+      (!Array.isArray(tags) || !tags.every((t) => typeof t === 'string'))
+    ) {
+      return res
+        .status(400)
+        .json({ message: 'tags must be an array of strings' });
+    }
+
     // Use provided conditionHash or compute from claimStatement and endTime
     let id: string;
     if (conditionHash) {
@@ -177,6 +189,7 @@ router.post('/', async (req: Request, res: Response) => {
           claimStatement: claimStatement || '', // Empty string if not provided (for external conditions like Polymarket)
           description,
           similarMarkets: Array.isArray(similarMarkets) ? similarMarkets : [],
+          tags: Array.isArray(tags) ? tags : [],
           chainId: chainId ?? 42161, // Default to Arbitrum if not provided
           conditionGroupId: resolvedGroupId ?? undefined,
           displayOrder: resolvedGroupId ? 0 : undefined,
@@ -226,6 +239,7 @@ router.put('/:id', async (req: Request, res: Response) => {
       endTime,
       chainId,
       groupName,
+      tags,
     } = req.body as {
       question?: string;
       shortName?: string;
@@ -238,6 +252,7 @@ router.put('/:id', async (req: Request, res: Response) => {
       endTime?: number | string;
       chainId?: number;
       groupName?: string;
+      tags?: string[];
     };
 
     const existing = await prisma.condition.findUnique({ where: { id } });
@@ -326,6 +341,16 @@ router.put('/:id', async (req: Request, res: Response) => {
           .json({ message: 'similarMarkets must be HTTP(S) URLs' });
       }
 
+      // Validate tags if provided
+      if (
+        typeof tags !== 'undefined' &&
+        (!Array.isArray(tags) || !tags.every((t) => typeof t === 'string'))
+      ) {
+        return res
+          .status(400)
+          .json({ message: 'tags must be an array of strings' });
+      }
+
       const condition = await prisma.condition.update({
         where: { id },
         data: {
@@ -351,6 +376,9 @@ router.put('/:id', async (req: Request, res: Response) => {
                   ? similarMarkets
                   : [],
               }
+            : {}),
+          ...(typeof tags !== 'undefined'
+            ? { tags: Array.isArray(tags) ? tags : [] }
             : {}),
           // Extend endTime if a new forward value was provided
           ...(newEndTime !== undefined ? { endTime: newEndTime } : {}),
