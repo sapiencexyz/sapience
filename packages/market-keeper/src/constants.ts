@@ -50,6 +50,7 @@ export const ALWAYS_INCLUDE_PATTERNS = [
 // Relist configuration
 export const RELIST_LOOKBACK_DAYS = 30;
 export const RELIST_FORWARD_DAYS = 7;
+export const RELIST_GRACE_PERIOD_DAYS = 2;
 
 // LLM Configuration
 export const LLM_ENABLED = process.env.LLM_ENABLED === 'true';

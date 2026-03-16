@@ -7,7 +7,11 @@
  */
 
 import 'dotenv/config';
-import { DEFAULT_SAPIENCE_API_URL, RELIST_FORWARD_DAYS } from '../constants';
+import {
+  DEFAULT_SAPIENCE_API_URL,
+  RELIST_FORWARD_DAYS,
+  RELIST_GRACE_PERIOD_DAYS,
+} from '../constants';
 import {
   validatePrivateKey,
   confirmProductionAccess,
@@ -52,6 +56,41 @@ Environment Variables (required for API submission):
   SAPIENCE_API_URL     API URL (default: https://api.sapience.xyz)
   ADMIN_PRIVATE_KEY    64-char hex private key for signing admin requests
 `);
+}
+
+// ============ Grace Period Classification ============
+
+export interface GracePeriodResult {
+  eligible: string[];
+  gracePeriodSkipped: number;
+  futureEndTimeSkipped: number;
+}
+
+/**
+ * Classify existing conditions into those eligible for endTime extension
+ * vs those that should be skipped (grace period or future endTime).
+ */
+export function classifyForExtension(
+  existingConditions: Map<string, { endTime: number }>,
+  nowUnix: number,
+  gracePeriodDays: number
+): GracePeriodResult {
+  const gracePeriodSeconds = gracePeriodDays * 24 * 60 * 60;
+  const eligible: string[] = [];
+  let gracePeriodSkipped = 0;
+  let futureEndTimeSkipped = 0;
+
+  for (const [conditionId, { endTime }] of existingConditions) {
+    if (endTime > nowUnix) {
+      futureEndTimeSkipped++;
+    } else if (nowUnix - endTime < gracePeriodSeconds) {
+      gracePeriodSkipped++;
+    } else {
+      eligible.push(conditionId);
+    }
+  }
+
+  return { eligible, gracePeriodSkipped, futureEndTimeSkipped };
 }
 
 // ============ EndTime Extension ============
@@ -143,63 +182,93 @@ export async function main() {
 
     log(`[Relist] New endDate for all markets: ${newEndDateISO}`);
 
-    // 3. Check which markets already exist in Sapience
+    // 3. Check which markets already exist in Sapience (with endTime)
     const allConditionIds = markets.map((m) => m.conditionId);
-    const existingIds = await checkExistingConditions(apiUrl, allConditionIds);
-
-    log(
-      `[Relist] ${existingIds.size} already listed, ${markets.length - existingIds.size} new`
+    const existingConditions = await checkExistingConditions(
+      apiUrl,
+      allConditionIds
     );
 
-    // 4. Extend endTime for existing conditions
-    if (
-      existingIds.size > 0 &&
-      hasAPICredentials &&
-      privateKey &&
-      !options.dryRun
-    ) {
-      log(
-        `[Relist] Extending endTime for ${existingIds.size} existing conditions...`
-      );
-      let extended = 0;
-      let skipped = 0;
-      let failed = 0;
+    log(
+      `[Relist] ${existingConditions.size} already listed, ${markets.length - existingConditions.size} new`
+    );
 
-      for (const conditionId of existingIds) {
-        const result = await extendConditionEndTime(
-          apiUrl,
-          privateKey,
-          conditionId,
-          newEndTimeUnix
+    // 4. Extend endTime for existing conditions (with grace period filtering)
+    const nowUnix = Math.floor(Date.now() / 1000);
+
+    if (existingConditions.size > 0) {
+      const {
+        eligible: eligibleForExtension,
+        gracePeriodSkipped,
+        futureEndTimeSkipped,
+      } = classifyForExtension(
+        existingConditions,
+        nowUnix,
+        RELIST_GRACE_PERIOD_DAYS
+      );
+
+      if (gracePeriodSkipped > 0) {
+        log(
+          `[Relist] ${gracePeriodSkipped} conditions skipped (within ${RELIST_GRACE_PERIOD_DAYS}-day grace period for settlement)`
         );
-        if (result.success) {
-          extended++;
-          log(`[Relist] Extended endTime: ${conditionId}...`);
-        } else if (
-          result.error?.includes('settled') ||
-          result.error?.includes('shortened')
-        ) {
-          skipped++;
-        } else {
-          failed++;
-          logError(
-            `[Relist] Failed to extend ${conditionId}...: ${result.error}`
-          );
-        }
-        await delay(SUBMISSION_DELAY_MS);
+      }
+      if (futureEndTimeSkipped > 0) {
+        log(
+          `[Relist] ${futureEndTimeSkipped} conditions skipped (endTime still in the future)`
+        );
       }
 
-      log(
-        `[Relist] EndTime extension: ${extended} extended, ${skipped} skipped, ${failed} failed`
-      );
-    } else if (existingIds.size > 0 && options.dryRun) {
-      log(
-        `[Relist] DRY RUN: Would extend endTime for ${existingIds.size} existing conditions to ${newEndDateISO}`
-      );
+      if (
+        eligibleForExtension.length > 0 &&
+        hasAPICredentials &&
+        privateKey &&
+        !options.dryRun
+      ) {
+        log(
+          `[Relist] Extending endTime for ${eligibleForExtension.length} existing conditions...`
+        );
+        let extended = 0;
+        let skipped = 0;
+        let failed = 0;
+
+        for (const conditionId of eligibleForExtension) {
+          const result = await extendConditionEndTime(
+            apiUrl,
+            privateKey,
+            conditionId,
+            newEndTimeUnix
+          );
+          if (result.success) {
+            extended++;
+            log(`[Relist] Extended endTime: ${conditionId}...`);
+          } else if (
+            result.error?.includes('settled') ||
+            result.error?.includes('shortened')
+          ) {
+            skipped++;
+          } else {
+            failed++;
+            logError(
+              `[Relist] Failed to extend ${conditionId}...: ${result.error}`
+            );
+          }
+          await delay(SUBMISSION_DELAY_MS);
+        }
+
+        log(
+          `[Relist] EndTime extension: ${extended} extended, ${skipped} skipped, ${failed} failed`
+        );
+      } else if (eligibleForExtension.length > 0 && options.dryRun) {
+        log(
+          `[Relist] DRY RUN: Would extend endTime for ${eligibleForExtension.length} existing conditions to ${newEndDateISO}`
+        );
+      }
     }
 
     // 5. Override endDate for new market submissions
-    const newMarkets = markets.filter((m) => !existingIds.has(m.conditionId));
+    const newMarkets = markets.filter(
+      (m) => !existingConditions.has(m.conditionId)
+    );
 
     if (newMarkets.length === 0) {
       log('[Relist] No new markets to create');

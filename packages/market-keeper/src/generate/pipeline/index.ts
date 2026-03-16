@@ -18,15 +18,11 @@ import type {
 import type { Filter, FilterStats, PipelineResult } from './types';
 
 // Import combinators
-import { UnionFilter, IntersectionFilter } from './combinators';
+import { UnionFilter } from './combinators';
 
 // Import all filters
 import { BinaryMarketsFilter } from './filters/binary-markets';
-import {
-  VolumeThresholdFilter,
-  MarketVolumeThresholdFilter,
-  type MarketGroup,
-} from './filters/volume-threshold';
+import { type MarketGroup } from './filters/volume-threshold';
 import {
   LiquidityThresholdFilter,
   MarketLiquidityThresholdFilter,
@@ -41,7 +37,10 @@ import {
   NonCryptoConditionFilter,
   NonCryptoGroupFilter,
 } from './filters/exclude-crypto';
-import { ExcludeExistingMarketsFilter } from './filters/exclude-existing';
+import {
+  ExcludeExistingMarketsFilter,
+  type ExistingCondition,
+} from './filters/exclude-existing';
 
 // Re-export types and utilities
 export type {
@@ -51,7 +50,10 @@ export type {
   PipelineResult,
 } from './types';
 export type { MarketGroup } from './filters/volume-threshold';
-export { checkExistingConditions } from './filters/exclude-existing';
+export {
+  checkExistingConditions,
+  type ExistingCondition,
+} from './filters/exclude-existing';
 export { matchesAlwaysIncludePatterns } from './filters/always-include';
 
 /**
@@ -74,10 +76,7 @@ export const MARKET_FILTERS: Filter<PolymarketMarket>[] = [
  */
 export const GROUP_FILTERS: Filter<MarketGroup>[] = [
   new UnionFilter([
-    new IntersectionFilter([
-      new VolumeThresholdFilter(),
-      new LiquidityThresholdFilter(),
-    ]),
+    new LiquidityThresholdFilter(),
     new AlwaysIncludeGroupFilter(),
   ]),
 ];
@@ -91,10 +90,7 @@ export const GROUP_FILTERS: Filter<MarketGroup>[] = [
  */
 export const UNGROUPED_MARKET_FILTERS: Filter<PolymarketMarket>[] = [
   new UnionFilter([
-    new IntersectionFilter([
-      new MarketVolumeThresholdFilter(),
-      new MarketLiquidityThresholdFilter(),
-    ]),
+    new MarketLiquidityThresholdFilter(),
     new AlwaysIncludeMarketFilter(),
   ]),
 ];
@@ -146,9 +142,9 @@ export const API_CONDITION_FILTERS: Filter<SapienceCondition>[] = [
  * Note: Filter must be constructed with existing IDs (fetched async)
  */
 export function createLlmPreFilter(
-  existingIds: Set<string>
+  existing: Set<string> | Map<string, ExistingCondition>
 ): Filter<PolymarketMarket>[] {
-  return [new ExcludeExistingMarketsFilter(existingIds)];
+  return [new ExcludeExistingMarketsFilter(existing)];
 }
 
 /**
