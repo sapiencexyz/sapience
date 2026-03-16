@@ -31,8 +31,8 @@ const ReindexCollateralTransfersForm = () => {
       });
 
       toast({
-        title: 'Reindex started',
-        description: `Collateral transfer reindex started${fromBlock ? ` from block ${fromBlock}` : ' from token creation'} on chain ${DEFAULT_CHAIN_ID}`,
+        title: 'Reindex job submitted',
+        description: `Running in background${fromBlock ? ` from block ${fromBlock}` : ' from token creation'} on chain ${DEFAULT_CHAIN_ID}. Check API logs for progress.`,
       });
     } catch (error) {
       console.error('Collateral transfer reindex error:', error);
