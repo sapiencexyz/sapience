@@ -643,24 +643,24 @@ export default function QuestionPageContent({
               size="normal"
               appearance="brandWhite"
             />
+            {polymarketUrl && (
+              <a
+                href={polymarketUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-9 items-center rounded-full border border-brand-white/20 bg-card px-3.5 text-sm font-medium leading-none text-brand-white hover:opacity-70 transition-opacity"
+              >
+                <Image
+                  src="/polymarket-logomark.png"
+                  alt="Polymarket"
+                  width={24}
+                  height={24}
+                  className="mr-1.5 h-4 w-4"
+                />
+                View on Polymarket
+              </a>
+            )}
           </div>
-          {polymarketUrl && (
-            <a
-              href={polymarketUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mb-4 inline-flex h-9 items-center rounded-full border border-brand-white/20 bg-card px-3.5 text-sm font-medium leading-none text-brand-white hover:opacity-70 transition-opacity"
-            >
-              <Image
-                src="/polymarket-logomark.png"
-                alt="Polymarket"
-                width={24}
-                height={24}
-                className="mr-1.5 h-4 w-4"
-              />
-              View on Polymarket
-            </a>
-          )}
           {data.description ? (
             <div className="text-sm leading-relaxed break-words [&_a]:break-all text-brand-white/90">
               <SafeMarkdown
@@ -781,24 +781,24 @@ export default function QuestionPageContent({
               size="normal"
               appearance="brandWhite"
             />
+            {polymarketUrl && (
+              <a
+                href={polymarketUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-9 items-center rounded-full border border-brand-white/20 bg-card px-3.5 text-sm font-medium leading-none text-brand-white hover:opacity-70 transition-opacity"
+              >
+                <Image
+                  src="/polymarket-logomark.png"
+                  alt="Polymarket"
+                  width={24}
+                  height={24}
+                  className="mr-1.5 h-4 w-4"
+                />
+                View on Polymarket
+              </a>
+            )}
           </div>
-          {polymarketUrl && (
-            <a
-              href={polymarketUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mb-4 inline-flex h-9 items-center rounded-full border border-brand-white/20 bg-card px-3.5 text-sm font-medium leading-none text-brand-white hover:opacity-70 transition-opacity"
-            >
-              <Image
-                src="/polymarket-logomark.png"
-                alt="Polymarket"
-                width={24}
-                height={24}
-                className="mr-1.5 h-4 w-4"
-              />
-              View on Polymarket
-            </a>
-          )}
           {data.description ? (
             <div className="text-sm leading-relaxed break-words [&_a]:break-all text-brand-white/90">
               <SafeMarkdown
