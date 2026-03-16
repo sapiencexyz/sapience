@@ -123,6 +123,16 @@ const startServer = async () => {
       });
     }
 
+    // Close signal WebSocket connections
+    for (const client of signalWss.clients) {
+      if (
+        client.readyState === client.OPEN ||
+        client.readyState === client.CONNECTING
+      ) {
+        client.close(1001, 'server_shutting_down');
+      }
+    }
+
     // Close all WebSocket connections
     if (auctionWss) {
       const clients = Array.from(auctionWss.clients);

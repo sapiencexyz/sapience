@@ -2,6 +2,7 @@
 
 import { ReconnectingWebSocketClient } from './ReconnectingWebSocket';
 import { getSharedMeshClient } from './MeshAuctionClient';
+import { isValidGossipPayload } from '@sapience/sdk/auction/gossipValidation';
 
 /** Message types that should be gossiped over the mesh for redundancy. */
 const MESH_TYPES = new Set([
@@ -96,6 +97,7 @@ class AuctionWsClient {
         (msg: unknown) => {
           const data = msg as Record<string, unknown>;
           if (!shouldMesh(data)) return;
+          if (!isValidGossipPayload(data.type as string, data)) return;
           if (!dedup(data)) return; // already seen from WS
           cb(msg);
         }

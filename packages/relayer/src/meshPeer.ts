@@ -1,4 +1,5 @@
 import type { SubscriptionManager } from './transport/types';
+import { isValidGossipPayload } from '@sapience/sdk/auction/gossipValidation';
 
 /** Minimal MeshClient shape for type safety without cross-package rootDir issues. */
 interface MeshClientLike {
@@ -32,6 +33,7 @@ export async function attachMeshGossip(
   const mesh = new Ctor({ signalUrl });
 
   mesh.onAny((type, payload) => {
+    if (!isValidGossipPayload(type, payload)) return;
     const topic = mapTypeToTopic(type, payload);
     if (topic) localSubs.broadcast(topic, { type, payload });
   });

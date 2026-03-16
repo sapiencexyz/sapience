@@ -12,6 +12,8 @@ let capturedEvents: {
 const mockBroadcastToPeers = vi.fn<(data: string) => number>().mockReturnValue(1);
 const mockConnect = vi.fn();
 const mockDisconnect = vi.fn();
+const mockGetConnectedPeerIds = vi.fn<() => string[]>().mockReturnValue([]);
+const mockAddDiscoveredPeers = vi.fn();
 
 vi.mock('../peer/PeerManager', () => ({
   PeerManager: vi.fn().mockImplementation((_config, events) => {
@@ -20,6 +22,8 @@ vi.mock('../peer/PeerManager', () => ({
       connect: mockConnect,
       disconnect: mockDisconnect,
       broadcastToPeers: mockBroadcastToPeers,
+      getConnectedPeerIds: mockGetConnectedPeerIds,
+      addDiscoveredPeers: mockAddDiscoveredPeers,
       get peerCount() {
         return 0;
       },
@@ -429,6 +433,95 @@ describe('MeshClient', () => {
       capturedEvents.onMessage('peer-1', JSON.stringify(env));
 
       expect(mockBroadcastToPeers).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('peer-sharing', () => {
+    it('does not deliver __peer-share messages to application handlers', () => {
+      client.connect();
+      const handler = vi.fn();
+      client.onAny(handler);
+
+      const env = makeEnvelope({
+        type: '__peer-share',
+        payload: { peers: ['peer-a', 'peer-b'] },
+      });
+      capturedEvents.onMessage('peer-1', JSON.stringify(env));
+
+      expect(handler).not.toHaveBeenCalled();
+    });
+
+    it('feeds discovered peers to PeerManager', () => {
+      client.connect();
+
+      const env = makeEnvelope({
+        type: '__peer-share',
+        payload: { peers: ['peer-a', 'peer-b'] },
+      });
+      capturedEvents.onMessage('peer-1', JSON.stringify(env));
+
+      expect(mockAddDiscoveredPeers).toHaveBeenCalledWith(['peer-a', 'peer-b']);
+    });
+
+    it('ignores __peer-share with invalid payload', () => {
+      client.connect();
+
+      const env = makeEnvelope({
+        type: '__peer-share',
+        payload: { peers: 'not-an-array' },
+      });
+      capturedEvents.onMessage('peer-1', JSON.stringify(env));
+
+      expect(mockAddDiscoveredPeers).not.toHaveBeenCalled();
+    });
+
+    it('shares peers on interval after connect', () => {
+      mockGetConnectedPeerIds.mockReturnValue(['peer-x', 'peer-y']);
+      client.connect();
+      mockBroadcastToPeers.mockClear();
+
+      // Advance to peer share interval (60s)
+      vi.advanceTimersByTime(60_000);
+
+      expect(mockBroadcastToPeers).toHaveBeenCalled();
+      const sent = JSON.parse(mockBroadcastToPeers.mock.calls[0][0]);
+      expect(sent.type).toBe('__peer-share');
+      expect(sent.payload).toEqual({ peers: ['peer-x', 'peer-y'] });
+    });
+
+    it('does not share peers when none are connected', () => {
+      mockGetConnectedPeerIds.mockReturnValue([]);
+      client.connect();
+      mockBroadcastToPeers.mockClear();
+
+      vi.advanceTimersByTime(60_000);
+
+      expect(mockBroadcastToPeers).not.toHaveBeenCalled();
+    });
+
+    it('shares peers when a new peer connects', () => {
+      mockGetConnectedPeerIds.mockReturnValue(['peer-new']);
+      client.connect();
+      mockBroadcastToPeers.mockClear();
+
+      capturedEvents.onPeerConnected('peer-new');
+
+      expect(mockBroadcastToPeers).toHaveBeenCalled();
+      const sent = JSON.parse(mockBroadcastToPeers.mock.calls[0][0]);
+      expect(sent.type).toBe('__peer-share');
+    });
+
+    it('rebroadcasts __peer-share to other peers', () => {
+      client.connect();
+
+      const env = makeEnvelope({
+        type: '__peer-share',
+        payload: { peers: ['peer-a'] },
+      });
+      capturedEvents.onMessage('peer-1', JSON.stringify(env));
+
+      // Should rebroadcast (gossip protocol), even though it's consumed internally
+      expect(mockBroadcastToPeers).toHaveBeenCalledOnce();
     });
   });
 });

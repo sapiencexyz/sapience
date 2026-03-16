@@ -3,6 +3,8 @@ import { PeerConnection } from './PeerConnection';
 export interface PeerManagerConfig {
   signalUrl: string;
   maxPeers?: number;
+  /** Max entries in the known-peers set. Default 500. */
+  maxKnownPeers?: number;
   rtcConfig?: RTCConfiguration;
 }
 
@@ -24,6 +26,7 @@ interface SignalMsg {
 }
 
 const DEFAULT_MAX_PEERS = 6;
+const DEFAULT_MAX_KNOWN_PEERS = 500;
 
 export class PeerManager {
   private peers = new Map<string, PeerConnection>();
@@ -32,6 +35,8 @@ export class PeerManager {
   private events: PeerManagerEvents;
   private myId: string | null = null;
   private knownPeers = new Set<string>();
+  /** Insertion-order list mirroring knownPeers for LRU eviction. */
+  private knownPeersOrder: string[] = [];
   private backoffMs = 400;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
   private closed = false;
@@ -40,6 +45,7 @@ export class PeerManager {
     this.config = {
       signalUrl: config.signalUrl,
       maxPeers: config.maxPeers ?? DEFAULT_MAX_PEERS,
+      maxKnownPeers: config.maxKnownPeers ?? DEFAULT_MAX_KNOWN_PEERS,
       rtcConfig: config.rtcConfig ?? {
         iceServers: [
           { urls: 'stun:stun.l.google.com:19302' },
@@ -65,12 +71,31 @@ export class PeerManager {
     for (const peer of this.peers.values()) {
       if (peer.send(data)) sent++;
     }
-    // Fallback: also relay through signal server for peers without direct P2P
-    if (this.signal && this.signal.readyState === WebSocket.OPEN) {
-      this.signal.send(JSON.stringify({ type: 'relay-broadcast', data }));
-      sent = Math.max(sent, this.knownPeers.size);
-    }
     return sent;
+  }
+
+  /** Returns IDs of peers with open data channels. */
+  getConnectedPeerIds(): string[] {
+    return [...this.peers.entries()]
+      .filter(([, peer]) => peer.isOpen)
+      .map(([id]) => id);
+  }
+
+  /** Inject peer IDs discovered via gossip and attempt connections. */
+  addDiscoveredPeers(peerIds: string[]): void {
+    let added = false;
+    for (const id of peerIds) {
+      if (id === this.myId) continue;
+      if (this.knownPeers.has(id)) continue;
+      this.trackKnownPeer(id);
+      added = true;
+      if (this.peers.size < this.config.maxPeers) {
+        this.initiateConnection(id);
+      }
+    }
+    if (added) {
+      this.events.onPeerCountChanged(this.peerCount);
+    }
   }
 
   disconnect(): void {
@@ -84,8 +109,27 @@ export class PeerManager {
     }
     this.peers.clear();
     this.knownPeers.clear();
+    this.knownPeersOrder = [];
     this.signal?.close();
     this.signal = null;
+  }
+
+  /** Track a known peer with LRU eviction when the cap is reached. */
+  private trackKnownPeer(id: string): boolean {
+    if (this.knownPeers.has(id)) return false;
+    // Evict oldest entries if at capacity
+    while (this.knownPeers.size >= this.config.maxKnownPeers && this.knownPeersOrder.length > 0) {
+      const oldest = this.knownPeersOrder.shift()!;
+      // Don't evict peers with active connections
+      if (this.peers.has(oldest)) {
+        this.knownPeersOrder.push(oldest);
+        continue;
+      }
+      this.knownPeers.delete(oldest);
+    }
+    this.trackKnownPeer(id);
+    this.knownPeersOrder.push(id);
+    return true;
   }
 
   private connectSignal(): void {
@@ -137,7 +181,7 @@ export class PeerManager {
         if (msg.yourId) this.myId = msg.yourId;
         for (const id of msg.peers ?? []) {
           if (id === this.myId) continue;
-          this.knownPeers.add(id);
+          this.trackKnownPeer(id);
           if (this.peers.size < this.config.maxPeers) {
             this.initiateConnection(id);
           }
@@ -149,7 +193,7 @@ export class PeerManager {
       }
       case 'peer-joined': {
         if (msg.peerId && msg.peerId !== this.myId) {
-          this.knownPeers.add(msg.peerId);
+          this.trackKnownPeer(msg.peerId);
           this.events.onPeerCountChanged(this.peerCount);
           if (this.peers.size < this.config.maxPeers) {
             this.initiateConnection(msg.peerId);
@@ -160,6 +204,8 @@ export class PeerManager {
       case 'peer-left': {
         if (msg.peerId) {
           this.knownPeers.delete(msg.peerId);
+          const idx = this.knownPeersOrder.indexOf(msg.peerId);
+          if (idx !== -1) this.knownPeersOrder.splice(idx, 1);
           this.events.onPeerCountChanged(this.peerCount);
           this.removePeer(msg.peerId);
         }
@@ -192,13 +238,6 @@ export class PeerManager {
                 /* ignore late ICE */
               });
           }
-        }
-        break;
-      }
-      case 'relay-broadcast': {
-        // Received gossip data relayed through the signal server
-        if (msg.from && msg.data) {
-          this.events.onMessage(msg.from, msg.data as string);
         }
         break;
       }

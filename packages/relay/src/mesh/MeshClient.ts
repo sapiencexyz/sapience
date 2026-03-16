@@ -26,6 +26,9 @@ interface GossipEnvelope {
 
 const PRUNE_INTERVAL_MS = 30_000;
 const BW_WINDOW_MS = 5_000;
+/** Internal message type for sharing peer lists over data channels. */
+const PEER_SHARE_TYPE = '__peer-share';
+const PEER_SHARE_INTERVAL_MS = 60_000;
 
 function makeId(): string {
   return typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -49,6 +52,7 @@ export class MeshClient {
   private maxHops: number;
   private rateLimitPerSec: number;
   private pruneTimer: ReturnType<typeof setInterval> | null = null;
+  private peerShareTimer: ReturnType<typeof setInterval> | null = null;
 
   // Bandwidth tracking
   private byteLog: [number, number][] = [];
@@ -64,7 +68,9 @@ export class MeshClient {
     this.peerManager = new PeerManager(
       { signalUrl: config.signalUrl, maxPeers: config.maxPeers },
       {
-        onPeerConnected: () => {},
+        onPeerConnected: () => {
+          this.sharePeers();
+        },
         onPeerDisconnected: () => {},
         onMessage: (peerId, data) => {
           this.recordBytes(data.length);
@@ -83,12 +89,14 @@ export class MeshClient {
     this.peerManager.connect();
     this.pruneTimer = setInterval(() => this.prune(), PRUNE_INTERVAL_MS);
     this.bwTimer = setInterval(() => this.emitBandwidth(), 1_000);
+    this.peerShareTimer = setInterval(() => this.sharePeers(), PEER_SHARE_INTERVAL_MS);
   }
 
   disconnect(): void {
     this.peerManager.disconnect();
     if (this.pruneTimer) { clearInterval(this.pruneTimer); this.pruneTimer = null; }
     if (this.bwTimer) { clearInterval(this.bwTimer); this.bwTimer = null; }
+    if (this.peerShareTimer) { clearInterval(this.peerShareTimer); this.peerShareTimer = null; }
   }
 
   /** Broadcast a message to the mesh. Returns the gossip message ID. */
@@ -161,6 +169,15 @@ export class MeshClient {
     // Re-broadcast
     this.peerManager.broadcastToPeers(JSON.stringify(msg));
 
+    // Handle peer-sharing internally — do not deliver to app handlers
+    if (msg.type === PEER_SHARE_TYPE) {
+      const payload = msg.payload as { peers?: string[] };
+      if (payload.peers && Array.isArray(payload.peers)) {
+        this.peerManager.addDiscoveredPeers(payload.peers);
+      }
+      return;
+    }
+
     // Deliver to local handlers
     const typeHandlers = this.handlers.get(msg.type);
     if (typeHandlers) {
@@ -184,6 +201,14 @@ export class MeshClient {
       while (ts.length > 0 && now - ts[0] > 1_000) ts.shift();
       if (ts.length === 0) this.peerMsgTimestamps.delete(pid);
     }
+  }
+
+  // --- Private: peer sharing ---
+
+  private sharePeers(): void {
+    const connectedPeers = this.peerManager.getConnectedPeerIds();
+    if (connectedPeers.length === 0) return;
+    this.broadcast(PEER_SHARE_TYPE, { peers: connectedPeers });
   }
 
   // --- Private: bandwidth ---

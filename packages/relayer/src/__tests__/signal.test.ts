@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach, afterEach } from 'vitest';
 import { WebSocket } from 'ws';
 import http from 'http';
 import { createSignalWebSocketServer } from '../signal';
+import type { SignalServerConfig } from '../signal';
 
 function waitForMessage(ws: WebSocket): Promise<Record<string, unknown>> {
   return new Promise((resolve) => {
@@ -21,6 +22,27 @@ function waitForOpen(ws: WebSocket): Promise<void> {
   });
 }
 
+function waitForClose(ws: WebSocket): Promise<void> {
+  return new Promise((resolve) => {
+    if (ws.readyState === WebSocket.CLOSED) {
+      resolve();
+    } else {
+      ws.once('close', () => resolve());
+    }
+  });
+}
+
+function setupServer(config?: SignalServerConfig) {
+  const wss = createSignalWebSocketServer(config);
+  const server = http.createServer();
+  server.on('upgrade', (req, socket, head) => {
+    wss.handleUpgrade(req, socket, head, (ws) => {
+      wss.emit('connection', ws, req);
+    });
+  });
+  return server;
+}
+
 describe('createSignalWebSocketServer', () => {
   let server: http.Server;
   let port: number;
@@ -28,14 +50,7 @@ describe('createSignalWebSocketServer', () => {
 
   beforeEach(async () => {
     clients = [];
-    const wss = createSignalWebSocketServer();
-
-    server = http.createServer();
-    server.on('upgrade', (req, socket, head) => {
-      wss.handleUpgrade(req, socket, head, (ws) => {
-        wss.emit('connection', ws, req);
-      });
-    });
+    server = setupServer();
 
     await new Promise<void>((resolve) => {
       server.listen(0, () => resolve());
@@ -128,7 +143,7 @@ describe('createSignalWebSocketServer', () => {
     expect(offerMsg.data).toEqual({ sdp: 'mock-sdp', type: 'offer' });
   });
 
-  it('broadcasts relay-broadcast to all other peers', async () => {
+  it('rejects relay-broadcast messages', async () => {
     const ws1 = connect();
     await waitForMessage(ws1);
 
@@ -136,15 +151,7 @@ describe('createSignalWebSocketServer', () => {
     await waitForMessage(ws2);
     await waitForMessage(ws1); // peer-joined
 
-    const ws3 = connect();
-    await waitForMessage(ws3);
-    await waitForMessage(ws1); // peer-joined for ws3
-    await waitForMessage(ws2); // peer-joined for ws3
-
-    // ws1 sends relay-broadcast
-    const relay2 = waitForMessage(ws2);
-    const relay3 = waitForMessage(ws3);
-
+    // ws1 sends relay-broadcast — should be silently dropped
     ws1.send(
       JSON.stringify({
         type: 'relay-broadcast',
@@ -152,17 +159,38 @@ describe('createSignalWebSocketServer', () => {
       })
     );
 
-    const msg2 = await relay2;
-    const msg3 = await relay3;
-
-    expect(msg2.type).toBe('relay-broadcast');
-    expect(msg2.data).toBe('{"id":"test","type":"auction.bids"}');
-
-    expect(msg3.type).toBe('relay-broadcast');
-    expect(msg3.data).toBe('{"id":"test","type":"auction.bids"}');
+    const received = await Promise.race([
+      waitForMessage(ws2).then(() => true),
+      new Promise<boolean>((r) => setTimeout(() => r(false), 200)),
+    ]);
+    expect(received).toBe(false);
   });
 
-  it('does not route messages without a target (non-relay)', async () => {
+  it('rejects unknown message types', async () => {
+    const ws1 = connect();
+    await waitForMessage(ws1);
+
+    const ws2 = connect();
+    const ws2Init = await waitForMessage(ws2);
+    await waitForMessage(ws1); // peer-joined
+
+    // Send a custom type with valid target — should be dropped
+    ws1.send(
+      JSON.stringify({
+        type: 'custom-foo',
+        target: ws2Init.yourId,
+        data: { evil: true },
+      })
+    );
+
+    const received = await Promise.race([
+      waitForMessage(ws2).then(() => true),
+      new Promise<boolean>((r) => setTimeout(() => r(false), 200)),
+    ]);
+    expect(received).toBe(false);
+  });
+
+  it('does not route messages without a target', async () => {
     const ws1 = connect();
     await waitForMessage(ws1);
 
@@ -173,7 +201,6 @@ describe('createSignalWebSocketServer', () => {
     // Send a message with no target — should be silently dropped
     ws1.send(JSON.stringify({ type: 'offer', data: { sdp: 'mock' } }));
 
-    // Give it a moment — ws2 should not receive anything
     const received = await Promise.race([
       waitForMessage(ws2).then(() => true),
       new Promise<boolean>((r) => setTimeout(() => r(false), 200)),
@@ -205,5 +232,119 @@ describe('createSignalWebSocketServer', () => {
     const ws2 = connect();
     const msg = await waitForMessage(ws2);
     expect(msg.type).toBe('peers');
+  });
+});
+
+describe('signal server hardening', () => {
+  let server: http.Server;
+  let port: number;
+  let clients: WebSocket[];
+
+  afterEach(async () => {
+    for (const ws of clients) {
+      if (
+        ws.readyState === WebSocket.OPEN ||
+        ws.readyState === WebSocket.CONNECTING
+      ) {
+        ws.close();
+      }
+    }
+    await new Promise<void>((resolve) => {
+      server.close(() => resolve());
+    });
+  });
+
+  function connect(): WebSocket {
+    const ws = new WebSocket(`ws://127.0.0.1:${port}`);
+    clients.push(ws);
+    return ws;
+  }
+
+  async function startServer(config?: SignalServerConfig) {
+    clients = [];
+    server = setupServer(config);
+    await new Promise<void>((resolve) => {
+      server.listen(0, () => resolve());
+    });
+    const addr = server.address() as { port: number };
+    port = addr.port;
+  }
+
+  it('rejects connections over max limit', async () => {
+    await startServer({ maxConnections: 2 });
+
+    const ws1 = connect();
+    await waitForMessage(ws1); // peers
+
+    const ws2 = connect();
+    await waitForMessage(ws2); // peers
+
+    // 3rd connection should be closed by server
+    const ws3 = connect();
+    await waitForClose(ws3);
+
+    expect(ws1.readyState).toBe(WebSocket.OPEN);
+    expect(ws2.readyState).toBe(WebSocket.OPEN);
+    expect(ws3.readyState).toBe(WebSocket.CLOSED);
+  });
+
+  it('rejects oversized messages', async () => {
+    await startServer({ maxMessageSize: 100 });
+
+    const ws1 = connect();
+    await waitForMessage(ws1);
+
+    const ws2 = connect();
+    const ws2Init = await waitForMessage(ws2);
+    await waitForMessage(ws1); // peer-joined
+
+    // Send an offer that exceeds the size limit
+    const bigData = 'x'.repeat(200);
+    ws1.send(
+      JSON.stringify({
+        type: 'offer',
+        target: ws2Init.yourId,
+        data: { sdp: bigData },
+      })
+    );
+
+    const received = await Promise.race([
+      waitForMessage(ws2).then(() => true),
+      new Promise<boolean>((r) => setTimeout(() => r(false), 200)),
+    ]);
+    expect(received).toBe(false);
+  });
+
+  it('rate limits per-peer messages', async () => {
+    await startServer({ rateLimitPerSec: 2 });
+
+    const ws1 = connect();
+    await waitForMessage(ws1);
+
+    const ws2 = connect();
+    const ws2Init = await waitForMessage(ws2);
+    await waitForMessage(ws1); // peer-joined
+    await waitForOpen(ws1);
+
+    const received: Record<string, unknown>[] = [];
+    ws2.on('message', (raw) => {
+      const msg = JSON.parse(String(raw));
+      if (msg.type === 'offer') received.push(msg);
+    });
+
+    // Send 3 rapid offers — only 2 should arrive
+    for (let i = 0; i < 3; i++) {
+      ws1.send(
+        JSON.stringify({
+          type: 'offer',
+          target: ws2Init.yourId,
+          data: { sdp: `offer-${i}` },
+        })
+      );
+    }
+
+    // Wait for all messages to settle
+    await new Promise((r) => setTimeout(r, 200));
+    expect(received.length).toBe(2);
   });
 });
