@@ -31,7 +31,7 @@ function randomSubset<T>(arr: T[], n: number): T[] {
 function extractIp(req?: IncomingMessage): string {
   if (!req) return 'unknown';
   return (
-    (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+    (req.headers['x-forwarded-for'] as string)?.split(',').pop()?.trim() ||
     req.socket?.remoteAddress ||
     'unknown'
   );

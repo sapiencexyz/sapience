@@ -494,7 +494,7 @@ describe('MeshClient', () => {
 
       const env = makeEnvelope({
         type: '__peer-share',
-        payload: { peers: ['peer-a', 'peer-b'] },
+        payload: { peers: ['peer-aaa', 'peer-bbb'] },
       });
       capturedEvents.onMessage('peer-1', JSON.stringify(env));
 
@@ -506,11 +506,14 @@ describe('MeshClient', () => {
 
       const env = makeEnvelope({
         type: '__peer-share',
-        payload: { peers: ['peer-a', 'peer-b'] },
+        payload: { peers: ['peer-aaa', 'peer-bbb'] },
       });
       capturedEvents.onMessage('peer-1', JSON.stringify(env));
 
-      expect(mockAddDiscoveredPeers).toHaveBeenCalledWith(['peer-a', 'peer-b']);
+      expect(mockAddDiscoveredPeers).toHaveBeenCalledWith([
+        'peer-aaa',
+        'peer-bbb',
+      ]);
     });
 
     it('ignores __peer-share with invalid payload', () => {
@@ -561,12 +564,66 @@ describe('MeshClient', () => {
       expect(sent.type).toBe('__peer-share');
     });
 
+    it('filters out peer IDs that fail format validation', () => {
+      client.connect();
+
+      const env = makeEnvelope({
+        type: '__peer-share',
+        payload: {
+          peers: [
+            'valid-peer-id-1', // valid
+            'ab', // too short (< 8 chars)
+            '../../../etc/passwd', // contains slashes
+            'valid-peer-id-2', // valid
+            '', // empty
+            123, // not a string
+            'a'.repeat(100), // too long (> 64 chars)
+          ],
+        },
+      });
+      capturedEvents.onMessage('peer-1', JSON.stringify(env));
+
+      expect(mockAddDiscoveredPeers).toHaveBeenCalledWith([
+        'valid-peer-id-1',
+        'valid-peer-id-2',
+      ]);
+    });
+
+    it('caps peer IDs per share message at 20', () => {
+      client.connect();
+
+      const manyPeers = Array.from(
+        { length: 50 },
+        (_, i) => `peer-id-${String(i).padStart(4, '0')}`
+      );
+      const env = makeEnvelope({
+        type: '__peer-share',
+        payload: { peers: manyPeers },
+      });
+      capturedEvents.onMessage('peer-1', JSON.stringify(env));
+
+      expect(mockAddDiscoveredPeers).toHaveBeenCalledOnce();
+      expect(mockAddDiscoveredPeers.mock.calls[0][0]).toHaveLength(20);
+    });
+
+    it('drops __peer-share where all IDs are invalid', () => {
+      client.connect();
+
+      const env = makeEnvelope({
+        type: '__peer-share',
+        payload: { peers: ['ab', '', null, 123] },
+      });
+      capturedEvents.onMessage('peer-1', JSON.stringify(env));
+
+      expect(mockAddDiscoveredPeers).not.toHaveBeenCalled();
+    });
+
     it('rebroadcasts __peer-share to other peers', () => {
       client.connect();
 
       const env = makeEnvelope({
         type: '__peer-share',
-        payload: { peers: ['peer-a'] },
+        payload: { peers: ['peer-aaa'] },
       });
       capturedEvents.onMessage('peer-1', JSON.stringify(env));
 

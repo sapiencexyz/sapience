@@ -410,6 +410,29 @@ describe('signal server hardening', () => {
     expect(ws3.readyState).toBe(WebSocket.CLOSED);
   });
 
+  it('uses rightmost X-Forwarded-For IP (ignores client-spoofed prefix)', async () => {
+    await startServer({ maxConnectionsPerIp: 1 });
+
+    // Connect with a spoofed X-Forwarded-For — the proxy appends the real IP
+    // so the header looks like "spoofed, real-ip". Server should use "real-ip".
+    const ws1 = new WebSocket(`ws://127.0.0.1:${port}`, {
+      headers: { 'x-forwarded-for': '1.2.3.4, 10.0.0.1' },
+    });
+    clients.push(ws1);
+    await waitForMessage(ws1);
+
+    // Second connection from "different spoofed IP" but same real IP (10.0.0.1)
+    const ws2 = new WebSocket(`ws://127.0.0.1:${port}`, {
+      headers: { 'x-forwarded-for': '5.6.7.8, 10.0.0.1' },
+    });
+    clients.push(ws2);
+
+    // Should be rejected — same real IP (10.0.0.1), limit is 1
+    await waitForClose(ws2);
+    expect(ws1.readyState).toBe(WebSocket.OPEN);
+    expect(ws2.readyState).toBe(WebSocket.CLOSED);
+  });
+
   it('closes idle connections after timeout', async () => {
     await startServer({ idleTimeoutMs: 200 });
 

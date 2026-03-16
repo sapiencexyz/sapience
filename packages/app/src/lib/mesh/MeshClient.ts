@@ -35,6 +35,10 @@ const BW_WINDOW_MS = 5_000;
 /** Internal message type for sharing peer lists over data channels. */
 const PEER_SHARE_TYPE = '__peer-share';
 const PEER_SHARE_INTERVAL_MS = 60_000;
+/** Max peer IDs accepted per __peer-share message. */
+const MAX_PEER_SHARE_IDS = 20;
+/** Peer IDs must look like UUIDs or hex strings (8–64 chars, alphanumeric + hyphens). */
+const PEER_ID_RE = /^[a-zA-Z0-9-]{8,64}$/;
 
 function makeId(): string {
   return typeof crypto !== 'undefined' && 'randomUUID' in crypto
@@ -257,9 +261,16 @@ export class MeshClient {
 
     // Handle peer-sharing internally — do not deliver to app handlers
     if (msg.type === PEER_SHARE_TYPE) {
-      const payload = msg.payload as { peers?: string[] };
+      const payload = msg.payload as { peers?: unknown[] };
       if (payload.peers && Array.isArray(payload.peers)) {
-        this.peerManager.addDiscoveredPeers(payload.peers);
+        const valid = payload.peers
+          .filter(
+            (id): id is string => typeof id === 'string' && PEER_ID_RE.test(id)
+          )
+          .slice(0, MAX_PEER_SHARE_IDS);
+        if (valid.length > 0) {
+          this.peerManager.addDiscoveredPeers(valid);
+        }
       }
       return;
     }

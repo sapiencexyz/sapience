@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { getRpcUrl, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 
 const PING_INTERVAL_MS = 5_000;
 
 export function useRpcPing() {
   const [pingMs, setPingMs] = useState<number | null>(null);
-  const rpcUrl = getRpcUrl(DEFAULT_CHAIN_ID);
+  const rpcUrl = useMemo(() => getRpcUrl(DEFAULT_CHAIN_ID), []);
   const intervalRef = useRef<ReturnType<typeof setInterval> | undefined>(
     undefined
   );

@@ -21,6 +21,16 @@ function isNonEmptyString(v: unknown): v is string {
   return typeof v === 'string' && v.length > 0;
 }
 
+/** Max length for numeric string fields (collateral, etc.) to prevent BigInt parse DoS. */
+const MAX_NUMERIC_STRING_LEN = 78; // uint256 max is 78 decimal digits
+
+function isBoundedNumericString(v: unknown): v is string {
+  return isNonEmptyString(v) && v.length <= MAX_NUMERIC_STRING_LEN;
+}
+
+/** Max conditionId hex length. bytes32 = 66 chars (0x + 64); allow up to 322 for Pyth encoding. */
+const MAX_CONDITION_ID_LEN = 322;
+
 function isFiniteNumber(v: unknown): v is number {
   return typeof v === 'number' && Number.isFinite(v);
 }
@@ -33,6 +43,7 @@ function isPickJson(p: unknown): boolean {
     typeof pick.conditionId === 'string' &&
     /^0x[a-fA-F0-9]+$/.test(pick.conditionId) &&
     pick.conditionId.length >= 66 &&
+    pick.conditionId.length <= MAX_CONDITION_ID_LEN &&
     (pick.predictedOutcome === 0 || pick.predictedOutcome === 1)
   );
 }
@@ -60,7 +71,7 @@ export function isValidGossipPayload(type: string, payload: unknown): boolean {
       return (
         hasValidPicks(p) &&
         isAddress(p.predictor) &&
-        isNonEmptyString(p.predictorCollateral) &&
+        isBoundedNumericString(p.predictorCollateral) &&
         isFiniteNumber(p.chainId) &&
         p.chainId > 0
       );
@@ -70,7 +81,7 @@ export function isValidGossipPayload(type: string, payload: unknown): boolean {
         isNonEmptyString(p.auctionId) &&
         hasValidPicks(p) &&
         isAddress(p.predictor) &&
-        isNonEmptyString(p.predictorCollateral) &&
+        isBoundedNumericString(p.predictorCollateral) &&
         isFiniteNumber(p.chainId) &&
         p.chainId > 0
       );
@@ -85,7 +96,7 @@ export function isValidGossipPayload(type: string, payload: unknown): boolean {
           return (
             isNonEmptyString(bid.auctionId) &&
             isAddress(bid.counterparty) &&
-            isNonEmptyString(bid.counterpartyCollateral)
+            isBoundedNumericString(bid.counterpartyCollateral)
           );
         })
       );
@@ -94,7 +105,7 @@ export function isValidGossipPayload(type: string, payload: unknown): boolean {
       return (
         isNonEmptyString(p.auctionId) &&
         isAddress(p.counterparty) &&
-        isNonEmptyString(p.counterpartyCollateral)
+        isBoundedNumericString(p.counterpartyCollateral)
       );
 
     case 'bid.ack':

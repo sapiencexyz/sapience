@@ -273,6 +273,91 @@ describe('isValidGossipPayload', () => {
     });
   });
 
+  describe('length bounds', () => {
+    const validPick = {
+      conditionResolver: '0x1234567890abcdef1234567890abcdef12345678',
+      conditionId: '0x' + 'ab'.repeat(32),
+      predictedOutcome: 0,
+    };
+
+    it('rejects conditionId exceeding max length (322 chars)', () => {
+      const oversizedPick = {
+        ...validPick,
+        conditionId: '0x' + 'ab'.repeat(200), // 402 chars, over 322 limit
+      };
+      expect(
+        isValidGossipPayload('auction.start', {
+          picks: [oversizedPick],
+          predictor: '0x1234567890abcdef1234567890abcdef12345678',
+          predictorCollateral: '1000000',
+          chainId: 1,
+        })
+      ).toBe(false);
+    });
+
+    it('accepts conditionId at max length (322 chars)', () => {
+      const maxPick = {
+        ...validPick,
+        conditionId: '0x' + 'ab'.repeat(160), // 322 chars, exactly at limit
+      };
+      expect(
+        isValidGossipPayload('auction.start', {
+          picks: [maxPick],
+          predictor: '0x1234567890abcdef1234567890abcdef12345678',
+          predictorCollateral: '1000000',
+          chainId: 1,
+        })
+      ).toBe(true);
+    });
+
+    it('rejects predictorCollateral exceeding max length', () => {
+      expect(
+        isValidGossipPayload('auction.start', {
+          picks: [validPick],
+          predictor: '0x1234567890abcdef1234567890abcdef12345678',
+          predictorCollateral: '9'.repeat(100), // 100 digits, over 78 limit
+          chainId: 1,
+        })
+      ).toBe(false);
+    });
+
+    it('accepts predictorCollateral at max length (78 digits)', () => {
+      expect(
+        isValidGossipPayload('auction.start', {
+          picks: [validPick],
+          predictor: '0x1234567890abcdef1234567890abcdef12345678',
+          predictorCollateral: '9'.repeat(78),
+          chainId: 1,
+        })
+      ).toBe(true);
+    });
+
+    it('rejects counterpartyCollateral exceeding max length in bid.submit', () => {
+      expect(
+        isValidGossipPayload('bid.submit', {
+          auctionId: 'auction-123',
+          counterparty: '0x1234567890abcdef1234567890abcdef12345678',
+          counterpartyCollateral: '9'.repeat(100),
+        })
+      ).toBe(false);
+    });
+
+    it('rejects counterpartyCollateral exceeding max length in auction.bids', () => {
+      expect(
+        isValidGossipPayload('auction.bids', {
+          auctionId: 'auction-123',
+          bids: [
+            {
+              auctionId: 'auction-123',
+              counterparty: '0x1234567890abcdef1234567890abcdef12345678',
+              counterpartyCollateral: '9'.repeat(100),
+            },
+          ],
+        })
+      ).toBe(false);
+    });
+  });
+
   describe('edge cases', () => {
     it('rejects null payload', () => {
       expect(isValidGossipPayload('auction.bids', null)).toBe(false);
