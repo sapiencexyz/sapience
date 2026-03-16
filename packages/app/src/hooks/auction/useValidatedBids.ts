@@ -12,7 +12,7 @@ import { getPublicClientForChainId } from '~/lib/utils/util';
 
 export type ValidationStatus = 'pending' | 'valid' | 'invalid';
 
-export interface UseValidatedEscrowBidsOptions {
+export interface UseValidatedBidsOptions {
   chainId: number;
   predictionMarketAddress?: Address;
   collateralTokenAddress?: Address;
@@ -25,7 +25,7 @@ export interface UseValidatedEscrowBidsOptions {
   enabled?: boolean;
 }
 
-export interface UseValidatedEscrowBidsResult {
+export interface UseValidatedBidsResult {
   validatedBids: QuoteBid[];
   validBids: QuoteBid[];
   invalidBidCount: number;
@@ -35,19 +35,21 @@ export interface UseValidatedEscrowBidsResult {
 const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
 /**
- * Hook that wraps raw QuoteBid[] with escrow bid validation.
+ * Hook that wraps raw QuoteBid[] with on-chain bid validation.
  *
  * Uses unified Tier 2 validation via `validateBidOnChain` from the SDK,
  * which calls `verifyMintPartySignature()` on-chain for definitive signature
  * verification plus nonce/balance/allowance checks. No session/EOA
  * bifurcation — all signature types are handled by the contract view.
  *
- * Deduplication pattern follows useValidatedAuctionBids.ts.
+ * Fail-closed: RPC errors and unexpected exceptions mark bids as invalid
+ * rather than allowing unverified bids through. This prevents unfunded
+ * bid griefing where a spoofed high bid could displace legitimate bids.
  */
-export function useValidatedEscrowBids(
+export function useValidatedBids(
   rawBids: QuoteBid[],
-  options: UseValidatedEscrowBidsOptions
-): UseValidatedEscrowBidsResult {
+  options: UseValidatedBidsOptions
+): UseValidatedBidsResult {
   const {
     chainId,
     predictionMarketAddress,
@@ -67,7 +69,7 @@ export function useValidatedEscrowBids(
   >(new Map());
   const [isValidating, setIsValidating] = useState(false);
 
-  // Deduplication refs (same pattern as useValidatedAuctionBids)
+  // Deduplication refs
   const validatingRef = useRef<Set<string>>(new Set());
   const validatedSignaturesRef = useRef<Set<string>>(new Set());
 
@@ -192,6 +194,7 @@ export function useValidatedEscrowBids(
                   predictionMarketAddress: predictionMarketAddress!,
                   collateralTokenAddress: collateralTokenAddress!,
                   publicClient,
+                  failOpen: false,
                 }
               );
 
@@ -213,13 +216,17 @@ export function useValidatedEscrowBids(
                 },
               ];
             } catch (err) {
-              // Unexpected error — treat as valid (fail-open)
+              // Fail-closed: treat unexpected errors as invalid to prevent
+              // unfunded bid griefing (spoofed high bids displacing real ones).
               const errorMsg =
                 err instanceof Error ? err.message.slice(0, 100) : 'Unknown';
               logBidValidation(
-                `[escrow-validate] Unexpected error for ${bid.counterpartySignature.slice(0, 10)}: ${errorMsg}`
+                `[validate] Unexpected error for ${bid.counterpartySignature.slice(0, 10)}: ${errorMsg}`
               );
-              return [bid.counterpartySignature, { isValid: true }];
+              return [
+                bid.counterpartySignature,
+                { isValid: false, error: errorMsg },
+              ];
             }
           }
         )

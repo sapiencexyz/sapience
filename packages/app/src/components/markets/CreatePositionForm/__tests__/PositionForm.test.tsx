@@ -655,7 +655,7 @@ describe('PositionForm', () => {
       );
     });
 
-    it('hides hint when stickyEstimateBid arrives', async () => {
+    it('keeps hint visible when stickyEstimateBid arrives for single pick', async () => {
       const estimateBid = {
         counterparty: '0xMaker',
         counterpartyCollateral: '5000000000000000000',
@@ -699,9 +699,9 @@ describe('PositionForm', () => {
         vi.advanceTimersByTime(100);
       });
 
-      // After the fix, hint should hide when stickyEstimateBid is present
+      // For single picks, prefer "add more predictions" over showing estimate
       expect(getByTestId('bid-display').dataset.showAddPredictionsHint).toBe(
-        'false'
+        'true'
       );
     });
   });
