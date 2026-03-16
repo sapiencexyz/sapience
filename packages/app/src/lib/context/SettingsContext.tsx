@@ -26,6 +26,8 @@ type SettingsContextValue = {
   adminBaseUrl: string | null;
   etherealRpcURL: string | null;
   arbitrumRpcURL: string | null;
+  /** Signal server endpoint (http(s) — converted to ws(s) at connection time). */
+  signalEndpoint: string | null;
   // Research Agent settings
   openrouterApiKey: string | null;
   researchAgentSystemMessage: string | null;
@@ -43,6 +45,7 @@ type SettingsContextValue = {
   setAdminBaseUrl: (value: string | null) => void;
   setEtherealRpcUrl: (value: string | null) => void;
   setArbitrumRpcUrl: (value: string | null) => void;
+  setSignalEndpoint: (value: string | null) => void;
   setOpenrouterApiKey: (value: string | null) => void;
   setResearchAgentSystemMessage: (value: string | null) => void;
   setResearchAgentModel: (value: string | null) => void;
@@ -59,6 +62,7 @@ type SettingsContextValue = {
     adminBaseUrl: string;
     etherealRpcURL: string;
     arbitrumRpcURL: string;
+    signalEndpoint: string;
     researchAgentSystemMessage: string;
     researchAgentModel: string;
     researchAgentTemperature: number;
@@ -83,6 +87,7 @@ const STORAGE_KEYS = {
   researchAgentTemperature: 'sapience.settings.researchAgentTemperature',
   showAmericanOdds: 'sapience.settings.showAmericanOdds',
   connectionDurationHours: 'sapience.settings.connectionDurationHours',
+  signalEndpoint: 'sapience.settings.signalEndpoint',
   meshRateLimit: 'sapience.settings.meshRateLimit',
   meshMaxPeers: 'sapience.settings.meshMaxPeers',
   meshFanout: 'sapience.settings.meshFanout',
@@ -111,6 +116,17 @@ function normalizeBaseUrlPreservePath(value: string): string {
     return `${u.origin}${path}`;
   } catch {
     return trimmed.endsWith('/') ? trimmed.slice(0, -1) : trimmed;
+  }
+}
+
+function getDefaultSignalEndpoint(): string {
+  const relayerBase = getDefaultRelayerBase();
+  try {
+    const u = new URL(relayerBase);
+    u.pathname = '/signal';
+    return u.toString();
+  } catch {
+    return 'https://relayer.sapience.xyz/signal';
   }
 }
 
@@ -224,6 +240,9 @@ export const SettingsProvider = ({
   >(null);
   const [connectionDurationHoursOverride, setConnectionDurationHoursOverride] =
     useState<number | null>(null);
+  const [signalEndpointOverride, setSignalEndpointOverride] = useState<
+    string | null
+  >(null);
   const [meshRateLimitOverride, setMeshRateLimitOverride] = useState<
     number | null
   >(null);
@@ -292,6 +311,12 @@ export const SettingsProvider = ({
         setChatBaseOverride(normalizeBaseUrlPreservePath(c));
       if (admin && isHttpUrl(admin))
         setAdminBaseOverride(normalizeBaseUrlPreservePath(admin));
+      const sig =
+        typeof window !== 'undefined'
+          ? window.localStorage.getItem(STORAGE_KEYS.signalEndpoint)
+          : null;
+      if (sig && isHttpUrl(sig))
+        setSignalEndpointOverride(normalizeBaseUrlPreservePath(sig));
       if (etherealRpc && isHttpUrl(etherealRpc))
         setEtherealRpcOverride(etherealRpc);
       if (arbitrumRpc && isHttpUrl(arbitrumRpc))
@@ -351,6 +376,7 @@ export const SettingsProvider = ({
     () => ({
       graphqlEndpoint: getDefaultGraphqlEndpoint(),
       apiBaseUrl: getDefaultRelayerBase(),
+      signalEndpoint: getDefaultSignalEndpoint(),
       chatBaseUrl: getDefaultChatBase(),
       adminBaseUrl: getDefaultAdminBase(),
       etherealRpcURL: getDefaultEtherealRpcURL(),
@@ -390,6 +416,9 @@ export const SettingsProvider = ({
     ? graphqlOverride || defaults.graphqlEndpoint
     : null;
   const apiBaseUrl = mounted ? apiBaseOverride || defaults.apiBaseUrl : null;
+  const signalEndpoint = mounted
+    ? signalEndpointOverride || defaults.signalEndpoint
+    : null;
   const chatBaseUrl = mounted ? chatBaseOverride || defaults.chatBaseUrl : null;
   const adminBaseUrl = mounted
     ? adminBaseOverride || defaults.adminBaseUrl
@@ -455,6 +484,23 @@ export const SettingsProvider = ({
       if (!isHttpUrl(v)) return;
       window.localStorage.setItem(STORAGE_KEYS.api, v);
       setApiBaseOverride(v);
+    } catch {
+      /* noop */
+    }
+  }, []);
+
+  const setSignalEndpoint = useCallback((value: string | null) => {
+    try {
+      if (typeof window === 'undefined') return;
+      if (!value) {
+        window.localStorage.removeItem(STORAGE_KEYS.signalEndpoint);
+        setSignalEndpointOverride(null);
+        return;
+      }
+      const v = normalizeBaseUrlPreservePath(value);
+      if (!isHttpUrl(v)) return;
+      window.localStorage.setItem(STORAGE_KEYS.signalEndpoint, v);
+      setSignalEndpointOverride(v);
     } catch {
       /* noop */
     }
@@ -687,6 +733,7 @@ export const SettingsProvider = ({
   const value: SettingsContextValue = {
     graphqlEndpoint,
     apiBaseUrl,
+    signalEndpoint,
     chatBaseUrl,
     adminBaseUrl,
     etherealRpcURL,
@@ -702,6 +749,7 @@ export const SettingsProvider = ({
     meshFanout,
     setGraphqlEndpoint,
     setApiBaseUrl,
+    setSignalEndpoint,
     setChatBaseUrl,
     setAdminBaseUrl,
     setEtherealRpcUrl,

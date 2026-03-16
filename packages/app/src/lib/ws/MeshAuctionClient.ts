@@ -2,6 +2,7 @@
 
 import { MeshClient } from '@sapience/relay/mesh/MeshClient';
 import { MeshTransport } from '@sapience/relay/mesh/MeshTransport';
+import { getSignalUrl } from './signalUrl';
 
 const RL_KEY = 'sapience.settings.meshRateLimit';
 const MAX_PEERS_KEY = 'sapience.settings.meshMaxPeers';
@@ -9,48 +10,6 @@ const FANOUT_KEY = 'sapience.settings.meshFanout';
 const DEFAULT_RL = 30;
 const DEFAULT_MAX_PEERS = 6;
 const DEFAULT_FANOUT = 0;
-
-/**
- * Derive the signal WebSocket URL from the relayer base URL.
- * The relayer serves signaling at /signal on the same origin.
- * e.g. https://relayer.sapience.xyz/auction → wss://relayer.sapience.xyz/signal
- */
-function getSignalUrl(): string {
-  // Check explicit override first
-  const explicit = process.env.NEXT_PUBLIC_SIGNAL_URL;
-  if (explicit) return explicit;
-
-  // Derive from relayer base URL (stored in settings or env)
-  try {
-    const stored =
-      typeof window !== 'undefined'
-        ? window.localStorage.getItem('sapience.settings.apiBaseUrl')
-        : null;
-    const base =
-      stored ||
-      process.env.NEXT_PUBLIC_FOIL_RELAYER_URL ||
-      process.env.NEXT_PUBLIC_FOIL_API_URL ||
-      '';
-
-    if (base) {
-      const u = new URL(base);
-      u.protocol = u.protocol === 'https:' ? 'wss:' : 'ws:';
-      u.pathname = '/signal';
-      u.search = '';
-      return u.toString();
-    }
-
-    // Fallback: derive from current page origin
-    if (typeof window !== 'undefined') {
-      const proto = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      return `${proto}//${window.location.host}/signal`;
-    }
-  } catch {
-    /* */
-  }
-
-  return 'wss://relayer.sapience.xyz/signal';
-}
 
 function readRateLimit(): number {
   try {
