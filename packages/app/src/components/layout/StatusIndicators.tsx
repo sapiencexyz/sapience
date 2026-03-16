@@ -53,7 +53,7 @@ export function StatusIndicators() {
             {pingMs !== null ? `${pingMs}ms` : '—'}
           </span>
         </TooltipTrigger>
-        <TooltipContent side="top">Ethereal RPC Ping</TooltipContent>
+        <TooltipContent side="top">Ethereal Ping</TooltipContent>
       </Tooltip>
       <span className="hidden sm:inline text-muted-foreground/60 mx-1">·</span>
       <Tooltip>

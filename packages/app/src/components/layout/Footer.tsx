@@ -11,7 +11,7 @@ export { ETHENA_BASE_APY } from '~/components/layout/StatusIndicators';
 const Footer = () => {
   return (
     <footer className="mt-auto block w-full border-t border-border/20 sm:border-border/40 bg-background/60 backdrop-blur-sm relative z-[40] sm:fixed sm:bottom-0 sm:left-0">
-      <div className="mx-auto px-4 pt-3 pb-2 sm:py-2 flex flex-col items-center gap-2 text-center sm:flex-row sm:justify-between sm:text-left">
+      <div className="mx-auto px-4 sm:px-3 pt-3 pb-2 sm:py-2 flex flex-col items-center gap-2 text-center sm:flex-row sm:justify-between sm:text-left">
         <StatusIndicators />
 
         <div className="flex flex-col items-center gap-2 sm:flex-row sm:items-center sm:gap-3.5">
