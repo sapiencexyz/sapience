@@ -8,6 +8,7 @@ import {
 } from '@sapience/sdk/contracts';
 import { getProviderForChain } from '../utils/utils';
 import { DEFAULT_CHAIN_ID, CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import { reindexCollateralTransfers } from '../workers/jobs/reindexCollateralTransfers';
 
 const router = Router();
 
@@ -330,37 +331,45 @@ router.post(
       return;
     }
 
-    const startCommand =
-      `pnpm run start:reindex-collateral-transfers ${parsedChainId} ${parsedFromBlock ?? ''}`.trim();
-
     const params = JSON.stringify({
       chainId: parsedChainId,
       fromBlock: parsedFromBlock,
     });
-    try {
-      const result = await executeLocalReindex(startCommand);
-      await prisma.backgroundJob.create({
-        data: {
-          command: 'reindex-collateral-transfers',
-          status: result.status,
-          params,
-        },
-      });
-      res.json({ success: true, job: result });
-    } catch (error: unknown) {
-      await prisma.backgroundJob.create({
-        data: {
-          command: 'reindex-collateral-transfers',
-          status: 'failed',
-          params,
-        },
-      });
-      if (error instanceof Error) {
-        res.status(500).json({ error: error.message });
-      } else {
-        res.status(500).json({ error: 'An unknown error occurred' });
+
+    const job = await prisma.backgroundJob.create({
+      data: {
+        command: 'reindex-collateral-transfers',
+        status: 'running',
+        params,
+      },
+    });
+
+    // Run in-process, fire-and-forget
+    void (async () => {
+      try {
+        const result = await reindexCollateralTransfers(
+          parsedChainId,
+          parsedFromBlock
+        );
+        await prisma.backgroundJob.update({
+          where: { id: job.id },
+          data: { status: result ? 'completed' : 'failed' },
+        });
+        console.log(
+          `[reindex/collateral-transfers] Job ${job.id} ${result ? 'completed' : 'failed'}`
+        );
+      } catch (error) {
+        console.error(
+          `[reindex/collateral-transfers] Job ${job.id} failed:`,
+          error instanceof Error ? error.message : error
+        );
+        await prisma.backgroundJob
+          .update({ where: { id: job.id }, data: { status: 'failed' } })
+          .catch(() => {});
       }
-    }
+    })();
+
+    res.status(202).json({ success: true, jobId: job.id });
   })
 );
 
