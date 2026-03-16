@@ -22,6 +22,7 @@
     "start:backfill-stats": "tsx src/workers/worker.ts backfillProtocolStats $*",
     "start:reindex-condition-settled": "tsx src/workers/worker.ts reindexConditionSettled $*",
     "start:reindex-transfers": "tsx src/workers/worker.ts reindexTransfers $*",
+    "start:reindex-collateral-transfers": "tsx src/workers/worker.ts reindexCollateralTransfers $*",
     "pretest": "pnpm --filter @sapience/sdk run build:lib",
     "test": "vitest run",
     "test:watch": "vitest",
