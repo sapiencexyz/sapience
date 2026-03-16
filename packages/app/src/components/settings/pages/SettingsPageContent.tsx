@@ -27,6 +27,10 @@ import {
   useSettings,
   DEFAULT_CONNECTION_DURATION_HOURS,
 } from '~/lib/context/SettingsContext';
+import {
+  DEFAULT_CHAIN_ID,
+  CHAIN_ID_ETHEREAL_TESTNET,
+} from '@sapience/sdk/constants';
 import Loader from '~/components/shared/Loader';
 import SegmentedTabsList from '~/components/shared/SegmentedTabsList';
 
@@ -358,7 +362,10 @@ const SettingsPageContent = () => {
                   <div className="space-y-6">
                     <div className="grid gap-2">
                       <Label htmlFor="ethereal-rpc-endpoint">
-                        Ethereal RPC Endpoint
+                        {DEFAULT_CHAIN_ID === CHAIN_ID_ETHEREAL_TESTNET
+                          ? 'Ethereal Testnet'
+                          : 'Ethereal'}{' '}
+                        RPC Endpoint
                       </Label>
                       <SettingField
                         id="ethereal-rpc-endpoint"
@@ -377,7 +384,10 @@ const SettingsPageContent = () => {
 
                     <div className="grid gap-2">
                       <Label htmlFor="arbitrum-rpc-endpoint">
-                        Arbitrum RPC Endpoint
+                        {DEFAULT_CHAIN_ID === CHAIN_ID_ETHEREAL_TESTNET
+                          ? 'Arbitrum Sepolia'
+                          : 'Arbitrum'}{' '}
+                        RPC Endpoint
                       </Label>
                       <SettingField
                         id="arbitrum-rpc-endpoint"
@@ -392,12 +402,18 @@ const SettingsPageContent = () => {
                       <p className="text-xs text-muted-foreground">
                         JSON-RPC URL for{' '}
                         <a
-                          href="https://chainlist.org/chain/42161"
+                          href={
+                            DEFAULT_CHAIN_ID === CHAIN_ID_ETHEREAL_TESTNET
+                              ? 'https://chainlist.org/chain/421614'
+                              : 'https://chainlist.org/chain/42161'
+                          }
                           target="_blank"
                           rel="noopener noreferrer"
                           className="underline decoration-muted-foreground/40 underline-offset-2 hover:decoration-muted-foreground hover:text-foreground transition-colors"
                         >
-                          Arbitrum
+                          {DEFAULT_CHAIN_ID === CHAIN_ID_ETHEREAL_TESTNET
+                            ? 'Arbitrum Sepolia'
+                            : 'Arbitrum'}
                         </a>{' '}
                         (forecasting)
                       </p>
