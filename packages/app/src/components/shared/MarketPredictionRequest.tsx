@@ -6,10 +6,8 @@ import { parseUnits, zeroAddress } from 'viem';
 import { useAccount, useReadContract } from 'wagmi';
 import { predictionMarketEscrowAbi } from '@sapience/sdk/abis';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
-import {
-  DEFAULT_CHAIN_ID,
-  PREFERRED_ESTIMATE_QUOTER,
-} from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { PREFERRED_ESTIMATE_QUOTER } from '~/lib/constants';
 import { OutcomeSide } from '@sapience/sdk/types';
 import { conditionalTokensConditionResolver } from '@sapience/sdk/contracts';
 import { useAuctionStart, type QuoteBid } from '~/lib/auction/useAuctionStart';
