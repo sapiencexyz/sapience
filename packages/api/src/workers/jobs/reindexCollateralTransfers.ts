@@ -10,6 +10,34 @@ const TRANSFER_EVENT = parseAbiItem(
 const BLOCK_BATCH_SIZE = 500;
 const INDEXER_STATE_KEY = 'collateral-transfer-indexer';
 const TIMESTAMP_CHUNK_SIZE = 20;
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 2000;
+
+async function getLogsWithRetry(
+  client: ReturnType<typeof getProviderForChain>,
+  params: {
+    address: `0x${string}`;
+    event: typeof TRANSFER_EVENT;
+    fromBlock: bigint;
+    toBlock: bigint;
+  }
+) {
+  for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+    try {
+      const logs = await client.getLogs(params);
+      return logs;
+    } catch (error) {
+      if (attempt === MAX_RETRIES) throw error;
+      console.warn(
+        `[reindexCollateralTransfers] getLogs failed (attempt ${attempt}/${MAX_RETRIES}), retrying in ${RETRY_DELAY_MS}ms...`,
+        error instanceof Error ? error.message : error
+      );
+      await new Promise((r) => setTimeout(r, RETRY_DELAY_MS * attempt));
+    }
+  }
+  // Unreachable, but satisfies TypeScript
+  throw new Error('getLogsWithRetry: exhausted retries');
+}
 
 /**
  * Reindex wUSDe collateral Transfer events.
@@ -89,8 +117,8 @@ export async function reindexCollateralTransfers(
       );
     }
 
-    const logs = await client.getLogs({
-      address: tokenAddress,
+    const logs = await getLogsWithRetry(client, {
+      address: tokenAddress as `0x${string}`,
       event: TRANSFER_EVENT,
       fromBlock: start,
       toBlock: end,
@@ -110,11 +138,21 @@ export async function reindexCollateralTransfers(
         const chunk = uniqueBlocks.slice(i, i + TIMESTAMP_CHUNK_SIZE);
         await Promise.all(
           chunk.map(async (blockNumber) => {
-            const block = await client.getBlock({ blockNumber });
-            blockTimestamps.set(
-              blockNumber,
-              new Date(Number(block.timestamp) * 1000)
-            );
+            for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+              try {
+                const block = await client.getBlock({ blockNumber });
+                blockTimestamps.set(
+                  blockNumber,
+                  new Date(Number(block.timestamp) * 1000)
+                );
+                break;
+              } catch (error) {
+                if (attempt === MAX_RETRIES) throw error;
+                await new Promise((r) =>
+                  setTimeout(r, RETRY_DELAY_MS * attempt)
+                );
+              }
+            }
           })
         );
       }
