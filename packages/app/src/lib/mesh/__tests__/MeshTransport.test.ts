@@ -1,22 +1,29 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { MeshTransport } from '../mesh/MeshTransport';
+import { MeshTransport } from '../MeshTransport';
 
 function createMockMesh() {
   const peerCountCallbacks = new Set<(count: number) => void>();
   const anyHandlers = new Set<(type: string, payload: unknown) => void>();
-  const typeHandlers = new Map<string, Set<(type: string, payload: unknown) => void>>();
+  const typeHandlers = new Map<
+    string,
+    Set<(type: string, payload: unknown) => void>
+  >();
 
   return {
-    broadcast: vi.fn<(type: string, payload: unknown) => string>().mockReturnValue('msg-123'),
-    on: vi.fn((type: string, handler: (type: string, payload: unknown) => void) => {
-      let set = typeHandlers.get(type);
-      if (!set) {
-        set = new Set();
-        typeHandlers.set(type, set);
+    broadcast: vi
+      .fn<(type: string, payload: unknown) => string>()
+      .mockReturnValue('msg-123'),
+    on: vi.fn(
+      (type: string, handler: (type: string, payload: unknown) => void) => {
+        let set = typeHandlers.get(type);
+        if (!set) {
+          set = new Set();
+          typeHandlers.set(type, set);
+        }
+        set.add(handler);
+        return () => set!.delete(handler);
       }
-      set.add(handler);
-      return () => set!.delete(handler);
-    }),
+    ),
     onAny: vi.fn((handler: (type: string, payload: unknown) => void) => {
       anyHandlers.add(handler);
       return () => anyHandlers.delete(handler);
@@ -88,14 +95,21 @@ describe('MeshTransport', () => {
 
       const promise = transport.sendWithAck('bid.submit', { amount: 100 });
 
-      mesh._emitType('bid.submit.ack', { payload: { id: 'msg-789' }, status: 'ok' });
+      mesh._emitType('bid.submit.ack', {
+        payload: { id: 'msg-789' },
+        status: 'ok',
+      });
 
       const result = await promise;
       expect(result).toEqual(expect.objectContaining({ status: 'ok' }));
     });
 
     it('rejects on timeout', async () => {
-      const promise = transport.sendWithAck('bid.submit', { amount: 100 }, { timeoutMs: 1_000 });
+      const promise = transport.sendWithAck(
+        'bid.submit',
+        { amount: 100 },
+        { timeoutMs: 1_000 }
+      );
 
       vi.advanceTimersByTime(1_001);
 
@@ -116,7 +130,11 @@ describe('MeshTransport', () => {
     it('ignores acks with non-matching IDs', async () => {
       mesh.broadcast.mockReturnValue('msg-AAA');
 
-      const promise = transport.sendWithAck('bid.submit', { amount: 100 }, { timeoutMs: 500 });
+      const promise = transport.sendWithAck(
+        'bid.submit',
+        { amount: 100 },
+        { timeoutMs: 500 }
+      );
 
       // Wrong ID
       mesh._emitType('bid.submit.ack', { id: 'msg-BBB', status: 'ok' });

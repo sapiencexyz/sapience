@@ -1,5 +1,5 @@
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
-import { MeshClient } from '../mesh/MeshClient';
+import { MeshClient } from '../MeshClient';
 
 // Capture the PeerManager constructor args so we can drive events
 let capturedEvents: {
@@ -9,15 +9,19 @@ let capturedEvents: {
   onPeerCountChanged: (count: number) => void;
 };
 
-const mockBroadcastToPeers = vi.fn<(data: string) => number>().mockReturnValue(1);
-const mockSendToPeers = vi.fn<(data: string, peerIds: string[]) => number>().mockReturnValue(1);
+const mockBroadcastToPeers = vi
+  .fn<(data: string) => number>()
+  .mockReturnValue(1);
+const mockSendToPeers = vi
+  .fn<(data: string, peerIds: string[]) => number>()
+  .mockReturnValue(1);
 const mockConnect = vi.fn();
 const mockDisconnect = vi.fn();
 const mockGetConnectedPeerIds = vi.fn<() => string[]>().mockReturnValue([]);
 const mockAddDiscoveredPeers = vi.fn();
 const mockSetMaxPeers = vi.fn();
 
-vi.mock('../peer/PeerManager', () => ({
+vi.mock('../PeerManager', () => ({
   PeerManager: vi.fn().mockImplementation((_config, events) => {
     capturedEvents = events;
     return {
@@ -35,7 +39,9 @@ vi.mock('../peer/PeerManager', () => ({
   }),
 }));
 
-function makeEnvelope(overrides: Record<string, unknown> = {}): Record<string, unknown> {
+function makeEnvelope(
+  overrides: Record<string, unknown> = {}
+): Record<string, unknown> {
   return {
     id: `msg-${Math.random().toString(36).slice(2)}`,
     type: 'auction.bids',
@@ -102,7 +108,10 @@ describe('MeshClient', () => {
       // Simulate receiving our own message back — should be ignored
       const handler = vi.fn();
       client.on('test', handler);
-      capturedEvents.onMessage('peer-1', JSON.stringify(makeEnvelope({ id: msgId })));
+      capturedEvents.onMessage(
+        'peer-1',
+        JSON.stringify(makeEnvelope({ id: msgId }))
+      );
       expect(handler).not.toHaveBeenCalled();
     });
   });
@@ -136,7 +145,10 @@ describe('MeshClient', () => {
       const unsub = client.on('test', handler);
 
       unsub();
-      capturedEvents.onMessage('peer-1', JSON.stringify(makeEnvelope({ type: 'test' })));
+      capturedEvents.onMessage(
+        'peer-1',
+        JSON.stringify(makeEnvelope({ type: 'test' }))
+      );
       expect(handler).not.toHaveBeenCalled();
     });
 
@@ -257,12 +269,18 @@ describe('MeshClient', () => {
 
       // Send 5 messages (at the limit)
       for (let i = 0; i < 5; i++) {
-        capturedEvents.onMessage('peer-1', JSON.stringify(makeEnvelope({ type: 'test' })));
+        capturedEvents.onMessage(
+          'peer-1',
+          JSON.stringify(makeEnvelope({ type: 'test' }))
+        );
       }
       expect(handler).toHaveBeenCalledTimes(5);
 
       // 6th should be dropped
-      capturedEvents.onMessage('peer-1', JSON.stringify(makeEnvelope({ type: 'test' })));
+      capturedEvents.onMessage(
+        'peer-1',
+        JSON.stringify(makeEnvelope({ type: 'test' }))
+      );
       expect(handler).toHaveBeenCalledTimes(5);
     });
 
@@ -272,13 +290,19 @@ describe('MeshClient', () => {
       client.on('test', handler);
 
       for (let i = 0; i < 5; i++) {
-        capturedEvents.onMessage('peer-1', JSON.stringify(makeEnvelope({ type: 'test' })));
+        capturedEvents.onMessage(
+          'peer-1',
+          JSON.stringify(makeEnvelope({ type: 'test' }))
+        );
       }
       expect(handler).toHaveBeenCalledTimes(5);
 
       vi.advanceTimersByTime(1_001);
 
-      capturedEvents.onMessage('peer-1', JSON.stringify(makeEnvelope({ type: 'test' })));
+      capturedEvents.onMessage(
+        'peer-1',
+        JSON.stringify(makeEnvelope({ type: 'test' }))
+      );
       expect(handler).toHaveBeenCalledTimes(6);
     });
 
@@ -288,10 +312,16 @@ describe('MeshClient', () => {
       client.on('test', handler);
 
       for (let i = 0; i < 5; i++) {
-        capturedEvents.onMessage('peer-1', JSON.stringify(makeEnvelope({ type: 'test' })));
+        capturedEvents.onMessage(
+          'peer-1',
+          JSON.stringify(makeEnvelope({ type: 'test' }))
+        );
       }
       // peer-1 is at limit, but peer-2 should still work
-      capturedEvents.onMessage('peer-2', JSON.stringify(makeEnvelope({ type: 'test' })));
+      capturedEvents.onMessage(
+        'peer-2',
+        JSON.stringify(makeEnvelope({ type: 'test' }))
+      );
       expect(handler).toHaveBeenCalledTimes(6);
     });
 
@@ -302,9 +332,18 @@ describe('MeshClient', () => {
 
       client.setRateLimit(2);
 
-      capturedEvents.onMessage('peer-1', JSON.stringify(makeEnvelope({ type: 'test' })));
-      capturedEvents.onMessage('peer-1', JSON.stringify(makeEnvelope({ type: 'test' })));
-      capturedEvents.onMessage('peer-1', JSON.stringify(makeEnvelope({ type: 'test' })));
+      capturedEvents.onMessage(
+        'peer-1',
+        JSON.stringify(makeEnvelope({ type: 'test' }))
+      );
+      capturedEvents.onMessage(
+        'peer-1',
+        JSON.stringify(makeEnvelope({ type: 'test' }))
+      );
+      capturedEvents.onMessage(
+        'peer-1',
+        JSON.stringify(makeEnvelope({ type: 'test' }))
+      );
       expect(handler).toHaveBeenCalledTimes(2);
     });
 
@@ -316,7 +355,10 @@ describe('MeshClient', () => {
       client.setRateLimit(0);
 
       for (let i = 0; i < 20; i++) {
-        capturedEvents.onMessage('peer-1', JSON.stringify(makeEnvelope({ type: 'test' })));
+        capturedEvents.onMessage(
+          'peer-1',
+          JSON.stringify(makeEnvelope({ type: 'test' }))
+        );
       }
       expect(handler).toHaveBeenCalledTimes(20);
     });
@@ -337,7 +379,11 @@ describe('MeshClient', () => {
       vi.advanceTimersByTime(10_000 + 30_000);
 
       // Same message ID should now be accepted again (pruned from seen set)
-      const env2 = makeEnvelope({ type: 'test', id: 'old-msg', ts: Date.now() });
+      const env2 = makeEnvelope({
+        type: 'test',
+        id: 'old-msg',
+        ts: Date.now(),
+      });
       capturedEvents.onMessage('peer-2', JSON.stringify(env2));
       expect(handler).toHaveBeenCalledTimes(2);
     });
@@ -540,7 +586,10 @@ describe('MeshClient', () => {
       small.onAny(handler);
 
       // Create a message whose JSON is > 50 bytes
-      const env = makeEnvelope({ type: 'test', payload: { data: 'x'.repeat(100) } });
+      const env = makeEnvelope({
+        type: 'test',
+        payload: { data: 'x'.repeat(100) },
+      });
       capturedEvents.onMessage('peer-1', JSON.stringify(env));
 
       expect(handler).not.toHaveBeenCalled();

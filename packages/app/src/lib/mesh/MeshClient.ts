@@ -1,4 +1,4 @@
-import { PeerManager } from '../peer/PeerManager';
+import { PeerManager } from './PeerManager';
 
 export interface MeshConfig {
   signalUrl: string;
@@ -86,7 +86,11 @@ export class MeshClient {
         },
         onPeerCountChanged: (count) => {
           for (const cb of this.peerCountListeners) {
-            try { cb(count); } catch { /* */ }
+            try {
+              cb(count);
+            } catch {
+              /* */
+            }
           }
         },
       }
@@ -97,21 +101,37 @@ export class MeshClient {
     this.peerManager.connect();
     this.pruneTimer = setInterval(() => this.prune(), PRUNE_INTERVAL_MS);
     this.bwTimer = setInterval(() => this.emitBandwidth(), 1_000);
-    this.peerShareTimer = setInterval(() => this.sharePeers(), PEER_SHARE_INTERVAL_MS);
+    this.peerShareTimer = setInterval(
+      () => this.sharePeers(),
+      PEER_SHARE_INTERVAL_MS
+    );
   }
 
   disconnect(): void {
     this.peerManager.disconnect();
-    if (this.pruneTimer) { clearInterval(this.pruneTimer); this.pruneTimer = null; }
-    if (this.bwTimer) { clearInterval(this.bwTimer); this.bwTimer = null; }
-    if (this.peerShareTimer) { clearInterval(this.peerShareTimer); this.peerShareTimer = null; }
+    if (this.pruneTimer) {
+      clearInterval(this.pruneTimer);
+      this.pruneTimer = null;
+    }
+    if (this.bwTimer) {
+      clearInterval(this.bwTimer);
+      this.bwTimer = null;
+    }
+    if (this.peerShareTimer) {
+      clearInterval(this.peerShareTimer);
+      this.peerShareTimer = null;
+    }
   }
 
   /** Broadcast a message to the mesh. Returns the gossip message ID. */
   broadcast(type: string, payload: unknown): string {
     const msg: GossipEnvelope = {
-      id: makeId(), type, payload,
-      origin: this.nodeId, hops: 0, ts: Date.now(),
+      id: makeId(),
+      type,
+      payload,
+      origin: this.nodeId,
+      hops: 0,
+      ts: Date.now(),
     };
     this.seen.set(msg.id, Date.now());
     const raw = JSON.stringify(msg);
@@ -122,28 +142,44 @@ export class MeshClient {
 
   on(type: string, handler: MessageHandler): () => void {
     let set = this.handlers.get(type);
-    if (!set) { set = new Set(); this.handlers.set(type, set); }
+    if (!set) {
+      set = new Set();
+      this.handlers.set(type, set);
+    }
     set.add(handler);
-    return () => { set!.delete(handler); if (set!.size === 0) this.handlers.delete(type); };
+    return () => {
+      set.delete(handler);
+      if (set.size === 0) this.handlers.delete(type);
+    };
   }
 
   onAny(handler: MessageHandler): () => void {
     this.allHandlers.add(handler);
-    return () => { this.allHandlers.delete(handler); };
+    return () => {
+      this.allHandlers.delete(handler);
+    };
   }
 
-  get peerCount(): number { return this.peerManager.peerCount; }
+  get peerCount(): number {
+    return this.peerManager.peerCount;
+  }
 
   onPeerCountChange(cb: (count: number) => void): () => void {
     this.peerCountListeners.add(cb);
-    return () => { this.peerCountListeners.delete(cb); };
+    return () => {
+      this.peerCountListeners.delete(cb);
+    };
   }
 
-  get bandwidthKbps(): number { return this._lastKbps; }
+  get bandwidthKbps(): number {
+    return this._lastKbps;
+  }
 
   onBandwidthChange(cb: (kbps: number) => void): () => void {
     this.bandwidthListeners.add(cb);
-    return () => { this.bandwidthListeners.delete(cb); };
+    return () => {
+      this.bandwidthListeners.delete(cb);
+    };
   }
 
   setRateLimit(msgsPerSec: number): void {
@@ -183,7 +219,11 @@ export class MeshClient {
     if (raw.length > this.maxMessageSize) return;
 
     let msg: GossipEnvelope;
-    try { msg = JSON.parse(raw) as GossipEnvelope; } catch { return; }
+    try {
+      msg = JSON.parse(raw) as GossipEnvelope;
+    } catch {
+      return;
+    }
 
     if (!msg.id || !msg.type) return;
     if (this.seen.has(msg.id)) return;
@@ -194,7 +234,10 @@ export class MeshClient {
     if (this.rateLimitPerSec > 0) {
       const now = Date.now();
       let ts = this.peerMsgTimestamps.get(peerId);
-      if (!ts) { ts = []; this.peerMsgTimestamps.set(peerId, ts); }
+      if (!ts) {
+        ts = [];
+        this.peerMsgTimestamps.set(peerId, ts);
+      }
       while (ts.length > 0 && now - ts[0] > 1_000) ts.shift();
       if (ts.length >= this.rateLimitPerSec) return;
       ts.push(now);
@@ -218,9 +261,21 @@ export class MeshClient {
     // Deliver to local handlers
     const typeHandlers = this.handlers.get(msg.type);
     if (typeHandlers) {
-      for (const h of typeHandlers) { try { h(msg.type, msg.payload); } catch { /* */ } }
+      for (const h of typeHandlers) {
+        try {
+          h(msg.type, msg.payload);
+        } catch {
+          /* */
+        }
+      }
     }
-    for (const h of this.allHandlers) { try { h(msg.type, msg.payload); } catch { /* */ } }
+    for (const h of this.allHandlers) {
+      try {
+        h(msg.type, msg.payload);
+      } catch {
+        /* */
+      }
+    }
   }
 
   private prune(): void {
@@ -250,13 +305,22 @@ export class MeshClient {
 
   // --- Private: bandwidth ---
 
-  private recordBytes(n: number): void { this.byteLog.push([Date.now(), n]); }
+  private recordBytes(n: number): void {
+    this.byteLog.push([Date.now(), n]);
+  }
 
   private emitBandwidth(): void {
     const now = Date.now();
-    while (this.byteLog.length > 0 && now - this.byteLog[0][0] > BW_WINDOW_MS) this.byteLog.shift();
+    while (this.byteLog.length > 0 && now - this.byteLog[0][0] > BW_WINDOW_MS)
+      this.byteLog.shift();
     const total = this.byteLog.reduce((s, [, b]) => s + b, 0);
     this._lastKbps = Math.round(((total * 8) / BW_WINDOW_MS) * 10) / 10;
-    for (const cb of this.bandwidthListeners) { try { cb(this._lastKbps); } catch { /* */ } }
+    for (const cb of this.bandwidthListeners) {
+      try {
+        cb(this._lastKbps);
+      } catch {
+        /* */
+      }
+    }
   }
 }

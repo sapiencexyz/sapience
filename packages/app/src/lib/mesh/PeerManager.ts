@@ -64,7 +64,10 @@ export class PeerManager {
   connect(): void {
     this.closed = false;
     this.connectSignal();
-    this.pruneTimer = setInterval(() => this.pruneStalePeers(), PRUNE_INTERVAL_MS);
+    this.pruneTimer = setInterval(
+      () => this.pruneStalePeers(),
+      PRUNE_INTERVAL_MS
+    );
   }
 
   get peerCount(): number {
@@ -258,10 +261,14 @@ export class PeerManager {
         if (msg.from) {
           this.touchPeer(msg.from);
           if (this.peers.size < this.config.maxPeers) {
-            console.log(`[PeerManager] received offer from ${msg.from.slice(0,8)}, accepting`);
+            console.log(
+              `[PeerManager] received offer from ${msg.from.slice(0, 8)}, accepting`
+            );
             this.handleOffer(msg.from, msg.data as RTCSessionDescriptionInit);
           } else {
-            console.log(`[PeerManager] received offer from ${msg.from.slice(0,8)}, REJECTED — at max peers (${this.peers.size}/${this.config.maxPeers})`);
+            console.log(
+              `[PeerManager] received offer from ${msg.from.slice(0, 8)}, REJECTED — at max peers (${this.peers.size}/${this.config.maxPeers})`
+            );
           }
         }
         break;
@@ -271,15 +278,20 @@ export class PeerManager {
           this.touchPeer(msg.from);
           const peer = this.peers.get(msg.from);
           if (peer) {
-            console.log(`[PeerManager] received answer from ${msg.from.slice(0,8)}`);
-            peer
-              .setAnswer(msg.data as RTCSessionDescriptionInit)
-              .catch((e) => {
-                console.log(`[PeerManager] setAnswer failed for ${msg.from!.slice(0,8)}:`, e);
-                this.removePeer(msg.from!);
-              });
+            console.log(
+              `[PeerManager] received answer from ${msg.from.slice(0, 8)}`
+            );
+            peer.setAnswer(msg.data as RTCSessionDescriptionInit).catch((e) => {
+              console.log(
+                `[PeerManager] setAnswer failed for ${msg.from!.slice(0, 8)}:`,
+                e
+              );
+              this.removePeer(msg.from!);
+            });
           } else {
-            console.log(`[PeerManager] received answer from ${msg.from!.slice(0,8)} but no peer entry exists`);
+            console.log(
+              `[PeerManager] received answer from ${msg.from.slice(0, 8)} but no peer entry exists`
+            );
           }
         }
         break;
@@ -289,11 +301,9 @@ export class PeerManager {
           this.touchPeer(msg.from);
           const peer = this.peers.get(msg.from);
           if (peer) {
-            peer
-              .addIceCandidate(msg.data as RTCIceCandidateInit)
-              .catch(() => {
-                /* ignore late ICE */
-              });
+            peer.addIceCandidate(msg.data as RTCIceCandidateInit).catch(() => {
+              /* ignore late ICE */
+            });
           }
         }
         break;
@@ -303,15 +313,21 @@ export class PeerManager {
 
   private initiateConnection(peerId: string): void {
     if (this.peers.has(peerId)) {
-      console.log(`[PeerManager] skip initiate ${peerId.slice(0,8)} — already have peer`);
+      console.log(
+        `[PeerManager] skip initiate ${peerId.slice(0, 8)} — already have peer`
+      );
       return;
     }
     // Only the peer with the higher ID initiates — eliminates glare entirely
     if (this.myId && this.myId < peerId) {
-      console.log(`[PeerManager] skip initiate ${peerId.slice(0,8)} — my ID ${this.myId?.slice(0,8)} is lower (waiting for their offer)`);
+      console.log(
+        `[PeerManager] skip initiate ${peerId.slice(0, 8)} — my ID ${this.myId?.slice(0, 8)} is lower (waiting for their offer)`
+      );
       return;
     }
-    console.log(`[PeerManager] initiating connection to ${peerId.slice(0,8)} (my ID ${this.myId?.slice(0,8)})`);
+    console.log(
+      `[PeerManager] initiating connection to ${peerId.slice(0, 8)} (my ID ${this.myId?.slice(0, 8)})`
+    );
     const peer = this.createPeer(peerId);
     this.peers.set(peerId, peer);
 
@@ -326,10 +342,7 @@ export class PeerManager {
       });
   }
 
-  private handleOffer(
-    fromId: string,
-    offer: RTCSessionDescriptionInit
-  ): void {
+  private handleOffer(fromId: string, offer: RTCSessionDescriptionInit): void {
     if (this.peers.has(fromId)) return;
     const peer = this.createPeer(fromId);
     this.peers.set(fromId, peer);
@@ -338,14 +351,19 @@ export class PeerManager {
       .acceptOffer(offer)
       .then((answer) => {
         if (this.peers.get(fromId) !== peer) {
-          console.log(`[PeerManager] peer ${fromId.slice(0,8)} replaced before answer sent`);
+          console.log(
+            `[PeerManager] peer ${fromId.slice(0, 8)} replaced before answer sent`
+          );
           return;
         }
-        console.log(`[PeerManager] sending answer to ${fromId.slice(0,8)}`);
+        console.log(`[PeerManager] sending answer to ${fromId.slice(0, 8)}`);
         this.sendSignal({ type: 'answer', target: fromId, data: answer });
       })
       .catch((e) => {
-        console.log(`[PeerManager] acceptOffer failed for ${fromId.slice(0,8)}:`, e);
+        console.log(
+          `[PeerManager] acceptOffer failed for ${fromId.slice(0, 8)}:`,
+          e
+        );
         if (this.peers.get(fromId) === peer) this.removePeer(fromId);
       });
   }

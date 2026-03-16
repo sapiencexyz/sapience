@@ -32,7 +32,9 @@ export class PeerConnection {
 
     this.pc.onicecandidate = (ev) => {
       if (ev.candidate) {
-        console.log(`[PeerConnection] ICE candidate peer=${peerId} type=${ev.candidate.type} ${ev.candidate.candidate.slice(0, 60)}`);
+        console.log(
+          `[PeerConnection] ICE candidate peer=${peerId} type=${ev.candidate.type} ${ev.candidate.candidate.slice(0, 60)}`
+        );
         if (this.onIceCandidate) {
           this.onIceCandidate(ev.candidate.toJSON());
         }
@@ -42,22 +44,30 @@ export class PeerConnection {
     };
 
     this.pc.ondatachannel = (ev) => {
-      console.log(`[PeerConnection] ondatachannel peer=${peerId} channel=${ev.channel.label}`);
+      console.log(
+        `[PeerConnection] ondatachannel peer=${peerId} channel=${ev.channel.label}`
+      );
       this.setupDataChannel(ev.channel);
     };
 
     this.pc.oniceconnectionstatechange = () => {
-      console.log(`[PeerConnection] ICE state peer=${peerId}: ${this.pc.iceConnectionState}`);
+      console.log(
+        `[PeerConnection] ICE state peer=${peerId}: ${this.pc.iceConnectionState}`
+      );
     };
 
     this.pc.onconnectionstatechange = () => {
-      console.log(`[PeerConnection] conn state peer=${peerId}: ${this.pc.connectionState}`);
+      console.log(
+        `[PeerConnection] conn state peer=${peerId}: ${this.pc.connectionState}`
+      );
     };
   }
 
   private setupDataChannel(dc: RTCDataChannel): void {
     this.dc = dc;
-    console.log(`[PeerConnection] setupDataChannel peer=${this.peerId} label=${dc.label} state=${dc.readyState}`);
+    console.log(
+      `[PeerConnection] setupDataChannel peer=${this.peerId} label=${dc.label} state=${dc.readyState}`
+    );
     dc.onopen = () => {
       console.log(`[PeerConnection] DC OPEN peer=${this.peerId}`);
       this.events.onOpen();
@@ -101,10 +111,14 @@ export class PeerConnection {
 
   async addIceCandidate(candidate: RTCIceCandidateInit): Promise<void> {
     if (this.hasRemoteDesc) {
-      console.log(`[PeerConnection] adding ICE candidate peer=${this.peerId} (remote desc set)`);
+      console.log(
+        `[PeerConnection] adding ICE candidate peer=${this.peerId} (remote desc set)`
+      );
       await this.pc.addIceCandidate(candidate);
     } else {
-      console.log(`[PeerConnection] buffering ICE candidate peer=${this.peerId} (no remote desc yet, queue=${this.candidateQueue.length + 1})`);
+      console.log(
+        `[PeerConnection] buffering ICE candidate peer=${this.peerId} (no remote desc yet, queue=${this.candidateQueue.length + 1})`
+      );
       this.candidateQueue.push(candidate);
     }
   }
@@ -113,7 +127,9 @@ export class PeerConnection {
     for (const c of this.candidateQueue) {
       try {
         await this.pc.addIceCandidate(c);
-      } catch { /* ignore stale candidates */ }
+      } catch {
+        /* ignore stale candidates */
+      }
     }
     this.candidateQueue = [];
   }

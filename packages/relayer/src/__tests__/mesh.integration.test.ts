@@ -69,7 +69,7 @@ function waitForOpen(ws: WebSocket): Promise<void> {
   });
 }
 
-function waitForClose(ws: WebSocket): Promise<void> {
+function _waitForClose(ws: WebSocket): Promise<void> {
   return new Promise((resolve) => {
     if (ws.readyState === WebSocket.CLOSED) return resolve();
     ws.once('close', () => resolve());

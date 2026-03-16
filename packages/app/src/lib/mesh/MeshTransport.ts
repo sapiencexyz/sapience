@@ -24,14 +24,8 @@ export class MeshTransport {
     return new Promise((resolve, reject) => {
       const timeoutMs = opts?.timeoutMs ?? 5_000;
 
-      const timer = setTimeout(() => {
-        unsub();
-        reject(new Error('ack_timeout'));
-      }, timeoutMs);
+      const msgId = this.mesh.broadcast(type, { ...payload });
 
-      // Register listener before broadcast; msgId is set synchronously
-      // before any async ack can arrive.
-      let msgId: string;
       const unsub = this.mesh.on(`${type}.ack`, (_ackType, ackPayload) => {
         const ack = ackPayload as Record<string, unknown>;
         const nested = ack.payload as Record<string, unknown> | undefined;
@@ -42,7 +36,10 @@ export class MeshTransport {
         }
       });
 
-      msgId = this.mesh.broadcast(type, { ...payload });
+      const timer = setTimeout(() => {
+        unsub();
+        reject(new Error('ack_timeout'));
+      }, timeoutMs);
     });
   }
 
@@ -53,8 +50,12 @@ export class MeshTransport {
   addOpenListener(cb: () => void): () => void {
     let wasOpen = false;
     return this.mesh.onPeerCountChange((count) => {
-      if (count > 0 && !wasOpen) { wasOpen = true; cb(); }
-      else if (count === 0) { wasOpen = false; }
+      if (count > 0 && !wasOpen) {
+        wasOpen = true;
+        cb();
+      } else if (count === 0) {
+        wasOpen = false;
+      }
     });
   }
 
@@ -62,7 +63,10 @@ export class MeshTransport {
     let wasOpen = false;
     return this.mesh.onPeerCountChange((count) => {
       if (count > 0) wasOpen = true;
-      else if (count === 0 && wasOpen) { wasOpen = false; cb(); }
+      else if (count === 0 && wasOpen) {
+        wasOpen = false;
+        cb();
+      }
     });
   }
 

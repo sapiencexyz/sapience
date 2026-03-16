@@ -1,7 +1,7 @@
 'use client';
 
-import { MeshClient } from '@sapience/relay/mesh/MeshClient';
-import { MeshTransport } from '@sapience/relay/mesh/MeshTransport';
+import { MeshClient } from '~/lib/mesh/MeshClient';
+import { MeshTransport } from '~/lib/mesh/MeshTransport';
 import { getSignalUrl } from './signalUrl';
 
 const RL_KEY = 'sapience.settings.meshRateLimit';
