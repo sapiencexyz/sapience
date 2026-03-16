@@ -4,32 +4,15 @@ import { Button } from '@sapience/ui/components/ui/button';
 import Image from 'next/image';
 import Link from 'next/link';
 import { SiSubstack } from 'react-icons/si';
-import { PeerIndicator } from '~/components/relay/PeerIndicator';
+import { StatusIndicators } from '~/components/layout/StatusIndicators';
+
+export { ETHENA_BASE_APY } from '~/components/layout/StatusIndicators';
 
 const Footer = () => {
   return (
-    <footer className="mt-auto block w-full border-t border-border/20 bg-background/60 backdrop-blur-sm relative z-[40]">
+    <footer className="mt-auto block w-full border-t border-border/20 sm:border-border/40 bg-background/60 backdrop-blur-sm relative z-[40] sm:fixed sm:bottom-0 sm:left-0">
       <div className="mx-auto px-4 pt-3 pb-2 sm:py-2 flex flex-col items-center gap-2 text-center sm:flex-row sm:justify-between sm:text-left">
-        <div className="flex items-center gap-1.5 text-xs">
-          <span className="text-[hsl(var(--brand-white))]">Powered by</span>
-          <a
-            href="https://ethena.fi"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="w-fit"
-            aria-label="Ethena"
-          >
-            <Image
-              src="/ethena.svg"
-              alt="Ethena"
-              width={64}
-              height={18}
-              className="opacity-90 hover:opacity-100 transition-opacity duration-200 dark:invert"
-            />
-          </a>
-          <span className="text-muted-foreground/40">·</span>
-          <PeerIndicator />
-        </div>
+        <StatusIndicators />
 
         <div className="flex flex-col items-center gap-2 sm:flex-row sm:items-center sm:gap-3.5">
           <div className="flex items-center gap-3 text-xs order-2 sm:order-1">

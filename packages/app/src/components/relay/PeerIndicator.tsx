@@ -23,7 +23,7 @@ export function PeerIndicator() {
         {peerCount} {peerCount === 1 ? 'PEER' : 'PEERS'}
         {peerCount > 0 && (
           <span className="text-muted-foreground/60">
-            {' · '}
+            {' '}
             {fmtBw(bandwidthKbps)}
           </span>
         )}

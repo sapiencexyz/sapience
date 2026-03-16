@@ -102,8 +102,9 @@ const TerminalPageContent: React.FC = () => {
 
   const isMobile = useIsMobile();
   const isCompact = useIsBelow(1024);
+  const desktopFooterHeight = '36px';
   const desktopBottomGap = 'clamp(16px, 2.5vw, 32px)';
-  const desktopViewportHeight = `calc(100dvh - var(--page-top-offset, 0px) - ${desktopBottomGap})`;
+  const desktopViewportHeight = `calc(100dvh - var(--page-top-offset, 0px) - ${desktopFooterHeight} - ${desktopBottomGap})`;
 
   const [pinnedAuctions, setPinnedAuctions] = useState<string[]>([]);
   const [expandedAuctions, setExpandedAuctions] = useState<Set<string>>(
@@ -989,8 +990,8 @@ const TerminalPageContent: React.FC = () => {
     <TerminalLogsProvider>
       <ApprovalDialogProvider>
         <TradeNotifications />
-        <div className="h-full min-h-0">
-          <div className="relative w-full max-w-full overflow-visible flex flex-col lg:flex-row items-start">
+        <div className="h-full min-h-0 lg:overflow-hidden">
+          <div className="relative w-full max-w-full overflow-visible flex flex-col lg:flex-row items-start lg:overflow-hidden">
             {isCompact ? (
               <div className="block w-full lg:hidden mt-6 mb-8">
                 <AutoBid />
