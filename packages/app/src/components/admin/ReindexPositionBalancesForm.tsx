@@ -31,8 +31,8 @@ const ReindexPositionBalancesForm = () => {
       });
 
       toast({
-        title: 'Reindex started',
-        description: `Position balance reindex started for last ${days} day(s) on chain ${DEFAULT_CHAIN_ID}`,
+        title: 'Reindex job submitted',
+        description: `Running in background for last ${days} day(s) on chain ${DEFAULT_CHAIN_ID}. Check API logs for progress.`,
       });
     } catch (error) {
       console.error('Position balance reindex error:', error);
