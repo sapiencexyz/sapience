@@ -31,21 +31,45 @@ export class PeerConnection {
     this.pc = new RTCPeerConnection(config ?? RTC_CONFIG);
 
     this.pc.onicecandidate = (ev) => {
-      if (ev.candidate && this.onIceCandidate) {
-        this.onIceCandidate(ev.candidate.toJSON());
+      if (ev.candidate) {
+        console.log(`[PeerConnection] ICE candidate peer=${peerId} type=${ev.candidate.type} ${ev.candidate.candidate.slice(0, 60)}`);
+        if (this.onIceCandidate) {
+          this.onIceCandidate(ev.candidate.toJSON());
+        }
+      } else {
+        console.log(`[PeerConnection] ICE gathering complete peer=${peerId}`);
       }
     };
 
     this.pc.ondatachannel = (ev) => {
+      console.log(`[PeerConnection] ondatachannel peer=${peerId} channel=${ev.channel.label}`);
       this.setupDataChannel(ev.channel);
+    };
+
+    this.pc.oniceconnectionstatechange = () => {
+      console.log(`[PeerConnection] ICE state peer=${peerId}: ${this.pc.iceConnectionState}`);
+    };
+
+    this.pc.onconnectionstatechange = () => {
+      console.log(`[PeerConnection] conn state peer=${peerId}: ${this.pc.connectionState}`);
     };
   }
 
   private setupDataChannel(dc: RTCDataChannel): void {
     this.dc = dc;
-    dc.onopen = () => this.events.onOpen();
-    dc.onclose = () => this.events.onClose();
-    dc.onerror = (e) => this.events.onError(e);
+    console.log(`[PeerConnection] setupDataChannel peer=${this.peerId} label=${dc.label} state=${dc.readyState}`);
+    dc.onopen = () => {
+      console.log(`[PeerConnection] DC OPEN peer=${this.peerId}`);
+      this.events.onOpen();
+    };
+    dc.onclose = () => {
+      console.log(`[PeerConnection] DC CLOSE peer=${this.peerId}`);
+      this.events.onClose();
+    };
+    dc.onerror = (e) => {
+      console.log(`[PeerConnection] DC ERROR peer=${this.peerId}`, e);
+      this.events.onError(e);
+    };
     dc.onmessage = (ev) => this.events.onMessage(String(ev.data));
     if (dc.readyState === 'open') this.events.onOpen();
   }
@@ -77,9 +101,10 @@ export class PeerConnection {
 
   async addIceCandidate(candidate: RTCIceCandidateInit): Promise<void> {
     if (this.hasRemoteDesc) {
+      console.log(`[PeerConnection] adding ICE candidate peer=${this.peerId} (remote desc set)`);
       await this.pc.addIceCandidate(candidate);
     } else {
-      // Buffer until remote description is set
+      console.log(`[PeerConnection] buffering ICE candidate peer=${this.peerId} (no remote desc yet, queue=${this.candidateQueue.length + 1})`);
       this.candidateQueue.push(candidate);
     }
   }

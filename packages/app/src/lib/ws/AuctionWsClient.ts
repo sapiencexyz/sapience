@@ -46,40 +46,6 @@ function dedup(msg: Record<string, unknown>): boolean {
   return true;
 }
 
-interface KnownAuction {
-  picks: {
-    conditionResolver: string;
-    conditionId: string;
-    predictedOutcome: number;
-  }[];
-  predictorCollateral: string;
-  predictor: string;
-  chainId: number;
-  predictorSponsor?: string;
-  predictorSponsorData?: string;
-}
-
-/**
- * Track known auctions from the trusted WS relayer so we can validate
- * bid signatures received over the untrusted mesh.
- */
-const knownAuctions = new Map<string, KnownAuction>();
-
-function trackAuction(msg: Record<string, unknown>): void {
-  const type = msg.type as string;
-  if (type !== 'auction.start' && type !== 'auction.started') return;
-  const auctionId = (msg.auctionId as string) ?? (msg.id as string);
-  if (!auctionId) return;
-  knownAuctions.set(auctionId, {
-    picks: msg.picks as KnownAuction['picks'],
-    predictorCollateral: msg.predictorCollateral as string,
-    predictor: msg.predictor as string,
-    chainId: msg.chainId as number,
-    predictorSponsor: msg.predictorSponsor as string | undefined,
-    predictorSponsorData: msg.predictorSponsorData as string | undefined,
-  });
-}
-
 function getValidationContext(): GossipValidationContext {
   const escrow = predictionMarketEscrow[DEFAULT_CHAIN_ID];
   return {
@@ -87,7 +53,6 @@ function getValidationContext(): GossipValidationContext {
       escrow?.address ??
       ('0x0000000000000000000000000000000000000000' as Address),
     chainId: DEFAULT_CHAIN_ID,
-    getAuction: (auctionId: string) => knownAuctions.get(auctionId) ?? null,
   };
 }
 
@@ -142,8 +107,6 @@ class AuctionWsClient {
     this.client.addMessageListener = (cb: (msg: unknown) => void) => {
       const unsubWs = origAddMsgListener((msg: unknown) => {
         const data = msg as Record<string, unknown>;
-        // Track auctions from the trusted WS relayer for bid validation
-        trackAuction(data);
         if (shouldMesh(data)) dedup(data); // mark as seen from WS
         cb(msg);
       });

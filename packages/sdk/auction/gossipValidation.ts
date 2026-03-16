@@ -8,8 +8,8 @@
  */
 
 import type { Address } from 'viem';
-import type { AuctionRFQPayload, BidPayload, PickJson } from '../types/escrow';
-import { validateAuctionRFQ, validateBid } from './validation';
+import type { AuctionRFQPayload } from '../types/escrow';
+import { validateAuctionRFQ } from './validation';
 
 const ADDRESS_RE = /^0x[a-fA-F0-9]{40}$/;
 
@@ -124,15 +124,6 @@ export interface GossipValidationContext {
   verifyingContract: Address;
   /** Expected chain ID. */
   chainId: number;
-  /** Look up auction data by ID. Needed for bid signature verification. */
-  getAuction?: (auctionId: string) => {
-    picks: PickJson[];
-    predictorCollateral: string;
-    predictor: string;
-    chainId: number;
-    predictorSponsor?: string;
-    predictorSponsorData?: string;
-  } | null;
 }
 
 /**
@@ -143,9 +134,8 @@ export interface GossipValidationContext {
  * should be accepted, false if it should be dropped.
  *
  * - auction.start / auction.started → verifies predictor intent signature
- * - bid.submit → verifies counterparty mint signature (requires auction context)
- * - auction.bids → verifies each bid's signature (requires auction context)
- * - bid.ack / auction.filled / auction.expired / order.created → structural only
+ * - bid.submit / auction.bids / status messages → structural only
+ *   (bid signatures are verified on-chain at settlement)
  */
 export async function validateGossipPayloadAsync(
   type: string,
@@ -171,36 +161,11 @@ export async function validateGossipPayloadAsync(
       return result.status === 'valid';
     }
 
-    case 'bid.submit': {
-      const auction = ctx.getAuction?.(p.auctionId as string);
-      if (!auction) return false;
-      const result = await validateBid(p as unknown as BidPayload, auction, {
-        verifyingContract: ctx.verifyingContract,
-        chainId: ctx.chainId,
-      });
-      return result.status === 'valid';
-    }
-
-    case 'auction.bids': {
-      const bids = p.bids as unknown[];
-      if (bids.length === 0) return true;
-      const auction = ctx.getAuction?.(p.auctionId as string);
-      if (!auction) return false;
-      for (const bid of bids) {
-        const result = await validateBid(
-          bid as unknown as BidPayload,
-          auction,
-          {
-            verifyingContract: ctx.verifyingContract,
-            chainId: ctx.chainId,
-          }
-        );
-        if (result.status !== 'valid') return false;
-      }
-      return true;
-    }
-
-    // Status messages — structural check already passed
+    // Bids and status messages — structural check already passed.
+    // Bid signatures are verified on-chain at settlement; no auction
+    // context needed here.
+    case 'bid.submit':
+    case 'auction.bids':
     case 'bid.ack':
     case 'auction.filled':
     case 'auction.expired':

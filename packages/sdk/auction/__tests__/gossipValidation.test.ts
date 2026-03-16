@@ -6,15 +6,8 @@ import {
   validateGossipPayloadAsync,
   type GossipValidationContext,
 } from '../gossipValidation';
-import {
-  buildAuctionIntentTypedData,
-  buildCounterpartyMintTypedData,
-} from '../escrowSigning';
-import type {
-  AuctionRFQPayload,
-  BidPayload,
-  PickJson,
-} from '../../types/escrow';
+import { buildAuctionIntentTypedData } from '../escrowSigning';
+import type { AuctionRFQPayload, PickJson } from '../../types/escrow';
 
 describe('isValidGossipPayload', () => {
   const validPick = {
@@ -361,54 +354,10 @@ async function makeSignedAuctionRFQ(
   };
 }
 
-async function makeSignedBid(
-  auction: AuctionRFQPayload
-): Promise<{ bid: BidPayload }> {
-  const account = privateKeyToAccount(generatePrivateKey());
-  const deadline = futureDeadline();
-  const nonce = 42;
-
-  const typedData = buildCounterpartyMintTypedData({
-    picks: TEST_PICKS_SDK,
-    predictorCollateral: BigInt(auction.predictorCollateral),
-    counterpartyCollateral: BigInt('500000000000000000'),
-    predictor: auction.predictor as Address,
-    counterparty: account.address,
-    counterpartyNonce: BigInt(nonce),
-    counterpartyDeadline: BigInt(deadline),
-    verifyingContract: VERIFYING_CONTRACT,
-    chainId: CHAIN_ID,
-  });
-
-  const counterpartySignature = await account.signTypedData({
-    domain: {
-      ...typedData.domain,
-      chainId: Number(typedData.domain.chainId),
-    },
-    types: typedData.types,
-    primaryType: typedData.primaryType,
-    message: typedData.message,
-  });
-
-  return {
-    bid: {
-      auctionId: 'test-auction-id',
-      counterparty: account.address,
-      counterpartyCollateral: '500000000000000000',
-      counterpartyNonce: nonce,
-      counterpartyDeadline: deadline,
-      counterpartySignature,
-    },
-  };
-}
-
-function makeCtx(
-  getAuction?: GossipValidationContext['getAuction']
-): GossipValidationContext {
+function makeCtx(): GossipValidationContext {
   return {
     verifyingContract: VERIFYING_CONTRACT,
     chainId: CHAIN_ID,
-    getAuction,
   };
 }
 
@@ -513,80 +462,40 @@ describe('validateGossipPayloadAsync', () => {
     });
   });
 
-  // ── bid.submit ──
+  // ── bid.submit / auction.bids (structural only, signatures verified on-chain) ──
 
   describe('bid.submit', () => {
-    it('accepts with valid counterparty signature and auction context', async () => {
-      const { payload: auction } = await makeSignedAuctionRFQ();
-      const { bid } = await makeSignedBid(auction);
-      const getAuction = () => auction;
+    it('accepts structurally valid bid', async () => {
       expect(
-        await validateGossipPayloadAsync('bid.submit', bid, makeCtx(getAuction))
+        await validateGossipPayloadAsync(
+          'bid.submit',
+          {
+            auctionId: 'auction-123',
+            counterparty: '0x1234567890abcdef1234567890abcdef12345678',
+            counterpartyCollateral: '500000',
+          },
+          makeCtx()
+        )
       ).toBe(true);
-    });
-
-    it('rejects when getAuction returns null (unknown auction)', async () => {
-      const { payload: auction } = await makeSignedAuctionRFQ();
-      const { bid } = await makeSignedBid(auction);
-      const getAuction = () => null;
-      expect(
-        await validateGossipPayloadAsync('bid.submit', bid, makeCtx(getAuction))
-      ).toBe(false);
-    });
-
-    it('rejects when getAuction is not provided', async () => {
-      const { payload: auction } = await makeSignedAuctionRFQ();
-      const { bid } = await makeSignedBid(auction);
-      expect(
-        await validateGossipPayloadAsync('bid.submit', bid, makeCtx())
-      ).toBe(false);
-    });
-
-    it('rejects with forged counterparty signature', async () => {
-      const { payload: auction } = await makeSignedAuctionRFQ();
-      const { bid } = await makeSignedBid(auction);
-      // Replace signature with one from a different key
-      const imposter = privateKeyToAccount(generatePrivateKey());
-      const typedData = buildCounterpartyMintTypedData({
-        picks: TEST_PICKS_SDK,
-        predictorCollateral: BigInt(auction.predictorCollateral),
-        counterpartyCollateral: BigInt(bid.counterpartyCollateral),
-        predictor: auction.predictor as Address,
-        counterparty: imposter.address,
-        counterpartyNonce: BigInt(bid.counterpartyNonce),
-        counterpartyDeadline: BigInt(bid.counterpartyDeadline),
-        verifyingContract: VERIFYING_CONTRACT,
-        chainId: CHAIN_ID,
-      });
-      bid.counterpartySignature = await imposter.signTypedData({
-        domain: {
-          ...typedData.domain,
-          chainId: Number(typedData.domain.chainId),
-        },
-        types: typedData.types,
-        primaryType: typedData.primaryType,
-        message: typedData.message,
-      });
-      // counterparty address doesn't match signer
-      const getAuction = () => auction;
-      expect(
-        await validateGossipPayloadAsync('bid.submit', bid, makeCtx(getAuction))
-      ).toBe(false);
     });
   });
 
-  // ── auction.bids ──
-
   describe('auction.bids', () => {
-    it('accepts with valid signed bids and auction context', async () => {
-      const { payload: auction } = await makeSignedAuctionRFQ();
-      const { bid } = await makeSignedBid(auction);
-      const getAuction = () => auction;
+    it('accepts structurally valid bids', async () => {
       expect(
         await validateGossipPayloadAsync(
           'auction.bids',
-          { auctionId: bid.auctionId, bids: [bid] },
-          makeCtx(getAuction)
+          {
+            auctionId: 'auction-123',
+            bids: [
+              {
+                auctionId: 'auction-123',
+                counterparty: '0x1234567890abcdef1234567890abcdef12345678',
+                counterpartyCollateral: '500000',
+              },
+            ],
+          },
+          makeCtx()
         )
       ).toBe(true);
     });
@@ -599,33 +508,6 @@ describe('validateGossipPayloadAsync', () => {
           makeCtx()
         )
       ).toBe(true);
-    });
-
-    it('rejects when getAuction returns null for non-empty bids', async () => {
-      const { payload: auction } = await makeSignedAuctionRFQ();
-      const { bid } = await makeSignedBid(auction);
-      const getAuction = () => null;
-      expect(
-        await validateGossipPayloadAsync(
-          'auction.bids',
-          { auctionId: bid.auctionId, bids: [bid] },
-          makeCtx(getAuction)
-        )
-      ).toBe(false);
-    });
-
-    it('rejects if any bid has invalid signature', async () => {
-      const { payload: auction } = await makeSignedAuctionRFQ();
-      const { bid: good } = await makeSignedBid(auction);
-      const bad = { ...good, counterpartySignature: '0xdead' };
-      const getAuction = () => auction;
-      expect(
-        await validateGossipPayloadAsync(
-          'auction.bids',
-          { auctionId: good.auctionId, bids: [good, bad] },
-          makeCtx(getAuction)
-        )
-      ).toBe(false);
     });
   });
 
