@@ -3,7 +3,7 @@
  */
 
 import type { PolymarketMarket } from '../types';
-import { RELIST_LOOKBACK_DAYS } from '../constants';
+import { RELIST_LOOKBACK_DAYS, RELIST_GRACE_PERIOD_DAYS } from '../constants';
 import { fetchWithRetry } from '../utils';
 import {
   runPipeline,
@@ -14,11 +14,16 @@ import {
 const PAGE_SIZE = 500;
 
 /**
- * Fetch markets whose endDate is in the past (within the lookback window)
- * but are still active and not closed/archived on Polymarket.
+ * Fetch markets whose endDate is at least RELIST_GRACE_PERIOD_DAYS in the past
+ * (within the lookback window) but are still active and not closed/archived on
+ * Polymarket. The grace period gives the settle script time to resolve markets
+ * before relist picks them up.
  */
 export async function fetchPastEndDateMarkets(): Promise<PolymarketMarket[]> {
   const now = new Date();
+  const maxEndDate = new Date(
+    now.getTime() - RELIST_GRACE_PERIOD_DAYS * 24 * 60 * 60 * 1000
+  );
   const minEndDate = new Date(
     now.getTime() - RELIST_LOOKBACK_DAYS * 24 * 60 * 60 * 1000
   );
@@ -29,7 +34,7 @@ export async function fetchPastEndDateMarkets(): Promise<PolymarketMarket[]> {
   let offset = 0;
 
   console.log(
-    `[Relist] Fetching past-endDate markets from ${minEndDate.toISOString()} to ${now.toISOString()}...`
+    `[Relist] Fetching past-endDate markets from ${minEndDate.toISOString()} to ${maxEndDate.toISOString()} (${RELIST_GRACE_PERIOD_DAYS}-day grace period)...`
   );
 
   while (true) {
@@ -39,7 +44,7 @@ export async function fetchPastEndDateMarkets(): Promise<PolymarketMarket[]> {
       `https://gamma-api.polymarket.com/markets?limit=${PAGE_SIZE}&offset=${offset}` +
       `&active=true&closed=false&archived=false` +
       `&order=endDate&ascending=false` +
-      `&end_date_min=${minEndDate.toISOString()}&end_date_max=${now.toISOString()}`;
+      `&end_date_min=${minEndDate.toISOString()}&end_date_max=${maxEndDate.toISOString()}`;
 
     const response = await fetchWithRetry(url, {
       headers: { Accept: 'application/json' },
@@ -72,8 +77,8 @@ export async function fetchPastEndDateMarkets(): Promise<PolymarketMarket[]> {
     let newMarketsCount = 0;
     for (const m of markets) {
       if (m.archived) continue;
-      // Also filter client-side for endDate < now in case end_date_max isn't supported
-      if (new Date(m.endDate) >= now) continue;
+      // Also filter client-side for endDate < maxEndDate in case end_date_max isn't supported
+      if (new Date(m.endDate) >= maxEndDate) continue;
       if (!seenConditionIds.has(m.conditionId)) {
         seenConditionIds.add(m.conditionId);
         allMarkets.push(m);
