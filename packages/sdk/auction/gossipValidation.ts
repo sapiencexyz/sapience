@@ -1,10 +1,15 @@
 /**
- * Lightweight, synchronous payload validation for gossip messages.
+ * Gossip payload validation for peer mesh messages.
  *
- * These checks are structural only — no crypto, no RPC, no async.
- * They prevent malformed or obviously invalid payloads from reaching
- * application handlers via the peer mesh.
+ * Two tiers:
+ * - `isValidGossipPayload` — synchronous, structural only (fast path)
+ * - `validateGossipPayloadAsync` — async, cryptographic signature verification
+ *   using SDK validation functions. Must pass before dedup/delivery.
  */
+
+import type { Address } from 'viem';
+import type { AuctionRFQPayload, BidPayload, PickJson } from '../types/escrow';
+import { validateAuctionRFQ, validateBid } from './validation';
 
 const ADDRESS_RE = /^0x[a-fA-F0-9]{40}$/;
 
@@ -106,6 +111,101 @@ export function isValidGossipPayload(type: string, payload: unknown): boolean {
     case 'order.created':
       // Loose — just require it's an object with an id or auctionId
       return isNonEmptyString(p.id) || isNonEmptyString(p.auctionId);
+
+    default:
+      return false;
+  }
+}
+
+// ─── Async Cryptographic Validation ──────────────────────────────────────────
+
+export interface GossipValidationContext {
+  /** Escrow contract address for signature verification. */
+  verifyingContract: Address;
+  /** Expected chain ID. */
+  chainId: number;
+  /** Look up auction data by ID. Needed for bid signature verification. */
+  getAuction?: (auctionId: string) => {
+    picks: PickJson[];
+    predictorCollateral: string;
+    predictor: string;
+    chainId: number;
+    predictorSponsor?: string;
+    predictorSponsorData?: string;
+  } | null;
+}
+
+/**
+ * Async gossip payload validation with cryptographic signature verification.
+ *
+ * Runs structural checks first (via isValidGossipPayload), then verifies
+ * signatures using the SDK validation functions. Returns true if the payload
+ * should be accepted, false if it should be dropped.
+ *
+ * - auction.start / auction.started → verifies predictor intent signature
+ * - bid.submit → verifies counterparty mint signature (requires auction context)
+ * - auction.bids → verifies each bid's signature (requires auction context)
+ * - bid.ack / auction.filled / auction.expired / order.created → structural only
+ */
+export async function validateGossipPayloadAsync(
+  type: string,
+  payload: unknown,
+  ctx: GossipValidationContext
+): Promise<boolean> {
+  // Fast structural rejection
+  if (!isValidGossipPayload(type, payload)) return false;
+
+  const p = payload as Record<string, unknown>;
+
+  switch (type) {
+    case 'auction.start':
+    case 'auction.started': {
+      const result = await validateAuctionRFQ(
+        p as unknown as AuctionRFQPayload,
+        {
+          verifyingContract: ctx.verifyingContract,
+          chainId: ctx.chainId,
+          requireSignature: true,
+        }
+      );
+      return result.status === 'valid';
+    }
+
+    case 'bid.submit': {
+      const auction = ctx.getAuction?.(p.auctionId as string);
+      if (!auction) return false;
+      const result = await validateBid(p as unknown as BidPayload, auction, {
+        verifyingContract: ctx.verifyingContract,
+        chainId: ctx.chainId,
+      });
+      return result.status === 'valid';
+    }
+
+    case 'auction.bids': {
+      const bids = p.bids as unknown[];
+      if (bids.length === 0) return true;
+      const auction = ctx.getAuction?.(p.auctionId as string);
+      if (!auction) return false;
+      for (const bid of bids) {
+        const result = await validateBid(
+          bid as unknown as BidPayload,
+          auction,
+          {
+            verifyingContract: ctx.verifyingContract,
+            chainId: ctx.chainId,
+          }
+        );
+        if (result.status !== 'valid') return false;
+      }
+      return true;
+    }
+
+    // Status messages — structural check already passed
+    case 'bid.ack':
+    case 'auction.filled':
+    case 'auction.expired':
+    case 'order.created':
+      return true;
 
     default:
       return false;

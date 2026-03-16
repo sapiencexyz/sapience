@@ -1,5 +1,20 @@
 import { describe, it, expect } from 'vitest';
-import { isValidGossipPayload } from '../gossipValidation';
+import type { Address, Hex } from 'viem';
+import { privateKeyToAccount, generatePrivateKey } from 'viem/accounts';
+import {
+  isValidGossipPayload,
+  validateGossipPayloadAsync,
+  type GossipValidationContext,
+} from '../gossipValidation';
+import {
+  buildAuctionIntentTypedData,
+  buildCounterpartyMintTypedData,
+} from '../escrowSigning';
+import type {
+  AuctionRFQPayload,
+  BidPayload,
+  PickJson,
+} from '../../types/escrow';
 
 describe('isValidGossipPayload', () => {
   const validPick = {
@@ -273,6 +288,388 @@ describe('isValidGossipPayload', () => {
     it('rejects non-object payload', () => {
       expect(isValidGossipPayload('auction.bids', 'string')).toBe(false);
       expect(isValidGossipPayload('auction.bids', 42)).toBe(false);
+    });
+  });
+});
+
+// ─── validateGossipPayloadAsync ─────────────────────────────────────────────
+
+const VERIFYING_CONTRACT =
+  '0x1111111111111111111111111111111111111111' as Address;
+const CHAIN_ID = 42161;
+const CONDITION_RESOLVER =
+  '0x2222222222222222222222222222222222222222' as Address;
+const CONDITION_ID =
+  '0x0000000000000000000000000000000000000000000000000000000000000001' as Hex;
+
+const TEST_PICKS: PickJson[] = [
+  {
+    conditionResolver: CONDITION_RESOLVER,
+    conditionId: CONDITION_ID,
+    predictedOutcome: 1,
+  },
+];
+
+const TEST_PICKS_SDK = TEST_PICKS.map((p) => ({
+  conditionResolver: p.conditionResolver as Address,
+  conditionId: p.conditionId as Hex,
+  predictedOutcome: p.predictedOutcome,
+}));
+
+function futureDeadline(offsetSec = 3600): number {
+  return Math.floor(Date.now() / 1000) + offsetSec;
+}
+
+async function makeSignedAuctionRFQ(
+  overrides: Partial<AuctionRFQPayload> = {}
+): Promise<{ payload: AuctionRFQPayload }> {
+  const account = privateKeyToAccount(generatePrivateKey());
+  const deadline = futureDeadline();
+  const nonce = 1;
+
+  const typedData = buildAuctionIntentTypedData({
+    picks: TEST_PICKS_SDK,
+    predictor: account.address,
+    predictorCollateral: BigInt('1000000000000000000'),
+    predictorNonce: BigInt(nonce),
+    predictorDeadline: BigInt(deadline),
+    verifyingContract: VERIFYING_CONTRACT,
+    chainId: CHAIN_ID,
+  });
+
+  const intentSignature = await account.signTypedData({
+    domain: {
+      ...typedData.domain,
+      chainId: Number(typedData.domain.chainId),
+    },
+    types: typedData.types,
+    primaryType: typedData.primaryType,
+    message: typedData.message,
+  });
+
+  return {
+    payload: {
+      picks: TEST_PICKS,
+      predictorCollateral: '1000000000000000000',
+      predictor: account.address,
+      predictorNonce: nonce,
+      predictorDeadline: deadline,
+      intentSignature,
+      chainId: CHAIN_ID,
+      ...overrides,
+    },
+  };
+}
+
+async function makeSignedBid(
+  auction: AuctionRFQPayload
+): Promise<{ bid: BidPayload }> {
+  const account = privateKeyToAccount(generatePrivateKey());
+  const deadline = futureDeadline();
+  const nonce = 42;
+
+  const typedData = buildCounterpartyMintTypedData({
+    picks: TEST_PICKS_SDK,
+    predictorCollateral: BigInt(auction.predictorCollateral),
+    counterpartyCollateral: BigInt('500000000000000000'),
+    predictor: auction.predictor as Address,
+    counterparty: account.address,
+    counterpartyNonce: BigInt(nonce),
+    counterpartyDeadline: BigInt(deadline),
+    verifyingContract: VERIFYING_CONTRACT,
+    chainId: CHAIN_ID,
+  });
+
+  const counterpartySignature = await account.signTypedData({
+    domain: {
+      ...typedData.domain,
+      chainId: Number(typedData.domain.chainId),
+    },
+    types: typedData.types,
+    primaryType: typedData.primaryType,
+    message: typedData.message,
+  });
+
+  return {
+    bid: {
+      auctionId: 'test-auction-id',
+      counterparty: account.address,
+      counterpartyCollateral: '500000000000000000',
+      counterpartyNonce: nonce,
+      counterpartyDeadline: deadline,
+      counterpartySignature,
+    },
+  };
+}
+
+function makeCtx(
+  getAuction?: GossipValidationContext['getAuction']
+): GossipValidationContext {
+  return {
+    verifyingContract: VERIFYING_CONTRACT,
+    chainId: CHAIN_ID,
+    getAuction,
+  };
+}
+
+describe('validateGossipPayloadAsync', () => {
+  // ── structural rejection (delegates to isValidGossipPayload) ──
+
+  it('rejects structurally invalid payloads', async () => {
+    expect(
+      await validateGossipPayloadAsync(
+        'auction.start',
+        { bad: true },
+        makeCtx()
+      )
+    ).toBe(false);
+  });
+
+  it('rejects unknown message types', async () => {
+    expect(
+      await validateGossipPayloadAsync(
+        'evil.inject',
+        { data: 'pwned' },
+        makeCtx()
+      )
+    ).toBe(false);
+  });
+
+  // ── auction.start ──
+
+  describe('auction.start', () => {
+    it('accepts with valid intent signature', async () => {
+      const { payload } = await makeSignedAuctionRFQ();
+      expect(
+        await validateGossipPayloadAsync('auction.start', payload, makeCtx())
+      ).toBe(true);
+    });
+
+    it('rejects without intent signature', async () => {
+      const { payload } = await makeSignedAuctionRFQ();
+      delete (payload as Record<string, unknown>).intentSignature;
+      expect(
+        await validateGossipPayloadAsync('auction.start', payload, makeCtx())
+      ).toBe(false);
+    });
+
+    it('rejects with forged intent signature', async () => {
+      const { payload } = await makeSignedAuctionRFQ();
+      // Sign with a different key
+      const imposter = privateKeyToAccount(generatePrivateKey());
+      const typedData = buildAuctionIntentTypedData({
+        picks: TEST_PICKS_SDK,
+        predictor: imposter.address,
+        predictorCollateral: BigInt(payload.predictorCollateral),
+        predictorNonce: BigInt(payload.predictorNonce),
+        predictorDeadline: BigInt(payload.predictorDeadline),
+        verifyingContract: VERIFYING_CONTRACT,
+        chainId: CHAIN_ID,
+      });
+      payload.intentSignature = await imposter.signTypedData({
+        domain: {
+          ...typedData.domain,
+          chainId: Number(typedData.domain.chainId),
+        },
+        types: typedData.types,
+        primaryType: typedData.primaryType,
+        message: typedData.message,
+      });
+      // predictor address doesn't match the signer
+      expect(
+        await validateGossipPayloadAsync('auction.start', payload, makeCtx())
+      ).toBe(false);
+    });
+
+    it('rejects with expired deadline', async () => {
+      const pastDeadline = Math.floor(Date.now() / 1000) - 100;
+      const { payload } = await makeSignedAuctionRFQ({
+        predictorDeadline: pastDeadline,
+      });
+      expect(
+        await validateGossipPayloadAsync('auction.start', payload, makeCtx())
+      ).toBe(false);
+    });
+  });
+
+  // ── auction.started (same validation as auction.start) ──
+
+  describe('auction.started', () => {
+    it('accepts with valid intent signature', async () => {
+      const { payload } = await makeSignedAuctionRFQ();
+      const started = { ...payload, auctionId: 'auction-123' };
+      expect(
+        await validateGossipPayloadAsync('auction.started', started, makeCtx())
+      ).toBe(true);
+    });
+
+    it('rejects without intent signature', async () => {
+      const { payload } = await makeSignedAuctionRFQ();
+      const started = { ...payload, auctionId: 'auction-123' };
+      delete (started as Record<string, unknown>).intentSignature;
+      expect(
+        await validateGossipPayloadAsync('auction.started', started, makeCtx())
+      ).toBe(false);
+    });
+  });
+
+  // ── bid.submit ──
+
+  describe('bid.submit', () => {
+    it('accepts with valid counterparty signature and auction context', async () => {
+      const { payload: auction } = await makeSignedAuctionRFQ();
+      const { bid } = await makeSignedBid(auction);
+      const getAuction = () => auction;
+      expect(
+        await validateGossipPayloadAsync('bid.submit', bid, makeCtx(getAuction))
+      ).toBe(true);
+    });
+
+    it('rejects when getAuction returns null (unknown auction)', async () => {
+      const { payload: auction } = await makeSignedAuctionRFQ();
+      const { bid } = await makeSignedBid(auction);
+      const getAuction = () => null;
+      expect(
+        await validateGossipPayloadAsync('bid.submit', bid, makeCtx(getAuction))
+      ).toBe(false);
+    });
+
+    it('rejects when getAuction is not provided', async () => {
+      const { payload: auction } = await makeSignedAuctionRFQ();
+      const { bid } = await makeSignedBid(auction);
+      expect(
+        await validateGossipPayloadAsync('bid.submit', bid, makeCtx())
+      ).toBe(false);
+    });
+
+    it('rejects with forged counterparty signature', async () => {
+      const { payload: auction } = await makeSignedAuctionRFQ();
+      const { bid } = await makeSignedBid(auction);
+      // Replace signature with one from a different key
+      const imposter = privateKeyToAccount(generatePrivateKey());
+      const typedData = buildCounterpartyMintTypedData({
+        picks: TEST_PICKS_SDK,
+        predictorCollateral: BigInt(auction.predictorCollateral),
+        counterpartyCollateral: BigInt(bid.counterpartyCollateral),
+        predictor: auction.predictor as Address,
+        counterparty: imposter.address,
+        counterpartyNonce: BigInt(bid.counterpartyNonce),
+        counterpartyDeadline: BigInt(bid.counterpartyDeadline),
+        verifyingContract: VERIFYING_CONTRACT,
+        chainId: CHAIN_ID,
+      });
+      bid.counterpartySignature = await imposter.signTypedData({
+        domain: {
+          ...typedData.domain,
+          chainId: Number(typedData.domain.chainId),
+        },
+        types: typedData.types,
+        primaryType: typedData.primaryType,
+        message: typedData.message,
+      });
+      // counterparty address doesn't match signer
+      const getAuction = () => auction;
+      expect(
+        await validateGossipPayloadAsync('bid.submit', bid, makeCtx(getAuction))
+      ).toBe(false);
+    });
+  });
+
+  // ── auction.bids ──
+
+  describe('auction.bids', () => {
+    it('accepts with valid signed bids and auction context', async () => {
+      const { payload: auction } = await makeSignedAuctionRFQ();
+      const { bid } = await makeSignedBid(auction);
+      const getAuction = () => auction;
+      expect(
+        await validateGossipPayloadAsync(
+          'auction.bids',
+          { auctionId: bid.auctionId, bids: [bid] },
+          makeCtx(getAuction)
+        )
+      ).toBe(true);
+    });
+
+    it('accepts empty bids array', async () => {
+      expect(
+        await validateGossipPayloadAsync(
+          'auction.bids',
+          { auctionId: 'a-1', bids: [] },
+          makeCtx()
+        )
+      ).toBe(true);
+    });
+
+    it('rejects when getAuction returns null for non-empty bids', async () => {
+      const { payload: auction } = await makeSignedAuctionRFQ();
+      const { bid } = await makeSignedBid(auction);
+      const getAuction = () => null;
+      expect(
+        await validateGossipPayloadAsync(
+          'auction.bids',
+          { auctionId: bid.auctionId, bids: [bid] },
+          makeCtx(getAuction)
+        )
+      ).toBe(false);
+    });
+
+    it('rejects if any bid has invalid signature', async () => {
+      const { payload: auction } = await makeSignedAuctionRFQ();
+      const { bid: good } = await makeSignedBid(auction);
+      const bad = { ...good, counterpartySignature: '0xdead' };
+      const getAuction = () => auction;
+      expect(
+        await validateGossipPayloadAsync(
+          'auction.bids',
+          { auctionId: good.auctionId, bids: [good, bad] },
+          makeCtx(getAuction)
+        )
+      ).toBe(false);
+    });
+  });
+
+  // ── status messages (structural only) ──
+
+  describe('status messages pass with structural check only', () => {
+    it('bid.ack', async () => {
+      expect(
+        await validateGossipPayloadAsync(
+          'bid.ack',
+          { auctionId: 'a-1' },
+          makeCtx()
+        )
+      ).toBe(true);
+    });
+
+    it('auction.filled', async () => {
+      expect(
+        await validateGossipPayloadAsync(
+          'auction.filled',
+          { auctionId: 'a-1', transactionHash: '0xabc' },
+          makeCtx()
+        )
+      ).toBe(true);
+    });
+
+    it('auction.expired', async () => {
+      expect(
+        await validateGossipPayloadAsync(
+          'auction.expired',
+          { auctionId: 'a-1', reason: 'timeout' },
+          makeCtx()
+        )
+      ).toBe(true);
+    });
+
+    it('order.created', async () => {
+      expect(
+        await validateGossipPayloadAsync(
+          'order.created',
+          { id: 'order-1' },
+          makeCtx()
+        )
+      ).toBe(true);
     });
   });
 });
