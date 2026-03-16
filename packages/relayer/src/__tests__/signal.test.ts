@@ -347,4 +347,107 @@ describe('signal server hardening', () => {
     await new Promise((r) => setTimeout(r, 200));
     expect(received.length).toBe(2);
   });
+
+  it('rejects connections exceeding per-IP limit', async () => {
+    await startServer({ maxConnectionsPerIp: 2 });
+
+    const ws1 = connect();
+    await waitForMessage(ws1);
+
+    const ws2 = connect();
+    await waitForMessage(ws2);
+
+    // 3rd connection from same IP should be closed
+    const ws3 = connect();
+    await waitForClose(ws3);
+
+    expect(ws1.readyState).toBe(WebSocket.OPEN);
+    expect(ws2.readyState).toBe(WebSocket.OPEN);
+    expect(ws3.readyState).toBe(WebSocket.CLOSED);
+  });
+
+  it('allows reconnection after a per-IP slot frees up', async () => {
+    await startServer({ maxConnectionsPerIp: 1 });
+
+    const ws1 = connect();
+    await waitForMessage(ws1);
+
+    // 2nd connection rejected
+    const ws2 = connect();
+    await waitForClose(ws2);
+    expect(ws2.readyState).toBe(WebSocket.CLOSED);
+
+    // Close the first — slot opens
+    ws1.close();
+    await waitForClose(ws1);
+
+    // Now a new connection should succeed
+    const ws3 = connect();
+    const msg = await waitForMessage(ws3);
+    expect(msg.type).toBe('peers');
+    expect(ws3.readyState).toBe(WebSocket.OPEN);
+  });
+
+  it('rejects connections exceeding per-IP rate limit', async () => {
+    await startServer({ connectionRateLimitPerMin: 2 });
+
+    // First two connections succeed
+    const ws1 = connect();
+    await waitForMessage(ws1);
+
+    const ws2 = connect();
+    await waitForMessage(ws2);
+
+    // Close them to free per-IP connection slots
+    ws1.close();
+    await waitForClose(ws1);
+    ws2.close();
+    await waitForClose(ws2);
+
+    // 3rd connection within the same minute should be rate-limited
+    const ws3 = connect();
+    await waitForClose(ws3);
+    expect(ws3.readyState).toBe(WebSocket.CLOSED);
+  });
+
+  it('closes idle connections after timeout', async () => {
+    await startServer({ idleTimeoutMs: 200 });
+
+    const ws1 = connect();
+    await waitForMessage(ws1);
+    expect(ws1.readyState).toBe(WebSocket.OPEN);
+
+    // Wait for idle timeout to fire
+    await waitForClose(ws1);
+    expect(ws1.readyState).toBe(WebSocket.CLOSED);
+  });
+
+  it('resets idle timeout on message activity', async () => {
+    await startServer({ idleTimeoutMs: 300 });
+
+    const ws1 = connect();
+    await waitForMessage(ws1);
+
+    const ws2 = connect();
+    const ws2Init = await waitForMessage(ws2);
+    await waitForMessage(ws1); // peer-joined
+
+    // Send a message at 150ms — should reset the timer
+    await new Promise((r) => setTimeout(r, 150));
+    ws1.send(
+      JSON.stringify({
+        type: 'offer',
+        target: ws2Init.yourId as string,
+        data: { sdp: 'keepalive' },
+      })
+    );
+
+    // At 350ms total, the original timer would have fired, but the reset pushed it out
+    await new Promise((r) => setTimeout(r, 200));
+    expect(ws1.readyState).toBe(WebSocket.OPEN);
+
+    // Now wait for the actual timeout
+    await waitForClose(ws1);
+    expect(ws1.readyState).toBe(WebSocket.CLOSED);
+  });
 });
