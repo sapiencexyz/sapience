@@ -47,7 +47,7 @@ export function getPublicClientForChainId(chainId: number) {
 
     const client = createPublicClient({
       chain: isTestnet ? etherealTestnetChain : etherealChain,
-      transport: http(rpcUrl),
+      transport: http(rpcUrl, { retryCount: 3, retryDelay: 1000 }),
     });
     publicClientCache.set(chainId, client);
     return client;
@@ -75,7 +75,9 @@ export function getPublicClientForChainId(chainId: number) {
     chain: (chainObj ?? mainnet) as Parameters<
       typeof createPublicClient
     >[0]['chain'],
-    transport: defaultUrl ? http(defaultUrl) : http(),
+    transport: defaultUrl
+      ? http(defaultUrl, { retryCount: 3, retryDelay: 1000 })
+      : http(undefined, { retryCount: 3, retryDelay: 1000 }),
   });
   publicClientCache.set(chainId, client);
   return client;
