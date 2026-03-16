@@ -194,7 +194,7 @@ jobs:
       - run: pnpm --filter ui run lint
       - run: pnpm --filter ui run type-check
 
-  lint-relayer:
+  lint-typecheck-relayer:
     needs: [changes, install]
     if: needs.changes.outputs.relayer == 'true'
     runs-on: ubuntu-latest
@@ -209,7 +209,9 @@ jobs:
             node_modules
             packages/*/node_modules
           key: ${{ runner.os }}-modules-${{ github.sha }}
+      - run: pnpm --filter @sapience/sdk run build:lib
       - run: pnpm --filter @sapience/relayer run lint
+      - run: pnpm --filter @sapience/relayer run type-check
 
   test-sdk:
     needs: [changes, install]

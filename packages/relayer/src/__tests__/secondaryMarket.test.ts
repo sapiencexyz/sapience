@@ -387,15 +387,19 @@ function findMsg(
   return messages.find((m) => predicate(m as WsMsg)) as WsMsg | undefined;
 }
 
-function createMockClient(): ClientConnection {
+type MockClient = ClientConnection & { _messages: unknown[] };
+
+function createMockClient(): MockClient {
   const messages: unknown[] = [];
   return {
-    send: (msg: unknown) => messages.push(msg),
+    send: (msg: unknown) => {
+      messages.push(msg);
+    },
+    close: () => {},
     isOpen: true,
     id: `test-client-${Math.random().toString(36).slice(2)}`,
-    // Expose captured messages for assertion
     _messages: messages,
-  } as ClientConnection & { _messages: unknown[] };
+  } as MockClient;
 }
 
 function createMockSubs(): SubscriptionManager & {
@@ -415,9 +419,25 @@ function createMockSubs(): SubscriptionManager & {
       const removed = topics.get(topic)?.delete(client) ?? false;
       return removed;
     },
+    unsubscribeAll: (client: ClientConnection) => {
+      let count = 0;
+      for (const subs of topics.values()) {
+        if (subs.delete(client)) count++;
+      }
+      return count;
+    },
+    unsubscribeByPrefix: (prefix: string, client: ClientConnection) => {
+      let count = 0;
+      for (const [topic, subs] of topics) {
+        if (topic.startsWith(prefix) && subs.delete(client)) count++;
+      }
+      return count;
+    },
     broadcast: (topic: string, msg: unknown) => {
       broadcasts.push({ topic, msg });
+      return 0;
     },
+    broadcastRaw: (_topic: string, _raw: string) => 0,
     subscriberCount: (topic: string) => topics.get(topic)?.size ?? 0,
     _topics: topics,
     _broadcasts: broadcasts,
