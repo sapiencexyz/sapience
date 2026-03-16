@@ -313,4 +313,55 @@ router.post(
   })
 );
 
+router.post(
+  '/collateral-transfers',
+  handleAsyncErrors(async (req, res) => {
+    const { chainId, fromBlock } = req.body;
+
+    const parsedChainId = parseInt(chainId);
+    if (!chainId || isNaN(parsedChainId)) {
+      res.status(400).json({ error: 'Valid chainId is required' });
+      return;
+    }
+    const parsedFromBlock =
+      fromBlock !== undefined ? parseInt(fromBlock) : undefined;
+    if (parsedFromBlock !== undefined && isNaN(parsedFromBlock)) {
+      res.status(400).json({ error: 'fromBlock must be a number' });
+      return;
+    }
+
+    const startCommand =
+      `pnpm run start:reindex-collateral-transfers ${parsedChainId} ${parsedFromBlock ?? ''}`.trim();
+
+    const params = JSON.stringify({
+      chainId: parsedChainId,
+      fromBlock: parsedFromBlock,
+    });
+    try {
+      const result = await executeLocalReindex(startCommand);
+      await prisma.backgroundJob.create({
+        data: {
+          command: 'reindex-collateral-transfers',
+          status: result.status,
+          params,
+        },
+      });
+      res.json({ success: true, job: result });
+    } catch (error: unknown) {
+      await prisma.backgroundJob.create({
+        data: {
+          command: 'reindex-collateral-transfers',
+          status: 'failed',
+          params,
+        },
+      });
+      if (error instanceof Error) {
+        res.status(500).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: 'An unknown error occurred' });
+      }
+    }
+  })
+);
+
 export { router };

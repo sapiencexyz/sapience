@@ -28,6 +28,7 @@ import ReferralCodesTab from './ReferralCodesTab';
 import ReindexConditionSettledForm from './ReindexConditionSettledForm';
 import BackfillProtocolStatsForm from './BackfillProtocolStatsForm';
 import ReindexPositionBalancesForm from './ReindexPositionBalancesForm';
+import ReindexCollateralTransfersForm from './ReindexCollateralTransfersForm';
 import { useAdminApi } from '~/hooks/useAdminApi';
 import { useSettings } from '~/lib/context/SettingsContext';
 
@@ -128,6 +129,8 @@ const Admin = () => {
   const [protocolStatsBackfillOpen, setProtocolStatsBackfillOpen] =
     useState(false);
   const [positionBalancesReindexOpen, setPositionBalancesReindexOpen] =
+    useState(false);
+  const [collateralTransfersReindexOpen, setCollateralTransfersReindexOpen] =
     useState(false);
   const { adminBaseUrl, setAdminBaseUrl, defaults } = useSettings();
   const [adminDialogOpen, setAdminDialogOpen] = useState(false);
@@ -250,6 +253,22 @@ const Admin = () => {
                 <DialogTitle>Reindex Position Balances</DialogTitle>
               </DialogHeader>
               <ReindexPositionBalancesForm />
+            </DialogContent>
+          </Dialog>
+          <Dialog
+            open={collateralTransfersReindexOpen}
+            onOpenChange={setCollateralTransfersReindexOpen}
+          >
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                Reindex Collateral Transfers
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-sm">
+              <DialogHeader>
+                <DialogTitle>Reindex Collateral Transfers</DialogTitle>
+              </DialogHeader>
+              <ReindexCollateralTransfersForm />
             </DialogContent>
           </Dialog>
           <Dialog
