@@ -1,6 +1,7 @@
 import { reindexEAS } from './reindexEAS';
 import { backfillAccuracy } from './backfillAccuracy';
 import { reindexTransfers } from './reindexTransfers';
+import { reindexCollateralTransfers } from './reindexCollateralTransfers';
 import { reindexAccuracy } from './reindexAccuracy';
 import { reindexConditionSettled } from './reindexConditionSettled';
 import {
@@ -118,6 +119,24 @@ export async function handleJobCommand(argv: string[]): Promise<boolean> {
         process.exit(1);
       }
       console.log('Done reindexing transfers');
+      process.exit(0);
+      return true;
+    }
+    case 'reindexCollateralTransfers': {
+      const chainId = parseInt(argv[3], 10);
+      const fromBlock = argv[4] ? parseInt(argv[4], 10) : undefined;
+      if (isNaN(chainId)) {
+        console.error(
+          'Invalid arguments. Usage: tsx src/workers/worker.ts reindexCollateralTransfers <chainId> [fromBlock]'
+        );
+        process.exit(1);
+      }
+      const result = await reindexCollateralTransfers(chainId, fromBlock);
+      if (!result) {
+        console.error('Failed to reindex collateral transfers');
+        process.exit(1);
+      }
+      console.log('Done reindexing collateral transfers');
       process.exit(0);
       return true;
     }
