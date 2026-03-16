@@ -1254,6 +1254,11 @@ export type Position = {
   userCollateral?: Maybe<Scalars['String']['output']>;
 };
 
+/** Field to sort positions by */
+export type PositionSortField =
+  | 'CREATED_AT'
+  | 'UPDATED_AT';
+
 /** Escrow-based prediction record between a predictor and counterparty, with collateral and settlement tracking */
 export type Prediction = {
   __typename?: 'Prediction';
@@ -1576,6 +1581,8 @@ export type QueryPositionsArgs = {
   endsAtMin?: InputMaybe<Scalars['Int']['input']>;
   holder?: InputMaybe<Scalars['String']['input']>;
   holderWon?: InputMaybe<Scalars['Boolean']['input']>;
+  orderBy?: InputMaybe<PositionSortField>;
+  orderDirection?: InputMaybe<SortOrder>;
   pickConfigId?: InputMaybe<Scalars['String']['input']>;
   result?: InputMaybe<SettlementResult>;
   settled?: InputMaybe<Scalars['Boolean']['input']>;

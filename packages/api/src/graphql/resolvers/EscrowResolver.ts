@@ -97,6 +97,17 @@ registerEnumType(PredictionSortField, {
   description: 'Field to sort predictions by',
 });
 
+/** Fields available for sorting positions. */
+export enum PositionSortField {
+  CREATED_AT = 'createdAt',
+  UPDATED_AT = 'updatedAt',
+}
+
+registerEnumType(PositionSortField, {
+  name: 'PositionSortField',
+  description: 'Field to sort positions by',
+});
+
 // ============================================================================
 // GraphQL Object Types
 // ============================================================================
@@ -634,7 +645,11 @@ export class EscrowResolver {
     @Arg('collateralMin', () => String, { nullable: true })
     collateralMin?: string,
     @Arg('collateralMax', () => String, { nullable: true })
-    collateralMax?: string
+    collateralMax?: string,
+    @Arg('orderBy', () => PositionSortField, { nullable: true })
+    orderBy?: PositionSortField,
+    @Arg('orderDirection', () => SortOrder, { nullable: true })
+    orderDirection?: SortOrder
   ): Promise<PositionType[]> {
     const cappedTake = Math.max(1, Math.min(take, 100));
     const holderLower = holder?.toLowerCase();
@@ -784,9 +799,14 @@ export class EscrowResolver {
       },
     };
 
+    const direction = orderDirection === 'asc' ? 'asc' : 'desc';
+    const orderByClause: Prisma.PositionOrderByWithRelationInput = {
+      [orderBy ?? 'updatedAt']: direction,
+    };
+
     const rows = await prisma.position.findMany({
       where,
-      orderBy: { updatedAt: 'desc' },
+      orderBy: orderByClause,
       take: cappedTake,
       skip,
       include: {
