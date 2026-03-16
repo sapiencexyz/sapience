@@ -68,7 +68,7 @@ export class CollateralBalanceResolver {
   @Query(() => CollateralBalanceType)
   async collateralBalance(
     @Arg('address', () => String) address: string,
-    @Arg('chainId', () => Int, { defaultValue: 5064014 }) chainId: number,
+    @Arg('chainId', () => Int) chainId: number,
     @Arg('atBlock', () => Int, { nullable: true }) atBlock?: number
   ): Promise<CollateralBalanceType> {
     const addr = address.toLowerCase();
@@ -113,7 +113,7 @@ export class CollateralBalanceResolver {
     @Arg('intervalHours', () => Int, { defaultValue: 168 })
     intervalHours: number,
     @Arg('count', () => Int, { defaultValue: 12 }) count: number,
-    @Arg('chainId', () => Int, { defaultValue: 5064014 }) chainId: number
+    @Arg('chainId', () => Int) chainId: number
   ): Promise<CollateralBalanceSnapshotType[]> {
     const addr = address.toLowerCase();
     const cappedCount = Math.min(count, 365);
@@ -165,7 +165,7 @@ export class CollateralBalanceResolver {
   @Query(() => [CollateralTransferType])
   async collateralTransfers(
     @Arg('address', () => String) address: string,
-    @Arg('chainId', () => Int, { defaultValue: 5064014 }) chainId: number,
+    @Arg('chainId', () => Int) chainId: number,
     @Arg('limit', () => Int, { defaultValue: 100 }) limit: number,
     @Arg('offset', () => Int, { defaultValue: 0 }) offset: number
   ): Promise<CollateralTransferType[]> {

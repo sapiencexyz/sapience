@@ -7,7 +7,7 @@ import type { ValidationResult } from '@sapience/sdk/auction/validation';
 import { validateBidOnChain } from '@sapience/sdk/auction/validation';
 import type { QuoteBid } from '~/lib/auction/useAuctionStart';
 import { logBidValidation, formatBidForLog } from '~/lib/auction/bidLogger';
-import { PREFERRED_ESTIMATE_QUOTER } from '@sapience/sdk/constants';
+import { PREFERRED_ESTIMATE_QUOTER } from '~/lib/constants';
 import { getPublicClientForChainId } from '~/lib/utils/util';
 
 export type ValidationStatus = 'pending' | 'valid' | 'invalid';

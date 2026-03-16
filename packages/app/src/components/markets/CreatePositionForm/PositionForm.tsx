@@ -18,8 +18,8 @@ import {
   COLLATERAL_SYMBOLS,
   CHAIN_ID_ETHEREAL,
   CHAIN_ID_ETHEREAL_TESTNET,
-  PREFERRED_ESTIMATE_QUOTER,
 } from '@sapience/sdk/constants';
+import { PREFERRED_ESTIMATE_QUOTER } from '~/lib/constants';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import { PositionSizeInput } from '~/components/markets/forms';

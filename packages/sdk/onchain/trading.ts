@@ -21,7 +21,6 @@ import {
   etherealChain,
   getRpcUrl,
 } from '../constants/chain';
-import { getCollateralAddress } from '../constants/addresses';
 
 type Hex = `0x${string}`;
 
@@ -76,7 +75,7 @@ export async function getWUSDEBalance(
 ): Promise<bigint> {
   const client = createTradingPublicClient(rpcUrl);
   const balance = await client.readContract({
-    address: getCollateralAddress(chainId),
+    address: collateralToken[chainId]?.address,
     abi: WUSDE_ABI,
     functionName: 'balanceOf',
     args: [address],
@@ -114,7 +113,7 @@ export async function wrapUSDe(args: {
   const walletClient = createTradingWalletClient(privateKey, rpcUrl);
 
   const hash = await walletClient.sendTransaction({
-    to: getCollateralAddress(chainId),
+    to: collateralToken[chainId]?.address,
     data: encodeFunctionData({
       abi: WUSDE_ABI,
       functionName: 'deposit',
@@ -144,7 +143,7 @@ export async function unwrapUSDe(args: {
   const walletClient = createTradingWalletClient(privateKey, rpcUrl);
 
   const hash = await walletClient.sendTransaction({
-    to: getCollateralAddress(chainId),
+    to: collateralToken[chainId]?.address,
     data: encodeFunctionData({
       abi: WUSDE_ABI,
       functionName: 'withdraw',
@@ -169,7 +168,7 @@ export async function getWUSDEAllowance(args: {
   const publicClient = createTradingPublicClient(rpcUrl);
 
   const allowance = await publicClient.readContract({
-    address: getCollateralAddress(chainId),
+    address: collateralToken[chainId]?.address,
     abi: ERC20_ABI,
     functionName: 'allowance',
     args: [owner, spender],
@@ -281,7 +280,7 @@ export async function prepareForTrade(args: {
   if (currentAllowance < collateralAmount) {
     // Approve the exact amount needed (or could use max approval for convenience)
     const hash = await walletClient.writeContract({
-      address: getCollateralAddress(chainId),
+      address: collateralToken[chainId]?.address,
       abi: ERC20_ABI,
       functionName: 'approve',
       args: [spender, collateralAmount],

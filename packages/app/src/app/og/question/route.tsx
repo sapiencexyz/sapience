@@ -1,10 +1,8 @@
 import { ImageResponse } from 'next/og';
 import { parseUnits, zeroAddress } from 'viem';
 import { createEscrowAuctionWs } from '@sapience/sdk/relayer/escrowAuctionWs';
-import {
-  PREFERRED_ESTIMATE_QUOTER,
-  DEFAULT_CHAIN_ID,
-} from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { PREFERRED_ESTIMATE_QUOTER } from '~/lib/constants';
 import { conditionalTokensConditionResolver } from '@sapience/sdk/contracts';
 import { canonicalizePicks } from '@sapience/sdk/auction/escrowEncoding';
 import {

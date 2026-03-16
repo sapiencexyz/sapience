@@ -7,9 +7,9 @@ import { arbitrum } from 'viem/chains';
 import {
   CHAIN_ID_ETHEREAL,
   etherealChain,
-  getCollateralAddress,
 } from '@sapience/sdk/constants';
 import {
+  collateralToken,
   predictionMarketEscrow,
   getResolverAddress,
 } from '@sapience/sdk/contracts/addresses';
@@ -91,7 +91,7 @@ const PRIVATE_KEY_HEX = PRIVATE_KEY
 
 // Contract addresses from SDK
 const VERIFYING_CONTRACT = (process.env.VERIFYING_CONTRACT || predictionMarketEscrow[CHAIN_ID]?.address) as Address | undefined;
-const COLLATERAL_TOKEN = (process.env.COLLATERAL_TOKEN || getCollateralAddress(CHAIN_ID)) as Address;
+const COLLATERAL_TOKEN = (process.env.COLLATERAL_TOKEN || collateralToken[CHAIN_ID]?.address) as Address;
 
 // Sponsor allowlist
 const SPONSOR_ALLOWLIST: Set<string> | null = (() => {
