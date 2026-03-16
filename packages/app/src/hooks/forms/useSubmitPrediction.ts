@@ -3,12 +3,9 @@ import { encodeAbiParameters, parseAbiParameters, type Hash } from 'viem';
 import { useAccount } from 'wagmi';
 
 import { SCHEMA_UID } from '~/lib/constants';
-import { EAS_ATTEST_ABI, getEASContractAddress } from '~/hooks/contract/EAS';
+import { EAS_ATTEST_ABI, EAS_CONTRACT_ADDRESS } from '~/hooks/contract/EAS';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
-
-// Default to Arbitrum; anticipate most transactions occur on Arbitrum.
-// If a market requires a different chain in the future, thread that chainId in via hook params.
-const ARBITRUM_CHAIN_ID = 42161;
+import { CHAIN_ID_ARBITRUM } from '@sapience/sdk/constants';
 
 interface UseSubmitPredictionProps {
   submissionValue: string; // Value from the form - probability 0-100 (will be converted to D18)
@@ -100,8 +97,8 @@ export function useSubmitPrediction({
         condition
       );
       await writeContract({
-        chainId: ARBITRUM_CHAIN_ID,
-        address: getEASContractAddress(ARBITRUM_CHAIN_ID),
+        chainId: CHAIN_ID_ARBITRUM,
+        address: EAS_CONTRACT_ADDRESS,
         abi: EAS_ATTEST_ABI,
         functionName: 'attest',
         args: [

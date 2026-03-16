@@ -6,17 +6,12 @@ import { parseUnits, zeroAddress } from 'viem';
 import { useAccount, useReadContract } from 'wagmi';
 import { predictionMarketEscrowAbi } from '@sapience/sdk/abis';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
-import {
-  DEFAULT_CHAIN_ID,
-  PREFERRED_ESTIMATE_QUOTER,
-} from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { PREFERRED_ESTIMATE_QUOTER } from '~/lib/constants';
 import { OutcomeSide } from '@sapience/sdk/types';
-import { predictionMarketLZConditionalTokensResolver } from '@sapience/sdk/contracts';
+import { conditionalTokensConditionResolver } from '@sapience/sdk/contracts';
 import { useAuctionStart, type QuoteBid } from '~/lib/auction/useAuctionStart';
-import {
-  buildAuctionStartPayload,
-  type PredictedOutcomeInputStub,
-} from '~/lib/auction/buildAuctionPayload';
+import type { PredictedOutcomeInputStub } from '~/lib/auction/buildAuctionPayload';
 import PercentChance from '~/components/shared/PercentChance';
 
 const FADE_VARIANTS = {
@@ -105,7 +100,10 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
     React.useState<string | null>(null);
 
   const { address: predictorAddress } = useAccount();
-  const { requestQuotes, bids } = useAuctionStart({ disableLogging: true });
+  const { requestQuotes, bids } = useAuctionStart({
+    disableLogging: true,
+    skipIntentSigning: true,
+  });
   const chainId = chainIdProp ?? DEFAULT_CHAIN_ID;
   const PREDICTION_MARKET_ADDRESS =
     predictionMarketEscrow[chainId]?.address ||
@@ -267,28 +265,26 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
     if (effectiveOutcomes.length === 0 || !selectedPredictorAddress) return;
     const positionSizeWei = parseUnits('1', 18).toString();
     setLastPredictorPositionSizeWei(positionSizeWei);
-    const payload = buildAuctionStartPayload(effectiveOutcomes, chainId);
     const effectiveResolver =
       resolverAddress ||
-      predictionMarketLZConditionalTokensResolver[chainId]?.address ||
+      conditionalTokensConditionResolver[chainId]?.address ||
       null;
-    const escrowPicks = effectiveResolver
+    const picks = effectiveResolver
       ? effectiveOutcomes.map((o) => ({
-          conditionResolver: effectiveResolver as `0x${string}`,
+          conditionResolver: (o.resolverAddress ??
+            effectiveResolver) as `0x${string}`,
           conditionId: (o.marketId.startsWith('0x')
             ? o.marketId
             : `0x${o.marketId}`) as `0x${string}`,
           predictedOutcome: o.prediction ? OutcomeSide.YES : OutcomeSide.NO,
         }))
-      : undefined;
+      : [];
     requestQuotes({
       wager: positionSizeWei,
-      resolver: payload.resolver,
-      predictedOutcomes: payload.predictedOutcomes,
       predictor: selectedPredictorAddress,
       predictorNonce: predictorNonce !== undefined ? Number(predictorNonce) : 0,
       chainId: chainId,
-      ...(escrowPicks && { escrowPicks }),
+      picks,
     });
   };
 

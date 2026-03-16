@@ -319,6 +319,7 @@ type CollateralBalanceSnapshotType {
   atBlock: Int!
   balance: String!
   index: Int!
+  timestamp: DateTimeISO
 }
 
 type CollateralBalanceType {
@@ -333,6 +334,7 @@ type CollateralTransferType {
   chainId: Int!
   from: String!
   id: Int!
+  timestamp: DateTimeISO!
   to: String!
   transactionHash: String!
   value: String!
@@ -1102,6 +1104,12 @@ type Position {
   userCollateral: String
 }
 
+"""Field to sort positions by"""
+enum PositionSortField {
+  CREATED_AT
+  UPDATED_AT
+}
+
 """
 Escrow-based prediction record between a predictor and counterparty, with collateral and settlement tracking
 """
@@ -1128,6 +1136,29 @@ type Prediction {
   settleTxHash: String
   settled: Boolean!
   settledAt: Int
+}
+
+"""
+Time-bucketed prediction count with outcome breakdown, bucketed by creation time
+"""
+type PredictionCountDataPoint {
+  """Predictions lost in this bucket"""
+  lost: Int!
+
+  """Predictions settled as non-decisive in this bucket"""
+  nonDecisive: Int!
+
+  """Predictions still pending in this bucket"""
+  pending: Int!
+
+  """Unix epoch timestamp (seconds) for the start of this bucket"""
+  timestamp: Int!
+
+  """Total predictions created in this bucket"""
+  total: Int!
+
+  """Predictions won in this bucket"""
+  won: Int!
 }
 
 """Field to sort predictions by"""
@@ -1195,6 +1226,11 @@ type Query {
   accountPnl(address: String!, from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [PnlDataPoint!]!
 
   """
+  Time-bucketed prediction count with outcome breakdown for a single address, bucketed by creation time
+  """
+  accountPredictionCount(address: String!, from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [PredictionCountDataPoint!]!
+
+  """
   Profit rank and total PnL for a single address relative to all participants
   """
   accountProfitRank(address: String!): ProfitRank!
@@ -1221,9 +1257,9 @@ type Query {
   Paginated list of position close (burn) records, filterable by address, pick config, and chain
   """
   closes(address: String, chainId: Int, pickConfigId: String, skip: Int! = 0, take: Int! = 50): [Close!]!
-  collateralBalance(address: String!, atBlock: Int, chainId: Int! = 5064014): CollateralBalanceType!
-  collateralBalanceHistory(address: String!, chainId: Int! = 5064014, count: Int! = 12, currentBlock: Int, intervalHours: Int! = 168): [CollateralBalanceSnapshotType!]!
-  collateralTransfers(address: String!, chainId: Int! = 5064014, limit: Int! = 100, offset: Int! = 0): [CollateralTransferType!]!
+  collateralBalance(address: String!, atBlock: Int, chainId: Int!): CollateralBalanceType!
+  collateralBalanceHistory(address: String!, chainId: Int!, count: Int! = 12, currentBlock: Int, intervalHours: Int! = 168): [CollateralBalanceSnapshotType!]!
+  collateralTransfers(address: String!, chainId: Int!, limit: Int! = 100, offset: Int! = 0): [CollateralTransferType!]!
   condition(where: ConditionWhereUniqueInput!): Condition
   conditionGroup(where: ConditionGroupWhereUniqueInput!): ConditionGroup
   conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]!
@@ -1238,9 +1274,9 @@ type Query {
   pickConfigurations(chainId: Int, resolved: Boolean, result: SettlementResult, skip: Int! = 0, take: Int! = 50): [PickConfiguration!]!
 
   """
-  Paginated list of token position balances, filterable by holder, condition, chain, or pick config
+  Paginated list of token position balances, filterable by holder, condition, chain, pick config, settlement, date range, collateral range, and won/lost status
   """
-  positions(chainId: Int, conditionId: String, holder: String, pickConfigId: String, skip: Int! = 0, take: Int! = 50): [Position!]!
+  positions(chainId: Int, collateralMax: String, collateralMin: String, conditionId: String, endsAtMax: Int, endsAtMin: Int, holder: String, holderWon: Boolean, orderBy: PositionSortField, orderDirection: SortOrder, pickConfigId: String, result: SettlementResult, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Position!]!
 
   """Look up a single prediction by its on-chain prediction ID"""
   prediction(id: String!): Prediction

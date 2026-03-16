@@ -7,7 +7,7 @@ import {
   Resolver,
 } from 'type-graphql';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
-import { escrowContracts } from '@sapience/sdk/contracts';
+import { contracts } from '@sapience/sdk/contracts';
 import prisma from '../../db';
 import { getProtocolStatsTimeSeries } from '../../helpers/protocolStats';
 
@@ -102,7 +102,7 @@ export class AnalyticsResolver {
   async protocolStats(): Promise<ProtocolStat[]> {
     const chainId = DEFAULT_CHAIN_ID;
     const vaultAddress = (
-      escrowContracts.predictionMarketVault[chainId]?.address ?? ''
+      contracts.predictionMarketVault[chainId]?.address ?? ''
     ).toLowerCase();
 
     // Fetch snapshots first to get our timestamps

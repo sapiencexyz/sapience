@@ -1,5 +1,5 @@
-import type { Meta, StoryObj } from "@storybook/react-webpack5";
-import { useState } from "react";
+import type { Meta, StoryObj } from '@storybook/react-webpack5';
+import { useState } from 'react';
 import {
   User,
   CreditCard,
@@ -8,42 +8,42 @@ import {
   BarChart3,
   FileText,
   Mail,
-} from "lucide-react";
+} from 'lucide-react';
 import {
   Tabs,
   TabsContent,
   TabsList,
   TabsTrigger,
-} from "../../components/ui/tabs";
+} from '../../components/ui/tabs';
 import {
   Card,
   CardContent,
   CardDescription,
   CardHeader,
   CardTitle,
-} from "../../components/ui/card";
-import { Badge } from "../../components/ui/badge";
-import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
-import { Label } from "../../components/ui/label";
-import { Separator } from "../../components/ui/separator";
+} from '../../components/ui/card';
+import { Badge } from '../../components/ui/badge';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
+import { Separator } from '../../components/ui/separator';
 
 const meta: Meta<typeof Tabs> = {
-  title: "UI/Tabs",
+  title: 'UI/Tabs',
   component: Tabs,
   parameters: {
-    layout: "centered",
+    layout: 'centered',
   },
-  tags: ["autodocs"],
+  tags: ['autodocs'],
   argTypes: {
     defaultValue: {
-      control: { type: "text" },
+      control: { type: 'text' },
     },
     value: {
-      control: { type: "text" },
+      control: { type: 'text' },
     },
     onValueChange: {
-      action: "valueChanged",
+      action: 'valueChanged',
     },
   },
 };
@@ -205,7 +205,7 @@ export const WithIcons: Story = {
 
 export const Controlled: Story = {
   render: () => {
-    const [activeTab, setActiveTab] = useState("overview");
+    const [activeTab, setActiveTab] = useState('overview');
 
     return (
       <Tabs
@@ -232,7 +232,7 @@ export const Controlled: Story = {
                 Current tab: <strong>{activeTab}</strong>
               </p>
               <div className="mt-4">
-                <Button onClick={() => setActiveTab("analytics")}>
+                <Button onClick={() => setActiveTab('analytics')}>
                   Switch to Analytics
                 </Button>
               </div>
@@ -626,7 +626,7 @@ export const WithBadges: Story = {
 export const LoadingState: Story = {
   render: () => {
     const [isLoading, setIsLoading] = useState(false);
-    const [activeTab, setActiveTab] = useState("data");
+    const [activeTab, setActiveTab] = useState('data');
 
     const handleTabChange = (value: string) => {
       setIsLoading(true);
@@ -735,10 +735,10 @@ export const LoadingState: Story = {
 export const DynamicTabs: Story = {
   render: () => {
     const [tabs, setTabs] = useState([
-      { id: "tab1", label: "Tab 1", content: "Content for tab 1" },
-      { id: "tab2", label: "Tab 2", content: "Content for tab 2" },
+      { id: 'tab1', label: 'Tab 1', content: 'Content for tab 1' },
+      { id: 'tab2', label: 'Tab 2', content: 'Content for tab 2' },
     ]);
-    const [activeTab, setActiveTab] = useState("tab1");
+    const [activeTab, setActiveTab] = useState('tab1');
 
     const addTab = () => {
       const newId = `tab${tabs.length + 1}`;

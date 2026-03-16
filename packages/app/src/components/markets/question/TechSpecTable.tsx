@@ -2,12 +2,9 @@
 
 import Image from 'next/image';
 import { Copy } from 'lucide-react';
-import { predictionMarket } from '@sapience/sdk/contracts/addresses';
+import { predictionMarketEscrow } from '@sapience/sdk/contracts/addresses';
 import { ConditionStatusIndicator } from './ConditionStatusIndicator';
-import {
-  UMA_RESOLVER_ADDRESSES,
-  POLYMARKET_RESOLVER_ADDRESSES,
-} from '~/lib/constants';
+import { POLYMARKET_RESOLVER_ADDRESSES } from '~/lib/constants';
 
 interface TechSpecTableProps {
   conditionId: string;
@@ -28,11 +25,7 @@ export function TechSpecTable({
   nonDecisive,
   resolverAddress,
 }: TechSpecTableProps) {
-  const marketAddress = predictionMarket[chainId]?.address;
-
-  const isUmaResolver =
-    resolverAddress &&
-    UMA_RESOLVER_ADDRESSES.has(resolverAddress.toLowerCase());
+  const marketAddress = predictionMarketEscrow[chainId]?.address;
 
   const isPolymarketResolver =
     resolverAddress &&
@@ -92,23 +85,6 @@ export function TechSpecTable({
           <td className="px-4 py-3 text-brand-white font-mono text-sm break-all align-middle leading-none">
             {resolverAddress ? (
               <span className="inline-flex items-center gap-1.5 align-middle leading-none">
-                {isUmaResolver && (
-                  <a
-                    href="https://uma.xyz/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center hover:opacity-90 transition-opacity"
-                    aria-label="Visit UMA website"
-                  >
-                    <Image
-                      src="/uma-logomark.png"
-                      alt="UMA"
-                      width={24}
-                      height={24}
-                      className="h-[18px] w-[18px]"
-                    />
-                  </a>
-                )}
                 {isPolymarketResolver && (
                   <a
                     href="https://polymarket.com/"

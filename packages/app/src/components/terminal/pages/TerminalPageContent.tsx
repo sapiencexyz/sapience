@@ -24,7 +24,9 @@ import {
   decodeAuctionPredictedOutcomes,
   formatPythPriceDecimalFromInt,
   formatUnixSecondsToLocalInput,
+  PYTH_RESOLVER_SET,
 } from '~/lib/auction/decodePredictedOutcomes';
+import { decodePythMarketId } from '@sapience/sdk';
 import { usePythFeedLabel } from '~/lib/pyth/usePythFeedLabel';
 
 import CategoryFilter from '~/components/terminal/filters/CategoryFilter';
@@ -37,6 +39,7 @@ import SignedFilter, {
 } from '~/components/terminal/filters/SignedFilter';
 import { type MultiSelectItem } from '~/components/terminal/filters/MultiSelect';
 import { useConditionsByIds } from '~/hooks/graphql/useConditionsByIds';
+import type { ConditionById } from '@sapience/sdk/queries';
 import Loader from '~/components/shared/Loader';
 import { useReadContracts } from 'wagmi';
 import { collateralToken } from '@sapience/sdk/contracts';
@@ -45,18 +48,35 @@ import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { toAuctionWsUrl } from '~/lib/ws';
 
-/** Shape of auction.started message data payload */
-interface AuctionStartedData {
+/** Shape of auction message data payload */
+interface AuctionMessageData {
   auctionId?: string;
   predictor?: string;
   predictorCollateral?: string;
   resolver?: string;
   predictedOutcomes?: string[];
+  predictorNonce?: number | string;
+  intentSignature?: string;
   picks?: Array<{
-    conditionResolver?: string;
-    conditionId?: string;
-    predictedOutcome?: number;
+    conditionResolver: string;
+    conditionId: string;
+    predictedOutcome: number;
   }>;
+  bids?: Array<Record<string, unknown>>;
+  payload?: {
+    auctionId?: string;
+    resolver?: string;
+    predictor?: string;
+    predictorCollateral?: string;
+    predictedOutcomes?: string[];
+  };
+  [key: string]: unknown;
+}
+
+/** Safely cast unknown feed message data to AuctionMessageData */
+function asAuctionData(data: unknown): AuctionMessageData {
+  if (data && typeof data === 'object') return data as AuctionMessageData;
+  return {} as AuctionMessageData;
 }
 
 // Defined outside TerminalPageContent to prevent remounting on parent re-renders
@@ -141,15 +161,23 @@ const TerminalPageContent: React.FC = () => {
     );
   }, [displayMessages]);
 
-  const getAuctionId = useCallback((m: any): string | null => {
-    return (
-      (m?.channel as string) ||
-      (m?.data?.auctionId as string) ||
-      (m?.data?.payload?.auctionId as string) ||
-      (m?.auctionId as string) ||
-      null
-    );
-  }, []);
+  const getAuctionId = useCallback(
+    (m: {
+      channel?: string | null;
+      data?: unknown;
+      auctionId?: string;
+    }): string | null => {
+      const d = asAuctionData(m?.data);
+      return (
+        m?.channel ||
+        d?.auctionId ||
+        d?.payload?.auctionId ||
+        m?.auctionId ||
+        null
+      );
+    },
+    []
+  );
 
   // Cached decoder for predicted outcomes keyed by auctionId + predictorNonce
   // Stores { data, accessedAt } for time-based LRU pruning
@@ -159,7 +187,7 @@ const TerminalPageContent: React.FC = () => {
       {
         data:
           | {
-              kind: 'uma';
+              kind: 'condition';
               data: Array<{ marketId: `0x${string}`; prediction: boolean }>;
             }
           | {
@@ -181,10 +209,10 @@ const TerminalPageContent: React.FC = () => {
   const getDecodedPredictedOutcomes = useCallback(
     (m: {
       type: string;
-      data: any;
+      data: unknown;
     }):
       | {
-          kind: 'uma';
+          kind: 'condition';
           data: Array<{ marketId: `0x${string}`; prediction: boolean }>;
         }
       | {
@@ -201,8 +229,9 @@ const TerminalPageContent: React.FC = () => {
       | { kind: 'unknown'; data: [] } => {
       try {
         if (m?.type !== 'auction.started') return { kind: 'unknown', data: [] };
-        const cacheKey = `${getAuctionId(m) || 'unknown'}:${String(
-          m?.data?.predictorNonce ?? 'n'
+        const md = asAuctionData(m?.data);
+        const cacheKey = `${getAuctionId(m as { channel?: string | null; data?: unknown }) || 'unknown'}:${String(
+          md?.predictorNonce ?? 'n'
         )}`;
         const cached = decodeCacheRef.current.get(cacheKey);
         if (cached) {
@@ -211,14 +240,13 @@ const TerminalPageContent: React.FC = () => {
           return cached.data;
         }
         const decoded = decodeAuctionPredictedOutcomes({
-          resolver:
-            (m as any)?.data?.resolver ?? (m as any)?.data?.payload?.resolver,
-          predictedOutcomes: (m as any)?.data?.predictedOutcomes,
+          resolver: md?.resolver ?? md?.payload?.resolver,
+          predictedOutcomes: md?.predictedOutcomes,
         });
         const entry =
-          decoded.kind === 'uma'
+          decoded.kind === 'condition'
             ? {
-                kind: 'uma' as const,
+                kind: 'condition' as const,
                 data: decoded.outcomes.map((o) => ({
                   marketId: o.marketId,
                   prediction: !!o.prediction,
@@ -252,11 +280,14 @@ const TerminalPageContent: React.FC = () => {
   // Build maps for last activity and latest started message per auction
   const { lastActivityByAuction, latestStartedByAuction } = useMemo(() => {
     const lastActivity = new Map<string, number>();
-    const latestStarted = new Map<string, any>();
+    const latestStarted = new Map<
+      string,
+      (typeof auctionAndBidMessages)[number]
+    >();
     for (const m of auctionAndBidMessages) {
-      const id = getAuctionId(m as any);
+      const id = getAuctionId(m);
       if (!id) continue;
-      const t = Number((m as any)?.time || 0);
+      const t = Number(m?.time || 0);
       const prev = lastActivity.get(id) || 0;
       if (t > prev) lastActivity.set(id, t);
       if (m.type === 'auction.started') {
@@ -296,12 +327,16 @@ const TerminalPageContent: React.FC = () => {
         if (m.type !== 'auction.started') continue;
 
         // Escrow auctions have picks[] with conditionId directly
-        const picks = (m as any)?.data?.picks as
-          | Array<{ conditionId?: string }>
+        const mData = asAuctionData(m?.data);
+        const picks = mData?.picks as
+          | Array<{ conditionId?: string; conditionResolver?: string }>
           | undefined;
         if (Array.isArray(picks) && picks.length > 0) {
           for (const p of picks) {
             if (p.conditionId && typeof p.conditionId === 'string') {
+              // Skip Pyth picks — they encode market params, not DB condition IDs
+              const resolver = p.conditionResolver?.toLowerCase?.() ?? '';
+              if (PYTH_RESOLVER_SET.has(resolver)) continue;
               set.add(p.conditionId);
             }
           }
@@ -310,13 +345,12 @@ const TerminalPageContent: React.FC = () => {
 
         // V1 auctions use resolver + predictedOutcomes
         const decoded = decodeAuctionPredictedOutcomes({
-          resolver:
-            (m as any)?.data?.resolver ?? (m as any)?.data?.payload?.resolver,
-          predictedOutcomes: (m as any)?.data?.predictedOutcomes,
+          resolver: mData?.resolver ?? mData?.payload?.resolver,
+          predictedOutcomes: mData?.predictedOutcomes,
         });
-        if (decoded.kind !== 'uma') continue;
+        if (decoded.kind !== 'condition') continue;
         for (const o of decoded.outcomes || []) {
-          const id = (o as any)?.marketId as string | undefined;
+          const id = o?.marketId as string | undefined;
           if (id && typeof id === 'string') set.add(id);
         }
       }
@@ -331,7 +365,7 @@ const TerminalPageContent: React.FC = () => {
     const set = new Set<string>();
     for (const m of auctionAndBidMessages) {
       if (m.type !== 'auction.started') continue;
-      const auctionData = m.data as AuctionStartedData | undefined;
+      const auctionData = m.data as AuctionMessageData | undefined;
       const addr = auctionData?.predictor;
       if (addr && typeof addr === 'string') {
         set.add(addr);
@@ -350,7 +384,7 @@ const TerminalPageContent: React.FC = () => {
   // Preserve previously resolved condition names to avoid flicker when query key changes
   // LRU-style capped at 2000 entries to prevent unbounded growth while being generous
   const CONDITION_CACHE_MAX = 2000;
-  const stickyConditionMapRef = useRef<Map<string, any>>(new Map());
+  const stickyConditionMapRef = useRef<Map<string, ConditionById>>(new Map());
   const [conditionMapTick, setConditionMapTick] = useState(0);
   useEffect(() => {
     try {
@@ -391,14 +425,41 @@ const TerminalPageContent: React.FC = () => {
   // Categories for multi-select
   const { data: categories = [] } = useCategories();
 
-  function renderPredictionsCell(m: { type: string; data: any }) {
+  function renderPredictionsCell(m: { type: string; data: unknown }) {
     try {
       if (m.type !== 'auction.started')
         return <span className="text-muted-foreground">—</span>;
 
       // Escrow auctions: picks[] with conditionId directly
-      const escrowPicks = (m.data as AuctionStartedData)?.picks;
+      const escrowPicks = asAuctionData(m.data)?.picks;
       if (Array.isArray(escrowPicks) && escrowPicks.length > 0) {
+        // Check if first pick uses a Pyth resolver — render via PythPredictionsCell
+        const firstResolver =
+          escrowPicks[0]?.conditionResolver?.toLowerCase?.() ?? '';
+        if (
+          PYTH_RESOLVER_SET.has(firstResolver) &&
+          escrowPicks[0]?.conditionId
+        ) {
+          try {
+            const decoded = decodePythMarketId(
+              escrowPicks[0].conditionId as `0x${string}`
+            );
+            if (!decoded) return null;
+            return (
+              <PythPredictionsCell
+                first={{
+                  ...decoded,
+                  // predictedOutcome 1 = Over (maker), 0 = Under
+                  prediction: escrowPicks[0].predictedOutcome === 1,
+                }}
+              />
+            );
+          } catch {
+            return null;
+          }
+        }
+
+        // Non-Pyth escrow: look up condition names from DB
         const allResolved = escrowPicks.every(
           (p) => p.conditionId && renderConditionMap.has(p.conditionId)
         );
@@ -408,7 +469,7 @@ const TerminalPageContent: React.FC = () => {
         }
         if (!hasLoadedConditionsOnce) return null;
         const picks: Pick[] = escrowPicks.map((p) => {
-          const cond = renderConditionMap.get(p.conditionId!);
+          const cond = renderConditionMap.get(p.conditionId);
           return {
             question: cond?.question ?? String(p.conditionId),
             // Escrow predictedOutcome: 0 = Yes, 1 = No (from the predictor's perspective)
@@ -431,14 +492,13 @@ const TerminalPageContent: React.FC = () => {
       }
 
       // V1 auctions: decode from resolver + predictedOutcomes
-      const decoded = getDecodedPredictedOutcomes(m as any);
+      const decoded = getDecodedPredictedOutcomes(m);
+      const cellData = asAuctionData(m.data);
 
       // If we can't decode any legs, show bytecode payload only if request errored or completed
       if (!decoded || decoded.kind === 'unknown' || decoded.data.length === 0) {
-        const encodedArr: string[] = Array.isArray(
-          (m as any)?.data?.predictedOutcomes
-        )
-          ? ((m as any).data.predictedOutcomes as string[])
+        const encodedArr: string[] = Array.isArray(cellData?.predictedOutcomes)
+          ? cellData.predictedOutcomes
           : [];
         const encoded = encodedArr[0];
         if (encoded && (conditionsError || !areConditionsLoading)) {
@@ -463,10 +523,8 @@ const TerminalPageContent: React.FC = () => {
       );
       if (!allResolved) {
         // If the query errored, fallback to bytecode to at least show something
-        const encodedArr: string[] = Array.isArray(
-          (m as any)?.data?.predictedOutcomes
-        )
-          ? ((m as any).data.predictedOutcomes as string[])
+        const encodedArr: string[] = Array.isArray(cellData?.predictedOutcomes)
+          ? cellData.predictedOutcomes
           : [];
         const encoded = encodedArr[0];
         if (conditionsError && encoded) {
@@ -618,23 +676,60 @@ const TerminalPageContent: React.FC = () => {
       // Pinned rows bypass filters entirely
       if (row.pinned) return true;
 
-      const decoded = getDecodedPredictedOutcomes(row.m);
-      const legConditionIds =
-        decoded.kind === 'uma'
-          ? decoded.data.map((l) => String(l.marketId))
-          : [];
-      const legCategorySlugs = (() => {
-        if (decoded.kind === 'uma') {
-          return decoded.data.map((l) => {
-            const cond = renderConditionMap.get(String(l.marketId));
-            return cond?.category?.slug ?? null;
-          });
-        }
-        if (decoded.kind === 'pyth') {
-          return ['prices'] as const;
-        }
-        return [];
-      })();
+      // Detect Pyth escrow auctions early — they don't have DB conditions
+      const auctionDataForFilter = row.m?.data as
+        | AuctionMessageData
+        | undefined;
+      const escrowPicksForFilter = auctionDataForFilter?.picks;
+      const isPythEscrow =
+        Array.isArray(escrowPicksForFilter) &&
+        escrowPicksForFilter.length > 0 &&
+        PYTH_RESOLVER_SET.has(
+          escrowPicksForFilter[0]?.conditionResolver?.toLowerCase?.() ?? ''
+        );
+
+      let legConditionIds: string[] = [];
+      let legCategorySlugs: (string | null)[] = [];
+
+      if (isPythEscrow) {
+        // Pyth escrow — category is always 'prices', no DB condition IDs
+        legCategorySlugs = ['prices'];
+      } else if (
+        Array.isArray(escrowPicksForFilter) &&
+        escrowPicksForFilter.length > 0
+      ) {
+        // Escrow auction: derive condition IDs and categories from picks
+        legConditionIds = escrowPicksForFilter
+          .filter(
+            (p) =>
+              !PYTH_RESOLVER_SET.has(p.conditionResolver?.toLowerCase?.() ?? '')
+          )
+          .map((p) => p.conditionId)
+          .filter(Boolean);
+        legCategorySlugs = legConditionIds.map((id) => {
+          const cond = renderConditionMap.get(id);
+          return cond?.category?.slug ?? null;
+        });
+      } else {
+        // V1 fallback: decode from resolver + predictedOutcomes
+        const decoded = getDecodedPredictedOutcomes(row.m);
+        legConditionIds =
+          decoded.kind === 'condition'
+            ? decoded.data.map((l) => String(l.marketId))
+            : [];
+        legCategorySlugs = (() => {
+          if (decoded.kind === 'condition') {
+            return decoded.data.map((l) => {
+              const cond = renderConditionMap.get(String(l.marketId));
+              return cond?.category?.slug ?? null;
+            });
+          }
+          if (decoded.kind === 'pyth') {
+            return ['prices'] as const;
+          }
+          return [] as (string | null)[];
+        })();
+      }
 
       const matchesCategory =
         selectedCategorySlugs.length === 0 ||
@@ -651,7 +746,7 @@ const TerminalPageContent: React.FC = () => {
       if (!matchesCondition) return false;
 
       // Check address filter
-      const auctionData = row.m?.data as AuctionStartedData | undefined;
+      const auctionData = row.m?.data as AuctionMessageData | undefined;
       if (selectedAddresses.length > 0) {
         if (
           !auctionData?.predictor ||
@@ -660,8 +755,8 @@ const TerminalPageContent: React.FC = () => {
           return false;
       }
 
-      // Check signed filter (escrow auctions are always signed)
-      const isSigned = true;
+      // Check signed filter — signed means predictor provided an EIP-712 intentSignature
+      const isSigned = !!auctionData?.intentSignature;
       if (signedFilter === 'signed' && !isSigned) return false;
       if (signedFilter === 'unsigned' && isSigned) return false;
 
@@ -833,11 +928,16 @@ const TerminalPageContent: React.FC = () => {
     };
   }, [virtualizer]);
 
-  function toUiTx(m: { time: number; type: string; data: any }): UiTransaction {
+  function toUiTx(m: {
+    time: number;
+    type: string;
+    data: unknown;
+  }): UiTransaction {
     const createdAt = new Date(m.time).toISOString();
+    const txData = asAuctionData(m.data);
     if (m.type === 'auction.started') {
-      const predictor = (m as any)?.data?.predictor || '';
-      const predictorCollateral = (m as any)?.data?.predictorCollateral || '0';
+      const predictor = txData?.predictor || '';
+      const predictorCollateral = txData?.predictorCollateral || '0';
       return {
         id: m.time,
         type: 'FORECAST',
@@ -847,9 +947,7 @@ const TerminalPageContent: React.FC = () => {
       } as UiTransaction;
     }
     if (m.type === 'auction.bids') {
-      const bids = Array.isArray((m as any)?.data?.bids)
-        ? ((m as any).data.bids as unknown as any[])
-        : [];
+      const bids = Array.isArray(txData?.bids) ? txData.bids : [];
       const top = bids.reduce((best, b) => {
         try {
           const cur = BigInt(String(b?.counterpartyCollateral ?? '0'));
@@ -1029,6 +1127,7 @@ const TerminalPageContent: React.FC = () => {
                           pinnedRows.map((row, idx) => {
                             const auctionId = row.id;
                             const m = row.m;
+                            const d = asAuctionData(m?.data);
                             const rowKey = `auction-pinned-${auctionId ?? idx}`;
                             return (
                               <div key={rowKey}>
@@ -1037,28 +1136,17 @@ const TerminalPageContent: React.FC = () => {
                                   predictionsContent={renderPredictionsCell(m)}
                                   auctionId={auctionId}
                                   predictorCollateral={String(
-                                    m?.data?.predictorCollateral ?? '0'
+                                    d?.predictorCollateral ?? '0'
                                   )}
-                                  predictor={m?.data?.predictor || null}
-                                  resolver={
-                                    m?.data?.resolver ||
-                                    (Array.isArray(m?.data?.picks) &&
-                                      m?.data?.picks[0]?.conditionResolver) ||
-                                    null
-                                  }
-                                  predictedOutcomes={
-                                    Array.isArray(m?.data?.predictedOutcomes)
-                                      ? (m?.data?.predictedOutcomes as string[])
-                                      : []
-                                  }
+                                  predictor={d?.predictor || null}
                                   collateralAssetTicker={collateralAssetTicker}
                                   onTogglePin={togglePin}
                                   isPinned={true}
                                   isExpanded={expandedAuctions.has(auctionId)}
                                   onToggleExpanded={toggleExpanded}
-                                  escrowPicks={
-                                    Array.isArray(m?.data?.picks)
-                                      ? m?.data?.picks
+                                  picks={
+                                    Array.isArray(d?.picks)
+                                      ? d?.picks
                                       : undefined
                                   }
                                 />
@@ -1077,6 +1165,7 @@ const TerminalPageContent: React.FC = () => {
                               const row = unpinnedRows[vi.index];
                               const auctionId = row?.id;
                               const m = row?.m;
+                              const d = asAuctionData(m?.data);
                               return (
                                 <div
                                   key={vi.key}
@@ -1098,24 +1187,9 @@ const TerminalPageContent: React.FC = () => {
                                       )}
                                       auctionId={auctionId}
                                       predictorCollateral={String(
-                                        m?.data?.predictorCollateral ?? '0'
+                                        d?.predictorCollateral ?? '0'
                                       )}
-                                      predictor={m?.data?.predictor || null}
-                                      resolver={
-                                        m?.data?.resolver ||
-                                        (Array.isArray(m?.data?.picks) &&
-                                          m?.data?.picks[0]
-                                            ?.conditionResolver) ||
-                                        null
-                                      }
-                                      predictedOutcomes={
-                                        Array.isArray(
-                                          m?.data?.predictedOutcomes
-                                        )
-                                          ? (m?.data
-                                              ?.predictedOutcomes as string[])
-                                          : []
-                                      }
+                                      predictor={d?.predictor || null}
                                       collateralAssetTicker={
                                         collateralAssetTicker
                                       }
@@ -1125,9 +1199,9 @@ const TerminalPageContent: React.FC = () => {
                                         auctionId
                                       )}
                                       onToggleExpanded={toggleExpanded}
-                                      escrowPicks={
-                                        Array.isArray(m?.data?.picks)
-                                          ? m?.data?.picks
+                                      picks={
+                                        Array.isArray(d?.picks)
+                                          ? d?.picks
                                           : undefined
                                       }
                                     />

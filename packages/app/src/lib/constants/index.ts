@@ -1,11 +1,11 @@
 import {
-  umaResolver,
-  lzPMResolver,
-  lzUmaResolver,
-  predictionMarketLZConditionalTokensResolver,
   conditionalTokensConditionResolver,
   type ChainAddressMap,
 } from '@sapience/sdk/contracts';
+
+// address of anonymous quoter bot
+export const PREFERRED_ESTIMATE_QUOTER =
+  '0xe02eD37D0458c8999943CbE6D1c9DB597f3EE572';
 
 export const ADMIN_AUTHENTICATE_MSG =
   'Sign this message to authenticate for admin actions.';
@@ -46,31 +46,11 @@ function buildDisplayMap(
   return result;
 }
 
-// UMA Resolver on Arbitrum (default resolver for conditions)
-export const UMA_RESOLVER_ARBITRUM = umaResolver[42161]?.address ?? '';
-
-// Known UMA resolver addresses — umaResolver, lzUmaResolver, lzPMResolver (all chains + legacy)
-export const UMA_RESOLVER_ADDRESSES = new Set(
-  collectAddresses(umaResolver, lzUmaResolver, lzPMResolver).map((a) =>
+// Known Polymarket resolver addresses — CT condition resolver (all chains + legacy)
+export const POLYMARKET_RESOLVER_ADDRESSES = new Set(
+  collectAddresses(conditionalTokensConditionResolver).map((a) =>
     a.toLowerCase()
   )
-);
-
-const umaDisplay: ResolverDisplay = {
-  name: 'UMA',
-  icon: '/uma.svg',
-  iconAlt: 'UMA',
-  url: 'https://uma.xyz/',
-};
-export const UMA_RESOLVER_DISPLAY: Record<string, ResolverDisplay> =
-  buildDisplayMap(umaDisplay, umaResolver, lzUmaResolver, lzPMResolver);
-
-// Known Polymarket resolver addresses — LZ CT resolver, CT condition resolver (all chains + legacy)
-export const POLYMARKET_RESOLVER_ADDRESSES = new Set(
-  collectAddresses(
-    predictionMarketLZConditionalTokensResolver,
-    conditionalTokensConditionResolver
-  ).map((a) => a.toLowerCase())
 );
 
 const polymarketDisplay: ResolverDisplay = {
@@ -81,11 +61,7 @@ const polymarketDisplay: ResolverDisplay = {
   url: 'https://polymarket.com/',
 };
 export const POLYMARKET_RESOLVER_DISPLAY: Record<string, ResolverDisplay> =
-  buildDisplayMap(
-    polymarketDisplay,
-    predictionMarketLZConditionalTokensResolver,
-    conditionalTokensConditionResolver
-  );
+  buildDisplayMap(polymarketDisplay, conditionalTokensConditionResolver);
 
 // Forecast schema: address resolver, bytes condition, uint256 forecast, string comment
 export const SCHEMA_UID =

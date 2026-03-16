@@ -259,7 +259,7 @@ contract SessionKeyERC1271Test is Test {
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = IV2Types.Pick({
             conditionResolver: address(resolver),
-            conditionId: CONDITION_ID,
+            conditionId: abi.encode(CONDITION_ID),
             predictedOutcome: IV2Types.OutcomeSide.YES
         });
         return picks;
@@ -528,7 +528,9 @@ contract SessionKeyERC1271Test is Test {
             ""
         );
 
-        vm.expectRevert(IPredictionMarketEscrow.InvalidSignature.selector);
+        vm.expectRevert(
+            IPredictionMarketEscrow.InvalidPredictorSignature.selector
+        );
         market.mint(request);
     }
 
@@ -544,7 +546,9 @@ contract SessionKeyERC1271Test is Test {
             ""
         );
 
-        vm.expectRevert(IPredictionMarketEscrow.InvalidSignature.selector);
+        vm.expectRevert(
+            IPredictionMarketEscrow.InvalidPredictorSignature.selector
+        );
         market.mint(request);
     }
 
@@ -593,7 +597,9 @@ contract SessionKeyERC1271Test is Test {
         // Warp past deadline
         vm.warp(deadline + 1);
 
-        vm.expectRevert(IPredictionMarketEscrow.InvalidSignature.selector);
+        vm.expectRevert(
+            IPredictionMarketEscrow.InvalidPredictorSignature.selector
+        );
         market.mint(request);
     }
 
@@ -787,7 +793,9 @@ contract SessionKeyERC1271Test is Test {
             })
         );
 
-        vm.expectRevert(IPredictionMarketEscrow.InvalidSignature.selector);
+        vm.expectRevert(
+            IPredictionMarketEscrow.InvalidPredictorSignature.selector
+        );
         market.burn(request);
     }
 

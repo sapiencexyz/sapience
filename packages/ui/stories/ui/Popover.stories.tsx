@@ -1,30 +1,30 @@
-import type { Meta, StoryObj } from "@storybook/react-webpack5";
-import { useState } from "react";
-import { Calendar, Info, Settings, User } from "lucide-react";
+import type { Meta, StoryObj } from '@storybook/react-webpack5';
+import { useState } from 'react';
+import { Calendar, Info, Settings, User } from 'lucide-react';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "../../components/ui/popover";
-import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
-import { Label } from "../../components/ui/label";
+} from '../../components/ui/popover';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
 
 const meta: Meta<typeof Popover> = {
-  title: "UI/Popover",
+  title: 'UI/Popover',
   component: Popover,
   parameters: {
-    layout: "centered",
+    layout: 'centered',
     docs: {
       canvas: {
         height: 400,
       },
     },
   },
-  tags: ["autodocs"],
+  tags: ['autodocs'],
   argTypes: {
     open: {
-      control: { type: "boolean" },
+      control: { type: 'boolean' },
     },
   },
 };
@@ -202,9 +202,9 @@ export const Controlled: Story = {
               <div className="space-y-2">
                 <h4 className="font-medium leading-none">Controlled Popover</h4>
                 <p className="text-sm text-muted-foreground">
-                  This popover is controlled by React state. Current state:{" "}
+                  This popover is controlled by React state. Current state:{' '}
                   <span className="font-semibold">
-                    {open ? "Open" : "Closed"}
+                    {open ? 'Open' : 'Closed'}
                   </span>
                 </p>
                 <Button

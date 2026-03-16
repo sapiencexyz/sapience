@@ -26,9 +26,10 @@ contract PythConditionResolver is IConditionResolver, ReentrancyGuard {
 
     // ============ Events ============
     event MarketSettled(
-        bytes32 indexed conditionId,
+        bytes32 indexed conditionIdHash,
         bytes32 indexed priceId,
         uint64 indexed endTime,
+        bytes conditionId,
         bool resolvedToOver,
         int64 benchmarkPrice,
         int32 benchmarkExpo,
@@ -66,23 +67,27 @@ contract PythConditionResolver is IConditionResolver, ReentrancyGuard {
     // ============ IConditionResolver Implementation ============
 
     /// @inheritdoc IConditionResolver
-    function isValidCondition(bytes32 conditionId)
+    function isValidCondition(bytes calldata conditionId)
         external
         pure
         returns (bool)
     {
-        // Any non-zero conditionId is potentially valid (we can't validate without market data)
-        // The actual validation happens during settlement
-        return conditionId != bytes32(0);
+        // conditionId must be a valid abi.encode of BinaryOptionMarket fields
+        // abi.encode(bytes32, uint64, int64, int32, bool) = 5 × 32 = 160 bytes
+        if (conditionId.length != 160) return false;
+        (bytes32 priceId,,,,) =
+            abi.decode(conditionId, (bytes32, uint64, int64, int32, bool));
+        return priceId != bytes32(0);
     }
 
     /// @inheritdoc IConditionResolver
-    function getResolution(bytes32 conditionId)
+    function getResolution(bytes calldata conditionId)
         external
         view
         returns (bool isResolved, IV2Types.OutcomeVector memory outcome)
     {
-        MarketSettlement memory s = settlements[conditionId];
+        bytes32 key = keccak256(conditionId);
+        MarketSettlement memory s = settlements[key];
 
         if (!s.settled) {
             return (false, IV2Types.OutcomeVector(0, 0));
@@ -98,7 +103,7 @@ contract PythConditionResolver is IConditionResolver, ReentrancyGuard {
     }
 
     /// @inheritdoc IConditionResolver
-    function getResolutions(bytes32[] calldata conditionIds)
+    function getResolutions(bytes[] calldata conditionIds)
         external
         view
         returns (
@@ -111,7 +116,8 @@ contract PythConditionResolver is IConditionResolver, ReentrancyGuard {
         outcomes = new IV2Types.OutcomeVector[](length);
 
         for (uint256 i = 0; i < length; i++) {
-            MarketSettlement memory s = settlements[conditionIds[i]];
+            bytes32 key = keccak256(conditionIds[i]);
+            MarketSettlement memory s = settlements[key];
 
             if (!s.settled) {
                 isResolved[i] = false;
@@ -126,9 +132,14 @@ contract PythConditionResolver is IConditionResolver, ReentrancyGuard {
     }
 
     /// @inheritdoc IConditionResolver
-    function isFinalized(bytes32 conditionId) external view returns (bool) {
+    function isFinalized(bytes calldata conditionId)
+        external
+        view
+        returns (bool)
+    {
         // Once settled, Pyth markets are final (based on verified historical data)
-        return settlements[conditionId].settled;
+        bytes32 key = keccak256(conditionId);
+        return settlements[key].settled;
     }
 
     // ============ Settlement ============
@@ -136,7 +147,7 @@ contract PythConditionResolver is IConditionResolver, ReentrancyGuard {
     /// @notice Settle a condition using a verified Pyth Lazer update
     /// @param market The market parameters
     /// @param updateData The Pyth Lazer update data (single element array)
-    /// @return conditionId The unique condition identifier
+    /// @return conditionId The unique condition identifier (abi-encoded market params)
     /// @return resolvedToOver True if the condition resolved to OVER (YES)
     function settleCondition(
         BinaryOptionMarket calldata market,
@@ -145,7 +156,7 @@ contract PythConditionResolver is IConditionResolver, ReentrancyGuard {
         external
         payable
         nonReentrant
-        returns (bytes32 conditionId, bool resolvedToOver)
+        returns (bytes memory conditionId, bool resolvedToOver)
     {
         if (market.priceId == bytes32(0)) {
             revert InvalidMarketData();
@@ -155,7 +166,8 @@ contract PythConditionResolver is IConditionResolver, ReentrancyGuard {
         if (block.timestamp < market.endTime) revert MarketNotEnded();
 
         conditionId = getConditionId(market);
-        if (settlements[conditionId].settled) revert MarketAlreadySettled();
+        bytes32 key = keccak256(conditionId);
+        if (settlements[key].settled) revert MarketAlreadySettled();
 
         // Verify the update on-chain
         if (updateData.length != 1) revert InvalidMarketData();
@@ -187,7 +199,7 @@ contract PythConditionResolver is IConditionResolver, ReentrancyGuard {
             ? (benchmarkPrice >= market.strikePrice)
             : (benchmarkPrice > market.strikePrice);
 
-        settlements[conditionId] = MarketSettlement({
+        settlements[key] = MarketSettlement({
             settled: true,
             resolvedToOver: resolvedToOver,
             benchmarkPrice: benchmarkPrice,
@@ -196,9 +208,10 @@ contract PythConditionResolver is IConditionResolver, ReentrancyGuard {
         });
 
         emit MarketSettled(
-            conditionId,
+            key,
             market.priceId,
             market.endTime,
+            conditionId,
             resolvedToOver,
             benchmarkPrice,
             benchmarkExpo,
@@ -216,32 +229,30 @@ contract PythConditionResolver is IConditionResolver, ReentrancyGuard {
 
     /// @notice Compute the conditionId for a market
     /// @param market The market parameters
-    /// @return The unique condition identifier
+    /// @return The unique condition identifier (abi-encoded market params)
     function getConditionId(BinaryOptionMarket memory market)
         public
         pure
-        returns (bytes32)
+        returns (bytes memory)
     {
-        return keccak256(
-            abi.encode(
-                market.priceId,
-                market.endTime,
-                market.strikePrice,
-                market.strikeExpo,
-                market.overWinsOnTie
-            )
+        return abi.encode(
+            market.priceId,
+            market.endTime,
+            market.strikePrice,
+            market.strikeExpo,
+            market.overWinsOnTie
         );
     }
 
     /// @notice Get the settlement data for a condition
-    /// @param conditionId The condition identifier
+    /// @param conditionId The condition identifier (abi-encoded market params)
     /// @return The settlement data
-    function getSettlement(bytes32 conditionId)
+    function getSettlement(bytes calldata conditionId)
         external
         view
         returns (MarketSettlement memory)
     {
-        return settlements[conditionId];
+        return settlements[keccak256(conditionId)];
     }
 
     // ============ Internal Functions ============

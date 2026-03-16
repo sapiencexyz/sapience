@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import {
   validateAuctionForMint,
   verifyMakerBid,
-  createMintParlayRequestData,
+  createMintComboRequestData,
   calculateExpectedPayout,
   validatePayout,
   createValidationError,
@@ -25,7 +25,8 @@ const validBidParams = {
   maker: '0x1234567890123456789012345678901234567890',
   makerCollateral: '500000000000000000', // 0.5 ETH
   makerDeadline: Math.floor(Date.now() / 1000) + 3600, // 1 hour from now
-  makerSignature: '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1b',
+  makerSignature:
+    '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef1b',
 };
 
 describe('validateAuctionForMint', () => {
@@ -55,19 +56,27 @@ describe('validateAuctionForMint', () => {
     });
 
     it('throws or returns valid: false for non-numeric wager string', () => {
-      expect(() => validateAuctionForMint({ ...validAuction, wager: 'abc' })).toThrow();
+      expect(() =>
+        validateAuctionForMint({ ...validAuction, wager: 'abc' })
+      ).toThrow();
     });
   });
 
   describe('predictedOutcomes validation', () => {
     it('returns valid: false for empty predictedOutcomes array', () => {
-      const result = validateAuctionForMint({ ...validAuction, predictedOutcomes: [] });
+      const result = validateAuctionForMint({
+        ...validAuction,
+        predictedOutcomes: [],
+      });
       expect(result.valid).toBe(false);
       expect(result.error).toContain('outcome');
     });
 
     it('returns valid: false for predictedOutcomes with empty string element', () => {
-      const result = validateAuctionForMint({ ...validAuction, predictedOutcomes: [''] });
+      const result = validateAuctionForMint({
+        ...validAuction,
+        predictedOutcomes: [''],
+      });
       expect(result.valid).toBe(false);
       expect(result.error).toContain('outcome');
     });
@@ -95,7 +104,10 @@ describe('validateAuctionForMint', () => {
     });
 
     it('returns valid: false for chainId of Infinity', () => {
-      const result = validateAuctionForMint({ ...validAuction, chainId: Infinity });
+      const result = validateAuctionForMint({
+        ...validAuction,
+        chainId: Infinity,
+      });
       expect(result.valid).toBe(false);
       expect(result.error).toContain('chainId');
     });
@@ -109,25 +121,37 @@ describe('validateAuctionForMint', () => {
 
   describe('resolver validation', () => {
     it('returns valid: false for resolver without "0x" prefix', () => {
-      const result = validateAuctionForMint({ ...validAuction, resolver: '1234567890123456789012345678901234567890' });
+      const result = validateAuctionForMint({
+        ...validAuction,
+        resolver: '1234567890123456789012345678901234567890',
+      });
       expect(result.valid).toBe(false);
       expect(result.error).toContain('resolver');
     });
 
     it('returns valid: false for resolver with only 39 hex chars', () => {
-      const result = validateAuctionForMint({ ...validAuction, resolver: '0x123456789012345678901234567890123456789' }); // 39 chars
+      const result = validateAuctionForMint({
+        ...validAuction,
+        resolver: '0x123456789012345678901234567890123456789',
+      }); // 39 chars
       expect(result.valid).toBe(false);
       expect(result.error).toContain('resolver');
     });
 
     it('returns valid: false for resolver with 41 hex chars', () => {
-      const result = validateAuctionForMint({ ...validAuction, resolver: '0x12345678901234567890123456789012345678901' }); // 41 chars
+      const result = validateAuctionForMint({
+        ...validAuction,
+        resolver: '0x12345678901234567890123456789012345678901',
+      }); // 41 chars
       expect(result.valid).toBe(false);
       expect(result.error).toContain('resolver');
     });
 
     it('returns valid: false for resolver with invalid hex chars', () => {
-      const result = validateAuctionForMint({ ...validAuction, resolver: '0x123456789012345678901234567890123456789g' }); // 'g' is invalid
+      const result = validateAuctionForMint({
+        ...validAuction,
+        resolver: '0x123456789012345678901234567890123456789g',
+      }); // 'g' is invalid
       expect(result.valid).toBe(false);
       expect(result.error).toContain('resolver');
     });
@@ -135,7 +159,10 @@ describe('validateAuctionForMint', () => {
 
   describe('taker validation', () => {
     it('returns valid: false for taker with invalid format', () => {
-      const result = validateAuctionForMint({ ...validAuction, taker: 'invalid-address' });
+      const result = validateAuctionForMint({
+        ...validAuction,
+        taker: 'invalid-address',
+      });
       expect(result.valid).toBe(false);
       expect(result.error).toContain('taker');
     });
@@ -149,13 +176,19 @@ describe('validateAuctionForMint', () => {
 
   describe('takerNonce validation', () => {
     it('returns valid: false for takerNonce of -1', () => {
-      const result = validateAuctionForMint({ ...validAuction, takerNonce: -1 });
+      const result = validateAuctionForMint({
+        ...validAuction,
+        takerNonce: -1,
+      });
       expect(result.valid).toBe(false);
       expect(result.error).toContain('takerNonce');
     });
 
     it('returns valid: false for takerNonce of Infinity', () => {
-      const result = validateAuctionForMint({ ...validAuction, takerNonce: Infinity });
+      const result = validateAuctionForMint({
+        ...validAuction,
+        takerNonce: Infinity,
+      });
       expect(result.valid).toBe(false);
       expect(result.error).toContain('takerNonce');
     });
@@ -182,8 +215,11 @@ describe('verifyMakerBid', () => {
     });
 
     it('returns ok: false for undefined auctionId', () => {
-      // @ts-expect-error - testing invalid input
-      const result = verifyMakerBid({ ...validBidParams, auctionId: undefined });
+      const result = verifyMakerBid({
+        ...validBidParams,
+        // @ts-expect-error - testing invalid input
+        auctionId: undefined,
+      });
       expect(result.ok).toBe(false);
       expect(result.reason).toBe('invalid_auction_id');
     });
@@ -191,7 +227,10 @@ describe('verifyMakerBid', () => {
 
   describe('maker validation', () => {
     it('returns ok: false with reason "invalid_maker" for invalid maker address format', () => {
-      const result = verifyMakerBid({ ...validBidParams, maker: 'not-an-address' });
+      const result = verifyMakerBid({
+        ...validBidParams,
+        maker: 'not-an-address',
+      });
       expect(result.ok).toBe(false);
       expect(result.reason).toBe('invalid_maker');
     });
@@ -205,7 +244,10 @@ describe('verifyMakerBid', () => {
 
   describe('makerCollateral validation', () => {
     it('returns ok: false with reason "invalid_maker_collateral" for makerCollateral of "0"', () => {
-      const result = verifyMakerBid({ ...validBidParams, makerCollateral: '0' });
+      const result = verifyMakerBid({
+        ...validBidParams,
+        makerCollateral: '0',
+      });
       expect(result.ok).toBe(false);
       expect(result.reason).toBe('invalid_maker_collateral');
     });
@@ -217,7 +259,10 @@ describe('verifyMakerBid', () => {
     });
 
     it('returns ok: false for negative makerCollateral', () => {
-      const result = verifyMakerBid({ ...validBidParams, makerCollateral: '-100' });
+      const result = verifyMakerBid({
+        ...validBidParams,
+        makerCollateral: '-100',
+      });
       expect(result.ok).toBe(false);
       expect(result.reason).toBe('invalid_maker_collateral');
     });
@@ -225,19 +270,28 @@ describe('verifyMakerBid', () => {
 
   describe('makerDeadline validation', () => {
     it('returns ok: false with reason "quote_expired" for expired makerDeadline', () => {
-      const result = verifyMakerBid({ ...validBidParams, makerDeadline: Math.floor(Date.now() / 1000) - 100 });
+      const result = verifyMakerBid({
+        ...validBidParams,
+        makerDeadline: Math.floor(Date.now() / 1000) - 100,
+      });
       expect(result.ok).toBe(false);
       expect(result.reason).toBe('quote_expired');
     });
 
     it('returns ok: false for makerDeadline equal to current time', () => {
-      const result = verifyMakerBid({ ...validBidParams, makerDeadline: Math.floor(Date.now() / 1000) });
+      const result = verifyMakerBid({
+        ...validBidParams,
+        makerDeadline: Math.floor(Date.now() / 1000),
+      });
       expect(result.ok).toBe(false);
       expect(result.reason).toBe('quote_expired');
     });
 
     it('returns ok: false for non-finite makerDeadline', () => {
-      const result = verifyMakerBid({ ...validBidParams, makerDeadline: Infinity });
+      const result = verifyMakerBid({
+        ...validBidParams,
+        makerDeadline: Infinity,
+      });
       expect(result.ok).toBe(false);
       expect(result.reason).toBe('quote_expired');
     });
@@ -245,27 +299,40 @@ describe('verifyMakerBid', () => {
 
   describe('makerSignature validation', () => {
     it('returns ok: false with reason "invalid_maker_bid_signature_format" for signature without "0x" prefix', () => {
-      const result = verifyMakerBid({ ...validBidParams, makerSignature: '1234567890' });
+      const result = verifyMakerBid({
+        ...validBidParams,
+        makerSignature: '1234567890',
+      });
       expect(result.ok).toBe(false);
       expect(result.reason).toBe('invalid_maker_bid_signature_format');
     });
 
     it('returns ok: false for signature shorter than 10 chars', () => {
-      const result = verifyMakerBid({ ...validBidParams, makerSignature: '0x1234' });
+      const result = verifyMakerBid({
+        ...validBidParams,
+        makerSignature: '0x1234',
+      });
       expect(result.ok).toBe(false);
       expect(result.reason).toBe('invalid_maker_bid_signature_format');
     });
 
     it('accepts signature with exactly 10 chars', () => {
-      const result = verifyMakerBid({ ...validBidParams, makerSignature: '0x12345678' }); // 10 chars
+      const result = verifyMakerBid({
+        ...validBidParams,
+        makerSignature: '0x12345678',
+      }); // 10 chars
       expect(result.ok).toBe(true);
     });
   });
 });
 
-describe('createMintParlayRequestData', () => {
-  it('returns correctly structured MintParlayRequestData for valid auction', () => {
-    const result = createMintParlayRequestData(validAuction, validAuction.taker, '100');
+describe('createMintComboRequestData', () => {
+  it('returns correctly structured MintComboRequestData for valid auction', () => {
+    const result = createMintComboRequestData(
+      validAuction,
+      validAuction.taker,
+      '100'
+    );
     expect(result).toEqual({
       taker: validAuction.taker,
       predictedOutcomes: validAuction.predictedOutcomes,
@@ -277,18 +344,30 @@ describe('createMintParlayRequestData', () => {
 
   it('throws Error for auction without resolver', () => {
     const auctionWithoutResolver = { ...validAuction, resolver: '' };
-    expect(() => createMintParlayRequestData(auctionWithoutResolver, validAuction.taker, '100')).toThrow('resolver');
+    expect(() =>
+      createMintComboRequestData(
+        auctionWithoutResolver,
+        validAuction.taker,
+        '100'
+      )
+    ).toThrow('resolver');
   });
 
   it('throws Error for null auction', () => {
-    // @ts-expect-error - testing invalid input
-    expect(() => createMintParlayRequestData(null, validAuction.taker, '100')).toThrow();
+    expect(() =>
+      // @ts-expect-error - testing invalid input
+      createMintComboRequestData(null, validAuction.taker, '100')
+    ).toThrow();
   });
 
   it('preserves exact taker and takerCollateral values', () => {
     const customTaker = '0xdeaddeaddeaddeaddeaddeaddeaddeaddeaddead';
     const customCollateral = '999999999999999999';
-    const result = createMintParlayRequestData(validAuction, customTaker, customCollateral);
+    const result = createMintComboRequestData(
+      validAuction,
+      customTaker,
+      customCollateral
+    );
     expect(result.taker).toBe(customTaker);
     expect(result.takerCollateral).toBe(customCollateral);
   });
@@ -335,7 +414,11 @@ describe('validatePayout', () => {
   });
 
   it('handles large values correctly', () => {
-    const result = validatePayout('999999999999999999', '1', '1000000000000000000');
+    const result = validatePayout(
+      '999999999999999999',
+      '1',
+      '1000000000000000000'
+    );
     expect(result).toBe(true);
   });
 });
@@ -347,7 +430,10 @@ describe('createValidationError', () => {
   });
 
   it('includes context in message', () => {
-    const result = createValidationError('test reason', { field: 'value', count: 5 });
+    const result = createValidationError('test reason', {
+      field: 'value',
+      count: 5,
+    });
     expect(result).toContain('Validation failed: test reason');
     expect(result).toContain('field=value');
     expect(result).toContain('count=5');

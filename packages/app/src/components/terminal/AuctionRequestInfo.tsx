@@ -23,8 +23,17 @@ type SubmitData = {
   mode: 'duration' | 'datetime';
 };
 
+interface BidEntry {
+  counterparty?: string;
+  counterpartyCollateral?: string;
+  counterpartyDeadline?: number;
+  counterpartySignature?: string;
+  counterpartyNonce?: number;
+  [key: string]: unknown;
+}
+
 type Props = {
-  bids: any[] | undefined;
+  bids: BidEntry[] | undefined;
   predictorCollateral: string | null;
   collateralAssetTicker: string;
   onSubmit: (data: SubmitData) => void | Promise<void>;
@@ -32,7 +41,7 @@ type Props = {
 };
 
 type BestBidProps = {
-  sortedBids: any[];
+  sortedBids: BidEntry[];
   now: number;
   predictorCollateral: string | null;
   collateralAssetTicker: string;
@@ -61,9 +70,9 @@ const BestBid: React.FC<BestBidProps> = ({
             : Number.POSITIVE_INFINITY;
         if (ms > now) return b;
       }
-      return null as any;
+      return null;
     } catch {
-      return null as any;
+      return null;
     }
   }, [sortedBids, now]);
   return (
@@ -281,7 +290,7 @@ const AuctionRequestInfo: React.FC<Props> = ({
 
   const winningBid = useMemo(() => {
     try {
-      if (!Array.isArray(bids) || bids.length === 0) return null as any;
+      if (!Array.isArray(bids) || bids.length === 0) return null;
       const candidates = bids.filter((b) => {
         // Filter out zero address bids
         if (
@@ -294,7 +303,7 @@ const AuctionRequestInfo: React.FC<Props> = ({
         if (!Number.isFinite(deadlineSec) || deadlineSec <= 0) return true;
         return deadlineSec * 1000 > now;
       });
-      if (candidates.length === 0) return null as any;
+      if (candidates.length === 0) return null;
       return candidates.reduce((best, b) => {
         try {
           const cur = BigInt(String(b?.counterpartyCollateral ?? '0'));
@@ -305,13 +314,13 @@ const AuctionRequestInfo: React.FC<Props> = ({
         }
       }, candidates[0]);
     } catch {
-      return null as any;
+      return null;
     }
   }, [bids, now]);
 
   // No separate Highest Bid summary row; top bid appears first in the list below
 
-  const sortedBids: any[] = useMemo(() => {
+  const sortedBids: BidEntry[] = useMemo(() => {
     const list = Array.isArray(bids) ? [...bids] : [];
     const withSortKey = list.map((b) => {
       let positionSize = 0n;

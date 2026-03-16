@@ -319,7 +319,7 @@ const ApprovalDialog: React.FC = () => {
           ],
           // Enable fallback for wallets that don't support EIP-5792
           experimental_fallback: true,
-        } as any);
+        } as Parameters<typeof sendCallsAsync>[0]);
       } else {
         // Just approve
         await approve();

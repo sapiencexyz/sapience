@@ -360,7 +360,7 @@ router.post('/claim', async (req: Request, res: Response) => {
       update: { referredByCodeId: code.id },
     });
 
-    // Grant sponsorship budget on-chain (fire-and-forget — don't block the response)
+    // Grant sponsorship budget on-chain (awaits tx submission, confirmation is fire-and-forget)
     const sponsorTxHash = await grantSponsorshipBudget(
       normalizeAddress(walletAddress) as Address
     ).catch((err) => {

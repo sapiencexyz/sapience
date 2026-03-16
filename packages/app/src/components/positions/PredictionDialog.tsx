@@ -46,8 +46,7 @@ export default function PredictionDialog({
   const computed = !prediction.settled
     ? computeResultFromConditions(rawPicks, conditionsMap)
     : null;
-  const isSettled =
-    prediction.settled || (computed?.result !== 'UNRESOLVED');
+  const isSettled = prediction.settled || computed?.result !== 'UNRESOLVED';
   const result = prediction.settled
     ? prediction.result
     : (computed?.result ?? 'UNRESOLVED');

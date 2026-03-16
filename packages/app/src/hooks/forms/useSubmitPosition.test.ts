@@ -1,60 +1,60 @@
+import { vi } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useSubmitPosition } from './useSubmitPosition';
 import type { MintPredictionRequestData } from '~/lib/auction/useAuctionStart';
 
-const mockUseAccount = jest.fn().mockReturnValue({ address: '0xUserAddress' });
-const mockUseReadContract = jest.fn().mockReturnValue({
+const mockUseAccount = vi.fn().mockReturnValue({ address: '0xUserAddress' });
+const mockUseReadContract = vi.fn().mockReturnValue({
   data: undefined,
   isLoading: false,
-  refetch: jest.fn().mockResolvedValue({ data: undefined }),
+  refetch: vi.fn().mockResolvedValue({ data: undefined }),
 });
-jest.mock('wagmi', () => ({
+vi.mock('wagmi', () => ({
   useAccount: (...args: unknown[]) => mockUseAccount(...args),
   useReadContract: (...args: unknown[]) => mockUseReadContract(...args),
   useSignTypedData: () => ({
-    signTypedDataAsync: jest.fn().mockResolvedValue('0xMockSignature'),
+    signTypedDataAsync: vi.fn().mockResolvedValue('0xMockSignature'),
   }),
   erc20Abi: [],
 }));
 
-const mockEncodeFunctionData = jest.fn().mockReturnValue('0xEncodedCalldata');
-jest.mock('viem', () => ({
+const mockEncodeFunctionData = vi.fn().mockReturnValue('0xEncodedCalldata');
+vi.mock('viem', () => ({
   encodeFunctionData: (...args: unknown[]) => mockEncodeFunctionData(...args),
   erc20Abi: [],
-  parseAbi: jest.fn().mockReturnValue([]),
+  parseAbi: vi.fn().mockReturnValue([]),
 }));
 
-const mockPrepareMintCalls = jest.fn().mockReturnValue([
+const mockPrepareMintCalls = vi.fn().mockReturnValue([
   {
     to: '0xMarket' as `0x${string}`,
     data: '0xEncodedCalldata' as `0x${string}`,
   },
 ]);
-jest.mock('@sapience/sdk', () => ({
-  predictionMarketAbi: [],
+vi.mock('@sapience/sdk', () => ({
   generateRandomNonce: () => BigInt(12345),
   toBigIntSafe: (value: string | number | bigint | undefined) => {
     if (value === undefined) return undefined;
     return BigInt(value);
   },
-  validateCounterpartyFunds: jest.fn().mockResolvedValue(undefined),
+  validateCounterpartyFunds: vi.fn().mockResolvedValue(undefined),
   prepareMintCalls: (...args: unknown[]) => mockPrepareMintCalls(...args),
 }));
 
-jest.mock('@sapience/sdk/constants', () => ({
+vi.mock('@sapience/sdk/constants', () => ({
   CHAIN_ID_ETHEREAL: 5064014,
   CHAIN_ID_ETHEREAL_TESTNET: 13374202,
 }));
 
-jest.mock('@sapience/sdk/contracts', () => ({
+vi.mock('@sapience/sdk/contracts', () => ({
   collateralToken: {
     5064014: { address: '0xCollateralEthereal' },
     42161: { address: '0xCollateralArbitrum' },
   },
 }));
 
-jest.mock('@sapience/sdk/auction/escrowSigning', () => ({
-  buildPredictorMintTypedData: jest.fn().mockReturnValue({
+vi.mock('@sapience/sdk/auction/escrowSigning', () => ({
+  buildPredictorMintTypedData: vi.fn().mockReturnValue({
     domain: {
       name: 'Test',
       version: '1',
@@ -67,33 +67,33 @@ jest.mock('@sapience/sdk/auction/escrowSigning', () => ({
   }),
 }));
 
-jest.mock('~/lib/session/sessionKeyManager', () => ({
-  encodeEscrowSessionKeyData: jest.fn().mockReturnValue('0xSessionKeyData'),
+vi.mock('~/lib/session/sessionKeyManager', () => ({
+  encodeEscrowSessionKeyData: vi.fn().mockReturnValue('0xSessionKeyData'),
 }));
 
-const mockSendCalls = jest.fn();
+const mockSendCalls = vi.fn();
 let capturedCallbacks: Record<string, (...args: unknown[]) => void> = {};
 
-jest.mock('~/hooks/blockchain/useSapienceWriteContract', () => ({
+vi.mock('~/hooks/blockchain/useSapienceWriteContract', () => ({
   useSapienceWriteContract: (opts: Record<string, unknown>) => {
     capturedCallbacks = opts as Record<string, (...args: unknown[]) => void>;
     return {
-      writeContract: jest.fn(),
+      writeContract: vi.fn(),
       sendCalls: mockSendCalls,
       isPending: false,
-      reset: jest.fn(),
+      reset: vi.fn(),
     };
   },
 }));
 
-jest.mock('~/lib/context/SessionContext', () => ({
+vi.mock('~/lib/context/SessionContext', () => ({
   useSession: () => ({
     effectiveAddress: '0xUserAddress',
   }),
 }));
 
-const mockReadContract = jest.fn().mockResolvedValue(0n);
-jest.mock('~/lib/utils/util', () => ({
+const mockReadContract = vi.fn().mockResolvedValue(0n);
+vi.mock('~/lib/utils/util', () => ({
   getPublicClientForChainId: () => ({
     readContract: (...args: unknown[]) => mockReadContract(...args),
   }),
@@ -126,13 +126,13 @@ const VALID_MINT_DATA: MintPredictionRequestData = {
 
 describe('useSubmitPosition', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockSendCalls.mockResolvedValue(undefined);
     // Default: predictorNonce query returns 0n, refetch returns 0n
     mockUseReadContract.mockReturnValue({
       data: 0n,
       isLoading: false,
-      refetch: jest.fn().mockResolvedValue({ data: 0n }),
+      refetch: vi.fn().mockResolvedValue({ data: 0n }),
     });
     mockUseAccount.mockReturnValue({ address: '0xUserAddress' });
     // Mock counterparty validation - return enough balance/allowance

@@ -72,7 +72,7 @@ contract PredictionMarketEscrowNonceAudit is Test {
 
     // ============ Helpers ============
 
-    function _createPick(bytes32 conditionId)
+    function _createPick(bytes memory conditionId)
         internal
         view
         returns (IV2Types.Pick[] memory)
@@ -162,8 +162,8 @@ contract PredictionMarketEscrowNonceAudit is Test {
         bytes32 condId1 = keccak256("concurrent-1");
         bytes32 condId2 = keccak256("concurrent-2");
 
-        IV2Types.Pick[] memory picks1 = _createPick(condId1);
-        IV2Types.Pick[] memory picks2 = _createPick(condId2);
+        IV2Types.Pick[] memory picks1 = _createPick(abi.encode(condId1));
+        IV2Types.Pick[] memory picks2 = _createPick(abi.encode(condId2));
 
         // Sign with nonces 100 and 50 (intentionally non-sequential)
         IV2Types.MintRequest memory req1 = _buildMintRequest(picks1, 100, 200);
@@ -187,8 +187,8 @@ contract PredictionMarketEscrowNonceAudit is Test {
         bytes32 condId1 = keccak256("reuse-1");
         bytes32 condId2 = keccak256("reuse-2");
 
-        IV2Types.Pick[] memory picks1 = _createPick(condId1);
-        IV2Types.Pick[] memory picks2 = _createPick(condId2);
+        IV2Types.Pick[] memory picks1 = _createPick(abi.encode(condId1));
+        IV2Types.Pick[] memory picks2 = _createPick(abi.encode(condId2));
 
         // First mint with nonce 42 for predictor
         IV2Types.MintRequest memory req1 = _buildMintRequest(picks1, 42, 43);
@@ -207,8 +207,8 @@ contract PredictionMarketEscrowNonceAudit is Test {
         bytes32 condId1 = keccak256("reuse-ctr-1");
         bytes32 condId2 = keccak256("reuse-ctr-2");
 
-        IV2Types.Pick[] memory picks1 = _createPick(condId1);
-        IV2Types.Pick[] memory picks2 = _createPick(condId2);
+        IV2Types.Pick[] memory picks1 = _createPick(abi.encode(condId1));
+        IV2Types.Pick[] memory picks2 = _createPick(abi.encode(condId2));
 
         IV2Types.MintRequest memory req1 = _buildMintRequest(picks1, 10, 20);
         market.mint(req1);
@@ -226,8 +226,8 @@ contract PredictionMarketEscrowNonceAudit is Test {
         bytes32 condId1 = keccak256("word-boundary-1");
         bytes32 condId2 = keccak256("word-boundary-2");
 
-        IV2Types.Pick[] memory picks1 = _createPick(condId1);
-        IV2Types.Pick[] memory picks2 = _createPick(condId2);
+        IV2Types.Pick[] memory picks1 = _createPick(abi.encode(condId1));
+        IV2Types.Pick[] memory picks2 = _createPick(abi.encode(condId2));
 
         // Nonce 255 is in word 0, bit 255
         // Nonce 256 is in word 1, bit 0
@@ -274,7 +274,7 @@ contract PredictionMarketEscrowNonceAudit is Test {
      */
     function test_M3_highNonceValues() public {
         bytes32 condId = keccak256("high-nonce");
-        IV2Types.Pick[] memory picks = _createPick(condId);
+        IV2Types.Pick[] memory picks = _createPick(abi.encode(condId));
 
         // Use very high nonces (near max uint256 range)
         uint256 highNonce1 = type(uint256).max - 1;
@@ -293,7 +293,7 @@ contract PredictionMarketEscrowNonceAudit is Test {
      */
     function test_M3_sameNonceDifferentAccounts() public {
         bytes32 condId = keccak256("same-nonce-diff-accounts");
-        IV2Types.Pick[] memory picks = _createPick(condId);
+        IV2Types.Pick[] memory picks = _createPick(abi.encode(condId));
 
         // Both predictor and counterparty use nonce 7
         IV2Types.MintRequest memory req = _buildMintRequest(picks, 7, 7);
@@ -311,9 +311,9 @@ contract PredictionMarketEscrowNonceAudit is Test {
         bytes32 condId2 = keccak256("same-word-2");
         bytes32 condId3 = keccak256("same-word-3");
 
-        IV2Types.Pick[] memory picks1 = _createPick(condId1);
-        IV2Types.Pick[] memory picks2 = _createPick(condId2);
-        IV2Types.Pick[] memory picks3 = _createPick(condId3);
+        IV2Types.Pick[] memory picks1 = _createPick(abi.encode(condId1));
+        IV2Types.Pick[] memory picks2 = _createPick(abi.encode(condId2));
+        IV2Types.Pick[] memory picks3 = _createPick(abi.encode(condId3));
 
         // All in word 0 (nonces 0-255)
         market.mint(_buildMintRequest(picks1, 0, 0));

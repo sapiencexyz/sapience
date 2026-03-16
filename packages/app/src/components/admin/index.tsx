@@ -151,7 +151,7 @@ const Admin = () => {
 
   const { toast } = useToast();
 
-  const handleSmartAccountLookup = async (e: React.FormEvent) => {
+  const handleSmartAccountLookup = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = eoaInput.trim();
     if (!trimmed) return;
@@ -159,7 +159,7 @@ const Admin = () => {
     try {
       setIsLookupLoading(true);
       setSmartAccountResult('');
-      const result = await getSmartAccountAddress(trimmed as Address);
+      const result = getSmartAccountAddress(trimmed as Address);
       setSmartAccountResult(result);
     } catch (error) {
       console.error('Smart account lookup error:', error);

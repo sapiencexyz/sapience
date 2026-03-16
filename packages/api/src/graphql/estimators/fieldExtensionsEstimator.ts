@@ -10,13 +10,16 @@ import type {
 
 export function fieldExtensionsEstimator(): ComplexityEstimator {
   return (args: ComplexityEstimatorArgs) => {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const extensions = args.field.extensions as any;
+    const extensions = args.field.extensions as Readonly<
+      Record<string, unknown>
+    >;
     if (extensions) {
       if (typeof extensions.complexity === 'number') {
         return args.childComplexity + extensions.complexity;
       } else if (typeof extensions.complexity === 'function') {
-        return extensions.complexity(args);
+        return (
+          extensions.complexity as (args: ComplexityEstimatorArgs) => number
+        )(args);
       }
     }
     // Return undefined to let the next estimator handle it

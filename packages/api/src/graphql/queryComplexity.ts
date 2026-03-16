@@ -268,7 +268,13 @@ export class QueryComplexity {
             this.evaluatedNodes++;
             if (this.evaluatedNodes >= this.maxQueryNodes) {
               throw new GraphQLError(
-                'Query exceeds the maximum allowed number of nodes.'
+                'Query exceeds the maximum allowed number of nodes.',
+                {
+                  extensions: {
+                    code: 'QUERY_NODE_LIMIT_EXCEEDED',
+                    http: { status: 400 },
+                  },
+                }
               );
             }
             let innerComplexities = complexities;
@@ -505,7 +511,13 @@ export class QueryComplexity {
       );
     }
     return new GraphQLError(
-      queryComplexityMessage(this.options.maximumComplexity, this.complexity)
+      queryComplexityMessage(this.options.maximumComplexity, this.complexity),
+      {
+        extensions: {
+          code: 'QUERY_COMPLEXITY_EXCEEDED',
+          http: { status: 400 },
+        },
+      }
     );
   }
 }
@@ -564,6 +576,7 @@ export function createComplexityEstimators(
       if (fieldName === 'accountVolume') return 1000;
       if (fieldName === 'accountPnl') return 1500;
       if (fieldName === 'accountBalance') return 2000;
+      if (fieldName === 'accountPredictionCount') return 1000;
       if (fieldName === 'protocolVolume') return 1500;
       // Full-table groupBy aggregates (no cache)
       if (fieldName === 'accuracyLeaderboard') return 1500;

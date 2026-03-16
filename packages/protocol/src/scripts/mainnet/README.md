@@ -9,11 +9,13 @@ This deployment deploys the full bridge infrastructure for mainnet, connecting E
 ### Contracts Deployed
 
 **On PM Network (Source Chain - Ethereal Mainnet):**
+
 - ManualConditionResolver
 - PredictionMarketEscrow
 - PredictionMarketBridge
 
 **On SM Network (Remote Chain - Arbitrum Mainnet):**
+
 - PredictionMarketTokenFactory
 - PredictionMarketBridgeRemote
 
@@ -41,7 +43,7 @@ SM_NETWORK_RPC_URL=https://arb1.arbitrum.io/rpc
 SM_NETWORK_LZ_ENDPOINT=0x1a44076050125825900e736c501f859c50fE728c
 SM_NETWORK_LZ_EID=30110
 
-# Collateral Token (existing mainnet token - e.g., USDC, WUSDe)
+# Collateral Token (canonical address in @sapience/sdk/contracts/addresses)
 COLLATERAL_TOKEN_ADDRESS=0x...
 
 # LayerZero Library and DVN Configuration (2 DVNs required for production)
@@ -68,6 +70,7 @@ SM_NETWORK_ETHERSCAN_API_KEY=your_arbiscan_api_key
 3. Fund deployer address on both chains with native tokens for gas.
 
 **Finding LayerZero addresses:**
+
 - Endpoints: https://docs.layerzero.network/v2/developers/evm/technical-reference/deployed-contracts
 - DVN addresses: https://docs.layerzero.network/v2/developers/evm/technical-reference/dvn-addresses
 
@@ -89,6 +92,7 @@ forge script src/scripts/mainnet/00_DeployCollateral.s.sol \
 ```
 
 Optional environment variables for test collateral:
+
 - `COLLATERAL_NAME` - Token name (default: "Test USDe")
 - `COLLATERAL_SYMBOL` - Token symbol (default: "tUSDe")
 - `COLLATERAL_INITIAL_SUPPLY` - Initial supply in wei (default: 1,000,000 tokens)
@@ -178,26 +182,26 @@ forge script src/scripts/mainnet/08b_CheckStatus_SMNetwork.s.sol --rpc-url $SM_N
 
 ## Script Summary
 
-| # | Script | Chain | Description |
-|---|--------|-------|-------------|
-| 00 | DeployCollateral | Ethereal | Deploy test ERC20 collateral (optional) |
-| 01 | DeployResolver | Ethereal | Deploy ManualConditionResolver |
-| 02 | DeployPredictionMarket | Ethereal | Deploy PredictionMarketEscrow |
-| 03 | DeployEtherealBridge | Ethereal | Deploy PredictionMarketBridge |
-| 04 | DeployFactory | Arbitrum | Deploy PredictionMarketTokenFactory |
-| 05 | DeployRemoteBridge | Arbitrum | Deploy PredictionMarketBridgeRemote |
-| 06 | ConfigureEtherealBridge | Ethereal | Set peer and bridge config |
-| 06b | SetDVN_EtherealBridge | Ethereal | Set SendLib, ReceiveLib, DVN config |
-| 07 | ConfigureRemoteBridge | Arbitrum | Set peer, config, factory deployer |
-| 07b | SetDVN_RemoteBridge | Arbitrum | Set SendLib, ReceiveLib, DVN, Executor |
-| 08a | CheckStatus_PMNetwork | Ethereal | View PM Network deployment status |
-| 08b | CheckStatus_SMNetwork | Arbitrum | View SM Network deployment status |
-| 09 | MintPredictionMarketTokens | Ethereal | Mint prediction market tokens for testing |
-| 10 | TestBridgeToRemote | Ethereal | Bridge tokens to Arbitrum |
-| 10b | ResolvePrediction | Ethereal | Resolve condition and settle prediction |
-| 11 | TestBridgeBack | Arbitrum | Bridge tokens back to Ethereal |
-| 12 | RetryBridgePM | Ethereal | Retry a pending bridge from PM Network |
-| 13 | RetryBridgeSM | Arbitrum | Retry a pending bridge from SM Network |
+| #   | Script                     | Chain    | Description                               |
+| --- | -------------------------- | -------- | ----------------------------------------- |
+| 00  | DeployCollateral           | Ethereal | Deploy test ERC20 collateral (optional)   |
+| 01  | DeployResolver             | Ethereal | Deploy ManualConditionResolver            |
+| 02  | DeployPredictionMarket     | Ethereal | Deploy PredictionMarketEscrow             |
+| 03  | DeployEtherealBridge       | Ethereal | Deploy PredictionMarketBridge             |
+| 04  | DeployFactory              | Arbitrum | Deploy PredictionMarketTokenFactory       |
+| 05  | DeployRemoteBridge         | Arbitrum | Deploy PredictionMarketBridgeRemote       |
+| 06  | ConfigureEtherealBridge    | Ethereal | Set peer and bridge config                |
+| 06b | SetDVN_EtherealBridge      | Ethereal | Set SendLib, ReceiveLib, DVN config       |
+| 07  | ConfigureRemoteBridge      | Arbitrum | Set peer, config, factory deployer        |
+| 07b | SetDVN_RemoteBridge        | Arbitrum | Set SendLib, ReceiveLib, DVN, Executor    |
+| 08a | CheckStatus_PMNetwork      | Ethereal | View PM Network deployment status         |
+| 08b | CheckStatus_SMNetwork      | Arbitrum | View SM Network deployment status         |
+| 09  | MintPredictionMarketTokens | Ethereal | Mint prediction market tokens for testing |
+| 10  | TestBridgeToRemote         | Ethereal | Bridge tokens to Arbitrum                 |
+| 10b | ResolvePrediction          | Ethereal | Resolve condition and settle prediction   |
+| 11  | TestBridgeBack             | Arbitrum | Bridge tokens back to Ethereal            |
+| 12  | RetryBridgePM              | Ethereal | Retry a pending bridge from PM Network    |
+| 13  | RetryBridgeSM              | Arbitrum | Retry a pending bridge from SM Network    |
 
 ## Testing: Mint and Bridge
 
@@ -290,14 +294,14 @@ forge script src/scripts/mainnet/11_TestBridgeBack.s.sol \
 
 ### Test Script Options
 
-| Variable | Description | Default |
-|----------|-------------|---------|
-| `PREDICTOR_COLLATERAL` | Predictor's collateral amount | 100 tokens |
-| `COUNTERPARTY_COLLATERAL` | Counterparty's collateral amount | 33.33 tokens |
-| `BRIDGE_AMOUNT` | Amount to bridge | 10 tokens |
-| `BRIDGE_RECIPIENT` | Override recipient address | sender |
-| `IS_PREDICTOR_TOKEN` | Bridge predictor (true) or counterparty (false) token | true |
-| `OUTCOME` | Resolution outcome: "yes", "no", or "tie" | yes |
+| Variable                  | Description                                           | Default      |
+| ------------------------- | ----------------------------------------------------- | ------------ |
+| `PREDICTOR_COLLATERAL`    | Predictor's collateral amount                         | 100 tokens   |
+| `COUNTERPARTY_COLLATERAL` | Counterparty's collateral amount                      | 33.33 tokens |
+| `BRIDGE_AMOUNT`           | Amount to bridge                                      | 10 tokens    |
+| `BRIDGE_RECIPIENT`        | Override recipient address                            | sender       |
+| `IS_PREDICTOR_TOKEN`      | Bridge predictor (true) or counterparty (false) token | true         |
+| `OUTCOME`                 | Resolution outcome: "yes", "no", or "tie"             | yes          |
 
 ## Automated Deployment
 
@@ -414,12 +418,16 @@ Track cross-chain messages: https://layerzeroscan.com/
    - **Ethereal (PM Network)**: Uses Blockscout at `https://explorer.ethereal.trade`. No API key needed. The deploy script automatically uses `--verifier blockscout --verifier-url https://explorer.ethereal.trade/api/`.
    - **Arbitrum (SM Network)**: Uses Arbiscan. Set `SM_NETWORK_ETHERSCAN_API_KEY` for verification.
 
-## Contract Addresses (fill after deployment)
+## Contract Addresses
 
-| Contract | Chain | Address |
-|----------|-------|---------|
-| ManualConditionResolver | Ethereal | |
-| PredictionMarketEscrow | Ethereal | |
-| PredictionMarketTokenFactory | Arbitrum | |
-| PredictionMarketBridge | Ethereal | |
-| PredictionMarketBridgeRemote | Arbitrum | |
+After deployment, update the contract addresses in `@sapience/sdk/contracts/addresses` — that file is the single source of truth. Other packages import from there:
+
+```typescript
+import {
+  predictionMarketEscrow,
+  manualConditionResolver,
+  predictionMarketBridge,
+  predictionMarketBridgeRemote,
+  predictionMarketTokenFactory,
+} from '@sapience/sdk/contracts/addresses';
+```

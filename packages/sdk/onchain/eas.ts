@@ -1,4 +1,8 @@
-import { encodeAbiParameters, encodeFunctionData, parseAbiParameters } from 'viem';
+import {
+  encodeAbiParameters,
+  encodeFunctionData,
+  parseAbiParameters,
+} from 'viem';
 import type { Address } from 'viem';
 import { contracts } from '../contracts/addresses';
 import { CHAIN_ID_ARBITRUM } from '../constants/chain';
@@ -68,15 +72,16 @@ export async function buildAttestationCalldata(
   prediction: { probability: number; reasoning: string; confidence: number },
   chainId: number = CHAIN_ID_ARBITRUM,
   resolver?: Address,
-  condition?: Hex,
+  condition?: Hex
 ): Promise<AttestationCalldata | null> {
   const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as Address;
-  const ZERO_BYTES32 = '0x0000000000000000000000000000000000000000000000000000000000000000' as Hex;
+  const ZERO_BYTES32 =
+    '0x0000000000000000000000000000000000000000000000000000000000000000' as Hex;
   const EMPTY_BYTES = '0x' as Hex;
 
   const encodedData = encodeAbiParameters(
     parseAbiParameters(
-      'address resolver, bytes condition, uint256 forecast, string comment',
+      'address resolver, bytes condition, uint256 forecast, string comment'
     ),
     [
       resolver || ZERO_ADDRESS,
@@ -85,7 +90,7 @@ export async function buildAttestationCalldata(
       prediction.reasoning.length > 180
         ? `${prediction.reasoning.substring(0, 177)}...`
         : prediction.reasoning,
-    ],
+    ]
   );
 
   const attestationRequest = {
@@ -107,7 +112,7 @@ export async function buildAttestationCalldata(
   });
 
   // EAS addresses live in contracts/addresses.ts for consistency with the repo
-  const easAddress = (contracts as any).eas?.[chainId]?.address as Address | undefined;
+  const easAddress = contracts.eas?.[chainId]?.address as Address | undefined;
   if (!easAddress) {
     return null;
   }
@@ -120,5 +125,3 @@ export async function buildAttestationCalldata(
     description: `Attest: ${prediction.probability}% YES`,
   };
 }
-
-

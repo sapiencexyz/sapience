@@ -92,32 +92,34 @@ Submit a bid as counterparty for an open auction.
 Keep-alive message. Server responds with `pong`.
 
 ```typescript
-{ type: 'ping' }
+{
+  type: 'ping';
+}
 ```
 
 ### Server -> Client
 
-| Type | Description |
-|------|-------------|
-| `auction.ack` | Confirms auction start/subscribe/unsubscribe. Contains `{ auctionId, subscribed?, unsubscribed?, error? }` |
-| `auction.started` | Broadcast to all clients when a new auction opens. Contains full `AuctionDetails`. |
-| `auction.bids` | Sent to auction subscribers when bids update. Contains `{ auctionId, bids: ValidatedBid[] }` |
-| `auction.filled` | Sent when prediction is minted on-chain. Contains `{ auctionId, predictionId, pickConfigId, transactionHash }` |
-| `auction.expired` | Sent when auction deadline passes. Contains `{ auctionId, reason }` |
-| `bid.ack` | Confirms bid receipt or reports error. Contains `{ bidId?, error? }` |
-| `pong` | Response to `ping` |
-| `error` | Server error. Contains `{ message, code? }` |
+| Type              | Description                                                                                                    |
+| ----------------- | -------------------------------------------------------------------------------------------------------------- |
+| `auction.ack`     | Confirms auction start/subscribe/unsubscribe. Contains `{ auctionId, subscribed?, unsubscribed?, error? }`     |
+| `auction.started` | Broadcast to all clients when a new auction opens. Contains full `AuctionDetails`.                             |
+| `auction.bids`    | Sent to auction subscribers when bids update. Contains `{ auctionId, bids: ValidatedBid[] }`                   |
+| `auction.filled`  | Sent when prediction is minted on-chain. Contains `{ auctionId, predictionId, pickConfigId, transactionHash }` |
+| `auction.expired` | Sent when auction deadline passes. Contains `{ auctionId, reason }`                                            |
+| `bid.ack`         | Confirms bid receipt or reports error. Contains `{ bidId?, error? }`                                           |
+| `pong`            | Response to `ping`                                                                                             |
+| `error`           | Server error. Contains `{ message, code? }`                                                                    |
 
 ## Vault Quote Protocol
 
 The vault quote protocol is multiplexed on the same `/auction` endpoint.
 
-| Client Message | Description |
-|---|---|
-| `vault_quote.subscribe` | Subscribe to vault share price updates. Payload: `{ chainId, vaultAddress }` |
-| `vault_quote.unsubscribe` | Unsubscribe from vault updates. Payload: `{ chainId, vaultAddress }` |
-| `vault_quote.publish` | Publish a signed vault quote (vault manager only). |
-| `vault_quote.observe` | Observe all vault quote activity (debug). |
+| Client Message            | Description                                                                  |
+| ------------------------- | ---------------------------------------------------------------------------- |
+| `vault_quote.subscribe`   | Subscribe to vault share price updates. Payload: `{ chainId, vaultAddress }` |
+| `vault_quote.unsubscribe` | Unsubscribe from vault updates. Payload: `{ chainId, vaultAddress }`         |
+| `vault_quote.publish`     | Publish a signed vault quote (vault manager only).                           |
+| `vault_quote.observe`     | Observe all vault quote activity (debug).                                    |
 
 Server responds with `vault_quote.ack` and `vault_quote.update` messages.
 
@@ -126,18 +128,24 @@ Server responds with `vault_quote.ack` and `vault_quote.update` messages.
 ### 1. Predictor Creates Auction
 
 ```typescript
-import { createEscrowAuctionWs, buildAuctionRequest } from '@sapience/sdk/relayer/escrowAuctionWs';
+import {
+  createEscrowAuctionWs,
+  buildAuctionRequest,
+} from '@sapience/sdk/relayer/escrowAuctionWs';
+import { pythConditionResolver } from '@sapience/sdk/contracts/addresses';
+import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 
 const client = createEscrowAuctionWs('wss://relayer.sapience.xyz/auction', {
   onAuctionAck: ({ auctionId }) => console.log('Auction created:', auctionId),
   onAuctionBids: ({ auctionId, bids }) => console.log('Bids:', bids),
-  onAuctionFilled: ({ transactionHash }) => console.log('Filled:', transactionHash),
+  onAuctionFilled: ({ transactionHash }) =>
+    console.log('Filled:', transactionHash),
 });
 
 client.startAuction({
   picks: [
     {
-      conditionResolver: '0xdC1Fa830aD1de01f1EF603749f48bD73384286BE',
+      conditionResolver: pythConditionResolver[CHAIN_ID_ETHEREAL].address,
       conditionId: '0x...',
       predictedOutcome: 0, // YES
     },
@@ -148,7 +156,7 @@ client.startAuction({
   predictorNonce: 1,
   predictorDeadline: Math.floor(Date.now() / 1000) + 300,
   predictorSignature: '0x...', // EIP-712 signature
-  chainId: 5064014,
+  chainId: CHAIN_ID_ETHEREAL,
 });
 ```
 
@@ -171,12 +179,12 @@ After the predictor selects a bid, both signatures are submitted to `PredictionM
 
 ## Connection Management
 
-| Limit | Value |
-|-------|-------|
-| Rate limit | 100 messages per 10s window |
-| Max message size | 64 KB |
-| Idle timeout | Configurable via `WS_IDLE_TIMEOUT_MS` |
-| Max connections | Configurable via `WS_MAX_CONNECTIONS` |
+| Limit            | Value                                 |
+| ---------------- | ------------------------------------- |
+| Rate limit       | 100 messages per 10s window           |
+| Max message size | 64 KB                                 |
+| Idle timeout     | Configurable via `WS_IDLE_TIMEOUT_MS` |
+| Max connections  | Configurable via `WS_MAX_CONNECTIONS` |
 
 Exceeding rate limits or message size closes the connection with code `1008` or `1009`.
 
@@ -199,15 +207,15 @@ Exceeding rate limits or message size closes the connection with code `1008` or 
 
 ## Environment Variables
 
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `PORT` | `3002` | Server port |
-| `ENABLE_AUCTION_WS` | `true` | Enable auction WebSocket |
-| `WS_MAX_CONNECTIONS` | - | Max concurrent connections |
-| `WS_IDLE_TIMEOUT_MS` | - | Idle connection timeout |
-| `WS_ALLOWED_ORIGINS` | - | Comma-separated allowed origins |
-| `RATE_LIMIT_WINDOW_MS` | `10000` | Rate limit window |
-| `RATE_LIMIT_MAX_MESSAGES` | `100` | Max messages per window |
-| `CHAIN_5064014_RPC_URL` | - | Custom RPC for Ethereal mainnet |
-| `CHAIN_13374202_RPC_URL` | - | Custom RPC for Ethereal testnet |
-| `NODE_ENV` | `development` | Environment |
+| Variable                  | Default       | Description                     |
+| ------------------------- | ------------- | ------------------------------- |
+| `PORT`                    | `3002`        | Server port                     |
+| `ENABLE_AUCTION_WS`       | `true`        | Enable auction WebSocket        |
+| `WS_MAX_CONNECTIONS`      | -             | Max concurrent connections      |
+| `WS_IDLE_TIMEOUT_MS`      | -             | Idle connection timeout         |
+| `WS_ALLOWED_ORIGINS`      | -             | Comma-separated allowed origins |
+| `RATE_LIMIT_WINDOW_MS`    | `10000`       | Rate limit window               |
+| `RATE_LIMIT_MAX_MESSAGES` | `100`         | Max messages per window         |
+| `CHAIN_5064014_RPC_URL`   | -             | Custom RPC for Ethereal mainnet |
+| `CHAIN_13374202_RPC_URL`  | -             | Custom RPC for Ethereal testnet |
+| `NODE_ENV`                | `development` | Environment                     |

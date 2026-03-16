@@ -700,8 +700,7 @@ async function testMintFunction(): Promise<{ success: boolean; hash?: string; re
         const decoded = decodeEventLog({
           abi: [PREDICTION_MINTED_EVENT],
           data: log.data,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          topics: log.topics as any
+          topics: log.topics as [`0x${string}`, ...`0x${string}`[]]
         });
         return (decoded as { eventName: string }).eventName === 'PredictionMinted';
       } catch {
@@ -717,8 +716,7 @@ async function testMintFunction(): Promise<{ success: boolean; hash?: string; re
         const decoded = decodeEventLog({
           abi: [PREDICTION_MINTED_EVENT],
           data: mintedEvent.data,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          topics: mintedEvent.topics as any
+          topics: mintedEvent.topics as [`0x${string}`, ...`0x${string}`[]]
         });
         const eventData = decoded as { args: { makerNftTokenId: bigint; takerNftTokenId: bigint } };
         
@@ -920,8 +918,7 @@ async function testBurnFunction(makerNftTokenId: bigint): Promise<{ success: boo
         const decoded = decodeEventLog({
           abi: [PREDICTION_BURNED_EVENT],
           data: log.data,
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          topics: log.topics as any
+          topics: log.topics as [`0x${string}`, ...`0x${string}`[]]
         });
         return (decoded as { eventName: string }).eventName === 'PredictionBurned';
       } catch {

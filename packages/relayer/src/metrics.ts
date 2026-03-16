@@ -92,6 +92,23 @@ export const vaultQuotesPublished = new Counter({
 });
 
 // ============================================================================
+// Secondary Market Metrics
+// ============================================================================
+
+export const secondaryListingsStarted = new Counter({
+  name: 'relayer_secondary_listings_started_total',
+  help: 'Total number of secondary market listings created',
+  registers: [register],
+});
+
+export const secondaryBidsSubmitted = new Counter({
+  name: 'relayer_secondary_bids_submitted_total',
+  help: 'Total number of secondary market bids submitted',
+  labelNames: ['status'], // 'success', 'rejected'
+  registers: [register],
+});
+
+// ============================================================================
 // Error Metrics
 // ============================================================================
 
@@ -123,4 +140,3 @@ export const subscriptionsActive = new Gauge({
 export async function getMetrics(): Promise<string> {
   return register.metrics();
 }
-

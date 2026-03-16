@@ -4,6 +4,7 @@ import * as React from 'react';
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
+import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@sapience/ui/components/ui/badge';
@@ -31,7 +32,7 @@ import { ResolverBadge } from '~/components/shared/ResolverBadge';
 import Comments, { CommentFilters } from '~/components/shared/Comments';
 import PredictionForm from '~/components/markets/pages/PredictionForm';
 import ConditionForecastForm from '~/components/conditions/ConditionForecastForm';
-import { UMA_RESOLVER_ARBITRUM } from '~/lib/constants';
+import { POLYMARKET_RESOLVER_ADDRESSES } from '~/lib/constants';
 import { FocusAreaBadge } from '~/components/shared/FocusAreaBadge';
 import ResearchAgent from '~/components/markets/ResearchAgent';
 import ActivityTable from '~/components/positions/ActivityTable';
@@ -82,6 +83,7 @@ export default function QuestionPageContent({
       chainId?: number | null;
       resolver?: string | null;
       openInterest?: string | null;
+      similarMarkets?: string[] | null;
     } | null,
     Error
   >({
@@ -103,6 +105,7 @@ export default function QuestionPageContent({
             chainId
             resolver
             openInterest
+            similarMarkets
             category {
               slug
             }
@@ -149,6 +152,25 @@ export default function QuestionPageContent({
   // Use chain/resolver from the condition - no fallbacks
   const chainId = data?.chainId ?? DEFAULT_CHAIN_ID;
   const resolverAddress = data?.resolver ?? undefined;
+
+  const isPolymarketResolver =
+    resolverAddress &&
+    POLYMARKET_RESOLVER_ADDRESSES.has(resolverAddress.toLowerCase());
+
+  const polymarketUrl = useMemo(() => {
+    if (!isPolymarketResolver || !data?.similarMarkets) return null;
+    const pm = data.similarMarkets.find((u) => u.includes('polymarket.com'));
+    if (!pm) return null;
+    // Handle both formats: full URL with /event/ path, or legacy #slug-only
+    try {
+      const parsed = new URL(pm);
+      if (parsed.pathname !== '/') return pm;
+      // Legacy format: https://polymarket.com#slug — not a navigable URL
+      return null;
+    } catch {
+      return null;
+    }
+  }, [isPolymarketResolver, data?.similarMarkets]);
 
   // If the resolver in the URL is wrong, immediately canonicalize to the computed resolver.
   React.useEffect(() => {
@@ -348,11 +370,57 @@ export default function QuestionPageContent({
     | 'agent'
     | 'techspecs';
 
+  const TAB_VALUES: PrimaryTab[] = [
+    'predictions',
+    'positions',
+    'forecasts',
+    'resolution',
+    'agent',
+    'techspecs',
+  ];
+
+  const getTabFromHash = (): PrimaryTab | null => {
+    if (typeof window === 'undefined') return null;
+    const raw = window.location.hash?.replace('#', '').toLowerCase();
+    return (TAB_VALUES as string[]).includes(raw) ? (raw as PrimaryTab) : null;
+  };
+
   // Keep primary tab controlled so we can default to Positions when available
   const [primaryTab, setPrimaryTab] = React.useState<PrimaryTab>('forecasts');
+  const hashOverrideRef = React.useRef(false);
 
-  const handlePrimaryTabChange = (value: string) =>
-    setPrimaryTab(value as PrimaryTab);
+  // Read hash on mount
+  React.useEffect(() => {
+    const fromHash = getTabFromHash();
+    if (fromHash) {
+      setPrimaryTab(fromHash);
+      hashOverrideRef.current = true;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Listen for hashchange (browser back/forward)
+  React.useEffect(() => {
+    const onHashChange = () => {
+      const fromHash = getTabFromHash();
+      if (fromHash) setPrimaryTab(fromHash);
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handlePrimaryTabChange = (value: string) => {
+    const tab = value as PrimaryTab;
+    setPrimaryTab(tab);
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(
+        null,
+        '',
+        `${window.location.pathname}${window.location.search}#${tab}`
+      );
+    }
+  };
 
   const primaryTabValue = useMemo(() => {
     if (
@@ -368,7 +436,7 @@ export default function QuestionPageContent({
   const hasEverHadPositionsRef = React.useRef(hasPositions);
   React.useEffect(() => {
     if (hasPositions) {
-      if (!hasEverHadPositionsRef.current) {
+      if (!hasEverHadPositionsRef.current && !hashOverrideRef.current) {
         setPrimaryTab('predictions');
       }
       hasEverHadPositionsRef.current = true;
@@ -424,7 +492,10 @@ export default function QuestionPageContent({
   }, [scatterData, forecastScatterData, data?.endTime]);
 
   // Disable logging - only CreatePositionForm should log auction activity
-  const { bids, requestQuotes } = useAuctionStart({ disableLogging: true });
+  const { bids, requestQuotes } = useAuctionStart({
+    disableLogging: true,
+    skipIntentSigning: true,
+  });
   if (isLoading) {
     return (
       <div
@@ -589,7 +660,7 @@ export default function QuestionPageContent({
             <div className="p-4 border-b border-border/60">
               <ConditionForecastForm
                 conditionId={conditionId}
-                resolver={UMA_RESOLVER_ARBITRUM}
+                resolver={data.resolver ?? ''}
                 question={data.question || ''}
                 endTime={data.endTime ?? undefined}
                 categorySlug={data.category?.slug}
@@ -618,6 +689,23 @@ export default function QuestionPageContent({
               size="normal"
               appearance="brandWhite"
             />
+            {polymarketUrl && (
+              <a
+                href={polymarketUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-9 items-center rounded-full border border-brand-white/20 bg-card px-3.5 text-sm font-medium leading-none text-brand-white hover:opacity-70 transition-opacity"
+              >
+                <Image
+                  src="/polymarket-logomark.png"
+                  alt="Polymarket"
+                  width={24}
+                  height={24}
+                  className="mr-1.5 h-4 w-4"
+                />
+                View on Polymarket
+              </a>
+            )}
           </div>
           {data.description ? (
             <div className="text-sm leading-relaxed break-words [&_a]:break-all text-brand-white/90">
@@ -711,7 +799,7 @@ export default function QuestionPageContent({
             <div className="p-4 border-b border-border/60">
               <ConditionForecastForm
                 conditionId={conditionId}
-                resolver={UMA_RESOLVER_ARBITRUM}
+                resolver={data.resolver ?? ''}
                 question={data.question || ''}
                 endTime={data.endTime ?? undefined}
                 categorySlug={data.category?.slug}
@@ -739,6 +827,23 @@ export default function QuestionPageContent({
               size="normal"
               appearance="brandWhite"
             />
+            {polymarketUrl && (
+              <a
+                href={polymarketUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-9 items-center rounded-full border border-brand-white/20 bg-card px-3.5 text-sm font-medium leading-none text-brand-white hover:opacity-70 transition-opacity"
+              >
+                <Image
+                  src="/polymarket-logomark.png"
+                  alt="Polymarket"
+                  width={24}
+                  height={24}
+                  className="mr-1.5 h-4 w-4"
+                />
+                View on Polymarket
+              </a>
+            )}
           </div>
           {data.description ? (
             <div className="text-sm leading-relaxed break-words [&_a]:break-all text-brand-white/90">

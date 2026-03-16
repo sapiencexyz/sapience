@@ -313,10 +313,10 @@ contract ConditionalTokensReaderTest is TestHelperOz5 {
         verifyPackets(pmEid, addressToBytes32(address(pmResolver)));
 
         // Check PM resolver received the resolution
-        assertTrue(pmResolver.isFinalized(CONDITION_ID_1));
+        assertTrue(pmResolver.isFinalized(abi.encode(CONDITION_ID_1)));
 
         (bool isResolved, IV2Types.OutcomeVector memory outcome) =
-            pmResolver.getResolution(CONDITION_ID_1);
+            pmResolver.getResolution(abi.encode(CONDITION_ID_1));
         assertTrue(isResolved);
         assertEq(outcome.yesWeight, 1);
         assertEq(outcome.noWeight, 0);
@@ -333,7 +333,7 @@ contract ConditionalTokensReaderTest is TestHelperOz5 {
         verifyPackets(pmEid, addressToBytes32(address(pmResolver)));
 
         (bool isResolved, IV2Types.OutcomeVector memory outcome) =
-            pmResolver.getResolution(CONDITION_ID_2);
+            pmResolver.getResolution(abi.encode(CONDITION_ID_2));
         assertTrue(isResolved);
         assertEq(outcome.yesWeight, 0);
         assertEq(outcome.noWeight, 1);
@@ -350,10 +350,10 @@ contract ConditionalTokensReaderTest is TestHelperOz5 {
         verifyPackets(pmEid, addressToBytes32(address(pmResolver)));
 
         // Should be finalized as non-decisive
-        assertTrue(pmResolver.isFinalized(CONDITION_ID_2));
+        assertTrue(pmResolver.isFinalized(abi.encode(CONDITION_ID_2)));
 
         (bool isResolved, IV2Types.OutcomeVector memory outcome) =
-            pmResolver.getResolution(CONDITION_ID_2);
+            pmResolver.getResolution(abi.encode(CONDITION_ID_2));
         assertTrue(isResolved);
         // Non-decisive: both weights are 1
         assertEq(outcome.yesWeight, 1);

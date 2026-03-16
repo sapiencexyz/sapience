@@ -8,7 +8,11 @@
  * - Rate limited: max 10 alerts per 60s window
  */
 import { formatUnits } from 'viem';
-import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
+import {
+  COLLATERAL_SYMBOLS,
+  CHAIN_ID_ETHEREAL,
+  CHAIN_ID_ETHEREAL_TESTNET,
+} from '@sapience/sdk/constants';
 
 const WEBHOOK_PREFIX = 'https://discord.com/api/webhooks/';
 const APP_BASE_URL = 'https://sapience.xyz';
@@ -52,10 +56,8 @@ export interface PositionAlertData {
   blockTimestamp: number;
   transactionHash: string;
   chainId: number;
-  /** NFT token ID of the predictor's position */
-  nftId?: string;
-  /** Market contract address */
-  marketAddress?: string;
+  /** Prediction ID for linking to the position page */
+  predictionId?: string;
 }
 
 export function truncateAddress(addr: string): string {
@@ -88,6 +90,10 @@ export function getChainName(chainId: number): string {
       return 'Base';
     case 11155111:
       return 'Sepolia';
+    case CHAIN_ID_ETHEREAL:
+      return 'Ethereal';
+    case CHAIN_ID_ETHEREAL_TESTNET:
+      return 'Ethereal Testnet';
     default:
       return `Chain ${chainId}`;
   }
@@ -121,13 +127,17 @@ export function buildPositionEmbed(data: PositionAlertData): object {
     .join('\n');
 
   const explorerBaseUrl =
-    data.chainId === 42161
-      ? 'https://arbiscan.io'
-      : data.chainId === 8453
-        ? 'https://basescan.org'
-        : data.chainId === 11155111
-          ? 'https://sepolia.etherscan.io'
-          : 'https://etherscan.io';
+    data.chainId === CHAIN_ID_ETHEREAL
+      ? 'https://explorer.ethereal.trade'
+      : data.chainId === CHAIN_ID_ETHEREAL_TESTNET
+        ? 'https://explorer.etherealtest.net'
+        : data.chainId === 42161
+          ? 'https://arbiscan.io'
+          : data.chainId === 8453
+            ? 'https://basescan.org'
+            : data.chainId === 11155111
+              ? 'https://sepolia.etherscan.io'
+              : 'https://etherscan.io';
 
   const txLink = data.transactionHash
     ? `[View tx](${explorerBaseUrl}/tx/${data.transactionHash})`
@@ -157,11 +167,11 @@ export function buildPositionEmbed(data: PositionAlertData): object {
         value: `${formatCollateral(data.totalCollateral, decimals)} ${symbol}`,
         inline: true,
       },
-      ...(data.nftId && data.marketAddress
+      ...(data.predictionId
         ? [
             {
               name: '📄 Position',
-              value: `[View Position](${APP_BASE_URL}/positions/${data.marketAddress}/${data.nftId})`,
+              value: `[View Position](${APP_BASE_URL}/predictions/${data.predictionId})`,
               inline: true,
             },
           ]

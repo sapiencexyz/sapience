@@ -2,7 +2,7 @@ import { erc20Abi, formatUnits } from 'viem';
 import prisma from '../db';
 import { LegacyPositionStatus } from '../../generated/prisma';
 import { getProviderForChain, getBlockByTimestamp } from '../utils/utils';
-import { contracts, escrowContracts } from '@sapience/sdk/contracts';
+import { contracts } from '@sapience/sdk/contracts';
 import { predictionMarketVaultAbi } from '@sapience/sdk/abis';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 
@@ -42,7 +42,7 @@ export async function fetchVaultTVL(
 ): Promise<bigint> {
   const client = getProviderForChain(chainId);
 
-  const vaultAddress = escrowContracts.predictionMarketVault[chainId]?.address;
+  const vaultAddress = contracts.predictionMarketVault[chainId]?.address;
   const collateralAddress = contracts.collateralToken[chainId]?.address;
 
   if (!vaultAddress || !collateralAddress) {
@@ -70,7 +70,7 @@ export async function fetchVaultDeployed(
   chainId: number = DEFAULT_CHAIN_ID,
   atTimestamp?: number
 ): Promise<bigint> {
-  const vaultAddress = escrowContracts.predictionMarketVault[chainId]?.address;
+  const vaultAddress = contracts.predictionMarketVault[chainId]?.address;
   if (!vaultAddress) return 0n;
 
   const predictions = await prisma.prediction.findMany({
@@ -115,7 +115,7 @@ export async function fetchVaultAvailableAssets(
   chainId: number = DEFAULT_CHAIN_ID
 ): Promise<bigint> {
   const client = getProviderForChain(chainId);
-  const vaultAddress = escrowContracts.predictionMarketVault[chainId]?.address;
+  const vaultAddress = contracts.predictionMarketVault[chainId]?.address;
 
   if (!vaultAddress) {
     throw new Error(`Vault not configured for chain ${chainId}`);
@@ -139,7 +139,7 @@ export async function fetchVaultAvailableAssetsAtBlock(
   blockNumber: bigint
 ): Promise<bigint> {
   const client = getProviderForChain(chainId);
-  const vaultAddress = escrowContracts.predictionMarketVault[chainId]?.address;
+  const vaultAddress = contracts.predictionMarketVault[chainId]?.address;
 
   if (!vaultAddress) {
     throw new Error(`Vault not configured for chain ${chainId}`);
@@ -164,8 +164,7 @@ export async function fetchPredictionMarketTVL(
 ): Promise<bigint> {
   const client = getProviderForChain(chainId);
 
-  const escrowAddress =
-    escrowContracts.predictionMarketEscrow[chainId]?.address;
+  const escrowAddress = contracts.predictionMarketEscrow[chainId]?.address;
   const collateralAddress = contracts.collateralToken[chainId]?.address;
 
   if (!escrowAddress || !collateralAddress) {
@@ -193,7 +192,7 @@ export async function fetchVaultTVLAtBlock(
 ): Promise<bigint> {
   const client = getProviderForChain(chainId);
 
-  const vaultAddress = escrowContracts.predictionMarketVault[chainId]?.address;
+  const vaultAddress = contracts.predictionMarketVault[chainId]?.address;
   const collateralAddress = contracts.collateralToken[chainId]?.address;
 
   if (!vaultAddress || !collateralAddress) {
@@ -222,8 +221,7 @@ export async function fetchPredictionMarketTVLAtBlock(
 ): Promise<bigint> {
   const client = getProviderForChain(chainId);
 
-  const escrowAddress =
-    escrowContracts.predictionMarketEscrow[chainId]?.address;
+  const escrowAddress = contracts.predictionMarketEscrow[chainId]?.address;
   const collateralAddress = contracts.collateralToken[chainId]?.address;
 
   if (!escrowAddress || !collateralAddress) {
@@ -250,7 +248,7 @@ async function calculateVaultPnL(
   chainId: number,
   beforeTimestamp?: number
 ): Promise<VaultPnLResult> {
-  const vaultAddress = escrowContracts.predictionMarketVault[chainId]?.address;
+  const vaultAddress = contracts.predictionMarketVault[chainId]?.address;
   if (!vaultAddress) {
     return {
       realizedPnL: 0n,
@@ -469,7 +467,7 @@ export async function computeAndStoreProtocolStats(
   chainId: number = DEFAULT_CHAIN_ID
 ): Promise<void> {
   const vaultAddress = (
-    escrowContracts.predictionMarketVault[chainId]?.address ?? ''
+    contracts.predictionMarketVault[chainId]?.address ?? ''
   ).toLowerCase();
 
   console.log(
@@ -580,7 +578,7 @@ export async function backfillProtocolStats(
 ): Promise<void> {
   const client = getProviderForChain(chainId);
   const vaultAddress = (
-    escrowContracts.predictionMarketVault[chainId]?.address ?? ''
+    contracts.predictionMarketVault[chainId]?.address ?? ''
   ).toLowerCase();
 
   console.log(

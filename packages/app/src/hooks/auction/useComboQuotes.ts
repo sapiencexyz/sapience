@@ -5,10 +5,8 @@ import { parseUnits } from 'viem';
 import { useAccount, useReadContract } from 'wagmi';
 import { predictionMarketEscrowAbi } from '@sapience/sdk/abis';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
-import {
-  DEFAULT_CHAIN_ID,
-  PREFERRED_ESTIMATE_QUOTER,
-} from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { PREFERRED_ESTIMATE_QUOTER } from '~/lib/constants';
 import { OutcomeSide } from '@sapience/sdk/types';
 import { canonicalizePicks } from '@sapience/sdk/auction/escrowEncoding';
 import { useSettings } from '~/lib/context/SettingsContext';

@@ -63,7 +63,8 @@ contract PredictionMarketEscrowSponsorTest is Test {
     uint256 public constant COUNTERPARTY_COLLATERAL = 150e18;
     bytes32 public constant REF_CODE = keccak256("test-ref-code");
 
-    bytes32 public conditionId1;
+    bytes32 public rawConditionId1;
+    bytes public conditionId1;
 
     uint256 private _nextNonce = 1;
 
@@ -94,7 +95,8 @@ contract PredictionMarketEscrowSponsorTest is Test {
         vm.prank(owner);
         resolver.approveSettler(settler);
 
-        conditionId1 = keccak256(abi.encode("condition-1"));
+        rawConditionId1 = keccak256(abi.encode("condition-1"));
+        conditionId1 = abi.encode(rawConditionId1);
 
         // Deploy mock sponsors
         goodSponsor = new MockGoodSponsor(address(collateralToken));
@@ -121,11 +123,10 @@ contract PredictionMarketEscrowSponsorTest is Test {
 
     // ============ Helpers ============
 
-    function _createPick(bytes32 _conditionId, IV2Types.OutcomeSide _outcome)
-        internal
-        view
-        returns (IV2Types.Pick memory)
-    {
+    function _createPick(
+        bytes memory _conditionId,
+        IV2Types.OutcomeSide _outcome
+    ) internal view returns (IV2Types.Pick memory) {
         return IV2Types.Pick({
             conditionResolver: address(resolver),
             conditionId: _conditionId,

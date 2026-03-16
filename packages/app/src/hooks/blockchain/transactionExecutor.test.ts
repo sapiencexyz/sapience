@@ -1,3 +1,4 @@
+import { vi, type Mock } from 'vitest';
 import { encodeFunctionData, parseAbi } from 'viem';
 import { waitForCallsStatus } from 'viem/actions';
 import {
@@ -21,8 +22,8 @@ import {
 const CHAIN_ID_ETHEREAL = 5064014;
 const CHAIN_ID_ETHEREAL_TESTNET = 13374202;
 
-jest.mock('viem/actions', () => ({
-  waitForCallsStatus: jest.fn(),
+vi.mock('viem/actions', () => ({
+  waitForCallsStatus: vi.fn(),
 }));
 
 // ─── getExecutionPath ────────────────────────────────────────────────────────
@@ -204,7 +205,7 @@ describe('pickFinalTransactionHash', () => {
 
 describe('resolveEoaBatchResult', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('returns hash via pickFinalTransactionHash when no data.id', async () => {
@@ -222,7 +223,7 @@ describe('resolveEoaBatchResult', () => {
   });
 
   it('calls waitForCallsStatus and returns hash when data.id + client present', async () => {
-    (waitForCallsStatus as jest.Mock).mockResolvedValue({
+    (waitForCallsStatus as Mock).mockResolvedValue({
       receipts: [{ transactionHash: '0xpolled' }],
     });
     const result = await resolveEoaBatchResult(
@@ -237,9 +238,7 @@ describe('resolveEoaBatchResult', () => {
   });
 
   it('returns undefined when waitForCallsStatus throws', async () => {
-    (waitForCallsStatus as jest.Mock).mockRejectedValue(
-      new Error('network error')
-    );
+    (waitForCallsStatus as Mock).mockRejectedValue(new Error('network error'));
     const result = await resolveEoaBatchResult(
       { id: 'bundle-3' },
       { mock: 'client' }
@@ -256,15 +255,15 @@ describe('resolveEoaBatchResult', () => {
 // ─── executeViaSessionKeyDefault ─────────────────────────────────────────────
 
 describe('executeViaSessionKeyDefault', () => {
-  const mockEncodeCalls = jest.fn().mockResolvedValue('0xencoded');
-  const mockSendUserOperation = jest.fn().mockResolvedValue('0xuserophash');
+  const mockEncodeCalls = vi.fn().mockResolvedValue('0xencoded');
+  const mockSendUserOperation = vi.fn().mockResolvedValue('0xuserophash');
   const mockClient: SessionClient = {
     account: { encodeCalls: mockEncodeCalls },
     sendUserOperation: mockSendUserOperation,
   };
 
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
   });
 
   it('encodes calls and sends user operation', async () => {
@@ -275,9 +274,9 @@ describe('executeViaSessionKeyDefault', () => {
         value: 0n,
       },
     ];
-    const onTxSending = jest.fn();
-    const onTxSent = jest.fn();
-    const onReceiptConfirmed = jest.fn();
+    const onTxSending = vi.fn();
+    const onTxSent = vi.fn();
+    const onReceiptConfirmed = vi.fn();
 
     const result = await executeViaSessionKeyDefault(
       mockClient,
@@ -331,15 +330,15 @@ describe('executeTransaction', () => {
 
   describe('session path', () => {
     it('calls executeViaSessionKey with wrapped calls', async () => {
-      const executeViaSessionKey = jest.fn().mockResolvedValue('0xophash');
+      const executeViaSessionKey = vi.fn().mockResolvedValue('0xophash');
       const result = await executeTransaction(
         dummyCalls,
         CHAIN_ID_ETHEREAL,
         'session',
         {
           sessionClient: {
-            account: { encodeCalls: jest.fn() },
-            sendUserOperation: jest.fn(),
+            account: { encodeCalls: vi.fn() },
+            sendUserOperation: vi.fn(),
           },
           executeViaSessionKey,
         }
@@ -352,13 +351,13 @@ describe('executeTransaction', () => {
 
     it('creates Arbitrum session lazily when needed', async () => {
       const newClient: SessionClient = {
-        account: { encodeCalls: jest.fn() },
-        sendUserOperation: jest.fn(),
+        account: { encodeCalls: vi.fn() },
+        sendUserOperation: vi.fn(),
       };
-      const createArbitrumSessionIfNeeded = jest
+      const createArbitrumSessionIfNeeded = vi
         .fn()
         .mockResolvedValue(newClient);
-      const executeViaSessionKey = jest.fn().mockResolvedValue('0x');
+      const executeViaSessionKey = vi.fn().mockResolvedValue('0x');
 
       await executeTransaction(dummyCalls, 42161, 'session', {
         sessionClient: null,
@@ -376,7 +375,7 @@ describe('executeTransaction', () => {
     });
 
     it('falls through to owner when sessionClient is null', async () => {
-      const executeViaOwnerSigning = jest.fn().mockResolvedValue('0xownerhash');
+      const executeViaOwnerSigning = vi.fn().mockResolvedValue('0xownerhash');
 
       const result = await executeTransaction(
         dummyCalls,
@@ -395,7 +394,7 @@ describe('executeTransaction', () => {
 
   describe('owner path', () => {
     it('calls executeViaOwnerSigning', async () => {
-      const executeViaOwnerSigning = jest.fn().mockResolvedValue('0xownertx');
+      const executeViaOwnerSigning = vi.fn().mockResolvedValue('0xownertx');
 
       const result = await executeTransaction(
         dummyCalls,
@@ -419,7 +418,7 @@ describe('executeTransaction', () => {
           value: 500n,
         },
       ];
-      const executeViaOwnerSigning = jest.fn().mockResolvedValue('0x');
+      const executeViaOwnerSigning = vi.fn().mockResolvedValue('0x');
 
       await executeTransaction(callsWithValue, CHAIN_ID_ETHEREAL, 'owner', {
         executeViaOwnerSigning,
@@ -434,7 +433,7 @@ describe('executeTransaction', () => {
 
   describe('eoa path', () => {
     it('uses writeContractAsync for single call in writeContract mode', async () => {
-      const writeContractAsync = jest.fn().mockResolvedValue('0xeoahash');
+      const writeContractAsync = vi.fn().mockResolvedValue('0xeoahash');
       const originalArgs = {
         chainId: 42161,
         address: '0x',
@@ -459,7 +458,7 @@ describe('executeTransaction', () => {
     });
 
     it('uses sendCallsAsync for batch sendCalls mode', async () => {
-      const sendCallsAsync = jest.fn().mockResolvedValue({ txHash: '0xbatch' });
+      const sendCallsAsync = vi.fn().mockResolvedValue({ txHash: '0xbatch' });
       const originalArgs = { chainId: 42161, calls: dummyCalls };
 
       const result = await executeTransaction(
@@ -486,7 +485,7 @@ describe('executeTransaction', () => {
           value: 100n,
         },
       ];
-      const sendCallsAsync = jest.fn().mockResolvedValue({
+      const sendCallsAsync = vi.fn().mockResolvedValue({
         receipts: [{ transactionHash: '0xwrapped' }],
       });
 
@@ -494,7 +493,7 @@ describe('executeTransaction', () => {
         callsWithValue,
         CHAIN_ID_ETHEREAL,
         'eoa',
-        { sendCallsAsync, writeContractAsync: jest.fn() },
+        { sendCallsAsync, writeContractAsync: vi.fn() },
         'writeContract'
       );
 

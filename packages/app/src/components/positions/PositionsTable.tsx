@@ -24,7 +24,6 @@ import {
   type ConditionsMap,
 } from '~/components/positions/toPickLegs';
 import { COLLATERAL_SYMBOLS, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
-import { OutcomeSide } from '@sapience/sdk/types';
 import {
   usePositionBalances,
   usePositionBalancesByConditionId,
@@ -54,7 +53,10 @@ import {
 } from '~/lib/utils/tableFilters';
 import { useEscrowWrite } from '~/hooks/blockchain/useEscrowWrite';
 import { useClaimableAmount } from '~/hooks/blockchain/useEscrowContract';
+import { useAccount } from 'wagmi';
 import { useSession } from '~/lib/context/SessionContext';
+import SellPositionDialog from '~/components/secondary/SellPositionDialog';
+import { useFeatureFlag } from '~/hooks/useFeatureFlag';
 
 function PositionRow({
   position,
@@ -62,23 +64,28 @@ function PositionRow({
   conditionsMap,
   onShare,
   onRefetch,
+  showSell,
 }: {
   position: PositionBalance;
   collateralSymbol: string;
   conditionsMap: ConditionsMap;
   onShare: (position: PositionBalance) => void;
   onRefetch?: () => void;
+  showSell: boolean;
 }) {
   const { pickConfig, isPredictorToken } = position;
   const rawPicks = pickConfig?.picks ?? [];
   const picks = toPicks(rawPicks, isPredictorToken, conditionsMap);
-  const { effectiveAddress } = useSession();
+  const { effectiveAddress, smartAccountAddress } = useSession();
+  const { address: walletAddress } = useAccount();
 
-  // Only show claim button if the connected wallet owns this position
+  // Show action buttons if the connected wallet (EOA or Smart Account) owns this position
+  const holderLower = position.holder?.toLowerCase();
   const isOwnPosition =
-    effectiveAddress &&
-    position.holder &&
-    effectiveAddress.toLowerCase() === position.holder.toLowerCase();
+    !!holderLower &&
+    (effectiveAddress?.toLowerCase() === holderLower ||
+      smartAccountAddress?.toLowerCase() === holderLower ||
+      walletAddress?.toLowerCase() === holderLower);
 
   // Position size = user's deposited collateral (from Prediction records)
   const positionSizeFormatted = parseFloat(
@@ -124,13 +131,18 @@ function PositionRow({
   // Claim / redeem state
   const [isRedeeming, setIsRedeeming] = React.useState(false);
   const [redeemed, setRedeemed] = React.useState(false);
-  const { settleAndRedeem } = useEscrowWrite({ chainId: position.chainId });
+  const escrowAddress = (pickConfig?.marketAddress as Address) ?? undefined;
+  const { settleAndRedeem } = useEscrowWrite({
+    chainId: position.chainId,
+    escrowAddress,
+  });
 
   const { isLoading: isLoadingClaimable } = useClaimableAmount({
     pickConfigId: pickConfig?.id as `0x${string}`,
     tokenAddress: position.tokenAddress as Address,
     amount: BigInt(position.balance),
     chainId: position.chainId,
+    contractAddress: escrowAddress,
     enabled:
       isResolved &&
       holderWon &&
@@ -356,15 +368,34 @@ function PositionRow({
           );
         })()}
       </TableCell>
-      {/* Share */}
+      {/* Actions */}
       <TableCell className="text-right">
-        <button
-          type="button"
-          className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
-          onClick={() => onShare(position)}
-        >
-          Share
-        </button>
+        <div className="flex items-center justify-end gap-2">
+          {showSell &&
+            !isResolved &&
+            isOwnPosition &&
+            BigInt(position.balance) > 0n && (
+              <SellPositionDialog
+                position={position}
+                collateralSymbol={collateralSymbol}
+                onSuccess={onRefetch}
+              >
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm font-medium bg-background hover:bg-accent hover:text-accent-foreground border-border transition-colors"
+                >
+                  Sell
+                </button>
+              </SellPositionDialog>
+            )}
+          <button
+            type="button"
+            className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
+            onClick={() => onShare(position)}
+          >
+            Share
+          </button>
+        </div>
       </TableCell>
     </TableRow>
   );
@@ -383,11 +414,24 @@ export default function PositionsTable({
   chainId?: number;
   leftSlot?: React.ReactNode;
 }) {
+  const showSell = useFeatureFlag('secondaryMarket', 'secondaryMarket');
   const collateralSymbol =
     COLLATERAL_SYMBOLS[chainId || DEFAULT_CHAIN_ID] || 'USDe';
   const [filters, setFilters] = React.useState<PositionsFilterState>(
     getDefaultPositionsFilterState
   );
+
+  // Derive server-side `settled` filter from status selection.
+  // Only 'active' → settled=false; only 'won'/'lost' → settled=true; mixed → undefined
+  const serverSettled = React.useMemo(() => {
+    const s = filters.status;
+    if (s.length === 0 || s.length === 3) return undefined;
+    const hasActive = s.includes('active');
+    const hasResolved = s.includes('won') || s.includes('lost');
+    if (hasActive && !hasResolved) return false;
+    if (hasResolved && !hasActive) return true;
+    return undefined;
+  }, [filters.status]);
 
   // Fetch position balances for this user
   const {
@@ -398,6 +442,7 @@ export default function PositionsTable({
   } = usePositionBalances({
     holder: account,
     chainId,
+    settled: serverSettled,
   });
 
   // Fetch position balances for a condition (all holders)
@@ -408,14 +453,13 @@ export default function PositionsTable({
     refetch: conditionRefetch,
   } = usePositionBalancesByConditionId({
     conditionId: !account ? conditionId : undefined,
+    settled: serverSettled,
   });
 
-  const allPositions = account ? accountPositions : conditionPositions;
+  const positions = account ? accountPositions : conditionPositions;
   const isLoading = account ? accountLoading : conditionLoading;
   const error = account ? accountError : conditionError;
   const refetch = account ? accountRefetch : conditionRefetch;
-
-  const positions = allPositions;
 
   // Collect all unique conditionIds to fetch category data
   const conditionIds = React.useMemo(() => {
@@ -468,7 +512,9 @@ export default function PositionsTable({
     // Filter by position size range
     if (filters.valueRange[0] > 0 || filters.valueRange[1] < Infinity) {
       result = result.filter((p) => {
-        const balanceEth = parseFloat(formatEther(BigInt(p.userCollateral || p.balance)));
+        const balanceEth = parseFloat(
+          formatEther(BigInt(p.userCollateral || p.balance))
+        );
         return (
           balanceEth >= filters.valueRange[0] &&
           balanceEth <= filters.valueRange[1]
@@ -502,7 +548,8 @@ export default function PositionsTable({
   const shareImageSrc = React.useMemo(() => {
     if (!sharePosition) return null;
     const { pickConfig, isPredictorToken } = sharePosition;
-    const picks = pickConfig?.picks ?? [];
+    const rawPicks = pickConfig?.picks ?? [];
+    const resolvedPicks = toPicks(rawPicks, isPredictorToken, conditionsMap);
 
     const wager = parseFloat(
       formatEther(BigInt(sharePosition.userCollateral || '0'))
@@ -519,18 +566,8 @@ export default function PositionsTable({
       qp.set('anti', '1');
     }
 
-    for (const pick of picks) {
-      const condition = conditionsMap.get(pick.conditionId);
-      const question =
-        condition?.question ?? condition?.shortName ?? pick.conditionId;
-      const choice = isPredictorToken
-        ? (pick.predictedOutcome as OutcomeSide) === OutcomeSide.YES
-          ? 'Yes'
-          : 'No'
-        : (pick.predictedOutcome as OutcomeSide) === OutcomeSide.YES
-          ? 'No'
-          : 'Yes';
-      qp.append('leg', `${question}|${choice}`);
+    for (const pick of resolvedPicks) {
+      qp.append('leg', `${pick.question}|${pick.choice}`);
     }
 
     return `/og/prediction?${qp.toString()}`;
@@ -618,6 +655,7 @@ export default function PositionsTable({
                 conditionsMap={conditionsMap}
                 onShare={setSharePosition}
                 onRefetch={refetch}
+                showSell={showSell}
               />
             ))}
           </TableBody>

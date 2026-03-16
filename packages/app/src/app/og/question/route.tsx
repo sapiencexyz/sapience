@@ -1,11 +1,9 @@
 import { ImageResponse } from 'next/og';
 import { parseUnits, zeroAddress } from 'viem';
 import { createEscrowAuctionWs } from '@sapience/sdk/relayer/escrowAuctionWs';
-import {
-  PREFERRED_ESTIMATE_QUOTER,
-  DEFAULT_CHAIN_ID,
-} from '@sapience/sdk/constants';
-import { predictionMarketLZConditionalTokensResolver } from '@sapience/sdk/contracts';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { PREFERRED_ESTIMATE_QUOTER } from '~/lib/constants';
+import { conditionalTokensConditionResolver } from '@sapience/sdk/contracts';
 import { canonicalizePicks } from '@sapience/sdk/auction/escrowEncoding';
 import {
   og,
@@ -215,7 +213,7 @@ const ESTIMATE_TIMEOUT_MS = 5000;
  */
 async function fetchEstimate(conditionId: string): Promise<number | null> {
   const resolverAddress =
-    predictionMarketLZConditionalTokensResolver[DEFAULT_CHAIN_ID]?.address;
+    conditionalTokensConditionResolver[DEFAULT_CHAIN_ID]?.address;
   if (!resolverAddress) return null;
 
   const formattedConditionId = (
@@ -279,7 +277,10 @@ async function fetchEstimate(conditionId: string): Promise<number | null> {
 
           const predictorColl = BigInt(predictorCollateral);
           const counterpartyColl = BigInt(
-            String((quoterBid as any).counterpartyCollateral || '0')
+            String(
+              (quoterBid as Record<string, unknown>).counterpartyCollateral ||
+                '0'
+            )
           );
           const denom = predictorColl + counterpartyColl;
           if (denom === 0n) {

@@ -75,12 +75,20 @@ contract DebugV2MintCall is Script {
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](2);
         picks[0] = IV2Types.Pick({
             conditionResolver: RESOLVER,
-            conditionId: 0xa8cf9bbc27d7def898d24e05d684f2bc95aa563ebf497998cfd5edb5f995a228,
+            conditionId: abi.encode(
+                bytes32(
+                    0xa8cf9bbc27d7def898d24e05d684f2bc95aa563ebf497998cfd5edb5f995a228
+                )
+            ),
             predictedOutcome: IV2Types.OutcomeSide.YES
         });
         picks[1] = IV2Types.Pick({
             conditionResolver: RESOLVER,
-            conditionId: 0xaa29c399d3701dd41fd76dc0ed57be0e53cbfff0632420974cebee5a58b4f016,
+            conditionId: abi.encode(
+                bytes32(
+                    0xaa29c399d3701dd41fd76dc0ed57be0e53cbfff0632420974cebee5a58b4f016
+                )
+            ),
             predictedOutcome: IV2Types.OutcomeSide.NO
         });
 
