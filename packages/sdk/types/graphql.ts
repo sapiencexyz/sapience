@@ -1507,13 +1507,13 @@ export type QueryClosesArgs = {
 export type QueryCollateralBalanceArgs = {
   address: Scalars['String']['input'];
   atBlock?: InputMaybe<Scalars['Int']['input']>;
-  chainId?: Scalars['Int']['input'];
+  chainId: Scalars['Int']['input'];
 };
 
 
 export type QueryCollateralBalanceHistoryArgs = {
   address: Scalars['String']['input'];
-  chainId?: Scalars['Int']['input'];
+  chainId: Scalars['Int']['input'];
   count?: Scalars['Int']['input'];
   currentBlock?: InputMaybe<Scalars['Int']['input']>;
   intervalHours?: Scalars['Int']['input'];
@@ -1522,7 +1522,7 @@ export type QueryCollateralBalanceHistoryArgs = {
 
 export type QueryCollateralTransfersArgs = {
   address: Scalars['String']['input'];
-  chainId?: Scalars['Int']['input'];
+  chainId: Scalars['Int']['input'];
   limit?: Scalars['Int']['input'];
   offset?: Scalars['Int']['input'];
 };

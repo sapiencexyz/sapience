@@ -103,6 +103,9 @@ vi.mock('@sapience/sdk/constants', () => ({
   CHAIN_ID_ETHEREAL: 5064014,
   CHAIN_ID_ETHEREAL_TESTNET: 13374202,
   DEFAULT_CHAIN_ID: 42161,
+}));
+
+vi.mock('~/lib/constants', () => ({
   PREFERRED_ESTIMATE_QUOTER: '0xe02eD37D0458c8999943CbE6D1c9DB597f3EE572',
 }));
 

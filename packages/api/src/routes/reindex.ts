@@ -7,10 +7,11 @@ import {
   manualConditionResolver,
 } from '@sapience/sdk/contracts';
 import { getProviderForChain } from '../utils/utils';
+import { DEFAULT_CHAIN_ID, CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 
 const router = Router();
 
-const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+const IS_MAINNET = DEFAULT_CHAIN_ID === CHAIN_ID_ETHEREAL;
 
 /**
  * Returns all resolver addresses that the condition-settled indexer
@@ -20,15 +21,15 @@ function getResolverAddressesForChain(chainId: number): `0x${string}`[] {
   const addresses: `0x${string}`[] = [];
   const zero = '0x0000000000000000000000000000000000000000';
 
-  if (IS_PRODUCTION) {
-    // Production: CT + Pyth resolvers on mainnet
+  if (IS_MAINNET) {
+    // Mainnet: CT + Pyth resolvers
     const ct = conditionalTokensConditionResolver[chainId]?.address;
     if (ct && ct !== zero) addresses.push(ct as `0x${string}`);
 
     const pyth = pythConditionResolver[chainId]?.address;
     if (pyth && pyth !== zero) addresses.push(pyth as `0x${string}`);
   } else {
-    // Non-production: manual resolver on testnet
+    // Testnet: manual resolver
     const manual = manualConditionResolver[chainId]?.address;
     if (manual && manual !== zero) addresses.push(manual as `0x${string}`);
   }
@@ -302,6 +303,57 @@ router.post(
     } catch (error: unknown) {
       await prisma.backgroundJob.create({
         data: { command: 'reindex-transfers', status: 'failed', params },
+      });
+      if (error instanceof Error) {
+        res.status(500).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: 'An unknown error occurred' });
+      }
+    }
+  })
+);
+
+router.post(
+  '/collateral-transfers',
+  handleAsyncErrors(async (req, res) => {
+    const { chainId, fromBlock } = req.body;
+
+    const parsedChainId = parseInt(chainId);
+    if (!chainId || isNaN(parsedChainId)) {
+      res.status(400).json({ error: 'Valid chainId is required' });
+      return;
+    }
+    const parsedFromBlock =
+      fromBlock !== undefined ? parseInt(fromBlock) : undefined;
+    if (parsedFromBlock !== undefined && isNaN(parsedFromBlock)) {
+      res.status(400).json({ error: 'fromBlock must be a number' });
+      return;
+    }
+
+    const startCommand =
+      `pnpm run start:reindex-collateral-transfers ${parsedChainId} ${parsedFromBlock ?? ''}`.trim();
+
+    const params = JSON.stringify({
+      chainId: parsedChainId,
+      fromBlock: parsedFromBlock,
+    });
+    try {
+      const result = await executeLocalReindex(startCommand);
+      await prisma.backgroundJob.create({
+        data: {
+          command: 'reindex-collateral-transfers',
+          status: result.status,
+          params,
+        },
+      });
+      res.json({ success: true, job: result });
+    } catch (error: unknown) {
+      await prisma.backgroundJob.create({
+        data: {
+          command: 'reindex-collateral-transfers',
+          status: 'failed',
+          params,
+        },
       });
       if (error instanceof Error) {
         res.status(500).json({ error: error.message });
