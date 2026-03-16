@@ -3,8 +3,10 @@ import { PeerConnection } from './PeerConnection';
 export interface PeerManagerConfig {
   signalUrl: string;
   maxPeers?: number;
-  /** Max entries in the known-peers set. Default 500. */
+  /** Max entries in the known-peers map. Default 500. */
   maxKnownPeers?: number;
+  /** Drop known peers not seen within this many ms. Default 30 000 (30s). */
+  stalePeerMs?: number;
   rtcConfig?: RTCConfiguration;
 }
 
@@ -27,6 +29,8 @@ interface SignalMsg {
 
 const DEFAULT_MAX_PEERS = 6;
 const DEFAULT_MAX_KNOWN_PEERS = 500;
+const DEFAULT_STALE_PEER_MS = 30_000;
+const PRUNE_INTERVAL_MS = 10_000;
 
 export class PeerManager {
   private peers = new Map<string, PeerConnection>();
@@ -34,11 +38,11 @@ export class PeerManager {
   private config: Required<PeerManagerConfig>;
   private events: PeerManagerEvents;
   private myId: string | null = null;
-  private knownPeers = new Set<string>();
-  /** Insertion-order list mirroring knownPeers for LRU eviction. */
-  private knownPeersOrder: string[] = [];
+  /** peerId → lastSeen timestamp. Peers not seen within stalePeerMs are pruned. */
+  private knownPeers = new Map<string, number>();
   private backoffMs = 400;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private pruneTimer: ReturnType<typeof setInterval> | null = null;
   private closed = false;
 
   constructor(config: PeerManagerConfig, events: PeerManagerEvents) {
@@ -46,6 +50,7 @@ export class PeerManager {
       signalUrl: config.signalUrl,
       maxPeers: config.maxPeers ?? DEFAULT_MAX_PEERS,
       maxKnownPeers: config.maxKnownPeers ?? DEFAULT_MAX_KNOWN_PEERS,
+      stalePeerMs: config.stalePeerMs ?? DEFAULT_STALE_PEER_MS,
       rtcConfig: config.rtcConfig ?? {
         iceServers: [
           { urls: 'stun:stun.l.google.com:19302' },
@@ -59,10 +64,10 @@ export class PeerManager {
   connect(): void {
     this.closed = false;
     this.connectSignal();
+    this.pruneTimer = setInterval(() => this.pruneStalePeers(), PRUNE_INTERVAL_MS);
   }
 
   get peerCount(): number {
-    // Count known peers from the signal server (not just open data channels)
     return this.knownPeers.size;
   }
 
@@ -86,9 +91,8 @@ export class PeerManager {
     let added = false;
     for (const id of peerIds) {
       if (id === this.myId) continue;
-      if (this.knownPeers.has(id)) continue;
-      this.trackKnownPeer(id);
-      added = true;
+      if (!this.knownPeers.has(id)) added = true;
+      this.touchPeer(id);
       if (this.peers.size < this.config.maxPeers) {
         this.initiateConnection(id);
       }
@@ -104,32 +108,52 @@ export class PeerManager {
       clearTimeout(this.reconnectTimer);
       this.reconnectTimer = null;
     }
+    if (this.pruneTimer) {
+      clearInterval(this.pruneTimer);
+      this.pruneTimer = null;
+    }
     for (const peer of this.peers.values()) {
       peer.close();
     }
     this.peers.clear();
     this.knownPeers.clear();
-    this.knownPeersOrder = [];
     this.signal?.close();
     this.signal = null;
   }
 
-  /** Track a known peer with LRU eviction when the cap is reached. */
-  private trackKnownPeer(id: string): boolean {
-    if (this.knownPeers.has(id)) return false;
-    // Evict oldest entries if at capacity
-    while (this.knownPeers.size >= this.config.maxKnownPeers && this.knownPeersOrder.length > 0) {
-      const oldest = this.knownPeersOrder.shift()!;
-      // Don't evict peers with active connections
-      if (this.peers.has(oldest)) {
-        this.knownPeersOrder.push(oldest);
-        continue;
-      }
-      this.knownPeers.delete(oldest);
+  /** Record that we've heard from/about a peer. Enforces the cap. */
+  private touchPeer(id: string): void {
+    this.knownPeers.set(id, Date.now());
+    // Enforce cap by evicting oldest non-connected peers
+    if (this.knownPeers.size > this.config.maxKnownPeers) {
+      this.evictOldest();
     }
-    this.trackKnownPeer(id);
-    this.knownPeersOrder.push(id);
-    return true;
+  }
+
+  /** Remove oldest non-connected peers until we're at the cap. */
+  private evictOldest(): void {
+    const sorted = [...this.knownPeers.entries()]
+      .filter(([id]) => !this.peers.has(id))
+      .sort((a, b) => a[1] - b[1]);
+    for (const [id] of sorted) {
+      if (this.knownPeers.size <= this.config.maxKnownPeers) break;
+      this.knownPeers.delete(id);
+    }
+  }
+
+  /** Drop peers we haven't heard from within stalePeerMs. */
+  private pruneStalePeers(): void {
+    const cutoff = Date.now() - this.config.stalePeerMs;
+    let pruned = false;
+    for (const [id, lastSeen] of this.knownPeers) {
+      if (lastSeen < cutoff && !this.peers.has(id)) {
+        this.knownPeers.delete(id);
+        pruned = true;
+      }
+    }
+    if (pruned) {
+      this.events.onPeerCountChanged(this.peerCount);
+    }
   }
 
   private connectSignal(): void {
@@ -181,7 +205,7 @@ export class PeerManager {
         if (msg.yourId) this.myId = msg.yourId;
         for (const id of msg.peers ?? []) {
           if (id === this.myId) continue;
-          this.trackKnownPeer(id);
+          this.touchPeer(id);
           if (this.peers.size < this.config.maxPeers) {
             this.initiateConnection(id);
           }
@@ -193,7 +217,7 @@ export class PeerManager {
       }
       case 'peer-joined': {
         if (msg.peerId && msg.peerId !== this.myId) {
-          this.trackKnownPeer(msg.peerId);
+          this.touchPeer(msg.peerId);
           this.events.onPeerCountChanged(this.peerCount);
           if (this.peers.size < this.config.maxPeers) {
             this.initiateConnection(msg.peerId);
@@ -204,21 +228,23 @@ export class PeerManager {
       case 'peer-left': {
         if (msg.peerId) {
           this.knownPeers.delete(msg.peerId);
-          const idx = this.knownPeersOrder.indexOf(msg.peerId);
-          if (idx !== -1) this.knownPeersOrder.splice(idx, 1);
           this.events.onPeerCountChanged(this.peerCount);
           this.removePeer(msg.peerId);
         }
         break;
       }
       case 'offer': {
-        if (msg.from && this.peers.size < this.config.maxPeers) {
-          this.handleOffer(msg.from, msg.data as RTCSessionDescriptionInit);
+        if (msg.from) {
+          this.touchPeer(msg.from);
+          if (this.peers.size < this.config.maxPeers) {
+            this.handleOffer(msg.from, msg.data as RTCSessionDescriptionInit);
+          }
         }
         break;
       }
       case 'answer': {
         if (msg.from) {
+          this.touchPeer(msg.from);
           const peer = this.peers.get(msg.from);
           if (peer) {
             peer
@@ -230,6 +256,7 @@ export class PeerManager {
       }
       case 'ice-candidate': {
         if (msg.from) {
+          this.touchPeer(msg.from);
           const peer = this.peers.get(msg.from);
           if (peer) {
             peer
@@ -284,6 +311,7 @@ export class PeerManager {
   private createPeer(peerId: string): PeerConnection {
     const peer = new PeerConnection(peerId, this.config.rtcConfig, {
       onOpen: () => {
+        this.touchPeer(peerId);
         this.events.onPeerConnected(peerId);
         this.events.onPeerCountChanged(this.peerCount);
       },
@@ -291,6 +319,7 @@ export class PeerManager {
         this.removePeer(peerId);
       },
       onMessage: (data) => {
+        this.touchPeer(peerId);
         this.events.onMessage(peerId, data);
       },
       onError: () => {
@@ -320,7 +349,7 @@ export class PeerManager {
   }
 
   private fillPeerSlots(): void {
-    for (const id of this.knownPeers) {
+    for (const id of this.knownPeers.keys()) {
       if (this.peers.size >= this.config.maxPeers) break;
       if (!this.peers.has(id)) {
         this.initiateConnection(id);
