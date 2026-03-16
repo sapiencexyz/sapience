@@ -322,17 +322,19 @@ router.post(
       res.status(400).json({ error: 'Valid chainId is required' });
       return;
     }
-    if (fromBlock !== undefined && isNaN(parseInt(fromBlock))) {
+    const parsedFromBlock =
+      fromBlock !== undefined ? parseInt(fromBlock) : undefined;
+    if (parsedFromBlock !== undefined && isNaN(parsedFromBlock)) {
       res.status(400).json({ error: 'fromBlock must be a number' });
       return;
     }
 
     const startCommand =
-      `pnpm run start:reindex-collateral-transfers ${parsedChainId} ${fromBlock ?? ''}`.trim();
+      `pnpm run start:reindex-collateral-transfers ${parsedChainId} ${parsedFromBlock ?? ''}`.trim();
 
     const params = JSON.stringify({
       chainId: parsedChainId,
-      fromBlock: fromBlock ? parseInt(fromBlock) : undefined,
+      fromBlock: parsedFromBlock,
     });
     try {
       const result = await executeLocalReindex(startCommand);
