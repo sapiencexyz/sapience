@@ -31,8 +31,8 @@ const BackfillProtocolStatsForm = () => {
       });
 
       toast({
-        title: 'Backfill started',
-        description: `Protocol stats backfill started for ${days} days on Ethereal (${DEFAULT_CHAIN_ID})`,
+        title: 'Backfill job submitted',
+        description: `Running in background for ${days} days on chain ${DEFAULT_CHAIN_ID}. Check API logs for progress.`,
       });
     } catch (error) {
       console.error('Protocol stats backfill error:', error);

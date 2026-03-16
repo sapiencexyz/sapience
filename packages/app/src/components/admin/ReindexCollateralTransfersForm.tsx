@@ -13,8 +13,8 @@ const Loader = dynamic(() => import('~/components/shared/Loader'), {
   loading: () => <div className="w-4 h-4" />,
 });
 
-const ReindexPositionBalancesForm = () => {
-  const [days, setDays] = useState('7');
+const ReindexCollateralTransfersForm = () => {
+  const [fromBlock, setFromBlock] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
   const { postJson } = useAdminApi();
@@ -25,17 +25,17 @@ const ReindexPositionBalancesForm = () => {
     try {
       setIsLoading(true);
 
-      await postJson('/reindex/position-balances', {
+      await postJson('/reindex/collateral-transfers', {
         chainId: DEFAULT_CHAIN_ID,
-        days: Number(days),
+        ...(fromBlock && { fromBlock: Number(fromBlock) }),
       });
 
       toast({
         title: 'Reindex job submitted',
-        description: `Running in background for last ${days} day(s) on chain ${DEFAULT_CHAIN_ID}. Check API logs for progress.`,
+        description: `Running in background${fromBlock ? ` from block ${fromBlock}` : ' from token creation'} on chain ${DEFAULT_CHAIN_ID}. Check API logs for progress.`,
       });
     } catch (error) {
-      console.error('Position balance reindex error:', error);
+      console.error('Collateral transfer reindex error:', error);
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -57,38 +57,20 @@ const ReindexPositionBalancesForm = () => {
       </div>
 
       <div className="space-y-2">
-        <label className="text-sm font-medium">Quick Ranges</label>
-        <div className="flex gap-2 flex-wrap">
-          {[1, 2, 7, 14].map((d) => (
-            <Button
-              key={d}
-              type="button"
-              variant="outline"
-              size="sm"
-              onClick={() => setDays(d.toString())}
-            >
-              {d} day{d > 1 ? 's' : ''}
-            </Button>
-          ))}
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <label htmlFor="reindexDays" className="text-sm font-medium">
-          Days to reindex
+        <label htmlFor="collateralFromBlock" className="text-sm font-medium">
+          From Block (optional)
         </label>
         <Input
-          id="reindexDays"
+          id="collateralFromBlock"
           type="number"
-          value={days}
-          onChange={(e) => setDays(e.target.value)}
-          placeholder="7"
-          min="1"
+          value={fromBlock}
+          onChange={(e) => setFromBlock(e.target.value)}
+          placeholder="Leave blank to start from token creation"
+          min="0"
         />
         <p className="text-sm text-muted-foreground">
-          Replays missed Transfer events to fix Position balances. Uses binary
-          search to find the starting block. Only processes events not already
-          indexed.
+          Replays wUSDe Transfer events to fix collateral balances. Uses
+          skipDuplicates so already-indexed events are skipped.
         </p>
       </div>
 
@@ -99,11 +81,11 @@ const ReindexPositionBalancesForm = () => {
             <span className="ml-2">Processing...</span>
           </>
         ) : (
-          'Reindex Position Balances'
+          'Reindex Collateral Transfers'
         )}
       </Button>
     </form>
   );
 };
 
-export default ReindexPositionBalancesForm;
+export default ReindexCollateralTransfersForm;
