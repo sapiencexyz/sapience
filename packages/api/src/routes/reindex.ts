@@ -337,30 +337,39 @@ router.post(
       chainId: parsedChainId,
       fromBlock: parsedFromBlock,
     });
-    try {
-      const result = await executeLocalReindex(startCommand);
-      await prisma.backgroundJob.create({
-        data: {
-          command: 'reindex-collateral-transfers',
-          status: result.status,
-          params,
-        },
+
+    // Create job record immediately with 'running' status
+    const job = await prisma.backgroundJob.create({
+      data: {
+        command: 'reindex-collateral-transfers',
+        status: 'running',
+        params,
+      },
+    });
+
+    // Fire-and-forget: spawn the process and update job status on completion
+    void executeLocalReindex(startCommand)
+      .then(async (result) => {
+        await prisma.backgroundJob.update({
+          where: { id: job.id },
+          data: { status: result.status },
+        });
+        console.log(`[reindex/collateral-transfers] Job ${job.id} completed`);
+      })
+      .catch(async (error) => {
+        console.error(
+          `[reindex/collateral-transfers] Job ${job.id} failed:`,
+          error instanceof Error ? error.message : error
+        );
+        await prisma.backgroundJob
+          .update({
+            where: { id: job.id },
+            data: { status: 'failed' },
+          })
+          .catch(() => {});
       });
-      res.json({ success: true, job: result });
-    } catch (error: unknown) {
-      await prisma.backgroundJob.create({
-        data: {
-          command: 'reindex-collateral-transfers',
-          status: 'failed',
-          params,
-        },
-      });
-      if (error instanceof Error) {
-        res.status(500).json({ error: error.message });
-      } else {
-        res.status(500).json({ error: 'An unknown error occurred' });
-      }
-    }
+
+    res.status(202).json({ success: true, jobId: job.id });
   })
 );
 
