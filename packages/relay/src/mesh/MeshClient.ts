@@ -11,6 +11,10 @@ export interface MeshConfig {
   maxHops?: number;
   /** Max inbound messages per peer per second. 0 = unlimited. Default 30. */
   rateLimitPerSec?: number;
+  /** Max inbound message size in bytes. Default 16_384. */
+  maxMessageSize?: number;
+  /** Max peers to forward to per rebroadcast. 0 = all. Default 0. */
+  maxFanout?: number;
 }
 
 export type MessageHandler = (type: string, payload: unknown) => void;
@@ -51,6 +55,8 @@ export class MeshClient {
   private seenTtlMs: number;
   private maxHops: number;
   private rateLimitPerSec: number;
+  private maxMessageSize: number;
+  private maxFanout: number;
   private pruneTimer: ReturnType<typeof setInterval> | null = null;
   private peerShareTimer: ReturnType<typeof setInterval> | null = null;
 
@@ -64,6 +70,8 @@ export class MeshClient {
     this.seenTtlMs = config.seenTtlMs ?? 120_000;
     this.maxHops = config.maxHops ?? 10;
     this.rateLimitPerSec = config.rateLimitPerSec ?? 30;
+    this.maxMessageSize = config.maxMessageSize ?? 16_384;
+    this.maxFanout = config.maxFanout ?? 0;
 
     this.peerManager = new PeerManager(
       { signalUrl: config.signalUrl, maxPeers: config.maxPeers },
@@ -108,7 +116,7 @@ export class MeshClient {
     this.seen.set(msg.id, Date.now());
     const raw = JSON.stringify(msg);
     this.recordBytes(raw.length);
-    this.peerManager.broadcastToPeers(raw);
+    this.fanoutSend(raw);
     return msg.id;
   }
 
@@ -142,9 +150,38 @@ export class MeshClient {
     this.rateLimitPerSec = Math.max(0, msgsPerSec);
   }
 
+  setMaxFanout(n: number): void {
+    this.maxFanout = Math.max(0, n);
+  }
+
+  setMaxPeers(n: number): void {
+    this.peerManager.setMaxPeers(n);
+  }
+
   // --- Private: gossip + dedup ---
 
+  /** Send to all peers or a random subset if maxFanout > 0. */
+  private fanoutSend(data: string): void {
+    if (this.maxFanout <= 0) {
+      this.peerManager.broadcastToPeers(data);
+      return;
+    }
+    const ids = this.peerManager.getConnectedPeerIds();
+    if (ids.length <= this.maxFanout) {
+      this.peerManager.broadcastToPeers(data);
+      return;
+    }
+    // Fisher-Yates partial shuffle to pick maxFanout peers
+    for (let i = ids.length - 1; i > ids.length - 1 - this.maxFanout; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [ids[i], ids[j]] = [ids[j], ids[i]];
+    }
+    this.peerManager.sendToPeers(data, ids.slice(ids.length - this.maxFanout));
+  }
+
   private handleIncoming(raw: string, peerId: string): void {
+    if (raw.length > this.maxMessageSize) return;
+
     let msg: GossipEnvelope;
     try { msg = JSON.parse(raw) as GossipEnvelope; } catch { return; }
 
@@ -167,7 +204,7 @@ export class MeshClient {
     msg.hops++;
 
     // Re-broadcast
-    this.peerManager.broadcastToPeers(JSON.stringify(msg));
+    this.fanoutSend(JSON.stringify(msg));
 
     // Handle peer-sharing internally — do not deliver to app handlers
     if (msg.type === PEER_SHARE_TYPE) {

@@ -4,7 +4,11 @@ import { MeshClient } from '@sapience/relay/mesh/MeshClient';
 import { MeshTransport } from '@sapience/relay/mesh/MeshTransport';
 
 const RL_KEY = 'sapience.settings.meshRateLimit';
+const MAX_PEERS_KEY = 'sapience.settings.meshMaxPeers';
+const FANOUT_KEY = 'sapience.settings.meshFanout';
 const DEFAULT_RL = 30;
+const DEFAULT_MAX_PEERS = 6;
+const DEFAULT_FANOUT = 0;
 
 /**
  * Derive the signal WebSocket URL from the relayer base URL.
@@ -64,6 +68,38 @@ function readRateLimit(): number {
   return DEFAULT_RL;
 }
 
+function readMaxPeers(): number {
+  try {
+    const v =
+      typeof window !== 'undefined'
+        ? window.localStorage.getItem(MAX_PEERS_KEY)
+        : null;
+    if (v) {
+      const n = parseInt(v, 10);
+      if (Number.isFinite(n) && n >= 1) return n;
+    }
+  } catch {
+    /* */
+  }
+  return DEFAULT_MAX_PEERS;
+}
+
+function readFanout(): number {
+  try {
+    const v =
+      typeof window !== 'undefined'
+        ? window.localStorage.getItem(FANOUT_KEY)
+        : null;
+    if (v) {
+      const n = parseInt(v, 10);
+      if (Number.isFinite(n) && n >= 0) return n;
+    }
+  } catch {
+    /* */
+  }
+  return DEFAULT_FANOUT;
+}
+
 class MeshAuctionClient {
   private mesh: MeshClient | null = null;
   private transport: MeshTransport | null = null;
@@ -73,6 +109,8 @@ class MeshAuctionClient {
       this.mesh = new MeshClient({
         signalUrl: getSignalUrl(),
         rateLimitPerSec: readRateLimit(),
+        maxPeers: readMaxPeers(),
+        maxFanout: readFanout(),
       });
       this.mesh.connect();
       this.transport = new MeshTransport(this.mesh);
@@ -104,6 +142,14 @@ class MeshAuctionClient {
   setRateLimit(n: number): void {
     this.mesh?.setRateLimit(n);
   }
+
+  setMaxPeers(n: number): void {
+    this.mesh?.setMaxPeers(n);
+  }
+
+  setMaxFanout(n: number): void {
+    this.mesh?.setMaxFanout(n);
+  }
 }
 
 const shared = new MeshAuctionClient();
@@ -125,4 +171,10 @@ export function onMeshBandwidthChange(cb: (kbps: number) => void): () => void {
 }
 export function setMeshRateLimit(n: number): void {
   shared.setRateLimit(n);
+}
+export function setMeshMaxPeers(n: number): void {
+  shared.setMaxPeers(n);
+}
+export function setMeshFanout(n: number): void {
+  shared.setMaxFanout(n);
 }

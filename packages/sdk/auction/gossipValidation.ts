@@ -93,8 +93,7 @@ export function isValidGossipPayload(type: string, payload: unknown): boolean {
       );
 
     case 'bid.ack':
-      // Ack messages are lightweight — just need to be objects
-      return true;
+      return isNonEmptyString(p.auctionId);
 
     case 'auction.filled':
       return (
@@ -103,11 +102,6 @@ export function isValidGossipPayload(type: string, payload: unknown): boolean {
 
     case 'auction.expired':
       return isNonEmptyString(p.auctionId) && isNonEmptyString(p.reason);
-
-    case 'vault_quote.update':
-      return (
-        isAddress(p.vaultAddress) && isFiniteNumber(p.chainId) && p.chainId > 0
-      );
 
     case 'order.created':
       // Loose — just require it's an object with an id or auctionId

@@ -10,10 +10,12 @@ let capturedEvents: {
 };
 
 const mockBroadcastToPeers = vi.fn<(data: string) => number>().mockReturnValue(1);
+const mockSendToPeers = vi.fn<(data: string, peerIds: string[]) => number>().mockReturnValue(1);
 const mockConnect = vi.fn();
 const mockDisconnect = vi.fn();
 const mockGetConnectedPeerIds = vi.fn<() => string[]>().mockReturnValue([]);
 const mockAddDiscoveredPeers = vi.fn();
+const mockSetMaxPeers = vi.fn();
 
 vi.mock('../peer/PeerManager', () => ({
   PeerManager: vi.fn().mockImplementation((_config, events) => {
@@ -22,8 +24,10 @@ vi.mock('../peer/PeerManager', () => ({
       connect: mockConnect,
       disconnect: mockDisconnect,
       broadcastToPeers: mockBroadcastToPeers,
+      sendToPeers: mockSendToPeers,
       getConnectedPeerIds: mockGetConnectedPeerIds,
       addDiscoveredPeers: mockAddDiscoveredPeers,
+      setMaxPeers: mockSetMaxPeers,
       get peerCount() {
         return 0;
       },
@@ -522,6 +526,108 @@ describe('MeshClient', () => {
 
       // Should rebroadcast (gossip protocol), even though it's consumed internally
       expect(mockBroadcastToPeers).toHaveBeenCalledOnce();
+    });
+  });
+
+  describe('maxMessageSize', () => {
+    it('drops messages exceeding maxMessageSize', () => {
+      const small = new MeshClient({
+        signalUrl: 'ws://localhost:3001',
+        maxMessageSize: 50,
+      });
+      small.connect();
+      const handler = vi.fn();
+      small.onAny(handler);
+
+      // Create a message whose JSON is > 50 bytes
+      const env = makeEnvelope({ type: 'test', payload: { data: 'x'.repeat(100) } });
+      capturedEvents.onMessage('peer-1', JSON.stringify(env));
+
+      expect(handler).not.toHaveBeenCalled();
+      small.disconnect();
+    });
+
+    it('accepts messages within maxMessageSize', () => {
+      const small = new MeshClient({
+        signalUrl: 'ws://localhost:3001',
+        maxMessageSize: 10_000,
+      });
+      small.connect();
+      const handler = vi.fn();
+      small.onAny(handler);
+
+      const env = makeEnvelope({ type: 'test' });
+      capturedEvents.onMessage('peer-1', JSON.stringify(env));
+
+      expect(handler).toHaveBeenCalledOnce();
+      small.disconnect();
+    });
+  });
+
+  describe('fanout', () => {
+    it('broadcasts to all peers when maxFanout is 0', () => {
+      client.connect();
+      mockGetConnectedPeerIds.mockReturnValue(['p1', 'p2', 'p3']);
+
+      client.broadcast('test', { data: 1 });
+
+      // Should use broadcastToPeers (not sendToPeers) when fanout=0
+      expect(mockBroadcastToPeers).toHaveBeenCalled();
+      expect(mockSendToPeers).not.toHaveBeenCalled();
+    });
+
+    it('sends to a subset when maxFanout is set', () => {
+      const fanoutClient = new MeshClient({
+        signalUrl: 'ws://localhost:3001',
+        maxFanout: 2,
+      });
+      fanoutClient.connect();
+      mockGetConnectedPeerIds.mockReturnValue(['p1', 'p2', 'p3', 'p4']);
+      mockBroadcastToPeers.mockClear();
+
+      fanoutClient.broadcast('test', { data: 1 });
+
+      expect(mockSendToPeers).toHaveBeenCalledOnce();
+      const [, peerIds] = mockSendToPeers.mock.calls[0];
+      expect(peerIds).toHaveLength(2);
+      fanoutClient.disconnect();
+    });
+
+    it('falls back to broadcastToPeers when connected peers <= maxFanout', () => {
+      const fanoutClient = new MeshClient({
+        signalUrl: 'ws://localhost:3001',
+        maxFanout: 5,
+      });
+      fanoutClient.connect();
+      mockGetConnectedPeerIds.mockReturnValue(['p1', 'p2']);
+      mockBroadcastToPeers.mockClear();
+
+      fanoutClient.broadcast('test', { data: 1 });
+
+      expect(mockBroadcastToPeers).toHaveBeenCalled();
+      expect(mockSendToPeers).not.toHaveBeenCalled();
+      fanoutClient.disconnect();
+    });
+
+    it('setMaxFanout adjusts fanout dynamically', () => {
+      client.connect();
+      mockGetConnectedPeerIds.mockReturnValue(['p1', 'p2', 'p3', 'p4']);
+      mockBroadcastToPeers.mockClear();
+      mockSendToPeers.mockClear();
+
+      client.setMaxFanout(2);
+      client.broadcast('test', { data: 1 });
+
+      expect(mockSendToPeers).toHaveBeenCalledOnce();
+      const [, peerIds] = mockSendToPeers.mock.calls[0];
+      expect(peerIds).toHaveLength(2);
+    });
+  });
+
+  describe('setMaxPeers', () => {
+    it('delegates to PeerManager', () => {
+      client.setMaxPeers(3);
+      expect(mockSetMaxPeers).toHaveBeenCalledWith(3);
     });
   });
 });

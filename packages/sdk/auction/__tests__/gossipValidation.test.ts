@@ -184,9 +184,15 @@ describe('isValidGossipPayload', () => {
   });
 
   describe('bid.ack', () => {
-    it('accepts any object', () => {
-      expect(isValidGossipPayload('bid.ack', { bidId: '123' })).toBe(true);
-      expect(isValidGossipPayload('bid.ack', {})).toBe(true);
+    it('accepts payload with auctionId', () => {
+      expect(
+        isValidGossipPayload('bid.ack', { auctionId: 'auction-123' })
+      ).toBe(true);
+    });
+
+    it('rejects missing auctionId', () => {
+      expect(isValidGossipPayload('bid.ack', {})).toBe(false);
+      expect(isValidGossipPayload('bid.ack', { bidId: '123' })).toBe(false);
     });
   });
 
@@ -220,20 +226,11 @@ describe('isValidGossipPayload', () => {
     });
   });
 
-  describe('vault_quote.update', () => {
-    it('accepts valid payload', () => {
+  describe('vault_quote.update (removed)', () => {
+    it('rejects vault_quote.update as it should not be gossiped', () => {
       expect(
         isValidGossipPayload('vault_quote.update', {
           vaultAddress: '0x1234567890abcdef1234567890abcdef12345678',
-          chainId: 1,
-        })
-      ).toBe(true);
-    });
-
-    it('rejects invalid vault address', () => {
-      expect(
-        isValidGossipPayload('vault_quote.update', {
-          vaultAddress: 'bad',
           chainId: 1,
         })
       ).toBe(false);

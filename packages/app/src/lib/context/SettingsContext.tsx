@@ -35,6 +35,8 @@ type SettingsContextValue = {
   showAmericanOdds: boolean | null;
   connectionDurationHours: number | null;
   meshRateLimit: number | null;
+  meshMaxPeers: number | null;
+  meshFanout: number | null;
   setGraphqlEndpoint: (value: string | null) => void;
   setApiBaseUrl: (value: string | null) => void;
   setChatBaseUrl: (value: string | null) => void;
@@ -48,6 +50,8 @@ type SettingsContextValue = {
   setShowAmericanOdds: (value: boolean | null) => void;
   setConnectionDurationHours: (value: number | null) => void;
   setMeshRateLimit: (value: number | null) => void;
+  setMeshMaxPeers: (value: number | null) => void;
+  setMeshFanout: (value: number | null) => void;
   defaults: {
     graphqlEndpoint: string;
     apiBaseUrl: string;
@@ -61,6 +65,8 @@ type SettingsContextValue = {
     showAmericanOdds: boolean;
     connectionDurationHours: number;
     meshRateLimit: number;
+    meshMaxPeers: number;
+    meshFanout: number;
   };
 };
 
@@ -78,6 +84,8 @@ const STORAGE_KEYS = {
   showAmericanOdds: 'sapience.settings.showAmericanOdds',
   connectionDurationHours: 'sapience.settings.connectionDurationHours',
   meshRateLimit: 'sapience.settings.meshRateLimit',
+  meshMaxPeers: 'sapience.settings.meshMaxPeers',
+  meshFanout: 'sapience.settings.meshFanout',
 } as const;
 
 export const DEFAULT_CONNECTION_DURATION_HOURS = 24 * 7;
@@ -219,6 +227,12 @@ export const SettingsProvider = ({
   const [meshRateLimitOverride, setMeshRateLimitOverride] = useState<
     number | null
   >(null);
+  const [meshMaxPeersOverride, setMeshMaxPeersOverride] = useState<
+    number | null
+  >(null);
+  const [meshFanoutOverride, setMeshFanoutOverride] = useState<number | null>(
+    null
+  );
 
   useEffect(() => {
     setMounted(true);
@@ -310,6 +324,24 @@ export const SettingsProvider = ({
         if (Number.isFinite(parsed) && parsed >= 1)
           setMeshRateLimitOverride(parsed);
       }
+      const mmp =
+        typeof window !== 'undefined'
+          ? window.localStorage.getItem(STORAGE_KEYS.meshMaxPeers)
+          : null;
+      if (mmp) {
+        const parsed = parseInt(mmp, 10);
+        if (Number.isFinite(parsed) && parsed >= 1)
+          setMeshMaxPeersOverride(parsed);
+      }
+      const mf =
+        typeof window !== 'undefined'
+          ? window.localStorage.getItem(STORAGE_KEYS.meshFanout)
+          : null;
+      if (mf) {
+        const parsed = parseInt(mf, 10);
+        if (Number.isFinite(parsed) && parsed >= 0)
+          setMeshFanoutOverride(parsed);
+      }
     } catch {
       /* noop */
     }
@@ -330,6 +362,8 @@ export const SettingsProvider = ({
       showAmericanOdds: false,
       connectionDurationHours: DEFAULT_CONNECTION_DURATION_HOURS,
       meshRateLimit: 30,
+      meshMaxPeers: 6,
+      meshFanout: 0,
     }),
     []
   );
@@ -384,6 +418,12 @@ export const SettingsProvider = ({
     : null;
   const meshRateLimit = mounted
     ? (meshRateLimitOverride ?? defaults.meshRateLimit)
+    : null;
+  const meshMaxPeers = mounted
+    ? (meshMaxPeersOverride ?? defaults.meshMaxPeers)
+    : null;
+  const meshFanout = mounted
+    ? (meshFanoutOverride ?? defaults.meshFanout)
     : null;
 
   const setGraphqlEndpoint = useCallback((value: string | null) => {
@@ -610,6 +650,40 @@ export const SettingsProvider = ({
     }
   }, []);
 
+  const setMeshMaxPeers = useCallback((value: number | null) => {
+    try {
+      if (typeof window === 'undefined') return;
+      if (value == null) {
+        window.localStorage.removeItem(STORAGE_KEYS.meshMaxPeers);
+        setMeshMaxPeersOverride(null);
+        return;
+      }
+      const clamped = Math.max(1, Math.min(12, Math.floor(Number(value))));
+      if (!Number.isFinite(clamped)) return;
+      window.localStorage.setItem(STORAGE_KEYS.meshMaxPeers, String(clamped));
+      setMeshMaxPeersOverride(clamped);
+    } catch {
+      /* noop */
+    }
+  }, []);
+
+  const setMeshFanout = useCallback((value: number | null) => {
+    try {
+      if (typeof window === 'undefined') return;
+      if (value == null) {
+        window.localStorage.removeItem(STORAGE_KEYS.meshFanout);
+        setMeshFanoutOverride(null);
+        return;
+      }
+      const clamped = Math.max(0, Math.min(12, Math.floor(Number(value))));
+      if (!Number.isFinite(clamped)) return;
+      window.localStorage.setItem(STORAGE_KEYS.meshFanout, String(clamped));
+      setMeshFanoutOverride(clamped);
+    } catch {
+      /* noop */
+    }
+  }, []);
+
   const value: SettingsContextValue = {
     graphqlEndpoint,
     apiBaseUrl,
@@ -624,6 +698,8 @@ export const SettingsProvider = ({
     showAmericanOdds,
     connectionDurationHours,
     meshRateLimit,
+    meshMaxPeers,
+    meshFanout,
     setGraphqlEndpoint,
     setApiBaseUrl,
     setChatBaseUrl,
@@ -637,6 +713,8 @@ export const SettingsProvider = ({
     setShowAmericanOdds,
     setConnectionDurationHours,
     setMeshRateLimit,
+    setMeshMaxPeers,
+    setMeshFanout,
     defaults,
   };
 

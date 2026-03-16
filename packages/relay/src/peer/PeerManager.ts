@@ -68,7 +68,7 @@ export class PeerManager {
   }
 
   get peerCount(): number {
-    return this.knownPeers.size;
+    return [...this.peers.values()].filter((p) => p.isOpen).length;
   }
 
   broadcastToPeers(data: string): number {
@@ -79,11 +79,32 @@ export class PeerManager {
     return sent;
   }
 
+  /** Send data to a specific subset of peers. */
+  sendToPeers(data: string, peerIds: string[]): number {
+    let sent = 0;
+    for (const id of peerIds) {
+      const peer = this.peers.get(id);
+      if (peer && peer.send(data)) sent++;
+    }
+    return sent;
+  }
+
   /** Returns IDs of peers with open data channels. */
   getConnectedPeerIds(): string[] {
     return [...this.peers.entries()]
       .filter(([, peer]) => peer.isOpen)
       .map(([id]) => id);
+  }
+
+  /** Update maxPeers at runtime and trim excess connections if needed. */
+  setMaxPeers(n: number): void {
+    this.config.maxPeers = Math.max(1, n);
+    // Trim excess connections
+    const connected = this.getConnectedPeerIds();
+    while (connected.length > this.config.maxPeers) {
+      const id = connected.pop()!;
+      this.removePeer(id);
+    }
   }
 
   /** Inject peer IDs discovered via gossip and attempt connections. */

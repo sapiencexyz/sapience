@@ -31,7 +31,11 @@ import {
   DEFAULT_CHAIN_ID,
   CHAIN_ID_ETHEREAL_TESTNET,
 } from '@sapience/sdk/constants';
-import { setMeshRateLimit as applyMeshRateLimit } from '~/lib/ws/MeshAuctionClient';
+import {
+  setMeshRateLimit as applyMeshRateLimit,
+  setMeshMaxPeers as applyMeshMaxPeers,
+  setMeshFanout as applyMeshFanout,
+} from '~/lib/ws/MeshAuctionClient';
 import Loader from '~/components/shared/Loader';
 import SegmentedTabsList from '~/components/shared/SegmentedTabsList';
 
@@ -175,6 +179,8 @@ const SettingsPageContent = () => {
     showAmericanOdds,
     connectionDurationHours,
     meshRateLimit,
+    meshMaxPeers,
+    meshFanout,
     setGraphqlEndpoint,
     setApiBaseUrl,
     setChatBaseUrl,
@@ -187,6 +193,8 @@ const SettingsPageContent = () => {
     setShowAmericanOdds,
     setConnectionDurationHours,
     setMeshRateLimit,
+    setMeshMaxPeers,
+    setMeshFanout,
     defaults,
   } = useSettings();
   const [mounted, setMounted] = useState(false);
@@ -202,6 +210,8 @@ const SettingsPageContent = () => {
   const [connectionDurationInput, setConnectionDurationInput] =
     useState<string>(String(DEFAULT_CONNECTION_DURATION_HOURS));
   const [meshRateLimitInput, setMeshRateLimitInput] = useState<number>(30);
+  const [meshMaxPeersInput, setMeshMaxPeersInput] = useState<number>(6);
+  const [meshFanoutInput, setMeshFanoutInput] = useState<number>(0);
   const [isModelFocused, setIsModelFocused] = useState(false);
   const [activeTab, setActiveTab] = useState<'network' | 'interface' | 'agent'>(
     'network'
@@ -255,6 +265,8 @@ const SettingsPageContent = () => {
       String(connectionDurationHours ?? defaults.connectionDurationHours)
     );
     setMeshRateLimitInput(meshRateLimit ?? defaults.meshRateLimit);
+    setMeshMaxPeersInput(meshMaxPeers ?? defaults.meshMaxPeers);
+    setMeshFanoutInput(meshFanout ?? defaults.meshFanout);
     setHydrated(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mounted]);
@@ -513,6 +525,64 @@ const SettingsPageContent = () => {
                       </div>
                       <p className="text-xs text-muted-foreground">
                         Max inbound messages per peer per second (1–200)
+                      </p>
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label htmlFor="mesh-max-peers">Max Peers</Label>
+                      <div className="w-32">
+                        <Input
+                          id="mesh-max-peers"
+                          type="number"
+                          min={1}
+                          max={12}
+                          value={meshMaxPeersInput}
+                          onChange={(e) => {
+                            const v = parseInt(e.target.value, 10);
+                            if (Number.isFinite(v)) setMeshMaxPeersInput(v);
+                          }}
+                          onBlur={() => {
+                            const clamped = Math.max(
+                              1,
+                              Math.min(12, meshMaxPeersInput)
+                            );
+                            setMeshMaxPeersInput(clamped);
+                            setMeshMaxPeers(clamped);
+                            applyMeshMaxPeers(clamped);
+                          }}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Max WebRTC data channel connections (1–12)
+                      </p>
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label htmlFor="mesh-fanout">Fanout</Label>
+                      <div className="w-32">
+                        <Input
+                          id="mesh-fanout"
+                          type="number"
+                          min={0}
+                          max={12}
+                          value={meshFanoutInput}
+                          onChange={(e) => {
+                            const v = parseInt(e.target.value, 10);
+                            if (Number.isFinite(v)) setMeshFanoutInput(v);
+                          }}
+                          onBlur={() => {
+                            const clamped = Math.max(
+                              0,
+                              Math.min(12, meshFanoutInput)
+                            );
+                            setMeshFanoutInput(clamped);
+                            setMeshFanout(clamped);
+                            applyMeshFanout(clamped);
+                          }}
+                        />
+                      </div>
+                      <p className="text-xs text-muted-foreground">
+                        Peers to forward messages to (0 = all connected peers)
                       </p>
                     </div>
                   </div>
