@@ -370,11 +370,57 @@ export default function QuestionPageContent({
     | 'agent'
     | 'techspecs';
 
+  const TAB_VALUES: PrimaryTab[] = [
+    'predictions',
+    'positions',
+    'forecasts',
+    'resolution',
+    'agent',
+    'techspecs',
+  ];
+
+  const getTabFromHash = (): PrimaryTab | null => {
+    if (typeof window === 'undefined') return null;
+    const raw = window.location.hash?.replace('#', '').toLowerCase();
+    return (TAB_VALUES as string[]).includes(raw) ? (raw as PrimaryTab) : null;
+  };
+
   // Keep primary tab controlled so we can default to Positions when available
   const [primaryTab, setPrimaryTab] = React.useState<PrimaryTab>('forecasts');
+  const hashOverrideRef = React.useRef(false);
 
-  const handlePrimaryTabChange = (value: string) =>
-    setPrimaryTab(value as PrimaryTab);
+  // Read hash on mount
+  React.useEffect(() => {
+    const fromHash = getTabFromHash();
+    if (fromHash) {
+      setPrimaryTab(fromHash);
+      hashOverrideRef.current = true;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Listen for hashchange (browser back/forward)
+  React.useEffect(() => {
+    const onHashChange = () => {
+      const fromHash = getTabFromHash();
+      if (fromHash) setPrimaryTab(fromHash);
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handlePrimaryTabChange = (value: string) => {
+    const tab = value as PrimaryTab;
+    setPrimaryTab(tab);
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(
+        null,
+        '',
+        `${window.location.pathname}${window.location.search}#${tab}`
+      );
+    }
+  };
 
   const primaryTabValue = useMemo(() => {
     if (
@@ -390,7 +436,7 @@ export default function QuestionPageContent({
   const hasEverHadPositionsRef = React.useRef(hasPositions);
   React.useEffect(() => {
     if (hasPositions) {
-      if (!hasEverHadPositionsRef.current) {
+      if (!hasEverHadPositionsRef.current && !hashOverrideRef.current) {
         setPrimaryTab('predictions');
       }
       hasEverHadPositionsRef.current = true;
@@ -643,24 +689,24 @@ export default function QuestionPageContent({
               size="normal"
               appearance="brandWhite"
             />
+            {polymarketUrl && (
+              <a
+                href={polymarketUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-9 items-center rounded-full border border-brand-white/20 bg-card px-3.5 text-sm font-medium leading-none text-brand-white hover:opacity-70 transition-opacity"
+              >
+                <Image
+                  src="/polymarket-logomark.png"
+                  alt="Polymarket"
+                  width={24}
+                  height={24}
+                  className="mr-1.5 h-4 w-4"
+                />
+                View on Polymarket
+              </a>
+            )}
           </div>
-          {polymarketUrl && (
-            <a
-              href={polymarketUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mb-4 inline-flex items-center gap-1.5 text-sm text-brand-white/70 hover:text-brand-white transition-colors"
-            >
-              <Image
-                src="/polymarket-logomark.png"
-                alt="Polymarket"
-                width={24}
-                height={24}
-                className="h-4 w-4"
-              />
-              View on Polymarket
-            </a>
-          )}
           {data.description ? (
             <div className="text-sm leading-relaxed break-words [&_a]:break-all text-brand-white/90">
               <SafeMarkdown
@@ -781,24 +827,24 @@ export default function QuestionPageContent({
               size="normal"
               appearance="brandWhite"
             />
+            {polymarketUrl && (
+              <a
+                href={polymarketUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-9 items-center rounded-full border border-brand-white/20 bg-card px-3.5 text-sm font-medium leading-none text-brand-white hover:opacity-70 transition-opacity"
+              >
+                <Image
+                  src="/polymarket-logomark.png"
+                  alt="Polymarket"
+                  width={24}
+                  height={24}
+                  className="mr-1.5 h-4 w-4"
+                />
+                View on Polymarket
+              </a>
+            )}
           </div>
-          {polymarketUrl && (
-            <a
-              href={polymarketUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="mb-4 inline-flex items-center gap-1.5 text-sm text-brand-white/70 hover:text-brand-white transition-colors"
-            >
-              <Image
-                src="/polymarket-logomark.png"
-                alt="Polymarket"
-                width={24}
-                height={24}
-                className="h-4 w-4"
-              />
-              View on Polymarket
-            </a>
-          )}
           {data.description ? (
             <div className="text-sm leading-relaxed break-words [&_a]:break-all text-brand-white/90">
               <SafeMarkdown
