@@ -370,11 +370,57 @@ export default function QuestionPageContent({
     | 'agent'
     | 'techspecs';
 
+  const TAB_VALUES: PrimaryTab[] = [
+    'predictions',
+    'positions',
+    'forecasts',
+    'resolution',
+    'agent',
+    'techspecs',
+  ];
+
+  const getTabFromHash = (): PrimaryTab | null => {
+    if (typeof window === 'undefined') return null;
+    const raw = window.location.hash?.replace('#', '').toLowerCase();
+    return (TAB_VALUES as string[]).includes(raw) ? (raw as PrimaryTab) : null;
+  };
+
   // Keep primary tab controlled so we can default to Positions when available
   const [primaryTab, setPrimaryTab] = React.useState<PrimaryTab>('forecasts');
+  const hashOverrideRef = React.useRef(false);
 
-  const handlePrimaryTabChange = (value: string) =>
-    setPrimaryTab(value as PrimaryTab);
+  // Read hash on mount
+  React.useEffect(() => {
+    const fromHash = getTabFromHash();
+    if (fromHash) {
+      setPrimaryTab(fromHash);
+      hashOverrideRef.current = true;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Listen for hashchange (browser back/forward)
+  React.useEffect(() => {
+    const onHashChange = () => {
+      const fromHash = getTabFromHash();
+      if (fromHash) setPrimaryTab(fromHash);
+    };
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const handlePrimaryTabChange = (value: string) => {
+    const tab = value as PrimaryTab;
+    setPrimaryTab(tab);
+    if (typeof window !== 'undefined') {
+      window.history.replaceState(
+        null,
+        '',
+        `${window.location.pathname}${window.location.search}#${tab}`
+      );
+    }
+  };
 
   const primaryTabValue = useMemo(() => {
     if (
@@ -390,7 +436,7 @@ export default function QuestionPageContent({
   const hasEverHadPositionsRef = React.useRef(hasPositions);
   React.useEffect(() => {
     if (hasPositions) {
-      if (!hasEverHadPositionsRef.current) {
+      if (!hasEverHadPositionsRef.current && !hashOverrideRef.current) {
         setPrimaryTab('predictions');
       }
       hasEverHadPositionsRef.current = true;
