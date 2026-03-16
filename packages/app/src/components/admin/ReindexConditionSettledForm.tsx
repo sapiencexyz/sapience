@@ -32,13 +32,9 @@ const ReindexConditionSettledForm = () => {
         ...(endTimestamp && { endTimestamp: Number(endTimestamp) }),
       });
 
-      const timeRange = startTimestamp
-        ? `from ${new Date(Number(startTimestamp) * 1000).toLocaleDateString()}`
-        : 'last 2 days (default)';
-
       toast({
-        title: 'Reindex started',
-        description: `Prediction market reindexing started on Ethereal (${DEFAULT_CHAIN_ID}) ${timeRange}`,
+        title: 'Reindex job submitted',
+        description: `Running in background on chain ${DEFAULT_CHAIN_ID}. Check API logs for progress.`,
       });
 
       setStartTimestamp('');
