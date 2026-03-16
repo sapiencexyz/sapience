@@ -5,7 +5,7 @@ import {
 
 // address of anonymous quoter bot
 export const PREFERRED_ESTIMATE_QUOTER =
-  '0xe02eD37D0458c8999943CbE6D1c9DB597f3EE572' as const;
+  '0xe02eD37D0458c8999943CbE6D1c9DB597f3EE572';
 
 export const ADMIN_AUTHENTICATE_MSG =
   'Sign this message to authenticate for admin actions.';
