@@ -7,10 +7,11 @@ import {
   manualConditionResolver,
 } from '@sapience/sdk/contracts';
 import { getProviderForChain } from '../utils/utils';
+import { DEFAULT_CHAIN_ID, CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 
 const router = Router();
 
-const IS_PRODUCTION = process.env.NODE_ENV === 'production';
+const IS_MAINNET = DEFAULT_CHAIN_ID === CHAIN_ID_ETHEREAL;
 
 /**
  * Returns all resolver addresses that the condition-settled indexer
@@ -20,15 +21,15 @@ function getResolverAddressesForChain(chainId: number): `0x${string}`[] {
   const addresses: `0x${string}`[] = [];
   const zero = '0x0000000000000000000000000000000000000000';
 
-  if (IS_PRODUCTION) {
-    // Production: CT + Pyth resolvers on mainnet
+  if (IS_MAINNET) {
+    // Mainnet: CT + Pyth resolvers
     const ct = conditionalTokensConditionResolver[chainId]?.address;
     if (ct && ct !== zero) addresses.push(ct as `0x${string}`);
 
     const pyth = pythConditionResolver[chainId]?.address;
     if (pyth && pyth !== zero) addresses.push(pyth as `0x${string}`);
   } else {
-    // Non-production: manual resolver on testnet
+    // Testnet: manual resolver
     const manual = manualConditionResolver[chainId]?.address;
     if (manual && manual !== zero) addresses.push(manual as `0x${string}`);
   }
