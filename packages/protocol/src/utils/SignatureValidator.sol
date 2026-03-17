@@ -407,14 +407,17 @@ abstract contract SignatureValidator is EIP712 {
             )
         );
         bytes32 burnDigest = _hashTypedDataV4(burnStructHash);
-        address recoveredSessionKey =
-            ECDSA.recover(burnDigest, sessionKeySignature);
+        {
+            (address recoveredSessionKey, ECDSA.RecoverError err,) =
+                ECDSA.tryRecover(burnDigest, sessionKeySignature);
 
-        if (
-            recoveredSessionKey == address(0)
-                || recoveredSessionKey != sessionApproval.sessionKey
-        ) {
-            return false;
+            if (
+                err != ECDSA.RecoverError.NoError
+                    || recoveredSessionKey == address(0)
+                    || recoveredSessionKey != sessionApproval.sessionKey
+            ) {
+                return false;
+            }
         }
 
         // 2. Verify the owner authorized this session key
@@ -422,25 +425,28 @@ abstract contract SignatureValidator is EIP712 {
             return false;
         }
 
-        bytes32 sessionStructHash = keccak256(
-            abi.encode(
-                SESSION_KEY_APPROVAL_TYPEHASH,
-                sessionApproval.sessionKey,
-                sessionApproval.smartAccount,
-                sessionApproval.validUntil,
-                sessionApproval.permissionsHash,
-                sessionApproval.chainId
-            )
-        );
-        bytes32 sessionHash = _hashTypedDataV4(sessionStructHash);
-        address recoveredOwner =
-            ECDSA.recover(sessionHash, sessionApproval.ownerSignature);
+        {
+            bytes32 sessionStructHash = keccak256(
+                abi.encode(
+                    SESSION_KEY_APPROVAL_TYPEHASH,
+                    sessionApproval.sessionKey,
+                    sessionApproval.smartAccount,
+                    sessionApproval.validUntil,
+                    sessionApproval.permissionsHash,
+                    sessionApproval.chainId
+                )
+            );
+            bytes32 sessionHash = _hashTypedDataV4(sessionStructHash);
+            (address recoveredOwner, ECDSA.RecoverError err,) =
+                ECDSA.tryRecover(sessionHash, sessionApproval.ownerSignature);
 
-        if (
-            recoveredOwner == address(0)
-                || recoveredOwner != sessionApproval.owner
-        ) {
-            return false;
+            if (
+                err != ECDSA.RecoverError.NoError
+                    || recoveredOwner == address(0)
+                    || recoveredOwner != sessionApproval.owner
+            ) {
+                return false;
+            }
         }
 
         // 3. Verify the smart account is derived from the owner
@@ -569,14 +575,17 @@ abstract contract SignatureValidator is EIP712 {
             )
         );
         bytes32 mintHash = _hashTypedDataV4(mintStructHash);
-        address recoveredSessionKey =
-            ECDSA.recover(mintHash, sessionKeySignature);
+        {
+            (address recoveredSessionKey, ECDSA.RecoverError err,) =
+                ECDSA.tryRecover(mintHash, sessionKeySignature);
 
-        if (
-            recoveredSessionKey == address(0)
-                || recoveredSessionKey != sessionApproval.sessionKey
-        ) {
-            return false;
+            if (
+                err != ECDSA.RecoverError.NoError
+                    || recoveredSessionKey == address(0)
+                    || recoveredSessionKey != sessionApproval.sessionKey
+            ) {
+                return false;
+            }
         }
 
         // 2. Verify the owner authorized this session key
@@ -585,25 +594,28 @@ abstract contract SignatureValidator is EIP712 {
             return false;
         }
 
-        bytes32 sessionStructHash = keccak256(
-            abi.encode(
-                SESSION_KEY_APPROVAL_TYPEHASH,
-                sessionApproval.sessionKey,
-                sessionApproval.smartAccount,
-                sessionApproval.validUntil,
-                sessionApproval.permissionsHash,
-                sessionApproval.chainId
-            )
-        );
-        bytes32 sessionHash = _hashTypedDataV4(sessionStructHash);
-        address recoveredOwner =
-            ECDSA.recover(sessionHash, sessionApproval.ownerSignature);
+        {
+            bytes32 sessionStructHash = keccak256(
+                abi.encode(
+                    SESSION_KEY_APPROVAL_TYPEHASH,
+                    sessionApproval.sessionKey,
+                    sessionApproval.smartAccount,
+                    sessionApproval.validUntil,
+                    sessionApproval.permissionsHash,
+                    sessionApproval.chainId
+                )
+            );
+            bytes32 sessionHash = _hashTypedDataV4(sessionStructHash);
+            (address recoveredOwner, ECDSA.RecoverError err,) =
+                ECDSA.tryRecover(sessionHash, sessionApproval.ownerSignature);
 
-        if (
-            recoveredOwner == address(0)
-                || recoveredOwner != sessionApproval.owner
-        ) {
-            return false;
+            if (
+                err != ECDSA.RecoverError.NoError
+                    || recoveredOwner == address(0)
+                    || recoveredOwner != sessionApproval.owner
+            ) {
+                return false;
+            }
         }
 
         // 3. Verify the smart account is derived from the owner
