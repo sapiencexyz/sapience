@@ -54,9 +54,9 @@ interface SendCallsParams {
 }
 
 // Success toast messages
-const SUCCESS_TITLE = 'Transaction successfully submitted.';
+const SUCCESS_TITLE = 'Transaction submitted';
 const SUCCESS_SUFFIX =
-  'It may take a few moments for the transaction to be processed and reflected in the app.';
+  'It may take a moment to be reflected in the UI.';
 
 function formatSuccessDescription(message?: string): string {
   return message ? `${message}\n\n${SUCCESS_SUFFIX}` : SUCCESS_SUFFIX;
