@@ -43,11 +43,11 @@ Package-specific highlights:
 
 CI uses path-filtered jobs — only packages with changed files are checked. All checks must pass before merge.
 
-- **API** (`packages/api`): lint, compile, vitest
-- **App** (`packages/app`): lint, type-check
-- **SDK** (`packages/sdk`): build, lint, type-check
+- **API** (`packages/api`): lint, type-check, compile, vitest
+- **App** (`packages/app`): lint, type-check, vitest
+- **SDK** (`packages/sdk`): build, lint, type-check, vitest
 - **UI** (`packages/ui`): lint, type-check
-- **Relayer** (`packages/relayer`): lint
+- **Relayer** (`packages/relayer`): lint, type-check, vitest
 - **Protocol** (`packages/protocol`): `forge fmt --check`, contract tests
 
 SDK changes also trigger API, App, and Relayer checks (they depend on it). UI changes trigger App checks.
@@ -117,8 +117,8 @@ When fixing a bug, first write a test that reproduces it, then fix the code.
 
 - Prefer package-level lint/format commands (`lint`, `lint:fix`, `format`) instead of manual `eslint` invocations.
 - For contract work, use Foundry's targeted flags (`forge test --match-path …`).
-- Frontend tests use Jest (`pnpm --filter @sapience/app run test`) and Playwright for E2E (`test:e2e`).
-- Keep Storybook snapshots current when touching shared UI (`pnpm --filter @sapience/sdk run build-storybook`).
+- All TypeScript packages use vitest for tests. Always build the SDK before running tests in app, api, or relayer — they import from SDK dist files and will fail with Vite transform errors otherwise.
+- Keep Storybook snapshots current when touching shared UI (`pnpm --filter @sapience/ui run build-storybook`).
 
 ## Deployment & Ops
 
