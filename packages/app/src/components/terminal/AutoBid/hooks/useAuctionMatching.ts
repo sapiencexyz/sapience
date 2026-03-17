@@ -94,7 +94,7 @@ export function useAuctionMatching({
   allowanceValue,
   isPermitLoading,
   isRestricted,
-  address: _address,
+  address,
   collateralSymbol,
   tokenDecimals,
   auctionMessages,
@@ -545,6 +545,9 @@ export function useAuctionMatching({
             : null;
         const counterpartyAddr = normalizeAddress(counterpartyRaw);
         if (!counterpartyAddr) return;
+        // Guard: never copy your own bids (prevents self-outbidding loops)
+        const normalizedSelf = normalizeAddress(address ?? null);
+        if (normalizedSelf && counterpartyAddr === normalizedSelf) return;
         const matched = normalizedOrders.find(
           (item) => item.address === counterpartyAddr
         );
@@ -714,6 +717,7 @@ export function useAuctionMatching({
       });
     },
     [
+      address,
       chainId,
       collateralTokenAddress,
       evaluateAutoBidReadiness,
@@ -777,6 +781,17 @@ export function useAuctionMatching({
           const oldest = auctionContextKeysRef.current.shift();
           if (oldest) auctionContextCacheRef.current.delete(oldest);
         }
+      }
+
+      // Guard: never bid against your own auction (prevents self-outbidding)
+      const normalizedSelf = normalizeAddress(address ?? null);
+      const normalizedPredictor = normalizeAddress(predictorAddr ?? null);
+      if (
+        normalizedSelf &&
+        normalizedPredictor &&
+        normalizedSelf === normalizedPredictor
+      ) {
+        return;
       }
 
       const activeConditionOrders = orders.filter(
@@ -860,6 +875,7 @@ export function useAuctionMatching({
       });
     },
     [
+      address,
       evaluateAutoBidReadiness,
       getOrderIndex,
       orders,
