@@ -1,5 +1,6 @@
 'use client';
 
+import { useAnimatedNumber } from '~/hooks/useAnimatedNumber';
 import { usePeerMesh } from '~/hooks/relay/usePeerMesh';
 
 function fmtBw(kbps: number): string {
@@ -9,6 +10,7 @@ function fmtBw(kbps: number): string {
 
 export function PeerIndicator() {
   const { peerCount, bandwidthKbps } = usePeerMesh();
+  const animatedBw = useAnimatedNumber(peerCount > 0 ? bandwidthKbps : null);
 
   return (
     <div className="flex items-center gap-1.5 font-mono text-xs uppercase">
@@ -21,11 +23,8 @@ export function PeerIndicator() {
       />
       <span className="text-muted-foreground tabular-nums">
         {peerCount} {peerCount === 1 ? 'PEER' : 'PEERS'}
-        {peerCount > 0 && (
-          <span className="text-muted-foreground/60">
-            {' '}
-            {fmtBw(bandwidthKbps)}
-          </span>
+        {peerCount > 0 && animatedBw !== null && (
+          <span className="text-muted-foreground/60"> {fmtBw(animatedBw)}</span>
         )}
       </span>
     </div>
