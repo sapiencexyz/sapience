@@ -1,6 +1,10 @@
 'use client';
 
-import { etherealChain } from '@sapience/sdk/constants';
+import {
+  DEFAULT_CHAIN_ID,
+  CHAIN_ID_ETHEREAL_TESTNET,
+  getRpcUrl,
+} from '@sapience/sdk/constants';
 import type React from 'react';
 import {
   createContext,
@@ -150,14 +154,20 @@ function getDefaultAdminBase(): string {
 }
 
 function getDefaultEtherealRpcURL(): string {
-  // Respects SDK chain definitions which already have the correct RPC URLs
-  return etherealChain.rpcUrls.default.http[0];
+  // Uses DEFAULT_CHAIN_ID so staging (testnet) gets the testnet RPC automatically
+  return getRpcUrl(DEFAULT_CHAIN_ID);
 }
 
 function getDefaultArbitrumRpcURL(): string {
+  const isTestnet = DEFAULT_CHAIN_ID === CHAIN_ID_ETHEREAL_TESTNET;
   const infuraKey = process.env.NEXT_PUBLIC_INFURA_API_KEY;
-  return infuraKey
-    ? `https://arbitrum-mainnet.infura.io/v3/${infuraKey}`
+  if (infuraKey) {
+    return isTestnet
+      ? `https://arbitrum-sepolia.infura.io/v3/${infuraKey}`
+      : `https://arbitrum-mainnet.infura.io/v3/${infuraKey}`;
+  }
+  return isTestnet
+    ? 'https://arbitrum-sepolia-rpc.publicnode.com'
     : 'https://arbitrum-rpc.publicnode.com';
 }
 
