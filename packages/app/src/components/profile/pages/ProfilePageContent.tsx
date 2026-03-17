@@ -23,9 +23,15 @@ import ShareAfterRedirect from '~/components/shared/ShareAfterRedirect';
 const TAB_VALUES = ['positions', 'forecasts', 'activity'] as const;
 type TabValue = (typeof TAB_VALUES)[number];
 
-const ProfilePageContent = () => {
+const ProfilePageContent = ({
+  addressOverride,
+}: {
+  addressOverride?: string;
+} = {}) => {
   const params = useParams();
-  const address = (params.address as string).toLowerCase() as Address;
+  const address = (
+    addressOverride || (params.address as string)
+  ).toLowerCase() as Address;
 
   const { data: attestations, isLoading: forecastsLoading } = useForecasts({
     attesterAddress: address,

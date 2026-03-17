@@ -1,3 +1,7 @@
+if (process.env.NEXT_BUILD_TARGET === 'ipfs') {
+  module.exports = require('./next.config.ipfs.js');
+} else {
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -100,3 +104,5 @@ const sentryConfig = {
 module.exports = isProduction
   ? withSentryConfig(nextConfig, sentryConfig)
   : nextConfig;
+
+} // end NEXT_BUILD_TARGET !== 'ipfs'

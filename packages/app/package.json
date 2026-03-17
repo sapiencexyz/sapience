@@ -21,7 +21,9 @@
     "release": "cross-env HUSKY=0 standard-version",
     "push-release": "git push --follow-tags origin main",
     "prepare": "echo 'Skipping husky install'",
-    "format:check": "prettier --check src"
+    "format:check": "prettier --check src",
+    "build:ipfs": "node scripts/build-ipfs.mjs",
+    "pin:ipfs": "node scripts/pin-ipfs.mjs"
   },
   "dependencies": {
     "@hookform/resolvers": "3.9.0",
