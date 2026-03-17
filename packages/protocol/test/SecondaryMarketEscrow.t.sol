@@ -90,6 +90,56 @@ contract MockSmartAccountCompact is IERC1271 {
 }
 
 /// @notice Mock account factory for session key tests
+/// @notice Mock 2-of-3 multisig implementing EIP-1271
+/// Signature = abi.encode(bytes[] sigs) where each inner sig is a 65-byte ECDSA sig.
+/// Validates that at least `threshold` unique registered signers approved the hash.
+contract MockMultisig is IERC1271 {
+    bytes4 private constant EIP1271_MAGIC_VALUE = 0x1626ba7e;
+    uint256 public threshold;
+    mapping(address => bool) public isSigner;
+
+    constructor(address[] memory signers, uint256 _threshold) {
+        threshold = _threshold;
+        for (uint256 i = 0; i < signers.length; i++) {
+            isSigner[signers[i]] = true;
+        }
+    }
+
+    function isValidSignature(bytes32 hash, bytes memory signature)
+        external
+        view
+        override
+        returns (bytes4)
+    {
+        bytes[] memory sigs = abi.decode(signature, (bytes[]));
+        uint256 valid = 0;
+        address lastSigner = address(0);
+        for (uint256 i = 0; i < sigs.length; i++) {
+            (uint8 v, bytes32 r, bytes32 s) = _split(sigs[i]);
+            address recovered = ecrecover(hash, v, r, s);
+            // Enforce ascending order to prevent duplicates
+            if (recovered > lastSigner && isSigner[recovered]) {
+                valid++;
+                lastSigner = recovered;
+            }
+        }
+        return valid >= threshold ? EIP1271_MAGIC_VALUE : bytes4(0xffffffff);
+    }
+
+    function _split(bytes memory sig)
+        internal
+        pure
+        returns (uint8 v, bytes32 r, bytes32 s)
+    {
+        require(sig.length == 65);
+        assembly {
+            r := mload(add(sig, 32))
+            s := mload(add(sig, 64))
+            v := byte(0, mload(add(sig, 96)))
+        }
+    }
+}
+
 contract MockAccountFactory {
     mapping(address => mapping(uint256 => address)) private _accounts;
 
@@ -880,6 +930,151 @@ contract SecondaryMarketEscrowTest is Test {
             TOKEN_AMOUNT,
             "Buyer should receive position tokens"
         );
+    }
+
+    /// @notice Multisig seller: signature is abi.encode(bytes[]) which is not
+    ///         a valid ECDSA sig at all. Before tryRecover fix this reverts;
+    ///         after, it falls through to EIP-1271 and the multisig validates.
+    function test_executeTrade_multisigSeller() public {
+        // 2-of-3 multisig with seller, buyer, relayer as signers
+        address[] memory signers = new address[](3);
+        signers[0] = seller;
+        signers[1] = buyer;
+        signers[2] = relayer;
+        MockMultisig multisig = new MockMultisig(signers, 2);
+
+        // Fund and approve
+        positionToken.mint(address(multisig), 10_000e18);
+        vm.prank(address(multisig));
+        positionToken.approve(address(escrow), type(uint256).max);
+
+        bytes32 tradeHash = _computeTradeHash(
+            address(positionToken),
+            address(collateralToken),
+            address(multisig),
+            buyer,
+            TOKEN_AMOUNT,
+            PRICE
+        );
+
+        uint256 sNonce = _freshNonce();
+        uint256 bNonce = _freshNonce();
+        uint256 deadline = block.timestamp + 1 hours;
+
+        // Build multisig signature: 2 inner ECDSA sigs from seller + relayer
+        bytes32 approvalHash = escrow.getTradeApprovalHash(
+            tradeHash, address(multisig), sNonce, deadline
+        );
+        bytes[] memory innerSigs = new bytes[](2);
+        // Must be in ascending address order for the mock's duplicate check
+        if (seller < relayer) {
+            (uint8 v1, bytes32 r1, bytes32 s1) = vm.sign(sellerPk, approvalHash);
+            innerSigs[0] = abi.encodePacked(r1, s1, v1);
+            (uint8 v2, bytes32 r2, bytes32 s2) = vm.sign(4, approvalHash); // relayer pk = 4
+            innerSigs[1] = abi.encodePacked(r2, s2, v2);
+        } else {
+            (uint8 v2, bytes32 r2, bytes32 s2) = vm.sign(4, approvalHash);
+            innerSigs[0] = abi.encodePacked(r2, s2, v2);
+            (uint8 v1, bytes32 r1, bytes32 s1) = vm.sign(sellerPk, approvalHash);
+            innerSigs[1] = abi.encodePacked(r1, s1, v1);
+        }
+        bytes memory multisigSig = abi.encode(innerSigs);
+
+        ISecondaryMarketEscrow.TradeRequest memory request;
+        request.token = address(positionToken);
+        request.collateral = address(collateralToken);
+        request.seller = address(multisig);
+        request.buyer = buyer;
+        request.tokenAmount = TOKEN_AMOUNT;
+        request.price = PRICE;
+        request.sellerNonce = sNonce;
+        request.buyerNonce = bNonce;
+        request.sellerDeadline = deadline;
+        request.buyerDeadline = deadline;
+        request.sellerSignature = multisigSig; // Not ECDSA — will fail recover
+        request.buyerSignature =
+            _signTradeApproval(tradeHash, buyer, bNonce, deadline, buyerPk);
+        request.refCode = REF_CODE;
+        request.sellerSessionKeyData = "";
+        request.buyerSessionKeyData = "";
+
+        // Before fix: reverts in ECDSA.recover (multisig sig is not 65 bytes)
+        // After fix: tryRecover returns error, falls through to EIP-1271, multisig validates 2-of-3
+        uint256 sellerPosBefore = positionToken.balanceOf(address(multisig));
+
+        escrow.executeTrade(request);
+
+        assertEq(
+            positionToken.balanceOf(address(multisig)),
+            sellerPosBefore - TOKEN_AMOUNT,
+            "Multisig position tokens should decrease"
+        );
+        assertEq(
+            collateralToken.balanceOf(address(multisig)),
+            PRICE,
+            "Multisig should receive collateral"
+        );
+        assertEq(
+            positionToken.balanceOf(buyer),
+            TOKEN_AMOUNT,
+            "Buyer should receive position tokens"
+        );
+    }
+
+    /// @notice Multisig seller with insufficient signers should still revert
+    function test_executeTrade_multisigSeller_insufficientSigners() public {
+        address[] memory signers = new address[](3);
+        signers[0] = seller;
+        signers[1] = buyer;
+        signers[2] = relayer;
+        MockMultisig multisig = new MockMultisig(signers, 2);
+
+        positionToken.mint(address(multisig), 10_000e18);
+        vm.prank(address(multisig));
+        positionToken.approve(address(escrow), type(uint256).max);
+
+        bytes32 tradeHash = _computeTradeHash(
+            address(positionToken),
+            address(collateralToken),
+            address(multisig),
+            buyer,
+            TOKEN_AMOUNT,
+            PRICE
+        );
+
+        uint256 sNonce = _freshNonce();
+        uint256 bNonce = _freshNonce();
+        uint256 deadline = block.timestamp + 1 hours;
+
+        // Only 1 signer — below threshold of 2
+        bytes32 approvalHash = escrow.getTradeApprovalHash(
+            tradeHash, address(multisig), sNonce, deadline
+        );
+        bytes[] memory innerSigs = new bytes[](1);
+        (uint8 v1, bytes32 r1, bytes32 s1) = vm.sign(sellerPk, approvalHash);
+        innerSigs[0] = abi.encodePacked(r1, s1, v1);
+        bytes memory multisigSig = abi.encode(innerSigs);
+
+        ISecondaryMarketEscrow.TradeRequest memory request;
+        request.token = address(positionToken);
+        request.collateral = address(collateralToken);
+        request.seller = address(multisig);
+        request.buyer = buyer;
+        request.tokenAmount = TOKEN_AMOUNT;
+        request.price = PRICE;
+        request.sellerNonce = sNonce;
+        request.buyerNonce = bNonce;
+        request.sellerDeadline = deadline;
+        request.buyerDeadline = deadline;
+        request.sellerSignature = multisigSig;
+        request.buyerSignature =
+            _signTradeApproval(tradeHash, buyer, bNonce, deadline, buyerPk);
+        request.refCode = REF_CODE;
+        request.sellerSessionKeyData = "";
+        request.buyerSessionKeyData = "";
+
+        vm.expectRevert(ISecondaryMarketEscrow.InvalidSignature.selector);
+        escrow.executeTrade(request);
     }
 
     // ============ View Functions ============
