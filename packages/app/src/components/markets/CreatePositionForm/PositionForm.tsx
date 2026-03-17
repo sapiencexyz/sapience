@@ -914,9 +914,7 @@ export default function PositionForm({
               allBids={validBids}
               predictorPositionSizeWei={predictorPositionSizeWei}
               predictorAddress={selectedPredictorAddress}
-              showAddPredictionsHint={
-                selections.length === 1 && !bestBid && !stickyEstimateBid
-              }
+              showAddPredictionsHint={selections.length === 1 && !bestBid}
               isAuctionPending={
                 recentlyRequested && !bestBid && !stickyEstimateBid
               }

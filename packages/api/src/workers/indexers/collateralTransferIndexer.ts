@@ -8,6 +8,8 @@ import { collateralToken } from '@sapience/sdk/contracts';
 const BLOCK_BATCH_SIZE = 500;
 const POLLING_INTERVAL_MS = 10_000;
 const INDEXER_STATE_KEY = 'collateral-transfer-indexer';
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 2000;
 
 const TRANSFER_EVENT = parseAbiItem(
   'event Transfer(address indexed from, address indexed to, uint256 value)'
@@ -108,19 +110,52 @@ class CollateralTransferIndexer implements IIndexer {
           ? currentBlock
           : start + BigInt(BLOCK_BATCH_SIZE) - 1n;
 
-      const logs = await this.client.getLogs({
-        address: this.tokenAddress,
-        event: TRANSFER_EVENT,
-        fromBlock: start,
-        toBlock: end,
-      });
+      const logs = await this.getLogsWithRetry(start, end);
 
       if (logs.length > 0) {
         await this.processLogs(logs);
       }
-    }
 
-    await this.setLastIndexedBlock(Number(currentBlock));
+      // Persist cursor after each batch so a crash doesn't replay everything
+      await this.setLastIndexedBlock(Number(end));
+    }
+  }
+
+  private async getLogsWithRetry(fromBlock: bigint, toBlock: bigint) {
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        return await this.client.getLogs({
+          address: this.tokenAddress,
+          event: TRANSFER_EVENT,
+          fromBlock,
+          toBlock,
+        });
+      } catch (error) {
+        if (attempt === MAX_RETRIES) throw error;
+        console.warn(
+          `[CollateralTransferIndexer] getLogs failed (attempt ${attempt}/${MAX_RETRIES}), retrying in ${RETRY_DELAY_MS * attempt}ms...`,
+          error instanceof Error ? error.message : error
+        );
+        await new Promise((r) => setTimeout(r, RETRY_DELAY_MS * attempt));
+      }
+    }
+    throw new Error('getLogsWithRetry: exhausted retries');
+  }
+
+  private async getBlockWithRetry(blockNumber: bigint) {
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        return await this.client.getBlock({ blockNumber });
+      } catch (error) {
+        if (attempt === MAX_RETRIES) throw error;
+        console.warn(
+          `[CollateralTransferIndexer] getBlock(${blockNumber}) failed (attempt ${attempt}/${MAX_RETRIES}), retrying...`,
+          error instanceof Error ? error.message : error
+        );
+        await new Promise((r) => setTimeout(r, RETRY_DELAY_MS * attempt));
+      }
+    }
+    throw new Error('getBlockWithRetry: exhausted retries');
   }
 
   private async processLogs(
@@ -145,7 +180,7 @@ class CollateralTransferIndexer implements IIndexer {
       const chunk = uniqueBlocks.slice(i, i + CHUNK_SIZE);
       await Promise.all(
         chunk.map(async (blockNumber) => {
-          const block = await this.client.getBlock({ blockNumber });
+          const block = await this.getBlockWithRetry(blockNumber);
           blockTimestamps.set(
             blockNumber,
             new Date(Number(block.timestamp) * 1000)
@@ -165,7 +200,7 @@ class CollateralTransferIndexer implements IIndexer {
             : undefined;
         if (!timestamp) {
           console.warn(
-            `[collateralTransferIndexer] Missing block timestamp for block ${log.blockNumber}, tx ${log.transactionHash}`
+            `[CollateralTransferIndexer] Missing block timestamp for block ${log.blockNumber}, tx ${log.transactionHash}`
           );
         }
         return {
