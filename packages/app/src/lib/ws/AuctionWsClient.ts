@@ -75,7 +75,36 @@ class AuctionWsClient {
     this.ensureClient().send(msg);
     if (shouldMesh(msg)) {
       try {
-        getSharedMeshClient().send(msg);
+        const mesh = getSharedMeshClient();
+        mesh.send(msg);
+        // P2P: promote auction.start → auction.started so peers can display
+        // the request without a relayer. When the relayer IS present, its
+        // auction.started arrives via WS and dedup drops the duplicate.
+        // P2P promotions: translate raw client messages into the formats
+        // that consuming hooks expect (normally produced by the relayer).
+        if (msg.type === 'auction.start') {
+          const payload = msg.payload as Record<string, unknown> | undefined;
+          const auctionId =
+            (payload?.id as string) || msg.id || crypto.randomUUID();
+          const { id: _origId, ...rest } = payload ?? {};
+          mesh.send({
+            type: 'auction.started',
+            auctionId,
+            payload: { ...rest, auctionId },
+          });
+        }
+        if (msg.type === 'bid.submit') {
+          const payload = msg.payload as Record<string, unknown> | undefined;
+          const auctionId =
+            (payload?.auctionId as string) || (msg.auctionId as string) || '';
+          if (auctionId) {
+            mesh.send({
+              type: 'auction.bids',
+              auctionId,
+              payload: { auctionId, bids: [payload ?? msg] },
+            });
+          }
+        }
       } catch {
         /* mesh unavailable */
       }
@@ -108,12 +137,11 @@ class AuctionWsClient {
       (msg: unknown) => {
         const data = msg as Record<string, unknown>;
         if (!shouldMesh(data)) return;
-        if (!isValidGossipPayload(data.type as string, data)) return;
-        validateGossipPayloadAsync(
-          data.type as string,
-          data,
-          getValidationContext()
-        )
+        const inner =
+          (data.payload as Record<string, unknown> | undefined) ?? data;
+        const msgType = data.type as string;
+        if (!isValidGossipPayload(msgType, inner)) return;
+        validateGossipPayloadAsync(msgType, inner, getValidationContext())
           .then((valid) => {
             if (!valid) return;
             if (!this.dedup(data)) return;

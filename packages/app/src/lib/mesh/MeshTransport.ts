@@ -16,31 +16,15 @@ export class MeshTransport {
     this.mesh.broadcast(type, msg);
   }
 
+  // eslint-disable-next-line @typescript-eslint/require-await
   async sendWithAck<T = unknown>(
-    type: string,
-    payload: Record<string, unknown>,
-    opts?: { timeoutMs?: number }
+    _type: string,
+    _payload: Record<string, unknown>,
+    _opts?: { timeoutMs?: number }
   ): Promise<T> {
-    return new Promise((resolve, reject) => {
-      const timeoutMs = opts?.timeoutMs ?? 5_000;
-
-      const msgId = this.mesh.broadcast(type, { ...payload });
-
-      const unsub = this.mesh.on(`${type}.ack`, (_ackType, ackPayload) => {
-        const ack = ackPayload as Record<string, unknown>;
-        const nested = ack.payload as Record<string, unknown> | undefined;
-        if (ack.id === msgId || (nested && nested.id === msgId)) {
-          clearTimeout(timer);
-          unsub();
-          resolve(ack as T);
-        }
-      });
-
-      const timer = setTimeout(() => {
-        unsub();
-        reject(new Error('ack_timeout'));
-      }, timeoutMs);
-    });
+    throw new Error(
+      'sendWithAck is not supported on MeshTransport — use WS transport for ack flows'
+    );
   }
 
   addMessageListener(cb: (msg: unknown) => void): () => void {

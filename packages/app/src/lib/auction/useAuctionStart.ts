@@ -214,10 +214,10 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
         };
 
         // ---------------------------------------------------------------
-        // Handle ack response for our pending auction.start
-        // This runs synchronously in the onmessage callback, so
-        // latestAuctionIdRef is set BEFORE any subsequent bid message
-        // fires — eliminates the bids-before-ack race entirely.
+        // Handle ack response for our pending auction.start.
+        // With optimistic IDs the auction is already active; the ack
+        // confirms it and may provide a relayer-assigned ID that
+        // supersedes the optimistic one.
         // ---------------------------------------------------------------
         const msgId = String(data?.id || data?.payload?.id || '');
         if (msgId && msgId === sentMessageIdRef.current) {
@@ -229,35 +229,30 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
 
           if (data?.payload?.error) {
             console.error('[Escrow Auction] Start failed:', data.payload.error);
+            latestAuctionIdRef.current = null;
+            setAuctionId(null);
             inflightRef.current = '';
             pendingBidsRef.current.clear();
             return;
           }
 
-          const newId = (data?.payload?.auctionId as string) || null;
-          latestAuctionIdRef.current = newId;
-          loggedStaleAuctionsRef.current.clear();
-          setAuctionId(newId);
-
-          // Replay bids that arrived before this ack (fast quoter race)
-          if (newId && pendingBidsRef.current.has(newId)) {
-            const buffered = pendingBidsRef.current.get(newId)!;
+          // If the relayer assigned a different auctionId, adopt it.
+          // Otherwise the optimistic ID (already set) stays.
+          const relayerId = (data?.payload?.auctionId as string) || null;
+          if (relayerId && relayerId !== latestAuctionIdRef.current) {
+            latestAuctionIdRef.current = relayerId;
+            setAuctionId(relayerId);
             log(
-              `Replayed ${buffered.length} buffered bid(s) for auction ${newId.slice(0, 8)}`
+              `[escrow] Relayer assigned auctionId=${relayerId.slice(0, 8)} (was ${msgId.slice(0, 8)})`
             );
-            setBids(buffered);
           }
-          pendingBidsRef.current.clear();
-
-          log(
-            `[escrow] Auction started: id=${newId?.slice(0, 8)}, latestRef=${latestAuctionIdRef.current?.slice(0, 8)}`
-          );
 
           // Subscribe to auction updates
-          if (newId) {
+          const activeId = latestAuctionIdRef.current;
+          if (activeId) {
             client.send({
               type: 'auction.subscribe',
-              payload: { auctionId: newId },
+              payload: { auctionId: activeId },
             });
           }
 
@@ -491,15 +486,18 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
         predictorDeadline,
       };
 
-      // Generate a correlation ID and send via client.send() instead of
-      // sendWithAck(). The ack is handled synchronously in handleMessage
-      // (matched by this ID), which eliminates the microtask race where
-      // bids arrive before the ack sets latestAuctionIdRef.
+      // Optimistic auction ID: the client generates the auctionId upfront
+      // and sets it immediately. Bids can match right away from either the
+      // relayer (WS) or peer mesh path. If the relayer responds with an ack,
+      // it confirms the auction; the ID is already active either way.
       const messageId = crypto.randomUUID();
       sentMessageIdRef.current = messageId;
+      latestAuctionIdRef.current = messageId;
+      loggedStaleAuctionsRef.current.clear();
+      setAuctionId(messageId);
 
       log(
-        `[auction] Sending auction.start: keys=${Object.keys(escrowPayload).join(',')}, hasIntentSig=${!!escrowPayload.intentSignature}, hasSessionKeyData=${!!escrowPayload.predictorSessionKeyData}`
+        `[auction] Sending auction.start: auctionId=${messageId.slice(0, 8)}, keys=${Object.keys(escrowPayload).join(',')}, hasIntentSig=${!!escrowPayload.intentSignature}, hasSessionKeyData=${!!escrowPayload.predictorSessionKeyData}`
       );
 
       client.send({
@@ -508,14 +506,15 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
         payload: { ...escrowPayload, id: messageId },
       });
 
-      // Manual ack timeout — if the relayer doesn't respond, clean up
+      // Ack timeout — clear the pending correlation ID so stale acks
+      // from the relayer are ignored. The auction ID stays active.
       if (ackTimeoutRef.current) window.clearTimeout(ackTimeoutRef.current);
       ackTimeoutRef.current = window.setTimeout(() => {
         if (sentMessageIdRef.current !== messageId) return;
         sentMessageIdRef.current = null;
-        log('[auction] ack timeout — no response from relayer');
-        pendingBidsRef.current.clear();
-        inflightRef.current = '';
+        log(
+          `[auction] relayer ack timeout (auction ${messageId.slice(0, 8)} active via optimistic ID)`
+        );
       }, 10_000);
     },
     [wsUrl, walletAddress, signTypedDataAsync]

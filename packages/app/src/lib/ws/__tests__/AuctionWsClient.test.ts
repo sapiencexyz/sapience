@@ -80,11 +80,58 @@ describe('AuctionWsClient dual-send (outbound)', () => {
     const msg = {
       id: 'a1',
       type: 'auction.start',
-      payload: { picks: [], predictor: '0x1234' },
+      payload: { picks: [], predictor: '0x1234', id: 'a1' },
     };
     client.send(msg);
 
     expect(mockMeshTransport.send).toHaveBeenCalledWith(msg);
+  });
+
+  it('promotes auction.start to auction.started on mesh for P2P', () => {
+    const client = getSharedAuctionWsClient('ws://localhost:9999');
+    const msg = {
+      id: 'promo-1',
+      type: 'auction.start',
+      payload: { picks: [], predictor: '0x1234', id: 'promo-1' },
+    };
+    client.send(msg);
+
+    // First call: original auction.start
+    // Second call: promoted auction.started
+    expect(mockMeshTransport.send).toHaveBeenCalledTimes(2);
+
+    const promoted = meshSent[1];
+    expect(promoted.type).toBe('auction.started');
+    expect((promoted.payload as Record<string, unknown>).auctionId).toBe(
+      'promo-1'
+    );
+    // Original id should be omitted to avoid dedup collision
+    expect((promoted.payload as Record<string, unknown>).id).toBeUndefined();
+  });
+
+  it('promotes bid.submit to auction.bids on mesh for P2P', () => {
+    const client = getSharedAuctionWsClient('ws://localhost:9999');
+    const msg = {
+      id: 'b1',
+      type: 'bid.submit',
+      payload: {
+        auctionId: 'a1',
+        counterparty: '0x1234567890123456789012345678901234567890',
+        counterpartyCollateral: '100',
+      },
+    };
+    client.send(msg);
+
+    // First call: original bid.submit
+    // Second call: promoted auction.bids
+    expect(mockMeshTransport.send).toHaveBeenCalledTimes(2);
+
+    const promoted = meshSent[1];
+    expect(promoted.type).toBe('auction.bids');
+    expect((promoted.payload as Record<string, unknown>).auctionId).toBe('a1');
+    const bids = (promoted.payload as Record<string, unknown>)
+      .bids as unknown[];
+    expect(bids).toHaveLength(1);
   });
 
   it('sends bid.submit to both relayer WS and mesh', () => {
@@ -236,6 +283,36 @@ describe('AuctionWsClient dual-receive (inbound)', () => {
     expect(received).toHaveLength(0);
     // Should not even reach validation
     expect(isValidGossipPayloadMock).not.toHaveBeenCalled();
+  });
+
+  it('validates against inner payload, not outer envelope', async () => {
+    const client = getSharedAuctionWsClient('ws://localhost:9999');
+    const received: unknown[] = [];
+    client.addMessageListener((msg) => received.push(msg));
+
+    // Simulate a mesh message where fields are nested in payload (real shape)
+    isValidGossipPayloadMock.mockImplementation((_type, data) => {
+      // Should receive the inner payload with picks, not the outer envelope
+      return !!(data as Record<string, unknown>).picks;
+    });
+
+    // Outer envelope — picks are inside payload, not at top level
+    deliverFromMesh({
+      type: 'auction.start',
+      payload: {
+        picks: [
+          { conditionResolver: '0x1234567890123456789012345678901234567890' },
+        ],
+        predictor: '0x1234567890123456789012345678901234567890',
+      },
+    });
+
+    await vi.waitFor(() => expect(received).toHaveLength(1));
+    // Validation was called with inner payload
+    expect(isValidGossipPayloadMock).toHaveBeenCalledWith(
+      'auction.start',
+      expect.objectContaining({ picks: expect.any(Array) })
+    );
   });
 
   it('unsubscribes from mesh when WS listener is removed', () => {

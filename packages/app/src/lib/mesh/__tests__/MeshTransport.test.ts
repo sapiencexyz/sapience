@@ -78,70 +78,10 @@ describe('MeshTransport', () => {
   });
 
   describe('sendWithAck', () => {
-    it('resolves when an ack with matching ID is received', async () => {
-      mesh.broadcast.mockReturnValue('msg-456');
-
-      const promise = transport.sendWithAck('bid.submit', { amount: 100 });
-
-      // Simulate ack arriving
-      mesh._emitType('bid.submit.ack', { id: 'msg-456', status: 'ok' });
-
-      const result = await promise;
-      expect(result).toEqual({ id: 'msg-456', status: 'ok' });
-    });
-
-    it('resolves when ack ID is nested in payload', async () => {
-      mesh.broadcast.mockReturnValue('msg-789');
-
-      const promise = transport.sendWithAck('bid.submit', { amount: 100 });
-
-      mesh._emitType('bid.submit.ack', {
-        payload: { id: 'msg-789' },
-        status: 'ok',
-      });
-
-      const result = await promise;
-      expect(result).toEqual(expect.objectContaining({ status: 'ok' }));
-    });
-
-    it('rejects on timeout', async () => {
-      const promise = transport.sendWithAck(
-        'bid.submit',
-        { amount: 100 },
-        { timeoutMs: 1_000 }
-      );
-
-      vi.advanceTimersByTime(1_001);
-
-      await expect(promise).rejects.toThrow('ack_timeout');
-    });
-
-    it('uses default 5s timeout', async () => {
-      const promise = transport.sendWithAck('bid.submit', { amount: 100 });
-
-      vi.advanceTimersByTime(4_999);
-      // Should not have rejected yet
-
-      vi.advanceTimersByTime(2);
-
-      await expect(promise).rejects.toThrow('ack_timeout');
-    });
-
-    it('ignores acks with non-matching IDs', async () => {
-      mesh.broadcast.mockReturnValue('msg-AAA');
-
-      const promise = transport.sendWithAck(
-        'bid.submit',
-        { amount: 100 },
-        { timeoutMs: 500 }
-      );
-
-      // Wrong ID
-      mesh._emitType('bid.submit.ack', { id: 'msg-BBB', status: 'ok' });
-
-      vi.advanceTimersByTime(501);
-
-      await expect(promise).rejects.toThrow('ack_timeout');
+    it('throws because ack matching cannot work over gossip', async () => {
+      await expect(
+        transport.sendWithAck('bid.submit', { amount: 100 })
+      ).rejects.toThrow('not supported on MeshTransport');
     });
   });
 
