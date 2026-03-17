@@ -29,7 +29,10 @@ export function usePeerMesh() {
       setKnownPeerCount(getMeshKnownPeerCount());
     });
     const u2 = onMeshBandwidthChange(setBandwidthKbps);
-    const u3 = onMeshSignalStateChange(setSignalConnected);
+    const u3 = onMeshSignalStateChange((connected) => {
+      setSignalConnected(connected);
+      setKnownPeerCount(getMeshKnownPeerCount());
+    });
     return () => {
       u1();
       u2();

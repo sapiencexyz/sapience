@@ -149,6 +149,7 @@ export function setMeshMaxPeers(n: number): void {
 export function setMeshFanout(n: number): void {
   shared.setMaxFanout(n);
 }
+
 export function getMeshSignalConnected(): boolean {
   return shared.signalConnected;
 }
