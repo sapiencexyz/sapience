@@ -27,7 +27,7 @@ const ProfilePageContent = ({
   addressOverride,
 }: {
   addressOverride?: string;
-} = {}) => {
+}) => {
   const params = useParams();
   const address = (
     addressOverride || (params.address as string)

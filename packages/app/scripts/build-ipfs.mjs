@@ -152,11 +152,8 @@ try {
     },
   });
 
-  // ── Step 6: Restore all files ──────────────────────────────────────
-  console.log('\n[ipfs] Restoring source files...');
-  restoreAll();
+  // ── Step 6: Post-process out/ (file restoration handled by finally block)
 
-  // ── Step 7: Post-process out/ ──────────────────────────────────────
   console.log('[ipfs] Post-processing output...');
 
   // Copy 404.html → 200.html (SPA fallback)

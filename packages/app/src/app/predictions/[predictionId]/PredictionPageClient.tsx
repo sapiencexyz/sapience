@@ -5,15 +5,8 @@ import { useQuery } from '@tanstack/react-query';
 import { OutcomeSide } from '@sapience/sdk/types';
 import { PicksContent } from '~/components/shared/PicksSummary';
 import PositionSummary from '~/components/positions/PositionSummary';
-import type {
-  PredictionData,
-  ConditionData,
-} from '~/app/og/_prediction-helpers';
-import {
-  getGraphQLEndpoint,
-  PREDICTION_BY_ID_QUERY,
-  CONDITIONS_BY_IDS_QUERY,
-} from '~/app/og/_prediction-helpers';
+import type { PredictionData, ConditionData } from '~/lib/data/predictions';
+import { fetchPredictionWithConditions } from '~/lib/data/predictions';
 import type { Pick } from '~/components/shared/StackedPredictions';
 import { computeResultFromConditions } from '~/components/positions/toPickLegs';
 
@@ -26,39 +19,6 @@ function formatCollateral(wei?: string): number {
   }
 }
 
-async function fetchPrediction(predictionId: string) {
-  const endpoint = getGraphQLEndpoint();
-  const resp = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      query: PREDICTION_BY_ID_QUERY,
-      variables: { id: predictionId },
-    }),
-  });
-  const json = await resp.json();
-  const prediction: PredictionData | null = json?.data?.prediction ?? null;
-  if (!prediction) return { prediction: null, conditions: [] };
-
-  const conditionIds =
-    prediction.pickConfig?.picks.map((p) => p.conditionId) ?? [];
-  if (conditionIds.length === 0)
-    return { prediction, conditions: [] as (ConditionData & { id: string })[] };
-
-  const condResp = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      query: CONDITIONS_BY_IDS_QUERY,
-      variables: { where: { id: { in: conditionIds } } },
-    }),
-  });
-  const condJson = await condResp.json();
-  const conditions: (ConditionData & { id: string })[] =
-    condJson?.data?.conditions ?? [];
-  return { prediction, conditions };
-}
-
 export default function PredictionPageClient({
   predictionId,
   serverPrediction,
@@ -68,9 +28,13 @@ export default function PredictionPageClient({
   serverPrediction: PredictionData | null;
   serverConditions: (ConditionData & { id: string })[];
 }) {
-  const { data: clientData, isLoading } = useQuery({
-    queryKey: ['prediction-ipfs', predictionId],
-    queryFn: () => fetchPrediction(predictionId),
+  const {
+    data: clientData,
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: ['prediction', predictionId],
+    queryFn: () => fetchPredictionWithConditions(predictionId),
     enabled: !serverPrediction,
   });
 
@@ -86,6 +50,14 @@ export default function PredictionPageClient({
         <div className="animate-pulse text-muted-foreground">
           Loading prediction...
         </div>
+      </div>
+    );
+  }
+
+  if (!serverPrediction && isError) {
+    return (
+      <div className="text-center text-muted-foreground">
+        Failed to load prediction. Please check your connection and try again.
       </div>
     );
   }

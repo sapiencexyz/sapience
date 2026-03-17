@@ -9,11 +9,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
-import type { AttestationData } from '~/app/og/_forecast-helpers';
-import {
-  d18ToPercentage,
-  fetchAttestationByUid,
-} from '~/app/og/_forecast-helpers';
+import type { AttestationData } from '~/lib/data/forecasts';
+import { d18ToPercentage, fetchAttestationByUid } from '~/lib/data/forecasts';
 import { formatPercentChance } from '~/lib/format/percentChance';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import ConditionStatus from '~/components/shared/ConditionStatus';
@@ -26,8 +23,12 @@ export default function ForecastPageClient({
   uid: string;
   serverAttestation: AttestationData | null;
 }) {
-  const { data: clientAttestation, isLoading } = useQuery({
-    queryKey: ['forecast-ipfs', uid],
+  const {
+    data: clientAttestation,
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: ['forecast', uid],
     queryFn: () => fetchAttestationByUid(uid),
     enabled: !serverAttestation,
   });
@@ -40,6 +41,14 @@ export default function ForecastPageClient({
         <div className="animate-pulse text-muted-foreground">
           Loading forecast...
         </div>
+      </div>
+    );
+  }
+
+  if (!serverAttestation && isError) {
+    return (
+      <div className="text-center text-muted-foreground">
+        Failed to load forecast. Please check your connection and try again.
       </div>
     );
   }
