@@ -16,6 +16,7 @@ import {
   predictionMarketEscrow,
 } from '@sapience/sdk/contracts';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
+import { useSession } from '~/lib/context/SessionContext';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import type { Address } from 'viem';
 import { useChainId } from 'wagmi';
@@ -60,6 +61,7 @@ const AuctionRequestRow: React.FC<Props> = ({
   picks,
 }) => {
   const { address } = useAccount();
+  const { effectiveAddress } = useSession();
   const { openConnectDialog } = useConnectDialog();
   const walletChainId = useChainId();
   const chainId = walletChainId ?? DEFAULT_CHAIN_ID;
@@ -130,6 +132,7 @@ const AuctionRequestRow: React.FC<Props> = ({
     predictionMarketAddress: escrowAddress,
     collateralTokenAddress: COLLATERAL_ADDRESS as Address | undefined,
     enabled: Boolean(auctionId),
+    selfAddress: effectiveAddress ?? address,
   });
 
   const totalBidCount = processedBids.length;
