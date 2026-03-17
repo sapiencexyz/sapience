@@ -53,6 +53,7 @@ interface AuctionMessageData {
   auctionId?: string;
   predictor?: string;
   predictorCollateral?: string;
+  predictorDeadline?: number;
   resolver?: string;
   predictedOutcomes?: string[];
   predictorNonce?: number | string;
@@ -665,11 +666,19 @@ const TerminalPageContent: React.FC = () => {
       }
     );
 
-    // Prune inactive unpinned (> 30m); pinned always visible
+    // Prune inactive unpinned (> 30m) and auctions past predictorDeadline; pinned always visible
     const thirtyMinAgo = Date.now() - 30 * 60 * 1000;
-    const pruned = baseRows.filter(
-      (row) => row.pinned || row.lastActivity >= thirtyMinAgo
-    );
+    const nowSec = Math.floor(Date.now() / 1000);
+    const pruned = baseRows.filter((row) => {
+      if (row.pinned) return true;
+      if (row.lastActivity < thirtyMinAgo) return false;
+      // Hide auctions whose predictor deadline has passed (requester no longer listening)
+      const auctionData = asAuctionData(row.m?.data);
+      const deadline = auctionData?.predictorDeadline;
+      if (typeof deadline === 'number' && deadline > 0 && deadline < nowSec)
+        return false;
+      return true;
+    });
 
     // Helper: apply content filters only to UNPINNED rows
     const passFilters = (row: (typeof pruned)[number]) => {
