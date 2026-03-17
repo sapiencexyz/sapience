@@ -82,7 +82,7 @@ export function useTokenApproval({
       // Transaction hash received, approval is in progress
       setError(undefined);
     },
-    successMessage: 'Token approval submission was successful',
+    successMessage: 'Token approved.',
     fallbackErrorMessage: 'Token approval failed',
   });
 
