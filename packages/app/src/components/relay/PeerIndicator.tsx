@@ -34,14 +34,12 @@ export function PeerIndicator() {
         className={`h-1.5 w-1.5 rounded-full ${
           peerCount > 0
             ? 'bg-green-500 shadow-[0_0_4px_rgba(34,197,94,0.6)]'
-            : cantReachMesh
-              ? 'bg-destructive shadow-[0_0_4px_rgba(239,68,68,0.5)]'
-              : 'bg-muted-foreground/40'
-        }`}
+            : 'bg-muted-foreground/40'
+        } ${cantReachMesh ? 'animate-pulse' : ''}`}
       />
       <span className="text-muted-foreground/60 tabular-nums">
         {cantReachMesh ? (
-          "CAN'T REACH MESH"
+          'MESH PENDING'
         ) : (
           <>
             <span className="text-muted-foreground">
