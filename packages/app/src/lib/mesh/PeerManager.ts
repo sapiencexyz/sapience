@@ -17,6 +17,7 @@ export interface PeerManagerEvents {
   onPeerDisconnected: (peerId: string) => void;
   onMessage: (peerId: string, data: string) => void;
   onPeerCountChanged: (count: number) => void;
+  onSignalStateChanged: (connected: boolean) => void;
 }
 
 interface SignalMsg {
@@ -79,6 +80,14 @@ export class PeerManager {
 
   get peerCount(): number {
     return [...this.peers.values()].filter((p) => p.isOpen).length;
+  }
+
+  get signalConnected(): boolean {
+    return this.signal !== null && this.signal.readyState === WebSocket.OPEN;
+  }
+
+  get knownPeerCount(): number {
+    return this.knownPeers.size;
   }
 
   broadcastToPeers(data: string): number {
@@ -195,6 +204,7 @@ export class PeerManager {
 
       ws.onopen = () => {
         this.backoffMs = 400;
+        this.events.onSignalStateChanged(true);
       };
 
       ws.onmessage = (ev) => {
@@ -208,6 +218,7 @@ export class PeerManager {
 
       ws.onclose = () => {
         this.signal = null;
+        this.events.onSignalStateChanged(false);
         this.scheduleReconnect();
       };
 
