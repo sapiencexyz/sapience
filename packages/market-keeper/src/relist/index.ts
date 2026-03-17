@@ -1,9 +1,9 @@
 /**
  * Main entry point for relist keeper
  *
- * Fetches Polymarket markets with past endDates that are still actively traded,
- * creates new conditions on Sapience for never-listed markets, and extends
- * endTime on already-listed unsettled conditions.
+ * Fetches Polymarket markets with past endDates that are still actively traded
+ * and creates new conditions on Sapience for never-listed markets.
+ * Already-listed conditions are never touched.
  */
 
 import 'dotenv/config';
@@ -11,8 +11,6 @@ import { DEFAULT_SAPIENCE_API_URL, RELIST_FORWARD_DAYS } from '../constants';
 import {
   validatePrivateKey,
   confirmProductionAccess,
-  fetchWithRetry,
-  getAdminAuthHeaders,
   log,
   logError,
 } from '../utils';
@@ -41,8 +39,8 @@ function showHelp(): void {
 Usage: tsx scripts/relist.ts [options]
 
 Fetches Polymarket markets with past end dates that are still actively traded,
-and lists them on Sapience with endTime = now + 7 days. Also extends endTime
-for already-listed conditions that are still traded.
+and lists them on Sapience with endTime = now + 7 days.
+Already-listed conditions are skipped (endTime is never overwritten).
 
 Options:
   --dry-run      Show what would be submitted without actually submitting
@@ -52,50 +50,6 @@ Environment Variables (required for API submission):
   SAPIENCE_API_URL     API URL (default: https://api.sapience.xyz)
   ADMIN_PRIVATE_KEY    64-char hex private key for signing admin requests
 `);
-}
-
-// ============ EndTime Extension ============
-
-const SUBMISSION_DELAY_MS = 300;
-const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
-
-/**
- * Extend endTime on an existing condition via PUT /admin/conditions/:id
- */
-async function extendConditionEndTime(
-  apiUrl: string,
-  privateKey: `0x${string}`,
-  conditionId: string,
-  newEndTimeUnix: number
-): Promise<{ success: boolean; error?: string }> {
-  try {
-    const authHeaders = await getAdminAuthHeaders(privateKey);
-
-    const response = await fetchWithRetry(
-      `${apiUrl}/admin/conditions/${conditionId}`,
-      {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          ...authHeaders,
-        },
-        body: JSON.stringify({ endTime: newEndTimeUnix }),
-      }
-    );
-
-    if (response.ok) {
-      return { success: true };
-    }
-
-    const errorData = await response
-      .json()
-      .catch(() => ({ message: 'Unknown error' }));
-    const errorMsg = `HTTP ${response.status}: ${errorData.message || response.statusText}`;
-    return { success: false, error: errorMsg };
-  } catch (error) {
-    const errorMsg = error instanceof Error ? error.message : String(error);
-    return { success: false, error: errorMsg };
-  }
 }
 
 // ============ Main ============
@@ -139,67 +93,24 @@ export async function main() {
       Date.now() + RELIST_FORWARD_DAYS * 24 * 60 * 60 * 1000
     );
     const newEndDateISO = newEndDate.toISOString();
-    const newEndTimeUnix = Math.floor(newEndDate.getTime() / 1000);
 
-    log(`[Relist] New endDate for all markets: ${newEndDateISO}`);
+    log(`[Relist] New endDate for new markets: ${newEndDateISO}`);
 
-    // 3. Check which markets already exist in Sapience
+    // 3. Check which markets already exist in Sapience (skip them entirely)
     const allConditionIds = markets.map((m) => m.conditionId);
-    const existingIds = await checkExistingConditions(apiUrl, allConditionIds);
-
-    log(
-      `[Relist] ${existingIds.size} already listed, ${markets.length - existingIds.size} new`
+    const existingConditions = await checkExistingConditions(
+      apiUrl,
+      allConditionIds
     );
 
-    // 4. Extend endTime for existing conditions
-    if (
-      existingIds.size > 0 &&
-      hasAPICredentials &&
-      privateKey &&
-      !options.dryRun
-    ) {
-      log(
-        `[Relist] Extending endTime for ${existingIds.size} existing conditions...`
-      );
-      let extended = 0;
-      let skipped = 0;
-      let failed = 0;
+    log(
+      `[Relist] ${existingConditions.size} already listed (skipping), ${markets.length - existingConditions.size} new`
+    );
 
-      for (const conditionId of existingIds) {
-        const result = await extendConditionEndTime(
-          apiUrl,
-          privateKey,
-          conditionId,
-          newEndTimeUnix
-        );
-        if (result.success) {
-          extended++;
-          log(`[Relist] Extended endTime: ${conditionId}...`);
-        } else if (
-          result.error?.includes('settled') ||
-          result.error?.includes('shortened')
-        ) {
-          skipped++;
-        } else {
-          failed++;
-          logError(
-            `[Relist] Failed to extend ${conditionId}...: ${result.error}`
-          );
-        }
-        await delay(SUBMISSION_DELAY_MS);
-      }
-
-      log(
-        `[Relist] EndTime extension: ${extended} extended, ${skipped} skipped, ${failed} failed`
-      );
-    } else if (existingIds.size > 0 && options.dryRun) {
-      log(
-        `[Relist] DRY RUN: Would extend endTime for ${existingIds.size} existing conditions to ${newEndDateISO}`
-      );
-    }
-
-    // 5. Override endDate for new market submissions
-    const newMarkets = markets.filter((m) => !existingIds.has(m.conditionId));
+    // 4. Filter to only new markets
+    const newMarkets = markets.filter(
+      (m) => !existingConditions.has(m.conditionId)
+    );
 
     if (newMarkets.length === 0) {
       log('[Relist] No new markets to create');
@@ -211,7 +122,7 @@ export async function main() {
       market.endDate = newEndDateISO;
     }
 
-    // 6. Process through existing pipeline (grouping, LLM enrichment, etc.)
+    // 5. Process through existing pipeline (grouping, LLM enrichment, etc.)
     const sapienceData = await groupMarkets(newMarkets, apiUrl);
 
     log(
@@ -225,7 +136,7 @@ export async function main() {
       return;
     }
 
-    // 7. Submit new conditions to API
+    // 6. Submit new conditions to API
     if (hasAPICredentials && apiUrl && privateKey) {
       await submitToAPI(apiUrl, privateKey, sapienceData);
     }
