@@ -133,25 +133,25 @@ export function usePreprocessedBids(
   useEffect(() => {
     if (!canValidate || rawBids.length === 0) return;
 
-    const newBids = rawBids.filter((bid) => {
-      // Skip zero-address bids
-      if (!bid.counterparty || bid.counterparty.toLowerCase() === ZERO_ADDRESS)
-        return false;
-      // Self-bids are pre-validated (signed locally) — skip async validation
+    // Self-bids are pre-validated (signed locally) — mark valid immediately
+    for (const bid of rawBids) {
       if (
         normalizedSelf &&
-        bid.counterparty.toLowerCase() === normalizedSelf
+        bid.counterparty?.toLowerCase() === normalizedSelf &&
+        !validatedRef.current.has(bid.counterpartySignature)
       ) {
-        if (!validatedRef.current.has(bid.counterpartySignature)) {
-          validatedRef.current.add(bid.counterpartySignature);
-          setValidationResults((prev) => {
-            const updated = new Map(prev);
-            updated.set(bid.counterpartySignature, { status: 'valid' });
-            return updated;
-          });
-        }
-        return false;
+        validatedRef.current.add(bid.counterpartySignature);
+        setValidationResults((prev) => {
+          const updated = new Map(prev);
+          updated.set(bid.counterpartySignature, { status: 'valid' });
+          return updated;
+        });
       }
+    }
+
+    const newBids = rawBids.filter((bid) => {
+      if (!bid.counterparty || bid.counterparty.toLowerCase() === ZERO_ADDRESS)
+        return false;
       const sig = bid.counterpartySignature;
       return !validatedRef.current.has(sig) && !validatingRef.current.has(sig);
     });
@@ -254,6 +254,7 @@ export function usePreprocessedBids(
     picks,
     predictorSponsor,
     predictorSponsorData,
+    normalizedSelf,
   ]);
 
   // Clean up stale entries
