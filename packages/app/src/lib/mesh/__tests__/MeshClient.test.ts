@@ -7,6 +7,7 @@ let capturedEvents: {
   onPeerDisconnected: (peerId: string) => void;
   onMessage: (peerId: string, data: string) => void;
   onPeerCountChanged: (count: number) => void;
+  onSignalStateChanged: (connected: boolean) => void;
 };
 
 const mockBroadcastToPeers = vi
@@ -33,6 +34,12 @@ vi.mock('../PeerManager', () => ({
       addDiscoveredPeers: mockAddDiscoveredPeers,
       setMaxPeers: mockSetMaxPeers,
       get peerCount() {
+        return 0;
+      },
+      get signalConnected() {
+        return false;
+      },
+      get knownPeerCount() {
         return 0;
       },
     };
@@ -827,6 +834,28 @@ describe('MeshClient', () => {
       expect(mockSendToPeers).toHaveBeenCalledOnce();
       const [, peerIds] = mockSendToPeers.mock.calls[0];
       expect(peerIds).toHaveLength(2);
+    });
+  });
+
+  describe('signal state', () => {
+    it('forwards signal state changes to listeners', () => {
+      const listener = vi.fn();
+      client.onSignalStateChange(listener);
+
+      capturedEvents.onSignalStateChanged(true);
+      expect(listener).toHaveBeenCalledWith(true);
+
+      capturedEvents.onSignalStateChanged(false);
+      expect(listener).toHaveBeenCalledWith(false);
+    });
+
+    it('unsubscribes signal state listener', () => {
+      const listener = vi.fn();
+      const unsub = client.onSignalStateChange(listener);
+
+      unsub();
+      capturedEvents.onSignalStateChanged(true);
+      expect(listener).not.toHaveBeenCalled();
     });
   });
 
