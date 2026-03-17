@@ -233,8 +233,6 @@ async function fetchEstimate(conditionId: string): Promise<number | null> {
 
   let settled = false;
   let resolvePromise: (value: number | null) => void;
-  let timeout: ReturnType<typeof setTimeout>;
-
   const promise = new Promise<number | null>((resolve) => {
     resolvePromise = resolve;
   });
@@ -299,7 +297,7 @@ async function fetchEstimate(conditionId: string): Promise<number | null> {
     { maxRetries: 0 }
   );
 
-  timeout = setTimeout(() => {
+  const timeout = setTimeout(() => {
     if (settled) return;
     settled = true;
     client.close();
