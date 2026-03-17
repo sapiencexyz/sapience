@@ -45,6 +45,50 @@ contract MockSmartAccountForTrade is IERC1271 {
     }
 }
 
+/// @notice Mock smart account that accepts both 65-byte and 64-byte (EIP-2098 compact) sigs
+contract MockSmartAccountCompact is IERC1271 {
+    address public owner;
+    bytes4 private constant EIP1271_MAGIC_VALUE = 0x1626ba7e;
+
+    constructor(address _owner) {
+        owner = _owner;
+    }
+
+    function isValidSignature(bytes32 hash, bytes memory signature)
+        external
+        view
+        override
+        returns (bytes4)
+    {
+        uint8 v;
+        bytes32 r;
+        bytes32 s;
+        if (signature.length == 65) {
+            assembly {
+                r := mload(add(signature, 32))
+                s := mload(add(signature, 64))
+                v := byte(0, mload(add(signature, 96)))
+            }
+        } else if (signature.length == 64) {
+            // EIP-2098 compact: r (32) ++ vs (32)
+            bytes32 vs;
+            assembly {
+                r := mload(add(signature, 32))
+                vs := mload(add(signature, 64))
+            }
+            s = vs & bytes32(0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff);
+            v = uint8(uint256(vs >> 255)) + 27;
+        } else {
+            return 0xffffffff;
+        }
+        address signer = ecrecover(hash, v, r, s);
+        if (signer == owner) {
+            return EIP1271_MAGIC_VALUE;
+        }
+        return 0xffffffff;
+    }
+}
+
 /// @notice Mock account factory for session key tests
 contract MockAccountFactory {
     mapping(address => mapping(uint256 => address)) private _accounts;
@@ -750,6 +794,92 @@ contract SecondaryMarketEscrowTest is Test {
 
         vm.expectRevert(ISecondaryMarketEscrow.InvalidSignature.selector);
         escrow.executeTrade(request);
+    }
+
+    // ============ EIP-1271 Fallback via tryRecover ============
+
+    /// @notice Regression: ECDSA.recover reverts on malformed sigs, preventing
+    ///         the EIP-1271 fallback from ever being reached for smart accounts
+    ///         that use non-standard signature formats. With tryRecover the
+    ///         invalid ECDSA result is caught gracefully and the contract
+    ///         code-length check + isValidSignature path executes.
+    function test_executeTrade_smartAccount_eip1271_with_compact_signature()
+        public
+    {
+        // Smart account whose owner is `seller` — supports compact sigs
+        MockSmartAccountCompact smartSeller =
+            new MockSmartAccountCompact(seller);
+
+        positionToken.mint(address(smartSeller), 10_000e18);
+        vm.prank(address(smartSeller));
+        positionToken.approve(address(escrow), type(uint256).max);
+
+        bytes32 tradeHash = _computeTradeHash(
+            address(positionToken),
+            address(collateralToken),
+            address(smartSeller),
+            buyer,
+            TOKEN_AMOUNT,
+            PRICE
+        );
+
+        uint256 sNonce = _freshNonce();
+        uint256 bNonce = _freshNonce();
+        uint256 deadline = block.timestamp + 1 hours;
+
+        // Build a 64-byte "compact" EIP-2098 signature. ECDSA.recover reverts
+        // with ECDSAInvalidSignatureLength for non-65-byte sigs, but the smart
+        // account's isValidSignature can still validate it. With tryRecover
+        // the ECDSA path gracefully returns false and falls through to EIP-1271.
+        bytes32 approvalHash = escrow.getTradeApprovalHash(
+            tradeHash, address(smartSeller), sNonce, deadline
+        );
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(sellerPk, approvalHash);
+
+        // Pack into 64-byte compact form (EIP-2098): r ++ (s | (v-27)<<255)
+        bytes32 vs = bytes32(uint256(s) | (uint256(v - 27) << 255));
+        bytes memory compactSig = abi.encodePacked(r, vs);
+        assert(compactSig.length == 64);
+
+        ISecondaryMarketEscrow.TradeRequest memory request;
+        request.token = address(positionToken);
+        request.collateral = address(collateralToken);
+        request.seller = address(smartSeller);
+        request.buyer = buyer;
+        request.tokenAmount = TOKEN_AMOUNT;
+        request.price = PRICE;
+        request.sellerNonce = sNonce;
+        request.buyerNonce = bNonce;
+        request.sellerDeadline = deadline;
+        request.buyerDeadline = deadline;
+        request.sellerSignature = compactSig; // 64 bytes — ECDSA.recover reverts
+        request.buyerSignature =
+            _signTradeApproval(tradeHash, buyer, bNonce, deadline, buyerPk);
+        request.refCode = REF_CODE;
+        request.sellerSessionKeyData = "";
+        request.buyerSessionKeyData = "";
+
+        // Before fix: reverts with ECDSAInvalidSignatureLength (never reaches EIP-1271)
+        // After fix:  tryRecover returns error, falls through to EIP-1271, trade succeeds
+        uint256 sellerPosBefore = positionToken.balanceOf(address(smartSeller));
+
+        escrow.executeTrade(request);
+
+        assertEq(
+            positionToken.balanceOf(address(smartSeller)),
+            sellerPosBefore - TOKEN_AMOUNT,
+            "Seller position tokens should decrease"
+        );
+        assertEq(
+            collateralToken.balanceOf(address(smartSeller)),
+            PRICE,
+            "Seller should receive collateral"
+        );
+        assertEq(
+            positionToken.balanceOf(buyer),
+            TOKEN_AMOUNT,
+            "Buyer should receive position tokens"
+        );
     }
 
     // ============ View Functions ============

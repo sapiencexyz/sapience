@@ -277,9 +277,10 @@ contract SecondaryMarketEscrow is
         );
 
         bytes32 hash = _hashTypedDataV4(structHash);
-        address recoveredSigner = ECDSA.recover(hash, signature);
+        (address recoveredSigner, ECDSA.RecoverError error,) =
+            ECDSA.tryRecover(hash, signature);
 
-        if (recoveredSigner == address(0)) {
+        if (error != ECDSA.RecoverError.NoError) {
             return false;
         }
 
@@ -377,11 +378,11 @@ contract SecondaryMarketEscrow is
             )
         );
         bytes32 tradeDigest = _hashTypedDataV4(tradeStructHash);
-        address recoveredSessionKey =
-            ECDSA.recover(tradeDigest, sessionKeySignature);
+        (address recoveredSessionKey, ECDSA.RecoverError skError,) =
+            ECDSA.tryRecover(tradeDigest, sessionKeySignature);
 
         if (
-            recoveredSessionKey == address(0)
+            skError != ECDSA.RecoverError.NoError
                 || recoveredSessionKey != skData.sessionKey
         ) {
             return false;
@@ -403,10 +404,13 @@ contract SecondaryMarketEscrow is
             )
         );
         bytes32 sessionHash = _hashTypedDataV4(sessionStructHash);
-        address recoveredOwner =
-            ECDSA.recover(sessionHash, skData.ownerSignature);
+        (address recoveredOwner, ECDSA.RecoverError ownerError,) =
+            ECDSA.tryRecover(sessionHash, skData.ownerSignature);
 
-        if (recoveredOwner == address(0) || recoveredOwner != skData.owner) {
+        if (
+            ownerError != ECDSA.RecoverError.NoError
+                || recoveredOwner != skData.owner
+        ) {
             return false;
         }
 
