@@ -20,21 +20,11 @@ import {
   TRADE_APPROVAL_TYPES,
 } from './secondarySigning';
 import type { ValidationResult, ValidationErrorCode } from './validation';
+import { isValidAddress, isValidSignatureFormat } from './validationUtils';
 
 // Re-export so relayer consumers don't need two imports
 export type { ValidationResult, ValidationErrorCode };
 export { isActionable } from './validation';
-
-// ─── Shared Helpers ──────────────────────────────────────────────────────────
-
-function isValidAddress(addr: unknown): addr is string {
-  return typeof addr === 'string' && /^0x[a-fA-F0-9]{40}$/.test(addr);
-}
-
-function isValidSignatureFormat(sig: unknown): sig is string {
-  // Compact ECDSA (EIP-2098) = 64 bytes = "0x" + 128 hex = 130 chars minimum
-  return typeof sig === 'string' && sig.startsWith('0x') && sig.length >= 130;
-}
 
 function isValidHex(value: unknown): value is string {
   return typeof value === 'string' && /^0x[a-fA-F0-9]+$/.test(value);

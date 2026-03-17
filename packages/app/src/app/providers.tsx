@@ -78,6 +78,7 @@ const wagmiConfig = createConfig({
         ]
       : [],
   transports,
+  pollingInterval: 5_000,
 });
 
 const Providers = ({ children }: { children: React.ReactNode }) => {

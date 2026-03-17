@@ -225,7 +225,7 @@ describe('buildSimulationStateOverride', () => {
       simulationAddress: addr,
       collateralTokenAddress: collateral,
       predictionMarketAddress: market,
-      makerCollateralWei: 1000n,
+      counterpartyCollateralWei: 1000n,
     });
 
     expect(result).toHaveLength(2);

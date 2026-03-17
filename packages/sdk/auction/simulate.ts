@@ -58,13 +58,22 @@ export interface SimulateBidResult {
   error?: string;
 }
 
-/** Bid data from the API (bidder/market maker). */
+/**
+ * Bid data from the API (counterparty / market maker).
+ *
+ * Field mapping to contract MintApproval struct:
+ *   counterparty       -> counterparty (address)
+ *   counterpartyCollateral -> counterpartyCollateral (uint256)
+ *   counterpartyDeadline   -> counterpartyDeadline (uint256)
+ *   counterpartySignature  -> counterpartySignature (bytes)
+ *   counterpartyNonce      -> counterpartyNonce (uint256)
+ */
 export interface BidData {
-  maker: string;
-  makerCollateral: string;
-  makerDeadline: number;
-  makerSignature: string;
-  makerNonce: number;
+  counterparty: string;
+  counterpartyCollateral: string;
+  counterpartyDeadline: number;
+  counterpartySignature: string;
+  counterpartyNonce: number;
 }
 
 export type ValidationStatus = 'pending' | 'valid' | 'invalid';
@@ -77,13 +86,18 @@ export interface LegacyValidatedBid<T extends BidData> {
 
 /**
  * Options for simulating a bid mint transaction.
+ *
+ * Field mapping to contract parameters:
+ *   predictorAddress -> predictor (the user placing the prediction)
+ *   predictorCollateral -> predictorCollateral (uint256)
+ *   predictorNonce  -> predictorNonce (uint256)
  */
 export interface SimulateBidMintOptions {
   chainId: number;
   predictionMarketAddress: `0x${string}`;
-  takerAddress: `0x${string}`;
-  takerCollateral: string;
-  takerNonce: number;
+  predictorAddress: `0x${string}`;
+  predictorCollateral: string;
+  predictorNonce: number;
   encodedPredictedOutcomes: `0x${string}`;
   resolver: `0x${string}`;
   collateralTokenAddress: `0x${string}`;
@@ -118,11 +132,11 @@ export function parseSimulationError(err: unknown): string {
     ['CollateralBelowMinimum', 'Collateral below minimum'],
     [
       'MakerCollateralMustBeGreaterThanZero',
-      'Maker collateral must be greater than zero',
+      'Counterparty collateral must be greater than zero',
     ],
     [
       'TakerCollateralMustBeGreaterThanZero',
-      'Taker collateral must be greater than zero',
+      'Predictor collateral must be greater than zero',
     ],
     [
       'InvalidMarketsAccordingToResolver',
@@ -166,7 +180,8 @@ export function buildSimulationStateOverride(params: {
   simulationAddress: `0x${string}`;
   collateralTokenAddress: `0x${string}`;
   predictionMarketAddress: `0x${string}`;
-  makerCollateralWei: bigint;
+  /** Wei amount of the counterparty's collateral (used to size the state override). */
+  counterpartyCollateralWei: bigint;
 }): Array<{
   address: `0x${string}`;
   balance?: bigint;
@@ -176,7 +191,7 @@ export function buildSimulationStateOverride(params: {
     simulationAddress,
     collateralTokenAddress,
     predictionMarketAddress,
-    makerCollateralWei,
+    counterpartyCollateralWei,
   } = params;
 
   const balanceSlot = getSoladyBalanceSlot(simulationAddress);
@@ -184,7 +199,7 @@ export function buildSimulationStateOverride(params: {
     simulationAddress,
     predictionMarketAddress
   );
-  const sufficientBalance = makerCollateralWei + 1n;
+  const sufficientBalance = counterpartyCollateralWei + 1n;
 
   return [
     {

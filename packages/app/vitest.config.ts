@@ -15,6 +15,11 @@ export default defineConfig({
   resolve: {
     alias: {
       '~': path.resolve(__dirname, 'src'),
+      // constants/chain is not in the SDK export map but is imported by app code
+      '@sapience/sdk/constants/chain': path.resolve(
+        __dirname,
+        '../sdk/constants/chain.ts'
+      ),
     },
   },
 });

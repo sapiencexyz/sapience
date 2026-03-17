@@ -7,6 +7,5 @@ export * from './positions';
 export * from './forecasts';
 export * from './leaderboard';
 export * from './analytics';
-export * from './trades';
 export * from './questions';
 export * from './pickConfigurations';

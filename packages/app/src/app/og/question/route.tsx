@@ -231,77 +231,80 @@ async function fetchEstimate(conditionId: string): Promise<number | null> {
   const predictorCollateral = parseUnits('1', 18).toString();
   const nowSec = Math.floor(Date.now() / 1000);
 
-  return new Promise<number | null>((resolve) => {
-    let settled = false;
-
-    const timeout = setTimeout(() => {
-      if (settled) return;
-      settled = true;
-      client.close();
-      resolve(null);
-    }, ESTIMATE_TIMEOUT_MS);
-
-    const client = createEscrowAuctionWs(
-      RELAYER_WS_URL,
-      {
-        onOpen: () => {
-          client.startAuction({
-            picks: picks.map((p) => ({
-              conditionResolver: p.conditionResolver,
-              conditionId: p.conditionId,
-              predictedOutcome: p.predictedOutcome,
-            })),
-            predictorCollateral,
-            predictor: zeroAddress,
-            predictorNonce: 0,
-            predictorDeadline: nowSec + 300,
-            chainId: DEFAULT_CHAIN_ID,
-          });
-        },
-        onAuctionBids: (payload) => {
-          if (settled) return;
-
-          const bids = payload?.bids;
-          if (!Array.isArray(bids)) return;
-
-          const quoterBid = bids.find(
-            (b) =>
-              b.counterparty?.toLowerCase() ===
-              PREFERRED_ESTIMATE_QUOTER.toLowerCase()
-          );
-          if (!quoterBid) return;
-
-          settled = true;
-          clearTimeout(timeout);
-          client.close();
-
-          const predictorColl = BigInt(predictorCollateral);
-          const counterpartyColl = BigInt(
-            String(
-              (quoterBid as Record<string, unknown>).counterpartyCollateral ||
-                '0'
-            )
-          );
-          const denom = predictorColl + counterpartyColl;
-          if (denom === 0n) {
-            resolve(null);
-            return;
-          }
-          const prob = Number(predictorColl) / Number(denom);
-          const clamped = Math.max(0, Math.min(1, prob));
-          resolve(clamped);
-        },
-        onError: () => {
-          if (settled) return;
-          settled = true;
-          clearTimeout(timeout);
-          client.close();
-          resolve(null);
-        },
-      },
-      { maxRetries: 0 }
-    );
+  let settled = false;
+  let resolvePromise: (value: number | null) => void;
+  const promise = new Promise<number | null>((resolve) => {
+    resolvePromise = resolve;
   });
+
+  const client = await createEscrowAuctionWs(
+    RELAYER_WS_URL,
+    {
+      onOpen: () => {
+        client.startAuction({
+          picks: picks.map((p) => ({
+            conditionResolver: p.conditionResolver,
+            conditionId: p.conditionId,
+            predictedOutcome: p.predictedOutcome,
+          })),
+          predictorCollateral,
+          predictor: zeroAddress,
+          predictorNonce: 0,
+          predictorDeadline: nowSec + 300,
+          chainId: DEFAULT_CHAIN_ID,
+        });
+      },
+      onAuctionBids: (payload) => {
+        if (settled) return;
+
+        const bids = payload?.bids;
+        if (!Array.isArray(bids)) return;
+
+        const quoterBid = bids.find(
+          (b) =>
+            b.counterparty?.toLowerCase() ===
+            PREFERRED_ESTIMATE_QUOTER.toLowerCase()
+        );
+        if (!quoterBid) return;
+
+        settled = true;
+        clearTimeout(timeout);
+        client.close();
+
+        const predictorColl = BigInt(predictorCollateral);
+        const counterpartyColl = BigInt(
+          String(
+            (quoterBid as Record<string, unknown>).counterpartyCollateral || '0'
+          )
+        );
+        const denom = predictorColl + counterpartyColl;
+        if (denom === 0n) {
+          resolvePromise(null);
+          return;
+        }
+        const prob = Number(predictorColl) / Number(denom);
+        const clamped = Math.max(0, Math.min(1, prob));
+        resolvePromise(clamped);
+      },
+      onError: () => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        client.close();
+        resolvePromise(null);
+      },
+    },
+    { maxRetries: 0 }
+  );
+
+  const timeout = setTimeout(() => {
+    if (settled) return;
+    settled = true;
+    client.close();
+    resolvePromise(null);
+  }, ESTIMATE_TIMEOUT_MS);
+
+  return promise;
 }
 
 export async function GET(req: Request) {
