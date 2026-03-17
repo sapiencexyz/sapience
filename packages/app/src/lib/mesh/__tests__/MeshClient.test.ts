@@ -448,6 +448,57 @@ describe('MeshClient', () => {
       capturedEvents.onMessage('peer-1', JSON.stringify({ id: 'abc' }));
       expect(handler).not.toHaveBeenCalled();
     });
+
+    it('ignores messages where hops is not a finite number', () => {
+      client.connect();
+      const handler = vi.fn();
+      client.onAny(handler);
+
+      // String hops (type coercion attack)
+      capturedEvents.onMessage(
+        'peer-1',
+        JSON.stringify(makeEnvelope({ type: 'test', hops: '0' }))
+      );
+      // NaN hops
+      capturedEvents.onMessage(
+        'peer-1',
+        JSON.stringify(makeEnvelope({ type: 'test', hops: NaN }))
+      );
+      // Infinity hops
+      capturedEvents.onMessage(
+        'peer-1',
+        JSON.stringify(makeEnvelope({ type: 'test', hops: Infinity }))
+      );
+      expect(handler).not.toHaveBeenCalled();
+    });
+
+    it('ignores messages where ts is not a finite number', () => {
+      client.connect();
+      const handler = vi.fn();
+      client.onAny(handler);
+
+      capturedEvents.onMessage(
+        'peer-1',
+        JSON.stringify(makeEnvelope({ type: 'test', ts: 'not-a-timestamp' }))
+      );
+      capturedEvents.onMessage(
+        'peer-1',
+        JSON.stringify(makeEnvelope({ type: 'test', ts: null }))
+      );
+      expect(handler).not.toHaveBeenCalled();
+    });
+
+    it('ignores messages where origin is not a string', () => {
+      client.connect();
+      const handler = vi.fn();
+      client.onAny(handler);
+
+      capturedEvents.onMessage(
+        'peer-1',
+        JSON.stringify(makeEnvelope({ type: 'test', origin: 123 }))
+      );
+      expect(handler).not.toHaveBeenCalled();
+    });
   });
 
   describe('peer count', () => {
@@ -740,6 +791,23 @@ describe('MeshClient', () => {
       mockGetConnectedPeerIds.mockReturnValue(['p1', 'p2']);
       mockBroadcastToPeers.mockClear();
 
+      fanoutClient.broadcast('test', { data: 1 });
+
+      expect(mockBroadcastToPeers).toHaveBeenCalled();
+      expect(mockSendToPeers).not.toHaveBeenCalled();
+      fanoutClient.disconnect();
+    });
+
+    it('handles maxFanout larger than peer count without crashing', () => {
+      const fanoutClient = new MeshClient({
+        signalUrl: 'ws://localhost:3001',
+        maxFanout: 100,
+      });
+      fanoutClient.connect();
+      mockGetConnectedPeerIds.mockReturnValue(['p1', 'p2', 'p3']);
+      mockBroadcastToPeers.mockClear();
+
+      // Should fall back to broadcastToPeers since 3 peers <= 100 fanout
       fanoutClient.broadcast('test', { data: 1 });
 
       expect(mockBroadcastToPeers).toHaveBeenCalled();

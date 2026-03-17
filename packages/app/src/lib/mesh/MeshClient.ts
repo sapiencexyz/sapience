@@ -46,6 +46,22 @@ function makeId(): string {
     : `${Math.random().toString(36).slice(2)}${Date.now()}`;
 }
 
+function isValidEnvelope(v: unknown): v is GossipEnvelope {
+  if (typeof v !== 'object' || v === null) return false;
+  const m = v as Record<string, unknown>;
+  return (
+    typeof m.id === 'string' &&
+    m.id.length > 0 &&
+    typeof m.type === 'string' &&
+    m.type.length > 0 &&
+    typeof m.hops === 'number' &&
+    Number.isFinite(m.hops) &&
+    typeof m.ts === 'number' &&
+    Number.isFinite(m.ts) &&
+    typeof m.origin === 'string'
+  );
+}
+
 export class MeshClient {
   private peerManager: PeerManager;
   private nodeId = makeId();
@@ -218,11 +234,12 @@ export class MeshClient {
       return;
     }
     // Fisher-Yates partial shuffle to pick maxFanout peers
-    for (let i = ids.length - 1; i > ids.length - 1 - this.maxFanout; i--) {
+    const fanout = Math.min(this.maxFanout, ids.length);
+    for (let i = ids.length - 1; i > ids.length - 1 - fanout; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [ids[i], ids[j]] = [ids[j], ids[i]];
     }
-    this.peerManager.sendToPeers(data, ids.slice(ids.length - this.maxFanout));
+    this.peerManager.sendToPeers(data, ids.slice(ids.length - fanout));
   }
 
   private handleIncoming(raw: string, peerId: string): void {
@@ -230,12 +247,13 @@ export class MeshClient {
 
     let msg: GossipEnvelope;
     try {
-      msg = JSON.parse(raw) as GossipEnvelope;
+      const parsed: unknown = JSON.parse(raw);
+      if (!isValidEnvelope(parsed)) return;
+      msg = parsed;
     } catch {
       return;
     }
 
-    if (!msg.id || !msg.type) return;
     if (this.seen.has(msg.id)) return;
     if (msg.hops >= this.maxHops) return;
     if (Date.now() - msg.ts > this.seenTtlMs) return;

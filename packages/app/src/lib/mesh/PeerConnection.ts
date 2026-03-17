@@ -65,6 +65,13 @@ export class PeerConnection {
   }
 
   private setupDataChannel(dc: RTCDataChannel): void {
+    // Clear old data channel listeners before replacing
+    if (this.dc) {
+      this.dc.onopen = null;
+      this.dc.onclose = null;
+      this.dc.onerror = null;
+      this.dc.onmessage = null;
+    }
     this.dc = dc;
     this.log(
       `setupDataChannel peer=${this.peerId} label=${dc.label} state=${dc.readyState}`
@@ -146,7 +153,19 @@ export class PeerConnection {
   }
 
   close(): void {
-    this.dc?.close();
+    // Clear data channel listeners
+    if (this.dc) {
+      this.dc.onopen = null;
+      this.dc.onclose = null;
+      this.dc.onerror = null;
+      this.dc.onmessage = null;
+      this.dc.close();
+    }
+    // Clear RTCPeerConnection listeners
+    this.pc.onicecandidate = null;
+    this.pc.ondatachannel = null;
+    this.pc.oniceconnectionstatechange = null;
+    this.pc.onconnectionstatechange = null;
     this.pc.close();
   }
 }

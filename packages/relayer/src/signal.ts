@@ -198,7 +198,7 @@ export function createSignalWebSocketServer(
     });
     const heartbeat = setInterval(() => {
       if (!alive.value) {
-        ws.terminate();
+        ws.close(1008, 'heartbeat_timeout');
         return;
       }
       alive.value = false;
