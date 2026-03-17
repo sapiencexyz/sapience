@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 import "@openzeppelin/contracts/utils/cryptography/EIP712.sol";
 import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "./IAccountFactory.sol";
+import "./ECDSAHelper.sol";
 
 /**
  * @title SignatureValidator
@@ -135,15 +136,7 @@ abstract contract SignatureValidator is EIP712 {
         );
 
         bytes32 hash = _hashTypedDataV4(structHash);
-        (address recoveredSigner, ECDSA.RecoverError err,) =
-            ECDSA.tryRecover(hash, signature);
-
-        if (err != ECDSA.RecoverError.NoError || recoveredSigner == address(0))
-        {
-            return false;
-        }
-
-        return recoveredSigner == signer;
+        return ECDSAHelper.isValidECDSASignature(hash, signature, signer);
     }
 
     /// @notice Gas limit for EIP-1271 signature validation calls
@@ -282,15 +275,7 @@ abstract contract SignatureValidator is EIP712 {
         );
 
         bytes32 hash = _hashTypedDataV4(structHash);
-        (address recoveredSigner, ECDSA.RecoverError err,) =
-            ECDSA.tryRecover(hash, signature);
-
-        if (err != ECDSA.RecoverError.NoError || recoveredSigner == address(0))
-        {
-            return false;
-        }
-
-        return recoveredSigner == signer;
+        return ECDSAHelper.isValidECDSASignature(hash, signature, signer);
     }
 
     /// @notice Validate burn signature for EOA or smart contract with EIP-1271 fallback
@@ -407,17 +392,10 @@ abstract contract SignatureValidator is EIP712 {
             )
         );
         bytes32 burnDigest = _hashTypedDataV4(burnStructHash);
-        {
-            (address recoveredSessionKey, ECDSA.RecoverError err,) =
-                ECDSA.tryRecover(burnDigest, sessionKeySignature);
-
-            if (
-                err != ECDSA.RecoverError.NoError
-                    || recoveredSessionKey == address(0)
-                    || recoveredSessionKey != sessionApproval.sessionKey
-            ) {
-                return false;
-            }
+        if (!ECDSAHelper.isValidECDSASignature(
+                burnDigest, sessionKeySignature, sessionApproval.sessionKey
+            )) {
+            return false;
         }
 
         // 2. Verify the owner authorized this session key
@@ -425,28 +403,23 @@ abstract contract SignatureValidator is EIP712 {
             return false;
         }
 
-        {
-            bytes32 sessionStructHash = keccak256(
-                abi.encode(
-                    SESSION_KEY_APPROVAL_TYPEHASH,
-                    sessionApproval.sessionKey,
-                    sessionApproval.smartAccount,
-                    sessionApproval.validUntil,
-                    sessionApproval.permissionsHash,
-                    sessionApproval.chainId
-                )
-            );
-            bytes32 sessionHash = _hashTypedDataV4(sessionStructHash);
-            (address recoveredOwner, ECDSA.RecoverError err,) =
-                ECDSA.tryRecover(sessionHash, sessionApproval.ownerSignature);
-
-            if (
-                err != ECDSA.RecoverError.NoError
-                    || recoveredOwner == address(0)
-                    || recoveredOwner != sessionApproval.owner
-            ) {
-                return false;
-            }
+        bytes32 sessionStructHash = keccak256(
+            abi.encode(
+                SESSION_KEY_APPROVAL_TYPEHASH,
+                sessionApproval.sessionKey,
+                sessionApproval.smartAccount,
+                sessionApproval.validUntil,
+                sessionApproval.permissionsHash,
+                sessionApproval.chainId
+            )
+        );
+        bytes32 sessionHash = _hashTypedDataV4(sessionStructHash);
+        if (!ECDSAHelper.isValidECDSASignature(
+                sessionHash,
+                sessionApproval.ownerSignature,
+                sessionApproval.owner
+            )) {
+            return false;
         }
 
         // 3. Verify the smart account is derived from the owner
@@ -575,17 +548,10 @@ abstract contract SignatureValidator is EIP712 {
             )
         );
         bytes32 mintHash = _hashTypedDataV4(mintStructHash);
-        {
-            (address recoveredSessionKey, ECDSA.RecoverError err,) =
-                ECDSA.tryRecover(mintHash, sessionKeySignature);
-
-            if (
-                err != ECDSA.RecoverError.NoError
-                    || recoveredSessionKey == address(0)
-                    || recoveredSessionKey != sessionApproval.sessionKey
-            ) {
-                return false;
-            }
+        if (!ECDSAHelper.isValidECDSASignature(
+                mintHash, sessionKeySignature, sessionApproval.sessionKey
+            )) {
+            return false;
         }
 
         // 2. Verify the owner authorized this session key
@@ -594,28 +560,23 @@ abstract contract SignatureValidator is EIP712 {
             return false;
         }
 
-        {
-            bytes32 sessionStructHash = keccak256(
-                abi.encode(
-                    SESSION_KEY_APPROVAL_TYPEHASH,
-                    sessionApproval.sessionKey,
-                    sessionApproval.smartAccount,
-                    sessionApproval.validUntil,
-                    sessionApproval.permissionsHash,
-                    sessionApproval.chainId
-                )
-            );
-            bytes32 sessionHash = _hashTypedDataV4(sessionStructHash);
-            (address recoveredOwner, ECDSA.RecoverError err,) =
-                ECDSA.tryRecover(sessionHash, sessionApproval.ownerSignature);
-
-            if (
-                err != ECDSA.RecoverError.NoError
-                    || recoveredOwner == address(0)
-                    || recoveredOwner != sessionApproval.owner
-            ) {
-                return false;
-            }
+        bytes32 sessionStructHash = keccak256(
+            abi.encode(
+                SESSION_KEY_APPROVAL_TYPEHASH,
+                sessionApproval.sessionKey,
+                sessionApproval.smartAccount,
+                sessionApproval.validUntil,
+                sessionApproval.permissionsHash,
+                sessionApproval.chainId
+            )
+        );
+        bytes32 sessionHash = _hashTypedDataV4(sessionStructHash);
+        if (!ECDSAHelper.isValidECDSASignature(
+                sessionHash,
+                sessionApproval.ownerSignature,
+                sessionApproval.owner
+            )) {
+            return false;
         }
 
         // 3. Verify the smart account is derived from the owner
