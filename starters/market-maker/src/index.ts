@@ -499,7 +499,7 @@ async function handleAuction(auction: AuctionDetails, submitBid: (payload: Retur
 // Main — connect via SDK WebSocket client
 // ============================================================================
 
-function start() {
+async function start() {
   if (!VERIFYING_CONTRACT) {
     logger.error('Cannot start: PredictionMarketEscrow contract address not available');
     return;
@@ -507,7 +507,7 @@ function start() {
 
   void prepareCollateral();
 
-  const client = createEscrowAuctionWs(RELAYER_WS_URL, {
+  const client = await createEscrowAuctionWs(RELAYER_WS_URL, {
     onOpen: () => {
       logger.success('🔌 Connected to relayer');
       logger.info([

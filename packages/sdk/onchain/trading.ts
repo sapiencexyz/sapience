@@ -3,8 +3,8 @@ import {
   createWalletClient,
   http,
   encodeFunctionData,
-  parseAbi,
   type Chain,
+  type Hex,
   type PublicClient,
   type WalletClient,
   type Transport,
@@ -21,22 +21,7 @@ import {
   etherealChain,
   getRpcUrl,
 } from '../constants/chain';
-
-type Hex = `0x${string}`;
-
-// WUSDe ABI for wrap/unwrap operations
-const WUSDE_ABI = parseAbi([
-  'function deposit() payable',
-  'function withdraw(uint256 amount)',
-  'function balanceOf(address account) view returns (uint256)',
-]);
-
-// ERC20 ABI for approvals
-const ERC20_ABI = parseAbi([
-  'function approve(address spender, uint256 amount) returns (bool)',
-  'function allowance(address owner, address spender) view returns (uint256)',
-  'function balanceOf(address account) view returns (uint256)',
-]);
+import { WUSDE_ABI, ERC20_ABI } from './sharedAbis';
 
 /**
  * Create a public client for the trading chain
