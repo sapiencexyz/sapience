@@ -76,7 +76,10 @@ contract MockSmartAccountCompact is IERC1271 {
                 r := mload(add(signature, 32))
                 vs := mload(add(signature, 64))
             }
-            s = vs & bytes32(0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff);
+            s = vs
+                & bytes32(
+                    0x7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff
+                );
             v = uint8(uint256(vs >> 255)) + 27;
         } else {
             return 0xffffffff;
