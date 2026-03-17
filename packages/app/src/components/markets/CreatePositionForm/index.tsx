@@ -61,7 +61,7 @@ import { useSponsorStatus } from '~/hooks/sponsorship/useSponsorStatus';
 import { usePositionProgress } from '~/hooks/forms/usePositionProgress';
 import { useAuctionStart, type QuoteBid } from '~/lib/auction/useAuctionStart';
 
-import { useValidatedEscrowBids } from '~/hooks/auction/useValidatedEscrowBids';
+import { useValidatedBids } from '~/hooks/auction/useValidatedBids';
 import {
   DEFAULT_POSITION_SIZE,
   getMaxPositionSize,
@@ -494,7 +494,7 @@ const CreatePositionFormInner = ({
   const auctionSponsorAddress = currentAuctionParams?.predictorSponsor;
 
   // Validate escrow bids: unified Tier 2 validation (on-chain sig verification + nonce + balance)
-  const { validatedBids: bids } = useValidatedEscrowBids(rawBids, {
+  const { validatedBids: bids } = useValidatedBids(rawBids, {
     chainId: positionChainId,
     predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
     collateralTokenAddress: collateralToken,
