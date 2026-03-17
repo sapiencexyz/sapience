@@ -74,6 +74,7 @@ export async function fetchAttestationByUid(
       },
     }),
   });
+  if (!resp.ok) return null;
   const json = await resp.json();
   const attestations: AttestationData[] = json?.data?.attestations ?? [];
   return attestations[0] ?? null;

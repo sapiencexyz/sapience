@@ -120,6 +120,7 @@ export async function fetchPredictionWithConditions(
       variables: { id: predictionId },
     }),
   });
+  if (!resp.ok) return { prediction: null, conditions: [] };
   const json = await resp.json();
   const prediction: PredictionData | null = json?.data?.prediction ?? null;
   if (!prediction) return { prediction: null, conditions: [] };
@@ -128,16 +129,22 @@ export async function fetchPredictionWithConditions(
     prediction.pickConfig?.picks.map((p) => p.conditionId) ?? [];
   if (conditionIds.length === 0) return { prediction, conditions: [] };
 
-  const condResp = await fetch(endpoint, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      query: CONDITIONS_BY_IDS_QUERY,
-      variables: { where: { id: { in: conditionIds } } },
-    }),
-  });
-  const condJson = await condResp.json();
-  const conditions: (ConditionData & { id: string })[] =
-    condJson?.data?.conditions ?? [];
+  let conditions: (ConditionData & { id: string })[] = [];
+  try {
+    const condResp = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query: CONDITIONS_BY_IDS_QUERY,
+        variables: { where: { id: { in: conditionIds } } },
+      }),
+    });
+    if (condResp.ok) {
+      const condJson = await condResp.json();
+      conditions = condJson?.data?.conditions ?? [];
+    }
+  } catch {
+    // Condition fetch is non-critical
+  }
   return { prediction, conditions };
 }
