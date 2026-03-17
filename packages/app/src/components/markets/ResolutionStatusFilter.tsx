@@ -17,12 +17,14 @@ import { cn } from '@sapience/ui/lib/utils';
 
 export type ResolutionStatusFilterValue =
   | 'all'
+  | 'resolved'
   | 'resolvedYes'
   | 'resolvedNo'
   | 'unresolved';
 
 const OPTIONS: { value: ResolutionStatusFilterValue; label: string }[] = [
   { value: 'all', label: 'All Markets' },
+  { value: 'resolved', label: 'Resolved' },
   { value: 'resolvedYes', label: 'Resolved Yes' },
   { value: 'resolvedNo', label: 'Resolved No' },
   { value: 'unresolved', label: 'Unresolved' },
