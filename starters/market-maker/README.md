@@ -1,12 +1,15 @@
 # Market Maker Starter
 
+> [!TIP] > **This project is designed to be used with AI coding agents.** Point [Claude Code](https://docs.anthropic.com/en/docs/claude-code), [Codex](https://openai.com/index/introducing-codex/), Cursor, or any code-aware LLM at this directory and ask it to build your strategy. The `CLAUDE.md` file provides full architectural context so agents can navigate and extend the codebase autonomously.
+
 A pluggable auction market maker that connects to the Sapience relayer and dynamically quotes prediction market auctions using pricing strategies.
 
-> **Note:** The built-in strategies are simple starting points designed to demonstrate
+> [!WARNING]
+> The built-in strategies are simple starting points designed to demonstrate
 > the strategy interface and get you up and running quickly. They use basic models
 > (single-parameter Black-Scholes for Pyth, raw Gamma API mid-price for Polymarket)
-> and do not include risk management, position sizing, inventory tracking, exposure
-> limits, or correlation handling. You should build on top of these foundations with
+> and **do not include risk management, position sizing, inventory tracking, exposure
+> limits, or correlation handling.** You should build on top of these foundations with
 > your own pricing logic and risk controls before deploying with real capital.
 
 **Built-in strategies:**
