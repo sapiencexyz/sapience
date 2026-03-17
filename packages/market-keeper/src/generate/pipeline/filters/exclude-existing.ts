@@ -6,16 +6,21 @@ import type { PolymarketMarket } from '../../../types';
 import type { Filter, FilterResult } from '../types';
 import { fetchWithRetry } from '../../../utils';
 
+export interface ExistingCondition {
+  endTime: number;
+}
+
 /**
  * Check which condition IDs already exist in Sapience API
  * Uses GraphQL to batch query by condition IDs
+ * Returns a Map of conditionId → { endTime }
  */
 export async function checkExistingConditions(
   apiUrl: string,
   conditionIds: string[]
-): Promise<Set<string>> {
+): Promise<Map<string, ExistingCondition>> {
   if (conditionIds.length === 0) {
-    return new Set();
+    return new Map();
   }
 
   try {
@@ -25,6 +30,7 @@ export async function checkExistingConditions(
       query CheckConditions($where: ConditionWhereInput!) {
         conditions(where: $where, take: 100) {
           id
+          endTime
         }
       }
     `;
@@ -34,7 +40,7 @@ export async function checkExistingConditions(
     for (let i = 0; i < conditionIds.length; i += PAGE_SIZE) {
       chunks.push(conditionIds.slice(i, i + PAGE_SIZE));
     }
-    const existingIds = new Set<string>();
+    const existing = new Map<string, ExistingCondition>();
     for (const chunk of chunks) {
       const response = await fetchWithRetry(graphqlUrl, {
         method: 'POST',
@@ -52,17 +58,17 @@ export async function checkExistingConditions(
 
       const result = await response.json();
       for (const condition of result.data?.conditions ?? []) {
-        existingIds.add(condition.id);
+        existing.set(condition.id, { endTime: condition.endTime });
       }
     }
 
     console.log(
-      `[API] Found ${existingIds.size}/${conditionIds.length} conditions already exist`
+      `[API] Found ${existing.size}/${conditionIds.length} conditions already exist`
     );
-    return existingIds;
+    return existing;
   } catch (error) {
     console.warn(`[API] Error checking existing conditions: ${error}`);
-    return new Set(); // On error, proceed with all markets
+    return new Map(); // On error, proceed with all markets
   }
 }
 
@@ -73,8 +79,12 @@ export async function checkExistingConditions(
 export class ExcludeExistingMarketsFilter implements Filter<PolymarketMarket> {
   name = 'exclude-existing';
   description = 'Skip markets already in Sapience';
+  private existingIds: Set<string>;
 
-  constructor(private existingIds: Set<string>) {}
+  constructor(existing: Set<string> | Map<string, ExistingCondition>) {
+    this.existingIds =
+      existing instanceof Set ? existing : new Set(existing.keys());
+  }
 
   apply(markets: PolymarketMarket[]): FilterResult<PolymarketMarket> {
     const kept: PolymarketMarket[] = [];

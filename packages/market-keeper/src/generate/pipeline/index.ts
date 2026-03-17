@@ -41,7 +41,10 @@ import {
   NonCryptoConditionFilter,
   NonCryptoGroupFilter,
 } from './filters/exclude-crypto';
-import { ExcludeExistingMarketsFilter } from './filters/exclude-existing';
+import {
+  ExcludeExistingMarketsFilter,
+  type ExistingCondition,
+} from './filters/exclude-existing';
 
 // Re-export types and utilities
 export type {
@@ -51,7 +54,10 @@ export type {
   PipelineResult,
 } from './types';
 export type { MarketGroup } from './filters/volume-threshold';
-export { checkExistingConditions } from './filters/exclude-existing';
+export {
+  checkExistingConditions,
+  type ExistingCondition,
+} from './filters/exclude-existing';
 export { matchesAlwaysIncludePatterns } from './filters/always-include';
 
 /**
@@ -146,9 +152,9 @@ export const API_CONDITION_FILTERS: Filter<SapienceCondition>[] = [
  * Note: Filter must be constructed with existing IDs (fetched async)
  */
 export function createLlmPreFilter(
-  existingIds: Set<string>
+  existing: Set<string> | Map<string, ExistingCondition>
 ): Filter<PolymarketMarket>[] {
-  return [new ExcludeExistingMarketsFilter(existingIds)];
+  return [new ExcludeExistingMarketsFilter(existing)];
 }
 
 /**
