@@ -247,8 +247,22 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
             );
           }
 
-          // Subscribe to auction updates
+          // Replay any bids that arrived while waiting for the ack.
+          // Quoters can respond before the relayer acks, so bids keyed to
+          // the relayer-assigned ID (or the optimistic ID) may be buffered.
           const activeId = latestAuctionIdRef.current;
+          if (activeId && pendingBidsRef.current.size > 0) {
+            const buffered = pendingBidsRef.current.get(activeId);
+            if (buffered && buffered.length > 0) {
+              log(
+                `[escrow] Replaying ${buffered.length} buffered bid(s) for ${activeId.slice(0, 8)}`
+              );
+              setBids(buffered);
+            }
+            pendingBidsRef.current.clear();
+          }
+
+          // Subscribe to auction updates
           if (activeId) {
             client.send({
               type: 'auction.subscribe',
@@ -336,11 +350,13 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
     return () => {
       offMessage();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [wsUrl]);
 
   const requestQuotes = useCallback(
     async (
       params: AuctionParams | null,
+      // eslint-disable-next-line @typescript-eslint/no-shadow
       options?: { forceRefresh?: boolean }
     ) => {
       if (!params || !wsUrl) return;
@@ -517,6 +533,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
         );
       }, 10_000);
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [wsUrl, walletAddress, signTypedDataAsync]
   );
 
@@ -593,6 +610,7 @@ export function useAuctionStart(options?: UseAuctionStartOptions) {
         predictorSponsorData: auction.predictorSponsorData,
       };
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [auctionId]
   );
 

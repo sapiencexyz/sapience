@@ -1,8 +1,6 @@
 'use client';
 
 import type { Address } from 'viem';
-import { ReconnectingWebSocketClient } from './ReconnectingWebSocket';
-import { getSharedMeshClient } from './MeshAuctionClient';
 import {
   isValidGossipPayload,
   validateGossipPayloadAsync,
@@ -10,6 +8,8 @@ import {
 } from '@sapience/sdk/auction/gossipValidation';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants/chain';
+import { ReconnectingWebSocketClient } from './ReconnectingWebSocket';
+import { getSharedMeshClient } from './MeshAuctionClient';
 
 /** Message types that should be gossiped over the mesh for redundancy. */
 const MESH_TYPES = new Set([
@@ -137,6 +137,10 @@ class AuctionWsClient {
       (msg: unknown) => {
         const data = msg as Record<string, unknown>;
         if (!shouldMesh(data)) return;
+        // Dedup BEFORE async validation to prevent a race where two
+        // identical messages both enter the async path and both pass
+        // the dedup check after their validations resolve.
+        if (!this.dedup(data)) return;
         const inner =
           (data.payload as Record<string, unknown> | undefined) ?? data;
         const msgType = data.type as string;
@@ -144,7 +148,6 @@ class AuctionWsClient {
         validateGossipPayloadAsync(msgType, inner, getValidationContext())
           .then((valid) => {
             if (!valid) return;
-            if (!this.dedup(data)) return;
             cb(msg);
           })
           .catch(() => {

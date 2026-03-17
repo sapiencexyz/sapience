@@ -469,6 +469,21 @@ describe('validateGossipPayloadAsync', () => {
     ).toBe(false);
   });
 
+  it('returns false when signature verification throws', async () => {
+    // Build a payload that passes structural checks but will cause
+    // validateAuctionRFQ to throw (e.g., malformed signature data).
+    const { payload } = await makeSignedAuctionRFQ();
+    // Corrupt the signature to a value that passes the format regex
+    // but causes viem's verifyTypedData to throw internally.
+    payload.intentSignature = ('0x' + 'ff'.repeat(65)) as `0x${string}`;
+    const result = await validateGossipPayloadAsync(
+      'auction.start',
+      payload,
+      makeCtx()
+    );
+    expect(result).toBe(false);
+  });
+
   // ── auction.start ──
 
   describe('auction.start', () => {

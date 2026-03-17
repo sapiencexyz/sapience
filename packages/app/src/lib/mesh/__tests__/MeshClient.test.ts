@@ -182,6 +182,38 @@ describe('MeshClient', () => {
       expect(badHandler).toHaveBeenCalled();
       expect(goodHandler).toHaveBeenCalled();
     });
+
+    it('onAny handlers still run when on() handler throws', () => {
+      client.connect();
+      const badTyped = vi.fn().mockImplementation(() => {
+        throw new Error('typed handler boom');
+      });
+      const anyHandler = vi.fn();
+      client.on('test', badTyped);
+      client.onAny(anyHandler);
+
+      const env = makeEnvelope({ type: 'test' });
+      capturedEvents.onMessage('peer-1', JSON.stringify(env));
+
+      expect(badTyped).toHaveBeenCalled();
+      expect(anyHandler).toHaveBeenCalledWith('test', env.payload);
+    });
+
+    it('on() handlers still run when onAny handler throws', () => {
+      client.connect();
+      const badAny = vi.fn().mockImplementation(() => {
+        throw new Error('any handler boom');
+      });
+      const typedHandler = vi.fn();
+      client.onAny(badAny);
+      client.on('test', typedHandler);
+
+      const env = makeEnvelope({ type: 'test' });
+      capturedEvents.onMessage('peer-1', JSON.stringify(env));
+
+      expect(badAny).toHaveBeenCalled();
+      expect(typedHandler).toHaveBeenCalledWith('test', env.payload);
+    });
   });
 
   describe('deduplication', () => {

@@ -369,6 +369,51 @@ describe('AuctionWsClient deduplication', () => {
     expect(received).toHaveLength(1);
   });
 
+  it('deduplicates concurrent identical mesh messages before async validation resolves', async () => {
+    const client = getSharedAuctionWsClient('ws://localhost:9999');
+    const received: unknown[] = [];
+    client.addMessageListener((msg) => received.push(msg));
+
+    // Make async validation slow so both messages enter the pipeline
+    // before the first one resolves.
+    let resolveValidation!: (v: boolean) => void;
+    validateGossipPayloadAsyncMock.mockImplementation(
+      () =>
+        new Promise<boolean>((resolve) => {
+          resolveValidation = resolve;
+        })
+    );
+
+    const msg = {
+      id: 'concurrent-dedup-1',
+      type: 'auction.bids',
+      auctionId: 'a1',
+      bids: [
+        {
+          auctionId: 'a1',
+          counterparty: '0x1234567890123456789012345678901234567890',
+          counterpartyCollateral: '100',
+        },
+      ],
+    };
+
+    // Deliver the same message twice before validation resolves.
+    // Because dedup runs synchronously before async validation,
+    // the second message should be dropped immediately.
+    deliverFromMesh(msg);
+    deliverFromMesh(msg);
+
+    // Resolve the (single) pending validation
+    resolveValidation(true);
+    await vi.advanceTimersByTimeAsync(50);
+
+    // Only one message should be delivered
+    expect(received).toHaveLength(1);
+    // Async validation should only have been called once (second message
+    // was deduped before reaching validation)
+    expect(validateGossipPayloadAsyncMock).toHaveBeenCalledTimes(1);
+  });
+
   it('expires dedup entries after SEEN_TTL even when map is small', async () => {
     const client = getSharedAuctionWsClient('ws://localhost:9999');
     const received: unknown[] = [];

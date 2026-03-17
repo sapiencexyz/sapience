@@ -158,32 +158,37 @@ export async function validateGossipPayloadAsync(
 
   const p = payload as Record<string, unknown>;
 
-  switch (type) {
-    case 'auction.start':
-    case 'auction.started': {
-      const result = await validateAuctionRFQ(
-        p as unknown as AuctionRFQPayload,
-        {
-          verifyingContract: ctx.verifyingContract,
-          chainId: ctx.chainId,
-          requireSignature: true,
-        }
-      );
-      return result.status === 'valid';
+  try {
+    switch (type) {
+      case 'auction.start':
+      case 'auction.started': {
+        const result = await validateAuctionRFQ(
+          p as unknown as AuctionRFQPayload,
+          {
+            verifyingContract: ctx.verifyingContract,
+            chainId: ctx.chainId,
+            requireSignature: true,
+          }
+        );
+        return result.status === 'valid';
+      }
+
+      // Bids and status messages — structural check already passed.
+      // Bid signatures are verified on-chain at settlement; no auction
+      // context needed here.
+      case 'bid.submit':
+      case 'auction.bids':
+      case 'bid.ack':
+      case 'auction.filled':
+      case 'auction.expired':
+      case 'order.created':
+        return true;
+
+      default:
+        return false;
     }
-
-    // Bids and status messages — structural check already passed.
-    // Bid signatures are verified on-chain at settlement; no auction
-    // context needed here.
-    case 'bid.submit':
-    case 'auction.bids':
-    case 'bid.ack':
-    case 'auction.filled':
-    case 'auction.expired':
-    case 'order.created':
-      return true;
-
-    default:
-      return false;
+  } catch {
+    // Signature verification or other validation errors — treat as invalid
+    return false;
   }
 }
