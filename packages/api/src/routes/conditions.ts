@@ -204,7 +204,7 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
-// PUT /admin/conditions/:id - update editable fields (cannot change claimStatement or endTime)
+// PUT /admin/conditions/:id - update editable fields (cannot change claimStatement)
 router.put('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -261,15 +261,9 @@ router.put('/:id', async (req: Request, res: Response) => {
         return res.status(400).json({ message: 'Invalid endTime' });
       }
       if (endTimeInt !== existing.endTime) {
-        // Allow forward extension only (new > existing), reject shortening
         if (existing.settled) {
           return res.status(400).json({
             message: 'endTime cannot be changed on a settled condition',
-          });
-        }
-        if (existing.endTime !== null && endTimeInt < existing.endTime) {
-          return res.status(400).json({
-            message: 'endTime can only be extended forward, not shortened',
           });
         }
         newEndTime = endTimeInt;
