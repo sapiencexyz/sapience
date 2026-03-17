@@ -14,7 +14,7 @@
  *   ETH_RPC_URL         — Ethereum mainnet RPC (default: https://eth.llamarpc.com)
  */
 
-import { execSync } from 'node:child_process';
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -49,8 +49,12 @@ console.log('[pin] Uploading to Pinata...');
 let cid;
 try {
   // Try using the pinata-web3 SDK via npx
-  const result = execSync(
-    `npx --yes pinata upload --jwt "${PINATA_JWT}" --name "sapience-ipfs-$(date +%Y%m%d-%H%M%S)" "${OUT_DIR}"`,
+  const now = new Date();
+  const pad = (n) => String(n).padStart(2, '0');
+  const ts = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
+  const result = execFileSync(
+    'npx',
+    ['--yes', 'pinata', 'upload', '--jwt', PINATA_JWT, '--name', `sapience-ipfs-${ts}`, OUT_DIR],
     { encoding: 'utf-8', stdio: ['pipe', 'pipe', 'pipe'] }
   );
   const match = result.match(/Qm\w{44}|bafy\w+/);
@@ -67,16 +71,16 @@ if (!cid) {
 
   // Create a tar of the directory and upload
   const tarPath = path.join(OUT_DIR, '..', 'ipfs-build.tar.gz');
-  execSync(`tar -czf "${tarPath}" -C "${OUT_DIR}" .`, { stdio: 'inherit' });
+  execFileSync('tar', ['-czf', tarPath, '-C', OUT_DIR, '.'], { stdio: 'inherit' });
 
-  const curlResult = execSync(
-    `curl -s -X POST "https://api.pinata.cloud/pinning/pinFileToIPFS" ` +
-    `-H "Authorization: Bearer ${PINATA_JWT}" ` +
-    `-F "file=@${tarPath};type=application/gzip" ` +
-    `-F 'pinataMetadata={"name":"sapience-ipfs"}' ` +
-    `-F 'pinataOptions={"wrapWithDirectory":false}'`,
-    { encoding: 'utf-8' }
-  );
+  const curlResult = execFileSync('curl', [
+    '-s', '-X', 'POST',
+    'https://api.pinata.cloud/pinning/pinFileToIPFS',
+    '-H', `Authorization: Bearer ${PINATA_JWT}`,
+    '-F', `file=@${tarPath};type=application/gzip`,
+    '-F', 'pinataMetadata={"name":"sapience-ipfs"}',
+    '-F', 'pinataOptions={"wrapWithDirectory":false}',
+  ], { encoding: 'utf-8' });
   fs.unlinkSync(tarPath);
 
   try {
