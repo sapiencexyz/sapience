@@ -280,9 +280,9 @@ export const secondaryMarketEscrow: ChainAddressMap = {
  */
 export const onboardingSponsor: ChainAddressMap = {
   5064014: {
-    // Ethereal mainnet — deployed 2026-03-09
-    address: '0x4DDB0fD9be45c3F86aF25B661a0e18403DB0602d',
-    legacy: [] as const,
+    // Ethereal mainnet — redeployed 2026-03-17
+    address: '0xFB177fd4eC88b813e88178Fa898D75651Dece8ED',
+    legacy: ['0x4DDB0fD9be45c3F86aF25B661a0e18403DB0602d'] as const,
   },
   13374202: {
     // Ethereal testnet - TODO: deploy
