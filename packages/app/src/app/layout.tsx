@@ -126,7 +126,7 @@ const RootLayout = ({ children }: RootLayoutProps) => {
               <CommandMenu />
               <Toaster />
               <InstallDialog />
-              <div className="fixed bottom-5 right-4 md:right-6 z-[55]">
+              <div className="fixed bottom-5 right-4 sm:bottom-14 sm:right-6 z-[55]">
                 <Suspense fallback={null}>
                   <FloatingChatButton />
                 </Suspense>

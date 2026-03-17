@@ -31,6 +31,11 @@ import {
   DEFAULT_CHAIN_ID,
   CHAIN_ID_ETHEREAL_TESTNET,
 } from '@sapience/sdk/constants';
+import {
+  setMeshRateLimit as applyMeshRateLimit,
+  setMeshMaxPeers as applyMeshMaxPeers,
+  setMeshFanout as applyMeshFanout,
+} from '~/lib/ws/MeshAuctionClient';
 import Loader from '~/components/shared/Loader';
 import SegmentedTabsList from '~/components/shared/SegmentedTabsList';
 
@@ -164,6 +169,7 @@ const SettingsPageContent = () => {
   const {
     graphqlEndpoint,
     apiBaseUrl,
+    signalEndpoint,
     chatBaseUrl,
     etherealRpcURL,
     arbitrumRpcURL,
@@ -173,8 +179,12 @@ const SettingsPageContent = () => {
     researchAgentTemperature,
     showAmericanOdds,
     connectionDurationHours,
+    meshRateLimit,
+    meshMaxPeers,
+    meshFanout,
     setGraphqlEndpoint,
     setApiBaseUrl,
+    setSignalEndpoint,
     setChatBaseUrl,
     setEtherealRpcUrl,
     setArbitrumRpcUrl,
@@ -184,11 +194,15 @@ const SettingsPageContent = () => {
     setResearchAgentTemperature,
     setShowAmericanOdds,
     setConnectionDurationHours,
+    setMeshRateLimit,
+    setMeshMaxPeers,
+    setMeshFanout,
     defaults,
   } = useSettings();
   const [mounted, setMounted] = useState(false);
   const [gqlInput, setGqlInput] = useState('');
   const [apiInput, setApiInput] = useState('');
+  const [signalInput, setSignalInput] = useState('');
   const [chatInput, setChatInput] = useState('');
   const [etherealRpcInput, setEtherealRpcInput] = useState('');
   const [arbitrumRpcInput, setArbitrumRpcInput] = useState('');
@@ -198,6 +212,9 @@ const SettingsPageContent = () => {
   const [temperatureInput, setTemperatureInput] = useState<number>(0.7);
   const [connectionDurationInput, setConnectionDurationInput] =
     useState<string>(String(DEFAULT_CONNECTION_DURATION_HOURS));
+  const [meshRateLimitInput, setMeshRateLimitInput] = useState<number>(100);
+  const [meshMaxPeersInput, setMeshMaxPeersInput] = useState<number>(25);
+  const [meshFanoutInput, setMeshFanoutInput] = useState<number>(0);
   const [isModelFocused, setIsModelFocused] = useState(false);
   const [activeTab, setActiveTab] = useState<'network' | 'interface' | 'agent'>(
     'network'
@@ -233,6 +250,7 @@ const SettingsPageContent = () => {
     if (!mounted) return;
     setGqlInput(graphqlEndpoint || defaults.graphqlEndpoint);
     setApiInput(apiBaseUrl ?? defaults.apiBaseUrl);
+    setSignalInput(signalEndpoint ?? defaults.signalEndpoint);
     setChatInput(chatBaseUrl ?? defaults.chatBaseUrl);
     setEtherealRpcInput(etherealRpcURL ?? defaults.etherealRpcURL);
     setArbitrumRpcInput(arbitrumRpcURL ?? defaults.arbitrumRpcURL);
@@ -250,6 +268,9 @@ const SettingsPageContent = () => {
     setConnectionDurationInput(
       String(connectionDurationHours ?? defaults.connectionDurationHours)
     );
+    setMeshRateLimitInput(meshRateLimit ?? defaults.meshRateLimit);
+    setMeshMaxPeersInput(meshMaxPeers ?? defaults.meshMaxPeers);
+    setMeshFanoutInput(meshFanout ?? defaults.meshFanout);
     setHydrated(true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [mounted]);
@@ -437,23 +458,6 @@ const SettingsPageContent = () => {
                     </div>
 
                     <div className="grid gap-2">
-                      <Label htmlFor="relayer-endpoint">Relayer Endpoint</Label>
-                      <SettingField
-                        id="relayer-endpoint"
-                        value={apiInput}
-                        setValue={setApiInput}
-                        defaultValue={defaults.apiBaseUrl}
-                        onPersist={setApiBaseUrl}
-                        validate={isHttpUrl}
-                        normalizeOnChange={normalizeBase}
-                        invalidMessage="Must be an absolute http(s) base URL"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Used to relay bids for positions
-                      </p>
-                    </div>
-
-                    <div className="grid gap-2">
                       <Label htmlFor="chat-endpoint">Chat Endpoint</Label>
                       <SettingField
                         id="chat-endpoint"
@@ -476,6 +480,121 @@ const SettingsPageContent = () => {
                         </button>{' '}
                         to send and receive signed messages
                       </p>
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label htmlFor="relayer-endpoint">Relayer Endpoint</Label>
+                      <SettingField
+                        id="relayer-endpoint"
+                        value={apiInput}
+                        setValue={setApiInput}
+                        defaultValue={defaults.apiBaseUrl}
+                        onPersist={setApiBaseUrl}
+                        validate={isHttpUrl}
+                        normalizeOnChange={normalizeBase}
+                        invalidMessage="Must be an absolute http(s) base URL"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Used to relay bids for positions
+                      </p>
+                    </div>
+
+                    <div className="grid gap-2">
+                      <Label htmlFor="signal-endpoint">Signal Endpoint</Label>
+                      <SettingField
+                        id="signal-endpoint"
+                        value={signalInput}
+                        setValue={setSignalInput}
+                        defaultValue={defaults.signalEndpoint}
+                        onPersist={setSignalEndpoint}
+                        validate={isHttpUrl}
+                        normalizeOnChange={normalizeBase}
+                        invalidMessage="Must be an absolute http(s) base URL"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        WebRTC signaling server for mesh peer discovery
+                      </p>
+                    </div>
+
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                      <div className="grid gap-2">
+                        <Label htmlFor="mesh-rate-limit">Mesh Rate Limit</Label>
+                        <div className="relative">
+                          <Input
+                            id="mesh-rate-limit"
+                            type="number"
+                            min={0}
+                            className="pr-14"
+                            value={meshRateLimitInput}
+                            onChange={(e) => {
+                              const v = parseInt(e.target.value, 10);
+                              if (Number.isFinite(v)) setMeshRateLimitInput(v);
+                            }}
+                            onBlur={() => {
+                              const v = Math.max(0, meshRateLimitInput);
+                              setMeshRateLimitInput(v);
+                              setMeshRateLimit(v);
+                              applyMeshRateLimit(v);
+                            }}
+                          />
+                          <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
+                            msg/s
+                          </span>
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Max inbound messages per peer per second
+                        </p>
+                      </div>
+
+                      <div className="grid gap-2">
+                        <Label htmlFor="mesh-max-peers">Max Peers</Label>
+                        <div>
+                          <Input
+                            id="mesh-max-peers"
+                            type="number"
+                            min={0}
+                            value={meshMaxPeersInput}
+                            onChange={(e) => {
+                              const v = parseInt(e.target.value, 10);
+                              if (Number.isFinite(v)) setMeshMaxPeersInput(v);
+                            }}
+                            onBlur={() => {
+                              const v = Math.max(0, meshMaxPeersInput);
+                              setMeshMaxPeersInput(v);
+                              setMeshMaxPeers(v);
+                              applyMeshMaxPeers(v);
+                            }}
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Max WebRTC data channel connections
+                        </p>
+                      </div>
+
+                      <div className="grid gap-2">
+                        <Label htmlFor="mesh-fanout">Fanout</Label>
+                        <div>
+                          <Input
+                            id="mesh-fanout"
+                            type="number"
+                            min={0}
+                            value={meshFanoutInput}
+                            onChange={(e) => {
+                              const v = parseInt(e.target.value, 10);
+                              if (Number.isFinite(v)) setMeshFanoutInput(v);
+                            }}
+                            onBlur={() => {
+                              const v = Math.max(0, meshFanoutInput);
+                              setMeshFanoutInput(v);
+                              setMeshFanout(v);
+                              applyMeshFanout(v);
+                            }}
+                          />
+                        </div>
+                        <p className="text-xs text-muted-foreground">
+                          Peers to forward messages to (0 = all connected peers)
+                        </p>
+                      </div>
                     </div>
                   </div>
                 </CardContent>
