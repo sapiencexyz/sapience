@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { encodeAbiParameters, encodeEventTopics, pad, type Block } from 'viem';
+import { encodeAbiParameters, encodeEventTopics, type Block } from 'viem';
 
 // --- Mocks ---
 
@@ -86,7 +86,7 @@ describe('processManualConditionSettled', () => {
     await processManualConditionSettled(CTX, log as never, MOCK_BLOCK);
 
     expect(mockSettleCondition).toHaveBeenCalledOnce();
-    const [tag, passedLog, block, input] = mockSettleCondition.mock.calls[0];
+    const [tag, _passedLog, _block, input] = mockSettleCondition.mock.calls[0];
     expect(tag).toContain('ConditionSettledIndexer');
     expect(tag).toContain('13374202');
     expect(input.conditionId).toBe(CONDITION_ID.toLowerCase());
