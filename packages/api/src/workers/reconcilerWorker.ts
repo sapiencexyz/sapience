@@ -91,6 +91,14 @@ function getIndexersByChain(): Map<
   for (const [slug, indexer] of Object.entries(INDEXERS)) {
     if (!indexer?.client) continue;
 
+    // Skip EAS indexer — it runs on Arbitrum's public RPC which has
+    // aggressive rate limits. The Background Worker handles EAS; the
+    // reconciler focuses on Ethereal chain events.
+    if (slug.startsWith('attestation-')) {
+      console.log(`${LOG_PREFIX} Skipping ${slug} (EAS on Arbitrum — rate-limited)`);
+      continue;
+    }
+
     const chainId = (
       indexer.client as PublicClient & { chain?: { id: number } }
     ).chain?.id;
