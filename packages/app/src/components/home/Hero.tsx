@@ -49,7 +49,7 @@ export default function Hero() {
     };
   }, []);
   return (
-    <section className="relative isolate flex flex-col w-full overflow-hidden min-h-[calc(100dvh-var(--page-top-offset,0px))] pb-[var(--ticker-height,0px)]">
+    <section className="relative isolate flex flex-col w-full overflow-hidden min-h-[calc(100dvh-var(--page-top-offset,0px)-32px)] pb-[var(--ticker-height,0px)]">
       <HeroBackgroundLines />
       <div className="relative z-10 container mx-auto lg:max-w-6xl xl:max-w-7xl 2xl:max-w-[1440px] px-4 md:px-8 flex-1 flex flex-col justify-center gap-8 pt-6 pb-20 md:pt-8 md:pb-24">
         <div className="relative z-10 w-full flex flex-col items-center">

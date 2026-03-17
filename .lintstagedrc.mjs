@@ -1,10 +1,17 @@
 /** @type {import('lint-staged').Config} */
 export default {
   // App — uses --max-warnings=0 (strictest package)
-  'packages/app/src/**/*.{js,jsx,ts,tsx}': (files) => [
-    `bash -c 'cd packages/app && npx eslint --fix --max-warnings=0 ${files.join(' ')}'`,
-    `prettier --write ${files.join(' ')}`,
-  ],
+  // Filter out test files since eslint ignores them (*.test.ts) and the
+  // "File ignored" message counts as a warning under --max-warnings=0.
+  'packages/app/src/**/*.{js,jsx,ts,tsx}': (files) => {
+    const nonTest = files.filter((f) => !f.includes('.test.'));
+    return [
+      ...(nonTest.length > 0
+        ? [`bash -c 'cd packages/app && npx eslint --fix --max-warnings=0 ${nonTest.join(' ')}'`]
+        : []),
+      `prettier --write ${files.join(' ')}`,
+    ];
+  },
 
   // API
   'packages/api/src/**/*.{js,ts}': (files) => [

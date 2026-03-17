@@ -54,6 +54,7 @@ import {
   useSettings,
   DEFAULT_CONNECTION_DURATION_HOURS,
 } from '~/lib/context/SettingsContext';
+import { StatusIndicators } from '~/components/layout/StatusIndicators';
 
 const USER_REFERRAL_STATUS_QUERY = `
   query UserReferralStatus($wallet: String!) {
@@ -815,23 +816,7 @@ const Header = () => {
             </Button>
           </div>
           <div className="flex flex-col gap-2 text-xs w-full ml-4 rounded-lg -mt-1">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[hsl(var(--brand-white))]">Powered by</span>
-              <a
-                href="https://ethena.fi"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="inline-flex items-center"
-              >
-                <Image
-                  src="/ethena.svg"
-                  alt="Ethena"
-                  width={64}
-                  height={18}
-                  className="dark:invert opacity-90 hover:opacity-100 transition-opacity duration-200"
-                />
-              </a>
-            </div>
+            <StatusIndicators />
             <div className="flex items-center gap-3 pb-3">
               <a
                 href="https://docs.sapience.xyz/terms-of-service"

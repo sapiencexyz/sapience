@@ -188,7 +188,8 @@ export function useEscrowBidSubmission(
         return { success: false, error: 'Realtime connection not configured' };
       }
 
-      // Validate predictor can fund the mint before we sign (avoid wasting signature on dead auction)
+      // Best-effort check — predictor may batch approval with the mint tx,
+      // so insufficient allowance here is expected and should not block the bid.
       try {
         const publicClient = getPublicClientForChainId(chainId);
         await validateCounterpartyFunds(
@@ -198,14 +199,8 @@ export function useEscrowBidSubmission(
           verifyingContract,
           publicClient
         );
-      } catch (err) {
-        if (err instanceof Error && err.message.includes('market maker')) {
-          return {
-            success: false,
-            error: `Predictor cannot fund this auction`,
-          };
-        }
-        // RPC error — don't block the bid
+      } catch {
+        // Don't block — predictor funds are verified on-chain at settlement
       }
 
       // Calculate deadline with optional clamping
