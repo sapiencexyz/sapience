@@ -23,7 +23,18 @@
     "incremental": true,
     "strictNullChecks": true
   },
-  "include": ["index.ts", "auction", "queries", "types"],
+  "include": [
+    "index.ts",
+    "auction",
+    "queries",
+    "types",
+    "abis",
+    "constants",
+    "contracts",
+    "relayer",
+    "onchain",
+    "session"
+  ],
   "exclude": [
     "node_modules",
     "dist",
