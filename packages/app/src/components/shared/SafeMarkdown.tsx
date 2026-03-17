@@ -36,7 +36,6 @@ const ALLOWED_TAGS_COMPACT = [
   'strong',
   'em',
   'code',
-  'a',
   'ul',
   'ol',
   'li',

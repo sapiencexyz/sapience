@@ -365,8 +365,8 @@ const ApprovalDialog: React.FC = () => {
           toast({
             title: 'Approval submitted',
             description:
-              'Waiting for the updated allowance took longer than expected. Please wait a moment and try again if needed.',
-            duration: 6000,
+              'Allowance confirmation is taking longer than usual.',
+            duration: 5000,
           });
         } catch (e) {
           if (allowanceWaitIdRef.current !== waitId) return; // cancelled/replaced
@@ -374,8 +374,8 @@ const ApprovalDialog: React.FC = () => {
           toast({
             title: 'Approval submitted',
             description:
-              'We could not confirm the updated allowance yet. Please wait a moment and try again if needed.',
-            duration: 6000,
+              'Could not confirm the updated allowance.',
+            duration: 5000,
           });
           console.error('Failed while waiting for allowance update:', e);
         }

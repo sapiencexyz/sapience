@@ -6,7 +6,7 @@
  * @module onchain/position
  */
 
-import { encodeFunctionData, erc20Abi, parseAbi, zeroAddress } from 'viem';
+import { encodeFunctionData, erc20Abi, zeroAddress } from 'viem';
 import type { Address, Hex } from 'viem';
 import { predictionMarketEscrowAbi } from '../abis';
 import {
@@ -14,11 +14,7 @@ import {
   CHAIN_ID_ETHEREAL_TESTNET,
 } from '../constants/chain';
 import { collateralToken } from '../contracts/addresses';
-
-const WUSDE_ABI = parseAbi([
-  'function deposit() payable',
-  'function withdraw(uint256 amount)',
-]);
+import { WUSDE_ABI } from './sharedAbis';
 
 /**
  * Safely convert a string / number / bigint to bigint.

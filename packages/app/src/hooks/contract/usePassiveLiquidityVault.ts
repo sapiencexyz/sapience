@@ -7,8 +7,8 @@ import {
   collateralToken,
 } from '@sapience/sdk/contracts';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { predictionMarketVaultAbi } from '@sapience/sdk/abis';
 import {
-  predictionMarketVaultAbi,
   formatVaultAssetAmount,
   formatVaultSharesAmount,
   formatUtilizationRate,

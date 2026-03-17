@@ -5,10 +5,9 @@ import {
   parseEther,
   type Account,
   type CallReturnType,
+  type Hex,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-
-type Hex = `0x${string}`;
 
 export async function simulateTransaction(args: {
   rpc: string;
