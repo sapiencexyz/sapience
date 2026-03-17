@@ -115,4 +115,54 @@ describe('fetchEventTags', () => {
 
     expect(result.size).toBe(0);
   });
+
+  it('paginates when a page returns exactly PAGE_SIZE (500) events', async () => {
+    // First page: 500 events (triggers next page fetch)
+    const page1 = Array.from({ length: 500 }, (_, i) => ({
+      slug: `event-${i}`,
+      tags: [{ label: 'Tag', slug: 'tag' }],
+    }));
+    // Second page: fewer than 500 (signals end)
+    const page2 = [
+      {
+        slug: 'event-500',
+        tags: [{ label: 'Final', slug: 'final' }],
+      },
+    ];
+
+    mockFetchWithRetry
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(page1) })
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(page2) });
+
+    const result = await fetchEventTags(opts);
+
+    expect(result.size).toBe(501);
+    expect(result.get('event-0')).toEqual(['Tag']);
+    expect(result.get('event-500')).toEqual(['Final']);
+    expect(mockFetchWithRetry).toHaveBeenCalledTimes(2);
+    // Verify offset parameter
+    expect(mockFetchWithRetry.mock.calls[0][0]).toContain('offset=0');
+    expect(mockFetchWithRetry.mock.calls[1][0]).toContain('offset=500');
+  });
+
+  it('stops paginating on API error mid-pagination', async () => {
+    const page1 = Array.from({ length: 500 }, (_, i) => ({
+      slug: `event-${i}`,
+      tags: [{ label: 'Tag', slug: 'tag' }],
+    }));
+
+    mockFetchWithRetry
+      .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve(page1) })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 429,
+        statusText: 'Too Many Requests',
+      });
+
+    const result = await fetchEventTags(opts);
+
+    // Should still return what was fetched from page 1
+    expect(result.size).toBe(500);
+    expect(mockFetchWithRetry).toHaveBeenCalledTimes(2);
+  });
 });
