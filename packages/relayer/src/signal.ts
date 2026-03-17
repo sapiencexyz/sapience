@@ -2,7 +2,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { randomUUID } from 'crypto';
 import type { IncomingMessage } from 'http';
 
-const MAX_PEERS_ANNOUNCE = 8;
+const MAX_PEERS_ANNOUNCE = 25;
 const HEARTBEAT_INTERVAL_MS = 30_000;
 
 /** Only these message types are forwarded between peers. */

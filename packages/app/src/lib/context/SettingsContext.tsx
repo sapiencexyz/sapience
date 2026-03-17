@@ -387,8 +387,8 @@ export const SettingsProvider = ({
       researchAgentTemperature: 0.7,
       showAmericanOdds: false,
       connectionDurationHours: DEFAULT_CONNECTION_DURATION_HOURS,
-      meshRateLimit: 30,
-      meshMaxPeers: 6,
+      meshRateLimit: 100,
+      meshMaxPeers: 25,
       meshFanout: 0,
     }),
     []

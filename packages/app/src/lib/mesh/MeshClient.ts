@@ -9,7 +9,7 @@ export interface MeshConfig {
   seenTtlMs?: number;
   /** Max hop count before dropping. Default 10. */
   maxHops?: number;
-  /** Max inbound messages per peer per second. 0 = unlimited. Default 30. */
+  /** Max inbound messages per peer per second. 0 = unlimited. Default 100. */
   rateLimitPerSec?: number;
   /** Max inbound message size in bytes. Default 16_384. */
   maxMessageSize?: number;
@@ -75,7 +75,7 @@ export class MeshClient {
     this.maxSeenSize = config.maxSeenSize ?? 10_000;
     this.seenTtlMs = config.seenTtlMs ?? 120_000;
     this.maxHops = config.maxHops ?? 10;
-    this.rateLimitPerSec = config.rateLimitPerSec ?? 30;
+    this.rateLimitPerSec = config.rateLimitPerSec ?? 100;
     this.maxMessageSize = config.maxMessageSize ?? 16_384;
     this.maxFanout = config.maxFanout ?? 0;
 

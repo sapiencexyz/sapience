@@ -29,7 +29,7 @@ interface SignalMsg {
   data?: unknown;
 }
 
-const DEFAULT_MAX_PEERS = 6;
+const DEFAULT_MAX_PEERS = 25;
 const DEFAULT_MAX_KNOWN_PEERS = 500;
 const DEFAULT_STALE_PEER_MS = 30_000;
 const PRUNE_INTERVAL_MS = 10_000;

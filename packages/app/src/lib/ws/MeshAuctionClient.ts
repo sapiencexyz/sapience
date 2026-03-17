@@ -7,8 +7,8 @@ import { getSignalUrl } from './signalUrl';
 const RL_KEY = 'sapience.settings.meshRateLimit';
 const MAX_PEERS_KEY = 'sapience.settings.meshMaxPeers';
 const FANOUT_KEY = 'sapience.settings.meshFanout';
-const DEFAULT_RL = 30;
-const DEFAULT_MAX_PEERS = 6;
+const DEFAULT_RL = 100;
+const DEFAULT_MAX_PEERS = 25;
 const DEFAULT_FANOUT = 0;
 
 function readRateLimit(): number {

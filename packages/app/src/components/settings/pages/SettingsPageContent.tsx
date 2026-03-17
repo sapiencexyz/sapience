@@ -212,8 +212,8 @@ const SettingsPageContent = () => {
   const [temperatureInput, setTemperatureInput] = useState<number>(0.7);
   const [connectionDurationInput, setConnectionDurationInput] =
     useState<string>(String(DEFAULT_CONNECTION_DURATION_HOURS));
-  const [meshRateLimitInput, setMeshRateLimitInput] = useState<number>(30);
-  const [meshMaxPeersInput, setMeshMaxPeersInput] = useState<number>(6);
+  const [meshRateLimitInput, setMeshRateLimitInput] = useState<number>(100);
+  const [meshMaxPeersInput, setMeshMaxPeersInput] = useState<number>(25);
   const [meshFanoutInput, setMeshFanoutInput] = useState<number>(0);
   const [isModelFocused, setIsModelFocused] = useState(false);
   const [activeTab, setActiveTab] = useState<'network' | 'interface' | 'agent'>(
