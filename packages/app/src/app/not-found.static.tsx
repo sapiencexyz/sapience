@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import SpaFallbackRouter from '~/components/ipfs/SpaFallbackRouter';
+import SpaFallbackRouter from '~/components/static/SpaFallbackRouter';
 
 export const metadata: Metadata = {
   title: '404 Not Found',

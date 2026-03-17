@@ -1,10 +1,13 @@
 #!/usr/bin/env node
 /**
- * IPFS static build orchestrator.
+ * Static build orchestrator.
  *
- * 1. Swaps *.ipfs.tsx overrides into place
+ * Produces a fully client-renderable static export suitable for hosting
+ * on IPFS, S3, Cloudflare Pages, or any static file server.
+ *
+ * 1. Swaps *.static.tsx overrides into place
  * 2. Removes server-only route handlers and dynamic route pages
- * 3. Runs `next build` with NEXT_BUILD_TARGET=ipfs
+ * 3. Runs `next build` with NEXT_BUILD_TARGET=static
  * 4. Restores all files (guaranteed via finally)
  * 5. Post-processes the `out/` directory for SPA hosting
  */
@@ -24,7 +27,7 @@ const backups = new Map();
 
 function backup(filePath) {
   if (!fs.existsSync(filePath)) return;
-  const tmp = filePath + '.__ipfs_backup__';
+  const tmp = filePath + '.__static_backup__';
   fs.copyFileSync(filePath, tmp);
   backups.set(filePath, tmp);
 }
@@ -69,19 +72,19 @@ function findFiles(dir, pattern) {
 }
 
 try {
-  console.log('[ipfs] Starting IPFS static build...\n');
+  console.log('[static] Starting static build...\n');
 
-  // ── Step 1: Swap *.ipfs.tsx / *.ipfs.ts overrides ───────────────────
-  const ipfsOverrides = findFiles(SRC_APP, /\.ipfs\.tsx?$/);
-  for (const override of ipfsOverrides) {
-    const target = override.replace(/\.ipfs\.(tsx?)$/, '.$1');
+  // ── Step 1: Swap *.static.tsx / *.static.ts overrides ─────────────
+  const staticOverrides = findFiles(SRC_APP, /\.static\.tsx?$/);
+  for (const override of staticOverrides) {
+    const target = override.replace(/\.static\.(tsx?)$/, '.$1');
     const basename = path.basename(target);
     if (!['page.tsx', 'not-found.tsx', 'manifest.ts'].includes(basename)) continue;
     if (fs.existsSync(target)) {
       backup(target);
     }
     fs.copyFileSync(override, target);
-    console.log(`[ipfs]   swapped ${path.relative(APP_ROOT, override)} → ${path.relative(APP_ROOT, target)}`);
+    console.log(`[static]   swapped ${path.relative(APP_ROOT, override)} → ${path.relative(APP_ROOT, target)}`);
   }
 
   // ── Step 2: Remove route handlers ──────────────────────────────────
@@ -109,10 +112,10 @@ try {
 
   for (const handler of routeHandlers) {
     removeWithBackup(handler);
-    console.log(`[ipfs]   removed ${path.relative(APP_ROOT, handler)}`);
+    console.log(`[static]   removed ${path.relative(APP_ROOT, handler)}`);
   }
 
-  // ── Step 3: Remove Sentry configs (not needed for static IPFS build) ─
+  // ── Step 3: Remove Sentry configs (not needed for static build) ────
   const sentryFiles = [
     path.join(APP_ROOT, 'sentry.server.config.ts'),
     path.join(APP_ROOT, 'sentry.edge.config.ts'),
@@ -122,7 +125,7 @@ try {
   ];
   for (const f of sentryFiles) {
     removeWithBackup(f);
-    console.log(`[ipfs]   removed ${path.relative(APP_ROOT, f)}`);
+    console.log(`[static]   removed ${path.relative(APP_ROOT, f)}`);
   }
 
   // ── Step 4: Remove dynamic route pages ─────────────────────────────
@@ -135,18 +138,18 @@ try {
 
   for (const page of dynamicPages) {
     removeWithBackup(page);
-    console.log(`[ipfs]   removed ${path.relative(APP_ROOT, page)}`);
+    console.log(`[static]   removed ${path.relative(APP_ROOT, page)}`);
   }
 
   // ── Step 5: Run next build ─────────────────────────────────────────
-  console.log('\n[ipfs] Running next build...\n');
+  console.log('\n[static] Running next build...\n');
   execSync('npx next build', {
     cwd: APP_ROOT,
     stdio: 'inherit',
     env: {
       ...process.env,
-      NEXT_BUILD_TARGET: 'ipfs',
-      // Disable Sentry completely for IPFS builds
+      NEXT_BUILD_TARGET: 'static',
+      // Disable Sentry completely for static builds
       SENTRY_DSN: '',
       NEXT_PUBLIC_SENTRY_DSN: '',
     },
@@ -154,19 +157,19 @@ try {
 
   // ── Step 6: Post-process out/ (file restoration handled by finally block)
 
-  console.log('[ipfs] Post-processing output...');
+  console.log('[static] Post-processing output...');
 
   // Copy 404.html → 200.html (SPA fallback)
   const html404 = path.join(OUT_DIR, '404.html');
   const html200 = path.join(OUT_DIR, '200.html');
   if (fs.existsSync(html404)) {
     fs.copyFileSync(html404, html200);
-    console.log('[ipfs]   copied 404.html → 200.html');
+    console.log('[static]   copied 404.html → 200.html');
   }
 
   // Write _redirects (Fleek / 4EVERLAND SPA fallback)
   fs.writeFileSync(path.join(OUT_DIR, '_redirects'), '/* /200.html 200\n');
-  console.log('[ipfs]   wrote _redirects');
+  console.log('[static]   wrote _redirects');
 
   // Write _headers
   fs.writeFileSync(
@@ -176,11 +179,11 @@ try {
   Access-Control-Allow-Origin: *
 `
   );
-  console.log('[ipfs]   wrote _headers');
+  console.log('[static]   wrote _headers');
 
-  console.log('\n[ipfs] IPFS build complete! Output at packages/app/out/');
+  console.log('\n[static] Static build complete! Output at packages/app/out/');
 } catch (err) {
-  console.error('\n[ipfs] Build failed:', err.message);
+  console.error('\n[static] Build failed:', err.message);
   process.exitCode = 1;
 } finally {
   // Guarantee restoration even on failure

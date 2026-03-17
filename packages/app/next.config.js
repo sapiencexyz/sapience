@@ -1,5 +1,5 @@
-if (process.env.NEXT_BUILD_TARGET === 'ipfs') {
-  module.exports = require('./next.config.ipfs.js');
+if (process.env.NEXT_BUILD_TARGET === 'static') {
+  module.exports = require('./next.config.static.js');
 } else {
 
 /** @type {import('next').NextConfig} */
@@ -105,4 +105,4 @@ module.exports = isProduction
   ? withSentryConfig(nextConfig, sentryConfig)
   : nextConfig;
 
-} // end NEXT_BUILD_TARGET !== 'ipfs'
+} // end NEXT_BUILD_TARGET !== 'static'

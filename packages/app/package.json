@@ -22,7 +22,7 @@
     "push-release": "git push --follow-tags origin main",
     "prepare": "echo 'Skipping husky install'",
     "format:check": "prettier --check src",
-    "build:ipfs": "node scripts/build-ipfs.mjs",
+    "build:static": "node scripts/build-static.mjs",
     "pin:ipfs": "node scripts/pin-ipfs.mjs"
   },
   "dependencies": {

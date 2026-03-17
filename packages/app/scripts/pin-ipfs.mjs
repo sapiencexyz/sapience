@@ -31,7 +31,7 @@ const { values } = parseArgs({
 });
 
 if (!fs.existsSync(OUT_DIR)) {
-  console.error('[pin] No out/ directory found. Run `pnpm build:ipfs` first.');
+  console.error('[pin] No out/ directory found. Run `pnpm build:static` first.');
   process.exit(1);
 }
 

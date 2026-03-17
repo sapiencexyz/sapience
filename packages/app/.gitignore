@@ -53,8 +53,8 @@ sitemap*.xml
 # VS Code
 .vscode/settings.json
 
-# IPFS build backup files
-*.__ipfs_backup__
+# Static build backup files
+*.__static_backup__
 
 # Sentry Config File
 .env.sentry-build-plugin
