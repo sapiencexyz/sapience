@@ -119,23 +119,13 @@ abstract contract SignatureValidator is EIP712 {
         uint256 deadline,
         bytes memory signature
     ) internal view returns (bool isValid) {
-        // Check deadline
         if (block.timestamp > deadline) {
             return false;
         }
 
-        bytes32 structHash = keccak256(
-            abi.encode(
-                MINT_APPROVAL_TYPEHASH,
-                predictionHash,
-                signer,
-                collateral,
-                nonce,
-                deadline
-            )
+        bytes32 hash = getMintApprovalHash(
+            predictionHash, signer, collateral, nonce, deadline
         );
-
-        bytes32 hash = _hashTypedDataV4(structHash);
         return ECDSAHelper.isValidECDSASignature(hash, signature, signer);
     }
 
@@ -167,14 +157,30 @@ abstract contract SignatureValidator is EIP712 {
         }
     }
 
-    /// @notice Validate signature for EOA or smart contract with EIP-1271 fallback
-    /// @param predictionHash Hash of the prediction parameters
+    /// @notice Validate signature: try ECDSA first, fallback to EIP-1271 for contracts
+    /// @param hash The EIP-712 typed data hash
     /// @param signer Expected signer address (EOA or smart contract)
-    /// @param collateral Collateral amount for this signer
-    /// @param nonce Nonce for replay protection
-    /// @param deadline Signature expiration timestamp
-    /// @param signature The signature (ECDSA for EOA, or signature validated by EIP-1271)
-    /// @return isValid True if the signature is valid
+    /// @param signature The signature bytes
+    /// @return isValid True if the signature is valid via either path
+    function _validateSignatureWithFallback(
+        bytes32 hash,
+        address signer,
+        bytes memory signature
+    ) internal view returns (bool isValid) {
+        // Try ECDSA first (for EOAs)
+        if (ECDSAHelper.isValidECDSASignature(hash, signature, signer)) {
+            return true;
+        }
+
+        // Fallback to EIP-1271 for contracts
+        if (signer.code.length > 0) {
+            return _isEIP1271SignatureValid(signer, hash, signature);
+        }
+
+        return false;
+    }
+
+    /// @notice Validate signature for EOA or smart contract with EIP-1271 fallback
     function _isApprovalValidWithEIP1271Fallback(
         bytes32 predictionHash,
         address signer,
@@ -187,30 +193,10 @@ abstract contract SignatureValidator is EIP712 {
             return false;
         }
 
-        // Try ECDSA first (for EOAs)
-        if (_isApprovalValid(
-                predictionHash, signer, collateral, nonce, deadline, signature
-            )) {
-            return true;
-        }
-
-        // Fallback to EIP-1271 for contracts
-        if (signer.code.length > 0) {
-            bytes32 structHash = keccak256(
-                abi.encode(
-                    MINT_APPROVAL_TYPEHASH,
-                    predictionHash,
-                    signer,
-                    collateral,
-                    nonce,
-                    deadline
-                )
-            );
-            bytes32 hash = _hashTypedDataV4(structHash);
-            return _isEIP1271SignatureValid(signer, hash, signature);
-        }
-
-        return false;
+        bytes32 hash = getMintApprovalHash(
+            predictionHash, signer, collateral, nonce, deadline
+        );
+        return _validateSignatureWithFallback(hash, signer, signature);
     }
 
     /// @notice Get the hash that should be signed offchain for mint approval
@@ -262,31 +248,13 @@ abstract contract SignatureValidator is EIP712 {
             return false;
         }
 
-        bytes32 structHash = keccak256(
-            abi.encode(
-                BURN_APPROVAL_TYPEHASH,
-                burnHash,
-                signer,
-                tokenAmount,
-                payout,
-                nonce,
-                deadline
-            )
+        bytes32 hash = getBurnApprovalHash(
+            burnHash, signer, tokenAmount, payout, nonce, deadline
         );
-
-        bytes32 hash = _hashTypedDataV4(structHash);
         return ECDSAHelper.isValidECDSASignature(hash, signature, signer);
     }
 
     /// @notice Validate burn signature for EOA or smart contract with EIP-1271 fallback
-    /// @param burnHash Hash of the burn parameters
-    /// @param signer Expected signer address (EOA or smart contract)
-    /// @param tokenAmount Token amount for this signer
-    /// @param payout Payout amount for this signer
-    /// @param nonce Nonce for replay protection
-    /// @param deadline Signature expiration timestamp
-    /// @param signature The signature (ECDSA for EOA, or signature validated by EIP-1271)
-    /// @return isValid True if the signature is valid
     function _isBurnApprovalValidWithEIP1271Fallback(
         bytes32 burnHash,
         address signer,
@@ -300,68 +268,39 @@ abstract contract SignatureValidator is EIP712 {
             return false;
         }
 
-        // Try ECDSA first (for EOAs)
-        if (_isBurnApprovalValid(
-                burnHash,
-                signer,
-                tokenAmount,
-                payout,
-                nonce,
-                deadline,
-                signature
-            )) {
-            return true;
-        }
-
-        // Fallback to EIP-1271 for contracts
-        if (signer.code.length > 0) {
-            bytes32 structHash = keccak256(
-                abi.encode(
-                    BURN_APPROVAL_TYPEHASH,
-                    burnHash,
-                    signer,
-                    tokenAmount,
-                    payout,
-                    nonce,
-                    deadline
-                )
-            );
-            bytes32 hash = _hashTypedDataV4(structHash);
-            return _isEIP1271SignatureValid(signer, hash, signature);
-        }
-
-        return false;
+        bytes32 hash = getBurnApprovalHash(
+            burnHash, signer, tokenAmount, payout, nonce, deadline
+        );
+        return _validateSignatureWithFallback(hash, signer, signature);
     }
 
-    /// @notice Validate a burn approval signed by a session key
-    /// @param burnHash Hash of the burn parameters
+    /// @notice Shared session key validation: preamble checks, session key sig,
+    ///         owner sig, and account factory verification.
+    /// @param messageDigest The EIP-712 hash of the operation-specific message
+    ///        (mint or burn approval) that the session key signed
     /// @param smartAccount The smart account address (expected signer)
-    /// @param tokenAmount Token amount
-    /// @param payout Payout amount
-    /// @param nonce Nonce for replay protection
     /// @param deadline Signature expiration timestamp
-    /// @param sessionKeySignature The session key's signature on the burn approval
-    /// @param sessionApproval The owner's approval of the session key
-    /// @return isValid True if both signatures are valid
-    function _isSessionKeyBurnApprovalValid(
-        bytes32 burnHash,
+    /// @param requiredPermission The permission hash required (MINT_PERMISSION or BURN_PERMISSION)
+    /// @param sessionKeySignature The session key's signature on messageDigest
+    /// @param sessionApproval The owner's session key approval
+    /// @return isValid True if all checks pass
+    function _validateSessionKeyApproval(
+        bytes32 messageDigest,
         address smartAccount,
-        uint256 tokenAmount,
-        uint256 payout,
-        uint256 nonce,
         uint256 deadline,
+        bytes32 requiredPermission,
         bytes memory sessionKeySignature,
         SessionKeyApproval memory sessionApproval
     ) internal view returns (bool isValid) {
+        // Deadline and session validity
         if (block.timestamp > deadline) {
             return false;
         }
-
         if (block.timestamp > sessionApproval.validUntil) {
             return false;
         }
 
-        // Check if session key has been revoked
+        // Revocation check
         if (
             _revokedSessionKeys[
                     sessionApproval.owner
@@ -370,30 +309,17 @@ abstract contract SignatureValidator is EIP712 {
             return false;
         }
 
-        // Validate permissionsHash matches BURN_PERMISSION
-        if (sessionApproval.permissionsHash != BURN_PERMISSION) {
+        // Permission and smart account match
+        if (sessionApproval.permissionsHash != requiredPermission) {
             return false;
         }
-
         if (sessionApproval.smartAccount != smartAccount) {
             return false;
         }
 
-        // 1. Verify the session key signed the burn message
-        bytes32 burnStructHash = keccak256(
-            abi.encode(
-                BURN_APPROVAL_TYPEHASH,
-                burnHash,
-                smartAccount,
-                tokenAmount,
-                payout,
-                nonce,
-                deadline
-            )
-        );
-        bytes32 burnDigest = _hashTypedDataV4(burnStructHash);
+        // 1. Verify the session key signed the message
         if (!ECDSAHelper.isValidECDSASignature(
-                burnDigest, sessionKeySignature, sessionApproval.sessionKey
+                messageDigest, sessionKeySignature, sessionApproval.sessionKey
             )) {
             return false;
         }
@@ -403,17 +329,13 @@ abstract contract SignatureValidator is EIP712 {
             return false;
         }
 
-        bytes32 sessionStructHash = keccak256(
-            abi.encode(
-                SESSION_KEY_APPROVAL_TYPEHASH,
-                sessionApproval.sessionKey,
-                sessionApproval.smartAccount,
-                sessionApproval.validUntil,
-                sessionApproval.permissionsHash,
-                sessionApproval.chainId
-            )
+        bytes32 sessionHash = getSessionKeyApprovalHash(
+            sessionApproval.sessionKey,
+            sessionApproval.smartAccount,
+            sessionApproval.validUntil,
+            sessionApproval.permissionsHash,
+            sessionApproval.chainId
         );
-        bytes32 sessionHash = _hashTypedDataV4(sessionStructHash);
         if (!ECDSAHelper.isValidECDSASignature(
                 sessionHash,
                 sessionApproval.ownerSignature,
@@ -438,6 +360,30 @@ abstract contract SignatureValidator is EIP712 {
         }
 
         return true;
+    }
+
+    /// @notice Validate a burn approval signed by a session key
+    function _isSessionKeyBurnApprovalValid(
+        bytes32 burnHash,
+        address smartAccount,
+        uint256 tokenAmount,
+        uint256 payout,
+        uint256 nonce,
+        uint256 deadline,
+        bytes memory sessionKeySignature,
+        SessionKeyApproval memory sessionApproval
+    ) internal view returns (bool isValid) {
+        bytes32 burnDigest = getBurnApprovalHash(
+            burnHash, smartAccount, tokenAmount, payout, nonce, deadline
+        );
+        return _validateSessionKeyApproval(
+            burnDigest,
+            smartAccount,
+            deadline,
+            BURN_PERMISSION,
+            sessionKeySignature,
+            sessionApproval
+        );
     }
 
     /// @notice Get the hash that should be signed offchain for burn approval
@@ -490,14 +436,6 @@ abstract contract SignatureValidator is EIP712 {
     }
 
     /// @notice Validate a mint approval signed by a session key
-    /// @param predictionHash Hash of the prediction parameters
-    /// @param smartAccount The smart account address (expected signer)
-    /// @param collateral Collateral amount
-    /// @param nonce Nonce for replay protection
-    /// @param deadline Signature expiration timestamp
-    /// @param sessionKeySignature The session key's signature on the mint approval
-    /// @param sessionApproval The owner's approval of the session key
-    /// @return isValid True if both signatures are valid
     function _isSessionKeyApprovalValid(
         bytes32 predictionHash,
         address smartAccount,
@@ -507,97 +445,17 @@ abstract contract SignatureValidator is EIP712 {
         bytes memory sessionKeySignature,
         SessionKeyApproval memory sessionApproval
     ) internal view returns (bool isValid) {
-        // Check deadline
-        if (block.timestamp > deadline) {
-            return false;
-        }
-
-        // Check session key is still valid
-        if (block.timestamp > sessionApproval.validUntil) {
-            return false;
-        }
-
-        // Check if session key has been revoked
-        if (
-            _revokedSessionKeys[
-                    sessionApproval.owner
-                ][sessionApproval.sessionKey] > 0
-        ) {
-            return false;
-        }
-
-        // Validate permissionsHash matches MINT_PERMISSION
-        if (sessionApproval.permissionsHash != MINT_PERMISSION) {
-            return false;
-        }
-
-        // Verify smart account matches
-        if (sessionApproval.smartAccount != smartAccount) {
-            return false;
-        }
-
-        // 1. Verify the session key signed the message
-        bytes32 mintStructHash = keccak256(
-            abi.encode(
-                MINT_APPROVAL_TYPEHASH,
-                predictionHash,
-                smartAccount,
-                collateral,
-                nonce,
-                deadline
-            )
+        bytes32 mintDigest = getMintApprovalHash(
+            predictionHash, smartAccount, collateral, nonce, deadline
         );
-        bytes32 mintHash = _hashTypedDataV4(mintStructHash);
-        if (!ECDSAHelper.isValidECDSASignature(
-                mintHash, sessionKeySignature, sessionApproval.sessionKey
-            )) {
-            return false;
-        }
-
-        // 2. Verify the owner authorized this session key
-        // Verify chain ID matches to prevent cross-chain replay attacks
-        if (sessionApproval.chainId != block.chainid) {
-            return false;
-        }
-
-        bytes32 sessionStructHash = keccak256(
-            abi.encode(
-                SESSION_KEY_APPROVAL_TYPEHASH,
-                sessionApproval.sessionKey,
-                sessionApproval.smartAccount,
-                sessionApproval.validUntil,
-                sessionApproval.permissionsHash,
-                sessionApproval.chainId
-            )
+        return _validateSessionKeyApproval(
+            mintDigest,
+            smartAccount,
+            deadline,
+            MINT_PERMISSION,
+            sessionKeySignature,
+            sessionApproval
         );
-        bytes32 sessionHash = _hashTypedDataV4(sessionStructHash);
-        if (!ECDSAHelper.isValidECDSASignature(
-                sessionHash,
-                sessionApproval.ownerSignature,
-                sessionApproval.owner
-            )) {
-            return false;
-        }
-
-        // 3. Verify the smart account is derived from the owner
-        // This ensures the owner actually controls the smart account they claim to
-        if (address(accountFactory) == address(0)) {
-            revert AccountFactoryNotSet();
-        }
-
-        // Try index 0 first (primary account), then index 1 as fallback
-        address expectedAccount =
-            accountFactory.getAccountAddress(sessionApproval.owner, 0);
-        if (expectedAccount != smartAccount) {
-            // Try index 1 for users with multiple accounts
-            expectedAccount =
-                accountFactory.getAccountAddress(sessionApproval.owner, 1);
-            if (expectedAccount != smartAccount) {
-                return false;
-            }
-        }
-
-        return true;
     }
 
     /// @notice Get the hash for session key approval (owner signs this)
