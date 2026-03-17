@@ -69,6 +69,7 @@ export class MeshClient {
   private allHandlers = new Set<MessageHandler>();
   private peerCountListeners = new Set<(count: number) => void>();
   private bandwidthListeners = new Set<(kbps: number) => void>();
+  private signalStateListeners = new Set<(connected: boolean) => void>();
 
   // Gossip state (was GossipProtocol)
   private seen = new Map<string, number>();
@@ -114,6 +115,15 @@ export class MeshClient {
           for (const cb of this.peerCountListeners) {
             try {
               cb(count);
+            } catch {
+              /* */
+            }
+          }
+        },
+        onSignalStateChanged: (connected) => {
+          for (const cb of this.signalStateListeners) {
+            try {
+              cb(connected);
             } catch {
               /* */
             }
@@ -197,8 +207,23 @@ export class MeshClient {
     };
   }
 
+  get signalConnected(): boolean {
+    return this.peerManager.signalConnected;
+  }
+
+  get knownPeerCount(): number {
+    return this.peerManager.knownPeerCount;
+  }
+
   get bandwidthKbps(): number {
     return this._lastKbps;
+  }
+
+  onSignalStateChange(cb: (connected: boolean) => void): () => void {
+    this.signalStateListeners.add(cb);
+    return () => {
+      this.signalStateListeners.delete(cb);
+    };
   }
 
   onBandwidthChange(cb: (kbps: number) => void): () => void {
