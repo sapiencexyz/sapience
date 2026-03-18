@@ -17,7 +17,7 @@ import { getCategoryStyle } from '~/lib/utils/categoryStyle';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
 import MarketBadge from '~/components/markets/MarketBadge';
 
-export type PickChoice = 'Yes' | 'No' | 'Over' | 'Under';
+export type PickChoice = 'Yes' | 'No';
 
 export interface Pick {
   question: string;

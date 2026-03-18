@@ -863,9 +863,9 @@ const CreatePositionFormInner = ({
       trackPrediction={true}
       progressState={progressState}
       onPredictionIndexed={handlePositionIndexed}
-      expectedPicks={shareDialogData?.picks.map((p) => ({
+      expectedPicks={currentAuctionParams?.picks?.map((p) => ({
         conditionId: p.conditionId,
-        predictedOutcome: p.choice === 'Yes' ? 0 : 1,
+        predictedOutcome: p.predictedOutcome,
       }))}
     />
   );

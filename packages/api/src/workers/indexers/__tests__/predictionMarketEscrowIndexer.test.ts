@@ -756,7 +756,7 @@ describe('PredictionMarketEscrowIndexer', () => {
       expect(result!.endTime).toBe(1700100000);
     });
 
-    it('should produce description parseable by parseMarketFromDescription', () => {
+    it('should produce human-readable description', () => {
       const conditionId = makePythConditionId({
         feedLazerId: 1,
         endTime: 1700100000n,
@@ -766,18 +766,10 @@ describe('PredictionMarketEscrowIndexer', () => {
       });
       const result = buildPythConditionData(conditionId)!;
 
-      // Verify pipe-delimited format
-      expect(result.description.startsWith('PYTH_LAZER')).toBe(true);
-      const parts: Record<string, string> = {};
-      for (const part of result.description.split('|')) {
-        const eq = part.indexOf('=');
-        if (eq > 0) parts[part.slice(0, eq)] = part.slice(eq + 1);
-      }
-      expect(parts.strikePrice).toBe('7108000');
-      expect(parts.strikeExpo).toBe('-2');
-      expect(parts.overWinsOnTie).toBe('1');
-      expect(parts.endTime).toBe('1700100000');
-      expect(parts.priceId).toMatch(/^0x/);
+      // Verify human-readable description
+      expect(result.description).toContain('Pyth Network Lazer oracle');
+      expect(result.description).toContain('over');
+      expect(result.description).toContain('71,080');
     });
 
     it('should format UNDER for overWinsOnTie=false', () => {
@@ -804,7 +796,7 @@ describe('PredictionMarketEscrowIndexer', () => {
       });
       const result = buildPythConditionData(conditionId)!;
       expect(result.question).toBe('Crypto.ETH/USD OVER $12.3456789');
-      expect(result.description).toContain('strikeDecimal=12.34567890');
+      expect(result.description).toContain('$12.3456789');
     });
 
     it('should handle zero exponent (whole numbers)', () => {
@@ -871,7 +863,7 @@ describe('PredictionMarketEscrowIndexer', () => {
       });
       const result = buildPythConditionData(conditionId)!;
       expect(result.question).toBe('Crypto.ENA/USD OVER $0.3');
-      expect(result.description).toContain('strikeDecimal=0.3');
+      expect(result.description).toContain('$0.3');
     });
 
     it('should handle negative strike prices', () => {
@@ -964,12 +956,9 @@ describe('PredictionMarketEscrowIndexer', () => {
 
       // description must be parseable by market-keeper
       const desc = upsertCall.create.description;
-      expect(desc).toContain('PYTH_LAZER');
-      expect(desc).toContain('strikePrice=7108000');
-      expect(desc).toContain('strikeExpo=-2');
-      expect(desc).toContain('overWinsOnTie=1');
-      expect(desc).toContain('endTime=1700100000');
-      expect(desc).toContain('strikeDecimal=71080.00');
+      expect(desc).toContain('Pyth Network Lazer oracle');
+      expect(desc).toContain('over');
+      expect(desc).toContain('71,080');
 
       // picks.create should also have been called (after the upsert)
       expect(mockPrisma.picks.create).toHaveBeenCalledTimes(1);
@@ -1020,7 +1009,7 @@ describe('PredictionMarketEscrowIndexer', () => {
       const upsertCall = mockPrisma.condition.upsert.mock.calls[0][0];
       expect(upsertCall.create.question).toBe('Crypto.ETH/USD UNDER $3,500');
       expect(upsertCall.create.shortName).toBe('ETH UNDER $3,500');
-      expect(upsertCall.create.description).toContain('overWinsOnTie=0');
+      expect(upsertCall.create.description).toContain('under');
     });
 
     it('should handle fractional prices without losing precision', async () => {
@@ -1041,9 +1030,7 @@ describe('PredictionMarketEscrowIndexer', () => {
       expect(upsertCall.create.question).toBe(
         'Crypto.ENA/USD OVER $123.456789'
       );
-      expect(upsertCall.create.description).toContain(
-        'strikeDecimal=123.456789'
-      );
+      expect(upsertCall.create.description).toContain('$123.456789');
     });
 
     it('should handle whole-number prices (trim .00)', async () => {
@@ -1061,8 +1048,7 @@ describe('PredictionMarketEscrowIndexer', () => {
 
       const upsertCall = mockPrisma.condition.upsert.mock.calls[0][0];
       expect(upsertCall.create.question).toBe('Crypto.BTC/USD OVER $50,000');
-      // strikeDecimal with 0 fraction digits
-      expect(upsertCall.create.description).toContain('strikeDecimal=50000');
+      expect(upsertCall.create.description).toContain('$50,000');
     });
 
     it('should fall back to Feed #N for unknown feed IDs', async () => {
