@@ -23,6 +23,13 @@ const nextConfig = {
     // pino-pretty is an optional dep that pino tries to require at runtime;
     // mark it as external so webpack doesn't fail the build.
     config.externals = [...(config.externals || []), 'pino-pretty'];
+    // @cowprotocol packages ship ESM source files but declare "type": "commonjs"
+    // Override the module type so webpack parses them as ESM
+    config.module.rules.push({
+      test: /\.js$/,
+      include: /@cowprotocol/,
+      type: 'javascript/esm',
+    });
     return config;
   },
   async headers() {

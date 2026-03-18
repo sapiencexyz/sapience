@@ -1,7 +1,12 @@
 'use client';
 
 import { useState, useMemo, useCallback } from 'react';
-import { useReadContract, useWriteContract as useWagmiWriteContract, useSwitchChain, useAccount } from 'wagmi';
+import {
+  useReadContract,
+  useWriteContract as useWagmiWriteContract,
+  useSwitchChain,
+  useAccount,
+} from 'wagmi';
 import { formatEther, zeroAddress } from 'viem';
 import erc20ABI from '@sapience/sdk/queries/abis/erc20abi.json';
 import {
@@ -24,15 +29,13 @@ const ZERO_BYTES32 =
 function getBridgeConfig(fromChainId: number) {
   if (fromChainId === CHAIN_ID_ETHEREAL) {
     return {
-      address: predictionMarketBridge[CHAIN_ID_ETHEREAL]
-        ?.address as `0x${string}`,
+      address: predictionMarketBridge[CHAIN_ID_ETHEREAL]?.address,
       abi: predictionMarketBridgeAbi,
     };
   }
   if (fromChainId === CHAIN_ID_ARBITRUM) {
     return {
-      address: predictionMarketBridgeRemote[CHAIN_ID_ARBITRUM]
-        ?.address as `0x${string}`,
+      address: predictionMarketBridgeRemote[CHAIN_ID_ARBITRUM]?.address,
       abi: predictionMarketBridgeRemoteAbi,
     };
   }
@@ -60,11 +63,7 @@ export function useBridgeQuote({
     chainId: fromChainId,
     query: {
       enabled:
-        enabled &&
-        !!bridgeAddress &&
-        !!tokenAddress &&
-        !!amount &&
-        amount > 0n,
+        enabled && !!bridgeAddress && !!tokenAddress && !!amount && amount > 0n,
       refetchInterval: 30_000,
     },
   });
@@ -141,10 +140,8 @@ export function useBridgeApproval({
   // Use raw wagmi writeContract for approve — position tokens are dynamically
   // deployed addresses that can't be enumerated in session key permissions,
   // so this requires owner (wallet) signing.
-  const {
-    writeContractAsync,
-    isPending: isWritePending,
-  } = useWagmiWriteContract();
+  const { writeContractAsync, isPending: isWritePending } =
+    useWagmiWriteContract();
 
   const approve = useCallback(async () => {
     if (!tokenAddress || !bridgeAddress || !amount) return;
@@ -167,7 +164,16 @@ export function useBridgeApproval({
     } finally {
       setIsApproving(false);
     }
-  }, [tokenAddress, bridgeAddress, amount, fromChainId, walletChain?.id, switchChainAsync, writeContractAsync, refetchAllowance]);
+  }, [
+    tokenAddress,
+    bridgeAddress,
+    amount,
+    fromChainId,
+    walletChain?.id,
+    switchChainAsync,
+    writeContractAsync,
+    refetchAllowance,
+  ]);
 
   return {
     hasAllowance,
@@ -178,11 +184,7 @@ export function useBridgeApproval({
   };
 }
 
-export function useBridgeExecute({
-  fromChainId,
-}: {
-  fromChainId: number;
-}) {
+export function useBridgeExecute({ fromChainId }: { fromChainId: number }) {
   const { address: bridgeAddress, abi } = getBridgeConfig(fromChainId);
   const { chain: walletChain } = useAccount();
   const { switchChainAsync } = useSwitchChain();
@@ -191,10 +193,8 @@ export function useBridgeExecute({
 
   // Use raw wagmi writeContract — bridging is cross-chain with msg.value,
   // so it must go through the EOA wallet directly.
-  const {
-    writeContractAsync,
-    isPending: isWritePending,
-  } = useWagmiWriteContract();
+  const { writeContractAsync, isPending: isWritePending } =
+    useWagmiWriteContract();
 
   const bridge = useCallback(
     async ({
@@ -230,7 +230,14 @@ export function useBridgeExecute({
         setIsBridging(false);
       }
     },
-    [bridgeAddress, abi, fromChainId, walletChain?.id, switchChainAsync, writeContractAsync]
+    [
+      bridgeAddress,
+      abi,
+      fromChainId,
+      walletChain?.id,
+      switchChainAsync,
+      writeContractAsync,
+    ]
   );
 
   return {
@@ -262,11 +269,7 @@ export function usePendingBridges({
     args: [currentAddress as `0x${string}`],
     chainId: fromChainId,
     query: {
-      enabled:
-        enabled &&
-        isConnected &&
-        !!currentAddress &&
-        !!bridgeAddress,
+      enabled: enabled && isConnected && !!currentAddress && !!bridgeAddress,
       refetchInterval: 15_000,
     },
   });
