@@ -3,21 +3,17 @@
     "type": "constructor",
     "inputs": [
       {
-        "name": "_endpoint",
+        "name": "endpoint_",
         "type": "address",
         "internalType": "address"
       },
       {
-        "name": "_owner",
+        "name": "owner_",
         "type": "address",
         "internalType": "address"
       }
     ],
     "stateMutability": "nonpayable"
-  },
-  {
-    "type": "receive",
-    "stateMutability": "payable"
   },
   {
     "type": "function",
@@ -77,19 +73,42 @@
         "internalType": "bool"
       },
       {
+        "name": "invalid",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
+        "name": "nonDecisive",
+        "type": "bool",
+        "internalType": "bool"
+      },
+      {
         "name": "resolvedToYes",
         "type": "bool",
         "internalType": "bool"
+      },
+      {
+        "name": "payoutDenominator",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "noPayout",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "yesPayout",
+        "type": "uint256",
+        "internalType": "uint256"
+      },
+      {
+        "name": "updatedAt",
+        "type": "uint64",
+        "internalType": "uint64"
       }
     ],
     "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "depositETH",
-    "inputs": [],
-    "outputs": [],
-    "stateMutability": "payable"
   },
   {
     "type": "function",
@@ -141,58 +160,56 @@
     ],
     "outputs": [
       {
-        "name": "settled",
-        "type": "bool",
-        "internalType": "bool"
-      },
-      {
-        "name": "resolvedToYes",
-        "type": "bool",
-        "internalType": "bool"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "getETHBalance",
-    "inputs": [],
-    "outputs": [
-      {
         "name": "",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "getGasThresholds",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "warning",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "critical",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "stateMutability": "view"
-  },
-  {
-    "type": "function",
-    "name": "getLzReceiveCost",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "",
-        "type": "uint128",
-        "internalType": "uint128"
+        "type": "tuple",
+        "internalType": "struct IConditionalTokensConditionResolver.ConditionState",
+        "components": [
+          {
+            "name": "conditionId",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "settled",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "invalid",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "nonDecisive",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "resolvedToYes",
+            "type": "bool",
+            "internalType": "bool"
+          },
+          {
+            "name": "payoutDenominator",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "noPayout",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "yesPayout",
+            "type": "uint256",
+            "internalType": "uint256"
+          },
+          {
+            "name": "updatedAt",
+            "type": "uint64",
+            "internalType": "uint64"
+          }
+        ]
       }
     ],
     "stateMutability": "view"
@@ -304,6 +321,44 @@
         "name": "_sender",
         "type": "address",
         "internalType": "address"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "isConditionInvalid",
+    "inputs": [
+      {
+        "name": "conditionId",
+        "type": "bytes32",
+        "internalType": "bytes32"
+      }
+    ],
+    "outputs": [
+      {
+        "name": "",
+        "type": "bool",
+        "internalType": "bool"
+      }
+    ],
+    "stateMutability": "view"
+  },
+  {
+    "type": "function",
+    "name": "isConditionSettled",
+    "inputs": [
+      {
+        "name": "conditionId",
+        "type": "bytes32",
+        "internalType": "bytes32"
       }
     ],
     "outputs": [
@@ -443,7 +498,7 @@
         "internalType": "uint64"
       }
     ],
-    "stateMutability": "pure"
+    "stateMutability": "view"
   },
   {
     "type": "function",
@@ -524,37 +579,6 @@
   },
   {
     "type": "function",
-    "name": "setGasThresholds",
-    "inputs": [
-      {
-        "name": "warningThreshold",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "criticalThreshold",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "setLzReceiveCost",
-    "inputs": [
-      {
-        "name": "cost",
-        "type": "uint128",
-        "internalType": "uint128"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
     "name": "setPeer",
     "inputs": [
       {
@@ -579,19 +603,6 @@
         "name": "newOwner",
         "type": "address",
         "internalType": "address"
-      }
-    ],
-    "outputs": [],
-    "stateMutability": "nonpayable"
-  },
-  {
-    "type": "function",
-    "name": "withdrawETH",
-    "inputs": [
-      {
-        "name": "amount",
-        "type": "uint256",
-        "internalType": "uint256"
       }
     ],
     "outputs": [],
@@ -633,19 +644,43 @@
         "internalType": "bytes32"
       },
       {
+        "name": "invalid",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      },
+      {
+        "name": "nonDecisive",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      },
+      {
         "name": "resolvedToYes",
         "type": "bool",
         "indexed": false,
         "internalType": "bool"
       },
       {
-        "name": "assertedTruthfully",
-        "type": "bool",
+        "name": "payoutDenominator",
+        "type": "uint256",
         "indexed": false,
-        "internalType": "bool"
+        "internalType": "uint256"
       },
       {
-        "name": "resolutionTime",
+        "name": "noPayout",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "yesPayout",
+        "type": "uint256",
+        "indexed": false,
+        "internalType": "uint256"
+      },
+      {
+        "name": "timestamp",
         "type": "uint256",
         "indexed": false,
         "internalType": "uint256"
@@ -698,102 +733,6 @@
   },
   {
     "type": "event",
-    "name": "ETHDeposited",
-    "inputs": [
-      {
-        "name": "depositor",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "amount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "ETHWithdrawn",
-    "inputs": [
-      {
-        "name": "recipient",
-        "type": "address",
-        "indexed": true,
-        "internalType": "address"
-      },
-      {
-        "name": "amount",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "GasReserveCritical",
-    "inputs": [
-      {
-        "name": "currentBalance",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "GasReserveLow",
-    "inputs": [
-      {
-        "name": "currentBalance",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "GasThresholdsUpdated",
-    "inputs": [
-      {
-        "name": "warningThreshold",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      },
-      {
-        "name": "criticalThreshold",
-        "type": "uint256",
-        "indexed": false,
-        "internalType": "uint256"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
-    "name": "LzReceiveCostUpdated",
-    "inputs": [
-      {
-        "name": "lzReceiveCost",
-        "type": "uint128",
-        "indexed": false,
-        "internalType": "uint128"
-      }
-    ],
-    "anonymous": false
-  },
-  {
-    "type": "event",
     "name": "OwnershipTransferred",
     "inputs": [
       {
@@ -832,38 +771,12 @@
   },
   {
     "type": "error",
-    "name": "ConditionAlreadySettled",
-    "inputs": []
-  },
-  {
-    "type": "error",
-    "name": "ETHTransferFailed",
+    "name": "ConditionNotSettled",
     "inputs": [
       {
-        "name": "recipient",
-        "type": "address",
-        "internalType": "address"
-      },
-      {
-        "name": "amount",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ]
-  },
-  {
-    "type": "error",
-    "name": "InsufficientETHBalance",
-    "inputs": [
-      {
-        "name": "required",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "available",
-        "type": "uint256",
-        "internalType": "uint256"
+        "name": "conditionId",
+        "type": "bytes32",
+        "internalType": "bytes32"
       }
     ]
   },
@@ -877,6 +790,11 @@
         "internalType": "uint16"
       }
     ]
+  },
+  {
+    "type": "error",
+    "name": "InvalidConditionIdLength",
+    "inputs": []
   },
   {
     "type": "error",
@@ -922,44 +840,12 @@
   },
   {
     "type": "error",
-    "name": "InvalidThresholdValues",
-    "inputs": [
-      {
-        "name": "warning",
-        "type": "uint256",
-        "internalType": "uint256"
-      },
-      {
-        "name": "critical",
-        "type": "uint256",
-        "internalType": "uint256"
-      }
-    ]
-  },
-  {
-    "type": "error",
-    "name": "LzTokenUnavailable",
-    "inputs": []
-  },
-  {
-    "type": "error",
     "name": "NoPeer",
     "inputs": [
       {
         "name": "eid",
         "type": "uint32",
         "internalType": "uint32"
-      }
-    ]
-  },
-  {
-    "type": "error",
-    "name": "NotEnoughNative",
-    "inputs": [
-      {
-        "name": "msgValue",
-        "type": "uint256",
-        "internalType": "uint256"
       }
     ]
   },
