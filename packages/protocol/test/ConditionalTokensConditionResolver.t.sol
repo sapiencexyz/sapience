@@ -55,6 +55,15 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
         uint256 yesPayout,
         uint256 timestamp
     );
+
+    // Unified event from IConditionResolver
+    event ConditionResolved(
+        bytes conditionId,
+        IV2Types.OutcomeVector outcome,
+        bool isIndecisive,
+        bool resolvedToYes
+    );
+
     event BridgeConfigUpdated(LZTypes.BridgeConfig config);
 
     function setUp() public override {
@@ -173,6 +182,14 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
             abi.encode(CONDITION_ID_1, uint256(1), uint256(0), uint256(1));
         bytes memory message = abi.encode(uint16(10), payload); // CMD_RESOLUTION_RESPONSE = 10
 
+        vm.expectEmit(false, false, false, true);
+        emit ConditionResolved(
+            abi.encode(CONDITION_ID_1),
+            IV2Types.OutcomeVector(1, 0),
+            false,
+            true
+        );
+
         vm.prank(address(endpoints[pmEid]));
         pmResolver.lzReceive(
             _createOrigin(polygonEid, address(polygonReader)),
@@ -197,6 +214,14 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
         bytes memory payload =
             abi.encode(CONDITION_ID_1, uint256(1), uint256(1), uint256(0));
         bytes memory message = abi.encode(uint16(10), payload);
+
+        vm.expectEmit(false, false, false, true);
+        emit ConditionResolved(
+            abi.encode(CONDITION_ID_1),
+            IV2Types.OutcomeVector(0, 1),
+            false,
+            false
+        );
 
         vm.prank(address(endpoints[pmEid]));
         pmResolver.lzReceive(
@@ -239,6 +264,14 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
         bytes memory payload =
             abi.encode(CONDITION_ID_1, uint256(2), uint256(1), uint256(1));
         bytes memory message = abi.encode(uint16(10), payload);
+
+        vm.expectEmit(false, false, false, true);
+        emit ConditionResolved(
+            abi.encode(CONDITION_ID_1),
+            IV2Types.OutcomeVector(1, 1),
+            true,
+            false
+        );
 
         vm.prank(address(endpoints[pmEid]));
         pmResolver.lzReceive(

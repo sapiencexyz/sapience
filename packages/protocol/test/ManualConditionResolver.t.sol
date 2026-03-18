@@ -31,6 +31,13 @@ contract ManualConditionResolverTest is Test {
         address indexed settler
     );
 
+    event ConditionResolved(
+        bytes conditionId,
+        IV2Types.OutcomeVector outcome,
+        bool isIndecisive,
+        bool resolvedToYes
+    );
+
     function setUp() public {
         owner = vm.addr(1);
         settler1 = vm.addr(2);
@@ -112,6 +119,10 @@ contract ManualConditionResolverTest is Test {
         vm.prank(settler1);
         vm.expectEmit(true, false, false, true);
         emit ConditionSettled(RAW_CONDITION_ID_1, 1, 0, settler1);
+        vm.expectEmit(false, false, false, true);
+        emit ConditionResolved(
+            abi.encode(RAW_CONDITION_ID_1), outcome, false, true
+        );
         resolver.settleCondition(RAW_CONDITION_ID_1, outcome);
 
         assertTrue(resolver.isSettled(RAW_CONDITION_ID_1));
@@ -130,6 +141,10 @@ contract ManualConditionResolverTest is Test {
         IV2Types.OutcomeVector memory outcome = IV2Types.OutcomeVector(0, 1);
 
         vm.prank(settler1);
+        vm.expectEmit(false, false, false, true);
+        emit ConditionResolved(
+            abi.encode(RAW_CONDITION_ID_1), outcome, false, false
+        );
         resolver.settleCondition(RAW_CONDITION_ID_1, outcome);
 
         (bool isResolved, IV2Types.OutcomeVector memory result) =
@@ -146,6 +161,10 @@ contract ManualConditionResolverTest is Test {
         IV2Types.OutcomeVector memory outcome = IV2Types.OutcomeVector(1, 1);
 
         vm.prank(settler1);
+        vm.expectEmit(false, false, false, true);
+        emit ConditionResolved(
+            abi.encode(RAW_CONDITION_ID_1), outcome, true, false
+        );
         resolver.settleCondition(RAW_CONDITION_ID_1, outcome);
 
         (bool isResolved, IV2Types.OutcomeVector memory result) =

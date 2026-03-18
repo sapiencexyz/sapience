@@ -3,12 +3,13 @@ pragma solidity ^0.8.19;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IConditionResolver } from "../../interfaces/IConditionResolver.sol";
+import { ConditionResolverBase } from "../ConditionResolverBase.sol";
 import { IV2Types } from "../../interfaces/IV2Types.sol";
 
 /// @title ManualConditionResolver
 /// @notice Generic condition resolver where approved settlers can manually settle conditions
 /// @dev Useful for conditions that require off-chain verification or admin resolution
-contract ManualConditionResolver is IConditionResolver, Ownable {
+contract ManualConditionResolver is ConditionResolverBase, Ownable {
     // ============ Errors ============
     error NotApprovedSettler();
     error ConditionAlreadySettled();
@@ -84,6 +85,8 @@ contract ManualConditionResolver is IConditionResolver, Ownable {
         emit ConditionSettled(
             conditionId, outcome.yesWeight, outcome.noWeight, msg.sender
         );
+
+        _emitResolved(abi.encode(conditionId), outcome);
     }
 
     /// @notice Batch settle multiple conditions
@@ -114,6 +117,8 @@ contract ManualConditionResolver is IConditionResolver, Ownable {
             emit ConditionSettled(
                 conditionId, outcome.yesWeight, outcome.noWeight, msg.sender
             );
+
+            _emitResolved(abi.encode(conditionId), outcome);
         }
     }
 

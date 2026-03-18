@@ -14,6 +14,7 @@ import {
     IConditionalTokensConditionResolver
 } from "./interfaces/IConditionalTokensConditionResolver.sol";
 import { IConditionResolver } from "../../interfaces/IConditionResolver.sol";
+import { ConditionResolverBase } from "../ConditionResolverBase.sol";
 import { IV2Types } from "../../interfaces/IV2Types.sol";
 import { LZTypes } from "../shared/LZTypes.sol";
 
@@ -28,7 +29,8 @@ import { LZTypes } from "../shared/LZTypes.sol";
 contract ConditionalTokensConditionResolver is
     OAppReceiver,
     ReentrancyGuard,
-    IConditionalTokensConditionResolver
+    IConditionalTokensConditionResolver,
+    ConditionResolverBase
 {
     // ============ Errors ============
     error InvalidConditionIdLength();
@@ -329,6 +331,7 @@ contract ConditionalTokensConditionResolver is
                 yesPayout,
                 block.timestamp
             );
+            _emitResolved(abi.encode(conditionId), IV2Types.OutcomeVector(1, 1));
             return;
         }
 
@@ -347,6 +350,13 @@ contract ConditionalTokensConditionResolver is
             noPayout,
             yesPayout,
             block.timestamp
+        );
+
+        _emitResolved(
+            abi.encode(conditionId),
+            condition.resolvedToYes
+                ? IV2Types.OutcomeVector(1, 0)
+                : IV2Types.OutcomeVector(0, 1)
         );
     }
 }
