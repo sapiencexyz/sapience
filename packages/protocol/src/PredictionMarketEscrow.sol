@@ -1159,6 +1159,13 @@ contract PredictionMarketEscrow is
             return (false, IV2Types.SettlementResult.UNRESOLVED);
         }
 
+        // Validate array lengths — a malicious resolver can return empty or
+        // short arrays without reverting, which would cause an out-of-bounds
+        // panic in the loop below. Treat as unresolved (same as catch branch).
+        if (resolved.length != numPicks || outcomes.length != numPicks) {
+            return (false, IV2Types.SettlementResult.UNRESOLVED);
+        }
+
         // Process results — a single decisive loss is enough for COUNTERPARTY_WINS
         // even if other picks are still unresolved (predictor needs ALL legs)
         bool hasUnresolved = false;
