@@ -71,11 +71,13 @@ jobs:
           key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: ${{ runner.os }}-pnpm-
       - run: pnpm install
+      - run: pnpm --filter @sapience/sdk run build:lib
       - uses: actions/cache/save@v4
         with:
           path: |
             node_modules
             packages/*/node_modules
+            packages/sdk/dist
           key: ${{ runner.os }}-modules-${{ github.sha }}
 
   test-api:
@@ -92,8 +94,8 @@ jobs:
           path: |
             node_modules
             packages/*/node_modules
+            packages/sdk/dist
           key: ${{ runner.os }}-modules-${{ github.sha }}
-      - run: pnpm --filter @sapience/sdk run build:lib
       - run: pnpm --filter @sapience/api run generate-types
       - name: Verify generated files are up to date
         run: git diff --exit-code packages/api/schema.graphql packages/sdk/types/graphql.ts
@@ -114,8 +116,8 @@ jobs:
           path: |
             node_modules
             packages/*/node_modules
+            packages/sdk/dist
           key: ${{ runner.os }}-modules-${{ github.sha }}
-      - run: pnpm --filter @sapience/sdk run build:lib
       - run: pnpm --filter @sapience/api run prisma:generate
       - run: pnpm --filter @sapience/api run lint
       - run: pnpm --filter @sapience/api run type-check
@@ -134,8 +136,8 @@ jobs:
           path: |
             node_modules
             packages/*/node_modules
+            packages/sdk/dist
           key: ${{ runner.os }}-modules-${{ github.sha }}
-      - run: pnpm --filter @sapience/sdk run build:lib
       - run: pnpm --filter app run lint
       - run: pnpm --filter app run type-check
 
@@ -153,8 +155,8 @@ jobs:
           path: |
             node_modules
             packages/*/node_modules
+            packages/sdk/dist
           key: ${{ runner.os }}-modules-${{ github.sha }}
-      - run: pnpm --filter @sapience/sdk run build:lib
       - run: pnpm --filter app test
 
   lint-typecheck-sdk:
@@ -171,8 +173,8 @@ jobs:
           path: |
             node_modules
             packages/*/node_modules
+            packages/sdk/dist
           key: ${{ runner.os }}-modules-${{ github.sha }}
-      - run: pnpm --filter @sapience/sdk run build:lib
       - run: pnpm --filter @sapience/sdk run lint
       - run: pnpm --filter @sapience/sdk run type-check
 
@@ -190,6 +192,7 @@ jobs:
           path: |
             node_modules
             packages/*/node_modules
+            packages/sdk/dist
           key: ${{ runner.os }}-modules-${{ github.sha }}
       - run: pnpm --filter ui run lint
       - run: pnpm --filter ui run type-check
@@ -208,8 +211,8 @@ jobs:
           path: |
             node_modules
             packages/*/node_modules
+            packages/sdk/dist
           key: ${{ runner.os }}-modules-${{ github.sha }}
-      - run: pnpm --filter @sapience/sdk run build:lib
       - run: pnpm --filter @sapience/relayer run lint
       - run: pnpm --filter @sapience/relayer run type-check
 
@@ -227,8 +230,8 @@ jobs:
           path: |
             node_modules
             packages/*/node_modules
+            packages/sdk/dist
           key: ${{ runner.os }}-modules-${{ github.sha }}
-      - run: pnpm --filter @sapience/sdk run build:lib
       - run: pnpm --filter @sapience/sdk run test
 
   test-relayer:
@@ -245,8 +248,8 @@ jobs:
           path: |
             node_modules
             packages/*/node_modules
+            packages/sdk/dist
           key: ${{ runner.os }}-modules-${{ github.sha }}
-      - run: pnpm --filter @sapience/sdk run build:lib
       - run: pnpm --filter @sapience/relayer run test
 
   test-protocol:
