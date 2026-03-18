@@ -63,6 +63,7 @@ const GET_QUESTIONS = /* GraphQL */ `
           claimStatement
           description
           similarMarkets
+          tags
           chainId
           resolver
           settled
@@ -90,6 +91,7 @@ const GET_QUESTIONS = /* GraphQL */ `
         claimStatement
         description
         similarMarkets
+        tags
         chainId
         resolver
         settled

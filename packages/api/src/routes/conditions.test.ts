@@ -137,6 +137,46 @@ describe('conditions routes', () => {
       expect(res.body.message).toMatch(/already exists/i);
     });
 
+    it('stores tags array when provided', async () => {
+      mockPrisma.condition.create.mockResolvedValue({ id: '0x1' });
+
+      const res = await request(app)
+        .post('/admin/conditions')
+        .send(baseBody({ tags: ['bitcoin', 'crypto'] }));
+
+      expect(res.status).toBe(201);
+      const createCall = mockPrisma.condition.create.mock.calls[0][0];
+      expect(createCall.data.tags).toEqual(['bitcoin', 'crypto']);
+    });
+
+    it('defaults tags to empty array when not provided', async () => {
+      mockPrisma.condition.create.mockResolvedValue({ id: '0x1' });
+
+      const res = await request(app).post('/admin/conditions').send(baseBody());
+
+      expect(res.status).toBe(201);
+      const createCall = mockPrisma.condition.create.mock.calls[0][0];
+      expect(createCall.data.tags).toEqual([]);
+    });
+
+    it('returns 400 when tags is not an array', async () => {
+      const res = await request(app)
+        .post('/admin/conditions')
+        .send(baseBody({ tags: 'not-an-array' }));
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/tags/);
+    });
+
+    it('returns 400 when tags contains non-strings', async () => {
+      const res = await request(app)
+        .post('/admin/conditions')
+        .send(baseBody({ tags: [123, null] }));
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/tags/);
+    });
+
     it('creates conditionGroup when groupName is provided and returns 201', async () => {
       mockPrisma.conditionGroup.findFirst.mockResolvedValue(null);
       mockPrisma.conditionGroup.create.mockResolvedValue({
@@ -242,6 +282,38 @@ describe('conditions routes', () => {
       expect(res.status).toBe(200);
       const updateCall = mockPrisma.condition.update.mock.calls[0][0];
       expect(updateCall.data.endTime).toBe(FUTURE_END_TIME + 10000);
+    });
+
+    it('updates tags when provided', async () => {
+      mockPrisma.condition.findUnique.mockResolvedValue(existingCondition());
+      mockPrisma.condition.update.mockResolvedValue({
+        ...existingCondition(),
+        tags: ['updated-tag'],
+      });
+
+      const res = await request(app)
+        .put(`/admin/conditions/${VALID_ID}`)
+        .send({ tags: ['updated-tag'] });
+
+      expect(res.status).toBe(200);
+      const updateCall = mockPrisma.condition.update.mock.calls[0][0];
+      expect(updateCall.data.tags).toEqual(['updated-tag']);
+    });
+
+    it('does not overwrite tags when not provided', async () => {
+      mockPrisma.condition.findUnique.mockResolvedValue(existingCondition());
+      mockPrisma.condition.update.mockResolvedValue({
+        ...existingCondition(),
+        question: 'Updated question',
+      });
+
+      const res = await request(app)
+        .put(`/admin/conditions/${VALID_ID}`)
+        .send({ question: 'Updated question' });
+
+      expect(res.status).toBe(200);
+      const updateCall = mockPrisma.condition.update.mock.calls[0][0];
+      expect(updateCall.data).not.toHaveProperty('tags');
     });
 
     it('updates question and description fields and returns 200', async () => {
