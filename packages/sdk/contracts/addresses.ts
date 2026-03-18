@@ -327,6 +327,24 @@ export function getResolverAddress(
   return RESOLVER_MAP[type]?.[chainId]?.address;
 }
 
+/** Get all deployed (non-zero) resolver addresses for a given chain. */
+export function getResolverAddressesForChain(
+  chainId: number
+): { type: ResolverType; address: Address }[] {
+  const zero = '0x0000000000000000000000000000000000000000';
+  const result: { type: ResolverType; address: Address }[] = [];
+  for (const [type, map] of Object.entries(RESOLVER_MAP) as [
+    ResolverType,
+    ChainAddressMap,
+  ][]) {
+    const addr = map[chainId]?.address;
+    if (addr && addr !== zero) {
+      result.push({ type, address: addr });
+    }
+  }
+  return result;
+}
+
 /** Identify the resolver type from an on-chain address. */
 export function identifyResolver(
   address: string,
