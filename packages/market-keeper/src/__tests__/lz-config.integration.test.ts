@@ -58,8 +58,10 @@ const peersAbi = [
 describe.skipIf(!POLYGON_RPC_URL)(
   'LayerZero config cross-check (integration)',
   () => {
+    // http() throws if URL is undefined even inside a skipped describe,
+    // so guard with a fallback placeholder that's never actually used.
     const polygonClient = createPublicClient({
-      transport: http(POLYGON_RPC_URL!),
+      transport: http(POLYGON_RPC_URL || 'http://localhost'),
     });
 
     const etherealChain = {
