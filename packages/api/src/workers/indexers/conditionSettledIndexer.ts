@@ -9,6 +9,7 @@ import {
 } from 'viem';
 import Sentry from '../../instrument';
 import { IIndexer } from '../../interfaces';
+import { processConditionResolved } from './conditionSettled/processConditionResolved';
 import { processConditionSettled } from './conditionSettled/processConditionSettled';
 import { processPythMarketSettled } from './conditionSettled/processPythMarketSettled';
 import { processManualConditionSettled } from './conditionSettled/processManualConditionSettled';
@@ -17,17 +18,23 @@ import type { HandlerContext } from './conditionSettled/handlerContext';
 const BLOCK_BATCH_SIZE = 100;
 const POLLING_INTERVAL_MS = 10_000;
 
-const CONDITION_SETTLED_TOPIC = keccak256(
+// Primary: unified event from IConditionResolver (new contracts after unified-condition-resolved)
+const CONDITION_RESOLVED_TOPIC = keccak256(
+  toHex('ConditionResolved(bytes,bool,bool)')
+);
+
+// Legacy: old event topic hashes from pre-unified contracts (kept for historical reindexing)
+const LEGACY_CT_CONDITION_RESOLVED_TOPIC = keccak256(
   toHex(
     'ConditionResolved(bytes32,bool,bool,bool,uint256,uint256,uint256,uint256)'
   )
 );
 
-const MARKET_SETTLED_TOPIC = keccak256(
+const LEGACY_PYTH_MARKET_SETTLED_TOPIC = keccak256(
   toHex('MarketSettled(bytes32,bytes32,uint64,bytes,bool,int64,int32,uint64)')
 );
 
-const MANUAL_CONDITION_SETTLED_TOPIC = keccak256(
+const LEGACY_MANUAL_CONDITION_SETTLED_TOPIC = keccak256(
   toHex('ConditionSettled(bytes32,uint256,uint256,address)')
 );
 
@@ -299,11 +306,17 @@ class ConditionSettledIndexer implements IIndexer {
   private async processLog(log: Log, block: Block): Promise<void> {
     try {
       const topic = log.topics[0];
-      if (topic === CONDITION_SETTLED_TOPIC) {
+
+      // Primary: unified event from IConditionResolver (new contracts)
+      if (topic === CONDITION_RESOLVED_TOPIC) {
+        await processConditionResolved(this.handlerContext, log, block);
+      }
+      // Legacy: old event names from pre-unified contracts (historical reindexing)
+      else if (topic === LEGACY_CT_CONDITION_RESOLVED_TOPIC) {
         await processConditionSettled(this.handlerContext, log, block);
-      } else if (topic === MARKET_SETTLED_TOPIC) {
+      } else if (topic === LEGACY_PYTH_MARKET_SETTLED_TOPIC) {
         await processPythMarketSettled(this.handlerContext, log, block);
-      } else if (topic === MANUAL_CONDITION_SETTLED_TOPIC) {
+      } else if (topic === LEGACY_MANUAL_CONDITION_SETTLED_TOPIC) {
         await processManualConditionSettled(this.handlerContext, log, block);
       }
     } catch (error) {

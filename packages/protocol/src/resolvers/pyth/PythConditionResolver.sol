@@ -6,6 +6,7 @@ import {
 } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 
 import { IConditionResolver } from "../../interfaces/IConditionResolver.sol";
+import { ConditionResolverBase } from "../ConditionResolverBase.sol";
 import { IV2Types } from "../../interfaces/IV2Types.sol";
 import { IPythLazer } from "./PythLazerLibs/IPythLazer.sol";
 import { PythLazerLib } from "./PythLazerLibs/PythLazerLib.sol";
@@ -15,7 +16,7 @@ import { PythLazerStructs } from "./PythLazerLibs/PythLazerStructs.sol";
 /// @title PythConditionResolver
 /// @notice V2 condition resolver for binary options settled using Pyth Lazer verified historical updates
 /// @dev Each conditionId maps to a unique binary option market (priceId, endTime, strike, etc.)
-contract PythConditionResolver is IConditionResolver, ReentrancyGuard {
+contract PythConditionResolver is ConditionResolverBase, ReentrancyGuard {
     // ============ Custom Errors ============
     error MarketNotEnded();
     error MarketAlreadySettled();
@@ -25,7 +26,7 @@ contract PythConditionResolver is IConditionResolver, ReentrancyGuard {
     error RefundFailed();
 
     // ============ Events ============
-    event MarketSettled(
+    event ConditionResolutionDetail(
         bytes32 indexed conditionIdHash,
         bytes32 indexed priceId,
         uint64 indexed endTime,
@@ -207,7 +208,7 @@ contract PythConditionResolver is IConditionResolver, ReentrancyGuard {
             publishTime: publishTimeSec
         });
 
-        emit MarketSettled(
+        emit ConditionResolutionDetail(
             key,
             market.priceId,
             market.endTime,
@@ -216,6 +217,13 @@ contract PythConditionResolver is IConditionResolver, ReentrancyGuard {
             benchmarkPrice,
             benchmarkExpo,
             publishTimeSec
+        );
+
+        _emitResolved(
+            conditionId,
+            resolvedToOver
+                ? IV2Types.OutcomeVector(1, 0)
+                : IV2Types.OutcomeVector(0, 1)
         );
 
         // Refund excess ETH
