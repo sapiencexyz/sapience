@@ -254,7 +254,10 @@ describe('buildBatchSettleCalldata', () => {
     expect(decoded.functionName).toBe('settleConditions');
     expect(decoded.args[0]).toHaveLength(5);
     expect(decoded.args[1]).toHaveLength(5);
+    expect(decoded.args[1][0]).toEqual({ yesWeight: 1n, noWeight: 0n });
+    expect(decoded.args[1][1]).toEqual({ yesWeight: 0n, noWeight: 1n });
     expect(decoded.args[1][2]).toEqual({ yesWeight: 1n, noWeight: 1n });
+    expect(decoded.args[1][3]).toEqual({ yesWeight: 1n, noWeight: 0n });
     expect(decoded.args[1][4]).toEqual({ yesWeight: 0n, noWeight: 1n });
   });
 });
