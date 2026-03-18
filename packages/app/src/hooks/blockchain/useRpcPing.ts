@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { getRpcUrl, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useAnimatedNumber } from '~/hooks/useAnimatedNumber';
 
-const PING_INTERVAL_MS = 5_000;
+const PING_INTERVAL_MS = 15_000;
 
 export function useRpcPing() {
   const [rawMs, setRawMs] = useState<number | null>(null);
@@ -15,6 +15,7 @@ export function useRpcPing() {
 
   useEffect(() => {
     async function measure() {
+      if (document.hidden) return;
       const start = performance.now();
       try {
         await fetch(rpcUrl, {
@@ -33,9 +34,17 @@ export function useRpcPing() {
       }
     }
 
+    function handleVisibilityChange() {
+      if (!document.hidden) measure();
+    }
+
     measure();
     intervalRef.current = setInterval(measure, PING_INTERVAL_MS);
-    return () => clearInterval(intervalRef.current);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => {
+      clearInterval(intervalRef.current);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+    };
   }, [rpcUrl]);
 
   const animated = useAnimatedNumber(rawMs);
