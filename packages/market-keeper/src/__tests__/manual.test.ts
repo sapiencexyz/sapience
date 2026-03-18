@@ -31,13 +31,49 @@ describe('determineOutcomeFromPolymarket', () => {
     expect(result).toEqual({ yesWeight: 1n, noWeight: 1n });
   });
 
-  it('handles larger payout values correctly', () => {
-    // YES wins with larger values
+  it('handles larger payout values — YES wins', () => {
     const result = determineOutcomeFromPolymarket([
       1000000000000000000n,
       0n,
     ]);
     expect(result).toEqual({ yesWeight: 1n, noWeight: 0n });
+  });
+
+  it('handles larger payout values — NO wins', () => {
+    const result = determineOutcomeFromPolymarket([
+      0n,
+      1000000000000000000n,
+    ]);
+    expect(result).toEqual({ yesWeight: 0n, noWeight: 1n });
+  });
+
+  it('handles larger payout values — NO wins by margin', () => {
+    const result = determineOutcomeFromPolymarket([
+      500000000000000000n,
+      1000000000000000000n,
+    ]);
+    expect(result).toEqual({ yesWeight: 0n, noWeight: 1n });
+  });
+
+  it('handles more than 2 outcomes — first wins', () => {
+    const result = determineOutcomeFromPolymarket([100n, 0n, 0n]);
+    expect(result).toEqual({ yesWeight: 1n, noWeight: 0n });
+  });
+
+  it('handles more than 2 outcomes — second wins', () => {
+    const result = determineOutcomeFromPolymarket([0n, 100n, 50n]);
+    expect(result).toEqual({ yesWeight: 0n, noWeight: 1n });
+  });
+
+  it('handles more than 2 outcomes — tie when equal', () => {
+    const result = determineOutcomeFromPolymarket([50n, 50n, 50n]);
+    expect(result).toEqual({ yesWeight: 1n, noWeight: 1n });
+  });
+
+  it('ignores extra outcomes beyond first two', () => {
+    // Only [yes, no] matter — extra slots are ignored
+    const result = determineOutcomeFromPolymarket([0n, 1n, 999n, 999n]);
+    expect(result).toEqual({ yesWeight: 0n, noWeight: 1n });
   });
 
   it('throws for fewer than 2 payout numerators', () => {
@@ -151,5 +187,31 @@ describe('buildBatchSettleCalldata', () => {
     expect(() => buildBatchSettleCalldata(ids, [outcomes[0]])).toThrow(
       'Array length mismatch'
     );
+  });
+
+  it('encodes 5 conditions in a single batch', () => {
+    const batchIds = Array.from({ length: 5 }, (_, i) =>
+      (`0x${(i + 1).toString(16).padStart(64, '0')}`) as Hex
+    );
+    const batchOutcomes = [
+      { yesWeight: 1n, noWeight: 0n },
+      { yesWeight: 0n, noWeight: 1n },
+      { yesWeight: 1n, noWeight: 1n },
+      { yesWeight: 1n, noWeight: 0n },
+      { yesWeight: 0n, noWeight: 1n },
+    ];
+
+    const calldata = buildBatchSettleCalldata(batchIds, batchOutcomes);
+
+    const decoded = decodeFunctionData({
+      abi: manualConditionResolverAbi,
+      data: calldata,
+    });
+
+    expect(decoded.functionName).toBe('settleConditions');
+    expect(decoded.args[0]).toHaveLength(5);
+    expect(decoded.args[1]).toHaveLength(5);
+    expect(decoded.args[1][2]).toEqual({ yesWeight: 1n, noWeight: 1n });
+    expect(decoded.args[1][4]).toEqual({ yesWeight: 0n, noWeight: 1n });
   });
 });
