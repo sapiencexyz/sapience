@@ -13,13 +13,13 @@ import {
 } from '@sapience/sdk/constants';
 import { collateralToken } from '@sapience/sdk/contracts';
 import { useAccount, useReadContract, useSignTypedData } from 'wagmi';
+import { buildPredictorMintTypedData } from '@sapience/sdk/auction/escrowSigning';
+import type { Pick as EscrowPick } from '@sapience/sdk/types/escrow';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 import { useSession } from '~/lib/context/SessionContext';
 
 import type { MintPredictionRequestData } from '~/lib/auction/useAuctionStart';
 import { getPublicClientForChainId } from '~/lib/utils/util';
-import { buildPredictorMintTypedData } from '@sapience/sdk/auction/escrowSigning';
-import type { Pick as EscrowPick } from '@sapience/sdk/types/escrow';
 
 interface UseSubmitPositionProps {
   chainId: number;
@@ -272,6 +272,7 @@ export function useSubmitPosition({
         await attempt();
         setIsProcessing(false);
       } catch (err: unknown) {
+        console.error('[submitPosition] error:', err);
         const errorMessage =
           err instanceof Error
             ? err.message
@@ -294,6 +295,7 @@ export function useSubmitPosition({
       predictionMarketAddress,
       isUsingSession,
       sessionSignTypedData,
+      signTypedDataAsync,
     ]
   );
 

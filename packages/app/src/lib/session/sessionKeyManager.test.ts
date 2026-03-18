@@ -93,16 +93,20 @@ vi.mock('viem/accounts', () => ({
   })),
 }));
 
-vi.mock('viem/chains', () => ({
-  arbitrum: {
-    id: 42161,
-    name: 'Arbitrum One',
-    nativeCurrency: { decimals: 18, name: 'Ether', symbol: 'ETH' },
-    rpcUrls: {
-      default: { http: ['https://arb1.arbitrum.io/rpc'] },
+vi.mock('viem/chains', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('viem/chains')>();
+  return {
+    ...actual,
+    arbitrum: {
+      id: 42161,
+      name: 'Arbitrum One',
+      nativeCurrency: { decimals: 18, name: 'Ether', symbol: 'ETH' },
+      rpcUrls: {
+        default: { http: ['https://arb1.arbitrum.io/rpc'] },
+      },
     },
-  },
-}));
+  };
+});
 
 // Mock @zerodev/sdk
 vi.mock('@zerodev/sdk', () => ({

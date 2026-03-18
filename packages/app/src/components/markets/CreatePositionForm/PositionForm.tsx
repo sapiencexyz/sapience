@@ -12,15 +12,22 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { FormProvider, type UseFormReturn, useWatch } from 'react-hook-form';
 import { parseUnits } from 'viem';
 import { useAccount } from 'wagmi';
-import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
 import { generateRandomNonce } from '@sapience/sdk';
 import {
   COLLATERAL_SYMBOLS,
   CHAIN_ID_ETHEREAL,
   CHAIN_ID_ETHEREAL_TESTNET,
 } from '@sapience/sdk/constants';
-import { PREFERRED_ESTIMATE_QUOTER } from '~/lib/constants';
 import { useToast } from '@sapience/ui/hooks/use-toast';
+import {
+  PythPredictionListItem,
+  UmaPredictionListItem,
+  type PythPrediction,
+  type UmaPrediction,
+} from '@sapience/ui';
+import SponsorshipIndicator from './SponsorshipIndicator';
+import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
+import { PREFERRED_ESTIMATE_QUOTER } from '~/lib/constants';
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import { PositionSizeInput } from '~/components/markets/forms';
 import BidDisplay from '~/components/markets/forms/shared/BidDisplay';
@@ -35,17 +42,10 @@ import { useSession } from '~/lib/context/SessionContext';
 import { getCategoryIcon } from '~/lib/theme/categoryIcons';
 import { getCategoryStyle, getColorWithAlpha } from '~/lib/utils/categoryStyle';
 import { getMaxPositionSize } from '~/lib/utils/positionFormUtils';
-import {
-  PythPredictionListItem,
-  UmaPredictionListItem,
-  type PythPrediction,
-  type UmaPrediction,
-} from '@sapience/ui';
 import { logPositionForm, formatBidForLog } from '~/lib/auction/bidLogger';
 import { getAuctionTriggerMode } from '~/lib/auction/auctionTriggerMode';
 import { useSponsorStatus } from '~/hooks/sponsorship/useSponsorStatus';
 import { useSponsorshipActivation } from '~/hooks/sponsorship/useSponsorshipActivation';
-import SponsorshipIndicator from './SponsorshipIndicator';
 
 const EMPTY_BIDS: QuoteBid[] = [];
 
@@ -95,7 +95,8 @@ export default function PositionForm({
   pythPredictions = [],
   onRemovePythPrediction,
 }: PositionFormProps) {
-  const { selections, removeSelection, getPicks } = useCreatePositionContext();
+  const { selections, removeSelection, getPolymarketPicks } =
+    useCreatePositionContext();
   const { address: predictorAddress } = useAccount();
   const { hasConnectedWallet } = useConnectedWallet();
   const { openConnectDialog } = useConnectDialog();
@@ -251,6 +252,7 @@ export default function PositionForm({
       currentRequestKeyRef.current = null; // Ignore incoming bids for old configuration
       prevPositionSizeRef.current = positionSizeValue || '';
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [positionSizeValue]);
 
   // Clear bids when wallet connection state changes
@@ -268,6 +270,7 @@ export default function PositionForm({
       currentRequestKeyRef.current = null;
       prevHasConnectedWalletRef.current = hasConnectedWallet;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasConnectedWallet]);
 
   // Clear bids when trigger mode changes (e.g. switching between EOA and Smart Account)
@@ -285,6 +288,7 @@ export default function PositionForm({
       currentRequestKeyRef.current = null;
       prevTriggerModeRef.current = triggerMode;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [triggerMode]);
 
   // Clear bids when selections change (prediction flipped, added, or removed) (for animations)
@@ -298,6 +302,7 @@ export default function PositionForm({
       currentRequestKeyRef.current = null; // Ignore incoming bids for old configuration
       prevPredictionsKeyRef.current = predictionsKey;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [predictionsKey]);
 
   // Update valid bids when new bids come in (for animations)
@@ -328,6 +333,7 @@ export default function PositionForm({
         `[accept] REJECTED: key mismatch. ref=${currentRequestKeyRef.current?.slice(0, 40)}, current=${currentRequestKey.slice(0, 40)}`
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bids, predictionsKey, positionSizeValue]);
 
   // Track previous filter result to avoid logging on every tick
@@ -561,12 +567,12 @@ export default function PositionForm({
         if (hasPyth && pythEscrowPicks) {
           picks = pythEscrowPicks;
         } else if (hasUma) {
-          const conditionPicks = getPicks();
+          const conditionPicks = getPolymarketPicks();
           if (conditionPicks.length > 0) {
             picks = conditionPicks;
           } else {
             console.warn(
-              '[PositionForm] Escrow chain but getPicks() empty',
+              '[PositionForm] Escrow chain but getPolymarketPicks() empty',
               selections.map((s) => ({
                 id: s.conditionId,
                 resolver: s.resolverAddress,
@@ -623,6 +629,7 @@ export default function PositionForm({
         });
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       selections,
       pythPredictions,
@@ -633,7 +640,7 @@ export default function PositionForm({
       collateralDecimals,
       chainId,
       predictionsKey,
-      getPicks,
+      getPolymarketPicks,
       sponsorAddress,
     ]
   );

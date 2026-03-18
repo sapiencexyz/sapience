@@ -70,7 +70,7 @@ describe('CreatePositionContext — predictedOutcome mapping', () => {
       result.current.addSelection(makeSelection({ prediction: true }));
     });
 
-    const picks = result.current.getPicks();
+    const picks = result.current.getPolymarketPicks();
     expect(picks).toHaveLength(1);
     expect(picks[0].predictedOutcome).toBe(OutcomeSide.YES);
     expect(picks[0].predictedOutcome).toBe(0);
@@ -85,7 +85,7 @@ describe('CreatePositionContext — predictedOutcome mapping', () => {
       result.current.addSelection(makeSelection({ prediction: false }));
     });
 
-    const picks = result.current.getPicks();
+    const picks = result.current.getPolymarketPicks();
     expect(picks).toHaveLength(1);
     expect(picks[0].predictedOutcome).toBe(OutcomeSide.NO);
     expect(picks[0].predictedOutcome).toBe(1);
@@ -113,7 +113,7 @@ describe('CreatePositionContext — predictedOutcome mapping', () => {
       );
     });
 
-    const picks = result.current.getPicks();
+    const picks = result.current.getPolymarketPicks();
     expect(picks).toHaveLength(2);
 
     const pickA = picks.find(
@@ -140,7 +140,7 @@ describe('CreatePositionContext — predictedOutcome mapping', () => {
       );
     });
 
-    const picks = result.current.getPicks();
+    const picks = result.current.getPolymarketPicks();
     expect(picks).toHaveLength(0);
   });
 
@@ -155,7 +155,7 @@ describe('CreatePositionContext — predictedOutcome mapping', () => {
       );
     });
 
-    expect(result.current.getPicks()[0].predictedOutcome).toBe(0); // YES
+    expect(result.current.getPolymarketPicks()[0].predictedOutcome).toBe(0); // YES
 
     act(() => {
       result.current.addSelection(
@@ -163,7 +163,7 @@ describe('CreatePositionContext — predictedOutcome mapping', () => {
       );
     });
 
-    const picks = result.current.getPicks();
+    const picks = result.current.getPolymarketPicks();
     expect(picks).toHaveLength(1);
     expect(picks[0].predictedOutcome).toBe(1); // NO
   });

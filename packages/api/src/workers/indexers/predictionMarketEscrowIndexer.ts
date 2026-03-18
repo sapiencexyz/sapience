@@ -9,11 +9,72 @@ import {
   predictionMarketEscrowAbi,
   predictionMarketTokenAbi,
 } from '@sapience/sdk/abis';
+import { identifyResolver } from '@sapience/sdk/contracts/addresses';
+import {
+  decodePythMarketId,
+  decodePythLazerFeedId,
+} from '@sapience/sdk/auction/encoding';
+import { PYTH_FEED_NAMES, PYTH_FEEDS } from '@sapience/sdk/constants';
 import { sendPositionAlert } from '../../helpers/discordAlert';
 
 type TxClient = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
 
 const BLOCK_BATCH_SIZE = 100;
+
+/**
+ * Build Condition row data from a Pyth conditionId.
+ * Returns null if the conditionId can't be decoded as a Pyth market.
+ */
+export function buildPythConditionData(conditionId: string): {
+  question: string;
+  shortName: string;
+  endTime: number;
+  description: string;
+} | null {
+  const market = decodePythMarketId(conditionId as `0x${string}`);
+  if (!market) return null;
+
+  const { priceId, endTime, strikePrice, strikeExpo, overWinsOnTie } = market;
+
+  const feedId = decodePythLazerFeedId(priceId);
+  const ticker = feedId != null ? PYTH_FEED_NAMES[feedId] : null;
+  const feed =
+    feedId != null ? PYTH_FEEDS.find((f) => f.lazerId === feedId) : null;
+  const feedSymbol =
+    feed?.symbol ?? (ticker ? `Crypto.${ticker}/USD` : `Feed #${feedId}`);
+  const shortTicker = ticker ?? `Feed #${feedId}`;
+
+  const priceNum = Number(strikePrice) * Math.pow(10, Number(strikeExpo));
+  const formattedPrice = priceNum.toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: Math.max(0, -Number(strikeExpo)),
+  });
+  // Clean display: trim ".00" for whole numbers
+  const displayPrice = formattedPrice.replace(/\.0+$/, '');
+
+  const direction = overWinsOnTie ? 'OVER' : 'UNDER';
+  const question = `${feedSymbol} ${direction} $${displayPrice}`;
+  const shortName = `${shortTicker} ${direction} $${displayPrice}`;
+
+  // Description format must match parseMarketFromDescription() in market-keeper
+  const strikeDecimal = priceNum.toFixed(Math.max(0, -Number(strikeExpo)));
+  const description = [
+    'PYTH_LAZER',
+    `priceId=${priceId}`,
+    `endTime=${endTime.toString()}`,
+    `strikePrice=${strikePrice.toString()}`,
+    `strikeExpo=${strikeExpo}`,
+    `overWinsOnTie=${overWinsOnTie ? '1' : '0'}`,
+    `strikeDecimal=${strikeDecimal}`,
+  ].join('|');
+
+  return {
+    question,
+    shortName,
+    endTime: Number(endTime),
+    description,
+  };
+}
 
 // Event type interfaces (matching PredictionMarketEscrow events)
 interface PredictionCreatedEvent {
@@ -688,6 +749,34 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     ).toString();
 
     if (picksOnChain) {
+      // Auto-create Condition rows for Pyth picks (FK target must exist before Pick insert)
+      for (const pick of picksOnChain) {
+        const resolver = pick.conditionResolver as string;
+        if (identifyResolver(resolver, this.chainId) !== 'pyth') continue;
+
+        const conditionId = (pick.conditionId as string).toLowerCase();
+        const pythData = buildPythConditionData(conditionId);
+        if (!pythData) continue;
+
+        await tx.condition.upsert({
+          where: { id: conditionId },
+          update: {},
+          create: {
+            id: conditionId,
+            question: pythData.question,
+            shortName: pythData.shortName,
+            endTime: pythData.endTime,
+            claimStatement: '',
+            description: pythData.description,
+            resolver: resolver.toLowerCase(),
+            chainId: this.chainId,
+          },
+        });
+        console.log(
+          `[PredictionMarketEscrowIndexer:${this.chainId}] Upserted Pyth condition ${conditionId} — ${pythData.shortName}`
+        );
+      }
+
       // New pick config — create with picks
       try {
         await tx.picks.create({
