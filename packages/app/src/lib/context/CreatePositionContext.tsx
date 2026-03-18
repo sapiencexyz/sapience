@@ -9,8 +9,6 @@ import {
   useEffect,
 } from 'react';
 import { z } from 'zod';
-import { fetchConditionsByIds } from '~/hooks/graphql/fetchConditionsByIds';
-import { DEFAULT_POSITION_SIZE } from '~/lib/utils/positionFormUtils';
 
 // localStorage key for position selections persistence
 const STORAGE_KEY_SELECTIONS = 'sapience:position-selections';
@@ -31,6 +29,8 @@ import {
   computePickConfigId,
   canonicalizePicks,
 } from '@sapience/sdk/auction/escrowEncoding';
+import { DEFAULT_POSITION_SIZE } from '~/lib/utils/positionFormUtils';
+import { fetchConditionsByIds } from '~/hooks/graphql/fetchConditionsByIds';
 
 // Updated CreatePositionEntry type based on requirements
 interface CreatePositionEntry {
@@ -87,7 +87,7 @@ interface CreatePositionContextType {
   setIsPopoverOpen: (open: boolean) => void;
   // Escrow protocol helpers
   /** Convert current selections to Pick[] array */
-  getPicks: () => EscrowPick[];
+  getPolymarketPicks: () => EscrowPick[];
   /** Compute pickConfigId from current selections */
   getPickConfigId: () => Hex | null;
 }
@@ -313,7 +313,7 @@ export const CreatePositionProvider = ({
   }, []);
 
   // Escrow helpers: convert selections to Pick[] array
-  const getPicks = useCallback((): EscrowPick[] => {
+  const getPolymarketPicks = useCallback((): EscrowPick[] => {
     return canonicalizePicks(
       selections
         .filter((s) => s.resolverAddress) // Only include selections with resolver address
@@ -327,10 +327,10 @@ export const CreatePositionProvider = ({
 
   // Escrow helper: compute pickConfigId from current selections
   const getPickConfigId = useCallback((): Hex | null => {
-    const picks = getPicks();
+    const picks = getPolymarketPicks();
     if (picks.length === 0) return null;
     return computePickConfigId(picks);
-  }, [getPicks]);
+  }, [getPolymarketPicks]);
 
   const value: CreatePositionContextType = {
     createPositionEntries: singlePositions,
@@ -346,7 +346,7 @@ export const CreatePositionProvider = ({
     openPopover,
     isPopoverOpen,
     setIsPopoverOpen,
-    getPicks,
+    getPolymarketPicks,
     getPickConfigId,
   };
 
