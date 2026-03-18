@@ -190,6 +190,7 @@ vi.mock('@sapience/sdk/abis', () => ({
   collateralTokenAbi: [],
   predictionMarketVaultAbi: [],
   secondaryMarketEscrowAbi: [],
+  predictionMarketBridgeAbi: [],
 }));
 
 vi.mock('@sapience/sdk/contracts', () => ({
@@ -214,6 +215,10 @@ vi.mock('@sapience/sdk/contracts', () => ({
   predictionMarketVault: {
     5064014: { address: '0xVaultEthereal' },
     13374202: { address: '0xVaultEtherealTestnet' },
+  },
+  predictionMarketBridge: {
+    5064014: { address: '0xBridgeEthereal' },
+    13374202: { address: '0xBridgeEtherealTestnet' },
   },
 }));
 
