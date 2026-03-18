@@ -397,8 +397,11 @@ async function checkAndSettleCondition(
           settled: false,
         };
       }
-    } catch {
-      // Revert means not yet resolved on Ethereal — proceed with Polygon check
+    } catch (err) {
+      // Revert likely means not yet resolved on Ethereal — proceed with Polygon check
+      console.log(
+        `[${conditionId}] getResolution reverted (${err instanceof Error ? err.message : String(err)}), proceeding to Polygon check`
+      );
     }
 
     // Step 2: Check if resolved on Polygon (ConditionalTokensReader)
