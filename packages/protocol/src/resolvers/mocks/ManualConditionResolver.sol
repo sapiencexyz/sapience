@@ -19,7 +19,7 @@ contract ManualConditionResolver is ConditionResolverBase, Ownable {
     // ============ Events ============
     event SettlerApproved(address indexed settler);
     event SettlerRevoked(address indexed settler);
-    event ConditionSettled(
+    event ConditionResolutionDetail(
         bytes32 indexed conditionId,
         uint256 yesWeight,
         uint256 noWeight,
@@ -82,7 +82,7 @@ contract ManualConditionResolver is ConditionResolverBase, Ownable {
         _outcomes[conditionId] = outcome;
         isSettled[conditionId] = true;
 
-        emit ConditionSettled(
+        emit ConditionResolutionDetail(
             conditionId, outcome.yesWeight, outcome.noWeight, msg.sender
         );
 
@@ -114,7 +114,7 @@ contract ManualConditionResolver is ConditionResolverBase, Ownable {
             _outcomes[conditionId] = outcome;
             isSettled[conditionId] = true;
 
-            emit ConditionSettled(
+            emit ConditionResolutionDetail(
                 conditionId, outcome.yesWeight, outcome.noWeight, msg.sender
             );
 

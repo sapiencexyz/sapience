@@ -26,7 +26,7 @@ contract PythConditionResolver is ConditionResolverBase, ReentrancyGuard {
     error RefundFailed();
 
     // ============ Events ============
-    event MarketSettled(
+    event ConditionResolutionDetail(
         bytes32 indexed conditionIdHash,
         bytes32 indexed priceId,
         uint64 indexed endTime,
@@ -208,7 +208,7 @@ contract PythConditionResolver is ConditionResolverBase, ReentrancyGuard {
             publishTime: publishTimeSec
         });
 
-        emit MarketSettled(
+        emit ConditionResolutionDetail(
             key,
             market.priceId,
             market.endTime,

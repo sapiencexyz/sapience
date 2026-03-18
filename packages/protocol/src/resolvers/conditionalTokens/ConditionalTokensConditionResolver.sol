@@ -283,7 +283,7 @@ contract ConditionalTokensConditionResolver is
             condition.settled = false;
             condition.invalid = false;
             condition.nonDecisive = false;
-            emit ConditionResolved(
+            emit ConditionResolutionDetail(
                 conditionId,
                 false,
                 false,
@@ -302,7 +302,7 @@ contract ConditionalTokensConditionResolver is
             condition.settled = false;
             condition.invalid = true;
             condition.nonDecisive = false;
-            emit ConditionResolved(
+            emit ConditionResolutionDetail(
                 conditionId,
                 true,
                 false,
@@ -321,7 +321,7 @@ contract ConditionalTokensConditionResolver is
             condition.invalid = false;
             condition.nonDecisive = true;
             condition.resolvedToYes = false;
-            emit ConditionResolved(
+            emit ConditionResolutionDetail(
                 conditionId,
                 false,
                 true,
@@ -341,7 +341,7 @@ contract ConditionalTokensConditionResolver is
         condition.nonDecisive = false;
         condition.resolvedToYes = yesPayout > noPayout;
 
-        emit ConditionResolved(
+        emit ConditionResolutionDetail(
             conditionId,
             false,
             false,

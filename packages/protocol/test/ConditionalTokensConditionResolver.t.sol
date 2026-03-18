@@ -45,7 +45,7 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
     bytes32 public constant CONDITION_ID_3 = keccak256("condition-3");
 
     // Events
-    event ConditionResolved(
+    event ConditionResolutionDetail(
         bytes32 indexed conditionId,
         bool invalid,
         bool nonDecisive,

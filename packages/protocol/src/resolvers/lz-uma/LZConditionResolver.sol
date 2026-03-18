@@ -227,7 +227,7 @@ contract LZConditionResolver is
             );
         }
 
-        emit ConditionResolved(
+        emit ConditionResolutionDetail(
             conditionId, resolvedToYes, assertedTruthfully, block.timestamp
         );
     }

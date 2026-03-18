@@ -32,7 +32,7 @@ contract LZConditionResolverTest is TestHelperOz5 {
     bytes32 public constant CONDITION_ID_2 = keccak256("condition-2");
 
     // Events
-    event ConditionResolved(
+    event ConditionResolutionDetail(
         bytes32 indexed conditionId,
         bool resolvedToYes,
         bool assertedTruthfully,

@@ -24,7 +24,7 @@ contract ManualConditionResolverTest is Test {
 
     event SettlerApproved(address indexed settler);
     event SettlerRevoked(address indexed settler);
-    event ConditionSettled(
+    event ConditionResolutionDetail(
         bytes32 indexed conditionId,
         uint256 yesWeight,
         uint256 noWeight,
@@ -118,7 +118,7 @@ contract ManualConditionResolverTest is Test {
 
         vm.prank(settler1);
         vm.expectEmit(true, false, false, true);
-        emit ConditionSettled(RAW_CONDITION_ID_1, 1, 0, settler1);
+        emit ConditionResolutionDetail(RAW_CONDITION_ID_1, 1, 0, settler1);
         vm.expectEmit(false, false, false, true);
         emit ConditionResolved(
             abi.encode(RAW_CONDITION_ID_1), outcome, false, true
