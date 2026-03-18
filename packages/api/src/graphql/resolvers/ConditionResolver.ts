@@ -63,7 +63,6 @@ export class ConditionResolver {
       | 'categoryId'
       | 'endTime'
       | 'public'
-      | 'claimStatement'
       | 'description'
       | 'similarMarkets'
       | 'chainId'

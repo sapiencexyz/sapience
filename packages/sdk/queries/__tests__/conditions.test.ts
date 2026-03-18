@@ -98,9 +98,6 @@ describe('buildConditionsWhereClause', () => {
               { question: { contains: 'bitcoin', mode: 'insensitive' } },
               { shortName: { contains: 'bitcoin', mode: 'insensitive' } },
               { description: { contains: 'bitcoin', mode: 'insensitive' } },
-              {
-                claimStatement: { contains: 'bitcoin', mode: 'insensitive' },
-              },
             ],
           },
         ],

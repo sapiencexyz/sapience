@@ -197,7 +197,6 @@ const PYTH_DEBUG_CONDITIONS_QUERY = /* GraphQL */ `
       endTime
       chainId
       resolver
-      claimStatement
       question
       description
     }
@@ -214,7 +213,6 @@ type ConditionRow = {
 };
 
 type DebugConditionRow = ConditionRow & {
-  claimStatement: string;
   question: string;
 };
 
@@ -791,7 +789,7 @@ async function main() {
           where: {
             chainId: { equals: args.chainId },
             endTime: { lte: nowSec },
-            claimStatement: { startsWith: 'PYTH:' },
+            question: { contains: 'PYTH', mode: 'insensitive' },
           },
           take: 10,
           skip: 0,
@@ -809,9 +807,7 @@ async function main() {
         );
         for (const r of rows) {
           const label =
-            r.question?.trim()?.length > 0
-              ? r.question.trim()
-              : r.claimStatement;
+            r.question?.trim()?.length > 0 ? r.question.trim() : r.id;
           console.log(
             `  - condition=${r.id} endTime=${r.endTime} resolver=${r.resolver ?? 'null'} settled=${r.settled ?? 'unknown'} label=${label}`
           );

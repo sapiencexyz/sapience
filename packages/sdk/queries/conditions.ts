@@ -7,7 +7,6 @@ export interface ConditionType {
   shortName?: string | null;
   endTime: number;
   public: boolean;
-  claimStatement: string;
   description: string;
   similarMarkets: string[];
   tags?: string[];
@@ -48,7 +47,6 @@ export const GET_CONDITIONS = /* GraphQL */ `
       shortName
       endTime
       public
-      claimStatement
       description
       similarMarkets
       chainId
@@ -101,7 +99,6 @@ export function buildConditionsWhereClause(
         { question: { contains: searchTerm, mode: 'insensitive' } },
         { shortName: { contains: searchTerm, mode: 'insensitive' } },
         { description: { contains: searchTerm, mode: 'insensitive' } },
-        { claimStatement: { contains: searchTerm, mode: 'insensitive' } },
       ],
     });
   }
