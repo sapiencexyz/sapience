@@ -7,16 +7,11 @@ import SecondaryMarketIndexer from './workers/indexers/secondaryMarketIndexer';
 import PositionTokenTransferIndexer from './workers/indexers/positionTokenTransferIndexer';
 import ConditionSettledIndexer from './workers/indexers/conditionSettledIndexer';
 import CollateralTransferIndexer from './workers/indexers/collateralTransferIndexer';
-import {
-  conditionalTokensConditionResolver,
-  pythConditionResolver,
-  manualConditionResolver,
-} from '@sapience/sdk/contracts';
-import { DEFAULT_CHAIN_ID, CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import { getResolverAddressesForChain } from '@sapience/sdk/contracts';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 
 // Environment variable to control whether escrow indexers are enabled
 const ENABLE_ESCROW_INDEXERS = process.env.ENABLE_ESCROW_INDEXERS === 'true';
-const IS_MAINNET = DEFAULT_CHAIN_ID === CHAIN_ID_ETHEREAL;
 
 // Build indexers object based on environment configuration
 const buildIndexers = (): { [key: string]: IIndexer } => {
@@ -37,34 +32,13 @@ const buildIndexers = (): { [key: string]: IIndexer } => {
       chainId
     );
 
-    if (IS_MAINNET) {
-      // Settlement indexers — CT (Polymarket) + Pyth resolvers
-      if (conditionalTokensConditionResolver[chainId]?.address) {
-        indexers['condition-settled-ct-ethereal'] = new ConditionSettledIndexer(
-          chainId,
-          conditionalTokensConditionResolver[chainId].address as `0x${string}`
-        );
-      }
-      if (pythConditionResolver[chainId]?.address) {
-        indexers['condition-settled-pyth-ethereal'] =
-          new ConditionSettledIndexer(
-            chainId,
-            pythConditionResolver[chainId].address as `0x${string}`
-          );
-      }
-    } else {
-      // Settlement indexer — manual resolver for testing
-      if (manualConditionResolver[chainId]?.address) {
-        indexers['condition-settled-manual-testnet'] =
-          new ConditionSettledIndexer(
-            chainId,
-            manualConditionResolver[chainId].address as `0x${string}`
-          );
-      }
+    for (const { type, address } of getResolverAddressesForChain(chainId)) {
+      indexers[`condition-settled-${type}-${chainId}`] =
+        new ConditionSettledIndexer(chainId, address);
     }
 
     console.log(
-      `[Indexers] Escrow indexers enabled for chain ${chainId} (${IS_MAINNET ? 'mainnet' : 'testnet'})`
+      `[Indexers] Escrow indexers enabled for chain ${chainId} (${getResolverAddressesForChain(chainId).length} resolvers)`
     );
   } else {
     console.log(
