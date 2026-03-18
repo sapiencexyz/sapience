@@ -41,10 +41,7 @@ contract LZConditionResolverTest is TestHelperOz5 {
 
     // Unified event from IConditionResolver (different signature, same name is fine)
     event ConditionResolved(
-        bytes conditionId,
-        IV2Types.OutcomeVector outcome,
-        bool isIndecisive,
-        bool resolvedToYes
+        bytes conditionId, bool isIndecisive, bool resolvedToYes
     );
 
     event BridgeConfigUpdated(LZTypes.BridgeConfig config);
@@ -202,12 +199,7 @@ contract LZConditionResolverTest is TestHelperOz5 {
 
         // Expect unified ConditionResolved event
         vm.expectEmit(false, false, false, true);
-        emit ConditionResolved(
-            abi.encode(CONDITION_ID_1),
-            IV2Types.OutcomeVector(1, 0),
-            false,
-            true
-        );
+        emit ConditionResolved(abi.encode(CONDITION_ID_1), false, true);
 
         // Use LZ test helper to simulate receive
         vm.prank(address(endpoints[pmEid]));
@@ -234,12 +226,7 @@ contract LZConditionResolverTest is TestHelperOz5 {
         bytes memory message = abi.encode(uint16(8), payload);
 
         vm.expectEmit(false, false, false, true);
-        emit ConditionResolved(
-            abi.encode(CONDITION_ID_1),
-            IV2Types.OutcomeVector(0, 1),
-            false,
-            false
-        );
+        emit ConditionResolved(abi.encode(CONDITION_ID_1), false, false);
 
         vm.prank(address(endpoints[pmEid]));
         pmResolver.lzReceive(

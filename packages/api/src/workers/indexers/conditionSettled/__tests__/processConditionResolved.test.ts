@@ -28,7 +28,7 @@ const TX_HASH = ('0x' + 'ab'.repeat(32)) as `0x${string}`;
 const BLOCK_HASH = ('0x' + '00'.repeat(32)) as `0x${string}`;
 
 const CONDITION_RESOLVED_TOPIC = keccak256(
-  toHex('ConditionResolved(bytes,(uint256,uint256),bool,bool)')
+  toHex('ConditionResolved(bytes,bool,bool)')
 );
 
 const CTX: HandlerContext = {
@@ -44,15 +44,11 @@ const MOCK_BLOCK = {
 // --- Helpers ---
 
 function makeLog(opts: {
-  yesWeight?: bigint;
-  noWeight?: bigint;
   isIndecisive?: boolean;
   resolvedToYes?: boolean;
   conditionId?: `0x${string}`;
 } = {}) {
   const {
-    yesWeight = 1n,
-    noWeight = 0n,
     isIndecisive = false,
     resolvedToYes = true,
     conditionId = CONDITION_ID_BYTES,
@@ -62,17 +58,10 @@ function makeLog(opts: {
   const data = encodeAbiParameters(
     [
       { type: 'bytes' },
-      {
-        type: 'tuple',
-        components: [
-          { type: 'uint256' },
-          { type: 'uint256' },
-        ],
-      },
       { type: 'bool' },
       { type: 'bool' },
     ],
-    [conditionId, [yesWeight, noWeight], isIndecisive, resolvedToYes]
+    [conditionId, isIndecisive, resolvedToYes]
   );
 
   return {
@@ -97,7 +86,7 @@ beforeEach(() => {
 
 describe('processConditionResolved', () => {
   it('calls settleCondition with resolvedToYes=true for YES outcome', async () => {
-    const log = makeLog({ yesWeight: 1n, noWeight: 0n, isIndecisive: false, resolvedToYes: true });
+    const log = makeLog({ isIndecisive: false, resolvedToYes: true });
     await processConditionResolved(CTX, log as never, MOCK_BLOCK);
 
     expect(mockSettleCondition).toHaveBeenCalledOnce();
@@ -106,14 +95,12 @@ describe('processConditionResolved', () => {
     expect(input.resolvedToYes).toBe(true);
     expect(input.nonDecisive).toBe(false);
     expect(input.eventData.eventType).toBe('ConditionResolved');
-    expect(input.eventData.yesWeight).toBe('1');
-    expect(input.eventData.noWeight).toBe('0');
     expect(input.eventData.isIndecisive).toBe(false);
     expect(input.eventData.resolvedToYes).toBe(true);
   });
 
   it('calls settleCondition with resolvedToYes=false for NO outcome', async () => {
-    const log = makeLog({ yesWeight: 0n, noWeight: 1n, isIndecisive: false, resolvedToYes: false });
+    const log = makeLog({ isIndecisive: false, resolvedToYes: false });
     await processConditionResolved(CTX, log as never, MOCK_BLOCK);
 
     const input = mockSettleCondition.mock.calls[0][3];
@@ -122,7 +109,7 @@ describe('processConditionResolved', () => {
   });
 
   it('sets nonDecisive=true for indecisive (tie) outcome', async () => {
-    const log = makeLog({ yesWeight: 1n, noWeight: 1n, isIndecisive: true, resolvedToYes: false });
+    const log = makeLog({ isIndecisive: true, resolvedToYes: false });
     await processConditionResolved(CTX, log as never, MOCK_BLOCK);
 
     const input = mockSettleCondition.mock.calls[0][3];
@@ -183,8 +170,6 @@ describe('processConditionResolved', () => {
 
     const log = makeLog({
       conditionId: pythConditionId,
-      yesWeight: 1n,
-      noWeight: 0n,
       isIndecisive: false,
       resolvedToYes: true,
     });

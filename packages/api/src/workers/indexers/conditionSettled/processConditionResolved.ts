@@ -9,25 +9,16 @@ import { settleCondition } from './settleCondition';
  * Solidity signature:
  *   ConditionResolved(
  *     bytes   conditionId,          // non-indexed
- *     (uint256 yesWeight, uint256 noWeight) outcome,  // non-indexed tuple
  *     bool    isIndecisive,         // non-indexed
  *     bool    resolvedToYes         // non-indexed
  *   )
  *
  * All params are non-indexed, so everything lives in log.data.
- * topic0 = keccak256("ConditionResolved(bytes,(uint256,uint256),bool,bool)")
- *        = 0xaa6ea56b5c965c495cbdeecef47c281b1c18725d70b281d93705c5727123a57b
+ * topic0 = keccak256("ConditionResolved(bytes,bool,bool)")
+ *        = 0xd51b7654de6c35da107817ecef62e0a008d0d246709c53babba4e32a40fb5b66
  */
 const CONDITION_RESOLVED_DATA_PARAMS = [
   { type: 'bytes', name: 'conditionId' },
-  {
-    type: 'tuple',
-    name: 'outcome',
-    components: [
-      { type: 'uint256', name: 'yesWeight' },
-      { type: 'uint256', name: 'noWeight' },
-    ],
-  },
   { type: 'bool', name: 'isIndecisive' },
   { type: 'bool', name: 'resolvedToYes' },
 ] as const;
@@ -45,7 +36,7 @@ export async function processConditionResolved(
       );
     }
 
-    const [conditionIdBytes, outcome, isIndecisive, resolvedToYes] =
+    const [conditionIdBytes, isIndecisive, resolvedToYes] =
       decodeAbiParameters(CONDITION_RESOLVED_DATA_PARAMS, log.data);
 
     const conditionId = (conditionIdBytes as string).toLowerCase();
@@ -57,8 +48,6 @@ export async function processConditionResolved(
       eventData: {
         eventType: 'ConditionResolved',
         conditionId,
-        yesWeight: (outcome as { yesWeight: bigint; noWeight: bigint }).yesWeight.toString(),
-        noWeight: (outcome as { yesWeight: bigint; noWeight: bigint }).noWeight.toString(),
         isIndecisive,
         resolvedToYes,
         blockNumber: Number(log.blockNumber),

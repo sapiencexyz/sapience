@@ -15,14 +15,10 @@ import "./IV2Types.sol";
 interface IConditionResolver {
     /// @notice Unified event emitted by all resolvers when a condition is resolved
     /// @param conditionId The opaque condition identifier (variable length)
-    /// @param outcome The outcome vector [yesWeight, noWeight]
     /// @param isIndecisive True if both yesWeight and noWeight are non-zero (tie)
     /// @param resolvedToYes True if not indecisive and yesWeight > 0
     event ConditionResolved(
-        bytes conditionId,
-        IV2Types.OutcomeVector outcome,
-        bool isIndecisive,
-        bool resolvedToYes
+        bytes conditionId, bool isIndecisive, bool resolvedToYes
     );
 
     /// @notice Check if a condition ID is valid for this resolver

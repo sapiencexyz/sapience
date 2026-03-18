@@ -120,24 +120,6 @@
         "internalType": "bytes"
       },
       {
-        "name": "outcome",
-        "type": "tuple",
-        "indexed": false,
-        "internalType": "struct IV2Types.OutcomeVector",
-        "components": [
-          {
-            "name": "yesWeight",
-            "type": "uint256",
-            "internalType": "uint256"
-          },
-          {
-            "name": "noWeight",
-            "type": "uint256",
-            "internalType": "uint256"
-          }
-        ]
-      },
-      {
         "name": "isIndecisive",
         "type": "bool",
         "indexed": false,

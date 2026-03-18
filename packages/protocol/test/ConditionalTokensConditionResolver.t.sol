@@ -58,10 +58,7 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
 
     // Unified event from IConditionResolver
     event ConditionResolved(
-        bytes conditionId,
-        IV2Types.OutcomeVector outcome,
-        bool isIndecisive,
-        bool resolvedToYes
+        bytes conditionId, bool isIndecisive, bool resolvedToYes
     );
 
     event BridgeConfigUpdated(LZTypes.BridgeConfig config);
@@ -183,12 +180,7 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
         bytes memory message = abi.encode(uint16(10), payload); // CMD_RESOLUTION_RESPONSE = 10
 
         vm.expectEmit(false, false, false, true);
-        emit ConditionResolved(
-            abi.encode(CONDITION_ID_1),
-            IV2Types.OutcomeVector(1, 0),
-            false,
-            true
-        );
+        emit ConditionResolved(abi.encode(CONDITION_ID_1), false, true);
 
         vm.prank(address(endpoints[pmEid]));
         pmResolver.lzReceive(
@@ -216,12 +208,7 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
         bytes memory message = abi.encode(uint16(10), payload);
 
         vm.expectEmit(false, false, false, true);
-        emit ConditionResolved(
-            abi.encode(CONDITION_ID_1),
-            IV2Types.OutcomeVector(0, 1),
-            false,
-            false
-        );
+        emit ConditionResolved(abi.encode(CONDITION_ID_1), false, false);
 
         vm.prank(address(endpoints[pmEid]));
         pmResolver.lzReceive(
@@ -266,12 +253,7 @@ contract ConditionalTokensConditionResolverTest is TestHelperOz5 {
         bytes memory message = abi.encode(uint16(10), payload);
 
         vm.expectEmit(false, false, false, true);
-        emit ConditionResolved(
-            abi.encode(CONDITION_ID_1),
-            IV2Types.OutcomeVector(1, 1),
-            true,
-            false
-        );
+        emit ConditionResolved(abi.encode(CONDITION_ID_1), true, false);
 
         vm.prank(address(endpoints[pmEid]));
         pmResolver.lzReceive(

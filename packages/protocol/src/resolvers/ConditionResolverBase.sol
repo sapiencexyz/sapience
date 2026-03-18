@@ -18,8 +18,6 @@ abstract contract ConditionResolverBase is IConditionResolver {
         bool isIndecisive = outcome.yesWeight > 0 && outcome.noWeight > 0;
         bool resolvedToYes = !isIndecisive && outcome.yesWeight > 0;
 
-        emit ConditionResolved(
-            conditionId, outcome, isIndecisive, resolvedToYes
-        );
+        emit ConditionResolved(conditionId, isIndecisive, resolvedToYes);
     }
 }

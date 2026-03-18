@@ -46,10 +46,7 @@ contract ConditionResolverBaseTest is Test {
     TestableConditionResolver public resolver;
 
     event ConditionResolved(
-        bytes conditionId,
-        IV2Types.OutcomeVector outcome,
-        bool isIndecisive,
-        bool resolvedToYes
+        bytes conditionId, bool isIndecisive, bool resolvedToYes
     );
 
     function setUp() public {
@@ -61,7 +58,7 @@ contract ConditionResolverBaseTest is Test {
         IV2Types.OutcomeVector memory outcome = IV2Types.OutcomeVector(1, 0);
 
         vm.expectEmit(false, false, false, true);
-        emit ConditionResolved(conditionId, outcome, false, true);
+        emit ConditionResolved(conditionId, false, true);
 
         resolver.emitResolved(conditionId, outcome);
     }
@@ -71,7 +68,7 @@ contract ConditionResolverBaseTest is Test {
         IV2Types.OutcomeVector memory outcome = IV2Types.OutcomeVector(0, 1);
 
         vm.expectEmit(false, false, false, true);
-        emit ConditionResolved(conditionId, outcome, false, false);
+        emit ConditionResolved(conditionId, false, false);
 
         resolver.emitResolved(conditionId, outcome);
     }
@@ -81,7 +78,7 @@ contract ConditionResolverBaseTest is Test {
         IV2Types.OutcomeVector memory outcome = IV2Types.OutcomeVector(1, 1);
 
         vm.expectEmit(false, false, false, true);
-        emit ConditionResolved(conditionId, outcome, true, false);
+        emit ConditionResolved(conditionId, true, false);
 
         resolver.emitResolved(conditionId, outcome);
     }

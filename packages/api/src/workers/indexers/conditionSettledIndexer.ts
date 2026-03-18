@@ -20,7 +20,7 @@ const POLLING_INTERVAL_MS = 10_000;
 
 // Primary: unified event from IConditionResolver (new contracts after unified-condition-resolved)
 const CONDITION_RESOLVED_TOPIC = keccak256(
-  toHex('ConditionResolved(bytes,(uint256,uint256),bool,bool)')
+  toHex('ConditionResolved(bytes,bool,bool)')
 );
 
 // Legacy: old event topic hashes from pre-unified contracts (kept for historical reindexing)

@@ -32,10 +32,7 @@ contract ManualConditionResolverTest is Test {
     );
 
     event ConditionResolved(
-        bytes conditionId,
-        IV2Types.OutcomeVector outcome,
-        bool isIndecisive,
-        bool resolvedToYes
+        bytes conditionId, bool isIndecisive, bool resolvedToYes
     );
 
     function setUp() public {
@@ -120,9 +117,7 @@ contract ManualConditionResolverTest is Test {
         vm.expectEmit(true, false, false, true);
         emit ConditionResolutionDetail(RAW_CONDITION_ID_1, 1, 0, settler1);
         vm.expectEmit(false, false, false, true);
-        emit ConditionResolved(
-            abi.encode(RAW_CONDITION_ID_1), outcome, false, true
-        );
+        emit ConditionResolved(abi.encode(RAW_CONDITION_ID_1), false, true);
         resolver.settleCondition(RAW_CONDITION_ID_1, outcome);
 
         assertTrue(resolver.isSettled(RAW_CONDITION_ID_1));
@@ -142,9 +137,7 @@ contract ManualConditionResolverTest is Test {
 
         vm.prank(settler1);
         vm.expectEmit(false, false, false, true);
-        emit ConditionResolved(
-            abi.encode(RAW_CONDITION_ID_1), outcome, false, false
-        );
+        emit ConditionResolved(abi.encode(RAW_CONDITION_ID_1), false, false);
         resolver.settleCondition(RAW_CONDITION_ID_1, outcome);
 
         (bool isResolved, IV2Types.OutcomeVector memory result) =
@@ -162,9 +155,7 @@ contract ManualConditionResolverTest is Test {
 
         vm.prank(settler1);
         vm.expectEmit(false, false, false, true);
-        emit ConditionResolved(
-            abi.encode(RAW_CONDITION_ID_1), outcome, true, false
-        );
+        emit ConditionResolved(abi.encode(RAW_CONDITION_ID_1), true, false);
         resolver.settleCondition(RAW_CONDITION_ID_1, outcome);
 
         (bool isResolved, IV2Types.OutcomeVector memory result) =
