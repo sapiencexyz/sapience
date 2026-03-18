@@ -53,6 +53,9 @@ sitemap*.xml
 # VS Code
 .vscode/settings.json
 
+# Static build backup files
+*.__static_backup__
+
 # Sentry Config File
 .env.sentry-build-plugin
 

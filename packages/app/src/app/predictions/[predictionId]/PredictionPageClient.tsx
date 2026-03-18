@@ -1,13 +1,12 @@
 'use client';
 
 import { formatEther } from 'viem';
+import { useQuery } from '@tanstack/react-query';
 import { OutcomeSide } from '@sapience/sdk/types';
 import { PicksContent } from '~/components/shared/PicksSummary';
 import PositionSummary from '~/components/positions/PositionSummary';
-import type {
-  PredictionData,
-  ConditionData,
-} from '~/app/og/_prediction-helpers';
+import type { PredictionData, ConditionData } from '~/lib/data/predictions';
+import { fetchPredictionWithConditions } from '~/lib/data/predictions';
 import type { Pick } from '~/components/shared/StackedPredictions';
 import { computeResultFromConditions } from '~/components/positions/toPickLegs';
 
@@ -29,7 +28,41 @@ export default function PredictionPageClient({
   serverPrediction: PredictionData | null;
   serverConditions: (ConditionData & { id: string })[];
 }) {
-  if (!serverPrediction) {
+  const {
+    data: clientData,
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: ['prediction', predictionId],
+    queryFn: () => fetchPredictionWithConditions(predictionId),
+    enabled: !serverPrediction,
+  });
+
+  const prediction = serverPrediction ?? clientData?.prediction ?? null;
+  const conditions =
+    serverConditions.length > 0
+      ? serverConditions
+      : (clientData?.conditions ?? []);
+
+  if (!serverPrediction && isLoading) {
+    return (
+      <div className="flex min-h-[50dvh] items-center justify-center">
+        <div className="animate-pulse text-muted-foreground">
+          Loading prediction...
+        </div>
+      </div>
+    );
+  }
+
+  if (!serverPrediction && isError) {
+    return (
+      <div className="text-center text-muted-foreground">
+        Failed to load prediction. Please check your connection and try again.
+      </div>
+    );
+  }
+
+  if (!prediction) {
     return (
       <div className="text-center text-muted-foreground">
         Prediction not found.
@@ -37,8 +70,8 @@ export default function PredictionPageClient({
     );
   }
 
-  const conditionsMap = new Map(serverConditions.map((c) => [c.id, c]));
-  const picks = serverPrediction.pickConfig?.picks ?? [];
+  const conditionsMap = new Map(conditions.map((c) => [c.id, c]));
+  const picks = prediction.pickConfig?.picks ?? [];
 
   // Build picks from predictor's perspective
   const displayPicks: Pick[] = picks.map((pick) => {
@@ -59,12 +92,12 @@ export default function PredictionPageClient({
     };
   });
 
-  const positionSize = formatCollateral(serverPrediction.predictorCollateral);
+  const positionSize = formatCollateral(prediction.predictorCollateral);
   const totalPayout =
-    formatCollateral(serverPrediction.predictorCollateral) +
-    formatCollateral(serverPrediction.counterpartyCollateral);
-  const createdAt = serverPrediction.createdAt
-    ? new Date(serverPrediction.createdAt)
+    formatCollateral(prediction.predictorCollateral) +
+    formatCollateral(prediction.counterpartyCollateral);
+  const createdAt = prediction.createdAt
+    ? new Date(prediction.createdAt)
     : null;
 
   // Compute the maximum endTime from conditions
@@ -75,16 +108,15 @@ export default function PredictionPageClient({
     }, 0) || null;
 
   // Compute result from individual conditions when prediction not yet settled on-chain
-  const computed = !serverPrediction.settled
+  const computed = !prediction.settled
     ? computeResultFromConditions(
         picks,
         conditionsMap as Parameters<typeof computeResultFromConditions>[1]
       )
     : null;
-  const isSettled =
-    serverPrediction.settled || computed?.result !== 'UNRESOLVED';
-  const result = serverPrediction.settled
-    ? serverPrediction.result
+  const isSettled = prediction.settled || computed?.result !== 'UNRESOLVED';
+  const result = prediction.settled
+    ? prediction.result
     : (computed?.result ?? 'UNRESOLVED');
   const predictorWon = result === 'PREDICTOR_WINS';
   const positionWon = isSettled && (predictorWon || result === 'NON_DECISIVE');
@@ -111,8 +143,8 @@ export default function PredictionPageClient({
           roi={roi}
           isSettled={isSettled}
           positionWon={positionWon}
-          predictorAddress={serverPrediction.predictor}
-          counterpartyAddress={serverPrediction.counterparty}
+          predictorAddress={prediction.predictor}
+          counterpartyAddress={prediction.counterparty}
         />
       </div>
 

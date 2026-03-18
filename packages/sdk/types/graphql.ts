@@ -424,6 +424,7 @@ export type Condition = {
   settledAt?: Maybe<Scalars['Int']['output']>;
   shortName?: Maybe<Scalars['String']['output']>;
   similarMarkets: Array<Scalars['String']['output']>;
+  tags: Array<Scalars['String']['output']>;
 };
 
 
@@ -609,6 +610,7 @@ export type ConditionOrderByWithRelationInput = {
   settledAt?: InputMaybe<SortOrderInput>;
   shortName?: InputMaybe<SortOrderInput>;
   similarMarkets?: InputMaybe<SortOrder>;
+  tags?: InputMaybe<SortOrder>;
 };
 
 export type ConditionRelationFilter = {
@@ -638,7 +640,8 @@ export type ConditionScalarFieldEnum =
   | 'settled'
   | 'settledAt'
   | 'shortName'
-  | 'similarMarkets';
+  | 'similarMarkets'
+  | 'tags';
 
 export type ConditionWhereInput = {
   AND?: InputMaybe<Array<ConditionWhereInput>>;
@@ -670,6 +673,7 @@ export type ConditionWhereInput = {
   settledAt?: InputMaybe<IntNullableFilter>;
   shortName?: InputMaybe<StringNullableFilter>;
   similarMarkets?: InputMaybe<StringNullableListFilter>;
+  tags?: InputMaybe<StringNullableListFilter>;
 };
 
 export type ConditionWhereUniqueInput = {
@@ -702,6 +706,7 @@ export type ConditionWhereUniqueInput = {
   settledAt?: InputMaybe<IntNullableFilter>;
   shortName?: InputMaybe<StringNullableFilter>;
   similarMarkets?: InputMaybe<StringNullableListFilter>;
+  tags?: InputMaybe<StringNullableListFilter>;
 };
 
 export type DateTimeFilter = {
