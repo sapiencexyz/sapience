@@ -475,7 +475,7 @@ const CreatePositionFormInner = ({
   }, [watchedPositionSize, collateralDecimals]);
 
   // Use the canonical picks from the auction params — they contain the exact picks
-  // the counterparty signed over, for both Pyth and Polymarket. getPicks() only
+  // the counterparty signed over, for both Pyth and Polymarket. getPolymarketPicks() only
   // returns Polymarket selections and would skip validation for Pyth-only predictions.
   const validationPicks = useMemo(() => {
     const picks = currentAuctionParams?.picks;
