@@ -202,12 +202,17 @@ export async function fetchVaultQuoteFromRelayer(
     }
 
     ws.on('open', () => {
-      ws.send(
-        JSON.stringify({
-          type: 'vault_quote.subscribe',
-          payload: { chainId, vaultAddress },
-        })
-      );
+      try {
+        ws.send(
+          JSON.stringify({
+            type: 'vault_quote.subscribe',
+            payload: { chainId, vaultAddress },
+          })
+        );
+      } catch (err) {
+        console.warn('[ProtocolStats] Failed to send subscribe message:', err);
+        settle(null);
+      }
     });
 
     ws.on('message', (raw: WebSocket.Data) => {

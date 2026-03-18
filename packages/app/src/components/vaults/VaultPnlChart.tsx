@@ -13,125 +13,21 @@ import {
 } from 'recharts';
 import { Tabs, TabsTrigger } from '@sapience/ui/components/ui/tabs';
 import {
+  formatLargeNumber,
+  formatTimestampTick,
+  AnimatedCursor,
+  ChartTooltip,
+  CHART_AXIS_STYLE,
+  CHART_MARGIN,
+  CURSOR_ANIMATION_STYLE,
+} from './chartUtils';
+import {
   useProtocolStats,
   type ProtocolStat,
 } from '~/hooks/graphql/useAnalytics';
 import Loader from '~/components/shared/Loader';
 import SegmentedTabsList from '~/components/shared/SegmentedTabsList';
 import { type Period, PERIOD_DAYS } from '~/components/shared/PeriodFilter';
-
-function formatLargeNumber(value: number): string {
-  if (value >= 1_000_000) {
-    return `${(value / 1_000_000).toFixed(1)}M`;
-  }
-  if (value >= 1_000) {
-    return `${(value / 1_000).toFixed(1)}K`;
-  }
-  if (value >= 1) {
-    return value.toFixed(1);
-  }
-  return value.toFixed(2);
-}
-
-function formatTimestampTick(value: number): string {
-  const date = new Date(value * 1000);
-  return `${date.getUTCMonth() + 1}/${date.getUTCDate()}`;
-}
-
-type AnimatedCursorProps = {
-  top?: number;
-  height?: number;
-  points?: Array<{ x: number; y: number }>;
-};
-
-function AnimatedCursor({ points, top, height }: AnimatedCursorProps) {
-  if (!points || points.length === 0) return null;
-
-  return (
-    <line
-      x1={points[0].x}
-      y1={top ?? 0}
-      x2={points[0].x}
-      y2={(top ?? 0) + (height ?? 0)}
-      stroke="hsl(var(--brand-white))"
-      strokeWidth={1}
-      strokeDasharray="1 3"
-      className="pnl-chart-cursor"
-    />
-  );
-}
-
-type ChartTooltipProps = {
-  active?: boolean;
-  payload?: Array<{
-    value?: number | string | (number | string)[];
-    dataKey?: string | number;
-  }>;
-  label?: string;
-  collateralSymbol: string;
-};
-
-function ChartTooltip({
-  active,
-  payload,
-  label,
-  collateralSymbol,
-}: ChartTooltipProps): React.ReactNode {
-  if (!active || !payload?.length) return null;
-
-  const dataPoint = payload.find((p) => p.dataKey === 'pnl');
-  if (!dataPoint || dataPoint.value == null) return null;
-
-  const value = Number(dataPoint.value);
-  const isPositive = value >= 0;
-  const formattedValue = value.toLocaleString(undefined, {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  });
-
-  // Format timestamp (Unix seconds) to date string
-  let dateLabel = '';
-  if (label != null) {
-    const date = new Date(Number(label) * 1000);
-    const months = [
-      'Jan',
-      'Feb',
-      'Mar',
-      'Apr',
-      'May',
-      'Jun',
-      'Jul',
-      'Aug',
-      'Sep',
-      'Oct',
-      'Nov',
-      'Dec',
-    ];
-    dateLabel = `${months[date.getUTCMonth()]} ${date.getUTCDate()}, ${date.getUTCFullYear()}`;
-  }
-
-  return (
-    <div className="bg-background border border-border rounded-md px-3 py-2">
-      <div className="text-xs font-medium text-muted-foreground mb-1">
-        {dateLabel}
-      </div>
-      <div
-        className={`text-sm font-mono ${isPositive ? 'text-green-500' : 'text-red-500'}`}
-      >
-        {isPositive ? '+' : ''}
-        {formattedValue} {collateralSymbol}
-      </div>
-    </div>
-  );
-}
-
-const CHART_AXIS_STYLE = {
-  tick: { fill: 'hsl(var(--muted-foreground))', fontSize: 11 },
-  axisLine: { stroke: 'hsl(var(--brand-white) / 0.3)' },
-  tickLine: { stroke: 'hsl(var(--brand-white) / 0.3)' },
-};
-
-const CHART_MARGIN = { top: 10, right: 0, left: -15, bottom: 0 };
 
 type VaultPnlChartProps = {
   /** Optional external protocol stats data. If not provided, will fetch internally. */
@@ -365,6 +261,7 @@ export default function VaultPnlChart({
                     <ChartTooltip
                       {...props}
                       collateralSymbol={collateralSymbol}
+                      dataKey="pnl"
                     />
                   )}
                 />
@@ -387,16 +284,7 @@ export default function VaultPnlChart({
         )}
       </div>
 
-      <style jsx>{`
-        :global(.pnl-chart-cursor) {
-          animation: cursorDash 1.4s linear infinite;
-        }
-        @keyframes cursorDash {
-          to {
-            stroke-dashoffset: 8;
-          }
-        }
-      `}</style>
+      <style jsx>{CURSOR_ANIMATION_STYLE}</style>
     </div>
   );
 }

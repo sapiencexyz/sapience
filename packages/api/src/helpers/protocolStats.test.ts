@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
-const { mockPrisma, mockReadContract } = vi.hoisted(() => {
+const { mockPrisma, mockReadContract, MockWebSocket } = vi.hoisted(() => {
   const mockReadContract = vi.fn().mockResolvedValue(1000000000000000000n);
   const mockPrisma = {
     prediction: { findMany: vi.fn() },
@@ -15,7 +15,26 @@ const { mockPrisma, mockReadContract } = vi.hoisted(() => {
       findMany: vi.fn(),
     },
   };
-  return { mockPrisma, mockReadContract };
+  // Minimal mock that immediately fires 'close' so fetchVaultQuoteFromRelayer resolves with null
+  class MockWebSocket {
+    private handlers: Record<string, ((...args: unknown[]) => void)[]> = {};
+    constructor() {
+      // Schedule open + close so the promise settles immediately
+      setTimeout(() => {
+        this.emit('open');
+        this.emit('close');
+      }, 0);
+    }
+    on(event: string, handler: (...args: unknown[]) => void) {
+      (this.handlers[event] ??= []).push(handler);
+    }
+    send() {}
+    close() {}
+    private emit(event: string) {
+      for (const h of this.handlers[event] ?? []) h();
+    }
+  }
+  return { mockPrisma, mockReadContract, MockWebSocket };
 });
 
 vi.mock('../db', () => ({ default: mockPrisma }));
@@ -51,6 +70,12 @@ vi.mock('@sapience/sdk/abis', () => ({
 
 vi.mock('@sapience/sdk/constants', () => ({
   DEFAULT_CHAIN_ID: 42161,
+}));
+
+vi.mock('ws', () => ({ default: MockWebSocket }));
+
+vi.mock('../config', () => ({
+  config: { RELAYER_WS_URL: 'ws://localhost:0/test' },
 }));
 
 import {
@@ -208,6 +233,13 @@ describe('computeAndStoreProtocolStats', () => {
     expect(create.vaultCollateralWon).toBe('0');
     expect(create.vaultCollateralLost).toBe('0');
 
+    // uPnL fields (relayer mock returns null, so defaults)
+    expect(create.vaultCollateralPerShare).toBe('0');
+    expect(create.vaultTotalSupply).toBe('1000000000000000000'); // mockReadContract returns 1e18
+    expect(create.vaultFairValueAssets).toBeDefined();
+    expect(create.vaultUPnL).toBeDefined();
+    expect(create.uPnLQuoteFromRelayer).toBe(false);
+
     // Verify update payload matches create payload for all value fields
     const update = upsertCall.update;
     expect(update.vaultBalance).toBe(create.vaultBalance);
@@ -222,6 +254,11 @@ describe('computeAndStoreProtocolStats', () => {
     expect(update.vaultPositionsLost).toBe(create.vaultPositionsLost);
     expect(update.vaultCollateralWon).toBe(create.vaultCollateralWon);
     expect(update.vaultCollateralLost).toBe(create.vaultCollateralLost);
+    expect(update.vaultCollateralPerShare).toBe(create.vaultCollateralPerShare);
+    expect(update.vaultTotalSupply).toBe(create.vaultTotalSupply);
+    expect(update.vaultFairValueAssets).toBe(create.vaultFairValueAssets);
+    expect(update.vaultUPnL).toBe(create.vaultUPnL);
+    expect(update.uPnLQuoteFromRelayer).toBe(create.uPnLQuoteFromRelayer);
   });
 });
 
