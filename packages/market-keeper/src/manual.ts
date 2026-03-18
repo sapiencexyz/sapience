@@ -95,6 +95,12 @@ export function determineOutcomeFromPolymarket(
     );
   }
 
+  if (payoutNumerators.every((v) => v === 0n)) {
+    throw new Error(
+      `All-zero payout numerators are invalid: [${payoutNumerators.join(', ')}]`
+    );
+  }
+
   const [yesPayout, noPayout] = payoutNumerators;
 
   if (yesPayout > noPayout) {

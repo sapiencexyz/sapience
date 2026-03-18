@@ -26,9 +26,16 @@ describe('determineOutcomeFromPolymarket', () => {
     expect(result).toEqual({ yesWeight: 1n, noWeight: 1n });
   });
 
-  it('returns TIE for [0, 0] payouts', () => {
-    const result = determineOutcomeFromPolymarket([0n, 0n]);
-    expect(result).toEqual({ yesWeight: 1n, noWeight: 1n });
+  it('throws for [0, 0] payouts (invalid data)', () => {
+    expect(() => determineOutcomeFromPolymarket([0n, 0n])).toThrow(
+      'All-zero payout numerators are invalid'
+    );
+  });
+
+  it('throws for all-zero with extra outcomes', () => {
+    expect(() => determineOutcomeFromPolymarket([0n, 0n, 0n])).toThrow(
+      'All-zero payout numerators are invalid'
+    );
   });
 
   it('handles larger payout values — YES wins', () => {
