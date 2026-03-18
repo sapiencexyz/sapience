@@ -59,7 +59,7 @@ import {
   etherealTestnetChain,
 } from '@sapience/sdk/constants';
 import { computeSmartAccountAddress } from '@sapience/sdk/session';
-import { httpWithRetry } from '../utils/util';
+import { httpWithRetry, withRetry } from '../utils/util';
 
 // Re-export etherealChain as 'ethereal' for backward compatibility
 export { etherealChain as ethereal };
@@ -124,31 +124,6 @@ function stripParametersFromUserOp(params: unknown): unknown {
     }
     return param;
   });
-}
-
-/**
- * Retry an async operation with exponential backoff.
- */
-async function withRetry<T>(
-  fn: () => Promise<T>,
-  retries: number,
-  delayMs: number
-): Promise<T> {
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    try {
-      return await fn();
-    } catch (error) {
-      if (attempt === retries) throw error;
-      console.debug(
-        `[SessionKeyManager] Retry ${attempt + 1}/${retries} after error:`,
-        error
-      );
-      await new Promise((resolve) =>
-        setTimeout(resolve, delayMs * 2 ** attempt)
-      );
-    }
-  }
-  throw new Error('unreachable');
 }
 
 /**
@@ -833,10 +808,8 @@ export async function createSession(
   );
 
   // Switch to Ethereal chain (only emit progress if chain switch is actually needed)
-  const currentChainHex = await withRetry(
-    () => ownerSigner.provider.request({ method: 'eth_chainId' }),
-    3,
-    1000
+  const currentChainHex = await withRetry(() =>
+    ownerSigner.provider.request({ method: 'eth_chainId' })
   );
   const currentChainId = parseInt(currentChainHex, 16);
   if (currentChainId !== etherealChainId) {
