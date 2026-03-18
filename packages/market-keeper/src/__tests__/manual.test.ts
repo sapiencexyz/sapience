@@ -179,6 +179,24 @@ describe('buildSettleCalldata', () => {
       noWeight: 1n,
     });
   });
+
+  it('encodes TIE outcome correctly', () => {
+    const calldata = buildSettleCalldata(conditionId, {
+      yesWeight: 1n,
+      noWeight: 1n,
+    });
+
+    const decoded = decodeFunctionData({
+      abi: manualConditionResolverAbi,
+      data: calldata,
+    });
+
+    expect(decoded.args[0]).toBe(conditionId);
+    expect(decoded.args[1]).toEqual({
+      yesWeight: 1n,
+      noWeight: 1n,
+    });
+  });
 });
 
 // ============ buildBatchSettleCalldata ============
