@@ -108,15 +108,21 @@ describe('withRetry', () => {
   });
 
   it('throws the last error after exhausting all retries', async () => {
-    const fn = vi.fn().mockRejectedValue(new Error('persistent'));
+    const fn = vi
+      .fn()
+      .mockRejectedValueOnce(new Error('persistent'))
+      .mockRejectedValueOnce(new Error('persistent'))
+      .mockRejectedValueOnce(new Error('persistent'));
 
     const promise = withRetry(fn, 2, 100);
+    // Attach rejection handler before advancing timers to avoid unhandled rejection
+    const rejection = expect(promise).rejects.toThrow('persistent');
 
     // Advance through two retry delays (100ms, 200ms)
     await vi.advanceTimersByTimeAsync(100);
     await vi.advanceTimersByTimeAsync(200);
 
-    await expect(promise).rejects.toThrow('persistent');
+    await rejection;
     expect(fn).toHaveBeenCalledTimes(3); // initial + 2 retries
   });
 
