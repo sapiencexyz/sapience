@@ -110,7 +110,7 @@ describe('SessionContext', () => {
     });
 
     mockLoadSession.mockReturnValue(null);
-    mockGetSmartAccountAddress.mockResolvedValue(mockSmartAccountAddress);
+    mockGetSmartAccountAddress.mockReturnValue(mockSmartAccountAddress);
   });
 
   afterEach(() => {
@@ -174,10 +174,8 @@ describe('SessionContext', () => {
   });
 
   describe('smart account address calculation', () => {
-    // TODO: These async tests fail due to React 19 + jest-environment-jsdom act() incompatibility.
-    // The CJS polyfill handles sync act() but async state updates from mocked promises don't flush.
-    // Fix: migrate to vitest (native ESM + React 19 support) or upgrade @testing-library/react.
-    it.skip('calculates address when wallet connects', async () => {
+    it('calculates address when wallet connects', async () => {
+      vi.useRealTimers();
       mockUseAccount.mockReturnValue({
         address: mockWalletAddress,
         connector: { getProvider: vi.fn() },
@@ -189,11 +187,7 @@ describe('SessionContext', () => {
         </SessionProvider>
       );
 
-      // Initially calculating
-      expect(screen.getByTestId('isCalculatingAddress')).toHaveTextContent(
-        'true'
-      );
-
+      // getSmartAccountAddress is now synchronous — address is set in useEffect
       await waitFor(() => {
         expect(mockGetSmartAccountAddress).toHaveBeenCalledWith(
           mockWalletAddress
@@ -207,7 +201,8 @@ describe('SessionContext', () => {
       });
     });
 
-    it.skip('clears address when wallet disconnects', async () => {
+    it('clears address when wallet disconnects', async () => {
+      vi.useRealTimers();
       const { rerender } = render(
         <SessionProvider>
           <TestConsumer />
@@ -253,7 +248,8 @@ describe('SessionContext', () => {
   });
 
   describe('startSession', () => {
-    it.skip('creates session and updates state', async () => {
+    it('creates session and updates state', async () => {
+      vi.useRealTimers();
       const mockProvider = { request: vi.fn() };
       const mockConnector = { getProvider: vi.fn(() => mockProvider) };
 
@@ -313,7 +309,8 @@ describe('SessionContext', () => {
   });
 
   describe('endSession', () => {
-    it.skip('clears session state and localStorage', async () => {
+    it('clears session state and localStorage', async () => {
+      vi.useRealTimers();
       const mockProvider = { request: vi.fn() };
       const mockConnector = { getProvider: vi.fn(() => mockProvider) };
 
@@ -373,7 +370,8 @@ describe('SessionContext', () => {
   });
 
   describe('session restoration', () => {
-    it.skip('restores session from localStorage on mount', async () => {
+    it('restores session from localStorage on mount', async () => {
+      vi.useRealTimers();
       const mockProvider = { request: vi.fn() };
       const mockConnector = { getProvider: vi.fn(() => mockProvider) };
 

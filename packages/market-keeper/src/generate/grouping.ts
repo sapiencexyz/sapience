@@ -21,6 +21,7 @@ import {
 import { inferSapienceCategorySlug } from './category';
 import { transformMatchQuestion, getPolymarketUrl } from './transform';
 import { enrichMarketsWithLLM, type MarketEnrichmentOutput } from '../llm';
+import { fetchEventTags } from './tags';
 import {
   runPipeline,
   printPipelineStats,
@@ -63,7 +64,8 @@ export function computeGroupCategory(
 export function transformToSapienceCondition(
   market: PolymarketMarket,
   groupTitle?: string,
-  enrichment?: MarketEnrichmentOutput
+  enrichment?: MarketEnrichmentOutput,
+  tags: string[] = []
 ): SapienceCondition {
   // Transform "X vs Y" questions to "X beats Y?" for clarity
   const question = transformMatchQuestion(market);
@@ -75,6 +77,7 @@ export function transformToSapienceCondition(
     endDate: market.endDate,
     description: market.description || '',
     similarMarkets: [getPolymarketUrl(market)],
+    tags,
     categorySlug: enrichment?.category || inferSapienceCategorySlug(market), // Use LLM category or fallback
     chainId: CHAIN_ID,
     groupTitle,
@@ -103,6 +106,19 @@ export async function groupMarkets(
       ungrouped.push(market);
     }
   }
+
+  // Fetch event tags from Polymarket /events endpoint
+  // Compute date range from markets for the events query
+  const endDates = markets
+    .map((m) => new Date(m.endDate).getTime())
+    .filter((t) => !isNaN(t));
+  const endDateMin = new Date(
+    Math.min(Date.now(), ...endDates) - 60 * 1000
+  ).toISOString();
+  const endDateMax = new Date(
+    Math.max(Date.now(), ...endDates) + 24 * 60 * 60 * 1000
+  ).toISOString();
+  const eventTagMap = await fetchEventTags({ endDateMin, endDateMax });
 
   // Apply group filters pipeline (volume OR always-include)
   const { output: filteredGroups, stats: groupStats } = runPipeline(
@@ -159,10 +175,13 @@ export async function groupMarkets(
   for (const group of newGroups) {
     const market = group.markets[0]; // Each group has exactly 1 market now
     const enrichment = enrichments.get(market.conditionId);
+    const eventSlug = market.events?.[0]?.slug;
+    const marketTags = eventSlug ? (eventTagMap.get(eventSlug) ?? []) : [];
     const condition = transformToSapienceCondition(
       market,
       group.title,
-      enrichment
+      enrichment,
+      marketTags
     );
 
     // Use event description if available, otherwise use market's description
@@ -177,14 +196,22 @@ export async function groupMarkets(
       description: groupDescription,
       categorySlug: condition.categorySlug,
       similarMarkets: [`https://polymarket.com#${group.eventSlug}`],
+      tags: marketTags,
       conditions: [condition],
     });
   }
 
   // Create ungrouped conditions from markets without events
-  const ungroupedConditions = newUngrouped.map((m) =>
-    transformToSapienceCondition(m, undefined, enrichments.get(m.conditionId))
-  );
+  const ungroupedConditions = newUngrouped.map((m) => {
+    const slug = m.events?.[0]?.slug;
+    const mTags = slug ? (eventTagMap.get(slug) ?? []) : [];
+    return transformToSapienceCondition(
+      m,
+      undefined,
+      enrichments.get(m.conditionId),
+      mTags
+    );
+  });
 
   // Count total conditions after filtering
   const totalConditions =

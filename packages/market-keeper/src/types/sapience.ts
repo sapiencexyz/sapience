@@ -20,6 +20,7 @@ export interface SapienceCondition {
   endDate: string;
   description: string;
   similarMarkets: string[]; // Polymarket URLs (slug is in the URL)
+  tags: string[]; // Event tags from Polymarket (e.g., "Politics", "Crypto")
   chainId: number; // Chain ID where condition will be deployed (Ethereal: 5064014)
   groupTitle?: string; // Group title for API submission (API will find-or-create group by name)
 }
@@ -29,6 +30,7 @@ export interface SapienceConditionGroup {
   categorySlug: SapienceCategorySlug;
   description: string;
   similarMarkets: string[];
+  tags: string[];
   conditions: SapienceCondition[];
 }
 
