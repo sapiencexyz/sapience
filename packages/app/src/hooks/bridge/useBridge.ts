@@ -7,8 +7,7 @@ import {
   useSwitchChain,
   useAccount,
 } from 'wagmi';
-import { formatEther, zeroAddress } from 'viem';
-import erc20ABI from '@sapience/sdk/queries/abis/erc20abi.json';
+import { erc20Abi, formatEther, zeroAddress } from 'viem';
 import {
   predictionMarketBridge,
   predictionMarketBridgeRemote,
@@ -80,19 +79,6 @@ export function useBridgeQuote({
   };
 }
 
-const ERC20_APPROVE_ABI = [
-  {
-    name: 'approve',
-    type: 'function',
-    stateMutability: 'nonpayable',
-    inputs: [
-      { name: 'spender', type: 'address' },
-      { name: 'amount', type: 'uint256' },
-    ],
-    outputs: [{ name: '', type: 'bool' }],
-  },
-] as const;
-
 export function useBridgeApproval({
   tokenAddress,
   amount,
@@ -114,7 +100,7 @@ export function useBridgeApproval({
     isLoading: isLoadingAllowance,
     refetch: refetchAllowance,
   } = useReadContract({
-    abi: erc20ABI,
+    abi: erc20Abi,
     address: tokenAddress,
     functionName: 'allowance',
     args: [currentAddress as `0x${string}`, bridgeAddress as `0x${string}`],
@@ -132,10 +118,11 @@ export function useBridgeApproval({
 
   const hasAllowance = useMemo(() => {
     if (!allowance || !amount) return false;
-    return (allowance as bigint) >= amount;
+    return allowance >= amount;
   }, [allowance, amount]);
 
   const [isApproving, setIsApproving] = useState(false);
+  const [approveError, setApproveError] = useState<string | null>(null);
 
   // Use raw wagmi writeContract for approve — position tokens are dynamically
   // deployed addresses that can't be enumerated in session key permissions,
@@ -146,21 +133,25 @@ export function useBridgeApproval({
   const approve = useCallback(async () => {
     if (!tokenAddress || !bridgeAddress || !amount) return;
     setIsApproving(true);
+    setApproveError(null);
     try {
       // Ensure wallet is on the correct chain before approving
       if (walletChain?.id !== fromChainId) {
         await switchChainAsync({ chainId: fromChainId });
       }
       await writeContractAsync({
-        abi: ERC20_APPROVE_ABI,
+        abi: erc20Abi,
         address: tokenAddress,
         functionName: 'approve',
         args: [bridgeAddress, amount],
         chainId: fromChainId,
       });
       refetchAllowance();
-    } catch {
-      // approval failed or user rejected
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Approval failed';
+      setApproveError(message);
+      throw error;
     } finally {
       setIsApproving(false);
     }
@@ -180,6 +171,7 @@ export function useBridgeApproval({
     isLoadingAllowance,
     approve,
     isApproving: isApproving || isWritePending,
+    approveError,
     refetchAllowance,
   };
 }
@@ -190,6 +182,7 @@ export function useBridgeExecute({ fromChainId }: { fromChainId: number }) {
   const { switchChainAsync } = useSwitchChain();
   const [isBridging, setIsBridging] = useState(false);
   const [bridgeSuccess, setBridgeSuccess] = useState(false);
+  const [bridgeError, setBridgeError] = useState<string | null>(null);
 
   // Use raw wagmi writeContract — bridging is cross-chain with msg.value,
   // so it must go through the EOA wallet directly.
@@ -211,6 +204,7 @@ export function useBridgeExecute({ fromChainId }: { fromChainId: number }) {
       if (!bridgeAddress || !abi) return;
       setIsBridging(true);
       setBridgeSuccess(false);
+      setBridgeError(null);
       try {
         // Ensure wallet is on the correct chain before bridging
         if (walletChain?.id !== fromChainId) {
@@ -226,8 +220,12 @@ export function useBridgeExecute({ fromChainId }: { fromChainId: number }) {
         });
         setIsBridging(false);
         setBridgeSuccess(true);
-      } catch {
+      } catch (error) {
         setIsBridging(false);
+        const message =
+          error instanceof Error ? error.message : 'Bridge failed';
+        setBridgeError(message);
+        throw error;
       }
     },
     [
@@ -244,6 +242,7 @@ export function useBridgeExecute({ fromChainId }: { fromChainId: number }) {
     bridge,
     isBridging: isBridging || isWritePending,
     bridgeSuccess,
+    bridgeError,
     resetBridgeSuccess: () => setBridgeSuccess(false),
   };
 }

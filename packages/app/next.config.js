@@ -27,7 +27,7 @@ const nextConfig = {
     // Override the module type so webpack parses them as ESM
     config.module.rules.push({
       test: /\.js$/,
-      include: /@cowprotocol/,
+      include: /node_modules[\\/]@cowprotocol/,
       type: 'javascript/esm',
     });
     return config;

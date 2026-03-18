@@ -800,7 +800,7 @@ export async function createSession(
               target: etherealContracts.bridge,
               abi: predictionMarketBridgeAbi,
               functionName: 'bridge',
-              // Allow sending native value for LayerZero fees (up to 1 ETH worth)
+              // Allow sending native value for LayerZero fees (up to 1 USDe on Ethereal)
               valueLimit: BigInt(1e18),
             },
           ]

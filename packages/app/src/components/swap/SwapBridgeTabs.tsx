@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from '@sapience/ui/components/ui/select';
 import { CHAIN_ID_ETHEREAL, CHAIN_ID_ARBITRUM } from '@sapience/sdk/constants';
+import { useToast } from '@sapience/ui/hooks/use-toast';
 import SegmentedTabsList from '~/components/shared/SegmentedTabsList';
 
 import { useCurrentAddress } from '~/hooks/blockchain/useCurrentAddress';
@@ -146,6 +147,7 @@ function BridgeSection() {
   const { switchChainAsync } = useSwitchChain();
   const { openConnectDialog } = useConnectDialog();
   const { smartAccountAddress } = useSession();
+  const { toast } = useToast();
 
   // Direction
   const [fromChainId, setFromChainId] = useState<number>(CHAIN_ID_ETHEREAL);
@@ -308,18 +310,27 @@ function BridgeSection() {
       return; // Let user click again after chain switch
     }
 
-    if (!hasAllowance) {
-      await approve();
-      // Approval will trigger refetchAllowance, user clicks again for bridge
-      return;
-    }
+    try {
+      if (!hasAllowance) {
+        await approve();
+        // Approval will trigger refetchAllowance, user clicks again for bridge
+        return;
+      }
 
-    await bridge({
-      tokenAddress: selectedTokenAddress as `0x${string}`,
-      recipient,
-      amount: parsedAmount,
-      nativeFee,
-    });
+      await bridge({
+        tokenAddress: selectedTokenAddress as `0x${string}`,
+        recipient,
+        amount: parsedAmount,
+        nativeFee,
+      });
+    } catch (error) {
+      toast({
+        title: 'Bridge Failed',
+        description:
+          error instanceof Error ? error.message : 'Transaction failed',
+        variant: 'destructive',
+      });
+    }
   };
 
   // Button text
@@ -583,7 +594,7 @@ function BridgeSection() {
               openConnectDialog();
               return;
             }
-            handleBridge();
+            void handleBridge();
           }}
         >
           {getButtonText()}
