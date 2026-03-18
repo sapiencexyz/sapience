@@ -22,7 +22,7 @@
     "settle-manual:execute:wait": "tsx scripts/settle-manual.ts --execute --wait",
     "relist": "tsx scripts/relist.ts",
     "relist:dry-run": "LLM_ENABLED=false tsx scripts/relist.ts --dry-run",
-    "start": "tsx scripts/start.ts",
+    "start": "node scripts/start.js",
     "lint": "eslint src --quiet",
     "lint:fix": "eslint src --fix --quiet && pnpm format",
     "format": "prettier --write src scripts",
