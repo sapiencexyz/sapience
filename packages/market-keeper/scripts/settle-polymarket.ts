@@ -378,23 +378,27 @@ async function checkAndSettleCondition(
     console.log(
       `[${conditionId}] Checking ConditionalTokensConditionResolver...`
     );
-    const [isResolved] = await etherealClient.readContract({
-      address: RESOLVER_ADDRESS,
-      abi: resolverAbi,
-      functionName: 'getResolution',
-      args: [conditionId],
-    });
+    try {
+      const [isResolved] = await etherealClient.readContract({
+        address: RESOLVER_ADDRESS,
+        abi: resolverAbi,
+        functionName: 'getResolution',
+        args: [conditionId],
+      });
 
-    if (isResolved) {
-      console.log(
-        `[${conditionId}] Already settled on ConditionalTokensConditionResolver`
-      );
-      return {
-        conditionId,
-        alreadyResolved: true,
-        canResolve: false,
-        settled: false,
-      };
+      if (isResolved) {
+        console.log(
+          `[${conditionId}] Already settled on ConditionalTokensConditionResolver`
+        );
+        return {
+          conditionId,
+          alreadyResolved: true,
+          canResolve: false,
+          settled: false,
+        };
+      }
+    } catch {
+      // Revert means not yet resolved on Ethereal — proceed with Polygon check
     }
 
     // Step 2: Check if resolved on Polygon (ConditionalTokensReader)
