@@ -1,13 +1,8 @@
 import { Router } from 'express';
 import { handleAsyncErrors } from '../helpers/handleAsyncErrors';
 import prisma from '../db';
-import {
-  conditionalTokensConditionResolver,
-  pythConditionResolver,
-  manualConditionResolver,
-} from '@sapience/sdk/contracts';
+import { getResolverAddressesForChain } from '@sapience/sdk/contracts';
 import { getProviderForChain } from '../utils/utils';
-import { DEFAULT_CHAIN_ID, CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import { reindexAccuracy } from '../workers/jobs/reindexAccuracy';
 import { reindexConditionSettled } from '../workers/jobs/reindexConditionSettled';
 import { backfillProtocolStats } from '../helpers/protocolStats';
@@ -15,32 +10,6 @@ import { reindexTransfers } from '../workers/jobs/reindexTransfers';
 import { reindexCollateralTransfers } from '../workers/jobs/reindexCollateralTransfers';
 
 const router = Router();
-
-const IS_MAINNET = DEFAULT_CHAIN_ID === CHAIN_ID_ETHEREAL;
-
-/**
- * Returns all resolver addresses that the condition-settled indexer
- * watches for a given chain. Mirrors the logic in fixtures.ts.
- */
-function getResolverAddressesForChain(chainId: number): `0x${string}`[] {
-  const addresses: `0x${string}`[] = [];
-  const zero = '0x0000000000000000000000000000000000000000';
-
-  if (IS_MAINNET) {
-    // Mainnet: CT + Pyth resolvers
-    const ct = conditionalTokensConditionResolver[chainId]?.address;
-    if (ct && ct !== zero) addresses.push(ct as `0x${string}`);
-
-    const pyth = pythConditionResolver[chainId]?.address;
-    if (pyth && pyth !== zero) addresses.push(pyth as `0x${string}`);
-  } else {
-    // Testnet: manual resolver
-    const manual = manualConditionResolver[chainId]?.address;
-    if (manual && manual !== zero) addresses.push(manual as `0x${string}`);
-  }
-
-  return addresses;
-}
 
 const ETH_ADDRESS_RE = /^0x[a-fA-F0-9]{40}$/;
 const SAFE_STRING_RE = /^[a-zA-Z0-9_\-.:x]+$/;
@@ -114,7 +83,9 @@ router.post(
       return;
     }
 
-    const resolverAddresses = getResolverAddressesForChain(parsedChainId);
+    const resolverAddresses = getResolverAddressesForChain(parsedChainId).map(
+      (r) => r.address
+    );
     if (resolverAddresses.length === 0) {
       res.status(400).json({
         error: `No resolver addresses configured for chain ${parsedChainId}`,
