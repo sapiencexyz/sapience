@@ -1,7 +1,7 @@
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
+import type { http } from 'viem';
 import {
   createPublicClient,
-  http,
   keccak256,
   parseAbi,
   slice,
@@ -59,6 +59,7 @@ import {
   etherealTestnetChain,
 } from '@sapience/sdk/constants';
 import { computeSmartAccountAddress } from '@sapience/sdk/session';
+import { httpWithRetry } from '../utils/util';
 
 // Re-export etherealChain as 'ethereal' for backward compatibility
 export { etherealChain as ethereal };
@@ -126,13 +127,38 @@ function stripParametersFromUserOp(params: unknown): unknown {
 }
 
 /**
+ * Retry an async operation with exponential backoff.
+ */
+async function withRetry<T>(
+  fn: () => Promise<T>,
+  retries: number,
+  delayMs: number
+): Promise<T> {
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      if (attempt === retries) throw error;
+      console.debug(
+        `[SessionKeyManager] Retry ${attempt + 1}/${retries} after error:`,
+        error
+      );
+      await new Promise((resolve) =>
+        setTimeout(resolve, delayMs * 2 ** attempt)
+      );
+    }
+  }
+  throw new Error('unreachable');
+}
+
+/**
  * Create a transport wrapper that strips the `parameters` field from userOp.
  * This fixes compatibility between viem 2.33+ and ZeroDev's RPC.
  */
 function createZeroDevCompatibleTransport(
   url: string
 ): ReturnType<typeof http> {
-  const baseTransport = http(url);
+  const baseTransport = httpWithRetry(url);
 
   // Return a transport factory that wraps the base transport
   return ((config) => {
@@ -628,7 +654,7 @@ function getEtherealChain(chainId: number): Chain {
 // Public clients - Arbitrum is static, Ethereal is created based on chainId
 function getArbitrumPublicClient() {
   return createPublicClient({
-    transport: http(
+    transport: httpWithRetry(
       process.env.NEXT_PUBLIC_RPC_URL || 'https://arb1.arbitrum.io/rpc'
     ),
     chain: arbitrum,
@@ -638,7 +664,7 @@ function getArbitrumPublicClient() {
 function getEtherealPublicClient(chainId: number) {
   const chain = getEtherealChain(chainId);
   return createPublicClient({
-    transport: http(chain.rpcUrls.default.http[0]),
+    transport: httpWithRetry(chain.rpcUrls.default.http[0]),
     chain,
   });
 }
@@ -807,9 +833,11 @@ export async function createSession(
   );
 
   // Switch to Ethereal chain (only emit progress if chain switch is actually needed)
-  const currentChainHex = await ownerSigner.provider.request({
-    method: 'eth_chainId',
-  });
+  const currentChainHex = await withRetry(
+    () => ownerSigner.provider.request({ method: 'eth_chainId' }),
+    3,
+    1000
+  );
   const currentChainId = parseInt(currentChainHex, 16);
   if (currentChainId !== etherealChainId) {
     onProgress?.('switching-network');

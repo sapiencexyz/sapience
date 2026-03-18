@@ -1,6 +1,6 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { createPublicClient, http } from 'viem';
+import { createPublicClient, http, type HttpTransportConfig } from 'viem';
 import * as chains from 'viem/chains';
 import { mainnet } from 'viem/chains';
 import {
@@ -11,14 +11,22 @@ import {
   etherealTestnetChain,
 } from '@sapience/sdk/constants';
 
+/**
+ * Viem HTTP transport with default retry configuration.
+ * Use this instead of bare `http()` so every RPC transport retries on transient failures.
+ */
+export function httpWithRetry(url?: string, config?: HttpTransportConfig) {
+  return http(url, { retryCount: 3, retryDelay: 1000, ...config });
+}
+
 // Mainnet client for ENS resolution
 export const mainnetClient = createPublicClient({
   chain: mainnet,
   transport: process.env.NEXT_PUBLIC_INFURA_API_KEY
-    ? http(
+    ? httpWithRetry(
         `https://mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
       )
-    : http('https://ethereum-rpc.publicnode.com'),
+    : httpWithRetry('https://ethereum-rpc.publicnode.com'),
 });
 
 // etherealChain and etherealTestnetChain imported from @sapience/sdk/constants
@@ -47,7 +55,7 @@ export function getPublicClientForChainId(chainId: number) {
 
     const client = createPublicClient({
       chain: isTestnet ? etherealTestnetChain : etherealChain,
-      transport: http(rpcUrl, { retryCount: 3, retryDelay: 1000 }),
+      transport: httpWithRetry(rpcUrl),
     });
     publicClientCache.set(chainId, client);
     return client;
@@ -70,14 +78,11 @@ export function getPublicClientForChainId(chainId: number) {
     chainObj?.rpcUrls?.default?.http?.[0] ||
     (chainId === 1 ? 'https://ethereum-rpc.publicnode.com' : undefined);
 
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any -- viem chain union type too complex for strict cache typing
   const client = createPublicClient({
     chain: (chainObj ?? mainnet) as Parameters<
       typeof createPublicClient
     >[0]['chain'],
-    transport: defaultUrl
-      ? http(defaultUrl, { retryCount: 3, retryDelay: 1000 })
-      : http(undefined, { retryCount: 3, retryDelay: 1000 }),
+    transport: httpWithRetry(defaultUrl),
   });
   publicClientCache.set(chainId, client);
   return client;
