@@ -1,8 +1,8 @@
 'use client';
 
+import { getSignalUrl } from './signalUrl';
 import { MeshClient } from '~/lib/mesh/MeshClient';
 import { MeshTransport } from '~/lib/mesh/MeshTransport';
-import { getSignalUrl } from './signalUrl';
 
 const RL_KEY = 'sapience.settings.meshRateLimit';
 const MAX_PEERS_KEY = 'sapience.settings.meshMaxPeers';
@@ -90,12 +90,24 @@ class MeshAuctionClient {
     return this.mesh?.bandwidthKbps ?? 0;
   }
 
+  get signalConnected(): boolean {
+    return this.mesh?.signalConnected ?? false;
+  }
+
+  get knownPeerCount(): number {
+    return this.mesh?.knownPeerCount ?? 0;
+  }
+
   onPeerCountChange(cb: (count: number) => void): () => void {
     return this.ensureMesh().onPeerCountChange(cb);
   }
 
   onBandwidthChange(cb: (kbps: number) => void): () => void {
     return this.ensureMesh().onBandwidthChange(cb);
+  }
+
+  onSignalStateChange(cb: (connected: boolean) => void): () => void {
+    return this.ensureMesh().onSignalStateChange(cb);
   }
 
   setRateLimit(n: number): void {
@@ -136,4 +148,16 @@ export function setMeshMaxPeers(n: number): void {
 }
 export function setMeshFanout(n: number): void {
   shared.setMaxFanout(n);
+}
+
+export function getMeshSignalConnected(): boolean {
+  return shared.signalConnected;
+}
+export function getMeshKnownPeerCount(): number {
+  return shared.knownPeerCount;
+}
+export function onMeshSignalStateChange(
+  cb: (connected: boolean) => void
+): () => void {
+  return shared.onSignalStateChange(cb);
 }

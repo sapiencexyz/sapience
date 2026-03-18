@@ -77,7 +77,9 @@ export async function GET(req: Request) {
     const horizonParam = normalizeText(searchParams.get('hor'), 48);
     let oddsRaw = normalizeText(searchParams.get('odds'), 8);
     if (uidParam) {
-      const attestation = await fetchAttestationByUid(uidParam);
+      const attestation = await fetchAttestationByUid(uidParam).catch(
+        () => null
+      );
       if (attestation) {
         question =
           normalizeText(attestation.condition?.question ?? null, 160) ||

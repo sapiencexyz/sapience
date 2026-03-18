@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useQuery } from '@tanstack/react-query';
 import { format, formatDistanceToNow, formatDistanceStrict } from 'date-fns';
 import {
   Tooltip,
@@ -8,8 +9,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
-import type { AttestationData } from '~/app/og/_forecast-helpers';
-import { d18ToPercentage } from '~/app/og/_forecast-helpers';
+import type { AttestationData } from '~/lib/data/forecasts';
+import { d18ToPercentage, fetchAttestationByUid } from '~/lib/data/forecasts';
 import { formatPercentChance } from '~/lib/format/percentChance';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import ConditionStatus from '~/components/shared/ConditionStatus';
@@ -22,7 +23,37 @@ export default function ForecastPageClient({
   uid: string;
   serverAttestation: AttestationData | null;
 }) {
-  if (!serverAttestation) {
+  const {
+    data: clientAttestation,
+    isLoading,
+    isError,
+  } = useQuery({
+    queryKey: ['forecast', uid],
+    queryFn: () => fetchAttestationByUid(uid),
+    enabled: !serverAttestation,
+  });
+
+  const attestation = serverAttestation ?? clientAttestation ?? null;
+
+  if (!serverAttestation && isLoading) {
+    return (
+      <div className="flex min-h-[50dvh] items-center justify-center">
+        <div className="animate-pulse text-muted-foreground">
+          Loading forecast...
+        </div>
+      </div>
+    );
+  }
+
+  if (!serverAttestation && isError) {
+    return (
+      <div className="text-center text-muted-foreground">
+        Failed to load forecast. Please check your connection and try again.
+      </div>
+    );
+  }
+
+  if (!attestation) {
     return (
       <div className="text-center text-muted-foreground">
         Forecast not found.
@@ -30,16 +61,15 @@ export default function ForecastPageClient({
     );
   }
 
-  const question =
-    serverAttestation.condition?.question ?? 'Question not available';
-  const attester = serverAttestation.attester;
-  const createdAt = new Date(serverAttestation.time * 1000);
-  const comment = serverAttestation.comment?.trim() || null;
+  const question = attestation.condition?.question ?? 'Question not available';
+  const attester = attestation.attester;
+  const createdAt = new Date(attestation.time * 1000);
+  const comment = attestation.comment?.trim() || null;
 
   // Prediction percentage
   let percentage: number | null = null;
   try {
-    percentage = d18ToPercentage(serverAttestation.prediction);
+    percentage = d18ToPercentage(attestation.prediction);
   } catch {
     // ignore
   }
@@ -51,7 +81,7 @@ export default function ForecastPageClient({
   }
 
   // Resolution / horizon
-  const endTime = serverAttestation.condition?.endTime ?? null;
+  const endTime = attestation.condition?.endTime ?? null;
   const resolutionDate = endTime ? new Date(endTime * 1000) : null;
 
   const resolutionStr = resolutionDate
@@ -62,8 +92,8 @@ export default function ForecastPageClient({
     : null;
 
   // Status
-  const isSettled = serverAttestation.condition?.settled ?? false;
-  const resolvedToYes = serverAttestation.condition?.resolvedToYes;
+  const isSettled = attestation.condition?.settled ?? false;
+  const resolvedToYes = attestation.condition?.resolvedToYes;
 
   return (
     <div className="space-y-4 pt-2">
@@ -119,10 +149,10 @@ export default function ForecastPageClient({
         <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
           Question
         </div>
-        {serverAttestation.condition ? (
+        {attestation.condition ? (
           <ConditionTitleLink
-            conditionId={serverAttestation.condition.id}
-            resolverAddress={serverAttestation.condition.resolver ?? undefined}
+            conditionId={attestation.condition.id}
+            resolverAddress={attestation.condition.resolver ?? undefined}
             title={question}
             className="text-base md:text-lg font-medium"
           />
