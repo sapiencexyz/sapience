@@ -187,8 +187,17 @@ contract PythConditionResolver is ConditionResolverBase, ReentrancyGuard {
                 _benchmarkFromVerifiedPayload(payload, feedId);
         }
 
-        // Enforce exact-second alignment
-        if (publishTimeMicros % 1_000_000 != 0) revert InvalidMarketData();
+        // Enforce exact-second match between the Pyth update and the market endTime.
+        // publishTimeSec is already truncated via integer division (timestamp / 1_000_000),
+        // so sub-second microsecond residue is safely discarded.
+        // TRUST ASSUMPTION: We rely entirely on Pyth Lazer's cryptographic signature
+        // verification to guarantee that the price was actually observed at the stated
+        // timestamp. There is no on-chain staleness check against block.timestamp.
+        // The exact-second match constrains *which* second can settle a market, but
+        // a compromised Pyth Lazer signer could submit a validly-signed payload with
+        // an arbitrary price for any past timestamp. This is a single-point-of-trust
+        // on the Pyth Lazer signer key — acceptable given the protocol's oracle model,
+        // but callers should be aware of this trust boundary.
         if (publishTimeSec != market.endTime) revert InvalidMarketData();
 
         // Require exact exponent match
