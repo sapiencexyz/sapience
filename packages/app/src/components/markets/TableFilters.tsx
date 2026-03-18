@@ -6,15 +6,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@sapience/ui/components/ui/popover';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@sapience/ui/components/ui/command';
-import { ChevronsUpDown, Check, Search } from 'lucide-react';
+import { ChevronsUpDown, Check, Search, ChevronRight } from 'lucide-react';
 import { cn } from '@sapience/ui/lib/utils';
 import ResolutionStatusFilter, {
   type ResolutionStatusFilterValue,
@@ -60,6 +52,13 @@ function CategoryMultiSelect({
   onChange,
 }: CategoryMultiSelectProps) {
   const [open, setOpen] = React.useState(false);
+  const [pmExpanded, setPmExpanded] = React.useState(true);
+
+  // Separate prediction-market categories from prices
+  const predictionMarketCategories = categories.filter(
+    (c) => c.slug !== 'prices'
+  );
+  const pricesCategory = categories.find((c) => c.slug === 'prices');
 
   const handleToggle = (slug: string) => {
     if (selectedSlugs.includes(slug)) {
@@ -74,6 +73,16 @@ function CategoryMultiSelect({
       onChange([]);
     } else {
       onChange(categories.map((c) => c.slug));
+    }
+  };
+
+  const handleTogglePredictionMarkets = () => {
+    const pmSlugs = predictionMarketCategories.map((c) => c.slug);
+    const allPmSelected = pmSlugs.every((s) => selectedSlugs.includes(s));
+    if (allPmSelected) {
+      onChange(selectedSlugs.filter((s) => !pmSlugs.includes(s)));
+    } else {
+      onChange([...new Set([...selectedSlugs, ...pmSlugs])]);
     }
   };
 
@@ -94,6 +103,15 @@ function CategoryMultiSelect({
   const isAllSelected =
     selectedSlugs.length === 0 || selectedSlugs.length === categories.length;
 
+  const pmSlugs = predictionMarketCategories.map((c) => c.slug);
+  const allPmSelected =
+    pmSlugs.length > 0 && pmSlugs.every((s) => selectedSlugs.includes(s));
+  const somePmSelected = pmSlugs.some((s) => selectedSlugs.includes(s));
+
+  const isPricesSelected = pricesCategory
+    ? selectedSlugs.includes(pricesCategory.slug)
+    : false;
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -111,31 +129,65 @@ function CategoryMultiSelect({
           <ChevronsUpDown className="h-4 w-4 opacity-50" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-[220px] p-0" align="start">
-        <Command>
-          <CommandInput placeholder="Search focus areas..." className="h-9" />
-          <CommandList>
-            <CommandEmpty>No focus area found.</CommandEmpty>
-            <CommandGroup>
-              <CommandItem
-                onSelect={handleSelectAll}
-                className="cursor-pointer flex items-center justify-between"
+      <PopoverContent className="w-[240px] p-1" align="start">
+        <div className="flex flex-col">
+          {/* All focus areas */}
+          <button
+            type="button"
+            onClick={handleSelectAll}
+            className="cursor-pointer flex items-center justify-between rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
+          >
+            <span className="font-medium">All focus areas</span>
+            <Check
+              className={cn(
+                'h-4 w-4',
+                isAllSelected ? 'opacity-100 text-amber-400' : 'opacity-0'
+              )}
+            />
+          </button>
+
+          {/* Prediction Markets group */}
+          <div className="mt-1">
+            <div className="flex items-center">
+              <button
+                type="button"
+                onClick={() => setPmExpanded(!pmExpanded)}
+                className="p-1 rounded-sm hover:bg-accent"
               >
-                <span className="font-medium">All focus areas</span>
+                <ChevronRight
+                  className={cn(
+                    'h-3.5 w-3.5 transition-transform',
+                    pmExpanded && 'rotate-90'
+                  )}
+                />
+              </button>
+              <button
+                type="button"
+                onClick={handleTogglePredictionMarkets}
+                className="flex-1 cursor-pointer flex items-center justify-between rounded-sm px-1.5 py-1.5 text-sm hover:bg-accent"
+              >
+                <span className="font-medium">Prediction Markets</span>
                 <Check
                   className={cn(
                     'h-4 w-4',
-                    isAllSelected ? 'opacity-100 text-amber-400' : 'opacity-0'
+                    allPmSelected
+                      ? 'opacity-100 text-amber-400'
+                      : somePmSelected
+                        ? 'opacity-100 text-amber-400/50'
+                        : 'opacity-0'
                   )}
                 />
-              </CommandItem>
-              {categories.map((category) => {
+              </button>
+            </div>
+            {pmExpanded &&
+              predictionMarketCategories.map((category) => {
                 const isSelected = selectedSlugs.includes(category.slug);
                 return (
-                  <CommandItem
+                  <button
+                    type="button"
                     key={category.slug}
-                    onSelect={() => handleToggle(category.slug)}
-                    className="cursor-pointer flex items-center justify-between"
+                    onClick={() => handleToggle(category.slug)}
+                    className="w-full cursor-pointer flex items-center justify-between rounded-sm pl-8 pr-2 py-1.5 text-sm hover:bg-accent"
                   >
                     <span>{category.name}</span>
                     <Check
@@ -144,12 +196,29 @@ function CategoryMultiSelect({
                         isSelected ? 'opacity-100 text-amber-400' : 'opacity-0'
                       )}
                     />
-                  </CommandItem>
+                  </button>
                 );
               })}
-            </CommandGroup>
-          </CommandList>
-        </Command>
+          </div>
+
+          {/* Prices (Pyth) */}
+          {pricesCategory && (
+            <button
+              type="button"
+              onClick={() => handleToggle(pricesCategory.slug)}
+              className="cursor-pointer flex items-center justify-between rounded-sm px-2 py-1.5 text-sm hover:bg-accent mt-1"
+              style={{ paddingLeft: 'calc(0.5rem + 1.25rem)' }}
+            >
+              <span className="font-medium">Prices</span>
+              <Check
+                className={cn(
+                  'h-4 w-4',
+                  isPricesSelected ? 'opacity-100 text-amber-400' : 'opacity-0'
+                )}
+              />
+            </button>
+          )}
+        </div>
       </PopoverContent>
     </Popover>
   );
