@@ -238,16 +238,21 @@ describe('conditions routes', () => {
       expect(res.body.message).toMatch(/not found/i);
     });
 
-    it('returns 400 when shortening endTime', async () => {
+    it('allows shortening endTime on unsettled condition', async () => {
       const existing = existingCondition({ endTime: FUTURE_END_TIME + 5000 });
       mockPrisma.condition.findUnique.mockResolvedValue(existing);
+      mockPrisma.condition.update.mockResolvedValue({
+        ...existing,
+        endTime: FUTURE_END_TIME,
+      });
 
       const res = await request(app)
         .put(`/admin/conditions/${VALID_ID}`)
         .send({ endTime: FUTURE_END_TIME });
 
-      expect(res.status).toBe(400);
-      expect(res.body.message).toMatch(/shortened/i);
+      expect(res.status).toBe(200);
+      const updateCall = mockPrisma.condition.update.mock.calls[0][0];
+      expect(updateCall.data.endTime).toBe(FUTURE_END_TIME);
     });
 
     it('returns 400 when changing endTime on settled condition', async () => {

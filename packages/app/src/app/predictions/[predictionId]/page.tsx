@@ -1,12 +1,6 @@
 import type { Metadata } from 'next';
-import {
-  PREDICTION_BY_ID_QUERY,
-  CONDITIONS_BY_IDS_QUERY,
-  getGraphQLEndpoint,
-  type PredictionData,
-  type ConditionData,
-} from '~/app/og/_prediction-helpers';
 import PredictionPageClient from './PredictionPageClient';
+import { fetchPredictionWithConditions } from '~/lib/data/predictions';
 
 type PredictionPageProps = {
   params: Promise<{ predictionId: string }>;
@@ -52,65 +46,13 @@ export async function generateMetadata(
   };
 }
 
-async function fetchPrediction(predictionId: string): Promise<{
-  prediction: PredictionData | null;
-  conditions: Map<string, ConditionData>;
-}> {
-  const conditions = new Map<string, ConditionData>();
-  try {
-    const endpoint = getGraphQLEndpoint();
-    const resp = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        query: PREDICTION_BY_ID_QUERY,
-        variables: { id: predictionId },
-      }),
-      next: { revalidate: 30 },
-    });
-    if (!resp.ok) return { prediction: null, conditions };
-    const json = await resp.json();
-    const prediction: PredictionData | null = json?.data?.prediction ?? null;
-    if (!prediction) return { prediction: null, conditions };
-
-    // Fetch condition data for picks
-    const conditionIds =
-      prediction.pickConfig?.picks.map((p) => p.conditionId) ?? [];
-    if (conditionIds.length > 0) {
-      try {
-        const condResp = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            query: CONDITIONS_BY_IDS_QUERY,
-            variables: { where: { id: { in: conditionIds } } },
-          }),
-          next: { revalidate: 30 },
-        });
-        if (!condResp.ok) throw new Error('Conditions fetch failed');
-        const condJson = await condResp.json();
-        const conds: ConditionData[] = condJson?.data?.conditions ?? [];
-        for (const c of conds) {
-          conditions.set(c.id, c);
-        }
-      } catch {
-        // Condition fetch is non-critical
-      }
-    }
-
-    return { prediction, conditions };
-  } catch {
-    return { prediction: null, conditions };
-  }
-}
-
-export default async function PredictionPage(props: PredictionPageProps) {
-  const { predictionId } = await props.params;
-  const { prediction, conditions } = await fetchPrediction(predictionId);
-
-  // Serialize conditions map for client component
-  const conditionsArray = Array.from(conditions.entries()).map(
-    ([id, data]) => ({ ...data, id })
+export default async function PredictionPage({ params }: PredictionPageProps) {
+  const { predictionId } = await params;
+  const result = await fetchPredictionWithConditions(predictionId).catch(
+    (): Awaited<ReturnType<typeof fetchPredictionWithConditions>> => ({
+      prediction: null,
+      conditions: [],
+    })
   );
 
   return (
@@ -119,8 +61,8 @@ export default async function PredictionPage(props: PredictionPageProps) {
         <div className="rounded-lg border border-border bg-brand-black p-6">
           <PredictionPageClient
             predictionId={predictionId}
-            serverPrediction={prediction}
-            serverConditions={conditionsArray}
+            serverPrediction={result.prediction}
+            serverConditions={result.conditions}
           />
         </div>
       </main>

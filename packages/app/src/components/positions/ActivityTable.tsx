@@ -11,6 +11,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
+import { COLLATERAL_SYMBOLS, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { OutcomeSide } from '@sapience/sdk/types';
 import EmptyTabState from '~/components/shared/EmptyTabState';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import Loader from '~/components/shared/Loader';
@@ -18,8 +20,6 @@ import PicksSummary from '~/components/shared/PicksSummary';
 import CountdownCell from '~/components/shared/CountdownCell';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
-import { COLLATERAL_SYMBOLS, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
-import { OutcomeSide } from '@sapience/sdk/types';
 import {
   usePredictions,
   usePredictionsByConditionId,
@@ -45,6 +45,7 @@ import {
   isWithinDateRange,
   matchesConditionSearch,
 } from '~/lib/utils/tableFilters';
+import { useInfiniteScroll } from '~/hooks/useInfiniteScroll';
 
 function ActivityRow({
   prediction,
@@ -287,9 +288,9 @@ function SharePredictionDialog({
   onClose: () => void;
 }) {
   const { prediction, pickConfig, isPredictorSide } = sharePrediction;
-  const picks = pickConfig?.picks ?? [];
 
   const imageSrc = React.useMemo(() => {
+    const picks = pickConfig?.picks ?? [];
     const predictorEth = Number(
       formatEther(BigInt(prediction.predictorCollateral))
     );
@@ -329,7 +330,6 @@ function SharePredictionDialog({
     isPredictorSide,
     conditionsMap,
     collateralSymbol,
-    picks,
   ]);
 
   const shareUrl =
@@ -534,6 +534,12 @@ export default function ActivityTable({
 
   const hasMore = predictions.length > take;
 
+  const { loadMoreRef } = useInfiniteScroll({
+    hasMore,
+    isLoading: predictionsLoading,
+    onFetchMore: () => setTake((t) => t + effectivePageSize),
+  });
+
   const headerContent = (
     <div className="px-4 py-4 border-b border-border/60 flex flex-col sm:flex-row sm:items-center gap-4 bg-white/[0.03]">
       {leftSlot && leftSlot}
@@ -626,17 +632,7 @@ export default function ActivityTable({
           </tbody>
         </table>
       </div>
-      {hasMore && (
-        <div className="flex justify-center py-4">
-          <button
-            type="button"
-            onClick={() => setTake((t) => t + effectivePageSize)}
-            className="text-sm font-mono text-brand-white hover:text-brand-white/70 underline decoration-dotted underline-offset-4 transition-colors cursor-pointer"
-          >
-            Show more
-          </button>
-        </div>
-      )}
+      <div ref={loadMoreRef} className="h-1" />
       {sharePrediction && (
         <SharePredictionDialog
           sharePrediction={sharePrediction}
