@@ -76,6 +76,24 @@ describe('determineOutcomeFromPolymarket', () => {
     expect(result).toEqual({ yesWeight: 0n, noWeight: 1n });
   });
 
+  it('throws for negative payout numerators', () => {
+    expect(() => determineOutcomeFromPolymarket([-1n, 0n])).toThrow(
+      'Negative payout numerators are invalid'
+    );
+  });
+
+  it('throws for negative value in second position', () => {
+    expect(() => determineOutcomeFromPolymarket([1n, -1n])).toThrow(
+      'Negative payout numerators are invalid'
+    );
+  });
+
+  it('throws for negative values in extra outcomes', () => {
+    expect(() => determineOutcomeFromPolymarket([1n, 0n, -5n])).toThrow(
+      'Negative payout numerators are invalid'
+    );
+  });
+
   it('throws for fewer than 2 payout numerators', () => {
     expect(() => determineOutcomeFromPolymarket([1n])).toThrow(
       'Expected at least 2 payout numerators'
