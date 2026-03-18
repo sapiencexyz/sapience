@@ -254,4 +254,57 @@ describe('useValidatedBids', () => {
     expect(validated?.validationStatus).toBe('invalid');
     expect(result.current.validBids).toHaveLength(0);
   });
+
+  // ---- canValidate requires picks ----
+
+  it('triggers on-chain validation when picks are provided', async () => {
+    const bid = makeBid({ counterpartySignature: '0xwith_picks' });
+
+    const optsWithPicks: UseValidatedBidsOptions = {
+      ...DEFAULT_OPTS,
+      picks: DEFAULT_PICKS,
+    };
+
+    renderStable([bid], optsWithPicks);
+    await flush();
+
+    expect(mockValidateBidOnChain).toHaveBeenCalledTimes(1);
+  });
+
+  it('defaults bids to valid without on-chain validation when picks are empty', async () => {
+    const bid = makeBid({ counterpartySignature: '0xno_picks' });
+
+    const optsNoPicks: UseValidatedBidsOptions = {
+      ...DEFAULT_OPTS,
+      picks: [],
+    };
+
+    const { result } = renderStable([bid], optsNoPicks);
+    await flush();
+
+    // canValidate is false when picks is empty → bids default to 'valid' without on-chain check
+    expect(mockValidateBidOnChain).not.toHaveBeenCalled();
+    const validated = result.current.validatedBids.find(
+      (b) => b.counterpartySignature === '0xno_picks'
+    );
+    expect(validated?.validationStatus).toBe('valid');
+  });
+
+  it('defaults bids to valid without on-chain validation when picks are undefined', async () => {
+    const bid = makeBid({ counterpartySignature: '0xundefined_picks' });
+
+    const optsNoPicks: UseValidatedBidsOptions = {
+      ...DEFAULT_OPTS,
+      picks: undefined,
+    };
+
+    const { result } = renderStable([bid], optsNoPicks);
+    await flush();
+
+    expect(mockValidateBidOnChain).not.toHaveBeenCalled();
+    const validated = result.current.validatedBids.find(
+      (b) => b.counterpartySignature === '0xundefined_picks'
+    );
+    expect(validated?.validationStatus).toBe('valid');
+  });
 });

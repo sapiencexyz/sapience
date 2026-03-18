@@ -17,8 +17,6 @@ import {
 import { useIsBelow } from '@sapience/ui/hooks/use-mobile';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
-import OgShareDialogBase from '~/components/shared/OgShareDialog';
 import { DollarSign, Share2, Link2, ImageIcon, X } from 'lucide-react';
 import {
   DropdownMenu,
@@ -46,22 +44,28 @@ import { z } from 'zod';
 import { predictionMarketEscrowAbi } from '@sapience/sdk/abis';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
 import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
+import type { PythPrediction } from '@sapience/ui';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import type { Address } from 'viem';
 import { erc20Abi, formatUnits, parseUnits } from 'viem';
 import { useAccount, useReadContracts } from 'wagmi';
-import { useSession } from '~/lib/context/SessionContext';
-import { createPositionSizeSchema } from '~/components/markets/forms/inputs/PositionSizeInput';
-import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
-
+import OgShareDialogBase from '~/components/shared/OgShareDialog';
+import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
 import { CreatePositionFormContent } from '~/components/markets/CreatePositionForm/CreatePositionFormContent';
-import { useConnectedWallet } from '~/hooks/useConnectedWallet';
-import { useSubmitPosition } from '~/hooks/forms/useSubmitPosition';
-import { useSponsorStatus } from '~/hooks/sponsorship/useSponsorStatus';
-import { usePositionProgress } from '~/hooks/forms/usePositionProgress';
-import { useAuctionStart, type QuoteBid } from '~/lib/auction/useAuctionStart';
-
+import { createPositionSizeSchema } from '~/components/markets/forms/inputs/PositionSizeInput';
 import { useValidatedBids } from '~/hooks/auction/useValidatedBids';
+import { useSubmitPosition } from '~/hooks/forms/useSubmitPosition';
+import { usePositionProgress } from '~/hooks/forms/usePositionProgress';
+import { useSponsorStatus } from '~/hooks/sponsorship/useSponsorStatus';
+import { useConnectedWallet } from '~/hooks/useConnectedWallet';
+import { useAuctionStart, type QuoteBid } from '~/lib/auction/useAuctionStart';
+import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
+import {
+  CollateralBalanceProvider,
+  useCollateralBalanceContext,
+} from '~/lib/context/CollateralBalanceContext';
+import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
+import { useSession } from '~/lib/context/SessionContext';
 import {
   DEFAULT_POSITION_SIZE,
   getMaxPositionSize,
@@ -69,12 +73,6 @@ import {
   calculatePayout,
   YES_SQRT_PRICE_X96,
 } from '~/lib/utils/positionFormUtils';
-import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
-import {
-  CollateralBalanceProvider,
-  useCollateralBalanceContext,
-} from '~/lib/context/CollateralBalanceContext';
-import type { PythPrediction } from '@sapience/ui';
 
 interface CreatePositionFormProps {
   variant?: 'triggered' | 'panel';
@@ -159,7 +157,6 @@ const CreatePositionFormInner = ({
     clearPositionForm,
     selections,
     clearSelections,
-    getPicks,
   } = useCreatePositionContext();
 
   const isCompact = useIsBelow(1024);
@@ -477,15 +474,13 @@ const CreatePositionFormInner = ({
     }
   }, [watchedPositionSize, collateralDecimals]);
 
-  // Compute picks for bid validation (memoized to avoid re-renders)
+  // Use the canonical picks from the auction params — they contain the exact picks
+  // the counterparty signed over, for both Pyth and Polymarket. getPicks() only
+  // returns Polymarket selections and would skip validation for Pyth-only predictions.
   const validationPicks = useMemo(() => {
-    try {
-      const picks = getPicks();
-      return picks.length > 0 ? picks : undefined;
-    } catch {
-      return undefined;
-    }
-  }, [getPicks]);
+    const picks = currentAuctionParams?.picks;
+    return picks && picks.length > 0 ? picks : undefined;
+  }, [currentAuctionParams]);
 
   // Derive sponsor status from the actual auction params (not from user eligibility).
   // The counterparty signed with whatever sponsor was in the auction request, so
@@ -688,12 +683,20 @@ const CreatePositionFormInner = ({
               (limitAmount !== undefined ? String(limitAmount) : undefined);
           }
 
+          // Build picks from both Polymarket selections and Pyth predictions
+          const polymarketPicks = selections.map((s) => ({
+            conditionId: s.conditionId,
+            question: s.question,
+            choice: s.prediction ? 'Yes' : ('No' as 'Yes' | 'No'),
+          }));
+          const pythPicks = pythPredictions.map((p) => ({
+            conditionId: p.id,
+            question: `${p.priceFeedLabel ?? 'Crypto'} ${p.direction.toUpperCase()} $${p.targetPrice.toLocaleString()}`,
+            choice: 'Yes' as const,
+          }));
+
           const dialogData = {
-            picks: selections.map((s) => ({
-              conditionId: s.conditionId,
-              question: s.question,
-              choice: s.prediction ? 'Yes' : ('No' as 'Yes' | 'No'),
-            })),
+            picks: [...polymarketPicks, ...pythPicks],
             positionSize: submittedPositionSize,
             payout,
             symbol: collateralSymbol || 'testUSDe',
@@ -706,15 +709,8 @@ const CreatePositionFormInner = ({
           // Close the popover/drawer
           setIsPopoverOpen(false);
 
-          // Add picks directly from selections (ensures exact match with counterparty signature)
-          const picks = getPicks();
-          if (picks.length > 0) {
-            mintReq.picks = picks.map((p) => ({
-              conditionResolver: p.conditionResolver,
-              conditionId: p.conditionId,
-              predictedOutcome: p.predictedOutcome,
-            }));
-          }
+          // picks are already set by buildMintRequestDataFromBid from auction.picks
+          // (the canonical set the counterparty signed over, including both Pyth and Polymarket)
 
           // Sponsorship: predictorSponsor is already set by buildMintRequestDataFromBid
           // from the auction params (threaded when user clicked "Use" on the sponsor indicator).

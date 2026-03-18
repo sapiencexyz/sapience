@@ -206,15 +206,15 @@ type PrepareForTrade = (args: {
 }) => Promise<{ ready: boolean; wrapTxHash?: Hex; approvalTxHash?: Hex; wusdBalance: bigint }>;
 const prepareForTrade = sdk.prepareForTrade as PrepareForTrade | undefined;
 
-async function prepareCollateral() {
+async function prepareCollateral(): Promise<boolean> {
   try {
     if (!account || !PRIVATE_KEY_HEX) {
       logger.info('Skipping collateral preparation: PRIVATE_KEY not set');
-      return;
+      return true; // dry-run mode, no collateral needed
     }
     if (!VERIFYING_CONTRACT) {
       logger.warn('Skipping collateral preparation: VERIFYING_CONTRACT not set');
-      return;
+      return false;
     }
 
     logger.info([
@@ -235,7 +235,7 @@ async function prepareCollateral() {
       if (result.wrapTxHash) logger.success(`Wrapped USDe -> WUSDe: ${result.wrapTxHash}`);
       if (result.approvalTxHash) logger.success(`Approved WUSDe: ${result.approvalTxHash}`);
       logger.success(`Ready for trading. WUSDe balance: ${result.wusdBalance}`);
-      return;
+      return true;
     }
 
     // Fallback: simple MAX approval for ERC-20 collateral
@@ -254,7 +254,7 @@ async function prepareCollateral() {
 
     if (current >= MAX / 2n) {
       logger.success(`Approval already sufficient for ${formatAddress(VERIFYING_CONTRACT)}`);
-      return;
+      return true;
     }
 
     const hash = (await walletClient.writeContract({
@@ -266,8 +266,10 @@ async function prepareCollateral() {
     })) as Hex;
     await publicClient.waitForTransactionReceipt({ hash });
     logger.success(`Approval tx for ${formatAddress(VERIFYING_CONTRACT)}: ${hash}`);
+    return true;
   } catch (e) {
     logger.error('Collateral preparation failed:', e);
+    return false;
   }
 }
 
@@ -505,7 +507,11 @@ async function start() {
     return;
   }
 
-  void prepareCollateral();
+  const collateralReady = await prepareCollateral();
+  if (!collateralReady) {
+    logger.error('⛔️ Aborting: collateral preparation failed — cannot bid without approval');
+    return;
+  }
 
   const client = await createEscrowAuctionWs(RELAYER_WS_URL, {
     onOpen: () => {
