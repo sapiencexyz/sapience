@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { getRpcUrl, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { useAnimatedNumber } from '~/hooks/useAnimatedNumber';
 
-const PING_INTERVAL_MS = 15_000;
+const PING_INTERVAL_MS = 10_000;
 
 export function useRpcPing() {
   const [rawMs, setRawMs] = useState<number | null>(null);
