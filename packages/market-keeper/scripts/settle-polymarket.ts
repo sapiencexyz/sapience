@@ -111,7 +111,7 @@ interface ConditionsQueryResponse {
 interface SettlementResult {
   conditionId: string;
   alreadyResolved: boolean;
-  resolvedOnPolygon: boolean;
+  canResolve: boolean;
   settled: boolean;
   txHash?: string;
   error?: string;
@@ -392,7 +392,7 @@ async function checkAndSettleCondition(
       return {
         conditionId,
         alreadyResolved: true,
-        resolvedOnPolygon: false,
+        canResolve: false,
         settled: false,
       };
     }
@@ -411,7 +411,7 @@ async function checkAndSettleCondition(
       return {
         conditionId,
         alreadyResolved: false,
-        resolvedOnPolygon: false,
+        canResolve: false,
         settled: false,
       };
     }
@@ -423,7 +423,7 @@ async function checkAndSettleCondition(
       return {
         conditionId,
         alreadyResolved: false,
-        resolvedOnPolygon: true,
+        canResolve: true,
         settled: false,
       };
     }
@@ -432,7 +432,7 @@ async function checkAndSettleCondition(
       return {
         conditionId,
         alreadyResolved: false,
-        resolvedOnPolygon: true,
+        canResolve: true,
         settled: false,
         error: 'No wallet client (missing ADMIN_PRIVATE_KEY)',
       };
@@ -490,7 +490,7 @@ async function checkAndSettleCondition(
     return {
       conditionId,
       alreadyResolved: false,
-      resolvedOnPolygon: true,
+      canResolve: true,
       settled: true,
       txHash: hash,
     };
@@ -499,7 +499,7 @@ async function checkAndSettleCondition(
     return {
       conditionId,
       alreadyResolved: false,
-      resolvedOnPolygon: false,
+      canResolve: false,
       settled: false,
       error: errorMessage,
     };
@@ -594,7 +594,7 @@ async function main() {
     const results = {
       total: conditions.length,
       alreadyResolved: 0,
-      resolvedOnPolygon: 0,
+      canResolve: 0,
       settled: 0,
       skipped: 0,
       errors: 0,
@@ -614,10 +614,10 @@ async function main() {
       } else if (result.error) {
         console.error(`Error for ${condition.id}: ${result.error}`);
         results.errors++;
-      } else if (!result.resolvedOnPolygon) {
+      } else if (!result.canResolve) {
         results.skipped++;
       } else {
-        results.resolvedOnPolygon++;
+        results.canResolve++;
         if (result.settled) results.settled++;
       }
     }
@@ -626,7 +626,7 @@ async function main() {
     console.log('\n--- Summary ---');
     console.log(`Total conditions:        ${results.total}`);
     console.log(`Already on resolver:     ${results.alreadyResolved}`);
-    console.log(`Resolved on Polygon:     ${results.resolvedOnPolygon}`);
+    console.log(`Resolved on Polygon:     ${results.canResolve}`);
     console.log(`Settled (tx sent):       ${results.settled}`);
     console.log(`Skipped (not resolved):  ${results.skipped}`);
     console.log(`Errors:                  ${results.errors}`);
