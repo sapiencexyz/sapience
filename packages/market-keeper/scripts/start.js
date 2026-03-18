@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-import { execSync } from 'child_process';
+const { execSync } = require('child_process');
 
-const run = (cmd: string) => execSync(cmd, { stdio: 'inherit' });
+const run = (cmd) => execSync(cmd, { stdio: 'inherit' });
 
 run('node dist/scripts/generate.js');
 run('node dist/scripts/relist.js');
