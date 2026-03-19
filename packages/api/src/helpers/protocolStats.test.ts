@@ -6,8 +6,6 @@ const { mockPrisma, mockReadContract } = vi.hoisted(() => {
   const mockReadContract = vi.fn().mockResolvedValue(1000000000000000000n);
   const mockPrisma = {
     prediction: { findMany: vi.fn() },
-    legacyPosition: { findMany: vi.fn() },
-    event: { findMany: vi.fn() },
     vaultFlowEvent: { findMany: vi.fn() },
     protocolStatsSnapshot: {
       upsert: vi.fn(),
@@ -21,7 +19,12 @@ const { mockPrisma, mockReadContract } = vi.hoisted(() => {
 vi.mock('../db', () => ({ default: mockPrisma }));
 
 vi.mock('../../generated/prisma', () => ({
-  LegacyPositionStatus: { settled: 'settled', consolidated: 'consolidated' },
+  SettlementResult: {
+    UNRESOLVED: 'UNRESOLVED',
+    PREDICTOR_WINS: 'PREDICTOR_WINS',
+    COUNTERPARTY_WINS: 'COUNTERPARTY_WINS',
+    NON_DECISIVE: 'NON_DECISIVE',
+  },
 }));
 
 vi.mock('../utils/utils', () => ({
@@ -81,7 +84,10 @@ describe('fetchVaultDeployed', () => {
       where: {
         chainId: 42161,
         counterparty: '0xvault',
-        settled: false,
+        OR: [
+          { pickConfigId: null },
+          { pickConfiguration: { resolved: false } },
+        ],
       },
       select: { counterpartyCollateral: true },
     });
@@ -109,8 +115,14 @@ describe('fetchVaultDeployed', () => {
         counterparty: '0xvault',
         onChainCreatedAt: { lte: timestamp },
         OR: [
-          { settled: false },
-          { settled: true, settledAt: { gt: timestamp } },
+          { pickConfigId: null },
+          { pickConfiguration: { resolved: false } },
+          {
+            pickConfiguration: {
+              resolved: true,
+              resolvedAt: { gt: timestamp },
+            },
+          },
         ],
       },
       select: { counterpartyCollateral: true },
@@ -130,10 +142,8 @@ describe('fetchVaultDeployed', () => {
 describe('computeAndStoreProtocolStats', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Default: no predictions, no positions, no flow events
+    // Default: no predictions, no flow events
     mockPrisma.prediction.findMany.mockResolvedValue([]);
-    mockPrisma.legacyPosition.findMany.mockResolvedValue([]);
-    mockPrisma.event.findMany.mockResolvedValue([]);
     mockPrisma.vaultFlowEvent.findMany.mockResolvedValue([]);
     mockPrisma.protocolStatsSnapshot.upsert.mockResolvedValue({});
     // readContract returns 1e18 for all calls (vault balance, available assets, escrow balance)
@@ -222,6 +232,119 @@ describe('computeAndStoreProtocolStats', () => {
     expect(update.vaultPositionsLost).toBe(create.vaultPositionsLost);
     expect(update.vaultCollateralWon).toBe(create.vaultCollateralWon);
     expect(update.vaultCollateralLost).toBe(create.vaultCollateralLost);
+  });
+});
+
+// ─── calculateVaultPnL (via computeAndStoreProtocolStats) ───────────────────
+
+describe('vault PnL calculation', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockPrisma.prediction.findMany.mockResolvedValue([]);
+    mockPrisma.vaultFlowEvent.findMany.mockResolvedValue([]);
+    mockPrisma.protocolStatsSnapshot.upsert.mockResolvedValue({});
+    mockReadContract.mockResolvedValue(1000000000000000000n);
+  });
+
+  it('calculates gains when vault wins as counterparty', async () => {
+    // fetchVaultDeployed call returns no active predictions
+    // calculateVaultPnL call returns resolved prediction where vault won
+    mockPrisma.prediction.findMany
+      .mockResolvedValueOnce([]) // fetchVaultDeployed
+      .mockResolvedValueOnce([
+        {
+          predictor: '0xuser',
+          counterparty: '0xvault',
+          predictorCollateral: '300000000000000000',
+          counterpartyCollateral: '700000000000000000',
+          pickConfiguration: { result: 'COUNTERPARTY_WINS' },
+        },
+      ]);
+
+    await computeAndStoreProtocolStats(42161);
+
+    const upsertCall = mockPrisma.protocolStatsSnapshot.upsert.mock.calls[0][0];
+    // Vault won as counterparty: gains = predictorCollateral = 0.3e18
+    expect(upsertCall.create.vaultRealizedPnL).toBe('300000000000000000');
+    expect(upsertCall.create.vaultPositionsWon).toBe(1);
+    expect(upsertCall.create.vaultPositionsLost).toBe(0);
+    expect(upsertCall.create.vaultCollateralWon).toBe('300000000000000000');
+    expect(upsertCall.create.vaultCollateralLost).toBe('0');
+  });
+
+  it('calculates losses when vault loses as counterparty', async () => {
+    mockPrisma.prediction.findMany
+      .mockResolvedValueOnce([]) // fetchVaultDeployed
+      .mockResolvedValueOnce([
+        {
+          predictor: '0xuser',
+          counterparty: '0xvault',
+          predictorCollateral: '300000000000000000',
+          counterpartyCollateral: '700000000000000000',
+          pickConfiguration: { result: 'PREDICTOR_WINS' },
+        },
+      ]);
+
+    await computeAndStoreProtocolStats(42161);
+
+    const upsertCall = mockPrisma.protocolStatsSnapshot.upsert.mock.calls[0][0];
+    // Vault lost as counterparty: loss = counterpartyCollateral = 0.7e18
+    expect(upsertCall.create.vaultRealizedPnL).toBe('-700000000000000000');
+    expect(upsertCall.create.vaultPositionsWon).toBe(0);
+    expect(upsertCall.create.vaultPositionsLost).toBe(1);
+    expect(upsertCall.create.vaultCollateralLost).toBe('700000000000000000');
+  });
+
+  it('handles mixed wins and losses', async () => {
+    mockPrisma.prediction.findMany
+      .mockResolvedValueOnce([]) // fetchVaultDeployed
+      .mockResolvedValueOnce([
+        {
+          predictor: '0xuser1',
+          counterparty: '0xvault',
+          predictorCollateral: '200000000000000000',
+          counterpartyCollateral: '800000000000000000',
+          pickConfiguration: { result: 'COUNTERPARTY_WINS' },
+        },
+        {
+          predictor: '0xuser2',
+          counterparty: '0xvault',
+          predictorCollateral: '500000000000000000',
+          counterpartyCollateral: '500000000000000000',
+          pickConfiguration: { result: 'PREDICTOR_WINS' },
+        },
+      ]);
+
+    await computeAndStoreProtocolStats(42161);
+
+    const upsertCall = mockPrisma.protocolStatsSnapshot.upsert.mock.calls[0][0];
+    // Win: +0.2e18, Loss: -0.5e18, Net: -0.3e18
+    expect(upsertCall.create.vaultRealizedPnL).toBe('-300000000000000000');
+    expect(upsertCall.create.vaultPositionsWon).toBe(1);
+    expect(upsertCall.create.vaultPositionsLost).toBe(1);
+    expect(upsertCall.create.vaultCollateralWon).toBe('200000000000000000');
+    expect(upsertCall.create.vaultCollateralLost).toBe('500000000000000000');
+  });
+
+  it('skips predictions with UNRESOLVED result', async () => {
+    mockPrisma.prediction.findMany
+      .mockResolvedValueOnce([]) // fetchVaultDeployed
+      .mockResolvedValueOnce([
+        {
+          predictor: '0xuser',
+          counterparty: '0xvault',
+          predictorCollateral: '500000000000000000',
+          counterpartyCollateral: '500000000000000000',
+          pickConfiguration: { result: 'UNRESOLVED' },
+        },
+      ]);
+
+    await computeAndStoreProtocolStats(42161);
+
+    const upsertCall = mockPrisma.protocolStatsSnapshot.upsert.mock.calls[0][0];
+    expect(upsertCall.create.vaultRealizedPnL).toBe('0');
+    expect(upsertCall.create.vaultPositionsWon).toBe(0);
+    expect(upsertCall.create.vaultPositionsLost).toBe(0);
   });
 });
 
