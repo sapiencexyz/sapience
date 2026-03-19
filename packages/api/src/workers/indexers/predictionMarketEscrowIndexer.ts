@@ -15,6 +15,7 @@ import {
   decodePythLazerFeedId,
 } from '@sapience/sdk/auction/encoding';
 import { PYTH_FEED_NAMES, PYTH_FEEDS } from '@sapience/sdk/constants';
+import { isPredictedYes } from '@sapience/sdk/types';
 import { sendPositionAlert } from '../../helpers/discordAlert';
 
 type TxClient = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
@@ -56,17 +57,8 @@ export function buildPythConditionData(conditionId: string): {
   const question = `${feedSymbol} ${direction} $${displayPrice}`;
   const shortName = `${shortTicker} ${direction} $${displayPrice}`;
 
-  // Description format must match parseMarketFromDescription() in market-keeper
-  const strikeDecimal = priceNum.toFixed(Math.max(0, -Number(strikeExpo)));
-  const description = [
-    'PYTH_LAZER',
-    `priceId=${priceId}`,
-    `endTime=${endTime.toString()}`,
-    `strikePrice=${strikePrice.toString()}`,
-    `strikeExpo=${strikeExpo}`,
-    `overWinsOnTie=${overWinsOnTie ? '1' : '0'}`,
-    `strikeDecimal=${strikeDecimal}`,
-  ].join('|');
+  const endDate = new Date(Number(endTime) * 1000).toUTCString();
+  const description = `Resolved by Pyth Network Lazer oracle. If ${feedSymbol} is ${direction.toLowerCase()} $${displayPrice} at settlement (${endDate}), YES wins.`;
 
   return {
     question,
@@ -642,7 +634,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
           predictions: picks.map((p) => ({
             conditionId: p.conditionId,
             question: questionMap.get(p.conditionId) ?? p.conditionId,
-            outcomeYes: p.predictedOutcome === 1,
+            outcomeYes: isPredictedYes(p.predictedOutcome),
           })),
           blockTimestamp: timestamp,
           transactionHash: log.transactionHash || '',

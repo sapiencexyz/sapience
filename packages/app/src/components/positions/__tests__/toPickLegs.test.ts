@@ -162,22 +162,22 @@ describe('toPicks — Pyth resolver picks', () => {
     expect(pp!.dateTimeLocal).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
   });
 
-  it('choice is "Over" or "Under" (not "Yes"/"No")', () => {
-    // Predictor side, predicted over (0=YES) → "Over"
+  it('choice is "Yes" or "No" (consistent with Polymarket)', () => {
+    // Predictor side, predicted over (0=YES) → "Yes"
     const overPicks = toPicks(
       [makePickData({ predictedOutcome: 0 })],
       true,
       emptyConditionsMap
     );
-    expect(overPicks[0].choice).toBe('Over');
+    expect(overPicks[0].choice).toBe('Yes');
 
-    // Predictor side, predicted under (1=NO) → "Under"
+    // Predictor side, predicted under (1=NO) → "No"
     const underPicks = toPicks(
       [makePickData({ predictedOutcome: 1 })],
       true,
       emptyConditionsMap
     );
-    expect(underPicks[0].choice).toBe('Under');
+    expect(underPicks[0].choice).toBe('No');
 
     // Counterparty side flips
     const counterOverPicks = toPicks(
@@ -185,7 +185,7 @@ describe('toPicks — Pyth resolver picks', () => {
       false,
       emptyConditionsMap
     );
-    expect(counterOverPicks[0].choice).toBe('Under');
+    expect(counterOverPicks[0].choice).toBe('No');
   });
 
   it('unknown feed still sets source: "pyth", priceFeedLabel is undefined', () => {
@@ -480,7 +480,7 @@ describe('toPicks — mixed resolver picks', () => {
 
     // First pick: Pyth
     expect(result[0].source).toBe('pyth');
-    expect(result[0].choice).toBe('Over');
+    expect(result[0].choice).toBe('Yes');
 
     // Second pick: non-Pyth
     expect(result[1].source).toBeUndefined();
@@ -488,10 +488,10 @@ describe('toPicks — mixed resolver picks', () => {
     expect(result[1].question).toBe('Will it rain?');
   });
 
-  it('Pyth counterparty under (predictedOutcome=1) shows "Over"', () => {
+  it('Pyth counterparty under (predictedOutcome=1) shows "Yes"', () => {
     const pick = makePickData({ predictedOutcome: 1 }); // Under on predictor side
     const result = toPicks([pick], false, emptyConditionsMap); // counterparty flips
-    expect(result[0].choice).toBe('Over');
+    expect(result[0].choice).toBe('Yes');
   });
 
   it('uses shortName when question is null', () => {

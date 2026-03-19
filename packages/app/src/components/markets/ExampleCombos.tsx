@@ -3,10 +3,11 @@
 import * as React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
-import PercentChance from '~/components/shared/PercentChance';
+import { isPredictedYes } from '@sapience/sdk/types';
 import { Table, TableBody, TableCell } from '@sapience/ui/components/ui/table';
 import { Button } from '@sapience/ui/components/ui/button';
 import { RefreshCw } from 'lucide-react';
+import PercentChance from '~/components/shared/PercentChance';
 import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 import {
   useRecentCombos,
@@ -31,7 +32,7 @@ function comboToLegs(combo: RecentCombo): Pick[] {
     if (!p.condition) continue;
     legs.push({
       question: p.condition.question ?? '',
-      choice: p.predictedOutcome === 1 ? 'Yes' : 'No',
+      choice: isPredictedYes(p.predictedOutcome) ? 'Yes' : 'No',
       conditionId: p.conditionId,
       resolverAddress: p.condition.resolver,
       categorySlug: p.condition.category?.slug,
@@ -59,7 +60,7 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
           conditionId: pick.conditionId,
           question: pick.condition.question ?? '',
           shortName: pick.condition.shortName,
-          prediction: pick.predictedOutcome === 1,
+          prediction: isPredictedYes(pick.predictedOutcome),
           categorySlug: pick.condition.category?.slug,
           resolverAddress: pick.condition.resolver,
           endTime: pick.condition.endTime,

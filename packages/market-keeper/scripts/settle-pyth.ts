@@ -47,12 +47,15 @@ import {
   type Hex,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { pythConditionResolver, getPythMarketHash } from '@sapience/sdk';
+import {
+  pythConditionResolver,
+  getPythMarketHash,
+  decodePythMarketId,
+} from '@sapience/sdk';
 import { fetchWithRetry } from '../src/utils/fetch.js';
 import { confirmProductionAccess } from '../src/utils/index.js';
 import { logSeparator } from '../src/utils/log.js';
 import {
-  parseMarketFromDescription,
   decodeFeedIdFromPriceId,
   extractEvmBlobFromJson,
   parseLazerPayload,
@@ -569,26 +572,22 @@ async function main() {
     return;
   }
 
-  // 2) Parse market parameters from each condition's description
+  // 2) Decode market parameters from each condition's conditionId (ABI-encoded)
   const marketsById = new Map<Hex, Market>();
-  let skippedNoDescription = 0;
+  let skippedDecode = 0;
   for (const c of conditions) {
-    if (!c.description) {
-      skippedNoDescription++;
-      continue;
-    }
-    const market = parseMarketFromDescription(c.description);
+    const market = decodePythMarketId(c.id as Hex);
     if (!market) {
-      skippedNoDescription++;
+      skippedDecode++;
       continue;
     }
     const marketId = getPythMarketHash(market);
     marketsById.set(marketId, market);
   }
 
-  if (skippedNoDescription > 0) {
+  if (skippedDecode > 0) {
     console.log(
-      `[settle-pyth] Skipped ${skippedNoDescription} conditions without parseable PYTH_LAZER description`
+      `[settle-pyth] Skipped ${skippedDecode} conditions with non-decodable conditionId`
     );
   }
   console.log(`[settle-pyth] Unique markets to settle: ${marketsById.size}`);

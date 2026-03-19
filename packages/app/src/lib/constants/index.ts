@@ -1,5 +1,6 @@
 import {
   conditionalTokensConditionResolver,
+  pythConditionResolver,
   type ChainAddressMap,
 } from '@sapience/sdk/contracts';
 
@@ -62,6 +63,16 @@ const polymarketDisplay: ResolverDisplay = {
 };
 export const POLYMARKET_RESOLVER_DISPLAY: Record<string, ResolverDisplay> =
   buildDisplayMap(polymarketDisplay, conditionalTokensConditionResolver);
+
+const pythDisplay: ResolverDisplay = {
+  name: 'Pyth Network',
+  icon: '/pyth-network.svg',
+  badgeIcon: '/pyth-badge.svg',
+  iconAlt: 'Pyth Network',
+  url: 'https://pyth.network/',
+};
+export const PYTH_RESOLVER_DISPLAY: Record<string, ResolverDisplay> =
+  buildDisplayMap(pythDisplay, pythConditionResolver);
 
 // Forecast schema: address resolver, bytes condition, uint256 forecast, string comment
 export const SCHEMA_UID =
