@@ -13,7 +13,7 @@ import { createGasAwareX402Middleware } from './x402';
 export const ADMIN_AUTHENTICATE_MSG =
   'Sign this message to authenticate for admin actions.';
 const ALLOWED_ADDRESSES =
-  process.env.ALLOWED_ADDRESSES?.split(',').map((a) => a.toLowerCase()) || [];
+  process.env.ALLOWED_ADDRESSES?.split(',').map((a) => a.trim().toLowerCase()) || [];
 const MESSAGE_EXPIRY = 5 * 60 * 1000; // 5 minutes in milliseconds
 
 export async function isValidWalletSignature(
