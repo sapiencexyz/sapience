@@ -315,12 +315,14 @@ export async function GET(req: Request) {
                                   {word}
                                 </div>
                               ))}
-                              <Pill
-                                text={leg.choice}
-                                tone={leg.tone}
-                                scale={scale}
-                                compact={compact}
-                              />
+                              {leg.choice && (
+                                <Pill
+                                  text={leg.choice}
+                                  tone={leg.tone}
+                                  scale={scale}
+                                  compact={compact}
+                                />
+                              )}
                             </div>
                           </div>
                         );
