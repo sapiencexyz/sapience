@@ -12,7 +12,9 @@ import {
 } from '@sapience/ui/components/ui/tooltip';
 import { Badge } from '@sapience/ui/components/ui/badge';
 import { cn } from '@sapience/ui/lib/utils';
+import Link from 'next/link';
 import type { FilterState } from './TableFilters';
+import { inferResolverKind } from '~/lib/resolvers/conditionResolver';
 import type { ConditionType } from '~/hooks/graphql/useConditions';
 import type { ConditionGroupConditionType } from '~/hooks/graphql/useConditionGroups';
 import type {
@@ -344,6 +346,7 @@ export function PredictCell({
 }) {
   const { addSelection, removeSelection, selections } =
     useCreatePositionContext();
+  const resolverKind = inferResolverKind(condition.resolver);
 
   const selectionState = React.useMemo(() => {
     if (!condition.id) return { selectedYes: false, selectedNo: false };
@@ -414,6 +417,27 @@ export function PredictCell({
     return (
       <div className="w-full max-w-[320px] ml-auto h-8 flex items-center justify-center text-muted-foreground opacity-50">
         <Minus className="h-3 w-3" />
+      </div>
+    );
+  }
+
+  // Pyth conditions encode direction in the question — show a single PREDICT button
+  // that navigates to the condition page where users configure strike/expiry
+  if (resolverKind === 'pyth') {
+    const isSelected = selectionState.selectedYes || selectionState.selectedNo;
+    return (
+      <div className={cn('w-full font-mono', className)}>
+        <Link
+          href={`/questions/${condition.id}`}
+          className={cn(
+            'flex items-center justify-center w-full h-8 rounded-md text-xs font-semibold uppercase tracking-wider transition-colors',
+            isSelected
+              ? 'bg-accent-gold/20 text-accent-gold border border-accent-gold/40'
+              : 'bg-white/10 text-foreground hover:bg-white/15 border border-white/10'
+          )}
+        >
+          PREDICT
+        </Link>
       </div>
     );
   }
