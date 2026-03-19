@@ -2,8 +2,8 @@
 
 export type PredictionChoice = 'YES' | 'NO' | 'OVER' | 'UNDER';
 
-export type UmaPredictionLeg = {
-  type: 'uma';
+export type PolymarketPredictionLeg = {
+  type: 'polymarket';
   id: string;
   question: string;
   conditionId?: string;
@@ -23,4 +23,4 @@ export type PythPredictionLeg = {
   targetPriceFullPrecision?: string;
 };
 
-export type PredictionLeg = UmaPredictionLeg | PythPredictionLeg;
+export type PredictionLeg = PolymarketPredictionLeg | PythPredictionLeg;

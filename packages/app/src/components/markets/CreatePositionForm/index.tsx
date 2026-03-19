@@ -51,6 +51,7 @@ import { erc20Abi, formatUnits, parseUnits } from 'viem';
 import { useAccount, useReadContracts } from 'wagmi';
 import OgShareDialogBase from '~/components/shared/OgShareDialog';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
+import { buildDialogPicks } from '~/components/markets/CreatePositionForm/buildDialogPicks';
 import { CreatePositionFormContent } from '~/components/markets/CreatePositionForm/CreatePositionFormContent';
 import { createPositionSizeSchema } from '~/components/markets/forms/inputs/PositionSizeInput';
 import { useValidatedBids } from '~/hooks/auction/useValidatedBids';
@@ -684,23 +685,8 @@ const CreatePositionFormInner = ({
               (limitAmount !== undefined ? String(limitAmount) : undefined);
           }
 
-          // Build picks from both Polymarket selections and Pyth predictions
-          const polymarketPicks = selections.map((s) => ({
-            conditionId: s.conditionId,
-            question: s.question,
-            choice: s.prediction ? ('Yes' as const) : ('No' as const),
-            source: 'polymarket' as const,
-          }));
-          const pythPicks = pythPredictions.map((p) => ({
-            conditionId: p.id,
-            question: `${p.priceFeedLabel ?? 'Crypto'} ${p.direction === 'over' ? '>' : '<'} $${p.targetPrice.toLocaleString()}`,
-            choice:
-              p.direction === 'over' ? ('Over' as const) : ('Under' as const),
-            source: 'pyth' as const,
-          }));
-
           const dialogData = {
-            picks: [...polymarketPicks, ...pythPicks],
+            picks: buildDialogPicks(selections, pythPredictions),
             positionSize: submittedPositionSize,
             payout,
             symbol: collateralSymbol || 'testUSDe',

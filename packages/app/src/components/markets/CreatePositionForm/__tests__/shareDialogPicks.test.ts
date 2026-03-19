@@ -1,4 +1,6 @@
 import { describe, it, expect } from 'vitest';
+import type { PythPrediction } from '@sapience/ui';
+import { buildDialogPicks } from '../buildDialogPicks';
 
 /**
  * Tests for the share dialog pick construction logic used in handlePositionSubmit.
@@ -10,46 +12,7 @@ import { describe, it, expect } from 'vitest';
  * The badge is hidden for Pyth picks; the question text carries the direction.
  */
 
-// Types matching what handlePositionSubmit uses
-type Selection = {
-  conditionId: string;
-  question: string;
-  prediction: boolean;
-};
-
-type PythPrediction = {
-  id: string;
-  priceId: string;
-  priceFeedLabel?: string;
-  direction: 'over' | 'under';
-  targetPrice: number;
-  targetPriceRaw?: string;
-  targetPriceFullPrecision?: string;
-  priceExpo: number;
-  dateTimeLocal: string;
-};
-
-// Extracted from handlePositionSubmit in CreatePositionForm/index.tsx
-function buildDialogPicks(
-  selections: Selection[],
-  pythPredictions: PythPrediction[]
-) {
-  const polymarketPicks = selections.map((s) => ({
-    conditionId: s.conditionId,
-    question: s.question,
-    choice: s.prediction ? ('Yes' as const) : ('No' as const),
-    source: 'polymarket' as const,
-  }));
-  const pythPicks = pythPredictions.map((p) => ({
-    conditionId: p.id,
-    question: `${p.priceFeedLabel ?? 'Crypto'} ${p.direction === 'over' ? '>' : '<'} $${p.targetPrice.toLocaleString()}`,
-    choice: p.direction === 'over' ? ('Over' as const) : ('Under' as const),
-    source: 'pyth' as const,
-  }));
-  return [...polymarketPicks, ...pythPicks];
-}
-
-describe('shareDialogPicks', () => {
+describe('buildDialogPicks', () => {
   const makePythPrediction = (
     overrides: Partial<PythPrediction> = {}
   ): PythPrediction => ({
@@ -74,7 +37,7 @@ describe('shareDialogPicks', () => {
   });
 
   it('builds picks from Polymarket selections when no Pyth predictions', () => {
-    const selections: Selection[] = [
+    const selections = [
       {
         conditionId: '0xCond1',
         question: 'Will BTC hit 100k?',
@@ -90,7 +53,7 @@ describe('shareDialogPicks', () => {
   });
 
   it('combines Polymarket and Pyth picks in a combo', () => {
-    const selections: Selection[] = [
+    const selections = [
       {
         conditionId: '0xCond1',
         question: 'Will BTC hit 100k?',
