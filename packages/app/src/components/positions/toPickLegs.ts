@@ -34,15 +34,20 @@ export function toPicks(
     const condition = conditionsMap.get(pick.conditionId);
     const resolverKind = inferResolverKind(pick.conditionResolver);
 
+    // Shared choice/flip logic for all resolver types
+    const predictorChoseYes = isPredictedYes(pick.predictedOutcome);
+    const effectiveOutcome = isPredictorSide
+      ? pick.predictedOutcome
+      : predictorChoseYes
+        ? OutcomeSide.NO
+        : OutcomeSide.YES;
+    const choice = getChoiceLabel(effectiveOutcome);
+
     if (resolverKind === 'pyth') {
       const decoded = decodePythMarketId(pick.conditionId as `0x${string}`);
 
-      const predictorChoseYes = isPredictedYes(pick.predictedOutcome);
-      const viewerChoseYes = isPredictorSide
-        ? predictorChoseYes
-        : !predictorChoseYes;
-      const direction: 'over' | 'under' = viewerChoseYes ? 'over' : 'under';
-      const choice = viewerChoseYes ? 'Yes' : 'No';
+      // Direction always reflects the predictor's direction (not the viewer's)
+      const direction: 'over' | 'under' = predictorChoseYes ? 'over' : 'under';
 
       if (decoded) {
         const priceStr = formatPythPriceDecimalFromInt(
@@ -50,13 +55,11 @@ export function toPicks(
           decoded.strikeExpo
         );
         const feedLabel = getPythFeedLabelSync(decoded.priceId);
-        // Use DB shortName/question when available; fall back to decoded label
+        // Use DB shortName/question when available; fall back to decoded label with ">" framing
         const question =
           condition?.shortName ??
           condition?.question ??
-          (feedLabel
-            ? `${feedLabel} ${direction === 'over' ? '>' : '<'} $${priceStr}`
-            : pick.conditionId);
+          (feedLabel ? `${feedLabel} > $${priceStr}` : pick.conditionId);
 
         return {
           question,
@@ -101,15 +104,9 @@ export function toPicks(
     }
 
     // Default path (non-Pyth resolvers)
-    const predictorChoseYes = isPredictedYes(pick.predictedOutcome);
-    const effectiveOutcome = isPredictorSide
-      ? pick.predictedOutcome
-      : predictorChoseYes
-        ? OutcomeSide.NO
-        : OutcomeSide.YES;
     return {
       question: condition?.question ?? condition?.shortName ?? pick.conditionId,
-      choice: getChoiceLabel(effectiveOutcome, resolverKind),
+      choice,
       conditionId: pick.conditionId,
       resolverAddress: pick.conditionResolver ?? condition?.resolver ?? null,
       categorySlug: condition?.category?.slug ?? null,

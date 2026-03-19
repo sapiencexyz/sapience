@@ -20,12 +20,12 @@ import {
 } from '@sapience/sdk/constants';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import {
-  PythPredictionListItem,
   PredictionListItem,
   type PythPrediction,
   type PredictionListItemData,
 } from '@sapience/ui';
 import SponsorshipIndicator from './SponsorshipIndicator';
+import { PythMarketBadge } from '~/components/shared/PythMarketBadge';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
 import { PREFERRED_ESTIMATE_QUOTER } from '~/lib/constants';
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
@@ -807,15 +807,20 @@ export default function PositionForm({
           ].map((item, index) => {
             if (item.kind === 'pyth') {
               const p = item.p;
+              const predictionData: PredictionListItemData = {
+                id: p.id,
+                question: `${p.priceFeedLabel ?? 'Crypto'} OVER $${p.targetPrice.toLocaleString()}`,
+                prediction: p.direction === 'over',
+              };
               return (
                 <div
                   key={p.id}
                   className={`-mx-4 px-4 py-2.5 border-b border-brand-white/10 ${index === 0 ? 'border-t' : ''}`}
                 >
-                  <PythPredictionListItem
-                    prediction={p}
+                  <PredictionListItem
+                    prediction={predictionData}
+                    leading={<PythMarketBadge className="w-5 h-5" />}
                     onRemove={onRemovePythPrediction}
-                    layout="inline"
                   />
                 </div>
               );

@@ -55,12 +55,11 @@ export function buildPythConditionData(conditionId: string): {
   // Clean display: trim ".00" for whole numbers
   const displayPrice = formattedPrice.replace(/\.0+$/, '');
 
-  const direction = overWinsOnTie ? 'OVER' : 'UNDER';
-  const question = `${feedSymbol} ${direction} $${displayPrice}`;
-  const shortName = `${shortTicker} ${direction} $${displayPrice}`;
+  const question = `${feedSymbol} OVER $${displayPrice}`;
+  const shortName = `${shortTicker} OVER $${displayPrice}`;
 
   const endDate = new Date(Number(endTime) * 1000).toUTCString();
-  const description = `Resolved by Pyth Network Lazer oracle. If ${feedSymbol} is ${direction.toLowerCase()} $${displayPrice} at settlement (${endDate}), YES wins.`;
+  const description = `Resolved by Pyth Network Lazer oracle. If ${feedSymbol} is over $${displayPrice} at settlement (${endDate}), YES wins. If the price is exactly $${displayPrice} at settlement, ${overWinsOnTie ? 'OVER' : 'UNDER'} wins.`;
 
   // Derive asset class from Pyth symbol prefix (e.g. "Crypto.BTC/USD" → "crypto")
   const assetClass = feedSymbol.split('.')[0]?.toLowerCase() ?? 'crypto';
