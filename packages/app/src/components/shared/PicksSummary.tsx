@@ -1,13 +1,14 @@
 'use client';
 
 import Link from 'next/link';
-import { PredictionChoiceBadge, PythOracleMark } from '@sapience/ui';
+import { PredictionChoiceBadge } from '@sapience/ui';
 import { formatDistanceToNow } from 'date-fns';
 import {
   StackedIcons,
   type Pick,
 } from '~/components/shared/StackedPredictions';
 import CounterpartyBadge from '~/components/shared/CounterpartyBadge';
+import { PythMarketBadge } from '~/components/shared/PythMarketBadge';
 import ResolutionBadge from '~/components/shared/ResolutionBadge';
 import ConditionStatus from '~/components/shared/ConditionStatus';
 import { getCategoryIcon } from '~/lib/theme/categoryIcons';
@@ -151,18 +152,7 @@ export function PicksContent({
                   <div className="flex items-center gap-2 min-w-0">
                     {(() => {
                       if (pick.source === 'pyth') {
-                        return (
-                          <div
-                            className="w-6 h-6 rounded-full shrink-0 flex items-center justify-center"
-                            style={{ backgroundColor: 'hsl(var(--muted))' }}
-                          >
-                            <PythOracleMark
-                              className="h-3 w-3 text-foreground/80"
-                              src="/pyth-network.svg"
-                              alt="Pyth"
-                            />
-                          </div>
-                        );
+                        return <PythMarketBadge />;
                       }
                       const CategoryIcon = getCategoryIcon(pick.categorySlug);
                       const color = getCategoryStyle(pick.categorySlug).color;
@@ -194,9 +184,11 @@ export function PicksContent({
                   <PickForecastCell pick={pick} />
                 </td>
                 <td className="py-2 pr-4 text-right whitespace-nowrap">
-                  <PredictionChoiceBadge
-                    choice={String(pick.choice).toUpperCase()}
-                  />
+                  {pick.source !== 'pyth' && (
+                    <PredictionChoiceBadge
+                      choice={String(pick.choice).toUpperCase()}
+                    />
+                  )}
                 </td>
                 <td className="py-2 pl-4 text-right whitespace-nowrap">
                   <PickEndsCell pick={pick} positionStatus={positionStatus} />

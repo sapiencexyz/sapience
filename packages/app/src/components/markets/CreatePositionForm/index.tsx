@@ -51,6 +51,7 @@ import { erc20Abi, formatUnits, parseUnits } from 'viem';
 import { useAccount, useReadContracts } from 'wagmi';
 import OgShareDialogBase from '~/components/shared/OgShareDialog';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
+import { buildDialogPicks } from '~/components/markets/CreatePositionForm/buildDialogPicks';
 import { CreatePositionFormContent } from '~/components/markets/CreatePositionForm/CreatePositionFormContent';
 import { createPositionSizeSchema } from '~/components/markets/forms/inputs/PositionSizeInput';
 import { useValidatedBids } from '~/hooks/auction/useValidatedBids';
@@ -207,7 +208,8 @@ const CreatePositionFormInner = ({
     picks: Array<{
       conditionId: string;
       question: string;
-      choice: 'Yes' | 'No';
+      choice: 'Yes' | 'No' | 'Over' | 'Under';
+      source?: 'polymarket' | 'pyth';
     }>;
     positionSize: string;
     payout?: string;
@@ -683,20 +685,8 @@ const CreatePositionFormInner = ({
               (limitAmount !== undefined ? String(limitAmount) : undefined);
           }
 
-          // Build picks from both Polymarket selections and Pyth predictions
-          const polymarketPicks = selections.map((s) => ({
-            conditionId: s.conditionId,
-            question: s.question,
-            choice: s.prediction ? 'Yes' : ('No' as 'Yes' | 'No'),
-          }));
-          const pythPicks = pythPredictions.map((p) => ({
-            conditionId: p.id,
-            question: `${p.priceFeedLabel ?? 'Crypto'} ${p.direction.toUpperCase()} $${p.targetPrice.toLocaleString()}`,
-            choice: 'Yes' as const,
-          }));
-
           const dialogData = {
-            picks: [...polymarketPicks, ...pythPicks],
+            picks: buildDialogPicks(selections, pythPredictions),
             positionSize: submittedPositionSize,
             payout,
             symbol: collateralSymbol || 'testUSDe',
@@ -775,12 +765,19 @@ const CreatePositionFormInner = ({
 
   // Build OG image URL for the preview card (drafted position, not yet submitted)
   const previewCardImageSrc = useMemo(() => {
-    if (selections.length === 0) return null;
+    if (selections.length === 0 && pythPredictions.length === 0) return null;
     const qp = new URLSearchParams();
     if (effectiveAddress)
       qp.set('addr', String(effectiveAddress).toLowerCase());
     selections.forEach((s) => {
       qp.append('leg', `${s.question}|${s.prediction ? 'Yes' : 'No'}`);
+    });
+    pythPredictions.forEach((p) => {
+      // No badge for Pyth — direction is already in the question text
+      qp.append(
+        'leg',
+        `${p.priceFeedLabel ?? 'Crypto'} ${p.direction === 'over' ? '>' : '<'} $${p.targetPrice.toLocaleString()}|`
+      );
     });
     if (watchedPositionSize) qp.set('wager', watchedPositionSize);
     if (collateralSymbol) qp.set('symbol', collateralSymbol);
@@ -798,6 +795,7 @@ const CreatePositionFormInner = ({
     return `/og/prediction?${qp.toString()}`;
   }, [
     selections,
+    pythPredictions,
     effectiveAddress,
     watchedPositionSize,
     collateralSymbol,

@@ -223,8 +223,8 @@ vi.mock('viem', () => ({
 // @sapience/ui — stub UI components used by PositionForm
 vi.mock('@sapience/ui', () => ({
   PythPredictionListItem: () => <div data-testid="pyth-prediction-list-item" />,
-  UmaPredictionListItem: ({ prediction }: { prediction: { id: string } }) => (
-    <div data-testid={`uma-prediction-${prediction.id}`} />
+  PredictionListItem: ({ prediction }: { prediction: { id: string } }) => (
+    <div data-testid={`prediction-${prediction.id}`} />
   ),
 }));
 

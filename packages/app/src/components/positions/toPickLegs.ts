@@ -1,8 +1,9 @@
-import { isPredictedYes } from '@sapience/sdk/types';
+import { isPredictedYes, OutcomeSide } from '@sapience/sdk/types';
 import { decodePythMarketId } from '@sapience/sdk';
 import type { PickData } from '~/hooks/graphql/usePositions';
 import type { Pick } from '~/components/shared/StackedPredictions';
 import { inferResolverKind } from '~/lib/resolvers/conditionResolver';
+import { getChoiceLabel } from '~/lib/resolvers/choiceLabel';
 import {
   formatPythPriceDecimalFromInt,
   formatUnixSecondsToLocalInput,
@@ -100,15 +101,15 @@ export function toPicks(
     }
 
     // Default path (non-Pyth resolvers)
+    const predictorChoseYes = isPredictedYes(pick.predictedOutcome);
+    const effectiveOutcome = isPredictorSide
+      ? pick.predictedOutcome
+      : predictorChoseYes
+        ? OutcomeSide.NO
+        : OutcomeSide.YES;
     return {
       question: condition?.question ?? condition?.shortName ?? pick.conditionId,
-      choice: isPredictorSide
-        ? isPredictedYes(pick.predictedOutcome)
-          ? 'Yes'
-          : 'No'
-        : isPredictedYes(pick.predictedOutcome)
-          ? 'No'
-          : 'Yes',
+      choice: getChoiceLabel(effectiveOutcome, resolverKind),
       conditionId: pick.conditionId,
       resolverAddress: pick.conditionResolver ?? condition?.resolver ?? null,
       categorySlug: condition?.category?.slug ?? null,

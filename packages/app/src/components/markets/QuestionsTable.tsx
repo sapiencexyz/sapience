@@ -24,9 +24,9 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
-import { PythOracleMark } from '@sapience/ui';
 import { cn } from '@sapience/ui/lib/utils';
 import Loader from '../shared/Loader';
+import { PythMarketBadge } from '../shared/PythMarketBadge';
 import ConditionTitleLink from './ConditionTitleLink';
 import MarketBadge from './MarketBadge';
 import TableFilters, {
@@ -152,16 +152,7 @@ function createColumns(
         return (
           <div className="flex items-center gap-3 w-full min-w-0">
             {isPyth ? (
-              <div
-                className="w-6 h-6 rounded-full shrink-0 flex items-center justify-center"
-                style={{ backgroundColor: 'hsl(var(--muted))' }}
-              >
-                <PythOracleMark
-                  className="h-3 w-3 text-foreground/80"
-                  src="/pyth-network.svg"
-                  alt="Pyth"
-                />
-              </div>
+              <PythMarketBadge />
             ) : (
               <MarketBadge
                 label={condition.question}
@@ -400,16 +391,7 @@ function ChildConditionRow({
       <TableCell className="py-2 pl-4 w-full max-w-0 min-w-[200px]">
         <div className="flex items-center gap-3 w-full min-w-0">
           {isPyth ? (
-            <div
-              className="w-6 h-6 rounded-full shrink-0 flex items-center justify-center"
-              style={{ backgroundColor: 'hsl(var(--muted))' }}
-            >
-              <PythOracleMark
-                className="h-3 w-3 text-foreground/80"
-                src="/pyth-network.svg"
-                alt="Pyth"
-              />
-            </div>
+            <PythMarketBadge />
           ) : (
             <MarketBadge
               label={condition.question}

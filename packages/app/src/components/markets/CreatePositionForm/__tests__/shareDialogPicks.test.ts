@@ -1,59 +1,18 @@
 import { describe, it, expect } from 'vitest';
+import type { PythPrediction } from '@sapience/ui';
+import { buildDialogPicks } from '../buildDialogPicks';
 
 /**
  * Tests for the share dialog pick construction logic used in handlePositionSubmit.
  * Verifies that Pyth predictions are included alongside Polymarket selections
  * in the share card OG image.
+ *
+ * Pyth picks always have predictedOutcome = 0 (YES) — the direction (over/under)
+ * is encoded in the conditionId itself, so there's no meaningful Yes/No choice.
+ * The badge is hidden for Pyth picks; the question text carries the direction.
  */
 
-// Types matching what handlePositionSubmit uses
-type Selection = {
-  conditionId: string;
-  question: string;
-  prediction: boolean;
-};
-
-type PythPrediction = {
-  id: string;
-  priceId: string;
-  priceFeedLabel?: string;
-  direction: 'over' | 'under';
-  targetPrice: number;
-  targetPriceRaw?: string;
-  targetPriceFullPrecision?: string;
-  priceExpo: number;
-  dateTimeLocal: string;
-};
-
-// Extracted from handlePositionSubmit in CreatePositionForm/index.tsx
-function buildDialogPicks(
-  selections: Selection[],
-  pythPredictions: PythPrediction[]
-) {
-  const polymarketPicks = selections.map((s) => ({
-    conditionId: s.conditionId,
-    question: s.question,
-    choice: s.prediction ? 'Yes' : ('No' as 'Yes' | 'No'),
-  }));
-  const pythPicks = pythPredictions.map((p) => ({
-    conditionId: p.id,
-    question: `${p.priceFeedLabel ?? 'Crypto'} ${p.direction.toUpperCase()} $${p.targetPrice.toLocaleString()}`,
-    choice: 'Yes' as const,
-  }));
-  return [...polymarketPicks, ...pythPicks];
-}
-
-// Matches the expectedPicks mapping in the share dialog
-function buildExpectedPicks(
-  picks: Array<{ conditionId: string; choice: string }>
-) {
-  return picks.map((p) => ({
-    conditionId: p.conditionId,
-    predictedOutcome: p.choice === 'Yes' ? 0 : 1,
-  }));
-}
-
-describe('shareDialogPicks', () => {
+describe('buildDialogPicks', () => {
   const makePythPrediction = (
     overrides: Partial<PythPrediction> = {}
   ): PythPrediction => ({
@@ -71,13 +30,14 @@ describe('shareDialogPicks', () => {
     const picks = buildDialogPicks([], [makePythPrediction()]);
 
     expect(picks).toHaveLength(1);
-    expect(picks[0].question).toBe('Crypto.BTC/USD OVER $71,426.18');
-    expect(picks[0].choice).toBe('Yes');
+    expect(picks[0].question).toBe('Crypto.BTC/USD > $71,426.18');
+    expect(picks[0].choice).toBe('Over');
+    expect(picks[0].source).toBe('pyth');
     expect(picks[0].conditionId).toBe('pyth-1');
   });
 
   it('builds picks from Polymarket selections when no Pyth predictions', () => {
-    const selections: Selection[] = [
+    const selections = [
       {
         conditionId: '0xCond1',
         question: 'Will BTC hit 100k?',
@@ -89,10 +49,11 @@ describe('shareDialogPicks', () => {
     expect(picks).toHaveLength(1);
     expect(picks[0].question).toBe('Will BTC hit 100k?');
     expect(picks[0].choice).toBe('Yes');
+    expect(picks[0].source).toBe('polymarket');
   });
 
   it('combines Polymarket and Pyth picks in a combo', () => {
-    const selections: Selection[] = [
+    const selections = [
       {
         conditionId: '0xCond1',
         question: 'Will BTC hit 100k?',
@@ -103,8 +64,10 @@ describe('shareDialogPicks', () => {
     const picks = buildDialogPicks(selections, pyth);
 
     expect(picks).toHaveLength(2);
+    expect(picks[0].source).toBe('polymarket');
     expect(picks[0].question).toBe('Will BTC hit 100k?');
-    expect(picks[1].question).toBe('Crypto.BTC/USD OVER $71,426.18');
+    expect(picks[1].source).toBe('pyth');
+    expect(picks[1].question).toBe('Crypto.BTC/USD > $71,426.18');
   });
 
   it('handles UNDER direction', () => {
@@ -113,8 +76,9 @@ describe('shareDialogPicks', () => {
       [makePythPrediction({ direction: 'under', targetPrice: 50000 })]
     );
 
-    expect(picks[0].question).toBe('Crypto.BTC/USD UNDER $50,000');
-    expect(picks[0].choice).toBe('Yes');
+    expect(picks[0].question).toBe('Crypto.BTC/USD < $50,000');
+    expect(picks[0].choice).toBe('Under');
+    expect(picks[0].source).toBe('pyth');
   });
 
   it('uses "Crypto" fallback when priceFeedLabel is missing', () => {
@@ -126,9 +90,9 @@ describe('shareDialogPicks', () => {
     expect(picks[0].question).toContain('Crypto');
   });
 
-  it('maps Pyth picks to predictedOutcome 0 (always Yes)', () => {
-    // Pyth picks always use choice "Yes" regardless of direction —
-    // the direction is encoded in the question text (e.g. "BTC OVER $71k" → Yes)
+  it('Pyth picks always have source=pyth for badge hiding', () => {
+    // Pyth predictedOutcome is always 0 (YES) on-chain — the direction is
+    // encoded in the conditionId. UI hides the badge for source=pyth picks.
     const overPicks = buildDialogPicks(
       [],
       [makePythPrediction({ direction: 'over' })]
@@ -138,11 +102,8 @@ describe('shareDialogPicks', () => {
       [makePythPrediction({ direction: 'under' })]
     );
 
-    const overExpected = buildExpectedPicks(overPicks);
-    const underExpected = buildExpectedPicks(underPicks);
-
-    expect(overExpected[0].predictedOutcome).toBe(0); // Yes → 0
-    expect(underExpected[0].predictedOutcome).toBe(0); // Yes → 0
+    expect(overPicks[0].source).toBe('pyth');
+    expect(underPicks[0].source).toBe('pyth');
   });
 
   it('handles multiple Pyth predictions', () => {
@@ -159,7 +120,9 @@ describe('shareDialogPicks', () => {
 
     expect(picks).toHaveLength(2);
     expect(picks[0].conditionId).toBe('p1');
+    expect(picks[0].choice).toBe('Over');
     expect(picks[1].conditionId).toBe('p2');
-    expect(picks[1].question).toBe('Crypto.ETH/USD UNDER $3,500');
+    expect(picks[1].choice).toBe('Under');
+    expect(picks[1].question).toBe('Crypto.ETH/USD < $3,500');
   });
 });
