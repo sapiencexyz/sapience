@@ -64,6 +64,22 @@ const MarketsPage = () => {
     }
   );
 
+  // Default to prediction-market categories (exclude prices) on first load
+  const defaultedRef = useRef(false);
+  useEffect(() => {
+    if (
+      !defaultedRef.current &&
+      allCategories.length > 0 &&
+      filters.selectedCategories.length === 0
+    ) {
+      defaultedRef.current = true;
+      const pmSlugs = allCategories
+        .filter((c) => !c.slug.startsWith('prices-'))
+        .map((c) => c.slug);
+      setFilters((prev) => ({ ...prev, selectedCategories: pmSlugs }));
+    }
+  }, [allCategories, filters.selectedCategories, setFilters]);
+
   // Pick up ?category= from URL on initial load and client-side navigation
   const appliedCategoryRef = useRef<string | null>(null);
   useEffect(() => {
@@ -76,7 +92,7 @@ const MarketsPage = () => {
       }));
       router.replace('/markets', { scroll: false });
     }
-  }, [searchParams, router]);
+  }, [searchParams, router, setFilters]);
 
   // Sorting state - lifted here so backend can respect it during pagination
   const [sortField, setSortField] = useSessionState<SortField>(
@@ -93,7 +109,7 @@ const MarketsPage = () => {
       setSortField(field);
       setSortDirection(direction);
     },
-    []
+    [setSortField, setSortDirection]
   );
 
   const [pythPredictions, setPythPredictions] = useState<PythPrediction[]>([]);
