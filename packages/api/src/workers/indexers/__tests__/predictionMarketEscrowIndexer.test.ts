@@ -26,6 +26,7 @@ const mockPrisma = {
   },
   pick: { findMany: vi.fn() },
   condition: { upsert: vi.fn() },
+  category: { findFirst: vi.fn() },
   claim: { create: vi.fn() },
   close: { create: vi.fn() },
   indexerState: { findFirst: vi.fn(), upsert: vi.fn() },
@@ -878,6 +879,68 @@ describe('PredictionMarketEscrowIndexer', () => {
       const result = buildPythConditionData(conditionId)!;
       expect(result.question).toBe('Commodities.USOILSPOT UNDER $-5');
     });
+
+    // ─── categorySlug derivation ──────────────────────────────────────
+
+    it('should return categorySlug prices-crypto for Crypto feeds', () => {
+      const conditionId = makePythConditionId({
+        feedLazerId: 1, // BTC → Crypto.BTC/USD
+        endTime: 1700100000n,
+        strikePrice: 7108000n,
+        strikeExpo: -2,
+        overWinsOnTie: true,
+      });
+      const result = buildPythConditionData(conditionId)!;
+      expect(result.categorySlug).toBe('prices-crypto');
+    });
+
+    it('should return categorySlug prices-commodities for Commodities feeds', () => {
+      const conditionId = makePythConditionId({
+        feedLazerId: 657, // OIL → Commodities.USOILSPOT
+        endTime: 1700600000n,
+        strikePrice: 7500n,
+        strikeExpo: -2,
+        overWinsOnTie: true,
+      });
+      const result = buildPythConditionData(conditionId)!;
+      expect(result.categorySlug).toBe('prices-commodities');
+    });
+
+    it('should return categorySlug prices-commodities for Metal feeds', () => {
+      const conditionId = makePythConditionId({
+        feedLazerId: 346, // GOLD → Metal.XAU/USD
+        endTime: 1700600000n,
+        strikePrice: 200000n,
+        strikeExpo: -2,
+        overWinsOnTie: true,
+      });
+      const result = buildPythConditionData(conditionId)!;
+      expect(result.categorySlug).toBe('prices-commodities');
+    });
+
+    it('should return categorySlug prices-equity for Equity feeds', () => {
+      const conditionId = makePythConditionId({
+        feedLazerId: 1398, // SPY → Equity.US.SPY/USD
+        endTime: 1700600000n,
+        strikePrice: 50000n,
+        strikeExpo: -2,
+        overWinsOnTie: true,
+      });
+      const result = buildPythConditionData(conditionId)!;
+      expect(result.categorySlug).toBe('prices-equity');
+    });
+
+    it('should fall back to prices-crypto for unknown asset classes', () => {
+      const conditionId = makePythConditionId({
+        feedLazerId: 12345, // unknown → "Feed #12345" → prefix "feed #12345"
+        endTime: 1700700000n,
+        strikePrice: 100n,
+        strikeExpo: 0,
+        overWinsOnTie: true,
+      });
+      const result = buildPythConditionData(conditionId)!;
+      expect(result.categorySlug).toBe('prices-crypto');
+    });
   });
 
   // ─── Pyth condition auto-creation (integration) ───────────────────
@@ -937,6 +1000,11 @@ describe('PredictionMarketEscrowIndexer', () => {
         overWinsOnTie: true,
       });
 
+      mockPrisma.category.findFirst.mockResolvedValue({
+        id: 42,
+        slug: 'prices-crypto',
+      });
+
       const indexer = setupPythPredictionTest(conditionId);
       await indexer.indexBlocks('test', [50]);
 
@@ -952,12 +1020,18 @@ describe('PredictionMarketEscrowIndexer', () => {
       expect(upsertCall.create.endTime).toBe(1700100000);
       expect(upsertCall.create.resolver).toBe(PYTH_RESOLVER.toLowerCase());
       expect(upsertCall.create.chainId).toBe(42161);
+      expect(upsertCall.create.categoryId).toBe(42);
 
       // description must be parseable by market-keeper
       const desc = upsertCall.create.description;
       expect(desc).toContain('Pyth Network Lazer oracle');
       expect(desc).toContain('over');
       expect(desc).toContain('71,080');
+
+      // category lookup should use the correct slug
+      expect(mockPrisma.category.findFirst).toHaveBeenCalledWith({
+        where: { slug: 'prices-crypto' },
+      });
 
       // picks.create should also have been called (after the upsert)
       expect(mockPrisma.picks.create).toHaveBeenCalledTimes(1);
@@ -1065,6 +1139,89 @@ describe('PredictionMarketEscrowIndexer', () => {
       const upsertCall = mockPrisma.condition.upsert.mock.calls[0][0];
       expect(upsertCall.create.question).toBe('Feed #99999 OVER $100');
       expect(upsertCall.create.shortName).toBe('Feed #99999 OVER $100');
+    });
+
+    it('should omit categoryId when category is not found in DB', async () => {
+      const conditionId = makePythConditionId({
+        feedLazerId: 1,
+        endTime: 1700100000n,
+        strikePrice: 7108000n,
+        strikeExpo: -2,
+        overWinsOnTie: true,
+      });
+
+      // category.findFirst returns null → no matching category row
+      mockPrisma.category.findFirst.mockResolvedValue(null);
+
+      const indexer = setupPythPredictionTest(conditionId);
+      await indexer.indexBlocks('test', [50]);
+
+      const upsertCall = mockPrisma.condition.upsert.mock.calls[0][0];
+      expect(upsertCall.create.categoryId).toBeUndefined();
+    });
+
+    it('should cache category lookups across picks in the same transaction', async () => {
+      // Two picks with the same Pyth resolver → same categorySlug → one DB lookup
+      const conditionId1 = makePythConditionId({
+        feedLazerId: 1, // BTC → prices-crypto
+        endTime: 1700100000n,
+        strikePrice: 7108000n,
+        strikeExpo: -2,
+        overWinsOnTie: true,
+      });
+      const conditionId2 = makePythConditionId({
+        feedLazerId: 2, // ETH → prices-crypto
+        endTime: 1700200000n,
+        strikePrice: 350000n,
+        strikeExpo: -2,
+        overWinsOnTie: false,
+      });
+
+      mockPrisma.category.findFirst.mockResolvedValue({
+        id: 42,
+        slug: 'prices-crypto',
+      });
+
+      const indexer = new PredictionMarketEscrowIndexer(42161);
+      const log = makePredictionCreatedLog();
+
+      indexer.client = {
+        getLogs: vi.fn().mockResolvedValue([log]),
+        getBlock: vi.fn().mockResolvedValue(MOCK_BLOCK),
+        readContract: vi
+          .fn()
+          .mockResolvedValueOnce({
+            pickConfigId: PICK_CONFIG_ID,
+            predictorTokensMinted: 1000000000000000000n,
+            counterpartyTokensMinted: 2000000000000000000n,
+          })
+          .mockResolvedValueOnce([
+            {
+              conditionResolver: PYTH_RESOLVER as `0x${string}`,
+              conditionId: conditionId1,
+              predictedOutcome: 1,
+            },
+            {
+              conditionResolver: PYTH_RESOLVER as `0x${string}`,
+              conditionId: conditionId2,
+              predictedOutcome: 0,
+            },
+          ]),
+      };
+
+      await indexer.indexBlocks('test', [50]);
+
+      // Both conditions should have categoryId set
+      expect(mockPrisma.condition.upsert).toHaveBeenCalledTimes(2);
+      expect(
+        mockPrisma.condition.upsert.mock.calls[0][0].create.categoryId
+      ).toBe(42);
+      expect(
+        mockPrisma.condition.upsert.mock.calls[1][0].create.categoryId
+      ).toBe(42);
+
+      // But category.findFirst should only be called once (cached)
+      expect(mockPrisma.category.findFirst).toHaveBeenCalledTimes(1);
     });
   });
 });
