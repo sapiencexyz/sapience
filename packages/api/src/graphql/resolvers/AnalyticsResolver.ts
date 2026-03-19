@@ -77,17 +77,13 @@ interface DailyOIRow {
 
 function buildTimestampMap<T extends { timestamp: bigint }>(
   rows: T[],
-  key: keyof T,
-  days: number = 90
+  key: keyof T
 ): Map<number, string> {
   const map = new Map<number, string>();
-  const cutoffTimestamp = Math.floor(Date.now() / 1000) - days * 86400;
   for (const row of rows) {
     const ts = Number(row.timestamp);
-    if (ts >= cutoffTimestamp) {
-      const value = row[key];
-      map.set(ts, value?.toString() || '0');
-    }
+    const value = row[key];
+    map.set(ts, value?.toString() || '0');
   }
   return map;
 }
@@ -105,9 +101,9 @@ export class AnalyticsResolver {
       contracts.predictionMarketVault[chainId]?.address ?? ''
     ).toLowerCase();
 
-    // Fetch snapshots first to get our timestamps
+    // Fetch all available snapshots
     const protocolSnapshots = await getProtocolStatsTimeSeries(
-      90,
+      undefined,
       chainId,
       vaultAddress
     );
@@ -177,14 +173,12 @@ export class AnalyticsResolver {
       const cumVol = volumeMap.get(snapshot.timestamp) || '0';
       const prevCumVol =
         i > 0 ? volumeMap.get(protocolSnapshots[i - 1].timestamp) || '0' : '0';
-      const dailyVolume =
-        i > 0 ? (BigInt(cumVol) - BigInt(prevCumVol)).toString() : '0';
+      const dailyVolume = (BigInt(cumVol) - BigInt(prevCumVol)).toString();
 
       const prevPnL = i > 0 ? protocolSnapshots[i - 1].vaultRealizedPnL : '0';
-      const dailyPnL =
-        i > 0
-          ? (BigInt(snapshot.vaultRealizedPnL) - BigInt(prevPnL)).toString()
-          : '0';
+      const dailyPnL = (
+        BigInt(snapshot.vaultRealizedPnL) - BigInt(prevPnL)
+      ).toString();
 
       return {
         timestamp: snapshot.timestamp,

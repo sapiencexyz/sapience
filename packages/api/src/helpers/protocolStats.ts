@@ -525,18 +525,23 @@ export async function getLatestProtocolStats(
 }
 
 /**
- * Get stats time series for the last N days.
+ * Get stats time series. If days is provided, limits to the last N days.
+ * If omitted, returns all available snapshots.
  */
 export async function getProtocolStatsTimeSeries(
-  days: number = 90,
+  days?: number,
   chainId: number = DEFAULT_CHAIN_ID,
   vaultAddress?: string
 ) {
-  const startTimestamp = getUtcMidnightTimestamp(new Date()) - days * 86400;
-
   return prisma.protocolStatsSnapshot.findMany({
     where: {
-      timestamp: { gte: startTimestamp },
+      ...(days
+        ? {
+            timestamp: {
+              gte: getUtcMidnightTimestamp(new Date()) - days * 86400,
+            },
+          }
+        : {}),
       chainId,
       ...(vaultAddress ? { vaultAddress } : {}),
     },

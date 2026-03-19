@@ -157,22 +157,43 @@ const CHART_MARGIN = { top: 10, right: 0, left: 0, bottom: 0 };
 
 function filterDataByPeriod<T extends { timestamp: number }>(
   data: T[],
-  period: Period
+  period: Period,
+  zeroEntry: Omit<T, 'timestamp'>
 ): T[] {
   const days = PERIOD_DAYS[period];
   if (days === Infinity) return data;
-  const cutoff = Math.floor(Date.now() / 1000) - days * 24 * 60 * 60;
-  return data.filter((item) => item.timestamp >= cutoff);
+
+  const now = Math.floor(Date.now() / 1000);
+  // Align cutoff to UTC midnight so we don't exclude snapshots that
+  // fall on the boundary day (snapshots use UTC midnight timestamps)
+  const DAY_SECONDS = 86400;
+  const cutoff =
+    Math.floor((now - days * DAY_SECONDS) / DAY_SECONDS) * DAY_SECONDS;
+  const filtered = data.filter((item) => item.timestamp >= cutoff);
+
+  // Fill missing days with zero entries
+  const existingTimestamps = new Set(
+    filtered.map((d) => Math.floor(d.timestamp / DAY_SECONDS))
+  );
+  const filled = [...filtered];
+  for (let ts = cutoff; ts <= now; ts += DAY_SECONDS) {
+    const dayKey = Math.floor(ts / DAY_SECONDS);
+    if (!existingTimestamps.has(dayKey)) {
+      filled.push({ ...zeroEntry, timestamp: ts } as T);
+    }
+  }
+  filled.sort((a, b) => a.timestamp - b.timestamp);
+  return filled;
 }
 
 function AnalyticsPageContent(): React.ReactElement {
   const collateralSymbol = COLLATERAL_SYMBOLS[DEFAULT_CHAIN_ID] || 'USDe';
 
   // Period states for each chart
-  const [volumePeriod, setVolumePeriod] = useState<Period>('3M');
-  const [oiPeriod, setOiPeriod] = useState<Period>('3M');
-  const [tvlPeriod, setTvlPeriod] = useState<Period>('3M');
-  const [pnlPeriod, setPnlPeriod] = useState<Period>('3M');
+  const [volumePeriod, setVolumePeriod] = useState<Period>('1W');
+  const [oiPeriod, setOiPeriod] = useState<Period>('1W');
+  const [tvlPeriod, setTvlPeriod] = useState<Period>('1W');
+  const [pnlPeriod, setPnlPeriod] = useState<Period>('1W');
 
   // Fetch protocol stats and daily volumes
   const { data: protocolStats, isLoading: statsLoading } = useProtocolStats();
@@ -210,19 +231,33 @@ function AnalyticsPageContent(): React.ReactElement {
     }));
   }, [protocolStats]);
 
-  // Filter chart data based on selected periods
+  // Filter chart data based on selected periods, filling missing days with zeros
   const filteredVolumeData = useMemo(
-    () => filterDataByPeriod(volumeChartData, volumePeriod),
+    () => filterDataByPeriod(volumeChartData, volumePeriod, { volume: 0 }),
     [volumeChartData, volumePeriod]
   );
 
   const filteredOiData = useMemo(
-    () => filterDataByPeriod(statsChartData, oiPeriod),
+    () =>
+      filterDataByPeriod(statsChartData, oiPeriod, {
+        openInterest: 0,
+        totalBalance: 0,
+        vaultBalance: 0,
+        vaultDeployed: 0,
+        escrowBalance: 0,
+      }),
     [statsChartData, oiPeriod]
   );
 
   const filteredTvlData = useMemo(
-    () => filterDataByPeriod(statsChartData, tvlPeriod),
+    () =>
+      filterDataByPeriod(statsChartData, tvlPeriod, {
+        openInterest: 0,
+        totalBalance: 0,
+        vaultBalance: 0,
+        vaultDeployed: 0,
+        escrowBalance: 0,
+      }),
     [statsChartData, tvlPeriod]
   );
 
@@ -345,7 +380,25 @@ function AnalyticsPageContent(): React.ReactElement {
           <Card className="bg-brand-black border border-brand-white/10">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="sc-heading text-foreground">Daily Volume</h3>
+                <h3 className="sc-heading text-foreground flex items-center gap-1.5">
+                  Daily Volume
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className="text-muted-foreground hover:text-foreground transition-colors">
+                        <Info className="h-4 w-4" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      className="w-auto bg-background border border-border p-3"
+                      align="start"
+                    >
+                      <p className="text-sm text-muted-foreground">
+                        Includes volume from both V1 (legacy) and V2 (escrow)
+                        prediction markets.
+                      </p>
+                    </PopoverContent>
+                  </Popover>
+                </h3>
                 <PeriodFilter value={volumePeriod} onChange={setVolumePeriod} />
               </div>
               <div className="h-[300px]">
@@ -404,7 +457,25 @@ function AnalyticsPageContent(): React.ReactElement {
           <Card className="bg-brand-black border border-brand-white/10">
             <CardContent className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="sc-heading text-foreground">Open Interest</h3>
+                <h3 className="sc-heading text-foreground flex items-center gap-1.5">
+                  Open Interest
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <button className="text-muted-foreground hover:text-foreground transition-colors">
+                        <Info className="h-4 w-4" />
+                      </button>
+                    </PopoverTrigger>
+                    <PopoverContent
+                      className="w-auto bg-background border border-border p-3"
+                      align="start"
+                    >
+                      <p className="text-sm text-muted-foreground">
+                        Includes open interest from both V1 (legacy) and V2
+                        (escrow) prediction markets.
+                      </p>
+                    </PopoverContent>
+                  </Popover>
+                </h3>
                 <PeriodFilter value={oiPeriod} onChange={setOiPeriod} />
               </div>
               <div className="h-[300px]">
