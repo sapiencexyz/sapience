@@ -194,9 +194,11 @@ export function PicksContent({
                   <PickForecastCell pick={pick} />
                 </td>
                 <td className="py-2 pr-4 text-right whitespace-nowrap">
-                  <PredictionChoiceBadge
-                    choice={String(pick.choice).toUpperCase()}
-                  />
+                  {pick.source !== 'pyth' && (
+                    <PredictionChoiceBadge
+                      choice={String(pick.choice).toUpperCase()}
+                    />
+                  )}
                 </td>
                 <td className="py-2 pl-4 text-right whitespace-nowrap">
                   <PickEndsCell pick={pick} positionStatus={positionStatus} />

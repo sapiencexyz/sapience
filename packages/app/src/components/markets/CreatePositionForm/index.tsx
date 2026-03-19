@@ -207,7 +207,8 @@ const CreatePositionFormInner = ({
     picks: Array<{
       conditionId: string;
       question: string;
-      choice: 'Yes' | 'No';
+      choice: 'Yes' | 'No' | 'Over' | 'Under';
+      source?: 'polymarket' | 'pyth';
     }>;
     positionSize: string;
     payout?: string;
@@ -687,12 +688,14 @@ const CreatePositionFormInner = ({
           const polymarketPicks = selections.map((s) => ({
             conditionId: s.conditionId,
             question: s.question,
-            choice: s.prediction ? 'Yes' : ('No' as 'Yes' | 'No'),
+            choice: s.prediction ? ('Yes' as const) : ('No' as const),
+            source: 'polymarket' as const,
           }));
           const pythPicks = pythPredictions.map((p) => ({
             conditionId: p.id,
-            question: `${p.priceFeedLabel ?? 'Crypto'} ${p.direction.toUpperCase()} $${p.targetPrice.toLocaleString()}`,
-            choice: 'Yes' as const,
+            question: `${p.priceFeedLabel ?? 'Crypto'} ${p.direction === 'over' ? '>' : '<'} $${p.targetPrice.toLocaleString()}`,
+            choice: p.direction === 'over' ? ('Over' as const) : ('Under' as const),
+            source: 'pyth' as const,
           }));
 
           const dialogData = {
@@ -775,12 +778,16 @@ const CreatePositionFormInner = ({
 
   // Build OG image URL for the preview card (drafted position, not yet submitted)
   const previewCardImageSrc = useMemo(() => {
-    if (selections.length === 0) return null;
+    if (selections.length === 0 && pythPredictions.length === 0) return null;
     const qp = new URLSearchParams();
     if (effectiveAddress)
       qp.set('addr', String(effectiveAddress).toLowerCase());
     selections.forEach((s) => {
       qp.append('leg', `${s.question}|${s.prediction ? 'Yes' : 'No'}`);
+    });
+    pythPredictions.forEach((p) => {
+      const dir = p.direction === 'over' ? 'Over' : 'Under';
+      qp.append('leg', `${p.priceFeedLabel ?? 'Crypto'} ${p.direction === 'over' ? '>' : '<'} $${p.targetPrice.toLocaleString()}|${dir}`);
     });
     if (watchedPositionSize) qp.set('wager', watchedPositionSize);
     if (collateralSymbol) qp.set('symbol', collateralSymbol);

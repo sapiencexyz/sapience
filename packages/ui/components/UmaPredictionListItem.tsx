@@ -27,6 +27,8 @@ export type UmaPredictionListItemProps = {
   onRemove?: (id: string) => void;
   yesLabel?: string;
   noLabel?: string;
+  /** Hide the choice badge entirely (e.g. for Pyth picks where Over/Under is in the question text). */
+  hideBadge?: boolean;
 };
 
 export function UmaPredictionListItem({
@@ -36,6 +38,7 @@ export function UmaPredictionListItem({
   onRemove,
   yesLabel = 'YES',
   noLabel = 'NO',
+  hideBadge = false,
 }: UmaPredictionListItemProps) {
   return (
     <div className="flex items-center gap-2">
@@ -55,11 +58,13 @@ export function UmaPredictionListItem({
                 </div>
               )}
             </div>
-            <span className="shrink-0">
-              <PredictionChoiceBadge
-                choice={prediction.prediction ? yesLabel : noLabel}
-              />
-            </span>
+            {!hideBadge && (
+              <span className="shrink-0">
+                <PredictionChoiceBadge
+                  choice={prediction.prediction ? yesLabel : noLabel}
+                />
+              </span>
+            )}
           </div>
         </div>
       </div>

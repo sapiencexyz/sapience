@@ -129,14 +129,14 @@ export const StackedPredictionsTitle = React.memo(
     const remainingPicks = picks.slice(1);
     const remainingCount = remainingPicks.length;
     const badgeLabel = String(firstPick.choice).toUpperCase();
-    const firstIsPyth =
-      firstPick.source === 'pyth' && !!firstPick.pythPrediction;
+    const firstIsPyth = firstPick.source === 'pyth';
+    const firstHasPythData = firstIsPyth && !!firstPick.pythPrediction;
 
     return (
       <div
         className={`flex items-center gap-2 flex-wrap xl:flex-nowrap min-w-0 ${className ?? ''}`}
       >
-        {firstIsPyth ? (
+        {firstHasPythData ? (
           <div className={`min-w-0 flex-initial ${maxWidthClass}`}>
             <PythPredictionListItem
               prediction={firstPick.pythPrediction!}
@@ -163,9 +163,11 @@ export const StackedPredictionsTitle = React.memo(
                   {firstPick.question}
                 </span>
               )}
-              <span className="shrink-0 whitespace-nowrap">
-                <PredictionChoiceBadge choice={badgeLabel} />
-              </span>
+              {!firstIsPyth && (
+                <span className="shrink-0 whitespace-nowrap">
+                  <PredictionChoiceBadge choice={badgeLabel} />
+                </span>
+              )}
             </span>
           </>
         )}
@@ -226,9 +228,11 @@ export const StackedPredictionsTitle = React.memo(
                                 {pick.question}
                               </span>
                             )}
-                            <PredictionChoiceBadge
-                              choice={String(pick.choice).toUpperCase()}
-                            />
+                            {pick.source !== 'pyth' && (
+                              <PredictionChoiceBadge
+                                choice={String(pick.choice).toUpperCase()}
+                              />
+                            )}
                           </>
                         )}
                       </div>
