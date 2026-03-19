@@ -22,6 +22,7 @@ jobs:
       protocol: ${{ steps.filter.outputs.protocol }}
       relayer: ${{ steps.filter.outputs.relayer }}
       ui: ${{ steps.filter.outputs.ui }}
+      market-keeper: ${{ steps.filter.outputs.market-keeper }}
     steps:
       - uses: actions/checkout@v4
       - uses: dorny/paths-filter@v3
@@ -48,15 +49,14 @@ jobs:
               - 'pnpm-lock.yaml'
             ui:
               - 'packages/ui/**'
+            market-keeper:
+              - 'packages/market-keeper/**'
+              - 'packages/sdk/**'
+              - 'pnpm-lock.yaml'
 
-  install:
+  test-api:
     needs: changes
-    if: >-
-      needs.changes.outputs.api == 'true' ||
-      needs.changes.outputs.app == 'true' ||
-      needs.changes.outputs.sdk == 'true' ||
-      needs.changes.outputs.relayer == 'true' ||
-      needs.changes.outputs.ui == 'true'
+    if: needs.changes.outputs.api == 'true'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -71,28 +71,6 @@ jobs:
           key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
           restore-keys: ${{ runner.os }}-pnpm-
       - run: pnpm install
-      - uses: actions/cache/save@v4
-        with:
-          path: |
-            node_modules
-            packages/*/node_modules
-          key: ${{ runner.os }}-modules-${{ github.sha }}
-
-  test-api:
-    needs: [changes, install]
-    if: needs.changes.outputs.api == 'true'
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with: { node-version: '20' }
-      - uses: pnpm/action-setup@v4
-      - uses: actions/cache/restore@v4
-        with:
-          path: |
-            node_modules
-            packages/*/node_modules
-          key: ${{ runner.os }}-modules-${{ github.sha }}
       - run: pnpm --filter @sapience/sdk run build:lib
       - run: pnpm --filter @sapience/api run generate-types
       - name: Verify generated files are up to date
@@ -101,7 +79,7 @@ jobs:
       - run: pnpm --filter @sapience/api run test -- --run
 
   lint-api:
-    needs: [changes, install]
+    needs: changes
     if: needs.changes.outputs.api == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -109,19 +87,21 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: '20' }
       - uses: pnpm/action-setup@v4
-      - uses: actions/cache/restore@v4
+      - name: Get pnpm store
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+      - uses: actions/cache@v4
         with:
-          path: |
-            node_modules
-            packages/*/node_modules
-          key: ${{ runner.os }}-modules-${{ github.sha }}
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-
+      - run: pnpm install
       - run: pnpm --filter @sapience/sdk run build:lib
       - run: pnpm --filter @sapience/api run prisma:generate
       - run: pnpm --filter @sapience/api run lint
       - run: pnpm --filter @sapience/api run type-check
 
   lint-typecheck-app:
-    needs: [changes, install]
+    needs: changes
     if: needs.changes.outputs.app == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -129,18 +109,20 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: '20' }
       - uses: pnpm/action-setup@v4
-      - uses: actions/cache/restore@v4
+      - name: Get pnpm store
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+      - uses: actions/cache@v4
         with:
-          path: |
-            node_modules
-            packages/*/node_modules
-          key: ${{ runner.os }}-modules-${{ github.sha }}
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-
+      - run: pnpm install
       - run: pnpm --filter @sapience/sdk run build:lib
       - run: pnpm --filter app run lint
       - run: pnpm --filter app run type-check
 
   test-app:
-    needs: [changes, install]
+    needs: changes
     if: needs.changes.outputs.app == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -148,17 +130,19 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: '20' }
       - uses: pnpm/action-setup@v4
-      - uses: actions/cache/restore@v4
+      - name: Get pnpm store
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+      - uses: actions/cache@v4
         with:
-          path: |
-            node_modules
-            packages/*/node_modules
-          key: ${{ runner.os }}-modules-${{ github.sha }}
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-
+      - run: pnpm install
       - run: pnpm --filter @sapience/sdk run build:lib
       - run: pnpm --filter app test
 
   lint-typecheck-sdk:
-    needs: [changes, install]
+    needs: changes
     if: needs.changes.outputs.sdk == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -166,18 +150,20 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: '20' }
       - uses: pnpm/action-setup@v4
-      - uses: actions/cache/restore@v4
+      - name: Get pnpm store
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+      - uses: actions/cache@v4
         with:
-          path: |
-            node_modules
-            packages/*/node_modules
-          key: ${{ runner.os }}-modules-${{ github.sha }}
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-
+      - run: pnpm install
       - run: pnpm --filter @sapience/sdk run build:lib
       - run: pnpm --filter @sapience/sdk run lint
       - run: pnpm --filter @sapience/sdk run type-check
 
   lint-typecheck-ui:
-    needs: [changes, install]
+    needs: changes
     if: needs.changes.outputs.ui == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -185,17 +171,19 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: '20' }
       - uses: pnpm/action-setup@v4
-      - uses: actions/cache/restore@v4
+      - name: Get pnpm store
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+      - uses: actions/cache@v4
         with:
-          path: |
-            node_modules
-            packages/*/node_modules
-          key: ${{ runner.os }}-modules-${{ github.sha }}
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-
+      - run: pnpm install
       - run: pnpm --filter ui run lint
       - run: pnpm --filter ui run type-check
 
   lint-typecheck-relayer:
-    needs: [changes, install]
+    needs: changes
     if: needs.changes.outputs.relayer == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -203,18 +191,20 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: '20' }
       - uses: pnpm/action-setup@v4
-      - uses: actions/cache/restore@v4
+      - name: Get pnpm store
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+      - uses: actions/cache@v4
         with:
-          path: |
-            node_modules
-            packages/*/node_modules
-          key: ${{ runner.os }}-modules-${{ github.sha }}
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-
+      - run: pnpm install
       - run: pnpm --filter @sapience/sdk run build:lib
       - run: pnpm --filter @sapience/relayer run lint
       - run: pnpm --filter @sapience/relayer run type-check
 
   test-sdk:
-    needs: [changes, install]
+    needs: changes
     if: needs.changes.outputs.sdk == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -222,17 +212,19 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: '20' }
       - uses: pnpm/action-setup@v4
-      - uses: actions/cache/restore@v4
+      - name: Get pnpm store
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+      - uses: actions/cache@v4
         with:
-          path: |
-            node_modules
-            packages/*/node_modules
-          key: ${{ runner.os }}-modules-${{ github.sha }}
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-
+      - run: pnpm install
       - run: pnpm --filter @sapience/sdk run build:lib
       - run: pnpm --filter @sapience/sdk run test
 
   test-relayer:
-    needs: [changes, install]
+    needs: changes
     if: needs.changes.outputs.relayer == 'true'
     runs-on: ubuntu-latest
     steps:
@@ -240,12 +232,14 @@ jobs:
       - uses: actions/setup-node@v4
         with: { node-version: '20' }
       - uses: pnpm/action-setup@v4
-      - uses: actions/cache/restore@v4
+      - name: Get pnpm store
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+      - uses: actions/cache@v4
         with:
-          path: |
-            node_modules
-            packages/*/node_modules
-          key: ${{ runner.os }}-modules-${{ github.sha }}
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-
+      - run: pnpm install
       - run: pnpm --filter @sapience/sdk run build:lib
       - run: pnpm --filter @sapience/relayer run test
 
@@ -266,3 +260,25 @@ jobs:
       - run: forge fmt --check
         working-directory: packages/protocol
       - run: pnpm --filter protocol run test
+
+  test-market-keeper:
+    needs: changes
+    if: needs.changes.outputs.market-keeper == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - uses: pnpm/action-setup@v4
+      - name: Get pnpm store
+        run: echo "STORE_PATH=$(pnpm store path --silent)" >> $GITHUB_ENV
+      - uses: actions/cache@v4
+        with:
+          path: ${{ env.STORE_PATH }}
+          key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: ${{ runner.os }}-pnpm-
+      - run: pnpm install
+      - run: pnpm --filter @sapience/sdk run build:lib
+      - run: pnpm --filter @sapience/market-keeper run test
+        env:
+          POLYGON_RPC_URL: ${{ secrets.POLYGON_RPC_URL }}

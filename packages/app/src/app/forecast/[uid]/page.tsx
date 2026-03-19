@@ -1,6 +1,6 @@
 import type { Metadata } from 'next';
-import { fetchAttestationByUid } from '~/app/og/_forecast-helpers';
 import ForecastPageClient from './ForecastPageClient';
+import { fetchAttestationByUid } from '~/lib/data/forecasts';
 
 type ForecastPageProps = {
   params: Promise<{ uid: string }>;
@@ -16,7 +16,7 @@ export async function generateMetadata(
   props: ForecastPageProps
 ): Promise<Metadata> {
   const { uid } = await props.params;
-  const attestation = await fetchAttestationByUid(uid);
+  const attestation = await fetchAttestationByUid(uid).catch(() => null);
 
   const question = attestation?.condition?.question ?? 'Forecast on Sapience';
   const img = buildForecastImageUrl(uid);
@@ -49,9 +49,9 @@ export async function generateMetadata(
   };
 }
 
-export default async function ForecastPage(props: ForecastPageProps) {
-  const { uid } = await props.params;
-  const attestation = await fetchAttestationByUid(uid);
+export default async function ForecastPage({ params }: ForecastPageProps) {
+  const { uid } = await params;
+  const attestation = await fetchAttestationByUid(uid).catch(() => null);
 
   return (
     <div className="relative min-h-[calc(100vh-200px)] flex items-center justify-center">

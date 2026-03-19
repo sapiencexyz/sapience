@@ -1,5 +1,4 @@
 export * from './client/graphqlClient';
-export * from './hooks/market/useMarket';
 export * from './conditions';
 export * from './conditionGroups';
 export * from './categories';

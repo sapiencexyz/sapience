@@ -6,15 +6,7 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@sapience/ui/components/ui/popover';
-import {
-  Command,
-  CommandEmpty,
-  CommandGroup,
-  CommandInput,
-  CommandItem,
-  CommandList,
-} from '@sapience/ui/components/ui/command';
-import { ChevronsUpDown, Check, Search } from 'lucide-react';
+import { ChevronsUpDown, Check, Search, ChevronRight } from 'lucide-react';
 import { cn } from '@sapience/ui/lib/utils';
 import ResolutionStatusFilter, {
   type ResolutionStatusFilterValue,
@@ -60,6 +52,16 @@ function CategoryMultiSelect({
   onChange,
 }: CategoryMultiSelectProps) {
   const [open, setOpen] = React.useState(false);
+  const [pmExpanded, setPmExpanded] = React.useState(true);
+  const [pricesExpanded, setPricesExpanded] = React.useState(false);
+
+  // Separate prediction-market categories from price asset-class categories
+  const predictionMarketCategories = categories.filter(
+    (c) => !c.slug.startsWith('prices-')
+  );
+  const pricesCategories = categories.filter((c) =>
+    c.slug.startsWith('prices-')
+  );
 
   const handleToggle = (slug: string) => {
     if (selectedSlugs.includes(slug)) {
@@ -70,10 +72,23 @@ function CategoryMultiSelect({
   };
 
   const handleSelectAll = () => {
-    if (selectedSlugs.length === categories.length) {
+    if (
+      selectedSlugs.length === categories.length ||
+      selectedSlugs.length === 0
+    ) {
       onChange([]);
     } else {
       onChange(categories.map((c) => c.slug));
+    }
+  };
+
+  const handleToggleGroup = (groupCategories: CategoryOption[]) => {
+    const groupSlugs = groupCategories.map((c) => c.slug);
+    const allSelected = groupSlugs.every((s) => selectedSlugs.includes(s));
+    if (allSelected) {
+      onChange(selectedSlugs.filter((s) => !groupSlugs.includes(s)));
+    } else {
+      onChange([...new Set([...selectedSlugs, ...groupSlugs])]);
     }
   };
 
@@ -81,18 +96,43 @@ function CategoryMultiSelect({
     if (selectedSlugs.length === 0) {
       return 'All focus areas';
     }
+    if (selectedSlugs.length === categories.length) {
+      return 'All focus areas';
+    }
+    const pmSlugSet = new Set(predictionMarketCategories.map((c) => c.slug));
+    if (
+      selectedSlugs.length === pmSlugSet.size &&
+      selectedSlugs.every((s) => pmSlugSet.has(s))
+    ) {
+      return 'Prediction Markets';
+    }
+    const pricesSlugSet = new Set(pricesCategories.map((c) => c.slug));
+    if (
+      selectedSlugs.length === pricesSlugSet.size &&
+      selectedSlugs.every((s) => pricesSlugSet.has(s))
+    ) {
+      return 'Prices';
+    }
     if (selectedSlugs.length === 1) {
       const cat = categories.find((c) => c.slug === selectedSlugs[0]);
       return cat?.name || selectedSlugs[0];
-    }
-    if (selectedSlugs.length === categories.length) {
-      return 'All focus areas';
     }
     return `${selectedSlugs.length} focus areas`;
   };
 
   const isAllSelected =
     selectedSlugs.length === 0 || selectedSlugs.length === categories.length;
+
+  const pmSlugs = predictionMarketCategories.map((c) => c.slug);
+  const allPmSelected =
+    pmSlugs.length > 0 && pmSlugs.every((s) => selectedSlugs.includes(s));
+  const somePmSelected = pmSlugs.some((s) => selectedSlugs.includes(s));
+
+  const pricesSlugs = pricesCategories.map((c) => c.slug);
+  const allPricesSelected =
+    pricesSlugs.length > 0 &&
+    pricesSlugs.every((s) => selectedSlugs.includes(s));
+  const somePricesSelected = pricesSlugs.some((s) => selectedSlugs.includes(s));
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -111,31 +151,65 @@ function CategoryMultiSelect({
           <ChevronsUpDown className="h-4 w-4 opacity-50" />
         </button>
       </PopoverTrigger>
-      <PopoverContent className="w-[220px] p-0" align="start">
-        <Command>
-          <CommandInput placeholder="Search focus areas..." className="h-9" />
-          <CommandList>
-            <CommandEmpty>No focus area found.</CommandEmpty>
-            <CommandGroup>
-              <CommandItem
-                onSelect={handleSelectAll}
-                className="cursor-pointer flex items-center justify-between"
+      <PopoverContent className="w-[240px] p-1" align="start">
+        <div className="flex flex-col">
+          {/* All focus areas */}
+          <button
+            type="button"
+            onClick={handleSelectAll}
+            className="cursor-pointer flex items-center justify-between rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
+          >
+            <span className="font-medium">All focus areas</span>
+            <Check
+              className={cn(
+                'h-4 w-4',
+                isAllSelected ? 'opacity-100 text-amber-400' : 'opacity-0'
+              )}
+            />
+          </button>
+
+          {/* Prediction Markets group */}
+          <div className="mt-1">
+            <div className="flex items-center">
+              <button
+                type="button"
+                onClick={() => setPmExpanded(!pmExpanded)}
+                className="p-1 rounded-sm hover:bg-accent"
               >
-                <span className="font-medium">All focus areas</span>
+                <ChevronRight
+                  className={cn(
+                    'h-3.5 w-3.5 transition-transform',
+                    pmExpanded && 'rotate-90'
+                  )}
+                />
+              </button>
+              <button
+                type="button"
+                onClick={() => handleToggleGroup(predictionMarketCategories)}
+                className="flex-1 cursor-pointer flex items-center justify-between rounded-sm px-1.5 py-1.5 text-sm hover:bg-accent"
+              >
+                <span className="font-medium">Prediction Markets</span>
                 <Check
                   className={cn(
                     'h-4 w-4',
-                    isAllSelected ? 'opacity-100 text-amber-400' : 'opacity-0'
+                    allPmSelected
+                      ? 'opacity-100 text-amber-400'
+                      : somePmSelected
+                        ? 'opacity-100 text-amber-400/50'
+                        : 'opacity-0'
                   )}
                 />
-              </CommandItem>
-              {categories.map((category) => {
+              </button>
+            </div>
+            {pmExpanded &&
+              predictionMarketCategories.map((category) => {
                 const isSelected = selectedSlugs.includes(category.slug);
                 return (
-                  <CommandItem
+                  <button
+                    type="button"
                     key={category.slug}
-                    onSelect={() => handleToggle(category.slug)}
-                    className="cursor-pointer flex items-center justify-between"
+                    onClick={() => handleToggle(category.slug)}
+                    className="w-full cursor-pointer flex items-center justify-between rounded-sm pl-8 pr-2 py-1.5 text-sm hover:bg-accent"
                   >
                     <span>{category.name}</span>
                     <Check
@@ -144,12 +218,70 @@ function CategoryMultiSelect({
                         isSelected ? 'opacity-100 text-amber-400' : 'opacity-0'
                       )}
                     />
-                  </CommandItem>
+                  </button>
                 );
               })}
-            </CommandGroup>
-          </CommandList>
-        </Command>
+          </div>
+
+          {/* Prices group */}
+          {pricesCategories.length > 0 && (
+            <div className="mt-1">
+              <div className="flex items-center">
+                <button
+                  type="button"
+                  onClick={() => setPricesExpanded(!pricesExpanded)}
+                  className="p-1 rounded-sm hover:bg-accent"
+                >
+                  <ChevronRight
+                    className={cn(
+                      'h-3.5 w-3.5 transition-transform',
+                      pricesExpanded && 'rotate-90'
+                    )}
+                  />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleToggleGroup(pricesCategories)}
+                  className="flex-1 cursor-pointer flex items-center justify-between rounded-sm px-1.5 py-1.5 text-sm hover:bg-accent"
+                >
+                  <span className="font-medium">Prices</span>
+                  <Check
+                    className={cn(
+                      'h-4 w-4',
+                      allPricesSelected
+                        ? 'opacity-100 text-amber-400'
+                        : somePricesSelected
+                          ? 'opacity-100 text-amber-400/50'
+                          : 'opacity-0'
+                    )}
+                  />
+                </button>
+              </div>
+              {pricesExpanded &&
+                pricesCategories.map((category) => {
+                  const isSelected = selectedSlugs.includes(category.slug);
+                  return (
+                    <button
+                      type="button"
+                      key={category.slug}
+                      onClick={() => handleToggle(category.slug)}
+                      className="w-full cursor-pointer flex items-center justify-between rounded-sm pl-8 pr-2 py-1.5 text-sm hover:bg-accent"
+                    >
+                      <span>{category.name}</span>
+                      <Check
+                        className={cn(
+                          'h-4 w-4',
+                          isSelected
+                            ? 'opacity-100 text-amber-400'
+                            : 'opacity-0'
+                        )}
+                      />
+                    </button>
+                  );
+                })}
+            </div>
+          )}
+        </div>
       </PopoverContent>
     </Popover>
   );

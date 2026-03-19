@@ -5,7 +5,9 @@ import {
   keccak256,
   toHex,
   type Block,
+  type Hex,
 } from 'viem';
+import { getPythMarketId } from '@sapience/sdk/auction/encoding';
 
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 
@@ -23,6 +25,8 @@ const mockPrisma = {
     update: vi.fn(),
   },
   pick: { findMany: vi.fn() },
+  condition: { upsert: vi.fn() },
+  category: { findFirst: vi.fn() },
   claim: { create: vi.fn() },
   close: { create: vi.fn() },
   indexerState: { findFirst: vi.fn(), upsert: vi.fn() },
@@ -58,6 +62,23 @@ vi.mock('@sapience/sdk/contracts', () => ({
     },
   },
 }));
+
+const PYTH_RESOLVER = '0x6666666666666666666666666666666666666666';
+const NON_PYTH_RESOLVER = '0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA';
+
+vi.mock('@sapience/sdk/contracts/addresses', () => ({
+  identifyResolver: (address: string, _chainId: number) =>
+    address.toLowerCase() === PYTH_RESOLVER.toLowerCase() ? 'pyth' : null,
+}));
+// Real implementations — these are pure decode/encode functions
+vi.mock('@sapience/sdk/auction/encoding', async () => {
+  const actual = await vi.importActual('@sapience/sdk/auction/encoding');
+  return actual;
+});
+vi.mock('@sapience/sdk/constants', async () => {
+  const actual = await vi.importActual('@sapience/sdk/constants');
+  return actual;
+});
 
 // Minimal ABI stubs — only the events the indexer needs to decode
 const escrowAbi = [
@@ -303,6 +324,7 @@ describe('PredictionMarketEscrowIndexer', () => {
     mockPrisma.picks.findFirst.mockResolvedValue(null);
     mockPrisma.picks.update.mockResolvedValue({});
     mockPrisma.pick.findMany.mockResolvedValue([]);
+    mockPrisma.condition.upsert.mockResolvedValue({});
     mockPrisma.claim.create.mockResolvedValue({});
     mockPrisma.close.create.mockResolvedValue({});
     mockPrisma.indexerState.findFirst.mockResolvedValue(null);
@@ -682,6 +704,524 @@ describe('PredictionMarketEscrowIndexer', () => {
       // No event recorded, no DB writes
       expect(mockPrisma.event.create).not.toHaveBeenCalled();
       expect(mockPrisma.prediction.create).not.toHaveBeenCalled();
+    });
+  });
+
+  // ─── buildPythConditionData unit tests ──────────────────────────────
+
+  describe('buildPythConditionData', () => {
+    let buildPythConditionData: typeof import('../predictionMarketEscrowIndexer').buildPythConditionData;
+
+    beforeEach(async () => {
+      const mod = await import('../predictionMarketEscrowIndexer');
+      buildPythConditionData = mod.buildPythConditionData;
+    });
+
+    function makePythConditionId(params: {
+      feedLazerId: number;
+      endTime: bigint;
+      strikePrice: bigint;
+      strikeExpo: number;
+      overWinsOnTie: boolean;
+    }): Hex {
+      const priceId = ('0x' +
+        params.feedLazerId.toString(16).padStart(64, '0')) as Hex;
+      return getPythMarketId({
+        priceId,
+        endTime: params.endTime,
+        strikePrice: params.strikePrice,
+        strikeExpo: params.strikeExpo,
+        overWinsOnTie: params.overWinsOnTie,
+      });
+    }
+
+    it('should return null for non-Pyth conditionIds', () => {
+      // A keccak hash is not a valid ABI-encoded Pyth market
+      const result = buildPythConditionData(keccak256(toHex('not-pyth')));
+      expect(result).toBeNull();
+    });
+
+    it('should decode BTC OVER with strikeExpo=-2', () => {
+      const conditionId = makePythConditionId({
+        feedLazerId: 1,
+        endTime: 1700100000n,
+        strikePrice: 7108000n,
+        strikeExpo: -2,
+        overWinsOnTie: true,
+      });
+      const result = buildPythConditionData(conditionId);
+
+      expect(result).not.toBeNull();
+      expect(result!.question).toBe('Crypto.BTC/USD OVER $71,080');
+      expect(result!.shortName).toBe('BTC OVER $71,080');
+      expect(result!.endTime).toBe(1700100000);
+    });
+
+    it('should produce human-readable description', () => {
+      const conditionId = makePythConditionId({
+        feedLazerId: 1,
+        endTime: 1700100000n,
+        strikePrice: 7108000n,
+        strikeExpo: -2,
+        overWinsOnTie: true,
+      });
+      const result = buildPythConditionData(conditionId)!;
+
+      // Verify human-readable description
+      expect(result.description).toContain('Pyth Network Lazer oracle');
+      expect(result.description).toContain('over');
+      expect(result.description).toContain('71,080');
+    });
+
+    it('should format UNDER for overWinsOnTie=false', () => {
+      const conditionId = makePythConditionId({
+        feedLazerId: 2,
+        endTime: 1700200000n,
+        strikePrice: 350000n,
+        strikeExpo: -2,
+        overWinsOnTie: false,
+      });
+      const result = buildPythConditionData(conditionId)!;
+      expect(result.question).toBe('Crypto.ETH/USD UNDER $3,500');
+      expect(result.shortName).toBe('ETH UNDER $3,500');
+    });
+
+    it('should preserve full decimal precision for small exponents', () => {
+      // strikeExpo=-8: 1234567890 * 10^-8 = 12.3456789
+      const conditionId = makePythConditionId({
+        feedLazerId: 2,
+        endTime: 1700300000n,
+        strikePrice: 1234567890n,
+        strikeExpo: -8,
+        overWinsOnTie: true,
+      });
+      const result = buildPythConditionData(conditionId)!;
+      expect(result.question).toBe('Crypto.ETH/USD OVER $12.3456789');
+      expect(result.description).toContain('$12.3456789');
+    });
+
+    it('should handle zero exponent (whole numbers)', () => {
+      const conditionId = makePythConditionId({
+        feedLazerId: 1,
+        endTime: 1700400000n,
+        strikePrice: 100000n,
+        strikeExpo: 0,
+        overWinsOnTie: true,
+      });
+      const result = buildPythConditionData(conditionId)!;
+      expect(result.question).toBe('Crypto.BTC/USD OVER $100,000');
+      // No trailing .00
+      expect(result.question).not.toContain('.00');
+    });
+
+    it('should handle positive exponent', () => {
+      // strikePrice=5, strikeExpo=3 → 5000
+      const conditionId = makePythConditionId({
+        feedLazerId: 1,
+        endTime: 1700500000n,
+        strikePrice: 5n,
+        strikeExpo: 3,
+        overWinsOnTie: true,
+      });
+      const result = buildPythConditionData(conditionId)!;
+      expect(result.question).toBe('Crypto.BTC/USD OVER $5,000');
+    });
+
+    it('should format commodity feeds correctly', () => {
+      const conditionId = makePythConditionId({
+        feedLazerId: 657, // OIL
+        endTime: 1700600000n,
+        strikePrice: 7500n,
+        strikeExpo: -2,
+        overWinsOnTie: true,
+      });
+      const result = buildPythConditionData(conditionId)!;
+      expect(result.question).toBe('Commodities.USOILSPOT OVER $75');
+      expect(result.shortName).toBe('OIL OVER $75');
+    });
+
+    it('should fall back for unknown feed IDs', () => {
+      const conditionId = makePythConditionId({
+        feedLazerId: 12345,
+        endTime: 1700700000n,
+        strikePrice: 100n,
+        strikeExpo: 0,
+        overWinsOnTie: true,
+      });
+      const result = buildPythConditionData(conditionId)!;
+      expect(result.question).toBe('Feed #12345 OVER $100');
+      expect(result.shortName).toBe('Feed #12345 OVER $100');
+    });
+
+    it('should handle floating-point precision edge case (0.1 + 0.2 style)', () => {
+      // strikePrice=3, strikeExpo=-1 → 0.3 exactly (not 0.30000000000000004)
+      const conditionId = makePythConditionId({
+        feedLazerId: 85,
+        endTime: 1700800000n,
+        strikePrice: 3n,
+        strikeExpo: -1,
+        overWinsOnTie: true,
+      });
+      const result = buildPythConditionData(conditionId)!;
+      expect(result.question).toBe('Crypto.ENA/USD OVER $0.3');
+      expect(result.description).toContain('$0.3');
+    });
+
+    it('should handle negative strike prices', () => {
+      // Negative prices can occur (e.g., oil futures in 2020)
+      const conditionId = makePythConditionId({
+        feedLazerId: 657,
+        endTime: 1700900000n,
+        strikePrice: -500n,
+        strikeExpo: -2,
+        overWinsOnTie: false,
+      });
+      const result = buildPythConditionData(conditionId)!;
+      expect(result.question).toBe('Commodities.USOILSPOT UNDER $-5');
+    });
+
+    // ─── categorySlug derivation ──────────────────────────────────────
+
+    it('should return categorySlug prices-crypto for Crypto feeds', () => {
+      const conditionId = makePythConditionId({
+        feedLazerId: 1, // BTC → Crypto.BTC/USD
+        endTime: 1700100000n,
+        strikePrice: 7108000n,
+        strikeExpo: -2,
+        overWinsOnTie: true,
+      });
+      const result = buildPythConditionData(conditionId)!;
+      expect(result.categorySlug).toBe('prices-crypto');
+    });
+
+    it('should return categorySlug prices-commodities for Commodities feeds', () => {
+      const conditionId = makePythConditionId({
+        feedLazerId: 657, // OIL → Commodities.USOILSPOT
+        endTime: 1700600000n,
+        strikePrice: 7500n,
+        strikeExpo: -2,
+        overWinsOnTie: true,
+      });
+      const result = buildPythConditionData(conditionId)!;
+      expect(result.categorySlug).toBe('prices-commodities');
+    });
+
+    it('should return categorySlug prices-commodities for Metal feeds', () => {
+      const conditionId = makePythConditionId({
+        feedLazerId: 346, // GOLD → Metal.XAU/USD
+        endTime: 1700600000n,
+        strikePrice: 200000n,
+        strikeExpo: -2,
+        overWinsOnTie: true,
+      });
+      const result = buildPythConditionData(conditionId)!;
+      expect(result.categorySlug).toBe('prices-commodities');
+    });
+
+    it('should return categorySlug prices-equity for Equity feeds', () => {
+      const conditionId = makePythConditionId({
+        feedLazerId: 1398, // SPY → Equity.US.SPY/USD
+        endTime: 1700600000n,
+        strikePrice: 50000n,
+        strikeExpo: -2,
+        overWinsOnTie: true,
+      });
+      const result = buildPythConditionData(conditionId)!;
+      expect(result.categorySlug).toBe('prices-equity');
+    });
+
+    it('should fall back to prices-crypto for unknown asset classes', () => {
+      const conditionId = makePythConditionId({
+        feedLazerId: 12345, // unknown → "Feed #12345" → prefix "feed #12345"
+        endTime: 1700700000n,
+        strikePrice: 100n,
+        strikeExpo: 0,
+        overWinsOnTie: true,
+      });
+      const result = buildPythConditionData(conditionId)!;
+      expect(result.categorySlug).toBe('prices-crypto');
+    });
+  });
+
+  // ─── Pyth condition auto-creation (integration) ───────────────────
+
+  describe('Pyth condition upsert', () => {
+    /** Encode a Pyth market into a conditionId, like the on-chain contract does */
+    function makePythConditionId(params: {
+      feedLazerId: number;
+      endTime: bigint;
+      strikePrice: bigint;
+      strikeExpo: number;
+      overWinsOnTie: boolean;
+    }): Hex {
+      // priceId is bytes32 with the lazerId in the low bits
+      const priceId = ('0x' +
+        params.feedLazerId.toString(16).padStart(64, '0')) as Hex;
+      return getPythMarketId({
+        priceId,
+        endTime: params.endTime,
+        strikePrice: params.strikePrice,
+        strikeExpo: params.strikeExpo,
+        overWinsOnTie: params.overWinsOnTie,
+      });
+    }
+
+    function setupPythPredictionTest(conditionId: Hex) {
+      const indexer = new PredictionMarketEscrowIndexer(42161);
+      const log = makePredictionCreatedLog();
+
+      indexer.client = {
+        getLogs: vi.fn().mockResolvedValue([log]),
+        getBlock: vi.fn().mockResolvedValue(MOCK_BLOCK),
+        readContract: vi
+          .fn()
+          .mockResolvedValueOnce({
+            pickConfigId: PICK_CONFIG_ID,
+            predictorTokensMinted: 1000000000000000000n,
+            counterpartyTokensMinted: 2000000000000000000n,
+          })
+          .mockResolvedValueOnce([
+            {
+              conditionResolver: PYTH_RESOLVER as `0x${string}`,
+              conditionId,
+              predictedOutcome: 1,
+            },
+          ]),
+      };
+      return indexer;
+    }
+
+    it('should upsert a Condition row for Pyth picks before creating picks', async () => {
+      const conditionId = makePythConditionId({
+        feedLazerId: 1, // BTC
+        endTime: 1700100000n,
+        strikePrice: 7108000n,
+        strikeExpo: -2,
+        overWinsOnTie: true,
+      });
+
+      mockPrisma.category.findFirst.mockResolvedValue({
+        id: 42,
+        slug: 'prices-crypto',
+      });
+
+      const indexer = setupPythPredictionTest(conditionId);
+      await indexer.indexBlocks('test', [50]);
+
+      // condition.upsert should have been called
+      expect(mockPrisma.condition.upsert).toHaveBeenCalledTimes(1);
+      const upsertCall = mockPrisma.condition.upsert.mock.calls[0][0];
+
+      expect(upsertCall.where.id).toBe(conditionId.toLowerCase());
+      expect(upsertCall.update).toEqual({});
+      expect(upsertCall.create.id).toBe(conditionId.toLowerCase());
+      expect(upsertCall.create.question).toBe('Crypto.BTC/USD OVER $71,080');
+      expect(upsertCall.create.shortName).toBe('BTC OVER $71,080');
+      expect(upsertCall.create.endTime).toBe(1700100000);
+      expect(upsertCall.create.resolver).toBe(PYTH_RESOLVER.toLowerCase());
+      expect(upsertCall.create.chainId).toBe(42161);
+      expect(upsertCall.create.categoryId).toBe(42);
+
+      // description must be parseable by market-keeper
+      const desc = upsertCall.create.description;
+      expect(desc).toContain('Pyth Network Lazer oracle');
+      expect(desc).toContain('over');
+      expect(desc).toContain('71,080');
+
+      // category lookup should use the correct slug
+      expect(mockPrisma.category.findFirst).toHaveBeenCalledWith({
+        where: { slug: 'prices-crypto' },
+      });
+
+      // picks.create should also have been called (after the upsert)
+      expect(mockPrisma.picks.create).toHaveBeenCalledTimes(1);
+    });
+
+    it('should NOT upsert conditions for non-Pyth resolvers', async () => {
+      const indexer = new PredictionMarketEscrowIndexer(42161);
+      const log = makePredictionCreatedLog();
+
+      indexer.client = {
+        getLogs: vi.fn().mockResolvedValue([log]),
+        getBlock: vi.fn().mockResolvedValue(MOCK_BLOCK),
+        readContract: vi
+          .fn()
+          .mockResolvedValueOnce({
+            pickConfigId: PICK_CONFIG_ID,
+            predictorTokensMinted: 1000000000000000000n,
+            counterpartyTokensMinted: 2000000000000000000n,
+          })
+          .mockResolvedValueOnce([
+            {
+              conditionResolver: NON_PYTH_RESOLVER as `0x${string}`,
+              conditionId: keccak256(toHex('polymarket-cond')),
+              predictedOutcome: 1,
+            },
+          ]),
+      };
+
+      await indexer.indexBlocks('test', [50]);
+
+      expect(mockPrisma.condition.upsert).not.toHaveBeenCalled();
+      // picks should still be created
+      expect(mockPrisma.picks.create).toHaveBeenCalledTimes(1);
+    });
+
+    it('should format UNDER direction when overWinsOnTie is false', async () => {
+      const conditionId = makePythConditionId({
+        feedLazerId: 2, // ETH
+        endTime: 1700200000n,
+        strikePrice: 350000n,
+        strikeExpo: -2,
+        overWinsOnTie: false,
+      });
+
+      const indexer = setupPythPredictionTest(conditionId);
+      await indexer.indexBlocks('test', [50]);
+
+      const upsertCall = mockPrisma.condition.upsert.mock.calls[0][0];
+      expect(upsertCall.create.question).toBe('Crypto.ETH/USD UNDER $3,500');
+      expect(upsertCall.create.shortName).toBe('ETH UNDER $3,500');
+      expect(upsertCall.create.description).toContain('under');
+    });
+
+    it('should handle fractional prices without losing precision', async () => {
+      // strikePrice=123456789, strikeExpo=-6 → $123.456789
+      const conditionId = makePythConditionId({
+        feedLazerId: 85, // ENA
+        endTime: 1700300000n,
+        strikePrice: 123456789n,
+        strikeExpo: -6,
+        overWinsOnTie: true,
+      });
+
+      const indexer = setupPythPredictionTest(conditionId);
+      await indexer.indexBlocks('test', [50]);
+
+      const upsertCall = mockPrisma.condition.upsert.mock.calls[0][0];
+      // Price should be $123.456789
+      expect(upsertCall.create.question).toBe(
+        'Crypto.ENA/USD OVER $123.456789'
+      );
+      expect(upsertCall.create.description).toContain('$123.456789');
+    });
+
+    it('should handle whole-number prices (trim .00)', async () => {
+      // strikePrice=50000, strikeExpo=0 → $50,000
+      const conditionId = makePythConditionId({
+        feedLazerId: 1,
+        endTime: 1700400000n,
+        strikePrice: 50000n,
+        strikeExpo: 0,
+        overWinsOnTie: true,
+      });
+
+      const indexer = setupPythPredictionTest(conditionId);
+      await indexer.indexBlocks('test', [50]);
+
+      const upsertCall = mockPrisma.condition.upsert.mock.calls[0][0];
+      expect(upsertCall.create.question).toBe('Crypto.BTC/USD OVER $50,000');
+      expect(upsertCall.create.description).toContain('$50,000');
+    });
+
+    it('should fall back to Feed #N for unknown feed IDs', async () => {
+      const conditionId = makePythConditionId({
+        feedLazerId: 99999, // not in PYTH_FEEDS
+        endTime: 1700500000n,
+        strikePrice: 100n,
+        strikeExpo: 0,
+        overWinsOnTie: true,
+      });
+
+      const indexer = setupPythPredictionTest(conditionId);
+      await indexer.indexBlocks('test', [50]);
+
+      const upsertCall = mockPrisma.condition.upsert.mock.calls[0][0];
+      expect(upsertCall.create.question).toBe('Feed #99999 OVER $100');
+      expect(upsertCall.create.shortName).toBe('Feed #99999 OVER $100');
+    });
+
+    it('should omit categoryId when category is not found in DB', async () => {
+      const conditionId = makePythConditionId({
+        feedLazerId: 1,
+        endTime: 1700100000n,
+        strikePrice: 7108000n,
+        strikeExpo: -2,
+        overWinsOnTie: true,
+      });
+
+      // category.findFirst returns null → no matching category row
+      mockPrisma.category.findFirst.mockResolvedValue(null);
+
+      const indexer = setupPythPredictionTest(conditionId);
+      await indexer.indexBlocks('test', [50]);
+
+      const upsertCall = mockPrisma.condition.upsert.mock.calls[0][0];
+      expect(upsertCall.create.categoryId).toBeUndefined();
+    });
+
+    it('should cache category lookups across picks in the same transaction', async () => {
+      // Two picks with the same Pyth resolver → same categorySlug → one DB lookup
+      const conditionId1 = makePythConditionId({
+        feedLazerId: 1, // BTC → prices-crypto
+        endTime: 1700100000n,
+        strikePrice: 7108000n,
+        strikeExpo: -2,
+        overWinsOnTie: true,
+      });
+      const conditionId2 = makePythConditionId({
+        feedLazerId: 2, // ETH → prices-crypto
+        endTime: 1700200000n,
+        strikePrice: 350000n,
+        strikeExpo: -2,
+        overWinsOnTie: false,
+      });
+
+      mockPrisma.category.findFirst.mockResolvedValue({
+        id: 42,
+        slug: 'prices-crypto',
+      });
+
+      const indexer = new PredictionMarketEscrowIndexer(42161);
+      const log = makePredictionCreatedLog();
+
+      indexer.client = {
+        getLogs: vi.fn().mockResolvedValue([log]),
+        getBlock: vi.fn().mockResolvedValue(MOCK_BLOCK),
+        readContract: vi
+          .fn()
+          .mockResolvedValueOnce({
+            pickConfigId: PICK_CONFIG_ID,
+            predictorTokensMinted: 1000000000000000000n,
+            counterpartyTokensMinted: 2000000000000000000n,
+          })
+          .mockResolvedValueOnce([
+            {
+              conditionResolver: PYTH_RESOLVER as `0x${string}`,
+              conditionId: conditionId1,
+              predictedOutcome: 1,
+            },
+            {
+              conditionResolver: PYTH_RESOLVER as `0x${string}`,
+              conditionId: conditionId2,
+              predictedOutcome: 0,
+            },
+          ]),
+      };
+
+      await indexer.indexBlocks('test', [50]);
+
+      // Both conditions should have categoryId set
+      expect(mockPrisma.condition.upsert).toHaveBeenCalledTimes(2);
+      expect(
+        mockPrisma.condition.upsert.mock.calls[0][0].create.categoryId
+      ).toBe(42);
+      expect(
+        mockPrisma.condition.upsert.mock.calls[1][0].create.categoryId
+      ).toBe(42);
+
+      // But category.findFirst should only be called once (cached)
+      expect(mockPrisma.category.findFirst).toHaveBeenCalledTimes(1);
     });
   });
 });

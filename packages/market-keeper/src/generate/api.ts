@@ -101,6 +101,7 @@ export async function submitCondition(
         endTime: toUnixTimestamp(condition.endDate),
         description: condition.description,
         similarMarkets: condition.similarMarkets,
+        tags: condition.tags,
         chainId: condition.chainId,
         groupName: condition.groupTitle,
         resolver: RESOLVER_ADDRESS,

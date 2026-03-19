@@ -60,9 +60,9 @@ const GET_QUESTIONS = /* GraphQL */ `
           shortName
           endTime
           public
-          claimStatement
           description
           similarMarkets
+          tags
           chainId
           resolver
           settled
@@ -87,9 +87,9 @@ const GET_QUESTIONS = /* GraphQL */ `
         shortName
         endTime
         public
-        claimStatement
         description
         similarMarkets
+        tags
         chainId
         resolver
         settled

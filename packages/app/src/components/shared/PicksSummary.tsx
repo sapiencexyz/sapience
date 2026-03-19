@@ -1,14 +1,15 @@
 'use client';
 
+import Link from 'next/link';
+import { PredictionChoiceBadge } from '@sapience/ui';
+import { formatDistanceToNow } from 'date-fns';
 import {
   StackedIcons,
   type Pick,
 } from '~/components/shared/StackedPredictions';
 import CounterpartyBadge from '~/components/shared/CounterpartyBadge';
-import Link from 'next/link';
-import { PredictionChoiceBadge } from '@sapience/ui';
+import { PythMarketBadge } from '~/components/shared/PythMarketBadge';
 import ResolutionBadge from '~/components/shared/ResolutionBadge';
-import { formatDistanceToNow } from 'date-fns';
 import ConditionStatus from '~/components/shared/ConditionStatus';
 import { getCategoryIcon } from '~/lib/theme/categoryIcons';
 import { getCategoryStyle } from '~/lib/utils/categoryStyle';
@@ -150,6 +151,9 @@ export function PicksContent({
                 <td className="py-2 pr-4 w-full max-w-[480px]">
                   <div className="flex items-center gap-2 min-w-0">
                     {(() => {
+                      if (pick.source === 'pyth') {
+                        return <PythMarketBadge />;
+                      }
                       const CategoryIcon = getCategoryIcon(pick.categorySlug);
                       const color = getCategoryStyle(pick.categorySlug).color;
                       return (
@@ -180,9 +184,11 @@ export function PicksContent({
                   <PickForecastCell pick={pick} />
                 </td>
                 <td className="py-2 pr-4 text-right whitespace-nowrap">
-                  <PredictionChoiceBadge
-                    choice={String(pick.choice).toUpperCase()}
-                  />
+                  {pick.source !== 'pyth' && (
+                    <PredictionChoiceBadge
+                      choice={String(pick.choice).toUpperCase()}
+                    />
+                  )}
                 </td>
                 <td className="py-2 pl-4 text-right whitespace-nowrap">
                   <PickEndsCell pick={pick} positionStatus={positionStatus} />

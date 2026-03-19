@@ -192,10 +192,10 @@ async function getConditionsByIds(ids: string[]): Promise<Map<string, ConditionB
 }
 
 // ============================================================================
-// Collateral preparation (SDK prepareForTrade for Ethereal, simple approve otherwise)
+// Per-bid collateral preparation (wrap + approve on demand via SDK)
 // ============================================================================
 
-// Load prepareForTrade from SDK (optional — only used for Ethereal USDe wrapping)
+// Load prepareForTrade from SDK (Ethereal: wrap USDe -> WUSDe + approve)
 const sdk = await loadSdk();
 type PrepareForTrade = (args: {
   privateKey: Hex;
@@ -206,45 +206,30 @@ type PrepareForTrade = (args: {
 }) => Promise<{ ready: boolean; wrapTxHash?: Hex; approvalTxHash?: Hex; wusdBalance: bigint }>;
 const prepareForTrade = sdk.prepareForTrade as PrepareForTrade | undefined;
 
-async function prepareCollateral() {
+/**
+ * Ensure sufficient wrapped collateral + approval for a specific bid amount.
+ * Called per-bid in handleAuction — only wraps/approves when needed.
+ */
+async function ensureCollateral(bidAmount: bigint): Promise<boolean> {
+  if (!account || !PRIVATE_KEY_HEX || !VERIFYING_CONTRACT) return false;
+
   try {
-    if (!account || !PRIVATE_KEY_HEX) {
-      logger.info('Skipping collateral preparation: PRIVATE_KEY not set');
-      return;
-    }
-    if (!VERIFYING_CONTRACT) {
-      logger.warn('Skipping collateral preparation: VERIFYING_CONTRACT not set');
-      return;
-    }
-
-    logger.info([
-      '🔐 Preparing collateral for trading',
-      fmt.bullet(fmt.field('chain', fmt.value(`${CHAIN_NAME} (${CHAIN_ID})`))),
-      fmt.bullet(fmt.field('collateral', fmt.value(formatAddress(COLLATERAL_TOKEN)))),
-      fmt.bullet(fmt.field('spender', fmt.value(formatAddress(VERIFYING_CONTRACT)))),
-    ].join('\n'));
-
     if (CHAIN_ID === CHAIN_ID_ETHEREAL && prepareForTrade) {
-      logger.info('📦 Using prepareForTrade for Ethereal (wrap USDe -> WUSDe + approve)');
       const result = await prepareForTrade({
         privateKey: PRIVATE_KEY_HEX,
-        collateralAmount: MAX_BID,
+        collateralAmount: bidAmount,
         spender: VERIFYING_CONTRACT,
         rpcUrl: RPC_URL,
       });
-      if (result.wrapTxHash) logger.success(`Wrapped USDe -> WUSDe: ${result.wrapTxHash}`);
-      if (result.approvalTxHash) logger.success(`Approved WUSDe: ${result.approvalTxHash}`);
-      logger.success(`Ready for trading. WUSDe balance: ${result.wusdBalance}`);
-      return;
+      if (result.wrapTxHash) logger.info(`🔄 Wrapped USDe -> WUSDe: ${result.wrapTxHash}`);
+      if (result.approvalTxHash) logger.info(`✅ Approved WUSDe: ${result.approvalTxHash}`);
+      return true;
     }
 
-    // Fallback: simple MAX approval for ERC-20 collateral
-    logger.info('📝 Using simple approval for ERC-20 collateral');
+    // Non-Ethereal: simple ERC-20 approval check
     const chain = chainsById[CHAIN_ID];
     const publicClient = createPublicClient({ transport: http(RPC_URL), chain });
-    const walletClient = createWalletClient({ account, transport: http(RPC_URL), chain });
 
-    const MAX = (1n << 256n) - 1n;
     const current = (await publicClient.readContract({
       address: COLLATERAL_TOKEN,
       abi: erc20Abi,
@@ -252,11 +237,10 @@ async function prepareCollateral() {
       args: [MAKER as Address, VERIFYING_CONTRACT],
     })) as bigint;
 
-    if (current >= MAX / 2n) {
-      logger.success(`Approval already sufficient for ${formatAddress(VERIFYING_CONTRACT)}`);
-      return;
-    }
+    if (current >= bidAmount) return true;
 
+    const walletClient = createWalletClient({ account, transport: http(RPC_URL), chain });
+    const MAX = (1n << 256n) - 1n;
     const hash = (await walletClient.writeContract({
       address: COLLATERAL_TOKEN,
       abi: erc20Abi,
@@ -265,9 +249,11 @@ async function prepareCollateral() {
       chain,
     })) as Hex;
     await publicClient.waitForTransactionReceipt({ hash });
-    logger.success(`Approval tx for ${formatAddress(VERIFYING_CONTRACT)}: ${hash}`);
+    logger.info(`✅ Approved collateral: ${hash}`);
+    return true;
   } catch (e) {
     logger.error('Collateral preparation failed:', e);
+    return false;
   }
 }
 
@@ -424,6 +410,13 @@ async function handleAuction(auction: AuctionDetails, submitBid: (payload: Retur
     return;
   }
 
+  // Ensure sufficient wrapped collateral + approval for this bid
+  const collateralReady = await ensureCollateral(counterpartyCollateral);
+  if (!collateralReady) {
+    logger.error(`⛔️ Skipping auction ${auctionId}: insufficient collateral for ${bidDec} USDe bid`);
+    return;
+  }
+
   const counterpartyDeadline = BigInt(Math.floor(Date.now() / 1000) + DEADLINE_SECONDS);
   // Bitmap nonces — any unused random value is valid (Permit2-style)
   const counterpartyNonce = BigInt(crypto.getRandomValues(new Uint32Array(1))[0]) + 1n;
@@ -504,8 +497,6 @@ async function start() {
     logger.error('Cannot start: PredictionMarketEscrow contract address not available');
     return;
   }
-
-  void prepareCollateral();
 
   const client = await createEscrowAuctionWs(RELAYER_WS_URL, {
     onOpen: () => {

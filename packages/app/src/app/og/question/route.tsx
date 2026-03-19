@@ -2,9 +2,9 @@ import { ImageResponse } from 'next/og';
 import { parseUnits, zeroAddress } from 'viem';
 import { createEscrowAuctionWs } from '@sapience/sdk/relayer/escrowAuctionWs';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
-import { PREFERRED_ESTIMATE_QUOTER } from '~/lib/constants';
 import { conditionalTokensConditionResolver } from '@sapience/sdk/contracts';
 import { canonicalizePicks } from '@sapience/sdk/auction/escrowEncoding';
+import { OutcomeSide } from '@sapience/sdk/types';
 import {
   og,
   WIDTH,
@@ -20,6 +20,7 @@ import {
   FONT_FAMILY,
   createErrorImageResponse,
 } from '../_shared';
+import { PREFERRED_ESTIMATE_QUOTER } from '~/lib/constants';
 
 export const runtime = 'nodejs';
 
@@ -224,7 +225,7 @@ async function fetchEstimate(conditionId: string): Promise<number | null> {
     {
       conditionResolver: resolverAddress,
       conditionId: formattedConditionId,
-      predictedOutcome: 1, // YES
+      predictedOutcome: OutcomeSide.YES,
     },
   ]);
 

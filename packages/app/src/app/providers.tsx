@@ -4,13 +4,13 @@ import { WagmiProvider, createConfig, createStorage } from 'wagmi';
 import { QueryClientProvider, QueryClient } from '@tanstack/react-query';
 import type { HttpTransport } from 'viem';
 import { type Chain, arbitrum } from 'viem/chains';
-import { http } from 'wagmi';
 import { injected, coinbaseWallet, walletConnect } from 'wagmi/connectors';
 
 import type React from 'react';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { hashFn } from 'wagmi/query';
 import { etherealChain, etherealTestnetChain } from '@sapience/sdk/constants';
+import { httpWithRetry } from '~/lib/utils/util';
 import { SapienceProvider } from '~/lib/context/SapienceProvider';
 import ThemeProvider from '~/lib/context/ThemeProvider';
 import { CreatePositionProvider } from '~/lib/context/CreatePositionContext';
@@ -32,13 +32,13 @@ const queryClient = new QueryClient({
 // Build chains and transports
 const buildChainsAndTransports = () => {
   const transports: Record<number, HttpTransport> = {
-    [arbitrum.id]: http(
+    [arbitrum.id]: httpWithRetry(
       process.env.NEXT_PUBLIC_INFURA_API_KEY
         ? `https://arbitrum-mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
         : 'https://arbitrum-rpc.publicnode.com'
     ),
-    [etherealChain.id]: http(etherealChain.rpcUrls.default.http[0]),
-    [etherealTestnetChain.id]: http(
+    [etherealChain.id]: httpWithRetry(etherealChain.rpcUrls.default.http[0]),
+    [etherealTestnetChain.id]: httpWithRetry(
       etherealTestnetChain.rpcUrls.default.http[0]
     ),
   };

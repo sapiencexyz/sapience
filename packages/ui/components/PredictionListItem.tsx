@@ -4,7 +4,7 @@ import * as React from 'react';
 
 import { PredictionChoiceBadge } from './predictions/PredictionChoiceBadge';
 
-export type UmaPrediction = {
+export type PredictionListItemData = {
   id: string;
   conditionId?: string;
   question: string;
@@ -12,11 +12,11 @@ export type UmaPrediction = {
   categorySlug?: string | null;
 };
 
-export type UmaPredictionListItemProps = {
-  prediction: UmaPrediction;
+export type PredictionListItemProps = {
+  prediction: PredictionListItemData;
   /**
    * Optional leading element (typically the circular category icon).
-   * If not provided, falls back to a generic UMA icon.
+   * If not provided, falls back to a generic icon.
    */
   leading?: React.ReactNode;
   /**
@@ -27,16 +27,19 @@ export type UmaPredictionListItemProps = {
   onRemove?: (id: string) => void;
   yesLabel?: string;
   noLabel?: string;
+  /** Hide the choice badge entirely (e.g. for Pyth picks where Over/Under is in the question text). */
+  hideBadge?: boolean;
 };
 
-export function UmaPredictionListItem({
+export function PredictionListItem({
   prediction,
   leading,
   title,
   onRemove,
   yesLabel = 'YES',
   noLabel = 'NO',
-}: UmaPredictionListItemProps) {
+  hideBadge = false,
+}: PredictionListItemProps) {
   return (
     <div className="flex items-center gap-2">
       {leading ?? (
@@ -55,11 +58,13 @@ export function UmaPredictionListItem({
                 </div>
               )}
             </div>
-            <span className="shrink-0">
-              <PredictionChoiceBadge
-                choice={prediction.prediction ? yesLabel : noLabel}
-              />
-            </span>
+            {!hideBadge && (
+              <span className="shrink-0">
+                <PredictionChoiceBadge
+                  choice={prediction.prediction ? yesLabel : noLabel}
+                />
+              </span>
+            )}
           </div>
         </div>
       </div>

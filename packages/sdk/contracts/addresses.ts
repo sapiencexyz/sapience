@@ -121,9 +121,12 @@ export const conditionalTokensConditionResolver: ChainAddressMap = {
  */
 export const conditionalTokensReader: ChainAddressMap = {
   137: {
-    // Polygon mainnet — deployed 2026-02-28
-    address: '0x882288A664e29aEBC654Fa9679697d23716fcCD1',
-    legacy: ['0x97b356E9689dCEa3a268Ac6D7d8A87A24fa95ae2'] as const,
+    // Polygon mainnet — redeployed 2026-03-17
+    address: '0x79cB914f3F336426E89FaB55A9488AB25770552D',
+    legacy: [
+      '0x882288A664e29aEBC654Fa9679697d23716fcCD1',
+      '0x97b356E9689dCEa3a268Ac6D7d8A87A24fa95ae2',
+    ] as const,
   },
 } as const;
 
@@ -280,9 +283,9 @@ export const secondaryMarketEscrow: ChainAddressMap = {
  */
 export const onboardingSponsor: ChainAddressMap = {
   5064014: {
-    // Ethereal mainnet — deployed 2026-03-09
-    address: '0x4DDB0fD9be45c3F86aF25B661a0e18403DB0602d',
-    legacy: [] as const,
+    // Ethereal mainnet — redeployed 2026-03-17
+    address: '0xFB177fd4eC88b813e88178Fa898D75651Dece8ED',
+    legacy: ['0x4DDB0fD9be45c3F86aF25B661a0e18403DB0602d'] as const,
   },
   13374202: {
     // Ethereal testnet - TODO: deploy

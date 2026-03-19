@@ -348,7 +348,6 @@ type Condition {
   category(where: CategoryWhereInput): Category
   categoryId: Int
   chainId: Int!
-  claimStatement: String!
   conditionGroup(where: ConditionGroupWhereInput): ConditionGroup
   conditionGroupId: Int
   createdAt: DateTimeISO!
@@ -370,6 +369,7 @@ type Condition {
   settledAt: Int
   shortName: String
   similarMarkets: [String!]!
+  tags: [String!]!
 }
 
 type ConditionCount {
@@ -473,7 +473,6 @@ input ConditionOrderByWithRelationInput {
   category: CategoryOrderByWithRelationInput
   categoryId: SortOrderInput
   chainId: SortOrder
-  claimStatement: SortOrder
   conditionGroup: ConditionGroupOrderByWithRelationInput
   conditionGroupId: SortOrderInput
   createdAt: SortOrder
@@ -493,6 +492,7 @@ input ConditionOrderByWithRelationInput {
   settledAt: SortOrderInput
   shortName: SortOrderInput
   similarMarkets: SortOrder
+  tags: SortOrder
 }
 
 input ConditionRelationFilter {
@@ -505,7 +505,6 @@ enum ConditionScalarFieldEnum {
   assertionTimestamp
   categoryId
   chainId
-  claimStatement
   conditionGroupId
   createdAt
   description
@@ -523,6 +522,7 @@ enum ConditionScalarFieldEnum {
   settledAt
   shortName
   similarMarkets
+  tags
 }
 
 input ConditionWhereInput {
@@ -535,7 +535,6 @@ input ConditionWhereInput {
   category: CategoryNullableRelationFilter
   categoryId: IntNullableFilter
   chainId: IntFilter
-  claimStatement: StringFilter
   conditionGroup: ConditionGroupNullableRelationFilter
   conditionGroupId: IntNullableFilter
   createdAt: DateTimeFilter
@@ -555,6 +554,7 @@ input ConditionWhereInput {
   settledAt: IntNullableFilter
   shortName: StringNullableFilter
   similarMarkets: StringNullableListFilter
+  tags: StringNullableListFilter
 }
 
 input ConditionWhereUniqueInput {
@@ -567,7 +567,6 @@ input ConditionWhereUniqueInput {
   category: CategoryNullableRelationFilter
   categoryId: IntNullableFilter
   chainId: IntFilter
-  claimStatement: StringFilter
   conditionGroup: ConditionGroupNullableRelationFilter
   conditionGroupId: IntNullableFilter
   createdAt: DateTimeFilter
@@ -587,6 +586,7 @@ input ConditionWhereUniqueInput {
   settledAt: IntNullableFilter
   shortName: StringNullableFilter
   similarMarkets: StringNullableListFilter
+  tags: StringNullableListFilter
 }
 
 input DateTimeFilter {

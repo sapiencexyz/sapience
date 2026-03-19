@@ -173,9 +173,9 @@ model Condition {
   category         Category?       @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   endTime          Int
   public           Boolean         @default(true)
-  claimStatement   String          @db.VarChar
   description      String          @db.Text
   similarMarkets   String[]        @default([])
+  tags             String[]        @default([])
   chainId          Int             @default(42161)
   openInterest     String          @default("0") @db.VarChar
   predictionCount  Int             @default(0)

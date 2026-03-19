@@ -223,8 +223,8 @@ vi.mock('viem', () => ({
 // @sapience/ui — stub UI components used by PositionForm
 vi.mock('@sapience/ui', () => ({
   PythPredictionListItem: () => <div data-testid="pyth-prediction-list-item" />,
-  UmaPredictionListItem: ({ prediction }: { prediction: { id: string } }) => (
-    <div data-testid={`uma-prediction-${prediction.id}`} />
+  PredictionListItem: ({ prediction }: { prediction: { id: string } }) => (
+    <div data-testid={`prediction-${prediction.id}`} />
   ),
 }));
 
@@ -328,7 +328,7 @@ function setDefaults() {
       makeSelection({ id: 'sel-2', conditionId: '0xCondition2' }),
     ],
     removeSelection: vi.fn(),
-    getPicks: () => [
+    getPolymarketPicks: () => [
       {
         conditionResolver: '0xResolver1',
         conditionId: '0xCondition1',
@@ -461,7 +461,7 @@ describe('PositionForm', () => {
       mockUseCreatePositionContext.mockReturnValue({
         selections: [],
         removeSelection: vi.fn(),
-        getPicks: () => [],
+        getPolymarketPicks: () => [],
       });
       renderForm();
 
@@ -573,7 +573,7 @@ describe('PositionForm', () => {
       mockUseCreatePositionContext.mockReturnValue({
         selections: [makeSelection()],
         removeSelection: vi.fn(),
-        getPicks: () => [
+        getPolymarketPicks: () => [
           {
             conditionResolver: '0xResolver1',
             conditionId: '0xCondition1',

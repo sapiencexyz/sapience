@@ -8,7 +8,6 @@ import {
 } from '@sapience/ui/components/ui/hover-card';
 import {
   PredictionChoiceBadge,
-  PythOracleMark,
   PythPredictionListItem,
   type PythPrediction,
 } from '@sapience/ui';
@@ -16,8 +15,7 @@ import { getCategoryIcon } from '~/lib/theme/categoryIcons';
 import { getCategoryStyle } from '~/lib/utils/categoryStyle';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
 import MarketBadge from '~/components/markets/MarketBadge';
-
-export type PickChoice = 'Yes' | 'No' | 'Over' | 'Under';
+import { PythMarketBadge } from '~/components/shared/PythMarketBadge';
 
 export interface Pick {
   question: string;
@@ -31,7 +29,7 @@ export interface Pick {
    * When set to 'pyth', stacked icons will render the Pyth mark instead of a category icon.
    * (Useful when a combo includes a Pyth pick.)
    */
-  source?: 'uma' | 'pyth';
+  source?: 'polymarket' | 'pyth';
   /**
    * Optional structured Pyth prediction data. When provided, we render with `PythPredictionListItem`
    * (no "OVER $0.19" badge).
@@ -82,24 +80,22 @@ export function StackedIcons({
         const isPyth = pick.source === 'pyth';
         const CategoryIcon = getCategoryIcon(pick.categorySlug);
         const color = colors[i] || 'hsl(var(--muted-foreground))';
-        return (
+        return isPyth ? (
+          <PythMarketBadge
+            key={`icon-${pick.conditionId || i}-${i}`}
+            className="ring-2 ring-background"
+            style={{ zIndex: picks.length - i }}
+          />
+        ) : (
           <div
             key={`icon-${pick.conditionId || i}-${i}`}
             className="w-6 h-6 rounded-full shrink-0 flex items-center justify-center ring-2 ring-background"
             style={{
-              backgroundColor: isPyth ? 'hsl(var(--muted))' : color,
+              backgroundColor: color,
               zIndex: picks.length - i,
             }}
           >
-            {isPyth ? (
-              <PythOracleMark
-                className="h-3 w-3 text-foreground/80"
-                src="/pyth-network.svg"
-                alt="Pyth"
-              />
-            ) : (
-              <CategoryIcon className="h-3 w-3 text-white/80" />
-            )}
+            <CategoryIcon className="h-3 w-3 text-white/80" />
           </div>
         );
       })}
@@ -129,14 +125,14 @@ export const StackedPredictionsTitle = React.memo(
     const remainingPicks = picks.slice(1);
     const remainingCount = remainingPicks.length;
     const badgeLabel = String(firstPick.choice).toUpperCase();
-    const firstIsPyth =
-      firstPick.source === 'pyth' && !!firstPick.pythPrediction;
+    const firstIsPyth = firstPick.source === 'pyth';
+    const firstHasPythData = firstIsPyth && !!firstPick.pythPrediction;
 
     return (
       <div
         className={`flex items-center gap-2 flex-wrap xl:flex-nowrap min-w-0 ${className ?? ''}`}
       >
-        {firstIsPyth ? (
+        {firstHasPythData ? (
           <div className={`min-w-0 flex-initial ${maxWidthClass}`}>
             <PythPredictionListItem
               prediction={firstPick.pythPrediction!}
@@ -163,9 +159,11 @@ export const StackedPredictionsTitle = React.memo(
                   {firstPick.question}
                 </span>
               )}
-              <span className="shrink-0 whitespace-nowrap">
-                <PredictionChoiceBadge choice={badgeLabel} />
-              </span>
+              {!firstIsPyth && (
+                <span className="shrink-0 whitespace-nowrap">
+                  <PredictionChoiceBadge choice={badgeLabel} />
+                </span>
+              )}
             </span>
           </>
         )}
@@ -226,9 +224,11 @@ export const StackedPredictionsTitle = React.memo(
                                 {pick.question}
                               </span>
                             )}
-                            <PredictionChoiceBadge
-                              choice={String(pick.choice).toUpperCase()}
-                            />
+                            {pick.source !== 'pyth' && (
+                              <PredictionChoiceBadge
+                                choice={String(pick.choice).toUpperCase()}
+                              />
+                            )}
                           </>
                         )}
                       </div>

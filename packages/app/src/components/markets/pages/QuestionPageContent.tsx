@@ -5,6 +5,7 @@ import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import Image from 'next/image';
+import { PythOracleMark } from '@sapience/ui';
 import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@sapience/ui/components/ui/badge';
@@ -26,6 +27,9 @@ import {
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { OutcomeSide } from '@sapience/sdk/types';
 import { formatEther } from 'viem';
+import { decodePythMarketId } from '@sapience/sdk';
+import { decodePythLazerFeedId } from '@sapience/sdk/auction/encoding';
+import { PYTH_FEEDS } from '@sapience/sdk/constants';
 import EndTimeDisplay from '~/components/shared/EndTimeDisplay';
 import SafeMarkdown from '~/components/shared/SafeMarkdown';
 import { ResolverBadge } from '~/components/shared/ResolverBadge';
@@ -33,6 +37,7 @@ import Comments, { CommentFilters } from '~/components/shared/Comments';
 import PredictionForm from '~/components/markets/pages/PredictionForm';
 import ConditionForecastForm from '~/components/conditions/ConditionForecastForm';
 import { POLYMARKET_RESOLVER_ADDRESSES } from '~/lib/constants';
+import { inferResolverKind } from '~/lib/resolvers/conditionResolver';
 import { FocusAreaBadge } from '~/components/shared/FocusAreaBadge';
 import ResearchAgent from '~/components/markets/ResearchAgent';
 import ActivityTable from '~/components/positions/ActivityTable';
@@ -156,6 +161,28 @@ export default function QuestionPageContent({
   const isPolymarketResolver =
     resolverAddress &&
     POLYMARKET_RESOLVER_ADDRESSES.has(resolverAddress.toLowerCase());
+  const isPythResolver = inferResolverKind(resolverAddress) === 'pyth';
+
+  const pythFeedUrl = useMemo(() => {
+    if (!isPythResolver || !conditionId) return null;
+    try {
+      const decoded = decodePythMarketId(
+        (conditionId.startsWith('0x')
+          ? conditionId
+          : `0x${conditionId}`) as `0x${string}`
+      );
+      if (!decoded) return null;
+      const feedId = decodePythLazerFeedId(decoded.priceId);
+      if (feedId == null) return null;
+      const feed = PYTH_FEEDS.find((f) => f.lazerId === feedId);
+      if (!feed?.symbol) return null;
+      // Pyth price feed page URL format: https://www.pyth.network/price-feeds/crypto-btc-usd
+      const slug = feed.symbol.replace(/[./]/g, '-').toLowerCase();
+      return `https://www.pyth.network/price-feeds/${slug}`;
+    } catch {
+      return null;
+    }
+  }, [isPythResolver, conditionId]);
 
   const polymarketUrl = useMemo(() => {
     if (!isPolymarketResolver || !data?.similarMarkets) return null;
@@ -706,6 +733,21 @@ export default function QuestionPageContent({
                 View on Polymarket
               </a>
             )}
+            {pythFeedUrl && (
+              <a
+                href={pythFeedUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-9 items-center rounded-full border border-brand-white/20 bg-card px-3.5 text-sm font-medium leading-none text-brand-white hover:opacity-70 transition-opacity"
+              >
+                <PythOracleMark
+                  className="mr-1.5 h-4 w-4 text-foreground/80"
+                  src="/pyth-network.svg"
+                  alt="Pyth Network"
+                />
+                View on Pyth
+              </a>
+            )}
           </div>
           {data.description ? (
             <div className="text-sm leading-relaxed break-words [&_a]:break-all text-brand-white/90">
@@ -842,6 +884,21 @@ export default function QuestionPageContent({
                   className="mr-1.5 h-4 w-4"
                 />
                 View on Polymarket
+              </a>
+            )}
+            {pythFeedUrl && (
+              <a
+                href={pythFeedUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex h-9 items-center rounded-full border border-brand-white/20 bg-card px-3.5 text-sm font-medium leading-none text-brand-white hover:opacity-70 transition-opacity"
+              >
+                <PythOracleMark
+                  className="mr-1.5 h-4 w-4 text-foreground/80"
+                  src="/pyth-network.svg"
+                  alt="Pyth Network"
+                />
+                View on Pyth
               </a>
             )}
           </div>

@@ -46,7 +46,7 @@ import { useMemo, useState } from 'react';
 import { Copy, Upload, FileText, CheckCircle, XCircle } from 'lucide-react';
 import { formatDistanceToNow, fromUnixTime } from 'date-fns';
 import { useReadContract } from 'wagmi';
-import { keccak256, concatHex, toHex, isAddress } from 'viem';
+import { keccak256, toHex, isAddress } from 'viem';
 import {
   manualConditionResolver,
   pythConditionResolver,
@@ -68,7 +68,6 @@ type RFQRow = {
   conditionGroup?: { id?: number; name?: string } | null;
   endTime?: number;
   public?: boolean;
-  claimStatement: string;
   description: string;
   similarMarketUrls?: string[];
   chainId?: number;
@@ -84,7 +83,6 @@ type CSVRow = {
   categorySlug?: string;
   endTimeUTC: string;
   public?: string;
-  claimStatement: string;
   description: string;
   shortName?: string;
   similarMarkets?: string;
@@ -151,7 +149,6 @@ const RFQTab = ({
   const [categorySlug, setCategorySlug] = useState<string>('');
   const [endTime, setEndTime] = useState<number>(0);
   const [isPublic, setIsPublic] = useState<boolean>(true);
-  const [claimStatement, setClaimStatement] = useState('');
   const [description, setDescription] = useState('');
   const [similarMarketsText, setSimilarMarketsText] = useState('');
   const [groupName, setGroupName] = useState('');
@@ -187,8 +184,8 @@ const RFQTab = ({
     type: keyof typeof ESCROW_RESOLVER_MAP,
     chainId: number
   ): string | null => {
-    const resolver = ESCROW_RESOLVER_MAP[type];
-    return resolver?.[chainId]?.address ?? null;
+    const resolverMap = ESCROW_RESOLVER_MAP[type];
+    return resolverMap?.[chainId]?.address ?? null;
   };
 
   const {
@@ -223,7 +220,6 @@ const RFQTab = ({
     setCategorySlug('');
     setEndTime(0);
     setIsPublic(true);
-    setClaimStatement('');
     setDescription('');
     setSimilarMarketsText('');
     setGroupName('');
@@ -248,7 +244,6 @@ const RFQTab = ({
     // Validate required fields
     if (!row.question?.trim()) errors.push('Question is required');
     if (!row.endTimeUTC?.trim()) errors.push('End time is required');
-    if (!row.claimStatement?.trim()) errors.push('Claim statement is required');
     if (!row.description?.trim()) errors.push('Description is required');
     if (!row.resolver?.trim()) {
       errors.push('Resolver address is required');
@@ -369,7 +364,6 @@ const RFQTab = ({
                 : {}),
               endTime: row.parsedEndTime!,
               public: row.parsedPublic ?? true,
-              claimStatement: row.claimStatement.trim(),
               description: row.description.trim(),
               similarMarkets: row.parsedSimilarMarkets || [],
               chainId: currentChainId,
@@ -415,38 +409,27 @@ const RFQTab = ({
   };
 
   function ConditionStatusBadges({
-    claimStatement,
-    endTime,
+    conditionId,
+    endTime: badgeEndTime,
     isSettledOverride,
-    chainId,
-    resolver,
+    chainId: badgeChainId,
+    resolver: badgeResolver,
   }: {
-    claimStatement?: string;
+    conditionId?: string;
     endTime?: number;
     isSettledOverride?: boolean;
     chainId?: number;
     resolver?: string | null;
   }) {
     const nowSeconds = Math.floor(Date.now() / 1000);
-    const isUpcoming = (endTime ?? 0) > nowSeconds;
-    const isPastEnd = !!endTime && endTime <= nowSeconds;
+    const isUpcoming = (badgeEndTime ?? 0) > nowSeconds;
+    const isPastEnd = !!badgeEndTime && badgeEndTime <= nowSeconds;
 
-    let marketId: `0x${string}` | undefined;
-    try {
-      if (claimStatement && endTime) {
-        const claimHex = toHex(claimStatement);
-        const colonHex = toHex(':');
-        const endTimeHex = toHex(BigInt(endTime), { size: 32 });
-        const packed = concatHex([claimHex, colonHex, endTimeHex]);
-        marketId = keccak256(packed);
-      }
-    } catch {
-      marketId = undefined;
-    }
+    const marketId = conditionId as `0x${string}` | undefined;
 
-    const targetChainId = chainId || DEFAULT_CHAIN_ID;
+    const targetChainId = badgeChainId || DEFAULT_CHAIN_ID;
     const address =
-      (resolver as `0x${string}` | undefined) ??
+      (badgeResolver as `0x${string}` | undefined) ??
       pythConditionResolver[targetChainId]?.address;
 
     const { data } = useReadContract({
@@ -490,7 +473,7 @@ const RFQTab = ({
         size: 140,
         cell: ({ row }) => (
           <ConditionStatusBadges
-            claimStatement={row.original.claimStatement}
+            conditionId={row.original.id}
             endTime={row.original.endTime}
             isSettledOverride={row.original.settled ?? row.original._isSettled}
             chainId={row.original.chainId}
@@ -576,9 +559,11 @@ const RFQTab = ({
         accessorKey: 'question',
         size: 300,
         cell: ({ getValue }) => {
-          const question = getValue() as string;
-          const isLong = question.length > 100;
-          const truncated = isLong ? `${question.slice(0, 100)}...` : question;
+          const questionValue = getValue() as string;
+          const isLong = questionValue.length > 100;
+          const truncated = isLong
+            ? `${questionValue.slice(0, 100)}...`
+            : questionValue;
           return (
             <TooltipProvider>
               <Tooltip>
@@ -594,7 +579,7 @@ const RFQTab = ({
                 </TooltipTrigger>
                 {isLong && (
                   <TooltipContent className="max-w-xs">
-                    <p>{question}</p>
+                    <p>{questionValue}</p>
                   </TooltipContent>
                 )}
               </Tooltip>
@@ -633,10 +618,10 @@ const RFQTab = ({
         accessorKey: 'public',
         size: 80,
         cell: ({ getValue }) => {
-          const isPublic = getValue() as boolean;
+          const isPublicValue = getValue() as boolean;
           return (
-            <Badge variant={isPublic ? 'default' : 'secondary'}>
-              {isPublic ? 'Yes' : 'No'}
+            <Badge variant={isPublicValue ? 'default' : 'secondary'}>
+              {isPublicValue ? 'Yes' : 'No'}
             </Badge>
           );
         },
@@ -724,7 +709,6 @@ const RFQTab = ({
                   setCategorySlug(original.category?.slug || '');
                   setEndTime(original.endTime ?? 0);
                   setIsPublic(Boolean(original.public));
-                  setClaimStatement(original.claimStatement || '');
                   setDescription(original.description || '');
                   setSimilarMarketsText(
                     (original.similarMarketUrls || []).join(', ')
@@ -741,7 +725,7 @@ const RFQTab = ({
         },
       },
     ],
-    [toast]
+    [toast, setCreateOpen]
   );
 
   const rows: RFQRow[] = useMemo(() => {
@@ -756,7 +740,6 @@ const RFQTab = ({
         conditionGroup: c.conditionGroup || undefined,
         endTime: c.endTime,
         public: c.public,
-        claimStatement: c.claimStatement,
         description: c.description,
         similarMarketUrls: c.similarMarkets,
         chainId: c.chainId,
@@ -842,7 +825,6 @@ const RFQTab = ({
           ...(categorySlug ? { categorySlug } : {}),
           endTime: endTime,
           public: isPublic,
-          claimStatement,
           description,
           similarMarkets,
           chainId:
@@ -861,13 +843,13 @@ const RFQTab = ({
         setCreateOpen(false);
         resetForm();
       }
-    } catch (e) {
+    } catch (err) {
       toast({
         variant: 'destructive',
         title: editingId
           ? 'Error updating condition'
           : 'Error creating condition',
-        description: (e as Error)?.message || 'Request failed',
+        description: (err as Error)?.message || 'Request failed',
       });
     }
   };
@@ -980,7 +962,7 @@ const RFQTab = ({
               Upload a CSV file to bulk import conditions. The file should have
               the following columns:
               <code className="block mt-2 p-2 bg-muted rounded text-sm">
-                question,categorySlug,endTimeUTC,public,claimStatement,description,shortName,similarMarkets,group,resolver
+                question,categorySlug,endTimeUTC,public,description,shortName,similarMarkets,group,resolver
               </code>
               <span className="block mt-1 text-xs">
                 group is optional - finds or creates a condition group by name.
@@ -1272,15 +1254,6 @@ const RFQTab = ({
               </div>
             </div>
             <div className="space-y-2 md:col-span-2">
-              <label className="text-sm font-medium">Claim Statement</label>
-              <Input
-                value={claimStatement}
-                onChange={(e) => setClaimStatement(e.target.value)}
-                required
-                disabled={Boolean(editingId)}
-              />
-            </div>
-            <div className="space-y-2 md:col-span-2">
               <label className="text-sm font-medium">Description / Rules</label>
               <Textarea
                 value={description}
@@ -1360,7 +1333,7 @@ const RFQTab = ({
                       type="button"
                       variant="outline"
                       onClick={() => {
-                        const uniqueData = `${claimStatement}:${endTime}:${Date.now()}`;
+                        const uniqueData = `${question}:${endTime}:${Date.now()}`;
                         const hash = keccak256(toHex(uniqueData));
                         setEscrowConditionId(hash);
                       }}
