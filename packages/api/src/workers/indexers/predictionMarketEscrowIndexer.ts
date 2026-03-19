@@ -758,7 +758,6 @@ class PredictionMarketEscrowIndexer implements IIndexer {
             question: pythData.question,
             shortName: pythData.shortName,
             endTime: pythData.endTime,
-            claimStatement: '',
             description: pythData.description,
             resolver: resolver.toLowerCase(),
             chainId: this.chainId,

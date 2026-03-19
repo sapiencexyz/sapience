@@ -950,7 +950,6 @@ describe('PredictionMarketEscrowIndexer', () => {
       expect(upsertCall.create.question).toBe('Crypto.BTC/USD OVER $71,080');
       expect(upsertCall.create.shortName).toBe('BTC OVER $71,080');
       expect(upsertCall.create.endTime).toBe(1700100000);
-      expect(upsertCall.create.claimStatement).toBe('');
       expect(upsertCall.create.resolver).toBe(PYTH_RESOLVER.toLowerCase());
       expect(upsertCall.create.chainId).toBe(42161);
 
