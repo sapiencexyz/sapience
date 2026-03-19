@@ -21,9 +21,9 @@ import {
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import {
   PythPredictionListItem,
-  UmaPredictionListItem,
+  PredictionListItem,
   type PythPrediction,
-  type UmaPrediction,
+  type PredictionListItemData,
 } from '@sapience/ui';
 import SponsorshipIndicator from './SponsorshipIndicator';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
@@ -828,7 +828,7 @@ export default function PositionForm({
             const bgWithAlpha = getColorWithAlpha(categoryColor, 0.1);
             // In CreatePositionForm: show shortName if available, always show question in tooltip
             const displayTitle = s.shortName || s.question;
-            const umaPrediction: UmaPrediction = {
+            const predictionData: PredictionListItemData = {
               id: s.id,
               conditionId: s.conditionId,
               question: displayTitle,
@@ -840,8 +840,8 @@ export default function PositionForm({
                 key={s.id}
                 className={`-mx-4 px-4 py-2.5 border-b border-brand-white/10 ${index === 0 ? 'border-t' : ''}`}
               >
-                <UmaPredictionListItem
-                  prediction={umaPrediction}
+                <PredictionListItem
+                  prediction={predictionData}
                   leading={
                     <div
                       className="w-5 h-5 rounded-full shrink-0 flex items-center justify-center"

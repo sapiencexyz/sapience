@@ -111,9 +111,10 @@ export async function GET(req: Request) {
                 pick.conditionResolver ?? condition?.resolver
               );
               // Pyth picks encode direction in the question text — no badge needed
-              const choice = resolverKind === 'pyth'
-                ? ''
-                : getChoiceLabel(pick.predictedOutcome, resolverKind);
+              const choice =
+                resolverKind === 'pyth'
+                  ? ''
+                  : getChoiceLabel(pick.predictedOutcome, resolverKind);
 
               // Determine resolution status per leg
               let resolution: ResolutionStatus | null = null;
@@ -198,8 +199,8 @@ export async function GET(req: Request) {
       .slice(0, 12) // safety cap
       .map((entry) => entry.split('|'))
       .map(([text, choice, resolutionStr]) => {
-        const label = normalizeText(choice || '', 48) || '—';
-        const normalized = normalizeChoiceLabel(label);
+        const label = normalizeText(choice || '', 48);
+        const normalized = label ? normalizeChoiceLabel(label) : null;
         const resolution: ResolutionStatus | null =
           resolutionStr === 'correct' ||
           resolutionStr === 'incorrect' ||

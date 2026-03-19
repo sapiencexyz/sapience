@@ -694,7 +694,8 @@ const CreatePositionFormInner = ({
           const pythPicks = pythPredictions.map((p) => ({
             conditionId: p.id,
             question: `${p.priceFeedLabel ?? 'Crypto'} ${p.direction === 'over' ? '>' : '<'} $${p.targetPrice.toLocaleString()}`,
-            choice: p.direction === 'over' ? ('Over' as const) : ('Under' as const),
+            choice:
+              p.direction === 'over' ? ('Over' as const) : ('Under' as const),
             source: 'pyth' as const,
           }));
 
@@ -786,8 +787,11 @@ const CreatePositionFormInner = ({
       qp.append('leg', `${s.question}|${s.prediction ? 'Yes' : 'No'}`);
     });
     pythPredictions.forEach((p) => {
-      const dir = p.direction === 'over' ? 'Over' : 'Under';
-      qp.append('leg', `${p.priceFeedLabel ?? 'Crypto'} ${p.direction === 'over' ? '>' : '<'} $${p.targetPrice.toLocaleString()}|${dir}`);
+      // No badge for Pyth — direction is already in the question text
+      qp.append(
+        'leg',
+        `${p.priceFeedLabel ?? 'Crypto'} ${p.direction === 'over' ? '>' : '<'} $${p.targetPrice.toLocaleString()}|`
+      );
     });
     if (watchedPositionSize) qp.set('wager', watchedPositionSize);
     if (collateralSymbol) qp.set('symbol', collateralSymbol);
@@ -805,6 +809,7 @@ const CreatePositionFormInner = ({
     return `/og/prediction?${qp.toString()}`;
   }, [
     selections,
+    pythPredictions,
     effectiveAddress,
     watchedPositionSize,
     collateralSymbol,
