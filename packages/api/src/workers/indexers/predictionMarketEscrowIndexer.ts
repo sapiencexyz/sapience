@@ -31,6 +31,8 @@ export function buildPythConditionData(conditionId: string): {
   shortName: string;
   endTime: number;
   description: string;
+  /** Asset class slug for category assignment (e.g. "prices-crypto") */
+  categorySlug: string;
 } | null {
   const market = decodePythMarketId(conditionId as `0x${string}`);
   if (!market) return null;
@@ -60,11 +62,23 @@ export function buildPythConditionData(conditionId: string): {
   const endDate = new Date(Number(endTime) * 1000).toUTCString();
   const description = `Resolved by Pyth Network Lazer oracle. If ${feedSymbol} is ${direction.toLowerCase()} $${displayPrice} at settlement (${endDate}), YES wins.`;
 
+  // Derive asset class from Pyth symbol prefix (e.g. "Crypto.BTC/USD" → "crypto")
+  const assetClass = feedSymbol.split('.')[0]?.toLowerCase() ?? 'crypto';
+  // Map Pyth asset classes to category slugs; metals are commodities
+  const assetClassToSlug: Record<string, string> = {
+    crypto: 'prices-crypto',
+    commodities: 'prices-commodities',
+    metal: 'prices-commodities',
+    equity: 'prices-equity',
+  };
+  const categorySlug = assetClassToSlug[assetClass] ?? 'prices-crypto';
+
   return {
     question,
     shortName,
     endTime: Number(endTime),
     description,
+    categorySlug,
   };
 }
 
@@ -742,6 +756,9 @@ class PredictionMarketEscrowIndexer implements IIndexer {
 
     if (picksOnChain) {
       // Auto-create Condition rows for Pyth picks (FK target must exist before Pick insert)
+      // Cache price category lookups so we query each slug at most once
+      const pricesCategoryCache = new Map<string, number>();
+
       for (const pick of picksOnChain) {
         const resolver = pick.conditionResolver as string;
         if (identifyResolver(resolver, this.chainId) !== 'pyth') continue;
@@ -749,6 +766,20 @@ class PredictionMarketEscrowIndexer implements IIndexer {
         const conditionId = (pick.conditionId as string).toLowerCase();
         const pythData = buildPythConditionData(conditionId);
         if (!pythData) continue;
+
+        // Resolve the asset-class category id
+        let categoryId: number | undefined;
+        if (pricesCategoryCache.has(pythData.categorySlug)) {
+          categoryId = pricesCategoryCache.get(pythData.categorySlug);
+        } else {
+          const cat = await tx.category.findFirst({
+            where: { slug: pythData.categorySlug },
+          });
+          if (cat) {
+            pricesCategoryCache.set(pythData.categorySlug, cat.id);
+            categoryId = cat.id;
+          }
+        }
 
         await tx.condition.upsert({
           where: { id: conditionId },
@@ -761,6 +792,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
             description: pythData.description,
             resolver: resolver.toLowerCase(),
             chainId: this.chainId,
+            ...(categoryId != null ? { categoryId } : {}),
           },
         });
         console.log(
