@@ -4,10 +4,7 @@ import type { PickData } from '~/hooks/graphql/usePositions';
 import type { Pick } from '~/components/shared/StackedPredictions';
 import { inferResolverKind } from '~/lib/resolvers/conditionResolver';
 import { getChoiceLabel } from '~/lib/resolvers/choiceLabel';
-import {
-  formatPythPriceDecimalFromInt,
-  formatUnixSecondsToLocalInput,
-} from '~/lib/auction/decodePredictedOutcomes';
+import { formatPythPriceDecimalFromInt } from '~/lib/auction/decodePredictedOutcomes';
 import { getPythFeedLabelSync } from '~/lib/pyth/usePythFeedLabel';
 
 export type ConditionsMap = Map<
@@ -46,9 +43,6 @@ export function toPicks(
     if (resolverKind === 'pyth') {
       const decoded = decodePythMarketId(pick.conditionId as `0x${string}`);
 
-      // Direction always reflects the predictor's direction (not the viewer's)
-      const direction: 'over' | 'under' = predictorChoseYes ? 'over' : 'under';
-
       if (decoded) {
         const priceStr = formatPythPriceDecimalFromInt(
           decoded.strikePrice,
@@ -70,17 +64,6 @@ export function toPicks(
           categorySlug: condition?.category?.slug ?? null,
           endTime: condition?.endTime ?? Number(decoded.endTime),
           source: 'pyth' as const,
-          pythPrediction: {
-            id: pick.conditionId,
-            priceId: decoded.priceId,
-            priceFeedLabel: feedLabel ?? undefined,
-            direction,
-            targetPrice: Number(priceStr),
-            targetPriceRaw: priceStr,
-            targetPriceFullPrecision: priceStr,
-            priceExpo: decoded.strikeExpo,
-            dateTimeLocal: formatUnixSecondsToLocalInput(decoded.endTime),
-          },
           settled: condition?.settled,
           resolvedToYes: condition?.resolvedToYes,
           nonDecisive: condition?.nonDecisive,

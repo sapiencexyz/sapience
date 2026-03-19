@@ -26,21 +26,6 @@ export interface Pick {
    * (Useful when a combo includes a Pyth pick.)
    */
   source?: 'polymarket' | 'pyth';
-  /**
-   * Optional structured Pyth prediction data, populated for backward compat.
-   * Direction always reflects the predictor's choice.
-   */
-  pythPrediction?: {
-    id: string;
-    priceId: string;
-    priceFeedLabel?: string;
-    direction: 'over' | 'under';
-    targetPrice: number;
-    targetPriceRaw: string;
-    targetPriceFullPrecision: string;
-    priceExpo: number;
-    dateTimeLocal: string;
-  };
   /** Whether the condition has been settled on-chain. */
   settled?: boolean;
   /** If settled, whether it resolved to YES. */

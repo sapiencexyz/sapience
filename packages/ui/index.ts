@@ -11,7 +11,6 @@ export * from './components/ui/textarea';
 export * from './components/ui/hover-card';
 export * from './components/CreatePythPredictionForm';
 export * from './components/PythOracleMark';
-export * from './components/PythPredictionListItem';
 export * from './components/PredictionListItem';
 export * from './components/predictions/types';
 export * from './components/predictions/PredictionChoiceBadge';
