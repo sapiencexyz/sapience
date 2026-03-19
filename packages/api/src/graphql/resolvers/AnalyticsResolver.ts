@@ -94,7 +94,7 @@ export class AnalyticsResolver {
     description:
       'Daily protocol statistics time series (last 90 days) — vault balance, volume, PnL, and open interest',
   })
-  @Directive('@cacheControl(maxAge: 120)')
+  @Directive('@cacheControl(maxAge: 3600)')
   async protocolStats(): Promise<ProtocolStat[]> {
     const chainId = DEFAULT_CHAIN_ID;
     const vaultAddress = (
