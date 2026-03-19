@@ -226,10 +226,6 @@ vi.mock('@sapience/ui', () => ({
   PredictionListItem: ({ prediction }: { prediction: { id: string } }) => (
     <div data-testid={`prediction-${prediction.id}`} />
   ),
-  // Deprecated aliases — keep for any transient imports
-  UmaPredictionListItem: ({ prediction }: { prediction: { id: string } }) => (
-    <div data-testid={`prediction-${prediction.id}`} />
-  ),
 }));
 
 vi.mock('@sapience/ui/components/ui/dialog', () => ({

@@ -4,13 +4,6 @@ import * as React from 'react';
 
 import { PredictionChoiceBadge } from './predictions/PredictionChoiceBadge';
 
-/** @deprecated Use {@link PredictionListItemData} instead. */
-export type UmaPrediction = PredictionListItemData;
-/** @deprecated Use {@link PredictionListItemProps} instead. */
-export type UmaPredictionListItemProps = PredictionListItemProps;
-/** @deprecated Use {@link PredictionListItem} instead. */
-export const UmaPredictionListItem = PredictionListItem;
-
 export type PredictionListItemData = {
   id: string;
   conditionId?: string;

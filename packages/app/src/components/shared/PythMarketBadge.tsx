@@ -1,5 +1,6 @@
 import type React from 'react';
 import { PythOracleMark } from '@sapience/ui';
+import { cn } from '@sapience/ui/lib/utils';
 
 /**
  * Pyth oracle mark inside a muted circular badge.
@@ -14,7 +15,10 @@ export function PythMarketBadge({
 }) {
   return (
     <div
-      className={`w-6 h-6 rounded-full shrink-0 flex items-center justify-center ${className ?? ''}`}
+      className={cn(
+        'w-6 h-6 rounded-full shrink-0 flex items-center justify-center',
+        className
+      )}
       style={{ backgroundColor: 'hsl(var(--muted))', ...style }}
     >
       <PythOracleMark

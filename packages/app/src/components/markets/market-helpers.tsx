@@ -12,7 +12,6 @@ import {
 } from '@sapience/ui/components/ui/tooltip';
 import { Badge } from '@sapience/ui/components/ui/badge';
 import { cn } from '@sapience/ui/lib/utils';
-import Link from 'next/link';
 import type { FilterState } from './TableFilters';
 import { inferResolverKind } from '~/lib/resolvers/conditionResolver';
 import type { ConditionType } from '~/hooks/graphql/useConditions';
@@ -443,8 +442,9 @@ export function PredictCell({
 
     return (
       <div className={cn('w-full font-mono', className)}>
-        <Link
-          href={`/questions/${condition.id}`}
+        <button
+          type="button"
+          onClick={handleYes}
           className={cn(
             'flex items-center justify-center w-full h-8 rounded-md text-sm font-medium uppercase transition-colors',
             isSelected
@@ -453,7 +453,7 @@ export function PredictCell({
           )}
         >
           PREDICT
-        </Link>
+        </button>
       </div>
     );
   }
