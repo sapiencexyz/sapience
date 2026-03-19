@@ -99,7 +99,7 @@ export function toPicks(
       };
     }
 
-    // UMA / default path
+    // Default path (non-Pyth resolvers)
     return {
       question: condition?.question ?? condition?.shortName ?? pick.conditionId,
       choice: isPredictorSide
