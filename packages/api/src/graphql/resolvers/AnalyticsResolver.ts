@@ -118,10 +118,11 @@ export class AnalyticsResolver {
 
     // Get all snapshot timestamps
     const snapshotTimestamps = protocolSnapshots.map((s) => s.timestamp);
+    const firstSnapshotTimestamp = snapshotTimestamps[0];
 
     // Fetch volume and OI data at snapshot timestamps in parallel
     const [cumulativeVolumes, openInterests] = await Promise.all([
-      // Cumulative volume up to each snapshot timestamp (legacy + escrow predictions)
+      // Cumulative volume within the snapshot window (legacy + escrow predictions)
       prisma.$queryRaw<CumulativeVolumeRow[]>`
         SELECT
           ts.timestamp,
@@ -136,12 +137,15 @@ export class AnalyticsResolver {
             "chainId"
           FROM "Prediction"
         ) combined ON
-          combined.created_ts <= ts.timestamp
+          combined.created_ts >= ${firstSnapshotTimestamp}
+          AND combined.created_ts <= ts.timestamp
           AND combined."chainId" = ${chainId}
         GROUP BY ts.timestamp
         ORDER BY ts.timestamp
       `,
       // Open interest at each snapshot timestamp (legacy + escrow predictions)
+      // For V2 Predictions, use Picks.resolvedAt instead of Prediction.settledAt
+      // because losing predictions may never get settled on-chain.
       prisma.$queryRaw<DailyOIRow[]>`
         SELECT
           ts.timestamp,
@@ -152,10 +156,11 @@ export class AnalyticsResolver {
             CAST("totalCollateral" AS DECIMAL) AS vol, "chainId"
           FROM position
           UNION ALL
-          SELECT "onChainCreatedAt" AS created_ts, "settledAt" AS settled_ts,
-            CAST("predictorCollateral" AS DECIMAL) + CAST("counterpartyCollateral" AS DECIMAL) AS vol,
-            "chainId"
-          FROM "Prediction"
+          SELECT p."onChainCreatedAt" AS created_ts, pk."resolvedAt" AS settled_ts,
+            CAST(p."predictorCollateral" AS DECIMAL) + CAST(p."counterpartyCollateral" AS DECIMAL) AS vol,
+            p."chainId"
+          FROM "Prediction" p
+          LEFT JOIN "Picks" pk ON pk.id = p."pickConfigId"
         ) combined ON
           combined.created_ts <= ts.timestamp
           AND (combined.settled_ts IS NULL OR combined.settled_ts > ts.timestamp)
@@ -172,12 +177,14 @@ export class AnalyticsResolver {
       const cumVol = volumeMap.get(snapshot.timestamp) || '0';
       const prevCumVol =
         i > 0 ? volumeMap.get(protocolSnapshots[i - 1].timestamp) || '0' : '0';
-      const dailyVolume = (BigInt(cumVol) - BigInt(prevCumVol)).toString();
+      const dailyVolume =
+        i > 0 ? (BigInt(cumVol) - BigInt(prevCumVol)).toString() : '0';
 
       const prevPnL = i > 0 ? protocolSnapshots[i - 1].vaultRealizedPnL : '0';
-      const dailyPnL = (
-        BigInt(snapshot.vaultRealizedPnL) - BigInt(prevPnL)
-      ).toString();
+      const dailyPnL =
+        i > 0
+          ? (BigInt(snapshot.vaultRealizedPnL) - BigInt(prevPnL)).toString()
+          : '0';
 
       return {
         timestamp: snapshot.timestamp,
