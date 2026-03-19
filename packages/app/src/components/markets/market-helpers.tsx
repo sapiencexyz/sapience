@@ -12,11 +12,7 @@ import {
 } from '@sapience/ui/components/ui/tooltip';
 import { Badge } from '@sapience/ui/components/ui/badge';
 import { cn } from '@sapience/ui/lib/utils';
-import MarketPredictionRequest from '~/components/shared/MarketPredictionRequest';
-import YesNoSplitButton from '~/components/shared/YesNoSplitButton';
-import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
-import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
-import { getDeterministicCategoryColor } from '~/lib/theme/categoryPalette';
+import type { FilterState } from './TableFilters';
 import type { ConditionType } from '~/hooks/graphql/useConditions';
 import type { ConditionGroupConditionType } from '~/hooks/graphql/useConditionGroups';
 import type {
@@ -24,7 +20,11 @@ import type {
   SortDirection,
   QuestionType,
 } from '~/hooks/graphql/useInfiniteQuestions';
-import type { FilterState } from './TableFilters';
+import MarketPredictionRequest from '~/components/shared/MarketPredictionRequest';
+import YesNoSplitButton from '~/components/shared/YesNoSplitButton';
+import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
+import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
+import { getDeterministicCategoryColor } from '~/lib/theme/categoryPalette';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -63,7 +63,6 @@ export function groupConditionToConditionType(
     shortName: gc.shortName,
     endTime: gc.endTime,
     public: gc.public,
-    claimStatement: gc.claimStatement,
     description: gc.description,
     similarMarkets: gc.similarMarkets,
     chainId: gc.chainId,

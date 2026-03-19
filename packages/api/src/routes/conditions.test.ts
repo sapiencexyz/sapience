@@ -26,10 +26,10 @@ const PAST_END_TIME = 1000;
 
 function baseBody(overrides: Record<string, unknown> = {}) {
   return {
+    conditionHash: VALID_CONDITION_HASH,
     question: 'Will BTC hit 100k?',
     endTime: FUTURE_END_TIME,
     description: 'A test condition',
-    claimStatement: 'BTC will hit 100k by EOY',
     resolver: VALID_RESOLVER,
     ...overrides,
   };
@@ -90,26 +90,20 @@ describe('conditions routes', () => {
       expect(res.body.message).toMatch(/nonexistent/);
     });
 
-    it('computes conditionHash from claimStatement + endTime and returns 201', async () => {
-      const created = { id: '0x123', question: 'Will BTC hit 100k?' };
-      mockPrisma.condition.create.mockResolvedValue(created);
+    it('returns 400 when conditionHash is missing', async () => {
+      const res = await request(app)
+        .post('/admin/conditions')
+        .send(baseBody({ conditionHash: undefined }));
 
-      const body = baseBody();
-      const res = await request(app).post('/admin/conditions').send(body);
-
-      expect(res.status).toBe(201);
-
-      // The id passed to create should be a valid 0x-prefixed 32-byte hex
-      const createCall = mockPrisma.condition.create.mock.calls[0][0];
-      expect(createCall.data.id).toMatch(/^0x[0-9a-fA-F]{64}$/);
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/conditionHash/i);
     });
 
     it('uses provided conditionHash directly and returns 201', async () => {
       const created = { id: VALID_CONDITION_HASH };
       mockPrisma.condition.create.mockResolvedValue(created);
 
-      const body = baseBody({ conditionHash: VALID_CONDITION_HASH });
-      const res = await request(app).post('/admin/conditions').send(body);
+      const res = await request(app).post('/admin/conditions').send(baseBody());
 
       expect(res.status).toBe(201);
 
@@ -209,7 +203,6 @@ describe('conditions routes', () => {
       return {
         id: VALID_ID,
         question: 'Original question',
-        claimStatement: 'Original claim',
         endTime: FUTURE_END_TIME,
         chainId: 42161,
         settled: false,

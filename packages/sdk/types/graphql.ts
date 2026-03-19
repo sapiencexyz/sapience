@@ -403,7 +403,6 @@ export type Condition = {
   category?: Maybe<Category>;
   categoryId?: Maybe<Scalars['Int']['output']>;
   chainId: Scalars['Int']['output'];
-  claimStatement: Scalars['String']['output'];
   conditionGroup?: Maybe<ConditionGroup>;
   conditionGroupId?: Maybe<Scalars['Int']['output']>;
   createdAt: Scalars['DateTimeISO']['output'];
@@ -590,7 +589,6 @@ export type ConditionOrderByWithRelationInput = {
   category?: InputMaybe<CategoryOrderByWithRelationInput>;
   categoryId?: InputMaybe<SortOrderInput>;
   chainId?: InputMaybe<SortOrder>;
-  claimStatement?: InputMaybe<SortOrder>;
   conditionGroup?: InputMaybe<ConditionGroupOrderByWithRelationInput>;
   conditionGroupId?: InputMaybe<SortOrderInput>;
   createdAt?: InputMaybe<SortOrder>;
@@ -623,7 +621,6 @@ export type ConditionScalarFieldEnum =
   | 'assertionTimestamp'
   | 'categoryId'
   | 'chainId'
-  | 'claimStatement'
   | 'conditionGroupId'
   | 'createdAt'
   | 'description'
@@ -653,7 +650,6 @@ export type ConditionWhereInput = {
   category?: InputMaybe<CategoryNullableRelationFilter>;
   categoryId?: InputMaybe<IntNullableFilter>;
   chainId?: InputMaybe<IntFilter>;
-  claimStatement?: InputMaybe<StringFilter>;
   conditionGroup?: InputMaybe<ConditionGroupNullableRelationFilter>;
   conditionGroupId?: InputMaybe<IntNullableFilter>;
   createdAt?: InputMaybe<DateTimeFilter>;
@@ -686,7 +682,6 @@ export type ConditionWhereUniqueInput = {
   category?: InputMaybe<CategoryNullableRelationFilter>;
   categoryId?: InputMaybe<IntNullableFilter>;
   chainId?: InputMaybe<IntFilter>;
-  claimStatement?: InputMaybe<StringFilter>;
   conditionGroup?: InputMaybe<ConditionGroupNullableRelationFilter>;
   conditionGroupId?: InputMaybe<IntNullableFilter>;
   createdAt?: InputMaybe<DateTimeFilter>;

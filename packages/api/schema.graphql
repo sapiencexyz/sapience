@@ -348,7 +348,6 @@ type Condition {
   category(where: CategoryWhereInput): Category
   categoryId: Int
   chainId: Int!
-  claimStatement: String!
   conditionGroup(where: ConditionGroupWhereInput): ConditionGroup
   conditionGroupId: Int
   createdAt: DateTimeISO!
@@ -474,7 +473,6 @@ input ConditionOrderByWithRelationInput {
   category: CategoryOrderByWithRelationInput
   categoryId: SortOrderInput
   chainId: SortOrder
-  claimStatement: SortOrder
   conditionGroup: ConditionGroupOrderByWithRelationInput
   conditionGroupId: SortOrderInput
   createdAt: SortOrder
@@ -507,7 +505,6 @@ enum ConditionScalarFieldEnum {
   assertionTimestamp
   categoryId
   chainId
-  claimStatement
   conditionGroupId
   createdAt
   description
@@ -538,7 +535,6 @@ input ConditionWhereInput {
   category: CategoryNullableRelationFilter
   categoryId: IntNullableFilter
   chainId: IntFilter
-  claimStatement: StringFilter
   conditionGroup: ConditionGroupNullableRelationFilter
   conditionGroupId: IntNullableFilter
   createdAt: DateTimeFilter
@@ -571,7 +567,6 @@ input ConditionWhereUniqueInput {
   category: CategoryNullableRelationFilter
   categoryId: IntNullableFilter
   chainId: IntFilter
-  claimStatement: StringFilter
   conditionGroup: ConditionGroupNullableRelationFilter
   conditionGroupId: IntNullableFilter
   createdAt: DateTimeFilter
