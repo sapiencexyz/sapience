@@ -77,17 +77,13 @@ interface DailyOIRow {
 
 function buildTimestampMap<T extends { timestamp: bigint }>(
   rows: T[],
-  key: keyof T,
-  days: number = 90
+  key: keyof T
 ): Map<number, string> {
   const map = new Map<number, string>();
-  const cutoffTimestamp = Math.floor(Date.now() / 1000) - days * 86400;
   for (const row of rows) {
     const ts = Number(row.timestamp);
-    if (ts >= cutoffTimestamp) {
-      const value = row[key];
-      map.set(ts, value?.toString() || '0');
-    }
+    const value = row[key];
+    map.set(ts, value?.toString() || '0');
   }
   return map;
 }
@@ -98,16 +94,16 @@ export class AnalyticsResolver {
     description:
       'Daily protocol statistics time series (last 90 days) — vault balance, volume, PnL, and open interest',
   })
-  @Directive('@cacheControl(maxAge: 120)')
+  @Directive('@cacheControl(maxAge: 3600)')
   async protocolStats(): Promise<ProtocolStat[]> {
     const chainId = DEFAULT_CHAIN_ID;
     const vaultAddress = (
       contracts.predictionMarketVault[chainId]?.address ?? ''
     ).toLowerCase();
 
-    // Fetch snapshots first to get our timestamps
+    // Fetch all available snapshots
     const protocolSnapshots = await getProtocolStatsTimeSeries(
-      90,
+      undefined,
       chainId,
       vaultAddress
     );
@@ -118,10 +114,11 @@ export class AnalyticsResolver {
 
     // Get all snapshot timestamps
     const snapshotTimestamps = protocolSnapshots.map((s) => s.timestamp);
+    const firstSnapshotTimestamp = snapshotTimestamps[0];
 
     // Fetch volume and OI data at snapshot timestamps in parallel
     const [cumulativeVolumes, openInterests] = await Promise.all([
-      // Cumulative volume up to each snapshot timestamp (legacy + escrow predictions)
+      // Cumulative volume within the snapshot window (legacy + escrow predictions)
       prisma.$queryRaw<CumulativeVolumeRow[]>`
         SELECT
           ts.timestamp,
@@ -136,12 +133,15 @@ export class AnalyticsResolver {
             "chainId"
           FROM "Prediction"
         ) combined ON
-          combined.created_ts <= ts.timestamp
+          combined.created_ts >= ${firstSnapshotTimestamp}
+          AND combined.created_ts <= ts.timestamp
           AND combined."chainId" = ${chainId}
         GROUP BY ts.timestamp
         ORDER BY ts.timestamp
       `,
       // Open interest at each snapshot timestamp (legacy + escrow predictions)
+      // For V2 Predictions, use Picks.resolvedAt instead of Prediction.settledAt
+      // because losing predictions may never get settled on-chain.
       prisma.$queryRaw<DailyOIRow[]>`
         SELECT
           ts.timestamp,
@@ -152,10 +152,11 @@ export class AnalyticsResolver {
             CAST("totalCollateral" AS DECIMAL) AS vol, "chainId"
           FROM position
           UNION ALL
-          SELECT "onChainCreatedAt" AS created_ts, "settledAt" AS settled_ts,
-            CAST("predictorCollateral" AS DECIMAL) + CAST("counterpartyCollateral" AS DECIMAL) AS vol,
-            "chainId"
-          FROM "Prediction"
+          SELECT p."onChainCreatedAt" AS created_ts, pk."resolvedAt" AS settled_ts,
+            CAST(p."predictorCollateral" AS DECIMAL) + CAST(p."counterpartyCollateral" AS DECIMAL) AS vol,
+            p."chainId"
+          FROM "Prediction" p
+          LEFT JOIN "Picks" pk ON pk.id = p."pickConfigId"
         ) combined ON
           combined.created_ts <= ts.timestamp
           AND (combined.settled_ts IS NULL OR combined.settled_ts > ts.timestamp)

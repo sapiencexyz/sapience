@@ -275,7 +275,7 @@ input CategoryWhereUniqueInput {
   conditions: ConditionListRelationFilter
   createdAt: DateTimeFilter
   id: Int
-  name: String
+  name: StringFilter
   slug: String
 }
 

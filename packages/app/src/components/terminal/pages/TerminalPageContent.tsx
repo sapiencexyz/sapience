@@ -6,7 +6,6 @@ import { useIsMobile, useIsBelow } from '@sapience/ui/hooks/use-mobile';
 import { motion } from 'framer-motion';
 import { parseUnits, erc20Abi } from 'viem';
 import { useVirtualizer } from '@tanstack/react-virtual';
-import { PythPredictionListItem, type PythPrediction } from '@sapience/ui';
 import { decodePythMarketId } from '@sapience/sdk';
 import { isPredictedYes } from '@sapience/sdk/types';
 import type { ConditionById } from '@sapience/sdk/queries';
@@ -29,7 +28,6 @@ import StackedPredictions, {
 import {
   decodeAuctionPredictedOutcomes,
   formatPythPriceDecimalFromInt,
-  formatUnixSecondsToLocalInput,
   PYTH_RESOLVER_SET,
 } from '~/lib/auction/decodePredictedOutcomes';
 import { usePythFeedLabel } from '~/lib/pyth/usePythFeedLabel';
@@ -1255,18 +1253,6 @@ const TerminalPageContent: React.FC = () => {
 
 export default TerminalPageContent;
 
-function pythSideFromMakerPrediction(params: {
-  makerPrediction: boolean; // true=Over, false=Under
-  perspective: 'maker' | 'taker';
-}): { direction: 'over' | 'under' } {
-  // For Pyth, the counterparty/taker is always the opposite side of the maker.
-  const displayPrediction =
-    params.perspective === 'taker'
-      ? !params.makerPrediction
-      : params.makerPrediction;
-  return { direction: displayPrediction ? 'over' : 'under' };
-}
-
 function PythPredictionsCell({
   first,
 }: {
@@ -1280,29 +1266,23 @@ function PythPredictionsCell({
   };
 }) {
   const feedLabel = usePythFeedLabel(first.priceId);
-  // In the auction/taker view we show what the TAKER needs to win.
-  // maker Over -> taker Under, maker Under -> taker Over.
-  const side = pythSideFromMakerPrediction({
-    makerPrediction: first.prediction,
-    perspective: 'taker',
-  });
   const priceStr = formatPythPriceDecimalFromInt(
     first.strikePrice,
     first.strikeExpo
   );
-  const priceNum = Number(priceStr);
 
-  const pythPrediction: PythPrediction = {
-    id: `${first.priceId}:${first.endTime.toString()}:${first.strikePrice.toString()}:${first.strikeExpo}`,
-    priceId: first.priceId,
-    priceFeedLabel: feedLabel ?? undefined,
-    direction: side.direction,
-    targetPrice: Number.isFinite(priceNum) ? priceNum : 0,
-    targetPriceRaw: priceStr,
-    targetPriceFullPrecision: priceStr,
-    priceExpo: first.strikeExpo,
-    dateTimeLocal: formatUnixSecondsToLocalInput(first.endTime),
-  };
+  // Taker perspective: invert the maker's prediction
+  const takerChoice = first.prediction ? 'No' : 'Yes';
+  const question = `${feedLabel ?? 'Crypto'} OVER $${priceStr}`;
+
+  const picks: Pick[] = [
+    {
+      question,
+      choice: takerChoice,
+      source: 'pyth',
+      categorySlug: 'prices',
+    },
+  ];
 
   return (
     <motion.div
@@ -1310,9 +1290,7 @@ function PythPredictionsCell({
       animate={{ opacity: 1 }}
       transition={{ duration: 0.14, ease: 'easeOut' }}
     >
-      <div className="max-w-full">
-        <PythPredictionListItem prediction={pythPrediction} layout="inline" />
-      </div>
+      <StackedPredictions picks={picks} className="max-w-full" />
     </motion.div>
   );
 }
