@@ -345,7 +345,6 @@ export function PredictCell({
 }) {
   const { addSelection, removeSelection, selections } =
     useCreatePositionContext();
-  const resolverKind = inferResolverKind(condition.resolver);
 
   const selectionState = React.useMemo(() => {
     if (!condition.id) return { selectedYes: false, selectedNo: false };
@@ -420,43 +419,12 @@ export function PredictCell({
     );
   }
 
-  // Pyth conditions encode direction in the question — show a single PREDICT button
-  // that navigates to the condition page where users configure strike/expiry
-  if (resolverKind === 'pyth') {
-    const isSelected = selectionState.selectedYes || selectionState.selectedNo;
-    const isPastEnd =
-      !!condition.endTime && condition.endTime <= Math.floor(Date.now() / 1000);
-
-    if (isPastEnd) {
-      return (
-        <div className={cn('w-full font-mono', className)}>
-          <span
-            className="flex items-center justify-center w-full h-8 rounded-md text-sm font-medium uppercase bg-white/5 text-muted-foreground border border-white/5 cursor-not-allowed"
-            aria-disabled="true"
-          >
-            PREDICT
-          </span>
-        </div>
-      );
-    }
-
-    return (
-      <div className={cn('w-full font-mono', className)}>
-        <button
-          type="button"
-          onClick={handleYes}
-          className={cn(
-            'flex items-center justify-center w-full h-8 rounded-md text-sm font-medium uppercase transition-colors',
-            isSelected
-              ? 'bg-accent-gold/20 text-accent-gold border border-accent-gold/40'
-              : 'bg-white/10 text-foreground hover:bg-white/15 border border-white/10'
-          )}
-        >
-          PREDICT
-        </button>
-      </div>
-    );
-  }
+  // Pyth conditions can't accept new predictions after endTime (settlement is on-chain via oracle).
+  // Polymarket conditions may still be tradeable after endTime, so don't disable those.
+  const isPythPastEnd =
+    inferResolverKind(condition.resolver) === 'pyth' &&
+    !!condition.endTime &&
+    condition.endTime <= Math.floor(Date.now() / 1000);
 
   return (
     <div className={cn('w-full font-mono', className)}>
@@ -470,6 +438,7 @@ export function PredictCell({
         selectedYes={selectionState.selectedYes}
         selectedNo={selectionState.selectedNo}
         colorScheme={colorScheme}
+        disabled={isPythPastEnd}
       />
     </div>
   );

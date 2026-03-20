@@ -176,7 +176,6 @@ export default function QuestionPageContent({
       if (feedId == null) return null;
       const feed = PYTH_FEEDS.find((f) => f.lazerId === feedId);
       if (!feed?.symbol) return null;
-      // Pyth price feed page URL format: https://www.pyth.network/price-feeds/crypto-btc-usd
       const slug = feed.symbol.replace(/[./]/g, '-').toLowerCase();
       return `https://www.pyth.network/price-feeds/${slug}`;
     } catch {

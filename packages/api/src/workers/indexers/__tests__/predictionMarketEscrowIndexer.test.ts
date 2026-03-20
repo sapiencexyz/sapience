@@ -771,9 +771,12 @@ describe('PredictionMarketEscrowIndexer', () => {
       expect(result.description).toContain('Pyth Network Lazer oracle');
       expect(result.description).toContain('over');
       expect(result.description).toContain('71,080');
+      expect(result.description).toContain(
+        'exactly $71,080 at settlement, OVER wins'
+      );
     });
 
-    it('should format UNDER for overWinsOnTie=false', () => {
+    it('should always use OVER direction regardless of overWinsOnTie', () => {
       const conditionId = makePythConditionId({
         feedLazerId: 2,
         endTime: 1700200000n,
@@ -782,8 +785,11 @@ describe('PredictionMarketEscrowIndexer', () => {
         overWinsOnTie: false,
       });
       const result = buildPythConditionData(conditionId)!;
-      expect(result.question).toBe('Crypto.ETH/USD UNDER $3,500');
-      expect(result.shortName).toBe('ETH UNDER $3,500');
+      expect(result.question).toBe('Crypto.ETH/USD OVER $3,500');
+      expect(result.shortName).toBe('ETH OVER $3,500');
+      expect(result.description).toContain(
+        'exactly $3,500 at settlement, UNDER wins'
+      );
     });
 
     it('should preserve full decimal precision for small exponents', () => {
@@ -877,7 +883,7 @@ describe('PredictionMarketEscrowIndexer', () => {
         overWinsOnTie: false,
       });
       const result = buildPythConditionData(conditionId)!;
-      expect(result.question).toBe('Commodities.USOILSPOT UNDER $-5');
+      expect(result.question).toBe('Commodities.USOILSPOT OVER $-5');
     });
 
     // ─── categorySlug derivation ──────────────────────────────────────
@@ -1067,7 +1073,7 @@ describe('PredictionMarketEscrowIndexer', () => {
       expect(mockPrisma.picks.create).toHaveBeenCalledTimes(1);
     });
 
-    it('should format UNDER direction when overWinsOnTie is false', async () => {
+    it('should always use OVER direction even when overWinsOnTie is false', async () => {
       const conditionId = makePythConditionId({
         feedLazerId: 2, // ETH
         endTime: 1700200000n,
@@ -1080,9 +1086,12 @@ describe('PredictionMarketEscrowIndexer', () => {
       await indexer.indexBlocks('test', [50]);
 
       const upsertCall = mockPrisma.condition.upsert.mock.calls[0][0];
-      expect(upsertCall.create.question).toBe('Crypto.ETH/USD UNDER $3,500');
-      expect(upsertCall.create.shortName).toBe('ETH UNDER $3,500');
-      expect(upsertCall.create.description).toContain('under');
+      expect(upsertCall.create.question).toBe('Crypto.ETH/USD OVER $3,500');
+      expect(upsertCall.create.shortName).toBe('ETH OVER $3,500');
+      expect(upsertCall.create.description).toContain('over');
+      expect(upsertCall.create.description).toContain(
+        'exactly $3,500 at settlement, UNDER wins'
+      );
     });
 
     it('should handle fractional prices without losing precision', async () => {
