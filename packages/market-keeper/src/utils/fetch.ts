@@ -18,7 +18,10 @@ export async function fetchWithRetry(
       const response = await fetch(url, options);
 
       // Retry on 429 rate limit
-      if (response.status === 429 && attempt < maxRetries) {
+      if (
+        (response.status === 429 || response.status === 402) &&
+        attempt < maxRetries
+      ) {
         const retryAfter = response.headers.get('Retry-After');
         const retryAfterMs = retryAfter ? Number(retryAfter) * 1000 : 0;
         const delay =
