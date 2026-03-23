@@ -228,12 +228,27 @@ router.put('/batch', async (req: Request, res: Response) => {
       return res.status(400).json({ message: 'No valid fields to update' });
     }
 
+    const existing = await prisma.condition.count({
+      where: { id: { in: ids } },
+    });
+
+    if (existing === 0) {
+      return res
+        .status(404)
+        .json({ message: 'No conditions found matching the provided IDs' });
+    }
+
     const result = await prisma.condition.updateMany({
       where: { id: { in: ids } },
       data,
     });
 
-    return res.json({ updated: result.count });
+    const status = existing < ids.length ? 207 : 200;
+    return res.status(status).json({
+      updated: result.count,
+      requested: ids.length,
+      found: existing,
+    });
   } catch (error: unknown) {
     console.error('Error in batch update conditions:', error);
     return res.status(500).json({ message: 'Internal Server Error' });

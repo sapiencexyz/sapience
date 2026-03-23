@@ -214,8 +214,18 @@ export async function privateConditions(
         };
       }
 
-      const data = (await response.json()) as { updated: number };
+      const data = (await response.json()) as {
+        updated: number;
+        requested: number;
+        found: number;
+      };
       totalUpdated += data.updated;
+
+      if (response.status === 207) {
+        console.log(
+          `[Cleanup] Batch partial match: requested=${data.requested}, found=${data.found}, updated=${data.updated}`
+        );
+      }
     }
 
     return { success: true, updated: totalUpdated };
