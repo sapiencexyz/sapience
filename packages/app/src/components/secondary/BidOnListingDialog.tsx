@@ -31,14 +31,7 @@ export default function BidOnListingDialog({
   children,
 }: BidOnListingDialogProps) {
   const [open, setOpen] = React.useState(false);
-  const initialPrice = React.useMemo(() => {
-    try {
-      return formatEther(BigInt(listing.minPrice));
-    } catch {
-      return '0';
-    }
-  }, [listing.minPrice]);
-  const [price, setPrice] = React.useState(initialPrice);
+  const [price, setPrice] = React.useState('');
   const [error, setError] = React.useState<string | null>(null);
 
   // Reset state when dialog opens
@@ -72,12 +65,6 @@ export default function BidOnListingDialog({
           setError('Price must be greater than 0');
           return;
         }
-        if (priceWei < BigInt(listing.minPrice)) {
-          setError(
-            `Price must be at least ${formatEther(BigInt(listing.minPrice))} ${collateralSymbol}`
-          );
-          return;
-        }
 
         const result = await submitBid({
           auctionId: listing.auctionId,
@@ -98,10 +85,8 @@ export default function BidOnListingDialog({
   );
 
   let tokenAmountDisplay: string;
-  let minPriceDisplay: string;
   try {
     tokenAmountDisplay = formatEther(BigInt(listing.tokenAmount));
-    minPriceDisplay = formatEther(BigInt(listing.minPrice));
   } catch {
     return null; // Malformed listing data
   }
@@ -123,9 +108,6 @@ export default function BidOnListingDialog({
           </p>
           <p>Amount: {tokenAmountDisplay} tokens</p>
           <p>
-            Minimum price: {minPriceDisplay} {collateralSymbol}
-          </p>
-          <p>
             Seller:{' '}
             <span className="font-mono">
               {listing.seller.slice(0, 6)}…{listing.seller.slice(-4)}
@@ -143,9 +125,7 @@ export default function BidOnListingDialog({
               onChange={(e) => setPrice(e.target.value)}
               placeholder="0.0"
             />
-            <p className="text-xs text-muted-foreground">
-              Must be ≥ {minPriceDisplay} {collateralSymbol}
-            </p>
+
           </div>
 
           {error && (

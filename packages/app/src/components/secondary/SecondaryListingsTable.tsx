@@ -81,7 +81,6 @@ export default function SecondaryListingsTable({
         <TableRow>
           <TableHead>Token</TableHead>
           <TableHead>Amount</TableHead>
-          <TableHead>Min Price</TableHead>
           <TableHead>Seller</TableHead>
           <TableHead>Bids</TableHead>
           <TableHead>Expires</TableHead>
@@ -91,10 +90,8 @@ export default function SecondaryListingsTable({
       <TableBody>
         {listings.map((listing) => {
           let amount: number;
-          let minPrice: number;
           try {
             amount = parseFloat(formatEther(BigInt(listing.tokenAmount)));
-            minPrice = parseFloat(formatEther(BigInt(listing.minPrice)));
           } catch {
             return null; // Skip malformed listings
           }
@@ -112,12 +109,6 @@ export default function SecondaryListingsTable({
               </TableCell>
               <TableCell>
                 <NumberDisplay value={amount} />
-              </TableCell>
-              <TableCell>
-                <NumberDisplay
-                  value={minPrice}
-                  appendedText={collateralSymbol}
-                />
               </TableCell>
               <TableCell>
                 <span className="font-mono text-xs">
