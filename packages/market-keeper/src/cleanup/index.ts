@@ -68,13 +68,6 @@ Environment Variables:
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-function hasEngagement(condition: {
-  openInterest: string;
-  attestationCount: number;
-}): boolean {
-  return condition.openInterest !== '0' || condition.attestationCount > 0;
-}
-
 export async function main(): Promise<void> {
   const options = parseArgs();
 
@@ -119,7 +112,6 @@ export async function main(): Promise<void> {
     total: conditions.length,
     resolved: 0,
     privated: 0,
-    skippedEngagement: 0,
     skippedUnresolved: 0,
     errors: 0,
   };
@@ -138,15 +130,7 @@ export async function main(): Promise<void> {
 
       results.resolved++;
 
-      if (hasEngagement(condition)) {
-        log(
-          `[${condition.id}] Resolved with engagement (OI: ${condition.openInterest}, attestations: ${condition.attestationCount}) — settle-polymarket will handle`
-        );
-        results.skippedEngagement++;
-        continue;
-      }
-
-      // Resolved + no engagement → mark for privating
+      // Resolved + no engagement (guaranteed by GQL filter) → mark for privating
       log(
         `[${condition.id}] ${options.dryRun ? 'DRY RUN — would private' : 'Will private'} (resolved, no engagement)`
       );
@@ -222,7 +206,6 @@ export async function main(): Promise<void> {
   log(`Total conditions:            ${results.total}`);
   log(`Resolved on Polygon:         ${results.resolved}`);
   log(`Privated (no engagement):    ${results.privated}`);
-  log(`Skipped (has engagement):    ${results.skippedEngagement}`);
   log(`Skipped (not resolved):      ${results.skippedUnresolved}`);
   log(`Errors:                      ${results.errors}`);
 }

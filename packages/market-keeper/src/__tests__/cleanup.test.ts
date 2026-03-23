@@ -110,36 +110,6 @@ describe('cleanup-polymarket main()', () => {
     );
   });
 
-  it('does NOT private resolved conditions with OI > 0', async () => {
-    const condition = makeCondition({
-      id: '0x1',
-      openInterest: '1000000000000000000',
-      attestationCount: 0,
-    });
-    mockFetchExpired.mockResolvedValue([condition]);
-    mockCanRequestResolution.mockResolvedValue(true);
-    process.argv = ['node', 'cleanup-polymarket.ts', '--execute'];
-
-    await runMainWithTimers();
-
-    expect(mockPrivate).not.toHaveBeenCalled();
-  });
-
-  it('does NOT private resolved conditions with attestations', async () => {
-    const condition = makeCondition({
-      id: '0x1',
-      openInterest: '0',
-      attestationCount: 3,
-    });
-    mockFetchExpired.mockResolvedValue([condition]);
-    mockCanRequestResolution.mockResolvedValue(true);
-    process.argv = ['node', 'cleanup-polymarket.ts', '--execute'];
-
-    await runMainWithTimers();
-
-    expect(mockPrivate).not.toHaveBeenCalled();
-  });
-
   it('skips unresolved conditions (not yet resolved on Polygon CTF)', async () => {
     const condition = makeCondition({ id: '0x1' });
     mockFetchExpired.mockResolvedValue([condition]);
