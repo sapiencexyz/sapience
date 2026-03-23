@@ -119,7 +119,6 @@ const corsOptions: cors.CorsOptions = {
     // Otherwise, only allow specific domains
     if (
       !origin || // Allow same-origin requests
-      /^https?:\/\/([a-zA-Z0-9-]+\.)*foil\.xyz$/.test(origin) ||
       /^https?:\/\/([a-zA-Z0-9-]+\.)*sapience\.xyz$/.test(origin) ||
       /^https?:\/\/([a-zA-Z0-9-]+\.)*ethereal\.trade$/.test(origin) ||
       /^https?:\/\/([a-zA-Z0-9-]+\.)*etherealtest\.net$/.test(origin) ||
