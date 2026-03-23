@@ -3,6 +3,12 @@
 import Link from 'next/link';
 import { PredictionChoiceBadge } from '@sapience/ui';
 import { formatDistanceToNow } from 'date-fns';
+import { Info } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@sapience/ui/components/ui/tooltip';
 import {
   StackedIcons,
   type Pick,
@@ -135,7 +141,19 @@ export function PicksContent({
                 Prediction
               </th>
               <th className="pb-2 pl-4 font-medium text-right whitespace-nowrap">
-                Ends
+                <span className="inline-flex items-center gap-1">
+                  Ends
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex cursor-help">
+                        <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      End times are estimates and may vary
+                    </TooltipContent>
+                  </Tooltip>
+                </span>
               </th>
             </tr>
           </thead>
