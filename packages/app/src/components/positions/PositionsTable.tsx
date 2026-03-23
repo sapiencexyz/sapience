@@ -377,7 +377,6 @@ function PositionRow({
             BigInt(position.balance) > 0n && (
               <SellPositionDialog
                 position={position}
-                collateralSymbol={collateralSymbol}
                 onSuccess={onRefetch}
               >
                 <button

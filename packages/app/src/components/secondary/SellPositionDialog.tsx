@@ -34,14 +34,12 @@ const DEADLINE_OPTIONS = [
 
 interface SellPositionDialogProps {
   position: PositionBalance;
-  collateralSymbol: string;
   onSuccess?: () => void;
   children: React.ReactNode;
 }
 
 export default function SellPositionDialog({
   position,
-  collateralSymbol,
   onSuccess,
   children,
 }: SellPositionDialogProps) {
