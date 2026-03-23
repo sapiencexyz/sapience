@@ -7,7 +7,7 @@ import type {
   SapienceConditionGroup,
   SapienceOutput,
 } from '../types';
-import { RESOLVER_ADDRESS } from '../constants';
+import { RESOLVER_ADDRESS, END_TIME_BUFFER_SECONDS } from '../constants';
 import { fetchWithRetry, getAdminAuthHeaders } from '../utils';
 import {
   runPipeline,
@@ -20,7 +20,7 @@ import {
 /**
  * Delay between API submissions to avoid rate limiting
  */
-const SUBMISSION_DELAY_MS = 300;
+const SUBMISSION_DELAY_MS = 200;
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
@@ -98,7 +98,7 @@ export async function submitCondition(
         question: condition.question,
         shortName: condition.shortName,
         categorySlug: condition.categorySlug,
-        endTime: toUnixTimestamp(condition.endDate),
+        endTime: toUnixTimestamp(condition.endDate) + END_TIME_BUFFER_SECONDS,
         description: condition.description,
         similarMarkets: condition.similarMarkets,
         tags: condition.tags,

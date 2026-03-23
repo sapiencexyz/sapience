@@ -185,6 +185,76 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
+// PUT /admin/conditions/batch - batch update fields on multiple conditions
+// NOTE: Must be registered before /:id to avoid Express matching "batch" as an :id param
+router.put('/batch', async (req: Request, res: Response) => {
+  try {
+    const { ids, update } = req.body as {
+      ids?: string[];
+      update?: { public?: boolean };
+    };
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res
+        .status(400)
+        .json({ message: 'ids must be a non-empty array of condition IDs' });
+    }
+
+    if (ids.length > 200) {
+      return res
+        .status(400)
+        .json({ message: 'Batch size limit is 200 conditions' });
+    }
+
+    if (!update || typeof update !== 'object') {
+      return res.status(400).json({ message: 'update object is required' });
+    }
+
+    // Validate all IDs are valid hex
+    for (const id of ids) {
+      if (!/^0x[0-9a-fA-F]{64}$/.test(id)) {
+        return res.status(400).json({ message: `Invalid id format: ${id}` });
+      }
+    }
+
+    // Build update data
+    const data: Record<string, unknown> = {};
+
+    if (typeof update.public !== 'undefined') {
+      data.public = Boolean(update.public);
+    }
+
+    if (Object.keys(data).length === 0) {
+      return res.status(400).json({ message: 'No valid fields to update' });
+    }
+
+    const existing = await prisma.condition.count({
+      where: { id: { in: ids } },
+    });
+
+    if (existing === 0) {
+      return res
+        .status(404)
+        .json({ message: 'No conditions found matching the provided IDs' });
+    }
+
+    const result = await prisma.condition.updateMany({
+      where: { id: { in: ids } },
+      data,
+    });
+
+    const status = existing < ids.length ? 207 : 200;
+    return res.status(status).json({
+      updated: result.count,
+      requested: ids.length,
+      found: existing,
+    });
+  } catch (error: unknown) {
+    console.error('Error in batch update conditions:', error);
+    return res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
 // PUT /admin/conditions/:id - update editable fields
 router.put('/:id', async (req: Request, res: Response) => {
   try {

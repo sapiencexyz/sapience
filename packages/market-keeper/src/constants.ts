@@ -49,7 +49,11 @@ export const ALWAYS_INCLUDE_PATTERNS = [
 
 // Relist configuration
 export const RELIST_LOOKBACK_DAYS = 30;
-export const RELIST_FORWARD_DAYS = 7;
+export const RELIST_FORWARD_DAYS = 3;
+
+// End time buffer: added to Polymarket's endDate to cover UMA 2h liveness period
+export const END_TIME_BUFFER_HOURS = 4;
+export const END_TIME_BUFFER_SECONDS = END_TIME_BUFFER_HOURS * 3600;
 
 // LLM Configuration
 export const LLM_ENABLED = process.env.LLM_ENABLED === 'true';
