@@ -16,6 +16,7 @@ const mockPrisma = {
   prediction: {
     findUnique: vi.fn(),
     create: vi.fn(),
+    update: vi.fn(),
     updateMany: vi.fn(),
   },
   picks: {
@@ -318,6 +319,7 @@ describe('PredictionMarketEscrowIndexer', () => {
     mockPrisma.event.create.mockResolvedValue({});
     mockPrisma.prediction.findUnique.mockResolvedValue(null);
     mockPrisma.prediction.create.mockResolvedValue({});
+    mockPrisma.prediction.update.mockResolvedValue({});
     mockPrisma.prediction.updateMany.mockResolvedValue({ count: 1 });
     mockPrisma.picks.findUnique.mockResolvedValue(null);
     mockPrisma.picks.create.mockResolvedValue({});
@@ -771,9 +773,12 @@ describe('PredictionMarketEscrowIndexer', () => {
       expect(result.description).toContain('Pyth Network Lazer oracle');
       expect(result.description).toContain('over');
       expect(result.description).toContain('71,080');
+      expect(result.description).toContain(
+        'exactly $71,080 at settlement, OVER wins'
+      );
     });
 
-    it('should format UNDER for overWinsOnTie=false', () => {
+    it('should always use OVER direction regardless of overWinsOnTie', () => {
       const conditionId = makePythConditionId({
         feedLazerId: 2,
         endTime: 1700200000n,
@@ -782,8 +787,11 @@ describe('PredictionMarketEscrowIndexer', () => {
         overWinsOnTie: false,
       });
       const result = buildPythConditionData(conditionId)!;
-      expect(result.question).toBe('Crypto.ETH/USD UNDER $3,500');
-      expect(result.shortName).toBe('ETH UNDER $3,500');
+      expect(result.question).toBe('Crypto.ETH/USD OVER $3,500');
+      expect(result.shortName).toBe('ETH OVER $3,500');
+      expect(result.description).toContain(
+        'exactly $3,500 at settlement, UNDER wins'
+      );
     });
 
     it('should preserve full decimal precision for small exponents', () => {
@@ -877,7 +885,7 @@ describe('PredictionMarketEscrowIndexer', () => {
         overWinsOnTie: false,
       });
       const result = buildPythConditionData(conditionId)!;
-      expect(result.question).toBe('Commodities.USOILSPOT UNDER $-5');
+      expect(result.question).toBe('Commodities.USOILSPOT OVER $-5');
     });
 
     // ─── categorySlug derivation ──────────────────────────────────────
@@ -1067,7 +1075,7 @@ describe('PredictionMarketEscrowIndexer', () => {
       expect(mockPrisma.picks.create).toHaveBeenCalledTimes(1);
     });
 
-    it('should format UNDER direction when overWinsOnTie is false', async () => {
+    it('should always use OVER direction even when overWinsOnTie is false', async () => {
       const conditionId = makePythConditionId({
         feedLazerId: 2, // ETH
         endTime: 1700200000n,
@@ -1080,9 +1088,12 @@ describe('PredictionMarketEscrowIndexer', () => {
       await indexer.indexBlocks('test', [50]);
 
       const upsertCall = mockPrisma.condition.upsert.mock.calls[0][0];
-      expect(upsertCall.create.question).toBe('Crypto.ETH/USD UNDER $3,500');
-      expect(upsertCall.create.shortName).toBe('ETH UNDER $3,500');
-      expect(upsertCall.create.description).toContain('under');
+      expect(upsertCall.create.question).toBe('Crypto.ETH/USD OVER $3,500');
+      expect(upsertCall.create.shortName).toBe('ETH OVER $3,500');
+      expect(upsertCall.create.description).toContain('over');
+      expect(upsertCall.create.description).toContain(
+        'exactly $3,500 at settlement, UNDER wins'
+      );
     });
 
     it('should handle fractional prices without losing precision', async () => {
@@ -1222,6 +1233,140 @@ describe('PredictionMarketEscrowIndexer', () => {
 
       // But category.findFirst should only be called once (cached)
       expect(mockPrisma.category.findFirst).toHaveBeenCalledTimes(1);
+    });
+  });
+
+  // ─── SAP-767: Repair missing positions on re-encounter ─────────────
+
+  describe('SAP-767: repair missing positions', () => {
+    it('should warn and still create prediction when initial RPC fails', async () => {
+      const indexer = new PredictionMarketEscrowIndexer(42161);
+      const log = makePredictionCreatedLog();
+      const consoleWarnSpy = vi.spyOn(console, 'warn');
+
+      // RPC call to getPrediction fails
+      indexer.client = {
+        getLogs: vi.fn().mockResolvedValue([log]),
+        getBlock: vi.fn().mockResolvedValue(MOCK_BLOCK),
+        readContract: vi.fn().mockRejectedValue(new Error('RPC timeout')),
+      };
+
+      await indexer.indexBlocks('test', [50]);
+
+      // Prediction should still be created (but with pickConfigId: null)
+      expect(mockPrisma.prediction.create).toHaveBeenCalledTimes(1);
+      const predCreate = mockPrisma.prediction.create.mock.calls[0][0];
+      expect(predCreate.data.pickConfigId).toBeNull();
+
+      // Should log a warning about the RPC failure
+      expect(consoleWarnSpy).toHaveBeenCalledWith(
+        expect.stringContaining('RPC failed'),
+        expect.anything()
+      );
+
+      consoleWarnSpy.mockRestore();
+    });
+
+    it('should repair positions when re-encountering a prediction with null pickConfigId', async () => {
+      const indexer = new PredictionMarketEscrowIndexer(42161);
+      const log = makePredictionCreatedLog();
+
+      // Prediction exists but pickConfigId is null (previous RPC failure)
+      mockPrisma.prediction.findUnique.mockResolvedValue({
+        predictionId: PREDICTION_ID.toLowerCase(),
+        pickConfigId: null,
+      });
+
+      // This time the RPC succeeds
+      indexer.client = {
+        getLogs: vi.fn().mockResolvedValue([log]),
+        getBlock: vi.fn().mockResolvedValue(MOCK_BLOCK),
+        readContract: vi
+          .fn()
+          .mockResolvedValueOnce({
+            pickConfigId: PICK_CONFIG_ID,
+            predictorTokensMinted: 1000000000000000000n,
+            counterpartyTokensMinted: 2000000000000000000n,
+          })
+          .mockResolvedValueOnce([
+            {
+              conditionResolver: NON_PYTH_RESOLVER as `0x${string}`,
+              conditionId: keccak256(toHex('cond-1')),
+              predictedOutcome: 1,
+            },
+          ]),
+      };
+
+      await indexer.indexBlocks('test', [50]);
+
+      // Should NOT create a new prediction (already exists)
+      expect(mockPrisma.prediction.create).not.toHaveBeenCalled();
+
+      // Should run the repair transaction — picks + positions + prediction update
+      expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1);
+      expect(mockPrisma.picks.create).toHaveBeenCalledTimes(1);
+
+      // Should update the prediction with the now-known pickConfigId
+      expect(mockPrisma.prediction.update).toHaveBeenCalledWith({
+        where: { predictionId: PREDICTION_ID.toLowerCase() },
+        data: { pickConfigId: PICK_CONFIG_ID.toLowerCase() },
+      });
+    });
+
+    it('should skip repair when prediction already has a pickConfigId', async () => {
+      const indexer = new PredictionMarketEscrowIndexer(42161);
+      const log = makePredictionCreatedLog();
+
+      // Prediction exists WITH pickConfigId (normal idempotency path)
+      mockPrisma.prediction.findUnique.mockResolvedValue({
+        predictionId: PREDICTION_ID.toLowerCase(),
+        pickConfigId: PICK_CONFIG_ID.toLowerCase(),
+      });
+
+      indexer.client = {
+        getLogs: vi.fn().mockResolvedValue([log]),
+        getBlock: vi.fn().mockResolvedValue(MOCK_BLOCK),
+      };
+
+      await indexer.indexBlocks('test', [50]);
+
+      // No transaction, no RPC calls, no writes
+      expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+      expect(mockPrisma.prediction.create).not.toHaveBeenCalled();
+    });
+
+    it('should log a severe error when repair RPC also fails', async () => {
+      const indexer = new PredictionMarketEscrowIndexer(42161);
+      const log = makePredictionCreatedLog();
+      const consoleErrorSpy = vi.spyOn(console, 'error');
+
+      // Prediction exists but pickConfigId is null
+      mockPrisma.prediction.findUnique.mockResolvedValue({
+        predictionId: PREDICTION_ID.toLowerCase(),
+        pickConfigId: null,
+      });
+
+      // RPC fails again on repair attempt
+      indexer.client = {
+        getLogs: vi.fn().mockResolvedValue([log]),
+        getBlock: vi.fn().mockResolvedValue(MOCK_BLOCK),
+        readContract: vi.fn().mockRejectedValue(new Error('RPC timeout again')),
+      };
+
+      await indexer.indexBlocks('test', [50]);
+
+      // Should NOT crash the indexer
+      // Should log a severe/critical error
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
+        expect.stringContaining('CRITICAL'),
+        expect.anything()
+      );
+
+      // No writes should happen
+      expect(mockPrisma.$transaction).not.toHaveBeenCalled();
+      expect(mockPrisma.prediction.create).not.toHaveBeenCalled();
+
+      consoleErrorSpy.mockRestore();
     });
   });
 });

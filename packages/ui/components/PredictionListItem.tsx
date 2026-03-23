@@ -27,8 +27,6 @@ export type PredictionListItemProps = {
   onRemove?: (id: string) => void;
   yesLabel?: string;
   noLabel?: string;
-  /** Hide the choice badge entirely (e.g. for Pyth picks where Over/Under is in the question text). */
-  hideBadge?: boolean;
 };
 
 export function PredictionListItem({
@@ -38,7 +36,6 @@ export function PredictionListItem({
   onRemove,
   yesLabel = 'YES',
   noLabel = 'NO',
-  hideBadge = false,
 }: PredictionListItemProps) {
   return (
     <div className="flex items-center gap-2">
@@ -58,13 +55,11 @@ export function PredictionListItem({
                 </div>
               )}
             </div>
-            {!hideBadge && (
-              <span className="shrink-0">
-                <PredictionChoiceBadge
-                  choice={prediction.prediction ? yesLabel : noLabel}
-                />
-              </span>
-            )}
+            <span className="shrink-0">
+              <PredictionChoiceBadge
+                choice={prediction.prediction ? yesLabel : noLabel}
+              />
+            </span>
           </div>
         </div>
       </div>

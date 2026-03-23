@@ -150,18 +150,6 @@ describe('toPicks — Pyth resolver picks', () => {
     expect(picks[0].source).toBe('pyth');
   });
 
-  it('populates pythPrediction with decoded feed label, direction, targetPrice, priceExpo, dateTimeLocal', () => {
-    const picks = toPicks([makePickData()], true, emptyConditionsMap);
-    const pp = picks[0].pythPrediction;
-
-    expect(pp).toBeDefined();
-    expect(pp!.priceFeedLabel).toBe('ETH');
-    expect(pp!.direction).toBe('over');
-    expect(pp!.targetPrice).toBe(2500);
-    expect(pp!.priceExpo).toBe(STRIKE_EXPO);
-    expect(pp!.dateTimeLocal).toMatch(/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/);
-  });
-
   it('choice is "Yes" or "No" (consistent with Polymarket)', () => {
     // Predictor side, predicted over (0=YES) → "Yes"
     const overPicks = toPicks(
@@ -197,8 +185,6 @@ describe('toPicks — Pyth resolver picks', () => {
     );
 
     expect(picks[0].source).toBe('pyth');
-    expect(picks[0].pythPrediction).toBeDefined();
-    expect(picks[0].pythPrediction!.priceFeedLabel).toBeUndefined();
   });
 
   it('uses endTime from decoded market when conditionsMap has no entry', () => {
@@ -216,8 +202,6 @@ describe('toPicks — Pyth resolver picks', () => {
     );
 
     expect(picks[0].source).toBe('pyth');
-    // No pythPrediction since decode failed
-    expect(picks[0].pythPrediction).toBeUndefined();
     // Falls back to conditionId as question
     expect(picks[0].question).toBe('0xdead');
   });

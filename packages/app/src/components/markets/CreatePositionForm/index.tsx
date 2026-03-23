@@ -208,7 +208,7 @@ const CreatePositionFormInner = ({
     picks: Array<{
       conditionId: string;
       question: string;
-      choice: 'Yes' | 'No' | 'Over' | 'Under';
+      choice: 'Yes' | 'No';
       source?: 'polymarket' | 'pyth';
     }>;
     positionSize: string;
@@ -773,10 +773,9 @@ const CreatePositionFormInner = ({
       qp.append('leg', `${s.question}|${s.prediction ? 'Yes' : 'No'}`);
     });
     pythPredictions.forEach((p) => {
-      // No badge for Pyth — direction is already in the question text
       qp.append(
         'leg',
-        `${p.priceFeedLabel ?? 'Crypto'} ${p.direction === 'over' ? '>' : '<'} $${p.targetPrice.toLocaleString()}|`
+        `${p.priceFeedLabel ?? 'Crypto'} OVER $${p.targetPrice.toLocaleString()}|${p.direction === 'over' ? 'Yes' : 'No'}`
       );
     });
     if (watchedPositionSize) qp.set('wager', watchedPositionSize);

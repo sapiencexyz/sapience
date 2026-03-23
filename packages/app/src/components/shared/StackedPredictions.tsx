@@ -6,11 +6,7 @@ import {
   HoverCardContent,
   HoverCardTrigger,
 } from '@sapience/ui/components/ui/hover-card';
-import {
-  PredictionChoiceBadge,
-  PythPredictionListItem,
-  type PythPrediction,
-} from '@sapience/ui';
+import { PredictionChoiceBadge } from '@sapience/ui';
 import { getCategoryIcon } from '~/lib/theme/categoryIcons';
 import { getCategoryStyle } from '~/lib/utils/categoryStyle';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
@@ -30,11 +26,6 @@ export interface Pick {
    * (Useful when a combo includes a Pyth pick.)
    */
   source?: 'polymarket' | 'pyth';
-  /**
-   * Optional structured Pyth prediction data. When provided, we render with `PythPredictionListItem`
-   * (no "OVER $0.19" badge).
-   */
-  pythPrediction?: PythPrediction;
   /** Whether the condition has been settled on-chain. */
   settled?: boolean;
   /** If settled, whether it resolved to YES. */
@@ -125,48 +116,32 @@ export const StackedPredictionsTitle = React.memo(
     const remainingPicks = picks.slice(1);
     const remainingCount = remainingPicks.length;
     const badgeLabel = String(firstPick.choice).toUpperCase();
-    const firstIsPyth = firstPick.source === 'pyth';
-    const firstHasPythData = firstIsPyth && !!firstPick.pythPrediction;
 
     return (
       <div
         className={`flex items-center gap-2 flex-wrap xl:flex-nowrap min-w-0 ${className ?? ''}`}
       >
-        {firstHasPythData ? (
-          <div className={`min-w-0 flex-initial ${maxWidthClass}`}>
-            <PythPredictionListItem
-              prediction={firstPick.pythPrediction!}
-              layout="inline"
-              showOracleIcon={false}
+        {/* Question + badge stay together; question truncates but doesn't push badge to far right */}
+        <span
+          className={`inline-flex items-center gap-2 min-w-0 max-w-full ${maxWidthClass}`}
+        >
+          {firstPick.conditionId ? (
+            <ConditionTitleLink
+              conditionId={firstPick.conditionId}
+              resolverAddress={firstPick.resolverAddress ?? undefined}
+              title={firstPick.question}
+              clampLines={1}
+              className="text-sm min-w-0 flex-1"
             />
-          </div>
-        ) : (
-          <>
-            {/* Question + badge stay together; question truncates but doesn't push badge to far right */}
-            <span
-              className={`inline-flex items-center gap-2 min-w-0 max-w-full ${maxWidthClass}`}
-            >
-              {firstPick.conditionId ? (
-                <ConditionTitleLink
-                  conditionId={firstPick.conditionId}
-                  resolverAddress={firstPick.resolverAddress ?? undefined}
-                  title={firstPick.question}
-                  clampLines={1}
-                  className="text-sm min-w-0 flex-1"
-                />
-              ) : (
-                <span className="min-w-0 flex-1 block truncate text-sm font-mono text-brand-white">
-                  {firstPick.question}
-                </span>
-              )}
-              {!firstIsPyth && (
-                <span className="shrink-0 whitespace-nowrap">
-                  <PredictionChoiceBadge choice={badgeLabel} />
-                </span>
-              )}
+          ) : (
+            <span className="min-w-0 flex-1 block truncate text-sm font-mono text-brand-white">
+              {firstPick.question}
             </span>
-          </>
-        )}
+          )}
+          <span className="shrink-0 whitespace-nowrap">
+            <PredictionChoiceBadge choice={badgeLabel} />
+          </span>
+        </span>
 
         <span className="inline-flex items-center gap-2 whitespace-nowrap basis-full md:basis-auto md:shrink-0">
           {/* "and N predictions" hover card */}
@@ -194,43 +169,28 @@ export const StackedPredictionsTitle = React.memo(
                         key={`${pick.conditionId || i}-${i}`}
                         className="flex items-center gap-3 px-3 py-2"
                       >
-                        {pick.source === 'pyth' && pick.pythPrediction ? (
-                          <div className="min-w-0 flex-1">
-                            <PythPredictionListItem
-                              prediction={pick.pythPrediction}
-                              layout="inline"
-                            />
-                          </div>
+                        <MarketBadge
+                          label={pick.question}
+                          size={32}
+                          color={getCategoryColor(pick.categorySlug)}
+                          categorySlug={pick.categorySlug}
+                        />
+                        {pick.conditionId ? (
+                          <ConditionTitleLink
+                            conditionId={pick.conditionId}
+                            resolverAddress={pick.resolverAddress ?? undefined}
+                            title={pick.question}
+                            clampLines={1}
+                            className="text-sm"
+                          />
                         ) : (
-                          <>
-                            <MarketBadge
-                              label={pick.question}
-                              size={32}
-                              color={getCategoryColor(pick.categorySlug)}
-                              categorySlug={pick.categorySlug}
-                            />
-                            {pick.conditionId ? (
-                              <ConditionTitleLink
-                                conditionId={pick.conditionId}
-                                resolverAddress={
-                                  pick.resolverAddress ?? undefined
-                                }
-                                title={pick.question}
-                                clampLines={1}
-                                className="text-sm"
-                              />
-                            ) : (
-                              <span className="text-sm font-mono text-brand-white">
-                                {pick.question}
-                              </span>
-                            )}
-                            {pick.source !== 'pyth' && (
-                              <PredictionChoiceBadge
-                                choice={String(pick.choice).toUpperCase()}
-                              />
-                            )}
-                          </>
+                          <span className="text-sm font-mono text-brand-white">
+                            {pick.question}
+                          </span>
                         )}
+                        <PredictionChoiceBadge
+                          choice={String(pick.choice).toUpperCase()}
+                        />
                       </div>
                     ))}
                   </div>

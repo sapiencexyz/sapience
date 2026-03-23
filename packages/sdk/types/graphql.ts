@@ -328,7 +328,7 @@ export type CategoryWhereUniqueInput = {
   conditions?: InputMaybe<ConditionListRelationFilter>;
   createdAt?: InputMaybe<DateTimeFilter>;
   id?: InputMaybe<Scalars['Int']['input']>;
-  name?: InputMaybe<Scalars['String']['input']>;
+  name?: InputMaybe<StringFilter>;
   slug?: InputMaybe<Scalars['String']['input']>;
 };
 
