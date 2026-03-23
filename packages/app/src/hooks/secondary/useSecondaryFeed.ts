@@ -55,7 +55,6 @@ export function useSecondaryFeed(options: UseSecondaryFeedOptions = {}) {
               token: l.token,
               collateral: l.collateral,
               tokenAmount: l.tokenAmount,
-              minPrice: l.minPrice,
               seller: l.seller,
               sellerDeadline: l.sellerDeadline,
               chainId: l.chainId,

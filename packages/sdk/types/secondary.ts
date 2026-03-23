@@ -63,11 +63,10 @@ export interface SecondaryAuctionRequestPayload {
   token: string; // Position token address
   collateral: string; // Collateral token address
   tokenAmount: string; // wei string
-  minPrice: string; // wei string - minimum acceptable collateral
   seller: string; // EOA or smart account
   sellerNonce: number;
   sellerDeadline: number; // unix timestamp
-  sellerSignature: string; // EIP-712 TradeApproval signature
+  sellerSignature: string; // EIP-712 TradeApproval signature (price=0, buyer=0x0)
   chainId: number;
   refCode?: string;
   sellerSessionKeyData?: string;
@@ -106,7 +105,6 @@ export interface SecondaryAuctionDetails {
   token: string;
   collateral: string;
   tokenAmount: string;
-  minPrice: string;
   seller: string;
   sellerDeadline: number;
   chainId: number;
@@ -131,7 +129,6 @@ export interface SecondaryListingSummary {
   token: string;
   collateral: string;
   tokenAmount: string;
-  minPrice: string;
   seller: string;
   sellerDeadline: number;
   chainId: number;

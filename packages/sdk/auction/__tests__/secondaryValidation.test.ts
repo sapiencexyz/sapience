@@ -60,7 +60,6 @@ async function makeSignedListing(
   const nonce = Math.floor(Math.random() * 1_000_000);
   const deadline = futureDeadline();
   const tokenAmount = '1000000000000000000';
-  const minPrice = '500000000000000000';
 
   const typedData = buildSellerTradeApproval({
     token: TOKEN,
@@ -68,7 +67,7 @@ async function makeSignedListing(
     seller: sellerAccount.address,
     buyer: zeroAddress, // buyer unknown at listing time
     tokenAmount: BigInt(tokenAmount),
-    price: BigInt(minPrice),
+    price: 0n, // price unknown at listing time
     sellerNonce: BigInt(nonce),
     sellerDeadline: BigInt(deadline),
     verifyingContract: VERIFYING_CONTRACT,
@@ -86,7 +85,6 @@ async function makeSignedListing(
     token: TOKEN,
     collateral: COLLATERAL,
     tokenAmount,
-    minPrice,
     seller: sellerAccount.address,
     sellerNonce: nonce,
     sellerDeadline: deadline,
@@ -230,18 +228,6 @@ describe('validateSecondaryListing', () => {
     }
   });
 
-  test('rejects zero minPrice', async () => {
-    const listing = await makeSignedListing({ minPrice: '0' });
-    const result = await validateSecondaryListing(
-      listing,
-      DEFAULT_LISTING_OPTS
-    );
-    expect(result.status).toBe('invalid');
-    if (result.status === 'invalid') {
-      expect(result.code).toBe('MISSING_FIELD');
-    }
-  });
-
   test('rejects invalid nonce', async () => {
     const listing = await makeSignedListing({
       sellerNonce: -1,
@@ -361,7 +347,7 @@ describe('validateSecondaryListing', () => {
       seller: sellerAccount.address,
       buyer: zeroAddress,
       tokenAmount: BigInt(listing.tokenAmount),
-      price: BigInt(listing.minPrice),
+      price: 0n,
       sellerNonce: BigInt(listing.sellerNonce),
       sellerDeadline: BigInt(listing.sellerDeadline),
       verifyingContract: VERIFYING_CONTRACT,
@@ -562,21 +548,6 @@ describe('validateSecondaryBid', () => {
   });
 
   // ── Price validation ────────────────────────────────────────────────────────
-
-  test('rejects bid price below listing minPrice with PRICE_TOO_LOW code', async () => {
-    const listing = await makeSignedListing({
-      minPrice: '1000000000000000000',
-    });
-    const bid = await makeSignedBid(listing, {
-      price: '100000000000000000', // 0.1 ETH < 1 ETH min
-    });
-    const result = await validateSecondaryBid(bid, listing, DEFAULT_BID_OPTS);
-    expect(result.status).toBe('invalid');
-    if (result.status === 'invalid') {
-      expect(result.code).toBe('PRICE_TOO_LOW');
-      expect(result.reason).toContain('below minimum');
-    }
-  });
 
   // ── Signature ───────────────────────────────────────────────────────────────
 

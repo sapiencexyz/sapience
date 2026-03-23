@@ -80,7 +80,7 @@ export async function verifySellerSignature(
       payload.seller as Address,
       ZERO_ADDRESS, // buyer unknown at listing time
       BigInt(payload.tokenAmount),
-      BigInt(payload.minPrice)
+      0n // price unknown at listing time — hardcoded to 0
     );
 
     const domain = getSecondaryDomain(verifyingContract, payload.chainId);

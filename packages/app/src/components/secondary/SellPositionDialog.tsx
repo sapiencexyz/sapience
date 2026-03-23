@@ -56,7 +56,6 @@ export default function SellPositionDialog({
     }
   }, [position.balance]);
   const [tokenAmount, setTokenAmount] = React.useState(initialBalance);
-  const [minPrice, setMinPrice] = React.useState('');
   const [deadlineSeconds, setDeadlineSeconds] = React.useState('900');
   const [error, setError] = React.useState<string | null>(null);
 
@@ -86,19 +85,10 @@ export default function SellPositionDialog({
           setError('Please enter a valid token amount');
           return;
         }
-        if (!minPrice.trim() || !/^\d*\.?\d*$/.test(minPrice.trim())) {
-          setError('Please enter a valid minimum price');
-          return;
-        }
         const amountWei = parseEther(tokenAmount.trim());
-        const priceWei = parseEther(minPrice.trim());
 
         if (amountWei <= 0n) {
           setError('Token amount must be greater than 0');
-          return;
-        }
-        if (priceWei <= 0n) {
-          setError('Minimum price must be greater than 0');
           return;
         }
         if (amountWei > BigInt(position.balance)) {
@@ -109,7 +99,6 @@ export default function SellPositionDialog({
         const result = await startAuction({
           token: position.tokenAddress as Address,
           tokenAmount: amountWei,
-          minPrice: priceWei,
           deadlineSeconds: Number(deadlineSeconds),
         });
 
@@ -122,7 +111,7 @@ export default function SellPositionDialog({
         );
       }
     },
-    [tokenAmount, minPrice, deadlineSeconds, position, startAuction]
+    [tokenAmount, deadlineSeconds, position, startAuction]
   );
 
   return (
@@ -168,19 +157,6 @@ export default function SellPositionDialog({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="minPrice">
-                Minimum Price ({collateralSymbol})
-              </Label>
-              <Input
-                id="minPrice"
-                type="text"
-                value={minPrice}
-                onChange={(e) => setMinPrice(e.target.value)}
-                placeholder="0.0"
-              />
-            </div>
-
-            <div className="space-y-2">
               <Label htmlFor="deadline">Deadline</Label>
               <Select
                 value={deadlineSeconds}
@@ -208,7 +184,7 @@ export default function SellPositionDialog({
             <Button
               type="submit"
               className="w-full"
-              disabled={isSubmitting || !tokenAmount || !minPrice}
+              disabled={isSubmitting || !tokenAmount}
             >
               {isSubmitting ? (
                 <>
