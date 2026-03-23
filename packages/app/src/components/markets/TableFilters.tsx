@@ -406,19 +406,19 @@ export default function TableFilters({
   return (
     <div
       className={cn(
-        'grid gap-2 md:gap-4 grid-cols-2 md:grid-cols-5',
+        'grid gap-2 xl:gap-4 grid-cols-2 xl:grid-cols-5',
         className
       )}
     >
       {/* Search input */}
       <div className="relative flex items-center">
-        <Search className="hidden md:block absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none z-10" />
+        <Search className="hidden xl:block absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none z-10" />
         <input
           type="text"
           placeholder="Search questions"
           value={searchTerm}
           onChange={handleSearchInputChange}
-          className="w-full h-8 rounded-md border border-border bg-muted/30 text-left pl-3 md:pl-9 pr-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-ring"
+          className="w-full h-8 rounded-md border border-border bg-muted/30 text-left pl-3 xl:pl-9 pr-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-ring"
         />
       </div>
       <CategoryMultiSelect
@@ -466,7 +466,7 @@ export default function TableFilters({
           { range: [TIME_SLIDER_MIN, 0], label: 'Ended in the past' },
         ]}
       />
-      <div className="col-span-2 md:col-span-1">
+      <div className="col-span-2 xl:col-span-1">
         <ResolutionStatusFilter
           value={filters.resolutionStatus}
           onChange={handleResolutionStatusChange}

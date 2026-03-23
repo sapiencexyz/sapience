@@ -1,6 +1,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { PolymarketMarket } from '../types';
 import type { SapienceOutput } from '../types/sapience';
+import { RELIST_FORWARD_DAYS } from '../constants';
 
 // Mock all external dependencies before importing main
 vi.mock('../utils', () => ({
@@ -115,7 +116,7 @@ describe('relist main()', () => {
     expect(passedMarkets[0].conditionId).toBe('0x2');
   });
 
-  it('overrides endDate to now+7d on new markets', async () => {
+  it('overrides endDate to now+RELIST_FORWARD_DAYS on new markets', async () => {
     const markets = [
       makeMarket({ conditionId: '0x1', endDate: '2020-01-01T00:00:00Z' }),
     ];
@@ -129,10 +130,10 @@ describe('relist main()', () => {
 
     const passedMarkets = mockGroupMarkets.mock.calls[0][0];
     const newEndDate = new Date(passedMarkets[0].endDate).getTime();
-    const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+    const forwardMs = RELIST_FORWARD_DAYS * 24 * 60 * 60 * 1000;
 
-    expect(newEndDate).toBeGreaterThanOrEqual(before + sevenDaysMs - 5000);
-    expect(newEndDate).toBeLessThanOrEqual(after + sevenDaysMs + 5000);
+    expect(newEndDate).toBeGreaterThanOrEqual(before + forwardMs - 5000);
+    expect(newEndDate).toBeLessThanOrEqual(after + forwardMs + 5000);
   });
 
   it('exits early when all markets already exist in Sapience', async () => {

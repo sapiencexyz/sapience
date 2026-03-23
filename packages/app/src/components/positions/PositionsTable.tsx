@@ -11,35 +11,42 @@ import {
   TableRow,
 } from '@sapience/ui/components/ui/table';
 import { Badge } from '@sapience/ui/components/ui/badge';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@sapience/ui/components/ui/tooltip';
+import { Info } from 'lucide-react';
 import * as React from 'react';
+import { formatDistanceToNow } from 'date-fns';
+import { COLLATERAL_SYMBOLS, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@sapience/ui/components/ui/popover';
+import { PredictionChoiceBadge } from '@sapience/ui';
+import { useAccount } from 'wagmi';
 import EmptyTabState from '~/components/shared/EmptyTabState';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import Loader from '~/components/shared/Loader';
 
 import CountdownCell from '~/components/shared/CountdownCell';
-import { formatDistanceToNow } from 'date-fns';
 import {
   toPicks,
   computeResultFromConditions,
   type ConditionsMap,
 } from '~/components/positions/toPickLegs';
-import { COLLATERAL_SYMBOLS, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import {
   usePositionBalances,
   usePositionBalancesByConditionId,
   type PositionBalance,
 } from '~/hooks/graphql/usePositions';
 import { useConditionsByIds } from '~/hooks/graphql/useConditionsByIds';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@sapience/ui/components/ui/popover';
 import { StackedIcons } from '~/components/shared/StackedPredictions';
 import CounterpartyBadge from '~/components/shared/CounterpartyBadge';
 import { getCategoryIcon } from '~/lib/theme/categoryIcons';
 import { getCategoryStyle } from '~/lib/utils/categoryStyle';
-import { PredictionChoiceBadge } from '@sapience/ui';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
 import OgShareDialogBase from '~/components/shared/OgShareDialog';
 import {
@@ -53,7 +60,6 @@ import {
 } from '~/lib/utils/tableFilters';
 import { useEscrowWrite } from '~/hooks/blockchain/useEscrowWrite';
 import { useClaimableAmount } from '~/hooks/blockchain/useEscrowContract';
-import { useAccount } from 'wagmi';
 import { useSession } from '~/lib/context/SessionContext';
 import SellPositionDialog from '~/components/secondary/SellPositionDialog';
 import { useFeatureFlag } from '~/hooks/useFeatureFlag';
@@ -156,6 +162,7 @@ function PositionRow({
     if (!predictionId) return;
     setIsRedeeming(true);
     try {
+      // eslint-disable-next-line @typescript-eslint/no-shadow
       const result = await settleAndRedeem({
         predictionId: predictionId as `0x${string}`,
         positionToken: position.tokenAddress as Address,
@@ -377,7 +384,6 @@ function PositionRow({
             BigInt(position.balance) > 0n && (
               <SellPositionDialog
                 position={position}
-                collateralSymbol={collateralSymbol}
                 onSuccess={onRefetch}
               >
                 <button
@@ -642,7 +648,21 @@ export default function PositionsTable({
               <TableHead className="h-auto py-3">Position Size</TableHead>
               <TableHead className="h-auto py-3">Payout</TableHead>
               <TableHead className="h-auto py-3">Profit/Loss</TableHead>
-              <TableHead className="h-auto py-3">Ends</TableHead>
+              <TableHead className="h-auto py-3">
+                <span className="flex items-center gap-1">
+                  Ends
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex cursor-help">
+                        <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      End times are estimates and may vary
+                    </TooltipContent>
+                  </Tooltip>
+                </span>
+              </TableHead>
               <TableHead className="h-auto py-3"></TableHead>
             </TableRow>
           </TableHeader>
