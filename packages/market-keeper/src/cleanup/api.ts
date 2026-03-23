@@ -145,41 +145,51 @@ export async function fetchExpiredNoEngagementConditions(
   return all;
 }
 
+const CHUNK_SIZE = 50;
+
 export async function fetchConditionsWithEngagement(
   apiUrl: string,
   ids: string[]
 ): Promise<string[]> {
   if (ids.length === 0) return [];
 
-  const response = await fetchWithRetry(`${apiUrl}/graphql`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify({
-      query: CONDITIONS_WITH_ENGAGEMENT_QUERY,
-      variables: { ids },
-    }),
-  });
+  const allEngaged: string[] = [];
 
-  if (!response.ok) {
-    const body = await response.text().catch(() => '(unreadable)');
-    throw new Error(
-      `GraphQL request failed: ${response.status} ${response.statusText}\n${body.slice(0, 500)}`
-    );
+  for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
+    const chunk = ids.slice(i, i + CHUNK_SIZE);
+    const response = await fetchWithRetry(`${apiUrl}/graphql`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+      body: JSON.stringify({
+        query: CONDITIONS_WITH_ENGAGEMENT_QUERY,
+        variables: { ids: chunk },
+      }),
+    });
+
+    if (!response.ok) {
+      const body = await response.text().catch(() => '(unreadable)');
+      throw new Error(
+        `GraphQL request failed: ${response.status} ${response.statusText}\n${body.slice(0, 500)}`
+      );
+    }
+
+    const result = (await response.json()) as GraphQLResponse<{
+      conditions: { id: string }[];
+    }>;
+    if (result.errors?.length) {
+      throw new Error(
+        `GraphQL errors: ${result.errors.map((e) => e.message).join('; ')}`
+      );
+    }
+
+    allEngaged.push(...(result.data?.conditions ?? []).map((c) => c.id));
   }
 
-  const result = (await response.json()) as GraphQLResponse<{
-    conditions: { id: string }[];
-  }>;
-  if (result.errors?.length) {
-    throw new Error(
-      `GraphQL errors: ${result.errors.map((e) => e.message).join('; ')}`
-    );
-  }
-
-  return (result.data?.conditions ?? []).map((c) => c.id);
+  return allEngaged;
 }
-
-const BATCH_LIMIT = 200;
 
 async function batchUpdateConditions(
   apiUrl: string,
@@ -193,8 +203,8 @@ async function batchUpdateConditions(
     const authHeaders = await getAdminAuthHeaders(privateKey);
     let totalUpdated = 0;
 
-    for (let i = 0; i < conditionIds.length; i += BATCH_LIMIT) {
-      const chunk = conditionIds.slice(i, i + BATCH_LIMIT);
+    for (let i = 0; i < conditionIds.length; i += CHUNK_SIZE) {
+      const chunk = conditionIds.slice(i, i + CHUNK_SIZE);
       const response = await fetchWithRetry(
         `${apiUrl}/admin/conditions/batch`,
         {
@@ -243,7 +253,9 @@ export async function privateConditions(
   privateKey: `0x${string}`,
   conditionIds: string[]
 ): Promise<{ success: boolean; updated?: number; error?: string }> {
-  return batchUpdateConditions(apiUrl, privateKey, conditionIds, { public: false });
+  return batchUpdateConditions(apiUrl, privateKey, conditionIds, {
+    public: false,
+  });
 }
 
 export async function republishConditions(
@@ -251,7 +263,9 @@ export async function republishConditions(
   privateKey: `0x${string}`,
   conditionIds: string[]
 ): Promise<{ success: boolean; updated?: number; error?: string }> {
-  return batchUpdateConditions(apiUrl, privateKey, conditionIds, { public: true });
+  return batchUpdateConditions(apiUrl, privateKey, conditionIds, {
+    public: true,
+  });
 }
 
 export async function settleConditionOnPolygon(
