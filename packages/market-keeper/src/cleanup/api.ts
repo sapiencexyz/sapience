@@ -145,7 +145,7 @@ export async function fetchExpiredNoEngagementConditions(
   return all;
 }
 
-const RECHECK_CHUNK_SIZE = 50;
+const CHUNK_SIZE = 50;
 
 export async function fetchConditionsWithEngagement(
   apiUrl: string,
@@ -155,8 +155,8 @@ export async function fetchConditionsWithEngagement(
 
   const allEngaged: string[] = [];
 
-  for (let i = 0; i < ids.length; i += RECHECK_CHUNK_SIZE) {
-    const chunk = ids.slice(i, i + RECHECK_CHUNK_SIZE);
+  for (let i = 0; i < ids.length; i += CHUNK_SIZE) {
+    const chunk = ids.slice(i, i + CHUNK_SIZE);
     const response = await fetchWithRetry(`${apiUrl}/graphql`, {
       method: 'POST',
       headers: {
@@ -191,8 +191,6 @@ export async function fetchConditionsWithEngagement(
   return allEngaged;
 }
 
-const BATCH_LIMIT = 200;
-
 async function batchUpdateConditions(
   apiUrl: string,
   privateKey: `0x${string}`,
@@ -205,8 +203,8 @@ async function batchUpdateConditions(
     const authHeaders = await getAdminAuthHeaders(privateKey);
     let totalUpdated = 0;
 
-    for (let i = 0; i < conditionIds.length; i += BATCH_LIMIT) {
-      const chunk = conditionIds.slice(i, i + BATCH_LIMIT);
+    for (let i = 0; i < conditionIds.length; i += CHUNK_SIZE) {
+      const chunk = conditionIds.slice(i, i + CHUNK_SIZE);
       const response = await fetchWithRetry(
         `${apiUrl}/admin/conditions/batch`,
         {
