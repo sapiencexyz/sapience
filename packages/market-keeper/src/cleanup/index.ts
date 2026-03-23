@@ -22,6 +22,7 @@ import { validatePrivateKey, confirmProductionAccess, log } from '../utils';
 import {
   fetchExpiredNoEngagementConditions,
   privateConditions,
+  republishConditions,
   fetchConditionsWithEngagement,
   settleConditionOnPolygon,
 } from './api';
@@ -169,8 +170,16 @@ export async function main(): Promise<void> {
 
     if (engagedIds.length > 0) {
       log(
-        `[Cleanup] ${engagedIds.length} privated condition(s) gained engagement — settling directly`
+        `[Cleanup] ${engagedIds.length} privated condition(s) gained engagement — re-publishing and settling`
       );
+
+      // Re-publish so users can see their positions
+      const republishResult = await republishConditions(apiUrl, privateKey!, engagedIds);
+      if (republishResult.success) {
+        log(`[Cleanup] Re-published ${republishResult.updated} condition(s)`);
+      } else {
+        log(`[Cleanup] Re-publish failed: ${republishResult.error}`);
+      }
 
       const walletClient = createPolygonWalletClient(
         polygonRpcUrl,

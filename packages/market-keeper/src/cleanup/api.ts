@@ -181,10 +181,11 @@ export async function fetchConditionsWithEngagement(
 
 const BATCH_LIMIT = 200;
 
-export async function privateConditions(
+async function batchUpdateConditions(
   apiUrl: string,
   privateKey: `0x${string}`,
-  conditionIds: string[]
+  conditionIds: string[],
+  update: { public?: boolean }
 ): Promise<{ success: boolean; updated?: number; error?: string }> {
   if (conditionIds.length === 0) return { success: true, updated: 0 };
 
@@ -199,7 +200,7 @@ export async function privateConditions(
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', ...authHeaders },
-          body: JSON.stringify({ ids: chunk, update: { public: false } }),
+          body: JSON.stringify({ ids: chunk, update }),
         }
       );
 
@@ -235,6 +236,22 @@ export async function privateConditions(
       error: error instanceof Error ? error.message : String(error),
     };
   }
+}
+
+export async function privateConditions(
+  apiUrl: string,
+  privateKey: `0x${string}`,
+  conditionIds: string[]
+): Promise<{ success: boolean; updated?: number; error?: string }> {
+  return batchUpdateConditions(apiUrl, privateKey, conditionIds, { public: false });
+}
+
+export async function republishConditions(
+  apiUrl: string,
+  privateKey: `0x${string}`,
+  conditionIds: string[]
+): Promise<{ success: boolean; updated?: number; error?: string }> {
+  return batchUpdateConditions(apiUrl, privateKey, conditionIds, { public: true });
 }
 
 export async function settleConditionOnPolygon(

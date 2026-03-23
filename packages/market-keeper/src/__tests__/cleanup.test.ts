@@ -11,6 +11,7 @@ vi.mock('../utils', () => ({
 vi.mock('../cleanup/api', () => ({
   fetchExpiredNoEngagementConditions: vi.fn(),
   privateConditions: vi.fn(),
+  republishConditions: vi.fn(),
   fetchConditionsWithEngagement: vi.fn(),
   settleConditionOnPolygon: vi.fn(),
 }));
@@ -25,6 +26,7 @@ import { main } from '../cleanup/index';
 import {
   fetchExpiredNoEngagementConditions,
   privateConditions,
+  republishConditions,
   fetchConditionsWithEngagement,
   settleConditionOnPolygon,
 } from '../cleanup/api';
@@ -34,6 +36,7 @@ import { log } from '../utils';
 const mockFetchExpired = vi.mocked(fetchExpiredNoEngagementConditions);
 const mockPrivate = vi.mocked(privateConditions);
 const mockFetchByIds = vi.mocked(fetchConditionsWithEngagement);
+const mockRepublish = vi.mocked(republishConditions);
 const mockSettle = vi.mocked(settleConditionOnPolygon);
 const mockCanRequestResolution = vi.mocked(canRequestResolution);
 const mockLog = vi.mocked(log);
@@ -123,7 +126,7 @@ describe('cleanup-polymarket main()', () => {
     expect(logCalls.some((msg) => msg.includes('Not resolved'))).toBe(true);
   });
 
-  it('settles directly if a privated condition gains OI during safeguard wait', async () => {
+  it('re-publishes and settles if a privated condition gains OI during safeguard wait', async () => {
     const condition = makeCondition({
       id: '0x1',
       openInterest: '0',
@@ -132,6 +135,7 @@ describe('cleanup-polymarket main()', () => {
     mockFetchExpired.mockResolvedValue([condition]);
     mockCanRequestResolution.mockResolvedValue(true);
     mockPrivate.mockResolvedValue({ success: true, updated: 1 });
+    mockRepublish.mockResolvedValue({ success: true, updated: 1 });
     // After 15s wait, OI has appeared
     mockFetchByIds.mockResolvedValue(['0x1']);
     mockSettle.mockResolvedValue({ success: true });
@@ -144,6 +148,12 @@ describe('cleanup-polymarket main()', () => {
       expect.any(String),
       ['0x1']
     );
+    // Re-publish before settling
+    expect(mockRepublish).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(String),
+      ['0x1']
+    );
     expect(mockSettle).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
@@ -151,7 +161,7 @@ describe('cleanup-polymarket main()', () => {
     );
   });
 
-  it('settles directly if a privated condition gains attestations during safeguard wait', async () => {
+  it('re-publishes and settles if a privated condition gains attestations during safeguard wait', async () => {
     const condition = makeCondition({
       id: '0x1',
       openInterest: '0',
@@ -160,6 +170,7 @@ describe('cleanup-polymarket main()', () => {
     mockFetchExpired.mockResolvedValue([condition]);
     mockCanRequestResolution.mockResolvedValue(true);
     mockPrivate.mockResolvedValue({ success: true, updated: 1 });
+    mockRepublish.mockResolvedValue({ success: true, updated: 1 });
     // After 15s wait, attestations appeared
     mockFetchByIds.mockResolvedValue(['0x1']);
     mockSettle.mockResolvedValue({ success: true });
@@ -172,7 +183,12 @@ describe('cleanup-polymarket main()', () => {
       expect.any(String),
       ['0x1']
     );
-
+    // Re-publish before settling
+    expect(mockRepublish).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(String),
+      ['0x1']
+    );
     expect(mockSettle).toHaveBeenCalledWith(
       expect.anything(),
       expect.anything(),
