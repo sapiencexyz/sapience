@@ -17,7 +17,7 @@ import {
   useReactTable,
   type ColumnDef,
 } from '@tanstack/react-table';
-import { ChevronUp, ChevronDown } from 'lucide-react';
+import { ChevronUp, ChevronDown, Info } from 'lucide-react';
 import { formatEther } from 'viem';
 import {
   Tooltip,
@@ -273,6 +273,16 @@ function createColumns(
               className="px-0 gap-1 hover:bg-transparent whitespace-nowrap"
             >
               Ends
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex cursor-help">
+                    <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  End times are estimates and may vary
+                </TooltipContent>
+              </Tooltip>
               {sorted === 'asc' ? (
                 <ChevronUp className="h-4 w-4" />
               ) : sorted === 'desc' ? (
