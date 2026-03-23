@@ -575,20 +575,63 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     const predictionIdLower = event.predictionId.toLowerCase();
     const timestamp = Number(block.timestamp);
 
-    // Skip if this prediction already exists (idempotent for re-indexing)
+    // Check if this prediction already exists (idempotent for re-indexing)
     const existingPrediction = await prisma.prediction.findUnique({
       where: { predictionId: predictionIdLower },
     });
 
     if (existingPrediction) {
-      console.log(
-        `[PredictionMarketEscrowIndexer:${this.chainId}] Prediction ${predictionIdLower} already exists, skipping`
-      );
+      // SAP-767: If prediction exists but pickConfigId is null, a previous RPC
+      // call failed after the prediction row was created. Attempt repair.
+      if (!existingPrediction.pickConfigId) {
+        console.log(
+          `[PredictionMarketEscrowIndexer:${this.chainId}] Prediction ${predictionIdLower} missing pickConfigId, attempting repair...`
+        );
+        const repairData = await this.readPickConfigData(event, log);
+        if (repairData) {
+          await prisma.$transaction(async (tx) => {
+            await this.writePickConfigAndBalances(tx, event, repairData);
+            await tx.prediction.update({
+              where: { predictionId: predictionIdLower },
+              data: { pickConfigId: repairData.pickConfigId },
+            });
+          });
+          console.log(
+            `[PredictionMarketEscrowIndexer:${this.chainId}] Repaired prediction ${predictionIdLower} with pickConfigId=${repairData.pickConfigId}`
+          );
+        } else {
+          console.error(
+            `[PredictionMarketEscrowIndexer:${this.chainId}] CRITICAL: Repair RPC failed for prediction ${predictionIdLower} — positions still missing, will retry next cycle`,
+            { predictionId: predictionIdLower, chainId: this.chainId }
+          );
+          Sentry.captureException(
+            new Error(
+              `CRITICAL: Repair RPC failed for prediction ${predictionIdLower} — positions still missing`
+            )
+          );
+        }
+      } else {
+        console.log(
+          `[PredictionMarketEscrowIndexer:${this.chainId}] Prediction ${predictionIdLower} already exists, skipping`
+        );
+      }
       return;
     }
 
     // Read on-chain data outside the transaction (RPC calls can't run inside prisma.$transaction)
     const onChainData = await this.readPickConfigData(event, log);
+
+    if (!onChainData) {
+      console.warn(
+        `[PredictionMarketEscrowIndexer:${this.chainId}] RPC failed for prediction ${predictionIdLower} — creating prediction without positions, will repair on next encounter`,
+        { predictionId: predictionIdLower, chainId: this.chainId }
+      );
+      Sentry.captureException(
+        new Error(
+          `RPC failed reading pick config for prediction ${predictionIdLower} — positions deferred`
+        )
+      );
+    }
 
     // Wrap all DB writes in a transaction so partial state can't persist
     await prisma.$transaction(async (tx) => {
