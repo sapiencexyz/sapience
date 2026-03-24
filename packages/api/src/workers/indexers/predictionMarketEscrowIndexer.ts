@@ -167,26 +167,38 @@ class PredictionMarketEscrowIndexer implements IIndexer {
   private chainId: number;
   private contractAddress: `0x${string}`;
   private blockCreated: bigint;
+  public readonly isLegacy: boolean;
   private sigintHandler: (() => void) | null = null;
   private pollingInterval: NodeJS.Timeout | null = null;
   private lastProcessedBlock: bigint = 0n;
 
-  constructor(chainId: number) {
+  constructor(
+    chainId: number,
+    contractOverride?: `0x${string}`,
+    isLegacy: boolean = false,
+    blockCreated?: number
+  ) {
     this.chainId = chainId;
+    this.isLegacy = isLegacy;
     this.client = getProviderForChain(chainId);
 
-    // Get the contract address for this specific chain
-    const contractEntry = predictionMarketEscrow[chainId];
-    if (!contractEntry?.address) {
-      throw new Error(
-        `PredictionMarketEscrow contract not deployed on chain ${chainId}. Available chains: ${Object.keys(predictionMarketEscrow).join(', ')}`
-      );
+    if (contractOverride) {
+      this.contractAddress = contractOverride;
+      this.blockCreated = BigInt(blockCreated || 0);
+    } else {
+      // Get the contract address for this specific chain
+      const contractEntry = predictionMarketEscrow[chainId];
+      if (!contractEntry?.address) {
+        throw new Error(
+          `PredictionMarketEscrow contract not deployed on chain ${chainId}. Available chains: ${Object.keys(predictionMarketEscrow).join(', ')}`
+        );
+      }
+      this.contractAddress = contractEntry.address as `0x${string}`;
+      this.blockCreated = BigInt(contractEntry.blockCreated || 0);
     }
-    this.contractAddress = contractEntry.address as `0x${string}`;
-    this.blockCreated = BigInt(contractEntry.blockCreated || 0);
 
     console.log(
-      `[PredictionMarketEscrowIndexer:${this.chainId}] Initialized with contract ${this.contractAddress} (blockCreated: ${this.blockCreated})`
+      `[PredictionMarketEscrowIndexer:${this.chainId}] Initialized with contract ${this.contractAddress} (blockCreated: ${this.blockCreated}, legacy: ${this.isLegacy})`
     );
   }
 
@@ -612,6 +624,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
           createTxHash: log.transactionHash || '',
           refCode: event.refCode !== ZERO_BYTES32 ? event.refCode : null,
           pickConfigId: onChainData?.pickConfigId ?? null,
+          isLegacy: this.isLegacy,
         },
       });
     });
@@ -811,6 +824,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
             counterpartyToken,
             totalPredictorCollateral: predictorCollateralStr,
             totalCounterpartyCollateral: counterpartyCollateralStr,
+            isLegacy: this.isLegacy,
             picks: {
               create: picksOnChain.map((pick) => ({
                 conditionResolver: (

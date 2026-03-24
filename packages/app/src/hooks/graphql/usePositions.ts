@@ -59,6 +59,7 @@ export type PickConfigData = {
   predictorToken?: string | null;
   counterpartyToken?: string | null;
   endsAt?: number | null;
+  isLegacy: boolean;
   picks: PickData[];
   predictionId?: string | null;
 };
@@ -96,6 +97,7 @@ const PICK_CONFIG_FRAGMENT = `
     predictorToken
     counterpartyToken
     endsAt
+    isLegacy
     picks {
       id
       pickConfigId
@@ -279,6 +281,7 @@ const POSITION_BALANCES_QUERY = /* GraphQL */ `
         predictorToken
         counterpartyToken
         endsAt
+        isLegacy
         predictionId
         picks {
           id
@@ -329,6 +332,7 @@ const POSITION_BALANCES_BY_CONDITION_QUERY = /* GraphQL */ `
         predictorToken
         counterpartyToken
         endsAt
+        isLegacy
         predictionId
         picks {
           id
