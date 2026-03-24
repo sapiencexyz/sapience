@@ -322,7 +322,7 @@
   },
   {
     "type": "event",
-    "name": "MarketSettled",
+    "name": "ConditionResolutionDetail",
     "inputs": [
       {
         "name": "conditionIdHash",
@@ -371,6 +371,31 @@
         "type": "uint64",
         "indexed": false,
         "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ConditionResolved",
+    "inputs": [
+      {
+        "name": "conditionId",
+        "type": "bytes",
+        "indexed": false,
+        "internalType": "bytes"
+      },
+      {
+        "name": "isIndecisive",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      },
+      {
+        "name": "resolvedToYes",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
       }
     ],
     "anonymous": false
