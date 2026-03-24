@@ -16,7 +16,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
-import { ExternalLink } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import NumberDisplay from '~/components/shared/NumberDisplay';
@@ -30,17 +29,10 @@ import {
   type SecondaryTrade,
 } from '~/hooks/graphql/useSecondaryTrades';
 
-function getExplorerTxUrl(chainId: number, txHash: string): string {
-  if (chainId === 13374202) {
-    return `https://explorer.etherealtest.net/tx/${txHash}`;
-  }
-  return `#`;
-}
-
 function SkeletonRow() {
   return (
     <TableRow>
-      {Array.from({ length: 7 }).map((_, i) => (
+      {Array.from({ length: 6 }).map((_, i) => (
         <TableCell key={i}>
           <div className="h-4 w-20 rounded bg-white/[0.06] animate-pulse" />
         </TableCell>
@@ -77,13 +69,12 @@ export default function SecondaryTradesTable({
     <Table>
       <TableHeader>
         <TableRow className="hover:!bg-white/[0.03] bg-white/[0.03] border-b border-border/60">
+          <TableHead className="h-auto py-3">Executed</TableHead>
           <TableHead className="h-auto py-3">Position</TableHead>
-          <TableHead className="h-auto py-3">Seller</TableHead>
           <TableHead className="h-auto py-3">Buyer</TableHead>
+          <TableHead className="h-auto py-3">Seller</TableHead>
           <TableHead className="h-auto py-3">Amount</TableHead>
           <TableHead className="h-auto py-3">Price</TableHead>
-          <TableHead className="h-auto py-3">Date</TableHead>
-          <TableHead className="h-auto py-3 w-10"></TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -97,41 +88,6 @@ export default function SecondaryTradesTable({
 
               return (
                 <TableRow key={trade.tradeHash}>
-                  <TableCell>
-                    <PicksPopover
-                      picks={enriched?.picks ?? []}
-                      fallbackAddress={trade.token}
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1.5 text-brand-white">
-                      <EnsAvatar
-                        address={trade.seller}
-                        width={16}
-                        height={16}
-                      />
-                      <AddressDisplay address={trade.seller} compact />
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-1.5 text-brand-white">
-                      <EnsAvatar address={trade.buyer} width={16} height={16} />
-                      <AddressDisplay address={trade.buyer} compact />
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    <span className="font-mono text-brand-white">
-                      <NumberDisplay value={amount} />
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <span className="font-mono">
-                      <NumberDisplay
-                        value={price}
-                        appendedText={collateralSymbol}
-                      />
-                    </span>
-                  </TableCell>
                   <TableCell>
                     <TooltipProvider>
                       <Tooltip>
@@ -147,14 +103,39 @@ export default function SecondaryTradesTable({
                     </TooltipProvider>
                   </TableCell>
                   <TableCell>
-                    <a
-                      href={getExplorerTxUrl(trade.chainId, trade.txHash)}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center justify-center text-muted-foreground hover:text-accent-gold transition-colors"
-                    >
-                      <ExternalLink className="h-3.5 w-3.5" />
-                    </a>
+                    <PicksPopover
+                      picks={enriched?.picks ?? []}
+                      fallbackAddress={trade.token}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2 text-brand-white">
+                      <EnsAvatar address={trade.buyer} width={20} height={20} />
+                      <AddressDisplay address={trade.buyer} />
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2 text-brand-white">
+                      <EnsAvatar
+                        address={trade.seller}
+                        width={20}
+                        height={20}
+                      />
+                      <AddressDisplay address={trade.seller} />
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <span className="font-mono text-brand-white">
+                      <NumberDisplay value={amount} />
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <span className="font-mono">
+                      <NumberDisplay
+                        value={price}
+                        appendedText={collateralSymbol}
+                      />
+                    </span>
                   </TableCell>
                 </TableRow>
               );

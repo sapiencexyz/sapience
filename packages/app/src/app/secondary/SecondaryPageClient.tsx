@@ -17,13 +17,14 @@ export default function SecondaryPageClient() {
 
   return (
     <div className="space-y-6 py-6">
-      <h3 className="text-2xl font-medium">Position Sales</h3>
-
       <Tabs defaultValue="listings">
-        <SegmentedTabsList>
-          <TabsTrigger value="listings">Active Listings</TabsTrigger>
-          <TabsTrigger value="history">Trade History</TabsTrigger>
-        </SegmentedTabsList>
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <h3 className="text-2xl font-medium">Position Sales</h3>
+          <SegmentedTabsList>
+            <TabsTrigger value="listings">Active Listings</TabsTrigger>
+            <TabsTrigger value="history">Trade History</TabsTrigger>
+          </SegmentedTabsList>
+        </div>
 
         <TabsContent value="listings" className="mt-4">
           <div className="border border-border/60 rounded-lg overflow-hidden bg-brand-black">
