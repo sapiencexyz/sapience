@@ -7,7 +7,13 @@ import SecondaryMarketIndexer from './workers/indexers/secondaryMarketIndexer';
 import PositionTokenTransferIndexer from './workers/indexers/positionTokenTransferIndexer';
 import ConditionSettledIndexer from './workers/indexers/conditionSettledIndexer';
 import CollateralTransferIndexer from './workers/indexers/collateralTransferIndexer';
-import { getResolverAddressesForChain } from '@sapience/sdk/contracts';
+import {
+  getResolverAddressesForChain,
+  getLegacyResolverAddressesForChain,
+  predictionMarketEscrow,
+  secondaryMarketEscrow,
+  normalizeLegacyEntry,
+} from '@sapience/sdk/contracts';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 
 // Environment variable to control whether escrow indexers are enabled
@@ -37,8 +43,63 @@ const buildIndexers = (): { [key: string]: IIndexer } => {
         new ConditionSettledIndexer(chainId, address);
     }
 
+    // Register legacy escrow indexers
+    const escrowEntry = predictionMarketEscrow[chainId];
+    for (const legEntry of escrowEntry?.legacy ?? []) {
+      const { address, blockCreated } = normalizeLegacyEntry(legEntry);
+      const slug = address.slice(0, 10).toLowerCase();
+      indexers[`escrow-legacy-${slug}-${chainId}`] =
+        new PredictionMarketEscrowIndexer(
+          chainId,
+          address as `0x${string}`,
+          true,
+          blockCreated
+        );
+      indexers[`transfer-legacy-${slug}-${chainId}`] =
+        new PositionTokenTransferIndexer(
+          chainId,
+          address as `0x${string}`,
+          true,
+          blockCreated
+        );
+    }
+
+    // Register legacy secondary market indexers
+    const secondaryEntry = secondaryMarketEscrow[chainId];
+    for (const legEntry of secondaryEntry?.legacy ?? []) {
+      const { address, blockCreated } = normalizeLegacyEntry(legEntry);
+      const slug = address.slice(0, 10).toLowerCase();
+      indexers[`secondary-legacy-${slug}-${chainId}`] =
+        new SecondaryMarketIndexer(
+          chainId,
+          address as `0x${string}`,
+          true,
+          blockCreated
+        );
+    }
+
+    // Register legacy resolver indexers
+    for (const {
+      type,
+      address,
+      blockCreated,
+    } of getLegacyResolverAddressesForChain(chainId)) {
+      const slug = address.slice(0, 10).toLowerCase();
+      indexers[`condition-settled-legacy-${type}-${slug}-${chainId}`] =
+        new ConditionSettledIndexer(
+          chainId,
+          address as `0x${string}`,
+          true,
+          blockCreated
+        );
+    }
+
+    const legacyEscrowCount = escrowEntry?.legacy?.length ?? 0;
+    const legacySecondaryCount = secondaryEntry?.legacy?.length ?? 0;
+    const legacyResolverCount =
+      getLegacyResolverAddressesForChain(chainId).length;
     console.log(
-      `[Indexers] Escrow indexers enabled for chain ${chainId} (${getResolverAddressesForChain(chainId).length} resolvers)`
+      `[Indexers] Escrow indexers enabled for chain ${chainId} (${getResolverAddressesForChain(chainId).length} resolvers, ${legacyEscrowCount} legacy escrow, ${legacySecondaryCount} legacy secondary, ${legacyResolverCount} legacy resolvers)`
     );
   } else {
     console.log(

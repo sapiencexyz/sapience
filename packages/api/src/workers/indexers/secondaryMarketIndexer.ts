@@ -32,25 +32,37 @@ class SecondaryMarketIndexer implements IIndexer {
   private chainId: number;
   private contractAddress: `0x${string}`;
   private blockCreated: bigint;
+  public readonly isLegacy: boolean;
   private sigintHandler: (() => void) | null = null;
   private pollingInterval: NodeJS.Timeout | null = null;
   private lastProcessedBlock: bigint = 0n;
 
-  constructor(chainId: number) {
+  constructor(
+    chainId: number,
+    contractOverride?: `0x${string}`,
+    isLegacy: boolean = false,
+    blockCreated?: number
+  ) {
     this.chainId = chainId;
+    this.isLegacy = isLegacy;
     this.client = getProviderForChain(chainId);
 
-    const contractEntry = secondaryMarketEscrow[chainId];
-    if (!contractEntry?.address) {
-      throw new Error(
-        `SecondaryMarketEscrow contract not deployed on chain ${chainId}. Available chains: ${Object.keys(secondaryMarketEscrow).join(', ')}`
-      );
+    if (contractOverride) {
+      this.contractAddress = contractOverride;
+      this.blockCreated = BigInt(blockCreated || 0);
+    } else {
+      const contractEntry = secondaryMarketEscrow[chainId];
+      if (!contractEntry?.address) {
+        throw new Error(
+          `SecondaryMarketEscrow contract not deployed on chain ${chainId}. Available chains: ${Object.keys(secondaryMarketEscrow).join(', ')}`
+        );
+      }
+      this.contractAddress = contractEntry.address as `0x${string}`;
+      this.blockCreated = BigInt(contractEntry.blockCreated || 0);
     }
-    this.contractAddress = contractEntry.address as `0x${string}`;
-    this.blockCreated = BigInt(contractEntry.blockCreated || 0);
 
     console.log(
-      `[SecondaryMarketIndexer:${this.chainId}] Initialized with contract ${this.contractAddress} (blockCreated: ${this.blockCreated})`
+      `[SecondaryMarketIndexer:${this.chainId}] Initialized with contract ${this.contractAddress} (blockCreated: ${this.blockCreated}, legacy: ${this.isLegacy})`
     );
   }
 

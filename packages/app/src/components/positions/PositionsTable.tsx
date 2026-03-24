@@ -45,6 +45,7 @@ import {
 import { useConditionsByIds } from '~/hooks/graphql/useConditionsByIds';
 import { StackedIcons } from '~/components/shared/StackedPredictions';
 import CounterpartyBadge from '~/components/shared/CounterpartyBadge';
+import LegacyBadge from '~/components/shared/LegacyBadge';
 import { getCategoryIcon } from '~/lib/theme/categoryIcons';
 import { getCategoryStyle } from '~/lib/utils/categoryStyle';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
@@ -162,13 +163,12 @@ function PositionRow({
     if (!predictionId) return;
     setIsRedeeming(true);
     try {
-      // eslint-disable-next-line @typescript-eslint/no-shadow
-      const result = await settleAndRedeem({
+      const redeemResult = await settleAndRedeem({
         predictionId: predictionId as `0x${string}`,
         positionToken: position.tokenAddress as Address,
         amount: BigInt(position.balance),
       });
-      if (result.success) {
+      if (redeemResult.success) {
         setRedeemed(true);
         onRefetch?.();
       }
@@ -329,6 +329,7 @@ function PositionRow({
             </span>
           )}
           {!isPredictorToken && <CounterpartyBadge />}
+          {pickConfig?.isLegacy && <LegacyBadge />}
         </div>
       </TableCell>
       <TableCell>

@@ -36,18 +36,39 @@ class PositionTokenTransferIndexer implements IIndexer {
   public client: PublicClient;
   private isWatching = false;
   private chainId: number;
+  public readonly isLegacy: boolean;
+  private escrowAddress: `0x${string}` | null;
   private pollingInterval: NodeJS.Timeout | null = null;
   private sigintHandler: (() => void) | null = null;
   private blockCreated: bigint;
+  private indexerStateKeySuffix: string;
 
-  constructor(chainId: number) {
+  constructor(
+    chainId: number,
+    contractOverride?: `0x${string}`,
+    isLegacy: boolean = false,
+    blockCreated?: number
+  ) {
     this.chainId = chainId;
+    this.isLegacy = isLegacy;
+    this.escrowAddress = contractOverride ?? null;
     this.client = getProviderForChain(chainId);
 
-    const contractEntry = predictionMarketEscrow[chainId];
-    this.blockCreated = BigInt(contractEntry?.blockCreated || 0);
+    if (blockCreated !== undefined) {
+      this.blockCreated = BigInt(blockCreated);
+    } else {
+      const contractEntry = predictionMarketEscrow[chainId];
+      this.blockCreated = BigInt(contractEntry?.blockCreated || 0);
+    }
 
-    console.log(`[TransferIndexer:${this.chainId}] Initialized`);
+    // Use a unique state key suffix for legacy instances
+    this.indexerStateKeySuffix = contractOverride
+      ? `:${contractOverride.slice(0, 10).toLowerCase()}`
+      : '';
+
+    console.log(
+      `[TransferIndexer:${this.chainId}${this.indexerStateKeySuffix}] Initialized (legacy: ${this.isLegacy})`
+    );
   }
 
   // --- IIndexer interface ---
@@ -279,13 +300,20 @@ class PositionTokenTransferIndexer implements IIndexer {
     tokenAddresses: string[];
     tokenInfoMap: Map<string, TokenInfo>;
   }> {
+    const where: NonNullable<Parameters<typeof prisma.picks.findMany>[0]>['where'] = {
+      fullyRedeemed: false,
+      chainId: this.chainId,
+      predictorToken: { not: null },
+      counterpartyToken: { not: null },
+    };
+
+    // Legacy instances only watch tokens from their specific escrow contract
+    if (this.escrowAddress) {
+      where!.marketAddress = this.escrowAddress.toLowerCase();
+    }
+
     const configs = await prisma.picks.findMany({
-      where: {
-        fullyRedeemed: false,
-        chainId: this.chainId,
-        predictorToken: { not: null },
-        counterpartyToken: { not: null },
-      },
+      where,
       select: {
         id: true,
         predictorToken: true,
@@ -321,7 +349,7 @@ class PositionTokenTransferIndexer implements IIndexer {
   // --- Block cursor persistence via KeyValueStore ---
 
   private async getLastIndexedBlock(): Promise<bigint> {
-    const key = `${INDEXER_STATE_KEY}:${this.chainId}`;
+    const key = `${INDEXER_STATE_KEY}:${this.chainId}${this.indexerStateKeySuffix}`;
     const row = await prisma.keyValueStore.findUnique({ where: { key } });
     if (row) return BigInt(row.value);
 
@@ -359,9 +387,9 @@ class PositionTokenTransferIndexer implements IIndexer {
 
   private async setLastIndexedBlock(block: number): Promise<void> {
     console.log(
-      `[TransferIndexer:${this.chainId}] Persisting watermark block=${block}`
+      `[TransferIndexer:${this.chainId}${this.indexerStateKeySuffix}] Persisting watermark block=${block}`
     );
-    const key = `${INDEXER_STATE_KEY}:${this.chainId}`;
+    const key = `${INDEXER_STATE_KEY}:${this.chainId}${this.indexerStateKeySuffix}`;
     await prisma.keyValueStore.upsert({
       where: { key },
       create: { key, value: block.toString() },

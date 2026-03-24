@@ -1066,6 +1066,7 @@ type PickConfiguration {
   counterpartyToken: String
   endsAt: Int
   id: String!
+  isLegacy: Boolean!
   marketAddress: String!
   picks: [Pick!]!
   predictionId: String
@@ -1124,6 +1125,7 @@ type Prediction {
   createTxHash: String!
   createdAt: DateTimeISO!
   id: Int!
+  isLegacy: Boolean!
   marketAddress: String!
   pickConfig: PickConfiguration
   predictionId: String!
@@ -1287,7 +1289,7 @@ type Query {
   """
   Paginated list of escrow-based predictions, filterable by address, condition, chain, and settlement status
   """
-  predictions(address: String, chainId: Int, conditionId: String, orderBy: PredictionSortField, orderDirection: SortOrder, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Prediction!]!
+  predictions(address: String, chainId: Int, conditionId: String, isLegacy: Boolean, orderBy: PredictionSortField, orderDirection: SortOrder, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Prediction!]!
 
   """
   Profit leaderboard — addresses ranked by total PnL across all positions
