@@ -103,11 +103,11 @@ export default function AcceptBidDialog({
         ) : (
           <div className="space-y-2 max-h-64 overflow-y-auto">
             {sortedBids.map((bid) => {
-              let priceValue: number;
+              let priceValue: number | null;
               try {
                 priceValue = parseFloat(formatEther(BigInt(bid.price)));
               } catch {
-                priceValue = 0;
+                priceValue = null;
               }
               const isSelected =
                 selectedBid?.buyerSignature === bid.buyerSignature;
@@ -129,10 +129,14 @@ export default function AcceptBidDialog({
                     </div>
                     <p className="font-mono text-ethena">
                       OFFER:{' '}
-                      <NumberDisplay
-                        value={priceValue}
-                        appendedText={collateralSymbol}
-                      />
+                      {priceValue !== null ? (
+                        <NumberDisplay
+                          value={priceValue}
+                          appendedText={collateralSymbol}
+                        />
+                      ) : (
+                        '—'
+                      )}
                     </p>
                     <div className="flex items-center gap-1">
                       <span className="font-mono text-muted-foreground">

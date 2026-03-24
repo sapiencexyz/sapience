@@ -62,7 +62,7 @@ export default function PicksPopover({
               const color = getCategoryStyle(pick.categorySlug).color;
               return (
                 <div
-                  key={`pick-${i}`}
+                  key={pick.conditionId ?? `pick-${i}`}
                   className="flex items-center gap-3 px-3 py-2"
                 >
                   <div

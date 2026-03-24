@@ -191,19 +191,10 @@ export function useSecondaryFeed(options: UseSecondaryFeedOptions = {}) {
     [wsUrl]
   );
 
-  const removeListing = useCallback((auctionId: string) => {
-    setListings((prev) => {
-      const next = new Map(prev);
-      next.delete(auctionId);
-      return next;
-    });
-  }, []);
-
   return {
     listings: listingsArray,
     listingsMap: listings,
     isConnected,
     subscribeToBids,
-    removeListing,
   };
 }

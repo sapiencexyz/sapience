@@ -40,10 +40,18 @@ export default function SecondaryListingsTable({
   });
   const collateralSymbol = COLLATERAL_SYMBOLS[chainId] ?? 'COLLATERAL';
 
-  // Collect unique token addresses for enrichment
-  const tokenAddresses = React.useMemo(
-    () => listings.map((l) => l.token),
+  // Collect unique token addresses for enrichment — join into a stable string
+  // key so the memo doesn't recompute on every WebSocket-driven array reference change.
+  const tokenKey = React.useMemo(
+    () =>
+      Array.from(new Set(listings.map((l) => l.token.toLowerCase())))
+        .sort()
+        .join(','),
     [listings]
+  );
+  const tokenAddresses = React.useMemo(
+    () => (tokenKey ? tokenKey.split(',') : []),
+    [tokenKey]
   );
   const { map: enrichedMap } = useEnrichedTokens(tokenAddresses);
 

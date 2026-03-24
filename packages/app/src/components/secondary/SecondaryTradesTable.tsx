@@ -54,10 +54,18 @@ export default function SecondaryTradesTable({
 
   const collateralSymbol = COLLATERAL_SYMBOLS[chainId ?? 0] ?? 'COLLATERAL';
 
-  // Collect unique token addresses for enrichment
-  const tokenAddresses = React.useMemo(
-    () => (trades ?? []).map((t) => t.token),
+  // Collect unique token addresses for enrichment — join into a stable string
+  // key so the memo doesn't recompute on every new trades array reference.
+  const tokenKey = React.useMemo(
+    () =>
+      Array.from(new Set((trades ?? []).map((t) => t.token.toLowerCase())))
+        .sort()
+        .join(','),
     [trades]
+  );
+  const tokenAddresses = React.useMemo(
+    () => (tokenKey ? tokenKey.split(',') : []),
+    [tokenKey]
   );
   const { map: enrichedMap } = useEnrichedTokens(tokenAddresses);
 
