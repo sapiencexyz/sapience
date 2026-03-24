@@ -290,6 +290,7 @@ async function fetchPythLazerEvmUpdateBlob(args: {
   const channelsToTry = [
     'fixed_rate@50ms',
     'fixed_rate@200ms',
+    'fixed_rate@1000ms',
     'real_time',
   ] as const;
 
