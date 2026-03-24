@@ -1,7 +1,10 @@
 import { Router } from 'express';
 import { handleAsyncErrors } from '../helpers/handleAsyncErrors';
 import prisma from '../db';
-import { getResolverAddressesForChain } from '@sapience/sdk/contracts';
+import {
+  getResolverAddressesForChain,
+  getLegacyResolverAddressesForChain,
+} from '@sapience/sdk/contracts';
 import { getProviderForChain } from '../utils/utils';
 import { reindexAccuracy } from '../workers/jobs/reindexAccuracy';
 import { reindexConditionSettled } from '../workers/jobs/reindexConditionSettled';
@@ -59,7 +62,7 @@ router.post(
 router.post(
   '/condition-settled',
   handleAsyncErrors(async (req, res) => {
-    const { chainId, startTimestamp, endTimestamp } = req.body;
+    const { chainId, startTimestamp, endTimestamp, legacy } = req.body;
 
     const parsedChainId = parseInt(chainId);
     if (!chainId || isNaN(parsedChainId)) {
@@ -83,10 +86,17 @@ router.post(
       return;
     }
 
+    const includeLegacy = legacy === true || legacy === 'true';
+
     const resolverAddresses = getResolverAddressesForChain(parsedChainId).map(
       (r) => r.address
     );
-    if (resolverAddresses.length === 0) {
+    const legacyResolverAddresses = includeLegacy
+      ? getLegacyResolverAddressesForChain(parsedChainId).map((r) => r.address)
+      : [];
+
+    const allAddresses = [...resolverAddresses, ...legacyResolverAddresses];
+    if (allAddresses.length === 0) {
       res.status(400).json({
         error: `No resolver addresses configured for chain ${parsedChainId}`,
       });
@@ -98,9 +108,10 @@ router.post(
 
     const params = JSON.stringify({
       chainId: parsedChainId,
-      resolverAddresses,
+      resolverAddresses: allAddresses,
       startTimestamp: parsedStart,
       endTimestamp: parsedEnd,
+      legacy: includeLegacy,
     });
 
     const job = await prisma.backgroundJob.create({
@@ -109,12 +120,14 @@ router.post(
 
     void (async () => {
       try {
-        for (const resolverAddress of resolverAddresses) {
+        const legacySet = new Set(legacyResolverAddresses);
+        for (const resolverAddress of allAddresses) {
           await reindexConditionSettled(
             parsedChainId,
             resolverAddress,
             parsedStart,
-            parsedEnd
+            parsedEnd,
+            legacySet.has(resolverAddress)
           );
         }
         await prisma.backgroundJob.update({

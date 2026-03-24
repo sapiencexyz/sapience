@@ -24,7 +24,7 @@ interface IConditionalTokensConditionResolver is IConditionResolver {
 
     // ============ Events ============
 
-    event ConditionResolved(
+    event ConditionResolutionDetail(
         bytes32 indexed conditionId,
         bool invalid,
         bool nonDecisive,

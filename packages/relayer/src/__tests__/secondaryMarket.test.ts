@@ -38,7 +38,6 @@ function createListing(
     token: '0x1111111111111111111111111111111111111111',
     collateral: '0x2222222222222222222222222222222222222222',
     tokenAmount: '1000000000000000000',
-    minPrice: '500000000000000000',
     seller: '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
     sellerNonce: Math.floor(Math.random() * 1_000_000),
     sellerDeadline: futureDeadline,

@@ -166,26 +166,38 @@ class PredictionMarketEscrowIndexer implements IIndexer {
   private chainId: number;
   private contractAddress: `0x${string}`;
   private blockCreated: bigint;
+  public readonly isLegacy: boolean;
   private sigintHandler: (() => void) | null = null;
   private pollingInterval: NodeJS.Timeout | null = null;
   private lastProcessedBlock: bigint = 0n;
 
-  constructor(chainId: number) {
+  constructor(
+    chainId: number,
+    contractOverride?: `0x${string}`,
+    isLegacy: boolean = false,
+    blockCreated?: number
+  ) {
     this.chainId = chainId;
+    this.isLegacy = isLegacy;
     this.client = getProviderForChain(chainId);
 
-    // Get the contract address for this specific chain
-    const contractEntry = predictionMarketEscrow[chainId];
-    if (!contractEntry?.address) {
-      throw new Error(
-        `PredictionMarketEscrow contract not deployed on chain ${chainId}. Available chains: ${Object.keys(predictionMarketEscrow).join(', ')}`
-      );
+    if (contractOverride) {
+      this.contractAddress = contractOverride;
+      this.blockCreated = BigInt(blockCreated || 0);
+    } else {
+      // Get the contract address for this specific chain
+      const contractEntry = predictionMarketEscrow[chainId];
+      if (!contractEntry?.address) {
+        throw new Error(
+          `PredictionMarketEscrow contract not deployed on chain ${chainId}. Available chains: ${Object.keys(predictionMarketEscrow).join(', ')}`
+        );
+      }
+      this.contractAddress = contractEntry.address as `0x${string}`;
+      this.blockCreated = BigInt(contractEntry.blockCreated || 0);
     }
-    this.contractAddress = contractEntry.address as `0x${string}`;
-    this.blockCreated = BigInt(contractEntry.blockCreated || 0);
 
     console.log(
-      `[PredictionMarketEscrowIndexer:${this.chainId}] Initialized with contract ${this.contractAddress} (blockCreated: ${this.blockCreated})`
+      `[PredictionMarketEscrowIndexer:${this.chainId}] Initialized with contract ${this.contractAddress} (blockCreated: ${this.blockCreated}, legacy: ${this.isLegacy})`
     );
   }
 
@@ -575,20 +587,63 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     const predictionIdLower = event.predictionId.toLowerCase();
     const timestamp = Number(block.timestamp);
 
-    // Skip if this prediction already exists (idempotent for re-indexing)
+    // Check if this prediction already exists (idempotent for re-indexing)
     const existingPrediction = await prisma.prediction.findUnique({
       where: { predictionId: predictionIdLower },
     });
 
     if (existingPrediction) {
-      console.log(
-        `[PredictionMarketEscrowIndexer:${this.chainId}] Prediction ${predictionIdLower} already exists, skipping`
-      );
+      // SAP-767: If prediction exists but pickConfigId is null, a previous RPC
+      // call failed after the prediction row was created. Attempt repair.
+      if (!existingPrediction.pickConfigId) {
+        console.log(
+          `[PredictionMarketEscrowIndexer:${this.chainId}] Prediction ${predictionIdLower} missing pickConfigId, attempting repair...`
+        );
+        const repairData = await this.readPickConfigData(event, log);
+        if (repairData) {
+          await prisma.$transaction(async (tx) => {
+            await this.writePickConfigAndBalances(tx, event, repairData);
+            await tx.prediction.update({
+              where: { predictionId: predictionIdLower },
+              data: { pickConfigId: repairData.pickConfigId },
+            });
+          });
+          console.log(
+            `[PredictionMarketEscrowIndexer:${this.chainId}] Repaired prediction ${predictionIdLower} with pickConfigId=${repairData.pickConfigId}`
+          );
+        } else {
+          console.error(
+            `[PredictionMarketEscrowIndexer:${this.chainId}] CRITICAL: Repair RPC failed for prediction ${predictionIdLower} — positions still missing, will retry next cycle`,
+            { predictionId: predictionIdLower, chainId: this.chainId }
+          );
+          Sentry.captureException(
+            new Error(
+              `CRITICAL: Repair RPC failed for prediction ${predictionIdLower} — positions still missing`
+            )
+          );
+        }
+      } else {
+        console.log(
+          `[PredictionMarketEscrowIndexer:${this.chainId}] Prediction ${predictionIdLower} already exists, skipping`
+        );
+      }
       return;
     }
 
     // Read on-chain data outside the transaction (RPC calls can't run inside prisma.$transaction)
     const onChainData = await this.readPickConfigData(event, log);
+
+    if (!onChainData) {
+      console.warn(
+        `[PredictionMarketEscrowIndexer:${this.chainId}] RPC failed for prediction ${predictionIdLower} — creating prediction without positions, will repair on next encounter`,
+        { predictionId: predictionIdLower, chainId: this.chainId }
+      );
+      Sentry.captureException(
+        new Error(
+          `RPC failed reading pick config for prediction ${predictionIdLower} — positions deferred`
+        )
+      );
+    }
 
     // Wrap all DB writes in a transaction so partial state can't persist
     await prisma.$transaction(async (tx) => {
@@ -611,6 +666,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
           createTxHash: log.transactionHash || '',
           refCode: event.refCode !== ZERO_BYTES32 ? event.refCode : null,
           pickConfigId: onChainData?.pickConfigId ?? null,
+          isLegacy: this.isLegacy,
         },
       });
     });
@@ -810,6 +866,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
             counterpartyToken,
             totalPredictorCollateral: predictorCollateralStr,
             totalCounterpartyCollateral: counterpartyCollateralStr,
+            isLegacy: this.isLegacy,
             picks: {
               create: picksOnChain.map((pick) => ({
                 conditionResolver: (

@@ -1216,6 +1216,7 @@ export type PickConfiguration = {
   counterpartyToken?: Maybe<Scalars['String']['output']>;
   endsAt?: Maybe<Scalars['Int']['output']>;
   id: Scalars['String']['output'];
+  isLegacy: Scalars['Boolean']['output'];
   marketAddress: Scalars['String']['output'];
   picks: Array<Pick>;
   predictionId?: Maybe<Scalars['String']['output']>;
@@ -1272,6 +1273,7 @@ export type Prediction = {
   createTxHash: Scalars['String']['output'];
   createdAt: Scalars['DateTimeISO']['output'];
   id: Scalars['Int']['output'];
+  isLegacy: Scalars['Boolean']['output'];
   marketAddress: Scalars['String']['output'];
   pickConfig?: Maybe<PickConfiguration>;
   predictionId: Scalars['String']['output'];
@@ -1569,6 +1571,7 @@ export type QueryPickConfigurationsArgs = {
   result?: InputMaybe<SettlementResult>;
   skip?: Scalars['Int']['input'];
   take?: Scalars['Int']['input'];
+  tokens?: InputMaybe<Array<Scalars['String']['input']>>;
 };
 
 
@@ -1606,6 +1609,7 @@ export type QueryPredictionsArgs = {
   address?: InputMaybe<Scalars['String']['input']>;
   chainId?: InputMaybe<Scalars['Int']['input']>;
   conditionId?: InputMaybe<Scalars['String']['input']>;
+  isLegacy?: InputMaybe<Scalars['Boolean']['input']>;
   orderBy?: InputMaybe<PredictionSortField>;
   orderDirection?: InputMaybe<SortOrder>;
   settled?: InputMaybe<Scalars['Boolean']['input']>;

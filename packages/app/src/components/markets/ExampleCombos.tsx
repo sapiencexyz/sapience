@@ -120,7 +120,7 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
                   className="border-b border-brand-white/20"
                 >
                   {/* Desktop icons cell - hidden on mobile */}
-                  <TableCell className="hidden md:table-cell p-0 w-[88px]">
+                  <TableCell className="hidden xl:table-cell p-0 w-[88px]">
                     <div className="py-3 pl-4 pr-3 relative h-[48px]">
                       <AnimatePresence mode="wait">
                         {isReady ? (
@@ -156,7 +156,7 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
                     </div>
                   </TableCell>
                   {/* Question cell - includes all content on mobile */}
-                  <TableCell className="py-3 pl-3 md:pl-0 pr-3 md:pr-0">
+                  <TableCell className="py-3 pl-3 xl:pl-0 pr-3 xl:pr-0">
                     <AnimatePresence mode="wait">
                       {isReady && combo ? (
                         <motion.div
@@ -170,16 +170,16 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
                           {/* Mobile Row 1: Icons (on their own line) */}
                           <StackedIcons
                             picks={legs}
-                            className="flex md:hidden"
+                            className="flex xl:hidden"
                           />
                           {/* Row 2: Question + Badge + "and N others" */}
                           <StackedPredictionsTitle
                             picks={legs}
-                            className="md:gap-x-2"
-                            maxWidthClass="max-w-full md:max-w-[460px]"
+                            className="xl:gap-x-2"
+                            maxWidthClass="max-w-full xl:max-w-[460px]"
                           />
                           {/* Mobile Row 3/4: Probability + PICK in one row */}
-                          <div className="md:hidden mt-0.5 flex items-center gap-3">
+                          <div className="xl:hidden mt-0.5 flex items-center gap-3">
                             <div className="text-sm flex-1 min-w-0 max-w-[240px]">
                               {probability !== null ? (
                                 <>
@@ -233,7 +233,7 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
                         >
                           {/* Mobile Row 1: Icons skeleton */}
                           <div
-                            className="md:hidden w-10 h-6 rounded bg-brand-white/5"
+                            className="xl:hidden w-10 h-6 rounded bg-brand-white/5"
                             style={{
                               animation: `suggestedRowPulse 2.4s ease-in-out infinite`,
                               animationDelay: `${idx * 0.3}s`,
@@ -249,7 +249,7 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
                           />
                           {/* Mobile Row 3: Probability skeleton */}
                           <div
-                            className="md:hidden w-full max-w-[240px] h-5 rounded bg-brand-white/5"
+                            className="xl:hidden w-full max-w-[240px] h-5 rounded bg-brand-white/5"
                             style={{
                               animation: `suggestedRowPulse 2.4s ease-in-out infinite`,
                               animationDelay: `${idx * 0.3 + 0.2}s`,
@@ -257,7 +257,7 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
                           />
                           {/* Mobile Row 4: Button skeleton */}
                           <div
-                            className="md:hidden w-full h-8 rounded bg-brand-white/5"
+                            className="xl:hidden w-full h-8 rounded bg-brand-white/5"
                             style={{
                               animation: `suggestedRowPulse 2.4s ease-in-out infinite`,
                               animationDelay: `${idx * 0.3 + 0.15}s`,
@@ -268,7 +268,7 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
                     </AnimatePresence>
                   </TableCell>
                   {/* Probability cell - desktop only */}
-                  <TableCell className="hidden md:table-cell py-3 pl-4 text-right whitespace-nowrap">
+                  <TableCell className="hidden xl:table-cell py-3 pl-4 text-right whitespace-nowrap">
                     <AnimatePresence mode="wait">
                       {isReady ? (
                         <motion.div
@@ -324,7 +324,7 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
                     </AnimatePresence>
                   </TableCell>
                   {/* Desktop PICK button cell - hidden on mobile */}
-                  <TableCell className="hidden md:table-cell p-0 w-[72px]">
+                  <TableCell className="hidden xl:table-cell p-0 w-[72px]">
                     <div className="py-3 pr-4 flex justify-end">
                       <AnimatePresence mode="wait">
                         {isReady && combo ? (

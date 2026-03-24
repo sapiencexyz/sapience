@@ -32,12 +32,18 @@ contract LZConditionResolverTest is TestHelperOz5 {
     bytes32 public constant CONDITION_ID_2 = keccak256("condition-2");
 
     // Events
-    event ConditionResolved(
+    event ConditionResolutionDetail(
         bytes32 indexed conditionId,
         bool resolvedToYes,
         bool assertedTruthfully,
         uint256 resolutionTime
     );
+
+    // Unified event from IConditionResolver (different signature, same name is fine)
+    event ConditionResolved(
+        bytes conditionId, bool isIndecisive, bool resolvedToYes
+    );
+
     event BridgeConfigUpdated(LZTypes.BridgeConfig config);
 
     function setUp() public override {
@@ -191,6 +197,10 @@ contract LZConditionResolverTest is TestHelperOz5 {
         bytes memory payload = abi.encode(CONDITION_ID_1, true, true);
         bytes memory message = abi.encode(uint16(8), payload); // CMD_CONDITION_RESOLVED = 8
 
+        // Expect unified ConditionResolved event
+        vm.expectEmit(false, false, false, true);
+        emit ConditionResolved(abi.encode(CONDITION_ID_1), false, true);
+
         // Use LZ test helper to simulate receive
         vm.prank(address(endpoints[pmEid]));
         pmResolver.lzReceive(
@@ -214,6 +224,9 @@ contract LZConditionResolverTest is TestHelperOz5 {
     function test_lzReceive_conditionResolvedNo() public {
         bytes memory payload = abi.encode(CONDITION_ID_1, false, true);
         bytes memory message = abi.encode(uint16(8), payload);
+
+        vm.expectEmit(false, false, false, true);
+        emit ConditionResolved(abi.encode(CONDITION_ID_1), false, false);
 
         vm.prank(address(endpoints[pmEid]));
         pmResolver.lzReceive(
