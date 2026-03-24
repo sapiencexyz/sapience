@@ -77,11 +77,6 @@ export class TradeResolver {
     if (token) where.token = token.toLowerCase();
     if (chainId !== undefined && chainId !== null) where.chainId = chainId;
 
-    // Require at least one filter to avoid full table scans
-    if (!seller && !buyer && !token) {
-      return [];
-    }
-
     const rows = await prisma.secondaryTrade.findMany({
       where,
       orderBy: { executedAt: 'desc' },
@@ -151,8 +146,6 @@ export class TradeResolver {
     if (buyer) where.buyer = buyer.toLowerCase();
     if (token) where.token = token.toLowerCase();
     if (chainId !== undefined && chainId !== null) where.chainId = chainId;
-
-    if (!seller && !buyer && !token) return 0;
 
     return prisma.secondaryTrade.count({ where });
   }
