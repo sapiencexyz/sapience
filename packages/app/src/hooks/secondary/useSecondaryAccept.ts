@@ -13,11 +13,11 @@ import {
   collateralToken,
 } from '@sapience/sdk/contracts';
 import { generateRandomNonce } from '@sapience/sdk';
+import type { SecondaryValidatedBid } from '@sapience/sdk/types/secondary';
 import { useSession } from '~/lib/context/SessionContext';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 import { getPublicClientForChainId } from '~/lib/utils/util';
 import { encodeEscrowSessionKeyData } from '~/lib/session/sessionKeyManager';
-import type { SecondaryValidatedBid } from '@sapience/sdk/types/secondary';
 
 export interface AcceptBidParams {
   /** Position token address */
@@ -97,7 +97,7 @@ export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
       setIsAccepting(false);
       onError?.(error);
     },
-    successMessage: 'Secondary market trade executed successfully!',
+    successMessage: undefined,
     redirectPage: 'profile',
     redirectProfileAnchor: 'positions',
     forceOwnerPath: true,
@@ -255,7 +255,6 @@ export function useSecondaryAccept(options: UseSecondaryAcceptOptions = {}) {
       isUsingSession,
       tradeSessionKeyApproval,
       sendCalls,
-      onSuccess,
       onError,
       onSignatureRejected,
     ]

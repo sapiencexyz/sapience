@@ -1159,6 +1159,13 @@ contract PredictionMarketEscrow is
             return (false, IV2Types.SettlementResult.UNRESOLVED);
         }
 
+        // Validate array lengths — a malicious resolver can return empty or
+        // short arrays without reverting, which would cause an out-of-bounds
+        // panic in the loop below. Treat as unresolved (same as catch branch).
+        if (resolved.length != numPicks || outcomes.length != numPicks) {
+            return (false, IV2Types.SettlementResult.UNRESOLVED);
+        }
+
         // Process results — a single decisive loss is enough for COUNTERPARTY_WINS
         // even if other picks are still unresolved (predictor needs ALL legs)
         bool hasUnresolved = false;
@@ -1183,6 +1190,11 @@ contract PredictionMarketEscrow is
     }
 
     /// @notice Resolve using individual calls when picks use different resolvers
+    /// @dev Unlike _resolveBatch, this path calls getResolution() (singular) which
+    ///      returns a scalar (bool, OutcomeVector) — not arrays — so there is no
+    ///      array-length mismatch risk. A malicious resolver returning garbage data
+    ///      will be processed by _evaluatePick; this is by design since each resolver
+    ///      is trusted for its own pick. The try/catch prevents revert-based DoS.
     function _resolveIndividual(IV2Types.Pick[] storage picks, uint256 numPicks)
         internal
         view
@@ -1194,7 +1206,9 @@ contract PredictionMarketEscrow is
         for (uint256 i = 0; i < numPicks; i++) {
             IV2Types.Pick storage pick = picks[i];
 
-            // Call resolver with try/catch to prevent DoS from malicious resolvers
+            // Call resolver with try/catch to prevent DoS from malicious resolvers.
+            // getResolution returns scalars (bool, OutcomeVector), not arrays,
+            // so no array-bounds validation is needed (cf. _resolveBatch).
             bool isResolved;
             IV2Types.OutcomeVector memory outcome;
             try IConditionResolver(pick.conditionResolver)

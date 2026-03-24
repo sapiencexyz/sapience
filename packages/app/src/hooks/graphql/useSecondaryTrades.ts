@@ -61,6 +61,25 @@ const TRADES_BY_BUYER_QUERY = /* GraphQL */ `
   }
 `;
 
+const ALL_TRADES_QUERY = /* GraphQL */ `
+  query AllTrades($chainId: Int, $take: Int, $skip: Int) {
+    trades(chainId: $chainId, take: $take, skip: $skip) {
+      id
+      tradeHash
+      chainId
+      token
+      collateral
+      seller
+      buyer
+      tokenAmount
+      price
+      txHash
+      blockNumber
+      executedAt
+    }
+  }
+`;
+
 const TRADE_QUERY = /* GraphQL */ `
   query Trade($id: String!) {
     trade(id: $id) {
@@ -155,6 +174,35 @@ export function useSecondaryTrade(tradeHash?: string) {
   return {
     data: data ?? null,
     isLoading: !!enabled && (isLoading || isFetching),
+    error,
+    refetch,
+  };
+}
+
+export function useSecondaryTrades(params: {
+  chainId?: number;
+  take?: number;
+  skip?: number;
+}) {
+  const { chainId, take = 50, skip = 0 } = params;
+
+  const { data, isLoading, isFetching, error, refetch } = useQuery({
+    queryKey: ['secondaryTradesAll', chainId, take, skip],
+    staleTime: 30_000,
+    gcTime: 5 * 60 * 1000,
+    refetchOnWindowFocus: false,
+    queryFn: async () => {
+      const resp = await graphqlRequest<{ trades: SecondaryTrade[] }>(
+        ALL_TRADES_QUERY,
+        { chainId: chainId ?? null, take, skip }
+      );
+      return resp?.trades ?? [];
+    },
+  });
+
+  return {
+    data: data ?? [],
+    isLoading: isLoading || isFetching,
     error,
     refetch,
   };

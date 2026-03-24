@@ -30,6 +30,7 @@ type PicksWithPicks = {
   predictorToken: string | null;
   counterpartyToken: string | null;
   endsAt: number | null;
+  isLegacy: boolean;
   picks: {
     id: number;
     pickConfigId: string;
@@ -58,6 +59,7 @@ export function mapPickConfig(
     predictorToken: pc.predictorToken ?? null,
     counterpartyToken: pc.counterpartyToken ?? null,
     endsAt: pc.endsAt ?? null,
+    isLegacy: pc.isLegacy,
     picks: pc.picks.map((p) => ({
       id: p.id,
       pickConfigId: p.pickConfigId,
@@ -181,6 +183,9 @@ export class PickConfigurationType {
 
   @Field(() => String, { nullable: true })
   predictionId?: string | null;
+
+  @Field(() => Boolean)
+  isLegacy!: boolean;
 }
 
 @ObjectType('Prediction', {
@@ -250,6 +255,9 @@ export class PredictionType {
 
   @Field(() => String, { nullable: true })
   refCode?: string | null;
+
+  @Field(() => Boolean)
+  isLegacy!: boolean;
 
   @Field(() => PickConfigurationType, { nullable: true })
   pickConfig?: PickConfigurationType | null;
@@ -416,6 +424,7 @@ export class EscrowResolver {
     @Arg('conditionId', () => String, { nullable: true }) conditionId?: string,
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number,
     @Arg('settled', () => Boolean, { nullable: true }) settled?: boolean,
+    @Arg('isLegacy', () => Boolean, { nullable: true }) isLegacy?: boolean,
     @Arg('orderBy', () => PredictionSortField, { nullable: true })
     orderBy?: PredictionSortField,
     @Arg('orderDirection', () => SortOrder, { nullable: true })
@@ -453,6 +462,9 @@ export class EscrowResolver {
     }
     if (settled !== undefined && settled !== null) {
       filters.push({ settled });
+    }
+    if (isLegacy !== undefined && isLegacy !== null) {
+      filters.push({ isLegacy });
     }
 
     if (filters.length > 0) {
@@ -503,6 +515,7 @@ export class EscrowResolver {
       createTxHash: r.createTxHash,
       settleTxHash: r.settleTxHash ?? null,
       refCode: r.refCode ?? null,
+      isLegacy: r.isLegacy,
       pickConfig: r.pickConfiguration
         ? mapPickConfig(r.pickConfiguration)
         : null,
@@ -551,6 +564,7 @@ export class EscrowResolver {
       createTxHash: r.createTxHash,
       settleTxHash: r.settleTxHash ?? null,
       refCode: r.refCode ?? null,
+      isLegacy: r.isLegacy,
       pickConfig: r.pickConfiguration
         ? mapPickConfig(r.pickConfiguration)
         : null,
@@ -571,7 +585,9 @@ export class EscrowResolver {
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number,
     @Arg('resolved', () => Boolean, { nullable: true }) resolved?: boolean,
     @Arg('result', () => SettlementResult, { nullable: true })
-    result?: SettlementResult
+    result?: SettlementResult,
+    @Arg('tokens', () => [String], { nullable: true })
+    tokens?: string[]
   ): Promise<PickConfigurationType[]> {
     const cappedTake = Math.max(1, Math.min(take, 100));
     const where: Prisma.PicksWhereInput = {};
@@ -584,6 +600,16 @@ export class EscrowResolver {
     }
     if (result) {
       where.result = result as unknown as Prisma.EnumSettlementResultFilter;
+    }
+    if (tokens && tokens.length > 0) {
+      if (tokens.length > 100) {
+        throw new Error('tokens filter limited to 100 addresses');
+      }
+      const lowered = tokens.map((t) => t.toLowerCase());
+      where.OR = [
+        { predictorToken: { in: lowered } },
+        { counterpartyToken: { in: lowered } },
+      ];
     }
 
     const rows = await prisma.picks.findMany({

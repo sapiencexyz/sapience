@@ -2,10 +2,15 @@ import type { Address } from 'viem';
 
 export type ChainId = 42161 | 5064014 | number;
 
+export interface LegacyContractEntry {
+  address: Address;
+  blockCreated: number;
+}
+
 export interface ContractAddressEntry {
   address: Address;
   blockCreated?: number;
-  legacy?: readonly Address[];
+  legacy?: readonly (Address | LegacyContractEntry)[];
 }
 
 export type ChainAddressMap = Record<ChainId, ContractAddressEntry>;
@@ -50,20 +55,44 @@ export const predictionMarketEscrow: ChainAddressMap = {
     // Ethereal mainnet — redeployed 2026-03-13
     address: '0xEF6B5C544814a3c5E335b6D2BAec6CBDe0f97A76',
     legacy: [
-      '0x243022eBf5d66741499d76555CADFDE51e101e03',
-      '0xC18ed3483733d4e15516c2Fe101fF20B61e88A55',
-      '0x23C765fcE26aDbA3A1e0790d548410367D5A3487',
+      {
+        address: '0x243022eBf5d66741499d76555CADFDE51e101e03',
+        blockCreated: 3562422,
+      },
+      {
+        address: '0xC18ed3483733d4e15516c2Fe101fF20B61e88A55',
+        blockCreated: 3499800,
+      },
+      {
+        address: '0x23C765fcE26aDbA3A1e0790d548410367D5A3487',
+        blockCreated: 3253196,
+      },
     ] as const,
   },
   13374202: {
     // Ethereal testnet — redeployed 2026-03-13
     address: '0x3B680e06B9A384179644C1bC7842Db67Df5Fb5f0',
     legacy: [
-      '0x3025C4E3087f33Ac04D78eE34f35D4d003c2D642',
-      '0x7Bd9b22F89ECa14C5afa4de37Ae7B15C80de7a69',
-      '0x32Bf5903EA9c98FB20eB07735a8e62D303B60B3C',
-      '0xb5d2E6B148eBdFB02a3456F0Af021FAe81356511',
-      '0x8730eE1194Cd03A14deA9975e2bafD4C8b6019F1',
+      {
+        address: '0x3025C4E3087f33Ac04D78eE34f35D4d003c2D642',
+        blockCreated: 2294248,
+      },
+      {
+        address: '0x7Bd9b22F89ECa14C5afa4de37Ae7B15C80de7a69',
+        blockCreated: 2294058,
+      },
+      {
+        address: '0x32Bf5903EA9c98FB20eB07735a8e62D303B60B3C',
+        blockCreated: 2293993,
+      },
+      {
+        address: '0xb5d2E6B148eBdFB02a3456F0Af021FAe81356511',
+        blockCreated: 2264547,
+      },
+      {
+        address: '0x8730eE1194Cd03A14deA9975e2bafD4C8b6019F1',
+        blockCreated: 2107812,
+      },
     ] as const,
   },
 } as const;
@@ -77,7 +106,12 @@ export const predictionMarketVault: ChainAddressMap = {
   5064014: {
     // Ethereal mainnet — deployed 2026-03-05
     address: '0x0f246fBd64f6FE57544aAB16A31e1E3F59257723',
-    legacy: ['0x5704dB4b2c068d74Fde25257106a7029463f812E'] as const,
+    legacy: [
+      {
+        address: '0x5704dB4b2c068d74Fde25257106a7029463f812E',
+        blockCreated: 3253965,
+      },
+    ] as const,
   },
   13374202: {
     // Ethereal testnet — deployed 2026-02-18
@@ -94,7 +128,12 @@ export const pythConditionResolver: ChainAddressMap = {
   5064014: {
     // Ethereal mainnet — redeployed 2026-03-13
     address: '0x3384de2a15e8D767a36f09f6e67F41C9fa8C6B1f',
-    legacy: ['0x6399F6397701e4213BBaEf9f7a15EF31C9c329E1'] as const,
+    legacy: [
+      {
+        address: '0x6399F6397701e4213BBaEf9f7a15EF31C9c329E1',
+        blockCreated: 3278610,
+      },
+    ] as const,
   },
   13374202: {
     // Ethereal testnet — deployed 2026-02-28
@@ -111,7 +150,12 @@ export const conditionalTokensConditionResolver: ChainAddressMap = {
   5064014: {
     // Ethereal mainnet — redeployed 2026-03-13
     address: '0x19e34DB5bef20EF0613854c3670cD809DEFf4035',
-    legacy: ['0x130598b7334901077cA5369b098Fd47F042CdcC9'] as const,
+    legacy: [
+      {
+        address: '0x130598b7334901077cA5369b098Fd47F042CdcC9',
+        blockCreated: 3278696,
+      },
+    ] as const,
   },
 } as const;
 
@@ -124,8 +168,14 @@ export const conditionalTokensReader: ChainAddressMap = {
     // Polygon mainnet — redeployed 2026-03-17
     address: '0x79cB914f3F336426E89FaB55A9488AB25770552D',
     legacy: [
-      '0x882288A664e29aEBC654Fa9679697d23716fcCD1',
-      '0x97b356E9689dCEa3a268Ac6D7d8A87A24fa95ae2',
+      {
+        address: '0x882288A664e29aEBC654Fa9679697d23716fcCD1',
+        blockCreated: 0,
+      },
+      {
+        address: '0x97b356E9689dCEa3a268Ac6D7d8A87A24fa95ae2',
+        blockCreated: 0,
+      },
     ] as const,
   },
 } as const;
@@ -139,20 +189,44 @@ export const manualConditionResolver: ChainAddressMap = {
     // Ethereal mainnet — redeployed 2026-03-13
     address: '0x3791b6B4B80c1aDEeb37350F63825E43722a3573',
     legacy: [
-      '0x07a93E42afBCf747B8a9180e61b890888eF813F4',
-      '0xAdFcDD47f8E09D5Cc00B25d2bbC3A8fdc3Ad4674',
+      {
+        address: '0x07a93E42afBCf747B8a9180e61b890888eF813F4',
+        blockCreated: 3659073,
+      },
+      {
+        address: '0xAdFcDD47f8E09D5Cc00B25d2bbC3A8fdc3Ad4674',
+        blockCreated: 3253178,
+      },
     ] as const,
   },
   13374202: {
     // Ethereal testnet — redeployed 2026-03-13
     address: '0xa5ec46b834aC33ec68e30E7dDeedbbbD4f461784',
     legacy: [
-      '0x5fa66D9021490BC7479B33D226C70Dd3C91AF399',
-      '0x9f0fA333e634b9E11CbcA0fC16123912b941F7Bd',
-      '0x31C51d3a6e01a9F15144429ebc71E8815157a0aD',
-      '0xAE41b42dC5d9a98C53c7A91c44523173300c1f31',
-      '0x9938583eA9a6450Cc64502bDcBF76f4EEa2F9560',
-      '0x514A4321d89Aa47D1b1Dd9E0a3226249E6ef896A',
+      {
+        address: '0x5fa66D9021490BC7479B33D226C70Dd3C91AF399',
+        blockCreated: 2537087,
+      },
+      {
+        address: '0x9f0fA333e634b9E11CbcA0fC16123912b941F7Bd',
+        blockCreated: 2294246,
+      },
+      {
+        address: '0x31C51d3a6e01a9F15144429ebc71E8815157a0aD',
+        blockCreated: 2294057,
+      },
+      {
+        address: '0xAE41b42dC5d9a98C53c7A91c44523173300c1f31',
+        blockCreated: 2293991,
+      },
+      {
+        address: '0x9938583eA9a6450Cc64502bDcBF76f4EEa2F9560',
+        blockCreated: 2264546,
+      },
+      {
+        address: '0x514A4321d89Aa47D1b1Dd9E0a3226249E6ef896A',
+        blockCreated: 2107805,
+      },
     ] as const,
   },
 } as const;
@@ -166,20 +240,44 @@ export const predictionMarketBridge: ChainAddressMap = {
     // Ethereal mainnet — redeployed 2026-03-13
     address: '0x4091E14e114733FB888fD24E24bCaA70E955c07B',
     legacy: [
-      '0x6660a7AC974BDc06b54B82842088821407A67c03',
-      '0x7Ac66f19Cb9B4540A0aF02eeA406f413138D659A',
-      '0xf3a0026Bd8Bf3B3ca41177C93b99F97dfB657506',
+      {
+        address: '0x6660a7AC974BDc06b54B82842088821407A67c03',
+        blockCreated: 3562429,
+      },
+      {
+        address: '0x7Ac66f19Cb9B4540A0aF02eeA406f413138D659A',
+        blockCreated: 3499804,
+      },
+      {
+        address: '0xf3a0026Bd8Bf3B3ca41177C93b99F97dfB657506',
+        blockCreated: 3253210,
+      },
     ] as const,
   },
   13374202: {
     // Ethereal testnet — redeployed 2026-03-13
     address: '0xd45D795A3eB5890ad3Ff127C29b3A191D8A06F44',
     legacy: [
-      '0xAf0c78547018F9e2e515e6Fc0064DD091f3dDE38',
-      '0x1F6eF06A42860973A7Ad2A27A4Def0aa78eF49c3',
-      '0xAE32505E17Ff704df7Cd22E99916360328915BEb',
-      '0xAe66B4DED22bED7bE9385c29ADEc7AC9e1B97700',
-      '0x275Ba9B8DB207afb33022043848216BB7195eDb5',
+      {
+        address: '0xAf0c78547018F9e2e515e6Fc0064DD091f3dDE38',
+        blockCreated: 2294253,
+      },
+      {
+        address: '0x1F6eF06A42860973A7Ad2A27A4Def0aa78eF49c3',
+        blockCreated: 2294060,
+      },
+      {
+        address: '0xAE32505E17Ff704df7Cd22E99916360328915BEb',
+        blockCreated: 2293995,
+      },
+      {
+        address: '0xAe66B4DED22bED7bE9385c29ADEc7AC9e1B97700',
+        blockCreated: 2264550,
+      },
+      {
+        address: '0x275Ba9B8DB207afb33022043848216BB7195eDb5',
+        blockCreated: 2107823,
+      },
     ] as const,
   },
 } as const;
@@ -193,20 +291,44 @@ export const predictionMarketBridgeRemote: ChainAddressMap = {
     // Arbitrum mainnet — redeployed 2026-03-13
     address: '0x39fCc2898C471048A519B316188aB196F2ECb08A',
     legacy: [
-      '0x5BdAb642A8e5d2B1eaba93456eDc2F11FAecb0b7',
-      '0x49FD85a1Bf0C449A516Bf2a45d6106Bef7150aD5',
-      '0x136700DBA1cCC2eDd16aB0bf439bd6b65574F99f',
+      {
+        address: '0x5BdAb642A8e5d2B1eaba93456eDc2F11FAecb0b7',
+        blockCreated: 441025284,
+      },
+      {
+        address: '0x49FD85a1Bf0C449A516Bf2a45d6106Bef7150aD5',
+        blockCreated: 441018295,
+      },
+      {
+        address: '0x136700DBA1cCC2eDd16aB0bf439bd6b65574F99f',
+        blockCreated: 436762121,
+      },
     ] as const,
   },
   421614: {
     // Arbitrum Sepolia testnet — redeployed 2026-03-13
     address: '0x11B74d5a4aF9c83FF6610C0FaA8EC5378077Eb16',
     legacy: [
-      '0x4e52A5D1FaCcd4ebb97cEf22E91760662C7eDb54',
-      '0x06e2a473aA8652666aa7F1AF8808559b2164c89F',
-      '0x888e445F96515186B7b262d959FFF4AF14151ca9',
-      '0xE64ca8f0533422BCb6d48dCF11DB2fF3FA26B7Fb',
-      '0x1a7F19Ee50FBCa9a4d195E4a3737e7737b252b4c',
+      {
+        address: '0x4e52A5D1FaCcd4ebb97cEf22E91760662C7eDb54',
+        blockCreated: 252903704,
+      },
+      {
+        address: '0x06e2a473aA8652666aa7F1AF8808559b2164c89F',
+        blockCreated: 252901852,
+      },
+      {
+        address: '0x888e445F96515186B7b262d959FFF4AF14151ca9',
+        blockCreated: 252901943,
+      },
+      {
+        address: '0xE64ca8f0533422BCb6d48dCF11DB2fF3FA26B7Fb',
+        blockCreated: 252904306,
+      },
+      {
+        address: '0x1a7F19Ee50FBCa9a4d195E4a3737e7737b252b4c',
+        blockCreated: 252901832,
+      },
     ] as const,
   },
 } as const;
@@ -220,39 +342,84 @@ export const predictionMarketTokenFactory: ChainAddressMap = {
     // Ethereal mainnet — redeployed 2026-03-13 (CREATE2 deterministic, same address on both chains)
     address: '0xea76782164474ec59b647C5be21FAFD0Ecf936BD',
     legacy: [
-      '0xD838d19E910Dc4d235B1A7548BF86B08F9b1241D',
-      '0xe51f86ff77388c108Aa77A629b82713FF5233FE2',
-      '0x82b1b600DaCFcff4Cc1e3bD02c542222597e5Fe2',
+      {
+        address: '0xD838d19E910Dc4d235B1A7548BF86B08F9b1241D',
+        blockCreated: 3562421,
+      },
+      {
+        address: '0xe51f86ff77388c108Aa77A629b82713FF5233FE2',
+        blockCreated: 3499797,
+      },
+      {
+        address: '0x82b1b600DaCFcff4Cc1e3bD02c542222597e5Fe2',
+        blockCreated: 3253184,
+      },
     ] as const,
   },
   42161: {
     // Arbitrum mainnet — redeployed 2026-03-13 (CREATE2 deterministic, same address on both chains)
     address: '0xea76782164474ec59b647C5be21FAFD0Ecf936BD',
     legacy: [
-      '0xD838d19E910Dc4d235B1A7548BF86B08F9b1241D',
-      '0xe51f86ff77388c108Aa77A629b82713FF5233FE2',
-      '0x82b1b600DaCFcff4Cc1e3bD02c542222597e5Fe2',
+      {
+        address: '0xD838d19E910Dc4d235B1A7548BF86B08F9b1241D',
+        blockCreated: 441015320,
+      },
+      {
+        address: '0xe51f86ff77388c108Aa77A629b82713FF5233FE2',
+        blockCreated: 442253903,
+      },
+      {
+        address: '0x82b1b600DaCFcff4Cc1e3bD02c542222597e5Fe2',
+        blockCreated: 436762123,
+      },
     ] as const,
   },
   13374202: {
     // Ethereal testnet — redeployed 2026-03-13 (CREATE2 deterministic, same address on both chains)
     address: '0x5B9f2cb9c822899A0F824eEb039B628A4d13d7AD',
     legacy: [
-      '0x9924518205391c0443fA565327108afB3E100b51',
-      '0x6a53c3A010D0Bd9E4BE4815959413A379d5bfDDF',
-      '0xA2566AF673d4fe3174d0fBDe5ee8cadfc0c684b5',
-      '0xcbf9eB6AF28fBCc7c19760aC230cC216113742d0',
+      {
+        address: '0x9924518205391c0443fA565327108afB3E100b51',
+        blockCreated: 2294247,
+      },
+      {
+        address: '0x6a53c3A010D0Bd9E4BE4815959413A379d5bfDDF',
+        blockCreated: 2294038,
+      },
+      {
+        address: '0xA2566AF673d4fe3174d0fBDe5ee8cadfc0c684b5',
+        blockCreated: 2293992,
+      },
+      {
+        address: '0xcbf9eB6AF28fBCc7c19760aC230cC216113742d0',
+        blockCreated: 2293665,
+      },
     ] as const,
   },
   421614: {
     // Arbitrum Sepolia testnet — redeployed 2026-03-13 (CREATE2 deterministic, same address on both chains)
     address: '0x5B9f2cb9c822899A0F824eEb039B628A4d13d7AD',
     legacy: [
-      '0x9924518205391c0443fA565327108afB3E100b51',
-      '0x6a53c3A010D0Bd9E4BE4815959413A379d5bfDDF',
-      '0xA2566AF673d4fe3174d0fBDe5ee8cadfc0c684b5',
-      '0xD0734eb4b22eFc22F53254C276e8A3095740600a',
-      '0x0daA1bC7FC4d7f2753FdB65e0AD96b97361385A3',
+      {
+        address: '0x9924518205391c0443fA565327108afB3E100b51',
+        blockCreated: 252904693,
+      },
+      {
+        address: '0x6a53c3A010D0Bd9E4BE4815959413A379d5bfDDF',
+        blockCreated: 252901121,
+      },
+      {
+        address: '0xA2566AF673d4fe3174d0fBDe5ee8cadfc0c684b5',
+        blockCreated: 252903523,
+      },
+      {
+        address: '0xD0734eb4b22eFc22F53254C276e8A3095740600a',
+        blockCreated: 252901145,
+      },
+      {
+        address: '0x0daA1bC7FC4d7f2753FdB65e0AD96b97361385A3',
+        blockCreated: 252901123,
+      },
     ] as const,
   },
 } as const;
@@ -270,7 +437,12 @@ export const secondaryMarketEscrow: ChainAddressMap = {
   13374202: {
     // Ethereal testnet — redeployed 2026-02-26 (bitmap nonces + session key revocation)
     address: '0x16222940184Aad2E806529C963531e36c13875cF',
-    legacy: ['0x0c12a974E7741135a8431458705Ae16dDa41aA85'] as const,
+    legacy: [
+      {
+        address: '0x0c12a974E7741135a8431458705Ae16dDa41aA85',
+        blockCreated: 2266775,
+      },
+    ] as const,
   },
 } as const;
 
@@ -285,7 +457,12 @@ export const onboardingSponsor: ChainAddressMap = {
   5064014: {
     // Ethereal mainnet — redeployed 2026-03-17
     address: '0xFB177fd4eC88b813e88178Fa898D75651Dece8ED',
-    legacy: ['0x4DDB0fD9be45c3F86aF25B661a0e18403DB0602d'] as const,
+    legacy: [
+      {
+        address: '0x4DDB0fD9be45c3F86aF25B661a0e18403DB0602d',
+        blockCreated: 3563212,
+      },
+    ] as const,
   },
   13374202: {
     // Ethereal testnet - TODO: deploy
@@ -293,6 +470,16 @@ export const onboardingSponsor: ChainAddressMap = {
     legacy: [] as const,
   },
 } as const;
+
+/** Normalize a legacy entry (Address | LegacyContractEntry) to { address, blockCreated }. */
+export function normalizeLegacyEntry(
+  entry: Address | LegacyContractEntry
+): LegacyContractEntry {
+  if (typeof entry === 'string') {
+    return { address: entry, blockCreated: 0 };
+  }
+  return entry;
+}
 
 export const contracts = {
   collateralToken,
@@ -348,7 +535,37 @@ export function getResolverAddressesForChain(
   return result;
 }
 
-/** Identify the resolver type from an on-chain address. */
+/** Get all legacy resolver addresses for a given chain. */
+export function getLegacyResolverAddressesForChain(
+  chainId: number
+): { type: ResolverType; address: Address; blockCreated: number }[] {
+  const result: {
+    type: ResolverType;
+    address: Address;
+    blockCreated: number;
+  }[] = [];
+  for (const [type, map] of Object.entries(RESOLVER_MAP) as [
+    ResolverType,
+    ChainAddressMap,
+  ][]) {
+    const entry = map[chainId];
+    if (!entry?.legacy) continue;
+    for (const leg of entry.legacy) {
+      if (typeof leg === 'string') {
+        result.push({ type, address: leg, blockCreated: 0 });
+      } else {
+        result.push({
+          type,
+          address: leg.address,
+          blockCreated: leg.blockCreated,
+        });
+      }
+    }
+  }
+  return result;
+}
+
+/** Identify the resolver type from an on-chain address (current or legacy). */
 export function identifyResolver(
   address: string,
   chainId: number
@@ -358,7 +575,16 @@ export function identifyResolver(
     ResolverType,
     ChainAddressMap,
   ][]) {
-    if (map[chainId]?.address.toLowerCase() === lower) return type;
+    const entry = map[chainId];
+    if (!entry) continue;
+    if (entry.address.toLowerCase() === lower) return type;
+    // Also check legacy addresses
+    if (entry.legacy) {
+      for (const leg of entry.legacy) {
+        const legAddr = typeof leg === 'string' ? leg : leg.address;
+        if (legAddr.toLowerCase() === lower) return type;
+      }
+    }
   }
   return null;
 }

@@ -29,7 +29,9 @@ function collectAddresses(...maps: ChainAddressMap[]): string[] {
     for (const entry of Object.values(map)) {
       if (entry?.address) addrs.push(entry.address);
       if (entry?.legacy) {
-        for (const addr of entry.legacy) addrs.push(addr);
+        for (const leg of entry.legacy) {
+          addrs.push(typeof leg === 'string' ? leg : leg.address);
+        }
       }
     }
   }

@@ -517,6 +517,9 @@ model Prediction {
   collateralDeposited    String?   @db.VarChar
   collateralDepositedAt  Int?
 
+  // Legacy contract flag
+  isLegacy               Boolean   @default(false)
+
   @@index([chainId, marketAddress], map: "IDX_prediction_chain_market")
   @@index([predictor], map: "IDX_prediction_predictor")
   @@index([counterparty], map: "IDX_prediction_counterparty")
@@ -545,6 +548,9 @@ model Picks {
   counterpartyToken            String?   @db.VarChar
   endsAt                       Int?
   fullyRedeemed                Boolean   @default(false)
+
+  // Legacy contract flag
+  isLegacy                     Boolean   @default(false)
 
   picks                        Pick[]
   positionBalances             Position[]

@@ -9,7 +9,7 @@ import { LZTypes } from "../../shared/LZTypes.sol";
 /// @dev This resolver receives resolution messages from UMA side via LayerZero
 interface ILZConditionResolver is IConditionResolver {
     // ============ Events ============
-    event ConditionResolved(
+    event ConditionResolutionDetail(
         bytes32 indexed conditionId,
         bool resolvedToYes,
         bool assertedTruthfully,
