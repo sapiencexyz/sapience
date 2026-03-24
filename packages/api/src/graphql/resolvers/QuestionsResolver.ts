@@ -101,7 +101,7 @@ export class QuestionsResolver {
     description:
       'Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field',
   })
-  @Directive('@cacheControl(maxAge: 30)')
+  @Directive('@cacheControl(maxAge: 120)')
   async questions(
     @Ctx() ctx: ApolloContext,
     @Arg('take', () => Int, { defaultValue: 50 }) take: number,
@@ -349,9 +349,9 @@ export class QuestionsResolver {
       return {};
     })();
 
+    // Only filter fields that affect which conditions appear in a group's response.
+    // public and chainId are already guaranteed by the SQL query — no need to re-check.
     const conditionWhere = {
-      public: true,
-      ...(chainId !== null ? { chainId } : {}),
       ...resolvedPrismaFilter,
       ...(minEndTime !== null ? { endTime: { gte: minEndTime } } : {}),
     };
