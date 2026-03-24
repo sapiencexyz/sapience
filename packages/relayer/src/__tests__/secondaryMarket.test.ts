@@ -492,6 +492,42 @@ describe('SecondaryMarketHandlers', () => {
       expect(broadcast!.topic).toBe('secondary:global');
     });
 
+    it('broadcasts quote-only requests with quote metadata and returns non-penalty success', async () => {
+      const client = createMockClient();
+      const subs = createMockSubs();
+      const ctx = createMockCtx(client);
+
+      const payload = createListing({ quoteOnly: true });
+      const rejected = await handleSecondaryAuctionStart(
+        client,
+        payload,
+        subs,
+        ctx
+      );
+
+      expect(rejected).toBe(false);
+
+      const ack = findMsg(
+        client._messages,
+        (m) => m.type === 'secondary.auction.ack' && !!m.payload.auctionId
+      );
+      expect(ack).toBeDefined();
+
+      const broadcast = subs._broadcasts.find(
+        (b) => (b.msg as WsMsg).type === 'secondary.auction.started'
+      );
+      expect(broadcast).toBeDefined();
+      expect(broadcast!.topic).toBe('secondary:global');
+      expect((broadcast!.msg as WsMsg).payload).toMatchObject({
+        auctionId: ack!.payload.auctionId,
+        quoteOnly: true,
+        escrowContract: payload.escrowContract,
+      });
+      expect(
+        subs._topics.get(`secondary:${ack!.payload.auctionId}`)?.has(client)
+      ).toBe(true);
+    });
+
     it('rejects duplicate seller nonce', async () => {
       const client = createMockClient();
       const subs = createMockSubs();
@@ -784,7 +820,6 @@ describe('SecondaryMarketHandlers', () => {
       const subs = createMockSubs();
       const ctx = createMockCtx(client);
 
-      // Create two listings
       await handleSecondaryAuctionStart(
         client,
         createListing({ sellerNonce: 1 }),
@@ -807,6 +842,35 @@ describe('SecondaryMarketHandlers', () => {
       );
       expect(snapshot).toBeDefined();
       expect(snapshot!.payload.listings).toHaveLength(2);
+    });
+
+    it('excludes quote-only requests from listings snapshots', async () => {
+      const client = createMockClient();
+      const subs = createMockSubs();
+      const ctx = createMockCtx(client);
+
+      await handleSecondaryAuctionStart(
+        client,
+        createListing({ sellerNonce: 1 }),
+        subs,
+        ctx
+      );
+      await handleSecondaryAuctionStart(
+        client,
+        createListing({ sellerNonce: 2, quoteOnly: true }),
+        subs,
+        ctx
+      );
+
+      const reqClient = createMockClient();
+      handleSecondaryListingsRequest(reqClient);
+
+      const snapshot = findMsg(
+        reqClient._messages,
+        (m) => m.type === 'secondary.listings.snapshot'
+      );
+      expect(snapshot).toBeDefined();
+      expect(snapshot!.payload.listings).toHaveLength(1);
     });
   });
 });

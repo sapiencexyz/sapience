@@ -105,6 +105,58 @@ export async function handleSecondaryAuctionStart(
     return true;
   }
 
+  // ── Quote-only path ──
+  // Price discovery request: register in registry (so bid routing works) but
+  // mark as quoteOnly so it's excluded from the listings snapshot.
+  // Broadcast to feed subscribers, but exclude from the listings snapshot.
+  if (payload.quoteOnly) {
+    const quoteId = addSecondaryListing(payload);
+    if (!quoteId) {
+      client.send({
+        type: 'secondary.auction.ack',
+        payload: { error: 'duplicate_nonce' },
+      });
+      return false;
+    }
+
+    // Auto-subscribe the requester so they receive bid responses
+    const isNew = subs.subscribe(auctionTopic(quoteId), client);
+    if (isNew) subscriptionsActive.inc({ subscription_type: 'secondary' });
+
+    // Ack to sender
+    client.send({
+      type: 'secondary.auction.ack',
+      payload: { auctionId: quoteId },
+    });
+
+    // Build quote details — includes quoteOnly flag so vault-bot can detect
+    const quoteDetails: SecondaryAuctionDetails = {
+      auctionId: quoteId,
+      token: payload.token,
+      collateral: payload.collateral,
+      tokenAmount: payload.tokenAmount,
+      seller: payload.seller,
+      sellerDeadline: payload.sellerDeadline,
+      chainId: payload.chainId,
+      escrowContract: payload.escrowContract,
+      createdAt: new Date().toISOString(),
+      quoteOnly: true,
+    };
+
+    // Broadcast to feed subscribers (vault-bot observers see quoteOnly=true)
+    subs.broadcast(GLOBAL_FEED_TOPIC, {
+      type: 'secondary.auction.started',
+      payload: quoteDetails,
+    });
+
+    console.log(
+      `[Secondary] Quote request: ${quoteId} seller=${payload.seller.slice(0, 10)} token=${payload.token.slice(0, 10)}`
+    );
+    return false;
+  }
+
+  // ── Real listing path (existing logic) ──
+
   // Add to registry
   const auctionId = addSecondaryListing(payload);
   if (!auctionId) {
@@ -338,7 +390,10 @@ export function handleSecondaryFeedUnsubscribe(
  * Handle secondary.listings.request — return all active (non-expired) listings
  */
 export function handleSecondaryListingsRequest(client: ClientConnection): void {
-  const listings = getAllSecondaryListings();
+  // Filter out quoteOnly listings — they shouldn't appear in the public snapshot
+  const listings = getAllSecondaryListings().filter(
+    (rec) => !rec.auction.quoteOnly
+  );
 
   const details = listings.map((rec) => ({
     auctionId: rec.auctionId,
