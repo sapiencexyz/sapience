@@ -1571,6 +1571,7 @@ export type QueryPickConfigurationsArgs = {
   result?: InputMaybe<SettlementResult>;
   skip?: Scalars['Int']['input'];
   take?: Scalars['Int']['input'];
+  tokens?: InputMaybe<Array<Scalars['String']['input']>>;
 };
 
 

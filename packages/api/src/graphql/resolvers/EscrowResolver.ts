@@ -585,7 +585,9 @@ export class EscrowResolver {
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number,
     @Arg('resolved', () => Boolean, { nullable: true }) resolved?: boolean,
     @Arg('result', () => SettlementResult, { nullable: true })
-    result?: SettlementResult
+    result?: SettlementResult,
+    @Arg('tokens', () => [String], { nullable: true })
+    tokens?: string[]
   ): Promise<PickConfigurationType[]> {
     const cappedTake = Math.max(1, Math.min(take, 100));
     const where: Prisma.PicksWhereInput = {};
@@ -598,6 +600,16 @@ export class EscrowResolver {
     }
     if (result) {
       where.result = result as unknown as Prisma.EnumSettlementResultFilter;
+    }
+    if (tokens && tokens.length > 0) {
+      if (tokens.length > 100) {
+        throw new Error('tokens filter limited to 100 addresses');
+      }
+      const lowered = tokens.map((t) => t.toLowerCase());
+      where.OR = [
+        { predictorToken: { in: lowered } },
+        { counterpartyToken: { in: lowered } },
+      ];
     }
 
     const rows = await prisma.picks.findMany({
