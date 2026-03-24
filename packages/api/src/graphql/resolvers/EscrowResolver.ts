@@ -602,6 +602,9 @@ export class EscrowResolver {
       where.result = result as unknown as Prisma.EnumSettlementResultFilter;
     }
     if (tokens && tokens.length > 0) {
+      if (tokens.length > 100) {
+        throw new Error('tokens filter limited to 100 addresses');
+      }
       const lowered = tokens.map((t) => t.toLowerCase());
       where.OR = [
         { predictorToken: { in: lowered } },
