@@ -69,18 +69,16 @@ export class TradeResolver {
     @Arg('token', () => String, { nullable: true }) token?: string,
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number
   ): Promise<SecondaryTradeType[]> {
-    const cappedTake = Math.max(1, Math.min(take, 100));
+    const hasFilter = !!(seller || buyer || token);
+    // Tighter cap when no filter is provided to limit unindexed scans
+    const maxTake = hasFilter ? 100 : 50;
+    const cappedTake = Math.max(1, Math.min(take, maxTake));
     const where: Prisma.SecondaryTradeWhereInput = {};
 
     if (seller) where.seller = seller.toLowerCase();
     if (buyer) where.buyer = buyer.toLowerCase();
     if (token) where.token = token.toLowerCase();
     if (chainId !== undefined && chainId !== null) where.chainId = chainId;
-
-    // Require at least one filter to avoid full table scans
-    if (!seller && !buyer && !token) {
-      return [];
-    }
 
     const rows = await prisma.secondaryTrade.findMany({
       where,
@@ -151,8 +149,6 @@ export class TradeResolver {
     if (buyer) where.buyer = buyer.toLowerCase();
     if (token) where.token = token.toLowerCase();
     if (chainId !== undefined && chainId !== null) where.chainId = chainId;
-
-    if (!seller && !buyer && !token) return 0;
 
     return prisma.secondaryTrade.count({ where });
   }
