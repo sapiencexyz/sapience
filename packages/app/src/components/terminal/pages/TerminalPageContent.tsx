@@ -3,10 +3,16 @@
 import type React from 'react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useIsMobile, useIsBelow } from '@sapience/ui/hooks/use-mobile';
-import { useSessionState } from '~/hooks/useSessionState';
 import { motion } from 'framer-motion';
 import { parseUnits, erc20Abi } from 'viem';
 import { useVirtualizer } from '@tanstack/react-virtual';
+import { decodePythMarketId } from '@sapience/sdk';
+import { isPredictedYes } from '@sapience/sdk/types';
+import type { ConditionById } from '@sapience/sdk/queries';
+import { useReadContracts } from 'wagmi';
+import { collateralToken } from '@sapience/sdk/contracts';
+import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
+import { useSessionState } from '~/hooks/useSessionState';
 import { type UiTransaction } from '~/components/markets/DataDrawer/TransactionCells';
 import { useAuctionRelayerFeed } from '~/lib/auction/useAuctionRelayerFeed';
 import AuctionRequestRow from '~/components/terminal/AuctionRequestRow';
@@ -19,14 +25,11 @@ import { useCategories } from '~/hooks/graphql/useCategories';
 import StackedPredictions, {
   type Pick,
 } from '~/components/shared/StackedPredictions';
-import { PythPredictionListItem, type PythPrediction } from '@sapience/ui';
 import {
   decodeAuctionPredictedOutcomes,
   formatPythPriceDecimalFromInt,
-  formatUnixSecondsToLocalInput,
   PYTH_RESOLVER_SET,
 } from '~/lib/auction/decodePredictedOutcomes';
-import { decodePythMarketId } from '@sapience/sdk';
 import { usePythFeedLabel } from '~/lib/pyth/usePythFeedLabel';
 
 import CategoryFilter from '~/components/terminal/filters/CategoryFilter';
@@ -39,12 +42,8 @@ import SignedFilter, {
 } from '~/components/terminal/filters/SignedFilter';
 import { type MultiSelectItem } from '~/components/terminal/filters/MultiSelect';
 import { useConditionsByIds } from '~/hooks/graphql/useConditionsByIds';
-import type { ConditionById } from '@sapience/sdk/queries';
 import Loader from '~/components/shared/Loader';
-import { useReadContracts } from 'wagmi';
-import { collateralToken } from '@sapience/sdk/contracts';
 import bidsHub from '~/lib/auction/useAuctionBidsHub';
-import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { toAuctionWsUrl } from '~/lib/ws';
 
@@ -451,8 +450,7 @@ const TerminalPageContent: React.FC = () => {
               <PythPredictionsCell
                 first={{
                   ...decoded,
-                  // predictedOutcome 1 = Over (maker), 0 = Under
-                  prediction: escrowPicks[0].predictedOutcome === 1,
+                  prediction: isPredictedYes(escrowPicks[0].predictedOutcome),
                 }}
               />
             );
@@ -474,10 +472,10 @@ const TerminalPageContent: React.FC = () => {
           const cond = renderConditionMap.get(p.conditionId);
           return {
             question: cond?.question ?? String(p.conditionId),
-            // Escrow predictedOutcome: 0 = Yes, 1 = No (from the predictor's perspective)
-            // In terminal view we show counterparty perspective (inverted)
-            choice:
-              p.predictedOutcome === 0 ? ('No' as const) : ('Yes' as const),
+            // Terminal shows counterparty perspective (inverted from predictor)
+            choice: isPredictedYes(p.predictedOutcome)
+              ? ('No' as const)
+              : ('Yes' as const),
             conditionId: String(p.conditionId),
             categorySlug: cond?.category?.slug ?? null,
           };
@@ -654,6 +652,7 @@ const TerminalPageContent: React.FC = () => {
       map.set(id, Array.isArray(arr) ? arr.length : 0);
     }
     return map;
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- bidsTick triggers recompute of external bidsHub state
   }, [bidsTick]);
 
   // Build pinned/unpinned rows for rendering
@@ -900,7 +899,9 @@ const TerminalPageContent: React.FC = () => {
   useEffect(() => {
     return () => {
       rowObserversRef.current.forEach((ro) => ro.disconnect());
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       rowObserversRef.current.clear();
+      // eslint-disable-next-line react-hooks/exhaustive-deps
       rowElsRef.current.clear();
     };
   }, []);
@@ -1252,20 +1253,6 @@ const TerminalPageContent: React.FC = () => {
 
 export default TerminalPageContent;
 
-function pythSideFromMakerPrediction(params: {
-  makerPrediction: boolean; // true=Over, false=Under
-  perspective: 'maker' | 'taker';
-}): { direction: 'over' | 'under'; choice: 'OVER' | 'UNDER' } {
-  // For Pyth, the counterparty/taker is always the opposite side of the maker.
-  const displayPrediction =
-    params.perspective === 'taker'
-      ? !params.makerPrediction
-      : params.makerPrediction;
-  return displayPrediction
-    ? { direction: 'over', choice: 'OVER' }
-    : { direction: 'under', choice: 'UNDER' };
-}
-
 function PythPredictionsCell({
   first,
 }: {
@@ -1279,29 +1266,23 @@ function PythPredictionsCell({
   };
 }) {
   const feedLabel = usePythFeedLabel(first.priceId);
-  // In the auction/taker view we show what the TAKER needs to win.
-  // maker Over -> taker Under, maker Under -> taker Over.
-  const side = pythSideFromMakerPrediction({
-    makerPrediction: first.prediction,
-    perspective: 'taker',
-  });
   const priceStr = formatPythPriceDecimalFromInt(
     first.strikePrice,
     first.strikeExpo
   );
-  const priceNum = Number(priceStr);
 
-  const pythPrediction: PythPrediction = {
-    id: `${first.priceId}:${first.endTime.toString()}:${first.strikePrice.toString()}:${first.strikeExpo}`,
-    priceId: first.priceId,
-    priceFeedLabel: feedLabel ?? undefined,
-    direction: side.direction,
-    targetPrice: Number.isFinite(priceNum) ? priceNum : 0,
-    targetPriceRaw: priceStr,
-    targetPriceFullPrecision: priceStr,
-    priceExpo: first.strikeExpo,
-    dateTimeLocal: formatUnixSecondsToLocalInput(first.endTime),
-  };
+  // Taker perspective: invert the maker's prediction
+  const takerChoice = first.prediction ? 'No' : 'Yes';
+  const question = `${feedLabel ?? 'Crypto'} OVER $${priceStr}`;
+
+  const picks: Pick[] = [
+    {
+      question,
+      choice: takerChoice,
+      source: 'pyth',
+      categorySlug: 'prices',
+    },
+  ];
 
   return (
     <motion.div
@@ -1309,9 +1290,7 @@ function PythPredictionsCell({
       animate={{ opacity: 1 }}
       transition={{ duration: 0.14, ease: 'easeOut' }}
     >
-      <div className="max-w-full">
-        <PythPredictionListItem prediction={pythPrediction} layout="inline" />
-      </div>
+      <StackedPredictions picks={picks} className="max-w-full" />
     </motion.div>
   );
 }

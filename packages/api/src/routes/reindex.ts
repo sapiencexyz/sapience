@@ -2,12 +2,10 @@ import { Router } from 'express';
 import { handleAsyncErrors } from '../helpers/handleAsyncErrors';
 import prisma from '../db';
 import {
-  conditionalTokensConditionResolver,
-  pythConditionResolver,
-  manualConditionResolver,
+  getResolverAddressesForChain,
+  getLegacyResolverAddressesForChain,
 } from '@sapience/sdk/contracts';
 import { getProviderForChain } from '../utils/utils';
-import { DEFAULT_CHAIN_ID, CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import { reindexAccuracy } from '../workers/jobs/reindexAccuracy';
 import { reindexConditionSettled } from '../workers/jobs/reindexConditionSettled';
 import { backfillProtocolStats } from '../helpers/protocolStats';
@@ -15,32 +13,6 @@ import { reindexTransfers } from '../workers/jobs/reindexTransfers';
 import { reindexCollateralTransfers } from '../workers/jobs/reindexCollateralTransfers';
 
 const router = Router();
-
-const IS_MAINNET = DEFAULT_CHAIN_ID === CHAIN_ID_ETHEREAL;
-
-/**
- * Returns all resolver addresses that the condition-settled indexer
- * watches for a given chain. Mirrors the logic in fixtures.ts.
- */
-function getResolverAddressesForChain(chainId: number): `0x${string}`[] {
-  const addresses: `0x${string}`[] = [];
-  const zero = '0x0000000000000000000000000000000000000000';
-
-  if (IS_MAINNET) {
-    // Mainnet: CT + Pyth resolvers
-    const ct = conditionalTokensConditionResolver[chainId]?.address;
-    if (ct && ct !== zero) addresses.push(ct as `0x${string}`);
-
-    const pyth = pythConditionResolver[chainId]?.address;
-    if (pyth && pyth !== zero) addresses.push(pyth as `0x${string}`);
-  } else {
-    // Testnet: manual resolver
-    const manual = manualConditionResolver[chainId]?.address;
-    if (manual && manual !== zero) addresses.push(manual as `0x${string}`);
-  }
-
-  return addresses;
-}
 
 const ETH_ADDRESS_RE = /^0x[a-fA-F0-9]{40}$/;
 const SAFE_STRING_RE = /^[a-zA-Z0-9_\-.:x]+$/;
@@ -90,7 +62,7 @@ router.post(
 router.post(
   '/condition-settled',
   handleAsyncErrors(async (req, res) => {
-    const { chainId, startTimestamp, endTimestamp } = req.body;
+    const { chainId, startTimestamp, endTimestamp, legacy } = req.body;
 
     const parsedChainId = parseInt(chainId);
     if (!chainId || isNaN(parsedChainId)) {
@@ -114,8 +86,17 @@ router.post(
       return;
     }
 
-    const resolverAddresses = getResolverAddressesForChain(parsedChainId);
-    if (resolverAddresses.length === 0) {
+    const includeLegacy = legacy === true || legacy === 'true';
+
+    const resolverAddresses = getResolverAddressesForChain(parsedChainId).map(
+      (r) => r.address
+    );
+    const legacyResolverAddresses = includeLegacy
+      ? getLegacyResolverAddressesForChain(parsedChainId).map((r) => r.address)
+      : [];
+
+    const allAddresses = [...resolverAddresses, ...legacyResolverAddresses];
+    if (allAddresses.length === 0) {
       res.status(400).json({
         error: `No resolver addresses configured for chain ${parsedChainId}`,
       });
@@ -127,9 +108,10 @@ router.post(
 
     const params = JSON.stringify({
       chainId: parsedChainId,
-      resolverAddresses,
+      resolverAddresses: allAddresses,
       startTimestamp: parsedStart,
       endTimestamp: parsedEnd,
+      legacy: includeLegacy,
     });
 
     const job = await prisma.backgroundJob.create({
@@ -138,12 +120,14 @@ router.post(
 
     void (async () => {
       try {
-        for (const resolverAddress of resolverAddresses) {
+        const legacySet = new Set(legacyResolverAddresses);
+        for (const resolverAddress of allAddresses) {
           await reindexConditionSettled(
             parsedChainId,
             resolverAddress,
             parsedStart,
-            parsedEnd
+            parsedEnd,
+            legacySet.has(resolverAddress)
           );
         }
         await prisma.backgroundJob.update({

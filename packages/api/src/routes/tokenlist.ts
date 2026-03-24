@@ -8,6 +8,7 @@ import {
   getTokenFactoryAddress,
 } from '@sapience/sdk';
 import type { Address, Hex } from 'viem';
+import { isPredictedYes } from '@sapience/sdk/types';
 import prisma from '../db';
 
 const router = Router();
@@ -115,7 +116,7 @@ async function buildTokenList(): Promise<string> {
 
   for (const cond of conditions) {
     for (const outcome of [0, 1] as const) {
-      const outcomeLabel = outcome === 0 ? 'Yes' : 'No';
+      const outcomeLabel = isPredictedYes(outcome) ? 'Yes' : 'No';
 
       // Compute deterministic pickConfigId for this single-condition pick
       const pickConfigId = computePickConfigId([

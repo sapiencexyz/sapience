@@ -1,12 +1,10 @@
-import { OutcomeSide } from '@sapience/sdk/types';
+import { isPredictedYes, OutcomeSide } from '@sapience/sdk/types';
 import { decodePythMarketId } from '@sapience/sdk';
 import type { PickData } from '~/hooks/graphql/usePositions';
 import type { Pick } from '~/components/shared/StackedPredictions';
 import { inferResolverKind } from '~/lib/resolvers/conditionResolver';
-import {
-  formatPythPriceDecimalFromInt,
-  formatUnixSecondsToLocalInput,
-} from '~/lib/auction/decodePredictedOutcomes';
+import { getChoiceLabel } from '~/lib/resolvers/choiceLabel';
+import { formatPythPriceDecimalFromInt } from '~/lib/auction/decodePredictedOutcomes';
 import { getPythFeedLabelSync } from '~/lib/pyth/usePythFeedLabel';
 
 export type ConditionsMap = Map<
@@ -33,16 +31,17 @@ export function toPicks(
     const condition = conditionsMap.get(pick.conditionId);
     const resolverKind = inferResolverKind(pick.conditionResolver);
 
+    // Shared choice/flip logic for all resolver types
+    const predictorChoseYes = isPredictedYes(pick.predictedOutcome);
+    const effectiveOutcome = isPredictorSide
+      ? pick.predictedOutcome
+      : predictorChoseYes
+        ? OutcomeSide.NO
+        : OutcomeSide.YES;
+    const choice = getChoiceLabel(effectiveOutcome);
+
     if (resolverKind === 'pyth') {
       const decoded = decodePythMarketId(pick.conditionId as `0x${string}`);
-
-      // On-chain convention: Over→YES=0, Under→NO=1
-      const predictorChoseOver = pick.predictedOutcome === 0;
-      const viewerChoseOver = isPredictorSide
-        ? predictorChoseOver
-        : !predictorChoseOver;
-      const direction: 'over' | 'under' = viewerChoseOver ? 'over' : 'under';
-      const choice = viewerChoseOver ? 'Over' : 'Under';
 
       if (decoded) {
         const priceStr = formatPythPriceDecimalFromInt(
@@ -50,9 +49,11 @@ export function toPicks(
           decoded.strikeExpo
         );
         const feedLabel = getPythFeedLabelSync(decoded.priceId);
-        const question = feedLabel
-          ? `${feedLabel} ${direction === 'over' ? '>' : '<'} $${priceStr}`
-          : pick.conditionId;
+        // Use DB shortName/question when available; fall back to decoded label with ">" framing
+        const question =
+          condition?.shortName ??
+          condition?.question ??
+          (feedLabel ? `${feedLabel} > $${priceStr}` : pick.conditionId);
 
         return {
           question,
@@ -63,17 +64,6 @@ export function toPicks(
           categorySlug: condition?.category?.slug ?? null,
           endTime: condition?.endTime ?? Number(decoded.endTime),
           source: 'pyth' as const,
-          pythPrediction: {
-            id: pick.conditionId,
-            priceId: decoded.priceId,
-            priceFeedLabel: feedLabel ?? undefined,
-            direction,
-            targetPrice: Number(priceStr),
-            targetPriceRaw: priceStr,
-            targetPriceFullPrecision: priceStr,
-            priceExpo: decoded.strikeExpo,
-            dateTimeLocal: formatUnixSecondsToLocalInput(decoded.endTime),
-          },
           settled: condition?.settled,
           resolvedToYes: condition?.resolvedToYes,
           nonDecisive: condition?.nonDecisive,
@@ -96,16 +86,10 @@ export function toPicks(
       };
     }
 
-    // UMA / default path
+    // Default path (non-Pyth resolvers)
     return {
       question: condition?.question ?? condition?.shortName ?? pick.conditionId,
-      choice: isPredictorSide
-        ? (pick.predictedOutcome as OutcomeSide) === OutcomeSide.YES
-          ? 'Yes'
-          : 'No'
-        : (pick.predictedOutcome as OutcomeSide) === OutcomeSide.YES
-          ? 'No'
-          : 'Yes',
+      choice,
       conditionId: pick.conditionId,
       resolverAddress: pick.conditionResolver ?? condition?.resolver ?? null,
       categorySlug: condition?.category?.slug ?? null,
@@ -152,8 +136,7 @@ export function computeResultFromConditions(
     }
 
     // Check if predictor's pick matches the resolution
-    const predictedYes =
-      (pick.predictedOutcome as OutcomeSide) === OutcomeSide.YES;
+    const predictedYes = isPredictedYes(pick.predictedOutcome);
     const resolvedYes = !!condition.resolvedToYes;
 
     if (predictedYes !== resolvedYes) {

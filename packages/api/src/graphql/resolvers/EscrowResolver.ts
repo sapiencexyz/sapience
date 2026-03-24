@@ -30,6 +30,7 @@ type PicksWithPicks = {
   predictorToken: string | null;
   counterpartyToken: string | null;
   endsAt: number | null;
+  isLegacy: boolean;
   picks: {
     id: number;
     pickConfigId: string;
@@ -58,6 +59,7 @@ export function mapPickConfig(
     predictorToken: pc.predictorToken ?? null,
     counterpartyToken: pc.counterpartyToken ?? null,
     endsAt: pc.endsAt ?? null,
+    isLegacy: pc.isLegacy,
     picks: pc.picks.map((p) => ({
       id: p.id,
       pickConfigId: p.pickConfigId,
@@ -181,6 +183,9 @@ export class PickConfigurationType {
 
   @Field(() => String, { nullable: true })
   predictionId?: string | null;
+
+  @Field(() => Boolean)
+  isLegacy!: boolean;
 }
 
 @ObjectType('Prediction', {
@@ -250,6 +255,9 @@ export class PredictionType {
 
   @Field(() => String, { nullable: true })
   refCode?: string | null;
+
+  @Field(() => Boolean)
+  isLegacy!: boolean;
 
   @Field(() => PickConfigurationType, { nullable: true })
   pickConfig?: PickConfigurationType | null;
@@ -416,6 +424,7 @@ export class EscrowResolver {
     @Arg('conditionId', () => String, { nullable: true }) conditionId?: string,
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number,
     @Arg('settled', () => Boolean, { nullable: true }) settled?: boolean,
+    @Arg('isLegacy', () => Boolean, { nullable: true }) isLegacy?: boolean,
     @Arg('orderBy', () => PredictionSortField, { nullable: true })
     orderBy?: PredictionSortField,
     @Arg('orderDirection', () => SortOrder, { nullable: true })
@@ -453,6 +462,9 @@ export class EscrowResolver {
     }
     if (settled !== undefined && settled !== null) {
       filters.push({ settled });
+    }
+    if (isLegacy !== undefined && isLegacy !== null) {
+      filters.push({ isLegacy });
     }
 
     if (filters.length > 0) {
@@ -503,6 +515,7 @@ export class EscrowResolver {
       createTxHash: r.createTxHash,
       settleTxHash: r.settleTxHash ?? null,
       refCode: r.refCode ?? null,
+      isLegacy: r.isLegacy,
       pickConfig: r.pickConfiguration
         ? mapPickConfig(r.pickConfiguration)
         : null,
@@ -551,6 +564,7 @@ export class EscrowResolver {
       createTxHash: r.createTxHash,
       settleTxHash: r.settleTxHash ?? null,
       refCode: r.refCode ?? null,
+      isLegacy: r.isLegacy,
       pickConfig: r.pickConfiguration
         ? mapPickConfig(r.pickConfiguration)
         : null,

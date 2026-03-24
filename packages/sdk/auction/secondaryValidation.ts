@@ -90,12 +90,7 @@ export async function validateSecondaryListing(
     );
   }
 
-  // 5. Field presence — minPrice
-  if (!isPositiveWei(payload.minPrice)) {
-    return invalid('MISSING_FIELD', 'minPrice must be a positive wei string');
-  }
-
-  // 6. Field presence — nonce
+  // 5. Field presence — nonce
   if (
     typeof payload.sellerNonce !== 'number' ||
     !Number.isFinite(payload.sellerNonce) ||
@@ -104,7 +99,7 @@ export async function validateSecondaryListing(
     return invalid('MISSING_FIELD', 'Invalid sellerNonce');
   }
 
-  // 7. Field presence — chainId
+  // 6. Field presence — chainId
   if (
     typeof payload.chainId !== 'number' ||
     !Number.isFinite(payload.chainId) ||
@@ -113,7 +108,7 @@ export async function validateSecondaryListing(
     return invalid('MISSING_FIELD', 'Invalid chainId');
   }
 
-  // 8. Chain mismatch
+  // 7. Chain mismatch
   if (opts.chainId !== undefined && payload.chainId !== opts.chainId) {
     return invalid(
       'CHAIN_MISMATCH',
@@ -121,7 +116,7 @@ export async function validateSecondaryListing(
     );
   }
 
-  // 9. Deadline freshness
+  // 8. Deadline freshness
   if (
     typeof payload.sellerDeadline !== 'number' ||
     !Number.isFinite(payload.sellerDeadline)
@@ -134,7 +129,7 @@ export async function validateSecondaryListing(
     return invalid('EXPIRED_DEADLINE', 'sellerDeadline must be in the future');
   }
 
-  // 10. Deadline upper bound
+  // 9. Deadline upper bound
   if (opts.maxDeadlineSeconds !== undefined) {
     const maxDeadline = nowSec + opts.maxDeadlineSeconds;
     if (payload.sellerDeadline > maxDeadline) {
@@ -145,12 +140,12 @@ export async function validateSecondaryListing(
     }
   }
 
-  // 11. Signature format
+  // 10. Signature format
   if (!isValidSignatureFormat(payload.sellerSignature)) {
     return invalid('INVALID_SIGNATURE', 'Invalid sellerSignature format');
   }
 
-  // 12. Session key data format validation (if present)
+  // 11. Session key data format validation (if present)
   if (
     payload.sellerSessionKeyData !== undefined &&
     payload.sellerSessionKeyData !== '' &&
@@ -162,7 +157,7 @@ export async function validateSecondaryListing(
     );
   }
 
-  // 13. Signature verification
+  // 12. Signature verification
   if (verifySignature) {
     // Session key signatures cannot be verified offline — ECDSA recovery
     // would recover the session key address, not the smart account address.
@@ -185,7 +180,7 @@ export async function validateSecondaryListing(
         payload.seller as Address,
         zeroAddress, // buyer unknown at listing time
         BigInt(payload.tokenAmount),
-        BigInt(payload.minPrice)
+        0n // price unknown at listing time — hardcoded to 0
       );
 
       const domain = getSecondaryDomain(
@@ -246,7 +241,7 @@ export interface ValidateSecondaryBidOptions {
 /**
  * Tier 1 validation for secondary market bid payloads.
  *
- * Combines field presence + deadline + price check + signature verification.
+ * Combines field presence + deadline + signature verification.
  * Session key signatures return 'unverified'.
  */
 export async function validateSecondaryBid(
@@ -271,16 +266,7 @@ export async function validateSecondaryBid(
     return invalid('MISSING_FIELD', 'price must be a positive wei string');
   }
 
-  // 4. Price >= minPrice
-  try {
-    if (BigInt(bid.price) < BigInt(listing.minPrice)) {
-      return invalid('PRICE_TOO_LOW', 'Bid price below minimum listing price');
-    }
-  } catch {
-    return invalid('MISSING_FIELD', 'Invalid price or minPrice format');
-  }
-
-  // 5. Field presence — nonce
+  // 4. Field presence — nonce
   if (
     typeof bid.buyerNonce !== 'number' ||
     !Number.isFinite(bid.buyerNonce) ||
@@ -289,7 +275,7 @@ export async function validateSecondaryBid(
     return invalid('MISSING_FIELD', 'Invalid buyerNonce');
   }
 
-  // 6. Deadline freshness
+  // 5. Deadline freshness
   if (
     typeof bid.buyerDeadline !== 'number' ||
     !Number.isFinite(bid.buyerDeadline)
@@ -302,12 +288,12 @@ export async function validateSecondaryBid(
     return invalid('EXPIRED_DEADLINE', 'buyerDeadline must be in the future');
   }
 
-  // 7. Signature format
+  // 6. Signature format
   if (!isValidSignatureFormat(bid.buyerSignature)) {
     return invalid('INVALID_SIGNATURE', 'Invalid buyerSignature format');
   }
 
-  // 8. Session key data format validation (if present)
+  // 7. Session key data format validation (if present)
   if (
     bid.buyerSessionKeyData !== undefined &&
     bid.buyerSessionKeyData !== '' &&
@@ -319,7 +305,7 @@ export async function validateSecondaryBid(
     );
   }
 
-  // 9. Signature verification
+  // 8. Signature verification
   if (verifySignature) {
     // Session key signatures: return unverified, let on-chain handle it
     if (bid.buyerSessionKeyData) {

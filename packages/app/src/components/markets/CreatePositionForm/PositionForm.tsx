@@ -12,15 +12,22 @@ import { AnimatePresence, motion } from 'framer-motion';
 import { FormProvider, type UseFormReturn, useWatch } from 'react-hook-form';
 import { parseUnits } from 'viem';
 import { useAccount } from 'wagmi';
-import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
 import { generateRandomNonce } from '@sapience/sdk';
 import {
   COLLATERAL_SYMBOLS,
   CHAIN_ID_ETHEREAL,
   CHAIN_ID_ETHEREAL_TESTNET,
 } from '@sapience/sdk/constants';
-import { PREFERRED_ESTIMATE_QUOTER } from '~/lib/constants';
 import { useToast } from '@sapience/ui/hooks/use-toast';
+import {
+  PredictionListItem,
+  type PythPrediction,
+  type PredictionListItemData,
+} from '@sapience/ui';
+import SponsorshipIndicator from './SponsorshipIndicator';
+import { PythMarketBadge } from '~/components/shared/PythMarketBadge';
+import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
+import { PREFERRED_ESTIMATE_QUOTER } from '~/lib/constants';
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import { PositionSizeInput } from '~/components/markets/forms';
 import BidDisplay from '~/components/markets/forms/shared/BidDisplay';
@@ -35,17 +42,10 @@ import { useSession } from '~/lib/context/SessionContext';
 import { getCategoryIcon } from '~/lib/theme/categoryIcons';
 import { getCategoryStyle, getColorWithAlpha } from '~/lib/utils/categoryStyle';
 import { getMaxPositionSize } from '~/lib/utils/positionFormUtils';
-import {
-  PythPredictionListItem,
-  UmaPredictionListItem,
-  type PythPrediction,
-  type UmaPrediction,
-} from '@sapience/ui';
 import { logPositionForm, formatBidForLog } from '~/lib/auction/bidLogger';
 import { getAuctionTriggerMode } from '~/lib/auction/auctionTriggerMode';
 import { useSponsorStatus } from '~/hooks/sponsorship/useSponsorStatus';
 import { useSponsorshipActivation } from '~/hooks/sponsorship/useSponsorshipActivation';
-import SponsorshipIndicator from './SponsorshipIndicator';
 
 const EMPTY_BIDS: QuoteBid[] = [];
 
@@ -95,7 +95,8 @@ export default function PositionForm({
   pythPredictions = [],
   onRemovePythPrediction,
 }: PositionFormProps) {
-  const { selections, removeSelection, getPicks } = useCreatePositionContext();
+  const { selections, removeSelection, getPolymarketPicks } =
+    useCreatePositionContext();
   const { address: predictorAddress } = useAccount();
   const { hasConnectedWallet } = useConnectedWallet();
   const { openConnectDialog } = useConnectDialog();
@@ -251,6 +252,7 @@ export default function PositionForm({
       currentRequestKeyRef.current = null; // Ignore incoming bids for old configuration
       prevPositionSizeRef.current = positionSizeValue || '';
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [positionSizeValue]);
 
   // Clear bids when wallet connection state changes
@@ -268,6 +270,7 @@ export default function PositionForm({
       currentRequestKeyRef.current = null;
       prevHasConnectedWalletRef.current = hasConnectedWallet;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasConnectedWallet]);
 
   // Clear bids when trigger mode changes (e.g. switching between EOA and Smart Account)
@@ -285,6 +288,7 @@ export default function PositionForm({
       currentRequestKeyRef.current = null;
       prevTriggerModeRef.current = triggerMode;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [triggerMode]);
 
   // Clear bids when selections change (prediction flipped, added, or removed) (for animations)
@@ -298,6 +302,7 @@ export default function PositionForm({
       currentRequestKeyRef.current = null; // Ignore incoming bids for old configuration
       prevPredictionsKeyRef.current = predictionsKey;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [predictionsKey]);
 
   // Update valid bids when new bids come in (for animations)
@@ -328,6 +333,7 @@ export default function PositionForm({
         `[accept] REJECTED: key mismatch. ref=${currentRequestKeyRef.current?.slice(0, 40)}, current=${currentRequestKey.slice(0, 40)}`
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bids, predictionsKey, positionSizeValue]);
 
   // Track previous filter result to avoid logging on every tick
@@ -561,12 +567,12 @@ export default function PositionForm({
         if (hasPyth && pythEscrowPicks) {
           picks = pythEscrowPicks;
         } else if (hasUma) {
-          const conditionPicks = getPicks();
+          const conditionPicks = getPolymarketPicks();
           if (conditionPicks.length > 0) {
             picks = conditionPicks;
           } else {
             console.warn(
-              '[PositionForm] Escrow chain but getPicks() empty',
+              '[PositionForm] Escrow chain but getPolymarketPicks() empty',
               selections.map((s) => ({
                 id: s.conditionId,
                 resolver: s.resolverAddress,
@@ -623,6 +629,7 @@ export default function PositionForm({
         });
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       selections,
       pythPredictions,
@@ -633,7 +640,7 @@ export default function PositionForm({
       collateralDecimals,
       chainId,
       predictionsKey,
-      getPicks,
+      getPolymarketPicks,
       sponsorAddress,
     ]
   );
@@ -800,15 +807,20 @@ export default function PositionForm({
           ].map((item, index) => {
             if (item.kind === 'pyth') {
               const p = item.p;
+              const predictionData: PredictionListItemData = {
+                id: p.id,
+                question: `${p.priceFeedLabel ?? 'Crypto'} OVER $${p.targetPrice.toLocaleString()}`,
+                prediction: p.direction === 'over',
+              };
               return (
                 <div
                   key={p.id}
                   className={`-mx-4 px-4 py-2.5 border-b border-brand-white/10 ${index === 0 ? 'border-t' : ''}`}
                 >
-                  <PythPredictionListItem
-                    prediction={p}
+                  <PredictionListItem
+                    prediction={predictionData}
+                    leading={<PythMarketBadge className="w-5 h-5" />}
                     onRemove={onRemovePythPrediction}
-                    layout="inline"
                   />
                 </div>
               );
@@ -821,7 +833,7 @@ export default function PositionForm({
             const bgWithAlpha = getColorWithAlpha(categoryColor, 0.1);
             // In CreatePositionForm: show shortName if available, always show question in tooltip
             const displayTitle = s.shortName || s.question;
-            const umaPrediction: UmaPrediction = {
+            const predictionData: PredictionListItemData = {
               id: s.id,
               conditionId: s.conditionId,
               question: displayTitle,
@@ -833,8 +845,8 @@ export default function PositionForm({
                 key={s.id}
                 className={`-mx-4 px-4 py-2.5 border-b border-brand-white/10 ${index === 0 ? 'border-t' : ''}`}
               >
-                <UmaPredictionListItem
-                  prediction={umaPrediction}
+                <PredictionListItem
+                  prediction={predictionData}
                   leading={
                     <div
                       className="w-5 h-5 rounded-full shrink-0 flex items-center justify-center"

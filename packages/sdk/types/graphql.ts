@@ -328,7 +328,7 @@ export type CategoryWhereUniqueInput = {
   conditions?: InputMaybe<ConditionListRelationFilter>;
   createdAt?: InputMaybe<DateTimeFilter>;
   id?: InputMaybe<Scalars['Int']['input']>;
-  name?: InputMaybe<Scalars['String']['input']>;
+  name?: InputMaybe<StringFilter>;
   slug?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -403,7 +403,6 @@ export type Condition = {
   category?: Maybe<Category>;
   categoryId?: Maybe<Scalars['Int']['output']>;
   chainId: Scalars['Int']['output'];
-  claimStatement: Scalars['String']['output'];
   conditionGroup?: Maybe<ConditionGroup>;
   conditionGroupId?: Maybe<Scalars['Int']['output']>;
   createdAt: Scalars['DateTimeISO']['output'];
@@ -590,7 +589,6 @@ export type ConditionOrderByWithRelationInput = {
   category?: InputMaybe<CategoryOrderByWithRelationInput>;
   categoryId?: InputMaybe<SortOrderInput>;
   chainId?: InputMaybe<SortOrder>;
-  claimStatement?: InputMaybe<SortOrder>;
   conditionGroup?: InputMaybe<ConditionGroupOrderByWithRelationInput>;
   conditionGroupId?: InputMaybe<SortOrderInput>;
   createdAt?: InputMaybe<SortOrder>;
@@ -623,7 +621,6 @@ export type ConditionScalarFieldEnum =
   | 'assertionTimestamp'
   | 'categoryId'
   | 'chainId'
-  | 'claimStatement'
   | 'conditionGroupId'
   | 'createdAt'
   | 'description'
@@ -653,7 +650,6 @@ export type ConditionWhereInput = {
   category?: InputMaybe<CategoryNullableRelationFilter>;
   categoryId?: InputMaybe<IntNullableFilter>;
   chainId?: InputMaybe<IntFilter>;
-  claimStatement?: InputMaybe<StringFilter>;
   conditionGroup?: InputMaybe<ConditionGroupNullableRelationFilter>;
   conditionGroupId?: InputMaybe<IntNullableFilter>;
   createdAt?: InputMaybe<DateTimeFilter>;
@@ -686,7 +682,6 @@ export type ConditionWhereUniqueInput = {
   category?: InputMaybe<CategoryNullableRelationFilter>;
   categoryId?: InputMaybe<IntNullableFilter>;
   chainId?: InputMaybe<IntFilter>;
-  claimStatement?: InputMaybe<StringFilter>;
   conditionGroup?: InputMaybe<ConditionGroupNullableRelationFilter>;
   conditionGroupId?: InputMaybe<IntNullableFilter>;
   createdAt?: InputMaybe<DateTimeFilter>;
@@ -1221,6 +1216,7 @@ export type PickConfiguration = {
   counterpartyToken?: Maybe<Scalars['String']['output']>;
   endsAt?: Maybe<Scalars['Int']['output']>;
   id: Scalars['String']['output'];
+  isLegacy: Scalars['Boolean']['output'];
   marketAddress: Scalars['String']['output'];
   picks: Array<Pick>;
   predictionId?: Maybe<Scalars['String']['output']>;
@@ -1277,6 +1273,7 @@ export type Prediction = {
   createTxHash: Scalars['String']['output'];
   createdAt: Scalars['DateTimeISO']['output'];
   id: Scalars['Int']['output'];
+  isLegacy: Scalars['Boolean']['output'];
   marketAddress: Scalars['String']['output'];
   pickConfig?: Maybe<PickConfiguration>;
   predictionId: Scalars['String']['output'];
@@ -1611,6 +1608,7 @@ export type QueryPredictionsArgs = {
   address?: InputMaybe<Scalars['String']['input']>;
   chainId?: InputMaybe<Scalars['Int']['input']>;
   conditionId?: InputMaybe<Scalars['String']['input']>;
+  isLegacy?: InputMaybe<Scalars['Boolean']['input']>;
   orderBy?: InputMaybe<PredictionSortField>;
   orderDirection?: InputMaybe<SortOrder>;
   settled?: InputMaybe<Scalars['Boolean']['input']>;

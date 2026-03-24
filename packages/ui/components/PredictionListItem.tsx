@@ -4,7 +4,7 @@ import * as React from 'react';
 
 import { PredictionChoiceBadge } from './predictions/PredictionChoiceBadge';
 
-export type UmaPrediction = {
+export type PredictionListItemData = {
   id: string;
   conditionId?: string;
   question: string;
@@ -12,11 +12,11 @@ export type UmaPrediction = {
   categorySlug?: string | null;
 };
 
-export type UmaPredictionListItemProps = {
-  prediction: UmaPrediction;
+export type PredictionListItemProps = {
+  prediction: PredictionListItemData;
   /**
    * Optional leading element (typically the circular category icon).
-   * If not provided, falls back to a generic UMA icon.
+   * If not provided, falls back to a generic icon.
    */
   leading?: React.ReactNode;
   /**
@@ -29,14 +29,14 @@ export type UmaPredictionListItemProps = {
   noLabel?: string;
 };
 
-export function UmaPredictionListItem({
+export function PredictionListItem({
   prediction,
   leading,
   title,
   onRemove,
   yesLabel = 'YES',
   noLabel = 'NO',
-}: UmaPredictionListItemProps) {
+}: PredictionListItemProps) {
   return (
     <div className="flex items-center gap-2">
       {leading ?? (

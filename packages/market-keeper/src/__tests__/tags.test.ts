@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fetchEventTags } from '../generate/tags';
 
 const mockFetchWithRetry = vi.fn();

@@ -24,6 +24,17 @@ export enum OutcomeSide {
   NO = 1,
 }
 
+/**
+ * Type-safe check: did the predictor choose YES?
+ *
+ * Use this instead of raw `=== 0` / `=== 1` comparisons to avoid
+ * the counterintuitive YES=0 mapping causing bugs. Every callsite
+ * that interprets a predictedOutcome should call this function.
+ */
+export function isPredictedYes(predictedOutcome: number): boolean {
+  return predictedOutcome === (OutcomeSide.YES as number);
+}
+
 /** Settlement result for a prediction */
 export enum SettlementResult {
   UNRESOLVED = 0,

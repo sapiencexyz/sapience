@@ -1,16 +1,19 @@
 #!/usr/bin/env node
 /// <reference types="node" />
 /**
- * Settle Sapience conditions by bridging resolution data from Polymarket via LayerZero
+ * Settle conditions on ConditionalTokensConditionResolver via LayerZero bridging
  *
- * This script:
+ * Production only — bridges resolution data from Polymarket (Polygon) to Ethereal
+ * mainnet via ConditionalTokensReader.requestResolution().
+ *
  * 1. Queries Sapience API for unsettled conditions that have ended
- * 2. Checks if each condition is resolved on Polymarket (via ConditionalTokensReader on Polygon)
- * 3. Triggers LayerZero resolution bridging by calling requestResolution
+ * 2. Checks if each condition is already settled on ConditionalTokensConditionResolver
+ * 3. Checks if each condition is resolved on Polymarket (via ConditionalTokensReader on Polygon)
+ * 4. Triggers LayerZero resolution bridging by calling requestResolution on Polygon
  *
  * Usage:
- *   tsx scripts/settle.ts --dry-run
- *   tsx scripts/settle.ts --execute
+ *   tsx scripts/settle-polymarket.ts --dry-run
+ *   tsx scripts/settle-polymarket.ts --execute
  *
  * Options:
  *   --dry-run      Check conditions without sending transactions (default)
@@ -19,47 +22,66 @@
  *   --help         Show this help message
  *
  * Environment Variables (can be set in .env file):
- *   POLYGON_RPC_URL    Polygon RPC URL (required)
+ *   POLYGON_RPC_URL          Polygon RPC URL (required)
  *   ADMIN_PRIVATE_KEY        Private key for signing transactions (required for --execute)
- *   SAPIENCE_API_URL   Sapience GraphQL API URL (default: https://api.sapience.xyz/graphql)
+ *   SAPIENCE_API_URL         Sapience GraphQL API URL (default: https://api.sapience.xyz)
+ *   RESOLVER_ADDRESS         ConditionalTokensConditionResolver address override
+ *   CHAIN_ID                 Ethereal chain ID override (default: 5064014)
  */
 
 import 'dotenv/config';
 
-import { confirmProductionAccess } from '../src/utils/index.js';
 import {
   createPublicClient,
-  createWalletClient,
   http,
   type Address,
   type Hex,
-  type Account,
   type PublicClient,
   type WalletClient,
   type Transport,
   type Chain,
+  type Account,
   formatEther,
+  defineChain,
 } from 'viem';
-import { privateKeyToAccount } from 'viem/accounts';
-import { polygon } from 'viem/chains';
 import { fetchWithRetry } from '../src/utils/fetch.js';
-import { RESOLVER_ADDRESS, CHAIN_ID } from '../src/constants.js';
-import { conditionalTokensReader } from '@sapience/sdk/contracts/addresses';
-import { CHAIN_ID_POLYGON } from '@sapience/sdk/constants';
+import { confirmProductionAccess } from '../src/utils/index.js';
+import { conditionalTokensConditionResolver } from '@sapience/sdk';
+import {
+  createPolygonClient,
+  createPolygonWalletClient,
+  canRequestResolution as checkCanRequestResolution,
+  requestResolution as sendRequestResolution,
+} from '../src/polygon/client.js';
 
 // ============ Constants ============
 
-// ConditionalTokensReader contract on Polygon
-const CONDITIONAL_TOKENS_READER_ADDRESS = (process.env
-  .CONDITIONAL_TOKENS_READER_ADDRESS ||
-  conditionalTokensReader[CHAIN_ID_POLYGON]?.address ||
-  '') as Address;
+const RESOLVER_CHAIN_ID = Number(process.env.CHAIN_ID || '5064014');
+
+const RESOLVER_ADDRESS = (process.env.RESOLVER_ADDRESS ||
+  conditionalTokensConditionResolver[RESOLVER_CHAIN_ID]?.address) as Address;
+
+const ETHEREAL_RPC = 'https://rpc.ethereal.trade';
 
 // Default Sapience API URL
-const DEFAULT_SAPIENCE_API_URL = 'https://api.sapience.xyz/graphql';
+const DEFAULT_API_URL = 'https://api.sapience.xyz/graphql';
 
-// Polygon chain ID
-const POLYGON_CHAIN_ID = 137;
+// ============ Chain Definition ============
+
+const etherealChain = defineChain({
+  id: RESOLVER_CHAIN_ID,
+  name: 'Ethereal',
+  nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+  rpcUrls: {
+    default: { http: [ETHEREAL_RPC] },
+  },
+  blockExplorers: {
+    default: {
+      name: 'Ethereal Explorer',
+      url: 'https://explorer.ethereal.trade',
+    },
+  },
+});
 
 // ============ Types ============
 
@@ -83,42 +105,18 @@ interface ConditionsQueryResponse {
   conditions: SapienceCondition[];
 }
 
-// ============ ABI ============
+interface SettlementResult {
+  conditionId: string;
+  alreadyResolved: boolean;
+  canResolve: boolean;
+  settled: boolean;
+  txHash?: string;
+  error?: string;
+}
 
-const conditionalTokensReaderAbi = [
-  {
-    type: 'function',
-    name: 'canRequestResolution',
-    stateMutability: 'view',
-    inputs: [{ name: 'conditionId', type: 'bytes32' }],
-    outputs: [{ name: '', type: 'bool' }],
-  },
-  {
-    type: 'function',
-    name: 'quoteResolution',
-    stateMutability: 'view',
-    inputs: [{ name: 'conditionId', type: 'bytes32' }],
-    outputs: [
-      {
-        name: 'fee',
-        type: 'tuple',
-        components: [
-          { name: 'nativeFee', type: 'uint256' },
-          { name: 'lzTokenFee', type: 'uint256' },
-        ],
-      },
-    ],
-  },
-  {
-    type: 'function',
-    name: 'requestResolution',
-    stateMutability: 'payable',
-    inputs: [{ name: 'conditionId', type: 'bytes32' }],
-    outputs: [],
-  },
-] as const;
+// ============ ABIs ============
 
-// Resolver ABI (Ethereal) — getResolution returns (resolved, outcome)
+// Resolver ABI — getResolution to check if already settled
 const resolverAbi = [
   {
     type: 'function',
@@ -157,7 +155,10 @@ function parseArgs(): CLIOptions {
 
 function showHelp(): void {
   console.log(`
-Usage: tsx scripts/settle.ts [options]
+Usage: tsx scripts/settle-polymarket.ts [options]
+
+Settles conditions on ConditionalTokensConditionResolver (Ethereal mainnet) by
+bridging resolution data from Polymarket on Polygon via LayerZero.
 
 Options:
   --dry-run      Check conditions without sending transactions (default)
@@ -166,23 +167,24 @@ Options:
   --help, -h     Show this help message
 
 Environment Variables:
-  POLYGON_RPC_URL    Polygon RPC URL (required)
-  ADMIN_PRIVATE_KEY        Private key for signing transactions (required for --execute)
-  SAPIENCE_API_URL   Sapience GraphQL API URL (default: https://api.sapience.xyz/graphql)
+  POLYGON_RPC_URL        Polygon RPC URL (required)
+  ADMIN_PRIVATE_KEY      Private key for signing transactions (required for --execute)
+  SAPIENCE_API_URL       Sapience GraphQL API URL (default: https://api.sapience.xyz)
+  RESOLVER_ADDRESS       ConditionalTokensConditionResolver address override
+  CHAIN_ID               Ethereal chain ID override (default: 5064014)
 
 Examples:
-  # Dry run - check which conditions can be settled
-  tsx scripts/settle.ts --dry-run
+  # Dry run
+  tsx scripts/settle-polymarket.ts --dry-run
 
-  # Execute settlements
+  # Execute (LZ bridging)
   POLYGON_RPC_URL=https://polygon-rpc.com ADMIN_PRIVATE_KEY=0x... \\
-    tsx scripts/settle.ts --execute --wait
+    tsx scripts/settle-polymarket.ts --execute --wait
 `);
 }
 
 // ============ GraphQL Query ============
 
-// Page size for fetching conditions (to avoid query complexity limits)
 const CONDITIONS_PAGE_SIZE = 30;
 
 const UNRESOLVED_CONDITIONS_QUERY = `
@@ -279,7 +281,6 @@ async function fetchUnresolvedConditions(
   console.log(`Fetching unresolved conditions from ${apiUrl}...`);
 
   while (true) {
-    // Fetch one extra to check if there's a next page
     const page = await fetchConditionsPage(
       apiUrl,
       nowTimestamp,
@@ -306,19 +307,10 @@ async function fetchUnresolvedConditions(
   return allConditions;
 }
 
-// ============ Blockchain Functions ============
-
-interface SettlementResult {
-  conditionId: string;
-  alreadyResolved: boolean;
-  canResolve: boolean;
-  settled: boolean;
-  txHash?: string;
-  error?: string;
-}
+// ============ Settlement Logic ============
 
 async function checkAndSettleCondition(
-  publicClient: PublicClient,
+  polygonClient: PublicClient,
   etherealClient: PublicClient,
   walletClient: WalletClient<Transport, Chain, Account> | null,
   condition: SapienceCondition,
@@ -327,8 +319,10 @@ async function checkAndSettleCondition(
   const conditionId = condition.id as Hex;
 
   try {
-    // Check if condition is already resolved on Ethereal
-    console.log(`[${conditionId}] Checking if already resolved on Ethereal...`);
+    // Step 1: Check if already settled on ConditionalTokensConditionResolver
+    console.log(
+      `[${conditionId}] Checking ConditionalTokensConditionResolver...`
+    );
     try {
       const [isResolved] = await etherealClient.readContract({
         address: RESOLVER_ADDRESS,
@@ -336,9 +330,10 @@ async function checkAndSettleCondition(
         functionName: 'getResolution',
         args: [conditionId],
       });
+
       if (isResolved) {
         console.log(
-          `[${conditionId}] Already resolved on Ethereal`
+          `[${conditionId}] Already settled on ConditionalTokensConditionResolver`
         );
         return {
           conditionId,
@@ -347,21 +342,19 @@ async function checkAndSettleCondition(
           settled: false,
         };
       }
-    } catch {
-      // Revert means not yet resolved on Ethereal — proceed with Polygon check
+    } catch (err) {
+      // Revert likely means not yet resolved on Ethereal — proceed with Polygon check
+      console.log(
+        `[${conditionId}] getResolution reverted (${err instanceof Error ? err.message : String(err)}), proceeding to Polygon check`
+      );
     }
 
-    // Check if condition can be resolved on Polymarket
-    console.log(`[${conditionId}] Checking canRequestResolution...`);
-    const canResolve = await publicClient.readContract({
-      address: CONDITIONAL_TOKENS_READER_ADDRESS,
-      abi: conditionalTokensReaderAbi,
-      functionName: 'canRequestResolution',
-      args: [conditionId],
-    });
+    // Step 2: Check if resolved on Polygon (ConditionalTokensReader)
+    console.log(`[${conditionId}] Checking canRequestResolution on Polygon...`);
+    const canResolve = await checkCanRequestResolution(polygonClient, conditionId);
 
     if (!canResolve) {
-      console.log(`[${conditionId}] Not resolved on Polymarket yet`);
+      console.log(`[${conditionId}] Not resolved on Polygon yet, skipping`);
       return {
         conditionId,
         alreadyResolved: false,
@@ -370,22 +363,10 @@ async function checkAndSettleCondition(
       };
     }
 
-    // Get the LayerZero fee quote
-    console.log(`[${conditionId}] Getting LayerZero fee quote...`);
-    const fee = await publicClient.readContract({
-      address: CONDITIONAL_TOKENS_READER_ADDRESS,
-      abi: conditionalTokensReaderAbi,
-      functionName: 'quoteResolution',
-      args: [conditionId],
-    });
-
-    const nativeFee = fee.nativeFee;
-    console.log(
-      `[${conditionId}] LayerZero fee: ${formatEther(nativeFee)} POL`
-    );
-
     if (options.dryRun) {
-      console.log(`[${conditionId}] DRY RUN - would call requestResolution`);
+      console.log(
+        `[${conditionId}] DRY RUN — would call requestResolution (LZ bridge)`
+      );
       return {
         conditionId,
         alreadyResolved: false,
@@ -404,37 +385,19 @@ async function checkAndSettleCondition(
       };
     }
 
-    // Execute the settlement
-    console.log(`[${conditionId}] Estimating gas...`);
-    const estimatedGas = await publicClient.estimateContractGas({
-      address: CONDITIONAL_TOKENS_READER_ADDRESS,
-      abi: conditionalTokensReaderAbi,
-      functionName: 'requestResolution',
-      args: [conditionId],
-      value: nativeFee,
-      account: walletClient.account,
-    });
-    const gasLimit = (estimatedGas * 130n) / 100n; // Add 30% buffer
-    console.log(
-      `[${conditionId}] Estimated gas: ${estimatedGas}, using limit: ${gasLimit}`
-    );
-
-    console.log(`[${conditionId}] Sending requestResolution transaction...`);
-    const hash = await walletClient.writeContract({
-      address: CONDITIONAL_TOKENS_READER_ADDRESS,
-      abi: conditionalTokensReaderAbi,
-      functionName: 'requestResolution',
-      args: [conditionId],
-      value: nativeFee,
-      gas: gasLimit,
-    });
-
+    // Send requestResolution on Polygon (triggers LZ bridge to Ethereal)
+    console.log(`[${conditionId}] Sending requestResolution...`);
+    const hash = await sendRequestResolution(polygonClient, walletClient, conditionId);
     console.log(`[${conditionId}] Transaction sent: ${hash}`);
 
     if (options.wait) {
       console.log(`[${conditionId}] Waiting for confirmation...`);
-      const receipt = await publicClient.waitForTransactionReceipt({ hash });
-      console.log(`[${conditionId}] Confirmed in block ${receipt.blockNumber}`);
+      const receipt = await polygonClient.waitForTransactionReceipt({
+        hash,
+      });
+      console.log(
+        `[${conditionId}] Confirmed in block ${receipt.blockNumber}`
+      );
     }
 
     return {
@@ -472,7 +435,7 @@ async function main() {
   if (process.env.SAPIENCE_API_URL) {
     sapienceApiUrl = process.env.SAPIENCE_API_URL + '/graphql';
   } else {
-    sapienceApiUrl = DEFAULT_SAPIENCE_API_URL;
+    sapienceApiUrl = DEFAULT_API_URL;
   }
 
   if (!polygonRpcUrl) {
@@ -487,40 +450,33 @@ async function main() {
     process.exit(1);
   }
 
-  // Confirm production access if pointing to production without NODE_ENV=production
+  // Confirm production access if pointing to production
   await confirmProductionAccess(process.env.SAPIENCE_API_URL);
 
-  const publicClient = createPublicClient({
-    chain: polygon,
-    transport: http(polygonRpcUrl),
+  // Polygon client — read ConditionalTokensReader
+  const polygonClient = createPolygonClient(polygonRpcUrl);
+
+  // Ethereal client — read resolver state
+  const etherealClient = createPublicClient({
+    chain: etherealChain,
+    transport: http(ETHEREAL_RPC),
   });
 
-  const etherealClient = createPublicClient({
-    transport: http('https://rpc.ethereal.trade'),
-  });
   console.log(
-    `Ethereal client connected (chain ${CHAIN_ID}, resolver ${RESOLVER_ADDRESS})`
+    `Ethereal client connected (chain ${RESOLVER_CHAIN_ID}, resolver ${RESOLVER_ADDRESS})`
   );
 
-  let walletClient: WalletClient<Transport, typeof polygon, Account> | null =
-    null;
+  // Wallet on Polygon for requestResolution (LZ bridging)
+  let walletClient: WalletClient<Transport, Chain, Account> | null = null;
 
   if (privateKey) {
-    const formattedKey = privateKey.startsWith('0x')
-      ? privateKey
-      : `0x${privateKey}`;
-    const account = privateKeyToAccount(formattedKey as Hex);
+    walletClient = createPolygonWalletClient(polygonRpcUrl, privateKey);
 
-    walletClient = createWalletClient({
-      account,
-      chain: polygon,
-      transport: http(polygonRpcUrl),
+    const balance = await polygonClient.getBalance({
+      address: walletClient.account.address,
     });
-
-    // Check wallet balance
-    const balance = await publicClient.getBalance({ address: account.address });
     console.log(
-      `Wallet ${account.address} balance: ${formatEther(balance)} POL`
+      `Wallet ${walletClient.account.address} balance: ${formatEther(balance)} POL (Polygon)`
     );
   }
 
@@ -533,7 +489,7 @@ async function main() {
     }
 
     console.log(
-      `Processing ${conditions.length} conditions with open interest or forecasts (mode: ${options.dryRun ? 'dry-run' : 'execute'})`
+      `Processing ${conditions.length} conditions (mode: ${options.dryRun ? 'dry-run' : 'execute'})`
     );
 
     const results = {
@@ -547,7 +503,7 @@ async function main() {
 
     for (const condition of conditions) {
       const result = await checkAndSettleCondition(
-        publicClient,
+        polygonClient,
         etherealClient,
         walletClient,
         condition,
@@ -561,18 +517,20 @@ async function main() {
         results.errors++;
       } else if (!result.canResolve) {
         results.skipped++;
-      } else if (result.settled) {
-        results.settled++;
-        results.canResolve++;
       } else {
         results.canResolve++;
+        if (result.settled) results.settled++;
       }
     }
 
     // Summary
-    console.log(
-      `Summary: ${results.total} processed, ${results.alreadyResolved} already resolved on Ethereal, ${results.canResolve} resolvable, ${results.settled} settled, ${results.skipped} skipped, ${results.errors} errors`
-    );
+    console.log('\n--- Summary ---');
+    console.log(`Total conditions:        ${results.total}`);
+    console.log(`Already on resolver:     ${results.alreadyResolved}`);
+    console.log(`Resolved on Polygon:     ${results.canResolve}`);
+    console.log(`Settled (tx sent):       ${results.settled}`);
+    console.log(`Skipped (not resolved):  ${results.skipped}`);
+    console.log(`Errors:                  ${results.errors}`);
   } catch (error) {
     console.error('Error:', error);
     process.exit(1);
@@ -580,4 +538,7 @@ async function main() {
 }
 
 // Run
-main();
+import { logSeparator } from '../src/utils/log.js';
+
+logSeparator('market-keeper:settle-polymarket', 'START');
+main().finally(() => logSeparator('market-keeper:settle-polymarket', 'END'));

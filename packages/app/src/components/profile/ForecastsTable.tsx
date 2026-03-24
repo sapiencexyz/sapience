@@ -23,7 +23,7 @@ import { useQuery } from '@tanstack/react-query';
 import { formatDistanceToNow, format, formatDistanceStrict } from 'date-fns';
 import React, { useMemo, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { ChevronUp, ChevronDown, CircleHelp } from 'lucide-react';
+import { ChevronUp, ChevronDown, CircleHelp, Info } from 'lucide-react';
 import EmptyTabState from '~/components/shared/EmptyTabState';
 import { fetchConditionsByIds } from '~/hooks/graphql/fetchConditionsByIds';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
@@ -524,7 +524,21 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
           return 0;
         },
         enableSorting: false,
-        header: () => <span className="text-sm font-medium">Ends</span>,
+        header: () => (
+          <span className="text-sm font-medium flex items-center gap-1">
+            Ends
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="inline-flex cursor-help">
+                  <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                </span>
+              </TooltipTrigger>
+              <TooltipContent side="top">
+                End times are estimates and may vary
+              </TooltipContent>
+            </Tooltip>
+          </span>
+        ),
         cell: (info) => {
           const conditionId = info.row.original.conditionId;
           const condition =
@@ -783,8 +797,18 @@ const ForecastsTable = ({ attesterAddress, leftSlot }: ForecastsTableProps) => {
                                     )}
                                   </div>
                                   <div className="text-brand-white">
-                                    <div className="text-xs text-muted-foreground mb-1">
+                                    <div className="text-xs text-muted-foreground mb-1 flex items-center gap-1">
                                       Ends
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <span className="inline-flex cursor-help">
+                                            <Info className="h-3 w-3" />
+                                          </span>
+                                        </TooltipTrigger>
+                                        <TooltipContent side="top">
+                                          End times are estimates and may vary
+                                        </TooltipContent>
+                                      </Tooltip>
                                     </div>
                                     {renderContent(
                                       flexRender(
