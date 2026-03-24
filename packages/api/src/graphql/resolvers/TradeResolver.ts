@@ -69,10 +69,7 @@ export class TradeResolver {
     @Arg('token', () => String, { nullable: true }) token?: string,
     @Arg('chainId', () => Int, { nullable: true }) chainId?: number
   ): Promise<SecondaryTradeType[]> {
-    const hasFilter = !!(seller || buyer || token);
-    // Tighter cap when no filter is provided to limit unindexed scans
-    const maxTake = hasFilter ? 100 : 50;
-    const cappedTake = Math.max(1, Math.min(take, maxTake));
+    const cappedTake = Math.max(1, Math.min(take, 100));
     const where: Prisma.SecondaryTradeWhereInput = {};
 
     if (seller) where.seller = seller.toLowerCase();
