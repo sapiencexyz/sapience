@@ -300,7 +300,7 @@ class PositionTokenTransferIndexer implements IIndexer {
     tokenAddresses: string[];
     tokenInfoMap: Map<string, TokenInfo>;
   }> {
-    const where: Parameters<typeof prisma.picks.findMany>[0]['where'] = {
+    const where: NonNullable<Parameters<typeof prisma.picks.findMany>[0]>['where'] = {
       fullyRedeemed: false,
       chainId: this.chainId,
       predictorToken: { not: null },
