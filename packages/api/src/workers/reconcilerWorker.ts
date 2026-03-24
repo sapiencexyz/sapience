@@ -95,7 +95,9 @@ function getIndexersByChain(): Map<
     // aggressive rate limits. The Background Worker handles EAS; the
     // reconciler focuses on Ethereal chain events.
     if (slug.startsWith('attestation-')) {
-      console.log(`${LOG_PREFIX} Skipping ${slug} (EAS on Arbitrum — rate-limited)`);
+      console.log(
+        `${LOG_PREFIX} Skipping ${slug} (EAS on Arbitrum — rate-limited)`
+      );
       continue;
     }
 

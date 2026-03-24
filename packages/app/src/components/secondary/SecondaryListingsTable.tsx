@@ -10,18 +10,20 @@ import {
   TableHeader,
   TableRow,
 } from '@sapience/ui/components/ui/table';
-import { Badge } from '@sapience/ui/components/ui/badge';
-import { Button } from '@sapience/ui/components/ui/button';
-import { formatDistanceToNowStrict } from 'date-fns';
-import { Clock, ShoppingCart, Gavel } from 'lucide-react';
+import { ChevronDown } from 'lucide-react';
+import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
+import { useAccount } from 'wagmi';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import Loader from '~/components/shared/Loader';
 import EmptyTabState from '~/components/shared/EmptyTabState';
+import CountdownCell from '~/components/shared/CountdownCell';
+import { AddressDisplay } from '~/components/shared/AddressDisplay';
+import EnsAvatar from '~/components/shared/EnsAvatar';
+import PicksPopover from '~/components/shared/PicksPopover';
 import { useSecondaryFeed } from '~/hooks/secondary/useSecondaryFeed';
+import { useEnrichedTokens } from '~/hooks/secondary/useEnrichedTokens';
 import BidOnListingDialog from '~/components/secondary/BidOnListingDialog';
 import AcceptBidDialog from '~/components/secondary/AcceptBidDialog';
-import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
-import { useAccount } from 'wagmi';
 import { useSession } from '~/lib/context/SessionContext';
 
 interface SecondaryListingsTableProps {
@@ -37,6 +39,21 @@ export default function SecondaryListingsTable({
     enabled: true,
   });
   const collateralSymbol = COLLATERAL_SYMBOLS[chainId] ?? 'COLLATERAL';
+
+  // Collect unique token addresses for enrichment — join into a stable string
+  // key so the memo doesn't recompute on every WebSocket-driven array reference change.
+  const tokenKey = React.useMemo(
+    () =>
+      Array.from(new Set(listings.map((l) => l.token.toLowerCase())))
+        .sort()
+        .join(','),
+    [listings]
+  );
+  const tokenAddresses = React.useMemo(
+    () => (tokenKey ? tokenKey.split(',') : []),
+    [tokenKey]
+  );
+  const { map: enrichedMap } = useEnrichedTokens(tokenAddresses);
 
   // Auto-subscribe to bids for user's own listings (track already-subscribed to avoid loops)
   const subscribedRef = React.useRef<Set<string>>(new Set());
@@ -70,21 +87,18 @@ export default function SecondaryListingsTable({
   }
 
   if (listings.length === 0) {
-    return (
-      <EmptyTabState message="No active secondary market listings. Sell a position to get started!" />
-    );
+    return <EmptyTabState message="NO ACTIVE LISTINGS" />;
   }
 
   return (
     <Table>
       <TableHeader>
-        <TableRow>
-          <TableHead>Token</TableHead>
-          <TableHead>Amount</TableHead>
-          <TableHead>Seller</TableHead>
-          <TableHead>Bids</TableHead>
-          <TableHead>Expires</TableHead>
-          <TableHead className="text-right">Action</TableHead>
+        <TableRow className="hover:!bg-white/[0.03] bg-white/[0.03] border-b border-border/60">
+          <TableHead className="h-auto py-3">Position</TableHead>
+          <TableHead className="h-auto py-3">Amount</TableHead>
+          <TableHead className="h-auto py-3">Seller</TableHead>
+          <TableHead className="h-auto py-3">Expires</TableHead>
+          <TableHead className="h-auto py-3 text-right"></TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
@@ -95,72 +109,60 @@ export default function SecondaryListingsTable({
           } catch {
             return null; // Skip malformed listings
           }
-          const deadline = new Date(listing.sellerDeadline * 1000);
-          const isExpired = deadline < new Date();
           const isMine = isMyAddress(listing.seller);
+          const enriched = enrichedMap.get(listing.token.toLowerCase());
 
           return (
-            <TableRow
-              key={listing.auctionId}
-              className={isExpired ? 'opacity-50' : ''}
-            >
-              <TableCell className="font-mono text-xs">
-                {listing.token.slice(0, 6)}…{listing.token.slice(-4)}
+            <TableRow key={listing.auctionId}>
+              <TableCell>
+                <PicksPopover
+                  picks={enriched?.picks ?? []}
+                  fallbackAddress={listing.token}
+                />
               </TableCell>
               <TableCell>
-                <NumberDisplay value={amount} />
-              </TableCell>
-              <TableCell>
-                <span className="font-mono text-xs">
-                  {listing.seller.slice(0, 6)}…{listing.seller.slice(-4)}
+                <span className="font-mono text-brand-white">
+                  <NumberDisplay value={amount} />
                 </span>
-                {isMine && (
-                  <Badge variant="outline" className="ml-2 text-xs">
-                    You
-                  </Badge>
-                )}
               </TableCell>
               <TableCell>
-                <Badge variant={listing.bidCount > 0 ? 'default' : 'secondary'}>
-                  {listing.bidCount}
-                </Badge>
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                  <Clock className="w-3 h-3" />
-                  {isExpired
-                    ? 'Expired'
-                    : formatDistanceToNowStrict(deadline, {
-                        addSuffix: true,
-                      })}
+                <div className="flex items-center gap-2 text-brand-white">
+                  <EnsAvatar address={listing.seller} width={20} height={20} />
+                  <AddressDisplay address={listing.seller} />
                 </div>
+              </TableCell>
+              <TableCell>
+                <CountdownCell endTime={listing.sellerDeadline} />
               </TableCell>
               <TableCell className="text-right">
                 {isMine ? (
-                  // Seller sees their bids and can accept
                   <AcceptBidDialog
                     listing={listing}
                     collateralSymbol={collateralSymbol}
                   >
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={isExpired || listing.bidCount === 0}
+                    <button
+                      type="button"
+                      className="inline-flex items-center justify-center h-6 px-2 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground text-[10px] flex-shrink-0 text-brand-white transition-colors duration-300 ease-out"
                     >
-                      <Gavel className="w-3 h-3 mr-1" />
-                      Bids ({listing.bidCount})
-                    </Button>
+                      <span className="font-mono">
+                        {listing.bidCount === 1
+                          ? '1 BID'
+                          : `${listing.bidCount} BIDS`}
+                      </span>
+                      <ChevronDown className="ml-1 h-3.5 w-3.5 transition-transform duration-300 ease-out" />
+                    </button>
                   </AcceptBidDialog>
                 ) : (
-                  // Buyer can place a bid
                   <BidOnListingDialog
                     listing={listing}
                     collateralSymbol={collateralSymbol}
                   >
-                    <Button size="sm" disabled={isExpired}>
-                      <ShoppingCart className="w-3 h-3 mr-1" />
-                      Buy
-                    </Button>
+                    <button
+                      type="button"
+                      className="inline-flex items-center justify-center h-6 px-2 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground text-[10px] flex-shrink-0 text-brand-white transition-colors duration-300 ease-out font-mono"
+                    >
+                      PLACE BID
+                    </button>
                   </BidOnListingDialog>
                 )}
               </TableCell>

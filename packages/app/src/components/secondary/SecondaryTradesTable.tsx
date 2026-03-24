@@ -1,5 +1,6 @@
 'use client';
 
+import * as React from 'react';
 import { formatEther } from 'viem';
 import {
   Table,
@@ -9,100 +10,144 @@ import {
   TableHeader,
   TableRow,
 } from '@sapience/ui/components/ui/table';
-import { Badge } from '@sapience/ui/components/ui/badge';
-import NumberDisplay from '~/components/shared/NumberDisplay';
-import Loader from '~/components/shared/Loader';
-import EmptyTabState from '~/components/shared/EmptyTabState';
 import {
-  useSecondaryTradesByAddress,
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@sapience/ui/components/ui/tooltip';
+import { formatDistanceToNow } from 'date-fns';
+import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
+import NumberDisplay from '~/components/shared/NumberDisplay';
+import EmptyTabState from '~/components/shared/EmptyTabState';
+import PicksPopover from '~/components/shared/PicksPopover';
+import { AddressDisplay } from '~/components/shared/AddressDisplay';
+import EnsAvatar from '~/components/shared/EnsAvatar';
+import { useEnrichedTokens } from '~/hooks/secondary/useEnrichedTokens';
+import {
+  useSecondaryTrades,
   type SecondaryTrade,
 } from '~/hooks/graphql/useSecondaryTrades';
-import { COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 
-function getExplorerTxUrl(chainId: number, txHash: string): string {
-  if (chainId === 13374202) {
-    return `https://explorer.etherealtest.net/tx/${txHash}`;
-  }
-  return `#`;
+function SkeletonRow() {
+  return (
+    <TableRow>
+      {Array.from({ length: 6 }).map((_, i) => (
+        <TableCell key={i}>
+          <div className="h-4 w-20 rounded bg-white/[0.06] animate-pulse" />
+        </TableCell>
+      ))}
+    </TableRow>
+  );
 }
 
 interface SecondaryTradesTableProps {
-  address?: string;
   chainId?: number;
 }
 
 export default function SecondaryTradesTable({
-  address,
   chainId,
 }: SecondaryTradesTableProps) {
-  const { data: trades, isLoading } = useSecondaryTradesByAddress({
-    address,
+  const { data: trades, isLoading } = useSecondaryTrades({
     chainId,
   });
 
   const collateralSymbol = COLLATERAL_SYMBOLS[chainId ?? 0] ?? 'COLLATERAL';
 
-  if (isLoading) {
-    return <Loader />;
-  }
+  // Collect unique token addresses for enrichment — join into a stable string
+  // key so the memo doesn't recompute on every new trades array reference.
+  const tokenKey = React.useMemo(
+    () =>
+      Array.from(new Set((trades ?? []).map((t) => t.token.toLowerCase())))
+        .sort()
+        .join(','),
+    [trades]
+  );
+  const tokenAddresses = React.useMemo(
+    () => (tokenKey ? tokenKey.split(',') : []),
+    [tokenKey]
+  );
+  const { map: enrichedMap } = useEnrichedTokens(tokenAddresses);
 
-  if (!trades || trades.length === 0) {
-    return <EmptyTabState message="No secondary trades yet" />;
+  if (!isLoading && (!trades || trades.length === 0)) {
+    return <EmptyTabState message="NO TRADE HISTORY" />;
   }
 
   return (
     <Table>
       <TableHeader>
-        <TableRow>
-          <TableHead>Token</TableHead>
-          <TableHead>Role</TableHead>
-          <TableHead>Amount</TableHead>
-          <TableHead>Price</TableHead>
-          <TableHead>Date</TableHead>
-          <TableHead>Tx Hash</TableHead>
+        <TableRow className="hover:!bg-white/[0.03] bg-white/[0.03] border-b border-border/60">
+          <TableHead className="h-auto py-3">Executed</TableHead>
+          <TableHead className="h-auto py-3">Position</TableHead>
+          <TableHead className="h-auto py-3">Buyer</TableHead>
+          <TableHead className="h-auto py-3">Seller</TableHead>
+          <TableHead className="h-auto py-3">Amount</TableHead>
+          <TableHead className="h-auto py-3">Price</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
-        {trades.map((trade: SecondaryTrade) => {
-          const isSeller =
-            trade.seller.toLowerCase() === address?.toLowerCase();
-          const role = isSeller ? 'Seller' : 'Buyer';
-          const amount = parseFloat(formatEther(BigInt(trade.tokenAmount)));
-          const price = parseFloat(formatEther(BigInt(trade.price)));
-          const date = new Date(trade.executedAt * 1000);
+        {isLoading
+          ? Array.from({ length: 3 }).map((_, i) => <SkeletonRow key={i} />)
+          : trades.map((trade: SecondaryTrade) => {
+              const amount = parseFloat(formatEther(BigInt(trade.tokenAmount)));
+              const price = parseFloat(formatEther(BigInt(trade.price)));
+              const date = new Date(trade.executedAt * 1000);
+              const enriched = enrichedMap.get(trade.token.toLowerCase());
 
-          return (
-            <TableRow key={trade.tradeHash}>
-              <TableCell className="font-mono text-xs">
-                {trade.token.slice(0, 6)}…{trade.token.slice(-4)}
-              </TableCell>
-              <TableCell>
-                <Badge variant={isSeller ? 'default' : 'secondary'}>
-                  {role}
-                </Badge>
-              </TableCell>
-              <TableCell>
-                <NumberDisplay value={amount} />
-              </TableCell>
-              <TableCell>
-                <NumberDisplay value={price} appendedText={collateralSymbol} />
-              </TableCell>
-              <TableCell className="text-sm text-muted-foreground">
-                {date.toLocaleDateString()}
-              </TableCell>
-              <TableCell>
-                <a
-                  href={getExplorerTxUrl(trade.chainId, trade.txHash)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="font-mono text-xs text-blue-500 hover:underline"
-                >
-                  {trade.txHash.slice(0, 6)}…{trade.txHash.slice(-4)}
-                </a>
-              </TableCell>
-            </TableRow>
-          );
-        })}
+              return (
+                <TableRow key={trade.tradeHash}>
+                  <TableCell>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="text-sm text-muted-foreground cursor-default">
+                            {formatDistanceToNow(date, { addSuffix: true })}
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent>
+                          <span>{date.toLocaleString()}</span>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </TableCell>
+                  <TableCell>
+                    <PicksPopover
+                      picks={enriched?.picks ?? []}
+                      fallbackAddress={trade.token}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2 text-brand-white">
+                      <EnsAvatar address={trade.buyer} width={20} height={20} />
+                      <AddressDisplay address={trade.buyer} />
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2 text-brand-white">
+                      <EnsAvatar
+                        address={trade.seller}
+                        width={20}
+                        height={20}
+                      />
+                      <AddressDisplay address={trade.seller} />
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <span className="font-mono text-brand-white">
+                      <NumberDisplay value={amount} />
+                    </span>
+                  </TableCell>
+                  <TableCell>
+                    <span className="font-mono">
+                      <NumberDisplay
+                        value={price}
+                        appendedText={collateralSymbol}
+                      />
+                    </span>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
       </TableBody>
     </Table>
   );
