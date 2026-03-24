@@ -170,6 +170,10 @@ vi.mock('~/components/markets/ConditionTitleLink', () => {
   return { __esModule: true, default: ConditionTitleLink };
 });
 
+vi.mock('~/components/shared/PythMarketBadge', () => ({
+  PythMarketBadge: () => <div data-testid="pyth-market-badge" />,
+}));
+
 vi.mock('~/components/shared/RestrictedJurisdictionBanner', () => {
   const Banner = (props: Record<string, unknown>) => (
     <div data-testid="restricted-banner" data-show={String(props.show)} />
@@ -222,7 +226,6 @@ vi.mock('viem', () => ({
 
 // @sapience/ui — stub UI components used by PositionForm
 vi.mock('@sapience/ui', () => ({
-  PythPredictionListItem: () => <div data-testid="pyth-prediction-list-item" />,
   PredictionListItem: ({ prediction }: { prediction: { id: string } }) => (
     <div data-testid={`prediction-${prediction.id}`} />
   ),

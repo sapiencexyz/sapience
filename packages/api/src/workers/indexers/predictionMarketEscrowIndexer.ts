@@ -55,12 +55,11 @@ export function buildPythConditionData(conditionId: string): {
   // Clean display: trim ".00" for whole numbers
   const displayPrice = formattedPrice.replace(/\.0+$/, '');
 
-  const direction = overWinsOnTie ? 'OVER' : 'UNDER';
-  const question = `${feedSymbol} ${direction} $${displayPrice}`;
-  const shortName = `${shortTicker} ${direction} $${displayPrice}`;
+  const question = `${feedSymbol} OVER $${displayPrice}`;
+  const shortName = `${shortTicker} OVER $${displayPrice}`;
 
   const endDate = new Date(Number(endTime) * 1000).toUTCString();
-  const description = `Resolved by Pyth Network Lazer oracle. If ${feedSymbol} is ${direction.toLowerCase()} $${displayPrice} at settlement (${endDate}), YES wins.`;
+  const description = `Resolved by Pyth Network Lazer oracle. If ${feedSymbol} is over $${displayPrice} at settlement (${endDate}), YES wins. If the price is exactly $${displayPrice} at settlement, ${overWinsOnTie ? 'OVER' : 'UNDER'} wins.`;
 
   // Derive asset class from Pyth symbol prefix (e.g. "Crypto.BTC/USD" → "crypto")
   const assetClass = feedSymbol.split('.')[0]?.toLowerCase() ?? 'crypto';
@@ -588,20 +587,63 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     const predictionIdLower = event.predictionId.toLowerCase();
     const timestamp = Number(block.timestamp);
 
-    // Skip if this prediction already exists (idempotent for re-indexing)
+    // Check if this prediction already exists (idempotent for re-indexing)
     const existingPrediction = await prisma.prediction.findUnique({
       where: { predictionId: predictionIdLower },
     });
 
     if (existingPrediction) {
-      console.log(
-        `[PredictionMarketEscrowIndexer:${this.chainId}] Prediction ${predictionIdLower} already exists, skipping`
-      );
+      // SAP-767: If prediction exists but pickConfigId is null, a previous RPC
+      // call failed after the prediction row was created. Attempt repair.
+      if (!existingPrediction.pickConfigId) {
+        console.log(
+          `[PredictionMarketEscrowIndexer:${this.chainId}] Prediction ${predictionIdLower} missing pickConfigId, attempting repair...`
+        );
+        const repairData = await this.readPickConfigData(event, log);
+        if (repairData) {
+          await prisma.$transaction(async (tx) => {
+            await this.writePickConfigAndBalances(tx, event, repairData);
+            await tx.prediction.update({
+              where: { predictionId: predictionIdLower },
+              data: { pickConfigId: repairData.pickConfigId },
+            });
+          });
+          console.log(
+            `[PredictionMarketEscrowIndexer:${this.chainId}] Repaired prediction ${predictionIdLower} with pickConfigId=${repairData.pickConfigId}`
+          );
+        } else {
+          console.error(
+            `[PredictionMarketEscrowIndexer:${this.chainId}] CRITICAL: Repair RPC failed for prediction ${predictionIdLower} — positions still missing, will retry next cycle`,
+            { predictionId: predictionIdLower, chainId: this.chainId }
+          );
+          Sentry.captureException(
+            new Error(
+              `CRITICAL: Repair RPC failed for prediction ${predictionIdLower} — positions still missing`
+            )
+          );
+        }
+      } else {
+        console.log(
+          `[PredictionMarketEscrowIndexer:${this.chainId}] Prediction ${predictionIdLower} already exists, skipping`
+        );
+      }
       return;
     }
 
     // Read on-chain data outside the transaction (RPC calls can't run inside prisma.$transaction)
     const onChainData = await this.readPickConfigData(event, log);
+
+    if (!onChainData) {
+      console.warn(
+        `[PredictionMarketEscrowIndexer:${this.chainId}] RPC failed for prediction ${predictionIdLower} — creating prediction without positions, will repair on next encounter`,
+        { predictionId: predictionIdLower, chainId: this.chainId }
+      );
+      Sentry.captureException(
+        new Error(
+          `RPC failed reading pick config for prediction ${predictionIdLower} — positions deferred`
+        )
+      );
+    }
 
     // Wrap all DB writes in a transaction so partial state can't persist
     await prisma.$transaction(async (tx) => {

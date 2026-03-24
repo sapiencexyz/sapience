@@ -6,10 +6,6 @@ import { buildDialogPicks } from '../buildDialogPicks';
  * Tests for the share dialog pick construction logic used in handlePositionSubmit.
  * Verifies that Pyth predictions are included alongside Polymarket selections
  * in the share card OG image.
- *
- * Pyth picks always have predictedOutcome = 0 (YES) — the direction (over/under)
- * is encoded in the conditionId itself, so there's no meaningful Yes/No choice.
- * The badge is hidden for Pyth picks; the question text carries the direction.
  */
 
 describe('buildDialogPicks', () => {
@@ -31,7 +27,7 @@ describe('buildDialogPicks', () => {
 
     expect(picks).toHaveLength(1);
     expect(picks[0].question).toBe('Crypto.BTC/USD > $71,426.18');
-    expect(picks[0].choice).toBe('Over');
+    expect(picks[0].choice).toBe('Yes');
     expect(picks[0].source).toBe('pyth');
     expect(picks[0].conditionId).toBe('pyth-1');
   });
@@ -70,14 +66,14 @@ describe('buildDialogPicks', () => {
     expect(picks[1].question).toBe('Crypto.BTC/USD > $71,426.18');
   });
 
-  it('handles UNDER direction', () => {
+  it('handles UNDER direction — question still uses >, choice is No', () => {
     const picks = buildDialogPicks(
       [],
       [makePythPrediction({ direction: 'under', targetPrice: 50000 })]
     );
 
-    expect(picks[0].question).toBe('Crypto.BTC/USD < $50,000');
-    expect(picks[0].choice).toBe('Under');
+    expect(picks[0].question).toBe('Crypto.BTC/USD > $50,000');
+    expect(picks[0].choice).toBe('No');
     expect(picks[0].source).toBe('pyth');
   });
 
@@ -90,9 +86,7 @@ describe('buildDialogPicks', () => {
     expect(picks[0].question).toContain('Crypto');
   });
 
-  it('Pyth picks always have source=pyth for badge hiding', () => {
-    // Pyth predictedOutcome is always 0 (YES) on-chain — the direction is
-    // encoded in the conditionId. UI hides the badge for source=pyth picks.
+  it('Pyth picks always have source=pyth', () => {
     const overPicks = buildDialogPicks(
       [],
       [makePythPrediction({ direction: 'over' })]
@@ -120,9 +114,9 @@ describe('buildDialogPicks', () => {
 
     expect(picks).toHaveLength(2);
     expect(picks[0].conditionId).toBe('p1');
-    expect(picks[0].choice).toBe('Over');
+    expect(picks[0].choice).toBe('Yes');
     expect(picks[1].conditionId).toBe('p2');
-    expect(picks[1].choice).toBe('Under');
-    expect(picks[1].question).toBe('Crypto.ETH/USD < $3,500');
+    expect(picks[1].choice).toBe('No');
+    expect(picks[1].question).toBe('Crypto.ETH/USD > $3,500');
   });
 });

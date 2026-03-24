@@ -10,6 +10,13 @@ import {
   TableHeader,
   TableRow,
 } from '@sapience/ui/components/ui/table';
+import { Badge } from '@sapience/ui/components/ui/badge';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@sapience/ui/components/ui/tooltip';
+import { Info } from 'lucide-react';
 import * as React from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { COLLATERAL_SYMBOLS, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
@@ -378,7 +385,6 @@ function PositionRow({
             BigInt(position.balance) > 0n && (
               <SellPositionDialog
                 position={position}
-                collateralSymbol={collateralSymbol}
                 onSuccess={onRefetch}
               >
                 <button
@@ -643,7 +649,21 @@ export default function PositionsTable({
               <TableHead className="h-auto py-3">Position Size</TableHead>
               <TableHead className="h-auto py-3">Payout</TableHead>
               <TableHead className="h-auto py-3">Profit/Loss</TableHead>
-              <TableHead className="h-auto py-3">Ends</TableHead>
+              <TableHead className="h-auto py-3">
+                <span className="flex items-center gap-1">
+                  Ends
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex cursor-help">
+                        <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      End times are estimates and may vary
+                    </TooltipContent>
+                  </Tooltip>
+                </span>
+              </TableHead>
               <TableHead className="h-auto py-3"></TableHead>
             </TableRow>
           </TableHeader>

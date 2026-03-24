@@ -33,24 +33,26 @@ import 'dotenv/config';
 
 import {
   createPublicClient,
-  createWalletClient,
   http,
   type Address,
   type Hex,
-  type Account,
   type PublicClient,
   type WalletClient,
   type Transport,
   type Chain,
+  type Account,
   formatEther,
   defineChain,
 } from 'viem';
-import { privateKeyToAccount } from 'viem/accounts';
-import { polygon } from 'viem/chains';
 import { fetchWithRetry } from '../src/utils/fetch.js';
 import { confirmProductionAccess } from '../src/utils/index.js';
 import { conditionalTokensConditionResolver } from '@sapience/sdk';
-import { conditionalTokensReader } from '@sapience/sdk/contracts/addresses';
+import {
+  createPolygonClient,
+  createPolygonWalletClient,
+  canRequestResolution as checkCanRequestResolution,
+  requestResolution as sendRequestResolution,
+} from '../src/polygon/client.js';
 
 // ============ Constants ============
 
@@ -60,11 +62,6 @@ const RESOLVER_ADDRESS = (process.env.RESOLVER_ADDRESS ||
   conditionalTokensConditionResolver[RESOLVER_CHAIN_ID]?.address) as Address;
 
 const ETHEREAL_RPC = 'https://rpc.ethereal.trade';
-
-// ConditionalTokensReader contract on Polygon
-const CONDITIONAL_TOKENS_READER_ADDRESS = (process.env
-  .CONDITIONAL_TOKENS_READER_ADDRESS ||
-  conditionalTokensReader[137]?.address) as Address;
 
 // Default Sapience API URL
 const DEFAULT_API_URL = 'https://api.sapience.xyz/graphql';
@@ -118,58 +115,6 @@ interface SettlementResult {
 }
 
 // ============ ABIs ============
-
-// ConditionalTokensReader (Polygon) — reads Polymarket resolution data
-const conditionalTokensReaderAbi = [
-  {
-    type: 'function',
-    name: 'canRequestResolution',
-    stateMutability: 'view',
-    inputs: [{ name: 'conditionId', type: 'bytes32' }],
-    outputs: [{ name: '', type: 'bool' }],
-  },
-  {
-    type: 'function',
-    name: 'getConditionResolution',
-    stateMutability: 'view',
-    inputs: [{ name: 'conditionId', type: 'bytes32' }],
-    outputs: [
-      {
-        name: '',
-        type: 'tuple',
-        components: [
-          { name: 'slotCount', type: 'uint256' },
-          { name: 'payoutDenominator', type: 'uint256' },
-          { name: 'noPayout', type: 'uint256' },
-          { name: 'yesPayout', type: 'uint256' },
-        ],
-      },
-    ],
-  },
-  {
-    type: 'function',
-    name: 'quoteResolution',
-    stateMutability: 'view',
-    inputs: [{ name: 'conditionId', type: 'bytes32' }],
-    outputs: [
-      {
-        name: 'fee',
-        type: 'tuple',
-        components: [
-          { name: 'nativeFee', type: 'uint256' },
-          { name: 'lzTokenFee', type: 'uint256' },
-        ],
-      },
-    ],
-  },
-  {
-    type: 'function',
-    name: 'requestResolution',
-    stateMutability: 'payable',
-    inputs: [{ name: 'conditionId', type: 'bytes32' }],
-    outputs: [],
-  },
-] as const;
 
 // Resolver ABI — getResolution to check if already settled
 const resolverAbi = [
@@ -406,12 +351,7 @@ async function checkAndSettleCondition(
 
     // Step 2: Check if resolved on Polygon (ConditionalTokensReader)
     console.log(`[${conditionId}] Checking canRequestResolution on Polygon...`);
-    const canResolve = await polygonClient.readContract({
-      address: CONDITIONAL_TOKENS_READER_ADDRESS,
-      abi: conditionalTokensReaderAbi,
-      functionName: 'canRequestResolution',
-      args: [conditionId],
-    });
+    const canResolve = await checkCanRequestResolution(polygonClient, conditionId);
 
     if (!canResolve) {
       console.log(`[${conditionId}] Not resolved on Polygon yet, skipping`);
@@ -445,43 +385,9 @@ async function checkAndSettleCondition(
       };
     }
 
-    // Quote LayerZero fee
-    console.log(`[${conditionId}] Getting LayerZero fee quote...`);
-    const fee = await polygonClient.readContract({
-      address: CONDITIONAL_TOKENS_READER_ADDRESS,
-      abi: conditionalTokensReaderAbi,
-      functionName: 'quoteResolution',
-      args: [conditionId],
-    });
-    const nativeFee = fee.nativeFee;
-    console.log(
-      `[${conditionId}] LayerZero fee: ${formatEther(nativeFee)} POL`
-    );
-
     // Send requestResolution on Polygon (triggers LZ bridge to Ethereal)
     console.log(`[${conditionId}] Sending requestResolution...`);
-    const estimatedGas = await polygonClient.estimateContractGas({
-      address: CONDITIONAL_TOKENS_READER_ADDRESS,
-      abi: conditionalTokensReaderAbi,
-      functionName: 'requestResolution',
-      args: [conditionId],
-      value: nativeFee,
-      account: walletClient.account,
-    });
-    const gasLimit = (estimatedGas * 130n) / 100n;
-    console.log(
-      `[${conditionId}] Estimated gas: ${estimatedGas}, using limit: ${gasLimit}`
-    );
-
-    const hash = await walletClient.writeContract({
-      address: CONDITIONAL_TOKENS_READER_ADDRESS,
-      abi: conditionalTokensReaderAbi,
-      functionName: 'requestResolution',
-      args: [conditionId],
-      value: nativeFee,
-      gas: gasLimit,
-    });
-
+    const hash = await sendRequestResolution(polygonClient, walletClient, conditionId);
     console.log(`[${conditionId}] Transaction sent: ${hash}`);
 
     if (options.wait) {
@@ -548,10 +454,7 @@ async function main() {
   await confirmProductionAccess(process.env.SAPIENCE_API_URL);
 
   // Polygon client — read ConditionalTokensReader
-  const polygonClient = createPublicClient({
-    chain: polygon,
-    transport: http(polygonRpcUrl),
-  });
+  const polygonClient = createPolygonClient(polygonRpcUrl);
 
   // Ethereal client — read resolver state
   const etherealClient = createPublicClient({
@@ -567,22 +470,13 @@ async function main() {
   let walletClient: WalletClient<Transport, Chain, Account> | null = null;
 
   if (privateKey) {
-    const formattedKey = privateKey.startsWith('0x')
-      ? privateKey
-      : `0x${privateKey}`;
-    const account = privateKeyToAccount(formattedKey as Hex);
-
-    walletClient = createWalletClient({
-      account,
-      chain: polygon,
-      transport: http(polygonRpcUrl),
-    });
+    walletClient = createPolygonWalletClient(polygonRpcUrl, privateKey);
 
     const balance = await polygonClient.getBalance({
-      address: account.address,
+      address: walletClient.account.address,
     });
     console.log(
-      `Wallet ${account.address} balance: ${formatEther(balance)} POL (Polygon)`
+      `Wallet ${walletClient.account.address} balance: ${formatEther(balance)} POL (Polygon)`
     );
   }
 

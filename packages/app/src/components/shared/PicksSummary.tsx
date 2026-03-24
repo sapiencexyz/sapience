@@ -3,6 +3,12 @@
 import Link from 'next/link';
 import { PredictionChoiceBadge } from '@sapience/ui';
 import { formatDistanceToNow } from 'date-fns';
+import { Info } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@sapience/ui/components/ui/tooltip';
 import {
   StackedIcons,
   type Pick,
@@ -19,7 +25,6 @@ import MarketPredictionRequest from '~/components/shared/MarketPredictionRequest
 interface PicksSummaryProps {
   picks: Pick[];
   isCounterparty?: boolean;
-  hasPythPick?: boolean;
   predictionId?: string | null;
   onClick?: () => void;
 }
@@ -28,7 +33,6 @@ export interface PicksContentProps {
   picks: Pick[];
   positionId: string | number;
   isCounterparty?: boolean;
-  hasPythPick?: boolean;
   createdAt?: string | number;
   hideHeader?: boolean;
   /** Position-level status: controls what the "Ends" column shows for settled picks */
@@ -103,7 +107,6 @@ export function PicksContent({
   picks,
   positionId,
   isCounterparty,
-  hasPythPick,
   createdAt,
   hideHeader,
   positionStatus,
@@ -113,7 +116,7 @@ export function PicksContent({
       {!hideHeader && (
         <div className="flex items-baseline gap-2 text-lg font-semibold mb-4">
           Prediction #{positionId}
-          {isCounterparty && !hasPythPick && <CounterpartyBadge />}
+          {isCounterparty && <CounterpartyBadge />}
           {createdAt && (
             <span className="text-sm font-normal text-muted-foreground">
               created{' '}
@@ -138,7 +141,19 @@ export function PicksContent({
                 Prediction
               </th>
               <th className="pb-2 pl-4 font-medium text-right whitespace-nowrap">
-                Ends
+                <span className="inline-flex items-center gap-1">
+                  Ends
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex cursor-help">
+                        <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      End times are estimates and may vary
+                    </TooltipContent>
+                  </Tooltip>
+                </span>
               </th>
             </tr>
           </thead>
@@ -184,11 +199,9 @@ export function PicksContent({
                   <PickForecastCell pick={pick} />
                 </td>
                 <td className="py-2 pr-4 text-right whitespace-nowrap">
-                  {pick.source !== 'pyth' && (
-                    <PredictionChoiceBadge
-                      choice={String(pick.choice).toUpperCase()}
-                    />
-                  )}
+                  <PredictionChoiceBadge
+                    choice={String(pick.choice).toUpperCase()}
+                  />
                 </td>
                 <td className="py-2 pl-4 text-right whitespace-nowrap">
                   <PickEndsCell pick={pick} positionStatus={positionStatus} />
@@ -205,7 +218,6 @@ export function PicksContent({
 export default function PicksSummary({
   picks,
   isCounterparty,
-  hasPythPick,
   predictionId,
   onClick,
 }: PicksSummaryProps) {
@@ -238,7 +250,7 @@ export default function PicksSummary({
           {picks.length} {picks.length === 1 ? 'PICK' : 'PICKS'}
         </span>
       )}
-      {isCounterparty && !hasPythPick && <CounterpartyBadge />}
+      {isCounterparty && <CounterpartyBadge />}
     </div>
   );
 }

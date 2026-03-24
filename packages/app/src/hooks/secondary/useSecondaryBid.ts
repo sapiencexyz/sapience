@@ -25,7 +25,7 @@ export interface SecondaryBidParams {
   token: Address;
   /** Amount of position tokens (must match listing) */
   tokenAmount: bigint;
-  /** Collateral price the buyer is offering (>= listing minPrice) */
+  /** Collateral price the buyer is offering */
   price: bigint;
   /** Seller address (from the listing) */
   seller: Address;

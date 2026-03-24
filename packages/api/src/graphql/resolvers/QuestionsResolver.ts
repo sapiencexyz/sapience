@@ -133,9 +133,7 @@ export class QuestionsResolver {
     const boundedSearch = search?.slice(0, 200) ?? null;
     const boundedCategorySlugs = categorySlugs?.slice(0, 50) ?? null;
 
-    // Exclude dead markets: 0 open interest + past end time (no positions, can't trade)
     const nowSec = Math.floor(Date.now() / 1000);
-    const deadMarketFilter = Prisma.sql`AND NOT (c."openInterest" = '0' AND c."endTime" < ${nowSec})`;
 
     // Build resolution status SQL filter
     const resolvedFilter = (() => {
@@ -181,7 +179,6 @@ export class QuestionsResolver {
           ${chainId != null ? Prisma.sql`AND c."chainId" = ${chainId}` : Prisma.empty}
           ${resolvedFilter}
           ${minEndTime != null ? Prisma.sql`AND c."endTime" >= ${minEndTime}` : Prisma.empty}
-          ${deadMarketFilter}
         GROUP BY cg.id
         HAVING MAX(c."endTime") <= ${nowSec}
       ),
@@ -208,7 +205,6 @@ export class QuestionsResolver {
           ${chainId != null ? Prisma.sql`AND c."chainId" = ${chainId}` : Prisma.empty}
           ${resolvedFilter}
           ${minEndTime != null ? Prisma.sql`AND c."endTime" >= ${minEndTime}` : Prisma.empty}
-          ${deadMarketFilter}
         WHERE NOT EXISTS (SELECT 1 FROM expired_groups eg WHERE eg.id = cg.id)
           ${
             boundedSearch
@@ -255,7 +251,6 @@ export class QuestionsResolver {
           ${chainId != null ? Prisma.sql`AND c."chainId" = ${chainId}` : Prisma.empty}
           ${resolvedFilter}
           ${minEndTime != null ? Prisma.sql`AND c."endTime" >= ${minEndTime}` : Prisma.empty}
-          ${deadMarketFilter}
           ${
             boundedSearch
               ? Prisma.sql`AND (c.question ILIKE ${'%' + boundedSearch + '%'} OR c."shortName" ILIKE ${'%' + boundedSearch + '%'} OR EXISTS (SELECT 1 FROM unnest(c.tags) AS t WHERE t ILIKE ${'%' + boundedSearch + '%'}))`
@@ -269,9 +264,7 @@ export class QuestionsResolver {
 
         UNION ALL
 
-        -- Part C: Individual conditions from expired groups (OI > 0)
-        -- Note: deadMarketFilter is omitted here because OI != '0' already
-        -- excludes dead markets (dead = OI=0 AND past end).
+        -- Part C: Individual conditions from expired groups
         SELECT
           'condition' as item_type,
           NULL::integer as group_id,
@@ -289,7 +282,6 @@ export class QuestionsResolver {
           COALESCE(c."endTime", 2147483647) as end_time
         FROM condition c
         WHERE EXISTS (SELECT 1 FROM expired_groups eg WHERE eg.id = c."conditionGroupId")
-          AND c."openInterest" != '0'
           AND c.public = true
           ${chainId != null ? Prisma.sql`AND c."chainId" = ${chainId}` : Prisma.empty}
           ${resolvedFilter}
@@ -362,9 +354,6 @@ export class QuestionsResolver {
       ...(chainId !== null ? { chainId } : {}),
       ...resolvedPrismaFilter,
       ...(minEndTime !== null ? { endTime: { gte: minEndTime } } : {}),
-      // Mirror the SQL deadMarketFilter: exclude conditions with 0 OI + past end time
-      // so nested group conditions don't include dead markets the SQL query excluded
-      NOT: { openInterest: '0', endTime: { lt: nowSec } },
     };
 
     const groupInclude = {

@@ -33,7 +33,6 @@ import {
   type PredictionData,
   type ConditionData,
 } from '../_prediction-helpers';
-import { inferResolverKind } from '~/lib/resolvers/conditionResolver';
 import { getChoiceLabel } from '~/lib/resolvers/choiceLabel';
 
 export const runtime = 'nodejs';
@@ -107,14 +106,7 @@ export async function GET(req: Request) {
               const condition = conditionsMap.get(pick.conditionId);
               const question =
                 condition?.question || condition?.shortName || pick.conditionId;
-              const resolverKind = inferResolverKind(
-                pick.conditionResolver ?? condition?.resolver
-              );
-              // Pyth picks encode direction in the question text — no badge needed
-              const choice =
-                resolverKind === 'pyth'
-                  ? ''
-                  : getChoiceLabel(pick.predictedOutcome, resolverKind);
+              const choice = getChoiceLabel(pick.predictedOutcome);
 
               // Determine resolution status per leg
               let resolution: ResolutionStatus | null = null;

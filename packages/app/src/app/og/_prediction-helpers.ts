@@ -30,23 +30,19 @@ export function formatUnits(value: string, decimals: number = 18): string {
 }
 
 // Helper to normalize choice labels to standard format
-export function normalizeChoiceLabel(
-  label: string
-): 'YES' | 'NO' | 'OVER' | 'UNDER' | null {
+export function normalizeChoiceLabel(label: string): 'YES' | 'NO' | null {
   const upper = label.toUpperCase();
   if (upper === 'YES' || upper.startsWith('YES')) return 'YES';
   if (upper === 'NO' || upper.startsWith('NO')) return 'NO';
-  if (upper === 'OVER' || upper.startsWith('OVER')) return 'OVER';
-  if (upper === 'UNDER' || upper.startsWith('UNDER')) return 'UNDER';
   return null;
 }
 
 // Helper to determine pill tone from normalized choice
 export function getChoiceTone(
-  normalized: 'YES' | 'NO' | 'OVER' | 'UNDER' | null
+  normalized: 'YES' | 'NO' | null
 ): 'success' | 'danger' | 'neutral' {
-  if (normalized === 'YES' || normalized === 'OVER') return 'success';
-  if (normalized === 'NO' || normalized === 'UNDER') return 'danger';
+  if (normalized === 'YES') return 'success';
+  if (normalized === 'NO') return 'danger';
   return 'neutral';
 }
 

@@ -86,10 +86,8 @@ export default function AcceptBidDialog({
   );
 
   let tokenAmountDisplay: string;
-  let minPriceDisplay: string;
   try {
     tokenAmountDisplay = formatEther(BigInt(listing.tokenAmount));
-    minPriceDisplay = formatEther(BigInt(listing.minPrice));
   } catch {
     return null; // Malformed listing data — don't render
   }
@@ -112,9 +110,6 @@ export default function AcceptBidDialog({
             </span>
           </p>
           <p>Selling: {tokenAmountDisplay} tokens</p>
-          <p>
-            Minimum: {minPriceDisplay} {collateralSymbol}
-          </p>
         </div>
 
         {sortedBids.length === 0 ? (

@@ -6,7 +6,26 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@sapience/ui/components/ui/popover';
-import { ChevronsUpDown, Check, Search, ChevronRight } from 'lucide-react';
+import {
+  ChevronsUpDown,
+  Check,
+  Search,
+  ChevronRight,
+  Globe,
+  LayoutGrid,
+  DollarSign,
+  TrendingUp,
+  Coins,
+  CloudSun,
+  Landmark,
+  FlaskConical,
+  Medal,
+  Tv,
+  Wheat,
+  Bitcoin,
+  BarChart3,
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { cn } from '@sapience/ui/lib/utils';
 import ResolutionStatusFilter, {
   type ResolutionStatusFilterValue,
@@ -39,6 +58,19 @@ interface TableFiltersProps {
   onSearchChange: (value: string) => void;
   className?: string;
 }
+
+const CATEGORY_ICONS: Record<string, LucideIcon> = {
+  'economy-finance': TrendingUp,
+  crypto: Coins,
+  weather: CloudSun,
+  geopolitics: Landmark,
+  'tech-science': FlaskConical,
+  sports: Medal,
+  culture: Tv,
+  'prices-commodities': Wheat,
+  'prices-crypto': Bitcoin,
+  'prices-equity': BarChart3,
+};
 
 interface CategoryMultiSelectProps {
   categories: CategoryOption[];
@@ -94,17 +126,17 @@ function CategoryMultiSelect({
 
   const getButtonLabel = () => {
     if (selectedSlugs.length === 0) {
-      return 'All focus areas';
+      return 'All Markets';
     }
     if (selectedSlugs.length === categories.length) {
-      return 'All focus areas';
+      return 'All Markets';
     }
     const pmSlugSet = new Set(predictionMarketCategories.map((c) => c.slug));
     if (
       selectedSlugs.length === pmSlugSet.size &&
       selectedSlugs.every((s) => pmSlugSet.has(s))
     ) {
-      return 'Prediction Markets';
+      return 'Polymarkets';
     }
     const pricesSlugSet = new Set(pricesCategories.map((c) => c.slug));
     if (
@@ -117,7 +149,7 @@ function CategoryMultiSelect({
       const cat = categories.find((c) => c.slug === selectedSlugs[0]);
       return cat?.name || selectedSlugs[0];
     }
-    return `${selectedSlugs.length} focus areas`;
+    return `${selectedSlugs.length} markets`;
   };
 
   const isAllSelected =
@@ -153,13 +185,16 @@ function CategoryMultiSelect({
       </PopoverTrigger>
       <PopoverContent className="w-[240px] p-1" align="start">
         <div className="flex flex-col">
-          {/* All focus areas */}
+          {/* All Markets */}
           <button
             type="button"
             onClick={handleSelectAll}
             className="cursor-pointer flex items-center justify-between rounded-sm px-2 py-1.5 text-sm hover:bg-accent"
           >
-            <span className="font-medium">All focus areas</span>
+            <span className="font-medium flex items-center gap-2">
+              <Globe className="h-3.5 w-3.5 opacity-60" />
+              All Markets
+            </span>
             <Check
               className={cn(
                 'h-4 w-4',
@@ -168,7 +203,7 @@ function CategoryMultiSelect({
             />
           </button>
 
-          {/* Prediction Markets group */}
+          {/* Polymarkets group */}
           <div className="mt-1">
             <div className="flex items-center">
               <button
@@ -188,7 +223,10 @@ function CategoryMultiSelect({
                 onClick={() => handleToggleGroup(predictionMarketCategories)}
                 className="flex-1 cursor-pointer flex items-center justify-between rounded-sm px-1.5 py-1.5 text-sm hover:bg-accent"
               >
-                <span className="font-medium">Prediction Markets</span>
+                <span className="font-medium flex items-center gap-2">
+                  <LayoutGrid className="h-3.5 w-3.5 opacity-60" />
+                  Polymarkets
+                </span>
                 <Check
                   className={cn(
                     'h-4 w-4',
@@ -204,6 +242,7 @@ function CategoryMultiSelect({
             {pmExpanded &&
               predictionMarketCategories.map((category) => {
                 const isSelected = selectedSlugs.includes(category.slug);
+                const Icon = CATEGORY_ICONS[category.slug];
                 return (
                   <button
                     type="button"
@@ -211,7 +250,10 @@ function CategoryMultiSelect({
                     onClick={() => handleToggle(category.slug)}
                     className="w-full cursor-pointer flex items-center justify-between rounded-sm pl-8 pr-2 py-1.5 text-sm hover:bg-accent"
                   >
-                    <span>{category.name}</span>
+                    <span className="flex items-center gap-2">
+                      {Icon && <Icon className="h-3.5 w-3.5 opacity-60" />}
+                      {category.name}
+                    </span>
                     <Check
                       className={cn(
                         'h-4 w-4',
@@ -244,7 +286,10 @@ function CategoryMultiSelect({
                   onClick={() => handleToggleGroup(pricesCategories)}
                   className="flex-1 cursor-pointer flex items-center justify-between rounded-sm px-1.5 py-1.5 text-sm hover:bg-accent"
                 >
-                  <span className="font-medium">Prices</span>
+                  <span className="font-medium flex items-center gap-2">
+                    <DollarSign className="h-3.5 w-3.5 opacity-60" />
+                    Prices
+                  </span>
                   <Check
                     className={cn(
                       'h-4 w-4',
@@ -260,6 +305,7 @@ function CategoryMultiSelect({
               {pricesExpanded &&
                 pricesCategories.map((category) => {
                   const isSelected = selectedSlugs.includes(category.slug);
+                  const Icon = CATEGORY_ICONS[category.slug];
                   return (
                     <button
                       type="button"
@@ -267,7 +313,10 @@ function CategoryMultiSelect({
                       onClick={() => handleToggle(category.slug)}
                       className="w-full cursor-pointer flex items-center justify-between rounded-sm pl-8 pr-2 py-1.5 text-sm hover:bg-accent"
                     >
-                      <span>{category.name}</span>
+                      <span className="flex items-center gap-2">
+                        {Icon && <Icon className="h-3.5 w-3.5 opacity-60" />}
+                        {category.name}
+                      </span>
                       <Check
                         className={cn(
                           'h-4 w-4',
@@ -357,19 +406,19 @@ export default function TableFilters({
   return (
     <div
       className={cn(
-        'grid gap-2 md:gap-4 grid-cols-2 md:grid-cols-5',
+        'grid gap-2 xl:gap-4 grid-cols-2 xl:grid-cols-5',
         className
       )}
     >
       {/* Search input */}
       <div className="relative flex items-center">
-        <Search className="hidden md:block absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none z-10" />
+        <Search className="hidden xl:block absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none z-10" />
         <input
           type="text"
           placeholder="Search questions"
           value={searchTerm}
           onChange={handleSearchInputChange}
-          className="w-full h-8 rounded-md border border-border bg-muted/30 text-left pl-3 md:pl-9 pr-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-ring"
+          className="w-full h-8 rounded-md border border-border bg-muted/30 text-left pl-3 xl:pl-9 pr-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-ring"
         />
       </div>
       <CategoryMultiSelect
@@ -417,7 +466,7 @@ export default function TableFilters({
           { range: [TIME_SLIDER_MIN, 0], label: 'Ended in the past' },
         ]}
       />
-      <div className="col-span-2 md:col-span-1">
+      <div className="col-span-2 xl:col-span-1">
         <ResolutionStatusFilter
           value={filters.resolutionStatus}
           onChange={handleResolutionStatusChange}
