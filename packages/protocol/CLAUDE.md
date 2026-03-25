@@ -48,8 +48,9 @@ src/
 ├── SecondaryMarketEscrow.sol        # Atomic OTC swap for position tokens
 └── scripts/
     ├── debug/           # Debug scripts
-    ├── mainnet/         # Mainnet deployment scripts
-    └── testnet/         # Testnet deployment scripts
+    ├── deploy/          # Unified deployment scripts (use --env testnet|mainnet)
+    ├── mainnet/         # Mainnet .env and deployments.json
+    └── testnet/         # Testnet .env and deployments.json
 test/
 ├── fixtures/            # Hash fixture generation for SDK golden tests
 ├── mocks/               # Mock contracts for testing

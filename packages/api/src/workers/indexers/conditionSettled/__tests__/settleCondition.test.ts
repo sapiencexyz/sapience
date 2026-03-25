@@ -35,7 +35,7 @@ import { resolvePickConfigsForCondition } from '../resolvePickConfigs';
 
 const TAG = '[test]';
 const CONDITION_ID = '0xabcdef';
-const RESOLVER = '0x3384de2a15e8d767a36f09f6e67f41c9fa8c6b1f';
+const RESOLVER = '0x49e848a5abb356c40b025e05dd0f7efe95721d55';
 const TX_HASH = ('0x' + 'ab'.repeat(32)) as `0x${string}`;
 
 function makeLog(overrides: Partial<Log> = {}): Log {
