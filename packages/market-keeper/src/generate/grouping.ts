@@ -22,6 +22,7 @@ import { inferSapienceCategorySlug } from './category';
 import { transformMatchQuestion, getPolymarketUrl } from './transform';
 import { enrichMarketsWithLLM, type MarketEnrichmentOutput } from '../llm';
 import { fetchEventTags } from './tags';
+import { parseYesPrice } from '../utils/price';
 import {
   runPipeline,
   printPipelineStats,
@@ -81,6 +82,7 @@ export function transformToSapienceCondition(
     categorySlug: enrichment?.category || inferSapienceCategorySlug(market), // Use LLM category or fallback
     chainId: CHAIN_ID,
     groupTitle,
+    estimatedPrice: parseYesPrice(market.outcomePrices),
   };
 }
 
@@ -104,6 +106,25 @@ export async function groupMarkets(
       });
     } else {
       ungrouped.push(market);
+    }
+  }
+
+  // Check existing conditions EARLY — on full markets array (before filtering)
+  // so we can build price updates for ALL existing conditions regardless of liquidity
+  const allMarketConditionIds = markets.map((m) => m.conditionId);
+  const existingIds = await checkExistingConditions(
+    apiUrl,
+    allMarketConditionIds
+  );
+
+  // Build price updates for existing conditions
+  const priceUpdates: Array<{ id: string; estimatedPrice: number }> = [];
+  for (const market of markets) {
+    if (existingIds.has(market.conditionId)) {
+      const price = parseYesPrice(market.outcomePrices);
+      if (price !== undefined) {
+        priceUpdates.push({ id: market.conditionId, estimatedPrice: price });
+      }
     }
   }
 
@@ -142,11 +163,7 @@ export async function groupMarkets(
     ...filteredUngrouped,
   ];
 
-  // Check which conditions already exist (to skip LLM for them)
-  const allConditionIds = allFilteredMarkets.map((m) => m.conditionId);
-  const existingIds = await checkExistingConditions(apiUrl, allConditionIds);
-
-  // Apply LLM pre-filter pipeline to separate new vs existing markets
+  // Apply LLM pre-filter pipeline to separate new vs existing markets (reuse existingIds from above)
   const { output: newMarkets, stats: llmFilterStats } = runPipeline(
     allFilteredMarkets,
     createLlmPreFilter(existingIds),
@@ -228,6 +245,7 @@ export async function groupMarkets(
     },
     groups: conditionGroups,
     ungroupedConditions,
+    priceUpdates,
   };
 }
 

@@ -7,7 +7,7 @@ import { DEFAULT_SAPIENCE_API_URL } from '../constants';
 import { validatePrivateKey, confirmProductionAccess } from '../utils';
 import { fetchEndingSoonestMarkets } from './market';
 import { groupMarkets, exportJSON } from './grouping';
-import { printDryRun, submitToAPI } from './api';
+import { printDryRun, submitToAPI, submitPriceUpdates } from './api';
 
 // ============ CLI Arguments ============
 
@@ -100,6 +100,7 @@ export async function main() {
     // Submit to API if credentials are available
     if (hasAPICredentials && apiUrl && privateKey) {
       await submitToAPI(apiUrl, privateKey, sapienceData);
+      await submitPriceUpdates(apiUrl, privateKey, sapienceData.priceUpdates);
     }
   } catch (error) {
     console.error('Error:', error);

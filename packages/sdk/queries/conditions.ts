@@ -21,6 +21,7 @@ export interface ConditionType {
   openInterest: string;
   conditionGroupId?: number | null;
   conditionGroup?: { id: number; name: string } | null;
+  estimatedPrice?: number | null;
 }
 
 export interface ConditionFilters {
@@ -57,6 +58,7 @@ export const GET_CONDITIONS = /* GraphQL */ `
       assertionId
       assertionTimestamp
       openInterest
+      estimatedPrice
       conditionGroupId
       conditionGroup {
         id

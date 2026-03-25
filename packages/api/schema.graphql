@@ -354,6 +354,9 @@ type Condition {
   description: String!
   displayOrder: Int
   endTime: Int!
+
+  """YES probability from Polymarket (0.0–1.0), null for non-Polymarket"""
+  estimatedPrice: Float
   id: String!
   nonDecisive: Boolean!
   openInterest: String!
@@ -479,6 +482,7 @@ input ConditionOrderByWithRelationInput {
   description: SortOrder
   displayOrder: SortOrderInput
   endTime: SortOrder
+  estimatedPrice: SortOrderInput
   id: SortOrder
   nonDecisive: SortOrder
   openInterest: SortOrder
@@ -510,6 +514,7 @@ enum ConditionScalarFieldEnum {
   description
   displayOrder
   endTime
+  estimatedPrice
   id
   nonDecisive
   openInterest
@@ -541,6 +546,7 @@ input ConditionWhereInput {
   description: StringFilter
   displayOrder: IntNullableFilter
   endTime: IntFilter
+  estimatedPrice: FloatNullableFilter
   id: StringFilter
   nonDecisive: BoolFilter
   openInterest: StringFilter
@@ -573,6 +579,7 @@ input ConditionWhereUniqueInput {
   description: StringFilter
   displayOrder: IntNullableFilter
   endTime: IntFilter
+  estimatedPrice: FloatNullableFilter
   id: String
   nonDecisive: BoolFilter
   openInterest: StringFilter

@@ -1,6 +1,7 @@
 import {
   ObjectType,
   Field,
+  Float,
   Int,
   Query,
   Resolver,
@@ -117,7 +118,11 @@ export class QuestionsResolver {
     @Arg('minEndTime', () => Int, { nullable: true })
     minEndTime: number | null,
     @Arg('resolutionStatus', () => ResolutionStatus, { nullable: true })
-    resolutionStatus: ResolutionStatus | null
+    resolutionStatus: ResolutionStatus | null,
+    @Arg('minEstimatedPrice', () => Float, { nullable: true })
+    minEstimatedPrice: number | null,
+    @Arg('maxEstimatedPrice', () => Float, { nullable: true })
+    maxEstimatedPrice: number | null
   ): Promise<Question[]> {
     const prisma = getPrismaFromContext(ctx);
 
@@ -154,6 +159,17 @@ export class QuestionsResolver {
       return Prisma.empty;
     })();
 
+    // Build estimated price SQL filter
+    const priceFilter = (() => {
+      const parts = [];
+      if (minEstimatedPrice != null)
+        parts.push(Prisma.sql`c."estimatedPrice" >= ${minEstimatedPrice}`);
+      if (maxEstimatedPrice != null)
+        parts.push(Prisma.sql`c."estimatedPrice" <= ${maxEstimatedPrice}`);
+      if (parts.length === 0) return Prisma.empty;
+      return Prisma.sql`AND (${Prisma.join(parts, ' AND ')})`;
+    })();
+
     // Step 1: UNION query to get groups, ungrouped conditions, and expired group
     // conditions sorted together.
     // - Part A: Active groups (not all-expired) with aggregate sort values
@@ -178,6 +194,7 @@ export class QuestionsResolver {
           AND c.public = true
           ${chainId != null ? Prisma.sql`AND c."chainId" = ${chainId}` : Prisma.empty}
           ${resolvedFilter}
+          ${priceFilter}
           ${minEndTime != null ? Prisma.sql`AND c."endTime" >= ${minEndTime}` : Prisma.empty}
         GROUP BY cg.id
         HAVING MAX(c."endTime") <= ${nowSec}
@@ -204,6 +221,7 @@ export class QuestionsResolver {
           AND c.public = true
           ${chainId != null ? Prisma.sql`AND c."chainId" = ${chainId}` : Prisma.empty}
           ${resolvedFilter}
+          ${priceFilter}
           ${minEndTime != null ? Prisma.sql`AND c."endTime" >= ${minEndTime}` : Prisma.empty}
         WHERE NOT EXISTS (SELECT 1 FROM expired_groups eg WHERE eg.id = cg.id)
           ${
@@ -250,6 +268,7 @@ export class QuestionsResolver {
           AND c.public = true
           ${chainId != null ? Prisma.sql`AND c."chainId" = ${chainId}` : Prisma.empty}
           ${resolvedFilter}
+          ${priceFilter}
           ${minEndTime != null ? Prisma.sql`AND c."endTime" >= ${minEndTime}` : Prisma.empty}
           ${
             boundedSearch
@@ -285,6 +304,7 @@ export class QuestionsResolver {
           AND c.public = true
           ${chainId != null ? Prisma.sql`AND c."chainId" = ${chainId}` : Prisma.empty}
           ${resolvedFilter}
+          ${priceFilter}
           ${minEndTime != null ? Prisma.sql`AND c."endTime" >= ${minEndTime}` : Prisma.empty}
           ${
             boundedSearch

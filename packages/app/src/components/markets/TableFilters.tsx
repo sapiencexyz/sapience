@@ -43,6 +43,7 @@ export interface FilterState {
   timeToResolutionRange: [number, number]; // in days, negative = ended
   selectedCategories: string[]; // array of category slugs
   resolutionStatus: ResolutionStatusFilterValue;
+  estimatedPriceRange: [number, number]; // 0-100, displayed as percentage
 }
 
 interface TableFiltersProps {
@@ -393,6 +394,10 @@ export default function TableFilters({
     onFiltersChange({ ...filters, selectedCategories: slugs });
   };
 
+  const handleEstimatedPriceChange = (value: [number, number]) => {
+    onFiltersChange({ ...filters, estimatedPriceRange: value });
+  };
+
   const handleResolutionStatusChange = (
     status: ResolutionStatusFilterValue
   ) => {
@@ -406,7 +411,7 @@ export default function TableFilters({
   return (
     <div
       className={cn(
-        'grid gap-2 xl:gap-4 grid-cols-2 xl:grid-cols-5',
+        'grid gap-2 xl:gap-4 grid-cols-2 xl:grid-cols-6',
         className
       )}
     >
@@ -441,6 +446,17 @@ export default function TableFilters({
           return Number(v.replace(/,/g, ''));
         }}
         unit="OI"
+      />
+      <RangeFilter
+        placeholder="Any price"
+        value={filters.estimatedPriceRange}
+        onChange={handleEstimatedPriceChange}
+        min={0}
+        max={100}
+        step={1}
+        formatValue={(v) => `${v}%`}
+        parseValue={(v) => Number(v.replace(/%/g, ''))}
+        unit="%"
       />
       <RangeFilter
         placeholder="Time to resolution"
