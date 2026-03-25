@@ -22,6 +22,8 @@
     "settle-manual:execute:wait": "tsx scripts/settle-manual.ts --execute --wait",
     "relist": "tsx scripts/relist.ts",
     "relist:dry-run": "LLM_ENABLED=false tsx scripts/relist.ts --dry-run",
+    "refresh-prices": "tsx scripts/refresh-prices.ts",
+    "refresh-prices:dry-run": "tsx scripts/refresh-prices.ts --dry-run",
     "cleanup-polymarket": "tsx scripts/cleanup-polymarket.ts",
     "cleanup-polymarket:dry-run": "tsx scripts/cleanup-polymarket.ts --dry-run",
     "cleanup-polymarket:execute": "tsx scripts/cleanup-polymarket.ts --execute",

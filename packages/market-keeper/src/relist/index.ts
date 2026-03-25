@@ -14,9 +14,10 @@ import {
   log,
   logError,
 } from '../utils';
+import { parseYesPrice } from '../utils/price';
 import { fetchPastEndDateMarkets } from './market';
 import { groupMarkets, exportJSON } from '../generate/grouping';
-import { printDryRun, submitToAPI } from '../generate/api';
+import { printDryRun, submitToAPI, submitPriceUpdates } from '../generate/api';
 import { checkExistingConditions } from '../generate/pipeline';
 
 // ============ CLI Arguments ============
@@ -88,6 +89,19 @@ export async function main() {
       return;
     }
 
+    // Build price updates from ALL fetched markets (including already-listed ones)
+    const priceUpdates: Array<{ id: string; estimatedPrice: number }> = [];
+    for (const market of markets) {
+      const price = parseYesPrice(market.outcomePrices);
+      if (price !== undefined) {
+        priceUpdates.push({ id: market.conditionId, estimatedPrice: price });
+      }
+    }
+
+    log(
+      `[Relist] ${priceUpdates.length} price updates from past-endDate markets`
+    );
+
     // 2. Compute new endDate (now + RELIST_FORWARD_DAYS)
     const newEndDate = new Date(
       Date.now() + RELIST_FORWARD_DAYS * 24 * 60 * 60 * 1000
@@ -114,6 +128,11 @@ export async function main() {
 
     if (newMarkets.length === 0) {
       log('[Relist] No new markets to create');
+
+      // Still submit price updates even when there are no new markets
+      if (hasAPICredentials && apiUrl && privateKey && !options.dryRun) {
+        await submitPriceUpdates(apiUrl, privateKey, priceUpdates);
+      }
       return;
     }
 
@@ -136,9 +155,10 @@ export async function main() {
       return;
     }
 
-    // 6. Submit new conditions to API
+    // 6. Submit new conditions to API + price updates for all fetched markets
     if (hasAPICredentials && apiUrl && privateKey) {
       await submitToAPI(apiUrl, privateKey, sapienceData);
+      await submitPriceUpdates(apiUrl, privateKey, priceUpdates);
     }
   } catch (error) {
     logError('Error:', error);
