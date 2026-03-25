@@ -89,7 +89,7 @@ function makeMarketSettledLog(
 
   return {
     address: (overrides.address ||
-      '0x3384de2a15e8d767a36f09f6e67f41c9fa8c6b1f') as `0x${string}`,
+      '0x49e848a5abb356c40b025e05dd0f7efe95721d55') as `0x${string}`,
     blockHash: ('0x' + '00'.repeat(32)) as `0x${string}`,
     blockNumber: 100n,
     data,
@@ -107,7 +107,7 @@ const MOCK_BLOCK = {
 } as unknown as Block;
 const MOCK_CTX: HandlerContext = {
   chainId: 13374202,
-  contractAddress: '0x3384de2a15e8d767a36f09f6e67f41c9fa8c6b1f',
+  contractAddress: '0x49e848a5abb356c40b025e05dd0f7efe95721d55',
 };
 
 // --- Tests ---
@@ -137,7 +137,7 @@ describe('processPythMarketSettled', () => {
   });
 
   it('updates condition with resolvedToYes=true when resolvedToOver=true', async () => {
-    const resolverAddress = '0x3384de2a15e8d767a36f09f6e67f41c9fa8c6b1f';
+    const resolverAddress = '0x49e848a5abb356c40b025e05dd0f7efe95721d55';
     mockPrisma.condition.findUnique.mockResolvedValue({
       id: CONDITION_ID_BYTES.toLowerCase(),
       resolver: resolverAddress,
@@ -162,7 +162,7 @@ describe('processPythMarketSettled', () => {
   });
 
   it('updates condition with resolvedToYes=false when resolvedToOver=false', async () => {
-    const resolverAddress = '0x3384de2a15e8d767a36f09f6e67f41c9fa8c6b1f';
+    const resolverAddress = '0x49e848a5abb356c40b025e05dd0f7efe95721d55';
     mockPrisma.condition.findUnique.mockResolvedValue({
       id: CONDITION_ID_BYTES.toLowerCase(),
       resolver: resolverAddress,
@@ -186,7 +186,7 @@ describe('processPythMarketSettled', () => {
   });
 
   it('calls scoring after settling condition', async () => {
-    const resolverAddress = '0x3384de2a15e8d767a36f09f6e67f41c9fa8c6b1f';
+    const resolverAddress = '0x49e848a5abb356c40b025e05dd0f7efe95721d55';
     mockPrisma.condition.findUnique.mockResolvedValue({
       id: CONDITION_ID_BYTES.toLowerCase(),
       resolver: resolverAddress,
@@ -250,7 +250,7 @@ describe('processPythMarketSettled', () => {
   it('catches scoring errors without propagating them', async () => {
     mockPrisma.condition.findUnique.mockResolvedValue({
       id: CONDITION_ID_BYTES.toLowerCase(),
-      resolver: '0x3384de2a15e8d767a36f09f6e67f41c9fa8c6b1f',
+      resolver: '0x49e848a5abb356c40b025e05dd0f7efe95721d55',
     });
     vi.mocked(scoreSelectedForecastsForSettledMarket).mockRejectedValue(
       new Error('scoring failure')
@@ -275,7 +275,7 @@ describe('processPythMarketSettled', () => {
   it('calls resolvePickConfigsForCondition inside the transaction', async () => {
     mockPrisma.condition.findUnique.mockResolvedValue({
       id: CONDITION_ID_BYTES.toLowerCase(),
-      resolver: '0x3384de2a15e8d767a36f09f6e67f41c9fa8c6b1f',
+      resolver: '0x49e848a5abb356c40b025e05dd0f7efe95721d55',
     });
 
     await processPythMarketSettled(
@@ -294,7 +294,7 @@ describe('processPythMarketSettled', () => {
   it('always sets nonDecisive to false (Pyth has no ties)', async () => {
     mockPrisma.condition.findUnique.mockResolvedValue({
       id: CONDITION_ID_BYTES.toLowerCase(),
-      resolver: '0x3384de2a15e8d767a36f09f6e67f41c9fa8c6b1f',
+      resolver: '0x49e848a5abb356c40b025e05dd0f7efe95721d55',
     });
 
     await processPythMarketSettled(

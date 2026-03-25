@@ -22,8 +22,7 @@ const CONDITION_ID_BYTES = encodeAbiParameters(
   [RAW_CONDITION_ID]
 );
 
-const RESOLVER =
-  '0xa5ec46b834ac33ec68e30e7ddeedbbbD4f461784' as `0x${string}`;
+const RESOLVER = '0x5eae96e92112c83c64d38b0aeeac8807416d9683' as `0x${string}`;
 const TX_HASH = ('0x' + 'ab'.repeat(32)) as `0x${string}`;
 const BLOCK_HASH = ('0x' + '00'.repeat(32)) as `0x${string}`;
 
@@ -43,11 +42,13 @@ const MOCK_BLOCK = {
 
 // --- Helpers ---
 
-function makeLog(opts: {
-  isIndecisive?: boolean;
-  resolvedToYes?: boolean;
-  conditionId?: `0x${string}`;
-} = {}) {
+function makeLog(
+  opts: {
+    isIndecisive?: boolean;
+    resolvedToYes?: boolean;
+    conditionId?: `0x${string}`;
+  } = {}
+) {
   const {
     isIndecisive = false,
     resolvedToYes = true,
@@ -56,11 +57,7 @@ function makeLog(opts: {
 
   // All params are non-indexed → everything in data
   const data = encodeAbiParameters(
-    [
-      { type: 'bytes' },
-      { type: 'bool' },
-      { type: 'bool' },
-    ],
+    [{ type: 'bytes' }, { type: 'bool' }, { type: 'bool' }],
     [conditionId, isIndecisive, resolvedToYes]
   );
 
