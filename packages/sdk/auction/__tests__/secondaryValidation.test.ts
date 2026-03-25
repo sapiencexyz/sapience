@@ -29,7 +29,7 @@ import type {
 // ─── Test fixtures ────────────────────────────────────────────────────────────
 
 const VERIFYING_CONTRACT =
-  '0x16222940184Aad2E806529C963531e36c13875cF' as Address;
+  '0x3c2783afA444c157eE3689E6306cFC0f2FbD231B' as Address;
 const CHAIN_ID = 13374202;
 
 const TOKEN = '0x1111111111111111111111111111111111111111' as Address;
