@@ -88,6 +88,7 @@ export default function QuestionPageContent({
       chainId?: number | null;
       resolver?: string | null;
       openInterest?: string | null;
+      estimatedPrice?: number | null;
       similarMarkets?: string[] | null;
     } | null,
     Error
@@ -110,6 +111,7 @@ export default function QuestionPageContent({
             chainId
             resolver
             openInterest
+            estimatedPrice
             similarMarkets
             category {
               slug
@@ -140,6 +142,7 @@ export default function QuestionPageContent({
           chainId?: number | null;
           resolver?: string | null;
           openInterest?: string | null;
+          estimatedPrice?: number | null;
         }>;
       }>(QUERY, { where: whereClause });
       return resp?.conditions?.[0] || null;
@@ -566,6 +569,7 @@ export default function QuestionPageContent({
       resolvedToYes={data.resolvedToYes}
       nonDecisive={data.nonDecisive}
       endTime={data.endTime}
+      estimatedPrice={data.estimatedPrice}
     />
   );
 

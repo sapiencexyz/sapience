@@ -22,6 +22,7 @@ import { inferSapienceCategorySlug } from './category';
 import { transformMatchQuestion, getPolymarketUrl } from './transform';
 import { enrichMarketsWithLLM, type MarketEnrichmentOutput } from '../llm';
 import { fetchEventTags } from './tags';
+import { parseYesPrice } from '../utils/price';
 import {
   runPipeline,
   printPipelineStats,
@@ -81,6 +82,7 @@ export function transformToSapienceCondition(
     categorySlug: enrichment?.category || inferSapienceCategorySlug(market), // Use LLM category or fallback
     chainId: CHAIN_ID,
     groupTitle,
+    estimatedPrice: parseYesPrice(market.outcomePrices),
   };
 }
 

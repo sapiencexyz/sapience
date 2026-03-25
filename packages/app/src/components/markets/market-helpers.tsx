@@ -76,6 +76,7 @@ export function groupConditionToConditionType(
     assertionId: gc.assertionId,
     assertionTimestamp: gc.assertionTimestamp,
     conditionGroupId: gc.conditionGroupId,
+    estimatedPrice: gc.estimatedPrice,
   };
 }
 
@@ -312,6 +313,7 @@ export function ForecastCell({
     <MarketPredictionRequest
       conditionId={condition.id}
       prefetchedProbability={prefetchedProbability}
+      estimatedPrice={condition.estimatedPrice}
       onPrediction={onPrediction}
       skipViewportCheck={skipViewportCheck}
       chainId={condition.chainId}

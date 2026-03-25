@@ -72,6 +72,7 @@ const emptySapienceOutput: SapienceOutput = {
   },
   groups: [],
   ungroupedConditions: [],
+
 };
 
 beforeEach(() => {

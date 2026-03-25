@@ -33,6 +33,7 @@ export interface PolymarketMarket {
       slug?: string;
     }>;
   }>;
+  outcomePrices?: string | number[];
   active: boolean;
   closed: boolean;
   archived?: boolean;

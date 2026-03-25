@@ -28,6 +28,7 @@ if [[ "$NETWORK" != "testnet" && "$NETWORK" != "mainnet" ]]; then
 fi
 
 ENV_DIR="$SCRIPT_DIR/../$NETWORK"
+CONFIG_FILE="$ENV_DIR/config.json"
 ENV_FILE="$ENV_DIR/.env"
 DEPLOYMENTS_FILE="$ENV_DIR/deployments.json"
 
@@ -232,31 +233,52 @@ update_deployment() {
     log_info "Saved deployment: $network.$contract_name = $address"
 }
 
-# Load .env file
+# Load config.json (public, versioned) + .env (secrets, gitignored)
 load_env() {
+    # 1. Load config.json — public configuration
+    if [ -f "$CONFIG_FILE" ]; then
+        if ! command -v jq &> /dev/null; then
+            log_error "jq is required to parse config.json"
+            exit 1
+        fi
+        # Export each key-value pair as an env var
+        while IFS='=' read -r key value; do
+            export "$key=$value"
+        done < <(jq -r 'to_entries[] | "\(.key)=\(.value)"' "$CONFIG_FILE")
+        log_info "Loaded config from $CONFIG_FILE"
+    else
+        log_warn "config.json not found at $CONFIG_FILE — using .env only"
+    fi
+
+    # 2. Load .env — secrets (overrides config.json if same key exists)
     if [ -f "$ENV_FILE" ]; then
         set -a
         source "$ENV_FILE"
         set +a
-        log_info "Loaded environment from $ENV_FILE"
+        log_info "Loaded secrets from $ENV_FILE"
     else
         log_error ".env file not found at $ENV_FILE"
         exit 1
     fi
 }
 
-# Add or update env variable
+# Add or update env variable (writes to config.json for public values, .env for secrets)
 update_env() {
     local key=$1
     local value=$2
 
-    if grep -q "^${key}=" "$ENV_FILE" 2>/dev/null; then
-        # Update existing
-        sed -i.bak "s|^${key}=.*|${key}=${value}|" "$ENV_FILE"
-        rm -f "$ENV_FILE.bak"
+    # Write to config.json if available (deployed addresses are public)
+    if [ -f "$CONFIG_FILE" ] && command -v jq &> /dev/null; then
+        local temp_file=$(mktemp)
+        jq --arg key "$key" --arg val "$value" '.[$key] = $val' "$CONFIG_FILE" > "$temp_file" && mv "$temp_file" "$CONFIG_FILE"
     else
-        # Add new
-        echo "${key}=${value}" >> "$ENV_FILE"
+        # Fallback: write to .env
+        if grep -q "^${key}=" "$ENV_FILE" 2>/dev/null; then
+            sed -i.bak "s|^${key}=.*|${key}=${value}|" "$ENV_FILE"
+            rm -f "$ENV_FILE.bak"
+        else
+            echo "${key}=${value}" >> "$ENV_FILE"
+        fi
     fi
 
     # Export to current shell
