@@ -32,6 +32,7 @@ router.post('/', async (req: Request, res: Response) => {
       groupName,
       resolver,
       tags,
+      estimatedPrice,
     } = req.body as {
       conditionHash?: string;
       question?: string;
@@ -46,6 +47,7 @@ router.post('/', async (req: Request, res: Response) => {
       groupName?: string;
       resolver?: string;
       tags?: string[];
+      estimatedPrice?: number;
     };
 
     // conditionHash is required (must be 0x-prefixed 32-byte hex)
@@ -159,6 +161,12 @@ router.post('/', async (req: Request, res: Response) => {
           similarMarkets: Array.isArray(similarMarkets) ? similarMarkets : [],
           tags: Array.isArray(tags) ? tags : [],
           chainId: chainId ?? 42161, // Default to Arbitrum if not provided
+          estimatedPrice:
+            typeof estimatedPrice === 'number' &&
+            estimatedPrice >= 0 &&
+            estimatedPrice <= 1
+              ? estimatedPrice
+              : undefined,
           conditionGroupId: resolvedGroupId ?? undefined,
           displayOrder: resolvedGroupId ? 0 : undefined,
           resolver: resolver ? resolver.toLowerCase() : undefined,
@@ -181,6 +189,66 @@ router.post('/', async (req: Request, res: Response) => {
     }
   } catch (error: unknown) {
     console.error('Error in create condition:', error);
+    return res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
+// PUT /admin/conditions/prices - batch update estimatedPrice on multiple conditions
+// NOTE: Must be registered before /:id to avoid Express matching "prices" as an :id param
+router.put('/prices', async (req: Request, res: Response) => {
+  try {
+    const { updates } = req.body as {
+      updates?: Array<{ id: string; estimatedPrice: number }>;
+    };
+
+    if (!Array.isArray(updates) || updates.length === 0) {
+      return res
+        .status(400)
+        .json({ message: 'updates must be a non-empty array' });
+    }
+
+    if (updates.length > 200) {
+      return res
+        .status(400)
+        .json({ message: 'Batch size limit is 200 updates' });
+    }
+
+    // Validate each update
+    for (const update of updates) {
+      if (!/^0x[0-9a-fA-F]{64}$/.test(update.id)) {
+        return res
+          .status(400)
+          .json({ message: `Invalid id format: ${update.id}` });
+      }
+      if (
+        typeof update.estimatedPrice !== 'number' ||
+        update.estimatedPrice < 0 ||
+        update.estimatedPrice > 1
+      ) {
+        return res.status(400).json({
+          message: `estimatedPrice must be a number between 0 and 1 for id ${update.id}`,
+        });
+      }
+    }
+
+    // Use transaction with individual updates (each condition gets a different price)
+    const results = await prisma.$transaction(
+      updates.map((u) =>
+        prisma.condition.updateMany({
+          where: { id: u.id },
+          data: { estimatedPrice: u.estimatedPrice },
+        })
+      )
+    );
+
+    const totalUpdated = results.reduce((sum, r) => sum + r.count, 0);
+
+    return res.status(200).json({
+      updated: totalUpdated,
+      requested: updates.length,
+    });
+  } catch (error: unknown) {
+    console.error('Error in batch price update:', error);
     return res.status(500).json({ message: 'Internal Server Error' });
   }
 });
@@ -277,6 +345,7 @@ router.put('/:id', async (req: Request, res: Response) => {
       chainId,
       groupName,
       tags,
+      estimatedPrice,
     } = req.body as {
       question?: string;
       shortName?: string;
@@ -289,6 +358,7 @@ router.put('/:id', async (req: Request, res: Response) => {
       chainId?: number;
       groupName?: string;
       tags?: string[];
+      estimatedPrice?: number;
     };
 
     const existing = await prisma.condition.findUnique({ where: { id } });
@@ -400,6 +470,12 @@ router.put('/:id', async (req: Request, res: Response) => {
             : {}),
           ...(typeof tags !== 'undefined'
             ? { tags: Array.isArray(tags) ? tags : [] }
+            : {}),
+          // Update estimatedPrice if provided and valid
+          ...(typeof estimatedPrice === 'number' &&
+          estimatedPrice >= 0 &&
+          estimatedPrice <= 1
+            ? { estimatedPrice }
             : {}),
           // Extend endTime if a new forward value was provided
           ...(newEndTime !== undefined ? { endTime: newEndTime } : {}),

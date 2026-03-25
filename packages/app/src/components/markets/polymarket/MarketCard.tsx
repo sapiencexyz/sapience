@@ -216,6 +216,7 @@ function ConditionCard({
                 <MarketPredictionRequest
                   conditionId={condition.id}
                   prefetchedProbability={probability}
+                  estimatedPrice={condition.estimatedPrice}
                   onPrediction={handlePrediction}
                   inline
                   requestLabel="Request"

@@ -409,6 +409,8 @@ export type Condition = {
   description: Scalars['String']['output'];
   displayOrder?: Maybe<Scalars['Int']['output']>;
   endTime: Scalars['Int']['output'];
+  /** YES probability from Polymarket (0.0–1.0), null for non-Polymarket */
+  estimatedPrice?: Maybe<Scalars['Float']['output']>;
   id: Scalars['String']['output'];
   nonDecisive: Scalars['Boolean']['output'];
   openInterest: Scalars['String']['output'];
@@ -595,6 +597,7 @@ export type ConditionOrderByWithRelationInput = {
   description?: InputMaybe<SortOrder>;
   displayOrder?: InputMaybe<SortOrderInput>;
   endTime?: InputMaybe<SortOrder>;
+  estimatedPrice?: InputMaybe<SortOrderInput>;
   id?: InputMaybe<SortOrder>;
   nonDecisive?: InputMaybe<SortOrder>;
   openInterest?: InputMaybe<SortOrder>;
@@ -626,6 +629,7 @@ export type ConditionScalarFieldEnum =
   | 'description'
   | 'displayOrder'
   | 'endTime'
+  | 'estimatedPrice'
   | 'id'
   | 'nonDecisive'
   | 'openInterest'
@@ -656,6 +660,7 @@ export type ConditionWhereInput = {
   description?: InputMaybe<StringFilter>;
   displayOrder?: InputMaybe<IntNullableFilter>;
   endTime?: InputMaybe<IntFilter>;
+  estimatedPrice?: InputMaybe<FloatNullableFilter>;
   id?: InputMaybe<StringFilter>;
   nonDecisive?: InputMaybe<BoolFilter>;
   openInterest?: InputMaybe<StringFilter>;
@@ -688,6 +693,7 @@ export type ConditionWhereUniqueInput = {
   description?: InputMaybe<StringFilter>;
   displayOrder?: InputMaybe<IntNullableFilter>;
   endTime?: InputMaybe<IntFilter>;
+  estimatedPrice?: InputMaybe<FloatNullableFilter>;
   id?: InputMaybe<Scalars['String']['input']>;
   nonDecisive?: InputMaybe<BoolFilter>;
   openInterest?: InputMaybe<StringFilter>;
@@ -1634,7 +1640,9 @@ export type QueryProtocolVolumeArgs = {
 export type QueryQuestionsArgs = {
   categorySlugs?: InputMaybe<Array<Scalars['String']['input']>>;
   chainId?: InputMaybe<Scalars['Int']['input']>;
+  maxEstimatedPrice?: InputMaybe<Scalars['Float']['input']>;
   minEndTime?: InputMaybe<Scalars['Int']['input']>;
+  minEstimatedPrice?: InputMaybe<Scalars['Float']['input']>;
   resolutionStatus?: InputMaybe<ResolutionStatus>;
   search?: InputMaybe<Scalars['String']['input']>;
   skip?: Scalars['Int']['input'];

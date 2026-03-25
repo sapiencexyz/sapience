@@ -43,6 +43,7 @@ export interface FilterState {
   timeToResolutionRange: [number, number]; // in days, negative = ended
   selectedCategories: string[]; // array of category slugs
   resolutionStatus: ResolutionStatusFilterValue;
+  estimatedPriceRange: [number, number]; // 0-100, displayed as percentage
 }
 
 interface TableFiltersProps {
@@ -393,6 +394,10 @@ export default function TableFilters({
     onFiltersChange({ ...filters, selectedCategories: slugs });
   };
 
+  const handleEstimatedPriceChange = (value: [number, number]) => {
+    onFiltersChange({ ...filters, estimatedPriceRange: value });
+  };
+
   const handleResolutionStatusChange = (
     status: ResolutionStatusFilterValue
   ) => {
@@ -406,7 +411,7 @@ export default function TableFilters({
   return (
     <div
       className={cn(
-        'grid gap-2 xl:gap-4 grid-cols-2 xl:grid-cols-5',
+        'grid gap-2 xl:gap-4 grid-cols-2 xl:grid-cols-6',
         className
       )}
     >
@@ -415,7 +420,7 @@ export default function TableFilters({
         <Search className="hidden xl:block absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none z-10" />
         <input
           type="text"
-          placeholder="Search questions"
+          placeholder="Search"
           value={searchTerm}
           onChange={handleSearchInputChange}
           className="w-full h-8 rounded-md border border-border bg-muted/30 text-left pl-3 xl:pl-9 pr-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-ring"
@@ -427,7 +432,17 @@ export default function TableFilters({
         onChange={handleCategoriesChange}
       />
       <RangeFilter
-        placeholder="Any open interest"
+        placeholder="Forecast"
+        value={filters.estimatedPriceRange ?? [0, 100]}
+        onChange={handleEstimatedPriceChange}
+        min={0}
+        max={100}
+        step={1}
+        formatValue={(v) => `${v}%`}
+        parseValue={(v) => Number(v.replace(/%/g, ''))}
+      />
+      <RangeFilter
+        placeholder="Open Interest"
         value={openInterestSliderValue}
         onChange={handleOpenInterestChange}
         min={openInterestBounds[0]}
@@ -443,7 +458,7 @@ export default function TableFilters({
         unit="OI"
       />
       <RangeFilter
-        placeholder="Time to resolution"
+        placeholder="Ends in"
         value={timeSliderValue}
         onChange={handleTimeToResolutionChange}
         min={TIME_SLIDER_MIN}
@@ -466,7 +481,7 @@ export default function TableFilters({
           { range: [TIME_SLIDER_MIN, 0], label: 'Ended in the past' },
         ]}
       />
-      <div className="col-span-2 xl:col-span-1">
+      <div>
         <ResolutionStatusFilter
           value={filters.resolutionStatus}
           onChange={handleResolutionStatusChange}

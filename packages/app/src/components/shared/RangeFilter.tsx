@@ -164,7 +164,7 @@ export function RangeFilter({
                 onChange={handleMinInputChange}
                 onBlur={handleMinBlur}
                 onKeyDown={handleKeyDown}
-                className="w-full pr-10 text-right font-mono text-xs tabular-nums"
+                className={`w-full text-right font-mono text-xs tabular-nums ${unit ? 'pr-10' : 'pr-2'}`}
               />
               {unit && (
                 <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground pointer-events-none">
@@ -181,7 +181,7 @@ export function RangeFilter({
                 onChange={handleMaxInputChange}
                 onBlur={handleMaxBlur}
                 onKeyDown={handleKeyDown}
-                className="w-full pr-10 text-right font-mono text-xs tabular-nums"
+                className={`w-full text-right font-mono text-xs tabular-nums ${unit ? 'pr-10' : 'pr-2'}`}
               />
               {unit && (
                 <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] text-muted-foreground pointer-events-none">
