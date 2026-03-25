@@ -247,6 +247,15 @@ FACTORY_SALT=0x...                     # custom CREATE2 salt for factory
 > This ensures a fresh salt on each day's deployment, avoiding CREATE2 address collisions.
 > You only need to set it manually if you're deploying twice on the same day or need a specific salt.
 
+## Configuration
+
+Configuration is split into two files per environment:
+
+- **`config.json`** — Public, non-sensitive values (RPC URLs, contract addresses, DVN config, etc.). Versioned in git.
+- **`.env`** — Secrets only (private keys, API keys). Gitignored.
+
+On deploy, `config.json` is loaded first, then `.env` overrides (secrets take precedence). Deployed contract addresses are written to `config.json` automatically.
+
 ## Directory Structure
 
 ```
@@ -257,12 +266,14 @@ scripts/
 │   ├── vault/           # Vault-specific scripts
 │   └── README.md        # This file
 ├── testnet/
-│   ├── .env             # Testnet environment config
-│   ├── .env.example     # Template
+│   ├── config.json      # Public config (versioned)
+│   ├── .env             # Secrets only (gitignored)
+│   ├── .env.example     # Template for secrets
 │   └── deployments.json # Deployed addresses (auto-generated)
 ├── mainnet/
-│   ├── .env             # Mainnet environment config
-│   ├── .env.example     # Template
+│   ├── config.json      # Public config (versioned)
+│   ├── .env             # Secrets only (gitignored)
+│   ├── .env.example     # Template for secrets
 │   └── deployments.json # Deployed addresses (auto-generated)
 └── debug/               # Debug/diagnostic scripts
 ```
