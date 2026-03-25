@@ -234,7 +234,7 @@ POLYGON_ETHERSCAN_API_KEY=             # Polygonscan API key
 | Network | Explorer URL                             | Chain ID   |
 | ------- | ---------------------------------------- | ---------- |
 | testnet | `https://explorer.etherealtest.net/api/` | `13374202` |
-| mainnet | `https://explorer.ethereal.trade/api/`   | `5066318`  |
+| mainnet | `https://explorer.ethereal.trade/api/`   | `5064014`  |
 
 ### Optional — Factory Salt
 

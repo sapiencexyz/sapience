@@ -1051,7 +1051,7 @@ verify_contract() {
     if [[ "$rpc_url" == "$PM_NETWORK_RPC_URL" ]]; then
         # Ethereal uses Blockscout
         local explorer_url="${PM_NETWORK_EXPLORER_URL:-https://explorer.ethereal.trade/api/}"
-        local chain_id="${PM_NETWORK_CHAIN_ID:-5066318}"
+        local chain_id="${PM_NETWORK_CHAIN_ID:-5064014}"
         verify_cmd="forge verify-contract $address $contract_path --chain-id $chain_id --verifier blockscout --verifier-url $explorer_url"
     elif [[ "$rpc_url" == "$SM_NETWORK_RPC_URL" ]]; then
         # Arbitrum uses Arbiscan (Etherscan-compatible)
