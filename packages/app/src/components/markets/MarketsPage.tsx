@@ -147,10 +147,10 @@ const MarketsPage = () => {
     // Backend filtering by resolution status
     resolutionStatus: filters.resolutionStatus,
     // Backend filtering by estimated price (convert percentage to 0-1)
-    ...(filters.estimatedPriceRange[0] > 0
+    ...((filters.estimatedPriceRange?.[0] ?? 0) > 0
       ? { minEstimatedPrice: filters.estimatedPriceRange[0] / 100 }
       : {}),
-    ...(filters.estimatedPriceRange[1] < 100
+    ...((filters.estimatedPriceRange?.[1] ?? 100) < 100
       ? { maxEstimatedPrice: filters.estimatedPriceRange[1] / 100 }
       : {}),
   });
