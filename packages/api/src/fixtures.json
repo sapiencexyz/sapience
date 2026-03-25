@@ -27,6 +27,18 @@
     {
       "name": "Culture",
       "slug": "culture"
+    },
+    {
+      "name": "Crypto",
+      "slug": "prices-crypto"
+    },
+    {
+      "name": "Commodities",
+      "slug": "prices-commodities"
+    },
+    {
+      "name": "Equity",
+      "slug": "prices-equity"
     }
   ]
 }

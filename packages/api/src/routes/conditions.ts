@@ -1,6 +1,5 @@
 import { Request, Response, Router } from 'express';
 import prisma from '../db';
-import { keccak256, toHex, concatHex } from 'viem';
 
 const router = Router();
 
@@ -27,12 +26,12 @@ router.post('/', async (req: Request, res: Response) => {
       categorySlug,
       endTime,
       public: isPublic = true,
-      claimStatement,
       description,
       similarMarkets,
       chainId,
       groupName,
       resolver,
+      tags,
     } = req.body as {
       conditionHash?: string;
       question?: string;
@@ -41,18 +40,19 @@ router.post('/', async (req: Request, res: Response) => {
       categorySlug?: string;
       endTime?: number | string;
       public?: boolean;
-      claimStatement?: string;
       description?: string;
       similarMarkets?: string[];
       chainId?: number;
       groupName?: string;
       resolver?: string;
+      tags?: string[];
     };
 
-    // Validate conditionHash if provided (must be 0x-prefixed 32-byte hex)
-    if (conditionHash && !/^0x[0-9a-fA-F]{64}$/.test(conditionHash)) {
+    // conditionHash is required (must be 0x-prefixed 32-byte hex)
+    if (!conditionHash || !/^0x[0-9a-fA-F]{64}$/.test(conditionHash)) {
       return res.status(400).json({
-        message: 'conditionHash must be a 0x-prefixed 32-byte hex string',
+        message:
+          'conditionHash is required and must be a 0x-prefixed 32-byte hex string',
       });
     }
 
@@ -62,26 +62,8 @@ router.post('/', async (req: Request, res: Response) => {
       });
     }
 
-    // When conditionHash is provided, claimStatement and resolver are optional
-    // Otherwise, both are required for computing the condition ID
-    if (!conditionHash) {
-      if (!claimStatement || !resolver) {
-        return res.status(400).json({
-          message:
-            'claimStatement and resolver are required when conditionHash is not provided',
-        });
-      }
-      // Validate resolver is a valid Ethereum address
-      if (
-        typeof resolver !== 'string' ||
-        !/^0x[a-fA-F0-9]{40}$/.test(resolver)
-      ) {
-        return res.status(400).json({
-          message: 'Resolver must be a valid Ethereum address (0x...)',
-        });
-      }
-    } else if (resolver) {
-      // If resolver is provided with conditionHash, still validate it
+    // Validate resolver if provided
+    if (resolver) {
       if (
         typeof resolver !== 'string' ||
         !/^0x[a-fA-F0-9]{40}$/.test(resolver)
@@ -149,18 +131,17 @@ router.post('/', async (req: Request, res: Response) => {
         .json({ message: 'similarMarkets must be HTTP(S) URLs' });
     }
 
-    // Use provided conditionHash or compute from claimStatement and endTime
-    let id: string;
-    if (conditionHash) {
-      id = conditionHash;
-    } else {
-      // Solidity equivalent: keccak256(abi.encodePacked(claimStatement, ":", uint256(endTime)))
-      const claimHex = toHex(claimStatement!);
-      const colonHex = toHex(':');
-      const endTimeHex = toHex(BigInt(endTimeInt), { size: 32 });
-      const packed = concatHex([claimHex, colonHex, endTimeHex]);
-      id = keccak256(packed);
+    // Validate tags if provided
+    if (
+      typeof tags !== 'undefined' &&
+      (!Array.isArray(tags) || !tags.every((t) => typeof t === 'string'))
+    ) {
+      return res
+        .status(400)
+        .json({ message: 'tags must be an array of strings' });
     }
+
+    const id = conditionHash;
 
     try {
       const condition = await prisma.condition.create({
@@ -174,9 +155,9 @@ router.post('/', async (req: Request, res: Response) => {
           categoryId: resolvedCategoryId ?? undefined,
           endTime: endTimeInt,
           public: Boolean(isPublic),
-          claimStatement: claimStatement || '', // Empty string if not provided (for external conditions like Polymarket)
           description,
           similarMarkets: Array.isArray(similarMarkets) ? similarMarkets : [],
+          tags: Array.isArray(tags) ? tags : [],
           chainId: chainId ?? 42161, // Default to Arbitrum if not provided
           conditionGroupId: resolvedGroupId ?? undefined,
           displayOrder: resolvedGroupId ? 0 : undefined,
@@ -204,7 +185,77 @@ router.post('/', async (req: Request, res: Response) => {
   }
 });
 
-// PUT /admin/conditions/:id - update editable fields (cannot change claimStatement or endTime)
+// PUT /admin/conditions/batch - batch update fields on multiple conditions
+// NOTE: Must be registered before /:id to avoid Express matching "batch" as an :id param
+router.put('/batch', async (req: Request, res: Response) => {
+  try {
+    const { ids, update } = req.body as {
+      ids?: string[];
+      update?: { public?: boolean };
+    };
+
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res
+        .status(400)
+        .json({ message: 'ids must be a non-empty array of condition IDs' });
+    }
+
+    if (ids.length > 200) {
+      return res
+        .status(400)
+        .json({ message: 'Batch size limit is 200 conditions' });
+    }
+
+    if (!update || typeof update !== 'object') {
+      return res.status(400).json({ message: 'update object is required' });
+    }
+
+    // Validate all IDs are valid hex
+    for (const id of ids) {
+      if (!/^0x[0-9a-fA-F]{64}$/.test(id)) {
+        return res.status(400).json({ message: `Invalid id format: ${id}` });
+      }
+    }
+
+    // Build update data
+    const data: Record<string, unknown> = {};
+
+    if (typeof update.public !== 'undefined') {
+      data.public = Boolean(update.public);
+    }
+
+    if (Object.keys(data).length === 0) {
+      return res.status(400).json({ message: 'No valid fields to update' });
+    }
+
+    const existing = await prisma.condition.count({
+      where: { id: { in: ids } },
+    });
+
+    if (existing === 0) {
+      return res
+        .status(404)
+        .json({ message: 'No conditions found matching the provided IDs' });
+    }
+
+    const result = await prisma.condition.updateMany({
+      where: { id: { in: ids } },
+      data,
+    });
+
+    const status = existing < ids.length ? 207 : 200;
+    return res.status(status).json({
+      updated: result.count,
+      requested: ids.length,
+      found: existing,
+    });
+  } catch (error: unknown) {
+    console.error('Error in batch update conditions:', error);
+    return res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
+// PUT /admin/conditions/:id - update editable fields
 router.put('/:id', async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
@@ -222,10 +273,10 @@ router.put('/:id', async (req: Request, res: Response) => {
       public: isPublic,
       description,
       similarMarkets,
-      claimStatement,
       endTime,
       chainId,
       groupName,
+      tags,
     } = req.body as {
       question?: string;
       shortName?: string;
@@ -234,24 +285,15 @@ router.put('/:id', async (req: Request, res: Response) => {
       public?: boolean;
       description?: string;
       similarMarkets?: string[];
-      claimStatement?: string;
       endTime?: number | string;
       chainId?: number;
       groupName?: string;
+      tags?: string[];
     };
 
     const existing = await prisma.condition.findUnique({ where: { id } });
     if (!existing) {
       return res.status(404).json({ message: 'Condition not found' });
-    }
-
-    if (
-      typeof claimStatement !== 'undefined' &&
-      claimStatement !== existing.claimStatement
-    ) {
-      return res
-        .status(400)
-        .json({ message: 'claimStatement cannot be changed' });
     }
 
     let newEndTime: number | undefined;
@@ -261,15 +303,9 @@ router.put('/:id', async (req: Request, res: Response) => {
         return res.status(400).json({ message: 'Invalid endTime' });
       }
       if (endTimeInt !== existing.endTime) {
-        // Allow forward extension only (new > existing), reject shortening
         if (existing.settled) {
           return res.status(400).json({
             message: 'endTime cannot be changed on a settled condition',
-          });
-        }
-        if (existing.endTime !== null && endTimeInt < existing.endTime) {
-          return res.status(400).json({
-            message: 'endTime can only be extended forward, not shortened',
           });
         }
         newEndTime = endTimeInt;
@@ -326,6 +362,16 @@ router.put('/:id', async (req: Request, res: Response) => {
           .json({ message: 'similarMarkets must be HTTP(S) URLs' });
       }
 
+      // Validate tags if provided
+      if (
+        typeof tags !== 'undefined' &&
+        (!Array.isArray(tags) || !tags.every((t) => typeof t === 'string'))
+      ) {
+        return res
+          .status(400)
+          .json({ message: 'tags must be an array of strings' });
+      }
+
       const condition = await prisma.condition.update({
         where: { id },
         data: {
@@ -351,6 +397,9 @@ router.put('/:id', async (req: Request, res: Response) => {
                   ? similarMarkets
                   : [],
               }
+            : {}),
+          ...(typeof tags !== 'undefined'
+            ? { tags: Array.isArray(tags) ? tags : [] }
             : {}),
           // Extend endTime if a new forward value was provided
           ...(newEndTime !== undefined ? { endTime: newEndTime } : {}),

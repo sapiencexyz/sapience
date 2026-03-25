@@ -402,4 +402,100 @@ describe('usePreprocessedBids', () => {
     expect(processed?.validationStatus).toBe('valid');
     expect(mockValidateBidFull).not.toHaveBeenCalled();
   });
+
+  // ---- 10. Self-bid fast-tracking ----
+
+  it('marks self-bids as valid immediately without calling validateBidFull', async () => {
+    const selfBid = makeBid({
+      counterparty: '0xSelfAddress',
+      counterpartySignature: '0xself',
+      counterpartyDeadline: Math.floor(Date.now() / 1000) + 3600,
+    });
+    const otherBid = makeBid({
+      counterparty: '0xOtherAddress',
+      counterpartySignature: '0xother',
+      counterpartyDeadline: Math.floor(Date.now() / 1000) + 3600,
+    });
+
+    const opts: UsePreprocessedBidsOptions = {
+      ...DEFAULT_OPTS,
+      selfAddress: '0xSelfAddress',
+    };
+
+    const { result } = renderStable([selfBid, otherBid], opts);
+
+    await flush();
+
+    // Self-bid should be valid
+    const selfProcessed = result.current.processedBids.find(
+      (b) => b.counterpartySignature === '0xself'
+    );
+    expect(selfProcessed?.validationStatus).toBe('valid');
+
+    // Other bid should also be validated (via validateBidFull)
+    const otherProcessed = result.current.processedBids.find(
+      (b) => b.counterpartySignature === '0xother'
+    );
+    expect(otherProcessed?.validationStatus).toBe('valid');
+
+    // validateBidFull should only be called for the other bid
+    expect(mockValidateBidFull).toHaveBeenCalledTimes(1);
+    expect(mockValidateBidFull.mock.calls[0][0].counterpartySignature).toBe(
+      '0xother'
+    );
+  });
+
+  it('self-bid matching is case-insensitive', async () => {
+    const selfBid = makeBid({
+      counterparty: '0xabcdef1234567890',
+      counterpartySignature: '0xselfcase',
+      counterpartyDeadline: Math.floor(Date.now() / 1000) + 3600,
+    });
+
+    const opts: UsePreprocessedBidsOptions = {
+      ...DEFAULT_OPTS,
+      selfAddress: '0xABCDEF1234567890',
+    };
+
+    const { result } = renderStable([selfBid], opts);
+
+    await flush();
+
+    const processed = result.current.processedBids.find(
+      (b) => b.counterpartySignature === '0xselfcase'
+    );
+    expect(processed?.validationStatus).toBe('valid');
+    expect(mockValidateBidFull).not.toHaveBeenCalled();
+  });
+
+  it('self-bid deduplication only sets validation result once per signature', async () => {
+    const sig = '0xdupself';
+    const selfBid1 = makeBid({
+      counterparty: '0xSelfAddr',
+      counterpartySignature: sig,
+      counterpartyDeadline: Math.floor(Date.now() / 1000) + 3600,
+    });
+    const selfBid2 = makeBid({
+      counterparty: '0xSelfAddr',
+      counterpartySignature: sig,
+      counterpartyDeadline: Math.floor(Date.now() / 1000) + 3600,
+    });
+
+    const opts: UsePreprocessedBidsOptions = {
+      ...DEFAULT_OPTS,
+      selfAddress: '0xSelfAddr',
+    };
+
+    const { result } = renderStable([selfBid1, selfBid2], opts);
+
+    await flush();
+
+    // Both should show valid
+    const validBids = result.current.processedBids.filter(
+      (b) => b.counterpartySignature === sig
+    );
+    expect(validBids).toHaveLength(2);
+    expect(validBids.every((b) => b.validationStatus === 'valid')).toBe(true);
+    expect(mockValidateBidFull).not.toHaveBeenCalled();
+  });
 });

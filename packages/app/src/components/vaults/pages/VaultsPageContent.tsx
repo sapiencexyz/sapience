@@ -530,7 +530,7 @@ const VaultsPageContent = () => {
     const protocolTvlNum = Number(formatAssetAmount(protocolTvlWei));
     const vaultTvlNum = Number(formatAssetAmount(tvlWei));
 
-    const ETHENA_BASE_APY = 3.5;
+    const ETHENA_BASE_APY = 4;
     const effectiveApy =
       vaultTvlNum > 0 ? (protocolTvlNum / vaultTvlNum) * ETHENA_BASE_APY : 0;
     const annualYieldToVault = vaultTvlNum * (effectiveApy / 100);

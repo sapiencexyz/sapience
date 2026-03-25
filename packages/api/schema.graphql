@@ -275,7 +275,7 @@ input CategoryWhereUniqueInput {
   conditions: ConditionListRelationFilter
   createdAt: DateTimeFilter
   id: Int
-  name: String
+  name: StringFilter
   slug: String
 }
 
@@ -348,7 +348,6 @@ type Condition {
   category(where: CategoryWhereInput): Category
   categoryId: Int
   chainId: Int!
-  claimStatement: String!
   conditionGroup(where: ConditionGroupWhereInput): ConditionGroup
   conditionGroupId: Int
   createdAt: DateTimeISO!
@@ -370,6 +369,7 @@ type Condition {
   settledAt: Int
   shortName: String
   similarMarkets: [String!]!
+  tags: [String!]!
 }
 
 type ConditionCount {
@@ -473,7 +473,6 @@ input ConditionOrderByWithRelationInput {
   category: CategoryOrderByWithRelationInput
   categoryId: SortOrderInput
   chainId: SortOrder
-  claimStatement: SortOrder
   conditionGroup: ConditionGroupOrderByWithRelationInput
   conditionGroupId: SortOrderInput
   createdAt: SortOrder
@@ -493,6 +492,7 @@ input ConditionOrderByWithRelationInput {
   settledAt: SortOrderInput
   shortName: SortOrderInput
   similarMarkets: SortOrder
+  tags: SortOrder
 }
 
 input ConditionRelationFilter {
@@ -505,7 +505,6 @@ enum ConditionScalarFieldEnum {
   assertionTimestamp
   categoryId
   chainId
-  claimStatement
   conditionGroupId
   createdAt
   description
@@ -523,6 +522,7 @@ enum ConditionScalarFieldEnum {
   settledAt
   shortName
   similarMarkets
+  tags
 }
 
 input ConditionWhereInput {
@@ -535,7 +535,6 @@ input ConditionWhereInput {
   category: CategoryNullableRelationFilter
   categoryId: IntNullableFilter
   chainId: IntFilter
-  claimStatement: StringFilter
   conditionGroup: ConditionGroupNullableRelationFilter
   conditionGroupId: IntNullableFilter
   createdAt: DateTimeFilter
@@ -555,6 +554,7 @@ input ConditionWhereInput {
   settledAt: IntNullableFilter
   shortName: StringNullableFilter
   similarMarkets: StringNullableListFilter
+  tags: StringNullableListFilter
 }
 
 input ConditionWhereUniqueInput {
@@ -567,7 +567,6 @@ input ConditionWhereUniqueInput {
   category: CategoryNullableRelationFilter
   categoryId: IntNullableFilter
   chainId: IntFilter
-  claimStatement: StringFilter
   conditionGroup: ConditionGroupNullableRelationFilter
   conditionGroupId: IntNullableFilter
   createdAt: DateTimeFilter
@@ -587,6 +586,7 @@ input ConditionWhereUniqueInput {
   settledAt: IntNullableFilter
   shortName: StringNullableFilter
   similarMarkets: StringNullableListFilter
+  tags: StringNullableListFilter
 }
 
 input DateTimeFilter {
@@ -1066,6 +1066,7 @@ type PickConfiguration {
   counterpartyToken: String
   endsAt: Int
   id: String!
+  isLegacy: Boolean!
   marketAddress: String!
   picks: [Pick!]!
   predictionId: String
@@ -1124,6 +1125,7 @@ type Prediction {
   createTxHash: String!
   createdAt: DateTimeISO!
   id: Int!
+  isLegacy: Boolean!
   marketAddress: String!
   pickConfig: PickConfiguration
   predictionId: String!
@@ -1271,7 +1273,7 @@ type Query {
   """
   Paginated list of pick configurations, filterable by chain, resolution status, and result
   """
-  pickConfigurations(chainId: Int, resolved: Boolean, result: SettlementResult, skip: Int! = 0, take: Int! = 50): [PickConfiguration!]!
+  pickConfigurations(chainId: Int, resolved: Boolean, result: SettlementResult, skip: Int! = 0, take: Int! = 50, tokens: [String!]): [PickConfiguration!]!
 
   """
   Paginated list of token position balances, filterable by holder, condition, chain, pick config, settlement, date range, collateral range, and won/lost status
@@ -1287,7 +1289,7 @@ type Query {
   """
   Paginated list of escrow-based predictions, filterable by address, condition, chain, and settlement status
   """
-  predictions(address: String, chainId: Int, conditionId: String, orderBy: PredictionSortField, orderDirection: SortOrder, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Prediction!]!
+  predictions(address: String, chainId: Int, conditionId: String, isLegacy: Boolean, orderBy: PredictionSortField, orderDirection: SortOrder, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Prediction!]!
 
   """
   Profit leaderboard — addresses ranked by total PnL across all positions

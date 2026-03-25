@@ -2,84 +2,20 @@ import { Router } from 'express';
 import { handleAsyncErrors } from '../helpers/handleAsyncErrors';
 import prisma from '../db';
 import {
-  conditionalTokensConditionResolver,
-  pythConditionResolver,
-  manualConditionResolver,
+  getResolverAddressesForChain,
+  getLegacyResolverAddressesForChain,
 } from '@sapience/sdk/contracts';
 import { getProviderForChain } from '../utils/utils';
-import { DEFAULT_CHAIN_ID, CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import { reindexAccuracy } from '../workers/jobs/reindexAccuracy';
+import { reindexConditionSettled } from '../workers/jobs/reindexConditionSettled';
+import { backfillProtocolStats } from '../helpers/protocolStats';
+import { reindexTransfers } from '../workers/jobs/reindexTransfers';
+import { reindexCollateralTransfers } from '../workers/jobs/reindexCollateralTransfers';
 
 const router = Router();
 
-const IS_MAINNET = DEFAULT_CHAIN_ID === CHAIN_ID_ETHEREAL;
-
-/**
- * Returns all resolver addresses that the condition-settled indexer
- * watches for a given chain. Mirrors the logic in fixtures.ts.
- */
-function getResolverAddressesForChain(chainId: number): `0x${string}`[] {
-  const addresses: `0x${string}`[] = [];
-  const zero = '0x0000000000000000000000000000000000000000';
-
-  if (IS_MAINNET) {
-    // Mainnet: CT + Pyth resolvers
-    const ct = conditionalTokensConditionResolver[chainId]?.address;
-    if (ct && ct !== zero) addresses.push(ct as `0x${string}`);
-
-    const pyth = pythConditionResolver[chainId]?.address;
-    if (pyth && pyth !== zero) addresses.push(pyth as `0x${string}`);
-  } else {
-    // Testnet: manual resolver
-    const manual = manualConditionResolver[chainId]?.address;
-    if (manual && manual !== zero) addresses.push(manual as `0x${string}`);
-  }
-
-  return addresses;
-}
-
 const ETH_ADDRESS_RE = /^0x[a-fA-F0-9]{40}$/;
 const SAFE_STRING_RE = /^[a-zA-Z0-9_\-.:x]+$/;
-
-const executeLocalReindex = async (
-  startCommand: string
-): Promise<{ id: string; status: string; output: string }> => {
-  return new Promise((resolve, reject) => {
-    // Use dynamic import for child_process
-    import('child_process')
-      .then(({ spawn }) => {
-        const [command, ...args] = startCommand.split(' ');
-
-        const process = spawn(command, args, {
-          stdio: ['ignore', 'pipe', 'pipe'],
-        });
-
-        let output = '';
-
-        process.stdout.on('data', (data: Buffer) => {
-          const str = data.toString();
-          output += str;
-          console.log(str); // Stream to console in real-time
-        });
-
-        process.stderr.on('data', (data: Buffer) => {
-          const str = data.toString();
-          console.error(str); // Stream to console in real-time
-          output += `Error: ${str}\n`; // Also capture errors in the output
-        });
-
-        process.on('close', (code: number) => {
-          if (code === 0) {
-            resolve({ id: 'local', status: 'completed', output });
-          } else {
-            reject(new Error(`Process exited with code ${code}`));
-          }
-        });
-      })
-      .catch(() => {
-        reject(new Error('Failed to load child_process module'));
-      });
-  });
-};
 
 router.post(
   '/accuracy',
@@ -95,33 +31,38 @@ router.post(
       return;
     }
 
-    const startCommand =
-      `pnpm run start:reindex-accuracy ${address || ''} ${marketId || ''}`.trim();
-
     const params = JSON.stringify({ address, marketId });
-    try {
-      const result = await executeLocalReindex(startCommand);
-      await prisma.backgroundJob.create({
-        data: { command: 'reindex-accuracy', status: result.status, params },
-      });
-      res.json({ success: true, job: result });
-    } catch (error: unknown) {
-      await prisma.backgroundJob.create({
-        data: { command: 'reindex-accuracy', status: 'failed', params },
-      });
-      if (error instanceof Error) {
-        res.status(500).json({ error: error.message });
-      } else {
-        res.status(500).json({ error: 'An unknown error occurred' });
+    const job = await prisma.backgroundJob.create({
+      data: { command: 'reindex-accuracy', status: 'running', params },
+    });
+
+    void (async () => {
+      try {
+        await reindexAccuracy(address || undefined, marketId || undefined);
+        await prisma.backgroundJob.update({
+          where: { id: job.id },
+          data: { status: 'completed' },
+        });
+        console.log(`[reindex/accuracy] Job ${job.id} completed`);
+      } catch (error) {
+        console.error(
+          `[reindex/accuracy] Job ${job.id} failed:`,
+          error instanceof Error ? error.message : error
+        );
+        await prisma.backgroundJob
+          .update({ where: { id: job.id }, data: { status: 'failed' } })
+          .catch(() => {});
       }
-    }
+    })();
+
+    res.status(202).json({ success: true, jobId: job.id });
   })
 );
 
 router.post(
   '/condition-settled',
   handleAsyncErrors(async (req, res) => {
-    const { chainId, startTimestamp, endTimestamp } = req.body;
+    const { chainId, startTimestamp, endTimestamp, legacy } = req.body;
 
     const parsedChainId = parseInt(chainId);
     if (!chainId || isNaN(parsedChainId)) {
@@ -145,50 +86,67 @@ router.post(
       return;
     }
 
-    const resolverAddresses = getResolverAddressesForChain(parsedChainId);
-    if (resolverAddresses.length === 0) {
+    const includeLegacy = legacy === true || legacy === 'true';
+
+    const resolverAddresses = getResolverAddressesForChain(parsedChainId).map(
+      (r) => r.address
+    );
+    const legacyResolverAddresses = includeLegacy
+      ? getLegacyResolverAddressesForChain(parsedChainId).map((r) => r.address)
+      : [];
+
+    const allAddresses = [...resolverAddresses, ...legacyResolverAddresses];
+    if (allAddresses.length === 0) {
       res.status(400).json({
         error: `No resolver addresses configured for chain ${parsedChainId}`,
       });
       return;
     }
 
+    const parsedStart = startTimestamp ? parseInt(startTimestamp) : undefined;
+    const parsedEnd = endTimestamp ? parseInt(endTimestamp) : undefined;
+
     const params = JSON.stringify({
       chainId: parsedChainId,
-      resolverAddresses,
-      startTimestamp,
-      endTimestamp,
+      resolverAddresses: allAddresses,
+      startTimestamp: parsedStart,
+      endTimestamp: parsedEnd,
+      legacy: includeLegacy,
     });
 
-    try {
-      const results = [];
-      for (const resolverAddress of resolverAddresses) {
-        const startCommand = `pnpm run start:reindex-condition-settled ${parsedChainId} ${resolverAddress} ${startTimestamp || 'undefined'} ${endTimestamp || 'undefined'}`;
-        results.push(await executeLocalReindex(startCommand));
-      }
+    const job = await prisma.backgroundJob.create({
+      data: { command: 'reindex-condition-settled', status: 'running', params },
+    });
 
-      await prisma.backgroundJob.create({
-        data: {
-          command: 'reindex-condition-settled',
-          status: 'completed',
-          params,
-        },
-      });
-      res.json({ success: true, jobs: results });
-    } catch (error: unknown) {
-      await prisma.backgroundJob.create({
-        data: {
-          command: 'reindex-condition-settled',
-          status: 'failed',
-          params,
-        },
-      });
-      if (error instanceof Error) {
-        res.status(500).json({ error: error.message });
-      } else {
-        res.status(500).json({ error: 'An unknown error occurred' });
+    void (async () => {
+      try {
+        const legacySet = new Set(legacyResolverAddresses);
+        for (const resolverAddress of allAddresses) {
+          await reindexConditionSettled(
+            parsedChainId,
+            resolverAddress,
+            parsedStart,
+            parsedEnd,
+            legacySet.has(resolverAddress)
+          );
+        }
+        await prisma.backgroundJob.update({
+          where: { id: job.id },
+          data: { status: 'completed' },
+        });
+        console.log(`[reindex/condition-settled] Job ${job.id} completed`);
+      } catch (error) {
+        console.error(
+          `[reindex/condition-settled] Job ${job.id} failed:`,
+          error instanceof Error ? error.message : error
+        );
+        await prisma.backgroundJob
+          .update({ where: { id: job.id }, data: { status: 'failed' } })
+          .catch(() => {});
       }
-    }
+    })();
+
+    res.status(202).json({ success: true, jobId: job.id });
   })
 );
 
@@ -202,34 +160,37 @@ router.post(
       res.status(400).json({ error: 'days must be a positive integer' });
       return;
     }
-    if (
-      chainId !== undefined &&
-      chainId !== 'undefined' &&
-      isNaN(parseInt(chainId))
-    ) {
+    const parsedChainId = chainId ? parseInt(chainId) : undefined;
+    if (parsedChainId !== undefined && isNaN(parsedChainId)) {
       res.status(400).json({ error: 'chainId must be a number' });
       return;
     }
 
-    const startCommand = `pnpm run start:backfill-stats ${parsedDays} ${chainId || 'undefined'}`;
+    const params = JSON.stringify({ days: parsedDays, chainId: parsedChainId });
+    const job = await prisma.backgroundJob.create({
+      data: { command: 'backfill-stats', status: 'running', params },
+    });
 
-    const params = JSON.stringify({ days: parsedDays, chainId });
-    try {
-      const result = await executeLocalReindex(startCommand);
-      await prisma.backgroundJob.create({
-        data: { command: 'backfill-stats', status: result.status, params },
-      });
-      res.json({ success: true, job: result });
-    } catch (error: unknown) {
-      await prisma.backgroundJob.create({
-        data: { command: 'backfill-stats', status: 'failed', params },
-      });
-      if (error instanceof Error) {
-        res.status(500).json({ error: error.message });
-      } else {
-        res.status(500).json({ error: 'An unknown error occurred' });
+    void (async () => {
+      try {
+        await backfillProtocolStats(parsedChainId, parsedDays);
+        await prisma.backgroundJob.update({
+          where: { id: job.id },
+          data: { status: 'completed' },
+        });
+        console.log(`[reindex/protocol-stats] Job ${job.id} completed`);
+      } catch (error) {
+        console.error(
+          `[reindex/protocol-stats] Job ${job.id} failed:`,
+          error instanceof Error ? error.message : error
+        );
+        await prisma.backgroundJob
+          .update({ where: { id: job.id }, data: { status: 'failed' } })
+          .catch(() => {});
       }
-    }
+    })();
+
+    res.status(202).json({ success: true, jobId: job.id });
   })
 );
 
@@ -282,34 +243,38 @@ router.post(
       );
     }
 
-    const startCommand =
-      `pnpm run start:reindex-transfers ${parsedChainId} ${resolvedFromBlock || ''}`.trim();
-
     const params = JSON.stringify({
       chainId: parsedChainId,
       fromBlock: resolvedFromBlock,
       days: days ? parseInt(days) : undefined,
     });
-    try {
-      const result = await executeLocalReindex(startCommand);
-      await prisma.backgroundJob.create({
-        data: {
-          command: 'reindex-transfers',
-          status: result.status,
-          params,
-        },
-      });
-      res.json({ success: true, job: result });
-    } catch (error: unknown) {
-      await prisma.backgroundJob.create({
-        data: { command: 'reindex-transfers', status: 'failed', params },
-      });
-      if (error instanceof Error) {
-        res.status(500).json({ error: error.message });
-      } else {
-        res.status(500).json({ error: 'An unknown error occurred' });
+
+    const job = await prisma.backgroundJob.create({
+      data: { command: 'reindex-transfers', status: 'running', params },
+    });
+
+    void (async () => {
+      try {
+        const result = await reindexTransfers(parsedChainId, resolvedFromBlock);
+        await prisma.backgroundJob.update({
+          where: { id: job.id },
+          data: { status: result ? 'completed' : 'failed' },
+        });
+        console.log(
+          `[reindex/position-balances] Job ${job.id} ${result ? 'completed' : 'failed'}`
+        );
+      } catch (error) {
+        console.error(
+          `[reindex/position-balances] Job ${job.id} failed:`,
+          error instanceof Error ? error.message : error
+        );
+        await prisma.backgroundJob
+          .update({ where: { id: job.id }, data: { status: 'failed' } })
+          .catch(() => {});
       }
-    }
+    })();
+
+    res.status(202).json({ success: true, jobId: job.id });
   })
 );
 
@@ -330,37 +295,44 @@ router.post(
       return;
     }
 
-    const startCommand =
-      `pnpm run start:reindex-collateral-transfers ${parsedChainId} ${parsedFromBlock ?? ''}`.trim();
-
     const params = JSON.stringify({
       chainId: parsedChainId,
       fromBlock: parsedFromBlock,
     });
-    try {
-      const result = await executeLocalReindex(startCommand);
-      await prisma.backgroundJob.create({
-        data: {
-          command: 'reindex-collateral-transfers',
-          status: result.status,
-          params,
-        },
-      });
-      res.json({ success: true, job: result });
-    } catch (error: unknown) {
-      await prisma.backgroundJob.create({
-        data: {
-          command: 'reindex-collateral-transfers',
-          status: 'failed',
-          params,
-        },
-      });
-      if (error instanceof Error) {
-        res.status(500).json({ error: error.message });
-      } else {
-        res.status(500).json({ error: 'An unknown error occurred' });
+
+    const job = await prisma.backgroundJob.create({
+      data: {
+        command: 'reindex-collateral-transfers',
+        status: 'running',
+        params,
+      },
+    });
+
+    void (async () => {
+      try {
+        const result = await reindexCollateralTransfers(
+          parsedChainId,
+          parsedFromBlock
+        );
+        await prisma.backgroundJob.update({
+          where: { id: job.id },
+          data: { status: result ? 'completed' : 'failed' },
+        });
+        console.log(
+          `[reindex/collateral-transfers] Job ${job.id} ${result ? 'completed' : 'failed'}`
+        );
+      } catch (error) {
+        console.error(
+          `[reindex/collateral-transfers] Job ${job.id} failed:`,
+          error instanceof Error ? error.message : error
+        );
+        await prisma.backgroundJob
+          .update({ where: { id: job.id }, data: { status: 'failed' } })
+          .catch(() => {});
       }
-    }
+    })();
+
+    res.status(202).json({ success: true, jobId: job.id });
   })
 );
 

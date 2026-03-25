@@ -42,6 +42,8 @@ export interface UsePreprocessedBidsOptions {
   predictorSponsor?: string;
   /** Sponsor data (optional). */
   predictorSponsorData?: string;
+  /** Current user's address — bids from self skip async validation (already signed locally). */
+  selfAddress?: string;
 }
 
 export interface UsePreprocessedBidsResult {
@@ -82,7 +84,10 @@ export function usePreprocessedBids(
     enabled = true,
     predictorSponsor,
     predictorSponsorData,
+    selfAddress,
   } = opts;
+
+  const normalizedSelf = selfAddress?.toLowerCase();
 
   const [validationResults, setValidationResults] = useState<
     Map<string, { status: PreprocessedValidationStatus; error?: string }>
@@ -128,8 +133,23 @@ export function usePreprocessedBids(
   useEffect(() => {
     if (!canValidate || rawBids.length === 0) return;
 
+    // Self-bids are pre-validated (signed locally) — mark valid immediately
+    for (const bid of rawBids) {
+      if (
+        normalizedSelf &&
+        bid.counterparty?.toLowerCase() === normalizedSelf &&
+        !validatedRef.current.has(bid.counterpartySignature)
+      ) {
+        validatedRef.current.add(bid.counterpartySignature);
+        setValidationResults((prev) => {
+          const updated = new Map(prev);
+          updated.set(bid.counterpartySignature, { status: 'valid' });
+          return updated;
+        });
+      }
+    }
+
     const newBids = rawBids.filter((bid) => {
-      // Skip zero-address bids
       if (!bid.counterparty || bid.counterparty.toLowerCase() === ZERO_ADDRESS)
         return false;
       const sig = bid.counterpartySignature;
@@ -234,6 +254,7 @@ export function usePreprocessedBids(
     picks,
     predictorSponsor,
     predictorSponsorData,
+    normalizedSelf,
   ]);
 
   // Clean up stale entries

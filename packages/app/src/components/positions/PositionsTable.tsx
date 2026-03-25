@@ -11,35 +11,43 @@ import {
   TableRow,
 } from '@sapience/ui/components/ui/table';
 import { Badge } from '@sapience/ui/components/ui/badge';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@sapience/ui/components/ui/tooltip';
+import { Info } from 'lucide-react';
 import * as React from 'react';
+import { formatDistanceToNow } from 'date-fns';
+import { COLLATERAL_SYMBOLS, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@sapience/ui/components/ui/popover';
+import { PredictionChoiceBadge } from '@sapience/ui';
+import { useAccount } from 'wagmi';
 import EmptyTabState from '~/components/shared/EmptyTabState';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import Loader from '~/components/shared/Loader';
 
 import CountdownCell from '~/components/shared/CountdownCell';
-import { formatDistanceToNow } from 'date-fns';
 import {
   toPicks,
   computeResultFromConditions,
   type ConditionsMap,
 } from '~/components/positions/toPickLegs';
-import { COLLATERAL_SYMBOLS, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import {
   usePositionBalances,
   usePositionBalancesByConditionId,
   type PositionBalance,
 } from '~/hooks/graphql/usePositions';
 import { useConditionsByIds } from '~/hooks/graphql/useConditionsByIds';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@sapience/ui/components/ui/popover';
 import { StackedIcons } from '~/components/shared/StackedPredictions';
 import CounterpartyBadge from '~/components/shared/CounterpartyBadge';
+import LegacyBadge from '~/components/shared/LegacyBadge';
 import { getCategoryIcon } from '~/lib/theme/categoryIcons';
 import { getCategoryStyle } from '~/lib/utils/categoryStyle';
-import { PredictionChoiceBadge } from '@sapience/ui';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
 import OgShareDialogBase from '~/components/shared/OgShareDialog';
 import {
@@ -53,7 +61,6 @@ import {
 } from '~/lib/utils/tableFilters';
 import { useEscrowWrite } from '~/hooks/blockchain/useEscrowWrite';
 import { useClaimableAmount } from '~/hooks/blockchain/useEscrowContract';
-import { useAccount } from 'wagmi';
 import { useSession } from '~/lib/context/SessionContext';
 import SellPositionDialog from '~/components/secondary/SellPositionDialog';
 import { useFeatureFlag } from '~/hooks/useFeatureFlag';
@@ -156,12 +163,12 @@ function PositionRow({
     if (!predictionId) return;
     setIsRedeeming(true);
     try {
-      const result = await settleAndRedeem({
+      const redeemResult = await settleAndRedeem({
         predictionId: predictionId as `0x${string}`,
         positionToken: position.tokenAddress as Address,
         amount: BigInt(position.balance),
       });
-      if (result.success) {
+      if (redeemResult.success) {
         setRedeemed(true);
         onRefetch?.();
       }
@@ -252,11 +259,23 @@ function PositionRow({
       );
     }
 
-    // Not resolved → PENDING
+    // Not resolved → PENDING + optional Sell button
     return (
-      <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
-        PENDING
-      </span>
+      <div className="flex items-center gap-2">
+        <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
+          PENDING
+        </span>
+        {showSell && isOwnPosition && BigInt(position.balance) > 0n && (
+          <SellPositionDialog position={position} onSuccess={onRefetch}>
+            <button
+              type="button"
+              className="inline-flex items-center justify-center h-7 px-2.5 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              Sell
+            </button>
+          </SellPositionDialog>
+        )}
+      </div>
     );
   };
 
@@ -322,6 +341,7 @@ function PositionRow({
             </span>
           )}
           {!isPredictorToken && <CounterpartyBadge />}
+          {pickConfig?.isLegacy && <LegacyBadge />}
         </div>
       </TableCell>
       <TableCell>
@@ -371,23 +391,6 @@ function PositionRow({
       {/* Actions */}
       <TableCell className="text-right">
         <div className="flex items-center justify-end gap-2">
-          {showSell &&
-            !isResolved &&
-            isOwnPosition &&
-            BigInt(position.balance) > 0n && (
-              <SellPositionDialog
-                position={position}
-                collateralSymbol={collateralSymbol}
-                onSuccess={onRefetch}
-              >
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm font-medium bg-background hover:bg-accent hover:text-accent-foreground border-border transition-colors"
-                >
-                  Sell
-                </button>
-              </SellPositionDialog>
-            )}
           <button
             type="button"
             className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
@@ -642,7 +645,21 @@ export default function PositionsTable({
               <TableHead className="h-auto py-3">Position Size</TableHead>
               <TableHead className="h-auto py-3">Payout</TableHead>
               <TableHead className="h-auto py-3">Profit/Loss</TableHead>
-              <TableHead className="h-auto py-3">Ends</TableHead>
+              <TableHead className="h-auto py-3">
+                <span className="flex items-center gap-1">
+                  Ends
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex cursor-help">
+                        <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      End times are estimates and may vary
+                    </TooltipContent>
+                  </Tooltip>
+                </span>
+              </TableHead>
               <TableHead className="h-auto py-3"></TableHead>
             </TableRow>
           </TableHeader>

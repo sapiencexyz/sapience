@@ -13,9 +13,27 @@ import { Button } from '@sapience/ui/components/ui/button';
 import { Input } from '@sapience/ui/components/ui/input';
 import { Label } from '@sapience/ui/components/ui/label';
 import { Alert, AlertDescription } from '@sapience/ui/components/ui/alert';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@sapience/ui/components/ui/popover';
 import { Loader2 } from 'lucide-react';
+import NumberDisplay from '~/components/shared/NumberDisplay';
+import CountdownCell from '~/components/shared/CountdownCell';
+import PicksPopover from '~/components/shared/PicksPopover';
+import { AddressDisplay } from '~/components/shared/AddressDisplay';
+import EnsAvatar from '~/components/shared/EnsAvatar';
+import { useEnrichedTokens } from '~/hooks/secondary/useEnrichedTokens';
 import { useSecondaryBid } from '~/hooks/secondary/useSecondaryBid';
 import type { SecondaryListing } from '~/hooks/secondary/useSecondaryFeed';
+
+const BID_DEADLINE_OPTIONS = [
+  { label: '5 minutes', value: '300' },
+  { label: '15 minutes', value: '900' },
+  { label: '30 minutes', value: '1800' },
+  { label: '1 hour', value: '3600' },
+];
 
 interface BidOnListingDialogProps {
   listing: SecondaryListing;
@@ -31,15 +49,13 @@ export default function BidOnListingDialog({
   children,
 }: BidOnListingDialogProps) {
   const [open, setOpen] = React.useState(false);
-  const initialPrice = React.useMemo(() => {
-    try {
-      return formatEther(BigInt(listing.minPrice));
-    } catch {
-      return '0';
-    }
-  }, [listing.minPrice]);
-  const [price, setPrice] = React.useState(initialPrice);
+  const [price, setPrice] = React.useState('');
+  const [deadlineSeconds, setDeadlineSeconds] = React.useState('900');
   const [error, setError] = React.useState<string | null>(null);
+
+  const tokens = React.useMemo(() => [listing.token], [listing.token]);
+  const { map: enrichedMap } = useEnrichedTokens(tokens);
+  const enriched = enrichedMap.get(listing.token.toLowerCase());
 
   // Reset state when dialog opens
   React.useEffect(() => {
@@ -72,12 +88,6 @@ export default function BidOnListingDialog({
           setError('Price must be greater than 0');
           return;
         }
-        if (priceWei < BigInt(listing.minPrice)) {
-          setError(
-            `Price must be at least ${formatEther(BigInt(listing.minPrice))} ${collateralSymbol}`
-          );
-          return;
-        }
 
         const result = await submitBid({
           auctionId: listing.auctionId,
@@ -85,6 +95,7 @@ export default function BidOnListingDialog({
           tokenAmount: BigInt(listing.tokenAmount),
           price: priceWei,
           seller: listing.seller as Address,
+          deadlineSeconds: Number(deadlineSeconds),
         });
 
         if (!result.success && result.error) {
@@ -94,14 +105,12 @@ export default function BidOnListingDialog({
         setError(err instanceof Error ? err.message : 'Failed to submit bid');
       }
     },
-    [price, listing, collateralSymbol, submitBid]
+    [price, deadlineSeconds, listing, submitBid]
   );
 
-  let tokenAmountDisplay: string;
-  let minPriceDisplay: string;
+  let tokenAmount: number;
   try {
-    tokenAmountDisplay = formatEther(BigInt(listing.tokenAmount));
-    minPriceDisplay = formatEther(BigInt(listing.minPrice));
+    tokenAmount = parseFloat(formatEther(BigInt(listing.tokenAmount)));
   } catch {
     return null; // Malformed listing data
   }
@@ -109,43 +118,52 @@ export default function BidOnListingDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Bid on Position Tokens</DialogTitle>
+          <DialogTitle>Place a Bid</DialogTitle>
         </DialogHeader>
+        <p className="text-sm text-foreground -mt-1">
+          The seller will review all bids and choose which to accept.
+        </p>
 
-        <div className="space-y-1 text-sm text-muted-foreground">
-          <p>
-            Token:{' '}
-            <span className="font-mono">
-              {listing.token.slice(0, 6)}…{listing.token.slice(-4)}
+        <div className="border rounded-lg p-3 space-y-1 text-sm">
+          <PicksPopover
+            picks={enriched?.picks ?? []}
+            fallbackAddress={listing.token}
+          />
+          <div className="flex items-center gap-1">
+            <span className="font-mono text-muted-foreground">AMOUNT:</span>
+            <span className="font-mono text-brand-white">
+              <NumberDisplay value={tokenAmount} />
             </span>
-          </p>
-          <p>Amount: {tokenAmountDisplay} tokens</p>
-          <p>
-            Minimum price: {minPriceDisplay} {collateralSymbol}
-          </p>
-          <p>
-            Seller:{' '}
-            <span className="font-mono">
-              {listing.seller.slice(0, 6)}…{listing.seller.slice(-4)}
-            </span>
-          </p>
+          </div>
+          <div className="flex items-center gap-1 text-brand-white">
+            <span className="font-mono text-muted-foreground">SELLER:</span>
+            <EnsAvatar address={listing.seller} width={16} height={16} />
+            <AddressDisplay address={listing.seller} />
+          </div>
+          <div className="flex items-center gap-1">
+            <span className="font-mono text-muted-foreground">EXPIRES:</span>
+            <CountdownCell endTime={listing.sellerDeadline} />
+          </div>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="space-y-3">
           <div className="space-y-2">
-            <Label htmlFor="bidPrice">Your Offer ({collateralSymbol})</Label>
-            <Input
-              id="bidPrice"
-              type="text"
-              value={price}
-              onChange={(e) => setPrice(e.target.value)}
-              placeholder="0.0"
-            />
-            <p className="text-xs text-muted-foreground">
-              Must be ≥ {minPriceDisplay} {collateralSymbol}
-            </p>
+            <Label htmlFor="bidPrice">Your bid</Label>
+            <div className="relative">
+              <Input
+                id="bidPrice"
+                type="text"
+                value={price}
+                onChange={(e) => setPrice(e.target.value)}
+                placeholder="0.0"
+                className="pr-16"
+              />
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground font-mono">
+                {collateralSymbol}
+              </span>
+            </div>
           </div>
 
           {error && (
@@ -162,12 +180,40 @@ export default function BidOnListingDialog({
             {isSubmitting ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Approving & Signing…
+                Approving & Signing...
               </>
             ) : (
               'Submit Bid'
             )}
           </Button>
+          <p className="text-xs text-muted-foreground text-center -mt-1">
+            Bid expires in{' '}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="underline decoration-dotted underline-offset-2 hover:text-foreground transition-colors"
+                >
+                  {BID_DEADLINE_OPTIONS.find((o) => o.value === deadlineSeconds)
+                    ?.label ?? '15 minutes'}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-2" align="center">
+                <div className="flex flex-col gap-1">
+                  {BID_DEADLINE_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      className={`px-3 py-1.5 text-sm rounded-md text-left hover:bg-accent transition-colors ${opt.value === deadlineSeconds ? 'bg-accent font-medium' : ''}`}
+                      onClick={() => setDeadlineSeconds(opt.value)}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          </p>
         </form>
       </DialogContent>
     </Dialog>

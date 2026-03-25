@@ -63,7 +63,6 @@ export class ConditionResolver {
       | 'categoryId'
       | 'endTime'
       | 'public'
-      | 'claimStatement'
       | 'description'
       | 'similarMarkets'
       | 'chainId'
@@ -213,6 +212,7 @@ export class ConditionResolver {
       createTxHash: r.createTxHash,
       settleTxHash: r.settleTxHash ?? null,
       refCode: r.refCode ?? null,
+      isLegacy: r.isLegacy,
       pickConfig: r.pickConfiguration
         ? mapPickConfig(r.pickConfiguration)
         : null,

@@ -15,6 +15,7 @@
     "start": "pnpm run prisma:setup && concurrently \"pnpm run start:service\" \"pnpm run start:worker\"",
     "start:service": "pnpm run prisma:setup && tsx src/server.ts",
     "start:worker": "pnpm run prisma:setup && tsx src/workers/worker.ts",
+    "start:reconciler-worker": "pnpm run prisma:setup && tsx src/workers/reconcilerWorker.ts",
     "start:reindex-eas": "tsx src/workers/worker.ts reindexEAS $*",
     "start:reindex-accuracy": "tsx src/workers/worker.ts reindexAccuracy $*",
     "start:backfill-accuracy": "tsx src/workers/worker.ts backfillAccuracy $*",
@@ -79,14 +80,12 @@
     "prettier": "3.3.3",
     "prisma": "6.10.1",
     "reflect-metadata": "0.2.2",
-    "tsconfig-paths": "4.2.0",
     "tsx": "4.19.2",
     "type-graphql": "2.0.0-rc.2",
     "typegraphql-prisma": "0.28.0",
     "typescript": "5.8.3",
     "viem": "2.47.2",
-    "ws": "8.18.3",
-    "zod": "3.25.76"
+    "ws": "8.18.3"
   },
   "devDependencies": {
     "@eslint/js": "9.18.0",

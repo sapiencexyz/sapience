@@ -1,5 +1,5 @@
 import { ImageResponse } from 'next/og';
-import { OutcomeSide } from '@sapience/sdk/types';
+import { isPredictedYes } from '@sapience/sdk/types';
 import {
   og,
   WIDTH,
@@ -33,6 +33,7 @@ import {
   type PredictionData,
   type ConditionData,
 } from '../_prediction-helpers';
+import { getChoiceLabel } from '~/lib/resolvers/choiceLabel';
 
 export const runtime = 'nodejs';
 
@@ -105,16 +106,12 @@ export async function GET(req: Request) {
               const condition = conditionsMap.get(pick.conditionId);
               const question =
                 condition?.question || condition?.shortName || pick.conditionId;
-              const choice =
-                (pick.predictedOutcome as OutcomeSide) === OutcomeSide.YES
-                  ? 'Yes'
-                  : 'No';
+              const choice = getChoiceLabel(pick.predictedOutcome);
 
               // Determine resolution status per leg
               let resolution: ResolutionStatus | null = null;
               if (condition?.settled) {
-                const predictedYes =
-                  (pick.predictedOutcome as OutcomeSide) === OutcomeSide.YES;
+                const predictedYes = isPredictedYes(pick.predictedOutcome);
                 const resolvedToYes = condition.resolvedToYes ?? false;
                 const correct = predictedYes === resolvedToYes;
                 resolution = correct ? 'correct' : 'incorrect';
@@ -194,8 +191,8 @@ export async function GET(req: Request) {
       .slice(0, 12) // safety cap
       .map((entry) => entry.split('|'))
       .map(([text, choice, resolutionStr]) => {
-        const label = normalizeText(choice || '', 48) || '—';
-        const normalized = normalizeChoiceLabel(label);
+        const label = normalizeText(choice || '', 48);
+        const normalized = label ? normalizeChoiceLabel(label) : null;
         const resolution: ResolutionStatus | null =
           resolutionStr === 'correct' ||
           resolutionStr === 'incorrect' ||
@@ -311,12 +308,14 @@ export async function GET(req: Request) {
                                   {word}
                                 </div>
                               ))}
-                              <Pill
-                                text={leg.choice}
-                                tone={leg.tone}
-                                scale={scale}
-                                compact={compact}
-                              />
+                              {leg.choice && (
+                                <Pill
+                                  text={leg.choice}
+                                  tone={leg.tone}
+                                  scale={scale}
+                                  compact={compact}
+                                />
+                              )}
                             </div>
                           </div>
                         );

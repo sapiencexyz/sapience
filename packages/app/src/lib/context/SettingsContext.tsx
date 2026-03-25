@@ -1,6 +1,10 @@
 'use client';
 
-import { etherealChain } from '@sapience/sdk/constants';
+import {
+  DEFAULT_CHAIN_ID,
+  CHAIN_ID_ETHEREAL_TESTNET,
+  getRpcUrl,
+} from '@sapience/sdk/constants';
 import type React from 'react';
 import {
   createContext,
@@ -22,6 +26,8 @@ type SettingsContextValue = {
   adminBaseUrl: string | null;
   etherealRpcURL: string | null;
   arbitrumRpcURL: string | null;
+  /** Signal server endpoint (http(s) — converted to ws(s) at connection time). */
+  signalEndpoint: string | null;
   // Research Agent settings
   openrouterApiKey: string | null;
   researchAgentSystemMessage: string | null;
@@ -30,18 +36,25 @@ type SettingsContextValue = {
   // Appearance settings
   showAmericanOdds: boolean | null;
   connectionDurationHours: number | null;
+  meshRateLimit: number | null;
+  meshMaxPeers: number | null;
+  meshFanout: number | null;
   setGraphqlEndpoint: (value: string | null) => void;
   setApiBaseUrl: (value: string | null) => void;
   setChatBaseUrl: (value: string | null) => void;
   setAdminBaseUrl: (value: string | null) => void;
   setEtherealRpcUrl: (value: string | null) => void;
   setArbitrumRpcUrl: (value: string | null) => void;
+  setSignalEndpoint: (value: string | null) => void;
   setOpenrouterApiKey: (value: string | null) => void;
   setResearchAgentSystemMessage: (value: string | null) => void;
   setResearchAgentModel: (value: string | null) => void;
   setResearchAgentTemperature: (value: number | null) => void;
   setShowAmericanOdds: (value: boolean | null) => void;
   setConnectionDurationHours: (value: number | null) => void;
+  setMeshRateLimit: (value: number | null) => void;
+  setMeshMaxPeers: (value: number | null) => void;
+  setMeshFanout: (value: number | null) => void;
   defaults: {
     graphqlEndpoint: string;
     apiBaseUrl: string;
@@ -49,11 +62,15 @@ type SettingsContextValue = {
     adminBaseUrl: string;
     etherealRpcURL: string;
     arbitrumRpcURL: string;
+    signalEndpoint: string;
     researchAgentSystemMessage: string;
     researchAgentModel: string;
     researchAgentTemperature: number;
     showAmericanOdds: boolean;
     connectionDurationHours: number;
+    meshRateLimit: number;
+    meshMaxPeers: number;
+    meshFanout: number;
   };
 };
 
@@ -70,6 +87,10 @@ const STORAGE_KEYS = {
   researchAgentTemperature: 'sapience.settings.researchAgentTemperature',
   showAmericanOdds: 'sapience.settings.showAmericanOdds',
   connectionDurationHours: 'sapience.settings.connectionDurationHours',
+  signalEndpoint: 'sapience.settings.signalEndpoint',
+  meshRateLimit: 'sapience.settings.meshRateLimit',
+  meshMaxPeers: 'sapience.settings.meshMaxPeers',
+  meshFanout: 'sapience.settings.meshFanout',
 } as const;
 
 export const DEFAULT_CONNECTION_DURATION_HOURS = 24 * 7;
@@ -95,6 +116,17 @@ function normalizeBaseUrlPreservePath(value: string): string {
     return `${u.origin}${path}`;
   } catch {
     return trimmed.endsWith('/') ? trimmed.slice(0, -1) : trimmed;
+  }
+}
+
+function getDefaultSignalEndpoint(): string {
+  const relayerBase = getDefaultRelayerBase();
+  try {
+    const u = new URL(relayerBase);
+    u.pathname = '/signal';
+    return u.toString();
+  } catch {
+    return 'https://relayer.sapience.xyz/signal';
   }
 }
 
@@ -150,14 +182,20 @@ function getDefaultAdminBase(): string {
 }
 
 function getDefaultEtherealRpcURL(): string {
-  // Respects SDK chain definitions which already have the correct RPC URLs
-  return etherealChain.rpcUrls.default.http[0];
+  // Uses DEFAULT_CHAIN_ID so staging (testnet) gets the testnet RPC automatically
+  return getRpcUrl(DEFAULT_CHAIN_ID);
 }
 
 function getDefaultArbitrumRpcURL(): string {
+  const isTestnet = DEFAULT_CHAIN_ID === CHAIN_ID_ETHEREAL_TESTNET;
   const infuraKey = process.env.NEXT_PUBLIC_INFURA_API_KEY;
-  return infuraKey
-    ? `https://arbitrum-mainnet.infura.io/v3/${infuraKey}`
+  if (infuraKey) {
+    return isTestnet
+      ? `https://arbitrum-sepolia.infura.io/v3/${infuraKey}`
+      : `https://arbitrum-mainnet.infura.io/v3/${infuraKey}`;
+  }
+  return isTestnet
+    ? 'https://arbitrum-sepolia-rpc.publicnode.com'
     : 'https://arbitrum-rpc.publicnode.com';
 }
 
@@ -202,6 +240,18 @@ export const SettingsProvider = ({
   >(null);
   const [connectionDurationHoursOverride, setConnectionDurationHoursOverride] =
     useState<number | null>(null);
+  const [signalEndpointOverride, setSignalEndpointOverride] = useState<
+    string | null
+  >(null);
+  const [meshRateLimitOverride, setMeshRateLimitOverride] = useState<
+    number | null
+  >(null);
+  const [meshMaxPeersOverride, setMeshMaxPeersOverride] = useState<
+    number | null
+  >(null);
+  const [meshFanoutOverride, setMeshFanoutOverride] = useState<number | null>(
+    null
+  );
 
   useEffect(() => {
     setMounted(true);
@@ -261,6 +311,12 @@ export const SettingsProvider = ({
         setChatBaseOverride(normalizeBaseUrlPreservePath(c));
       if (admin && isHttpUrl(admin))
         setAdminBaseOverride(normalizeBaseUrlPreservePath(admin));
+      const sig =
+        typeof window !== 'undefined'
+          ? window.localStorage.getItem(STORAGE_KEYS.signalEndpoint)
+          : null;
+      if (sig && isHttpUrl(sig))
+        setSignalEndpointOverride(normalizeBaseUrlPreservePath(sig));
       if (etherealRpc && isHttpUrl(etherealRpc))
         setEtherealRpcOverride(etherealRpc);
       if (arbitrumRpc && isHttpUrl(arbitrumRpc))
@@ -284,6 +340,33 @@ export const SettingsProvider = ({
         if (Number.isFinite(parsed) && parsed >= 1)
           setConnectionDurationHoursOverride(parsed);
       }
+      const mrl =
+        typeof window !== 'undefined'
+          ? window.localStorage.getItem(STORAGE_KEYS.meshRateLimit)
+          : null;
+      if (mrl) {
+        const parsed = parseInt(mrl, 10);
+        if (Number.isFinite(parsed) && parsed >= 1)
+          setMeshRateLimitOverride(parsed);
+      }
+      const mmp =
+        typeof window !== 'undefined'
+          ? window.localStorage.getItem(STORAGE_KEYS.meshMaxPeers)
+          : null;
+      if (mmp) {
+        const parsed = parseInt(mmp, 10);
+        if (Number.isFinite(parsed) && parsed >= 1)
+          setMeshMaxPeersOverride(parsed);
+      }
+      const mf =
+        typeof window !== 'undefined'
+          ? window.localStorage.getItem(STORAGE_KEYS.meshFanout)
+          : null;
+      if (mf) {
+        const parsed = parseInt(mf, 10);
+        if (Number.isFinite(parsed) && parsed >= 0)
+          setMeshFanoutOverride(parsed);
+      }
     } catch {
       /* noop */
     }
@@ -293,6 +376,7 @@ export const SettingsProvider = ({
     () => ({
       graphqlEndpoint: getDefaultGraphqlEndpoint(),
       apiBaseUrl: getDefaultRelayerBase(),
+      signalEndpoint: getDefaultSignalEndpoint(),
       chatBaseUrl: getDefaultChatBase(),
       adminBaseUrl: getDefaultAdminBase(),
       etherealRpcURL: getDefaultEtherealRpcURL(),
@@ -303,6 +387,9 @@ export const SettingsProvider = ({
       researchAgentTemperature: 0.7,
       showAmericanOdds: false,
       connectionDurationHours: DEFAULT_CONNECTION_DURATION_HOURS,
+      meshRateLimit: 100,
+      meshMaxPeers: 25,
+      meshFanout: 0,
     }),
     []
   );
@@ -329,6 +416,9 @@ export const SettingsProvider = ({
     ? graphqlOverride || defaults.graphqlEndpoint
     : null;
   const apiBaseUrl = mounted ? apiBaseOverride || defaults.apiBaseUrl : null;
+  const signalEndpoint = mounted
+    ? signalEndpointOverride || defaults.signalEndpoint
+    : null;
   const chatBaseUrl = mounted ? chatBaseOverride || defaults.chatBaseUrl : null;
   const adminBaseUrl = mounted
     ? adminBaseOverride || defaults.adminBaseUrl
@@ -354,6 +444,15 @@ export const SettingsProvider = ({
     : null;
   const connectionDurationHours = mounted
     ? (connectionDurationHoursOverride ?? defaults.connectionDurationHours)
+    : null;
+  const meshRateLimit = mounted
+    ? (meshRateLimitOverride ?? defaults.meshRateLimit)
+    : null;
+  const meshMaxPeers = mounted
+    ? (meshMaxPeersOverride ?? defaults.meshMaxPeers)
+    : null;
+  const meshFanout = mounted
+    ? (meshFanoutOverride ?? defaults.meshFanout)
     : null;
 
   const setGraphqlEndpoint = useCallback((value: string | null) => {
@@ -385,6 +484,23 @@ export const SettingsProvider = ({
       if (!isHttpUrl(v)) return;
       window.localStorage.setItem(STORAGE_KEYS.api, v);
       setApiBaseOverride(v);
+    } catch {
+      /* noop */
+    }
+  }, []);
+
+  const setSignalEndpoint = useCallback((value: string | null) => {
+    try {
+      if (typeof window === 'undefined') return;
+      if (!value) {
+        window.localStorage.removeItem(STORAGE_KEYS.signalEndpoint);
+        setSignalEndpointOverride(null);
+        return;
+      }
+      const v = normalizeBaseUrlPreservePath(value);
+      if (!isHttpUrl(v)) return;
+      window.localStorage.setItem(STORAGE_KEYS.signalEndpoint, v);
+      setSignalEndpointOverride(v);
     } catch {
       /* noop */
     }
@@ -563,9 +679,61 @@ export const SettingsProvider = ({
     }
   }, []);
 
+  const setMeshRateLimit = useCallback((value: number | null) => {
+    try {
+      if (typeof window === 'undefined') return;
+      if (value == null) {
+        window.localStorage.removeItem(STORAGE_KEYS.meshRateLimit);
+        setMeshRateLimitOverride(null);
+        return;
+      }
+      const clamped = Math.max(1, Math.min(200, Math.floor(Number(value))));
+      if (!Number.isFinite(clamped)) return;
+      window.localStorage.setItem(STORAGE_KEYS.meshRateLimit, String(clamped));
+      setMeshRateLimitOverride(clamped);
+    } catch {
+      /* noop */
+    }
+  }, []);
+
+  const setMeshMaxPeers = useCallback((value: number | null) => {
+    try {
+      if (typeof window === 'undefined') return;
+      if (value == null) {
+        window.localStorage.removeItem(STORAGE_KEYS.meshMaxPeers);
+        setMeshMaxPeersOverride(null);
+        return;
+      }
+      const clamped = Math.max(1, Math.min(12, Math.floor(Number(value))));
+      if (!Number.isFinite(clamped)) return;
+      window.localStorage.setItem(STORAGE_KEYS.meshMaxPeers, String(clamped));
+      setMeshMaxPeersOverride(clamped);
+    } catch {
+      /* noop */
+    }
+  }, []);
+
+  const setMeshFanout = useCallback((value: number | null) => {
+    try {
+      if (typeof window === 'undefined') return;
+      if (value == null) {
+        window.localStorage.removeItem(STORAGE_KEYS.meshFanout);
+        setMeshFanoutOverride(null);
+        return;
+      }
+      const clamped = Math.max(0, Math.min(12, Math.floor(Number(value))));
+      if (!Number.isFinite(clamped)) return;
+      window.localStorage.setItem(STORAGE_KEYS.meshFanout, String(clamped));
+      setMeshFanoutOverride(clamped);
+    } catch {
+      /* noop */
+    }
+  }, []);
+
   const value: SettingsContextValue = {
     graphqlEndpoint,
     apiBaseUrl,
+    signalEndpoint,
     chatBaseUrl,
     adminBaseUrl,
     etherealRpcURL,
@@ -576,8 +744,12 @@ export const SettingsProvider = ({
     researchAgentTemperature,
     showAmericanOdds,
     connectionDurationHours,
+    meshRateLimit,
+    meshMaxPeers,
+    meshFanout,
     setGraphqlEndpoint,
     setApiBaseUrl,
+    setSignalEndpoint,
     setChatBaseUrl,
     setAdminBaseUrl,
     setEtherealRpcUrl,
@@ -588,6 +760,9 @@ export const SettingsProvider = ({
     setResearchAgentTemperature,
     setShowAmericanOdds,
     setConnectionDurationHours,
+    setMeshRateLimit,
+    setMeshMaxPeers,
+    setMeshFanout,
     defaults,
   };
 

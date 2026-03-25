@@ -9,12 +9,14 @@ Sapience Protocol is a decentralized prediction market protocol with fungible pr
 ## Commands
 
 ### Development
+
 ```bash
 pnpm test                   # Run all tests using Forge
 pnpm docgen                 # Generate documentation with Forge
 ```
 
 ### Testing Individual Files
+
 ```bash
 # Run specific test file
 forge test --match-path test/PredictionMarketEscrow.t.sol -vvv
@@ -24,6 +26,7 @@ forge test --match-test test_revertWhen_invalidEpoch -vvv
 ```
 
 ### Linting and Formatting
+
 ```bash
 pnpm lint # lint solidity source files
 pnpm fmt  # format solidity source files
@@ -45,8 +48,9 @@ src/
 ├── SecondaryMarketEscrow.sol        # Atomic OTC swap for position tokens
 └── scripts/
     ├── debug/           # Debug scripts
-    ├── mainnet/         # Mainnet deployment scripts
-    └── testnet/         # Testnet deployment scripts
+    ├── deploy/          # Unified deployment scripts (use --env testnet|mainnet)
+    ├── mainnet/         # Mainnet .env and deployments.json
+    └── testnet/         # Testnet .env and deployments.json
 test/
 ├── fixtures/            # Hash fixture generation for SDK golden tests
 ├── mocks/               # Mock contracts for testing
@@ -57,6 +61,7 @@ test/
 ## Contract Verification
 
 **Polygon (Polygonscan):**
+
 ```bash
 forge verify-contract \
   $CONTRACT_ADDRESS \
@@ -67,6 +72,7 @@ forge verify-contract \
 ```
 
 **Ethereal (Blockscout):**
+
 ```bash
 # IMPORTANT: Ethereal uses Blockscout - always include these flags
 forge verify-contract \
@@ -108,6 +114,7 @@ Users with the same picks share fungible tokens. Both sides of a mint receive to
 ### Condition Resolvers
 
 Located in `src/resolvers/`:
+
 - **PythConditionResolver** (`pyth/`): Pyth oracle-based resolution
 - **ManualConditionResolver** (`mocks/`): Admin-controlled resolution
 - **LZConditionResolver** (`lz-uma/`): Cross-chain resolution via LayerZero (Ethereal side)
@@ -122,13 +129,14 @@ Located in `src/resolvers/`:
 2. PredictionMarketEscrow applies prediction logic:
    - All picks match predicted outcome -> PREDICTOR_WINS
    - Any pick decisively against -> COUNTERPARTY_WINS
-   - Any non-decisive pick -> NON_DECISIVE (tie)
+   - Any non-decisive pick (tie/ambiguous) -> COUNTERPARTY_WINS
 
 ### Bridge (Position Token Bridge)
 
 Bridges position tokens between Ethereal and Arbitrum using LayerZero with two-phase commit (ACK).
 
 **Architecture:**
+
 ```
 PredictionMarketBridgeBase (abstract)
 ├── PredictionMarketBridge (Ethereal - source chain)
@@ -136,6 +144,7 @@ PredictionMarketBridgeBase (abstract)
 ```
 
 **Key Features:**
+
 - Unified interface: `bridge()`, `retry()` on both chains
 - Permissionless retry after 1 hour delay
 - Idempotent processing prevents double-mint/release
@@ -143,6 +152,7 @@ PredictionMarketBridgeBase (abstract)
 - Automatic token deployment on first bridge
 
 **Contracts:**
+
 - `PredictionMarketBridgeBase.sol`: Abstract base with shared logic
 - `PredictionMarketBridge.sol`: Ethereal side (escrow, release)
 - `PredictionMarketBridgeRemote.sol`: Arbitrum side (mint, burn)

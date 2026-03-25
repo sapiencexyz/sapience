@@ -6,7 +6,6 @@
   },
   "include": [
     "index.ts",
-    "mcp/**/*",
     "abis/**/*",
     "constants/**/*",
     "contracts/**/*",
@@ -14,7 +13,8 @@
     "types/**/*",
     "auction/**/*",
     "relayer/**/*",
-    "onchain/**/*"
+    "onchain/**/*",
+    "session/**/*"
   ],
   "exclude": [
     "node_modules",

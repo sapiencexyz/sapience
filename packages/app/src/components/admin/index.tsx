@@ -59,10 +59,8 @@ const ReindexAccuracyForm = () => {
       });
 
       toast({
-        title: 'Reindex started',
-        description: address
-          ? `Accuracy score reindex started for ${address}${marketId ? `, market ${marketId}` : ''}`
-          : 'Global accuracy score backfill started',
+        title: 'Reindex job submitted',
+        description: `Running in background. ${address ? `Reindexing ${address}${marketId ? `, market ${marketId}` : ''}` : 'Global accuracy backfill'}. Check API logs for progress.`,
       });
 
       setAddress('');

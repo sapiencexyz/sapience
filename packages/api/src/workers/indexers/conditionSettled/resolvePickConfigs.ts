@@ -1,4 +1,5 @@
 import type { PrismaClient } from '../../../../generated/prisma';
+import { isPredictedYes } from '@sapience/sdk/types';
 
 type TxClient = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
 
@@ -119,9 +120,7 @@ export function computeSettlementResult(
       return 'COUNTERPARTY_WINS';
     }
 
-    // Check if pick matches actual outcome
-    // OutcomeSide: YES = 0, NO = 1 (matches IV2Types.sol)
-    const predictedYes = pick.predictedOutcome === 0;
+    const predictedYes = isPredictedYes(pick.predictedOutcome);
     if (predictedYes !== cond.resolvedToYes) {
       return 'COUNTERPARTY_WINS';
     }

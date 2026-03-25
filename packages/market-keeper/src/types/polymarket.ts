@@ -28,6 +28,10 @@ export interface PolymarketMarket {
       ticker?: string;
       title?: string;
     }>;
+    tags?: Array<{
+      label?: string;
+      slug?: string;
+    }>;
   }>;
   active: boolean;
   closed: boolean;

@@ -47,6 +47,7 @@ vi.mock('../../utils', () => ({
 // ---- import under test ----
 
 import { useAuctionMatching } from '../useAuctionMatching';
+import { getConditionMatchInfo } from '../../utils';
 
 // ---- helpers ----
 
@@ -442,6 +443,163 @@ describe('useAuctionMatching — copy_trade validation', () => {
     await flush();
 
     // unverified bids should still proceed to submission (not rejected)
+    expect(submitBid).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('useAuctionMatching — self-bid prevention', () => {
+  it('skips copy_trade bids where the counterparty is the user themselves', async () => {
+    const submitBid = vi.fn().mockResolvedValue({ signature: '0xresult' });
+    // copy_trade order targeting someone else, but the bid counterparty IS ourselves
+    const order = makeOrder({ copyTradeAddress: '0xMyAddress' });
+    const auctionId = 'auction-self-copy-1';
+    const started = makeAuctionStarted(auctionId);
+    // The bid counterparty is our own address
+    const bids = makeAuctionBids(auctionId, '0xMyAddress');
+
+    const { rerender } = renderHook((props) => useAuctionMatching(props), {
+      initialProps: {
+        ...DEFAULT_PARAMS,
+        orders: [order],
+        auctionMessages: [started],
+        submitBid,
+        address: '0xMyAddress' as `0x${string}`,
+      },
+    });
+
+    await flush();
+
+    rerender({
+      ...DEFAULT_PARAMS,
+      orders: [order],
+      auctionMessages: [started, bids],
+      submitBid,
+      address: '0xMyAddress' as `0x${string}`,
+    });
+
+    await flush();
+
+    // Should NOT validate or submit — it's our own bid
+    expect(mockValidateBidFull).not.toHaveBeenCalled();
+    expect(submitBid).not.toHaveBeenCalled();
+  });
+
+  it('skips copy_trade self-bids with case-insensitive address matching', async () => {
+    const submitBid = vi.fn().mockResolvedValue({ signature: '0xresult' });
+    const order = makeOrder({ copyTradeAddress: '0xMYADDRESS' });
+    const auctionId = 'auction-self-case-1';
+    const started = makeAuctionStarted(auctionId);
+    const bids = makeAuctionBids(auctionId, '0xMyAddress');
+
+    const { rerender } = renderHook((props) => useAuctionMatching(props), {
+      initialProps: {
+        ...DEFAULT_PARAMS,
+        orders: [order],
+        auctionMessages: [started],
+        submitBid,
+        address: '0xmyaddress' as `0x${string}`,
+      },
+    });
+
+    await flush();
+
+    rerender({
+      ...DEFAULT_PARAMS,
+      orders: [order],
+      auctionMessages: [started, bids],
+      submitBid,
+      address: '0xmyaddress' as `0x${string}`,
+    });
+
+    await flush();
+
+    expect(submitBid).not.toHaveBeenCalled();
+  });
+
+  it('skips conditions auto-bid when the auction predictor is the user', async () => {
+    const submitBid = vi.fn().mockResolvedValue({ signature: '0xresult' });
+    const mockGetConditionMatchInfo = getConditionMatchInfo as ReturnType<
+      typeof vi.fn
+    >;
+    mockGetConditionMatchInfo.mockReturnValue({
+      matchedLegs: [{ marketId: '0xmarket1', prediction: true }],
+      inverted: false,
+    });
+
+    const order = makeOrder({
+      id: 'cond-order-1',
+      strategy: 'conditions',
+      copyTradeAddress: undefined,
+      conditionSelections: [
+        { conditionId: '0xCondition', outcome: 1 },
+      ] as Order['conditionSelections'],
+    });
+
+    // Auction predictor is our own address
+    const auctionId = 'auction-self-cond-1';
+    const started = makeAuctionStarted(auctionId, {
+      predictor: '0xMyAddress',
+    });
+
+    const { rerender } = renderHook((props) => useAuctionMatching(props), {
+      initialProps: {
+        ...DEFAULT_PARAMS,
+        orders: [order],
+        auctionMessages: [started],
+        submitBid,
+        address: '0xMyAddress' as `0x${string}`,
+      },
+    });
+
+    await flush();
+
+    // Re-render shouldn't trigger any bid since predictor === address
+    rerender({
+      ...DEFAULT_PARAMS,
+      orders: [order],
+      auctionMessages: [started],
+      submitBid,
+      address: '0xMyAddress' as `0x${string}`,
+    });
+
+    await flush();
+
+    expect(submitBid).not.toHaveBeenCalled();
+
+    // Restore default mock
+    mockGetConditionMatchInfo.mockReturnValue(null);
+  });
+
+  it('allows copy_trade bids from a different counterparty (not self)', async () => {
+    const submitBid = vi.fn().mockResolvedValue({ signature: '0xresult' });
+    const order = makeOrder({ copyTradeAddress: '0xTargetTrader' });
+    const auctionId = 'auction-other-1';
+    const started = makeAuctionStarted(auctionId);
+    const bids = makeAuctionBids(auctionId, '0xTargetTrader');
+
+    const { rerender } = renderHook((props) => useAuctionMatching(props), {
+      initialProps: {
+        ...DEFAULT_PARAMS,
+        orders: [order],
+        auctionMessages: [started],
+        submitBid,
+        address: '0xMyAddress' as `0x${string}`,
+      },
+    });
+
+    await flush();
+
+    rerender({
+      ...DEFAULT_PARAMS,
+      orders: [order],
+      auctionMessages: [started, bids],
+      submitBid,
+      address: '0xMyAddress' as `0x${string}`,
+    });
+
+    await flush();
+
+    // Should proceed normally — counterparty is not us
     expect(submitBid).toHaveBeenCalledTimes(1);
   });
 });

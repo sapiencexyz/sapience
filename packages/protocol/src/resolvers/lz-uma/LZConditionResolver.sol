@@ -11,6 +11,7 @@ import {
 } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { ILZConditionResolver } from "./interfaces/ILZConditionResolver.sol";
 import { IConditionResolver } from "../../interfaces/IConditionResolver.sol";
+import { ConditionResolverBase } from "../ConditionResolverBase.sol";
 import { IV2Types } from "../../interfaces/IV2Types.sol";
 import { LZTypes } from "../shared/LZTypes.sol";
 import { LZETHManagement } from "./LZETHManagement.sol";
@@ -21,6 +22,7 @@ import { LZETHManagement } from "./LZETHManagement.sol";
 contract LZConditionResolver is
     OApp,
     ILZConditionResolver,
+    ConditionResolverBase,
     ReentrancyGuard,
     LZETHManagement
 {
@@ -216,9 +218,16 @@ contract LZConditionResolver is
             }
             condition.settled = true;
             condition.resolvedToYes = resolvedToYes;
+
+            _emitResolved(
+                abi.encode(conditionId),
+                resolvedToYes
+                    ? IV2Types.OutcomeVector(1, 0)
+                    : IV2Types.OutcomeVector(0, 1)
+            );
         }
 
-        emit ConditionResolved(
+        emit ConditionResolutionDetail(
             conditionId, resolvedToYes, assertedTruthfully, block.timestamp
         );
     }

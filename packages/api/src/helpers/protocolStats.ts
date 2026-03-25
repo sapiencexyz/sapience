@@ -1,6 +1,6 @@
 import { erc20Abi, formatUnits } from 'viem';
 import prisma from '../db';
-import { LegacyPositionStatus } from '../../generated/prisma';
+import { SettlementResult } from '../../generated/prisma';
 import { getProviderForChain, getBlockByTimestamp } from '../utils/utils';
 import { contracts } from '@sapience/sdk/contracts';
 import { predictionMarketVaultAbi } from '@sapience/sdk/abis';
@@ -65,6 +65,9 @@ export async function fetchVaultTVL(
  * Fetch vault collateral locked in the escrow: sum of counterpartyCollateral
  * for predictions that were active at `atTimestamp` (or currently active if omitted)
  * where the vault is the counterparty.
+ *
+ * Uses Picks.resolved / Picks.resolvedAt instead of Prediction.settled / settledAt
+ * because losing predictions may never get settled on-chain.
  */
 export async function fetchVaultDeployed(
   chainId: number = DEFAULT_CHAIN_ID,
@@ -81,11 +84,25 @@ export async function fetchVaultDeployed(
         ? {
             onChainCreatedAt: { lte: atTimestamp },
             OR: [
-              { settled: false },
-              { settled: true, settledAt: { gt: atTimestamp } },
+              // No pick config linked — treat as active
+              { pickConfigId: null },
+              // Pick config not yet resolved
+              { pickConfiguration: { resolved: false } },
+              // Pick config resolved after the queried timestamp
+              {
+                pickConfiguration: {
+                  resolved: true,
+                  resolvedAt: { gt: atTimestamp },
+                },
+              },
             ],
           }
-        : { settled: false }),
+        : {
+            OR: [
+              { pickConfigId: null },
+              { pickConfiguration: { resolved: false } },
+            ],
+          }),
     },
     select: { counterpartyCollateral: true },
   });
@@ -242,7 +259,11 @@ export async function fetchPredictionMarketTVLAtBlock(
 }
 
 /**
- * Calculate vault's realized PnL from prediction positions.
+ * Calculate vault's realized PnL from resolved predictions.
+ *
+ * Uses Picks.resolved (set automatically when all conditions settle)
+ * rather than Prediction.settled (requires an explicit on-chain settle() call
+ * that may never happen for losing predictions).
  */
 async function calculateVaultPnL(
   chainId: number,
@@ -260,67 +281,24 @@ async function calculateVaultPnL(
   }
   const vaultAddressLower = vaultAddress.toLowerCase();
 
-  const whereClause: {
-    status: { in: LegacyPositionStatus[] };
-    predictorWon: { not: null };
-    chainId: number;
-    settledAt?: { lte: number };
-    OR: Array<{ predictor: string } | { counterparty: string }>;
-  } = {
-    status: {
-      in: [LegacyPositionStatus.settled, LegacyPositionStatus.consolidated],
+  const predictions = await prisma.prediction.findMany({
+    where: {
+      chainId,
+      pickConfigId: { not: null },
+      pickConfiguration: {
+        resolved: true,
+        result: { not: SettlementResult.UNRESOLVED },
+        ...(beforeTimestamp ? { resolvedAt: { lte: beforeTimestamp } } : {}),
+      },
+      OR: [
+        { predictor: vaultAddressLower },
+        { counterparty: vaultAddressLower },
+      ],
     },
-    predictorWon: { not: null },
-    chainId,
-    OR: [{ predictor: vaultAddressLower }, { counterparty: vaultAddressLower }],
-  };
-
-  if (beforeTimestamp) {
-    whereClause.settledAt = { lte: beforeTimestamp };
-  }
-
-  const positions = await prisma.legacyPosition.findMany({
-    where: whereClause,
+    include: {
+      pickConfiguration: { select: { result: true } },
+    },
   });
-
-  // Get mint events for collateral breakdown
-  const mintTimestamps = Array.from(
-    new Set(positions.map((p) => BigInt(p.mintedAt)))
-  );
-  const mintEvents = await prisma.event.findMany({
-    where: { timestamp: { in: mintTimestamps } },
-  });
-
-  const mintEventMap = new Map<
-    string,
-    {
-      makerCollateral: string;
-      takerCollateral: string;
-      totalCollateral: string;
-    }
-  >();
-  for (const event of mintEvents) {
-    try {
-      const data = event.logData as {
-        eventType?: string;
-        makerNftTokenId?: string;
-        takerNftTokenId?: string;
-        makerCollateral?: string;
-        takerCollateral?: string;
-        totalCollateral?: string;
-      };
-      if (data.eventType === 'PredictionMinted') {
-        const key = `${data.makerNftTokenId}-${data.takerNftTokenId}`;
-        mintEventMap.set(key, {
-          makerCollateral: data.makerCollateral || '0',
-          takerCollateral: data.takerCollateral || '0',
-          totalCollateral: data.totalCollateral || '0',
-        });
-      }
-    } catch {
-      continue;
-    }
-  }
 
   let realizedPnL = 0n;
   let positionsWon = 0;
@@ -328,37 +306,34 @@ async function calculateVaultPnL(
   let totalCollateralWon = 0n;
   let totalCollateralLost = 0n;
 
-  for (const position of positions) {
-    const mintKey = `${position.predictorNftTokenId}-${position.counterpartyNftTokenId}`;
-    const mintData = mintEventMap.get(mintKey);
+  for (const prediction of predictions) {
+    const picksResult = prediction.pickConfiguration?.result;
+    if (!picksResult || picksResult === SettlementResult.UNRESOLVED) continue;
 
-    const predictorCollateral = BigInt(
-      position.predictorCollateral || mintData?.makerCollateral || '0'
-    );
-    const counterpartyCollateral = BigInt(
-      position.counterpartyCollateral || mintData?.takerCollateral || '0'
-    );
-    const totalCollateral = BigInt(position.totalCollateral || '0');
+    const predictorCollateral = BigInt(prediction.predictorCollateral);
+    const counterpartyCollateral = BigInt(prediction.counterpartyCollateral);
 
     const isVaultPredictor =
-      position.predictor.toLowerCase() === vaultAddressLower;
-    const vaultCollateral = isVaultPredictor
-      ? predictorCollateral
-      : counterpartyCollateral;
+      prediction.predictor.toLowerCase() === vaultAddressLower;
 
-    const vaultWon = isVaultPredictor
-      ? position.predictorWon === true
-      : position.predictorWon === false;
+    const vaultWon =
+      (isVaultPredictor && picksResult === SettlementResult.PREDICTOR_WINS) ||
+      (!isVaultPredictor && picksResult === SettlementResult.COUNTERPARTY_WINS);
 
     if (vaultWon) {
-      const gains = totalCollateral - vaultCollateral;
+      const gains = isVaultPredictor
+        ? counterpartyCollateral
+        : predictorCollateral;
       realizedPnL += gains;
       positionsWon++;
       totalCollateralWon += gains;
     } else {
-      realizedPnL -= vaultCollateral;
+      const loss = isVaultPredictor
+        ? predictorCollateral
+        : counterpartyCollateral;
+      realizedPnL -= loss;
       positionsLost++;
-      totalCollateralLost += vaultCollateral;
+      totalCollateralLost += loss;
     }
   }
 
@@ -550,18 +525,23 @@ export async function getLatestProtocolStats(
 }
 
 /**
- * Get stats time series for the last N days.
+ * Get stats time series. If days is provided, limits to the last N days.
+ * If omitted, returns all available snapshots.
  */
 export async function getProtocolStatsTimeSeries(
-  days: number = 90,
+  days?: number,
   chainId: number = DEFAULT_CHAIN_ID,
   vaultAddress?: string
 ) {
-  const startTimestamp = getUtcMidnightTimestamp(new Date()) - days * 86400;
-
   return prisma.protocolStatsSnapshot.findMany({
     where: {
-      timestamp: { gte: startTimestamp },
+      ...(days
+        ? {
+            timestamp: {
+              gte: getUtcMidnightTimestamp(new Date()) - days * 86400,
+            },
+          }
+        : {}),
       chainId,
       ...(vaultAddress ? { vaultAddress } : {}),
     },

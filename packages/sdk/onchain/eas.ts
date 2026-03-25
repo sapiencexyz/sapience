@@ -2,12 +2,12 @@ import {
   encodeAbiParameters,
   encodeFunctionData,
   parseAbiParameters,
+  zeroAddress,
 } from 'viem';
-import type { Address } from 'viem';
+import type { Address, Hex } from 'viem';
 import { contracts } from '../contracts/addresses';
 import { CHAIN_ID_ARBITRUM } from '../constants/chain';
-
-type Hex = `0x${string}`;
+import { EAS_ABI, EAS_SCHEMA_ID } from './sharedAbis';
 
 export type AttestationCalldata = {
   to: Address;
@@ -16,42 +16,6 @@ export type AttestationCalldata = {
   chainId: number;
   description: string;
 };
-
-// EAS ABI (attest)
-const EAS_ABI = [
-  {
-    name: 'attest',
-    type: 'function',
-    inputs: [
-      {
-        name: 'request',
-        type: 'tuple',
-        components: [
-          { name: 'schema', type: 'bytes32' },
-          {
-            name: 'data',
-            type: 'tuple',
-            components: [
-              { name: 'recipient', type: 'address' },
-              { name: 'expirationTime', type: 'uint64' },
-              { name: 'revocable', type: 'bool' },
-              { name: 'refUID', type: 'bytes32' },
-              { name: 'data', type: 'bytes' },
-              { name: 'value', type: 'uint256' },
-            ],
-          },
-        ],
-      },
-    ],
-    outputs: [{ name: '', type: 'bytes32' }],
-    stateMutability: 'payable',
-  },
-] as const;
-
-// EAS schema id for forecast attestations
-// Schema: address resolver, bytes condition, uint256 forecast, string comment
-const SCHEMA_ID: Hex =
-  '0x7df55bcec6eb3b17b25c503cc318a36d33b0a9bbc2d6bc0d9788f9bd61980d49';
 
 /**
  * Decode probability from D18 format
@@ -74,7 +38,6 @@ export async function buildAttestationCalldata(
   resolver?: Address,
   condition?: Hex
 ): Promise<AttestationCalldata | null> {
-  const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as Address;
   const ZERO_BYTES32 =
     '0x0000000000000000000000000000000000000000000000000000000000000000' as Hex;
   const EMPTY_BYTES = '0x' as Hex;
@@ -84,7 +47,7 @@ export async function buildAttestationCalldata(
       'address resolver, bytes condition, uint256 forecast, string comment'
     ),
     [
-      resolver || ZERO_ADDRESS,
+      resolver || zeroAddress,
       condition || EMPTY_BYTES,
       BigInt(Math.round(prediction.probability * 1e18)), // D18 format
       prediction.reasoning.length > 180
@@ -94,9 +57,9 @@ export async function buildAttestationCalldata(
   );
 
   const attestationRequest = {
-    schema: SCHEMA_ID,
+    schema: EAS_SCHEMA_ID,
     data: {
-      recipient: ZERO_ADDRESS,
+      recipient: zeroAddress,
       expirationTime: 0n,
       revocable: false,
       refUID: ZERO_BYTES32,

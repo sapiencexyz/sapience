@@ -8,15 +8,16 @@ import PositionTokenTransferIndexer from './workers/indexers/positionTokenTransf
 import ConditionSettledIndexer from './workers/indexers/conditionSettledIndexer';
 import CollateralTransferIndexer from './workers/indexers/collateralTransferIndexer';
 import {
-  conditionalTokensConditionResolver,
-  pythConditionResolver,
-  manualConditionResolver,
+  getResolverAddressesForChain,
+  getLegacyResolverAddressesForChain,
+  predictionMarketEscrow,
+  secondaryMarketEscrow,
+  normalizeLegacyEntry,
 } from '@sapience/sdk/contracts';
-import { DEFAULT_CHAIN_ID, CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 
 // Environment variable to control whether escrow indexers are enabled
 const ENABLE_ESCROW_INDEXERS = process.env.ENABLE_ESCROW_INDEXERS === 'true';
-const IS_MAINNET = DEFAULT_CHAIN_ID === CHAIN_ID_ETHEREAL;
 
 // Build indexers object based on environment configuration
 const buildIndexers = (): { [key: string]: IIndexer } => {
@@ -37,34 +38,68 @@ const buildIndexers = (): { [key: string]: IIndexer } => {
       chainId
     );
 
-    if (IS_MAINNET) {
-      // Settlement indexers — CT (Polymarket) + Pyth resolvers
-      if (conditionalTokensConditionResolver[chainId]?.address) {
-        indexers['condition-settled-ct-ethereal'] = new ConditionSettledIndexer(
-          chainId,
-          conditionalTokensConditionResolver[chainId].address as `0x${string}`
-        );
-      }
-      if (pythConditionResolver[chainId]?.address) {
-        indexers['condition-settled-pyth-ethereal'] =
-          new ConditionSettledIndexer(
-            chainId,
-            pythConditionResolver[chainId].address as `0x${string}`
-          );
-      }
-    } else {
-      // Settlement indexer — manual resolver for testing
-      if (manualConditionResolver[chainId]?.address) {
-        indexers['condition-settled-manual-testnet'] =
-          new ConditionSettledIndexer(
-            chainId,
-            manualConditionResolver[chainId].address as `0x${string}`
-          );
-      }
+    for (const { type, address } of getResolverAddressesForChain(chainId)) {
+      indexers[`condition-settled-${type}-${chainId}`] =
+        new ConditionSettledIndexer(chainId, address);
     }
 
+    // Register legacy escrow indexers
+    const escrowEntry = predictionMarketEscrow[chainId];
+    for (const legEntry of escrowEntry?.legacy ?? []) {
+      const { address, blockCreated } = normalizeLegacyEntry(legEntry);
+      const slug = address.slice(0, 10).toLowerCase();
+      indexers[`escrow-legacy-${slug}-${chainId}`] =
+        new PredictionMarketEscrowIndexer(
+          chainId,
+          address as `0x${string}`,
+          true,
+          blockCreated
+        );
+      indexers[`transfer-legacy-${slug}-${chainId}`] =
+        new PositionTokenTransferIndexer(
+          chainId,
+          address as `0x${string}`,
+          true,
+          blockCreated
+        );
+    }
+
+    // Register legacy secondary market indexers
+    const secondaryEntry = secondaryMarketEscrow[chainId];
+    for (const legEntry of secondaryEntry?.legacy ?? []) {
+      const { address, blockCreated } = normalizeLegacyEntry(legEntry);
+      const slug = address.slice(0, 10).toLowerCase();
+      indexers[`secondary-legacy-${slug}-${chainId}`] =
+        new SecondaryMarketIndexer(
+          chainId,
+          address as `0x${string}`,
+          true,
+          blockCreated
+        );
+    }
+
+    // Register legacy resolver indexers
+    for (const {
+      type,
+      address,
+      blockCreated,
+    } of getLegacyResolverAddressesForChain(chainId)) {
+      const slug = address.slice(0, 10).toLowerCase();
+      indexers[`condition-settled-legacy-${type}-${slug}-${chainId}`] =
+        new ConditionSettledIndexer(
+          chainId,
+          address as `0x${string}`,
+          true,
+          blockCreated
+        );
+    }
+
+    const legacyEscrowCount = escrowEntry?.legacy?.length ?? 0;
+    const legacySecondaryCount = secondaryEntry?.legacy?.length ?? 0;
+    const legacyResolverCount =
+      getLegacyResolverAddressesForChain(chainId).length;
     console.log(
-      `[Indexers] Escrow indexers enabled for chain ${chainId} (${IS_MAINNET ? 'mainnet' : 'testnet'})`
+      `[Indexers] Escrow indexers enabled for chain ${chainId} (${getResolverAddressesForChain(chainId).length} resolvers, ${legacyEscrowCount} legacy escrow, ${legacySecondaryCount} legacy secondary, ${legacyResolverCount} legacy resolvers)`
     );
   } else {
     console.log(

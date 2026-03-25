@@ -3,12 +3,13 @@ pragma solidity ^0.8.19;
 
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IConditionResolver } from "../../interfaces/IConditionResolver.sol";
+import { ConditionResolverBase } from "../ConditionResolverBase.sol";
 import { IV2Types } from "../../interfaces/IV2Types.sol";
 
 /// @title ManualConditionResolver
 /// @notice Generic condition resolver where approved settlers can manually settle conditions
 /// @dev Useful for conditions that require off-chain verification or admin resolution
-contract ManualConditionResolver is IConditionResolver, Ownable {
+contract ManualConditionResolver is ConditionResolverBase, Ownable {
     // ============ Errors ============
     error NotApprovedSettler();
     error ConditionAlreadySettled();
@@ -18,7 +19,7 @@ contract ManualConditionResolver is IConditionResolver, Ownable {
     // ============ Events ============
     event SettlerApproved(address indexed settler);
     event SettlerRevoked(address indexed settler);
-    event ConditionSettled(
+    event ConditionResolutionDetail(
         bytes32 indexed conditionId,
         uint256 yesWeight,
         uint256 noWeight,
@@ -81,9 +82,11 @@ contract ManualConditionResolver is IConditionResolver, Ownable {
         _outcomes[conditionId] = outcome;
         isSettled[conditionId] = true;
 
-        emit ConditionSettled(
+        emit ConditionResolutionDetail(
             conditionId, outcome.yesWeight, outcome.noWeight, msg.sender
         );
+
+        _emitResolved(abi.encode(conditionId), outcome);
     }
 
     /// @notice Batch settle multiple conditions
@@ -111,9 +114,11 @@ contract ManualConditionResolver is IConditionResolver, Ownable {
             _outcomes[conditionId] = outcome;
             isSettled[conditionId] = true;
 
-            emit ConditionSettled(
+            emit ConditionResolutionDetail(
                 conditionId, outcome.yesWeight, outcome.noWeight, msg.sender
             );
+
+            _emitResolved(abi.encode(conditionId), outcome);
         }
     }
 

@@ -9,16 +9,15 @@ import {
   secondaryMarketEscrow,
   collateralToken,
 } from '@sapience/sdk/contracts';
+import { generateRandomNonce } from '@sapience/sdk';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { toAuctionWsUrl } from '~/lib/ws';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
-import { generateRandomNonce } from '@sapience/sdk';
 import { useSession } from '~/lib/context/SessionContext';
 
 export interface SecondaryAuctionStartParams {
   token: Address;
   tokenAmount: bigint;
-  minPrice: bigint;
   deadlineSeconds?: number;
   refCode?: Hex;
 }
@@ -71,13 +70,7 @@ export function useSecondaryAuctionStart(
     async (
       params: SecondaryAuctionStartParams
     ): Promise<SecondaryAuctionStartResult> => {
-      const {
-        token,
-        tokenAmount,
-        minPrice,
-        deadlineSeconds = 1800,
-        refCode,
-      } = params;
+      const { token, tokenAmount, deadlineSeconds = 1800, refCode } = params;
 
       // Use Smart Account address when session is active, EOA otherwise
       const sellerAddr = isUsingSession ? effectiveAddress : address;
@@ -99,23 +92,20 @@ export function useSecondaryAuctionStart(
       if (tokenAmount <= 0n) {
         return { success: false, error: 'Invalid token amount' };
       }
-      if (minPrice <= 0n) {
-        return { success: false, error: 'Invalid minimum price' };
-      }
 
       // Generate random nonce for bitmap nonce system (Permit2-style)
       const nonce = generateRandomNonce();
       const nowSec = Math.floor(Date.now() / 1000);
       const sellerDeadline = BigInt(nowSec + Math.max(60, deadlineSeconds));
 
-      // Seller signs with buyer=address(0) — bots will fill
+      // Seller signs with buyer=address(0), price=0 — bots will fill with actual price
       const typedData = buildSellerTradeApproval({
         token,
         collateral: collateralAddress,
         seller: sellerAddr,
         buyer: '0x0000000000000000000000000000000000000000' as Address,
         tokenAmount,
-        price: minPrice,
+        price: 0n,
         sellerNonce: nonce,
         sellerDeadline,
         verifyingContract,
@@ -162,7 +152,6 @@ export function useSecondaryAuctionStart(
         token,
         collateral: collateralAddress,
         tokenAmount: tokenAmount.toString(),
-        minPrice: minPrice.toString(),
         seller: sellerAddr,
         sellerNonce: Number(nonce),
         sellerDeadline: Number(sellerDeadline),

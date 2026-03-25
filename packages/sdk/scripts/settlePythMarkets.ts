@@ -15,7 +15,7 @@ import {
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { contracts } from '../contracts/addresses';
-import { getPythMarketHash } from '../auction/encoding';
+import { getPythMarketHash, decodePythMarketId } from '../auction/encoding';
 
 /**
  * Settle PythResolver conditions referenced by Sapience predictions.
@@ -197,7 +197,6 @@ const PYTH_DEBUG_CONDITIONS_QUERY = /* GraphQL */ `
       endTime
       chainId
       resolver
-      claimStatement
       question
       description
     }
@@ -214,7 +213,6 @@ type ConditionRow = {
 };
 
 type DebugConditionRow = ConditionRow & {
-  claimStatement: string;
   question: string;
 };
 
@@ -292,35 +290,7 @@ type Market = {
   overWinsOnTie: boolean;
 };
 
-/**
- * Parse market parameters from a Condition's description field.
- * Format: PYTH_LAZER|priceId=0x...|endTime=123|strikePrice=456|strikeExpo=-6|overWinsOnTie=1|strikeDecimal=...
- */
-function parseMarketFromDescription(description: string): Market | null {
-  if (!description.startsWith('PYTH_LAZER')) return null;
-  const params: Record<string, string> = {};
-  for (const part of description.split('|')) {
-    const eq = part.indexOf('=');
-    if (eq > 0) params[part.slice(0, eq)] = part.slice(eq + 1);
-  }
-  if (
-    !params.priceId ||
-    !params.endTime ||
-    !params.strikePrice ||
-    !params.strikeExpo
-  )
-    return null;
-  const priceId = (
-    params.priceId.startsWith('0x') ? params.priceId : `0x${params.priceId}`
-  ) as Hex;
-  return {
-    priceId,
-    endTime: BigInt(params.endTime),
-    strikePrice: BigInt(params.strikePrice),
-    strikeExpo: Number(params.strikeExpo),
-    overWinsOnTie: params.overWinsOnTie === '1',
-  };
-}
+// Market parameters are now decoded directly from the conditionId via decodePythMarketId().
 
 function decodeFeedIdFromPriceId(priceId: Hex): number | null {
   try {
@@ -601,6 +571,7 @@ async function fetchPythLazerEvmUpdateBlob(args: {
   const channelsToTry = [
     'fixed_rate@50ms',
     'fixed_rate@200ms',
+    'fixed_rate@1000ms',
     'real_time',
   ] as const;
 
@@ -819,7 +790,7 @@ async function main() {
           where: {
             chainId: { equals: args.chainId },
             endTime: { lte: nowSec },
-            claimStatement: { startsWith: 'PYTH:' },
+            question: { contains: 'PYTH', mode: 'insensitive' },
           },
           take: 10,
           skip: 0,
@@ -837,9 +808,7 @@ async function main() {
         );
         for (const r of rows) {
           const label =
-            r.question?.trim()?.length > 0
-              ? r.question.trim()
-              : r.claimStatement;
+            r.question?.trim()?.length > 0 ? r.question.trim() : r.id;
           console.log(
             `  - condition=${r.id} endTime=${r.endTime} resolver=${r.resolver ?? 'null'} settled=${r.settled ?? 'unknown'} label=${label}`
           );
@@ -856,26 +825,22 @@ async function main() {
     }
   }
 
-  // 2) Parse market parameters from each condition's description field.
+  // 2) Decode market parameters from each condition's conditionId (ABI-encoded).
   const marketsById = new Map<Hex, Market>();
-  let skippedNoDescription = 0;
+  let skippedDecode = 0;
   for (const c of conditions) {
-    if (!c.description) {
-      skippedNoDescription++;
-      continue;
-    }
-    const market = parseMarketFromDescription(c.description);
+    const market = decodePythMarketId(c.id as Hex);
     if (!market) {
-      skippedNoDescription++;
+      skippedDecode++;
       continue;
     }
     const marketId = getPythMarketHash(market);
     marketsById.set(marketId, market);
   }
 
-  if (skippedNoDescription > 0) {
+  if (skippedDecode > 0) {
     console.log(
-      `[settle:pyth] skipped ${skippedNoDescription} conditions without parseable PYTH_LAZER description`
+      `[settle:pyth] skipped ${skippedDecode} conditions with non-decodable conditionId`
     );
   }
   console.log('[settle:pyth] unique markets=', marketsById.size);

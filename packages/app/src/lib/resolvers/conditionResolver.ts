@@ -2,6 +2,7 @@ import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import {
   pythConditionResolver,
   conditionalTokensConditionResolver,
+  manualConditionResolver,
 } from '@sapience/sdk/contracts/addresses';
 
 type Address = `0x${string}`;
@@ -24,7 +25,7 @@ function findChainIdForAddress(
   return null;
 }
 
-export type ResolverKind = 'pyth' | 'conditionalTokens' | 'unknown';
+export type ResolverKind = 'pyth' | 'conditionalTokens' | 'manual' | 'unknown';
 
 export function inferResolverKind(
   resolverAddress?: string | null
@@ -34,6 +35,8 @@ export function inferResolverKind(
   if (findChainIdForAddress(addr, pythConditionResolver) != null) return 'pyth';
   if (findChainIdForAddress(addr, conditionalTokensConditionResolver) != null)
     return 'conditionalTokens';
+  if (findChainIdForAddress(addr, manualConditionResolver) != null)
+    return 'manual';
   return 'unknown';
 }
 

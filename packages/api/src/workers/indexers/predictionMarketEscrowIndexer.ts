@@ -9,11 +9,77 @@ import {
   predictionMarketEscrowAbi,
   predictionMarketTokenAbi,
 } from '@sapience/sdk/abis';
+import { identifyResolver } from '@sapience/sdk/contracts/addresses';
+import {
+  decodePythMarketId,
+  decodePythLazerFeedId,
+} from '@sapience/sdk/auction/encoding';
+import { PYTH_FEED_NAMES, PYTH_FEEDS } from '@sapience/sdk/constants';
+import { isPredictedYes } from '@sapience/sdk/types';
 import { sendPositionAlert } from '../../helpers/discordAlert';
 
 type TxClient = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
 
 const BLOCK_BATCH_SIZE = 100;
+
+/**
+ * Build Condition row data from a Pyth conditionId.
+ * Returns null if the conditionId can't be decoded as a Pyth market.
+ */
+export function buildPythConditionData(conditionId: string): {
+  question: string;
+  shortName: string;
+  endTime: number;
+  description: string;
+  /** Asset class slug for category assignment (e.g. "prices-crypto") */
+  categorySlug: string;
+} | null {
+  const market = decodePythMarketId(conditionId as `0x${string}`);
+  if (!market) return null;
+
+  const { priceId, endTime, strikePrice, strikeExpo, overWinsOnTie } = market;
+
+  const feedId = decodePythLazerFeedId(priceId);
+  const ticker = feedId != null ? PYTH_FEED_NAMES[feedId] : null;
+  const feed =
+    feedId != null ? PYTH_FEEDS.find((f) => f.lazerId === feedId) : null;
+  const feedSymbol =
+    feed?.symbol ?? (ticker ? `Crypto.${ticker}/USD` : `Feed #${feedId}`);
+  const shortTicker = ticker ?? `Feed #${feedId}`;
+
+  const priceNum = Number(strikePrice) * Math.pow(10, Number(strikeExpo));
+  const formattedPrice = priceNum.toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: Math.max(0, -Number(strikeExpo)),
+  });
+  // Clean display: trim ".00" for whole numbers
+  const displayPrice = formattedPrice.replace(/\.0+$/, '');
+
+  const question = `${feedSymbol} OVER $${displayPrice}`;
+  const shortName = `${shortTicker} OVER $${displayPrice}`;
+
+  const endDate = new Date(Number(endTime) * 1000).toUTCString();
+  const description = `Resolved by Pyth Network Lazer oracle. If ${feedSymbol} is over $${displayPrice} at settlement (${endDate}), YES wins. If the price is exactly $${displayPrice} at settlement, ${overWinsOnTie ? 'OVER' : 'UNDER'} wins.`;
+
+  // Derive asset class from Pyth symbol prefix (e.g. "Crypto.BTC/USD" → "crypto")
+  const assetClass = feedSymbol.split('.')[0]?.toLowerCase() ?? 'crypto';
+  // Map Pyth asset classes to category slugs; metals are commodities
+  const assetClassToSlug: Record<string, string> = {
+    crypto: 'prices-crypto',
+    commodities: 'prices-commodities',
+    metal: 'prices-commodities',
+    equity: 'prices-equity',
+  };
+  const categorySlug = assetClassToSlug[assetClass] ?? 'prices-crypto';
+
+  return {
+    question,
+    shortName,
+    endTime: Number(endTime),
+    description,
+    categorySlug,
+  };
+}
 
 // Event type interfaces (matching PredictionMarketEscrow events)
 interface PredictionCreatedEvent {
@@ -100,26 +166,38 @@ class PredictionMarketEscrowIndexer implements IIndexer {
   private chainId: number;
   private contractAddress: `0x${string}`;
   private blockCreated: bigint;
+  public readonly isLegacy: boolean;
   private sigintHandler: (() => void) | null = null;
   private pollingInterval: NodeJS.Timeout | null = null;
   private lastProcessedBlock: bigint = 0n;
 
-  constructor(chainId: number) {
+  constructor(
+    chainId: number,
+    contractOverride?: `0x${string}`,
+    isLegacy: boolean = false,
+    blockCreated?: number
+  ) {
     this.chainId = chainId;
+    this.isLegacy = isLegacy;
     this.client = getProviderForChain(chainId);
 
-    // Get the contract address for this specific chain
-    const contractEntry = predictionMarketEscrow[chainId];
-    if (!contractEntry?.address) {
-      throw new Error(
-        `PredictionMarketEscrow contract not deployed on chain ${chainId}. Available chains: ${Object.keys(predictionMarketEscrow).join(', ')}`
-      );
+    if (contractOverride) {
+      this.contractAddress = contractOverride;
+      this.blockCreated = BigInt(blockCreated || 0);
+    } else {
+      // Get the contract address for this specific chain
+      const contractEntry = predictionMarketEscrow[chainId];
+      if (!contractEntry?.address) {
+        throw new Error(
+          `PredictionMarketEscrow contract not deployed on chain ${chainId}. Available chains: ${Object.keys(predictionMarketEscrow).join(', ')}`
+        );
+      }
+      this.contractAddress = contractEntry.address as `0x${string}`;
+      this.blockCreated = BigInt(contractEntry.blockCreated || 0);
     }
-    this.contractAddress = contractEntry.address as `0x${string}`;
-    this.blockCreated = BigInt(contractEntry.blockCreated || 0);
 
     console.log(
-      `[PredictionMarketEscrowIndexer:${this.chainId}] Initialized with contract ${this.contractAddress} (blockCreated: ${this.blockCreated})`
+      `[PredictionMarketEscrowIndexer:${this.chainId}] Initialized with contract ${this.contractAddress} (blockCreated: ${this.blockCreated}, legacy: ${this.isLegacy})`
     );
   }
 
@@ -509,20 +587,63 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     const predictionIdLower = event.predictionId.toLowerCase();
     const timestamp = Number(block.timestamp);
 
-    // Skip if this prediction already exists (idempotent for re-indexing)
+    // Check if this prediction already exists (idempotent for re-indexing)
     const existingPrediction = await prisma.prediction.findUnique({
       where: { predictionId: predictionIdLower },
     });
 
     if (existingPrediction) {
-      console.log(
-        `[PredictionMarketEscrowIndexer:${this.chainId}] Prediction ${predictionIdLower} already exists, skipping`
-      );
+      // SAP-767: If prediction exists but pickConfigId is null, a previous RPC
+      // call failed after the prediction row was created. Attempt repair.
+      if (!existingPrediction.pickConfigId) {
+        console.log(
+          `[PredictionMarketEscrowIndexer:${this.chainId}] Prediction ${predictionIdLower} missing pickConfigId, attempting repair...`
+        );
+        const repairData = await this.readPickConfigData(event, log);
+        if (repairData) {
+          await prisma.$transaction(async (tx) => {
+            await this.writePickConfigAndBalances(tx, event, repairData);
+            await tx.prediction.update({
+              where: { predictionId: predictionIdLower },
+              data: { pickConfigId: repairData.pickConfigId },
+            });
+          });
+          console.log(
+            `[PredictionMarketEscrowIndexer:${this.chainId}] Repaired prediction ${predictionIdLower} with pickConfigId=${repairData.pickConfigId}`
+          );
+        } else {
+          console.error(
+            `[PredictionMarketEscrowIndexer:${this.chainId}] CRITICAL: Repair RPC failed for prediction ${predictionIdLower} — positions still missing, will retry next cycle`,
+            { predictionId: predictionIdLower, chainId: this.chainId }
+          );
+          Sentry.captureException(
+            new Error(
+              `CRITICAL: Repair RPC failed for prediction ${predictionIdLower} — positions still missing`
+            )
+          );
+        }
+      } else {
+        console.log(
+          `[PredictionMarketEscrowIndexer:${this.chainId}] Prediction ${predictionIdLower} already exists, skipping`
+        );
+      }
       return;
     }
 
     // Read on-chain data outside the transaction (RPC calls can't run inside prisma.$transaction)
     const onChainData = await this.readPickConfigData(event, log);
+
+    if (!onChainData) {
+      console.warn(
+        `[PredictionMarketEscrowIndexer:${this.chainId}] RPC failed for prediction ${predictionIdLower} — creating prediction without positions, will repair on next encounter`,
+        { predictionId: predictionIdLower, chainId: this.chainId }
+      );
+      Sentry.captureException(
+        new Error(
+          `RPC failed reading pick config for prediction ${predictionIdLower} — positions deferred`
+        )
+      );
+    }
 
     // Wrap all DB writes in a transaction so partial state can't persist
     await prisma.$transaction(async (tx) => {
@@ -545,6 +666,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
           createTxHash: log.transactionHash || '',
           refCode: event.refCode !== ZERO_BYTES32 ? event.refCode : null,
           pickConfigId: onChainData?.pickConfigId ?? null,
+          isLegacy: this.isLegacy,
         },
       });
     });
@@ -581,7 +703,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
           predictions: picks.map((p) => ({
             conditionId: p.conditionId,
             question: questionMap.get(p.conditionId) ?? p.conditionId,
-            outcomeYes: p.predictedOutcome === 1,
+            outcomeYes: isPredictedYes(p.predictedOutcome),
           })),
           blockTimestamp: timestamp,
           transactionHash: log.transactionHash || '',
@@ -688,6 +810,51 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     ).toString();
 
     if (picksOnChain) {
+      // Auto-create Condition rows for Pyth picks (FK target must exist before Pick insert)
+      // Cache price category lookups so we query each slug at most once
+      const pricesCategoryCache = new Map<string, number>();
+
+      for (const pick of picksOnChain) {
+        const resolver = pick.conditionResolver as string;
+        if (identifyResolver(resolver, this.chainId) !== 'pyth') continue;
+
+        const conditionId = (pick.conditionId as string).toLowerCase();
+        const pythData = buildPythConditionData(conditionId);
+        if (!pythData) continue;
+
+        // Resolve the asset-class category id
+        let categoryId: number | undefined;
+        if (pricesCategoryCache.has(pythData.categorySlug)) {
+          categoryId = pricesCategoryCache.get(pythData.categorySlug);
+        } else {
+          const cat = await tx.category.findFirst({
+            where: { slug: pythData.categorySlug },
+          });
+          if (cat) {
+            pricesCategoryCache.set(pythData.categorySlug, cat.id);
+            categoryId = cat.id;
+          }
+        }
+
+        await tx.condition.upsert({
+          where: { id: conditionId },
+          update: {},
+          create: {
+            id: conditionId,
+            question: pythData.question,
+            shortName: pythData.shortName,
+            endTime: pythData.endTime,
+            description: pythData.description,
+            resolver: resolver.toLowerCase(),
+            chainId: this.chainId,
+            ...(categoryId != null ? { categoryId } : {}),
+          },
+        });
+        console.log(
+          `[PredictionMarketEscrowIndexer:${this.chainId}] Upserted Pyth condition ${conditionId} — ${pythData.shortName}`
+        );
+      }
+
       // New pick config — create with picks
       try {
         await tx.picks.create({
@@ -699,6 +866,7 @@ class PredictionMarketEscrowIndexer implements IIndexer {
             counterpartyToken,
             totalPredictorCollateral: predictorCollateralStr,
             totalCounterpartyCollateral: counterpartyCollateralStr,
+            isLegacy: this.isLegacy,
             picks: {
               create: picksOnChain.map((pick) => ({
                 conditionResolver: (
