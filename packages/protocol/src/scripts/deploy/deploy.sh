@@ -611,7 +611,7 @@ configure_dvn_phase3b() {
 # Requires a new FACTORY_SALT to avoid CREATE2 collision with old factory
 upgrade_escrow() {
     log_info "=== Upgrade Escrow: Redeploy core contracts ==="
-    log_warn "This redeploys: Factory (both chains), Escrow, Bridges, AccountFactory, SecondaryMarketEscrow, OnboardingSponsor"
+    log_warn "This redeploys: Factory (both chains), Escrow, Bridges, AccountFactory, SecondaryMarketEscrow"
     log_warn "Reuses: Resolver, Collateral Token"
     log_warn "Old contracts remain active for settle/redeem of existing markets"
 
@@ -621,7 +621,7 @@ upgrade_escrow() {
     # Phase 1: Ethereal - Factory + Escrow + Bridge + AccountFactory
     log_info "--- Phase 1: Ethereal (PM Network) ---"
     check_env PM_NETWORK_DEPLOYER_PRIVATE_KEY PM_NETWORK_DEPLOYER_ADDRESS PM_NETWORK_RPC_URL \
-              COLLATERAL_TOKEN_ADDRESS RESOLVER_ADDRESS PM_NETWORK_LZ_ENDPOINT || exit 1
+              COLLATERAL_TOKEN_ADDRESS PM_NETWORK_LZ_ENDPOINT || exit 1
     set_deployer_pm
 
     # 02. Deploy NEW Factory on PM Network
@@ -652,19 +652,24 @@ upgrade_escrow() {
     fi
 
     # Configure existing AccountFactory on new Escrow
-    check_env ACCOUNT_FACTORY_ADDRESS || exit 1
-    log_info "Configuring existing AccountFactory ($ACCOUNT_FACTORY_ADDRESS) on new Escrow"
-    cd "$PROTOCOL_DIR"
-    local af_output
-    af_output=$(cast send "$PREDICTION_MARKET_ADDRESS" \
-        "setAccountFactory(address)" "$ACCOUNT_FACTORY_ADDRESS" \
-        --private-key "$PM_NETWORK_DEPLOYER_PRIVATE_KEY" \
-        --rpc-url "$PM_NETWORK_RPC_URL" 2>&1) || {
-        log_error "Failed to set AccountFactory on new Escrow"
-        echo "$af_output"
-        exit 1
-    }
-    log_success "AccountFactory configured on new Escrow"
+    # AccountFactory doesn't change between deploys — just set it on the new escrow
+    if [ -z "${ACCOUNT_FACTORY_ADDRESS:-}" ]; then
+        log_warn "ACCOUNT_FACTORY_ADDRESS not set — skipping AccountFactory configuration on new Escrow"
+        log_warn "Set ACCOUNT_FACTORY_ADDRESS in .env and run: cast send \$PREDICTION_MARKET_ADDRESS 'setAccountFactory(address)' \$ACCOUNT_FACTORY_ADDRESS"
+    else
+        log_info "Configuring existing AccountFactory ($ACCOUNT_FACTORY_ADDRESS) on new Escrow"
+        cd "$PROTOCOL_DIR"
+        local af_output
+        af_output=$(cast send "$PREDICTION_MARKET_ADDRESS" \
+            "setAccountFactory(address)" "$ACCOUNT_FACTORY_ADDRESS" \
+            --private-key "$PM_NETWORK_DEPLOYER_PRIVATE_KEY" \
+            --rpc-url "$PM_NETWORK_RPC_URL" 2>&1) || {
+            log_error "Failed to set AccountFactory on new Escrow"
+            echo "$af_output"
+            exit 1
+        }
+        log_success "AccountFactory configured on new Escrow"
+    fi
 
     # Deploy NEW SecondaryMarketEscrow (requires ACCOUNT_FACTORY_ADDRESS)
     run_script "src/scripts/deploy/DeploySecondaryMarketEscrow.s.sol:DeploySecondaryMarketEscrow" "$PM_NETWORK_RPC_URL" "Deploying NEW SecondaryMarketEscrow on PM Network"
@@ -707,20 +712,6 @@ upgrade_escrow() {
     log_info "--- Phase 3b: Configure DVN ---"
     configure_dvn_phase3b
 
-    # Deploy OnboardingSponsor if env vars are available
-    if [ -n "${REQUIRED_COUNTERPARTY:-}" ] && [ -n "${MAX_ENTRY_PRICE_BPS:-}" ]; then
-        log_info "--- Deploy OnboardingSponsor ---"
-        set_deployer_pm
-        run_script "src/scripts/deploy/DeployOnboardingSponsor.s.sol:DeployOnboardingSponsor" "$PM_NETWORK_RPC_URL" "Deploying NEW OnboardingSponsor"
-        addr=$(extract_address "$LAST_OUTPUT" "ONBOARDING_SPONSOR_ADDRESS=")
-        if [ -n "$addr" ]; then
-            update_env "ONBOARDING_SPONSOR_ADDRESS" "$addr"
-            update_deployment "pmNetwork" "OnboardingSponsor" "$addr"
-        fi
-    else
-        log_warn "Skipping OnboardingSponsor (set REQUIRED_COUNTERPARTY and MAX_ENTRY_PRICE_BPS to deploy)"
-    fi
-
     check_status
 
     echo ""
@@ -728,6 +719,7 @@ upgrade_escrow() {
     log_info "Old contracts remain active for settle/redeem of existing markets"
     log_info "New contracts handle all new markets going forward"
     log_warn "Remember to update PREDICTION_MARKET_ADDRESS in the API/app config"
+    log_info "Next: deploy-vault, then deploy-sponsor"
 }
 
 # Deploy SecondaryMarketEscrow standalone
