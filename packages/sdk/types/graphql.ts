@@ -1640,7 +1640,9 @@ export type QueryProtocolVolumeArgs = {
 export type QueryQuestionsArgs = {
   categorySlugs?: InputMaybe<Array<Scalars['String']['input']>>;
   chainId?: InputMaybe<Scalars['Int']['input']>;
+  maxEstimatedPrice?: InputMaybe<Scalars['Float']['input']>;
   minEndTime?: InputMaybe<Scalars['Int']['input']>;
+  minEstimatedPrice?: InputMaybe<Scalars['Float']['input']>;
   resolutionStatus?: InputMaybe<ResolutionStatus>;
   search?: InputMaybe<Scalars['String']['input']>;
   skip?: Scalars['Int']['input'];
