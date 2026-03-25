@@ -85,7 +85,7 @@ async function fetchActiveConditionIds(
         query,
         variables: {
           where: {
-            outcomeIndex: { equals: null },
+            settled: { equals: false },
             public: { equals: true },
           },
           take: PAGE_SIZE,
