@@ -109,22 +109,13 @@ export async function groupMarkets(
     }
   }
 
-  // Check existing conditions EARLY — on full markets array (before filtering)
-  // so we can build price updates for ALL existing conditions regardless of liquidity
-  const allMarketConditionIds = markets.map((m) => m.conditionId);
-  const existingIds = await checkExistingConditions(
-    apiUrl,
-    allMarketConditionIds
-  );
-
-  // Build price updates for existing conditions
+  // Build price updates for ALL markets that have a price — the batch endpoint
+  // no-ops for non-existent conditions, so no existence check needed here
   const priceUpdates: Array<{ id: string; estimatedPrice: number }> = [];
   for (const market of markets) {
-    if (existingIds.has(market.conditionId)) {
-      const price = parseYesPrice(market.outcomePrices);
-      if (price !== undefined) {
-        priceUpdates.push({ id: market.conditionId, estimatedPrice: price });
-      }
+    const price = parseYesPrice(market.outcomePrices);
+    if (price !== undefined) {
+      priceUpdates.push({ id: market.conditionId, estimatedPrice: price });
     }
   }
 
@@ -163,7 +154,11 @@ export async function groupMarkets(
     ...filteredUngrouped,
   ];
 
-  // Apply LLM pre-filter pipeline to separate new vs existing markets (reuse existingIds from above)
+  // Check which conditions already exist (to skip LLM for them)
+  const allConditionIds = allFilteredMarkets.map((m) => m.conditionId);
+  const existingIds = await checkExistingConditions(apiUrl, allConditionIds);
+
+  // Apply LLM pre-filter pipeline to separate new vs existing markets
   const { output: newMarkets, stats: llmFilterStats } = runPipeline(
     allFilteredMarkets,
     createLlmPreFilter(existingIds),

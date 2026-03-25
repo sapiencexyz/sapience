@@ -369,11 +369,19 @@ export class QuestionsResolver {
       return {};
     })();
 
+    const estimatedPriceFilter = {
+      ...(minEstimatedPrice != null ? { gte: minEstimatedPrice } : {}),
+      ...(maxEstimatedPrice != null ? { lte: maxEstimatedPrice } : {}),
+    };
+
     const conditionWhere = {
       public: true,
       ...(chainId !== null ? { chainId } : {}),
       ...resolvedPrismaFilter,
       ...(minEndTime !== null ? { endTime: { gte: minEndTime } } : {}),
+      ...(Object.keys(estimatedPriceFilter).length > 0
+        ? { estimatedPrice: estimatedPriceFilter }
+        : {}),
     };
 
     const groupInclude = {
