@@ -83,6 +83,9 @@ export function createAuctionWebSocketServer() {
 
   let activeConnectionCount = 0;
 
+  // Per-IP connection tracking
+  const connectionsPerIp = new Map<string, number>();
+
   // Shared subscription manager for all topics (escrow, vault, observers)
   const subs = new InMemorySubscriptionManager();
 
@@ -97,12 +100,27 @@ export function createAuctionWebSocketServer() {
   };
 
   wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
-    // Connection limit
+    const ip =
+      req.socket.remoteAddress ||
+      (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+      'unknown';
+
+    // Global connection limit
     if (activeConnectionCount >= config.WS_MAX_CONNECTIONS) {
       console.warn(
         `[Relayer] Max connections (${config.WS_MAX_CONNECTIONS}) reached, rejecting`
       );
       ws.close(1008, 'connection_limit_exceeded');
+      return;
+    }
+
+    // Per-IP connection limit
+    const ipCount = connectionsPerIp.get(ip) ?? 0;
+    if (ipCount >= config.WS_MAX_CONNECTIONS_PER_IP) {
+      console.warn(
+        `[Relayer] Per-IP limit (${config.WS_MAX_CONNECTIONS_PER_IP}) reached for ${ip}, rejecting`
+      );
+      ws.close(1008, 'ip_connection_limit');
       return;
     }
 
@@ -120,6 +138,7 @@ export function createAuctionWebSocketServer() {
     }
 
     activeConnectionCount++;
+    connectionsPerIp.set(ip, ipCount + 1);
     activeConnections.inc();
     connectionsTotal.inc();
 
@@ -128,11 +147,6 @@ export function createAuctionWebSocketServer() {
     });
     connectionMap.set(ws, client);
     allClients.add(client);
-
-    const ip =
-      req.socket.remoteAddress ||
-      (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
-      'unknown';
 
     // Idle timeout
     let idleTimeout: NodeJS.Timeout | null = null;
@@ -152,180 +166,299 @@ export function createAuctionWebSocketServer() {
     let rateCount = 0;
     let rateResetAt = Date.now() + RATE_LIMIT_WINDOW_MS;
 
+    // Penalty counters — disconnect abusive clients
+    let invalidMessageCount = 0;
+    let validationFailureCount = 0;
+
     ws.on('message', async (data: RawData) => {
-      resetIdleTimeout();
+      try {
+        resetIdleTimeout();
 
-      // Rate limiting
-      const now = Date.now();
-      if (now > rateResetAt) {
-        rateCount = 0;
-        rateResetAt = now + RATE_LIMIT_WINDOW_MS;
-      }
-      if (++rateCount > RATE_LIMIT_MAX_MESSAGES) {
-        rateLimitHits.inc();
-        console.warn(`[Relayer] Rate limit exceeded from ${ip}; closing`);
-        try {
-          ws.close(1008, 'rate_limited');
-        } catch {
-          /* */
+        // Rate limiting
+        const now = Date.now();
+        if (now > rateResetAt) {
+          rateCount = 0;
+          rateResetAt = now + RATE_LIMIT_WINDOW_MS;
         }
-        return;
-      }
-
-      // Size guard
-      const dataSize =
-        typeof data === 'string'
-          ? (data as string).length
-          : (data as Buffer).byteLength;
-      if (dataSize > 64_000) {
-        console.warn(`[Relayer] Message too large from ${ip}; closing`);
-        try {
-          ws.close(1009, 'message_too_large');
-        } catch {
-          /* */
-        }
-        return;
-      }
-
-      const msg = safeParse<ClientToServerMessage | { type?: string }>(data);
-      if (!msg || typeof msg !== 'object') {
-        messagesReceived.inc({ type: 'invalid' });
-        errorsTotal.inc({ type: 'validation', message_type: 'unknown' });
-        console.warn(`[Relayer] Invalid JSON from ${ip}`);
-        return;
-      }
-
-      const msgType = (msg as { type?: string })?.type || 'unknown';
-      const startTime = Date.now();
-      messagesReceived.inc({ type: msgType });
-
-      // JSON-level ping/pong
-      if (msgType === 'ping') {
-        client.send({ type: 'pong' });
-        trackDuration(msgType, startTime);
-        return;
-      }
-
-      // ── Vault quote messages ──────────────────────────────────────────
-      if (msgType.startsWith('vault_quote.')) {
-        const payload = (msg as { payload?: unknown })?.payload;
-
-        switch (msgType) {
-          case 'vault_quote.observe':
-            handleVaultObserve(client, subs);
-            break;
-          case 'vault_quote.unobserve':
-            handleVaultUnobserve(client, subs);
-            break;
-          case 'vault_quote.subscribe':
-            handleVaultSubscribe(
-              client,
-              payload as { chainId: number; vaultAddress: string } | undefined,
-              subs
-            );
-            break;
-          case 'vault_quote.unsubscribe':
-            handleVaultUnsubscribe(
-              client,
-              payload as { chainId: number; vaultAddress: string } | undefined,
-              subs
-            );
-            break;
-          case 'vault_quote.publish':
-          case 'vault_quote.submit':
-            await handleVaultQuotePublish(
-              client,
-              payload as Parameters<typeof handleVaultQuotePublish>[1],
-              subs
-            );
-            break;
-        }
-        trackDuration(msgType, startTime);
-        return;
-      }
-
-      // ── Escrow auction messages ───────────────────────────────────────
-      if (isEscrowClientMessage(msg)) {
-        switch (msg.type) {
-          case 'auction.start': {
-            const requestId =
-              (msg as { id?: string }).id ||
-              (msg.payload as { id?: string })?.id;
-            await handleAuctionStart(
-              client,
-              msg.payload as AuctionRFQPayload,
-              subs,
-              handlerCtx,
-              requestId
-            );
-            break;
+        if (++rateCount > RATE_LIMIT_MAX_MESSAGES) {
+          rateLimitHits.inc();
+          console.warn(`[Relayer] Rate limit exceeded from ${ip}; closing`);
+          try {
+            ws.close(1008, 'rate_limited');
+          } catch {
+            /* */
           }
-          case 'auction.subscribe':
-            handleAuctionSubscribe(
-              client,
-              (msg.payload as { auctionId?: string })?.auctionId,
-              subs
-            );
-            break;
-          case 'auction.unsubscribe':
-            handleAuctionUnsubscribe(
-              client,
-              (msg.payload as { auctionId?: string })?.auctionId,
-              subs
-            );
-            break;
-          case 'bid.submit':
-            await handleBidSubmit(client, msg.payload as BidPayload, subs);
-            break;
+          return;
         }
-        trackDuration(msgType, startTime);
-        return;
-      }
 
-      // ── Secondary market messages ─────────────────────────────────────
-      if (isSecondaryClientMessage(msg) && msgType.startsWith('secondary.')) {
-        const secondaryMsg =
-          msg as import('@sapience/sdk/types/secondary').SecondaryClientToServerMessage;
-        switch (secondaryMsg.type) {
-          case 'secondary.auction.start':
-            await handleSecondaryAuctionStart(
-              client,
-              secondaryMsg.payload,
-              subs,
-              handlerCtx
-            );
-            break;
-          case 'secondary.bid.submit':
-            await handleSecondaryBidSubmit(client, secondaryMsg.payload, subs);
-            break;
-          case 'secondary.auction.subscribe':
-            handleSecondarySubscribe(client, secondaryMsg.payload, subs);
-            break;
-          case 'secondary.auction.unsubscribe':
-            handleSecondaryUnsubscribe(client, secondaryMsg.payload, subs);
-            break;
-          case 'secondary.feed.subscribe':
-            handleSecondaryFeedSubscribe(client, subs);
-            break;
-          case 'secondary.feed.unsubscribe':
-            handleSecondaryFeedUnsubscribe(client, subs);
-            break;
-          case 'secondary.listings.request':
-            handleSecondaryListingsRequest(client);
-            break;
+        // Size guard
+        const dataSize =
+          typeof data === 'string'
+            ? (data as string).length
+            : (data as Buffer).byteLength;
+        if (dataSize > 64_000) {
+          console.warn(`[Relayer] Message too large from ${ip}; closing`);
+          try {
+            ws.close(1009, 'message_too_large');
+          } catch {
+            /* */
+          }
+          return;
         }
-        trackDuration(msgType, startTime);
-        return;
-      }
 
-      // ── Unhandled ─────────────────────────────────────────────────────
-      trackDuration(msgType, startTime);
-      errorsTotal.inc({ type: 'unhandled_message', message_type: msgType });
-      console.warn(
-        `[Relayer] Unhandled message type from ${ip}: ${
-          (msg as Record<string, unknown>)?.type ?? typeof msg
-        }`
-      );
+        const msg = safeParse<ClientToServerMessage | { type?: string }>(data);
+        if (!msg || typeof msg !== 'object') {
+          messagesReceived.inc({ type: 'invalid' });
+          errorsTotal.inc({ type: 'validation', message_type: 'unknown' });
+          invalidMessageCount++;
+          if (invalidMessageCount > config.WS_MAX_INVALID_MESSAGES) {
+            console.warn(
+              `[Relayer] Too many invalid messages from ${ip}; closing`
+            );
+            try {
+              ws.close(1008, 'too_many_invalid_messages');
+            } catch {
+              /* */
+            }
+            return;
+          }
+          return;
+        }
+
+        const msgType = (msg as { type?: string })?.type || 'unknown';
+        const startTime = Date.now();
+        messagesReceived.inc({ type: msgType });
+
+        // JSON-level ping/pong
+        if (msgType === 'ping') {
+          client.send({ type: 'pong' });
+          trackDuration(msgType, startTime);
+          return;
+        }
+
+        // ── Vault quote messages ──────────────────────────────────────────
+        if (msgType.startsWith('vault_quote.')) {
+          const payload = (msg as { payload?: unknown })?.payload;
+
+          switch (msgType) {
+            case 'vault_quote.observe':
+              handleVaultObserve(client, subs);
+              break;
+            case 'vault_quote.unobserve':
+              handleVaultUnobserve(client, subs);
+              break;
+            case 'vault_quote.subscribe':
+              handleVaultSubscribe(
+                client,
+                payload as
+                  | { chainId: number; vaultAddress: string }
+                  | undefined,
+                subs
+              );
+              break;
+            case 'vault_quote.unsubscribe':
+              handleVaultUnsubscribe(
+                client,
+                payload as
+                  | { chainId: number; vaultAddress: string }
+                  | undefined,
+                subs
+              );
+              break;
+            case 'vault_quote.publish':
+            case 'vault_quote.submit':
+              await handleVaultQuotePublish(
+                client,
+                payload as Parameters<typeof handleVaultQuotePublish>[1],
+                subs
+              );
+              break;
+          }
+          trackDuration(msgType, startTime);
+          return;
+        }
+
+        // ── Escrow auction messages ───────────────────────────────────────
+        if (isEscrowClientMessage(msg)) {
+          // Guard: all escrow messages except ping require a payload object
+          if (
+            msg.type !== 'ping' &&
+            (!msg.payload || typeof msg.payload !== 'object')
+          ) {
+            invalidMessageCount++;
+            if (invalidMessageCount > config.WS_MAX_INVALID_MESSAGES) {
+              console.warn(
+                `[Relayer] Too many invalid messages from ${ip}; closing`
+              );
+              try {
+                ws.close(1008, 'too_many_invalid_messages');
+              } catch {
+                /* */
+              }
+              return;
+            }
+            client.send({
+              type: 'error',
+              payload: {
+                message: 'missing or invalid payload',
+                code: 'invalid_payload',
+              },
+            });
+            trackDuration(msgType, startTime);
+            return;
+          }
+
+          let handlerFailed = false;
+          switch (msg.type) {
+            case 'auction.start': {
+              const requestId =
+                (msg as { id?: string }).id ||
+                (msg.payload as { id?: string })?.id;
+              handlerFailed = await handleAuctionStart(
+                client,
+                msg.payload as AuctionRFQPayload,
+                subs,
+                handlerCtx,
+                requestId
+              );
+              break;
+            }
+            case 'auction.subscribe':
+              handleAuctionSubscribe(
+                client,
+                (msg.payload as { auctionId?: string })?.auctionId,
+                subs
+              );
+              break;
+            case 'auction.unsubscribe':
+              handleAuctionUnsubscribe(
+                client,
+                (msg.payload as { auctionId?: string })?.auctionId,
+                subs
+              );
+              break;
+            case 'bid.submit':
+              handlerFailed = await handleBidSubmit(
+                client,
+                msg.payload as BidPayload,
+                subs
+              );
+              break;
+          }
+
+          // Track validation failures and disconnect abusive clients
+          if (handlerFailed) {
+            validationFailureCount++;
+            if (validationFailureCount > config.WS_MAX_VALIDATION_FAILURES) {
+              console.warn(
+                `[Relayer] Too many validation failures from ${ip}; closing`
+              );
+              try {
+                ws.close(1008, 'too_many_validation_failures');
+              } catch {
+                /* */
+              }
+              return;
+            }
+          }
+
+          trackDuration(msgType, startTime);
+          return;
+        }
+
+        // ── Secondary market messages ─────────────────────────────────────
+        if (isSecondaryClientMessage(msg) && msgType.startsWith('secondary.')) {
+          // Guard: secondary messages require payload (except feed/listings which may not)
+          const needsPayload =
+            !msgType.endsWith('.subscribe') &&
+            !msgType.endsWith('.unsubscribe') &&
+            !msgType.endsWith('.request');
+          const msgPayload = (msg as Record<string, unknown>).payload;
+          if (needsPayload && (!msgPayload || typeof msgPayload !== 'object')) {
+            client.send({
+              type: 'error',
+              payload: {
+                message: 'missing or invalid payload',
+                code: 'invalid_payload',
+              },
+            });
+            trackDuration(msgType, startTime);
+            return;
+          }
+
+          const secondaryMsg =
+            msg as import('@sapience/sdk/types/secondary').SecondaryClientToServerMessage;
+          switch (secondaryMsg.type) {
+            case 'secondary.auction.start':
+              await handleSecondaryAuctionStart(
+                client,
+                secondaryMsg.payload,
+                subs,
+                handlerCtx
+              );
+              break;
+            case 'secondary.bid.submit':
+              await handleSecondaryBidSubmit(
+                client,
+                secondaryMsg.payload,
+                subs
+              );
+              break;
+            case 'secondary.auction.subscribe':
+              handleSecondarySubscribe(client, secondaryMsg.payload, subs);
+              break;
+            case 'secondary.auction.unsubscribe':
+              handleSecondaryUnsubscribe(client, secondaryMsg.payload, subs);
+              break;
+            case 'secondary.feed.subscribe':
+              handleSecondaryFeedSubscribe(client, subs);
+              break;
+            case 'secondary.feed.unsubscribe':
+              handleSecondaryFeedUnsubscribe(client, subs);
+              break;
+            case 'secondary.listings.request':
+              handleSecondaryListingsRequest(client);
+              break;
+          }
+          trackDuration(msgType, startTime);
+          return;
+        }
+
+        // ── Unhandled ─────────────────────────────────────────────────────
+        trackDuration(msgType, startTime);
+        errorsTotal.inc({ type: 'unhandled_message', message_type: msgType });
+        invalidMessageCount++;
+        if (invalidMessageCount > config.WS_MAX_INVALID_MESSAGES) {
+          console.warn(
+            `[Relayer] Too many invalid messages from ${ip}; closing`
+          );
+          try {
+            ws.close(1008, 'too_many_invalid_messages');
+          } catch {
+            /* */
+          }
+          return;
+        }
+        console.warn(
+          `[Relayer] Unhandled message type from ${ip}: ${
+            (msg as Record<string, unknown>)?.type ?? typeof msg
+          }`
+        );
+      } catch (err) {
+        errorsTotal.inc({ type: 'handler_crash', message_type: 'unknown' });
+        console.error(
+          `[Relayer] Unhandled error in message handler from ${ip}:`,
+          err
+        );
+        try {
+          client.send({
+            type: 'error',
+            payload: { message: 'internal error', code: 'internal_error' },
+          });
+        } catch {
+          /* best-effort error response */
+        }
+      }
     });
 
     ws.on('error', (err) => {
@@ -346,6 +479,14 @@ export function createAuctionWebSocketServer() {
 
       activeConnectionCount--;
       activeConnections.dec();
+
+      // Decrement per-IP counter
+      const currentIpCount = connectionsPerIp.get(ip) ?? 1;
+      if (currentIpCount <= 1) {
+        connectionsPerIp.delete(ip);
+      } else {
+        connectionsPerIp.set(ip, currentIpCount - 1);
+      }
       const reasonStr = reason?.toString() ?? '';
       connectionsClosed.inc({ reason: reasonStr || `code_${code}` });
       console.log(
