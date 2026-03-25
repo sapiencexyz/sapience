@@ -9,10 +9,10 @@ import {
   secondaryMarketEscrow,
   collateralToken,
 } from '@sapience/sdk/contracts';
+import { generateRandomNonce } from '@sapience/sdk';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { toAuctionWsUrl } from '~/lib/ws';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
-import { generateRandomNonce } from '@sapience/sdk';
 import { useSession } from '~/lib/context/SessionContext';
 
 export interface SecondaryAuctionStartParams {
@@ -70,12 +70,7 @@ export function useSecondaryAuctionStart(
     async (
       params: SecondaryAuctionStartParams
     ): Promise<SecondaryAuctionStartResult> => {
-      const {
-        token,
-        tokenAmount,
-        deadlineSeconds = 1800,
-        refCode,
-      } = params;
+      const { token, tokenAmount, deadlineSeconds = 1800, refCode } = params;
 
       // Use Smart Account address when session is active, EOA otherwise
       const sellerAddr = isUsingSession ? effectiveAddress : address;

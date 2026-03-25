@@ -11,9 +11,12 @@ import {
 } from '@sapience/ui/components/ui/dialog';
 import { Button } from '@sapience/ui/components/ui/button';
 import { Alert, AlertDescription } from '@sapience/ui/components/ui/alert';
-import { Badge } from '@sapience/ui/components/ui/badge';
 import { Loader2, Check } from 'lucide-react';
 import type { SecondaryValidatedBid } from '@sapience/sdk/types/secondary';
+import NumberDisplay from '~/components/shared/NumberDisplay';
+import CountdownCell from '~/components/shared/CountdownCell';
+import { AddressDisplay } from '~/components/shared/AddressDisplay';
+import EnsAvatar from '~/components/shared/EnsAvatar';
 import { useSecondaryAccept } from '~/hooks/secondary/useSecondaryAccept';
 import type { SecondaryListing } from '~/hooks/secondary/useSecondaryFeed';
 
@@ -85,45 +88,26 @@ export default function AcceptBidDialog({
     [listing.bids]
   );
 
-  let tokenAmountDisplay: string;
-  try {
-    tokenAmountDisplay = formatEther(BigInt(listing.tokenAmount));
-  } catch {
-    return null; // Malformed listing data — don't render
-  }
-
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
       <DialogContent className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>
-            Bids on Your Listing ({listing.bids.length})
-          </DialogTitle>
+          <DialogTitle>Review Bids</DialogTitle>
         </DialogHeader>
-
-        <div className="space-y-1 text-sm text-muted-foreground">
-          <p>
-            Token:{' '}
-            <span className="font-mono">
-              {listing.token.slice(0, 6)}…{listing.token.slice(-4)}
-            </span>
-          </p>
-          <p>Selling: {tokenAmountDisplay} tokens</p>
-        </div>
 
         {sortedBids.length === 0 ? (
           <p className="text-sm text-muted-foreground py-4 text-center">
-            No bids yet. Waiting for buyers…
+            No bids yet.
           </p>
         ) : (
           <div className="space-y-2 max-h-64 overflow-y-auto">
-            {sortedBids.map((bid, i) => {
-              let priceDisplay: string;
+            {sortedBids.map((bid) => {
+              let priceValue: number | null;
               try {
-                priceDisplay = formatEther(BigInt(bid.price));
+                priceValue = parseFloat(formatEther(BigInt(bid.price)));
               } catch {
-                priceDisplay = '—';
+                priceValue = null;
               }
               const isSelected =
                 selectedBid?.buyerSignature === bid.buyerSignature;
@@ -135,25 +119,31 @@ export default function AcceptBidDialog({
                   key={`${bid.buyer}-${bid.buyerNonce}`}
                   className="flex items-center justify-between p-3 border rounded-lg"
                 >
-                  <div className="space-y-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-sm">
-                        {bid.buyer.slice(0, 6)}…{bid.buyer.slice(-4)}
+                  <div className="space-y-1 text-sm">
+                    <div className="flex items-center gap-1 text-brand-white">
+                      <span className="font-mono text-muted-foreground">
+                        BIDDER:
                       </span>
-                      {i === 0 && (
-                        <Badge variant="default" className="text-xs">
-                          Best
-                        </Badge>
-                      )}
-                      {isExpired && (
-                        <Badge variant="destructive" className="text-xs">
-                          Expired
-                        </Badge>
-                      )}
+                      <EnsAvatar address={bid.buyer} width={16} height={16} />
+                      <AddressDisplay address={bid.buyer} />
                     </div>
-                    <p className="text-sm font-medium">
-                      {priceDisplay} {collateralSymbol}
+                    <p className="font-mono text-ethena">
+                      OFFER:{' '}
+                      {priceValue !== null ? (
+                        <NumberDisplay
+                          value={priceValue}
+                          appendedText={collateralSymbol}
+                        />
+                      ) : (
+                        '—'
+                      )}
                     </p>
+                    <div className="flex items-center gap-1">
+                      <span className="font-mono text-muted-foreground">
+                        EXPIRES:
+                      </span>
+                      <CountdownCell endTime={bid.buyerDeadline} />
+                    </div>
                   </div>
 
                   <Button
@@ -163,12 +153,12 @@ export default function AcceptBidDialog({
                   >
                     {isAccepting && isSelected ? (
                       <>
-                        <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                        Accepting…
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        Accepting...
                       </>
                     ) : (
                       <>
-                        <Check className="w-3 h-3 mr-1" />
+                        <Check className="w-3 h-3" />
                         Accept
                       </>
                     )}

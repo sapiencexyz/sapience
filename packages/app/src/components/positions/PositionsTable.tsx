@@ -259,11 +259,23 @@ function PositionRow({
       );
     }
 
-    // Not resolved → PENDING
+    // Not resolved → PENDING + optional Sell button
     return (
-      <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
-        PENDING
-      </span>
+      <div className="flex items-center gap-2">
+        <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
+          PENDING
+        </span>
+        {showSell && isOwnPosition && BigInt(position.balance) > 0n && (
+          <SellPositionDialog position={position} onSuccess={onRefetch}>
+            <button
+              type="button"
+              className="inline-flex items-center justify-center h-7 px-2.5 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              Sell
+            </button>
+          </SellPositionDialog>
+        )}
+      </div>
     );
   };
 
@@ -379,22 +391,6 @@ function PositionRow({
       {/* Actions */}
       <TableCell className="text-right">
         <div className="flex items-center justify-end gap-2">
-          {showSell &&
-            !isResolved &&
-            isOwnPosition &&
-            BigInt(position.balance) > 0n && (
-              <SellPositionDialog
-                position={position}
-                onSuccess={onRefetch}
-              >
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm font-medium bg-background hover:bg-accent hover:text-accent-foreground border-border transition-colors"
-                >
-                  Sell
-                </button>
-              </SellPositionDialog>
-            )}
           <button
             type="button"
             className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
