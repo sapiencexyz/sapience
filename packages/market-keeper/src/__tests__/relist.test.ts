@@ -72,7 +72,7 @@ const emptySapienceOutput: SapienceOutput = {
   },
   groups: [],
   ungroupedConditions: [],
-  priceUpdates: [],
+
 };
 
 beforeEach(() => {

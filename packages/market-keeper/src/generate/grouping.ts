@@ -109,16 +109,6 @@ export async function groupMarkets(
     }
   }
 
-  // Build price updates for ALL markets that have a price — the batch endpoint
-  // no-ops for non-existent conditions, so no existence check needed here
-  const priceUpdates: Array<{ id: string; estimatedPrice: number }> = [];
-  for (const market of markets) {
-    const price = parseYesPrice(market.outcomePrices);
-    if (price !== undefined) {
-      priceUpdates.push({ id: market.conditionId, estimatedPrice: price });
-    }
-  }
-
   // Fetch event tags from Polymarket /events endpoint
   // Compute date range from markets for the events query
   const endDates = markets
@@ -240,7 +230,6 @@ export async function groupMarkets(
     },
     groups: conditionGroups,
     ungroupedConditions,
-    priceUpdates,
   };
 }
 

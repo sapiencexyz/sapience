@@ -240,22 +240,6 @@ export function printDryRun(data: SapienceOutput): void {
     );
   }
 
-  // Print price updates
-  if (data.priceUpdates.length > 0) {
-    console.log(
-      `Price updates for existing conditions: ${data.priceUpdates.length}`
-    );
-    for (const update of data.priceUpdates.slice(0, 10)) {
-      console.log(
-        `  ${update.id.slice(0, 10)}... → ${(update.estimatedPrice * 100).toFixed(1)}%`
-      );
-    }
-    if (data.priceUpdates.length > 10) {
-      console.log(`  ... and ${data.priceUpdates.length - 10} more`);
-    }
-    console.log('');
-  }
-
   console.log('\n========== END DRY RUN ==========\n');
 }
 

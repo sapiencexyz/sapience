@@ -45,5 +45,5 @@ export interface SapienceOutput {
   };
   groups: SapienceConditionGroup[];
   ungroupedConditions: SapienceCondition[];
-  priceUpdates: Array<{ id: string; estimatedPrice: number }>;
+
 }
