@@ -34,3 +34,16 @@ export interface EnrichmentResult {
   errors: string[];
   usedFallback: boolean;
 }
+
+export interface EndTimeEnrichmentInput {
+  conditionId: string;
+  question: string;
+  description: string;
+  eventTitle?: string;
+}
+
+export interface EndTimeOutput {
+  conditionId: string;
+  /** Unix timestamp in seconds, or null if LLM cannot determine */
+  endTime: number | null;
+}
