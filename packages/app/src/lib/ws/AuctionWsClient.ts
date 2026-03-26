@@ -49,6 +49,9 @@ class AuctionWsClient {
   /** Dedup recent message IDs seen from both WS and mesh. */
   private seen = new Map<string, number>();
 
+  /** Source tags keyed by message object identity — avoids mutating incoming messages. */
+  private sourceMap = new WeakMap<object, MessageSource>();
+
   setUrl(url: string | null) {
     if (this.url === url) return;
     this.url = url;
@@ -130,6 +133,9 @@ class AuctionWsClient {
     const unsubWs = client.addMessageListener((msg: unknown) => {
       const data = msg as Record<string, unknown>;
       if (shouldMesh(data)) this.dedup(data); // mark as seen from WS
+      if (typeof msg === 'object' && msg !== null) {
+        this.sourceMap.set(msg, 'relayer');
+      }
       cb(msg);
     });
 
@@ -148,6 +154,9 @@ class AuctionWsClient {
         validateGossipPayloadAsync(msgType, inner, getValidationContext())
           .then((valid) => {
             if (!valid) return;
+            if (typeof msg === 'object' && msg !== null) {
+              this.sourceMap.set(msg, 'p2p');
+            }
             cb(msg);
           })
           .catch(() => {
@@ -178,6 +187,10 @@ class AuctionWsClient {
     return this.ensureClient().addErrorListener(cb);
   }
 
+  getSource(msg: object): MessageSource | undefined {
+    return this.sourceMap.get(msg);
+  }
+
   /**
    * Returns true if the message is new, false if already seen.
    * Always prunes expired entries regardless of map size.
@@ -200,7 +213,14 @@ class AuctionWsClient {
   }
 }
 
+export type MessageSource = 'relayer' | 'p2p';
+
 const shared = new AuctionWsClient();
+
+export function getMessageSource(msg: unknown): MessageSource | undefined {
+  if (typeof msg !== 'object' || msg === null) return undefined;
+  return shared.getSource(msg);
+}
 
 export function getSharedAuctionWsClient(
   wsUrl: string | null
