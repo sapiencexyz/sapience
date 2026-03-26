@@ -8,11 +8,10 @@ run('node dist/scripts/relist.js');
 run('node dist/scripts/refresh-prices.js');
 run('node dist/scripts/cleanup-polymarket.js --execute');
 
-if (process.env.DEFAULT_CHAIN_ID !== '5064014') {
-  // Staging/testnet: manual resolver
+if (process.env.DEFAULT_CHAIN_ID === '5064014') {
+  run('node dist/scripts/settle-polymarket.js --execute --wait');
+} else {
   run('node dist/scripts/settle-manual.js --execute --wait');
 }
 
-// CT and Pyth settlement — both self-filter by resolver address
-run('node dist/scripts/settle-polymarket.js --execute --wait');
 run('node dist/scripts/settle-pyth.js --execute --wait');
