@@ -62,15 +62,9 @@ export function cdnCacheMiddleware(
     getHeader(name: string): string | number | string[] | undefined;
     setHeader(name: string, value: string): void;
     removeHeader(name: string): void;
-    on(event: string, listener: () => void): void;
   },
   next: () => void
 ) {
-  res.on('finish', () => {
-    // Headers are already sent at this point — too late.
-    // We need to intercept before send.
-  });
-
   // Override writeHead to set headers just before they're sent
   const origWriteHead = (
     res as unknown as {
