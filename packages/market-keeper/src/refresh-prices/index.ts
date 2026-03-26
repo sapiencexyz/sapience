@@ -60,9 +60,7 @@ Environment Variables (required for API submission):
  * Fetch all active Polymarket condition IDs from Sapience via GraphQL.
  * Only fetches unsettled conditions (no outcomeIndex set).
  */
-async function fetchActiveConditionIds(
-  apiUrl: string
-): Promise<string[]> {
+async function fetchActiveConditionIds(apiUrl: string): Promise<string[]> {
   const graphqlUrl = apiUrl.replace(/\/+$/, '') + '/graphql';
 
   const PAGE_SIZE = 100;
@@ -132,8 +130,7 @@ async function fetchPolymarketPrices(
     const batch = conditionIds.slice(i, i + BATCH_SIZE);
 
     // Query Polymarket for these condition IDs
-    const conditionIdParam = batch.join(',');
-    const url = `https://gamma-api.polymarket.com/markets?condition_id=${encodeURIComponent(conditionIdParam)}&limit=${BATCH_SIZE}`;
+    const url = `https://gamma-api.polymarket.com/markets?${batch.map((id) => `condition_ids=${id}`).join('&')}&limit=${BATCH_SIZE}`;
 
     try {
       const response = await fetchWithRetry(url, {
@@ -226,13 +223,8 @@ export async function main() {
     if (options.dryRun) {
       log('\n========== DRY RUN: Price Refresh ==========\n');
       log(`Total price updates: ${priceUpdates.length}`);
-      for (const update of priceUpdates.slice(0, 20)) {
-        log(
-          `  ${update.id.slice(0, 10)}... → ${(update.estimatedPrice * 100).toFixed(1)}%`
-        );
-      }
-      if (priceUpdates.length > 20) {
-        log(`  ... and ${priceUpdates.length - 20} more`);
+      for (const update of priceUpdates) {
+        log(`  ${update.id} → ${(update.estimatedPrice * 100).toFixed(1)}%`);
       }
       log('\n========== END DRY RUN ==========\n');
       return;
