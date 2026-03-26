@@ -10,8 +10,6 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
-import { umaResolver } from '@sapience/sdk/contracts';
-import { CHAIN_ID_ARBITRUM } from '@sapience/sdk/constants';
 import Comments, { CommentFilters } from '../../components/shared/Comments';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import WalletAddressPopover from '~/components/markets/DataDrawer/WalletAddressPopover';
@@ -129,7 +127,7 @@ const ForecastPageImp = () => {
               <div className="p-6 pb-4">
                 <ConditionForecastForm
                   conditionId={selectedCondition.id}
-                  resolver={umaResolver[CHAIN_ID_ARBITRUM]?.address ?? ''}
+                  resolver={selectedCondition?.resolver ?? ''}
                   question={selectedCondition.question}
                   endTime={selectedCondition.endTime}
                   categorySlug={selectedCondition.category?.slug || null}

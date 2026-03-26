@@ -1,7 +1,7 @@
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
+import type { http } from 'viem';
 import {
   createPublicClient,
-  http,
   keccak256,
   parseAbi,
   slice,
@@ -21,7 +21,6 @@ import {
   createKernelAccount,
   createKernelAccountClient,
   createZeroDevPaymasterClient,
-  addressToEmptyAccount, // Still needed for getSmartAccountAddress
   type KernelAccountClient,
 } from '@zerodev/sdk';
 import { signerToEcdsaValidator } from '@zerodev/ecdsa-validator';
@@ -40,12 +39,13 @@ import {
 import { getEntryPoint, KERNEL_V3_1 } from '@zerodev/sdk/constants';
 import {
   predictionMarketEscrowAbi,
+  secondaryMarketEscrowAbi,
   collateralTokenAbi,
   predictionMarketVaultAbi,
 } from '@sapience/sdk/abis';
 import {
-  predictionMarket as predictionMarketAddresses,
   predictionMarketEscrow as predictionMarketEscrowAddresses,
+  secondaryMarketEscrow as secondaryMarketEscrowAddresses,
   collateralToken as collateralTokenAddresses,
   eas as easAddresses,
   predictionMarketVault as vaultAddresses,
@@ -58,6 +58,8 @@ import {
   etherealChain,
   etherealTestnetChain,
 } from '@sapience/sdk/constants';
+import { computeSmartAccountAddress } from '@sapience/sdk/session';
+import { httpWithRetry, withRetry } from '../utils/util';
 
 // Re-export etherealChain as 'ethereal' for backward compatibility
 export { etherealChain as ethereal };
@@ -74,10 +76,17 @@ function getEtherealContractAddresses(chainId: number) {
   const isEscrowDeployed =
     escrowAddress &&
     escrowAddress !== '0x0000000000000000000000000000000000000000';
+  const secondaryEscrowAddress =
+    secondaryMarketEscrowAddresses[effectiveChainId]?.address;
+  const isSecondaryEscrowDeployed =
+    secondaryEscrowAddress &&
+    secondaryEscrowAddress !== '0x0000000000000000000000000000000000000000';
   return {
     wusde: collateralTokenAddresses[effectiveChainId].address,
-    predictionMarket: predictionMarketAddresses[effectiveChainId].address,
     predictionMarketEscrow: isEscrowDeployed ? escrowAddress : undefined,
+    secondaryMarketEscrow: isSecondaryEscrowDeployed
+      ? secondaryEscrowAddress
+      : undefined,
     vault: vaultAddresses[effectiveChainId].address,
   };
 }
@@ -124,7 +133,7 @@ function stripParametersFromUserOp(params: unknown): unknown {
 function createZeroDevCompatibleTransport(
   url: string
 ): ReturnType<typeof http> {
-  const baseTransport = http(url);
+  const baseTransport = httpWithRetry(url);
 
   // Return a transport factory that wraps the base transport
   return ((config) => {
@@ -241,6 +250,12 @@ const ESCROW_SESSION_KEY_APPROVAL_DOMAIN = {
   version: '1',
 } as const;
 
+// Secondary Market Escrow domain (matches SecondaryMarketEscrow.sol)
+const SECONDARY_ESCROW_APPROVAL_DOMAIN = {
+  name: 'SecondaryMarketEscrow',
+  version: '1',
+} as const;
+
 // EIP712Domain type - explicitly included for wallet compatibility
 // Some wallets (like Rabby on custom chains) need this to properly recognize EIP-712 format
 const EIP712_DOMAIN_TYPE = [
@@ -282,6 +297,9 @@ export interface SerializedSession {
   // Escrow Session Key Approval for PredictionMarketEscrow
   // This is a separate EIP-712 signature from the owner authorizing session key for escrow mints
   escrowSessionKeyApproval?: EscrowSessionKeyApproval;
+  // Trade Session Key Approval for SecondaryMarketEscrow
+  // Authorizes the session key with TRADE_PERMISSION for secondary market trades
+  tradeSessionKeyApproval?: EscrowSessionKeyApproval;
 }
 
 // Session result with chain clients
@@ -312,32 +330,8 @@ export interface OwnerSigner {
  * Calculate the smart account address for a given owner address.
  * This doesn't require any signatures - just computes the counterfactual address.
  */
-export async function getSmartAccountAddress(
-  ownerAddress: Address
-): Promise<Address> {
-  const publicClient = createPublicClient({
-    transport: http(
-      process.env.NEXT_PUBLIC_RPC_URL || 'https://arb1.arbitrum.io/rpc'
-    ),
-    chain: arbitrum,
-  });
-
-  const emptyAccount = addressToEmptyAccount(ownerAddress);
-  const ecdsaValidator = await signerToEcdsaValidator(publicClient, {
-    signer: emptyAccount,
-    entryPoint: ENTRY_POINT,
-    kernelVersion: KERNEL_VERSION,
-  });
-
-  const account = await createKernelAccount(publicClient, {
-    plugins: {
-      sudo: ecdsaValidator,
-    },
-    entryPoint: ENTRY_POINT,
-    kernelVersion: KERNEL_VERSION,
-  });
-
-  return account.address;
+export function getSmartAccountAddress(ownerAddress: Address): Address {
+  return computeSmartAccountAddress(ownerAddress);
 }
 
 /**
@@ -407,6 +401,14 @@ async function _signEscrowSessionKeyApproval(
   );
 
   // Verify the signature recovers to the owner address
+  // Build a verification message with bigint values matching the EIP-712 types
+  const verificationMessage = {
+    sessionKey: typedData.message.sessionKey,
+    smartAccount: typedData.message.smartAccount,
+    validUntil: BigInt(typedData.message.validUntil),
+    permissionsHash: typedData.message.permissionsHash,
+    chainId: BigInt(typedData.message.chainId),
+  };
   try {
     const recoveredAddress = await recoverTypedDataAddress({
       domain: {
@@ -415,8 +417,7 @@ async function _signEscrowSessionKeyApproval(
       },
       types: typedData.types,
       primaryType: typedData.primaryType,
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      message: typedData.message as any,
+      message: verificationMessage,
       signature: signature,
     });
     console.debug(
@@ -444,8 +445,7 @@ async function _signEscrowSessionKeyApproval(
         },
         types: typedData.types,
         primaryType: typedData.primaryType,
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        message: typedData.message as any,
+        message: verificationMessage,
       });
       console.debug('[SessionKeyManager] TypedData hash:', typedDataHash);
     }
@@ -455,6 +455,59 @@ async function _signEscrowSessionKeyApproval(
       verifyError
     );
   }
+
+  return {
+    sessionKey: sessionKeyAddress,
+    owner: ownerSigner.address,
+    smartAccount: smartAccountAddress,
+    validUntil: validUntilSeconds,
+    permissionsHash,
+    chainId,
+    ownerSignature: signature,
+  };
+}
+
+/**
+ * Sign a TRADE_PERMISSION session key approval for SecondaryMarketEscrow.
+ * The owner authorizes the session key to sign TradeApprovals.
+ */
+async function _signTradeSessionKeyApproval(
+  ownerSigner: OwnerSigner,
+  sessionKeyAddress: Address,
+  smartAccountAddress: Address,
+  validUntilSeconds: number,
+  chainId: number,
+  verifyingContract: Address
+): Promise<EscrowSessionKeyApproval> {
+  const permissionsHash = keccak256(toHex('TRADE')); // must match SecondaryMarketEscrow.TRADE_PERMISSION
+
+  const typedData = {
+    domain: {
+      ...SECONDARY_ESCROW_APPROVAL_DOMAIN,
+      chainId,
+      verifyingContract,
+    },
+    types: ESCROW_SESSION_KEY_APPROVAL_TYPES,
+    primaryType: 'SessionKeyApproval' as const,
+    message: {
+      sessionKey: sessionKeyAddress,
+      smartAccount: smartAccountAddress,
+      validUntil: String(validUntilSeconds),
+      permissionsHash,
+      chainId: String(chainId),
+    },
+  };
+
+  console.debug(
+    '[SessionKeyManager] Requesting trade session key approval signature...'
+  );
+
+  const signature = await ownerSigner.provider.request({
+    method: 'eth_signTypedData_v4',
+    params: [ownerSigner.address, JSON.stringify(typedData)],
+  });
+
+  console.debug('[SessionKeyManager] Trade session key approval signed');
 
   return {
     sessionKey: sessionKeyAddress,
@@ -576,7 +629,7 @@ function getEtherealChain(chainId: number): Chain {
 // Public clients - Arbitrum is static, Ethereal is created based on chainId
 function getArbitrumPublicClient() {
   return createPublicClient({
-    transport: http(
+    transport: httpWithRetry(
       process.env.NEXT_PUBLIC_RPC_URL || 'https://arb1.arbitrum.io/rpc'
     ),
     chain: arbitrum,
@@ -586,7 +639,7 @@ function getArbitrumPublicClient() {
 function getEtherealPublicClient(chainId: number) {
   const chain = getEtherealChain(chainId);
   return createPublicClient({
-    transport: http(chain.rpcUrls.default.http[0]),
+    transport: httpWithRetry(chain.rpcUrls.default.http[0]),
     chain,
   });
 }
@@ -653,7 +706,6 @@ export async function createSession(
   );
   console.debug(`[SessionKeyManager] Contract addresses:`, {
     wusde: etherealContracts.wusde,
-    predictionMarket: etherealContracts.predictionMarket,
     predictionMarketEscrow: etherealContracts.predictionMarketEscrow,
     vault: etherealContracts.vault,
   });
@@ -682,6 +734,7 @@ export async function createSession(
             value: [
               etherealContracts.vault,
               etherealContracts.predictionMarketEscrow,
+              etherealContracts.secondaryMarketEscrow,
             ].filter(Boolean) as Address[],
           },
           null,
@@ -728,6 +781,16 @@ export async function createSession(
             },
           ]
         : []),
+      // Secondary market escrow permissions (only if deployed)
+      ...(etherealContracts.secondaryMarketEscrow
+        ? [
+            {
+              target: etherealContracts.secondaryMarketEscrow,
+              abi: secondaryMarketEscrowAbi,
+              functionName: 'executeTrade',
+            },
+          ]
+        : []),
     ],
   });
 
@@ -745,9 +808,9 @@ export async function createSession(
   );
 
   // Switch to Ethereal chain (only emit progress if chain switch is actually needed)
-  const currentChainHex = await ownerSigner.provider.request({
-    method: 'eth_chainId',
-  });
+  const currentChainHex = await withRetry(() =>
+    ownerSigner.provider.request({ method: 'eth_chainId' })
+  );
   const currentChainId = parseInt(currentChainHex, 16);
   if (currentChainId !== etherealChainId) {
     onProgress?.('switching-network');
@@ -787,11 +850,13 @@ export async function createSession(
     etherealPermissionId
   );
 
-  // Signature caller policy: allows the escrow contract to call isValidSignature()
+  // Signature caller policy: allows escrow contracts to call isValidSignature()
   // on the smart account (ERC-1271 verification for session key signatures)
-  const escrowAddress = etherealContracts.predictionMarketEscrow;
   const signatureCallerPolicy = toSignatureCallerPolicy({
-    allowedCallers: [escrowAddress].filter(Boolean) as Address[],
+    allowedCallers: [
+      etherealContracts.predictionMarketEscrow,
+      etherealContracts.secondaryMarketEscrow,
+    ].filter(Boolean) as Address[],
   });
 
   // Create permission plugin for Ethereal with call, timestamp, and signature caller policies
@@ -912,10 +977,28 @@ export async function createSession(
   }
 
   onProgress?.('finalizing');
-  // Note: escrow session key approval (Option B) has been removed.
-  // Contract now validates session signatures via ERC-1271 (isValidSignature)
-  // on the deployed smart account. This eliminates the second wallet popup
-  // during session creation.
+
+  // Sign TRADE_PERMISSION approval for SecondaryMarketEscrow (if deployed).
+  // This authorizes the session key to sign TradeApprovals for secondary market trades.
+  let tradeSessionKeyApproval: EscrowSessionKeyApproval | undefined;
+  if (etherealContracts.secondaryMarketEscrow) {
+    try {
+      tradeSessionKeyApproval = await _signTradeSessionKeyApproval(
+        ownerSigner,
+        sessionKeyAccount.address,
+        smartAccountAddress,
+        validUntilInSeconds,
+        etherealChainId,
+        etherealContracts.secondaryMarketEscrow
+      );
+    } catch (e) {
+      console.warn(
+        '[SessionKeyManager] Failed to sign trade approval (non-fatal):',
+        e
+      );
+      // Non-fatal — secondary market won't work but primary market still does
+    }
+  }
 
   const config: SessionConfig = {
     durationHours,
@@ -933,6 +1016,7 @@ export async function createSession(
     // Arbitrum approval not set - will be created lazily
     etherealEnableTypedData,
     etherealChainId,
+    tradeSessionKeyApproval,
   };
 
   return {

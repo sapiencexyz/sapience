@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useState } from 'react';
-import { useAccount, useSignTypedData } from 'wagmi';
+import { useAccount, useChainId, useSignTypedData } from 'wagmi';
 import { type Address, type Hex } from 'viem';
 import { buildSellerTradeApproval } from '@sapience/sdk/auction/secondarySigning';
 import type { SecondaryAuctionRequestPayload } from '@sapience/sdk/types/secondary';
@@ -9,16 +9,15 @@ import {
   secondaryMarketEscrow,
   collateralToken,
 } from '@sapience/sdk/contracts';
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { generateRandomNonce } from '@sapience/sdk';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { toAuctionWsUrl } from '~/lib/ws';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
-import { generateRandomNonce } from '@sapience/sdk';
+import { useSession } from '~/lib/context/SessionContext';
 
 export interface SecondaryAuctionStartParams {
   token: Address;
   tokenAmount: bigint;
-  minPrice: bigint;
   deadlineSeconds?: number;
   refCode?: Hex;
 }
@@ -44,9 +43,15 @@ export function useSecondaryAuctionStart(
     onAuctionCreated,
   } = options;
 
-  const chainId = overrideChainId ?? DEFAULT_CHAIN_ID;
+  const walletChainId = useChainId();
+  const chainId = overrideChainId ?? walletChainId;
   const { address } = useAccount();
   const { signTypedDataAsync } = useSignTypedData();
+  const {
+    effectiveAddress,
+    signTypedDataRaw: sessionSignTypedDataRaw,
+    isUsingSession,
+  } = useSession();
   const { apiBaseUrl } = useSettings();
 
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -65,15 +70,11 @@ export function useSecondaryAuctionStart(
     async (
       params: SecondaryAuctionStartParams
     ): Promise<SecondaryAuctionStartResult> => {
-      const {
-        token,
-        tokenAmount,
-        minPrice,
-        deadlineSeconds = 1800,
-        refCode,
-      } = params;
+      const { token, tokenAmount, deadlineSeconds = 1800, refCode } = params;
 
-      if (!address) {
+      // Use Smart Account address when session is active, EOA otherwise
+      const sellerAddr = isUsingSession ? effectiveAddress : address;
+      if (!sellerAddr) {
         return { success: false, error: 'Wallet not connected' };
       }
       if (!verifyingContract) {
@@ -91,23 +92,20 @@ export function useSecondaryAuctionStart(
       if (tokenAmount <= 0n) {
         return { success: false, error: 'Invalid token amount' };
       }
-      if (minPrice <= 0n) {
-        return { success: false, error: 'Invalid minimum price' };
-      }
 
       // Generate random nonce for bitmap nonce system (Permit2-style)
       const nonce = generateRandomNonce();
       const nowSec = Math.floor(Date.now() / 1000);
       const sellerDeadline = BigInt(nowSec + Math.max(60, deadlineSeconds));
 
-      // Seller signs with buyer=address(0) — bots will fill
+      // Seller signs with buyer=address(0), price=0 — bots will fill with actual price
       const typedData = buildSellerTradeApproval({
         token,
         collateral: collateralAddress,
-        seller: address,
+        seller: sellerAddr,
         buyer: '0x0000000000000000000000000000000000000000' as Address,
         tokenAmount,
-        price: minPrice,
+        price: 0n,
         sellerNonce: nonce,
         sellerDeadline,
         verifyingContract,
@@ -117,19 +115,32 @@ export function useSecondaryAuctionStart(
       setIsSubmitting(true);
       let sellerSignature: Hex;
       try {
-        sellerSignature = await signTypedDataAsync({
-          domain: {
-            ...typedData.domain,
-            chainId: Number(typedData.domain.chainId),
-          },
-          types: typedData.types,
-          primaryType: typedData.primaryType,
-          message: typedData.message,
-        });
-      } catch (e: any) {
+        if (isUsingSession && sessionSignTypedDataRaw) {
+          // Session mode: sign with session key (no wallet prompt)
+          sellerSignature = await sessionSignTypedDataRaw({
+            domain: {
+              ...typedData.domain,
+              chainId: Number(typedData.domain.chainId),
+            },
+            types: typedData.types,
+            primaryType: typedData.primaryType,
+            message: typedData.message,
+          });
+        } else {
+          // EOA mode: sign with wallet
+          sellerSignature = await signTypedDataAsync({
+            domain: {
+              ...typedData.domain,
+              chainId: Number(typedData.domain.chainId),
+            },
+            types: typedData.types,
+            primaryType: typedData.primaryType,
+            message: typedData.message,
+          });
+        }
+      } catch (e: unknown) {
         setIsSubmitting(false);
-        const error =
-          e instanceof Error ? e : new Error(String(e?.message || e));
+        const error = e instanceof Error ? e : new Error(String(e));
         onSignatureRejected?.(error);
         return {
           success: false,
@@ -141,8 +152,7 @@ export function useSecondaryAuctionStart(
         token,
         collateral: collateralAddress,
         tokenAmount: tokenAmount.toString(),
-        minPrice: minPrice.toString(),
-        seller: address,
+        seller: sellerAddr,
         sellerNonce: Number(nonce),
         sellerDeadline: Number(sellerDeadline),
         sellerSignature,
@@ -165,9 +175,18 @@ export function useSecondaryAuctionStart(
           const removeListener = client.addMessageListener((msg: unknown) => {
             const data = msg as {
               type?: string;
-              payload?: { auctionId?: string; error?: string };
+              payload?: {
+                auctionId?: string;
+                error?: string;
+                subscribed?: boolean;
+                unsubscribed?: boolean;
+              };
             };
-            if (data?.type === 'secondary.auction.ack') {
+            // Only match auction start acks (with auctionId or error), not feed subscribe acks
+            if (
+              data?.type === 'secondary.auction.ack' &&
+              (data.payload?.auctionId || data.payload?.error)
+            ) {
               clearTimeout(timeout);
               removeListener();
               resolve(data.payload ?? {});
@@ -192,21 +211,24 @@ export function useSecondaryAuctionStart(
         }
 
         return { success: false, error: 'No auction ID returned' };
-      } catch (e: any) {
+      } catch (e: unknown) {
         setIsSubmitting(false);
         return {
           success: false,
-          error: `Failed to start auction: ${e?.message || 'Unknown error'}`,
+          error: `Failed to start auction: ${e instanceof Error ? e.message : 'Unknown error'}`,
         };
       }
     },
     [
       address,
+      effectiveAddress,
       chainId,
       verifyingContract,
       collateralAddress,
       wsUrl,
       signTypedDataAsync,
+      sessionSignTypedDataRaw,
+      isUsingSession,
       onSignatureRejected,
       onAuctionCreated,
     ]

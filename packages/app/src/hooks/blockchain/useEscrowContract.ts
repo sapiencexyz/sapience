@@ -9,13 +9,19 @@ import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { generateRandomNonce } from '@sapience/sdk';
 
 /**
- * Get PredictionMarketEscrow contract address for a chain
+ * Get PredictionMarketEscrow contract address for a chain.
+ * An optional `overrideAddress` can be provided to target a specific
+ * escrow deployment (e.g. legacy contracts stored per-position).
  */
-export function useEscrowContractAddress(chainId?: number) {
+export function useEscrowContractAddress(
+  chainId?: number,
+  overrideAddress?: Address
+) {
   const effectiveChainId = chainId ?? DEFAULT_CHAIN_ID;
-  return predictionMarketEscrow[effectiveChainId]?.address as
+  const defaultAddress = predictionMarketEscrow[effectiveChainId]?.address as
     | Address
     | undefined;
+  return overrideAddress ?? defaultAddress;
 }
 
 /**
@@ -51,10 +57,14 @@ export function usePickConfiguration(params: {
   pickConfigId?: `0x${string}`;
   chainId?: number;
   enabled?: boolean;
+  contractAddress?: Address;
 }) {
   const { pickConfigId, chainId, enabled = true } = params;
   const effectiveChainId = chainId ?? DEFAULT_CHAIN_ID;
-  const contractAddress = useEscrowContractAddress(effectiveChainId);
+  const contractAddress = useEscrowContractAddress(
+    effectiveChainId,
+    params.contractAddress
+  );
 
   const { data, isLoading, error, refetch } = useReadContract({
     abi: predictionMarketEscrowAbi,
@@ -103,10 +113,14 @@ export function useTokenPair(params: {
   pickConfigId?: `0x${string}`;
   chainId?: number;
   enabled?: boolean;
+  contractAddress?: Address;
 }) {
   const { pickConfigId, chainId, enabled = true } = params;
   const effectiveChainId = chainId ?? DEFAULT_CHAIN_ID;
-  const contractAddress = useEscrowContractAddress(effectiveChainId);
+  const contractAddress = useEscrowContractAddress(
+    effectiveChainId,
+    params.contractAddress
+  );
 
   const { data, isLoading, error, refetch } = useReadContract({
     abi: predictionMarketEscrowAbi,
@@ -194,10 +208,14 @@ export function useCanSettle(params: {
   predictionId?: `0x${string}`;
   chainId?: number;
   enabled?: boolean;
+  contractAddress?: Address;
 }) {
   const { predictionId, chainId, enabled = true } = params;
   const effectiveChainId = chainId ?? DEFAULT_CHAIN_ID;
-  const contractAddress = useEscrowContractAddress(effectiveChainId);
+  const contractAddress = useEscrowContractAddress(
+    effectiveChainId,
+    params.contractAddress
+  );
 
   const { data, isLoading, error, refetch } = useReadContract({
     abi: predictionMarketEscrowAbi,
@@ -227,6 +245,7 @@ export function useClaimableAmount(params: {
   amount?: bigint;
   chainId?: number;
   enabled?: boolean;
+  contractAddress?: Address;
 }) {
   const {
     pickConfigId,
@@ -236,7 +255,10 @@ export function useClaimableAmount(params: {
     enabled = true,
   } = params;
   const effectiveChainId = chainId ?? DEFAULT_CHAIN_ID;
-  const contractAddress = useEscrowContractAddress(effectiveChainId);
+  const contractAddress = useEscrowContractAddress(
+    effectiveChainId,
+    params.contractAddress
+  );
 
   const { data, isLoading, error, refetch } = useReadContract({
     abi: predictionMarketEscrowAbi,

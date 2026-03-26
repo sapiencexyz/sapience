@@ -11,7 +11,6 @@ import {
   ToastViewport,
 } from './toast';
 
-
 export function Toaster() {
   const { toasts } = useToast();
 

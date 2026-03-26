@@ -1,13 +1,21 @@
+if (process.env.NEXT_BUILD_TARGET === 'static') {
+  module.exports = require('./next.config.static.js');
+} else {
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
   productionBrowserSourceMaps: false,
   transpilePackages: ['@sapience/ui'],
+  // @zerodev/ecdsa-validator requires permissionless@0.1.x but 0.2.x is installed;
+  // externalize for server bundles so Node resolves them at runtime.
+  serverExternalPackages: ['@zerodev/ecdsa-validator', '@zerodev/sdk'],
   eslint: {
     dirs: ['src'],
+    ignoreDuringBuilds: true,
   },
   // Because we import the 403.html file in middleware.ts, we need to tell webpack to treat it as an asset.
-  webpack: (config) => {
+  webpack: (config, { isServer }) => {
     config.module.rules.push({
       test: /\.html$/,
       type: 'asset/source',
@@ -96,3 +104,5 @@ const sentryConfig = {
 module.exports = isProduction
   ? withSentryConfig(nextConfig, sentryConfig)
   : nextConfig;
+
+} // end NEXT_BUILD_TARGET !== 'static'

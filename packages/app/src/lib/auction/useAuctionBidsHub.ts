@@ -16,10 +16,19 @@ export type AuctionBid = {
   counterpartyDeadline: number;
   counterpartySignature: string;
   counterpartyNonce: number;
+  counterpartySessionKeyData?: string;
   receivedAtMs: number;
 };
 
 type Listener = () => void;
+
+interface WsBidsMessage {
+  type?: string;
+  payload?: {
+    auctionId?: string;
+    bids?: Array<Record<string, unknown>>;
+  };
+}
 
 class AuctionBidsHub {
   private client: ReturnType<typeof getSharedAuctionWsClient> | null = null;
@@ -56,7 +65,9 @@ class AuctionBidsHub {
     const offClose = c.addCloseListener(() => {
       this.isOpen = false;
     });
-    const offMsg = c.addMessageListener((raw) => this.onMessage(raw as any));
+    const offMsg = c.addMessageListener((raw) =>
+      this.onMessage(raw as WsBidsMessage)
+    );
     // Store noop cleanup to avoid GC until URL changes
     if (this.cleanupTimer != null) window.clearInterval(this.cleanupTimer);
     this.cleanupTimer = window.setInterval(() => this.prune(), 60_000);
@@ -66,11 +77,9 @@ class AuctionBidsHub {
     void offMsg;
   }
 
-  private onMessage(msg: any) {
+  private onMessage(msg: WsBidsMessage) {
     if (msg?.type !== 'auction.bids') return;
-    const raw = Array.isArray(msg?.payload?.bids)
-      ? (msg.payload.bids as any[])
-      : [];
+    const raw = Array.isArray(msg?.payload?.bids) ? msg.payload.bids : [];
     if (raw.length === 0) return;
     const auctionIdFromPayload = String(msg?.payload?.auctionId || '');
     const updates = new Map<string, AuctionBid[]>();

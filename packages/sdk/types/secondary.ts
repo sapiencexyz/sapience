@@ -63,11 +63,10 @@ export interface SecondaryAuctionRequestPayload {
   token: string; // Position token address
   collateral: string; // Collateral token address
   tokenAmount: string; // wei string
-  minPrice: string; // wei string - minimum acceptable collateral
   seller: string; // EOA or smart account
   sellerNonce: number;
   sellerDeadline: number; // unix timestamp
-  sellerSignature: string; // EIP-712 TradeApproval signature
+  sellerSignature: string; // EIP-712 TradeApproval signature (price=0, buyer=0x0)
   chainId: number;
   refCode?: string;
   sellerSessionKeyData?: string;
@@ -93,6 +92,9 @@ export type SecondaryClientToServerMessage =
   | { type: 'secondary.auction.subscribe'; payload: { auctionId: string } }
   | { type: 'secondary.auction.unsubscribe'; payload: { auctionId: string } }
   | { type: 'secondary.bid.submit'; payload: SecondaryBidPayload }
+  | { type: 'secondary.feed.subscribe' }
+  | { type: 'secondary.feed.unsubscribe' }
+  | { type: 'secondary.listings.request' }
   | { type: 'ping' };
 
 // ----- Server to Client Messages -----
@@ -103,7 +105,6 @@ export interface SecondaryAuctionDetails {
   token: string;
   collateral: string;
   tokenAmount: string;
-  minPrice: string;
   seller: string;
   sellerDeadline: number;
   chainId: number;
@@ -120,6 +121,19 @@ export interface SecondaryValidatedBid {
   buyerSignature: string;
   buyerSessionKeyData?: string;
   receivedAt: string; // ISO timestamp
+}
+
+/** Listing summary returned in listings snapshot */
+export interface SecondaryListingSummary {
+  auctionId: string;
+  token: string;
+  collateral: string;
+  tokenAmount: string;
+  seller: string;
+  sellerDeadline: number;
+  chainId: number;
+  createdAt: string;
+  bidCount: number;
 }
 
 export type SecondaryServerToClientMessage =
@@ -149,6 +163,10 @@ export type SecondaryServerToClientMessage =
   | {
       type: 'secondary.auction.expired';
       payload: { auctionId: string; reason: string };
+    }
+  | {
+      type: 'secondary.listings.snapshot';
+      payload: { listings: SecondaryListingSummary[] };
     }
   | { type: 'pong' }
   | { type: 'error'; payload: { message: string; code?: string } };

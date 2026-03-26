@@ -1,9 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { getProviderForChain } from '../utils/getProviderForChain';
-import {
-  getChainConfig,
-  etherealChain,
-} from '@sapience/sdk/constants';
+import { getChainConfig, etherealChain } from '@sapience/sdk/constants';
 
 describe('getProviderForChain', () => {
   const supportedChainIds = [5064014];

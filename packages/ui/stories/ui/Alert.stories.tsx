@@ -1,23 +1,23 @@
-import type { Meta, StoryObj } from "@storybook/react-webpack5";
+import type { Meta, StoryObj } from '@storybook/react-webpack5';
 import {
   AlertCircle,
   CheckCircle,
   Info as InfoIcon,
   XCircle,
-} from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "../../components/ui/alert";
+} from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '../../components/ui/alert';
 
 const meta: Meta<typeof Alert> = {
-  title: "UI/Alert",
+  title: 'UI/Alert',
   component: Alert,
   parameters: {
-    layout: "centered",
+    layout: 'centered',
   },
-  tags: ["autodocs"],
+  tags: ['autodocs'],
   argTypes: {
     variant: {
-      control: { type: "select" },
-      options: ["default", "destructive"],
+      control: { type: 'select' },
+      options: ['default', 'destructive'],
     },
   },
 };

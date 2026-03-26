@@ -33,8 +33,8 @@ function makeAlertData(
     transactionHash:
       '0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef',
     chainId: 42161,
-    nftId: '42',
-    marketAddress: '0xb04841cad1147675505816e2ec5c915430857b40',
+    predictionId:
+      '0xdeadbeef1234567890abcdef1234567890abcdef1234567890abcdef12345678',
     ...overrides,
   };
 }
@@ -95,6 +95,8 @@ describe('getChainName', () => {
     expect(getChainName(8453)).toBe('Base');
     expect(getChainName(1)).toBe('Ethereum');
     expect(getChainName(11155111)).toBe('Sepolia');
+    expect(getChainName(5064014)).toBe('Ethereal');
+    expect(getChainName(13374202)).toBe('Ethereal Testnet');
   });
 
   it('falls back for unknown chains', () => {
@@ -191,6 +193,26 @@ describe('buildPositionEmbed', () => {
     }>;
     const sepoliaTx = sepoliaFields.find((f) => f.name === '🔗 Transaction');
     expect(sepoliaTx?.value).toContain('sepolia.etherscan.io');
+
+    const ethereal = buildPositionEmbed(
+      makeAlertData({ chainId: 5064014 })
+    ) as Record<string, unknown>;
+    const etherealFields = ethereal.fields as Array<{
+      name: string;
+      value: string;
+    }>;
+    const etherealTx = etherealFields.find((f) => f.name === '🔗 Transaction');
+    expect(etherealTx?.value).toContain('explorer.ethereal.trade');
+
+    const etherealTestnet = buildPositionEmbed(
+      makeAlertData({ chainId: 13374202 })
+    ) as Record<string, unknown>;
+    const testnetFields = etherealTestnet.fields as Array<{
+      name: string;
+      value: string;
+    }>;
+    const testnetTx = testnetFields.find((f) => f.name === '🔗 Transaction');
+    expect(testnetTx?.value).toContain('explorer.etherealtest.net');
   });
 
   it('handles missing transaction hash gracefully', () => {

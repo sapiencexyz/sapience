@@ -37,6 +37,7 @@ interface OgShareDialogBaseProps {
   trackPrediction?: boolean; // Enable prediction tracking
   predictionTimestamp?: number; // Timestamp when prediction was submitted (ms)
   onPredictionIndexed?: () => void; // Called when prediction is found
+  expectedPicks?: Array<{ conditionId: string; predictedOutcome: number }>; // Expected picks to match against
 }
 
 export default function OgShareDialogBase({
@@ -54,6 +55,7 @@ export default function OgShareDialogBase({
   trackPrediction = false,
   predictionTimestamp,
   onPredictionIndexed,
+  expectedPicks,
 }: OgShareDialogBaseProps) {
   const [uncontrolledOpen, setUncontrolledOpen] = useState(false);
   const isControlled = typeof controlledOpen === 'boolean';
@@ -113,7 +115,9 @@ export default function OgShareDialogBase({
 
   // Prediction tracking logic
   useEffect(() => {
-    if (!trackPrediction || !open || !userAddress) return;
+    if (!trackPrediction || !open || !userAddress) {
+      return;
+    }
     if (resolvedPredictionId) {
       predictionPollingCancelledRef.current = true;
       if (predictionPollingTimerRef.current) {
@@ -125,11 +129,32 @@ export default function OgShareDialogBase({
 
     const minTimestamp = predictionOpenTimestampRef.current || Date.now();
 
-    const checkPredictions = (preds: Prediction[]): boolean => {
-      if (!preds || preds.length === 0) return false;
+    const checkPredictions = (
+      preds: Prediction[],
+      _source: string
+    ): boolean => {
+      if (!preds || preds.length === 0) {
+        return false;
+      }
       const found = preds.find((p) => {
         const createdAtMs = new Date(p.createdAt).getTime();
-        return createdAtMs >= minTimestamp - 10_000; // 10s buffer for clock skew
+        if (createdAtMs < minTimestamp - 10_000) return false; // 10s buffer for clock skew
+
+        // If expected picks are provided, verify the prediction's picks match
+        if (expectedPicks && expectedPicks.length > 0) {
+          const predPicks = p.pickConfig?.picks;
+          if (!predPicks || predPicks.length !== expectedPicks.length)
+            return false;
+          const predPickSet = new Set(
+            predPicks.map((pk) => `${pk.conditionId}:${pk.predictedOutcome}`)
+          );
+          const allMatch = expectedPicks.every((ep) =>
+            predPickSet.has(`${ep.conditionId}:${ep.predictedOutcome}`)
+          );
+          if (!allMatch) return false;
+        }
+
+        return true;
       });
       if (found) {
         setResolvedPredictionId(found.predictionId);
@@ -146,7 +171,7 @@ export default function OgShareDialogBase({
     };
 
     if (predictions.length > 0) {
-      checkPredictions(predictions);
+      checkPredictions(predictions, 'cached');
     }
 
     predictionPollingCancelledRef.current = false;
@@ -156,7 +181,7 @@ export default function OgShareDialogBase({
         const result = await refetchPredictions();
         const latest = result.data || [];
         if (!predictionPollingCancelledRef.current) {
-          checkPredictions(latest);
+          checkPredictions(latest, 'poll');
         }
       } catch (err) {
         console.warn('[OgShareDialog] prediction refetch threw', err);
@@ -182,6 +207,7 @@ export default function OgShareDialogBase({
     predictions,
     refetchPredictions,
     onPredictionIndexed,
+    expectedPicks,
   ]);
 
   // Reset tracking state when dialog closes
@@ -350,9 +376,9 @@ export default function OgShareDialogBase({
                       const blob = await res.blob();
                       if (
                         navigator.clipboard &&
-                        (window as any).ClipboardItem
+                        typeof ClipboardItem !== 'undefined'
                       ) {
-                        const item = new (window as any).ClipboardItem({
+                        const item = new ClipboardItem({
                           [blob.type]: blob,
                         });
                         await navigator.clipboard.write([item]);
@@ -407,9 +433,9 @@ export default function OgShareDialogBase({
                   variant="outline"
                   onClick={async () => {
                     const shareUrl = buildShareUrl();
-                    if ((navigator as any).share) {
+                    if (navigator.share) {
                       try {
-                        await (navigator as any).share({ url: shareUrl });
+                        await navigator.share({ url: shareUrl });
                         return;
                       } catch {
                         // fallthrough

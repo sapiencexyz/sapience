@@ -27,6 +27,8 @@ import ConditionGroupsTab from './ConditionGroupsTab';
 import ReferralCodesTab from './ReferralCodesTab';
 import ReindexConditionSettledForm from './ReindexConditionSettledForm';
 import BackfillProtocolStatsForm from './BackfillProtocolStatsForm';
+import ReindexPositionBalancesForm from './ReindexPositionBalancesForm';
+import ReindexCollateralTransfersForm from './ReindexCollateralTransfersForm';
 import { useAdminApi } from '~/hooks/useAdminApi';
 import { useSettings } from '~/lib/context/SettingsContext';
 
@@ -57,10 +59,8 @@ const ReindexAccuracyForm = () => {
       });
 
       toast({
-        title: 'Reindex started',
-        description: address
-          ? `Accuracy score reindex started for ${address}${marketId ? `, market ${marketId}` : ''}`
-          : 'Global accuracy score backfill started',
+        title: 'Reindex job submitted',
+        description: `Running in background. ${address ? `Reindexing ${address}${marketId ? `, market ${marketId}` : ''}` : 'Global accuracy backfill'}. Check API logs for progress.`,
       });
 
       setAddress('');
@@ -126,6 +126,10 @@ const Admin = () => {
     useState(false);
   const [protocolStatsBackfillOpen, setProtocolStatsBackfillOpen] =
     useState(false);
+  const [positionBalancesReindexOpen, setPositionBalancesReindexOpen] =
+    useState(false);
+  const [collateralTransfersReindexOpen, setCollateralTransfersReindexOpen] =
+    useState(false);
   const { adminBaseUrl, setAdminBaseUrl, defaults } = useSettings();
   const [adminDialogOpen, setAdminDialogOpen] = useState(false);
   const [adminDraft, setAdminDraft] = useState(
@@ -148,7 +152,7 @@ const Admin = () => {
 
   const { toast } = useToast();
 
-  const handleSmartAccountLookup = async (e: React.FormEvent) => {
+  const handleSmartAccountLookup = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = eoaInput.trim();
     if (!trimmed) return;
@@ -156,7 +160,7 @@ const Admin = () => {
     try {
       setIsLookupLoading(true);
       setSmartAccountResult('');
-      const result = await getSmartAccountAddress(trimmed as Address);
+      const result = getSmartAccountAddress(trimmed as Address);
       setSmartAccountResult(result);
     } catch (error) {
       console.error('Smart account lookup error:', error);
@@ -231,6 +235,38 @@ const Admin = () => {
                 <DialogTitle>Backfill Protocol Stats</DialogTitle>
               </DialogHeader>
               <BackfillProtocolStatsForm />
+            </DialogContent>
+          </Dialog>
+          <Dialog
+            open={positionBalancesReindexOpen}
+            onOpenChange={setPositionBalancesReindexOpen}
+          >
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                Reindex Position Balances
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-sm">
+              <DialogHeader>
+                <DialogTitle>Reindex Position Balances</DialogTitle>
+              </DialogHeader>
+              <ReindexPositionBalancesForm />
+            </DialogContent>
+          </Dialog>
+          <Dialog
+            open={collateralTransfersReindexOpen}
+            onOpenChange={setCollateralTransfersReindexOpen}
+          >
+            <DialogTrigger asChild>
+              <Button variant="outline" size="sm">
+                Reindex Collateral Transfers
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="max-w-sm">
+              <DialogHeader>
+                <DialogTitle>Reindex Collateral Transfers</DialogTitle>
+              </DialogHeader>
+              <ReindexCollateralTransfersForm />
             </DialogContent>
           </Dialog>
           <Dialog

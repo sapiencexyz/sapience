@@ -47,7 +47,13 @@ Create `index.ts`:
 ```typescript
 import 'dotenv/config';
 import { gql } from 'graphql-request';
-import { encodeAbiParameters, encodeFunctionData, parseEther, type Hex, type Address } from 'viem';
+import {
+  encodeAbiParameters,
+  encodeFunctionData,
+  parseEther,
+  type Hex,
+  type Address,
+} from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import {
   graphqlRequest,
@@ -61,8 +67,9 @@ import {
 // Configuration - Ethereal chain (5064014)
 const RPC_URL = 'https://rpc.ethereal.trade';
 const WS_URL = 'wss://relayer.sapience.xyz/auction';
-const RESOLVER = contracts.lzPMResolver[CHAIN_ID_ETHEREAL].address;
-const PREDICTION_MARKET = contracts.predictionMarket[CHAIN_ID_ETHEREAL].address;
+const RESOLVER = contracts.pythConditionResolver[CHAIN_ID_ETHEREAL].address;
+const PREDICTION_MARKET =
+  contracts.predictionMarketEscrow[CHAIN_ID_ETHEREAL].address;
 const POSITION_SIZE = '1000000000000000000'; // 1 WUSDe (18 decimals)
 
 const account = privateKeyToAccount(process.env.PRIVATE_KEY as Hex);
@@ -73,7 +80,7 @@ async function fetchCondition() {
   const query = gql`
     query Conditions($chainId: Int, $nowSec: Int) {
       conditions(
-        where: { 
+        where: {
           chainId: { equals: $chainId }
           public: { equals: true }
           endTime: { gt: $nowSec }
@@ -95,23 +102,30 @@ async function fetchCondition() {
 }
 
 // 2. Generate forecast using LLM
-async function generateForecast(question: string): Promise<{ probability: number; reasoning: string }> {
-  const response = await fetch('https://openrouter.ai/api/v1/chat/completions', {
-    method: 'POST',
-    headers: {
-      'Authorization': `Bearer ${process.env.OPENROUTER_API_KEY}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      model: 'openai/gpt-4o-mini',
-      messages: [{
-        role: 'user',
-        content: `Analyze this prediction market question and provide a probability (0-100) that the answer is YES: "${question}". 
+async function generateForecast(
+  question: string
+): Promise<{ probability: number; reasoning: string }> {
+  const response = await fetch(
+    'https://openrouter.ai/api/v1/chat/completions',
+    {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.OPENROUTER_API_KEY}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'openai/gpt-4o-mini',
+        messages: [
+          {
+            role: 'user',
+            content: `Analyze this prediction market question and provide a probability (0-100) that the answer is YES: "${question}". 
         
-Respond in JSON format: { "probability": <number>, "reasoning": "<brief explanation>" }`
-      }],
-    }),
-  });
+Respond in JSON format: { "probability": <number>, "reasoning": "<brief explanation>" }`,
+          },
+        ],
+      }),
+    }
+  );
   const data = await response.json();
   const result = JSON.parse(data.choices[0].message.content);
   return {
@@ -124,12 +138,17 @@ Respond in JSON format: { "probability": <number>, "reasoning": "<brief explanat
 function encodePrediction(marketId: string, probability: number) {
   const id = (marketId.startsWith('0x') ? marketId : `0x${marketId}`) as Hex;
   const prediction = probability > 50; // YES if >50%, NO if <50%
-  
+
   return encodeAbiParameters(
-    [{ type: 'tuple[]', components: [
-      { name: 'marketId', type: 'bytes32' },
-      { name: 'prediction', type: 'bool' },
-    ]}],
+    [
+      {
+        type: 'tuple[]',
+        components: [
+          { name: 'marketId', type: 'bytes32' },
+          { name: 'prediction', type: 'bool' },
+        ],
+      },
+    ],
     [[{ marketId: id, prediction }]]
   );
 }
@@ -146,7 +165,11 @@ async function prepareCollateral() {
 
 // 5. Execute trade by calling mint() on PredictionMarket contract
 // NOTE: Contract maker/taker naming is inverted from API (will be aligned in a future version)
-async function executeTrade(bid: any, encodedOutcomes: Hex, auctionTakerNonce: number) {
+async function executeTrade(
+  bid: any,
+  encodedOutcomes: Hex,
+  auctionTakerNonce: number
+) {
   const mintRequest = {
     encodedPredictedOutcomes: encodedOutcomes,
     resolver: RESOLVER,
@@ -157,7 +180,8 @@ async function executeTrade(bid: any, encodedOutcomes: Hex, auctionTakerNonce: n
     makerNonce: BigInt(auctionTakerNonce),
     takerSignature: bid.makerSignature as Hex,
     takerDeadline: BigInt(bid.makerDeadline),
-    refCode: '0x0000000000000000000000000000000000000000000000000000000000000000' as Hex,
+    refCode:
+      '0x0000000000000000000000000000000000000000000000000000000000000000' as Hex,
   };
 
   const { hash } = await submitTransaction({
@@ -166,23 +190,31 @@ async function executeTrade(bid: any, encodedOutcomes: Hex, auctionTakerNonce: n
     tx: {
       to: PREDICTION_MARKET,
       data: encodeFunctionData({
-        abi: [{
-          name: 'mint',
-          type: 'function',
-          inputs: [{ name: 'mintPredictionRequestData', type: 'tuple', components: [
-            { name: 'encodedPredictedOutcomes', type: 'bytes' },
-            { name: 'resolver', type: 'address' },
-            { name: 'makerCollateral', type: 'uint256' },
-            { name: 'takerCollateral', type: 'uint256' },
-            { name: 'maker', type: 'address' },
-            { name: 'taker', type: 'address' },
-            { name: 'makerNonce', type: 'uint256' },
-            { name: 'takerSignature', type: 'bytes' },
-            { name: 'takerDeadline', type: 'uint256' },
-            { name: 'refCode', type: 'bytes32' },
-          ]}],
-          outputs: [],
-        }],
+        abi: [
+          {
+            name: 'mint',
+            type: 'function',
+            inputs: [
+              {
+                name: 'mintPredictionRequestData',
+                type: 'tuple',
+                components: [
+                  { name: 'encodedPredictedOutcomes', type: 'bytes' },
+                  { name: 'resolver', type: 'address' },
+                  { name: 'makerCollateral', type: 'uint256' },
+                  { name: 'takerCollateral', type: 'uint256' },
+                  { name: 'maker', type: 'address' },
+                  { name: 'taker', type: 'address' },
+                  { name: 'makerNonce', type: 'uint256' },
+                  { name: 'takerSignature', type: 'bytes' },
+                  { name: 'takerDeadline', type: 'uint256' },
+                  { name: 'refCode', type: 'bytes32' },
+                ],
+              },
+            ],
+            outputs: [],
+          },
+        ],
         functionName: 'mint',
         args: [mintRequest],
       }),
@@ -234,53 +266,75 @@ async function main() {
       let takerSignature: string | undefined;
       let takerSignedAt: string | undefined;
       try {
-        const { createAuctionStartSiweMessage, extractSiweDomainAndUri } = await import('@sapience/sdk');
+        const { createAuctionStartSiweMessage, extractSiweDomainAndUri } =
+          await import('@sapience/sdk');
         const { domain, uri } = extractSiweDomainAndUri(WS_URL);
         const issuedAt = new Date().toISOString();
-        const message = createAuctionStartSiweMessage(payload, domain, uri, issuedAt);
+        const message = createAuctionStartSiweMessage(
+          payload,
+          domain,
+          uri,
+          issuedAt
+        );
         takerSignature = await account.signMessage({ message });
         takerSignedAt = issuedAt;
         console.log('Auction request signed');
       } catch (err) {
-        console.warn('Failed to sign auction request, proceeding without signature:', err);
+        console.warn(
+          'Failed to sign auction request, proceeding without signature:',
+          err
+        );
       }
 
-      ws.send(JSON.stringify({
-        type: 'auction.start',
-        payload: {
-          ...payload,
-          ...(takerSignature && takerSignedAt ? { takerSignature, takerSignedAt } : {}),
-        },
-      }));
+      ws.send(
+        JSON.stringify({
+          type: 'auction.start',
+          payload: {
+            ...payload,
+            ...(takerSignature && takerSignedAt
+              ? { takerSignature, takerSignedAt }
+              : {}),
+          },
+        })
+      );
     },
     onMessage: async (msg) => {
       if (msg.type === 'auction.ack') {
         auctionId = msg.payload.auctionId;
         console.log(`Auction ${auctionId} started, waiting for bids...`);
       }
-      
+
       if (msg.type === 'auction.bids' && msg.payload.bids?.length > 0) {
-        const bids = msg.payload.bids.filter((b: any) => b.auctionId === auctionId);
+        const bids = msg.payload.bids.filter(
+          (b: any) => b.auctionId === auctionId
+        );
         if (bids.length === 0) return;
-        
+
         // Filter out quote-only bids (zero address/signature) and expired bids
         const now = Date.now() / 1000;
         const actionableBids = bids.filter((b: any) => {
-          return b.maker !== '0x0000000000000000000000000000000000000000' &&
-                 b.makerSignature !== '0x0000000000000000000000000000000000000000000000000000000000000000' &&
-                 b.makerDeadline > now;
+          return (
+            b.maker !== '0x0000000000000000000000000000000000000000' &&
+            b.makerSignature !==
+              '0x0000000000000000000000000000000000000000000000000000000000000000' &&
+            b.makerDeadline > now
+          );
         });
-        
+
         // Select best bid (highest makerWager)
-        actionableBids.sort((a: any, b: any) => 
+        actionableBids.sort((a: any, b: any) =>
           BigInt(b.makerWager) > BigInt(a.makerWager) ? 1 : -1
         );
-        
+
         if (actionableBids.length > 0) {
           const bestBid = actionableBids[0];
           console.log(`Accepting actionable bid from ${bestBid.maker}`);
-          
-          const txHash = await executeTrade(bestBid, encodedOutcomes, takerNonce);
+
+          const txHash = await executeTrade(
+            bestBid,
+            encodedOutcomes,
+            takerNonce
+          );
           console.log(`Trade executed! TX: ${txHash}`);
           ws.close();
         }

@@ -1,60 +1,60 @@
+import { vi } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
 import { useSubmitPosition } from './useSubmitPosition';
 import type { MintPredictionRequestData } from '~/lib/auction/useAuctionStart';
 
-const mockUseAccount = jest.fn().mockReturnValue({ address: '0xUserAddress' });
-const mockUseReadContract = jest.fn().mockReturnValue({
+const mockUseAccount = vi.fn().mockReturnValue({ address: '0xUserAddress' });
+const mockUseReadContract = vi.fn().mockReturnValue({
   data: undefined,
   isLoading: false,
-  refetch: jest.fn().mockResolvedValue({ data: undefined }),
+  refetch: vi.fn().mockResolvedValue({ data: undefined }),
 });
-jest.mock('wagmi', () => ({
+vi.mock('wagmi', () => ({
   useAccount: (...args: unknown[]) => mockUseAccount(...args),
   useReadContract: (...args: unknown[]) => mockUseReadContract(...args),
   useSignTypedData: () => ({
-    signTypedDataAsync: jest.fn().mockResolvedValue('0xMockSignature'),
+    signTypedDataAsync: vi.fn().mockResolvedValue('0xMockSignature'),
   }),
   erc20Abi: [],
 }));
 
-const mockEncodeFunctionData = jest.fn().mockReturnValue('0xEncodedCalldata');
-jest.mock('viem', () => ({
+const mockEncodeFunctionData = vi.fn().mockReturnValue('0xEncodedCalldata');
+vi.mock('viem', () => ({
   encodeFunctionData: (...args: unknown[]) => mockEncodeFunctionData(...args),
   erc20Abi: [],
-  parseAbi: jest.fn().mockReturnValue([]),
+  parseAbi: vi.fn().mockReturnValue([]),
 }));
 
-const mockPrepareMintCalls = jest.fn().mockReturnValue([
+const mockPrepareMintCalls = vi.fn().mockReturnValue([
   {
     to: '0xMarket' as `0x${string}`,
     data: '0xEncodedCalldata' as `0x${string}`,
   },
 ]);
-jest.mock('@sapience/sdk', () => ({
-  predictionMarketAbi: [],
+vi.mock('@sapience/sdk', () => ({
   generateRandomNonce: () => BigInt(12345),
   toBigIntSafe: (value: string | number | bigint | undefined) => {
     if (value === undefined) return undefined;
     return BigInt(value);
   },
-  validateTakerFunds: jest.fn().mockResolvedValue(undefined),
+  validateCounterpartyFunds: vi.fn().mockResolvedValue(undefined),
   prepareMintCalls: (...args: unknown[]) => mockPrepareMintCalls(...args),
 }));
 
-jest.mock('@sapience/sdk/constants', () => ({
+vi.mock('@sapience/sdk/constants', () => ({
   CHAIN_ID_ETHEREAL: 5064014,
   CHAIN_ID_ETHEREAL_TESTNET: 13374202,
 }));
 
-jest.mock('@sapience/sdk/contracts', () => ({
+vi.mock('@sapience/sdk/contracts', () => ({
   collateralToken: {
     5064014: { address: '0xCollateralEthereal' },
     42161: { address: '0xCollateralArbitrum' },
   },
 }));
 
-jest.mock('@sapience/sdk/auction/escrowSigning', () => ({
-  buildPredictorMintTypedData: jest.fn().mockReturnValue({
+vi.mock('@sapience/sdk/auction/escrowSigning', () => ({
+  buildPredictorMintTypedData: vi.fn().mockReturnValue({
     domain: {
       name: 'Test',
       version: '1',
@@ -67,33 +67,33 @@ jest.mock('@sapience/sdk/auction/escrowSigning', () => ({
   }),
 }));
 
-jest.mock('~/lib/session/sessionKeyManager', () => ({
-  encodeEscrowSessionKeyData: jest.fn().mockReturnValue('0xSessionKeyData'),
+vi.mock('~/lib/session/sessionKeyManager', () => ({
+  encodeEscrowSessionKeyData: vi.fn().mockReturnValue('0xSessionKeyData'),
 }));
 
-const mockSendCalls = jest.fn();
+const mockSendCalls = vi.fn();
 let capturedCallbacks: Record<string, (...args: unknown[]) => void> = {};
 
-jest.mock('~/hooks/blockchain/useSapienceWriteContract', () => ({
+vi.mock('~/hooks/blockchain/useSapienceWriteContract', () => ({
   useSapienceWriteContract: (opts: Record<string, unknown>) => {
     capturedCallbacks = opts as Record<string, (...args: unknown[]) => void>;
     return {
-      writeContract: jest.fn(),
+      writeContract: vi.fn(),
       sendCalls: mockSendCalls,
       isPending: false,
-      reset: jest.fn(),
+      reset: vi.fn(),
     };
   },
 }));
 
-jest.mock('~/lib/context/SessionContext', () => ({
+vi.mock('~/lib/context/SessionContext', () => ({
   useSession: () => ({
     effectiveAddress: '0xUserAddress',
   }),
 }));
 
-const mockReadContract = jest.fn().mockResolvedValue(0n);
-jest.mock('~/lib/utils/util', () => ({
+const mockReadContract = vi.fn().mockResolvedValue(0n);
+vi.mock('~/lib/utils/util', () => ({
   getPublicClientForChainId: () => ({
     readContract: (...args: unknown[]) => mockReadContract(...args),
   }),
@@ -106,12 +106,13 @@ const DEFAULT_PROPS = {
 };
 
 const VALID_MINT_DATA: MintPredictionRequestData = {
-  makerCollateral: '1000000000000000000', // 1e18
-  takerCollateral: '2000000000000000000', // 2e18
-  maker: '0xUserAddress' as `0x${string}`,
-  taker: '0xBidder' as `0x${string}`,
-  takerSignature: '0xSig' as `0x${string}`,
-  takerDeadline: '9999999999',
+  predictorCollateral: '1000000000000000000', // 1e18
+  counterpartyCollateral: '2000000000000000000', // 2e18
+  predictor: '0xUserAddress' as `0x${string}`,
+  counterparty: '0xBidder' as `0x${string}`,
+  counterpartySignature: '0xSig' as `0x${string}`,
+  counterpartyDeadline: '9999999999',
+  predictorDeadline: '9999999999',
   refCode:
     '0x0000000000000000000000000000000000000000000000000000000000000000' as `0x${string}`,
   picks: [
@@ -125,16 +126,16 @@ const VALID_MINT_DATA: MintPredictionRequestData = {
 
 describe('useSubmitPosition', () => {
   beforeEach(() => {
-    jest.clearAllMocks();
+    vi.clearAllMocks();
     mockSendCalls.mockResolvedValue(undefined);
-    // Default: makerNonce query returns 0n, refetch returns 0n
+    // Default: predictorNonce query returns 0n, refetch returns 0n
     mockUseReadContract.mockReturnValue({
       data: 0n,
       isLoading: false,
-      refetch: jest.fn().mockResolvedValue({ data: 0n }),
+      refetch: vi.fn().mockResolvedValue({ data: 0n }),
     });
     mockUseAccount.mockReturnValue({ address: '0xUserAddress' });
-    // Mock taker validation - return enough balance/allowance
+    // Mock counterparty validation - return enough balance/allowance
     mockReadContract.mockResolvedValue(999999999999999999999n);
   });
 
@@ -162,7 +163,7 @@ describe('useSubmitPosition', () => {
   it('submitPosition happy path calls sendCalls with batch of calls', async () => {
     const mintData: MintPredictionRequestData = {
       ...VALID_MINT_DATA,
-      makerNonce: 0n,
+      predictorNonce: 0n,
     };
 
     const { result } = renderHook(() => useSubmitPosition(DEFAULT_PROPS));
@@ -185,11 +186,11 @@ describe('useSubmitPosition', () => {
     expect(result.current.error).toBeNull();
   });
 
-  it('sets error when maker !== effectiveAddress (address mismatch)', async () => {
+  it('sets error when predictor !== effectiveAddress (address mismatch)', async () => {
     const mintData: MintPredictionRequestData = {
       ...VALID_MINT_DATA,
-      maker: '0xDifferentAddress' as `0x${string}`,
-      makerNonce: 0n,
+      predictor: '0xDifferentAddress' as `0x${string}`,
+      predictorNonce: 0n,
     };
 
     const { result } = renderHook(() => useSubmitPosition(DEFAULT_PROPS));
@@ -206,7 +207,7 @@ describe('useSubmitPosition', () => {
   it('uses provided auction nonce directly without on-chain check', async () => {
     const mintData: MintPredictionRequestData = {
       ...VALID_MINT_DATA,
-      makerNonce: 42n,
+      predictorNonce: 42n,
     };
 
     const { result } = renderHook(() => useSubmitPosition(DEFAULT_PROPS));
@@ -225,9 +226,9 @@ describe('useSubmitPosition', () => {
 
     const mintData: MintPredictionRequestData = {
       ...VALID_MINT_DATA,
-      // no makerNonce → non-auction submission, hook generates random nonce
+      // no predictorNonce → non-auction submission, hook generates random nonce
     };
-    delete (mintData as Partial<MintPredictionRequestData>).makerNonce;
+    delete (mintData as Partial<MintPredictionRequestData>).predictorNonce;
 
     const { result } = renderHook(() => useSubmitPosition(DEFAULT_PROPS));
 
@@ -245,7 +246,7 @@ describe('useSubmitPosition', () => {
 
     const mintData: MintPredictionRequestData = {
       ...VALID_MINT_DATA,
-      makerNonce: 0n, // auction-provided nonce
+      predictorNonce: 0n, // auction-provided nonce
     };
 
     const { result } = renderHook(() => useSubmitPosition(DEFAULT_PROPS));
@@ -289,7 +290,7 @@ describe('useSubmitPosition', () => {
 
     const mintData: MintPredictionRequestData = {
       ...VALID_MINT_DATA,
-      makerNonce: 0n,
+      predictorNonce: 0n,
     };
 
     await act(async () => {
@@ -306,7 +307,7 @@ describe('useSubmitPosition', () => {
 
     const mintData: MintPredictionRequestData = {
       ...VALID_MINT_DATA,
-      makerNonce: 0n,
+      predictorNonce: 0n,
     };
 
     await act(async () => {

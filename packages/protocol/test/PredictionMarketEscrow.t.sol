@@ -29,8 +29,10 @@ contract PredictionMarketEscrowTest is Test {
         PREDICTOR_COLLATERAL + COUNTERPARTY_COLLATERAL;
     bytes32 public constant REF_CODE = keccak256("test-ref-code");
 
-    bytes32 public conditionId1;
-    bytes32 public conditionId2;
+    bytes public conditionId1;
+    bytes public conditionId2;
+    bytes32 public rawConditionId1;
+    bytes32 public rawConditionId2;
 
     uint256 private _nextNonce = 1;
 
@@ -63,8 +65,10 @@ contract PredictionMarketEscrowTest is Test {
         resolver.approveSettler(settler);
 
         // Create condition IDs
-        conditionId1 = keccak256(abi.encode("condition-1"));
-        conditionId2 = keccak256(abi.encode("condition-2"));
+        rawConditionId1 = keccak256(abi.encode("condition-1"));
+        rawConditionId2 = keccak256(abi.encode("condition-2"));
+        conditionId1 = abi.encode(rawConditionId1);
+        conditionId2 = abi.encode(rawConditionId2);
 
         // Mint tokens to users
         collateralToken.mint(predictor, 10_000e18);
@@ -79,11 +83,10 @@ contract PredictionMarketEscrowTest is Test {
 
     // ============ Helper Functions ============
 
-    function _createPick(bytes32 _conditionId, IV2Types.OutcomeSide _outcome)
-        internal
-        view
-        returns (IV2Types.Pick memory)
-    {
+    function _createPick(
+        bytes memory _conditionId,
+        IV2Types.OutcomeSide _outcome
+    ) internal view returns (IV2Types.Pick memory) {
         return IV2Types.Pick({
             conditionResolver: address(resolver),
             conditionId: _conditionId,
@@ -237,9 +240,15 @@ contract PredictionMarketEscrowTest is Test {
     }
 
     function test_mint_multiplePicks() public {
+        // Sort by keccak256 hash for canonical ordering
+        (bytes memory first, bytes memory second) = keccak256(conditionId1)
+            < keccak256(conditionId2)
+            ? (conditionId1, conditionId2)
+            : (conditionId2, conditionId1);
+
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](2);
-        picks[0] = _createPick(conditionId1, IV2Types.OutcomeSide.YES);
-        picks[1] = _createPick(conditionId2, IV2Types.OutcomeSide.NO);
+        picks[0] = _createPick(first, IV2Types.OutcomeSide.YES);
+        picks[1] = _createPick(second, IV2Types.OutcomeSide.NO);
 
         (
             bytes32 predictionId,
@@ -257,8 +266,8 @@ contract PredictionMarketEscrowTest is Test {
         IV2Types.Pick[] memory storedPicks =
             market.getPicks(prediction.pickConfigId);
         assertEq(storedPicks.length, 2);
-        assertEq(storedPicks[0].conditionId, conditionId1);
-        assertEq(storedPicks[1].conditionId, conditionId2);
+        assertEq(storedPicks[0].conditionId, first);
+        assertEq(storedPicks[1].conditionId, second);
     }
 
     function test_mint_revertIfNoPicks() public {
@@ -309,7 +318,7 @@ contract PredictionMarketEscrowTest is Test {
 
         // Settle condition to YES
         vm.prank(settler);
-        resolver.settleCondition(conditionId1, IV2Types.OutcomeVector(1, 0));
+        resolver.settleCondition(rawConditionId1, IV2Types.OutcomeVector(1, 0));
 
         // Settle prediction
         market.settle(predictionId, REF_CODE);
@@ -335,7 +344,7 @@ contract PredictionMarketEscrowTest is Test {
 
         // Settle condition to NO (predictor loses)
         vm.prank(settler);
-        resolver.settleCondition(conditionId1, IV2Types.OutcomeVector(0, 1));
+        resolver.settleCondition(rawConditionId1, IV2Types.OutcomeVector(0, 1));
 
         // Settle prediction
         market.settle(predictionId, REF_CODE);
@@ -361,7 +370,7 @@ contract PredictionMarketEscrowTest is Test {
 
         // Settle condition to TIE
         vm.prank(settler);
-        resolver.settleCondition(conditionId1, IV2Types.OutcomeVector(1, 1));
+        resolver.settleCondition(rawConditionId1, IV2Types.OutcomeVector(1, 1));
 
         // Settle prediction
         market.settle(predictionId, REF_CODE);
@@ -392,7 +401,7 @@ contract PredictionMarketEscrowTest is Test {
         (bytes32 predictionId,,) = _mintPrediction(picks);
 
         vm.prank(settler);
-        resolver.settleCondition(conditionId1, IV2Types.OutcomeVector(1, 0));
+        resolver.settleCondition(rawConditionId1, IV2Types.OutcomeVector(1, 0));
 
         market.settle(predictionId, REF_CODE);
 
@@ -425,7 +434,7 @@ contract PredictionMarketEscrowTest is Test {
 
         // Settle to predictor wins
         vm.prank(settler);
-        resolver.settleCondition(conditionId1, IV2Types.OutcomeVector(1, 0));
+        resolver.settleCondition(rawConditionId1, IV2Types.OutcomeVector(1, 0));
         market.settle(predictionId, REF_CODE);
 
         // Predictor redeems (full token balance = TOTAL_COLLATERAL)
@@ -452,7 +461,7 @@ contract PredictionMarketEscrowTest is Test {
 
         // Settle to counterparty wins
         vm.prank(settler);
-        resolver.settleCondition(conditionId1, IV2Types.OutcomeVector(0, 1));
+        resolver.settleCondition(rawConditionId1, IV2Types.OutcomeVector(0, 1));
         market.settle(predictionId, REF_CODE);
 
         // Counterparty redeems (full token balance = TOTAL_COLLATERAL)
@@ -483,7 +492,7 @@ contract PredictionMarketEscrowTest is Test {
 
         // Settle to tie — non-decisive treated as counterparty wins
         vm.prank(settler);
-        resolver.settleCondition(conditionId1, IV2Types.OutcomeVector(1, 1));
+        resolver.settleCondition(rawConditionId1, IV2Types.OutcomeVector(1, 1));
         market.settle(predictionId, REF_CODE);
 
         // Predictor gets nothing
@@ -508,7 +517,7 @@ contract PredictionMarketEscrowTest is Test {
 
         // Settle to predictor wins
         vm.prank(settler);
-        resolver.settleCondition(conditionId1, IV2Types.OutcomeVector(1, 0));
+        resolver.settleCondition(rawConditionId1, IV2Types.OutcomeVector(1, 0));
         market.settle(predictionId, REF_CODE);
 
         // Predictor redeems half of their tokens
@@ -552,7 +561,7 @@ contract PredictionMarketEscrowTest is Test {
         (bytes32 predictionId,,) = _mintPrediction(picks);
 
         vm.prank(settler);
-        resolver.settleCondition(conditionId1, IV2Types.OutcomeVector(1, 0));
+        resolver.settleCondition(rawConditionId1, IV2Types.OutcomeVector(1, 0));
 
         assertTrue(market.canSettle(predictionId));
     }

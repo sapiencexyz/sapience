@@ -44,6 +44,8 @@ interface PredictionFormProps {
   nonDecisive?: boolean | null;
   /** End time of the market (Unix timestamp in seconds) */
   endTime?: number | null;
+  /** Persisted Polymarket YES price (0-1). Shown while auction quote is loading. */
+  estimatedPrice?: number | null;
 }
 
 export default function PredictionForm({
@@ -61,6 +63,7 @@ export default function PredictionForm({
   resolvedToYes,
   nonDecisive,
   endTime,
+  estimatedPrice,
 }: PredictionFormProps) {
   const [selectedPrediction] = React.useState<boolean | null>(true);
   const positionSize = '1'; // Fixed position size for forecast calculation
@@ -222,7 +225,7 @@ export default function PredictionForm({
                     : 'border-no/40 bg-no/10 text-no'
               }`}
             >
-              {nonDecisive ? 'TIE' : resolvedToYes ? 'YES' : 'NO'}
+              {nonDecisive ? 'INDECISIVE' : resolvedToYes ? 'YES' : 'NO'}
             </Badge>
           </div>
         </div>
@@ -244,6 +247,16 @@ export default function PredictionForm({
                   className="font-mono"
                   colorByProbability
                 />
+              ) : isWaitingForBids && estimatedPrice != null ? (
+                <span className="animate-pulse inline-flex">
+                  <PercentChance
+                    probability={estimatedPrice}
+                    showLabel
+                    label="chance"
+                    className="font-mono"
+                    colorByProbability
+                  />
+                </span>
               ) : isWaitingForBids ? (
                 <span className="text-muted-foreground/60 animate-pulse">
                   Requesting...

@@ -120,6 +120,7 @@ export default defineConfig({
       {
         text: "Resources",
         items: [
+          { text: "Bug Bounty", link: "/user-guide/other-resources/bugbounty" },
           { text: "Audits", link: "/user-guide/other-resources/audits" },
           {
             text: "Brand Assets",

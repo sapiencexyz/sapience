@@ -65,9 +65,20 @@ export async function GET(req: Request) {
     const height = HEIGHT;
     const scale = getScale(width);
 
-    // Avatar: ENS avatar or blockie fallback
+    // Avatar: ENS avatar (pre-validated) or blockie fallback
     const blockieSrc = blo(address);
-    const avatarSrc = ensInfo.avatarUrl || blockieSrc;
+    let avatarSrc = blockieSrc;
+    if (ensInfo.avatarUrl) {
+      try {
+        const check = await fetch(ensInfo.avatarUrl, {
+          method: 'HEAD',
+          signal: AbortSignal.timeout(2000),
+        });
+        if (check.ok) avatarSrc = ensInfo.avatarUrl;
+      } catch {
+        // Unreachable or slow — fall back to blockie
+      }
+    }
     const avatarSize = Math.round(100 * scale);
 
     // Build two rows of metrics

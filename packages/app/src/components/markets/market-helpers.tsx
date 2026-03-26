@@ -12,11 +12,8 @@ import {
 } from '@sapience/ui/components/ui/tooltip';
 import { Badge } from '@sapience/ui/components/ui/badge';
 import { cn } from '@sapience/ui/lib/utils';
-import MarketPredictionRequest from '~/components/shared/MarketPredictionRequest';
-import YesNoSplitButton from '~/components/shared/YesNoSplitButton';
-import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
-import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
-import { getDeterministicCategoryColor } from '~/lib/theme/categoryPalette';
+import type { FilterState } from './TableFilters';
+import { inferResolverKind } from '~/lib/resolvers/conditionResolver';
 import type { ConditionType } from '~/hooks/graphql/useConditions';
 import type { ConditionGroupConditionType } from '~/hooks/graphql/useConditionGroups';
 import type {
@@ -24,7 +21,11 @@ import type {
   SortDirection,
   QuestionType,
 } from '~/hooks/graphql/useInfiniteQuestions';
-import type { FilterState } from './TableFilters';
+import MarketPredictionRequest from '~/components/shared/MarketPredictionRequest';
+import YesNoSplitButton from '~/components/shared/YesNoSplitButton';
+import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
+import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
+import { getDeterministicCategoryColor } from '~/lib/theme/categoryPalette';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -63,7 +64,6 @@ export function groupConditionToConditionType(
     shortName: gc.shortName,
     endTime: gc.endTime,
     public: gc.public,
-    claimStatement: gc.claimStatement,
     description: gc.description,
     similarMarkets: gc.similarMarkets,
     chainId: gc.chainId,
@@ -76,6 +76,7 @@ export function groupConditionToConditionType(
     assertionId: gc.assertionId,
     assertionTimestamp: gc.assertionTimestamp,
     conditionGroupId: gc.conditionGroupId,
+    estimatedPrice: gc.estimatedPrice,
   };
 }
 
@@ -202,7 +203,7 @@ export function ResolutionBadge({ status }: { status: ResolutionBadgeStatus }) {
           variant="outline"
           className="px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono border-muted-foreground/40 bg-muted/20 text-muted-foreground"
         >
-          TIE
+          INDECISIVE
         </Badge>
       </div>
     );
@@ -312,6 +313,7 @@ export function ForecastCell({
     <MarketPredictionRequest
       conditionId={condition.id}
       prefetchedProbability={prefetchedProbability}
+      estimatedPrice={condition.estimatedPrice}
       onPrediction={onPrediction}
       skipViewportCheck={skipViewportCheck}
       chainId={condition.chainId}
@@ -419,6 +421,13 @@ export function PredictCell({
     );
   }
 
+  // Pyth conditions can't accept new predictions after endTime (settlement is on-chain via oracle).
+  // Polymarket conditions may still be tradeable after endTime, so don't disable those.
+  const isPythPastEnd =
+    inferResolverKind(condition.resolver) === 'pyth' &&
+    !!condition.endTime &&
+    condition.endTime <= Math.floor(Date.now() / 1000);
+
   return (
     <div className={cn('w-full font-mono', className)}>
       <YesNoSplitButton
@@ -431,6 +440,7 @@ export function PredictCell({
         selectedYes={selectionState.selectedYes}
         selectedNo={selectionState.selectedNo}
         colorScheme={colorScheme}
+        disabled={isPythPastEnd}
       />
     </div>
   );

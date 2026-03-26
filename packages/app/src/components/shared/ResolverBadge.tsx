@@ -5,8 +5,8 @@ import { Badge } from '@sapience/ui/components/ui/badge';
 import { Copy, Gavel } from 'lucide-react';
 import { useMemo } from 'react';
 import {
-  UMA_RESOLVER_DISPLAY,
   POLYMARKET_RESOLVER_DISPLAY,
+  PYTH_RESOLVER_DISPLAY,
 } from '~/lib/constants';
 
 interface ResolverBadgeProps {
@@ -27,16 +27,16 @@ export function ResolverBadge({
   const resolverInfo = useMemo(() => {
     if (!resolverAddress) return null;
     const normalizedAddress = resolverAddress.toLowerCase();
-    // Find matching resolver info (case-insensitive) - check UMA first, then Polymarket
-    const umaEntry = Object.entries(UMA_RESOLVER_DISPLAY).find(
-      ([address]) => address.toLowerCase() === normalizedAddress
-    );
-    if (umaEntry) return UMA_RESOLVER_DISPLAY[umaEntry[0]];
 
     const polymarketEntry = Object.entries(POLYMARKET_RESOLVER_DISPLAY).find(
       ([address]) => address.toLowerCase() === normalizedAddress
     );
     if (polymarketEntry) return POLYMARKET_RESOLVER_DISPLAY[polymarketEntry[0]];
+
+    const pythEntry = Object.entries(PYTH_RESOLVER_DISPLAY).find(
+      ([address]) => address.toLowerCase() === normalizedAddress
+    );
+    if (pythEntry) return PYTH_RESOLVER_DISPLAY[pythEntry[0]];
 
     return null;
   }, [resolverAddress]);

@@ -3,38 +3,25 @@ import {
   createWalletClient,
   http,
   encodeFunctionData,
-  parseAbi,
   type Chain,
+  type Hex,
   type PublicClient,
   type WalletClient,
   type Transport,
   type Account,
 } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
-import { collateralToken, predictionMarketEscrow } from '../contracts/addresses';
+import {
+  collateralToken,
+  predictionMarketEscrow,
+} from '../contracts/addresses';
 import {
   CHAIN_ID_ETHEREAL,
   DEFAULT_CHAIN_ID,
   etherealChain,
   getRpcUrl,
 } from '../constants/chain';
-import { getCollateralAddress } from '../constants/addresses';
-
-type Hex = `0x${string}`;
-
-// WUSDe ABI for wrap/unwrap operations
-const WUSDE_ABI = parseAbi([
-  'function deposit() payable',
-  'function withdraw(uint256 amount)',
-  'function balanceOf(address account) view returns (uint256)',
-]);
-
-// ERC20 ABI for approvals
-const ERC20_ABI = parseAbi([
-  'function approve(address spender, uint256 amount) returns (bool)',
-  'function allowance(address owner, address spender) view returns (uint256)',
-  'function balanceOf(address account) view returns (uint256)',
-]);
+import { WUSDE_ABI, ERC20_ABI } from './sharedAbis';
 
 /**
  * Create a public client for the trading chain
@@ -73,7 +60,7 @@ export async function getWUSDEBalance(
 ): Promise<bigint> {
   const client = createTradingPublicClient(rpcUrl);
   const balance = await client.readContract({
-    address: getCollateralAddress(chainId),
+    address: collateralToken[chainId]?.address,
     abi: WUSDE_ABI,
     functionName: 'balanceOf',
     args: [address],
@@ -103,15 +90,15 @@ export async function wrapUSDe(args: {
   chainId?: number;
 }): Promise<{ hash: Hex }> {
   const { privateKey, amount, rpcUrl, chainId = DEFAULT_CHAIN_ID } = args;
-  
+
   if (amount <= 0n) {
     throw new Error('Amount must be greater than 0');
   }
 
   const walletClient = createTradingWalletClient(privateKey, rpcUrl);
-  
+
   const hash = await walletClient.sendTransaction({
-    to: getCollateralAddress(chainId),
+    to: collateralToken[chainId]?.address,
     data: encodeFunctionData({
       abi: WUSDE_ABI,
       functionName: 'deposit',
@@ -133,15 +120,15 @@ export async function unwrapUSDe(args: {
   chainId?: number;
 }): Promise<{ hash: Hex }> {
   const { privateKey, amount, rpcUrl, chainId = DEFAULT_CHAIN_ID } = args;
-  
+
   if (amount <= 0n) {
     throw new Error('Amount must be greater than 0');
   }
 
   const walletClient = createTradingWalletClient(privateKey, rpcUrl);
-  
+
   const hash = await walletClient.sendTransaction({
-    to: getCollateralAddress(chainId),
+    to: collateralToken[chainId]?.address,
     data: encodeFunctionData({
       abi: WUSDE_ABI,
       functionName: 'withdraw',
@@ -164,28 +151,28 @@ export async function getWUSDEAllowance(args: {
 }): Promise<bigint> {
   const { owner, spender, rpcUrl, chainId = DEFAULT_CHAIN_ID } = args;
   const publicClient = createTradingPublicClient(rpcUrl);
-  
+
   const allowance = await publicClient.readContract({
-    address: getCollateralAddress(chainId),
+    address: collateralToken[chainId]?.address,
     abi: ERC20_ABI,
     functionName: 'allowance',
     args: [owner, spender],
   });
-  
+
   return allowance as bigint;
 }
 
 /**
  * Complete preparation for trading: wraps USDe to WUSDe and approves for spending.
- * 
+ *
  * This function optimizes wrapping by only converting the additional USDe needed:
  * 1. Check existing WUSDe balance and only wrap the difference needed
  * 2. Check allowance and approve only if insufficient
  * 3. Execute transactions sequentially, waiting for each to confirm
- * 
+ *
  * On Ethereal chain, native token is USDe but contracts expect WUSDe (Wrapped USDe).
  * This function handles the wrapping and approval automatically.
- * 
+ *
  * @example
  * ```ts
  * const { ready, wrapTxHash, approvalTxHash } = await prepareForTrade({
@@ -209,29 +196,46 @@ export async function prepareForTrade(args: {
   approvalTxHash?: Hex;
   wusdBalance: bigint;
 }> {
-  const { privateKey, collateralAmount, rpcUrl, chainId = DEFAULT_CHAIN_ID } = args;
-  const spender = args.spender || (predictionMarketEscrow[chainId]?.address ?? predictionMarketEscrow[CHAIN_ID_ETHEREAL]?.address) as Hex;
-  
+  const {
+    privateKey,
+    collateralAmount,
+    rpcUrl,
+    chainId = DEFAULT_CHAIN_ID,
+  } = args;
+  const spender =
+    args.spender ||
+    ((predictionMarketEscrow[chainId]?.address ??
+      predictionMarketEscrow[CHAIN_ID_ETHEREAL]?.address) as Hex);
+
   if (!spender) {
-    throw new Error('No spender address provided and no default PredictionMarket address found');
+    throw new Error(
+      'No spender address provided and no default PredictionMarket address found'
+    );
   }
 
   const account = privateKeyToAccount(privateKey);
   const publicClient = createTradingPublicClient(rpcUrl);
   const walletClient = createTradingWalletClient(privateKey, rpcUrl);
-  
+
   let wrapTxHash: Hex | undefined;
   let approvalTxHash: Hex | undefined;
 
   // Step 1: Check existing WUSDe balance and only wrap the additional amount needed
-  const currentWUSDEBalance = await getWUSDEBalance(account.address, rpcUrl, chainId);
-  const amountToWrap = collateralAmount > currentWUSDEBalance 
-    ? collateralAmount - currentWUSDEBalance 
-    : 0n;
+  const currentWUSDEBalance = await getWUSDEBalance(
+    account.address,
+    rpcUrl,
+    chainId
+  );
+  const amountToWrap =
+    collateralAmount > currentWUSDEBalance
+      ? collateralAmount - currentWUSDEBalance
+      : 0n;
 
   if (amountToWrap > 0n) {
     // Check if we have enough native USDe to wrap the additional amount
-    const nativeBalance = await publicClient.getBalance({ address: account.address });
+    const nativeBalance = await publicClient.getBalance({
+      address: account.address,
+    });
     if (nativeBalance < amountToWrap) {
       throw new Error(
         `Insufficient native USDe balance. Need ${amountToWrap} more to wrap, but only have ${nativeBalance}`
@@ -245,7 +249,7 @@ export async function prepareForTrade(args: {
       chainId,
     });
     wrapTxHash = hash;
-    
+
     // Wait for wrap transaction to confirm before proceeding (nonce handling)
     await publicClient.waitForTransactionReceipt({ hash: wrapTxHash });
   }
@@ -261,13 +265,13 @@ export async function prepareForTrade(args: {
   if (currentAllowance < collateralAmount) {
     // Approve the exact amount needed (or could use max approval for convenience)
     const hash = await walletClient.writeContract({
-      address: getCollateralAddress(chainId),
+      address: collateralToken[chainId]?.address,
       abi: ERC20_ABI,
       functionName: 'approve',
       args: [spender, collateralAmount],
     });
     approvalTxHash = hash;
-    
+
     // Wait for approval transaction to confirm before proceeding (nonce handling)
     await publicClient.waitForTransactionReceipt({ hash: approvalTxHash });
   }
@@ -282,4 +286,3 @@ export async function prepareForTrade(args: {
     wusdBalance,
   };
 }
-

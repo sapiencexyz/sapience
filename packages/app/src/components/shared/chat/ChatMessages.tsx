@@ -53,6 +53,9 @@ export function ChatMessages({
       className={`overflow-y-auto overscroll-contain p-3 space-y-3 ${className}`}
     >
       {messages.map((m, index) => {
+        const hasContent = (m.text ?? '').trim().length > 0;
+        if (!hasContent && !m.error) return null;
+
         const prevMessage = index > 0 ? messages[index - 1] : null;
         const isSameAddressAsPrev = isSameAddress(
           prevMessage?.address,
@@ -88,11 +91,13 @@ export function ChatMessages({
                 </div>
               )
             )}
-            <div
-              className={`inline-block px-2 py-1 rounded ${m.author === 'me' ? 'bg-primary text-primary-foreground' : 'bg-muted'} ${m.error ? 'ring-1 ring-destructive/50' : ''} max-w-[80%] text-left break-words`}
-            >
-              <SafeMarkdown content={m.text} variant="compact" />
-            </div>
+            {hasContent && (
+              <div
+                className={`inline-block px-2 py-1 rounded ${m.author === 'me' ? 'bg-primary text-primary-foreground' : 'bg-muted'} ${m.error ? 'ring-1 ring-destructive/50' : ''} max-w-[80%] text-left break-words`}
+              >
+                <SafeMarkdown content={m.text} variant="compact" />
+              </div>
+            )}
             {m.error && (
               <div className="text-[10px] text-destructive mt-0.5 opacity-80">
                 {m.error}

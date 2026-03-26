@@ -511,10 +511,10 @@ contract LZConditionResolverUmaSideTest is TestHelperOz5 {
         verifyPackets(pmEid, addressToBytes32(address(pmResolver)));
 
         // Check PM resolver received the resolution
-        assertTrue(pmResolver.isFinalized(conditionId));
+        assertTrue(pmResolver.isFinalized(abi.encode(conditionId)));
 
         (bool isResolved, IV2Types.OutcomeVector memory outcome) =
-            pmResolver.getResolution(conditionId);
+            pmResolver.getResolution(abi.encode(conditionId));
         assertTrue(isResolved);
         assertEq(outcome.yesWeight, 1);
         assertEq(outcome.noWeight, 0);
@@ -537,7 +537,7 @@ contract LZConditionResolverUmaSideTest is TestHelperOz5 {
 
         // Check resolution
         (bool isResolved, IV2Types.OutcomeVector memory outcome) =
-            pmResolver.getResolution(conditionId);
+            pmResolver.getResolution(abi.encode(conditionId));
         assertTrue(isResolved);
         assertEq(outcome.yesWeight, 0);
         assertEq(outcome.noWeight, 1);

@@ -1,0 +1,59 @@
+{
+  "name": "@sapience/market-keeper",
+  "version": "1.0.0",
+  "private": true,
+  "license": "MIT",
+  "description": "Scripts for managing Sapience conditions from Polymarket markets",
+  "scripts": {
+    "build": "tsc",
+    "generate": "tsx scripts/generate.ts",
+    "generate:dry-run": "LLM_ENABLED=false tsx scripts/generate.ts --dry-run",
+    "settle-polymarket": "tsx scripts/settle-polymarket.ts",
+    "settle-polymarket:dry-run": "tsx scripts/settle-polymarket.ts --dry-run",
+    "settle-polymarket:execute": "tsx scripts/settle-polymarket.ts --execute",
+    "settle-polymarket:execute:wait": "tsx scripts/settle-polymarket.ts --execute --wait",
+    "settle-pyth": "tsx scripts/settle-pyth.ts",
+    "settle-pyth:dry-run": "tsx scripts/settle-pyth.ts --dry-run",
+    "settle-pyth:execute": "tsx scripts/settle-pyth.ts --execute",
+    "settle-pyth:execute:wait": "tsx scripts/settle-pyth.ts --execute --wait",
+    "settle-manual": "tsx scripts/settle-manual.ts",
+    "settle-manual:dry-run": "tsx scripts/settle-manual.ts --dry-run",
+    "settle-manual:execute": "tsx scripts/settle-manual.ts --execute",
+    "settle-manual:execute:wait": "tsx scripts/settle-manual.ts --execute --wait",
+    "relist": "tsx scripts/relist.ts",
+    "relist:dry-run": "LLM_ENABLED=false tsx scripts/relist.ts --dry-run",
+    "refresh-prices": "tsx scripts/refresh-prices.ts",
+    "refresh-prices:dry-run": "tsx scripts/refresh-prices.ts --dry-run",
+    "cleanup-polymarket": "tsx scripts/cleanup-polymarket.ts",
+    "cleanup-polymarket:dry-run": "tsx scripts/cleanup-polymarket.ts --dry-run",
+    "cleanup-polymarket:execute": "tsx scripts/cleanup-polymarket.ts --execute",
+    "start": "node scripts/start.js",
+    "lint": "eslint src --quiet",
+    "lint:fix": "eslint src --fix --quiet && pnpm format",
+    "format": "prettier --write src scripts",
+    "type-check": "tsc --noEmit",
+    "format:check": "prettier --check src scripts",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@sapience/sdk": "workspace:*",
+    "dotenv": "16.4.5",
+    "viem": "2.47.2"
+  },
+  "devDependencies": {
+    "vitest": "3.0.0",
+    "tsx": "4.19.2",
+    "@eslint/js": "9.18.0",
+    "@types/node": "20.17.10",
+    "eslint": "9.15.0",
+    "eslint-plugin-import": "2.32.0",
+    "globals": "15.11.0",
+    "prettier": "3.3.3",
+    "typescript": "5.8.3",
+    "typescript-eslint": "8.21.0"
+  },
+  "engines": {
+    "node": ">=22.x",
+    "pnpm": "9.x"
+  }
+}

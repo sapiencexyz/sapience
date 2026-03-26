@@ -16,7 +16,7 @@ datasource db {
 model Category {
   id           Int            @id(map: "PK_9c4e4a89e3674fc9f382d733f03") @default(autoincrement())
   createdAt    DateTime       @default(now()) @db.Timestamp(6)
-  name         String         @unique(map: "UQ_23c05c292c439d77b0de816b500") @db.VarChar
+  name         String         @db.VarChar
   slug         String         @unique(map: "UQ_cb73208f151aa71cdd78f662d70") @db.VarChar
   /// @TypeGraphQL.field(name: "conditions")
   condition       Condition[]
@@ -173,15 +173,17 @@ model Condition {
   category         Category?       @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   endTime          Int
   public           Boolean         @default(true)
-  claimStatement   String          @db.VarChar
   description      String          @db.Text
   similarMarkets   String[]        @default([])
+  tags             String[]        @default([])
   chainId          Int             @default(42161)
   openInterest     String          @default("0") @db.VarChar
   predictionCount  Int             @default(0)
   /// Canonical resolver address for this condition (latest observed wins)
   resolver         String?         @db.VarChar
-  
+  /// YES probability from Polymarket (0.0–1.0), null for non-Polymarket
+  estimatedPrice   Float?
+
   // Resolution status
   settled          Boolean         @default(false)
   resolvedToYes    Boolean         @default(false)
@@ -495,13 +497,15 @@ model Prediction {
   marketAddress          String    @db.VarChar
   predictor              String    @db.VarChar
   counterparty           String    @db.VarChar
-  predictorToken         String    @db.VarChar
-  counterpartyToken      String    @db.VarChar
   predictorCollateral    String    @db.VarChar
   counterpartyCollateral String    @db.VarChar
   onChainCreatedAt       Int
   createTxHash           String    @db.VarChar
   refCode                String?   @db.VarChar
+
+  // Pick configuration FK (nullable for rare RPC-error cases)
+  pickConfigId           String?   @db.VarChar
+  pickConfiguration      Picks?    @relation(fields: [pickConfigId], references: [id])
 
   // Settlement
   settled                Boolean   @default(false)
@@ -515,14 +519,16 @@ model Prediction {
   collateralDeposited    String?   @db.VarChar
   collateralDepositedAt  Int?
 
+  // Legacy contract flag
+  isLegacy               Boolean   @default(false)
+
   @@index([chainId, marketAddress], map: "IDX_prediction_chain_market")
   @@index([predictor], map: "IDX_prediction_predictor")
   @@index([counterparty], map: "IDX_prediction_counterparty")
   @@index([settled], map: "IDX_prediction_settled")
   @@index([onChainCreatedAt], map: "IDX_prediction_created_at")
   @@index([settledAt], map: "IDX_prediction_settled_at")
-  @@index([predictorToken], map: "IDX_prediction_predictor_token")
-  @@index([counterpartyToken], map: "IDX_prediction_counterparty_token")
+  @@index([pickConfigId], map: "IDX_prediction_pick_config_id")
 }
 
 // TODO: Rename Prisma model Picks → PickConfiguration (requires migration with @@map)
@@ -545,8 +551,12 @@ model Picks {
   endsAt                       Int?
   fullyRedeemed                Boolean   @default(false)
 
+  // Legacy contract flag
+  isLegacy                     Boolean   @default(false)
+
   picks                        Pick[]
   positionBalances             Position[]
+  predictions                  Prediction[]
 
   @@index([chainId, marketAddress], map: "IDX_pick_config_chain_market")
   @@index([resolved], map: "IDX_pick_config_resolved")
@@ -677,6 +687,7 @@ model CollateralTransfer {
   createdAt       DateTime @default(now()) @db.Timestamp(6)
   chainId         Int
   blockNumber     Int
+  timestamp       DateTime @db.Timestamp(6)
   transactionHash String   @db.VarChar
   logIndex        Int
   from            String   @db.VarChar

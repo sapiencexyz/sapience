@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { parseEther, formatEther, type Address } from 'viem';
+import { useRouter } from 'next/navigation';
 import {
   Dialog,
   DialogContent,
@@ -13,12 +14,10 @@ import { Button } from '@sapience/ui/components/ui/button';
 import { Input } from '@sapience/ui/components/ui/input';
 import { Label } from '@sapience/ui/components/ui/label';
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@sapience/ui/components/ui/select';
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@sapience/ui/components/ui/popover';
 import { Alert, AlertDescription } from '@sapience/ui/components/ui/alert';
 import { Loader2 } from 'lucide-react';
 import type { PositionBalance } from '~/hooks/graphql/usePositions';
@@ -33,35 +32,42 @@ const DEADLINE_OPTIONS = [
 
 interface SellPositionDialogProps {
   position: PositionBalance;
-  collateralSymbol: string;
-  chainId: number;
   onSuccess?: () => void;
   children: React.ReactNode;
 }
 
 export default function SellPositionDialog({
   position,
-  collateralSymbol,
-  chainId,
   onSuccess,
   children,
 }: SellPositionDialogProps) {
+  const router = useRouter();
   const [open, setOpen] = React.useState(false);
-  const [tokenAmount, setTokenAmount] = React.useState(
-    formatEther(BigInt(position.balance))
-  );
-  const [minPrice, setMinPrice] = React.useState('');
+  const initialBalance = React.useMemo(() => {
+    try {
+      return formatEther(BigInt(position.balance));
+    } catch {
+      return '0';
+    }
+  }, [position.balance]);
+  const [tokenAmount, setTokenAmount] = React.useState(initialBalance);
   const [deadlineSeconds, setDeadlineSeconds] = React.useState('900');
   const [error, setError] = React.useState<string | null>(null);
 
   const { startAuction, isSubmitting } = useSecondaryAuctionStart({
-    chainId,
     onSignatureRejected: (err) => setError(err.message),
     onAuctionCreated: () => {
-      setOpen(false);
       onSuccess?.();
+      router.push('/secondary');
     },
   });
+
+  // Reset state when dialog opens
+  React.useEffect(() => {
+    if (open) {
+      setError(null);
+    }
+  }, [open]);
 
   const handleSubmit = React.useCallback(
     async (e: React.FormEvent) => {
@@ -69,15 +75,14 @@ export default function SellPositionDialog({
       setError(null);
 
       try {
-        const amountWei = parseEther(tokenAmount);
-        const priceWei = parseEther(minPrice);
+        if (!tokenAmount.trim() || !/^\d*\.?\d*$/.test(tokenAmount.trim())) {
+          setError('Please enter a valid token amount');
+          return;
+        }
+        const amountWei = parseEther(tokenAmount.trim());
 
         if (amountWei <= 0n) {
           setError('Token amount must be greater than 0');
-          return;
-        }
-        if (priceWei <= 0n) {
-          setError('Minimum price must be greater than 0');
           return;
         }
         if (amountWei > BigInt(position.balance)) {
@@ -88,67 +93,70 @@ export default function SellPositionDialog({
         const result = await startAuction({
           token: position.tokenAddress as Address,
           tokenAmount: amountWei,
-          minPrice: priceWei,
           deadlineSeconds: Number(deadlineSeconds),
         });
 
         if (!result.success && result.error) {
           setError(result.error);
         }
-      } catch (err: any) {
-        setError(err?.message || 'Failed to create listing');
+      } catch (err: unknown) {
+        setError(
+          err instanceof Error ? err.message : 'Failed to create listing'
+        );
       }
     },
-    [tokenAmount, minPrice, deadlineSeconds, position, startAuction]
+    [tokenAmount, deadlineSeconds, position, startAuction]
   );
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogTrigger asChild>{children}</DialogTrigger>
-      <DialogContent>
+      <DialogContent className="max-w-sm">
         <DialogHeader>
-          <DialogTitle>Sell Position Tokens</DialogTitle>
+          <DialogTitle>Sell Position</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="tokenAmount">Token Amount</Label>
+
+        <form onSubmit={handleSubmit} className="space-y-3">
+          <p className="text-sm text-foreground -mt-1">
+            Buyers will submit offers on your listing and you choose which to
+            accept.
+          </p>
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="tokenAmount">Amount</Label>
+              <button
+                type="button"
+                className="text-[10px] font-semibold uppercase tracking-wider px-1.5 py-0.5 rounded bg-muted hover:bg-accent text-muted-foreground hover:text-foreground transition-colors"
+                onClick={() => {
+                  setTokenAmount(initialBalance);
+                  setError(null);
+                }}
+              >
+                Max
+              </button>
+            </div>
             <Input
               id="tokenAmount"
               type="text"
               value={tokenAmount}
-              onChange={(e) => setTokenAmount(e.target.value)}
+              onChange={(e) => {
+                const val = e.target.value;
+                setTokenAmount(val);
+                setError(null);
+                try {
+                  if (
+                    val.trim() &&
+                    /^\d*\.?\d*$/.test(val.trim()) &&
+                    parseEther(val.trim()) > BigInt(position.balance)
+                  ) {
+                    setError('Amount exceeds your balance');
+                  }
+                } catch {
+                  /* ignore parse errors while typing */
+                }
+              }}
               placeholder="0.0"
             />
-            <p className="text-xs text-muted-foreground">
-              Balance: {formatEther(BigInt(position.balance))}
-            </p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="minPrice">Minimum Price ({collateralSymbol})</Label>
-            <Input
-              id="minPrice"
-              type="text"
-              value={minPrice}
-              onChange={(e) => setMinPrice(e.target.value)}
-              placeholder="0.0"
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="deadline">Deadline</Label>
-            <Select value={deadlineSeconds} onValueChange={setDeadlineSeconds}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {DEADLINE_OPTIONS.map((opt) => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
           </div>
 
           {error && (
@@ -160,7 +168,7 @@ export default function SellPositionDialog({
           <Button
             type="submit"
             className="w-full"
-            disabled={isSubmitting || !tokenAmount || !minPrice}
+            disabled={isSubmitting || !tokenAmount}
           >
             {isSubmitting ? (
               <>
@@ -168,9 +176,37 @@ export default function SellPositionDialog({
                 Signing…
               </>
             ) : (
-              'List for Sale'
+              'Create Listing'
             )}
           </Button>
+          <p className="text-xs text-muted-foreground text-center -mt-1">
+            Listing expires in{' '}
+            <Popover>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className="underline decoration-dotted underline-offset-2 hover:text-foreground transition-colors"
+                >
+                  {DEADLINE_OPTIONS.find((o) => o.value === deadlineSeconds)
+                    ?.label ?? '15 minutes'}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-2" align="center">
+                <div className="flex flex-col gap-1">
+                  {DEADLINE_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      className={`px-3 py-1.5 text-sm rounded-md text-left hover:bg-accent transition-colors ${opt.value === deadlineSeconds ? 'bg-accent font-medium' : ''}`}
+                      onClick={() => setDeadlineSeconds(opt.value)}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </PopoverContent>
+            </Popover>
+          </p>
         </form>
       </DialogContent>
     </Dialog>

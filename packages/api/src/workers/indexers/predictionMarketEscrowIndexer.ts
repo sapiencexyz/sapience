@@ -1,4 +1,5 @@
 import prisma from '../../db';
+import type { PrismaClient } from '../../../generated/prisma';
 import { getProviderForChain, getBlockByTimestamp } from '../../utils/utils';
 import { type PublicClient, decodeEventLog, type Log, type Block } from 'viem';
 import Sentry from '../../instrument';
@@ -8,8 +9,77 @@ import {
   predictionMarketEscrowAbi,
   predictionMarketTokenAbi,
 } from '@sapience/sdk/abis';
+import { identifyResolver } from '@sapience/sdk/contracts/addresses';
+import {
+  decodePythMarketId,
+  decodePythLazerFeedId,
+} from '@sapience/sdk/auction/encoding';
+import { PYTH_FEED_NAMES, PYTH_FEEDS } from '@sapience/sdk/constants';
+import { isPredictedYes } from '@sapience/sdk/types';
+import { sendPositionAlert } from '../../helpers/discordAlert';
+
+type TxClient = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
 
 const BLOCK_BATCH_SIZE = 100;
+
+/**
+ * Build Condition row data from a Pyth conditionId.
+ * Returns null if the conditionId can't be decoded as a Pyth market.
+ */
+export function buildPythConditionData(conditionId: string): {
+  question: string;
+  shortName: string;
+  endTime: number;
+  description: string;
+  /** Asset class slug for category assignment (e.g. "prices-crypto") */
+  categorySlug: string;
+} | null {
+  const market = decodePythMarketId(conditionId as `0x${string}`);
+  if (!market) return null;
+
+  const { priceId, endTime, strikePrice, strikeExpo, overWinsOnTie } = market;
+
+  const feedId = decodePythLazerFeedId(priceId);
+  const ticker = feedId != null ? PYTH_FEED_NAMES[feedId] : null;
+  const feed =
+    feedId != null ? PYTH_FEEDS.find((f) => f.lazerId === feedId) : null;
+  const feedSymbol =
+    feed?.symbol ?? (ticker ? `Crypto.${ticker}/USD` : `Feed #${feedId}`);
+  const shortTicker = ticker ?? `Feed #${feedId}`;
+
+  const priceNum = Number(strikePrice) * Math.pow(10, Number(strikeExpo));
+  const formattedPrice = priceNum.toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: Math.max(0, -Number(strikeExpo)),
+  });
+  // Clean display: trim ".00" for whole numbers
+  const displayPrice = formattedPrice.replace(/\.0+$/, '');
+
+  const question = `${feedSymbol} OVER $${displayPrice}`;
+  const shortName = `${shortTicker} OVER $${displayPrice}`;
+
+  const endDate = new Date(Number(endTime) * 1000).toUTCString();
+  const description = `Resolved by Pyth Network Lazer oracle. If ${feedSymbol} is over $${displayPrice} at settlement (${endDate}), YES wins. If the price is exactly $${displayPrice} at settlement, ${overWinsOnTie ? 'OVER' : 'UNDER'} wins.`;
+
+  // Derive asset class from Pyth symbol prefix (e.g. "Crypto.BTC/USD" → "crypto")
+  const assetClass = feedSymbol.split('.')[0]?.toLowerCase() ?? 'crypto';
+  // Map Pyth asset classes to category slugs; metals are commodities
+  const assetClassToSlug: Record<string, string> = {
+    crypto: 'prices-crypto',
+    commodities: 'prices-commodities',
+    metal: 'prices-commodities',
+    equity: 'prices-equity',
+  };
+  const categorySlug = assetClassToSlug[assetClass] ?? 'prices-crypto';
+
+  return {
+    question,
+    shortName,
+    endTime: Number(endTime),
+    description,
+    categorySlug,
+  };
+}
 
 // Event type interfaces (matching PredictionMarketEscrow events)
 interface PredictionCreatedEvent {
@@ -96,26 +166,38 @@ class PredictionMarketEscrowIndexer implements IIndexer {
   private chainId: number;
   private contractAddress: `0x${string}`;
   private blockCreated: bigint;
+  public readonly isLegacy: boolean;
   private sigintHandler: (() => void) | null = null;
   private pollingInterval: NodeJS.Timeout | null = null;
   private lastProcessedBlock: bigint = 0n;
 
-  constructor(chainId: number) {
+  constructor(
+    chainId: number,
+    contractOverride?: `0x${string}`,
+    isLegacy: boolean = false,
+    blockCreated?: number
+  ) {
     this.chainId = chainId;
+    this.isLegacy = isLegacy;
     this.client = getProviderForChain(chainId);
 
-    // Get the contract address for this specific chain
-    const contractEntry = predictionMarketEscrow[chainId];
-    if (!contractEntry?.address) {
-      throw new Error(
-        `PredictionMarketEscrow contract not deployed on chain ${chainId}. Available chains: ${Object.keys(predictionMarketEscrow).join(', ')}`
-      );
+    if (contractOverride) {
+      this.contractAddress = contractOverride;
+      this.blockCreated = BigInt(blockCreated || 0);
+    } else {
+      // Get the contract address for this specific chain
+      const contractEntry = predictionMarketEscrow[chainId];
+      if (!contractEntry?.address) {
+        throw new Error(
+          `PredictionMarketEscrow contract not deployed on chain ${chainId}. Available chains: ${Object.keys(predictionMarketEscrow).join(', ')}`
+        );
+      }
+      this.contractAddress = contractEntry.address as `0x${string}`;
+      this.blockCreated = BigInt(contractEntry.blockCreated || 0);
     }
-    this.contractAddress = contractEntry.address as `0x${string}`;
-    this.blockCreated = BigInt(contractEntry.blockCreated || 0);
 
     console.log(
-      `[PredictionMarketEscrowIndexer:${this.chainId}] Initialized with contract ${this.contractAddress} (blockCreated: ${this.blockCreated})`
+      `[PredictionMarketEscrowIndexer:${this.chainId}] Initialized with contract ${this.contractAddress} (blockCreated: ${this.blockCreated}, legacy: ${this.isLegacy})`
     );
   }
 
@@ -505,38 +587,136 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     const predictionIdLower = event.predictionId.toLowerCase();
     const timestamp = Number(block.timestamp);
 
-    // Skip if this prediction already exists (idempotent for re-indexing)
+    // Check if this prediction already exists (idempotent for re-indexing)
     const existingPrediction = await prisma.prediction.findUnique({
       where: { predictionId: predictionIdLower },
     });
 
     if (existingPrediction) {
-      console.log(
-        `[PredictionMarketEscrowIndexer:${this.chainId}] Prediction ${predictionIdLower} already exists, skipping`
-      );
+      // SAP-767: If prediction exists but pickConfigId is null, a previous RPC
+      // call failed after the prediction row was created. Attempt repair.
+      if (!existingPrediction.pickConfigId) {
+        console.log(
+          `[PredictionMarketEscrowIndexer:${this.chainId}] Prediction ${predictionIdLower} missing pickConfigId, attempting repair...`
+        );
+        const repairData = await this.readPickConfigData(event, log);
+        if (repairData) {
+          await prisma.$transaction(async (tx) => {
+            await this.writePickConfigAndBalances(tx, event, repairData);
+            await tx.prediction.update({
+              where: { predictionId: predictionIdLower },
+              data: { pickConfigId: repairData.pickConfigId },
+            });
+          });
+          console.log(
+            `[PredictionMarketEscrowIndexer:${this.chainId}] Repaired prediction ${predictionIdLower} with pickConfigId=${repairData.pickConfigId}`
+          );
+        } else {
+          console.error(
+            `[PredictionMarketEscrowIndexer:${this.chainId}] CRITICAL: Repair RPC failed for prediction ${predictionIdLower} — positions still missing, will retry next cycle`,
+            { predictionId: predictionIdLower, chainId: this.chainId }
+          );
+          Sentry.captureException(
+            new Error(
+              `CRITICAL: Repair RPC failed for prediction ${predictionIdLower} — positions still missing`
+            )
+          );
+        }
+      } else {
+        console.log(
+          `[PredictionMarketEscrowIndexer:${this.chainId}] Prediction ${predictionIdLower} already exists, skipping`
+        );
+      }
       return;
     }
 
-    // Create prediction record
-    await prisma.prediction.create({
-      data: {
-        predictionId: predictionIdLower,
-        chainId: this.chainId,
-        marketAddress: this.contractAddress.toLowerCase(),
-        predictor: event.predictor.toLowerCase(),
-        counterparty: event.counterparty.toLowerCase(),
-        predictorToken: event.predictorToken.toLowerCase(),
-        counterpartyToken: event.counterpartyToken.toLowerCase(),
-        predictorCollateral: event.predictorCollateral.toString(),
-        counterpartyCollateral: event.counterpartyCollateral.toString(),
-        onChainCreatedAt: timestamp,
-        createTxHash: log.transactionHash || '',
-        refCode: event.refCode !== ZERO_BYTES32 ? event.refCode : null,
-      },
+    // Read on-chain data outside the transaction (RPC calls can't run inside prisma.$transaction)
+    const onChainData = await this.readPickConfigData(event, log);
+
+    if (!onChainData) {
+      console.warn(
+        `[PredictionMarketEscrowIndexer:${this.chainId}] RPC failed for prediction ${predictionIdLower} — creating prediction without positions, will repair on next encounter`,
+        { predictionId: predictionIdLower, chainId: this.chainId }
+      );
+      Sentry.captureException(
+        new Error(
+          `RPC failed reading pick config for prediction ${predictionIdLower} — positions deferred`
+        )
+      );
+    }
+
+    // Wrap all DB writes in a transaction so partial state can't persist
+    await prisma.$transaction(async (tx) => {
+      // Write pick config first (ensures Picks record exists for FK)
+      if (onChainData) {
+        await this.writePickConfigAndBalances(tx, event, onChainData);
+      }
+
+      // Create prediction record with direct FK to pick config
+      await tx.prediction.create({
+        data: {
+          predictionId: predictionIdLower,
+          chainId: this.chainId,
+          marketAddress: this.contractAddress.toLowerCase(),
+          predictor: event.predictor.toLowerCase(),
+          counterparty: event.counterparty.toLowerCase(),
+          predictorCollateral: event.predictorCollateral.toString(),
+          counterpartyCollateral: event.counterpartyCollateral.toString(),
+          onChainCreatedAt: timestamp,
+          createTxHash: log.transactionHash || '',
+          refCode: event.refCode !== ZERO_BYTES32 ? event.refCode : null,
+          pickConfigId: onChainData?.pickConfigId ?? null,
+          isLegacy: this.isLegacy,
+        },
+      });
     });
 
-    // Read picks from on-chain to populate Picks, Position, and open interest
-    await this.ensurePickConfigAndBalances(event, log);
+    // Send Discord alert — fire-and-forget, deliberately NOT awaited.
+    void (async () => {
+      try {
+        // Look up questions from the picks' conditions
+        const picks = onChainData?.pickConfigId
+          ? await prisma.pick.findMany({
+              where: { pickConfigId: onChainData.pickConfigId },
+              select: { conditionId: true, predictedOutcome: true },
+            })
+          : [];
+        const conditionIds = picks.map((p) => p.conditionId);
+        const conditions = conditionIds.length
+          ? await prisma.condition.findMany({
+              where: { id: { in: conditionIds } },
+              select: { id: true, question: true },
+            })
+          : [];
+        const questionMap = new Map(conditions.map((c) => [c.id, c.question]));
+
+        const totalCollateral = (
+          event.predictorCollateral + event.counterpartyCollateral
+        ).toString();
+
+        sendPositionAlert({
+          predictor: event.predictor,
+          counterparty: event.counterparty,
+          predictorCollateral: event.predictorCollateral.toString(),
+          counterpartyCollateral: event.counterpartyCollateral.toString(),
+          totalCollateral,
+          predictions: picks.map((p) => ({
+            conditionId: p.conditionId,
+            question: questionMap.get(p.conditionId) ?? p.conditionId,
+            outcomeYes: isPredictedYes(p.predictedOutcome),
+          })),
+          blockTimestamp: timestamp,
+          transactionHash: log.transactionHash || '',
+          chainId: this.chainId,
+          predictionId: predictionIdLower,
+        });
+      } catch (err) {
+        console.error(
+          `[PredictionMarketEscrowIndexer:${this.chainId}] Discord alert failed:`,
+          err
+        );
+      }
+    })();
 
     console.log(
       `[PredictionMarketEscrowIndexer:${this.chainId}] Processed PredictionCreated ${predictionIdLower}`
@@ -544,16 +724,22 @@ class PredictionMarketEscrowIndexer implements IIndexer {
   }
 
   /**
-   * On PredictionCreated, read pickConfigId from the contract and upsert
-   * the Picks (pick configuration), Pick rows, initial Position balance
-   * entries for predictor/counterparty, and open interest on conditions.
+   * Read on-chain pick config data (RPC calls) — called outside the transaction.
    */
-  private async ensurePickConfigAndBalances(
+  private async readPickConfigData(
     event: PredictionCreatedEvent,
     log: Log
-  ): Promise<void> {
+  ): Promise<{
+    pickConfigId: string;
+    predictorMinted: string;
+    counterpartyMinted: string;
+    picksOnChain: Array<{
+      conditionResolver: `0x${string}`;
+      conditionId: `0x${string}`;
+      predictedOutcome: number;
+    }> | null;
+  } | null> {
     try {
-      // Get pickConfigId from the on-chain prediction (read at event block for correctness)
       const predictionOnChain = (await this.client.readContract({
         address: this.contractAddress,
         abi: predictionMarketEscrowAbi,
@@ -567,22 +753,15 @@ class PredictionMarketEscrowIndexer implements IIndexer {
       };
 
       const pickConfigId = predictionOnChain.pickConfigId.toLowerCase();
-      const predictorToken = event.predictorToken.toLowerCase();
-      const counterpartyToken = event.counterpartyToken.toLowerCase();
-      const predictorCollateralStr = event.predictorCollateral.toString();
-      const counterpartyCollateralStr = event.counterpartyCollateral.toString();
-      const totalCollateral = (
-        event.predictorCollateral + event.counterpartyCollateral
-      ).toString();
 
-      // Upsert pick configuration (multiple predictions may share one)
+      // Check if config already exists — if not, read picks from chain
       const existingConfig = await prisma.picks.findUnique({
         where: { id: pickConfigId },
       });
 
+      let picksOnChain = null;
       if (!existingConfig) {
-        // Read picks from contract
-        const picksOnChain = (await this.client.readContract({
+        picksOnChain = (await this.client.readContract({
           address: this.contractAddress,
           abi: predictionMarketEscrowAbi,
           functionName: 'getPicks',
@@ -593,107 +772,178 @@ class PredictionMarketEscrowIndexer implements IIndexer {
           conditionId: `0x${string}`;
           predictedOutcome: number;
         }>;
+      }
 
-        try {
-          await prisma.picks.create({
-            data: {
-              id: pickConfigId,
-              chainId: this.chainId,
-              marketAddress: this.contractAddress.toLowerCase(),
-              predictorToken,
-              counterpartyToken,
-              totalPredictorCollateral: predictorCollateralStr,
-              totalCounterpartyCollateral: counterpartyCollateralStr,
-              picks: {
-                create: picksOnChain.map((pick) => ({
-                  conditionResolver: (
-                    pick.conditionResolver as string
-                  ).toLowerCase(),
-                  conditionId: (pick.conditionId as string).toLowerCase(),
-                  predictedOutcome: Number(pick.predictedOutcome),
-                })),
-              },
-            },
+      return {
+        pickConfigId,
+        predictorMinted: predictionOnChain.predictorTokensMinted.toString(),
+        counterpartyMinted:
+          predictionOnChain.counterpartyTokensMinted.toString(),
+        picksOnChain,
+      };
+    } catch (error) {
+      console.error(
+        `[PredictionMarketEscrowIndexer:${this.chainId}] Error reading on-chain pick config data:`,
+        error
+      );
+      Sentry.captureException(error);
+      return null;
+    }
+  }
+
+  /**
+   * Write pick config, positions, and open interest inside a transaction.
+   */
+  private async writePickConfigAndBalances(
+    tx: TxClient,
+    event: PredictionCreatedEvent,
+    data: NonNullable<Awaited<ReturnType<typeof this.readPickConfigData>>>
+  ): Promise<void> {
+    const { pickConfigId, predictorMinted, counterpartyMinted, picksOnChain } =
+      data;
+    const predictorToken = event.predictorToken.toLowerCase();
+    const counterpartyToken = event.counterpartyToken.toLowerCase();
+    const predictorCollateralStr = event.predictorCollateral.toString();
+    const counterpartyCollateralStr = event.counterpartyCollateral.toString();
+    const totalCollateral = (
+      event.predictorCollateral + event.counterpartyCollateral
+    ).toString();
+
+    if (picksOnChain) {
+      // Auto-create Condition rows for Pyth picks (FK target must exist before Pick insert)
+      // Cache price category lookups so we query each slug at most once
+      const pricesCategoryCache = new Map<string, number>();
+
+      for (const pick of picksOnChain) {
+        const resolver = pick.conditionResolver as string;
+        if (identifyResolver(resolver, this.chainId) !== 'pyth') continue;
+
+        const conditionId = (pick.conditionId as string).toLowerCase();
+        const pythData = buildPythConditionData(conditionId);
+        if (!pythData) continue;
+
+        // Resolve the asset-class category id
+        let categoryId: number | undefined;
+        if (pricesCategoryCache.has(pythData.categorySlug)) {
+          categoryId = pricesCategoryCache.get(pythData.categorySlug);
+        } else {
+          const cat = await tx.category.findFirst({
+            where: { slug: pythData.categorySlug },
           });
-        } catch {
-          // Race condition: another indexer instance created it first — accumulate instead
-          await prisma.$executeRaw`
-            UPDATE "Picks"
-            SET "totalPredictorCollateral" = (COALESCE("totalPredictorCollateral"::NUMERIC, 0) + ${predictorCollateralStr}::NUMERIC)::TEXT,
-                "totalCounterpartyCollateral" = (COALESCE("totalCounterpartyCollateral"::NUMERIC, 0) + ${counterpartyCollateralStr}::NUMERIC)::TEXT
-            WHERE id = ${pickConfigId}
-          `;
+          if (cat) {
+            pricesCategoryCache.set(pythData.categorySlug, cat.id);
+            categoryId = cat.id;
+          }
         }
 
-        // Update open interest and prediction count for each condition referenced by the picks
-        for (const pick of picksOnChain) {
-          const conditionId = (pick.conditionId as string).toLowerCase();
-          await prisma.$executeRaw`
-            UPDATE condition
-            SET "openInterest" = (COALESCE("openInterest"::NUMERIC, 0) + ${totalCollateral}::NUMERIC)::TEXT,
-                "predictionCount" = "predictionCount" + 1
-            WHERE id = ${conditionId}
-          `;
-        }
-
+        await tx.condition.upsert({
+          where: { id: conditionId },
+          update: {},
+          create: {
+            id: conditionId,
+            question: pythData.question,
+            shortName: pythData.shortName,
+            endTime: pythData.endTime,
+            description: pythData.description,
+            resolver: resolver.toLowerCase(),
+            chainId: this.chainId,
+            ...(categoryId != null ? { categoryId } : {}),
+          },
+        });
         console.log(
-          `[PredictionMarketEscrowIndexer:${this.chainId}] Created Picks config ${pickConfigId}`
+          `[PredictionMarketEscrowIndexer:${this.chainId}] Upserted Pyth condition ${conditionId} — ${pythData.shortName}`
         );
-      } else {
-        // Picks already exist — accumulate collateral totals
-        await prisma.$executeRaw`
+      }
+
+      // New pick config — create with picks
+      try {
+        await tx.picks.create({
+          data: {
+            id: pickConfigId,
+            chainId: this.chainId,
+            marketAddress: this.contractAddress.toLowerCase(),
+            predictorToken,
+            counterpartyToken,
+            totalPredictorCollateral: predictorCollateralStr,
+            totalCounterpartyCollateral: counterpartyCollateralStr,
+            isLegacy: this.isLegacy,
+            picks: {
+              create: picksOnChain.map((pick) => ({
+                conditionResolver: (
+                  pick.conditionResolver as string
+                ).toLowerCase(),
+                conditionId: (pick.conditionId as string).toLowerCase(),
+                predictedOutcome: Number(pick.predictedOutcome),
+              })),
+            },
+          },
+        });
+      } catch {
+        // Race condition: another indexer instance created it first — accumulate instead
+        await tx.$executeRaw`
           UPDATE "Picks"
           SET "totalPredictorCollateral" = (COALESCE("totalPredictorCollateral"::NUMERIC, 0) + ${predictorCollateralStr}::NUMERIC)::TEXT,
               "totalCounterpartyCollateral" = (COALESCE("totalCounterpartyCollateral"::NUMERIC, 0) + ${counterpartyCollateralStr}::NUMERIC)::TEXT
           WHERE id = ${pickConfigId}
         `;
-
-        // Update open interest and prediction count for existing picks' conditions
-        const existingPicks = await prisma.pick.findMany({
-          where: { pickConfigId },
-          select: { conditionId: true },
-        });
-        for (const pick of existingPicks) {
-          await prisma.$executeRaw`
-            UPDATE condition
-            SET "openInterest" = (COALESCE("openInterest"::NUMERIC, 0) + ${totalCollateral}::NUMERIC)::TEXT,
-                "predictionCount" = "predictionCount" + 1
-            WHERE id = ${pick.conditionId}
-          `;
-        }
       }
 
-      // Upsert initial position balances for predictor and counterparty
-      const predictorMinted =
-        predictionOnChain.predictorTokensMinted.toString();
-      const counterpartyMinted =
-        predictionOnChain.counterpartyTokensMinted.toString();
-
-      await prisma.$executeRaw`
-        INSERT INTO "Position" ("chainId", "tokenAddress", "pickConfigId", "isPredictorToken", holder, balance, "createdAt", "updatedAt")
-        VALUES (${this.chainId}, ${predictorToken}, ${pickConfigId}, true, ${event.predictor.toLowerCase()}, ${predictorMinted}, NOW(), NOW())
-        ON CONFLICT ("chainId", "tokenAddress", holder)
-        DO UPDATE SET balance = ("Position".balance::NUMERIC + ${predictorMinted}::NUMERIC)::TEXT, "updatedAt" = NOW()
-      `;
-
-      await prisma.$executeRaw`
-        INSERT INTO "Position" ("chainId", "tokenAddress", "pickConfigId", "isPredictorToken", holder, balance, "createdAt", "updatedAt")
-        VALUES (${this.chainId}, ${counterpartyToken}, ${pickConfigId}, false, ${event.counterparty.toLowerCase()}, ${counterpartyMinted}, NOW(), NOW())
-        ON CONFLICT ("chainId", "tokenAddress", holder)
-        DO UPDATE SET balance = ("Position".balance::NUMERIC + ${counterpartyMinted}::NUMERIC)::TEXT, "updatedAt" = NOW()
-      `;
+      // Update open interest and prediction count for each condition
+      for (const pick of picksOnChain) {
+        const conditionId = (pick.conditionId as string).toLowerCase();
+        await tx.$executeRaw`
+          UPDATE condition
+          SET "openInterest" = (COALESCE("openInterest"::NUMERIC, 0) + ${totalCollateral}::NUMERIC)::TEXT,
+              "predictionCount" = "predictionCount" + 1
+          WHERE id = ${conditionId}
+        `;
+      }
 
       console.log(
-        `[PredictionMarketEscrowIndexer:${this.chainId}] Upserted position balances for pickConfig ${pickConfigId}`
+        `[PredictionMarketEscrowIndexer:${this.chainId}] Created Picks config ${pickConfigId}`
       );
-    } catch (error) {
-      // Log but don't fail the indexer — the prediction record is already saved
-      console.error(
-        `[PredictionMarketEscrowIndexer:${this.chainId}] Error populating pick config / balances:`,
-        error
-      );
-      Sentry.captureException(error);
+    } else {
+      // Picks already exist — accumulate collateral totals
+      await tx.$executeRaw`
+        UPDATE "Picks"
+        SET "totalPredictorCollateral" = (COALESCE("totalPredictorCollateral"::NUMERIC, 0) + ${predictorCollateralStr}::NUMERIC)::TEXT,
+            "totalCounterpartyCollateral" = (COALESCE("totalCounterpartyCollateral"::NUMERIC, 0) + ${counterpartyCollateralStr}::NUMERIC)::TEXT
+        WHERE id = ${pickConfigId}
+      `;
+
+      // Update open interest and prediction count for existing picks' conditions
+      const existingPicks = await tx.pick.findMany({
+        where: { pickConfigId },
+        select: { conditionId: true },
+      });
+      for (const pick of existingPicks) {
+        await tx.$executeRaw`
+          UPDATE condition
+          SET "openInterest" = (COALESCE("openInterest"::NUMERIC, 0) + ${totalCollateral}::NUMERIC)::TEXT,
+              "predictionCount" = "predictionCount" + 1
+          WHERE id = ${pick.conditionId}
+        `;
+      }
     }
+
+    // Upsert initial position balances for predictor and counterparty
+    await tx.$executeRaw`
+      INSERT INTO "Position" ("chainId", "tokenAddress", "pickConfigId", "isPredictorToken", holder, balance, "createdAt", "updatedAt")
+      VALUES (${this.chainId}, ${predictorToken}, ${pickConfigId}, true, ${event.predictor.toLowerCase()}, ${predictorMinted}, NOW(), NOW())
+      ON CONFLICT ("chainId", "tokenAddress", holder)
+      DO UPDATE SET balance = ("Position".balance::NUMERIC + ${predictorMinted}::NUMERIC)::TEXT, "updatedAt" = NOW()
+    `;
+
+    await tx.$executeRaw`
+      INSERT INTO "Position" ("chainId", "tokenAddress", "pickConfigId", "isPredictorToken", holder, balance, "createdAt", "updatedAt")
+      VALUES (${this.chainId}, ${counterpartyToken}, ${pickConfigId}, false, ${event.counterparty.toLowerCase()}, ${counterpartyMinted}, NOW(), NOW())
+      ON CONFLICT ("chainId", "tokenAddress", holder)
+      DO UPDATE SET balance = ("Position".balance::NUMERIC + ${counterpartyMinted}::NUMERIC)::TEXT, "updatedAt" = NOW()
+    `;
+
+    console.log(
+      `[PredictionMarketEscrowIndexer:${this.chainId}] Upserted position balances for pickConfig ${pickConfigId}`
+    );
   }
 
   private async processPredictionSettled(
@@ -708,49 +958,46 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     const timestamp = Number(block.timestamp);
     const predictionIdLower = event.predictionId.toLowerCase();
 
-    // Update prediction as settled
-    await prisma.prediction.updateMany({
-      where: { predictionId: predictionIdLower },
-      data: {
-        settled: true,
-        settledAt: timestamp,
-        settleTxHash: log.transactionHash || '',
-        result: mapSettlementResult(event.result),
-        predictorClaimable: event.predictorClaimable.toString(),
-        counterpartyClaimable: event.counterpartyClaimable.toString(),
-      },
-    });
-
-    // Decrement open interest for conditions linked to this prediction
-    const pred = await prisma.prediction.findUnique({
-      where: { predictionId: predictionIdLower },
-    });
-    if (pred) {
-      const totalCollateral = (
-        BigInt(pred.predictorCollateral) + BigInt(pred.counterpartyCollateral)
-      ).toString();
-
-      const tokenAddresses = [pred.predictorToken, pred.counterpartyToken];
-      const position = await prisma.position.findFirst({
-        where: { tokenAddress: { in: tokenAddresses } },
-        select: { pickConfigId: true },
+    await prisma.$transaction(async (tx) => {
+      // Update prediction as settled
+      await tx.prediction.updateMany({
+        where: { predictionId: predictionIdLower },
+        data: {
+          settled: true,
+          settledAt: timestamp,
+          settleTxHash: log.transactionHash || '',
+          result: mapSettlementResult(event.result),
+          predictorClaimable: event.predictorClaimable.toString(),
+          counterpartyClaimable: event.counterpartyClaimable.toString(),
+        },
       });
-      if (position) {
-        const picks = await prisma.pick.findMany({
-          where: { pickConfigId: position.pickConfigId },
-          select: { conditionId: true },
-        });
-        for (const pick of picks) {
-          await prisma.$executeRaw`
-            UPDATE condition
-            SET "openInterest" = GREATEST(
-              (COALESCE("openInterest"::NUMERIC, 0) - ${totalCollateral}::NUMERIC), 0
-            )::TEXT
-            WHERE id = ${pick.conditionId}
-          `;
+
+      // Decrement open interest for conditions linked to this prediction
+      const pred = await tx.prediction.findUnique({
+        where: { predictionId: predictionIdLower },
+      });
+      if (pred) {
+        const totalCollateral = (
+          BigInt(pred.predictorCollateral) + BigInt(pred.counterpartyCollateral)
+        ).toString();
+
+        if (pred.pickConfigId) {
+          const picks = await tx.pick.findMany({
+            where: { pickConfigId: pred.pickConfigId },
+            select: { conditionId: true },
+          });
+          for (const pick of picks) {
+            await tx.$executeRaw`
+              UPDATE condition
+              SET "openInterest" = GREATEST(
+                (COALESCE("openInterest"::NUMERIC, 0) - ${totalCollateral}::NUMERIC), 0
+              )::TEXT
+              WHERE id = ${pick.conditionId}
+            `;
+          }
         }
       }
-    }
+    });
 
     console.log(
       `[PredictionMarketEscrowIndexer:${this.chainId}] Marked prediction ${predictionIdLower} as settled with result ${mapSettlementResult(event.result)}`
@@ -854,48 +1101,50 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     const timestamp = Number(block.timestamp);
     const pickConfigIdLower = event.pickConfigId.toLowerCase();
 
-    // Create close record
-    await prisma.close.create({
-      data: {
-        chainId: this.chainId,
-        marketAddress: this.contractAddress.toLowerCase(),
-        pickConfigId: pickConfigIdLower,
-        predictorHolder: event.predictorHolder.toLowerCase(),
-        counterpartyHolder: event.counterpartyHolder.toLowerCase(),
-        predictorTokensBurned: event.predictorTokensBurned.toString(),
-        counterpartyTokensBurned: event.counterpartyTokensBurned.toString(),
-        predictorPayout: event.predictorPayout.toString(),
-        counterpartyPayout: event.counterpartyPayout.toString(),
-        burnedAt: timestamp,
-        txHash: log.transactionHash || '',
-        refCode: event.refCode !== ZERO_BYTES32 ? event.refCode : null,
-      },
+    await prisma.$transaction(async (tx) => {
+      // Create close record
+      await tx.close.create({
+        data: {
+          chainId: this.chainId,
+          marketAddress: this.contractAddress.toLowerCase(),
+          pickConfigId: pickConfigIdLower,
+          predictorHolder: event.predictorHolder.toLowerCase(),
+          counterpartyHolder: event.counterpartyHolder.toLowerCase(),
+          predictorTokensBurned: event.predictorTokensBurned.toString(),
+          counterpartyTokensBurned: event.counterpartyTokensBurned.toString(),
+          predictorPayout: event.predictorPayout.toString(),
+          counterpartyPayout: event.counterpartyPayout.toString(),
+          burnedAt: timestamp,
+          txHash: log.transactionHash || '',
+          refCode: event.refCode !== ZERO_BYTES32 ? event.refCode : null,
+        },
+      });
+
+      // Position balance decrements are handled by the PositionTokenTransferIndexer
+      // via the ERC20 Transfer(holder, 0x0, amount) burn events.
+
+      // Decrement open interest by the collateral released in this close
+      const closeCollateral = (
+        BigInt(event.predictorPayout.toString()) +
+        BigInt(event.counterpartyPayout.toString())
+      ).toString();
+
+      const picks = await tx.pick.findMany({
+        where: { pickConfigId: pickConfigIdLower },
+        select: { conditionId: true },
+      });
+      for (const pick of picks) {
+        await tx.$executeRaw`
+          UPDATE condition
+          SET "openInterest" = GREATEST(
+            (COALESCE("openInterest"::NUMERIC, 0) - ${closeCollateral}::NUMERIC), 0
+          )::TEXT
+          WHERE id = ${pick.conditionId}
+        `;
+      }
     });
 
-    // Position balance decrements are handled by the PositionTokenTransferIndexer
-    // via the ERC20 Transfer(holder, 0x0, amount) burn events.
-
-    // Decrement open interest by the collateral released in this close
-    const closeCollateral = (
-      BigInt(event.predictorPayout.toString()) +
-      BigInt(event.counterpartyPayout.toString())
-    ).toString();
-
-    const picks = await prisma.pick.findMany({
-      where: { pickConfigId: pickConfigIdLower },
-      select: { conditionId: true },
-    });
-    for (const pick of picks) {
-      await prisma.$executeRaw`
-        UPDATE condition
-        SET "openInterest" = GREATEST(
-          (COALESCE("openInterest"::NUMERIC, 0) - ${closeCollateral}::NUMERIC), 0
-        )::TEXT
-        WHERE id = ${pick.conditionId}
-      `;
-    }
-
-    // Check if fully redeemed
+    // Check if fully redeemed (involves RPC calls, so outside the transaction)
     await this.checkFullyRedeemedByPickConfig(pickConfigIdLower);
 
     console.log(

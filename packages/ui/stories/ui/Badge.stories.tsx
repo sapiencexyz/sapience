@@ -1,17 +1,17 @@
-import type { Meta, StoryObj } from "@storybook/react-webpack5";
-import { Badge } from "../../components/ui/badge";
+import type { Meta, StoryObj } from '@storybook/react-webpack5';
+import { Badge } from '../../components/ui/badge';
 
 const meta: Meta<typeof Badge> = {
-  title: "UI/Badge",
+  title: 'UI/Badge',
   component: Badge,
   parameters: {
-    layout: "centered",
+    layout: 'centered',
   },
-  tags: ["autodocs"],
+  tags: ['autodocs'],
   argTypes: {
     variant: {
-      control: { type: "select" },
-      options: ["default", "secondary", "destructive", "outline"],
+      control: { type: 'select' },
+      options: ['default', 'secondary', 'destructive', 'outline'],
     },
   },
 };
@@ -21,7 +21,7 @@ type Story = StoryObj<typeof meta>;
 
 export const Default: Story = {
   args: {
-    children: "Badge",
+    children: 'Badge',
   },
 };
 
@@ -86,14 +86,14 @@ export const Interactive: Story = {
       <Badge
         variant="default"
         className="cursor-pointer hover:scale-105 transition-transform"
-        onClick={() => alert("Badge clicked!")}
+        onClick={() => alert('Badge clicked!')}
       >
         Clickable
       </Badge>
       <Badge
         variant="secondary"
         className="cursor-pointer hover:scale-105 transition-transform"
-        onClick={() => alert("Badge clicked!")}
+        onClick={() => alert('Badge clicked!')}
       >
         Interactive
       </Badge>

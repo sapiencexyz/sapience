@@ -1,16 +1,15 @@
-// Prediction-specific helpers for OG image generation
+// OG-specific formatting utilities + re-exports from shared data layer.
 
-// Helper to get GraphQL endpoint URL
-export function getGraphQLEndpoint(): string {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.sapience.xyz';
-  try {
-    const u = new URL(baseUrl);
-    return `${u.origin}/graphql`;
-  } catch {
-    return 'https://api.sapience.xyz/graphql';
-  }
-}
+// Re-exports for backward compatibility with OG routes and _profile-helpers
+export { getGraphQLEndpoint } from '~/lib/data/graphql';
+export {
+  PREDICTION_BY_ID_QUERY,
+  CONDITIONS_BY_IDS_QUERY,
+  type PredictionPick,
+  type PredictionPickConfig,
+  type PredictionData,
+  type ConditionData,
+} from '~/lib/data/predictions';
 
 // Helper to format units (18 decimals for collateral)
 export function formatUnits(value: string, decimals: number = 18): string {
@@ -31,23 +30,19 @@ export function formatUnits(value: string, decimals: number = 18): string {
 }
 
 // Helper to normalize choice labels to standard format
-export function normalizeChoiceLabel(
-  label: string
-): 'YES' | 'NO' | 'OVER' | 'UNDER' | null {
+export function normalizeChoiceLabel(label: string): 'YES' | 'NO' | null {
   const upper = label.toUpperCase();
   if (upper === 'YES' || upper.startsWith('YES')) return 'YES';
   if (upper === 'NO' || upper.startsWith('NO')) return 'NO';
-  if (upper === 'OVER' || upper.startsWith('OVER')) return 'OVER';
-  if (upper === 'UNDER' || upper.startsWith('UNDER')) return 'UNDER';
   return null;
 }
 
 // Helper to determine pill tone from normalized choice
 export function getChoiceTone(
-  normalized: 'YES' | 'NO' | 'OVER' | 'UNDER' | null
+  normalized: 'YES' | 'NO' | null
 ): 'success' | 'danger' | 'neutral' {
-  if (normalized === 'YES' || normalized === 'OVER') return 'success';
-  if (normalized === 'NO' || normalized === 'UNDER') return 'danger';
+  if (normalized === 'YES') return 'success';
+  if (normalized === 'NO') return 'danger';
   return 'neutral';
 }
 
@@ -60,105 +55,4 @@ export function roundToTwoDecimals(value: string): string {
   } catch {
     return value;
   }
-}
-
-// GraphQL query for fetching prediction data by predictionId
-export const PREDICTION_BY_ID_QUERY = `
-  query Prediction($id: String!) {
-    prediction(id: $id) {
-      id
-      predictionId
-      chainId
-      marketAddress
-      predictor
-      counterparty
-      predictorToken
-      counterpartyToken
-      predictorCollateral
-      counterpartyCollateral
-      settled
-      settledAt
-      result
-      createdAt
-      pickConfig {
-        id
-        chainId
-        marketAddress
-        resolved
-        result
-        resolvedAt
-        endsAt
-        picks {
-          id
-          conditionResolver
-          conditionId
-          predictedOutcome
-        }
-      }
-    }
-  }
-`;
-
-// Query to fetch condition question text for picks
-export const CONDITIONS_BY_IDS_QUERY = `
-  query ConditionsByIds($where: ConditionWhereInput!) {
-    conditions(where: $where, take: 100) {
-      id
-      question
-      shortName
-      endTime
-      settled
-      resolvedToYes
-      resolver
-      category { slug }
-    }
-  }
-`;
-
-// TypeScript interfaces for prediction OG data
-export interface PredictionPick {
-  id: number;
-  conditionResolver: string;
-  conditionId: string;
-  predictedOutcome: number;
-}
-
-export interface PredictionPickConfig {
-  id: string;
-  chainId: number;
-  marketAddress: string;
-  resolved: boolean;
-  result: string;
-  resolvedAt?: number | null;
-  endsAt?: number | null;
-  picks: PredictionPick[];
-}
-
-export interface PredictionData {
-  id: number;
-  predictionId: string;
-  chainId: number;
-  marketAddress: string;
-  predictor: string;
-  counterparty: string;
-  predictorToken: string;
-  counterpartyToken: string;
-  predictorCollateral: string;
-  counterpartyCollateral: string;
-  settled: boolean;
-  settledAt?: number | null;
-  result: string;
-  createdAt: string;
-  pickConfig?: PredictionPickConfig | null;
-}
-
-export interface ConditionData {
-  id: string;
-  question?: string | null;
-  shortName?: string | null;
-  endTime?: number | null;
-  settled?: boolean;
-  resolvedToYes?: boolean;
-  resolver?: string | null;
-  category?: { slug?: string | null } | null;
 }

@@ -11,32 +11,43 @@ import {
   TableRow,
 } from '@sapience/ui/components/ui/table';
 import { Badge } from '@sapience/ui/components/ui/badge';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@sapience/ui/components/ui/tooltip';
+import { Info } from 'lucide-react';
 import * as React from 'react';
+import { formatDistanceToNow } from 'date-fns';
+import { COLLATERAL_SYMBOLS, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@sapience/ui/components/ui/popover';
+import { PredictionChoiceBadge } from '@sapience/ui';
+import { useAccount } from 'wagmi';
 import EmptyTabState from '~/components/shared/EmptyTabState';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import Loader from '~/components/shared/Loader';
 
 import CountdownCell from '~/components/shared/CountdownCell';
-import { formatDistanceToNow } from 'date-fns';
-import { toPicks, type ConditionsMap } from '~/components/positions/toPickLegs';
-import { COLLATERAL_SYMBOLS, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
-import { OutcomeSide } from '@sapience/sdk/types';
+import {
+  toPicks,
+  computeResultFromConditions,
+  type ConditionsMap,
+} from '~/components/positions/toPickLegs';
 import {
   usePositionBalances,
   usePositionBalancesByConditionId,
   type PositionBalance,
 } from '~/hooks/graphql/usePositions';
 import { useConditionsByIds } from '~/hooks/graphql/useConditionsByIds';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@sapience/ui/components/ui/popover';
 import { StackedIcons } from '~/components/shared/StackedPredictions';
 import CounterpartyBadge from '~/components/shared/CounterpartyBadge';
+import LegacyBadge from '~/components/shared/LegacyBadge';
 import { getCategoryIcon } from '~/lib/theme/categoryIcons';
 import { getCategoryStyle } from '~/lib/utils/categoryStyle';
-import { PredictionChoiceBadge } from '@sapience/ui';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
 import OgShareDialogBase from '~/components/shared/OgShareDialog';
 import {
@@ -51,6 +62,8 @@ import {
 import { useEscrowWrite } from '~/hooks/blockchain/useEscrowWrite';
 import { useClaimableAmount } from '~/hooks/blockchain/useEscrowContract';
 import { useSession } from '~/lib/context/SessionContext';
+import SellPositionDialog from '~/components/secondary/SellPositionDialog';
+import { useFeatureFlag } from '~/hooks/useFeatureFlag';
 
 function PositionRow({
   position,
@@ -58,23 +71,28 @@ function PositionRow({
   conditionsMap,
   onShare,
   onRefetch,
+  showSell,
 }: {
   position: PositionBalance;
   collateralSymbol: string;
   conditionsMap: ConditionsMap;
   onShare: (position: PositionBalance) => void;
   onRefetch?: () => void;
+  showSell: boolean;
 }) {
   const { pickConfig, isPredictorToken } = position;
   const rawPicks = pickConfig?.picks ?? [];
   const picks = toPicks(rawPicks, isPredictorToken, conditionsMap);
-  const { effectiveAddress } = useSession();
+  const { effectiveAddress, smartAccountAddress } = useSession();
+  const { address: walletAddress } = useAccount();
 
-  // Only show claim button if the connected wallet owns this position
+  // Show action buttons if the connected wallet (EOA or Smart Account) owns this position
+  const holderLower = position.holder?.toLowerCase();
   const isOwnPosition =
-    effectiveAddress &&
-    position.holder &&
-    effectiveAddress.toLowerCase() === position.holder.toLowerCase();
+    !!holderLower &&
+    (effectiveAddress?.toLowerCase() === holderLower ||
+      smartAccountAddress?.toLowerCase() === holderLower ||
+      walletAddress?.toLowerCase() === holderLower);
 
   // Position size = user's deposited collateral (from Prediction records)
   const positionSizeFormatted = parseFloat(
@@ -86,22 +104,29 @@ function PositionRow({
     formatEther(BigInt(position.totalPayout || '0'))
   );
 
-  const result = pickConfig?.result ?? 'UNRESOLVED';
-  const isResolved = pickConfig?.resolved ?? false;
+  // Use on-chain result if resolved, otherwise compute from individual conditions
+  const onChainResolved = pickConfig?.resolved ?? false;
+  const computed = !onChainResolved
+    ? computeResultFromConditions(rawPicks, conditionsMap)
+    : null;
+  const result = onChainResolved
+    ? (pickConfig?.result ?? 'UNRESOLVED')
+    : (computed?.result ?? 'UNRESOLVED');
+  const isResolved = onChainResolved || result !== 'UNRESOLVED';
 
-  const viewerWon =
+  const holderWon =
     isResolved &&
     ((isPredictorToken && result === 'PREDICTOR_WINS') ||
       (!isPredictorToken && result === 'COUNTERPARTY_WINS'));
 
-  const viewerLost =
+  const holderLost =
     isResolved &&
     ((isPredictorToken && result === 'COUNTERPARTY_WINS') ||
       (!isPredictorToken && result === 'PREDICTOR_WINS'));
 
   // PnL: profit if won (payout - positionSize), loss if lost (-positionSize)
   const pnlValue = isResolved
-    ? viewerWon
+    ? holderWon
       ? payoutFormatted - positionSizeFormatted
       : -positionSizeFormatted
     : null;
@@ -113,49 +138,44 @@ function PositionRow({
   // Claim / redeem state
   const [isRedeeming, setIsRedeeming] = React.useState(false);
   const [redeemed, setRedeemed] = React.useState(false);
-  const { redeem, settle } = useEscrowWrite({ chainId: position.chainId });
+  const escrowAddress = (pickConfig?.marketAddress as Address) ?? undefined;
+  const { settleAndRedeem } = useEscrowWrite({
+    chainId: position.chainId,
+    escrowAddress,
+  });
 
   const { isLoading: isLoadingClaimable } = useClaimableAmount({
     pickConfigId: pickConfig?.id as `0x${string}`,
     tokenAddress: position.tokenAddress as Address,
     amount: BigInt(position.balance),
     chainId: position.chainId,
+    contractAddress: escrowAddress,
     enabled:
       isResolved &&
-      viewerWon &&
+      holderWon &&
       !!isOwnPosition &&
       BigInt(position.balance) > 0n,
   });
 
   const handleClaim = React.useCallback(async () => {
     if (!position.tokenAddress || BigInt(position.balance) <= 0n) return;
+    const predictionId = pickConfig?.predictionId;
+    if (!predictionId) return;
     setIsRedeeming(true);
     try {
-      // Settle the prediction first (resolves the pick config on-chain)
-      // This is a no-op if already settled, and required before redeem()
-      const predictionId = pickConfig?.predictionId;
-      if (predictionId) {
-        const settleResult = await settle({
-          predictionId: predictionId as `0x${string}`,
-        });
-        if (!settleResult.success) {
-          // settle() may fail if already settled — that's fine, continue to redeem
-          console.log('settle() did not succeed (may already be settled), attempting redeem...');
-        }
-      }
-
-      const result = await redeem({
+      const redeemResult = await settleAndRedeem({
+        predictionId: predictionId as `0x${string}`,
         positionToken: position.tokenAddress as Address,
         amount: BigInt(position.balance),
       });
-      if (result.success) {
+      if (redeemResult.success) {
         setRedeemed(true);
         onRefetch?.();
       }
     } finally {
       setIsRedeeming(false);
     }
-  }, [position, pickConfig, redeem, settle, onRefetch]);
+  }, [position, pickConfig, settleAndRedeem, onRefetch]);
 
   // Determine what to show in P/L column
   const renderPnlCell = () => {
@@ -187,7 +207,7 @@ function PositionRow({
     // Resolved, viewer won, and it's our position → show CLAIM link
     if (
       isResolved &&
-      viewerWon &&
+      holderWon &&
       isOwnPosition &&
       BigInt(position.balance) > 0n
     ) {
@@ -205,8 +225,26 @@ function PositionRow({
       );
     }
 
+    // Resolved, viewer won, viewing someone else's profile → show green PnL (no claim button)
+    if (isResolved && holderWon) {
+      return (
+        <div className="whitespace-nowrap tabular-nums font-mono flex items-baseline gap-1.5 text-green-500">
+          <NumberDisplay
+            value={pnlValue ?? 0}
+            className="tabular-nums font-mono text-green-500"
+          />{' '}
+          <span className="text-green-500">{collateralSymbol}</span>
+          {positionSizeFormatted > 0 && (
+            <span className="text-[10px] leading-tight tabular-nums font-mono text-green-500">
+              +{Math.round(roi).toLocaleString()}%
+            </span>
+          )}
+        </div>
+      );
+    }
+
     // Resolved, viewer lost → show realized PnL in red
-    if (isResolved && viewerLost) {
+    if (isResolved && holderLost) {
       return (
         <div className="whitespace-nowrap tabular-nums font-mono flex items-baseline gap-1.5 text-red-500">
           <NumberDisplay
@@ -221,11 +259,23 @@ function PositionRow({
       );
     }
 
-    // Not resolved → PENDING
+    // Not resolved → PENDING + optional Sell button
     return (
-      <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
-        PENDING
-      </span>
+      <div className="flex items-center gap-2">
+        <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
+          PENDING
+        </span>
+        {showSell && isOwnPosition && BigInt(position.balance) > 0n && (
+          <SellPositionDialog position={position} onSuccess={onRefetch}>
+            <button
+              type="button"
+              className="inline-flex items-center justify-center h-7 px-2.5 rounded-md text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-colors"
+            >
+              Sell
+            </button>
+          </SellPositionDialog>
+        )}
+      </div>
     );
   };
 
@@ -291,6 +341,7 @@ function PositionRow({
             </span>
           )}
           {!isPredictorToken && <CounterpartyBadge />}
+          {pickConfig?.isLegacy && <LegacyBadge />}
         </div>
       </TableCell>
       <TableCell>
@@ -337,15 +388,17 @@ function PositionRow({
           );
         })()}
       </TableCell>
-      {/* Share */}
+      {/* Actions */}
       <TableCell className="text-right">
-        <button
-          type="button"
-          className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
-          onClick={() => onShare(position)}
-        >
-          Share
-        </button>
+        <div className="flex items-center justify-end gap-2">
+          <button
+            type="button"
+            className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
+            onClick={() => onShare(position)}
+          >
+            Share
+          </button>
+        </div>
       </TableCell>
     </TableRow>
   );
@@ -364,11 +417,24 @@ export default function PositionsTable({
   chainId?: number;
   leftSlot?: React.ReactNode;
 }) {
+  const showSell = useFeatureFlag('secondaryMarket', 'secondaryMarket');
   const collateralSymbol =
     COLLATERAL_SYMBOLS[chainId || DEFAULT_CHAIN_ID] || 'USDe';
   const [filters, setFilters] = React.useState<PositionsFilterState>(
     getDefaultPositionsFilterState
   );
+
+  // Derive server-side `settled` filter from status selection.
+  // Only 'active' → settled=false; only 'won'/'lost' → settled=true; mixed → undefined
+  const serverSettled = React.useMemo(() => {
+    const s = filters.status;
+    if (s.length === 0 || s.length === 3) return undefined;
+    const hasActive = s.includes('active');
+    const hasResolved = s.includes('won') || s.includes('lost');
+    if (hasActive && !hasResolved) return false;
+    if (hasResolved && !hasActive) return true;
+    return undefined;
+  }, [filters.status]);
 
   // Fetch position balances for this user
   const {
@@ -379,6 +445,7 @@ export default function PositionsTable({
   } = usePositionBalances({
     holder: account,
     chainId,
+    settled: serverSettled,
   });
 
   // Fetch position balances for a condition (all holders)
@@ -389,18 +456,13 @@ export default function PositionsTable({
     refetch: conditionRefetch,
   } = usePositionBalancesByConditionId({
     conditionId: !account ? conditionId : undefined,
+    settled: serverSettled,
   });
 
-  const allPositions = account ? accountPositions : conditionPositions;
+  const positions = account ? accountPositions : conditionPositions;
   const isLoading = account ? accountLoading : conditionLoading;
   const error = account ? accountError : conditionError;
   const refetch = account ? accountRefetch : conditionRefetch;
-
-  // Filter out zero-balance positions (fully redeemed)
-  const positions = React.useMemo(
-    () => allPositions.filter((p) => BigInt(p.balance) > 0n),
-    [allPositions]
-  );
 
   // Collect all unique conditionIds to fetch category data
   const conditionIds = React.useMemo(() => {
@@ -428,16 +490,24 @@ export default function PositionsTable({
       });
     }
 
-    // Filter by status
+    // Filter by status (using per-condition resolution for early results)
     if (filters.status.length > 0 && filters.status.length < 3) {
       result = result.filter((p) => {
-        const res = p.pickConfig?.result ?? 'UNRESOLVED';
-        const isResolved = p.pickConfig?.resolved ?? false;
-        if (!isResolved) return filters.status.includes('active');
-        const viewerWon =
+        const onChainResolved = p.pickConfig?.resolved ?? false;
+        const picks = p.pickConfig?.picks ?? [];
+        const computed = !onChainResolved
+          ? computeResultFromConditions(picks, conditionsMap)
+          : null;
+        const res = onChainResolved
+          ? (p.pickConfig?.result ?? 'UNRESOLVED')
+          : (computed?.result ?? 'UNRESOLVED');
+        const resolved = onChainResolved || res !== 'UNRESOLVED';
+
+        if (!resolved) return filters.status.includes('active');
+        const holderWon =
           (p.isPredictorToken && res === 'PREDICTOR_WINS') ||
           (!p.isPredictorToken && res === 'COUNTERPARTY_WINS');
-        if (viewerWon) return filters.status.includes('won');
+        if (holderWon) return filters.status.includes('won');
         return filters.status.includes('lost');
       });
     }
@@ -445,7 +515,9 @@ export default function PositionsTable({
     // Filter by position size range
     if (filters.valueRange[0] > 0 || filters.valueRange[1] < Infinity) {
       result = result.filter((p) => {
-        const balanceEth = parseFloat(formatEther(BigInt(p.balance)));
+        const balanceEth = parseFloat(
+          formatEther(BigInt(p.userCollateral || p.balance))
+        );
         return (
           balanceEth >= filters.valueRange[0] &&
           balanceEth <= filters.valueRange[1]
@@ -479,7 +551,8 @@ export default function PositionsTable({
   const shareImageSrc = React.useMemo(() => {
     if (!sharePosition) return null;
     const { pickConfig, isPredictorToken } = sharePosition;
-    const picks = pickConfig?.picks ?? [];
+    const rawPicks = pickConfig?.picks ?? [];
+    const resolvedPicks = toPicks(rawPicks, isPredictorToken, conditionsMap);
 
     const wager = parseFloat(
       formatEther(BigInt(sharePosition.userCollateral || '0'))
@@ -496,18 +569,8 @@ export default function PositionsTable({
       qp.set('anti', '1');
     }
 
-    for (const pick of picks) {
-      const condition = conditionsMap.get(pick.conditionId);
-      const question =
-        condition?.question ?? condition?.shortName ?? pick.conditionId;
-      const choice = isPredictorToken
-        ? (pick.predictedOutcome as OutcomeSide) === OutcomeSide.YES
-          ? 'Yes'
-          : 'No'
-        : (pick.predictedOutcome as OutcomeSide) === OutcomeSide.YES
-          ? 'No'
-          : 'Yes';
-      qp.append('leg', `${question}|${choice}`);
+    for (const pick of resolvedPicks) {
+      qp.append('leg', `${pick.question}|${pick.choice}`);
     }
 
     return `/og/prediction?${qp.toString()}`;
@@ -582,7 +645,21 @@ export default function PositionsTable({
               <TableHead className="h-auto py-3">Position Size</TableHead>
               <TableHead className="h-auto py-3">Payout</TableHead>
               <TableHead className="h-auto py-3">Profit/Loss</TableHead>
-              <TableHead className="h-auto py-3">Ends</TableHead>
+              <TableHead className="h-auto py-3">
+                <span className="flex items-center gap-1">
+                  Ends
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex cursor-help">
+                        <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      End times are estimates and may vary
+                    </TooltipContent>
+                  </Tooltip>
+                </span>
+              </TableHead>
               <TableHead className="h-auto py-3"></TableHead>
             </TableRow>
           </TableHeader>
@@ -595,6 +672,7 @@ export default function PositionsTable({
                 conditionsMap={conditionsMap}
                 onShare={setSharePosition}
                 onRefetch={refetch}
+                showSell={showSell}
               />
             ))}
           </TableBody>

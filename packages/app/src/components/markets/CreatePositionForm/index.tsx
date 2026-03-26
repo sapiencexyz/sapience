@@ -17,8 +17,6 @@ import {
 import { useIsBelow } from '@sapience/ui/hooks/use-mobile';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
-import OgShareDialogBase from '~/components/shared/OgShareDialog';
 import { DollarSign, Share2, Link2, ImageIcon, X } from 'lucide-react';
 import {
   DropdownMenu,
@@ -35,28 +33,40 @@ import {
   useState,
   type CSSProperties,
 } from 'react';
-import { useForm, useWatch, type UseFormReturn } from 'react-hook-form';
+import {
+  useForm,
+  useWatch,
+  type UseFormReturn,
+  type Resolver,
+} from 'react-hook-form';
 import { z } from 'zod';
 
 import { predictionMarketEscrowAbi } from '@sapience/sdk/abis';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
 import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
+import type { PythPrediction } from '@sapience/ui';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import type { Address } from 'viem';
-import { erc20Abi, formatUnits } from 'viem';
+import { erc20Abi, formatUnits, parseUnits } from 'viem';
 import { useAccount, useReadContracts } from 'wagmi';
-import { useSession } from '~/lib/context/SessionContext';
-import { createPositionSizeSchema } from '~/components/markets/forms/inputs/PositionSizeInput';
-import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
-
+import OgShareDialogBase from '~/components/shared/OgShareDialog';
+import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
+import { buildDialogPicks } from '~/components/markets/CreatePositionForm/buildDialogPicks';
 import { CreatePositionFormContent } from '~/components/markets/CreatePositionForm/CreatePositionFormContent';
-import { useConnectedWallet } from '~/hooks/useConnectedWallet';
+import { createPositionSizeSchema } from '~/components/markets/forms/inputs/PositionSizeInput';
+import { useValidatedBids } from '~/hooks/auction/useValidatedBids';
 import { useSubmitPosition } from '~/hooks/forms/useSubmitPosition';
-import { useSponsorStatus } from '~/hooks/sponsorship/useSponsorStatus';
 import { usePositionProgress } from '~/hooks/forms/usePositionProgress';
+import { useSponsorStatus } from '~/hooks/sponsorship/useSponsorStatus';
+import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import { useAuctionStart, type QuoteBid } from '~/lib/auction/useAuctionStart';
-
-import { logPositionForm } from '~/lib/auction/bidLogger';
+import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
+import {
+  CollateralBalanceProvider,
+  useCollateralBalanceContext,
+} from '~/lib/context/CollateralBalanceContext';
+import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
+import { useSession } from '~/lib/context/SessionContext';
 import {
   DEFAULT_POSITION_SIZE,
   getMaxPositionSize,
@@ -64,12 +74,6 @@ import {
   calculatePayout,
   YES_SQRT_PRICE_X96,
 } from '~/lib/utils/positionFormUtils';
-import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
-import {
-  CollateralBalanceProvider,
-  useCollateralBalanceContext,
-} from '~/lib/context/CollateralBalanceContext';
-import type { PythPrediction } from '@sapience/ui';
 
 interface CreatePositionFormProps {
   variant?: 'triggered' | 'panel';
@@ -154,7 +158,6 @@ const CreatePositionFormInner = ({
     clearPositionForm,
     selections,
     clearSelections,
-    getPicks,
   } = useCreatePositionContext();
 
   const isCompact = useIsBelow(1024);
@@ -206,6 +209,7 @@ const CreatePositionFormInner = ({
       conditionId: string;
       question: string;
       choice: 'Yes' | 'No';
+      source?: 'polymarket' | 'pyth';
     }>;
     positionSize: string;
     payout?: string;
@@ -237,15 +241,8 @@ const CreatePositionFormInner = ({
   const PREDICTION_MARKET_ADDRESS =
     predictionMarketEscrow[positionChainId]?.address;
 
-  // Sponsorship status
-  const {
-    isSponsored,
-    sponsorAddress,
-    refetch: refetchSponsor,
-  } = useSponsorStatus();
-
-  // State for validated bids (async validation checks market maker balance/allowance)
-  const [bids, setBids] = useState<QuoteBid[]>([]);
+  // Sponsorship: refetch after mint to update budget display
+  const { refetch: refetchSponsor } = useSponsorStatus();
 
   // Fetch collateral token address from PredictionMarketEscrow
   const predictionMarketConfigRead = useReadContracts({
@@ -269,28 +266,6 @@ const CreatePositionFormInner = ({
     }
     return undefined;
   }, [predictionMarketConfigRead.data]);
-
-  // Escrow bids are marked as valid directly — no V1 mint simulation needed
-  useEffect(() => {
-    logPositionForm(
-      `[validation] rawBids=${rawBids.length}, hasParams=${!!currentAuctionParams}, hasMarket=${!!PREDICTION_MARKET_ADDRESS}`
-    );
-
-    if (rawBids.length === 0) {
-      setBids([]);
-      return;
-    }
-
-    logPositionForm(
-      `Received ${rawBids.length} escrow bid(s), marking as valid. First bid: counterparty=${rawBids[0]?.counterparty?.slice(0, 10)}, collateral=${rawBids[0]?.counterpartyCollateral}, deadline=${rawBids[0]?.counterpartyDeadline}`
-    );
-    setBids(
-      rawBids.map((b) => ({
-        ...b,
-        validationStatus: 'valid' as const,
-      }))
-    );
-  }, [rawBids, currentAuctionParams, PREDICTION_MARKET_ADDRESS]);
 
   // Escrow doesn't have a minCollateral concept
   const minCollateralRaw: bigint | undefined = undefined;
@@ -389,7 +364,7 @@ const CreatePositionFormInner = ({
   }, []);
 
   // Create form schema for position mode
-  const formSchema: z.ZodType<any> = useMemo(() => {
+  const formSchema: z.ZodTypeAny = useMemo(() => {
     const maxAmount = getMaxPositionSize(userBalance, isEtherealFromContext);
     const positionSizeSchema = createPositionSizeSchema(
       minPositionSize,
@@ -416,11 +391,21 @@ const CreatePositionFormInner = ({
   const formSchemaRef = useRef(formSchema);
   formSchemaRef.current = formSchema;
 
+  // Form data shape used by useForm
+  type PositionFormValues = {
+    positions: Record<
+      string,
+      { predictionValue: string; positionSize: string; isFlipped?: boolean }
+    >;
+    positionSize?: string;
+    limitAmount?: string | number;
+  };
+
   // Create a stable resolver that reads from the ref
   // This ensures validation uses the latest schema (with updated userBalance)
-  const dynamicResolver = useCallback(
-    async (data: any, context: any, options: any) => {
-      const resolver = zodResolver(formSchemaRef.current as any);
+  const dynamicResolver = useCallback<Resolver<PositionFormValues>>(
+    async (data, context, options) => {
+      const resolver = zodResolver(formSchemaRef.current);
       return resolver(data, context, options);
     },
     []
@@ -452,14 +437,7 @@ const CreatePositionFormInner = ({
   }, [createPositionEntries]);
 
   // Single form for both individual and position modes
-  const formMethods = useForm<{
-    positions: Record<
-      string,
-      { predictionValue: string; positionSize: string; isFlipped?: boolean }
-    >;
-    positionSize?: string;
-    limitAmount?: string | number;
-  }>({
+  const formMethods = useForm<PositionFormValues>({
     resolver: dynamicResolver,
     defaultValues: {
       ...generateFormValues,
@@ -486,6 +464,45 @@ const CreatePositionFormInner = ({
       formMethods.trigger('positionSize');
     }
   }, [userBalance, watchedPositionSize, formMethods]);
+
+  // Compute predictorCollateral in wei for bid validation
+  const predictorCollateralWei = useMemo(() => {
+    if (!watchedPositionSize || collateralDecimals === undefined)
+      return undefined;
+    try {
+      return parseUnits(watchedPositionSize, collateralDecimals).toString();
+    } catch {
+      return undefined;
+    }
+  }, [watchedPositionSize, collateralDecimals]);
+
+  // Use the canonical picks from the auction params — they contain the exact picks
+  // the counterparty signed over, for both Pyth and Polymarket. getPolymarketPicks() only
+  // returns Polymarket selections and would skip validation for Pyth-only predictions.
+  const validationPicks = useMemo(() => {
+    const picks = currentAuctionParams?.picks;
+    return picks && picks.length > 0 ? picks : undefined;
+  }, [currentAuctionParams]);
+
+  // Derive sponsor status from the actual auction params (not from user eligibility).
+  // The counterparty signed with whatever sponsor was in the auction request, so
+  // validation must match exactly.
+  const auctionHasSponsor = !!currentAuctionParams?.predictorSponsor;
+  const auctionSponsorAddress = currentAuctionParams?.predictorSponsor;
+
+  // Validate escrow bids: unified Tier 2 validation (on-chain sig verification + nonce + balance)
+  const { validatedBids: bids } = useValidatedBids(rawBids, {
+    chainId: positionChainId,
+    predictionMarketAddress: PREDICTION_MARKET_ADDRESS,
+    collateralTokenAddress: collateralToken,
+    predictorAddress: effectiveAddress as Address | undefined,
+    predictorCollateral: predictorCollateralWei,
+    predictorNonce: currentAuctionParams?.predictorNonce,
+    picks: validationPicks,
+    isSponsored: auctionHasSponsor,
+    sponsorAddress: auctionSponsorAddress,
+    enabled: true,
+  });
 
   // Reset initialization when effective address changes (e.g., session activates)
   useEffect(() => {
@@ -617,8 +634,8 @@ const CreatePositionFormInner = ({
     onSuccess: () => {
       clearPositionForm();
       setIsPopoverOpen(false);
-      // Refetch sponsor budget (it decreases after a sponsored mint)
-      refetchSponsor();
+      // Delayed refetch to allow on-chain state to settle after mint
+      setTimeout(() => refetchSponsor(), 5000);
     },
     onProgressUpdate: {
       onTxSending: startSubmission,
@@ -669,11 +686,7 @@ const CreatePositionFormInner = ({
           }
 
           const dialogData = {
-            picks: selections.map((s) => ({
-              conditionId: s.conditionId,
-              question: s.question,
-              choice: s.prediction ? 'Yes' : ('No' as 'Yes' | 'No'),
-            })),
+            picks: buildDialogPicks(selections, pythPredictions),
             positionSize: submittedPositionSize,
             payout,
             symbol: collateralSymbol || 'testUSDe',
@@ -686,22 +699,12 @@ const CreatePositionFormInner = ({
           // Close the popover/drawer
           setIsPopoverOpen(false);
 
-          // Add picks directly from selections (ensures exact match with counterparty signature)
-          const picks = getPicks();
-          if (picks.length > 0) {
-            mintReq.picks = picks.map((p) => ({
-              conditionResolver: p.conditionResolver,
-              conditionId: p.conditionId,
-              predictedOutcome: p.predictedOutcome,
-            }));
-          }
+          // picks are already set by buildMintRequestDataFromBid from auction.picks
+          // (the canonical set the counterparty signed over, including both Pyth and Polymarket)
 
-          // Wire sponsorship: if user has a sponsor budget, pass the sponsor address
-          // so the escrow contract calls fundMint instead of pulling from user's wallet
-          if (isSponsored && sponsorAddress) {
-            mintReq.predictorSponsor = sponsorAddress;
-            mintReq.predictorSponsorData = '0x';
-          }
+          // Sponsorship: predictorSponsor is already set by buildMintRequestDataFromBid
+          // from the auction params (threaded when user clicked "Use" on the sponsor indicator).
+          // No manual override needed — it must match what the counterparty signed over.
 
           // Submit the mint request to PredictionMarket
           submitPosition(mintReq);
@@ -762,12 +765,18 @@ const CreatePositionFormInner = ({
 
   // Build OG image URL for the preview card (drafted position, not yet submitted)
   const previewCardImageSrc = useMemo(() => {
-    if (selections.length === 0) return null;
+    if (selections.length === 0 && pythPredictions.length === 0) return null;
     const qp = new URLSearchParams();
     if (effectiveAddress)
       qp.set('addr', String(effectiveAddress).toLowerCase());
     selections.forEach((s) => {
       qp.append('leg', `${s.question}|${s.prediction ? 'Yes' : 'No'}`);
+    });
+    pythPredictions.forEach((p) => {
+      qp.append(
+        'leg',
+        `${p.priceFeedLabel ?? 'Crypto'} OVER $${p.targetPrice.toLocaleString()}|${p.direction === 'over' ? 'Yes' : 'No'}`
+      );
     });
     if (watchedPositionSize) qp.set('wager', watchedPositionSize);
     if (collateralSymbol) qp.set('symbol', collateralSymbol);
@@ -785,6 +794,7 @@ const CreatePositionFormInner = ({
     return `/og/prediction?${qp.toString()}`;
   }, [
     selections,
+    pythPredictions,
     effectiveAddress,
     watchedPositionSize,
     collateralSymbol,
@@ -836,6 +846,8 @@ const CreatePositionFormInner = ({
     pythPredictions,
     onRemovePythPrediction,
     onClearPythPredictions,
+    onViewCard: () => setShowPreviewCard(true),
+    onCopyLink: handleCopyLink,
   };
 
   // Share dialog component - rendered independently of layout
@@ -848,6 +860,10 @@ const CreatePositionFormInner = ({
       trackPrediction={true}
       progressState={progressState}
       onPredictionIndexed={handlePositionIndexed}
+      expectedPicks={currentAuctionParams?.picks?.map((p) => ({
+        conditionId: p.conditionId,
+        predictedOutcome: p.predictedOutcome,
+      }))}
     />
   );
 
@@ -888,18 +904,8 @@ const CreatePositionFormInner = ({
               } as CSSProperties
             }
           >
-            <DrawerHeader className="pb-0 flex items-center justify-between">
+            <DrawerHeader className="pb-0">
               <DrawerTitle className="text-left"></DrawerTitle>
-              <ShareClearBar
-                visible={selections.length > 0 || pythPredictions.length > 0}
-                onViewCard={() => setShowPreviewCard(true)}
-                onCopyLink={handleCopyLink}
-                onClear={() => {
-                  clearSelections();
-                  clearPositionForm();
-                  onClearPythPredictions?.();
-                }}
-              />
             </DrawerHeader>
             <div
               className={`${createPositionEntries.length === 0 ? 'pt-0 pb-4' : 'p-0'} h-full flex flex-col min-h-0`}

@@ -14,6 +14,7 @@ import {
     IConditionalTokensConditionResolver
 } from "./interfaces/IConditionalTokensConditionResolver.sol";
 import { IConditionResolver } from "../../interfaces/IConditionResolver.sol";
+import { ConditionResolverBase } from "../ConditionResolverBase.sol";
 import { IV2Types } from "../../interfaces/IV2Types.sol";
 import { LZTypes } from "../shared/LZTypes.sol";
 
@@ -21,11 +22,19 @@ import { LZTypes } from "../shared/LZTypes.sol";
 /// @notice Resolver that receives ConditionalTokens resolution data via LayerZero
 /// @dev Implements IConditionResolver and caches binary YES/NO outcomes for conditionIds.
 ///      Receives resolution data from ConditionalTokensReader on Polygon.
+///      Supports variable-length conditionId: 32 bytes = raw conditionId,
+///      >32 bytes = bytes32 conditionId + uint256 deadline timestamp.
+///      If a deadline is present and the condition is unresolved past the deadline,
+///      the resolver returns "indecisive" (tie) instead of "unresolved".
 contract ConditionalTokensConditionResolver is
     OAppReceiver,
     ReentrancyGuard,
-    IConditionalTokensConditionResolver
+    IConditionalTokensConditionResolver,
+    ConditionResolverBase
 {
+    // ============ Errors ============
+    error InvalidConditionIdLength();
+
     // ============ Constants ============
     uint16 private constant CMD_RESOLUTION_RESPONSE = 10;
 
@@ -62,25 +71,29 @@ contract ConditionalTokensConditionResolver is
     // ============ IConditionResolver Implementation ============
 
     /// @inheritdoc IConditionResolver
-    function isValidCondition(bytes32 conditionId)
+    function isValidCondition(bytes calldata conditionId)
         external
         pure
         returns (bool)
     {
-        return conditionId != bytes32(0);
+        // Must be exactly 32 bytes (raw conditionId) or 64 bytes (conditionId + uint256 deadline)
+        if (conditionId.length != 32 && conditionId.length != 64) return false;
+        bytes32 rawId = bytes32(conditionId[:32]);
+        return rawId != bytes32(0);
     }
 
     /// @inheritdoc IConditionResolver
-    function getResolution(bytes32 conditionId)
+    function getResolution(bytes calldata conditionId)
         external
         view
         returns (bool isResolved, IV2Types.OutcomeVector memory outcome)
     {
-        return _getResolution(conditions[conditionId]);
+        (bytes32 rawId, uint256 deadline) = _unpackConditionId(conditionId);
+        return _getResolution(conditions[rawId], deadline);
     }
 
     /// @inheritdoc IConditionResolver
-    function getResolutions(bytes32[] calldata conditionIds)
+    function getResolutions(bytes[] calldata conditionIds)
         external
         view
         returns (
@@ -93,15 +106,26 @@ contract ConditionalTokensConditionResolver is
         outcomes = new IV2Types.OutcomeVector[](length);
 
         for (uint256 i = 0; i < length; i++) {
+            (bytes32 rawId, uint256 deadline) =
+                _unpackConditionId(conditionIds[i]);
             (resolved[i], outcomes[i]) =
-                _getResolution(conditions[conditionIds[i]]);
+                _getResolution(conditions[rawId], deadline);
         }
     }
 
     /// @inheritdoc IConditionResolver
-    function isFinalized(bytes32 conditionId) external view returns (bool) {
-        ConditionState memory condition = conditions[conditionId];
-        return condition.settled && !condition.invalid;
+    function isFinalized(bytes calldata conditionId)
+        external
+        view
+        returns (bool)
+    {
+        (bytes32 rawId, uint256 deadline) = _unpackConditionId(conditionId);
+        ConditionState memory condition = conditions[rawId];
+        // Settled normally
+        if (condition.settled && !condition.invalid) return true;
+        // Past deadline and unresolved → finalized as indecisive
+        if (deadline > 0 && block.timestamp > deadline) return true;
+        return false;
     }
 
     // ============ View Functions ============
@@ -175,14 +199,43 @@ contract ConditionalTokensConditionResolver is
 
     // ============ Internal Functions ============
 
-    /// @dev Get resolution for a condition state
-    function _getResolution(ConditionState memory condition)
+    /// @dev Unpack a variable-length conditionId into raw bytes32 + optional deadline
+    /// @param conditionId The variable-length condition identifier
+    /// @return rawId The 32-byte condition identifier
+    /// @return deadline The deadline timestamp (0 if not present)
+    function _unpackConditionId(bytes calldata conditionId)
         internal
         pure
+        returns (bytes32 rawId, uint256 deadline)
+    {
+        if (conditionId.length != 32 && conditionId.length != 64) {
+            revert InvalidConditionIdLength();
+        }
+
+        if (conditionId.length == 32) {
+            rawId = abi.decode(conditionId, (bytes32));
+            // deadline = 0 (no deadline)
+        } else {
+            (rawId, deadline) = abi.decode(conditionId, (bytes32, uint256));
+        }
+    }
+
+    /// @dev Get resolution for a condition state, with optional deadline
+    /// @param condition The cached condition state
+    /// @param deadline The deadline timestamp (0 = no deadline)
+    /// @return isResolved Whether the condition should be treated as resolved
+    /// @return outcome The outcome vector
+    function _getResolution(ConditionState memory condition, uint256 deadline)
+        internal
+        view
         returns (bool isResolved, IV2Types.OutcomeVector memory outcome)
     {
         // Not resolved if: not settled, or marked as invalid
         if (!condition.settled || condition.invalid) {
+            // Deadline passed while unresolved → indecisive
+            if (deadline > 0 && block.timestamp > deadline) {
+                return (true, IV2Types.OutcomeVector(1, 1));
+            }
             return (false, IV2Types.OutcomeVector(0, 0));
         }
 
@@ -230,7 +283,7 @@ contract ConditionalTokensConditionResolver is
             condition.settled = false;
             condition.invalid = false;
             condition.nonDecisive = false;
-            emit ConditionResolved(
+            emit ConditionResolutionDetail(
                 conditionId,
                 false,
                 false,
@@ -249,7 +302,7 @@ contract ConditionalTokensConditionResolver is
             condition.settled = false;
             condition.invalid = true;
             condition.nonDecisive = false;
-            emit ConditionResolved(
+            emit ConditionResolutionDetail(
                 conditionId,
                 true,
                 false,
@@ -268,7 +321,7 @@ contract ConditionalTokensConditionResolver is
             condition.invalid = false;
             condition.nonDecisive = true;
             condition.resolvedToYes = false;
-            emit ConditionResolved(
+            emit ConditionResolutionDetail(
                 conditionId,
                 false,
                 true,
@@ -278,6 +331,7 @@ contract ConditionalTokensConditionResolver is
                 yesPayout,
                 block.timestamp
             );
+            _emitResolved(abi.encode(conditionId), IV2Types.OutcomeVector(1, 1));
             return;
         }
 
@@ -287,7 +341,7 @@ contract ConditionalTokensConditionResolver is
         condition.nonDecisive = false;
         condition.resolvedToYes = yesPayout > noPayout;
 
-        emit ConditionResolved(
+        emit ConditionResolutionDetail(
             conditionId,
             false,
             false,
@@ -296,6 +350,13 @@ contract ConditionalTokensConditionResolver is
             noPayout,
             yesPayout,
             block.timestamp
+        );
+
+        _emitResolved(
+            abi.encode(conditionId),
+            condition.resolvedToYes
+                ? IV2Types.OutcomeVector(1, 0)
+                : IV2Types.OutcomeVector(0, 1)
         );
     }
 }

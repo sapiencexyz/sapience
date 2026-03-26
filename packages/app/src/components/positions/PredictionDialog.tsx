@@ -5,7 +5,11 @@ import { formatEther } from 'viem';
 import { PicksContent } from '~/components/shared/PicksSummary';
 import PositionSummary from './PositionSummary';
 import type { Prediction, PickConfigData } from '~/hooks/graphql/usePositions';
-import { toPicks, type ConditionsMap } from '~/components/positions/toPickLegs';
+import {
+  toPicks,
+  computeResultFromConditions,
+  type ConditionsMap,
+} from '~/components/positions/toPickLegs';
 
 interface PredictionDialogProps {
   open: boolean;
@@ -38,8 +42,14 @@ export default function PredictionDialog({
     Number(formatEther(BigInt(prediction.predictorCollateral))) +
     Number(formatEther(BigInt(prediction.counterpartyCollateral)));
 
-  const isSettled = prediction.settled;
-  const result = prediction.result;
+  // Use on-chain result if settled, otherwise compute from individual conditions
+  const computed = !prediction.settled
+    ? computeResultFromConditions(rawPicks, conditionsMap)
+    : null;
+  const isSettled = prediction.settled || computed?.result !== 'UNRESOLVED';
+  const result = prediction.settled
+    ? prediction.result
+    : (computed?.result ?? 'UNRESOLVED');
   const predictorWon = result === 'PREDICTOR_WINS';
   const counterpartyWon = result === 'COUNTERPARTY_WINS';
   const positionWon =

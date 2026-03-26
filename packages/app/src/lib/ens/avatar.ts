@@ -57,12 +57,29 @@ function toHttpFromIpfs(uri: string): string {
   return uri;
 }
 
+const BLOCKED_HOSTNAME_PATTERNS = [
+  /^localhost$/i,
+  /^127\.\d+\.\d+\.\d+$/,
+  /^10\.\d+\.\d+\.\d+$/,
+  /^172\.(1[6-9]|2\d|3[01])\.\d+\.\d+$/,
+  /^192\.168\.\d+\.\d+$/,
+  /^169\.254\.\d+\.\d+$/,
+  /^\[::1\]$/,
+  /^0\.0\.0\.0$/,
+  /^metadata\.google\.internal$/i,
+];
+
+function isBlockedHost(hostname: string): boolean {
+  return BLOCKED_HOSTNAME_PATTERNS.some((re) => re.test(hostname));
+}
+
 function sanitizeAvatarUrl(url: string | null | undefined): string | null {
   if (!url) return null;
   try {
     const u = new URL(url);
-    if (u.protocol === 'http:' || u.protocol === 'https:') return u.toString();
-    return null;
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+    if (isBlockedHost(u.hostname)) return null;
+    return u.toString();
   } catch {
     return null;
   }
@@ -95,9 +112,12 @@ function parseEnsAvatarCaip(
   return { chainId, standard, contract, tokenId };
 }
 
-async function fetchJson<T = any>(url: string): Promise<T | null> {
+async function fetchJson<T = unknown>(url: string): Promise<T | null> {
   try {
-    const res = await fetch(url, { cache: 'force-cache' });
+    const res = await fetch(url, {
+      cache: 'force-cache',
+      signal: AbortSignal.timeout(5000),
+    });
     if (!res.ok) return null;
     const data = (await res.json()) as T;
     return data;
@@ -133,7 +153,7 @@ async function resolveNftImageUrl(
       args: [caip.tokenId],
     });
     const resolved = toHttpFromIpfs(tokenUri);
-    const metadata = await fetchJson<any>(resolved);
+    const metadata = await fetchJson<{ image?: string }>(resolved);
     const image = toHttpFromIpfs(String(metadata?.image || ''));
     return image || null;
   }
@@ -154,7 +174,7 @@ async function resolveNftImageUrl(
   });
   uri = replaceIdTemplate(uri, caip.tokenId);
   const resolved = toHttpFromIpfs(uri);
-  const metadata = await fetchJson<any>(resolved);
+  const metadata = await fetchJson<{ image?: string }>(resolved);
   const image = toHttpFromIpfs(String(metadata?.image || ''));
   return image || null;
 }

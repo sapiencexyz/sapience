@@ -2,12 +2,11 @@
 
 import Image from 'next/image';
 import { Copy } from 'lucide-react';
-import { predictionMarket } from '@sapience/sdk/contracts/addresses';
+import { PythOracleMark } from '@sapience/ui';
+import { predictionMarketEscrow } from '@sapience/sdk/contracts/addresses';
 import { ConditionStatusIndicator } from './ConditionStatusIndicator';
-import {
-  UMA_RESOLVER_ADDRESSES,
-  POLYMARKET_RESOLVER_ADDRESSES,
-} from '~/lib/constants';
+import { POLYMARKET_RESOLVER_ADDRESSES } from '~/lib/constants';
+import { inferResolverKind } from '~/lib/resolvers/conditionResolver';
 
 interface TechSpecTableProps {
   conditionId: string;
@@ -28,15 +27,12 @@ export function TechSpecTable({
   nonDecisive,
   resolverAddress,
 }: TechSpecTableProps) {
-  const marketAddress = predictionMarket[chainId]?.address;
-
-  const isUmaResolver =
-    resolverAddress &&
-    UMA_RESOLVER_ADDRESSES.has(resolverAddress.toLowerCase());
+  const marketAddress = predictionMarketEscrow[chainId]?.address;
 
   const isPolymarketResolver =
     resolverAddress &&
     POLYMARKET_RESOLVER_ADDRESSES.has(resolverAddress.toLowerCase());
+  const isPythResolver = inferResolverKind(resolverAddress) === 'pyth';
 
   const formatAddress = (address: string) =>
     `${address.slice(0, 6)}...${address.slice(-4)}`;
@@ -92,23 +88,6 @@ export function TechSpecTable({
           <td className="px-4 py-3 text-brand-white font-mono text-sm break-all align-middle leading-none">
             {resolverAddress ? (
               <span className="inline-flex items-center gap-1.5 align-middle leading-none">
-                {isUmaResolver && (
-                  <a
-                    href="https://uma.xyz/"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center hover:opacity-90 transition-opacity"
-                    aria-label="Visit UMA website"
-                  >
-                    <Image
-                      src="/uma-logomark.png"
-                      alt="UMA"
-                      width={24}
-                      height={24}
-                      className="h-[18px] w-[18px]"
-                    />
-                  </a>
-                )}
                 {isPolymarketResolver && (
                   <a
                     href="https://polymarket.com/"
@@ -124,6 +103,23 @@ export function TechSpecTable({
                       height={24}
                       className="h-[18px] w-[18px]"
                     />
+                  </a>
+                )}
+                {isPythResolver && (
+                  <a
+                    href="https://pyth.network/"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center hover:opacity-90 transition-opacity"
+                    aria-label="Visit Pyth Network"
+                  >
+                    <div className="h-[18px] w-[18px] rounded-full bg-muted flex items-center justify-center">
+                      <PythOracleMark
+                        className="h-3 w-3 text-foreground/80"
+                        src="/pyth-network.svg"
+                        alt="Pyth"
+                      />
+                    </div>
                   </a>
                 )}
                 {formatAddress(resolverAddress)}

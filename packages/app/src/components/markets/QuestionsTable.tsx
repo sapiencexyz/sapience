@@ -17,8 +17,7 @@ import {
   useReactTable,
   type ColumnDef,
 } from '@tanstack/react-table';
-import { ChevronUp, ChevronDown } from 'lucide-react';
-import Loader from '../shared/Loader';
+import { ChevronUp, ChevronDown, Info } from 'lucide-react';
 import { formatEther } from 'viem';
 import {
   Tooltip,
@@ -26,6 +25,8 @@ import {
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
 import { cn } from '@sapience/ui/lib/utils';
+import Loader from '../shared/Loader';
+import { PythMarketBadge } from '../shared/PythMarketBadge';
 import ConditionTitleLink from './ConditionTitleLink';
 import MarketBadge from './MarketBadge';
 import TableFilters, {
@@ -49,6 +50,7 @@ import {
   GroupForecastCell,
   PredictCell,
 } from './market-helpers';
+import { inferResolverKind } from '~/lib/resolvers/conditionResolver';
 import { usePredictionMap } from '~/hooks/usePredictionMap';
 import { useInfiniteScroll } from '~/hooks/useInfiniteScroll';
 
@@ -144,16 +146,21 @@ function createColumns(
         }
         // Standalone condition
         const condition = data.condition;
+        const isPyth = inferResolverKind(condition.resolver) === 'pyth';
         const categorySlug = condition.category?.slug;
         const color = getCategoryColor(categorySlug);
         return (
           <div className="flex items-center gap-3 w-full min-w-0">
-            <MarketBadge
-              label={condition.question}
-              size={24}
-              color={color}
-              categorySlug={categorySlug}
-            />
+            {isPyth ? (
+              <PythMarketBadge />
+            ) : (
+              <MarketBadge
+                label={condition.question}
+                size={24}
+                color={color}
+                categorySlug={categorySlug}
+              />
+            )}
             <ConditionTitleLink
               conditionId={condition.id}
               resolverAddress={condition.resolver ?? undefined}
@@ -266,6 +273,16 @@ function createColumns(
               className="px-0 gap-1 hover:bg-transparent whitespace-nowrap"
             >
               Ends
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="inline-flex cursor-help">
+                    <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  End times are estimates and may vary
+                </TooltipContent>
+              </Tooltip>
               {sorted === 'asc' ? (
                 <ChevronUp className="h-4 w-4" />
               ) : sorted === 'desc' ? (
@@ -365,6 +382,7 @@ function ChildConditionRow({
   isLast?: boolean;
 }) {
   const conditionType = groupConditionToConditionType(condition);
+  const isPyth = inferResolverKind(condition.resolver) === 'pyth';
   const categorySlug = condition.category?.slug;
   const color = getCategoryColor(categorySlug);
   const openInterestWei = BigInt(condition.openInterest || '0');
@@ -382,12 +400,16 @@ function ChildConditionRow({
     >
       <TableCell className="py-2 pl-4 w-full max-w-0 min-w-[200px]">
         <div className="flex items-center gap-3 w-full min-w-0">
-          <MarketBadge
-            label={condition.question}
-            size={24}
-            color={color}
-            categorySlug={categorySlug}
-          />
+          {isPyth ? (
+            <PythMarketBadge />
+          ) : (
+            <MarketBadge
+              label={condition.question}
+              size={24}
+              color={color}
+              categorySlug={categorySlug}
+            />
+          )}
           <ConditionTitleLink
             conditionId={condition.id}
             resolverAddress={condition.resolver ?? undefined}
@@ -544,6 +566,7 @@ export default function QuestionsTable({
         handleToggleExpand,
         handlePrediction
       ),
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- refs are stable, intentionally omitted
     [handleToggleExpand, handlePrediction]
   );
 

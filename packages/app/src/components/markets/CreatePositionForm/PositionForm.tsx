@@ -6,13 +6,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@sapience/ui/components/ui/dialog';
-import { Gift, Info } from 'lucide-react';
+import { Info } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FormProvider, type UseFormReturn, useWatch } from 'react-hook-form';
 import { parseUnits } from 'viem';
 import { useAccount } from 'wagmi';
-import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
 import { generateRandomNonce } from '@sapience/sdk';
 import {
   COLLATERAL_SYMBOLS,
@@ -20,13 +19,19 @@ import {
   CHAIN_ID_ETHEREAL_TESTNET,
 } from '@sapience/sdk/constants';
 import { useToast } from '@sapience/ui/hooks/use-toast';
+import {
+  PredictionListItem,
+  type PythPrediction,
+  type PredictionListItemData,
+} from '@sapience/ui';
+import SponsorshipIndicator from './SponsorshipIndicator';
+import { PythMarketBadge } from '~/components/shared/PythMarketBadge';
+import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
+import { PREFERRED_ESTIMATE_QUOTER } from '~/lib/constants';
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import { PositionSizeInput } from '~/components/markets/forms';
 import BidDisplay from '~/components/markets/forms/shared/BidDisplay';
-import {
-  buildAuctionStartPayload,
-  buildPythAuctionStartPayload,
-} from '~/lib/auction/buildAuctionPayload';
+import { buildPythAuctionStartPayload } from '~/lib/auction/buildAuctionPayload';
 import type { AuctionParams, QuoteBid } from '~/lib/auction/useAuctionStart';
 import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
@@ -37,18 +42,12 @@ import { useSession } from '~/lib/context/SessionContext';
 import { getCategoryIcon } from '~/lib/theme/categoryIcons';
 import { getCategoryStyle, getColorWithAlpha } from '~/lib/utils/categoryStyle';
 import { getMaxPositionSize } from '~/lib/utils/positionFormUtils';
-import {
-  PythPredictionListItem,
-  UmaPredictionListItem,
-  type PythPrediction,
-  type UmaPrediction,
-} from '@sapience/ui';
 import { logPositionForm, formatBidForLog } from '~/lib/auction/bidLogger';
-import {
-  useSponsorStatus,
-  isEntryPriceEligible,
-} from '~/hooks/sponsorship/useSponsorStatus';
-import { formatUnits } from 'viem';
+import { getAuctionTriggerMode } from '~/lib/auction/auctionTriggerMode';
+import { useSponsorStatus } from '~/hooks/sponsorship/useSponsorStatus';
+import { useSponsorshipActivation } from '~/hooks/sponsorship/useSponsorshipActivation';
+
+const EMPTY_BIDS: QuoteBid[] = [];
 
 interface PositionFormProps {
   methods: UseFormReturn<{
@@ -86,7 +85,7 @@ export default function PositionForm({
   isSubmitting,
   error,
   chainId = 42161,
-  bids = [],
+  bids = EMPTY_BIDS,
   requestQuotes,
   collateralToken,
   collateralSymbol: collateralSymbolProp,
@@ -96,7 +95,8 @@ export default function PositionForm({
   pythPredictions = [],
   onRemovePythPrediction,
 }: PositionFormProps) {
-  const { selections, removeSelection, getPicks } = useCreatePositionContext();
+  const { selections, removeSelection, getPolymarketPicks } =
+    useCreatePositionContext();
   const { address: predictorAddress } = useAccount();
   const { hasConnectedWallet } = useConnectedWallet();
   const { openConnectDialog } = useConnectDialog();
@@ -129,7 +129,34 @@ export default function PositionForm({
   } = useSession();
 
   // Sponsorship status
-  const { isSponsored, remainingBudget, maxEntryPriceBps } = useSponsorStatus();
+  const {
+    isSponsored,
+    sponsorAddress,
+    remainingBudget,
+    maxEntryPriceBps,
+    matchLimit,
+    requiredCounterparty,
+  } = useSponsorStatus();
+
+  // Sponsorship activation state machine (timeout, reset, activate).
+  // Callbacks are ref-ified inside the hook so triggerAuctionRequest (defined below) resolves at call-time.
+  const triggerAuctionRequestRef = useRef<
+    (opts?: { forceRefresh?: boolean; withSponsor?: boolean }) => void
+  >(() => {});
+  const {
+    sponsorshipActivated,
+    awaitingSponsoredBid,
+    activateSponsor,
+    clearAwaiting,
+    resetSponsor,
+  } = useSponsorshipActivation({
+    onActivate: () =>
+      triggerAuctionRequestRef.current({
+        forceRefresh: true,
+        withSponsor: true,
+      }),
+    onTimeout: () => triggerAuctionRequestRef.current({ forceRefresh: true }),
+  });
 
   // Determine the actual predictor address based on signing method
   // This MUST match the logic in useAuctionStart.requestQuotes
@@ -137,6 +164,10 @@ export default function PositionForm({
   // - Otherwise (signing with wallet): use predictorAddress (wallet)
   const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
   const willUseSessionSigning = isUsingSmartAccount && !!sessionSignMessage;
+  const triggerMode = getAuctionTriggerMode(
+    willUseSessionSigning,
+    hasConnectedWallet
+  );
   const selectedPredictorAddress = willUseSessionSigning
     ? (effectiveAddress ?? predictorAddress ?? ZERO_ADDRESS)
     : (predictorAddress ?? ZERO_ADDRESS);
@@ -216,10 +247,12 @@ export default function PositionForm({
       );
       setValidBids([]);
       setStickyEstimateBid(null);
+      resetSponsor();
       setLastQuoteRequestMs(null); // Reset cooldown when position size changes
       currentRequestKeyRef.current = null; // Ignore incoming bids for old configuration
       prevPositionSizeRef.current = positionSizeValue || '';
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [positionSizeValue]);
 
   // Clear bids when wallet connection state changes
@@ -232,11 +265,31 @@ export default function PositionForm({
       );
       setValidBids([]);
       setStickyEstimateBid(null);
+      resetSponsor();
       setLastQuoteRequestMs(null);
       currentRequestKeyRef.current = null;
       prevHasConnectedWalletRef.current = hasConnectedWallet;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [hasConnectedWallet]);
+
+  // Clear bids when trigger mode changes (e.g. switching between EOA and Smart Account)
+  // Old bids were generated for a different predictor address
+  const prevTriggerModeRef = useRef(triggerMode);
+  useEffect(() => {
+    if (prevTriggerModeRef.current !== triggerMode) {
+      logPositionForm(
+        `Trigger mode changed from ${prevTriggerModeRef.current} to ${triggerMode}, clearing bids`
+      );
+      setValidBids([]);
+      setStickyEstimateBid(null);
+      resetSponsor();
+      setLastQuoteRequestMs(null);
+      currentRequestKeyRef.current = null;
+      prevTriggerModeRef.current = triggerMode;
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [triggerMode]);
 
   // Clear bids when selections change (prediction flipped, added, or removed) (for animations)
   useEffect(() => {
@@ -244,10 +297,12 @@ export default function PositionForm({
       logPositionForm('Predictions changed, clearing bids');
       setValidBids([]);
       setStickyEstimateBid(null);
+      resetSponsor();
       setLastQuoteRequestMs(null); // Reset cooldown when selections change
       currentRequestKeyRef.current = null; // Ignore incoming bids for old configuration
       prevPredictionsKeyRef.current = predictionsKey;
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [predictionsKey]);
 
   // Update valid bids when new bids come in (for animations)
@@ -272,11 +327,13 @@ export default function PositionForm({
         );
       }
       setValidBids(bids);
+      clearAwaiting();
     } else if (bids.length > 0) {
       logPositionForm(
         `[accept] REJECTED: key mismatch. ref=${currentRequestKeyRef.current?.slice(0, 40)}, current=${currentRequestKey.slice(0, 40)}`
       );
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bids, predictionsKey, positionSizeValue]);
 
   // Track previous filter result to avoid logging on every tick
@@ -289,12 +346,25 @@ export default function PositionForm({
       return { bestBid: null, estimateBid: null };
     }
 
-    // Get non-expired bids
-    const nonExpiredBids = validBids.filter(
+    // Separate estimator bids (vault-bot with deadline=1 sentinel) from regular bids
+    const estimatorBids = validBids.filter(
+      (bid) =>
+        bid.counterparty?.toLowerCase() ===
+          PREFERRED_ESTIMATE_QUOTER.toLowerCase() &&
+        bid.validationStatus === 'valid'
+    );
+    const regularBids = validBids.filter(
+      (bid) =>
+        bid.counterparty?.toLowerCase() !==
+        PREFERRED_ESTIMATE_QUOTER.toLowerCase()
+    );
+
+    // Apply expiry filter only to regular bids (estimator bids use deadline=1 sentinel)
+    const nonExpiredBids = regularBids.filter(
       (bid) => bid.counterpartyDeadline * 1000 > nowMs
     );
 
-    if (nonExpiredBids.length === 0) {
+    if (nonExpiredBids.length === 0 && estimatorBids.length === 0) {
       const resultKey = 'all-expired';
       if (prevFilterResultRef.current !== resultKey) {
         logPositionForm(
@@ -322,18 +392,34 @@ export default function PositionForm({
         : null;
 
     if (validFilteredBids.length === 0) {
-      const resultKey = estimateFromFailed
-        ? `estimate:${estimateFromFailed.counterparty}`
+      // No valid regular bids — fall back to best estimator bid or failed estimate
+      const bestEstimator =
+        estimatorBids.length > 0
+          ? estimatorBids.reduce((acc, current) => {
+              try {
+                return BigInt(current.counterpartyCollateral) >
+                  BigInt(acc.counterpartyCollateral)
+                  ? current
+                  : acc;
+              } catch {
+                return acc;
+              }
+            })
+          : null;
+
+      const estimate = bestEstimator ?? estimateFromFailed;
+      const resultKey = estimate
+        ? `estimate:${estimate.counterparty}`
         : `no-valid:${failedBids.length}`;
       if (prevFilterResultRef.current !== resultKey) {
-        if (estimateFromFailed) {
+        if (estimate) {
           logPositionForm(
-            `Using estimate: ${formatBidForLog(estimateFromFailed, collateralDecimals)}`
+            `Using estimate: ${formatBidForLog(estimate, collateralDecimals)}`
           );
         }
         prevFilterResultRef.current = resultKey;
       }
-      return { bestBid: null, estimateBid: estimateFromFailed };
+      return { bestBid: null, estimateBid: estimate };
     }
 
     // Select the bid with highest counterpartyCollateral (highest payout for user)
@@ -368,8 +454,12 @@ export default function PositionForm({
       return;
     }
     // Clear the sticky estimate when there are no non-expired bids left.
+    // Estimator bids use deadline=1 (sentinel) and should not cause clearing.
     const hasAnyNonExpired = bids.some(
-      (b) => b.counterpartyDeadline * 1000 > nowMs
+      (b) =>
+        b.counterpartyDeadline * 1000 > nowMs ||
+        b.counterparty?.toLowerCase() ===
+          PREFERRED_ESTIMATE_QUOTER.toLowerCase()
     );
     if (!hasAnyNonExpired) setStickyEstimateBid(null);
   }, [bestBid, estimateBid, bids, nowMs]);
@@ -387,8 +477,13 @@ export default function PositionForm({
   const prevEstimateBidRef = useRef<typeof estimateBid>(null);
   useEffect(() => {
     if (estimateBid && !prevEstimateBidRef.current) {
-      // New estimate bid received - restart cooldown
-      setLastQuoteRequestMs(Date.now());
+      // For estimator bids (final answer for logged-out users), don't restart cooldown
+      const isFromEstimator =
+        estimateBid.counterparty?.toLowerCase() ===
+        PREFERRED_ESTIMATE_QUOTER.toLowerCase();
+      if (!isFromEstimator) {
+        setLastQuoteRequestMs(Date.now());
+      }
     }
     prevEstimateBidRef.current = estimateBid;
   }, [estimateBid]);
@@ -399,7 +494,7 @@ export default function PositionForm({
   const totalPredictionCount = selections.length + pythPredictions.length;
 
   const triggerAuctionRequest = useCallback(
-    async (options?: { forceRefresh?: boolean }) => {
+    async (options?: { forceRefresh?: boolean; withSponsor?: boolean }) => {
       // Prevent multiple concurrent auction requests
       if (auctionRequestInFlightRef.current) {
         return;
@@ -412,17 +507,6 @@ export default function PositionForm({
       const hasUma = selections.length > 0;
       const hasPyth = pythPredictions.length > 0;
 
-      // Auctions accept a single resolver per request; we can't mix UMA + Pyth in one auction today.
-      if (hasUma && hasPyth) {
-        toast({
-          title: "Can't mix UMA + Pyth in one auction",
-          description:
-            'Auctions use a single resolver per request. Please submit UMA-only or Pyth-only to request bids.',
-          variant: 'destructive',
-          duration: 6000,
-        });
-        return;
-      }
       if (!hasUma && !hasPyth) {
         return;
       }
@@ -455,50 +539,62 @@ export default function PositionForm({
           decimals
         ).toString();
 
-        const payload = hasPyth
-          ? buildPythAuctionStartPayload(
-              pythPredictions.map((p) => ({
-                priceId: p.priceId,
-                direction: p.direction,
-                targetPrice: p.targetPrice,
-                targetPriceRaw: p.targetPriceRaw,
-                priceExpo: p.priceExpo,
-                dateTimeLocal: p.dateTimeLocal,
-              })),
-              chainId
-            )
-          : buildAuctionStartPayload(
-              selections.map((s) => ({
-                marketId: s.conditionId || '0',
-                prediction: !!s.prediction,
-                resolverAddress: s.resolverAddress,
-              })),
-              chainId
-            );
+        let pythEscrowPicks:
+          | Array<{
+              conditionResolver: `0x${string}`;
+              conditionId: `0x${string}`;
+              predictedOutcome: number;
+            }>
+          | undefined;
 
-        const params: AuctionParams = {
-          wager: positionSizeWei,
-          resolver: payload.resolver,
-          predictedOutcomes: payload.predictedOutcomes,
-          predictor: selectedPredictorAddressRef.current,
-          predictorNonce: freshNonce !== undefined ? Number(freshNonce) : 0,
-          chainId: chainId,
-        };
+        if (hasPyth) {
+          const p = buildPythAuctionStartPayload(
+            pythPredictions.map((pp) => ({
+              priceId: pp.priceId,
+              direction: pp.direction,
+              targetPrice: pp.targetPrice,
+              targetPriceRaw: pp.targetPriceRaw,
+              priceExpo: pp.priceExpo,
+              dateTimeLocal: pp.dateTimeLocal,
+            })),
+            chainId
+          );
+          pythEscrowPicks = p.escrowPicks;
+        }
 
-        // Add escrowPicks for conditional token selections to trigger escrow auction
-        if (hasUma && !hasPyth) {
-          const escrowPicks = getPicks();
-          if (escrowPicks.length > 0) {
-            params.escrowPicks = escrowPicks;
+        // Build picks — required for all auction types
+        let picks: AuctionParams['picks'] = [];
+        if (hasPyth && pythEscrowPicks) {
+          picks = pythEscrowPicks;
+        } else if (hasUma) {
+          const conditionPicks = getPolymarketPicks();
+          if (conditionPicks.length > 0) {
+            picks = conditionPicks;
           } else {
             console.warn(
-              '[PositionForm] Escrow chain but getPicks() empty',
+              '[PositionForm] Escrow chain but getPolymarketPicks() empty',
               selections.map((s) => ({
                 id: s.conditionId,
                 resolver: s.resolverAddress,
               }))
             );
           }
+        }
+
+        const params: AuctionParams = {
+          wager: positionSizeWei,
+          predictor: selectedPredictorAddressRef.current,
+          predictorNonce: freshNonce !== undefined ? Number(freshNonce) : 0,
+          chainId: chainId,
+          picks,
+        };
+
+        // Only thread sponsor when the user explicitly activates sponsorship.
+        // Initial quotes are always unsponored so the bid is usable for self-funded
+        // mints; if the bid qualifies, the user clicks "Use" to re-request with sponsor.
+        if (options?.withSponsor && sponsorAddress) {
+          params.predictorSponsor = sponsorAddress;
+          params.predictorSponsorData = '0x';
         }
 
         requestQuotesRef.current(params, {
@@ -508,7 +604,7 @@ export default function PositionForm({
         // Set the request key to match incoming bids to this configuration
         currentRequestKeyRef.current = `${predictionsKey}:${positionSizeValue || ''}`;
         logPositionForm(
-          `[triggerAuction] Key set: ${currentRequestKeyRef.current.slice(0, 50)}, picks=${params.escrowPicks?.length ?? 0}`
+          `[triggerAuction] Key set: ${currentRequestKeyRef.current.slice(0, 50)}, picks=${params.picks?.length ?? 0}`
         );
 
         // Clear in-flight flag after a short delay to allow the debounced request to start
@@ -533,6 +629,7 @@ export default function PositionForm({
         });
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [
       selections,
       pythPredictions,
@@ -543,9 +640,15 @@ export default function PositionForm({
       collateralDecimals,
       chainId,
       predictionsKey,
-      getPicks,
+      getPolymarketPicks,
+      sponsorAddress,
     ]
   );
+
+  // Keep ref in sync so the sponsorship hook can call triggerAuctionRequest
+  useEffect(() => {
+    triggerAuctionRequestRef.current = triggerAuctionRequest;
+  }, [triggerAuctionRequest]);
 
   // Handler for "Initiate Auction" button - works for all users
   // Logged-out users get unsigned auctions that display as estimates
@@ -558,28 +661,30 @@ export default function PositionForm({
 
   // Auto-initiate auction when content (predictions/position size) changes
   // We debounce this to avoid spamming the auction endpoint while the user is typing
-  // Auto-trigger for all users - logged-out users get unsigned auctions with estimates
+  // In 'manual' mode (non-session connected wallet), skip auto-trigger entirely —
+  // the user must click "INITIATE AUCTION" to start the auction.
   const autoAuctionDebounceRef = useRef<number | undefined>(undefined);
   useEffect(() => {
-    // Wait for balance to load before triggering for logged-in users
-    // Skip balance loading check for logged-out users (they have no balance to load)
-    if (hasConnectedWallet && isBalanceLoading) return;
+    // Manual mode: don't auto-fire, require explicit user action
+    if (triggerMode === 'manual') return;
 
-    // Don't auto-trigger if there are form errors (e.g., position size exceeds balance)
-    // Skip this check for logged-out users since they can't have balance-related errors
-    if (hasConnectedWallet && hasFormErrors) return;
+    // Wait for balance to load before triggering (auto mode only)
+    if (triggerMode === 'auto' && isBalanceLoading) return;
 
-    // Must have at least one prediction
-    const hasPredictions = selections.length > 0 || pythPredictions.length > 0;
+    // Don't auto-trigger if there are form errors (auto mode only)
+    if (triggerMode === 'auto' && hasFormErrors) return;
+
+    // Must have at least one UMA prediction or at least one Pyth prediction
+    const hasPredictions = selections.length >= 1 || pythPredictions.length > 0;
     if (!hasPredictions) return;
 
     // Must have a valid position size
     const sizeNum = Number(positionSizeValue || '0');
     if (sizeNum <= 0 || Number.isNaN(sizeNum)) return;
 
-    // Don't auto-trigger if position size exceeds user's balance (only for logged-in users)
+    // Don't auto-trigger if position size exceeds user's balance (auto mode only)
     // Logged-out users can enter any position size to see estimates
-    if (hasConnectedWallet && sizeNum > userBalance) return;
+    if (triggerMode === 'auto' && sizeNum > userBalance) return;
 
     // Clear previous debounce timer
     if (autoAuctionDebounceRef.current !== undefined) {
@@ -600,7 +705,7 @@ export default function PositionForm({
       }
     };
   }, [
-    hasConnectedWallet,
+    triggerMode,
     isBalanceLoading,
     hasFormErrors,
     predictionsKey,
@@ -702,15 +807,20 @@ export default function PositionForm({
           ].map((item, index) => {
             if (item.kind === 'pyth') {
               const p = item.p;
+              const predictionData: PredictionListItemData = {
+                id: p.id,
+                question: `${p.priceFeedLabel ?? 'Crypto'} OVER $${p.targetPrice.toLocaleString()}`,
+                prediction: p.direction === 'over',
+              };
               return (
                 <div
                   key={p.id}
                   className={`-mx-4 px-4 py-2.5 border-b border-brand-white/10 ${index === 0 ? 'border-t' : ''}`}
                 >
-                  <PythPredictionListItem
-                    prediction={p}
+                  <PredictionListItem
+                    prediction={predictionData}
+                    leading={<PythMarketBadge className="w-5 h-5" />}
                     onRemove={onRemovePythPrediction}
-                    layout="inline"
                   />
                 </div>
               );
@@ -723,7 +833,7 @@ export default function PositionForm({
             const bgWithAlpha = getColorWithAlpha(categoryColor, 0.1);
             // In CreatePositionForm: show shortName if available, always show question in tooltip
             const displayTitle = s.shortName || s.question;
-            const umaPrediction: UmaPrediction = {
+            const predictionData: PredictionListItemData = {
               id: s.id,
               conditionId: s.conditionId,
               question: displayTitle,
@@ -735,8 +845,8 @@ export default function PositionForm({
                 key={s.id}
                 className={`-mx-4 px-4 py-2.5 border-b border-brand-white/10 ${index === 0 ? 'border-t' : ''}`}
               >
-                <UmaPredictionListItem
-                  prediction={umaPrediction}
+                <PredictionListItem
+                  prediction={predictionData}
                   leading={
                     <div
                       className="w-5 h-5 rounded-full shrink-0 flex items-center justify-center"
@@ -774,58 +884,22 @@ export default function PositionForm({
             />
           </div>
 
-          {/* Sponsorship indicator */}
-          {isSponsored &&
-            (() => {
-              const activeBid = bestBid ?? stickyEstimateBid;
-              // User's collateral = positionSize (what they typed), vault's collateral = bid.counterpartyCollateral
-              const decimals = collateralDecimals ?? 18;
-              const userCollateral = positionSizeValue
-                ? parseUnits(positionSizeValue, decimals)
-                : 0n;
-              const vaultCollateral = activeBid
-                ? BigInt(activeBid.counterpartyCollateral)
-                : 0n;
-              const bidEligible =
-                !activeBid || !userCollateral
-                  ? true // No bid or no size yet — show as available
-                  : isEntryPriceEligible(
-                      userCollateral,
-                      vaultCollateral,
-                      maxEntryPriceBps
-                    );
-              const sponsorAmountFormatted = formatUnits(remainingBudget, 18);
-
-              return (
-                <div
-                  className={`mt-3 rounded-lg border px-3 py-2.5 text-sm ${
-                    bidEligible
-                      ? 'border-ethena/30 bg-ethena/5'
-                      : 'border-muted/30 bg-muted/5 opacity-60'
-                  }`}
-                >
-                  <div className="flex items-center gap-2">
-                    <Gift
-                      className={`h-4 w-4 flex-shrink-0 ${bidEligible ? 'text-ethena' : 'text-muted-foreground'}`}
-                    />
-                    <div className="flex-1">
-                      <p
-                        className={`font-medium ${bidEligible ? 'text-ethena' : 'text-muted-foreground'}`}
-                      >
-                        {bidEligible
-                          ? `${sponsorAmountFormatted} ${collateralSymbol} sponsored`
-                          : 'Sponsorship unavailable at this price'}
-                      </p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {bidEligible
-                          ? `You pay ${collateralSymbol} 0 — the sponsor covers your side of this prediction.`
-                          : `Only available for positions priced below ${Number(maxEntryPriceBps) / 100}%.`}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-              );
-            })()}
+          {/* Sponsorship indicator — two-step: show eligibility first, activate on click */}
+          <SponsorshipIndicator
+            isSponsored={isSponsored}
+            sponsorAddress={sponsorAddress}
+            remainingBudget={remainingBudget}
+            maxEntryPriceBps={maxEntryPriceBps}
+            matchLimit={matchLimit}
+            requiredCounterparty={requiredCounterparty}
+            bestBid={bestBid}
+            positionSizeValue={positionSizeValue || ''}
+            collateralDecimals={collateralDecimals}
+            collateralSymbol={collateralSymbol}
+            sponsorshipActivated={sponsorshipActivated}
+            awaitingSponsoredBid={awaitingSponsoredBid}
+            onActivate={activateSponsor}
+          />
 
           <div className="mt-5 space-y-1">
             <RestrictedJurisdictionBanner
@@ -843,15 +917,19 @@ export default function PositionForm({
               onRequestBids={handleRequestBids}
               isSubmitting={isSubmitting}
               onSubmit={onSubmit}
-              isSubmitDisabled={isPermitLoading || isRestricted}
+              isSubmitDisabled={
+                isPermitLoading || isRestricted || awaitingSponsoredBid
+              }
               enableRainbowHover={isRainbowHoverEnabled}
               hintMounted={hintMounted}
               disclaimerMounted={disclaimerMounted}
               allBids={validBids}
               predictorPositionSizeWei={predictorPositionSizeWei}
               predictorAddress={selectedPredictorAddress}
-              showAddPredictionsHint={selections.length === 1}
-              isAuctionPending={recentlyRequested && !bestBid}
+              showAddPredictionsHint={selections.length === 1 && !bestBid}
+              isAuctionPending={
+                recentlyRequested && !bestBid && !stickyEstimateBid
+              }
               hasFormErrors={hasFormErrors}
               isLoggedOut={!hasConnectedWallet}
               onConnectClick={openConnectDialog}

@@ -25,9 +25,22 @@
   },
   "include": [
     "index.ts",
+    "auction",
     "queries",
-    "types"
+    "types",
+    "abis",
+    "constants",
+    "contracts",
+    "relayer",
+    "onchain",
+    "session"
   ],
-  "exclude": ["node_modules", "dist", "stories", ".storybook", "**/*.test.*", "**/*.spec.*"]
+  "exclude": [
+    "node_modules",
+    "dist",
+    "stories",
+    ".storybook",
+    "**/*.test.*",
+    "**/*.spec.*"
+  ]
 }
-

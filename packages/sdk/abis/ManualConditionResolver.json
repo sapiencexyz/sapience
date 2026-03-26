@@ -92,8 +92,8 @@
     "inputs": [
       {
         "name": "conditionId",
-        "type": "bytes32",
-        "internalType": "bytes32"
+        "type": "bytes",
+        "internalType": "bytes"
       }
     ],
     "outputs": [
@@ -128,8 +128,8 @@
     "inputs": [
       {
         "name": "conditionIds",
-        "type": "bytes32[]",
-        "internalType": "bytes32[]"
+        "type": "bytes[]",
+        "internalType": "bytes[]"
       }
     ],
     "outputs": [
@@ -164,8 +164,8 @@
     "inputs": [
       {
         "name": "conditionId",
-        "type": "bytes32",
-        "internalType": "bytes32"
+        "type": "bytes",
+        "internalType": "bytes"
       }
     ],
     "outputs": [
@@ -202,8 +202,8 @@
     "inputs": [
       {
         "name": "conditionId",
-        "type": "bytes32",
-        "internalType": "bytes32"
+        "type": "bytes",
+        "internalType": "bytes"
       }
     ],
     "outputs": [
@@ -323,7 +323,7 @@
   },
   {
     "type": "event",
-    "name": "ConditionSettled",
+    "name": "ConditionResolutionDetail",
     "inputs": [
       {
         "name": "conditionId",
@@ -348,6 +348,31 @@
         "type": "address",
         "indexed": true,
         "internalType": "address"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ConditionResolved",
+    "inputs": [
+      {
+        "name": "conditionId",
+        "type": "bytes",
+        "indexed": false,
+        "internalType": "bytes"
+      },
+      {
+        "name": "isIndecisive",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      },
+      {
+        "name": "resolvedToYes",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
       }
     ],
     "anonymous": false

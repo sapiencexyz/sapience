@@ -1,5 +1,5 @@
-import type { Meta, StoryObj } from "@storybook/react-webpack5";
-import { useState } from "react";
+import type { Meta, StoryObj } from '@storybook/react-webpack5';
+import { useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -8,21 +8,21 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
-} from "../../components/ui/dialog";
-import { Button } from "../../components/ui/button";
-import { Input } from "../../components/ui/input";
-import { Label } from "../../components/ui/label";
+} from '../../components/ui/dialog';
+import { Button } from '../../components/ui/button';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
 
 const meta: Meta<typeof Dialog> = {
-  title: "UI/Dialog",
+  title: 'UI/Dialog',
   component: Dialog,
   parameters: {
-    layout: "centered",
+    layout: 'centered',
   },
-  tags: ["autodocs"],
+  tags: ['autodocs'],
   argTypes: {
     open: {
-      control: { type: "boolean" },
+      control: { type: 'boolean' },
     },
   },
 };
@@ -227,9 +227,9 @@ export const Controlled: Story = {
             <DialogHeader>
               <DialogTitle>Controlled Dialog</DialogTitle>
               <DialogDescription>
-                This dialog is controlled by React state. The open state is:{" "}
+                This dialog is controlled by React state. The open state is:{' '}
                 <span className="font-semibold">
-                  {open ? "Open" : "Closed"}
+                  {open ? 'Open' : 'Closed'}
                 </span>
               </DialogDescription>
             </DialogHeader>

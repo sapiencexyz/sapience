@@ -1,5 +1,3 @@
-import WebSocket from 'ws';
-import type { RawData } from 'ws';
 import type {
   AuctionRFQPayload,
   AuctionDetails,
@@ -15,9 +13,9 @@ import type {
 
 export interface AuctionWsHandlers {
   onOpen?: () => void;
-  onClose?: (code: number, reason: Buffer) => void;
+  onClose?: (code: number, reason: string) => void;
   onError?: (err: unknown) => void;
-  onParseError?: (err: unknown, rawData: RawData) => void;
+  onParseError?: (err: unknown, rawData: unknown) => void;
 
   // Escrow-specific message handlers
   onAuctionAck?: (payload: {
@@ -56,14 +54,52 @@ export interface AuctionWsOptions {
   pingInterval?: number; // ms, default 30000
 }
 
+/** WebSocket readyState value for OPEN (same in both browser and Node.js ws). */
+const WS_OPEN = 1;
+
 /**
- * Create an escrow auction WebSocket client with typed message handling
+ * Resolve the WebSocket constructor for the current environment.
+ * Prefers the browser-native WebSocket; falls back to the Node.js `ws` package
+ * via dynamic import (avoids top-level import that would break browser bundling).
  */
-export function createEscrowAuctionWs(
+async function resolveWebSocket(): Promise<{
+  new (url: string): WebSocket;
+}> {
+  if (
+    typeof globalThis !== 'undefined' &&
+    typeof (globalThis as Record<string, unknown>).WebSocket === 'function'
+  ) {
+    return globalThis.WebSocket;
+  }
+
+  try {
+    // Dynamic import — ws is an optional peer dependency
+    const wsModule = await import('ws');
+    return (wsModule.default || wsModule) as unknown as {
+      new (url: string): WebSocket;
+    };
+  } catch {
+    throw new Error(
+      'WebSocket not available. For Node.js, install the "ws" package. ' +
+        'For browser environments, ensure globalThis.WebSocket is available.'
+    );
+  }
+}
+
+/**
+ * Create an escrow auction WebSocket client with typed message handling.
+ *
+ * Returns a Promise that resolves once the WebSocket constructor has been
+ * resolved (browser-native or Node.js `ws` via dynamic import) and the
+ * initial connection has been initiated.
+ */
+export async function createEscrowAuctionWs(
   url: string,
   handlers: AuctionWsHandlers = {},
   options: AuctionWsOptions = {}
 ) {
+  const WS = await resolveWebSocket();
+
   let ws: WebSocket | null = null;
   let retries = 0;
   let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
@@ -85,7 +121,8 @@ export function createEscrowAuctionWs(
 
   function scheduleReconnect() {
     if (stopped) return;
-    if (options.maxRetries !== undefined && retries >= options.maxRetries) return;
+    if (options.maxRetries !== undefined && retries >= options.maxRetries)
+      return;
     const delay = Math.min(30000, 1000 * 2 ** Math.min(6, retries++));
     reconnectTimer = setTimeout(connect, delay);
   }
@@ -126,9 +163,9 @@ export function createEscrowAuctionWs(
 
   function connect() {
     if (stopped) return;
-    ws = new WebSocket(url);
+    ws = new WS(url);
 
-    ws.on('open', () => {
+    ws.onopen = () => {
       retries = 0;
       handlers.onOpen?.();
 
@@ -138,31 +175,33 @@ export function createEscrowAuctionWs(
           sendPing();
         }, pingInterval);
       }
-    });
+    };
 
-    ws.on('message', (data: RawData) => {
+    ws.onmessage = (event: MessageEvent) => {
       try {
-        const msg = JSON.parse(String(data)) as ServerToClientMessage;
+        const raw =
+          typeof event.data === 'string' ? event.data : String(event.data);
+        const msg = JSON.parse(raw) as ServerToClientMessage;
         handleMessage(msg);
       } catch (e) {
-        handlers.onParseError?.(e, data);
+        handlers.onParseError?.(e, event.data);
         handlers.onError?.(e);
       }
-    });
+    };
 
-    ws.on('error', (err: unknown) => {
-      handlers.onError?.(err);
-    });
+    ws.onerror = () => {
+      handlers.onError?.(new Error('WebSocket connection error'));
+    };
 
-    ws.on('close', (code: number, reason: Buffer) => {
+    ws.onclose = (event: CloseEvent) => {
       clearTimers();
-      handlers.onClose?.(code, reason);
+      handlers.onClose?.(event.code, event.reason);
       scheduleReconnect();
-    });
+    };
   }
 
   function send(msg: ClientToServerMessage): boolean {
-    if (!ws || ws.readyState !== WebSocket.OPEN) return false;
+    if (!ws || ws.readyState !== WS_OPEN) return false;
     ws.send(JSON.stringify(msg));
     return true;
   }
@@ -182,7 +221,7 @@ export function createEscrowAuctionWs(
 
     /** Check if connected and ready */
     get isConnected() {
-      return ws !== null && ws.readyState === WebSocket.OPEN;
+      return ws !== null && ws.readyState === WS_OPEN;
     },
 
     /**
@@ -296,4 +335,3 @@ export function buildBidPayload(params: {
     counterpartySessionKeyData: params.counterpartySessionKeyData,
   };
 }
-

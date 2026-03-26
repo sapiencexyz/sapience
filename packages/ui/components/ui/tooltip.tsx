@@ -18,7 +18,8 @@ function useIsCoarsePointer(): boolean {
       const hasTouch =
         (typeof navigator !== 'undefined' && navigator.maxTouchPoints > 0) ||
         (typeof window !== 'undefined' &&
-          'ontouchstart' in (window as unknown as { ontouchstart?: unknown })) ||
+          'ontouchstart' in
+            (window as unknown as { ontouchstart?: unknown })) ||
         (typeof window !== 'undefined' &&
           window.matchMedia &&
           window.matchMedia('(pointer: coarse)').matches);
@@ -58,7 +59,11 @@ const Tooltip = ({
   const variant: TooltipVariant = usePopover ? 'popover' : 'tooltip';
 
   const root = usePopover ? (
-    <PopoverPrimitive.Root open={open} defaultOpen={defaultOpen} onOpenChange={onOpenChange}>
+    <PopoverPrimitive.Root
+      open={open}
+      defaultOpen={defaultOpen}
+      onOpenChange={onOpenChange}
+    >
       {children}
     </PopoverPrimitive.Root>
   ) : (
@@ -73,7 +78,9 @@ const Tooltip = ({
   );
 
   return (
-    <TooltipVariantContext.Provider value={variant}>{root}</TooltipVariantContext.Provider>
+    <TooltipVariantContext.Provider value={variant}>
+      {root}
+    </TooltipVariantContext.Provider>
   );
 };
 
@@ -85,7 +92,12 @@ const TooltipTrigger = React.forwardRef<
 
   if (variant === 'popover') {
     return (
-      <PopoverPrimitive.Trigger ref={ref as unknown as React.Ref<HTMLButtonElement>} {...(props as any)}>
+      <PopoverPrimitive.Trigger
+        ref={ref as unknown as React.Ref<HTMLButtonElement>}
+        {...(props as React.ComponentPropsWithoutRef<
+          typeof PopoverPrimitive.Trigger
+        >)}
+      >
         {children}
       </PopoverPrimitive.Trigger>
     );
@@ -116,8 +128,8 @@ const TooltipContent = React.forwardRef<
       <PopoverPrimitive.Portal>
         <PopoverPrimitive.Content
           ref={ref as unknown as React.Ref<HTMLDivElement>}
-          side={side as any}
-          align={align as any}
+          side={side}
+          align={align}
           sideOffset={sideOffset}
           collisionPadding={8}
           className={cn(
@@ -127,9 +139,11 @@ const TooltipContent = React.forwardRef<
           )}
           style={{
             maxWidth: 'min(88dvw, 280px)',
-            ...(props as any)?.style,
+            ...props.style,
           }}
-          {...(props as any)}
+          {...(props as React.ComponentPropsWithoutRef<
+            typeof PopoverPrimitive.Content
+          >)}
         />
       </PopoverPrimitive.Portal>
     );

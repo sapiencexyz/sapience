@@ -7,9 +7,9 @@ export interface ConditionType {
   shortName?: string | null;
   endTime: number;
   public: boolean;
-  claimStatement: string;
   description: string;
   similarMarkets: string[];
+  tags?: string[];
   chainId: number;
   resolver?: string | null;
   category?: { id: number; name: string; slug: string } | null;
@@ -21,6 +21,7 @@ export interface ConditionType {
   openInterest: string;
   conditionGroupId?: number | null;
   conditionGroup?: { id: number; name: string } | null;
+  estimatedPrice?: number | null;
 }
 
 export interface ConditionFilters {
@@ -47,7 +48,6 @@ export const GET_CONDITIONS = /* GraphQL */ `
       shortName
       endTime
       public
-      claimStatement
       description
       similarMarkets
       chainId
@@ -58,6 +58,7 @@ export const GET_CONDITIONS = /* GraphQL */ `
       assertionId
       assertionTimestamp
       openInterest
+      estimatedPrice
       conditionGroupId
       conditionGroup {
         id
@@ -100,7 +101,6 @@ export function buildConditionsWhereClause(
         { question: { contains: searchTerm, mode: 'insensitive' } },
         { shortName: { contains: searchTerm, mode: 'insensitive' } },
         { description: { contains: searchTerm, mode: 'insensitive' } },
-        { claimStatement: { contains: searchTerm, mode: 'insensitive' } },
       ],
     });
   }
@@ -207,9 +207,14 @@ type ConditionById = {
   id: string;
   shortName?: string | null;
   question?: string | null;
+  description?: string | null;
   endTime?: number | null;
   resolver?: string | null;
+  similarMarkets?: string[];
   category?: { slug?: string | null } | null;
+  settled?: boolean;
+  resolvedToYes?: boolean;
+  nonDecisive?: boolean;
 };
 
 const CONDITIONS_BY_IDS_QUERY = /* GraphQL */ `
@@ -218,8 +223,13 @@ const CONDITIONS_BY_IDS_QUERY = /* GraphQL */ `
       id
       shortName
       question
+      description
       endTime
       resolver
+      similarMarkets
+      settled
+      resolvedToYes
+      nonDecisive
       category {
         slug
       }

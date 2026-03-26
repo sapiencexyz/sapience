@@ -228,7 +228,7 @@ contract PredictionMarketEscrow is
                 request.predictorSignature,
                 request.predictorSessionKeyData
             )) {
-            revert InvalidSignature();
+            revert InvalidPredictorSignature();
         }
         // Validate counterparty signature (EOA or session key)
         if (!_validatePartySignature(
@@ -240,7 +240,7 @@ contract PredictionMarketEscrow is
                 request.counterpartySignature,
                 request.counterpartySessionKeyData
             )) {
-            revert InvalidSignature();
+            revert InvalidCounterpartSignature();
         }
 
         // Use bitmap nonces (reverts if already used)
@@ -391,12 +391,29 @@ contract PredictionMarketEscrow is
             revert ZeroAmount();
         }
 
+        // Enforce symmetric burn: both sides must burn the same fraction of
+        // their outstanding supply. Without this check an attacker can burn
+        // almost all of the eventual losing side while burning dust of the
+        // winning side, draining the loser-side collateral before settlement
+        // and leaving honest winners underpaid at redemption.
+        // Uses cross-multiplication to avoid division and rounding issues:
+        //   predictorAmount / totalPredictor == counterpartyAmount / totalCounterparty
+        //   ⟹ predictorAmount * totalCounterparty == counterpartyAmount * totalPredictor
+        {
+            IV2Types.PickConfiguration storage _config =
+                _pickConfigurations[request.pickConfigId];
+            if (
+                request.predictorTokenAmount
+                        * _config.totalCounterpartyTokensMinted
+                    != request.counterpartyTokenAmount
+                        * _config.totalPredictorTokensMinted
+            ) {
+                revert AsymmetricBurn();
+            }
+        }
+
         // Validate conservation: total payout must not exceed the collateral
-        // backing the burned tokens. With proportional minting, each token's
-        // collateral value = (tokenAmount / totalTokensMinted) * totalCollateral.
-        // For a mutual cancel, both parties agree on the split — we just ensure
-        // they don't extract more than exists. The collateral backing is computed
-        // from the predictor side's proportion (both sides have equal token counts).
+        // backing the burned tokens.
         {
             IV2Types.PickConfiguration storage _config =
                 _pickConfigurations[request.pickConfigId];
@@ -457,7 +474,7 @@ contract PredictionMarketEscrow is
                 request.predictorSignature,
                 request.predictorSessionKeyData
             )) {
-            revert InvalidSignature();
+            revert InvalidPredictorSignature();
         }
         // Validate counterparty signature
         if (!_validateBurnPartySignature(
@@ -470,7 +487,7 @@ contract PredictionMarketEscrow is
                 request.counterpartySignature,
                 request.counterpartySessionKeyData
             )) {
-            revert InvalidSignature();
+            revert InvalidCounterpartSignature();
         }
 
         // Use bitmap nonces (reverts if already used)
@@ -678,6 +695,31 @@ contract PredictionMarketEscrow is
     // ============ View Functions ============
 
     /// @inheritdoc IPredictionMarketEscrow
+    function getSymmetricBurnAmount(
+        bytes32 pickConfigId,
+        uint256 tokenAmount,
+        bool isPredictor
+    ) external view returns (uint256 counterpartAmount) {
+        IV2Types.PickConfiguration storage config =
+            _pickConfigurations[pickConfigId];
+
+        if (isPredictor) {
+            // Given predictor amount, compute required counterparty amount
+            // predictorAmount * totalCounterparty == counterpartyAmount * totalPredictor
+            if (config.totalPredictorTokensMinted == 0) return 0;
+            counterpartAmount =
+                (tokenAmount * config.totalCounterpartyTokensMinted)
+                    / config.totalPredictorTokensMinted;
+        } else {
+            // Given counterparty amount, compute required predictor amount
+            if (config.totalCounterpartyTokensMinted == 0) return 0;
+            counterpartAmount = (tokenAmount
+                    * config.totalPredictorTokensMinted)
+                / config.totalCounterpartyTokensMinted;
+        }
+    }
+
+    /// @inheritdoc IPredictionMarketEscrow
     function getPrediction(bytes32 predictionId)
         external
         view
@@ -821,6 +863,50 @@ contract PredictionMarketEscrow is
         return _tokenToPickConfig[token];
     }
 
+    /// @inheritdoc IPredictionMarketEscrow
+    function verifyMintPartySignature(
+        bytes32 predictionHash,
+        address signer,
+        uint256 collateral,
+        uint256 nonce,
+        uint256 deadline,
+        bytes calldata signature,
+        bytes calldata sessionKeyData
+    ) external view returns (bool isValid) {
+        return _validatePartySignature(
+            predictionHash,
+            signer,
+            collateral,
+            nonce,
+            deadline,
+            signature,
+            sessionKeyData
+        );
+    }
+
+    /// @inheritdoc IPredictionMarketEscrow
+    function verifyBurnPartySignature(
+        bytes32 burnHash,
+        address signer,
+        uint256 tokenAmount,
+        uint256 payout,
+        uint256 nonce,
+        uint256 deadline,
+        bytes calldata signature,
+        bytes calldata sessionKeyData
+    ) external view returns (bool isValid) {
+        return _validateBurnPartySignature(
+            burnHash,
+            signer,
+            tokenAmount,
+            payout,
+            nonce,
+            deadline,
+            signature,
+            sessionKeyData
+        );
+    }
+
     // ============ Internal: Nonce Management ============
 
     /// @notice Mark a nonce as used (Permit2-style bitmap)
@@ -942,8 +1028,11 @@ contract PredictionMarketEscrow is
                     revert PicksNotCanonical();
                 }
                 if (prev.conditionResolver == curr.conditionResolver) {
-                    if (prev.conditionId >= curr.conditionId) {
-                        if (prev.conditionId == curr.conditionId) {
+                    // Use keccak256 for canonical ordering of variable-length conditionIds
+                    bytes32 prevHash = keccak256(prev.conditionId);
+                    bytes32 currHash = keccak256(curr.conditionId);
+                    if (prevHash >= currHash) {
+                        if (prevHash == currHash) {
                             revert DuplicatePick();
                         }
                         revert PicksNotCanonical();
@@ -1048,7 +1137,7 @@ contract PredictionMarketEscrow is
         returns (bool canResolve, IV2Types.SettlementResult result)
     {
         // Build array of condition IDs
-        bytes32[] memory conditionIds = new bytes32[](numPicks);
+        bytes[] memory conditionIds = new bytes[](numPicks);
         for (uint256 i = 0; i < numPicks; i++) {
             conditionIds[i] = picks[i].conditionId;
         }
@@ -1070,10 +1159,20 @@ contract PredictionMarketEscrow is
             return (false, IV2Types.SettlementResult.UNRESOLVED);
         }
 
-        // Process results
+        // Validate array lengths — a malicious resolver can return empty or
+        // short arrays without reverting, which would cause an out-of-bounds
+        // panic in the loop below. Treat as unresolved (same as catch branch).
+        if (resolved.length != numPicks || outcomes.length != numPicks) {
+            return (false, IV2Types.SettlementResult.UNRESOLVED);
+        }
+
+        // Process results — a single decisive loss is enough for COUNTERPARTY_WINS
+        // even if other picks are still unresolved (predictor needs ALL legs)
+        bool hasUnresolved = false;
         for (uint256 i = 0; i < numPicks; i++) {
             if (!resolved[i]) {
-                return (false, IV2Types.SettlementResult.UNRESOLVED);
+                hasUnresolved = true;
+                continue;
             }
 
             (bool isLoss, bool isNonDecisive) =
@@ -1083,19 +1182,33 @@ contract PredictionMarketEscrow is
             }
         }
 
+        if (hasUnresolved) {
+            return (false, IV2Types.SettlementResult.UNRESOLVED);
+        }
+
         return (true, IV2Types.SettlementResult.PREDICTOR_WINS);
     }
 
     /// @notice Resolve using individual calls when picks use different resolvers
+    /// @dev Unlike _resolveBatch, this path calls getResolution() (singular) which
+    ///      returns a scalar (bool, OutcomeVector) — not arrays — so there is no
+    ///      array-length mismatch risk. A malicious resolver returning garbage data
+    ///      will be processed by _evaluatePick; this is by design since each resolver
+    ///      is trusted for its own pick. The try/catch prevents revert-based DoS.
     function _resolveIndividual(IV2Types.Pick[] storage picks, uint256 numPicks)
         internal
         view
         returns (bool canResolve, IV2Types.SettlementResult result)
     {
+        // A single decisive loss is enough for COUNTERPARTY_WINS
+        // even if other picks are still unresolved (predictor needs ALL legs)
+        bool hasUnresolved = false;
         for (uint256 i = 0; i < numPicks; i++) {
             IV2Types.Pick storage pick = picks[i];
 
-            // Call resolver with try/catch to prevent DoS from malicious resolvers
+            // Call resolver with try/catch to prevent DoS from malicious resolvers.
+            // getResolution returns scalars (bool, OutcomeVector), not arrays,
+            // so no array-bounds validation is needed (cf. _resolveBatch).
             bool isResolved;
             IV2Types.OutcomeVector memory outcome;
             try IConditionResolver(pick.conditionResolver)
@@ -1108,11 +1221,13 @@ contract PredictionMarketEscrow is
                 outcome = _outcome;
             } catch {
                 // Resolver call failed - treat as unresolved
-                return (false, IV2Types.SettlementResult.UNRESOLVED);
+                hasUnresolved = true;
+                continue;
             }
 
             if (!isResolved) {
-                return (false, IV2Types.SettlementResult.UNRESOLVED);
+                hasUnresolved = true;
+                continue;
             }
 
             (bool isLoss, bool isNonDecisive) =
@@ -1120,6 +1235,10 @@ contract PredictionMarketEscrow is
             if (isLoss || isNonDecisive) {
                 return (true, IV2Types.SettlementResult.COUNTERPARTY_WINS);
             }
+        }
+
+        if (hasUnresolved) {
+            return (false, IV2Types.SettlementResult.UNRESOLVED);
         }
 
         return (true, IV2Types.SettlementResult.PREDICTOR_WINS);

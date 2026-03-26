@@ -27,6 +27,9 @@ class CollateralBalanceSnapshotType {
 
   @Field(() => String)
   balance!: string;
+
+  @Field(() => Date, { nullable: true })
+  timestamp?: Date;
 }
 
 @ObjectType()
@@ -39,6 +42,9 @@ class CollateralTransferType {
 
   @Field(() => Int)
   blockNumber!: number;
+
+  @Field(() => Date)
+  timestamp!: Date;
 
   @Field(() => String)
   transactionHash!: string;
@@ -62,7 +68,7 @@ export class CollateralBalanceResolver {
   @Query(() => CollateralBalanceType)
   async collateralBalance(
     @Arg('address', () => String) address: string,
-    @Arg('chainId', () => Int, { defaultValue: 5064014 }) chainId: number,
+    @Arg('chainId', () => Int) chainId: number,
     @Arg('atBlock', () => Int, { nullable: true }) atBlock?: number
   ): Promise<CollateralBalanceType> {
     const addr = address.toLowerCase();
@@ -72,10 +78,10 @@ export class CollateralBalanceResolver {
         ? Prisma.sql`AND "blockNumber" <= ${atBlock}`
         : Prisma.empty;
 
-    const result = await prisma.$queryRaw<[{ balance: bigint }]>`
+    const result = await prisma.$queryRaw<[{ balance: string }]>`
       SELECT
-        COALESCE(SUM(CASE WHEN "to" = ${addr} THEN "value"::NUMERIC ELSE 0 END), 0) -
-        COALESCE(SUM(CASE WHEN "from" = ${addr} THEN "value"::NUMERIC ELSE 0 END), 0)
+        (COALESCE(SUM(CASE WHEN "to" = ${addr} THEN "value"::NUMERIC ELSE 0 END), 0) -
+        COALESCE(SUM(CASE WHEN "from" = ${addr} THEN "value"::NUMERIC ELSE 0 END), 0))::TEXT
         AS balance
       FROM collateral_transfer
       WHERE "chainId" = ${chainId}
@@ -86,7 +92,7 @@ export class CollateralBalanceResolver {
     return {
       address: addr,
       chainId,
-      balance: (result[0]?.balance ?? 0n).toString(),
+      balance: result[0]?.balance ?? '0',
       atBlock: atBlock ?? undefined,
     };
   }
@@ -107,7 +113,7 @@ export class CollateralBalanceResolver {
     @Arg('intervalHours', () => Int, { defaultValue: 168 })
     intervalHours: number,
     @Arg('count', () => Int, { defaultValue: 12 }) count: number,
-    @Arg('chainId', () => Int, { defaultValue: 5064014 }) chainId: number
+    @Arg('chainId', () => Int) chainId: number
   ): Promise<CollateralBalanceSnapshotType[]> {
     const addr = address.toLowerCase();
     const cappedCount = Math.min(count, 365);
@@ -128,11 +134,14 @@ export class CollateralBalanceResolver {
 
     const results = await Promise.all(
       boundaries.map(async (block, i) => {
-        const result = await prisma.$queryRaw<[{ balance: bigint }]>`
+        const result = await prisma.$queryRaw<
+          [{ balance: string; timestamp: Date | null }]
+        >`
           SELECT
-            COALESCE(SUM(CASE WHEN "to" = ${addr} THEN "value"::NUMERIC ELSE 0 END), 0) -
-            COALESCE(SUM(CASE WHEN "from" = ${addr} THEN "value"::NUMERIC ELSE 0 END), 0)
-            AS balance
+            (COALESCE(SUM(CASE WHEN "to" = ${addr} THEN "value"::NUMERIC ELSE 0 END), 0) -
+            COALESCE(SUM(CASE WHEN "from" = ${addr} THEN "value"::NUMERIC ELSE 0 END), 0))::TEXT
+            AS balance,
+            MAX("timestamp") AS timestamp
           FROM collateral_transfer
           WHERE "chainId" = ${chainId}
             AND ("from" = ${addr} OR "to" = ${addr})
@@ -141,7 +150,8 @@ export class CollateralBalanceResolver {
         return {
           index: i,
           atBlock: block,
-          balance: (result[0]?.balance ?? 0n).toString(),
+          balance: result[0]?.balance ?? '0',
+          timestamp: result[0]?.timestamp ?? undefined,
         };
       })
     );
@@ -155,7 +165,7 @@ export class CollateralBalanceResolver {
   @Query(() => [CollateralTransferType])
   async collateralTransfers(
     @Arg('address', () => String) address: string,
-    @Arg('chainId', () => Int, { defaultValue: 5064014 }) chainId: number,
+    @Arg('chainId', () => Int) chainId: number,
     @Arg('limit', () => Int, { defaultValue: 100 }) limit: number,
     @Arg('offset', () => Int, { defaultValue: 0 }) offset: number
   ): Promise<CollateralTransferType[]> {

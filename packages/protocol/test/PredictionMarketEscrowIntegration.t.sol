@@ -6,6 +6,7 @@ import "../src/PredictionMarketEscrow.sol";
 import "../src/PredictionMarketTokenFactory.sol";
 import "../src/resolvers/mocks/ManualConditionResolver.sol";
 import "../src/interfaces/IV2Types.sol";
+import "../src/interfaces/IPredictionMarketEscrow.sol";
 import "../src/interfaces/IV2Events.sol";
 import "../src/interfaces/IPredictionMarketToken.sol";
 import "./mocks/MockERC20.sol";
@@ -18,6 +19,7 @@ import "./mocks/MockERC20.sol";
 contract PredictionMarketEscrowIntegrationTest is Test {
     PredictionMarketEscrow public market;
     ManualConditionResolver public resolver;
+    ManualConditionResolver public resolver2;
     MockERC20 public collateralToken;
 
     address public owner;
@@ -58,9 +60,13 @@ contract PredictionMarketEscrowIntegrationTest is Test {
 
         vm.prank(owner);
         resolver = new ManualConditionResolver(owner);
+        vm.prank(owner);
+        resolver2 = new ManualConditionResolver(owner);
 
         vm.prank(owner);
         resolver.approveSettler(settler);
+        vm.prank(owner);
+        resolver2.approveSettler(settler);
 
         // Mint tokens
         collateralToken.mint(predictor, 100_000e18);
@@ -89,6 +95,18 @@ contract PredictionMarketEscrowIntegrationTest is Test {
         );
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(pk, approvalHash);
         return abi.encodePacked(r, s, v);
+    }
+
+    /// @dev Sort two picks by keccak256 of conditionId for canonical ordering
+    function _sortTwo(bytes memory a, bytes memory b)
+        internal
+        pure
+        returns (bytes memory first, bytes memory second)
+    {
+        if (keccak256(a) < keccak256(b)) {
+            return (a, b);
+        }
+        return (b, a);
     }
 
     function _createMintRequest(
@@ -158,7 +176,7 @@ contract PredictionMarketEscrowIntegrationTest is Test {
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = IV2Types.Pick({
             conditionResolver: address(resolver),
-            conditionId: conditionId,
+            conditionId: abi.encode(conditionId),
             predictedOutcome: IV2Types.OutcomeSide.YES
         });
 
@@ -231,7 +249,8 @@ contract PredictionMarketEscrowIntegrationTest is Test {
         bytes32 condition2 = keccak256("game-2-team-b-wins");
 
         // Sort conditions for canonical order (must be ascending by conditionId when same resolver)
-        (bytes32 first, bytes32 second) = condition1 < condition2
+        (bytes32 first, bytes32 second) = keccak256(abi.encode(condition1))
+            < keccak256(abi.encode(condition2))
             ? (condition1, condition2)
             : (condition2, condition1);
 
@@ -239,12 +258,12 @@ contract PredictionMarketEscrowIntegrationTest is Test {
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](2);
         picks[0] = IV2Types.Pick({
             conditionResolver: address(resolver),
-            conditionId: first,
+            conditionId: abi.encode(first),
             predictedOutcome: IV2Types.OutcomeSide.YES
         });
         picks[1] = IV2Types.Pick({
             conditionResolver: address(resolver),
-            conditionId: second,
+            conditionId: abi.encode(second),
             predictedOutcome: IV2Types.OutcomeSide.NO
         });
 
@@ -279,19 +298,20 @@ contract PredictionMarketEscrowIntegrationTest is Test {
         bytes32 condition2 = keccak256("game-2-team-b-wins");
 
         // Sort conditions for canonical order
-        (bytes32 first, bytes32 second) = condition1 < condition2
+        (bytes32 first, bytes32 second) = keccak256(abi.encode(condition1))
+            < keccak256(abi.encode(condition2))
             ? (condition1, condition2)
             : (condition2, condition1);
 
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](2);
         picks[0] = IV2Types.Pick({
             conditionResolver: address(resolver),
-            conditionId: first,
+            conditionId: abi.encode(first),
             predictedOutcome: IV2Types.OutcomeSide.YES
         });
         picks[1] = IV2Types.Pick({
             conditionResolver: address(resolver),
-            conditionId: second,
+            conditionId: abi.encode(second),
             predictedOutcome: IV2Types.OutcomeSide.YES
         });
 
@@ -337,7 +357,7 @@ contract PredictionMarketEscrowIntegrationTest is Test {
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = IV2Types.Pick({
             conditionResolver: address(resolver),
-            conditionId: conditionId,
+            conditionId: abi.encode(conditionId),
             predictedOutcome: IV2Types.OutcomeSide.YES
         });
 
@@ -391,7 +411,7 @@ contract PredictionMarketEscrowIntegrationTest is Test {
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = IV2Types.Pick({
             conditionResolver: address(resolver),
-            conditionId: conditionId,
+            conditionId: abi.encode(conditionId),
             predictedOutcome: IV2Types.OutcomeSide.YES
         });
 
@@ -446,14 +466,14 @@ contract PredictionMarketEscrowIntegrationTest is Test {
         IV2Types.Pick[] memory picks1 = new IV2Types.Pick[](1);
         picks1[0] = IV2Types.Pick({
             conditionResolver: address(resolver),
-            conditionId: condition1,
+            conditionId: abi.encode(condition1),
             predictedOutcome: IV2Types.OutcomeSide.YES
         });
 
         IV2Types.Pick[] memory picks2 = new IV2Types.Pick[](1);
         picks2[0] = IV2Types.Pick({
             conditionResolver: address(resolver),
-            conditionId: condition2,
+            conditionId: abi.encode(condition2),
             predictedOutcome: IV2Types.OutcomeSide.NO
         });
 
@@ -509,21 +529,35 @@ contract PredictionMarketEscrowIntegrationTest is Test {
      * @notice Test: Batch resolution optimization path
      */
     function test_fullFlow_batchResolution_samResolver() public {
-        // Create 4 conditions - all from same resolver
-        // Use bytes32 values that are naturally ordered
-        bytes32 c1 = bytes32(uint256(1));
-        bytes32 c2 = bytes32(uint256(2));
-        bytes32 c3 = bytes32(uint256(3));
-        bytes32 c4 = bytes32(uint256(4));
+        // Create 4 conditions - sort by keccak256 of encoded bytes for canonical order
+        bytes[4] memory conds;
+        conds[0] = abi.encode(bytes32(uint256(1)));
+        conds[1] = abi.encode(bytes32(uint256(2)));
+        conds[2] = abi.encode(bytes32(uint256(3)));
+        conds[3] = abi.encode(bytes32(uint256(4)));
+
+        // Bubble sort by keccak256
+        for (uint256 i = 0; i < 4; i++) {
+            for (uint256 j = i + 1; j < 4; j++) {
+                if (keccak256(conds[i]) > keccak256(conds[j])) {
+                    (conds[i], conds[j]) = (conds[j], conds[i]);
+                }
+            }
+        }
 
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](4);
-        picks[0] =
-            IV2Types.Pick(address(resolver), c1, IV2Types.OutcomeSide.YES);
-        picks[1] =
-            IV2Types.Pick(address(resolver), c2, IV2Types.OutcomeSide.YES);
-        picks[2] = IV2Types.Pick(address(resolver), c3, IV2Types.OutcomeSide.NO);
-        picks[3] =
-            IV2Types.Pick(address(resolver), c4, IV2Types.OutcomeSide.YES);
+        picks[0] = IV2Types.Pick(
+            address(resolver), conds[0], IV2Types.OutcomeSide.YES
+        );
+        picks[1] = IV2Types.Pick(
+            address(resolver), conds[1], IV2Types.OutcomeSide.YES
+        );
+        picks[2] = IV2Types.Pick(
+            address(resolver), conds[2], IV2Types.OutcomeSide.YES
+        );
+        picks[3] = IV2Types.Pick(
+            address(resolver), conds[3], IV2Types.OutcomeSide.YES
+        );
 
         uint256 pCollateral = 1000e18;
         uint256 cCollateral = 1000e18;
@@ -531,18 +565,18 @@ contract PredictionMarketEscrowIntegrationTest is Test {
             _createMintRequest(picks, pCollateral, cCollateral);
         (bytes32 predictionId, address predictorToken,) = market.mint(request);
 
-        // Batch settle all conditions
+        // Batch settle all conditions (raw bytes32 for ManualConditionResolver)
         bytes32[] memory conditionIds = new bytes32[](4);
-        conditionIds[0] = c1;
-        conditionIds[1] = c2;
-        conditionIds[2] = c3;
-        conditionIds[3] = c4;
+        conditionIds[0] = bytes32(uint256(1));
+        conditionIds[1] = bytes32(uint256(2));
+        conditionIds[2] = bytes32(uint256(3));
+        conditionIds[3] = bytes32(uint256(4));
 
         IV2Types.OutcomeVector[] memory outcomes =
             new IV2Types.OutcomeVector[](4);
         outcomes[0] = IV2Types.OutcomeVector(1, 0); // YES
         outcomes[1] = IV2Types.OutcomeVector(1, 0); // YES
-        outcomes[2] = IV2Types.OutcomeVector(0, 1); // NO
+        outcomes[2] = IV2Types.OutcomeVector(1, 0); // YES
         outcomes[3] = IV2Types.OutcomeVector(1, 0); // YES
 
         vm.prank(settler);
@@ -576,7 +610,7 @@ contract PredictionMarketEscrowIntegrationTest is Test {
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = IV2Types.Pick({
             conditionResolver: address(resolver),
-            conditionId: conditionId,
+            conditionId: abi.encode(conditionId),
             predictedOutcome: IV2Types.OutcomeSide.YES
         });
 
@@ -611,7 +645,7 @@ contract PredictionMarketEscrowIntegrationTest is Test {
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = IV2Types.Pick({
             conditionResolver: address(resolver),
-            conditionId: conditionId,
+            conditionId: abi.encode(conditionId),
             predictedOutcome: IV2Types.OutcomeSide.YES
         });
 
@@ -640,7 +674,7 @@ contract PredictionMarketEscrowIntegrationTest is Test {
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = IV2Types.Pick({
             conditionResolver: address(resolver),
-            conditionId: conditionId,
+            conditionId: abi.encode(conditionId),
             predictedOutcome: IV2Types.OutcomeSide.YES
         });
 
@@ -661,7 +695,7 @@ contract PredictionMarketEscrowIntegrationTest is Test {
         Vm.Log[] memory logs = vm.getRecordedLogs();
 
         bytes32 pickConfigCreatedSelector = keccak256(
-            "PickConfigCreated(bytes32,address,address,(address,bytes32,uint8)[])"
+            "PickConfigCreated(bytes32,address,address,(address,bytes,uint8)[])"
         );
 
         for (uint256 i = 0; i < logs.length; i++) {
@@ -681,7 +715,7 @@ contract PredictionMarketEscrowIntegrationTest is Test {
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = IV2Types.Pick({
             conditionResolver: address(resolver),
-            conditionId: conditionId,
+            conditionId: abi.encode(conditionId),
             predictedOutcome: IV2Types.OutcomeSide.NO
         });
 
@@ -699,7 +733,7 @@ contract PredictionMarketEscrowIntegrationTest is Test {
 
         // Find the PickConfigCreated event
         bytes32 pickConfigCreatedSelector = keccak256(
-            "PickConfigCreated(bytes32,address,address,(address,bytes32,uint8)[])"
+            "PickConfigCreated(bytes32,address,address,(address,bytes,uint8)[])"
         );
 
         bool found = false;
@@ -732,7 +766,7 @@ contract PredictionMarketEscrowIntegrationTest is Test {
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = IV2Types.Pick({
             conditionResolver: address(resolver),
-            conditionId: conditionId,
+            conditionId: abi.encode(conditionId),
             predictedOutcome: IV2Types.OutcomeSide.YES
         });
 
@@ -774,7 +808,7 @@ contract PredictionMarketEscrowIntegrationTest is Test {
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = IV2Types.Pick({
             conditionResolver: address(resolver),
-            conditionId: conditionId,
+            conditionId: abi.encode(conditionId),
             predictedOutcome: IV2Types.OutcomeSide.YES
         });
 
@@ -814,5 +848,387 @@ contract PredictionMarketEscrowIntegrationTest is Test {
             }
         }
         assertTrue(found, "PredictionCreated event not found on second mint");
+    }
+
+    // ============ Early Settlement Tests ============
+
+    /**
+     * @notice Test: Counterparty can claim when only one leg resolves against the predictor
+     * The predictor needs ALL legs to win, so one decisive loss should be enough
+     * for COUNTERPARTY_WINS even if other legs are still unresolved.
+     */
+    function test_fullFlow_twoPicks_earlyCounterpartyWin_oneLegLost() public {
+        bytes32 condition1 = keccak256("early-settle-leg-1");
+        bytes32 condition2 = keccak256("early-settle-leg-2");
+
+        // Sort conditions for canonical order
+        (bytes32 first, bytes32 second) = keccak256(abi.encode(condition1))
+            < keccak256(abi.encode(condition2))
+            ? (condition1, condition2)
+            : (condition2, condition1);
+
+        IV2Types.Pick[] memory picks = new IV2Types.Pick[](2);
+        picks[0] = IV2Types.Pick({
+            conditionResolver: address(resolver),
+            conditionId: abi.encode(first),
+            predictedOutcome: IV2Types.OutcomeSide.YES
+        });
+        picks[1] = IV2Types.Pick({
+            conditionResolver: address(resolver),
+            conditionId: abi.encode(second),
+            predictedOutcome: IV2Types.OutcomeSide.YES
+        });
+
+        uint256 pCollateral = 500e18;
+        uint256 cCollateral = 1000e18;
+        IV2Types.MintRequest memory request =
+            _createMintRequest(picks, pCollateral, cCollateral);
+        (bytes32 predictionId,, address counterpartyToken) =
+            market.mint(request);
+
+        // Only settle the SECOND condition — the one predictor LOSES
+        // The first condition remains unresolved, which comes first in the loop
+        vm.prank(settler);
+        resolver.settleCondition(second, IV2Types.OutcomeVector(0, 1)); // NO - predictor loses this pick
+
+        // Should be able to settle even though second condition is unresolved
+        market.settle(predictionId, REF_CODE);
+
+        IV2Types.Prediction memory prediction =
+            market.getPrediction(predictionId);
+        IV2Types.PickConfiguration memory config =
+            market.getPickConfiguration(prediction.pickConfigId);
+        assertEq(
+            uint256(config.result),
+            uint256(IV2Types.SettlementResult.COUNTERPARTY_WINS)
+        );
+
+        // Counterparty gets all
+        uint256 totalCollateral = pCollateral + cCollateral;
+        vm.prank(counterparty);
+        uint256 payout =
+            market.redeem(counterpartyToken, totalCollateral, REF_CODE);
+        assertEq(payout, totalCollateral);
+    }
+
+    /**
+     * @notice Test: Counterparty can claim when one leg resolves as a tie (non-decisive)
+     * while other legs are still unresolved.
+     */
+    function test_fullFlow_twoPicks_earlyCounterpartyWin_oneLegTie() public {
+        bytes32 condition1 = keccak256("early-tie-leg-1");
+        bytes32 condition2 = keccak256("early-tie-leg-2");
+
+        // Sort conditions for canonical order
+        (bytes32 first, bytes32 second) = keccak256(abi.encode(condition1))
+            < keccak256(abi.encode(condition2))
+            ? (condition1, condition2)
+            : (condition2, condition1);
+
+        IV2Types.Pick[] memory picks = new IV2Types.Pick[](2);
+        picks[0] = IV2Types.Pick({
+            conditionResolver: address(resolver),
+            conditionId: abi.encode(first),
+            predictedOutcome: IV2Types.OutcomeSide.YES
+        });
+        picks[1] = IV2Types.Pick({
+            conditionResolver: address(resolver),
+            conditionId: abi.encode(second),
+            predictedOutcome: IV2Types.OutcomeSide.YES
+        });
+
+        uint256 pCollateral = 500e18;
+        uint256 cCollateral = 1000e18;
+        IV2Types.MintRequest memory request =
+            _createMintRequest(picks, pCollateral, cCollateral);
+        (bytes32 predictionId,, address counterpartyToken) =
+            market.mint(request);
+
+        // Only settle the SECOND condition as a TIE (non-decisive)
+        // The first condition remains unresolved
+        vm.prank(settler);
+        resolver.settleCondition(second, IV2Types.OutcomeVector(1, 1)); // TIE
+
+        // Should settle as COUNTERPARTY_WINS even with first leg unresolved
+        market.settle(predictionId, REF_CODE);
+
+        IV2Types.Prediction memory prediction =
+            market.getPrediction(predictionId);
+        IV2Types.PickConfiguration memory config =
+            market.getPickConfiguration(prediction.pickConfigId);
+        assertEq(
+            uint256(config.result),
+            uint256(IV2Types.SettlementResult.COUNTERPARTY_WINS)
+        );
+
+        // Counterparty gets all
+        uint256 totalCollateral = pCollateral + cCollateral;
+        vm.prank(counterparty);
+        uint256 payout =
+            market.redeem(counterpartyToken, totalCollateral, REF_CODE);
+        assertEq(payout, totalCollateral);
+    }
+
+    /**
+     * @notice Test: Predictor wins one leg but other is unresolved — must wait
+     * Settlement should revert because predictor needs ALL legs to win.
+     */
+    function test_fullFlow_twoPicks_predictorWinsOne_otherUnresolved_reverts()
+        public
+    {
+        bytes32 condition1 = keccak256("wait-leg-1");
+        bytes32 condition2 = keccak256("wait-leg-2");
+
+        (bytes32 first, bytes32 second) = keccak256(abi.encode(condition1))
+            < keccak256(abi.encode(condition2))
+            ? (condition1, condition2)
+            : (condition2, condition1);
+
+        IV2Types.Pick[] memory picks = new IV2Types.Pick[](2);
+        picks[0] = IV2Types.Pick({
+            conditionResolver: address(resolver),
+            conditionId: abi.encode(first),
+            predictedOutcome: IV2Types.OutcomeSide.YES
+        });
+        picks[1] = IV2Types.Pick({
+            conditionResolver: address(resolver),
+            conditionId: abi.encode(second),
+            predictedOutcome: IV2Types.OutcomeSide.YES
+        });
+
+        uint256 pCollateral = 500e18;
+        uint256 cCollateral = 1000e18;
+        IV2Types.MintRequest memory request =
+            _createMintRequest(picks, pCollateral, cCollateral);
+        (bytes32 predictionId,,) = market.mint(request);
+
+        // Settle only first condition in predictor's favor
+        vm.prank(settler);
+        resolver.settleCondition(first, IV2Types.OutcomeVector(1, 0)); // YES - predictor wins this pick
+
+        // Should revert — predictor needs both legs, one is still unresolved
+        vm.expectRevert(
+            IPredictionMarketEscrow.PredictionNotResolvable.selector
+        );
+        market.settle(predictionId, REF_CODE);
+    }
+
+    /**
+     * @notice Test: All legs unresolved — settlement reverts
+     */
+    function test_fullFlow_twoPicks_allUnresolved_reverts() public {
+        bytes32 condition1 = keccak256("unresolved-leg-1");
+        bytes32 condition2 = keccak256("unresolved-leg-2");
+
+        (bytes32 first, bytes32 second) = keccak256(abi.encode(condition1))
+            < keccak256(abi.encode(condition2))
+            ? (condition1, condition2)
+            : (condition2, condition1);
+
+        IV2Types.Pick[] memory picks = new IV2Types.Pick[](2);
+        picks[0] = IV2Types.Pick({
+            conditionResolver: address(resolver),
+            conditionId: abi.encode(first),
+            predictedOutcome: IV2Types.OutcomeSide.YES
+        });
+        picks[1] = IV2Types.Pick({
+            conditionResolver: address(resolver),
+            conditionId: abi.encode(second),
+            predictedOutcome: IV2Types.OutcomeSide.YES
+        });
+
+        IV2Types.MintRequest memory request =
+            _createMintRequest(picks, 500e18, 1000e18);
+        (bytes32 predictionId,,) = market.mint(request);
+
+        // Neither condition settled
+        vm.expectRevert(
+            IPredictionMarketEscrow.PredictionNotResolvable.selector
+        );
+        market.settle(predictionId, REF_CODE);
+    }
+
+    /**
+     * @notice Test: 3-leg parlay — one leg lost, two unresolved, counterparty wins early
+     */
+    function test_fullFlow_threePicks_earlyCounterpartyWin_oneLegLost() public {
+        bytes32 condition1 = keccak256("three-leg-1");
+        bytes32 condition2 = keccak256("three-leg-2");
+        bytes32 condition3 = keccak256("three-leg-3");
+
+        // Sort all three by keccak256 of encoded conditionId for canonical ordering
+        bytes32[] memory sorted = new bytes32[](3);
+        sorted[0] = condition1;
+        sorted[1] = condition2;
+        sorted[2] = condition3;
+        // Simple bubble sort for 3 elements — compare by keccak256(abi.encode())
+        if (keccak256(abi.encode(sorted[0])) > keccak256(abi.encode(sorted[1])))
+        {
+            (sorted[0], sorted[1]) = (sorted[1], sorted[0]);
+        }
+        if (keccak256(abi.encode(sorted[1])) > keccak256(abi.encode(sorted[2])))
+        {
+            (sorted[1], sorted[2]) = (sorted[2], sorted[1]);
+        }
+        if (keccak256(abi.encode(sorted[0])) > keccak256(abi.encode(sorted[1])))
+        {
+            (sorted[0], sorted[1]) = (sorted[1], sorted[0]);
+        }
+
+        IV2Types.Pick[] memory picks = new IV2Types.Pick[](3);
+        picks[0] = IV2Types.Pick({
+            conditionResolver: address(resolver),
+            conditionId: abi.encode(sorted[0]),
+            predictedOutcome: IV2Types.OutcomeSide.YES
+        });
+        picks[1] = IV2Types.Pick({
+            conditionResolver: address(resolver),
+            conditionId: abi.encode(sorted[1]),
+            predictedOutcome: IV2Types.OutcomeSide.YES
+        });
+        picks[2] = IV2Types.Pick({
+            conditionResolver: address(resolver),
+            conditionId: abi.encode(sorted[2]),
+            predictedOutcome: IV2Types.OutcomeSide.NO
+        });
+
+        uint256 pCollateral = 500e18;
+        uint256 cCollateral = 1000e18;
+        IV2Types.MintRequest memory request =
+            _createMintRequest(picks, pCollateral, cCollateral);
+        (bytes32 predictionId,, address counterpartyToken) =
+            market.mint(request);
+
+        // Settle only the middle condition — predictor loses (predicted YES, got NO)
+        vm.prank(settler);
+        resolver.settleCondition(sorted[1], IV2Types.OutcomeVector(0, 1));
+
+        // Should settle as COUNTERPARTY_WINS despite two legs unresolved
+        market.settle(predictionId, REF_CODE);
+
+        IV2Types.PickConfiguration memory config = market.getPickConfiguration(
+            market.getPrediction(predictionId).pickConfigId
+        );
+        assertEq(
+            uint256(config.result),
+            uint256(IV2Types.SettlementResult.COUNTERPARTY_WINS)
+        );
+
+        uint256 totalCollateral = pCollateral + cCollateral;
+        vm.prank(counterparty);
+        uint256 payout =
+            market.redeem(counterpartyToken, totalCollateral, REF_CODE);
+        assertEq(payout, totalCollateral);
+    }
+
+    /**
+     * @notice Test: Mixed resolvers (individual path) — one leg lost on second resolver,
+     * other leg unresolved on first resolver — counterparty wins early
+     */
+    function test_fullFlow_twoPicks_mixedResolvers_earlyCounterpartyWin()
+        public
+    {
+        bytes32 condition1 = keccak256("mixed-resolver-leg-1");
+        bytes32 condition2 = keccak256("mixed-resolver-leg-2");
+
+        // Picks must be sorted by (resolver, conditionId) ascending
+        // Determine which resolver comes first
+        (
+            address firstResolver,
+            bytes32 firstCondition,
+            address secondResolver,
+            bytes32 secondCondition
+        ) = address(resolver) < address(resolver2)
+            ? (address(resolver), condition1, address(resolver2), condition2)
+            : (address(resolver2), condition2, address(resolver), condition1);
+
+        IV2Types.Pick[] memory picks = new IV2Types.Pick[](2);
+        picks[0] = IV2Types.Pick({
+            conditionResolver: firstResolver,
+            conditionId: abi.encode(firstCondition),
+            predictedOutcome: IV2Types.OutcomeSide.YES
+        });
+        picks[1] = IV2Types.Pick({
+            conditionResolver: secondResolver,
+            conditionId: abi.encode(secondCondition),
+            predictedOutcome: IV2Types.OutcomeSide.YES
+        });
+
+        uint256 pCollateral = 500e18;
+        uint256 cCollateral = 1000e18;
+        IV2Types.MintRequest memory request =
+            _createMintRequest(picks, pCollateral, cCollateral);
+        (bytes32 predictionId,, address counterpartyToken) =
+            market.mint(request);
+
+        // Settle only the second pick's condition — predictor loses
+        // First pick's condition remains unresolved
+        vm.prank(settler);
+        ManualConditionResolver(secondResolver)
+            .settleCondition(secondCondition, IV2Types.OutcomeVector(0, 1));
+
+        // Should settle via _resolveIndividual path
+        market.settle(predictionId, REF_CODE);
+
+        IV2Types.PickConfiguration memory config = market.getPickConfiguration(
+            market.getPrediction(predictionId).pickConfigId
+        );
+        assertEq(
+            uint256(config.result),
+            uint256(IV2Types.SettlementResult.COUNTERPARTY_WINS)
+        );
+
+        uint256 totalCollateral = pCollateral + cCollateral;
+        vm.prank(counterparty);
+        uint256 payout =
+            market.redeem(counterpartyToken, totalCollateral, REF_CODE);
+        assertEq(payout, totalCollateral);
+    }
+
+    /**
+     * @notice Test: Mixed resolvers — predictor wins one leg, other unresolved — must wait
+     */
+    function test_fullFlow_twoPicks_mixedResolvers_predictorWinsOne_reverts()
+        public
+    {
+        bytes32 condition1 = keccak256("mixed-wait-leg-1");
+        bytes32 condition2 = keccak256("mixed-wait-leg-2");
+
+        // Sort by resolver address
+        (
+            address firstResolver,
+            bytes32 firstCondition,
+            address secondResolver,
+            bytes32 secondCondition
+        ) = address(resolver) < address(resolver2)
+            ? (address(resolver), condition1, address(resolver2), condition2)
+            : (address(resolver2), condition2, address(resolver), condition1);
+
+        IV2Types.Pick[] memory picks = new IV2Types.Pick[](2);
+        picks[0] = IV2Types.Pick({
+            conditionResolver: firstResolver,
+            conditionId: abi.encode(firstCondition),
+            predictedOutcome: IV2Types.OutcomeSide.YES
+        });
+        picks[1] = IV2Types.Pick({
+            conditionResolver: secondResolver,
+            conditionId: abi.encode(secondCondition),
+            predictedOutcome: IV2Types.OutcomeSide.YES
+        });
+
+        IV2Types.MintRequest memory request =
+            _createMintRequest(picks, 500e18, 1000e18);
+        (bytes32 predictionId,,) = market.mint(request);
+
+        // Settle first pick's condition — predictor wins this one
+        vm.prank(settler);
+        ManualConditionResolver(firstResolver)
+            .settleCondition(firstCondition, IV2Types.OutcomeVector(1, 0));
+
+        // Should revert — second leg still unresolved
+        vm.expectRevert(
+            IPredictionMarketEscrow.PredictionNotResolvable.selector
+        );
+        market.settle(predictionId, REF_CODE);
     }
 }

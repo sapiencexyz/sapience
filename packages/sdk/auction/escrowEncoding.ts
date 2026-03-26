@@ -1,14 +1,23 @@
-import {
-  encodeAbiParameters,
-  keccak256,
-  type Address,
-  type Hex,
-} from 'viem';
+import { encodeAbiParameters, keccak256, type Address, type Hex } from 'viem';
 import type { Pick, PickJson, OutcomeSide } from '../types/escrow';
 
 // ============================================================================
 // Pick Encoding
 // ============================================================================
+//
+// ## conditionId: variable-length bytes
+//
+// The on-chain Pick struct uses `bytes conditionId` (variable length).
+// For UMA/Polymarket resolvers this is an abi-encoded bytes32 market ID.
+// For Pyth resolvers the conditionId is `abi.encode(priceId, endTime,
+// strikePrice, strikeExpo, overWinsOnTie)` (160 bytes).
+// For CT resolvers, conditionId may include a deadline timestamp:
+// 32 bytes = raw conditionId, 64 bytes = conditionId + uint256 deadline.
+//
+// conditionIds are passed as-is to the on-chain Pick struct (no hashing).
+// Canonical ordering of picks compares keccak256(conditionId) to match
+// the on-chain _validatePicks logic.
+//
 
 /**
  * ABI parameters for encoding a Pick struct
@@ -18,7 +27,7 @@ const PICK_TUPLE_TYPE = {
   type: 'tuple',
   components: [
     { name: 'conditionResolver', type: 'address' },
-    { name: 'conditionId', type: 'bytes32' },
+    { name: 'conditionId', type: 'bytes' },
     { name: 'predictedOutcome', type: 'uint8' },
   ],
 } as const;
@@ -35,15 +44,14 @@ const PICKS_ARRAY_TYPE = {
  * Encode an array of picks for ABI encoding
  * Internal helper that formats picks for encodeAbiParameters
  */
-function formatPicksForEncoding(
-  picks: Pick[]
-): Array<{
+function formatPicksForEncoding(picks: Pick[]): Array<{
   conditionResolver: Address;
   conditionId: Hex;
   predictedOutcome: number;
 }> {
   return picks.map((pick) => ({
     conditionResolver: pick.conditionResolver,
+    // On-chain Pick struct uses bytes conditionId — pass as-is (no hashing)
     conditionId: pick.conditionId,
     predictedOutcome: pick.predictedOutcome,
   }));
@@ -161,7 +169,7 @@ export function jsonToPicks(json: PickJson[]): Pick[] {
  *
  * Sorts by:
  * 1. conditionResolver (address, ascending)
- * 2. conditionId (bytes32, ascending)
+ * 2. keccak256(conditionId) (ascending)
  *
  * @param picks Array of picks (will not be mutated)
  * @returns New array with picks in canonical order
@@ -174,8 +182,10 @@ export function canonicalizePicks(picks: Pick[]): Pick[] {
       .localeCompare(b.conditionResolver.toLowerCase());
     if (resolverCmp !== 0) return resolverCmp;
 
-    // Then by conditionId
-    return a.conditionId.toLowerCase().localeCompare(b.conditionId.toLowerCase());
+    // Then by keccak256(conditionId) — matches on-chain canonical ordering
+    const hashA = keccak256(a.conditionId as Hex);
+    const hashB = keccak256(b.conditionId as Hex);
+    return hashA.toLowerCase().localeCompare(hashB.toLowerCase());
   });
 }
 
@@ -194,16 +204,22 @@ export function isValidPick(pick: unknown): pick is Pick {
     return false;
   }
 
-  // Check conditionId is valid bytes32 format
+  // Check conditionId is valid hex — must be at least bytes32 (66 chars = "0x" + 64).
+  // Longer values are valid: Pyth picks carry the full raw ABI encoding,
+  // CT resolvers may include a deadline (64 bytes / 130 hex chars).
   if (
     typeof p.conditionId !== 'string' ||
-    !/^0x[a-fA-F0-9]{64}$/.test(p.conditionId)
+    !/^0x[a-fA-F0-9]+$/.test(p.conditionId) ||
+    p.conditionId.length < 66 // bytes32 minimum
   ) {
     return false;
   }
 
   // Check predictedOutcome is 0 or 1
-  if (typeof p.predictedOutcome !== 'number' || (p.predictedOutcome !== 0 && p.predictedOutcome !== 1)) {
+  if (
+    typeof p.predictedOutcome !== 'number' ||
+    (p.predictedOutcome !== 0 && p.predictedOutcome !== 1)
+  ) {
     return false;
   }
 

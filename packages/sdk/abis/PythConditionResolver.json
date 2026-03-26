@@ -50,8 +50,8 @@
     "outputs": [
       {
         "name": "",
-        "type": "bytes32",
-        "internalType": "bytes32"
+        "type": "bytes",
+        "internalType": "bytes"
       }
     ],
     "stateMutability": "pure"
@@ -62,8 +62,8 @@
     "inputs": [
       {
         "name": "conditionId",
-        "type": "bytes32",
-        "internalType": "bytes32"
+        "type": "bytes",
+        "internalType": "bytes"
       }
     ],
     "outputs": [
@@ -98,8 +98,8 @@
     "inputs": [
       {
         "name": "conditionIds",
-        "type": "bytes32[]",
-        "internalType": "bytes32[]"
+        "type": "bytes[]",
+        "internalType": "bytes[]"
       }
     ],
     "outputs": [
@@ -134,8 +134,8 @@
     "inputs": [
       {
         "name": "conditionId",
-        "type": "bytes32",
-        "internalType": "bytes32"
+        "type": "bytes",
+        "internalType": "bytes"
       }
     ],
     "outputs": [
@@ -180,8 +180,8 @@
     "inputs": [
       {
         "name": "conditionId",
-        "type": "bytes32",
-        "internalType": "bytes32"
+        "type": "bytes",
+        "internalType": "bytes"
       }
     ],
     "outputs": [
@@ -199,8 +199,8 @@
     "inputs": [
       {
         "name": "conditionId",
-        "type": "bytes32",
-        "internalType": "bytes32"
+        "type": "bytes",
+        "internalType": "bytes"
       }
     ],
     "outputs": [
@@ -270,8 +270,8 @@
     "outputs": [
       {
         "name": "conditionId",
-        "type": "bytes32",
-        "internalType": "bytes32"
+        "type": "bytes",
+        "internalType": "bytes"
       },
       {
         "name": "resolvedToOver",
@@ -322,10 +322,10 @@
   },
   {
     "type": "event",
-    "name": "MarketSettled",
+    "name": "ConditionResolutionDetail",
     "inputs": [
       {
-        "name": "conditionId",
+        "name": "conditionIdHash",
         "type": "bytes32",
         "indexed": true,
         "internalType": "bytes32"
@@ -341,6 +341,12 @@
         "type": "uint64",
         "indexed": true,
         "internalType": "uint64"
+      },
+      {
+        "name": "conditionId",
+        "type": "bytes",
+        "indexed": false,
+        "internalType": "bytes"
       },
       {
         "name": "resolvedToOver",
@@ -365,6 +371,31 @@
         "type": "uint64",
         "indexed": false,
         "internalType": "uint64"
+      }
+    ],
+    "anonymous": false
+  },
+  {
+    "type": "event",
+    "name": "ConditionResolved",
+    "inputs": [
+      {
+        "name": "conditionId",
+        "type": "bytes",
+        "indexed": false,
+        "internalType": "bytes"
+      },
+      {
+        "name": "isIndecisive",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
+      },
+      {
+        "name": "resolvedToYes",
+        "type": "bool",
+        "indexed": false,
+        "internalType": "bool"
       }
     ],
     "anonymous": false

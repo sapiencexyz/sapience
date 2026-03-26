@@ -275,7 +275,7 @@ input CategoryWhereUniqueInput {
   conditions: ConditionListRelationFilter
   createdAt: DateTimeFilter
   id: Int
-  name: String
+  name: StringFilter
   slug: String
 }
 
@@ -319,6 +319,7 @@ type CollateralBalanceSnapshotType {
   atBlock: Int!
   balance: String!
   index: Int!
+  timestamp: DateTimeISO
 }
 
 type CollateralBalanceType {
@@ -333,6 +334,7 @@ type CollateralTransferType {
   chainId: Int!
   from: String!
   id: Int!
+  timestamp: DateTimeISO!
   to: String!
   transactionHash: String!
   value: String!
@@ -346,13 +348,15 @@ type Condition {
   category(where: CategoryWhereInput): Category
   categoryId: Int
   chainId: Int!
-  claimStatement: String!
   conditionGroup(where: ConditionGroupWhereInput): ConditionGroup
   conditionGroupId: Int
   createdAt: DateTimeISO!
   description: String!
   displayOrder: Int
   endTime: Int!
+
+  """YES probability from Polymarket (0.0–1.0), null for non-Polymarket"""
+  estimatedPrice: Float
   id: String!
   nonDecisive: Boolean!
   openInterest: String!
@@ -368,6 +372,7 @@ type Condition {
   settledAt: Int
   shortName: String
   similarMarkets: [String!]!
+  tags: [String!]!
 }
 
 type ConditionCount {
@@ -471,13 +476,13 @@ input ConditionOrderByWithRelationInput {
   category: CategoryOrderByWithRelationInput
   categoryId: SortOrderInput
   chainId: SortOrder
-  claimStatement: SortOrder
   conditionGroup: ConditionGroupOrderByWithRelationInput
   conditionGroupId: SortOrderInput
   createdAt: SortOrder
   description: SortOrder
   displayOrder: SortOrderInput
   endTime: SortOrder
+  estimatedPrice: SortOrderInput
   id: SortOrder
   nonDecisive: SortOrder
   openInterest: SortOrder
@@ -491,6 +496,7 @@ input ConditionOrderByWithRelationInput {
   settledAt: SortOrderInput
   shortName: SortOrderInput
   similarMarkets: SortOrder
+  tags: SortOrder
 }
 
 input ConditionRelationFilter {
@@ -503,12 +509,12 @@ enum ConditionScalarFieldEnum {
   assertionTimestamp
   categoryId
   chainId
-  claimStatement
   conditionGroupId
   createdAt
   description
   displayOrder
   endTime
+  estimatedPrice
   id
   nonDecisive
   openInterest
@@ -521,6 +527,7 @@ enum ConditionScalarFieldEnum {
   settledAt
   shortName
   similarMarkets
+  tags
 }
 
 input ConditionWhereInput {
@@ -533,13 +540,13 @@ input ConditionWhereInput {
   category: CategoryNullableRelationFilter
   categoryId: IntNullableFilter
   chainId: IntFilter
-  claimStatement: StringFilter
   conditionGroup: ConditionGroupNullableRelationFilter
   conditionGroupId: IntNullableFilter
   createdAt: DateTimeFilter
   description: StringFilter
   displayOrder: IntNullableFilter
   endTime: IntFilter
+  estimatedPrice: FloatNullableFilter
   id: StringFilter
   nonDecisive: BoolFilter
   openInterest: StringFilter
@@ -553,6 +560,7 @@ input ConditionWhereInput {
   settledAt: IntNullableFilter
   shortName: StringNullableFilter
   similarMarkets: StringNullableListFilter
+  tags: StringNullableListFilter
 }
 
 input ConditionWhereUniqueInput {
@@ -565,13 +573,13 @@ input ConditionWhereUniqueInput {
   category: CategoryNullableRelationFilter
   categoryId: IntNullableFilter
   chainId: IntFilter
-  claimStatement: StringFilter
   conditionGroup: ConditionGroupNullableRelationFilter
   conditionGroupId: IntNullableFilter
   createdAt: DateTimeFilter
   description: StringFilter
   displayOrder: IntNullableFilter
   endTime: IntFilter
+  estimatedPrice: FloatNullableFilter
   id: String
   nonDecisive: BoolFilter
   openInterest: StringFilter
@@ -585,6 +593,7 @@ input ConditionWhereUniqueInput {
   settledAt: IntNullableFilter
   shortName: StringNullableFilter
   similarMarkets: StringNullableListFilter
+  tags: StringNullableListFilter
 }
 
 input DateTimeFilter {
@@ -1064,6 +1073,7 @@ type PickConfiguration {
   counterpartyToken: String
   endsAt: Int
   id: String!
+  isLegacy: Boolean!
   marketAddress: String!
   picks: [Pick!]!
   predictionId: String
@@ -1102,6 +1112,12 @@ type Position {
   userCollateral: String
 }
 
+"""Field to sort positions by"""
+enum PositionSortField {
+  CREATED_AT
+  UPDATED_AT
+}
+
 """
 Escrow-based prediction record between a predictor and counterparty, with collateral and settlement tracking
 """
@@ -1116,6 +1132,7 @@ type Prediction {
   createTxHash: String!
   createdAt: DateTimeISO!
   id: Int!
+  isLegacy: Boolean!
   marketAddress: String!
   pickConfig: PickConfiguration
   predictionId: String!
@@ -1128,6 +1145,29 @@ type Prediction {
   settleTxHash: String
   settled: Boolean!
   settledAt: Int
+}
+
+"""
+Time-bucketed prediction count with outcome breakdown, bucketed by creation time
+"""
+type PredictionCountDataPoint {
+  """Predictions lost in this bucket"""
+  lost: Int!
+
+  """Predictions settled as non-decisive in this bucket"""
+  nonDecisive: Int!
+
+  """Predictions still pending in this bucket"""
+  pending: Int!
+
+  """Unix epoch timestamp (seconds) for the start of this bucket"""
+  timestamp: Int!
+
+  """Total predictions created in this bucket"""
+  total: Int!
+
+  """Predictions won in this bucket"""
+  won: Int!
 }
 
 """Field to sort predictions by"""
@@ -1195,6 +1235,11 @@ type Query {
   accountPnl(address: String!, from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [PnlDataPoint!]!
 
   """
+  Time-bucketed prediction count with outcome breakdown for a single address, bucketed by creation time
+  """
+  accountPredictionCount(address: String!, from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [PredictionCountDataPoint!]!
+
+  """
   Profit rank and total PnL for a single address relative to all participants
   """
   accountProfitRank(address: String!): ProfitRank!
@@ -1221,9 +1266,9 @@ type Query {
   Paginated list of position close (burn) records, filterable by address, pick config, and chain
   """
   closes(address: String, chainId: Int, pickConfigId: String, skip: Int! = 0, take: Int! = 50): [Close!]!
-  collateralBalance(address: String!, atBlock: Int, chainId: Int! = 5064014): CollateralBalanceType!
-  collateralBalanceHistory(address: String!, chainId: Int! = 5064014, count: Int! = 12, currentBlock: Int, intervalHours: Int! = 168): [CollateralBalanceSnapshotType!]!
-  collateralTransfers(address: String!, chainId: Int! = 5064014, limit: Int! = 100, offset: Int! = 0): [CollateralTransferType!]!
+  collateralBalance(address: String!, atBlock: Int, chainId: Int!): CollateralBalanceType!
+  collateralBalanceHistory(address: String!, chainId: Int!, count: Int! = 12, currentBlock: Int, intervalHours: Int! = 168): [CollateralBalanceSnapshotType!]!
+  collateralTransfers(address: String!, chainId: Int!, limit: Int! = 100, offset: Int! = 0): [CollateralTransferType!]!
   condition(where: ConditionWhereUniqueInput!): Condition
   conditionGroup(where: ConditionGroupWhereUniqueInput!): ConditionGroup
   conditionGroups(cursor: ConditionGroupWhereUniqueInput, distinct: [ConditionGroupScalarFieldEnum!], orderBy: [ConditionGroupOrderByWithRelationInput!], skip: Int, take: Int, where: ConditionGroupWhereInput): [ConditionGroup!]!
@@ -1235,12 +1280,12 @@ type Query {
   """
   Paginated list of pick configurations, filterable by chain, resolution status, and result
   """
-  pickConfigurations(chainId: Int, resolved: Boolean, result: SettlementResult, skip: Int! = 0, take: Int! = 50): [PickConfiguration!]!
+  pickConfigurations(chainId: Int, resolved: Boolean, result: SettlementResult, skip: Int! = 0, take: Int! = 50, tokens: [String!]): [PickConfiguration!]!
 
   """
-  Paginated list of token position balances, filterable by holder, condition, chain, or pick config
+  Paginated list of token position balances, filterable by holder, condition, chain, pick config, settlement, date range, collateral range, and won/lost status
   """
-  positions(chainId: Int, conditionId: String, holder: String, pickConfigId: String, skip: Int! = 0, take: Int! = 50): [Position!]!
+  positions(chainId: Int, collateralMax: String, collateralMin: String, conditionId: String, endsAtMax: Int, endsAtMin: Int, holder: String, holderWon: Boolean, orderBy: PositionSortField, orderDirection: SortOrder, pickConfigId: String, result: SettlementResult, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Position!]!
 
   """Look up a single prediction by its on-chain prediction ID"""
   prediction(id: String!): Prediction
@@ -1251,7 +1296,7 @@ type Query {
   """
   Paginated list of escrow-based predictions, filterable by address, condition, chain, and settlement status
   """
-  predictions(address: String, chainId: Int, conditionId: String, orderBy: PredictionSortField, orderDirection: SortOrder, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Prediction!]!
+  predictions(address: String, chainId: Int, conditionId: String, isLegacy: Boolean, orderBy: PredictionSortField, orderDirection: SortOrder, settled: Boolean, skip: Int! = 0, take: Int! = 50): [Prediction!]!
 
   """
   Profit leaderboard — addresses ranked by total PnL across all positions
@@ -1269,7 +1314,7 @@ type Query {
   """
   Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field
   """
-  questions(categorySlugs: [String!], chainId: Int, minEndTime: Int, resolutionStatus: ResolutionStatus, search: String, skip: Int! = 0, sortDirection: SortOrder! = desc, sortField: QuestionSortField, take: Int! = 50): [Question!]!
+  questions(categorySlugs: [String!], chainId: Int, maxEstimatedPrice: Float, minEndTime: Int, minEstimatedPrice: Float, resolutionStatus: ResolutionStatus, search: String, skip: Int! = 0, sortDirection: SortOrder! = desc, sortField: QuestionSortField, take: Int! = 50): [Question!]!
 
   """Look up a single secondary market trade by its trade hash"""
   trade(id: String!): Trade

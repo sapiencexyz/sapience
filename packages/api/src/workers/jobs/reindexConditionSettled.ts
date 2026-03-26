@@ -6,21 +6,29 @@ export async function reindexConditionSettled(
   chainId: number,
   resolverAddress: `0x${string}`,
   startTimestamp?: number,
-  endTimestamp?: number
+  endTimestamp?: number,
+  isLegacy: boolean = false
 ) {
   try {
     console.log(
-      `[ConditionSettled Reindex] Reindexing on chain ${chainId} resolver ${resolverAddress} from ${startTimestamp ? new Date(startTimestamp * 1000).toISOString() : '2 days ago'} to ${endTimestamp ? new Date(endTimestamp * 1000).toISOString() : 'now'}`
+      `[ConditionSettled Reindex] Reindexing on chain ${chainId} resolver ${resolverAddress} (legacy: ${isLegacy}) from ${startTimestamp ? new Date(startTimestamp * 1000).toISOString() : '2 days ago'} to ${endTimestamp ? new Date(endTimestamp * 1000).toISOString() : 'now'}`
     );
 
     await initializeDataSource();
 
     const resourceSlug = 'condition-settled';
-    const indexer = new ConditionSettledIndexer(chainId, resolverAddress);
+    const indexer = new ConditionSettledIndexer(
+      chainId,
+      resolverAddress,
+      isLegacy
+    );
 
     const startTime =
-      startTimestamp || Math.floor(Date.now() / 1000) - 2 * 24 * 60 * 60;
-    const endTime = endTimestamp || Math.floor(Date.now() / 1000);
+      startTimestamp !== undefined
+        ? startTimestamp
+        : Math.floor(Date.now() / 1000) - 2 * 24 * 60 * 60;
+    const endTime =
+      endTimestamp !== undefined ? endTimestamp : Math.floor(Date.now() / 1000);
 
     console.log(
       `[ConditionSettled Reindex] Starting reindex for chain ${chainId}`

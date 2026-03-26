@@ -4,12 +4,14 @@ import {
   VolumeDataPoint,
   PnlDataPoint,
   BalanceDataPoint,
+  PredictionCountDataPoint,
 } from '../types/TimeSeriesTypes';
 import {
   queryAccountVolume,
   queryAccountPnl,
   queryAccountBalance,
   queryProtocolVolume,
+  queryAccountPredictionCount,
 } from '../../helpers/timeSeriesQueries';
 
 @Resolver()
@@ -53,6 +55,20 @@ export class TimeSeriesResolver {
     @Arg('to', () => Date, { nullable: true }) to?: Date
   ): Promise<BalanceDataPoint[]> {
     return queryAccountBalance(address, interval, from, to);
+  }
+
+  @Query(() => [PredictionCountDataPoint], {
+    description:
+      'Time-bucketed prediction count with outcome breakdown for a single address, bucketed by creation time',
+  })
+  @Directive('@cacheControl(maxAge: 60)')
+  async accountPredictionCount(
+    @Arg('address', () => String) address: string,
+    @Arg('interval', () => TimeInterval) interval: TimeInterval,
+    @Arg('from', () => Date, { nullable: true }) from?: Date,
+    @Arg('to', () => Date, { nullable: true }) to?: Date
+  ): Promise<PredictionCountDataPoint[]> {
+    return queryAccountPredictionCount(address, interval, from, to);
   }
 
   @Query(() => [VolumeDataPoint], {

@@ -5,10 +5,34 @@ import type { Address, Hex } from 'viem';
  * TypeScript equivalents of the Solidity types in the PredictionMarketEscrow contract
  */
 
-/** Outcome side for a pick */
+/**
+ * Outcome side for a pick.
+ *
+ * YES = 0, NO = 1. This mirrors the Solidity enum (IV2Types.OutcomeSide)
+ * where values are assigned by declaration order. The ordering is
+ * load-bearing: it is ABI-encoded as uint8, hashed into pickConfigId,
+ * and embedded in EIP-712 signatures. Changing it would break all
+ * existing positions.
+ *
+ * This is an enum rather than a boolean because resolution can be
+ * non-decisive (tie) — the OutcomeVector [1,1] represents a result
+ * where neither YES nor NO wins outright. Using an enum keeps the
+ * prediction side extensible without conflating it with resolution.
+ */
 export enum OutcomeSide {
   YES = 0,
   NO = 1,
+}
+
+/**
+ * Type-safe check: did the predictor choose YES?
+ *
+ * Use this instead of raw `=== 0` / `=== 1` comparisons to avoid
+ * the counterintuitive YES=0 mapping causing bugs. Every callsite
+ * that interprets a predictedOutcome should call this function.
+ */
+export function isPredictedYes(predictedOutcome: number): boolean {
+  return predictedOutcome === (OutcomeSide.YES as number);
 }
 
 /** Settlement result for a prediction */
@@ -25,7 +49,7 @@ export interface OutcomeVector {
   noWeight: bigint;
 }
 
-/** A single pick in a prediction/parlay */
+/** A single pick in a prediction/combo */
 export interface Pick {
   conditionResolver: Address;
   conditionId: Hex;
@@ -257,8 +281,12 @@ export interface AuctionDetails {
   predictor: string;
   predictorNonce: number;
   predictorDeadline: number;
+  intentSignature?: string; // EIP-712 AuctionIntent — proves identity + intent
+  predictorSessionKeyData?: string; // ZeroDev/escrow session approval
   chainId: number;
   createdAt: string; // ISO timestamp
+  predictorSponsor?: string; // Sponsor contract address (address(0) = self-funded)
+  predictorSponsorData?: string; // Opaque data passed to sponsor's fundMint
 }
 
 /** Bid that has been validated */
@@ -286,7 +314,10 @@ export type ServerToClientMessage =
     }
   | { type: 'bid.ack'; payload: { bidId?: string; error?: string } }
   | { type: 'auction.started'; payload: AuctionDetails }
-  | { type: 'auction.bids'; payload: { auctionId: string; bids: ValidatedBid[] } }
+  | {
+      type: 'auction.bids';
+      payload: { auctionId: string; bids: ValidatedBid[] };
+    }
   | {
       type: 'auction.filled';
       payload: {

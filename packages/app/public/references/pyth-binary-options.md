@@ -36,6 +36,7 @@ const conditionId = getPythMarketId({
 ## Outcome Mapping
 
 For Pyth markets, Over maps to YES and Under maps to NO:
+
 - `predictedOutcome: 0` (YES) = **Over** — betting the price will be at or above the strike
 - `predictedOutcome: 1` (NO) = **Under** — betting the price will be below the strike
 
@@ -48,21 +49,23 @@ When building picks for Pyth markets, encode outcomes with:
 ```javascript
 import { encodePythBinaryOptionOutcomes } from '@sapience/sdk/auction/encoding';
 
-const encoded = encodePythBinaryOptionOutcomes([{
-  priceId: '0x...',
-  endTime: 1710000000n,
-  strikePrice: 50000000000n,
-  strikeExpo: -6,
-  overWinsOnTie: true,
-  prediction: true, // true = Over, false = Under
-}]);
+const encoded = encodePythBinaryOptionOutcomes([
+  {
+    priceId: '0x...',
+    endTime: 1710000000n,
+    strikePrice: 50000000000n,
+    strikeExpo: -6,
+    overWinsOnTie: true,
+    prediction: true, // true = Over, false = Under
+  },
+]);
 ```
 
 ## Resolution
 
 - **Outcome logic**: Over wins if `benchmarkPrice >= strikePrice` (when `overWinsOnTie=true`) or `benchmarkPrice > strikePrice` (when `overWinsOnTie=false`)
 - **Settlement is permissionless**: Anyone can settle by calling `PythConditionResolver.settleCondition(market, updateData)` with Pyth Lazer verified price update data at the exact `endTime`
-- **Resolver address**: `pythConditionResolver[CHAIN_ID_ETHEREAL].address` = `0x6399F6397701e4213BBaEf9f7a15EF31C9c329E1`
+- **Resolver address**: Import from SDK — `pythConditionResolver[CHAIN_ID_ETHEREAL].address` (see `@sapience/sdk/contracts/addresses`)
 - **ABI**: `pythConditionResolverAbi` from `@sapience/sdk/abis`
 
 ## Getting Pyth Lazer updateData

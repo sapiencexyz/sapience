@@ -11,6 +11,7 @@ import {
 } from "@openzeppelin/contracts/utils/ReentrancyGuard.sol";
 import { ILZConditionResolver } from "./interfaces/ILZConditionResolver.sol";
 import { IConditionResolver } from "../../interfaces/IConditionResolver.sol";
+import { ConditionResolverBase } from "../ConditionResolverBase.sol";
 import { IV2Types } from "../../interfaces/IV2Types.sol";
 import { LZTypes } from "../shared/LZTypes.sol";
 import { LZETHManagement } from "./LZETHManagement.sol";
@@ -21,6 +22,7 @@ import { LZETHManagement } from "./LZETHManagement.sol";
 contract LZConditionResolver is
     OApp,
     ILZConditionResolver,
+    ConditionResolverBase,
     ReentrancyGuard,
     LZETHManagement
 {
@@ -73,21 +75,24 @@ contract LZConditionResolver is
     // ============ IConditionResolver Implementation ============
 
     /// @inheritdoc IConditionResolver
-    function isValidCondition(bytes32 conditionId)
+    function isValidCondition(bytes calldata conditionId)
         external
         pure
         returns (bool)
     {
-        return conditionId != bytes32(0);
+        if (conditionId.length != 32) return false;
+        bytes32 rawId = bytes32(conditionId[:32]);
+        return rawId != bytes32(0);
     }
 
     /// @inheritdoc IConditionResolver
-    function getResolution(bytes32 conditionId)
+    function getResolution(bytes calldata conditionId)
         external
         view
         returns (bool isResolved, IV2Types.OutcomeVector memory outcome)
     {
-        ConditionState memory condition = conditions[conditionId];
+        bytes32 rawId = bytes32(conditionId[:32]);
+        ConditionState memory condition = conditions[rawId];
 
         if (!condition.settled) {
             return (false, IV2Types.OutcomeVector(0, 0));
@@ -102,7 +107,7 @@ contract LZConditionResolver is
     }
 
     /// @inheritdoc IConditionResolver
-    function getResolutions(bytes32[] calldata conditionIds)
+    function getResolutions(bytes[] calldata conditionIds)
         external
         view
         returns (
@@ -115,7 +120,8 @@ contract LZConditionResolver is
         outcomes = new IV2Types.OutcomeVector[](length);
 
         for (uint256 i = 0; i < length; i++) {
-            ConditionState memory condition = conditions[conditionIds[i]];
+            bytes32 rawId = bytes32(conditionIds[i][:32]);
+            ConditionState memory condition = conditions[rawId];
 
             if (condition.settled) {
                 resolved[i] = true;
@@ -132,8 +138,13 @@ contract LZConditionResolver is
     }
 
     /// @inheritdoc IConditionResolver
-    function isFinalized(bytes32 conditionId) external view returns (bool) {
-        return conditions[conditionId].settled;
+    function isFinalized(bytes calldata conditionId)
+        external
+        view
+        returns (bool)
+    {
+        bytes32 rawId = bytes32(conditionId[:32]);
+        return conditions[rawId].settled;
     }
 
     // ============ View Functions ============
@@ -207,9 +218,16 @@ contract LZConditionResolver is
             }
             condition.settled = true;
             condition.resolvedToYes = resolvedToYes;
+
+            _emitResolved(
+                abi.encode(conditionId),
+                resolvedToYes
+                    ? IV2Types.OutcomeVector(1, 0)
+                    : IV2Types.OutcomeVector(0, 1)
+            );
         }
 
-        emit ConditionResolved(
+        emit ConditionResolutionDetail(
             conditionId, resolvedToYes, assertedTruthfully, block.timestamp
         );
     }

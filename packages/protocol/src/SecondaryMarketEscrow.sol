@@ -10,6 +10,7 @@ import "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import "./interfaces/ISecondaryMarketEscrow.sol";
 import "./interfaces/IV2Types.sol";
 import "./utils/IAccountFactory.sol";
+import "./utils/ECDSAHelper.sol";
 
 /**
  * @title SecondaryMarketEscrow
@@ -277,13 +278,7 @@ contract SecondaryMarketEscrow is
         );
 
         bytes32 hash = _hashTypedDataV4(structHash);
-        address recoveredSigner = ECDSA.recover(hash, signature);
-
-        if (recoveredSigner == address(0)) {
-            return false;
-        }
-
-        return recoveredSigner == signer;
+        return ECDSAHelper.isValidECDSASignature(hash, signature, signer);
     }
 
     /// @notice Validate trade approval with EIP-1271 fallback for smart contracts
@@ -377,13 +372,9 @@ contract SecondaryMarketEscrow is
             )
         );
         bytes32 tradeDigest = _hashTypedDataV4(tradeStructHash);
-        address recoveredSessionKey =
-            ECDSA.recover(tradeDigest, sessionKeySignature);
-
-        if (
-            recoveredSessionKey == address(0)
-                || recoveredSessionKey != skData.sessionKey
-        ) {
+        if (!ECDSAHelper.isValidECDSASignature(
+                tradeDigest, sessionKeySignature, skData.sessionKey
+            )) {
             return false;
         }
 
@@ -403,10 +394,9 @@ contract SecondaryMarketEscrow is
             )
         );
         bytes32 sessionHash = _hashTypedDataV4(sessionStructHash);
-        address recoveredOwner =
-            ECDSA.recover(sessionHash, skData.ownerSignature);
-
-        if (recoveredOwner == address(0) || recoveredOwner != skData.owner) {
+        if (!ECDSAHelper.isValidECDSASignature(
+                sessionHash, skData.ownerSignature, skData.owner
+            )) {
             return false;
         }
 

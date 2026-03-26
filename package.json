@@ -4,7 +4,7 @@
   "private": true,
   "main": "index.js",
   "scripts": {
-    "build": "pnpm --filter protocol run build && pnpm --filter app run build && pnpm --filter data run build",
+    "build": "pnpm --filter protocol run build && pnpm --filter app run build && pnpm --filter docs run build",
     "test": "pnpm run test --recursive",
     "dev:protocol": "pnpm --filter protocol run dev",
     "dev:app": "pnpm --filter @sapience/app run dev",
@@ -23,15 +23,20 @@
     "start:compute-stats": "pnpm --filter api run start:compute-stats",
     "start:backfill-stats": "pnpm --filter api run start:backfill-stats",
     "start:reindex-condition-settled": "pnpm --filter api run start:reindex-condition-settled",
+    "start:reindex-transfers": "pnpm --filter api run start:reindex-transfers",
     "check": "pnpm --filter @sapience/sdk run build:lib && pnpm --filter @sapience/api run prisma:generate && pnpm -r run lint && pnpm -r --filter=!protocol run type-check && pnpm -r --filter=!protocol run test",
-    "format:check": "pnpm -r run format:check"
+    "format:check": "pnpm -r run format:check",
+    "prepare": "husky"
   },
   "keywords": [],
   "devDependencies": {
-    "concurrently": "8.2.2"
+    "concurrently": "8.2.2",
+    "husky": "9.1.7",
+    "lint-staged": "16.3.3",
+    "prettier": "3.3.3"
   },
   "engines": {
-    "node": ">=20.14.x",
+    "node": ">=22.x",
     "pnpm": "9.x"
   },
   "resolutions": {
@@ -46,7 +51,10 @@
       "elliptic": "6.6.1",
       "protobufjs": "7.2.5",
       "zod": "3.25.76",
-      "graphql": "16.12.0"
+      "porto>zod": "4.3.6",
+      "graphql": "16.12.0",
+      "viem": "2.47.2",
+      "wagmi": "2.19.5"
     }
   },
   "packageManager": "pnpm@9.15.9+sha512.68046141893c66fad01c079231128e9afb89ef87e2691d69e4d40eee228988295fd4682181bae55b58418c3a253bde65a505ec7c5f9403ece5cc3cd37dcf2531"

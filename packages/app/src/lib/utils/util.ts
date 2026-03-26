@@ -1,6 +1,6 @@
 import { type ClassValue, clsx } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { createPublicClient, http } from 'viem';
+import { createPublicClient, http, type HttpTransportConfig } from 'viem';
 import * as chains from 'viem/chains';
 import { mainnet } from 'viem/chains';
 import {
@@ -11,24 +11,68 @@ import {
   etherealTestnetChain,
 } from '@sapience/sdk/constants';
 
+/** Default number of retries for transient RPC / async failures. */
+export const DEFAULT_RETRY_COUNT = 3;
+/** Default initial delay (ms) between retries. */
+export const DEFAULT_RETRY_DELAY_MS = 1000;
+
+/**
+ * Viem HTTP transport with default retry configuration.
+ * Use this instead of bare `http()` so every RPC transport retries on transient failures.
+ */
+export function httpWithRetry(url?: string, config?: HttpTransportConfig) {
+  return http(url, {
+    retryCount: DEFAULT_RETRY_COUNT,
+    retryDelay: DEFAULT_RETRY_DELAY_MS,
+    ...config,
+  });
+}
+
+/**
+ * Retry an async operation with exponential backoff.
+ */
+export async function withRetry<T>(
+  fn: () => Promise<T>,
+  retries = DEFAULT_RETRY_COUNT,
+  delayMs = DEFAULT_RETRY_DELAY_MS
+): Promise<T> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      return await fn();
+    } catch (error) {
+      lastError = error;
+      if (attempt < retries) {
+        await new Promise((resolve) =>
+          setTimeout(resolve, delayMs * 2 ** attempt)
+        );
+      }
+    }
+  }
+  throw lastError;
+}
+
 // Mainnet client for ENS resolution
 export const mainnetClient = createPublicClient({
   chain: mainnet,
   transport: process.env.NEXT_PUBLIC_INFURA_API_KEY
-    ? http(
+    ? httpWithRetry(
         `https://mainnet.infura.io/v3/${process.env.NEXT_PUBLIC_INFURA_API_KEY}`
       )
-    : http('https://ethereum-rpc.publicnode.com'),
+    : httpWithRetry('https://ethereum-rpc.publicnode.com'),
 });
 
 // etherealChain and etherealTestnetChain imported from @sapience/sdk/constants
 
 // Use unknown to avoid structural type incompatibilities across different viem instances
-const publicClientCache: Map<number, unknown> = new Map();
+const publicClientCache: Map<
+  number,
+  ReturnType<typeof createPublicClient>
+> = new Map();
 
 export function getPublicClientForChainId(chainId: number) {
   const cached = publicClientCache.get(chainId);
-  if (cached) return cached as any;
+  if (cached) return cached;
 
   // Handle Ethereal chains specifically since they're not in viem/chains
   if (chainId === CHAIN_ID_ETHEREAL || chainId === CHAIN_ID_ETHEREAL_TESTNET) {
@@ -44,29 +88,19 @@ export function getPublicClientForChainId(chainId: number) {
 
     const client = createPublicClient({
       chain: isTestnet ? etherealTestnetChain : etherealChain,
-      transport: http(rpcUrl),
-    });
-    publicClientCache.set(chainId, client);
-    return client;
-  }
-
-  if (chainId === CHAIN_ID_ETHEREAL_TESTNET) {
-    // Allow per-chain override via NEXT_PUBLIC_RPC_<CHAINID>
-    const envKey = `NEXT_PUBLIC_RPC_${chainId}` as keyof NodeJS.ProcessEnv;
-    const envUrl = process.env[envKey as string];
-    const rpcUrl = envUrl || 'https://rpc.etherealtest.net';
-
-    const client = createPublicClient({
-      chain: etherealTestnetChain,
-      transport: http(rpcUrl),
+      transport: httpWithRetry(rpcUrl),
     });
     publicClientCache.set(chainId, client);
     return client;
   }
 
   const chainObj = Object.values(chains).find(
-    (c: any) => c?.id === chainId
-  ) as any;
+    (c) =>
+      typeof c === 'object' &&
+      c !== null &&
+      'id' in c &&
+      (c as { id: number }).id === chainId
+  );
 
   // Allow per-chain override via NEXT_PUBLIC_RPC_<CHAINID>
   const envKey = `NEXT_PUBLIC_RPC_${chainId}` as keyof NodeJS.ProcessEnv;
@@ -74,12 +108,14 @@ export function getPublicClientForChainId(chainId: number) {
 
   const defaultUrl =
     envUrl ||
-    chainObj?.rpcUrls?.public?.http?.[0] ||
+    chainObj?.rpcUrls?.default?.http?.[0] ||
     (chainId === 1 ? 'https://ethereum-rpc.publicnode.com' : undefined);
 
   const client = createPublicClient({
-    chain: chainObj ?? mainnet,
-    transport: defaultUrl ? http(defaultUrl) : http(),
+    chain: (chainObj ?? mainnet) as Parameters<
+      typeof createPublicClient
+    >[0]['chain'],
+    transport: httpWithRetry(defaultUrl),
   });
   publicClientCache.set(chainId, client);
   return client;

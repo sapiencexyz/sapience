@@ -4,7 +4,7 @@ import { erc20Abi } from 'viem';
 import {
   generateRandomNonce,
   toBigIntSafe,
-  validateTakerFunds,
+  validateCounterpartyFunds,
   prepareMintCalls,
 } from '@sapience/sdk';
 import {
@@ -13,13 +13,13 @@ import {
 } from '@sapience/sdk/constants';
 import { collateralToken } from '@sapience/sdk/contracts';
 import { useAccount, useReadContract, useSignTypedData } from 'wagmi';
+import { buildPredictorMintTypedData } from '@sapience/sdk/auction/escrowSigning';
+import type { Pick as EscrowPick } from '@sapience/sdk/types/escrow';
 import { useSapienceWriteContract } from '~/hooks/blockchain/useSapienceWriteContract';
 import { useSession } from '~/lib/context/SessionContext';
 
 import type { MintPredictionRequestData } from '~/lib/auction/useAuctionStart';
 import { getPublicClientForChainId } from '~/lib/utils/util';
-import { buildPredictorMintTypedData } from '@sapience/sdk/auction/escrowSigning';
-import type { Pick as EscrowPick } from '@sapience/sdk/types/escrow';
 
 interface UseSubmitPositionProps {
   chainId: number;
@@ -165,22 +165,24 @@ export function useSubmitPosition({
         // Determine nonce value - use auction-provided nonce if available,
         // otherwise generate a random bitmap nonce (Permit2-style)
         let nonceValue: bigint;
-        if (mintData.makerNonce !== undefined) {
+        if (mintData.predictorNonce !== undefined) {
           nonceValue =
-            toBigIntSafe(mintData.makerNonce) ?? generateRandomNonce();
+            toBigIntSafe(mintData.predictorNonce) ?? generateRandomNonce();
         } else {
           nonceValue = generateRandomNonce();
         }
 
         const filled: MintPredictionRequestData = {
           ...mintData,
-          makerNonce: nonceValue,
+          predictorNonce: nonceValue,
         };
 
         // Verify the predictor address matches the current effective address
         // The counterparty signature was signed by the bidder referencing the predictor address
         // This check must be unconditional to catch session state changes between auction start and submission
-        if (filled.maker?.toLowerCase() !== effectiveAddress?.toLowerCase()) {
+        if (
+          filled.predictor?.toLowerCase() !== effectiveAddress?.toLowerCase()
+        ) {
           throw new Error(
             'Address mismatch: the auction was started with a different account. ' +
               'Please request new bids.'
@@ -197,9 +199,9 @@ export function useSubmitPosition({
         }
 
         // Safety net: Check counterparty's allowance and balance
-        await validateTakerFunds(
-          filled.taker,
-          BigInt(filled.takerCollateral),
+        await validateCounterpartyFunds(
+          filled.counterparty,
+          BigInt(filled.counterpartyCollateral),
           collateralTokenAddress,
           predictionMarketAddress,
           publicClient
@@ -215,14 +217,16 @@ export function useSubmitPosition({
 
           const typedData = buildPredictorMintTypedData({
             picks,
-            predictorCollateral: BigInt(filled.makerCollateral),
-            counterpartyCollateral: BigInt(filled.takerCollateral),
-            predictor: filled.maker,
-            counterparty: filled.taker,
+            predictorCollateral: BigInt(filled.predictorCollateral),
+            counterpartyCollateral: BigInt(filled.counterpartyCollateral),
+            predictor: filled.predictor,
+            counterparty: filled.counterparty,
             predictorNonce: nonceValue,
-            predictorDeadline: BigInt(filled.takerDeadline),
-            predictorSponsor: '0x0000000000000000000000000000000000000000',
-            predictorSponsorData: '0x',
+            predictorDeadline: BigInt(filled.predictorDeadline),
+            predictorSponsor:
+              filled.predictorSponsor ??
+              '0x0000000000000000000000000000000000000000',
+            predictorSponsorData: filled.predictorSponsorData ?? '0x',
             verifyingContract: predictionMarketAddress,
             chainId,
           });
@@ -267,7 +271,8 @@ export function useSubmitPosition({
 
         await attempt();
         setIsProcessing(false);
-      } catch (err: any) {
+      } catch (err: unknown) {
+        console.error('[submitPosition] error:', err);
         const errorMessage =
           err instanceof Error
             ? err.message
@@ -290,6 +295,7 @@ export function useSubmitPosition({
       predictionMarketAddress,
       isUsingSession,
       sessionSignTypedData,
+      signTypedDataAsync,
     ]
   );
 

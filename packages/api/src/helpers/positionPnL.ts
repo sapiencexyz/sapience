@@ -257,17 +257,25 @@ export async function calculatePositionPnL(
       settled: true,
       result: { not: SettlementResult.UNRESOLVED },
     },
+    include: {
+      pickConfiguration: {
+        select: { predictorToken: true, counterpartyToken: true },
+      },
+    },
   });
 
   for (const prediction of settledPredictions) {
     const predictor = prediction.predictor.toLowerCase();
     const counterparty = prediction.counterparty.toLowerCase();
+    const predictorToken =
+      prediction.pickConfiguration?.predictorToken?.toLowerCase() ?? '';
+    const counterpartyToken =
+      prediction.pickConfiguration?.counterpartyToken?.toLowerCase() ?? '';
 
     // Calculate unrealized P&L for predictor (skip if already claimed in step 1)
     if (
-      !claimedTokenHolders.has(
-        `${prediction.predictorToken.toLowerCase()}:${predictor}`
-      ) &&
+      predictorToken &&
+      !claimedTokenHolders.has(`${predictorToken}:${predictor}`) &&
       (!owners?.length ||
         owners.map((o) => o.toLowerCase()).includes(predictor))
     ) {
@@ -281,9 +289,8 @@ export async function calculatePositionPnL(
 
     // Calculate unrealized P&L for counterparty (skip if already claimed in step 1)
     if (
-      !claimedTokenHolders.has(
-        `${prediction.counterpartyToken.toLowerCase()}:${counterparty}`
-      ) &&
+      counterpartyToken &&
+      !claimedTokenHolders.has(`${counterpartyToken}:${counterparty}`) &&
       (!owners?.length ||
         owners.map((o) => o.toLowerCase()).includes(counterparty))
     ) {
@@ -358,24 +365,26 @@ export async function calculateCombinedPositionPnL(): Promise<
       FROM "Close" c
       UNION ALL
       -- Unclaimed settled: predictor side (exclude already-claimed)
-      -- Match claims by positionToken since Claim.predictionId stores pickConfigId
+      -- Join Picks to get token addresses since Prediction no longer stores them
       SELECT p.predictor AS address,
         CAST(COALESCE(p."predictorClaimable", '0') AS DECIMAL) - CAST(p."predictorCollateral" AS DECIMAL) AS pnl
       FROM "Prediction" p
+      LEFT JOIN "Picks" pk ON pk.id = p."pickConfigId"
       WHERE p.settled = true AND p.result != 'UNRESOLVED'
         AND NOT EXISTS (
           SELECT 1 FROM "Claim" c
-          WHERE c."positionToken" = p."predictorToken" AND c.holder = p.predictor
+          WHERE c."positionToken" = pk."predictorToken" AND c.holder = p.predictor
         )
       UNION ALL
       -- Unclaimed settled: counterparty side (exclude already-claimed)
       SELECT p.counterparty AS address,
         CAST(COALESCE(p."counterpartyClaimable", '0') AS DECIMAL) - CAST(p."counterpartyCollateral" AS DECIMAL) AS pnl
       FROM "Prediction" p
+      LEFT JOIN "Picks" pk ON pk.id = p."pickConfigId"
       WHERE p.settled = true AND p.result != 'UNRESOLVED'
         AND NOT EXISTS (
           SELECT 1 FROM "Claim" c
-          WHERE c."positionToken" = p."counterpartyToken" AND c.holder = p.counterparty
+          WHERE c."positionToken" = pk."counterpartyToken" AND c.holder = p.counterparty
         )
     )
     SELECT address, SUM(pnl)::TEXT AS total_pnl, COUNT(*)::BIGINT AS position_count

@@ -8,6 +8,8 @@ import { collateralToken } from '@sapience/sdk/contracts';
 const BLOCK_BATCH_SIZE = 500;
 const POLLING_INTERVAL_MS = 10_000;
 const INDEXER_STATE_KEY = 'collateral-transfer-indexer';
+const MAX_RETRIES = 3;
+const RETRY_DELAY_MS = 2000;
 
 const TRANSFER_EVENT = parseAbiItem(
   'event Transfer(address indexed from, address indexed to, uint256 value)'
@@ -108,19 +110,52 @@ class CollateralTransferIndexer implements IIndexer {
           ? currentBlock
           : start + BigInt(BLOCK_BATCH_SIZE) - 1n;
 
-      const logs = await this.client.getLogs({
-        address: this.tokenAddress,
-        event: TRANSFER_EVENT,
-        fromBlock: start,
-        toBlock: end,
-      });
+      const logs = await this.getLogsWithRetry(start, end);
 
       if (logs.length > 0) {
         await this.processLogs(logs);
       }
-    }
 
-    await this.setLastIndexedBlock(Number(currentBlock));
+      // Persist cursor after each batch so a crash doesn't replay everything
+      await this.setLastIndexedBlock(Number(end));
+    }
+  }
+
+  private async getLogsWithRetry(fromBlock: bigint, toBlock: bigint) {
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        return await this.client.getLogs({
+          address: this.tokenAddress,
+          event: TRANSFER_EVENT,
+          fromBlock,
+          toBlock,
+        });
+      } catch (error) {
+        if (attempt === MAX_RETRIES) throw error;
+        console.warn(
+          `[CollateralTransferIndexer] getLogs failed (attempt ${attempt}/${MAX_RETRIES}), retrying in ${RETRY_DELAY_MS * attempt}ms...`,
+          error instanceof Error ? error.message : error
+        );
+        await new Promise((r) => setTimeout(r, RETRY_DELAY_MS * attempt));
+      }
+    }
+    throw new Error('getLogsWithRetry: exhausted retries');
+  }
+
+  private async getBlockWithRetry(blockNumber: bigint) {
+    for (let attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+      try {
+        return await this.client.getBlock({ blockNumber });
+      } catch (error) {
+        if (attempt === MAX_RETRIES) throw error;
+        console.warn(
+          `[CollateralTransferIndexer] getBlock(${blockNumber}) failed (attempt ${attempt}/${MAX_RETRIES}), retrying...`,
+          error instanceof Error ? error.message : error
+        );
+        await new Promise((r) => setTimeout(r, RETRY_DELAY_MS * attempt));
+      }
+    }
+    throw new Error('getBlockWithRetry: exhausted retries');
   }
 
   private async processLogs(
@@ -131,19 +166,54 @@ class CollateralTransferIndexer implements IIndexer {
       blockNumber: bigint | null;
     }>
   ): Promise<void> {
+    // Collect unique block numbers and fetch their timestamps (chunked to avoid RPC fan-out)
+    const uniqueBlocks = [
+      ...new Set(
+        logs
+          .map((log) => log.blockNumber)
+          .filter((bn): bn is bigint => bn !== null)
+      ),
+    ];
+    const blockTimestamps = new Map<bigint, Date>();
+    const CHUNK_SIZE = 20;
+    for (let i = 0; i < uniqueBlocks.length; i += CHUNK_SIZE) {
+      const chunk = uniqueBlocks.slice(i, i + CHUNK_SIZE);
+      await Promise.all(
+        chunk.map(async (blockNumber) => {
+          const block = await this.getBlockWithRetry(blockNumber);
+          blockTimestamps.set(
+            blockNumber,
+            new Date(Number(block.timestamp) * 1000)
+          );
+        })
+      );
+    }
+
     const records = logs
       .filter(
         (log) => log.args.from && log.args.to && log.args.value !== undefined
       )
-      .map((log) => ({
-        chainId: this.chainId,
-        blockNumber: Number(log.blockNumber ?? 0),
-        transactionHash: log.transactionHash,
-        logIndex: log.logIndex ?? 0,
-        from: log.args.from!.toLowerCase(),
-        to: log.args.to!.toLowerCase(),
-        value: log.args.value!.toString(),
-      }));
+      .map((log) => {
+        const timestamp =
+          log.blockNumber != null
+            ? blockTimestamps.get(log.blockNumber)
+            : undefined;
+        if (!timestamp) {
+          console.warn(
+            `[CollateralTransferIndexer] Missing block timestamp for block ${log.blockNumber}, tx ${log.transactionHash}`
+          );
+        }
+        return {
+          chainId: this.chainId,
+          blockNumber: Number(log.blockNumber ?? 0),
+          timestamp: timestamp ?? new Date(),
+          transactionHash: log.transactionHash,
+          logIndex: log.logIndex ?? 0,
+          from: log.args.from!.toLowerCase(),
+          to: log.args.to!.toLowerCase(),
+          value: log.args.value!.toString(),
+        };
+      });
 
     if (records.length === 0) return;
 
@@ -164,14 +234,20 @@ class CollateralTransferIndexer implements IIndexer {
     const row = await prisma.keyValueStore.findUnique({ where: { key } });
     if (row) return BigInt(row.value);
 
-    // No cursor yet — start from the collateral token's deploy block.
-    // If blockCreated isn't set in the SDK, start from block 0 to capture full history.
     const entry = collateralToken[this.chainId];
-    const deployBlock = entry?.blockCreated ? BigInt(entry.blockCreated) : 0n;
+    if (entry?.blockCreated) {
+      const deployBlock = BigInt(entry.blockCreated);
+      console.log(
+        `[CollateralTransferIndexer] No cursor found, starting from block ${deployBlock}`
+      );
+      return deployBlock;
+    }
+
+    // wUSDe existed before the escrow contract — start from block 0 to capture full history
     console.log(
-      `[CollateralTransferIndexer] No cursor found, starting from block ${deployBlock}`
+      `[CollateralTransferIndexer] No cursor found, starting from block 0`
     );
-    return deployBlock;
+    return 0n;
   }
 
   private async setLastIndexedBlock(block: number): Promise<void> {

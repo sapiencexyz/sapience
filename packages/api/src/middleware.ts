@@ -13,7 +13,9 @@ import { createGasAwareX402Middleware } from './x402';
 export const ADMIN_AUTHENTICATE_MSG =
   'Sign this message to authenticate for admin actions.';
 const ALLOWED_ADDRESSES =
-  process.env.ALLOWED_ADDRESSES?.split(',').map((a) => a.toLowerCase()) || [];
+  process.env.ALLOWED_ADDRESSES?.split(',').map((a) =>
+    a.trim().toLowerCase()
+  ) || [];
 const MESSAGE_EXPIRY = 5 * 60 * 1000; // 5 minutes in milliseconds
 
 export async function isValidWalletSignature(
@@ -117,12 +119,14 @@ const corsOptions: cors.CorsOptions = {
     // Otherwise, only allow specific domains
     if (
       !origin || // Allow same-origin requests
-      /^https?:\/\/([a-zA-Z0-9-]+\.)*foil\.xyz$/.test(origin) ||
       /^https?:\/\/([a-zA-Z0-9-]+\.)*sapience\.xyz$/.test(origin) ||
+      /^https?:\/\/([a-zA-Z0-9-]+\.)*ethereal\.trade$/.test(origin) ||
+      /^https?:\/\/([a-zA-Z0-9-]+\.)*etherealtest\.net$/.test(origin) ||
+      /^https?:\/\/([a-zA-Z0-9-]+\.)*etherealdev\.net$/.test(origin) ||
       /^https?:\/\/(app|docs)\.vercel\.app$/.test(origin) || // production Vercel
-      /^https?:\/\/(app|docs)-git-[a-z0-9-]+-sapiencexyz\.vercel\.app$/.test(
+      /^https?:\/\/(app|docs)-[a-z0-9-]+-sapiencexyz\.vercel\.app$/.test(
         origin
-      ) || // preview deploys
+      ) || // preview deploys (git branches and hash-based)
       /^https?:\/\/localhost(:\d+)?$/.test(origin) // Allow localhost with optional port
     ) {
       callback(null, true);

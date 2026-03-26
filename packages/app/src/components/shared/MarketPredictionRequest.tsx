@@ -6,17 +6,12 @@ import { parseUnits, zeroAddress } from 'viem';
 import { useAccount, useReadContract } from 'wagmi';
 import { predictionMarketEscrowAbi } from '@sapience/sdk/abis';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
-import {
-  DEFAULT_CHAIN_ID,
-  PREFERRED_ESTIMATE_QUOTER,
-} from '@sapience/sdk/constants';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { OutcomeSide } from '@sapience/sdk/types';
-import { predictionMarketLZConditionalTokensResolver } from '@sapience/sdk/contracts';
+import { conditionalTokensConditionResolver } from '@sapience/sdk/contracts';
+import { PREFERRED_ESTIMATE_QUOTER } from '~/lib/constants';
 import { useAuctionStart, type QuoteBid } from '~/lib/auction/useAuctionStart';
-import {
-  buildAuctionStartPayload,
-  type PredictedOutcomeInputStub,
-} from '~/lib/auction/buildAuctionPayload';
+import type { PredictedOutcomeInputStub } from '~/lib/auction/buildAuctionPayload';
 import PercentChance from '~/components/shared/PercentChance';
 
 const FADE_VARIANTS = {
@@ -36,6 +31,8 @@ interface MarketPredictionRequestProps {
   eager?: boolean;
   suppressLoadingPlaceholder?: boolean;
   prefetchedProbability?: number | null;
+  /** Persisted Polymarket YES price (0-1). Shown immediately while RFQ is in-flight. */
+  estimatedPrice?: number | null;
   skipViewportCheck?: boolean;
   requestLabel?: string;
   chainId?: number;
@@ -51,6 +48,7 @@ function arePropsEqual(
   // Compare primitive / stable props
   if (prev.conditionId !== next.conditionId) return false;
   if (prev.prefetchedProbability !== next.prefetchedProbability) return false;
+  if (prev.estimatedPrice !== next.estimatedPrice) return false;
   if (prev.inline !== next.inline) return false;
   if (prev.eager !== next.eager) return false;
   if (prev.suppressLoadingPlaceholder !== next.suppressLoadingPlaceholder)
@@ -86,6 +84,7 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
   eager = true,
   suppressLoadingPlaceholder = false,
   prefetchedProbability = null,
+  estimatedPrice = null,
   skipViewportCheck = false,
   requestLabel = 'Request',
   chainId: chainIdProp,
@@ -105,7 +104,10 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
     React.useState<string | null>(null);
 
   const { address: predictorAddress } = useAccount();
-  const { requestQuotes, bids } = useAuctionStart({ disableLogging: true });
+  const { requestQuotes, bids } = useAuctionStart({
+    disableLogging: true,
+    skipIntentSigning: true,
+  });
   const chainId = chainIdProp ?? DEFAULT_CHAIN_ID;
   const PREDICTION_MARKET_ADDRESS =
     predictionMarketEscrow[chainId]?.address ||
@@ -267,28 +269,26 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
     if (effectiveOutcomes.length === 0 || !selectedPredictorAddress) return;
     const positionSizeWei = parseUnits('1', 18).toString();
     setLastPredictorPositionSizeWei(positionSizeWei);
-    const payload = buildAuctionStartPayload(effectiveOutcomes, chainId);
     const effectiveResolver =
       resolverAddress ||
-      predictionMarketLZConditionalTokensResolver[chainId]?.address ||
+      conditionalTokensConditionResolver[chainId]?.address ||
       null;
-    const escrowPicks = effectiveResolver
+    const picks = effectiveResolver
       ? effectiveOutcomes.map((o) => ({
-          conditionResolver: effectiveResolver as `0x${string}`,
+          conditionResolver: (o.resolverAddress ??
+            effectiveResolver) as `0x${string}`,
           conditionId: (o.marketId.startsWith('0x')
             ? o.marketId
             : `0x${o.marketId}`) as `0x${string}`,
           predictedOutcome: o.prediction ? OutcomeSide.YES : OutcomeSide.NO,
         }))
-      : undefined;
+      : [];
     requestQuotes({
       wager: positionSizeWei,
-      resolver: payload.resolver,
-      predictedOutcomes: payload.predictedOutcomes,
       predictor: selectedPredictorAddress,
       predictorNonce: predictorNonce !== undefined ? Number(predictorNonce) : 0,
       chainId: chainId,
-      ...(escrowPicks && { escrowPicks }),
+      picks,
     });
   };
 
@@ -344,7 +344,26 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
     >
       <AnimatePresence initial={false} mode="wait">
         {requestedPrediction == null ? (
-          suppressLoadingPlaceholder ? null : isRequesting ? (
+          isRequesting && estimatedPrice != null ? (
+            // Show estimated price with pulse while RFQ is in-flight
+            <motion.span
+              key="estimated"
+              className="inline-flex animate-pulse"
+              variants={FADE_VARIANTS}
+              initial="hidden"
+              animate="visible"
+              exit="hidden"
+              transition={FADE_TRANSITION_FAST}
+            >
+              <PercentChance
+                probability={estimatedPrice}
+                showLabel={true}
+                label="chance"
+                className="font-mono"
+                colorByProbability
+              />
+            </motion.span>
+          ) : suppressLoadingPlaceholder ? null : isRequesting ? (
             <motion.span
               key="requesting"
               className="font-mono text-muted-foreground/60 animate-pulse"
@@ -355,6 +374,25 @@ const MarketPredictionRequestInner: React.FC<MarketPredictionRequestProps> = ({
               transition={FADE_TRANSITION_FAST}
             >
               {requestLabel}ing...
+            </motion.span>
+          ) : estimatedPrice != null ? (
+            // Show estimated price as static placeholder before request starts
+            <motion.span
+              key="estimated-idle"
+              className="inline-flex opacity-70"
+              variants={FADE_VARIANTS}
+              initial="hidden"
+              animate="visible"
+              exit="hidden"
+              transition={FADE_TRANSITION_FAST}
+            >
+              <PercentChance
+                probability={estimatedPrice}
+                showLabel={true}
+                label="chance"
+                className="font-mono"
+                colorByProbability
+              />
             </motion.span>
           ) : (
             <motion.button

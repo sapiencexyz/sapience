@@ -13,17 +13,26 @@ contract ManualConditionResolverTest is Test {
     address public settler2;
     address public unauthorizedUser;
 
-    bytes32 public constant CONDITION_ID_1 = keccak256("condition-1");
-    bytes32 public constant CONDITION_ID_2 = keccak256("condition-2");
-    bytes32 public constant CONDITION_ID_3 = keccak256("condition-3");
+    bytes32 public constant RAW_CONDITION_ID_1 = keccak256("condition-1");
+    bytes32 public constant RAW_CONDITION_ID_2 = keccak256("condition-2");
+    bytes32 public constant RAW_CONDITION_ID_3 = keccak256("condition-3");
+
+    // bytes-encoded versions for IConditionResolver interface
+    bytes public CONDITION_ID_1;
+    bytes public CONDITION_ID_2;
+    bytes public CONDITION_ID_3;
 
     event SettlerApproved(address indexed settler);
     event SettlerRevoked(address indexed settler);
-    event ConditionSettled(
+    event ConditionResolutionDetail(
         bytes32 indexed conditionId,
         uint256 yesWeight,
         uint256 noWeight,
         address indexed settler
+    );
+
+    event ConditionResolved(
+        bytes conditionId, bool isIndecisive, bool resolvedToYes
     );
 
     function setUp() public {
@@ -34,6 +43,10 @@ contract ManualConditionResolverTest is Test {
 
         vm.prank(owner);
         resolver = new ManualConditionResolver(owner);
+
+        CONDITION_ID_1 = abi.encode(RAW_CONDITION_ID_1);
+        CONDITION_ID_2 = abi.encode(RAW_CONDITION_ID_2);
+        CONDITION_ID_3 = abi.encode(RAW_CONDITION_ID_3);
     }
 
     // ============ Constructor Tests ============
@@ -102,10 +115,12 @@ contract ManualConditionResolverTest is Test {
 
         vm.prank(settler1);
         vm.expectEmit(true, false, false, true);
-        emit ConditionSettled(CONDITION_ID_1, 1, 0, settler1);
-        resolver.settleCondition(CONDITION_ID_1, outcome);
+        emit ConditionResolutionDetail(RAW_CONDITION_ID_1, 1, 0, settler1);
+        vm.expectEmit(false, false, false, true);
+        emit ConditionResolved(abi.encode(RAW_CONDITION_ID_1), false, true);
+        resolver.settleCondition(RAW_CONDITION_ID_1, outcome);
 
-        assertTrue(resolver.isSettled(CONDITION_ID_1));
+        assertTrue(resolver.isSettled(RAW_CONDITION_ID_1));
 
         (bool isResolved, IV2Types.OutcomeVector memory result) =
             resolver.getResolution(CONDITION_ID_1);
@@ -121,7 +136,9 @@ contract ManualConditionResolverTest is Test {
         IV2Types.OutcomeVector memory outcome = IV2Types.OutcomeVector(0, 1);
 
         vm.prank(settler1);
-        resolver.settleCondition(CONDITION_ID_1, outcome);
+        vm.expectEmit(false, false, false, true);
+        emit ConditionResolved(abi.encode(RAW_CONDITION_ID_1), false, false);
+        resolver.settleCondition(RAW_CONDITION_ID_1, outcome);
 
         (bool isResolved, IV2Types.OutcomeVector memory result) =
             resolver.getResolution(CONDITION_ID_1);
@@ -137,7 +154,9 @@ contract ManualConditionResolverTest is Test {
         IV2Types.OutcomeVector memory outcome = IV2Types.OutcomeVector(1, 1);
 
         vm.prank(settler1);
-        resolver.settleCondition(CONDITION_ID_1, outcome);
+        vm.expectEmit(false, false, false, true);
+        emit ConditionResolved(abi.encode(RAW_CONDITION_ID_1), true, false);
+        resolver.settleCondition(RAW_CONDITION_ID_1, outcome);
 
         (bool isResolved, IV2Types.OutcomeVector memory result) =
             resolver.getResolution(CONDITION_ID_1);
@@ -151,7 +170,7 @@ contract ManualConditionResolverTest is Test {
 
         vm.prank(unauthorizedUser);
         vm.expectRevert(ManualConditionResolver.NotApprovedSettler.selector);
-        resolver.settleCondition(CONDITION_ID_1, outcome);
+        resolver.settleCondition(RAW_CONDITION_ID_1, outcome);
     }
 
     function test_settleCondition_revertIfAlreadySettled() public {
@@ -161,13 +180,13 @@ contract ManualConditionResolverTest is Test {
         IV2Types.OutcomeVector memory outcome = IV2Types.OutcomeVector(1, 0);
 
         vm.prank(settler1);
-        resolver.settleCondition(CONDITION_ID_1, outcome);
+        resolver.settleCondition(RAW_CONDITION_ID_1, outcome);
 
         vm.prank(settler1);
         vm.expectRevert(
             ManualConditionResolver.ConditionAlreadySettled.selector
         );
-        resolver.settleCondition(CONDITION_ID_1, outcome);
+        resolver.settleCondition(RAW_CONDITION_ID_1, outcome);
     }
 
     function test_settleCondition_revertIfInvalidOutcome() public {
@@ -178,7 +197,7 @@ contract ManualConditionResolverTest is Test {
 
         vm.prank(settler1);
         vm.expectRevert(ManualConditionResolver.InvalidOutcome.selector);
-        resolver.settleCondition(CONDITION_ID_1, outcome);
+        resolver.settleCondition(RAW_CONDITION_ID_1, outcome);
     }
 
     // ============ Batch Settle Tests ============
@@ -188,9 +207,9 @@ contract ManualConditionResolverTest is Test {
         resolver.approveSettler(settler1);
 
         bytes32[] memory conditionIds = new bytes32[](3);
-        conditionIds[0] = CONDITION_ID_1;
-        conditionIds[1] = CONDITION_ID_2;
-        conditionIds[2] = CONDITION_ID_3;
+        conditionIds[0] = RAW_CONDITION_ID_1;
+        conditionIds[1] = RAW_CONDITION_ID_2;
+        conditionIds[2] = RAW_CONDITION_ID_3;
 
         IV2Types.OutcomeVector[] memory outcomes =
             new IV2Types.OutcomeVector[](3);
@@ -201,9 +220,9 @@ contract ManualConditionResolverTest is Test {
         vm.prank(settler1);
         resolver.settleConditions(conditionIds, outcomes);
 
-        assertTrue(resolver.isSettled(CONDITION_ID_1));
-        assertTrue(resolver.isSettled(CONDITION_ID_2));
-        assertTrue(resolver.isSettled(CONDITION_ID_3));
+        assertTrue(resolver.isSettled(RAW_CONDITION_ID_1));
+        assertTrue(resolver.isSettled(RAW_CONDITION_ID_2));
+        assertTrue(resolver.isSettled(RAW_CONDITION_ID_3));
     }
 
     // ============ IConditionResolver Interface Tests ============
@@ -213,7 +232,7 @@ contract ManualConditionResolverTest is Test {
     }
 
     function test_isValidCondition_zero() public view {
-        assertFalse(resolver.isValidCondition(bytes32(0)));
+        assertFalse(resolver.isValidCondition(abi.encode(bytes32(0))));
     }
 
     function test_getResolution_notSettled() public view {
@@ -231,10 +250,12 @@ contract ManualConditionResolverTest is Test {
 
         // Settle first condition
         vm.prank(settler1);
-        resolver.settleCondition(CONDITION_ID_1, IV2Types.OutcomeVector(1, 0));
+        resolver.settleCondition(
+            RAW_CONDITION_ID_1, IV2Types.OutcomeVector(1, 0)
+        );
 
         // Query batch (one settled, one not)
-        bytes32[] memory conditionIds = new bytes32[](2);
+        bytes[] memory conditionIds = new bytes[](2);
         conditionIds[0] = CONDITION_ID_1;
         conditionIds[1] = CONDITION_ID_2;
 
@@ -252,7 +273,9 @@ contract ManualConditionResolverTest is Test {
         resolver.approveSettler(settler1);
 
         vm.prank(settler1);
-        resolver.settleCondition(CONDITION_ID_1, IV2Types.OutcomeVector(1, 0));
+        resolver.settleCondition(
+            RAW_CONDITION_ID_1, IV2Types.OutcomeVector(1, 0)
+        );
 
         assertTrue(resolver.isFinalized(CONDITION_ID_1));
     }
@@ -268,10 +291,12 @@ contract ManualConditionResolverTest is Test {
         resolver.approveSettler(settler1);
 
         vm.prank(settler1);
-        resolver.settleCondition(CONDITION_ID_1, IV2Types.OutcomeVector(5, 3));
+        resolver.settleCondition(
+            RAW_CONDITION_ID_1, IV2Types.OutcomeVector(5, 3)
+        );
 
         IV2Types.OutcomeVector memory outcome =
-            resolver.getOutcome(CONDITION_ID_1);
+            resolver.getOutcome(RAW_CONDITION_ID_1);
         assertEq(outcome.yesWeight, 5);
         assertEq(outcome.noWeight, 3);
     }

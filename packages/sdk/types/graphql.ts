@@ -328,7 +328,7 @@ export type CategoryWhereUniqueInput = {
   conditions?: InputMaybe<ConditionListRelationFilter>;
   createdAt?: InputMaybe<DateTimeFilter>;
   id?: InputMaybe<Scalars['Int']['input']>;
-  name?: InputMaybe<Scalars['String']['input']>;
+  name?: InputMaybe<StringFilter>;
   slug?: InputMaybe<Scalars['String']['input']>;
 };
 
@@ -371,6 +371,7 @@ export type CollateralBalanceSnapshotType = {
   atBlock: Scalars['Int']['output'];
   balance: Scalars['String']['output'];
   index: Scalars['Int']['output'];
+  timestamp?: Maybe<Scalars['DateTimeISO']['output']>;
 };
 
 export type CollateralBalanceType = {
@@ -387,6 +388,7 @@ export type CollateralTransferType = {
   chainId: Scalars['Int']['output'];
   from: Scalars['String']['output'];
   id: Scalars['Int']['output'];
+  timestamp: Scalars['DateTimeISO']['output'];
   to: Scalars['String']['output'];
   transactionHash: Scalars['String']['output'];
   value: Scalars['String']['output'];
@@ -401,13 +403,14 @@ export type Condition = {
   category?: Maybe<Category>;
   categoryId?: Maybe<Scalars['Int']['output']>;
   chainId: Scalars['Int']['output'];
-  claimStatement: Scalars['String']['output'];
   conditionGroup?: Maybe<ConditionGroup>;
   conditionGroupId?: Maybe<Scalars['Int']['output']>;
   createdAt: Scalars['DateTimeISO']['output'];
   description: Scalars['String']['output'];
   displayOrder?: Maybe<Scalars['Int']['output']>;
   endTime: Scalars['Int']['output'];
+  /** YES probability from Polymarket (0.0–1.0), null for non-Polymarket */
+  estimatedPrice?: Maybe<Scalars['Float']['output']>;
   id: Scalars['String']['output'];
   nonDecisive: Scalars['Boolean']['output'];
   openInterest: Scalars['String']['output'];
@@ -422,6 +425,7 @@ export type Condition = {
   settledAt?: Maybe<Scalars['Int']['output']>;
   shortName?: Maybe<Scalars['String']['output']>;
   similarMarkets: Array<Scalars['String']['output']>;
+  tags: Array<Scalars['String']['output']>;
 };
 
 
@@ -587,13 +591,13 @@ export type ConditionOrderByWithRelationInput = {
   category?: InputMaybe<CategoryOrderByWithRelationInput>;
   categoryId?: InputMaybe<SortOrderInput>;
   chainId?: InputMaybe<SortOrder>;
-  claimStatement?: InputMaybe<SortOrder>;
   conditionGroup?: InputMaybe<ConditionGroupOrderByWithRelationInput>;
   conditionGroupId?: InputMaybe<SortOrderInput>;
   createdAt?: InputMaybe<SortOrder>;
   description?: InputMaybe<SortOrder>;
   displayOrder?: InputMaybe<SortOrderInput>;
   endTime?: InputMaybe<SortOrder>;
+  estimatedPrice?: InputMaybe<SortOrderInput>;
   id?: InputMaybe<SortOrder>;
   nonDecisive?: InputMaybe<SortOrder>;
   openInterest?: InputMaybe<SortOrder>;
@@ -607,6 +611,7 @@ export type ConditionOrderByWithRelationInput = {
   settledAt?: InputMaybe<SortOrderInput>;
   shortName?: InputMaybe<SortOrderInput>;
   similarMarkets?: InputMaybe<SortOrder>;
+  tags?: InputMaybe<SortOrder>;
 };
 
 export type ConditionRelationFilter = {
@@ -619,12 +624,12 @@ export type ConditionScalarFieldEnum =
   | 'assertionTimestamp'
   | 'categoryId'
   | 'chainId'
-  | 'claimStatement'
   | 'conditionGroupId'
   | 'createdAt'
   | 'description'
   | 'displayOrder'
   | 'endTime'
+  | 'estimatedPrice'
   | 'id'
   | 'nonDecisive'
   | 'openInterest'
@@ -636,7 +641,8 @@ export type ConditionScalarFieldEnum =
   | 'settled'
   | 'settledAt'
   | 'shortName'
-  | 'similarMarkets';
+  | 'similarMarkets'
+  | 'tags';
 
 export type ConditionWhereInput = {
   AND?: InputMaybe<Array<ConditionWhereInput>>;
@@ -648,13 +654,13 @@ export type ConditionWhereInput = {
   category?: InputMaybe<CategoryNullableRelationFilter>;
   categoryId?: InputMaybe<IntNullableFilter>;
   chainId?: InputMaybe<IntFilter>;
-  claimStatement?: InputMaybe<StringFilter>;
   conditionGroup?: InputMaybe<ConditionGroupNullableRelationFilter>;
   conditionGroupId?: InputMaybe<IntNullableFilter>;
   createdAt?: InputMaybe<DateTimeFilter>;
   description?: InputMaybe<StringFilter>;
   displayOrder?: InputMaybe<IntNullableFilter>;
   endTime?: InputMaybe<IntFilter>;
+  estimatedPrice?: InputMaybe<FloatNullableFilter>;
   id?: InputMaybe<StringFilter>;
   nonDecisive?: InputMaybe<BoolFilter>;
   openInterest?: InputMaybe<StringFilter>;
@@ -668,6 +674,7 @@ export type ConditionWhereInput = {
   settledAt?: InputMaybe<IntNullableFilter>;
   shortName?: InputMaybe<StringNullableFilter>;
   similarMarkets?: InputMaybe<StringNullableListFilter>;
+  tags?: InputMaybe<StringNullableListFilter>;
 };
 
 export type ConditionWhereUniqueInput = {
@@ -680,13 +687,13 @@ export type ConditionWhereUniqueInput = {
   category?: InputMaybe<CategoryNullableRelationFilter>;
   categoryId?: InputMaybe<IntNullableFilter>;
   chainId?: InputMaybe<IntFilter>;
-  claimStatement?: InputMaybe<StringFilter>;
   conditionGroup?: InputMaybe<ConditionGroupNullableRelationFilter>;
   conditionGroupId?: InputMaybe<IntNullableFilter>;
   createdAt?: InputMaybe<DateTimeFilter>;
   description?: InputMaybe<StringFilter>;
   displayOrder?: InputMaybe<IntNullableFilter>;
   endTime?: InputMaybe<IntFilter>;
+  estimatedPrice?: InputMaybe<FloatNullableFilter>;
   id?: InputMaybe<Scalars['String']['input']>;
   nonDecisive?: InputMaybe<BoolFilter>;
   openInterest?: InputMaybe<StringFilter>;
@@ -700,6 +707,7 @@ export type ConditionWhereUniqueInput = {
   settledAt?: InputMaybe<IntNullableFilter>;
   shortName?: InputMaybe<StringNullableFilter>;
   similarMarkets?: InputMaybe<StringNullableListFilter>;
+  tags?: InputMaybe<StringNullableListFilter>;
 };
 
 export type DateTimeFilter = {
@@ -1214,6 +1222,7 @@ export type PickConfiguration = {
   counterpartyToken?: Maybe<Scalars['String']['output']>;
   endsAt?: Maybe<Scalars['Int']['output']>;
   id: Scalars['String']['output'];
+  isLegacy: Scalars['Boolean']['output'];
   marketAddress: Scalars['String']['output'];
   picks: Array<Pick>;
   predictionId?: Maybe<Scalars['String']['output']>;
@@ -1252,6 +1261,11 @@ export type Position = {
   userCollateral?: Maybe<Scalars['String']['output']>;
 };
 
+/** Field to sort positions by */
+export type PositionSortField =
+  | 'CREATED_AT'
+  | 'UPDATED_AT';
+
 /** Escrow-based prediction record between a predictor and counterparty, with collateral and settlement tracking */
 export type Prediction = {
   __typename?: 'Prediction';
@@ -1265,6 +1279,7 @@ export type Prediction = {
   createTxHash: Scalars['String']['output'];
   createdAt: Scalars['DateTimeISO']['output'];
   id: Scalars['Int']['output'];
+  isLegacy: Scalars['Boolean']['output'];
   marketAddress: Scalars['String']['output'];
   pickConfig?: Maybe<PickConfiguration>;
   predictionId: Scalars['String']['output'];
@@ -1277,6 +1292,23 @@ export type Prediction = {
   settleTxHash?: Maybe<Scalars['String']['output']>;
   settled: Scalars['Boolean']['output'];
   settledAt?: Maybe<Scalars['Int']['output']>;
+};
+
+/** Time-bucketed prediction count with outcome breakdown, bucketed by creation time */
+export type PredictionCountDataPoint = {
+  __typename?: 'PredictionCountDataPoint';
+  /** Predictions lost in this bucket */
+  lost: Scalars['Int']['output'];
+  /** Predictions settled as non-decisive in this bucket */
+  nonDecisive: Scalars['Int']['output'];
+  /** Predictions still pending in this bucket */
+  pending: Scalars['Int']['output'];
+  /** Unix epoch timestamp (seconds) for the start of this bucket */
+  timestamp: Scalars['Int']['output'];
+  /** Total predictions created in this bucket */
+  total: Scalars['Int']['output'];
+  /** Predictions won in this bucket */
+  won: Scalars['Int']['output'];
 };
 
 /** Field to sort predictions by */
@@ -1331,6 +1363,8 @@ export type Query = {
   accountBalance: Array<BalanceDataPoint>;
   /** Time-bucketed profit and loss for a single address with cumulative tracking */
   accountPnl: Array<PnlDataPoint>;
+  /** Time-bucketed prediction count with outcome breakdown for a single address, bucketed by creation time */
+  accountPredictionCount: Array<PredictionCountDataPoint>;
   /** Profit rank and total PnL for a single address relative to all participants */
   accountProfitRank: ProfitRank;
   /** Total lifetime trading volume in wei for the given address across all prediction types */
@@ -1356,7 +1390,7 @@ export type Query = {
   pickConfiguration?: Maybe<PickConfiguration>;
   /** Paginated list of pick configurations, filterable by chain, resolution status, and result */
   pickConfigurations: Array<PickConfiguration>;
-  /** Paginated list of token position balances, filterable by holder, condition, chain, or pick config */
+  /** Paginated list of token position balances, filterable by holder, condition, chain, pick config, settlement, date range, collateral range, and won/lost status */
   positions: Array<Position>;
   /** Look up a single prediction by its on-chain prediction ID */
   prediction?: Maybe<Prediction>;
@@ -1402,6 +1436,14 @@ export type QueryAccountBalanceArgs = {
 
 
 export type QueryAccountPnlArgs = {
+  address: Scalars['String']['input'];
+  from?: InputMaybe<Scalars['DateTimeISO']['input']>;
+  interval: TimeInterval;
+  to?: InputMaybe<Scalars['DateTimeISO']['input']>;
+};
+
+
+export type QueryAccountPredictionCountArgs = {
   address: Scalars['String']['input'];
   from?: InputMaybe<Scalars['DateTimeISO']['input']>;
   interval: TimeInterval;
@@ -1473,13 +1515,13 @@ export type QueryClosesArgs = {
 export type QueryCollateralBalanceArgs = {
   address: Scalars['String']['input'];
   atBlock?: InputMaybe<Scalars['Int']['input']>;
-  chainId?: Scalars['Int']['input'];
+  chainId: Scalars['Int']['input'];
 };
 
 
 export type QueryCollateralBalanceHistoryArgs = {
   address: Scalars['String']['input'];
-  chainId?: Scalars['Int']['input'];
+  chainId: Scalars['Int']['input'];
   count?: Scalars['Int']['input'];
   currentBlock?: InputMaybe<Scalars['Int']['input']>;
   intervalHours?: Scalars['Int']['input'];
@@ -1488,7 +1530,7 @@ export type QueryCollateralBalanceHistoryArgs = {
 
 export type QueryCollateralTransfersArgs = {
   address: Scalars['String']['input'];
-  chainId?: Scalars['Int']['input'];
+  chainId: Scalars['Int']['input'];
   limit?: Scalars['Int']['input'];
   offset?: Scalars['Int']['input'];
 };
@@ -1535,14 +1577,24 @@ export type QueryPickConfigurationsArgs = {
   result?: InputMaybe<SettlementResult>;
   skip?: Scalars['Int']['input'];
   take?: Scalars['Int']['input'];
+  tokens?: InputMaybe<Array<Scalars['String']['input']>>;
 };
 
 
 export type QueryPositionsArgs = {
   chainId?: InputMaybe<Scalars['Int']['input']>;
+  collateralMax?: InputMaybe<Scalars['String']['input']>;
+  collateralMin?: InputMaybe<Scalars['String']['input']>;
   conditionId?: InputMaybe<Scalars['String']['input']>;
+  endsAtMax?: InputMaybe<Scalars['Int']['input']>;
+  endsAtMin?: InputMaybe<Scalars['Int']['input']>;
   holder?: InputMaybe<Scalars['String']['input']>;
+  holderWon?: InputMaybe<Scalars['Boolean']['input']>;
+  orderBy?: InputMaybe<PositionSortField>;
+  orderDirection?: InputMaybe<SortOrder>;
   pickConfigId?: InputMaybe<Scalars['String']['input']>;
+  result?: InputMaybe<SettlementResult>;
+  settled?: InputMaybe<Scalars['Boolean']['input']>;
   skip?: Scalars['Int']['input'];
   take?: Scalars['Int']['input'];
 };
@@ -1563,6 +1615,7 @@ export type QueryPredictionsArgs = {
   address?: InputMaybe<Scalars['String']['input']>;
   chainId?: InputMaybe<Scalars['Int']['input']>;
   conditionId?: InputMaybe<Scalars['String']['input']>;
+  isLegacy?: InputMaybe<Scalars['Boolean']['input']>;
   orderBy?: InputMaybe<PredictionSortField>;
   orderDirection?: InputMaybe<SortOrder>;
   settled?: InputMaybe<Scalars['Boolean']['input']>;
@@ -1587,7 +1640,9 @@ export type QueryProtocolVolumeArgs = {
 export type QueryQuestionsArgs = {
   categorySlugs?: InputMaybe<Array<Scalars['String']['input']>>;
   chainId?: InputMaybe<Scalars['Int']['input']>;
+  maxEstimatedPrice?: InputMaybe<Scalars['Float']['input']>;
   minEndTime?: InputMaybe<Scalars['Int']['input']>;
+  minEstimatedPrice?: InputMaybe<Scalars['Float']['input']>;
   resolutionStatus?: InputMaybe<ResolutionStatus>;
   search?: InputMaybe<Scalars['String']['input']>;
   skip?: Scalars['Int']['input'];

@@ -30,7 +30,8 @@ contract PredictionMarketVaultRedeemTest is Test {
         PREDICTOR_COLLATERAL + COUNTERPARTY_COLLATERAL;
     bytes32 public constant REF_CODE = keccak256("test-ref-code");
 
-    bytes32 public conditionId1;
+    bytes32 public rawConditionId1;
+    bytes public conditionId1;
 
     uint256 private _nextNonce = 1;
 
@@ -56,10 +57,7 @@ contract PredictionMarketVaultRedeemTest is Test {
         // Deploy vault with manager
         vm.prank(owner);
         vault = new PredictionMarketVault(
-            address(collateralToken),
-            manager,
-            "Sapience Vault",
-            "sVault"
+            address(collateralToken), manager, "Sapience Vault", "sVault"
         );
 
         // Deploy resolver
@@ -68,7 +66,8 @@ contract PredictionMarketVaultRedeemTest is Test {
         vm.prank(owner);
         resolver.approveSettler(settler);
 
-        conditionId1 = keccak256(abi.encode("condition-1"));
+        rawConditionId1 = keccak256(abi.encode("condition-1"));
+        conditionId1 = abi.encode(rawConditionId1);
 
         // Fund predictor
         collateralToken.mint(predictor, 10_000e18);
@@ -90,7 +89,9 @@ contract PredictionMarketVaultRedeemTest is Test {
     function _buildVaultDomainSeparator() internal view returns (bytes32) {
         return keccak256(
             abi.encode(
-                keccak256("EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"),
+                keccak256(
+                    "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+                ),
                 keccak256("SignatureProcessor"),
                 keccak256("1"),
                 block.chainid,
@@ -99,11 +100,19 @@ contract PredictionMarketVaultRedeemTest is Test {
         );
     }
 
-    function _signVaultApproval(bytes32 rawHash) internal view returns (bytes memory) {
-        bytes32 approveTypehash = keccak256("Approve(bytes32 messageHash,address owner)");
-        bytes32 structHash = keccak256(abi.encode(approveTypehash, rawHash, manager));
+    function _signVaultApproval(bytes32 rawHash)
+        internal
+        view
+        returns (bytes memory)
+    {
+        bytes32 approveTypehash =
+            keccak256("Approve(bytes32 messageHash,address owner)");
+        bytes32 structHash =
+            keccak256(abi.encode(approveTypehash, rawHash, manager));
         bytes32 typedDataHash = keccak256(
-            abi.encodePacked("\x19\x01", _buildVaultDomainSeparator(), structHash)
+            abi.encodePacked(
+                "\x19\x01", _buildVaultDomainSeparator(), structHash
+            )
         );
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(4, typedDataHash);
         return abi.encodePacked(r, s, v);
@@ -115,7 +124,11 @@ contract PredictionMarketVaultRedeemTest is Test {
     /// @return counterpartyToken The counterparty position token
     function _mintWithVaultAsCounterparty(IV2Types.Pick[] memory picks)
         internal
-        returns (bytes32 predictionId, address predictorToken, address counterpartyToken)
+        returns (
+            bytes32 predictionId,
+            address predictorToken,
+            address counterpartyToken
+        )
     {
         bytes32 _pickConfigId = keccak256(abi.encode(picks));
 
@@ -153,16 +166,27 @@ contract PredictionMarketVaultRedeemTest is Test {
             );
 
             request.predictorSignature = _signApproval(
-                predictionHash, predictor, PREDICTOR_COLLATERAL, pNonce, deadline, predictorPk
+                predictionHash,
+                predictor,
+                PREDICTOR_COLLATERAL,
+                pNonce,
+                deadline,
+                predictorPk
             );
 
             bytes32 counterpartyApprovalHash = market.getMintApprovalHash(
-                predictionHash, address(vault), COUNTERPARTY_COLLATERAL, cNonce, deadline
+                predictionHash,
+                address(vault),
+                COUNTERPARTY_COLLATERAL,
+                cNonce,
+                deadline
             );
-            request.counterpartySignature = _signVaultApproval(counterpartyApprovalHash);
+            request.counterpartySignature =
+                _signVaultApproval(counterpartyApprovalHash);
         }
 
-        (bytes32 _predictionId, address pToken, address cToken) = market.mint(request);
+        (bytes32 _predictionId, address pToken, address cToken) =
+            market.mint(request);
         return (_predictionId, pToken, cToken);
     }
 
@@ -192,20 +216,23 @@ contract PredictionMarketVaultRedeemTest is Test {
             predictedOutcome: IV2Types.OutcomeSide.YES
         });
 
-        (bytes32 predictionId, , address counterpartyToken) = _mintWithVaultAsCounterparty(picks);
+        (bytes32 predictionId,, address counterpartyToken) =
+            _mintWithVaultAsCounterparty(picks);
 
         // Settle: counterparty (vault) wins — predictor predicted YES, outcome is NO
         vm.prank(settler);
-        resolver.settleCondition(conditionId1, IV2Types.OutcomeVector(0, 1));
+        resolver.settleCondition(rawConditionId1, IV2Types.OutcomeVector(0, 1));
 
         market.settle(predictionId, REF_CODE);
 
         // Vault token balance
-        uint256 vaultTokenBalance = IERC20(counterpartyToken).balanceOf(address(vault));
+        uint256 vaultTokenBalance =
+            IERC20(counterpartyToken).balanceOf(address(vault));
         assertGt(vaultTokenBalance, 0, "Vault should hold counterparty tokens");
 
         // Record collateral balance before
-        uint256 vaultCollateralBefore = collateralToken.balanceOf(address(vault));
+        uint256 vaultCollateralBefore =
+            collateralToken.balanceOf(address(vault));
 
         // Manager calls redeemFromEscrow
         vm.prank(manager);
@@ -259,8 +286,11 @@ contract PredictionMarketVaultRedeemTest is Test {
             predictedOutcome: IV2Types.OutcomeSide.YES
         });
 
-        (bytes32 predictionId, address predictorToken, address counterpartyToken) =
-            _mintWithVaultAsCounterparty(picks);
+        (
+            bytes32 predictionId,
+            address predictorToken,
+            address counterpartyToken
+        ) = _mintWithVaultAsCounterparty(picks);
 
         bytes32 pickConfigId = keccak256(abi.encode(picks));
 
@@ -273,11 +303,11 @@ contract PredictionMarketVaultRedeemTest is Test {
         bytes32 burnHash = keccak256(
             abi.encode(
                 pickConfigId,
-                TOTAL_COLLATERAL,      // predictorTokenAmount (all predictor tokens)
-                TOTAL_COLLATERAL,      // counterpartyTokenAmount (all counterparty tokens)
+                TOTAL_COLLATERAL, // predictorTokenAmount (all predictor tokens)
+                TOTAL_COLLATERAL, // counterpartyTokenAmount (all counterparty tokens)
                 predictor,
                 address(vault),
-                PREDICTOR_COLLATERAL,  // predictorPayout (gets own collateral back)
+                PREDICTOR_COLLATERAL, // predictorPayout (gets own collateral back)
                 COUNTERPARTY_COLLATERAL // counterpartyPayout (gets own collateral back)
             )
         );
@@ -286,9 +316,15 @@ contract PredictionMarketVaultRedeemTest is Test {
         bytes memory predictorBurnSig;
         {
             bytes32 predictorBurnApprovalHash = market.getBurnApprovalHash(
-                burnHash, predictor, TOTAL_COLLATERAL, PREDICTOR_COLLATERAL, pNonce, deadline
+                burnHash,
+                predictor,
+                TOTAL_COLLATERAL,
+                PREDICTOR_COLLATERAL,
+                pNonce,
+                deadline
             );
-            (uint8 v, bytes32 r, bytes32 s) = vm.sign(predictorPk, predictorBurnApprovalHash);
+            (uint8 v, bytes32 r, bytes32 s) =
+                vm.sign(predictorPk, predictorBurnApprovalHash);
             predictorBurnSig = abi.encodePacked(r, s, v);
         }
 
@@ -296,7 +332,12 @@ contract PredictionMarketVaultRedeemTest is Test {
         bytes memory vaultBurnSig;
         {
             bytes32 vaultBurnApprovalHash = market.getBurnApprovalHash(
-                burnHash, address(vault), TOTAL_COLLATERAL, COUNTERPARTY_COLLATERAL, cNonce, deadline
+                burnHash,
+                address(vault),
+                TOTAL_COLLATERAL,
+                COUNTERPARTY_COLLATERAL,
+                cNonce,
+                deadline
             );
             vaultBurnSig = _signVaultApproval(vaultBurnApprovalHash);
         }
@@ -342,8 +383,16 @@ contract PredictionMarketVaultRedeemTest is Test {
         );
 
         // Position tokens should be burned
-        assertEq(IERC20(predictorToken).balanceOf(predictor), 0, "Predictor tokens burned");
-        assertEq(IERC20(counterpartyToken).balanceOf(address(vault)), 0, "Vault tokens burned");
+        assertEq(
+            IERC20(predictorToken).balanceOf(predictor),
+            0,
+            "Predictor tokens burned"
+        );
+        assertEq(
+            IERC20(counterpartyToken).balanceOf(address(vault)),
+            0,
+            "Vault tokens burned"
+        );
     }
 
     function test_burnFromEscrow_onlyManager() public {

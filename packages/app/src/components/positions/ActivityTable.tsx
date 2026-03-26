@@ -11,6 +11,8 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
+import { COLLATERAL_SYMBOLS, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
+import { OutcomeSide } from '@sapience/sdk/types';
 import EmptyTabState from '~/components/shared/EmptyTabState';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import Loader from '~/components/shared/Loader';
@@ -18,8 +20,6 @@ import PicksSummary from '~/components/shared/PicksSummary';
 import CountdownCell from '~/components/shared/CountdownCell';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
-import { COLLATERAL_SYMBOLS, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
-import { OutcomeSide } from '@sapience/sdk/types';
 import {
   usePredictions,
   usePredictionsByConditionId,
@@ -31,7 +31,11 @@ import {
 import { useConditionsByIds } from '~/hooks/graphql/useConditionsByIds';
 import OgShareDialogBase from '~/components/shared/OgShareDialog';
 import PredictionDialog from '~/components/positions/PredictionDialog';
-import { toPicks, type ConditionsMap } from '~/components/positions/toPickLegs';
+import {
+  toPicks,
+  computeResultFromConditions,
+  type ConditionsMap,
+} from '~/components/positions/toPickLegs';
 import {
   ActivityTableFilters,
   getDefaultActivityFilterState,
@@ -41,6 +45,7 @@ import {
   isWithinDateRange,
   matchesConditionSearch,
 } from '~/lib/utils/tableFilters';
+import { useInfiniteScroll } from '~/hooks/useInfiniteScroll';
 
 function ActivityRow({
   prediction,
@@ -90,9 +95,14 @@ function ActivityRow({
   );
   const totalEth = predictorEth + counterpartyEth;
 
-  // Result
-  const isSettled = prediction.settled;
-  const result = prediction.result;
+  // Result: use on-chain result if settled, otherwise compute from individual conditions
+  const computed = !prediction.settled
+    ? computeResultFromConditions(rawPicks, conditionsMap)
+    : null;
+  const isSettled = prediction.settled || computed?.result !== 'UNRESOLVED';
+  const result = prediction.settled
+    ? prediction.result
+    : (computed?.result ?? 'UNRESOLVED');
   const predictorWon = result === 'PREDICTOR_WINS';
   const counterpartyWon = result === 'COUNTERPARTY_WINS';
 
@@ -225,7 +235,9 @@ function ActivityRow({
             Result
           </div>
           {!isSettled && endsAtSec > 0 && endsAtMs > Date.now() ? (
-            <CountdownCell endTime={endsAtSec} />
+            <span className="whitespace-nowrap tabular-nums font-mono text-brand-white">
+              ENDS <CountdownCell endTime={endsAtSec} />
+            </span>
           ) : !isSettled ? (
             <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
               Pending
@@ -276,9 +288,9 @@ function SharePredictionDialog({
   onClose: () => void;
 }) {
   const { prediction, pickConfig, isPredictorSide } = sharePrediction;
-  const picks = pickConfig?.picks ?? [];
 
   const imageSrc = React.useMemo(() => {
+    const picks = pickConfig?.picks ?? [];
     const predictorEth = Number(
       formatEther(BigInt(prediction.predictorCollateral))
     );
@@ -318,7 +330,6 @@ function SharePredictionDialog({
     isPredictorSide,
     conditionsMap,
     collateralSymbol,
-    picks,
   ]);
 
   const shareUrl =
@@ -461,13 +472,22 @@ export default function ActivityTable({
       });
     }
 
-    // Filter by status
+    // Filter by status (using per-condition resolution for early results)
     if (filters.status.length > 0 && filters.status.length < 3) {
-      result = result.filter(({ prediction }) => {
-        if (!prediction.settled) return filters.status.includes('pending');
-        if (prediction.result === 'PREDICTOR_WINS')
+      result = result.filter(({ prediction, pickConfig }) => {
+        const picks = pickConfig?.picks ?? [];
+        const computed = !prediction.settled
+          ? computeResultFromConditions(picks, conditionsMap)
+          : null;
+        const effectiveResult = prediction.settled
+          ? prediction.result
+          : (computed?.result ?? 'UNRESOLVED');
+
+        if (effectiveResult === 'UNRESOLVED')
+          return filters.status.includes('pending');
+        if (effectiveResult === 'PREDICTOR_WINS')
           return filters.status.includes('predictor_won');
-        if (prediction.result === 'COUNTERPARTY_WINS')
+        if (effectiveResult === 'COUNTERPARTY_WINS')
           return filters.status.includes('counterparty_won');
         return filters.status.includes('pending');
       });
@@ -513,6 +533,12 @@ export default function ActivityTable({
   } | null>(null);
 
   const hasMore = predictions.length > take;
+
+  const { loadMoreRef } = useInfiniteScroll({
+    hasMore,
+    isLoading: predictionsLoading,
+    onFetchMore: () => setTake((t) => t + effectivePageSize),
+  });
 
   const headerContent = (
     <div className="px-4 py-4 border-b border-border/60 flex flex-col sm:flex-row sm:items-center gap-4 bg-white/[0.03]">
@@ -606,17 +632,7 @@ export default function ActivityTable({
           </tbody>
         </table>
       </div>
-      {hasMore && (
-        <div className="flex justify-center py-4">
-          <button
-            type="button"
-            onClick={() => setTake((t) => t + effectivePageSize)}
-            className="text-sm font-mono text-brand-white hover:text-brand-white/70 underline decoration-dotted underline-offset-4 transition-colors cursor-pointer"
-          >
-            Show more
-          </button>
-        </div>
-      )}
+      <div ref={loadMoreRef} className="h-1" />
       {sharePrediction && (
         <SharePredictionDialog
           sharePrediction={sharePrediction}

@@ -2,9 +2,17 @@ import { graphqlRequest } from './client/graphqlClient';
 import type { ConditionType } from './conditions';
 import type { ConditionGroupType } from './conditionGroups';
 
-export type SortField = 'openInterest' | 'endTime' | 'createdAt' | 'predictionCount';
+export type SortField =
+  | 'openInterest'
+  | 'endTime'
+  | 'createdAt'
+  | 'predictionCount';
 export type SortDirection = 'asc' | 'desc';
-export type ResolutionStatusValue = 'all' | 'unresolved' | 'resolvedYes' | 'resolvedNo';
+export type ResolutionStatusValue =
+  | 'all'
+  | 'unresolved'
+  | 'resolvedYes'
+  | 'resolvedNo';
 
 export interface QuestionType {
   questionType: 'group' | 'condition';
@@ -23,6 +31,8 @@ const GET_QUESTIONS = /* GraphQL */ `
     $categorySlugs: [String!]
     $minEndTime: Int
     $resolutionStatus: ResolutionStatus
+    $minEstimatedPrice: Float
+    $maxEstimatedPrice: Float
   ) {
     questions(
       take: $take
@@ -34,6 +44,8 @@ const GET_QUESTIONS = /* GraphQL */ `
       categorySlugs: $categorySlugs
       minEndTime: $minEndTime
       resolutionStatus: $resolutionStatus
+      minEstimatedPrice: $minEstimatedPrice
+      maxEstimatedPrice: $maxEstimatedPrice
     ) {
       questionType
       group {
@@ -52,9 +64,9 @@ const GET_QUESTIONS = /* GraphQL */ `
           shortName
           endTime
           public
-          claimStatement
           description
           similarMarkets
+          tags
           chainId
           resolver
           settled
@@ -63,6 +75,7 @@ const GET_QUESTIONS = /* GraphQL */ `
           assertionId
           assertionTimestamp
           openInterest
+          estimatedPrice
           conditionGroupId
           category {
             id
@@ -79,9 +92,9 @@ const GET_QUESTIONS = /* GraphQL */ `
         shortName
         endTime
         public
-        claimStatement
         description
         similarMarkets
+        tags
         chainId
         resolver
         settled
@@ -90,6 +103,7 @@ const GET_QUESTIONS = /* GraphQL */ `
         assertionId
         assertionTimestamp
         openInterest
+        estimatedPrice
         conditionGroupId
         category {
           id
@@ -111,6 +125,8 @@ export interface FetchQuestionsSortedParams {
   categorySlugs?: string[];
   minEndTime?: number;
   resolutionStatus?: string;
+  minEstimatedPrice?: number;
+  maxEstimatedPrice?: number;
 }
 
 export async function fetchQuestionsSorted(
@@ -129,6 +145,8 @@ export async function fetchQuestionsSorted(
     categorySlugs: params.categorySlugs?.length ? params.categorySlugs : null,
     minEndTime: params.minEndTime ?? null,
     resolutionStatus: params.resolutionStatus ?? null,
+    minEstimatedPrice: params.minEstimatedPrice ?? null,
+    maxEstimatedPrice: params.maxEstimatedPrice ?? null,
   };
 
   const data = await graphqlRequest<QuestionsQueryResult>(

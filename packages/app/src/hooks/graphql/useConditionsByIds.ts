@@ -16,8 +16,8 @@ export function useConditionsByIds(ids: string[]) {
   >({
     queryKey: key,
     enabled,
-    staleTime: 24 * 60 * 60 * 1000,
-    gcTime: 72 * 60 * 60 * 1000,
+    staleTime: 60_000,
+    gcTime: 5 * 60 * 1000,
     refetchOnWindowFocus: false,
     queryFn: async () => {
       const conditions = await fetchConditionsByIdsQuery(sorted);

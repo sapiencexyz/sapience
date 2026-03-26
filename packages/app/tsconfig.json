@@ -18,7 +18,7 @@
     "paths": {
       "~/*": ["./*"],
       "@/components/*": ["./components/*"],
-      "@/protocol/*": ["../../protocol/*"],      
+      "@/protocol/*": ["../../protocol/*"],
       "@sapience/ui": ["../../ui/index.ts"],
       "@sapience/ui/*": ["../../ui/*"],
       "@sapience/sdk": ["../../sdk/index.ts"],
@@ -40,5 +40,10 @@
     "commitlint.config.js",
     ".next/types/**/*.ts"
   ],
-  "exclude": ["node_modules", "**/*.test.ts", "**/*.test.tsx"]
+  "exclude": [
+    "node_modules",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "vitest.config.ts"
+  ]
 }

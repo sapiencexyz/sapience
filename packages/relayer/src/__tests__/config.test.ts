@@ -41,7 +41,8 @@ describe('Config', () => {
     it('reads string values from process.env', async () => {
       process.env.PORT = '9999';
       process.env.SENTRY_DSN = 'https://sentry.example.com/123';
-      process.env.WS_ALLOWED_ORIGINS = 'http://localhost:3000,http://example.com';
+      process.env.WS_ALLOWED_ORIGINS =
+        'http://localhost:3000,http://example.com';
 
       const { config } = await import('../config');
       expect(config.PORT).toBe('9999');

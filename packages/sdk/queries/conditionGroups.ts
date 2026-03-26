@@ -7,7 +7,6 @@ export interface ConditionGroupConditionType {
   shortName?: string | null;
   endTime: number;
   public: boolean;
-  claimStatement: string;
   description: string;
   similarMarkets: string[];
   chainId: number;
@@ -21,6 +20,7 @@ export interface ConditionGroupConditionType {
   openInterest: string;
   conditionGroupId?: number | null;
   displayOrder?: number | null;
+  estimatedPrice?: number | null;
 }
 
 export interface ConditionGroupType {
@@ -68,7 +68,6 @@ const GET_CONDITION_GROUPS = /* GraphQL */ `
         shortName
         endTime
         public
-        claimStatement
         description
         similarMarkets
         chainId
@@ -79,6 +78,7 @@ const GET_CONDITION_GROUPS = /* GraphQL */ `
         assertionId
         assertionTimestamp
         openInterest
+        estimatedPrice
         conditionGroupId
         category {
           id

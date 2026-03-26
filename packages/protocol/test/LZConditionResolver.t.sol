@@ -32,12 +32,18 @@ contract LZConditionResolverTest is TestHelperOz5 {
     bytes32 public constant CONDITION_ID_2 = keccak256("condition-2");
 
     // Events
-    event ConditionResolved(
+    event ConditionResolutionDetail(
         bytes32 indexed conditionId,
         bool resolvedToYes,
         bool assertedTruthfully,
         uint256 resolutionTime
     );
+
+    // Unified event from IConditionResolver (different signature, same name is fine)
+    event ConditionResolved(
+        bytes conditionId, bool isIndecisive, bool resolvedToYes
+    );
+
     event BridgeConfigUpdated(LZTypes.BridgeConfig config);
 
     function setUp() public override {
@@ -158,23 +164,23 @@ contract LZConditionResolverTest is TestHelperOz5 {
     // ============ IConditionResolver Tests ============
 
     function test_isValidCondition_valid() public view {
-        assertTrue(pmResolver.isValidCondition(CONDITION_ID_1));
+        assertTrue(pmResolver.isValidCondition(abi.encode(CONDITION_ID_1)));
     }
 
     function test_isValidCondition_invalid() public view {
-        assertFalse(pmResolver.isValidCondition(bytes32(0)));
+        assertFalse(pmResolver.isValidCondition(abi.encode(bytes32(0))));
     }
 
     function test_getResolution_notSettled() public view {
         (bool isResolved, IV2Types.OutcomeVector memory outcome) =
-            pmResolver.getResolution(CONDITION_ID_1);
+            pmResolver.getResolution(abi.encode(CONDITION_ID_1));
         assertFalse(isResolved);
         assertEq(outcome.yesWeight, 0);
         assertEq(outcome.noWeight, 0);
     }
 
     function test_isFinalized_notSettled() public view {
-        assertFalse(pmResolver.isFinalized(CONDITION_ID_1));
+        assertFalse(pmResolver.isFinalized(abi.encode(CONDITION_ID_1)));
     }
 
     function test_getCondition_notSettled() public view {
@@ -191,6 +197,10 @@ contract LZConditionResolverTest is TestHelperOz5 {
         bytes memory payload = abi.encode(CONDITION_ID_1, true, true);
         bytes memory message = abi.encode(uint16(8), payload); // CMD_CONDITION_RESOLVED = 8
 
+        // Expect unified ConditionResolved event
+        vm.expectEmit(false, false, false, true);
+        emit ConditionResolved(abi.encode(CONDITION_ID_1), false, true);
+
         // Use LZ test helper to simulate receive
         vm.prank(address(endpoints[pmEid]));
         pmResolver.lzReceive(
@@ -202,10 +212,10 @@ contract LZConditionResolverTest is TestHelperOz5 {
         );
 
         // Verify condition is resolved
-        assertTrue(pmResolver.isFinalized(CONDITION_ID_1));
+        assertTrue(pmResolver.isFinalized(abi.encode(CONDITION_ID_1)));
 
         (bool isResolved, IV2Types.OutcomeVector memory outcome) =
-            pmResolver.getResolution(CONDITION_ID_1);
+            pmResolver.getResolution(abi.encode(CONDITION_ID_1));
         assertTrue(isResolved);
         assertEq(outcome.yesWeight, 1);
         assertEq(outcome.noWeight, 0);
@@ -214,6 +224,9 @@ contract LZConditionResolverTest is TestHelperOz5 {
     function test_lzReceive_conditionResolvedNo() public {
         bytes memory payload = abi.encode(CONDITION_ID_1, false, true);
         bytes memory message = abi.encode(uint16(8), payload);
+
+        vm.expectEmit(false, false, false, true);
+        emit ConditionResolved(abi.encode(CONDITION_ID_1), false, false);
 
         vm.prank(address(endpoints[pmEid]));
         pmResolver.lzReceive(
@@ -225,7 +238,7 @@ contract LZConditionResolverTest is TestHelperOz5 {
         );
 
         (bool isResolved, IV2Types.OutcomeVector memory outcome) =
-            pmResolver.getResolution(CONDITION_ID_1);
+            pmResolver.getResolution(abi.encode(CONDITION_ID_1));
         assertTrue(isResolved);
         assertEq(outcome.yesWeight, 0);
         assertEq(outcome.noWeight, 1);
@@ -245,7 +258,7 @@ contract LZConditionResolverTest is TestHelperOz5 {
         );
 
         // Condition should NOT be settled since assertedTruthfully=false
-        assertFalse(pmResolver.isFinalized(CONDITION_ID_1));
+        assertFalse(pmResolver.isFinalized(abi.encode(CONDITION_ID_1)));
     }
 
     function test_lzReceive_revertIfInvalidSourceChain() public {
@@ -337,9 +350,9 @@ contract LZConditionResolverTest is TestHelperOz5 {
         );
 
         // Query batch
-        bytes32[] memory conditionIds = new bytes32[](2);
-        conditionIds[0] = CONDITION_ID_1;
-        conditionIds[1] = CONDITION_ID_2;
+        bytes[] memory conditionIds = new bytes[](2);
+        conditionIds[0] = abi.encode(CONDITION_ID_1);
+        conditionIds[1] = abi.encode(CONDITION_ID_2);
 
         (bool[] memory resolved, IV2Types.OutcomeVector[] memory outcomes) =
             pmResolver.getResolutions(conditionIds);

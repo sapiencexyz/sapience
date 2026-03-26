@@ -1,8 +1,14 @@
-import { encodeAbiParameters, encodeFunctionData, parseAbiParameters } from 'viem';
-import type { Address } from 'viem';
+import {
+  encodeAbiParameters,
+  encodeFunctionData,
+  parseAbiParameters,
+  zeroAddress,
+} from 'viem';
+import type { Address, Hex } from 'viem';
 import { submitTransaction } from './tx';
-
-type Hex = `0x${string}`;
+import { eas } from '../contracts/addresses';
+import { CHAIN_ID_ARBITRUM } from '../constants/chain';
+import { EAS_ABI, EAS_SCHEMA_ID } from './sharedAbis';
 
 /** Probability value constrained to 0-100 */
 export type Probability = number & { readonly __brand: 'Probability' };
@@ -16,47 +22,11 @@ export function probability(value: number): Probability {
 }
 
 // EAS contract on Arbitrum
-const EAS_ADDRESS_ARBITRUM: Address = '0xbD75f629A22Dc1ceD33dDA0b68c546A1c035c458';
-const ARBITRUM_CHAIN_ID = 42161;
+const EAS_ADDRESS_ARBITRUM: Address = eas[CHAIN_ID_ARBITRUM].address as Address;
+const ARBITRUM_CHAIN_ID = CHAIN_ID_ARBITRUM;
 
-// EAS schema id for forecast attestations
-// Schema: address resolver, bytes condition, uint256 forecast, string comment
-const SCHEMA_ID: Hex =
-  '0x7df55bcec6eb3b17b25c503cc318a36d33b0a9bbc2d6bc0d9788f9bd61980d49';
-
-// EAS ABI (attest)
-const EAS_ABI = [
-  {
-    name: 'attest',
-    type: 'function',
-    inputs: [
-      {
-        name: 'request',
-        type: 'tuple',
-        components: [
-          { name: 'schema', type: 'bytes32' },
-          {
-            name: 'data',
-            type: 'tuple',
-            components: [
-              { name: 'recipient', type: 'address' },
-              { name: 'expirationTime', type: 'uint64' },
-              { name: 'revocable', type: 'bool' },
-              { name: 'refUID', type: 'bytes32' },
-              { name: 'data', type: 'bytes' },
-              { name: 'value', type: 'uint256' },
-            ],
-          },
-        ],
-      },
-    ],
-    outputs: [{ name: '', type: 'bytes32' }],
-    stateMutability: 'payable',
-  },
-] as const;
-
-const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000' as Address;
-const ZERO_BYTES32 = '0x0000000000000000000000000000000000000000000000000000000000000000' as Hex;
+const ZERO_BYTES32 =
+  '0x0000000000000000000000000000000000000000000000000000000000000000' as Hex;
 
 /**
  * Convert probability (0-100) to D18 format
@@ -86,7 +56,7 @@ export function buildForecastCalldata(
   resolver: Address,
   condition: Hex,
   prob: number,
-  comment?: string,
+  comment?: string
 ): ForecastCalldata {
   if (prob < 0 || prob > 100) {
     throw new Error(`Probability must be between 0 and 100, got ${prob}`);
@@ -100,20 +70,15 @@ export function buildForecastCalldata(
 
   const encodedData = encodeAbiParameters(
     parseAbiParameters(
-      'address resolver, bytes condition, uint256 forecast, string comment',
+      'address resolver, bytes condition, uint256 forecast, string comment'
     ),
-    [
-      resolver,
-      condition,
-      probabilityToD18(prob),
-      truncatedComment,
-    ],
+    [resolver, condition, probabilityToD18(prob), truncatedComment]
   );
 
   const attestationRequest = {
-    schema: SCHEMA_ID,
+    schema: EAS_SCHEMA_ID,
     data: {
-      recipient: ZERO_ADDRESS,
+      recipient: zeroAddress,
       expirationTime: 0n,
       revocable: false,
       refUID: ZERO_BYTES32,
@@ -172,7 +137,7 @@ export async function submitForecast(args: {
     args.resolver,
     args.condition,
     args.probability,
-    args.comment,
+    args.comment
   );
 
   const rpc = args.rpc || 'https://arb1.arbitrum.io/rpc';
@@ -185,4 +150,3 @@ export async function submitForecast(args: {
 
   return { hash, calldata };
 }
-
