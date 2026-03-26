@@ -130,6 +130,7 @@ class AuctionWsClient {
     const unsubWs = client.addMessageListener((msg: unknown) => {
       const data = msg as Record<string, unknown>;
       if (shouldMesh(data)) this.dedup(data); // mark as seen from WS
+      (msg as Record<string, unknown>).__source = 'relayer';
       cb(msg);
     });
 
@@ -148,6 +149,7 @@ class AuctionWsClient {
         validateGossipPayloadAsync(msgType, inner, getValidationContext())
           .then((valid) => {
             if (!valid) return;
+            (msg as Record<string, unknown>).__source = 'p2p';
             cb(msg);
           })
           .catch(() => {
@@ -198,6 +200,14 @@ class AuctionWsClient {
     this.seen.set(id, now);
     return true;
   }
+}
+
+export type MessageSource = 'relayer' | 'p2p';
+
+export function getMessageSource(msg: unknown): MessageSource | undefined {
+  return (msg as Record<string, unknown>)?.__source as
+    | MessageSource
+    | undefined;
 }
 
 const shared = new AuctionWsClient();
