@@ -8,14 +8,6 @@
     "build": "tsc",
     "generate": "tsx scripts/generate.ts",
     "generate:dry-run": "LLM_ENABLED=false tsx scripts/generate.ts --dry-run",
-    "settle-polymarket": "tsx scripts/settle-polymarket.ts",
-    "settle-polymarket:dry-run": "tsx scripts/settle-polymarket.ts --dry-run",
-    "settle-polymarket:execute": "tsx scripts/settle-polymarket.ts --execute",
-    "settle-polymarket:execute:wait": "tsx scripts/settle-polymarket.ts --execute --wait",
-    "settle-pyth": "tsx scripts/settle-pyth.ts",
-    "settle-pyth:dry-run": "tsx scripts/settle-pyth.ts --dry-run",
-    "settle-pyth:execute": "tsx scripts/settle-pyth.ts --execute",
-    "settle-pyth:execute:wait": "tsx scripts/settle-pyth.ts --execute --wait",
     "settle-manual": "tsx scripts/settle-manual.ts",
     "settle-manual:dry-run": "tsx scripts/settle-manual.ts --dry-run",
     "settle-manual:execute": "tsx scripts/settle-manual.ts --execute",
@@ -33,7 +25,11 @@
     "format": "prettier --write src scripts",
     "type-check": "tsc --noEmit",
     "format:check": "prettier --check src scripts",
-    "test": "vitest run"
+    "test": "vitest run",
+    "settle": "tsx scripts/settle-conditions.ts",
+    "settle:dry-run": "tsx scripts/settle-conditions.ts --dry-run",
+    "settle:execute": "tsx scripts/settle-conditions.ts --execute",
+    "settle:execute:wait": "tsx scripts/settle-conditions.ts --execute --wait"
   },
   "dependencies": {
     "@sapience/sdk": "workspace:*",
