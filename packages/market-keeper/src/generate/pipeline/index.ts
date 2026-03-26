@@ -38,6 +38,7 @@ import {
   AlwaysIncludeConditionGroupFilter,
 } from './filters/always-include';
 import {
+  NonCryptoMarketFilter,
   NonCryptoConditionFilter,
   NonCryptoGroupFilter,
 } from './filters/exclude-crypto';
@@ -154,7 +155,10 @@ export const API_CONDITION_FILTERS: Filter<SapienceCondition>[] = [
 export function createLlmPreFilter(
   existing: Set<string> | Map<string, ExistingCondition>
 ): Filter<PolymarketMarket>[] {
-  return [new ExcludeExistingMarketsFilter(existing)];
+  return [
+    new ExcludeExistingMarketsFilter(existing),
+    new NonCryptoMarketFilter(),
+  ];
 }
 
 /**

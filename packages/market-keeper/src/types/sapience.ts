@@ -23,6 +23,8 @@ export interface SapienceCondition {
   tags: string[]; // Event tags from Polymarket (e.g., "Politics", "Crypto")
   chainId: number; // Chain ID where condition will be deployed (Ethereal: 5064014)
   groupTitle?: string; // Group title for API submission (API will find-or-create group by name)
+  estimatedPrice?: number; // 0-1, YES probability from Polymarket outcomePrices[0]
+  endTimeOverride?: number; // LLM-determined endTime (unix seconds, no buffer)
 }
 
 export interface SapienceConditionGroup {

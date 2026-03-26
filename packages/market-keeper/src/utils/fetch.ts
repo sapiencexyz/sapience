@@ -13,9 +13,13 @@ export async function fetchWithRetry(
 ): Promise<Response> {
   let lastError: Error | undefined;
 
+  const shortUrl = url.length > 120 ? url.slice(0, 120) + '…' : url;
+
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
+      const t0 = Date.now();
       const response = await fetch(url, options);
+      const ms = Date.now() - t0;
 
       // Retry on 429 rate limit
       if (
@@ -29,7 +33,7 @@ export async function fetchWithRetry(
             ? retryAfterMs
             : baseDelayMs * Math.pow(2, attempt) + Math.random() * 1000;
         console.log(
-          `[Retry] HTTP 429 rate limited, retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxRetries})`
+          `[Retry] HTTP 429 rate limited, retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxRetries}) — ${shortUrl}`
         );
         await new Promise((resolve) => setTimeout(resolve, delay));
         continue;
@@ -43,10 +47,16 @@ export async function fetchWithRetry(
       ) {
         const delay = baseDelayMs * Math.pow(2, attempt) + Math.random() * 1000;
         console.log(
-          `[Retry] HTTP ${response.status}, retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxRetries})`
+          `[Retry] HTTP ${response.status}, retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxRetries}) — ${shortUrl}`
         );
         await new Promise((resolve) => setTimeout(resolve, delay));
         continue;
+      }
+
+      if (attempt > 0) {
+        console.log(
+          `[Retry] Succeeded on attempt ${attempt + 1} (${ms}ms) — ${shortUrl}`
+        );
       }
 
       return response;
@@ -57,11 +67,15 @@ export async function fetchWithRetry(
       if (attempt < maxRetries) {
         const delay = baseDelayMs * Math.pow(2, attempt) + Math.random() * 1000;
         console.log(
-          `[Retry] Network error: ${lastError.message}, retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxRetries})`
+          `[Retry] Network error: ${lastError.message}, retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxRetries}) — ${shortUrl}`
         );
         await new Promise((resolve) => setTimeout(resolve, delay));
         continue;
       }
+
+      console.error(
+        `[Retry] All ${maxRetries} retries exhausted — ${shortUrl}`
+      );
     }
   }
 

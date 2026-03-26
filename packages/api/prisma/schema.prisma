@@ -181,7 +181,9 @@ model Condition {
   predictionCount  Int             @default(0)
   /// Canonical resolver address for this condition (latest observed wins)
   resolver         String?         @db.VarChar
-  
+  /// YES probability from Polymarket (0.0–1.0), null for non-Polymarket
+  estimatedPrice   Float?
+
   // Resolution status
   settled          Boolean         @default(false)
   resolvedToYes    Boolean         @default(false)

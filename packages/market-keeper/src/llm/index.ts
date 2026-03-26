@@ -2,5 +2,9 @@
  * LLM module exports
  */
 
-export { enrichMarketsWithLLM, getFallbackEnrichment } from './enrichment';
-export type { MarketEnrichmentOutput } from './types';
+export {
+  enrichMarketsWithLLM,
+  getFallbackEnrichment,
+  enrichEndTimesWithLLM,
+} from './enrichment';
+export type { MarketEnrichmentOutput, EndTimeOutput } from './types';
