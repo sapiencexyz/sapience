@@ -17,6 +17,8 @@ export interface UseInfiniteQuestionsOptions {
   sortDirection?: SortDirection;
   minEndTime?: number;
   resolutionStatus?: string;
+  minEstimatedPrice?: number;
+  maxEstimatedPrice?: number;
 }
 
 export interface UseInfiniteQuestionsResult {
@@ -39,6 +41,8 @@ export function useInfiniteQuestions(
     sortDirection = 'desc',
     minEndTime: rawMinEndTime,
     resolutionStatus,
+    minEstimatedPrice,
+    maxEstimatedPrice,
   } = opts;
 
   const minEndTime =
@@ -63,6 +67,8 @@ export function useInfiniteQuestions(
     sortDirection,
     minEndTime,
     resolutionStatus,
+    minEstimatedPrice,
+    maxEstimatedPrice,
   });
   const prevFiltersKeyRef = useRef(filtersKey);
   const lastSuccessfulSkipRef = useRef<number>(0);
@@ -95,6 +101,8 @@ export function useInfiniteQuestions(
       sortDirection,
       minEndTime,
       resolutionStatus,
+      minEstimatedPrice,
+      maxEstimatedPrice,
     ],
     queryFn: () =>
       fetchQuestionsSorted({
@@ -107,6 +115,8 @@ export function useInfiniteQuestions(
         categorySlugs,
         minEndTime,
         resolutionStatus,
+        minEstimatedPrice,
+        maxEstimatedPrice,
       }),
   });
 

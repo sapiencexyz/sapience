@@ -57,7 +57,18 @@ export const END_TIME_BUFFER_SECONDS = END_TIME_BUFFER_HOURS * 3600;
 
 // LLM Configuration
 export const LLM_ENABLED = process.env.LLM_ENABLED === 'true';
+// Sub-flags: both default ON when LLM_ENABLED=true; set to 'false' to disable individually
+export const LLM_ENRICHMENT_ENABLED =
+  LLM_ENABLED && process.env.LLM_ENRICHMENT_ENABLED !== 'false';
+export const LLM_ENDTIME_SEARCH_ENABLED =
+  LLM_ENABLED && process.env.LLM_ENDTIME_SEARCH_ENABLED !== 'false';
 export const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY || '';
 // set LLM_MODEL env var to use paid models like 'openai/gpt-4o-mini'
 // FFR: try mistralai/ministral-3b or other cheaper alternatives to gpt-4o-mini
 export const LLM_MODEL = process.env.LLM_MODEL || 'openai/gpt-4o-mini';
+
+// Perplexity Sonar model for web-search-augmented endTime determination
+export const LLM_ENDTIME_MODEL =
+  process.env.LLM_ENDTIME_MODEL || 'perplexity/sonar';
+// Longer timeout for Sonar (does web searches)
+export const LLM_ENDTIME_TIMEOUT_MS = 60000;

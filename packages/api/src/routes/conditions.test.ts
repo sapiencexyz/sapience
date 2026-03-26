@@ -7,9 +7,11 @@ const mockPrisma = {
     create: vi.fn(),
     findUnique: vi.fn(),
     update: vi.fn(),
+    updateMany: vi.fn(),
   },
   category: { findFirst: vi.fn() },
   conditionGroup: { findFirst: vi.fn(), create: vi.fn() },
+  $transaction: vi.fn(),
 };
 
 vi.mock('../db', () => ({ default: mockPrisma, __esModule: true }));
@@ -191,6 +193,105 @@ describe('conditions routes', () => {
       );
       const createCall = mockPrisma.condition.create.mock.calls[0][0];
       expect(createCall.data.conditionGroupId).toBe(42);
+    });
+  });
+
+  // ---------- PUT /admin/conditions/prices ----------
+
+  describe('PUT /admin/conditions/prices', () => {
+    it('returns 400 when updates is missing', async () => {
+      const res = await request(app).put('/admin/conditions/prices').send({});
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/updates/);
+    });
+
+    it('returns 400 when updates is empty', async () => {
+      const res = await request(app)
+        .put('/admin/conditions/prices')
+        .send({ updates: [] });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/updates/);
+    });
+
+    it('returns 400 when id format is invalid', async () => {
+      const res = await request(app)
+        .put('/admin/conditions/prices')
+        .send({ updates: [{ id: 'bad-id', estimatedPrice: 0.5 }] });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/Invalid id format/);
+    });
+
+    it('returns 400 when estimatedPrice is out of range', async () => {
+      const res = await request(app)
+        .put('/admin/conditions/prices')
+        .send({
+          updates: [{ id: VALID_CONDITION_HASH, estimatedPrice: 1.5 }],
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/estimatedPrice/);
+    });
+
+    it('returns 400 when estimatedPrice is negative', async () => {
+      const res = await request(app)
+        .put('/admin/conditions/prices')
+        .send({
+          updates: [{ id: VALID_CONDITION_HASH, estimatedPrice: -0.1 }],
+        });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/estimatedPrice/);
+    });
+
+    it('returns 400 when batch exceeds 200 updates', async () => {
+      const updates = Array.from({ length: 201 }, (_, i) => ({
+        id: '0x' + i.toString(16).padStart(64, '0'),
+        estimatedPrice: 0.5,
+      }));
+
+      const res = await request(app)
+        .put('/admin/conditions/prices')
+        .send({ updates });
+
+      expect(res.status).toBe(400);
+      expect(res.body.message).toMatch(/200/);
+    });
+
+    it('updates prices successfully and returns 200', async () => {
+      mockPrisma.$transaction.mockResolvedValue([{ count: 1 }, { count: 1 }]);
+
+      const HASH2 = '0x' + 'cd'.repeat(32);
+      const res = await request(app)
+        .put('/admin/conditions/prices')
+        .send({
+          updates: [
+            { id: VALID_CONDITION_HASH, estimatedPrice: 0.65 },
+            { id: HASH2, estimatedPrice: 0.35 },
+          ],
+        });
+
+      expect(res.status).toBe(200);
+      expect(res.body.updated).toBe(2);
+      expect(res.body.requested).toBe(2);
+    });
+
+    it('accepts boundary values 0 and 1', async () => {
+      const HASH2 = '0x' + 'cd'.repeat(32);
+      mockPrisma.$transaction.mockResolvedValue([{ count: 1 }, { count: 1 }]);
+
+      const res = await request(app)
+        .put('/admin/conditions/prices')
+        .send({
+          updates: [
+            { id: VALID_CONDITION_HASH, estimatedPrice: 0 },
+            { id: HASH2, estimatedPrice: 1 },
+          ],
+        });
+
+      expect(res.status).toBe(200);
     });
   });
 

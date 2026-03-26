@@ -13,15 +13,22 @@ import type {
 } from '../types';
 import {
   CHAIN_ID,
-  LLM_ENABLED,
+  LLM_ENRICHMENT_ENABLED,
+  LLM_ENDTIME_SEARCH_ENABLED,
   OPENROUTER_API_KEY,
   LLM_MODEL,
+  LLM_ENDTIME_MODEL,
   DEFAULT_SAPIENCE_API_URL,
 } from '../constants';
 import { inferSapienceCategorySlug } from './category';
 import { transformMatchQuestion, getPolymarketUrl } from './transform';
-import { enrichMarketsWithLLM, type MarketEnrichmentOutput } from '../llm';
+import {
+  enrichMarketsWithLLM,
+  enrichEndTimesWithLLM,
+  type MarketEnrichmentOutput,
+} from '../llm';
 import { fetchEventTags } from './tags';
+import { parseYesPrice } from '../utils/price';
 import {
   runPipeline,
   printPipelineStats,
@@ -65,7 +72,8 @@ export function transformToSapienceCondition(
   market: PolymarketMarket,
   groupTitle?: string,
   enrichment?: MarketEnrichmentOutput,
-  tags: string[] = []
+  tags: string[] = [],
+  endTimeOverride?: number
 ): SapienceCondition {
   // Transform "X vs Y" questions to "X beats Y?" for clarity
   const question = transformMatchQuestion(market);
@@ -81,6 +89,8 @@ export function transformToSapienceCondition(
     categorySlug: enrichment?.category || inferSapienceCategorySlug(market), // Use LLM category or fallback
     chainId: CHAIN_ID,
     groupTitle,
+    estimatedPrice: parseYesPrice(market.outcomePrices),
+    endTimeOverride,
   };
 }
 
@@ -154,12 +164,19 @@ export async function groupMarkets(
   );
   printPipelineStats(llmFilterStats, 'LLM Pre-Filter');
 
-  // Only enrich NEW markets with LLM (category + shortName)
-  const enrichments = await enrichMarketsWithLLM(newMarkets, {
-    enabled: LLM_ENABLED,
-    apiKey: OPENROUTER_API_KEY,
-    model: LLM_MODEL,
-  });
+  // Enrich NEW markets with LLM — category/shortName and endTime run in parallel
+  const [enrichments, endTimeMap] = await Promise.all([
+    enrichMarketsWithLLM(newMarkets, {
+      enabled: LLM_ENRICHMENT_ENABLED,
+      apiKey: OPENROUTER_API_KEY,
+      model: LLM_MODEL,
+    }),
+    enrichEndTimesWithLLM(newMarkets, {
+      enabled: LLM_ENDTIME_SEARCH_ENABLED,
+      apiKey: OPENROUTER_API_KEY,
+      model: LLM_ENDTIME_MODEL,
+    }),
+  ]);
 
   // Filter out existing markets from groups and ungrouped (no need to submit them)
   const newGroups = filteredGroups.filter(
@@ -181,7 +198,8 @@ export async function groupMarkets(
       market,
       group.title,
       enrichment,
-      marketTags
+      marketTags,
+      endTimeMap.get(market.conditionId)
     );
 
     // Use event description if available, otherwise use market's description
@@ -209,7 +227,8 @@ export async function groupMarkets(
       m,
       undefined,
       enrichments.get(m.conditionId),
-      mTags
+      mTags,
+      endTimeMap.get(m.conditionId)
     );
   });
 
