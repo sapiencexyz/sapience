@@ -9,9 +9,8 @@ run('node dist/scripts/refresh-prices.js');
 run('node dist/scripts/cleanup-polymarket.js --execute');
 
 if (process.env.DEFAULT_CHAIN_ID === '5064014') {
-  run('node dist/scripts/settle-polymarket.js --execute --wait');
+  // Unified settlement: dispatches to CT and Pyth handlers based on resolver
+  run('node dist/scripts/settle-conditions.js --execute --wait');
 } else {
   run('node dist/scripts/settle-manual.js --execute --wait');
 }
-
-run('node dist/scripts/settle-pyth.js --execute --wait');
