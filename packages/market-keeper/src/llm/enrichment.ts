@@ -7,6 +7,7 @@ import type {
   MarketEnrichmentInput,
   MarketEnrichmentOutput,
   EnrichmentResult,
+  EndTimeEnrichmentInput,
 } from './types';
 import { inferSapienceCategorySlug } from '../generate/category';
 import { inferShortName } from '../generate/shortName';
@@ -14,8 +15,15 @@ import {
   callOpenRouterForCategory,
   callOpenRouterForShortNameOnly,
   callOpenRouterForBoth,
+  callOpenRouterForEndTime,
+  logRegexPrepass,
+  type RegexResolvedEntry,
+  type SanityFailEntry,
 } from './openrouter';
 import { parseOutcomes } from '../generate/transform';
+import { extractEndTime } from '../generate/endtime';
+
+const ENDTIME_SANITY_CHECK_SECONDS = 14 * 86400; // 14 days
 
 // Reduced batch size to avoid token limits with free models
 const LLM_BATCH_SIZE = 10;
@@ -335,4 +343,165 @@ export async function enrichMarketsWithLLM(
     `[LLM] Enriched ${result.results.size} markets (${result.errors.length} errors)`
   );
   return result.results;
+}
+
+/**
+ * Convert a PolymarketMarket to EndTimeEnrichmentInput
+ */
+export function marketToEndTimeInput(
+  market: PolymarketMarket
+): EndTimeEnrichmentInput {
+  return {
+    conditionId: market.conditionId,
+    question: market.question,
+    description: market.description || '',
+    eventTitle: market.events?.[0]?.title,
+  };
+}
+
+/**
+ * Enrich markets with LLM-determined endTimes via Perplexity Sonar.
+ * Groups markets by event title so conditions sharing an event use 1 Sonar call.
+ * Returns a map of conditionId → endTime (unix seconds, NO buffer — caller adds buffer).
+ * Missing entries mean the LLM couldn't determine an endTime (caller should fall back).
+ */
+export async function enrichEndTimesWithLLM(
+  markets: PolymarketMarket[],
+  options: { enabled: boolean; apiKey?: string; model?: string }
+): Promise<Map<string, number>> {
+  const endTimeMap = new Map<string, number>();
+
+  if (markets.length === 0) {
+    return endTimeMap;
+  }
+
+  // ── Regex pre-pass (tiers 0–4): resolve what we can without Sonar ─────────
+  const sonarMarkets: PolymarketMarket[] = [];
+  const regexResolved: RegexResolvedEntry[] = [];
+  const sanityFails: SanityFailEntry[] = [];
+
+  for (const market of markets) {
+    const tierOut: { tier: string } = { tier: '6' };
+    const regexTs = extractEndTime(
+      market.question,
+      market.description ?? '',
+      tierOut
+    );
+    if (regexTs !== null && market.endDate) {
+      const polyTs = new Date(market.endDate).getTime() / 1000;
+      if (Math.abs(regexTs - polyTs) <= ENDTIME_SANITY_CHECK_SECONDS) {
+        endTimeMap.set(market.conditionId, regexTs);
+        regexResolved.push({
+          question: market.question,
+          tier: tierOut.tier,
+          ts: regexTs,
+        });
+        continue;
+      }
+      sanityFails.push({
+        question: market.question,
+        tier: tierOut.tier,
+        regexTs,
+        polyTs,
+      });
+    }
+    sonarMarkets.push(market);
+  }
+
+  logRegexPrepass({
+    total: markets.length,
+    resolved: regexResolved,
+    sanityFails,
+    sonarQuestions: sonarMarkets.map((m) => m.question),
+  });
+
+  console.log(
+    `[LLM:endTime] ${markets.length - sonarMarkets.length} resolved via regex, ${sonarMarkets.length} → Sonar`
+  );
+
+  if (!options.enabled || !options.apiKey || sonarMarkets.length === 0) {
+    if (!options.enabled || !options.apiKey) {
+      console.log(
+        `[LLM:endTime] Sonar skipped (enabled=${options.enabled}, hasKey=${!!options.apiKey})`
+      );
+    }
+    return endTimeMap;
+  }
+
+  // Group markets by event title — conditions sharing an event get 1 Sonar call
+  const eventGroups = new Map<string, PolymarketMarket[]>();
+  const ungrouped: PolymarketMarket[] = [];
+
+  for (const market of sonarMarkets) {
+    const eventTitle = market.events?.[0]?.title;
+    if (eventTitle) {
+      const group = eventGroups.get(eventTitle) || [];
+      group.push(market);
+      eventGroups.set(eventTitle, group);
+    } else {
+      ungrouped.push(market);
+    }
+  }
+
+  const totalCalls = eventGroups.size + ungrouped.length;
+  console.log(
+    `[LLM:endTime] Calling Sonar for ${sonarMarkets.length} markets (${eventGroups.size} event groups + ${ungrouped.length} ungrouped = ${totalCalls} calls)...`
+  );
+
+  let successCount = 0;
+  let errorCount = 0;
+
+  // 1 call per event group — all conditions in the group share the event context
+  for (const [eventTitle, groupMarkets] of eventGroups) {
+    try {
+      const inputs = groupMarkets.map(marketToEndTimeInput);
+      const outputs = await callOpenRouterForEndTime(inputs, {
+        apiKey: options.apiKey,
+        model: options.model,
+      });
+
+      for (const output of outputs) {
+        if (output.endTime !== null) {
+          endTimeMap.set(output.conditionId, output.endTime);
+          successCount++;
+        }
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error(
+        `[LLM:endTime] Failed for event "${eventTitle}" (${groupMarkets.length} markets): ${errorMsg}`
+      );
+      errorCount++;
+    }
+  }
+
+  // 1 call per ungrouped condition
+  for (const market of ungrouped) {
+    try {
+      const input = marketToEndTimeInput(market);
+      const outputs = await callOpenRouterForEndTime([input], {
+        apiKey: options.apiKey,
+        model: options.model,
+      });
+
+      for (const output of outputs) {
+        if (output.endTime !== null) {
+          endTimeMap.set(output.conditionId, output.endTime);
+          successCount++;
+        }
+      }
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error(
+        `[LLM:endTime] Failed for "${market.question}": ${errorMsg}`
+      );
+      errorCount++;
+    }
+  }
+
+  console.log(
+    `[LLM:endTime] Sonar done: ${successCount} endTimes determined, ${errorCount} errors, ${sonarMarkets.length - successCount - errorCount} unknown`
+  );
+
+  return endTimeMap;
 }

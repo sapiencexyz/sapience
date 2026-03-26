@@ -9,7 +9,7 @@ import {
 
 const SAMPLE_PICK_CONFIG_ID =
   '0x1234567890abcdef1234567890abcdef1234567890abcdef1234567890abcdef' as Hex;
-const SAMPLE_FACTORY = '0xea76782164474ec59b647C5be21FAFD0Ecf936BD' as Address;
+const SAMPLE_FACTORY = '0x085c814B058Fc3e3a47e25FC68A598790068C606' as Address;
 
 // ─── computeTokenSalt ────────────────────────────────────────────────────────
 

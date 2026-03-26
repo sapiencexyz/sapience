@@ -17,7 +17,7 @@ import type { HandlerContext } from '../handlerContext';
 const CONDITION_ID =
   '0xaabbccdd00000000000000000000000000000000000000000000000000000001' as `0x${string}`;
 const SETTLER = '0x1234567890abcdef1234567890abcdef12345678' as `0x${string}`;
-const RESOLVER = '0xa5ec46b834ac33ec68e30e7ddeedbbbD4f461784' as `0x${string}`;
+const RESOLVER = '0x5eae96e92112c83c64d38b0aeeac8807416d9683' as `0x${string}`;
 const TX_HASH = ('0x' + 'ab'.repeat(32)) as `0x${string}`;
 const BLOCK_HASH = ('0x' + '00'.repeat(32)) as `0x${string}`;
 

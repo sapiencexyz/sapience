@@ -14,6 +14,7 @@ import {
   log,
   logError,
 } from '../utils';
+
 import { fetchPastEndDateMarkets } from './market';
 import { groupMarkets, exportJSON } from '../generate/grouping';
 import { printDryRun, submitToAPI } from '../generate/api';

@@ -98,7 +98,11 @@ export async function submitCondition(
         question: condition.question,
         shortName: condition.shortName,
         categorySlug: condition.categorySlug,
-        endTime: toUnixTimestamp(condition.endDate) + END_TIME_BUFFER_SECONDS,
+        endTime:
+          Math.max(
+            toUnixTimestamp(condition.endDate),
+            condition.endTimeOverride ?? 0
+          ) + END_TIME_BUFFER_SECONDS,
         description: condition.description,
         similarMarkets: condition.similarMarkets,
         tags: condition.tags,
@@ -106,6 +110,7 @@ export async function submitCondition(
         groupName: condition.groupTitle,
         resolver: RESOLVER_ADDRESS,
         public: true,
+        estimatedPrice: condition.estimatedPrice,
       }),
     });
 
@@ -240,6 +245,62 @@ export function printDryRun(data: SapienceOutput): void {
   }
 
   console.log('\n========== END DRY RUN ==========\n');
+}
+
+/**
+ * Submit batch price updates for existing conditions
+ */
+export async function submitPriceUpdates(
+  apiUrl: string,
+  privateKey: `0x${string}`,
+  priceUpdates: Array<{ id: string; estimatedPrice: number }>
+): Promise<void> {
+  if (priceUpdates.length === 0) {
+    console.log('[Prices] No price updates to submit');
+    return;
+  }
+
+  const BATCH_SIZE = 200;
+  let totalUpdated = 0;
+
+  for (let i = 0; i < priceUpdates.length; i += BATCH_SIZE) {
+    const batch = priceUpdates.slice(i, i + BATCH_SIZE);
+    try {
+      const authHeaders = await getAdminAuthHeaders(privateKey);
+      const response = await fetchWithRetry(
+        `${apiUrl}/admin/conditions/prices`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            ...authHeaders,
+          },
+          body: JSON.stringify({ updates: batch }),
+        }
+      );
+
+      if (response.ok) {
+        const result = (await response.json()) as { updated: number };
+        totalUpdated += result.updated;
+      } else {
+        const errorData = await response
+          .json()
+          .catch(() => ({ message: 'Unknown error' }));
+        console.error(
+          `[Prices] Batch ${i / BATCH_SIZE + 1} failed: HTTP ${response.status}: ${(errorData as { message?: string }).message || response.statusText}`
+        );
+      }
+    } catch (error) {
+      console.error(
+        `[Prices] Batch ${i / BATCH_SIZE + 1} error:`,
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+  }
+
+  console.log(
+    `[Prices] Updated ${totalUpdated} of ${priceUpdates.length} conditions`
+  );
 }
 
 /**

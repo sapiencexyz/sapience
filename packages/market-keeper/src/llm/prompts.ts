@@ -3,7 +3,7 @@
  */
 
 import type { SapienceCategorySlug } from '../types';
-import type { MarketEnrichmentInput } from './types';
+import type { MarketEnrichmentInput, EndTimeEnrichmentInput } from './types';
 
 export const VALID_CATEGORIES: SapienceCategorySlug[] = [
   'crypto',
@@ -246,3 +246,54 @@ export const SHORTNAME_ONLY_SYSTEM_PROMPT =
 
 export const BOTH_SYSTEM_PROMPT =
   'You are a prediction market categorization assistant. Respond only with CSV lines: id,category,shortName. No markdown, no headers, no quotes around values. NEVER shorten or truncate IDs.';
+
+export const ENDTIME_SYSTEM_PROMPT =
+  'You are a prediction market deadline analyst with web search. For each market, determine when the event outcome will be definitively known. Always search for the exact scheduled start time before falling back to end-of-day estimates. Always output UTC. Respond only with CSV lines: id,ISO8601_datetime_UTC. No markdown, no headers. NEVER shorten or truncate IDs. If you cannot determine a resolution date, respond with id,UNKNOWN.';
+
+/**
+ * Build prompt for endTime determination via web search
+ */
+export function buildEndTimePrompt(markets: EndTimeEnrichmentInput[]): string {
+  const marketsJson = markets.map((m) => ({
+    id: m.conditionId,
+    q: m.question,
+    desc: m.description,
+    event: m.eventTitle,
+  }));
+
+  return `Determine when the outcome of each prediction market will be definitively known.
+
+TODAY'S DATE: ${new Date().toISOString().split('T')[0]}
+
+STEP 1 — SEARCH: For each market, construct a targeted search query from the question text to find the exact scheduled time. Examples:
+- Sports: search "[team1] vs [team2] [date] start time"
+- Esports: search "[team1] vs [team2] [tournament] schedule"
+- Financial: search "[company] earnings date Q[N] [year]" or "Fed meeting [month] [year] announcement time"
+- If description says the event was "postponed" or "rescheduled to [new date]": search for the new date; if not found, use the date directly 
+- If description contains a resolution source URL (e.g. vlr.gg, hltv.org, flashscore.com): search that site directly for the match schedule
+
+STEP 2 — COMPUTE END TIME: Return when the outcome will be KNOWN, not the start time.
+- Sports regular season: start time + typical duration (NBA +3h, soccer +2.5h, NFL +3.5h, MLB +4h, NHL +3h, boxing/MMA +5h, esports +4h, cricket +8h)
+- Sports knockout/playoff games: add 1h extra for overtime (NBA +4h, soccer +3.5h, NFL +4.5h)
+- Multi-day events (golf, cricket series, cycling): end of the final scheduled day in local timezone
+- Financial data releases (earnings, GDP, CPI, PMI, jobs report): if description says "released on [DATE]" or "expected on [DATE]", use that date; use 13:30 UTC for US pre-market releases (CPI, NFP, GDP) or 20:00 UTC for after-market earnings unless a specific time is known
+- Other financial events (Fed decisions): use the announcement date/time directly
+- Weather markets: local midnight of the stated date in the city's timezone
+- Elections: estimated results-known time (typically several hours after polls close, or next morning for close races)
+- If there is a deadline in the question/description (e.g. "Will X happen by Y?"): use Y directly
+
+STEP 3 — FALLBACK: Only if start time cannot be found after searching, use end of day (23:59:59) in the event's local timezone. NEVER return UNKNOWN just because a specific time is missing — if the date is known, end-of-day is always an acceptable fallback.
+
+OTHER RULES:
+- Always output UTC (convert from local timezone)
+- Use ISO 8601 format: YYYY-MM-DDTHH:MM:SSZ
+- If the event has no deterministic end date (e.g., "Will X ever happen?" with no deadline): respond with UNKNOWN
+
+IMPORTANT: Never shorten or truncate the market ID - copy it exactly as provided.
+
+MARKETS:
+${JSON.stringify(marketsJson, null, 2)}
+
+Respond with CSV format only (no header, no markdown):
+<full_id>,<ISO8601_datetime_UTC_or_UNKNOWN>`;
+}
