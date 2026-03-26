@@ -188,13 +188,14 @@ Examples:
 const CONDITIONS_PAGE_SIZE = 30;
 
 const UNRESOLVED_CONDITIONS_QUERY = `
-query UnresolvedConditions($now: Int!, $take: Int!, $skip: Int!) {
+query UnresolvedConditions($now: Int!, $take: Int!, $skip: Int!, $resolver: String!) {
   conditions(
     where: {
       AND: [
         { endTime: { lt: $now } }
         { settled: { equals: false } }
         { public: { equals: true } }
+        { resolver: { equals: $resolver, mode: insensitive } }
         {
           OR: [
             { openInterest: { gt: "0" } }
@@ -217,6 +218,7 @@ query UnresolvedConditions($now: Int!, $take: Int!, $skip: Int!) {
 async function fetchConditionsPage(
   apiUrl: string,
   nowTimestamp: number,
+  resolver: string,
   take: number,
   skip: number
 ): Promise<SapienceCondition[]> {
@@ -228,7 +230,7 @@ async function fetchConditionsPage(
     },
     body: JSON.stringify({
       query: UNRESOLVED_CONDITIONS_QUERY,
-      variables: { now: nowTimestamp, take, skip },
+      variables: { now: nowTimestamp, resolver, take, skip },
     }),
   });
 
@@ -272,7 +274,8 @@ async function fetchConditionsPage(
 }
 
 async function fetchUnresolvedConditions(
-  apiUrl: string
+  apiUrl: string,
+  resolver: string
 ): Promise<SapienceCondition[]> {
   const nowTimestamp = Math.floor(Date.now() / 1000);
   const allConditions: SapienceCondition[] = [];
@@ -284,6 +287,7 @@ async function fetchUnresolvedConditions(
     const page = await fetchConditionsPage(
       apiUrl,
       nowTimestamp,
+      resolver,
       CONDITIONS_PAGE_SIZE + 1,
       skip
     );
@@ -481,10 +485,10 @@ async function main() {
   }
 
   try {
-    const conditions = await fetchUnresolvedConditions(sapienceApiUrl);
+    const conditions = await fetchUnresolvedConditions(sapienceApiUrl, RESOLVER_ADDRESS);
 
     if (conditions.length === 0) {
-      console.log('No unsettled conditions found');
+      console.log('No unsettled CT conditions found');
       return;
     }
 
