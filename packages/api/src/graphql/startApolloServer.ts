@@ -105,8 +105,8 @@ export const initializeApolloServer = async () => {
         embed: true,
         includeCookies: true,
       }),
-      responseCachePlugin(),
       httpCacheHeadersPlugin(),
+      responseCachePlugin(),
       // Query complexity plugin
       // Note: Uses local adaptation of graphql-query-complexity to avoid
       // the "dual package hazard" in ESM + pnpm environments.
