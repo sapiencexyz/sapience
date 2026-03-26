@@ -101,8 +101,8 @@ export function createAuctionWebSocketServer() {
 
   wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
     const ip =
-      req.socket.remoteAddress ||
       (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+      req.socket.remoteAddress ||
       'unknown';
 
     // Global connection limit
