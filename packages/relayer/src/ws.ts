@@ -100,6 +100,11 @@ export function createAuctionWebSocketServer() {
   };
 
   wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
+    // TODO: split(',')[0] takes the leftmost x-forwarded-for entry, which the
+    // client controls. A spoofed header bypasses per-IP limits (but not global
+    // limits). Proper fix: take the rightmost entry (appended by Railway's proxy),
+    // but that requires knowing the exact proxy chain depth. Low risk — global
+    // cap is the real safety net.
     const ip =
       (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
       req.socket.remoteAddress ||
