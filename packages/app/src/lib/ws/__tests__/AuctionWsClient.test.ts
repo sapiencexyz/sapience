@@ -54,7 +54,9 @@ vi.mock('@sapience/sdk/constants/chain', () => ({
 // Import after mocks
 // ---------------------------------------------------------------------------
 
-const { getSharedAuctionWsClient } = await import('../AuctionWsClient');
+const { getSharedAuctionWsClient, getMessageSource } = await import(
+  '../AuctionWsClient'
+);
 
 // ---------------------------------------------------------------------------
 // Tests
@@ -442,5 +444,43 @@ describe('AuctionWsClient deduplication', () => {
     // Same ID should be accepted again after TTL expiry
     deliverFromMesh(msg);
     await vi.waitFor(() => expect(received).toHaveLength(2));
+  });
+});
+
+describe('AuctionWsClient source tagging', () => {
+  beforeEach(() => {
+    meshSent.length = 0;
+    meshListeners.length = 0;
+    mockMeshTransport.send.mockClear();
+    mockMeshTransport.addMessageListener.mockClear();
+    isValidGossipPayloadMock.mockReturnValue(true);
+    validateGossipPayloadAsyncMock.mockResolvedValue(true);
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it('tags mesh messages so getMessageSource returns "p2p"', async () => {
+    const client = getSharedAuctionWsClient('ws://localhost:9999');
+    const received: unknown[] = [];
+    client.addMessageListener((msg) => received.push(msg));
+
+    const meshMsg = {
+      id: 'src-tag-1',
+      type: 'auction.bids',
+      auctionId: 'a1',
+      bids: [],
+    };
+    deliverFromMesh(meshMsg);
+
+    await vi.waitFor(() => expect(received).toHaveLength(1));
+    expect(getMessageSource(received[0])).toBe('p2p');
+  });
+
+  it('getMessageSource returns undefined for untagged messages', () => {
+    expect(getMessageSource({ type: 'test' })).toBeUndefined();
+    expect(getMessageSource(null)).toBeUndefined();
+    expect(getMessageSource(undefined)).toBeUndefined();
   });
 });
