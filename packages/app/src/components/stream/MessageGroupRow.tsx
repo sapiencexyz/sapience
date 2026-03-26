@@ -6,32 +6,19 @@ import { Badge } from '@sapience/ui/components/ui/badge';
 import {
   Tooltip,
   TooltipContent,
-  TooltipProvider,
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
 import { TableRow, TableCell } from '@sapience/ui/components/ui/table';
 import MessageRow from './MessageRow';
+import {
+  formatTimeAgo,
+  formatTimeFull,
+  badgeBase,
+  sourceBadge,
+  p2pBadge,
+} from './utils';
 import type { MessageGroup } from '~/hooks/relayer/useRelayerMessageLog';
 import { useSecondTick } from '~/hooks/useSecondTick';
-
-function formatTimeAgo(ts: number): string {
-  const diff = Math.max(0, Math.floor((Date.now() - ts) / 1000));
-  if (diff < 5) return 'just now';
-  if (diff < 60) return `${diff}s ago`;
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  return `${Math.floor(diff / 3600)}h ago`;
-}
-
-function formatTimeFull(ts: number): string {
-  const d = new Date(ts);
-  return d.toLocaleTimeString('en-US', {
-    hour12: false,
-    hour: '2-digit',
-    minute: '2-digit',
-    second: '2-digit',
-    fractionalSecondDigits: 3,
-  });
-}
 
 function truncateId(id: string, maxLen = 16): string {
   return id.length > maxLen ? id.slice(0, maxLen) + '…' : id;
@@ -48,16 +35,11 @@ function getSourceSummary(group: MessageGroup) {
   return 'relayer';
 }
 
-const badgeBase = 'px-1.5 py-0.5 text-xs font-medium !rounded-md font-mono';
-
 const categoryColors: Record<string, string> = {
   rfq: 'border-blue-500/30 bg-blue-500/10 text-blue-500',
   vault: 'border-green-500/30 bg-green-500/10 text-green-500',
   secondary: 'border-orange-500/30 bg-orange-500/10 text-orange-500',
 };
-
-const sourceBadge = `${badgeBase} border-muted-foreground/30 bg-muted/20 text-muted-foreground`;
-const p2pBadge = `${badgeBase} border-purple-500/30 bg-purple-500/10 text-purple-500`;
 
 interface MessageGroupRowProps {
   group: MessageGroup;
@@ -66,8 +48,7 @@ interface MessageGroupRowProps {
 const MessageGroupRow = ({ group }: MessageGroupRowProps) => {
   const [isExpanded, setIsExpanded] = useState(false);
   const sourceSummary = getSourceSummary(group);
-  const now = useSecondTick();
-  void now; // trigger re-render every second
+  useSecondTick();
 
   return (
     <>
@@ -76,20 +57,18 @@ const MessageGroupRow = ({ group }: MessageGroupRowProps) => {
         onClick={() => setIsExpanded(!isExpanded)}
       >
         <TableCell className="font-mono text-xs text-muted-foreground py-1.5 px-4">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="cursor-default">
-                  {formatTimeAgo(group.updatedAt)}
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>
-                <span className="font-mono text-xs">
-                  {formatTimeFull(group.updatedAt)}
-                </span>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="cursor-default">
+                {formatTimeAgo(group.updatedAt)}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>
+              <span className="font-mono text-xs">
+                {formatTimeFull(group.updatedAt)}
+              </span>
+            </TooltipContent>
+          </Tooltip>
         </TableCell>
         <TableCell className="py-1.5 px-4">
           <Badge
@@ -100,18 +79,16 @@ const MessageGroupRow = ({ group }: MessageGroupRowProps) => {
           </Badge>
         </TableCell>
         <TableCell className="font-mono text-xs py-1.5 px-4 truncate">
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="cursor-default">
-                  {truncateId(group.groupId)}
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>
-                <span className="font-mono text-xs">{group.groupId}</span>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="cursor-default">
+                {truncateId(group.groupId)}
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>
+              <span className="font-mono text-xs">{group.groupId}</span>
+            </TooltipContent>
+          </Tooltip>
         </TableCell>
         <TableCell
           className="font-mono text-xs text-muted-foreground truncate max-w-0 py-1.5 px-4"

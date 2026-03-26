@@ -79,7 +79,9 @@ export function useRelayerMessageLog() {
 
   const groupsRef = useRef<Map<string, MessageGroup>>(new Map());
   const [tick, setTick] = useState(0);
-  const subscribedAuctionsRef = useRef<Map<string, number>>(new Map());
+  const subscribedAuctionsRef = useRef<
+    Map<string, { subscribedAt: number; secondary: boolean }>
+  >(new Map());
 
   const clear = useCallback(() => {
     groupsRef.current.clear();
@@ -90,6 +92,7 @@ export function useRelayerMessageLog() {
   useEffect(() => {
     if (!wsUrl) return;
     const client = getSharedAuctionWsClient(wsUrl);
+    const subscribedAuctions = subscribedAuctionsRef.current;
 
     // Subscribe to feeds (queued until open by the WS client)
     client.send({ type: 'vault_quote.observe' });
@@ -98,8 +101,11 @@ export function useRelayerMessageLog() {
     const offOpen = client.addOpenListener(() => {
       // Only resubscribe to dynamic auction channels on reconnect
       // (vault_quote.observe and secondary.feed.subscribe are sent once on mount)
-      for (const id of Array.from(subscribedAuctionsRef.current.keys())) {
-        client.send({ type: 'auction.subscribe', payload: { auctionId: id } });
+      for (const [id, entry] of Array.from(subscribedAuctions.entries())) {
+        const subType = entry.secondary
+          ? 'secondary.auction.subscribe'
+          : 'auction.subscribe';
+        client.send({ type: subType, payload: { auctionId: id } });
       }
     });
 
@@ -120,7 +126,7 @@ export function useRelayerMessageLog() {
 
         const groupInfo = extractGroupKey(type, msg);
         const groupId = groupInfo?.groupId ?? `system:${type}`;
-        const category = groupInfo?.category ?? 'escrow';
+        const category: GroupCategory = groupInfo?.category ?? 'rfq';
 
         const groups = groupsRef.current;
         const existing = groups.get(groupId);
@@ -151,7 +157,10 @@ export function useRelayerMessageLog() {
           const auctionId =
             (payload?.auctionId as string) || (msg.auctionId as string);
           if (auctionId) {
-            subscribedAuctionsRef.current.set(auctionId, now);
+            subscribedAuctions.set(auctionId, {
+              subscribedAt: now,
+              secondary: false,
+            });
             client.send({
               type: 'auction.subscribe',
               payload: { auctionId },
@@ -164,7 +173,10 @@ export function useRelayerMessageLog() {
           const auctionId =
             (payload?.auctionId as string) || (msg.auctionId as string);
           if (auctionId) {
-            subscribedAuctionsRef.current.set(auctionId, now);
+            subscribedAuctions.set(auctionId, {
+              subscribedAt: now,
+              secondary: true,
+            });
             client.send({
               type: 'secondary.auction.subscribe',
               payload: { auctionId },
@@ -192,13 +204,14 @@ export function useRelayerMessageLog() {
 
       // Prune stale subscriptions
       const subCutoff = Date.now() - SUBSCRIPTION_TTL_MS;
-      for (const [id, subscribedAt] of Array.from(
-        subscribedAuctionsRef.current.entries()
-      )) {
-        if (subscribedAt < subCutoff) {
-          subscribedAuctionsRef.current.delete(id);
+      for (const [id, entry] of Array.from(subscribedAuctions.entries())) {
+        if (entry.subscribedAt < subCutoff) {
+          subscribedAuctions.delete(id);
+          const unsubType = entry.secondary
+            ? 'secondary.auction.unsubscribe'
+            : 'auction.unsubscribe';
           client.send({
-            type: 'auction.unsubscribe',
+            type: unsubType,
             payload: { auctionId: id },
           });
         }
@@ -210,6 +223,7 @@ export function useRelayerMessageLog() {
     return () => {
       client.send({ type: 'vault_quote.unobserve' });
       client.send({ type: 'secondary.feed.unsubscribe' });
+      subscribedAuctions.clear();
       offMsg();
       offOpen();
       clearInterval(pruneTimer);

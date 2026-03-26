@@ -15,6 +15,7 @@ import {
   TableRow,
   TableHead,
 } from '@sapience/ui/components/ui/table';
+import { TooltipProvider } from '@sapience/ui/components/ui/tooltip';
 import MessageGroupRow from './MessageGroupRow';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { toAuctionWsUrl } from '~/lib/ws';
@@ -53,63 +54,65 @@ const StreamReview = () => {
   }, [groups, filter]);
 
   return (
-    <div className="space-y-4">
-      <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterTab)}>
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <h1 className="text-xl font-medium">Stream</h1>
-            <span
-              className={`h-2.5 w-2.5 rounded-full ${connected ? 'bg-green-500' : 'bg-red-500'}`}
-              title={connected ? 'Connected' : 'Disconnected'}
-            />
+    <TooltipProvider>
+      <div className="space-y-4">
+        <Tabs value={filter} onValueChange={(v) => setFilter(v as FilterTab)}>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <h1 className="text-xl font-medium">Stream</h1>
+              <span
+                className={`h-2.5 w-2.5 rounded-full ${connected ? 'bg-green-500' : 'bg-red-500'}`}
+                title={connected ? 'Connected' : 'Disconnected'}
+              />
+            </div>
+            <div className="flex items-center gap-3">
+              <TabsList>
+                <TabsTrigger value="all">All</TabsTrigger>
+                <TabsTrigger value="rfq">RFQ</TabsTrigger>
+                <TabsTrigger value="secondary">Secondary</TabsTrigger>
+                <TabsTrigger value="vault">Vault</TabsTrigger>
+              </TabsList>
+              <Button variant="outline" size="sm" onClick={clear}>
+                Clear
+              </Button>
+            </div>
           </div>
-          <div className="flex items-center gap-3">
-            <TabsList>
-              <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="rfq">RFQ</TabsTrigger>
-              <TabsTrigger value="secondary">Secondary</TabsTrigger>
-              <TabsTrigger value="vault">Vault</TabsTrigger>
-            </TabsList>
-            <Button variant="outline" size="sm" onClick={clear}>
-              Clear
-            </Button>
-          </div>
-        </div>
 
-        <TabsContent value={filter} className="mt-4">
-          {filtered.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground text-sm">
-              No messages yet. Waiting for activity…
-            </div>
-          ) : (
-            <div className="border rounded-md bg-black">
-              <Table className="table-fixed">
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-24 h-8 py-1 text-xs">
-                      Time
-                    </TableHead>
-                    <TableHead className="w-28 h-8 py-1 text-xs">
-                      Category
-                    </TableHead>
-                    <TableHead className="w-36 h-8 py-1 text-xs">
-                      Channel
-                    </TableHead>
-                    <TableHead className="h-8 py-1" />
-                    <TableHead className="w-28 h-8 py-1" />
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtered.map((group) => (
-                    <MessageGroupRow key={group.groupId} group={group} />
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
-          )}
-        </TabsContent>
-      </Tabs>
-    </div>
+          <TabsContent value={filter} className="mt-4">
+            {filtered.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground text-sm">
+                No messages yet. Waiting for activity…
+              </div>
+            ) : (
+              <div className="border rounded-md bg-black">
+                <Table className="table-fixed">
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-24 h-8 py-1 text-xs">
+                        Time
+                      </TableHead>
+                      <TableHead className="w-28 h-8 py-1 text-xs">
+                        Type
+                      </TableHead>
+                      <TableHead className="w-36 h-8 py-1 text-xs">
+                        Channel
+                      </TableHead>
+                      <TableHead className="h-8 py-1" />
+                      <TableHead className="w-28 h-8 py-1" />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filtered.map((group) => (
+                      <MessageGroupRow key={group.groupId} group={group} />
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </TabsContent>
+        </Tabs>
+      </div>
+    </TooltipProvider>
   );
 };
 
