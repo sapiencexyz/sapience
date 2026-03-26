@@ -46,6 +46,7 @@ import {
 } from 'viem';
 import { fetchWithRetry } from '../src/utils/fetch.js';
 import { confirmProductionAccess } from '../src/utils/index.js';
+import { filterByResolver } from '../src/settlement/resolver-filter.js';
 import { conditionalTokensConditionResolver } from '@sapience/sdk';
 import {
   createPolygonClient,
@@ -94,6 +95,7 @@ interface CLIOptions {
 
 interface SapienceCondition {
   id: string;
+  resolver: string | null;
 }
 
 interface GraphQLResponse<T> {
@@ -208,6 +210,7 @@ query UnresolvedConditions($now: Int!, $take: Int!, $skip: Int!) {
     skip: $skip
   ) {
     id
+    resolver
   }
 }
 `;
@@ -481,10 +484,19 @@ async function main() {
   }
 
   try {
-    const conditions = await fetchUnresolvedConditions(sapienceApiUrl);
+    const allConditions = await fetchUnresolvedConditions(sapienceApiUrl);
+
+    // Filter to only CT resolver conditions — skip Pyth and unknown resolvers
+    const conditions = filterByResolver(allConditions, RESOLVER_ADDRESS);
+
+    if (allConditions.length !== conditions.length) {
+      console.log(
+        `Filtered ${allConditions.length} conditions to ${conditions.length} matching CT resolver ${RESOLVER_ADDRESS}`
+      );
+    }
 
     if (conditions.length === 0) {
-      console.log('No unsettled conditions found');
+      console.log('No unsettled CT conditions found');
       return;
     }
 
