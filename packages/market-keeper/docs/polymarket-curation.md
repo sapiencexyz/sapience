@@ -10,7 +10,7 @@ Sapience doesn't list every market from Polymarket. Instead, an automated pipeli
 
 - Settle within the next **21 days**
 - Be a **binary** (Yes/No) market
-- Have at least **$10,000 in trading volume** and **$1,000 in liquidity** — unless it covers a key topic (see [Always-Include](#step-4-always-include-override) below)
+- Have at least **$5,000 in trading volume** and **$1,000 in liquidity** — unless it covers a key topic (see [Always-Include](#step-4-always-include-override) below)
 - Not be a **crypto** market (with some exceptions)
 - Not already exist on Sapience
 
@@ -38,7 +38,7 @@ A market must pass **both** of these thresholds to be included:
 
 | Threshold          | Minimum |
 | ------------------ | ------- |
-| **Trading volume** | $10,000 |
+| **Trading volume** | $5,000  |
 | **Liquidity**      | $1,000  |
 
 Markets with an event are each treated as their own group. A market passes if it meets both thresholds.
