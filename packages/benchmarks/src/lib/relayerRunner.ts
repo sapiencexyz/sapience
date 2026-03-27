@@ -36,8 +36,10 @@ export interface AuctionTiming {
   validationError?: string;
   /** Predictor collateral in wei string */
   predictorCollateral?: string;
-  /** First bid's counterparty collateral in wei string */
-  counterpartyCollateral?: string;
+  /** Estimator bid's counterparty collateral in wei string */
+  estimatorCollateral?: string;
+  /** Usable (non-estimator) bid's counterparty collateral in wei string */
+  usableCollateral?: string;
   /** The RFQ payload we sent (needed for bid validation) */
   rfqPayload?: AuctionRFQPayload;
   /** Number of picks in this auction */
@@ -173,9 +175,6 @@ export function setupMessageHandler(session: RelayerSession) {
           const bids: BidPayload[] = payload?.bids ?? [];
           if (!timing.firstBidAt) {
             timing.firstBidAt = now;
-            if (bids.length > 0) {
-              timing.counterpartyCollateral = bids[0].counterpartyCollateral;
-            }
             session.onUpdate();
           }
 
@@ -183,9 +182,11 @@ export function setupMessageHandler(session: RelayerSession) {
             if (bid.counterparty?.toLowerCase() === ESTIMATOR_ADDRESS) {
               if (!timing.firstEstimatorBidAt) {
                 timing.firstEstimatorBidAt = now;
+                timing.estimatorCollateral = bid.counterpartyCollateral;
                 session.onUpdate();
               }
             } else if (!timing.firstValidBidAt && !timing.validating) {
+              timing.usableCollateral = bid.counterpartyCollateral;
               timing.validating = true;
               validateBid(bid, timing, session);
             }

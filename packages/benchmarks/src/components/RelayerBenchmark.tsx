@@ -32,7 +32,8 @@ interface AuctionRow {
   error?: string;
   validationError?: string;
   predictorCollateral?: string;
-  counterpartyCollateral?: string;
+  estimatorCollateral?: string;
+  usableCollateral?: string;
   pickCount?: number;
   // For detail dialog
   rfqPayload?: Record<string, unknown>;
@@ -155,9 +156,13 @@ function AuctionDialog({ row, onClose }: { row: AuctionRow; onClose: () => void 
   if (row.bidMs !== undefined) sections.push({ label: 'Time to bid', content: `${fmt(row.bidMs)}ms` });
   if (row.validBidMs !== undefined) sections.push({ label: 'Time to usable bid', content: `${fmt(row.validBidMs)}ms` });
   if (row.predictorCollateral) sections.push({ label: 'Predictor collateral', content: `${fmtWei(row.predictorCollateral)} USDe` });
-  if (row.counterpartyCollateral) sections.push({ label: 'Counterparty collateral', content: `${fmtWei(row.counterpartyCollateral)} USDe` });
-  if (row.predictorCollateral && row.counterpartyCollateral) {
-    sections.push({ label: 'Implied chance', content: `${impliedChance(row.predictorCollateral, row.counterpartyCollateral)}%` });
+  if (row.estimatorCollateral) {
+    sections.push({ label: 'Estimator collateral', content: `${fmtWei(row.estimatorCollateral)} USDe` });
+    if (row.predictorCollateral) sections.push({ label: 'Estimator implied chance', content: `${impliedChance(row.predictorCollateral, row.estimatorCollateral)}%` });
+  }
+  if (row.usableCollateral) {
+    sections.push({ label: 'Usable collateral', content: `${fmtWei(row.usableCollateral)} USDe` });
+    if (row.predictorCollateral) sections.push({ label: 'Usable implied chance', content: `${impliedChance(row.predictorCollateral, row.usableCollateral)}%` });
   }
   if (row.error) sections.push({ label: 'Error', content: row.error });
   if (row.validationError) sections.push({ label: 'Validation error', content: row.validationError });
@@ -201,16 +206,16 @@ function AuctionDialog({ row, onClose }: { row: AuctionRow; onClose: () => void 
                   <span className="expected-label">Expected counterparty collateral</span>
                   <span className="expected-value">{fmtWei(String(Math.round(expected.expectedCounterpartyWei)))} USDe</span>
                 </div>
-                {row.counterpartyCollateral && (
+                {row.usableCollateral && (
                   <>
                     <div className="expected-row">
-                      <span className="expected-label">Actual counterparty collateral</span>
-                      <span className="expected-value">{fmtWei(row.counterpartyCollateral)} USDe</span>
+                      <span className="expected-label">Actual (usable) collateral</span>
+                      <span className="expected-value">{fmtWei(row.usableCollateral)} USDe</span>
                     </div>
                     <div className="expected-row">
                       <span className="expected-label">Difference</span>
                       {(() => {
-                        const diff = (Number(row.counterpartyCollateral) - expected.expectedCounterpartyWei) / 1e18;
+                        const diff = (Number(row.usableCollateral) - expected.expectedCounterpartyWei) / 1e18;
                         const sign = diff >= 0 ? '+' : '-';
                         const abs = Math.abs(diff);
                         return (
@@ -304,7 +309,8 @@ export function RelayerBenchmark({ config, conditions }: Props) {
         validationError: t.validationError,
         pickCount: t.pickCount,
         predictorCollateral: t.predictorCollateral,
-        counterpartyCollateral: t.counterpartyCollateral,
+        estimatorCollateral: t.estimatorCollateral,
+        usableCollateral: t.usableCollateral,
         rfqPayload: t.rfqPayload as unknown as Record<string, unknown>,
         auctionId: t.auctionId,
         picks: t.picks,
@@ -557,31 +563,30 @@ export function RelayerBenchmark({ config, conditions }: Props) {
                   <span className="auction-phase phase-pending">{row.validating ? 'validating...' : 'waiting for bid...'}</span>
                 ) : (
                   <>
-                    <span className="auction-phase phase-bid">
-                      BID {row.counterpartyCollateral && `${fmtWei(row.counterpartyCollateral)} `}
-                      {row.predictorCollateral && row.counterpartyCollateral && (
-                        <span className="auction-chance">({impliedChance(row.predictorCollateral, row.counterpartyCollateral)}%)</span>
-                      )}
-                      {' '}{fmt(row.bidMs!)}ms
-                    </span>
                     {row.estimatorBidMs != null && (
                       <>
+                        <span className="auction-phase phase-estimator">
+                          EST {row.estimatorCollateral && `${fmtWei(row.estimatorCollateral)} `}
+                          {row.predictorCollateral && row.estimatorCollateral && (
+                            <span className="auction-chance">({impliedChance(row.predictorCollateral, row.estimatorCollateral)}%)</span>
+                          )}
+                          {' '}{fmt(row.estimatorBidMs)}ms
+                        </span>
                         <span className="auction-arrow">→</span>
-                        <span className="auction-phase phase-estimator">ESTIMATOR {fmt(row.estimatorBidMs)}ms</span>
                       </>
                     )}
                     {row.validBidMs != null ? (
-                      <>
-                        <span className="auction-arrow">→</span>
-                        <span className="auction-phase phase-valid">USABLE {fmt(row.validBidMs)}ms</span>
-                      </>
-                    ) : row.state === 'bid' && (
-                      <>
-                        <span className="auction-arrow">→</span>
-                        <span className="auction-phase phase-pending" title={row.validationError}>
-                          {row.validating ? 'validating...' : row.validationError ? `failed: ${row.validationError.slice(0, 40)}` : 'waiting...'}
-                        </span>
-                      </>
+                      <span className="auction-phase phase-valid">
+                        USABLE {row.usableCollateral && `${fmtWei(row.usableCollateral)} `}
+                        {row.predictorCollateral && row.usableCollateral && (
+                          <span className="auction-chance">({impliedChance(row.predictorCollateral, row.usableCollateral)}%)</span>
+                        )}
+                        {' '}{fmt(row.validBidMs)}ms
+                      </span>
+                    ) : (
+                      <span className="auction-phase phase-pending" title={row.validationError}>
+                        {row.validating ? 'validating...' : row.validationError ? `failed: ${row.validationError.slice(0, 40)}` : 'waiting...'}
+                      </span>
                     )}
                   </>
                 )}
