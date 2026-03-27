@@ -100,9 +100,18 @@ export function createAuctionWebSocketServer() {
   };
 
   wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
+    // Railway (our reverse proxy) appends the real client IP as the rightmost
+    // entry in x-forwarded-for. Take that entry so clients can't spoof their IP
+    // by prepending a fake value.
+    const forwardedFor = (req.headers['x-forwarded-for'] as string)
+      ?.split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
     const ip =
+      (forwardedFor && forwardedFor.length > 0
+        ? forwardedFor[forwardedFor.length - 1]
+        : undefined) ||
       req.socket.remoteAddress ||
-      (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
       'unknown';
 
     // Global connection limit
