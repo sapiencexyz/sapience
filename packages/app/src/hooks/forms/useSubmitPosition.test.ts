@@ -1,5 +1,6 @@
 import { vi } from 'vitest';
 import { renderHook, act, waitFor } from '@testing-library/react';
+import { OutcomeSide } from '@sapience/sdk/types';
 import { useSubmitPosition } from './useSubmitPosition';
 import type { MintPredictionRequestData } from '~/lib/auction/useAuctionStart';
 
@@ -119,7 +120,7 @@ const VALID_MINT_DATA: MintPredictionRequestData = {
     {
       conditionResolver: '0xResolver' as `0x${string}`,
       conditionId: '0xABCD' as `0x${string}`,
-      predictedOutcome: 1,
+      predictedOutcome: OutcomeSide.NO,
     },
   ],
 };

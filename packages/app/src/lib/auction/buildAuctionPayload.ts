@@ -1,3 +1,4 @@
+import { OutcomeSide } from '@sapience/sdk/types';
 import { conditionalTokensConditionResolver } from '@sapience/sdk/contracts';
 import {
   CHAIN_ID_ETHEREAL,
@@ -242,7 +243,7 @@ export function buildPythAuctionStartPayload(
   const escrowPicks = normalized.map((o) => ({
     conditionResolver: resolver,
     conditionId: getPythMarketId(o),
-    predictedOutcome: o.prediction ? 0 : 1,
+    predictedOutcome: o.prediction ? OutcomeSide.YES : OutcomeSide.NO,
   }));
 
   return { resolver, predictedOutcomes: [encoded], escrowPicks };

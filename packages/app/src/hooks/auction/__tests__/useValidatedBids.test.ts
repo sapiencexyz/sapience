@@ -1,5 +1,6 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
+import { OutcomeSide } from '@sapience/sdk/types';
 import type { QuoteBid } from '~/lib/auction/useAuctionStart';
 import type { UseValidatedBidsOptions } from '../useValidatedBids';
 import type { Pick } from '@sapience/sdk/types';
@@ -65,7 +66,7 @@ const DEFAULT_PICKS: Pick[] = [
   {
     conditionResolver: '0xResolver' as `0x${string}`,
     conditionId: '0xCondition' as `0x${string}`,
-    predictedOutcome: 1,
+    predictedOutcome: OutcomeSide.NO,
   },
 ];
 

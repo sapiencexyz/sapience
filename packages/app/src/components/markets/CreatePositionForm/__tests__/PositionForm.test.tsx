@@ -89,6 +89,9 @@ vi.mock('@sapience/ui/hooks/use-toast', () => ({
   useToast: () => ({ toast: vi.fn() }),
 }));
 
+// SDK types
+import { OutcomeSide } from '@sapience/sdk/types';
+
 // SDK
 vi.mock('@sapience/sdk', () => ({
   generateRandomNonce: () => BigInt(12345),
@@ -335,12 +338,12 @@ function setDefaults() {
       {
         conditionResolver: '0xResolver1',
         conditionId: '0xCondition1',
-        predictedOutcome: 1,
+        predictedOutcome: OutcomeSide.NO,
       },
       {
         conditionResolver: '0xResolver1',
         conditionId: '0xCondition2',
-        predictedOutcome: 1,
+        predictedOutcome: OutcomeSide.NO,
       },
     ],
   });
@@ -580,7 +583,7 @@ describe('PositionForm', () => {
           {
             conditionResolver: '0xResolver1',
             conditionId: '0xCondition1',
-            predictedOutcome: 1,
+            predictedOutcome: OutcomeSide.NO,
           },
         ],
       });

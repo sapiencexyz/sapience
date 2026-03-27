@@ -1,4 +1,5 @@
 import { vi, describe, it, expect, beforeEach, afterEach } from 'vitest';
+import { OutcomeSide } from '@sapience/sdk/types';
 
 // ---------------------------------------------------------------------------
 // Mock MeshTransport — captures send() calls and exposes listener trigger
@@ -261,7 +262,7 @@ describe('AuctionWsClient dual-receive (inbound)', () => {
         {
           conditionResolver: '0x1234567890123456789012345678901234567890',
           conditionId: '0x' + 'ab'.repeat(32),
-          predictedOutcome: 0,
+          predictedOutcome: OutcomeSide.YES,
         },
       ],
       predictor: '0x1234567890123456789012345678901234567890',

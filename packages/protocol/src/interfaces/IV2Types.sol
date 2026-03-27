@@ -8,8 +8,8 @@ pragma solidity ^0.8.19;
 interface IV2Types {
     /// @notice Outcome side for a pick
     enum OutcomeSide {
-        YES,
-        NO
+        NO,
+        YES
     }
 
     /// @notice Settlement result for a prediction

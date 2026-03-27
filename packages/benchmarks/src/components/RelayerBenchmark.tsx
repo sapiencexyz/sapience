@@ -11,6 +11,7 @@ import {
   type RelayerSession,
   type AuctionTiming,
 } from '../lib/relayerRunner';
+import { OutcomeSide } from '@sapience/sdk/types/escrow';
 import type { EnvConfig } from '../lib/constants';
 
 interface Props {
@@ -97,7 +98,7 @@ function computeExpectedQuote(picks: EnrichedPick[], predictorCollateralWei: str
   for (const p of picks) {
     if (p.estimatedPrice == null) return null;
     // estimatedPrice is probability of YES; adjust for predicted outcome
-    const prob = p.predictedOutcome === 1 ? p.estimatedPrice : 1 - p.estimatedPrice;
+    const prob = p.predictedOutcome === OutcomeSide.YES ? p.estimatedPrice : 1 - p.estimatedPrice;
     if (prob <= 0 || prob >= 1) return null;
     probs.push(prob);
   }
@@ -117,8 +118,8 @@ function PickCard({ pick }: { pick: EnrichedPick }) {
     <div className="pick-card">
       <div className="pick-question">{pick.question ?? pick.conditionId.slice(0, 16)}</div>
       <div className="pick-details">
-        <span className={`pick-outcome ${pick.predictedOutcome === 1 ? 'pick-yes' : 'pick-no'}`}>
-          {pick.predictedOutcome === 1 ? 'YES' : 'NO'}
+        <span className={`pick-outcome ${pick.predictedOutcome === OutcomeSide.YES ? 'pick-yes' : 'pick-no'}`}>
+          {pick.predictedOutcome === OutcomeSide.YES ? 'YES' : 'NO'}
         </span>
         <span className="pick-price">
           {pick.polymarketUrl ? (
