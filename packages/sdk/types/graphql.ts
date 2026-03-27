@@ -12,8 +12,12 @@ export type Scalars = {
   Boolean: { input: boolean; output: boolean; }
   Int: { input: number; output: number; }
   Float: { input: number; output: number; }
+  /** The `BigInt` scalar type represents non-fractional signed whole numeric values. */
+  BigInt: { input: any; output: any; }
   /** A date-time string at UTC, such as 2007-12-03T10:15:30Z, compliant with the `date-time` format outlined in section 5.6 of the RFC 3339 profile of the ISO 8601 standard for representation of dates and times using the Gregorian calendar.This scalar is serialized to a string in ISO 8601 format and parsed from a string in ISO 8601 format. */
   DateTimeISO: { input: any; output: any; }
+  /** GraphQL Scalar representing the Prisma.Decimal type, based on Decimal.js library. */
+  Decimal: { input: any; output: any; }
 };
 
 /** Accuracy rank for an address on the forecasting leaderboard */
@@ -229,6 +233,17 @@ export type BalanceDataPoint = {
   deployedCollateral: Scalars['String']['output'];
   /** Unix epoch timestamp (seconds) for the start of this bucket */
   timestamp: Scalars['Int']['output'];
+};
+
+export type BigIntFilter = {
+  equals?: InputMaybe<Scalars['BigInt']['input']>;
+  gt?: InputMaybe<Scalars['BigInt']['input']>;
+  gte?: InputMaybe<Scalars['BigInt']['input']>;
+  in?: InputMaybe<Array<Scalars['BigInt']['input']>>;
+  lt?: InputMaybe<Scalars['BigInt']['input']>;
+  lte?: InputMaybe<Scalars['BigInt']['input']>;
+  not?: InputMaybe<NestedBigIntFilter>;
+  notIn?: InputMaybe<Array<Scalars['BigInt']['input']>>;
 };
 
 export type BoolFilter = {
@@ -532,16 +547,26 @@ export type ConditionGroupOrderByWithRelationInput = {
   conditions?: InputMaybe<ConditionOrderByRelationAggregateInput>;
   createdAt?: InputMaybe<SortOrder>;
   id?: InputMaybe<SortOrder>;
+  maxCreatedAtEpoch?: InputMaybe<SortOrder>;
+  maxEndTime?: InputMaybe<SortOrder>;
   name?: InputMaybe<SortOrder>;
+  publicConditionCount?: InputMaybe<SortOrder>;
   similarMarkets?: InputMaybe<SortOrder>;
+  totalOpenInterest?: InputMaybe<SortOrder>;
+  totalPredictionCount?: InputMaybe<SortOrder>;
 };
 
 export type ConditionGroupScalarFieldEnum =
   | 'categoryId'
   | 'createdAt'
   | 'id'
+  | 'maxCreatedAtEpoch'
+  | 'maxEndTime'
   | 'name'
-  | 'similarMarkets';
+  | 'publicConditionCount'
+  | 'similarMarkets'
+  | 'totalOpenInterest'
+  | 'totalPredictionCount';
 
 export type ConditionGroupWhereInput = {
   AND?: InputMaybe<Array<ConditionGroupWhereInput>>;
@@ -552,8 +577,13 @@ export type ConditionGroupWhereInput = {
   conditions?: InputMaybe<ConditionListRelationFilter>;
   createdAt?: InputMaybe<DateTimeFilter>;
   id?: InputMaybe<IntFilter>;
+  maxCreatedAtEpoch?: InputMaybe<BigIntFilter>;
+  maxEndTime?: InputMaybe<IntFilter>;
   name?: InputMaybe<StringFilter>;
+  publicConditionCount?: InputMaybe<IntFilter>;
   similarMarkets?: InputMaybe<StringNullableListFilter>;
+  totalOpenInterest?: InputMaybe<DecimalFilter>;
+  totalPredictionCount?: InputMaybe<IntFilter>;
 };
 
 export type ConditionGroupWhereUniqueInput = {
@@ -565,8 +595,13 @@ export type ConditionGroupWhereUniqueInput = {
   conditions?: InputMaybe<ConditionListRelationFilter>;
   createdAt?: InputMaybe<DateTimeFilter>;
   id?: InputMaybe<Scalars['Int']['input']>;
+  maxCreatedAtEpoch?: InputMaybe<BigIntFilter>;
+  maxEndTime?: InputMaybe<IntFilter>;
   name?: InputMaybe<Scalars['String']['input']>;
+  publicConditionCount?: InputMaybe<IntFilter>;
   similarMarkets?: InputMaybe<StringNullableListFilter>;
+  totalOpenInterest?: InputMaybe<DecimalFilter>;
+  totalPredictionCount?: InputMaybe<IntFilter>;
 };
 
 export type ConditionListRelationFilter = {
@@ -730,6 +765,17 @@ export type DateTimeNullableFilter = {
   lte?: InputMaybe<Scalars['DateTimeISO']['input']>;
   not?: InputMaybe<NestedDateTimeNullableFilter>;
   notIn?: InputMaybe<Array<Scalars['DateTimeISO']['input']>>;
+};
+
+export type DecimalFilter = {
+  equals?: InputMaybe<Scalars['Decimal']['input']>;
+  gt?: InputMaybe<Scalars['Decimal']['input']>;
+  gte?: InputMaybe<Scalars['Decimal']['input']>;
+  in?: InputMaybe<Array<Scalars['Decimal']['input']>>;
+  lt?: InputMaybe<Scalars['Decimal']['input']>;
+  lte?: InputMaybe<Scalars['Decimal']['input']>;
+  not?: InputMaybe<NestedDecimalFilter>;
+  notIn?: InputMaybe<Array<Scalars['Decimal']['input']>>;
 };
 
 export type EnumLegacyPositionStatusFilter = {
@@ -1092,6 +1138,17 @@ export type LimitOrderWhereInput = {
   status?: InputMaybe<EnumLimitOrderStatusFilter>;
 };
 
+export type NestedBigIntFilter = {
+  equals?: InputMaybe<Scalars['BigInt']['input']>;
+  gt?: InputMaybe<Scalars['BigInt']['input']>;
+  gte?: InputMaybe<Scalars['BigInt']['input']>;
+  in?: InputMaybe<Array<Scalars['BigInt']['input']>>;
+  lt?: InputMaybe<Scalars['BigInt']['input']>;
+  lte?: InputMaybe<Scalars['BigInt']['input']>;
+  not?: InputMaybe<NestedBigIntFilter>;
+  notIn?: InputMaybe<Array<Scalars['BigInt']['input']>>;
+};
+
 export type NestedBoolFilter = {
   equals?: InputMaybe<Scalars['Boolean']['input']>;
   not?: InputMaybe<NestedBoolFilter>;
@@ -1122,6 +1179,17 @@ export type NestedDateTimeNullableFilter = {
   lte?: InputMaybe<Scalars['DateTimeISO']['input']>;
   not?: InputMaybe<NestedDateTimeNullableFilter>;
   notIn?: InputMaybe<Array<Scalars['DateTimeISO']['input']>>;
+};
+
+export type NestedDecimalFilter = {
+  equals?: InputMaybe<Scalars['Decimal']['input']>;
+  gt?: InputMaybe<Scalars['Decimal']['input']>;
+  gte?: InputMaybe<Scalars['Decimal']['input']>;
+  in?: InputMaybe<Array<Scalars['Decimal']['input']>>;
+  lt?: InputMaybe<Scalars['Decimal']['input']>;
+  lte?: InputMaybe<Scalars['Decimal']['input']>;
+  not?: InputMaybe<NestedDecimalFilter>;
+  notIn?: InputMaybe<Array<Scalars['Decimal']['input']>>;
 };
 
 export type NestedEnumLegacyPositionStatusFilter = {
