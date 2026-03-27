@@ -411,6 +411,12 @@ export function RelayerBenchmark({ config, conditions }: Props) {
         <label>
           Private Key
           <input type="password" value={privateKey} onChange={(e) => handleKeyChange(e.target.value)} disabled={running} placeholder="0x..." />
+          <span className="key-hint">
+            Private key used to sign requests, verifying identity. Use{' '}
+            <a href="#" onClick={(e) => { e.preventDefault(); if (!running) handleKeyChange('0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'); }}>
+              any on staging
+            </a>.
+          </span>
         </label>
         {derivedAddress && (
           <div className="wallet-info">

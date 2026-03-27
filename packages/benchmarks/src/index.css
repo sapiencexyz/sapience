@@ -159,6 +159,25 @@ button {
   background: #ff5555;
 }
 
+.key-hint {
+  font-size: 0.7rem;
+  color: #555;
+  text-transform: none;
+  letter-spacing: 0;
+}
+
+.key-hint a {
+  color: #7788cc;
+  text-decoration: none;
+  border-bottom: 1px dotted #7788cc;
+  cursor: pointer;
+}
+
+.key-hint a:hover {
+  color: #99aaff;
+  border-bottom-color: #99aaff;
+}
+
 /* Status */
 .status {
   font-size: 0.8rem;
