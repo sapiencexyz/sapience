@@ -200,13 +200,13 @@ export class QuestionsResolver {
     const sortValueExpr = (() => {
       switch (sanitizedSortField) {
         case QuestionSortField.openInterest:
-          return Prisma.sql`COALESCE(SUM(c."openInterest"::numeric), 0)::text`;
+          return Prisma.sql`COALESCE(SUM(c."openInterest"::numeric), 0)`;
         case QuestionSortField.predictionCount:
-          return Prisma.sql`COALESCE(SUM(c."predictionCount"), 0)::text`;
+          return Prisma.sql`COALESCE(SUM(c."predictionCount")::numeric, 0)`;
         case QuestionSortField.createdAt:
-          return Prisma.sql`COALESCE(MAX(FLOOR(EXTRACT(EPOCH FROM c."createdAt"))::bigint), 0)::text`;
+          return Prisma.sql`COALESCE(MAX(FLOOR(EXTRACT(EPOCH FROM c."createdAt"))::bigint)::numeric, 0)`;
         default:
-          return Prisma.sql`COALESCE(MAX(c."endTime"), 0)::text`;
+          return Prisma.sql`COALESCE(MAX(c."endTime")::numeric, 0)`;
       }
     })();
 
@@ -227,12 +227,12 @@ export class QuestionsResolver {
     const groupSortValue = hasConditionFilters
       ? Prisma.sql`agg.sort_value`
       : sanitizedSortField === QuestionSortField.openInterest
-        ? Prisma.sql`cg."totalOpenInterest"::text`
+        ? Prisma.sql`cg."totalOpenInterest"::numeric`
         : sanitizedSortField === QuestionSortField.predictionCount
-          ? Prisma.sql`cg."totalPredictionCount"::text`
+          ? Prisma.sql`cg."totalPredictionCount"::numeric`
           : sanitizedSortField === QuestionSortField.createdAt
-            ? Prisma.sql`cg."maxCreatedAtEpoch"::text`
-            : Prisma.sql`cg."maxEndTime"::text`;
+            ? Prisma.sql`cg."maxCreatedAtEpoch"::numeric`
+            : Prisma.sql`cg."maxEndTime"::numeric`;
 
     const groupPredictionCount = hasConditionFilters
       ? Prisma.sql`agg.prediction_count`
@@ -245,12 +245,12 @@ export class QuestionsResolver {
     // --- Condition-level sort value (shared by merged Part B+C) ---
     const condSortValue =
       sanitizedSortField === QuestionSortField.openInterest
-        ? Prisma.sql`COALESCE(c."openInterest"::numeric, 0)::text`
+        ? Prisma.sql`COALESCE(c."openInterest"::numeric, 0)`
         : sanitizedSortField === QuestionSortField.predictionCount
-          ? Prisma.sql`c."predictionCount"::text`
+          ? Prisma.sql`c."predictionCount"::numeric`
           : sanitizedSortField === QuestionSortField.createdAt
-            ? Prisma.sql`COALESCE(FLOOR(EXTRACT(EPOCH FROM c."createdAt"))::bigint, 0)::text`
-            : Prisma.sql`COALESCE(c."endTime", 2147483647)::text`;
+            ? Prisma.sql`COALESCE(FLOOR(EXTRACT(EPOCH FROM c."createdAt"))::bigint, 0)::numeric`
+            : Prisma.sql`COALESCE(c."endTime", 2147483647)::numeric`;
 
     // Step 1: UNION query — two parts:
     // - Part A: Active groups (sort values from denormalized cols or LATERAL)
@@ -325,7 +325,7 @@ export class QuestionsResolver {
       )
       SELECT item_type, group_id, condition_id, prediction_count
       FROM combined
-      ORDER BY sort_value::numeric ${Prisma.raw(dir)},
+      ORDER BY sort_value ${Prisma.raw(dir)},
                end_time ASC,
                item_type ASC,
                COALESCE(group_id, 0) ASC,
