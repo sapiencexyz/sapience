@@ -24,8 +24,14 @@ export function createConcurrencyLimiter(opts: ConcurrencyLimiterOptions) {
   const activePerIp = new Map<string, number>();
 
   function getIp(req: Request): string {
+    const forwardedFor = (req.headers['x-forwarded-for'] as string)
+      ?.split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
     return (
-      (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+      (forwardedFor && forwardedFor.length > 0
+        ? forwardedFor[forwardedFor.length - 1]
+        : undefined) ||
       req.socket.remoteAddress ||
       'unknown'
     );

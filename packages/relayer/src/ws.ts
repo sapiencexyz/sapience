@@ -86,6 +86,18 @@ export function createAuctionWebSocketServer() {
   // Per-IP connection tracking
   const connectionsPerIp = new Map<string, number>();
 
+  // Per-IP penalty cooldown — IPs disconnected for abuse can't reconnect immediately
+  const penaltyCooldowns = new Map<string, number>(); // ip → cooldown expiry timestamp
+
+  // Sweep expired penalty cooldowns every 60s to prevent unbounded map growth
+  const penaltySweepInterval = setInterval(() => {
+    const now = Date.now();
+    for (const [ip, expiry] of penaltyCooldowns) {
+      if (now >= expiry) penaltyCooldowns.delete(ip);
+    }
+  }, 60_000);
+  penaltySweepInterval.unref(); // don't keep the process alive for cleanup
+
   // Shared subscription manager for all topics (escrow, vault, observers)
   const subs = new InMemorySubscriptionManager();
 
@@ -100,13 +112,17 @@ export function createAuctionWebSocketServer() {
   };
 
   wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
-    // TODO: split(',')[0] takes the leftmost x-forwarded-for entry, which the
-    // client controls. A spoofed header bypasses per-IP limits (but not global
-    // limits). Proper fix: take the rightmost entry (appended by Railway's proxy),
-    // but that requires knowing the exact proxy chain depth. Low risk — global
-    // cap is the real safety net.
+    // Railway (our reverse proxy) appends the real client IP as the rightmost
+    // entry in x-forwarded-for. Take that entry so clients can't spoof their IP
+    // by prepending a fake value.
+    const forwardedFor = (req.headers['x-forwarded-for'] as string)
+      ?.split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
     const ip =
-      (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() ||
+      (forwardedFor && forwardedFor.length > 0
+        ? forwardedFor[forwardedFor.length - 1]
+        : undefined) ||
       req.socket.remoteAddress ||
       'unknown';
 
@@ -118,6 +134,16 @@ export function createAuctionWebSocketServer() {
       ws.close(1008, 'connection_limit_exceeded');
       return;
     }
+
+    // Per-IP penalty cooldown — reject if recently disconnected for abuse
+    const cooldownExpiry = penaltyCooldowns.get(ip);
+    if (cooldownExpiry && Date.now() < cooldownExpiry) {
+      console.warn(`[Relayer] IP ${ip} in penalty cooldown, rejecting`);
+      ws.close(1008, 'penalty_cooldown');
+      return;
+    }
+    // Clean up expired cooldowns lazily
+    if (cooldownExpiry) penaltyCooldowns.delete(ip);
 
     // Per-IP connection limit
     const ipCount = connectionsPerIp.get(ip) ?? 0;
@@ -175,6 +201,16 @@ export function createAuctionWebSocketServer() {
     let invalidMessageCount = 0;
     let validationFailureCount = 0;
 
+    const penaltyDisconnect = (reason: string) => {
+      // 60-second cooldown before this IP can reconnect
+      penaltyCooldowns.set(ip, Date.now() + 60_000);
+      try {
+        ws.close(1008, reason);
+      } catch {
+        /* */
+      }
+    };
+
     ws.on('message', async (data: RawData) => {
       try {
         resetIdleTimeout();
@@ -220,11 +256,7 @@ export function createAuctionWebSocketServer() {
             console.warn(
               `[Relayer] Too many invalid messages from ${ip}; closing`
             );
-            try {
-              ws.close(1008, 'too_many_invalid_messages');
-            } catch {
-              /* */
-            }
+            penaltyDisconnect('too_many_invalid_messages');
             return;
           }
           return;
@@ -295,11 +327,7 @@ export function createAuctionWebSocketServer() {
               console.warn(
                 `[Relayer] Too many invalid messages from ${ip}; closing`
               );
-              try {
-                ws.close(1008, 'too_many_invalid_messages');
-              } catch {
-                /* */
-              }
+              penaltyDisconnect('too_many_invalid_messages');
               return;
             }
             client.send({
@@ -358,11 +386,7 @@ export function createAuctionWebSocketServer() {
               console.warn(
                 `[Relayer] Too many validation failures from ${ip}; closing`
               );
-              try {
-                ws.close(1008, 'too_many_validation_failures');
-              } catch {
-                /* */
-              }
+              penaltyDisconnect('too_many_validation_failures');
               return;
             }
           }
@@ -393,9 +417,10 @@ export function createAuctionWebSocketServer() {
 
           const secondaryMsg =
             msg as import('@sapience/sdk/types/secondary').SecondaryClientToServerMessage;
+          let secondaryHandlerFailed = false;
           switch (secondaryMsg.type) {
             case 'secondary.auction.start':
-              await handleSecondaryAuctionStart(
+              secondaryHandlerFailed = await handleSecondaryAuctionStart(
                 client,
                 secondaryMsg.payload,
                 subs,
@@ -403,7 +428,7 @@ export function createAuctionWebSocketServer() {
               );
               break;
             case 'secondary.bid.submit':
-              await handleSecondaryBidSubmit(
+              secondaryHandlerFailed = await handleSecondaryBidSubmit(
                 client,
                 secondaryMsg.payload,
                 subs
@@ -425,6 +450,19 @@ export function createAuctionWebSocketServer() {
               handleSecondaryListingsRequest(client);
               break;
           }
+
+          // Track validation failures and disconnect abusive clients
+          if (secondaryHandlerFailed) {
+            validationFailureCount++;
+            if (validationFailureCount > config.WS_MAX_VALIDATION_FAILURES) {
+              console.warn(
+                `[Relayer] Too many validation failures from ${ip}; closing`
+              );
+              penaltyDisconnect('too_many_validation_failures');
+              return;
+            }
+          }
+
           trackDuration(msgType, startTime);
           return;
         }
@@ -437,11 +475,7 @@ export function createAuctionWebSocketServer() {
           console.warn(
             `[Relayer] Too many invalid messages from ${ip}; closing`
           );
-          try {
-            ws.close(1008, 'too_many_invalid_messages');
-          } catch {
-            /* */
-          }
+          penaltyDisconnect('too_many_invalid_messages');
           return;
         }
         console.warn(
