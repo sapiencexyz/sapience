@@ -33,6 +33,34 @@ import {
 import type { ApolloContext } from '../../startApolloServer';
 import type { SortOrder } from '@generated/type-graphql';
 
+/**
+ * Recursively flatten a tagged-template mock call into a single SQL string.
+ * Prisma.sql fragments are nested Sql objects ({strings, values}); primitive
+ * interpolations are replaced with '?'.
+ */
+function flattenSql(args: unknown[]): string {
+  const strings = args[0] as string[];
+  const values = args.slice(1);
+  let result = '';
+  for (let i = 0; i < strings.length; i++) {
+    result += strings[i];
+    if (i < values.length) {
+      const v = values[i];
+      if (
+        v &&
+        typeof v === 'object' &&
+        'strings' in (v as Record<string, unknown>)
+      ) {
+        const sqlObj = v as { strings: string[]; values: unknown[] };
+        result += flattenSql([sqlObj.strings, ...sqlObj.values]);
+      } else {
+        result += '?';
+      }
+    }
+  }
+  return result;
+}
+
 describe('QuestionsResolver', () => {
   let resolver: QuestionsResolver;
 
@@ -51,6 +79,9 @@ describe('QuestionsResolver', () => {
       (overrides.minEstimatedPrice as number) ?? null,
       (overrides.maxEstimatedPrice as number) ?? null
     );
+
+  /** Extract the full SQL text from the first $queryRaw call. */
+  const getCapturedSql = () => flattenSql(mockPrisma.$queryRaw.mock.calls[0]);
 
   beforeEach(() => {
     vi.clearAllMocks();
@@ -256,5 +287,55 @@ describe('QuestionsResolver', () => {
     const group = result[0].group as unknown as Record<string, unknown>;
     // Prisma returns 'condition' but GraphQL expects 'conditions'
     expect(group.conditions).toEqual(nestedConditions);
+  });
+
+  // ---------- SQL-structure assertions ----------
+
+  describe('SQL structure', () => {
+    beforeEach(() => {
+      mockPrisma.$queryRaw.mockResolvedValue([]);
+    });
+
+    it('uses denormalized columns (no LATERAL) when no per-condition filters', async () => {
+      await callQuestions();
+      const sql = getCapturedSql();
+
+      expect(sql).not.toContain('CROSS JOIN LATERAL');
+      expect(sql).toContain('cg."totalPredictionCount"');
+    });
+
+    it('uses LATERAL JOIN for filtered group aggregates when chainId filter is active', async () => {
+      await callQuestions({ chainId: 1 });
+      const sql = getCapturedSql();
+
+      expect(sql).toContain('CROSS JOIN LATERAL');
+      // Should compute aggregates from filtered conditions, not denormalized columns
+      expect(sql).toContain('SUM');
+    });
+
+    it('uses LATERAL JOIN when resolutionStatus filter is active', async () => {
+      await callQuestions({ resolutionStatus: ResolutionStatus.unresolved });
+      const sql = getCapturedSql();
+
+      expect(sql).toContain('CROSS JOIN LATERAL');
+    });
+
+    it('uses LATERAL JOIN when price filter is active', async () => {
+      await callQuestions({ minEstimatedPrice: 0.2 });
+      const sql = getCapturedSql();
+
+      expect(sql).toContain('CROSS JOIN LATERAL');
+    });
+
+    it('merges ungrouped and expired-group conditions via LEFT JOIN (two UNION parts, not three)', async () => {
+      await callQuestions();
+      const sql = getCapturedSql();
+
+      // Merged part uses LEFT JOIN to handle both ungrouped and expired-group conditions
+      expect(sql).toContain('LEFT JOIN condition_group');
+      // Should have exactly two UNION ALL (Part A + merged Part B/C)
+      const unionCount = (sql.match(/UNION ALL/g) || []).length;
+      expect(unionCount).toBe(1);
+    });
   });
 });

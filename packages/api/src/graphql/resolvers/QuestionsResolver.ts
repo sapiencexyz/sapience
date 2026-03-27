@@ -91,12 +91,14 @@ export class Question {
  *
  * Uses pre-computed aggregate columns on condition_group (maintained by
  * trg_condition_group_aggregates trigger) to avoid GROUP BY in the main query.
+ * When per-condition filters (chainId, resolution, price, minEndTime) are
+ * active, a LATERAL JOIN computes aggregates from only the matching conditions
+ * so that sort order stays accurate.
  *
- * UNION SQL query:
- * 1. Active groups — sort values read directly from denormalized columns
- * 2. Ungrouped conditions — individual values
- * 3. Expired group conditions — individual values (groups past maxEndTime)
- * 4. Sort together, paginate, fetch full records via Prisma ORM
+ * UNION SQL query (two parts):
+ * 1. Active groups — denormalized columns (fast) or LATERAL (filtered)
+ * 2. Individual conditions — ungrouped + expired-group merged via LEFT JOIN
+ * 3. Sort together, paginate, fetch full records via Prisma ORM
  */
 @Resolver()
 export class QuestionsResolver {
@@ -173,7 +175,8 @@ export class QuestionsResolver {
       return Prisma.sql`AND (${Prisma.join(parts, ' AND ')})`;
     })();
 
-    // Determine if per-condition filters are active (require EXISTS subquery for groups)
+    // Determine if per-condition filters are active (require LATERAL subquery
+    // in Part A so that group sort values reflect only the filtered conditions)
     const hasConditionFilters =
       chainId != null ||
       (resolutionStatus != null && resolutionStatus !== ResolutionStatus.all) ||
@@ -181,27 +184,79 @@ export class QuestionsResolver {
       maxEstimatedPrice != null ||
       minEndTime != null;
 
-    // Build EXISTS subquery for Part A when per-condition filters are active.
-    // Uses the existing IDX_condition_market_filter composite index.
-    const groupExistsFilter = hasConditionFilters
-      ? Prisma.sql`AND EXISTS (
-          SELECT 1 FROM condition c
+    // Reusable per-condition filter fragment (for LATERAL and Part B+C)
+    const conditionFilters = Prisma.sql`
+      ${chainId != null ? Prisma.sql`AND c."chainId" = ${chainId}` : Prisma.empty}
+      ${resolvedFilter}
+      ${priceFilter}
+      ${minEndTime != null ? Prisma.sql`AND c."endTime" >= ${minEndTime}` : Prisma.empty}
+    `;
+
+    // --- Part A column/join fragments ---
+    // When per-condition filters are active, use a LATERAL JOIN to compute
+    // aggregates from only the matching conditions (preserving correct sort
+    // order). When unfiltered, read directly from denormalized columns.
+
+    const sortValueExpr = (() => {
+      switch (sanitizedSortField) {
+        case QuestionSortField.openInterest:
+          return Prisma.sql`COALESCE(SUM(c."openInterest"::numeric), 0)::text`;
+        case QuestionSortField.predictionCount:
+          return Prisma.sql`COALESCE(SUM(c."predictionCount"), 0)::text`;
+        case QuestionSortField.createdAt:
+          return Prisma.sql`COALESCE(MAX(FLOOR(EXTRACT(EPOCH FROM c."createdAt"))::bigint), 0)::text`;
+        default:
+          return Prisma.sql`COALESCE(MAX(c."endTime"), 0)::text`;
+      }
+    })();
+
+    const groupLateralJoin = hasConditionFilters
+      ? Prisma.sql`CROSS JOIN LATERAL (
+          SELECT
+            ${sortValueExpr} as sort_value,
+            COALESCE(SUM(c."predictionCount"), 0) as prediction_count,
+            COALESCE(MAX(c."endTime"), 0) as end_time
+          FROM condition c
           WHERE c."conditionGroupId" = cg.id
             AND c.public = true
-            ${chainId != null ? Prisma.sql`AND c."chainId" = ${chainId}` : Prisma.empty}
-            ${resolvedFilter}
-            ${priceFilter}
-            ${minEndTime != null ? Prisma.sql`AND c."endTime" >= ${minEndTime}` : Prisma.empty}
-        )`
+            ${conditionFilters}
+          HAVING COUNT(*) > 0
+        ) agg`
       : Prisma.empty;
 
-    // Step 1: UNION query to get groups, ungrouped conditions, and expired group
-    // conditions sorted together.
-    // - Part A: Active groups (not all-expired) — sort values from denormalized columns
-    // - Part B: Ungrouped conditions with individual sort values
-    // - Part C: Individual conditions from expired groups, sorted by their own values
-    // Note: condition_group.id is integer, condition.id is string (text)
-    // We store them separately and use item_type to determine which ID to use
+    const groupSortValue = hasConditionFilters
+      ? Prisma.sql`agg.sort_value`
+      : sanitizedSortField === QuestionSortField.openInterest
+        ? Prisma.sql`cg."totalOpenInterest"::text`
+        : sanitizedSortField === QuestionSortField.predictionCount
+          ? Prisma.sql`cg."totalPredictionCount"::text`
+          : sanitizedSortField === QuestionSortField.createdAt
+            ? Prisma.sql`cg."maxCreatedAtEpoch"::text`
+            : Prisma.sql`cg."maxEndTime"::text`;
+
+    const groupPredictionCount = hasConditionFilters
+      ? Prisma.sql`agg.prediction_count`
+      : Prisma.sql`cg."totalPredictionCount"`;
+
+    const groupEndTime = hasConditionFilters
+      ? Prisma.sql`agg.end_time`
+      : Prisma.sql`cg."maxEndTime"`;
+
+    // --- Condition-level sort value (shared by merged Part B+C) ---
+    const condSortValue =
+      sanitizedSortField === QuestionSortField.openInterest
+        ? Prisma.sql`COALESCE(c."openInterest"::numeric, 0)::text`
+        : sanitizedSortField === QuestionSortField.predictionCount
+          ? Prisma.sql`c."predictionCount"::text`
+          : sanitizedSortField === QuestionSortField.createdAt
+            ? Prisma.sql`COALESCE(FLOOR(EXTRACT(EPOCH FROM c."createdAt"))::bigint, 0)::text`
+            : Prisma.sql`COALESCE(c."endTime", 2147483647)::text`;
+
+    // Step 1: UNION query — two parts:
+    // - Part A: Active groups (sort values from denormalized cols or LATERAL)
+    // - Part B: Individual conditions (ungrouped OR from expired groups)
+    // Note: condition_group.id is integer, condition.id is string (text).
+    // We store them separately and use item_type to determine which ID to use.
     const sortedItems = await prisma.$queryRaw<
       {
         item_type: string;
@@ -216,21 +271,13 @@ export class QuestionsResolver {
           'group' as item_type,
           cg.id as group_id,
           NULL::text as condition_id,
-          ${
-            sanitizedSortField === QuestionSortField.openInterest
-              ? Prisma.sql`cg."totalOpenInterest"::text`
-              : sanitizedSortField === QuestionSortField.predictionCount
-                ? Prisma.sql`cg."totalPredictionCount"::text`
-                : sanitizedSortField === QuestionSortField.createdAt
-                  ? Prisma.sql`cg."maxCreatedAtEpoch"::text`
-                  : Prisma.sql`cg."maxEndTime"::text`
-          } as sort_value,
-          cg."totalPredictionCount" as prediction_count,
-          cg."maxEndTime" as end_time
+          ${groupSortValue} as sort_value,
+          ${groupPredictionCount} as prediction_count,
+          ${groupEndTime} as end_time
         FROM condition_group cg
+        ${groupLateralJoin}
         WHERE cg."publicConditionCount" > 0
           AND cg."maxEndTime" > ${nowSec}
-          ${groupExistsFilter}
           ${
             boundedSearch
               ? Prisma.sql`AND (
@@ -252,66 +299,19 @@ export class QuestionsResolver {
 
         UNION ALL
 
-        -- Part B: Ungrouped conditions (individual values)
+        -- Part B: Individual conditions (ungrouped or from expired groups)
         SELECT
           'condition' as item_type,
           NULL::integer as group_id,
           c.id as condition_id,
-          ${
-            sanitizedSortField === QuestionSortField.openInterest
-              ? Prisma.sql`COALESCE(c."openInterest"::numeric, 0)::text`
-              : sanitizedSortField === QuestionSortField.predictionCount
-                ? Prisma.sql`c."predictionCount"::text`
-                : sanitizedSortField === QuestionSortField.createdAt
-                  ? Prisma.sql`COALESCE(FLOOR(EXTRACT(EPOCH FROM c."createdAt"))::bigint, 0)::text`
-                  : Prisma.sql`COALESCE(c."endTime", 2147483647)::text`
-          } as sort_value,
+          ${condSortValue} as sort_value,
           c."predictionCount" as prediction_count,
           COALESCE(c."endTime", 2147483647) as end_time
         FROM condition c
-        WHERE c."conditionGroupId" IS NULL
-          AND c.public = true
-          ${chainId != null ? Prisma.sql`AND c."chainId" = ${chainId}` : Prisma.empty}
-          ${resolvedFilter}
-          ${priceFilter}
-          ${minEndTime != null ? Prisma.sql`AND c."endTime" >= ${minEndTime}` : Prisma.empty}
-          ${
-            boundedSearch
-              ? Prisma.sql`AND (c.question ILIKE ${'%' + boundedSearch + '%'} OR c."shortName" ILIKE ${'%' + boundedSearch + '%'} OR EXISTS (SELECT 1 FROM unnest(c.tags) AS t WHERE t ILIKE ${'%' + boundedSearch + '%'}))`
-              : Prisma.empty
-          }
-          ${
-            boundedCategorySlugs?.length
-              ? Prisma.sql`AND c."categoryId" IN (SELECT id FROM category WHERE slug = ANY(${boundedCategorySlugs}::text[]))`
-              : Prisma.empty
-          }
-
-        UNION ALL
-
-        -- Part C: Individual conditions from expired groups
-        SELECT
-          'condition' as item_type,
-          NULL::integer as group_id,
-          c.id as condition_id,
-          ${
-            sanitizedSortField === QuestionSortField.openInterest
-              ? Prisma.sql`COALESCE(c."openInterest"::numeric, 0)::text`
-              : sanitizedSortField === QuestionSortField.predictionCount
-                ? Prisma.sql`c."predictionCount"::text`
-                : sanitizedSortField === QuestionSortField.createdAt
-                  ? Prisma.sql`COALESCE(FLOOR(EXTRACT(EPOCH FROM c."createdAt"))::bigint, 0)::text`
-                  : Prisma.sql`COALESCE(c."endTime", 2147483647)::text`
-          } as sort_value,
-          c."predictionCount" as prediction_count,
-          COALESCE(c."endTime", 2147483647) as end_time
-        FROM condition c
-        INNER JOIN condition_group cg ON cg.id = c."conditionGroupId"
-        WHERE cg."maxEndTime" <= ${nowSec}
-          AND c.public = true
-          ${chainId != null ? Prisma.sql`AND c."chainId" = ${chainId}` : Prisma.empty}
-          ${resolvedFilter}
-          ${priceFilter}
-          ${minEndTime != null ? Prisma.sql`AND c."endTime" >= ${minEndTime}` : Prisma.empty}
+        LEFT JOIN condition_group cg ON cg.id = c."conditionGroupId"
+        WHERE c.public = true
+          AND (c."conditionGroupId" IS NULL OR cg."maxEndTime" <= ${nowSec})
+          ${conditionFilters}
           ${
             boundedSearch
               ? Prisma.sql`AND (c.question ILIKE ${'%' + boundedSearch + '%'} OR c."shortName" ILIKE ${'%' + boundedSearch + '%'} OR EXISTS (SELECT 1 FROM unnest(c.tags) AS t WHERE t ILIKE ${'%' + boundedSearch + '%'}))`
