@@ -14,6 +14,7 @@ import {
   fieldExtensionsEstimator,
   listMultiplierEstimator,
   fieldCostEstimator,
+  createComplexityEstimators,
 } from './queryComplexity.js';
 
 // Create a minimal test schema
@@ -65,6 +66,14 @@ const AggregateType = new GraphQLObjectType({
   },
 });
 
+const QuestionType = new GraphQLObjectType({
+  name: 'Question',
+  fields: {
+    questionType: { type: GraphQLString },
+    predictionCount: { type: GraphQLInt },
+  },
+});
+
 const QueryType = new GraphQLObjectType({
   name: 'Query',
   fields: {
@@ -84,6 +93,19 @@ const QueryType = new GraphQLObjectType({
     aggregate: {
       type: new GraphQLList(AggregateType),
       args: { by: { type: new GraphQLList(GraphQLString) } },
+    },
+    questions: {
+      type: new GraphQLList(QuestionType),
+      args: {
+        take: { type: GraphQLInt },
+        skip: { type: GraphQLInt },
+      },
+    },
+    protocolStats: {
+      type: new GraphQLObjectType({
+        name: 'ProtocolStats',
+        fields: { totalVolume: { type: GraphQLString } },
+      }),
     },
   },
 });
@@ -419,6 +441,59 @@ describe('queryComplexity', () => {
       });
       // scalar (1) + item (1) + id (1) = 3
       expect(complexity).toBe(3);
+    });
+  });
+
+  describe('createComplexityEstimators', () => {
+    it('assigns fixed cost to questions field, bypassing list multiplier', () => {
+      const query = parse(
+        `{ questions(take: 50) { questionType predictionCount } }`
+      );
+      const estimators = createComplexityEstimators(100);
+      const complexity = getComplexity({
+        schema: testSchema,
+        query,
+        estimators,
+      });
+      // questions gets fixed cost 500 from fieldCostEstimator
+      // + childComplexity (questionType: 1 + predictionCount: 1 = 2) = 502
+      // NOT 1 + 2 * 50 = 101 (which the list multiplier would produce)
+      expect(complexity).toBe(502);
+    });
+
+    it('assigns fixed cost to protocolStats field', () => {
+      const query = parse(`{ protocolStats { totalVolume } }`);
+      const estimators = createComplexityEstimators(100);
+      const complexity = getComplexity({
+        schema: testSchema,
+        query,
+        estimators,
+      });
+      // protocolStats: 2000 + totalVolume (1) = 2001
+      expect(complexity).toBe(2001);
+    });
+
+    it('questions cost stays fixed regardless of take value', () => {
+      const small = parse(
+        `{ questions(take: 10) { questionType predictionCount } }`
+      );
+      const large = parse(
+        `{ questions(take: 100) { questionType predictionCount } }`
+      );
+      const estimators = createComplexityEstimators(100);
+      const smallComplexity = getComplexity({
+        schema: testSchema,
+        query: small,
+        estimators,
+      });
+      const largeComplexity = getComplexity({
+        schema: testSchema,
+        query: large,
+        estimators,
+      });
+      // Both should have the same complexity since questions uses fixed cost
+      expect(smallComplexity).toBe(largeComplexity);
+      expect(smallComplexity).toBe(502);
     });
   });
 });

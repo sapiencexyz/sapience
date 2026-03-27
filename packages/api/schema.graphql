@@ -209,6 +209,22 @@ type BalanceDataPoint {
   timestamp: Int!
 }
 
+"""
+The `BigInt` scalar type represents non-fractional signed whole numeric values.
+"""
+scalar BigInt
+
+input BigIntFilter {
+  equals: BigInt
+  gt: BigInt
+  gte: BigInt
+  in: [BigInt!]
+  lt: BigInt
+  lte: BigInt
+  not: NestedBigIntFilter
+  notIn: [BigInt!]
+}
+
 input BoolFilter {
   equals: Boolean
   not: NestedBoolFilter
@@ -416,16 +432,26 @@ input ConditionGroupOrderByWithRelationInput {
   conditions: ConditionOrderByRelationAggregateInput
   createdAt: SortOrder
   id: SortOrder
+  maxCreatedAtEpoch: SortOrder
+  maxEndTime: SortOrder
   name: SortOrder
+  publicConditionCount: SortOrder
   similarMarkets: SortOrder
+  totalOpenInterest: SortOrder
+  totalPredictionCount: SortOrder
 }
 
 enum ConditionGroupScalarFieldEnum {
   categoryId
   createdAt
   id
+  maxCreatedAtEpoch
+  maxEndTime
   name
+  publicConditionCount
   similarMarkets
+  totalOpenInterest
+  totalPredictionCount
 }
 
 input ConditionGroupWhereInput {
@@ -437,8 +463,13 @@ input ConditionGroupWhereInput {
   conditions: ConditionListRelationFilter
   createdAt: DateTimeFilter
   id: IntFilter
+  maxCreatedAtEpoch: BigIntFilter
+  maxEndTime: IntFilter
   name: StringFilter
+  publicConditionCount: IntFilter
   similarMarkets: StringNullableListFilter
+  totalOpenInterest: DecimalFilter
+  totalPredictionCount: IntFilter
 }
 
 input ConditionGroupWhereUniqueInput {
@@ -450,8 +481,13 @@ input ConditionGroupWhereUniqueInput {
   conditions: ConditionListRelationFilter
   createdAt: DateTimeFilter
   id: Int
+  maxCreatedAtEpoch: BigIntFilter
+  maxEndTime: IntFilter
   name: String
+  publicConditionCount: IntFilter
   similarMarkets: StringNullableListFilter
+  totalOpenInterest: DecimalFilter
+  totalPredictionCount: IntFilter
 }
 
 input ConditionListRelationFilter {
@@ -621,6 +657,22 @@ input DateTimeNullableFilter {
   lte: DateTimeISO
   not: NestedDateTimeNullableFilter
   notIn: [DateTimeISO!]
+}
+
+"""
+GraphQL Scalar representing the Prisma.Decimal type, based on Decimal.js library.
+"""
+scalar Decimal
+
+input DecimalFilter {
+  equals: Decimal
+  gt: Decimal
+  gte: Decimal
+  in: [Decimal!]
+  lt: Decimal
+  lte: Decimal
+  not: NestedDecimalFilter
+  notIn: [Decimal!]
 }
 
 input EnumLegacyPositionStatusFilter {
@@ -942,6 +994,17 @@ input LimitOrderWhereInput {
   status: EnumLimitOrderStatusFilter
 }
 
+input NestedBigIntFilter {
+  equals: BigInt
+  gt: BigInt
+  gte: BigInt
+  in: [BigInt!]
+  lt: BigInt
+  lte: BigInt
+  not: NestedBigIntFilter
+  notIn: [BigInt!]
+}
+
 input NestedBoolFilter {
   equals: Boolean
   not: NestedBoolFilter
@@ -972,6 +1035,17 @@ input NestedDateTimeNullableFilter {
   lte: DateTimeISO
   not: NestedDateTimeNullableFilter
   notIn: [DateTimeISO!]
+}
+
+input NestedDecimalFilter {
+  equals: Decimal
+  gt: Decimal
+  gte: Decimal
+  in: [Decimal!]
+  lt: Decimal
+  lte: Decimal
+  not: NestedDecimalFilter
+  notIn: [Decimal!]
 }
 
 input NestedEnumLegacyPositionStatusFilter {
