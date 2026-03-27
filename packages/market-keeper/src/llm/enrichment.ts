@@ -387,9 +387,27 @@ export async function enrichEndTimesWithLLM(
       market.description ?? '',
       tierOut
     );
-    if (regexTs !== null && market.endDate) {
-      const polyTs = new Date(market.endDate).getTime() / 1000;
-      if (Math.abs(regexTs - polyTs) <= ENDTIME_SANITY_CHECK_SECONDS) {
+    if (regexTs !== null) {
+      if (market.endDate) {
+        // Sanity check: regex result should be within 14 days of Polymarket's endDate
+        const polyTs = new Date(market.endDate).getTime() / 1000;
+        if (Math.abs(regexTs - polyTs) <= ENDTIME_SANITY_CHECK_SECONDS) {
+          endTimeMap.set(market.conditionId, regexTs);
+          regexResolved.push({
+            question: market.question,
+            tier: tierOut.tier,
+            ts: regexTs,
+          });
+          continue;
+        }
+        sanityFails.push({
+          question: market.question,
+          tier: tierOut.tier,
+          regexTs,
+          polyTs,
+        });
+      } else {
+        // No endDate to sanity-check against — accept the regex result as-is
         endTimeMap.set(market.conditionId, regexTs);
         regexResolved.push({
           question: market.question,
@@ -398,12 +416,6 @@ export async function enrichEndTimesWithLLM(
         });
         continue;
       }
-      sanityFails.push({
-        question: market.question,
-        tier: tierOut.tier,
-        regexTs,
-        polyTs,
-      });
     }
     sonarMarkets.push(market);
   }

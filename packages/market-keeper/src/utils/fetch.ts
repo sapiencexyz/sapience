@@ -45,9 +45,10 @@ export async function fetchWithRetry(
         response.status < 600 &&
         attempt < maxRetries
       ) {
+        const body = await response.text().catch(() => '');
         const delay = baseDelayMs * Math.pow(2, attempt) + Math.random() * 1000;
         console.log(
-          `[Retry] HTTP ${response.status}, retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxRetries}) — ${shortUrl}`
+          `[Retry] HTTP ${response.status}, retrying in ${Math.round(delay)}ms (attempt ${attempt + 1}/${maxRetries}) — ${shortUrl}${body ? ` — ${body.slice(0, 200)}` : ''}`
         );
         await new Promise((resolve) => setTimeout(resolve, delay));
         continue;
