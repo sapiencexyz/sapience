@@ -3,7 +3,8 @@
  *
  * Protects routes behind USDC micropayments on Arbitrum One.
  * Runs the facilitator in-process (no separate service needed).
- * Uses dynamic pricing based on GraphQL query complexity.
+ * Charges a single bundle price per payment; credits are tracked by
+ * the credit session system (see creditSessions.ts).
  */
 import { paymentMiddleware } from '@x402/express';
 import { x402ResourceServer, type FacilitatorClient } from '@x402/core/server';
@@ -32,17 +33,6 @@ import { SharedSchema } from './graphql/sharedSchema';
 const NETWORK = 'eip155:42161' as const;
 // Native USDC on Arbitrum One (Circle's FiatTokenV2_2, supports EIP-3009)
 const USDC_ARBITRUM = '0xaf88d065e77c8cC2239327C5EDb3A432268e5831';
-
-// Payment configuration - tiered by GraphQL query complexity
-// Thresholds based on actual field costs from the GraphQL schema:
-// - Simple queries (basic field selections, small lists): 1-1000
-// - Medium queries (moderate lists, some aggregations): 1000-5000
-// - Complex queries (expensive aggregations, large lists): 5000+
-const COMPLEXITY_TIERS = {
-  simple: { maxComplexity: 1000, priceUSDC: 5000, priceUSD: 0.005 }, // $0.005 for simple queries
-  medium: { maxComplexity: 5000, priceUSDC: 15000, priceUSD: 0.015 }, // $0.015 for medium queries
-  complex: { maxComplexity: Infinity, priceUSDC: 30000, priceUSD: 0.03 }, // $0.03 for complex queries
-};
 
 // Gas estimation for EIP-3009 transferWithAuthorization
 // Typical gas usage: ~60,000-80,000 gas units
@@ -102,10 +92,10 @@ async function getEthUsdPrice(): Promise<number> {
 }
 
 /**
- * Calculate GraphQL query complexity using the same estimators as Apollo validation
- * Returns a complexity score used for tiered pricing (0-10000+)
+ * Calculate GraphQL query complexity using the same estimators as Apollo validation.
+ * The score is used directly as the credit cost for a query (minimum 1).
  */
-function calculateGraphQLComplexity(
+export function calculateGraphQLComplexity(
   query: string,
   variables?: Record<string, unknown>
 ): number {
@@ -138,19 +128,6 @@ function calculateGraphQLComplexity(
     console.error('[x402] Error calculating query complexity:', error);
     // On error, charge the highest tier to prevent abuse
     return Infinity;
-  }
-}
-
-/**
- * Get the appropriate pricing tier based on query complexity
- */
-function getComplexityTier(complexity: number): typeof COMPLEXITY_TIERS.simple {
-  if (complexity <= COMPLEXITY_TIERS.simple.maxComplexity) {
-    return COMPLEXITY_TIERS.simple;
-  } else if (complexity <= COMPLEXITY_TIERS.medium.maxComplexity) {
-    return COMPLEXITY_TIERS.medium;
-  } else {
-    return COMPLEXITY_TIERS.complex;
   }
 }
 
@@ -261,9 +238,9 @@ function createX402Server() {
 }
 
 /**
- * Create x402 middleware for a specific price tier
+ * Create x402 middleware for a given USDC price
  */
-function createX402MiddlewareForTier(
+function createX402PaymentMiddleware(
   priceUSDC: number,
   description: string,
   server: x402ResourceServer
@@ -294,58 +271,31 @@ function createX402MiddlewareForTier(
 }
 
 /**
- * Middleware wrapper that:
- * 1. Analyzes GraphQL query complexity for dynamic pricing
- * 2. Checks gas costs before requiring payment
- * 3. Routes to appropriate payment tier
- * If gas > payment, returns 503 instead of 402
+ * Middleware that checks gas costs before requiring an x402 payment.
+ * If gas > bundle price, returns 503 instead of 402.
  */
 export function createGasAwareX402Middleware() {
   // Create shared x402 server instance
   const server = createX402Server();
 
-  // Create middleware instances for each pricing tier
-  const simpleMiddleware = createX402MiddlewareForTier(
-    COMPLEXITY_TIERS.simple.priceUSDC,
-    'API access - simple query',
-    server
-  );
-  const mediumMiddleware = createX402MiddlewareForTier(
-    COMPLEXITY_TIERS.medium.priceUSDC,
-    'API access - medium complexity query',
-    server
-  );
-  const complexMiddleware = createX402MiddlewareForTier(
-    COMPLEXITY_TIERS.complex.priceUSDC,
-    'API access - complex query',
+  // Single bundle-priced middleware — one payment covers many queries
+  const bundlePrice = config.X402_CREDIT_BUNDLE_USDC;
+  const bundlePriceUSD = bundlePrice / 1e6; // USDC has 6 decimals
+  const bundleMiddleware = createX402PaymentMiddleware(
+    bundlePrice,
+    'API access - credit bundle',
     server
   );
 
   return async (req: Request, res: Response, next: NextFunction) => {
-    // Determine pricing tier based on query complexity (for GraphQL requests)
-    let tier = COMPLEXITY_TIERS.simple; // Default for non-GraphQL
-    let complexity = 0;
-
-    if (req.path === '/graphql' && req.method === 'POST' && req.body?.query) {
-      complexity = calculateGraphQLComplexity(
-        req.body.query,
-        req.body.variables
-      );
-      tier = getComplexityTier(complexity);
-
-      console.log(
-        `[x402] GraphQL query complexity: ${complexity} (tier: ${tier === COMPLEXITY_TIERS.simple ? 'simple' : tier === COMPLEXITY_TIERS.medium ? 'medium' : 'complex'}, price: $${tier.priceUSD})`
-      );
-    }
-
     // Check if gas is too expensive before requiring payment
-    const { tooExpensive, gasCostUSD, gasPrice } = await isGasTooExpensive(
-      tier.priceUSD
-    );
+    // Use bundle price (larger amount = less likely to be gas-unprofitable)
+    const { tooExpensive, gasCostUSD, gasPrice } =
+      await isGasTooExpensive(bundlePriceUSD);
 
     if (tooExpensive) {
       console.warn(
-        `[x402] Gas too expensive (${gasCostUSD.toFixed(6)} USD > ${tier.priceUSD} USD payment). ` +
+        `[x402] Gas too expensive (${gasCostUSD.toFixed(6)} USD > ${bundlePriceUSD} USD bundle). ` +
           `Gas price: ${gasPrice} gwei. Returning 503.`
       );
 
@@ -355,7 +305,7 @@ export function createGasAwareX402Middleware() {
           'Payment settlement costs exceed payment amount due to high gas prices. Please try again later.',
         details: {
           gasCostUSD: gasCostUSD.toFixed(6),
-          paymentAmountUSD: tier.priceUSD.toFixed(3),
+          paymentAmountUSD: bundlePriceUSD.toFixed(3),
           gasPrice: `${gasPrice} gwei`,
           reason: 'Unprofitable to settle payment on-chain',
         },
@@ -364,15 +314,7 @@ export function createGasAwareX402Middleware() {
       return;
     }
 
-    // Select appropriate middleware based on complexity tier
-    let selectedMiddleware = simpleMiddleware;
-    if (tier === COMPLEXITY_TIERS.medium) {
-      selectedMiddleware = mediumMiddleware;
-    } else if (tier === COMPLEXITY_TIERS.complex) {
-      selectedMiddleware = complexMiddleware;
-    }
-
-    // Gas is reasonable - proceed with x402 payment flow
-    return selectedMiddleware(req, res, next);
+    // Gas is reasonable - proceed with x402 payment flow (bundle price)
+    return bundleMiddleware(req, res, next);
   };
 }

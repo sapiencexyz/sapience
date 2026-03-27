@@ -2,6 +2,27 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { Request, Response, NextFunction } from 'express';
 import request from 'supertest';
 
+// Default x402 mock that includes all exports used by middleware
+function defaultX402Mock() {
+  return {
+    createGasAwareX402Middleware: vi.fn(() => {
+      return (_req: Request, _res: Response, next: NextFunction) => next();
+    }),
+    calculateGraphQLComplexity: vi.fn(() => 0),
+  };
+}
+
+// Default creditSessions mock — no active sessions
+function defaultCreditSessionsMock() {
+  return {
+    createCreditSession: vi.fn(),
+    getSession: vi.fn(() => null),
+    deductCredits: vi.fn(() => false),
+    extractPayerFromPaymentHeader: vi.fn(() => null),
+    _resetForTest: vi.fn(),
+  };
+}
+
 // Reset modules before EVERY test to get fresh rate limiter instances
 beforeEach(() => {
   vi.resetModules();
@@ -20,9 +41,8 @@ describe('rate limiting with trust proxy (simple mode)', () => {
         X402_PAY_TO: undefined,
       },
     }));
-    vi.doMock('./x402', () => ({
-      createGasAwareX402Middleware: vi.fn(),
-    }));
+    vi.doMock('./x402', () => defaultX402Mock());
+    vi.doMock('./creditSessions', () => defaultCreditSessionsMock());
 
     const { createApp } = await import('./app');
     const app = createApp();
@@ -56,9 +76,8 @@ describe('rate limiting with trust proxy (simple mode)', () => {
         X402_PAY_TO: undefined,
       },
     }));
-    vi.doMock('./x402', () => ({
-      createGasAwareX402Middleware: vi.fn(),
-    }));
+    vi.doMock('./x402', () => defaultX402Mock());
+    vi.doMock('./creditSessions', () => defaultCreditSessionsMock());
 
     const { createApp } = await import('./app');
     const app = createApp();
@@ -77,9 +96,13 @@ describe('tiered rate limiting with trust proxy (x402 mode)', () => {
         FREE_TIER_RATE_LIMIT: 3,
         HARD_RATE_LIMIT: 100,
         X402_PAY_TO: '0x1234567890abcdef1234567890abcdef12345678',
+        X402_CREDIT_BUNDLE_USDC: 1_000_000,
+        X402_CREDIT_SESSION_TTL_MS: 3_600_000,
       },
     }));
+    vi.doMock('./creditSessions', () => defaultCreditSessionsMock());
     vi.doMock('./x402', () => ({
+      ...defaultX402Mock(),
       createGasAwareX402Middleware: vi.fn(() => {
         return (req: Request, res: Response, next: NextFunction) => {
           if (!req.headers['payment-signature']) {
@@ -103,11 +126,14 @@ describe('tiered rate limiting with trust proxy (x402 mode)', () => {
       expect(res.status).toBe(200);
     }
 
-    // 1.2.3.4 should now get 402 (pushed to payment)
+    // 1.2.3.4 should now get 402 with credit session instructions
     const paymentRes = await request(app)
       .get('/test')
       .set('X-Forwarded-For', '1.2.3.4');
     expect(paymentRes.status).toBe(402);
+    expect(paymentRes.body.creditSession).toBeDefined();
+    expect(paymentRes.body.creditSession.instructions).toBeDefined();
+    expect(paymentRes.body.creditSession.bundle.amountUSD).toBe('$1.00');
 
     // 5.6.7.8 should still get 200 — NOT pushed to payment by someone else's usage
     const otherRes = await request(app)
@@ -124,9 +150,13 @@ describe('tiered rate limiting with trust proxy (x402 mode)', () => {
         FREE_TIER_RATE_LIMIT: 100,
         HARD_RATE_LIMIT: 5,
         X402_PAY_TO: '0x1234567890abcdef1234567890abcdef12345678',
+        X402_CREDIT_BUNDLE_USDC: 1_000_000,
+        X402_CREDIT_SESSION_TTL_MS: 3_600_000,
       },
     }));
+    vi.doMock('./creditSessions', () => defaultCreditSessionsMock());
     vi.doMock('./x402', () => ({
+      ...defaultX402Mock(),
       createGasAwareX402Middleware: vi.fn(() => {
         return (_req: Request, _res: Response, next: NextFunction) => next();
       }),
@@ -152,5 +182,256 @@ describe('tiered rate limiting with trust proxy (x402 mode)', () => {
       .get('/test')
       .set('X-Forwarded-For', '10.0.0.2');
     expect(otherRes.status).toBe(200);
+  });
+});
+
+// ─── Credit sessions ─────────────────────────────────────────────────────────
+
+describe('credit sessions', () => {
+  const X402_CONFIG = {
+    isProd: false,
+    RATE_LIMIT_WINDOW_MS: 60000,
+    FREE_TIER_RATE_LIMIT: 2,
+    HARD_RATE_LIMIT: 100,
+    X402_PAY_TO: '0x1234567890abcdef1234567890abcdef12345678',
+    X402_CREDIT_BUNDLE_USDC: 1_000_000,
+    X402_CREDIT_SESSION_TTL_MS: 3_600_000,
+  };
+
+  it('valid credit session bypasses x402 and deducts credits', async () => {
+    const mockGetSession = vi.fn(() => ({
+      wallet: '0xabc',
+      credits: 50000,
+      expiresAt: Date.now() + 3_600_000,
+    }));
+    const mockDeductCredits = vi.fn(() => true);
+
+    vi.doMock('./config', () => ({ config: X402_CONFIG }));
+    vi.doMock('./creditSessions', () => ({
+      ...defaultCreditSessionsMock(),
+      getSession: mockGetSession,
+      deductCredits: mockDeductCredits,
+    }));
+
+    const x402Mock = vi.fn();
+    vi.doMock('./x402', () => ({
+      ...defaultX402Mock(),
+      createGasAwareX402Middleware: vi.fn(() => x402Mock),
+    }));
+
+    const { createApp } = await import('./app');
+    const app = createApp();
+    app.get('/test', (_req, res) => res.json({ ok: true }));
+
+    const res = await request(app)
+      .get('/test')
+      .set('X-Credit-Session', 'valid-token-abc');
+
+    expect(res.status).toBe(200);
+    expect(mockDeductCredits).toHaveBeenCalledWith('valid-token-abc', 1);
+    // x402 should NOT have been called
+    expect(x402Mock).not.toHaveBeenCalled();
+    expect(res.headers['x-credits-remaining']).toBeDefined();
+  });
+
+  it('expired/invalid session token returns 402 with credit system instructions', async () => {
+    vi.doMock('./config', () => ({ config: X402_CONFIG }));
+    vi.doMock('./creditSessions', () => ({
+      ...defaultCreditSessionsMock(),
+      getSession: vi.fn(() => null), // invalid/expired
+    }));
+
+    const x402Mock = vi.fn();
+    vi.doMock('./x402', () => ({
+      ...defaultX402Mock(),
+      createGasAwareX402Middleware: vi.fn(() => x402Mock),
+    }));
+
+    const { createApp } = await import('./app');
+    const app = createApp();
+    app.get('/test', (_req, res) => res.json({ ok: true }));
+
+    const res = await request(app)
+      .get('/test')
+      .set('X-Credit-Session', 'expired-token');
+
+    expect(res.status).toBe(402);
+    expect(res.headers['x-credit-session-status']).toBe('expired');
+    expect(res.body.creditSession).toBeDefined();
+    expect(res.body.creditSession.status).toBe('expired');
+    expect(res.body.creditSession.bundle.amountUSD).toBe('$1.00');
+    expect(res.body.creditSession.pricing).toContain('complexity score');
+    expect(res.body.creditSession.instructions.step1).toContain(
+      'Payment-Signature'
+    );
+    expect(res.body.creditSession.instructions.step3).toContain(
+      'X-Credit-Session'
+    );
+    // x402 should NOT have been called — we sent our own 402
+    expect(x402Mock).not.toHaveBeenCalled();
+  });
+
+  it('successful payment creates credit session and returns token header', async () => {
+    const mockCreateCreditSession = vi.fn(() => ({
+      token: 'new-session-token',
+      credits: 1_000_000,
+      expiresAt: Date.now() + 3_600_000,
+    }));
+
+    vi.doMock('./config', () => ({ config: X402_CONFIG }));
+    vi.doMock('./creditSessions', () => ({
+      ...defaultCreditSessionsMock(),
+      createCreditSession: mockCreateCreditSession,
+      extractPayerFromPaymentHeader: vi.fn(() => '0xpayer'),
+    }));
+
+    // x402 mock that calls next() on payment success (simulates valid payment)
+    vi.doMock('./x402', () => ({
+      ...defaultX402Mock(),
+      createGasAwareX402Middleware: vi.fn(() => {
+        return (_req: Request, _res: Response, next: NextFunction) => {
+          next();
+        };
+      }),
+    }));
+
+    const { createApp } = await import('./app');
+    const app = createApp();
+    app.get('/test', (_req, res) => res.json({ ok: true }));
+
+    // Exhaust free tier
+    for (let i = 0; i < 2; i++) {
+      await request(app).get('/test').set('X-Forwarded-For', '2.2.2.2');
+    }
+
+    // Next request has payment header — should trigger credit session creation
+    const res = await request(app)
+      .get('/test')
+      .set('X-Forwarded-For', '2.2.2.2')
+      .set(
+        'Payment-Signature',
+        Buffer.from(
+          JSON.stringify({ authorization: { from: '0xpayer' } })
+        ).toString('base64')
+      );
+
+    expect(res.status).toBe(200);
+    expect(res.headers['x-credit-session']).toBe('new-session-token');
+    expect(res.headers['x-credits-remaining']).toBe('1000000');
+    expect(mockCreateCreditSession).toHaveBeenCalledWith(
+      '0xpayer',
+      1_000_000,
+      3_600_000
+    );
+  });
+
+  it('credits exhausted returns 402 with exhausted status and bundle info', async () => {
+    const mockGetSession = vi.fn(() => ({
+      wallet: '0xabc',
+      credits: 100, // not enough for the 5000 cost
+      expiresAt: Date.now() + 3_600_000,
+    }));
+
+    vi.doMock('./config', () => ({ config: X402_CONFIG }));
+    vi.doMock('./creditSessions', () => ({
+      ...defaultCreditSessionsMock(),
+      getSession: mockGetSession,
+      deductCredits: vi.fn(() => false), // insufficient credits
+    }));
+
+    const x402Mock = vi.fn();
+    vi.doMock('./x402', () => ({
+      ...defaultX402Mock(),
+      createGasAwareX402Middleware: vi.fn(() => x402Mock),
+    }));
+
+    const { createApp } = await import('./app');
+    const app = createApp();
+    app.get('/test', (_req, res) => res.json({ ok: true }));
+
+    const res = await request(app)
+      .get('/test')
+      .set('X-Credit-Session', 'exhausted-token');
+
+    expect(res.status).toBe(402);
+    expect(res.headers['x-credit-session-status']).toBe('exhausted');
+    expect(res.body.creditSession.status).toBe('exhausted');
+    expect(res.body.creditSession.instructions.step1).toContain(
+      'Payment-Signature'
+    );
+    expect(res.body.creditSession.instructions.step3).toContain(
+      'X-Credit-Session'
+    );
+    expect(res.body.message).toContain('run out of credits');
+    // x402 should NOT have been called — we sent our own 402
+    expect(x402Mock).not.toHaveBeenCalled();
+  });
+
+  it('credit sessions are per-token, not shared across IPs', async () => {
+    let sessionCreditsA = 50000;
+    const mockGetSession = vi.fn((token: string) => {
+      if (token === 'token-a') {
+        return {
+          wallet: '0xaaa',
+          credits: sessionCreditsA,
+          expiresAt: Date.now() + 3_600_000,
+        };
+      }
+      return null; // token-b is unknown
+    });
+    const mockDeductCredits = vi.fn((token: string) => {
+      if (token === 'token-a') {
+        sessionCreditsA -= 1;
+        return true;
+      }
+      return false;
+    });
+
+    vi.doMock('./config', () => ({ config: X402_CONFIG }));
+    vi.doMock('./creditSessions', () => ({
+      ...defaultCreditSessionsMock(),
+      getSession: mockGetSession,
+      deductCredits: mockDeductCredits,
+    }));
+
+    const x402Mock = vi.fn(
+      (_req: Request, res: Response, _next: NextFunction) => {
+        res.status(402).json({ error: 'Payment Required' });
+      }
+    );
+    vi.doMock('./x402', () => ({
+      ...defaultX402Mock(),
+      createGasAwareX402Middleware: vi.fn(() => x402Mock),
+    }));
+
+    const { createApp } = await import('./app');
+    const app = createApp();
+    app.get('/test', (_req, res) => res.json({ ok: true }));
+
+    // IP A with valid token-a → 200 (credits deducted)
+    const resA = await request(app)
+      .get('/test')
+      .set('X-Forwarded-For', '4.4.4.4')
+      .set('X-Credit-Session', 'token-a');
+    expect(resA.status).toBe(200);
+    expect(mockDeductCredits).toHaveBeenCalledWith('token-a', 1);
+
+    // Exhaust free tier for IP B
+    for (let i = 0; i < 2; i++) {
+      await request(app).get('/test').set('X-Forwarded-For', '5.5.5.5');
+    }
+
+    // IP B with invalid token-b → invalid session, free tier exhausted → 402
+    const resB = await request(app)
+      .get('/test')
+      .set('X-Forwarded-For', '5.5.5.5')
+      .set('X-Credit-Session', 'token-b');
+    expect(resB.status).toBe(402);
+
+    // token-a's credits were deducted; token-b never had credits
+    expect(mockDeductCredits).not.toHaveBeenCalledWith(
+      'token-b',
+      expect.anything()
+    );
   });
 });

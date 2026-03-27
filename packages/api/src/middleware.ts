@@ -5,7 +5,16 @@ import express from 'express';
 import rateLimit from 'express-rate-limit';
 import { recoverMessageAddress } from 'viem';
 import { config } from './config';
-import { createGasAwareX402Middleware } from './x402';
+import {
+  createGasAwareX402Middleware,
+  calculateGraphQLComplexity,
+} from './x402';
+import {
+  createCreditSession,
+  getSession,
+  deductCredits,
+  extractPayerFromPaymentHeader,
+} from './creditSessions';
 
 // ─── Admin auth ──────────────────────────────────────────────────────────────
 
@@ -143,13 +152,60 @@ const corsOptions: cors.CorsOptions = {
     'x-admin-signature',
     'x-admin-signature-timestamp',
     'Payment-Signature', // x402 payment header
+    'X-Credit-Session', // credit session token
   ],
   exposedHeaders: [
     'PAYMENT-REQUIRED',
     'PAYMENT-RESPONSE',
     'X-PAYMENT-RESPONSE',
+    'X-Credit-Session',
+    'X-Credit-Session-Status',
+    'X-Credits-Remaining',
   ],
 };
+
+// ─── Credit session 402 response ─────────────────────────────────────────────
+
+/**
+ * Build a structured 402 response body that explains the credit session system.
+ * Designed to be understood by both AI agents and programmatic HTTP clients.
+ */
+function buildCreditSession402Body(
+  message: string,
+  status?: 'expired' | 'exhausted'
+) {
+  const bundleAmount = config.X402_CREDIT_BUNDLE_USDC;
+  return {
+    error: 'Payment Required',
+    message,
+    creditSession: {
+      ...(status && { status }),
+      protocol: 'x402',
+      scheme: 'exact',
+      network: 'eip155:42161',
+      bundle: {
+        amount: String(bundleAmount),
+        currency: 'USDC',
+        decimals: 6,
+        amountUSD: `$${(bundleAmount / 1e6).toFixed(2)}`,
+      },
+      sessionTTLSeconds: Math.floor(config.X402_CREDIT_SESSION_TTL_MS / 1000),
+      pricing:
+        'Each query costs credits equal to its GraphQL complexity score (minimum 1). ' +
+        'Simple queries (~50-100) are cheap; complex aggregations (~5000+) cost more.',
+      instructions: {
+        step1:
+          'Send the same request with a Payment-Signature header containing a signed x402 exact-scheme payload for the bundle amount.',
+        step2:
+          'On success, read the X-Credit-Session response header — this is your session token.',
+        step3:
+          'On subsequent requests, include the header X-Credit-Session: <token> to spend credits without paying again.',
+        step4:
+          'Each request deducts credits equal to the query complexity score. When credits run out, you will receive this 402 again.',
+      },
+    },
+  };
+}
 
 // ─── Middleware setup ────────────────────────────────────────────────────────
 
@@ -192,10 +248,12 @@ export function setupMiddleware(app: Express) {
     standardHeaders: true,
     legacyHeaders: false,
     skip: (req) => {
-      // Skip rate limiting if request has payment header
-      // We check for the header presence (not validated payment) because
-      // freeTierLimiter runs BEFORE x402 middleware validates the payment
-      return !!req.headers['payment-signature'];
+      // Skip rate limiting if request has payment header or valid credit session
+      // We check for header presence (not validated payment) because
+      // freeTierLimiter runs BEFORE x402/credit middleware validates them
+      return (
+        !!req.headers['payment-signature'] || !!req.headers['x-credit-session']
+      );
     },
     // Custom handler to mark for payment instead of rejecting
     handler: (req: Request, _res: Response, next: NextFunction) => {
@@ -227,24 +285,92 @@ export function setupMiddleware(app: Express) {
     // Tier 2: Free tier check (flag if needs payment)
     app.use(freeTierLimiter);
 
-    // Tier 3: Conditional x402 payment processing (in-process facilitator)
+    // Tier 3: Credit session check + conditional x402 payment
     const x402Middleware = createGasAwareX402Middleware();
 
     app.use(async (req: Request, res: Response, next: NextFunction) => {
+      const creditToken = req.headers['x-credit-session'] as string | undefined;
       const hasPaymentHeader = req.headers['payment-signature'];
+      const requiresPayment = (req as Request & { requiresPayment?: boolean })
+        .requiresPayment;
 
-      // Process payment if either:
-      // 1. Free tier exceeded (req.requiresPayment=true) OR
-      // 2. Request has payment header (even if under free tier)
-      if (
-        (req as Request & { requiresPayment?: boolean }).requiresPayment ||
-        hasPaymentHeader
-      ) {
+      // --- Credit session check ---
+      let creditSessionFailed = false;
+      let creditFailureReason: 'expired' | 'exhausted' | undefined;
+      if (creditToken) {
+        const session = getSession(creditToken);
+        if (session) {
+          // Cost = query complexity score (minimum 1)
+          let cost = 1;
+          if (
+            req.path === '/graphql' &&
+            req.method === 'POST' &&
+            req.body?.query
+          ) {
+            cost = Math.max(
+              1,
+              calculateGraphQLComplexity(req.body.query, req.body.variables)
+            );
+          }
+
+          if (deductCredits(creditToken, cost)) {
+            const remaining = getSession(creditToken)?.credits ?? 0;
+            res.setHeader('X-Credits-Remaining', String(remaining));
+            return next();
+          }
+          creditFailureReason = 'exhausted';
+        } else {
+          creditFailureReason = 'expired';
+        }
+        // Invalid/expired/exhausted — must pay again
+        creditSessionFailed = true;
+      }
+
+      // --- x402 payment path ---
+      if (requiresPayment || hasPaymentHeader || creditSessionFailed) {
+        // No payment header — send a descriptive 402 explaining the credit
+        // system so AI agents and programmatic clients know what to do.
+        if (!hasPaymentHeader) {
+          if (creditSessionFailed) {
+            res.setHeader('X-Credit-Session-Status', creditFailureReason!);
+          }
+          const message =
+            creditFailureReason === 'exhausted'
+              ? 'Your credit session has run out of credits. Make a new x402 payment to purchase a fresh credit bundle.'
+              : creditFailureReason === 'expired'
+                ? 'Your credit session has expired or is invalid. Make a new x402 payment to start a new session.'
+                : 'Free tier rate limit exceeded. Make an x402 payment to purchase a credit bundle for continued access.';
+          res
+            .status(402)
+            .json(buildCreditSession402Body(message, creditFailureReason));
+          return;
+        }
+
         try {
-          // x402 middleware handles both cases:
-          // - No payment header → sends 402 directly (callback never called)
-          // - Valid payment → calls callback, then settles on-chain
-          await x402Middleware(req, res, next);
+          await x402Middleware(req, res, (err?: unknown) => {
+            if (err) return next(err);
+
+            // Payment succeeded — create credit session for the payer
+            const paymentHeader = req.headers['payment-signature'] as string;
+            const wallet = extractPayerFromPaymentHeader(paymentHeader);
+
+            if (wallet) {
+              try {
+                const { token, credits } = createCreditSession(
+                  wallet,
+                  config.X402_CREDIT_BUNDLE_USDC,
+                  config.X402_CREDIT_SESSION_TTL_MS
+                );
+                res.setHeader('X-Credit-Session', token);
+                res.setHeader('X-Credits-Remaining', String(credits));
+              } catch (e) {
+                console.error('[x402] Failed to create credit session:', e);
+                // Continue without session — payment still succeeded
+              }
+            }
+
+            next();
+          });
         } catch (err) {
           console.error('[x402] Payment middleware error:', err);
           if (!res.headersSent) {
@@ -256,7 +382,8 @@ export function setupMiddleware(app: Express) {
         }
         return;
       }
-      // Under free tier and no payment header - continue normally
+
+      // Under free tier, no credit session, no payment header — continue normally
       next();
     });
   } else {

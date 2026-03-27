@@ -72,6 +72,14 @@ const validators = {
     default: 400,
     desc: 'Hard rate limit (max requests per minute even with payment)',
   }),
+  X402_CREDIT_BUNDLE_USDC: num({
+    default: 1_000_000, // $1.00 in USDC base units (6 decimals)
+    desc: 'Credit bundle size in USDC base units (amount charged per x402 payment)',
+  }),
+  X402_CREDIT_SESSION_TTL_MS: num({
+    default: 3_600_000, // 1 hour
+    desc: 'Credit session expiry in milliseconds',
+  }),
 };
 
 type Config = Readonly<ReturnType<typeof cleanEnv<typeof validators>>>;
