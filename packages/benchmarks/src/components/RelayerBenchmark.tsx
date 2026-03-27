@@ -33,6 +33,7 @@ interface AuctionRow {
   validationError?: string;
   predictorCollateral?: string;
   counterpartyCollateral?: string;
+  pickCount?: number;
   // For detail dialog
   rfqPayload?: Record<string, unknown>;
   auctionId?: string;
@@ -301,6 +302,7 @@ export function RelayerBenchmark({ config, conditions }: Props) {
         validating: t.validating,
         error: t.error,
         validationError: t.validationError,
+        pickCount: t.pickCount,
         predictorCollateral: t.predictorCollateral,
         counterpartyCollateral: t.counterpartyCollateral,
         rfqPayload: t.rfqPayload as unknown as Record<string, unknown>,
@@ -350,11 +352,18 @@ export function RelayerBenchmark({ config, conditions }: Props) {
     setValidBidStats(null);
     setRows([]);
 
-    try {
-      setStatus(`Connecting... (${conditions.length} conditions)`);
-      const signer = createSigner(privateKey as Hex);
+    const signer = createSigner(privateKey as Hex);
+    const publicClient = createSessionPublicClient(config);
+
+    const connect = async (): Promise<WebSocket> => {
+      setStatus('Connecting...');
       const ws = await connectWs(wsUrl);
-      const publicClient = createSessionPublicClient(config);
+      setStatus(`Running (${conditions.length} conditions)`);
+      return ws;
+    };
+
+    try {
+      let ws = await connect();
 
       const session: RelayerSession = {
         ws, signer, config, publicClient,
@@ -362,17 +371,38 @@ export function RelayerBenchmark({ config, conditions }: Props) {
         timings: new Map(),
         onUpdate: rebuildFromTimings,
       };
-
       sessionRef.current = session;
       setupMessageHandler(session);
 
-      ws.onclose = () => {
-        if (!abortRef.current) { setStatus('WebSocket disconnected'); setRunning(false); }
+      // Auto-reconnect on drop
+      const attachReconnect = () => {
+        session.ws.onclose = async () => {
+          if (abortRef.current) return;
+          setStatus('Reconnecting...');
+          for (let attempt = 1; attempt <= 5; attempt++) {
+            await new Promise((r) => setTimeout(r, 1000 * attempt));
+            if (abortRef.current) return;
+            try {
+              ws = await connect();
+              session.ws = ws;
+              setupMessageHandler(session);
+              attachReconnect();
+              return;
+            } catch {
+              setStatus(`Reconnect attempt ${attempt}/5 failed`);
+            }
+          }
+          setStatus('WebSocket disconnected (5 retries exhausted)');
+          setRunning(false);
+        };
       };
-
-      setStatus('Running...');
+      attachReconnect();
 
       while (!abortRef.current) {
+        if (session.ws.readyState !== WebSocket.OPEN) {
+          await new Promise((r) => setTimeout(r, 500));
+          continue;
+        }
         try {
           const picks = buildRandomPicks(conditions);
           if (picks.length > 0) await sendAuction(session, picks);
@@ -438,6 +468,9 @@ export function RelayerBenchmark({ config, conditions }: Props) {
         <button onClick={running ? handleStop : handleStart} className={running ? 'btn-stop' : 'btn-start'} disabled={!running && conditions.length === 0}>
           {running ? 'Stop' : conditions.length === 0 ? 'Start GQL first' : 'Start'}
         </button>
+        {conditions.length > 0 && (
+          <span className="condition-count">{conditions.length} conditions in pool</span>
+        )}
       </div>
 
       {status && <div className="status">{status}</div>}
@@ -506,6 +539,7 @@ export function RelayerBenchmark({ config, conditions }: Props) {
         {rows.slice(-100).map((row) => (
           <div key={row.id} className="auction-row log-clickable" onClick={() => setInspecting(row)}>
             <span className="auction-id">{row.id}</span>
+            {row.pickCount && <span className="auction-picks">{row.pickCount}p</span>}
             {row.predictorCollateral && (
               <span className="auction-amount">{fmtWei(row.predictorCollateral)}</span>
             )}

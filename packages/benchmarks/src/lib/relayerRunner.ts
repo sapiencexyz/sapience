@@ -40,6 +40,8 @@ export interface AuctionTiming {
   counterpartyCollateral?: string;
   /** The RFQ payload we sent (needed for bid validation) */
   rfqPayload?: AuctionRFQPayload;
+  /** Number of picks in this auction */
+  pickCount?: number;
   /** Enriched picks with condition metadata */
   picks?: EnrichedPick[];
 }
@@ -63,11 +65,15 @@ function normalizeWsUrl(url: string): string {
   return url.replace(/^https:\/\//i, 'wss://').replace(/^http:\/\//i, 'ws://');
 }
 
-export function connectWs(url: string): Promise<WebSocket> {
+export function connectWs(url: string, timeoutMs = 10_000): Promise<WebSocket> {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(normalizeWsUrl(url));
-    ws.onopen = () => resolve(ws);
-    ws.onerror = () => reject(new Error('WebSocket connection failed'));
+    const timer = setTimeout(() => {
+      ws.close();
+      reject(new Error('WebSocket connection timed out'));
+    }, timeoutMs);
+    ws.onopen = () => { clearTimeout(timer); resolve(ws); };
+    ws.onerror = () => { clearTimeout(timer); reject(new Error('WebSocket connection failed')); };
   });
 }
 
@@ -221,6 +227,7 @@ export async function sendAuction(
     sentAt,
     rfqPayload: payload,
     predictorCollateral: payload.predictorCollateral,
+    pickCount: picks.length,
     picks,
   });
 

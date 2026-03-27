@@ -520,6 +520,20 @@ button {
   min-width: 58px;
 }
 
+.auction-picks {
+  color: #666;
+  font-size: 0.65rem;
+  flex-shrink: 0;
+  min-width: 18px;
+}
+
+.condition-count {
+  font-size: 0.7rem;
+  color: #666;
+  font-family: monospace;
+  text-align: center;
+}
+
 .auction-amount {
   color: #8899bb;
   flex-shrink: 0;
