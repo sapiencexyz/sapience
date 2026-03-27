@@ -89,6 +89,15 @@ export function createAuctionWebSocketServer() {
   // Per-IP penalty cooldown — IPs disconnected for abuse can't reconnect immediately
   const penaltyCooldowns = new Map<string, number>(); // ip → cooldown expiry timestamp
 
+  // Sweep expired penalty cooldowns every 60s to prevent unbounded map growth
+  const penaltySweepInterval = setInterval(() => {
+    const now = Date.now();
+    for (const [ip, expiry] of penaltyCooldowns) {
+      if (now >= expiry) penaltyCooldowns.delete(ip);
+    }
+  }, 60_000);
+  penaltySweepInterval.unref(); // don't keep the process alive for cleanup
+
   // Shared subscription manager for all topics (escrow, vault, observers)
   const subs = new InMemorySubscriptionManager();
 
