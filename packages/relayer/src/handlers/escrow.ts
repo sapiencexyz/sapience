@@ -30,6 +30,7 @@ import {
   errorsTotal,
   subscriptionsActive,
 } from '../metrics';
+import { config } from '../config';
 
 // Structured timing log for observability
 function logTiming(
@@ -56,13 +57,17 @@ export interface EscrowHandlerContext {
   allClients: () => Iterable<ClientConnection>;
 }
 
+/**
+ * @returns `true` if the request was rejected due to a validation failure
+ *          (used by ws.ts to track per-connection validation failure penalties).
+ */
 export async function handleAuctionStart(
   client: ClientConnection,
   payload: AuctionRFQPayload,
   subs: SubscriptionManager,
   ctx: EscrowHandlerContext,
   requestId?: string
-): Promise<void> {
+): Promise<boolean> {
   const startTime = Date.now();
   let pendingAuctionId = 'pending';
 
@@ -83,7 +88,7 @@ export async function handleAuctionStart(
       type: 'auction.ack',
       payload: { auctionId: '', error: 'unknown_chain_id' },
     });
-    return;
+    return true;
   }
 
   // Validate auction request structure + intent signature in one call
@@ -102,7 +107,7 @@ export async function handleAuctionStart(
         error: validation.reason || 'invalid_payload',
       },
     });
-    return;
+    return true;
   }
 
   const auctionId = upsertEscrowAuction(payload);
@@ -142,6 +147,8 @@ export async function handleAuctionStart(
   if (bids.length > 0) {
     client.send({ type: 'auction.bids', payload: { auctionId, bids } });
   }
+
+  return false;
 }
 
 export function handleAuctionSubscribe(
@@ -193,11 +200,14 @@ export function handleAuctionUnsubscribe(
   }
 }
 
+/**
+ * @returns `true` if the bid was rejected due to a validation failure.
+ */
 export async function handleBidSubmit(
   client: ClientConnection,
   bid: BidPayload,
   subs: SubscriptionManager
-): Promise<void> {
+): Promise<boolean> {
   const bidStartTime = Date.now();
   logTiming(bid.auctionId || 'unknown', 'bid_received', bidStartTime, {
     counterparty: bid.counterparty?.slice(0, 10) || 'unknown',
@@ -214,7 +224,20 @@ export async function handleBidSubmit(
     console.warn(
       `[Relayer] bid.submit rejected auctionId=${bid.auctionId} reason=auction_not_found_or_expired`
     );
-    return;
+    return true;
+  }
+
+  // Bid cap — matches secondary market's MAX_BIDS_PER_AUCTION
+  if (rec.bids.length >= config.MAX_BIDS_PER_ESCROW_AUCTION) {
+    bidsSubmitted.inc({ status: 'rejected' });
+    client.send({
+      type: 'bid.ack',
+      payload: { error: 'bid_limit_reached' },
+    });
+    console.warn(
+      `[Relayer] bid.submit rejected auctionId=${bid.auctionId} reason=bid_limit_reached (${rec.bids.length}/${config.MAX_BIDS_PER_ESCROW_AUCTION})`
+    );
+    return false; // Not a validation failure — just a capacity limit
   }
 
   // Validate bid structure + signature (offline only, no publicClient)
@@ -235,7 +258,7 @@ export async function handleBidSubmit(
     console.warn(
       `[Relayer] bid.submit rejected auctionId=${bid.auctionId} reason=${bidValidation.reason || 'invalid_bid'}`
     );
-    return;
+    return true;
   }
   // 'valid' and 'unverified' both pass through
 
@@ -250,7 +273,7 @@ export async function handleBidSubmit(
     console.warn(
       `[Relayer] bid.submit failed auctionId=${bid.auctionId} reason=auction_not_found_or_expired`
     );
-    return;
+    return false;
   }
   logTiming(bid.auctionId, 'bid_validated', bidStartTime);
 
@@ -269,4 +292,6 @@ export async function handleBidSubmit(
     bidCount: currentBids.length,
     subscribers: subscriberCount,
   });
+
+  return false;
 }

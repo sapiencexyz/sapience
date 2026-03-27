@@ -46,6 +46,10 @@ const validators = {
     default: 50,
     desc: 'Max concurrent GraphQL operations before shedding load with 503',
   }),
+  GRAPHQL_MAX_CONCURRENT_PER_IP: num({
+    default: 10,
+    desc: 'Max concurrent GraphQL operations per IP before shedding load with 503',
+  }),
   // x402 payment integration
   X402_PAY_TO: str({
     default: '',

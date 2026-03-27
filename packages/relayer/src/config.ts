@@ -27,6 +27,10 @@ export const config = cleanEnv(process.env, {
   WS_IDLE_TIMEOUT_MS: num({ default: 300_000 }), // 5 minutes
   WS_MAX_CONNECTIONS: num({ default: 1000 }),
   WS_ALLOWED_ORIGINS: str({ default: '' }), // Comma-separated list, empty = allow all
+  WS_MAX_CONNECTIONS_PER_IP: num({ default: 50 }), // Max connections from a single IP
+  WS_MAX_VALIDATION_FAILURES: num({ default: 10 }), // Disconnect after N signature validation failures
+  WS_MAX_INVALID_MESSAGES: num({ default: 20 }), // Disconnect after N invalid/malformed messages
+  MAX_BIDS_PER_ESCROW_AUCTION: num({ default: 50 }), // Max bids per escrow auction (matches secondary market)
   DEFAULT_VAULT_MANAGER: str({ default: '' }), // Fallback manager address if vault contract not deployed
 });
 

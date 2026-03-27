@@ -21,6 +21,10 @@ vi.mock('../config', () => ({
     WS_IDLE_TIMEOUT_MS: 2000,
     WS_MAX_CONNECTIONS: 3,
     WS_ALLOWED_ORIGINS: '',
+    WS_MAX_CONNECTIONS_PER_IP: 100, // high so per-IP doesn't interfere with these tests
+    WS_MAX_VALIDATION_FAILURES: 100,
+    WS_MAX_INVALID_MESSAGES: 100,
+    MAX_BIDS_PER_ESCROW_AUCTION: 50,
   },
   isProd: false,
   isDev: false,
