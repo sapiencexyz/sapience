@@ -226,7 +226,25 @@ model ConditionGroup {
   /// @TypeGraphQL.field(name: "conditions")
   condition      Condition[]
 
+  // Denormalized aggregates maintained by trigger on condition table
+  /// @TypeGraphQL.omit(output: true)
+  totalOpenInterest  Decimal  @default(0) @db.Decimal
+  /// @TypeGraphQL.omit(output: true)
+  maxEndTime         Int      @default(0)
+  /// @TypeGraphQL.omit(output: true)
+  totalPredictionCount Int    @default(0)
+  /// @TypeGraphQL.omit(output: true)
+  maxCreatedAtEpoch  BigInt   @default(0)
+  /// @TypeGraphQL.omit(output: true)
+  publicConditionCount Int    @default(0)
+
   @@index([categoryId])
+  // Raw SQL indexes (not representable in Prisma, managed via migration):
+  // - IDX_cg_total_oi: "totalOpenInterest" DESC WHERE "publicConditionCount" > 0
+  // - IDX_cg_max_end_time: "maxEndTime" DESC WHERE "publicConditionCount" > 0
+  // - IDX_cg_total_prediction_count: "totalPredictionCount" DESC WHERE "publicConditionCount" > 0
+  // - IDX_cg_max_created_at_epoch: "maxCreatedAtEpoch" DESC WHERE "publicConditionCount" > 0
+  // Trigger: trg_condition_group_aggregates maintains aggregates on condition INSERT/UPDATE/DELETE
   @@map("condition_group")
 }
 

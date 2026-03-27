@@ -6,6 +6,7 @@ import { SharedSchema } from './sharedSchema';
 import { ApolloServer } from '@apollo/server';
 import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default';
 import responseCachePlugin from '@apollo/server-plugin-response-cache';
+import { httpCacheHeadersPlugin } from './plugins/httpCacheHeadersPlugin';
 import depthLimit from 'graphql-depth-limit';
 import { GraphQLError } from 'graphql';
 import { validateQuery } from './queryValidation.js';
@@ -104,6 +105,7 @@ export const initializeApolloServer = async () => {
         embed: true,
         includeCookies: true,
       }),
+      httpCacheHeadersPlugin(),
       responseCachePlugin(),
       // Query complexity plugin
       // Note: Uses local adaptation of graphql-query-complexity to avoid
