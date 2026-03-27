@@ -1,6 +1,5 @@
 import { Resolver, FieldResolver, Root, Ctx, Args } from 'type-graphql';
 import { ConditionGroup, Condition, Category } from '@generated/type-graphql';
-// eslint-disable-next-line @typescript-eslint/consistent-type-imports -- @Args() needs runtime class, not just type
 import {
   ConditionGroupConditionArgs,
   ConditionGroupCategoryArgs,
@@ -24,7 +23,7 @@ export class ConditionGroupConditionsResolver {
   async conditions(
     @Root() conditionGroup: ConditionGroup,
     @Ctx() ctx: unknown,
-    @Args() args: ConditionGroupConditionArgs
+    @Args(() => ConditionGroupConditionArgs) args: ConditionGroupConditionArgs
   ): Promise<Condition[]> {
     return getPrismaFromContext(ctx)
       .conditionGroup.findUniqueOrThrow({
@@ -41,7 +40,7 @@ export class ConditionGroupConditionsResolver {
   async category(
     @Root() conditionGroup: ConditionGroup,
     @Ctx() ctx: unknown,
-    @Args() args: ConditionGroupCategoryArgs
+    @Args(() => ConditionGroupCategoryArgs) args: ConditionGroupCategoryArgs
   ): Promise<Category | null> {
     return getPrismaFromContext(ctx)
       .conditionGroup.findUniqueOrThrow({
