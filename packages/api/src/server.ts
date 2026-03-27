@@ -18,6 +18,7 @@ import {
   createAuctionProxyMiddleware,
   proxyAuctionWebSocket,
 } from './utils/auctionProxy';
+import { cdnCacheMiddleware } from './graphql/plugins/httpCacheHeadersPlugin';
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
 
@@ -74,6 +75,25 @@ const startServer = async () => {
     // Concurrency limiter — global + per-IP
     concurrencyMiddleware,
     express.json({ limit: '100kb' }),
+    // CDN cache headers — intercepts writeHead to set Cache-Control
+    // after Apollo's responseCachePlugin has finished
+    cdnCacheMiddleware as unknown as (
+      req: Request,
+      res: Response,
+      next: NextFunction
+    ) => void,
+    // Request timeout middleware
+    (_req: Request, res: Response, next: NextFunction) => {
+      const timeout = config.GRAPHQL_REQUEST_TIMEOUT_MS;
+      res.setTimeout(timeout, () => {
+        if (!res.headersSent) {
+          res.status(408).json({
+            errors: [{ message: `Request timeout after ${timeout}ms` }],
+          });
+        }
+      });
+      next();
+    },
     expressMiddleware(apolloServer, {
       context: async () => ({
         prisma,

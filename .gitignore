@@ -33,3 +33,6 @@ storybook-static
 /data/
 
 .playwright-mcp
+
+# Cloudflare Wrangler
+.wrangler
