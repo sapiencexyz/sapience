@@ -173,7 +173,15 @@ router.post('/', async (req: Request, res: Response) => {
         },
         include: { category: true, conditionGroup: true },
       });
-      return res.status(201).json(condition);
+      return res
+        .status(201)
+        .json(
+          JSON.parse(
+            JSON.stringify(condition, (_k, v) =>
+              typeof v === 'bigint' ? Number(v) : v
+            )
+          )
+        );
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
       if (
@@ -486,7 +494,13 @@ router.put('/:id', async (req: Request, res: Response) => {
         },
         include: { category: true, conditionGroup: true },
       });
-      return res.json(condition);
+      return res.json(
+        JSON.parse(
+          JSON.stringify(condition, (_k, v) =>
+            typeof v === 'bigint' ? Number(v) : v
+          )
+        )
+      );
     } catch (e: unknown) {
       console.error('Error updating condition:', e);
       return res.status(500).json({ message: 'Internal Server Error' });
