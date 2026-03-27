@@ -70,13 +70,16 @@ export interface SecondaryHandlerContext {
 
 /**
  * Handle secondary.auction.start — seller posts a listing
+ *
+ * @returns `true` if the request was rejected due to a validation failure
+ *          (used by ws.ts to track per-connection validation failure penalties).
  */
 export async function handleSecondaryAuctionStart(
   client: ClientConnection,
   payload: SecondaryAuctionRequestPayload,
   subs: SubscriptionManager,
   _ctx: SecondaryHandlerContext
-): Promise<void> {
+): Promise<boolean> {
   // Tier 1 validation — field presence, deadline, signature
   const verifyingContract = getVerifyingContract(payload.chainId);
   if (!verifyingContract) {
@@ -88,7 +91,7 @@ export async function handleSecondaryAuctionStart(
       type: 'secondary.auction.ack',
       payload: { error: 'unsupported_chain' },
     });
-    return;
+    return true;
   }
 
   const validation = await validateSecondaryListing(payload, {
@@ -110,7 +113,7 @@ export async function handleSecondaryAuctionStart(
       type: 'secondary.auction.ack',
       payload: { error: `${validation.code}: ${validation.reason}` },
     });
-    return;
+    return true;
   }
 
   // Add to registry
@@ -124,7 +127,7 @@ export async function handleSecondaryAuctionStart(
       type: 'secondary.auction.ack',
       payload: { error: 'duplicate_nonce' },
     });
-    return;
+    return false; // duplicate nonce is not a validation failure
   }
 
   secondaryListingsStarted.inc();
@@ -160,16 +163,20 @@ export async function handleSecondaryAuctionStart(
   console.log(
     `[Secondary] Auction started: ${auctionId} seller=${payload.seller.slice(0, 10)} token=${payload.token.slice(0, 10)}`
   );
+
+  return false;
 }
 
 /**
  * Handle secondary.bid.submit — buyer makes an offer
+ *
+ * @returns `true` if the bid was rejected due to a validation failure.
  */
 export async function handleSecondaryBidSubmit(
   client: ClientConnection,
   payload: SecondaryBidPayload,
   subs: SubscriptionManager
-): Promise<void> {
+): Promise<boolean> {
   const listing = getSecondaryListing(payload.auctionId);
   if (!listing) {
     secondaryBidsSubmitted.inc({ status: 'rejected' });
@@ -177,7 +184,7 @@ export async function handleSecondaryBidSubmit(
       type: 'secondary.bid.ack',
       payload: { error: 'auction_not_found_or_expired' },
     });
-    return;
+    return true;
   }
 
   // Tier 1 validation — field presence, deadline, price, signature
@@ -188,7 +195,7 @@ export async function handleSecondaryBidSubmit(
       type: 'secondary.bid.ack',
       payload: { error: 'unsupported_chain' },
     });
-    return;
+    return true;
   }
 
   const validation = await validateSecondaryBid(payload, listing.auction, {
@@ -209,7 +216,7 @@ export async function handleSecondaryBidSubmit(
       type: 'secondary.bid.ack',
       payload: { error: `${validation.code}: ${validation.reason}` },
     });
-    return;
+    return true;
   }
 
   const validated: SecondaryValidatedBid = {
@@ -230,7 +237,7 @@ export async function handleSecondaryBidSubmit(
       type: 'secondary.bid.ack',
       payload: { error: 'bid_rejected' },
     });
-    return;
+    return false; // capacity limit, not a validation failure
   }
 
   secondaryBidsSubmitted.inc({ status: 'success' });
@@ -252,6 +259,8 @@ export async function handleSecondaryBidSubmit(
   console.log(
     `[Secondary] Bid received: auction=${payload.auctionId.slice(0, 8)} buyer=${payload.buyer.slice(0, 10)} price=${payload.price}`
   );
+
+  return false;
 }
 
 /**
