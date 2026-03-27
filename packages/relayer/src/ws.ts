@@ -86,6 +86,9 @@ export function createAuctionWebSocketServer() {
   // Per-IP connection tracking
   const connectionsPerIp = new Map<string, number>();
 
+  // Per-IP penalty cooldown — IPs disconnected for abuse can't reconnect immediately
+  const penaltyCooldowns = new Map<string, number>(); // ip → cooldown expiry timestamp
+
   // Shared subscription manager for all topics (escrow, vault, observers)
   const subs = new InMemorySubscriptionManager();
 
@@ -122,6 +125,16 @@ export function createAuctionWebSocketServer() {
       ws.close(1008, 'connection_limit_exceeded');
       return;
     }
+
+    // Per-IP penalty cooldown — reject if recently disconnected for abuse
+    const cooldownExpiry = penaltyCooldowns.get(ip);
+    if (cooldownExpiry && Date.now() < cooldownExpiry) {
+      console.warn(`[Relayer] IP ${ip} in penalty cooldown, rejecting`);
+      ws.close(1008, 'penalty_cooldown');
+      return;
+    }
+    // Clean up expired cooldowns lazily
+    if (cooldownExpiry) penaltyCooldowns.delete(ip);
 
     // Per-IP connection limit
     const ipCount = connectionsPerIp.get(ip) ?? 0;
@@ -179,6 +192,16 @@ export function createAuctionWebSocketServer() {
     let invalidMessageCount = 0;
     let validationFailureCount = 0;
 
+    const penaltyDisconnect = (reason: string) => {
+      // 60-second cooldown before this IP can reconnect
+      penaltyCooldowns.set(ip, Date.now() + 60_000);
+      try {
+        ws.close(1008, reason);
+      } catch {
+        /* */
+      }
+    };
+
     ws.on('message', async (data: RawData) => {
       try {
         resetIdleTimeout();
@@ -224,11 +247,7 @@ export function createAuctionWebSocketServer() {
             console.warn(
               `[Relayer] Too many invalid messages from ${ip}; closing`
             );
-            try {
-              ws.close(1008, 'too_many_invalid_messages');
-            } catch {
-              /* */
-            }
+            penaltyDisconnect('too_many_invalid_messages');
             return;
           }
           return;
@@ -299,11 +318,7 @@ export function createAuctionWebSocketServer() {
               console.warn(
                 `[Relayer] Too many invalid messages from ${ip}; closing`
               );
-              try {
-                ws.close(1008, 'too_many_invalid_messages');
-              } catch {
-                /* */
-              }
+              penaltyDisconnect('too_many_invalid_messages');
               return;
             }
             client.send({
@@ -362,11 +377,7 @@ export function createAuctionWebSocketServer() {
               console.warn(
                 `[Relayer] Too many validation failures from ${ip}; closing`
               );
-              try {
-                ws.close(1008, 'too_many_validation_failures');
-              } catch {
-                /* */
-              }
+              penaltyDisconnect('too_many_validation_failures');
               return;
             }
           }
@@ -397,9 +408,10 @@ export function createAuctionWebSocketServer() {
 
           const secondaryMsg =
             msg as import('@sapience/sdk/types/secondary').SecondaryClientToServerMessage;
+          let secondaryHandlerFailed = false;
           switch (secondaryMsg.type) {
             case 'secondary.auction.start':
-              await handleSecondaryAuctionStart(
+              secondaryHandlerFailed = await handleSecondaryAuctionStart(
                 client,
                 secondaryMsg.payload,
                 subs,
@@ -407,7 +419,7 @@ export function createAuctionWebSocketServer() {
               );
               break;
             case 'secondary.bid.submit':
-              await handleSecondaryBidSubmit(
+              secondaryHandlerFailed = await handleSecondaryBidSubmit(
                 client,
                 secondaryMsg.payload,
                 subs
@@ -429,6 +441,19 @@ export function createAuctionWebSocketServer() {
               handleSecondaryListingsRequest(client);
               break;
           }
+
+          // Track validation failures and disconnect abusive clients
+          if (secondaryHandlerFailed) {
+            validationFailureCount++;
+            if (validationFailureCount > config.WS_MAX_VALIDATION_FAILURES) {
+              console.warn(
+                `[Relayer] Too many validation failures from ${ip}; closing`
+              );
+              penaltyDisconnect('too_many_validation_failures');
+              return;
+            }
+          }
+
           trackDuration(msgType, startTime);
           return;
         }
@@ -441,11 +466,7 @@ export function createAuctionWebSocketServer() {
           console.warn(
             `[Relayer] Too many invalid messages from ${ip}; closing`
           );
-          try {
-            ws.close(1008, 'too_many_invalid_messages');
-          } catch {
-            /* */
-          }
+          penaltyDisconnect('too_many_invalid_messages');
           return;
         }
         console.warn(
