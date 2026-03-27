@@ -568,6 +568,7 @@ export function createComplexityEstimators(
       if (fieldName.startsWith('_min')) return 5000;
       if (fieldName.startsWith('_max')) return 5000;
       // Expensive custom queries — heavy SQL aggregations
+      if (fieldName === 'questions') return 500;
       if (fieldName === 'protocolStats') return 2000;
       if (fieldName === 'profitLeaderboard') return 2000;
       if (fieldName === 'accountTotalVolume') return 500;
