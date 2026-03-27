@@ -272,6 +272,35 @@ button {
   font-family: monospace;
 }
 
+/* Stats breakdown (success/failure side-by-side) */
+.stats-breakdown {
+  display: flex;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.stats-breakdown .stats-panel {
+  flex: 1;
+  min-width: 0;
+  background: #0d0d14;
+  border: 1px solid #222;
+  border-radius: 4px;
+  padding: 8px;
+  margin-bottom: 0;
+}
+
+.stats-breakdown .stats-panel h4 {
+  text-align: center;
+}
+
+.stats-breakdown .stats-hero-value {
+  font-size: 0.95rem;
+}
+
+.stats-breakdown .stats-hero {
+  padding: 6px 6px;
+}
+
 /* Request Log */
 .request-log {
   height: 300px;
@@ -661,6 +690,107 @@ button {
 .auction-dialog-value {
   color: #ccc;
   font-family: monospace;
+}
+
+/* Picks section in auction dialog */
+.picks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+
+.pick-card {
+  background: #0d0d14;
+  border: 1px solid #222;
+  border-radius: 4px;
+  padding: 8px 10px;
+}
+
+.pick-question {
+  font-size: 0.8rem;
+  color: #ccc;
+  margin-bottom: 4px;
+  line-height: 1.3;
+}
+
+.pick-details {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.75rem;
+  font-family: monospace;
+}
+
+.pick-outcome {
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-weight: 700;
+  font-size: 0.7rem;
+}
+
+.pick-yes {
+  background: #1a3a1a;
+  color: #44cc66;
+}
+
+.pick-no {
+  background: #3a1a1a;
+  color: #ee5555;
+}
+
+.pick-price {
+  color: #ccaa44;
+  font-weight: 600;
+}
+
+.pick-link {
+  color: #ccaa44;
+  text-decoration: none;
+  border-bottom: 1px dotted #ccaa44;
+}
+
+.pick-link:hover {
+  color: #eedd66;
+  border-bottom-color: #eedd66;
+}
+
+/* Expected vs actual */
+.expected-vs-actual {
+  background: #0d0d14;
+  border: 1px solid #222;
+  border-radius: 4px;
+  padding: 8px 10px;
+}
+
+.expected-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 3px 0;
+  font-size: 0.75rem;
+  border-bottom: 1px solid #1a1a24;
+}
+
+.expected-row:last-child {
+  border-bottom: none;
+}
+
+.expected-label {
+  color: #666;
+}
+
+.expected-value {
+  color: #ccc;
+  font-family: monospace;
+  font-weight: 600;
+}
+
+.diff-positive {
+  color: #44cc66;
+}
+
+.diff-negative {
+  color: #ee5555;
 }
 
 @media (max-width: 800px) {

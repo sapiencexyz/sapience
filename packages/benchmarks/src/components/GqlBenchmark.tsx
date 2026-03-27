@@ -16,6 +16,8 @@ export function GqlBenchmark({ config, onQuestionsReceived }: Props) {
   const [delayMs, setDelayMs] = useState(200);
   const [running, setRunning] = useState(false);
   const [stats, setStats] = useState<Stats | null>(null);
+  const [successStats, setSuccessStats] = useState<Stats | null>(null);
+  const [failureStats, setFailureStats] = useState<Stats | null>(null);
   const [log, setLog] = useState<LogEntry[]>([]);
 
   const abortRef = useRef(false);
@@ -31,7 +33,14 @@ export function GqlBenchmark({ config, onQuestionsReceived }: Props) {
 
   const updateStats = useCallback(() => {
     const elapsed = performance.now() - startTimeRef.current;
-    setStats(computeStats(samplesRef.current, elapsed));
+    const all = samplesRef.current;
+    setStats(computeStats(all, elapsed));
+
+    const ok = all.filter((s) => s.success);
+    const fail = all.filter((s) => !s.success);
+    setSuccessStats(ok.length > 0 ? computeStats(ok, elapsed) : null);
+    setFailureStats(fail.length > 0 ? computeStats(fail, elapsed) : null);
+
     setLog([...logRef.current]);
   }, []);
 
@@ -74,6 +83,8 @@ export function GqlBenchmark({ config, onQuestionsReceived }: Props) {
     startTimeRef.current = performance.now();
     setRunning(true);
     setStats(null);
+    setSuccessStats(null);
+    setFailureStats(null);
     setLog([]);
 
     for (let i = 0; i < concurrency; i++) {
@@ -111,7 +122,13 @@ export function GqlBenchmark({ config, onQuestionsReceived }: Props) {
         </button>
       </div>
 
-      {stats && <StatsPanel stats={stats} />}
+      {stats && <StatsPanel stats={stats} label="All Requests" />}
+      {(successStats || failureStats) && (
+        <div className="stats-breakdown">
+          {successStats && <StatsPanel stats={successStats} label="Successful" />}
+          {failureStats && <StatsPanel stats={failureStats} label="Failed" />}
+        </div>
+      )}
       <RequestLog entries={log} />
     </div>
   );

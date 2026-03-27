@@ -5,6 +5,7 @@ import type { SignableTypedData } from '@sapience/sdk/auction/initiate';
 import type { PickJson, AuctionRFQPayload, BidPayload } from '@sapience/sdk/types/escrow';
 import { validateBidOnChain } from '@sapience/sdk/auction/validation';
 import type { EnvConfig } from './constants';
+import type { EnrichedPick } from './picks';
 
 function generateRandomNonce(): bigint {
   const arr = new Uint32Array(1);
@@ -44,6 +45,8 @@ export interface AuctionTiming {
   counterpartyCollateral?: string;
   /** The RFQ payload we sent (needed for bid validation) */
   rfqPayload?: AuctionRFQPayload;
+  /** Enriched picks with condition metadata */
+  picks?: EnrichedPick[];
 }
 
 export interface RelayerSession {
@@ -191,7 +194,7 @@ export function setupMessageHandler(session: RelayerSession) {
 
 export async function sendAuction(
   session: RelayerSession,
-  picks: PickJson[]
+  picks: EnrichedPick[]
 ): Promise<string> {
   const messageId = crypto.randomUUID();
   const nonce = generateRandomNonce();
@@ -218,6 +221,7 @@ export async function sendAuction(
     sentAt,
     rfqPayload: payload,
     predictorCollateral: payload.predictorCollateral,
+    picks,
   });
 
   session.ws.send(

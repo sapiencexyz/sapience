@@ -1,8 +1,63 @@
 import type { PickJson } from '@sapience/sdk/types/escrow';
 
-interface ConditionInfo {
+export interface ConditionInfo {
   id: string;
   resolver: string;
+  question?: string;
+  estimatedPrice?: number | null;
+  similarMarkets?: unknown;
+}
+
+export interface EnrichedPick {
+  conditionResolver: string;
+  conditionId: string;
+  predictedOutcome: number;
+  question?: string;
+  estimatedPrice?: number | null;
+  polymarketUrl?: string | null;
+}
+
+interface ConditionFields {
+  id: string;
+  resolver: string;
+  settled?: boolean;
+  question?: string;
+  estimatedPrice?: number | null;
+  similarMarkets?: unknown;
+}
+
+function extractPolymarketUrl(similarMarkets: unknown): string | null {
+  if (!similarMarkets) return null;
+  let markets: unknown[];
+  if (typeof similarMarkets === 'string') {
+    try { markets = JSON.parse(similarMarkets); } catch { return null; }
+  } else if (Array.isArray(similarMarkets)) {
+    markets = similarMarkets;
+  } else {
+    return null;
+  }
+
+  for (const m of markets) {
+    if (typeof m === 'string' && m.includes('polymarket.com/event/')) return m;
+    if (m && typeof m === 'object') {
+      for (const key of ['url', 'link', 'href']) {
+        const val = (m as Record<string, unknown>)[key];
+        if (typeof val === 'string' && val.includes('polymarket.com/event/')) return val;
+      }
+    }
+  }
+  return null;
+}
+
+function pushCondition(conditions: ConditionInfo[], c: ConditionFields) {
+  if (c.settled) return;
+  conditions.push({
+    id: c.id,
+    resolver: c.resolver,
+    question: c.question,
+    estimatedPrice: c.estimatedPrice,
+    similarMarkets: c.similarMarkets,
+  });
 }
 
 /**
@@ -11,21 +66,15 @@ interface ConditionInfo {
  */
 export function extractConditions(questions: Array<{
   questionType: string;
-  group?: { conditions?: Array<{ id: string; resolver: string; settled?: boolean }> } | null;
-  condition?: { id: string; resolver: string; settled?: boolean } | null;
+  group?: { conditions?: ConditionFields[] } | null;
+  condition?: ConditionFields | null;
 }>): ConditionInfo[] {
   const conditions: ConditionInfo[] = [];
 
   for (const q of questions) {
-    if (q.condition && !q.condition.settled) {
-      conditions.push({ id: q.condition.id, resolver: q.condition.resolver });
-    }
+    if (q.condition) pushCondition(conditions, q.condition);
     if (q.group?.conditions) {
-      for (const c of q.group.conditions) {
-        if (!c.settled) {
-          conditions.push({ id: c.id, resolver: c.resolver });
-        }
-      }
+      for (const c of q.group.conditions) pushCondition(conditions, c);
     }
   }
 
@@ -36,7 +85,7 @@ export function extractConditions(questions: Array<{
  * Build random picks from available conditions.
  * Selects 1-3 conditions and assigns random predicted outcomes.
  */
-export function buildRandomPicks(conditions: ConditionInfo[], count?: number): PickJson[] {
+export function buildRandomPicks(conditions: ConditionInfo[], count?: number): EnrichedPick[] {
   if (conditions.length === 0) return [];
 
   const pickCount = count ?? Math.min(Math.floor(Math.random() * 3) + 1, conditions.length);
@@ -47,5 +96,8 @@ export function buildRandomPicks(conditions: ConditionInfo[], count?: number): P
     conditionResolver: c.resolver,
     conditionId: c.id,
     predictedOutcome: Math.random() < 0.5 ? 0 : 1,
+    question: c.question,
+    estimatedPrice: c.estimatedPrice,
+    polymarketUrl: extractPolymarketUrl(c.similarMarkets),
   }));
 }

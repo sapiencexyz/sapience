@@ -1,13 +1,8 @@
 import { useState, useCallback } from 'react';
 import { GqlBenchmark } from './components/GqlBenchmark';
 import { RelayerBenchmark } from './components/RelayerBenchmark';
-import { extractConditions } from './lib/picks';
+import { extractConditions, type ConditionInfo } from './lib/picks';
 import { ENV_CONFIGS, type Environment, type EnvConfig } from './lib/constants';
-
-interface ConditionInfo {
-  id: string;
-  resolver: string;
-}
 
 export function App() {
   const [env, setEnv] = useState<Environment>('staging');

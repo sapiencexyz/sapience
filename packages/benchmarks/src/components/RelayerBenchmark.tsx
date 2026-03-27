@@ -1,7 +1,7 @@
 import { useState, useRef, useCallback, useEffect, type ReactNode } from 'react';
 import { createPublicClient, http, formatUnits, type Hex, type Address } from 'viem';
 import { computeStats, type Stats } from '../lib/stats';
-import { buildRandomPicks } from '../lib/picks';
+import { buildRandomPicks, type ConditionInfo, type EnrichedPick } from '../lib/picks';
 import {
   createSigner,
   connectWs,
@@ -12,11 +12,6 @@ import {
   type AuctionTiming,
 } from '../lib/relayerRunner';
 import type { EnvConfig } from '../lib/constants';
-
-interface ConditionInfo {
-  id: string;
-  resolver: string;
-}
 
 interface Props {
   config: EnvConfig;
@@ -40,6 +35,7 @@ interface AuctionRow {
   // For detail dialog
   rfqPayload?: Record<string, unknown>;
   auctionId?: string;
+  picks?: EnrichedPick[];
 }
 
 interface WalletInfo {
@@ -93,6 +89,46 @@ function StatBox({ label, value }: { label: string; value: string }) {
   );
 }
 
+function computeExpectedQuote(picks: EnrichedPick[], predictorCollateralWei: string) {
+  const probs: number[] = [];
+  for (const p of picks) {
+    if (p.estimatedPrice == null) return null;
+    // estimatedPrice is probability of YES; adjust for predicted outcome
+    const prob = p.predictedOutcome === 1 ? p.estimatedPrice : 1 - p.estimatedPrice;
+    if (prob <= 0 || prob >= 1) return null;
+    probs.push(prob);
+  }
+  const comboProb = probs.reduce((a, b) => a * b, 1);
+  if (comboProb <= 0 || comboProb >= 1) return null;
+  const predictorWei = Number(predictorCollateralWei);
+  const expectedCounterpartyWei = predictorWei * (1 / comboProb - 1);
+  return { comboProb, expectedCounterpartyWei };
+}
+
+function PickCard({ pick }: { pick: EnrichedPick }) {
+  const priceDisplay = pick.estimatedPrice != null
+    ? `${fmt(pick.estimatedPrice * 100, 0)}%`
+    : '—';
+
+  return (
+    <div className="pick-card">
+      <div className="pick-question">{pick.question ?? pick.conditionId.slice(0, 16)}</div>
+      <div className="pick-details">
+        <span className={`pick-outcome ${pick.predictedOutcome === 1 ? 'pick-yes' : 'pick-no'}`}>
+          {pick.predictedOutcome === 1 ? 'YES' : 'NO'}
+        </span>
+        <span className="pick-price">
+          {pick.polymarketUrl ? (
+            <a href={pick.polymarketUrl} target="_blank" rel="noopener noreferrer" className="pick-link">
+              {priceDisplay}
+            </a>
+          ) : priceDisplay}
+        </span>
+      </div>
+    </div>
+  );
+}
+
 function AuctionDialog({ row, onClose }: { row: AuctionRow; onClose: () => void }) {
   const dialogRef = useRef<HTMLDialogElement>(null);
 
@@ -124,6 +160,11 @@ function AuctionDialog({ row, onClose }: { row: AuctionRow; onClose: () => void 
   if (row.error) sections.push({ label: 'Error', content: row.error });
   if (row.validationError) sections.push({ label: 'Validation error', content: row.validationError });
 
+  // Expected vs actual quote comparison
+  const expected = row.picks?.length && row.predictorCollateral
+    ? computeExpectedQuote(row.picks, row.predictorCollateral)
+    : null;
+
   return (
     <dialog ref={dialogRef} className="query-dialog" onClose={onClose} onClick={(e) => { if (e.target === dialogRef.current) onClose(); }}>
       <div className="query-dialog-content">
@@ -142,6 +183,47 @@ function AuctionDialog({ row, onClose }: { row: AuctionRow; onClose: () => void 
             </div>
           ))}
         </div>
+        {row.picks && row.picks.length > 0 && (
+          <div className="query-dialog-section">
+            <h5>Picks ({row.picks.length})</h5>
+            <div className="picks-list">
+              {row.picks.map((p, i) => <PickCard key={i} pick={p} />)}
+            </div>
+            {expected && (
+              <div className="expected-vs-actual">
+                <div className="expected-row">
+                  <span className="expected-label">Combo probability (Polymarket)</span>
+                  <span className="expected-value">{fmt(expected.comboProb * 100, 1)}%</span>
+                </div>
+                <div className="expected-row">
+                  <span className="expected-label">Expected counterparty collateral</span>
+                  <span className="expected-value">{fmtWei(String(Math.round(expected.expectedCounterpartyWei)))} USDe</span>
+                </div>
+                {row.counterpartyCollateral && (
+                  <>
+                    <div className="expected-row">
+                      <span className="expected-label">Actual counterparty collateral</span>
+                      <span className="expected-value">{fmtWei(row.counterpartyCollateral)} USDe</span>
+                    </div>
+                    <div className="expected-row">
+                      <span className="expected-label">Difference</span>
+                      {(() => {
+                        const diff = (Number(row.counterpartyCollateral) - expected.expectedCounterpartyWei) / 1e18;
+                        const sign = diff >= 0 ? '+' : '-';
+                        const abs = Math.abs(diff);
+                        return (
+                          <span className={`expected-value ${diff >= 0 ? 'diff-positive' : 'diff-negative'}`}>
+                            {sign}{abs < 0.01 ? '<0.01' : abs.toFixed(2)} USDe
+                          </span>
+                        );
+                      })()}
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
         {row.rfqPayload && (
           <div className="query-dialog-section">
             <h5>RFQ Payload</h5>
@@ -218,6 +300,7 @@ export function RelayerBenchmark({ config, conditions }: Props) {
         counterpartyCollateral: t.counterpartyCollateral,
         rfqPayload: t.rfqPayload as unknown as Record<string, unknown>,
         auctionId: t.auctionId,
+        picks: t.picks,
       });
 
       // Any bid stats
