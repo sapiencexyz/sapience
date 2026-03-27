@@ -1,0 +1,15 @@
+{
+  "name": "@sapience/edge-cache",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "deploy:staging": "wrangler deploy --env staging",
+    "tail": "wrangler tail"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "4.20260317.1",
+    "wrangler": "4.77.0"
+  }
+}

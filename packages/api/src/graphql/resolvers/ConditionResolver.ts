@@ -1,6 +1,7 @@
 import {
   Arg,
   Ctx,
+  Directive,
   FieldResolver,
   Info,
   Int,
@@ -41,6 +42,7 @@ import { PredictionType, mapPickConfig } from './EscrowResolver';
 @Resolver(() => Condition)
 export class ConditionResolver {
   @Query(() => [Condition], { nullable: false })
+  @Directive('@cacheControl(maxAge: 30)')
   async conditions(
     @Ctx() ctx: ApolloContext,
     @Info() info: GraphQLResolveInfo,
