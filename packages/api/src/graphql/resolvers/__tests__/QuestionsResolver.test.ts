@@ -1,0 +1,260 @@
+import 'reflect-metadata';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+const mockPrisma = vi.hoisted(() => ({
+  $queryRaw: vi.fn(),
+  conditionGroup: {
+    findMany: vi.fn(),
+  },
+  condition: {
+    findMany: vi.fn(),
+  },
+}));
+
+// The resolver imports ConditionGroup, Condition, SortOrder from the generated
+// type-graphql package and getPrismaFromContext from its helpers.  These are
+// generated at build time and not available to Vitest's Vite resolver, so we
+// provide lightweight stubs.
+vi.mock('@generated/type-graphql', () => ({
+  ConditionGroup: class ConditionGroup {},
+  Condition: class Condition {},
+  SortOrder: { asc: 'asc', desc: 'desc' },
+}));
+vi.mock('@generated/type-graphql/helpers', () => ({
+  getPrismaFromContext: (ctx: Record<string, unknown>) => ctx.prisma,
+}));
+
+import {
+  QuestionsResolver,
+  QuestionItemType,
+  QuestionSortField,
+  ResolutionStatus,
+} from '../QuestionsResolver';
+import type { ApolloContext } from '../../startApolloServer';
+import type { SortOrder } from '@generated/type-graphql';
+
+describe('QuestionsResolver', () => {
+  let resolver: QuestionsResolver;
+
+  const callQuestions = (overrides: Record<string, unknown> = {}) =>
+    resolver.questions(
+      { prisma: mockPrisma } as unknown as ApolloContext,
+      (overrides.take as number) ?? 50,
+      (overrides.skip as number) ?? 0,
+      (overrides.chainId as number) ?? null,
+      (overrides.sortField as QuestionSortField) ?? null,
+      (overrides.sortDirection as SortOrder) ?? 'desc',
+      (overrides.search as string) ?? null,
+      (overrides.categorySlugs as string[]) ?? null,
+      (overrides.minEndTime as number) ?? null,
+      (overrides.resolutionStatus as ResolutionStatus) ?? null,
+      (overrides.minEstimatedPrice as number) ?? null,
+      (overrides.maxEstimatedPrice as number) ?? null
+    );
+
+  beforeEach(() => {
+    vi.clearAllMocks();
+    resolver = new QuestionsResolver();
+  });
+
+  it('returns [] when SQL finds no results', async () => {
+    mockPrisma.$queryRaw.mockResolvedValue([]);
+
+    const result = await callQuestions();
+
+    expect(result).toEqual([]);
+    expect(mockPrisma.conditionGroup.findMany).not.toHaveBeenCalled();
+    expect(mockPrisma.condition.findMany).not.toHaveBeenCalled();
+  });
+
+  it('assembles group items with questionType, group populated, condition null, predictionCount from BigInt', async () => {
+    mockPrisma.$queryRaw.mockResolvedValue([
+      {
+        item_type: 'group',
+        group_id: 1,
+        condition_id: null,
+        prediction_count: BigInt(42),
+      },
+    ]);
+
+    const fakeGroup = {
+      id: 1,
+      name: 'Test Group',
+      condition: [{ id: 'c1', question: 'Q1' }],
+    };
+    mockPrisma.conditionGroup.findMany.mockResolvedValue([fakeGroup]);
+    mockPrisma.condition.findMany.mockResolvedValue([]);
+
+    const result = await callQuestions();
+
+    expect(result).toHaveLength(1);
+    expect(result[0].questionType).toBe(QuestionItemType.group);
+    expect(result[0].group).toBeTruthy();
+    expect(result[0].condition).toBeNull();
+    expect(result[0].predictionCount).toBe(42);
+  });
+
+  it('assembles condition items with questionType, condition populated, group null', async () => {
+    mockPrisma.$queryRaw.mockResolvedValue([
+      {
+        item_type: 'condition',
+        group_id: null,
+        condition_id: 'cond-abc',
+        prediction_count: BigInt(7),
+      },
+    ]);
+
+    const fakeCondition = { id: 'cond-abc', question: 'Will it rain?' };
+    mockPrisma.conditionGroup.findMany.mockResolvedValue([]);
+    mockPrisma.condition.findMany.mockResolvedValue([fakeCondition]);
+
+    const result = await callQuestions();
+
+    expect(result).toHaveLength(1);
+    expect(result[0].questionType).toBe(QuestionItemType.condition);
+    expect(result[0].condition).toBeTruthy();
+    expect(result[0].group).toBeNull();
+    expect(result[0].predictionCount).toBe(7);
+  });
+
+  it('preserves SQL sort order across mixed group/condition results', async () => {
+    mockPrisma.$queryRaw.mockResolvedValue([
+      {
+        item_type: 'condition',
+        group_id: null,
+        condition_id: 'c1',
+        prediction_count: BigInt(10),
+      },
+      {
+        item_type: 'group',
+        group_id: 2,
+        condition_id: null,
+        prediction_count: BigInt(20),
+      },
+      {
+        item_type: 'condition',
+        group_id: null,
+        condition_id: 'c2',
+        prediction_count: BigInt(5),
+      },
+    ]);
+
+    mockPrisma.conditionGroup.findMany.mockResolvedValue([
+      { id: 2, name: 'G2', condition: [] },
+    ]);
+    mockPrisma.condition.findMany.mockResolvedValue([
+      { id: 'c1', question: 'Q1' },
+      { id: 'c2', question: 'Q2' },
+    ]);
+
+    const result = await callQuestions();
+
+    expect(result).toHaveLength(3);
+    expect(result[0].questionType).toBe(QuestionItemType.condition);
+    expect(result[0].condition!.id).toBe('c1');
+    expect(result[1].questionType).toBe(QuestionItemType.group);
+    expect(result[1].group!.id).toBe(2);
+    expect(result[2].questionType).toBe(QuestionItemType.condition);
+    expect(result[2].condition!.id).toBe('c2');
+  });
+
+  it('skips items when findMany does not return a matching record', async () => {
+    mockPrisma.$queryRaw.mockResolvedValue([
+      {
+        item_type: 'group',
+        group_id: 999,
+        condition_id: null,
+        prediction_count: BigInt(1),
+      },
+      {
+        item_type: 'condition',
+        group_id: null,
+        condition_id: 'missing',
+        prediction_count: BigInt(1),
+      },
+      {
+        item_type: 'condition',
+        group_id: null,
+        condition_id: 'exists',
+        prediction_count: BigInt(3),
+      },
+    ]);
+
+    mockPrisma.conditionGroup.findMany.mockResolvedValue([]); // group 999 not returned
+    mockPrisma.condition.findMany.mockResolvedValue([
+      { id: 'exists', question: 'Found' },
+    ]); // 'missing' not returned
+
+    const result = await callQuestions();
+
+    expect(result).toHaveLength(1);
+    expect(result[0].questionType).toBe(QuestionItemType.condition);
+    expect(result[0].condition!.id).toBe('exists');
+  });
+
+  it('only calls conditionGroup.findMany when group IDs present (not condition.findMany)', async () => {
+    mockPrisma.$queryRaw.mockResolvedValue([
+      {
+        item_type: 'group',
+        group_id: 1,
+        condition_id: null,
+        prediction_count: BigInt(5),
+      },
+    ]);
+
+    mockPrisma.conditionGroup.findMany.mockResolvedValue([
+      { id: 1, name: 'G1', condition: [] },
+    ]);
+
+    await callQuestions();
+
+    expect(mockPrisma.conditionGroup.findMany).toHaveBeenCalledOnce();
+    expect(mockPrisma.condition.findMany).not.toHaveBeenCalled();
+  });
+
+  it('only calls condition.findMany when condition IDs present (not conditionGroup.findMany)', async () => {
+    mockPrisma.$queryRaw.mockResolvedValue([
+      {
+        item_type: 'condition',
+        group_id: null,
+        condition_id: 'c1',
+        prediction_count: BigInt(3),
+      },
+    ]);
+
+    mockPrisma.condition.findMany.mockResolvedValue([
+      { id: 'c1', question: 'Q1' },
+    ]);
+
+    await callQuestions();
+
+    expect(mockPrisma.condition.findMany).toHaveBeenCalledOnce();
+    expect(mockPrisma.conditionGroup.findMany).not.toHaveBeenCalled();
+  });
+
+  it('maps Prisma condition field to GraphQL conditions on group output', async () => {
+    const nestedConditions = [
+      { id: 'c1', question: 'Sub Q1' },
+      { id: 'c2', question: 'Sub Q2' },
+    ];
+
+    mockPrisma.$queryRaw.mockResolvedValue([
+      {
+        item_type: 'group',
+        group_id: 10,
+        condition_id: null,
+        prediction_count: BigInt(100),
+      },
+    ]);
+    mockPrisma.conditionGroup.findMany.mockResolvedValue([
+      { id: 10, name: 'Multi', condition: nestedConditions },
+    ]);
+
+    const result = await callQuestions();
+
+    expect(result).toHaveLength(1);
+    const group = result[0].group as unknown as Record<string, unknown>;
+    // Prisma returns 'condition' but GraphQL expects 'conditions'
+    expect(group.conditions).toEqual(nestedConditions);
+  });
+});
