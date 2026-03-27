@@ -121,7 +121,11 @@ export async function main(): Promise<void> {
 
   for (const condition of conditions) {
     try {
+      log(
+        `[${condition.id}] "${condition.question}" — Checking canRequestResolution on Polygon (OI=${condition.openInterest})...`
+      );
       const resolved = await canRequestResolution(polygonClient, condition.id);
+      log(`[${condition.id}] canRequestResolution = ${resolved}`);
 
       if (!resolved) {
         log(`[${condition.id}] Not resolved on Polygon yet, skipping`);
@@ -138,7 +142,7 @@ export async function main(): Promise<void> {
       toPrivate.push(condition.id);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      log(`[${condition.id}] Error: ${msg}`);
+      log(`[${condition.id}] Error checking Polygon resolution: ${msg}`);
       results.errors++;
     }
   }
@@ -146,7 +150,13 @@ export async function main(): Promise<void> {
   // Batch private all resolved conditions with no engagement
   let privatedIds: string[] = [];
   if (toPrivate.length > 0 && options.execute) {
+    log(
+      `[Cleanup] Sending batch private for ${toPrivate.length} condition(s): ${toPrivate.map((id) => id.slice(0, 10) + '...').join(', ')}`
+    );
     const result = await privateConditions(apiUrl, privateKey!, toPrivate);
+    log(
+      `[Cleanup] Batch private response: success=${result.success}, updated=${result.updated}, error=${result.error}`
+    );
     if (result.success) {
       log(`[Cleanup] Batch privated ${result.updated} condition(s)`);
       results.privated = result.updated ?? 0;
@@ -174,7 +184,11 @@ export async function main(): Promise<void> {
       );
 
       // Re-publish so users can see their positions
-      const republishResult = await republishConditions(apiUrl, privateKey!, engagedIds);
+      const republishResult = await republishConditions(
+        apiUrl,
+        privateKey!,
+        engagedIds
+      );
       if (republishResult.success) {
         log(`[Cleanup] Re-published ${republishResult.updated} condition(s)`);
       } else {

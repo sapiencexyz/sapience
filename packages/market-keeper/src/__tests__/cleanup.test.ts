@@ -44,6 +44,7 @@ const mockLog = vi.mocked(log);
 interface TestCondition {
   id: string;
   openInterest: string;
+  question: string;
   attestationCount: number;
 }
 
@@ -51,6 +52,7 @@ function makeCondition(overrides: Partial<TestCondition> = {}): TestCondition {
   return {
     id: '0x' + 'a'.repeat(64),
     openInterest: '0',
+    question: 'Test question?',
     attestationCount: 0,
     ...overrides,
   };
