@@ -255,6 +255,9 @@ export function RelayerBenchmark({ config, conditions }: Props) {
   const logRef = useRef<HTMLDivElement>(null);
   const [inspecting, setInspecting] = useState<AuctionRow | null>(null);
 
+  // Clear private key from memory on unmount
+  useEffect(() => () => { setPrivateKey(''); }, []);
+
   useEffect(() => { if (!running) setWsUrl(config.relayerWsUrl); }, [config.relayerWsUrl, running]);
   useEffect(() => { const el = logRef.current; if (el) el.scrollTop = el.scrollHeight; }, [rows.length]);
 
@@ -410,7 +413,7 @@ export function RelayerBenchmark({ config, conditions }: Props) {
         </label>
         <label>
           Private Key
-          <input type="password" value={privateKey} onChange={(e) => handleKeyChange(e.target.value)} disabled={running} placeholder="0x..." />
+          <input type="password" value={privateKey} onChange={(e) => handleKeyChange(e.target.value)} disabled={running} placeholder="0x..." autoComplete="off" data-1p-ignore data-lpignore="true" />
           <span className="key-hint">
             Private key used to sign requests, verifying identity. Use{' '}
             <a href="#" onClick={(e) => { e.preventDefault(); if (!running) handleKeyChange('0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80'); }}>

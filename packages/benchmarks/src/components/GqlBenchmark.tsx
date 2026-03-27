@@ -24,7 +24,7 @@ export function GqlBenchmark({ config, onQuestionsReceived }: Props) {
   const samplesRef = useRef<{ durationMs: number; success: boolean }[]>([]);
   const logRef = useRef<LogEntry[]>([]);
   const startTimeRef = useRef(0);
-  const conditionsSentRef = useRef(false);
+  const lastConditionRefreshRef = useRef(0);
 
   // Sync URL when env changes (only when not running)
   useEffect(() => {
@@ -58,9 +58,13 @@ export function GqlBenchmark({ config, onQuestionsReceived }: Props) {
         variables: result.variables,
       });
 
-      if (result.success && result.rawQuestions && !conditionsSentRef.current) {
-        conditionsSentRef.current = true;
-        onQuestionsReceived?.(result.rawQuestions);
+      // Refresh conditions every 30s so the relayer picks from fresh data
+      if (result.success && result.rawQuestions) {
+        const now = Date.now();
+        if (now - lastConditionRefreshRef.current >= 30_000) {
+          lastConditionRefreshRef.current = now;
+          onQuestionsReceived?.(result.rawQuestions);
+        }
       }
 
       if (logRef.current.length > 200) {
@@ -79,7 +83,7 @@ export function GqlBenchmark({ config, onQuestionsReceived }: Props) {
     abortRef.current = false;
     samplesRef.current = [];
     logRef.current = [];
-    conditionsSentRef.current = false;
+    lastConditionRefreshRef.current = 0;
     startTimeRef.current = performance.now();
     setRunning(true);
     setStats(null);

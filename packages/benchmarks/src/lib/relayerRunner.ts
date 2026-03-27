@@ -13,19 +13,10 @@ function generateRandomNonce(): bigint {
   return BigInt(arr[0]) + 1n;
 }
 
-function randomCollateral(maxWei?: bigint): bigint {
-  const minUsd = 0.1;
-  const defaultMaxUsd = 10;
-  const minWei = BigInt(Math.floor(minUsd * 1e6)) * 10n ** 12n;
-
-  // If balance is too low, just use min
-  if (maxWei !== undefined && maxWei <= minWei) return minWei;
-
-  const maxUsd = maxWei !== undefined
-    ? Math.min(defaultMaxUsd, Number(maxWei) / 1e18)
-    : defaultMaxUsd;
-
-  const amount = minUsd + Math.random() * (Math.max(maxUsd, minUsd) - minUsd);
+function randomCollateral(): bigint {
+  const minUsd = 0.01;
+  const maxUsd = 10;
+  const amount = minUsd + Math.random() * (maxUsd - minUsd);
   return BigInt(Math.floor(amount * 1e6)) * 10n ** 12n;
 }
 
@@ -207,7 +198,7 @@ export async function sendAuction(
 ): Promise<string> {
   const messageId = crypto.randomUUID();
   const nonce = generateRandomNonce();
-  const collateral = randomCollateral(session.balanceWei);
+  const collateral = randomCollateral();
 
   const { payload } = await prepareAuctionRFQ({
     picks,
