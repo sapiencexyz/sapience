@@ -1,11 +1,12 @@
 /**
- * In-memory credit session store for x402 payments.
+ * Persistent credit session store for x402 payments (PostgreSQL via Prisma).
  *
  * Clients pay once for a credit bundle, receive a session token,
  * then spend credits across multiple queries — amortizing a single
  * on-chain gas cost over many requests.
  */
 import { randomBytes } from 'crypto';
+import prisma from './db';
 
 export type CreditSession = {
   wallet: string;
@@ -13,64 +14,64 @@ export type CreditSession = {
   expiresAt: number;
 };
 
-const sessions = new Map<string, CreditSession>();
-const MAX_CREDIT_SESSIONS = 10_000;
-const CLEANUP_INTERVAL_MS = 60_000;
-
-let cleanupTimer: ReturnType<typeof setInterval> | null = null;
-
-function startCleanup() {
-  if (cleanupTimer) return;
-  cleanupTimer = setInterval(() => {
-    const now = Date.now();
-    for (const [token, session] of sessions) {
-      if (session.expiresAt <= now) {
-        sessions.delete(token);
-      }
-    }
-  }, CLEANUP_INTERVAL_MS);
-  cleanupTimer.unref();
-}
-
-export function createCreditSession(
+export async function createCreditSession(
   wallet: string,
   credits: number,
   ttlMs: number
-): { token: string; credits: number; expiresAt: number } {
-  // Enforce hard cap — evict expired first, then reject if still full
-  if (sessions.size >= MAX_CREDIT_SESSIONS) {
-    const now = Date.now();
-    for (const [token, session] of sessions) {
-      if (session.expiresAt <= now) sessions.delete(token);
-    }
-    if (sessions.size >= MAX_CREDIT_SESSIONS) {
-      throw new Error('Credit session limit reached');
-    }
-  }
-
+): Promise<{ token: string; credits: number; expiresAt: number }> {
   const token = randomBytes(32).toString('hex');
-  const expiresAt = Date.now() + ttlMs;
-  sessions.set(token, { wallet, credits, expiresAt });
-  startCleanup();
+  const expiresAt = new Date(Date.now() + ttlMs);
 
-  return { token, credits, expiresAt };
+  await prisma.creditSession.create({
+    data: { token, wallet, credits, expiresAt },
+  });
+
+  return { token, credits, expiresAt: expiresAt.getTime() };
 }
 
-export function getSession(token: string): CreditSession | null {
-  const session = sessions.get(token);
-  if (!session) return null;
-  if (session.expiresAt <= Date.now()) {
-    sessions.delete(token);
+export async function getSession(token: string): Promise<CreditSession | null> {
+  const row = await prisma.creditSession.findUnique({ where: { token } });
+  if (!row) return null;
+
+  if (row.expiresAt.getTime() <= Date.now()) {
+    // Lazy-delete expired session
+    await prisma.creditSession.delete({ where: { token } }).catch(() => {});
     return null;
   }
-  return session;
+
+  return {
+    wallet: row.wallet,
+    credits: row.credits,
+    expiresAt: row.expiresAt.getTime(),
+  };
 }
 
-export function deductCredits(token: string, amount: number): boolean {
-  const session = getSession(token);
-  if (!session || session.credits < amount) return false;
-  session.credits -= amount;
-  return true;
+/**
+ * Atomically deduct credits from a session.
+ * Uses a single UPDATE … WHERE credits >= amount to avoid races.
+ */
+export async function deductCredits(
+  token: string,
+  amount: number
+): Promise<boolean> {
+  const now = new Date();
+  const result = await prisma.$queryRaw<{ token: string }[]>`
+    UPDATE credit_session
+    SET credits = credits - ${amount}
+    WHERE token = ${token}
+      AND credits >= ${amount}
+      AND "expiresAt" > ${now}
+    RETURNING token
+  `;
+  return result.length > 0;
+}
+
+/** Delete all expired sessions (space reclamation). */
+export async function cleanupExpiredSessions(): Promise<number> {
+  const { count } = await prisma.creditSession.deleteMany({
+    where: { expiresAt: { lte: new Date() } },
+  });
+  return count;
 }
 
 /**
@@ -88,14 +89,5 @@ export function extractPayerFromPaymentHeader(header: string): string | null {
     );
   } catch {
     return null;
-  }
-}
-
-/** Visible for testing — clear all sessions and stop cleanup timer. */
-export function _resetForTest() {
-  sessions.clear();
-  if (cleanupTimer) {
-    clearInterval(cleanupTimer);
-    cleanupTimer = null;
   }
 }

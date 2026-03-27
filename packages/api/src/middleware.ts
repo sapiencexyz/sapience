@@ -298,7 +298,7 @@ export function setupMiddleware(app: Express) {
       let creditSessionFailed = false;
       let creditFailureReason: 'expired' | 'exhausted' | undefined;
       if (creditToken) {
-        const session = getSession(creditToken);
+        const session = await getSession(creditToken);
         if (session) {
           // Cost = query complexity score (minimum 1)
           let cost = 1;
@@ -313,8 +313,8 @@ export function setupMiddleware(app: Express) {
             );
           }
 
-          if (deductCredits(creditToken, cost)) {
-            const remaining = getSession(creditToken)?.credits ?? 0;
+          if (await deductCredits(creditToken, cost)) {
+            const remaining = (await getSession(creditToken))?.credits ?? 0;
             res.setHeader('X-Credits-Remaining', String(remaining));
             return next();
           }
@@ -347,7 +347,7 @@ export function setupMiddleware(app: Express) {
         }
 
         try {
-          await x402Middleware(req, res, (err?: unknown) => {
+          await x402Middleware(req, res, async (err?: unknown) => {
             if (err) return next(err);
 
             // Payment succeeded — create credit session for the payer
@@ -356,7 +356,7 @@ export function setupMiddleware(app: Express) {
 
             if (wallet) {
               try {
-                const { token, credits } = createCreditSession(
+                const { token, credits } = await createCreditSession(
                   wallet,
                   config.X402_CREDIT_BUNDLE_USDC,
                   config.X402_CREDIT_SESSION_TTL_MS

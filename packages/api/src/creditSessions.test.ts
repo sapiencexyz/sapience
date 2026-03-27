@@ -1,81 +1,123 @@
-import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
+
+const mockPrisma = vi.hoisted(() => ({
+  creditSession: {
+    create: vi.fn(),
+    findUnique: vi.fn(),
+    delete: vi.fn(),
+    deleteMany: vi.fn(),
+  },
+  $queryRaw: vi.fn(),
+}));
+
+vi.mock('./db', () => ({ default: mockPrisma }));
+
 import {
   createCreditSession,
   getSession,
   deductCredits,
+  cleanupExpiredSessions,
   extractPayerFromPaymentHeader,
-  _resetForTest,
 } from './creditSessions';
 
 beforeEach(() => {
-  _resetForTest();
-});
-
-afterEach(() => {
-  _resetForTest();
+  vi.restoreAllMocks();
 });
 
 describe('createCreditSession', () => {
-  it('creates a session with a hex token', () => {
-    const result = createCreditSession('0xabc', 1_000_000, 3600_000);
+  it('calls prisma.creditSession.create with correct data', async () => {
+    mockPrisma.creditSession.create.mockResolvedValue({});
+
+    const result = await createCreditSession('0xabc', 1_000_000, 3600_000);
+
     expect(result.token).toMatch(/^[0-9a-f]{64}$/);
     expect(result.credits).toBe(1_000_000);
     expect(result.expiresAt).toBeGreaterThan(Date.now());
+
+    expect(mockPrisma.creditSession.create).toHaveBeenCalledWith({
+      data: {
+        token: result.token,
+        wallet: '0xabc',
+        credits: 1_000_000,
+        expiresAt: expect.any(Date),
+      },
+    });
   });
 
-  it('returns different tokens for each session', () => {
-    const a = createCreditSession('0xabc', 1000, 60000);
-    const b = createCreditSession('0xabc', 1000, 60000);
+  it('returns different tokens for each session', async () => {
+    mockPrisma.creditSession.create.mockResolvedValue({});
+
+    const a = await createCreditSession('0xabc', 1000, 60000);
+    const b = await createCreditSession('0xabc', 1000, 60000);
     expect(a.token).not.toBe(b.token);
   });
 });
 
 describe('getSession', () => {
-  it('returns session for valid token', () => {
-    const { token } = createCreditSession('0xabc', 5000, 60000);
-    const session = getSession(token);
+  it('returns session for valid token', async () => {
+    const futureDate = new Date(Date.now() + 60000);
+    mockPrisma.creditSession.findUnique.mockResolvedValue({
+      token: 'abc',
+      wallet: '0xabc',
+      credits: 5000,
+      expiresAt: futureDate,
+    });
+
+    const session = await getSession('abc');
     expect(session).not.toBeNull();
     expect(session!.wallet).toBe('0xabc');
     expect(session!.credits).toBe(5000);
+    expect(session!.expiresAt).toBe(futureDate.getTime());
   });
 
-  it('returns null for unknown token', () => {
-    expect(getSession('nonexistent')).toBeNull();
+  it('returns null for unknown token', async () => {
+    mockPrisma.creditSession.findUnique.mockResolvedValue(null);
+    expect(await getSession('nonexistent')).toBeNull();
   });
 
-  it('returns null for expired session', () => {
-    vi.useFakeTimers();
-    const { token } = createCreditSession('0xabc', 5000, 1000); // 1s TTL
-    vi.advanceTimersByTime(2000);
-    expect(getSession(token)).toBeNull();
-    vi.useRealTimers();
+  it('returns null and deletes expired session', async () => {
+    const pastDate = new Date(Date.now() - 1000);
+    mockPrisma.creditSession.findUnique.mockResolvedValue({
+      token: 'expired-token',
+      wallet: '0xabc',
+      credits: 5000,
+      expiresAt: pastDate,
+    });
+    mockPrisma.creditSession.delete.mockResolvedValue({});
+
+    expect(await getSession('expired-token')).toBeNull();
+    expect(mockPrisma.creditSession.delete).toHaveBeenCalledWith({
+      where: { token: 'expired-token' },
+    });
   });
 });
 
 describe('deductCredits', () => {
-  it('deducts credits and returns true when sufficient', () => {
-    const { token } = createCreditSession('0xabc', 10000, 60000);
-    expect(deductCredits(token, 5000)).toBe(true);
-    expect(getSession(token)!.credits).toBe(5000);
+  it('returns true when UPDATE matches a row', async () => {
+    mockPrisma.$queryRaw.mockResolvedValue([{ token: 'abc' }]);
+    expect(await deductCredits('abc', 5000)).toBe(true);
   });
 
-  it('returns false when insufficient credits', () => {
-    const { token } = createCreditSession('0xabc', 3000, 60000);
-    expect(deductCredits(token, 5000)).toBe(false);
-    // Credits should not have changed
-    expect(getSession(token)!.credits).toBe(3000);
+  it('returns false when UPDATE matches no rows', async () => {
+    mockPrisma.$queryRaw.mockResolvedValue([]);
+    expect(await deductCredits('abc', 5000)).toBe(false);
   });
 
-  it('returns false for unknown token', () => {
-    expect(deductCredits('nonexistent', 100)).toBe(false);
+  it('returns false for unknown token', async () => {
+    mockPrisma.$queryRaw.mockResolvedValue([]);
+    expect(await deductCredits('nonexistent', 100)).toBe(false);
   });
+});
 
-  it('deducts exactly to zero', () => {
-    const { token } = createCreditSession('0xabc', 5000, 60000);
-    expect(deductCredits(token, 5000)).toBe(true);
-    expect(getSession(token)!.credits).toBe(0);
-    // Next deduction should fail
-    expect(deductCredits(token, 1)).toBe(false);
+describe('cleanupExpiredSessions', () => {
+  it('calls deleteMany with correct filter and returns count', async () => {
+    mockPrisma.creditSession.deleteMany.mockResolvedValue({ count: 3 });
+
+    const count = await cleanupExpiredSessions();
+    expect(count).toBe(3);
+    expect(mockPrisma.creditSession.deleteMany).toHaveBeenCalledWith({
+      where: { expiresAt: { lte: expect.any(Date) } },
+    });
   });
 });
 
