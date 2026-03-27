@@ -36,10 +36,14 @@ export interface AuctionTiming {
   validationError?: string;
   /** Predictor collateral in wei string */
   predictorCollateral?: string;
-  /** First bid's counterparty collateral in wei string */
-  counterpartyCollateral?: string;
+  /** Estimator bid's counterparty collateral in wei string */
+  estimatorCollateral?: string;
+  /** Usable (non-estimator) bid's counterparty collateral in wei string */
+  usableCollateral?: string;
   /** The RFQ payload we sent (needed for bid validation) */
   rfqPayload?: AuctionRFQPayload;
+  /** Number of picks in this auction */
+  pickCount?: number;
   /** Enriched picks with condition metadata */
   picks?: EnrichedPick[];
 }
@@ -63,11 +67,15 @@ function normalizeWsUrl(url: string): string {
   return url.replace(/^https:\/\//i, 'wss://').replace(/^http:\/\//i, 'ws://');
 }
 
-export function connectWs(url: string): Promise<WebSocket> {
+export function connectWs(url: string, timeoutMs = 10_000): Promise<WebSocket> {
   return new Promise((resolve, reject) => {
     const ws = new WebSocket(normalizeWsUrl(url));
-    ws.onopen = () => resolve(ws);
-    ws.onerror = () => reject(new Error('WebSocket connection failed'));
+    const timer = setTimeout(() => {
+      ws.close();
+      reject(new Error('WebSocket connection timed out'));
+    }, timeoutMs);
+    ws.onopen = () => { clearTimeout(timer); resolve(ws); };
+    ws.onerror = () => { clearTimeout(timer); reject(new Error('WebSocket connection failed')); };
   });
 }
 
@@ -167,9 +175,6 @@ export function setupMessageHandler(session: RelayerSession) {
           const bids: BidPayload[] = payload?.bids ?? [];
           if (!timing.firstBidAt) {
             timing.firstBidAt = now;
-            if (bids.length > 0) {
-              timing.counterpartyCollateral = bids[0].counterpartyCollateral;
-            }
             session.onUpdate();
           }
 
@@ -177,9 +182,11 @@ export function setupMessageHandler(session: RelayerSession) {
             if (bid.counterparty?.toLowerCase() === ESTIMATOR_ADDRESS) {
               if (!timing.firstEstimatorBidAt) {
                 timing.firstEstimatorBidAt = now;
+                timing.estimatorCollateral = bid.counterpartyCollateral;
                 session.onUpdate();
               }
             } else if (!timing.firstValidBidAt && !timing.validating) {
+              timing.usableCollateral = bid.counterpartyCollateral;
               timing.validating = true;
               validateBid(bid, timing, session);
             }
@@ -221,6 +228,7 @@ export async function sendAuction(
     sentAt,
     rfqPayload: payload,
     predictorCollateral: payload.predictorCollateral,
+    pickCount: picks.length,
     picks,
   });
 
