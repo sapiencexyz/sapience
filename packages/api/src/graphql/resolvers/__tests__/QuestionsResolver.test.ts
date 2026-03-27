@@ -327,13 +327,14 @@ describe('QuestionsResolver', () => {
       expect(sql).toContain('CROSS JOIN LATERAL');
     });
 
-    it('merges ungrouped and expired-group conditions via LEFT JOIN (two UNION parts, not three)', async () => {
+    it('Part B only fetches ungrouped conditions (no LEFT JOIN, two UNION parts)', async () => {
       await callQuestions();
       const sql = getCapturedSql();
 
-      // Merged part uses LEFT JOIN to handle both ungrouped and expired-group conditions
-      expect(sql).toContain('LEFT JOIN condition_group');
-      // Should have exactly two UNION ALL (Part A + merged Part B/C)
+      // Part B no longer needs LEFT JOIN — only ungrouped conditions
+      expect(sql).not.toContain('LEFT JOIN condition_group');
+      expect(sql).toContain('"conditionGroupId" IS NULL');
+      // Should have exactly one UNION ALL (Part A + Part B)
       const unionCount = (sql.match(/UNION ALL/g) || []).length;
       expect(unionCount).toBe(1);
     });

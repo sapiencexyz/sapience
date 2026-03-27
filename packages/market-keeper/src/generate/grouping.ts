@@ -113,6 +113,8 @@ export async function groupMarkets(
         eventSlug: event.slug,
       });
     } else {
+      // Rare: Polymarket markets without an associated event.
+      // These become ungrouped conditions (no condition_group row).
       ungrouped.push(market);
     }
   }
