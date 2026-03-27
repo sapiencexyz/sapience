@@ -27,6 +27,7 @@ interface AuctionRow {
   ackMs?: number;
   bidMs?: number;
   validBidMs?: number;
+  estimatorBidMs?: number;
   validating?: boolean;
   error?: string;
   validationError?: string;
@@ -293,6 +294,7 @@ export function RelayerBenchmark({ config, conditions }: Props) {
         ackMs: t.ackAt ? t.ackAt - t.sentAt : undefined,
         bidMs: t.firstBidAt ? t.firstBidAt - t.sentAt : undefined,
         validBidMs: t.firstValidBidAt ? t.firstValidBidAt - t.sentAt : undefined,
+        estimatorBidMs: t.firstEstimatorBidAt ? t.firstEstimatorBidAt - t.sentAt : undefined,
         validating: t.validating,
         error: t.error,
         validationError: t.validationError,
@@ -510,20 +512,6 @@ export function RelayerBenchmark({ config, conditions }: Props) {
                 <span className="auction-arrow">→</span>
                 {row.state === 'acked' ? (
                   <span className="auction-phase phase-pending">{row.validating ? 'validating...' : 'waiting for bid...'}</span>
-                ) : row.state === 'bid' ? (
-                  <>
-                    <span className="auction-phase phase-bid">
-                      BID {row.counterpartyCollateral && `${fmtWei(row.counterpartyCollateral)} `}
-                      {row.predictorCollateral && row.counterpartyCollateral && (
-                        <span className="auction-chance">({impliedChance(row.predictorCollateral, row.counterpartyCollateral)}%)</span>
-                      )}
-                      {' '}{fmt(row.bidMs!)}ms
-                    </span>
-                    <span className="auction-arrow">→</span>
-                    <span className="auction-phase phase-pending" title={row.validationError}>
-                      {row.validating ? 'validating...' : `failed: ${row.validationError?.slice(0, 40) ?? 'unknown'}`}
-                    </span>
-                  </>
                 ) : (
                   <>
                     <span className="auction-phase phase-bid">
@@ -533,8 +521,25 @@ export function RelayerBenchmark({ config, conditions }: Props) {
                       )}
                       {' '}{fmt(row.bidMs!)}ms
                     </span>
-                    <span className="auction-arrow">→</span>
-                    <span className="auction-phase phase-valid">USABLE {fmt(row.validBidMs!)}ms</span>
+                    {row.estimatorBidMs != null && (
+                      <>
+                        <span className="auction-arrow">→</span>
+                        <span className="auction-phase phase-estimator">ESTIMATOR {fmt(row.estimatorBidMs)}ms</span>
+                      </>
+                    )}
+                    {row.validBidMs != null ? (
+                      <>
+                        <span className="auction-arrow">→</span>
+                        <span className="auction-phase phase-valid">USABLE {fmt(row.validBidMs)}ms</span>
+                      </>
+                    ) : row.state === 'bid' && (
+                      <>
+                        <span className="auction-arrow">→</span>
+                        <span className="auction-phase phase-pending" title={row.validationError}>
+                          {row.validating ? 'validating...' : row.validationError ? `failed: ${row.validationError.slice(0, 40)}` : 'waiting...'}
+                        </span>
+                      </>
+                    )}
                   </>
                 )}
               </>

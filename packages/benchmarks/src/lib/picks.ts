@@ -83,12 +83,12 @@ export function extractConditions(questions: Array<{
 
 /**
  * Build random picks from available conditions.
- * Selects 1-3 conditions and assigns random predicted outcomes.
+ * Selects 2-5 conditions and assigns random predicted outcomes.
  */
 export function buildRandomPicks(conditions: ConditionInfo[], count?: number): EnrichedPick[] {
   if (conditions.length === 0) return [];
 
-  const pickCount = count ?? Math.min(Math.floor(Math.random() * 3) + 1, conditions.length);
+  const pickCount = count ?? Math.min(Math.floor(Math.random() * 4) + 2, conditions.length);
   const shuffled = [...conditions].sort(() => Math.random() - 0.5);
   const selected = shuffled.slice(0, pickCount);
 

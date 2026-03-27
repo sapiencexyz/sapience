@@ -29,6 +29,9 @@ function randomCollateral(maxWei?: bigint): bigint {
   return BigInt(Math.floor(amount * 1e6)) * 10n ** 12n;
 }
 
+/** Trusted estimator address — bids from this address skip on-chain validation */
+const ESTIMATOR_ADDRESS = '0xe02eD37D0458c8999943CbE6D1c9DB597f3EE572'.toLowerCase();
+
 export interface AuctionTiming {
   auctionId?: string;
   sentAt: number;
@@ -36,6 +39,7 @@ export interface AuctionTiming {
   startedAt?: number;
   firstBidAt?: number;
   firstValidBidAt?: number;
+  firstEstimatorBidAt?: number;
   validating?: boolean;
   error?: string;
   validationError?: string;
@@ -179,7 +183,12 @@ export function setupMessageHandler(session: RelayerSession) {
           }
 
           for (const bid of bids) {
-            if (!timing.firstValidBidAt && !timing.validating) {
+            if (bid.counterparty?.toLowerCase() === ESTIMATOR_ADDRESS) {
+              if (!timing.firstEstimatorBidAt) {
+                timing.firstEstimatorBidAt = now;
+                session.onUpdate();
+              }
+            } else if (!timing.firstValidBidAt && !timing.validating) {
               timing.validating = true;
               validateBid(bid, timing, session);
             }

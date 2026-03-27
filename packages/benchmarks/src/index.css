@@ -553,6 +553,12 @@ button {
   font-weight: 700;
 }
 
+.phase-estimator {
+  background: #1a1a3a;
+  color: #aa88ff;
+  font-weight: 700;
+}
+
 .phase-error {
   background: #3a1a1a;
   color: #ee5555;
