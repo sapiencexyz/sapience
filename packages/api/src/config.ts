@@ -65,20 +65,12 @@ const validators = {
   }),
   // Tiered rate limiting (x402 payment tiers)
   FREE_TIER_RATE_LIMIT: num({
-    default: 200,
+    default: 120,
     desc: 'Free tier rate limit (requests per minute before payment required)',
-  }),
-  HARD_RATE_LIMIT: num({
-    default: 400,
-    desc: 'Hard rate limit (max requests per minute even with payment)',
   }),
   X402_CREDIT_BUNDLE_USDC: num({
     default: 1_000_000, // $1.00 in USDC base units (6 decimals)
     desc: 'Credit bundle size in USDC base units (amount charged per x402 payment)',
-  }),
-  X402_CREDIT_SESSION_TTL_MS: num({
-    default: 3_600_000, // 1 hour
-    desc: 'Credit session expiry in milliseconds',
   }),
 };
 

@@ -32,7 +32,7 @@ import { SharedSchema } from './graphql/sharedSchema';
 
 const NETWORK = 'eip155:42161' as const;
 // Native USDC on Arbitrum One (Circle's FiatTokenV2_2, supports EIP-3009)
-const USDC_ARBITRUM = '0xaf88d065e77c8cC2239327C5EDb3A432268e5831';
+export const USDC_ARBITRUM = '0xaf88d065e77c8cC2239327C5EDb3A432268e5831';
 
 // Gas estimation for EIP-3009 transferWithAuthorization
 // Typical gas usage: ~60,000-80,000 gas units
@@ -123,11 +123,11 @@ export function calculateGraphQLComplexity(
       estimators: createComplexityEstimators(config.GRAPHQL_MAX_LIST_SIZE),
     });
 
-    return complexity;
+    return Number.isFinite(complexity) ? complexity : 1;
   } catch (error) {
     console.error('[x402] Error calculating query complexity:', error);
-    // On error, charge the highest tier to prevent abuse
-    return Infinity;
+    // On error, return minimum — the query will fail at the GraphQL layer anyway if malformed
+    return 1;
   }
 }
 

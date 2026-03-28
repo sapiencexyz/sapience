@@ -8,6 +8,7 @@ import { config } from './config';
 import {
   createGasAwareX402Middleware,
   calculateGraphQLComplexity,
+  USDC_ARBITRUM,
 } from './x402';
 import {
   createCreditSession,
@@ -160,6 +161,7 @@ const corsOptions: cors.CorsOptions = {
     'X-PAYMENT-RESPONSE',
     'X-Credit-Session',
     'X-Credit-Session-Status',
+    'X-Credit-Session-Error',
     'X-Credits-Remaining',
   ],
 };
@@ -170,10 +172,7 @@ const corsOptions: cors.CorsOptions = {
  * Build a structured 402 response body that explains the credit session system.
  * Designed to be understood by both AI agents and programmatic HTTP clients.
  */
-function buildCreditSession402Body(
-  message: string,
-  status?: 'expired' | 'exhausted'
-) {
+function buildCreditSession402Body(message: string, status?: 'exhausted') {
   const bundleAmount = config.X402_CREDIT_BUNDLE_USDC;
   return {
     error: 'Payment Required',
@@ -184,14 +183,13 @@ function buildCreditSession402Body(
       scheme: 'exact',
       network: 'eip155:42161',
       payTo: config.X402_PAY_TO,
-      asset: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831', // USDC on Arbitrum One
+      asset: USDC_ARBITRUM,
       bundle: {
         amount: String(bundleAmount),
         currency: 'USDC',
         decimals: 6,
         amountUSD: `$${(bundleAmount / 1e6).toFixed(2)}`,
       },
-      sessionTTLSeconds: Math.floor(config.X402_CREDIT_SESSION_TTL_MS / 1000),
       pricing:
         'Each query costs credits equal to its GraphQL complexity score (minimum 1). ' +
         'Simple queries (~50-100) are cheap; complex aggregations (~5000+) cost more.',
@@ -247,7 +245,7 @@ export function setupMiddleware(app: Express) {
   const freeTierLimiter = rateLimit({
     windowMs: config.RATE_LIMIT_WINDOW_MS,
     max: config.FREE_TIER_RATE_LIMIT,
-    standardHeaders: true,
+    standardHeaders: false,
     legacyHeaders: false,
     skip: (req) => {
       // Skip rate limiting if request has payment header or valid credit session
@@ -282,7 +280,6 @@ export function setupMiddleware(app: Express) {
 
       // --- Credit session check ---
       let creditSessionFailed = false;
-      let creditFailureReason: 'expired' | 'exhausted' | undefined;
       if (creditToken) {
         const session = await getSession(creditToken);
         if (session) {
@@ -293,10 +290,11 @@ export function setupMiddleware(app: Express) {
             req.method === 'POST' &&
             req.body?.query
           ) {
-            cost = Math.max(
-              1,
-              calculateGraphQLComplexity(req.body.query, req.body.variables)
+            const raw = calculateGraphQLComplexity(
+              req.body.query,
+              req.body.variables
             );
+            cost = Number.isFinite(raw) ? Math.max(1, raw) : 1;
           }
 
           if (await deductCredits(creditToken, cost)) {
@@ -304,11 +302,8 @@ export function setupMiddleware(app: Express) {
             res.setHeader('X-Credits-Remaining', String(remaining));
             return next();
           }
-          creditFailureReason = 'exhausted';
-        } else {
-          creditFailureReason = 'expired';
         }
-        // Invalid/expired/exhausted — must pay again
+        // Unknown token or insufficient credits — must pay again
         creditSessionFailed = true;
       }
 
@@ -318,17 +313,19 @@ export function setupMiddleware(app: Express) {
         // system so AI agents and programmatic clients know what to do.
         if (!hasPaymentHeader) {
           if (creditSessionFailed) {
-            res.setHeader('X-Credit-Session-Status', creditFailureReason!);
+            res.setHeader('X-Credit-Session-Status', 'exhausted');
           }
-          const message =
-            creditFailureReason === 'exhausted'
-              ? 'Your credit session has run out of credits. Make a new x402 payment to purchase a fresh credit bundle.'
-              : creditFailureReason === 'expired'
-                ? 'Your credit session has expired or is invalid. Make a new x402 payment to start a new session.'
-                : 'Free tier rate limit exceeded. Make an x402 payment to purchase a credit bundle for continued access.';
+          const message = creditSessionFailed
+            ? 'Your credit session has run out of credits. Make a new x402 payment to purchase a fresh credit bundle.'
+            : 'Free tier rate limit exceeded. Make an x402 payment to purchase a credit bundle for continued access.';
           res
             .status(402)
-            .json(buildCreditSession402Body(message, creditFailureReason));
+            .json(
+              buildCreditSession402Body(
+                message,
+                creditSessionFailed ? 'exhausted' : undefined
+              )
+            );
           return;
         }
 
@@ -344,14 +341,13 @@ export function setupMiddleware(app: Express) {
               try {
                 const { token, credits } = await createCreditSession(
                   wallet,
-                  config.X402_CREDIT_BUNDLE_USDC,
-                  config.X402_CREDIT_SESSION_TTL_MS
+                  config.X402_CREDIT_BUNDLE_USDC
                 );
                 res.setHeader('X-Credit-Session', token);
                 res.setHeader('X-Credits-Remaining', String(credits));
               } catch (e) {
                 console.error('[x402] Failed to create credit session:', e);
-                // Continue without session — payment still succeeded
+                res.setHeader('X-Credit-Session-Error', 'creation_failed');
               }
             }
 
@@ -378,7 +374,7 @@ export function setupMiddleware(app: Express) {
       rateLimit({
         windowMs: config.RATE_LIMIT_WINDOW_MS,
         max: config.FREE_TIER_RATE_LIMIT,
-        standardHeaders: true,
+        standardHeaders: false,
         legacyHeaders: false,
       })
     );

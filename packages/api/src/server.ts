@@ -19,7 +19,6 @@ import {
   proxyAuctionWebSocket,
 } from './utils/auctionProxy';
 import { cdnCacheMiddleware } from './graphql/plugins/httpCacheHeadersPlugin';
-import { cleanupExpiredSessions } from './creditSessions';
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
 
@@ -163,25 +162,6 @@ const startServer = async () => {
       }
     }
   );
-
-  // Periodically delete expired credit sessions (space reclamation only —
-  // correctness does not depend on this; getSession lazy-deletes on read).
-  const creditCleanupTimer = setInterval(
-    async () => {
-      try {
-        const deleted = await cleanupExpiredSessions();
-        if (deleted > 0) {
-          console.log(
-            `[CreditSessions] Cleaned up ${deleted} expired sessions`
-          );
-        }
-      } catch (err) {
-        console.error('[CreditSessions] Cleanup error:', err);
-      }
-    },
-    5 * 60 * 1000
-  );
-  creditCleanupTimer.unref();
 
   httpServer.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);

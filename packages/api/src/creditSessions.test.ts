@@ -16,7 +16,6 @@ import {
   createCreditSession,
   getSession,
   deductCredits,
-  cleanupExpiredSessions,
   extractPayerFromPaymentHeader,
 } from './creditSessions';
 
@@ -28,18 +27,16 @@ describe('createCreditSession', () => {
   it('calls prisma.creditSession.create with correct data', async () => {
     mockPrisma.creditSession.create.mockResolvedValue({});
 
-    const result = await createCreditSession('0xabc', 1_000_000, 3600_000);
+    const result = await createCreditSession('0xabc', 1_000_000);
 
     expect(result.token).toMatch(/^[0-9a-f]{64}$/);
     expect(result.credits).toBe(1_000_000);
-    expect(result.expiresAt).toBeGreaterThan(Date.now());
 
     expect(mockPrisma.creditSession.create).toHaveBeenCalledWith({
       data: {
         token: result.token,
         wallet: '0xabc',
         credits: 1_000_000,
-        expiresAt: expect.any(Date),
       },
     });
   });
@@ -47,48 +44,29 @@ describe('createCreditSession', () => {
   it('returns different tokens for each session', async () => {
     mockPrisma.creditSession.create.mockResolvedValue({});
 
-    const a = await createCreditSession('0xabc', 1000, 60000);
-    const b = await createCreditSession('0xabc', 1000, 60000);
+    const a = await createCreditSession('0xabc', 1000);
+    const b = await createCreditSession('0xabc', 1000);
     expect(a.token).not.toBe(b.token);
   });
 });
 
 describe('getSession', () => {
   it('returns session for valid token', async () => {
-    const futureDate = new Date(Date.now() + 60000);
     mockPrisma.creditSession.findUnique.mockResolvedValue({
       token: 'abc',
       wallet: '0xabc',
       credits: 5000,
-      expiresAt: futureDate,
     });
 
     const session = await getSession('abc');
     expect(session).not.toBeNull();
     expect(session!.wallet).toBe('0xabc');
     expect(session!.credits).toBe(5000);
-    expect(session!.expiresAt).toBe(futureDate.getTime());
   });
 
   it('returns null for unknown token', async () => {
     mockPrisma.creditSession.findUnique.mockResolvedValue(null);
     expect(await getSession('nonexistent')).toBeNull();
-  });
-
-  it('returns null and deletes expired session', async () => {
-    const pastDate = new Date(Date.now() - 1000);
-    mockPrisma.creditSession.findUnique.mockResolvedValue({
-      token: 'expired-token',
-      wallet: '0xabc',
-      credits: 5000,
-      expiresAt: pastDate,
-    });
-    mockPrisma.creditSession.delete.mockResolvedValue({});
-
-    expect(await getSession('expired-token')).toBeNull();
-    expect(mockPrisma.creditSession.delete).toHaveBeenCalledWith({
-      where: { token: 'expired-token' },
-    });
   });
 });
 
@@ -106,18 +84,6 @@ describe('deductCredits', () => {
   it('returns false for unknown token', async () => {
     mockPrisma.$queryRaw.mockResolvedValue([]);
     expect(await deductCredits('nonexistent', 100)).toBe(false);
-  });
-});
-
-describe('cleanupExpiredSessions', () => {
-  it('calls deleteMany with correct filter and returns count', async () => {
-    mockPrisma.creditSession.deleteMany.mockResolvedValue({ count: 3 });
-
-    const count = await cleanupExpiredSessions();
-    expect(count).toBe(3);
-    expect(mockPrisma.creditSession.deleteMany).toHaveBeenCalledWith({
-      where: { expiresAt: { lte: expect.any(Date) } },
-    });
   });
 });
 

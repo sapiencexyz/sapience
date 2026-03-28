@@ -9,6 +9,7 @@ function defaultX402Mock() {
       return (_req: Request, _res: Response, next: NextFunction) => next();
     }),
     calculateGraphQLComplexity: vi.fn(() => 0),
+    USDC_ARBITRUM: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831',
   };
 }
 
@@ -39,7 +40,6 @@ function expectPaymentFields(body: Record<string, unknown>) {
   expect(bundle.currency).toBe('USDC');
   expect(bundle.decimals).toBe(6);
   expect(bundle.amountUSD).toBe('$1.00');
-  expect(cs.sessionTTLSeconds).toBe(3600);
   expect(cs.instructions).toBeDefined();
 }
 
@@ -57,7 +57,6 @@ describe('rate limiting with trust proxy (simple mode)', () => {
         isProd: false,
         RATE_LIMIT_WINDOW_MS: 60000,
         FREE_TIER_RATE_LIMIT: 3,
-        HARD_RATE_LIMIT: 10,
         X402_PAY_TO: undefined,
       },
     }));
@@ -92,7 +91,6 @@ describe('rate limiting with trust proxy (simple mode)', () => {
         isProd: false,
         RATE_LIMIT_WINDOW_MS: 60000,
         FREE_TIER_RATE_LIMIT: 3,
-        HARD_RATE_LIMIT: 10,
         X402_PAY_TO: undefined,
       },
     }));
@@ -114,10 +112,8 @@ describe('tiered rate limiting with trust proxy (x402 mode)', () => {
         isProd: false,
         RATE_LIMIT_WINDOW_MS: 60000,
         FREE_TIER_RATE_LIMIT: 3,
-        HARD_RATE_LIMIT: 100,
         X402_PAY_TO: TEST_PAY_TO,
         X402_CREDIT_BUNDLE_USDC: 1_000_000,
-        X402_CREDIT_SESSION_TTL_MS: 3_600_000,
       },
     }));
     vi.doMock('./creditSessions', () => defaultCreditSessionsMock());
@@ -160,16 +156,14 @@ describe('tiered rate limiting with trust proxy (x402 mode)', () => {
     expect(otherRes.status).toBe(200);
   });
 
-  it('hard limit returns 402 not 429 — users can always pay for access', async () => {
+  it('free tier exceeded returns 402 — users can always pay for access', async () => {
     vi.doMock('./config', () => ({
       config: {
         isProd: false,
         RATE_LIMIT_WINDOW_MS: 60000,
         FREE_TIER_RATE_LIMIT: 5,
-        HARD_RATE_LIMIT: 100,
         X402_PAY_TO: TEST_PAY_TO,
         X402_CREDIT_BUNDLE_USDC: 1_000_000,
-        X402_CREDIT_SESSION_TTL_MS: 3_600_000,
       },
     }));
     vi.doMock('./creditSessions', () => defaultCreditSessionsMock());
@@ -198,16 +192,14 @@ describe('tiered rate limiting with trust proxy (x402 mode)', () => {
     expect(otherRes.status).toBe(200);
   });
 
-  it('hard limit with credit session returns 402 not 429', async () => {
+  it('exhausted credit session returns 402 with exhausted status', async () => {
     vi.doMock('./config', () => ({
       config: {
         isProd: false,
         RATE_LIMIT_WINDOW_MS: 60000,
         FREE_TIER_RATE_LIMIT: 2,
-        HARD_RATE_LIMIT: 100,
         X402_PAY_TO: TEST_PAY_TO,
         X402_CREDIT_BUNDLE_USDC: 1_000_000,
-        X402_CREDIT_SESSION_TTL_MS: 3_600_000,
       },
     }));
     vi.doMock('./creditSessions', () => ({
@@ -215,7 +207,6 @@ describe('tiered rate limiting with trust proxy (x402 mode)', () => {
       getSession: vi.fn(() => ({
         wallet: '0xabc',
         credits: 0,
-        expiresAt: Date.now() + 3_600_000,
       })),
       deductCredits: vi.fn(() => false), // exhausted
     }));
@@ -244,17 +235,14 @@ describe('credit sessions', () => {
     isProd: false,
     RATE_LIMIT_WINDOW_MS: 60000,
     FREE_TIER_RATE_LIMIT: 2,
-    HARD_RATE_LIMIT: 100,
     X402_PAY_TO: '0x1234567890abcdef1234567890abcdef12345678',
     X402_CREDIT_BUNDLE_USDC: 1_000_000,
-    X402_CREDIT_SESSION_TTL_MS: 3_600_000,
   };
 
   it('valid credit session bypasses x402 and deducts credits', async () => {
     const mockGetSession = vi.fn(() => ({
       wallet: '0xabc',
       credits: 50000,
-      expiresAt: Date.now() + 3_600_000,
     }));
     const mockDeductCredits = vi.fn(() => true);
 
@@ -286,11 +274,11 @@ describe('credit sessions', () => {
     expect(res.headers['x-credits-remaining']).toBeDefined();
   });
 
-  it('expired/invalid session token returns 402 with credit system instructions', async () => {
+  it('invalid session token returns 402 with exhausted status', async () => {
     vi.doMock('./config', () => ({ config: X402_CONFIG }));
     vi.doMock('./creditSessions', () => ({
       ...defaultCreditSessionsMock(),
-      getSession: vi.fn(() => null), // invalid/expired
+      getSession: vi.fn(() => null), // unknown token
     }));
 
     const x402Mock = vi.fn();
@@ -305,12 +293,12 @@ describe('credit sessions', () => {
 
     const res = await request(app)
       .get('/test')
-      .set('X-Credit-Session', 'expired-token');
+      .set('X-Credit-Session', 'unknown-token');
 
     expect(res.status).toBe(402);
-    expect(res.headers['x-credit-session-status']).toBe('expired');
+    expect(res.headers['x-credit-session-status']).toBe('exhausted');
     expectPaymentFields(res.body);
-    expect(res.body.creditSession.status).toBe('expired');
+    expect(res.body.creditSession.status).toBe('exhausted');
     expect(res.body.creditSession.pricing).toContain('complexity score');
     expect(res.body.creditSession.instructions.step1).toContain(
       'Payment-Signature'
@@ -326,7 +314,6 @@ describe('credit sessions', () => {
     const mockCreateCreditSession = vi.fn(() => ({
       token: 'new-session-token',
       credits: 1_000_000,
-      expiresAt: Date.now() + 3_600_000,
     }));
 
     vi.doMock('./config', () => ({ config: X402_CONFIG }));
@@ -369,18 +356,13 @@ describe('credit sessions', () => {
     expect(res.status).toBe(200);
     expect(res.headers['x-credit-session']).toBe('new-session-token');
     expect(res.headers['x-credits-remaining']).toBe('1000000');
-    expect(mockCreateCreditSession).toHaveBeenCalledWith(
-      '0xpayer',
-      1_000_000,
-      3_600_000
-    );
+    expect(mockCreateCreditSession).toHaveBeenCalledWith('0xpayer', 1_000_000);
   });
 
   it('credits exhausted returns 402 with exhausted status and bundle info', async () => {
     const mockGetSession = vi.fn(() => ({
       wallet: '0xabc',
       credits: 100, // not enough for the 5000 cost
-      expiresAt: Date.now() + 3_600_000,
     }));
 
     vi.doMock('./config', () => ({ config: X402_CONFIG }));
@@ -426,7 +408,6 @@ describe('credit sessions', () => {
         return {
           wallet: '0xaaa',
           credits: sessionCreditsA,
-          expiresAt: Date.now() + 3_600_000,
         };
       }
       return null; // token-b is unknown
@@ -485,5 +466,87 @@ describe('credit sessions', () => {
       'token-b',
       expect.anything()
     );
+  });
+
+  it('malformed query (NaN/Infinity complexity) still gets valid numeric cost', async () => {
+    const mockGetSession = vi.fn(() => ({
+      wallet: '0xabc',
+      credits: 50000,
+    }));
+    const mockDeductCredits = vi.fn(() => true);
+
+    vi.doMock('./config', () => ({ config: X402_CONFIG }));
+    vi.doMock('./creditSessions', () => ({
+      ...defaultCreditSessionsMock(),
+      getSession: mockGetSession,
+      deductCredits: mockDeductCredits,
+    }));
+    vi.doMock('./x402', () => ({
+      ...defaultX402Mock(),
+      // Return NaN to simulate the bug
+      calculateGraphQLComplexity: vi.fn(() => NaN),
+    }));
+
+    const { createApp } = await import('./app');
+    const app = createApp();
+    app.post('/graphql', (_req, res) => res.json({ data: {} }));
+
+    const res = await request(app)
+      .post('/graphql')
+      .set('X-Credit-Session', 'valid-token')
+      .send({ query: '{ __typename }' });
+
+    expect(res.status).toBe(200);
+    // Math.max(1, NaN) = NaN, but our guard ensures complexity always returns finite
+    // so deductCredits should be called with 1 (the minimum)
+    expect(mockDeductCredits).toHaveBeenCalledWith('valid-token', 1);
+  });
+
+  it('session creation failure after payment sets error header but still succeeds', async () => {
+    const mockCreateCreditSession = vi.fn(() => {
+      throw new Error('DB connection failed');
+    });
+
+    vi.doMock('./config', () => ({ config: X402_CONFIG }));
+    vi.doMock('./creditSessions', () => ({
+      ...defaultCreditSessionsMock(),
+      createCreditSession: mockCreateCreditSession,
+      extractPayerFromPaymentHeader: vi.fn(() => '0xpayer'),
+    }));
+
+    // x402 mock that calls next() on payment success
+    vi.doMock('./x402', () => ({
+      ...defaultX402Mock(),
+      createGasAwareX402Middleware: vi.fn(() => {
+        return (_req: Request, _res: Response, next: NextFunction) => {
+          next();
+        };
+      }),
+    }));
+
+    const { createApp } = await import('./app');
+    const app = createApp();
+    app.get('/test', (_req, res) => res.json({ ok: true }));
+
+    // Exhaust free tier
+    for (let i = 0; i < 2; i++) {
+      await request(app).get('/test').set('X-Forwarded-For', '3.3.3.3');
+    }
+
+    // Payment succeeds but session creation fails
+    const res = await request(app)
+      .get('/test')
+      .set('X-Forwarded-For', '3.3.3.3')
+      .set(
+        'Payment-Signature',
+        Buffer.from(
+          JSON.stringify({ authorization: { from: '0xpayer' } })
+        ).toString('base64')
+      );
+
+    expect(res.status).toBe(200);
+    expect(res.headers['x-credit-session-error']).toBe('creation_failed');
+    // No session token should be set
+    expect(res.headers['x-credit-session']).toBeUndefined();
   });
 });

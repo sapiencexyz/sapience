@@ -4,6 +4,8 @@
  * Clients pay once for a credit bundle, receive a session token,
  * then spend credits across multiple queries — amortizing a single
  * on-chain gas cost over many requests.
+ *
+ * Sessions never expire — they persist until credits are exhausted.
  */
 import { randomBytes } from 'crypto';
 import prisma from './db';
@@ -11,38 +13,28 @@ import prisma from './db';
 export type CreditSession = {
   wallet: string;
   credits: number;
-  expiresAt: number;
 };
 
 export async function createCreditSession(
   wallet: string,
-  credits: number,
-  ttlMs: number
-): Promise<{ token: string; credits: number; expiresAt: number }> {
+  credits: number
+): Promise<{ token: string; credits: number }> {
   const token = randomBytes(32).toString('hex');
-  const expiresAt = new Date(Date.now() + ttlMs);
 
   await prisma.creditSession.create({
-    data: { token, wallet, credits, expiresAt },
+    data: { token, wallet, credits },
   });
 
-  return { token, credits, expiresAt: expiresAt.getTime() };
+  return { token, credits };
 }
 
 export async function getSession(token: string): Promise<CreditSession | null> {
   const row = await prisma.creditSession.findUnique({ where: { token } });
   if (!row) return null;
 
-  if (row.expiresAt.getTime() <= Date.now()) {
-    // Lazy-delete expired session
-    await prisma.creditSession.delete({ where: { token } }).catch(() => {});
-    return null;
-  }
-
   return {
     wallet: row.wallet,
     credits: row.credits,
-    expiresAt: row.expiresAt.getTime(),
   };
 }
 
@@ -54,24 +46,14 @@ export async function deductCredits(
   token: string,
   amount: number
 ): Promise<boolean> {
-  const now = new Date();
   const result = await prisma.$queryRaw<{ token: string }[]>`
     UPDATE credit_session
     SET credits = credits - ${amount}
     WHERE token = ${token}
       AND credits >= ${amount}
-      AND "expiresAt" > ${now}
     RETURNING token
   `;
   return result.length > 0;
-}
-
-/** Delete all expired sessions (space reclamation). */
-export async function cleanupExpiredSessions(): Promise<number> {
-  const { count } = await prisma.creditSession.deleteMany({
-    where: { expiresAt: { lte: new Date() } },
-  });
-  return count;
 }
 
 /**

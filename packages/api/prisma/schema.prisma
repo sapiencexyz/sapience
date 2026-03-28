@@ -704,10 +704,8 @@ model CreditSession {
   token     String   @id @db.VarChar(64)
   wallet    String   @db.VarChar
   credits   Int
-  expiresAt DateTime @db.Timestamp(6)
   createdAt DateTime @default(now()) @db.Timestamp(6)
 
-  @@index([expiresAt], map: "IDX_credit_session_expires_at")
   @@index([wallet], map: "IDX_credit_session_wallet")
   @@map("credit_session")
 }
