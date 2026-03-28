@@ -13,16 +13,9 @@ import { x402Facilitator } from '@x402/core/facilitator';
 import { registerExactEvmScheme as registerFacilitatorEvmScheme } from '@x402/evm/exact/facilitator';
 import { toFacilitatorEvmSigner } from '@x402/evm';
 import { config } from './config';
-import {
-  createWalletClient,
-  http,
-  publicActions,
-  createPublicClient,
-  formatGwei,
-} from 'viem';
+import { createWalletClient, http, publicActions } from 'viem';
 import { privateKeyToAccount } from 'viem/accounts';
 import { arbitrum } from 'viem/chains';
-import type { Request, Response, NextFunction } from 'express';
 import { parse } from 'graphql';
 import {
   getComplexity,
@@ -33,63 +26,6 @@ import { SharedSchema } from './graphql/sharedSchema';
 const NETWORK = 'eip155:42161' as const;
 // Native USDC on Arbitrum One (Circle's FiatTokenV2_2, supports EIP-3009)
 export const USDC_ARBITRUM = '0xaf88d065e77c8cC2239327C5EDb3A432268e5831';
-
-// Gas estimation for EIP-3009 transferWithAuthorization
-// Typical gas usage: ~60,000-80,000 gas units
-const ESTIMATED_GAS_UNITS = 80000;
-
-// Chainlink ETH/USD price feed on Arbitrum One
-const CHAINLINK_ETH_USD = '0x639Fe6ab55C921f74e7fac1ee960C0B6293ba612';
-const CHAINLINK_ABI = [
-  {
-    name: 'latestRoundData',
-    type: 'function',
-    stateMutability: 'view',
-    inputs: [],
-    outputs: [
-      { name: 'roundId', type: 'uint80' },
-      { name: 'answer', type: 'int256' },
-      { name: 'startedAt', type: 'uint256' },
-      { name: 'updatedAt', type: 'uint256' },
-      { name: 'answeredInRound', type: 'uint80' },
-    ],
-  },
-] as const;
-
-// Create public client for gas price + Chainlink reads
-const publicClient = createPublicClient({
-  chain: arbitrum,
-  transport: http(config.X402_ARBITRUM_RPC_URL),
-});
-
-// Cache ETH/USD price for 60 seconds to avoid hitting the oracle on every request
-let cachedEthPrice: { price: number; fetchedAt: number } | null = null;
-const ETH_PRICE_CACHE_MS = 60_000;
-const ETH_PRICE_FALLBACK = 3000;
-
-async function getEthUsdPrice(): Promise<number> {
-  if (
-    cachedEthPrice &&
-    Date.now() - cachedEthPrice.fetchedAt < ETH_PRICE_CACHE_MS
-  ) {
-    return cachedEthPrice.price;
-  }
-
-  try {
-    const [, answer] = await publicClient.readContract({
-      address: CHAINLINK_ETH_USD,
-      abi: CHAINLINK_ABI,
-      functionName: 'latestRoundData',
-    });
-    // Chainlink ETH/USD uses 8 decimals
-    const price = Number(answer) / 1e8;
-    cachedEthPrice = { price, fetchedAt: Date.now() };
-    return price;
-  } catch (error) {
-    console.error('[x402] Error fetching ETH/USD price from Chainlink:', error);
-    return cachedEthPrice?.price ?? ETH_PRICE_FALLBACK;
-  }
-}
 
 /**
  * Calculate GraphQL query complexity using the same estimators as Apollo validation.
@@ -128,42 +64,6 @@ export function calculateGraphQLComplexity(
     console.error('[x402] Error calculating query complexity:', error);
     // On error, return minimum — the query will fail at the GraphQL layer anyway if malformed
     return 1;
-  }
-}
-
-/**
- * Check if current gas costs exceed the payment amount
- * Returns true if gas cost > payment (unprofitable to settle)
- */
-async function isGasTooExpensive(
-  paymentAmountUSD: number
-): Promise<{ tooExpensive: boolean; gasCostUSD: number; gasPrice: string }> {
-  try {
-    // Get current gas price on Arbitrum
-    const gasPrice = await publicClient.getGasPrice();
-
-    // Calculate gas cost in wei
-    const gasCostWei = gasPrice * BigInt(ESTIMATED_GAS_UNITS);
-
-    // Convert to ETH
-    const gasCostETH = Number(gasCostWei) / 1e18;
-
-    // Real-time ETH/USD from Chainlink (cached 60s, falls back to $3000)
-    const ethUsdRate = await getEthUsdPrice();
-    const gasCostUSD = gasCostETH * ethUsdRate;
-
-    // Gas is too expensive if it costs more than the payment
-    const tooExpensive = gasCostUSD > paymentAmountUSD;
-
-    return {
-      tooExpensive,
-      gasCostUSD,
-      gasPrice: formatGwei(gasPrice),
-    };
-  } catch (error) {
-    console.error('Error checking gas price:', error);
-    // On error, assume gas is not too expensive (fail open)
-    return { tooExpensive: false, gasCostUSD: 0, gasPrice: '0' };
   }
 }
 
@@ -271,50 +171,15 @@ function createX402PaymentMiddleware(
 }
 
 /**
- * Middleware that checks gas costs before requiring an x402 payment.
- * If gas > bundle price, returns 503 instead of 402.
+ * Create the x402 payment middleware for credit bundle purchases.
  */
-export function createGasAwareX402Middleware() {
-  // Create shared x402 server instance
+export function createX402Middleware() {
   const server = createX402Server();
-
-  // Single bundle-priced middleware — one payment covers many queries
   const bundlePrice = config.X402_CREDIT_BUNDLE_USDC;
-  const bundlePriceUSD = bundlePrice / 1e6; // USDC has 6 decimals
-  const bundleMiddleware = createX402PaymentMiddleware(
+
+  return createX402PaymentMiddleware(
     bundlePrice,
     'API access - credit bundle',
     server
   );
-
-  return async (req: Request, res: Response, next: NextFunction) => {
-    // Check if gas is too expensive before requiring payment
-    // Use bundle price (larger amount = less likely to be gas-unprofitable)
-    const { tooExpensive, gasCostUSD, gasPrice } =
-      await isGasTooExpensive(bundlePriceUSD);
-
-    if (tooExpensive) {
-      console.warn(
-        `[x402] Gas too expensive (${gasCostUSD.toFixed(6)} USD > ${bundlePriceUSD} USD bundle). ` +
-          `Gas price: ${gasPrice} gwei. Returning 503.`
-      );
-
-      res.status(503).json({
-        error: 'Service Temporarily Unavailable',
-        message:
-          'Payment settlement costs exceed payment amount due to high gas prices. Please try again later.',
-        details: {
-          gasCostUSD: gasCostUSD.toFixed(6),
-          paymentAmountUSD: bundlePriceUSD.toFixed(3),
-          gasPrice: `${gasPrice} gwei`,
-          reason: 'Unprofitable to settle payment on-chain',
-        },
-        retryAfter: 300, // Suggest retry in 5 minutes
-      });
-      return;
-    }
-
-    // Gas is reasonable - proceed with x402 payment flow (bundle price)
-    return bundleMiddleware(req, res, next);
-  };
 }

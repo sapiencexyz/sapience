@@ -5,7 +5,7 @@ import request from 'supertest';
 // Default x402 mock that includes all exports used by middleware
 function defaultX402Mock() {
   return {
-    createGasAwareX402Middleware: vi.fn(() => {
+    createX402Middleware: vi.fn(() => {
       return (_req: Request, _res: Response, next: NextFunction) => next();
     }),
     calculateGraphQLComplexity: vi.fn(() => 0),
@@ -121,7 +121,7 @@ describe('tiered rate limiting with trust proxy (x402 mode)', () => {
     vi.doMock('./creditSessions', () => defaultCreditSessionsMock());
     vi.doMock('./x402', () => ({
       ...defaultX402Mock(),
-      createGasAwareX402Middleware: vi.fn(() => {
+      createX402Middleware: vi.fn(() => {
         return (req: Request, res: Response, next: NextFunction) => {
           if (!req.headers['payment-signature']) {
             res.status(402).json({ error: 'Payment Required' });
@@ -261,7 +261,7 @@ describe('credit sessions', () => {
     const x402Mock = vi.fn();
     vi.doMock('./x402', () => ({
       ...defaultX402Mock(),
-      createGasAwareX402Middleware: vi.fn(() => x402Mock),
+      createX402Middleware: vi.fn(() => x402Mock),
     }));
 
     const { createApp } = await import('./app');
@@ -289,7 +289,7 @@ describe('credit sessions', () => {
     const x402Mock = vi.fn();
     vi.doMock('./x402', () => ({
       ...defaultX402Mock(),
-      createGasAwareX402Middleware: vi.fn(() => x402Mock),
+      createX402Middleware: vi.fn(() => x402Mock),
     }));
 
     const { createApp } = await import('./app');
@@ -331,7 +331,7 @@ describe('credit sessions', () => {
     // x402 mock that calls next() on payment success (simulates valid payment)
     vi.doMock('./x402', () => ({
       ...defaultX402Mock(),
-      createGasAwareX402Middleware: vi.fn(() => {
+      createX402Middleware: vi.fn(() => {
         return (_req: Request, _res: Response, next: NextFunction) => {
           next();
         };
@@ -380,7 +380,7 @@ describe('credit sessions', () => {
     const x402Mock = vi.fn();
     vi.doMock('./x402', () => ({
       ...defaultX402Mock(),
-      createGasAwareX402Middleware: vi.fn(() => x402Mock),
+      createX402Middleware: vi.fn(() => x402Mock),
     }));
 
     const { createApp } = await import('./app');
@@ -439,7 +439,7 @@ describe('credit sessions', () => {
     );
     vi.doMock('./x402', () => ({
       ...defaultX402Mock(),
-      createGasAwareX402Middleware: vi.fn(() => x402Mock),
+      createX402Middleware: vi.fn(() => x402Mock),
     }));
 
     const { createApp } = await import('./app');
@@ -522,7 +522,7 @@ describe('credit sessions', () => {
     // x402 mock that calls next() on payment success
     vi.doMock('./x402', () => ({
       ...defaultX402Mock(),
-      createGasAwareX402Middleware: vi.fn(() => {
+      createX402Middleware: vi.fn(() => {
         return (_req: Request, _res: Response, next: NextFunction) => {
           next();
         };

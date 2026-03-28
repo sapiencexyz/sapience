@@ -6,7 +6,7 @@ import rateLimit from 'express-rate-limit';
 import { recoverMessageAddress } from 'viem';
 import { config } from './config';
 import {
-  createGasAwareX402Middleware,
+  createX402Middleware,
   calculateGraphQLComplexity,
   USDC_ARBITRUM,
 } from './x402';
@@ -281,7 +281,7 @@ export function setupMiddleware(app: Express) {
     app.use(freeTierLimiter);
 
     // Credit session check + conditional x402 payment
-    const x402Middleware = createGasAwareX402Middleware();
+    const x402Middleware = createX402Middleware();
 
     app.use(async (req: Request, res: Response, next: NextFunction) => {
       const creditToken = req.headers['x-credit-session'] as string | undefined;

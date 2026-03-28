@@ -105,17 +105,6 @@ On complexity calculation error, the minimum cost (1 credit) is charged — the 
 
 List fields multiply their children's cost by the requested list size (capped at `GRAPHQL_MAX_LIST_SIZE`). Some fields (like `questions`) handle list scaling internally via their own formula and bypass the list multiplier.
 
-## Gas Guard
-
-Before requiring payment, the middleware checks the current Arbitrum gas price. If estimated settlement gas cost exceeds the payment amount, it returns **503** instead of 402 to avoid unprofitable settlements.
-
-```
-Gas cost > payment amount → 503 Service Temporarily Unavailable
-                            (retryAfter: 300 seconds)
-```
-
-Settlement gas is estimated at 80,000 units (EIP-3009 `transferWithAuthorization`). ETH/USD rate is fetched from Chainlink (cached 60s, falls back to $3,000). On gas price check failure, it fails open (assumes gas is affordable).
-
 ## Environment Variables
 
 | Variable                       | Required                 | Default                        | Description                                                                                                                 |
