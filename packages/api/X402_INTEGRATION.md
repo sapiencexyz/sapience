@@ -90,18 +90,18 @@ On complexity calculation error, the minimum cost (1 credit) is charged — the 
 
 ### Complexity scoring examples
 
-| Field                                    | Cost                        |
-| ---------------------------------------- | --------------------------- |
-| Regular fields                           | 1 (default)                 |
-| `__type`                                 | 50                          |
-| `__schema`                               | 100                         |
-| `questions`                              | 100 + 8 × take (list-aware) |
-| `accountTotalVolume`                     | 500                         |
-| `accountProfitRank`                      | 2,000                       |
-| `protocolStats`                          | 2,000                       |
-| `profitLeaderboard`                      | 2,000                       |
-| `_count`, `_sum`, `_avg`, `_min`, `_max` | 5,000                       |
-| `_all`                                   | 10,000                      |
+| Field                                    | Cost                     |
+| ---------------------------------------- | ------------------------ |
+| Regular fields                           | 1 (default)              |
+| `__type`                                 | 50                       |
+| `__schema`                               | 100                      |
+| `questions`                              | 100 + (8 + child) × take |
+| `accountTotalVolume`                     | 500                      |
+| `accountProfitRank`                      | 2,000                    |
+| `protocolStats`                          | 2,000                    |
+| `profitLeaderboard`                      | 2,000                    |
+| `_count`, `_sum`, `_avg`, `_min`, `_max` | 5,000                    |
+| `_all`                                   | 10,000                   |
 
 List fields multiply their children's cost by the requested list size (capped at `GRAPHQL_MAX_LIST_SIZE`). Some fields (like `questions`) handle list scaling internally via their own formula and bypass the list multiplier.
 

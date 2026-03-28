@@ -468,7 +468,7 @@ describe('queryComplexity', () => {
   });
 
   describe('createComplexityEstimators', () => {
-    it('scales questions cost with take, default take=50 yields 502', () => {
+    it('scales questions cost with take, default take=50 yields 600', () => {
       const query = parse(
         `{ questions(take: 50) { questionType predictionCount } }`
       );
@@ -478,8 +478,9 @@ describe('queryComplexity', () => {
         query,
         estimators,
       });
-      // questions: 100 + 8*50 = 500, + childComplexity (2) = 502
-      expect(complexity).toBe(502);
+      // childComplexity = 2 (questionType + predictionCount)
+      // total = 100 + (8 + 2) * 50 = 600
+      expect(complexity).toBe(600);
     });
 
     it('assigns fixed cost to protocolStats field', () => {
@@ -512,10 +513,11 @@ describe('queryComplexity', () => {
         query: large,
         estimators,
       });
-      // questions(take:10): 100 + 8*10 = 180, + childComplexity (2) = 182
-      expect(smallComplexity).toBe(182);
-      // questions(take:100): take capped at maxListSize=100: 100 + 8*100 = 900, + 2 = 902
-      expect(largeComplexity).toBe(902);
+      // childComplexity = 2; total = 100 + (8 + 2) * take
+      // questions(take:10): 100 + 10*10 = 200
+      expect(smallComplexity).toBe(200);
+      // questions(take:100): capped at maxListSize=100: 100 + 10*100 = 1100
+      expect(largeComplexity).toBe(1100);
     });
   });
 });

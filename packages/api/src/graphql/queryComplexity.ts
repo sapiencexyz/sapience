@@ -573,7 +573,12 @@ export function createComplexityEstimators(
           typeof estimatorArgs.args.take === 'number'
             ? Math.min(Math.max(estimatorArgs.args.take, 1), maxListSize)
             : 50; // resolver default
-        return 100 + 8 * take; // + childComplexity auto-added by fieldCostEstimator
+        // childComplexity = cost of ONE Question's subfields (computed for the
+        // unwrapped type).  fieldCostEstimator auto-adds +childComplexity, so
+        // we subtract it here and multiply by take ourselves so that subfield
+        // cost scales with list size:  total = 100 + (8 + child) * take
+        const child = estimatorArgs.childComplexity;
+        return 100 + (8 + child) * take - child;
       }
       if (fieldName === 'protocolStats') return 2000;
       if (fieldName === 'profitLeaderboard') return 2000;
