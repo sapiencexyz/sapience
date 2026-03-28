@@ -23,6 +23,26 @@ function defaultCreditSessionsMock() {
   };
 }
 
+const TEST_PAY_TO = '0x1234567890abcdef1234567890abcdef12345678';
+
+/** Assert that a 402 response body contains all x402 payment fields an agent needs. */
+function expectPaymentFields(body: Record<string, unknown>) {
+  const cs = body.creditSession as Record<string, unknown>;
+  expect(cs).toBeDefined();
+  expect(cs.protocol).toBe('x402');
+  expect(cs.scheme).toBe('exact');
+  expect(cs.network).toBe('eip155:42161');
+  expect(cs.payTo).toBe(TEST_PAY_TO);
+  expect(cs.asset).toBe('0xaf88d065e77c8cC2239327C5EDb3A432268e5831');
+  const bundle = cs.bundle as Record<string, unknown>;
+  expect(bundle.amount).toBe('1000000');
+  expect(bundle.currency).toBe('USDC');
+  expect(bundle.decimals).toBe(6);
+  expect(bundle.amountUSD).toBe('$1.00');
+  expect(cs.sessionTTLSeconds).toBe(3600);
+  expect(cs.instructions).toBeDefined();
+}
+
 // Reset modules before EVERY test to get fresh rate limiter instances
 beforeEach(() => {
   vi.resetModules();
@@ -95,7 +115,7 @@ describe('tiered rate limiting with trust proxy (x402 mode)', () => {
         RATE_LIMIT_WINDOW_MS: 60000,
         FREE_TIER_RATE_LIMIT: 3,
         HARD_RATE_LIMIT: 100,
-        X402_PAY_TO: '0x1234567890abcdef1234567890abcdef12345678',
+        X402_PAY_TO: TEST_PAY_TO,
         X402_CREDIT_BUNDLE_USDC: 1_000_000,
         X402_CREDIT_SESSION_TTL_MS: 3_600_000,
       },
@@ -131,9 +151,7 @@ describe('tiered rate limiting with trust proxy (x402 mode)', () => {
       .get('/test')
       .set('X-Forwarded-For', '1.2.3.4');
     expect(paymentRes.status).toBe(402);
-    expect(paymentRes.body.creditSession).toBeDefined();
-    expect(paymentRes.body.creditSession.instructions).toBeDefined();
-    expect(paymentRes.body.creditSession.bundle.amountUSD).toBe('$1.00');
+    expectPaymentFields(paymentRes.body);
 
     // 5.6.7.8 should still get 200 — NOT pushed to payment by someone else's usage
     const otherRes = await request(app)
@@ -149,7 +167,7 @@ describe('tiered rate limiting with trust proxy (x402 mode)', () => {
         RATE_LIMIT_WINDOW_MS: 60000,
         FREE_TIER_RATE_LIMIT: 100,
         HARD_RATE_LIMIT: 5,
-        X402_PAY_TO: '0x1234567890abcdef1234567890abcdef12345678',
+        X402_PAY_TO: TEST_PAY_TO,
         X402_CREDIT_BUNDLE_USDC: 1_000_000,
         X402_CREDIT_SESSION_TTL_MS: 3_600_000,
       },
@@ -257,9 +275,8 @@ describe('credit sessions', () => {
 
     expect(res.status).toBe(402);
     expect(res.headers['x-credit-session-status']).toBe('expired');
-    expect(res.body.creditSession).toBeDefined();
+    expectPaymentFields(res.body);
     expect(res.body.creditSession.status).toBe('expired');
-    expect(res.body.creditSession.bundle.amountUSD).toBe('$1.00');
     expect(res.body.creditSession.pricing).toContain('complexity score');
     expect(res.body.creditSession.instructions.step1).toContain(
       'Payment-Signature'
@@ -355,6 +372,7 @@ describe('credit sessions', () => {
 
     expect(res.status).toBe(402);
     expect(res.headers['x-credit-session-status']).toBe('exhausted');
+    expectPaymentFields(res.body);
     expect(res.body.creditSession.status).toBe('exhausted');
     expect(res.body.creditSession.instructions.step1).toContain(
       'Payment-Signature'

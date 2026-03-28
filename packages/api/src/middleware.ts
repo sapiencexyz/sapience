@@ -183,6 +183,8 @@ function buildCreditSession402Body(
       protocol: 'x402',
       scheme: 'exact',
       network: 'eip155:42161',
+      payTo: config.X402_PAY_TO,
+      asset: '0xaf88d065e77c8cC2239327C5EDb3A432268e5831', // USDC on Arbitrum One
       bundle: {
         amount: String(bundleAmount),
         currency: 'USDC',
