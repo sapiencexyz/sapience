@@ -71,19 +71,19 @@ describe('getSession', () => {
 });
 
 describe('deductCredits', () => {
-  it('returns true when UPDATE matches a row', async () => {
-    mockPrisma.$queryRaw.mockResolvedValue([{ token: 'abc' }]);
-    expect(await deductCredits('abc', 5000)).toBe(true);
+  it('returns remaining credits when UPDATE matches a row', async () => {
+    mockPrisma.$queryRaw.mockResolvedValue([{ credits: 4995 }]);
+    expect(await deductCredits('abc', 5)).toBe(4995);
   });
 
-  it('returns false when UPDATE matches no rows', async () => {
+  it('returns null when UPDATE matches no rows (insufficient credits)', async () => {
     mockPrisma.$queryRaw.mockResolvedValue([]);
-    expect(await deductCredits('abc', 5000)).toBe(false);
+    expect(await deductCredits('abc', 5000)).toBeNull();
   });
 
-  it('returns false for unknown token', async () => {
+  it('returns null for unknown token', async () => {
     mockPrisma.$queryRaw.mockResolvedValue([]);
-    expect(await deductCredits('nonexistent', 100)).toBe(false);
+    expect(await deductCredits('nonexistent', 100)).toBeNull();
   });
 });
 

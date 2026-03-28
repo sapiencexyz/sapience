@@ -70,7 +70,11 @@ const validators = {
   }),
   X402_CREDIT_BUNDLE_USDC: num({
     default: 1_000_000, // $1.00 in USDC base units (6 decimals)
-    desc: 'Credit bundle size in USDC base units (amount charged per x402 payment)',
+    desc: 'USDC price per credit bundle in base units (6 decimals)',
+  }),
+  X402_CREDIT_BUNDLE_SIZE: num({
+    default: 10_000,
+    desc: 'Number of credits granted per bundle purchase',
   }),
 };
 

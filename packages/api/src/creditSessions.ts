@@ -41,19 +41,21 @@ export async function getSession(token: string): Promise<CreditSession | null> {
 /**
  * Atomically deduct credits from a session.
  * Uses a single UPDATE … WHERE credits >= amount to avoid races.
+ * Returns the remaining credit balance, or null if the deduction failed
+ * (unknown token or insufficient credits).
  */
 export async function deductCredits(
   token: string,
   amount: number
-): Promise<boolean> {
-  const result = await prisma.$queryRaw<{ token: string }[]>`
+): Promise<number | null> {
+  const result = await prisma.$queryRaw<{ credits: number }[]>`
     UPDATE credit_session
     SET credits = credits - ${amount}
     WHERE token = ${token}
       AND credits >= ${amount}
-    RETURNING token
+    RETURNING credits
   `;
-  return result.length > 0;
+  return result.length > 0 ? result[0].credits : null;
 }
 
 /**

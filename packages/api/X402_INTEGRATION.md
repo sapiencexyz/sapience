@@ -74,19 +74,17 @@ Router (GraphQL, REST, etc.)
 
 After a successful x402 payment, the API creates a **credit session** — a server-side balance of credits tied to a session token. Sessions never expire; they persist until credits are exhausted.
 
-Each GraphQL query costs credits equal to its complexity score (minimum 1). When credits run out, the client receives a 402 response prompting another payment.
+Each bundle purchase grants `X402_CREDIT_BUNDLE_SIZE` credits (default 10,000). GraphQL query complexity is divided by 100 to determine the credit cost (minimum 1 credit per request). When credits run out, the client receives a 402 response prompting another payment.
 
-## Dynamic Pricing
+### Credit cost examples
 
-Payment amounts are determined by GraphQL query complexity, calculated using the same estimators as Apollo Server's validation layer (shared via `createComplexityEstimators` in `queryComplexity.ts`).
-
-| Tier    | Complexity range | Price (USDC) |
-| ------- | ---------------- | ------------ |
-| Simple  | 0–1,000          | $0.005       |
-| Medium  | 1,000–5,000      | $0.015       |
-| Complex | 5,000+           | $0.030       |
-
-Non-GraphQL requests default to the simple tier.
+| Query type                 | Raw complexity | Credit cost | Requests per $1 bundle |
+| -------------------------- | -------------- | ----------- | ---------------------- |
+| Simple query               | ~100           | 1           | ~10,000                |
+| Medium query               | ~1,000         | 10          | ~1,000                 |
+| Complex aggregation        | ~5,000         | 50          | ~200                   |
+| Heavy aggregation (`_all`) | ~10,000        | 100         | ~100                   |
+| Non-GraphQL request        | N/A            | 1           | ~10,000                |
 
 On complexity calculation error, the minimum cost (1 credit) is charged — the query will fail at the GraphQL layer if it's truly malformed.
 
@@ -125,7 +123,8 @@ Settlement gas is estimated at 80,000 units (EIP-3009 `transferWithAuthorization
 | `X402_FACILITATOR_PRIVATE_KEY` | Yes (if X402_PAY_TO set) | `''`                           | Private key for the facilitator wallet. This wallet submits settlement transactions — fund it with ETH on Arbitrum for gas. |
 | `X402_ARBITRUM_RPC_URL`        | No                       | `https://arb1.arbitrum.io/rpc` | Arbitrum One RPC endpoint.                                                                                                  |
 | `FREE_TIER_RATE_LIMIT`         | No                       | `120`                          | Max requests/min before payment is required.                                                                                |
-| `X402_CREDIT_BUNDLE_USDC`      | No                       | `1000000`                      | Credit bundle size in USDC base units (6 decimals).                                                                         |
+| `X402_CREDIT_BUNDLE_USDC`      | No                       | `1000000`                      | USDC price per credit bundle in base units (6 decimals).                                                                    |
+| `X402_CREDIT_BUNDLE_SIZE`      | No                       | `10000`                        | Number of credits granted per bundle purchase.                                                                              |
 
 ## File Layout
 

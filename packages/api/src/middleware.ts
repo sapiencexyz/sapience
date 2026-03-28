@@ -166,6 +166,14 @@ const corsOptions: cors.CorsOptions = {
   ],
 };
 
+// ─── Credit cost scaling ─────────────────────────────────────────────────────
+// Divide raw GraphQL complexity by this to get the credit cost.
+// With the default divisor of 100 and bundle size of 10,000:
+//   simple query (~100 complexity) → 1 credit  → $1 buys ~10,000 requests
+//   medium query (~1000 complexity) → 10 credits → $1 buys ~1,000 requests
+//   heavy aggregation (~10000 complexity) → 100 credits → $1 buys ~100 requests
+const CREDIT_COMPLEXITY_DIVISOR = 100;
+
 // ─── Credit session 402 response ─────────────────────────────────────────────
 
 /**
@@ -174,6 +182,7 @@ const corsOptions: cors.CorsOptions = {
  */
 function buildCreditSession402Body(message: string, status?: 'exhausted') {
   const bundleAmount = config.X402_CREDIT_BUNDLE_USDC;
+  const bundleCredits = config.X402_CREDIT_BUNDLE_SIZE;
   return {
     error: 'Payment Required',
     message,
@@ -189,10 +198,12 @@ function buildCreditSession402Body(message: string, status?: 'exhausted') {
         currency: 'USDC',
         decimals: 6,
         amountUSD: `$${(bundleAmount / 1e6).toFixed(2)}`,
+        credits: bundleCredits,
       },
       pricing:
-        'Each query costs credits equal to its GraphQL complexity score (minimum 1). ' +
-        'Simple queries (~50-100) are cheap; complex aggregations (~5000+) cost more.',
+        `Each bundle grants ${bundleCredits.toLocaleString()} credits. ` +
+        'Simple queries cost 1 credit; complex aggregations cost more (up to ~100). ' +
+        'Non-GraphQL requests cost 1 credit.',
       instructions: {
         step1:
           'Send the same request with a Payment-Signature header containing a signed x402 exact-scheme payload for the bundle amount.',
@@ -201,7 +212,7 @@ function buildCreditSession402Body(message: string, status?: 'exhausted') {
         step3:
           'On subsequent requests, include the header X-Credit-Session: <token> to spend credits without paying again.',
         step4:
-          'Each request deducts credits equal to the query complexity score. When credits run out, you will receive this 402 again.',
+          'Each request deducts credits based on query complexity. When credits run out, you will receive this 402 again.',
       },
     },
   };
@@ -283,7 +294,7 @@ export function setupMiddleware(app: Express) {
       if (creditToken) {
         const session = await getSession(creditToken);
         if (session) {
-          // Cost = query complexity score (minimum 1)
+          // Cost = scaled complexity (minimum 1 credit)
           let cost = 1;
           if (
             req.path === '/graphql' &&
@@ -294,11 +305,13 @@ export function setupMiddleware(app: Express) {
               req.body.query,
               req.body.variables
             );
-            cost = Number.isFinite(raw) ? Math.max(1, raw) : 1;
+            cost = Number.isFinite(raw)
+              ? Math.max(1, Math.round(raw / CREDIT_COMPLEXITY_DIVISOR))
+              : 1;
           }
 
-          if (await deductCredits(creditToken, cost)) {
-            const remaining = (await getSession(creditToken))?.credits ?? 0;
+          const remaining = await deductCredits(creditToken, cost);
+          if (remaining !== null) {
             res.setHeader('X-Credits-Remaining', String(remaining));
             return next();
           }
@@ -341,7 +354,7 @@ export function setupMiddleware(app: Express) {
               try {
                 const { token, credits } = await createCreditSession(
                   wallet,
-                  config.X402_CREDIT_BUNDLE_USDC
+                  config.X402_CREDIT_BUNDLE_SIZE
                 );
                 res.setHeader('X-Credit-Session', token);
                 res.setHeader('X-Credits-Remaining', String(credits));

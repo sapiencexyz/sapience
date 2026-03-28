@@ -18,7 +18,7 @@ function defaultCreditSessionsMock() {
   return {
     createCreditSession: vi.fn(),
     getSession: vi.fn(() => null),
-    deductCredits: vi.fn(() => false),
+    deductCredits: vi.fn(() => null),
     extractPayerFromPaymentHeader: vi.fn(() => null),
     _resetForTest: vi.fn(),
   };
@@ -40,6 +40,7 @@ function expectPaymentFields(body: Record<string, unknown>) {
   expect(bundle.currency).toBe('USDC');
   expect(bundle.decimals).toBe(6);
   expect(bundle.amountUSD).toBe('$1.00');
+  expect(bundle.credits).toBe(10_000);
   expect(cs.instructions).toBeDefined();
 }
 
@@ -114,6 +115,7 @@ describe('tiered rate limiting with trust proxy (x402 mode)', () => {
         FREE_TIER_RATE_LIMIT: 3,
         X402_PAY_TO: TEST_PAY_TO,
         X402_CREDIT_BUNDLE_USDC: 1_000_000,
+        X402_CREDIT_BUNDLE_SIZE: 10_000,
       },
     }));
     vi.doMock('./creditSessions', () => defaultCreditSessionsMock());
@@ -164,6 +166,7 @@ describe('tiered rate limiting with trust proxy (x402 mode)', () => {
         FREE_TIER_RATE_LIMIT: 5,
         X402_PAY_TO: TEST_PAY_TO,
         X402_CREDIT_BUNDLE_USDC: 1_000_000,
+        X402_CREDIT_BUNDLE_SIZE: 10_000,
       },
     }));
     vi.doMock('./creditSessions', () => defaultCreditSessionsMock());
@@ -200,6 +203,7 @@ describe('tiered rate limiting with trust proxy (x402 mode)', () => {
         FREE_TIER_RATE_LIMIT: 2,
         X402_PAY_TO: TEST_PAY_TO,
         X402_CREDIT_BUNDLE_USDC: 1_000_000,
+        X402_CREDIT_BUNDLE_SIZE: 10_000,
       },
     }));
     vi.doMock('./creditSessions', () => ({
@@ -208,7 +212,7 @@ describe('tiered rate limiting with trust proxy (x402 mode)', () => {
         wallet: '0xabc',
         credits: 0,
       })),
-      deductCredits: vi.fn(() => false), // exhausted
+      deductCredits: vi.fn(() => null), // exhausted
     }));
     vi.doMock('./x402', () => defaultX402Mock());
 
@@ -237,6 +241,7 @@ describe('credit sessions', () => {
     FREE_TIER_RATE_LIMIT: 2,
     X402_PAY_TO: '0x1234567890abcdef1234567890abcdef12345678',
     X402_CREDIT_BUNDLE_USDC: 1_000_000,
+    X402_CREDIT_BUNDLE_SIZE: 10_000,
   };
 
   it('valid credit session bypasses x402 and deducts credits', async () => {
@@ -244,7 +249,7 @@ describe('credit sessions', () => {
       wallet: '0xabc',
       credits: 50000,
     }));
-    const mockDeductCredits = vi.fn(() => true);
+    const mockDeductCredits = vi.fn(() => 49999);
 
     vi.doMock('./config', () => ({ config: X402_CONFIG }));
     vi.doMock('./creditSessions', () => ({
@@ -299,7 +304,7 @@ describe('credit sessions', () => {
     expect(res.headers['x-credit-session-status']).toBe('exhausted');
     expectPaymentFields(res.body);
     expect(res.body.creditSession.status).toBe('exhausted');
-    expect(res.body.creditSession.pricing).toContain('complexity score');
+    expect(res.body.creditSession.pricing).toContain('10,000 credits');
     expect(res.body.creditSession.instructions.step1).toContain(
       'Payment-Signature'
     );
@@ -313,7 +318,7 @@ describe('credit sessions', () => {
   it('successful payment creates credit session and returns token header', async () => {
     const mockCreateCreditSession = vi.fn(() => ({
       token: 'new-session-token',
-      credits: 1_000_000,
+      credits: 10_000,
     }));
 
     vi.doMock('./config', () => ({ config: X402_CONFIG }));
@@ -355,21 +360,21 @@ describe('credit sessions', () => {
 
     expect(res.status).toBe(200);
     expect(res.headers['x-credit-session']).toBe('new-session-token');
-    expect(res.headers['x-credits-remaining']).toBe('1000000');
-    expect(mockCreateCreditSession).toHaveBeenCalledWith('0xpayer', 1_000_000);
+    expect(res.headers['x-credits-remaining']).toBe('10000');
+    expect(mockCreateCreditSession).toHaveBeenCalledWith('0xpayer', 10_000);
   });
 
   it('credits exhausted returns 402 with exhausted status and bundle info', async () => {
     const mockGetSession = vi.fn(() => ({
       wallet: '0xabc',
-      credits: 100, // not enough for the 5000 cost
+      credits: 0, // not enough
     }));
 
     vi.doMock('./config', () => ({ config: X402_CONFIG }));
     vi.doMock('./creditSessions', () => ({
       ...defaultCreditSessionsMock(),
       getSession: mockGetSession,
-      deductCredits: vi.fn(() => false), // insufficient credits
+      deductCredits: vi.fn(() => null), // insufficient credits
     }));
 
     const x402Mock = vi.fn();
@@ -415,9 +420,9 @@ describe('credit sessions', () => {
     const mockDeductCredits = vi.fn((token: string) => {
       if (token === 'token-a') {
         sessionCreditsA -= 1;
-        return true;
+        return sessionCreditsA;
       }
-      return false;
+      return null;
     });
 
     vi.doMock('./config', () => ({ config: X402_CONFIG }));
@@ -473,7 +478,7 @@ describe('credit sessions', () => {
       wallet: '0xabc',
       credits: 50000,
     }));
-    const mockDeductCredits = vi.fn(() => true);
+    const mockDeductCredits = vi.fn(() => 49999);
 
     vi.doMock('./config', () => ({ config: X402_CONFIG }));
     vi.doMock('./creditSessions', () => ({
