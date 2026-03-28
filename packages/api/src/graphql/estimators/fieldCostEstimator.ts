@@ -2,11 +2,17 @@
  * Field cost estimator
  * Assigns custom complexity costs to specific fields by name or pattern
  */
-import type { ComplexityEstimator } from '../queryComplexity.js';
+import type {
+  ComplexityEstimator,
+  ComplexityEstimatorArgs,
+} from '../queryComplexity.js';
 
 export type FieldCostConfig =
   | { [fieldName: string]: number }
-  | ((fieldName: string) => number | undefined);
+  | ((
+      fieldName: string,
+      estimatorArgs: ComplexityEstimatorArgs
+    ) => number | undefined);
 
 export function fieldCostEstimator(
   costs: FieldCostConfig
@@ -16,7 +22,7 @@ export function fieldCostEstimator(
 
     let cost: number | undefined;
     if (typeof costs === 'function') {
-      cost = costs(fieldName);
+      cost = costs(fieldName, args);
     } else {
       cost = costs[fieldName];
     }

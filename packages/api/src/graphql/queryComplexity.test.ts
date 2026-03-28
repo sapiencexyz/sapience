@@ -287,6 +287,29 @@ describe('queryComplexity', () => {
       expect(complexity).toBeGreaterThan(15000);
     });
 
+    it('function form receives estimatorArgs and can use args.take', () => {
+      const query = parse(`{ items(take: 25) { id } }`);
+      const complexity = getComplexity({
+        schema: testSchema,
+        query,
+        estimators: [
+          fieldCostEstimator((_fieldName, estimatorArgs) => {
+            if (_fieldName === 'items') {
+              const take =
+                typeof estimatorArgs.args.take === 'number'
+                  ? estimatorArgs.args.take
+                  : 10;
+              return 100 + 5 * take;
+            }
+            return undefined;
+          }),
+          simpleEstimator({ defaultComplexity: 1 }),
+        ],
+      });
+      // items: 100 + 5*25 = 225, + childComplexity (id: 1) = 226
+      expect(complexity).toBe(226);
+    });
+
     it('falls through to next estimator when no match', () => {
       const query = parse(`{ scalar }`);
       const complexity = getComplexity({
@@ -445,7 +468,7 @@ describe('queryComplexity', () => {
   });
 
   describe('createComplexityEstimators', () => {
-    it('assigns fixed cost to questions field, bypassing list multiplier', () => {
+    it('scales questions cost with take, default take=50 yields 502', () => {
       const query = parse(
         `{ questions(take: 50) { questionType predictionCount } }`
       );
@@ -455,9 +478,7 @@ describe('queryComplexity', () => {
         query,
         estimators,
       });
-      // questions gets fixed cost 500 from fieldCostEstimator
-      // + childComplexity (questionType: 1 + predictionCount: 1 = 2) = 502
-      // NOT 1 + 2 * 50 = 101 (which the list multiplier would produce)
+      // questions: 100 + 8*50 = 500, + childComplexity (2) = 502
       expect(complexity).toBe(502);
     });
 
@@ -473,7 +494,7 @@ describe('queryComplexity', () => {
       expect(complexity).toBe(2001);
     });
 
-    it('questions cost stays fixed regardless of take value', () => {
+    it('questions cost scales linearly with take', () => {
       const small = parse(
         `{ questions(take: 10) { questionType predictionCount } }`
       );
@@ -491,9 +512,10 @@ describe('queryComplexity', () => {
         query: large,
         estimators,
       });
-      // Both should have the same complexity since questions uses fixed cost
-      expect(smallComplexity).toBe(largeComplexity);
-      expect(smallComplexity).toBe(502);
+      // questions(take:10): 100 + 8*10 = 180, + childComplexity (2) = 182
+      expect(smallComplexity).toBe(182);
+      // questions(take:100): take capped at maxListSize=100: 100 + 8*100 = 900, + 2 = 902
+      expect(largeComplexity).toBe(902);
     });
   });
 });

@@ -559,7 +559,7 @@ export function createComplexityEstimators(
 ): ComplexityEstimator[] {
   return [
     _fieldExt(),
-    _fieldCost((fieldName: string) => {
+    _fieldCost((fieldName, estimatorArgs) => {
       // Aggregate fields that require full table scans
       if (fieldName === '_all') return 10000;
       if (fieldName.startsWith('_count')) return 5000;
@@ -568,11 +568,17 @@ export function createComplexityEstimators(
       if (fieldName.startsWith('_min')) return 5000;
       if (fieldName.startsWith('_max')) return 5000;
       // Expensive custom queries — heavy SQL aggregations
-      if (fieldName === 'questions') return 500;
+      if (fieldName === 'questions') {
+        const take =
+          typeof estimatorArgs.args.take === 'number'
+            ? Math.min(Math.max(estimatorArgs.args.take, 1), maxListSize)
+            : 50; // resolver default
+        return 100 + 8 * take; // + childComplexity auto-added by fieldCostEstimator
+      }
       if (fieldName === 'protocolStats') return 2000;
       if (fieldName === 'profitLeaderboard') return 2000;
       if (fieldName === 'accountTotalVolume') return 500;
-      if (fieldName === 'accountProfitRank') return 500;
+      if (fieldName === 'accountProfitRank') return 2000;
       // Time-series analytics — heavy SQL with generate_series + aggregation
       if (fieldName === 'accountVolume') return 1000;
       if (fieldName === 'accountPnl') return 1500;
