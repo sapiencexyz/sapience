@@ -118,16 +118,15 @@ List fields multiply their children's cost by the requested list size (capped at
 
 ## File Layout
 
-| File                             | Responsibility                                                                           |
-| -------------------------------- | ---------------------------------------------------------------------------------------- |
-| `src/x402.ts`                    | In-process facilitator, complexity-based pricing, gas guard, payment middleware creation |
-| `src/middleware.ts`              | CORS, helmet, rate limiters, x402 handler wiring, admin auth                             |
-| `src/creditSessions.ts`          | Credit session CRUD — create, get, deduct credits                                        |
-| `src/app.ts`                     | Express app factory — calls `setupMiddleware`, mounts router                             |
-| `src/config.ts`                  | Environment variable definitions (x402 + rate limit configs)                             |
-| `src/graphql/queryComplexity.ts` | Shared `createComplexityEstimators()` used by both Apollo validation and x402 pricing    |
-| `src/scripts/testX402Payment.ts` | End-to-end payment test script (`pnpm test:x402`)                                        |
-| `src/middleware.test.ts`         | Unit tests for the two-tier rate limiting system and credit sessions                     |
+| File                             | Responsibility                                                                        |
+| -------------------------------- | ------------------------------------------------------------------------------------- |
+| `src/x402.ts`                    | In-process facilitator, complexity-based pricing, payment middleware creation         |
+| `src/middleware.ts`              | CORS, helmet, rate limiters, x402 handler wiring, admin auth                          |
+| `src/creditSessions.ts`          | Credit session CRUD — create, get, deduct credits                                     |
+| `src/app.ts`                     | Express app factory — calls `setupMiddleware`, mounts router                          |
+| `src/config.ts`                  | Environment variable definitions (x402 + rate limit configs)                          |
+| `src/graphql/queryComplexity.ts` | Shared `createComplexityEstimators()` used by both Apollo validation and x402 pricing |
+| `src/middleware.test.ts`         | Unit tests for the two-tier rate limiting system and credit sessions                  |
 
 ## CORS
 
@@ -141,9 +140,6 @@ Payment-related headers are configured in `corsOptions`:
 ```bash
 # Unit tests (mocks x402 and viem, tests rate limit tiers)
 pnpm --filter @sapience/api test
-
-# End-to-end payment flow (requires funded wallets + Arbitrum RPC)
-pnpm --filter @sapience/api test:x402
 ```
 
 ## Dependencies
