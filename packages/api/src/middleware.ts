@@ -266,28 +266,12 @@ export function setupMiddleware(app: Express) {
     },
   });
 
-  const hardLimiter = rateLimit({
-    windowMs: config.RATE_LIMIT_WINDOW_MS,
-    max: config.HARD_RATE_LIMIT,
-    standardHeaders: true,
-    legacyHeaders: false,
-    // No skip - count all requests regardless of payment status
-    message: {
-      error: 'Too Many Requests',
-      message: `Hard limit of ${config.HARD_RATE_LIMIT} requests per minute exceeded.`,
-      tier: 'hard_limit',
-    },
-  });
-
   // Tiered rate limiting system
   if (config.X402_PAY_TO) {
-    // Tier 1: Hard limit check first (reject early if >400 req/min)
-    app.use(hardLimiter);
-
-    // Tier 2: Free tier check (flag if needs payment)
+    // Single rate limiter — excess goes to 402 payment path
     app.use(freeTierLimiter);
 
-    // Tier 3: Credit session check + conditional x402 payment
+    // Credit session check + conditional x402 payment
     const x402Middleware = createGasAwareX402Middleware();
 
     app.use(async (req: Request, res: Response, next: NextFunction) => {

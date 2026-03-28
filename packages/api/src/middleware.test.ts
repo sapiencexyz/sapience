@@ -160,46 +160,80 @@ describe('tiered rate limiting with trust proxy (x402 mode)', () => {
     expect(otherRes.status).toBe(200);
   });
 
-  it('hard limit is per-IP — one abuser cannot 429 everyone', async () => {
+  it('hard limit returns 402 not 429 — users can always pay for access', async () => {
     vi.doMock('./config', () => ({
       config: {
         isProd: false,
         RATE_LIMIT_WINDOW_MS: 60000,
-        FREE_TIER_RATE_LIMIT: 100,
-        HARD_RATE_LIMIT: 5,
+        FREE_TIER_RATE_LIMIT: 5,
+        HARD_RATE_LIMIT: 100,
         X402_PAY_TO: TEST_PAY_TO,
         X402_CREDIT_BUNDLE_USDC: 1_000_000,
         X402_CREDIT_SESSION_TTL_MS: 3_600_000,
       },
     }));
     vi.doMock('./creditSessions', () => defaultCreditSessionsMock());
-    vi.doMock('./x402', () => ({
-      ...defaultX402Mock(),
-      createGasAwareX402Middleware: vi.fn(() => {
-        return (_req: Request, _res: Response, next: NextFunction) => next();
-      }),
-    }));
+    vi.doMock('./x402', () => defaultX402Mock());
 
     const { createApp } = await import('./app');
     const app = createApp();
     app.get('/test', (_req, res) => res.json({ ok: true }));
 
-    // Exhaust hard limit for IP 10.0.0.1
+    // Exhaust free tier for IP 10.0.0.1
     for (let i = 0; i < 5; i++) {
       await request(app).get('/test').set('X-Forwarded-For', '10.0.0.1');
     }
 
-    // 10.0.0.1 should be hard-blocked with 429
+    // 10.0.0.1 should get 402 with payment instructions, never 429
     const blockedRes = await request(app)
       .get('/test')
       .set('X-Forwarded-For', '10.0.0.1');
-    expect(blockedRes.status).toBe(429);
+    expect(blockedRes.status).toBe(402);
+    expectPaymentFields(blockedRes.body);
 
     // 10.0.0.2 should still be fine
     const otherRes = await request(app)
       .get('/test')
       .set('X-Forwarded-For', '10.0.0.2');
     expect(otherRes.status).toBe(200);
+  });
+
+  it('hard limit with credit session returns 402 not 429', async () => {
+    vi.doMock('./config', () => ({
+      config: {
+        isProd: false,
+        RATE_LIMIT_WINDOW_MS: 60000,
+        FREE_TIER_RATE_LIMIT: 2,
+        HARD_RATE_LIMIT: 100,
+        X402_PAY_TO: TEST_PAY_TO,
+        X402_CREDIT_BUNDLE_USDC: 1_000_000,
+        X402_CREDIT_SESSION_TTL_MS: 3_600_000,
+      },
+    }));
+    vi.doMock('./creditSessions', () => ({
+      ...defaultCreditSessionsMock(),
+      getSession: vi.fn(() => ({
+        wallet: '0xabc',
+        credits: 0,
+        expiresAt: Date.now() + 3_600_000,
+      })),
+      deductCredits: vi.fn(() => false), // exhausted
+    }));
+    vi.doMock('./x402', () => defaultX402Mock());
+
+    const { createApp } = await import('./app');
+    const app = createApp();
+    app.get('/test', (_req, res) => res.json({ ok: true }));
+
+    // Send request with exhausted credit session — should get 402, not 429
+    const res = await request(app)
+      .get('/test')
+      .set('X-Forwarded-For', '10.0.0.1')
+      .set('X-Credit-Session', 'exhausted-token');
+
+    expect(res.status).toBe(402);
+    expectPaymentFields(res.body);
+    expect(res.body.creditSession.status).toBe('exhausted');
   });
 });
 
