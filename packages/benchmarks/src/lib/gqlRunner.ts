@@ -104,13 +104,14 @@ function randomElement<T>(arr: readonly T[]): T {
   return arr[Math.floor(Math.random() * arr.length)];
 }
 
-export function randomizeParams() {
+export function randomizeParams(chainId?: number) {
   return {
     take: randomInt(10, 50),
     skip: randomInt(0, 100),
     sortField: randomElement(SORT_FIELDS),
     sortDirection: randomElement(SORT_DIRECTIONS),
     resolutionStatus: 'unresolved',
+    ...(chainId != null && { chainId }),
   };
 }
 
@@ -153,7 +154,7 @@ export async function runGqlQuery(apiUrl: string, params: ReturnType<typeof rand
 }
 
 /** Fetch questions once and return the raw response data for condition extraction */
-export async function fetchQuestionsOnce(apiUrl: string) {
+export async function fetchQuestionsOnce(apiUrl: string, chainId?: number) {
   const res = await fetch(apiUrl, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -165,6 +166,7 @@ export async function fetchQuestionsOnce(apiUrl: string) {
         sortField: 'openInterest',
         sortDirection: 'desc',
         resolutionStatus: 'unresolved',
+        ...(chainId != null && { chainId }),
       },
     }),
   });
