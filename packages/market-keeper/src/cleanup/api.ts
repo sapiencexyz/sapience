@@ -21,13 +21,12 @@ export interface CleanupCondition {
 
 const CONDITIONS_PAGE_SIZE = 30;
 
-// Fetch expired conditions with no engagement (OI=0 and no attestations) — cleanup candidates
-const EXPIRED_NO_ENGAGEMENT_QUERY = `
-query ExpiredNoEngagement($now: Int!, $take: Int!, $skip: Int!) {
+// Fetch unsettled conditions with no engagement (OI=0 and no attestations) — cleanup candidates
+const UNRESOLVED_NO_ENGAGEMENT_QUERY = `
+query UnresolvedNoEngagement($take: Int!, $skip: Int!) {
   conditions(
     where: {
       AND: [
-        { endTime: { lt: $now } }
         { settled: { equals: false } }
         { public: { equals: true } }
         { openInterest: { equals: "0" } }
@@ -86,7 +85,6 @@ function mapCondition(raw: RawCondition): CleanupCondition {
 
 async function fetchConditionsPage(
   apiUrl: string,
-  nowTimestamp: number,
   take: number,
   skip: number
 ): Promise<CleanupCondition[]> {
@@ -94,8 +92,8 @@ async function fetchConditionsPage(
     method: 'POST',
     headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
     body: JSON.stringify({
-      query: EXPIRED_NO_ENGAGEMENT_QUERY,
-      variables: { now: nowTimestamp, take, skip },
+      query: UNRESOLVED_NO_ENGAGEMENT_QUERY,
+      variables: { take, skip },
     }),
   });
 
@@ -118,19 +116,17 @@ async function fetchConditionsPage(
   return (result.data?.conditions ?? []).map(mapCondition);
 }
 
-export async function fetchExpiredNoEngagementConditions(
+export async function fetchNoEngagementConditions(
   apiUrl: string
 ): Promise<CleanupCondition[]> {
-  const nowTimestamp = Math.floor(Date.now() / 1000);
   const all: CleanupCondition[] = [];
   let skip = 0;
 
-  console.log(`Fetching expired unresolved conditions from ${apiUrl}...`);
+  console.log(`Fetching unresolved no-engagement conditions from ${apiUrl}...`);
 
   while (true) {
     const page = await fetchConditionsPage(
       apiUrl,
-      nowTimestamp,
       CONDITIONS_PAGE_SIZE + 1,
       skip
     );
@@ -145,7 +141,7 @@ export async function fetchExpiredNoEngagementConditions(
     skip += CONDITIONS_PAGE_SIZE;
   }
 
-  console.log(`Found ${all.length} expired unresolved conditions`);
+  console.log(`Found ${all.length} unresolved no-engagement conditions`);
   return all;
 }
 
