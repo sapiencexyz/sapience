@@ -9,7 +9,7 @@ vi.mock('../utils', () => ({
 }));
 
 vi.mock('../cleanup/api', () => ({
-  fetchExpiredNoEngagementConditions: vi.fn(),
+  fetchNoEngagementConditions: vi.fn(),
   privateConditions: vi.fn(),
   republishConditions: vi.fn(),
   fetchConditionsWithEngagement: vi.fn(),
@@ -24,7 +24,7 @@ vi.mock('../polygon/client', () => ({
 
 import { main } from '../cleanup/index';
 import {
-  fetchExpiredNoEngagementConditions,
+  fetchNoEngagementConditions,
   privateConditions,
   republishConditions,
   fetchConditionsWithEngagement,
@@ -33,7 +33,7 @@ import {
 import { canRequestResolution } from '../polygon/client';
 import { log } from '../utils';
 
-const mockFetchExpired = vi.mocked(fetchExpiredNoEngagementConditions);
+const mockFetchNoEngagement = vi.mocked(fetchNoEngagementConditions);
 const mockPrivate = vi.mocked(privateConditions);
 const mockFetchByIds = vi.mocked(fetchConditionsWithEngagement);
 const mockRepublish = vi.mocked(republishConditions);
@@ -83,14 +83,14 @@ async function runMainWithTimers(): Promise<void> {
 
 describe('cleanup-polymarket main()', () => {
   it('exits early when no expired unresolved conditions found', async () => {
-    mockFetchExpired.mockResolvedValue([]);
+    mockFetchNoEngagement.mockResolvedValue([]);
 
     await runMainWithTimers();
 
     expect(mockCanRequestResolution).not.toHaveBeenCalled();
     expect(mockPrivate).not.toHaveBeenCalled();
     expect(mockLog).toHaveBeenCalledWith(
-      expect.stringContaining('No expired unresolved conditions')
+      expect.stringContaining('No unresolved no-engagement conditions')
     );
   });
 
@@ -100,7 +100,7 @@ describe('cleanup-polymarket main()', () => {
       openInterest: '0',
       attestationCount: 0,
     });
-    mockFetchExpired.mockResolvedValue([condition]);
+    mockFetchNoEngagement.mockResolvedValue([condition]);
     mockCanRequestResolution.mockResolvedValue(true);
     mockPrivate.mockResolvedValue({ success: true, updated: 1 });
     mockFetchByIds.mockResolvedValue([]);
@@ -117,7 +117,7 @@ describe('cleanup-polymarket main()', () => {
 
   it('skips unresolved conditions (not yet resolved on Polygon CTF)', async () => {
     const condition = makeCondition({ id: '0x1' });
-    mockFetchExpired.mockResolvedValue([condition]);
+    mockFetchNoEngagement.mockResolvedValue([condition]);
     mockCanRequestResolution.mockResolvedValue(false);
     process.argv = ['node', 'cleanup-polymarket.ts', '--execute'];
 
@@ -134,7 +134,7 @@ describe('cleanup-polymarket main()', () => {
       openInterest: '0',
       attestationCount: 0,
     });
-    mockFetchExpired.mockResolvedValue([condition]);
+    mockFetchNoEngagement.mockResolvedValue([condition]);
     mockCanRequestResolution.mockResolvedValue(true);
     mockPrivate.mockResolvedValue({ success: true, updated: 1 });
     mockRepublish.mockResolvedValue({ success: true, updated: 1 });
@@ -169,7 +169,7 @@ describe('cleanup-polymarket main()', () => {
       openInterest: '0',
       attestationCount: 0,
     });
-    mockFetchExpired.mockResolvedValue([condition]);
+    mockFetchNoEngagement.mockResolvedValue([condition]);
     mockCanRequestResolution.mockResolvedValue(true);
     mockPrivate.mockResolvedValue({ success: true, updated: 1 });
     mockRepublish.mockResolvedValue({ success: true, updated: 1 });
@@ -200,7 +200,7 @@ describe('cleanup-polymarket main()', () => {
 
   it('does not private or settle in dry-run mode', async () => {
     const condition = makeCondition({ id: '0x1' });
-    mockFetchExpired.mockResolvedValue([condition]);
+    mockFetchNoEngagement.mockResolvedValue([condition]);
     mockCanRequestResolution.mockResolvedValue(true);
 
     await runMainWithTimers();
