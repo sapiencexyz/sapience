@@ -132,7 +132,7 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
                             transition={{ duration: 0.3 }}
                             className="absolute inset-0 py-3 pl-4 pr-3 flex items-center"
                           >
-                            <StackedIcons picks={legs} />
+                            <StackedIcons picks={legs} max={3} />
                           </motion.div>
                         ) : (
                           <motion.div
@@ -171,6 +171,7 @@ const ExampleCombos: React.FC<ExampleCombosProps> = ({ className }) => {
                           <StackedIcons
                             picks={legs}
                             className="flex xl:hidden"
+                            max={3}
                           />
                           {/* Row 2: Question + Badge + "and N others" */}
                           <StackedPredictionsTitle
