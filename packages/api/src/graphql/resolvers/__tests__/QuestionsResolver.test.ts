@@ -327,6 +327,15 @@ describe('QuestionsResolver', () => {
       expect(sql).toContain('CROSS JOIN LATERAL');
     });
 
+    it('group search matches individual condition questions and shortNames', async () => {
+      await callQuestions({ search: 'Chicago Bulls' });
+      const sql = getCapturedSql();
+
+      // Part A search should match condition question/shortName, not just group name
+      expect(sql).toContain('c_search.question ILIKE');
+      expect(sql).toContain('c_search."shortName" ILIKE');
+    });
+
     it('Part B only fetches ungrouped conditions (no LEFT JOIN, two UNION parts)', async () => {
       await callQuestions();
       const sql = getCapturedSql();

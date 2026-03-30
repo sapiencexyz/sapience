@@ -291,10 +291,14 @@ export class QuestionsResolver {
               ? Prisma.sql`AND (
                   cg.name ILIKE ${'%' + boundedSearch + '%'}
                   OR EXISTS (
-                    SELECT 1 FROM condition c_tag
-                    WHERE c_tag."conditionGroupId" = cg.id
-                      AND c_tag.public = true
-                      AND EXISTS (SELECT 1 FROM unnest(c_tag.tags) AS t WHERE t ILIKE ${'%' + boundedSearch + '%'})
+                    SELECT 1 FROM condition c_search
+                    WHERE c_search."conditionGroupId" = cg.id
+                      AND c_search.public = true
+                      AND (
+                        c_search.question ILIKE ${'%' + boundedSearch + '%'}
+                        OR c_search."shortName" ILIKE ${'%' + boundedSearch + '%'}
+                        OR EXISTS (SELECT 1 FROM unnest(c_search.tags) AS t WHERE t ILIKE ${'%' + boundedSearch + '%'})
+                      )
                   )
                 )`
               : Prisma.empty
