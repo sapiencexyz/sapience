@@ -95,6 +95,7 @@ export async function generateAuctionPayload(
     predictorDeadline: deadline,
     intentSignature,
     chainId,
+    escrowContract: escrowAddress,
   };
 }
 
@@ -113,13 +114,17 @@ export async function generateBidPayload(
     predictor: string;
     predictorCollateral: string;
     chainId: number;
+    escrowContract?: string;
   },
   opts: {
     escrowAddress?: Address;
     collateral?: string;
   } = {}
 ): Promise<BidPayload> {
-  const escrowAddress = opts.escrowAddress ?? DEFAULT_ESCROW_ADDRESS;
+  const escrowAddress =
+    opts.escrowAddress ??
+    (auctionDetails.escrowContract as Address | undefined) ??
+    DEFAULT_ESCROW_ADDRESS;
   const collateral = opts.collateral ?? '500000000000000000';
   const nonce = nextNonce(account);
   const deadline = Math.floor(Date.now() / 1000) + 3600;

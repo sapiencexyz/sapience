@@ -90,6 +90,7 @@ async function makeSignedListing(
     sellerDeadline: deadline,
     sellerSignature,
     chainId: CHAIN_ID,
+    escrowContract: VERIFYING_CONTRACT,
     ...overrides,
   };
 }

@@ -157,6 +157,7 @@ export function useSecondaryAuctionStart(
         sellerDeadline: Number(sellerDeadline),
         sellerSignature,
         chainId,
+        escrowContract: verifyingContract,
         refCode: refCode ?? undefined,
       };
 

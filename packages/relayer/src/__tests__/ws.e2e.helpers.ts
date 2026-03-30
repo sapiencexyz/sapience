@@ -233,6 +233,7 @@ export async function startAuction(
     predictorDeadline: deadline,
     intentSignature,
     chainId: overrides?.chainId ?? TEST_CHAIN_ID,
+    escrowContract: overrides?.escrowContract ?? TEST_ESCROW_ADDRESS,
     ...(overrides?.refCode !== undefined && { refCode: overrides.refCode }),
     ...(overrides?.predictorSessionKeyData !== undefined && {
       predictorSessionKeyData: overrides.predictorSessionKeyData,
