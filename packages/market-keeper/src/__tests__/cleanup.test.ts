@@ -198,6 +198,32 @@ describe('cleanup-polymarket main()', () => {
     );
   });
 
+  it('privates a resolved condition even when endTime is in the future', async () => {
+    // Condition resolved on Polymarket but endTime hasn't passed yet — should still be cleaned up
+    const condition = makeCondition({
+      id: '0x1',
+      openInterest: '0',
+      attestationCount: 0,
+    });
+    mockFetchNoEngagement.mockResolvedValue([condition]);
+    mockCanRequestResolution.mockResolvedValue(true);
+    mockPrivate.mockResolvedValue({ success: true, updated: 1 });
+    mockFetchByIds.mockResolvedValue([]);
+    process.argv = ['node', 'cleanup-polymarket.ts', '--execute'];
+
+    await runMainWithTimers();
+
+    expect(mockCanRequestResolution).toHaveBeenCalledWith(
+      expect.anything(),
+      '0x1'
+    );
+    expect(mockPrivate).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(String),
+      ['0x1']
+    );
+  });
+
   it('does not private or settle in dry-run mode', async () => {
     const condition = makeCondition({ id: '0x1' });
     mockFetchNoEngagement.mockResolvedValue([condition]);
