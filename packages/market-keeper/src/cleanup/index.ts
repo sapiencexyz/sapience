@@ -1,7 +1,7 @@
 /**
- * Cleanup-polymarket: monitors expired conditions and privates resolved ones with no engagement.
+ * Cleanup-polymarket: monitors unsettled conditions and privates resolved ones with no engagement.
  *
- * For each expired, unsettled, public condition:
+ * For each unsettled, public condition with no engagement:
  * 1. Checks if resolved on Polygon CTF (canRequestResolution)
  * 2. If resolved + OI=0 + no attestations → private the condition
  * 3. If resolved + (OI>0 or attestations) → skip (settle-polymarket handles it)
@@ -20,7 +20,7 @@ import {
 } from '../polygon/client';
 import { validatePrivateKey, confirmProductionAccess, log } from '../utils';
 import {
-  fetchExpiredNoEngagementConditions,
+  fetchNoEngagementConditions,
   privateConditions,
   republishConditions,
   fetchConditionsWithEngagement,
@@ -97,11 +97,11 @@ export async function main(): Promise<void> {
 
   const polygonClient = createPolygonClient(polygonRpcUrl);
 
-  // Fetch expired, unsettled, public conditions
-  const conditions = await fetchExpiredNoEngagementConditions(apiUrl);
+  // Fetch unsettled, public conditions with no engagement
+  const conditions = await fetchNoEngagementConditions(apiUrl);
 
   if (conditions.length === 0) {
-    log('[Cleanup] No expired unresolved conditions found');
+    log('[Cleanup] No unresolved no-engagement conditions found');
     return;
   }
 
