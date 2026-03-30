@@ -248,7 +248,7 @@ export const BOTH_SYSTEM_PROMPT =
   'You are a prediction market categorization assistant. Respond only with CSV lines: id,category,shortName. No markdown, no headers, no quotes around values. NEVER shorten or truncate IDs.';
 
 export const ENDTIME_SYSTEM_PROMPT =
-  'You are a prediction market deadline analyst with web search. For each market, determine when the event outcome will be definitively known. Always search for the exact scheduled start time before falling back to end-of-day estimates. Always output UTC. Respond only with CSV lines: id,ISO8601_datetime_UTC. No markdown, no headers. NEVER shorten or truncate IDs. If you cannot determine a resolution date, respond with id,UNKNOWN.';
+  'You are a prediction market deadline analyst with web search. Each market is a YES/NO question — you do not need to know the answer, only WHEN the answer will become available. First check if the event has ALREADY HAPPENED by searching for results — if it has, return the past date when the outcome became known. Only search for future scheduled times if the event has not occurred yet. Always output UTC. Respond only with CSV lines: id,ISO8601_datetime_UTC. No markdown, no headers. NEVER shorten or truncate IDs. If you cannot determine a resolution date, respond with id,UNKNOWN.';
 
 /**
  * Build prompt for endTime determination via web search
@@ -265,29 +265,49 @@ export function buildEndTimePrompt(markets: EndTimeEnrichmentInput[]): string {
 
 TODAY'S DATE: ${new Date().toISOString().split('T')[0]}
 
-STEP 1 — SEARCH: For each market, construct a targeted search query from the question text to find the exact scheduled time. Examples:
+IMPORTANT CONTEXT: These are prediction markets with YES/NO outcomes. You do NOT need to predict the answer — you only need to determine WHEN the answer will become available. For example, "Will X be the next PM of Y?" does not require knowing who will be PM — it requires knowing when the PM will be announced (e.g. after coalition talks conclude). Similarly, "Will X happen between March 17-23?" just needs the end of that date range, not whether X actually happened.
+
+STEP 1 — CHECK DATES IN THE QUESTION: If the question contains a date or date range, check whether it is before today (${new Date().toISOString().split('T')[0]}).
+- If the date/range is entirely in the past (e.g. "between March 17-23" and today is March 27): the outcome is ALREADY knowable. Return the end of that date range (e.g. March 23 end-of-day in the relevant timezone). Do NOT add extra days for "data reporting" — prediction markets resolve based on the stated date.
+- If the date is in the future: proceed to Step 2.
+
+STEP 2 — CHECK IF THE EVENT ALREADY HAPPENED: Search for whether the event has already occurred or results are already known.
+- Elections: search "[election name] [year] results" — if results exist, the outcome is ALREADY known.
+- Sports: search "[team1] vs [team2] [date] score" — if a final score exists, it already happened.
+- "Will X be the next [leader] after the [year] elections?": search for "[year] [country] election results" — if the election happened, the answer is known (or will be known once coalition talks conclude — estimate that date, do NOT return UNKNOWN).
+- Any event: search "[event] results" or "[event] outcome" first.
+If the event already happened and the outcome is known, return the date/time when the outcome became known (e.g. when results were announced, when the game ended, when the vote was counted). Do NOT return a future date for an event that already occurred.
+
+STEP 3 — SEARCH FOR SCHEDULED TIME (only if the event has NOT happened yet): Construct a targeted search query from the question text to find the exact scheduled time. Examples:
 - Sports: search "[team1] vs [team2] [date] start time"
 - Esports: search "[team1] vs [team2] [tournament] schedule"
 - Financial: search "[company] earnings date Q[N] [year]" or "Fed meeting [month] [year] announcement time"
-- If description says the event was "postponed" or "rescheduled to [new date]": search for the new date; if not found, use the date directly 
+- If description says the event was "postponed" or "rescheduled to [new date]": search for the new date; if not found, use the date directly
 - If description contains a resolution source URL (e.g. vlr.gg, hltv.org, flashscore.com): search that site directly for the match schedule
+- Elections without a specific date in the question: search "[country/region] [year] election date" to find the actual scheduled date
 
-STEP 2 — COMPUTE END TIME: Return when the outcome will be KNOWN, not the start time.
+STEP 4 — COMPUTE END TIME: Return when the outcome will be KNOWN, not the start time.
+- If the question contains a past date/range (from Step 1): return end of that date/range
+- If the event already happened (from Step 2): return the date it happened (end of that day in local TZ if exact time unknown)
 - Sports regular season: start time + typical duration (NBA +3h, soccer +2.5h, NFL +3.5h, MLB +4h, NHL +3h, boxing/MMA +5h, esports +4h, cricket +8h)
 - Sports knockout/playoff games: add 1h extra for overtime (NBA +4h, soccer +3.5h, NFL +4.5h)
 - Multi-day events (golf, cricket series, cycling): end of the final scheduled day in local timezone
 - Financial data releases (earnings, GDP, CPI, PMI, jobs report): if description says "released on [DATE]" or "expected on [DATE]", use that date; use 13:30 UTC for US pre-market releases (CPI, NFP, GDP) or 20:00 UTC for after-market earnings unless a specific time is known
 - Other financial events (Fed decisions): use the announcement date/time directly
 - Weather markets: local midnight of the stated date in the city's timezone
-- Elections: estimated results-known time (typically several hours after polls close, or next morning for close races)
+- Elections (not yet held): estimated results-known time (typically several hours after polls close, or next morning for close races)
+- Elections with runoffs: if the question asks about the overall winner (not a specific round), use the runoff date
+- Elections already held but leader not yet chosen (e.g. coalition talks): estimate when the new government will be formed — search for "[country] coalition talks timeline" and give a realistic near-term estimate, NOT a constitutional maximum deadline
 - If there is a deadline in the question/description (e.g. "Will X happen by Y?"): use Y directly
 
-STEP 3 — FALLBACK: Only if start time cannot be found after searching, use end of day (23:59:59) in the event's local timezone. NEVER return UNKNOWN just because a specific time is missing — if the date is known, end-of-day is always an acceptable fallback.
+STEP 5 — FALLBACK: Only if start time cannot be found after searching, use end of day (23:59:59) in the event's local timezone. NEVER return UNKNOWN just because a specific time is missing — if the date is known, end-of-day is always an acceptable fallback.
+
+CRITICAL: The returned date must be the EARLIEST time the outcome can be known. Never return a "must be held by" constitutional deadline when the actual event date is known. Never return a future date for an event that search results confirm has already happened.
 
 OTHER RULES:
 - Always output UTC (convert from local timezone)
 - Use ISO 8601 format: YYYY-MM-DDTHH:MM:SSZ
-- If the event has no deterministic end date (e.g., "Will X ever happen?" with no deadline): respond with UNKNOWN
+- NEVER return UNKNOWN for a market that references a specific event (election, game, release date) — always estimate when the outcome will be known, even if the exact time is uncertain. Use UNKNOWN ONLY for truly open-ended questions with no event anchor (e.g. "Will X ever happen?" with no deadline and no referenced event).
 
 IMPORTANT: Never shorten or truncate the market ID - copy it exactly as provided.
 

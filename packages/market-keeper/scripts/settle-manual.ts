@@ -106,6 +106,7 @@ interface CLIOptions {
 
 interface SapienceCondition {
   id: string;
+  question: string;
 }
 
 interface GraphQLResponse<T> {
@@ -204,11 +205,10 @@ Examples:
 const CONDITIONS_PAGE_SIZE = 30;
 
 const UNRESOLVED_CONDITIONS_QUERY = `
-query UnresolvedConditions($now: Int!, $take: Int!, $skip: Int!) {
+query UnresolvedConditions($take: Int!, $skip: Int!) {
   conditions(
     where: {
       AND: [
-        { endTime: { lt: $now } }
         { settled: { equals: false } }
         { public: { equals: true } }
         {
@@ -224,6 +224,7 @@ query UnresolvedConditions($now: Int!, $take: Int!, $skip: Int!) {
     skip: $skip
   ) {
     id
+    question
   }
 }
 `;
@@ -232,7 +233,6 @@ query UnresolvedConditions($now: Int!, $take: Int!, $skip: Int!) {
 
 async function fetchConditionsPage(
   apiUrl: string,
-  nowTimestamp: number,
   take: number,
   skip: number
 ): Promise<SapienceCondition[]> {
@@ -244,7 +244,7 @@ async function fetchConditionsPage(
     },
     body: JSON.stringify({
       query: UNRESOLVED_CONDITIONS_QUERY,
-      variables: { now: nowTimestamp, take, skip },
+      variables: { take, skip },
     }),
   });
 
@@ -290,7 +290,6 @@ async function fetchConditionsPage(
 async function fetchUnresolvedConditions(
   apiUrl: string
 ): Promise<SapienceCondition[]> {
-  const nowTimestamp = Math.floor(Date.now() / 1000);
   const allConditions: SapienceCondition[] = [];
   let skip = 0;
 
@@ -299,7 +298,6 @@ async function fetchUnresolvedConditions(
   while (true) {
     const page = await fetchConditionsPage(
       apiUrl,
-      nowTimestamp,
       CONDITIONS_PAGE_SIZE + 1,
       skip
     );
@@ -404,13 +402,14 @@ async function resolveCondition(
   }
 
   // Check if resolved on Polymarket via Polygon
-  console.log(`[${conditionId}] Checking canRequestResolution on Polygon...`);
+  console.log(`[${conditionId}] Checking canRequestResolution on Polygon (reader=${CONDITIONAL_TOKENS_READER_ADDRESS})...`);
   const canResolve = await polygonClient.readContract({
     address: CONDITIONAL_TOKENS_READER_ADDRESS,
     abi: conditionalTokensReaderAbi,
     functionName: 'canRequestResolution',
     args: [conditionId],
   });
+  console.log(`[${conditionId}] canRequestResolution = ${canResolve}`);
 
   if (canResolve) {
     // Read the full resolution data
@@ -558,6 +557,7 @@ async function main() {
     // Phase 1: Resolve all conditions, collecting settlement candidates
     for (const condition of conditions) {
       try {
+        console.log(`[${condition.id}] "${condition.question}"`);
         const result = await resolveCondition(
           polygonClient,
           etherealClient,

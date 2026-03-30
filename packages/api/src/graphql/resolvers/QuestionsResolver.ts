@@ -96,8 +96,8 @@ export class Question {
  * so that sort order stays accurate.
  *
  * UNION SQL query (two parts):
- * 1. Active groups — denormalized columns (fast) or LATERAL (filtered)
- * 2. Individual conditions — ungrouped + expired-group merged via LEFT JOIN
+ * 1. Active groups — future endTime OR has unsettled public conditions
+ * 2. Ungrouped conditions only
  * 3. Sort together, paginate, fetch full records via Prisma ORM
  */
 @Resolver()
@@ -266,7 +266,7 @@ export class QuestionsResolver {
       }[]
     >`
       WITH combined AS (
-        -- Part A: Active groups (maxEndTime still in the future)
+        -- Part A: Active groups (future endTime OR has unsettled conditions)
         SELECT
           'group' as item_type,
           cg.id as group_id,
@@ -277,16 +277,28 @@ export class QuestionsResolver {
         FROM condition_group cg
         ${groupLateralJoin}
         WHERE cg."publicConditionCount" > 0
-          AND cg."maxEndTime" > ${nowSec}
+          AND (
+            cg."maxEndTime" > ${nowSec}
+            OR EXISTS (
+              SELECT 1 FROM condition c_unsettled
+              WHERE c_unsettled."conditionGroupId" = cg.id
+                AND c_unsettled.public = true
+                AND c_unsettled.settled = false
+            )
+          )
           ${
             boundedSearch
               ? Prisma.sql`AND (
                   cg.name ILIKE ${'%' + boundedSearch + '%'}
                   OR EXISTS (
-                    SELECT 1 FROM condition c_tag
-                    WHERE c_tag."conditionGroupId" = cg.id
-                      AND c_tag.public = true
-                      AND EXISTS (SELECT 1 FROM unnest(c_tag.tags) AS t WHERE t ILIKE ${'%' + boundedSearch + '%'})
+                    SELECT 1 FROM condition c_search
+                    WHERE c_search."conditionGroupId" = cg.id
+                      AND c_search.public = true
+                      AND (
+                        c_search.question ILIKE ${'%' + boundedSearch + '%'}
+                        OR c_search."shortName" ILIKE ${'%' + boundedSearch + '%'}
+                        OR EXISTS (SELECT 1 FROM unnest(c_search.tags) AS t WHERE t ILIKE ${'%' + boundedSearch + '%'})
+                      )
                   )
                 )`
               : Prisma.empty
@@ -299,7 +311,9 @@ export class QuestionsResolver {
 
         UNION ALL
 
-        -- Part B: Individual conditions (ungrouped or from expired groups)
+        -- Part B: Ungrouped conditions only (rare — almost all conditions belong
+        -- to a group via the keeper pipeline; this covers edge cases like manual
+        -- creation or Polymarket markets without an associated event)
         SELECT
           'condition' as item_type,
           NULL::integer as group_id,
@@ -308,9 +322,8 @@ export class QuestionsResolver {
           c."predictionCount" as prediction_count,
           COALESCE(c."endTime", 2147483647) as end_time
         FROM condition c
-        LEFT JOIN condition_group cg ON cg.id = c."conditionGroupId"
         WHERE c.public = true
-          AND (c."conditionGroupId" IS NULL OR cg."maxEndTime" <= ${nowSec})
+          AND c."conditionGroupId" IS NULL
           ${conditionFilters}
           ${
             boundedSearch

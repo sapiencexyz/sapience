@@ -32,7 +32,7 @@ export const DEFAULT_SAPIENCE_API_URL = 'https://api.sapience.xyz';
 export const MAX_END_DATE_DAYS = 21;
 
 // Minimum volume threshold (in USD) for including markets
-export const MIN_VOLUME_THRESHOLD = 10_000;
+export const MIN_VOLUME_THRESHOLD = 5_000;
 
 // Minimum liquidity threshold (in USD) for including markets
 export const MIN_LIQUIDITY_THRESHOLD = 1_000;

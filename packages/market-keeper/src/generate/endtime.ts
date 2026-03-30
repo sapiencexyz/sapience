@@ -220,6 +220,17 @@ export function extractEndTime(
 
   let m: RegExpExecArray | null;
 
+  // ── Tier 0p: Pyth Lazer endTime embedded in description ────────────────────
+  // Format: "PYTH_LAZER|...|endTime=1773870300|..."
+  const pythMatch = /\bendTime=(\d{9,11})\b/.exec(desc);
+  if (pythMatch) {
+    const ts = parseInt(pythMatch[1]);
+    if (ts > 1_000_000_000 && ts < 3_000_000_000) {
+      if (out) out.tier = '0p';
+      return ts;
+    }
+  }
+
   // ── Tier 0: Crypto "Up or Down – Month Day, Time TZ" ──────────────────────
   m = new RegExp(
     `Up or Down\\s*[-–]\\s*(${MONTHS})\\s+(\\d{1,2})(?:st|nd|rd|th)?(?:,?\\s*(\\d{4}))?,\\s*(\\d{1,2}(?::\\d{2})?)(?:\\s*-\\s*\\d{1,2}(?::\\d{2})?)?\\s*(?:([AP]M)\\s*)?([A-Z]{2,4})?`,
@@ -481,9 +492,9 @@ export function extractEndTime(
     return toTs(extractYear(mon, day), mon, day);
   }
 
-  // ── Tier 4e: "on/for [Month Day]" no year in question ─────────────────────
+  // ── Tier 4e: "on/for/between [Month Day]" no year in question ──────────────
   m = new RegExp(
-    `\\b(?:on|for)\\s+(${MONTHS})\\s+(\\d{1,2})(?:[-–](\\d{1,2}))?(?:st|nd|rd|th)?(?!\\s*,?\\s*\\d{4})`,
+    `\\b(?:on|for|between)\\s+(${MONTHS})\\s+(\\d{1,2})(?:[-–](\\d{1,2}))?(?:st|nd|rd|th)?(?!\\s*,?\\s*\\d{4})`,
     'i'
   ).exec(question);
   if (m) {

@@ -1,6 +1,9 @@
 import 'reflect-metadata';
 import { buildSchema, type NonEmptyArray } from 'type-graphql';
-import { relationResolvers } from '@generated/type-graphql';
+import {
+  relationResolvers,
+  ConditionGroupRelationsResolver,
+} from '@generated/type-graphql';
 import { prisma } from './resolvers/GeneratedResolvers';
 import { SharedSchema } from './sharedSchema';
 import { ApolloServer } from '@apollo/server';
@@ -41,6 +44,7 @@ import {
   TradeResolver,
   TimeSeriesResolver,
   CollateralBalanceResolver,
+  ConditionGroupConditionsResolver,
 } from './resolvers';
 
 export interface ApolloContext {
@@ -60,9 +64,20 @@ export const initializeApolloServer = async () => {
     FindUniqueUserResolver,
   ];
 
+  // Filter out ConditionGroupRelationsResolver — replaced by ConditionGroupConditionsResolver
+  // which always filters public = true on nested conditions
+  const filteredRelationResolvers = relationResolvers.filter(
+    (r) => r !== ConditionGroupRelationsResolver
+  );
+  if (filteredRelationResolvers.length === relationResolvers.length) {
+    throw new Error(
+      'Failed to filter ConditionGroupRelationsResolver — private conditions would leak into group responses'
+    );
+  }
+
   // Build the GraphQL schema with query resolvers, relation resolvers, and custom resolvers
   const allResolvers = queryResolvers
-    .concat(relationResolvers)
+    .concat(filteredRelationResolvers)
     .concat([
       PnLResolver,
       ScoreResolver,
@@ -74,6 +89,7 @@ export const initializeApolloServer = async () => {
       TradeResolver,
       TimeSeriesResolver,
       CollateralBalanceResolver,
+      ConditionGroupConditionsResolver,
     ]);
   const schema = await buildSchema({
     // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type -- type-graphql's buildSchema API requires NonEmptyArray<Function>
