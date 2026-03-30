@@ -15,7 +15,7 @@ import {
   decodePythLazerFeedId,
 } from '@sapience/sdk/auction/encoding';
 import { PYTH_FEED_NAMES, PYTH_FEEDS } from '@sapience/sdk/constants';
-import { isPredictedYes } from '@sapience/sdk/types';
+import { isPredictedYes, OutcomeSide } from '@sapience/sdk/types';
 import { sendPositionAlert } from '../../helpers/discordAlert';
 
 type TxClient = Parameters<Parameters<PrismaClient['$transaction']>[0]>[0];
@@ -873,7 +873,11 @@ class PredictionMarketEscrowIndexer implements IIndexer {
                   pick.conditionResolver as string
                 ).toLowerCase(),
                 conditionId: (pick.conditionId as string).toLowerCase(),
-                predictedOutcome: Number(pick.predictedOutcome),
+                predictedOutcome: this.isLegacy
+                  ? Number(pick.predictedOutcome) === 0
+                    ? OutcomeSide.YES
+                    : OutcomeSide.NO
+                  : Number(pick.predictedOutcome),
               })),
             },
           },

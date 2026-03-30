@@ -29,8 +29,9 @@ export enum OutcomeSide {
 
 /**
  * V1 escrow contracts that used the inverted OutcomeSide ordering
- * (YES = 0, NO = 1). The database stores raw on-chain values, so
- * reads from these contracts must be flipped before semantic use.
+ * (YES = 0, NO = 1). The indexer normalizes V1 values at write time,
+ * so the database always stores V2 convention (NO=0, YES=1).
+ * Downstream readers never need to call normalizeOutcomeSide.
  */
 const V1_ESCROW_CONTRACTS: ReadonlySet<string> = new Set(
   [
