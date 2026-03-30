@@ -157,6 +157,13 @@ export async function prepareAuctionRFQ(
     explicitContract ??
     (predictionMarketEscrow[chainId]?.address as Address | undefined);
 
+  if (!verifyingContract) {
+    throw new Error(
+      `No verifying contract for chainId=${chainId}. ` +
+        'Pass options.verifyingContract explicitly.'
+    );
+  }
+
   // 5. Assemble payload
   const payload: AuctionRFQPayload = {
     picks: picksToJson(canonicalPicks),
@@ -165,6 +172,7 @@ export async function prepareAuctionRFQ(
     predictorNonce: Number(nonce),
     predictorDeadline: deadline,
     chainId,
+    escrowContract: verifyingContract,
   };
 
   if (refCode) {
@@ -177,13 +185,6 @@ export async function prepareAuctionRFQ(
 
   // 6. Sign AuctionIntent (unless skipped)
   if (!skipIntentSigning) {
-    if (!verifyingContract) {
-      throw new Error(
-        `No verifying contract for chainId=${chainId}. ` +
-          'Pass options.verifyingContract explicitly.'
-      );
-    }
-
     const intentTypedData = buildAuctionIntentTypedData({
       picks: canonicalPicks,
       predictor,

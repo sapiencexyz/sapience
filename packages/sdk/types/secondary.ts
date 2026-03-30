@@ -68,6 +68,7 @@ export interface SecondaryAuctionRequestPayload {
   sellerDeadline: number; // unix timestamp
   sellerSignature: string; // EIP-712 TradeApproval signature (price=0, buyer=0x0)
   chainId: number;
+  escrowContract: string; // Secondary escrow contract address
   refCode?: string;
   sellerSessionKeyData?: string;
 }
@@ -108,6 +109,7 @@ export interface SecondaryAuctionDetails {
   seller: string;
   sellerDeadline: number;
   chainId: number;
+  escrowContract: string;
   createdAt: string; // ISO timestamp
 }
 
@@ -132,6 +134,7 @@ export interface SecondaryListingSummary {
   seller: string;
   sellerDeadline: number;
   chainId: number;
+  escrowContract: string;
   createdAt: string;
   bidCount: number;
 }
