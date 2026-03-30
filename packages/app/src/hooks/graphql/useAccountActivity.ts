@@ -180,11 +180,12 @@ export function useAccountActivity({
   const isLoading = initialLoading && !data;
   const isFetchingMore = isFetching && !!data;
 
-  // Map raw items to typed ActivityItems
+  // Map raw items to typed ActivityItems, skipping malformed entries
   const items: ActivityItem[] = useMemo(() => {
-    return rawItems.map((raw): ActivityItem => {
+    const mapped: ActivityItem[] = [];
+    for (const raw of rawItems) {
       if (raw.type === 'prediction' && raw.prediction) {
-        return {
+        mapped.push({
           type: 'prediction',
           timestamp: raw.timestamp * 1000,
           prediction: raw.prediction,
@@ -192,18 +193,20 @@ export function useAccountActivity({
           isPredictorSide: account
             ? raw.prediction.predictor.toLowerCase() === account.toLowerCase()
             : true,
-        };
+        });
+      } else if (raw.type === 'trade' && raw.trade) {
+        mapped.push({
+          type: 'trade',
+          timestamp: raw.timestamp * 1000,
+          trade: raw.trade,
+          pickConfig: raw.trade.pickConfig ?? null,
+          isBuyer: account
+            ? raw.trade.buyer.toLowerCase() === account.toLowerCase()
+            : false,
+        });
       }
-      return {
-        type: 'trade',
-        timestamp: raw.timestamp * 1000,
-        trade: raw.trade!,
-        pickConfig: raw.trade!.pickConfig ?? null,
-        isBuyer: account
-          ? raw.trade!.buyer.toLowerCase() === account.toLowerCase()
-          : false,
-      };
-    });
+    }
+    return mapped;
   }, [rawItems, account]);
 
   const hasMore = rawItems.length >= take;

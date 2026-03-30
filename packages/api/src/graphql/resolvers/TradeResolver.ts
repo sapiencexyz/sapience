@@ -73,6 +73,12 @@ export class TradeResolver {
     const cappedTake = Math.max(1, Math.min(take, 100));
     const where: Prisma.SecondaryTradeWhereInput = {};
 
+    if (address && (seller || buyer)) {
+      throw new Error(
+        'Cannot combine "address" with "seller" or "buyer" filters'
+      );
+    }
+
     if (address) {
       const addr = address.toLowerCase();
       where.OR = [{ seller: addr }, { buyer: addr }];

@@ -76,6 +76,8 @@ class ActivityItemType {
 // Resolver
 // ============================================================================
 
+const MAX_SKIP = 500;
+
 @Resolver()
 export class ActivityResolver {
   @Query(() => [ActivityItemType], {
@@ -89,13 +91,15 @@ export class ActivityResolver {
     @Arg('type', () => String, { nullable: true }) type?: string
   ): Promise<ActivityItemType[]> {
     const cappedTake = Math.max(1, Math.min(take, 100));
+    const cappedSkip = Math.max(0, Math.min(skip, MAX_SKIP));
     const addr = address.toLowerCase();
 
     const includePredictions = !type || type === 'prediction';
     const includeTrades = !type || type === 'trade';
 
-    // Fetch both sources in parallel, over-fetching so we can merge and slice
-    const fetchSize = Math.min(cappedTake + skip, 200);
+    // Fetch skip + take from each source — guarantees correct merged results
+    // for any interleaving of the two timestamp-sorted streams.
+    const fetchSize = cappedSkip + cappedTake;
 
     const [predictions, trades] = await Promise.all([
       includePredictions
@@ -210,6 +214,6 @@ export class ActivityResolver {
 
     // Sort by timestamp descending, apply skip/take
     items.sort((a, b) => b.timestamp - a.timestamp);
-    return items.slice(skip, skip + cappedTake);
+    return items.slice(cappedSkip, cappedSkip + cappedTake);
   }
 }
