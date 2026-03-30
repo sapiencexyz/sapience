@@ -61,7 +61,7 @@ const MarketsPage = () => {
       timeToResolutionRange: [-Infinity, Infinity],
       selectedCategories: [],
       resolutionStatus: 'unresolved',
-      estimatedPriceRange: [0, 100],
+      estimatedPriceRange: [1, 99],
     }
   );
 
