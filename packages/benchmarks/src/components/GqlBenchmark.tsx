@@ -59,7 +59,7 @@ export function GqlBenchmark({ config, onQuestionsReceived }: Props) {
       });
 
       // Refresh conditions every 30s so the relayer picks from fresh data
-      if (result.success && result.rawQuestions) {
+      if (result.success && result.rawQuestions && result.rawQuestions.length > 0) {
         const now = Date.now();
         if (now - lastConditionRefreshRef.current >= 30_000) {
           lastConditionRefreshRef.current = now;

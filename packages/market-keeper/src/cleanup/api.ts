@@ -15,6 +15,7 @@ import { requestResolution } from '../polygon/client';
 export interface CleanupCondition {
   id: string;
   openInterest: string;
+  question: string;
   attestationCount: number;
 }
 
@@ -39,6 +40,7 @@ query ExpiredNoEngagement($now: Int!, $take: Int!, $skip: Int!) {
   ) {
     id
     openInterest
+    question
   }
 }
 `;
@@ -69,6 +71,7 @@ interface GraphQLResponse<T> {
 interface RawCondition {
   id: string;
   openInterest: string;
+  question: string;
   _count?: { attestations: number };
 }
 
@@ -76,6 +79,7 @@ function mapCondition(raw: RawCondition): CleanupCondition {
   return {
     id: raw.id,
     openInterest: raw.openInterest,
+    question: raw.question,
     attestationCount: raw._count?.attestations ?? 0,
   };
 }

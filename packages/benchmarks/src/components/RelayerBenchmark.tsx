@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useEffect, type ReactNode } from 'react';
 import { createPublicClient, http, formatUnits, type Hex, type Address } from 'viem';
+import { isPredictedYes } from '@sapience/sdk/types/escrow';
 import { computeStats, type Stats } from '../lib/stats';
 import { buildRandomPicks, type ConditionInfo, type EnrichedPick } from '../lib/picks';
 import {
@@ -11,7 +12,6 @@ import {
   type RelayerSession,
   type AuctionTiming,
 } from '../lib/relayerRunner';
-import { OutcomeSide } from '@sapience/sdk/types/escrow';
 import type { EnvConfig } from '../lib/constants';
 
 interface Props {
@@ -98,7 +98,7 @@ function computeExpectedQuote(picks: EnrichedPick[], predictorCollateralWei: str
   for (const p of picks) {
     if (p.estimatedPrice == null) return null;
     // estimatedPrice is probability of YES; adjust for predicted outcome
-    const prob = p.predictedOutcome === OutcomeSide.YES ? p.estimatedPrice : 1 - p.estimatedPrice;
+    const prob = isPredictedYes(p.predictedOutcome) ? p.estimatedPrice : 1 - p.estimatedPrice;
     if (prob <= 0 || prob >= 1) return null;
     probs.push(prob);
   }
@@ -110,24 +110,27 @@ function computeExpectedQuote(picks: EnrichedPick[], predictorCollateralWei: str
 }
 
 function PickCard({ pick }: { pick: EnrichedPick }) {
-  const priceDisplay = pick.estimatedPrice != null
-    ? `${fmt(pick.estimatedPrice * 100, 0)}%`
-    : '—';
+  const yes = isPredictedYes(pick.predictedOutcome);
+  const hasPrice = pick.estimatedPrice != null;
+  const marketPrice = hasPrice ? pick.estimatedPrice! : null;
+  const winProb = hasPrice ? (yes ? marketPrice! : 1 - marketPrice!) : null;
 
   return (
     <div className="pick-card">
       <div className="pick-question">{pick.question ?? pick.conditionId.slice(0, 16)}</div>
       <div className="pick-details">
-        <span className={`pick-outcome ${pick.predictedOutcome === OutcomeSide.YES ? 'pick-yes' : 'pick-no'}`}>
-          {pick.predictedOutcome === OutcomeSide.YES ? 'YES' : 'NO'}
+        <span className={`pick-outcome ${yes ? 'pick-yes' : 'pick-no'}`}>
+          {yes ? 'YES' : 'NO'}
         </span>
-        <span className="pick-price">
-          {pick.polymarketUrl ? (
-            <a href={pick.polymarketUrl} target="_blank" rel="noopener noreferrer" className="pick-link">
-              {priceDisplay}
-            </a>
-          ) : priceDisplay}
-        </span>
+        {hasPrice && (
+          <span className="pick-price">
+            Polymarket: {pick.polymarketUrl ? (
+              <a href={pick.polymarketUrl} target="_blank" rel="noopener noreferrer" className="pick-link">
+                {marketPrice!.toFixed(2)}
+              </a>
+            ) : marketPrice!.toFixed(2)} &middot; Win Probability: {fmt(winProb! * 100, 0)}%
+          </span>
+        )}
       </div>
     </div>
   );

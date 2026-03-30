@@ -1,6 +1,15 @@
 import { Request, Response, Router } from 'express';
 import prisma from '../db';
 
+/** Convert BigInt values to numbers so JSON.stringify doesn't throw. */
+function toJsonSafe<T>(obj: T): T {
+  return JSON.parse(
+    JSON.stringify(obj, (_key, value) =>
+      typeof value === 'bigint' ? Number(value) : value
+    )
+  ) as T;
+}
+
 const router = Router();
 
 // GET /admin/conditionGroups - list all groups with their conditions
@@ -15,7 +24,7 @@ router.get('/', async (_req: Request, res: Response) => {
       },
       orderBy: { createdAt: 'desc' },
     });
-    return res.json(groups);
+    return res.json(toJsonSafe(groups));
   } catch (error: unknown) {
     console.error('Error fetching condition groups:', error);
     return res.status(500).json({ message: 'Internal Server Error' });
@@ -66,7 +75,7 @@ router.post('/', async (req: Request, res: Response) => {
         },
         include: { category: true, condition: true },
       });
-      return res.status(201).json(group);
+      return res.status(201).json(toJsonSafe(group));
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
       if (
@@ -147,7 +156,7 @@ router.put('/:id', async (req: Request, res: Response) => {
           },
         },
       });
-      return res.json(group);
+      return res.json(toJsonSafe(group));
     } catch (e: unknown) {
       const message = e instanceof Error ? e.message : String(e);
       if (
@@ -233,7 +242,7 @@ router.put('/:id/conditions', async (req: Request, res: Response) => {
           },
         },
       });
-      return res.json(group);
+      return res.json(toJsonSafe(group));
     } catch (e: unknown) {
       console.error('Error updating condition group conditions:', e);
       return res.status(500).json({ message: 'Internal Server Error' });
