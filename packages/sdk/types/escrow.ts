@@ -222,6 +222,7 @@ export interface AuctionRFQPayload {
   predictorDeadline: number; // unix timestamp
   intentSignature?: string; // EIP-712 AuctionIntent — proves identity + intent, relayer-only
   chainId: number;
+  escrowContract: string; // Escrow contract address
   refCode?: string;
   predictorSessionKeyData?: string; // ZeroDev session approval (base64)
   predictorSponsor?: string; // Sponsor contract address (address(0) = self-funded)
@@ -284,6 +285,7 @@ export interface AuctionDetails {
   intentSignature?: string; // EIP-712 AuctionIntent — proves identity + intent
   predictorSessionKeyData?: string; // ZeroDev/escrow session approval
   chainId: number;
+  escrowContract: string; // Escrow contract address used for this auction
   createdAt: string; // ISO timestamp
   predictorSponsor?: string; // Sponsor contract address (address(0) = self-funded)
   predictorSponsorData?: string; // Opaque data passed to sponsor's fundMint

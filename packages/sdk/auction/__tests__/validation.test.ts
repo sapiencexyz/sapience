@@ -78,6 +78,7 @@ function makeAuctionRFQ(
     predictorNonce: 1,
     predictorDeadline: futureDeadline(),
     chainId: CHAIN_ID,
+    escrowContract: VERIFYING_CONTRACT,
     ...overrides,
   };
 }
@@ -122,6 +123,7 @@ async function makeSignedAuctionRFQ(
       predictorDeadline: deadline,
       intentSignature,
       chainId: CHAIN_ID,
+      escrowContract: VERIFYING_CONTRACT,
       ...overrides,
     },
     account,

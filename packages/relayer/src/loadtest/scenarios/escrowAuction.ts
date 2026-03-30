@@ -111,6 +111,7 @@ export async function run(config: LoadTestConfig): Promise<void> {
       predictor: string;
       predictorCollateral: string;
       chainId: number;
+      escrowContract: string;
     }
   >();
 
@@ -129,6 +130,7 @@ export async function run(config: LoadTestConfig): Promise<void> {
         predictor: payload.predictor as string,
         predictorCollateral: payload.predictorCollateral as string,
         chainId: payload.chainId as number,
+        escrowContract: payload.escrowContract as string,
       });
     }
   });
@@ -204,6 +206,7 @@ export async function run(config: LoadTestConfig): Promise<void> {
           predictor: auctionPayload.predictor,
           predictorCollateral: auctionPayload.predictorCollateral,
           chainId: auctionPayload.chainId,
+          escrowContract: auctionPayload.escrowContract,
         };
 
         for (let b = 0; b < preset.bidsPerAuction; b++) {

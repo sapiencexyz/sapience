@@ -124,6 +124,7 @@ export async function run(config: LoadTestConfig): Promise<void> {
                 predictor: auctionPayload.predictor,
                 predictorCollateral: auctionPayload.predictorCollateral,
                 chainId: auctionPayload.chainId,
+                escrowContract: auctionPayload.escrowContract,
               });
               liveStats.bids.sent++;
               try {

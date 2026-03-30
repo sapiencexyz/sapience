@@ -23,7 +23,6 @@ import {
   validateSecondaryListing,
   validateSecondaryBid,
 } from '@sapience/sdk/auction/secondaryValidation';
-import { secondaryMarketEscrow } from '@sapience/sdk/contracts/addresses';
 import type { Address } from 'viem';
 import {
   addSecondaryListing,
@@ -51,15 +50,6 @@ function auctionTopic(auctionId: string): string {
 }
 
 // ============================================================================
-// Helpers
-// ============================================================================
-
-function getVerifyingContract(chainId: number): Address | undefined {
-  const entry = secondaryMarketEscrow[chainId];
-  return entry?.address as Address | undefined;
-}
-
-// ============================================================================
 // Handlers
 // ============================================================================
 
@@ -81,21 +71,20 @@ export async function handleSecondaryAuctionStart(
   _ctx: SecondaryHandlerContext
 ): Promise<boolean> {
   // Tier 1 validation — field presence, deadline, signature
-  const verifyingContract = getVerifyingContract(payload.chainId);
-  if (!verifyingContract) {
+  if (!payload.escrowContract) {
     errorsTotal.inc({
       type: 'validation',
       message_type: 'secondary.auction.start',
     });
     client.send({
       type: 'secondary.auction.ack',
-      payload: { error: 'unsupported_chain' },
+      payload: { error: 'missing_escrow_contract' },
     });
     return true;
   }
 
   const validation = await validateSecondaryListing(payload, {
-    verifyingContract,
+    verifyingContract: payload.escrowContract as Address,
     chainId: payload.chainId,
     maxDeadlineSeconds: 7200,
   });
@@ -151,6 +140,7 @@ export async function handleSecondaryAuctionStart(
     seller: payload.seller,
     sellerDeadline: payload.sellerDeadline,
     chainId: payload.chainId,
+    escrowContract: payload.escrowContract,
     createdAt: new Date().toISOString(),
   };
 
@@ -188,18 +178,8 @@ export async function handleSecondaryBidSubmit(
   }
 
   // Tier 1 validation — field presence, deadline, price, signature
-  const verifyingContract = getVerifyingContract(listing.auction.chainId);
-  if (!verifyingContract) {
-    secondaryBidsSubmitted.inc({ status: 'rejected' });
-    client.send({
-      type: 'secondary.bid.ack',
-      payload: { error: 'unsupported_chain' },
-    });
-    return true;
-  }
-
   const validation = await validateSecondaryBid(payload, listing.auction, {
-    verifyingContract,
+    verifyingContract: listing.auction.escrowContract as Address,
     chainId: listing.auction.chainId,
   });
 
@@ -368,6 +348,7 @@ export function handleSecondaryListingsRequest(client: ClientConnection): void {
     seller: rec.auction.seller,
     sellerDeadline: rec.auction.sellerDeadline,
     chainId: rec.auction.chainId,
+    escrowContract: rec.auction.escrowContract,
     createdAt: rec.createdAt,
     bidCount: rec.bids.length,
   }));

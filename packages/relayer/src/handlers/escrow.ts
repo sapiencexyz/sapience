@@ -16,7 +16,6 @@ import {
   validateAuctionRFQ,
   validateBid,
 } from '@sapience/sdk/auction/validation';
-import { predictionMarketEscrow } from '@sapience/sdk/contracts/addresses';
 import {
   upsertEscrowAuction,
   getEscrowAuction,
@@ -77,23 +76,20 @@ export async function handleAuctionStart(
     keys: Object.keys(payload).join(','),
   });
 
-  // Look up escrow contract address for this chain
-  const escrowAddr = predictionMarketEscrow[payload.chainId]?.address;
-  if (!escrowAddr) {
+  // Use client-supplied escrowContract as verifyingContract
+  if (!payload.escrowContract) {
     errorsTotal.inc({ type: 'validation', message_type: 'auction.start' });
-    console.warn(
-      `[Relayer] auction.start rejected: unknown chainId ${payload.chainId}`
-    );
+    console.warn('[Relayer] auction.start rejected: missing escrowContract');
     client.send({
       type: 'auction.ack',
-      payload: { auctionId: '', error: 'unknown_chain_id' },
+      payload: { auctionId: '', error: 'missing_escrow_contract' },
     });
     return true;
   }
 
   // Validate auction request structure + intent signature in one call
   const validation = await validateAuctionRFQ(payload, {
-    verifyingContract: escrowAddr as Address,
+    verifyingContract: payload.escrowContract as Address,
     requireSignature: !!payload.intentSignature,
     maxDeadlineSeconds: 7200,
   });
@@ -241,9 +237,8 @@ export async function handleBidSubmit(
   }
 
   // Validate bid structure + signature (offline only, no publicClient)
-  const escrowAddr = predictionMarketEscrow[rec.auction.chainId]?.address;
   const bidValidation = await validateBid(bid, rec.auction, {
-    verifyingContract: escrowAddr as Address,
+    verifyingContract: rec.auction.escrowContract as Address,
     chainId: rec.auction.chainId,
     // No publicClient — relayer does offline verification only.
     // Unverified bids pass through (relayer is not the authority).
