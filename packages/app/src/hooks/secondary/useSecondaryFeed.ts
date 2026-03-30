@@ -58,6 +58,7 @@ export function useSecondaryFeed(options: UseSecondaryFeedOptions = {}) {
               seller: l.seller,
               sellerDeadline: l.sellerDeadline,
               chainId: l.chainId,
+              escrowContract: l.escrowContract,
               createdAt: l.createdAt,
               bidCount: l.bidCount,
               bids: [],

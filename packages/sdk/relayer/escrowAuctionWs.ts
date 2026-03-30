@@ -297,6 +297,7 @@ export function buildAuctionRequest(params: {
   predictorDeadline: number;
   intentSignature: string;
   chainId: number;
+  escrowContract: string;
   refCode?: string;
   predictorSessionKeyData?: string;
 }): AuctionRFQPayload {
@@ -308,6 +309,7 @@ export function buildAuctionRequest(params: {
     predictorDeadline: params.predictorDeadline,
     intentSignature: params.intentSignature,
     chainId: params.chainId,
+    escrowContract: params.escrowContract,
     refCode: params.refCode,
     predictorSessionKeyData: params.predictorSessionKeyData,
   };

@@ -6,9 +6,9 @@ import { useAccount, useReadContract } from 'wagmi';
 import { predictionMarketEscrowAbi } from '@sapience/sdk/abis';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
-import { PREFERRED_ESTIMATE_QUOTER } from '~/lib/constants';
-import { OutcomeSide } from '@sapience/sdk/types';
+import type { OutcomeSide } from '@sapience/sdk/types';
 import { canonicalizePicks } from '@sapience/sdk/auction/escrowEncoding';
+import { PREFERRED_ESTIMATE_QUOTER } from '~/lib/constants';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { toAuctionWsUrl } from '~/lib/ws';
 import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
@@ -97,6 +97,7 @@ export function useComboQuotes(combos: RecentCombo[], chainId: number) {
             predictorNonce !== undefined ? Number(predictorNonce) : 0,
           predictorDeadline: nowSec + 300,
           chainId,
+          escrowContract: PREDICTION_MARKET_ADDRESS ?? '',
         };
 
         const pickConfigId = combo.pickConfigId;
@@ -125,7 +126,14 @@ export function useComboQuotes(combos: RecentCombo[], chainId: number) {
           });
       }
     },
-    [wsUrl, combos, chainId, selectedPredictorAddress, predictorNonce]
+    [
+      wsUrl,
+      combos,
+      chainId,
+      selectedPredictorAddress,
+      predictorNonce,
+      PREDICTION_MARKET_ADDRESS,
+    ]
   );
 
   // Request quotes when combos arrive
