@@ -11,6 +11,35 @@ type AccuracyRank {
   totalForecasters: Int!
 }
 
+"""
+A single activity entry — either a prediction or a trade, sorted by timestamp
+"""
+type ActivityItem {
+  prediction: Prediction
+
+  """Unix seconds timestamp for sorting"""
+  timestamp: Int!
+  trade: ActivityTrade
+  type: String!
+}
+
+"""Trade fields embedded in an activity item"""
+type ActivityTrade {
+  blockNumber: Int!
+  buyer: String!
+  chainId: Int!
+  collateral: String!
+  executedAt: Int!
+  id: Int!
+  pickConfig: PickConfiguration
+  price: String!
+  seller: String!
+  token: String!
+  tokenAmount: String!
+  tradeHash: String!
+  txHash: String!
+}
+
 type Attestation {
   attestation_score(where: AttestationScoreWhereInput): AttestationScore
   attester: String!
@@ -1299,6 +1328,11 @@ type Query {
   accountAccuracyRank(address: String!): AccuracyRank!
 
   """
+  Unified activity feed for an account — predictions and trades merged by timestamp
+  """
+  accountActivity(address: String!, skip: Int! = 0, take: Int! = 20, type: String): [ActivityItem!]!
+
+  """
   Time-bucketed balance snapshots for a single address showing deployed and claimable collateral
   """
   accountBalance(address: String!, from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [BalanceDataPoint!]!
@@ -1399,7 +1433,7 @@ type Query {
   """
   Paginated list of secondary market trades, filterable by seller, buyer, token, and chain
   """
-  trades(buyer: String, chainId: Int, seller: String, skip: Int! = 0, take: Int! = 50, token: String): [Trade!]!
+  trades(address: String, buyer: String, chainId: Int, seller: String, skip: Int! = 0, take: Int! = 50, token: String): [Trade!]!
   user(where: UserWhereUniqueInput!): User
   users(cursor: UserWhereUniqueInput, distinct: [UserScalarFieldEnum!], orderBy: [UserOrderByWithRelationInput!], skip: Int, take: Int, where: UserWhereInput): [User!]!
 }

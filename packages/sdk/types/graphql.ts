@@ -29,6 +29,34 @@ export type AccuracyRank = {
   totalForecasters: Scalars['Int']['output'];
 };
 
+/** A single activity entry — either a prediction or a trade, sorted by timestamp */
+export type ActivityItem = {
+  __typename?: 'ActivityItem';
+  prediction?: Maybe<Prediction>;
+  /** Unix seconds timestamp for sorting */
+  timestamp: Scalars['Int']['output'];
+  trade?: Maybe<ActivityTrade>;
+  type: Scalars['String']['output'];
+};
+
+/** Trade fields embedded in an activity item */
+export type ActivityTrade = {
+  __typename?: 'ActivityTrade';
+  blockNumber: Scalars['Int']['output'];
+  buyer: Scalars['String']['output'];
+  chainId: Scalars['Int']['output'];
+  collateral: Scalars['String']['output'];
+  executedAt: Scalars['Int']['output'];
+  id: Scalars['Int']['output'];
+  pickConfig?: Maybe<PickConfiguration>;
+  price: Scalars['String']['output'];
+  seller: Scalars['String']['output'];
+  token: Scalars['String']['output'];
+  tokenAmount: Scalars['String']['output'];
+  tradeHash: Scalars['String']['output'];
+  txHash: Scalars['String']['output'];
+};
+
 export type Attestation = {
   __typename?: 'Attestation';
   attestation_score?: Maybe<AttestationScore>;
@@ -1427,6 +1455,8 @@ export type Query = {
   accountAccuracy?: Maybe<ForecasterScore>;
   /** Accuracy rank and score for a single address relative to all forecasters */
   accountAccuracyRank: AccuracyRank;
+  /** Unified activity feed for an account — predictions and trades merged by timestamp */
+  accountActivity: Array<ActivityItem>;
   /** Time-bucketed balance snapshots for a single address showing deployed and claimable collateral */
   accountBalance: Array<BalanceDataPoint>;
   /** Time-bucketed profit and loss for a single address with cumulative tracking */
@@ -1492,6 +1522,14 @@ export type QueryAccountAccuracyArgs = {
 
 export type QueryAccountAccuracyRankArgs = {
   address: Scalars['String']['input'];
+};
+
+
+export type QueryAccountActivityArgs = {
+  address: Scalars['String']['input'];
+  skip?: Scalars['Int']['input'];
+  take?: Scalars['Int']['input'];
+  type?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -1734,6 +1772,7 @@ export type QueryTradeCountArgs = {
 
 
 export type QueryTradesArgs = {
+  address?: InputMaybe<Scalars['String']['input']>;
   buyer?: InputMaybe<Scalars['String']['input']>;
   chainId?: InputMaybe<Scalars['Int']['input']>;
   seller?: InputMaybe<Scalars['String']['input']>;
