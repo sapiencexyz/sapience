@@ -379,7 +379,9 @@ function TradeActivityRow({
                 height={16}
               />
               <AddressDisplay address={trade.buyer} />
-              <span className="text-muted-foreground text-xs">buyer</span>
+              <span className="text-muted-foreground text-xs uppercase">
+                buyer
+              </span>
             </span>
             <span className="inline-flex items-center gap-1.5 text-sm font-mono text-brand-white">
               <EnsAvatar
@@ -389,7 +391,9 @@ function TradeActivityRow({
                 height={16}
               />
               <AddressDisplay address={trade.seller} />
-              <span className="text-muted-foreground text-xs">seller</span>
+              <span className="text-muted-foreground text-xs uppercase">
+                seller
+              </span>
             </span>
           </div>
         </div>
