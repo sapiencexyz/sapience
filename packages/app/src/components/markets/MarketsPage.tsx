@@ -18,6 +18,7 @@ import ExampleCombos from '~/components/markets/ExampleCombos';
 import QuestionsTable from '~/components/markets/QuestionsTable';
 import QuestionsGrid from '~/components/markets/polymarket/QuestionsGrid';
 import SortControls from '~/components/markets/polymarket/SortControls';
+import TagBar from '~/components/markets/TagBar';
 import type { FilterState } from '~/components/markets/TableFilters';
 import { useCategories } from '~/hooks/graphql/useCategories';
 import {
@@ -53,6 +54,10 @@ const MarketsPage = () => {
   const [searchTerm, setSearchTerm] = useSessionState(
     'sapience.markets.searchTerm',
     ''
+  );
+  const [selectedTag, setSelectedTag] = useSessionState<string | null>(
+    'sapience.markets.selectedTag',
+    null
   );
   const [filters, setFilters] = useSessionState<FilterState>(
     'sapience.markets.filters',
@@ -118,6 +123,10 @@ const MarketsPage = () => {
   // Debounce search term for backend queries (300ms)
   const debouncedSearchTerm = useDebouncedValue(searchTerm, 300);
 
+  // Use selected tag or typed search (tag takes precedence, no debounce needed)
+  const effectiveSearch =
+    selectedTag || debouncedSearchTerm.trim() || undefined;
+
   // Compute backend filter params from client filter state
   // timeToResolutionRange[0] = min days from now (0 = today, negative = past)
   const minEndTime = useMemo(() => {
@@ -134,7 +143,7 @@ const MarketsPage = () => {
     hasMore,
     fetchMore,
   } = useInfiniteQuestions({
-    search: debouncedSearchTerm.trim() || undefined,
+    search: effectiveSearch,
     categorySlugs:
       filters.selectedCategories.length > 0
         ? filters.selectedCategories
@@ -301,7 +310,7 @@ const MarketsPage = () => {
 
           {/* Predict Prices (shared) */}
           {showPredictPrices && (
-            <div className={`w-full mt-2 ${useCardGrid ? 'px-4' : ''}`}>
+            <div className={`w-full mt-4 mb-2 ${useCardGrid ? 'px-4' : ''}`}>
               <div className="flex items-center justify-between mb-2 px-1">
                 <h2
                   className={`sc-heading ${useCardGrid ? 'text-white/80' : 'text-foreground'}`}
@@ -313,7 +322,6 @@ const MarketsPage = () => {
                 featuredFeeds={PYTH_FEEDS}
                 onPick={handlePythPick}
               />
-              <hr className="gold-hr mt-6 -mb-2" />
             </div>
           )}
 
@@ -336,21 +344,32 @@ const MarketsPage = () => {
                   onFetchMore={fetchMore}
                 />
               ) : (
-                <QuestionsTable
-                  questions={questions}
-                  isLoading={isLoadingData}
-                  isFetchingMore={isFetchingMore}
-                  hasMore={hasMore}
-                  onFetchMore={fetchMore}
-                  searchTerm={searchTerm}
-                  onSearchChange={setSearchTerm}
-                  filters={filters}
-                  onFiltersChange={setFilters}
-                  categories={categoryOptions}
-                  sortField={sortField}
-                  sortDirection={sortDirection}
-                  onSortChange={handleSortChange}
-                />
+                <div className="flex flex-col gap-4 h-full pt-2">
+                  <div>
+                    <h2 className="sc-heading text-foreground mb-3 px-1">
+                      Prediction Markets
+                    </h2>
+                    <TagBar
+                      searchTerm={searchTerm}
+                      onSearchChange={setSearchTerm}
+                      selectedTag={selectedTag}
+                      onSelectedTagChange={setSelectedTag}
+                    />
+                  </div>
+                  <QuestionsTable
+                    questions={questions}
+                    isLoading={isLoadingData}
+                    isFetchingMore={isFetchingMore}
+                    hasMore={hasMore}
+                    onFetchMore={fetchMore}
+                    filters={filters}
+                    onFiltersChange={setFilters}
+                    categories={categoryOptions}
+                    sortField={sortField}
+                    sortDirection={sortDirection}
+                    onSortChange={handleSortChange}
+                  />
+                </div>
               )}
             </motion.div>
           </div>
