@@ -64,6 +64,7 @@ export class TradeResolver {
   async trades(
     @Arg('take', () => Int, { defaultValue: 50 }) take: number,
     @Arg('skip', () => Int, { defaultValue: 0 }) skip: number,
+    @Arg('address', () => String, { nullable: true }) address?: string,
     @Arg('seller', () => String, { nullable: true }) seller?: string,
     @Arg('buyer', () => String, { nullable: true }) buyer?: string,
     @Arg('token', () => String, { nullable: true }) token?: string,
@@ -72,8 +73,13 @@ export class TradeResolver {
     const cappedTake = Math.max(1, Math.min(take, 100));
     const where: Prisma.SecondaryTradeWhereInput = {};
 
-    if (seller) where.seller = seller.toLowerCase();
-    if (buyer) where.buyer = buyer.toLowerCase();
+    if (address) {
+      const addr = address.toLowerCase();
+      where.OR = [{ seller: addr }, { buyer: addr }];
+    } else {
+      if (seller) where.seller = seller.toLowerCase();
+      if (buyer) where.buyer = buyer.toLowerCase();
+    }
     if (token) where.token = token.toLowerCase();
     if (chainId !== undefined && chainId !== null) where.chainId = chainId;
 

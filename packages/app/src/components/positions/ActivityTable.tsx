@@ -15,13 +15,13 @@ import { COLLATERAL_SYMBOLS, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { OutcomeSide } from '@sapience/sdk/types';
 import EmptyTabState from '~/components/shared/EmptyTabState';
 import NumberDisplay from '~/components/shared/NumberDisplay';
-import Loader from '~/components/shared/Loader';
 import PicksSummary from '~/components/shared/PicksSummary';
+import PicksPopover from '~/components/shared/PicksPopover';
 import CountdownCell from '~/components/shared/CountdownCell';
+import CounterpartyBadge from '~/components/shared/CounterpartyBadge';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import {
-  usePredictions,
   usePredictionsByConditionId,
   useRecentPredictions,
   usePositionBalances,
@@ -29,6 +29,12 @@ import {
   type PickConfigData,
 } from '~/hooks/graphql/usePositions';
 import { useConditionsByIds } from '~/hooks/graphql/useConditionsByIds';
+import {
+  useAccountActivity,
+  type ActivityItem,
+  type PredictionActivity,
+  type TradeActivity,
+} from '~/hooks/graphql/useAccountActivity';
 import OgShareDialogBase from '~/components/shared/OgShareDialog';
 import PredictionDialog from '~/components/positions/PredictionDialog';
 import {
@@ -47,18 +53,51 @@ import {
 } from '~/lib/utils/tableFilters';
 import { useInfiniteScroll } from '~/hooks/useInfiniteScroll';
 
-function ActivityRow({
-  prediction,
-  pickConfig,
-  isPredictorSide,
+// ─── Timestamp formatting ────────────────────────────────────────────────────
+
+function formatTimestamp(ms: number) {
+  const date = new Date(ms);
+  return {
+    relative: formatDistanceToNow(date, { addSuffix: true }),
+    exact: date.toLocaleString(undefined, {
+      year: 'numeric',
+      month: 'short',
+      day: '2-digit',
+      hour: 'numeric',
+      minute: '2-digit',
+      second: '2-digit',
+      timeZoneName: 'short',
+    }),
+  };
+}
+
+// ─── Type badge ──────────────────────────────────────────────────────────────
+
+function TypeBadge({ type }: { type: 'prediction' | 'trade' }) {
+  const isPrediction = type === 'prediction';
+  return (
+    <span
+      className={`inline-flex items-center px-1.5 py-0.5 text-xs font-medium !rounded-md shrink-0 font-mono uppercase border ${
+        isPrediction
+          ? 'border-foreground/40 bg-foreground/10 text-foreground'
+          : 'border-muted-foreground/40 bg-muted/20 text-muted-foreground'
+      }`}
+    >
+      {isPrediction ? 'Prediction' : 'Trade'}
+    </span>
+  );
+}
+
+// ─── Prediction row ──────────────────────────────────────────────────────────
+
+function PredictionActivityRow({
+  item,
   collateralSymbol,
   conditionsMap,
   onShare,
   onOpenDialog,
 }: {
-  prediction: Prediction;
-  pickConfig: PickConfigData | null;
-  isPredictorSide: boolean;
+  item: PredictionActivity;
   collateralSymbol: string;
   conditionsMap: ConditionsMap;
   onShare: (data: {
@@ -68,25 +107,14 @@ function ActivityRow({
   }) => void;
   onOpenDialog: () => void;
 }) {
+  const { prediction, pickConfig, isPredictorSide } = item;
   const rawPicks = pickConfig?.picks ?? [];
   const pickLegs = toPicks(rawPicks, isPredictorSide, conditionsMap);
 
-  // Timestamp
-  const timestamp = prediction.collateralDepositedAt
-    ? new Date(prediction.collateralDepositedAt * 1000)
-    : new Date(prediction.createdAt);
-  const timeDisplay = formatDistanceToNow(timestamp, { addSuffix: true });
-  const exactDisplay = timestamp.toLocaleString(undefined, {
-    year: 'numeric',
-    month: 'short',
-    day: '2-digit',
-    hour: 'numeric',
-    minute: '2-digit',
-    second: '2-digit',
-    timeZoneName: 'short',
-  });
+  const { relative: timeDisplay, exact: exactDisplay } = formatTimestamp(
+    item.timestamp
+  );
 
-  // Collateral amounts
   const predictorEth = Number(
     formatEther(BigInt(prediction.predictorCollateral))
   );
@@ -95,7 +123,6 @@ function ActivityRow({
   );
   const totalEth = predictorEth + counterpartyEth;
 
-  // Result: use on-chain result if settled, otherwise compute from individual conditions
   const computed = !prediction.settled
     ? computeResultFromConditions(rawPicks, conditionsMap)
     : null;
@@ -106,7 +133,6 @@ function ActivityRow({
   const predictorWon = result === 'PREDICTOR_WINS';
   const counterpartyWon = result === 'COUNTERPARTY_WINS';
 
-  // Ends: max endTime from condition data
   const endsAtSec =
     pickConfig?.endsAt ??
     Math.max(
@@ -117,11 +143,11 @@ function ActivityRow({
 
   return (
     <tr className="border-b last:border-b-0">
-      {/* Created */}
+      {/* Date */}
       <td className="px-4 py-3 whitespace-nowrap">
         <div className="text-sm">
           <div className="xl:hidden text-xs text-muted-foreground mb-1">
-            Created
+            Date
           </div>
           <TooltipProvider>
             <Tooltip>
@@ -137,11 +163,20 @@ function ActivityRow({
           </TooltipProvider>
         </div>
       </td>
-      {/* Predictions */}
+      {/* Type */}
+      <td className="px-4 py-3 whitespace-nowrap">
+        <div className="text-sm">
+          <div className="xl:hidden text-xs text-muted-foreground mb-1">
+            Type
+          </div>
+          <TypeBadge type="prediction" />
+        </div>
+      </td>
+      {/* Position */}
       <td className="px-4 py-3">
         <div className="text-sm">
           <div className="xl:hidden text-xs text-muted-foreground mb-1">
-            Predictions
+            Position
           </div>
           {pickLegs.length > 0 ? (
             <PicksSummary
@@ -155,13 +190,13 @@ function ActivityRow({
           )}
         </div>
       </td>
-      {/* Predictor */}
+      {/* Parties */}
       <td className="px-4 py-3 whitespace-nowrap">
         <div>
           <div className="xl:hidden text-xs text-muted-foreground mb-1">
-            Predictor
+            Parties
           </div>
-          <div className="flex flex-col gap-0.5">
+          <div className="flex flex-col gap-1">
             <span
               className={`inline-flex items-center gap-1.5 text-sm font-mono ${predictorWon ? 'text-green-400' : 'text-brand-white'}`}
             >
@@ -172,24 +207,14 @@ function ActivityRow({
                 height={16}
               />
               <AddressDisplay address={prediction.predictor} />
+              <span className="text-muted-foreground text-xs">
+                <NumberDisplay
+                  value={predictorEth}
+                  className="tabular-nums text-muted-foreground font-mono"
+                />{' '}
+                {collateralSymbol}
+              </span>
             </span>
-            <span className="whitespace-nowrap tabular-nums text-muted-foreground font-mono text-xs">
-              <NumberDisplay
-                value={predictorEth}
-                className="tabular-nums text-muted-foreground font-mono"
-              />{' '}
-              {collateralSymbol}
-            </span>
-          </div>
-        </div>
-      </td>
-      {/* Counterparty */}
-      <td className="px-4 py-3 whitespace-nowrap">
-        <div>
-          <div className="xl:hidden text-xs text-muted-foreground mb-1">
-            Counterparty
-          </div>
-          <div className="flex flex-col gap-0.5">
             <span
               className={`inline-flex items-center gap-1.5 text-sm font-mono ${counterpartyWon ? 'text-green-400' : 'text-brand-white'}`}
             >
@@ -200,22 +225,22 @@ function ActivityRow({
                 height={16}
               />
               <AddressDisplay address={prediction.counterparty} />
-            </span>
-            <span className="whitespace-nowrap tabular-nums text-muted-foreground font-mono text-xs">
-              <NumberDisplay
-                value={counterpartyEth}
-                className="tabular-nums text-muted-foreground font-mono"
-              />{' '}
-              {collateralSymbol}
+              <span className="text-muted-foreground text-xs">
+                <NumberDisplay
+                  value={counterpartyEth}
+                  className="tabular-nums text-muted-foreground font-mono"
+                />{' '}
+                {collateralSymbol}
+              </span>
             </span>
           </div>
         </div>
       </td>
-      {/* Payout */}
+      {/* Value */}
       <td className="px-4 py-3 whitespace-nowrap">
         <div>
           <div className="xl:hidden text-xs text-muted-foreground mb-1">
-            Payout
+            Value
           </div>
           <div className="whitespace-nowrap tabular-nums text-brand-white font-mono">
             <NumberDisplay
@@ -228,11 +253,11 @@ function ActivityRow({
           </div>
         </div>
       </td>
-      {/* Result */}
+      {/* Status */}
       <td className="px-4 py-3 whitespace-nowrap">
         <div>
           <div className="xl:hidden text-xs text-muted-foreground mb-1">
-            Result
+            Status
           </div>
           {!isSettled && endsAtSec > 0 && endsAtMs > Date.now() ? (
             <span className="whitespace-nowrap tabular-nums font-mono text-brand-white">
@@ -271,7 +296,144 @@ function ActivityRow({
   );
 }
 
-/** Builds OG image URL from query params and renders the share dialog */
+// ─── Trade row ───────────────────────────────────────────────────────────────
+
+function TradeActivityRow({
+  item,
+  collateralSymbol,
+  conditionsMap,
+}: {
+  item: TradeActivity;
+  collateralSymbol: string;
+  conditionsMap: ConditionsMap;
+}) {
+  const { trade, pickConfig, isBuyer } = item;
+  const rawPicks = pickConfig?.picks ?? [];
+  // Determine if trade token is the predictor token
+  const isPredictorToken =
+    pickConfig?.predictorToken?.toLowerCase() === trade.token.toLowerCase();
+  const pickLegs = toPicks(rawPicks, isPredictorToken, conditionsMap);
+
+  const { relative: timeDisplay, exact: exactDisplay } = formatTimestamp(
+    item.timestamp
+  );
+
+  const amount = Number(formatEther(BigInt(trade.tokenAmount)));
+  const price = Number(formatEther(BigInt(trade.price)));
+
+  return (
+    <tr className="border-b last:border-b-0">
+      {/* Date */}
+      <td className="px-4 py-3 whitespace-nowrap">
+        <div className="text-sm">
+          <div className="xl:hidden text-xs text-muted-foreground mb-1">
+            Date
+          </div>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="text-brand-white whitespace-nowrap cursor-default">
+                  {timeDisplay}
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <span>{exactDisplay}</span>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+      </td>
+      {/* Type */}
+      <td className="px-4 py-3 whitespace-nowrap">
+        <div className="text-sm">
+          <div className="xl:hidden text-xs text-muted-foreground mb-1">
+            Type
+          </div>
+          <TypeBadge type="trade" />
+        </div>
+      </td>
+      {/* Position */}
+      <td className="px-4 py-3">
+        <div className="text-sm">
+          <div className="xl:hidden text-xs text-muted-foreground mb-1">
+            Position
+          </div>
+          <div className="flex items-center gap-1.5">
+            <PicksPopover picks={pickLegs} fallbackAddress={trade.token} />
+            {!isPredictorToken && <CounterpartyBadge />}
+          </div>
+        </div>
+      </td>
+      {/* Parties */}
+      <td className="px-4 py-3 whitespace-nowrap">
+        <div>
+          <div className="xl:hidden text-xs text-muted-foreground mb-1">
+            Parties
+          </div>
+          <div className="flex flex-col gap-1">
+            <span className="inline-flex items-center gap-1.5 text-sm font-mono text-brand-white">
+              <EnsAvatar
+                address={trade.buyer}
+                className="shrink-0 rounded-sm ring-1 ring-border/50"
+                width={16}
+                height={16}
+              />
+              <AddressDisplay address={trade.buyer} />
+              <span className="text-muted-foreground text-xs">buyer</span>
+            </span>
+            <span className="inline-flex items-center gap-1.5 text-sm font-mono text-brand-white">
+              <EnsAvatar
+                address={trade.seller}
+                className="shrink-0 rounded-sm ring-1 ring-border/50"
+                width={16}
+                height={16}
+              />
+              <AddressDisplay address={trade.seller} />
+              <span className="text-muted-foreground text-xs">seller</span>
+            </span>
+          </div>
+        </div>
+      </td>
+      {/* Value */}
+      <td className="px-4 py-3 whitespace-nowrap">
+        <div>
+          <div className="xl:hidden text-xs text-muted-foreground mb-1">
+            Value
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <span className="whitespace-nowrap tabular-nums text-brand-white font-mono">
+              <NumberDisplay value={amount * price} /> {collateralSymbol}
+            </span>
+            <span className="whitespace-nowrap tabular-nums text-muted-foreground font-mono text-xs">
+              <NumberDisplay value={amount} /> &times;{' '}
+              <NumberDisplay value={price} /> {collateralSymbol}
+            </span>
+          </div>
+        </div>
+      </td>
+      {/* Status */}
+      <td className="px-4 py-3 whitespace-nowrap">
+        <div>
+          <div className="xl:hidden text-xs text-muted-foreground mb-1">
+            Status
+          </div>
+          <span
+            className={`whitespace-nowrap tabular-nums font-mono uppercase cursor-default ${
+              isBuyer ? 'text-green-400' : 'text-amber-400'
+            }`}
+          >
+            {isBuyer ? 'Bought' : 'Sold'}
+          </span>
+        </div>
+      </td>
+      {/* Share (empty for trades) */}
+      <td className="px-4 py-3 whitespace-nowrap" />
+    </tr>
+  );
+}
+
+// ─── Share dialog ────────────────────────────────────────────────────────────
+
 function SharePredictionDialog({
   sharePrediction,
   conditionsMap,
@@ -350,6 +512,8 @@ function SharePredictionDialog({
   );
 }
 
+// ─── Main component ──────────────────────────────────────────────────────────
+
 const DEFAULT_PAGE_SIZE = 20;
 
 export default function ActivityTable({
@@ -365,50 +529,59 @@ export default function ActivityTable({
 }) {
   const collateralSymbol = COLLATERAL_SYMBOLS[DEFAULT_CHAIN_ID] || 'USDe';
   const effectivePageSize = pageSize ?? DEFAULT_PAGE_SIZE;
-  const [take, setTake] = useState(effectivePageSize);
   const [filters, setFilters] = useState<ActivityFilterState>(
     getDefaultActivityFilterState
   );
 
-  // Predictions: address-filtered when account provided, conditionId-filtered,
-  // or all recent otherwise
-  const { data: accountPredictions, isLoading: accountLoading } =
-    usePredictions({ address: account, take, skip: 0 });
+  // ── Unified activity (account mode) ──────────────────────────────────────
+  const {
+    items: activityItems,
+    isLoading: activityLoading,
+    isFetchingMore: activityFetchingMore,
+    hasMore: activityHasMore,
+    fetchMore: activityFetchMore,
+  } = useAccountActivity({
+    account,
+    pageSize: effectivePageSize,
+    activityType: filters.activityType,
+  });
+
+  // ── Condition-only mode (no account) ─────────────────────────────────────
+  const [condTake, setCondTake] = useState(effectivePageSize);
 
   const { data: conditionPredictions, isLoading: conditionLoading } =
     usePredictionsByConditionId({
       conditionId: !account ? conditionId : undefined,
-      take,
+      take: condTake,
       skip: 0,
     });
 
+  const [recentTake, setRecentTake] = useState(effectivePageSize);
+
   const { data: recentPredictions, isLoading: recentLoading } =
     useRecentPredictions({
-      take: take + 1,
+      take: recentTake + 1,
       skip: 0,
       enabled: !account && !conditionId,
     });
 
-  const predictions = account
-    ? accountPredictions
-    : conditionId
-      ? conditionPredictions
-      : recentPredictions;
-  const predictionsLoading = account
-    ? accountLoading
-    : conditionId
-      ? conditionLoading
-      : recentLoading;
-
-  // Positions (for pickConfig enrichment): only meaningful with an account
-  // usePositionBalances is internally disabled when holder is falsy
-  const { data: positions, isLoading: positionsLoading } = usePositionBalances({
+  // Positions for non-account enrichment
+  const { data: positions } = usePositionBalances({
     holder: account,
   });
 
-  const isLoading = predictionsLoading || (account ? positionsLoading : false);
+  // Decide which mode we're in
+  const isAccountMode = !!account;
+  const isConditionMode = !account && !!conditionId;
+  const isRecentMode = !account && !conditionId;
 
-  // Build a map of tokenAddress → { pickConfig, isPredictorToken }
+  const isLoading = isAccountMode
+    ? activityLoading
+    : isConditionMode
+      ? conditionLoading
+      : recentLoading;
+
+  // For condition/recent modes, build items from predictions only (existing behavior)
   const tokenMap = React.useMemo(() => {
     const map = new Map<
       string,
@@ -425,18 +598,31 @@ export default function ActivityTable({
     return map;
   }, [positions]);
 
-  // Enrich predictions with pickConfig data
-  // Prefer pickConfig from the prediction query, fall back to tokenMap lookup
-  const enrichedPredictions = React.useMemo(() => {
+  const fallbackPredictions = React.useMemo(
+    () =>
+      isConditionMode
+        ? conditionPredictions
+        : isRecentMode
+          ? recentPredictions
+          : [],
+    [isConditionMode, conditionPredictions, isRecentMode, recentPredictions]
+  );
+
+  const fallbackItems: ActivityItem[] = React.useMemo(() => {
     const display =
-      !account && predictions.length > take
-        ? predictions.slice(0, take)
-        : predictions;
+      isRecentMode && fallbackPredictions.length > recentTake
+        ? fallbackPredictions.slice(0, recentTake)
+        : fallbackPredictions;
     return display.map((pred) => {
       const byPredictor = tokenMap.get(pred.predictorToken.toLowerCase());
       const byCounterparty = tokenMap.get(pred.counterpartyToken.toLowerCase());
       const match = byPredictor ?? byCounterparty;
+      const timestamp = pred.collateralDepositedAt
+        ? pred.collateralDepositedAt * 1000
+        : new Date(pred.createdAt).getTime();
       return {
+        type: 'prediction' as const,
+        timestamp,
         prediction: pred,
         pickConfig: pred.pickConfig ?? match?.pickConfig ?? null,
         isPredictorSide: account
@@ -444,37 +630,50 @@ export default function ActivityTable({
           : true,
       };
     });
-  }, [predictions, tokenMap, account, take]);
+  }, [fallbackPredictions, tokenMap, account, recentTake, isRecentMode]);
 
-  // Collect all conditionIds from pickConfigs
+  const items = isAccountMode ? activityItems : fallbackItems;
+
+  // ── Condition enrichment for all prediction items ────────────────────────
   const conditionIds = React.useMemo(() => {
     const ids = new Set<string>();
-    for (const { pickConfig } of enrichedPredictions) {
-      for (const pick of pickConfig?.picks ?? []) {
+    for (const item of items) {
+      for (const pick of item.pickConfig?.picks ?? []) {
         ids.add(pick.conditionId);
       }
     }
     return Array.from(ids);
-  }, [enrichedPredictions]);
+  }, [items]);
 
   const { map: conditionsMap } = useConditionsByIds(conditionIds);
 
-  // Apply client-side filters
-  const filteredPredictions = React.useMemo(() => {
-    let result = enrichedPredictions;
+  // ── Client-side filters ──────────────────────────────────────────────────
+  const filteredItems = React.useMemo(() => {
+    let result = items;
 
-    // Filter by search term (match against condition question text)
+    // Activity type filtering is handled server-side via the hook
+
+    // Filter by search term
     if (filters.searchTerm.trim()) {
       const term = filters.searchTerm.trim();
-      result = result.filter(({ pickConfig }) => {
-        const ids = (pickConfig?.picks ?? []).map((p) => p.conditionId);
-        return matchesConditionSearch(term, ids, conditionsMap);
+      result = result.filter((item) => {
+        if (item.type === 'prediction') {
+          const ids = (item.pickConfig?.picks ?? []).map((p) => p.conditionId);
+          return matchesConditionSearch(term, ids, conditionsMap);
+        }
+        // For trades, match via pick config condition IDs
+        const tradePickIds = (item.pickConfig?.picks ?? []).map(
+          (p) => p.conditionId
+        );
+        return matchesConditionSearch(term, tradePickIds, conditionsMap);
       });
     }
 
-    // Filter by status (using per-condition resolution for early results)
+    // Filter by status (only applies to predictions)
     if (filters.status.length > 0 && filters.status.length < 3) {
-      result = result.filter(({ prediction, pickConfig }) => {
+      result = result.filter((item) => {
+        if (item.type === 'trade') return true; // trades pass through status filter
+        const { prediction, pickConfig } = item;
         const picks = pickConfig?.picks ?? [];
         const computed = !prediction.settled
           ? computeResultFromConditions(picks, conditionsMap)
@@ -493,58 +692,76 @@ export default function ActivityTable({
       });
     }
 
-    // Filter by payout range
+    // Filter by value range
     if (filters.valueRange[0] > 0 || filters.valueRange[1] < Infinity) {
-      result = result.filter(({ prediction }) => {
-        const totalEth =
-          Number(formatEther(BigInt(prediction.predictorCollateral))) +
-          Number(formatEther(BigInt(prediction.counterpartyCollateral)));
-        return (
-          totalEth >= filters.valueRange[0] && totalEth <= filters.valueRange[1]
-        );
+      result = result.filter((item) => {
+        const value =
+          item.type === 'prediction'
+            ? Number(formatEther(BigInt(item.prediction.predictorCollateral))) +
+              Number(
+                formatEther(BigInt(item.prediction.counterpartyCollateral))
+              )
+            : Number(formatEther(BigInt(item.trade.tokenAmount))) *
+              Number(formatEther(BigInt(item.trade.price)));
+        return value >= filters.valueRange[0] && value <= filters.valueRange[1];
       });
     }
 
     // Filter by date range
     if (filters.dateRange[0] > -Infinity || filters.dateRange[1] < Infinity) {
-      result = result.filter(({ prediction }) => {
-        const timestampMs = prediction.collateralDepositedAt
-          ? prediction.collateralDepositedAt * 1000
-          : new Date(prediction.createdAt).getTime();
-        return isWithinDateRange(timestampMs, filters.dateRange);
-      });
+      result = result.filter((item) =>
+        isWithinDateRange(item.timestamp, filters.dateRange)
+      );
     }
 
     return result;
-  }, [enrichedPredictions, filters, conditionsMap]);
+  }, [items, filters, conditionsMap]);
 
-  // Share dialog state
+  // ── Share / detail dialog state ──────────────────────────────────────────
   const [sharePrediction, setSharePrediction] = useState<{
     prediction: Prediction;
     pickConfig: PickConfigData | null;
     isPredictorSide: boolean;
   } | null>(null);
 
-  // Prediction detail dialog state
   const [dialogPrediction, setDialogPrediction] = useState<{
     prediction: Prediction;
     pickConfig: PickConfigData | null;
     isPredictorSide: boolean;
   } | null>(null);
 
-  const hasMore = predictions.length > take;
+  // ── Infinite scroll ──────────────────────────────────────────────────────
+  const hasMore = isAccountMode
+    ? activityHasMore
+    : isConditionMode
+      ? conditionPredictions.length >= condTake
+      : recentPredictions.length > recentTake;
 
   const { loadMoreRef } = useInfiniteScroll({
     hasMore,
-    isLoading: predictionsLoading,
-    onFetchMore: () => setTake((t) => t + effectivePageSize),
+    isLoading,
+    isFetchingMore: isAccountMode ? activityFetchingMore : false,
+    onFetchMore: () => {
+      if (isAccountMode) {
+        activityFetchMore();
+      } else if (isConditionMode) {
+        setCondTake((t) => t + effectivePageSize);
+      } else {
+        setRecentTake((t) => t + effectivePageSize);
+      }
+    },
   });
 
+  // ── Render ───────────────────────────────────────────────────────────────
   const headerContent = (
     <div className="px-4 py-4 border-b border-border/60 flex flex-col sm:flex-row sm:items-center gap-4 bg-white/[0.03]">
       {leftSlot && leftSlot}
       <div className="flex-1">
-        <ActivityTableFilters filters={filters} onFiltersChange={setFilters} />
+        <ActivityTableFilters
+          filters={filters}
+          onFiltersChange={setFilters}
+          showTypeFilter={isAccountMode}
+        />
       </div>
     </div>
   );
@@ -553,14 +770,16 @@ export default function ActivityTable({
     return (
       <>
         {headerContent}
-        <div className="flex items-center justify-center py-8">
-          <Loader />
+        <div className="flex items-center justify-center py-12">
+          <span className="text-sm text-muted-foreground font-mono uppercase">
+            Loading activity…
+          </span>
         </div>
       </>
     );
   }
 
-  if (predictions.length === 0) {
+  if (items.length === 0) {
     return (
       <>
         {headerContent}
@@ -569,7 +788,7 @@ export default function ActivityTable({
     );
   }
 
-  if (filteredPredictions.length === 0) {
+  if (filteredItems.length === 0) {
     return (
       <>
         {headerContent}
@@ -586,22 +805,22 @@ export default function ActivityTable({
           <thead className="hidden xl:table-header-group text-sm font-medium text-muted-foreground">
             <tr className="bg-white/[0.03] border-b border-border/60">
               <th className="px-4 py-3 text-left align-middle font-medium">
-                Created
+                Date
               </th>
               <th className="px-4 py-3 text-left align-middle font-medium">
-                Predictions
+                Type
               </th>
               <th className="px-4 py-3 text-left align-middle font-medium">
-                Predictor
+                Position
               </th>
               <th className="px-4 py-3 text-left align-middle font-medium">
-                Counterparty
+                Parties
               </th>
               <th className="px-4 py-3 text-left align-middle font-medium">
-                Payout
+                Value
               </th>
               <th className="px-4 py-3 text-left align-middle font-medium">
-                Result
+                Status
               </th>
               <th className="px-4 py-3 text-left align-middle font-medium">
                 Share
@@ -609,23 +828,28 @@ export default function ActivityTable({
             </tr>
           </thead>
           <tbody>
-            {filteredPredictions.map(
-              ({ prediction, pickConfig, isPredictorSide }) => (
-                <ActivityRow
-                  key={prediction.id}
-                  prediction={prediction}
-                  pickConfig={pickConfig}
-                  isPredictorSide={isPredictorSide}
+            {filteredItems.map((item) =>
+              item.type === 'prediction' ? (
+                <PredictionActivityRow
+                  key={`pred-${item.prediction.id}`}
+                  item={item}
                   collateralSymbol={collateralSymbol}
                   conditionsMap={conditionsMap}
                   onShare={(data) => setSharePrediction(data)}
                   onOpenDialog={() =>
                     setDialogPrediction({
-                      prediction,
-                      pickConfig,
-                      isPredictorSide,
+                      prediction: item.prediction,
+                      pickConfig: item.pickConfig,
+                      isPredictorSide: item.isPredictorSide,
                     })
                   }
+                />
+              ) : (
+                <TradeActivityRow
+                  key={`trade-${item.trade.tradeHash}`}
+                  item={item}
+                  collateralSymbol={collateralSymbol}
+                  conditionsMap={conditionsMap}
                 />
               )
             )}
