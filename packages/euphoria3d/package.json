@@ -1,0 +1,32 @@
+{
+  "name": "@sapience/euphoria3d",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build"
+  },
+  "dependencies": {
+    "@react-three/drei": "^10.0.0",
+    "@react-three/fiber": "^9.1.0",
+    "@sapience/sdk": "workspace:*",
+    "@tanstack/react-query": "5.84.2",
+    "@zerodev/ecdsa-validator": "5.4.9",
+    "@zerodev/permissions": "5.6.3",
+    "@zerodev/sdk": "5.5.7",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "three": "^0.175.0",
+    "viem": "^2.21.0",
+    "wagmi": "2.19.5"
+  },
+  "devDependencies": {
+    "@types/react": "19.1.8",
+    "@types/react-dom": "19.1.8",
+    "@types/three": "^0.175.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "typescript": "^5.5.0",
+    "vite": "^5.4.0"
+  }
+}
