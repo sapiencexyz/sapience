@@ -86,10 +86,13 @@ describe('per-IP concurrency limit on /graphql', () => {
     );
 
     const successes = results.filter((r) => r.status === 200).length;
-    const shedded = results.filter((r) => r.status === 503).length;
+    const shedded = results.filter((r) => r.status === 429).length;
 
     expect(successes).toBe(2);
     expect(shedded).toBe(1);
+
+    const sheddedRes = results.find((r) => r.status === 429);
+    expect(sheddedRes!.headers['retry-after']).toBe('1');
   });
 
   it('allows requests from different IPs independently', async () => {
@@ -156,7 +159,7 @@ describe('per-IP concurrency limit on /graphql', () => {
     expect(res2.status).toBe(200);
   });
 
-  it('503 response includes per-IP indicator', async () => {
+  it('429 response includes per-IP indicator and Retry-After header', async () => {
     const app = createTestApp({
       maxConcurrent: 50,
       maxConcurrentPerIp: 1,
@@ -183,11 +186,12 @@ describe('per-IP concurrency limit on /graphql', () => {
         .send(JSON.stringify({ query: '{ __typename }' })),
     ]);
 
-    const shedded = results.find((r) => r.status === 503);
+    const shedded = results.find((r) => r.status === 429);
     expect(shedded).toBeDefined();
     expect(shedded!.body.errors[0].extensions.code).toBe(
       'IP_CONCURRENCY_EXCEEDED'
     );
+    expect(shedded!.headers['retry-after']).toBe('1');
   });
 
   it('global limit still applies even when per-IP limit is not reached', async () => {
@@ -224,13 +228,14 @@ describe('per-IP concurrency limit on /graphql', () => {
     ]);
 
     const successes = results.filter((r) => r.status === 200).length;
-    const shedded = results.filter((r) => r.status === 503).length;
+    const shedded = results.filter((r) => r.status === 429).length;
 
     expect(successes).toBe(2);
     expect(shedded).toBe(1);
 
-    // Global 503 uses SERVER_BUSY code (not IP_CONCURRENCY_EXCEEDED)
-    const sheddedRes = results.find((r) => r.status === 503);
+    // Global 429 uses SERVER_BUSY code (not IP_CONCURRENCY_EXCEEDED)
+    const sheddedRes = results.find((r) => r.status === 429);
     expect(sheddedRes!.body.errors[0].extensions.code).toBe('SERVER_BUSY');
+    expect(sheddedRes!.headers['retry-after']).toBe('1');
   });
 });

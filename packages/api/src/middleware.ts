@@ -5,7 +5,6 @@ import express from 'express';
 import rateLimit from 'express-rate-limit';
 import { recoverMessageAddress } from 'viem';
 import { config } from './config';
-import { createGasAwareX402Middleware } from './x402';
 
 // ─── Admin auth ──────────────────────────────────────────────────────────────
 
@@ -142,12 +141,6 @@ const corsOptions: cors.CorsOptions = {
     'Content-Type',
     'x-admin-signature',
     'x-admin-signature-timestamp',
-    'Payment-Signature', // x402 payment header
-  ],
-  exposedHeaders: [
-    'PAYMENT-REQUIRED',
-    'PAYMENT-RESPONSE',
-    'X-PAYMENT-RESPONSE',
   ],
 };
 
@@ -182,94 +175,18 @@ export function setupMiddleware(app: Express) {
       crossOriginEmbedderPolicy: false,
     })
   );
-  app.use(express.json());
   app.use(cors(corsOptions));
 
-  // Create FRESH rate limiters for this app instance
-  const freeTierLimiter = rateLimit({
-    windowMs: config.RATE_LIMIT_WINDOW_MS,
-    max: config.FREE_TIER_RATE_LIMIT,
-    standardHeaders: true,
-    legacyHeaders: false,
-    skip: (req) => {
-      // Skip rate limiting if request has payment header
-      // We check for the header presence (not validated payment) because
-      // freeTierLimiter runs BEFORE x402 middleware validates the payment
-      return !!req.headers['payment-signature'];
-    },
-    // Custom handler to mark for payment instead of rejecting
-    handler: (req: Request, _res: Response, next: NextFunction) => {
-      // When free tier is exceeded, mark for payment requirement
-      (req as Request & { requiresPayment?: boolean }).requiresPayment = true;
-      // Pass control to next middleware (x402)
-      next();
-    },
-  });
+  // Rate limiting runs before body parsing so rejected requests are cheap
+  app.use(
+    rateLimit({
+      windowMs: config.RATE_LIMIT_WINDOW_MS,
+      max: config.RATE_LIMIT_MAX_REQUESTS,
+      standardHeaders: true,
+      legacyHeaders: false,
+    })
+  );
 
-  const hardLimiter = rateLimit({
-    windowMs: config.RATE_LIMIT_WINDOW_MS,
-    max: config.HARD_RATE_LIMIT,
-    standardHeaders: true,
-    legacyHeaders: false,
-    // No skip - count all requests regardless of payment status
-    message: {
-      error: 'Too Many Requests',
-      message: `Hard limit of ${config.HARD_RATE_LIMIT} requests per minute exceeded.`,
-      tier: 'hard_limit',
-    },
-  });
-
-  // Tiered rate limiting system
-  if (config.X402_PAY_TO) {
-    // Tier 1: Hard limit check first (reject early if >400 req/min)
-    app.use(hardLimiter);
-
-    // Tier 2: Free tier check (flag if needs payment)
-    app.use(freeTierLimiter);
-
-    // Tier 3: Conditional x402 payment processing (in-process facilitator)
-    const x402Middleware = createGasAwareX402Middleware();
-
-    app.use(async (req: Request, res: Response, next: NextFunction) => {
-      const hasPaymentHeader = req.headers['payment-signature'];
-
-      // Process payment if either:
-      // 1. Free tier exceeded (req.requiresPayment=true) OR
-      // 2. Request has payment header (even if under free tier)
-      if (
-        (req as Request & { requiresPayment?: boolean }).requiresPayment ||
-        hasPaymentHeader
-      ) {
-        try {
-          // x402 middleware handles both cases:
-          // - No payment header → sends 402 directly (callback never called)
-          // - Valid payment → calls callback, then settles on-chain
-          await x402Middleware(req, res, next);
-        } catch (err) {
-          console.error('[x402] Payment middleware error:', err);
-          if (!res.headersSent) {
-            res.status(503).json({
-              error: 'Service Unavailable',
-              message: 'Payment processing failed. Please try again later.',
-            });
-          }
-        }
-        return;
-      }
-      // Under free tier and no payment header - continue normally
-      next();
-    });
-  } else {
-    // Simple rate limiting - no payment path, just reject with 429
-    app.use(
-      rateLimit({
-        windowMs: config.RATE_LIMIT_WINDOW_MS,
-        max: config.FREE_TIER_RATE_LIMIT,
-        standardHeaders: true,
-        legacyHeaders: false,
-      })
-    );
-
-    console.log('[x402] Tiered rate limiting disabled (X402_PAY_TO not set)');
-  }
+  // Body parsing after rate limiting — routes can override with stricter limits
+  app.use(express.json({ limit: '100kb' }));
 }

@@ -44,33 +44,11 @@ const validators = {
   }),
   GRAPHQL_MAX_CONCURRENT_OPERATIONS: num({
     default: 50,
-    desc: 'Max concurrent GraphQL operations before shedding load with 503',
+    desc: 'Max concurrent GraphQL operations before rejecting with 429',
   }),
   GRAPHQL_MAX_CONCURRENT_PER_IP: num({
-    default: 10,
-    desc: 'Max concurrent GraphQL operations per IP before shedding load with 503',
-  }),
-  // x402 payment integration
-  X402_PAY_TO: str({
-    default: '',
-    desc: 'EVM address to receive USDC payments via x402',
-  }),
-  X402_FACILITATOR_PRIVATE_KEY: str({
-    default: '',
-    desc: 'Private key for facilitator wallet (settles payments on-chain)',
-  }),
-  X402_ARBITRUM_RPC_URL: str({
-    default: 'https://arb1.arbitrum.io/rpc',
-    desc: 'Arbitrum One RPC URL',
-  }),
-  // Tiered rate limiting (x402 payment tiers)
-  FREE_TIER_RATE_LIMIT: num({
-    default: 200,
-    desc: 'Free tier rate limit (requests per minute before payment required)',
-  }),
-  HARD_RATE_LIMIT: num({
-    default: 400,
-    desc: 'Hard rate limit (max requests per minute even with payment)',
+    default: 25,
+    desc: 'Max concurrent GraphQL operations per IP before rejecting with 429',
   }),
 };
 
