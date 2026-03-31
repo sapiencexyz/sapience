@@ -10,3 +10,4 @@ export { TimeSeriesResolver } from './TimeSeriesResolver';
 export { CollateralBalanceResolver } from './CollateralBalanceResolver';
 export { ConditionGroupConditionsResolver } from './ConditionGroupConditionsResolver';
 export { ActivityResolver } from './ActivityResolver';
+export { TagsResolver } from './TagsResolver';

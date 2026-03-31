@@ -46,6 +46,7 @@ import {
   CollateralBalanceResolver,
   ConditionGroupConditionsResolver,
   ActivityResolver,
+  TagsResolver,
 } from './resolvers';
 
 export interface ApolloContext {
@@ -92,6 +93,7 @@ export const initializeApolloServer = async () => {
       CollateralBalanceResolver,
       ConditionGroupConditionsResolver,
       ActivityResolver,
+      TagsResolver,
     ]);
   const schema = await buildSchema({
     // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type -- type-graphql's buildSchema API requires NonEmptyArray<Function>

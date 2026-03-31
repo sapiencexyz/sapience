@@ -77,7 +77,8 @@ describe('QuestionsResolver', () => {
       (overrides.minEndTime as number) ?? null,
       (overrides.resolutionStatus as ResolutionStatus) ?? null,
       (overrides.minEstimatedPrice as number) ?? null,
-      (overrides.maxEstimatedPrice as number) ?? null
+      (overrides.maxEstimatedPrice as number) ?? null,
+      (overrides.tag as string) ?? null
     );
 
   /** Extract the full SQL text from the first $queryRaw call. */
