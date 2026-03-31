@@ -183,6 +183,20 @@ contract SecondaryMarketEscrow is
     }
 
     /// @inheritdoc ISecondaryMarketEscrow
+    function getTradeHash(
+        address token,
+        address collateral,
+        address seller,
+        address buyer,
+        uint256 tokenAmount,
+        uint256 price
+    ) public pure returns (bytes32 tradeHash) {
+        return keccak256(
+            abi.encode(token, collateral, seller, buyer, tokenAmount, price)
+        );
+    }
+
+    /// @inheritdoc ISecondaryMarketEscrow
     function getTradeApprovalHash(
         bytes32 tradeHash,
         address signer,
@@ -271,13 +285,7 @@ contract SecondaryMarketEscrow is
             return false;
         }
 
-        bytes32 structHash = keccak256(
-            abi.encode(
-                TRADE_APPROVAL_TYPEHASH, tradeHash, signer, nonce, deadline
-            )
-        );
-
-        bytes32 hash = _hashTypedDataV4(structHash);
+        bytes32 hash = getTradeApprovalHash(tradeHash, signer, nonce, deadline);
         return ECDSAHelper.isValidECDSASignature(hash, signature, signer);
     }
 
@@ -302,12 +310,8 @@ contract SecondaryMarketEscrow is
 
         // Fallback to EIP-1271 for contracts
         if (signer.code.length > 0) {
-            bytes32 structHash = keccak256(
-                abi.encode(
-                    TRADE_APPROVAL_TYPEHASH, tradeHash, signer, nonce, deadline
-                )
-            );
-            bytes32 hash = _hashTypedDataV4(structHash);
+            bytes32 hash =
+                getTradeApprovalHash(tradeHash, signer, nonce, deadline);
             return _isEIP1271SignatureValid(signer, hash, signature);
         }
 
@@ -362,16 +366,8 @@ contract SecondaryMarketEscrow is
         }
 
         // 1. Verify the session key signed the trade message
-        bytes32 tradeStructHash = keccak256(
-            abi.encode(
-                TRADE_APPROVAL_TYPEHASH,
-                tradeHash,
-                smartAccount,
-                nonce,
-                deadline
-            )
-        );
-        bytes32 tradeDigest = _hashTypedDataV4(tradeStructHash);
+        bytes32 tradeDigest =
+            getTradeApprovalHash(tradeHash, smartAccount, nonce, deadline);
         if (!ECDSAHelper.isValidECDSASignature(
                 tradeDigest, sessionKeySignature, skData.sessionKey
             )) {
