@@ -4,29 +4,6 @@ import { Search } from 'lucide-react';
 import { cn } from '@sapience/ui/lib/utils';
 import { getDeterministicCategoryColor } from '~/lib/theme/categoryPalette';
 
-const POPULAR_TAGS = [
-  'Trump',
-  'Bitcoin',
-  'Ethereum',
-  'AI',
-  'Fed',
-  'Elections',
-  'NBA',
-  'MLB',
-  'Soccer',
-  'UFC',
-  'Tariffs',
-  'Ukraine',
-  'Gold',
-  'Oil',
-  'S&P 500',
-  'OpenAI',
-  'NCAA',
-  'Movies',
-  'Elon Musk',
-  'Tech',
-];
-
 function getTagColor(tag: string): string {
   return getDeterministicCategoryColor(tag.toLowerCase());
 }
@@ -36,6 +13,7 @@ interface TagBarProps {
   onSearchChange: (value: string) => void;
   selectedTag: string | null;
   onSelectedTagChange: (tag: string | null) => void;
+  popularTags: string[];
   className?: string;
 }
 
@@ -44,6 +22,7 @@ export default function TagBar({
   onSearchChange,
   selectedTag,
   onSelectedTagChange,
+  popularTags,
   className,
 }: TagBarProps) {
   const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -80,7 +59,7 @@ export default function TagBar({
 
       {/* Tag chips */}
       <div className="flex items-center gap-1.5 overflow-x-auto scrollbar-none min-w-0">
-        {POPULAR_TAGS.map((tag) => {
+        {popularTags.map((tag) => {
           const isActive = selectedTag === tag;
           const color = getTagColor(tag);
           return (

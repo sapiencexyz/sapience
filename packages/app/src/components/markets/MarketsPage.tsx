@@ -21,6 +21,7 @@ import SortControls from '~/components/markets/polymarket/SortControls';
 import TagBar from '~/components/markets/TagBar';
 import type { FilterState } from '~/components/markets/TableFilters';
 import { useCategories } from '~/hooks/graphql/useCategories';
+import { usePopularTags } from '~/hooks/graphql/usePopularTags';
 import {
   useInfiniteQuestions,
   type SortField,
@@ -34,6 +35,7 @@ import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 const MarketsPage = () => {
   const { data: allCategories = [], isLoading: isLoadingCategories } =
     useCategories();
+  const { data: popularTags = [] } = usePopularTags();
 
   // Get compact status (needed by callbacks below)
   const isCompact = useIsBelow(1024);
@@ -354,6 +356,7 @@ const MarketsPage = () => {
                       onSearchChange={setSearchTerm}
                       selectedTag={selectedTag}
                       onSelectedTagChange={setSelectedTag}
+                      popularTags={popularTags}
                     />
                   </div>
                   <QuestionsTable
