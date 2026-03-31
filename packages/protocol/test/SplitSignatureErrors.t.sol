@@ -147,7 +147,7 @@ contract SplitSignatureErrorsTest is Test {
         );
 
         vm.expectRevert(
-            IPredictionMarketEscrow.InvalidCounterpartSignature.selector
+            IPredictionMarketEscrow.InvalidCounterpartySignature.selector
         );
         market.mint(request);
     }

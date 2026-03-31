@@ -638,7 +638,7 @@ contract PredictionMarketEscrowBurnTest is Test {
         );
 
         vm.expectRevert(
-            IPredictionMarketEscrow.InvalidCounterpartSignature.selector
+            IPredictionMarketEscrow.InvalidCounterpartySignature.selector
         );
         market.burn(req);
     }
@@ -710,7 +710,7 @@ contract PredictionMarketEscrowBurnTest is Test {
         req.counterpartyNonce = 999;
 
         vm.expectRevert(
-            IPredictionMarketEscrow.InvalidCounterpartSignature.selector
+            IPredictionMarketEscrow.InvalidCounterpartySignature.selector
         );
         market.burn(req);
     }
