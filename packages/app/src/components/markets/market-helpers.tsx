@@ -457,16 +457,6 @@ export function buildTopLevelRows(questions: QuestionType[]): TopLevelRow[] {
       const group = item.group;
       if (group.conditions.length === 0) return [];
 
-      if (group.conditions.length === 1) {
-        return [
-          {
-            kind: 'condition' as const,
-            id: `condition-${group.conditions[0].id}`,
-            condition: groupConditionToConditionType(group.conditions[0]),
-          },
-        ];
-      }
-
       let openInterestWei = 0n;
       let maxEndTime = 0;
       for (const c of group.conditions) {
