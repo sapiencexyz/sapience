@@ -84,8 +84,6 @@ export function useAutoRFQ({
   const lastSentFrame = useRef(-1);
   const cubeAuctionsRef = useRef(cubeAuctions);
   cubeAuctionsRef.current = cubeAuctions;
-  // Mutable ref for immediate lock visibility (avoids React state update lag)
-  const lockedCubesRef = useRef(new Set<string>());
 
   const handleAck = useCallback((payload: {
     auctionId?: string;
@@ -158,8 +156,6 @@ export function useAutoRFQ({
 
     const setQuoted = () => {
       setCubeAuctions((prev) => {
-        const existing = prev[correlation.cubeKey];
-        if (existing?.status === 'pending' || existing?.status === 'accepting' || existing?.status === 'accepted') return prev;
         return {
           ...prev,
           [correlation.cubeKey]: {
@@ -200,31 +196,12 @@ export function useAutoRFQ({
     const correlation = auctionCorrelation.current.get(payload.auctionId);
     if (!correlation) return;
 
-    setCubeAuctions((prev) => {
-      const existing = prev[correlation.cubeKey];
-      // Don't overwrite pending/accepted/filled cubes with expired
-      if (existing?.status === 'pending' || existing?.status === 'accepted' || existing?.status === 'filled') return prev;
-      return {
-        ...prev,
-        [correlation.cubeKey]: { status: 'expired', auctionId: payload.auctionId },
-      };
-    });
-
-    auctionCorrelation.current.delete(payload.auctionId);
-  }, []);
-
-  const handleFilled = useCallback((payload: { auctionId: string; predictionId: string; transactionHash: string }) => {
-    const correlation = auctionCorrelation.current.get(payload.auctionId);
-    if (!correlation) return;
-
     setCubeAuctions((prev) => ({
       ...prev,
-      [correlation.cubeKey]: {
-        ...prev[correlation.cubeKey],
-        status: 'filled',
-        auctionId: payload.auctionId,
-      },
+      [correlation.cubeKey]: { status: 'expired', auctionId: payload.auctionId },
     }));
+
+    auctionCorrelation.current.delete(payload.auctionId);
   }, []);
 
   // When the market maker computes a fair value AND sends a bid,
@@ -248,22 +225,18 @@ export function useAutoRFQ({
     };
 
     const setQuoted = () => {
-      setCubeAuctions((prev) => {
-        const existing = prev[correlation.cubeKey];
-        if (existing?.status === 'pending' || existing?.status === 'accepting' || existing?.status === 'accepted' || existing?.status === 'filled') return prev;
-        return {
-          ...prev,
-          [correlation.cubeKey]: {
-            ...existing,
-            status: 'quoted',
-            auctionId: quote.auctionId,
-            probability,
-            bidAmount: parseFloat(quote.bidAmount).toFixed(2),
-            bestBid,
-            auctionMeta: correlation.meta,
-          },
-        };
-      });
+      setCubeAuctions((prev) => ({
+        ...prev,
+        [correlation.cubeKey]: {
+          ...prev[correlation.cubeKey],
+          status: 'quoted' as const,
+          auctionId: quote.auctionId,
+          probability,
+          bidAmount: parseFloat(quote.bidAmount).toFixed(2),
+          bestBid,
+          auctionMeta: correlation.meta,
+        },
+      }));
     };
 
     if (validateBidRef.current) {
@@ -295,12 +268,6 @@ export function useAutoRFQ({
   }, []);
 
   const setCubeStatus = useCallback((cubeKey: string, update: Partial<CubeAuctionState>) => {
-    // Synchronously lock/unlock so the RFQ effect sees it immediately
-    if (update.status === 'pending' || update.status === 'accepting' || update.status === 'accepted' || update.status === 'filled') {
-      lockedCubesRef.current.add(cubeKey);
-    } else if (update.status === 'error' || update.status === 'expired') {
-      lockedCubesRef.current.delete(cubeKey);
-    }
     setCubeAuctions((prev) => ({
       ...prev,
       [cubeKey]: { ...prev[cubeKey], ...update } as CubeAuctionState,
@@ -317,19 +284,7 @@ export function useAutoRFQ({
 
     lastSentFrame.current = frameId;
 
-    // Read current state once to check which cubes are locked (accepting/accepted/filled)
-    const currentAuctions = cubeAuctionsRef.current;
-
     for (const cube of ALL_CUBES) {
-      // Don't overwrite cubes in accept/fill flow (mutable ref is immediately visible)
-      if (lockedCubesRef.current.has(cube.key)) {
-        continue;
-      }
-      const cubeState = currentAuctions[cube.key];
-      if (cubeState?.status === 'pending' || cubeState?.status === 'accepting' || cubeState?.status === 'accepted' || cubeState?.status === 'filled') {
-        continue;
-      }
-
       const payload = buildCubeAuctionPayload(
         leg1, leg2, leg3,
         latestLeg1, latestLeg2, latestLeg3,
@@ -369,5 +324,5 @@ export function useAutoRFQ({
     }
   }, [enabled, frameId, leg1, leg2, leg3, latestLeg1, latestLeg2, latestLeg3, expirySeconds, sizeUsde, clientRef, predictor, chainId]);
 
-  return { cubeAuctions, setCubeStatus, handleAck, handleBids, handleExpired, handleFilled, handleQuoteComputed };
+  return { cubeAuctions, setCubeStatus, handleAck, handleBids, handleExpired, handleQuoteComputed };
 }

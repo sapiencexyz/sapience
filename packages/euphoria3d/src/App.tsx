@@ -1,4 +1,4 @@
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useAccount, useConnect, useDisconnect, useSwitchChain, useBalance, useReadContract } from 'wagmi';
 import { injected } from 'wagmi/connectors';
 import { parseEther, formatEther, erc20Abi, type Address } from 'viem';
@@ -10,6 +10,7 @@ import { SessionOverlay } from './components/SessionOverlay';
 import { AcceptStatusPanel } from './components/AcceptStatusPanel';
 import { TransferDialog } from './components/TransferDialog';
 import { OCTANTS, type CubeKey } from './components/QuoteCubes';
+import type { SubmittedPosition } from './components/PositionOctants';
 import { useMarketMaker, type MarketMakerConfig, type WsClient } from './hooks/useMarketMaker';
 import { useAutoRFQ } from './hooks/useAutoRFQ';
 import { useBidSigner } from './hooks/useBidSigner';
@@ -17,8 +18,10 @@ import { useAcceptBid } from './hooks/useAcceptBid';
 import { usePythPrices } from './hooks/usePythPrices';
 import { useTokenSetup } from './hooks/useTokenSetup';
 import { useBidValidator } from './hooks/useBidValidator';
+import { usePositionPoller } from './hooks/usePositionPoller';
 import { useSession } from './lib/SessionContext';
 import { getEnvConfig, ROUND_SECONDS, type EnvMode } from './lib/envConfig';
+import { loadPositions, upsertPosition, removePosition, type StoredPosition } from './lib/positionStore';
 
 const OCTANT_MAP = new Map(OCTANTS.map((o) => [o.key, o]));
 
@@ -168,7 +171,10 @@ export function App() {
   // Shared WS client ref — useMarketMaker writes, useAutoRFQ reads
   const sharedClientRef = useRef<WsClient | null>(null);
 
-  // Auto-RFQ (uses shared ref — reads clientRef.current when effects fire)
+  // Ref to sphere group's world position (synced from Scene via lineEndRef prop)
+  const lineEndRef = useRef({ x: 0, y: 0, z: 0 });
+
+  // Auto-RFQ — all 8 cubes always cycle freely, no locking
   const autoRFQ = useAutoRFQ({
     clientRef: sharedClientRef,
     frameId,
@@ -182,20 +188,110 @@ export function App() {
     validateBid,
   });
 
-  // Accept bid (predictor signs + sends mint tx)
-  const { acceptBid, acceptLog, clearLog } = useAcceptBid(autoRFQ.setCubeStatus, envConfig.chainId);
+  // --- Submitted positions (separate from auction cycle) ---
+  const [submittedPositions, setSubmittedPositions] = useState<SubmittedPosition[]>(() => {
+    // Restore from localStorage on mount
+    const stored = loadPositions(envMode);
+    return stored.map((sp) => ({
+      id: sp.id,
+      cubeKey: sp.cubeKey,
+      status: sp.status,
+      predictionId: sp.predictionId,
+      won: sp.won,
+      worldPos: sp.worldPos,
+      auctionMeta: sp.auctionMeta,
+      bestBid: sp.bestBid,
+      bidAmount: sp.bidAmount,
+      probability: sp.probability,
+    }));
+  });
+
+  const updatePosition = useCallback((id: string, update: Partial<SubmittedPosition>) => {
+    setSubmittedPositions((prev) =>
+      prev.map((p) => (p.id === id ? { ...p, ...update } : p)),
+    );
+  }, []);
+
+  // Accept bid — operates on submitted positions
+  const { acceptBid, acceptLog, clearLog } = useAcceptBid(
+    // Route status updates to the submitted position instead of cubeAuctions
+    useCallback((cubeKey: string, update: { status: string; error?: string }) => {
+      setSubmittedPositions((prev) =>
+        prev.map((p) => {
+          if (p.cubeKey !== cubeKey || (p.status !== 'accepting' && p.status !== 'accepted')) return p;
+          return { ...p, ...update } as SubmittedPosition;
+        }),
+      );
+    }, []),
+    envConfig.chainId,
+  );
+
+  // Poll indexer for submitted positions
+  usePositionPoller(submittedPositions, updatePosition, effectiveAddress ?? address, envMode);
+
+  // Persist submitted positions to localStorage
+  useEffect(() => {
+    // Remove settled+faded positions (won is set and they've been visible long enough)
+    const active = submittedPositions.filter((p) => p.won === undefined || p.status !== 'filled');
+    for (const pos of submittedPositions) {
+      if (pos.won !== undefined) {
+        // Settled — remove from store after a delay (animation plays out)
+        removePosition(pos.id, envMode);
+      } else {
+        upsertPosition({
+          id: pos.id,
+          cubeKey: pos.cubeKey,
+          status: pos.status,
+          predictionId: pos.predictionId,
+          won: pos.won,
+          worldPos: pos.worldPos,
+          auctionMeta: pos.auctionMeta,
+          bestBid: pos.bestBid,
+          bidAmount: pos.bidAmount,
+          probability: pos.probability,
+          envMode,
+          savedAt: Date.now(),
+        });
+      }
+    }
+  }, [submittedPositions, envMode]);
 
   const handleCubeClick = useCallback((key: CubeKey) => {
     const state = autoRFQ.cubeAuctions[key];
+    if (!state) return;
+
     // Only accept if cube has a quoted bid
-    if (state?.status !== 'quoted' || !state.bestBid || !state.auctionMeta) return;
+    if (state.status !== 'quoted' || !state.bestBid || !state.auctionMeta) return;
 
-    // Immediate visual feedback (pulse)
-    autoRFQ.setCubeStatus(key, { status: 'pending' });
+    // Capture the current sphere position for freezing
+    const wp = lineEndRef.current;
+    const worldPos = { x: wp.x, y: wp.y, z: wp.z };
 
-    // Fire-and-forget: acceptBid handles its own error states
-    void acceptBid(key, state);
-  }, [autoRFQ, acceptBid]);
+    // Create a submitted position
+    const posId = crypto.randomUUID();
+    const newPos: SubmittedPosition = {
+      id: posId,
+      cubeKey: key,
+      status: 'accepting',
+      worldPos,
+      auctionMeta: state.auctionMeta,
+      bestBid: state.bestBid,
+      bidAmount: state.bidAmount,
+      probability: state.probability,
+    };
+    setSubmittedPositions((prev) => [...prev, newPos]);
+
+    // Fire-and-forget: acceptBid handles status updates via the callback
+    void acceptBid(key, { bestBid: state.bestBid, auctionMeta: state.auctionMeta });
+  }, [autoRFQ.cubeAuctions, acceptBid]);
+
+  const handlePositionClick = useCallback((positionId: string) => {
+    const pos = submittedPositions.find((p) => p.id === positionId);
+    if (pos?.predictionId) {
+      const base = envMode === 'staging' ? 'https://staging.sapience.xyz' : 'https://sapience.xyz';
+      window.open(`${base}/predictions/${pos.predictionId}`, '_blank');
+    }
+  }, [submittedPositions, envMode]);
 
   // Market maker WS connection + incoming auction processing
   const { quotes, status, clientRef } = useMarketMaker({
@@ -205,7 +301,7 @@ export function App() {
     onAuctionAck: autoRFQ.handleAck,
     onAuctionBidsRaw: autoRFQ.handleBids as (payload: { auctionId: string; bids: Array<Record<string, unknown>> }) => void,
     onAuctionExpired: autoRFQ.handleExpired,
-    onAuctionFilled: autoRFQ.handleFilled,
+    onAuctionFilled: undefined,
     onQuoteComputed: autoRFQ.handleQuoteComputed,
     signAndSubmitBid: mmConfig.autoBidEnabled && address ? signAndSubmitBid : undefined,
   });
@@ -237,7 +333,7 @@ export function App() {
   return (
     <div className="app-wrapper">
       <div className="top-bar">
-        <span className="top-bar-title">Euphoria 3D</span>
+        <span className="top-bar-title">Euphoria 3D &middot; <a href="https://sapience.xyz" target="_blank" rel="noopener noreferrer" className="top-bar-brand">POWERED BY SAPIENCE</a></span>
         <div className="top-bar-right">
           {address && (
             <>
@@ -249,23 +345,33 @@ export function App() {
               >
                 Bridge to Ethereal
               </a>
-              <span className={`balance-group${isSessionActive ? ' balance-group-dim' : ''}`}>
+              <a
+                href={`https://${envMode === 'staging' ? 'staging.' : ''}sapience.xyz/profile/${address}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className={`balance-group${isSessionActive ? ' balance-group-dim' : ''}`}
+              >
                 <span className="balance-label">EOA</span>
                 <span className="balance-addr">{address.slice(0, 6)}...{address.slice(-4)}</span>
                 <span className="balance-value">{eoaBalances.usde} USDe</span>
                 <span className="balance-value">{eoaBalances.wusde} wUSDe</span>
-              </span>
+              </a>
               {smartAccountAddress && (
                 <>
                   <button className="wallet-btn" onClick={() => setShowTransfer(true)}>
                     Transfer
                   </button>
-                  <span className="balance-group">
+                  <a
+                    href={`https://${envMode === 'staging' ? 'staging.' : ''}sapience.xyz/profile/${smartAccountAddress}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="balance-group"
+                  >
                     <span className="balance-label">SA</span>
                     <span className="balance-addr">{smartAccountAddress.slice(0, 6)}...{smartAccountAddress.slice(-4)}</span>
                     <span className="balance-value">{saBalances.usde} USDe</span>
                     <span className="balance-value">{saBalances.wusde} wUSDe</span>
-                  </span>
+                  </a>
                 </>
               )}
             </>
@@ -383,6 +489,9 @@ export function App() {
             onCubeClick={handleCubeClick}
             onCubeHover={handleCubeHover}
             cubeAuctions={autoRFQ.cubeAuctions}
+            submittedPositions={submittedPositions}
+            onPositionClick={handlePositionClick}
+            lineEndRef={lineEndRef}
           />
           <AcceptStatusPanel log={acceptLog} onClear={clearLog} />
         </div>

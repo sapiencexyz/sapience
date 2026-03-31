@@ -5,7 +5,7 @@ import { buildPredictorMintTypedData } from '@sapience/sdk/auction/escrowSigning
 import { jsonToPicks } from '@sapience/sdk/auction/escrowEncoding';
 import { predictionMarketEscrowAbi } from '@sapience/sdk/abis';
 import { predictionMarketEscrow, collateralToken } from '@sapience/sdk/contracts';
-import type { CubeAuctionState, CubeKey } from '../components/QuoteCubes';
+import type { CubeKey, AuctionMeta, BestBid } from '../components/QuoteCubes';
 import { useSession } from '../lib/SessionContext';
 
 export type AcceptStep = 'signing' | 'submitting' | 'confirming' | 'confirmed' | 'failed';
@@ -17,8 +17,13 @@ export interface AcceptLogEntry {
   message: string;
 }
 
+interface AcceptBidState {
+  bestBid: BestBid;
+  auctionMeta: AuctionMeta;
+}
+
 export function useAcceptBid(
-  setCubeStatus: (cubeKey: string, update: Partial<CubeAuctionState>) => void,
+  onStatusChange: (cubeKey: string, update: { status: string; error?: string }) => void,
   chainId: number,
 ) {
   const { address } = useAccount();
@@ -39,7 +44,7 @@ export function useAcceptBid(
 
   const clearLog = useCallback(() => setAcceptLog([]), []);
 
-  const acceptBid = useCallback(async (cubeKey: CubeKey, state: CubeAuctionState) => {
+  const acceptBid = useCallback(async (cubeKey: CubeKey, state: AcceptBidState) => {
     const signerAddress = effectiveAddress ?? address;
     if (!signerAddress) throw new Error('Wallet not connected');
     if (!state.bestBid || !state.auctionMeta) throw new Error('No bid to accept');
@@ -48,9 +53,9 @@ export function useAcceptBid(
     const escrowAddress = predictionMarketEscrow[chainId]?.address;
     if (!escrowAddress) throw new Error('No escrow address');
 
-    const shortId = state.auctionId ? state.auctionId.slice(0, 8) : cubeKey;
+    const shortId = cubeKey;
 
-    setCubeStatus(cubeKey, { status: 'accepting' });
+    onStatusChange(cubeKey, { status: 'accepting' });
     logStep(shortId, 'signing', 'Signing predictor approval...');
 
     try {
@@ -176,17 +181,17 @@ export function useAcceptBid(
       }
 
       logStep(shortId, 'confirmed', 'Mint confirmed');
-      setCubeStatus(cubeKey, { status: 'accepted' });
+      onStatusChange(cubeKey, { status: 'accepted' });
     } catch (err) {
       console.error('[accept-bid] Failed:', err);
       const msg = err instanceof Error ? err.message : 'Accept failed';
       logStep(shortId, 'failed', msg);
-      setCubeStatus(cubeKey, {
+      onStatusChange(cubeKey, {
         status: 'error',
         error: msg,
       });
     }
-  }, [address, effectiveAddress, signTypedDataAsync, sendTransactionAsync, setCubeStatus, chainId, isSessionActive, sessionSignTypedData, etherealClient, logStep]);
+  }, [address, effectiveAddress, signTypedDataAsync, sendTransactionAsync, onStatusChange, chainId, isSessionActive, sessionSignTypedData, etherealClient, logStep]);
 
   return { acceptBid, acceptLog, clearLog };
 }

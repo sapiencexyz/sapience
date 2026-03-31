@@ -4,6 +4,7 @@ import { OrbitControls, Line, Text } from '@react-three/drei';
 import * as THREE from 'three';
 import type { PricePoint } from '../hooks/usePythPrices';
 import { QuoteCubes, type CubeKey, type CubeAuctionState } from './QuoteCubes';
+import { PositionOctants, type SubmittedPosition } from './PositionOctants';
 import { ROUND_SECONDS } from '../lib/envConfig';
 
 const CUBE_SIZE = 4;
@@ -241,9 +242,13 @@ interface SceneProps {
   onCubeClick: (key: CubeKey, leg1Over: boolean, leg2Over: boolean, leg3Over: boolean) => void;
   onCubeHover: (key: CubeKey | null) => void;
   cubeAuctions: Record<string, CubeAuctionState>;
+  submittedPositions: SubmittedPosition[];
+  onPositionClick: (positionId: string) => void;
+  /** Ref to the sphere group's world position — used to capture freeze position on click */
+  lineEndRef?: React.RefObject<{ x: number; y: number; z: number }>;
 }
 
-export function Scene({ points, leg1Label, leg2Label, leg3Label, onCubeClick, onCubeHover, cubeAuctions }: SceneProps) {
+export function Scene({ points, leg1Label, leg2Label, leg3Label, onCubeClick, onCubeHover, cubeAuctions, submittedPositions, onPositionClick, lineEndRef }: SceneProps) {
   const targetBounds = useMemo<Bounds>(() => {
     if (points.length === 0) {
       return { minLeg1: 0, maxLeg1: 1, minLeg2: 0, maxLeg2: 1, minLeg3: 0, maxLeg3: 1 };
@@ -275,6 +280,17 @@ export function Scene({ points, leg1Label, leg2Label, leg3Label, onCubeClick, on
   const animatedLatest = useRef(new THREE.Vector3());
   const lineEnd = useRef(new THREE.Vector3());
 
+  // Sync lineEnd to parent ref for position capture on click
+  useEffect(() => {
+    if (!lineEndRef) return;
+    const ref = lineEndRef as { current: { x: number; y: number; z: number } };
+    const id = setInterval(() => {
+      const le = lineEnd.current;
+      ref.current = { x: le.x, y: le.y, z: le.z };
+    }, 50);
+    return () => clearInterval(id);
+  }, [lineEndRef]);
+
   return (
     <Canvas camera={{ position: [4, 3, 4], fov: 50 }}>
       <ambientLight intensity={0.4} />
@@ -291,6 +307,10 @@ export function Scene({ points, leg1Label, leg2Label, leg3Label, onCubeClick, on
         onCubeClick={onCubeClick}
         onCubeHover={onCubeHover}
         cubeAuctions={cubeAuctions}
+      />
+      <PositionOctants
+        positions={submittedPositions}
+        onClick={onPositionClick}
       />
       <OrbitControls enableZoom={true} />
     </Canvas>

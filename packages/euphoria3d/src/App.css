@@ -381,6 +381,15 @@ body,
   color: #888;
 }
 
+.top-bar-brand {
+  color: #ffd700;
+  text-decoration: none;
+}
+
+.top-bar-brand:hover {
+  text-decoration: underline;
+}
+
 .env-switcher {
   display: flex;
   gap: 2px;
@@ -423,11 +432,14 @@ body,
   gap: 10px;
 }
 
+a.balance-group,
 .balance-group {
   display: flex;
   align-items: center;
   gap: 6px;
   font-size: 10px;
+  text-decoration: none;
+  color: inherit;
 }
 
 .balance-group-dim {
@@ -1068,6 +1080,18 @@ body,
   font-size: 28px;
   font-weight: 700;
   color: #bb86fc;
+}
+
+.cube-tooltip-status {
+  margin-top: 8px;
+  padding: 6px 0 0;
+  text-align: center;
+  color: #bb86fc;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 }
 
 /* Top Bar Actions */

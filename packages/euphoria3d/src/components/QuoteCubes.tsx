@@ -21,11 +21,10 @@ export interface AuctionMeta {
 }
 
 export interface CubeAuctionState {
-  status: 'sending' | 'acked' | 'quoted' | 'pending' | 'accepting' | 'accepted' | 'filled' | 'expired' | 'error';
+  status: 'sending' | 'acked' | 'quoted' | 'expired' | 'error';
   auctionId?: string;
   probability?: number;
   bidAmount?: string;
-  won?: boolean;
   error?: string;
   bestBid?: BestBid;
   auctionMeta?: AuctionMeta;
@@ -71,20 +70,12 @@ interface AnimTargets {
   speed: number;
 }
 
-function getTargets(status: string | undefined, hovered: boolean, won?: boolean): AnimTargets {
+function getTargets(status: string | undefined, hovered: boolean): AnimTargets {
   switch (status) {
     case 'quoted':
       return hovered
         ? { opacity: 0.9, emissive: 0.5, yOffset: 0, color: COL_GOLD, speed: 12 }
         : { opacity: 0.85, emissive: 0.25, yOffset: 0, color: COL_FOREGROUND, speed: 6 };
-    case 'pending':
-    case 'accepting':
-    case 'accepted':
-      return { opacity: 0.85, emissive: 0.3, yOffset: 0, color: COL_GOLD, speed: 6 };
-    case 'filled':
-      return won === false
-        ? { opacity: 0, emissive: 0.3, yOffset: -0.8, color: COL_RED, speed: 3 }
-        : { opacity: 0, emissive: 0.3, yOffset: 0.8, color: COL_GREEN, speed: 3 };
     default:
       return { opacity: 0.2, emissive: 0.1, yOffset: 0, color: COL_IDLE, speed: 8 };
   }
@@ -107,18 +98,13 @@ function QuoteOctant({ position, cubeKey, state, onClick, onHover, leg1Over, leg
     [phiStart, phiLength, thetaStart, thetaLength],
   );
 
-  // Refs for imperative animation
-  const groupRef = useRef<THREE.Group>(null);
   const matRef = useRef<THREE.MeshStandardMaterial>(null);
 
   const anim = useRef({
     opacity: 0.2,
-    yOffset: 0,
     emissive: 0.1,
-    pulsePhase: 0,
     color: COL_IDLE.clone(),
     prevStatus: undefined as string | undefined,
-    frozenParentPos: null as THREE.Vector3 | null,
   });
 
   useFrame((_, delta) => {
@@ -130,38 +116,13 @@ function QuoteOctant({ position, cubeKey, state, onClick, onHover, leg1Over, leg
     const nowIdle = !status || status === 'sending' || status === 'acked' || status === 'expired';
     const quickFade = wasQuoted && nowIdle;
 
-    const targets = getTargets(status, hovered, state?.won);
+    const targets = getTargets(status, hovered);
     const speed = quickFade ? 15 : targets.speed;
     const t = 1 - Math.exp(-speed * delta);
 
     a.opacity += (targets.opacity - a.opacity) * t;
-    a.yOffset += (targets.yOffset - a.yOffset) * t;
     a.color.lerp(targets.color, t);
-
-    // Pulse emissive + opacity for pending/accepting/accepted, otherwise lerp
-    if (status === 'pending' || status === 'accepting' || status === 'accepted') {
-      a.pulsePhase += delta * 4;
-      const sine = 0.5 + 0.5 * Math.sin(a.pulsePhase);
-      a.emissive = 0.2 + 0.4 * sine;
-      a.opacity = 0.55 + 0.35 * sine;
-    } else {
-      a.pulsePhase = 0;
-      a.emissive += (targets.emissive - a.emissive) * t;
-    }
-
-    // Freeze parent position when octant starts fading out or is locked (pending/accepting/accepted)
-    const shouldFreeze = quickFade || status === 'filled' || status === 'pending' || status === 'accepting' || status === 'accepted';
-    if (shouldFreeze && !a.frozenParentPos && groupRef.current?.parent) {
-      a.frozenParentPos = groupRef.current.parent.position.clone();
-    }
-    // Clear freeze when octant returns to normal auction cycle
-    if ((status === 'quoted' || nowIdle) && !quickFade) {
-      a.frozenParentPos = null;
-    }
-    // Clear freeze when fully invisible
-    if (a.opacity < 0.05 && a.frozenParentPos) {
-      a.frozenParentPos = null;
-    }
+    a.emissive += (targets.emissive - a.emissive) * t;
 
     a.prevStatus = status;
 
@@ -172,25 +133,10 @@ function QuoteOctant({ position, cubeKey, state, onClick, onHover, leg1Over, leg
       matRef.current.emissive.copy(a.color);
       matRef.current.emissiveIntensity = a.emissive;
     }
-
-    // Apply position: counteract parent drift when frozen in place
-    if (groupRef.current) {
-      if (a.frozenParentPos && groupRef.current.parent) {
-        const pp = groupRef.current.parent.position;
-        groupRef.current.position.set(
-          a.frozenParentPos.x - pp.x,
-          a.frozenParentPos.y - pp.y + a.yOffset,
-          a.frozenParentPos.z - pp.z,
-        );
-      } else {
-        groupRef.current.position.set(0, a.yOffset, 0);
-      }
-    }
-
   });
 
   return (
-    <group ref={groupRef}>
+    <group>
       <mesh
         geometry={geometry}
         onClick={(e) => {
