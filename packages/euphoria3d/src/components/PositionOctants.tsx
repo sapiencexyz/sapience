@@ -1,4 +1,4 @@
-import { useRef, useMemo } from 'react';
+import { useRef, useMemo, useState } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { OCTANTS, type CubeKey } from './QuoteCubes';
@@ -31,6 +31,7 @@ export interface SubmittedPosition {
 }
 
 const COL_GOLD = new THREE.Color('#ffd700');
+const COL_FILLED = new THREE.Color('#ffab00'); // amber — distinct from pre-index gold
 const COL_GREEN = new THREE.Color('#4caf50');
 const COL_RED = new THREE.Color('#f44336');
 
@@ -76,30 +77,44 @@ function PositionOctant({
 
   const matRef = useRef<THREE.MeshStandardMaterial>(null);
   const groupRef = useRef<THREE.Group>(null);
+  const [hovered, setHovered] = useState(false);
+
+  const filledUnresolved = status === 'filled' && won === undefined;
 
   const anim = useRef({
     opacity: 0.7,
     emissive: 0.3,
     pulsePhase: 0,
     yOffset: 0,
+    scale: 1,
     color: COL_GOLD.clone(),
   });
 
   useFrame((_, delta) => {
     const a = anim.current;
-    const filledUnresolved = status === 'filled' && won === undefined;
 
-    if (status === 'accepting' || status === 'accepted' || filledUnresolved) {
-      // Pulsing — speed increases through stages
-      const pulseRate =
-        status === 'accepting' ? 4 :
-        status === 'accepted' ? 6 :
-        8;
+    if (status === 'accepting' || status === 'accepted') {
+      // Pre-index: gentle pulse in gold
+      const pulseRate = status === 'accepting' ? 4 : 6;
       a.pulsePhase += delta * pulseRate;
       const sine = 0.5 + 0.5 * Math.sin(a.pulsePhase);
       a.emissive = 0.2 + 0.4 * sine;
       a.opacity = 0.55 + 0.35 * sine;
       a.color.lerp(COL_GOLD, 0.1);
+      a.scale += (1 - a.scale) * 0.1;
+    } else if (filledUnresolved) {
+      // Indexed, waiting for settlement: amber pulse + hover boost
+      a.pulsePhase += delta * 5;
+      const sine = 0.5 + 0.5 * Math.sin(a.pulsePhase);
+
+      const targetScale = hovered ? 1.18 : 1;
+      const baseEmissive = hovered ? 0.5 : 0.25;
+      const baseOpacity = hovered ? 0.8 : 0.65;
+
+      a.emissive = baseEmissive + 0.35 * sine;
+      a.opacity = baseOpacity + 0.2 * sine;
+      a.color.lerp(COL_FILLED, 0.15);
+      a.scale += (targetScale - a.scale) * 0.12;
     } else if (status === 'filled' && won !== undefined) {
       // Settled — fade out with direction
       const targetColor = won ? COL_GREEN : COL_RED;
@@ -109,6 +124,7 @@ function PositionOctant({
       a.yOffset += (targetY - a.yOffset) * t;
       a.color.lerp(targetColor, t);
       a.emissive += (0.3 - a.emissive) * t;
+      a.scale += (1 - a.scale) * 0.1;
     }
 
     if (matRef.current) {
@@ -120,6 +136,7 @@ function PositionOctant({
 
     if (groupRef.current) {
       groupRef.current.position.set(worldPos.x, worldPos.y + a.yOffset, worldPos.z);
+      groupRef.current.scale.setScalar(a.scale);
     }
   });
 
@@ -133,9 +150,11 @@ function PositionOctant({
         }}
         onPointerOver={(e) => {
           e.stopPropagation();
-          document.body.style.cursor = 'pointer';
+          setHovered(true);
+          document.body.style.cursor = filledUnresolved ? 'pointer' : 'default';
         }}
         onPointerOut={() => {
+          setHovered(false);
           document.body.style.cursor = 'auto';
         }}
       >

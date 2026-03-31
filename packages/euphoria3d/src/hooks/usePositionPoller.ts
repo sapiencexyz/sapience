@@ -89,7 +89,14 @@ export function usePositionPoller(
 
           if (found) {
             if (needsIndexing) {
-              // Phase 1: position indexed
+              // Phase 1: position indexed — condition found on-chain
+              console.log(
+                `[position-poller] condition found for ${pos.id} (cube=${pos.cubeKey}):`,
+                {
+                  predictionId: found.predictionId,
+                  picks: found.pickConfig?.picks,
+                },
+              );
               updatePosition(pos.id, {
                 status: 'filled',
                 predictionId: found.predictionId,
@@ -99,6 +106,10 @@ export function usePositionPoller(
             if (found.settled && found.result) {
               // Phase 2: settled
               const won = found.result === 'PREDICTOR_WINS';
+              console.log(
+                `[position-poller] settlement for ${pos.id} (cube=${pos.cubeKey}):`,
+                { predictionId: found.predictionId, result: found.result, won },
+              );
               updatePosition(pos.id, { won });
               timersRef.current.delete(pos.id);
               return; // done
