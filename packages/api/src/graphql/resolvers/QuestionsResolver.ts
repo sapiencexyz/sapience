@@ -465,15 +465,25 @@ export class QuestionsResolver {
       if (item.item_type === 'group' && item.group_id !== null) {
         const group = groupMap.get(item.group_id);
         if (group) {
-          result.push({
-            questionType: QuestionItemType.group,
-            group: {
-              ...group,
-              conditions: group.condition, // Map Prisma 'condition' to GraphQL 'conditions'
-            } as unknown as ConditionGroup,
-            condition: null,
-            predictionCount: Number(item.prediction_count),
-          });
+          if (group.condition.length === 1) {
+            // Unwrap single-condition groups as standalone conditions
+            result.push({
+              questionType: QuestionItemType.condition,
+              group: null,
+              condition: group.condition[0] as Condition,
+              predictionCount: Number(item.prediction_count),
+            });
+          } else if (group.condition.length > 1) {
+            result.push({
+              questionType: QuestionItemType.group,
+              group: {
+                ...group,
+                conditions: group.condition, // Map Prisma 'condition' to GraphQL 'conditions'
+              } as unknown as ConditionGroup,
+              condition: null,
+              predictionCount: Number(item.prediction_count),
+            });
+          }
         }
       } else if (item.item_type === 'condition' && item.condition_id !== null) {
         const condition = conditionMap.get(item.condition_id);

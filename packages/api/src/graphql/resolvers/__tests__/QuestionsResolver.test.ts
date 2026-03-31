@@ -99,7 +99,7 @@ describe('QuestionsResolver', () => {
     expect(mockPrisma.condition.findMany).not.toHaveBeenCalled();
   });
 
-  it('assembles group items with questionType, group populated, condition null, predictionCount from BigInt', async () => {
+  it('unwraps single-condition groups as standalone conditions', async () => {
     mockPrisma.$queryRaw.mockResolvedValue([
       {
         item_type: 'group',
@@ -113,6 +113,36 @@ describe('QuestionsResolver', () => {
       id: 1,
       name: 'Test Group',
       condition: [{ id: 'c1', question: 'Q1' }],
+    };
+    mockPrisma.conditionGroup.findMany.mockResolvedValue([fakeGroup]);
+    mockPrisma.condition.findMany.mockResolvedValue([]);
+
+    const result = await callQuestions();
+
+    expect(result).toHaveLength(1);
+    expect(result[0].questionType).toBe(QuestionItemType.condition);
+    expect(result[0].condition).toEqual({ id: 'c1', question: 'Q1' });
+    expect(result[0].group).toBeNull();
+    expect(result[0].predictionCount).toBe(42);
+  });
+
+  it('returns multi-condition groups as groups with predictionCount from BigInt', async () => {
+    mockPrisma.$queryRaw.mockResolvedValue([
+      {
+        item_type: 'group',
+        group_id: 1,
+        condition_id: null,
+        prediction_count: BigInt(42),
+      },
+    ]);
+
+    const fakeGroup = {
+      id: 1,
+      name: 'Test Group',
+      condition: [
+        { id: 'c1', question: 'Q1' },
+        { id: 'c2', question: 'Q2' },
+      ],
     };
     mockPrisma.conditionGroup.findMany.mockResolvedValue([fakeGroup]);
     mockPrisma.condition.findMany.mockResolvedValue([]);
@@ -172,7 +202,14 @@ describe('QuestionsResolver', () => {
     ]);
 
     mockPrisma.conditionGroup.findMany.mockResolvedValue([
-      { id: 2, name: 'G2', condition: [] },
+      {
+        id: 2,
+        name: 'G2',
+        condition: [
+          { id: 'g2c1', question: 'GQ1' },
+          { id: 'g2c2', question: 'GQ2' },
+        ],
+      },
     ]);
     mockPrisma.condition.findMany.mockResolvedValue([
       { id: 'c1', question: 'Q1' },
@@ -288,6 +325,26 @@ describe('QuestionsResolver', () => {
     const group = result[0].group as unknown as Record<string, unknown>;
     // Prisma returns 'condition' but GraphQL expects 'conditions'
     expect(group.conditions).toEqual(nestedConditions);
+  });
+
+  it('skips groups with zero conditions after filtering', async () => {
+    mockPrisma.$queryRaw.mockResolvedValue([
+      {
+        item_type: 'group',
+        group_id: 1,
+        condition_id: null,
+        prediction_count: BigInt(0),
+      },
+    ]);
+
+    mockPrisma.conditionGroup.findMany.mockResolvedValue([
+      { id: 1, name: 'Empty Group', condition: [] },
+    ]);
+    mockPrisma.condition.findMany.mockResolvedValue([]);
+
+    const result = await callQuestions();
+
+    expect(result).toHaveLength(0);
   });
 
   // ---------- SQL-structure assertions ----------
