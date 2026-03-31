@@ -552,7 +552,7 @@ import { fieldCostEstimator as _fieldCost } from './estimators/fieldCostEstimato
 
 /**
  * Create the standard complexity estimators used across the API.
- * Shared by Apollo Server validation and x402 pricing middleware.
+ * Shared by Apollo Server validation.
  */
 export function createComplexityEstimators(
   maxListSize: number
