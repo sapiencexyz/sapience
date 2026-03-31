@@ -60,6 +60,19 @@ export function upsertPosition(pos: StoredPosition): void {
   }
 }
 
+/** Remove all positions for the given env from the store. */
+export function clearAllPositions(envMode: EnvMode): void {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    const all: StoredPosition[] = JSON.parse(raw);
+    const kept = all.filter((p) => p.envMode !== envMode);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(kept));
+  } catch {
+    // ignore
+  }
+}
+
 /** Remove a position from the store. */
 export function removePosition(id: string, envMode: EnvMode): void {
   try {

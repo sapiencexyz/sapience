@@ -21,7 +21,7 @@ import { useBidValidator } from './hooks/useBidValidator';
 import { usePositionPoller } from './hooks/usePositionPoller';
 import { useSession } from './lib/SessionContext';
 import { getEnvConfig, ROUND_SECONDS, type EnvMode } from './lib/envConfig';
-import { loadPositions, upsertPosition, removePosition, type StoredPosition } from './lib/positionStore';
+import { loadPositions, upsertPosition, clearAllPositions, type StoredPosition } from './lib/positionStore';
 
 const OCTANT_MAP = new Map(OCTANTS.map((o) => [o.key, o]));
 
@@ -229,30 +229,23 @@ export function App() {
   // Poll indexer for submitted positions
   usePositionPoller(submittedPositions, updatePosition, effectiveAddress ?? address, envMode);
 
-  // Persist submitted positions to localStorage
+  // Persist all submitted positions to localStorage
   useEffect(() => {
-    // Remove settled+faded positions (won is set and they've been visible long enough)
-    const active = submittedPositions.filter((p) => p.won === undefined || p.status !== 'filled');
     for (const pos of submittedPositions) {
-      if (pos.won !== undefined) {
-        // Settled — remove from store after a delay (animation plays out)
-        removePosition(pos.id, envMode);
-      } else {
-        upsertPosition({
-          id: pos.id,
-          cubeKey: pos.cubeKey,
-          status: pos.status,
-          predictionId: pos.predictionId,
-          won: pos.won,
-          worldPos: pos.worldPos,
-          auctionMeta: pos.auctionMeta,
-          bestBid: pos.bestBid,
-          bidAmount: pos.bidAmount,
-          probability: pos.probability,
-          envMode,
-          savedAt: Date.now(),
-        });
-      }
+      upsertPosition({
+        id: pos.id,
+        cubeKey: pos.cubeKey,
+        status: pos.status,
+        predictionId: pos.predictionId,
+        won: pos.won,
+        worldPos: pos.worldPos,
+        auctionMeta: pos.auctionMeta,
+        bestBid: pos.bestBid,
+        bidAmount: pos.bidAmount,
+        probability: pos.probability,
+        envMode,
+        savedAt: Date.now(),
+      });
     }
   }, [submittedPositions, envMode]);
 
@@ -284,6 +277,11 @@ export function App() {
     // Fire-and-forget: acceptBid handles status updates via the callback
     void acceptBid(key, { bestBid: state.bestBid, auctionMeta: state.auctionMeta });
   }, [autoRFQ.cubeAuctions, acceptBid]);
+
+  const clearOldPositions = useCallback(() => {
+    setSubmittedPositions([]);
+    clearAllPositions(envMode);
+  }, [envMode]);
 
   const handlePositionClick = useCallback((positionId: string) => {
     const pos = submittedPositions.find((p) => p.id === positionId);
@@ -432,7 +430,14 @@ export function App() {
       </div>
       <div className="app">
       <div className="panel">
-        <div className="panel-header">Binary Options Trader</div>
+        <div className="panel-header">
+          Binary Options Trader
+          {submittedPositions.length > 0 && (
+            <button className="token-approve-btn" onClick={clearOldPositions}>
+              Clear
+            </button>
+          )}
+        </div>
         <div className="ticker-bar">
           <div className="size-picker">
             <span className="ticker-label">Size</span>

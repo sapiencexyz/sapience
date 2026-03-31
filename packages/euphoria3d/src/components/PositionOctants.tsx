@@ -82,10 +82,9 @@ function PositionOctant({
   const filledUnresolved = status === 'filled' && won === undefined;
 
   const anim = useRef({
-    opacity: 0.7,
-    emissive: 0.3,
+    opacity: 0.35,
+    emissive: 0.1,
     pulsePhase: 0,
-    yOffset: 0,
     scale: 1,
     color: COL_GOLD.clone(),
   });
@@ -94,36 +93,34 @@ function PositionOctant({
     const a = anim.current;
 
     if (status === 'accepting' || status === 'accepted') {
-      // Pre-index: gentle pulse in gold
-      const pulseRate = status === 'accepting' ? 4 : 6;
+      // Waiting for indexer: dim, gentle pulse
+      const pulseRate = status === 'accepting' ? 3 : 4;
       a.pulsePhase += delta * pulseRate;
       const sine = 0.5 + 0.5 * Math.sin(a.pulsePhase);
-      a.emissive = 0.2 + 0.4 * sine;
-      a.opacity = 0.55 + 0.35 * sine;
+      a.emissive = 0.1 + 0.2 * sine;
+      a.opacity = 0.35 + 0.2 * sine;
       a.color.lerp(COL_GOLD, 0.1);
       a.scale += (1 - a.scale) * 0.1;
     } else if (filledUnresolved) {
-      // Indexed, waiting for settlement: amber pulse + hover boost
-      a.pulsePhase += delta * 5;
+      // Indexed (link active): brighter, very subtle pulse
+      a.pulsePhase += delta * 2;
       const sine = 0.5 + 0.5 * Math.sin(a.pulsePhase);
 
-      const targetScale = hovered ? 1.18 : 1;
-      const baseEmissive = hovered ? 0.5 : 0.25;
-      const baseOpacity = hovered ? 0.8 : 0.65;
+      const targetScale = hovered ? 1.12 : 1;
+      const baseEmissive = hovered ? 0.55 : 0.4;
+      const baseOpacity = hovered ? 0.9 : 0.8;
 
-      a.emissive = baseEmissive + 0.35 * sine;
-      a.opacity = baseOpacity + 0.2 * sine;
+      a.emissive = baseEmissive + 0.08 * sine;
+      a.opacity = baseOpacity + 0.06 * sine;
       a.color.lerp(COL_FILLED, 0.15);
       a.scale += (targetScale - a.scale) * 0.12;
     } else if (status === 'filled' && won !== undefined) {
-      // Settled — fade out with direction
+      // Settled: lerp to green/red and hold
       const targetColor = won ? COL_GREEN : COL_RED;
-      const targetY = won ? 0.8 : -0.8;
-      const t = 1 - Math.exp(-3 * delta);
-      a.opacity += (0 - a.opacity) * t;
-      a.yOffset += (targetY - a.yOffset) * t;
+      const t = 1 - Math.exp(-4 * delta);
       a.color.lerp(targetColor, t);
-      a.emissive += (0.3 - a.emissive) * t;
+      a.emissive += (0.35 - a.emissive) * t;
+      a.opacity += (0.75 - a.opacity) * t;
       a.scale += (1 - a.scale) * 0.1;
     }
 
@@ -135,7 +132,7 @@ function PositionOctant({
     }
 
     if (groupRef.current) {
-      groupRef.current.position.set(worldPos.x, worldPos.y + a.yOffset, worldPos.z);
+      groupRef.current.position.set(worldPos.x, worldPos.y, worldPos.z);
       groupRef.current.scale.setScalar(a.scale);
     }
   });
@@ -151,7 +148,7 @@ function PositionOctant({
         onPointerOver={(e) => {
           e.stopPropagation();
           setHovered(true);
-          document.body.style.cursor = filledUnresolved ? 'pointer' : 'default';
+          document.body.style.cursor = status === 'filled' ? 'pointer' : 'default';
         }}
         onPointerOut={() => {
           setHovered(false);
@@ -161,10 +158,10 @@ function PositionOctant({
         <meshStandardMaterial
           ref={matRef}
           transparent
-          opacity={0.7}
+          opacity={0.35}
           color={COL_GOLD}
           emissive={COL_GOLD}
-          emissiveIntensity={0.3}
+          emissiveIntensity={0.1}
           side={THREE.DoubleSide}
         />
       </mesh>

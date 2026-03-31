@@ -77,12 +77,6 @@ const MAX_SPLINE_POINTS = 1600;
 const DOT_TRAVEL_TIME = ROUND_SECONDS; // seconds to travel one segment along the spline
 const BOUNDS_LERP_SPEED = 8; // fast but smooth bounds transition (~0.4s to 95%)
 
-function smoothCurve(pts: THREE.Vector3[], samplesPerSeg: number): THREE.Vector3[] {
-  if (pts.length < 3) return pts;
-  const curve = new THREE.CatmullRomCurve3(pts, false, 'centripetal', 0.5);
-  return curve.getPoints((pts.length - 1) * samplesPerSeg);
-}
-
 function createLineObject(color: string): THREE.Line {
   const geo = new THREE.BufferGeometry();
   geo.setAttribute('position', new THREE.BufferAttribute(new Float32Array(MAX_SPLINE_POINTS * 3), 3));
@@ -93,9 +87,9 @@ function createLineObject(color: string): THREE.Line {
   return line;
 }
 
-function updateLineGeometry(line: THREE.Line, pts: THREE.Vector3[], yOverride?: number) {
+function updateLineGeometry(line: THREE.Line, pts: THREE.Vector3[], count: number, yOverride?: number) {
   const arr = line.geometry.attributes.position.array as Float32Array;
-  const count = Math.min(pts.length, MAX_SPLINE_POINTS);
+  count = Math.min(count, MAX_SPLINE_POINTS);
   for (let i = 0; i < count; i++) {
     const i3 = i * 3;
     arr[i3] = pts[i].x;
@@ -114,16 +108,25 @@ function lerpScalar(current: number, target: number, t: number): number {
  * Fully imperative price path that animates the normalization bounds each frame
  * so the line, shadow, and dot all transition smoothly when new data arrives.
  */
+export interface RawPoolHandle {
+  pool: THREE.Vector3[];
+  count: number;
+}
+
 function AnimatedPricePath({
   points,
   targetBounds,
   animatedLatest,
   lineEnd,
+  lineEndRef,
+  rawPoolRef,
 }: {
   points: PricePoint[];
   targetBounds: Bounds;
   animatedLatest: React.MutableRefObject<THREE.Vector3>;
   lineEnd: React.MutableRefObject<THREE.Vector3>;
+  lineEndRef?: React.RefObject<{ x: number; y: number; z: number }>;
+  rawPoolRef: React.MutableRefObject<RawPoolHandle>;
 }) {
   const boundsRef = useRef<Bounds>({ ...targetBounds });
   const targetRef = useRef(targetBounds);
@@ -137,6 +140,11 @@ function AnimatedPricePath({
   const prevPointCount = useRef(0);
   const curveRef = useRef<THREE.CatmullRomCurve3 | null>(null);
 
+  // Pre-allocated object pools — avoids per-frame Vector3 / curve allocation
+  const rawPool = useRef<THREE.Vector3[]>([]);
+  const rawView = useRef<THREE.Vector3[]>([]);
+  const smoothPool = useRef<THREE.Vector3[]>([]);
+
   // Snap bounds on first data (avoid lerping from 0)
   const initialized = useRef(false);
   useEffect(() => {
@@ -145,6 +153,17 @@ function AnimatedPricePath({
       initialized.current = true;
     }
   }, [points.length, targetBounds]);
+
+  const MAX_FRAME_DOTS = 512;
+  const frameDots = useMemo(() => {
+    const geo = new THREE.SphereGeometry(0.03, 8, 6);
+    const mat = new THREE.MeshBasicMaterial({ color: '#bb86fc', transparent: true, opacity: 0.6 });
+    const mesh = new THREE.InstancedMesh(geo, mat, MAX_FRAME_DOTS);
+    mesh.count = 0;
+    mesh.frustumCulled = false;
+    return mesh;
+  }, []);
+  const dotMatrix = useRef(new THREE.Matrix4());
 
   const { mainLine, shadowLine, dot } = useMemo(() => {
     const dotGeo = new THREE.SphereGeometry(0.08, 16, 16);
@@ -182,31 +201,65 @@ function AnimatedPricePath({
     b.minLeg3 = lerpScalar(b.minLeg3, tb.minLeg3, t);
     b.maxLeg3 = lerpScalar(b.maxLeg3, tb.maxLeg3, t);
 
-    const rawPts = pts.map((p) => new THREE.Vector3(
-      normalize(p.leg1, b.minLeg1, b.maxLeg1),
-      normalize(p.leg3, b.minLeg3, b.maxLeg3),
-      normalize(p.leg2, b.minLeg2, b.maxLeg2),
-    ));
+    // --- Normalize into pre-allocated Vector3 pool (zero alloc after warmup) ---
+    const rawCount = pts.length;
+    while (rawPool.current.length < rawCount) rawPool.current.push(new THREE.Vector3());
+    for (let i = 0; i < rawCount; i++) {
+      rawPool.current[i].set(
+        normalize(pts[i].leg1, b.minLeg1, b.maxLeg1),
+        normalize(pts[i].leg3, b.minLeg3, b.maxLeg3),
+        normalize(pts[i].leg2, b.minLeg2, b.maxLeg2),
+      );
+    }
+    // Stable array view for CatmullRomCurve3 (needs exactly rawCount entries)
+    rawView.current.length = rawCount;
+    for (let i = 0; i < rawCount; i++) rawView.current[i] = rawPool.current[i];
 
-    const smooth = smoothCurve(rawPts, SPLINE_SAMPLES_PER_SEGMENT);
-    updateLineGeometry(mainLine, smooth);
-    updateLineGeometry(shadowLine, smooth, -HALF);
+    // Expose raw positions so QuoteCubes ghosts can track curve points
+    rawPoolRef.current.pool = rawPool.current;
+    rawPoolRef.current.count = rawCount;
+
+    // --- Smooth spline: reuse curve object + sample into Vector3 pool ---
+    let smoothCount: number;
+    if (rawCount >= 3) {
+      if (!curveRef.current) {
+        curveRef.current = new THREE.CatmullRomCurve3(rawView.current, false, 'centripetal', 0.5);
+      } else {
+        curveRef.current.points = rawView.current;
+      }
+      const divisions = (rawCount - 1) * SPLINE_SAMPLES_PER_SEGMENT;
+      smoothCount = divisions + 1;
+      while (smoothPool.current.length < smoothCount) smoothPool.current.push(new THREE.Vector3());
+      for (let i = 0; i <= divisions; i++) {
+        curveRef.current.getPoint(i / divisions, smoothPool.current[i]);
+      }
+    } else {
+      smoothCount = 0;
+      curveRef.current = null;
+    }
+
+    if (smoothCount > 0) {
+      updateLineGeometry(mainLine, smoothPool.current, smoothCount);
+      updateLineGeometry(shadowLine, smoothPool.current, smoothCount, -HALF);
+    } else {
+      updateLineGeometry(mainLine, rawPool.current, rawCount);
+      updateLineGeometry(shadowLine, rawPool.current, rawCount, -HALF);
+    }
 
     // Line end snaps instantly
-    const last = rawPts[rawPts.length - 1];
+    const last = rawPool.current[rawCount - 1];
     lineEnd.current.copy(last);
 
-    // Build spline for dot to follow
-    if (rawPts.length >= 3) {
-      curveRef.current = new THREE.CatmullRomCurve3(rawPts, false, 'centripetal', 0.5);
-    } else {
-      curveRef.current = null;
+    // Sync to parent ref (replaces 50ms setInterval)
+    if (lineEndRef) {
+      const ref = lineEndRef as { current: { x: number; y: number; z: number } };
+      ref.current = { x: last.x, y: last.y, z: last.z };
     }
 
     // When new points arrive, reset dot progress to travel the last segment
     if (pts.length > prevPointCount.current && prevPointCount.current > 0) {
       // Place dot at the previous end position (one segment back from end)
-      dotT.current = Math.max(0, (rawPts.length - 2) / (rawPts.length - 1));
+      dotT.current = Math.max(0, (rawCount - 2) / (rawCount - 1));
     }
     prevPointCount.current = pts.length;
 
@@ -214,7 +267,7 @@ function AnimatedPricePath({
     dot.visible = true;
     if (curveRef.current) {
       const segmentDuration = DOT_TRAVEL_TIME;
-      const segmentT = 1 / (rawPts.length - 1); // fraction of curve per segment
+      const segmentT = 1 / (rawCount - 1);
       const advance = (delta / segmentDuration) * segmentT;
       dotT.current = Math.min(dotT.current + advance, 1);
       curveRef.current.getPoint(dotT.current, dot.position);
@@ -223,6 +276,16 @@ function AnimatedPricePath({
     }
 
     animatedLatest.current.copy(dot.position);
+
+    // Position frame dots at each raw price point
+    const dotCount = Math.min(rawCount, MAX_FRAME_DOTS);
+    frameDots.count = dotCount;
+    for (let i = 0; i < dotCount; i++) {
+      const p = rawPool.current[i];
+      dotMatrix.current.makeTranslation(p.x, p.y, p.z);
+      frameDots.setMatrixAt(i, dotMatrix.current);
+    }
+    frameDots.instanceMatrix.needsUpdate = true;
   });
 
   return (
@@ -230,6 +293,7 @@ function AnimatedPricePath({
       <primitive object={mainLine} />
       <primitive object={shadowLine} />
       <primitive object={dot} />
+      <primitive object={frameDots} />
     </group>
   );
 }
@@ -279,17 +343,7 @@ export function Scene({ points, leg1Label, leg2Label, leg3Label, onCubeClick, on
 
   const animatedLatest = useRef(new THREE.Vector3());
   const lineEnd = useRef(new THREE.Vector3());
-
-  // Sync lineEnd to parent ref for position capture on click
-  useEffect(() => {
-    if (!lineEndRef) return;
-    const ref = lineEndRef as { current: { x: number; y: number; z: number } };
-    const id = setInterval(() => {
-      const le = lineEnd.current;
-      ref.current = { x: le.x, y: le.y, z: le.z };
-    }, 50);
-    return () => clearInterval(id);
-  }, [lineEndRef]);
+  const rawPoolRef = useRef<RawPoolHandle>({ pool: [], count: 0 });
 
   return (
     <Canvas camera={{ position: [4, 3, 4], fov: 50 }}>
@@ -301,9 +355,12 @@ export function Scene({ points, leg1Label, leg2Label, leg3Label, onCubeClick, on
         targetBounds={targetBounds}
         animatedLatest={animatedLatest}
         lineEnd={lineEnd}
+        lineEndRef={lineEndRef}
+        rawPoolRef={rawPoolRef}
       />
       <QuoteCubes
         latestPointRef={lineEnd}
+        rawPoolRef={rawPoolRef}
         onCubeClick={onCubeClick}
         onCubeHover={onCubeHover}
         cubeAuctions={cubeAuctions}

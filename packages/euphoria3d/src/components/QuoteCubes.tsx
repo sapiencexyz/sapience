@@ -1,6 +1,7 @@
 import { useState, useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
+import type { RawPoolHandle } from './Scene';
 
 export type CubeKey = 'OOO' | 'OOU' | 'OUO' | 'OUU' | 'UOO' | 'UOU' | 'UUO' | 'UUU';
 
@@ -34,6 +35,7 @@ interface QuoteCubeProps {
   position: THREE.Vector3;
   cubeKey: CubeKey;
   state?: CubeAuctionState;
+  rawPoolRef: React.MutableRefObject<RawPoolHandle>;
   onClick: (key: CubeKey, leg1Over: boolean, leg2Over: boolean, leg3Over: boolean) => void;
   onHover: (key: CubeKey | null) => void;
   leg1Over: boolean;
@@ -81,7 +83,7 @@ function getTargets(status: string | undefined, hovered: boolean): AnimTargets {
   }
 }
 
-function QuoteOctant({ position, cubeKey, state, onClick, onHover, leg1Over, leg2Over, leg3Over }: QuoteCubeProps) {
+function QuoteOctant({ position, cubeKey, state, rawPoolRef, onClick, onHover, leg1Over, leg2Over, leg3Over }: QuoteCubeProps) {
   const [hovered, setHovered] = useState(false);
 
   const sx = Math.sign(position.x);
@@ -105,28 +107,40 @@ function QuoteOctant({ position, cubeKey, state, onClick, onHover, leg1Over, leg
     emissive: 0.1,
     color: COL_IDLE.clone(),
     prevStatus: undefined as string | undefined,
+    showQuoted: false,
   });
+  const prevRawCount = useRef(0);
 
   useFrame((_, delta) => {
     const a = anim.current;
-    const status = state?.status;
+    const rawStatus = state?.status;
 
-    // Quick fade when quoted octant gets replaced by new batch
-    const wasQuoted = a.prevStatus === 'quoted';
-    const nowIdle = !status || status === 'sending' || status === 'acked' || status === 'expired';
-    const quickFade = wasQuoted && nowIdle;
+    // New price point → revoke quoted appearance until fresh quotes arrive
+    const { count } = rawPoolRef.current;
+    if (count !== prevRawCount.current && prevRawCount.current > 0) {
+      a.showQuoted = false;
+    }
+    prevRawCount.current = count;
 
-    const targets = getTargets(status, hovered);
-    const speed = quickFade ? 15 : targets.speed;
-    const t = 1 - Math.exp(-speed * delta);
+    // Only grant quoted appearance on a fresh transition INTO quoted
+    if (rawStatus === 'quoted' && a.prevStatus !== 'quoted') {
+      a.showQuoted = true;
+    }
+    a.prevStatus = rawStatus;
 
-    a.opacity += (targets.opacity - a.opacity) * t;
-    a.color.lerp(targets.color, t);
-    a.emissive += (targets.emissive - a.emissive) * t;
+    if (a.showQuoted && rawStatus === 'quoted') {
+      const targets = getTargets('quoted', hovered);
+      const t = 1 - Math.exp(-targets.speed * delta);
+      a.opacity += (targets.opacity - a.opacity) * t;
+      a.color.lerp(targets.color, t);
+      a.emissive += (targets.emissive - a.emissive) * t;
+    } else {
+      const idle = getTargets(undefined, false);
+      a.opacity = idle.opacity;
+      a.emissive = idle.emissive;
+      a.color.copy(idle.color);
+    }
 
-    a.prevStatus = status;
-
-    // Apply to material
     if (matRef.current) {
       matRef.current.opacity = a.opacity;
       matRef.current.color.copy(a.color);
@@ -194,12 +208,13 @@ export const OCTANTS: {
 
 interface QuoteCubesProps {
   latestPointRef: React.RefObject<THREE.Vector3>;
+  rawPoolRef: React.MutableRefObject<RawPoolHandle>;
   onCubeClick: (key: CubeKey, leg1Over: boolean, leg2Over: boolean, leg3Over: boolean) => void;
   onCubeHover: (key: CubeKey | null) => void;
   cubeAuctions: Record<string, CubeAuctionState>;
 }
 
-export function QuoteCubes({ latestPointRef, onCubeClick, onCubeHover, cubeAuctions }: QuoteCubesProps) {
+export function QuoteCubes({ latestPointRef, rawPoolRef, onCubeClick, onCubeHover, cubeAuctions }: QuoteCubesProps) {
   const groupRef = useRef<THREE.Group>(null);
 
   useFrame(() => {
@@ -216,6 +231,7 @@ export function QuoteCubes({ latestPointRef, onCubeClick, onCubeHover, cubeAucti
           position={new THREE.Vector3(c.sx, c.sy, c.sz)}
           cubeKey={c.key}
           state={cubeAuctions[c.key]}
+          rawPoolRef={rawPoolRef}
           onClick={onCubeClick}
           onHover={onCubeHover}
           leg1Over={c.leg1Over}
