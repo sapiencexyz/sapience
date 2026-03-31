@@ -125,9 +125,10 @@ const MarketsPage = () => {
   // Debounce search term for backend queries (300ms)
   const debouncedSearchTerm = useDebouncedValue(searchTerm, 300);
 
-  // Use selected tag or typed search (tag takes precedence, no debounce needed)
-  const effectiveSearch =
-    selectedTag || debouncedSearchTerm.trim() || undefined;
+  // When a tag is selected, don't send a text search (they're mutually exclusive in the UI)
+  const effectiveSearch = selectedTag
+    ? undefined
+    : debouncedSearchTerm.trim() || undefined;
 
   // Compute backend filter params from client filter state
   // timeToResolutionRange[0] = min days from now (0 = today, negative = past)
@@ -146,6 +147,7 @@ const MarketsPage = () => {
     fetchMore,
   } = useInfiniteQuestions({
     search: effectiveSearch,
+    tag: selectedTag ?? undefined,
     categorySlugs:
       filters.selectedCategories.length > 0
         ? filters.selectedCategories

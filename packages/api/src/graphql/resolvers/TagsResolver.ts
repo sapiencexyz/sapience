@@ -26,7 +26,7 @@ export class TagsResolver {
         AND t NOT IN (
           'Hide From New', 'Recurring', 'Weekly', 'Monthly',
           'Monthly Hit', 'Multi Strikes', 'Neg Risk', 'Hit Price',
-          'Daily Temperature', 'Precipitation', 'Neg Risk',
+          'Daily Temperature', 'Precipitation',
           'Tweet Markets', 'Crypto Prices', 'Games'
         )
       GROUP BY t
