@@ -1,19 +1,16 @@
 /**
- * Refresh prices for ALL active Polymarket conditions in Sapience
+ * Refresh prices and volume for ALL active conditions with Polymarket similar markets
  *
- * Fetches all Polymarket condition IDs from the Sapience API,
- * looks up current prices on Polymarket's Gamma API,
- * and submits batch price updates.
+ * Fetches all condition IDs that have similarMarkets URLs from the Sapience API,
+ * looks up current prices and volume on Polymarket's Gamma API,
+ * and submits batch price + volume updates.
  *
  * This covers markets outside the generate/relist windows
  * (e.g., markets ending >21 days from now).
  */
 
 import 'dotenv/config';
-import {
-  DEFAULT_SAPIENCE_API_URL,
-  ALL_POLYMARKET_RESOLVER_ADDRESSES,
-} from '../constants';
+import { DEFAULT_SAPIENCE_API_URL } from '../constants';
 import {
   validatePrivateKey,
   confirmProductionAccess,
@@ -88,7 +85,7 @@ async function fetchActiveConditionIds(apiUrl: string): Promise<string[]> {
           where: {
             settled: { equals: false },
             public: { equals: true },
-            resolver: { in: ALL_POLYMARKET_RESOLVER_ADDRESSES },
+            similarMarkets: { isEmpty: false },
           },
           take: PAGE_SIZE,
           skip,
