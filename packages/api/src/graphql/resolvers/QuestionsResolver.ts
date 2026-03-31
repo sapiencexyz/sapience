@@ -37,6 +37,7 @@ export enum QuestionSortField {
   endTime = 'endTime',
   createdAt = 'createdAt',
   predictionCount = 'predictionCount',
+  similarMarketVolume = 'similarMarketVolume',
 }
 
 registerEnumType(QuestionSortField, {
@@ -208,6 +209,8 @@ export class QuestionsResolver {
           return Prisma.sql`COALESCE(SUM(c."predictionCount")::numeric, 0)`;
         case QuestionSortField.createdAt:
           return Prisma.sql`COALESCE(MAX(FLOOR(EXTRACT(EPOCH FROM c."createdAt"))::bigint)::numeric, 0)`;
+        case QuestionSortField.similarMarketVolume:
+          return Prisma.sql`COALESCE(SUM(c."similarMarketVolume"), 0)::numeric`;
         default:
           return Prisma.sql`COALESCE(MAX(c."endTime")::numeric, 0)`;
       }
@@ -235,7 +238,9 @@ export class QuestionsResolver {
           ? Prisma.sql`cg."totalPredictionCount"::numeric`
           : sanitizedSortField === QuestionSortField.createdAt
             ? Prisma.sql`cg."maxCreatedAtEpoch"::numeric`
-            : Prisma.sql`cg."maxEndTime"::numeric`;
+            : sanitizedSortField === QuestionSortField.similarMarketVolume
+              ? Prisma.sql`(SELECT COALESCE(SUM(c."similarMarketVolume"), 0) FROM condition c WHERE c."conditionGroupId" = cg.id AND c.public = true)::numeric`
+              : Prisma.sql`cg."maxEndTime"::numeric`;
 
     const groupPredictionCount = hasConditionFilters
       ? Prisma.sql`agg.prediction_count`
@@ -253,7 +258,9 @@ export class QuestionsResolver {
           ? Prisma.sql`c."predictionCount"::numeric`
           : sanitizedSortField === QuestionSortField.createdAt
             ? Prisma.sql`COALESCE(FLOOR(EXTRACT(EPOCH FROM c."createdAt"))::bigint, 0)::numeric`
-            : Prisma.sql`COALESCE(c."endTime", 2147483647)::numeric`;
+            : sanitizedSortField === QuestionSortField.similarMarketVolume
+              ? Prisma.sql`COALESCE(c."similarMarketVolume", 0)::numeric`
+              : Prisma.sql`COALESCE(c."endTime", 2147483647)::numeric`;
 
     // Step 1: UNION query — two parts:
     // - Part A: Active groups (sort values from denormalized cols or LATERAL)
@@ -465,15 +472,25 @@ export class QuestionsResolver {
       if (item.item_type === 'group' && item.group_id !== null) {
         const group = groupMap.get(item.group_id);
         if (group) {
-          result.push({
-            questionType: QuestionItemType.group,
-            group: {
-              ...group,
-              conditions: group.condition, // Map Prisma 'condition' to GraphQL 'conditions'
-            } as unknown as ConditionGroup,
-            condition: null,
-            predictionCount: Number(item.prediction_count),
-          });
+          if (group.condition.length === 1) {
+            // Unwrap single-condition groups as standalone conditions
+            result.push({
+              questionType: QuestionItemType.condition,
+              group: null,
+              condition: group.condition[0] as Condition,
+              predictionCount: Number(item.prediction_count),
+            });
+          } else if (group.condition.length > 1) {
+            result.push({
+              questionType: QuestionItemType.group,
+              group: {
+                ...group,
+                conditions: group.condition, // Map Prisma 'condition' to GraphQL 'conditions'
+              } as unknown as ConditionGroup,
+              condition: null,
+              predictionCount: Number(item.prediction_count),
+            });
+          }
         }
       } else if (item.item_type === 'condition' && item.condition_id !== null) {
         const condition = conditionMap.get(item.condition_id);

@@ -75,6 +75,7 @@ export function groupConditionToConditionType(
     nonDecisive: gc.nonDecisive,
     assertionId: gc.assertionId,
     assertionTimestamp: gc.assertionTimestamp,
+    similarMarketVolume: gc.similarMarketVolume,
     conditionGroupId: gc.conditionGroupId,
     estimatedPrice: gc.estimatedPrice,
   };
@@ -98,6 +99,24 @@ export function getRowOpenInterest(row: TopLevelRow): bigint {
 export function getRowEndTime(row: TopLevelRow): number {
   if (row.kind === 'group') return row.maxEndTime;
   return row.condition.endTime ?? 0;
+}
+
+/** Format a USD volume value as a compact string (e.g. $1.2M, $45K, $123) */
+export function formatVolume(vol: number): string {
+  if (vol >= 1000000) return `$${(vol / 1000000).toFixed(1)}M`;
+  if (vol >= 1000) return `$${(vol / 1000).toFixed(0)}K`;
+  return `$${vol.toLocaleString('en-US', { maximumFractionDigits: 0 })}`;
+}
+
+/** Get similar market volume (USD) for any row kind */
+export function getRowSimilarMarketVolume(row: TopLevelRow): number {
+  if (row.kind === 'group') {
+    return row.conditions.reduce(
+      (sum, c) => sum + (c.similarMarketVolume ?? 0),
+      0
+    );
+  }
+  return row.condition.similarMarketVolume ?? 0;
 }
 
 // ---------------------------------------------------------------------------
@@ -457,16 +476,6 @@ export function buildTopLevelRows(questions: QuestionType[]): TopLevelRow[] {
       const group = item.group;
       if (group.conditions.length === 0) return [];
 
-      if (group.conditions.length === 1) {
-        return [
-          {
-            kind: 'condition' as const,
-            id: `condition-${group.conditions[0].id}`,
-            condition: groupConditionToConditionType(group.conditions[0]),
-          },
-        ];
-      }
-
       let openInterestWei = 0n;
       let maxEndTime = 0;
       for (const c of group.conditions) {
@@ -505,6 +514,7 @@ export function filterRows(
   filters: FilterState
 ): TopLevelRow[] {
   const [minOI, maxOI] = filters.openInterestRange;
+  const [minVol, maxVol] = filters.similarMarketVolumeRange;
   const [minDays, maxDays] = filters.timeToResolutionRange;
   const nowSec = Math.floor(Date.now() / 1000);
 
@@ -514,6 +524,10 @@ export function filterRows(
     const endTime = getRowEndTime(row);
 
     if (oiUsde < minOI || oiUsde > maxOI) return false;
+
+    // Similar market volume filter
+    const vol = getRowSimilarMarketVolume(row);
+    if (vol < minVol || vol > maxVol) return false;
 
     if (endTime) {
       const daysFromNow = (endTime - nowSec) / 86400;

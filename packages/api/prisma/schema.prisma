@@ -178,6 +178,8 @@ model Condition {
   tags             String[]        @default([])
   chainId          Int             @default(42161)
   openInterest     String          @default("0") @db.VarChar
+  /// USD total trading volume from Polymarket similar market
+  similarMarketVolume Float        @default(0)
   predictionCount  Int             @default(0)
   /// Canonical resolver address for this condition (latest observed wins)
   resolver         String?         @db.VarChar
