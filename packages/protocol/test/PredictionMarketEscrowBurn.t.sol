@@ -776,6 +776,46 @@ contract PredictionMarketEscrowBurnTest is Test {
         market.burn(req);
     }
 
+    function test_burn_belowBackingKeepsAccountingCorrect() public {
+        (bytes32 pickConfigId,,) = _mintDefault();
+
+        IV2Types.PickConfiguration memory configBefore =
+            market.getPickConfiguration(pickConfigId);
+        uint256 balanceBefore = collateralToken.balanceOf(address(market));
+
+        // Burn all tokens at 60% of backing: payout 150, backing 250
+        IV2Types.BurnRequest memory req = _createBurnRequest(
+            pickConfigId,
+            TOTAL_COLLATERAL, // predictor tokens
+            TOTAL_COLLATERAL, // counterparty tokens
+            predictor,
+            counterparty,
+            60e18, // predictor gets 60
+            90e18, // counterparty gets 90 — total 150 < 250 backing
+            predictorPk,
+            counterpartyPk
+        );
+
+        market.burn(req);
+
+        // Verify: tracked collateral dropped by exactly the payout (150),
+        // not the full backing (250). Surplus stays in the pool.
+        IV2Types.PickConfiguration memory configAfter =
+            market.getPickConfiguration(pickConfigId);
+        uint256 trackedAfter = configAfter.totalPredictorCollateral
+            + configAfter.totalCounterpartyCollateral;
+        uint256 balanceAfter = collateralToken.balanceOf(address(market));
+
+        // Contract sent out 150, so balance dropped by 150
+        assertEq(balanceBefore - balanceAfter, 150e18, "balance delta");
+        // Tracked collateral also dropped by 150 — no orphaned funds
+        uint256 trackedBefore = configBefore.totalPredictorCollateral
+            + configBefore.totalCounterpartyCollateral;
+        assertEq(trackedBefore - trackedAfter, 150e18, "tracked delta");
+        // Balance and tracked match — nothing stranded
+        assertEq(balanceAfter, trackedAfter, "no stranded collateral");
+    }
+
     function test_burn_revertIfPickConfigAlreadyResolved() public {
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = _createPick(conditionId1, IV2Types.OutcomeSide.YES);
