@@ -1,0 +1,18 @@
+{
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "if": "Bash(git push *)",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "pnpm -r run type-check 2>&1 | head -40",
+            "timeout": 120,
+            "statusMessage": "Running type-check before push..."
+          }
+        ]
+      }
+    ]
+  }
+}
