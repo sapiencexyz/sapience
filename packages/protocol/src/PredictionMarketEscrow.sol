@@ -518,8 +518,8 @@ contract PredictionMarketEscrow is
             ? (request.predictorTokenAmount * config.totalPredictorCollateral)
                 / config.totalPredictorTokensMinted
             : 0;
-        uint256 counterpartyCollateralBacking = config
-            .totalCounterpartyTokensMinted > 0
+        uint256 counterpartyCollateralBacking = config.totalCounterpartyTokensMinted
+            > 0
             ? (request.counterpartyTokenAmount
                     * config.totalCounterpartyCollateral)
                 / config.totalCounterpartyTokensMinted

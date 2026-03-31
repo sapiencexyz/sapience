@@ -820,8 +820,11 @@ contract PredictionMarketEscrowBurnTest is Test {
         // Mint: 100e18 predictor collateral, 150e18 counterparty, 250e18 tokens each side
         IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
         picks[0] = _createPick(conditionId1, IV2Types.OutcomeSide.YES);
-        (bytes32 predictionId, address predictorToken, address counterpartyToken) =
-            _mintPrediction(picks);
+        (
+            bytes32 predictionId,
+            address predictorToken,
+            address counterpartyToken
+        ) = _mintPrediction(picks);
 
         IV2Types.Prediction memory pred = market.getPrediction(predictionId);
         bytes32 pickConfigId = pred.pickConfigId;
@@ -860,9 +863,11 @@ contract PredictionMarketEscrowBurnTest is Test {
         // Tracked collateral dropped by 75, not 125 — no orphaned funds
         IV2Types.PickConfiguration memory config =
             market.getPickConfiguration(pickConfigId);
-        uint256 trackedTotal =
-            config.totalPredictorCollateral + config.totalCounterpartyCollateral;
-        assertEq(balanceAfter, trackedTotal, "no stranded collateral after burn");
+        uint256 trackedTotal = config.totalPredictorCollateral
+            + config.totalCounterpartyCollateral;
+        assertEq(
+            balanceAfter, trackedTotal, "no stranded collateral after burn"
+        );
 
         // --- Resolve (predictor wins) and redeem remaining 125 tokens ---
         // Winner should receive the full tracked pool, including the 50e18
@@ -878,7 +883,9 @@ contract PredictionMarketEscrowBurnTest is Test {
         uint256 redeemed = collateralToken.balanceOf(predictor) - predBalBefore;
 
         // Winner gets full pool (predictor + counterparty collateral)
-        assertEq(redeemed, trackedTotal, "winner gets full pool including surplus");
+        assertEq(
+            redeemed, trackedTotal, "winner gets full pool including surplus"
+        );
 
         // Counterparty redeems losing tokens (0 payout, just burns)
         vm.prank(counterparty);
