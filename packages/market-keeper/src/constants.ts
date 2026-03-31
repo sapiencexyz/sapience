@@ -1,6 +1,7 @@
 import {
   manualConditionResolver,
   conditionalTokensConditionResolver,
+  normalizeLegacyEntry,
 } from '@sapience/sdk';
 
 /**
@@ -33,7 +34,7 @@ export const ALL_POLYMARKET_RESOLVER_ADDRESSES: string[] = (() => {
   const addrs: string[] = [entry.address];
   if (entry.legacy) {
     for (const leg of entry.legacy) {
-      addrs.push(leg.address);
+      addrs.push(normalizeLegacyEntry(leg).address);
     }
   }
   return addrs.map((a) => a.toLowerCase());
