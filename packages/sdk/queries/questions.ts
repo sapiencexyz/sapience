@@ -6,7 +6,8 @@ export type SortField =
   | 'openInterest'
   | 'endTime'
   | 'createdAt'
-  | 'predictionCount';
+  | 'predictionCount'
+  | 'similarMarketVolume';
 export type SortDirection = 'asc' | 'desc';
 export type ResolutionStatusValue =
   | 'all'
@@ -77,6 +78,7 @@ const GET_QUESTIONS = /* GraphQL */ `
           assertionId
           assertionTimestamp
           openInterest
+          similarMarketVolume
           estimatedPrice
           conditionGroupId
           category {
@@ -105,6 +107,7 @@ const GET_QUESTIONS = /* GraphQL */ `
         assertionId
         assertionTimestamp
         openInterest
+        similarMarketVolume
         estimatedPrice
         conditionGroupId
         category {

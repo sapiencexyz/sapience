@@ -126,8 +126,14 @@ async function fetchActiveConditionIds(apiUrl: string): Promise<string[]> {
  */
 async function fetchPolymarketPrices(
   conditionIds: string[]
-): Promise<Array<{ id: string; estimatedPrice: number }>> {
-  const priceUpdates: Array<{ id: string; estimatedPrice: number }> = [];
+): Promise<
+  Array<{ id: string; estimatedPrice: number; similarMarketVolume?: number }>
+> {
+  const priceUpdates: Array<{
+    id: string;
+    estimatedPrice: number;
+    similarMarketVolume?: number;
+  }> = [];
   const BATCH_SIZE = 50; // Polymarket API query string limit
 
   for (let i = 0; i < conditionIds.length; i += BATCH_SIZE) {
@@ -151,6 +157,7 @@ async function fetchPolymarketPrices(
       const markets = (await response.json()) as Array<{
         conditionId: string;
         outcomePrices?: string | number[];
+        volume?: string;
       }>;
 
       for (const market of markets) {
@@ -159,6 +166,7 @@ async function fetchPolymarketPrices(
           priceUpdates.push({
             id: market.conditionId,
             estimatedPrice: price,
+            similarMarketVolume: parseFloat(market.volume || '0') || 0,
           });
         }
       }
@@ -228,7 +236,9 @@ export async function main() {
       log('\n========== DRY RUN: Price Refresh ==========\n');
       log(`Total price updates: ${priceUpdates.length}`);
       for (const update of priceUpdates) {
-        log(`  ${update.id} → ${(update.estimatedPrice * 100).toFixed(1)}%`);
+        log(
+          `  ${update.id} → ${(update.estimatedPrice * 100).toFixed(1)}% (vol: $${(update.similarMarketVolume ?? 0).toLocaleString()})`
+        );
       }
       log('\n========== END DRY RUN ==========\n');
       return;
