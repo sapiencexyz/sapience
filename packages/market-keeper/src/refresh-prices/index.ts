@@ -10,7 +10,10 @@
  */
 
 import 'dotenv/config';
-import { DEFAULT_SAPIENCE_API_URL } from '../constants';
+import {
+  DEFAULT_SAPIENCE_API_URL,
+  ALL_POLYMARKET_RESOLVER_ADDRESSES,
+} from '../constants';
 import {
   validatePrivateKey,
   confirmProductionAccess,
@@ -85,6 +88,7 @@ async function fetchActiveConditionIds(apiUrl: string): Promise<string[]> {
           where: {
             settled: { equals: false },
             public: { equals: true },
+            resolver: { in: ALL_POLYMARKET_RESOLVER_ADDRESSES },
           },
           take: PAGE_SIZE,
           skip,
