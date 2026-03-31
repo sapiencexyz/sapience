@@ -40,10 +40,11 @@ const GAP = 0.03;
 const SPHERE_RADIUS = 0.6;
 
 function getPhiStart(sx: number, sz: number): number {
-  if (sx > 0 && sz > 0) return 0;
-  if (sx < 0 && sz > 0) return Math.PI / 2;
-  if (sx < 0 && sz < 0) return Math.PI;
-  return (3 * Math.PI) / 2;
+  // Must match QuoteCubes.tsx mapping
+  if (sx < 0 && sz > 0) return 0;
+  if (sx > 0 && sz > 0) return Math.PI / 2;
+  if (sx > 0 && sz < 0) return Math.PI;
+  return (3 * Math.PI) / 2; // sx < 0 && sz < 0
 }
 
 function PositionOctant({
