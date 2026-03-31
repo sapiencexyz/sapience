@@ -39,6 +39,7 @@ export interface CategoryOption {
 
 export interface FilterState {
   openInterestRange: [number, number];
+  similarMarketVolumeRange: [number, number];
   timeToResolutionRange: [number, number]; // in days, negative = ended
   selectedCategories: string[]; // array of category slugs
   resolutionStatus: ResolutionStatusFilterValue;
@@ -335,6 +336,7 @@ function CategoryMultiSelect({
 
 // Map slider bounds to Infinity for range filters
 const OPEN_INTEREST_SLIDER_MAX = 1000000;
+const SIMILAR_MARKET_VOLUME_SLIDER_MAX = 100000000;
 const TIME_SLIDER_MAX = 1000;
 const TIME_SLIDER_MIN = -1000;
 
@@ -360,6 +362,27 @@ export default function TableFilters({
       openInterestRange: [
         value[0],
         value[1] >= OPEN_INTEREST_SLIDER_MAX ? Infinity : value[1],
+      ],
+    });
+  };
+
+  // Map Infinity to slider max for similar market volume display
+  const similarMarketVolumeSliderValue: [number, number] = [
+    filters.similarMarketVolumeRange[0],
+    filters.similarMarketVolumeRange[1] === Infinity
+      ? SIMILAR_MARKET_VOLUME_SLIDER_MAX
+      : Math.min(
+          filters.similarMarketVolumeRange[1],
+          SIMILAR_MARKET_VOLUME_SLIDER_MAX
+        ),
+  ];
+
+  const handleSimilarMarketVolumeChange = (value: [number, number]) => {
+    onFiltersChange({
+      ...filters,
+      similarMarketVolumeRange: [
+        value[0],
+        value[1] >= SIMILAR_MARKET_VOLUME_SLIDER_MAX ? Infinity : value[1],
       ],
     });
   };
@@ -401,7 +424,7 @@ export default function TableFilters({
   return (
     <div
       className={cn(
-        'grid gap-2 lg:gap-4 grid-cols-2 lg:grid-cols-5',
+        'grid gap-2 lg:gap-4 grid-cols-2 lg:grid-cols-6',
         className
       )}
     >
@@ -435,6 +458,31 @@ export default function TableFilters({
           return Number(v.replace(/,/g, ''));
         }}
         unit="OI"
+      />
+      <RangeFilter
+        placeholder="Related Volume"
+        value={similarMarketVolumeSliderValue}
+        onChange={handleSimilarMarketVolumeChange}
+        min={0}
+        max={SIMILAR_MARKET_VOLUME_SLIDER_MAX}
+        step={10000}
+        formatValue={(v) =>
+          v >= SIMILAR_MARKET_VOLUME_SLIDER_MAX
+            ? '∞'
+            : v >= 1000000
+              ? `${(v / 1000000).toFixed(1)}M`
+              : v >= 1000
+                ? `${(v / 1000).toFixed(0)}K`
+                : v.toLocaleString()
+        }
+        parseValue={(v) => {
+          if (v === '∞') return SIMILAR_MARKET_VOLUME_SLIDER_MAX;
+          const cleaned = v.replace(/,/g, '');
+          if (cleaned.endsWith('M')) return parseFloat(cleaned) * 1000000;
+          if (cleaned.endsWith('K')) return parseFloat(cleaned) * 1000;
+          return Number(cleaned);
+        }}
+        unit="USD"
       />
       <RangeFilter
         placeholder="Ends in"
