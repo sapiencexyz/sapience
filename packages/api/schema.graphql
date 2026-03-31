@@ -1422,6 +1422,9 @@ type Query {
   """Top 20 most-used tags across public conditions"""
   popularTags: [String!]!
 
+  """Count of token positions for a given holder"""
+  positionCount(chainId: Int, holder: String!, settled: Boolean): Int!
+
   """
   Paginated list of token position balances, filterable by holder, condition, chain, pick config, settlement, date range, collateral range, and won/lost status
   """
