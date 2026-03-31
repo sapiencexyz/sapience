@@ -67,7 +67,10 @@ interface IPredictionMarketEscrow {
 
     /// @notice Burn positions bilaterally before resolution
     /// @param request The burn request containing token amounts, payouts, and signatures
-    /// @dev Both holders must sign. Conservation: predictorPayout + counterpartyPayout == predictorTokenAmount + counterpartyTokenAmount
+    /// @dev Both holders must sign. Payouts must not exceed the pro-rata collateral
+    ///      backing of the burned tokens. If the total payout is less than the backing,
+    ///      the surplus remains in the pool and is distributed to remaining token holders
+    ///      at redemption. If no other holders remain, the surplus is locked permanently.
     function burn(IV2Types.BurnRequest calldata request) external;
 
     /// @notice Settle a prediction based on condition resolver outcomes
