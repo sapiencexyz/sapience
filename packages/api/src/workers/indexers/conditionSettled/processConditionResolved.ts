@@ -36,8 +36,10 @@ export async function processConditionResolved(
       );
     }
 
-    const [conditionIdBytes, isIndecisive, resolvedToYes] =
-      decodeAbiParameters(CONDITION_RESOLVED_DATA_PARAMS, log.data);
+    const [conditionIdBytes, isIndecisive, resolvedToYes] = decodeAbiParameters(
+      CONDITION_RESOLVED_DATA_PARAMS,
+      log.data
+    );
 
     const conditionId = (conditionIdBytes as string).toLowerCase();
 
