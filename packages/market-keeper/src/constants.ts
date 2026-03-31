@@ -26,6 +26,19 @@ export const RESOLVER_ADDRESS = (process.env.RESOLVER_ADDRESS ||
     : manualConditionResolver[CHAIN_ID]?.address) ||
   '') as `0x${string}`;
 
+// All Polymarket resolver addresses for the current chain (current + legacy), lowercased to match DB storage
+export const ALL_POLYMARKET_RESOLVER_ADDRESSES: string[] = (() => {
+  const entry = conditionalTokensConditionResolver[CHAIN_ID];
+  if (!entry) return [];
+  const addrs: string[] = [entry.address];
+  if (entry.legacy) {
+    for (const leg of entry.legacy) {
+      addrs.push(leg.address);
+    }
+  }
+  return addrs.map((a) => a.toLowerCase());
+})();
+
 export const DEFAULT_SAPIENCE_API_URL = 'https://api.sapience.xyz';
 
 // Maximum end date window (in days) for fetching markets
