@@ -4,11 +4,24 @@ import {
   type TableFilterState,
   type TableFiltersConfig,
 } from '~/components/shared/TableFilters';
+import {
+  StatusFilter,
+  type StatusOption,
+} from '~/components/shared/StatusFilter';
 
 export type ActivityStatus = 'pending' | 'predictor_won' | 'counterparty_won';
-export type ActivityFilterState = TableFilterState<ActivityStatus>;
-export const getDefaultActivityFilterState =
-  getDefaultFilterState<ActivityStatus>;
+export type ActivityType = 'all' | 'prediction' | 'trade';
+
+export type ActivityFilterState = TableFilterState<ActivityStatus> & {
+  activityType: ActivityType;
+};
+
+export function getDefaultActivityFilterState(): ActivityFilterState {
+  return {
+    ...getDefaultFilterState<ActivityStatus>(),
+    activityType: 'all',
+  };
+}
 
 const ACTIVITY_CONFIG: TableFiltersConfig<ActivityStatus> = {
   statusOptions: [
@@ -34,12 +47,54 @@ const ACTIVITY_CONFIG: TableFiltersConfig<ActivityStatus> = {
   },
 };
 
+const ACTIVITY_TYPE_OPTIONS: StatusOption<ActivityType>[] = [
+  { value: 'all', label: 'All' },
+  { value: 'prediction', label: 'Predictions' },
+  { value: 'trade', label: 'Trades' },
+];
+
 export function ActivityTableFilters(props: {
   filters: ActivityFilterState;
   onFiltersChange: (filters: ActivityFilterState) => void;
+  showTypeFilter?: boolean;
   className?: string;
 }) {
-  return <TableFilters {...props} config={ACTIVITY_CONFIG} />;
+  const { filters, onFiltersChange, showTypeFilter, className } = props;
+
+  const handleTypeChange = (selected: ActivityType[]) => {
+    // Single-select: take the last selected value, default to 'all'
+    const value = selected.length > 0 ? selected[selected.length - 1] : 'all';
+    onFiltersChange({ ...filters, activityType: value });
+  };
+
+  // For the base TableFilters, we pass through without activityType
+  const handleBaseChange = (base: TableFilterState<ActivityStatus>) => {
+    onFiltersChange({ ...base, activityType: filters.activityType });
+  };
+
+  return (
+    <div
+      className={`grid gap-2 md:gap-4 ${showTypeFilter ? 'grid-cols-2 md:grid-cols-5' : 'grid-cols-2 md:grid-cols-4'} ${className ?? ''}`}
+    >
+      {showTypeFilter && (
+        <StatusFilter
+          options={ACTIVITY_TYPE_OPTIONS}
+          selected={
+            filters.activityType === 'all' ? [] : [filters.activityType]
+          }
+          onChange={handleTypeChange}
+          placeholder="All activity"
+          allLabel="All activity"
+        />
+      )}
+      <TableFilters
+        filters={filters}
+        onFiltersChange={handleBaseChange}
+        config={ACTIVITY_CONFIG}
+        inline
+      />
+    </div>
+  );
 }
 
 export default ActivityTableFilters;

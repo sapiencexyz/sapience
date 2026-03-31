@@ -127,7 +127,9 @@ export class QuestionsResolver {
     @Arg('minEstimatedPrice', () => Float, { nullable: true })
     minEstimatedPrice: number | null,
     @Arg('maxEstimatedPrice', () => Float, { nullable: true })
-    maxEstimatedPrice: number | null
+    maxEstimatedPrice: number | null,
+    @Arg('tag', () => String, { nullable: true })
+    tag: string | null
   ): Promise<Question[]> {
     const prisma = getPrismaFromContext(ctx);
 
@@ -142,6 +144,7 @@ export class QuestionsResolver {
     const boundedSkip = Math.max(0, skip);
     const boundedSearch = search?.slice(0, 200) ?? null;
     const boundedCategorySlugs = categorySlugs?.slice(0, 50) ?? null;
+    const boundedTag = tag?.slice(0, 200) ?? null;
 
     const nowSec = Math.floor(Date.now() / 1000);
 
@@ -308,6 +311,16 @@ export class QuestionsResolver {
               ? Prisma.sql`AND cg."categoryId" IN (SELECT id FROM category WHERE slug = ANY(${boundedCategorySlugs}::text[]))`
               : Prisma.empty
           }
+          ${
+            boundedTag
+              ? Prisma.sql`AND EXISTS (
+                  SELECT 1 FROM condition c_tag
+                  WHERE c_tag."conditionGroupId" = cg.id
+                    AND c_tag.public = true
+                    AND ${boundedTag} = ANY(c_tag.tags)
+                )`
+              : Prisma.empty
+          }
 
         UNION ALL
 
@@ -333,6 +346,11 @@ export class QuestionsResolver {
           ${
             boundedCategorySlugs?.length
               ? Prisma.sql`AND c."categoryId" IN (SELECT id FROM category WHERE slug = ANY(${boundedCategorySlugs}::text[]))`
+              : Prisma.empty
+          }
+          ${
+            boundedTag
+              ? Prisma.sql`AND ${boundedTag} = ANY(c.tags)`
               : Prisma.empty
           }
       )

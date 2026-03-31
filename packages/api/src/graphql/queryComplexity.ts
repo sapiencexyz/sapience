@@ -552,7 +552,7 @@ import { fieldCostEstimator as _fieldCost } from './estimators/fieldCostEstimato
 
 /**
  * Create the standard complexity estimators used across the API.
- * Shared by Apollo Server validation and x402 pricing middleware.
+ * Shared by Apollo Server validation.
  */
 export function createComplexityEstimators(
   maxListSize: number
@@ -569,6 +569,7 @@ export function createComplexityEstimators(
       if (fieldName.startsWith('_max')) return 5000;
       // Expensive custom queries — heavy SQL aggregations
       if (fieldName === 'questions') return 500;
+      if (fieldName === 'accountActivity') return 500;
       if (fieldName === 'protocolStats') return 2000;
       if (fieldName === 'profitLeaderboard') return 2000;
       if (fieldName === 'accountTotalVolume') return 500;
