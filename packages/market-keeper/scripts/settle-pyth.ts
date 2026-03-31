@@ -52,6 +52,7 @@ import {
   getPythMarketHash,
   decodePythMarketId,
 } from '@sapience/sdk';
+import { getChainConfig } from '@sapience/sdk/constants';
 import { fetchWithRetry } from '../src/utils/fetch.js';
 import { confirmProductionAccess } from '../src/utils/index.js';
 import { logSeparator } from '../src/utils/log.js';
@@ -76,8 +77,9 @@ const PYTH_CONSUMER_TOKEN =
 const PYTH_BASE_URL =
   process.env.PYTH_BASE_URL || 'https://pyth-lazer.dourolabs.app';
 
+const sdkChain = getChainConfig(CHAIN_ID);
 const ETHEREAL_RPC =
-  process.env.ETHEREAL_RPC_URL || 'https://rpc.ethereal.trade';
+  process.env.ETHEREAL_RPC_URL || sdkChain.rpcUrls.default.http[0];
 
 const DEFAULT_API_URL = 'https://api.sapience.xyz/graphql';
 
@@ -87,8 +89,8 @@ const MAX_CONDITIONS = 200;
 
 const etherealChain = defineChain({
   id: CHAIN_ID,
-  name: 'Ethereal',
-  nativeCurrency: { name: 'Ether', symbol: 'ETH', decimals: 18 },
+  name: sdkChain.name,
+  nativeCurrency: sdkChain.nativeCurrency,
   rpcUrls: {
     default: { http: [ETHEREAL_RPC] },
   },

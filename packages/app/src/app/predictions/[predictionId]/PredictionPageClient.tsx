@@ -9,6 +9,7 @@ import type { PredictionData, ConditionData } from '~/lib/data/predictions';
 import { fetchPredictionWithConditions } from '~/lib/data/predictions';
 import type { Pick } from '~/components/shared/StackedPredictions';
 import { computeResultFromConditions } from '~/components/positions/toPickLegs';
+import { inferResolverKind } from '~/lib/resolvers/conditionResolver';
 
 function formatCollateral(wei?: string): number {
   if (!wei) return 0;
@@ -76,6 +77,8 @@ export default function PredictionPageClient({
   // Build picks from predictor's perspective
   const displayPicks: Pick[] = picks.map((pick) => {
     const condition = conditionsMap.get(pick.conditionId);
+    const resolverAddr = pick.conditionResolver ?? condition?.resolver ?? null;
+    const resolverKind = inferResolverKind(resolverAddr);
     return {
       question: condition?.question || condition?.shortName || pick.conditionId,
       choice:
@@ -88,7 +91,8 @@ export default function PredictionPageClient({
       settled: condition?.settled ?? false,
       resolvedToYes: condition?.resolvedToYes ?? false,
       nonDecisive: condition?.nonDecisive,
-      resolverAddress: condition?.resolver ?? null,
+      resolverAddress: resolverAddr,
+      ...(resolverKind === 'pyth' && { source: 'pyth' as const }),
     };
   });
 
