@@ -153,10 +153,13 @@ export async function fetchQuestionsSorted(
     tag: params.tag ?? null,
   };
 
+  const start = performance.now();
   const data = await graphqlRequest<QuestionsQueryResult>(
     GET_QUESTIONS,
     variables
   );
+  const ms = (performance.now() - start).toFixed(1);
+  console.log(`[questions] ${ms}ms (skip=${params.skip}, take=${params.take})`);
 
   return data.questions ?? [];
 }
