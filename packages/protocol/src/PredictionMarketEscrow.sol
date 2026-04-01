@@ -512,20 +512,34 @@ contract PredictionMarketEscrow is
         IPredictionMarketToken(tokenPair.counterpartyToken)
             .burn(request.counterpartyHolder, request.counterpartyTokenAmount);
 
-        // Update collateral tracking proportionally (compute before decrementing tokens)
-        uint256 predictorCollateralReturned = config.totalPredictorTokensMinted
+        // Compute the pro-rata collateral backing for the burned tokens
+        uint256 predictorCollateralBacking = config.totalPredictorTokensMinted
             > 0
             ? (request.predictorTokenAmount * config.totalPredictorCollateral)
                 / config.totalPredictorTokensMinted
             : 0;
-        uint256 counterpartyCollateralReturned = config.totalCounterpartyTokensMinted
+        uint256 counterpartyCollateralBacking = config.totalCounterpartyTokensMinted
             > 0
             ? (request.counterpartyTokenAmount
                     * config.totalCounterpartyCollateral)
                 / config.totalCounterpartyTokensMinted
             : 0;
-        config.totalPredictorCollateral -= predictorCollateralReturned;
-        config.totalCounterpartyCollateral -= counterpartyCollateralReturned;
+        uint256 totalBacking =
+            predictorCollateralBacking + counterpartyCollateralBacking;
+        uint256 totalPayout =
+            request.predictorPayout + request.counterpartyPayout;
+
+        // Subtract only the actual payout from tracked collateral, split
+        // proportionally between predictor/counterparty pools. Any surplus
+        // (backing - payout) stays in the pool for remaining holders.
+        if (totalPayout > 0 && totalBacking > 0) {
+            uint256 predictorCollateralReturned =
+                (predictorCollateralBacking * totalPayout) / totalBacking;
+            uint256 counterpartyCollateralReturned =
+                totalPayout - predictorCollateralReturned;
+            config.totalPredictorCollateral -= predictorCollateralReturned;
+            config.totalCounterpartyCollateral -= counterpartyCollateralReturned;
+        }
 
         // Update token tracking
         config.totalPredictorTokensMinted -= request.predictorTokenAmount;

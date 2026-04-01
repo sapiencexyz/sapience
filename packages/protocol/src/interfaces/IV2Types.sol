@@ -97,7 +97,10 @@ interface IV2Types {
     }
 
     /// @notice Burn request data for bilateral position exit before resolution
-    /// @dev Both token holders sign to agree on payout split. Conservation: predictorPayout + counterpartyPayout == predictorTokenAmount + counterpartyTokenAmount
+    /// @dev Both token holders sign to agree on payout split. Total payout must not
+    ///      exceed the pro-rata collateral backing. Any shortfall (payout < backing)
+    ///      remains in the pool for remaining holders; if no holders remain it is
+    ///      locked permanently. Set payouts equal to backing for a full-value exit.
     struct BurnRequest {
         bytes32 pickConfigId; // Pick configuration to burn from
         uint256 predictorTokenAmount; // Predictor tokens to burn
