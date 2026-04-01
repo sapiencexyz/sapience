@@ -34,6 +34,7 @@ router.post('/', async (req: Request, res: Response) => {
       tags,
       estimatedPrice,
       similarMarketVolume,
+      similarMarketImage,
     } = req.body as {
       conditionHash?: string;
       question?: string;
@@ -50,6 +51,7 @@ router.post('/', async (req: Request, res: Response) => {
       tags?: string[];
       estimatedPrice?: number;
       similarMarketVolume?: number;
+      similarMarketImage?: string;
     };
 
     // conditionHash is required (must be 0x-prefixed 32-byte hex)
@@ -172,6 +174,11 @@ router.post('/', async (req: Request, res: Response) => {
           similarMarketVolume:
             typeof similarMarketVolume === 'number' && similarMarketVolume >= 0
               ? similarMarketVolume
+              : undefined,
+          similarMarketImage:
+            typeof similarMarketImage === 'string' &&
+            isHttpUrl(similarMarketImage)
+              ? similarMarketImage
               : undefined,
           conditionGroupId: resolvedGroupId ?? undefined,
           displayOrder: resolvedGroupId ? 0 : undefined,
@@ -371,6 +378,7 @@ router.put('/:id', async (req: Request, res: Response) => {
       tags,
       estimatedPrice,
       similarMarketVolume,
+      similarMarketImage,
     } = req.body as {
       question?: string;
       shortName?: string;
@@ -385,6 +393,7 @@ router.put('/:id', async (req: Request, res: Response) => {
       tags?: string[];
       estimatedPrice?: number;
       similarMarketVolume?: number;
+      similarMarketImage?: string;
     };
 
     const existing = await prisma.condition.findUnique({ where: { id } });
@@ -506,6 +515,10 @@ router.put('/:id', async (req: Request, res: Response) => {
           ...(typeof similarMarketVolume === 'number' &&
           similarMarketVolume >= 0
             ? { similarMarketVolume }
+            : {}),
+          ...(typeof similarMarketImage === 'string' &&
+          isHttpUrl(similarMarketImage)
+            ? { similarMarketImage }
             : {}),
           // Extend endTime if a new forward value was provided
           ...(newEndTime !== undefined ? { endTime: newEndTime } : {}),
