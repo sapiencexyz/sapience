@@ -22,7 +22,7 @@ const getGraphQLEndpoint = () => {
 };
 
 export const createGraphQLClient = () =>
-  new GraphQLClient(getGraphQLEndpoint());
+  new GraphQLClient(getGraphQLEndpoint(), { method: 'GET' });
 
 export async function graphqlRequest<T>(
   query: string,
