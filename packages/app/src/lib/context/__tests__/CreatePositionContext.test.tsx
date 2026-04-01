@@ -61,7 +61,7 @@ describe('CreatePositionContext — predictedOutcome mapping', () => {
     for (const key of Object.keys(store)) delete store[key];
   });
 
-  it('maps prediction: true → OutcomeSide.YES (0)', async () => {
+  it('maps prediction: true → OutcomeSide.YES', async () => {
     const { result } = renderHook(() => useCreatePositionContext(), {
       wrapper,
     });
@@ -73,10 +73,9 @@ describe('CreatePositionContext — predictedOutcome mapping', () => {
     const picks = result.current.getPolymarketPicks();
     expect(picks).toHaveLength(1);
     expect(picks[0].predictedOutcome).toBe(OutcomeSide.YES);
-    expect(picks[0].predictedOutcome).toBe(0);
   });
 
-  it('maps prediction: false → OutcomeSide.NO (1)', async () => {
+  it('maps prediction: false → OutcomeSide.NO', async () => {
     const { result } = renderHook(() => useCreatePositionContext(), {
       wrapper,
     });
@@ -88,7 +87,6 @@ describe('CreatePositionContext — predictedOutcome mapping', () => {
     const picks = result.current.getPolymarketPicks();
     expect(picks).toHaveLength(1);
     expect(picks[0].predictedOutcome).toBe(OutcomeSide.NO);
-    expect(picks[0].predictedOutcome).toBe(1);
   });
 
   it('multi-pick: YES and NO selections produce correct outcome values', async () => {
@@ -125,8 +123,8 @@ describe('CreatePositionContext — predictedOutcome mapping', () => {
 
     expect(pickA).toBeDefined();
     expect(pickB).toBeDefined();
-    expect(pickA!.predictedOutcome).toBe(0); // YES
-    expect(pickB!.predictedOutcome).toBe(1); // NO
+    expect(pickA!.predictedOutcome).toBe(OutcomeSide.YES);
+    expect(pickB!.predictedOutcome).toBe(OutcomeSide.NO);
   });
 
   it('excludes selections without resolverAddress', async () => {
@@ -155,7 +153,9 @@ describe('CreatePositionContext — predictedOutcome mapping', () => {
       );
     });
 
-    expect(result.current.getPolymarketPicks()[0].predictedOutcome).toBe(0); // YES
+    expect(result.current.getPolymarketPicks()[0].predictedOutcome).toBe(
+      OutcomeSide.YES
+    );
 
     act(() => {
       result.current.addSelection(
@@ -165,6 +165,6 @@ describe('CreatePositionContext — predictedOutcome mapping', () => {
 
     const picks = result.current.getPolymarketPicks();
     expect(picks).toHaveLength(1);
-    expect(picks[0].predictedOutcome).toBe(1); // NO
+    expect(picks[0].predictedOutcome).toBe(OutcomeSide.NO);
   });
 });
