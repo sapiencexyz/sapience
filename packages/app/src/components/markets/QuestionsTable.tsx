@@ -61,8 +61,6 @@ interface QuestionsTableProps {
   hasMore?: boolean;
   onFetchMore?: () => void;
 
-  searchTerm: string;
-  onSearchChange: (value: string) => void;
   filters: FilterState;
   onFiltersChange: (filters: FilterState) => void;
 
@@ -470,8 +468,6 @@ export default function QuestionsTable({
   isFetchingMore,
   hasMore,
   onFetchMore,
-  searchTerm,
-  onSearchChange,
   filters,
   onFiltersChange,
   categories,
@@ -598,9 +594,6 @@ export default function QuestionsTable({
         openInterestBounds={filterBounds.openInterestBounds}
         timeToResolutionBounds={filterBounds.timeToResolutionBounds}
         categories={categories}
-        searchTerm={searchTerm}
-        onSearchChange={onSearchChange}
-        className="mt-4"
       />
       <div
         ref={scrollContainerRef}

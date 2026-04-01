@@ -1390,6 +1390,12 @@ type Query {
   """
   pickConfigurations(chainId: Int, resolved: Boolean, result: SettlementResult, skip: Int! = 0, take: Int! = 50, tokens: [String!]): [PickConfiguration!]!
 
+  """Top 20 most-used tags across public conditions"""
+  popularTags: [String!]!
+
+  """Count of token positions for a given holder"""
+  positionCount(chainId: Int, holder: String!, settled: Boolean): Int!
+
   """
   Paginated list of token position balances, filterable by holder, condition, chain, pick config, settlement, date range, collateral range, and won/lost status
   """
@@ -1422,7 +1428,7 @@ type Query {
   """
   Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field
   """
-  questions(categorySlugs: [String!], chainId: Int, maxEstimatedPrice: Float, minEndTime: Int, minEstimatedPrice: Float, resolutionStatus: ResolutionStatus, search: String, skip: Int! = 0, sortDirection: SortOrder! = desc, sortField: QuestionSortField, take: Int! = 50): [Question!]!
+  questions(categorySlugs: [String!], chainId: Int, maxEstimatedPrice: Float, minEndTime: Int, minEstimatedPrice: Float, resolutionStatus: ResolutionStatus, search: String, skip: Int! = 0, sortDirection: SortOrder! = desc, sortField: QuestionSortField, tag: String, take: Int! = 50): [Question!]!
 
   """Look up a single secondary market trade by its trade hash"""
   trade(id: String!): Trade

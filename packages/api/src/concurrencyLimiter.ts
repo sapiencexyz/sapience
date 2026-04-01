@@ -64,17 +64,20 @@ export function createConcurrencyLimiter(opts: ConcurrencyLimiterOptions) {
     // Global limit
     if (activeOperations >= maxConcurrent) {
       console.warn(
-        `[Server] 503 load shed: ${activeOperations}/${maxConcurrent} active, ip=${ip}, path=${req.path}`
+        `[Server] 429 load shed: ${activeOperations}/${maxConcurrent} active, ip=${ip}, path=${req.path}`
       );
       opts.onGlobalShed?.(ip, activeOperations);
-      res.status(503).json({
-        errors: [
-          {
-            message: 'Server is busy. Please retry shortly.',
-            extensions: { code: 'SERVER_BUSY' },
-          },
-        ],
-      });
+      res
+        .set('Retry-After', '1')
+        .status(429)
+        .json({
+          errors: [
+            {
+              message: 'Server is busy. Please retry shortly.',
+              extensions: { code: 'SERVER_BUSY' },
+            },
+          ],
+        });
       return;
     }
 
@@ -82,17 +85,20 @@ export function createConcurrencyLimiter(opts: ConcurrencyLimiterOptions) {
     const ipOps = activePerIp.get(ip) ?? 0;
     if (ipOps >= maxConcurrentPerIp) {
       console.warn(
-        `[Server] 503 per-IP limit: ${ipOps}/${maxConcurrentPerIp} active for ip=${ip}`
+        `[Server] 429 per-IP limit: ${ipOps}/${maxConcurrentPerIp} active for ip=${ip}`
       );
-      res.status(503).json({
-        errors: [
-          {
-            message:
-              'Too many concurrent requests from this IP. Please retry shortly.',
-            extensions: { code: 'IP_CONCURRENCY_EXCEEDED' },
-          },
-        ],
-      });
+      res
+        .set('Retry-After', '1')
+        .status(429)
+        .json({
+          errors: [
+            {
+              message:
+                'Too many concurrent requests from this IP. Please retry shortly.',
+              extensions: { code: 'IP_CONCURRENCY_EXCEEDED' },
+            },
+          ],
+        });
       return;
     }
 

@@ -1488,6 +1488,10 @@ export type Query = {
   pickConfiguration?: Maybe<PickConfiguration>;
   /** Paginated list of pick configurations, filterable by chain, resolution status, and result */
   pickConfigurations: Array<PickConfiguration>;
+  /** Top 20 most-used tags across public conditions */
+  popularTags: Array<Scalars['String']['output']>;
+  /** Count of token positions for a given holder */
+  positionCount: Scalars['Int']['output'];
   /** Paginated list of token position balances, filterable by holder, condition, chain, pick config, settlement, date range, collateral range, and won/lost status */
   positions: Array<Position>;
   /** Look up a single prediction by its on-chain prediction ID */
@@ -1687,6 +1691,13 @@ export type QueryPickConfigurationsArgs = {
 };
 
 
+export type QueryPositionCountArgs = {
+  chainId?: InputMaybe<Scalars['Int']['input']>;
+  holder: Scalars['String']['input'];
+  settled?: InputMaybe<Scalars['Boolean']['input']>;
+};
+
+
 export type QueryPositionsArgs = {
   chainId?: InputMaybe<Scalars['Int']['input']>;
   collateralMax?: InputMaybe<Scalars['String']['input']>;
@@ -1754,6 +1765,7 @@ export type QueryQuestionsArgs = {
   skip?: Scalars['Int']['input'];
   sortDirection?: SortOrder;
   sortField?: InputMaybe<QuestionSortField>;
+  tag?: InputMaybe<Scalars['String']['input']>;
   take?: Scalars['Int']['input'];
 };
 

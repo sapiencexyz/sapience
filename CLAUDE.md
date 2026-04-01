@@ -4,6 +4,39 @@ Sapience is a pnpm monorepo (Node ≥ 20.14, pnpm 9.x). Run `pnpm install` to se
 
 See [`AGENTS.md`](AGENTS.md) for comprehensive project context, commands, CI requirements, and deployment details. Package-level guides exist at `packages/*/AGENTS.md` and `packages/*/CLAUDE.md`.
 
+## Project Overview
+
+This is a prediction market platform (Sapience) with: keeper services, GraphQL API, React frontend, Polymarket integration, on-chain settlement via conditional tokens. Key packages: keeper, frontend (FE), relayer, API. Predictions have conditions, positions, and settlement flows.
+
+## Terminology
+
+- **Predictions** are created by users and do not ALL settle.
+- **Conditions** settle on-chain.
+- **Positions** are user holdings.
+- Do not confuse these terms.
+- The **keeper** package handles cron jobs, settlement, and relisting.
+- The **API** package handles GraphQL resolvers.
+
+## External APIs
+
+When working with Polymarket API: use `condition_ids` (plural) as repeated query params, not `condition_id`. EndDates come from the `end_date_iso` field. Always verify API parameter names against actual API responses before assuming.
+
+## Git & PRs
+
+When creating PRs: only include changes that are actually in the diff vs the target branch. Do NOT mention changes already merged to main. Run `git diff main..HEAD --stat` to verify.
+
+## Debugging
+
+Before investigating any bug or issue, ASK the user:
+
+1. Which package/layer is affected? (keeper, API, frontend, relayer, SDK)
+2. Which files or area within that package?
+3. What behavior are you seeing vs what you expect?
+
+Do NOT start searching the codebase until you have at least (1) and (3). Do not guess the package — the wrong assumption wastes entire rounds of investigation.
+
+When debugging data issues, distinguish between frontend vs API as the source of the problem BEFORE making changes.
+
 ## Test-Driven Development
 
 Write tests before implementation. When adding or changing behavior:

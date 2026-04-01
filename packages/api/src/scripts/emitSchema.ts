@@ -33,6 +33,7 @@ import {
   TimeSeriesResolver,
   CollateralBalanceResolver,
   ActivityResolver,
+  TagsResolver,
 } from '../graphql/resolvers';
 
 // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
@@ -56,6 +57,7 @@ const allResolvers: Function[] = [
   TimeSeriesResolver,
   CollateralBalanceResolver,
   ActivityResolver,
+  TagsResolver,
 ];
 
 await buildSchema({

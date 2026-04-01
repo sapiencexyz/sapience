@@ -8,6 +8,7 @@ import { Table, TableBody, TableCell } from '@sapience/ui/components/ui/table';
 import { Button } from '@sapience/ui/components/ui/button';
 import { RefreshCw } from 'lucide-react';
 import PercentChance from '~/components/shared/PercentChance';
+import { inferResolverKind } from '~/lib/resolvers/conditionResolver';
 import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 import {
   useRecentCombos,
@@ -30,6 +31,7 @@ function comboToLegs(combo: RecentCombo): Pick[] {
   const legs: Pick[] = [];
   for (const p of combo.picks) {
     if (!p.condition) continue;
+    const resolverKind = inferResolverKind(p.condition.resolver);
     legs.push({
       question: p.condition.question ?? '',
       choice: isPredictedYes(p.predictedOutcome) ? 'Yes' : 'No',
@@ -37,6 +39,7 @@ function comboToLegs(combo: RecentCombo): Pick[] {
       resolverAddress: p.condition.resolver,
       categorySlug: p.condition.category?.slug,
       endTime: p.condition.endTime,
+      ...(resolverKind === 'pyth' && { source: 'pyth' as const }),
     });
   }
   return legs;
