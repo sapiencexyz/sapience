@@ -413,6 +413,28 @@ export class EscrowResolver {
     return prisma.prediction.count({ where });
   }
 
+  @Query(() => Int, {
+    description: 'Count of token positions for a given holder',
+  })
+  async positionCount(
+    @Arg('holder', () => String) holder: string,
+    @Arg('settled', () => Boolean, { nullable: true }) settled?: boolean,
+    @Arg('chainId', () => Int, { nullable: true }) chainId?: number
+  ): Promise<number> {
+    const where: Prisma.PositionWhereInput = {
+      holder: holder.toLowerCase(),
+      // Exclude zero-balance unsettled positions (same as positions query)
+      NOT: { balance: '0', pickConfiguration: { resolved: false } },
+    };
+    if (settled !== undefined && settled !== null) {
+      where.pickConfiguration = { resolved: settled };
+    }
+    if (chainId !== undefined && chainId !== null) {
+      where.chainId = chainId;
+    }
+    return prisma.position.count({ where });
+  }
+
   @Query(() => [PredictionType], {
     description:
       'Paginated list of escrow-based predictions, filterable by address, condition, chain, and settlement status',

@@ -117,7 +117,43 @@ SET session_replication_role = 'replica';
 SET session_replication_role = 'origin';
 RESTORE
 
-# Step 3: Manually reset sequences to match current data
+# Step 3: Backfill denormalized columns (triggers didn't fire during COPY)
+echo "Backfilling denormalized aggregate columns..."
+psql -U $LOCAL_USER -d $DB_NAME_LOCAL <<'BACKFILL'
+-- Backfill condition_group denormalized aggregates
+UPDATE condition_group cg
+SET
+  "totalOpenInterest"    = COALESCE(sub.total_oi, 0),
+  "maxEndTime"           = COALESCE(sub.max_et, 0),
+  "totalPredictionCount" = COALESCE(sub.total_pc, 0),
+  "maxCreatedAtEpoch"    = COALESCE(sub.max_ca, 0),
+  "publicConditionCount" = COALESCE(sub.pub_count, 0)
+FROM (
+  SELECT
+    "conditionGroupId",
+    SUM("openInterest"::numeric) AS total_oi,
+    MAX("endTime") AS max_et,
+    SUM("predictionCount") AS total_pc,
+    MAX(FLOOR(EXTRACT(EPOCH FROM "createdAt"))::bigint) AS max_ca,
+    COUNT(*)::integer AS pub_count
+  FROM condition
+  WHERE "conditionGroupId" IS NOT NULL AND public = true
+  GROUP BY "conditionGroupId"
+) sub
+WHERE cg.id = sub."conditionGroupId";
+
+-- Backfill condition.predictionCount from prediction table
+UPDATE condition c
+SET "predictionCount" = COALESCE(sub.cnt, 0)
+FROM (
+  SELECT "conditionId", COUNT(*)::integer AS cnt
+  FROM prediction
+  GROUP BY "conditionId"
+) sub
+WHERE c.id = sub."conditionId";
+BACKFILL
+
+# Step 4: Manually reset sequences to match current data
 echo "Manually resetting sequences..."
 psql -U $LOCAL_USER -d $DB_NAME_LOCAL <<EOF
 DO \$\$
