@@ -13,6 +13,9 @@ interface IV2Types {
     }
 
     /// @notice Settlement result for a prediction
+    /// @dev No DRAW/REFUND variant exists by design. Non-decisive outcomes (ties,
+    ///      voids, oracle deadline expiry) resolve to COUNTERPARTY_WINS — predictors
+    ///      must achieve a decisive win on every leg to claim.
     enum SettlementResult {
         UNRESOLVED,
         PREDICTOR_WINS,
