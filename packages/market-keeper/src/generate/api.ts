@@ -112,6 +112,7 @@ export async function submitCondition(
         public: true,
         estimatedPrice: condition.estimatedPrice,
         similarMarketVolume: condition.similarMarketVolume,
+        similarMarketImage: condition.similarMarketImage,
       }),
     });
 
