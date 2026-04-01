@@ -223,6 +223,7 @@ router.put('/prices', async (req: Request, res: Response) => {
         id: string;
         estimatedPrice: number;
         similarMarketVolume?: number;
+        similarMarketImage?: string;
       }>;
     };
 
@@ -266,6 +267,10 @@ router.put('/prices', async (req: Request, res: Response) => {
             ...(typeof u.similarMarketVolume === 'number' &&
             u.similarMarketVolume >= 0
               ? { similarMarketVolume: u.similarMarketVolume }
+              : {}),
+            ...(typeof u.similarMarketImage === 'string' &&
+            isHttpUrl(u.similarMarketImage)
+              ? { similarMarketImage: u.similarMarketImage }
               : {}),
           },
         })
