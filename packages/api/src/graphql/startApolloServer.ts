@@ -123,6 +123,11 @@ export const initializeApolloServer = async () => {
   // Create Apollo Server with the combined schema, depth limit, and query complexity limit
   const apolloServer = new ApolloServer({
     schema,
+    // Allow GET requests for GraphQL queries — enables CDN edge caching.
+    // Safe to disable: the API is stateless with no cookie/session auth
+    // (wallet signatures via x-admin-signature header), so CSRF does not apply.
+    // All data is public, CORS is strict, and error responses are excluded from caching.
+    csrfPrevention: false,
     formatError: (formattedError, error) => {
       console.error('GraphQL Error:', error);
       if (!config.isDev) {
