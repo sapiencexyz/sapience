@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { OutcomeSide } from '@sapience/sdk/types';
 import {
   normalizePredictionToProbability,
   outcomeFromCondition,
@@ -42,14 +43,14 @@ describe('normalizePredictionToProbability', () => {
 });
 
 describe('outcomeFromCondition', () => {
-  it('returns 1 when resolved to yes', () => {
+  it('returns YES when resolved to yes', () => {
     const condition = { settled: true, resolvedToYes: true };
-    expect(outcomeFromCondition(condition)).toBe(1);
+    expect(outcomeFromCondition(condition)).toBe(OutcomeSide.YES);
   });
 
-  it('returns 0 when resolved to no', () => {
+  it('returns NO when resolved to no', () => {
     const condition = { settled: true, resolvedToYes: false };
-    expect(outcomeFromCondition(condition)).toBe(0);
+    expect(outcomeFromCondition(condition)).toBe(OutcomeSide.NO);
   });
 
   it('returns null when not settled', () => {

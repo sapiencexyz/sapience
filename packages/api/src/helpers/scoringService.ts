@@ -1,3 +1,4 @@
+import { OutcomeSide } from '@sapience/sdk/types';
 import prisma from '../db';
 import {
   normalizePredictionToProbability,
@@ -337,7 +338,7 @@ export async function computeTimeWeightedForAttesterSummary(
     MarketKey,
     {
       end: number | null;
-      outcome: 0 | 1 | null;
+      outcome: OutcomeSide | null;
     }
   >();
 
@@ -458,7 +459,7 @@ export async function computeTimeWeightedForAttestersSummary(
     MarketKey,
     {
       end: number | null;
-      outcome: 0 | 1 | null;
+      outcome: OutcomeSide | null;
     }
   >();
 
@@ -493,7 +494,7 @@ export async function computeTimeWeightedForAttestersSummary(
     {
       att: string;
       end: number;
-      outcome: 0 | 1;
+      outcome: OutcomeSide;
       seq: { t: number; p: number }[];
     }
   >();
@@ -509,7 +510,7 @@ export async function computeTimeWeightedForAttestersSummary(
       groups.set(gg, {
         att,
         end: m.end as number,
-        outcome: m.outcome as 0 | 1,
+        outcome: m.outcome as OutcomeSide,
         seq: [],
       });
     const p = r.probabilityFloat as number;
