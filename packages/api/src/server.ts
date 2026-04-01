@@ -9,7 +9,7 @@ import type { Socket } from 'net';
 import { initSentry } from './instrument';
 import { initializeApolloServer } from './graphql/startApolloServer';
 import Sentry from './instrument';
-import express, { NextFunction, Request, Response } from 'express';
+import { NextFunction, Request, Response } from 'express';
 import { initializeFixtures } from './fixtures';
 import prisma from './db';
 import { config } from './config';
@@ -19,6 +19,7 @@ import {
   proxyAuctionWebSocket,
 } from './utils/auctionProxy';
 import { cdnCacheMiddleware } from './graphql/plugins/httpCacheHeadersPlugin';
+import { requestQueryCounter } from './db';
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
 
@@ -67,14 +68,28 @@ const startServer = async () => {
     }
   );
 
-  // Add GraphQL endpoint with payload size limit and request timeout
+  // Add GraphQL endpoint with concurrency limiting and request timeout
   app.use(
     '/graphql',
+    // Per-request timing + query counter
+    (req: Request, res: Response, next: NextFunction) => {
+      const store = { count: 0 };
+      requestQueryCounter.run(store, () => {
+        const start = performance.now();
+        const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+        res.on('finish', () => {
+          const ms = (performance.now() - start).toFixed(1);
+          console.log(
+            `[http] ${req.method} /graphql ${res.statusCode} ${ms}ms (${store.count} queries) ip=${ip}`
+          );
+        });
+        next();
+      });
+    },
     // Request timeout first — defends against slowloris (slow body delivery holding slots)
     timeoutMiddleware,
     // Concurrency limiter — global + per-IP
     concurrencyMiddleware,
-    express.json({ limit: '100kb' }),
     // CDN cache headers — intercepts writeHead to set Cache-Control
     // after Apollo's responseCachePlugin has finished
     cdnCacheMiddleware as unknown as (
@@ -82,18 +97,6 @@ const startServer = async () => {
       res: Response,
       next: NextFunction
     ) => void,
-    // Request timeout middleware
-    (_req: Request, res: Response, next: NextFunction) => {
-      const timeout = config.GRAPHQL_REQUEST_TIMEOUT_MS;
-      res.setTimeout(timeout, () => {
-        if (!res.headersSent) {
-          res.status(408).json({
-            errors: [{ message: `Request timeout after ${timeout}ms` }],
-          });
-        }
-      });
-      next();
-    },
     expressMiddleware(apolloServer, {
       context: async () => ({
         prisma,

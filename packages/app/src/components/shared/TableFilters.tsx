@@ -47,11 +47,14 @@ export function TableFilters<TStatus extends string>({
   onFiltersChange,
   config,
   className,
+  inline,
 }: {
   filters: TableFilterState<TStatus>;
   onFiltersChange: (filters: TableFilterState<TStatus>) => void;
   config: TableFiltersConfig<TStatus>;
   className?: string;
+  /** When true, renders filter elements without a wrapping grid container (for embedding in a parent grid). */
+  inline?: boolean;
 }) {
   const isMobile = useIsMobile();
   const dateMin = config.dateRange.min ?? DEFAULT_DATE_MIN;
@@ -101,13 +104,8 @@ export function TableFilters<TStatus extends string>({
     onFiltersChange({ ...filters, searchTerm: e.target.value });
   };
 
-  return (
-    <div
-      className={cn(
-        'grid gap-2 md:gap-4 grid-cols-2 md:grid-cols-4',
-        className
-      )}
-    >
+  const content = (
+    <>
       <div className="relative flex items-center">
         <Search className="hidden md:block absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none z-10" />
         <input
@@ -161,6 +159,19 @@ export function TableFilters<TStatus extends string>({
         showSign
         customLabels={config.dateRange.customLabels}
       />
+    </>
+  );
+
+  if (inline) return content;
+
+  return (
+    <div
+      className={cn(
+        'grid gap-2 md:gap-4 grid-cols-2 md:grid-cols-4',
+        className
+      )}
+    >
+      {content}
     </div>
   );
 }

@@ -55,19 +55,25 @@ function getCategoryColor(slug?: string | null): string {
 export function StackedIcons({
   picks,
   className,
+  max,
 }: {
   picks: Pick[];
   className?: string;
+  /** Maximum number of icons to display. Defaults to showing all. */
+  max?: number;
 }) {
   if (!picks || picks.length === 0) {
     return null;
   }
 
-  const colors = picks.map((pick) => getCategoryColor(pick.categorySlug));
+  const visiblePicks = max != null ? picks.slice(0, max) : picks;
+  const colors = visiblePicks.map((pick) =>
+    getCategoryColor(pick.categorySlug)
+  );
 
   return (
     <div className={`flex items-center -space-x-2 ${className ?? ''}`}>
-      {picks.map((pick, i) => {
+      {visiblePicks.map((pick, i) => {
         const isPyth = pick.source === 'pyth';
         const CategoryIcon = getCategoryIcon(pick.categorySlug);
         const color = colors[i] || 'hsl(var(--muted-foreground))';

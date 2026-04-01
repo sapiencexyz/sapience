@@ -114,6 +114,7 @@ async function createAuctionRFQ(): Promise<AuctionRFQPayload> {
     predictorDeadline: deadline,
     intentSignature,
     chainId: TEST_CHAIN_ID,
+    escrowContract: TEST_ESCROW_ADDRESS,
   };
 }
 

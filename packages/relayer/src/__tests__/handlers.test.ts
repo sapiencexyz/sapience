@@ -8,13 +8,6 @@ vi.mock('@sapience/sdk/auction/validation', () => ({
   validateBid: vi.fn(),
 }));
 
-// ── Mock contract addresses ────────────────────────────────────────────────
-vi.mock('@sapience/sdk/contracts/addresses', () => ({
-  predictionMarketEscrow: {
-    5064014: { address: '0xEscrowAddress' },
-  },
-}));
-
 // ── Mock escrowRegistry ────────────────────────────────────────────────────
 vi.mock('../escrowRegistry', () => ({
   upsertEscrowAuction: vi.fn(() => 'auction-123'),
@@ -142,6 +135,7 @@ const baseAuctionPayload = {
     },
   ],
   chainId: 5064014,
+  escrowContract: '0xEscrowAddress',
   predictorNonce: 1,
   predictorDeadline: Math.floor(Date.now() / 1000) + 3600,
 };
@@ -200,18 +194,37 @@ describe('Escrow Handlers', () => {
       expect(errorsTotal.inc).toHaveBeenCalled();
     });
 
-    it('rejects unknown chainId before validation', async () => {
+    it('rejects missing escrowContract before validation', async () => {
       const client = mockClient();
       const subs = mockSubs();
-      const payload = { ...baseAuctionPayload, chainId: 999999 };
+      const { escrowContract: _, ...payloadWithout } = baseAuctionPayload;
 
-      await handleAuctionStart(client, payload as never, subs, ctx);
+      await handleAuctionStart(client, payloadWithout as never, subs, ctx);
 
       expect(validateAuctionRFQ).not.toHaveBeenCalled();
       expect(client.send).toHaveBeenCalledWith(
         expect.objectContaining({
           type: 'auction.ack',
-          payload: expect.objectContaining({ error: 'unknown_chain_id' }),
+          payload: expect.objectContaining({
+            error: 'missing_escrow_contract',
+          }),
+        })
+      );
+    });
+
+    it('uses escrowContract as verifyingContract for validation', async () => {
+      vi.mocked(validateAuctionRFQ).mockResolvedValue({ status: 'valid' });
+      vi.mocked(getEscrowAuctionDetails).mockReturnValue(undefined);
+
+      const client = mockClient();
+      const subs = mockSubs();
+
+      await handleAuctionStart(client, baseAuctionPayload as never, subs, ctx);
+
+      expect(validateAuctionRFQ).toHaveBeenCalledWith(
+        baseAuctionPayload,
+        expect.objectContaining({
+          verifyingContract: '0xEscrowAddress',
         })
       );
     });
@@ -498,6 +511,37 @@ describe('Escrow Handlers', () => {
       );
       expect(bidsSubmitted.inc).toHaveBeenCalledWith({ status: 'rejected' });
       expect(addEscrowBid).not.toHaveBeenCalled();
+    });
+
+    it('uses escrowContract from auction record for bid validation', async () => {
+      const auctionRecord = {
+        auction: {
+          ...baseAuctionPayload,
+          escrowContract: '0xAuctionEscrow',
+        },
+        bids: [],
+        deadlineMs: Date.now() + 60000,
+      };
+      vi.mocked(getEscrowAuction).mockReturnValue(auctionRecord as never);
+      vi.mocked(validateBid).mockResolvedValue({ status: 'valid' });
+      vi.mocked(addEscrowBid).mockReturnValue({
+        ...baseBid,
+        receivedAt: new Date().toISOString(),
+      } as never);
+      vi.mocked(getEscrowBids).mockReturnValue([]);
+
+      const client = mockClient();
+      const subs = mockSubs();
+
+      await handleBidSubmit(client, baseBid as never, subs);
+
+      expect(validateBid).toHaveBeenCalledWith(
+        baseBid,
+        auctionRecord.auction,
+        expect.objectContaining({
+          verifyingContract: '0xAuctionEscrow',
+        })
+      );
     });
 
     it('passes through unverified bids', async () => {

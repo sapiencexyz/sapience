@@ -33,6 +33,7 @@ const GET_QUESTIONS = /* GraphQL */ `
     $resolutionStatus: ResolutionStatus
     $minEstimatedPrice: Float
     $maxEstimatedPrice: Float
+    $tag: String
   ) {
     questions(
       take: $take
@@ -46,6 +47,7 @@ const GET_QUESTIONS = /* GraphQL */ `
       resolutionStatus: $resolutionStatus
       minEstimatedPrice: $minEstimatedPrice
       maxEstimatedPrice: $maxEstimatedPrice
+      tag: $tag
     ) {
       questionType
       group {
@@ -127,6 +129,7 @@ export interface FetchQuestionsSortedParams {
   resolutionStatus?: string;
   minEstimatedPrice?: number;
   maxEstimatedPrice?: number;
+  tag?: string;
 }
 
 export async function fetchQuestionsSorted(
@@ -147,6 +150,7 @@ export async function fetchQuestionsSorted(
     resolutionStatus: params.resolutionStatus ?? null,
     minEstimatedPrice: params.minEstimatedPrice ?? null,
     maxEstimatedPrice: params.maxEstimatedPrice ?? null,
+    tag: params.tag ?? null,
   };
 
   const data = await graphqlRequest<QuestionsQueryResult>(

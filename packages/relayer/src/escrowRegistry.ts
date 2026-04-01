@@ -123,6 +123,7 @@ export function getEscrowAuctionDetails(
       predictorSessionKeyData: rec.auction.predictorSessionKeyData,
     }),
     chainId: rec.auction.chainId,
+    escrowContract: rec.auction.escrowContract,
     createdAt: new Date(rec.deadlineMs - 60_000).toISOString(), // Approximate creation time
     ...(rec.auction.predictorSponsor && {
       predictorSponsor: rec.auction.predictorSponsor,

@@ -43,6 +43,7 @@ function createListing(
     sellerDeadline: futureDeadline,
     sellerSignature: '0x' + 'ab'.repeat(65),
     chainId: 13374202,
+    escrowContract: '0x3c2783afA444c157eE3689E6306cFC0f2FbD231B',
     ...overrides,
   };
 }

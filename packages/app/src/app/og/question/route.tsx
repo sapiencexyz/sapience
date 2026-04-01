@@ -2,7 +2,10 @@ import { ImageResponse } from 'next/og';
 import { parseUnits, zeroAddress } from 'viem';
 import { createEscrowAuctionWs } from '@sapience/sdk/relayer/escrowAuctionWs';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
-import { conditionalTokensConditionResolver } from '@sapience/sdk/contracts';
+import {
+  conditionalTokensConditionResolver,
+  predictionMarketEscrow,
+} from '@sapience/sdk/contracts';
 import { canonicalizePicks } from '@sapience/sdk/auction/escrowEncoding';
 import { OutcomeSide } from '@sapience/sdk/types';
 import {
@@ -253,6 +256,8 @@ async function fetchEstimate(conditionId: string): Promise<number | null> {
           predictorNonce: 0,
           predictorDeadline: nowSec + 300,
           chainId: DEFAULT_CHAIN_ID,
+          escrowContract:
+            predictionMarketEscrow[DEFAULT_CHAIN_ID]?.address ?? '',
         });
       },
       onAuctionBids: (payload) => {

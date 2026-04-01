@@ -904,6 +904,7 @@ async function main() {
         functionName: 'verifyUpdate',
         args: [blob],
         value: verificationFee,
+        account: walletClient?.account ?? undefined,
       });
       const [payload] = sim.result as unknown as readonly [Hex, Address];
       const parsed = parseLazerPayload(payload);
