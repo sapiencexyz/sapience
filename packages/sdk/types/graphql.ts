@@ -467,6 +467,8 @@ export type Condition = {
   settled: Scalars['Boolean']['output'];
   settledAt?: Maybe<Scalars['Int']['output']>;
   shortName?: Maybe<Scalars['String']['output']>;
+  /** Image URL from Polymarket similar market */
+  similarMarketImage?: Maybe<Scalars['String']['output']>;
   /** USD total trading volume from Polymarket similar market */
   similarMarketVolume: Scalars['Float']['output'];
   similarMarkets: Array<Scalars['String']['output']>;
@@ -675,6 +677,7 @@ export type ConditionOrderByWithRelationInput = {
   settled?: InputMaybe<SortOrder>;
   settledAt?: InputMaybe<SortOrderInput>;
   shortName?: InputMaybe<SortOrderInput>;
+  similarMarketImage?: InputMaybe<SortOrderInput>;
   similarMarketVolume?: InputMaybe<SortOrder>;
   similarMarkets?: InputMaybe<SortOrder>;
   tags?: InputMaybe<SortOrder>;
@@ -707,6 +710,7 @@ export type ConditionScalarFieldEnum =
   | 'settled'
   | 'settledAt'
   | 'shortName'
+  | 'similarMarketImage'
   | 'similarMarketVolume'
   | 'similarMarkets'
   | 'tags';
@@ -740,6 +744,7 @@ export type ConditionWhereInput = {
   settled?: InputMaybe<BoolFilter>;
   settledAt?: InputMaybe<IntNullableFilter>;
   shortName?: InputMaybe<StringNullableFilter>;
+  similarMarketImage?: InputMaybe<StringNullableFilter>;
   similarMarketVolume?: InputMaybe<FloatFilter>;
   similarMarkets?: InputMaybe<StringNullableListFilter>;
   tags?: InputMaybe<StringNullableListFilter>;
@@ -774,6 +779,7 @@ export type ConditionWhereUniqueInput = {
   settled?: InputMaybe<BoolFilter>;
   settledAt?: InputMaybe<IntNullableFilter>;
   shortName?: InputMaybe<StringNullableFilter>;
+  similarMarketImage?: InputMaybe<StringNullableFilter>;
   similarMarketVolume?: InputMaybe<FloatFilter>;
   similarMarkets?: InputMaybe<StringNullableListFilter>;
   tags?: InputMaybe<StringNullableListFilter>;

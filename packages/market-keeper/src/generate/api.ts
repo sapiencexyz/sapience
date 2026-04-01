@@ -112,6 +112,7 @@ export async function submitCondition(
         public: true,
         estimatedPrice: condition.estimatedPrice,
         similarMarketVolume: condition.similarMarketVolume,
+        similarMarketImage: condition.similarMarketImage,
       }),
     });
 
@@ -258,6 +259,7 @@ export async function submitPriceUpdates(
     id: string;
     estimatedPrice: number;
     similarMarketVolume?: number;
+    similarMarketImage?: string;
   }>
 ): Promise<void> {
   if (priceUpdates.length === 0) {

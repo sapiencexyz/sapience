@@ -124,12 +124,18 @@ async function fetchActiveConditionIds(apiUrl: string): Promise<string[]> {
 async function fetchPolymarketPrices(
   conditionIds: string[]
 ): Promise<
-  Array<{ id: string; estimatedPrice: number; similarMarketVolume?: number }>
+  Array<{
+    id: string;
+    estimatedPrice: number;
+    similarMarketVolume?: number;
+    similarMarketImage?: string;
+  }>
 > {
   const priceUpdates: Array<{
     id: string;
     estimatedPrice: number;
     similarMarketVolume?: number;
+    similarMarketImage?: string;
   }> = [];
   const BATCH_SIZE = 50; // Polymarket API query string limit
 
@@ -155,6 +161,7 @@ async function fetchPolymarketPrices(
         conditionId: string;
         outcomePrices?: string | number[];
         volume?: string;
+        image?: string;
       }>;
 
       for (const market of markets) {
@@ -164,6 +171,7 @@ async function fetchPolymarketPrices(
             id: market.conditionId,
             estimatedPrice: price,
             similarMarketVolume: parseFloat(market.volume || '0') || 0,
+            similarMarketImage: market.image,
           });
         }
       }
