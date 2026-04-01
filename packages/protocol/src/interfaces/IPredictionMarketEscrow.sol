@@ -13,7 +13,7 @@ interface IPredictionMarketEscrow {
     // ============ Errors ============
 
     error InvalidPredictorSignature();
-    error InvalidCounterpartSignature();
+    error InvalidCounterpartySignature();
     error ExpiredDeadline();
     error NonceAlreadyUsed();
     error PredictionNotFound();

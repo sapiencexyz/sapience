@@ -240,7 +240,7 @@ contract PredictionMarketEscrow is
                 request.counterpartySignature,
                 request.counterpartySessionKeyData
             )) {
-            revert InvalidCounterpartSignature();
+            revert InvalidCounterpartySignature();
         }
 
         // Use bitmap nonces (reverts if already used)
@@ -487,7 +487,7 @@ contract PredictionMarketEscrow is
                 request.counterpartySignature,
                 request.counterpartySessionKeyData
             )) {
-            revert InvalidCounterpartSignature();
+            revert InvalidCounterpartySignature();
         }
 
         // Use bitmap nonces (reverts if already used)
