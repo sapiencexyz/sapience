@@ -90,17 +90,20 @@ describe('parseEndTimeResponse', () => {
   ];
 
   it('parses valid CSV with ISO dates', () => {
-    const content = `${id1},2026-04-01T12:00:00Z\n${id2},2026-05-15T23:59:59Z`;
+    // Use dates far in the future so the test doesn't break as time passes
+    const futureDate1 = '2099-04-01T12:00:00Z';
+    const futureDate2 = '2099-05-15T23:59:59Z';
+    const content = `${id1},${futureDate1}\n${id2},${futureDate2}`;
     const results = parseEndTimeResponse(content, markets);
 
     expect(results).toHaveLength(2);
     expect(results[0].conditionId).toBe(id1);
     expect(results[0].endTime).toBe(
-      Math.floor(new Date('2026-04-01T12:00:00Z').getTime() / 1000)
+      Math.floor(new Date(futureDate1).getTime() / 1000)
     );
     expect(results[1].conditionId).toBe(id2);
     expect(results[1].endTime).toBe(
-      Math.floor(new Date('2026-05-15T23:59:59Z').getTime() / 1000)
+      Math.floor(new Date(futureDate2).getTime() / 1000)
     );
   });
 
