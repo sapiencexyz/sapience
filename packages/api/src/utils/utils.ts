@@ -15,7 +15,7 @@ import * as Sentry from '@sentry/node';
 
 export const etherealChain: viem.Chain = {
   id: 5064014,
-  name: 'EtherealChain',
+  name: 'Ethereal Chain',
   nativeCurrency: {
     name: 'Ethena USDe',
     symbol: 'USDe',

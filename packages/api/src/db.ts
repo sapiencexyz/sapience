@@ -1,5 +1,8 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { PrismaClient } from '../generated/prisma';
 import { config } from './config';
+
+export const requestQueryCounter = new AsyncLocalStorage<{ count: number }>();
 
 let _instance: PrismaClient | undefined;
 
@@ -31,6 +34,13 @@ function getInstance(): PrismaClient {
       maxWait: config.PRISMA_QUERY_TIMEOUT_MS,
       timeout: config.PRISMA_QUERY_TIMEOUT_MS,
     },
+  });
+
+  // Query counter middleware
+  _instance.$use(async (params, next) => {
+    const store = requestQueryCounter.getStore();
+    if (store) store.count++;
+    return next(params);
   });
 
   // Query timeout middleware - bounds individual query execution time

@@ -135,13 +135,13 @@ PGSSLMODE=require PGPASSWORD=$DB_PASSWORD pg_dump -C --no-owner --no-acl --no-co
 # Extract constraints to add back later
 echo "Extracting constraints for later addition..."
 PGSSLMODE=require PGPASSWORD=$DB_PASSWORD pg_dump -C --no-owner --no-acl --no-comments --schema-only -U $DB_USER -h $DB_HOST -p $DB_PORT -d $DB_NAME \
-  --exclude-table-data="*_seq" | awk '/^(ALTER TABLE|CREATE UNIQUE INDEX|CREATE INDEX)/ { 
-      line = $0; 
-      while (!match(line, /;$/)) { 
-        getline next_line; 
-        line = line "\n" next_line; 
-      } 
-      print line; 
+  --exclude-table-data="*_seq" | awk '/^(ALTER TABLE|CREATE UNIQUE INDEX|CREATE INDEX|CREATE TRIGGER)/ {
+      line = $0;
+      while (!match(line, /;$/)) {
+        getline next_line;
+        line = line "\n" next_line;
+      }
+      print line;
     }' > constraints.sql
 
 # Check if the dump file was created
@@ -164,7 +164,7 @@ fi
 # Remove constraints from the dump file to avoid constraint violations during data insertion
 echo "Removing constraints from dump file..."
 awk '
-/^(ALTER TABLE|CREATE UNIQUE INDEX|CREATE INDEX)/ {
+/^(ALTER TABLE|CREATE UNIQUE INDEX|CREATE INDEX|CREATE TRIGGER)/ {
     # Skip this line and continue reading until we find a semicolon
     while (!match($0, /;$/)) {
         getline;

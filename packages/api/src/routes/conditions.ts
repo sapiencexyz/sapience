@@ -68,16 +68,16 @@ router.post('/', async (req: Request, res: Response) => {
       });
     }
 
-    // Validate resolver if provided
-    if (resolver) {
-      if (
-        typeof resolver !== 'string' ||
-        !/^0x[a-fA-F0-9]{40}$/.test(resolver)
-      ) {
-        return res.status(400).json({
-          message: 'Resolver must be a valid Ethereum address (0x...)',
-        });
-      }
+    // Validate resolver — required, must be a valid Ethereum address
+    if (
+      !resolver ||
+      typeof resolver !== 'string' ||
+      !/^0x[a-fA-F0-9]{40}$/.test(resolver)
+    ) {
+      return res.status(400).json({
+        message:
+          'resolver is required and must be a valid Ethereum address (0x-prefixed, 40 hex chars)',
+      });
     }
 
     let resolvedCategoryId: number | null = null;
@@ -182,7 +182,7 @@ router.post('/', async (req: Request, res: Response) => {
               : undefined,
           conditionGroupId: resolvedGroupId ?? undefined,
           displayOrder: resolvedGroupId ? 0 : undefined,
-          resolver: resolver ? resolver.toLowerCase() : undefined,
+          resolver: resolver.toLowerCase(),
         },
         include: { category: true, conditionGroup: true },
       });

@@ -411,8 +411,8 @@ type Condition {
   question: String!
   resolvedToYes: Boolean!
 
-  """Canonical resolver address for this condition (latest observed wins)"""
-  resolver: String
+  """Canonical resolver address for this condition (required)"""
+  resolver: String!
   settled: Boolean!
   settledAt: Int
   shortName: String
@@ -562,7 +562,7 @@ input ConditionOrderByWithRelationInput {
   public: SortOrder
   question: SortOrder
   resolvedToYes: SortOrder
-  resolver: SortOrderInput
+  resolver: SortOrder
   settled: SortOrder
   settledAt: SortOrderInput
   shortName: SortOrderInput
@@ -630,7 +630,7 @@ input ConditionWhereInput {
   public: BoolFilter
   question: StringFilter
   resolvedToYes: BoolFilter
-  resolver: StringNullableFilter
+  resolver: StringFilter
   settled: BoolFilter
   settledAt: IntNullableFilter
   shortName: StringNullableFilter
@@ -665,7 +665,7 @@ input ConditionWhereUniqueInput {
   public: BoolFilter
   question: StringFilter
   resolvedToYes: BoolFilter
-  resolver: StringNullableFilter
+  resolver: StringFilter
   settled: BoolFilter
   settledAt: IntNullableFilter
   shortName: StringNullableFilter

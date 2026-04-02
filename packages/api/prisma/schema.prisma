@@ -183,8 +183,8 @@ model Condition {
   /// Image URL from Polymarket similar market
   similarMarketImage  String?      @db.VarChar
   predictionCount  Int             @default(0)
-  /// Canonical resolver address for this condition (latest observed wins)
-  resolver         String?         @db.VarChar
+  /// Canonical resolver address for this condition (required)
+  resolver         String          @db.VarChar
   /// YES probability from Polymarket (0.0–1.0), null for non-Polymarket
   estimatedPrice   Float?
 
