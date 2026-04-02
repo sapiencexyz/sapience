@@ -28,12 +28,24 @@ function getInstance(): PrismaClient {
     log: config.isProd
       ? config.DATABASE_URL.includes('localhost')
         ? (['info', 'warn', 'error'] as const)
-        : (['query', 'info', 'warn', 'error'] as const)
+        : (['info', 'warn', 'error'] as const)
       : (['warn', 'error'] as const),
     transactionOptions: {
       maxWait: config.PRISMA_QUERY_TIMEOUT_MS,
       timeout: config.PRISMA_QUERY_TIMEOUT_MS,
     },
+  });
+
+  // Per-query timing middleware — measures Prisma's full round-trip
+  // (connection checkout + SQL execution + result deserialization)
+  _instance.$use(async (params, next) => {
+    const start = performance.now();
+    const result = await next(params);
+    const ms = performance.now() - start;
+    console.log(
+      `[prisma] ${params.model ?? 'raw'}.${params.action} ${ms.toFixed(1)}ms`
+    );
+    return result;
   });
 
   // Query counter middleware
