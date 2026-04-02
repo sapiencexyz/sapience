@@ -25,6 +25,7 @@ export interface SapienceCondition {
   groupTitle?: string; // Group title for API submission (API will find-or-create group by name)
   estimatedPrice?: number; // 0-1, YES probability from Polymarket outcomePrices[0]
   similarMarketVolume?: number; // USD total trading volume from Polymarket
+  similarMarketImage?: string; // Image URL from Polymarket
   endTimeOverride?: number; // LLM-determined endTime (unix seconds, no buffer)
 }
 

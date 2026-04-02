@@ -462,11 +462,13 @@ export type Condition = {
   public: Scalars['Boolean']['output'];
   question: Scalars['String']['output'];
   resolvedToYes: Scalars['Boolean']['output'];
-  /** Canonical resolver address for this condition (latest observed wins) */
-  resolver?: Maybe<Scalars['String']['output']>;
+  /** Canonical resolver address for this condition (required) */
+  resolver: Scalars['String']['output'];
   settled: Scalars['Boolean']['output'];
   settledAt?: Maybe<Scalars['Int']['output']>;
   shortName?: Maybe<Scalars['String']['output']>;
+  /** Image URL from Polymarket similar market */
+  similarMarketImage?: Maybe<Scalars['String']['output']>;
   /** USD total trading volume from Polymarket similar market */
   similarMarketVolume: Scalars['Float']['output'];
   similarMarkets: Array<Scalars['String']['output']>;
@@ -671,10 +673,11 @@ export type ConditionOrderByWithRelationInput = {
   public?: InputMaybe<SortOrder>;
   question?: InputMaybe<SortOrder>;
   resolvedToYes?: InputMaybe<SortOrder>;
-  resolver?: InputMaybe<SortOrderInput>;
+  resolver?: InputMaybe<SortOrder>;
   settled?: InputMaybe<SortOrder>;
   settledAt?: InputMaybe<SortOrderInput>;
   shortName?: InputMaybe<SortOrderInput>;
+  similarMarketImage?: InputMaybe<SortOrderInput>;
   similarMarketVolume?: InputMaybe<SortOrder>;
   similarMarkets?: InputMaybe<SortOrder>;
   tags?: InputMaybe<SortOrder>;
@@ -707,6 +710,7 @@ export type ConditionScalarFieldEnum =
   | 'settled'
   | 'settledAt'
   | 'shortName'
+  | 'similarMarketImage'
   | 'similarMarketVolume'
   | 'similarMarkets'
   | 'tags';
@@ -736,10 +740,11 @@ export type ConditionWhereInput = {
   public?: InputMaybe<BoolFilter>;
   question?: InputMaybe<StringFilter>;
   resolvedToYes?: InputMaybe<BoolFilter>;
-  resolver?: InputMaybe<StringNullableFilter>;
+  resolver?: InputMaybe<StringFilter>;
   settled?: InputMaybe<BoolFilter>;
   settledAt?: InputMaybe<IntNullableFilter>;
   shortName?: InputMaybe<StringNullableFilter>;
+  similarMarketImage?: InputMaybe<StringNullableFilter>;
   similarMarketVolume?: InputMaybe<FloatFilter>;
   similarMarkets?: InputMaybe<StringNullableListFilter>;
   tags?: InputMaybe<StringNullableListFilter>;
@@ -770,10 +775,11 @@ export type ConditionWhereUniqueInput = {
   public?: InputMaybe<BoolFilter>;
   question?: InputMaybe<StringFilter>;
   resolvedToYes?: InputMaybe<BoolFilter>;
-  resolver?: InputMaybe<StringNullableFilter>;
+  resolver?: InputMaybe<StringFilter>;
   settled?: InputMaybe<BoolFilter>;
   settledAt?: InputMaybe<IntNullableFilter>;
   shortName?: InputMaybe<StringNullableFilter>;
+  similarMarketImage?: InputMaybe<StringNullableFilter>;
   similarMarketVolume?: InputMaybe<FloatFilter>;
   similarMarkets?: InputMaybe<StringNullableListFilter>;
   tags?: InputMaybe<StringNullableListFilter>;

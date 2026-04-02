@@ -34,6 +34,7 @@ router.post('/', async (req: Request, res: Response) => {
       tags,
       estimatedPrice,
       similarMarketVolume,
+      similarMarketImage,
     } = req.body as {
       conditionHash?: string;
       question?: string;
@@ -50,6 +51,7 @@ router.post('/', async (req: Request, res: Response) => {
       tags?: string[];
       estimatedPrice?: number;
       similarMarketVolume?: number;
+      similarMarketImage?: string;
     };
 
     // conditionHash is required (must be 0x-prefixed 32-byte hex)
@@ -66,16 +68,16 @@ router.post('/', async (req: Request, res: Response) => {
       });
     }
 
-    // Validate resolver if provided
-    if (resolver) {
-      if (
-        typeof resolver !== 'string' ||
-        !/^0x[a-fA-F0-9]{40}$/.test(resolver)
-      ) {
-        return res.status(400).json({
-          message: 'Resolver must be a valid Ethereum address (0x...)',
-        });
-      }
+    // Validate resolver — required, must be a valid Ethereum address
+    if (
+      !resolver ||
+      typeof resolver !== 'string' ||
+      !/^0x[a-fA-F0-9]{40}$/.test(resolver)
+    ) {
+      return res.status(400).json({
+        message:
+          'resolver is required and must be a valid Ethereum address (0x-prefixed, 40 hex chars)',
+      });
     }
 
     let resolvedCategoryId: number | null = null;
@@ -173,9 +175,14 @@ router.post('/', async (req: Request, res: Response) => {
             typeof similarMarketVolume === 'number' && similarMarketVolume >= 0
               ? similarMarketVolume
               : undefined,
+          similarMarketImage:
+            typeof similarMarketImage === 'string' &&
+            isHttpUrl(similarMarketImage)
+              ? similarMarketImage
+              : undefined,
           conditionGroupId: resolvedGroupId ?? undefined,
           displayOrder: resolvedGroupId ? 0 : undefined,
-          resolver: resolver ? resolver.toLowerCase() : undefined,
+          resolver: resolver.toLowerCase(),
         },
         include: { category: true, conditionGroup: true },
       });
@@ -216,6 +223,7 @@ router.put('/prices', async (req: Request, res: Response) => {
         id: string;
         estimatedPrice: number;
         similarMarketVolume?: number;
+        similarMarketImage?: string;
       }>;
     };
 
@@ -259,6 +267,10 @@ router.put('/prices', async (req: Request, res: Response) => {
             ...(typeof u.similarMarketVolume === 'number' &&
             u.similarMarketVolume >= 0
               ? { similarMarketVolume: u.similarMarketVolume }
+              : {}),
+            ...(typeof u.similarMarketImage === 'string' &&
+            isHttpUrl(u.similarMarketImage)
+              ? { similarMarketImage: u.similarMarketImage }
               : {}),
           },
         })
@@ -371,6 +383,7 @@ router.put('/:id', async (req: Request, res: Response) => {
       tags,
       estimatedPrice,
       similarMarketVolume,
+      similarMarketImage,
     } = req.body as {
       question?: string;
       shortName?: string;
@@ -385,6 +398,7 @@ router.put('/:id', async (req: Request, res: Response) => {
       tags?: string[];
       estimatedPrice?: number;
       similarMarketVolume?: number;
+      similarMarketImage?: string;
     };
 
     const existing = await prisma.condition.findUnique({ where: { id } });
@@ -506,6 +520,10 @@ router.put('/:id', async (req: Request, res: Response) => {
           ...(typeof similarMarketVolume === 'number' &&
           similarMarketVolume >= 0
             ? { similarMarketVolume }
+            : {}),
+          ...(typeof similarMarketImage === 'string' &&
+          isHttpUrl(similarMarketImage)
+            ? { similarMarketImage }
             : {}),
           // Extend endTime if a new forward value was provided
           ...(newEndTime !== undefined ? { endTime: newEndTime } : {}),

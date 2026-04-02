@@ -411,11 +411,14 @@ type Condition {
   question: String!
   resolvedToYes: Boolean!
 
-  """Canonical resolver address for this condition (latest observed wins)"""
-  resolver: String
+  """Canonical resolver address for this condition (required)"""
+  resolver: String!
   settled: Boolean!
   settledAt: Int
   shortName: String
+
+  """Image URL from Polymarket similar market"""
+  similarMarketImage: String
 
   """USD total trading volume from Polymarket similar market"""
   similarMarketVolume: Float!
@@ -559,10 +562,11 @@ input ConditionOrderByWithRelationInput {
   public: SortOrder
   question: SortOrder
   resolvedToYes: SortOrder
-  resolver: SortOrderInput
+  resolver: SortOrder
   settled: SortOrder
   settledAt: SortOrderInput
   shortName: SortOrderInput
+  similarMarketImage: SortOrderInput
   similarMarketVolume: SortOrder
   similarMarkets: SortOrder
   tags: SortOrder
@@ -595,6 +599,7 @@ enum ConditionScalarFieldEnum {
   settled
   settledAt
   shortName
+  similarMarketImage
   similarMarketVolume
   similarMarkets
   tags
@@ -625,10 +630,11 @@ input ConditionWhereInput {
   public: BoolFilter
   question: StringFilter
   resolvedToYes: BoolFilter
-  resolver: StringNullableFilter
+  resolver: StringFilter
   settled: BoolFilter
   settledAt: IntNullableFilter
   shortName: StringNullableFilter
+  similarMarketImage: StringNullableFilter
   similarMarketVolume: FloatFilter
   similarMarkets: StringNullableListFilter
   tags: StringNullableListFilter
@@ -659,10 +665,11 @@ input ConditionWhereUniqueInput {
   public: BoolFilter
   question: StringFilter
   resolvedToYes: BoolFilter
-  resolver: StringNullableFilter
+  resolver: StringFilter
   settled: BoolFilter
   settledAt: IntNullableFilter
   shortName: StringNullableFilter
+  similarMarketImage: StringNullableFilter
   similarMarketVolume: FloatFilter
   similarMarkets: StringNullableListFilter
   tags: StringNullableListFilter

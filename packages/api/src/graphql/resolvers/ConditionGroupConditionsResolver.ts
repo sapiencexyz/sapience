@@ -10,9 +10,9 @@ import { getPrismaFromContext } from '@generated/type-graphql/helpers';
  * Replaces the auto-generated ConditionGroupRelationsResolver to always
  * filter out private conditions (public = false) from group responses.
  *
- * Preserves the same args interface (where, orderBy, take, skip, etc.)
- * so existing consumers are unaffected — but merges public: true into
- * the where clause server-side.
+ * When the parent resolver (e.g. QuestionsResolver) already loaded relations
+ * via Prisma `include`, we return the pre-loaded data directly to avoid
+ * redundant N+1 queries. Otherwise, we fall back to a fresh DB query.
  *
  * Also re-implements the category field resolver since we removed the
  * entire generated ConditionGroupRelationsResolver.
@@ -25,6 +25,13 @@ export class ConditionGroupConditionsResolver {
     @Ctx() ctx: unknown,
     @Args(() => ConditionGroupConditionArgs) args: ConditionGroupConditionArgs
   ): Promise<Condition[]> {
+    // Prisma relation name is 'condition', GraphQL field name is 'conditions'
+    const raw = conditionGroup as unknown as Record<string, unknown>;
+    const existing = raw.condition ?? raw.conditions;
+    if (Array.isArray(existing)) {
+      return existing as Condition[];
+    }
+
     return getPrismaFromContext(ctx)
       .conditionGroup.findUniqueOrThrow({
         where: { id: conditionGroup.id },
@@ -42,6 +49,12 @@ export class ConditionGroupConditionsResolver {
     @Ctx() ctx: unknown,
     @Args(() => ConditionGroupCategoryArgs) args: ConditionGroupCategoryArgs
   ): Promise<Category | null> {
+    const existing = (conditionGroup as unknown as Record<string, unknown>)
+      .category;
+    if (existing !== undefined) {
+      return existing as Category | null;
+    }
+
     return getPrismaFromContext(ctx)
       .conditionGroup.findUniqueOrThrow({
         where: { id: conditionGroup.id },

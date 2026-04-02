@@ -91,6 +91,7 @@ export function transformToSapienceCondition(
     groupTitle,
     estimatedPrice: parseYesPrice(market.outcomePrices),
     similarMarketVolume: parseFloat(market.volume || '0') || 0,
+    similarMarketImage: market.image,
     endTimeOverride,
   };
 }

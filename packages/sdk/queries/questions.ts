@@ -79,6 +79,7 @@ const GET_QUESTIONS = /* GraphQL */ `
           assertionTimestamp
           openInterest
           similarMarketVolume
+          similarMarketImage
           estimatedPrice
           conditionGroupId
           category {
