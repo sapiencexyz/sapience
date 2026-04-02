@@ -83,7 +83,7 @@ input AttestationOrderByWithRelationInput {
   id: SortOrder
   prediction: SortOrder
   recipient: SortOrder
-  resolver: SortOrder
+  resolver: SortOrderInput
   schemaId: SortOrder
   time: SortOrder
   transactionHash: SortOrder
@@ -151,7 +151,7 @@ input AttestationScoreOrderByWithRelationInput {
   probabilityD18: SortOrderInput
   probabilityFloat: SortOrderInput
   questionId: SortOrderInput
-  resolver: SortOrder
+  resolver: SortOrderInput
   scoredAt: SortOrderInput
   used: SortOrder
 }
@@ -173,7 +173,7 @@ input AttestationScoreWhereInput {
   probabilityD18: StringNullableFilter
   probabilityFloat: FloatNullableFilter
   questionId: StringNullableFilter
-  resolver: StringFilter
+  resolver: StringNullableFilter
   scoredAt: DateTimeNullableFilter
   used: BoolFilter
 }
@@ -194,7 +194,7 @@ input AttestationWhereInput {
   id: IntFilter
   prediction: StringFilter
   recipient: StringFilter
-  resolver: StringFilter
+  resolver: StringNullableFilter
   schemaId: StringFilter
   time: IntFilter
   transactionHash: StringFilter
@@ -217,7 +217,7 @@ input AttestationWhereUniqueInput {
   id: Int
   prediction: StringFilter
   recipient: StringFilter
-  resolver: StringFilter
+  resolver: StringNullableFilter
   schemaId: StringFilter
   time: IntFilter
   transactionHash: StringFilter
