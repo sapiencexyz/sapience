@@ -169,7 +169,7 @@ router.post('/', async (req: Request, res: Response) => {
               : undefined,
           conditionGroupId: resolvedGroupId ?? undefined,
           displayOrder: resolvedGroupId ? 0 : undefined,
-          resolver: resolver ? resolver.toLowerCase() : undefined,
+          resolver: resolver.toLowerCase(),
         },
         include: { category: true, conditionGroup: true },
       });
