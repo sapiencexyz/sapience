@@ -514,7 +514,7 @@ export function filterRows(
   filters: FilterState
 ): TopLevelRow[] {
   const [minOI, maxOI] = filters.openInterestRange;
-  const [minVol, maxVol] = filters.similarMarketVolumeRange;
+  const [minVol, maxVol] = filters.similarMarketVolumeRange ?? [0, Infinity];
   const [minDays, maxDays] = filters.timeToResolutionRange;
   const nowSec = Math.floor(Date.now() / 1000);
 
