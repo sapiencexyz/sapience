@@ -141,6 +141,7 @@ const corsOptions: cors.CorsOptions = {
     'Content-Type',
     'x-admin-signature',
     'x-admin-signature-timestamp',
+    'X-Request-ID',
   ],
 };
 
