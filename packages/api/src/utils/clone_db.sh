@@ -262,12 +262,12 @@ while IFS='|' read -r table data_type; do
         if [ -n "$TIMESTAMP_WHERE" ]; then
             PGSSLMODE=require PGPASSWORD=$DB_PASSWORD psql -U $DB_USER -h $DB_HOST -p $DB_PORT -d $DB_NAME -c "
                 COPY (SELECT * FROM public.\"$table\" $TIMESTAMP_WHERE) TO STDOUT;
-            " --csv >> complete_dump.sql
+            " >> complete_dump.sql
         else
             # No timestamp filter, get all data
             PGSSLMODE=require PGPASSWORD=$DB_PASSWORD psql -U $DB_USER -h $DB_HOST -p $DB_PORT -d $DB_NAME -c "
                 COPY public.\"$table\" TO STDOUT;
-            " --csv >> complete_dump.sql
+            " >> complete_dump.sql
         fi
         
         echo "\\." >> complete_dump.sql
@@ -292,7 +292,7 @@ for table in $ALL_TABLES; do
             # Export all data
             PGSSLMODE=require PGPASSWORD=$DB_PASSWORD psql -U $DB_USER -h $DB_HOST -p $DB_PORT -d $DB_NAME -c "
                 COPY public.\"$table\" TO STDOUT;
-            " --csv >> complete_dump.sql
+            " >> complete_dump.sql
             
             echo "\\." >> complete_dump.sql
         fi
