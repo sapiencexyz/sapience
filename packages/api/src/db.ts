@@ -2,7 +2,10 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 import { PrismaClient } from '../generated/prisma';
 import { config } from './config';
 
-export const requestQueryCounter = new AsyncLocalStorage<{ count: number }>();
+export const requestContext = new AsyncLocalStorage<{
+  count: number;
+  requestId: string;
+}>();
 
 let _instance: PrismaClient | undefined;
 
@@ -42,15 +45,17 @@ function getInstance(): PrismaClient {
     const start = performance.now();
     const result = await next(params);
     const ms = performance.now() - start;
+    const rid = requestContext.getStore()?.requestId ?? '';
+    const prefix = rid ? `[prisma:${rid}]` : '[prisma]';
     console.log(
-      `[prisma] ${params.model ?? 'raw'}.${params.action} ${ms.toFixed(1)}ms`
+      `${prefix} ${params.model ?? 'raw'}.${params.action} ${ms.toFixed(1)}ms`
     );
     return result;
   });
 
   // Query counter middleware
   _instance.$use(async (params, next) => {
-    const store = requestQueryCounter.getStore();
+    const store = requestContext.getStore();
     if (store) store.count++;
     return next(params);
   });
