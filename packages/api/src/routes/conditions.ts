@@ -33,6 +33,8 @@ router.post('/', async (req: Request, res: Response) => {
       resolver,
       tags,
       estimatedPrice,
+      similarMarketVolume,
+      similarMarketImage,
     } = req.body as {
       conditionHash?: string;
       question?: string;
@@ -48,6 +50,8 @@ router.post('/', async (req: Request, res: Response) => {
       resolver?: string;
       tags?: string[];
       estimatedPrice?: number;
+      similarMarketVolume?: number;
+      similarMarketImage?: string;
     };
 
     // conditionHash is required (must be 0x-prefixed 32-byte hex)
@@ -167,6 +171,15 @@ router.post('/', async (req: Request, res: Response) => {
             estimatedPrice <= 1
               ? estimatedPrice
               : undefined,
+          similarMarketVolume:
+            typeof similarMarketVolume === 'number' && similarMarketVolume >= 0
+              ? similarMarketVolume
+              : undefined,
+          similarMarketImage:
+            typeof similarMarketImage === 'string' &&
+            isHttpUrl(similarMarketImage)
+              ? similarMarketImage
+              : undefined,
           conditionGroupId: resolvedGroupId ?? undefined,
           displayOrder: resolvedGroupId ? 0 : undefined,
           resolver: resolver.toLowerCase(),
@@ -206,7 +219,12 @@ router.post('/', async (req: Request, res: Response) => {
 router.put('/prices', async (req: Request, res: Response) => {
   try {
     const { updates } = req.body as {
-      updates?: Array<{ id: string; estimatedPrice: number }>;
+      updates?: Array<{
+        id: string;
+        estimatedPrice: number;
+        similarMarketVolume?: number;
+        similarMarketImage?: string;
+      }>;
     };
 
     if (!Array.isArray(updates) || updates.length === 0) {
@@ -244,7 +262,17 @@ router.put('/prices', async (req: Request, res: Response) => {
       updates.map((u) =>
         prisma.condition.updateMany({
           where: { id: u.id },
-          data: { estimatedPrice: u.estimatedPrice },
+          data: {
+            estimatedPrice: u.estimatedPrice,
+            ...(typeof u.similarMarketVolume === 'number' &&
+            u.similarMarketVolume >= 0
+              ? { similarMarketVolume: u.similarMarketVolume }
+              : {}),
+            ...(typeof u.similarMarketImage === 'string' &&
+            isHttpUrl(u.similarMarketImage)
+              ? { similarMarketImage: u.similarMarketImage }
+              : {}),
+          },
         })
       )
     );
@@ -354,6 +382,8 @@ router.put('/:id', async (req: Request, res: Response) => {
       groupName,
       tags,
       estimatedPrice,
+      similarMarketVolume,
+      similarMarketImage,
     } = req.body as {
       question?: string;
       shortName?: string;
@@ -367,6 +397,8 @@ router.put('/:id', async (req: Request, res: Response) => {
       groupName?: string;
       tags?: string[];
       estimatedPrice?: number;
+      similarMarketVolume?: number;
+      similarMarketImage?: string;
     };
 
     const existing = await prisma.condition.findUnique({ where: { id } });
@@ -484,6 +516,14 @@ router.put('/:id', async (req: Request, res: Response) => {
           estimatedPrice >= 0 &&
           estimatedPrice <= 1
             ? { estimatedPrice }
+            : {}),
+          ...(typeof similarMarketVolume === 'number' &&
+          similarMarketVolume >= 0
+            ? { similarMarketVolume }
+            : {}),
+          ...(typeof similarMarketImage === 'string' &&
+          isHttpUrl(similarMarketImage)
+            ? { similarMarketImage }
             : {}),
           // Extend endTime if a new forward value was provided
           ...(newEndTime !== undefined ? { endTime: newEndTime } : {}),

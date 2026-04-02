@@ -65,6 +65,7 @@ const MarketsPage = () => {
     'sapience.markets.filters',
     {
       openInterestRange: [0, Infinity],
+      similarMarketVolumeRange: [0, Infinity],
       timeToResolutionRange: [-Infinity, Infinity],
       selectedCategories: [],
       resolutionStatus: 'unresolved',

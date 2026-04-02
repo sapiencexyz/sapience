@@ -69,6 +69,8 @@ export class ConditionResolver {
       | 'similarMarkets'
       | 'chainId'
       | 'openInterest'
+      | 'similarMarketVolume'
+      | 'similarMarketImage'
       | 'resolver'
       | 'settled'
       | 'resolvedToYes'

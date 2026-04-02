@@ -416,6 +416,12 @@ type Condition {
   settled: Boolean!
   settledAt: Int
   shortName: String
+
+  """Image URL from Polymarket similar market"""
+  similarMarketImage: String
+
+  """USD total trading volume from Polymarket similar market"""
+  similarMarketVolume: Float!
   similarMarkets: [String!]!
   tags: [String!]!
 }
@@ -560,6 +566,8 @@ input ConditionOrderByWithRelationInput {
   settled: SortOrder
   settledAt: SortOrderInput
   shortName: SortOrderInput
+  similarMarketImage: SortOrderInput
+  similarMarketVolume: SortOrder
   similarMarkets: SortOrder
   tags: SortOrder
 }
@@ -591,6 +599,8 @@ enum ConditionScalarFieldEnum {
   settled
   settledAt
   shortName
+  similarMarketImage
+  similarMarketVolume
   similarMarkets
   tags
 }
@@ -624,6 +634,8 @@ input ConditionWhereInput {
   settled: BoolFilter
   settledAt: IntNullableFilter
   shortName: StringNullableFilter
+  similarMarketImage: StringNullableFilter
+  similarMarketVolume: FloatFilter
   similarMarkets: StringNullableListFilter
   tags: StringNullableListFilter
 }
@@ -657,6 +669,8 @@ input ConditionWhereUniqueInput {
   settled: BoolFilter
   settledAt: IntNullableFilter
   shortName: StringNullableFilter
+  similarMarketImage: StringNullableFilter
+  similarMarketVolume: FloatFilter
   similarMarkets: StringNullableListFilter
   tags: StringNullableListFilter
 }
@@ -716,6 +730,17 @@ input EnumLimitOrderStatusFilter {
   in: [LimitOrderStatus!]
   not: NestedEnumLimitOrderStatusFilter
   notIn: [LimitOrderStatus!]
+}
+
+input FloatFilter {
+  equals: Float
+  gt: Float
+  gte: Float
+  in: [Float!]
+  lt: Float
+  lte: Float
+  not: NestedFloatFilter
+  notIn: [Float!]
 }
 
 input FloatNullableFilter {
@@ -1089,6 +1114,17 @@ input NestedEnumLimitOrderStatusFilter {
   in: [LimitOrderStatus!]
   not: NestedEnumLimitOrderStatusFilter
   notIn: [LimitOrderStatus!]
+}
+
+input NestedFloatFilter {
+  equals: Float
+  gt: Float
+  gte: Float
+  in: [Float!]
+  lt: Float
+  lte: Float
+  not: NestedFloatFilter
+  notIn: [Float!]
 }
 
 input NestedFloatNullableFilter {
@@ -1473,6 +1509,7 @@ enum QuestionSortField {
   endTime
   openInterest
   predictionCount
+  similarMarketVolume
 }
 
 type ReferralCode {

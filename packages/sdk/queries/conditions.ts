@@ -19,6 +19,8 @@ export interface ConditionType {
   assertionId?: string;
   assertionTimestamp?: number;
   openInterest: string;
+  similarMarketVolume?: number;
+  similarMarketImage?: string | null;
   conditionGroupId?: number | null;
   conditionGroup?: { id: number; name: string } | null;
   estimatedPrice?: number | null;
@@ -58,6 +60,8 @@ export const GET_CONDITIONS = /* GraphQL */ `
       assertionId
       assertionTimestamp
       openInterest
+      similarMarketVolume
+      similarMarketImage
       estimatedPrice
       conditionGroupId
       conditionGroup {
