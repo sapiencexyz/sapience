@@ -1,19 +1,16 @@
 /**
- * Refresh prices for ALL active Polymarket conditions in Sapience
+ * Refresh prices and volume for ALL active conditions with Polymarket similar markets
  *
- * Fetches all Polymarket condition IDs from the Sapience API,
- * looks up current prices on Polymarket's Gamma API,
- * and submits batch price updates.
+ * Fetches all condition IDs that have similarMarkets URLs from the Sapience API,
+ * looks up current prices and volume on Polymarket's Gamma API,
+ * and submits batch price + volume updates.
  *
  * This covers markets outside the generate/relist windows
  * (e.g., markets ending >21 days from now).
  */
 
 import 'dotenv/config';
-import {
-  DEFAULT_SAPIENCE_API_URL,
-  ALL_POLYMARKET_RESOLVER_ADDRESSES,
-} from '../constants';
+import { DEFAULT_SAPIENCE_API_URL } from '../constants';
 import {
   validatePrivateKey,
   confirmProductionAccess,
@@ -88,7 +85,7 @@ async function fetchActiveConditionIds(apiUrl: string): Promise<string[]> {
           where: {
             settled: { equals: false },
             public: { equals: true },
-            resolver: { in: ALL_POLYMARKET_RESOLVER_ADDRESSES },
+            similarMarkets: { isEmpty: false },
           },
           take: PAGE_SIZE,
           skip,
@@ -126,8 +123,20 @@ async function fetchActiveConditionIds(apiUrl: string): Promise<string[]> {
  */
 async function fetchPolymarketPrices(
   conditionIds: string[]
-): Promise<Array<{ id: string; estimatedPrice: number }>> {
-  const priceUpdates: Array<{ id: string; estimatedPrice: number }> = [];
+): Promise<
+  Array<{
+    id: string;
+    estimatedPrice: number;
+    similarMarketVolume?: number;
+    similarMarketImage?: string;
+  }>
+> {
+  const priceUpdates: Array<{
+    id: string;
+    estimatedPrice: number;
+    similarMarketVolume?: number;
+    similarMarketImage?: string;
+  }> = [];
   const BATCH_SIZE = 50; // Polymarket API query string limit
 
   for (let i = 0; i < conditionIds.length; i += BATCH_SIZE) {
@@ -151,6 +160,8 @@ async function fetchPolymarketPrices(
       const markets = (await response.json()) as Array<{
         conditionId: string;
         outcomePrices?: string | number[];
+        volume?: string;
+        image?: string;
       }>;
 
       for (const market of markets) {
@@ -159,6 +170,8 @@ async function fetchPolymarketPrices(
           priceUpdates.push({
             id: market.conditionId,
             estimatedPrice: price,
+            similarMarketVolume: parseFloat(market.volume || '0') || 0,
+            similarMarketImage: market.image,
           });
         }
       }
@@ -228,7 +241,9 @@ export async function main() {
       log('\n========== DRY RUN: Price Refresh ==========\n');
       log(`Total price updates: ${priceUpdates.length}`);
       for (const update of priceUpdates) {
-        log(`  ${update.id} → ${(update.estimatedPrice * 100).toFixed(1)}%`);
+        log(
+          `  ${update.id} → ${(update.estimatedPrice * 100).toFixed(1)}% (vol: $${(update.similarMarketVolume ?? 0).toLocaleString()})`
+        );
       }
       log('\n========== END DRY RUN ==========\n');
       return;

@@ -111,6 +111,8 @@ export async function submitCondition(
         resolver: RESOLVER_ADDRESS,
         public: true,
         estimatedPrice: condition.estimatedPrice,
+        similarMarketVolume: condition.similarMarketVolume,
+        similarMarketImage: condition.similarMarketImage,
       }),
     });
 
@@ -253,7 +255,12 @@ export function printDryRun(data: SapienceOutput): void {
 export async function submitPriceUpdates(
   apiUrl: string,
   privateKey: `0x${string}`,
-  priceUpdates: Array<{ id: string; estimatedPrice: number }>
+  priceUpdates: Array<{
+    id: string;
+    estimatedPrice: number;
+    similarMarketVolume?: number;
+    similarMarketImage?: string;
+  }>
 ): Promise<void> {
   if (priceUpdates.length === 0) {
     console.log('[Prices] No price updates to submit');

@@ -405,5 +405,62 @@ describe('QuestionsResolver', () => {
       const unionCount = (sql.match(/UNION ALL/g) || []).length;
       expect(unionCount).toBe(1);
     });
+
+    describe('similarMarketVolume sort field', () => {
+      it('uses similarMarketVolume in sort expression for unfiltered groups (subquery path)', async () => {
+        await callQuestions({
+          sortField: QuestionSortField.similarMarketVolume,
+        });
+        const sql = getCapturedSql();
+
+        // Unfiltered path: group sort value should use a subquery summing similarMarketVolume
+        expect(sql).not.toContain('CROSS JOIN LATERAL');
+        expect(sql).toContain('SUM(c."similarMarketVolume")');
+        // Ungrouped condition sort value should also reference similarMarketVolume
+        expect(sql).toContain('c."similarMarketVolume"');
+      });
+
+      it('uses similarMarketVolume in LATERAL sort expression for filtered groups', async () => {
+        await callQuestions({
+          sortField: QuestionSortField.similarMarketVolume,
+          resolutionStatus: ResolutionStatus.unresolved,
+        });
+        const sql = getCapturedSql();
+
+        // Filtered path: LATERAL JOIN should compute SUM(similarMarketVolume) from filtered conditions
+        expect(sql).toContain('CROSS JOIN LATERAL');
+        expect(sql).toContain('SUM(c."similarMarketVolume")');
+      });
+
+      it('both filtered and unfiltered paths sort by the same column', async () => {
+        // Unfiltered
+        await callQuestions({
+          sortField: QuestionSortField.similarMarketVolume,
+        });
+        const unfilteredSql = getCapturedSql();
+
+        vi.clearAllMocks();
+        mockPrisma.$queryRaw.mockResolvedValue([]);
+
+        // Filtered (chainId triggers LATERAL)
+        await callQuestions({
+          sortField: QuestionSortField.similarMarketVolume,
+          chainId: 1,
+        });
+        const filteredSql = getCapturedSql();
+
+        // Both paths must reference the same underlying column for consistency
+        const colRef = '"similarMarketVolume"';
+        expect(unfilteredSql).toContain(colRef);
+        expect(filteredSql).toContain(colRef);
+
+        // Part B (ungrouped conditions) sort expression should be identical in both
+        // Extract Part B from each SQL (after UNION ALL)
+        const unfilteredPartB = unfilteredSql.split('UNION ALL')[1];
+        const filteredPartB = filteredSql.split('UNION ALL')[1];
+        expect(unfilteredPartB).toContain(colRef);
+        expect(filteredPartB).toContain(colRef);
+      });
+    });
   });
 });

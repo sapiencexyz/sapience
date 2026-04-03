@@ -61,16 +61,22 @@ const MarketsPage = () => {
     'sapience.markets.selectedTag',
     null
   );
-  const [filters, setFilters] = useSessionState<FilterState>(
+  const defaultFilters: FilterState = {
+    openInterestRange: [0, Infinity],
+    similarMarketVolumeRange: [0, Infinity],
+    timeToResolutionRange: [-Infinity, Infinity],
+    selectedCategories: [],
+    resolutionStatus: 'unresolved',
+    estimatedPriceRange: [1, 99],
+  };
+
+  const [rawFilters, setFilters] = useSessionState<FilterState>(
     'sapience.markets.filters',
-    {
-      openInterestRange: [0, Infinity],
-      timeToResolutionRange: [-Infinity, Infinity],
-      selectedCategories: [],
-      resolutionStatus: 'unresolved',
-      estimatedPriceRange: [1, 99],
-    }
+    defaultFilters
   );
+
+  // Merge with defaults so stale sessionStorage entries gain new fields
+  const filters: FilterState = { ...defaultFilters, ...rawFilters };
 
   // Default to prediction-market categories (exclude prices) on first load
   const defaultedRef = useRef(false);
