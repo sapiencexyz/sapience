@@ -1,5 +1,5 @@
 import { useCallback, useState, useMemo } from 'react';
-import { erc20Abi } from 'viem';
+import { erc20Abi, type PublicClient } from 'viem';
 
 import {
   generateRandomNonce,
@@ -295,7 +295,7 @@ export function useSubmitPosition({
             {
               predictionMarketAddress,
               collateralTokenAddress,
-              publicClient,
+              publicClient: publicClient as PublicClient,
             }
           );
 
