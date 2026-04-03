@@ -75,10 +75,14 @@ export const predictionMarketEscrow: ChainAddressMap = {
     ] as const,
   },
   13374202: {
-    // Ethereal testnet — redeployed 2026-03-25
-    address: '0x9afaAAda6dc3a5013ef6fbaab203A55102E329eb',
-    blockCreated: 2585864,
+    // Ethereal testnet — redeployed 2026-04-03
+    address: '0xD2C147f9294b13FF3Cf1a0b3b52C54969AdBb2Ca',
+    blockCreated: 2857000,
     legacy: [
+      {
+        address: '0x9afaAAda6dc3a5013ef6fbaab203A55102E329eb',
+        blockCreated: 2585864,
+      },
       {
         address: '0x3B680e06B9A384179644C1bC7842Db67Df5Fb5f0',
         blockCreated: 2294248,
@@ -315,10 +319,14 @@ export const predictionMarketBridge: ChainAddressMap = {
     ] as const,
   },
   13374202: {
-    // Ethereal testnet — redeployed 2026-03-25
-    address: '0x8Bd3E6d81A55ba2A658666f470bFb8a40CF8F71F',
-    blockCreated: 2585866,
+    // Ethereal testnet — redeployed 2026-04-03
+    address: '0x57a56aEE60C5C411517bD5575709cc898DAbf1Fa',
+    blockCreated: 2857000,
     legacy: [
+      {
+        address: '0x8Bd3E6d81A55ba2A658666f470bFb8a40CF8F71F',
+        blockCreated: 2585866,
+      },
       {
         address: '0xd45D795A3eB5890ad3Ff127C29b3A191D8A06F44',
         blockCreated: 2294253,
@@ -376,10 +384,14 @@ export const predictionMarketBridgeRemote: ChainAddressMap = {
     ] as const,
   },
   421614: {
-    // Arbitrum Sepolia testnet — redeployed 2026-03-25
-    address: '0xb18b50A19040fC88b02082e869127935CA1df5aA',
-    blockCreated: 253273957,
+    // Arbitrum Sepolia testnet — redeployed 2026-04-03
+    address: '0xC80f317d26151C3093429c178d5f1ED4A64feF71',
+    blockCreated: 253300000,
     legacy: [
+      {
+        address: '0xb18b50A19040fC88b02082e869127935CA1df5aA',
+        blockCreated: 253273957,
+      },
       {
         address: '0x11B74d5a4aF9c83FF6610C0FaA8EC5378077Eb16',
         blockCreated: 252903704,
@@ -460,10 +472,14 @@ export const predictionMarketTokenFactory: ChainAddressMap = {
     ] as const,
   },
   13374202: {
-    // Ethereal testnet — redeployed 2026-03-25 (CREATE2 deterministic, same address on both chains)
-    address: '0xbD8bB933ae35D15Ef6DC9Bd82daEDA09B139d28C',
-    blockCreated: 2585863,
+    // Ethereal testnet — redeployed 2026-04-03 (CREATE2 deterministic, same address on both chains)
+    address: '0xfbC42AeB29bb2eEeDCD7431Ad5c2F18cB3016772',
+    blockCreated: 2857000,
     legacy: [
+      {
+        address: '0xbD8bB933ae35D15Ef6DC9Bd82daEDA09B139d28C',
+        blockCreated: 2585863,
+      },
       {
         address: '0x5B9f2cb9c822899A0F824eEb039B628A4d13d7AD',
         blockCreated: 2294247,
@@ -487,10 +503,14 @@ export const predictionMarketTokenFactory: ChainAddressMap = {
     ] as const,
   },
   421614: {
-    // Arbitrum Sepolia testnet — redeployed 2026-03-25 (CREATE2 deterministic, same address on both chains)
-    address: '0xbD8bB933ae35D15Ef6DC9Bd82daEDA09B139d28C',
-    blockCreated: 253273877,
+    // Arbitrum Sepolia testnet — redeployed 2026-04-03 (CREATE2 deterministic, same address on both chains)
+    address: '0xfbC42AeB29bb2eEeDCD7431Ad5c2F18cB3016772',
+    blockCreated: 253300000,
     legacy: [
+      {
+        address: '0xbD8bB933ae35D15Ef6DC9Bd82daEDA09B139d28C',
+        blockCreated: 253273877,
+      },
       {
         address: '0x5B9f2cb9c822899A0F824eEb039B628A4d13d7AD',
         blockCreated: 252904693,
@@ -536,10 +556,14 @@ export const secondaryMarketEscrow: ChainAddressMap = {
     ] as const,
   },
   13374202: {
-    // Ethereal testnet — redeployed 2026-03-25
-    address: '0x3c2783afA444c157eE3689E6306cFC0f2FbD231B',
-    blockCreated: 2585868,
+    // Ethereal testnet — redeployed 2026-04-03
+    address: '0x2877B0b65f0BB7F1e93681B7EE6646f568A23972',
+    blockCreated: 2857000,
     legacy: [
+      {
+        address: '0x3c2783afA444c157eE3689E6306cFC0f2FbD231B',
+        blockCreated: 2585868,
+      },
       {
         address: '0x16222940184Aad2E806529C963531e36c13875cF',
         blockCreated: 2266775,
@@ -575,10 +599,15 @@ export const onboardingSponsor: ChainAddressMap = {
     ] as const,
   },
   13374202: {
-    // Ethereal testnet — deployed 2026-03-25
-    address: '0x17a118f2510E6bb5FDDe6e9142917120A2D07760',
-    blockCreated: 2585875,
-    legacy: [] as const,
+    // Ethereal testnet — redeployed 2026-04-03
+    address: '0xa0b2fa0284273A4d6BA1C76521757F520c84f58a',
+    blockCreated: 2857000,
+    legacy: [
+      {
+        address: '0x17a118f2510E6bb5FDDe6e9142917120A2D07760',
+        blockCreated: 2585875,
+      },
+    ] as const,
   },
 } as const;
 
