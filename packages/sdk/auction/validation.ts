@@ -4,6 +4,29 @@
  * Combines field validation + signature verification into single entry points
  * that all consumers (relayer, market makers, trading terminal) share.
  *
+ * ## Validation Tiers
+ *
+ * | Tier | Module          | Requires       | Scope             | When              |
+ * |------|-----------------|----------------|-------------------|-------------------|
+ * | 1    | validation.ts   | Nothing        | RFQs + Bids       | On arrival        |
+ * | 2    | validation.ts   | RPC reads      | Bids              | On arrival        |
+ * | 3    | simulate.ts     | RPC simulation | Full mint tx      | Pre-submit        |
+ *
+ * **Tier 1** — Offline checks: field presence, deadline freshness, pick format,
+ * signature verification (ecrecover + optional ERC-1271 fallback).
+ * Applies to both auction RFQs ({@link validateAuctionRFQ}) and bids ({@link validateBid}).
+ *
+ * **Tier 2** — On-chain state reads: `verifyMintPartySignature()` view for definitive
+ * signature verification, nonce freshness, counterparty balance/allowance.
+ * Applies to bids only ({@link validateBidOnChain}).
+ *
+ * **Tier 3** — Full mint simulation via `eth_call` with state overrides. Overrides
+ * the predictor's allowance (simulating the approve in the batch) and uses the
+ * counterparty's real on-chain state. Catches contract-level reverts (bad picks,
+ * resolver rejections, collateral minimums, signature failures).
+ * Requires the predictor's signature, so runs at submit time, not bid arrival.
+ * See {@link simulateMint} in `auction/simulate.ts`.
+ *
  * @module auction/validation
  */
 
@@ -124,10 +147,13 @@ export interface ValidateAuctionRFQOptions {
 }
 
 /**
- * Tier 1 validation for auction RFQ payloads.
+ * **Tier 1** validation for auction RFQ payloads.
  *
  * Combines field presence checks + deadline + pick validation + intent
  * signature verification (all 4 paths) into a single call.
+ *
+ * See also: {@link validateBid} (Tier 1 for bids),
+ * {@link validateBidOnChain} (Tier 2), simulateMint (Tier 3, in simulate.ts).
  */
 export async function validateAuctionRFQ(
   payload: AuctionRFQPayload,
@@ -322,10 +348,12 @@ export interface ValidateBidOptions {
 }
 
 /**
- * Tier 1 validation for bid payloads.
+ * **Tier 1** validation for bid payloads.
  *
  * Combines field presence + deadline freshness + signature verification
  * (all 4 paths + optional ERC-1271 on-chain fallback).
+ *
+ * See also: {@link validateBidOnChain} (Tier 2), simulateMint (Tier 3, in simulate.ts).
  */
 export async function validateBid(
   bid: BidPayload,
@@ -563,15 +591,14 @@ export interface ValidateBidOnChainOptions {
 }
 
 /**
- * Tier 2: On-chain state + signature validation.
+ * **Tier 2**: On-chain state + signature validation.
  *
  * Validates counterparty signature via `verifyMintPartySignature()` on-chain
  * view (definitive for all sig types: EOA, smart account ERC-1271, session key),
  * plus nonce freshness + balance + allowance via RPC reads.
  *
- * This replaces the old Tier 3 (full mint simulation) approach. The protocol's
- * `verifyMintPartySignature()` view (PR #1322) gives definitive true/false
- * without needing a `signPredictorApproval` callback or state overrides.
+ * See also: simulateMint (Tier 3, in simulate.ts) for full mint() simulation
+ * with state overrides — runs at submit time after the predictor signs.
  */
 export async function validateBidOnChain(
   bid: {
@@ -768,10 +795,13 @@ export interface ValidateBidFullOptions {
 }
 
 /**
- * Tier 1 + Tier 2 combined.
+ * **Tier 1 + Tier 2** combined.
  *
  * Runs `validateBid` (offline) then `validateBidOnChain` (on-chain state).
  * Short-circuits on first failure.
+ *
+ * Tier 3 (simulateMint) is separate — it requires the predictor's signature
+ * and runs at submit time, not at bid arrival.
  */
 export async function validateBidFull(
   bid: BidPayload,

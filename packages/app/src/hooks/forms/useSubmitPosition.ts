@@ -7,6 +7,7 @@ import {
   validateCounterpartyFunds,
   prepareMintCalls,
 } from '@sapience/sdk';
+import { simulateMint } from '@sapience/sdk/auction/simulate';
 import {
   CHAIN_ID_ETHEREAL,
   CHAIN_ID_ETHEREAL_TESTNET,
@@ -147,14 +148,14 @@ export function useSubmitPosition({
   );
 
   const submitPosition = useCallback(
-    async (mintData: MintPredictionRequestData) => {
+    async (mintData: MintPredictionRequestData): Promise<boolean> => {
       if (!enabled || !address) {
-        return;
+        return false;
       }
 
       // Prevent duplicate submissions
       if (isProcessing) {
-        return;
+        return false;
       }
 
       setIsProcessing(true);
@@ -257,6 +258,54 @@ export function useSubmitPosition({
           throw new Error('No valid calls to execute');
         }
 
+        // Tier 3: simulate the mint via eth_call before sending the real tx.
+        // Catches contract reverts (bad picks, resolver rejections, signature
+        // issues, counterparty fund shortfalls) before the user pays gas.
+        if (filled.picks && filled.picks.length > 0) {
+          const simResult = await simulateMint(
+            {
+              picks: filled.picks.map((p) => ({
+                conditionResolver: p.conditionResolver,
+                conditionId: p.conditionId,
+                predictedOutcome: p.predictedOutcome,
+              })),
+              predictorCollateral: BigInt(filled.predictorCollateral),
+              counterpartyCollateral: BigInt(filled.counterpartyCollateral),
+              predictor: filled.predictor,
+              counterparty: filled.counterparty,
+              predictorNonce: nonceValue,
+              counterpartyNonce: BigInt(filled.counterpartyClaimedNonce ?? 0),
+              predictorDeadline: BigInt(filled.predictorDeadline),
+              counterpartyDeadline: BigInt(filled.counterpartyDeadline),
+              predictorSignature: filled.predictorSignature || '0x',
+              counterpartySignature: filled.counterpartySignature,
+              predictorSessionKeyData: filled.predictorSessionKeyData
+                ? (filled.predictorSessionKeyData as `0x${string}`)
+                : undefined,
+              counterpartySessionKeyData: filled.counterpartySessionKeyData
+                ? (filled.counterpartySessionKeyData as `0x${string}`)
+                : undefined,
+              predictorSponsor: filled.predictorSponsor
+                ? filled.predictorSponsor
+                : undefined,
+              predictorSponsorData: filled.predictorSponsorData
+                ? filled.predictorSponsorData
+                : undefined,
+            },
+            {
+              predictionMarketAddress,
+              collateralTokenAddress,
+              publicClient,
+            }
+          );
+
+          if (!simResult.success) {
+            throw new Error(
+              `Mint simulation failed: ${simResult.error || 'Unknown error'}`
+            );
+          }
+        }
+
         await sendCalls({
           calls,
           chainId,
@@ -271,6 +320,7 @@ export function useSubmitPosition({
 
         await attempt();
         setIsProcessing(false);
+        return true;
       } catch (err: unknown) {
         console.error('[submitPosition] error:', err);
         const errorMessage =
@@ -279,6 +329,7 @@ export function useSubmitPosition({
             : 'Failed to submit position prediction';
         setError(errorMessage);
         setIsProcessing(false);
+        return false;
       }
     },
     [
