@@ -76,9 +76,10 @@ export function useRecentCombos(opts: { chainId: number; count?: number }) {
   } = useConditionsByIds(conditionIds);
 
   // Filter to combos where every condition is still active (not settled),
-  // then cap to the requested count
+  // then cap to the requested count.
+  // Return [] while conditions are loading to avoid flashing settled combos.
   const activeCombos = useMemo(() => {
-    if (conditionMap.size === 0) return multiLegConfigs.slice(0, count);
+    if (conditionMap.size === 0) return [];
     return multiLegConfigs
       .filter((pc) =>
         pc.picks.every((p) => {
