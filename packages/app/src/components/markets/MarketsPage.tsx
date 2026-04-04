@@ -349,7 +349,7 @@ const MarketsPage = () => {
                   onFetchMore={fetchMore}
                 />
               ) : (
-                <div className="flex flex-col gap-4 h-full pt-2">
+                <div className="flex flex-col gap-2 sm:gap-4 h-full pt-2">
                   <div>
                     <h2 className="sc-heading text-foreground mb-3 px-1">
                       Prediction Markets
