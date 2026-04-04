@@ -31,8 +31,9 @@ export function useRecentCombos(opts: { chainId: number; count?: number }) {
     isLoading: isLoadingConfigs,
     error: configsError,
   } = useQuery<PickConfigurationResult[], Error>({
-    queryKey: ['pickConfigurations', chainId],
-    queryFn: () => fetchPickConfigurations({ take: 20, chainId }),
+    queryKey: ['pickConfigurations', chainId, 'unresolved'],
+    queryFn: () =>
+      fetchPickConfigurations({ take: 50, chainId, resolved: false }),
     staleTime: 60_000,
     refetchOnWindowFocus: false,
   });
@@ -50,7 +51,8 @@ export function useRecentCombos(opts: { chainId: number; count?: number }) {
       if (seen.has(key)) continue;
       seen.add(key);
       result.push(pc);
-      if (result.length >= count) break;
+      // Take extra candidates; settled-condition filter runs after enrichment
+      if (result.length >= count * 3) break;
     }
     return result;
   }, [pickConfigs, count]);
@@ -73,10 +75,24 @@ export function useRecentCombos(opts: { chainId: number; count?: number }) {
     error: conditionsError,
   } = useConditionsByIds(conditionIds);
 
+  // Filter to combos where every condition is still active (not settled),
+  // then cap to the requested count
+  const activeCombos = useMemo(() => {
+    if (conditionMap.size === 0) return multiLegConfigs.slice(0, count);
+    return multiLegConfigs
+      .filter((pc) =>
+        pc.picks.every((p) => {
+          const c = conditionMap.get(p.conditionId);
+          return c && !c.settled;
+        })
+      )
+      .slice(0, count);
+  }, [multiLegConfigs, conditionMap, count]);
+
   // Build enriched combos
   const combos: RecentCombo[] = useMemo(
     () =>
-      multiLegConfigs.map((pc) => {
+      activeCombos.map((pc) => {
         const predictorWei = BigInt(pc.totalPredictorCollateral || '0');
         const counterpartyWei = BigInt(pc.totalCounterpartyCollateral || '0');
         const denom = counterpartyWei + predictorWei;
@@ -94,7 +110,7 @@ export function useRecentCombos(opts: { chainId: number; count?: number }) {
           })),
         };
       }),
-    [multiLegConfigs, conditionMap]
+    [activeCombos, conditionMap]
   );
 
   return {
