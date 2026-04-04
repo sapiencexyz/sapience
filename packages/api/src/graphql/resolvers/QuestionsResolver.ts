@@ -147,8 +147,6 @@ export class QuestionsResolver {
     const boundedCategorySlugs = categorySlugs?.slice(0, 50) ?? null;
     const boundedTag = tag?.slice(0, 200) ?? null;
 
-    const nowSec = Math.floor(Date.now() / 1000);
-
     // Build resolution status SQL filter
     const resolvedFilter = (() => {
       if (resolutionStatus && resolutionStatus !== ResolutionStatus.all) {
@@ -287,15 +285,6 @@ export class QuestionsResolver {
         FROM condition_group cg
         ${groupLateralJoin}
         WHERE cg."publicConditionCount" > 0
-          AND (
-            cg."maxEndTime" > ${nowSec}
-            OR EXISTS (
-              SELECT 1 FROM condition c_unsettled
-              WHERE c_unsettled."conditionGroupId" = cg.id
-                AND c_unsettled.public = true
-                AND c_unsettled.settled = false
-            )
-          )
           ${
             boundedSearch
               ? Prisma.sql`AND (
