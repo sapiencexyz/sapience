@@ -84,7 +84,11 @@ export function useRecentCombos(opts: { chainId: number; count?: number }) {
       .filter((pc) =>
         pc.picks.every((p) => {
           const c = conditionMap.get(p.conditionId);
-          return c && !c.settled;
+          if (!c || c.settled) return false;
+          // Filter out extreme prices — not useful as examples
+          const price = c.estimatedPrice ?? null;
+          if (price !== null && (price < 1 || price > 99)) return false;
+          return true;
         })
       )
       .slice(0, count);
