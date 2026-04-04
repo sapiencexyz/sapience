@@ -44,16 +44,16 @@ export default function TagBar({
   };
 
   return (
-    <div className={cn('flex items-center gap-2', className)}>
+    <div className={cn('flex flex-col sm:flex-row sm:items-center gap-2', className)}>
       {/* Search input */}
-      <div className="relative flex items-center shrink-0">
+      <div className="relative flex items-center">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 opacity-50 pointer-events-none z-10" />
         <input
           type="text"
           placeholder="Search"
           value={searchTerm}
           onChange={handleSearchChange}
-          className="w-48 xl:w-56 h-8 rounded-md border border-border bg-muted/30 text-left pl-9 pr-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-ring"
+          className="w-full sm:w-48 xl:w-56 h-8 rounded-md border border-border bg-muted/30 text-left pl-9 pr-3 text-sm placeholder:text-muted-foreground focus-visible:outline-none focus-visible:border-ring"
         />
       </div>
 
