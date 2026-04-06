@@ -38,6 +38,7 @@ import {
 } from '~/hooks/graphql/usePositions';
 import { useConditionsByIds } from '~/hooks/graphql/useConditionsByIds';
 import PicksSummary from '~/components/shared/PicksSummary';
+import LegacyBadge from '~/components/shared/LegacyBadge';
 import PredictionDialog from '~/components/positions/PredictionDialog';
 import OgShareDialogBase from '~/components/shared/OgShareDialog';
 import {
@@ -280,6 +281,7 @@ function PositionRow({
           predictionId={pickConfig?.predictionId}
           onClick={onOpenDialog}
         />
+        {pickConfig?.isLegacy && <LegacyBadge />}
       </TableCell>
       <TableCell>
         <NumberDisplay
