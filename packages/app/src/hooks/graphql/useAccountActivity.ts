@@ -27,7 +27,7 @@ export type ActivityItem = PredictionActivity | TradeActivity;
 
 const ACCOUNT_ACTIVITY_QUERY = /* GraphQL */ `
   query AccountActivity(
-    $address: String!
+    $address: String
     $take: Int
     $skip: Int
     $type: String
@@ -137,13 +137,16 @@ export function useAccountActivity({
   account,
   pageSize = DEFAULT_PAGE_SIZE,
   activityType,
+  enabled: enabledOverride,
 }: {
   account?: Address;
   pageSize?: number;
   activityType?: string;
+  /** Override enabled state. Defaults to true when account is provided. */
+  enabled?: boolean;
 }) {
   const [take, setTake] = useState(pageSize);
-  const enabled = Boolean(account);
+  const enabled = enabledOverride ?? Boolean(account);
 
   const typeFilter =
     activityType && activityType !== 'all' ? activityType : undefined;
@@ -153,7 +156,7 @@ export function useAccountActivity({
     isLoading: initialLoading,
     isFetching,
   } = useQuery({
-    queryKey: ['accountActivity', account, take, typeFilter],
+    queryKey: ['accountActivity', account ?? 'global', take, typeFilter],
     enabled,
     staleTime: 30_000,
     gcTime: 5 * 60 * 1000,
@@ -165,7 +168,7 @@ export function useAccountActivity({
       const resp = await graphqlRequest<{
         accountActivity: RawActivityItem[];
       }>(ACCOUNT_ACTIVITY_QUERY, {
-        address: account,
+        address: account ?? null,
         take,
         skip: 0,
         type: typeFilter ?? null,

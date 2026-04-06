@@ -1489,7 +1489,7 @@ export type Query = {
   accountAccuracy?: Maybe<ForecasterScore>;
   /** Accuracy rank and score for a single address relative to all forecasters */
   accountAccuracyRank: AccuracyRank;
-  /** Unified activity feed for an account — predictions and trades merged by timestamp */
+  /** Unified activity feed — predictions and trades merged by timestamp. When address is provided, scopes to that account; otherwise returns recent global activity. */
   accountActivity: Array<ActivityItem>;
   /** Time-bucketed balance snapshots for a single address showing deployed and claimable collateral */
   accountBalance: Array<BalanceDataPoint>;
@@ -1564,7 +1564,7 @@ export type QueryAccountAccuracyRankArgs = {
 
 
 export type QueryAccountActivityArgs = {
-  address: Scalars['String']['input'];
+  address?: InputMaybe<Scalars['String']['input']>;
   skip?: Scalars['Int']['input'];
   take?: Scalars['Int']['input'];
   type?: InputMaybe<Scalars['String']['input']>;
