@@ -200,8 +200,11 @@ export async function main(): Promise<void> {
   let privatedIds: string[] = [];
   if (toPrivate.length > 0 && options.execute) {
     log(
-      `[Cleanup] Sending batch private for ${toPrivate.length} condition(s): ${toPrivate.map((id) => id.slice(0, 10) + '...').join(', ')}`
+      `[Cleanup] Sending batch private for ${toPrivate.length} condition(s):`
     );
+    for (const id of toPrivate) {
+      log(`  → ${id}`);
+    }
     const result = await privateConditions(apiUrl, privateKey!, toPrivate);
     log(
       `[Cleanup] Batch private response: success=${result.success}, updated=${result.updated}, error=${result.error}`
