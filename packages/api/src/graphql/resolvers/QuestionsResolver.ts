@@ -195,9 +195,9 @@ export class QuestionsResolver {
     `;
 
     // --- Part A column/join fragments ---
-    // When per-condition filters are active, use a LATERAL JOIN to compute
-    // aggregates from only the matching conditions (preserving correct sort
-    // order). When unfiltered, read directly from denormalized columns.
+    // When per-condition filters are active, use a LEFT JOIN + GROUP BY to
+    // compute aggregates from only the matching conditions in a single pass.
+    // When unfiltered, read directly from denormalized columns (faster).
 
     const sortValueExpr = (() => {
       switch (sanitizedSortField) {
@@ -214,22 +214,16 @@ export class QuestionsResolver {
       }
     })();
 
-    const groupLateralJoin = hasConditionFilters
-      ? Prisma.sql`CROSS JOIN LATERAL (
-          SELECT
-            ${sortValueExpr} as sort_value,
-            COALESCE(SUM(c."predictionCount"), 0) as prediction_count,
-            COALESCE(MAX(c."endTime"), 0) as end_time
-          FROM condition c
-          WHERE c."conditionGroupId" = cg.id
+    // LEFT JOIN scans the condition table once and hash-aggregates by group,
+    // instead of the previous LATERAL which probed the index per group (~800x).
+    const groupConditionJoin = hasConditionFilters
+      ? Prisma.sql`LEFT JOIN condition c ON c."conditionGroupId" = cg.id
             AND c.public = true
-            ${conditionFilters}
-          HAVING COUNT(*) > 0
-        ) agg`
+            ${conditionFilters}`
       : Prisma.empty;
 
     const groupSortValue = hasConditionFilters
-      ? Prisma.sql`agg.sort_value`
+      ? sortValueExpr
       : sanitizedSortField === QuestionSortField.openInterest
         ? Prisma.sql`cg."totalOpenInterest"::numeric`
         : sanitizedSortField === QuestionSortField.predictionCount
@@ -241,12 +235,17 @@ export class QuestionsResolver {
               : Prisma.sql`cg."maxEndTime"::numeric`;
 
     const groupPredictionCount = hasConditionFilters
-      ? Prisma.sql`agg.prediction_count`
+      ? Prisma.sql`COALESCE(SUM(c."predictionCount"), 0)`
       : Prisma.sql`cg."totalPredictionCount"`;
 
     const groupEndTime = hasConditionFilters
-      ? Prisma.sql`agg.end_time`
+      ? Prisma.sql`COALESCE(MAX(c."endTime"), 0)`
       : Prisma.sql`cg."maxEndTime"`;
+
+    const groupByClause = hasConditionFilters
+      ? Prisma.sql`GROUP BY cg.id
+        HAVING COUNT(c.id) > 0`
+      : Prisma.empty;
 
     // --- Condition-level sort value (shared by merged Part B+C) ---
     const condSortValue =
@@ -283,7 +282,7 @@ export class QuestionsResolver {
           ${groupPredictionCount} as prediction_count,
           ${groupEndTime} as end_time
         FROM condition_group cg
-        ${groupLateralJoin}
+        ${groupConditionJoin}
         WHERE cg."publicConditionCount" > 0
           ${
             boundedSearch
@@ -317,6 +316,7 @@ export class QuestionsResolver {
                 )`
               : Prisma.empty
           }
+        ${groupByClause}
 
         UNION ALL
 

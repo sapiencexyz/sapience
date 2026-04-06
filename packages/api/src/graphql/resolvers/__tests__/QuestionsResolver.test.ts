@@ -362,27 +362,30 @@ describe('QuestionsResolver', () => {
       expect(sql).toContain('cg."totalPredictionCount"');
     });
 
-    it('uses LATERAL JOIN for filtered group aggregates when chainId filter is active', async () => {
+    it('uses LEFT JOIN + GROUP BY for filtered group aggregates when chainId filter is active', async () => {
       await callQuestions({ chainId: 1 });
       const sql = getCapturedSql();
 
-      expect(sql).toContain('CROSS JOIN LATERAL');
+      expect(sql).toContain('LEFT JOIN condition c ON');
+      expect(sql).toContain('GROUP BY cg.id');
       // Should compute aggregates from filtered conditions, not denormalized columns
       expect(sql).toContain('SUM');
     });
 
-    it('uses LATERAL JOIN when resolutionStatus filter is active', async () => {
+    it('uses LEFT JOIN + GROUP BY when resolutionStatus filter is active', async () => {
       await callQuestions({ resolutionStatus: ResolutionStatus.unresolved });
       const sql = getCapturedSql();
 
-      expect(sql).toContain('CROSS JOIN LATERAL');
+      expect(sql).toContain('LEFT JOIN condition c ON');
+      expect(sql).toContain('GROUP BY cg.id');
     });
 
-    it('uses LATERAL JOIN when price filter is active', async () => {
+    it('uses LEFT JOIN + GROUP BY when price filter is active', async () => {
       await callQuestions({ minEstimatedPrice: 0.2 });
       const sql = getCapturedSql();
 
-      expect(sql).toContain('CROSS JOIN LATERAL');
+      expect(sql).toContain('LEFT JOIN condition c ON');
+      expect(sql).toContain('GROUP BY cg.id');
     });
 
     it('group search matches individual condition questions and shortNames', async () => {
@@ -420,15 +423,15 @@ describe('QuestionsResolver', () => {
         expect(sql).toContain('c."similarMarketVolume"');
       });
 
-      it('uses similarMarketVolume in LATERAL sort expression for filtered groups', async () => {
+      it('uses similarMarketVolume in LEFT JOIN sort expression for filtered groups', async () => {
         await callQuestions({
           sortField: QuestionSortField.similarMarketVolume,
           resolutionStatus: ResolutionStatus.unresolved,
         });
         const sql = getCapturedSql();
 
-        // Filtered path: LATERAL JOIN should compute SUM(similarMarketVolume) from filtered conditions
-        expect(sql).toContain('CROSS JOIN LATERAL');
+        // Filtered path: LEFT JOIN + GROUP BY should compute SUM(similarMarketVolume) from filtered conditions
+        expect(sql).toContain('LEFT JOIN condition c ON');
         expect(sql).toContain('SUM(c."similarMarketVolume")');
       });
 
@@ -442,7 +445,7 @@ describe('QuestionsResolver', () => {
         vi.clearAllMocks();
         mockPrisma.$queryRaw.mockResolvedValue([]);
 
-        // Filtered (chainId triggers LATERAL)
+        // Filtered (chainId triggers LEFT JOIN + GROUP BY)
         await callQuestions({
           sortField: QuestionSortField.similarMarketVolume,
           chainId: 1,
