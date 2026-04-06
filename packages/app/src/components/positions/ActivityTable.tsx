@@ -406,11 +406,12 @@ function TradeActivityRow({
           </div>
           <div className="flex flex-col gap-0.5">
             <span className="whitespace-nowrap tabular-nums text-brand-white font-mono">
-              <NumberDisplay value={amount * price} /> {collateralSymbol}
+              <NumberDisplay value={price} /> {collateralSymbol}
             </span>
             <span className="whitespace-nowrap tabular-nums text-muted-foreground font-mono text-xs">
               <NumberDisplay value={amount} /> &times;{' '}
-              <NumberDisplay value={price} /> {collateralSymbol}
+              <NumberDisplay value={amount > 0 ? price / amount : 0} />{' '}
+              {collateralSymbol}
             </span>
           </div>
         </div>
@@ -705,8 +706,7 @@ export default function ActivityTable({
               Number(
                 formatEther(BigInt(item.prediction.counterpartyCollateral))
               )
-            : Number(formatEther(BigInt(item.trade.tokenAmount))) *
-              Number(formatEther(BigInt(item.trade.price)));
+            : Number(formatEther(BigInt(item.trade.price)));
         return value >= filters.valueRange[0] && value <= filters.valueRange[1];
       });
     }
