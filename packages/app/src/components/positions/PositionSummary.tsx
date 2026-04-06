@@ -74,20 +74,9 @@ export default function PositionSummary({
               ? `${positionId.slice(0, 6)}...${positionId.slice(-4)}`
               : `#${positionId}`}
           </h2>
-          {positionUrl && (
-            <Link
-              href={positionUrl}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-muted-foreground hover:text-foreground transition-colors"
-              title="View full prediction page"
-            >
-              <ExternalLink className="h-4 w-4" />
-            </Link>
-          )}
           {isCounterpartyPosition && <CounterpartyBadge />}
         </div>
-        {/* Status badge */}
+        {/* Status badge + external link */}
         {isSettled ? (
           positionWon ? (
             <span className="px-1.5 py-0.5 text-xs font-medium rounded-md font-mono border border-yes/40 bg-yes/10 text-yes">
@@ -102,6 +91,17 @@ export default function PositionSummary({
           <span className="px-1.5 py-0.5 text-xs font-medium rounded-md font-mono border border-foreground/40 bg-foreground/10 text-foreground">
             ACTIVE
           </span>
+        )}
+        {positionUrl && (
+          <Link
+            href={positionUrl}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-muted-foreground hover:text-foreground transition-colors"
+            title="View full prediction page"
+          >
+            <ExternalLink className="h-4 w-4" />
+          </Link>
         )}
         {/* Created time - pushed right */}
         <div className="flex items-center gap-2 ml-auto">

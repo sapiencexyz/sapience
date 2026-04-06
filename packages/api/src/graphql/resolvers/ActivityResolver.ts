@@ -82,17 +82,18 @@ const MAX_SKIP = 500;
 export class ActivityResolver {
   @Query(() => [ActivityItemType], {
     description:
-      'Unified activity feed for an account — predictions and trades merged by timestamp',
+      'Unified activity feed — predictions and trades merged by timestamp. ' +
+      'When address is provided, scopes to that account; otherwise returns recent global activity.',
   })
   async accountActivity(
-    @Arg('address', () => String) address: string,
-    @Arg('take', () => Int, { defaultValue: 20 }) take: number,
-    @Arg('skip', () => Int, { defaultValue: 0 }) skip: number,
+    @Arg('address', () => String, { nullable: true }) address?: string,
+    @Arg('take', () => Int, { defaultValue: 20 }) take?: number,
+    @Arg('skip', () => Int, { defaultValue: 0 }) skip?: number,
     @Arg('type', () => String, { nullable: true }) type?: string
   ): Promise<ActivityItemType[]> {
-    const cappedTake = Math.max(1, Math.min(take, 100));
-    const cappedSkip = Math.max(0, Math.min(skip, MAX_SKIP));
-    const addr = address.toLowerCase();
+    const cappedTake = Math.max(1, Math.min(take ?? 20, 100));
+    const cappedSkip = Math.max(0, Math.min(skip ?? 0, MAX_SKIP));
+    const addr = address?.toLowerCase();
 
     const includePredictions = !type || type === 'prediction';
     const includeTrades = !type || type === 'trade';
@@ -101,10 +102,15 @@ export class ActivityResolver {
     // for any interleaving of the two timestamp-sorted streams.
     const fetchSize = cappedSkip + cappedTake;
 
+    const predictionWhere = addr
+      ? { OR: [{ predictor: addr }, { counterparty: addr }] }
+      : {};
+    const tradeWhere = addr ? { OR: [{ seller: addr }, { buyer: addr }] } : {};
+
     const [predictions, trades] = await Promise.all([
       includePredictions
         ? prisma.prediction.findMany({
-            where: { OR: [{ predictor: addr }, { counterparty: addr }] },
+            where: predictionWhere,
             orderBy: { createdAt: 'desc' },
             take: fetchSize,
             include: { pickConfiguration: { include: { picks: true } } },
@@ -112,7 +118,7 @@ export class ActivityResolver {
         : Promise.resolve([]),
       includeTrades
         ? prisma.secondaryTrade.findMany({
-            where: { OR: [{ seller: addr }, { buyer: addr }] },
+            where: tradeWhere,
             orderBy: { executedAt: 'desc' },
             take: fetchSize,
           })

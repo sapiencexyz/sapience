@@ -278,4 +278,24 @@ describe('ActivityResolver', () => {
 
     expect(result).toEqual([]);
   });
+
+  it('returns global activity when address is omitted', async () => {
+    const pred = makePrediction({ id: 1, collateralDepositedAt: 1000 });
+    const trade = makeTrade({ id: 1, executedAt: 900 });
+    mockPrisma.prediction.findMany.mockResolvedValue([pred]);
+    mockPrisma.secondaryTrade.findMany.mockResolvedValue([trade]);
+
+    const result = await resolver.accountActivity(undefined, 20, 0);
+
+    expect(result).toHaveLength(2);
+    expect(result[0].type).toBe('prediction');
+    expect(result[1].type).toBe('trade');
+    // No address filter — queries with empty where clause
+    expect(mockPrisma.prediction.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: {} })
+    );
+    expect(mockPrisma.secondaryTrade.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({ where: {} })
+    );
+  });
 });

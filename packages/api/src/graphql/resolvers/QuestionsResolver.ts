@@ -37,6 +37,7 @@ export enum QuestionSortField {
   endTime = 'endTime',
   createdAt = 'createdAt',
   predictionCount = 'predictionCount',
+  similarMarketVolume = 'similarMarketVolume',
 }
 
 registerEnumType(QuestionSortField, {
@@ -146,8 +147,6 @@ export class QuestionsResolver {
     const boundedCategorySlugs = categorySlugs?.slice(0, 50) ?? null;
     const boundedTag = tag?.slice(0, 200) ?? null;
 
-    const nowSec = Math.floor(Date.now() / 1000);
-
     // Build resolution status SQL filter
     const resolvedFilter = (() => {
       if (resolutionStatus && resolutionStatus !== ResolutionStatus.all) {
@@ -196,9 +195,9 @@ export class QuestionsResolver {
     `;
 
     // --- Part A column/join fragments ---
-    // When per-condition filters are active, use a LATERAL JOIN to compute
-    // aggregates from only the matching conditions (preserving correct sort
-    // order). When unfiltered, read directly from denormalized columns.
+    // When per-condition filters are active, use a LEFT JOIN + GROUP BY to
+    // compute aggregates from only the matching conditions in a single pass.
+    // When unfiltered, read directly from denormalized columns (faster).
 
     const sortValueExpr = (() => {
       switch (sanitizedSortField) {
@@ -208,42 +207,45 @@ export class QuestionsResolver {
           return Prisma.sql`COALESCE(SUM(c."predictionCount")::numeric, 0)`;
         case QuestionSortField.createdAt:
           return Prisma.sql`COALESCE(MAX(FLOOR(EXTRACT(EPOCH FROM c."createdAt"))::bigint)::numeric, 0)`;
+        case QuestionSortField.similarMarketVolume:
+          return Prisma.sql`COALESCE(SUM(c."similarMarketVolume"), 0)::numeric`;
         default:
           return Prisma.sql`COALESCE(MAX(c."endTime")::numeric, 0)`;
       }
     })();
 
-    const groupLateralJoin = hasConditionFilters
-      ? Prisma.sql`CROSS JOIN LATERAL (
-          SELECT
-            ${sortValueExpr} as sort_value,
-            COALESCE(SUM(c."predictionCount"), 0) as prediction_count,
-            COALESCE(MAX(c."endTime"), 0) as end_time
-          FROM condition c
-          WHERE c."conditionGroupId" = cg.id
+    // LEFT JOIN scans the condition table once and hash-aggregates by group,
+    // instead of the previous LATERAL which probed the index per group (~800x).
+    const groupConditionJoin = hasConditionFilters
+      ? Prisma.sql`LEFT JOIN condition c ON c."conditionGroupId" = cg.id
             AND c.public = true
-            ${conditionFilters}
-          HAVING COUNT(*) > 0
-        ) agg`
+            ${conditionFilters}`
       : Prisma.empty;
 
     const groupSortValue = hasConditionFilters
-      ? Prisma.sql`agg.sort_value`
+      ? sortValueExpr
       : sanitizedSortField === QuestionSortField.openInterest
         ? Prisma.sql`cg."totalOpenInterest"::numeric`
         : sanitizedSortField === QuestionSortField.predictionCount
           ? Prisma.sql`cg."totalPredictionCount"::numeric`
           : sanitizedSortField === QuestionSortField.createdAt
             ? Prisma.sql`cg."maxCreatedAtEpoch"::numeric`
-            : Prisma.sql`cg."maxEndTime"::numeric`;
+            : sanitizedSortField === QuestionSortField.similarMarketVolume
+              ? Prisma.sql`(SELECT COALESCE(SUM(c."similarMarketVolume"), 0) FROM condition c WHERE c."conditionGroupId" = cg.id AND c.public = true)::numeric`
+              : Prisma.sql`cg."maxEndTime"::numeric`;
 
     const groupPredictionCount = hasConditionFilters
-      ? Prisma.sql`agg.prediction_count`
+      ? Prisma.sql`COALESCE(SUM(c."predictionCount"), 0)`
       : Prisma.sql`cg."totalPredictionCount"`;
 
     const groupEndTime = hasConditionFilters
-      ? Prisma.sql`agg.end_time`
+      ? Prisma.sql`COALESCE(MAX(c."endTime"), 0)`
       : Prisma.sql`cg."maxEndTime"`;
+
+    const groupByClause = hasConditionFilters
+      ? Prisma.sql`GROUP BY cg.id
+        HAVING COUNT(c.id) > 0`
+      : Prisma.empty;
 
     // --- Condition-level sort value (shared by merged Part B+C) ---
     const condSortValue =
@@ -253,7 +255,9 @@ export class QuestionsResolver {
           ? Prisma.sql`c."predictionCount"::numeric`
           : sanitizedSortField === QuestionSortField.createdAt
             ? Prisma.sql`COALESCE(FLOOR(EXTRACT(EPOCH FROM c."createdAt"))::bigint, 0)::numeric`
-            : Prisma.sql`COALESCE(c."endTime", 2147483647)::numeric`;
+            : sanitizedSortField === QuestionSortField.similarMarketVolume
+              ? Prisma.sql`COALESCE(c."similarMarketVolume", 0)::numeric`
+              : Prisma.sql`COALESCE(c."endTime", 2147483647)::numeric`;
 
     // Step 1: UNION query — two parts:
     // - Part A: Active groups (sort values from denormalized cols or LATERAL)
@@ -278,17 +282,8 @@ export class QuestionsResolver {
           ${groupPredictionCount} as prediction_count,
           ${groupEndTime} as end_time
         FROM condition_group cg
-        ${groupLateralJoin}
+        ${groupConditionJoin}
         WHERE cg."publicConditionCount" > 0
-          AND (
-            cg."maxEndTime" > ${nowSec}
-            OR EXISTS (
-              SELECT 1 FROM condition c_unsettled
-              WHERE c_unsettled."conditionGroupId" = cg.id
-                AND c_unsettled.public = true
-                AND c_unsettled.settled = false
-            )
-          )
           ${
             boundedSearch
               ? Prisma.sql`AND (
@@ -321,6 +316,7 @@ export class QuestionsResolver {
                 )`
               : Prisma.empty
           }
+        ${groupByClause}
 
         UNION ALL
 

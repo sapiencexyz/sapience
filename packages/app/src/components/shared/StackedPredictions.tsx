@@ -72,7 +72,9 @@ export function StackedIcons({
   );
 
   return (
-    <div className={`flex items-center -space-x-2 ${className ?? ''}`}>
+    <div
+      className={`flex items-center -space-x-2 animate-in fade-in duration-300 ${className ?? ''}`}
+    >
       {visiblePicks.map((pick, i) => {
         const isPyth = pick.source === 'pyth';
         const CategoryIcon = getCategoryIcon(pick.categorySlug);
@@ -86,7 +88,7 @@ export function StackedIcons({
         ) : (
           <div
             key={`icon-${pick.conditionId || i}-${i}`}
-            className="w-6 h-6 rounded-full shrink-0 flex items-center justify-center ring-2 ring-background"
+            className="w-6 h-6 rounded-full shrink-0 flex items-center justify-center ring-2 ring-background transition-colors duration-300"
             style={{
               backgroundColor: color,
               zIndex: picks.length - i,

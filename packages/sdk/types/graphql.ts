@@ -462,11 +462,15 @@ export type Condition = {
   public: Scalars['Boolean']['output'];
   question: Scalars['String']['output'];
   resolvedToYes: Scalars['Boolean']['output'];
-  /** Canonical resolver address for this condition (latest observed wins) */
-  resolver?: Maybe<Scalars['String']['output']>;
+  /** Canonical resolver address for this condition (required) */
+  resolver: Scalars['String']['output'];
   settled: Scalars['Boolean']['output'];
   settledAt?: Maybe<Scalars['Int']['output']>;
   shortName?: Maybe<Scalars['String']['output']>;
+  /** Image URL from Polymarket similar market */
+  similarMarketImage?: Maybe<Scalars['String']['output']>;
+  /** USD total trading volume from Polymarket similar market */
+  similarMarketVolume: Scalars['Float']['output'];
   similarMarkets: Array<Scalars['String']['output']>;
   tags: Array<Scalars['String']['output']>;
 };
@@ -669,10 +673,12 @@ export type ConditionOrderByWithRelationInput = {
   public?: InputMaybe<SortOrder>;
   question?: InputMaybe<SortOrder>;
   resolvedToYes?: InputMaybe<SortOrder>;
-  resolver?: InputMaybe<SortOrderInput>;
+  resolver?: InputMaybe<SortOrder>;
   settled?: InputMaybe<SortOrder>;
   settledAt?: InputMaybe<SortOrderInput>;
   shortName?: InputMaybe<SortOrderInput>;
+  similarMarketImage?: InputMaybe<SortOrderInput>;
+  similarMarketVolume?: InputMaybe<SortOrder>;
   similarMarkets?: InputMaybe<SortOrder>;
   tags?: InputMaybe<SortOrder>;
 };
@@ -704,6 +710,8 @@ export type ConditionScalarFieldEnum =
   | 'settled'
   | 'settledAt'
   | 'shortName'
+  | 'similarMarketImage'
+  | 'similarMarketVolume'
   | 'similarMarkets'
   | 'tags';
 
@@ -732,10 +740,12 @@ export type ConditionWhereInput = {
   public?: InputMaybe<BoolFilter>;
   question?: InputMaybe<StringFilter>;
   resolvedToYes?: InputMaybe<BoolFilter>;
-  resolver?: InputMaybe<StringNullableFilter>;
+  resolver?: InputMaybe<StringFilter>;
   settled?: InputMaybe<BoolFilter>;
   settledAt?: InputMaybe<IntNullableFilter>;
   shortName?: InputMaybe<StringNullableFilter>;
+  similarMarketImage?: InputMaybe<StringNullableFilter>;
+  similarMarketVolume?: InputMaybe<FloatFilter>;
   similarMarkets?: InputMaybe<StringNullableListFilter>;
   tags?: InputMaybe<StringNullableListFilter>;
 };
@@ -765,10 +775,12 @@ export type ConditionWhereUniqueInput = {
   public?: InputMaybe<BoolFilter>;
   question?: InputMaybe<StringFilter>;
   resolvedToYes?: InputMaybe<BoolFilter>;
-  resolver?: InputMaybe<StringNullableFilter>;
+  resolver?: InputMaybe<StringFilter>;
   settled?: InputMaybe<BoolFilter>;
   settledAt?: InputMaybe<IntNullableFilter>;
   shortName?: InputMaybe<StringNullableFilter>;
+  similarMarketImage?: InputMaybe<StringNullableFilter>;
+  similarMarketVolume?: InputMaybe<FloatFilter>;
   similarMarkets?: InputMaybe<StringNullableListFilter>;
   tags?: InputMaybe<StringNullableListFilter>;
 };
@@ -818,6 +830,17 @@ export type EnumLimitOrderStatusFilter = {
   in?: InputMaybe<Array<LimitOrderStatus>>;
   not?: InputMaybe<NestedEnumLimitOrderStatusFilter>;
   notIn?: InputMaybe<Array<LimitOrderStatus>>;
+};
+
+export type FloatFilter = {
+  equals?: InputMaybe<Scalars['Float']['input']>;
+  gt?: InputMaybe<Scalars['Float']['input']>;
+  gte?: InputMaybe<Scalars['Float']['input']>;
+  in?: InputMaybe<Array<Scalars['Float']['input']>>;
+  lt?: InputMaybe<Scalars['Float']['input']>;
+  lte?: InputMaybe<Scalars['Float']['input']>;
+  not?: InputMaybe<NestedFloatFilter>;
+  notIn?: InputMaybe<Array<Scalars['Float']['input']>>;
 };
 
 export type FloatNullableFilter = {
@@ -1234,6 +1257,17 @@ export type NestedEnumLimitOrderStatusFilter = {
   notIn?: InputMaybe<Array<LimitOrderStatus>>;
 };
 
+export type NestedFloatFilter = {
+  equals?: InputMaybe<Scalars['Float']['input']>;
+  gt?: InputMaybe<Scalars['Float']['input']>;
+  gte?: InputMaybe<Scalars['Float']['input']>;
+  in?: InputMaybe<Array<Scalars['Float']['input']>>;
+  lt?: InputMaybe<Scalars['Float']['input']>;
+  lte?: InputMaybe<Scalars['Float']['input']>;
+  not?: InputMaybe<NestedFloatFilter>;
+  notIn?: InputMaybe<Array<Scalars['Float']['input']>>;
+};
+
 export type NestedFloatNullableFilter = {
   equals?: InputMaybe<Scalars['Float']['input']>;
   gt?: InputMaybe<Scalars['Float']['input']>;
@@ -1455,7 +1489,7 @@ export type Query = {
   accountAccuracy?: Maybe<ForecasterScore>;
   /** Accuracy rank and score for a single address relative to all forecasters */
   accountAccuracyRank: AccuracyRank;
-  /** Unified activity feed for an account — predictions and trades merged by timestamp */
+  /** Unified activity feed — predictions and trades merged by timestamp. When address is provided, scopes to that account; otherwise returns recent global activity. */
   accountActivity: Array<ActivityItem>;
   /** Time-bucketed balance snapshots for a single address showing deployed and claimable collateral */
   accountBalance: Array<BalanceDataPoint>;
@@ -1530,7 +1564,7 @@ export type QueryAccountAccuracyRankArgs = {
 
 
 export type QueryAccountActivityArgs = {
-  address: Scalars['String']['input'];
+  address?: InputMaybe<Scalars['String']['input']>;
   skip?: Scalars['Int']['input'];
   take?: Scalars['Int']['input'];
   type?: InputMaybe<Scalars['String']['input']>;
@@ -1831,7 +1865,8 @@ export type QuestionSortField =
   | 'createdAt'
   | 'endTime'
   | 'openInterest'
-  | 'predictionCount';
+  | 'predictionCount'
+  | 'similarMarketVolume';
 
 export type ReferralCode = {
   __typename?: 'ReferralCode';

@@ -37,6 +37,7 @@ export interface PolymarketMarket {
   active: boolean;
   closed: boolean;
   archived?: boolean;
+  image?: string;
   groupItemTitle?: string;
   groupItemThreshold?: string;
   marketGroup?: string;

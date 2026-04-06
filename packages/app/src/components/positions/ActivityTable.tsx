@@ -23,7 +23,6 @@ import EnsAvatar from '~/components/shared/EnsAvatar';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import {
   usePredictionsByConditionId,
-  useRecentPredictions,
   usePositionBalances,
   type Prediction,
   type PickConfigData,
@@ -302,10 +301,12 @@ function TradeActivityRow({
   item,
   collateralSymbol,
   conditionsMap,
+  hasAccount,
 }: {
   item: TradeActivity;
   collateralSymbol: string;
   conditionsMap: ConditionsMap;
+  hasAccount: boolean;
 }) {
   const { trade, pickConfig, isBuyer } = item;
   const rawPicks = pickConfig?.picks ?? [];
@@ -406,11 +407,12 @@ function TradeActivityRow({
           </div>
           <div className="flex flex-col gap-0.5">
             <span className="whitespace-nowrap tabular-nums text-brand-white font-mono">
-              <NumberDisplay value={amount * price} /> {collateralSymbol}
+              <NumberDisplay value={price} /> {collateralSymbol}
             </span>
             <span className="whitespace-nowrap tabular-nums text-muted-foreground font-mono text-xs">
               <NumberDisplay value={amount} /> &times;{' '}
-              <NumberDisplay value={price} /> {collateralSymbol}
+              <NumberDisplay value={amount > 0 ? price / amount : 0} />{' '}
+              {collateralSymbol}
             </span>
           </div>
         </div>
@@ -423,10 +425,14 @@ function TradeActivityRow({
           </div>
           <span
             className={`whitespace-nowrap tabular-nums font-mono uppercase cursor-default ${
-              isBuyer ? 'text-green-400' : 'text-amber-400'
+              hasAccount
+                ? isBuyer
+                  ? 'text-green-400'
+                  : 'text-amber-400'
+                : 'text-brand-white'
             }`}
           >
-            {isBuyer ? 'Bought' : 'Sold'}
+            {hasAccount ? (isBuyer ? 'Bought' : 'Sold') : 'Trade'}
           </span>
         </div>
       </td>
@@ -537,7 +543,8 @@ export default function ActivityTable({
     getDefaultActivityFilterState
   );
 
-  // ── Unified activity (account mode) ──────────────────────────────────────
+  // ── Unified activity (account + recent modes) ───────────────────────────
+  const isConditionMode = !account && !!conditionId;
   const {
     items: activityItems,
     isLoading: activityLoading,
@@ -548,6 +555,7 @@ export default function ActivityTable({
     account,
     pageSize: effectivePageSize,
     activityType: filters.activityType,
+    enabled: !isConditionMode,
   });
 
   // ── Condition-only mode (no account) ─────────────────────────────────────
@@ -560,15 +568,6 @@ export default function ActivityTable({
       skip: 0,
     });
 
-  const [recentTake, setRecentTake] = useState(effectivePageSize);
-
-  const { data: recentPredictions, isLoading: recentLoading } =
-    useRecentPredictions({
-      take: recentTake + 1,
-      skip: 0,
-      enabled: !account && !conditionId,
-    });
-
   // Positions for non-account enrichment
   const { data: positions } = usePositionBalances({
     holder: account,
@@ -576,16 +575,10 @@ export default function ActivityTable({
 
   // Decide which mode we're in
   const isAccountMode = !!account;
-  const isConditionMode = !account && !!conditionId;
-  const isRecentMode = !account && !conditionId;
 
-  const isLoading = isAccountMode
-    ? activityLoading
-    : isConditionMode
-      ? conditionLoading
-      : recentLoading;
+  const isLoading = isConditionMode ? conditionLoading : activityLoading;
 
-  // For condition/recent modes, build items from predictions only (existing behavior)
+  // For condition mode, build items from predictions only
   const tokenMap = React.useMemo(() => {
     const map = new Map<
       string,
@@ -602,22 +595,8 @@ export default function ActivityTable({
     return map;
   }, [positions]);
 
-  const fallbackPredictions = React.useMemo(
-    () =>
-      isConditionMode
-        ? conditionPredictions
-        : isRecentMode
-          ? recentPredictions
-          : [],
-    [isConditionMode, conditionPredictions, isRecentMode, recentPredictions]
-  );
-
-  const fallbackItems: ActivityItem[] = React.useMemo(() => {
-    const display =
-      isRecentMode && fallbackPredictions.length > recentTake
-        ? fallbackPredictions.slice(0, recentTake)
-        : fallbackPredictions;
-    return display.map((pred) => {
+  const conditionItems: ActivityItem[] = React.useMemo(() => {
+    return conditionPredictions.map((pred) => {
       const byPredictor = tokenMap.get(pred.predictorToken.toLowerCase());
       const byCounterparty = tokenMap.get(pred.counterpartyToken.toLowerCase());
       const match = byPredictor ?? byCounterparty;
@@ -634,9 +613,9 @@ export default function ActivityTable({
           : true,
       };
     });
-  }, [fallbackPredictions, tokenMap, account, recentTake, isRecentMode]);
+  }, [conditionPredictions, tokenMap, account]);
 
-  const items = isAccountMode ? activityItems : fallbackItems;
+  const items = isConditionMode ? conditionItems : activityItems;
 
   // ── Condition enrichment for all prediction items ────────────────────────
   const conditionIds = React.useMemo(() => {
@@ -705,8 +684,7 @@ export default function ActivityTable({
               Number(
                 formatEther(BigInt(item.prediction.counterpartyCollateral))
               )
-            : Number(formatEther(BigInt(item.trade.tokenAmount))) *
-              Number(formatEther(BigInt(item.trade.price)));
+            : Number(formatEther(BigInt(item.trade.price)));
         return value >= filters.valueRange[0] && value <= filters.valueRange[1];
       });
     }
@@ -735,23 +713,19 @@ export default function ActivityTable({
   } | null>(null);
 
   // ── Infinite scroll ──────────────────────────────────────────────────────
-  const hasMore = isAccountMode
-    ? activityHasMore
-    : isConditionMode
-      ? conditionPredictions.length >= condTake
-      : recentPredictions.length > recentTake;
+  const hasMore = isConditionMode
+    ? conditionPredictions.length >= condTake
+    : activityHasMore;
 
   const { loadMoreRef } = useInfiniteScroll({
     hasMore,
     isLoading,
-    isFetchingMore: isAccountMode ? activityFetchingMore : false,
+    isFetchingMore: isConditionMode ? false : activityFetchingMore,
     onFetchMore: () => {
-      if (isAccountMode) {
-        activityFetchMore();
-      } else if (isConditionMode) {
+      if (isConditionMode) {
         setCondTake((t) => t + effectivePageSize);
       } else {
-        setRecentTake((t) => t + effectivePageSize);
+        activityFetchMore();
       }
     },
   });
@@ -764,7 +738,7 @@ export default function ActivityTable({
         <ActivityTableFilters
           filters={filters}
           onFiltersChange={setFilters}
-          showTypeFilter={isAccountMode}
+          showTypeFilter={!isConditionMode}
         />
       </div>
     </div>
@@ -854,6 +828,7 @@ export default function ActivityTable({
                   item={item}
                   collateralSymbol={collateralSymbol}
                   conditionsMap={conditionsMap}
+                  hasAccount={isAccountMode}
                 />
               )
             )}
