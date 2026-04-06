@@ -16,8 +16,9 @@
 import {
   createPolygonClient,
   createPolygonWalletClient,
-  canRequestResolution,
+  batchCanRequestResolution,
 } from '../polygon/client';
+import { batchCheckGammaResolution } from '../polymarket-api';
 import { validatePrivateKey, confirmProductionAccess, log } from '../utils';
 import {
   fetchNoEngagementConditions,
@@ -110,40 +111,88 @@ export async function main(): Promise<void> {
   );
 
   const results = {
-    total: conditions.length,
+    total: 0,
     resolved: 0,
     privated: 0,
+    skippedActive: 0,
     skippedUnresolved: 0,
     errors: 0,
   };
 
+  const conditionMap = new Map(conditions.map((c) => [c.id, c]));
+  // Deduplicate — the GraphQL query can return the same condition ID multiple times
+  const allIds = [...new Set(conditions.map((c) => c.id))];
+  if (allIds.length < conditions.length) {
+    log(
+      `[Cleanup] Deduplicated ${conditions.length} → ${allIds.length} unique condition IDs`
+    );
+  }
+  results.total = allIds.length;
+
+  // Step 1: Check Gamma API for closed markets (free, no RPC)
+  log(`[Cleanup] Checking Gamma API for ${allIds.length} conditions...`);
+  const gamma = await batchCheckGammaResolution(allIds);
+
   const toPrivate: string[] = [];
+  const needsOnChainCheck: string[] = [];
 
-  for (const condition of conditions) {
+  // Classify each condition based on Gamma status
+  for (const id of allIds) {
+    const c = conditionMap.get(id);
+    const q = c ? `"${c.question}"` : '';
+    const status = gamma.statuses.get(id) ?? 'not_found';
+
+    switch (status) {
+      case 'closed':
+        log(
+          `[${id}] ${q} — Gamma: closed → ${options.dryRun ? 'DRY RUN — would private' : 'will private'}`
+        );
+        toPrivate.push(id);
+        results.resolved++;
+        break;
+      case 'active':
+        log(`[${id}] ${q} — Gamma: active → skipping`);
+        results.skippedActive++;
+        break;
+      case 'archived':
+      case 'not_found':
+      case 'api_error':
+        log(`[${id}] ${q} — Gamma: ${status} → will check on-chain`);
+        needsOnChainCheck.push(id);
+        break;
+    }
+  }
+
+  // Step 2: Batch on-chain check for unresolved conditions via multicall
+  if (needsOnChainCheck.length > 0) {
+    log(
+      `[Cleanup] Checking ${needsOnChainCheck.length} conditions on-chain via multicall...`
+    );
     try {
-      log(
-        `[${condition.id}] "${condition.question}" — Checking canRequestResolution on Polygon (OI=${condition.openInterest})...`
+      const onChainResults = await batchCanRequestResolution(
+        polygonClient,
+        needsOnChainCheck
       );
-      const resolved = await canRequestResolution(polygonClient, condition.id);
-      log(`[${condition.id}] canRequestResolution = ${resolved}`);
 
-      if (!resolved) {
-        log(`[${condition.id}] Not resolved on Polygon yet, skipping`);
-        results.skippedUnresolved++;
-        continue;
+      for (const [id, canResolve] of onChainResults) {
+        const c = conditionMap.get(id);
+        const question = c ? `"${c.question}"` : '';
+        log(`[${id}] ${question} — canRequestResolution = ${canResolve}`);
+
+        if (canResolve) {
+          log(
+            `[${id}] ${options.dryRun ? 'DRY RUN — would private' : 'will private'} (resolved on-chain, no engagement)`
+          );
+          toPrivate.push(id);
+          results.resolved++;
+        } else {
+          results.skippedUnresolved++;
+        }
       }
-
-      results.resolved++;
-
-      // Resolved + no engagement (guaranteed by GQL filter) → mark for privating
-      log(
-        `[${condition.id}] ${options.dryRun ? 'DRY RUN — would private' : 'Will private'} (resolved, no engagement)`
-      );
-      toPrivate.push(condition.id);
     } catch (error) {
       const msg = error instanceof Error ? error.message : String(error);
-      log(`[${condition.id}] Error checking Polygon resolution: ${msg}`);
-      results.errors++;
+      log(`[Cleanup] Multicall error: ${msg}`);
+      results.errors += needsOnChainCheck.length;
     }
   }
 
@@ -227,8 +276,9 @@ export async function main(): Promise<void> {
   // Summary
   log('\n--- Cleanup Summary ---');
   log(`Total conditions:            ${results.total}`);
-  log(`Resolved on Polygon:         ${results.resolved}`);
+  log(`Resolved (Gamma + on-chain): ${results.resolved}`);
   log(`Privated (no engagement):    ${results.privated}`);
+  log(`Skipped (active on Gamma):   ${results.skippedActive}`);
   log(`Skipped (not resolved):      ${results.skippedUnresolved}`);
   log(`Errors:                      ${results.errors}`);
 }
