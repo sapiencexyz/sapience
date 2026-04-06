@@ -219,6 +219,7 @@ type ConditionById = {
   settled?: boolean;
   resolvedToYes?: boolean;
   nonDecisive?: boolean;
+  estimatedPrice?: number | null;
 };
 
 const CONDITIONS_BY_IDS_QUERY = /* GraphQL */ `
@@ -234,6 +235,7 @@ const CONDITIONS_BY_IDS_QUERY = /* GraphQL */ `
       settled
       resolvedToYes
       nonDecisive
+      estimatedPrice
       category {
         slug
       }

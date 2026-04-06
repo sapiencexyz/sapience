@@ -55,6 +55,11 @@ export function useInfiniteQuestions(
   const [skip, setSkip] = useState(0);
   const [allLoadedData, setAllLoadedData] = useState<QuestionType[]>([]);
   const [hasMore, setHasMore] = useState(true);
+  // Tracks the last skip value whose data has been merged into allLoadedData.
+  // Used to keep isFetchingMore=true until the new rows are in the DOM,
+  // preventing a layout shift where the skeleton disappears one frame before
+  // the new rows appear.
+  const [lastMergedSkip, setLastMergedSkip] = useState(-1);
 
   const processedSkipRef = useRef<number>(-1);
   const isFetchPendingRef = useRef(false);
@@ -82,6 +87,7 @@ export function useInfiniteQuestions(
       setSkip(0);
       setAllLoadedData([]);
       setHasMore(true);
+      setLastMergedSkip(-1);
       processedSkipRef.current = -1;
       lastSuccessfulSkipRef.current = 0;
       isFetchPendingRef.current = false;
@@ -137,6 +143,7 @@ export function useInfiniteQuestions(
 
       if (skip === 0) {
         setAllLoadedData(items);
+        setLastMergedSkip(skip);
       } else {
         setAllLoadedData((prev) => {
           const existingIds = new Set(
@@ -154,6 +161,10 @@ export function useInfiniteQuestions(
                 : `condition-${item.condition?.id}`;
             return !existingIds.has(id);
           });
+
+          // Batched with setAllLoadedData — React renders both in the same frame,
+          // so the skeleton stays visible until the new rows are ready.
+          setLastMergedSkip(skip);
 
           return [...prev, ...newItems];
         });
@@ -193,7 +204,7 @@ export function useInfiniteQuestions(
   return {
     data: allLoadedData,
     isLoading: isFetching && skip === 0,
-    isFetchingMore: isFetching && skip > 0,
+    isFetchingMore: skip > 0 && (isFetching || lastMergedSkip !== skip),
     hasMore,
     fetchMore,
   };
