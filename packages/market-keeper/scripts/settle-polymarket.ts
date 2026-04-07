@@ -50,9 +50,10 @@ import { conditionalTokensConditionResolver } from '@sapience/sdk';
 import {
   createPolygonClient,
   createPolygonWalletClient,
-  canRequestResolution as checkCanRequestResolution,
+  batchCanRequestResolution,
   requestResolution as sendRequestResolution,
 } from '../src/polygon/client.js';
+import { batchCheckGammaResolution } from '../src/polymarket-api.js';
 
 // ============ Constants ============
 
@@ -116,18 +117,18 @@ interface SettlementResult {
 
 // ============ ABIs ============
 
-// Resolver ABI — getResolution to check if already settled
+// Resolver ABI — getResolutions (batch) to check if already settled
 const resolverAbi = [
   {
     type: 'function',
-    name: 'getResolution',
+    name: 'getResolutions',
     stateMutability: 'view',
-    inputs: [{ name: 'conditionId', type: 'bytes' }],
+    inputs: [{ name: 'conditionIds', type: 'bytes[]' }],
     outputs: [
-      { name: 'resolved', type: 'bool' },
+      { name: 'resolved', type: 'bool[]' },
       {
-        name: 'outcome',
-        type: 'tuple',
+        name: 'outcomes',
+        type: 'tuple[]',
         components: [
           { name: 'yesWeight', type: 'uint256' },
           { name: 'noWeight', type: 'uint256' },
@@ -309,113 +310,97 @@ async function fetchUnresolvedConditions(
 
 // ============ Settlement Logic ============
 
-async function checkAndSettleCondition(
-  polygonClient: PublicClient,
-  etherealClient: PublicClient,
-  walletClient: WalletClient<Transport, Chain, Account> | null,
-  condition: SapienceCondition,
-  options: CLIOptions
-): Promise<SettlementResult> {
-  const conditionId = condition.id as Hex;
+/**
+ * Check Ethereal resolver for already-settled conditions.
+ * Returns a Set of condition IDs that are already settled.
+ */
+const BATCH_SIZE = 50;
 
-  try {
-    // Step 1: Check if already settled on ConditionalTokensConditionResolver
-    console.log(
-      `[${conditionId}] Checking ConditionalTokensConditionResolver...`
-    );
+/**
+ * Batch-check Ethereal resolver for already-settled conditions using
+ * the contract's native getResolutions(bytes[]) function.
+ */
+async function filterAlreadySettled(
+  etherealClient: PublicClient,
+  conditionIds: string[]
+): Promise<Set<string>> {
+  const settled = new Set<string>();
+
+  for (let i = 0; i < conditionIds.length; i += BATCH_SIZE) {
+    const batch = conditionIds.slice(i, i + BATCH_SIZE);
+
     try {
-      const [isResolved] = await etherealClient.readContract({
+      const [resolvedArr] = await etherealClient.readContract({
         address: RESOLVER_ADDRESS,
         abi: resolverAbi,
-        functionName: 'getResolution',
-        args: [conditionId],
+        functionName: 'getResolutions',
+        args: [batch as Hex[]],
       });
 
-      if (isResolved) {
-        console.log(
-          `[${conditionId}] Already settled on ConditionalTokensConditionResolver`
-        );
-        return {
-          conditionId,
-          alreadyResolved: true,
-          canResolve: false,
-          settled: false,
-        };
+      for (let j = 0; j < batch.length; j++) {
+        if (resolvedArr[j]) {
+          console.log(`[${batch[j]}] Already settled on ConditionalTokensConditionResolver`);
+          settled.add(batch[j]);
+        }
       }
     } catch (err) {
-      // Revert likely means not yet resolved on Ethereal — proceed with Polygon check
-      console.log(
-        `[${conditionId}] getResolution reverted (${err instanceof Error ? err.message : String(err)}), proceeding to Polygon check`
+      // Batch read reverted — likely one malformed id or a transient RPC error.
+      // The old per-id flow treated reverts as "not yet resolved on Ethereal"
+      // and fell through to the Polygon/Gamma gate. Preserve that semantic by
+      // retrying each id individually so one bad apple doesn't poison the batch.
+      console.warn(
+        `[batch ${i}-${i + batch.length - 1}] getResolutions reverted (${err instanceof Error ? err.message : String(err)}), falling back to per-id checks`
       );
+
+      for (const id of batch) {
+        try {
+          const [isResolvedArr] = await etherealClient.readContract({
+            address: RESOLVER_ADDRESS,
+            abi: resolverAbi,
+            functionName: 'getResolutions',
+            args: [[id] as Hex[]],
+          });
+          if (isResolvedArr[0]) {
+            console.log(`[${id}] Already settled on ConditionalTokensConditionResolver`);
+            settled.add(id);
+          }
+        } catch (perIdErr) {
+          // Treat as not-settled. Gamma/Polygon check is the real settlement gate.
+          console.log(
+            `[${id}] getResolutions reverted (${perIdErr instanceof Error ? perIdErr.message : String(perIdErr)}), treating as unresolved and proceeding`
+          );
+        }
+      }
     }
+  }
 
-    // Step 2: Check if resolved on Polygon (ConditionalTokensReader)
-    console.log(`[${conditionId}] Checking canRequestResolution on Polygon...`);
-    const canResolve = await checkCanRequestResolution(polygonClient, conditionId);
+  return settled;
+}
 
-    if (!canResolve) {
-      console.log(`[${conditionId}] Not resolved on Polygon yet, skipping`);
-      return {
-        conditionId,
-        alreadyResolved: false,
-        canResolve: false,
-        settled: false,
-      };
-    }
-
-    if (options.dryRun) {
-      console.log(
-        `[${conditionId}] DRY RUN — would call requestResolution (LZ bridge)`
-      );
-      return {
-        conditionId,
-        alreadyResolved: false,
-        canResolve: true,
-        settled: false,
-      };
-    }
-
-    if (!walletClient) {
-      return {
-        conditionId,
-        alreadyResolved: false,
-        canResolve: true,
-        settled: false,
-        error: 'No wallet client (missing ADMIN_PRIVATE_KEY)',
-      };
-    }
-
-    // Send requestResolution on Polygon (triggers LZ bridge to Ethereal)
+/**
+ * Send requestResolution for a single condition and optionally wait for confirmation.
+ */
+async function settleCondition(
+  polygonClient: PublicClient,
+  walletClient: WalletClient<Transport, Chain, Account>,
+  conditionId: string,
+  options: CLIOptions
+): Promise<SettlementResult> {
+  try {
     console.log(`[${conditionId}] Sending requestResolution...`);
     const hash = await sendRequestResolution(polygonClient, walletClient, conditionId);
     console.log(`[${conditionId}] Transaction sent: ${hash}`);
 
     if (options.wait) {
       console.log(`[${conditionId}] Waiting for confirmation...`);
-      const receipt = await polygonClient.waitForTransactionReceipt({
-        hash,
-      });
-      console.log(
-        `[${conditionId}] Confirmed in block ${receipt.blockNumber}`
-      );
+      const receipt = await polygonClient.waitForTransactionReceipt({ hash });
+      console.log(`[${conditionId}] Confirmed in block ${receipt.blockNumber}`);
     }
 
-    return {
-      conditionId,
-      alreadyResolved: false,
-      canResolve: true,
-      settled: true,
-      txHash: hash,
-    };
+    return { conditionId, alreadyResolved: false, canResolve: true, settled: true, txHash: hash };
   } catch (error) {
-    const errorMessage = error instanceof Error ? error.message : String(error);
-    return {
-      conditionId,
-      alreadyResolved: false,
-      canResolve: false,
-      settled: false,
-      error: errorMessage,
-    };
+    const msg = error instanceof Error ? error.message : String(error);
+    return { conditionId, alreadyResolved: false, canResolve: true, settled: false, error: msg };
   }
 }
 
@@ -501,25 +486,75 @@ async function main() {
       errors: 0,
     };
 
-    for (const condition of conditions) {
-      const result = await checkAndSettleCondition(
-        polygonClient,
-        etherealClient,
-        walletClient,
-        condition,
-        options
-      );
+    const allIds = conditions.map((c) => c.id);
 
-      if (result.alreadyResolved) {
-        results.alreadyResolved++;
-      } else if (result.error) {
-        console.error(`Error for ${condition.id}: ${result.error}`);
-        results.errors++;
-      } else if (!result.canResolve) {
-        results.skipped++;
-      } else {
-        results.canResolve++;
-        if (result.settled) results.settled++;
+    // Step 1: Filter out already-settled on Ethereal
+    const alreadySettled = await filterAlreadySettled(etherealClient, allIds);
+    results.alreadyResolved = alreadySettled.size;
+    const unsettledIds = allIds.filter((id) => !alreadySettled.has(id));
+
+    if (unsettledIds.length === 0) {
+      console.log('All conditions already settled on resolver');
+    } else {
+      // Step 2: Check Gamma API (free, no RPC)
+      console.log(`Checking Gamma API for ${unsettledIds.length} conditions...`);
+      const gamma = await batchCheckGammaResolution(unsettledIds);
+
+      const toSettle: string[] = [];
+
+      // Log Gamma classifications (hint only — RPC is truth for settle)
+      for (const id of unsettledIds) {
+        const status = gamma.statuses.get(id) ?? 'not_found';
+        console.log(`[${id}] Gamma: ${status}`);
+      }
+
+      // Step 3: Batch on-chain check via multicall for ALL unsettled conditions.
+      // Gamma is a classification hint, not authority over whether to burn POL.
+      // Every condition must pass canRequestResolution before we send requestResolution.
+      console.log(
+        `Checking ${unsettledIds.length} conditions on-chain via multicall...`
+      );
+      try {
+        const onChainResults = await batchCanRequestResolution(
+          polygonClient,
+          unsettledIds
+        );
+
+        for (const [id, canResolve] of onChainResults) {
+          console.log(`[${id}] canRequestResolution = ${canResolve}`);
+          if (canResolve) {
+            console.log(`[${id}] ${options.dryRun ? 'DRY RUN — would send requestResolution' : 'will send requestResolution'}`);
+            toSettle.push(id);
+            results.canResolve++;
+          } else {
+            results.skipped++;
+          }
+        }
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        console.error(`Multicall error: ${msg}`);
+        results.errors += unsettledIds.length;
+      }
+
+      // Step 4: Send requestResolution for all resolved conditions
+      if (toSettle.length > 0 && options.execute && walletClient) {
+        for (const id of toSettle) {
+          const result = await settleCondition(
+            polygonClient,
+            walletClient,
+            id,
+            options
+          );
+          if (result.settled) {
+            results.settled++;
+          } else if (result.error) {
+            console.error(`[${id}] Settlement error: ${result.error}`);
+            results.errors++;
+          }
+        }
+      } else if (toSettle.length > 0 && options.execute && !walletClient) {
+        console.error('No wallet client (missing ADMIN_PRIVATE_KEY)');
+        results.errors += toSettle.length;
       }
     }
 
