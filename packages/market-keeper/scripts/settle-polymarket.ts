@@ -501,57 +501,39 @@ async function main() {
       const gamma = await batchCheckGammaResolution(unsettledIds);
 
       const toSettle: string[] = [];
-      const needsOnChainCheck: string[] = [];
 
-      // Classify each condition based on Gamma status
+      // Log Gamma classifications (hint only — RPC is truth for settle)
       for (const id of unsettledIds) {
         const status = gamma.statuses.get(id) ?? 'not_found';
-
-        switch (status) {
-          case 'closed':
-            console.log(`[${id}] Gamma: closed → ${options.dryRun ? 'DRY RUN — would send requestResolution' : 'will send requestResolution'}`);
-            toSettle.push(id);
-            results.canResolve++;
-            break;
-          case 'active':
-            console.log(`[${id}] Gamma: active → skipping`);
-            results.skipped++;
-            break;
-          case 'archived':
-          case 'not_found':
-          case 'api_error':
-            console.log(`[${id}] Gamma: ${status} → will check on-chain`);
-            needsOnChainCheck.push(id);
-            break;
-        }
+        console.log(`[${id}] Gamma: ${status}`);
       }
 
-      // Step 3: Batch on-chain check via multicall
-      if (needsOnChainCheck.length > 0) {
-        console.log(
-          `Checking ${needsOnChainCheck.length} conditions on-chain via multicall...`
+      // Step 3: Batch on-chain check via multicall for ALL unsettled conditions.
+      // Gamma is a classification hint, not authority over whether to burn POL.
+      // Every condition must pass canRequestResolution before we send requestResolution.
+      console.log(
+        `Checking ${unsettledIds.length} conditions on-chain via multicall...`
+      );
+      try {
+        const onChainResults = await batchCanRequestResolution(
+          polygonClient,
+          unsettledIds
         );
-        try {
-          const onChainResults = await batchCanRequestResolution(
-            polygonClient,
-            needsOnChainCheck
-          );
 
-          for (const [id, canResolve] of onChainResults) {
-            console.log(`[${id}] canRequestResolution = ${canResolve}`);
-            if (canResolve) {
-              console.log(`[${id}] ${options.dryRun ? 'DRY RUN — would send requestResolution' : 'will send requestResolution'}`);
-              toSettle.push(id);
-              results.canResolve++;
-            } else {
-              results.skipped++;
-            }
+        for (const [id, canResolve] of onChainResults) {
+          console.log(`[${id}] canRequestResolution = ${canResolve}`);
+          if (canResolve) {
+            console.log(`[${id}] ${options.dryRun ? 'DRY RUN — would send requestResolution' : 'will send requestResolution'}`);
+            toSettle.push(id);
+            results.canResolve++;
+          } else {
+            results.skipped++;
           }
-        } catch (error) {
-          const msg = error instanceof Error ? error.message : String(error);
-          console.error(`Multicall error: ${msg}`);
-          results.errors += needsOnChainCheck.length;
         }
+      } catch (error) {
+        const msg = error instanceof Error ? error.message : String(error);
+        console.error(`Multicall error: ${msg}`);
+        results.errors += unsettledIds.length;
       }
 
       // Step 4: Send requestResolution for all resolved conditions
