@@ -109,6 +109,41 @@ export async function canRequestResolution(
   });
 }
 
+/**
+ * Batch-check canRequestResolution for multiple conditions using multicall.
+ * Sends up to `batchSize` calls per JSON-RPC request via the Multicall3 contract on Polygon.
+ * Returns a Map of conditionId → boolean (false on individual call failure).
+ */
+export async function batchCanRequestResolution(
+  polygonClient: PublicClient,
+  conditionIds: string[],
+  batchSize: number = 50
+): Promise<Map<string, boolean>> {
+  const results = new Map<string, boolean>();
+
+  for (let i = 0; i < conditionIds.length; i += batchSize) {
+    const batch = conditionIds.slice(i, i + batchSize);
+    const contracts = batch.map((id) => ({
+      address: CONDITIONAL_TOKENS_READER_ADDRESS,
+      abi: conditionalTokensReaderAbi,
+      functionName: 'canRequestResolution' as const,
+      args: [id as Hex],
+    }));
+
+    const batchResults = await polygonClient.multicall({ contracts });
+
+    for (let j = 0; j < batch.length; j++) {
+      const r = batchResults[j];
+      results.set(
+        batch[j],
+        r.status === 'success' ? (r.result as boolean) : false
+      );
+    }
+  }
+
+  return results;
+}
+
 export async function requestResolution(
   polygonClient: PublicClient,
   walletClient: WalletClient<Transport, Chain, Account>,

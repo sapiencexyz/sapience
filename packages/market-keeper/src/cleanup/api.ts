@@ -33,13 +33,14 @@ query UnresolvedNoEngagement($take: Int!, $skip: Int!) {
         { attestations: { none: {} } }
       ]
     }
-    orderBy: { endTime: asc }
+    orderBy: [{ endTime: asc }, { id: asc }]
     take: $take
     skip: $skip
   ) {
     id
     openInterest
     question
+    endTime
   }
 }
 `;
