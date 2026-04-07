@@ -329,17 +329,47 @@ async function filterAlreadySettled(
   for (let i = 0; i < conditionIds.length; i += BATCH_SIZE) {
     const batch = conditionIds.slice(i, i + BATCH_SIZE);
 
-    const [resolvedArr] = await etherealClient.readContract({
-      address: RESOLVER_ADDRESS,
-      abi: resolverAbi,
-      functionName: 'getResolutions',
-      args: [batch as Hex[]],
-    });
+    try {
+      const [resolvedArr] = await etherealClient.readContract({
+        address: RESOLVER_ADDRESS,
+        abi: resolverAbi,
+        functionName: 'getResolutions',
+        args: [batch as Hex[]],
+      });
 
-    for (let j = 0; j < batch.length; j++) {
-      if (resolvedArr[j]) {
-        console.log(`[${batch[j]}] Already settled on ConditionalTokensConditionResolver`);
-        settled.add(batch[j]);
+      for (let j = 0; j < batch.length; j++) {
+        if (resolvedArr[j]) {
+          console.log(`[${batch[j]}] Already settled on ConditionalTokensConditionResolver`);
+          settled.add(batch[j]);
+        }
+      }
+    } catch (err) {
+      // Batch read reverted — likely one malformed id or a transient RPC error.
+      // The old per-id flow treated reverts as "not yet resolved on Ethereal"
+      // and fell through to the Polygon/Gamma gate. Preserve that semantic by
+      // retrying each id individually so one bad apple doesn't poison the batch.
+      console.warn(
+        `[batch ${i}-${i + batch.length - 1}] getResolutions reverted (${err instanceof Error ? err.message : String(err)}), falling back to per-id checks`
+      );
+
+      for (const id of batch) {
+        try {
+          const [isResolvedArr] = await etherealClient.readContract({
+            address: RESOLVER_ADDRESS,
+            abi: resolverAbi,
+            functionName: 'getResolutions',
+            args: [[id] as Hex[]],
+          });
+          if (isResolvedArr[0]) {
+            console.log(`[${id}] Already settled on ConditionalTokensConditionResolver`);
+            settled.add(id);
+          }
+        } catch (perIdErr) {
+          // Treat as not-settled. Gamma/Polygon check is the real settlement gate.
+          console.log(
+            `[${id}] getResolutions reverted (${perIdErr instanceof Error ? perIdErr.message : String(perIdErr)}), treating as unresolved and proceeding`
+          );
+        }
       }
     }
   }
