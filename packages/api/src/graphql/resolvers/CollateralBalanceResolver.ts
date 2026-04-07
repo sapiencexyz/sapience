@@ -28,8 +28,8 @@ class CollateralBalanceSnapshotType {
   @Field(() => String)
   balance!: string;
 
-  @Field(() => Date, { nullable: true })
-  timestamp?: Date;
+  @Field(() => Date)
+  timestamp!: Date;
 }
 
 @ObjectType()
@@ -117,7 +117,8 @@ export class CollateralBalanceResolver {
   ): Promise<CollateralBalanceSnapshotType[]> {
     const addr = address.toLowerCase();
     const cappedCount = Math.min(count, 365);
-    const BLOCKS_PER_HOUR = Math.floor(3600 / 1.3);
+    const ASSUMED_BLOCK_TIME_SECONDS = 1.3;
+    const BLOCKS_PER_HOUR = Math.floor(3600 / ASSUMED_BLOCK_TIME_SECONDS);
     const step = intervalHours * BLOCKS_PER_HOUR;
 
     let headBlock = currentBlock;
@@ -126,6 +127,16 @@ export class CollateralBalanceResolver {
       const row = await prisma.keyValueStore.findUnique({ where: { key } });
       headBlock = row ? parseInt(row.value, 10) : 0;
     }
+
+    const headTimestampResult = await prisma.$queryRaw<
+      [{ timestamp: Date | null }]
+    >`
+      SELECT MAX("timestamp") AS timestamp
+      FROM collateral_transfer
+      WHERE "chainId" = ${chainId}
+        AND "blockNumber" <= ${headBlock}
+    `;
+    const headTimestamp = headTimestampResult[0]?.timestamp ?? new Date(0);
 
     const boundaries: number[] = [];
     for (let i = 0; i <= cappedCount; i++) {
@@ -147,11 +158,16 @@ export class CollateralBalanceResolver {
             AND ("from" = ${addr} OR "to" = ${addr})
             AND "blockNumber" <= ${block}
         `;
+        const estimatedBoundaryTimestamp = new Date(
+          headTimestamp.getTime() -
+            Math.max(0, headBlock - block) * ASSUMED_BLOCK_TIME_SECONDS * 1000
+        );
+
         return {
           index: i,
           atBlock: block,
           balance: result[0]?.balance ?? '0',
-          timestamp: result[0]?.timestamp ?? undefined,
+          timestamp: result[0]?.timestamp ?? estimatedBoundaryTimestamp,
         };
       })
     );

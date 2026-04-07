@@ -414,7 +414,7 @@ export type CollateralBalanceSnapshotType = {
   atBlock: Scalars['Int']['output'];
   balance: Scalars['String']['output'];
   index: Scalars['Int']['output'];
-  timestamp?: Maybe<Scalars['DateTimeISO']['output']>;
+  timestamp: Scalars['DateTimeISO']['output'];
 };
 
 export type CollateralBalanceType = {

@@ -364,7 +364,7 @@ type CollateralBalanceSnapshotType {
   atBlock: Int!
   balance: String!
   index: Int!
-  timestamp: DateTimeISO
+  timestamp: DateTimeISO!
 }
 
 type CollateralBalanceType {
