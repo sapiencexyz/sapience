@@ -50,8 +50,8 @@ export const ALWAYS_INCLUDE_PATTERNS = [
 ];
 
 // Supplementary event tag slugs to fetch from /events endpoint
-// The /markets list endpoint has blind spots — some active markets don't appear
-// in paginated results but are discoverable via /events?tag_slug=X
+// added this for other market tags we are not fetching from the markets endpoint.
+// We add the tags here and we can fetch them.
 export const SUPPLEMENTARY_EVENT_TAGS = ['earnings'];
 
 // Relist configuration
