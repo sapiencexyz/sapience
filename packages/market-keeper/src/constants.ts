@@ -49,6 +49,11 @@ export const ALWAYS_INCLUDE_PATTERNS = [
   /price of Ethereum.+on \w+ \d+/i, // "Will the price of Ethereum be above... on January 28?"
 ];
 
+// Supplementary event tag slugs to fetch from /events endpoint
+// added this for other market tags we are not fetching from the markets endpoint.
+// We add the tags here and we can fetch them.
+export const SUPPLEMENTARY_EVENT_TAGS = ['earnings'];
+
 // Relist configuration
 export const RELIST_LOOKBACK_DAYS = 30;
 export const RELIST_FORWARD_DAYS = 3;
