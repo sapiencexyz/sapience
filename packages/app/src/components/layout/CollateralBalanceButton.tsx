@@ -16,7 +16,6 @@ import {
   DialogTitle,
 } from '@sapience/ui/components/ui/dialog';
 import { ArrowRight, Gift, Info } from 'lucide-react';
-import SponsorshipBadge from '~/components/shared/SponsorshipBadge';
 import {
   parseEther,
   encodeFunctionData,
@@ -29,6 +28,14 @@ import { Input } from '@sapience/ui/components/ui/input';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { collateralToken } from '@sapience/sdk/contracts';
+import { useSwitchChain } from 'wagmi';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@sapience/ui/components/ui/tooltip';
+import { formatUnits } from 'viem';
+import SponsorshipBadge from '~/components/shared/SponsorshipBadge';
 import { useCollateralBalance } from '~/hooks/blockchain/useCollateralBalance';
 import { useSession } from '~/lib/context/SessionContext';
 import {
@@ -38,14 +45,7 @@ import {
 import { STARGATE_DEPOSIT_URL } from '~/lib/constants';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import EnsAvatar from '~/components/shared/EnsAvatar';
-import { useSwitchChain } from 'wagmi';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@sapience/ui/components/ui/tooltip';
 import { useSponsorStatus } from '~/hooks/sponsorship/useSponsorStatus';
-import { formatUnits } from 'viem';
 
 const WUSDE_ABI = parseAbi([
   'function deposit() payable',
@@ -329,8 +329,8 @@ export default function CollateralBalanceButton({
       const ownerSigner: OwnerSigner = {
         address: eoaAddress,
         provider,
-        switchChain: async (chainId: number) => {
-          await switchChainAsync({ chainId });
+        switchChain: async (targetChainId: number) => {
+          await switchChainAsync({ chainId: targetChainId });
         },
       };
 
@@ -652,7 +652,8 @@ export default function CollateralBalanceButton({
             <div className="flex items-center gap-4">
               <div className="relative flex-1">
                 <Input
-                  type="number"
+                  type="text"
+                  inputMode="decimal"
                   value={transferAmount}
                   onChange={(e) => setTransferAmount(e.target.value)}
                   placeholder="0.00"
