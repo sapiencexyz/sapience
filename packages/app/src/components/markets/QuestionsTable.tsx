@@ -767,8 +767,9 @@ export default function QuestionsTable({
                     </React.Fragment>
                   );
                 })}
-                {/* Pulsating loading row while fetching next page */}
-                {isFetchingMore && hasMore && (
+                {/* Pulsating loading row — always visible when more pages exist
+                    so the user sees it as soon as they reach the bottom */}
+                {hasMore && (
                   <TableRow className="hover:bg-transparent border-b border-brand-white/20">
                     <TableCell colSpan={columns.length} className="py-2">
                       <div className="flex items-center gap-3 animate-pulse">

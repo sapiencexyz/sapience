@@ -19,7 +19,11 @@ vi.mock('../cleanup/api', () => ({
 vi.mock('../polygon/client', () => ({
   createPolygonClient: vi.fn(() => ({})),
   createPolygonWalletClient: vi.fn(() => ({})),
-  canRequestResolution: vi.fn(),
+  batchCanRequestResolution: vi.fn(),
+}));
+
+vi.mock('../polymarket-api', () => ({
+  batchCheckGammaResolution: vi.fn(),
 }));
 
 import { main } from '../cleanup/index';
@@ -30,7 +34,8 @@ import {
   fetchConditionsWithEngagement,
   settleConditionOnPolygon,
 } from '../cleanup/api';
-import { canRequestResolution } from '../polygon/client';
+import { batchCanRequestResolution } from '../polygon/client';
+import { batchCheckGammaResolution } from '../polymarket-api';
 import { log } from '../utils';
 
 const mockFetchNoEngagement = vi.mocked(fetchNoEngagementConditions);
@@ -38,7 +43,8 @@ const mockPrivate = vi.mocked(privateConditions);
 const mockFetchByIds = vi.mocked(fetchConditionsWithEngagement);
 const mockRepublish = vi.mocked(republishConditions);
 const mockSettle = vi.mocked(settleConditionOnPolygon);
-const mockCanRequestResolution = vi.mocked(canRequestResolution);
+const mockBatchCanRequestResolution = vi.mocked(batchCanRequestResolution);
+const mockBatchCheckGamma = vi.mocked(batchCheckGammaResolution);
 const mockLog = vi.mocked(log);
 
 interface TestCondition {
@@ -87,21 +93,23 @@ describe('cleanup-polymarket main()', () => {
 
     await runMainWithTimers();
 
-    expect(mockCanRequestResolution).not.toHaveBeenCalled();
+    expect(mockBatchCheckGamma).not.toHaveBeenCalled();
     expect(mockPrivate).not.toHaveBeenCalled();
     expect(mockLog).toHaveBeenCalledWith(
       expect.stringContaining('No unresolved no-engagement conditions')
     );
   });
 
-  it('privates resolved conditions with OI=0 and no attestations', async () => {
+  it('privates conditions resolved via Gamma API (closed)', async () => {
     const condition = makeCondition({
       id: '0x1',
       openInterest: '0',
       attestationCount: 0,
     });
     mockFetchNoEngagement.mockResolvedValue([condition]);
-    mockCanRequestResolution.mockResolvedValue(true);
+    mockBatchCheckGamma.mockResolvedValue({
+      statuses: new Map([['0x1', 'closed' as const]]),
+    });
     mockPrivate.mockResolvedValue({ success: true, updated: 1 });
     mockFetchByIds.mockResolvedValue([]);
     process.argv = ['node', 'cleanup-polymarket.ts', '--execute'];
@@ -113,19 +121,54 @@ describe('cleanup-polymarket main()', () => {
       expect.any(String),
       ['0x1']
     );
+    // No on-chain calls needed since Gamma confirmed resolution
+    expect(mockBatchCanRequestResolution).not.toHaveBeenCalled();
   });
 
-  it('skips unresolved conditions (not yet resolved on Polygon CTF)', async () => {
+  it('privates conditions resolved via on-chain fallback (multicall)', async () => {
+    const condition = makeCondition({
+      id: '0x1',
+      openInterest: '0',
+      attestationCount: 0,
+    });
+    mockFetchNoEngagement.mockResolvedValue([condition]);
+    mockBatchCheckGamma.mockResolvedValue({
+      statuses: new Map([['0x1', 'not_found' as const]]),
+    });
+    mockBatchCanRequestResolution.mockResolvedValue(new Map([['0x1', true]]));
+    mockPrivate.mockResolvedValue({ success: true, updated: 1 });
+    mockFetchByIds.mockResolvedValue([]);
+    process.argv = ['node', 'cleanup-polymarket.ts', '--execute'];
+
+    await runMainWithTimers();
+
+    expect(mockBatchCanRequestResolution).toHaveBeenCalledWith(
+      expect.anything(),
+      ['0x1']
+    );
+    expect(mockPrivate).toHaveBeenCalledWith(
+      expect.any(String),
+      expect.any(String),
+      ['0x1']
+    );
+  });
+
+  it('skips unresolved conditions (not resolved on Gamma or on-chain)', async () => {
     const condition = makeCondition({ id: '0x1' });
     mockFetchNoEngagement.mockResolvedValue([condition]);
-    mockCanRequestResolution.mockResolvedValue(false);
+    mockBatchCheckGamma.mockResolvedValue({
+      statuses: new Map([['0x1', 'not_found' as const]]),
+    });
+    mockBatchCanRequestResolution.mockResolvedValue(new Map([['0x1', false]]));
     process.argv = ['node', 'cleanup-polymarket.ts', '--execute'];
 
     await runMainWithTimers();
 
     expect(mockPrivate).not.toHaveBeenCalled();
     const logCalls = mockLog.mock.calls.map((c) => String(c[0]));
-    expect(logCalls.some((msg) => msg.includes('Not resolved'))).toBe(true);
+    expect(
+      logCalls.some((msg) => msg.includes('canRequestResolution = false'))
+    ).toBe(true);
   });
 
   it('re-publishes and settles if a privated condition gains OI during safeguard wait', async () => {
@@ -135,7 +178,9 @@ describe('cleanup-polymarket main()', () => {
       attestationCount: 0,
     });
     mockFetchNoEngagement.mockResolvedValue([condition]);
-    mockCanRequestResolution.mockResolvedValue(true);
+    mockBatchCheckGamma.mockResolvedValue({
+      statuses: new Map([['0x1', 'closed' as const]]),
+    });
     mockPrivate.mockResolvedValue({ success: true, updated: 1 });
     mockRepublish.mockResolvedValue({ success: true, updated: 1 });
     // After 15s wait, OI has appeared
@@ -170,7 +215,9 @@ describe('cleanup-polymarket main()', () => {
       attestationCount: 0,
     });
     mockFetchNoEngagement.mockResolvedValue([condition]);
-    mockCanRequestResolution.mockResolvedValue(true);
+    mockBatchCheckGamma.mockResolvedValue({
+      statuses: new Map([['0x1', 'closed' as const]]),
+    });
     mockPrivate.mockResolvedValue({ success: true, updated: 1 });
     mockRepublish.mockResolvedValue({ success: true, updated: 1 });
     // After 15s wait, attestations appeared
@@ -206,17 +253,15 @@ describe('cleanup-polymarket main()', () => {
       attestationCount: 0,
     });
     mockFetchNoEngagement.mockResolvedValue([condition]);
-    mockCanRequestResolution.mockResolvedValue(true);
+    mockBatchCheckGamma.mockResolvedValue({
+      statuses: new Map([['0x1', 'closed' as const]]),
+    });
     mockPrivate.mockResolvedValue({ success: true, updated: 1 });
     mockFetchByIds.mockResolvedValue([]);
     process.argv = ['node', 'cleanup-polymarket.ts', '--execute'];
 
     await runMainWithTimers();
 
-    expect(mockCanRequestResolution).toHaveBeenCalledWith(
-      expect.anything(),
-      '0x1'
-    );
     expect(mockPrivate).toHaveBeenCalledWith(
       expect.any(String),
       expect.any(String),
@@ -227,7 +272,9 @@ describe('cleanup-polymarket main()', () => {
   it('does not private or settle in dry-run mode', async () => {
     const condition = makeCondition({ id: '0x1' });
     mockFetchNoEngagement.mockResolvedValue([condition]);
-    mockCanRequestResolution.mockResolvedValue(true);
+    mockBatchCheckGamma.mockResolvedValue({
+      statuses: new Map([['0x1', 'closed' as const]]),
+    });
 
     await runMainWithTimers();
 
