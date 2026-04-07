@@ -14,6 +14,7 @@ import {
   type Hex,
   type PublicClient,
 } from 'viem';
+import { OutcomeSide } from '../types/escrow';
 import type { AuctionRFQPayload, BidPayload, PickJson } from '../types/escrow';
 import {
   verifyAuctionIntentSignature,
@@ -96,7 +97,8 @@ function isValidPickJson(pick: unknown): pick is PickJson {
     return false;
   if (
     typeof p.predictedOutcome !== 'number' ||
-    (p.predictedOutcome !== 0 && p.predictedOutcome !== 1)
+    (p.predictedOutcome !== (OutcomeSide.NO as number) &&
+      p.predictedOutcome !== (OutcomeSide.YES as number))
   )
     return false;
   return true;

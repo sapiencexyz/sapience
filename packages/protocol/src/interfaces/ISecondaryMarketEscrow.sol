@@ -106,6 +106,23 @@ interface ISecondaryMarketEscrow {
     /// @return separator The domain separator
     function domainSeparator() external view returns (bytes32 separator);
 
+    /// @notice Get the trade hash from its input parameters for verification
+    /// @param token Position token address
+    /// @param collateral Collateral token address
+    /// @param seller Seller address
+    /// @param buyer Buyer address
+    /// @param tokenAmount Amount of position tokens
+    /// @param price Amount of collateral
+    /// @return tradeHash The computed trade hash
+    function getTradeHash(
+        address token,
+        address collateral,
+        address seller,
+        address buyer,
+        uint256 tokenAmount,
+        uint256 price
+    ) external pure returns (bytes32 tradeHash);
+
     /// @notice Get the hash that should be signed for trade approval
     /// @param tradeHash Hash of the trade parameters
     /// @param signer Signer address

@@ -1,5 +1,6 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
+import { OutcomeSide } from '@sapience/sdk/types';
 import type { AuctionBid } from '~/lib/auction/useAuctionBidsHub';
 import type { UsePreprocessedBidsOptions } from '../usePreprocessedBids';
 
@@ -61,7 +62,7 @@ const DEFAULT_OPTS: UsePreprocessedBidsOptions = {
     {
       conditionResolver: '0xResolver',
       conditionId: '0xCondition',
-      predictedOutcome: 1,
+      predictedOutcome: OutcomeSide.NO,
     },
   ],
   predictor: '0xPredictor',

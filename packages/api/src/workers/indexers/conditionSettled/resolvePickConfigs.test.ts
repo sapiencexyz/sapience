@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from 'vitest';
+import { OutcomeSide } from '@sapience/sdk/types';
 import {
   computeSettlementResult,
   resolvePickConfigsForCondition,
@@ -14,36 +15,36 @@ describe('computeSettlementResult', () => {
     nonDecisive,
   });
 
-  // OutcomeSide: YES = 0, NO = 1 (matches IV2Types.sol)
+  // OutcomeSide: NO = 0, YES = 1 (matches IV2Types.sol)
 
   it('returns PREDICTOR_WINS when single pick predicted YES and condition resolved YES', () => {
-    const picks = [{ conditionId: 'c1', predictedOutcome: 0 }];
+    const picks = [{ conditionId: 'c1', predictedOutcome: OutcomeSide.YES }];
     const map = new Map([['c1', cond('c1', true)]]);
     expect(computeSettlementResult(picks, map)).toBe('PREDICTOR_WINS');
   });
 
   it('returns PREDICTOR_WINS when single pick predicted NO and condition resolved NO', () => {
-    const picks = [{ conditionId: 'c1', predictedOutcome: 1 }];
+    const picks = [{ conditionId: 'c1', predictedOutcome: OutcomeSide.NO }];
     const map = new Map([['c1', cond('c1', false)]]);
     expect(computeSettlementResult(picks, map)).toBe('PREDICTOR_WINS');
   });
 
   it('returns COUNTERPARTY_WINS when single pick predicted YES but condition resolved NO', () => {
-    const picks = [{ conditionId: 'c1', predictedOutcome: 0 }];
+    const picks = [{ conditionId: 'c1', predictedOutcome: OutcomeSide.YES }];
     const map = new Map([['c1', cond('c1', false)]]);
     expect(computeSettlementResult(picks, map)).toBe('COUNTERPARTY_WINS');
   });
 
   it('returns COUNTERPARTY_WINS when single pick predicted NO but condition resolved YES', () => {
-    const picks = [{ conditionId: 'c1', predictedOutcome: 1 }];
+    const picks = [{ conditionId: 'c1', predictedOutcome: OutcomeSide.NO }];
     const map = new Map([['c1', cond('c1', true)]]);
     expect(computeSettlementResult(picks, map)).toBe('COUNTERPARTY_WINS');
   });
 
   it('returns PREDICTOR_WINS when all multi-picks are correct', () => {
     const picks = [
-      { conditionId: 'c1', predictedOutcome: 0 },
-      { conditionId: 'c2', predictedOutcome: 1 },
+      { conditionId: 'c1', predictedOutcome: OutcomeSide.YES },
+      { conditionId: 'c2', predictedOutcome: OutcomeSide.NO },
     ];
     const map = new Map([
       ['c1', cond('c1', true)],
@@ -54,8 +55,8 @@ describe('computeSettlementResult', () => {
 
   it('returns COUNTERPARTY_WINS when one of multi-picks is wrong', () => {
     const picks = [
-      { conditionId: 'c1', predictedOutcome: 0 },
-      { conditionId: 'c2', predictedOutcome: 0 },
+      { conditionId: 'c1', predictedOutcome: OutcomeSide.YES },
+      { conditionId: 'c2', predictedOutcome: OutcomeSide.YES },
     ];
     const map = new Map([
       ['c1', cond('c1', true)],
@@ -65,15 +66,15 @@ describe('computeSettlementResult', () => {
   });
 
   it('returns COUNTERPARTY_WINS when condition is non-decisive (tie)', () => {
-    const picks = [{ conditionId: 'c1', predictedOutcome: 0 }];
+    const picks = [{ conditionId: 'c1', predictedOutcome: OutcomeSide.YES }];
     const map = new Map([['c1', cond('c1', false, true)]]);
     expect(computeSettlementResult(picks, map)).toBe('COUNTERPARTY_WINS');
   });
 
   it('returns COUNTERPARTY_WINS when any condition is non-decisive even if others match', () => {
     const picks = [
-      { conditionId: 'c1', predictedOutcome: 0 },
-      { conditionId: 'c2', predictedOutcome: 1 },
+      { conditionId: 'c1', predictedOutcome: OutcomeSide.YES },
+      { conditionId: 'c2', predictedOutcome: OutcomeSide.NO },
     ];
     const map = new Map([
       ['c1', cond('c1', true)],
@@ -83,7 +84,7 @@ describe('computeSettlementResult', () => {
   });
 
   it('returns null when condition is missing from map', () => {
-    const picks = [{ conditionId: 'c1', predictedOutcome: 1 }];
+    const picks = [{ conditionId: 'c1', predictedOutcome: OutcomeSide.NO }];
     const map = new Map<
       string,
       {
@@ -100,34 +101,38 @@ describe('computeSettlementResult', () => {
   // Pyth Over/Under settlement mapping
   //
   // On-chain PythConditionResolver:
-  //   Over  → payoutNumerators [1,0] → YES = 0
-  //   Under → payoutNumerators [0,1] → NO  = 1
+  //   Over  → payoutNumerators [1,0] → YES
+  //   Under → payoutNumerators [0,1] → NO
   //
   // MarketSettled event:
   //   resolvedToOver: true  → resolvedToYes: true
   //   resolvedToOver: false → resolvedToYes: false
   // -------------------------------------------------------------------------
 
-  it('Pyth Over pick (predictedOutcome=0) wins when resolvedToYes=true (Over won)', () => {
-    const picks = [{ conditionId: 'pyth-1', predictedOutcome: 0 }];
+  it('Pyth Over pick (predictedOutcome=YES) wins when resolvedToYes=true (Over won)', () => {
+    const picks = [
+      { conditionId: 'pyth-1', predictedOutcome: OutcomeSide.YES },
+    ];
     const map = new Map([['pyth-1', cond('pyth-1', true)]]);
     expect(computeSettlementResult(picks, map)).toBe('PREDICTOR_WINS');
   });
 
-  it('Pyth Over pick (predictedOutcome=0) loses when resolvedToYes=false (Under won)', () => {
-    const picks = [{ conditionId: 'pyth-1', predictedOutcome: 0 }];
+  it('Pyth Over pick (predictedOutcome=YES) loses when resolvedToYes=false (Under won)', () => {
+    const picks = [
+      { conditionId: 'pyth-1', predictedOutcome: OutcomeSide.YES },
+    ];
     const map = new Map([['pyth-1', cond('pyth-1', false)]]);
     expect(computeSettlementResult(picks, map)).toBe('COUNTERPARTY_WINS');
   });
 
-  it('Pyth Under pick (predictedOutcome=1) wins when resolvedToYes=false (Under won)', () => {
-    const picks = [{ conditionId: 'pyth-1', predictedOutcome: 1 }];
+  it('Pyth Under pick (predictedOutcome=NO) wins when resolvedToYes=false (Under won)', () => {
+    const picks = [{ conditionId: 'pyth-1', predictedOutcome: OutcomeSide.NO }];
     const map = new Map([['pyth-1', cond('pyth-1', false)]]);
     expect(computeSettlementResult(picks, map)).toBe('PREDICTOR_WINS');
   });
 
-  it('Pyth Under pick (predictedOutcome=1) loses when resolvedToYes=true (Over won)', () => {
-    const picks = [{ conditionId: 'pyth-1', predictedOutcome: 1 }];
+  it('Pyth Under pick (predictedOutcome=NO) loses when resolvedToYes=true (Over won)', () => {
+    const picks = [{ conditionId: 'pyth-1', predictedOutcome: OutcomeSide.NO }];
     const map = new Map([['pyth-1', cond('pyth-1', true)]]);
     expect(computeSettlementResult(picks, map)).toBe('COUNTERPARTY_WINS');
   });
@@ -162,8 +167,8 @@ describe('resolvePickConfigsForCondition', () => {
           {
             id: 'pc1',
             picks: [
-              { conditionId: 'c1', predictedOutcome: 1 },
-              { conditionId: 'c2', predictedOutcome: 0 },
+              { conditionId: 'c1', predictedOutcome: OutcomeSide.NO },
+              { conditionId: 'c2', predictedOutcome: OutcomeSide.YES },
             ],
           },
         ]),
@@ -193,8 +198,8 @@ describe('resolvePickConfigsForCondition', () => {
           {
             id: 'pc1',
             picks: [
-              { conditionId: 'c1', predictedOutcome: 0 },
-              { conditionId: 'c2', predictedOutcome: 1 },
+              { conditionId: 'c1', predictedOutcome: OutcomeSide.YES },
+              { conditionId: 'c2', predictedOutcome: OutcomeSide.NO },
             ],
           },
         ]),
@@ -226,8 +231,8 @@ describe('resolvePickConfigsForCondition', () => {
           {
             id: 'pc1',
             picks: [
-              { conditionId: 'c1', predictedOutcome: 1 },
-              { conditionId: 'c2', predictedOutcome: 1 },
+              { conditionId: 'c1', predictedOutcome: OutcomeSide.NO },
+              { conditionId: 'c2', predictedOutcome: OutcomeSide.NO },
             ],
           },
         ]),
@@ -258,7 +263,7 @@ describe('resolvePickConfigsForCondition', () => {
         findMany: vi.fn().mockResolvedValue([
           {
             id: 'pc1',
-            picks: [{ conditionId: 'c1', predictedOutcome: 1 }],
+            picks: [{ conditionId: 'c1', predictedOutcome: OutcomeSide.NO }],
           },
         ]),
         update: vi.fn(),

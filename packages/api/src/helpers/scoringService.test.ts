@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { OutcomeSide } from '@sapience/sdk/types';
 
 const mockPrisma = vi.hoisted(() => ({
   attestation: { findUnique: vi.fn() },
@@ -121,7 +122,7 @@ describe('scoreSelectedForecastsForSettledMarket', () => {
       settled: true,
       resolvedToYes: true,
     });
-    mockOutcome.mockReturnValue(1);
+    mockOutcome.mockReturnValue(OutcomeSide.YES);
 
     await scoreSelectedForecastsForSettledMarket(MARKET_ADDR, MARKET_ID);
     expect(mockPrisma.$transaction).not.toHaveBeenCalled();
@@ -134,7 +135,7 @@ describe('scoreSelectedForecastsForSettledMarket', () => {
       settled: true,
       resolvedToYes: true,
     });
-    mockOutcome.mockReturnValue(1);
+    mockOutcome.mockReturnValue(OutcomeSide.YES);
     mockPrisma.attestationScore.findMany.mockResolvedValue([]);
 
     await scoreSelectedForecastsForSettledMarket(MARKET_ADDR, MARKET_ID);
@@ -148,7 +149,7 @@ describe('scoreSelectedForecastsForSettledMarket', () => {
       settled: true,
       resolvedToYes: true,
     });
-    mockOutcome.mockReturnValue(1);
+    mockOutcome.mockReturnValue(OutcomeSide.YES);
     mockPrisma.attestationScore.findMany.mockResolvedValue([
       { attestationId: 10, probabilityFloat: 1.0 },
     ]);
@@ -161,7 +162,10 @@ describe('scoreSelectedForecastsForSettledMarket', () => {
     expect(mockPrisma.$transaction).toHaveBeenCalledTimes(1);
     expect(mockPrisma.attestationScore.update).toHaveBeenCalledWith({
       where: { attestationId: 10 },
-      data: expect.objectContaining({ errorSquared: 0, outcome: 1 }),
+      data: expect.objectContaining({
+        errorSquared: 0,
+        outcome: OutcomeSide.YES,
+      }),
     });
   });
 
@@ -172,7 +176,7 @@ describe('scoreSelectedForecastsForSettledMarket', () => {
       settled: true,
       resolvedToYes: true,
     });
-    mockOutcome.mockReturnValue(1);
+    mockOutcome.mockReturnValue(OutcomeSide.YES);
     mockPrisma.attestationScore.findMany.mockResolvedValue([
       { attestationId: 20, probabilityFloat: 0.0 },
     ]);
@@ -182,7 +186,10 @@ describe('scoreSelectedForecastsForSettledMarket', () => {
 
     expect(mockPrisma.attestationScore.update).toHaveBeenCalledWith({
       where: { attestationId: 20 },
-      data: expect.objectContaining({ errorSquared: 1, outcome: 1 }),
+      data: expect.objectContaining({
+        errorSquared: 1,
+        outcome: OutcomeSide.YES,
+      }),
     });
   });
 
@@ -193,7 +200,7 @@ describe('scoreSelectedForecastsForSettledMarket', () => {
       settled: true,
       resolvedToYes: true,
     });
-    mockOutcome.mockReturnValue(1);
+    mockOutcome.mockReturnValue(OutcomeSide.YES);
     mockPrisma.attestationScore.findMany.mockResolvedValue([
       { attestationId: 30, probabilityFloat: 0.7 },
     ]);
@@ -204,7 +211,7 @@ describe('scoreSelectedForecastsForSettledMarket', () => {
     const call = mockPrisma.attestationScore.update.mock.calls[0][0];
     expect(call.where.attestationId).toBe(30);
     expect(call.data.errorSquared).toBeCloseTo(0.09, 6);
-    expect(call.data.outcome).toBe(1);
+    expect(call.data.outcome).toBe(OutcomeSide.YES);
   });
 
   it('scores multiple forecasts in a single $transaction call', async () => {
@@ -214,7 +221,7 @@ describe('scoreSelectedForecastsForSettledMarket', () => {
       settled: true,
       resolvedToYes: true,
     });
-    mockOutcome.mockReturnValue(1);
+    mockOutcome.mockReturnValue(OutcomeSide.YES);
     mockPrisma.attestationScore.findMany.mockResolvedValue([
       { attestationId: 40, probabilityFloat: 1.0 },
       { attestationId: 41, probabilityFloat: 0.5 },
@@ -295,7 +302,7 @@ describe('computeTimeWeightedForAttesterMarketValue', () => {
       settled: true,
       resolvedToYes: true,
     });
-    mockOutcome.mockReturnValue(1);
+    mockOutcome.mockReturnValue(OutcomeSide.YES);
     mockPrisma.attestationScore.findMany.mockResolvedValue([]);
 
     const result = await computeTimeWeightedForAttesterMarketValue(
@@ -316,7 +323,7 @@ describe('computeTimeWeightedForAttesterMarketValue', () => {
       settled: true,
       resolvedToYes: true,
     });
-    mockOutcome.mockReturnValue(1);
+    mockOutcome.mockReturnValue(OutcomeSide.YES);
     mockPrisma.attestationScore.findMany.mockResolvedValue([
       {
         attestationId: 1,
@@ -344,7 +351,7 @@ describe('computeTimeWeightedForAttesterMarketValue', () => {
       settled: true,
       resolvedToYes: true,
     });
-    mockOutcome.mockReturnValue(1);
+    mockOutcome.mockReturnValue(OutcomeSide.YES);
     mockPrisma.attestationScore.findMany.mockResolvedValue([
       {
         attestationId: 1,
@@ -376,7 +383,7 @@ describe('computeTimeWeightedForAttesterMarketValue', () => {
       settled: true,
       resolvedToYes: true,
     });
-    mockOutcome.mockReturnValue(1);
+    mockOutcome.mockReturnValue(OutcomeSide.YES);
     mockPrisma.attestationScore.findMany.mockResolvedValue([
       {
         attestationId: 1,
@@ -404,7 +411,7 @@ describe('computeTimeWeightedForAttesterMarketValue', () => {
       settled: true,
       resolvedToYes: true,
     });
-    mockOutcome.mockReturnValue(1);
+    mockOutcome.mockReturnValue(OutcomeSide.YES);
     mockPrisma.attestationScore.findMany.mockResolvedValue([
       {
         attestationId: 1,
@@ -465,7 +472,7 @@ describe('computeTimeWeightedForAttesterSummary', () => {
     mockPrisma.condition.findMany.mockResolvedValue([
       { id: 'cond-1', endTime: 2000, settled: true, resolvedToYes: true },
     ]);
-    mockOutcome.mockReturnValue(1);
+    mockOutcome.mockReturnValue(OutcomeSide.YES);
 
     const result = await computeTimeWeightedForAttesterSummary(ATTESTER);
     expect(result.numTimeWeighted).toBe(1);
@@ -529,7 +536,7 @@ describe('computeTimeWeightedForAttesterSummary', () => {
     mockPrisma.condition.findMany.mockResolvedValue([
       { id: 'cond-1', endTime: 2000, settled: true, resolvedToYes: true },
     ]);
-    mockOutcome.mockReturnValue(1);
+    mockOutcome.mockReturnValue(OutcomeSide.YES);
 
     const result = await computeTimeWeightedForAttesterSummary(ATTESTER);
     expect(result).toEqual({ sumTimeWeightedError: 0, numTimeWeighted: 0 });
@@ -578,7 +585,7 @@ describe('computeTimeWeightedForAttesterSummary', () => {
     mockPrisma.condition.findMany.mockResolvedValue([
       { id: 'cond-1', endTime: 2000, settled: true, resolvedToYes: true },
     ]);
-    mockOutcome.mockReturnValue(1);
+    mockOutcome.mockReturnValue(OutcomeSide.YES);
 
     const result = await computeTimeWeightedForAttesterSummary(ATTESTER);
     expect(result).toEqual({ sumTimeWeightedError: 0, numTimeWeighted: 0 });
@@ -621,7 +628,7 @@ describe('computeTimeWeightedForAttestersSummary', () => {
     mockPrisma.condition.findMany.mockResolvedValue([
       { id: 'cond-1', endTime: 1000, settled: true, resolvedToYes: true },
     ]);
-    mockOutcome.mockReturnValue(1);
+    mockOutcome.mockReturnValue(OutcomeSide.YES);
 
     const result = await computeTimeWeightedForAttestersSummary(['0xA', '0xB']);
 
@@ -663,7 +670,7 @@ describe('computeTimeWeightedForAttestersSummary', () => {
     mockPrisma.condition.findMany.mockResolvedValue([
       { id: 'cond-1', endTime: 1000, settled: true, resolvedToYes: true },
     ]);
-    mockOutcome.mockReturnValue(1);
+    mockOutcome.mockReturnValue(OutcomeSide.YES);
 
     const result = await computeTimeWeightedForAttestersSummary(['0xA', '0xB']);
 
@@ -698,7 +705,7 @@ describe('computeTimeWeightedForAttestersSummary', () => {
     mockPrisma.condition.findMany.mockResolvedValue([
       { id: 'cond-1', endTime: 1000, settled: true, resolvedToYes: true },
     ]);
-    mockOutcome.mockReturnValue(1);
+    mockOutcome.mockReturnValue(OutcomeSide.YES);
 
     const result = await computeTimeWeightedForAttestersSummary([
       '0xA',

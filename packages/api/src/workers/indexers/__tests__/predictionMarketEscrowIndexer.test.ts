@@ -8,6 +8,7 @@ import {
   type Hex,
 } from 'viem';
 import { getPythMarketId } from '@sapience/sdk/auction/encoding';
+import { OutcomeSide } from '@sapience/sdk/types';
 
 // ─── Mocks ───────────────────────────────────────────────────────────────────
 
@@ -366,7 +367,7 @@ describe('PredictionMarketEscrowIndexer', () => {
               conditionResolver:
                 '0xAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA' as `0x${string}`,
               conditionId: keccak256(toHex('cond-1')),
-              predictedOutcome: 1,
+              predictedOutcome: OutcomeSide.NO,
             },
           ]),
       };
@@ -992,7 +993,7 @@ describe('PredictionMarketEscrowIndexer', () => {
             {
               conditionResolver: PYTH_RESOLVER as `0x${string}`,
               conditionId,
-              predictedOutcome: 1,
+              predictedOutcome: OutcomeSide.NO,
             },
           ]),
       };
@@ -1063,7 +1064,7 @@ describe('PredictionMarketEscrowIndexer', () => {
             {
               conditionResolver: NON_PYTH_RESOLVER as `0x${string}`,
               conditionId: keccak256(toHex('polymarket-cond')),
-              predictedOutcome: 1,
+              predictedOutcome: OutcomeSide.NO,
             },
           ]),
       };
@@ -1210,12 +1211,12 @@ describe('PredictionMarketEscrowIndexer', () => {
             {
               conditionResolver: PYTH_RESOLVER as `0x${string}`,
               conditionId: conditionId1,
-              predictedOutcome: 1,
+              predictedOutcome: OutcomeSide.NO,
             },
             {
               conditionResolver: PYTH_RESOLVER as `0x${string}`,
               conditionId: conditionId2,
-              predictedOutcome: 0,
+              predictedOutcome: OutcomeSide.YES,
             },
           ]),
       };
@@ -1292,7 +1293,7 @@ describe('PredictionMarketEscrowIndexer', () => {
             {
               conditionResolver: NON_PYTH_RESOLVER as `0x${string}`,
               conditionId: keccak256(toHex('cond-1')),
-              predictedOutcome: 1,
+              predictedOutcome: OutcomeSide.NO,
             },
           ]),
       };
