@@ -57,26 +57,18 @@ export async function resolvePickConfigsForCondition(
     conditions.map((c) => [c.id, c])
   );
 
-  // 3. For each unresolved config, check if ALL conditions are settled
+  // 3. For each unresolved config, compute result.
+  //    Early-exits on definitive losses (any settled pick that is wrong or
+  //    non-decisive) even when other conditions haven't settled yet.
   for (const config of unresolvedConfigs) {
-    const allSettled = config.picks.every((pick) => {
-      const cond = conditionMap.get(pick.conditionId);
-      return cond?.settled === true;
-    });
-
-    if (!allSettled) continue;
-
-    // 4. Compute result
     const result = computeSettlementResult(config.picks, conditionMap);
 
     if (result === null) {
-      console.warn(
-        `[resolvePickConfigs] Skipping pickConfig ${config.id}: missing condition data`
-      );
+      // Either missing condition data or not all settled yet with no loss
       continue;
     }
 
-    // 5. Update the pickConfig
+    // 4. Update the pickConfig
     await tx.picks.update({
       where: { id: config.id },
       data: {
@@ -96,15 +88,21 @@ export async function resolvePickConfigsForCondition(
  * Determines the settlement result for a pick configuration.
  *
  * Rules (matching Solidity contract PredictionMarketEscrow._evaluatePick):
- * - If ANY pick's condition is non-decisive (tie) → COUNTERPARTY_WINS
- * - If ANY pick predicted incorrectly → COUNTERPARTY_WINS
- * - If ALL picks predicted correctly → PREDICTOR_WINS
- * - Returns null if a condition is missing from the map (data integrity issue)
+ * - If ANY settled pick's condition is non-decisive (tie) → COUNTERPARTY_WINS
+ * - If ANY settled pick predicted incorrectly → COUNTERPARTY_WINS
+ * - If ALL picks settled and predicted correctly → PREDICTOR_WINS
+ * - Returns null if not all conditions are settled yet AND no definitive loss,
+ *   or if a condition is missing from the map (data integrity issue)
+ *
+ * This enables early resolution: a combo with one losing leg can be resolved
+ * as COUNTERPARTY_WINS without waiting for every condition to settle.
  */
 export function computeSettlementResult(
   picks: Array<{ conditionId: string; predictedOutcome: number }>,
   conditionMap: Map<string, ConditionOutcome>
 ): 'PREDICTOR_WINS' | 'COUNTERPARTY_WINS' | null {
+  let allSettled = true;
+
   for (const pick of picks) {
     const cond = conditionMap.get(pick.conditionId);
 
@@ -113,6 +111,11 @@ export function computeSettlementResult(
         `[resolvePickConfigs] Condition ${pick.conditionId} not found in DB`
       );
       return null;
+    }
+
+    if (!cond.settled) {
+      allSettled = false;
+      continue;
     }
 
     // Tie → counterparty wins (per contract logic)
@@ -126,5 +129,9 @@ export function computeSettlementResult(
     }
   }
 
-  return 'PREDICTOR_WINS';
+  if (allSettled) {
+    return 'PREDICTOR_WINS';
+  }
+
+  return null;
 }
