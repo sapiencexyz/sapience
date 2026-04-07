@@ -106,3 +106,6 @@ Binary options and secondary market sales are experimental features and are **ou
 [MIT](LICENSE) — the entire protocol is fully open source. Contracts, SDK, API, frontend — all of it. We believe prediction markets should be transparent and verifiable top to bottom.
 
 We welcome pull requests. If you want to contribute or just chat, [come hang out in Discord](https://discord.gg/sapience).
+
+<!-- nostradamus health check -->
+
