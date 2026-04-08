@@ -1,8 +1,17 @@
 import {
   conditionalTokensConditionResolver,
+  manualConditionResolver,
   pythConditionResolver,
   type ChainAddressMap,
 } from '@sapience/sdk/contracts';
+
+// On Ethereal testnet, the LayerZero bridge that pipes Polymarket conditions in
+// on mainnet does not exist. The market-keeper instead uses the manual resolver
+// as a stand-in, so Polymarket-imported conditions on staging carry the manual
+// resolver address. Treat the testnet manual resolver as a Polymarket resolver so
+// the resolution UI surfaces the Polymarket link. On mainnet the manual resolver
+// is reserved for genuine admin-resolved conditions and must not be relabeled.
+const ETHEREAL_TESTNET_CHAIN_ID = 13374202;
 
 // address of anonymous quoter bot
 export const PREFERRED_ESTIMATE_QUOTER =
@@ -38,6 +47,25 @@ function collectAddresses(...maps: ChainAddressMap[]): string[] {
   return addrs;
 }
 
+// Same as collectAddresses but limited to a single chain id.
+function collectAddressesForChain(
+  chainId: number,
+  ...maps: ChainAddressMap[]
+): string[] {
+  const addrs: string[] = [];
+  for (const map of maps) {
+    const entry = map[chainId];
+    if (!entry) continue;
+    if (entry.address) addrs.push(entry.address);
+    if (entry.legacy) {
+      for (const leg of entry.legacy) {
+        addrs.push(typeof leg === 'string' ? leg : leg.address);
+      }
+    }
+  }
+  return addrs;
+}
+
 function buildDisplayMap(
   display: ResolverDisplay,
   ...maps: ChainAddressMap[]
@@ -49,11 +77,17 @@ function buildDisplayMap(
   return result;
 }
 
-// Known Polymarket resolver addresses — CT condition resolver (all chains + legacy)
+// Known Polymarket resolver addresses — CT condition resolver (all chains + legacy),
+// plus the testnet manual resolver which acts as the staging stand-in for the LZ
+// bridge from Polygon (see comment near ETHEREAL_TESTNET_CHAIN_ID above).
 export const POLYMARKET_RESOLVER_ADDRESSES = new Set(
-  collectAddresses(conditionalTokensConditionResolver).map((a) =>
-    a.toLowerCase()
-  )
+  [
+    ...collectAddresses(conditionalTokensConditionResolver),
+    ...collectAddressesForChain(
+      ETHEREAL_TESTNET_CHAIN_ID,
+      manualConditionResolver
+    ),
+  ].map((a) => a.toLowerCase())
 );
 
 const polymarketDisplay: ResolverDisplay = {
@@ -63,8 +97,15 @@ const polymarketDisplay: ResolverDisplay = {
   iconAlt: 'Polymarket',
   url: 'https://polymarket.com/',
 };
-export const POLYMARKET_RESOLVER_DISPLAY: Record<string, ResolverDisplay> =
-  buildDisplayMap(polymarketDisplay, conditionalTokensConditionResolver);
+export const POLYMARKET_RESOLVER_DISPLAY: Record<string, ResolverDisplay> = {
+  ...buildDisplayMap(polymarketDisplay, conditionalTokensConditionResolver),
+  ...Object.fromEntries(
+    collectAddressesForChain(
+      ETHEREAL_TESTNET_CHAIN_ID,
+      manualConditionResolver
+    ).map((addr) => [addr, polymarketDisplay])
+  ),
+};
 
 const pythDisplay: ResolverDisplay = {
   name: 'Pyth Network',
