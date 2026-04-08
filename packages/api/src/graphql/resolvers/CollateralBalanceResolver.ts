@@ -2,6 +2,14 @@ import { Arg, Field, Int, ObjectType, Query, Resolver } from 'type-graphql';
 import prisma from '../../db';
 import { Prisma } from '../../../generated/prisma';
 
+/**
+ * Approximate block time used to convert hours → blocks for snapshot spacing
+ * and as a fallback for estimating timestamps when no real transfer data
+ * exists in a window. Real per-snapshot timestamps come from the CTE itself
+ * whenever the wallet has any transfer activity at or before that block.
+ */
+const ASSUMED_BLOCK_TIME_SECONDS = 1.3;
+
 @ObjectType()
 class CollateralBalanceType {
   @Field(() => String)
@@ -28,8 +36,8 @@ class CollateralBalanceSnapshotType {
   @Field(() => String)
   balance!: string;
 
-  @Field(() => Date, { nullable: true })
-  timestamp?: Date;
+  @Field(() => Date)
+  timestamp!: Date;
 }
 
 @ObjectType()
@@ -117,7 +125,7 @@ export class CollateralBalanceResolver {
   ): Promise<CollateralBalanceSnapshotType[]> {
     const addr = address.toLowerCase();
     const cappedCount = Math.min(count, 365);
-    const BLOCKS_PER_HOUR = Math.floor(3600 / 1.3);
+    const BLOCKS_PER_HOUR = Math.floor(3600 / ASSUMED_BLOCK_TIME_SECONDS);
     const step = intervalHours * BLOCKS_PER_HOUR;
 
     let headBlock = currentBlock;
@@ -127,36 +135,85 @@ export class CollateralBalanceResolver {
       headBlock = row ? parseInt(row.value, 10) : 0;
     }
 
-    const boundaries: number[] = [];
-    for (let i = 0; i <= cappedCount; i++) {
-      boundaries.push(Math.max(0, headBlock - i * step));
-    }
+    // Single CTE: computes per-interval net flow AND captures the most recent
+    // real transfer timestamp inside each interval. The outer SELECT turns
+    // those into (a) a running cumulative balance via SUM() OVER and (b) a
+    // carry-forward "last known timestamp at or before this block" via
+    // MAX() OVER, both ordered DESC by index (oldest → newest) so each row
+    // sees everything that happened up to its own block. This replaces the
+    // earlier two-query approach (one balance CTE + one head-timestamp lookup)
+    // and gives accurate per-snapshot timestamps from real transfer events
+    // instead of extrapolating linearly from head with a 1.3s assumption.
+    const rows = await prisma.$queryRaw<
+      {
+        index: number;
+        atBlock: number;
+        balance: string;
+        measuredTs: Date | null;
+      }[]
+    >`
+      WITH boundaries AS (
+        SELECT
+          gs.idx AS index,
+          GREATEST(0, ${headBlock} - gs.idx * ${step})::INT AS blk
+        FROM generate_series(0, ${cappedCount}) AS gs(idx)
+      ),
+      boundaries_with_prev AS (
+        SELECT
+          index,
+          blk,
+          COALESCE(LEAD(blk) OVER (ORDER BY index), -1) AS prev_blk
+        FROM boundaries
+      ),
+      interval_aggs AS (
+        SELECT
+          b.index,
+          b.blk,
+          COALESCE(
+            SUM(CASE WHEN ct."to" = ${addr} THEN ct."value"::NUMERIC ELSE 0 END) -
+            SUM(CASE WHEN ct."from" = ${addr} THEN ct."value"::NUMERIC ELSE 0 END),
+            0
+          ) AS net,
+          MAX(ct."timestamp") AS interval_max_ts
+        FROM boundaries_with_prev b
+        LEFT JOIN collateral_transfer ct
+          ON ct."chainId" = ${chainId}
+          AND (ct."from" = ${addr} OR ct."to" = ${addr})
+          AND ct."blockNumber" <= b.blk
+          AND ct."blockNumber" > b.prev_blk
+        GROUP BY b.index, b.blk
+      )
+      SELECT
+        index,
+        blk AS "atBlock",
+        (SUM(net) OVER (ORDER BY index DESC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW))::TEXT AS balance,
+        MAX(interval_max_ts) OVER (ORDER BY index DESC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW) AS "measuredTs"
+      FROM interval_aggs
+      ORDER BY index
+    `;
 
-    const results = await Promise.all(
-      boundaries.map(async (block, i) => {
-        const result = await prisma.$queryRaw<
-          [{ balance: string; timestamp: Date | null }]
-        >`
-          SELECT
-            (COALESCE(SUM(CASE WHEN "to" = ${addr} THEN "value"::NUMERIC ELSE 0 END), 0) -
-            COALESCE(SUM(CASE WHEN "from" = ${addr} THEN "value"::NUMERIC ELSE 0 END), 0))::TEXT
-            AS balance,
-            MAX("timestamp") AS timestamp
-          FROM collateral_transfer
-          WHERE "chainId" = ${chainId}
-            AND ("from" = ${addr} OR "to" = ${addr})
-            AND "blockNumber" <= ${block}
-        `;
-        return {
-          index: i,
-          atBlock: block,
-          balance: result[0]?.balance ?? '0',
-          timestamp: result[0]?.timestamp ?? undefined,
-        };
-      })
-    );
-
-    return results;
+    // For wallets with at least one transfer, every snapshot at or after the
+    // first transfer gets a real measured timestamp. Snapshots that predate
+    // any activity (and the empty-history edge case) fall back to a linear
+    // extrapolation from "now" using the assumed block time — best-effort.
+    const fallbackAnchor = new Date();
+    return rows.map((row) => {
+      const measured = row.measuredTs;
+      const timestamp =
+        measured ??
+        new Date(
+          fallbackAnchor.getTime() -
+            Math.max(0, headBlock - Number(row.atBlock)) *
+              ASSUMED_BLOCK_TIME_SECONDS *
+              1000
+        );
+      return {
+        index: Number(row.index),
+        atBlock: Number(row.atBlock),
+        balance: row.balance ?? '0',
+        timestamp,
+      };
+    });
   }
 
   /**
