@@ -311,6 +311,70 @@ export async function submitPriceUpdates(
 }
 
 /**
+ * Submit metadata updates for existing conditions whose Polymarket
+ * data has changed (e.g., renamed markets, changed slugs).
+ * Uses PUT /admin/conditions/:id for each update.
+ */
+export async function submitMetadataUpdates(
+  apiUrl: string,
+  privateKey: `0x${string}`,
+  updates: Array<{
+    conditionId: string;
+    fields: {
+      question?: string;
+      groupName?: string;
+    };
+  }>
+): Promise<void> {
+  if (updates.length === 0) {
+    return;
+  }
+
+  console.log(`[Metadata] Submitting ${updates.length} metadata updates...`);
+
+  let successCount = 0;
+
+  for (const update of updates) {
+    try {
+      const authHeaders = await getAdminAuthHeaders(privateKey);
+      const response = await fetchWithRetry(
+        `${apiUrl}/admin/conditions/${update.conditionId}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            ...authHeaders,
+          },
+          body: JSON.stringify(update.fields),
+        }
+      );
+
+      if (response.ok) {
+        successCount++;
+      } else {
+        const errorData = await response
+          .json()
+          .catch(() => ({ message: 'Unknown error' }));
+        console.error(
+          `[Metadata] Failed to update ${update.conditionId.slice(0, 10)}...: HTTP ${response.status}: ${(errorData as { message?: string }).message || response.statusText}`
+        );
+      }
+    } catch (error) {
+      console.error(
+        `[Metadata] Error updating ${update.conditionId.slice(0, 10)}...:`,
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+
+    await delay(SUBMISSION_DELAY_MS);
+  }
+
+  console.log(
+    `[Metadata] Updated ${successCount} of ${updates.length} conditions`
+  );
+}
+
+/**
  * Submit all condition groups and conditions to the API
  */
 export async function submitToAPI(

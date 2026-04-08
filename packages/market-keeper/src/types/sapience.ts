@@ -38,6 +38,18 @@ export interface SapienceConditionGroup {
   conditions: SapienceCondition[];
 }
 
+export interface MetadataUpdate {
+  conditionId: string;
+  fields: {
+    question?: string;
+    groupName?: string;
+  };
+  old: {
+    question?: string;
+    groupName?: string;
+  };
+}
+
 export interface SapienceOutput {
   metadata: {
     generatedAt: string;
@@ -48,4 +60,5 @@ export interface SapienceOutput {
   };
   groups: SapienceConditionGroup[];
   ungroupedConditions: SapienceCondition[];
+  metadataUpdates: MetadataUpdate[];
 }

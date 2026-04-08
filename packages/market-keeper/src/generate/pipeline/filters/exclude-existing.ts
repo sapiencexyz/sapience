@@ -8,6 +8,9 @@ import { fetchWithRetry } from '../../../utils';
 
 export interface ExistingCondition {
   endTime: number;
+  question?: string;
+  similarMarkets?: string[];
+  groupName?: string;
 }
 
 /**
@@ -31,6 +34,11 @@ export async function checkExistingConditions(
         conditions(where: $where, take: 100) {
           id
           endTime
+          question
+          similarMarkets
+          conditionGroup {
+            name
+          }
         }
       }
     `;
@@ -58,7 +66,12 @@ export async function checkExistingConditions(
 
       const result = await response.json();
       for (const condition of result.data?.conditions ?? []) {
-        existing.set(condition.id, { endTime: condition.endTime });
+        existing.set(condition.id, {
+          endTime: condition.endTime,
+          question: condition.question,
+          similarMarkets: condition.similarMarkets,
+          groupName: condition.conditionGroup?.name,
+        });
       }
     }
 

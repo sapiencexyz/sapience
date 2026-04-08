@@ -7,7 +7,7 @@ import { DEFAULT_SAPIENCE_API_URL } from '../constants';
 import { validatePrivateKey, confirmProductionAccess } from '../utils';
 import { fetchEndingSoonestMarkets } from './market';
 import { groupMarkets, exportJSON } from './grouping';
-import { printDryRun, submitToAPI } from './api';
+import { printDryRun, submitToAPI, submitMetadataUpdates } from './api';
 
 // ============ CLI Arguments ============
 
@@ -94,12 +94,40 @@ export async function main() {
     // Dry run mode - just print what would be submitted
     if (options.dryRun) {
       printDryRun(sapienceData);
+      if (sapienceData.metadataUpdates.length > 0) {
+        console.log(
+          `\nWould update metadata for ${sapienceData.metadataUpdates.length} existing conditions:`
+        );
+        for (const u of sapienceData.metadataUpdates) {
+          const changed = Object.keys(u.fields).join(', ');
+          console.log(`  ${u.conditionId.slice(0, 10)}... → ${changed}`);
+          if (u.old.question && u.fields.question) {
+            console.log(
+              `    question: "${u.old.question}" → "${u.fields.question}"`
+            );
+          }
+          if (u.old.groupName && u.fields.groupName) {
+            console.log(
+              `    group: "${u.old.groupName}" → "${u.fields.groupName}"`
+            );
+          }
+        }
+      }
       return;
     }
 
     // Submit to API if credentials are available
     if (hasAPICredentials && apiUrl && privateKey) {
       await submitToAPI(apiUrl, privateKey, sapienceData);
+
+      // Submit metadata updates for existing conditions that changed on Polymarket
+      if (sapienceData.metadataUpdates.length > 0) {
+        await submitMetadataUpdates(
+          apiUrl,
+          privateKey,
+          sapienceData.metadataUpdates
+        );
+      }
     }
   } catch (error) {
     console.error('Error:', error);

@@ -10,6 +10,7 @@ import type {
   SapienceConditionGroup,
   SapienceOutput,
   SapienceCategorySlug,
+  MetadataUpdate,
 } from '../types';
 import {
   CHAIN_ID,
@@ -160,6 +161,13 @@ export async function groupMarkets(
   const allConditionIds = allFilteredMarkets.map((m) => m.conditionId);
   const existingIds = await checkExistingConditions(apiUrl, allConditionIds);
 
+  // Compute metadata updates for existing conditions by diffing against fresh Polymarket data
+  const metadataUpdates = computeMetadataUpdates(
+    allFilteredMarkets,
+    filteredGroups,
+    existingIds
+  );
+
   // Apply LLM pre-filter pipeline to separate new vs existing markets
   const { output: newMarkets, stats: llmFilterStats } = runPipeline(
     allFilteredMarkets,
@@ -251,7 +259,88 @@ export async function groupMarkets(
     },
     groups: conditionGroups,
     ungroupedConditions,
+    metadataUpdates,
   };
+}
+
+/**
+ * Compare existing conditions in the DB against fresh Polymarket data.
+ * Returns a list of updates where the market's question, group title, or
+ * similarMarkets URL has changed on Polymarket's side.
+ */
+function computeMetadataUpdates(
+  markets: PolymarketMarket[],
+  groups: Array<{
+    title: string;
+    markets: PolymarketMarket[];
+    eventSlug?: string;
+  }>,
+  existingIds: Map<
+    string,
+    {
+      endTime: number;
+      question?: string;
+      similarMarkets?: string[];
+      groupName?: string;
+    }
+  >
+): MetadataUpdate[] {
+  const updates: MetadataUpdate[] = [];
+
+  // Build a lookup from conditionId → group info for existing markets
+  const groupByConditionId = new Map<
+    string,
+    { title: string; eventSlug?: string }
+  >();
+  for (const group of groups) {
+    const market = group.markets[0];
+    if (existingIds.has(market.conditionId)) {
+      groupByConditionId.set(market.conditionId, {
+        title: group.title,
+        eventSlug: group.eventSlug,
+      });
+    }
+  }
+
+  for (const market of markets) {
+    const existing = existingIds.get(market.conditionId);
+    if (!existing) continue;
+
+    const groupInfo = groupByConditionId.get(market.conditionId);
+    const newQuestion = market.question;
+    const newGroupName = groupInfo?.title;
+
+    const fields: MetadataUpdate['fields'] = {};
+    const old: MetadataUpdate['old'] = {};
+
+    if (newQuestion && existing.question !== newQuestion) {
+      fields.question = newQuestion;
+      old.question = existing.question;
+    }
+
+    if (newGroupName && existing.groupName !== newGroupName) {
+      fields.groupName = newGroupName;
+      old.groupName = existing.groupName;
+    }
+
+    if (Object.keys(fields).length > 0) {
+      updates.push({ conditionId: market.conditionId, fields, old });
+    }
+  }
+
+  if (updates.length > 0) {
+    console.log(
+      `[Metadata] Found ${updates.length} conditions with stale metadata`
+    );
+    for (const u of updates) {
+      const changed = Object.keys(u.fields).join(', ');
+      console.log(
+        `[Metadata]   ${u.conditionId.slice(0, 10)}... changed: ${changed}`
+      );
+    }
+  }
+
+  return updates;
 }
 
 export function exportJSON(
