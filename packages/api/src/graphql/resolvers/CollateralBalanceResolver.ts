@@ -180,12 +180,12 @@ export class CollateralBalanceResolver {
     const headTimestamp = headTimestampResult[0]?.timestamp ?? new Date();
 
     return rows.map((row) => ({
-      index: row.index,
-      atBlock: row.atBlock,
+      index: Number(row.index),
+      atBlock: Number(row.atBlock),
       balance: row.balance ?? '0',
       timestamp: new Date(
         headTimestamp.getTime() -
-          Math.max(0, headBlock - row.atBlock) *
+          Math.max(0, headBlock - Number(row.atBlock)) *
             ASSUMED_BLOCK_TIME_SECONDS *
             1000
       ),
