@@ -105,13 +105,20 @@ describe('CollateralBalanceResolver', () => {
       mockPrisma.keyValueStore.findUnique.mockResolvedValue({
         value: '2000000',
       });
-      // First $queryRaw: single balance query; second: head timestamp
-      mockPrisma.$queryRaw
-        .mockResolvedValueOnce([
-          { index: 0, atBlock: 2000000, balance: '9999999999999999999999' },
-          { index: 1, atBlock: 1534153, balance: '9999999999999999999999' },
-        ])
-        .mockResolvedValueOnce([{ timestamp: new Date('2026-03-01') }]);
+      mockPrisma.$queryRaw.mockResolvedValueOnce([
+        {
+          index: 0,
+          atBlock: 2000000,
+          balance: '9999999999999999999999',
+          measuredTs: new Date('2026-03-01'),
+        },
+        {
+          index: 1,
+          atBlock: 1534153,
+          balance: '9999999999999999999999',
+          measuredTs: new Date('2026-02-22'),
+        },
+      ]);
 
       const result = await resolver.collateralBalanceHistory(
         '0x131E278cfC6ED4863AAf0EB9Ce2d915aef775045',
@@ -130,12 +137,20 @@ describe('CollateralBalanceResolver', () => {
       mockPrisma.keyValueStore.findUnique.mockResolvedValue({
         value: '2000000',
       });
-      mockPrisma.$queryRaw
-        .mockResolvedValueOnce([
-          { index: 0, atBlock: 2000000, balance: '0' },
-          { index: 1, atBlock: 1534153, balance: '0' },
-        ])
-        .mockResolvedValueOnce([{ timestamp: new Date('2026-03-01') }]);
+      mockPrisma.$queryRaw.mockResolvedValueOnce([
+        {
+          index: 0,
+          atBlock: 2000000,
+          balance: '0',
+          measuredTs: new Date('2026-03-01'),
+        },
+        {
+          index: 1,
+          atBlock: 1534153,
+          balance: '0',
+          measuredTs: new Date('2026-02-22'),
+        },
+      ]);
 
       const result = await resolver.collateralBalanceHistory(
         '0x0000000000000000000000000000000000000000',
@@ -150,19 +165,43 @@ describe('CollateralBalanceResolver', () => {
       }
     });
 
-    it('never returns null timestamps', async () => {
+    it('uses real measured timestamps from the CTE when present', async () => {
       mockPrisma.keyValueStore.findUnique.mockResolvedValue({
         value: '2000000',
       });
-      mockPrisma.$queryRaw
-        .mockResolvedValueOnce([
-          { index: 0, atBlock: 2000000, balance: '0' },
-          { index: 1, atBlock: 1534153, balance: '0' },
-          { index: 2, atBlock: 1068306, balance: '0' },
-          { index: 3, atBlock: 602459, balance: '0' },
-        ])
-        .mockResolvedValueOnce([{ timestamp: new Date('2026-03-01') }]);
+      const realTs0 = new Date('2026-03-01T12:34:56Z');
+      const realTs1 = new Date('2026-02-22T08:15:00Z');
+      mockPrisma.$queryRaw.mockResolvedValueOnce([
+        { index: 0, atBlock: 2000000, balance: '500', measuredTs: realTs0 },
+        { index: 1, atBlock: 1534153, balance: '300', measuredTs: realTs1 },
+      ]);
 
+      const result = await resolver.collateralBalanceHistory(
+        '0x131E278cfC6ED4863AAf0EB9Ce2d915aef775045',
+        null,
+        168,
+        1,
+        13374202
+      );
+
+      // Real measured timestamps come straight through, not extrapolated.
+      expect(result[0].timestamp.getTime()).toBe(realTs0.getTime());
+      expect(result[1].timestamp.getTime()).toBe(realTs1.getTime());
+    });
+
+    it('falls back to extrapolation only when measuredTs is null (empty wallet)', async () => {
+      mockPrisma.keyValueStore.findUnique.mockResolvedValue({
+        value: '2000000',
+      });
+      // Wallet with zero historical activity → CTE returns null measuredTs
+      mockPrisma.$queryRaw.mockResolvedValueOnce([
+        { index: 0, atBlock: 2000000, balance: '0', measuredTs: null },
+        { index: 1, atBlock: 1534153, balance: '0', measuredTs: null },
+        { index: 2, atBlock: 1068306, balance: '0', measuredTs: null },
+        { index: 3, atBlock: 602459, balance: '0', measuredTs: null },
+      ]);
+
+      const before = Date.now();
       const result = await resolver.collateralBalanceHistory(
         '0x0000000000000000000000000000000000000000',
         null,
@@ -170,10 +209,24 @@ describe('CollateralBalanceResolver', () => {
         3,
         13374202
       );
+      const after = Date.now();
 
+      // Schema is Date! — every snapshot must have a real Date instance.
       for (const snapshot of result) {
         expect(snapshot.timestamp).toBeInstanceOf(Date);
         expect(snapshot.timestamp.getTime()).not.toBe(0);
+      }
+
+      // Index 0 (head) extrapolates from "now" with zero block delta,
+      // so it should land between the resolver's start and end clock.
+      expect(result[0].timestamp.getTime()).toBeGreaterThanOrEqual(before);
+      expect(result[0].timestamp.getTime()).toBeLessThanOrEqual(after);
+
+      // Older snapshots are progressively further in the past — monotonic.
+      for (let i = 1; i < result.length; i++) {
+        expect(result[i].timestamp.getTime()).toBeLessThan(
+          result[i - 1].timestamp.getTime()
+        );
       }
     });
   });
