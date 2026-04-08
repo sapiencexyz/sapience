@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { OutcomeSide } from '@sapience/sdk/types';
 import type { ClientConnection, SubscriptionManager } from '../transport/types';
 
 // ── Mock SDK validation ────────────────────────────────────────────────────
@@ -130,7 +131,7 @@ const baseAuctionPayload = {
     {
       conditionResolver: '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
       conditionId: '0x01',
-      predictedOutcome: 1,
+      predictedOutcome: OutcomeSide.NO,
     },
   ],
   chainId: 5064014,

@@ -638,7 +638,7 @@ contract PredictionMarketEscrowBurnTest is Test {
         );
 
         vm.expectRevert(
-            IPredictionMarketEscrow.InvalidCounterpartSignature.selector
+            IPredictionMarketEscrow.InvalidCounterpartySignature.selector
         );
         market.burn(req);
     }
@@ -710,7 +710,7 @@ contract PredictionMarketEscrowBurnTest is Test {
         req.counterpartyNonce = 999;
 
         vm.expectRevert(
-            IPredictionMarketEscrow.InvalidCounterpartSignature.selector
+            IPredictionMarketEscrow.InvalidCounterpartySignature.selector
         );
         market.burn(req);
     }
@@ -774,6 +774,129 @@ contract PredictionMarketEscrowBurnTest is Test {
 
         vm.expectRevert(IPredictionMarketEscrow.InvalidBurnAmounts.selector);
         market.burn(req);
+    }
+
+    function test_burn_belowBackingKeepsAccountingCorrect() public {
+        (bytes32 pickConfigId,,) = _mintDefault();
+
+        IV2Types.PickConfiguration memory configBefore =
+            market.getPickConfiguration(pickConfigId);
+        uint256 balanceBefore = collateralToken.balanceOf(address(market));
+
+        // Burn all tokens at 60% of backing: payout 150, backing 250
+        IV2Types.BurnRequest memory req = _createBurnRequest(
+            pickConfigId,
+            TOTAL_COLLATERAL, // predictor tokens
+            TOTAL_COLLATERAL, // counterparty tokens
+            predictor,
+            counterparty,
+            60e18, // predictor gets 60
+            90e18, // counterparty gets 90 — total 150 < 250 backing
+            predictorPk,
+            counterpartyPk
+        );
+
+        market.burn(req);
+
+        // Verify: tracked collateral dropped by exactly the payout (150),
+        // not the full backing (250). Surplus stays in the pool.
+        IV2Types.PickConfiguration memory configAfter =
+            market.getPickConfiguration(pickConfigId);
+        uint256 trackedAfter = configAfter.totalPredictorCollateral
+            + configAfter.totalCounterpartyCollateral;
+        uint256 balanceAfter = collateralToken.balanceOf(address(market));
+
+        // Contract sent out 150, so balance dropped by 150
+        assertEq(balanceBefore - balanceAfter, 150e18, "balance delta");
+        // Tracked collateral also dropped by 150 — no orphaned funds
+        uint256 trackedBefore = configBefore.totalPredictorCollateral
+            + configBefore.totalCounterpartyCollateral;
+        assertEq(trackedBefore - trackedAfter, 150e18, "tracked delta");
+        // Balance and tracked match — nothing stranded
+        assertEq(balanceAfter, trackedAfter, "no stranded collateral");
+    }
+
+    function test_burn_asymmetricBelowBackingThenRedeem() public {
+        // Mint: 100e18 predictor collateral, 150e18 counterparty, 250e18 tokens each side
+        IV2Types.Pick[] memory picks = new IV2Types.Pick[](1);
+        picks[0] = _createPick(conditionId1, IV2Types.OutcomeSide.YES);
+        (
+            bytes32 predictionId,
+            address predictorToken,
+            address counterpartyToken
+        ) = _mintPrediction(picks);
+
+        IV2Types.Prediction memory pred = market.getPrediction(predictionId);
+        bytes32 pickConfigId = pred.pickConfigId;
+
+        // --- Burn HALF the tokens with asymmetric, below-backing payouts ---
+        // Pro-rata backing for 125 tokens:
+        //   predictorBacking   = (125 * 100) / 250 = 50e18
+        //   counterpartyBacking = (125 * 150) / 250 = 75e18
+        //   totalBacking = 125e18
+        //
+        // Payout split: predictor gets ~89%, counterparty gets ~11%
+        // Total payout = 75e18 — 60% of backing. 50e18 surplus stays in pool.
+        uint256 burnTokens = 125e18;
+        uint256 predPayout = 67e18;
+        uint256 ctrPayout = 8e18;
+
+        IV2Types.BurnRequest memory req = _createBurnRequest(
+            pickConfigId,
+            burnTokens,
+            burnTokens,
+            predictor,
+            counterparty,
+            predPayout,
+            ctrPayout,
+            predictorPk,
+            counterpartyPk
+        );
+
+        uint256 balanceBefore = collateralToken.balanceOf(address(market));
+        market.burn(req);
+        uint256 balanceAfter = collateralToken.balanceOf(address(market));
+
+        // Contract sent out exactly 75e18
+        assertEq(balanceBefore - balanceAfter, 75e18, "transfer delta");
+
+        // Tracked collateral dropped by 75, not 125 — no orphaned funds
+        IV2Types.PickConfiguration memory config =
+            market.getPickConfiguration(pickConfigId);
+        uint256 trackedTotal = config.totalPredictorCollateral
+            + config.totalCounterpartyCollateral;
+        assertEq(
+            balanceAfter, trackedTotal, "no stranded collateral after burn"
+        );
+
+        // --- Resolve (predictor wins) and redeem remaining 125 tokens ---
+        // Winner should receive the full tracked pool, including the 50e18
+        // surplus that stayed from the below-backing burn.
+        vm.prank(settler);
+        resolver.settleCondition(rawConditionId1, IV2Types.OutcomeVector(1, 0));
+        market.settle(predictionId, REF_CODE);
+
+        // Predictor redeems remaining 125 tokens
+        uint256 predBalBefore = collateralToken.balanceOf(predictor);
+        vm.prank(predictor);
+        market.redeem(predictorToken, 125e18, REF_CODE);
+        uint256 redeemed = collateralToken.balanceOf(predictor) - predBalBefore;
+
+        // Winner gets full pool (predictor + counterparty collateral)
+        assertEq(
+            redeemed, trackedTotal, "winner gets full pool including surplus"
+        );
+
+        // Counterparty redeems losing tokens (0 payout, just burns)
+        vm.prank(counterparty);
+        market.redeem(counterpartyToken, 125e18, REF_CODE);
+
+        // Contract fully drained — nothing stuck
+        assertEq(
+            collateralToken.balanceOf(address(market)),
+            0,
+            "contract fully drained"
+        );
     }
 
     function test_burn_revertIfPickConfigAlreadyResolved() public {

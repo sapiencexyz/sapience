@@ -125,7 +125,9 @@ contract PredictionMarketEscrow is
         // Check that winning-side tokens have been fully redeemed.
         // For decisive outcomes, only the winning side needs to reach zero supply
         // since losing-side holders have no economic incentive to burn (zero payout).
-        // For non-decisive (DRAW/REFUND), both sides should burn.
+        // For non-decisive outcomes (tie/draw/void), counterparty wins by design —
+        // there is no DRAW/REFUND settlement. Both sides should burn if a refund
+        // path is ever added; until then, only the counterparty side claims.
         uint256 predictorSupply =
             IPredictionMarketToken(tokenPair.predictorToken).totalSupply();
         uint256 counterpartySupply =
@@ -240,7 +242,7 @@ contract PredictionMarketEscrow is
                 request.counterpartySignature,
                 request.counterpartySessionKeyData
             )) {
-            revert InvalidCounterpartSignature();
+            revert InvalidCounterpartySignature();
         }
 
         // Use bitmap nonces (reverts if already used)
@@ -487,7 +489,7 @@ contract PredictionMarketEscrow is
                 request.counterpartySignature,
                 request.counterpartySessionKeyData
             )) {
-            revert InvalidCounterpartSignature();
+            revert InvalidCounterpartySignature();
         }
 
         // Use bitmap nonces (reverts if already used)
@@ -512,20 +514,34 @@ contract PredictionMarketEscrow is
         IPredictionMarketToken(tokenPair.counterpartyToken)
             .burn(request.counterpartyHolder, request.counterpartyTokenAmount);
 
-        // Update collateral tracking proportionally (compute before decrementing tokens)
-        uint256 predictorCollateralReturned = config.totalPredictorTokensMinted
+        // Compute the pro-rata collateral backing for the burned tokens
+        uint256 predictorCollateralBacking = config.totalPredictorTokensMinted
             > 0
             ? (request.predictorTokenAmount * config.totalPredictorCollateral)
                 / config.totalPredictorTokensMinted
             : 0;
-        uint256 counterpartyCollateralReturned = config.totalCounterpartyTokensMinted
+        uint256 counterpartyCollateralBacking = config.totalCounterpartyTokensMinted
             > 0
             ? (request.counterpartyTokenAmount
                     * config.totalCounterpartyCollateral)
                 / config.totalCounterpartyTokensMinted
             : 0;
-        config.totalPredictorCollateral -= predictorCollateralReturned;
-        config.totalCounterpartyCollateral -= counterpartyCollateralReturned;
+        uint256 totalBacking =
+            predictorCollateralBacking + counterpartyCollateralBacking;
+        uint256 totalPayout =
+            request.predictorPayout + request.counterpartyPayout;
+
+        // Subtract only the actual payout from tracked collateral, split
+        // proportionally between predictor/counterparty pools. Any surplus
+        // (backing - payout) stays in the pool for remaining holders.
+        if (totalPayout > 0 && totalBacking > 0) {
+            uint256 predictorCollateralReturned =
+                (predictorCollateralBacking * totalPayout) / totalBacking;
+            uint256 counterpartyCollateralReturned =
+                totalPayout - predictorCollateralReturned;
+            config.totalPredictorCollateral -= predictorCollateralReturned;
+            config.totalCounterpartyCollateral -= counterpartyCollateralReturned;
+        }
 
         // Update token tracking
         config.totalPredictorTokensMinted -= request.predictorTokenAmount;
@@ -1167,7 +1183,10 @@ contract PredictionMarketEscrow is
         }
 
         // Process results — a single decisive loss is enough for COUNTERPARTY_WINS
-        // even if other picks are still unresolved (predictor needs ALL legs)
+        // even if other picks are still unresolved (predictor needs ALL legs).
+        // Non-decisive outcomes (ties, voids, oracle deadline expiry returning [1,1])
+        // are intentionally treated as COUNTERPARTY_WINS — predictor must have a
+        // decisive win on every leg to claim. No DRAW/REFUND enum exists by design.
         bool hasUnresolved = false;
         for (uint256 i = 0; i < numPicks; i++) {
             if (!resolved[i]) {
@@ -1201,7 +1220,9 @@ contract PredictionMarketEscrow is
         returns (bool canResolve, IV2Types.SettlementResult result)
     {
         // A single decisive loss is enough for COUNTERPARTY_WINS
-        // even if other picks are still unresolved (predictor needs ALL legs)
+        // even if other picks are still unresolved (predictor needs ALL legs).
+        // Non-decisive outcomes (ties, voids) → COUNTERPARTY_WINS intentionally
+        // (see _resolveBatch for rationale).
         bool hasUnresolved = false;
         for (uint256 i = 0; i < numPicks; i++) {
             IV2Types.Pick storage pick = picks[i];
@@ -1245,8 +1266,12 @@ contract PredictionMarketEscrow is
     }
 
     /// @notice Evaluate a single pick against its outcome
+    /// @dev Non-decisive outcomes (both weights > 0, e.g. [1,1] ties or oracle expiry)
+    ///      are treated as counterparty wins at the resolution layer. This is intentional:
+    ///      SettlementResult has no DRAW variant, and predictors must achieve a decisive
+    ///      win on every leg. Counterparties bear no prediction risk on void/tie outcomes.
     /// @return isLoss True if predictor decisively lost this pick
-    /// @return isNonDecisive True if outcome is a tie
+    /// @return isNonDecisive True if outcome is a tie (maps to COUNTERPARTY_WINS upstream)
     function _evaluatePick(
         IV2Types.OutcomeSide predictedOutcome,
         IV2Types.OutcomeVector memory outcome

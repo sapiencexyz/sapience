@@ -191,7 +191,7 @@ export function decodedOutcomesToPicks(
     return decoded.outcomes.map((o) => ({
       conditionResolver: resolverAddress,
       conditionId: getPythMarketId(o),
-      // On-chain convention: Over→[1,0]→YES=0, Under→[0,1]→NO=1
+      // On-chain convention: Over→YES, Under→NO
       predictedOutcome: o.prediction ? OutcomeSide.YES : OutcomeSide.NO,
     }));
   }

@@ -6,6 +6,7 @@ import { privateKeyToAccount, generatePrivateKey } from 'viem/accounts';
 import type { AuctionRFQPayload, BidPayload } from '../escrowTypes';
 import { buildAuctionIntentTypedData } from '@sapience/sdk/auction/escrowSigning';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts/addresses';
+import { OutcomeSide } from '@sapience/sdk/types';
 import type { Address, Hex } from 'viem';
 
 // Test server setup
@@ -67,7 +68,7 @@ async function sendAndWait(
 const TEST_PICK = {
   conditionResolver: '0x1234567890123456789012345678901234567890',
   conditionId: '0x' + 'ab'.repeat(32),
-  predictedOutcome: 0 as const,
+  predictedOutcome: OutcomeSide.NO,
 };
 
 const TEST_CHAIN_ID = 5064014;

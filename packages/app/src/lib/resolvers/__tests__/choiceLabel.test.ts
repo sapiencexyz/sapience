@@ -11,11 +11,11 @@ describe('getChoiceLabel', () => {
     expect(getChoiceLabel(OutcomeSide.NO)).toBe('No');
   });
 
-  it('treats numeric 0 as YES', () => {
-    expect(getChoiceLabel(0)).toBe('Yes');
+  it('treats numeric 0 as NO', () => {
+    expect(getChoiceLabel(0)).toBe('No');
   });
 
-  it('treats numeric 1 as NO', () => {
-    expect(getChoiceLabel(1)).toBe('No');
+  it('treats numeric 1 as YES', () => {
+    expect(getChoiceLabel(1)).toBe('Yes');
   });
 });

@@ -19,6 +19,7 @@ import {
   buildAuctionIntentTypedData,
   buildCounterpartyMintTypedData,
 } from '../escrowSigning';
+import { OutcomeSide } from '../../types/escrow';
 import type {
   AuctionRFQPayload,
   BidPayload,
@@ -53,7 +54,7 @@ const TEST_PICKS: PickJson[] = [
   {
     conditionResolver: CONDITION_RESOLVER,
     conditionId: CONDITION_ID,
-    predictedOutcome: 1,
+    predictedOutcome: OutcomeSide.NO,
   },
 ];
 

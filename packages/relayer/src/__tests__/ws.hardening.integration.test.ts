@@ -41,6 +41,7 @@ import {
   createSignedBid,
 } from './ws.e2e.helpers';
 import { generatePrivateKey, privateKeyToAccount } from 'viem/accounts';
+import { OutcomeSide } from '@sapience/sdk/types';
 
 // ============================================================================
 // Test infrastructure
@@ -280,7 +281,7 @@ describe('Validation Failure Penalty', () => {
               {
                 conditionResolver: '0x1234567890123456789012345678901234567890',
                 conditionId: '0x' + 'ab'.repeat(32),
-                predictedOutcome: 0,
+                predictedOutcome: OutcomeSide.YES,
               },
             ],
             predictorCollateral: '1000000000000000000',
@@ -313,7 +314,7 @@ describe('Validation Failure Penalty', () => {
               {
                 conditionResolver: '0x1234567890123456789012345678901234567890',
                 conditionId: '0x' + 'ab'.repeat(32),
-                predictedOutcome: 0,
+                predictedOutcome: OutcomeSide.YES,
               },
             ],
             predictorCollateral: '1000000000000000000',

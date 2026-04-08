@@ -7,13 +7,14 @@ import {
   type GossipValidationContext,
 } from '../gossipValidation';
 import { buildAuctionIntentTypedData } from '../escrowSigning';
+import { OutcomeSide } from '../../types/escrow';
 import type { AuctionRFQPayload, PickJson } from '../../types/escrow';
 
 describe('isValidGossipPayload', () => {
   const validPick = {
     conditionResolver: '0x1234567890abcdef1234567890abcdef12345678',
     conditionId: '0x' + 'ab'.repeat(32),
-    predictedOutcome: 0,
+    predictedOutcome: OutcomeSide.YES,
   };
 
   describe('auction.start', () => {
@@ -277,7 +278,7 @@ describe('isValidGossipPayload', () => {
     const validPick = {
       conditionResolver: '0x1234567890abcdef1234567890abcdef12345678',
       conditionId: '0x' + 'ab'.repeat(32),
-      predictedOutcome: 0,
+      predictedOutcome: OutcomeSide.YES,
     };
 
     it('rejects conditionId exceeding max length (322 chars)', () => {
@@ -384,7 +385,7 @@ const TEST_PICKS: PickJson[] = [
   {
     conditionResolver: CONDITION_RESOLVER,
     conditionId: CONDITION_ID,
-    predictedOutcome: 1,
+    predictedOutcome: OutcomeSide.NO,
   },
 ];
 
