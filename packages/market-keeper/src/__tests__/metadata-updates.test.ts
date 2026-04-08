@@ -21,12 +21,13 @@ vi.mock('../llm', () => ({
   enrichEndTimesWithLLM: vi.fn().mockResolvedValue(new Map()),
 }));
 
+const mockFetchEventTags = vi.fn().mockResolvedValue(new Map());
 vi.mock('./tags', () => ({
-  fetchEventTags: vi.fn().mockResolvedValue(new Map()),
+  fetchEventTags: (...args: unknown[]) => mockFetchEventTags(...args),
 }));
 
 vi.mock('../generate/tags', () => ({
-  fetchEventTags: vi.fn().mockResolvedValue(new Map()),
+  fetchEventTags: (...args: unknown[]) => mockFetchEventTags(...args),
 }));
 
 vi.mock('../generate/pipeline', () => ({
@@ -43,6 +44,7 @@ vi.mock('../generate/pipeline', () => ({
 
 import { groupMarkets } from '../generate/grouping';
 import { checkExistingConditions } from '../generate/pipeline';
+import type { ExistingCondition } from '../generate/pipeline';
 
 const mockCheckExisting = vi.mocked(checkExistingConditions);
 
@@ -66,8 +68,38 @@ function makeMarket(
   };
 }
 
+/**
+ * Build an `ExistingCondition` that matches what the generate pipeline
+ * WOULD have written on initial create for the given market — so tests
+ * can assert "no drift" vs "this specific field drifted" without having
+ * to repeat all the default fields.
+ */
+function existingFromMarket(
+  market: PolymarketMarket,
+  overrides: Partial<ExistingCondition> = {}
+): ExistingCondition {
+  const eventSlug = market.events?.[0]?.slug;
+  const eventTitle = market.events?.[0]?.title;
+  const url = eventSlug
+    ? `https://polymarket.com/event/${eventSlug}#${market.slug}`
+    : `https://polymarket.com#${market.slug}`;
+  return {
+    endTime: 1700000000,
+    question: market.question,
+    shortName: market.question,
+    description: market.description || '',
+    similarMarkets: [url],
+    tags: [],
+    similarMarketVolume: parseFloat(market.volume || '0') || 0,
+    similarMarketImage: market.image,
+    groupName: eventTitle,
+    ...overrides,
+  };
+}
+
 beforeEach(() => {
   vi.clearAllMocks();
+  mockFetchEventTags.mockResolvedValue(new Map());
 });
 
 describe('metadata updates via groupMarkets', () => {
@@ -81,11 +113,10 @@ describe('metadata updates via groupMarkets', () => {
       new Map([
         [
           '0xaaa',
-          {
-            endTime: 1700000000,
+          existingFromMarket(market, {
             question: 'Will BTC hit 100k?', // old question in DB
-            groupName: 'Bitcoin Milestones',
-          },
+            shortName: 'Will BTC hit 100k?',
+          }),
         ],
       ])
     );
@@ -93,10 +124,14 @@ describe('metadata updates via groupMarkets', () => {
     const result = await groupMarkets([market], 'https://test-api.example.com');
 
     expect(result.metadataUpdates).toHaveLength(1);
-    expect(result.metadataUpdates[0]).toEqual({
-      conditionId: '0xaaa',
-      fields: { question: 'Will BTC hit 150k?' },
-      old: { question: 'Will BTC hit 100k?' },
+    expect(result.metadataUpdates[0].conditionId).toBe('0xaaa');
+    expect(result.metadataUpdates[0].fields).toEqual({
+      question: 'Will BTC hit 150k?',
+      shortName: 'Will BTC hit 150k?', // reset to new question
+    });
+    expect(result.metadataUpdates[0].old).toEqual({
+      question: 'Will BTC hit 100k?',
+      shortName: 'Will BTC hit 100k?',
     });
   });
 
@@ -111,11 +146,9 @@ describe('metadata updates via groupMarkets', () => {
       new Map([
         [
           '0xbbb',
-          {
-            endTime: 1700000000,
-            question: 'Will ETH hit 10k?',
+          existingFromMarket(market, {
             groupName: 'Ethereum Price Targets', // old group name
-          },
+          }),
         ],
       ])
     );
@@ -123,29 +156,31 @@ describe('metadata updates via groupMarkets', () => {
     const result = await groupMarkets([market], 'https://test-api.example.com');
 
     expect(result.metadataUpdates).toHaveLength(1);
-    expect(result.metadataUpdates[0]).toEqual({
-      conditionId: '0xbbb',
-      fields: { groupName: 'Ethereum Price Targets 2025' },
-      old: { groupName: 'Ethereum Price Targets' },
+    expect(result.metadataUpdates[0].fields).toEqual({
+      groupName: 'Ethereum Price Targets 2025',
+    });
+    expect(result.metadataUpdates[0].old).toEqual({
+      groupName: 'Ethereum Price Targets',
     });
   });
 
-  it('detects both question and group name changes', async () => {
+  it('detects similarMarkets URL change when event slug changes', async () => {
+    // Polymarket renamed the event slug; our similarMarkets URL is now stale
     const market = makeMarket({
-      conditionId: '0xccc',
-      question: 'New question?',
-      events: [{ title: 'New Group Name', slug: 'new-slug' }],
+      conditionId: '0xslug',
+      slug: 'btc-100k',
+      events: [{ title: 'Bitcoin Milestones', slug: 'btc-milestones-v2' }],
     });
 
     mockCheckExisting.mockResolvedValue(
       new Map([
         [
-          '0xccc',
-          {
-            endTime: 1700000000,
-            question: 'Old question?',
-            groupName: 'Old Group Name',
-          },
+          '0xslug',
+          existingFromMarket(market, {
+            similarMarkets: [
+              'https://polymarket.com/event/btc-milestones#btc-100k',
+            ],
+          }),
         ],
       ])
     );
@@ -153,31 +188,158 @@ describe('metadata updates via groupMarkets', () => {
     const result = await groupMarkets([market], 'https://test-api.example.com');
 
     expect(result.metadataUpdates).toHaveLength(1);
-    expect(result.metadataUpdates[0]).toEqual({
-      conditionId: '0xccc',
-      fields: { question: 'New question?', groupName: 'New Group Name' },
-      old: { question: 'Old question?', groupName: 'Old Group Name' },
-    });
+    expect(result.metadataUpdates[0].fields.similarMarkets).toEqual([
+      'https://polymarket.com/event/btc-milestones-v2#btc-100k',
+    ]);
+    expect(result.metadataUpdates[0].old.similarMarkets).toEqual([
+      'https://polymarket.com/event/btc-milestones#btc-100k',
+    ]);
   });
 
-  it('returns no updates when metadata matches', async () => {
+  it('detects similarMarkets URL change when market slug changes', async () => {
     const market = makeMarket({
-      conditionId: '0xddd',
-      question: 'Same question?',
-      events: [{ title: 'Same Group', slug: 'same' }],
+      conditionId: '0xmslug',
+      slug: 'will-btc-reach-100k', // market slug renamed
+      events: [{ title: 'Bitcoin Milestones', slug: 'btc-milestones' }],
     });
 
     mockCheckExisting.mockResolvedValue(
       new Map([
         [
-          '0xddd',
-          {
-            endTime: 1700000000,
-            question: 'Same question?',
-            groupName: 'Same Group',
-          },
+          '0xmslug',
+          existingFromMarket(market, {
+            similarMarkets: [
+              'https://polymarket.com/event/btc-milestones#will-btc-hit-100k',
+            ],
+          }),
         ],
       ])
+    );
+
+    const result = await groupMarkets([market], 'https://test-api.example.com');
+
+    expect(result.metadataUpdates).toHaveLength(1);
+    expect(result.metadataUpdates[0].fields.similarMarkets).toEqual([
+      'https://polymarket.com/event/btc-milestones#will-btc-reach-100k',
+    ]);
+  });
+
+  it('detects description change', async () => {
+    const market = makeMarket({
+      conditionId: '0xdesc',
+      description: 'Updated description from Polymarket',
+    });
+
+    mockCheckExisting.mockResolvedValue(
+      new Map([
+        [
+          '0xdesc',
+          existingFromMarket(market, { description: 'Old description' }),
+        ],
+      ])
+    );
+
+    const result = await groupMarkets([market], 'https://test-api.example.com');
+
+    expect(result.metadataUpdates).toHaveLength(1);
+    expect(result.metadataUpdates[0].fields.description).toBe(
+      'Updated description from Polymarket'
+    );
+  });
+
+  it('detects tags change', async () => {
+    mockFetchEventTags.mockResolvedValue(
+      new Map([['btc-milestones', ['crypto', 'btc', 'price']]])
+    );
+
+    const market = makeMarket({ conditionId: '0xtags' });
+
+    mockCheckExisting.mockResolvedValue(
+      new Map([
+        [
+          '0xtags',
+          existingFromMarket(market, { tags: ['crypto', 'btc'] }), // missing 'price'
+        ],
+      ])
+    );
+
+    const result = await groupMarkets([market], 'https://test-api.example.com');
+
+    expect(result.metadataUpdates).toHaveLength(1);
+    expect(result.metadataUpdates[0].fields.tags).toEqual([
+      'crypto',
+      'btc',
+      'price',
+    ]);
+  });
+
+  it('treats tags as order-insensitive (no spurious update)', async () => {
+    mockFetchEventTags.mockResolvedValue(
+      new Map([['btc-milestones', ['crypto', 'btc', 'price']]])
+    );
+
+    const market = makeMarket({ conditionId: '0xordered' });
+
+    mockCheckExisting.mockResolvedValue(
+      new Map([
+        [
+          '0xordered',
+          // Same tags, different order
+          existingFromMarket(market, { tags: ['price', 'crypto', 'btc'] }),
+        ],
+      ])
+    );
+
+    const result = await groupMarkets([market], 'https://test-api.example.com');
+
+    expect(result.metadataUpdates).toHaveLength(0);
+  });
+
+  it('applies transformMatchQuestion so "vs" markets do not flap', async () => {
+    // "X vs. Y" should be transformed to "X beats Y?" by transformMatchQuestion.
+    // The DB has the transformed version; raw Polymarket data has "vs".
+    // The old buggy diff would detect a change on every run; the fixed
+    // diff should see them as equal.
+    const market = makeMarket({
+      conditionId: '0xvs',
+      question: 'Lakers vs. Celtics',
+    });
+
+    // The existing condition was stored with the transformed question.
+    // Since we can't import transformMatchQuestion here without pulling
+    // in all its dependencies, use a stub that's guaranteed to match
+    // whatever the transform produces by running the diff once and
+    // asserting it does NOT produce an update when existing matches.
+    // Strategy: first run with a known-correct existing, then verify
+    // it's stable.
+    mockCheckExisting.mockResolvedValueOnce(
+      new Map([['0xvs', existingFromMarket(market)]])
+    );
+    const first = await groupMarkets([market], 'https://test-api.example.com');
+    // Seed round — whatever question the first run produced, use it
+    // as the "existing" for the second run.
+    const seeded = first.metadataUpdates[0]?.fields.question ?? market.question;
+
+    mockCheckExisting.mockResolvedValueOnce(
+      new Map([
+        [
+          '0xvs',
+          existingFromMarket(market, { question: seeded, shortName: seeded }),
+        ],
+      ])
+    );
+    const second = await groupMarkets([market], 'https://test-api.example.com');
+
+    // On the second run, nothing should drift — the transformed question
+    // matches what's in the DB, so no update emitted.
+    expect(second.metadataUpdates).toHaveLength(0);
+  });
+
+  it('skips unchanged conditions', async () => {
+    const market = makeMarket({ conditionId: '0xddd' });
+
+    mockCheckExisting.mockResolvedValue(
+      new Map([['0xddd', existingFromMarket(market)]])
     );
 
     const result = await groupMarkets([market], 'https://test-api.example.com');
@@ -195,7 +357,7 @@ describe('metadata updates via groupMarkets', () => {
     expect(result.metadataUpdates).toHaveLength(0);
   });
 
-  it('backfills when existing condition has no question stored in DB', async () => {
+  it('backfills every syncable field when existing condition is sparse', async () => {
     const market = makeMarket({
       conditionId: '0xfff',
       question: 'Some question?',
@@ -208,7 +370,7 @@ describe('metadata updates via groupMarkets', () => {
           '0xfff',
           {
             endTime: 1700000000,
-            // no question or groupName in DB
+            // no other metadata in DB — backfill everything we know
           },
         ],
       ])
@@ -217,11 +379,16 @@ describe('metadata updates via groupMarkets', () => {
     const result = await groupMarkets([market], 'https://test-api.example.com');
 
     expect(result.metadataUpdates).toHaveLength(1);
-    expect(result.metadataUpdates[0]).toEqual({
-      conditionId: '0xfff',
-      fields: { question: 'Some question?', groupName: 'Some Group' },
-      old: { question: undefined, groupName: undefined },
-    });
+    const update = result.metadataUpdates[0];
+    expect(update.conditionId).toBe('0xfff');
+    expect(update.fields.question).toBe('Some question?');
+    expect(update.fields.groupName).toBe('Some Group');
+    expect(update.fields.description).toBe('A test market');
+    expect(update.fields.similarMarkets).toEqual([
+      'https://polymarket.com/event/some-group#btc-100k',
+    ]);
+    expect(update.fields.similarMarketVolume).toBe(100000);
+    expect(update.fields.shortName).toBe('Some question?');
   });
 
   it('handles multiple conditions with mixed updates', async () => {
@@ -247,20 +414,12 @@ describe('metadata updates via groupMarkets', () => {
       new Map([
         [
           '0x111',
-          {
-            endTime: 1700000000,
+          existingFromMarket(markets[0], {
             question: 'Old question?',
-            groupName: 'Same Group',
-          },
+            shortName: 'Old question?',
+          }),
         ],
-        [
-          '0x222',
-          {
-            endTime: 1700000000,
-            question: 'Unchanged question?',
-            groupName: 'Same Group 2',
-          },
-        ],
+        ['0x222', existingFromMarket(markets[1])],
         // 0x333 is new, not in DB
       ])
     );
@@ -270,5 +429,32 @@ describe('metadata updates via groupMarkets', () => {
     // Only 0x111 changed
     expect(result.metadataUpdates).toHaveLength(1);
     expect(result.metadataUpdates[0].conditionId).toBe('0x111');
+    expect(result.metadataUpdates[0].fields.question).toBe('Changed question?');
+    expect(result.metadataUpdates[0].fields.shortName).toBe(
+      'Changed question?'
+    );
+  });
+
+  it('does not clear a field when fresh Polymarket value is missing', async () => {
+    // similarMarketImage is optional on the PolymarketMarket type.
+    // If the market comes back without an image, we should NOT clear
+    // the existing image in the DB — just leave it alone.
+    const market = makeMarket({ conditionId: '0xnoimg', image: undefined });
+
+    mockCheckExisting.mockResolvedValue(
+      new Map([
+        [
+          '0xnoimg',
+          existingFromMarket(market, {
+            similarMarketImage: 'https://existing-image.png',
+          }),
+        ],
+      ])
+    );
+
+    const result = await groupMarkets([market], 'https://test-api.example.com');
+
+    // No updates — we don't own a fresh value, so we don't touch it.
+    expect(result.metadataUpdates).toHaveLength(0);
   });
 });

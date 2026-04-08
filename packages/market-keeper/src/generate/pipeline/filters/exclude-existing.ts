@@ -9,7 +9,12 @@ import { fetchWithRetry } from '../../../utils';
 export interface ExistingCondition {
   endTime: number;
   question?: string;
+  shortName?: string;
+  description?: string;
   similarMarkets?: string[];
+  tags?: string[];
+  similarMarketVolume?: number;
+  similarMarketImage?: string;
   groupName?: string;
 }
 
@@ -35,7 +40,12 @@ export async function checkExistingConditions(
           id
           endTime
           question
+          shortName
+          description
           similarMarkets
+          tags
+          similarMarketVolume
+          similarMarketImage
           conditionGroup {
             name
           }
@@ -68,9 +78,14 @@ export async function checkExistingConditions(
       for (const condition of result.data?.conditions ?? []) {
         existing.set(condition.id, {
           endTime: condition.endTime,
-          question: condition.question,
-          similarMarkets: condition.similarMarkets,
-          groupName: condition.conditionGroup?.name,
+          question: condition.question ?? undefined,
+          shortName: condition.shortName ?? undefined,
+          description: condition.description ?? undefined,
+          similarMarkets: condition.similarMarkets ?? undefined,
+          tags: condition.tags ?? undefined,
+          similarMarketVolume: condition.similarMarketVolume ?? undefined,
+          similarMarketImage: condition.similarMarketImage ?? undefined,
+          groupName: condition.conditionGroup?.name ?? undefined,
         });
       }
     }

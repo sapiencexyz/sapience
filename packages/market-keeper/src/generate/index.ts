@@ -99,16 +99,15 @@ export async function main() {
           `\nWould update metadata for ${sapienceData.metadataUpdates.length} existing conditions:`
         );
         for (const u of sapienceData.metadataUpdates) {
-          const changed = Object.keys(u.fields).join(', ');
-          console.log(`  ${u.conditionId.slice(0, 10)}... → ${changed}`);
-          if (u.old.question && u.fields.question) {
+          const changedKeys = Object.keys(u.fields);
+          console.log(
+            `  ${u.conditionId.slice(0, 10)}... → ${changedKeys.join(', ')}`
+          );
+          const oldRec = u.old as Record<string, unknown>;
+          const newRec = u.fields as Record<string, unknown>;
+          for (const key of changedKeys) {
             console.log(
-              `    question: "${u.old.question}" → "${u.fields.question}"`
-            );
-          }
-          if (u.old.groupName && u.fields.groupName) {
-            console.log(
-              `    group: "${u.old.groupName}" → "${u.fields.groupName}"`
+              `    ${key}: ${JSON.stringify(oldRec[key])} → ${JSON.stringify(newRec[key])}`
             );
           }
         }

@@ -6,6 +6,7 @@ import type {
   SapienceCondition,
   SapienceConditionGroup,
   SapienceOutput,
+  SyncableFields,
 } from '../types';
 import { RESOLVER_ADDRESS, END_TIME_BUFFER_SECONDS } from '../constants';
 import { fetchWithRetry, getAdminAuthHeaders } from '../utils';
@@ -312,7 +313,7 @@ export async function submitPriceUpdates(
 
 /**
  * Submit metadata updates for existing conditions whose Polymarket
- * data has changed (e.g., renamed markets, changed slugs).
+ * data has changed (e.g., renamed markets, changed slugs, new tags).
  * Uses PUT /admin/conditions/:id for each update.
  */
 export async function submitMetadataUpdates(
@@ -320,10 +321,7 @@ export async function submitMetadataUpdates(
   privateKey: `0x${string}`,
   updates: Array<{
     conditionId: string;
-    fields: {
-      question?: string;
-      groupName?: string;
-    };
+    fields: SyncableFields;
   }>
 ): Promise<void> {
   if (updates.length === 0) {
