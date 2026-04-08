@@ -128,6 +128,47 @@ export class CollateralBalanceResolver {
       headBlock = row ? parseInt(row.value, 10) : 0;
     }
 
+    const rows = await prisma.$queryRaw<
+      { index: number; atBlock: number; balance: string }[]
+    >`
+      WITH boundaries AS (
+        SELECT
+          gs.idx AS index,
+          GREATEST(0, ${headBlock} - gs.idx * ${step})::INT AS blk
+        FROM generate_series(0, ${cappedCount}) AS gs(idx)
+      ),
+      boundaries_with_prev AS (
+        SELECT
+          index,
+          blk,
+          COALESCE(LEAD(blk) OVER (ORDER BY index), -1) AS prev_blk
+        FROM boundaries
+      ),
+      interval_nets AS (
+        SELECT
+          b.index,
+          b.blk,
+          COALESCE(
+            SUM(CASE WHEN ct."to" = ${addr} THEN ct."value"::NUMERIC ELSE 0 END) -
+            SUM(CASE WHEN ct."from" = ${addr} THEN ct."value"::NUMERIC ELSE 0 END),
+            0
+          ) AS net
+        FROM boundaries_with_prev b
+        LEFT JOIN collateral_transfer ct
+          ON ct."chainId" = ${chainId}
+          AND (ct."from" = ${addr} OR ct."to" = ${addr})
+          AND ct."blockNumber" <= b.blk
+          AND ct."blockNumber" > b.prev_blk
+        GROUP BY b.index, b.blk
+      )
+      SELECT
+        index,
+        blk AS "atBlock",
+        (SUM(net) OVER (ORDER BY index DESC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW))::TEXT AS balance
+      FROM interval_nets
+      ORDER BY index
+    `;
+
     const headTimestampResult = await prisma.$queryRaw<
       [{ timestamp: Date | null }]
     >`
@@ -136,43 +177,19 @@ export class CollateralBalanceResolver {
       WHERE "chainId" = ${chainId}
         AND "blockNumber" <= ${headBlock}
     `;
-    const headTimestamp = headTimestampResult[0]?.timestamp ?? new Date(0);
+    const headTimestamp = headTimestampResult[0]?.timestamp ?? new Date();
 
-    const boundaries: number[] = [];
-    for (let i = 0; i <= cappedCount; i++) {
-      boundaries.push(Math.max(0, headBlock - i * step));
-    }
-
-    const results = await Promise.all(
-      boundaries.map(async (block, i) => {
-        const result = await prisma.$queryRaw<
-          [{ balance: string; timestamp: Date | null }]
-        >`
-          SELECT
-            (COALESCE(SUM(CASE WHEN "to" = ${addr} THEN "value"::NUMERIC ELSE 0 END), 0) -
-            COALESCE(SUM(CASE WHEN "from" = ${addr} THEN "value"::NUMERIC ELSE 0 END), 0))::TEXT
-            AS balance,
-            MAX("timestamp") AS timestamp
-          FROM collateral_transfer
-          WHERE "chainId" = ${chainId}
-            AND ("from" = ${addr} OR "to" = ${addr})
-            AND "blockNumber" <= ${block}
-        `;
-        const estimatedBoundaryTimestamp = new Date(
-          headTimestamp.getTime() -
-            Math.max(0, headBlock - block) * ASSUMED_BLOCK_TIME_SECONDS * 1000
-        );
-
-        return {
-          index: i,
-          atBlock: block,
-          balance: result[0]?.balance ?? '0',
-          timestamp: result[0]?.timestamp ?? estimatedBoundaryTimestamp,
-        };
-      })
-    );
-
-    return results;
+    return rows.map((row) => ({
+      index: row.index,
+      atBlock: row.atBlock,
+      balance: row.balance ?? '0',
+      timestamp: new Date(
+        headTimestamp.getTime() -
+          Math.max(0, headBlock - row.atBlock) *
+            ASSUMED_BLOCK_TIME_SECONDS *
+            1000
+      ),
+    }));
   }
 
   /**

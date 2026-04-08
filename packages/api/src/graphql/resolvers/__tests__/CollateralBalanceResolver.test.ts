@@ -105,12 +105,13 @@ describe('CollateralBalanceResolver', () => {
       mockPrisma.keyValueStore.findUnique.mockResolvedValue({
         value: '2000000',
       });
-      mockPrisma.$queryRaw.mockResolvedValue([
-        {
-          balance: '9999999999999999999999',
-          timestamp: new Date('2026-03-01'),
-        },
-      ]);
+      // First $queryRaw: single balance query; second: head timestamp
+      mockPrisma.$queryRaw
+        .mockResolvedValueOnce([
+          { index: 0, atBlock: 2000000, balance: '9999999999999999999999' },
+          { index: 1, atBlock: 1534153, balance: '9999999999999999999999' },
+        ])
+        .mockResolvedValueOnce([{ timestamp: new Date('2026-03-01') }]);
 
       const result = await resolver.collateralBalanceHistory(
         '0x131E278cfC6ED4863AAf0EB9Ce2d915aef775045',
@@ -129,9 +130,12 @@ describe('CollateralBalanceResolver', () => {
       mockPrisma.keyValueStore.findUnique.mockResolvedValue({
         value: '2000000',
       });
-      mockPrisma.$queryRaw.mockResolvedValue([
-        { balance: null, timestamp: null },
-      ]);
+      mockPrisma.$queryRaw
+        .mockResolvedValueOnce([
+          { index: 0, atBlock: 2000000, balance: '0' },
+          { index: 1, atBlock: 1534153, balance: '0' },
+        ])
+        .mockResolvedValueOnce([{ timestamp: new Date('2026-03-01') }]);
 
       const result = await resolver.collateralBalanceHistory(
         '0x0000000000000000000000000000000000000000',
@@ -143,6 +147,33 @@ describe('CollateralBalanceResolver', () => {
 
       for (const snapshot of result) {
         expect(snapshot.balance).toBe('0');
+      }
+    });
+
+    it('never returns null timestamps', async () => {
+      mockPrisma.keyValueStore.findUnique.mockResolvedValue({
+        value: '2000000',
+      });
+      mockPrisma.$queryRaw
+        .mockResolvedValueOnce([
+          { index: 0, atBlock: 2000000, balance: '0' },
+          { index: 1, atBlock: 1534153, balance: '0' },
+          { index: 2, atBlock: 1068306, balance: '0' },
+          { index: 3, atBlock: 602459, balance: '0' },
+        ])
+        .mockResolvedValueOnce([{ timestamp: new Date('2026-03-01') }]);
+
+      const result = await resolver.collateralBalanceHistory(
+        '0x0000000000000000000000000000000000000000',
+        null,
+        168,
+        3,
+        13374202
+      );
+
+      for (const snapshot of result) {
+        expect(snapshot.timestamp).toBeInstanceOf(Date);
+        expect(snapshot.timestamp.getTime()).not.toBe(0);
       }
     });
   });
