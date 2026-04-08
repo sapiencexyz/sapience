@@ -233,6 +233,21 @@ describe('computeAndStoreProtocolStats', () => {
     expect(update.vaultCollateralWon).toBe(create.vaultCollateralWon);
     expect(update.vaultCollateralLost).toBe(create.vaultCollateralLost);
   });
+
+  it('uses UTC midnight timestamp for snapshot', async () => {
+    await computeAndStoreProtocolStats(42161);
+
+    const upsertCall = mockPrisma.protocolStatsSnapshot.upsert.mock.calls[0][0];
+    const timestamp = upsertCall.where.chainId_vaultAddress_timestamp.timestamp;
+
+    const now = new Date();
+    const expectedMidnight = Math.floor(
+      Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()) / 1000
+    );
+
+    expect(timestamp).toBe(expectedMidnight);
+    expect(upsertCall.create.timestamp).toBe(expectedMidnight);
+  });
 });
 
 // ─── calculateVaultPnL (via computeAndStoreProtocolStats) ───────────────────
