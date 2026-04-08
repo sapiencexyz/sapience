@@ -1,5 +1,6 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
+import { OutcomeSide } from '@sapience/sdk/types';
 import type { Order } from '../../types';
 import type { AuctionFeedMessage } from '~/lib/auction/useAuctionRelayerFeed';
 
@@ -91,7 +92,7 @@ function makeAuctionStarted(
         {
           conditionResolver: '0xResolver',
           conditionId: '0xCondition',
-          predictedOutcome: 1,
+          predictedOutcome: OutcomeSide.NO,
         },
       ],
       ...overrides,
@@ -531,7 +532,7 @@ describe('useAuctionMatching — self-bid prevention', () => {
       strategy: 'conditions',
       copyTradeAddress: undefined,
       conditionSelections: [
-        { conditionId: '0xCondition', outcome: 1 },
+        { conditionId: '0xCondition', outcome: OutcomeSide.NO },
       ] as Order['conditionSelections'],
     });
 

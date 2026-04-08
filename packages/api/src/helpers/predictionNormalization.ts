@@ -1,3 +1,5 @@
+import { OutcomeSide } from '@sapience/sdk/types';
+
 export type NormalizedProbability = {
   probabilityFloat: number | null;
   probabilityD18: string | null;
@@ -76,9 +78,9 @@ export function normalizePredictionToProbability(
 export function outcomeFromCondition(condition: {
   settled: boolean;
   resolvedToYes: boolean;
-}): 0 | 1 | null {
+}): OutcomeSide | null {
   if (!condition.settled) {
     return null;
   }
-  return condition.resolvedToYes ? 1 : 0;
+  return condition.resolvedToYes ? OutcomeSide.YES : OutcomeSide.NO;
 }

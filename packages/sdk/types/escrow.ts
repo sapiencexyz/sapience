@@ -8,11 +8,14 @@ import type { Address, Hex } from 'viem';
 /**
  * Outcome side for a pick.
  *
- * YES = 0, NO = 1. This mirrors the Solidity enum (IV2Types.OutcomeSide)
+ * NO = 0, YES = 1. This mirrors the Solidity enum (IV2Types.OutcomeSide)
  * where values are assigned by declaration order. The ordering is
  * load-bearing: it is ABI-encoded as uint8, hashed into pickConfigId,
- * and embedded in EIP-712 signatures. Changing it would break all
- * existing positions.
+ * and embedded in EIP-712 signatures.
+ *
+ * V1 contracts used the inverted order (YES = 0, NO = 1). Use
+ * {@link isV1EscrowContract} and {@link normalizeOutcomeSide} when
+ * reading data from legacy contracts.
  *
  * This is an enum rather than a boolean because resolution can be
  * non-decisive (tie) — the OutcomeVector [1,1] represents a result
@@ -20,16 +23,69 @@ import type { Address, Hex } from 'viem';
  * prediction side extensible without conflating it with resolution.
  */
 export enum OutcomeSide {
-  YES = 0,
-  NO = 1,
+  NO = 0,
+  YES = 1,
+}
+
+/**
+ * V1 escrow contracts that used the inverted OutcomeSide ordering
+ * (YES = 0, NO = 1). The indexer normalizes V1 values at write time,
+ * so the database always stores V2 convention (NO=0, YES=1).
+ * Downstream readers never need to call normalizeOutcomeSide.
+ */
+const V1_ESCROW_CONTRACTS: ReadonlySet<string> = new Set(
+  [
+    // Ethereal mainnet
+    '0x8aA92a92436e89cF72E5525A54B64D317919d624',
+    '0xEF6B5C544814a3c5E335b6D2BAec6CBDe0f97A76',
+    '0x243022eBf5d66741499d76555CADFDE51e101e03',
+    '0xC18ed3483733d4e15516c2Fe101fF20B61e88A55',
+    '0x23C765fcE26aDbA3A1e0790d548410367D5A3487',
+    // Ethereal testnet
+    '0x9afaAAda6dc3a5013ef6fbaab203A55102E329eb',
+    '0x3B680e06B9A384179644C1bC7842Db67Df5Fb5f0',
+    '0x3025C4E3087f33Ac04D78eE34f35D4d003c2D642',
+    '0x7Bd9b22F89ECa14C5afa4de37Ae7B15C80de7a69',
+    '0x32Bf5903EA9c98FB20eB07735a8e62D303B60B3C',
+    '0xb5d2E6B148eBdFB02a3456F0Af021FAe81356511',
+    '0x8730eE1194Cd03A14deA9975e2bafD4C8b6019F1',
+  ].map((a) => a.toLowerCase())
+);
+
+/**
+ * Returns true if the given escrow address is a V1 contract that uses
+ * the inverted OutcomeSide enum (YES = 0, NO = 1).
+ */
+export function isV1EscrowContract(marketAddress: string): boolean {
+  return V1_ESCROW_CONTRACTS.has(marketAddress.toLowerCase());
+}
+
+/**
+ * Normalize a raw on-chain predictedOutcome to the canonical V2 enum.
+ *
+ * For V1 contracts the value is flipped (0 ↔ 1).
+ * For V2 contracts the value is returned as-is.
+ */
+export function normalizeOutcomeSide(
+  rawOutcome: number,
+  marketAddress: string
+): OutcomeSide {
+  if (isV1EscrowContract(marketAddress)) {
+    return rawOutcome === 0 ? OutcomeSide.YES : OutcomeSide.NO;
+  }
+  return rawOutcome as OutcomeSide;
 }
 
 /**
  * Type-safe check: did the predictor choose YES?
  *
  * Use this instead of raw `=== 0` / `=== 1` comparisons to avoid
- * the counterintuitive YES=0 mapping causing bugs. Every callsite
- * that interprets a predictedOutcome should call this function.
+ * bugs. Every callsite that interprets a predictedOutcome should
+ * call this function.
+ *
+ * IMPORTANT: the value passed here must already be normalized to V2
+ * convention (NO=0, YES=1). For raw on-chain values from legacy
+ * contracts, call {@link normalizeOutcomeSide} first.
  */
 export function isPredictedYes(predictedOutcome: number): boolean {
   return predictedOutcome === (OutcomeSide.YES as number);

@@ -1,5 +1,6 @@
 import { encodeAbiParameters, keccak256, type Address, type Hex } from 'viem';
-import type { Pick, PickJson, OutcomeSide } from '../types/escrow';
+import { OutcomeSide } from '../types/escrow';
+import type { Pick, PickJson } from '../types/escrow';
 
 // ============================================================================
 // Pick Encoding
@@ -215,10 +216,11 @@ export function isValidPick(pick: unknown): pick is Pick {
     return false;
   }
 
-  // Check predictedOutcome is 0 or 1
+  // Check predictedOutcome is a valid OutcomeSide (NO=0 or YES=1)
   if (
     typeof p.predictedOutcome !== 'number' ||
-    (p.predictedOutcome !== 0 && p.predictedOutcome !== 1)
+    (p.predictedOutcome !== (OutcomeSide.NO as number) &&
+      p.predictedOutcome !== (OutcomeSide.YES as number))
   ) {
     return false;
   }

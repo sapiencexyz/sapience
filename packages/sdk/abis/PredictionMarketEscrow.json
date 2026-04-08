@@ -1687,7 +1687,7 @@
   },
   {
     "type": "error",
-    "name": "InvalidCounterpartSignature",
+    "name": "InvalidCounterpartySignature",
     "inputs": []
   },
   {

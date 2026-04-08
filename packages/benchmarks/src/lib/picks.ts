@@ -1,3 +1,4 @@
+import { OutcomeSide } from '@sapience/sdk/types/escrow';
 import type { PickJson } from '@sapience/sdk/types/escrow';
 
 export interface ConditionInfo {
@@ -95,7 +96,7 @@ export function buildRandomPicks(conditions: ConditionInfo[], count?: number): E
   return selected.map((c) => ({
     conditionResolver: c.resolver,
     conditionId: c.id,
-    predictedOutcome: Math.random() < 0.5 ? 0 : 1,
+    predictedOutcome: Math.random() < 0.5 ? OutcomeSide.YES : OutcomeSide.NO,
     question: c.question,
     estimatedPrice: c.estimatedPrice,
     polymarketUrl: extractPolymarketUrl(c.similarMarkets),
