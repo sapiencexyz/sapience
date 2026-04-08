@@ -713,7 +713,7 @@ contract PredictionMarketVaultIntegrationTest is Test {
         request.predictorSponsorData = "";
 
         vm.expectRevert(
-            IPredictionMarketEscrow.InvalidCounterpartSignature.selector
+            IPredictionMarketEscrow.InvalidCounterpartySignature.selector
         );
         market.mint(request);
     }

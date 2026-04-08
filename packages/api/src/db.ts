@@ -1,5 +1,11 @@
+import { AsyncLocalStorage } from 'node:async_hooks';
 import { PrismaClient } from '../generated/prisma';
 import { config } from './config';
+
+export const requestContext = new AsyncLocalStorage<{
+  count: number;
+  requestId: string;
+}>();
 
 let _instance: PrismaClient | undefined;
 
@@ -25,12 +31,33 @@ function getInstance(): PrismaClient {
     log: config.isProd
       ? config.DATABASE_URL.includes('localhost')
         ? (['info', 'warn', 'error'] as const)
-        : (['query', 'info', 'warn', 'error'] as const)
+        : (['info', 'warn', 'error'] as const)
       : (['warn', 'error'] as const),
     transactionOptions: {
       maxWait: config.PRISMA_QUERY_TIMEOUT_MS,
       timeout: config.PRISMA_QUERY_TIMEOUT_MS,
     },
+  });
+
+  // Per-query timing middleware — measures Prisma's full round-trip
+  // (connection checkout + SQL execution + result deserialization)
+  _instance.$use(async (params, next) => {
+    const start = performance.now();
+    const result = await next(params);
+    const ms = performance.now() - start;
+    const rid = requestContext.getStore()?.requestId ?? '';
+    const prefix = rid ? `[prisma:${rid}]` : '[prisma]';
+    console.log(
+      `${prefix} ${params.model ?? 'raw'}.${params.action} ${ms.toFixed(1)}ms`
+    );
+    return result;
+  });
+
+  // Query counter middleware
+  _instance.$use(async (params, next) => {
+    const store = requestContext.getStore();
+    if (store) store.count++;
+    return next(params);
   });
 
   // Query timeout middleware - bounds individual query execution time

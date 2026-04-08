@@ -89,6 +89,9 @@ vi.mock('@sapience/ui/hooks/use-toast', () => ({
   useToast: () => ({ toast: vi.fn() }),
 }));
 
+// SDK types
+import { OutcomeSide } from '@sapience/sdk/types';
+
 // SDK
 vi.mock('@sapience/sdk', () => ({
   generateRandomNonce: () => BigInt(12345),
@@ -335,12 +338,12 @@ function setDefaults() {
       {
         conditionResolver: '0xResolver1',
         conditionId: '0xCondition1',
-        predictedOutcome: 1,
+        predictedOutcome: OutcomeSide.NO,
       },
       {
         conditionResolver: '0xResolver1',
         conditionId: '0xCondition2',
-        predictedOutcome: 1,
+        predictedOutcome: OutcomeSide.NO,
       },
     ],
   });
@@ -580,13 +583,13 @@ describe('PositionForm', () => {
           {
             conditionResolver: '0xResolver1',
             conditionId: '0xCondition1',
-            predictedOutcome: 1,
+            predictedOutcome: OutcomeSide.NO,
           },
         ],
       });
     });
 
-    it('shows showAddPredictionsHint when 1 selection and no bestBid/stickyEstimate', () => {
+    it('does not show showAddPredictionsHint even with 1 selection and no bestBid/stickyEstimate', () => {
       const { getByTestId } = renderForm();
 
       act(() => {
@@ -594,7 +597,7 @@ describe('PositionForm', () => {
       });
 
       const bidDisplay = getByTestId('bid-display');
-      expect(bidDisplay.dataset.showAddPredictionsHint).toBe('true');
+      expect(bidDisplay.dataset.showAddPredictionsHint).toBe('false');
     });
 
     it('still fires auction silently with 1 selection', async () => {
@@ -627,9 +630,9 @@ describe('PositionForm', () => {
         vi.advanceTimersByTime(300);
       });
 
-      // Hint shown before bids arrive
+      // Hint always false now (single leg block removed)
       expect(getByTestId('bid-display').dataset.showAddPredictionsHint).toBe(
-        'true'
+        'false'
       );
 
       // Now rerender with a valid bid (stable reference)
@@ -658,7 +661,7 @@ describe('PositionForm', () => {
       );
     });
 
-    it('keeps hint visible when stickyEstimateBid arrives for single pick', async () => {
+    it('hint stays false even when only stickyEstimateBid arrives for single pick', async () => {
       const estimateBid = {
         counterparty: '0xMaker',
         counterpartyCollateral: '5000000000000000000',
@@ -679,7 +682,7 @@ describe('PositionForm', () => {
       });
 
       expect(getByTestId('bid-display').dataset.showAddPredictionsHint).toBe(
-        'true'
+        'false'
       );
 
       // Rerender with an estimate bid (stable reference; only invalid bid → becomes stickyEstimate)
@@ -702,9 +705,9 @@ describe('PositionForm', () => {
         vi.advanceTimersByTime(100);
       });
 
-      // For single picks, prefer "add more predictions" over showing estimate
+      // Hint remains false (single leg block removed)
       expect(getByTestId('bid-display').dataset.showAddPredictionsHint).toBe(
-        'true'
+        'false'
       );
     });
   });

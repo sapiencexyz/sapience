@@ -8,6 +8,7 @@
  */
 
 import type { Address } from 'viem';
+import { OutcomeSide } from '../types/escrow';
 import type { AuctionRFQPayload } from '../types/escrow';
 import { validateAuctionRFQ } from './validation';
 
@@ -44,7 +45,8 @@ function isPickJson(p: unknown): boolean {
     /^0x[a-fA-F0-9]+$/.test(pick.conditionId) &&
     pick.conditionId.length >= 66 &&
     pick.conditionId.length <= MAX_CONDITION_ID_LEN &&
-    (pick.predictedOutcome === 0 || pick.predictedOutcome === 1)
+    (pick.predictedOutcome === OutcomeSide.NO ||
+      pick.predictedOutcome === OutcomeSide.YES)
   );
 }
 

@@ -20,6 +20,7 @@ export interface ConditionType {
   assertionTimestamp?: number;
   openInterest: string;
   similarMarketVolume?: number;
+  similarMarketImage?: string | null;
   conditionGroupId?: number | null;
   conditionGroup?: { id: number; name: string } | null;
   estimatedPrice?: number | null;
@@ -60,6 +61,7 @@ export const GET_CONDITIONS = /* GraphQL */ `
       assertionTimestamp
       openInterest
       similarMarketVolume
+      similarMarketImage
       estimatedPrice
       conditionGroupId
       conditionGroup {
@@ -217,6 +219,7 @@ type ConditionById = {
   settled?: boolean;
   resolvedToYes?: boolean;
   nonDecisive?: boolean;
+  estimatedPrice?: number | null;
 };
 
 const CONDITIONS_BY_IDS_QUERY = /* GraphQL */ `
@@ -232,6 +235,7 @@ const CONDITIONS_BY_IDS_QUERY = /* GraphQL */ `
       settled
       resolvedToYes
       nonDecisive
+      estimatedPrice
       category {
         slug
       }

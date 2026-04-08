@@ -227,6 +227,158 @@ describe('QuestionsResolver', () => {
     expect(result[2].condition!.id).toBe('c2');
   });
 
+  it('preserves SQL sort order even when Prisma returns records in different order', async () => {
+    // SQL returns items in sort order: g1, c1, g2, c2, g3
+    mockPrisma.$queryRaw.mockResolvedValue([
+      {
+        item_type: 'group',
+        group_id: 10,
+        condition_id: null,
+        prediction_count: BigInt(100),
+      },
+      {
+        item_type: 'condition',
+        group_id: null,
+        condition_id: 'cA',
+        prediction_count: BigInt(50),
+      },
+      {
+        item_type: 'group',
+        group_id: 20,
+        condition_id: null,
+        prediction_count: BigInt(30),
+      },
+      {
+        item_type: 'condition',
+        group_id: null,
+        condition_id: 'cB',
+        prediction_count: BigInt(10),
+      },
+      {
+        item_type: 'group',
+        group_id: 30,
+        condition_id: null,
+        prediction_count: BigInt(5),
+      },
+    ]);
+
+    // Prisma returns groups in REVERSE order (simulating arbitrary DB return order)
+    mockPrisma.conditionGroup.findMany.mockResolvedValue([
+      {
+        id: 30,
+        name: 'G30',
+        condition: [
+          { id: 'g30c1', question: 'Q30a' },
+          { id: 'g30c2', question: 'Q30b' },
+        ],
+      },
+      {
+        id: 10,
+        name: 'G10',
+        condition: [
+          { id: 'g10c1', question: 'Q10a' },
+          { id: 'g10c2', question: 'Q10b' },
+        ],
+      },
+      {
+        id: 20,
+        name: 'G20',
+        condition: [
+          { id: 'g20c1', question: 'Q20a' },
+          { id: 'g20c2', question: 'Q20b' },
+        ],
+      },
+    ]);
+    // Prisma returns conditions in REVERSE order
+    mockPrisma.condition.findMany.mockResolvedValue([
+      { id: 'cB', question: 'Condition B' },
+      { id: 'cA', question: 'Condition A' },
+    ]);
+
+    const result = await callQuestions();
+
+    // Result must match the SQL order, NOT the Prisma return order
+    expect(result).toHaveLength(5);
+    expect(result[0].questionType).toBe(QuestionItemType.group);
+    expect(result[0].group!.id).toBe(10);
+    expect(result[1].questionType).toBe(QuestionItemType.condition);
+    expect(result[1].condition!.id).toBe('cA');
+    expect(result[2].questionType).toBe(QuestionItemType.group);
+    expect(result[2].group!.id).toBe(20);
+    expect(result[3].questionType).toBe(QuestionItemType.condition);
+    expect(result[3].condition!.id).toBe('cB');
+    expect(result[4].questionType).toBe(QuestionItemType.group);
+    expect(result[4].group!.id).toBe(30);
+  });
+
+  it('unwrapped single-condition groups maintain their SQL position among other items', async () => {
+    // SQL order: condition, single-condition-group (will unwrap), multi-condition-group, condition
+    mockPrisma.$queryRaw.mockResolvedValue([
+      {
+        item_type: 'condition',
+        group_id: null,
+        condition_id: 'c1',
+        prediction_count: BigInt(100),
+      },
+      {
+        item_type: 'group',
+        group_id: 1,
+        condition_id: null,
+        prediction_count: BigInt(80),
+      },
+      {
+        item_type: 'group',
+        group_id: 2,
+        condition_id: null,
+        prediction_count: BigInt(50),
+      },
+      {
+        item_type: 'condition',
+        group_id: null,
+        condition_id: 'c2',
+        prediction_count: BigInt(10),
+      },
+    ]);
+
+    mockPrisma.conditionGroup.findMany.mockResolvedValue([
+      // Group 1: single condition -> will be unwrapped
+      {
+        id: 1,
+        name: 'SingleGroup',
+        condition: [{ id: 'sg1', question: 'Single Q' }],
+      },
+      // Group 2: multi condition -> stays as group
+      {
+        id: 2,
+        name: 'MultiGroup',
+        condition: [
+          { id: 'mg1', question: 'Multi Q1' },
+          { id: 'mg2', question: 'Multi Q2' },
+        ],
+      },
+    ]);
+    mockPrisma.condition.findMany.mockResolvedValue([
+      { id: 'c1', question: 'Standalone 1' },
+      { id: 'c2', question: 'Standalone 2' },
+    ]);
+
+    const result = await callQuestions();
+
+    expect(result).toHaveLength(4);
+    // Position 0: standalone condition c1
+    expect(result[0].questionType).toBe(QuestionItemType.condition);
+    expect(result[0].condition!.id).toBe('c1');
+    // Position 1: unwrapped single-condition group -> becomes condition sg1
+    expect(result[1].questionType).toBe(QuestionItemType.condition);
+    expect(result[1].condition!.id).toBe('sg1');
+    // Position 2: multi-condition group stays as group
+    expect(result[2].questionType).toBe(QuestionItemType.group);
+    expect(result[2].group!.id).toBe(2);
+    // Position 3: standalone condition c2
+    expect(result[3].questionType).toBe(QuestionItemType.condition);
+    expect(result[3].condition!.id).toBe('c2');
+  });
+
   it('skips items when findMany does not return a matching record', async () => {
     mockPrisma.$queryRaw.mockResolvedValue([
       {
@@ -362,27 +514,30 @@ describe('QuestionsResolver', () => {
       expect(sql).toContain('cg."totalPredictionCount"');
     });
 
-    it('uses LATERAL JOIN for filtered group aggregates when chainId filter is active', async () => {
+    it('uses LEFT JOIN + GROUP BY for filtered group aggregates when chainId filter is active', async () => {
       await callQuestions({ chainId: 1 });
       const sql = getCapturedSql();
 
-      expect(sql).toContain('CROSS JOIN LATERAL');
+      expect(sql).toContain('LEFT JOIN condition c ON');
+      expect(sql).toContain('GROUP BY cg.id');
       // Should compute aggregates from filtered conditions, not denormalized columns
       expect(sql).toContain('SUM');
     });
 
-    it('uses LATERAL JOIN when resolutionStatus filter is active', async () => {
+    it('uses LEFT JOIN + GROUP BY when resolutionStatus filter is active', async () => {
       await callQuestions({ resolutionStatus: ResolutionStatus.unresolved });
       const sql = getCapturedSql();
 
-      expect(sql).toContain('CROSS JOIN LATERAL');
+      expect(sql).toContain('LEFT JOIN condition c ON');
+      expect(sql).toContain('GROUP BY cg.id');
     });
 
-    it('uses LATERAL JOIN when price filter is active', async () => {
+    it('uses LEFT JOIN + GROUP BY when price filter is active', async () => {
       await callQuestions({ minEstimatedPrice: 0.2 });
       const sql = getCapturedSql();
 
-      expect(sql).toContain('CROSS JOIN LATERAL');
+      expect(sql).toContain('LEFT JOIN condition c ON');
+      expect(sql).toContain('GROUP BY cg.id');
     });
 
     it('group search matches individual condition questions and shortNames', async () => {
@@ -420,15 +575,15 @@ describe('QuestionsResolver', () => {
         expect(sql).toContain('c."similarMarketVolume"');
       });
 
-      it('uses similarMarketVolume in LATERAL sort expression for filtered groups', async () => {
+      it('uses similarMarketVolume in LEFT JOIN sort expression for filtered groups', async () => {
         await callQuestions({
           sortField: QuestionSortField.similarMarketVolume,
           resolutionStatus: ResolutionStatus.unresolved,
         });
         const sql = getCapturedSql();
 
-        // Filtered path: LATERAL JOIN should compute SUM(similarMarketVolume) from filtered conditions
-        expect(sql).toContain('CROSS JOIN LATERAL');
+        // Filtered path: LEFT JOIN + GROUP BY should compute SUM(similarMarketVolume) from filtered conditions
+        expect(sql).toContain('LEFT JOIN condition c ON');
         expect(sql).toContain('SUM(c."similarMarketVolume")');
       });
 
@@ -442,7 +597,7 @@ describe('QuestionsResolver', () => {
         vi.clearAllMocks();
         mockPrisma.$queryRaw.mockResolvedValue([]);
 
-        // Filtered (chainId triggers LATERAL)
+        // Filtered (chainId triggers LEFT JOIN + GROUP BY)
         await callQuestions({
           sortField: QuestionSortField.similarMarketVolume,
           chainId: 1,

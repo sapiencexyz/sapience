@@ -206,6 +206,37 @@ describe('conditions routes', () => {
       const createCall = mockPrisma.condition.create.mock.calls[0][0];
       expect(createCall.data.similarMarketVolume).toBe(123456.78);
     });
+
+    it('stores similarMarketImage when provided', async () => {
+      mockPrisma.condition.create.mockResolvedValue({ id: '0x1' });
+
+      const res = await request(app)
+        .post('/admin/conditions')
+        .send(
+          baseBody({
+            similarMarketImage:
+              'https://polymarket-upload.s3.us-east-2.amazonaws.com/test.jpg',
+          })
+        );
+
+      expect(res.status).toBe(201);
+      const createCall = mockPrisma.condition.create.mock.calls[0][0];
+      expect(createCall.data.similarMarketImage).toBe(
+        'https://polymarket-upload.s3.us-east-2.amazonaws.com/test.jpg'
+      );
+    });
+
+    it('ignores similarMarketImage when not a valid URL', async () => {
+      mockPrisma.condition.create.mockResolvedValue({ id: '0x1' });
+
+      const res = await request(app)
+        .post('/admin/conditions')
+        .send(baseBody({ similarMarketImage: 'not-a-url' }));
+
+      expect(res.status).toBe(201);
+      const createCall = mockPrisma.condition.create.mock.calls[0][0];
+      expect(createCall.data.similarMarketImage).toBeUndefined();
+    });
   });
 
   // ---------- PUT /admin/conditions/prices ----------
@@ -308,6 +339,29 @@ describe('conditions routes', () => {
       expect(res.status).toBe(200);
       const updateManyCall = mockPrisma.condition.updateMany.mock.calls[0][0];
       expect(updateManyCall.data.similarMarketVolume).toBe(99999.99);
+    });
+
+    it('passes similarMarketImage to Prisma when provided', async () => {
+      mockPrisma.$transaction.mockResolvedValue([{ count: 1 }]);
+
+      const res = await request(app)
+        .put('/admin/conditions/prices')
+        .send({
+          updates: [
+            {
+              id: VALID_CONDITION_HASH,
+              estimatedPrice: 0.5,
+              similarMarketImage:
+                'https://polymarket-upload.s3.us-east-2.amazonaws.com/test.jpg',
+            },
+          ],
+        });
+
+      expect(res.status).toBe(200);
+      const updateManyCall = mockPrisma.condition.updateMany.mock.calls[0][0];
+      expect(updateManyCall.data.similarMarketImage).toBe(
+        'https://polymarket-upload.s3.us-east-2.amazonaws.com/test.jpg'
+      );
     });
 
     it('works without similarMarketVolume (backward compat)', async () => {
@@ -469,6 +523,28 @@ describe('conditions routes', () => {
       expect(res.status).toBe(200);
       const updateCall = mockPrisma.condition.update.mock.calls[0][0];
       expect(updateCall.data.similarMarketVolume).toBe(50000);
+    });
+
+    it('updates similarMarketImage when provided', async () => {
+      mockPrisma.condition.findUnique.mockResolvedValue(existingCondition());
+      mockPrisma.condition.update.mockResolvedValue({
+        ...existingCondition(),
+        similarMarketImage:
+          'https://polymarket-upload.s3.us-east-2.amazonaws.com/test.jpg',
+      });
+
+      const res = await request(app)
+        .put(`/admin/conditions/${VALID_ID}`)
+        .send({
+          similarMarketImage:
+            'https://polymarket-upload.s3.us-east-2.amazonaws.com/test.jpg',
+        });
+
+      expect(res.status).toBe(200);
+      const updateCall = mockPrisma.condition.update.mock.calls[0][0];
+      expect(updateCall.data.similarMarketImage).toBe(
+        'https://polymarket-upload.s3.us-east-2.amazonaws.com/test.jpg'
+      );
     });
 
     it('updates question and description fields and returns 200', async () => {

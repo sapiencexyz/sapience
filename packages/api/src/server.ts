@@ -19,6 +19,7 @@ import {
   proxyAuctionWebSocket,
 } from './utils/auctionProxy';
 import { cdnCacheMiddleware } from './graphql/plugins/httpCacheHeadersPlugin';
+import { requestContext } from './db';
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3001;
 
@@ -70,6 +71,23 @@ const startServer = async () => {
   // Add GraphQL endpoint with concurrency limiting and request timeout
   app.use(
     '/graphql',
+    // Per-request timing + query counter + request ID
+    (req: Request, res: Response, next: NextFunction) => {
+      const requestId = (req.headers['x-request-id'] as string) || '';
+      const store = { count: 0, requestId };
+      requestContext.run(store, () => {
+        const start = performance.now();
+        const ip = req.ip || req.headers['x-forwarded-for'] || 'unknown';
+        const tag = requestId ? `[http:${requestId}]` : '[http]';
+        res.on('finish', () => {
+          const ms = (performance.now() - start).toFixed(1);
+          console.log(
+            `${tag} ${req.method} /graphql ${res.statusCode} ${ms}ms (${store.count} queries) ip=${ip}`
+          );
+        });
+        next();
+      });
+    },
     // Request timeout first — defends against slowloris (slow body delivery holding slots)
     timeoutMiddleware,
     // Concurrency limiter — global + per-IP

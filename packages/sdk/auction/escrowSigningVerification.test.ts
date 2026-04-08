@@ -8,6 +8,7 @@
 
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import type { Address, Hex } from 'viem';
+import { OutcomeSide } from '../types/escrow';
 
 // Mock viem.recoverTypedDataAddress
 const mockRecoverTypedDataAddress = vi.fn();
@@ -52,7 +53,7 @@ const TEST_PICKS = [
   {
     conditionResolver: CONDITION_RESOLVER,
     conditionId: CONDITION_ID,
-    predictedOutcome: 1,
+    predictedOutcome: OutcomeSide.NO,
   },
 ];
 

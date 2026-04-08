@@ -3,7 +3,7 @@
  */
 
 import type { PolymarketMarket } from '../types';
-import { MAX_END_DATE_DAYS } from '../constants';
+import { MAX_END_DATE_DAYS, SUPPLEMENTARY_EVENT_TAGS } from '../constants';
 import { fetchWithRetry } from '../utils';
 import { runPipeline, printPipelineStats, MARKET_FILTERS } from './pipeline';
 
@@ -110,6 +110,29 @@ export async function fetchEndingSoonestMarkets(): Promise<PolymarketMarket[]> {
     `[Polymarket] Total fetched: ${allMarkets.length} markets across ${pageCount} pages`
   );
 
+  // Fetch supplementary markets from /events endpoint by tag slug.
+  // The /markets list endpoint has blind spots where some active markets
+  // don't appear in paginated results but are discoverable via event tags.
+  const supplementaryMarkets = await fetchMarketsByEventTags(
+    SUPPLEMENTARY_EVENT_TAGS,
+    maxEndDate
+  );
+
+  let supplementaryCount = 0;
+  for (const m of supplementaryMarkets) {
+    if (!seenConditionIds.has(m.conditionId)) {
+      seenConditionIds.add(m.conditionId);
+      allMarkets.push(m);
+      supplementaryCount++;
+    }
+  }
+
+  if (supplementaryCount > 0) {
+    console.log(
+      `[Polymarket] Supplementary event tags added ${supplementaryCount} new markets`
+    );
+  }
+
   // Apply market filters pipeline (binary markets filter)
   const { output: filteredMarkets, stats } = runPipeline(
     allMarkets,
@@ -120,4 +143,63 @@ export async function fetchEndingSoonestMarkets(): Promise<PolymarketMarket[]> {
   printPipelineStats(stats, 'Market Pipeline');
 
   return filteredMarkets;
+}
+
+/**
+ * Fetch markets from the /events endpoint by tag slugs.
+ * Returns flattened market objects from event.markets[].
+ * Injects the parent event into each market's `events` array so downstream
+ * grouping logic (which reads market.events[0]) works correctly.
+ */
+async function fetchMarketsByEventTags(
+  tagSlugs: string[],
+  maxEndDate: Date
+): Promise<PolymarketMarket[]> {
+  const markets: PolymarketMarket[] = [];
+
+  for (const tag of tagSlugs) {
+    const url = `https://gamma-api.polymarket.com/events?active=true&closed=false&tag_slug=${encodeURIComponent(tag)}&limit=200`;
+
+    const response = await fetchWithRetry(url, {
+      headers: { Accept: 'application/json' },
+    });
+
+    if (!response.ok) {
+      console.warn(
+        `[Polymarket] Failed to fetch events for tag "${tag}": HTTP ${response.status}`
+      );
+      continue;
+    }
+
+    const events: Array<{
+      id?: string;
+      title?: string;
+      slug?: string;
+      description?: string;
+      markets?: PolymarketMarket[];
+    }> = await response.json();
+
+    for (const event of events) {
+      const parentEvent = {
+        id: event.id,
+        title: event.title,
+        slug: event.slug,
+        description: event.description,
+      };
+
+      for (const market of event.markets ?? []) {
+        if (new Date(market.endDate) < maxEndDate) {
+          // Inject parent event so grouping logic can read market.events[0]
+          market.events = [parentEvent];
+          markets.push(market);
+        }
+      }
+    }
+
+    console.log(
+      `[Polymarket] Tag "${tag}": fetched ${events.length} events with ${markets.length} markets`
+    );
+  }
+
+  return markets;
 }

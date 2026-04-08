@@ -1,4 +1,5 @@
 import { describe, it, expect } from 'vitest';
+import { OutcomeSide } from '@sapience/sdk/types';
 import {
   normalizePythPriceId,
   decimalToScaledBigInt,
@@ -200,18 +201,18 @@ describe('buildPythAuctionStartPayload', () => {
     expect(result.escrowPicks[0].conditionResolver).toBe(expectedCondResolver);
   });
 
-  it('sets predictedOutcome 0 (YES) for direction "over"', () => {
+  it('sets predictedOutcome YES for direction "over"', () => {
     const result = buildPythAuctionStartPayload([
       makeStub({ direction: 'over' }),
     ]);
-    expect(result.escrowPicks[0].predictedOutcome).toBe(0);
+    expect(result.escrowPicks[0].predictedOutcome).toBe(OutcomeSide.YES);
   });
 
-  it('sets predictedOutcome 1 (NO) for direction "under"', () => {
+  it('sets predictedOutcome NO for direction "under"', () => {
     const result = buildPythAuctionStartPayload([
       makeStub({ direction: 'under' }),
     ]);
-    expect(result.escrowPicks[0].predictedOutcome).toBe(1);
+    expect(result.escrowPicks[0].predictedOutcome).toBe(OutcomeSide.NO);
   });
 
   it('returns encoded predictedOutcomes as hex array', () => {
@@ -226,8 +227,8 @@ describe('buildPythAuctionStartPayload', () => {
       makeStub({ direction: 'under', priceId: '1' }),
     ]);
     expect(result.escrowPicks).toHaveLength(2);
-    expect(result.escrowPicks[0].predictedOutcome).toBe(0); // Over = YES
-    expect(result.escrowPicks[1].predictedOutcome).toBe(1); // Under = NO
+    expect(result.escrowPicks[0].predictedOutcome).toBe(OutcomeSide.YES); // Over = YES
+    expect(result.escrowPicks[1].predictedOutcome).toBe(OutcomeSide.NO); // Under = NO
   });
 
   it('each escrowPick has a unique conditionId', () => {

@@ -20,12 +20,6 @@ import { Info } from 'lucide-react';
 import * as React from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { COLLATERAL_SYMBOLS, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@sapience/ui/components/ui/popover';
-import { PredictionChoiceBadge } from '@sapience/ui';
 import { useAccount } from 'wagmi';
 import EmptyTabState from '~/components/shared/EmptyTabState';
 import NumberDisplay from '~/components/shared/NumberDisplay';
@@ -43,12 +37,9 @@ import {
   type PositionBalance,
 } from '~/hooks/graphql/usePositions';
 import { useConditionsByIds } from '~/hooks/graphql/useConditionsByIds';
-import { StackedIcons } from '~/components/shared/StackedPredictions';
-import CounterpartyBadge from '~/components/shared/CounterpartyBadge';
+import PicksSummary from '~/components/shared/PicksSummary';
 import LegacyBadge from '~/components/shared/LegacyBadge';
-import { getCategoryIcon } from '~/lib/theme/categoryIcons';
-import { getCategoryStyle } from '~/lib/utils/categoryStyle';
-import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
+import PredictionDialog from '~/components/positions/PredictionDialog';
 import OgShareDialogBase from '~/components/shared/OgShareDialog';
 import {
   PositionsTableFilters,
@@ -70,6 +61,7 @@ function PositionRow({
   collateralSymbol,
   conditionsMap,
   onShare,
+  onOpenDialog,
   onRefetch,
   showSell,
 }: {
@@ -77,6 +69,7 @@ function PositionRow({
   collateralSymbol: string;
   conditionsMap: ConditionsMap;
   onShare: (position: PositionBalance) => void;
+  onOpenDialog: () => void;
   onRefetch?: () => void;
   showSell: boolean;
 }) {
@@ -282,67 +275,13 @@ function PositionRow({
   return (
     <TableRow>
       <TableCell>
-        <div className="flex items-center gap-2">
-          <StackedIcons picks={picks} />
-          {picks.length > 0 ? (
-            <Popover>
-              <PopoverTrigger asChild>
-                <button
-                  type="button"
-                  className="text-lg font-mono font-semibold text-brand-white hover:text-brand-white/70 underline decoration-dotted underline-offset-4 transition-colors cursor-pointer whitespace-nowrap"
-                >
-                  {picks.length} {picks.length === 1 ? 'PICK' : 'PICKS'}
-                </button>
-              </PopoverTrigger>
-              <PopoverContent
-                className="w-auto max-w-sm p-0 bg-brand-black border-brand-white/20"
-                align="start"
-              >
-                <div className="flex flex-col divide-y divide-brand-white/20">
-                  {picks.map((pick, i) => {
-                    const CategoryIcon = getCategoryIcon(pick.categorySlug);
-                    const color = getCategoryStyle(pick.categorySlug).color;
-                    return (
-                      <div
-                        key={`pick-${i}`}
-                        className="flex items-center gap-3 px-3 py-2"
-                      >
-                        <div
-                          className="w-6 h-6 rounded-full shrink-0 flex items-center justify-center"
-                          style={{ backgroundColor: color }}
-                        >
-                          <CategoryIcon className="h-3 w-3 text-white/80" />
-                        </div>
-                        {pick.conditionId ? (
-                          <ConditionTitleLink
-                            conditionId={pick.conditionId}
-                            resolverAddress={pick.resolverAddress ?? undefined}
-                            title={pick.question}
-                            clampLines={1}
-                            className="text-sm flex-1 min-w-0"
-                          />
-                        ) : (
-                          <span className="text-sm flex-1 min-w-0 font-mono truncate">
-                            {pick.question}
-                          </span>
-                        )}
-                        <PredictionChoiceBadge
-                          choice={String(pick.choice).toUpperCase()}
-                        />
-                      </div>
-                    );
-                  })}
-                </div>
-              </PopoverContent>
-            </Popover>
-          ) : (
-            <span className="text-lg font-mono font-semibold text-brand-white whitespace-nowrap">
-              —
-            </span>
-          )}
-          {!isPredictorToken && <CounterpartyBadge />}
-          {pickConfig?.isLegacy && <LegacyBadge />}
-        </div>
+        <PicksSummary
+          picks={picks}
+          isCounterparty={!isPredictorToken}
+          predictionId={pickConfig?.predictionId}
+          onClick={onOpenDialog}
+        />
+        {pickConfig?.isLegacy && <LegacyBadge />}
       </TableCell>
       <TableCell>
         <NumberDisplay
@@ -547,6 +486,10 @@ export default function PositionsTable({
   const [sharePosition, setSharePosition] =
     React.useState<PositionBalance | null>(null);
 
+  // Prediction detail dialog state
+  const [dialogPosition, setDialogPosition] =
+    React.useState<PositionBalance | null>(null);
+
   // Build OG image URL for position sharing
   const shareImageSrc = React.useMemo(() => {
     if (!sharePosition) return null;
@@ -671,6 +614,7 @@ export default function PositionsTable({
                 collateralSymbol={collateralSymbol}
                 conditionsMap={conditionsMap}
                 onShare={setSharePosition}
+                onOpenDialog={() => setDialogPosition(position)}
                 onRefetch={refetch}
                 showSell={showSell}
               />
@@ -678,6 +622,56 @@ export default function PositionsTable({
           </TableBody>
         </Table>
       </div>
+      {dialogPosition &&
+        (() => {
+          const dp = dialogPosition;
+          const pc = dp.pickConfig;
+          // Build a minimal Prediction object from the PositionBalance
+          const prediction = pc
+            ? {
+                id: dp.id,
+                predictionId: pc.predictionId ?? '',
+                predictor: dp.isPredictorToken ? dp.holder : '',
+                counterparty: dp.isPredictorToken ? '' : dp.holder,
+                predictorCollateral: pc.totalPredictorCollateral,
+                counterpartyCollateral: pc.totalCounterpartyCollateral,
+                settled: pc.resolved,
+                result: (pc.result ?? 'UNRESOLVED') as
+                  | 'UNRESOLVED'
+                  | 'PREDICTOR_WINS'
+                  | 'COUNTERPARTY_WINS'
+                  | 'NON_DECISIVE',
+                createdAt: dp.createdAt,
+                chainId: dp.chainId,
+                marketAddress: pc.marketAddress,
+                predictorToken: pc.predictorToken ?? '',
+                counterpartyToken: pc.counterpartyToken ?? '',
+                collateralDeposited: null,
+                collateralDepositedAt: null,
+                settledAt: pc.resolvedAt ?? null,
+                predictorClaimable: null,
+                counterpartyClaimable: null,
+                createTxHash: '',
+                settleTxHash: null,
+                refCode: null,
+                isLegacy: pc.isLegacy,
+                pickConfig: pc,
+              }
+            : null;
+          return prediction ? (
+            <PredictionDialog
+              open
+              onOpenChange={(open) => {
+                if (!open) setDialogPosition(null);
+              }}
+              prediction={prediction}
+              pickConfig={pc ?? null}
+              isPredictorSide={dp.isPredictorToken}
+              conditionsMap={conditionsMap}
+              collateralSymbol={collateralSymbol}
+            />
+          ) : null;
+        })()}
       {sharePosition && shareImageSrc && (
         <OgShareDialogBase
           imageSrc={shareImageSrc}

@@ -1,8 +1,5 @@
-import {
-  manualConditionResolver,
-  conditionalTokensConditionResolver,
-  normalizeLegacyEntry,
-} from '@sapience/sdk';
+import { CHAIN_ID_ETHEREAL_TESTNET } from '@sapience/sdk/constants';
+import { getResolverConfig, type ResolverType } from './resolver';
 
 /**
  * Configuration constants
@@ -12,33 +9,24 @@ import {
 export const ADMIN_AUTHENTICATE_MSG =
   'Sign this message to authenticate for admin actions.';
 
-// Environment mode
-const isProduction = process.env.NODE_ENV === 'production';
-
 // Chain ID — configurable via env var, defaults to Ethereal mainnet
 export const CHAIN_ID = Number(process.env.CHAIN_ID || '5064014');
 
-// Resolver address — configurable via env var
-// Production: ConditionalTokensConditionResolver (LZ bridging from Polygon)
-// Staging: ManualConditionResolver (direct admin settlement)
-export const RESOLVER_ADDRESS = (process.env.RESOLVER_ADDRESS ||
-  (isProduction
-    ? conditionalTokensConditionResolver[CHAIN_ID]?.address
-    : manualConditionResolver[CHAIN_ID]?.address) ||
-  '') as `0x${string}`;
+// Resolver type — derived from chain ID:
+//   Testnet (13374202) → 'manual' (ManualConditionResolver, direct admin settlement)
+//   Everything else    → 'ct'     (ConditionalTokensConditionResolver, LZ bridge from Polygon)
+export const RESOLVER_TYPE: ResolverType =
+  CHAIN_ID === CHAIN_ID_ETHEREAL_TESTNET ? 'manual' : 'ct';
 
-// All Polymarket resolver addresses for the current chain (current + legacy), lowercased to match DB storage
-export const ALL_POLYMARKET_RESOLVER_ADDRESSES: string[] = (() => {
-  const entry = conditionalTokensConditionResolver[CHAIN_ID];
-  if (!entry) return [];
-  const addrs: string[] = [entry.address];
-  if (entry.legacy) {
-    for (const leg of entry.legacy) {
-      addrs.push(normalizeLegacyEntry(leg).address);
-    }
-  }
-  return addrs.map((a) => a.toLowerCase());
-})();
+const resolverConfig = getResolverConfig(CHAIN_ID, RESOLVER_TYPE);
+
+// Primary resolver address for creating new conditions
+export const RESOLVER_ADDRESS = resolverConfig.address;
+
+// All resolver addresses (current + legacy) for this chain, lowercased for DB matching.
+// Used to filter Polymarket-sourced conditions for price refresh queries.
+export const ALL_POLYMARKET_RESOLVER_ADDRESSES: string[] =
+  resolverConfig.allAddresses;
 
 export const DEFAULT_SAPIENCE_API_URL = 'https://api.sapience.xyz';
 
@@ -46,7 +34,7 @@ export const DEFAULT_SAPIENCE_API_URL = 'https://api.sapience.xyz';
 export const MAX_END_DATE_DAYS = 21;
 
 // Minimum volume threshold (in USD) for including markets
-export const MIN_VOLUME_THRESHOLD = 5_000;
+export const MIN_VOLUME_THRESHOLD = 1_000;
 
 // Minimum liquidity threshold (in USD) for including markets
 export const MIN_LIQUIDITY_THRESHOLD = 1_000;
@@ -60,6 +48,11 @@ export const ALWAYS_INCLUDE_PATTERNS = [
   /price of Bitcoin.+on \w+ \d+/i, // "Will the price of Bitcoin be... on January 28?"
   /price of Ethereum.+on \w+ \d+/i, // "Will the price of Ethereum be above... on January 28?"
 ];
+
+// Supplementary event tag slugs to fetch from /events endpoint
+// added this for other market tags we are not fetching from the markets endpoint.
+// We add the tags here and we can fetch them.
+export const SUPPLEMENTARY_EVENT_TAGS = ['earnings'];
 
 // Relist configuration
 export const RELIST_LOOKBACK_DAYS = 30;

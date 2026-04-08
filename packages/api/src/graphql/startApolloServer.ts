@@ -3,6 +3,7 @@ import { buildSchema, type NonEmptyArray } from 'type-graphql';
 import {
   relationResolvers,
   ConditionGroupRelationsResolver,
+  ConditionRelationsResolver,
 } from '@generated/type-graphql';
 import { prisma } from './resolvers/GeneratedResolvers';
 import { SharedSchema } from './sharedSchema';
@@ -45,6 +46,7 @@ import {
   TimeSeriesResolver,
   CollateralBalanceResolver,
   ConditionGroupConditionsResolver,
+  ConditionFieldsResolver,
   ActivityResolver,
   TagsResolver,
 } from './resolvers';
@@ -66,14 +68,23 @@ export const initializeApolloServer = async () => {
     FindUniqueUserResolver,
   ];
 
-  // Filter out ConditionGroupRelationsResolver — replaced by ConditionGroupConditionsResolver
-  // which always filters public = true on nested conditions
+  // Filter out generated relation resolvers replaced by custom implementations:
+  // - ConditionGroupRelationsResolver → ConditionGroupConditionsResolver (filters public = true)
+  // - ConditionRelationsResolver → ConditionFieldsResolver (returns pre-loaded data to avoid N+1)
+  // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
+  const replacedResolvers: Set<Function> = new Set([
+    ConditionGroupRelationsResolver,
+    ConditionRelationsResolver,
+  ]);
   const filteredRelationResolvers = relationResolvers.filter(
-    (r) => r !== ConditionGroupRelationsResolver
+    (r) => !replacedResolvers.has(r)
   );
-  if (filteredRelationResolvers.length === relationResolvers.length) {
+  if (
+    filteredRelationResolvers.length !==
+    relationResolvers.length - replacedResolvers.size
+  ) {
     throw new Error(
-      'Failed to filter ConditionGroupRelationsResolver — private conditions would leak into group responses'
+      'Failed to filter generated relation resolvers — check that ConditionGroupRelationsResolver and ConditionRelationsResolver are still exported from @generated/type-graphql'
     );
   }
 
@@ -92,6 +103,7 @@ export const initializeApolloServer = async () => {
       TimeSeriesResolver,
       CollateralBalanceResolver,
       ConditionGroupConditionsResolver,
+      ConditionFieldsResolver,
       ActivityResolver,
       TagsResolver,
     ]);
@@ -111,6 +123,11 @@ export const initializeApolloServer = async () => {
   // Create Apollo Server with the combined schema, depth limit, and query complexity limit
   const apolloServer = new ApolloServer({
     schema,
+    // Allow GET requests for GraphQL queries — enables CDN edge caching.
+    // Safe to disable: the API is stateless with no cookie/session auth
+    // (wallet signatures via x-admin-signature header), so CSRF does not apply.
+    // All data is public, CORS is strict, and error responses are excluded from caching.
+    csrfPrevention: false,
     formatError: (formattedError, error) => {
       console.error('GraphQL Error:', error);
       if (!config.isDev) {

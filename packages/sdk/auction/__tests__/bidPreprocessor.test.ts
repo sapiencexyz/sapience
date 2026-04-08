@@ -12,6 +12,7 @@ import {
   getValidBids,
   getExcludedBidCount,
 } from '../bidPreprocessor';
+import { OutcomeSide } from '../../types/escrow';
 import type { BidPayload, PickJson } from '../../types/escrow';
 
 // ─── Mock validateBidFull ──────────────────────────────────────────────────
@@ -35,7 +36,7 @@ const TEST_PICKS: PickJson[] = [
     conditionResolver: '0x2222222222222222222222222222222222222222',
     conditionId:
       '0x0000000000000000000000000000000000000000000000000000000000000001',
-    predictedOutcome: 1,
+    predictedOutcome: OutcomeSide.NO,
   },
 ];
 

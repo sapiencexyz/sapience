@@ -1,5 +1,6 @@
 import { describe, test, expect, vi } from 'vitest';
 import type { Address } from 'viem';
+import { OutcomeSide } from '../../types/escrow';
 import {
   toBigIntSafe,
   prepareMintCalls,
@@ -66,7 +67,7 @@ describe('prepareMintCalls', () => {
         conditionResolver: conditionResolver as `0x${string}`,
         conditionId:
           '0x0000000000000000000000000000000000000000000000000000000000000001' as `0x${string}`,
-        predictedOutcome: 1,
+        predictedOutcome: OutcomeSide.NO,
       },
     ],
     counterpartyClaimedNonce: 0,
