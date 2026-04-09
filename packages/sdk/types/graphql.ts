@@ -411,7 +411,6 @@ export type Close = {
 
 export type CollateralBalanceSnapshotType = {
   __typename?: 'CollateralBalanceSnapshotType';
-  atBlock: Scalars['Int']['output'];
   balance: Scalars['String']['output'];
   index: Scalars['Int']['output'];
   timestamp: Scalars['DateTimeISO']['output'];
@@ -1667,7 +1666,6 @@ export type QueryCollateralBalanceHistoryArgs = {
   address: Scalars['String']['input'];
   chainId: Scalars['Int']['input'];
   count?: Scalars['Int']['input'];
-  currentBlock?: InputMaybe<Scalars['Int']['input']>;
   intervalHours?: Scalars['Int']['input'];
 };
 
