@@ -126,7 +126,6 @@ const corsOptions: cors.CorsOptions = {
       /^https?:\/\/(app|docs)-[a-z0-9-]+-sapiencexyz\.vercel\.app$/.test(
         origin
       ) || // preview deploys (git branches and hash-based)
-      /^https?:\/\/([a-zA-Z0-9-]+\.)*meridian\.xyz$/.test(origin) || // Meridian integration
       /^https?:\/\/([a-zA-Z0-9-]+-)?meridianxyz\.vercel\.app$/.test(origin) || // Meridian Vercel deploys
       /^https?:\/\/localhost(:\d+)?$/.test(origin) // Allow localhost with optional port
     ) {
