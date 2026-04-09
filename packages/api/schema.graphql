@@ -361,7 +361,6 @@ type Close {
 }
 
 type CollateralBalanceSnapshotType {
-  atBlock: Int!
   balance: String!
   index: Int!
   timestamp: DateTimeISO!
@@ -1411,7 +1410,7 @@ type Query {
   """
   closes(address: String, chainId: Int, pickConfigId: String, skip: Int! = 0, take: Int! = 50): [Close!]!
   collateralBalance(address: String!, atBlock: Int, chainId: Int!): CollateralBalanceType!
-  collateralBalanceHistory(address: String!, chainId: Int!, count: Int! = 12, currentBlock: Int, intervalHours: Int! = 168): [CollateralBalanceSnapshotType!]!
+  collateralBalanceHistory(address: String!, chainId: Int!, count: Int! = 12, intervalHours: Int! = 168): [CollateralBalanceSnapshotType!]!
   collateralTransfers(address: String!, chainId: Int!, limit: Int! = 100, offset: Int! = 0): [CollateralTransferType!]!
   condition(where: ConditionWhereUniqueInput!): Condition
   conditionGroup(where: ConditionGroupWhereUniqueInput!): ConditionGroup
