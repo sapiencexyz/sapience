@@ -44,6 +44,16 @@ export function marketToEnrichmentInput(
   };
 }
 
+/**
+ * Resolve the best available shortName for a market using the priority chain:
+ * 1. groupItemTitle (from Polymarket API — e.g. "Viktor Orban")
+ * 2. inferShortName (deterministic regex rules)
+ * 3. null (signals LLM or question fallback needed)
+ */
+export function resolveShortName(market: PolymarketMarket): string | null {
+  return market.groupItemTitle?.trim() || inferShortName(market) || null;
+}
+
 export function getFallbackEnrichment(
   market: PolymarketMarket
 ): MarketEnrichmentOutput {
@@ -52,7 +62,7 @@ export function getFallbackEnrichment(
     conditionId: market.conditionId,
     // If deterministic category is 'unknown', fall back to 'geopolitics'
     category: category === 'unknown' ? 'geopolitics' : category,
-    shortName: inferShortName(market) ?? market.question,
+    shortName: resolveShortName(market) ?? market.question,
   };
 }
 
@@ -83,7 +93,7 @@ export async function enrichMarkets(
     const cached = enrichmentCache.get(market.conditionId);
     if (cached) {
       // Use cached result (with deterministic overrides if available)
-      const shortName = inferShortName(market);
+      const shortName = resolveShortName(market);
       const category = inferSapienceCategorySlug(market);
       results.set(market.conditionId, {
         ...cached,
@@ -93,7 +103,7 @@ export async function enrichMarkets(
       continue;
     }
 
-    const shortName = inferShortName(market);
+    const shortName = resolveShortName(market);
     const category = inferSapienceCategorySlug(market);
 
     if (shortName && category !== 'unknown') {
@@ -315,7 +325,7 @@ export async function enrichMarketsWithLLM(
     const results = new Map<string, MarketEnrichmentOutput>();
     let deterministicCount = 0;
     for (const market of markets) {
-      const shortName = inferShortName(market);
+      const shortName = resolveShortName(market);
       if (shortName) {
         deterministicCount++;
       } else {
@@ -324,7 +334,7 @@ export async function enrichMarketsWithLLM(
       results.set(market.conditionId, getFallbackEnrichment(market));
     }
     console.log(
-      `[LLM] Disabled or no API key, using regex fallback for ${markets.length} markets (${deterministicCount} with deterministic short names)`
+      `[LLM] Disabled or no API key, using fallback for ${markets.length} markets (${deterministicCount} with deterministic short names)`
     );
     return results;
   }
