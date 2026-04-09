@@ -116,6 +116,11 @@ vi.mock('@sapience/sdk/contracts', () => ({
   pythConditionResolver: {},
   conditionalTokensConditionResolver: {},
   collateralToken: { 42161: { address: '0xCollateral' } },
+  predictionMarketVault: {
+    42161: { address: '0xVault' },
+    5064014: { address: '0xVault' },
+    13374202: { address: '0xVault' },
+  },
 }));
 
 // buildAuctionPayload — return minimal valid payloads
@@ -151,6 +156,7 @@ vi.mock('~/components/markets/forms/shared/BidDisplay', () => {
       data-is-auction-pending={String(props.isAuctionPending)}
       data-has-best-bid={String(!!props.bestBid)}
       data-has-estimate-bid={String(!!props.estimateBid)}
+      data-show-max-payout-tooltip={String(props.showMaxPayoutTooltip)}
       data-estimate-counterparty={
         (props.estimateBid as { counterparty?: string } | null)?.counterparty ??
         ''
@@ -1078,9 +1084,96 @@ describe('PositionForm', () => {
   });
 
   // =========================================================================
-  // G. Geofence enforcement
+  // G. Max-payout vault tooltip
   // =========================================================================
-  describe('G. Geofence enforcement', () => {
+  describe('G. Max-payout vault tooltip', () => {
+    it('flags the bid display when the vault offers exactly 100 collateral', async () => {
+      const vaultBid = {
+        counterparty: '0xVault',
+        counterpartyCollateral: '100000000000000000000',
+        counterpartyDeadline: Math.floor(Date.now() / 1000) + 60,
+        counterpartyNonce: 1,
+        counterpartySignature: '0xSig',
+        validationStatus: 'valid' as const,
+        counterpartyChainId: 42161,
+        predictorCollateral: '10000000000000000000',
+      };
+
+      const { getByTestId, rerender } = renderForm();
+
+      await act(async () => {
+        vi.advanceTimersByTime(300);
+      });
+
+      await act(async () => {
+        rerender(
+          <PositionForm
+            methods={makeFormMethods()}
+            onSubmit={vi.fn()}
+            isSubmitting={false}
+            chainId={42161}
+            requestQuotes={mockRequestQuotes}
+            collateralDecimals={18}
+            bids={[vaultBid]}
+          />
+        );
+      });
+
+      await act(async () => {
+        vi.advanceTimersByTime(100);
+      });
+
+      expect(getByTestId('bid-display').dataset.showMaxPayoutTooltip).toBe(
+        'true'
+      );
+    });
+
+    it('does not flag the bid display for non-vault or non-100 collateral bids', async () => {
+      const notMaxVaultBid = {
+        counterparty: '0xNotVault',
+        counterpartyCollateral: '99000000000000000000',
+        counterpartyDeadline: Math.floor(Date.now() / 1000) + 60,
+        counterpartyNonce: 1,
+        counterpartySignature: '0xSig',
+        validationStatus: 'valid' as const,
+        counterpartyChainId: 42161,
+        predictorCollateral: '10000000000000000000',
+      };
+
+      const { getByTestId, rerender } = renderForm();
+
+      await act(async () => {
+        vi.advanceTimersByTime(300);
+      });
+
+      await act(async () => {
+        rerender(
+          <PositionForm
+            methods={makeFormMethods()}
+            onSubmit={vi.fn()}
+            isSubmitting={false}
+            chainId={42161}
+            requestQuotes={mockRequestQuotes}
+            collateralDecimals={18}
+            bids={[notMaxVaultBid]}
+          />
+        );
+      });
+
+      await act(async () => {
+        vi.advanceTimersByTime(100);
+      });
+
+      expect(getByTestId('bid-display').dataset.showMaxPayoutTooltip).toBe(
+        'false'
+      );
+    });
+  });
+
+  // =========================================================================
+  // H. Geofence enforcement
+  // =========================================================================
+  describe('H. Geofence enforcement', () => {
     it('shows banner and disables submit when jurisdiction is restricted', () => {
       mockUseSapience.mockReturnValue({
         permitData: { permitted: false },

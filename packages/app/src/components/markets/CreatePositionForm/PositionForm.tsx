@@ -13,6 +13,7 @@ import { FormProvider, type UseFormReturn, useWatch } from 'react-hook-form';
 import { parseUnits } from 'viem';
 import { useAccount } from 'wagmi';
 import { generateRandomNonce } from '@sapience/sdk';
+import { predictionMarketVault } from '@sapience/sdk/contracts';
 import {
   COLLATERAL_SYMBOLS,
   CHAIN_ID_ETHEREAL,
@@ -722,6 +723,22 @@ export default function PositionForm({
   // Since automatic auction trigger is disabled, show button immediately when no bids
   const showNoBidsHint = !bestBid && !recentlyRequested;
 
+  const showMaxPayoutTooltip = useMemo(() => {
+    const vaultAddress = predictionMarketVault[chainId]?.address?.toLowerCase();
+
+    if (!bestBid || !vaultAddress) return false;
+    if (bestBid.counterparty?.toLowerCase() !== vaultAddress) return false;
+
+    try {
+      return (
+        BigInt(bestBid.counterpartyCollateral) ===
+        parseUnits('100', collateralDecimals ?? 18)
+      );
+    } catch {
+      return false;
+    }
+  }, [bestBid, chainId, collateralDecimals]);
+
   // Show "Some combinations may not receive bids" hint after 3 seconds of no bids
   // This replaces the disclaimer after waiting for bids without success
   const HINT_DELAY_MS = 3000;
@@ -912,6 +929,7 @@ export default function PositionForm({
               positionSize={positionSizeValue || '0'}
               collateralSymbol={collateralSymbol}
               collateralDecimals={collateralDecimals}
+              showMaxPayoutTooltip={showMaxPayoutTooltip}
               nowMs={nowMs}
               showRequestBidsButton={showNoBidsHint}
               onRequestBids={handleRequestBids}

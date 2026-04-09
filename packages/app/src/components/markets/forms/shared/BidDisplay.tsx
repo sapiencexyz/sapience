@@ -2,6 +2,12 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { Button } from '@sapience/ui/components/ui/button';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@sapience/ui/components/ui/tooltip';
 import { formatUnits, parseUnits } from 'viem';
 import { ChevronDown, Info } from 'lucide-react';
 import RiskDisclaimer from './RiskDisclaimer';
@@ -22,6 +28,8 @@ interface BidDisplayProps {
   collateralSymbol: string;
   /** Collateral decimals (default 18) */
   collateralDecimals?: number;
+  /** Show info tooltip when payout is the vault's max offer */
+  showMaxPayoutTooltip?: boolean;
   /** Current time in ms for expiration calculation */
   nowMs: number;
   /** Whether to show "Request Bids" button */
@@ -72,6 +80,7 @@ export default function BidDisplay({
   positionSize,
   collateralSymbol,
   collateralDecimals = 18,
+  showMaxPayoutTooltip = false,
   nowMs,
   showRequestBidsButton,
   onRequestBids,
@@ -96,11 +105,11 @@ export default function BidDisplay({
 
   // Helper function to calculate payout amount
   const calculatePayoutAmount = useCallback(
-    (bid: QuoteBid, positionSize: string): string => {
+    (bid: QuoteBid, positionSizeValue: string): string => {
       let userPositionSizeWei: bigint = 0n;
       try {
         userPositionSizeWei = parseUnits(
-          positionSize || '0',
+          positionSizeValue || '0',
           collateralDecimals
         );
       } catch {
@@ -237,6 +246,24 @@ export default function BidDisplay({
 
   const buttonState = getButtonState();
 
+  const maxPayoutTooltip = showMaxPayoutTooltip ? (
+    <TooltipProvider delayDuration={0}>
+      <Tooltip>
+        <TooltipTrigger asChild>
+          <span
+            className="inline-flex cursor-help text-brand-white/70 transition-colors hover:text-brand-white"
+            aria-label="Max payout info"
+          >
+            <Info className="h-3.5 w-3.5" />
+          </span>
+        </TooltipTrigger>
+        <TooltipContent>
+          This is max payout ever offered by the bidder.
+        </TooltipContent>
+      </Tooltip>
+    </TooltipProvider>
+  ) : null;
+
   return (
     <div
       className={`text-center ${payoutTakesSpace ? '' : 'relative'} ${className ?? ''}`}
@@ -254,8 +281,9 @@ export default function BidDisplay({
                   <span className="font-light text-brand-white uppercase tracking-wider">
                     Payout
                   </span>
-                  <span className="text-brand-white font-semibold inline-flex items-center whitespace-nowrap">
+                  <span className="text-brand-white font-semibold inline-flex items-center gap-1 whitespace-nowrap">
                     {`${humanTotal} ${collateralSymbol}`}
+                    {maxPayoutTooltip}
                   </span>
                 </span>
                 {/* View Auction Toggle - directly under Payout */}
@@ -347,8 +375,9 @@ export default function BidDisplay({
                   <span className="font-light text-muted-foreground uppercase tracking-wider">
                     ESTIMATED PAYOUT
                   </span>
-                  <span className="text-muted-foreground font-semibold whitespace-nowrap">
+                  <span className="text-muted-foreground font-semibold inline-flex items-center gap-1 whitespace-nowrap">
                     {`${humanTotal} ${collateralSymbol}`}
+                    {maxPayoutTooltip}
                   </span>
                 </span>
               </div>
