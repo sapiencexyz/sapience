@@ -27,6 +27,7 @@ import { transformMatchQuestion, getPolymarketUrl } from './transform';
 import {
   enrichMarketsWithLLM,
   enrichEndTimesWithLLM,
+  resolveShortName,
   type MarketEnrichmentOutput,
 } from '../llm';
 import { fetchEventTags } from './tags';
@@ -81,10 +82,14 @@ export function transformToSapienceCondition(
   // Transform "X vs Y" questions to "X beats Y?" for clarity
   const question = transformMatchQuestion(market);
 
+  // shortName priority: groupItemTitle > LLM/regex enrichment > question fallback
+  const shortName =
+    market.groupItemTitle?.trim() || enrichment?.shortName || question;
+
   return {
     conditionHash: market.conditionId, // Use Polymarket's conditionId directly
     question,
-    shortName: enrichment?.shortName || question, // Use LLM shortName or fallback to question
+    shortName,
     endDate: market.endDate,
     description: market.description || '',
     similarMarkets: [getPolymarketUrl(market)],
@@ -374,18 +379,16 @@ function computeMetadataUpdates(
       }
     }
 
-    // shortName is LLM-derived from question on create. The generate cron
-    // does NOT re-run the LLM for existing markets, so if question drifts
-    // we reset shortName to the new question — matching the non-LLM
-    // fallback in transformToSapienceCondition (enrichment?.shortName || question).
-    // This keeps shortName at least consistent with the current question
-    // instead of referring to a completely different (old) question.
-    if (fields.question !== undefined) {
-      const freshShort = fields.question;
-      if (existing.shortName !== freshShort) {
-        fields.shortName = freshShort;
-        old.shortName = existing.shortName;
-      }
+    // shortName priority: groupItemTitle > regex > question fallback.
+    // The generate cron does NOT re-run the LLM for existing markets,
+    // so we re-derive the best shortName from the current market data.
+    // If the market has a groupItemTitle (e.g. "Viktor Orban"), use that;
+    // otherwise fall back to the (possibly updated) question.
+    const freshShort =
+      resolveShortName(market) ?? fields.question ?? existing.question;
+    if (freshShort && existing.shortName !== freshShort) {
+      fields.shortName = freshShort;
+      old.shortName = existing.shortName;
     }
 
     if (Object.keys(fields).length > 0) {
