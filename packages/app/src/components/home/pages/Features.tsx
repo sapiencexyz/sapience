@@ -1,6 +1,5 @@
 'use client';
 
-import { Badge } from '@sapience/ui/components/ui/badge';
 import PulsingGradient from '../../shared/PulsingGradient';
 
 export default function Features() {
@@ -45,27 +44,27 @@ export default function Features() {
         </div>
 
         <div className="space-y-3">
-          <div className="eyebrow text-foreground flex flex-wrap items-center gap-x-3 gap-y-1">
-            SECONDARY SALES
-            <Badge
-              variant="outline"
-              className="px-1.5 py-0.5 text-xs font-medium !rounded-md font-mono border-foreground/40 bg-foreground/10 text-foreground tracking-normal"
-            >
-              COMING SOON
-            </Badge>
-          </div>
+          <div className="eyebrow text-foreground">TOKENIZED POSITIONS</div>
           <p className="headline max-w-5xl">
-            Trade prediction market positions using{' '}
+            Every position is a standard{' '}
             <a
-              href="https://cow.fi"
+              href="https://tokenlists.org/token-list?url=https://api.sapience.xyz/tokenlist.json"
               target="_blank"
               rel="noreferrer"
               className="gold-link"
             >
-              CoW Swap
+              ERC&#8209;20 token
+            </a>{' '}
+            on{' '}
+            <a
+              href="https://arbitrum.io"
+              target="_blank"
+              rel="noreferrer"
+              className="gold-link"
+            >
+              Arbitrum
             </a>
-            . Exit positions early or acquire exposure to prediction markets
-            using nearly any asset.
+            . Swap, lend, LP, and build on top of prediction market outcomes.
           </p>
         </div>
       </div>
