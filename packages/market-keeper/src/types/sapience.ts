@@ -15,7 +15,7 @@ export type SapienceCategorySlug =
 export interface SapienceCondition {
   conditionHash: string; // Polymarket's conditionId - used to resolve via LZ
   question: string;
-  shortName: string; // Short display name (using question since Polymarket doesn't provide one)
+  shortName: string; // Short display name (from Polymarket groupItemTitle, regex, LLM, or question fallback)
   categorySlug: SapienceCategorySlug;
   endDate: string;
   description: string;

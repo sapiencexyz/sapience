@@ -16,10 +16,14 @@ vi.mock('../constants', async (importOriginal) => {
   };
 });
 
-vi.mock('../llm', () => ({
-  enrichMarketsWithLLM: vi.fn().mockResolvedValue(new Map()),
-  enrichEndTimesWithLLM: vi.fn().mockResolvedValue(new Map()),
-}));
+vi.mock('../llm', async (importOriginal) => {
+  const actual = await importOriginal<Record<string, unknown>>();
+  return {
+    ...actual,
+    enrichMarketsWithLLM: vi.fn().mockResolvedValue(new Map()),
+    enrichEndTimesWithLLM: vi.fn().mockResolvedValue(new Map()),
+  };
+});
 
 const mockFetchEventTags = vi.fn().mockResolvedValue(new Map());
 vi.mock('./tags', () => ({
@@ -433,6 +437,92 @@ describe('metadata updates via groupMarkets', () => {
     expect(result.metadataUpdates[0].fields.shortName).toBe(
       'Changed question?'
     );
+  });
+
+  it('uses groupItemTitle as shortName for new conditions', async () => {
+    const market = makeMarket({
+      conditionId: '0xgit',
+      question: 'Will the next Prime Minister of Hungary be Viktor Orban?',
+      groupItemTitle: 'Viktor Orban',
+    });
+
+    mockCheckExisting.mockResolvedValue(new Map()); // new condition
+
+    const result = await groupMarkets([market], 'https://test-api.example.com');
+
+    // New condition should appear in groups with groupItemTitle as shortName
+    const condition = result.groups[0]?.conditions[0];
+    expect(condition).toBeDefined();
+    expect(condition.shortName).toBe('Viktor Orban');
+  });
+
+  it('uses groupItemTitle over regex-derived shortName', async () => {
+    // This market would match the crypto threshold regex (Rule 11)
+    // but groupItemTitle should take priority
+    const market = makeMarket({
+      conditionId: '0xprio',
+      question: 'Will Bitcoin reach $200k?',
+      groupItemTitle: 'BTC 200k',
+    });
+
+    mockCheckExisting.mockResolvedValue(new Map());
+
+    const result = await groupMarkets([market], 'https://test-api.example.com');
+
+    const condition = result.groups[0]?.conditions[0];
+    expect(condition).toBeDefined();
+    expect(condition.shortName).toBe('BTC 200k');
+  });
+
+  it('updates shortName to groupItemTitle on existing condition', async () => {
+    const market = makeMarket({
+      conditionId: '0xupd',
+      question: 'Will the next Prime Minister of Hungary be Viktor Orban?',
+      groupItemTitle: 'Viktor Orban',
+    });
+
+    mockCheckExisting.mockResolvedValue(
+      new Map([
+        [
+          '0xupd',
+          existingFromMarket(market, {
+            shortName:
+              'Will the next Prime Minister of Hungary be Viktor Orban?',
+          }),
+        ],
+      ])
+    );
+
+    const result = await groupMarkets([market], 'https://test-api.example.com');
+
+    expect(result.metadataUpdates).toHaveLength(1);
+    expect(result.metadataUpdates[0].fields.shortName).toBe('Viktor Orban');
+    expect(result.metadataUpdates[0].old.shortName).toBe(
+      'Will the next Prime Minister of Hungary be Viktor Orban?'
+    );
+  });
+
+  it('does not update shortName when groupItemTitle already matches', async () => {
+    const market = makeMarket({
+      conditionId: '0xmatch',
+      question: 'Will the next Prime Minister of Hungary be Viktor Orban?',
+      groupItemTitle: 'Viktor Orban',
+    });
+
+    mockCheckExisting.mockResolvedValue(
+      new Map([
+        [
+          '0xmatch',
+          existingFromMarket(market, {
+            shortName: 'Viktor Orban',
+          }),
+        ],
+      ])
+    );
+
+    const result = await groupMarkets([market], 'https://test-api.example.com');
+
+    expect(result.metadataUpdates).toHaveLength(0);
   });
 
   it('does not clear a field when fresh Polymarket value is missing', async () => {
