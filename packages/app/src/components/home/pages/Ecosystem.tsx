@@ -1,7 +1,5 @@
 'use client';
 
-import { Badge } from '@sapience/ui/components/ui/badge';
-
 export default function Ecosystem() {
   return (
     <section className="w-full py-16 md:py-20">
@@ -49,29 +47,22 @@ export default function Ecosystem() {
           </div>
           <div className="w-full md:basis-1/3 relative flex items-center justify-start gap-3 md:gap-4 md:pl-1">
             <img
-              src="/cowswap-circle.svg"
-              alt="CoW Swap"
+              src="/arbitrum-circle.svg"
+              alt="Arbitrum"
               className="h-16 w-16 md:h-24 md:w-24 shrink-0"
             />
             <p className="text-sm md:text-base leading-relaxed text-foreground/80">
-              Trade prediction market tokens for crypto, stablecoins, and other
-              tokenized assets using{' '}
+              Prediction market positions are ERC&#8209;20 standard{' '}
               <a
-                href="https://cow.fi"
+                href="https://tokenlists.org/token-list?url=https://api.sapience.xyz/tokenlist.json"
                 target="_blank"
                 rel="noreferrer"
                 className="gold-link"
               >
-                CoW Swap
+                tokens on Arbitrum
               </a>
-              .
+              . Integrate with DeFi protocols and trade freely.
             </p>
-            <Badge
-              variant="outline"
-              className="absolute -bottom-4 left-[79px] md:left-[115px] px-1.5 py-0.5 text-xs font-medium !rounded-md font-mono border-foreground/40 bg-foreground/10 text-foreground tracking-normal"
-            >
-              COMING SOON
-            </Badge>
           </div>
           <span
             aria-hidden
