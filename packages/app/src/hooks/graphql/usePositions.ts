@@ -184,41 +184,6 @@ const PREDICTIONS_BY_CONDITION_QUERY = /* GraphQL */ `
   }
 `;
 
-const RECENT_PREDICTIONS_QUERY = /* GraphQL */ `
-  query RecentPredictions(
-    $take: Int
-    $skip: Int
-  ) {
-    predictions(
-      take: $take
-      skip: $skip
-    ) {
-      id
-      predictionId
-      chainId
-      marketAddress
-      predictor
-      counterparty
-      predictorToken
-      counterpartyToken
-      predictorCollateral
-      counterpartyCollateral
-      collateralDeposited
-      collateralDepositedAt
-      settled
-      settledAt
-      settleTxHash
-      result
-      predictorClaimable
-      counterpartyClaimable
-      createTxHash
-      createdAt
-      refCode
-      ${PICK_CONFIG_FRAGMENT}
-    }
-  }
-`;
-
 const PREDICTIONS_COUNT_QUERY = /* GraphQL */ `
   query PredictionsCount($address: String!, $chainId: Int) {
     predictionCount(address: $address, chainId: $chainId)
@@ -483,40 +448,6 @@ export function usePositionBalancesByConditionId(params: {
   return {
     data: data ?? [],
     isLoading: !!enabled && (isLoading || isFetching),
-    error,
-    refetch,
-  };
-}
-
-/**
- * Hook to get recent predictions across all users (for the Feed page)
- */
-export function useRecentPredictions(params: {
-  take?: number;
-  skip?: number;
-  enabled?: boolean;
-}) {
-  const { take = 50, skip = 0, enabled = true } = params;
-
-  const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ['recentPredictions', take, skip],
-    enabled,
-    staleTime: 15_000,
-    gcTime: 5 * 60 * 1000,
-    refetchOnWindowFocus: false,
-    refetchOnReconnect: false,
-    queryFn: async () => {
-      const resp = await graphqlRequest<{ predictions: Prediction[] }>(
-        RECENT_PREDICTIONS_QUERY,
-        { take, skip }
-      );
-      return resp?.predictions ?? [];
-    },
-  });
-
-  return {
-    data: data ?? [],
-    isLoading: isLoading || isFetching,
     error,
     refetch,
   };

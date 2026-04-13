@@ -218,18 +218,18 @@ describe('decodedOutcomesToPicks — Pyth outcomes', () => {
     expect(picks[0].conditionId).toBe(expectedConditionId);
   });
 
-  it('predictedOutcome matches on-chain convention: prediction:true (Over) → 0 (YES), prediction:false (Under) → 1 (NO)', () => {
+  it('predictedOutcome matches on-chain convention: prediction:true (Over) → YES, prediction:false (Under) → NO', () => {
     const overPicks = decodedOutcomesToPicks(
       makePythOutcomes([{ prediction: true }]),
       PYTH_RESOLVER_ADDR!
     );
-    expect(overPicks[0].predictedOutcome).toBe(0);
+    expect(overPicks[0].predictedOutcome).toBe(OutcomeSide.YES);
 
     const underPicks = decodedOutcomesToPicks(
       makePythOutcomes([{ prediction: false }]),
       PYTH_RESOLVER_ADDR!
     );
-    expect(underPicks[0].predictedOutcome).toBe(1);
+    expect(underPicks[0].predictedOutcome).toBe(OutcomeSide.NO);
   });
 
   it('multi-outcome Pyth picks produce correct array', () => {
@@ -240,8 +240,8 @@ describe('decodedOutcomesToPicks — Pyth outcomes', () => {
 
     const picks = decodedOutcomesToPicks(decoded, PYTH_RESOLVER_ADDR!);
     expect(picks).toHaveLength(2);
-    expect(picks[0].predictedOutcome).toBe(0);
-    expect(picks[1].predictedOutcome).toBe(1);
+    expect(picks[0].predictedOutcome).toBe(OutcomeSide.YES);
+    expect(picks[1].predictedOutcome).toBe(OutcomeSide.NO);
   });
 
   it('returns empty array for unknown decoded outcomes', () => {
@@ -310,7 +310,7 @@ describe('decodedOutcomesToPicks — condition outcomes', () => {
 // ---------------------------------------------------------------------------
 
 describe('on-chain invariant: Pyth encode → decode → picks', () => {
-  it('Over prediction encodes to YES=0, which wins when resolvedToOver=true', () => {
+  it('Over prediction encodes to YES, which wins when resolvedToOver=true', () => {
     // Encode
     const outcomes: PythBinaryOptionOutcome[] = [
       {
@@ -335,12 +335,12 @@ describe('on-chain invariant: Pyth encode → decode → picks', () => {
     const picks = decodedOutcomesToPicks(decoded, PYTH_RESOLVER_ADDR!);
     expect(picks).toHaveLength(1);
 
-    // Over → YES=0: on-chain, when resolvedToOver=true the OutcomeVector
-    // is [1,0] (isDecisiveYes), so predictedOutcome must be YES=0 to win.
+    // Over → YES: on-chain, when resolvedToOver=true the OutcomeVector
+    // is [1,0] (isDecisiveYes), so predictedOutcome must be YES to win.
     expect(picks[0].predictedOutcome).toBe(OutcomeSide.YES);
   });
 
-  it('Under prediction encodes to NO=1, which wins when resolvedToOver=false', () => {
+  it('Under prediction encodes to NO, which wins when resolvedToOver=false', () => {
     const outcomes: PythBinaryOptionOutcome[] = [
       {
         priceId: ETH_PRICE_ID,
@@ -359,8 +359,8 @@ describe('on-chain invariant: Pyth encode → decode → picks', () => {
     });
     const picks = decodedOutcomesToPicks(decoded, PYTH_RESOLVER_ADDR!);
 
-    // Under → NO=1: on-chain, when resolvedToOver=false the OutcomeVector
-    // is [0,1] (isDecisiveNo), so predictedOutcome must be NO=1 to win.
+    // Under → NO: on-chain, when resolvedToOver=false the OutcomeVector
+    // is [0,1] (isDecisiveNo), so predictedOutcome must be NO to win.
     expect(picks[0].predictedOutcome).toBe(OutcomeSide.NO);
   });
 });

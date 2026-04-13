@@ -102,19 +102,15 @@ describe('CollateralBalanceResolver', () => {
 
   describe('collateralBalanceHistory', () => {
     it('returns full integer strings without scientific notation', async () => {
-      mockPrisma.keyValueStore.findUnique.mockResolvedValue({
-        value: '2000000',
-      });
-      mockPrisma.$queryRaw.mockResolvedValue([
-        {
-          balance: '9999999999999999999999',
-          timestamp: new Date('2026-03-01'),
-        },
+      const now = new Date();
+      const weekAgo = new Date(now.getTime() - 7 * 24 * 3600 * 1000);
+      mockPrisma.$queryRaw.mockResolvedValueOnce([
+        { index: 0, boundary: now, balance: '9999999999999999999999' },
+        { index: 1, boundary: weekAgo, balance: '9999999999999999999999' },
       ]);
 
       const result = await resolver.collateralBalanceHistory(
         '0x131E278cfC6ED4863AAf0EB9Ce2d915aef775045',
-        null,
         168,
         1,
         13374202
@@ -126,16 +122,15 @@ describe('CollateralBalanceResolver', () => {
     });
 
     it('returns "0" when no transfers exist for a snapshot', async () => {
-      mockPrisma.keyValueStore.findUnique.mockResolvedValue({
-        value: '2000000',
-      });
-      mockPrisma.$queryRaw.mockResolvedValue([
-        { balance: null, timestamp: null },
+      const now = new Date();
+      const weekAgo = new Date(now.getTime() - 7 * 24 * 3600 * 1000);
+      mockPrisma.$queryRaw.mockResolvedValueOnce([
+        { index: 0, boundary: now, balance: '0' },
+        { index: 1, boundary: weekAgo, balance: '0' },
       ]);
 
       const result = await resolver.collateralBalanceHistory(
         '0x0000000000000000000000000000000000000000',
-        null,
         168,
         1,
         13374202
@@ -143,6 +138,34 @@ describe('CollateralBalanceResolver', () => {
 
       for (const snapshot of result) {
         expect(snapshot.balance).toBe('0');
+      }
+    });
+
+    it('always returns evenly-spaced timestamps', async () => {
+      const now = new Date();
+      const boundaries = Array.from({ length: 4 }, (_, i) => ({
+        index: i,
+        boundary: new Date(now.getTime() - i * 24 * 3600 * 1000),
+        balance: '0',
+      }));
+      mockPrisma.$queryRaw.mockResolvedValueOnce(boundaries);
+
+      const result = await resolver.collateralBalanceHistory(
+        '0x0000000000000000000000000000000000000000',
+        24,
+        3,
+        13374202
+      );
+
+      for (const snapshot of result) {
+        expect(snapshot.timestamp).toBeInstanceOf(Date);
+      }
+
+      // Timestamps should be monotonically decreasing
+      for (let i = 1; i < result.length; i++) {
+        expect(result[i].timestamp.getTime()).toBeLessThan(
+          result[i - 1].timestamp.getTime()
+        );
       }
     });
   });

@@ -15,7 +15,7 @@ export function StatusIndicators() {
   const pingMs = useRpcPing();
 
   return (
-    <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-1.5 text-xs">
+    <div className="flex flex-col gap-2 xl:flex-row xl:items-center xl:gap-1.5 text-xs">
       <Tooltip>
         <TooltipTrigger asChild>
           <a
@@ -39,7 +39,7 @@ export function StatusIndicators() {
         </TooltipTrigger>
         <TooltipContent side="top">Ethena APY</TooltipContent>
       </Tooltip>
-      <span className="hidden sm:inline text-muted-foreground/60 mx-1">·</span>
+      <span className="hidden xl:inline text-muted-foreground/60 mx-1">·</span>
       <Tooltip>
         <TooltipTrigger asChild>
           <span className="flex items-center gap-1.5 font-mono text-xs text-muted-foreground tabular-nums cursor-default">
@@ -55,7 +55,7 @@ export function StatusIndicators() {
         </TooltipTrigger>
         <TooltipContent side="top">Ethereal Ping</TooltipContent>
       </Tooltip>
-      <span className="hidden sm:inline text-muted-foreground/60 mx-1">·</span>
+      <span className="hidden xl:inline text-muted-foreground/60 mx-1">·</span>
       <Tooltip>
         <TooltipTrigger asChild>
           <span className="cursor-default">

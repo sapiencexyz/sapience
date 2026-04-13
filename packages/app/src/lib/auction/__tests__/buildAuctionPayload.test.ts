@@ -6,6 +6,7 @@ import {
   type PythOutcomeInputStub,
 } from '../buildAuctionPayload';
 import { CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
+import { OutcomeSide } from '@sapience/sdk/types';
 
 // ---------------------------------------------------------------------------
 // Polymarket / ConditionalTokens outcomes
@@ -121,24 +122,24 @@ describe('buildPythAuctionStartPayload — Pyth outcome mapping', () => {
     dateTimeLocal,
   };
 
-  it('direction "over" → predictedOutcome: 0 (YES)', () => {
+  it('direction "over" → predictedOutcome: YES', () => {
     const { escrowPicks } = buildPythAuctionStartPayload(
       [{ ...basePythOutcome, direction: 'over' }],
       CHAIN_ID_ETHEREAL
     );
 
     expect(escrowPicks).toHaveLength(1);
-    expect(escrowPicks[0].predictedOutcome).toBe(0);
+    expect(escrowPicks[0].predictedOutcome).toBe(OutcomeSide.YES);
   });
 
-  it('direction "under" → predictedOutcome: 1 (NO)', () => {
+  it('direction "under" → predictedOutcome: NO', () => {
     const { escrowPicks } = buildPythAuctionStartPayload(
       [{ ...basePythOutcome, direction: 'under' }],
       CHAIN_ID_ETHEREAL
     );
 
     expect(escrowPicks).toHaveLength(1);
-    expect(escrowPicks[0].predictedOutcome).toBe(1);
+    expect(escrowPicks[0].predictedOutcome).toBe(OutcomeSide.NO);
   });
 
   it('mixed directions produce correct outcomes', () => {
@@ -151,7 +152,7 @@ describe('buildPythAuctionStartPayload — Pyth outcome mapping', () => {
     );
 
     expect(escrowPicks).toHaveLength(2);
-    expect(escrowPicks[0].predictedOutcome).toBe(0); // over = YES
-    expect(escrowPicks[1].predictedOutcome).toBe(1); // under = NO
+    expect(escrowPicks[0].predictedOutcome).toBe(OutcomeSide.YES); // over = YES
+    expect(escrowPicks[1].predictedOutcome).toBe(OutcomeSide.NO); // under = NO
   });
 });

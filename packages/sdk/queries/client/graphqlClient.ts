@@ -22,7 +22,15 @@ const getGraphQLEndpoint = () => {
 };
 
 export const createGraphQLClient = () =>
-  new GraphQLClient(getGraphQLEndpoint(), { method: 'GET' });
+  new GraphQLClient(getGraphQLEndpoint(), {
+    method: 'GET',
+    headers: {
+      'X-Request-ID':
+        typeof crypto !== 'undefined' && crypto.randomUUID
+          ? crypto.randomUUID().slice(0, 8)
+          : Math.random().toString(36).slice(2, 10),
+    },
+  });
 
 export async function graphqlRequest<T>(
   query: string,

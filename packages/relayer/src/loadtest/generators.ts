@@ -10,6 +10,7 @@ import {
 import { predictionMarketEscrow } from '@sapience/sdk/contracts/addresses';
 import type { AuctionRFQPayload, BidPayload } from '../escrowTypes';
 import type { Address, Hex } from 'viem';
+import { OutcomeSide } from '@sapience/sdk/types';
 import type { Pick } from '@sapience/sdk/types';
 import {
   type LoadTestAccount,
@@ -25,7 +26,7 @@ const DEFAULT_ESCROW_ADDRESS = predictionMarketEscrow[DEFAULT_CHAIN_ID]
 const DEFAULT_PICK: Pick = {
   conditionResolver: '0x1234567890123456789012345678901234567890' as Address,
   conditionId: ('0x' + 'ab'.repeat(32)) as Hex,
-  predictedOutcome: 0,
+  predictedOutcome: OutcomeSide.YES,
 };
 
 export interface AuctionPayloadResult {

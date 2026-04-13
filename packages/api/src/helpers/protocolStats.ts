@@ -449,8 +449,8 @@ export async function computeAndStoreProtocolStats(
     `[ProtocolStats] Starting stats computation for chain ${chainId}, vault ${vaultAddress}`
   );
 
-  // Use current timestamp for flexible snapshot frequency
-  const timestamp = Math.floor(Date.now() / 1000);
+  // Use UTC midnight for consistent daily snapshots (matches backfillProtocolStats)
+  const timestamp = getUtcMidnightTimestamp(new Date());
 
   // Fetch balances
   const vaultBalance = await fetchVaultTVL(chainId);

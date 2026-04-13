@@ -17,7 +17,7 @@ import {
   useReactTable,
   type ColumnDef,
 } from '@tanstack/react-table';
-import { ChevronUp, ChevronDown, Info } from 'lucide-react';
+import { ChevronUp, ChevronDown, Info, ArrowRightLeft } from 'lucide-react';
 import { formatEther } from 'viem';
 import {
   Tooltip,
@@ -42,6 +42,8 @@ import {
   groupConditionToConditionType,
   getCategoryColor,
   getRowOpenInterest,
+  getRowSimilarMarketVolume,
+  formatVolume,
   getRowEndTime,
   buildTopLevelRows,
   filterRows,
@@ -98,11 +100,15 @@ function getCellClassName(colId: string): string {
 // Create columns for the TopLevelRow type
 // Uses refs instead of direct state to keep column definitions stable across
 // prediction updates, preventing remounts/flashes.
+type VolumeMetric = 'openInterest' | 'similarMarketVolume';
+
 function createColumns(
   predictionMapRef: React.RefObject<Record<string, number>>,
   expandedGroupIdsRef: React.RefObject<Set<number>>,
+  volumeMetricRef: React.RefObject<VolumeMetric>,
   onToggleExpand: (groupId: number) => void,
-  onPrediction: (conditionId: string, p: number) => void
+  onPrediction: (conditionId: string, p: number) => void,
+  onToggleVolumeMetric: () => void
 ): ColumnDef<TopLevelRow>[] {
   return [
     {
@@ -201,15 +207,45 @@ function createColumns(
       id: 'openInterest',
       accessorFn: (row) => getRowOpenInterest(row).toString(),
       header: ({ column }) => {
+        const metric = volumeMetricRef.current;
         const sorted = column.getIsSorted();
+        const label =
+          metric === 'similarMarketVolume' ? 'Related Volume' : 'Open Interest';
         return (
-          <div className="flex justify-end">
+          <div className="flex justify-end items-center">
             <Button
               variant="ghost"
               onClick={() => column.toggleSorting(sorted === 'asc')}
               className="px-0 gap-1 hover:bg-transparent whitespace-nowrap"
             >
-              Open Interest
+              {label}
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onToggleVolumeMetric();
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.stopPropagation();
+                        onToggleVolumeMetric();
+                      }
+                    }}
+                    className="inline-flex items-center justify-center h-5 w-5 rounded text-muted-foreground hover:text-foreground transition-colors"
+                  >
+                    <ArrowRightLeft className="h-3 w-3" />
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent side="top">
+                  Switch to{' '}
+                  {metric === 'similarMarketVolume'
+                    ? 'Open Interest'
+                    : 'Related Volume'}
+                </TooltipContent>
+              </Tooltip>
               {sorted === 'asc' ? (
                 <ChevronUp className="h-4 w-4" />
               ) : sorted === 'desc' ? (
@@ -225,14 +261,30 @@ function createColumns(
         );
       },
       cell: ({ row }) => {
+        const metric = volumeMetricRef.current;
+        if (metric === 'similarMarketVolume') {
+          const vol = getRowSimilarMarketVolume(row.original);
+          if (vol === 0) {
+            return (
+              <div className="text-sm whitespace-nowrap text-right">
+                <span className="text-muted-foreground">—</span>
+              </div>
+            );
+          }
+          return (
+            <div className="text-sm whitespace-nowrap text-right">
+              <span className="tabular-nums text-foreground">
+                {formatVolume(vol)}
+              </span>
+            </div>
+          );
+        }
         const openInterestWei = getRowOpenInterest(row.original);
         const etherValue = parseFloat(formatEther(openInterestWei));
         const formattedValue = etherValue.toLocaleString('en-US', {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
         });
-
-        // Show em dash for zero open interest
         if (openInterestWei === 0n) {
           return (
             <div className="text-sm whitespace-nowrap text-right">
@@ -240,7 +292,6 @@ function createColumns(
             </div>
           );
         }
-
         return (
           <div className="text-sm whitespace-nowrap text-right">
             <span className="tabular-nums text-foreground">
@@ -251,6 +302,12 @@ function createColumns(
         );
       },
       sortingFn: (rowA, rowB) => {
+        if (volumeMetricRef.current === 'similarMarketVolume') {
+          return (
+            getRowSimilarMarketVolume(rowA.original) -
+            getRowSimilarMarketVolume(rowB.original)
+          );
+        }
         const a = getRowOpenInterest(rowA.original);
         const b = getRowOpenInterest(rowB.original);
         if (a < b) return -1;
@@ -372,11 +429,13 @@ function ChildConditionRow({
   condition,
   predictionMap,
   onPrediction,
+  volumeMetric,
   isLast = false,
 }: {
   condition: ConditionGroupConditionType;
   predictionMap: Record<string, number>;
   onPrediction: (conditionId: string, p: number) => void;
+  volumeMetric: VolumeMetric;
   isLast?: boolean;
 }) {
   const conditionType = groupConditionToConditionType(condition);
@@ -427,18 +486,30 @@ function ChildConditionRow({
         </div>
       </TableCell>
       <TableCell className="py-2 text-right">
-        <div className="text-sm whitespace-nowrap text-right">
-          {openInterestWei === 0n ? (
-            <span className="text-muted-foreground">—</span>
-          ) : (
-            <>
+        {volumeMetric === 'similarMarketVolume' ? (
+          <div className="text-sm whitespace-nowrap text-right">
+            {(condition.similarMarketVolume ?? 0) === 0 ? (
+              <span className="text-muted-foreground">—</span>
+            ) : (
               <span className="tabular-nums text-foreground">
-                {formattedValue}
+                {formatVolume(condition.similarMarketVolume ?? 0)}
               </span>
-              <span className="ml-1 text-foreground">USDe</span>
-            </>
-          )}
-        </div>
+            )}
+          </div>
+        ) : (
+          <div className="text-sm whitespace-nowrap text-right">
+            {openInterestWei === 0n ? (
+              <span className="text-muted-foreground">—</span>
+            ) : (
+              <>
+                <span className="tabular-nums text-foreground">
+                  {formattedValue}
+                </span>
+                <span className="ml-1 text-foreground">USDe</span>
+              </>
+            )}
+          </div>
+        )}
       </TableCell>
       <TableCell className="py-2 text-right">
         {condition.endTime ? (
@@ -475,9 +546,33 @@ export default function QuestionsTable({
   sortDirection,
   onSortChange,
 }: QuestionsTableProps) {
+  // Volume metric toggle: show OI or Similar Market Volume in the same column
+  const [volumeMetric, setVolumeMetric] =
+    React.useState<VolumeMetric>('openInterest');
+  const volumeMetricRef = React.useRef<VolumeMetric>(volumeMetric);
+  volumeMetricRef.current = volumeMetric;
+
+  const handleToggleVolumeMetric = React.useCallback(() => {
+    setVolumeMetric((prev) => {
+      const next =
+        prev === 'openInterest' ? 'similarMarketVolume' : 'openInterest';
+      // If currently sorting by the old metric, switch sort to the new one
+      if (sortField === prev) {
+        onSortChange(next, sortDirection);
+      }
+      return next;
+    });
+  }, [sortField, sortDirection, onSortChange]);
+
   // Derive table sorting state from controlled props
+  // Map similarMarketVolume sort field to the openInterest column id (they share a column)
   const sorting: SortingState = React.useMemo(
-    () => [{ id: sortField, desc: sortDirection === 'desc' }],
+    () => [
+      {
+        id: sortField === 'similarMarketVolume' ? 'openInterest' : sortField,
+        desc: sortDirection === 'desc',
+      },
+    ],
     [sortField, sortDirection]
   );
 
@@ -491,9 +586,11 @@ export default function QuestionsTable({
 
       if (newSorting.length > 0) {
         const { id, desc } = newSorting[0];
-        // Only handle sortable columns that backend supports
-        if (id === 'openInterest' || id === 'endTime') {
-          onSortChange(id, desc ? 'desc' : 'asc');
+        if (id === 'openInterest') {
+          // Sort by whichever metric is active in the column
+          onSortChange(volumeMetricRef.current, desc ? 'desc' : 'asc');
+        } else if (id === 'endTime') {
+          onSortChange('endTime', desc ? 'desc' : 'asc');
         }
       }
     },
@@ -559,11 +656,13 @@ export default function QuestionsTable({
       createColumns(
         predictionMapRef,
         expandedGroupIdsRef,
+        volumeMetricRef,
         handleToggleExpand,
-        handlePrediction
+        handlePrediction,
+        handleToggleVolumeMetric
       ),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- refs are stable, intentionally omitted
-    [handleToggleExpand, handlePrediction]
+    [handleToggleExpand, handlePrediction, handleToggleVolumeMetric]
   );
 
   const table = useReactTable({
@@ -661,14 +760,16 @@ export default function QuestionsTable({
                             condition={condition}
                             predictionMap={predictionMap}
                             onPrediction={handlePrediction}
+                            volumeMetric={volumeMetric}
                             isLast={idx === data.conditions.length - 1}
                           />
                         ))}
                     </React.Fragment>
                   );
                 })}
-                {/* Pulsating loading row while fetching next page */}
-                {isFetchingMore && hasMore && (
+                {/* Pulsating loading row — always visible when more pages exist
+                    so the user sees it as soon as they reach the bottom */}
+                {hasMore && (
                   <TableRow className="hover:bg-transparent border-b border-brand-white/20">
                     <TableCell colSpan={columns.length} className="py-2">
                       <div className="flex items-center gap-3 animate-pulse">

@@ -361,10 +361,9 @@ type Close {
 }
 
 type CollateralBalanceSnapshotType {
-  atBlock: Int!
   balance: String!
   index: Int!
-  timestamp: DateTimeISO
+  timestamp: DateTimeISO!
 }
 
 type CollateralBalanceType {
@@ -411,11 +410,17 @@ type Condition {
   question: String!
   resolvedToYes: Boolean!
 
-  """Canonical resolver address for this condition (latest observed wins)"""
-  resolver: String
+  """Canonical resolver address for this condition (required)"""
+  resolver: String!
   settled: Boolean!
   settledAt: Int
   shortName: String
+
+  """Image URL from Polymarket similar market"""
+  similarMarketImage: String
+
+  """USD total trading volume from Polymarket similar market"""
+  similarMarketVolume: Float!
   similarMarkets: [String!]!
   tags: [String!]!
 }
@@ -556,10 +561,12 @@ input ConditionOrderByWithRelationInput {
   public: SortOrder
   question: SortOrder
   resolvedToYes: SortOrder
-  resolver: SortOrderInput
+  resolver: SortOrder
   settled: SortOrder
   settledAt: SortOrderInput
   shortName: SortOrderInput
+  similarMarketImage: SortOrderInput
+  similarMarketVolume: SortOrder
   similarMarkets: SortOrder
   tags: SortOrder
 }
@@ -591,6 +598,8 @@ enum ConditionScalarFieldEnum {
   settled
   settledAt
   shortName
+  similarMarketImage
+  similarMarketVolume
   similarMarkets
   tags
 }
@@ -620,10 +629,12 @@ input ConditionWhereInput {
   public: BoolFilter
   question: StringFilter
   resolvedToYes: BoolFilter
-  resolver: StringNullableFilter
+  resolver: StringFilter
   settled: BoolFilter
   settledAt: IntNullableFilter
   shortName: StringNullableFilter
+  similarMarketImage: StringNullableFilter
+  similarMarketVolume: FloatFilter
   similarMarkets: StringNullableListFilter
   tags: StringNullableListFilter
 }
@@ -653,10 +664,12 @@ input ConditionWhereUniqueInput {
   public: BoolFilter
   question: StringFilter
   resolvedToYes: BoolFilter
-  resolver: StringNullableFilter
+  resolver: StringFilter
   settled: BoolFilter
   settledAt: IntNullableFilter
   shortName: StringNullableFilter
+  similarMarketImage: StringNullableFilter
+  similarMarketVolume: FloatFilter
   similarMarkets: StringNullableListFilter
   tags: StringNullableListFilter
 }
@@ -716,6 +729,17 @@ input EnumLimitOrderStatusFilter {
   in: [LimitOrderStatus!]
   not: NestedEnumLimitOrderStatusFilter
   notIn: [LimitOrderStatus!]
+}
+
+input FloatFilter {
+  equals: Float
+  gt: Float
+  gte: Float
+  in: [Float!]
+  lt: Float
+  lte: Float
+  not: NestedFloatFilter
+  notIn: [Float!]
 }
 
 input FloatNullableFilter {
@@ -1091,6 +1115,17 @@ input NestedEnumLimitOrderStatusFilter {
   notIn: [LimitOrderStatus!]
 }
 
+input NestedFloatFilter {
+  equals: Float
+  gt: Float
+  gte: Float
+  in: [Float!]
+  lt: Float
+  lte: Float
+  not: NestedFloatFilter
+  notIn: [Float!]
+}
+
 input NestedFloatNullableFilter {
   equals: Float
   gt: Float
@@ -1328,9 +1363,9 @@ type Query {
   accountAccuracyRank(address: String!): AccuracyRank!
 
   """
-  Unified activity feed for an account — predictions and trades merged by timestamp
+  Unified activity feed — predictions and trades merged by timestamp. When address is provided, scopes to that account; otherwise returns recent global activity.
   """
-  accountActivity(address: String!, skip: Int! = 0, take: Int! = 20, type: String): [ActivityItem!]!
+  accountActivity(address: String, skip: Int! = 0, take: Int! = 20, type: String): [ActivityItem!]!
 
   """
   Time-bucketed balance snapshots for a single address showing deployed and claimable collateral
@@ -1375,7 +1410,7 @@ type Query {
   """
   closes(address: String, chainId: Int, pickConfigId: String, skip: Int! = 0, take: Int! = 50): [Close!]!
   collateralBalance(address: String!, atBlock: Int, chainId: Int!): CollateralBalanceType!
-  collateralBalanceHistory(address: String!, chainId: Int!, count: Int! = 12, currentBlock: Int, intervalHours: Int! = 168): [CollateralBalanceSnapshotType!]!
+  collateralBalanceHistory(address: String!, chainId: Int!, count: Int! = 12, intervalHours: Int! = 168): [CollateralBalanceSnapshotType!]!
   collateralTransfers(address: String!, chainId: Int!, limit: Int! = 100, offset: Int! = 0): [CollateralTransferType!]!
   condition(where: ConditionWhereUniqueInput!): Condition
   conditionGroup(where: ConditionGroupWhereUniqueInput!): ConditionGroup
@@ -1473,6 +1508,7 @@ enum QuestionSortField {
   endTime
   openInterest
   predictionCount
+  similarMarketVolume
 }
 
 type ReferralCode {

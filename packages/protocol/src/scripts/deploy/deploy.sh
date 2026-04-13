@@ -777,7 +777,7 @@ deploy_onboarding_sponsor() {
     set_deployer_pm
 
     run_script "src/scripts/deploy/DeployOnboardingSponsor.s.sol:DeployOnboardingSponsor" "$PM_NETWORK_RPC_URL" "Deploying OnboardingSponsor on PM Network"
-    local addr=$(extract_address "$LAST_OUTPUT" "OnboardingSponsor:")
+    local addr=$(extract_address "$LAST_OUTPUT" "ONBOARDING_SPONSOR_ADDRESS=")
     if [ -n "$addr" ]; then
         update_env "ONBOARDING_SPONSOR_ADDRESS" "$addr"
         update_deployment "pmNetwork" "OnboardingSponsor" "$addr"

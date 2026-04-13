@@ -1,17 +1,17 @@
 'use client';
 
 import * as React from 'react';
-import { ConditionCard, GroupCard, staggerContainer } from './MarketCard';
+// @ts-expect-error — @types/react-dom is not installed; react-dom@19 ships JS-only in this project
+import { createPortal } from 'react-dom';
+import { AnimatePresence, motion } from 'framer-motion';
+import { X } from 'lucide-react';
 import {
   type TopLevelRow,
   type QuestionType,
   buildTopLevelRows,
   groupConditionToConditionType,
 } from '../market-helpers';
-// @ts-expect-error — @types/react-dom is not installed; react-dom@19 ships JS-only in this project
-import { createPortal } from 'react-dom';
-import { AnimatePresence, motion } from 'framer-motion';
-import { X } from 'lucide-react';
+import { ConditionCard, GroupCard, staggerContainer } from './MarketCard';
 import { usePredictionMap } from '~/hooks/usePredictionMap';
 import { useInfiniteScroll } from '~/hooks/useInfiniteScroll';
 
@@ -169,7 +169,7 @@ export default function QuestionsGrid({
                   );
                 })}
 
-                {isFetchingMore && hasMore && (
+                {hasMore && (
                   <>
                     {Array.from({ length: 3 }).map((_, i) => (
                       <SkeletonCard key={`loading-${i}`} />

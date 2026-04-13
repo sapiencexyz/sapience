@@ -17,6 +17,7 @@ import {
   type PrepareAuctionRFQParams,
 } from '../initiate';
 import { canonicalizePicks, computePickConfigId } from '../escrowEncoding';
+import { OutcomeSide } from '../../types/escrow';
 import type { Pick, PickJson } from '../../types/escrow';
 
 // ─── Test fixtures ────────────────────────────────────────────────────────────
@@ -33,7 +34,7 @@ const TEST_PICKS: Pick[] = [
   {
     conditionResolver: CONDITION_RESOLVER,
     conditionId: CONDITION_ID,
-    predictedOutcome: 1,
+    predictedOutcome: OutcomeSide.NO,
   },
 ];
 
@@ -41,7 +42,7 @@ const TEST_PICKS_JSON: PickJson[] = [
   {
     conditionResolver: CONDITION_RESOLVER,
     conditionId: CONDITION_ID,
-    predictedOutcome: 1,
+    predictedOutcome: OutcomeSide.NO,
   },
 ];
 
@@ -139,14 +140,14 @@ describe('prepareAuctionRFQ', () => {
         '0xaAaAaAaaAaAaAaaAaAAAAAAAAaaaAaAaAaaAaaAa' as Address,
       conditionId:
         '0x0000000000000000000000000000000000000000000000000000000000000001' as Hex,
-      predictedOutcome: 0,
+      predictedOutcome: OutcomeSide.YES,
     };
     const pick2: Pick = {
       conditionResolver:
         '0x3333333333333333333333333333333333333333' as Address,
       conditionId:
         '0x0000000000000000000000000000000000000000000000000000000000000002' as Hex,
-      predictedOutcome: 1,
+      predictedOutcome: OutcomeSide.NO,
     };
 
     // Pass in non-canonical order

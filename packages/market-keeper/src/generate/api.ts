@@ -6,6 +6,7 @@ import type {
   SapienceCondition,
   SapienceConditionGroup,
   SapienceOutput,
+  SyncableFields,
 } from '../types';
 import { RESOLVER_ADDRESS, END_TIME_BUFFER_SECONDS } from '../constants';
 import { fetchWithRetry, getAdminAuthHeaders } from '../utils';
@@ -111,6 +112,8 @@ export async function submitCondition(
         resolver: RESOLVER_ADDRESS,
         public: true,
         estimatedPrice: condition.estimatedPrice,
+        similarMarketVolume: condition.similarMarketVolume,
+        similarMarketImage: condition.similarMarketImage,
       }),
     });
 
@@ -253,7 +256,12 @@ export function printDryRun(data: SapienceOutput): void {
 export async function submitPriceUpdates(
   apiUrl: string,
   privateKey: `0x${string}`,
-  priceUpdates: Array<{ id: string; estimatedPrice: number }>
+  priceUpdates: Array<{
+    id: string;
+    estimatedPrice: number;
+    similarMarketVolume?: number;
+    similarMarketImage?: string;
+  }>
 ): Promise<void> {
   if (priceUpdates.length === 0) {
     console.log('[Prices] No price updates to submit');
@@ -300,6 +308,67 @@ export async function submitPriceUpdates(
 
   console.log(
     `[Prices] Updated ${totalUpdated} of ${priceUpdates.length} conditions`
+  );
+}
+
+/**
+ * Submit metadata updates for existing conditions whose Polymarket
+ * data has changed (e.g., renamed markets, changed slugs, new tags).
+ * Uses PUT /admin/conditions/:id for each update.
+ */
+export async function submitMetadataUpdates(
+  apiUrl: string,
+  privateKey: `0x${string}`,
+  updates: Array<{
+    conditionId: string;
+    fields: SyncableFields;
+  }>
+): Promise<void> {
+  if (updates.length === 0) {
+    return;
+  }
+
+  console.log(`[Metadata] Submitting ${updates.length} metadata updates...`);
+
+  let successCount = 0;
+
+  for (const update of updates) {
+    try {
+      const authHeaders = await getAdminAuthHeaders(privateKey);
+      const response = await fetchWithRetry(
+        `${apiUrl}/admin/conditions/${update.conditionId}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            ...authHeaders,
+          },
+          body: JSON.stringify(update.fields),
+        }
+      );
+
+      if (response.ok) {
+        successCount++;
+      } else {
+        const errorData = await response
+          .json()
+          .catch(() => ({ message: 'Unknown error' }));
+        console.error(
+          `[Metadata] Failed to update ${update.conditionId.slice(0, 10)}...: HTTP ${response.status}: ${(errorData as { message?: string }).message || response.statusText}`
+        );
+      }
+    } catch (error) {
+      console.error(
+        `[Metadata] Error updating ${update.conditionId.slice(0, 10)}...:`,
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+
+    await delay(SUBMISSION_DELAY_MS);
+  }
+
+  console.log(
+    `[Metadata] Updated ${successCount} of ${updates.length} conditions`
   );
 }
 

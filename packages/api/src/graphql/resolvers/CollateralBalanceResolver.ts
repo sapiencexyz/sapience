@@ -22,14 +22,11 @@ class CollateralBalanceSnapshotType {
   @Field(() => Int)
   index!: number;
 
-  @Field(() => Int)
-  atBlock!: number;
-
   @Field(() => String)
   balance!: string;
 
-  @Field(() => Date, { nullable: true })
-  timestamp?: Date;
+  @Field(() => Date)
+  timestamp!: Date;
 }
 
 @ObjectType()
@@ -98,18 +95,14 @@ export class CollateralBalanceResolver {
   }
 
   /**
-   * Return the cumulative balance at evenly-spaced block boundaries.
+   * Return the cumulative balance at evenly-spaced time boundaries.
    *
    * @param intervalHours - spacing between snapshots in hours (1 = hourly, 24 = daily, 168 = weekly)
-   * @param count         - number of snapshots to return going backwards from currentBlock
-   *
-   * Assumes ~1.3s block time to convert hours to blocks.
+   * @param count         - number of snapshots to return going backwards from now
    */
   @Query(() => [CollateralBalanceSnapshotType])
   async collateralBalanceHistory(
     @Arg('address', () => String) address: string,
-    @Arg('currentBlock', () => Int, { nullable: true })
-    currentBlock: number | null,
     @Arg('intervalHours', () => Int, { defaultValue: 168 })
     intervalHours: number,
     @Arg('count', () => Int, { defaultValue: 12 }) count: number,
@@ -117,46 +110,54 @@ export class CollateralBalanceResolver {
   ): Promise<CollateralBalanceSnapshotType[]> {
     const addr = address.toLowerCase();
     const cappedCount = Math.min(count, 365);
-    const BLOCKS_PER_HOUR = Math.floor(3600 / 1.3);
-    const step = intervalHours * BLOCKS_PER_HOUR;
+    const intervalSeconds = intervalHours * 3600;
 
-    let headBlock = currentBlock;
-    if (headBlock == null) {
-      const key = `collateral-transfer-indexer:${chainId}`;
-      const row = await prisma.keyValueStore.findUnique({ where: { key } });
-      headBlock = row ? parseInt(row.value, 10) : 0;
-    }
+    const rows = await prisma.$queryRaw<
+      { index: number; boundary: Date; balance: string }[]
+    >`
+      WITH boundaries AS (
+        SELECT
+          gs.idx AS index,
+          (NOW() - (gs.idx * ${intervalSeconds} * INTERVAL '1 second')) AS boundary
+        FROM generate_series(0, ${cappedCount}) AS gs(idx)
+      ),
+      boundaries_with_prev AS (
+        SELECT
+          index,
+          boundary,
+          LEAD(boundary) OVER (ORDER BY index) AS prev_boundary
+        FROM boundaries
+      ),
+      interval_nets AS (
+        SELECT
+          b.index,
+          b.boundary,
+          COALESCE(
+            SUM(CASE WHEN ct."to" = ${addr} THEN ct."value"::NUMERIC ELSE 0 END) -
+            SUM(CASE WHEN ct."from" = ${addr} THEN ct."value"::NUMERIC ELSE 0 END),
+            0
+          ) AS net
+        FROM boundaries_with_prev b
+        LEFT JOIN collateral_transfer ct
+          ON ct."chainId" = ${chainId}
+          AND (ct."from" = ${addr} OR ct."to" = ${addr})
+          AND ct."timestamp" <= b.boundary
+          AND (b.prev_boundary IS NULL OR ct."timestamp" > b.prev_boundary)
+        GROUP BY b.index, b.boundary
+      )
+      SELECT
+        index,
+        boundary,
+        (SUM(net) OVER (ORDER BY index DESC ROWS BETWEEN UNBOUNDED PRECEDING AND CURRENT ROW))::TEXT AS balance
+      FROM interval_nets
+      ORDER BY index
+    `;
 
-    const boundaries: number[] = [];
-    for (let i = 0; i <= cappedCount; i++) {
-      boundaries.push(Math.max(0, headBlock - i * step));
-    }
-
-    const results = await Promise.all(
-      boundaries.map(async (block, i) => {
-        const result = await prisma.$queryRaw<
-          [{ balance: string; timestamp: Date | null }]
-        >`
-          SELECT
-            (COALESCE(SUM(CASE WHEN "to" = ${addr} THEN "value"::NUMERIC ELSE 0 END), 0) -
-            COALESCE(SUM(CASE WHEN "from" = ${addr} THEN "value"::NUMERIC ELSE 0 END), 0))::TEXT
-            AS balance,
-            MAX("timestamp") AS timestamp
-          FROM collateral_transfer
-          WHERE "chainId" = ${chainId}
-            AND ("from" = ${addr} OR "to" = ${addr})
-            AND "blockNumber" <= ${block}
-        `;
-        return {
-          index: i,
-          atBlock: block,
-          balance: result[0]?.balance ?? '0',
-          timestamp: result[0]?.timestamp ?? undefined,
-        };
-      })
-    );
-
-    return results;
+    return rows.map((row) => ({
+      index: Number(row.index),
+      balance: row.balance ?? '0',
+      timestamp: row.boundary,
+    }));
   }
 
   /**
