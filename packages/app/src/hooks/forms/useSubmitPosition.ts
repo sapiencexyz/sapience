@@ -261,7 +261,29 @@ export function useSubmitPosition({
         // Tier 3: simulate the mint via eth_call before sending the real tx.
         // Catches contract reverts (bad picks, resolver rejections, signature
         // issues, counterparty fund shortfalls) before the user pays gas.
-        if (filled.picks && filled.picks.length > 0) {
+        //
+        // Skipped when the predictor is a smart account (deployed code at the
+        // address). Smart accounts that rely on ERC-4337 validator routing —
+        // e.g. ZeroDev Kernel — make the mint's EIP-1271 signature callback
+        // (`signer.isValidSignature`) depend on state set up by
+        // `validateUserOp`, which a plain `eth_call` cannot reproduce. In that
+        // environment Kernel reverts with `InvalidValidator()` and the
+        // simulation blocks an otherwise-valid submission. The real tx still
+        // routes through the bundler + EntryPoint, where validation works
+        // correctly, so submission on-chain is unaffected. EOA predictors
+        // still get the full Tier 3 pre-flight check. A follow-up should add
+        // proper smart-account simulation via `eth_estimateUserOperationGas`.
+        const predictorCode = await (publicClient as PublicClient).getBytecode({
+          address: filled.predictor,
+        });
+        const predictorIsSmartAccount =
+          predictorCode !== undefined && predictorCode !== '0x';
+
+        if (
+          !predictorIsSmartAccount &&
+          filled.picks &&
+          filled.picks.length > 0
+        ) {
           // Invariant: the signing block above unconditionally sets
           // predictorSignature under the same `picks.length > 0` guard.
           if (!filled.predictorSignature) {
