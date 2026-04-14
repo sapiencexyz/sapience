@@ -1,5 +1,5 @@
 import { useCallback, useState, useMemo } from 'react';
-import { erc20Abi } from 'viem';
+import { erc20Abi, type PublicClient } from 'viem';
 
 import {
   generateRandomNonce,
@@ -7,6 +7,7 @@ import {
   validateCounterpartyFunds,
   prepareMintCalls,
 } from '@sapience/sdk';
+import { simulateMint } from '@sapience/sdk/auction/simulate';
 import {
   CHAIN_ID_ETHEREAL,
   CHAIN_ID_ETHEREAL_TESTNET,
@@ -147,14 +148,14 @@ export function useSubmitPosition({
   );
 
   const submitPosition = useCallback(
-    async (mintData: MintPredictionRequestData) => {
+    async (mintData: MintPredictionRequestData): Promise<boolean> => {
       if (!enabled || !address) {
-        return;
+        return false;
       }
 
       // Prevent duplicate submissions
       if (isProcessing) {
-        return;
+        return false;
       }
 
       setIsProcessing(true);
@@ -257,6 +258,91 @@ export function useSubmitPosition({
           throw new Error('No valid calls to execute');
         }
 
+        // Tier 3: simulate the mint via eth_call before sending the real tx.
+        // Catches contract reverts (bad picks, resolver rejections, signature
+        // issues, counterparty fund shortfalls) before the user pays gas.
+        //
+        // Skipped when the predictor is a smart account (deployed code at the
+        // address). Smart accounts that rely on ERC-4337 validator routing —
+        // e.g. ZeroDev Kernel — make the mint's EIP-1271 signature callback
+        // (`signer.isValidSignature`) depend on state set up by
+        // `validateUserOp`, which a plain `eth_call` cannot reproduce. In that
+        // environment Kernel reverts with `InvalidValidator()` and the
+        // simulation blocks an otherwise-valid submission. The real tx still
+        // routes through the bundler + EntryPoint, where validation works
+        // correctly, so submission on-chain is unaffected. EOA predictors
+        // still get the full Tier 3 pre-flight check. A follow-up should add
+        // proper smart-account simulation via `eth_estimateUserOperationGas`.
+        const predictorCode = await (publicClient as PublicClient).getBytecode({
+          address: filled.predictor,
+        });
+        const predictorIsSmartAccount =
+          predictorCode !== undefined && predictorCode !== '0x';
+
+        if (
+          !predictorIsSmartAccount &&
+          filled.picks &&
+          filled.picks.length > 0
+        ) {
+          // Invariant: the signing block above unconditionally sets
+          // predictorSignature under the same `picks.length > 0` guard.
+          if (!filled.predictorSignature) {
+            throw new Error('Predictor signature missing before simulation');
+          }
+          const simResult = await simulateMint(
+            {
+              picks: filled.picks.map((p) => ({
+                conditionResolver: p.conditionResolver,
+                conditionId: p.conditionId,
+                predictedOutcome: p.predictedOutcome,
+              })),
+              predictorCollateral: BigInt(filled.predictorCollateral),
+              counterpartyCollateral: BigInt(filled.counterpartyCollateral),
+              predictor: filled.predictor,
+              counterparty: filled.counterparty,
+              predictorNonce: nonceValue,
+              counterpartyNonce: BigInt(filled.counterpartyClaimedNonce ?? 0),
+              predictorDeadline: BigInt(filled.predictorDeadline),
+              counterpartyDeadline: BigInt(filled.counterpartyDeadline),
+              predictorSignature: filled.predictorSignature,
+              counterpartySignature: filled.counterpartySignature,
+              predictorSessionKeyData: filled.predictorSessionKeyData
+                ? (filled.predictorSessionKeyData as `0x${string}`)
+                : undefined,
+              counterpartySessionKeyData: filled.counterpartySessionKeyData
+                ? (filled.counterpartySessionKeyData as `0x${string}`)
+                : undefined,
+              predictorSponsor: filled.predictorSponsor
+                ? filled.predictorSponsor
+                : undefined,
+              predictorSponsorData: filled.predictorSponsorData
+                ? filled.predictorSponsorData
+                : undefined,
+            },
+            {
+              predictionMarketAddress,
+              collateralTokenAddress,
+              publicClient: publicClient as PublicClient,
+            }
+          );
+
+          if (!simResult.success) {
+            // Only block on real contract reverts. Non-revert failures
+            // (RPC/network) are fail-open: log and proceed so a transient
+            // blip doesn't prevent a valid submission. This mirrors the
+            // Tier 2 fail-open philosophy documented in the SDK README.
+            if (simResult.isRevert) {
+              throw new Error(
+                `Mint simulation failed: ${simResult.error || 'Unknown error'}`
+              );
+            }
+            console.warn(
+              '[submitPosition] Tier 3 simulation unavailable, proceeding:',
+              simResult.error
+            );
+          }
+        }
+
         await sendCalls({
           calls,
           chainId,
@@ -271,6 +357,7 @@ export function useSubmitPosition({
 
         await attempt();
         setIsProcessing(false);
+        return true;
       } catch (err: unknown) {
         console.error('[submitPosition] error:', err);
         const errorMessage =
@@ -279,6 +366,7 @@ export function useSubmitPosition({
             : 'Failed to submit position prediction';
         setError(errorMessage);
         setIsProcessing(false);
+        return false;
       }
     },
     [

@@ -54,6 +54,11 @@ vi.mock('@sapience/sdk/contracts', () => ({
   },
 }));
 
+const mockSimulateMint = vi.fn().mockResolvedValue({ success: true });
+vi.mock('@sapience/sdk/auction/simulate', () => ({
+  simulateMint: (...args: unknown[]) => mockSimulateMint(...args),
+}));
+
 vi.mock('@sapience/sdk/auction/escrowSigning', () => ({
   buildPredictorMintTypedData: vi.fn().mockReturnValue({
     domain: {

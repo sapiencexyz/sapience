@@ -645,7 +645,7 @@ const CreatePositionFormInner = ({
   });
 
   // Receives the exact bid the user clicked to submit - no race condition possible
-  const handlePositionSubmit = (bid: QuoteBid) => {
+  const handlePositionSubmit = async (bid: QuoteBid) => {
     if (!hasConnectedWallet) {
       openConnectDialog();
       return;
@@ -692,13 +692,6 @@ const CreatePositionFormInner = ({
             symbol: collateralSymbol || 'testUSDe',
           };
 
-          // Open share dialog immediately with position form data
-          setShareDialogData(dialogData);
-          setShowShareDialog(true);
-
-          // Close the popover/drawer
-          setIsPopoverOpen(false);
-
           // picks are already set by buildMintRequestDataFromBid from auction.picks
           // (the canonical set the counterparty signed over, including both Pyth and Polymarket)
 
@@ -706,8 +699,15 @@ const CreatePositionFormInner = ({
           // from the auction params (threaded when user clicked "Use" on the sponsor indicator).
           // No manual override needed — it must match what the counterparty signed over.
 
-          // Submit the mint request to PredictionMarket
-          submitPosition(mintReq);
+          // Submit the mint request (includes Tier 3 simulation before sending tx).
+          // Only show share dialog and close form if submission succeeds.
+          const success = await submitPosition(mintReq);
+
+          if (success) {
+            setShareDialogData(dialogData);
+            setShowShareDialog(true);
+            setIsPopoverOpen(false);
+          }
           return;
         }
       }
