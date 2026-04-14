@@ -319,6 +319,7 @@ function createColumns(
                       <DropdownMenuItem
                         key={id}
                         onSelect={() => onSelectMetricOption(id)}
+                        onClick={(e) => e.stopPropagation()}
                         className="pl-8 pr-2 cursor-pointer"
                       >
                         <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
@@ -343,6 +344,7 @@ function createColumns(
                         checked={excludeLow}
                         onCheckedChange={(v) => onExcludeLowOddsChange(!!v)}
                         onSelect={(e) => e.preventDefault()}
+                        onClick={(e) => e.stopPropagation()}
                         className="cursor-pointer"
                       >
                         Exclude extreme odds (0.01–0.99)
