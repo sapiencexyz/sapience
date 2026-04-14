@@ -326,7 +326,7 @@ describe('simulateMint', () => {
 
   test('returns error with parsed message on contract revert', async () => {
     const revertError = Object.assign(
-      new Error('execution reverted: InvalidCounterpartSignature'),
+      new Error('execution reverted: InvalidCounterpartySignature'),
       { name: 'ContractFunctionExecutionError' }
     );
     const client = makeMockPublicClient(undefined, revertError);

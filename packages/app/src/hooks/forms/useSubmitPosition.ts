@@ -262,6 +262,11 @@ export function useSubmitPosition({
         // Catches contract reverts (bad picks, resolver rejections, signature
         // issues, counterparty fund shortfalls) before the user pays gas.
         if (filled.picks && filled.picks.length > 0) {
+          // Invariant: the signing block above unconditionally sets
+          // predictorSignature under the same `picks.length > 0` guard.
+          if (!filled.predictorSignature) {
+            throw new Error('Predictor signature missing before simulation');
+          }
           const simResult = await simulateMint(
             {
               picks: filled.picks.map((p) => ({
@@ -277,7 +282,7 @@ export function useSubmitPosition({
               counterpartyNonce: BigInt(filled.counterpartyClaimedNonce ?? 0),
               predictorDeadline: BigInt(filled.predictorDeadline),
               counterpartyDeadline: BigInt(filled.counterpartyDeadline),
-              predictorSignature: filled.predictorSignature || '0x',
+              predictorSignature: filled.predictorSignature,
               counterpartySignature: filled.counterpartySignature,
               predictorSessionKeyData: filled.predictorSessionKeyData
                 ? (filled.predictorSessionKeyData as `0x${string}`)
@@ -300,8 +305,18 @@ export function useSubmitPosition({
           );
 
           if (!simResult.success) {
-            throw new Error(
-              `Mint simulation failed: ${simResult.error || 'Unknown error'}`
+            // Only block on real contract reverts. Non-revert failures
+            // (RPC/network) are fail-open: log and proceed so a transient
+            // blip doesn't prevent a valid submission. This mirrors the
+            // Tier 2 fail-open philosophy documented in the SDK README.
+            if (simResult.isRevert) {
+              throw new Error(
+                `Mint simulation failed: ${simResult.error || 'Unknown error'}`
+              );
+            }
+            console.warn(
+              '[submitPosition] Tier 3 simulation unavailable, proceeding:',
+              simResult.error
             );
           }
         }
