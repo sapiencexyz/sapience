@@ -52,13 +52,12 @@ export interface FilterState {
   estimatedPriceRange: [number, number]; // 0-100, displayed as percentage
 }
 
-export const VOLUME_RANGE_KEYS = [
-  'similarMarketVolumeRange',
-  'volume1hRange',
-  'volume4hRange',
-  'volume24hRange',
-  'volume7dRange',
-] as const;
+type VolumeRangeKey =
+  | 'similarMarketVolumeRange'
+  | 'volume1hRange'
+  | 'volume4hRange'
+  | 'volume24hRange'
+  | 'volume7dRange';
 
 interface TableFiltersProps {
   filters: FilterState;
@@ -394,11 +393,12 @@ function VolumeRangeRow({ label, value, max, onChange }: VolumeRangeRowProps) {
     formatVolumeValue(committedValue[1], max)
   );
 
+  const committedMin = committedValue[0];
+  const committedMax = committedValue[1];
   React.useEffect(() => {
-    setLocalMin(formatVolumeValue(committedValue[0], max));
-    setLocalMax(formatVolumeValue(committedValue[1], max));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [committedValue[0], committedValue[1], max]);
+    setLocalMin(formatVolumeValue(committedMin, max));
+    setLocalMax(formatVolumeValue(committedMax, max));
+  }, [committedMin, committedMax, max]);
 
   const emit = (next: [number, number]) => {
     onChange([next[0], next[1] >= max ? Infinity : next[1]]);
@@ -502,7 +502,7 @@ function RelatedVolumeFilter({
   const windowBands: Array<
     Array<{
       label: string;
-      key: (typeof VOLUME_RANGE_KEYS)[number];
+      key: VolumeRangeKey;
       max: number;
     }>
   > = [
