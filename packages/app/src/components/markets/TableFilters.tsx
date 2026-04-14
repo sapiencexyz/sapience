@@ -6,6 +6,8 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@sapience/ui/components/ui/popover';
+import Slider from '@sapience/ui/components/ui/slider';
+import { Input } from '@sapience/ui/components/ui/input';
 import {
   ChevronsUpDown,
   Check,
@@ -39,12 +41,23 @@ export interface CategoryOption {
 
 export interface FilterState {
   openInterestRange: [number, number];
-  similarMarketVolumeRange: [number, number];
+  similarMarketVolumeRange: [number, number]; // all-time
+  volume1hRange: [number, number];
+  volume4hRange: [number, number];
+  volume24hRange: [number, number];
+  volume7dRange: [number, number];
   timeToResolutionRange: [number, number]; // in days, negative = ended
   selectedCategories: string[]; // array of category slugs
   resolutionStatus: ResolutionStatusFilterValue;
   estimatedPriceRange: [number, number]; // 0-100, displayed as percentage
 }
+
+type VolumeRangeKey =
+  | 'similarMarketVolumeRange'
+  | 'volume1hRange'
+  | 'volume4hRange'
+  | 'volume24hRange'
+  | 'volume7dRange';
 
 interface TableFiltersProps {
   filters: FilterState;
@@ -169,16 +182,17 @@ function CategoryMultiSelect({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="w-full h-8 rounded-md border border-border bg-muted/30 text-left inline-flex items-center justify-between px-3 text-sm"
+          className="w-full h-8 rounded-md border border-border bg-muted/30 text-left inline-flex items-center justify-between gap-2 px-3 text-sm"
         >
           <span
-            className={
-              selectedSlugs.length === 0 ? 'text-muted-foreground' : ''
-            }
+            className={cn(
+              'min-w-0 truncate',
+              selectedSlugs.length === 0 && 'text-muted-foreground'
+            )}
           >
             {getButtonLabel()}
           </span>
-          <ChevronsUpDown className="h-4 w-4 opacity-50" />
+          <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-[240px] p-1" align="start">
@@ -336,9 +350,239 @@ function CategoryMultiSelect({
 
 // Map slider bounds to Infinity for range filters
 const OPEN_INTEREST_SLIDER_MAX = 1000000;
-const SIMILAR_MARKET_VOLUME_SLIDER_MAX = 100000000;
+const VOLUME_SLIDER_STEP = 10000;
 const TIME_SLIDER_MAX = 1000;
 const TIME_SLIDER_MIN = -1000;
+
+const formatVolumeValue = (v: number, max: number): string => {
+  if (v >= max) return '∞';
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(1)}M`;
+  if (v >= 1_000) return `${(v / 1_000).toFixed(0)}K`;
+  return v.toLocaleString();
+};
+
+const parseVolumeValue = (raw: string, max: number): number => {
+  if (raw === '∞') return max;
+  const cleaned = raw.replace(/,/g, '').trim();
+  if (cleaned.endsWith('M')) return parseFloat(cleaned) * 1_000_000;
+  if (cleaned.endsWith('K')) return parseFloat(cleaned) * 1_000;
+  return Number(cleaned);
+};
+
+interface VolumeRangeRowProps {
+  label: string;
+  value: [number, number];
+  max: number;
+  onChange: (value: [number, number]) => void;
+}
+
+function VolumeRangeRow({ label, value, max, onChange }: VolumeRangeRowProps) {
+  const committedValue: [number, number] = [
+    value[0],
+    value[1] === Infinity ? max : Math.min(value[1], max),
+  ];
+  // Local state tracks the slider position while dragging; only committed on release.
+  const [dragValue, setDragValue] = React.useState<[number, number] | null>(
+    null
+  );
+  const displayValue = dragValue ?? committedValue;
+  const [localMin, setLocalMin] = React.useState(
+    formatVolumeValue(committedValue[0], max)
+  );
+  const [localMax, setLocalMax] = React.useState(
+    formatVolumeValue(committedValue[1], max)
+  );
+
+  const committedMin = committedValue[0];
+  const committedMax = committedValue[1];
+  React.useEffect(() => {
+    setLocalMin(formatVolumeValue(committedMin, max));
+    setLocalMax(formatVolumeValue(committedMax, max));
+  }, [committedMin, committedMax, max]);
+
+  const emit = (next: [number, number]) => {
+    onChange([next[0], next[1] >= max ? Infinity : next[1]]);
+  };
+
+  const handleSliderChange = (newValue: number[]) => {
+    if (newValue.length >= 2) setDragValue([newValue[0], newValue[1]]);
+  };
+
+  const handleSliderCommit = (newValue: number[]) => {
+    if (newValue.length >= 2) emit([newValue[0], newValue[1]]);
+    setDragValue(null);
+  };
+
+  const commitMin = () => {
+    const parsed = parseVolumeValue(localMin, max);
+    if (!isNaN(parsed)) {
+      const clamped = Math.max(0, Math.min(parsed, committedValue[1]));
+      emit([clamped, committedValue[1]]);
+    } else {
+      setLocalMin(formatVolumeValue(committedValue[0], max));
+    }
+  };
+
+  const commitMax = () => {
+    const parsed = parseVolumeValue(localMax, max);
+    if (!isNaN(parsed)) {
+      const clamped = Math.min(max, Math.max(parsed, committedValue[0]));
+      emit([committedValue[0], clamped]);
+    } else {
+      setLocalMax(formatVolumeValue(committedValue[1], max));
+    }
+  };
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex items-center justify-between text-xs">
+        <span className="text-muted-foreground font-mono">{label}</span>
+        <span className="tabular-nums text-muted-foreground">
+          {formatVolumeValue(displayValue[0], max)}
+          {' → '}
+          {formatVolumeValue(displayValue[1], max)}
+        </span>
+      </div>
+      <div className="px-1 py-1">
+        <Slider
+          value={displayValue}
+          onValueChange={handleSliderChange}
+          onValueCommit={handleSliderCommit}
+          min={0}
+          max={max}
+          step={VOLUME_SLIDER_STEP}
+          className="w-full"
+        />
+      </div>
+      <div className="flex items-center gap-1.5">
+        <Input
+          inputSize="xs"
+          type="text"
+          value={localMin}
+          onChange={(e) => setLocalMin(e.target.value)}
+          onBlur={commitMin}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') e.currentTarget.blur();
+          }}
+          className="w-full text-right font-mono text-xs tabular-nums"
+        />
+        <span className="text-muted-foreground text-xs">to</span>
+        <Input
+          inputSize="xs"
+          type="text"
+          value={localMax}
+          onChange={(e) => setLocalMax(e.target.value)}
+          onBlur={commitMax}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') e.currentTarget.blur();
+          }}
+          className="w-full text-right font-mono text-xs tabular-nums"
+        />
+      </div>
+    </div>
+  );
+}
+
+interface RelatedVolumeFilterProps {
+  filters: FilterState;
+  onFiltersChange: (filters: FilterState) => void;
+}
+
+function RelatedVolumeFilter({
+  filters,
+  onFiltersChange,
+}: RelatedVolumeFilterProps) {
+  const [open, setOpen] = React.useState(false);
+
+  const allTimeRow = {
+    label: 'ALL-TIME',
+    key: 'similarMarketVolumeRange' as const,
+    max: 50_000_000,
+  };
+  const windowBands: Array<
+    Array<{
+      label: string;
+      key: VolumeRangeKey;
+      max: number;
+    }>
+  > = [
+    [
+      { label: 'LAST 7D', key: 'volume7dRange', max: 25_000_000 },
+      { label: 'LAST 4H', key: 'volume4hRange', max: 2_500_000 },
+    ],
+    [
+      { label: 'LAST 24H', key: 'volume24hRange', max: 5_000_000 },
+      { label: 'LAST 1H', key: 'volume1hRange', max: 1_000_000 },
+    ],
+  ];
+  const windowRows = windowBands.flat();
+
+  const activeCount = [allTimeRow, ...windowRows].filter(({ key, max }) => {
+    const r = filters[key];
+    if (!Array.isArray(r) || r.length !== 2) return false;
+    const [lo, hi] = r;
+    const loActive = typeof lo === 'number' && lo > 0;
+    const hiActive = typeof hi === 'number' && Number.isFinite(hi) && hi < max;
+    return loActive || hiActive;
+  }).length;
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="w-full h-8 rounded-md border border-border bg-muted/30 text-left inline-flex items-center justify-between gap-2 px-3 text-sm"
+        >
+          <span
+            className={cn(
+              'min-w-0 truncate',
+              activeCount === 0 ? 'text-muted-foreground' : 'text-foreground'
+            )}
+          >
+            Related Volume
+          </span>
+          <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
+        </button>
+      </PopoverTrigger>
+      <PopoverContent
+        className="w-[360px] max-w-[calc(100vw-1rem)] p-0"
+        align="start"
+      >
+        <div className="flex flex-col divide-y divide-border/60">
+          <div className="p-3">
+            <VolumeRangeRow
+              label={allTimeRow.label}
+              value={filters[allTimeRow.key]}
+              max={allTimeRow.max}
+              onChange={(value) =>
+                onFiltersChange({ ...filters, [allTimeRow.key]: value })
+              }
+            />
+          </div>
+          {windowBands.map((band, i) => (
+            <div
+              key={i}
+              className="grid grid-cols-1 sm:grid-cols-2 divide-y sm:divide-y-0 sm:divide-x divide-border/60"
+            >
+              {band.map(({ label, key, max }) => (
+                <div key={key} className="p-3">
+                  <VolumeRangeRow
+                    label={label}
+                    value={filters[key]}
+                    max={max}
+                    onChange={(value) =>
+                      onFiltersChange({ ...filters, [key]: value })
+                    }
+                  />
+                </div>
+              ))}
+            </div>
+          ))}
+        </div>
+      </PopoverContent>
+    </Popover>
+  );
+}
 
 export default function TableFilters({
   filters,
@@ -362,27 +606,6 @@ export default function TableFilters({
       openInterestRange: [
         value[0],
         value[1] >= OPEN_INTEREST_SLIDER_MAX ? Infinity : value[1],
-      ],
-    });
-  };
-
-  // Map Infinity to slider max for similar market volume display
-  const similarMarketVolumeSliderValue: [number, number] = [
-    filters.similarMarketVolumeRange[0],
-    filters.similarMarketVolumeRange[1] === Infinity
-      ? SIMILAR_MARKET_VOLUME_SLIDER_MAX
-      : Math.min(
-          filters.similarMarketVolumeRange[1],
-          SIMILAR_MARKET_VOLUME_SLIDER_MAX
-        ),
-  ];
-
-  const handleSimilarMarketVolumeChange = (value: [number, number]) => {
-    onFiltersChange({
-      ...filters,
-      similarMarketVolumeRange: [
-        value[0],
-        value[1] >= SIMILAR_MARKET_VOLUME_SLIDER_MAX ? Infinity : value[1],
       ],
     });
   };
@@ -459,30 +682,9 @@ export default function TableFilters({
         }}
         unit="OI"
       />
-      <RangeFilter
-        placeholder="Related Volume"
-        value={similarMarketVolumeSliderValue}
-        onChange={handleSimilarMarketVolumeChange}
-        min={0}
-        max={SIMILAR_MARKET_VOLUME_SLIDER_MAX}
-        step={10000}
-        formatValue={(v) =>
-          v >= SIMILAR_MARKET_VOLUME_SLIDER_MAX
-            ? '∞'
-            : v >= 1000000
-              ? `${(v / 1000000).toFixed(1)}M`
-              : v >= 1000
-                ? `${(v / 1000).toFixed(0)}K`
-                : v.toLocaleString()
-        }
-        parseValue={(v) => {
-          if (v === '∞') return SIMILAR_MARKET_VOLUME_SLIDER_MAX;
-          const cleaned = v.replace(/,/g, '');
-          if (cleaned.endsWith('M')) return parseFloat(cleaned) * 1000000;
-          if (cleaned.endsWith('K')) return parseFloat(cleaned) * 1000;
-          return Number(cleaned);
-        }}
-        unit="USD"
+      <RelatedVolumeFilter
+        filters={filters}
+        onFiltersChange={onFiltersChange}
       />
       <RangeFilter
         placeholder="Ends in"
