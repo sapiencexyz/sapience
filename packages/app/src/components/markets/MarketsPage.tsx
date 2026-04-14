@@ -65,6 +65,10 @@ const MarketsPage = () => {
   const defaultFilters: FilterState = {
     openInterestRange: [0, Infinity],
     similarMarketVolumeRange: [0, Infinity],
+    volume1hRange: [0, Infinity],
+    volume4hRange: [0, Infinity],
+    volume24hRange: [0, Infinity],
+    volume7dRange: [0, Infinity],
     timeToResolutionRange: [-Infinity, Infinity],
     selectedCategories: [],
     resolutionStatus: 'unresolved',

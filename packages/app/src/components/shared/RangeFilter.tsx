@@ -135,12 +135,14 @@ export function RangeFilter({
       <PopoverTrigger asChild>
         <button
           type="button"
-          className="w-full h-8 rounded-md border border-border bg-muted/30 text-left inline-flex items-center justify-between px-3 text-sm"
+          className="w-full h-8 rounded-md border border-border bg-muted/30 text-left inline-flex items-center justify-between gap-2 px-3 text-sm"
         >
-          <span className={isAtBounds ? 'text-muted-foreground' : ''}>
+          <span
+            className={`min-w-0 truncate ${isAtBounds ? 'text-muted-foreground' : ''}`}
+          >
             {getButtonLabel()}
           </span>
-          <ChevronsUpDown className="h-4 w-4 opacity-50" />
+          <ChevronsUpDown className="h-4 w-4 shrink-0 opacity-50" />
         </button>
       </PopoverTrigger>
       <PopoverContent className="w-[280px] p-4" align="start">
