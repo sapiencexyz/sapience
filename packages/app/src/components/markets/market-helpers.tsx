@@ -554,7 +554,8 @@ export function buildTopLevelRows(questions: QuestionType[]): TopLevelRow[] {
 /** Client-side filtering of rows (OI range + volume windows + time-to-resolution range) */
 export function filterRows(
   rows: TopLevelRow[],
-  filters: FilterState
+  filters: FilterState,
+  excludeLowOdds = false
 ): TopLevelRow[] {
   const [minOI, maxOI] = filters.openInterestRange;
   const [minVol, maxVol] = filters.similarMarketVolumeRange ?? [0, Infinity];
@@ -598,10 +599,11 @@ export function filterRows(
     const vol = getRowSimilarMarketVolume(row);
     if (vol < minVol || vol > maxVol) return false;
 
-    // Time-bucketed volume filters
+    // Time-bucketed volume filters — respect the excludeLowOdds toggle so
+    // the slider ranges match the numbers displayed in the volume column.
     for (const { window, min, max } of windowRanges) {
       if (min === 0 && max === Infinity) continue;
-      const v = getRowTimeBucketedVolume(row, window, false);
+      const v = getRowTimeBucketedVolume(row, window, excludeLowOdds);
       if (v < min || v > max) return false;
     }
 

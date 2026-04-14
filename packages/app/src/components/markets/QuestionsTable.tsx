@@ -813,8 +813,8 @@ export default function QuestionsTable({
 
   // Apply client-side filters (open interest range, time to resolution)
   const filteredRows = React.useMemo(
-    () => filterRows(topLevelRows, filters),
-    [topLevelRows, filters]
+    () => filterRows(topLevelRows, filters, excludeLowOdds),
+    [topLevelRows, filters, excludeLowOdds]
   );
 
   // Infinite scroll
