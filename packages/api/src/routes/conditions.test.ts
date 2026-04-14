@@ -533,12 +533,10 @@ describe('conditions routes', () => {
           'https://polymarket-upload.s3.us-east-2.amazonaws.com/test.jpg',
       });
 
-      const res = await request(app)
-        .put(`/admin/conditions/${VALID_ID}`)
-        .send({
-          similarMarketImage:
-            'https://polymarket-upload.s3.us-east-2.amazonaws.com/test.jpg',
-        });
+      const res = await request(app).put(`/admin/conditions/${VALID_ID}`).send({
+        similarMarketImage:
+          'https://polymarket-upload.s3.us-east-2.amazonaws.com/test.jpg',
+      });
 
       expect(res.status).toBe(200);
       const updateCall = mockPrisma.condition.update.mock.calls[0][0];

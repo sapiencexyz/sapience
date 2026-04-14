@@ -38,11 +38,25 @@ export enum QuestionSortField {
   createdAt = 'createdAt',
   predictionCount = 'predictionCount',
   similarMarketVolume = 'similarMarketVolume',
+  volume = 'volume',
 }
 
 registerEnumType(QuestionSortField, {
   name: 'QuestionSortField',
   description: 'Field to sort questions by',
+});
+
+/** Time window for volume sorting. */
+export enum VolumeWindow {
+  oneHour = '1h',
+  fourHours = '4h',
+  twentyFourHours = '24h',
+  sevenDays = '7d',
+}
+
+registerEnumType(VolumeWindow, {
+  name: 'VolumeWindow',
+  description: 'Time window for volume-based sorting',
 });
 
 /** Resolution status filter for questions. */
@@ -130,7 +144,11 @@ export class QuestionsResolver {
     @Arg('maxEstimatedPrice', () => Float, { nullable: true })
     maxEstimatedPrice: number | null,
     @Arg('tag', () => String, { nullable: true })
-    tag: string | null
+    tag: string | null,
+    @Arg('volumeWindow', () => VolumeWindow, { nullable: true })
+    volumeWindow: VolumeWindow | null,
+    @Arg('excludeLowOdds', () => Boolean, { nullable: true })
+    excludeLowOdds: boolean | null
   ): Promise<Question[]> {
     const prisma = getPrismaFromContext(ctx);
 
@@ -194,6 +212,63 @@ export class QuestionsResolver {
       ${minEndTime != null ? Prisma.sql`AND c."endTime" >= ${minEndTime}` : Prisma.empty}
     `;
 
+    // --- Volume column resolution ---
+    // Maps volumeWindow + excludeLowOdds to the correct condition and group columns.
+    // All fragments are static Prisma.sql — no dynamic column names.
+    const volumeColumnFragments = {
+      volume1h: {
+        cond: Prisma.sql`c."volume1h"`,
+        sumExpr: Prisma.sql`COALESCE(SUM(c."volume1h"), 0)::numeric`,
+        group: Prisma.sql`cg."totalVolume1h"::numeric`,
+      },
+      volume4h: {
+        cond: Prisma.sql`c."volume4h"`,
+        sumExpr: Prisma.sql`COALESCE(SUM(c."volume4h"), 0)::numeric`,
+        group: Prisma.sql`cg."totalVolume4h"::numeric`,
+      },
+      volume24h: {
+        cond: Prisma.sql`c."volume24h"`,
+        sumExpr: Prisma.sql`COALESCE(SUM(c."volume24h"), 0)::numeric`,
+        group: Prisma.sql`cg."totalVolume24h"::numeric`,
+      },
+      volume7d: {
+        cond: Prisma.sql`c."volume7d"`,
+        sumExpr: Prisma.sql`COALESCE(SUM(c."volume7d"), 0)::numeric`,
+        group: Prisma.sql`cg."totalVolume7d"::numeric`,
+      },
+      volumeFiltered1h: {
+        cond: Prisma.sql`c."volumeFiltered1h"`,
+        sumExpr: Prisma.sql`COALESCE(SUM(c."volumeFiltered1h"), 0)::numeric`,
+        group: Prisma.sql`cg."totalVolumeFiltered1h"::numeric`,
+      },
+      volumeFiltered4h: {
+        cond: Prisma.sql`c."volumeFiltered4h"`,
+        sumExpr: Prisma.sql`COALESCE(SUM(c."volumeFiltered4h"), 0)::numeric`,
+        group: Prisma.sql`cg."totalVolumeFiltered4h"::numeric`,
+      },
+      volumeFiltered24h: {
+        cond: Prisma.sql`c."volumeFiltered24h"`,
+        sumExpr: Prisma.sql`COALESCE(SUM(c."volumeFiltered24h"), 0)::numeric`,
+        group: Prisma.sql`cg."totalVolumeFiltered24h"::numeric`,
+      },
+      volumeFiltered7d: {
+        cond: Prisma.sql`c."volumeFiltered7d"`,
+        sumExpr: Prisma.sql`COALESCE(SUM(c."volumeFiltered7d"), 0)::numeric`,
+        group: Prisma.sql`cg."totalVolumeFiltered7d"::numeric`,
+      },
+    } as const;
+
+    const resolvedVolumeKey = (() => {
+      const window = volumeWindow ?? VolumeWindow.twentyFourHours;
+      const prefix = excludeLowOdds ? 'volumeFiltered' : 'volume';
+      const suffix = { '1h': '1h', '4h': '4h', '24h': '24h', '7d': '7d' }[
+        window
+      ];
+      return `${prefix}${suffix}` as keyof typeof volumeColumnFragments;
+    })();
+
+    const volumeFragments = volumeColumnFragments[resolvedVolumeKey];
+
     // --- Part A column/join fragments ---
     // When per-condition filters are active, use a LEFT JOIN + GROUP BY to
     // compute aggregates from only the matching conditions in a single pass.
@@ -209,6 +284,8 @@ export class QuestionsResolver {
           return Prisma.sql`COALESCE(MAX(FLOOR(EXTRACT(EPOCH FROM c."createdAt"))::bigint)::numeric, 0)`;
         case QuestionSortField.similarMarketVolume:
           return Prisma.sql`COALESCE(SUM(c."similarMarketVolume"), 0)::numeric`;
+        case QuestionSortField.volume:
+          return volumeFragments.sumExpr;
         default:
           return Prisma.sql`COALESCE(MAX(c."endTime")::numeric, 0)`;
       }
@@ -232,7 +309,9 @@ export class QuestionsResolver {
             ? Prisma.sql`cg."maxCreatedAtEpoch"::numeric`
             : sanitizedSortField === QuestionSortField.similarMarketVolume
               ? Prisma.sql`(SELECT COALESCE(SUM(c."similarMarketVolume"), 0) FROM condition c WHERE c."conditionGroupId" = cg.id AND c.public = true)::numeric`
-              : Prisma.sql`cg."maxEndTime"::numeric`;
+              : sanitizedSortField === QuestionSortField.volume
+                ? volumeFragments.group
+                : Prisma.sql`cg."maxEndTime"::numeric`;
 
     const groupPredictionCount = hasConditionFilters
       ? Prisma.sql`COALESCE(SUM(c."predictionCount"), 0)`
@@ -257,7 +336,9 @@ export class QuestionsResolver {
             ? Prisma.sql`COALESCE(FLOOR(EXTRACT(EPOCH FROM c."createdAt"))::bigint, 0)::numeric`
             : sanitizedSortField === QuestionSortField.similarMarketVolume
               ? Prisma.sql`COALESCE(c."similarMarketVolume", 0)::numeric`
-              : Prisma.sql`COALESCE(c."endTime", 2147483647)::numeric`;
+              : sanitizedSortField === QuestionSortField.volume
+                ? Prisma.sql`COALESCE(${volumeFragments.cond}, 0)::numeric`
+                : Prisma.sql`COALESCE(c."endTime", 2147483647)::numeric`;
 
     // Step 1: UNION query — two parts:
     // - Part A: Active groups (sort values from denormalized cols or LATERAL)

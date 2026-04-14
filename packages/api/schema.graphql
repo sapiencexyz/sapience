@@ -423,6 +423,14 @@ type Condition {
   similarMarketVolume: Float!
   similarMarkets: [String!]!
   tags: [String!]!
+  volume1h: Float!
+  volume4h: Float!
+  volume7d: Float!
+  volume24h: Float!
+  volumeFiltered1h: Float!
+  volumeFiltered4h: Float!
+  volumeFiltered7d: Float!
+  volumeFiltered24h: Float!
 }
 
 type ConditionCount {
@@ -473,6 +481,14 @@ input ConditionGroupOrderByWithRelationInput {
   similarMarkets: SortOrder
   totalOpenInterest: SortOrder
   totalPredictionCount: SortOrder
+  totalVolume1h: SortOrder
+  totalVolume4h: SortOrder
+  totalVolume7d: SortOrder
+  totalVolume24h: SortOrder
+  totalVolumeFiltered1h: SortOrder
+  totalVolumeFiltered4h: SortOrder
+  totalVolumeFiltered7d: SortOrder
+  totalVolumeFiltered24h: SortOrder
 }
 
 enum ConditionGroupScalarFieldEnum {
@@ -486,6 +502,14 @@ enum ConditionGroupScalarFieldEnum {
   similarMarkets
   totalOpenInterest
   totalPredictionCount
+  totalVolume1h
+  totalVolume4h
+  totalVolume7d
+  totalVolume24h
+  totalVolumeFiltered1h
+  totalVolumeFiltered4h
+  totalVolumeFiltered7d
+  totalVolumeFiltered24h
 }
 
 input ConditionGroupWhereInput {
@@ -504,6 +528,14 @@ input ConditionGroupWhereInput {
   similarMarkets: StringNullableListFilter
   totalOpenInterest: DecimalFilter
   totalPredictionCount: IntFilter
+  totalVolume1h: DecimalFilter
+  totalVolume4h: DecimalFilter
+  totalVolume7d: DecimalFilter
+  totalVolume24h: DecimalFilter
+  totalVolumeFiltered1h: DecimalFilter
+  totalVolumeFiltered4h: DecimalFilter
+  totalVolumeFiltered7d: DecimalFilter
+  totalVolumeFiltered24h: DecimalFilter
 }
 
 input ConditionGroupWhereUniqueInput {
@@ -522,6 +554,14 @@ input ConditionGroupWhereUniqueInput {
   similarMarkets: StringNullableListFilter
   totalOpenInterest: DecimalFilter
   totalPredictionCount: IntFilter
+  totalVolume1h: DecimalFilter
+  totalVolume4h: DecimalFilter
+  totalVolume7d: DecimalFilter
+  totalVolume24h: DecimalFilter
+  totalVolumeFiltered1h: DecimalFilter
+  totalVolumeFiltered4h: DecimalFilter
+  totalVolumeFiltered7d: DecimalFilter
+  totalVolumeFiltered24h: DecimalFilter
 }
 
 input ConditionListRelationFilter {
@@ -569,6 +609,14 @@ input ConditionOrderByWithRelationInput {
   similarMarketVolume: SortOrder
   similarMarkets: SortOrder
   tags: SortOrder
+  volume1h: SortOrder
+  volume4h: SortOrder
+  volume7d: SortOrder
+  volume24h: SortOrder
+  volumeFiltered1h: SortOrder
+  volumeFiltered4h: SortOrder
+  volumeFiltered7d: SortOrder
+  volumeFiltered24h: SortOrder
 }
 
 input ConditionRelationFilter {
@@ -602,6 +650,14 @@ enum ConditionScalarFieldEnum {
   similarMarketVolume
   similarMarkets
   tags
+  volume1h
+  volume4h
+  volume7d
+  volume24h
+  volumeFiltered1h
+  volumeFiltered4h
+  volumeFiltered7d
+  volumeFiltered24h
 }
 
 input ConditionWhereInput {
@@ -637,6 +693,14 @@ input ConditionWhereInput {
   similarMarketVolume: FloatFilter
   similarMarkets: StringNullableListFilter
   tags: StringNullableListFilter
+  volume1h: FloatFilter
+  volume4h: FloatFilter
+  volume7d: FloatFilter
+  volume24h: FloatFilter
+  volumeFiltered1h: FloatFilter
+  volumeFiltered4h: FloatFilter
+  volumeFiltered7d: FloatFilter
+  volumeFiltered24h: FloatFilter
 }
 
 input ConditionWhereUniqueInput {
@@ -672,6 +736,14 @@ input ConditionWhereUniqueInput {
   similarMarketVolume: FloatFilter
   similarMarkets: StringNullableListFilter
   tags: StringNullableListFilter
+  volume1h: FloatFilter
+  volume4h: FloatFilter
+  volume7d: FloatFilter
+  volume24h: FloatFilter
+  volumeFiltered1h: FloatFilter
+  volumeFiltered4h: FloatFilter
+  volumeFiltered7d: FloatFilter
+  volumeFiltered24h: FloatFilter
 }
 
 input DateTimeFilter {
@@ -1463,7 +1535,7 @@ type Query {
   """
   Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field
   """
-  questions(categorySlugs: [String!], chainId: Int, maxEstimatedPrice: Float, minEndTime: Int, minEstimatedPrice: Float, resolutionStatus: ResolutionStatus, search: String, skip: Int! = 0, sortDirection: SortOrder! = desc, sortField: QuestionSortField, tag: String, take: Int! = 50): [Question!]!
+  questions(categorySlugs: [String!], chainId: Int, excludeLowOdds: Boolean, maxEstimatedPrice: Float, minEndTime: Int, minEstimatedPrice: Float, resolutionStatus: ResolutionStatus, search: String, skip: Int! = 0, sortDirection: SortOrder! = desc, sortField: QuestionSortField, tag: String, take: Int! = 50, volumeWindow: VolumeWindow): [Question!]!
 
   """Look up a single secondary market trade by its trade hash"""
   trade(id: String!): Trade
@@ -1509,6 +1581,7 @@ enum QuestionSortField {
   openInterest
   predictionCount
   similarMarketVolume
+  volume
 }
 
 type ReferralCode {
@@ -1768,4 +1841,12 @@ type VolumeDataPoint {
 
   """Total volume in wei for this bucket"""
   volume: String!
+}
+
+"""Time window for volume-based sorting"""
+enum VolumeWindow {
+  fourHours
+  oneHour
+  sevenDays
+  twentyFourHours
 }

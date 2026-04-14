@@ -5,8 +5,9 @@ import {
   type QuestionType,
   type SortField,
   type SortDirection,
+  type VolumeWindow,
 } from '@sapience/sdk/queries';
-export type { SortField, SortDirection, QuestionType };
+export type { SortField, SortDirection, VolumeWindow, QuestionType };
 
 export interface UseInfiniteQuestionsOptions {
   chainId?: number;
@@ -20,6 +21,8 @@ export interface UseInfiniteQuestionsOptions {
   minEstimatedPrice?: number;
   maxEstimatedPrice?: number;
   tag?: string;
+  volumeWindow?: VolumeWindow;
+  excludeLowOdds?: boolean;
 }
 
 export interface UseInfiniteQuestionsResult {
@@ -45,6 +48,8 @@ export function useInfiniteQuestions(
     minEstimatedPrice,
     maxEstimatedPrice,
     tag,
+    volumeWindow,
+    excludeLowOdds,
   } = opts;
 
   const minEndTime =
@@ -77,6 +82,8 @@ export function useInfiniteQuestions(
     minEstimatedPrice,
     maxEstimatedPrice,
     tag,
+    volumeWindow,
+    excludeLowOdds,
   });
   const prevFiltersKeyRef = useRef(filtersKey);
   const lastSuccessfulSkipRef = useRef<number>(0);
@@ -113,6 +120,8 @@ export function useInfiniteQuestions(
       minEstimatedPrice,
       maxEstimatedPrice,
       tag,
+      volumeWindow,
+      excludeLowOdds,
     ],
     queryFn: () =>
       fetchQuestionsSorted({
@@ -128,6 +137,8 @@ export function useInfiniteQuestions(
         minEstimatedPrice,
         maxEstimatedPrice,
         tag,
+        volumeWindow,
+        excludeLowOdds,
       }),
   });
 

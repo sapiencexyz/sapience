@@ -61,6 +61,18 @@ export default function SortControls({
         </button>
         <button
           type="button"
+          onClick={() => handleClick('volume')}
+          className={`inline-flex items-center gap-1 h-full px-4 rounded-full font-display text-sm font-semibold tracking-[0.02em] transition-colors ${
+            sortField === 'volume'
+              ? 'bg-white/20 text-white'
+              : 'text-white/60 hover:text-white'
+          }`}
+        >
+          Volume
+          <ArrowIcon field="volume" />
+        </button>
+        <button
+          type="button"
           onClick={() => handleClick('endTime')}
           className={`inline-flex items-center gap-1 h-full px-4 rounded-full font-display text-sm font-semibold tracking-[0.02em] transition-colors ${
             sortField === 'endTime'

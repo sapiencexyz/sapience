@@ -99,9 +99,11 @@ vi.mock('~/lib/context/SessionContext', () => ({
 }));
 
 const mockReadContract = vi.fn().mockResolvedValue(0n);
+const mockGetBytecode = vi.fn().mockResolvedValue(undefined);
 vi.mock('~/lib/utils/util', () => ({
   getPublicClientForChainId: () => ({
     readContract: (...args: unknown[]) => mockReadContract(...args),
+    getBytecode: (...args: unknown[]) => mockGetBytecode(...args),
   }),
 }));
 
