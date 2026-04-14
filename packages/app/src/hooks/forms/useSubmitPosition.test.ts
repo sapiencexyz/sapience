@@ -54,6 +54,11 @@ vi.mock('@sapience/sdk/contracts', () => ({
   },
 }));
 
+const mockSimulateMint = vi.fn().mockResolvedValue({ success: true });
+vi.mock('@sapience/sdk/auction/simulate', () => ({
+  simulateMint: (...args: unknown[]) => mockSimulateMint(...args),
+}));
+
 vi.mock('@sapience/sdk/auction/escrowSigning', () => ({
   buildPredictorMintTypedData: vi.fn().mockReturnValue({
     domain: {
@@ -94,9 +99,11 @@ vi.mock('~/lib/context/SessionContext', () => ({
 }));
 
 const mockReadContract = vi.fn().mockResolvedValue(0n);
+const mockGetBytecode = vi.fn().mockResolvedValue(undefined);
 vi.mock('~/lib/utils/util', () => ({
   getPublicClientForChainId: () => ({
     readContract: (...args: unknown[]) => mockReadContract(...args),
+    getBytecode: (...args: unknown[]) => mockGetBytecode(...args),
   }),
 }));
 

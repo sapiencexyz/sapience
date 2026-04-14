@@ -34,8 +34,7 @@ vi.mock('../../db', () => ({ default: mockPrisma }));
 /** Build a valid condition payload — all required fields present */
 function validPayload(overrides: Record<string, unknown> = {}) {
   return {
-    conditionHash:
-      '0x' + 'ab'.repeat(32),
+    conditionHash: '0x' + 'ab'.repeat(32),
     question: 'Will BTC hit $200k by end of 2026?',
     endTime: Math.floor(Date.now() / 1000) + 86400, // tomorrow
     description: 'Test condition',
@@ -82,9 +81,7 @@ describe('POST /admin/conditions', () => {
       const payload = validPayload();
       delete (payload as Record<string, unknown>).resolver;
 
-      const res = await request(app)
-        .post('/admin/conditions')
-        .send(payload);
+      const res = await request(app).post('/admin/conditions').send(payload);
 
       expect(res.status).toBe(400);
       expect(res.body.message).toMatch(/resolver/i);

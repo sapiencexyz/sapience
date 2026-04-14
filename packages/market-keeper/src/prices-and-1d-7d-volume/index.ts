@@ -19,7 +19,7 @@ import {
   logError,
 } from '../utils';
 import { parseYesPrice } from '../utils/price';
-import { submitPriceUpdates } from '../generate/api';
+import { submitPriceUpdates, submitVolumeUpdates } from '../generate/api';
 
 // ============ CLI Arguments ============
 
@@ -38,11 +38,10 @@ function parseArgs(): RefreshPricesCLIOptions {
 
 function showHelp(): void {
   console.log(`
-Usage: tsx scripts/refresh-prices.ts [options]
+Usage: tsx scripts/prices-and-1d-7d-volume.ts [options]
 
 Fetches all active Polymarket conditions from Sapience, looks up current prices
-on Polymarket, and submits batch price updates. Covers markets outside the
-generate (0-21 days) and relist (-30-0 days) windows.
+and 24h/7d volume on Polymarket's Gamma API, and submits batch updates.
 
 Options:
   --dry-run      Show what would be updated without submitting
@@ -65,12 +64,16 @@ async function fetchActiveConditionIds(apiUrl: string): Promise<string[]> {
 
   const PAGE_SIZE = 100;
   const allIds: string[] = [];
+  const seen = new Set<string>();
   let skip = 0;
 
   while (true) {
+    // orderBy id ensures deterministic pagination — without it, conditions
+    // sharing the same timestamp can shift between pages, causing missed or
+    // duplicate results (see commit 31c216402).
     const query = `
-      query ActiveConditions($where: ConditionWhereInput!, $take: Int!, $skip: Int!) {
-        conditions(where: $where, take: $take, skip: $skip) {
+      query ActiveConditions($where: ConditionWhereInput!, $take: Int!, $skip: Int!, $orderBy: [ConditionOrderByWithRelationInput!]) {
+        conditions(where: $where, take: $take, skip: $skip, orderBy: $orderBy) {
           id
         }
       }
@@ -89,6 +92,7 @@ async function fetchActiveConditionIds(apiUrl: string): Promise<string[]> {
           },
           take: PAGE_SIZE,
           skip,
+          orderBy: [{ id: 'asc' }],
         },
       }),
     });
@@ -105,7 +109,10 @@ async function fetchActiveConditionIds(apiUrl: string): Promise<string[]> {
     const conditions = result.data?.conditions ?? [];
 
     for (const c of conditions) {
-      allIds.push(c.id);
+      if (!seen.has(c.id)) {
+        seen.add(c.id);
+        allIds.push(c.id);
+      }
     }
 
     if (conditions.length < PAGE_SIZE) break;
@@ -121,22 +128,29 @@ async function fetchActiveConditionIds(apiUrl: string): Promise<string[]> {
  * Look up current prices for a batch of condition IDs on Polymarket.
  * Uses the Gamma API's condition_id filter.
  */
+interface PriceUpdate {
+  id: string;
+  estimatedPrice: number;
+  similarMarketVolume?: number;
+  similarMarketImage?: string;
+}
+
+interface VolumeUpdate {
+  id: string;
+  volume24h: number;
+  volume7d: number;
+}
+
+interface PolymarketFetchResult {
+  priceUpdates: PriceUpdate[];
+  volumeUpdates: VolumeUpdate[];
+}
+
 async function fetchPolymarketPrices(
   conditionIds: string[]
-): Promise<
-  Array<{
-    id: string;
-    estimatedPrice: number;
-    similarMarketVolume?: number;
-    similarMarketImage?: string;
-  }>
-> {
-  const priceUpdates: Array<{
-    id: string;
-    estimatedPrice: number;
-    similarMarketVolume?: number;
-    similarMarketImage?: string;
-  }> = [];
+): Promise<PolymarketFetchResult> {
+  const priceUpdates: PriceUpdate[] = [];
+  const volumeUpdates: VolumeUpdate[] = [];
   const BATCH_SIZE = 50; // Polymarket API query string limit
 
   for (let i = 0; i < conditionIds.length; i += BATCH_SIZE) {
@@ -152,7 +166,7 @@ async function fetchPolymarketPrices(
 
       if (!response.ok) {
         logError(
-          `[RefreshPrices] Polymarket batch ${i / BATCH_SIZE + 1} failed: HTTP ${response.status}`
+          `[Prices+Volume] Polymarket batch ${i / BATCH_SIZE + 1} failed: HTTP ${response.status}`
         );
         continue;
       }
@@ -161,6 +175,8 @@ async function fetchPolymarketPrices(
         conditionId: string;
         outcomePrices?: string | number[];
         volume?: string;
+        volume24hr?: number;
+        volume1wk?: number;
         image?: string;
       }>;
 
@@ -173,17 +189,30 @@ async function fetchPolymarketPrices(
             similarMarketVolume: parseFloat(market.volume || '0') || 0,
             similarMarketImage: market.image,
           });
+
+          // Gamma API provides pre-computed 24h and 7d volume.
+          // These are written first; refresh-volume runs after and overwrites
+          // with more accurate trade-based values (see start.js ordering).
+          const v24h = market.volume24hr ?? 0;
+          const v7d = market.volume1wk ?? 0;
+          if (v24h > 0 || v7d > 0) {
+            volumeUpdates.push({
+              id: market.conditionId,
+              volume24h: v24h,
+              volume7d: v7d,
+            });
+          }
         }
       }
     } catch (error) {
       logError(
-        `[RefreshPrices] Polymarket batch ${i / BATCH_SIZE + 1} error:`,
+        `[Prices+Volume] Polymarket batch ${i / BATCH_SIZE + 1} error:`,
         error instanceof Error ? error.message : String(error)
       );
     }
   }
 
-  return priceUpdates;
+  return { priceUpdates, volumeUpdates };
 }
 
 // ============ Main ============
@@ -215,24 +244,25 @@ export async function main() {
 
   try {
     // 1. Fetch all active Polymarket condition IDs from Sapience
-    log('[RefreshPrices] Fetching active conditions from Sapience...');
+    log('[Prices+Volume] Fetching active conditions from Sapience...');
     const conditionIds = await fetchActiveConditionIds(apiUrl);
-    log(`[RefreshPrices] Found ${conditionIds.length} active conditions`);
+    log(`[Prices+Volume] Found ${conditionIds.length} active conditions`);
 
     if (conditionIds.length === 0) {
-      log('[RefreshPrices] No active conditions to update');
+      log('[Prices+Volume] No active conditions to update');
       return;
     }
 
-    // 2. Look up current prices on Polymarket
-    log('[RefreshPrices] Fetching prices from Polymarket...');
-    const priceUpdates = await fetchPolymarketPrices(conditionIds);
+    // 2. Look up current prices + time-bucketed volume on Polymarket
+    log('[Prices+Volume] Fetching prices from Polymarket...');
+    const { priceUpdates, volumeUpdates } =
+      await fetchPolymarketPrices(conditionIds);
     log(
-      `[RefreshPrices] Got prices for ${priceUpdates.length}/${conditionIds.length} conditions`
+      `[Prices+Volume] Got prices for ${priceUpdates.length}/${conditionIds.length} conditions, ${volumeUpdates.length} volume updates`
     );
 
     if (priceUpdates.length === 0) {
-      log('[RefreshPrices] No price updates to submit');
+      log('[Prices+Volume] No price updates to submit');
       return;
     }
 
@@ -245,13 +275,28 @@ export async function main() {
           `  ${update.id} → ${(update.estimatedPrice * 100).toFixed(1)}% (vol: $${(update.similarMarketVolume ?? 0).toLocaleString()})`
         );
       }
+      if (volumeUpdates.length > 0) {
+        log(`\nVolume updates (24h/7d from Gamma): ${volumeUpdates.length}`);
+        for (const v of volumeUpdates.slice(0, 10)) {
+          log(
+            `  ${v.id} → 24h: $${v.volume24h.toLocaleString()}, 7d: $${v.volume7d.toLocaleString()}`
+          );
+        }
+        if (volumeUpdates.length > 10) {
+          log(`  ... and ${volumeUpdates.length - 10} more`);
+        }
+      }
       log('\n========== END DRY RUN ==========\n');
       return;
     }
 
-    // 4. Submit price updates
+    // 4. Submit price updates + volume updates
     if (hasAPICredentials && apiUrl && privateKey) {
       await submitPriceUpdates(apiUrl, privateKey, priceUpdates);
+
+      if (volumeUpdates.length > 0) {
+        await submitVolumeUpdates(apiUrl, privateKey, volumeUpdates);
+      }
     }
   } catch (error) {
     logError('Error:', error);

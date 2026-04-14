@@ -1,14 +1,31 @@
 /**
- * Pure bid simulation utilities for auction validation.
+ * Auction simulation utilities.
  *
- * Extracted from packages/app/src/lib/auction/simulateBidMint.ts
- * Storage slot helpers and types are pure; the actual simulation function
- * remains in the app because it depends on app-specific RPC client setup.
+ * Tier 3 validation: simulates the on-chain mint() call via eth_call
+ * with state overrides. Catches contract-level reverts (bad picks,
+ * resolver rejections, signature issues, counterparty fund shortfalls)
+ * before the real transaction fires.
+ *
+ * Also exports pure helpers for Solady storage slot computation,
+ * state override construction, and error parsing.
  *
  * @module auction/simulate
  */
 
-import { concat, keccak256, toHex } from 'viem';
+import {
+  concat,
+  encodeFunctionData,
+  keccak256,
+  toHex,
+  zeroAddress,
+  type Address,
+  type Hex,
+  type PublicClient,
+} from 'viem';
+import { predictionMarketEscrowAbi } from '../abis';
+
+/** 32-byte zero ref code (no referral). */
+const ZERO_REF_CODE = ('0x' + '00'.repeat(32)) as Hex;
 
 // ─── Solady ERC20 Storage Slot Helpers ───────────────────────────────────────
 
@@ -180,8 +197,8 @@ export function buildSimulationStateOverride(params: {
   simulationAddress: `0x${string}`;
   collateralTokenAddress: `0x${string}`;
   predictionMarketAddress: `0x${string}`;
-  /** Wei amount of the counterparty's collateral (used to size the state override). */
-  counterpartyCollateralWei: bigint;
+  /** Wei amount of collateral to override (used to size the state override). */
+  collateralAmountWei: bigint;
 }): Array<{
   address: `0x${string}`;
   balance?: bigint;
@@ -191,7 +208,7 @@ export function buildSimulationStateOverride(params: {
     simulationAddress,
     collateralTokenAddress,
     predictionMarketAddress,
-    counterpartyCollateralWei,
+    collateralAmountWei,
   } = params;
 
   const balanceSlot = getSoladyBalanceSlot(simulationAddress);
@@ -199,7 +216,7 @@ export function buildSimulationStateOverride(params: {
     simulationAddress,
     predictionMarketAddress
   );
-  const sufficientBalance = counterpartyCollateralWei + 1n;
+  const sufficientBalance = collateralAmountWei + 1n;
 
   return [
     {
@@ -295,4 +312,170 @@ export function isContractRevert(err: unknown): boolean {
   // Fallback: check message for revert keywords
   const msg = err.message;
   return msg.includes('execution reverted') || msg.includes('revert');
+}
+
+// ─── Tier 3: Mint Simulation ────────────────────────────────────────────────
+
+/** Pick data for mint simulation (matches contract IV2Types.Pick). */
+export interface SimulateMintPick {
+  conditionResolver: Address;
+  conditionId: Hex;
+  predictedOutcome: number;
+}
+
+/** Parameters for Tier 3 mint simulation. */
+export interface SimulateMintParams {
+  picks: SimulateMintPick[];
+  predictorCollateral: bigint;
+  counterpartyCollateral: bigint;
+  predictor: Address;
+  counterparty: Address;
+  predictorNonce: bigint;
+  counterpartyNonce: bigint;
+  predictorDeadline: bigint;
+  counterpartyDeadline: bigint;
+  predictorSignature: Hex;
+  counterpartySignature: Hex;
+  refCode?: Hex;
+  predictorSessionKeyData?: Hex;
+  counterpartySessionKeyData?: Hex;
+  predictorSponsor?: Address;
+  predictorSponsorData?: Hex;
+}
+
+export interface SimulateMintOptions {
+  predictionMarketAddress: Address;
+  collateralTokenAddress: Address;
+  publicClient: PublicClient;
+  /**
+   * Check predictor's real on-chain balance instead of overriding it.
+   * Default false — the approve is part of the same batch, so we override
+   * both balance and allowance to simulate the batch executing atomically.
+   */
+  checkPredictorBalance?: boolean;
+}
+
+export interface SimulateMintResult {
+  success: boolean;
+  error?: string;
+  /** True if the error was a contract revert (vs RPC/network failure). */
+  isRevert?: boolean;
+}
+
+/**
+ * Tier 3 validation: simulate the mint() call via eth_call.
+ *
+ * Overrides the predictor's ERC-20 allowance (and optionally balance) to
+ * simulate the approve that would execute earlier in the batch. Uses the
+ * counterparty's real on-chain balance/allowance — this is the validation
+ * point (confirming their funds are actually available).
+ *
+ * Catches all contract-level reverts: bad picks, resolver rejections,
+ * signature failures, collateral minimums, counterparty fund shortfalls, etc.
+ */
+export async function simulateMint(
+  params: SimulateMintParams,
+  opts: SimulateMintOptions
+): Promise<SimulateMintResult> {
+  const {
+    predictionMarketAddress,
+    collateralTokenAddress,
+    publicClient,
+    checkPredictorBalance = false,
+  } = opts;
+
+  // Build state overrides for the predictor's allowance (simulates the
+  // approve call that precedes mint in the batch). If checkPredictorBalance
+  // is false (default), also override the predictor's balance so we don't
+  // fail on insufficient funds — the form's balance context guards that.
+  const predictorOverrides = buildSimulationStateOverride({
+    simulationAddress: params.predictor,
+    collateralTokenAddress,
+    predictionMarketAddress,
+    collateralAmountWei: params.predictorCollateral,
+  });
+
+  // When checking predictor balance, only override allowance (not balance)
+  let stateOverride: StateOverrideEntry[];
+  if (checkPredictorBalance) {
+    // Strip balance override, keep only allowance
+    const allowanceOnly: StateOverrideEntry[] = predictorOverrides.map(
+      (entry) => {
+        if (entry.address.toLowerCase() === params.predictor.toLowerCase()) {
+          // Remove the native balance override for the predictor account
+          return { address: entry.address };
+        }
+        if (
+          entry.address.toLowerCase() === collateralTokenAddress.toLowerCase()
+        ) {
+          // Keep only allowance slot, strip balance slot
+          const allowanceSlot = getSoladyAllowanceSlot(
+            params.predictor,
+            predictionMarketAddress
+          );
+          return {
+            address: entry.address,
+            stateDiff: entry.stateDiff?.filter(
+              (sd) => sd.slot.toLowerCase() === allowanceSlot.toLowerCase()
+            ),
+          };
+        }
+        return entry;
+      }
+    );
+    stateOverride = allowanceOnly;
+  } else {
+    stateOverride = predictorOverrides;
+  }
+
+  // Encode the mint calldata
+  const mintCalldata = encodeFunctionData({
+    abi: predictionMarketEscrowAbi,
+    functionName: 'mint',
+    args: [
+      {
+        picks: params.picks.map((p) => ({
+          conditionResolver: p.conditionResolver,
+          conditionId: p.conditionId,
+          predictedOutcome: p.predictedOutcome,
+        })),
+        predictorCollateral: params.predictorCollateral,
+        counterpartyCollateral: params.counterpartyCollateral,
+        predictor: params.predictor,
+        counterparty: params.counterparty,
+        predictorNonce: params.predictorNonce,
+        counterpartyNonce: params.counterpartyNonce,
+        predictorDeadline: params.predictorDeadline,
+        counterpartyDeadline: params.counterpartyDeadline,
+        predictorSignature: params.predictorSignature,
+        counterpartySignature: params.counterpartySignature,
+        refCode: params.refCode ?? ZERO_REF_CODE,
+        predictorSessionKeyData: params.predictorSessionKeyData ?? '0x',
+        counterpartySessionKeyData: params.counterpartySessionKeyData ?? '0x',
+        predictorSponsor: params.predictorSponsor ?? zeroAddress,
+        predictorSponsorData: params.predictorSponsorData ?? '0x',
+      },
+    ],
+  });
+
+  try {
+    // eth_call with state overrides — simulates the mint without sending a tx.
+    // We use raw `call` instead of `simulateContract` because viem's
+    // simulateContract doesn't support stateOverride directly.
+    await publicClient.call({
+      to: predictionMarketAddress,
+      data: mintCalldata,
+      account: params.predictor,
+      stateOverride,
+    });
+
+    return { success: true };
+  } catch (err) {
+    const revert = isContractRevert(err);
+    return {
+      success: false,
+      error: parseSimulationError(err),
+      isRevert: revert,
+    };
+  }
 }

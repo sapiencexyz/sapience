@@ -13,7 +13,10 @@ import {
   buildSimulationStateOverride,
   getSoladyBalanceSlot,
   getSoladyAllowanceSlot,
+  simulateMint,
+  type SimulateMintParams,
 } from '../simulate';
+import type { Address, Hex } from 'viem';
 
 // ─── mergeStateOverrides ──────────────────────────────────────────────────────
 
@@ -225,7 +228,7 @@ describe('buildSimulationStateOverride', () => {
       simulationAddress: addr,
       collateralTokenAddress: collateral,
       predictionMarketAddress: market,
-      counterpartyCollateralWei: 1000n,
+      collateralAmountWei: 1000n,
     });
 
     expect(result).toHaveLength(2);
@@ -268,5 +271,135 @@ describe('getSoladyAllowanceSlot', () => {
     expect(getSoladyAllowanceSlot(owner, spender1)).not.toBe(
       getSoladyAllowanceSlot(owner, spender2)
     );
+  });
+});
+
+// ─── simulateMint ────────────────────────────────────────────────────────────
+
+describe('simulateMint', () => {
+  const PREDICTOR = '0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa' as Address;
+  const COUNTERPARTY = '0xbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb' as Address;
+  const MARKET = '0xcccccccccccccccccccccccccccccccccccccccc' as Address;
+  const COLLATERAL = '0xdddddddddddddddddddddddddddddddddddddddd' as Address;
+  const RESOLVER = '0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee' as Address;
+
+  const defaultParams: SimulateMintParams = {
+    picks: [
+      {
+        conditionResolver: RESOLVER,
+        conditionId: ('0x' + 'ab'.repeat(32)) as Hex,
+        predictedOutcome: 1,
+      },
+    ],
+    predictorCollateral: 1000000000000000000n,
+    counterpartyCollateral: 2000000000000000000n,
+    predictor: PREDICTOR,
+    counterparty: COUNTERPARTY,
+    predictorNonce: 1n,
+    counterpartyNonce: 2n,
+    predictorDeadline: 9999999999n,
+    counterpartyDeadline: 9999999999n,
+    predictorSignature: '0xabc123' as Hex,
+    counterpartySignature: '0xdef456' as Hex,
+  };
+
+  function makeMockPublicClient(callResult?: unknown, callError?: Error) {
+    return {
+      call: callError
+        ? async () => {
+            throw callError;
+          }
+        : async () => callResult ?? { data: '0x' },
+    } as unknown as PublicClient;
+  }
+
+  test('returns success when eth_call succeeds', async () => {
+    const client = makeMockPublicClient();
+    const result = await simulateMint(defaultParams, {
+      predictionMarketAddress: MARKET,
+      collateralTokenAddress: COLLATERAL,
+      publicClient: client,
+    });
+    expect(result.success).toBe(true);
+    expect(result.error).toBeUndefined();
+  });
+
+  test('returns error with parsed message on contract revert', async () => {
+    const revertError = Object.assign(
+      new Error('execution reverted: InvalidCounterpartySignature'),
+      { name: 'ContractFunctionExecutionError' }
+    );
+    const client = makeMockPublicClient(undefined, revertError);
+    const result = await simulateMint(defaultParams, {
+      predictionMarketAddress: MARKET,
+      collateralTokenAddress: COLLATERAL,
+      publicClient: client,
+    });
+    expect(result.success).toBe(false);
+    expect(result.isRevert).toBe(true);
+    expect(result.error).toBe('Invalid counterparty signature');
+  });
+
+  test('returns error on RPC failure (non-revert)', async () => {
+    const rpcError = new Error('network timeout');
+    const client = makeMockPublicClient(undefined, rpcError);
+    const result = await simulateMint(defaultParams, {
+      predictionMarketAddress: MARKET,
+      collateralTokenAddress: COLLATERAL,
+      publicClient: client,
+    });
+    expect(result.success).toBe(false);
+    expect(result.isRevert).toBe(false);
+  });
+
+  test('passes state overrides to eth_call', async () => {
+    const callSpy = async (args: Record<string, unknown>) => {
+      // Verify stateOverride is present
+      expect(args).toHaveProperty('stateOverride');
+      const overrides = args.stateOverride as Array<{ address: string }>;
+      expect(overrides.length).toBeGreaterThan(0);
+      // Predictor's collateral token should have state overrides
+      const tokenOverride = overrides.find(
+        (o) => o.address.toLowerCase() === COLLATERAL.toLowerCase()
+      );
+      expect(tokenOverride).toBeDefined();
+      return { data: '0x' };
+    };
+    const client = { call: callSpy } as unknown as PublicClient;
+
+    const result = await simulateMint(defaultParams, {
+      predictionMarketAddress: MARKET,
+      collateralTokenAddress: COLLATERAL,
+      publicClient: client,
+    });
+    expect(result.success).toBe(true);
+  });
+
+  test('uses default values for optional fields', async () => {
+    const callSpy = async (args: Record<string, unknown>) => {
+      // Verify calldata is present (mint was encoded)
+      expect(args).toHaveProperty('data');
+      expect(typeof args.data).toBe('string');
+      expect((args.data as string).startsWith('0x')).toBe(true);
+      return { data: '0x' };
+    };
+    const client = { call: callSpy } as unknown as PublicClient;
+
+    // Params without optional fields
+    const minimalParams: SimulateMintParams = {
+      ...defaultParams,
+      refCode: undefined,
+      predictorSessionKeyData: undefined,
+      counterpartySessionKeyData: undefined,
+      predictorSponsor: undefined,
+      predictorSponsorData: undefined,
+    };
+
+    const result = await simulateMint(minimalParams, {
+      predictionMarketAddress: MARKET,
+      collateralTokenAddress: COLLATERAL,
+      publicClient: client,
+    });
+    expect(result.success).toBe(true);
   });
 });

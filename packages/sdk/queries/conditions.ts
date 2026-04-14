@@ -24,6 +24,14 @@ export interface ConditionType {
   conditionGroupId?: number | null;
   conditionGroup?: { id: number; name: string } | null;
   estimatedPrice?: number | null;
+  volume1h?: number;
+  volume4h?: number;
+  volume24h?: number;
+  volume7d?: number;
+  volumeFiltered1h?: number;
+  volumeFiltered4h?: number;
+  volumeFiltered24h?: number;
+  volumeFiltered7d?: number;
 }
 
 export interface ConditionFilters {

@@ -7,11 +7,22 @@ export type SortField =
   | 'endTime'
   | 'createdAt'
   | 'predictionCount'
-  | 'similarMarketVolume';
+  | 'similarMarketVolume'
+  | 'volume';
 export type SortDirection = 'asc' | 'desc';
+export type VolumeWindow = '1h' | '4h' | '24h' | '7d';
+
+/** Map friendly VolumeWindow values to GraphQL enum keys */
+const VOLUME_WINDOW_TO_GQL: Record<VolumeWindow, string> = {
+  '1h': 'oneHour',
+  '4h': 'fourHours',
+  '24h': 'twentyFourHours',
+  '7d': 'sevenDays',
+};
 export type ResolutionStatusValue =
   | 'all'
   | 'unresolved'
+  | 'resolved'
   | 'resolvedYes'
   | 'resolvedNo';
 
@@ -35,6 +46,8 @@ const GET_QUESTIONS = /* GraphQL */ `
     $minEstimatedPrice: Float
     $maxEstimatedPrice: Float
     $tag: String
+    $volumeWindow: VolumeWindow
+    $excludeLowOdds: Boolean
   ) {
     questions(
       take: $take
@@ -49,6 +62,8 @@ const GET_QUESTIONS = /* GraphQL */ `
       minEstimatedPrice: $minEstimatedPrice
       maxEstimatedPrice: $maxEstimatedPrice
       tag: $tag
+      volumeWindow: $volumeWindow
+      excludeLowOdds: $excludeLowOdds
     ) {
       questionType
       group {
@@ -81,6 +96,14 @@ const GET_QUESTIONS = /* GraphQL */ `
           similarMarketVolume
           similarMarketImage
           estimatedPrice
+          volume1h
+          volume4h
+          volume24h
+          volume7d
+          volumeFiltered1h
+          volumeFiltered4h
+          volumeFiltered24h
+          volumeFiltered7d
           conditionGroupId
           category {
             id
@@ -109,7 +132,16 @@ const GET_QUESTIONS = /* GraphQL */ `
         assertionTimestamp
         openInterest
         similarMarketVolume
+        similarMarketImage
         estimatedPrice
+        volume1h
+        volume4h
+        volume24h
+        volume7d
+        volumeFiltered1h
+        volumeFiltered4h
+        volumeFiltered24h
+        volumeFiltered7d
         conditionGroupId
         category {
           id
@@ -134,6 +166,8 @@ export interface FetchQuestionsSortedParams {
   minEstimatedPrice?: number;
   maxEstimatedPrice?: number;
   tag?: string;
+  volumeWindow?: VolumeWindow;
+  excludeLowOdds?: boolean;
 }
 
 export async function fetchQuestionsSorted(
@@ -155,6 +189,8 @@ export async function fetchQuestionsSorted(
     minEstimatedPrice: params.minEstimatedPrice ?? null,
     maxEstimatedPrice: params.maxEstimatedPrice ?? null,
     tag: params.tag ?? null,
+    volumeWindow: params.volumeWindow ? VOLUME_WINDOW_TO_GQL[params.volumeWindow] : null,
+    excludeLowOdds: params.excludeLowOdds ?? null,
   };
 
   const data = await graphqlRequest<QuestionsQueryResult>(

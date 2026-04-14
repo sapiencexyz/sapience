@@ -29,6 +29,7 @@ import {
   QuestionItemType,
   QuestionSortField,
   ResolutionStatus,
+  VolumeWindow,
 } from '../QuestionsResolver';
 import type { ApolloContext } from '../../startApolloServer';
 import type { SortOrder } from '@generated/type-graphql';
@@ -78,7 +79,9 @@ describe('QuestionsResolver', () => {
       (overrides.resolutionStatus as ResolutionStatus) ?? null,
       (overrides.minEstimatedPrice as number) ?? null,
       (overrides.maxEstimatedPrice as number) ?? null,
-      (overrides.tag as string) ?? null
+      (overrides.tag as string) ?? null,
+      (overrides.volumeWindow as VolumeWindow) ?? null,
+      (overrides.excludeLowOdds as boolean) ?? null
     );
 
   /** Extract the full SQL text from the first $queryRaw call. */
@@ -615,6 +618,91 @@ describe('QuestionsResolver', () => {
         const filteredPartB = filteredSql.split('UNION ALL')[1];
         expect(unfilteredPartB).toContain(colRef);
         expect(filteredPartB).toContain(colRef);
+      });
+    });
+
+    describe('volume sort field', () => {
+      it('defaults to volume24h when no volumeWindow specified', async () => {
+        await callQuestions({
+          sortField: QuestionSortField.volume,
+        });
+        const sql = getCapturedSql();
+        expect(sql).toContain('"volume24h"');
+        expect(sql).toContain('"totalVolume24h"');
+      });
+
+      it('uses volume1h when volumeWindow is oneHour', async () => {
+        await callQuestions({
+          sortField: QuestionSortField.volume,
+          volumeWindow: VolumeWindow.oneHour,
+        });
+        const sql = getCapturedSql();
+        expect(sql).toContain('"volume1h"');
+        expect(sql).toContain('"totalVolume1h"');
+      });
+
+      it('uses volume4h when volumeWindow is fourHours', async () => {
+        await callQuestions({
+          sortField: QuestionSortField.volume,
+          volumeWindow: VolumeWindow.fourHours,
+        });
+        const sql = getCapturedSql();
+        expect(sql).toContain('"volume4h"');
+        expect(sql).toContain('"totalVolume4h"');
+      });
+
+      it('uses volume7d when volumeWindow is sevenDays', async () => {
+        await callQuestions({
+          sortField: QuestionSortField.volume,
+          volumeWindow: VolumeWindow.sevenDays,
+        });
+        const sql = getCapturedSql();
+        expect(sql).toContain('"volume7d"');
+        expect(sql).toContain('"totalVolume7d"');
+      });
+
+      it('uses volumeFiltered24h when excludeLowOdds is true', async () => {
+        await callQuestions({
+          sortField: QuestionSortField.volume,
+          excludeLowOdds: true,
+        });
+        const sql = getCapturedSql();
+        expect(sql).toContain('"volumeFiltered24h"');
+        expect(sql).toContain('"totalVolumeFiltered24h"');
+      });
+
+      it('uses volumeFiltered1h when oneHour + excludeLowOdds', async () => {
+        await callQuestions({
+          sortField: QuestionSortField.volume,
+          volumeWindow: VolumeWindow.oneHour,
+          excludeLowOdds: true,
+        });
+        const sql = getCapturedSql();
+        expect(sql).toContain('"volumeFiltered1h"');
+        expect(sql).toContain('"totalVolumeFiltered1h"');
+      });
+
+      it('uses LEFT JOIN path when per-condition filters are active', async () => {
+        await callQuestions({
+          sortField: QuestionSortField.volume,
+          volumeWindow: VolumeWindow.fourHours,
+          resolutionStatus: ResolutionStatus.unresolved,
+        });
+        const sql = getCapturedSql();
+        expect(sql).toContain('LEFT JOIN condition c ON');
+        expect(sql).toContain('SUM(c."volume4h")');
+      });
+
+      it('does not affect SQL when sortField is not volume', async () => {
+        await callQuestions({
+          sortField: QuestionSortField.openInterest,
+          volumeWindow: VolumeWindow.oneHour,
+          excludeLowOdds: true,
+        });
+        const sql = getCapturedSql();
+        expect(sql).not.toContain('"volume1h"');
+        expect(sql).not.toContain('"volumeFiltered"');
+        expect(sql).toContain('"openInterest"');
       });
     });
   });

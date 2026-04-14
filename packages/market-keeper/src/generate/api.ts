@@ -312,9 +312,96 @@ export async function submitPriceUpdates(
 }
 
 /**
+ * Submit batch volume updates for existing conditions.
+ * Uses PUT /admin/conditions/volume.
+ */
+export async function submitVolumeUpdates<T extends { id: string }>(
+  apiUrl: string,
+  privateKey: `0x${string}`,
+  volumeUpdates: T[]
+): Promise<void> {
+  if (volumeUpdates.length === 0) {
+    console.log('[Volume] No volume updates to submit');
+    return;
+  }
+
+  const BATCH_SIZE = 200;
+  let totalUpdated = 0;
+
+  for (let i = 0; i < volumeUpdates.length; i += BATCH_SIZE) {
+    const batch = volumeUpdates.slice(i, i + BATCH_SIZE);
+    try {
+      const authHeaders = await getAdminAuthHeaders(privateKey);
+      const response = await fetchWithRetry(
+        `${apiUrl}/admin/conditions/volume`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            ...authHeaders,
+          },
+          body: JSON.stringify({ updates: batch }),
+        }
+      );
+
+      if (response.ok) {
+        const result = (await response.json()) as { updated: number };
+        totalUpdated += result.updated;
+      } else {
+        const errorData = await response
+          .json()
+          .catch(() => ({ message: 'Unknown error' }));
+        console.error(
+          `[Volume] Batch ${i / BATCH_SIZE + 1} failed: HTTP ${response.status}: ${(errorData as { message?: string }).message || response.statusText}`
+        );
+      }
+    } catch (error) {
+      console.error(
+        `[Volume] Batch ${i / BATCH_SIZE + 1} error:`,
+        error instanceof Error ? error.message : String(error)
+      );
+    }
+  }
+
+  console.log(
+    `[Volume] Updated ${totalUpdated} of ${volumeUpdates.length} conditions`
+  );
+}
+
+/** API body limit — must match express.json({ limit }) in middleware.ts */
+const API_BODY_LIMIT_BYTES = 100 * 1024; // 100KB
+
+/** Safety margin to stay under the limit */
+const BODY_LIMIT_HEADROOM = 0.9;
+
+/**
+ * Split payloads into batches that fit within the API body size limit.
+ * Measures actual JSON size rather than using a fixed count.
+ */
+function batchBySize<T>(items: T[], maxBytes: number): T[][] {
+  const limit = Math.floor(maxBytes * BODY_LIMIT_HEADROOM);
+  const batches: T[][] = [];
+  let current: T[] = [];
+  let currentSize = 20; // overhead for `{"updates":[]}`
+
+  for (const item of items) {
+    const itemSize = JSON.stringify(item).length + 1; // +1 for comma
+    if (current.length > 0 && currentSize + itemSize > limit) {
+      batches.push(current);
+      current = [];
+      currentSize = 20;
+    }
+    current.push(item);
+    currentSize += itemSize;
+  }
+  if (current.length > 0) batches.push(current);
+  return batches;
+}
+
+/**
  * Submit metadata updates for existing conditions whose Polymarket
  * data has changed (e.g., renamed markets, changed slugs, new tags).
- * Uses PUT /admin/conditions/:id for each update.
+ * Uses PUT /admin/conditions/batch-metadata with dynamic batch sizing.
  */
 export async function submitMetadataUpdates(
   apiUrl: string,
@@ -330,45 +417,63 @@ export async function submitMetadataUpdates(
 
   console.log(`[Metadata] Submitting ${updates.length} metadata updates...`);
 
-  let successCount = 0;
+  // Convert to the batch-metadata payload format
+  const payloads = updates.map((u) => ({
+    id: u.conditionId,
+    fields: u.fields,
+  }));
 
-  for (const update of updates) {
+  const batches = batchBySize(payloads, API_BODY_LIMIT_BYTES);
+  let totalUpdated = 0;
+  let totalFailed = 0;
+
+  for (let i = 0; i < batches.length; i++) {
+    const batch = batches[i];
     try {
       const authHeaders = await getAdminAuthHeaders(privateKey);
       const response = await fetchWithRetry(
-        `${apiUrl}/admin/conditions/${update.conditionId}`,
+        `${apiUrl}/admin/conditions/batch-metadata`,
         {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
             ...authHeaders,
           },
-          body: JSON.stringify(update.fields),
+          body: JSON.stringify({ updates: batch }),
         }
       );
 
       if (response.ok) {
-        successCount++;
+        const result = (await response.json()) as {
+          updated: number;
+          failed: number;
+        };
+        totalUpdated += result.updated;
+        totalFailed += result.failed;
       } else {
         const errorData = await response
           .json()
           .catch(() => ({ message: 'Unknown error' }));
         console.error(
-          `[Metadata] Failed to update ${update.conditionId.slice(0, 10)}...: HTTP ${response.status}: ${(errorData as { message?: string }).message || response.statusText}`
+          `[Metadata] Batch ${i + 1} failed: HTTP ${response.status}: ${(errorData as { message?: string }).message || response.statusText}`
         );
+        totalFailed += batch.length;
       }
     } catch (error) {
       console.error(
-        `[Metadata] Error updating ${update.conditionId.slice(0, 10)}...:`,
+        `[Metadata] Batch ${i + 1} error:`,
         error instanceof Error ? error.message : String(error)
       );
+      totalFailed += batch.length;
     }
 
-    await delay(SUBMISSION_DELAY_MS);
+    if (i + 1 < batches.length) {
+      await delay(SUBMISSION_DELAY_MS);
+    }
   }
 
   console.log(
-    `[Metadata] Updated ${successCount} of ${updates.length} conditions`
+    `[Metadata] ${totalUpdated} updated, ${totalFailed} failed (${batches.length} batches)`
   );
 }
 
@@ -390,107 +495,157 @@ export async function submitToAPI(
   );
   printPipelineStats(groupStats, 'API Group Filter');
 
-  let groupsCreated = 0;
-  let groupsSkipped = 0;
-  let groupsFailed = 0;
-  let conditionsCreated = 0;
-  let conditionsSkipped = 0;
-  let conditionsFailed = 0;
-
   const cryptoGroupsSkipped = data.groups.length - includedGroups.length;
   let cryptoConditionsSkipped = 0;
 
-  // Track submitted group titles to avoid duplicate API calls within this run
-  // (Multiple markets from same event each create a group with same title)
-  const submittedGroupTitles = new Set<string>();
+  // Collect all conditions into a flat list for batch submission
+  const allConditions: SapienceCondition[] = [];
 
-  // Submit groups and their conditions
   for (const group of includedGroups) {
-    // Only submit group if we haven't already in this run
-    if (!submittedGroupTitles.has(group.title)) {
-      const groupResult = await submitConditionGroup(apiUrl, privateKey, group);
-      submittedGroupTitles.add(group.title);
-      if (groupResult.success) {
-        if (groupResult.error) {
-          groupsSkipped++;
-        } else {
-          groupsCreated++;
-          console.log(`[API] Created group: "${group.title}"`);
-        }
-      } else {
-        groupsFailed++;
-      }
-      await delay(SUBMISSION_DELAY_MS);
-    }
-
-    // Filter conditions through pipeline
     const { output: includedConditions } = runPipeline(
       group.conditions,
       API_CONDITION_FILTERS
     );
     cryptoConditionsSkipped +=
       group.conditions.length - includedConditions.length;
-
-    // Always submit conditions (they link to group via groupName field)
-    for (const condition of includedConditions) {
-      const conditionResult = await submitCondition(
-        apiUrl,
-        privateKey,
-        condition
-      );
-
-      if (conditionResult.success) {
-        if (conditionResult.error) {
-          conditionsSkipped++;
-        } else {
-          conditionsCreated++;
-          console.log(
-            `[API] Created condition: "${condition.question.slice(0, 50)}${condition.question.length > 50 ? '...' : ''}"`
-          );
-        }
-      } else {
-        conditionsFailed++;
-      }
-      await delay(SUBMISSION_DELAY_MS);
-    }
+    allConditions.push(...includedConditions);
   }
 
-  // Submit ungrouped conditions
+  // Add ungrouped conditions
   const { output: includedUngrouped } = runPipeline(
     data.ungroupedConditions,
     API_CONDITION_FILTERS
   );
   cryptoConditionsSkipped +=
     data.ungroupedConditions.length - includedUngrouped.length;
+  allConditions.push(...includedUngrouped);
 
-  for (const condition of includedUngrouped) {
-    const conditionResult = await submitCondition(
-      apiUrl,
-      privateKey,
-      condition
-    );
-    if (conditionResult.success) {
-      if (conditionResult.error) {
-        conditionsSkipped++;
-      } else {
-        conditionsCreated++;
-        console.log(
-          `[API] Created condition: "${condition.question.slice(0, 50)}${condition.question.length > 50 ? '...' : ''}" (ungrouped)`
-        );
-      }
-    } else {
-      conditionsFailed++;
-    }
-    await delay(SUBMISSION_DELAY_MS);
+  if (allConditions.length === 0) {
+    console.log('[API] No conditions to submit');
+    return;
   }
 
-  // Final summary
-  const uniqueGroupsSubmitted = submittedGroupTitles.size;
+  // Build batch payloads
+  const payloads = allConditions.map((condition) => ({
+    conditionHash: condition.conditionHash,
+    question: condition.question,
+    shortName: condition.shortName,
+    categorySlug: condition.categorySlug,
+    endTime:
+      Math.max(
+        toUnixTimestamp(condition.endDate),
+        condition.endTimeOverride ?? 0
+      ) + END_TIME_BUFFER_SECONDS,
+    description: condition.description,
+    similarMarkets: condition.similarMarkets,
+    tags: condition.tags,
+    chainId: condition.chainId,
+    groupName: condition.groupTitle,
+    resolver: RESOLVER_ADDRESS,
+    estimatedPrice: condition.estimatedPrice,
+    similarMarketVolume: condition.similarMarketVolume,
+    similarMarketImage: condition.similarMarketImage,
+  }));
+
+  // Split into batches that fit within the API body size limit
+  const batches = batchBySize(payloads, API_BODY_LIMIT_BYTES);
+  let totalCreated = 0;
+  let totalSkipped = 0;
+  let totalFailed = 0;
+  const allFailedGroups = new Set<string>();
+
+  async function submitBatches(
+    batchList: typeof payloads[],
+    label: string
+  ) {
+    for (let batchIdx = 0; batchIdx < batchList.length; batchIdx++) {
+      const batch = batchList[batchIdx];
+      const batchNum = batchIdx + 1;
+
+      try {
+        const authHeaders = await getAdminAuthHeaders(privateKey);
+        const response = await fetchWithRetry(
+          `${apiUrl}/admin/conditions/batch-create`,
+          {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              ...authHeaders,
+            },
+            body: JSON.stringify({ conditions: batch }),
+          }
+        );
+
+        if (response.ok) {
+          const result = (await response.json()) as {
+            created: number;
+            skipped: number;
+            failed: number;
+            failedGroups?: string[];
+          };
+          totalCreated += result.created;
+          totalSkipped += result.skipped;
+          totalFailed += result.failed;
+          if (result.failedGroups) {
+            for (const g of result.failedGroups) allFailedGroups.add(g);
+          }
+          console.log(
+            `${label} Batch ${batchNum}: ${result.created} created, ${result.skipped} skipped, ${result.failed} failed${result.failedGroups?.length ? `, ${result.failedGroups.length} group(s) failed` : ''}`
+          );
+        } else {
+          const errorData = await response
+            .json()
+            .catch(() => ({ message: 'Unknown error' }));
+          console.error(
+            `${label} Batch ${batchNum} failed: HTTP ${response.status}: ${(errorData as { message?: string }).message || response.statusText}`
+          );
+          totalFailed += batch.length;
+        }
+      } catch (error) {
+        console.error(
+          `${label} Batch ${batchNum} error:`,
+          error instanceof Error ? error.message : String(error)
+        );
+        totalFailed += batch.length;
+      }
+
+      if (batchIdx + 1 < batchList.length) {
+        await delay(SUBMISSION_DELAY_MS);
+      }
+    }
+  }
+
+  await submitBatches(batches, '[API]');
+
+  // Retry conditions whose groups failed — the group creation may succeed
+  // on a second attempt (transient DB error) and assign the group properly.
+  if (allFailedGroups.size > 0) {
+    const retryPayloads = payloads.filter(
+      (p) => p.groupName && allFailedGroups.has(p.groupName)
+    );
+    if (retryPayloads.length > 0) {
+      console.log(
+        `[API] Retrying ${retryPayloads.length} conditions for ${allFailedGroups.size} failed group(s): ${[...allFailedGroups].join(', ')}`
+      );
+      await delay(1000); // brief pause before retry
+      const retryBatches = batchBySize(retryPayloads, API_BODY_LIMIT_BYTES);
+      await submitBatches(retryBatches, '[API Retry]');
+    }
+  }
+
   console.log(
-    `Groups: ${uniqueGroupsSubmitted} unique (${groupsCreated} created, ${groupsSkipped} already existed, ${groupsFailed} failed)`
+    `[API] Submitted ${payloads.length} conditions in ${batches.length} batches (sizes: ${batches.map((b: unknown[]) => b.length).join(', ')})`
+  );
+
+  // Final summary
+  const uniqueGroups = new Set(
+    allConditions.map((c) => c.groupTitle).filter(Boolean)
+  ).size;
+  console.log(
+    `Groups: ${uniqueGroups} unique (auto-created via batch-create)`
   );
   console.log(
-    `Conditions: ${conditionsCreated} created, ${conditionsSkipped} skipped, ${conditionsFailed} failed`
+    `Conditions: ${totalCreated} created, ${totalSkipped} skipped, ${totalFailed} failed`
   );
   if (cryptoGroupsSkipped > 0 || cryptoConditionsSkipped > 0) {
     console.log(
