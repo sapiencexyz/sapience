@@ -4,9 +4,6 @@
  *
  * Returns a unix timestamp (seconds) for the predicted resolution time,
  * or null if no date can be extracted (tier 6 — caller sends to Sonar).
- *
- * NOTE: Does NOT apply the 14-day sanity check. Caller (enrichEndTimesWithLLM)
- * compares result against Polymarket's endDate before trusting it.
  */
 
 const MONTHS =
@@ -202,7 +199,6 @@ export function extractYear(month: number, day: number): number {
 /**
  * Extract a resolution end-time from market question + description.
  * Tries tiers 0–4f in order; returns null (tier 6) if none match.
- * Caller should apply a sanity check against Polymarket's endDate.
  */
 export function extractEndTime(
   question: string,
@@ -401,9 +397,9 @@ export function extractEndTime(
     }
 
     const dm = new RegExp(
-      `\\b(${MONTHS})\\s+(\\d{1,2})(?:[-–](\\d{1,2}))?(?:st|nd|rd|th)?(?:,?\\s*(\\d{4}))?`,
+      `\\b(${MONTHS})\\s+(\\d{1,2})(?!\\d)(?:[-–](\\d{1,2}))?(?:st|nd|rd|th)?(?:,?\\s*(\\d{4}))?`,
       'i'
-    ).exec(combined);
+    ).exec(question);
     if (dm) {
       const mon = parseMonth(dm[1]);
       // Use end of range if present (e.g. "March 23-29" → 29), else use the single day
@@ -537,6 +533,45 @@ export function extractEndTime(
       if (out) out.tier = '4month';
       return toTs(yr, mon, lastDay, 23, 59);
     }
+  }
+
+  // ── Tier 4month2: "in [Month [Year]]" for non-crypto markets ──────────────
+  // Generalised version of 4month. Catches "Will Trump say X in April?",
+  // weather/econ "in April 2026", etc. Resolves to last day of month 23:59 UTC.
+  // Placed late so more-specific tiers (4weather, 4a–4f) take precedence.
+  // Excludes central bank / monetary policy questions — those resolve mid-month
+  // on the meeting date, not end-of-month.
+  const CENTRAL_BANK_RE =
+    /\b(?:Fed\b|Federal Reserve|ECB|FOMC|Bank of (?:England|Japan|Canada)|BoE|BoJ|BoC|RBA|interest rate|rate (?:cut|hike|hold|decision)|funds rate|basis points?\b|bps\b)/i;
+  m = new RegExp(`\\bin\\s+(${MONTHS})(?:\\s+(\\d{4}))?\\s*\\??$`, 'i').exec(
+    question
+  );
+  if (m && !CENTRAL_BANK_RE.test(question)) {
+    const mon = parseMonth(m[1]);
+    const approxLastDay = new Date(
+      Date.UTC(new Date().getUTCFullYear(), mon, 0)
+    ).getUTCDate();
+    const yr = m[2] ? parseInt(m[2]) : extractYear(mon, approxLastDay);
+    const lastDay = new Date(Date.UTC(yr, mon, 0)).getUTCDate();
+    if (out) out.tier = '4month2';
+    return toTs(yr, mon, lastDay, 23, 59);
+  }
+
+  // ── Tier 4week: "this week" → next Sunday 23:59 ET ──────────────────────
+  if (/\bthis\s+week\b/i.test(question)) {
+    const now = new Date();
+    const dayOfWeek = now.getUTCDay(); // 0=Sun, 1=Mon, ..., 6=Sat
+    const daysUntilSunday = dayOfWeek === 0 ? 7 : 7 - dayOfWeek;
+    const sunday = new Date(now.getTime() + daysUntilSunday * 86400 * 1000);
+    if (out) out.tier = '4week';
+    return toTs(
+      sunday.getUTCFullYear(),
+      sunday.getUTCMonth() + 1,
+      sunday.getUTCDate(),
+      23,
+      59,
+      -4 // ET
+    );
   }
 
   // Tier 6: no date found

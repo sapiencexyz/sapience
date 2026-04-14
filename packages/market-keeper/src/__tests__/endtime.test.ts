@@ -754,16 +754,124 @@ describe('extractEndTime', () => {
     });
   });
 
+  // ── Tier 4month2 — generalised "in [Month]" ────────────────────────────────
+  describe('tier 4month2 — non-crypto "in [Month]" markets', () => {
+    it('resolves "in April?" to last day of April', () => {
+      const out = { tier: '' };
+      const ts = extractEndTime(
+        'Will Elon post 50+ tweets in April?',
+        '',
+        out
+      );
+      expect(out.tier).toBe('4month2');
+      const d = new Date(ts! * 1000);
+      expect(d.getUTCMonth()).toBe(3); // April = 3 (0-indexed)
+      expect(d.getUTCDate()).toBe(30);
+    });
+
+    it('resolves "in April 2026?" with explicit year', () => {
+      const out = { tier: '' };
+      const ts = extractEndTime(
+        'Will SpaceX have exactly 12 launches in April 2026?',
+        '',
+        out
+      );
+      expect(out.tier).toBe('4month2');
+      expect(ts).toBe(
+        Math.floor(new Date('2026-04-30T23:59:00Z').getTime() / 1000)
+      );
+    });
+
+    it('excludes Fed / central bank questions', () => {
+      const cases = [
+        'Will the Fed cut rates in April?',
+        'Will the ECB cut rates in June?',
+        'Will the FOMC cut by 25 bps in June?',
+        'Fed holds rates steady in April?',
+        'Will the Fed funds rate be above 4% in May?',
+        'Will the Fed raise interest rates in May 2026?',
+      ];
+      for (const q of cases) {
+        const out = { tier: '' };
+        extractEndTime(q, '', out);
+        expect(out.tier).not.toBe('4month2');
+      }
+    });
+
+    it('does not match crypto — those hit tier 4month', () => {
+      const out = { tier: '' };
+      extractEndTime('Will Bitcoin reach $100k in March?', '', out);
+      expect(out.tier).toBe('4month');
+    });
+  });
+
+  // ── Tier 4week — "this week" ──────────────────────────────────────────────
+  describe('tier 4week — "this week" markets', () => {
+    it('resolves "this week" to next Sunday 23:59 ET', () => {
+      const out = { tier: '' };
+      const ts = extractEndTime(
+        'Will Trump post "Crypto" this week on Truth Social?',
+        '',
+        out
+      );
+      expect(out.tier).toBe('4week');
+      expect(ts).not.toBeNull();
+      // Should land on a Sunday
+      const d = new Date(ts! * 1000);
+      // 03:59 UTC = 23:59 ET (UTC-4), so the ET date is Saturday night → Sunday
+      // The UTC day might be Monday (03:59 UTC Monday = 23:59 ET Sunday)
+      // Check that the ET day is Sunday (0)
+      const etDate = new Date(d.getTime() - 4 * 3600 * 1000);
+      expect(etDate.getUTCDay()).toBe(0); // Sunday
+    });
+
+    it('does not match "last week" or "next week"', () => {
+      expect(
+        extractEndTime('What happened last week?', '')
+      ).toBeNull();
+    });
+  });
+
+  // ── Weather tier bug fix ──────────────────────────────────────────────────
+  describe('tier 4weather — decimal number bug fix', () => {
+    it('does not false-match "1.10ºC in April 2026" as April 20', () => {
+      const out = { tier: '' };
+      const ts = extractEndTime(
+        'Will global temperature increase by less than 1.10ºC in April 2026?',
+        '',
+        out
+      );
+      // Should NOT be 4weather with day=20; should fall through to 4month2
+      expect(out.tier).toBe('4month2');
+      const d = new Date(ts! * 1000);
+      expect(d.getUTCMonth()).toBe(3); // April
+      expect(d.getUTCDate()).toBe(30); // end of month, not 20
+    });
+
+    it('does not grab dates from description fallback clauses', () => {
+      const out = { tier: '' };
+      const ts = extractEndTime(
+        'Will global temperature increase by less than 1.10ºC in April 2026?',
+        'If no data by June 1, 2026, this market resolves to lowest bracket.',
+        out
+      );
+      // Should NOT grab "June 1" from description
+      expect(out.tier).toBe('4month2');
+      const d = new Date(ts! * 1000);
+      expect(d.getUTCMonth()).toBe(3); // April, not June
+    });
+
+    it('still matches real weather dates in question', () => {
+      const out = { tier: '' };
+      extractEndTime('Will it rain in New York on April 15?', '', out);
+      expect(out.tier).toBe('4weather');
+    });
+  });
+
   // ── Tier 6 — no match ─────────────────────────────────────────────────────
   describe('tier 6 — no match', () => {
     it('returns null for open-ended questions', () => {
       expect(extractEndTime('Will X ever happen?', '')).toBeNull();
-    });
-
-    it('returns null for bare month references (no day)', () => {
-      expect(
-        extractEndTime('Will Elon post 50+ tweets in April?', '')
-      ).toBeNull();
     });
 
     it('returns null for empty inputs', () => {
