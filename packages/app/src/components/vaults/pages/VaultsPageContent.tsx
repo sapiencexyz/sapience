@@ -28,8 +28,6 @@ import EnsAvatar from '~/components/shared/EnsAvatar';
 import { usePassiveLiquidityVault } from '~/hooks/contract/usePassiveLiquidityVault';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
-import { useRestrictedJurisdiction } from '~/hooks/useRestrictedJurisdiction';
-import RestrictedJurisdictionBanner from '~/components/shared/RestrictedJurisdictionBanner';
 import { useProtocolStats } from '~/hooks/graphql/useAnalytics';
 import RiskDisclaimer from '~/components/markets/forms/shared/RiskDisclaimer';
 import Loader from '~/components/shared/Loader';
@@ -74,7 +72,6 @@ const VaultsPageContent = () => {
     chainId: VAULT_CHAIN_ID,
   });
 
-  const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
   const { data: protocolStats, isLoading: isAnalyticsLoading } =
     useProtocolStats();
 
@@ -257,11 +254,6 @@ const VaultsPageContent = () => {
             </div>
           )}
 
-          <RestrictedJurisdictionBanner
-            show={!isPermitLoading && isRestricted}
-            iconClassName="h-4 w-4"
-          />
-
           <Button
             size="lg"
             className="w-full text-base bg-brand-white text-brand-black hover:bg-brand-white/90"
@@ -273,8 +265,6 @@ const VaultsPageContent = () => {
               pricePerShare === '0' ||
               isInteractionDelayActive ||
               !!(pendingRequest && !pendingRequest.processed) ||
-              isPermitLoading ||
-              isRestricted ||
               (!!depositAmount && exceedsVaultCapacity) ||
               (isConnected && !isWhitelisted)
             }
@@ -402,11 +392,6 @@ const VaultsPageContent = () => {
             </div>
           )}
 
-          <RestrictedJurisdictionBanner
-            show={!isPermitLoading && isRestricted}
-            iconClassName="h-4 w-4"
-          />
-
           <Button
             size="lg"
             className="w-full text-base bg-brand-white text-brand-black hover:bg-brand-white/90"
@@ -418,9 +403,7 @@ const VaultsPageContent = () => {
               pricePerShare === '0' ||
               isInteractionDelayActive ||
               !!(pendingRequest && !pendingRequest.processed) ||
-              withdrawExceedsShareBalance ||
-              isPermitLoading ||
-              isRestricted
+              withdrawExceedsShareBalance
             }
             onClick={async () => {
               if (!isConnected) {

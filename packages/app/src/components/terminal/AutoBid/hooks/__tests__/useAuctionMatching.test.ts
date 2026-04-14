@@ -132,8 +132,6 @@ const DEFAULT_PARAMS = {
   pushLogEntry: vi.fn(),
   balanceValue: 1000,
   allowanceValue: 1000,
-  isPermitLoading: false,
-  isRestricted: false,
   address: '0xMyAddress' as `0x${string}`,
   collateralSymbol: 'USDC',
   tokenDecimals: 6,

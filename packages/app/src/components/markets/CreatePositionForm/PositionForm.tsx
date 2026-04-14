@@ -35,8 +35,6 @@ import { buildPythAuctionStartPayload } from '~/lib/auction/buildAuctionPayload'
 import type { AuctionParams, QuoteBid } from '~/lib/auction/useAuctionStart';
 import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
-import { useRestrictedJurisdiction } from '~/hooks/useRestrictedJurisdiction';
-import RestrictedJurisdictionBanner from '~/components/shared/RestrictedJurisdictionBanner';
 import { useCollateralBalanceContext } from '~/lib/context/CollateralBalanceContext';
 import { useSession } from '~/lib/context/SessionContext';
 import { getCategoryIcon } from '~/lib/theme/categoryIcons';
@@ -121,7 +119,6 @@ export default function PositionForm({
   // bids after *this* form initiates an auction for the current inputs.
   const [validBids, setValidBids] = useState<QuoteBid[]>([]);
 
-  const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
   const {
     effectiveAddress,
     isUsingSmartAccount,
@@ -902,10 +899,6 @@ export default function PositionForm({
           />
 
           <div className="mt-5 space-y-1">
-            <RestrictedJurisdictionBanner
-              show={!isPermitLoading && isRestricted}
-              className="mb-3"
-            />
             <BidDisplay
               bestBid={bestBid}
               estimateBid={stickyEstimateBid}
@@ -917,9 +910,7 @@ export default function PositionForm({
               onRequestBids={handleRequestBids}
               isSubmitting={isSubmitting}
               onSubmit={onSubmit}
-              isSubmitDisabled={
-                isPermitLoading || isRestricted || awaitingSponsoredBid
-              }
+              isSubmitDisabled={awaitingSponsoredBid}
               enableRainbowHover={isRainbowHoverEnabled}
               hintMounted={hintMounted}
               disclaimerMounted={disclaimerMounted}

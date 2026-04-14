@@ -22,9 +22,7 @@ import {
   CHAIN_ID_ETHEREAL_TESTNET,
 } from '@sapience/sdk/constants';
 import { collateralToken } from '@sapience/sdk/contracts';
-import { useRestrictedJurisdiction } from '~/hooks/useRestrictedJurisdiction';
 import erc20AbiLocal from '@sapience/sdk/queries/abis/erc20abi.json';
-import RestrictedJurisdictionBanner from '~/components/shared/RestrictedJurisdictionBanner';
 import {
   Dialog,
   DialogContent,
@@ -54,7 +52,6 @@ const ApprovalDialog: React.FC = () => {
   const { isOpen, setOpen, requiredAmount } = useApprovalDialog();
   const chainId = DEFAULT_CHAIN_ID;
   const { currentAddress: address, isUsingSmartAccount } = useCurrentAddress();
-  const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
   const { toast } = useToast();
 
   const isEtherealChain =
@@ -364,8 +361,7 @@ const ApprovalDialog: React.FC = () => {
           setIsWaitingForAllowance(false);
           toast({
             title: 'Approval submitted',
-            description:
-              'Allowance confirmation is taking longer than usual.',
+            description: 'Allowance confirmation is taking longer than usual.',
             duration: 5000,
           });
         } catch (e) {
@@ -373,8 +369,7 @@ const ApprovalDialog: React.FC = () => {
           setIsWaitingForAllowance(false);
           toast({
             title: 'Approval submitted',
-            description:
-              'Could not confirm the updated allowance.',
+            description: 'Could not confirm the updated allowance.',
             duration: 5000,
           });
           console.error('Failed while waiting for allowance update:', e);
@@ -478,8 +473,6 @@ const ApprovalDialog: React.FC = () => {
               !SPENDER_ADDRESS ||
               hasInsufficientBalance ||
               needsMoreWusdeWrap ||
-              isPermitLoading ||
-              isRestricted ||
               (requiredAmountWei != null &&
                 approveAmountWei < requiredAmountWei)
             }
@@ -492,12 +485,6 @@ const ApprovalDialog: React.FC = () => {
                   ? 'Insufficient USDe to Wrap'
                   : 'Submit'}
           </Button>
-
-          <RestrictedJurisdictionBanner
-            show={!isPermitLoading && isRestricted}
-            iconClassName="h-4 w-4"
-          />
-
           {requiredAmount &&
           !hasInsufficientBalance &&
           requiredAmountWei != null &&

@@ -15,7 +15,6 @@ import { useCollateralBalance } from '~/hooks/blockchain/useCollateralBalance';
 import { useApprovalDialog } from '~/components/terminal/ApprovalDialogContext';
 import { useTerminalLogs } from '~/components/terminal/TerminalLogsContext';
 import { useAuctionRelayerFeed } from '~/lib/auction/useAuctionRelayerFeed';
-import { useRestrictedJurisdiction } from '~/hooks/useRestrictedJurisdiction';
 import { useEscrowBidSubmission } from '~/hooks/auction';
 import type { MultiSelectItem } from '~/components/terminal/filters/MultiSelect';
 
@@ -40,7 +39,6 @@ const AutoBid: React.FC<AutoBidProps> = () => {
   const { address } = useAccount();
   const chainId = DEFAULT_CHAIN_ID;
   const { messages: auctionMessages } = useAuctionRelayerFeed();
-  const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
 
   const {
     balance,
@@ -236,8 +234,6 @@ const AutoBid: React.FC<AutoBidProps> = () => {
     pushLogEntry,
     balanceValue: balance,
     allowanceValue,
-    isPermitLoading,
-    isRestricted,
     address,
     collateralSymbol,
     tokenDecimals,

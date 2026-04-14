@@ -11,7 +11,6 @@ import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { hashFn } from 'wagmi/query';
 import { etherealChain, etherealTestnetChain } from '@sapience/sdk/constants';
 import { httpWithRetry } from '~/lib/utils/util';
-import { SapienceProvider } from '~/lib/context/SapienceProvider';
 import ThemeProvider from '~/lib/context/ThemeProvider';
 import { CreatePositionProvider } from '~/lib/context/CreatePositionContext';
 import { SettingsProvider } from '~/lib/context/SettingsContext';
@@ -98,11 +97,9 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
           <AuthProvider>
             <WagmiProvider config={wagmiConfig}>
               <SessionProvider>
-                <SapienceProvider>
-                  <ConnectDialogProvider>
-                    <CreatePositionProvider>{children}</CreatePositionProvider>
-                  </ConnectDialogProvider>
-                </SapienceProvider>
+                <ConnectDialogProvider>
+                  <CreatePositionProvider>{children}</CreatePositionProvider>
+                </ConnectDialogProvider>
               </SessionProvider>
             </WagmiProvider>
           </AuthProvider>

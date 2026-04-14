@@ -71,8 +71,6 @@ type UseAuctionMatchingParams = {
   pushLogEntry: (entry: PushLogEntryParams) => void;
   balanceValue: number;
   allowanceValue: number;
-  isPermitLoading: boolean;
-  isRestricted: boolean;
   address?: `0x${string}`;
   collateralSymbol: string;
   tokenDecimals: number;
@@ -92,8 +90,6 @@ export function useAuctionMatching({
   pushLogEntry,
   balanceValue,
   allowanceValue,
-  isPermitLoading,
-  isRestricted,
   address,
   collateralSymbol,
   tokenDecimals,
@@ -130,29 +126,8 @@ export function useAuctionMatching({
         dedupeSuffix?: string | null;
       };
     }) => {
-      const dedupeBase = `${details.order.id}:${
-        details.context.kind
-      }:${details.context.auctionId ?? 'none'}:${
-        details.context.dedupeSuffix ?? 'default'
-      }`;
-
       const orderTag = formatOrderTag(details.order, null, getOrderIndex);
       const orderLabelSnapshot = formatOrderLabelSnapshot(orderTag);
-
-      if (isPermitLoading) {
-        pushLogEntry({
-          kind: 'system',
-          message: `${orderTag} compliance check pending; holding auto-bid`,
-          meta: {
-            orderId: details.order.id,
-            labelSnapshot: orderLabelSnapshot,
-            formattedPrefix: orderTag,
-            highlight: 'compliance check pending; holding auto-bid',
-          },
-          dedupeKey: `permit:${dedupeBase}`,
-        });
-        return { blocked: true as const, reason: 'permit_loading' as const };
-      }
 
       const requiredSpend =
         typeof details.context.estimatedSpend === 'number' &&
@@ -213,37 +188,10 @@ export function useAuctionMatching({
         });
         return { blocked: true as const, reason: 'allowance' as const };
       }
-
-      if (isRestricted) {
-        const statusMessage =
-          'You cannot access this app from a restricted region';
-        pushLogEntry({
-          kind: 'system',
-          message: `${orderTag} bid ${statusMessage}`,
-          severity: 'error',
-          meta: {
-            orderId: details.order.id,
-            labelSnapshot: orderLabelSnapshot,
-            formattedPrefix: orderTag,
-            verb: 'bid',
-            highlight: statusMessage,
-          },
-          dedupeKey: `geofence:${dedupeBase}`,
-        });
-        return { blocked: true as const, reason: 'geofence' as const };
-      }
-
       // Ready to submit - no log needed here, will log after successful submission
       return { blocked: false as const, reason: null };
     },
-    [
-      allowanceValue,
-      balanceValue,
-      getOrderIndex,
-      isPermitLoading,
-      isRestricted,
-      pushLogEntry,
-    ]
+    [allowanceValue, balanceValue, getOrderIndex, pushLogEntry]
   );
 
   // Helper to mark a bid as processed (called on successful signature)
