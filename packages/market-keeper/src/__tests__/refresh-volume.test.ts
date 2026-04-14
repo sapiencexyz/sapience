@@ -1,15 +1,15 @@
 import { describe, it, expect } from 'vitest';
 import {
   aggregateVolumes,
+  compactConditionVolumes,
+  type ConditionVolume,
   type DataApiTrade,
 } from '../refresh-volume/index';
 
 // Fixed "now" for deterministic tests
 const NOW = 1700000000;
 
-function makeTrade(
-  overrides: Partial<DataApiTrade> = {}
-): DataApiTrade {
+function makeTrade(overrides: Partial<DataApiTrade> = {}): DataApiTrade {
   return {
     conditionId: '0xabc',
     size: 100,
@@ -19,6 +19,24 @@ function makeTrade(
     ...overrides,
   };
 }
+
+describe('compactConditionVolumes', () => {
+  it('drops failed fetch holes before submission', () => {
+    const good: ConditionVolume = {
+      id: '0xabc',
+      volume1h: 1,
+      volume4h: 2,
+      volume24h: 3,
+      volume7d: 4,
+      volumeFiltered1h: 1,
+      volumeFiltered4h: 2,
+      volumeFiltered24h: 3,
+      volumeFiltered7d: 4,
+    };
+
+    expect(compactConditionVolumes([good, undefined])).toEqual([good]);
+  });
+});
 
 describe('aggregateVolumes', () => {
   it('returns zeroes for conditions with no trades', () => {
@@ -38,27 +56,27 @@ describe('aggregateVolumes', () => {
 
   it('buckets trades into correct time windows', () => {
     const trades: DataApiTrade[] = [
-      makeTrade({ timestamp: NOW - 1800, size: 10 }),    // 30m ago → 1h, 4h, 24h, 7d
-      makeTrade({ timestamp: NOW - 7200, size: 20 }),    // 2h ago  → 4h, 24h, 7d
-      makeTrade({ timestamp: NOW - 43200, size: 30 }),   // 12h ago → 24h, 7d
-      makeTrade({ timestamp: NOW - 259200, size: 40 }),  // 3d ago  → 7d only
+      makeTrade({ timestamp: NOW - 1800, size: 10 }), // 30m ago → 1h, 4h, 24h, 7d
+      makeTrade({ timestamp: NOW - 7200, size: 20 }), // 2h ago  → 4h, 24h, 7d
+      makeTrade({ timestamp: NOW - 43200, size: 30 }), // 12h ago → 24h, 7d
+      makeTrade({ timestamp: NOW - 259200, size: 40 }), // 3d ago  → 7d only
     ];
 
     const [result] = aggregateVolumes(trades, ['0xabc'], NOW);
 
     expect(result.volume1h).toBe(10);
-    expect(result.volume4h).toBe(30);   // 10 + 20
-    expect(result.volume24h).toBe(60);  // 10 + 20 + 30
-    expect(result.volume7d).toBe(100);  // 10 + 20 + 30 + 40
+    expect(result.volume4h).toBe(30); // 10 + 20
+    expect(result.volume24h).toBe(60); // 10 + 20 + 30
+    expect(result.volume7d).toBe(100); // 10 + 20 + 30 + 40
   });
 
   it('filters trades by price [0.01, 0.99] for filtered volumes', () => {
     const trades: DataApiTrade[] = [
-      makeTrade({ price: 0.5, size: 100 }),    // in range
-      makeTrade({ price: 0.001, size: 200 }),  // below range
-      makeTrade({ price: 0.999, size: 300 }),  // above range
-      makeTrade({ price: 0.01, size: 50 }),    // boundary — included
-      makeTrade({ price: 0.99, size: 75 }),    // boundary — included
+      makeTrade({ price: 0.5, size: 100 }), // in range
+      makeTrade({ price: 0.001, size: 200 }), // below range
+      makeTrade({ price: 0.999, size: 300 }), // above range
+      makeTrade({ price: 0.01, size: 50 }), // boundary — included
+      makeTrade({ price: 0.99, size: 75 }), // boundary — included
     ];
 
     const [result] = aggregateVolumes(trades, ['0xabc'], NOW);
@@ -139,17 +157,17 @@ describe('aggregateVolumes', () => {
   it('applies filtered volume across all time windows', () => {
     const trades: DataApiTrade[] = [
       // Low odds trade at different times
-      makeTrade({ timestamp: NOW - 1800, price: 0.001, size: 50 }),   // 30m ago
-      makeTrade({ timestamp: NOW - 7200, price: 0.001, size: 100 }),  // 2h ago
+      makeTrade({ timestamp: NOW - 1800, price: 0.001, size: 50 }), // 30m ago
+      makeTrade({ timestamp: NOW - 7200, price: 0.001, size: 100 }), // 2h ago
       // Normal trade
-      makeTrade({ timestamp: NOW - 1800, price: 0.5, size: 200 }),    // 30m ago
+      makeTrade({ timestamp: NOW - 1800, price: 0.5, size: 200 }), // 30m ago
     ];
 
     const [result] = aggregateVolumes(trades, ['0xabc'], NOW);
 
-    expect(result.volume1h).toBe(250);          // 50 + 200
-    expect(result.volumeFiltered1h).toBe(200);  // only the 0.5 price trade
-    expect(result.volume4h).toBe(350);          // 50 + 100 + 200
-    expect(result.volumeFiltered4h).toBe(200);  // only the 0.5 price trade
+    expect(result.volume1h).toBe(250); // 50 + 200
+    expect(result.volumeFiltered1h).toBe(200); // only the 0.5 price trade
+    expect(result.volume4h).toBe(350); // 50 + 100 + 200
+    expect(result.volumeFiltered4h).toBe(200); // only the 0.5 price trade
   });
 });

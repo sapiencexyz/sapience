@@ -167,7 +167,11 @@ async function fetchTradesForSide(
   marketParam: string,
   side: 'BUY' | 'SELL',
   cutoffTimestamp: number
-): Promise<{ trades: DataApiTrade[]; hitCap: boolean; oldestTimestamp: number }> {
+): Promise<{
+  trades: DataApiTrade[];
+  hitCap: boolean;
+  oldestTimestamp: number;
+}> {
   const collected: DataApiTrade[] = [];
   const seenHashes = new Set<string>();
   let offset = 0;
@@ -231,11 +235,19 @@ async function fetchTradesForSide(
     }
 
     if (offset >= MAX_OFFSET) {
-      return { trades: collected, hitCap: true, oldestTimestamp: batchMinTimestamp };
+      return {
+        trades: collected,
+        hitCap: true,
+        oldestTimestamp: batchMinTimestamp,
+      };
     }
   }
 
-  return { trades: collected, hitCap: false, oldestTimestamp: batchMinTimestamp };
+  return {
+    trades: collected,
+    hitCap: false,
+    oldestTimestamp: batchMinTimestamp,
+  };
 }
 
 /**
@@ -267,16 +279,22 @@ async function fetchTradesForConditions(
   }
 
   // Log if either side hit the 4k cap
-  const worstOldest = Math.max(buyResult.oldestTimestamp, sellResult.oldestTimestamp);
+  const worstOldest = Math.max(
+    buyResult.oldestTimestamp,
+    sellResult.oldestTimestamp
+  );
   if (buyResult.hitCap || sellResult.hitCap) {
-    const oldestReached = worstOldest === Infinity
-      ? 'unknown'
-      : new Date(worstOldest * 1000).toISOString();
+    const oldestReached =
+      worstOldest === Infinity
+        ? 'unknown'
+        : new Date(worstOldest * 1000).toISOString();
     const fourHoursAgo = Math.floor(Date.now() / 1000) - TIME_WINDOWS['4h'];
     const sides = [
       buyResult.hitCap ? 'BUY' : null,
       sellResult.hitCap ? 'SELL' : null,
-    ].filter(Boolean).join('+');
+    ]
+      .filter(Boolean)
+      .join('+');
 
     if (worstOldest > fourHoursAgo) {
       logError(
@@ -294,7 +312,7 @@ async function fetchTradesForConditions(
 
 // ============ Volume Aggregation ============
 
-interface ConditionVolume {
+export interface ConditionVolume {
   id: string;
   volume1h: number;
   volume4h: number;
@@ -304,6 +322,12 @@ interface ConditionVolume {
   volumeFiltered4h: number;
   volumeFiltered24h: number;
   volumeFiltered7d: number;
+}
+
+export function compactConditionVolumes(
+  volumes: Array<ConditionVolume | undefined>
+): ConditionVolume[] {
+  return volumes.filter((v): v is ConditionVolume => v !== undefined);
 }
 
 /**
@@ -413,9 +437,12 @@ export async function main() {
     // 2. Fetch trades from Data API per condition (parallel with concurrency limit)
     const nowTimestamp = Math.floor(Date.now() / 1000);
     const cutoff7d = nowTimestamp - TIME_WINDOWS['7d'];
-    const allVolumes: ConditionVolume[] = new Array(conditionIds.length);
+    const allVolumes: Array<ConditionVolume | undefined> = new Array(
+      conditionIds.length
+    );
     let totalTradesFetched = 0;
     let completed = 0;
+    let totalFetchFailures = 0;
     const fetchStart = performance.now();
 
     // Process conditions in waves of CONCURRENCY
@@ -430,11 +457,7 @@ export async function main() {
             cutoff7d
           );
           const ms = performance.now() - start;
-          const volumes = aggregateVolumes(
-            trades,
-            [conditionId],
-            nowTimestamp
-          );
+          const volumes = aggregateVolumes(trades, [conditionId], nowTimestamp);
           return { globalIdx, trades: trades.length, ms, volume: volumes[0] };
         })
       );
@@ -446,6 +469,7 @@ export async function main() {
           totalTradesFetched += r.value.trades;
         } else {
           waveFailed++;
+          totalFetchFailures++;
           logError(
             `[RefreshVolume] Condition fetch failed: ${r.reason instanceof Error ? r.reason.message : String(r.reason)}`
           );
@@ -455,13 +479,20 @@ export async function main() {
 
       // Log one line per wave
       const fulfilled = waveResults.filter(
-        (r): r is PromiseFulfilledResult<{ globalIdx: number; trades: number; ms: number; volume: ConditionVolume }> =>
-          r.status === 'fulfilled'
+        (
+          r
+        ): r is PromiseFulfilledResult<{
+          globalIdx: number;
+          trades: number;
+          ms: number;
+          volume: ConditionVolume;
+        }> => r.status === 'fulfilled'
       );
       const waveTradeCount = fulfilled.reduce((s, r) => s + r.value.trades, 0);
-      const waveMaxMs = fulfilled.length > 0
-        ? Math.max(...fulfilled.map((r) => r.value.ms))
-        : 0;
+      const waveMaxMs =
+        fulfilled.length > 0
+          ? Math.max(...fulfilled.map((r) => r.value.ms))
+          : 0;
       const failedSuffix = waveFailed > 0 ? `, ${waveFailed} failed` : '';
       log(
         `[RefreshVolume]   ${completed}/${conditionIds.length}: ${wave.length} conditions, ${waveTradeCount} trades (${waveMaxMs.toFixed(0)}ms)${failedSuffix}`
@@ -473,17 +504,25 @@ export async function main() {
       }
     }
 
+    const successfulVolumes = compactConditionVolumes(allVolumes);
     const fetchSec = ((performance.now() - fetchStart) / 1000).toFixed(1);
     log(
       `[RefreshVolume] Fetched ${totalTradesFetched.toLocaleString()} trades across ${conditionIds.length} conditions (${fetchSec}s)`
     );
+    if (totalFetchFailures > 0) {
+      logError(
+        `[RefreshVolume] Skipping ${totalFetchFailures} failed condition fetch(es); submitting ${successfulVolumes.length} successful update(s)`
+      );
+    }
 
     // 3. Dry run: print what would be updated
     if (options.dryRun) {
       log('\n========== DRY RUN: Volume Refresh ==========\n');
-      log(`Total conditions: ${allVolumes.length}`);
+      log(`Total conditions: ${conditionIds.length}`);
+      log(`Successful updates: ${successfulVolumes.length}`);
+      log(`Failed fetches: ${totalFetchFailures}`);
 
-      const withVolume = allVolumes.filter((v) => v.volume7d > 0);
+      const withVolume = successfulVolumes.filter((v) => v.volume7d > 0);
       log(`Conditions with 7d volume: ${withVolume.length}`);
 
       for (const v of withVolume.slice(0, 15)) {
@@ -506,11 +545,17 @@ export async function main() {
 
     // 4. Submit volume updates
     if (hasAPICredentials && apiUrl && privateKey) {
-      const submitStart = performance.now();
-      await submitVolumeUpdates(apiUrl, privateKey, allVolumes);
-      log(
-        `[RefreshVolume] Submitted updates (${((performance.now() - submitStart) / 1000).toFixed(1)}s)`
-      );
+      if (successfulVolumes.length === 0) {
+        logError(
+          '[RefreshVolume] No successful condition fetches; skipping volume submission'
+        );
+      } else {
+        const submitStart = performance.now();
+        await submitVolumeUpdates(apiUrl, privateKey, successfulVolumes);
+        log(
+          `[RefreshVolume] Submitted ${successfulVolumes.length} updates (${((performance.now() - submitStart) / 1000).toFixed(1)}s)`
+        );
+      }
     }
 
     const totalSec = ((performance.now() - totalStart) / 1000).toFixed(1);
