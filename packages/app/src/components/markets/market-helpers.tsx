@@ -78,6 +78,14 @@ export function groupConditionToConditionType(
     similarMarketVolume: gc.similarMarketVolume,
     conditionGroupId: gc.conditionGroupId,
     estimatedPrice: gc.estimatedPrice,
+    volume1h: gc.volume1h,
+    volume4h: gc.volume4h,
+    volume24h: gc.volume24h,
+    volume7d: gc.volume7d,
+    volumeFiltered1h: gc.volumeFiltered1h,
+    volumeFiltered4h: gc.volumeFiltered4h,
+    volumeFiltered24h: gc.volumeFiltered24h,
+    volumeFiltered7d: gc.volumeFiltered7d,
   };
 }
 
@@ -117,6 +125,41 @@ export function getRowSimilarMarketVolume(row: TopLevelRow): number {
     );
   }
   return row.condition.similarMarketVolume ?? 0;
+}
+
+type VolumeWindowKey = '1h' | '4h' | '24h' | '7d';
+
+const VOLUME_FIELDS = {
+  '1h': { raw: 'volume1h', filtered: 'volumeFiltered1h' },
+  '4h': { raw: 'volume4h', filtered: 'volumeFiltered4h' },
+  '24h': { raw: 'volume24h', filtered: 'volumeFiltered24h' },
+  '7d': { raw: 'volume7d', filtered: 'volumeFiltered7d' },
+} as const;
+
+function getConditionVolume(
+  c: ConditionType | ConditionGroupConditionType,
+  window: VolumeWindowKey,
+  filtered: boolean
+): number {
+  const field = filtered
+    ? VOLUME_FIELDS[window].filtered
+    : VOLUME_FIELDS[window].raw;
+  return ((c as unknown as Record<string, unknown>)[field] as number) ?? 0;
+}
+
+/** Get time-bucketed volume (USD) for any row kind */
+export function getRowTimeBucketedVolume(
+  row: TopLevelRow,
+  window: VolumeWindowKey,
+  filtered: boolean
+): number {
+  if (row.kind === 'group') {
+    return row.conditions.reduce(
+      (sum, c) => sum + getConditionVolume(c, window, filtered),
+      0
+    );
+  }
+  return getConditionVolume(row.condition, window, filtered);
 }
 
 // ---------------------------------------------------------------------------

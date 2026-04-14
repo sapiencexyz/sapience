@@ -188,6 +188,17 @@ model Condition {
   /// YES probability from Polymarket (0.0–1.0), null for non-Polymarket
   estimatedPrice   Float?
 
+  // Time-bucketed Polymarket volume (USD)
+  volume1h           Float     @default(0)
+  volume4h           Float     @default(0)
+  volume24h          Float     @default(0)
+  volume7d           Float     @default(0)
+  // Filtered volume: only trades priced in [0.01, 0.99]
+  volumeFiltered1h   Float     @default(0)
+  volumeFiltered4h   Float     @default(0)
+  volumeFiltered24h  Float     @default(0)
+  volumeFiltered7d   Float     @default(0)
+
   // Resolution status
   settled          Boolean         @default(false)
   resolvedToYes    Boolean         @default(false)
@@ -242,12 +253,31 @@ model ConditionGroup {
   /// @TypeGraphQL.omit(output: true)
   publicConditionCount Int    @default(0)
 
+  // Denormalized volume aggregates (maintained by trigger)
+  /// @TypeGraphQL.omit(output: true)
+  totalVolume1h          Decimal  @default(0) @db.Decimal
+  /// @TypeGraphQL.omit(output: true)
+  totalVolume4h          Decimal  @default(0) @db.Decimal
+  /// @TypeGraphQL.omit(output: true)
+  totalVolume24h         Decimal  @default(0) @db.Decimal
+  /// @TypeGraphQL.omit(output: true)
+  totalVolume7d          Decimal  @default(0) @db.Decimal
+  /// @TypeGraphQL.omit(output: true)
+  totalVolumeFiltered1h  Decimal  @default(0) @db.Decimal
+  /// @TypeGraphQL.omit(output: true)
+  totalVolumeFiltered4h  Decimal  @default(0) @db.Decimal
+  /// @TypeGraphQL.omit(output: true)
+  totalVolumeFiltered24h Decimal  @default(0) @db.Decimal
+  /// @TypeGraphQL.omit(output: true)
+  totalVolumeFiltered7d  Decimal  @default(0) @db.Decimal
+
   @@index([categoryId])
   // Raw SQL indexes (not representable in Prisma, managed via migration):
   // - IDX_cg_total_oi: "totalOpenInterest" DESC WHERE "publicConditionCount" > 0
   // - IDX_cg_max_end_time: "maxEndTime" DESC WHERE "publicConditionCount" > 0
   // - IDX_cg_total_prediction_count: "totalPredictionCount" DESC WHERE "publicConditionCount" > 0
   // - IDX_cg_max_created_at_epoch: "maxCreatedAtEpoch" DESC WHERE "publicConditionCount" > 0
+  // - IDX_cg_total_volume_*: volume DESC WHERE "publicConditionCount" > 0
   // Trigger: trg_condition_group_aggregates maintains aggregates on condition INSERT/UPDATE/DELETE
   @@map("condition_group")
 }

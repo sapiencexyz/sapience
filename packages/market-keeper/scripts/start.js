@@ -5,7 +5,8 @@ const run = (cmd) => execSync(cmd, { stdio: 'inherit' });
 
 run('node dist/scripts/generate.js');
 run('node dist/scripts/relist.js');
-run('node dist/scripts/refresh-prices.js');
+run('node dist/scripts/prices-and-1d-7d-volume.js');
+run('node dist/scripts/refresh-volume.js');
 run('node dist/scripts/cleanup-polymarket.js --execute');
 
 if (process.env.DEFAULT_CHAIN_ID === '5064014') {

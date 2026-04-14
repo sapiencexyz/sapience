@@ -26,6 +26,7 @@ import {
   useInfiniteQuestions,
   type SortField,
   type SortDirection,
+  type VolumeWindow,
 } from '~/hooks/graphql/useInfiniteQuestions';
 import { useDebouncedValue } from '~/hooks/useDebouncedValue';
 import { useFeatureFlag } from '~/hooks/useFeatureFlag';
@@ -117,6 +118,14 @@ const MarketsPage = () => {
     'sapience.markets.sortDirection',
     'desc'
   );
+  const [volumeWindow, setVolumeWindow] = useSessionState<VolumeWindow>(
+    'sapience.markets.volumeWindow',
+    '24h'
+  );
+  const [excludeLowOdds, setExcludeLowOdds] = useSessionState<boolean>(
+    'sapience.markets.excludeLowOdds',
+    false
+  );
 
   const handleSortChange = useCallback(
     (field: SortField, direction: SortDirection) => {
@@ -172,6 +181,8 @@ const MarketsPage = () => {
     ...((filters.estimatedPriceRange?.[1] ?? 100) < 100
       ? { maxEstimatedPrice: filters.estimatedPriceRange[1] / 100 }
       : {}),
+    // Volume sorting params (only relevant when sortField is 'volume')
+    ...(sortField === 'volume' ? { volumeWindow, excludeLowOdds } : {}),
   });
 
   const handlePythPick = useCallback(
@@ -379,6 +390,10 @@ const MarketsPage = () => {
                     sortField={sortField}
                     sortDirection={sortDirection}
                     onSortChange={handleSortChange}
+                    volumeWindow={volumeWindow}
+                    onVolumeWindowChange={setVolumeWindow}
+                    excludeLowOdds={excludeLowOdds}
+                    onExcludeLowOddsChange={setExcludeLowOdds}
                   />
                 </div>
               )}

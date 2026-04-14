@@ -207,7 +207,7 @@ async function batchUpdateConditions(
     for (let i = 0; i < conditionIds.length; i += CHUNK_SIZE) {
       const chunk = conditionIds.slice(i, i + CHUNK_SIZE);
       const response = await fetchWithRetry(
-        `${apiUrl}/admin/conditions/batch`,
+        `${apiUrl}/admin/conditions/batch-private`,
         {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json', ...authHeaders },

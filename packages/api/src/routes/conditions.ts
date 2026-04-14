@@ -15,6 +15,201 @@ function isHttpUrl(value: unknown): boolean {
 
 // GET route removed in favor of GraphQL. Use GraphQL `conditions` query for reads.
 
+interface BatchCreateConditionInput {
+  conditionHash: string;
+  question: string;
+  shortName?: string;
+  categorySlug?: string;
+  endTime: number;
+  description: string;
+  similarMarkets?: string[];
+  tags?: string[];
+  chainId?: number;
+  groupName?: string;
+  resolver: string;
+  estimatedPrice?: number;
+  similarMarketVolume?: number;
+  similarMarketImage?: string;
+}
+
+// POST /admin/conditions/batch-create - batch create conditions (with auto group creation)
+// NOTE: Must be registered before /:id and the single POST / route
+router.post('/batch-create', async (req: Request, res: Response) => {
+  try {
+    const { conditions: items } = req.body as {
+      conditions?: BatchCreateConditionInput[];
+    };
+
+    if (!Array.isArray(items) || items.length === 0) {
+      return res
+        .status(400)
+        .json({ message: 'conditions must be a non-empty array' });
+    }
+
+    // No count limit — the express.json body parser (100KB) is the effective cap.
+    // The keeper uses batchBySize() to stay under the body limit dynamically.
+
+    const nowSeconds = Math.floor(Date.now() / 1000);
+
+    // Validate all items upfront before touching DB
+    for (const item of items) {
+      if (
+        !item.conditionHash ||
+        !/^0x[0-9a-fA-F]{64}$/.test(item.conditionHash)
+      ) {
+        return res.status(400).json({
+          message: `Invalid conditionHash: ${item.conditionHash}`,
+        });
+      }
+      if (!item.question || !item.endTime || !item.description) {
+        return res.status(400).json({
+          message: `Missing required fields for ${item.conditionHash}`,
+        });
+      }
+      if (!item.resolver || !/^0x[a-fA-F0-9]{40}$/.test(item.resolver)) {
+        return res.status(400).json({
+          message: `Invalid resolver for ${item.conditionHash}`,
+        });
+      }
+      const endTimeInt = parseInt(String(item.endTime), 10);
+      if (Number.isNaN(endTimeInt) || endTimeInt <= nowSeconds) {
+        return res.status(400).json({
+          message: `endTime must be a future Unix timestamp for ${item.conditionHash}`,
+        });
+      }
+    }
+
+    // Resolve category slugs (batch lookup)
+    const uniqueSlugs = [
+      ...new Set(items.map((i) => i.categorySlug).filter(Boolean)),
+    ] as string[];
+    const categories =
+      uniqueSlugs.length > 0
+        ? await prisma.category.findMany({
+            where: { slug: { in: uniqueSlugs } },
+          })
+        : [];
+    const categoryBySlug = new Map(categories.map((c) => [c.slug, c.id]));
+
+    // Resolve or create groups (batch find, then create missing)
+    const uniqueGroupNames = [
+      ...new Set(items.map((i) => i.groupName?.trim()).filter(Boolean)),
+    ] as string[];
+    const existingGroups =
+      uniqueGroupNames.length > 0
+        ? await prisma.conditionGroup.findMany({
+            where: { name: { in: uniqueGroupNames } },
+          })
+        : [];
+    const groupByName = new Map(existingGroups.map((g) => [g.name, g.id]));
+
+    // Create missing groups
+    const failedGroups: string[] = [];
+    for (const name of uniqueGroupNames) {
+      if (!groupByName.has(name)) {
+        // Find categoryId from the first condition that references this group
+        const firstItem = items.find((i) => i.groupName?.trim() === name);
+        const categoryId = firstItem?.categorySlug
+          ? (categoryBySlug.get(firstItem.categorySlug) ?? null)
+          : null;
+        try {
+          const group = await prisma.conditionGroup.create({
+            data: { name, categoryId },
+          });
+          groupByName.set(name, group.id);
+        } catch (e: unknown) {
+          const message = e instanceof Error ? e.message : String(e);
+          if (message.includes('Unique constraint')) {
+            // Race condition: another request created it
+            const existing = await prisma.conditionGroup.findFirst({
+              where: { name },
+            });
+            if (existing) groupByName.set(name, existing.id);
+          } else {
+            console.error(
+              `[BatchCreate] Failed to create group "${name}": ${message}`
+            );
+            failedGroups.push(name);
+          }
+        }
+      }
+    }
+
+    // Create conditions
+    let created = 0;
+    let skipped = 0;
+    let failed = 0;
+
+    for (const item of items) {
+      const categoryId = item.categorySlug
+        ? (categoryBySlug.get(item.categorySlug) ?? null)
+        : null;
+      const groupId = item.groupName?.trim()
+        ? (groupByName.get(item.groupName.trim()) ?? null)
+        : null;
+
+      try {
+        await prisma.condition.create({
+          data: {
+            id: item.conditionHash,
+            question: item.question,
+            shortName: item.shortName?.trim() || undefined,
+            categoryId: categoryId ?? undefined,
+            endTime: parseInt(String(item.endTime), 10),
+            public: true,
+            description: item.description,
+            similarMarkets: Array.isArray(item.similarMarkets)
+              ? item.similarMarkets
+              : [],
+            tags: Array.isArray(item.tags) ? item.tags : [],
+            chainId: item.chainId ?? 42161,
+            estimatedPrice:
+              typeof item.estimatedPrice === 'number' &&
+              item.estimatedPrice >= 0 &&
+              item.estimatedPrice <= 1
+                ? item.estimatedPrice
+                : undefined,
+            similarMarketVolume:
+              typeof item.similarMarketVolume === 'number' &&
+              item.similarMarketVolume >= 0
+                ? item.similarMarketVolume
+                : undefined,
+            similarMarketImage:
+              typeof item.similarMarketImage === 'string' &&
+              isHttpUrl(item.similarMarketImage)
+                ? item.similarMarketImage
+                : undefined,
+            conditionGroupId: groupId ?? undefined,
+            displayOrder: groupId ? 0 : undefined,
+            resolver: item.resolver.toLowerCase(),
+          },
+        });
+        created++;
+      } catch (e: unknown) {
+        const message = e instanceof Error ? e.message : String(e);
+        if (message.includes('Unique constraint')) {
+          skipped++;
+        } else {
+          console.error(
+            `[BatchCreate] Failed ${item.conditionHash}: ${message}`
+          );
+          failed++;
+        }
+      }
+    }
+
+    return res.status(201).json({
+      created,
+      skipped,
+      failed,
+      ...(failedGroups.length > 0 ? { failedGroups } : {}),
+    });
+  } catch (error: unknown) {
+    console.error('Error in batch create conditions:', error);
+    return res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
 // POST /admin/conditions - create a condition
 router.post('/', async (req: Request, res: Response) => {
   try {
@@ -289,9 +484,208 @@ router.put('/prices', async (req: Request, res: Response) => {
   }
 });
 
-// PUT /admin/conditions/batch - batch update fields on multiple conditions
-// NOTE: Must be registered before /:id to avoid Express matching "batch" as an :id param
-router.put('/batch', async (req: Request, res: Response) => {
+// Volume field names for validation and update building
+const VOLUME_FIELDS = [
+  'volume1h',
+  'volume4h',
+  'volume24h',
+  'volume7d',
+  'volumeFiltered1h',
+  'volumeFiltered4h',
+  'volumeFiltered24h',
+  'volumeFiltered7d',
+] as const;
+
+// PUT /admin/conditions/volume - batch update time-bucketed volume on multiple conditions
+// NOTE: Must be registered before /:id to avoid Express matching "volume" as an :id param
+router.put('/volume', async (req: Request, res: Response) => {
+  try {
+    const { updates } = req.body as {
+      updates?: Array<Record<string, unknown>>;
+    };
+
+    if (!Array.isArray(updates) || updates.length === 0) {
+      return res
+        .status(400)
+        .json({ message: 'updates must be a non-empty array' });
+    }
+
+    if (updates.length > 200) {
+      return res
+        .status(400)
+        .json({ message: 'Batch size limit is 200 updates' });
+    }
+
+    // Validate each update
+    for (const update of updates) {
+      if (
+        typeof update.id !== 'string' ||
+        !/^0x[0-9a-fA-F]{64}$/.test(update.id)
+      ) {
+        return res
+          .status(400)
+          .json({ message: `Invalid id format: ${update.id}` });
+      }
+
+      // Validate volume fields are non-negative numbers when present
+      for (const field of VOLUME_FIELDS) {
+        if (field in update) {
+          if (typeof update[field] !== 'number' || update[field] < 0) {
+            return res.status(400).json({
+              message: `${field} must be a non-negative number for id ${update.id}`,
+            });
+          }
+        }
+      }
+    }
+
+    const results = await prisma.$transaction(
+      updates.map((u) => {
+        const data: Record<string, number> = {};
+        for (const field of VOLUME_FIELDS) {
+          if (typeof u[field] === 'number' && u[field] >= 0) {
+            data[field] = u[field];
+          }
+        }
+        return prisma.condition.updateMany({
+          where: { id: u.id as string },
+          data,
+        });
+      })
+    );
+
+    const totalUpdated = results.reduce((sum, r) => sum + r.count, 0);
+
+    return res.status(200).json({
+      updated: totalUpdated,
+      requested: updates.length,
+    });
+  } catch (error: unknown) {
+    console.error('Error in batch volume update:', error);
+    return res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
+// PUT /admin/conditions/batch-metadata - batch update metadata fields on multiple conditions
+// Each condition gets different field values. Only touches syncable metadata fields.
+// NOTE: Must be registered before /:id to avoid Express matching as an :id param
+router.put('/batch-metadata', async (req: Request, res: Response) => {
+  try {
+    const { updates } = req.body as {
+      updates?: Array<{
+        id: string;
+        fields: {
+          question?: string;
+          shortName?: string;
+          description?: string;
+          similarMarkets?: string[];
+          tags?: string[];
+          similarMarketVolume?: number;
+          similarMarketImage?: string;
+          groupName?: string;
+        };
+      }>;
+    };
+
+    if (!Array.isArray(updates) || updates.length === 0) {
+      return res
+        .status(400)
+        .json({ message: 'updates must be a non-empty array' });
+    }
+
+    // Validate IDs
+    for (const u of updates) {
+      if (!/^0x[0-9a-fA-F]{64}$/.test(u.id)) {
+        return res.status(400).json({ message: `Invalid id format: ${u.id}` });
+      }
+    }
+
+    // Batch-resolve groupNames: find or create all referenced groups upfront
+    const uniqueGroupNames = [
+      ...new Set(
+        updates.map((u) => u.fields.groupName?.trim()).filter(Boolean)
+      ),
+    ] as string[];
+
+    const groupByName = new Map<string, number>();
+    if (uniqueGroupNames.length > 0) {
+      const existing = await prisma.conditionGroup.findMany({
+        where: { name: { in: uniqueGroupNames } },
+      });
+      for (const g of existing) groupByName.set(g.name, g.id);
+
+      for (const name of uniqueGroupNames) {
+        if (!groupByName.has(name)) {
+          try {
+            const group = await prisma.conditionGroup.create({
+              data: { name },
+            });
+            groupByName.set(name, group.id);
+          } catch (e: unknown) {
+            const msg = e instanceof Error ? e.message : String(e);
+            if (msg.includes('Unique constraint')) {
+              const found = await prisma.conditionGroup.findFirst({
+                where: { name },
+              });
+              if (found) groupByName.set(name, found.id);
+            }
+          }
+        }
+      }
+    }
+
+    let updated = 0;
+    let failed = 0;
+
+    for (const u of updates) {
+      const f = u.fields;
+      const data: Record<string, unknown> = {};
+
+      if (typeof f.question === 'string') data.question = f.question;
+      if (typeof f.shortName === 'string')
+        data.shortName = f.shortName.trim() || null;
+      if (typeof f.description === 'string') data.description = f.description;
+      if (Array.isArray(f.similarMarkets))
+        data.similarMarkets = f.similarMarkets;
+      if (Array.isArray(f.tags)) data.tags = f.tags;
+      if (
+        typeof f.similarMarketVolume === 'number' &&
+        f.similarMarketVolume >= 0
+      )
+        data.similarMarketVolume = f.similarMarketVolume;
+      if (
+        typeof f.similarMarketImage === 'string' &&
+        isHttpUrl(f.similarMarketImage)
+      )
+        data.similarMarketImage = f.similarMarketImage;
+      if (f.groupName?.trim()) {
+        const groupId = groupByName.get(f.groupName.trim());
+        if (groupId) {
+          data.conditionGroupId = groupId;
+          data.displayOrder = 0;
+        }
+      }
+
+      if (Object.keys(data).length === 0) continue;
+
+      try {
+        await prisma.condition.update({ where: { id: u.id }, data });
+        updated++;
+      } catch {
+        failed++;
+      }
+    }
+
+    return res.status(200).json({ updated, failed, requested: updates.length });
+  } catch (error: unknown) {
+    console.error('Error in batch metadata update:', error);
+    return res.status(500).json({ message: 'Internal Server Error' });
+  }
+});
+
+// PUT /admin/conditions/batch-private - batch update visibility on multiple conditions
+// NOTE: Must be registered before /:id to avoid Express matching as an :id param
+router.put('/batch-private', async (req: Request, res: Response) => {
   try {
     const { ids, update } = req.body as {
       ids?: string[];
