@@ -319,7 +319,7 @@ function createColumns(
                       <DropdownMenuItem
                         key={id}
                         onSelect={() => onSelectMetricOption(id)}
-                        className="pl-8 pr-2"
+                        className="pl-8 pr-2 cursor-pointer"
                       >
                         <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
                           {isSelected && (
@@ -343,6 +343,7 @@ function createColumns(
                         checked={excludeLow}
                         onCheckedChange={(v) => onExcludeLowOddsChange(!!v)}
                         onSelect={(e) => e.preventDefault()}
+                        className="cursor-pointer"
                       >
                         Exclude extreme odds (0.01–0.99)
                       </DropdownMenuCheckboxItem>
@@ -715,9 +716,12 @@ export default function QuestionsTable({
   excludeLowOdds,
   onExcludeLowOddsChange,
 }: QuestionsTableProps) {
-  // Volume metric toggle: cycle through OI → Related Volume → Time-Bucketed Volume
-  const [volumeMetric, setVolumeMetric] =
-    React.useState<VolumeMetric>('openInterest');
+  // Derive volume metric from the persisted sortField so the dropdown and
+  // column header stay in sync with the actual sort on reload.
+  const volumeMetric: VolumeMetric =
+    sortField === 'volume' || sortField === 'similarMarketVolume'
+      ? sortField
+      : 'openInterest';
   const volumeMetricRef = React.useRef<VolumeMetric>(volumeMetric);
   volumeMetricRef.current = volumeMetric;
   const volumeWindowRef = React.useRef<VolumeWindow>(volumeWindow);
@@ -729,7 +733,6 @@ export default function QuestionsTable({
     (id: MetricOptionId) => {
       const decoded = decodeOptionId(id);
       if (decoded.window) onVolumeWindowChange(decoded.window);
-      setVolumeMetric(decoded.metric);
       // Selecting a metric always sorts by it, descending by default
       onSortChange(decoded.metric, 'desc');
     },
