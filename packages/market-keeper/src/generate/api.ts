@@ -100,10 +100,8 @@ export async function submitCondition(
         shortName: condition.shortName,
         categorySlug: condition.categorySlug,
         endTime:
-          Math.max(
-            toUnixTimestamp(condition.endDate),
-            condition.endTimeOverride ?? 0
-          ) + END_TIME_BUFFER_SECONDS,
+          (condition.endTimeOverride ?? toUnixTimestamp(condition.endDate)) +
+          END_TIME_BUFFER_SECONDS,
         description: condition.description,
         similarMarkets: condition.similarMarkets,
         tags: condition.tags,
@@ -532,10 +530,8 @@ export async function submitToAPI(
     shortName: condition.shortName,
     categorySlug: condition.categorySlug,
     endTime:
-      Math.max(
-        toUnixTimestamp(condition.endDate),
-        condition.endTimeOverride ?? 0
-      ) + END_TIME_BUFFER_SECONDS,
+      (condition.endTimeOverride ?? toUnixTimestamp(condition.endDate)) +
+      END_TIME_BUFFER_SECONDS,
     description: condition.description,
     similarMarkets: condition.similarMarkets,
     tags: condition.tags,

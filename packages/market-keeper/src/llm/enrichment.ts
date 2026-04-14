@@ -18,12 +18,9 @@ import {
   callOpenRouterForEndTime,
   logRegexPrepass,
   type RegexResolvedEntry,
-  type SanityFailEntry,
 } from './openrouter';
 import { parseOutcomes } from '../generate/transform';
 import { extractEndTime } from '../generate/endtime';
-
-const ENDTIME_SANITY_CHECK_SECONDS = 14 * 86400; // 14 days
 
 // Reduced batch size to avoid token limits with free models
 const LLM_BATCH_SIZE = 10;
@@ -388,7 +385,6 @@ export async function enrichEndTimesWithLLM(
   // ── Regex pre-pass (tiers 0–4): resolve what we can without Sonar ─────────
   const sonarMarkets: PolymarketMarket[] = [];
   const regexResolved: RegexResolvedEntry[] = [];
-  const sanityFails: SanityFailEntry[] = [];
 
   for (const market of markets) {
     const tierOut: { tier: string } = { tier: '6' };
@@ -398,34 +394,13 @@ export async function enrichEndTimesWithLLM(
       tierOut
     );
     if (regexTs !== null) {
-      if (market.endDate) {
-        // Sanity check: regex result should be within 14 days of Polymarket's endDate
-        const polyTs = new Date(market.endDate).getTime() / 1000;
-        if (Math.abs(regexTs - polyTs) <= ENDTIME_SANITY_CHECK_SECONDS) {
-          endTimeMap.set(market.conditionId, regexTs);
-          regexResolved.push({
-            question: market.question,
-            tier: tierOut.tier,
-            ts: regexTs,
-          });
-          continue;
-        }
-        sanityFails.push({
-          question: market.question,
-          tier: tierOut.tier,
-          regexTs,
-          polyTs,
-        });
-      } else {
-        // No endDate to sanity-check against — accept the regex result as-is
-        endTimeMap.set(market.conditionId, regexTs);
-        regexResolved.push({
-          question: market.question,
-          tier: tierOut.tier,
-          ts: regexTs,
-        });
-        continue;
-      }
+      endTimeMap.set(market.conditionId, regexTs);
+      regexResolved.push({
+        question: market.question,
+        tier: tierOut.tier,
+        ts: regexTs,
+      });
+      continue;
     }
     sonarMarkets.push(market);
   }
@@ -433,7 +408,7 @@ export async function enrichEndTimesWithLLM(
   logRegexPrepass({
     total: markets.length,
     resolved: regexResolved,
-    sanityFails,
+    sanityFails: [],
     sonarQuestions: sonarMarkets.map((m) => m.question),
   });
 
