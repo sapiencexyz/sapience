@@ -3,7 +3,6 @@
 import { Button } from '@sapience/ui/components/ui/button';
 import Image from 'next/image';
 import Link from 'next/link';
-import { SiSubstack } from 'react-icons/si';
 import { StatusIndicators } from '~/components/layout/StatusIndicators';
 
 export { ETHENA_BASE_APY } from '~/components/layout/StatusIndicators';
@@ -76,18 +75,6 @@ const Footer = () => {
                   alt="Discord"
                   width={10}
                   height={10}
-                />
-              </a>
-            </Button>
-            <Button size="icon" className="h-4 w-4 rounded-full" asChild>
-              <a
-                href="https://blog.sapience.xyz"
-                target="_blank"
-                rel="noopener noreferrer"
-              >
-                <SiSubstack
-                  className="h-0.5 w-0.5 scale-[60%]"
-                  aria-label="Substack"
                 />
               </a>
             </Button>
