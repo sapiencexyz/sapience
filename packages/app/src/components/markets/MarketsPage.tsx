@@ -126,6 +126,10 @@ const MarketsPage = () => {
     'sapience.markets.volumeWindow',
     null
   );
+  const [filterVolume, setFilterVolume] = useSessionState<boolean>(
+    'sapience.markets.filterVolume',
+    false
+  );
 
   const handleSortChange = useCallback(
     (field: SortField, direction: SortDirection) => {
@@ -200,7 +204,11 @@ const MarketsPage = () => {
     ...((filters.estimatedPriceRange?.[1] ?? 100) < 100
       ? { maxEstimatedPrice: filters.estimatedPriceRange[1] / 100 }
       : {}),
-    similarMarketVolumeWindow: volumeWindow ?? undefined,
+    similarMarketVolumeWindow: volumeWindow
+      ? filterVolume
+        ? (`${volumeWindow}Filtered` as VolumeWindow)
+        : volumeWindow
+      : undefined,
     ...(selectedSimilarMarketVolumeRange[0] > 0
       ? { minSimilarMarketVolume: selectedSimilarMarketVolumeRange[0] }
       : {}),
@@ -416,6 +424,8 @@ const MarketsPage = () => {
                     onSortChange={handleSortChange}
                     volumeWindow={volumeWindow}
                     onVolumeWindowChange={setVolumeWindow}
+                    filterVolume={filterVolume}
+                    onFilterVolumeChange={setFilterVolume}
                   />
                 </div>
               )}

@@ -82,6 +82,10 @@ export function groupConditionToConditionType(
     similarMarketVolume4h: gc.similarMarketVolume4h,
     similarMarketVolume24h: gc.similarMarketVolume24h,
     similarMarketVolume7d: gc.similarMarketVolume7d,
+    similarMarketVolumeFiltered1h: gc.similarMarketVolumeFiltered1h,
+    similarMarketVolumeFiltered4h: gc.similarMarketVolumeFiltered4h,
+    similarMarketVolumeFiltered24h: gc.similarMarketVolumeFiltered24h,
+    similarMarketVolumeFiltered7d: gc.similarMarketVolumeFiltered7d,
   };
 }
 
@@ -123,13 +127,25 @@ export function getRowSimilarMarketVolume(row: TopLevelRow): number {
   return row.condition.similarMarketVolume ?? 0;
 }
 
-type VolumeWindowKey = '1h' | '4h' | '24h' | '7d';
+type VolumeWindowKey =
+  | '1h'
+  | '4h'
+  | '24h'
+  | '7d'
+  | '1hFiltered'
+  | '4hFiltered'
+  | '24hFiltered'
+  | '7dFiltered';
 
 const VOLUME_FIELDS = {
   '1h': 'similarMarketVolume1h',
   '4h': 'similarMarketVolume4h',
   '24h': 'similarMarketVolume24h',
   '7d': 'similarMarketVolume7d',
+  '1hFiltered': 'similarMarketVolumeFiltered1h',
+  '4hFiltered': 'similarMarketVolumeFiltered4h',
+  '24hFiltered': 'similarMarketVolumeFiltered24h',
+  '7dFiltered': 'similarMarketVolumeFiltered7d',
 } as const;
 
 function getConditionVolume(

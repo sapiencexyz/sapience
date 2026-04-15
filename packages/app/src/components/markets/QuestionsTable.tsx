@@ -35,6 +35,7 @@ import {
   DropdownMenuTrigger,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuSeparator,
 } from '@sapience/ui/components/ui/dropdown-menu';
 import { cn } from '@sapience/ui/lib/utils';
 import Loader from '../shared/Loader';
@@ -90,6 +91,10 @@ interface QuestionsTableProps {
   // Volume sorting controls
   volumeWindow: VolumeWindow | null;
   onVolumeWindowChange: (window: VolumeWindow | null) => void;
+
+  // Filter volume toggle (excludes extreme-odds trades from sorted volume)
+  filterVolume: boolean;
+  onFilterVolumeChange: (v: boolean) => void;
 }
 
 // Class name maps for table headers and cells
@@ -159,9 +164,11 @@ function createColumns(
   expandedGroupIdsRef: React.RefObject<Set<number>>,
   volumeMetricRef: React.RefObject<VolumeMetric>,
   volumeWindowRef: React.RefObject<VolumeWindow | null>,
+  filterVolumeRef: React.RefObject<boolean>,
   onToggleExpand: (groupId: number) => void,
   onPrediction: (conditionId: string, p: number) => void,
-  onSelectMetricOption: (id: MetricOptionId) => void
+  onSelectMetricOption: (id: MetricOptionId) => void,
+  onToggleFilterVolume: () => void
 ): ColumnDef<TopLevelRow>[] {
   return [
     {
@@ -337,6 +344,42 @@ function createColumns(
                       </DropdownMenuItem>
                     );
                   })}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onSelect={onToggleFilterVolume}
+                    onClick={(e) => e.stopPropagation()}
+                    className="pl-8 pr-2 cursor-pointer"
+                  >
+                    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+                      {filterVolumeRef.current && (
+                        <Check className="h-4 w-4 text-emerald-500" />
+                      )}
+                    </span>
+                    <span
+                      className={cn(
+                        filterVolumeRef.current && 'font-medium text-foreground'
+                      )}
+                    >
+                      Filter Volume
+                    </span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span
+                          className="ml-auto inline-flex cursor-help"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent
+                        side="left"
+                        className="max-w-[200px] text-xs whitespace-normal"
+                      >
+                        Excludes volume from trades where the outcome price is
+                        below $0.01 or above $0.99
+                      </TooltipContent>
+                    </Tooltip>
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
               {sorted === 'asc' ? (
@@ -549,23 +592,25 @@ function createColumns(
   ];
 }
 
-/** Get time-bucketed volume for a single condition (used in child rows) */
+/** Get time-bucketed volume for a single condition (used in child rows).
+ *  Always uses the base (unfiltered) window key for display. */
 function getConditionTimeBucketedVolume(
   c: ConditionGroupConditionType,
   window: VolumeWindow | null
 ): number {
-  const fields = {
+  const fields: Record<string, string> = {
     '1h': 'similarMarketVolume1h',
     '4h': 'similarMarketVolume4h',
     '24h': 'similarMarketVolume24h',
     '7d': 'similarMarketVolume7d',
-  } as const;
+    '1hFiltered': 'similarMarketVolumeFiltered1h',
+    '4hFiltered': 'similarMarketVolumeFiltered4h',
+    '24hFiltered': 'similarMarketVolumeFiltered24h',
+    '7dFiltered': 'similarMarketVolumeFiltered7d',
+  };
   const resolvedWindow = window ?? '24h';
-  return (
-    ((c as unknown as Record<string, unknown>)[
-      fields[resolvedWindow]
-    ] as number) ?? 0
-  );
+  const field = fields[resolvedWindow] ?? 'similarMarketVolume24h';
+  return ((c as unknown as Record<string, unknown>)[field] as number) ?? 0;
 }
 
 // Child row component for expanded group conditions
@@ -708,6 +753,8 @@ export default function QuestionsTable({
   onSortChange,
   volumeWindow,
   onVolumeWindowChange,
+  filterVolume,
+  onFilterVolumeChange,
 }: QuestionsTableProps) {
   // Derive volume metric from the persisted sortField so the dropdown and
   // column header stay in sync with the actual sort on reload.
@@ -721,6 +768,8 @@ export default function QuestionsTable({
   volumeMetricRef.current = volumeMetric;
   const volumeWindowRef = React.useRef<VolumeWindow | null>(volumeWindow);
   volumeWindowRef.current = volumeWindow;
+  const filterVolumeRef = React.useRef<boolean>(filterVolume);
+  filterVolumeRef.current = filterVolume;
 
   const handleSelectMetricOption = React.useCallback(
     (id: MetricOptionId) => {
@@ -736,6 +785,10 @@ export default function QuestionsTable({
     },
     [onSortChange, onVolumeWindowChange]
   );
+
+  const handleToggleFilterVolume = React.useCallback(() => {
+    onFilterVolumeChange(!filterVolumeRef.current);
+  }, [onFilterVolumeChange]);
 
   // Derive table sorting state from controlled props
   // Map similarMarketVolume sort to the openInterest column id (they share a column)
@@ -836,12 +889,19 @@ export default function QuestionsTable({
         expandedGroupIdsRef,
         volumeMetricRef,
         volumeWindowRef,
+        filterVolumeRef,
         handleToggleExpand,
         handlePrediction,
-        handleSelectMetricOption
+        handleSelectMetricOption,
+        handleToggleFilterVolume
       ),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- refs are stable, intentionally omitted
-    [handleToggleExpand, handlePrediction, handleSelectMetricOption]
+    [
+      handleToggleExpand,
+      handlePrediction,
+      handleSelectMetricOption,
+      handleToggleFilterVolume,
+    ]
   );
 
   const table = useReactTable({
@@ -872,6 +932,8 @@ export default function QuestionsTable({
         openInterestBounds={filterBounds.openInterestBounds}
         timeToResolutionBounds={filterBounds.timeToResolutionBounds}
         categories={categories}
+        filterVolume={filterVolume}
+        onFilterVolumeChange={onFilterVolumeChange}
       />
       <div
         ref={scrollContainerRef}

@@ -51,6 +51,10 @@ export enum VolumeWindow {
   fourHours = '4h',
   twentyFourHours = '24h',
   sevenDays = '7d',
+  oneHourFiltered = '1hFiltered',
+  fourHoursFiltered = '4hFiltered',
+  twentyFourHoursFiltered = '24hFiltered',
+  sevenDaysFiltered = '7dFiltered',
 }
 
 registerEnumType(VolumeWindow, {
@@ -196,14 +200,16 @@ export class QuestionsResolver {
       return Prisma.sql`AND (${Prisma.join(parts, ' AND ')})`;
     })();
 
-    // Determine if per-condition filters are active (require LATERAL subquery
-    // in Part A so that group sort values reflect only the filtered conditions)
+    // Determine if per-condition filters are active (require LEFT JOIN in
+    // Part A so that group sort values reflect only the filtered conditions)
     const hasConditionFilters =
       chainId != null ||
       (resolutionStatus != null && resolutionStatus !== ResolutionStatus.all) ||
       minEstimatedPrice != null ||
       maxEstimatedPrice != null ||
-      minEndTime != null;
+      minEndTime != null ||
+      minSimilarMarketVolume != null ||
+      maxSimilarMarketVolume != null;
 
     // --- Volume column resolution ---
     // Maps volumeWindow to the correct condition and group columns.
@@ -229,18 +235,53 @@ export class QuestionsResolver {
         sumExpr: Prisma.sql`COALESCE(SUM(c."volume7d"), 0)::numeric`,
         group: Prisma.sql`cg."totalVolume7d"::numeric`,
       },
+      volumeFiltered1h: {
+        cond: Prisma.sql`c."volumeFiltered1h"`,
+        sumExpr: Prisma.sql`COALESCE(SUM(c."volumeFiltered1h"), 0)::numeric`,
+        group: Prisma.sql`cg."totalVolumeFiltered1h"::numeric`,
+      },
+      volumeFiltered4h: {
+        cond: Prisma.sql`c."volumeFiltered4h"`,
+        sumExpr: Prisma.sql`COALESCE(SUM(c."volumeFiltered4h"), 0)::numeric`,
+        group: Prisma.sql`cg."totalVolumeFiltered4h"::numeric`,
+      },
+      volumeFiltered24h: {
+        cond: Prisma.sql`c."volumeFiltered24h"`,
+        sumExpr: Prisma.sql`COALESCE(SUM(c."volumeFiltered24h"), 0)::numeric`,
+        group: Prisma.sql`cg."totalVolumeFiltered24h"::numeric`,
+      },
+      volumeFiltered7d: {
+        cond: Prisma.sql`c."volumeFiltered7d"`,
+        sumExpr: Prisma.sql`COALESCE(SUM(c."volumeFiltered7d"), 0)::numeric`,
+        group: Prisma.sql`cg."totalVolumeFiltered7d"::numeric`,
+      },
     } as const;
 
     const resolvedVolumeKey = (() => {
       const window = similarMarketVolumeWindow ?? VolumeWindow.twentyFourHours;
-      const suffix = { '1h': '1h', '4h': '4h', '24h': '24h', '7d': '7d' }[
-        window
-      ];
-      return `volume${suffix}` as keyof typeof volumeColumnFragments;
+      const windowMap: Record<string, keyof typeof volumeColumnFragments> = {
+        '1h': 'volume1h',
+        '4h': 'volume4h',
+        '24h': 'volume24h',
+        '7d': 'volume7d',
+        '1hFiltered': 'volumeFiltered1h',
+        '4hFiltered': 'volumeFiltered4h',
+        '24hFiltered': 'volumeFiltered24h',
+        '7dFiltered': 'volumeFiltered7d',
+      };
+      return windowMap[window] ?? 'volume24h';
     })();
 
     const volumeFragments = volumeColumnFragments[resolvedVolumeKey];
     const useWindowedSimilarMarketVolume = similarMarketVolumeWindow != null;
+
+    // All-time volume sort has no denormalized column on condition_group, so
+    // it also needs the LEFT JOIN to compute SUM in a single pass rather than
+    // falling back to a correlated subquery per group.
+    const requiresConditionJoin =
+      hasConditionFilters ||
+      (sanitizedSortField === QuestionSortField.similarMarketVolume &&
+        !useWindowedSimilarMarketVolume);
 
     const similarMarketVolumeFilter = (() => {
       const parts = [];
@@ -289,14 +330,14 @@ export class QuestionsResolver {
     })();
 
     // LEFT JOIN scans the condition table once and hash-aggregates by group,
-    // instead of the previous LATERAL which probed the index per group (~800x).
-    const groupConditionJoin = hasConditionFilters
+    // instead of a correlated subquery that probes the index per group.
+    const groupConditionJoin = requiresConditionJoin
       ? Prisma.sql`LEFT JOIN condition c ON c."conditionGroupId" = cg.id
             AND c.public = true
             ${conditionFilters}`
       : Prisma.empty;
 
-    const groupSortValue = hasConditionFilters
+    const groupSortValue = requiresConditionJoin
       ? sortValueExpr
       : sanitizedSortField === QuestionSortField.openInterest
         ? Prisma.sql`cg."totalOpenInterest"::numeric`
@@ -305,20 +346,18 @@ export class QuestionsResolver {
           : sanitizedSortField === QuestionSortField.createdAt
             ? Prisma.sql`cg."maxCreatedAtEpoch"::numeric`
             : sanitizedSortField === QuestionSortField.similarMarketVolume
-              ? useWindowedSimilarMarketVolume
-                ? volumeFragments.group
-                : Prisma.sql`(SELECT COALESCE(SUM(c."similarMarketVolume"), 0) FROM condition c WHERE c."conditionGroupId" = cg.id AND c.public = true)::numeric`
+              ? volumeFragments.group
               : Prisma.sql`cg."maxEndTime"::numeric`;
 
-    const groupPredictionCount = hasConditionFilters
+    const groupPredictionCount = requiresConditionJoin
       ? Prisma.sql`COALESCE(SUM(c."predictionCount"), 0)`
       : Prisma.sql`cg."totalPredictionCount"`;
 
-    const groupEndTime = hasConditionFilters
+    const groupEndTime = requiresConditionJoin
       ? Prisma.sql`COALESCE(MAX(c."endTime"), 0)`
       : Prisma.sql`cg."maxEndTime"`;
 
-    const groupByClause = hasConditionFilters
+    const groupByClause = requiresConditionJoin
       ? Prisma.sql`GROUP BY cg.id
         HAVING COUNT(c.id) > 0`
       : Prisma.empty;
@@ -503,6 +542,10 @@ export class QuestionsResolver {
         volume4h: 'similarMarketVolume4h',
         volume24h: 'similarMarketVolume24h',
         volume7d: 'similarMarketVolume7d',
+        volumeFiltered1h: 'similarMarketVolumeFiltered1h',
+        volumeFiltered4h: 'similarMarketVolumeFiltered4h',
+        volumeFiltered24h: 'similarMarketVolumeFiltered24h',
+        volumeFiltered7d: 'similarMarketVolumeFiltered7d',
       } as const;
       const field = fieldByResolvedVolumeKey[resolvedVolumeKey];
       return { [field]: similarMarketVolumeRangeFilter };

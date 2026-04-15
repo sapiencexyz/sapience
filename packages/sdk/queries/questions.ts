@@ -9,7 +9,15 @@ export type SortField =
   | 'predictionCount'
   | 'similarMarketVolume';
 export type SortDirection = 'asc' | 'desc';
-export type VolumeWindow = '1h' | '4h' | '24h' | '7d';
+export type VolumeWindow =
+  | '1h'
+  | '4h'
+  | '24h'
+  | '7d'
+  | '1hFiltered'
+  | '4hFiltered'
+  | '24hFiltered'
+  | '7dFiltered';
 
 /** Map friendly VolumeWindow values to GraphQL enum keys */
 const VOLUME_WINDOW_TO_GQL: Record<VolumeWindow, string> = {
@@ -17,6 +25,10 @@ const VOLUME_WINDOW_TO_GQL: Record<VolumeWindow, string> = {
   '4h': 'fourHours',
   '24h': 'twentyFourHours',
   '7d': 'sevenDays',
+  '1hFiltered': 'oneHourFiltered',
+  '4hFiltered': 'fourHoursFiltered',
+  '24hFiltered': 'twentyFourHoursFiltered',
+  '7dFiltered': 'sevenDaysFiltered',
 };
 export type ResolutionStatusValue =
   | 'all'
@@ -101,6 +113,10 @@ const GET_QUESTIONS = /* GraphQL */ `
           similarMarketVolume4h
           similarMarketVolume24h
           similarMarketVolume7d
+          similarMarketVolumeFiltered1h
+          similarMarketVolumeFiltered4h
+          similarMarketVolumeFiltered24h
+          similarMarketVolumeFiltered7d
           conditionGroupId
           category {
             id
@@ -135,6 +151,10 @@ const GET_QUESTIONS = /* GraphQL */ `
         similarMarketVolume4h
         similarMarketVolume24h
         similarMarketVolume7d
+        similarMarketVolumeFiltered1h
+        similarMarketVolumeFiltered4h
+        similarMarketVolumeFiltered24h
+        similarMarketVolumeFiltered7d
         conditionGroupId
         category {
           id

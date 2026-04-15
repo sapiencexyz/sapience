@@ -425,6 +425,10 @@ type Condition {
   similarMarketVolume4h: Float!
   similarMarketVolume7d: Float!
   similarMarketVolume24h: Float!
+  similarMarketVolumeFiltered1h: Float!
+  similarMarketVolumeFiltered4h: Float!
+  similarMarketVolumeFiltered7d: Float!
+  similarMarketVolumeFiltered24h: Float!
   similarMarkets: [String!]!
   tags: [String!]!
 }
@@ -481,6 +485,10 @@ input ConditionGroupOrderByWithRelationInput {
   totalSimilarMarketVolume4h: SortOrder
   totalSimilarMarketVolume7d: SortOrder
   totalSimilarMarketVolume24h: SortOrder
+  totalSimilarMarketVolumeFiltered1h: SortOrder
+  totalSimilarMarketVolumeFiltered4h: SortOrder
+  totalSimilarMarketVolumeFiltered7d: SortOrder
+  totalSimilarMarketVolumeFiltered24h: SortOrder
 }
 
 enum ConditionGroupScalarFieldEnum {
@@ -498,6 +506,10 @@ enum ConditionGroupScalarFieldEnum {
   totalSimilarMarketVolume4h
   totalSimilarMarketVolume7d
   totalSimilarMarketVolume24h
+  totalSimilarMarketVolumeFiltered1h
+  totalSimilarMarketVolumeFiltered4h
+  totalSimilarMarketVolumeFiltered7d
+  totalSimilarMarketVolumeFiltered24h
 }
 
 input ConditionGroupWhereInput {
@@ -520,6 +532,10 @@ input ConditionGroupWhereInput {
   totalSimilarMarketVolume4h: DecimalFilter
   totalSimilarMarketVolume7d: DecimalFilter
   totalSimilarMarketVolume24h: DecimalFilter
+  totalSimilarMarketVolumeFiltered1h: DecimalFilter
+  totalSimilarMarketVolumeFiltered4h: DecimalFilter
+  totalSimilarMarketVolumeFiltered7d: DecimalFilter
+  totalSimilarMarketVolumeFiltered24h: DecimalFilter
 }
 
 input ConditionGroupWhereUniqueInput {
@@ -542,6 +558,10 @@ input ConditionGroupWhereUniqueInput {
   totalSimilarMarketVolume4h: DecimalFilter
   totalSimilarMarketVolume7d: DecimalFilter
   totalSimilarMarketVolume24h: DecimalFilter
+  totalSimilarMarketVolumeFiltered1h: DecimalFilter
+  totalSimilarMarketVolumeFiltered4h: DecimalFilter
+  totalSimilarMarketVolumeFiltered7d: DecimalFilter
+  totalSimilarMarketVolumeFiltered24h: DecimalFilter
 }
 
 input ConditionListRelationFilter {
@@ -591,6 +611,10 @@ input ConditionOrderByWithRelationInput {
   similarMarketVolume4h: SortOrder
   similarMarketVolume7d: SortOrder
   similarMarketVolume24h: SortOrder
+  similarMarketVolumeFiltered1h: SortOrder
+  similarMarketVolumeFiltered4h: SortOrder
+  similarMarketVolumeFiltered7d: SortOrder
+  similarMarketVolumeFiltered24h: SortOrder
   similarMarkets: SortOrder
   tags: SortOrder
 }
@@ -628,6 +652,10 @@ enum ConditionScalarFieldEnum {
   similarMarketVolume4h
   similarMarketVolume7d
   similarMarketVolume24h
+  similarMarketVolumeFiltered1h
+  similarMarketVolumeFiltered4h
+  similarMarketVolumeFiltered7d
+  similarMarketVolumeFiltered24h
   similarMarkets
   tags
 }
@@ -667,6 +695,10 @@ input ConditionWhereInput {
   similarMarketVolume4h: FloatFilter
   similarMarketVolume7d: FloatFilter
   similarMarketVolume24h: FloatFilter
+  similarMarketVolumeFiltered1h: FloatFilter
+  similarMarketVolumeFiltered4h: FloatFilter
+  similarMarketVolumeFiltered7d: FloatFilter
+  similarMarketVolumeFiltered24h: FloatFilter
   similarMarkets: StringNullableListFilter
   tags: StringNullableListFilter
 }
@@ -706,6 +738,10 @@ input ConditionWhereUniqueInput {
   similarMarketVolume4h: FloatFilter
   similarMarketVolume7d: FloatFilter
   similarMarketVolume24h: FloatFilter
+  similarMarketVolumeFiltered1h: FloatFilter
+  similarMarketVolumeFiltered4h: FloatFilter
+  similarMarketVolumeFiltered7d: FloatFilter
+  similarMarketVolumeFiltered24h: FloatFilter
   similarMarkets: StringNullableListFilter
   tags: StringNullableListFilter
 }
@@ -1809,7 +1845,11 @@ type VolumeDataPoint {
 """Time window for volume-based sorting"""
 enum VolumeWindow {
   fourHours
+  fourHoursFiltered
   oneHour
+  oneHourFiltered
   sevenDays
+  sevenDaysFiltered
   twentyFourHours
+  twentyFourHoursFiltered
 }

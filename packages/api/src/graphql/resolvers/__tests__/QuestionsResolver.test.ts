@@ -89,6 +89,11 @@ describe('QuestionsResolver', () => {
   const getCapturedSql = () => flattenSql(mockPrisma.$queryRaw.mock.calls[0]);
 
   type VolumeColumnKey = '1h' | '4h' | '24h' | '7d';
+  type FilteredVolumeColumnKey =
+    | '1hFiltered'
+    | '4hFiltered'
+    | '24hFiltered'
+    | '7dFiltered';
 
   const VOLUME_SQL_COLUMNS: Record<
     VolumeColumnKey,
@@ -111,6 +116,37 @@ describe('QuestionsResolver', () => {
       group: '"totalVolume7d"',
     },
   };
+
+  const FILTERED_VOLUME_SQL_COLUMNS: Record<
+    FilteredVolumeColumnKey,
+    { cond: string; group: string }
+  > = {
+    '1hFiltered': {
+      cond: '"volumeFiltered1h"',
+      group: '"totalVolumeFiltered1h"',
+    },
+    '4hFiltered': {
+      cond: '"volumeFiltered4h"',
+      group: '"totalVolumeFiltered4h"',
+    },
+    '24hFiltered': {
+      cond: '"volumeFiltered24h"',
+      group: '"totalVolumeFiltered24h"',
+    },
+    '7dFiltered': {
+      cond: '"volumeFiltered7d"',
+      group: '"totalVolumeFiltered7d"',
+    },
+  };
+
+  function expectFilteredVolumeColumns(
+    sql: string,
+    key: FilteredVolumeColumnKey
+  ) {
+    const cols = FILTERED_VOLUME_SQL_COLUMNS[key];
+    expect(sql).toContain(cols.cond);
+    expect(sql).toContain(cols.group);
+  }
 
   function expectVolumeColumns(sql: string, key: VolumeColumnKey) {
     const cols = VOLUME_SQL_COLUMNS[key];
@@ -603,16 +639,15 @@ describe('QuestionsResolver', () => {
     });
 
     describe('similarMarketVolume sort field', () => {
-      it('uses similarMarketVolume in sort expression for unfiltered groups (subquery path)', async () => {
+      it('uses LEFT JOIN + SUM for all-time similarMarketVolume sort (no correlated subquery)', async () => {
         await callQuestions({
           sortField: QuestionSortField.similarMarketVolume,
         });
         const sql = getCapturedSql();
 
-        // Unfiltered path: group sort value should use a subquery summing similarMarketVolume
-        expect(sql).not.toContain('CROSS JOIN LATERAL');
+        expect(sql).toContain('LEFT JOIN condition c ON');
         expect(sql).toContain('SUM(c."similarMarketVolume")');
-        // Ungrouped condition sort value should also reference similarMarketVolume
+        expect(sql).not.toContain('(SELECT COALESCE(SUM');
         expect(sql).toContain('c."similarMarketVolume"');
       });
 
@@ -722,6 +757,73 @@ describe('QuestionsResolver', () => {
       });
     });
 
+    describe('filtered volume windows', () => {
+      it('uses volumeFiltered1h when similarMarketVolumeWindow is oneHourFiltered', async () => {
+        await callQuestions({
+          sortField: QuestionSortField.similarMarketVolume,
+          similarMarketVolumeWindow: VolumeWindow.oneHourFiltered,
+        });
+        const sql = getCapturedSql();
+        expectFilteredVolumeColumns(sql, '1hFiltered');
+        expect(sql).not.toContain('"volume1h"');
+      });
+
+      it('uses volumeFiltered4h when similarMarketVolumeWindow is fourHoursFiltered', async () => {
+        await callQuestions({
+          sortField: QuestionSortField.similarMarketVolume,
+          similarMarketVolumeWindow: VolumeWindow.fourHoursFiltered,
+        });
+        const sql = getCapturedSql();
+        expectFilteredVolumeColumns(sql, '4hFiltered');
+        expect(sql).not.toContain('"volume4h"');
+      });
+
+      it('uses volumeFiltered24h when similarMarketVolumeWindow is twentyFourHoursFiltered', async () => {
+        await callQuestions({
+          sortField: QuestionSortField.similarMarketVolume,
+          similarMarketVolumeWindow: VolumeWindow.twentyFourHoursFiltered,
+        });
+        const sql = getCapturedSql();
+        expectFilteredVolumeColumns(sql, '24hFiltered');
+        expect(sql).not.toContain('"volume24h"');
+      });
+
+      it('uses volumeFiltered7d when similarMarketVolumeWindow is sevenDaysFiltered', async () => {
+        await callQuestions({
+          sortField: QuestionSortField.similarMarketVolume,
+          similarMarketVolumeWindow: VolumeWindow.sevenDaysFiltered,
+        });
+        const sql = getCapturedSql();
+        expectFilteredVolumeColumns(sql, '7dFiltered');
+        expect(sql).not.toContain('"volume7d"');
+      });
+
+      it('uses LEFT JOIN path with filtered columns when per-condition filters are active', async () => {
+        await callQuestions({
+          sortField: QuestionSortField.similarMarketVolume,
+          similarMarketVolumeWindow: VolumeWindow.sevenDaysFiltered,
+          resolutionStatus: ResolutionStatus.unresolved,
+        });
+        const sql = getCapturedSql();
+        expect(sql).toContain('LEFT JOIN condition c ON');
+        expect(sql).toContain('SUM(c."volumeFiltered7d")');
+        // Condition column present; group (denormalized) column not used on LEFT JOIN path
+        expect(sql).toContain('"volumeFiltered7d"');
+        expect(sql).not.toContain('"totalVolumeFiltered7d"');
+      });
+
+      it('maps filtered window to filtered Prisma field for volume range filter', async () => {
+        await callQuestions({
+          sortField: QuestionSortField.openInterest,
+          similarMarketVolumeWindow: VolumeWindow.oneHourFiltered,
+          minSimilarMarketVolume: 500,
+        });
+        const sql = getCapturedSql();
+        expect(sql).toContain('"volumeFiltered1h"');
+        expect(sql).toContain('>= ?');
+      });
+    });
+
     describe('similarMarketVolume behavior matrix', () => {
       it.each([
         {
@@ -729,24 +831,49 @@ describe('QuestionsResolver', () => {
           sortField: QuestionSortField.similarMarketVolume,
           similarMarketVolumeWindow: null,
           expectedWindow: null,
+          expectedFilteredWindow: null,
         },
         {
           label: 'similarMarketVolume + oneHour',
           sortField: QuestionSortField.similarMarketVolume,
           similarMarketVolumeWindow: VolumeWindow.oneHour,
           expectedWindow: '1h' as const,
+          expectedFilteredWindow: null,
         },
         {
           label: 'similarMarketVolume + fourHours',
           sortField: QuestionSortField.similarMarketVolume,
           similarMarketVolumeWindow: VolumeWindow.fourHours,
           expectedWindow: '4h' as const,
+          expectedFilteredWindow: null,
         },
         {
           label: 'similarMarketVolume + sevenDays',
           sortField: QuestionSortField.similarMarketVolume,
           similarMarketVolumeWindow: VolumeWindow.sevenDays,
           expectedWindow: '7d' as const,
+          expectedFilteredWindow: null,
+        },
+        {
+          label: 'similarMarketVolume + oneHourFiltered',
+          sortField: QuestionSortField.similarMarketVolume,
+          similarMarketVolumeWindow: VolumeWindow.oneHourFiltered,
+          expectedWindow: null,
+          expectedFilteredWindow: '1hFiltered' as const,
+        },
+        {
+          label: 'similarMarketVolume + fourHoursFiltered',
+          sortField: QuestionSortField.similarMarketVolume,
+          similarMarketVolumeWindow: VolumeWindow.fourHoursFiltered,
+          expectedWindow: null,
+          expectedFilteredWindow: '4hFiltered' as const,
+        },
+        {
+          label: 'similarMarketVolume + sevenDaysFiltered',
+          sortField: QuestionSortField.similarMarketVolume,
+          similarMarketVolumeWindow: VolumeWindow.sevenDaysFiltered,
+          expectedWindow: null,
+          expectedFilteredWindow: '7dFiltered' as const,
         },
       ])('$label', async (row) => {
         await callQuestions({
@@ -754,11 +881,16 @@ describe('QuestionsResolver', () => {
           similarMarketVolumeWindow: row.similarMarketVolumeWindow,
         });
         const sql = getCapturedSql();
-        if (row.expectedWindow === null) {
+        if (
+          row.expectedWindow === null &&
+          row.expectedFilteredWindow === null
+        ) {
           expect(sql).toContain('"similarMarketVolume"');
           expectNoVolumeColumns(sql);
-        } else {
+        } else if (row.expectedWindow !== null) {
           expectVolumeColumns(sql, row.expectedWindow);
+        } else if (row.expectedFilteredWindow !== null) {
+          expectFilteredVolumeColumns(sql, row.expectedFilteredWindow);
         }
       });
     });
@@ -792,6 +924,42 @@ describe('QuestionsResolver', () => {
         expect(sql).toContain('"volume1h"');
         expect(sql).toContain('>= ?');
         expect(sql).toContain('"openInterest"');
+      });
+
+      it('triggers LEFT JOIN when minSimilarMarketVolume is the only per-condition filter', async () => {
+        await callQuestions({ minSimilarMarketVolume: 1000 });
+        const sql = getCapturedSql();
+        expect(sql).toContain('LEFT JOIN condition c ON');
+        expect(sql).toContain('GROUP BY cg.id');
+      });
+
+      it('triggers LEFT JOIN when maxSimilarMarketVolume is the only per-condition filter', async () => {
+        await callQuestions({ maxSimilarMarketVolume: 50000 });
+        const sql = getCapturedSql();
+        expect(sql).toContain('LEFT JOIN condition c ON');
+        expect(sql).toContain('GROUP BY cg.id');
+      });
+    });
+
+    describe('all-time similarMarketVolume sort avoids correlated subquery', () => {
+      it('uses LEFT JOIN instead of correlated subquery for unfiltered all-time volume sort', async () => {
+        await callQuestions({
+          sortField: QuestionSortField.similarMarketVolume,
+        });
+        const sql = getCapturedSql();
+        expect(sql).toContain('LEFT JOIN condition c ON');
+        expect(sql).toContain('GROUP BY cg.id');
+        expect(sql).not.toContain('(SELECT COALESCE(SUM');
+      });
+
+      it('still uses denormalized columns for windowed volume sort without filters', async () => {
+        await callQuestions({
+          sortField: QuestionSortField.similarMarketVolume,
+          similarMarketVolumeWindow: VolumeWindow.fourHours,
+        });
+        const sql = getCapturedSql();
+        expect(sql).not.toContain('LEFT JOIN condition c ON');
+        expect(sql).toContain('"totalVolume4h"');
       });
     });
   });

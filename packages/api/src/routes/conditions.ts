@@ -491,6 +491,10 @@ const SIMILAR_MARKET_VOLUME_FIELDS = [
   'similarMarketVolume4h',
   'similarMarketVolume24h',
   'similarMarketVolume7d',
+  'similarMarketVolumeFiltered1h',
+  'similarMarketVolumeFiltered4h',
+  'similarMarketVolumeFiltered24h',
+  'similarMarketVolumeFiltered7d',
 ] as const;
 
 // PUT /admin/conditions/volume - batch update time-bucketed volume on multiple conditions

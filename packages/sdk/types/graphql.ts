@@ -474,6 +474,10 @@ export type Condition = {
   similarMarketVolume4h: Scalars['Float']['output'];
   similarMarketVolume7d: Scalars['Float']['output'];
   similarMarketVolume24h: Scalars['Float']['output'];
+  similarMarketVolumeFiltered1h: Scalars['Float']['output'];
+  similarMarketVolumeFiltered4h: Scalars['Float']['output'];
+  similarMarketVolumeFiltered7d: Scalars['Float']['output'];
+  similarMarketVolumeFiltered24h: Scalars['Float']['output'];
   similarMarkets: Array<Scalars['String']['output']>;
   tags: Array<Scalars['String']['output']>;
 };
@@ -593,6 +597,10 @@ export type ConditionGroupOrderByWithRelationInput = {
   totalSimilarMarketVolume4h?: InputMaybe<SortOrder>;
   totalSimilarMarketVolume7d?: InputMaybe<SortOrder>;
   totalSimilarMarketVolume24h?: InputMaybe<SortOrder>;
+  totalSimilarMarketVolumeFiltered1h?: InputMaybe<SortOrder>;
+  totalSimilarMarketVolumeFiltered4h?: InputMaybe<SortOrder>;
+  totalSimilarMarketVolumeFiltered7d?: InputMaybe<SortOrder>;
+  totalSimilarMarketVolumeFiltered24h?: InputMaybe<SortOrder>;
 };
 
 export type ConditionGroupScalarFieldEnum =
@@ -609,7 +617,11 @@ export type ConditionGroupScalarFieldEnum =
   | 'totalSimilarMarketVolume1h'
   | 'totalSimilarMarketVolume4h'
   | 'totalSimilarMarketVolume7d'
-  | 'totalSimilarMarketVolume24h';
+  | 'totalSimilarMarketVolume24h'
+  | 'totalSimilarMarketVolumeFiltered1h'
+  | 'totalSimilarMarketVolumeFiltered4h'
+  | 'totalSimilarMarketVolumeFiltered7d'
+  | 'totalSimilarMarketVolumeFiltered24h';
 
 export type ConditionGroupWhereInput = {
   AND?: InputMaybe<Array<ConditionGroupWhereInput>>;
@@ -631,6 +643,10 @@ export type ConditionGroupWhereInput = {
   totalSimilarMarketVolume4h?: InputMaybe<DecimalFilter>;
   totalSimilarMarketVolume7d?: InputMaybe<DecimalFilter>;
   totalSimilarMarketVolume24h?: InputMaybe<DecimalFilter>;
+  totalSimilarMarketVolumeFiltered1h?: InputMaybe<DecimalFilter>;
+  totalSimilarMarketVolumeFiltered4h?: InputMaybe<DecimalFilter>;
+  totalSimilarMarketVolumeFiltered7d?: InputMaybe<DecimalFilter>;
+  totalSimilarMarketVolumeFiltered24h?: InputMaybe<DecimalFilter>;
 };
 
 export type ConditionGroupWhereUniqueInput = {
@@ -653,6 +669,10 @@ export type ConditionGroupWhereUniqueInput = {
   totalSimilarMarketVolume4h?: InputMaybe<DecimalFilter>;
   totalSimilarMarketVolume7d?: InputMaybe<DecimalFilter>;
   totalSimilarMarketVolume24h?: InputMaybe<DecimalFilter>;
+  totalSimilarMarketVolumeFiltered1h?: InputMaybe<DecimalFilter>;
+  totalSimilarMarketVolumeFiltered4h?: InputMaybe<DecimalFilter>;
+  totalSimilarMarketVolumeFiltered7d?: InputMaybe<DecimalFilter>;
+  totalSimilarMarketVolumeFiltered24h?: InputMaybe<DecimalFilter>;
 };
 
 export type ConditionListRelationFilter = {
@@ -702,6 +722,10 @@ export type ConditionOrderByWithRelationInput = {
   similarMarketVolume4h?: InputMaybe<SortOrder>;
   similarMarketVolume7d?: InputMaybe<SortOrder>;
   similarMarketVolume24h?: InputMaybe<SortOrder>;
+  similarMarketVolumeFiltered1h?: InputMaybe<SortOrder>;
+  similarMarketVolumeFiltered4h?: InputMaybe<SortOrder>;
+  similarMarketVolumeFiltered7d?: InputMaybe<SortOrder>;
+  similarMarketVolumeFiltered24h?: InputMaybe<SortOrder>;
   similarMarkets?: InputMaybe<SortOrder>;
   tags?: InputMaybe<SortOrder>;
 };
@@ -739,6 +763,10 @@ export type ConditionScalarFieldEnum =
   | 'similarMarketVolume4h'
   | 'similarMarketVolume7d'
   | 'similarMarketVolume24h'
+  | 'similarMarketVolumeFiltered1h'
+  | 'similarMarketVolumeFiltered4h'
+  | 'similarMarketVolumeFiltered7d'
+  | 'similarMarketVolumeFiltered24h'
   | 'similarMarkets'
   | 'tags';
 
@@ -777,6 +805,10 @@ export type ConditionWhereInput = {
   similarMarketVolume4h?: InputMaybe<FloatFilter>;
   similarMarketVolume7d?: InputMaybe<FloatFilter>;
   similarMarketVolume24h?: InputMaybe<FloatFilter>;
+  similarMarketVolumeFiltered1h?: InputMaybe<FloatFilter>;
+  similarMarketVolumeFiltered4h?: InputMaybe<FloatFilter>;
+  similarMarketVolumeFiltered7d?: InputMaybe<FloatFilter>;
+  similarMarketVolumeFiltered24h?: InputMaybe<FloatFilter>;
   similarMarkets?: InputMaybe<StringNullableListFilter>;
   tags?: InputMaybe<StringNullableListFilter>;
 };
@@ -816,6 +848,10 @@ export type ConditionWhereUniqueInput = {
   similarMarketVolume4h?: InputMaybe<FloatFilter>;
   similarMarketVolume7d?: InputMaybe<FloatFilter>;
   similarMarketVolume24h?: InputMaybe<FloatFilter>;
+  similarMarketVolumeFiltered1h?: InputMaybe<FloatFilter>;
+  similarMarketVolumeFiltered4h?: InputMaybe<FloatFilter>;
+  similarMarketVolumeFiltered7d?: InputMaybe<FloatFilter>;
+  similarMarketVolumeFiltered24h?: InputMaybe<FloatFilter>;
   similarMarkets?: InputMaybe<StringNullableListFilter>;
   tags?: InputMaybe<StringNullableListFilter>;
 };
@@ -2214,6 +2250,10 @@ export type VolumeDataPoint = {
 /** Time window for volume-based sorting */
 export type VolumeWindow =
   | 'fourHours'
+  | 'fourHoursFiltered'
   | 'oneHour'
+  | 'oneHourFiltered'
   | 'sevenDays'
-  | 'twentyFourHours';
+  | 'sevenDaysFiltered'
+  | 'twentyFourHours'
+  | 'twentyFourHoursFiltered';
