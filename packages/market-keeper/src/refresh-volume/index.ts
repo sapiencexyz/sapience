@@ -21,10 +21,6 @@ import { submitVolumeUpdates } from '../generate/api';
 
 const POLYMARKET_DATA_API = 'https://data-api.polymarket.com';
 
-/** Price range for filtered volume — trades outside this are excluded */
-const FILTERED_PRICE_MIN = 0.01;
-const FILTERED_PRICE_MAX = 0.99;
-
 /** Time windows in seconds */
 const TIME_WINDOWS = {
   '1h': 3600,
@@ -318,10 +314,6 @@ export interface ConditionVolume {
   similarMarketVolume4h: number;
   similarMarketVolume24h: number;
   similarMarketVolume7d: number;
-  similarMarketVolumeFiltered1h: number;
-  similarMarketVolumeFiltered4h: number;
-  similarMarketVolumeFiltered24h: number;
-  similarMarketVolumeFiltered7d: number;
 }
 
 export function compactConditionVolumes(
@@ -354,38 +346,25 @@ export function aggregateVolumes(
       similarMarketVolume4h: 0,
       similarMarketVolume24h: 0,
       similarMarketVolume7d: 0,
-      similarMarketVolumeFiltered1h: 0,
-      similarMarketVolumeFiltered4h: 0,
-      similarMarketVolumeFiltered24h: 0,
-      similarMarketVolumeFiltered7d: 0,
     });
   }
-
-  const isFilteredPrice = (price: number) =>
-    price >= FILTERED_PRICE_MIN && price <= FILTERED_PRICE_MAX;
 
   for (const trade of trades) {
     const vol = volumeMap.get(trade.conditionId);
     if (!vol) continue;
 
     const size = trade.size;
-    const filtered = isFilteredPrice(trade.price);
 
     if (trade.timestamp >= cutoffs['1h']) {
       vol.similarMarketVolume1h += size;
-      if (filtered) vol.similarMarketVolumeFiltered1h += size;
     }
     if (trade.timestamp >= cutoffs['4h']) {
       vol.similarMarketVolume4h += size;
-      if (filtered) vol.similarMarketVolumeFiltered4h += size;
     }
     if (trade.timestamp >= cutoffs['24h']) {
       vol.similarMarketVolume24h += size;
-      if (filtered) vol.similarMarketVolumeFiltered24h += size;
     }
-    // All trades are within 7d (we filtered at fetch time)
     vol.similarMarketVolume7d += size;
-    if (filtered) vol.similarMarketVolumeFiltered7d += size;
   }
 
   return [...volumeMap.values()];
@@ -530,9 +509,6 @@ export async function main() {
       for (const v of withVolume.slice(0, 15)) {
         log(
           `  ${v.id} → 1h: $${v.similarMarketVolume1h.toFixed(0)} | 4h: $${v.similarMarketVolume4h.toFixed(0)} | 24h: $${v.similarMarketVolume24h.toFixed(0)} | 7d: $${v.similarMarketVolume7d.toFixed(0)}`
-        );
-        log(
-          `    filtered → 1h: $${v.similarMarketVolumeFiltered1h.toFixed(0)} | 4h: $${v.similarMarketVolumeFiltered4h.toFixed(0)} | 24h: $${v.similarMarketVolumeFiltered24h.toFixed(0)} | 7d: $${v.similarMarketVolumeFiltered7d.toFixed(0)}`
         );
       }
       if (withVolume.length > 15) {

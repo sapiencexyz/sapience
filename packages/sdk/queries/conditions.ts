@@ -28,10 +28,6 @@ export interface ConditionType {
   similarMarketVolume4h?: number;
   similarMarketVolume24h?: number;
   similarMarketVolume7d?: number;
-  similarMarketVolumeFiltered1h?: number;
-  similarMarketVolumeFiltered4h?: number;
-  similarMarketVolumeFiltered24h?: number;
-  similarMarketVolumeFiltered7d?: number;
 }
 
 export interface ConditionFilters {

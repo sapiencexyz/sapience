@@ -82,10 +82,6 @@ export function groupConditionToConditionType(
     similarMarketVolume4h: gc.similarMarketVolume4h,
     similarMarketVolume24h: gc.similarMarketVolume24h,
     similarMarketVolume7d: gc.similarMarketVolume7d,
-    similarMarketVolumeFiltered1h: gc.similarMarketVolumeFiltered1h,
-    similarMarketVolumeFiltered4h: gc.similarMarketVolumeFiltered4h,
-    similarMarketVolumeFiltered24h: gc.similarMarketVolumeFiltered24h,
-    similarMarketVolumeFiltered7d: gc.similarMarketVolumeFiltered7d,
   };
 }
 

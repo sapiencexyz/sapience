@@ -101,10 +101,6 @@ const GET_QUESTIONS = /* GraphQL */ `
           similarMarketVolume4h
           similarMarketVolume24h
           similarMarketVolume7d
-          similarMarketVolumeFiltered1h
-          similarMarketVolumeFiltered4h
-          similarMarketVolumeFiltered24h
-          similarMarketVolumeFiltered7d
           conditionGroupId
           category {
             id
@@ -139,10 +135,6 @@ const GET_QUESTIONS = /* GraphQL */ `
         similarMarketVolume4h
         similarMarketVolume24h
         similarMarketVolume7d
-        similarMarketVolumeFiltered1h
-        similarMarketVolumeFiltered4h
-        similarMarketVolumeFiltered24h
-        similarMarketVolumeFiltered7d
         conditionGroupId
         category {
           id

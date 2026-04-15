@@ -38,10 +38,6 @@ function makeConditionRow(
       similarMarketVolume4h: 0,
       similarMarketVolume24h: 0,
       similarMarketVolume7d: 0,
-      similarMarketVolumeFiltered1h: 0,
-      similarMarketVolumeFiltered4h: 0,
-      similarMarketVolumeFiltered24h: 0,
-      similarMarketVolumeFiltered7d: 0,
       ...overrides,
     } as unknown as TopLevelRow extends { condition: infer C } ? C : never,
   };
