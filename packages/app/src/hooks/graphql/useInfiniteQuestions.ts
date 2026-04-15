@@ -20,9 +20,11 @@ export interface UseInfiniteQuestionsOptions {
   resolutionStatus?: string;
   minEstimatedPrice?: number;
   maxEstimatedPrice?: number;
+  minSimilarMarketVolume?: number;
+  maxSimilarMarketVolume?: number;
   tag?: string;
   similarMarketVolumeWindow?: VolumeWindow;
-  excludeLowOdds?: boolean;
+  excludeExtremeOdds?: boolean;
 }
 
 export interface UseInfiniteQuestionsResult {
@@ -47,9 +49,11 @@ export function useInfiniteQuestions(
     resolutionStatus,
     minEstimatedPrice,
     maxEstimatedPrice,
+    minSimilarMarketVolume,
+    maxSimilarMarketVolume,
     tag,
     similarMarketVolumeWindow,
-    excludeLowOdds,
+    excludeExtremeOdds,
   } = opts;
 
   const minEndTime =
@@ -81,9 +85,11 @@ export function useInfiniteQuestions(
     resolutionStatus,
     minEstimatedPrice,
     maxEstimatedPrice,
+    minSimilarMarketVolume,
+    maxSimilarMarketVolume,
     tag,
     similarMarketVolumeWindow,
-    excludeLowOdds,
+    excludeExtremeOdds,
   });
   const prevFiltersKeyRef = useRef(filtersKey);
   const lastSuccessfulSkipRef = useRef<number>(0);
@@ -119,9 +125,11 @@ export function useInfiniteQuestions(
       resolutionStatus,
       minEstimatedPrice,
       maxEstimatedPrice,
+      minSimilarMarketVolume,
+      maxSimilarMarketVolume,
       tag,
       similarMarketVolumeWindow,
-      excludeLowOdds,
+      excludeExtremeOdds,
     ],
     queryFn: () =>
       fetchQuestionsSorted({
@@ -136,9 +144,11 @@ export function useInfiniteQuestions(
         resolutionStatus,
         minEstimatedPrice,
         maxEstimatedPrice,
+        minSimilarMarketVolume,
+        maxSimilarMarketVolume,
         tag,
         similarMarketVolumeWindow,
-        excludeLowOdds,
+        excludeExtremeOdds,
       }),
   });
 

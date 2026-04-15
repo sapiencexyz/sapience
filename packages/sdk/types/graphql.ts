@@ -1861,10 +1861,12 @@ export type QueryProtocolVolumeArgs = {
 export type QueryQuestionsArgs = {
   categorySlugs?: InputMaybe<Array<Scalars['String']['input']>>;
   chainId?: InputMaybe<Scalars['Int']['input']>;
-  excludeLowOdds?: InputMaybe<Scalars['Boolean']['input']>;
+  excludeExtremeOdds?: InputMaybe<Scalars['Boolean']['input']>;
   maxEstimatedPrice?: InputMaybe<Scalars['Float']['input']>;
+  maxSimilarMarketVolume?: InputMaybe<Scalars['Float']['input']>;
   minEndTime?: InputMaybe<Scalars['Int']['input']>;
   minEstimatedPrice?: InputMaybe<Scalars['Float']['input']>;
+  minSimilarMarketVolume?: InputMaybe<Scalars['Float']['input']>;
   resolutionStatus?: InputMaybe<ResolutionStatus>;
   search?: InputMaybe<Scalars['String']['input']>;
   similarMarketVolumeWindow?: InputMaybe<VolumeWindow>;
@@ -1938,8 +1940,7 @@ export type QuestionSortField =
   | 'endTime'
   | 'openInterest'
   | 'predictionCount'
-  | 'similarMarketVolume'
-  | 'volume';
+  | 'similarMarketVolume';
 
 export type ReferralCode = {
   __typename?: 'ReferralCode';

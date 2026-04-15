@@ -7,8 +7,7 @@ export type SortField =
   | 'endTime'
   | 'createdAt'
   | 'predictionCount'
-  | 'similarMarketVolume'
-  | 'volume';
+  | 'similarMarketVolume';
 export type SortDirection = 'asc' | 'desc';
 export type VolumeWindow = '1h' | '4h' | '24h' | '7d';
 
@@ -45,9 +44,11 @@ const GET_QUESTIONS = /* GraphQL */ `
     $resolutionStatus: ResolutionStatus
     $minEstimatedPrice: Float
     $maxEstimatedPrice: Float
+    $minSimilarMarketVolume: Float
+    $maxSimilarMarketVolume: Float
     $tag: String
     $similarMarketVolumeWindow: VolumeWindow
-    $excludeLowOdds: Boolean
+    $excludeExtremeOdds: Boolean
   ) {
     questions(
       take: $take
@@ -61,9 +62,11 @@ const GET_QUESTIONS = /* GraphQL */ `
       resolutionStatus: $resolutionStatus
       minEstimatedPrice: $minEstimatedPrice
       maxEstimatedPrice: $maxEstimatedPrice
+      minSimilarMarketVolume: $minSimilarMarketVolume
+      maxSimilarMarketVolume: $maxSimilarMarketVolume
       tag: $tag
       similarMarketVolumeWindow: $similarMarketVolumeWindow
-      excludeLowOdds: $excludeLowOdds
+      excludeExtremeOdds: $excludeExtremeOdds
     ) {
       questionType
       group {
@@ -165,9 +168,11 @@ export interface FetchQuestionsSortedParams {
   resolutionStatus?: string;
   minEstimatedPrice?: number;
   maxEstimatedPrice?: number;
+  minSimilarMarketVolume?: number;
+  maxSimilarMarketVolume?: number;
   tag?: string;
   similarMarketVolumeWindow?: VolumeWindow;
-  excludeLowOdds?: boolean;
+  excludeExtremeOdds?: boolean;
 }
 
 export async function fetchQuestionsSorted(
@@ -188,11 +193,13 @@ export async function fetchQuestionsSorted(
     resolutionStatus: params.resolutionStatus ?? null,
     minEstimatedPrice: params.minEstimatedPrice ?? null,
     maxEstimatedPrice: params.maxEstimatedPrice ?? null,
+    minSimilarMarketVolume: params.minSimilarMarketVolume ?? null,
+    maxSimilarMarketVolume: params.maxSimilarMarketVolume ?? null,
     tag: params.tag ?? null,
     similarMarketVolumeWindow: params.similarMarketVolumeWindow
       ? VOLUME_WINDOW_TO_GQL[params.similarMarketVolumeWindow]
       : null,
-    excludeLowOdds: params.excludeLowOdds ?? null,
+    excludeExtremeOdds: params.excludeExtremeOdds ?? null,
   };
 
   const data = await graphqlRequest<QuestionsQueryResult>(
