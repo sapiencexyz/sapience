@@ -46,7 +46,7 @@ const GET_QUESTIONS = /* GraphQL */ `
     $minEstimatedPrice: Float
     $maxEstimatedPrice: Float
     $tag: String
-    $volumeWindow: VolumeWindow
+    $similarMarketVolumeWindow: VolumeWindow
     $excludeLowOdds: Boolean
   ) {
     questions(
@@ -62,7 +62,7 @@ const GET_QUESTIONS = /* GraphQL */ `
       minEstimatedPrice: $minEstimatedPrice
       maxEstimatedPrice: $maxEstimatedPrice
       tag: $tag
-      volumeWindow: $volumeWindow
+      similarMarketVolumeWindow: $similarMarketVolumeWindow
       excludeLowOdds: $excludeLowOdds
     ) {
       questionType
@@ -166,7 +166,7 @@ export interface FetchQuestionsSortedParams {
   minEstimatedPrice?: number;
   maxEstimatedPrice?: number;
   tag?: string;
-  volumeWindow?: VolumeWindow;
+  similarMarketVolumeWindow?: VolumeWindow;
   excludeLowOdds?: boolean;
 }
 
@@ -189,7 +189,9 @@ export async function fetchQuestionsSorted(
     minEstimatedPrice: params.minEstimatedPrice ?? null,
     maxEstimatedPrice: params.maxEstimatedPrice ?? null,
     tag: params.tag ?? null,
-    volumeWindow: params.volumeWindow ? VOLUME_WINDOW_TO_GQL[params.volumeWindow] : null,
+    similarMarketVolumeWindow: params.similarMarketVolumeWindow
+      ? VOLUME_WINDOW_TO_GQL[params.similarMarketVolumeWindow]
+      : null,
     excludeLowOdds: params.excludeLowOdds ?? null,
   };
 

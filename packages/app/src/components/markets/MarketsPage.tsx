@@ -186,7 +186,9 @@ const MarketsPage = () => {
       ? { maxEstimatedPrice: filters.estimatedPriceRange[1] / 100 }
       : {}),
     // Volume sorting params (only relevant when sortField is 'volume')
-    ...(sortField === 'volume' ? { volumeWindow, excludeLowOdds } : {}),
+    ...(sortField === 'volume'
+      ? { similarMarketVolumeWindow: volumeWindow, excludeLowOdds }
+      : {}),
   });
 
   const handlePythPick = useCallback(

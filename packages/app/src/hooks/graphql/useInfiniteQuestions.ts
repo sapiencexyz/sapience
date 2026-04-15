@@ -21,7 +21,7 @@ export interface UseInfiniteQuestionsOptions {
   minEstimatedPrice?: number;
   maxEstimatedPrice?: number;
   tag?: string;
-  volumeWindow?: VolumeWindow;
+  similarMarketVolumeWindow?: VolumeWindow;
   excludeLowOdds?: boolean;
 }
 
@@ -48,7 +48,7 @@ export function useInfiniteQuestions(
     minEstimatedPrice,
     maxEstimatedPrice,
     tag,
-    volumeWindow,
+    similarMarketVolumeWindow,
     excludeLowOdds,
   } = opts;
 
@@ -82,7 +82,7 @@ export function useInfiniteQuestions(
     minEstimatedPrice,
     maxEstimatedPrice,
     tag,
-    volumeWindow,
+    similarMarketVolumeWindow,
     excludeLowOdds,
   });
   const prevFiltersKeyRef = useRef(filtersKey);
@@ -120,7 +120,7 @@ export function useInfiniteQuestions(
       minEstimatedPrice,
       maxEstimatedPrice,
       tag,
-      volumeWindow,
+      similarMarketVolumeWindow,
       excludeLowOdds,
     ],
     queryFn: () =>
@@ -137,7 +137,7 @@ export function useInfiniteQuestions(
         minEstimatedPrice,
         maxEstimatedPrice,
         tag,
-        volumeWindow,
+        similarMarketVolumeWindow,
         excludeLowOdds,
       }),
   });

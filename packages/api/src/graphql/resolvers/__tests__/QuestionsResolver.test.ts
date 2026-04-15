@@ -80,7 +80,7 @@ describe('QuestionsResolver', () => {
       (overrides.minEstimatedPrice as number) ?? null,
       (overrides.maxEstimatedPrice as number) ?? null,
       (overrides.tag as string) ?? null,
-      (overrides.volumeWindow as VolumeWindow) ?? null,
+      (overrides.similarMarketVolumeWindow as VolumeWindow) ?? null,
       (overrides.excludeLowOdds as boolean) ?? null
     );
 
@@ -622,7 +622,7 @@ describe('QuestionsResolver', () => {
     });
 
     describe('volume sort field', () => {
-      it('defaults to volume24h when no volumeWindow specified', async () => {
+      it('defaults to volume24h when no similarMarketVolumeWindow specified', async () => {
         await callQuestions({
           sortField: QuestionSortField.volume,
         });
@@ -631,30 +631,30 @@ describe('QuestionsResolver', () => {
         expect(sql).toContain('"totalVolume24h"');
       });
 
-      it('uses volume1h when volumeWindow is oneHour', async () => {
+      it('uses volume1h when similarMarketVolumeWindow is oneHour', async () => {
         await callQuestions({
           sortField: QuestionSortField.volume,
-          volumeWindow: VolumeWindow.oneHour,
+          similarMarketVolumeWindow: VolumeWindow.oneHour,
         });
         const sql = getCapturedSql();
         expect(sql).toContain('"volume1h"');
         expect(sql).toContain('"totalVolume1h"');
       });
 
-      it('uses volume4h when volumeWindow is fourHours', async () => {
+      it('uses volume4h when similarMarketVolumeWindow is fourHours', async () => {
         await callQuestions({
           sortField: QuestionSortField.volume,
-          volumeWindow: VolumeWindow.fourHours,
+          similarMarketVolumeWindow: VolumeWindow.fourHours,
         });
         const sql = getCapturedSql();
         expect(sql).toContain('"volume4h"');
         expect(sql).toContain('"totalVolume4h"');
       });
 
-      it('uses volume7d when volumeWindow is sevenDays', async () => {
+      it('uses volume7d when similarMarketVolumeWindow is sevenDays', async () => {
         await callQuestions({
           sortField: QuestionSortField.volume,
-          volumeWindow: VolumeWindow.sevenDays,
+          similarMarketVolumeWindow: VolumeWindow.sevenDays,
         });
         const sql = getCapturedSql();
         expect(sql).toContain('"volume7d"');
@@ -674,7 +674,7 @@ describe('QuestionsResolver', () => {
       it('uses volumeFiltered1h when oneHour + excludeLowOdds', async () => {
         await callQuestions({
           sortField: QuestionSortField.volume,
-          volumeWindow: VolumeWindow.oneHour,
+          similarMarketVolumeWindow: VolumeWindow.oneHour,
           excludeLowOdds: true,
         });
         const sql = getCapturedSql();
@@ -685,7 +685,7 @@ describe('QuestionsResolver', () => {
       it('uses LEFT JOIN path when per-condition filters are active', async () => {
         await callQuestions({
           sortField: QuestionSortField.volume,
-          volumeWindow: VolumeWindow.fourHours,
+          similarMarketVolumeWindow: VolumeWindow.fourHours,
           resolutionStatus: ResolutionStatus.unresolved,
         });
         const sql = getCapturedSql();
@@ -696,7 +696,7 @@ describe('QuestionsResolver', () => {
       it('does not affect SQL when sortField is not volume', async () => {
         await callQuestions({
           sortField: QuestionSortField.openInterest,
-          volumeWindow: VolumeWindow.oneHour,
+          similarMarketVolumeWindow: VolumeWindow.oneHour,
           excludeLowOdds: true,
         });
         const sql = getCapturedSql();

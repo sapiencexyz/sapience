@@ -1535,7 +1535,7 @@ type Query {
   """
   Sorted, paginated list of questions — groups and ungrouped conditions interleaved by the chosen sort field
   """
-  questions(categorySlugs: [String!], chainId: Int, excludeLowOdds: Boolean, maxEstimatedPrice: Float, minEndTime: Int, minEstimatedPrice: Float, resolutionStatus: ResolutionStatus, search: String, skip: Int! = 0, sortDirection: SortOrder! = desc, sortField: QuestionSortField, tag: String, take: Int! = 50, volumeWindow: VolumeWindow): [Question!]!
+  questions(categorySlugs: [String!], chainId: Int, excludeLowOdds: Boolean, maxEstimatedPrice: Float, minEndTime: Int, minEstimatedPrice: Float, resolutionStatus: ResolutionStatus, search: String, similarMarketVolumeWindow: VolumeWindow, skip: Int! = 0, sortDirection: SortOrder! = desc, sortField: QuestionSortField, tag: String, take: Int! = 50): [Question!]!
 
   """Look up a single secondary market trade by its trade hash"""
   trade(id: String!): Trade

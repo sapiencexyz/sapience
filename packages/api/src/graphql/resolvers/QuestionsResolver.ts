@@ -145,8 +145,8 @@ export class QuestionsResolver {
     maxEstimatedPrice: number | null,
     @Arg('tag', () => String, { nullable: true })
     tag: string | null,
-    @Arg('volumeWindow', () => VolumeWindow, { nullable: true })
-    volumeWindow: VolumeWindow | null,
+    @Arg('similarMarketVolumeWindow', () => VolumeWindow, { nullable: true })
+    similarMarketVolumeWindow: VolumeWindow | null,
     @Arg('excludeLowOdds', () => Boolean, { nullable: true })
     excludeLowOdds: boolean | null
   ): Promise<Question[]> {
@@ -259,7 +259,7 @@ export class QuestionsResolver {
     } as const;
 
     const resolvedVolumeKey = (() => {
-      const window = volumeWindow ?? VolumeWindow.twentyFourHours;
+      const window = similarMarketVolumeWindow ?? VolumeWindow.twentyFourHours;
       const prefix = excludeLowOdds ? 'volumeFiltered' : 'volume';
       const suffix = { '1h': '1h', '4h': '4h', '24h': '24h', '7d': '7d' }[
         window

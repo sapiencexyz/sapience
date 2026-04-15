@@ -1867,12 +1867,12 @@ export type QueryQuestionsArgs = {
   minEstimatedPrice?: InputMaybe<Scalars['Float']['input']>;
   resolutionStatus?: InputMaybe<ResolutionStatus>;
   search?: InputMaybe<Scalars['String']['input']>;
+  similarMarketVolumeWindow?: InputMaybe<VolumeWindow>;
   skip?: Scalars['Int']['input'];
   sortDirection?: SortOrder;
   sortField?: InputMaybe<QuestionSortField>;
   tag?: InputMaybe<Scalars['String']['input']>;
   take?: Scalars['Int']['input'];
-  volumeWindow?: InputMaybe<VolumeWindow>;
 };
 
 
