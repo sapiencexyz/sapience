@@ -96,14 +96,14 @@ const GET_QUESTIONS = /* GraphQL */ `
           similarMarketVolume
           similarMarketImage
           estimatedPrice
-          volume1h
-          volume4h
-          volume24h
-          volume7d
-          volumeFiltered1h
-          volumeFiltered4h
-          volumeFiltered24h
-          volumeFiltered7d
+          similarMarketVolume1h
+          similarMarketVolume4h
+          similarMarketVolume24h
+          similarMarketVolume7d
+          similarMarketVolumeFiltered1h
+          similarMarketVolumeFiltered4h
+          similarMarketVolumeFiltered24h
+          similarMarketVolumeFiltered7d
           conditionGroupId
           category {
             id
@@ -134,14 +134,14 @@ const GET_QUESTIONS = /* GraphQL */ `
         similarMarketVolume
         similarMarketImage
         estimatedPrice
-        volume1h
-        volume4h
-        volume24h
-        volume7d
-        volumeFiltered1h
-        volumeFiltered4h
-        volumeFiltered24h
-        volumeFiltered7d
+        similarMarketVolume1h
+        similarMarketVolume4h
+        similarMarketVolume24h
+        similarMarketVolume7d
+        similarMarketVolumeFiltered1h
+        similarMarketVolumeFiltered4h
+        similarMarketVolumeFiltered24h
+        similarMarketVolumeFiltered7d
         conditionGroupId
         category {
           id

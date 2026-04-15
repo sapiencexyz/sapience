@@ -421,16 +421,16 @@ type Condition {
 
   """USD total trading volume from Polymarket similar market"""
   similarMarketVolume: Float!
+  similarMarketVolume1h: Float!
+  similarMarketVolume4h: Float!
+  similarMarketVolume7d: Float!
+  similarMarketVolume24h: Float!
+  similarMarketVolumeFiltered1h: Float!
+  similarMarketVolumeFiltered4h: Float!
+  similarMarketVolumeFiltered7d: Float!
+  similarMarketVolumeFiltered24h: Float!
   similarMarkets: [String!]!
   tags: [String!]!
-  volume1h: Float!
-  volume4h: Float!
-  volume7d: Float!
-  volume24h: Float!
-  volumeFiltered1h: Float!
-  volumeFiltered4h: Float!
-  volumeFiltered7d: Float!
-  volumeFiltered24h: Float!
 }
 
 type ConditionCount {
@@ -481,14 +481,14 @@ input ConditionGroupOrderByWithRelationInput {
   similarMarkets: SortOrder
   totalOpenInterest: SortOrder
   totalPredictionCount: SortOrder
-  totalVolume1h: SortOrder
-  totalVolume4h: SortOrder
-  totalVolume7d: SortOrder
-  totalVolume24h: SortOrder
-  totalVolumeFiltered1h: SortOrder
-  totalVolumeFiltered4h: SortOrder
-  totalVolumeFiltered7d: SortOrder
-  totalVolumeFiltered24h: SortOrder
+  totalSimilarMarketVolume1h: SortOrder
+  totalSimilarMarketVolume4h: SortOrder
+  totalSimilarMarketVolume7d: SortOrder
+  totalSimilarMarketVolume24h: SortOrder
+  totalSimilarMarketVolumeFiltered1h: SortOrder
+  totalSimilarMarketVolumeFiltered4h: SortOrder
+  totalSimilarMarketVolumeFiltered7d: SortOrder
+  totalSimilarMarketVolumeFiltered24h: SortOrder
 }
 
 enum ConditionGroupScalarFieldEnum {
@@ -502,14 +502,14 @@ enum ConditionGroupScalarFieldEnum {
   similarMarkets
   totalOpenInterest
   totalPredictionCount
-  totalVolume1h
-  totalVolume4h
-  totalVolume7d
-  totalVolume24h
-  totalVolumeFiltered1h
-  totalVolumeFiltered4h
-  totalVolumeFiltered7d
-  totalVolumeFiltered24h
+  totalSimilarMarketVolume1h
+  totalSimilarMarketVolume4h
+  totalSimilarMarketVolume7d
+  totalSimilarMarketVolume24h
+  totalSimilarMarketVolumeFiltered1h
+  totalSimilarMarketVolumeFiltered4h
+  totalSimilarMarketVolumeFiltered7d
+  totalSimilarMarketVolumeFiltered24h
 }
 
 input ConditionGroupWhereInput {
@@ -528,14 +528,14 @@ input ConditionGroupWhereInput {
   similarMarkets: StringNullableListFilter
   totalOpenInterest: DecimalFilter
   totalPredictionCount: IntFilter
-  totalVolume1h: DecimalFilter
-  totalVolume4h: DecimalFilter
-  totalVolume7d: DecimalFilter
-  totalVolume24h: DecimalFilter
-  totalVolumeFiltered1h: DecimalFilter
-  totalVolumeFiltered4h: DecimalFilter
-  totalVolumeFiltered7d: DecimalFilter
-  totalVolumeFiltered24h: DecimalFilter
+  totalSimilarMarketVolume1h: DecimalFilter
+  totalSimilarMarketVolume4h: DecimalFilter
+  totalSimilarMarketVolume7d: DecimalFilter
+  totalSimilarMarketVolume24h: DecimalFilter
+  totalSimilarMarketVolumeFiltered1h: DecimalFilter
+  totalSimilarMarketVolumeFiltered4h: DecimalFilter
+  totalSimilarMarketVolumeFiltered7d: DecimalFilter
+  totalSimilarMarketVolumeFiltered24h: DecimalFilter
 }
 
 input ConditionGroupWhereUniqueInput {
@@ -554,14 +554,14 @@ input ConditionGroupWhereUniqueInput {
   similarMarkets: StringNullableListFilter
   totalOpenInterest: DecimalFilter
   totalPredictionCount: IntFilter
-  totalVolume1h: DecimalFilter
-  totalVolume4h: DecimalFilter
-  totalVolume7d: DecimalFilter
-  totalVolume24h: DecimalFilter
-  totalVolumeFiltered1h: DecimalFilter
-  totalVolumeFiltered4h: DecimalFilter
-  totalVolumeFiltered7d: DecimalFilter
-  totalVolumeFiltered24h: DecimalFilter
+  totalSimilarMarketVolume1h: DecimalFilter
+  totalSimilarMarketVolume4h: DecimalFilter
+  totalSimilarMarketVolume7d: DecimalFilter
+  totalSimilarMarketVolume24h: DecimalFilter
+  totalSimilarMarketVolumeFiltered1h: DecimalFilter
+  totalSimilarMarketVolumeFiltered4h: DecimalFilter
+  totalSimilarMarketVolumeFiltered7d: DecimalFilter
+  totalSimilarMarketVolumeFiltered24h: DecimalFilter
 }
 
 input ConditionListRelationFilter {
@@ -607,16 +607,16 @@ input ConditionOrderByWithRelationInput {
   shortName: SortOrderInput
   similarMarketImage: SortOrderInput
   similarMarketVolume: SortOrder
+  similarMarketVolume1h: SortOrder
+  similarMarketVolume4h: SortOrder
+  similarMarketVolume7d: SortOrder
+  similarMarketVolume24h: SortOrder
+  similarMarketVolumeFiltered1h: SortOrder
+  similarMarketVolumeFiltered4h: SortOrder
+  similarMarketVolumeFiltered7d: SortOrder
+  similarMarketVolumeFiltered24h: SortOrder
   similarMarkets: SortOrder
   tags: SortOrder
-  volume1h: SortOrder
-  volume4h: SortOrder
-  volume7d: SortOrder
-  volume24h: SortOrder
-  volumeFiltered1h: SortOrder
-  volumeFiltered4h: SortOrder
-  volumeFiltered7d: SortOrder
-  volumeFiltered24h: SortOrder
 }
 
 input ConditionRelationFilter {
@@ -648,16 +648,16 @@ enum ConditionScalarFieldEnum {
   shortName
   similarMarketImage
   similarMarketVolume
+  similarMarketVolume1h
+  similarMarketVolume4h
+  similarMarketVolume7d
+  similarMarketVolume24h
+  similarMarketVolumeFiltered1h
+  similarMarketVolumeFiltered4h
+  similarMarketVolumeFiltered7d
+  similarMarketVolumeFiltered24h
   similarMarkets
   tags
-  volume1h
-  volume4h
-  volume7d
-  volume24h
-  volumeFiltered1h
-  volumeFiltered4h
-  volumeFiltered7d
-  volumeFiltered24h
 }
 
 input ConditionWhereInput {
@@ -691,16 +691,16 @@ input ConditionWhereInput {
   shortName: StringNullableFilter
   similarMarketImage: StringNullableFilter
   similarMarketVolume: FloatFilter
+  similarMarketVolume1h: FloatFilter
+  similarMarketVolume4h: FloatFilter
+  similarMarketVolume7d: FloatFilter
+  similarMarketVolume24h: FloatFilter
+  similarMarketVolumeFiltered1h: FloatFilter
+  similarMarketVolumeFiltered4h: FloatFilter
+  similarMarketVolumeFiltered7d: FloatFilter
+  similarMarketVolumeFiltered24h: FloatFilter
   similarMarkets: StringNullableListFilter
   tags: StringNullableListFilter
-  volume1h: FloatFilter
-  volume4h: FloatFilter
-  volume7d: FloatFilter
-  volume24h: FloatFilter
-  volumeFiltered1h: FloatFilter
-  volumeFiltered4h: FloatFilter
-  volumeFiltered7d: FloatFilter
-  volumeFiltered24h: FloatFilter
 }
 
 input ConditionWhereUniqueInput {
@@ -734,16 +734,16 @@ input ConditionWhereUniqueInput {
   shortName: StringNullableFilter
   similarMarketImage: StringNullableFilter
   similarMarketVolume: FloatFilter
+  similarMarketVolume1h: FloatFilter
+  similarMarketVolume4h: FloatFilter
+  similarMarketVolume7d: FloatFilter
+  similarMarketVolume24h: FloatFilter
+  similarMarketVolumeFiltered1h: FloatFilter
+  similarMarketVolumeFiltered4h: FloatFilter
+  similarMarketVolumeFiltered7d: FloatFilter
+  similarMarketVolumeFiltered24h: FloatFilter
   similarMarkets: StringNullableListFilter
   tags: StringNullableListFilter
-  volume1h: FloatFilter
-  volume4h: FloatFilter
-  volume7d: FloatFilter
-  volume24h: FloatFilter
-  volumeFiltered1h: FloatFilter
-  volumeFiltered4h: FloatFilter
-  volumeFiltered7d: FloatFilter
-  volumeFiltered24h: FloatFilter
 }
 
 input DateTimeFilter {

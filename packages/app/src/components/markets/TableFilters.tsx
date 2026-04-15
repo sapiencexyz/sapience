@@ -42,10 +42,10 @@ export interface CategoryOption {
 export interface FilterState {
   openInterestRange: [number, number];
   similarMarketVolumeRange: [number, number]; // all-time
-  volume1hRange: [number, number];
-  volume4hRange: [number, number];
-  volume24hRange: [number, number];
-  volume7dRange: [number, number];
+  similarMarketVolume1hRange: [number, number];
+  similarMarketVolume4hRange: [number, number];
+  similarMarketVolume24hRange: [number, number];
+  similarMarketVolume7dRange: [number, number];
   timeToResolutionRange: [number, number]; // in days, negative = ended
   selectedCategories: string[]; // array of category slugs
   resolutionStatus: ResolutionStatusFilterValue;
@@ -54,10 +54,10 @@ export interface FilterState {
 
 type VolumeRangeKey =
   | 'similarMarketVolumeRange'
-  | 'volume1hRange'
-  | 'volume4hRange'
-  | 'volume24hRange'
-  | 'volume7dRange';
+  | 'similarMarketVolume1hRange'
+  | 'similarMarketVolume4hRange'
+  | 'similarMarketVolume24hRange'
+  | 'similarMarketVolume7dRange';
 
 interface TableFiltersProps {
   filters: FilterState;
@@ -507,12 +507,16 @@ function RelatedVolumeFilter({
     }>
   > = [
     [
-      { label: 'LAST 7D', key: 'volume7dRange', max: 25_000_000 },
-      { label: 'LAST 4H', key: 'volume4hRange', max: 2_500_000 },
+      { label: 'LAST 7D', key: 'similarMarketVolume7dRange', max: 25_000_000 },
+      { label: 'LAST 4H', key: 'similarMarketVolume4hRange', max: 2_500_000 },
     ],
     [
-      { label: 'LAST 24H', key: 'volume24hRange', max: 5_000_000 },
-      { label: 'LAST 1H', key: 'volume1hRange', max: 1_000_000 },
+      {
+        label: 'LAST 24H',
+        key: 'similarMarketVolume24hRange',
+        max: 5_000_000,
+      },
+      { label: 'LAST 1H', key: 'similarMarketVolume1hRange', max: 1_000_000 },
     ],
   ];
   const windowRows = windowBands.flat();

@@ -24,14 +24,14 @@ describe('compactConditionVolumes', () => {
   it('drops failed fetch holes before submission', () => {
     const good: ConditionVolume = {
       id: '0xabc',
-      volume1h: 1,
-      volume4h: 2,
-      volume24h: 3,
-      volume7d: 4,
-      volumeFiltered1h: 1,
-      volumeFiltered4h: 2,
-      volumeFiltered24h: 3,
-      volumeFiltered7d: 4,
+      similarMarketVolume1h: 1,
+      similarMarketVolume4h: 2,
+      similarMarketVolume24h: 3,
+      similarMarketVolume7d: 4,
+      similarMarketVolumeFiltered1h: 1,
+      similarMarketVolumeFiltered4h: 2,
+      similarMarketVolumeFiltered24h: 3,
+      similarMarketVolumeFiltered7d: 4,
     };
 
     expect(compactConditionVolumes([good, undefined])).toEqual([good]);
@@ -43,14 +43,14 @@ describe('aggregateVolumes', () => {
     const result = aggregateVolumes([], ['0xabc', '0xdef'], NOW);
     expect(result).toHaveLength(2);
     for (const v of result) {
-      expect(v.volume1h).toBe(0);
-      expect(v.volume4h).toBe(0);
-      expect(v.volume24h).toBe(0);
-      expect(v.volume7d).toBe(0);
-      expect(v.volumeFiltered1h).toBe(0);
-      expect(v.volumeFiltered4h).toBe(0);
-      expect(v.volumeFiltered24h).toBe(0);
-      expect(v.volumeFiltered7d).toBe(0);
+      expect(v.similarMarketVolume1h).toBe(0);
+      expect(v.similarMarketVolume4h).toBe(0);
+      expect(v.similarMarketVolume24h).toBe(0);
+      expect(v.similarMarketVolume7d).toBe(0);
+      expect(v.similarMarketVolumeFiltered1h).toBe(0);
+      expect(v.similarMarketVolumeFiltered4h).toBe(0);
+      expect(v.similarMarketVolumeFiltered24h).toBe(0);
+      expect(v.similarMarketVolumeFiltered7d).toBe(0);
     }
   });
 
@@ -64,10 +64,10 @@ describe('aggregateVolumes', () => {
 
     const [result] = aggregateVolumes(trades, ['0xabc'], NOW);
 
-    expect(result.volume1h).toBe(10);
-    expect(result.volume4h).toBe(30); // 10 + 20
-    expect(result.volume24h).toBe(60); // 10 + 20 + 30
-    expect(result.volume7d).toBe(100); // 10 + 20 + 30 + 40
+    expect(result.similarMarketVolume1h).toBe(10);
+    expect(result.similarMarketVolume4h).toBe(30); // 10 + 20
+    expect(result.similarMarketVolume24h).toBe(60); // 10 + 20 + 30
+    expect(result.similarMarketVolume7d).toBe(100); // 10 + 20 + 30 + 40
   });
 
   it('filters trades by price [0.01, 0.99] for filtered volumes', () => {
@@ -82,9 +82,9 @@ describe('aggregateVolumes', () => {
     const [result] = aggregateVolumes(trades, ['0xabc'], NOW);
 
     // Raw volume: all trades
-    expect(result.volume1h).toBe(725);
+    expect(result.similarMarketVolume1h).toBe(725);
     // Filtered volume: 100 + 50 + 75 = 225 (excludes 0.001 and 0.999)
-    expect(result.volumeFiltered1h).toBe(225);
+    expect(result.similarMarketVolumeFiltered1h).toBe(225);
   });
 
   it('includes boundary prices 0.01 and 0.99 in filtered volume', () => {
@@ -94,7 +94,7 @@ describe('aggregateVolumes', () => {
     ];
 
     const [result] = aggregateVolumes(trades, ['0xabc'], NOW);
-    expect(result.volumeFiltered1h).toBe(30);
+    expect(result.similarMarketVolumeFiltered1h).toBe(30);
   });
 
   it('excludes prices just outside [0.01, 0.99]', () => {
@@ -104,8 +104,8 @@ describe('aggregateVolumes', () => {
     ];
 
     const [result] = aggregateVolumes(trades, ['0xabc'], NOW);
-    expect(result.volume1h).toBe(30);
-    expect(result.volumeFiltered1h).toBe(0);
+    expect(result.similarMarketVolume1h).toBe(30);
+    expect(result.similarMarketVolumeFiltered1h).toBe(0);
   });
 
   it('ignores trades from unknown condition IDs', () => {
@@ -114,7 +114,7 @@ describe('aggregateVolumes', () => {
     ];
 
     const [result] = aggregateVolumes(trades, ['0xabc'], NOW);
-    expect(result.volume7d).toBe(0);
+    expect(result.similarMarketVolume7d).toBe(0);
   });
 
   it('aggregates across multiple conditions independently', () => {
@@ -128,8 +128,8 @@ describe('aggregateVolumes', () => {
     const abc = result.find((v) => v.id === '0xabc')!;
     const def = result.find((v) => v.id === '0xdef')!;
 
-    expect(abc.volume1h).toBe(150);
-    expect(def.volume1h).toBe(200);
+    expect(abc.similarMarketVolume1h).toBe(150);
+    expect(def.similarMarketVolume1h).toBe(200);
   });
 
   it('handles trade exactly at time window cutoff', () => {
@@ -140,8 +140,8 @@ describe('aggregateVolumes', () => {
 
     const [result] = aggregateVolumes(trades, ['0xabc'], NOW);
     // >= cutoff, so included in 1h
-    expect(result.volume1h).toBe(100);
-    expect(result.volume4h).toBe(100);
+    expect(result.similarMarketVolume1h).toBe(100);
+    expect(result.similarMarketVolume4h).toBe(100);
   });
 
   it('excludes trade just before time window cutoff', () => {
@@ -150,8 +150,8 @@ describe('aggregateVolumes', () => {
     ];
 
     const [result] = aggregateVolumes(trades, ['0xabc'], NOW);
-    expect(result.volume1h).toBe(0);
-    expect(result.volume4h).toBe(100); // still within 4h
+    expect(result.similarMarketVolume1h).toBe(0);
+    expect(result.similarMarketVolume4h).toBe(100); // still within 4h
   });
 
   it('applies filtered volume across all time windows', () => {
@@ -165,9 +165,9 @@ describe('aggregateVolumes', () => {
 
     const [result] = aggregateVolumes(trades, ['0xabc'], NOW);
 
-    expect(result.volume1h).toBe(250); // 50 + 200
-    expect(result.volumeFiltered1h).toBe(200); // only the 0.5 price trade
-    expect(result.volume4h).toBe(350); // 50 + 100 + 200
-    expect(result.volumeFiltered4h).toBe(200); // only the 0.5 price trade
+    expect(result.similarMarketVolume1h).toBe(250); // 50 + 200
+    expect(result.similarMarketVolumeFiltered1h).toBe(200); // only the 0.5 price trade
+    expect(result.similarMarketVolume4h).toBe(350); // 50 + 100 + 200
+    expect(result.similarMarketVolumeFiltered4h).toBe(200); // only the 0.5 price trade
   });
 });

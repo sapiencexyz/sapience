@@ -559,10 +559,12 @@ function getConditionTimeBucketedVolume(
   filtered: boolean
 ): number {
   const fields = {
-    '1h': filtered ? 'volumeFiltered1h' : 'volume1h',
-    '4h': filtered ? 'volumeFiltered4h' : 'volume4h',
-    '24h': filtered ? 'volumeFiltered24h' : 'volume24h',
-    '7d': filtered ? 'volumeFiltered7d' : 'volume7d',
+    '1h': filtered ? 'similarMarketVolumeFiltered1h' : 'similarMarketVolume1h',
+    '4h': filtered ? 'similarMarketVolumeFiltered4h' : 'similarMarketVolume4h',
+    '24h': filtered
+      ? 'similarMarketVolumeFiltered24h'
+      : 'similarMarketVolume24h',
+    '7d': filtered ? 'similarMarketVolumeFiltered7d' : 'similarMarketVolume7d',
   } as const;
   return (
     ((c as unknown as Record<string, unknown>)[fields[window]] as number) ?? 0

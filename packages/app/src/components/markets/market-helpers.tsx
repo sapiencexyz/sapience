@@ -78,14 +78,14 @@ export function groupConditionToConditionType(
     similarMarketVolume: gc.similarMarketVolume,
     conditionGroupId: gc.conditionGroupId,
     estimatedPrice: gc.estimatedPrice,
-    volume1h: gc.volume1h,
-    volume4h: gc.volume4h,
-    volume24h: gc.volume24h,
-    volume7d: gc.volume7d,
-    volumeFiltered1h: gc.volumeFiltered1h,
-    volumeFiltered4h: gc.volumeFiltered4h,
-    volumeFiltered24h: gc.volumeFiltered24h,
-    volumeFiltered7d: gc.volumeFiltered7d,
+    similarMarketVolume1h: gc.similarMarketVolume1h,
+    similarMarketVolume4h: gc.similarMarketVolume4h,
+    similarMarketVolume24h: gc.similarMarketVolume24h,
+    similarMarketVolume7d: gc.similarMarketVolume7d,
+    similarMarketVolumeFiltered1h: gc.similarMarketVolumeFiltered1h,
+    similarMarketVolumeFiltered4h: gc.similarMarketVolumeFiltered4h,
+    similarMarketVolumeFiltered24h: gc.similarMarketVolumeFiltered24h,
+    similarMarketVolumeFiltered7d: gc.similarMarketVolumeFiltered7d,
   };
 }
 
@@ -130,10 +130,22 @@ export function getRowSimilarMarketVolume(row: TopLevelRow): number {
 type VolumeWindowKey = '1h' | '4h' | '24h' | '7d';
 
 const VOLUME_FIELDS = {
-  '1h': { raw: 'volume1h', filtered: 'volumeFiltered1h' },
-  '4h': { raw: 'volume4h', filtered: 'volumeFiltered4h' },
-  '24h': { raw: 'volume24h', filtered: 'volumeFiltered24h' },
-  '7d': { raw: 'volume7d', filtered: 'volumeFiltered7d' },
+  '1h': {
+    raw: 'similarMarketVolume1h',
+    filtered: 'similarMarketVolumeFiltered1h',
+  },
+  '4h': {
+    raw: 'similarMarketVolume4h',
+    filtered: 'similarMarketVolumeFiltered4h',
+  },
+  '24h': {
+    raw: 'similarMarketVolume24h',
+    filtered: 'similarMarketVolumeFiltered24h',
+  },
+  '7d': {
+    raw: 'similarMarketVolume7d',
+    filtered: 'similarMarketVolumeFiltered7d',
+  },
 } as const;
 
 function getConditionVolume(
@@ -566,23 +578,23 @@ export function filterRows(
   }> = [
     {
       window: '1h',
-      min: filters.volume1hRange?.[0] ?? 0,
-      max: filters.volume1hRange?.[1] ?? Infinity,
+      min: filters.similarMarketVolume1hRange?.[0] ?? 0,
+      max: filters.similarMarketVolume1hRange?.[1] ?? Infinity,
     },
     {
       window: '4h',
-      min: filters.volume4hRange?.[0] ?? 0,
-      max: filters.volume4hRange?.[1] ?? Infinity,
+      min: filters.similarMarketVolume4hRange?.[0] ?? 0,
+      max: filters.similarMarketVolume4hRange?.[1] ?? Infinity,
     },
     {
       window: '24h',
-      min: filters.volume24hRange?.[0] ?? 0,
-      max: filters.volume24hRange?.[1] ?? Infinity,
+      min: filters.similarMarketVolume24hRange?.[0] ?? 0,
+      max: filters.similarMarketVolume24hRange?.[1] ?? Infinity,
     },
     {
       window: '7d',
-      min: filters.volume7dRange?.[0] ?? 0,
-      max: filters.volume7dRange?.[1] ?? Infinity,
+      min: filters.similarMarketVolume7dRange?.[0] ?? 0,
+      max: filters.similarMarketVolume7dRange?.[1] ?? Infinity,
     },
   ];
   const [minDays, maxDays] = filters.timeToResolutionRange;
