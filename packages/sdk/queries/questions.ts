@@ -48,7 +48,6 @@ const GET_QUESTIONS = /* GraphQL */ `
     $maxSimilarMarketVolume: Float
     $tag: String
     $similarMarketVolumeWindow: VolumeWindow
-    $excludeExtremeOdds: Boolean
   ) {
     questions(
       take: $take
@@ -66,7 +65,6 @@ const GET_QUESTIONS = /* GraphQL */ `
       maxSimilarMarketVolume: $maxSimilarMarketVolume
       tag: $tag
       similarMarketVolumeWindow: $similarMarketVolumeWindow
-      excludeExtremeOdds: $excludeExtremeOdds
     ) {
       questionType
       group {
@@ -172,7 +170,6 @@ export interface FetchQuestionsSortedParams {
   maxSimilarMarketVolume?: number;
   tag?: string;
   similarMarketVolumeWindow?: VolumeWindow;
-  excludeExtremeOdds?: boolean;
 }
 
 export async function fetchQuestionsSorted(
@@ -199,7 +196,6 @@ export async function fetchQuestionsSorted(
     similarMarketVolumeWindow: params.similarMarketVolumeWindow
       ? VOLUME_WINDOW_TO_GQL[params.similarMarketVolumeWindow]
       : null,
-    excludeExtremeOdds: params.excludeExtremeOdds ?? null,
   };
 
   const data = await graphqlRequest<QuestionsQueryResult>(

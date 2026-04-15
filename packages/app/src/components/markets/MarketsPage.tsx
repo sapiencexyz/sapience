@@ -126,10 +126,6 @@ const MarketsPage = () => {
     'sapience.markets.volumeWindow',
     null
   );
-  const [excludeExtremeOdds, setExcludeExtremeOdds] = useSessionState<boolean>(
-    'sapience.markets.excludeExtremeOdds',
-    false
-  );
 
   const handleSortChange = useCallback(
     (field: SortField, direction: SortDirection) => {
@@ -205,7 +201,6 @@ const MarketsPage = () => {
       ? { maxEstimatedPrice: filters.estimatedPriceRange[1] / 100 }
       : {}),
     similarMarketVolumeWindow: volumeWindow ?? undefined,
-    excludeExtremeOdds,
     ...(selectedSimilarMarketVolumeRange[0] > 0
       ? { minSimilarMarketVolume: selectedSimilarMarketVolumeRange[0] }
       : {}),
@@ -421,8 +416,6 @@ const MarketsPage = () => {
                     onSortChange={handleSortChange}
                     volumeWindow={volumeWindow}
                     onVolumeWindowChange={setVolumeWindow}
-                    excludeExtremeOdds={excludeExtremeOdds}
-                    onExcludeExtremeOddsChange={setExcludeExtremeOdds}
                   />
                 </div>
               )}

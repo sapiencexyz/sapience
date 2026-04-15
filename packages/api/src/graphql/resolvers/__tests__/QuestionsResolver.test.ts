@@ -82,8 +82,7 @@ describe('QuestionsResolver', () => {
       (overrides.minSimilarMarketVolume as number) ?? null,
       (overrides.maxSimilarMarketVolume as number) ?? null,
       (overrides.tag as string) ?? null,
-      (overrides.similarMarketVolumeWindow as VolumeWindow) ?? null,
-      (overrides.excludeExtremeOdds as boolean) ?? null
+      (overrides.similarMarketVolumeWindow as VolumeWindow) ?? null
     );
 
   /** Extract the full SQL text from the first $queryRaw call. */
@@ -93,60 +92,36 @@ describe('QuestionsResolver', () => {
 
   const VOLUME_SQL_COLUMNS: Record<
     VolumeColumnKey,
-    { cond: string; group: string; filteredCond: string; filteredGroup: string }
+    { cond: string; group: string }
   > = {
     '1h': {
       cond: '"volume1h"',
       group: '"totalVolume1h"',
-      filteredCond: '"volumeFiltered1h"',
-      filteredGroup: '"totalVolumeFiltered1h"',
     },
     '4h': {
       cond: '"volume4h"',
       group: '"totalVolume4h"',
-      filteredCond: '"volumeFiltered4h"',
-      filteredGroup: '"totalVolumeFiltered4h"',
     },
     '24h': {
       cond: '"volume24h"',
       group: '"totalVolume24h"',
-      filteredCond: '"volumeFiltered24h"',
-      filteredGroup: '"totalVolumeFiltered24h"',
     },
     '7d': {
       cond: '"volume7d"',
       group: '"totalVolume7d"',
-      filteredCond: '"volumeFiltered7d"',
-      filteredGroup: '"totalVolumeFiltered7d"',
     },
   };
 
-  function expectVolumeColumns(
-    sql: string,
-    key: VolumeColumnKey,
-    filtered: boolean
-  ) {
+  function expectVolumeColumns(sql: string, key: VolumeColumnKey) {
     const cols = VOLUME_SQL_COLUMNS[key];
-    if (filtered) {
-      expect(sql).toContain(cols.filteredCond);
-      expect(sql).toContain(cols.filteredGroup);
-      expect(sql).not.toContain(cols.cond);
-      expect(sql).not.toContain(cols.group);
-      return;
-    }
-
     expect(sql).toContain(cols.cond);
     expect(sql).toContain(cols.group);
-    expect(sql).not.toContain(cols.filteredCond);
-    expect(sql).not.toContain(cols.filteredGroup);
   }
 
   function expectNoVolumeColumns(sql: string) {
     for (const cols of Object.values(VOLUME_SQL_COLUMNS)) {
       expect(sql).not.toContain(cols.cond);
       expect(sql).not.toContain(cols.group);
-      expect(sql).not.toContain(cols.filteredCond);
-      expect(sql).not.toContain(cols.filteredGroup);
     }
   }
 
@@ -682,32 +657,10 @@ describe('QuestionsResolver', () => {
         expect(unfilteredPartB).toContain(colRef);
         expect(filteredPartB).toContain(colRef);
       });
-
-      it('uses filtered volume columns when excludeExtremeOdds is true', async () => {
-        await callQuestions({
-          sortField: QuestionSortField.similarMarketVolume,
-          excludeExtremeOdds: true,
-        });
-        const sql = getCapturedSql();
-        expect(sql).toContain('"volumeFiltered24h"');
-        expect(sql).toContain('"totalVolumeFiltered24h"');
-        expect(sql).not.toContain('"similarMarketVolume"');
-      });
-
-      it('respects similarMarketVolumeWindow when excludeExtremeOdds is true', async () => {
-        await callQuestions({
-          sortField: QuestionSortField.similarMarketVolume,
-          similarMarketVolumeWindow: VolumeWindow.oneHour,
-          excludeExtremeOdds: true,
-        });
-        const sql = getCapturedSql();
-        expect(sql).toContain('"volumeFiltered1h"');
-        expect(sql).toContain('"totalVolumeFiltered1h"');
-      });
     });
 
     describe('similarMarketVolume windowed sort behavior', () => {
-      it('defaults to all-time similarMarketVolume when no window and no excludeExtremeOdds', async () => {
+      it('defaults to all-time similarMarketVolume when no window is provided', async () => {
         await callQuestions({
           sortField: QuestionSortField.similarMarketVolume,
         });
@@ -746,27 +699,6 @@ describe('QuestionsResolver', () => {
         expect(sql).toContain('"totalVolume7d"');
       });
 
-      it('uses volumeFiltered24h when excludeExtremeOdds is true', async () => {
-        await callQuestions({
-          sortField: QuestionSortField.similarMarketVolume,
-          excludeExtremeOdds: true,
-        });
-        const sql = getCapturedSql();
-        expect(sql).toContain('"volumeFiltered24h"');
-        expect(sql).toContain('"totalVolumeFiltered24h"');
-      });
-
-      it('uses volumeFiltered1h when oneHour + excludeExtremeOdds', async () => {
-        await callQuestions({
-          sortField: QuestionSortField.similarMarketVolume,
-          similarMarketVolumeWindow: VolumeWindow.oneHour,
-          excludeExtremeOdds: true,
-        });
-        const sql = getCapturedSql();
-        expect(sql).toContain('"volumeFiltered1h"');
-        expect(sql).toContain('"totalVolumeFiltered1h"');
-      });
-
       it('uses LEFT JOIN path when per-condition filters are active', async () => {
         await callQuestions({
           sortField: QuestionSortField.similarMarketVolume,
@@ -782,7 +714,6 @@ describe('QuestionsResolver', () => {
         await callQuestions({
           sortField: QuestionSortField.openInterest,
           similarMarketVolumeWindow: VolumeWindow.oneHour,
-          excludeExtremeOdds: true,
         });
         const sql = getCapturedSql();
         expect(sql).not.toContain('"volume1h"');
@@ -794,49 +725,40 @@ describe('QuestionsResolver', () => {
     describe('similarMarketVolume behavior matrix', () => {
       it.each([
         {
-          label: 'similarMarketVolume + default window + no exclude',
+          label: 'similarMarketVolume + default window',
           sortField: QuestionSortField.similarMarketVolume,
           similarMarketVolumeWindow: null,
-          excludeExtremeOdds: null,
           expectedWindow: null,
-          expectedFiltered: false,
         },
         {
-          label: 'similarMarketVolume + oneHour + no exclude',
+          label: 'similarMarketVolume + oneHour',
           sortField: QuestionSortField.similarMarketVolume,
           similarMarketVolumeWindow: VolumeWindow.oneHour,
-          excludeExtremeOdds: false,
           expectedWindow: '1h' as const,
-          expectedFiltered: false,
         },
         {
-          label: 'similarMarketVolume + fourHours + exclude',
+          label: 'similarMarketVolume + fourHours',
           sortField: QuestionSortField.similarMarketVolume,
           similarMarketVolumeWindow: VolumeWindow.fourHours,
-          excludeExtremeOdds: true,
           expectedWindow: '4h' as const,
-          expectedFiltered: true,
         },
         {
-          label: 'similarMarketVolume + sevenDays + exclude',
+          label: 'similarMarketVolume + sevenDays',
           sortField: QuestionSortField.similarMarketVolume,
           similarMarketVolumeWindow: VolumeWindow.sevenDays,
-          excludeExtremeOdds: true,
           expectedWindow: '7d' as const,
-          expectedFiltered: true,
         },
       ])('$label', async (row) => {
         await callQuestions({
           sortField: row.sortField,
           similarMarketVolumeWindow: row.similarMarketVolumeWindow,
-          excludeExtremeOdds: row.excludeExtremeOdds,
         });
         const sql = getCapturedSql();
         if (row.expectedWindow === null) {
           expect(sql).toContain('"similarMarketVolume"');
           expectNoVolumeColumns(sql);
         } else {
-          expectVolumeColumns(sql, row.expectedWindow, row.expectedFiltered);
+          expectVolumeColumns(sql, row.expectedWindow);
         }
       });
     });
@@ -844,14 +766,13 @@ describe('QuestionsResolver', () => {
     describe('non-volume sort ignores volume knobs', () => {
       it.each([
         {
-          label: 'openInterest ignores window + excludeExtremeOdds',
+          label: 'openInterest ignores volume window',
           sortField: QuestionSortField.openInterest,
         },
       ])('$label', async (row) => {
         await callQuestions({
           sortField: row.sortField,
           similarMarketVolumeWindow: VolumeWindow.oneHour,
-          excludeExtremeOdds: true,
         });
         const sql = getCapturedSql();
 
@@ -866,10 +787,9 @@ describe('QuestionsResolver', () => {
           sortField: QuestionSortField.openInterest,
           minSimilarMarketVolume: 1000,
           similarMarketVolumeWindow: VolumeWindow.oneHour,
-          excludeExtremeOdds: true,
         });
         const sql = getCapturedSql();
-        expect(sql).toContain('"volumeFiltered1h"');
+        expect(sql).toContain('"volume1h"');
         expect(sql).toContain('>= ?');
         expect(sql).toContain('"openInterest"');
       });

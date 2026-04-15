@@ -130,48 +130,32 @@ export function getRowSimilarMarketVolume(row: TopLevelRow): number {
 type VolumeWindowKey = '1h' | '4h' | '24h' | '7d';
 
 const VOLUME_FIELDS = {
-  '1h': {
-    raw: 'similarMarketVolume1h',
-    filtered: 'similarMarketVolumeFiltered1h',
-  },
-  '4h': {
-    raw: 'similarMarketVolume4h',
-    filtered: 'similarMarketVolumeFiltered4h',
-  },
-  '24h': {
-    raw: 'similarMarketVolume24h',
-    filtered: 'similarMarketVolumeFiltered24h',
-  },
-  '7d': {
-    raw: 'similarMarketVolume7d',
-    filtered: 'similarMarketVolumeFiltered7d',
-  },
+  '1h': 'similarMarketVolume1h',
+  '4h': 'similarMarketVolume4h',
+  '24h': 'similarMarketVolume24h',
+  '7d': 'similarMarketVolume7d',
 } as const;
 
 function getConditionVolume(
   c: ConditionType | ConditionGroupConditionType,
-  window: VolumeWindowKey,
-  filtered: boolean
+  window: VolumeWindowKey
 ): number {
-  const field = filtered
-    ? VOLUME_FIELDS[window].filtered
-    : VOLUME_FIELDS[window].raw;
+  const field = VOLUME_FIELDS[window];
   return ((c as unknown as Record<string, unknown>)[field] as number) ?? 0;
 }
 
 /** Get time-bucketed volume (USD) for any row kind */
 export function getRowTimeBucketedVolume(
   row: TopLevelRow,
-  window: VolumeWindowKey,
-  filtered: boolean
+  window: VolumeWindowKey
 ): number {
   if (row.kind === 'group') {
     return row.conditions.reduce(
-      (sum, c) => sum + getConditionVolume(c, window, filtered),
+      (sum, c) => sum + getConditionVolume(c, window),
       0
     );
   }
-  return getConditionVolume(row.condition, window, filtered);
+  return getConditionVolume(row.condition, window);
 }
 
 // ---------------------------------------------------------------------------
@@ -566,8 +550,7 @@ export function buildTopLevelRows(questions: QuestionType[]): TopLevelRow[] {
 /** Client-side filtering of rows (OI range + volume windows + time-to-resolution range) */
 export function filterRows(
   rows: TopLevelRow[],
-  filters: FilterState,
-  excludeExtremeOdds = false
+  filters: FilterState
 ): TopLevelRow[] {
   const [minOI, maxOI] = filters.openInterestRange;
   const [minVol, maxVol] = filters.similarMarketVolumeRange ?? [0, Infinity];
@@ -611,11 +594,10 @@ export function filterRows(
     const vol = getRowSimilarMarketVolume(row);
     if (vol < minVol || vol > maxVol) return false;
 
-    // Time-bucketed volume filters — respect the excludeExtremeOdds toggle so
-    // the slider ranges match the numbers displayed in the volume column.
+    // Time-bucketed volume filters
     for (const { window, min, max } of windowRanges) {
       if (min === 0 && max === Infinity) continue;
-      const v = getRowTimeBucketedVolume(row, window, excludeExtremeOdds);
+      const v = getRowTimeBucketedVolume(row, window);
       if (v < min || v > max) return false;
     }
 

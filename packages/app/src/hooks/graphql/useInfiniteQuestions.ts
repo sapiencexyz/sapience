@@ -24,7 +24,6 @@ export interface UseInfiniteQuestionsOptions {
   maxSimilarMarketVolume?: number;
   tag?: string;
   similarMarketVolumeWindow?: VolumeWindow;
-  excludeExtremeOdds?: boolean;
 }
 
 export interface UseInfiniteQuestionsResult {
@@ -53,7 +52,6 @@ export function useInfiniteQuestions(
     maxSimilarMarketVolume,
     tag,
     similarMarketVolumeWindow,
-    excludeExtremeOdds,
   } = opts;
 
   const minEndTime =
@@ -89,7 +87,6 @@ export function useInfiniteQuestions(
     maxSimilarMarketVolume,
     tag,
     similarMarketVolumeWindow,
-    excludeExtremeOdds,
   });
   const prevFiltersKeyRef = useRef(filtersKey);
   const lastSuccessfulSkipRef = useRef<number>(0);
@@ -129,7 +126,6 @@ export function useInfiniteQuestions(
       maxSimilarMarketVolume,
       tag,
       similarMarketVolumeWindow,
-      excludeExtremeOdds,
     ],
     queryFn: () =>
       fetchQuestionsSorted({
@@ -148,7 +144,6 @@ export function useInfiniteQuestions(
         maxSimilarMarketVolume,
         tag,
         similarMarketVolumeWindow,
-        excludeExtremeOdds,
       }),
   });
 

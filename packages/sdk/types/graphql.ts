@@ -1861,7 +1861,6 @@ export type QueryProtocolVolumeArgs = {
 export type QueryQuestionsArgs = {
   categorySlugs?: InputMaybe<Array<Scalars['String']['input']>>;
   chainId?: InputMaybe<Scalars['Int']['input']>;
-  excludeExtremeOdds?: InputMaybe<Scalars['Boolean']['input']>;
   maxEstimatedPrice?: InputMaybe<Scalars['Float']['input']>;
   maxSimilarMarketVolume?: InputMaybe<Scalars['Float']['input']>;
   minEndTime?: InputMaybe<Scalars['Int']['input']>;

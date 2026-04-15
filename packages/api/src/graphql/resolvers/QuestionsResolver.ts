@@ -149,9 +149,7 @@ export class QuestionsResolver {
     @Arg('tag', () => String, { nullable: true })
     tag: string | null,
     @Arg('similarMarketVolumeWindow', () => VolumeWindow, { nullable: true })
-    similarMarketVolumeWindow: VolumeWindow | null,
-    @Arg('excludeExtremeOdds', () => Boolean, { nullable: true })
-    excludeExtremeOdds: boolean | null
+    similarMarketVolumeWindow: VolumeWindow | null
   ): Promise<Question[]> {
     const prisma = getPrismaFromContext(ctx);
 
@@ -208,7 +206,7 @@ export class QuestionsResolver {
       minEndTime != null;
 
     // --- Volume column resolution ---
-    // Maps volumeWindow + excludeExtremeOdds to the correct condition and group columns.
+    // Maps volumeWindow to the correct condition and group columns.
     // All fragments are static Prisma.sql — no dynamic column names.
     const volumeColumnFragments = {
       volume1h: {
@@ -231,40 +229,18 @@ export class QuestionsResolver {
         sumExpr: Prisma.sql`COALESCE(SUM(c."volume7d"), 0)::numeric`,
         group: Prisma.sql`cg."totalVolume7d"::numeric`,
       },
-      volumeFiltered1h: {
-        cond: Prisma.sql`c."volumeFiltered1h"`,
-        sumExpr: Prisma.sql`COALESCE(SUM(c."volumeFiltered1h"), 0)::numeric`,
-        group: Prisma.sql`cg."totalVolumeFiltered1h"::numeric`,
-      },
-      volumeFiltered4h: {
-        cond: Prisma.sql`c."volumeFiltered4h"`,
-        sumExpr: Prisma.sql`COALESCE(SUM(c."volumeFiltered4h"), 0)::numeric`,
-        group: Prisma.sql`cg."totalVolumeFiltered4h"::numeric`,
-      },
-      volumeFiltered24h: {
-        cond: Prisma.sql`c."volumeFiltered24h"`,
-        sumExpr: Prisma.sql`COALESCE(SUM(c."volumeFiltered24h"), 0)::numeric`,
-        group: Prisma.sql`cg."totalVolumeFiltered24h"::numeric`,
-      },
-      volumeFiltered7d: {
-        cond: Prisma.sql`c."volumeFiltered7d"`,
-        sumExpr: Prisma.sql`COALESCE(SUM(c."volumeFiltered7d"), 0)::numeric`,
-        group: Prisma.sql`cg."totalVolumeFiltered7d"::numeric`,
-      },
     } as const;
 
     const resolvedVolumeKey = (() => {
       const window = similarMarketVolumeWindow ?? VolumeWindow.twentyFourHours;
-      const prefix = excludeExtremeOdds ? 'volumeFiltered' : 'volume';
       const suffix = { '1h': '1h', '4h': '4h', '24h': '24h', '7d': '7d' }[
         window
       ];
-      return `${prefix}${suffix}` as keyof typeof volumeColumnFragments;
+      return `volume${suffix}` as keyof typeof volumeColumnFragments;
     })();
 
     const volumeFragments = volumeColumnFragments[resolvedVolumeKey];
-    const useWindowedSimilarMarketVolume =
-      similarMarketVolumeWindow != null || Boolean(excludeExtremeOdds);
+    const useWindowedSimilarMarketVolume = similarMarketVolumeWindow != null;
 
     const similarMarketVolumeFilter = (() => {
       const parts = [];
@@ -527,10 +503,6 @@ export class QuestionsResolver {
         volume4h: 'similarMarketVolume4h',
         volume24h: 'similarMarketVolume24h',
         volume7d: 'similarMarketVolume7d',
-        volumeFiltered1h: 'similarMarketVolumeFiltered1h',
-        volumeFiltered4h: 'similarMarketVolumeFiltered4h',
-        volumeFiltered24h: 'similarMarketVolumeFiltered24h',
-        volumeFiltered7d: 'similarMarketVolumeFiltered7d',
       } as const;
       const field = fieldByResolvedVolumeKey[resolvedVolumeKey];
       return { [field]: similarMarketVolumeRangeFilter };
