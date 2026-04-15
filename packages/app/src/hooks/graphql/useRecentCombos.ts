@@ -4,8 +4,8 @@ import {
   fetchPickConfigurations,
   type PickConfigurationResult,
 } from '@sapience/sdk/queries';
-import { useConditionsByIds } from './useConditionsByIds';
 import type { ConditionById } from '@sapience/sdk/queries/conditions';
+import { useConditionsByIds } from './useConditionsByIds';
 
 export type RecentCombo = {
   pickConfigId: string;
@@ -85,9 +85,10 @@ export function useRecentCombos(opts: { chainId: number; count?: number }) {
         pc.picks.every((p) => {
           const c = conditionMap.get(p.conditionId);
           if (!c || c.settled) return false;
-          // Filter out extreme prices — not useful as examples
+          // estimatedPrice is stored as a 0-1 probability; filter out only
+          // near-certain outcomes outside the 1%-99% band.
           const price = c.estimatedPrice ?? null;
-          if (price !== null && (price < 1 || price > 99)) return false;
+          if (price !== null && (price < 0.01 || price > 0.99)) return false;
           return true;
         })
       )
