@@ -1,0 +1,314 @@
+{
+  "conditions": [
+    {
+      "id": "0xe868ff6988eccbbc18ec9460e46c19d0f61be0c162a30aeb69b1f5b29edd3b08",
+      "createdAt": "<ISO_TIMESTAMP>",
+      "question": "Will Trump say \"Air force\" during No Tax on Tips Roundtable?",
+      "shortName": "Will Trump say \"Air force\" during No Tax on Tips Roundtable?",
+      "optionName": "Air force",
+      "endTime": 1776412740,
+      "public": true,
+      "description": "Donald Trump is scheduled to participate in an event titled \"The President participates in a Roundtable and Remarks on Tax Day\" in Las Vegas, Nevada on April 16, 2026, 7PM ET (https://rollcall.com/factbase/trump/calendar/). \nThis market will resolve to \"Yes\" if Donald Trump says the listed term during the Tax Day Roundtable scheduled for April 16, 2026. Otherwise, the market will resolve to \"No\".\nPlural and possessive forms of the listed term will count toward the resolution of this market regardless of context; however, other forms will NOT count.\nInstances where the term is used in a compound word will count regardless of context (e.g., joyful is not a compound word for \"joy,\" however, \"killjoy\" is a compounding of the words \"kill\" and \"joy\").\nIf this market requires a specified number of mentions of a person’s first or last name, a full-name mention will count as one mention (e.g., if a market is about “Joe / Biden 5+ times,” a mention of “Joe Biden” will count once).\nThis market is explicitly about the event titled \"The President participates in a Roundtable and Remarks on Tax Day\" scheduled for April 16, 2026, 7PM ET (https://rollcall.com/factbase/trump/calendar/). Speeches, events, or comments that occur outside of the named, scheduled event will not qualify toward this market's resolution. If the event contains a Q&A, it will count toward the resolution of this market.\nAI-generated audio or video will not count toward this market's resolution.\nIf this event is definitively cancelled, or otherwise is not aired by April 16, 2026, 11:59 PM ET, \"-No Qualifying Event-\" will resolve to \"Yes\" and all other brackets will resolve to \"No\". \nThe resolution source will be video of the events. Only remarks which are broadcast or streamed live will count toward this market's resolution.",
+      "similarMarkets": [
+        "https://polymarket.com/event/what-will-trump-say-during-no-tax-on-tips-roundtable#will-trump-say-air-force-during-no-tax-on-tips-roundtable"
+      ],
+      "chainId": 5064014,
+      "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+      "settled": false,
+      "resolvedToYes": false,
+      "nonDecisive": false,
+      "assertionId": null,
+      "assertionTimestamp": null,
+      "openInterest": "0",
+      "similarMarketVolume": 1297.432087,
+      "similarMarketImage": "https://polymarket-upload.s3.us-east-2.amazonaws.com/what-will-trump-say-during-no-tax-on-tips-roundtable-eIY7lPsVJB3W.jpg",
+      "estimatedPrice": 0.41,
+      "conditionGroupId": 130761,
+      "conditionGroup": null,
+      "category": {
+        "id": 4,
+        "name": "Geopolitics",
+        "slug": "geopolitics"
+      }
+    },
+    {
+      "id": "0xe61651606d06d2e0a2bde379106583b87f44f2f1c515844ea07e8007e8c21457",
+      "createdAt": "<ISO_TIMESTAMP>",
+      "question": "Will Trump say \"Waitress\" during No Tax on Tips Roundtable?",
+      "shortName": "Will Trump say \"Waitress\" during No Tax on Tips Roundtable?",
+      "optionName": "Waitress",
+      "endTime": 1776412740,
+      "public": true,
+      "description": "Donald Trump is scheduled to participate in an event titled \"The President participates in a Roundtable and Remarks on Tax Day\" in Las Vegas, Nevada on April 16, 2026, 7PM ET (https://rollcall.com/factbase/trump/calendar/). \nThis market will resolve to \"Yes\" if Donald Trump says the listed term during the Tax Day Roundtable scheduled for April 16, 2026. Otherwise, the market will resolve to \"No\".\nPlural and possessive forms of the listed term will count toward the resolution of this market regardless of context; however, other forms will NOT count.\nInstances where the term is used in a compound word will count regardless of context (e.g., joyful is not a compound word for \"joy,\" however, \"killjoy\" is a compounding of the words \"kill\" and \"joy\").\nIf this market requires a specified number of mentions of a person’s first or last name, a full-name mention will count as one mention (e.g., if a market is about “Joe / Biden 5+ times,” a mention of “Joe Biden” will count once).\nThis market is explicitly about the event titled \"The President participates in a Roundtable and Remarks on Tax Day\" scheduled for April 16, 2026, 7PM ET (https://rollcall.com/factbase/trump/calendar/). Speeches, events, or comments that occur outside of the named, scheduled event will not qualify toward this market's resolution. If the event contains a Q&A, it will count toward the resolution of this market.\nAI-generated audio or video will not count toward this market's resolution.\nIf this event is definitively cancelled, or otherwise is not aired by April 16, 2026, 11:59 PM ET, \"-No Qualifying Event-\" will resolve to \"Yes\" and all other brackets will resolve to \"No\". \nThe resolution source will be video of the events. Only remarks which are broadcast or streamed live will count toward this market's resolution.",
+      "similarMarkets": [
+        "https://polymarket.com/event/what-will-trump-say-during-no-tax-on-tips-roundtable#will-trump-say-waitress-during-no-tax-on-tips-roundtable"
+      ],
+      "chainId": 5064014,
+      "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+      "settled": false,
+      "resolvedToYes": false,
+      "nonDecisive": false,
+      "assertionId": null,
+      "assertionTimestamp": null,
+      "openInterest": "0",
+      "similarMarketVolume": 1114.415136,
+      "similarMarketImage": "https://polymarket-upload.s3.us-east-2.amazonaws.com/what-will-trump-say-during-no-tax-on-tips-roundtable-eIY7lPsVJB3W.jpg",
+      "estimatedPrice": 0.675,
+      "conditionGroupId": 130761,
+      "conditionGroup": null,
+      "category": {
+        "id": 4,
+        "name": "Geopolitics",
+        "slug": "geopolitics"
+      }
+    },
+    {
+      "id": "0x771ec4cc5663d0717593df67d7556785a511bdd1d31fe990956e24506d8bf577",
+      "createdAt": "<ISO_TIMESTAMP>",
+      "question": "Will Trump say \"Women's sports\" during No Tax on Tips Roundtable?",
+      "shortName": "Will Trump say \"Women's sports\" during No Tax on Tips Roundtable?",
+      "optionName": "Women's sports",
+      "endTime": 1776412740,
+      "public": true,
+      "description": "Donald Trump is scheduled to participate in an event titled \"The President participates in a Roundtable and Remarks on Tax Day\" in Las Vegas, Nevada on April 16, 2026, 7PM ET (https://rollcall.com/factbase/trump/calendar/). \nThis market will resolve to \"Yes\" if Donald Trump says the listed term during the Tax Day Roundtable scheduled for April 16, 2026. Otherwise, the market will resolve to \"No\".\nPlural and possessive forms of the listed term will count toward the resolution of this market regardless of context; however, other forms will NOT count.\nInstances where the term is used in a compound word will count regardless of context (e.g., joyful is not a compound word for \"joy,\" however, \"killjoy\" is a compounding of the words \"kill\" and \"joy\").\nIf this market requires a specified number of mentions of a person’s first or last name, a full-name mention will count as one mention (e.g., if a market is about “Joe / Biden 5+ times,” a mention of “Joe Biden” will count once).\nThis market is explicitly about the event titled \"The President participates in a Roundtable and Remarks on Tax Day\" scheduled for April 16, 2026, 7PM ET (https://rollcall.com/factbase/trump/calendar/). Speeches, events, or comments that occur outside of the named, scheduled event will not qualify toward this market's resolution. If the event contains a Q&A, it will count toward the resolution of this market.\nAI-generated audio or video will not count toward this market's resolution.\nIf this event is definitively cancelled, or otherwise is not aired by April 16, 2026, 11:59 PM ET, \"-No Qualifying Event-\" will resolve to \"Yes\" and all other brackets will resolve to \"No\". \nThe resolution source will be video of the events. Only remarks which are broadcast or streamed live will count toward this market's resolution.",
+      "similarMarkets": [
+        "https://polymarket.com/event/what-will-trump-say-during-no-tax-on-tips-roundtable#will-trump-say-womens-sports-during-no-tax-on-tips-roundtable"
+      ],
+      "chainId": 5064014,
+      "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+      "settled": false,
+      "resolvedToYes": false,
+      "nonDecisive": false,
+      "assertionId": null,
+      "assertionTimestamp": null,
+      "openInterest": "0",
+      "similarMarketVolume": 1135.112743,
+      "similarMarketImage": "https://polymarket-upload.s3.us-east-2.amazonaws.com/what-will-trump-say-during-no-tax-on-tips-roundtable-eIY7lPsVJB3W.jpg",
+      "estimatedPrice": 0.345,
+      "conditionGroupId": 130761,
+      "conditionGroup": null,
+      "category": {
+        "id": 4,
+        "name": "Geopolitics",
+        "slug": "geopolitics"
+      }
+    },
+    {
+      "id": "0x95d9ad4b05d970250f3b9c762c5e4d7e1ab0eeee209f9c9a9c2c60858280f1bd",
+      "createdAt": "<ISO_TIMESTAMP>",
+      "question": "Will Trump say \"Million\" or \"Billion\" or \"Trillion\" 15+ times during No Tax on Tips Roundtable?",
+      "shortName": "Will Trump say \"Million\" or \"Billion\" or \"Trillion\" 15+ times during No Tax on Tips Roundtable?",
+      "optionName": "Million / Billion / Trillion 15+ times",
+      "endTime": 1776412740,
+      "public": true,
+      "description": "Donald Trump is scheduled to participate in an event titled \"The President participates in a Roundtable and Remarks on Tax Day\" in Las Vegas, Nevada on April 16, 2026, 7PM ET (https://rollcall.com/factbase/trump/calendar/). \nThis market will resolve to \"Yes\" if Donald Trump says the listed term during the Tax Day Roundtable scheduled for April 16, 2026. Otherwise, the market will resolve to \"No\".\nPlural and possessive forms of the listed term will count toward the resolution of this market regardless of context; however, other forms will NOT count.\nInstances where the term is used in a compound word will count regardless of context (e.g., joyful is not a compound word for \"joy,\" however, \"killjoy\" is a compounding of the words \"kill\" and \"joy\").\nIf this market requires a specified number of mentions of a person’s first or last name, a full-name mention will count as one mention (e.g., if a market is about “Joe / Biden 5+ times,” a mention of “Joe Biden” will count once).\nThis market is explicitly about the event titled \"The President participates in a Roundtable and Remarks on Tax Day\" scheduled for April 16, 2026, 7PM ET (https://rollcall.com/factbase/trump/calendar/). Speeches, events, or comments that occur outside of the named, scheduled event will not qualify toward this market's resolution. If the event contains a Q&A, it will count toward the resolution of this market.\nAI-generated audio or video will not count toward this market's resolution.\nIf this event is definitively cancelled, or otherwise is not aired by April 16, 2026, 11:59 PM ET, \"-No Qualifying Event-\" will resolve to \"Yes\" and all other brackets will resolve to \"No\". \nThe resolution source will be video of the events. Only remarks which are broadcast or streamed live will count toward this market's resolution.",
+      "similarMarkets": [
+        "https://polymarket.com/event/what-will-trump-say-during-no-tax-on-tips-roundtable#will-trump-say-million-or-billion-or-trillion-15-times-during-no-tax-on-tips-roundtable"
+      ],
+      "chainId": 5064014,
+      "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+      "settled": false,
+      "resolvedToYes": false,
+      "nonDecisive": false,
+      "assertionId": null,
+      "assertionTimestamp": null,
+      "openInterest": "0",
+      "similarMarketVolume": 1154.732647,
+      "similarMarketImage": "https://polymarket-upload.s3.us-east-2.amazonaws.com/what-will-trump-say-during-no-tax-on-tips-roundtable-eIY7lPsVJB3W.jpg",
+      "estimatedPrice": 0.77,
+      "conditionGroupId": 130761,
+      "conditionGroup": null,
+      "category": {
+        "id": 4,
+        "name": "Geopolitics",
+        "slug": "geopolitics"
+      }
+    },
+    {
+      "id": "0x2bf173fd213d4a421580c03c07291e0e4917b38768b52414eab888e67b89023e",
+      "createdAt": "<ISO_TIMESTAMP>",
+      "question": "Will Mark Rutte say \"Defense\" 3+ times during meeting with Prime Minister of Czechia?",
+      "shortName": "Will Mark Rutte say \"Defense\" 3+ times during meeting with Prime Minister of Czechia?",
+      "optionName": "Defense 3+ times",
+      "endTime": 1776412740,
+      "public": true,
+      "description": "NATO Secretary General Mark Rutte is scheduled to participate in a meeting with Prime Minister of Czechia Andrej Babiš on April 16, 2026, 12:35 ET (https://www.nato.int/en/news-and-events/events/media-advisories/2026/04/15/nato-secretary-general-to-visit-czechia). \nThis market will resolve to \"Yes\" if Mark Rutte says the listed term during the meeting with the Prime Minister of Czechia scheduled for April 16, 2026. Otherwise, the market will resolve to \"No\".\nPlural and possessive forms of the listed term will count toward the resolution of this market regardless of context; however, other forms will NOT count.\nInstances where the term is used in a compound word will count regardless of context (e.g., joyful is not a compound word for \"joy,\" however, \"killjoy\" is a compounding of the words \"kill\" and \"joy\").\nIf this market requires a specified number of mentions of a person’s first or last name, a full-name mention will count as one mention (e.g., if a market is about “Joe / Biden 5+ times,” a mention of “Joe Biden” will count once).\nThis market is explicitly about Mark Rutte's meeting with the Prime Minister of Czechia scheduled for April 16, 2026, 12:35PM ET. Speeches, events, or comments that occur outside of the named, scheduled event will not qualify toward this market's resolution. If the event contains a Q&A, it will count toward the resolution of this market.\nAI-generated audio or video will not count toward this market's resolution.\nIf this event is definitively cancelled, or otherwise is not aired by April 16, 2026, 11:59 PM ET, \"-No Qualifying Event-\" will resolve to \"Yes\" and all other brackets will resolve to \"No\". \nThe resolution source will be video of the events. Only remarks which are broadcast or streamed live will count toward this market's resolution.",
+      "similarMarkets": [
+        "https://polymarket.com/event/what-will-nato-secretary-general-say-during-meeting-with-prime-minister-of-czechia#will-mark-rutte-say-defense-3-times-during-meeting-with-prime-minister-of-czechia"
+      ],
+      "chainId": 5064014,
+      "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+      "settled": false,
+      "resolvedToYes": false,
+      "nonDecisive": false,
+      "assertionId": null,
+      "assertionTimestamp": null,
+      "openInterest": "0",
+      "similarMarketVolume": 1001.33,
+      "similarMarketImage": "https://polymarket-upload.s3.us-east-2.amazonaws.com/what-will-nato-secretary-general-say-during-meeting-with-prime-minister-of-czechia-0lVM95iS4Nhv.jpg",
+      "estimatedPrice": 0.9995,
+      "conditionGroupId": 131528,
+      "conditionGroup": null,
+      "category": {
+        "id": 4,
+        "name": "Geopolitics",
+        "slug": "geopolitics"
+      }
+    },
+    {
+      "id": "0xc1a2689067dd4606b78a2e75fae6c9ba5498966b6a27fdd7cfa4571470380cea",
+      "createdAt": "<ISO_TIMESTAMP>",
+      "question": "Will the highest temperature in Cape Town be 23°C on April 16?",
+      "shortName": "Will the highest temperature in Cape Town be 23°C on April 16?",
+      "optionName": "23°C",
+      "endTime": 1776398340,
+      "public": true,
+      "description": "This market will resolve to the temperature range that contains the highest temperature recorded at the Cape Town International Airport Station in degrees Celsius on 16 Apr '26.\nThe resolution source for this market will be information from Wunderground, specifically the highest temperature recorded for all times on this day by the Forecast for the Cape Town International Airport Station once information is finalized, available here: https://www.wunderground.com/history/daily/za/matroosfontein/FACT.\nTo toggle between Fahrenheit and Celsius, click the gear icon next to the search bar and switch the Temperature setting between °F and °C.\nThis market can not resolve to \"Yes\" until all data for this date has been finalized.\nThe resolution source for this market measures temperatures to whole degrees Celsius (eg, 9°C). Thus, this is the level of precision that will be used when resolving the market.\nAny revisions to temperatures recorded after data is finalized for this market's timeframe will not be considered for this market's resolution.",
+      "similarMarkets": [
+        "https://polymarket.com/event/highest-temperature-in-cape-town-on-april-16-2026#highest-temperature-in-cape-town-on-april-16-2026-23c"
+      ],
+      "chainId": 5064014,
+      "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+      "settled": false,
+      "resolvedToYes": false,
+      "nonDecisive": false,
+      "assertionId": null,
+      "assertionTimestamp": null,
+      "openInterest": "0",
+      "similarMarketVolume": 1766.770914,
+      "similarMarketImage": "https://polymarket-upload.s3.us-east-2.amazonaws.com/cape-town-6b1f408cef.jpg",
+      "estimatedPrice": 0.0025,
+      "conditionGroupId": 131015,
+      "conditionGroup": null,
+      "category": {
+        "id": 2,
+        "name": "Weather",
+        "slug": "weather"
+      }
+    },
+    {
+      "id": "0x0ff5d703e98571b13354b913052386e972f4f4cb58949ddd2a73d1f9f52d2496",
+      "createdAt": "<ISO_TIMESTAMP>",
+      "question": "Will Washington Nationals vs Pittsburgh Pirates total be over 5.5?",
+      "shortName": "WSH/PTT O5.5",
+      "optionName": "O/U 5.5",
+      "endTime": 1776386100,
+      "public": true,
+      "description": "In the upcoming MLB game between the Washington Nationals and Pittsburgh Pirates, scheduled for April 16 at 12:35 PM ET:\nThis market will resolve to \"Over\" if the Washington Nationals and Pittsburgh Pirates combine to score 6 or more runs in this game.\nIf the combined total is less than 6, this market will resolve to \"Under\".\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.\nTo know when a postponed game will be played, please check the home team's schedule on MLB.com for the listed team and look for the game described as a makeup game.\nThe primary resolution source for this market is the official final statistics of the event as recognized by the governing body or event organizers. However, if the governing body or event organizers have not published final match statistics within 24 hours after the event's conclusion, a consensus of credible reporting may be used instead.",
+      "similarMarkets": [
+        "https://polymarket.com/event/mlb-wsh-pit-2026-04-16#mlb-wsh-pit-2026-04-16-total-5pt5"
+      ],
+      "chainId": 5064014,
+      "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+      "settled": false,
+      "resolvedToYes": false,
+      "nonDecisive": false,
+      "assertionId": null,
+      "assertionTimestamp": null,
+      "openInterest": "0",
+      "similarMarketVolume": 2742.215954,
+      "similarMarketImage": "https://polymarket-upload.s3.us-east-2.amazonaws.com/Repetitive-markets/MLB.jpg",
+      "estimatedPrice": 0.9995,
+      "conditionGroupId": 126367,
+      "conditionGroup": null,
+      "category": {
+        "id": 6,
+        "name": "Sports",
+        "slug": "sports"
+      }
+    },
+    {
+      "id": "0x15380b6977414b9c4057ab51bb96ce79496b9d0932cb502e5366d464f3a7111b",
+      "createdAt": "<ISO_TIMESTAMP>",
+      "question": "Will Washington Nationals vs Pittsburgh Pirates total be over 7.5?",
+      "shortName": "WSH/PTT O7.5",
+      "optionName": "O/U 7.5",
+      "endTime": 1776386100,
+      "public": true,
+      "description": "In the upcoming MLB game between the Washington Nationals and Pittsburgh Pirates, scheduled for April 16 at 12:35 PM ET:\nThis market will resolve to \"Over\" if the Washington Nationals and Pittsburgh Pirates combine to score 8 or more runs in this game.\nIf the combined total is less than 8, this market will resolve to \"Under\".\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.\nTo know when a postponed game will be played, please check the home team's schedule on MLB.com for the listed team and look for the game described as a makeup game.\nThe primary resolution source for this market is the official final statistics of the event as recognized by the governing body or event organizers. However, if the governing body or event organizers have not published final match statistics within 24 hours after the event's conclusion, a consensus of credible reporting may be used instead.",
+      "similarMarkets": [
+        "https://polymarket.com/event/mlb-wsh-pit-2026-04-16#mlb-wsh-pit-2026-04-16-total-7pt5"
+      ],
+      "chainId": 5064014,
+      "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+      "settled": false,
+      "resolvedToYes": false,
+      "nonDecisive": false,
+      "assertionId": null,
+      "assertionTimestamp": null,
+      "openInterest": "0",
+      "similarMarketVolume": 15957.16260000001,
+      "similarMarketImage": "https://polymarket-upload.s3.us-east-2.amazonaws.com/Repetitive-markets/MLB.jpg",
+      "estimatedPrice": 0.9995,
+      "conditionGroupId": 126367,
+      "conditionGroup": null,
+      "category": {
+        "id": 6,
+        "name": "Sports",
+        "slug": "sports"
+      }
+    },
+    {
+      "id": "0x3f41c543f7ed6771d3b8ed5bbdac796d3814fddea9fe48b455abc9c00b7cfbeb",
+      "createdAt": "<ISO_TIMESTAMP>",
+      "question": "Will San Francisco Giants vs Cincinnati Reds total be over 4.5?",
+      "shortName": "SNF/CNC O4.5",
+      "optionName": "O/U 4.5",
+      "endTime": 1776386400,
+      "public": true,
+      "description": "In the upcoming MLB game between the San Francisco Giants and Cincinnati Reds, scheduled for April 16 at 12:40 PM ET:\nThis market will resolve to \"Over\" if the San Francisco Giants and Cincinnati Reds combine to score 5 or more runs in this game.\nIf the combined total is less than 5, this market will resolve to \"Under\".\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.\nTo know when a postponed game will be played, please check the home team's schedule on MLB.com for the listed team and look for the game described as a makeup game.\nThe primary resolution source for this market is the official final statistics of the event as recognized by the governing body or event organizers. However, if the governing body or event organizers have not published final match statistics within 24 hours after the event's conclusion, a consensus of credible reporting may be used instead.",
+      "similarMarkets": [
+        "https://polymarket.com/event/mlb-sf-cin-2026-04-16#mlb-sf-cin-2026-04-16-total-4pt5"
+      ],
+      "chainId": 5064014,
+      "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+      "settled": false,
+      "resolvedToYes": false,
+      "nonDecisive": false,
+      "assertionId": null,
+      "assertionTimestamp": null,
+      "openInterest": "0",
+      "similarMarketVolume": 9716.849779999999,
+      "similarMarketImage": "https://polymarket-upload.s3.us-east-2.amazonaws.com/Repetitive-markets/MLB.jpg",
+      "estimatedPrice": 0.49,
+      "conditionGroupId": 130138,
+      "conditionGroup": null,
+      "category": {
+        "id": 6,
+        "name": "Sports",
+        "slug": "sports"
+      }
+    },
+    {
+      "id": "0x8db3fc50c70fd7631ea0920dee3ba579c87d4a89af0de02fbe4279a7b43f17f3",
+      "createdAt": "<ISO_TIMESTAMP>",
+      "question": "Toronto Blue Jays covers -1.5 spread vs Milwaukee Brewers?",
+      "shortName": "TRN -1.5",
+      "optionName": "Spread -1.5",
+      "endTime": 1776390000,
+      "public": true,
+      "description": "In the upcoming MLB game between the Toronto Blue Jays and Milwaukee Brewers, scheduled for April 16 at 1:40 PM ET:\nThis market will resolve to \"Toronto Blue Jays\" if the Toronto Blue Jays win the game by 2 or more runs.\nOtherwise, this market will resolve to \"Milwaukee Brewers\". If the game ends in a tie, this market will resolve to \"Milwaukee Brewers\".\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.\nTo know when a postponed game will be played, please check the home team's schedule on MLB.com for the listed team and look for the game described as a makeup game.\nThe primary resolution source for this market is the official final statistics of the event as recognized by the governing body or event organizers. However, if the governing body or event organizers have not published final match statistics within 24 hours after the event's conclusion, a consensus of credible reporting may be used instead.",
+      "similarMarkets": [
+        "https://polymarket.com/event/mlb-tor-mil-2026-04-16#mlb-tor-mil-2026-04-16-spread-away-1pt5"
+      ],
+      "chainId": 5064014,
+      "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+      "settled": false,
+      "resolvedToYes": false,
+      "nonDecisive": false,
+      "assertionId": null,
+      "assertionTimestamp": null,
+      "openInterest": "0",
+      "similarMarketVolume": 1202.064715,
+      "similarMarketImage": "https://polymarket-upload.s3.us-east-2.amazonaws.com/Repetitive-markets/MLB.jpg",
+      "estimatedPrice": 0.38,
+      "conditionGroupId": 129339,
+      "conditionGroup": null,
+      "category": {
+        "id": 6,
+        "name": "Sports",
+        "slug": "sports"
+      }
+    }
+  ]
+}

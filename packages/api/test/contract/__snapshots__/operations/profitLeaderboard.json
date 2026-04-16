@@ -1,0 +1,44 @@
+{
+  "profitLeaderboard": [
+    {
+      "address": "0x4f1abd0e5c4506c95a4fd5259371bd9a877d9488",
+      "totalPnL": "45.747807621764287944"
+    },
+    {
+      "address": "0x5c1d4fed296d2637205ac132ce3e030f5d94d026",
+      "totalPnL": "36.022330601918959303"
+    },
+    {
+      "address": "0xc370ac37b8247df21fe16db239aab1343540a2d1",
+      "totalPnL": "12.977105074050827582"
+    },
+    {
+      "address": "0x0dc63a9be81db634e786aa121ddb5244502be4a4",
+      "totalPnL": "11.666471786684223133"
+    },
+    {
+      "address": "0x49aa23e19ae8b333d6cdd69bb09cbb74528952ce",
+      "totalPnL": "10.450670067960563969"
+    },
+    {
+      "address": "0x5848677f1cabf41c2a17135bba15b97d93f4f1b6",
+      "totalPnL": "9.846964897867444222"
+    },
+    {
+      "address": "0xed1ff0c0861a125f2b8de24ceb875abd3350ead6",
+      "totalPnL": "4.469064461942968691"
+    },
+    {
+      "address": "0x6266d78bbcc5dadf193961f3014afbcd3e1fb1d8",
+      "totalPnL": "2.630068666613911699"
+    },
+    {
+      "address": "0x2360b930a60266dbe9f9d993795fe34556c2ea03",
+      "totalPnL": "2.479907552129741788"
+    },
+    {
+      "address": "0xfa80d2f8808eb016fa90cdcdc21ae48fee93db94",
+      "totalPnL": "1.654335533670836522"
+    }
+  ]
+}

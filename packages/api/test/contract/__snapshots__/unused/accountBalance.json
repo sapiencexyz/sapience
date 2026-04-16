@@ -1,0 +1,461 @@
+{
+  "data": {
+    "accountBalance": [
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      },
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "claimableCollateral": "0",
+        "deployedCollateral": "0"
+      }
+    ]
+  }
+}

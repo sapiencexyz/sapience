@@ -1,0 +1,9 @@
+{
+  "data": {
+    "collateralBalance": {
+      "address": "0x0000000000000000000000000000000000000000",
+      "balance": "0",
+      "chainId": 1
+    }
+  }
+}

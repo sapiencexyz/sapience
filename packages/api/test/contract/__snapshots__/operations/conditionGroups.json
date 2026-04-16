@@ -1,0 +1,114 @@
+{
+  "conditionGroups": [
+    {
+      "id": 85,
+      "createdAt": "<ISO_TIMESTAMP>",
+      "name": "Hurricanes vs. Red Wings:",
+      "category": {
+        "id": 6,
+        "name": "Sports",
+        "slug": "sports"
+      },
+      "conditions": []
+    },
+    {
+      "id": 84,
+      "createdAt": "<ISO_TIMESTAMP>",
+      "name": "Lightning vs. Flyers:",
+      "category": {
+        "id": 6,
+        "name": "Sports",
+        "slug": "sports"
+      },
+      "conditions": []
+    },
+    {
+      "id": 83,
+      "createdAt": "<ISO_TIMESTAMP>",
+      "name": "season 2 of Culinary Class Wars",
+      "category": {
+        "id": 4,
+        "name": "Geopolitics",
+        "slug": "geopolitics"
+      },
+      "conditions": []
+    },
+    {
+      "id": 82,
+      "createdAt": "<ISO_TIMESTAMP>",
+      "name": "New Orleans Privateers vs. Southeastern Louisiana Lions:",
+      "category": {
+        "id": 6,
+        "name": "Sports",
+        "slug": "sports"
+      },
+      "conditions": []
+    },
+    {
+      "id": 81,
+      "createdAt": "<ISO_TIMESTAMP>",
+      "name": "Grambling State Tigers vs. Florida A&M Rattlers:",
+      "category": {
+        "id": 6,
+        "name": "Sports",
+        "slug": "sports"
+      },
+      "conditions": []
+    },
+    {
+      "id": 80,
+      "createdAt": "<ISO_TIMESTAMP>",
+      "name": "Kraken vs. Rangers:",
+      "category": {
+        "id": 6,
+        "name": "Sports",
+        "slug": "sports"
+      },
+      "conditions": []
+    },
+    {
+      "id": 78,
+      "createdAt": "<ISO_TIMESTAMP>",
+      "name": "South Carolina State Bulldogs vs. Coppin State Eagles:",
+      "category": {
+        "id": 6,
+        "name": "Sports",
+        "slug": "sports"
+      },
+      "conditions": []
+    },
+    {
+      "id": 77,
+      "createdAt": "<ISO_TIMESTAMP>",
+      "name": "top US Netflix show this week",
+      "category": {
+        "id": 7,
+        "name": "Culture",
+        "slug": "culture"
+      },
+      "conditions": []
+    },
+    {
+      "id": 76,
+      "createdAt": "<ISO_TIMESTAMP>",
+      "name": "top US Netflix movie this week",
+      "category": {
+        "id": 7,
+        "name": "Culture",
+        "slug": "culture"
+      },
+      "conditions": []
+    },
+    {
+      "id": 75,
+      "createdAt": "<ISO_TIMESTAMP>",
+      "name": "#2 US Netflix movie this week",
+      "category": {
+        "id": 7,
+        "name": "Culture",
+        "slug": "culture"
+      },
+      "conditions": []
+    }
+  ]
+}
