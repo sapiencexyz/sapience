@@ -363,7 +363,7 @@ const MarketsPage = () => {
 
           {/* Predict Prices (shared) */}
           {showPredictPrices && (
-            <div className={`w-full mt-4 mb-2 ${useCardGrid ? 'px-4' : ''}`}>
+            <div className={`w-full mb-2 ${useCardGrid ? 'px-4' : ''}`}>
               <div className="flex items-center justify-between mb-2 px-1">
                 <h2
                   className={`sc-heading ${useCardGrid ? 'text-white/80' : 'text-foreground'}`}
