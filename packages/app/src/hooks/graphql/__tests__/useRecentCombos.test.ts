@@ -73,14 +73,12 @@ function makeCondition(
     settled: false,
     resolvedToYes: false,
     nonDecisive: false,
-    estimatedPrice: 50,
+    estimatedPrice: 0.5,
     ...overrides,
   };
 }
 
-function conditionMap(
-  conditions: ConditionById[]
-): Map<string, ConditionById> {
+function conditionMap(conditions: ConditionById[]): Map<string, ConditionById> {
   return new Map(conditions.map((c) => [c.id, c]));
 }
 
@@ -260,14 +258,14 @@ describe('useRecentCombos', () => {
     expect(result.current.combos[0].pickConfigId).toBe('active-combo');
   });
 
-  it('filters out combos where any condition has estimatedPrice < 1', async () => {
+  it('filters out combos where any condition has estimatedPrice < 0.01', async () => {
     const useRecentCombos = await getHook();
 
     const configs = [makeConfig({ id: 'low-price' })];
     mockFetchPickConfigurations.mockResolvedValue(configs);
     const conds = [
-      makeCondition({ id: 'c1', estimatedPrice: 0.5 }), // < 1
-      makeCondition({ id: 'c2', estimatedPrice: 50 }),
+      makeCondition({ id: 'c1', estimatedPrice: 0.005 }), // < 0.01
+      makeCondition({ id: 'c2', estimatedPrice: 0.5 }),
     ];
     mockUseConditionsByIds.mockReturnValue({
       map: conditionMap(conds),
@@ -283,20 +281,19 @@ describe('useRecentCombos', () => {
       expect(mockFetchPickConfigurations).toHaveBeenCalled();
     });
 
-    // Wait a tick for state to settle
     await waitFor(() => {
       expect(result.current.combos).toEqual([]);
     });
   });
 
-  it('filters out combos where any condition has estimatedPrice > 99', async () => {
+  it('filters out combos where any condition has estimatedPrice > 0.99', async () => {
     const useRecentCombos = await getHook();
 
     const configs = [makeConfig({ id: 'high-price' })];
     mockFetchPickConfigurations.mockResolvedValue(configs);
     const conds = [
-      makeCondition({ id: 'c1', estimatedPrice: 50 }),
-      makeCondition({ id: 'c2', estimatedPrice: 99.5 }), // > 99
+      makeCondition({ id: 'c1', estimatedPrice: 0.5 }),
+      makeCondition({ id: 'c2', estimatedPrice: 0.995 }), // > 0.99
     ];
     mockUseConditionsByIds.mockReturnValue({
       map: conditionMap(conds),
@@ -315,6 +312,32 @@ describe('useRecentCombos', () => {
     await waitFor(() => {
       expect(result.current.combos).toEqual([]);
     });
+  });
+
+  it('keeps combos whose estimatedPrice values are within the 1%-99% band', async () => {
+    const useRecentCombos = await getHook();
+
+    const configs = [makeConfig({ id: 'mid-band' })];
+    mockFetchPickConfigurations.mockResolvedValue(configs);
+    const conds = [
+      makeCondition({ id: 'c1', estimatedPrice: 0.0185 }),
+      makeCondition({ id: 'c2', estimatedPrice: 0.9895 }),
+    ];
+    mockUseConditionsByIds.mockReturnValue({
+      map: conditionMap(conds),
+      isLoading: false,
+      error: null,
+    });
+
+    const { result } = renderHook(() => useRecentCombos({ chainId: 1 }), {
+      wrapper: createWrapper(),
+    });
+
+    await waitFor(() => {
+      expect(result.current.combos.length).toBe(1);
+    });
+
+    expect(result.current.combos[0].pickConfigId).toBe('mid-band');
   });
 
   it('allows combos where estimatedPrice is null', async () => {
@@ -324,7 +347,7 @@ describe('useRecentCombos', () => {
     mockFetchPickConfigurations.mockResolvedValue(configs);
     const conds = [
       makeCondition({ id: 'c1', estimatedPrice: null }),
-      makeCondition({ id: 'c2', estimatedPrice: 50 }),
+      makeCondition({ id: 'c2', estimatedPrice: 0.5 }),
     ];
     mockUseConditionsByIds.mockReturnValue({
       map: conditionMap(conds),
