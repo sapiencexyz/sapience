@@ -130,6 +130,17 @@ type VolumeMetric =
 
 const VOLUME_WINDOW_OPTIONS: VolumeWindow[] = ['7d', '24h', '4h', '1h'];
 
+export function getEffectiveVolumeWindow(
+  window: VolumeWindow | null,
+  filterVolume: boolean
+): VolumeWindow {
+  const resolvedWindow = window ?? '24h';
+  if (!filterVolume || resolvedWindow.endsWith('Filtered')) {
+    return resolvedWindow;
+  }
+  return `${resolvedWindow}Filtered` as VolumeWindow;
+}
+
 // Encode the (metric, window) tuple as a single radio value for DropdownMenu
 type MetricOptionId =
   | 'openInterest'
@@ -398,6 +409,10 @@ function createColumns(
       },
       cell: ({ row }) => {
         const metric = volumeMetricRef.current;
+        const effectiveVolumeWindow = getEffectiveVolumeWindow(
+          volumeWindowRef.current,
+          filterVolumeRef.current
+        );
         if (metric === 'similarMarketVolumeAllTime') {
           const vol = getRowSimilarMarketVolume(row.original);
           if (vol === 0) {
@@ -418,7 +433,7 @@ function createColumns(
         if (metric === 'similarMarketVolumeWindowed') {
           const vol = getRowTimeBucketedVolume(
             row.original,
-            volumeWindowRef.current ?? '24h'
+            effectiveVolumeWindow
           );
           if (vol === 0) {
             return (
@@ -465,15 +480,13 @@ function createColumns(
           );
         }
         if (volumeMetricRef.current === 'similarMarketVolumeWindowed') {
+          const effectiveVolumeWindow = getEffectiveVolumeWindow(
+            volumeWindowRef.current,
+            filterVolumeRef.current
+          );
           return (
-            getRowTimeBucketedVolume(
-              rowA.original,
-              volumeWindowRef.current ?? '24h'
-            ) -
-            getRowTimeBucketedVolume(
-              rowB.original,
-              volumeWindowRef.current ?? '24h'
-            )
+            getRowTimeBucketedVolume(rowA.original, effectiveVolumeWindow) -
+            getRowTimeBucketedVolume(rowB.original, effectiveVolumeWindow)
           );
         }
         const a = getRowOpenInterest(rowA.original);
@@ -592,9 +605,8 @@ function createColumns(
   ];
 }
 
-/** Get time-bucketed volume for a single condition (used in child rows).
- *  Always uses the base (unfiltered) window key for display. */
-function getConditionTimeBucketedVolume(
+/** Get time-bucketed volume for a single condition (used in child rows). */
+export function getConditionTimeBucketedVolume(
   c: ConditionGroupConditionType,
   window: VolumeWindow | null
 ): number {
@@ -620,6 +632,7 @@ function ChildConditionRow({
   onPrediction,
   volumeMetric,
   volumeWindow,
+  filterVolume,
   isLast = false,
 }: {
   condition: ConditionGroupConditionType;
@@ -627,6 +640,7 @@ function ChildConditionRow({
   onPrediction: (conditionId: string, p: number) => void;
   volumeMetric: VolumeMetric;
   volumeWindow: VolumeWindow | null;
+  filterVolume: boolean;
   isLast?: boolean;
 }) {
   const conditionType = groupConditionToConditionType(condition);
@@ -639,6 +653,10 @@ function ChildConditionRow({
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+  const effectiveVolumeWindow = getEffectiveVolumeWindow(
+    volumeWindow,
+    filterVolume
+  );
 
   return (
     <TableRow
@@ -690,7 +708,10 @@ function ChildConditionRow({
           </div>
         ) : volumeMetric === 'similarMarketVolumeWindowed' ? (
           (() => {
-            const vol = getConditionTimeBucketedVolume(condition, volumeWindow);
+            const vol = getConditionTimeBucketedVolume(
+              condition,
+              effectiveVolumeWindow
+            );
             return (
               <div className="text-sm whitespace-nowrap text-right">
                 {vol === 0 ? (
@@ -1004,6 +1025,7 @@ export default function QuestionsTable({
                             onPrediction={handlePrediction}
                             volumeMetric={volumeMetric}
                             volumeWindow={volumeWindow}
+                            filterVolume={filterVolume}
                             isLast={idx === data.conditions.length - 1}
                           />
                         ))}
