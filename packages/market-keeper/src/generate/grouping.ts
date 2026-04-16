@@ -82,14 +82,15 @@ export function transformToSapienceCondition(
   // Transform "X vs Y" questions to "X beats Y?" for clarity
   const question = transformMatchQuestion(market);
 
-  // shortName priority: groupItemTitle > LLM/regex enrichment > question fallback
-  const shortName =
-    market.groupItemTitle?.trim() || enrichment?.shortName || question;
+  // shortName = full Yes/No-answerable short form; optionName = verbatim Polymarket groupItemTitle
+  const shortName = enrichment?.shortName || question;
+  const optionName = market.groupItemTitle?.trim() || undefined;
 
   return {
     conditionHash: market.conditionId, // Use Polymarket's conditionId directly
     question,
     shortName,
+    optionName,
     endDate: market.endDate,
     description: market.description || '',
     similarMarkets: [getPolymarketUrl(market)],
@@ -283,6 +284,7 @@ function freshMetadataFor(
 ): SyncableFields {
   return {
     question: transformMatchQuestion(market),
+    optionName: market.groupItemTitle?.trim() || undefined,
     description: market.description || '',
     similarMarkets: [getPolymarketUrl(market)],
     tags,
@@ -360,6 +362,7 @@ function computeMetadataUpdates(
     // "we don't own this value right now" → skip, never blank out DB state.
     const keys: (keyof SyncableFields)[] = [
       'question',
+      'optionName',
       'description',
       'similarMarkets',
       'tags',
@@ -379,15 +382,12 @@ function computeMetadataUpdates(
       }
     }
 
-    // shortName priority: groupItemTitle > regex > question fallback.
-    // The generate cron does NOT re-run the LLM for existing markets,
-    // so we re-derive the best shortName from the current market data.
-    // If the market has a groupItemTitle (e.g. "Viktor Orban"), use that;
-    // otherwise fall back to the (possibly updated) question.
-    const freshShort =
-      resolveShortName(market) ?? fields.question ?? existing.question;
-    if (freshShort && existing.shortName !== freshShort) {
-      fields.shortName = freshShort;
+    // Only rewrite shortName when deterministic regex produces a non-null
+    // result. Never fall back to question — that would overwrite nice
+    // LLM-generated shortNames with the full question on every drift.
+    const regexShort = resolveShortName(market);
+    if (regexShort && existing.shortName !== regexShort) {
+      fields.shortName = regexShort;
       old.shortName = existing.shortName;
     }
 

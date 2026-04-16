@@ -169,6 +169,7 @@ model Condition {
   createdAt        DateTime        @default(now()) @db.Timestamp(6)
   question         String          @db.VarChar
   shortName        String?         @db.VarChar
+  optionName       String?         @db.VarChar
   categoryId       Int?
   category         Category?       @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   endTime          Int

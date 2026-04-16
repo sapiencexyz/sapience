@@ -42,13 +42,14 @@ export function marketToEnrichmentInput(
 }
 
 /**
- * Resolve the best available shortName for a market using the priority chain:
- * 1. groupItemTitle (from Polymarket API — e.g. "Viktor Orban")
- * 2. inferShortName (deterministic regex rules)
- * 3. null (signals LLM or question fallback needed)
+ * Resolve the best available shortName for a market.
+ * Returns inferShortName (deterministic regex rules), or null if no rule matches.
+ *
+ * groupItemTitle is intentionally NOT consulted here — it belongs on
+ * Condition.optionName (the per-row differentiator inside a group).
  */
 export function resolveShortName(market: PolymarketMarket): string | null {
-  return market.groupItemTitle?.trim() || inferShortName(market) || null;
+  return inferShortName(market) || null;
 }
 
 export function getFallbackEnrichment(

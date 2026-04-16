@@ -456,6 +456,7 @@ export type Condition = {
   id: Scalars['String']['output'];
   nonDecisive: Scalars['Boolean']['output'];
   openInterest: Scalars['String']['output'];
+  optionName?: Maybe<Scalars['String']['output']>;
   predictionCount: Scalars['Int']['output'];
   predictions: Array<LegacyPrediction>;
   public: Scalars['Boolean']['output'];
@@ -707,6 +708,7 @@ export type ConditionOrderByWithRelationInput = {
   id?: InputMaybe<SortOrder>;
   nonDecisive?: InputMaybe<SortOrder>;
   openInterest?: InputMaybe<SortOrder>;
+  optionName?: InputMaybe<SortOrderInput>;
   predictionCount?: InputMaybe<SortOrder>;
   predictions?: InputMaybe<LegacyPredictionOrderByRelationAggregateInput>;
   public?: InputMaybe<SortOrder>;
@@ -749,6 +751,7 @@ export type ConditionScalarFieldEnum =
   | 'id'
   | 'nonDecisive'
   | 'openInterest'
+  | 'optionName'
   | 'predictionCount'
   | 'public'
   | 'question'
@@ -790,6 +793,7 @@ export type ConditionWhereInput = {
   id?: InputMaybe<StringFilter>;
   nonDecisive?: InputMaybe<BoolFilter>;
   openInterest?: InputMaybe<StringFilter>;
+  optionName?: InputMaybe<StringNullableFilter>;
   predictionCount?: InputMaybe<IntFilter>;
   predictions?: InputMaybe<LegacyPredictionListRelationFilter>;
   public?: InputMaybe<BoolFilter>;
@@ -833,6 +837,7 @@ export type ConditionWhereUniqueInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   nonDecisive?: InputMaybe<BoolFilter>;
   openInterest?: InputMaybe<StringFilter>;
+  optionName?: InputMaybe<StringNullableFilter>;
   predictionCount?: InputMaybe<IntFilter>;
   predictions?: InputMaybe<LegacyPredictionListRelationFilter>;
   public?: InputMaybe<BoolFilter>;

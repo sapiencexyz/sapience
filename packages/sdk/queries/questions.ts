@@ -93,6 +93,7 @@ const GET_QUESTIONS = /* GraphQL */ `
           createdAt
           question
           shortName
+          optionName
           endTime
           public
           description

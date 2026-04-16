@@ -5,6 +5,7 @@ export interface ConditionType {
   createdAt: string;
   question: string;
   shortName?: string | null;
+  optionName?: string | null;
   endTime: number;
   public: boolean;
   description: string;
@@ -56,6 +57,7 @@ export const GET_CONDITIONS = /* GraphQL */ `
       createdAt
       question
       shortName
+      optionName
       endTime
       public
       description
@@ -218,6 +220,7 @@ export async function fetchConditionsByIds<T>(
 type ConditionById = {
   id: string;
   shortName?: string | null;
+  optionName?: string | null;
   question?: string | null;
   description?: string | null;
   endTime?: number | null;
@@ -235,6 +238,7 @@ const CONDITIONS_BY_IDS_QUERY = /* GraphQL */ `
     conditions(where: $where, take: 100) {
       id
       shortName
+      optionName
       question
       description
       endTime

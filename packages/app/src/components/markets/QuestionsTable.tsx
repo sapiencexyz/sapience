@@ -661,7 +661,8 @@ function ChildConditionRow({
           <ConditionTitleLink
             conditionId={condition.id}
             resolverAddress={condition.resolver ?? undefined}
-            title={condition.question}
+            title={condition.optionName || condition.question}
+            tooltipTitle={condition.optionName ? condition.question : undefined}
             clampLines={1}
             className="text-sm min-w-0"
           />

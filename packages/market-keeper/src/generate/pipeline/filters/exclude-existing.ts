@@ -10,6 +10,7 @@ export interface ExistingCondition {
   endTime: number;
   question?: string;
   shortName?: string;
+  optionName?: string;
   description?: string;
   similarMarkets?: string[];
   tags?: string[];
@@ -41,6 +42,7 @@ export async function checkExistingConditions(
           endTime
           question
           shortName
+          optionName
           description
           similarMarkets
           tags
@@ -80,6 +82,7 @@ export async function checkExistingConditions(
           endTime: condition.endTime,
           question: condition.question ?? undefined,
           shortName: condition.shortName ?? undefined,
+          optionName: condition.optionName ?? undefined,
           description: condition.description ?? undefined,
           similarMarkets: condition.similarMarkets ?? undefined,
           tags: condition.tags ?? undefined,

@@ -5,6 +5,7 @@ export interface ConditionGroupConditionType {
   createdAt: string;
   question: string;
   shortName?: string | null;
+  optionName?: string | null;
   endTime: number;
   public: boolean;
   description: string;
@@ -76,6 +77,7 @@ const GET_CONDITION_GROUPS = /* GraphQL */ `
         createdAt
         question
         shortName
+        optionName
         endTime
         public
         description

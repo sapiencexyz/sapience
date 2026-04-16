@@ -62,6 +62,7 @@ export function groupConditionToConditionType(
     createdAt: gc.createdAt,
     question: gc.question,
     shortName: gc.shortName,
+    optionName: gc.optionName,
     endTime: gc.endTime,
     public: gc.public,
     description: gc.description,

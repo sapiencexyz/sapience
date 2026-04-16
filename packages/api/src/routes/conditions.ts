@@ -19,6 +19,7 @@ interface BatchCreateConditionInput {
   conditionHash: string;
   question: string;
   shortName?: string;
+  optionName?: string;
   categorySlug?: string;
   endTime: number;
   description: string;
@@ -154,6 +155,7 @@ router.post('/batch-create', async (req: Request, res: Response) => {
             id: item.conditionHash,
             question: item.question,
             shortName: item.shortName?.trim() || undefined,
+            optionName: item.optionName?.trim() || undefined,
             categoryId: categoryId ?? undefined,
             endTime: parseInt(String(item.endTime), 10),
             public: true,
@@ -217,6 +219,7 @@ router.post('/', async (req: Request, res: Response) => {
       conditionHash,
       question,
       shortName,
+      optionName,
       categoryId,
       categorySlug,
       endTime,
@@ -234,6 +237,7 @@ router.post('/', async (req: Request, res: Response) => {
       conditionHash?: string;
       question?: string;
       shortName?: string;
+      optionName?: string;
       categoryId?: number;
       categorySlug?: string;
       endTime?: number | string;
@@ -352,6 +356,10 @@ router.post('/', async (req: Request, res: Response) => {
           shortName:
             shortName && shortName.trim().length > 0
               ? shortName.trim()
+              : undefined,
+          optionName:
+            optionName && optionName.trim().length > 0
+              ? optionName.trim()
               : undefined,
           categoryId: resolvedCategoryId ?? undefined,
           endTime: endTimeInt,
@@ -578,6 +586,7 @@ router.put('/batch-metadata', async (req: Request, res: Response) => {
         fields: {
           question?: string;
           shortName?: string;
+          optionName?: string;
           description?: string;
           similarMarkets?: string[];
           tags?: string[];
@@ -645,6 +654,8 @@ router.put('/batch-metadata', async (req: Request, res: Response) => {
       if (typeof f.question === 'string') data.question = f.question;
       if (typeof f.shortName === 'string')
         data.shortName = f.shortName.trim() || null;
+      if (typeof f.optionName === 'string')
+        data.optionName = f.optionName.trim() || null;
       if (typeof f.description === 'string') data.description = f.description;
       if (Array.isArray(f.similarMarkets))
         data.similarMarkets = f.similarMarkets;
@@ -767,6 +778,7 @@ router.put('/:id', async (req: Request, res: Response) => {
     const {
       question,
       shortName,
+      optionName,
       categoryId,
       categorySlug,
       public: isPublic,
@@ -782,6 +794,7 @@ router.put('/:id', async (req: Request, res: Response) => {
     } = req.body as {
       question?: string;
       shortName?: string;
+      optionName?: string;
       categoryId?: number;
       categorySlug?: string;
       public?: boolean;
@@ -886,6 +899,14 @@ router.put('/:id', async (req: Request, res: Response) => {
                 shortName:
                   shortName && shortName.trim().length > 0
                     ? shortName.trim()
+                    : null,
+              }
+            : {}),
+          ...(typeof optionName !== 'undefined'
+            ? {
+                optionName:
+                  optionName && optionName.trim().length > 0
+                    ? optionName.trim()
                     : null,
               }
             : {}),
