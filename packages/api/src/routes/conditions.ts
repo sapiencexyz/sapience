@@ -484,16 +484,17 @@ router.put('/prices', async (req: Request, res: Response) => {
   }
 });
 
-// Volume field names for validation and update building
-const VOLUME_FIELDS = [
-  'volume1h',
-  'volume4h',
-  'volume24h',
-  'volume7d',
-  'volumeFiltered1h',
-  'volumeFiltered4h',
-  'volumeFiltered24h',
-  'volumeFiltered7d',
+// Similar-market volume field names for validation and update building.
+// These are Polymarket-derived volumes computed by the keeper.
+const SIMILAR_MARKET_VOLUME_FIELDS = [
+  'similarMarketVolume1h',
+  'similarMarketVolume4h',
+  'similarMarketVolume24h',
+  'similarMarketVolume7d',
+  'similarMarketVolumeFiltered1h',
+  'similarMarketVolumeFiltered4h',
+  'similarMarketVolumeFiltered24h',
+  'similarMarketVolumeFiltered7d',
 ] as const;
 
 // PUT /admin/conditions/volume - batch update time-bucketed volume on multiple conditions
@@ -528,7 +529,7 @@ router.put('/volume', async (req: Request, res: Response) => {
       }
 
       // Validate volume fields are non-negative numbers when present
-      for (const field of VOLUME_FIELDS) {
+      for (const field of SIMILAR_MARKET_VOLUME_FIELDS) {
         if (field in update) {
           if (typeof update[field] !== 'number' || update[field] < 0) {
             return res.status(400).json({
@@ -542,7 +543,7 @@ router.put('/volume', async (req: Request, res: Response) => {
     const results = await prisma.$transaction(
       updates.map((u) => {
         const data: Record<string, number> = {};
-        for (const field of VOLUME_FIELDS) {
+        for (const field of SIMILAR_MARKET_VOLUME_FIELDS) {
           if (typeof u[field] === 'number' && u[field] >= 0) {
             data[field] = u[field];
           }

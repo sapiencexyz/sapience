@@ -7,10 +7,17 @@ export type SortField =
   | 'endTime'
   | 'createdAt'
   | 'predictionCount'
-  | 'similarMarketVolume'
-  | 'volume';
+  | 'similarMarketVolume';
 export type SortDirection = 'asc' | 'desc';
-export type VolumeWindow = '1h' | '4h' | '24h' | '7d';
+export type VolumeWindow =
+  | '1h'
+  | '4h'
+  | '24h'
+  | '7d'
+  | '1hFiltered'
+  | '4hFiltered'
+  | '24hFiltered'
+  | '7dFiltered';
 
 /** Map friendly VolumeWindow values to GraphQL enum keys */
 const VOLUME_WINDOW_TO_GQL: Record<VolumeWindow, string> = {
@@ -18,6 +25,10 @@ const VOLUME_WINDOW_TO_GQL: Record<VolumeWindow, string> = {
   '4h': 'fourHours',
   '24h': 'twentyFourHours',
   '7d': 'sevenDays',
+  '1hFiltered': 'oneHourFiltered',
+  '4hFiltered': 'fourHoursFiltered',
+  '24hFiltered': 'twentyFourHoursFiltered',
+  '7dFiltered': 'sevenDaysFiltered',
 };
 export type ResolutionStatusValue =
   | 'all'
@@ -45,9 +56,10 @@ const GET_QUESTIONS = /* GraphQL */ `
     $resolutionStatus: ResolutionStatus
     $minEstimatedPrice: Float
     $maxEstimatedPrice: Float
+    $minSimilarMarketVolume: Float
+    $maxSimilarMarketVolume: Float
     $tag: String
-    $volumeWindow: VolumeWindow
-    $excludeLowOdds: Boolean
+    $similarMarketVolumeWindow: VolumeWindow
   ) {
     questions(
       take: $take
@@ -61,9 +73,10 @@ const GET_QUESTIONS = /* GraphQL */ `
       resolutionStatus: $resolutionStatus
       minEstimatedPrice: $minEstimatedPrice
       maxEstimatedPrice: $maxEstimatedPrice
+      minSimilarMarketVolume: $minSimilarMarketVolume
+      maxSimilarMarketVolume: $maxSimilarMarketVolume
       tag: $tag
-      volumeWindow: $volumeWindow
-      excludeLowOdds: $excludeLowOdds
+      similarMarketVolumeWindow: $similarMarketVolumeWindow
     ) {
       questionType
       group {
@@ -96,14 +109,14 @@ const GET_QUESTIONS = /* GraphQL */ `
           similarMarketVolume
           similarMarketImage
           estimatedPrice
-          volume1h
-          volume4h
-          volume24h
-          volume7d
-          volumeFiltered1h
-          volumeFiltered4h
-          volumeFiltered24h
-          volumeFiltered7d
+          similarMarketVolume1h
+          similarMarketVolume4h
+          similarMarketVolume24h
+          similarMarketVolume7d
+          similarMarketVolumeFiltered1h
+          similarMarketVolumeFiltered4h
+          similarMarketVolumeFiltered24h
+          similarMarketVolumeFiltered7d
           conditionGroupId
           category {
             id
@@ -134,14 +147,14 @@ const GET_QUESTIONS = /* GraphQL */ `
         similarMarketVolume
         similarMarketImage
         estimatedPrice
-        volume1h
-        volume4h
-        volume24h
-        volume7d
-        volumeFiltered1h
-        volumeFiltered4h
-        volumeFiltered24h
-        volumeFiltered7d
+        similarMarketVolume1h
+        similarMarketVolume4h
+        similarMarketVolume24h
+        similarMarketVolume7d
+        similarMarketVolumeFiltered1h
+        similarMarketVolumeFiltered4h
+        similarMarketVolumeFiltered24h
+        similarMarketVolumeFiltered7d
         conditionGroupId
         category {
           id
@@ -165,9 +178,10 @@ export interface FetchQuestionsSortedParams {
   resolutionStatus?: string;
   minEstimatedPrice?: number;
   maxEstimatedPrice?: number;
+  minSimilarMarketVolume?: number;
+  maxSimilarMarketVolume?: number;
   tag?: string;
-  volumeWindow?: VolumeWindow;
-  excludeLowOdds?: boolean;
+  similarMarketVolumeWindow?: VolumeWindow;
 }
 
 export async function fetchQuestionsSorted(
@@ -188,9 +202,12 @@ export async function fetchQuestionsSorted(
     resolutionStatus: params.resolutionStatus ?? null,
     minEstimatedPrice: params.minEstimatedPrice ?? null,
     maxEstimatedPrice: params.maxEstimatedPrice ?? null,
+    minSimilarMarketVolume: params.minSimilarMarketVolume ?? null,
+    maxSimilarMarketVolume: params.maxSimilarMarketVolume ?? null,
     tag: params.tag ?? null,
-    volumeWindow: params.volumeWindow ? VOLUME_WINDOW_TO_GQL[params.volumeWindow] : null,
-    excludeLowOdds: params.excludeLowOdds ?? null,
+    similarMarketVolumeWindow: params.similarMarketVolumeWindow
+      ? VOLUME_WINDOW_TO_GQL[params.similarMarketVolumeWindow]
+      : null,
   };
 
   const data = await graphqlRequest<QuestionsQueryResult>(

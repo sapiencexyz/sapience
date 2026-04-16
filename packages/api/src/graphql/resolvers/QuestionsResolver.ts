@@ -38,7 +38,6 @@ export enum QuestionSortField {
   createdAt = 'createdAt',
   predictionCount = 'predictionCount',
   similarMarketVolume = 'similarMarketVolume',
-  volume = 'volume',
 }
 
 registerEnumType(QuestionSortField, {
@@ -52,6 +51,10 @@ export enum VolumeWindow {
   fourHours = '4h',
   twentyFourHours = '24h',
   sevenDays = '7d',
+  oneHourFiltered = '1hFiltered',
+  fourHoursFiltered = '4hFiltered',
+  twentyFourHoursFiltered = '24hFiltered',
+  sevenDaysFiltered = '7dFiltered',
 }
 
 registerEnumType(VolumeWindow, {
@@ -143,12 +146,14 @@ export class QuestionsResolver {
     minEstimatedPrice: number | null,
     @Arg('maxEstimatedPrice', () => Float, { nullable: true })
     maxEstimatedPrice: number | null,
+    @Arg('minSimilarMarketVolume', () => Float, { nullable: true })
+    minSimilarMarketVolume: number | null,
+    @Arg('maxSimilarMarketVolume', () => Float, { nullable: true })
+    maxSimilarMarketVolume: number | null,
     @Arg('tag', () => String, { nullable: true })
     tag: string | null,
-    @Arg('volumeWindow', () => VolumeWindow, { nullable: true })
-    volumeWindow: VolumeWindow | null,
-    @Arg('excludeLowOdds', () => Boolean, { nullable: true })
-    excludeLowOdds: boolean | null
+    @Arg('similarMarketVolumeWindow', () => VolumeWindow, { nullable: true })
+    similarMarketVolumeWindow: VolumeWindow | null
   ): Promise<Question[]> {
     const prisma = getPrismaFromContext(ctx);
 
@@ -195,25 +200,19 @@ export class QuestionsResolver {
       return Prisma.sql`AND (${Prisma.join(parts, ' AND ')})`;
     })();
 
-    // Determine if per-condition filters are active (require LATERAL subquery
-    // in Part A so that group sort values reflect only the filtered conditions)
+    // Determine if per-condition filters are active (require LEFT JOIN in
+    // Part A so that group sort values reflect only the filtered conditions)
     const hasConditionFilters =
       chainId != null ||
       (resolutionStatus != null && resolutionStatus !== ResolutionStatus.all) ||
       minEstimatedPrice != null ||
       maxEstimatedPrice != null ||
-      minEndTime != null;
-
-    // Reusable per-condition filter fragment (for LATERAL and Part B+C)
-    const conditionFilters = Prisma.sql`
-      ${chainId != null ? Prisma.sql`AND c."chainId" = ${chainId}` : Prisma.empty}
-      ${resolvedFilter}
-      ${priceFilter}
-      ${minEndTime != null ? Prisma.sql`AND c."endTime" >= ${minEndTime}` : Prisma.empty}
-    `;
+      minEndTime != null ||
+      minSimilarMarketVolume != null ||
+      maxSimilarMarketVolume != null;
 
     // --- Volume column resolution ---
-    // Maps volumeWindow + excludeLowOdds to the correct condition and group columns.
+    // Maps volumeWindow to the correct condition and group columns.
     // All fragments are static Prisma.sql — no dynamic column names.
     const volumeColumnFragments = {
       volume1h: {
@@ -259,15 +258,54 @@ export class QuestionsResolver {
     } as const;
 
     const resolvedVolumeKey = (() => {
-      const window = volumeWindow ?? VolumeWindow.twentyFourHours;
-      const prefix = excludeLowOdds ? 'volumeFiltered' : 'volume';
-      const suffix = { '1h': '1h', '4h': '4h', '24h': '24h', '7d': '7d' }[
-        window
-      ];
-      return `${prefix}${suffix}` as keyof typeof volumeColumnFragments;
+      const window = similarMarketVolumeWindow ?? VolumeWindow.twentyFourHours;
+      const windowMap: Record<string, keyof typeof volumeColumnFragments> = {
+        '1h': 'volume1h',
+        '4h': 'volume4h',
+        '24h': 'volume24h',
+        '7d': 'volume7d',
+        '1hFiltered': 'volumeFiltered1h',
+        '4hFiltered': 'volumeFiltered4h',
+        '24hFiltered': 'volumeFiltered24h',
+        '7dFiltered': 'volumeFiltered7d',
+      };
+      return windowMap[window] ?? 'volume24h';
     })();
 
     const volumeFragments = volumeColumnFragments[resolvedVolumeKey];
+    const useWindowedSimilarMarketVolume = similarMarketVolumeWindow != null;
+
+    // All-time volume sort has no denormalized column on condition_group, so
+    // it also needs the LEFT JOIN to compute SUM in a single pass rather than
+    // falling back to a correlated subquery per group.
+    const requiresConditionJoin =
+      hasConditionFilters ||
+      (sanitizedSortField === QuestionSortField.similarMarketVolume &&
+        !useWindowedSimilarMarketVolume);
+
+    const similarMarketVolumeFilter = (() => {
+      const parts = [];
+      const expr = useWindowedSimilarMarketVolume
+        ? volumeFragments.cond
+        : Prisma.sql`c."similarMarketVolume"`;
+      if (minSimilarMarketVolume != null) {
+        parts.push(Prisma.sql`${expr} >= ${minSimilarMarketVolume}`);
+      }
+      if (maxSimilarMarketVolume != null) {
+        parts.push(Prisma.sql`${expr} <= ${maxSimilarMarketVolume}`);
+      }
+      if (parts.length === 0) return Prisma.empty;
+      return Prisma.sql`AND (${Prisma.join(parts, ' AND ')})`;
+    })();
+
+    // Reusable per-condition filter fragment (for Part A join and Part B)
+    const conditionFilters = Prisma.sql`
+      ${chainId != null ? Prisma.sql`AND c."chainId" = ${chainId}` : Prisma.empty}
+      ${resolvedFilter}
+      ${priceFilter}
+      ${similarMarketVolumeFilter}
+      ${minEndTime != null ? Prisma.sql`AND c."endTime" >= ${minEndTime}` : Prisma.empty}
+    `;
 
     // --- Part A column/join fragments ---
     // When per-condition filters are active, use a LEFT JOIN + GROUP BY to
@@ -283,23 +321,23 @@ export class QuestionsResolver {
         case QuestionSortField.createdAt:
           return Prisma.sql`COALESCE(MAX(FLOOR(EXTRACT(EPOCH FROM c."createdAt"))::bigint)::numeric, 0)`;
         case QuestionSortField.similarMarketVolume:
-          return Prisma.sql`COALESCE(SUM(c."similarMarketVolume"), 0)::numeric`;
-        case QuestionSortField.volume:
-          return volumeFragments.sumExpr;
+          return useWindowedSimilarMarketVolume
+            ? volumeFragments.sumExpr
+            : Prisma.sql`COALESCE(SUM(c."similarMarketVolume"), 0)::numeric`;
         default:
           return Prisma.sql`COALESCE(MAX(c."endTime")::numeric, 0)`;
       }
     })();
 
     // LEFT JOIN scans the condition table once and hash-aggregates by group,
-    // instead of the previous LATERAL which probed the index per group (~800x).
-    const groupConditionJoin = hasConditionFilters
+    // instead of a correlated subquery that probes the index per group.
+    const groupConditionJoin = requiresConditionJoin
       ? Prisma.sql`LEFT JOIN condition c ON c."conditionGroupId" = cg.id
             AND c.public = true
             ${conditionFilters}`
       : Prisma.empty;
 
-    const groupSortValue = hasConditionFilters
+    const groupSortValue = requiresConditionJoin
       ? sortValueExpr
       : sanitizedSortField === QuestionSortField.openInterest
         ? Prisma.sql`cg."totalOpenInterest"::numeric`
@@ -308,20 +346,18 @@ export class QuestionsResolver {
           : sanitizedSortField === QuestionSortField.createdAt
             ? Prisma.sql`cg."maxCreatedAtEpoch"::numeric`
             : sanitizedSortField === QuestionSortField.similarMarketVolume
-              ? Prisma.sql`(SELECT COALESCE(SUM(c."similarMarketVolume"), 0) FROM condition c WHERE c."conditionGroupId" = cg.id AND c.public = true)::numeric`
-              : sanitizedSortField === QuestionSortField.volume
-                ? volumeFragments.group
-                : Prisma.sql`cg."maxEndTime"::numeric`;
+              ? volumeFragments.group
+              : Prisma.sql`cg."maxEndTime"::numeric`;
 
-    const groupPredictionCount = hasConditionFilters
+    const groupPredictionCount = requiresConditionJoin
       ? Prisma.sql`COALESCE(SUM(c."predictionCount"), 0)`
       : Prisma.sql`cg."totalPredictionCount"`;
 
-    const groupEndTime = hasConditionFilters
+    const groupEndTime = requiresConditionJoin
       ? Prisma.sql`COALESCE(MAX(c."endTime"), 0)`
       : Prisma.sql`cg."maxEndTime"`;
 
-    const groupByClause = hasConditionFilters
+    const groupByClause = requiresConditionJoin
       ? Prisma.sql`GROUP BY cg.id
         HAVING COUNT(c.id) > 0`
       : Prisma.empty;
@@ -335,10 +371,10 @@ export class QuestionsResolver {
           : sanitizedSortField === QuestionSortField.createdAt
             ? Prisma.sql`COALESCE(FLOOR(EXTRACT(EPOCH FROM c."createdAt"))::bigint, 0)::numeric`
             : sanitizedSortField === QuestionSortField.similarMarketVolume
-              ? Prisma.sql`COALESCE(c."similarMarketVolume", 0)::numeric`
-              : sanitizedSortField === QuestionSortField.volume
+              ? useWindowedSimilarMarketVolume
                 ? Prisma.sql`COALESCE(${volumeFragments.cond}, 0)::numeric`
-                : Prisma.sql`COALESCE(c."endTime", 2147483647)::numeric`;
+                : Prisma.sql`COALESCE(c."similarMarketVolume", 0)::numeric`
+              : Prisma.sql`COALESCE(c."endTime", 2147483647)::numeric`;
 
     // Step 1: UNION query — two parts:
     // - Part A: Active groups (sort values from denormalized cols or LATERAL)
@@ -487,6 +523,33 @@ export class QuestionsResolver {
       ...(minEstimatedPrice != null ? { gte: minEstimatedPrice } : {}),
       ...(maxEstimatedPrice != null ? { lte: maxEstimatedPrice } : {}),
     };
+    const similarMarketVolumeRangeFilter = {
+      ...(minSimilarMarketVolume != null
+        ? { gte: minSimilarMarketVolume }
+        : {}),
+      ...(maxSimilarMarketVolume != null
+        ? { lte: maxSimilarMarketVolume }
+        : {}),
+    };
+
+    const prismaSimilarMarketVolumeFilter = (() => {
+      if (Object.keys(similarMarketVolumeRangeFilter).length === 0) return {};
+      if (!useWindowedSimilarMarketVolume) {
+        return { similarMarketVolume: similarMarketVolumeRangeFilter };
+      }
+      const fieldByResolvedVolumeKey = {
+        volume1h: 'similarMarketVolume1h',
+        volume4h: 'similarMarketVolume4h',
+        volume24h: 'similarMarketVolume24h',
+        volume7d: 'similarMarketVolume7d',
+        volumeFiltered1h: 'similarMarketVolumeFiltered1h',
+        volumeFiltered4h: 'similarMarketVolumeFiltered4h',
+        volumeFiltered24h: 'similarMarketVolumeFiltered24h',
+        volumeFiltered7d: 'similarMarketVolumeFiltered7d',
+      } as const;
+      const field = fieldByResolvedVolumeKey[resolvedVolumeKey];
+      return { [field]: similarMarketVolumeRangeFilter };
+    })();
 
     const conditionWhere = {
       public: true,
@@ -496,6 +559,7 @@ export class QuestionsResolver {
       ...(Object.keys(estimatedPriceFilter).length > 0
         ? { estimatedPrice: estimatedPriceFilter }
         : {}),
+      ...prismaSimilarMarketVolumeFilter,
     };
 
     const groupInclude = {

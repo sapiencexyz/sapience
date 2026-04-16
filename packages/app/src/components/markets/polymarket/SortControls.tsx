@@ -61,15 +61,15 @@ export default function SortControls({
         </button>
         <button
           type="button"
-          onClick={() => handleClick('volume')}
+          onClick={() => handleClick('similarMarketVolume')}
           className={`inline-flex items-center gap-1 h-full px-4 rounded-full font-display text-sm font-semibold tracking-[0.02em] transition-colors ${
-            sortField === 'volume'
+            sortField === 'similarMarketVolume'
               ? 'bg-white/20 text-white'
               : 'text-white/60 hover:text-white'
           }`}
         >
           Volume
-          <ArrowIcon field="volume" />
+          <ArrowIcon field="similarMarketVolume" />
         </button>
         <button
           type="button"
