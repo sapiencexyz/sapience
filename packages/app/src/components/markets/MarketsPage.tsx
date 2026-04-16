@@ -33,6 +33,20 @@ import { useFeatureFlag } from '~/hooks/useFeatureFlag';
 import { useSessionState } from '~/hooks/useSessionState';
 import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 
+const VALID_SORT_FIELDS: SortField[] = [
+  'openInterest',
+  'endTime',
+  'createdAt',
+  'predictionCount',
+  'similarMarketVolume',
+];
+
+function migrateMarketSortField(value: unknown): SortField {
+  return VALID_SORT_FIELDS.includes(value as SortField)
+    ? (value as SortField)
+    : 'openInterest';
+}
+
 const MarketsPage = () => {
   const { data: allCategories = [], isLoading: isLoadingCategories } =
     useCategories();
@@ -116,7 +130,10 @@ const MarketsPage = () => {
   // Sorting state - lifted here so backend can respect it during pagination
   const [sortField, setSortField] = useSessionState<SortField>(
     'sapience.markets.sortField',
-    'openInterest'
+    'openInterest',
+    {
+      migrate: migrateMarketSortField,
+    }
   );
   const [sortDirection, setSortDirection] = useSessionState<SortDirection>(
     'sapience.markets.sortDirection',

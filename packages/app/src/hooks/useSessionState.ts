@@ -30,13 +30,19 @@ function deserialize<T>(raw: string): T {
  */
 export function useSessionState<T>(
   key: string,
-  defaultValue: T
+  defaultValue: T,
+  options?: {
+    migrate?: (value: unknown) => T;
+  }
 ): [T, React.Dispatch<React.SetStateAction<T>>] {
   const [value, setValue] = useState<T>(() => {
     if (typeof window === 'undefined') return defaultValue;
     try {
       const stored = window.sessionStorage.getItem(key);
-      if (stored !== null) return deserialize<T>(stored);
+      if (stored !== null) {
+        const parsed = deserialize<unknown>(stored);
+        return options?.migrate ? options.migrate(parsed) : (parsed as T);
+      }
     } catch {
       // Storage unavailable or corrupt — fall through
     }
