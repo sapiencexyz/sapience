@@ -62,6 +62,7 @@ export function groupConditionToConditionType(
     createdAt: gc.createdAt,
     question: gc.question,
     shortName: gc.shortName,
+    optionName: gc.optionName,
     endTime: gc.endTime,
     public: gc.public,
     description: gc.description,
@@ -78,14 +79,14 @@ export function groupConditionToConditionType(
     similarMarketVolume: gc.similarMarketVolume,
     conditionGroupId: gc.conditionGroupId,
     estimatedPrice: gc.estimatedPrice,
-    volume1h: gc.volume1h,
-    volume4h: gc.volume4h,
-    volume24h: gc.volume24h,
-    volume7d: gc.volume7d,
-    volumeFiltered1h: gc.volumeFiltered1h,
-    volumeFiltered4h: gc.volumeFiltered4h,
-    volumeFiltered24h: gc.volumeFiltered24h,
-    volumeFiltered7d: gc.volumeFiltered7d,
+    similarMarketVolume1h: gc.similarMarketVolume1h,
+    similarMarketVolume4h: gc.similarMarketVolume4h,
+    similarMarketVolume24h: gc.similarMarketVolume24h,
+    similarMarketVolume7d: gc.similarMarketVolume7d,
+    similarMarketVolumeFiltered1h: gc.similarMarketVolumeFiltered1h,
+    similarMarketVolumeFiltered4h: gc.similarMarketVolumeFiltered4h,
+    similarMarketVolumeFiltered24h: gc.similarMarketVolumeFiltered24h,
+    similarMarketVolumeFiltered7d: gc.similarMarketVolumeFiltered7d,
   };
 }
 
@@ -127,39 +128,47 @@ export function getRowSimilarMarketVolume(row: TopLevelRow): number {
   return row.condition.similarMarketVolume ?? 0;
 }
 
-type VolumeWindowKey = '1h' | '4h' | '24h' | '7d';
+type VolumeWindowKey =
+  | '1h'
+  | '4h'
+  | '24h'
+  | '7d'
+  | '1hFiltered'
+  | '4hFiltered'
+  | '24hFiltered'
+  | '7dFiltered';
 
 const VOLUME_FIELDS = {
-  '1h': { raw: 'volume1h', filtered: 'volumeFiltered1h' },
-  '4h': { raw: 'volume4h', filtered: 'volumeFiltered4h' },
-  '24h': { raw: 'volume24h', filtered: 'volumeFiltered24h' },
-  '7d': { raw: 'volume7d', filtered: 'volumeFiltered7d' },
+  '1h': 'similarMarketVolume1h',
+  '4h': 'similarMarketVolume4h',
+  '24h': 'similarMarketVolume24h',
+  '7d': 'similarMarketVolume7d',
+  '1hFiltered': 'similarMarketVolumeFiltered1h',
+  '4hFiltered': 'similarMarketVolumeFiltered4h',
+  '24hFiltered': 'similarMarketVolumeFiltered24h',
+  '7dFiltered': 'similarMarketVolumeFiltered7d',
 } as const;
 
 function getConditionVolume(
   c: ConditionType | ConditionGroupConditionType,
-  window: VolumeWindowKey,
-  filtered: boolean
+  window: VolumeWindowKey
 ): number {
-  const field = filtered
-    ? VOLUME_FIELDS[window].filtered
-    : VOLUME_FIELDS[window].raw;
+  const field = VOLUME_FIELDS[window];
   return ((c as unknown as Record<string, unknown>)[field] as number) ?? 0;
 }
 
 /** Get time-bucketed volume (USD) for any row kind */
 export function getRowTimeBucketedVolume(
   row: TopLevelRow,
-  window: VolumeWindowKey,
-  filtered: boolean
+  window: VolumeWindowKey
 ): number {
   if (row.kind === 'group') {
     return row.conditions.reduce(
-      (sum, c) => sum + getConditionVolume(c, window, filtered),
+      (sum, c) => sum + getConditionVolume(c, window),
       0
     );
   }
-  return getConditionVolume(row.condition, window, filtered);
+  return getConditionVolume(row.condition, window);
 }
 
 // ---------------------------------------------------------------------------
@@ -554,8 +563,7 @@ export function buildTopLevelRows(questions: QuestionType[]): TopLevelRow[] {
 /** Client-side filtering of rows (OI range + volume windows + time-to-resolution range) */
 export function filterRows(
   rows: TopLevelRow[],
-  filters: FilterState,
-  excludeLowOdds = false
+  filters: FilterState
 ): TopLevelRow[] {
   const [minOI, maxOI] = filters.openInterestRange;
   const [minVol, maxVol] = filters.similarMarketVolumeRange ?? [0, Infinity];
@@ -566,23 +574,23 @@ export function filterRows(
   }> = [
     {
       window: '1h',
-      min: filters.volume1hRange?.[0] ?? 0,
-      max: filters.volume1hRange?.[1] ?? Infinity,
+      min: filters.similarMarketVolume1hRange?.[0] ?? 0,
+      max: filters.similarMarketVolume1hRange?.[1] ?? Infinity,
     },
     {
       window: '4h',
-      min: filters.volume4hRange?.[0] ?? 0,
-      max: filters.volume4hRange?.[1] ?? Infinity,
+      min: filters.similarMarketVolume4hRange?.[0] ?? 0,
+      max: filters.similarMarketVolume4hRange?.[1] ?? Infinity,
     },
     {
       window: '24h',
-      min: filters.volume24hRange?.[0] ?? 0,
-      max: filters.volume24hRange?.[1] ?? Infinity,
+      min: filters.similarMarketVolume24hRange?.[0] ?? 0,
+      max: filters.similarMarketVolume24hRange?.[1] ?? Infinity,
     },
     {
       window: '7d',
-      min: filters.volume7dRange?.[0] ?? 0,
-      max: filters.volume7dRange?.[1] ?? Infinity,
+      min: filters.similarMarketVolume7dRange?.[0] ?? 0,
+      max: filters.similarMarketVolume7dRange?.[1] ?? Infinity,
     },
   ];
   const [minDays, maxDays] = filters.timeToResolutionRange;
@@ -599,11 +607,10 @@ export function filterRows(
     const vol = getRowSimilarMarketVolume(row);
     if (vol < minVol || vol > maxVol) return false;
 
-    // Time-bucketed volume filters — respect the excludeLowOdds toggle so
-    // the slider ranges match the numbers displayed in the volume column.
+    // Time-bucketed volume filters
     for (const { window, min, max } of windowRanges) {
       if (min === 0 && max === Infinity) continue;
-      const v = getRowTimeBucketedVolume(row, window, excludeLowOdds);
+      const v = getRowTimeBucketedVolume(row, window);
       if (v < min || v > max) return false;
     }
 

@@ -19,6 +19,7 @@ interface BatchCreateConditionInput {
   conditionHash: string;
   question: string;
   shortName?: string;
+  optionName?: string;
   categorySlug?: string;
   endTime: number;
   description: string;
@@ -154,6 +155,7 @@ router.post('/batch-create', async (req: Request, res: Response) => {
             id: item.conditionHash,
             question: item.question,
             shortName: item.shortName?.trim() || undefined,
+            optionName: item.optionName?.trim() || undefined,
             categoryId: categoryId ?? undefined,
             endTime: parseInt(String(item.endTime), 10),
             public: true,
@@ -217,6 +219,7 @@ router.post('/', async (req: Request, res: Response) => {
       conditionHash,
       question,
       shortName,
+      optionName,
       categoryId,
       categorySlug,
       endTime,
@@ -234,6 +237,7 @@ router.post('/', async (req: Request, res: Response) => {
       conditionHash?: string;
       question?: string;
       shortName?: string;
+      optionName?: string;
       categoryId?: number;
       categorySlug?: string;
       endTime?: number | string;
@@ -352,6 +356,10 @@ router.post('/', async (req: Request, res: Response) => {
           shortName:
             shortName && shortName.trim().length > 0
               ? shortName.trim()
+              : undefined,
+          optionName:
+            optionName && optionName.trim().length > 0
+              ? optionName.trim()
               : undefined,
           categoryId: resolvedCategoryId ?? undefined,
           endTime: endTimeInt,
@@ -484,16 +492,17 @@ router.put('/prices', async (req: Request, res: Response) => {
   }
 });
 
-// Volume field names for validation and update building
-const VOLUME_FIELDS = [
-  'volume1h',
-  'volume4h',
-  'volume24h',
-  'volume7d',
-  'volumeFiltered1h',
-  'volumeFiltered4h',
-  'volumeFiltered24h',
-  'volumeFiltered7d',
+// Similar-market volume field names for validation and update building.
+// These are Polymarket-derived volumes computed by the keeper.
+const SIMILAR_MARKET_VOLUME_FIELDS = [
+  'similarMarketVolume1h',
+  'similarMarketVolume4h',
+  'similarMarketVolume24h',
+  'similarMarketVolume7d',
+  'similarMarketVolumeFiltered1h',
+  'similarMarketVolumeFiltered4h',
+  'similarMarketVolumeFiltered24h',
+  'similarMarketVolumeFiltered7d',
 ] as const;
 
 // PUT /admin/conditions/volume - batch update time-bucketed volume on multiple conditions
@@ -528,7 +537,7 @@ router.put('/volume', async (req: Request, res: Response) => {
       }
 
       // Validate volume fields are non-negative numbers when present
-      for (const field of VOLUME_FIELDS) {
+      for (const field of SIMILAR_MARKET_VOLUME_FIELDS) {
         if (field in update) {
           if (typeof update[field] !== 'number' || update[field] < 0) {
             return res.status(400).json({
@@ -542,7 +551,7 @@ router.put('/volume', async (req: Request, res: Response) => {
     const results = await prisma.$transaction(
       updates.map((u) => {
         const data: Record<string, number> = {};
-        for (const field of VOLUME_FIELDS) {
+        for (const field of SIMILAR_MARKET_VOLUME_FIELDS) {
           if (typeof u[field] === 'number' && u[field] >= 0) {
             data[field] = u[field];
           }
@@ -577,6 +586,7 @@ router.put('/batch-metadata', async (req: Request, res: Response) => {
         fields: {
           question?: string;
           shortName?: string;
+          optionName?: string;
           description?: string;
           similarMarkets?: string[];
           tags?: string[];
@@ -644,6 +654,8 @@ router.put('/batch-metadata', async (req: Request, res: Response) => {
       if (typeof f.question === 'string') data.question = f.question;
       if (typeof f.shortName === 'string')
         data.shortName = f.shortName.trim() || null;
+      if (typeof f.optionName === 'string')
+        data.optionName = f.optionName.trim() || null;
       if (typeof f.description === 'string') data.description = f.description;
       if (Array.isArray(f.similarMarkets))
         data.similarMarkets = f.similarMarkets;
@@ -766,6 +778,7 @@ router.put('/:id', async (req: Request, res: Response) => {
     const {
       question,
       shortName,
+      optionName,
       categoryId,
       categorySlug,
       public: isPublic,
@@ -781,6 +794,7 @@ router.put('/:id', async (req: Request, res: Response) => {
     } = req.body as {
       question?: string;
       shortName?: string;
+      optionName?: string;
       categoryId?: number;
       categorySlug?: string;
       public?: boolean;
@@ -885,6 +899,14 @@ router.put('/:id', async (req: Request, res: Response) => {
                 shortName:
                   shortName && shortName.trim().length > 0
                     ? shortName.trim()
+                    : null,
+              }
+            : {}),
+          ...(typeof optionName !== 'undefined'
+            ? {
+                optionName:
+                  optionName && optionName.trim().length > 0
+                    ? optionName.trim()
                     : null,
               }
             : {}),

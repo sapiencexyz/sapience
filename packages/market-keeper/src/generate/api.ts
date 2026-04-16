@@ -98,6 +98,7 @@ export async function submitCondition(
         conditionHash: condition.conditionHash,
         question: condition.question,
         shortName: condition.shortName,
+        optionName: condition.optionName,
         categorySlug: condition.categorySlug,
         endTime:
           (condition.endTimeOverride ?? toUnixTimestamp(condition.endDate)) +
@@ -528,6 +529,7 @@ export async function submitToAPI(
     conditionHash: condition.conditionHash,
     question: condition.question,
     shortName: condition.shortName,
+    optionName: condition.optionName,
     categorySlug: condition.categorySlug,
     endTime:
       (condition.endTimeOverride ?? toUnixTimestamp(condition.endDate)) +
@@ -550,10 +552,7 @@ export async function submitToAPI(
   let totalFailed = 0;
   const allFailedGroups = new Set<string>();
 
-  async function submitBatches(
-    batchList: typeof payloads[],
-    label: string
-  ) {
+  async function submitBatches(batchList: (typeof payloads)[], label: string) {
     for (let batchIdx = 0; batchIdx < batchList.length; batchIdx++) {
       const batch = batchList[batchIdx];
       const batchNum = batchIdx + 1;
@@ -637,9 +636,7 @@ export async function submitToAPI(
   const uniqueGroups = new Set(
     allConditions.map((c) => c.groupTitle).filter(Boolean)
   ).size;
-  console.log(
-    `Groups: ${uniqueGroups} unique (auto-created via batch-create)`
-  );
+  console.log(`Groups: ${uniqueGroups} unique (auto-created via batch-create)`);
   console.log(
     `Conditions: ${totalCreated} created, ${totalSkipped} skipped, ${totalFailed} failed`
   );

@@ -456,6 +456,7 @@ export type Condition = {
   id: Scalars['String']['output'];
   nonDecisive: Scalars['Boolean']['output'];
   openInterest: Scalars['String']['output'];
+  optionName?: Maybe<Scalars['String']['output']>;
   predictionCount: Scalars['Int']['output'];
   predictions: Array<LegacyPrediction>;
   public: Scalars['Boolean']['output'];
@@ -470,16 +471,16 @@ export type Condition = {
   similarMarketImage?: Maybe<Scalars['String']['output']>;
   /** USD total trading volume from Polymarket similar market */
   similarMarketVolume: Scalars['Float']['output'];
+  similarMarketVolume1h: Scalars['Float']['output'];
+  similarMarketVolume4h: Scalars['Float']['output'];
+  similarMarketVolume7d: Scalars['Float']['output'];
+  similarMarketVolume24h: Scalars['Float']['output'];
+  similarMarketVolumeFiltered1h: Scalars['Float']['output'];
+  similarMarketVolumeFiltered4h: Scalars['Float']['output'];
+  similarMarketVolumeFiltered7d: Scalars['Float']['output'];
+  similarMarketVolumeFiltered24h: Scalars['Float']['output'];
   similarMarkets: Array<Scalars['String']['output']>;
   tags: Array<Scalars['String']['output']>;
-  volume1h: Scalars['Float']['output'];
-  volume4h: Scalars['Float']['output'];
-  volume7d: Scalars['Float']['output'];
-  volume24h: Scalars['Float']['output'];
-  volumeFiltered1h: Scalars['Float']['output'];
-  volumeFiltered4h: Scalars['Float']['output'];
-  volumeFiltered7d: Scalars['Float']['output'];
-  volumeFiltered24h: Scalars['Float']['output'];
 };
 
 
@@ -593,14 +594,14 @@ export type ConditionGroupOrderByWithRelationInput = {
   similarMarkets?: InputMaybe<SortOrder>;
   totalOpenInterest?: InputMaybe<SortOrder>;
   totalPredictionCount?: InputMaybe<SortOrder>;
-  totalVolume1h?: InputMaybe<SortOrder>;
-  totalVolume4h?: InputMaybe<SortOrder>;
-  totalVolume7d?: InputMaybe<SortOrder>;
-  totalVolume24h?: InputMaybe<SortOrder>;
-  totalVolumeFiltered1h?: InputMaybe<SortOrder>;
-  totalVolumeFiltered4h?: InputMaybe<SortOrder>;
-  totalVolumeFiltered7d?: InputMaybe<SortOrder>;
-  totalVolumeFiltered24h?: InputMaybe<SortOrder>;
+  totalSimilarMarketVolume1h?: InputMaybe<SortOrder>;
+  totalSimilarMarketVolume4h?: InputMaybe<SortOrder>;
+  totalSimilarMarketVolume7d?: InputMaybe<SortOrder>;
+  totalSimilarMarketVolume24h?: InputMaybe<SortOrder>;
+  totalSimilarMarketVolumeFiltered1h?: InputMaybe<SortOrder>;
+  totalSimilarMarketVolumeFiltered4h?: InputMaybe<SortOrder>;
+  totalSimilarMarketVolumeFiltered7d?: InputMaybe<SortOrder>;
+  totalSimilarMarketVolumeFiltered24h?: InputMaybe<SortOrder>;
 };
 
 export type ConditionGroupScalarFieldEnum =
@@ -614,14 +615,14 @@ export type ConditionGroupScalarFieldEnum =
   | 'similarMarkets'
   | 'totalOpenInterest'
   | 'totalPredictionCount'
-  | 'totalVolume1h'
-  | 'totalVolume4h'
-  | 'totalVolume7d'
-  | 'totalVolume24h'
-  | 'totalVolumeFiltered1h'
-  | 'totalVolumeFiltered4h'
-  | 'totalVolumeFiltered7d'
-  | 'totalVolumeFiltered24h';
+  | 'totalSimilarMarketVolume1h'
+  | 'totalSimilarMarketVolume4h'
+  | 'totalSimilarMarketVolume7d'
+  | 'totalSimilarMarketVolume24h'
+  | 'totalSimilarMarketVolumeFiltered1h'
+  | 'totalSimilarMarketVolumeFiltered4h'
+  | 'totalSimilarMarketVolumeFiltered7d'
+  | 'totalSimilarMarketVolumeFiltered24h';
 
 export type ConditionGroupWhereInput = {
   AND?: InputMaybe<Array<ConditionGroupWhereInput>>;
@@ -639,14 +640,14 @@ export type ConditionGroupWhereInput = {
   similarMarkets?: InputMaybe<StringNullableListFilter>;
   totalOpenInterest?: InputMaybe<DecimalFilter>;
   totalPredictionCount?: InputMaybe<IntFilter>;
-  totalVolume1h?: InputMaybe<DecimalFilter>;
-  totalVolume4h?: InputMaybe<DecimalFilter>;
-  totalVolume7d?: InputMaybe<DecimalFilter>;
-  totalVolume24h?: InputMaybe<DecimalFilter>;
-  totalVolumeFiltered1h?: InputMaybe<DecimalFilter>;
-  totalVolumeFiltered4h?: InputMaybe<DecimalFilter>;
-  totalVolumeFiltered7d?: InputMaybe<DecimalFilter>;
-  totalVolumeFiltered24h?: InputMaybe<DecimalFilter>;
+  totalSimilarMarketVolume1h?: InputMaybe<DecimalFilter>;
+  totalSimilarMarketVolume4h?: InputMaybe<DecimalFilter>;
+  totalSimilarMarketVolume7d?: InputMaybe<DecimalFilter>;
+  totalSimilarMarketVolume24h?: InputMaybe<DecimalFilter>;
+  totalSimilarMarketVolumeFiltered1h?: InputMaybe<DecimalFilter>;
+  totalSimilarMarketVolumeFiltered4h?: InputMaybe<DecimalFilter>;
+  totalSimilarMarketVolumeFiltered7d?: InputMaybe<DecimalFilter>;
+  totalSimilarMarketVolumeFiltered24h?: InputMaybe<DecimalFilter>;
 };
 
 export type ConditionGroupWhereUniqueInput = {
@@ -665,14 +666,14 @@ export type ConditionGroupWhereUniqueInput = {
   similarMarkets?: InputMaybe<StringNullableListFilter>;
   totalOpenInterest?: InputMaybe<DecimalFilter>;
   totalPredictionCount?: InputMaybe<IntFilter>;
-  totalVolume1h?: InputMaybe<DecimalFilter>;
-  totalVolume4h?: InputMaybe<DecimalFilter>;
-  totalVolume7d?: InputMaybe<DecimalFilter>;
-  totalVolume24h?: InputMaybe<DecimalFilter>;
-  totalVolumeFiltered1h?: InputMaybe<DecimalFilter>;
-  totalVolumeFiltered4h?: InputMaybe<DecimalFilter>;
-  totalVolumeFiltered7d?: InputMaybe<DecimalFilter>;
-  totalVolumeFiltered24h?: InputMaybe<DecimalFilter>;
+  totalSimilarMarketVolume1h?: InputMaybe<DecimalFilter>;
+  totalSimilarMarketVolume4h?: InputMaybe<DecimalFilter>;
+  totalSimilarMarketVolume7d?: InputMaybe<DecimalFilter>;
+  totalSimilarMarketVolume24h?: InputMaybe<DecimalFilter>;
+  totalSimilarMarketVolumeFiltered1h?: InputMaybe<DecimalFilter>;
+  totalSimilarMarketVolumeFiltered4h?: InputMaybe<DecimalFilter>;
+  totalSimilarMarketVolumeFiltered7d?: InputMaybe<DecimalFilter>;
+  totalSimilarMarketVolumeFiltered24h?: InputMaybe<DecimalFilter>;
 };
 
 export type ConditionListRelationFilter = {
@@ -707,6 +708,7 @@ export type ConditionOrderByWithRelationInput = {
   id?: InputMaybe<SortOrder>;
   nonDecisive?: InputMaybe<SortOrder>;
   openInterest?: InputMaybe<SortOrder>;
+  optionName?: InputMaybe<SortOrderInput>;
   predictionCount?: InputMaybe<SortOrder>;
   predictions?: InputMaybe<LegacyPredictionOrderByRelationAggregateInput>;
   public?: InputMaybe<SortOrder>;
@@ -718,16 +720,16 @@ export type ConditionOrderByWithRelationInput = {
   shortName?: InputMaybe<SortOrderInput>;
   similarMarketImage?: InputMaybe<SortOrderInput>;
   similarMarketVolume?: InputMaybe<SortOrder>;
+  similarMarketVolume1h?: InputMaybe<SortOrder>;
+  similarMarketVolume4h?: InputMaybe<SortOrder>;
+  similarMarketVolume7d?: InputMaybe<SortOrder>;
+  similarMarketVolume24h?: InputMaybe<SortOrder>;
+  similarMarketVolumeFiltered1h?: InputMaybe<SortOrder>;
+  similarMarketVolumeFiltered4h?: InputMaybe<SortOrder>;
+  similarMarketVolumeFiltered7d?: InputMaybe<SortOrder>;
+  similarMarketVolumeFiltered24h?: InputMaybe<SortOrder>;
   similarMarkets?: InputMaybe<SortOrder>;
   tags?: InputMaybe<SortOrder>;
-  volume1h?: InputMaybe<SortOrder>;
-  volume4h?: InputMaybe<SortOrder>;
-  volume7d?: InputMaybe<SortOrder>;
-  volume24h?: InputMaybe<SortOrder>;
-  volumeFiltered1h?: InputMaybe<SortOrder>;
-  volumeFiltered4h?: InputMaybe<SortOrder>;
-  volumeFiltered7d?: InputMaybe<SortOrder>;
-  volumeFiltered24h?: InputMaybe<SortOrder>;
 };
 
 export type ConditionRelationFilter = {
@@ -749,6 +751,7 @@ export type ConditionScalarFieldEnum =
   | 'id'
   | 'nonDecisive'
   | 'openInterest'
+  | 'optionName'
   | 'predictionCount'
   | 'public'
   | 'question'
@@ -759,16 +762,16 @@ export type ConditionScalarFieldEnum =
   | 'shortName'
   | 'similarMarketImage'
   | 'similarMarketVolume'
+  | 'similarMarketVolume1h'
+  | 'similarMarketVolume4h'
+  | 'similarMarketVolume7d'
+  | 'similarMarketVolume24h'
+  | 'similarMarketVolumeFiltered1h'
+  | 'similarMarketVolumeFiltered4h'
+  | 'similarMarketVolumeFiltered7d'
+  | 'similarMarketVolumeFiltered24h'
   | 'similarMarkets'
-  | 'tags'
-  | 'volume1h'
-  | 'volume4h'
-  | 'volume7d'
-  | 'volume24h'
-  | 'volumeFiltered1h'
-  | 'volumeFiltered4h'
-  | 'volumeFiltered7d'
-  | 'volumeFiltered24h';
+  | 'tags';
 
 export type ConditionWhereInput = {
   AND?: InputMaybe<Array<ConditionWhereInput>>;
@@ -790,6 +793,7 @@ export type ConditionWhereInput = {
   id?: InputMaybe<StringFilter>;
   nonDecisive?: InputMaybe<BoolFilter>;
   openInterest?: InputMaybe<StringFilter>;
+  optionName?: InputMaybe<StringNullableFilter>;
   predictionCount?: InputMaybe<IntFilter>;
   predictions?: InputMaybe<LegacyPredictionListRelationFilter>;
   public?: InputMaybe<BoolFilter>;
@@ -801,16 +805,16 @@ export type ConditionWhereInput = {
   shortName?: InputMaybe<StringNullableFilter>;
   similarMarketImage?: InputMaybe<StringNullableFilter>;
   similarMarketVolume?: InputMaybe<FloatFilter>;
+  similarMarketVolume1h?: InputMaybe<FloatFilter>;
+  similarMarketVolume4h?: InputMaybe<FloatFilter>;
+  similarMarketVolume7d?: InputMaybe<FloatFilter>;
+  similarMarketVolume24h?: InputMaybe<FloatFilter>;
+  similarMarketVolumeFiltered1h?: InputMaybe<FloatFilter>;
+  similarMarketVolumeFiltered4h?: InputMaybe<FloatFilter>;
+  similarMarketVolumeFiltered7d?: InputMaybe<FloatFilter>;
+  similarMarketVolumeFiltered24h?: InputMaybe<FloatFilter>;
   similarMarkets?: InputMaybe<StringNullableListFilter>;
   tags?: InputMaybe<StringNullableListFilter>;
-  volume1h?: InputMaybe<FloatFilter>;
-  volume4h?: InputMaybe<FloatFilter>;
-  volume7d?: InputMaybe<FloatFilter>;
-  volume24h?: InputMaybe<FloatFilter>;
-  volumeFiltered1h?: InputMaybe<FloatFilter>;
-  volumeFiltered4h?: InputMaybe<FloatFilter>;
-  volumeFiltered7d?: InputMaybe<FloatFilter>;
-  volumeFiltered24h?: InputMaybe<FloatFilter>;
 };
 
 export type ConditionWhereUniqueInput = {
@@ -833,6 +837,7 @@ export type ConditionWhereUniqueInput = {
   id?: InputMaybe<Scalars['String']['input']>;
   nonDecisive?: InputMaybe<BoolFilter>;
   openInterest?: InputMaybe<StringFilter>;
+  optionName?: InputMaybe<StringNullableFilter>;
   predictionCount?: InputMaybe<IntFilter>;
   predictions?: InputMaybe<LegacyPredictionListRelationFilter>;
   public?: InputMaybe<BoolFilter>;
@@ -844,16 +849,16 @@ export type ConditionWhereUniqueInput = {
   shortName?: InputMaybe<StringNullableFilter>;
   similarMarketImage?: InputMaybe<StringNullableFilter>;
   similarMarketVolume?: InputMaybe<FloatFilter>;
+  similarMarketVolume1h?: InputMaybe<FloatFilter>;
+  similarMarketVolume4h?: InputMaybe<FloatFilter>;
+  similarMarketVolume7d?: InputMaybe<FloatFilter>;
+  similarMarketVolume24h?: InputMaybe<FloatFilter>;
+  similarMarketVolumeFiltered1h?: InputMaybe<FloatFilter>;
+  similarMarketVolumeFiltered4h?: InputMaybe<FloatFilter>;
+  similarMarketVolumeFiltered7d?: InputMaybe<FloatFilter>;
+  similarMarketVolumeFiltered24h?: InputMaybe<FloatFilter>;
   similarMarkets?: InputMaybe<StringNullableListFilter>;
   tags?: InputMaybe<StringNullableListFilter>;
-  volume1h?: InputMaybe<FloatFilter>;
-  volume4h?: InputMaybe<FloatFilter>;
-  volume7d?: InputMaybe<FloatFilter>;
-  volume24h?: InputMaybe<FloatFilter>;
-  volumeFiltered1h?: InputMaybe<FloatFilter>;
-  volumeFiltered4h?: InputMaybe<FloatFilter>;
-  volumeFiltered7d?: InputMaybe<FloatFilter>;
-  volumeFiltered24h?: InputMaybe<FloatFilter>;
 };
 
 export type DateTimeFilter = {
@@ -1861,18 +1866,19 @@ export type QueryProtocolVolumeArgs = {
 export type QueryQuestionsArgs = {
   categorySlugs?: InputMaybe<Array<Scalars['String']['input']>>;
   chainId?: InputMaybe<Scalars['Int']['input']>;
-  excludeLowOdds?: InputMaybe<Scalars['Boolean']['input']>;
   maxEstimatedPrice?: InputMaybe<Scalars['Float']['input']>;
+  maxSimilarMarketVolume?: InputMaybe<Scalars['Float']['input']>;
   minEndTime?: InputMaybe<Scalars['Int']['input']>;
   minEstimatedPrice?: InputMaybe<Scalars['Float']['input']>;
+  minSimilarMarketVolume?: InputMaybe<Scalars['Float']['input']>;
   resolutionStatus?: InputMaybe<ResolutionStatus>;
   search?: InputMaybe<Scalars['String']['input']>;
+  similarMarketVolumeWindow?: InputMaybe<VolumeWindow>;
   skip?: Scalars['Int']['input'];
   sortDirection?: SortOrder;
   sortField?: InputMaybe<QuestionSortField>;
   tag?: InputMaybe<Scalars['String']['input']>;
   take?: Scalars['Int']['input'];
-  volumeWindow?: InputMaybe<VolumeWindow>;
 };
 
 
@@ -1938,8 +1944,7 @@ export type QuestionSortField =
   | 'endTime'
   | 'openInterest'
   | 'predictionCount'
-  | 'similarMarketVolume'
-  | 'volume';
+  | 'similarMarketVolume';
 
 export type ReferralCode = {
   __typename?: 'ReferralCode';
@@ -2250,6 +2255,10 @@ export type VolumeDataPoint = {
 /** Time window for volume-based sorting */
 export type VolumeWindow =
   | 'fourHours'
+  | 'fourHoursFiltered'
   | 'oneHour'
+  | 'oneHourFiltered'
   | 'sevenDays'
-  | 'twentyFourHours';
+  | 'sevenDaysFiltered'
+  | 'twentyFourHours'
+  | 'twentyFourHoursFiltered';

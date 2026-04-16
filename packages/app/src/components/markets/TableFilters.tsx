@@ -25,7 +25,14 @@ import {
   Wheat,
   Bitcoin,
   BarChart3,
+  Info,
 } from 'lucide-react';
+import { Switch } from '@sapience/ui/components/ui/switch';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@sapience/ui/components/ui/tooltip';
 import type { LucideIcon } from 'lucide-react';
 import { cn } from '@sapience/ui/lib/utils';
 import ResolutionStatusFilter, {
@@ -42,10 +49,10 @@ export interface CategoryOption {
 export interface FilterState {
   openInterestRange: [number, number];
   similarMarketVolumeRange: [number, number]; // all-time
-  volume1hRange: [number, number];
-  volume4hRange: [number, number];
-  volume24hRange: [number, number];
-  volume7dRange: [number, number];
+  similarMarketVolume1hRange: [number, number];
+  similarMarketVolume4hRange: [number, number];
+  similarMarketVolume24hRange: [number, number];
+  similarMarketVolume7dRange: [number, number];
   timeToResolutionRange: [number, number]; // in days, negative = ended
   selectedCategories: string[]; // array of category slugs
   resolutionStatus: ResolutionStatusFilterValue;
@@ -54,10 +61,10 @@ export interface FilterState {
 
 type VolumeRangeKey =
   | 'similarMarketVolumeRange'
-  | 'volume1hRange'
-  | 'volume4hRange'
-  | 'volume24hRange'
-  | 'volume7dRange';
+  | 'similarMarketVolume1hRange'
+  | 'similarMarketVolume4hRange'
+  | 'similarMarketVolume24hRange'
+  | 'similarMarketVolume7dRange';
 
 interface TableFiltersProps {
   filters: FilterState;
@@ -68,6 +75,9 @@ interface TableFiltersProps {
   // Available categories for the dropdown
   categories: CategoryOption[];
   className?: string;
+  // Filter volume toggle (excludes extreme-odds trades)
+  filterVolume?: boolean;
+  onFilterVolumeChange?: (v: boolean) => void;
 }
 
 const CATEGORY_ICONS: Record<string, LucideIcon> = {
@@ -486,11 +496,15 @@ function VolumeRangeRow({ label, value, max, onChange }: VolumeRangeRowProps) {
 interface RelatedVolumeFilterProps {
   filters: FilterState;
   onFiltersChange: (filters: FilterState) => void;
+  filterVolume?: boolean;
+  onFilterVolumeChange?: (v: boolean) => void;
 }
 
 function RelatedVolumeFilter({
   filters,
   onFiltersChange,
+  filterVolume = false,
+  onFilterVolumeChange,
 }: RelatedVolumeFilterProps) {
   const [open, setOpen] = React.useState(false);
 
@@ -507,12 +521,16 @@ function RelatedVolumeFilter({
     }>
   > = [
     [
-      { label: 'LAST 7D', key: 'volume7dRange', max: 25_000_000 },
-      { label: 'LAST 4H', key: 'volume4hRange', max: 2_500_000 },
+      { label: 'LAST 7D', key: 'similarMarketVolume7dRange', max: 25_000_000 },
+      { label: 'LAST 4H', key: 'similarMarketVolume4hRange', max: 2_500_000 },
     ],
     [
-      { label: 'LAST 24H', key: 'volume24hRange', max: 5_000_000 },
-      { label: 'LAST 1H', key: 'volume1hRange', max: 1_000_000 },
+      {
+        label: 'LAST 24H',
+        key: 'similarMarketVolume24hRange',
+        max: 5_000_000,
+      },
+      { label: 'LAST 1H', key: 'similarMarketVolume1hRange', max: 1_000_000 },
     ],
   ];
   const windowRows = windowBands.flat();
@@ -578,6 +596,33 @@ function RelatedVolumeFilter({
               ))}
             </div>
           ))}
+          {onFilterVolumeChange && (
+            <div className="p-3 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-muted-foreground font-mono">
+                  FILTER VOLUME
+                </span>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex cursor-help">
+                      <Info className="h-3 w-3 text-muted-foreground" />
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent
+                    side="top"
+                    className="max-w-[220px] text-xs whitespace-normal"
+                  >
+                    Excludes volume from trades where the outcome price is below
+                    $0.01 or above $0.99
+                  </TooltipContent>
+                </Tooltip>
+              </div>
+              <Switch
+                checked={filterVolume}
+                onCheckedChange={onFilterVolumeChange}
+              />
+            </div>
+          )}
         </div>
       </PopoverContent>
     </Popover>
@@ -591,6 +636,8 @@ export default function TableFilters({
   timeToResolutionBounds: _timeToResolutionBounds,
   categories,
   className,
+  filterVolume,
+  onFilterVolumeChange,
 }: TableFiltersProps) {
   // Map Infinity to slider max for display
   const openInterestSliderValue: [number, number] = [
@@ -685,6 +732,8 @@ export default function TableFilters({
       <RelatedVolumeFilter
         filters={filters}
         onFiltersChange={onFiltersChange}
+        filterVolume={filterVolume}
+        onFilterVolumeChange={onFilterVolumeChange}
       />
       <RangeFilter
         placeholder="Ends in"

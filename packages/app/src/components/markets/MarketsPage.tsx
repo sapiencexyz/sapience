@@ -33,6 +33,20 @@ import { useFeatureFlag } from '~/hooks/useFeatureFlag';
 import { useSessionState } from '~/hooks/useSessionState';
 import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 
+const VALID_SORT_FIELDS: SortField[] = [
+  'openInterest',
+  'endTime',
+  'createdAt',
+  'predictionCount',
+  'similarMarketVolume',
+];
+
+function migrateMarketSortField(value: unknown): SortField {
+  return VALID_SORT_FIELDS.includes(value as SortField)
+    ? (value as SortField)
+    : 'openInterest';
+}
+
 const MarketsPage = () => {
   const { data: allCategories = [], isLoading: isLoadingCategories } =
     useCategories();
@@ -65,10 +79,10 @@ const MarketsPage = () => {
   const defaultFilters: FilterState = {
     openInterestRange: [0, Infinity],
     similarMarketVolumeRange: [0, Infinity],
-    volume1hRange: [0, Infinity],
-    volume4hRange: [0, Infinity],
-    volume24hRange: [0, Infinity],
-    volume7dRange: [0, Infinity],
+    similarMarketVolume1hRange: [0, Infinity],
+    similarMarketVolume4hRange: [0, Infinity],
+    similarMarketVolume24hRange: [0, Infinity],
+    similarMarketVolume7dRange: [0, Infinity],
     timeToResolutionRange: [-Infinity, Infinity],
     selectedCategories: [],
     resolutionStatus: 'unresolved',
@@ -116,18 +130,21 @@ const MarketsPage = () => {
   // Sorting state - lifted here so backend can respect it during pagination
   const [sortField, setSortField] = useSessionState<SortField>(
     'sapience.markets.sortField',
-    'openInterest'
+    'openInterest',
+    {
+      migrate: migrateMarketSortField,
+    }
   );
   const [sortDirection, setSortDirection] = useSessionState<SortDirection>(
     'sapience.markets.sortDirection',
     'desc'
   );
-  const [volumeWindow, setVolumeWindow] = useSessionState<VolumeWindow>(
+  const [volumeWindow, setVolumeWindow] = useSessionState<VolumeWindow | null>(
     'sapience.markets.volumeWindow',
-    '24h'
+    null
   );
-  const [excludeLowOdds, setExcludeLowOdds] = useSessionState<boolean>(
-    'sapience.markets.excludeLowOdds',
+  const [filterVolume, setFilterVolume] = useSessionState<boolean>(
+    'sapience.markets.filterVolume',
     false
   );
 
@@ -157,6 +174,25 @@ const MarketsPage = () => {
     return nowSec + minDays * 86400;
   }, [filters.timeToResolutionRange]);
 
+  const selectedSimilarMarketVolumeRange = useMemo<[number, number]>(() => {
+    if (volumeWindow === '1h')
+      return filters.similarMarketVolume1hRange ?? [0, Infinity];
+    if (volumeWindow === '4h')
+      return filters.similarMarketVolume4hRange ?? [0, Infinity];
+    if (volumeWindow === '24h')
+      return filters.similarMarketVolume24hRange ?? [0, Infinity];
+    if (volumeWindow === '7d')
+      return filters.similarMarketVolume7dRange ?? [0, Infinity];
+    return filters.similarMarketVolumeRange ?? [0, Infinity];
+  }, [
+    filters.similarMarketVolume1hRange,
+    filters.similarMarketVolume4hRange,
+    filters.similarMarketVolume24hRange,
+    filters.similarMarketVolume7dRange,
+    filters.similarMarketVolumeRange,
+    volumeWindow,
+  ]);
+
   // Fetch questions (both groups and ungrouped conditions interleaved)
   const {
     data: questions,
@@ -185,8 +221,17 @@ const MarketsPage = () => {
     ...((filters.estimatedPriceRange?.[1] ?? 100) < 100
       ? { maxEstimatedPrice: filters.estimatedPriceRange[1] / 100 }
       : {}),
-    // Volume sorting params (only relevant when sortField is 'volume')
-    ...(sortField === 'volume' ? { volumeWindow, excludeLowOdds } : {}),
+    similarMarketVolumeWindow: volumeWindow
+      ? filterVolume
+        ? (`${volumeWindow}Filtered` as VolumeWindow)
+        : volumeWindow
+      : undefined,
+    ...(selectedSimilarMarketVolumeRange[0] > 0
+      ? { minSimilarMarketVolume: selectedSimilarMarketVolumeRange[0] }
+      : {}),
+    ...(Number.isFinite(selectedSimilarMarketVolumeRange[1])
+      ? { maxSimilarMarketVolume: selectedSimilarMarketVolumeRange[1] }
+      : {}),
   });
 
   const handlePythPick = useCallback(
@@ -396,8 +441,8 @@ const MarketsPage = () => {
                     onSortChange={handleSortChange}
                     volumeWindow={volumeWindow}
                     onVolumeWindowChange={setVolumeWindow}
-                    excludeLowOdds={excludeLowOdds}
-                    onExcludeLowOddsChange={setExcludeLowOdds}
+                    filterVolume={filterVolume}
+                    onFilterVolumeChange={setFilterVolume}
                   />
                 </div>
               )}
