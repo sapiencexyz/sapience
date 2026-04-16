@@ -92,6 +92,48 @@ describe('fetchEventTags', () => {
     expect(result.get('dup-event')).toEqual(['Crypto']);
   });
 
+  it('deduplicates after normalization (temperature + Temperature collapse)', async () => {
+    mockResponse([
+      {
+        slug: 'case-dup',
+        tags: [
+          { label: 'temperature', slug: 'temperature' },
+          { label: 'Temperature', slug: 'temperature-2' },
+        ],
+      },
+    ]);
+
+    const result = await fetchEventTags(opts);
+
+    expect(result.get('case-dup')).toEqual(['Temperature']);
+  });
+
+  it('capitalizes the first letter of each label (preserves rest)', async () => {
+    // Polymarket returns some labels miscased, e.g. `temperature` lowercase.
+    // We normalize the first character so acronyms like "UFC" are untouched
+    // but "temperature" becomes "Temperature".
+    mockResponse([
+      {
+        slug: 'weather-event',
+        tags: [
+          { label: 'temperature', slug: 'temperature' },
+          { label: 'Highest temperature', slug: 'highest-temperature' },
+          { label: 'UFC', slug: 'ufc' },
+          { label: 'Weather', slug: 'weather' },
+        ],
+      },
+    ]);
+
+    const result = await fetchEventTags(opts);
+
+    expect(result.get('weather-event')).toEqual([
+      'Temperature',
+      'Highest temperature',
+      'UFC',
+      'Weather',
+    ]);
+  });
+
   it('returns empty map on API error', async () => {
     mockFetchWithRetry.mockResolvedValue({
       ok: false,
