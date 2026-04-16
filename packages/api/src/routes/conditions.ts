@@ -13,6 +13,16 @@ function isHttpUrl(value: unknown): boolean {
   }
 }
 
+// Polymarket returns some tag labels miscased (e.g. `temperature`). Uppercase
+// the first char and preserve the rest so acronyms like `UFC` stay intact.
+// Mirrors normalizeTagLabel in packages/market-keeper/src/generate/tags.ts.
+function normalizeTags(tags: unknown): string[] {
+  if (!Array.isArray(tags)) return [];
+  return tags
+    .filter((t): t is string => typeof t === 'string' && t.length > 0)
+    .map((t) => t.charAt(0).toUpperCase() + t.slice(1));
+}
+
 // GET route removed in favor of GraphQL. Use GraphQL `conditions` query for reads.
 
 interface BatchCreateConditionInput {
@@ -161,7 +171,7 @@ router.post('/batch-create', async (req: Request, res: Response) => {
             similarMarkets: Array.isArray(item.similarMarkets)
               ? item.similarMarkets
               : [],
-            tags: Array.isArray(item.tags) ? item.tags : [],
+            tags: normalizeTags(item.tags),
             chainId: item.chainId ?? 42161,
             estimatedPrice:
               typeof item.estimatedPrice === 'number' &&
@@ -358,7 +368,7 @@ router.post('/', async (req: Request, res: Response) => {
           public: Boolean(isPublic),
           description,
           similarMarkets: Array.isArray(similarMarkets) ? similarMarkets : [],
-          tags: Array.isArray(tags) ? tags : [],
+          tags: normalizeTags(tags),
           chainId: chainId ?? 42161, // Default to Arbitrum if not provided
           estimatedPrice:
             typeof estimatedPrice === 'number' &&
@@ -647,7 +657,7 @@ router.put('/batch-metadata', async (req: Request, res: Response) => {
       if (typeof f.description === 'string') data.description = f.description;
       if (Array.isArray(f.similarMarkets))
         data.similarMarkets = f.similarMarkets;
-      if (Array.isArray(f.tags)) data.tags = f.tags;
+      if (Array.isArray(f.tags)) data.tags = normalizeTags(f.tags);
       if (
         typeof f.similarMarketVolume === 'number' &&
         f.similarMarketVolume >= 0
@@ -902,9 +912,7 @@ router.put('/:id', async (req: Request, res: Response) => {
                   : [],
               }
             : {}),
-          ...(typeof tags !== 'undefined'
-            ? { tags: Array.isArray(tags) ? tags : [] }
-            : {}),
+          ...(typeof tags !== 'undefined' ? { tags: normalizeTags(tags) } : {}),
           // Update estimatedPrice if provided and valid
           ...(typeof estimatedPrice === 'number' &&
           estimatedPrice >= 0 &&

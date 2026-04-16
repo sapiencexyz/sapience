@@ -58,8 +58,10 @@ const MarketsPage = () => {
     'sapience.markets.searchTerm',
     ''
   );
+  // Key bumped to v2 after tag-case normalization (lowercase values like
+  // "temperature" no longer match; force a reset of stale selections).
   const [selectedTag, setSelectedTag] = useSessionState<string | null>(
-    'sapience.markets.selectedTag',
+    'sapience.markets.selectedTag.v2',
     null
   );
   const defaultFilters: FilterState = {
