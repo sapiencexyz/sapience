@@ -27,6 +27,8 @@
     "pretest": "pnpm --filter @sapience/sdk run build:lib",
     "test": "vitest run",
     "test:watch": "vitest",
+    "test:contract": "pnpm --filter @sapience/sdk run build:lib && pnpm run prisma:generate && vitest --config vitest.contract.config.ts --run",
+    "snapshot-test-db": "tsx scripts/snapshotTestDb.ts",
     "test:prediction-e2e": "tsx test-prediction-indexer-e2e.ts",
     "test:prediction-mint": "tsx test-prediction-indexer-e2e.ts mint",
     "test:prediction-burn": "tsx test-prediction-indexer-e2e.ts burn",

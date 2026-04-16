@@ -48,7 +48,7 @@ export interface ConditionGroupFilters {
   publicOnly?: boolean;
 }
 
-const GET_CONDITION_GROUPS = /* GraphQL */ `
+export const GET_CONDITION_GROUPS = /* GraphQL */ `
   query ConditionGroups(
     $take: Int
     $skip: Int

@@ -18,7 +18,7 @@ export interface ProtocolStat {
   dailyVolume: string;
 }
 
-const GET_PROTOCOL_STATS = /* GraphQL */ `
+export const GET_PROTOCOL_STATS = /* GraphQL */ `
   query ProtocolStats {
     protocolStats {
       timestamp
