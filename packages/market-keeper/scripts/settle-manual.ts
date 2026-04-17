@@ -50,8 +50,11 @@ import { privateKeyToAccount } from 'viem/accounts';
 import { polygon } from 'viem/chains';
 import { fetchWithRetry } from '../src/utils/fetch.js';
 import { logSeparator } from '../src/utils/log.js';
-import { manualConditionResolver } from '@sapience/sdk';
-import { conditionalTokensReader } from '@sapience/sdk/contracts/addresses';
+import {
+  manualConditionResolver,
+  conditionalTokensReader,
+  normalizeLegacyEntry,
+} from '@sapience/sdk/contracts/addresses';
 import {
   determineOutcomeFromPolymarket,
   outcomeToString,
@@ -63,9 +66,31 @@ import {
 
 const CHAIN_ID = Number(process.env.CHAIN_ID || '13374202');
 
-const RESOLVER_ADDRESS = (process.env.RESOLVER_ADDRESS ||
-  manualConditionResolver[CHAIN_ID]?.address ||
-  '') as Address;
+/**
+ * Get all manual resolver addresses for the configured chain (current + legacy).
+ */
+function getManualResolverAddresses(): { address: Address; label: string }[] {
+  const config = manualConditionResolver[CHAIN_ID];
+  if (!config) {
+    throw new Error(
+      `No ManualConditionResolver configured for chain ${CHAIN_ID}`
+    );
+  }
+
+  const addresses: { address: Address; label: string }[] = [
+    { address: config.address as Address, label: 'current' },
+  ];
+
+  for (const legEntry of config.legacy ?? []) {
+    const { address } = normalizeLegacyEntry(legEntry);
+    addresses.push({
+      address: address as Address,
+      label: `legacy-${address.slice(0, 8)}`,
+    });
+  }
+
+  return addresses;
+}
 
 const ETHEREAL_RPC = 'https://rpc.etherealtest.net';
 
@@ -205,12 +230,13 @@ Examples:
 const CONDITIONS_PAGE_SIZE = 30;
 
 const UNRESOLVED_CONDITIONS_QUERY = `
-query UnresolvedConditions($take: Int!, $skip: Int!) {
+query UnresolvedConditions($take: Int!, $skip: Int!, $resolver: String!) {
   conditions(
     where: {
       AND: [
         { settled: { equals: false } }
         { public: { equals: true } }
+        { resolver: { equals: $resolver, mode: insensitive } }
         {
           OR: [
             { openInterest: { gt: "0" } }
@@ -233,6 +259,7 @@ query UnresolvedConditions($take: Int!, $skip: Int!) {
 
 async function fetchConditionsPage(
   apiUrl: string,
+  resolver: string,
   take: number,
   skip: number
 ): Promise<SapienceCondition[]> {
@@ -244,7 +271,7 @@ async function fetchConditionsPage(
     },
     body: JSON.stringify({
       query: UNRESOLVED_CONDITIONS_QUERY,
-      variables: { take, skip },
+      variables: { resolver, take, skip },
     }),
   });
 
@@ -288,7 +315,8 @@ async function fetchConditionsPage(
 }
 
 async function fetchUnresolvedConditions(
-  apiUrl: string
+  apiUrl: string,
+  resolver: string
 ): Promise<SapienceCondition[]> {
   const allConditions: SapienceCondition[] = [];
   let skip = 0;
@@ -298,6 +326,7 @@ async function fetchUnresolvedConditions(
   while (true) {
     const page = await fetchConditionsPage(
       apiUrl,
+      resolver,
       CONDITIONS_PAGE_SIZE + 1,
       skip
     );
@@ -382,19 +411,22 @@ async function checkPolymarketApiResolution(
 async function resolveCondition(
   polygonClient: PublicClient,
   etherealClient: PublicClient,
-  conditionId: Hex
+  conditionId: Hex,
+  resolverAddress: Address
 ): Promise<SettlementCandidate | 'already-settled' | 'not-resolved' | string> {
   // Check if already settled on ManualConditionResolver
   try {
     const [isResolved] = await etherealClient.readContract({
-      address: RESOLVER_ADDRESS,
+      address: resolverAddress,
       abi: manualConditionResolverAbi,
       functionName: 'getResolution',
       args: [conditionId],
     });
 
     if (isResolved) {
-      console.log(`[${conditionId}] Already settled on ManualConditionResolver`);
+      console.log(
+        `[${conditionId}] Already settled on ManualConditionResolver`
+      );
       return 'already-settled';
     }
   } catch {
@@ -402,7 +434,9 @@ async function resolveCondition(
   }
 
   // Check if resolved on Polymarket via Polygon
-  console.log(`[${conditionId}] Checking canRequestResolution on Polygon (reader=${CONDITIONAL_TOKENS_READER_ADDRESS})...`);
+  console.log(
+    `[${conditionId}] Checking canRequestResolution on Polygon (reader=${CONDITIONAL_TOKENS_READER_ADDRESS})...`
+  );
   const canResolve = await polygonClient.readContract({
     address: CONDITIONAL_TOKENS_READER_ADDRESS,
     abi: conditionalTokensReaderAbi,
@@ -450,6 +484,181 @@ async function resolveCondition(
   return 'not-resolved';
 }
 
+// ============ Per-resolver processing ============
+
+interface ResolverResults {
+  label: string;
+  total: number;
+  alreadySettled: number;
+  settled: number;
+  notResolved: number;
+  errors: number;
+}
+
+async function processResolver(
+  resolverAddress: Address,
+  label: string,
+  options: CLIOptions,
+  sapienceApiUrl: string,
+  polygonClient: PublicClient,
+  etherealClient: PublicClient,
+  walletClient: WalletClient<Transport, Chain, Account> | null
+): Promise<ResolverResults> {
+  const results: ResolverResults = {
+    label,
+    total: 0,
+    alreadySettled: 0,
+    settled: 0,
+    notResolved: 0,
+    errors: 0,
+  };
+
+  const conditions = await fetchUnresolvedConditions(
+    sapienceApiUrl,
+    resolverAddress
+  );
+  results.total = conditions.length;
+
+  if (conditions.length === 0) {
+    console.log('No unsettled conditions for this resolver');
+    return results;
+  }
+
+  console.log(
+    `Processing ${conditions.length} conditions (mode: ${options.dryRun ? 'dry-run' : 'execute'})...`
+  );
+
+  const candidates: SettlementCandidate[] = [];
+
+  // Phase 1: Resolve all conditions, collecting settlement candidates
+  for (const condition of conditions) {
+    try {
+      console.log(`[${condition.id}] "${condition.question}"`);
+      const result = await resolveCondition(
+        polygonClient,
+        etherealClient,
+        condition.id as Hex,
+        resolverAddress
+      );
+
+      if (result === 'already-settled') {
+        results.alreadySettled++;
+      } else if (result === 'not-resolved') {
+        results.notResolved++;
+      } else if (typeof result === 'string') {
+        console.error(`Error for ${condition.id}: ${result}`);
+        results.errors++;
+      } else {
+        candidates.push(result);
+      }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error(`Error for ${condition.id}: ${msg}`);
+      results.errors++;
+    }
+  }
+
+  console.log(
+    `\nResolution check complete: ${candidates.length} ready to settle, ${results.alreadySettled} already settled, ${results.notResolved} not resolved yet, ${results.errors} errors`
+  );
+
+  if (candidates.length === 0) {
+    console.log('Nothing to settle');
+    return results;
+  }
+
+  // Log what we're settling
+  for (const c of candidates) {
+    console.log(
+      `  ${c.conditionId} → ${outcomeToString(c.outcome)} (via ${c.source})`
+    );
+  }
+
+  if (options.dryRun) {
+    console.log(
+      `\nDRY RUN — would settle ${candidates.length} conditions via settleConditions()`
+    );
+    results.settled = candidates.length;
+    return results;
+  }
+
+  if (!walletClient) {
+    console.error('No wallet client (missing ADMIN_PRIVATE_KEY)');
+    results.errors += candidates.length;
+    return results;
+  }
+
+  // Phase 2: Batch settle
+  const conditionIds = candidates.map((c) => c.conditionId);
+  const outcomes = candidates.map((c) => c.outcome);
+
+  if (candidates.length === 1) {
+    const { conditionId, outcome } = candidates[0];
+    console.log(
+      `\nSettling 1 condition: ${conditionId} → ${outcomeToString(outcome)}`
+    );
+
+    const estimatedGas = await etherealClient.estimateContractGas({
+      address: resolverAddress,
+      abi: manualConditionResolverAbi,
+      functionName: 'settleCondition',
+      args: [conditionId, outcome],
+      account: walletClient.account,
+    });
+    const gasLimit = (estimatedGas * 130n) / 100n;
+
+    const hash = await walletClient.writeContract({
+      address: resolverAddress,
+      abi: manualConditionResolverAbi,
+      functionName: 'settleCondition',
+      args: [conditionId, outcome],
+      gas: gasLimit,
+    });
+
+    console.log(`Transaction sent: ${hash}`);
+
+    if (options.wait) {
+      console.log('Waiting for confirmation...');
+      const receipt = await etherealClient.waitForTransactionReceipt({ hash });
+      console.log(`Confirmed in block ${receipt.blockNumber}`);
+    }
+
+    results.settled = 1;
+  } else {
+    console.log(`\nBatch settling ${candidates.length} conditions...`);
+
+    const estimatedGas = await etherealClient.estimateContractGas({
+      address: resolverAddress,
+      abi: manualConditionResolverAbi,
+      functionName: 'settleConditions',
+      args: [conditionIds, outcomes],
+      account: walletClient.account,
+    });
+    const gasLimit = (estimatedGas * 130n) / 100n;
+    console.log(`Estimated gas: ${estimatedGas}, using limit: ${gasLimit}`);
+
+    const hash = await walletClient.writeContract({
+      address: resolverAddress,
+      abi: manualConditionResolverAbi,
+      functionName: 'settleConditions',
+      args: [conditionIds, outcomes],
+      gas: gasLimit,
+    });
+
+    console.log(`Transaction sent: ${hash}`);
+
+    if (options.wait) {
+      console.log('Waiting for confirmation...');
+      const receipt = await etherealClient.waitForTransactionReceipt({ hash });
+      console.log(`Confirmed in block ${receipt.blockNumber}`);
+    }
+
+    results.settled = candidates.length;
+  }
+
+  return results;
+}
+
 // ============ Main ============
 
 async function main() {
@@ -460,25 +669,7 @@ async function main() {
     process.exit(0);
   }
 
-  // Guard: staging only
-  const expectedAddress = manualConditionResolver[CHAIN_ID]?.address;
-  if (
-    expectedAddress &&
-    RESOLVER_ADDRESS.toLowerCase() !== expectedAddress.toLowerCase()
-  ) {
-    console.error(
-      `RESOLVER_ADDRESS ${RESOLVER_ADDRESS} does not match ManualConditionResolver ${expectedAddress} for chain ${CHAIN_ID}.` +
-        ` This script is for staging/testnet only.`
-    );
-    process.exit(1);
-  }
-
-  if (!RESOLVER_ADDRESS) {
-    console.error(
-      `No ManualConditionResolver address found for chain ${CHAIN_ID}. Set RESOLVER_ADDRESS or CHAIN_ID.`
-    );
-    process.exit(1);
-  }
+  const resolvers = getManualResolverAddresses();
 
   const polygonRpcUrl = process.env.POLYGON_RPC_URL;
   const privateKey = process.env.ADMIN_PRIVATE_KEY;
@@ -501,8 +692,8 @@ async function main() {
     process.exit(1);
   }
 
-  console.log(`ManualConditionResolver: ${RESOLVER_ADDRESS}`);
-  console.log(`Chain: ${CHAIN_ID} (Ethereal Testnet)`);
+  console.log(`Chain: ${CHAIN_ID}`);
+  console.log(`Manual resolvers: ${resolvers.length} (current + legacy)`);
   console.log(`Mode: ${options.dryRun ? 'dry-run' : 'execute'}`);
 
   // Polygon client — read Polymarket resolution data
@@ -540,154 +731,53 @@ async function main() {
   }
 
   try {
-    const conditions = await fetchUnresolvedConditions(sapienceApiUrl);
+    const allResults: ResolverResults[] = [];
 
-    if (conditions.length === 0) {
-      console.log('No unsettled conditions found');
-      return;
-    }
+    for (const resolver of resolvers) {
+      console.log(`\n=== Manual resolver: ${resolver.label} ===`);
+      console.log(`  Address: ${resolver.address}`);
 
-    console.log(`Processing ${conditions.length} conditions...`);
-
-    const candidates: SettlementCandidate[] = [];
-    let alreadySettled = 0;
-    let notResolved = 0;
-    let errors = 0;
-
-    // Phase 1: Resolve all conditions, collecting settlement candidates
-    for (const condition of conditions) {
-      try {
-        console.log(`[${condition.id}] "${condition.question}"`);
-        const result = await resolveCondition(
-          polygonClient,
-          etherealClient,
-          condition.id as Hex
-        );
-
-        if (result === 'already-settled') {
-          alreadySettled++;
-        } else if (result === 'not-resolved') {
-          notResolved++;
-        } else if (typeof result === 'string') {
-          console.error(`Error for ${condition.id}: ${result}`);
-          errors++;
-        } else {
-          candidates.push(result);
-        }
-      } catch (error) {
-        const msg = error instanceof Error ? error.message : String(error);
-        console.error(`Error for ${condition.id}: ${msg}`);
-        errors++;
-      }
-    }
-
-    console.log(
-      `\nResolution check complete: ${candidates.length} ready to settle, ${alreadySettled} already settled, ${notResolved} not resolved yet, ${errors} errors`
-    );
-
-    if (candidates.length === 0) {
-      console.log('Nothing to settle');
-      return;
-    }
-
-    // Log what we're settling
-    for (const c of candidates) {
-      console.log(
-        `  ${c.conditionId} → ${outcomeToString(c.outcome)} (via ${c.source})`
+      const results = await processResolver(
+        resolver.address,
+        resolver.label,
+        options,
+        sapienceApiUrl,
+        polygonClient,
+        etherealClient,
+        walletClient
       );
-    }
-
-    if (options.dryRun) {
-      console.log(
-        `\nDRY RUN — would settle ${candidates.length} conditions via settleConditions()`
-      );
-      return;
-    }
-
-    if (!walletClient) {
-      console.error('No wallet client (missing ADMIN_PRIVATE_KEY)');
-      return;
-    }
-
-    // Phase 2: Batch settle
-    const conditionIds = candidates.map((c) => c.conditionId);
-    const outcomes = candidates.map((c) => c.outcome);
-
-    if (candidates.length === 1) {
-      // Single settlement
-      const { conditionId, outcome } = candidates[0];
-      console.log(
-        `\nSettling 1 condition: ${conditionId} → ${outcomeToString(outcome)}`
-      );
-
-      const estimatedGas = await etherealClient.estimateContractGas({
-        address: RESOLVER_ADDRESS,
-        abi: manualConditionResolverAbi,
-        functionName: 'settleCondition',
-        args: [conditionId, outcome],
-        account: walletClient.account,
-      });
-      const gasLimit = (estimatedGas * 130n) / 100n;
-
-      const hash = await walletClient.writeContract({
-        address: RESOLVER_ADDRESS,
-        abi: manualConditionResolverAbi,
-        functionName: 'settleCondition',
-        args: [conditionId, outcome],
-        gas: gasLimit,
-      });
-
-      console.log(`Transaction sent: ${hash}`);
-
-      if (options.wait) {
-        console.log('Waiting for confirmation...');
-        const receipt = await etherealClient.waitForTransactionReceipt({
-          hash,
-        });
-        console.log(`Confirmed in block ${receipt.blockNumber}`);
-      }
-    } else {
-      // Batch settlement
-      console.log(`\nBatch settling ${candidates.length} conditions...`);
-
-      const estimatedGas = await etherealClient.estimateContractGas({
-        address: RESOLVER_ADDRESS,
-        abi: manualConditionResolverAbi,
-        functionName: 'settleConditions',
-        args: [conditionIds, outcomes],
-        account: walletClient.account,
-      });
-      const gasLimit = (estimatedGas * 130n) / 100n;
-      console.log(
-        `Estimated gas: ${estimatedGas}, using limit: ${gasLimit}`
-      );
-
-      const hash = await walletClient.writeContract({
-        address: RESOLVER_ADDRESS,
-        abi: manualConditionResolverAbi,
-        functionName: 'settleConditions',
-        args: [conditionIds, outcomes],
-        gas: gasLimit,
-      });
-
-      console.log(`Transaction sent: ${hash}`);
-
-      if (options.wait) {
-        console.log('Waiting for confirmation...');
-        const receipt = await etherealClient.waitForTransactionReceipt({
-          hash,
-        });
-        console.log(`Confirmed in block ${receipt.blockNumber}`);
-      }
+      allResults.push(results);
     }
 
     // Summary
     console.log('\n--- Summary ---');
-    console.log(`Total conditions:        ${conditions.length}`);
-    console.log(`Already settled:         ${alreadySettled}`);
-    console.log(`Settled (tx sent):       ${candidates.length}`);
-    console.log(`Not resolved (skipped):  ${notResolved}`);
-    console.log(`Errors:                  ${errors}`);
+    for (const r of allResults) {
+      if (r.total === 0) {
+        console.log(`[${r.label}] No conditions`);
+        continue;
+      }
+      console.log(
+        `[${r.label}] Total: ${r.total}, Already settled: ${r.alreadySettled}, Settled: ${r.settled}, Not resolved: ${r.notResolved}, Errors: ${r.errors}`
+      );
+    }
+
+    const totals = allResults.reduce(
+      (acc, r) => ({
+        total: acc.total + r.total,
+        alreadySettled: acc.alreadySettled + r.alreadySettled,
+        settled: acc.settled + r.settled,
+        notResolved: acc.notResolved + r.notResolved,
+        errors: acc.errors + r.errors,
+      }),
+      { total: 0, alreadySettled: 0, settled: 0, notResolved: 0, errors: 0 }
+    );
+
+    console.log(`\nTotal across all resolvers:`);
+    console.log(`  Conditions:          ${totals.total}`);
+    console.log(`  Already settled:     ${totals.alreadySettled}`);
+    console.log(`  Settled (tx sent):   ${totals.settled}`);
+    console.log(`  Not resolved:        ${totals.notResolved}`);
+    console.log(`  Errors:              ${totals.errors}`);
   } catch (error) {
     console.error('Error:', error);
     process.exit(1);
