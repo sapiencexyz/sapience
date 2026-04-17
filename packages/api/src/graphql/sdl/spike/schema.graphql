@@ -1,0 +1,17 @@
+"""
+Phase 0 spike schema — proves SDL-first + graphql-tools works
+against the contract test fixture DB. Intentionally minimal: one
+type, one root query, enough to round-trip GET_CATEGORIES.
+
+Superseded once Phase 1 introduces the real domain SDL.
+"""
+
+type Category {
+  id: Int!
+  name: String!
+  slug: String!
+}
+
+type Query {
+  categories: [Category!]!
+}
