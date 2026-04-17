@@ -82,7 +82,9 @@ describe('Phase 0 SDL-first spike', () => {
       }
     }`);
     const categoriesField = (
-      queryAST.definitions[0] as { selectionSet: { selections: [unknown] } }
+      queryAST.definitions[0] as unknown as {
+        selectionSet: { selections: [unknown] };
+      }
     ).selectionSet.selections[0];
     const fakeInfo = {
       fieldNodes: [categoriesField],
