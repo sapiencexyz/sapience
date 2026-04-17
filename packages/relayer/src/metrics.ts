@@ -120,6 +120,43 @@ export const errorsTotal = new Counter({
 });
 
 // ============================================================================
+// Committed Intent Metrics (PRD-001)
+// ============================================================================
+
+export const commitmentsSubmitted = new Counter({
+  name: 'relayer_commitments_submitted_total',
+  help: 'Total number of commitment.submit messages processed',
+  labelNames: ['status', 'reason'], // status: accepted|rejected; reason: optional rejection reason code
+  registers: [register],
+});
+
+export const quotesSubmitted = new Counter({
+  name: 'relayer_committed_intent_quotes_submitted_total',
+  help: 'Total number of quote.submit messages processed (committed-intent)',
+  labelNames: ['status', 'reason'],
+  registers: [register],
+});
+
+export const quotesCancelled = new Counter({
+  name: 'relayer_committed_intent_quotes_cancelled_total',
+  help: 'Total number of quote.cancel messages processed (committed-intent)',
+  labelNames: ['status'],
+  registers: [register],
+});
+
+/**
+ * Live committed-intent exposure per counterparty.
+ * Counterparty addresses are truncated to the first 10 chars to bound
+ * label cardinality (still distinguishable in practice).
+ */
+export const committedIntentExposure = new Gauge({
+  name: 'relayer_committed_intent_exposure',
+  help: 'Live committed-intent exposure (sum of outstanding quote amountOut) per counterparty (truncated address)',
+  labelNames: ['counterparty'],
+  registers: [register],
+});
+
+// ============================================================================
 // Subscription Metrics
 // ============================================================================
 

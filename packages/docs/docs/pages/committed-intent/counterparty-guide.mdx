@@ -1,0 +1,198 @@
+---
+title: 'Counterparty Guide'
+description: 'How to operate as a counterparty and market maker on Sapience using the committed-intent flow.'
+---
+
+# Counterparty Guide
+
+This guide covers how to participate as a counterparty (market maker) in the commit order flow. Counterparties provide liquidity by quoting against predictor commitments.
+
+## Overview
+
+When a predictor creates a commitment, it is broadcast to connected counterparties. You respond with signed quotes offering to take the opposite side of the position. If your quote is selected during execution, your collateral is pulled and the position is minted.
+
+## CounterpartyVault
+
+Every counterparty maintains a **CounterpartyVault** -- a single shared collateral pool denominated in WUSDe that backs all of your outstanding quotes.
+
+### Depositing
+
+Deposit WUSDe into your vault. This is a one-time operation (plus top-ups as needed). All your quotes draw from this single pool, which is far more capital-efficient than locking collateral per quote.
+
+```ts
+import { getContract } from 'viem';
+
+const vault = getContract({
+  address: COUNTERPARTY_VAULT_ADDRESS,
+  abi: counterpartyVaultAbi,
+  client: walletClient,
+});
+
+// Approve WUSDe first
+await wusde.write.approve([COUNTERPARTY_VAULT_ADDRESS, depositAmount]);
+
+// Deposit
+await vault.write.deposit([depositAmount]);
+```
+
+### Withdrawal Delay
+
+You cannot withdraw from your vault while you have live quotes outstanding. The vault tracks an `earliestWithdrawal` timestamp. You must bump this forward whenever you post quotes with longer deadlines:
+
+```ts
+// Before posting quotes with a deadline of `quoteDeadline`:
+await vault.write.bumpEarliestWithdrawal([quoteDeadline]);
+```
+
+This prevents mid-auction rug pulls. You can only withdraw after all your known quote deadlines have passed.
+
+### Checking Your Balance
+
+```ts
+const balance = await vault.read.balanceOf([counterpartyAddress]);
+const earliest = await vault.read.earliestWithdrawal([counterpartyAddress]);
+```
+
+## Quoting
+
+### Quote Shape
+
+Each quote is a fixed-price slice with two fields:
+
+| Field       | Description                                                           |
+| ----------- | --------------------------------------------------------------------- |
+| `maxIn`     | Maximum amount of the predictor's `amountIn` you are willing to match |
+| `amountOut` | Total collateral you commit if `maxIn` is fully consumed              |
+
+The implicit price is `amountOut / maxIn`. Partial consumption is linear: if the executor takes `slice <= maxIn`, you provide `amountOut * slice / maxIn`.
+
+### Producing Competitive Quotes
+
+Quotes are ranked by implicit price (highest `amountOut / maxIn` first). To win:
+
+- Offer the highest `amountOut` relative to `maxIn`.
+- If you want depth pricing (different prices at different sizes), submit **multiple quotes** at different price points rather than a single large quote.
+- Quotes are filled greedily from best price to worst. A large commitment may aggregate slices from multiple counterparties.
+
+### Signing a Quote
+
+Quotes are EIP-712 typed data signed against the `SapienceCommittedIntent` domain:
+
+```ts
+import { buildQuoteTypedData } from '@sapience/sdk/auction/committedIntentSigning';
+
+const quote = {
+  counterparty: myAddress,
+  deadline: BigInt(Math.floor(Date.now() / 1000) + 60),
+  commitmentHash: commitment.hash,
+  maxIn: parseEther('100'),
+  amountOut: parseEther('200'),
+  nonce: 7n,
+};
+
+const typedData = buildQuoteTypedData(quote, executorAddress, chainId);
+const signature = await walletClient.signTypedData(typedData);
+```
+
+### Submitting Quotes
+
+Send signed quotes to the relayer via WebSocket:
+
+```ts
+ws.send(
+  JSON.stringify({
+    type: 'quote.submit',
+    payload: {
+      quote: {
+        counterparty: quote.counterparty,
+        deadline: quote.deadline.toString(),
+        commitmentHash: quote.commitmentHash,
+        maxIn: quote.maxIn.toString(),
+        amountOut: quote.amountOut.toString(),
+        nonce: quote.nonce.toString(),
+      },
+      signature,
+      receivedAt: new Date().toISOString(),
+    },
+  })
+);
+```
+
+## Slashing
+
+If your quote wins but you cannot back it (wallet + vault funds are insufficient), you are **totally slashed**:
+
+- Your **entire vault balance is drained**, regardless of the shortfall size.
+- If a fallback counterparty exists, the slashed funds compensate the predictor for the price difference (make-whole). Any excess goes to the InsurancePool.
+- If no fallback exists, the entire drained amount goes to the InsurancePool.
+- You are **frozen** at the relayer level until you top up your vault and a cooldown period passes.
+
+The slash is always total -- losing your entire vault -- to create a strong deterrent. The same offense (signing a quote you cannot back) always produces the same consequence. You control your risk by choosing how much to deposit in the vault.
+
+### Avoiding Slashing
+
+- Only quote what you can back with wallet + vault funds combined.
+- Monitor your total live exposure across all outstanding quotes.
+- The relayer enforces an off-chain solvency gate: `vaultBalance >= totalLiveExposure * minInsuranceRate`. Stay above this threshold or the relayer will stop broadcasting your quotes.
+
+## InsurancePool
+
+The InsurancePool is a shared on-chain fund that covers predictor shortfalls when a counterparty fails and the vault slash does not fully compensate the price difference.
+
+- **Funded by:** total-slash events (excess over make-whole in fallback cases, entire vault when no fallback exists).
+- **Drawn by:** legitimate shortfall claims during execution.
+- **No admin, no withdrawals, no governance.** Self-balancing: more failures produce more funding.
+
+As a counterparty, you contribute to the pool involuntarily only if you are slashed. Well-behaved counterparties never interact with it directly.
+
+## Bulk Quote Cancellation
+
+Quotes use a monotonic per-counterparty nonce. To cancel all outstanding quotes, submit a cancel message with a minimum nonce:
+
+```ts
+ws.send(
+  JSON.stringify({
+    type: 'quote.cancel',
+    payload: {
+      counterparty: myAddress,
+      minNonce: '100', // invalidates all quotes with nonce < 100
+      signature: cancelSignature,
+    },
+  })
+);
+```
+
+This is an off-chain relayer convention. The relayer stops broadcasting invalidated quotes. On-chain, nonce validation happens per-quote during execution -- a quote with a reused or invalidated nonce will be skipped.
+
+## Running the Vault-Bot
+
+The `vault-bot` package provides a reference implementation of a counterparty. It:
+
+1. Connects to the relayer WebSocket.
+2. Listens for `commitment.created` messages.
+3. Evaluates each commitment and produces quotes based on its pricing model.
+4. Maintains vault deposits and manages `earliestWithdrawal`.
+
+Configure the vault-bot mode via the `VAULT_BOT_MODE` environment variable:
+
+| Value        | Behavior                                |
+| ------------ | --------------------------------------- |
+| `auction`    | Legacy RFQ only                         |
+| `commitment` | Commit order flow only                  |
+| `both`       | Responds to both (for parallel rollout) |
+
+Key source files:
+
+- `vault-bot/src/services/commitment-quoter.ts` -- quote generation logic
+- `vault-bot/src/services/counterparty-vault-manager.ts` -- vault deposit and withdrawal management
+
+## Quick Reference
+
+| Concept          | Detail                                              |
+| ---------------- | --------------------------------------------------- |
+| Collateral asset | WUSDe (hardcoded)                                   |
+| Vault type       | Single shared pool per counterparty                 |
+| Slash model      | Total vault drain on any failure                    |
+| Quote ranking    | By implicit price `amountOut / maxIn` (descending)  |
+| Cancellation     | Monotonic nonce, off-chain via relayer              |
+| Withdrawal       | Blocked until `earliestWithdrawal` timestamp passes |

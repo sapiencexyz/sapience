@@ -7,6 +7,7 @@ import SecondaryMarketIndexer from './workers/indexers/secondaryMarketIndexer';
 import PositionTokenTransferIndexer from './workers/indexers/positionTokenTransferIndexer';
 import ConditionSettledIndexer from './workers/indexers/conditionSettledIndexer';
 import CollateralTransferIndexer from './workers/indexers/collateralTransferIndexer';
+import CommittedIntentIndexer from './workers/indexers/committedIntentIndexer';
 import {
   getResolverAddressesForChain,
   getLegacyResolverAddressesForChain,
@@ -18,6 +19,12 @@ import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 
 // Environment variable to control whether escrow indexers are enabled
 const ENABLE_ESCROW_INDEXERS = process.env.ENABLE_ESCROW_INDEXERS === 'true';
+
+// Feature flag for the Committed Intent indexer (see prd-001-feature-flag.md).
+// Default to true per the PRD: the indexer reads events even when the rest of
+// the rollout is gated, so data is ready the moment downstream flags flip.
+const ENABLE_COMMITTED_INTENT_INDEXER =
+  (process.env.COMMITTED_INTENT_INDEXER_ENABLED ?? 'true') === 'true';
 
 // Build indexers object based on environment configuration
 const buildIndexers = (): { [key: string]: IIndexer } => {
@@ -104,6 +111,31 @@ const buildIndexers = (): { [key: string]: IIndexer } => {
   } else {
     console.log(
       '[Indexers] Escrow indexers disabled (ENABLE_ESCROW_INDEXERS=false)'
+    );
+  }
+
+  // Committed Intent indexer (feature-flagged).
+  if (ENABLE_COMMITTED_INTENT_INDEXER) {
+    const chainId = DEFAULT_CHAIN_ID;
+    const executorAddress =
+      process.env[`COMMITTED_INTENT_EXECUTOR_ADDRESS_${chainId}`] ??
+      process.env.COMMITTED_INTENT_EXECUTOR_ADDRESS;
+
+    if (executorAddress) {
+      indexers[`committed-intent-${chainId}`] = new CommittedIntentIndexer(
+        chainId
+      );
+      console.log(
+        `[Indexers] Committed Intent indexer enabled for chain ${chainId} (executor ${executorAddress})`
+      );
+    } else {
+      console.log(
+        `[Indexers] Committed Intent indexer flag is ON but COMMITTED_INTENT_EXECUTOR_ADDRESS is unset — skipping`
+      );
+    }
+  } else {
+    console.log(
+      '[Indexers] Committed Intent indexer disabled (COMMITTED_INTENT_INDEXER_ENABLED=false)'
     );
   }
 

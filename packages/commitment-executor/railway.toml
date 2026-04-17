@@ -1,0 +1,10 @@
+[build]
+builder = "NIXPACKS"
+buildCommand = "pnpm --filter @sapience/sdk run build:lib && pnpm --filter @sapience/commitment-executor run build"
+
+[deploy]
+startCommand = "pnpm --filter @sapience/commitment-executor run start"
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+healthcheckPath = "/health"
+healthcheckTimeout = 30

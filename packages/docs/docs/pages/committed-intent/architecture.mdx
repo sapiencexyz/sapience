@@ -1,0 +1,266 @@
+---
+title: 'Architecture'
+description: 'Deep dive into the committed-intent architecture, contract topology, and fund flows.'
+---
+
+# Architecture
+
+This page describes the system architecture of the commit order flow, covering the off-chain coordination layer, on-chain contract topology, fund flows, and the execution algorithm.
+
+## System Overview
+
+The commit order system has two layers: an off-chain coordination layer (relayer, counterparties, executors) and an on-chain settlement layer (executor contract, escrows, vaults).
+
+```
+ OFF-CHAIN
+ ---------
+                                                             Counterparty A
+  Predictor ---signs commitment---> Relayer ---broadcasts--> Counterparty B
+      |                              |                       Counterparty C
+      |                              | mirrors                    |
+      |                              v                            |
+      |                         Public Quote  <--signed quotes----+
+      |                         Feed
+      |
+      | executes in T1
+      v
+  Executor
+  (predictor in T1, anyone in T2)
+      |
+      | calls execute(commitment, quotes[], sigs[])
+      |
+ ON-CHAIN
+ --------
+      v
+  CommittedIntentExecutor
+  |       |           |              |
+  v       v           v              v
+  Pre-    Post-       Counterparty   Insurance
+  mint    mint        Vault          Pool
+  Escrow  Escrow      (per CP)       (shared)
+```
+
+**Off-chain flow:**
+
+1. Predictor signs a commitment and submits it to the relayer.
+2. Relayer broadcasts the commitment to registered counterparties and mirrors it to the public quote feed.
+3. Counterparties return signed quotes `(maxIn, amountOut)`.
+4. During T1, only the predictor can execute. During T2, any executor watching the public feed can execute.
+
+**On-chain flow:**
+
+5. The executor calls `execute()` on the `CommittedIntentExecutor` with the commitment, predictor signature, sorted quotes, and counterparty signatures.
+6. The contract validates all signatures, walks the quotes best-price-first, pulls counterparty collateral, mints positions, and handles failures via the slashing ladder.
+
+## Contract Topology
+
+### CommittedIntentExecutor
+
+The central contract. Responsibilities:
+
+- Validate EIP-712 signatures for both commitments and quotes (ECDSA with ERC-1271 fallback).
+- Enforce time windows (T1 predictor-only, T2 open).
+- Walk the quote array using the greedy best-price-first algorithm.
+- Pull counterparty collateral through the fallback ladder (wallet, then vault, then next quote).
+- Trigger slashing on counterparty failure.
+- Mint positions via `trustedMintRouter` on `PredictionMarketEscrow`.
+- Settle the pre-mint escrow and distribute executor tips.
+
+Storage is minimal under the single-shot (Option A) lifecycle:
+
+```
+settled[commitmentHash]          -- bool, marks completed commitments
+usedQuoteHash[quoteHash]         -- bool, prevents quote reuse
+_nonceBitmap[address][word]      -- bitmap, independent of the escrow
+```
+
+No persistent `consumedIn` mapping is needed because each commitment executes in a single transaction.
+
+### PreMintEscrow
+
+Holds predictor collateral from commit time until settlement or expiry. Two entrypoints:
+
+- `lock(commitmentHash, predictor, amountIn, executorTip, sponsorUse, walletUse, ...)` -- called by the executor during `commit()`. Pulls `walletUse` from the predictor and reserves `sponsorUse` from the sponsor contract. The `executorTip` is escrowed separately from the trading collateral.
+- `settle(commitmentHash, filledIn, collateralSink, tipPaid, tipRecipient)` -- called by the executor during `execute()`. Moves the filled portion to the post-mint escrow, refunds the unfilled remainder, and distributes the tip.
+- `releaseAll(commitmentHash)` -- called during `expire()`. Returns all escrowed funds to their sources.
+
+### CounterpartyVault
+
+A shared collateral pool per counterparty (WUSDe only in v1). Key features:
+
+- `deposit(amount)` / `withdraw(amount)` -- standard deposit/withdrawal with a time lock.
+- `bumpEarliestWithdrawal(when)` -- the counterparty calls this to extend their withdrawal lock when posting quotes with longer deadlines. Prevents mid-auction withdrawal.
+- `pullOut(cp, amount, sink)` -- executor-only. Attempts to pull `amount` from the counterparty's vault balance to `sink`.
+- `slashTotal(cp, sink)` -- executor-only. Drains the counterparty's entire vault balance. Always total, never proportional.
+
+### InsurancePool
+
+A shared fund that covers predictor shortfalls when slashed vault funds are insufficient:
+
+- `contribute(commitmentHash, fromCp, amount)` -- receives funds from slash events.
+- `drawFor(commitmentHash, sink, requested)` -- the executor draws from the pool during execution to cover shortfalls.
+- No admin, no withdrawals, no governance. Self-balancing: more counterparty failures produce more funding.
+
+### OnboardingSponsorV2
+
+A new deployment (separate from the legacy v1 sponsor) that supports the reserve/release/spend model:
+
+- `reserve(predictor, amount, data)` -- hold sponsor credit at commit time.
+- `spend(predictor, amount)` -- debit on successful mint.
+- `release(predictor, amount)` -- restore credit on expiry or partial fill.
+
+### PredictionMarketEscrow (existing, modified)
+
+The existing post-mint escrow gains a single new field:
+
+- `trustedMintRouter` -- an immutable address (settable by owner) that, when it is `msg.sender`, bypasses the normal `MintApproval` signature validation. This is safe because `CommittedIntentExecutor` has already validated the `Commitment` and `Quote` signatures before calling `mint()`.
+
+All downstream behavior (position tracking, resolution, claiming) is unchanged.
+
+## Fund Flows
+
+### Happy Path (Full Fill)
+
+```
+1. Commit:    Predictor wallet --[walletUse]--> PreMintEscrow
+              Sponsor          --[sponsorUse]-> PreMintEscrow (reserved)
+
+2. Execute:   PreMintEscrow    --[filledIn]---> PredictionMarketEscrow (post-mint)
+              CP wallet        --[sliceOut]---> PredictionMarketEscrow (post-mint)
+              PreMintEscrow    --[tip]--------> Executor (if not self-execute)
+
+3. Mint:      PredictionMarketEscrow mints:
+              - Predictor tokens --> Predictor
+              - Counterparty tokens --> Counterparty
+```
+
+### Partial Fill
+
+Same as full fill for the filled portion. The unfilled remainder:
+
+```
+              PreMintEscrow --[walletCredit]--> Predictor (withdrawable credit)
+              Sponsor       <--[released]------ PreMintEscrow
+```
+
+Consumption order is sponsor-first, then wallet. Refund order is the reverse: wallet credit first, then sponsor release.
+
+### Counterparty Failure (Fallback Exists)
+
+```
+1. CP A fails: CounterpartyVault[A] --[drained]--> Executor (temp hold)
+               Of drained: makeWhole --> added to CP B's mint collateral
+                           excess    --> InsurancePool
+
+2. If vault < delta:
+               InsurancePool --[draw]--> added to CP B's mint collateral
+
+3. CP B fills: Mint happens with total collateral =
+               sliceIn + sliceOut_B + makeWhole + poolDraw
+```
+
+### Counterparty Failure (No Fallback)
+
+```
+1. CP A fails: CounterpartyVault[A] --[drained]--> InsurancePool
+2. No mint. Commitment stays alive until deadline.
+3. If new quotes arrive, a subsequent execute can succeed.
+4. At deadline: expire() refunds PreMintEscrow to predictor.
+```
+
+### Expiry (No Quotes)
+
+```
+              Anyone calls expire() after deadline:
+              PreMintEscrow --[walletUse]--> Predictor (credit)
+              Sponsor       <--[sponsorUse]- PreMintEscrow (released)
+```
+
+## The Walk Algorithm
+
+The core of `execute()` is the walk -- a greedy loop over quotes sorted by descending implicit price. Pseudocode:
+
+```
+remaining = commitment.amountIn
+aggregateOut = 0
+bonusCarry = 0
+
+for each quote in quotes (sorted best-price-first):
+    // Verify: monotonically decreasing price
+    // Verify: valid signature, deadline, commitmentHash match, not reused
+
+    take = min(quote.maxIn, remaining)
+    sliceOut = take * quote.amountOut / quote.maxIn
+
+    // Try to pull sliceOut from counterparty
+    pulled = vault.pullOut(counterparty, sliceOut)
+    if pulled < sliceOut:
+        // FAILURE: slash entire vault
+        drained = vault.slashTotal(counterparty)
+
+        if next quote exists:
+            delta = thisQuote.amountOut - nextQuote.amountOut
+            makeWhole = min(drained, delta)
+            excess = drained - makeWhole
+            if makeWhole < delta:
+                poolDraw = insurancePool.drawFor(delta - makeWhole)
+            bonusCarry += makeWhole + poolDraw
+            send excess to InsurancePool
+        else:
+            send drained to InsurancePool
+
+        continue  // remaining unchanged, move to next quote
+
+    // SUCCESS: mint bilateral position
+    collateral = take + sliceOut + bonusCarry
+    mint(predictor, counterparty, collateral)
+    bonusCarry = 0
+    remaining -= take
+    aggregateOut += sliceOut
+
+// Post-walk
+filledIn = amountIn - remaining
+if filledIn < minFillIn or aggregateOut < minAmountOut:
+    if caller is predictor (T1): revert  // loud failure
+    else (T2): emit event, return        // silent, commitment stays alive
+else:
+    settle escrow, mark commitment as settled
+```
+
+Key properties:
+
+- **Never reverts for business logic in T2.** Either the mint succeeds (outcome 1) or all slashing is persisted and the commitment stays alive for retry (outcome 2).
+- **Slash-all-failures.** Every counterparty that fails during the walk is totally slashed, not just the last one.
+- **bonusCarry.** Make-whole funds from slashed counterparties are carried forward and added to the next successful mint, compensating the predictor.
+- **Single-shot.** Under Option A, each commitment is executed at most once. No persistent `consumedIn` state.
+
+## Open vs Closed Auction
+
+The contract is agnostic to auction format. It validates whatever quotes it receives at whatever moment `execute` is called.
+
+**Open bid (current default):** Quotes stream in during the commitment window. Counterparties can see each other's quotes via the public mirror and improve their offers. Better for real-time markets with short deadlines.
+
+**Closed (sealed-bid) batch:** The relayer holds quotes privately until a reveal moment, then publishes them all at once. Can be layered on without contract changes by modifying relayer behavior. Considered a v2 option for large or high-value commitments.
+
+## Signature Validation
+
+The executor validates two types of EIP-712 signatures:
+
+- **Commitment signatures** from the predictor (ECDSA or ERC-1271 fallback for smart accounts).
+- **Quote signatures** from counterparties (ECDSA or ERC-1271 fallback).
+
+The domain is `SapienceCommittedIntent` version `1`, scoped to the `CommittedIntentExecutor` address. This is distinct from the legacy escrow domain to prevent cross-contamination.
+
+Smart-account predictors authenticate via ZeroDev Kernel session keys. The session scope includes `commit`, `execute`, and `wUSDe.approve` permissions on the executor contract. Counterparties in v1 are always EOAs (hot key); ERC-1271 fallback is available for future smart-account counterparties.
+
+## Monotonicity Check
+
+The contract verifies that quotes are submitted in descending price order using a gas-efficient cross-multiply check (no division):
+
+```
+for i in 1..n:
+    require(quotes[i-1].amountOut * quotes[i].maxIn
+         >= quotes[i].amountOut * quotes[i-1].maxIn)
+```
+
+This ensures the greedy walk fills from best to worst price.

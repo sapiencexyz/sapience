@@ -12,3 +12,4 @@ export { ConditionGroupConditionsResolver } from './ConditionGroupConditionsReso
 export { ActivityResolver } from './ActivityResolver';
 export { TagsResolver } from './TagsResolver';
 export { ConditionFieldsResolver } from './ConditionFieldsResolver';
+export { CommittedIntentResolver } from './CommittedIntentResolver';

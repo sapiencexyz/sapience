@@ -24,12 +24,27 @@ import {
   handleVaultUnsubscribe,
   handleVaultQuotePublish,
 } from './handlers/vault';
+import {
+  handleCommitmentSubmit,
+  handleCommitmentSubscribe,
+  handleCommitmentUnsubscribe,
+  handleQuoteSubmit,
+  handleQuoteCancel,
+} from './handlers/committedIntent';
 import type {
   ClientToServerMessage,
   AuctionRFQPayload,
   BidPayload,
 } from './escrowTypes';
 import { isEscrowClientMessage } from './escrowTypes';
+import { isCommittedIntentClientMessage } from './committedIntentTypes';
+import { pruneExpired } from './committedIntentRegistry';
+import { MIRROR_TOPIC } from './publicMirror';
+import type {
+  SignedCommitmentJson,
+  SignedQuoteJson,
+  QuoteCancelJson,
+} from './committedIntentTypes';
 import { isSecondaryClientMessage } from './secondaryMarketTypes';
 import {
   handleSecondaryAuctionStart,
@@ -109,6 +124,22 @@ export function createAuctionWebSocketServer() {
 
   const handlerCtx = {
     allClients: () => allClients as Iterable<ClientConnection>,
+  };
+
+  // Committed-intent handler context — injected on every committed-intent
+  // message dispatch below. Includes a simple `setTimeout`-backed TTL
+  // scheduler so expired registry records get pruned after grace period.
+  const ciHandlerCtx = {
+    allClients: () => allClients as Iterable<ClientConnection>,
+    scheduleExpiry: (_commitmentHash: string, deadlineMs: number) => {
+      const delay = Math.max(0, deadlineMs - Date.now());
+      // Cap to 2**31-1 to satisfy setTimeout.
+      const clamped = Math.min(delay, 2_147_483_000);
+      const t = setTimeout(() => {
+        pruneExpired();
+      }, clamped);
+      t.unref?.();
+    },
   };
 
   wss.on('connection', (ws: WebSocket, req: IncomingMessage) => {
@@ -467,6 +498,151 @@ export function createAuctionWebSocketServer() {
           return;
         }
 
+        // ── Committed-Intent messages (PRD-001) ───────────────────────────
+        if (isCommittedIntentClientMessage(msg)) {
+          const requestId = (msg as { id?: string }).id;
+
+          // Feature flag gate — if off, respond with a disabled error for
+          // every message type and count as a validation failure.
+          if (!config.COMMITTED_INTENT_ENABLED) {
+            const ackType: 'commitment.ack' | 'quote.ack' =
+              msg.type === 'quote.submit' || msg.type === 'quote.cancel'
+                ? 'quote.ack'
+                : 'commitment.ack';
+            client.send({
+              type: ackType,
+              payload: {
+                error: 'committed_intent_disabled',
+                ...(requestId ? { id: requestId } : {}),
+              },
+            });
+            validationFailureCount++;
+            if (validationFailureCount > config.WS_MAX_VALIDATION_FAILURES) {
+              console.warn(
+                `[Relayer] Too many validation failures from ${ip}; closing`
+              );
+              penaltyDisconnect('too_many_validation_failures');
+              return;
+            }
+            trackDuration(msgType, startTime);
+            return;
+          }
+
+          // Guard: every committed-intent message requires a payload object.
+          const msgPayload = (msg as { payload?: unknown }).payload;
+          if (!msgPayload || typeof msgPayload !== 'object') {
+            invalidMessageCount++;
+            if (invalidMessageCount > config.WS_MAX_INVALID_MESSAGES) {
+              penaltyDisconnect('too_many_invalid_messages');
+              return;
+            }
+            client.send({
+              type: 'error',
+              payload: {
+                message: 'missing or invalid payload',
+                code: 'invalid_payload',
+              },
+            });
+            trackDuration(msgType, startTime);
+            return;
+          }
+
+          let ciHandlerFailed = false;
+          switch (msg.type) {
+            case 'commitment.submit':
+              ciHandlerFailed = await handleCommitmentSubmit(
+                client,
+                msgPayload as SignedCommitmentJson,
+                subs,
+                ciHandlerCtx,
+                requestId
+              );
+              break;
+            case 'commitment.subscribe':
+              ciHandlerFailed = handleCommitmentSubscribe(
+                client,
+                (msgPayload as { commitmentHash?: string }).commitmentHash,
+                subs
+              );
+              break;
+            case 'commitment.unsubscribe':
+              ciHandlerFailed = handleCommitmentUnsubscribe(
+                client,
+                (msgPayload as { commitmentHash?: string }).commitmentHash,
+                subs
+              );
+              break;
+            case 'quote.submit':
+              ciHandlerFailed = await handleQuoteSubmit(
+                client,
+                msgPayload as SignedQuoteJson,
+                subs,
+                ciHandlerCtx,
+                requestId
+              );
+              break;
+            case 'quote.cancel':
+              ciHandlerFailed = await handleQuoteCancel(
+                client,
+                msgPayload as QuoteCancelJson,
+                subs,
+                ciHandlerCtx,
+                requestId
+              );
+              break;
+          }
+
+          if (ciHandlerFailed) {
+            validationFailureCount++;
+            if (validationFailureCount > config.WS_MAX_VALIDATION_FAILURES) {
+              console.warn(
+                `[Relayer] Too many validation failures from ${ip}; closing`
+              );
+              penaltyDisconnect('too_many_validation_failures');
+              return;
+            }
+          }
+          trackDuration(msgType, startTime);
+          return;
+        }
+
+        // ── Public mirror opt-in subscription ─────────────────────────────
+        // Thin helper for executors wanting the §4.9 public feed.
+        if (
+          msgType === 'mirror.subscribe' ||
+          msgType === 'mirror.unsubscribe'
+        ) {
+          if (!config.COMMITTED_INTENT_ENABLED) {
+            client.send({
+              type: 'error',
+              payload: {
+                message: 'committed_intent_disabled',
+                code: 'committed_intent_disabled',
+              },
+            });
+            trackDuration(msgType, startTime);
+            return;
+          }
+          if (msgType === 'mirror.subscribe') {
+            const isNew = subs.subscribe(MIRROR_TOPIC, client);
+            if (isNew) subscriptionsActive.inc({ subscription_type: 'mirror' });
+            client.send({
+              type: 'mirror.ack',
+              payload: { subscribed: true, topic: MIRROR_TOPIC },
+            });
+          } else {
+            const wasRemoved = subs.unsubscribe(MIRROR_TOPIC, client);
+            if (wasRemoved)
+              subscriptionsActive.dec({ subscription_type: 'mirror' });
+            client.send({
+              type: 'mirror.ack',
+              payload: { unsubscribed: true, topic: MIRROR_TOPIC },
+            });
+          }
+          trackDuration(msgType, startTime);
+          return;
+        }
+
         // ── Unhandled ─────────────────────────────────────────────────────
         trackDuration(msgType, startTime);
         errorsTotal.inc({ type: 'unhandled_message', message_type: msgType });
@@ -546,6 +722,18 @@ export function createAuctionWebSocketServer() {
       const secondaryUnsubs = subs.unsubscribeByPrefix('secondary:', client);
       for (let i = 0; i < secondaryUnsubs; i++) {
         subscriptionsActive.dec({ subscription_type: 'secondary' });
+      }
+
+      // Clean up committed-intent subscriptions (per-commitment topics).
+      const commitmentUnsubs = subs.unsubscribeByPrefix('commitment:', client);
+      for (let i = 0; i < commitmentUnsubs; i++) {
+        subscriptionsActive.dec({ subscription_type: 'commitment' });
+      }
+
+      // Clean up public mirror subscription (singleton topic).
+      const mirrorUnsub = subs.unsubscribeByPrefix(MIRROR_TOPIC, client);
+      for (let i = 0; i < mirrorUnsub; i++) {
+        subscriptionsActive.dec({ subscription_type: 'mirror' });
       }
 
       allClients.delete(client);

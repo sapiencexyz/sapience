@@ -17,4 +17,11 @@ export * from './auction/escrowEncoding';
 export * from './auction/escrowSigning';
 export * from './auction/secondarySigning';
 
+// Committed-Intent surface (PRD-001)
+export * from './types/committedIntent';
+export * from './auction/committedIntentEncoding';
+export * from './auction/committedIntentSigning';
+export * from './relayer/committedIntentMessages';
+export * from './session/eip712Verify';
+
 export * from './relayer/escrowAuctionWs';

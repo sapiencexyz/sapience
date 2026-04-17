@@ -14,10 +14,10 @@ datasource db {
 }
 
 model Category {
-  id           Int            @id(map: "PK_9c4e4a89e3674fc9f382d733f03") @default(autoincrement())
-  createdAt    DateTime       @default(now()) @db.Timestamp(6)
-  name         String         @db.VarChar
-  slug         String         @unique(map: "UQ_cb73208f151aa71cdd78f662d70") @db.VarChar
+  id              Int              @id(map: "PK_9c4e4a89e3674fc9f382d733f03") @default(autoincrement())
+  createdAt       DateTime         @default(now()) @db.Timestamp(6)
+  name            String           @db.VarChar
+  slug            String           @unique(map: "UQ_cb73208f151aa71cdd78f662d70") @db.VarChar
   /// @TypeGraphQL.field(name: "conditions")
   condition       Condition[]
   /// @TypeGraphQL.field(name: "conditionGroups")
@@ -28,13 +28,13 @@ model Category {
 }
 
 model Event {
-  id              Int           @id(map: "PK_30c2f3bbaf6d34a55f8ae6e4614") @default(autoincrement())
-  createdAt       DateTime      @default(now()) @db.Timestamp(6)
+  id              Int      @id(map: "PK_30c2f3bbaf6d34a55f8ae6e4614") @default(autoincrement())
+  createdAt       DateTime @default(now()) @db.Timestamp(6)
   blockNumber     Int
-  transactionHash String        @db.VarChar
+  transactionHash String   @db.VarChar
   timestamp       BigInt
   logIndex        Int
-  logData         Json          @db.Json
+  logData         Json     @db.Json
 
   @@index([timestamp], map: "IDX_2c15918ff289396205521c5f3c")
   @@index([blockNumber], map: "IDX_5430e2d7fe1df2bcada2c12deb")
@@ -69,28 +69,28 @@ model BackgroundJob {
 }
 
 model Attestation {
-  id              Int      @id(map: "PK_attestation") @default(autoincrement())
-  createdAt       DateTime @default(now()) @db.Timestamp(6)
-  
+  id        Int      @id(map: "PK_attestation") @default(autoincrement())
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+
   // Core EAS fields
-  uid             String   @unique @db.VarChar
-  attester        String   @db.VarChar
-  recipient       String   @db.VarChar
+  uid             String @unique @db.VarChar
+  attester        String @db.VarChar
+  recipient       String @db.VarChar
   time            Int // Using time instead of timestamp to mimic AES indexer
   blockNumber     Int
-  transactionHash String   @db.VarChar
-  schemaId        String   @db.VarChar
+  transactionHash String @db.VarChar
+  schemaId        String @db.VarChar
 
   // Prediction market raw data
-  data            String   @db.VarChar    
-  decodedDataJson String   @db.VarChar @default("")
+  data            String @db.VarChar
+  decodedDataJson String @default("") @db.VarChar
 
   // Prediction market schema data
-  resolver        String?  @db.VarChar
-  conditionId      String?  @db.VarChar
-  condition        Condition? @relation(fields: [conditionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  prediction      String   @db.VarChar
-  comment         String?  @db.Text
+  resolver    String?    @db.VarChar
+  conditionId String?    @db.VarChar
+  condition   Condition? @relation(fields: [conditionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  prediction  String     @db.VarChar
+  comment     String?    @db.Text
 
   // Relation to scores
   attestation_score AttestationScore?
@@ -104,28 +104,28 @@ model Attestation {
 }
 
 model AttestationScore {
-  id               Int         @id @default(autoincrement())
-  createdAt        DateTime    @default(now()) @db.Timestamp(6)
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @db.Timestamp(6)
 
   // Foreign keys and identifiers
-  attestationId    Int         @unique
-  attestation      Attestation @relation(fields: [attestationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  attester         String      @db.VarChar
-  marketAddress    String?     @db.VarChar
-  marketId         String?     @db.VarChar
-  questionId       String?     @db.VarChar
-  resolver         String?     @db.VarChar
+  attestationId Int         @unique
+  attestation   Attestation @relation(fields: [attestationId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  attester      String      @db.VarChar
+  marketAddress String?     @db.VarChar
+  marketId      String?     @db.VarChar
+  questionId    String?     @db.VarChar
+  resolver      String?     @db.VarChar
 
   // Forecast metadata
-  madeAt           Int
-  used             Boolean     @default(false)
+  madeAt Int
+  used   Boolean @default(false)
 
   // Probability and scoring
-  probabilityD18   String?     @db.VarChar
+  probabilityD18   String?   @db.VarChar
   probabilityFloat Float?
   outcome          Int?
   errorSquared     Float?
-  scoredAt         DateTime?   @db.Timestamp(6)
+  scoredAt         DateTime? @db.Timestamp(6)
 
   @@index([attester], map: "IDX_attestation_score_attester")
   @@index([marketAddress], map: "IDX_attestation_score_market_address")
@@ -165,58 +165,58 @@ model ChatMessage {
 }
 
 model Condition {
-  id               String          @id @db.VarChar
-  createdAt        DateTime        @default(now()) @db.Timestamp(6)
-  question         String          @db.VarChar
-  shortName        String?         @db.VarChar
-  categoryId       Int?
-  category         Category?       @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  endTime          Int
-  public           Boolean         @default(true)
-  description      String          @db.Text
-  similarMarkets   String[]        @default([])
-  tags             String[]        @default([])
-  chainId          Int             @default(42161)
-  openInterest     String          @default("0") @db.VarChar
+  id                  String    @id @db.VarChar
+  createdAt           DateTime  @default(now()) @db.Timestamp(6)
+  question            String    @db.VarChar
+  shortName           String?   @db.VarChar
+  categoryId          Int?
+  category            Category? @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  endTime             Int
+  public              Boolean   @default(true)
+  description         String    @db.Text
+  similarMarkets      String[]  @default([])
+  tags                String[]  @default([])
+  chainId             Int       @default(42161)
+  openInterest        String    @default("0") @db.VarChar
   /// USD total trading volume from Polymarket similar market
-  similarMarketVolume Float        @default(0)
+  similarMarketVolume Float     @default(0)
   /// Image URL from Polymarket similar market
-  similarMarketImage  String?      @db.VarChar
-  predictionCount  Int             @default(0)
+  similarMarketImage  String?   @db.VarChar
+  predictionCount     Int       @default(0)
   /// Canonical resolver address for this condition (required)
-  resolver         String          @db.VarChar
+  resolver            String    @db.VarChar
   /// YES probability from Polymarket (0.0–1.0), null for non-Polymarket
-  estimatedPrice   Float?
+  estimatedPrice      Float?
 
   // Time-bucketed Polymarket volume (USD)
-  volume1h           Float     @default(0)
-  volume4h           Float     @default(0)
-  volume24h          Float     @default(0)
-  volume7d           Float     @default(0)
+  volume1h          Float @default(0)
+  volume4h          Float @default(0)
+  volume24h         Float @default(0)
+  volume7d          Float @default(0)
   // Filtered volume: only trades priced in [0.01, 0.99]
-  volumeFiltered1h   Float     @default(0)
-  volumeFiltered4h   Float     @default(0)
-  volumeFiltered24h  Float     @default(0)
-  volumeFiltered7d   Float     @default(0)
+  volumeFiltered1h  Float @default(0)
+  volumeFiltered4h  Float @default(0)
+  volumeFiltered24h Float @default(0)
+  volumeFiltered7d  Float @default(0)
 
   // Resolution status
-  settled          Boolean         @default(false)
-  resolvedToYes    Boolean         @default(false)
-  nonDecisive      Boolean         @default(false)
-  settledAt        Int?
-  assertionId      String?         @db.VarChar
+  settled            Boolean @default(false)
+  resolvedToYes      Boolean @default(false)
+  nonDecisive        Boolean @default(false)
+  settledAt          Int?
+  assertionId        String? @db.VarChar
   assertionTimestamp Int?
 
   // Condition group relationship
   conditionGroupId Int?
   conditionGroup   ConditionGroup? @relation(fields: [conditionGroupId], references: [id], onDelete: SetNull, onUpdate: NoAction)
-  displayOrder     Int?            // Order within group, null when not in a group
+  displayOrder     Int? // Order within group, null when not in a group
 
   // Legacy normalized predictions
-  predictions    LegacyPrediction[]
+  predictions LegacyPrediction[]
 
   // Attestations referencing this condition
-  attestations   Attestation[]
+  attestations Attestation[]
 
   @@index([categoryId])
   @@index([endTime])
@@ -243,33 +243,33 @@ model ConditionGroup {
 
   // Denormalized aggregates maintained by trigger on condition table
   /// @TypeGraphQL.omit(output: true)
-  totalOpenInterest  Decimal  @default(0) @db.Decimal
+  totalOpenInterest    Decimal @default(0) @db.Decimal
   /// @TypeGraphQL.omit(output: true)
-  maxEndTime         Int      @default(0)
+  maxEndTime           Int     @default(0)
   /// @TypeGraphQL.omit(output: true)
-  totalPredictionCount Int    @default(0)
+  totalPredictionCount Int     @default(0)
   /// @TypeGraphQL.omit(output: true)
-  maxCreatedAtEpoch  BigInt   @default(0)
+  maxCreatedAtEpoch    BigInt  @default(0)
   /// @TypeGraphQL.omit(output: true)
-  publicConditionCount Int    @default(0)
+  publicConditionCount Int     @default(0)
 
   // Denormalized volume aggregates (maintained by trigger)
   /// @TypeGraphQL.omit(output: true)
-  totalVolume1h          Decimal  @default(0) @db.Decimal
+  totalVolume1h          Decimal @default(0) @db.Decimal
   /// @TypeGraphQL.omit(output: true)
-  totalVolume4h          Decimal  @default(0) @db.Decimal
+  totalVolume4h          Decimal @default(0) @db.Decimal
   /// @TypeGraphQL.omit(output: true)
-  totalVolume24h         Decimal  @default(0) @db.Decimal
+  totalVolume24h         Decimal @default(0) @db.Decimal
   /// @TypeGraphQL.omit(output: true)
-  totalVolume7d          Decimal  @default(0) @db.Decimal
+  totalVolume7d          Decimal @default(0) @db.Decimal
   /// @TypeGraphQL.omit(output: true)
-  totalVolumeFiltered1h  Decimal  @default(0) @db.Decimal
+  totalVolumeFiltered1h  Decimal @default(0) @db.Decimal
   /// @TypeGraphQL.omit(output: true)
-  totalVolumeFiltered4h  Decimal  @default(0) @db.Decimal
+  totalVolumeFiltered4h  Decimal @default(0) @db.Decimal
   /// @TypeGraphQL.omit(output: true)
-  totalVolumeFiltered24h Decimal  @default(0) @db.Decimal
+  totalVolumeFiltered24h Decimal @default(0) @db.Decimal
   /// @TypeGraphQL.omit(output: true)
-  totalVolumeFiltered7d  Decimal  @default(0) @db.Decimal
+  totalVolumeFiltered7d  Decimal @default(0) @db.Decimal
 
   @@index([categoryId])
   // Raw SQL indexes (not representable in Prisma, managed via migration):
@@ -283,19 +283,19 @@ model ConditionGroup {
 }
 
 model LegacyPrediction {
-  id          Int       @id @default(autoincrement())
-  createdAt   DateTime  @default(now()) @db.Timestamp(6)
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @db.Timestamp(6)
 
   // The market condition being predicted
   conditionId String
   condition   Condition @relation(fields: [conditionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   // Exactly one of these should be set; enforced in application logic
-  positionId   Int?
-  position     LegacyPosition?   @relation(fields: [positionId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  positionId Int?
+  position   LegacyPosition? @relation(fields: [positionId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   limitOrderId Int?
-  limitOrder   LimitOrder?  @relation(fields: [limitOrderId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  limitOrder   LimitOrder? @relation(fields: [limitOrderId], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   // Conceptual prediction data
   outcomeYes Boolean
@@ -303,43 +303,43 @@ model LegacyPrediction {
   // Optional derived / debugging / traceability fields
   chainId Int?
 
+  @@unique([positionId, conditionId], map: "UQ_prediction_position_condition")
+  @@unique([limitOrderId, conditionId], map: "UQ_prediction_limit_order_condition")
   @@index([conditionId], map: "IDX_prediction_condition")
   @@index([positionId], map: "IDX_prediction_position")
   @@index([limitOrderId], map: "IDX_prediction_limit_order")
-  @@unique([positionId, conditionId], map: "UQ_prediction_position_condition")
-  @@unique([limitOrderId, conditionId], map: "UQ_prediction_limit_order_condition")
   @@map("prediction")
 }
 
 /// Legacy position model (NFT-based, V1)
 model LegacyPosition {
-  id               Int       @id @default(autoincrement())
-  createdAt        DateTime  @default(now()) @db.Timestamp(6)
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @db.Timestamp(6)
 
   // On-chain identifiers
-  chainId          Int
-  marketAddress    String    @db.VarChar
-  predictor        String    @db.VarChar
-  counterparty     String    @db.VarChar
-  predictorNftTokenId  String    @db.VarChar
-  counterpartyNftTokenId  String    @db.VarChar
-  totalCollateral  String    @db.VarChar
-  predictorCollateral  String?   @db.VarChar
-  counterpartyCollateral  String?   @db.VarChar
-  refCode          String?   @db.VarChar
+  chainId                Int
+  marketAddress          String  @db.VarChar
+  predictor              String  @db.VarChar
+  counterparty           String  @db.VarChar
+  predictorNftTokenId    String  @db.VarChar
+  counterpartyNftTokenId String  @db.VarChar
+  totalCollateral        String  @db.VarChar
+  predictorCollateral    String? @db.VarChar
+  counterpartyCollateral String? @db.VarChar
+  refCode                String? @db.VarChar
 
   // Status
-  status           LegacyPositionStatus @default(active)
+  status       LegacyPositionStatus @default(active)
   /// True when the predictor's submitted outcomes were correct (previously makerWon)
-  predictorWon     Boolean?
-  mintedAt         Int
-  settledAt        Int?
+  predictorWon Boolean?
+  mintedAt     Int
+  settledAt    Int?
 
   // Derived for UI convenience
-  endsAt           Int?
+  endsAt Int?
 
   // Normalized predictions
-  predictions   LegacyPrediction[]
+  predictions LegacyPrediction[]
 
   @@index([predictor], map: "IDX_position_predictor")
   @@index([counterparty], map: "IDX_position_counterparty")
@@ -358,41 +358,40 @@ enum LegacyPositionStatus {
   @@map("PositionStatus")
 }
 
-
 model LimitOrder {
-  id                Int       @id @default(autoincrement())
-  createdAt         DateTime  @default(now()) @db.Timestamp(6)
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @db.Timestamp(6)
 
   // On-chain identifiers
-  chainId           Int
-  marketAddress     String    @db.VarChar
-  orderId           String    @db.VarChar
-  predictor         String    @db.VarChar
-  resolver          String    @db.VarChar
-  
+  chainId       Int
+  marketAddress String @db.VarChar
+  orderId       String @db.VarChar
+  predictor     String @db.VarChar
+  resolver      String @db.VarChar
+
   // Order details
-  predictorCollateral   String    @db.VarChar
-  counterpartyCollateral   String    @db.VarChar
-  refCode           String?   @db.VarChar
-  
+  predictorCollateral    String  @db.VarChar
+  counterpartyCollateral String  @db.VarChar
+  refCode                String? @db.VarChar
+
   // Status and lifecycle
-  status            LimitOrderStatus @default(pending)
-  
+  status LimitOrderStatus @default(pending)
+
   // Timestamps
-  placedAt          Int
-  filledAt          Int?
-  cancelledAt       Int?
-  
+  placedAt    Int
+  filledAt    Int?
+  cancelledAt Int?
+
   // Set when order is filled
-  counterparty             String?   @db.VarChar
-  
+  counterparty String? @db.VarChar
+
   // Transaction hashes for traceability
-  placedTxHash      String    @db.VarChar
-  filledTxHash      String?   @db.VarChar
-  cancelledTxHash   String?   @db.VarChar
-  
+  placedTxHash    String  @db.VarChar
+  filledTxHash    String? @db.VarChar
+  cancelledTxHash String? @db.VarChar
+
   // Normalized predictions
-  predictions    LegacyPrediction[]
+  predictions LegacyPrediction[]
 
   @@unique([chainId, marketAddress, orderId], map: "UQ_limit_order_chain_market_id")
   @@index([predictor], map: "IDX_limit_order_predictor")
@@ -410,45 +409,44 @@ enum LimitOrderStatus {
 /// Application-level user record, keyed by wallet address,
 /// used for referrals and other per-wallet metadata.
 model User {
-  id           Int      @id @default(autoincrement())
-  createdAt    DateTime @default(now()) @db.Timestamp(6)
-  updatedAt    DateTime @updatedAt @db.Timestamp(6)
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
 
   /// Canonical Ethereum wallet address for this user.
-  address      String   @unique(map: "UQ_user_address") @db.VarChar
+  address String @unique(map: "UQ_user_address") @db.VarChar
 
   /// keccak256(utf8(trimmed_lowercase_code)) stored as 0x-prefixed hex.
-  refCodeHash  String?  @unique(map: "UQ_user_ref_code_hash") @db.VarChar
+  refCodeHash String? @unique(map: "UQ_user_ref_code_hash") @db.VarChar
 
   /// Maximum number of referrals this user's code allows. Default is 0,
   /// so codes are not usable until explicitly configured.
-  maxReferrals Int      @default(0)
+  maxReferrals Int @default(0)
 
   referredById Int?
-  referredBy   User?   @relation("UserReferrals", fields: [referredById], references: [id])
-  referrals    User[]  @relation("UserReferrals")
+  referredBy   User?  @relation("UserReferrals", fields: [referredById], references: [id])
+  referrals    User[] @relation("UserReferrals")
 
-  referredByCodeId  Int?
-  referredByCode    ReferralCode? @relation("AdminCodeClaims", fields: [referredByCodeId], references: [id])
+  referredByCodeId Int?
+  referredByCode   ReferralCode? @relation("AdminCodeClaims", fields: [referredByCodeId], references: [id])
 
   @@index([address], map: "IDX_user_address")
   @@map("app_user")
 }
 
-
 model ReferralCode {
-  id           Int       @id @default(autoincrement())
-  createdAt    DateTime  @default(now()) @db.Timestamp(6)
-  updatedAt    DateTime  @updatedAt @db.Timestamp(6)
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
 
+  codeHash    String  @unique(map: "UQ_referral_code_hash") @db.VarChar
+  maxClaims   Int
+  isActive    Boolean @default(true)
+  expiresAt   Int?
+  createdBy   String  @db.VarChar
+  creatorType String  @default("user") @db.VarChar(10)
+  claimedBy   User[]  @relation("AdminCodeClaims")
 
-  codeHash     String    @unique(map: "UQ_referral_code_hash") @db.VarChar
-  maxClaims    Int
-  isActive     Boolean   @default(true)
-  expiresAt    Int?
-  createdBy    String    @db.VarChar
-  creatorType  String    @default("user") @db.VarChar(10)
-  claimedBy    User[]    @relation("AdminCodeClaims")
   @@index([codeHash], map: "IDX_referral_code_hash")
   @@index([isActive], map: "IDX_referral_code_active")
   @@index([createdBy], map: "IDX_referral_code_created_by")
@@ -457,35 +455,35 @@ model ReferralCode {
 
 /// Daily snapshot of protocol stats from Vault and PredictionMarket contracts
 model ProtocolStatsSnapshot {
-  id            Int      @id @default(autoincrement())
-  createdAt     DateTime @default(now()) @db.Timestamp(6)
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @db.Timestamp(6)
 
   /// Unix timestamp of the snapshot (UTC midnight, seconds since epoch)
-  timestamp     Int
-  chainId       Int      @default(5064014)
-  vaultAddress  String   @default("") @db.VarChar
+  timestamp    Int
+  chainId      Int    @default(5064014)
+  vaultAddress String @default("") @db.VarChar
 
   /// Vault balance: wUSDe.balanceOf(vault) only, excludes deployed funds (in wei)
-  vaultBalance  String   @db.VarChar
+  vaultBalance String @db.VarChar
 
   /// Vault available assets: vault.availableAssets() - excludes pending deposits (in wei)
   vaultAvailableAssets String @default("0") @db.VarChar
 
   /// Vault deployed: vault.totalDeployed() - funds deployed to escrow (in wei)
-  vaultDeployed String   @default("0") @db.VarChar
+  vaultDeployed String @default("0") @db.VarChar
 
   /// Escrow balance: wUSDe.balanceOf(predictionMarket) (in wei)
-  escrowBalance String   @db.VarChar
+  escrowBalance String @db.VarChar
 
   /// Vault PnL metrics
-  vaultRealizedPnL      String   @default("0") @db.VarChar  // Total realized PnL from predictions
-  vaultAirdropGains     String   @default("0") @db.VarChar  // Unexpected balance increases
-  vaultDeposits         String   @default("0") @db.VarChar  // Total user deposits
-  vaultWithdrawals      String   @default("0") @db.VarChar  // Total user withdrawals
-  vaultPositionsWon     Int      @default(0)
-  vaultPositionsLost    Int      @default(0)
-  vaultCollateralWon    String   @default("0") @db.VarChar
-  vaultCollateralLost   String   @default("0") @db.VarChar
+  vaultRealizedPnL    String @default("0") @db.VarChar // Total realized PnL from predictions
+  vaultAirdropGains   String @default("0") @db.VarChar // Unexpected balance increases
+  vaultDeposits       String @default("0") @db.VarChar // Total user deposits
+  vaultWithdrawals    String @default("0") @db.VarChar // Total user withdrawals
+  vaultPositionsWon   Int    @default(0)
+  vaultPositionsLost  Int    @default(0)
+  vaultCollateralWon  String @default("0") @db.VarChar
+  vaultCollateralLost String @default("0") @db.VarChar
 
   @@unique([chainId, vaultAddress, timestamp], map: "UQ_protocol_stats_snapshot_chain_vault_timestamp")
   @@index([timestamp], map: "IDX_protocol_stats_snapshot_timestamp")
@@ -502,10 +500,10 @@ model VaultFlowEvent {
   transactionHash String   @db.VarChar
   timestamp       Int
   logIndex        Int
-  eventType       String   @db.VarChar  // 'deposit' or 'withdrawal'
+  eventType       String   @db.VarChar // 'deposit' or 'withdrawal'
   user            String   @db.VarChar
-  assets          String   @db.VarChar  // Amount in wei
-  shares          String   @db.VarChar  // Shares minted/burned
+  assets          String   @db.VarChar // Amount in wei
+  shares          String   @db.VarChar // Shares minted/burned
 
   @@unique([chainId, transactionHash, logIndex])
   @@index([chainId, timestamp])
@@ -541,38 +539,38 @@ model IndexerState {
 
 /// A prediction (position) created on-chain via PredictionMarketEscrow
 model Prediction {
-  id                     Int       @id @default(autoincrement())
-  createdAt              DateTime  @default(now()) @db.Timestamp(6)
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @db.Timestamp(6)
 
-  predictionId           String    @unique @db.VarChar
+  predictionId           String  @unique @db.VarChar
   chainId                Int
-  marketAddress          String    @db.VarChar
-  predictor              String    @db.VarChar
-  counterparty           String    @db.VarChar
-  predictorCollateral    String    @db.VarChar
-  counterpartyCollateral String    @db.VarChar
+  marketAddress          String  @db.VarChar
+  predictor              String  @db.VarChar
+  counterparty           String  @db.VarChar
+  predictorCollateral    String  @db.VarChar
+  counterpartyCollateral String  @db.VarChar
   onChainCreatedAt       Int
-  createTxHash           String    @db.VarChar
-  refCode                String?   @db.VarChar
+  createTxHash           String  @db.VarChar
+  refCode                String? @db.VarChar
 
   // Pick configuration FK (nullable for rare RPC-error cases)
-  pickConfigId           String?   @db.VarChar
-  pickConfiguration      Picks?    @relation(fields: [pickConfigId], references: [id])
+  pickConfigId      String? @db.VarChar
+  pickConfiguration Picks?  @relation(fields: [pickConfigId], references: [id])
 
   // Settlement
-  settled                Boolean   @default(false)
-  settledAt              Int?
-  settleTxHash           String?   @db.VarChar
-  result                 SettlementResult @default(UNRESOLVED)
-  predictorClaimable     String?   @db.VarChar
-  counterpartyClaimable  String?   @db.VarChar
+  settled               Boolean          @default(false)
+  settledAt             Int?
+  settleTxHash          String?          @db.VarChar
+  result                SettlementResult @default(UNRESOLVED)
+  predictorClaimable    String?          @db.VarChar
+  counterpartyClaimable String?          @db.VarChar
 
   // Collateral deposit tracking
-  collateralDeposited    String?   @db.VarChar
-  collateralDepositedAt  Int?
+  collateralDeposited   String? @db.VarChar
+  collateralDepositedAt Int?
 
   // Legacy contract flag
-  isLegacy               Boolean   @default(false)
+  isLegacy Boolean @default(false)
 
   @@index([chainId, marketAddress], map: "IDX_prediction_chain_market")
   @@index([predictor], map: "IDX_prediction_predictor")
@@ -586,29 +584,29 @@ model Prediction {
 // TODO: Rename Prisma model Picks → PickConfiguration (requires migration with @@map)
 /// A pick configuration (group of picks that define a combined position)
 model Picks {
-  id                           String    @id @db.VarChar
-  createdAt                    DateTime  @default(now()) @db.Timestamp(6)
+  id        String   @id @db.VarChar
+  createdAt DateTime @default(now()) @db.Timestamp(6)
 
-  chainId                      Int
-  marketAddress                String    @db.VarChar
-  totalPredictorCollateral     String    @default("0") @db.VarChar
-  totalCounterpartyCollateral  String    @default("0") @db.VarChar
-  claimedPredictorCollateral   String    @default("0") @db.VarChar
-  claimedCounterpartyCollateral String   @default("0") @db.VarChar
-  resolved                     Boolean   @default(false)
-  result                       SettlementResult @default(UNRESOLVED)
-  resolvedAt                   Int?
-  predictorToken               String?   @db.VarChar
-  counterpartyToken            String?   @db.VarChar
-  endsAt                       Int?
-  fullyRedeemed                Boolean   @default(false)
+  chainId                       Int
+  marketAddress                 String           @db.VarChar
+  totalPredictorCollateral      String           @default("0") @db.VarChar
+  totalCounterpartyCollateral   String           @default("0") @db.VarChar
+  claimedPredictorCollateral    String           @default("0") @db.VarChar
+  claimedCounterpartyCollateral String           @default("0") @db.VarChar
+  resolved                      Boolean          @default(false)
+  result                        SettlementResult @default(UNRESOLVED)
+  resolvedAt                    Int?
+  predictorToken                String?          @db.VarChar
+  counterpartyToken             String?          @db.VarChar
+  endsAt                        Int?
+  fullyRedeemed                 Boolean          @default(false)
 
   // Legacy contract flag
-  isLegacy                     Boolean   @default(false)
+  isLegacy Boolean @default(false)
 
-  picks                        Pick[]
-  positionBalances             Position[]
-  predictions                  Prediction[]
+  picks            Pick[]
+  positionBalances Position[]
+  predictions      Prediction[]
 
   @@index([chainId, marketAddress], map: "IDX_pick_config_chain_market")
   @@index([resolved], map: "IDX_pick_config_resolved")
@@ -617,15 +615,15 @@ model Picks {
 
 /// Individual pick within a pick configuration
 model Pick {
-  id                  Int      @id @default(autoincrement())
-  createdAt           DateTime @default(now()) @db.Timestamp(6)
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @db.Timestamp(6)
 
-  pickConfigId        String   @db.VarChar
-  pickConfiguration   Picks    @relation(fields: [pickConfigId], references: [id], onDelete: Cascade)
+  pickConfigId      String @db.VarChar
+  pickConfiguration Picks  @relation(fields: [pickConfigId], references: [id], onDelete: Cascade)
 
-  conditionResolver   String   @db.VarChar
-  conditionId         String   @db.VarChar
-  predictedOutcome    Int
+  conditionResolver String @db.VarChar
+  conditionId       String @db.VarChar
+  predictedOutcome  Int
 
   @@index([pickConfigId], map: "IDX_pick_config_id")
   @@index([conditionId], map: "IDX_pick_condition_id")
@@ -633,17 +631,17 @@ model Pick {
 
 /// Token balance tracking for positions
 model Position {
-  id               Int      @id @default(autoincrement())
-  createdAt        DateTime @default(now()) @db.Timestamp(6)
-  updatedAt        DateTime @updatedAt @db.Timestamp(6)
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @updatedAt @db.Timestamp(6)
 
-  chainId          Int
-  tokenAddress     String   @db.VarChar
-  pickConfigId     String   @db.VarChar
+  chainId           Int
+  tokenAddress      String  @db.VarChar
+  pickConfigId      String  @db.VarChar
   pickConfiguration Picks   @relation(fields: [pickConfigId], references: [id], onDelete: Cascade)
-  isPredictorToken Boolean
-  holder           String   @db.VarChar
-  balance          String   @db.VarChar
+  isPredictorToken  Boolean
+  holder            String  @db.VarChar
+  balance           String  @db.VarChar
 
   @@unique([chainId, tokenAddress, holder], map: "UQ_position_balance")
   @@index([holder], map: "IDX_position_balance_holder")
@@ -653,19 +651,19 @@ model Position {
 
 /// Record of token claims (early exit via redeem)
 model Claim {
-  id              Int      @id @default(autoincrement())
-  createdAt       DateTime @default(now()) @db.Timestamp(6)
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @db.Timestamp(6)
 
-  chainId         Int
-  marketAddress   String   @db.VarChar
-  predictionId    String   @db.VarChar
-  holder          String   @db.VarChar
-  positionToken   String   @db.VarChar
-  tokensBurned    String   @db.VarChar
-  collateralPaid  String   @db.VarChar
-  redeemedAt      Int
-  txHash          String   @db.VarChar
-  refCode         String?  @db.VarChar
+  chainId        Int
+  marketAddress  String  @db.VarChar
+  predictionId   String  @db.VarChar
+  holder         String  @db.VarChar
+  positionToken  String  @db.VarChar
+  tokensBurned   String  @db.VarChar
+  collateralPaid String  @db.VarChar
+  redeemedAt     Int
+  txHash         String  @db.VarChar
+  refCode        String? @db.VarChar
 
   @@index([chainId, marketAddress], map: "IDX_claim_chain_market")
   @@index([holder], map: "IDX_claim_holder")
@@ -675,21 +673,21 @@ model Claim {
 
 /// Record of position closes (settled exits)
 model Close {
-  id                       Int      @id @default(autoincrement())
-  createdAt                DateTime @default(now()) @db.Timestamp(6)
+  id        Int      @id @default(autoincrement())
+  createdAt DateTime @default(now()) @db.Timestamp(6)
 
   chainId                  Int
-  marketAddress            String   @db.VarChar
-  pickConfigId             String   @db.VarChar
-  predictorHolder          String   @db.VarChar
-  counterpartyHolder       String   @db.VarChar
-  predictorTokensBurned    String   @db.VarChar
-  counterpartyTokensBurned String   @db.VarChar
-  predictorPayout          String   @db.VarChar
-  counterpartyPayout       String   @db.VarChar
+  marketAddress            String  @db.VarChar
+  pickConfigId             String  @db.VarChar
+  predictorHolder          String  @db.VarChar
+  counterpartyHolder       String  @db.VarChar
+  predictorTokensBurned    String  @db.VarChar
+  counterpartyTokensBurned String  @db.VarChar
+  predictorPayout          String  @db.VarChar
+  counterpartyPayout       String  @db.VarChar
   burnedAt                 Int
-  txHash                   String   @db.VarChar
-  refCode                  String?  @db.VarChar
+  txHash                   String  @db.VarChar
+  refCode                  String? @db.VarChar
 
   @@index([chainId, marketAddress], map: "IDX_close_chain_market")
   @@index([pickConfigId], map: "IDX_close_pick_config")
@@ -710,19 +708,19 @@ model SecondaryIndexerState {
 
 /// A secondary market trade executed on-chain via SecondaryMarketEscrow
 model SecondaryTrade {
-  id          Int       @id @default(autoincrement())
-  createdAt   DateTime  @default(now()) @db.Timestamp(6)
+  id          Int      @id @default(autoincrement())
+  createdAt   DateTime @default(now()) @db.Timestamp(6)
   chainId     Int
-  tradeHash   String    @unique @db.VarChar
-  seller      String    @db.VarChar
-  buyer       String    @db.VarChar
-  token       String    @db.VarChar
-  collateral  String    @db.VarChar
-  tokenAmount String    @db.VarChar
-  price       String    @db.VarChar
-  refCode     String?   @db.VarChar
+  tradeHash   String   @unique @db.VarChar
+  seller      String   @db.VarChar
+  buyer       String   @db.VarChar
+  token       String   @db.VarChar
+  collateral  String   @db.VarChar
+  tokenAmount String   @db.VarChar
+  price       String   @db.VarChar
+  refCode     String?  @db.VarChar
   executedAt  Int
-  txHash      String    @db.VarChar
+  txHash      String   @db.VarChar
   blockNumber Int
 
   @@index([chainId], map: "IDX_secondary_trade_chain")
@@ -731,6 +729,164 @@ model SecondaryTrade {
   @@index([token], map: "IDX_secondary_trade_token")
   @@index([executedAt], map: "IDX_secondary_trade_executed_at")
   @@map("secondary_trade")
+}
+
+// ───────────────────────────────────────────────
+// Committed Intent Models (PRD-001)
+// ───────────────────────────────────────────────
+
+enum CommitmentStatus {
+  OPEN
+  EXECUTED
+  EXPIRED
+  SLASH_ONLY_STAY_ALIVE
+
+  @@map("V2CommitmentStatus")
+}
+
+/// A commitment created on-chain via CommittedIntentExecutor.commit(...).
+/// Keyed by the EIP-712 commitmentHash (0x-prefixed hex).
+model Commitment {
+  id        String   @id @db.VarChar // = commitmentHash
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+
+  chainId            Int
+  predictor          String @db.VarChar
+  pickConfigId       String @db.VarChar
+  amountIn           String @db.VarChar
+  minFillIn          String @db.VarChar
+  minAmountOut       String @db.VarChar
+  executorTip        String @db.VarChar
+  predictorWindowEnd Int // unix seconds
+  deadline           Int // unix seconds
+  nonce              String @db.VarChar
+  sponsorUse         String @db.VarChar
+  walletUse          String @db.VarChar
+
+  createdBlock  Int
+  createdTxHash String @db.VarChar
+
+  status          CommitmentStatus @default(OPEN)
+  /// filledIn from the settling Executed event (cumulative sum across slices)
+  filledIn        String?          @db.VarChar
+  /// filledOut from the settling Executed event
+  filledOut       String?          @db.VarChar
+  refundedIn      String?          @db.VarChar
+  tipPaid         String?          @db.VarChar
+  walletRefunded  String?          @db.VarChar
+  sponsorReleased String?          @db.VarChar
+  settledAt       Int? // unix seconds
+  settledTxHash   String?          @db.VarChar
+
+  slices  CommitmentSlice[]
+  slashes CommitmentSlash[]
+
+  @@index([chainId], map: "IDX_commitment_chain")
+  @@index([predictor], map: "IDX_commitment_predictor")
+  @@index([pickConfigId], map: "IDX_commitment_pick_config")
+  @@index([status], map: "IDX_commitment_status")
+  @@index([createdBlock], map: "IDX_commitment_created_block")
+  @@map("commitment")
+}
+
+/// A slice of a commitment that was filled via a counterparty quote.
+model CommitmentSlice {
+  id        BigInt   @id @default(autoincrement())
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+
+  chainId        Int
+  commitmentHash String     @db.VarChar
+  commitment     Commitment @relation(fields: [commitmentHash], references: [id], onDelete: Cascade)
+  sliceIndex     Int
+  quoteHash      String     @db.VarChar
+  counterparty   String     @db.VarChar
+  sliceIn        String     @db.VarChar
+  sliceOut       String     @db.VarChar
+  sliceBonus     String     @db.VarChar
+  predictionId   String     @db.VarChar
+
+  txHash      String   @db.VarChar
+  logIndex    Int
+  blockNumber Int
+  indexedAt   DateTime @default(now()) @db.Timestamp(6)
+
+  @@unique([txHash, logIndex], map: "UQ_commitment_slice_tx_log")
+  @@index([commitmentHash, sliceIndex], map: "IDX_commitment_slice_hash_idx")
+  @@index([counterparty], map: "IDX_commitment_slice_counterparty")
+  @@index([predictionId], map: "IDX_commitment_slice_prediction")
+  @@map("commitment_slice")
+}
+
+/// A counterparty slash event emitted during execute(...).
+model CommitmentSlash {
+  id        BigInt   @id @default(autoincrement())
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+
+  chainId          Int
+  commitmentHash   String     @db.VarChar
+  commitment       Commitment @relation(fields: [commitmentHash], references: [id], onDelete: Cascade)
+  counterparty     String     @db.VarChar
+  vaultDrained     String     @db.VarChar
+  makeWhole        String     @db.VarChar
+  poolContribution String     @db.VarChar
+  poolReceived     String     @db.VarChar
+
+  txHash      String   @db.VarChar
+  logIndex    Int
+  blockNumber Int
+  indexedAt   DateTime @default(now()) @db.Timestamp(6)
+
+  @@unique([txHash, logIndex], map: "UQ_commitment_slash_tx_log")
+  @@index([commitmentHash], map: "IDX_commitment_slash_hash")
+  @@index([counterparty], map: "IDX_commitment_slash_counterparty")
+  @@map("commitment_slash")
+}
+
+/// Deposits / withdrawals / slashes on the CounterpartyVault, per counterparty.
+model CounterpartyVaultEvent {
+  id        BigInt   @id @default(autoincrement())
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+
+  chainId      Int
+  counterparty String @db.VarChar
+  /// "deposit" | "withdraw" | "slash"
+  eventType    String @db.VarChar
+  amount       String @db.VarChar
+
+  txHash      String   @db.VarChar
+  logIndex    Int
+  blockNumber Int
+  indexedAt   DateTime @default(now()) @db.Timestamp(6)
+
+  @@unique([txHash, logIndex], map: "UQ_cp_vault_event_tx_log")
+  @@index([counterparty], map: "IDX_cp_vault_event_counterparty")
+  @@index([chainId, counterparty], map: "IDX_cp_vault_event_chain_cp")
+  @@index([eventType], map: "IDX_cp_vault_event_type")
+  @@map("counterparty_vault_event")
+}
+
+/// Insurance pool funding / draw events emitted from CommittedIntentExecutor.
+model InsurancePoolEvent {
+  id        BigInt   @id @default(autoincrement())
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+
+  chainId          Int
+  /// "funded" | "drawn"
+  eventType        String  @db.VarChar
+  fromCounterparty String? @db.VarChar
+  commitmentHash   String? @db.VarChar
+  amount           String  @db.VarChar
+
+  txHash      String   @db.VarChar
+  logIndex    Int
+  blockNumber Int
+  indexedAt   DateTime @default(now()) @db.Timestamp(6)
+
+  @@unique([txHash, logIndex], map: "UQ_insurance_pool_event_tx_log")
+  @@index([chainId], map: "IDX_insurance_pool_event_chain")
+  @@index([eventType], map: "IDX_insurance_pool_event_type")
+  @@index([commitmentHash], map: "IDX_insurance_pool_event_commitment")
+  @@map("insurance_pool_event")
 }
 
 /// Indexed wUSDe (collateral token) Transfer events on Ethereal for historical balance queries
@@ -744,7 +900,7 @@ model CollateralTransfer {
   logIndex        Int
   from            String   @db.VarChar
   to              String   @db.VarChar
-  value           String   @db.VarChar  // Amount in wei
+  value           String   @db.VarChar // Amount in wei
 
   @@unique([chainId, transactionHash, logIndex])
   @@index([chainId, from], map: "IDX_collateral_transfer_from")

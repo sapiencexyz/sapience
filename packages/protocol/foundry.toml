@@ -2,7 +2,7 @@
 src = "src"
 out = "out"
 libs = ["lib"]
-fs_permissions = [{ access = "read", path = "./"}]
+fs_permissions = [{ access = "read", path = "./"}, { access = "write", path = "../sdk/__fixtures__" }]
 no_match_test = "Skip"
 optimizer = true
 solc_version = "0.8.30"

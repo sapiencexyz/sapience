@@ -1,0 +1,252 @@
+---
+title: 'SDK Integration'
+description: 'Build on top of the committed-intent flow using the Sapience SDK.'
+---
+
+# SDK Integration
+
+This guide covers how to integrate with the commit order system programmatically. It is aimed at developers building trading bots, frontends, or other tools on top of Sapience.
+
+## SDK Module Overview
+
+The committed-intent SDK surface lives in four modules:
+
+| Module   | Path                                  | Purpose                                                           |
+| -------- | ------------------------------------- | ----------------------------------------------------------------- |
+| Types    | `sdk/types/committedIntent`           | `Commitment`, `Quote`, JSON transport types, signed wrappers      |
+| Encoding | `sdk/auction/committedIntentEncoding` | Hash computation, domain builder, `pickConfigId` canonicalization |
+| Signing  | `sdk/auction/committedIntentSigning`  | EIP-712 typed data builders, sign/verify helpers                  |
+| Messages | `sdk/relayer/committedIntentMessages` | WebSocket message types for client and server                     |
+
+## Building a Commitment
+
+### 1. Construct the commitment object
+
+```ts
+import type { Commitment } from '@sapience/sdk/types/committedIntent';
+import { parseEther } from 'viem';
+
+const commitment: Commitment = {
+  predictor: '0xYourAddress',
+  predictorWindowEnd: BigInt(Math.floor(Date.now() / 1000) + 30), // 30s T1
+  deadline: BigInt(Math.floor(Date.now() / 1000) + 120), // 2min total
+  pickConfigId: computedPickConfigId, // from canonicalizePickConfigId(picks)
+  amountIn: parseEther('100'),
+  minFillIn: parseEther('60'),
+  minAmountOut: parseEther('150'),
+  executorTip: parseEther('1'),
+  nonce: 42n,
+};
+```
+
+### 2. Build EIP-712 typed data and sign
+
+```ts
+import { buildCommitmentTypedData } from '@sapience/sdk/auction/committedIntentSigning';
+
+const typedData = buildCommitmentTypedData(
+  commitment,
+  EXECUTOR_ADDRESS,
+  chainId
+);
+
+const signature = await walletClient.signTypedData(typedData);
+```
+
+### 3. Submit to the relayer
+
+```ts
+ws.send(
+  JSON.stringify({
+    type: 'commitment.submit',
+    payload: {
+      commitment: {
+        predictor: commitment.predictor,
+        predictorWindowEnd: commitment.predictorWindowEnd.toString(),
+        deadline: commitment.deadline.toString(),
+        pickConfigId: commitment.pickConfigId,
+        amountIn: commitment.amountIn.toString(),
+        minFillIn: commitment.minFillIn.toString(),
+        minAmountOut: commitment.minAmountOut.toString(),
+        executorTip: commitment.executorTip.toString(),
+        nonce: commitment.nonce.toString(),
+      },
+      signature,
+      chainId,
+      executorContract: EXECUTOR_ADDRESS,
+    },
+  })
+);
+```
+
+### 4. Call commit on-chain
+
+After submitting to the relayer, call `commit` on the executor contract to escrow funds:
+
+```ts
+import { encodeFunctionData } from 'viem';
+
+// Approve WUSDe for amountIn + executorTip
+await wusde.write.approve([
+  EXECUTOR_ADDRESS,
+  commitment.amountIn + commitment.executorTip,
+]);
+
+// Call commit to pull funds into pre-mint escrow
+await walletClient.writeContract({
+  address: EXECUTOR_ADDRESS,
+  abi: committedIntentExecutorAbi,
+  functionName: 'commit',
+  args: [commitment, signature],
+});
+```
+
+## Building a Quote
+
+```ts
+import type { Quote } from '@sapience/sdk/types/committedIntent';
+import { computeCommitmentHash } from '@sapience/sdk/auction/committedIntentEncoding';
+import { buildQuoteTypedData } from '@sapience/sdk/auction/committedIntentSigning';
+
+const commitHash = computeCommitmentHash(commitment, EXECUTOR_ADDRESS, chainId);
+
+const quote: Quote = {
+  counterparty: '0xCounterpartyAddress',
+  deadline: BigInt(Math.floor(Date.now() / 1000) + 60),
+  commitmentHash: commitHash,
+  maxIn: parseEther('100'),
+  amountOut: parseEther('200'),
+  nonce: 7n,
+};
+
+const quoteTypedData = buildQuoteTypedData(quote, EXECUTOR_ADDRESS, chainId);
+const quoteSig = await walletClient.signTypedData(quoteTypedData);
+```
+
+## Encoding Execute Calldata
+
+To execute a commitment against a set of quotes (during T1 as the predictor, or during T2 as any executor):
+
+```ts
+await walletClient.writeContract({
+  address: EXECUTOR_ADDRESS,
+  abi: committedIntentExecutorAbi,
+  functionName: 'execute',
+  args: [
+    commitment, // Commitment struct
+    predictorSig, // predictor's EIP-712 signature
+    picks, // Pick[] -- canonical picks matching pickConfigId
+    quotes, // Quote[] -- sorted best-price-first
+    counterpartySigs, // bytes[] -- one signature per quote
+    tipRecipient, // address -- who receives the tip (use zero for msg.sender)
+  ],
+});
+```
+
+Quotes must be sorted by descending implicit price (`amountOut / maxIn`). The contract verifies monotonicity using a cross-multiply check and will revert with `CI_NonMonotonicQuotes` if the ordering is wrong.
+
+## WebSocket Protocol
+
+Connect to the relayer WebSocket to interact with the commitment system in real time.
+
+### Endpoint
+
+```
+wss://relayer.sapience.xyz/auction
+```
+
+Messages share the same WebSocket connection as the legacy auction flow, distinguished by the `type` prefix.
+
+### Client Messages (Inbound)
+
+| Type                     | Purpose                                        |
+| ------------------------ | ---------------------------------------------- |
+| `commitment.submit`      | Submit a new signed commitment                 |
+| `commitment.subscribe`   | Subscribe to updates for a specific commitment |
+| `commitment.unsubscribe` | Unsubscribe from a commitment                  |
+| `quote.submit`           | Submit a signed quote against a commitment     |
+| `quote.cancel`           | Bulk-cancel quotes by minimum nonce            |
+
+### Server Messages (Outbound)
+
+| Type                  | Purpose                                                |
+| --------------------- | ------------------------------------------------------ |
+| `commitment.created`  | Broadcast when a new commitment is accepted            |
+| `commitment.quote`    | A new quote has arrived for a commitment               |
+| `commitment.executed` | A commitment has been executed (includes fill details) |
+| `commitment.expired`  | A commitment expired with no execution                 |
+| `commitment.slashed`  | A counterparty was slashed during execution            |
+| `commitment.ack`      | Acknowledgment of a `commitment.submit`                |
+| `quote.ack`           | Acknowledgment of a `quote.submit`                     |
+
+### Example: Listening for Quotes
+
+```ts
+const ws = new WebSocket('wss://relayer.sapience.xyz/auction');
+
+ws.on('open', () => {
+  ws.send(
+    JSON.stringify({
+      type: 'commitment.subscribe',
+      payload: { commitmentHash: '0x...' },
+    })
+  );
+});
+
+ws.on('message', (data) => {
+  const msg = JSON.parse(String(data));
+
+  if (msg.type === 'commitment.quote') {
+    const { quote, signature, receivedAt } = msg.payload;
+    console.log(
+      `Quote from ${quote.counterparty}: ${quote.amountOut} for ${quote.maxIn}`
+    );
+  }
+
+  if (msg.type === 'commitment.executed') {
+    const { filledIn, filledOut, refundedIn, tipPaid } = msg.payload;
+    console.log(`Executed: filled ${filledIn}, received ${filledOut}`);
+  }
+});
+```
+
+### Public Mirror
+
+The relayer mirrors `commitment.created`, `commitment.quote`, `commitment.executed`, `commitment.expired`, and `commitment.slashed` messages to a public feed. This enables third-party executors to participate in T2 without depending on a direct relayer connection.
+
+Messages **not** mirrored: `commitment.ack`, `quote.ack`, and internal state from `quote.cancel`.
+
+## Contract Addresses and EIP-712 Domain
+
+See the [Contracts and Addresses](/builder-guide/reference/contracts-and-addresses) reference for deployment addresses. Key contracts: `CommittedIntentExecutor`, `PreMintEscrow`, `CounterpartyVault`, `InsurancePool`, and `OnboardingSponsorV2`.
+
+All committed-intent signatures use a dedicated EIP-712 domain (separate from the legacy escrow domain):
+
+```ts
+{
+  name: 'SapienceCommittedIntent',
+  version: '1',
+  chainId: chainId,
+  verifyingContract: EXECUTOR_ADDRESS, // CommittedIntentExecutor
+}
+```
+
+## Feature Flag
+
+The committed-intent flow is gated by a feature flag during rollout. To check if it is enabled:
+
+- **Frontend (app):** Check the `NEXT_PUBLIC_COMMITTED_INTENT_ENABLED` environment variable.
+- **Relayer:** The `COMMITTED_INTENT_ENABLED` env var controls whether `commitment.*` and `quote.*` messages are accepted.
+- **Vault-bot:** The `VAULT_BOT_MODE` env var (`auction`, `commitment`, or `both`) determines which flow the bot participates in.
+
+During the parallel rollout, both flows are available. The SDK exports both modules (`auction/escrowSigning` for legacy, `auction/committedIntentSigning` for commit orders).
+
+## Session Keys
+
+Smart-account users (ZeroDev Kernel) authenticate via session keys. The scope for committed-intent includes:
+
+- `wUSDe.approve(CommittedIntentExecutor, *)` -- for escrow funding
+- `CommittedIntentExecutor.commit(c, sig)` -- to lock funds
+- `CommittedIntentExecutor.execute(...)` -- for T1 self-execution
+
+The first time a user creates a commit order, the app prompts for a one-time session approval covering these permissions. Existing RFQ sessions remain valid for the legacy flow.

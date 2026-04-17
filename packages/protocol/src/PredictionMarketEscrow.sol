@@ -36,6 +36,20 @@ contract PredictionMarketEscrow is
     /// @notice The token factory for CREATE3 deployments
     IPredictionMarketTokenFactory public immutable tokenFactory;
 
+    // ============ Trusted Mint Router (Committed-Intent, A-2) ============
+
+    /// @notice Optional router (e.g. CommittedIntentExecutor) that may call
+    ///         `mint()` with pre-validated commitment/quote signatures. When
+    ///         set, `msg.sender == trustedMintRouter` bypasses the
+    ///         MintApproval signature checks inside `mint()` — predictor and
+    ///         counterparty nonces are still consumed (replay protection
+    ///         preserved) and all other invariants run unchanged.
+    /// @dev See `prd-001-decisions.md` A-2.
+    address public trustedMintRouter;
+
+    /// @notice Emitted when the owner updates the trusted mint router.
+    event TrustedMintRouterSet(address indexed router);
+
     // ============ State: Pick Configurations ============
 
     /// @notice Mapping from pickConfigId to pick configuration data
@@ -94,6 +108,15 @@ contract PredictionMarketEscrow is
     /// @dev Only callable by owner. Set to address(0) to disable strict verification
     function setAccountFactory(address factory_) external onlyOwner {
         _setAccountFactory(factory_);
+    }
+
+    /// @notice Set the trusted mint router (CommittedIntentExecutor) that may
+    ///         call `mint()` without per-party MintApproval signatures.
+    /// @dev See `prd-001-decisions.md` A-2. Only the owner may update this.
+    /// @param router The new router address; set to address(0) to disable.
+    function setTrustedMintRouter(address router) external onlyOwner {
+        trustedMintRouter = router;
+        emit TrustedMintRouterSet(router);
     }
 
     /// @notice Sweep dust collateral from a fully-redeemed pick configuration
@@ -220,32 +243,41 @@ contract PredictionMarketEscrow is
             )
         );
 
-        // Validate predictor signature (EOA or session key)
-        if (!_validatePartySignature(
-                predictionHash,
-                request.predictor,
-                request.predictorCollateral,
-                request.predictorNonce,
-                request.predictorDeadline,
-                request.predictorSignature,
-                request.predictorSessionKeyData
-            )) {
-            revert InvalidPredictorSignature();
-        }
-        // Validate counterparty signature (EOA or session key)
-        if (!_validatePartySignature(
-                predictionHash,
-                request.counterparty,
-                request.counterpartyCollateral,
-                request.counterpartyNonce,
-                request.counterpartyDeadline,
-                request.counterpartySignature,
-                request.counterpartySessionKeyData
-            )) {
-            revert InvalidCounterpartySignature();
+        // A-2: When the caller is the trusted mint router
+        // (CommittedIntentExecutor), per-party MintApproval signatures have
+        // already been validated upstream as Commitment/Quote signatures —
+        // skip the signature checks here. Nonces are still consumed below to
+        // preserve replay protection.
+        if (msg.sender != trustedMintRouter) {
+            // Validate predictor signature (EOA or session key)
+            if (!_validatePartySignature(
+                    predictionHash,
+                    request.predictor,
+                    request.predictorCollateral,
+                    request.predictorNonce,
+                    request.predictorDeadline,
+                    request.predictorSignature,
+                    request.predictorSessionKeyData
+                )) {
+                revert InvalidPredictorSignature();
+            }
+            // Validate counterparty signature (EOA or session key)
+            if (!_validatePartySignature(
+                    predictionHash,
+                    request.counterparty,
+                    request.counterpartyCollateral,
+                    request.counterpartyNonce,
+                    request.counterpartyDeadline,
+                    request.counterpartySignature,
+                    request.counterpartySessionKeyData
+                )) {
+                revert InvalidCounterpartySignature();
+            }
         }
 
-        // Use bitmap nonces (reverts if already used)
+        // Use bitmap nonces (reverts if already used). Always enforced, even
+        // on the trustedMintRouter path — the executor must supply nonces so
+        // replay protection is not bypassed.
         _useNonce(request.predictor, request.predictorNonce);
         _useNonce(request.counterparty, request.counterpartyNonce);
 
@@ -305,25 +337,35 @@ contract PredictionMarketEscrow is
         address predictorToken,
         address counterpartyToken
     ) internal {
-        // Transfer collateral from both parties
-        if (request.predictorSponsor != address(0)) {
-            uint256 balBefore = collateralToken.balanceOf(address(this));
-            IMintSponsor(request.predictorSponsor)
-                .fundMint(address(this), request);
-            if (
-                collateralToken.balanceOf(address(this))
-                    < balBefore + request.predictorCollateral
-            ) {
-                revert SponsorUnderfunded();
+        // A-2: On the trustedMintRouter path, collateral for both parties has
+        // already been transferred to this escrow by the router (predictor
+        // side via PreMintEscrow.settle, counterparty side via
+        // CounterpartyVault.pullOut or bonus carry). Skip the transfers.
+        if (msg.sender != trustedMintRouter) {
+            // Transfer collateral from both parties
+            if (request.predictorSponsor != address(0)) {
+                uint256 balBefore = collateralToken.balanceOf(address(this));
+                IMintSponsor(request.predictorSponsor)
+                    .fundMint(address(this), request);
+                if (
+                    collateralToken.balanceOf(address(this))
+                        < balBefore + request.predictorCollateral
+                ) {
+                    revert SponsorUnderfunded();
+                }
+            } else {
+                collateralToken.safeTransferFrom(
+                    request.predictor,
+                    address(this),
+                    request.predictorCollateral
+                );
             }
-        } else {
             collateralToken.safeTransferFrom(
-                request.predictor, address(this), request.predictorCollateral
+                request.counterparty,
+                address(this),
+                request.counterpartyCollateral
             );
         }
-        collateralToken.safeTransferFrom(
-            request.counterparty, address(this), request.counterpartyCollateral
-        );
 
         uint256 totalCollateral =
             request.predictorCollateral + request.counterpartyCollateral;

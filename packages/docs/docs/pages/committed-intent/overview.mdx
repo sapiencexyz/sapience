@@ -1,0 +1,98 @@
+---
+title: 'Commit Orders'
+description: 'How commit orders work for predictors on Sapience.'
+---
+
+# Commit Orders
+
+Commit orders replace the old RFQ (Request-for-Quote) flow with a binding commitment model. Instead of sending a non-binding request and hoping for a good quote, you lock your collateral upfront and let counterparties compete to give you the best price.
+
+## Why Commit Orders?
+
+In the old RFQ system, you could walk away from any quote -- which sounds nice, but it meant counterparties had to price defensively (wider spreads) to protect themselves against being picked off. Commit orders flip this: **you** commit first, and counterparties compete knowing the order is real. The result is tighter pricing for you.
+
+## How It Works
+
+### 1. Pick Your Markets
+
+Choose one or more questions and your expected outcomes. Multiple picks combine into a single position -- you win if **all** of them resolve correctly.
+
+### 2. Set Your Collateral
+
+Decide how much you want to put in (`amountIn`). This is the total collateral backing your position in WUSDe.
+
+### 3. Configure Partial Fill (Optional)
+
+By default, your entire commitment must be filled or nothing happens. If you want to allow partial fills, set a minimum fill amount (`minFillIn`). For example, committing 100 WUSDe with a minimum fill of 60 means you accept any fill of 60 or more.
+
+You also set a `minAmountOut` -- the minimum total counterparty collateral you will accept on the filled portion. This protects you from getting a bad price.
+
+### 4. Sign and Commit
+
+You sign an EIP-712 typed message that locks in your parameters. Your collateral is pulled into a **pre-mint escrow** at this point -- the funds are committed and cannot be withdrawn until the order resolves.
+
+### 5. Watch Quotes
+
+Counterparties see your commitment and submit signed quotes. Each quote specifies how much of your collateral the counterparty is willing to match (`maxIn`) and how much they will put up on their side (`amountOut`). Better quotes mean more counterparty collateral, which means a bigger potential payout for you.
+
+Quotes stream in during the commitment window. You can see them in real time.
+
+### 6. Execute or Let It Happen
+
+You have two windows:
+
+- **T1 (your exclusive window):** Only you can execute. Pick any combination of quotes that meets your minimums. You are not forced to pick the best-priced quotes during this window -- choose whatever you prefer.
+- **T2 (open window):** Anyone can execute on your behalf. Honest executors follow a best-price-first convention, filling your order with the most competitive quotes available.
+
+If you execute during T1, no executor tip is charged. If someone else executes for you during T2, the executor tip you set at commitment time is paid to them.
+
+## Sponsor-First Funding
+
+If you have an invitation or sponsorship credit, your first commitments are covered by the sponsor. The system draws from your sponsorship balance first, then from your wallet for any shortfall. New users with active sponsorship see no extra deposit step -- the commit flow works the same way, the sponsor just covers the cost.
+
+When your sponsorship runs out, you transition to self-funded commitments from your wallet balance.
+
+## The T1 Window Explained
+
+T1 is your exclusive execution window. It starts when your commitment is created and ends at `predictorWindowEnd`. During this time, only you can call `execute`. This gives you a real "first refusal" -- you can inspect all incoming quotes and pick the ones you want.
+
+T1 can be as short as a few seconds (for fast trades) or up to half of the total commitment window (for larger orders where you want time to evaluate). The frontend sets a sensible default, but you can adjust it.
+
+After T1 ends, T2 begins and runs until `deadline`. During T2, any executor -- the relayer, a keeper, or any third party -- can execute your commitment.
+
+## Executor Tip
+
+The executor tip is a fixed fee you set at commitment time. It incentivizes third-party execution if you do not execute during T1.
+
+- **You execute in T1:** Tip is waived. You pay nothing extra.
+- **Someone else executes in T2:** The tip is paid to the executor from your escrowed funds.
+
+The tip is escrowed separately from your trading collateral (`amountIn`), so it does not affect the size of your position.
+
+## What Happens If No Quotes Arrive
+
+If no counterparty submits a valid quote before your deadline, the commitment simply expires. Your collateral is refunded:
+
+- Wallet funds stay as a credit in the pre-mint escrow, withdrawable to your wallet at any time or reusable for future commitments.
+- Sponsorship credit is released back to the sponsor pool.
+
+An `expire` transaction (callable by anyone) triggers the refund after the deadline passes. The relayer runs cleanup sweeps automatically, so you typically do not need to do anything.
+
+## What Happens on Partial Fill
+
+If quotes only cover part of your commitment but meet your `minFillIn` threshold:
+
+- The filled portion mints your position as normal.
+- The unfilled remainder is refunded (sponsorship released first, then wallet credit).
+- You receive prediction tokens proportional to the filled amount.
+
+## Quick Reference
+
+| Parameter            | What It Controls                                                     |
+| -------------------- | -------------------------------------------------------------------- |
+| `amountIn`           | Your total collateral                                                |
+| `minFillIn`          | Minimum acceptable fill (set equal to `amountIn` for all-or-nothing) |
+| `minAmountOut`       | Minimum counterparty collateral on the filled portion                |
+| `predictorWindowEnd` | End of your exclusive T1 window                                      |
+| `deadline`           | When the commitment expires if not executed                          |
+| `executorTip`        | Fee paid to third-party executors (waived on self-execute)           |

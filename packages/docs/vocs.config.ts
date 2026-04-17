@@ -66,6 +66,15 @@ export default defineConfig({
         ],
       },
       {
+        text: "Commit Orders",
+        items: [
+          { text: "Overview", link: "/committed-intent/overview" },
+          { text: "Counterparty Guide", link: "/committed-intent/counterparty-guide" },
+          { text: "SDK Integration", link: "/committed-intent/integration" },
+          { text: "Architecture", link: "/committed-intent/architecture" },
+        ],
+      },
+      {
         text: "Reference",
         items: [
           {

@@ -49,6 +49,7 @@ import {
   ConditionFieldsResolver,
   ActivityResolver,
   TagsResolver,
+  CommittedIntentResolver,
 } from './resolvers';
 
 export interface ApolloContext {
@@ -106,6 +107,7 @@ export const initializeApolloServer = async () => {
       ConditionFieldsResolver,
       ActivityResolver,
       TagsResolver,
+      CommittedIntentResolver,
     ]);
   const schema = await buildSchema({
     // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type -- type-graphql's buildSchema API requires NonEmptyArray<Function>

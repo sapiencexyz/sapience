@@ -15,7 +15,7 @@ import {
   verifySessionApproval,
   type SessionApprovalPayload,
 } from '../session/verification';
-import { computeSmartAccountAddress } from '../session/smartAccount';
+import { verifyEip712Signature } from '../session/eip712Verify';
 
 // ============================================================================
 // EIP-712 Domain & Types
@@ -689,22 +689,18 @@ export async function verifyAuctionIntentSignature(params: {
       }
     }
 
-    // Path 2: Direct EOA verification
-    const recovered = await recoverTypedDataAddress({
-      ...typedData,
-      signature: params.intentSignature,
-    });
-
-    if (recovered.toLowerCase() === predictorAddress) {
+    // Path 2+3: shared ECDSA + smart-account-derivation verifier (D-1).
+    // `verifyEip712Signature` handles both the direct EOA match and the
+    // off-chain CREATE2 smart-account derivation in one call.
+    const sharedResult = await verifyEip712Signature(
+      typedData,
+      params.intentSignature,
+      params.predictor,
+      { smartAccountDerivationEnabled: true }
+    );
+    const recovered = sharedResult.recoveredAddress as Address;
+    if (sharedResult.valid) {
       return { valid: true, recoveredAddress: recovered };
-    }
-
-    // Path 3: Smart account owner — recovered EOA owns the smart account
-    {
-      const expectedSmartAccount = computeSmartAccountAddress(recovered);
-      if (expectedSmartAccount.toLowerCase() === predictorAddress) {
-        return { valid: true, recoveredAddress: recovered };
-      }
     }
 
     // Path 4: ZeroDev session key (JSON with approval + typedData)
@@ -840,22 +836,16 @@ export async function verifyCounterpartyMintSignature(params: {
       }
     }
 
-    // Path 2: Direct EOA verification
-    const recovered = await recoverTypedDataAddress({
-      ...typedData,
-      signature: params.counterpartySignature,
-    });
-
-    if (recovered.toLowerCase() === counterpartyAddress) {
+    // Path 2+3: shared ECDSA + smart-account-derivation verifier (D-1).
+    const sharedResult = await verifyEip712Signature(
+      typedData,
+      params.counterpartySignature,
+      params.counterparty,
+      { smartAccountDerivationEnabled: true }
+    );
+    const recovered = sharedResult.recoveredAddress as Address | undefined;
+    if (sharedResult.valid) {
       return { valid: true, recoveredAddress: recovered };
-    }
-
-    // Path 3: Smart account owner — recovered EOA owns the smart account
-    {
-      const expectedSmartAccount = computeSmartAccountAddress(recovered);
-      if (expectedSmartAccount.toLowerCase() === counterpartyAddress) {
-        return { valid: true, recoveredAddress: recovered };
-      }
     }
 
     return { valid: false, recoveredAddress: recovered };

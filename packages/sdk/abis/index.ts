@@ -30,3 +30,9 @@ export const predictionMarketTokenFactoryAbi =
   PredictionMarketTokenFactory as Abi;
 export const secondaryMarketEscrowAbi = SecondaryMarketEscrow as Abi;
 export const onboardingSponsorAbi = OnboardingSponsor as Abi;
+
+// Committed-Intent ABIs (hand-rolled — see per-file headers for provenance)
+export { committedIntentExecutorAbi } from './CommittedIntentExecutor';
+export { preMintEscrowAbi } from './PreMintEscrow';
+export { counterpartyVaultAbi } from './CounterpartyVault';
+export { insurancePoolAbi } from './InsurancePool';

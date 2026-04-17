@@ -127,12 +127,37 @@
       "types": "./dist/session/index.d.ts",
       "import": "./dist/session/index.mjs",
       "require": "./dist/session/index.js"
+    },
+    "./session/eip712Verify": {
+      "types": "./dist/session/eip712Verify.d.ts",
+      "import": "./dist/session/eip712Verify.mjs",
+      "require": "./dist/session/eip712Verify.js"
+    },
+    "./auction/committedIntentEncoding": {
+      "types": "./dist/auction/committedIntentEncoding.d.ts",
+      "import": "./dist/auction/committedIntentEncoding.mjs",
+      "require": "./dist/auction/committedIntentEncoding.js"
+    },
+    "./auction/committedIntentSigning": {
+      "types": "./dist/auction/committedIntentSigning.d.ts",
+      "import": "./dist/auction/committedIntentSigning.mjs",
+      "require": "./dist/auction/committedIntentSigning.js"
+    },
+    "./relayer/committedIntentMessages": {
+      "types": "./dist/relayer/committedIntentMessages.d.ts",
+      "import": "./dist/relayer/committedIntentMessages.mjs",
+      "require": "./dist/relayer/committedIntentMessages.js"
+    },
+    "./types/committedIntent": {
+      "types": "./dist/types/committedIntent.d.ts",
+      "import": "./dist/types/committedIntent.mjs",
+      "require": "./dist/types/committedIntent.js"
     }
   },
   "scripts": {
     "prepare": "pnpm run build:lib",
-    "dev": "tsup index.ts auction/encoding.ts auction/escrowEncoding.ts auction/escrowSigning.ts auction/simulate.ts auction/secondarySigning.ts auction/secondaryValidation.ts auction/validation.ts auction/gossipValidation.ts auction/bidPreprocessor.ts auction/initiate.ts relayer/escrowAuctionWs.ts abis/index.ts constants/index.ts contracts/index.ts contracts/addresses.ts queries/index.ts queries/client/graphqlClient.ts types/index.ts types/escrow.ts types/secondary.ts types/graphql.ts session/index.ts --format cjs,esm --dts --watch",
-    "build:lib": "tsup index.ts auction/encoding.ts auction/escrowEncoding.ts auction/escrowSigning.ts auction/simulate.ts auction/secondarySigning.ts auction/secondaryValidation.ts auction/validation.ts auction/gossipValidation.ts auction/bidPreprocessor.ts auction/initiate.ts relayer/escrowAuctionWs.ts abis/index.ts constants/index.ts contracts/index.ts contracts/addresses.ts queries/index.ts queries/client/graphqlClient.ts types/index.ts types/escrow.ts types/secondary.ts types/graphql.ts session/index.ts --format cjs,esm --dts --tsconfig tsconfig.build.json",
+    "dev": "tsup index.ts auction/encoding.ts auction/escrowEncoding.ts auction/escrowSigning.ts auction/simulate.ts auction/secondarySigning.ts auction/secondaryValidation.ts auction/validation.ts auction/gossipValidation.ts auction/bidPreprocessor.ts auction/initiate.ts auction/committedIntentEncoding.ts auction/committedIntentSigning.ts relayer/escrowAuctionWs.ts relayer/committedIntentMessages.ts abis/index.ts constants/index.ts contracts/index.ts contracts/addresses.ts queries/index.ts queries/client/graphqlClient.ts types/index.ts types/escrow.ts types/committedIntent.ts types/secondary.ts types/graphql.ts session/index.ts session/eip712Verify.ts --format cjs,esm --dts --watch",
+    "build:lib": "tsup index.ts auction/encoding.ts auction/escrowEncoding.ts auction/escrowSigning.ts auction/simulate.ts auction/secondarySigning.ts auction/secondaryValidation.ts auction/validation.ts auction/gossipValidation.ts auction/bidPreprocessor.ts auction/initiate.ts auction/committedIntentEncoding.ts auction/committedIntentSigning.ts relayer/escrowAuctionWs.ts relayer/committedIntentMessages.ts abis/index.ts constants/index.ts contracts/index.ts contracts/addresses.ts queries/index.ts queries/client/graphqlClient.ts types/index.ts types/escrow.ts types/committedIntent.ts types/secondary.ts types/graphql.ts session/index.ts session/eip712Verify.ts --format cjs,esm --dts --tsconfig tsconfig.build.json",
     "build": "pnpm run build:lib",
     "lint": "eslint . --quiet",
     "lint:fix": "eslint . --fix --quiet && pnpm format",

@@ -43,6 +43,7 @@ import {
   collateralTokenAbi,
   predictionMarketVaultAbi,
 } from '@sapience/sdk/abis';
+import { committedIntentExecutorAbi } from '@sapience/sdk/abis';
 import {
   predictionMarketEscrow as predictionMarketEscrowAddresses,
   secondaryMarketEscrow as secondaryMarketEscrowAddresses,
@@ -60,6 +61,10 @@ import {
 } from '@sapience/sdk/constants';
 import { computeSmartAccountAddress } from '@sapience/sdk/session';
 import { httpWithRetry, withRetry } from '../utils/util';
+import {
+  COMMITTED_INTENT_ENABLED,
+  COMMITTED_INTENT_EXECUTOR_ADDRESS,
+} from '~/lib/constants/featureFlags';
 
 // Re-export etherealChain as 'ethereal' for backward compatibility
 export { etherealChain as ethereal };
@@ -735,6 +740,12 @@ export async function createSession(
               etherealContracts.vault,
               etherealContracts.predictionMarketEscrow,
               etherealContracts.secondaryMarketEscrow,
+              // Committed-intent executor: approve wUSDe for escrow pull (D-4)
+              ...(COMMITTED_INTENT_ENABLED &&
+              COMMITTED_INTENT_EXECUTOR_ADDRESS !==
+                '0x0000000000000000000000000000000000000000'
+                ? [COMMITTED_INTENT_EXECUTOR_ADDRESS]
+                : []),
             ].filter(Boolean) as Address[],
           },
           null,
@@ -788,6 +799,24 @@ export async function createSession(
               target: etherealContracts.secondaryMarketEscrow,
               abi: secondaryMarketEscrowAbi,
               functionName: 'executeTrade',
+            },
+          ]
+        : []),
+      // Committed-intent executor permissions (D-4, spec 0.3 §3)
+      // Gated behind feature flag — one extra target in the approval screen.
+      ...(COMMITTED_INTENT_ENABLED &&
+      COMMITTED_INTENT_EXECUTOR_ADDRESS !==
+        '0x0000000000000000000000000000000000000000'
+        ? [
+            {
+              target: COMMITTED_INTENT_EXECUTOR_ADDRESS,
+              abi: committedIntentExecutorAbi,
+              functionName: 'commit',
+            },
+            {
+              target: COMMITTED_INTENT_EXECUTOR_ADDRESS,
+              abi: committedIntentExecutorAbi,
+              functionName: 'execute',
             },
           ]
         : []),
@@ -856,6 +885,12 @@ export async function createSession(
     allowedCallers: [
       etherealContracts.predictionMarketEscrow,
       etherealContracts.secondaryMarketEscrow,
+      // Committed-intent executor: ERC-1271 sig verification (spec 0.3 §3)
+      ...(COMMITTED_INTENT_ENABLED &&
+      COMMITTED_INTENT_EXECUTOR_ADDRESS !==
+        '0x0000000000000000000000000000000000000000'
+        ? [COMMITTED_INTENT_EXECUTOR_ADDRESS]
+        : []),
     ].filter(Boolean) as Address[],
   });
 
