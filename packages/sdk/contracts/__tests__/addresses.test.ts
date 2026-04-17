@@ -1,8 +1,10 @@
 import { describe, it, expect } from 'vitest';
 import {
   getResolverAddressesForChain,
+  getConditionalTokensPairs,
   pythConditionResolver,
   conditionalTokensConditionResolver,
+  conditionalTokensReader,
   manualConditionResolver,
 } from '../addresses';
 
@@ -56,5 +58,47 @@ describe('getResolverAddressesForChain', () => {
 
   it('returns empty array for unknown chain', () => {
     expect(getResolverAddressesForChain(999999)).toEqual([]);
+  });
+});
+
+describe('getConditionalTokensPairs', () => {
+  const MAINNET = 5064014;
+
+  it('returns at least the current pair on mainnet', () => {
+    const pairs = getConditionalTokensPairs(MAINNET);
+    expect(pairs.length).toBeGreaterThanOrEqual(1);
+
+    const current = pairs.find((p) => p.current);
+    expect(current).toBeDefined();
+  });
+
+  it('current pair matches SDK config addresses', () => {
+    const pairs = getConditionalTokensPairs(MAINNET);
+    const current = pairs.find((p) => p.current)!;
+
+    expect(current.resolver.toLowerCase()).toBe(
+      conditionalTokensConditionResolver[MAINNET].address.toLowerCase()
+    );
+    expect(current.reader.toLowerCase()).toBe(
+      conditionalTokensReader[137].address.toLowerCase()
+    );
+  });
+
+  it('includes legacy pairs', () => {
+    const pairs = getConditionalTokensPairs(MAINNET);
+    const legacy = pairs.filter((p) => !p.current);
+    expect(legacy.length).toBeGreaterThanOrEqual(1);
+  });
+
+  it('all pairs have valid addresses', () => {
+    const pairs = getConditionalTokensPairs(MAINNET);
+    for (const pair of pairs) {
+      expect(pair.reader).toMatch(/^0x[0-9a-fA-F]{40}$/);
+      expect(pair.resolver).toMatch(/^0x[0-9a-fA-F]{40}$/);
+    }
+  });
+
+  it('returns empty array for unknown chain', () => {
+    expect(getConditionalTokensPairs(999999)).toEqual([]);
   });
 });
