@@ -774,7 +774,7 @@ input DateTimeNullableFilter {
 }
 
 """
-GraphQL Scalar representing the Prisma.Decimal type, based on Decimal.js library.
+Prisma.Decimal — round-tripped as a decimal string with arbitrary precision.
 """
 scalar Decimal
 

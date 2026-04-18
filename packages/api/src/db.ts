@@ -1,4 +1,5 @@
 import { AsyncLocalStorage } from 'node:async_hooks';
+import { PrismaPg } from '@prisma/adapter-pg';
 import { PrismaClient } from '../generated/prisma';
 import { config } from './config';
 
@@ -8,30 +9,25 @@ export const requestContext = new AsyncLocalStorage<{
 }>();
 
 let _instance: PrismaClient | undefined;
+let _extendedInstance: PrismaClient | undefined;
 
 function getInstance(): PrismaClient {
   if (_instance) return _instance;
 
-  // Ensure the connection pool is bounded to prevent exhausting database connections.
-  // Appends connection_limit and pool_timeout to DATABASE_URL if not already present.
-  const dbUrl = new URL(config.DATABASE_URL);
-  if (!dbUrl.searchParams.has('connection_limit')) {
-    dbUrl.searchParams.set(
-      'connection_limit',
-      String(config.CONNECTION_POOL_SIZE)
-    );
-  }
-  if (!dbUrl.searchParams.has('pool_timeout')) {
-    dbUrl.searchParams.set('pool_timeout', '10');
-  }
+  // Bound the connection pool to avoid exhausting DB connections.
+  // In Prisma 7 these params come from the adapter (pg connection
+  // options), not from query-string params on DATABASE_URL, because
+  // the Rust engine that used to parse those is gone.
+  const adapter = new PrismaPg({
+    connectionString: config.DATABASE_URL,
+    max: config.CONNECTION_POOL_SIZE,
+    idleTimeoutMillis: 10_000,
+  });
 
-  // Create Prisma client with appropriate logging and query timeout
   _instance = new PrismaClient({
-    datasourceUrl: dbUrl.toString(),
+    adapter,
     log: config.isProd
-      ? config.DATABASE_URL.includes('localhost')
-        ? (['info', 'warn', 'error'] as const)
-        : (['info', 'warn', 'error'] as const)
+      ? (['info', 'warn', 'error'] as const)
       : (['warn', 'error'] as const),
     transactionOptions: {
       maxWait: config.PRISMA_QUERY_TIMEOUT_MS,
@@ -80,8 +76,6 @@ function getInstance(): PrismaClient {
   return _instance;
 }
 
-let _extendedInstance: PrismaClient | undefined;
-
 // Initialize database connection
 export const initializeDataSource = async () => {
   try {
@@ -96,9 +90,10 @@ export const initializeDataSource = async () => {
 /**
  * Lazily-initialized Prisma client singleton.
  *
- * The PrismaClient is created on first property access, not at import time.
- * This allows build-time scripts (e.g. emit-schema) to import modules that
- * transitively depend on prisma without needing a database connection.
+ * The PrismaClient is created on first property access, not at import
+ * time. This allows build-time scripts (e.g. emit-schema) to import
+ * modules that transitively depend on prisma without needing a
+ * database connection.
  */
 const prisma: PrismaClient = new Proxy({} as PrismaClient, {
   get(_, prop) {
