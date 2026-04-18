@@ -17,6 +17,14 @@ import type { CodegenConfig } from '@graphql-codegen/cli';
 
 const config: CodegenConfig = {
   schema: './src/graphql/sdl/schema/**/*.graphql',
+  /**
+   * Post-write fixup for the Omit / Pick collision that happens
+   * because our SDL has a top-level `Pick` type (prediction pick) —
+   * see scripts/fixResolverTypesOmit.cjs for the rationale.
+   */
+  hooks: {
+    afterOneFileWrite: ['node src/scripts/fixResolverTypesOmit.cjs'],
+  },
   generates: {
     './src/graphql/sdl/__generated__/resolvers.ts': {
       plugins: ['typescript', 'typescript-resolvers'],
@@ -37,11 +45,33 @@ const config: CodegenConfig = {
         // Resolver types accept both plain return values and Promises
         // so resolvers can be `async` without being forced to wrap.
         asyncResolverTypes: true,
-        // Don't shadow Prisma types by default — each model-backed
-        // GraphQL type gets a Mappers entry in a follow-up commit
-        // that points at the Prisma row shape. For now, mappers stay
-        // empty; resolvers will receive the Prisma row at runtime and
-        // TS falls back to the codegen-generated model type.
+        // Map each model-backed GraphQL type to its Prisma row at
+        // the resolver-parent level. This lets us return `prisma.x
+        // .findMany()` rows directly without TS complaining that
+        // relation fields (attestations, predictions, conditions,
+        // etc.) are missing — those are filled by field resolvers at
+        // runtime.
+        mappers: {
+          Attestation:
+            '../../../../generated/prisma#Attestation as PrismaAttestationRow',
+          AttestationScore:
+            '../../../../generated/prisma#AttestationScore as PrismaAttestationScoreRow',
+          Category:
+            '../../../../generated/prisma#Category as PrismaCategoryRow',
+          Condition:
+            '../../../../generated/prisma#Condition as PrismaConditionRow',
+          ConditionGroup:
+            '../../../../generated/prisma#ConditionGroup as PrismaConditionGroupRow',
+          LegacyPosition:
+            '../../../../generated/prisma#LegacyPosition as PrismaLegacyPositionRow',
+          LegacyPrediction:
+            '../../../../generated/prisma#LegacyPrediction as PrismaLegacyPredictionRow',
+          LimitOrder:
+            '../../../../generated/prisma#LimitOrder as PrismaLimitOrderRow',
+          ReferralCode:
+            '../../../../generated/prisma#ReferralCode as PrismaReferralCodeRow',
+          User: '../../../../generated/prisma#User as PrismaUserRow',
+        },
         avoidOptionals: false,
         enumsAsTypes: false,
         // Let `makeExecutableSchema` do the typename work at runtime
