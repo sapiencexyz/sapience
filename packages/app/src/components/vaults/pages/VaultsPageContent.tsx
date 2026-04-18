@@ -618,6 +618,11 @@ const VaultsPageContent = () => {
                           </span>
                         </h4>
                         <div className="relative">
+                          {tvlWei <= VAULT_CAPACITY_WEI && (
+                            <div className="mb-1 text-right font-mono text-[10px] text-muted-foreground/50 uppercase">
+                              {depositCapDisplay} cap
+                            </div>
+                          )}
                           <div className="w-full h-3 rounded-sm bg-[hsl(var(--primary)/_0.09)] overflow-hidden shadow-inner relative">
                             <div
                               className="h-3 bg-accent-gold rounded-sm transition-all gold-sheen"
@@ -659,11 +664,6 @@ const VaultsPageContent = () => {
                                 </span>
                               </div>
                             </>
-                          )}
-                          {tvlWei <= VAULT_CAPACITY_WEI && (
-                            <div className="mt-1 text-right font-mono text-[10px] text-muted-foreground/50 uppercase">
-                              {depositCapDisplay} cap
-                            </div>
                           )}
                         </div>
                         <div className="mt-2 flex flex-col items-start sm:flex-row sm:items-baseline sm:justify-between gap-1 sm:gap-0 text-sm">
