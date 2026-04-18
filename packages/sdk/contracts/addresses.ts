@@ -127,7 +127,7 @@ export const predictionMarketVault: ChainAddressMap = {
     legacy: [
       {
         address: '0x0f246fBd64f6FE57544aAB16A31e1E3F59257723',
-        blockCreated: 3253965,
+        blockCreated: 3472849,
       },
       {
         address: '0x5704dB4b2c068d74Fde25257106a7029463f812E',
@@ -160,7 +160,7 @@ export const pythConditionResolver: ChainAddressMap = {
     legacy: [
       {
         address: '0x3384de2a15e8D767a36f09f6e67F41C9fa8C6B1f',
-        blockCreated: 3278610,
+        blockCreated: 3659812,
       },
       {
         address: '0x6399F6397701e4213BBaEf9f7a15EF31C9c329E1',
@@ -731,6 +731,54 @@ export function getLegacyResolverAddressesForChain(
     }
   }
   return result;
+}
+
+// ============================================================================
+// ConditionalTokens Reader↔Resolver Pairs
+// ============================================================================
+
+export interface ConditionalTokensPair {
+  /** Polygon ConditionalTokensReader address */
+  reader: Address;
+  /** Ethereal ConditionalTokensConditionResolver address */
+  resolver: Address;
+  /** Whether this is the current (active) deployment */
+  current: boolean;
+}
+
+/**
+ * Verified reader↔resolver pairs for ConditionalTokens settlement.
+ * Each Polygon reader bridges via LayerZero to its paired Ethereal resolver.
+ * Pairing verified on-chain via reader.getBridgeConfig().
+ */
+const CONDITIONAL_TOKENS_PAIRS: Record<ChainId, ConditionalTokensPair[]> = {
+  5064014: [
+    {
+      reader: '0xCBDc09b831f53EeD2409f32896850dd10801851E',
+      resolver: '0xc7A489F8b5CEf914fcA2511a84cdC0221cD9a0F4',
+      current: true,
+    },
+    {
+      reader: '0x79cB914f3F336426E89FaB55A9488AB25770552D',
+      resolver: '0x19e34DB5bef20EF0613854c3670cD809DEFf4035',
+      current: false,
+    },
+    {
+      reader: '0x882288A664e29aEBC654Fa9679697d23716fcCD1',
+      resolver: '0x130598b7334901077cA5369b098Fd47F042CdcC9',
+      current: false,
+    },
+  ],
+};
+
+/**
+ * Get all verified ConditionalTokens reader↔resolver pairs for a chain.
+ * Returns current pair first, then legacy pairs.
+ */
+export function getConditionalTokensPairs(
+  chainId: number
+): ConditionalTokensPair[] {
+  return CONDITIONAL_TOKENS_PAIRS[chainId] ?? [];
 }
 
 /** Identify the resolver type from an on-chain address (current or legacy). */

@@ -19,18 +19,21 @@ import { Vault, Clock } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { parseUnits } from 'viem';
 import { formatDuration, intervalToDuration } from 'date-fns';
+import Link from 'next/link';
+import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
 import { useCurrentAddress } from '~/hooks/blockchain/useCurrentAddress';
-import Link from 'next/link';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import { usePassiveLiquidityVault } from '~/hooks/contract/usePassiveLiquidityVault';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
-import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import { useRestrictedJurisdiction } from '~/hooks/useRestrictedJurisdiction';
 import RestrictedJurisdictionBanner from '~/components/shared/RestrictedJurisdictionBanner';
-import { useProtocolStats } from '~/hooks/graphql/useAnalytics';
+import {
+  getProtocolTvlWei,
+  useProtocolStats,
+} from '~/hooks/graphql/useAnalytics';
 import RiskDisclaimer from '~/components/markets/forms/shared/RiskDisclaimer';
 import Loader from '~/components/shared/Loader';
 import VaultPnlChart from '~/components/vaults/VaultPnlChart';
@@ -523,10 +526,7 @@ const VaultsPageContent = () => {
   const yieldMetrics = useMemo(() => {
     const lastStat = protocolStats?.[protocolStats.length - 1];
 
-    const protocolTvlWei = lastStat
-      ? BigInt(lastStat.vaultBalance || '0') +
-        BigInt(lastStat.escrowBalance || '0')
-      : 0n;
+    const protocolTvlWei = getProtocolTvlWei(lastStat);
     const protocolTvlNum = Number(formatAssetAmount(protocolTvlWei));
     const vaultTvlNum = Number(formatAssetAmount(tvlWei));
 
