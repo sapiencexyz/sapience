@@ -38,7 +38,11 @@ const config: CodegenConfig = {
         // the wire, Date objects at the resolver boundary) rather
         // than a plain DateTime scalar.
         scalars: {
-          DateTimeISO: { input: 'Date | string', output: 'Date | string' },
+          // Prisma hands us Date objects; graphql-js's serialize step
+          // converts to ISO strings at the edge. Clients send ISO
+          // strings but graphql-js parses them before the resolver
+          // sees them, so `input: Date` is also correct.
+          DateTimeISO: 'Date',
           Decimal: 'string',
           BigInt: 'bigint',
         },

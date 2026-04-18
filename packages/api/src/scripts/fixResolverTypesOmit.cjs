@@ -23,9 +23,15 @@ if (!file) {
 }
 
 const src = fs.readFileSync(file, 'utf8');
+// Use a homomorphic mapped type ({ [P in keyof T as ...] }) so `?`
+// optionality is preserved — a non-homomorphic mapping via
+// `[P in Exclude<keyof T, K>]` would strip the `?` modifier and break
+// `Omit<T, ...>` wherever codegen relies on it (see Question's
+// ResolverTypes: `Omit<Question, "condition" | "group">` needs
+// predictionCount to remain optional).
 const fixed = src.replace(
   'export type Omit<T, K extends keyof T> = Pick<T, Exclude<keyof T, K>>;',
-  'export type Omit<T, K extends keyof T> = { [P in Exclude<keyof T, K>]: T[P] };'
+  'export type Omit<T, K extends keyof T> = { [P in keyof T as P extends K ? never : P]: T[P] };'
 );
 if (fixed !== src) {
   fs.writeFileSync(file, fixed);
