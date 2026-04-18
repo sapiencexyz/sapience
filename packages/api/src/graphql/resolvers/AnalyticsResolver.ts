@@ -193,14 +193,24 @@ export class AnalyticsResolver {
     // end-of-previous-day, so we shift the display timestamp back by 1 day.
     const results: ProtocolStat[] = protocolSnapshots.map((snapshot, i) => {
       const cumVol = volumeMap.get(snapshot.timestamp) || '0';
-      const prevCumVol =
-        i > 0 ? volumeMap.get(protocolSnapshots[i - 1].timestamp) || '0' : '0';
-      const dailyVolume = (BigInt(cumVol) - BigInt(prevCumVol)).toString();
+      // i === 0 has no prior snapshot to diff against; defaulting the delta to
+      // cumVol would dump all pre-window activity onto the first bar, so we
+      // explicitly emit 0 and let the series start one day later.
+      const dailyVolume =
+        i === 0
+          ? '0'
+          : (
+              BigInt(cumVol) -
+              BigInt(volumeMap.get(protocolSnapshots[i - 1].timestamp) || '0')
+            ).toString();
 
-      const prevPnL = i > 0 ? protocolSnapshots[i - 1].vaultRealizedPnL : '0';
-      const dailyPnL = (
-        BigInt(snapshot.vaultRealizedPnL) - BigInt(prevPnL)
-      ).toString();
+      const dailyPnL =
+        i === 0
+          ? '0'
+          : (
+              BigInt(snapshot.vaultRealizedPnL) -
+              BigInt(protocolSnapshots[i - 1].vaultRealizedPnL)
+            ).toString();
 
       return {
         timestamp: snapshot.timestamp - DAY_SECONDS,

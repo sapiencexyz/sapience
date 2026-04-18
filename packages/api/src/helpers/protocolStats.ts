@@ -617,32 +617,47 @@ export async function backfillProtocolStats(
   let successCount = 0;
   let skipCount = 0;
 
-  // Ethereal mainnet launched ~October 20, 2025. Before this date, no contracts
-  // existed on-chain, so we create zero-valued snapshots as time-axis placeholders.
-  const ETHEREAL_MAINNET_LAUNCH = Math.floor(Date.UTC(2025, 9, 20) / 1000); // 2025-10-20 UTC
+  // Snapshots are keyed by the current vault address. For dates before it was
+  // deployed, write zero placeholders so the analytics chart has a continuous
+  // x-axis and the first-day delta isn't a cumulative dump of pre-deploy activity.
+  const vaultConfig = contracts.predictionMarketVault[chainId];
+  let currentVaultDeployTimestamp = 0;
+  if (vaultConfig?.blockCreated) {
+    const deployBlock = await client.getBlock({
+      blockNumber: BigInt(vaultConfig.blockCreated),
+    });
+    currentVaultDeployTimestamp = Number(deployBlock.timestamp);
+  }
+
+  const zeroSnapshot = {
+    vaultBalance: 0n,
+    vaultAvailableAssets: 0n,
+    vaultDeployed: 0n,
+    escrowBalance: 0n,
+    vaultRealizedPnL: 0n,
+    vaultAirdropGains: 0n,
+    vaultDeposits: 0n,
+    vaultWithdrawals: 0n,
+    vaultPositionsWon: 0,
+    vaultPositionsLost: 0,
+    vaultCollateralWon: 0n,
+    vaultCollateralLost: 0n,
+  };
 
   for (let idx = 0; idx < timestamps.length; idx++) {
     const timestamp = timestamps[idx];
     const dateStr = new Date(timestamp * 1000).toISOString().split('T')[0];
 
-    if (timestamp < ETHEREAL_MAINNET_LAUNCH) {
+    if (timestamp < currentVaultDeployTimestamp) {
       console.log(
-        `[ProtocolStats] ${dateStr} - before Ethereal mainnet launch, creating zero-valued snapshot`
+        `[ProtocolStats] ${dateStr} - before current vault deploy, creating zero-valued snapshot`
       );
-      await upsertProtocolStatsSnapshot(timestamp, chainId, vaultAddress, {
-        vaultBalance: 0n,
-        vaultAvailableAssets: 0n,
-        vaultDeployed: 0n,
-        escrowBalance: 0n,
-        vaultRealizedPnL: 0n,
-        vaultAirdropGains: 0n,
-        vaultDeposits: 0n,
-        vaultWithdrawals: 0n,
-        vaultPositionsWon: 0,
-        vaultPositionsLost: 0,
-        vaultCollateralWon: 0n,
-        vaultCollateralLost: 0n,
-      });
+      await upsertProtocolStatsSnapshot(
+        timestamp,
+        chainId,
+        vaultAddress,
+        zeroSnapshot
+      );
       skipCount++;
       continue;
     }
