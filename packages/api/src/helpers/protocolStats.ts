@@ -261,10 +261,6 @@ export async function fetchPredictionMarketTVLAtBlock(
 }
 
 /**
- * Try reading a value from the current contract, then fall back through legacy
- * contracts in order. Returns 0n if all fail (contract not deployed at that block).
- */
-/**
  * Find the correct contract address for a given block number by checking
  * blockCreated timestamps. Returns the contract that was deployed at or before
  * the given block, preferring newer deployments.
@@ -275,32 +271,20 @@ export async function fetchPredictionMarketTVLAtBlock(
  */
 function getContractForBlock(
   contractConfig: (typeof contracts.predictionMarketVault)[number],
-  blockNumber: bigint,
-  label: string = 'contract'
+  blockNumber: bigint
 ): `0x${string}` | null {
-  // Try current contract
   const currentBlock = contractConfig.blockCreated ?? 0;
   if (blockNumber >= BigInt(currentBlock)) {
-    console.log(
-      `[ProtocolStats]     ${label}: using current ${contractConfig.address.slice(0, 10)}... (deployed at block ${currentBlock})`
-    );
     return contractConfig.address as `0x${string}`;
   }
 
-  // Try legacy contracts in order (newest legacy first)
-  for (let i = 0; i < (contractConfig.legacy ?? []).length; i++) {
-    const entry = normalizeLegacyEntry(contractConfig.legacy![i]);
+  for (const legEntry of contractConfig.legacy ?? []) {
+    const entry = normalizeLegacyEntry(legEntry);
     if (blockNumber >= BigInt(entry.blockCreated)) {
-      console.log(
-        `[ProtocolStats]     ${label}: using legacy-${i + 1} ${entry.address.slice(0, 10)}... (deployed at block ${entry.blockCreated})`
-      );
       return entry.address as `0x${string}`;
     }
   }
 
-  console.log(
-    `[ProtocolStats]     ${label}: no contract deployed at block ${blockNumber}`
-  );
   return null;
 }
 
@@ -684,10 +668,10 @@ export async function backfillProtocolStats(
       | undefined;
 
     const vaultAddr = vaultConfig
-      ? getContractForBlock(vaultConfig, blockNumber, 'vault')
+      ? getContractForBlock(vaultConfig, blockNumber)
       : null;
     const escrowAddr = escrowConfig
-      ? getContractForBlock(escrowConfig, blockNumber, 'escrow')
+      ? getContractForBlock(escrowConfig, blockNumber)
       : null;
 
     let vaultBalance = 0n;

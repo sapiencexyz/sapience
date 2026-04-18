@@ -221,63 +221,75 @@ export class AnalyticsResolver {
       };
     });
 
-    // Append live "today" data point using real-time OI/volume
-    const lastSnapshot = protocolSnapshots[protocolSnapshots.length - 1];
-    const lastCumVol = volumeMap.get(lastSnapshot.timestamp) || '0';
-    const liveCumVol = volumeMap.get(nowTimestamp) || lastCumVol;
-    const liveDailyVolume = (
-      BigInt(liveCumVol) - BigInt(lastCumVol)
-    ).toString();
-    const liveDailyPnL = '0'; // PnL not computed live
+    // Append live "today" data point using real-time OI/volume. If any of the
+    // live reads fail (flaky RPC, DB timeout) we fall through and return the
+    // snapshot-only series rather than failing the whole query.
+    try {
+      const lastSnapshot = protocolSnapshots[protocolSnapshots.length - 1];
+      const lastCumVol = volumeMap.get(lastSnapshot.timestamp) || '0';
+      const liveCumVol = volumeMap.get(nowTimestamp) || lastCumVol;
+      const liveDailyVolume = (
+        BigInt(liveCumVol) - BigInt(lastCumVol)
+      ).toString();
 
-    // Fetch all live values for today's candle in parallel
-    const [
-      liveVaultBalance,
-      liveVaultAvailableAssets,
-      liveVaultDeployed,
-      liveEscrowBalance,
-      livePnlResult,
-      liveFlowsResult,
-    ] = await Promise.all([
-      fetchVaultTVL(chainId),
-      fetchVaultAvailableAssets(chainId),
-      fetchVaultDeployed(chainId),
-      fetchPredictionMarketEscrowTVL(chainId),
-      calculateVaultPnL(chainId),
-      calculateVaultFlows(chainId),
-    ]);
+      const [
+        liveVaultBalance,
+        liveVaultAvailableAssets,
+        liveVaultDeployed,
+        liveEscrowBalance,
+        livePnlResult,
+        liveFlowsResult,
+      ] = await Promise.all([
+        fetchVaultTVL(chainId),
+        fetchVaultAvailableAssets(chainId),
+        fetchVaultDeployed(chainId),
+        fetchPredictionMarketEscrowTVL(chainId),
+        calculateVaultPnL(chainId),
+        calculateVaultFlows(chainId),
+      ]);
 
-    const liveActualTotalAssets = liveVaultBalance + liveVaultDeployed;
-    const liveExpectedTotalAssets =
-      liveFlowsResult.totalDeposits -
-      liveFlowsResult.totalWithdrawals +
-      livePnlResult.realizedPnL;
-    const liveAirdropGains =
-      liveActualTotalAssets > liveExpectedTotalAssets
-        ? liveActualTotalAssets - liveExpectedTotalAssets
-        : 0n;
+      const liveDailyPnL = (
+        livePnlResult.realizedPnL - BigInt(lastSnapshot.vaultRealizedPnL)
+      ).toString();
 
-    // Today's display timestamp = last snapshot's midnight (shifted back = yesterday),
-    // so today = last snapshot's original timestamp (unshifted)
-    const todayTimestamp = lastSnapshot.timestamp;
+      const liveActualTotalAssets = liveVaultBalance + liveVaultDeployed;
+      const liveExpectedTotalAssets =
+        liveFlowsResult.totalDeposits -
+        liveFlowsResult.totalWithdrawals +
+        livePnlResult.realizedPnL;
+      const liveAirdropGains =
+        liveActualTotalAssets > liveExpectedTotalAssets
+          ? liveActualTotalAssets - liveExpectedTotalAssets
+          : 0n;
 
-    results.push({
-      timestamp: todayTimestamp,
-      cumulativeVolume: liveCumVol,
-      openInterest: oiMap.get(nowTimestamp) || '0',
-      vaultBalance: liveVaultBalance.toString(),
-      vaultAvailableAssets: liveVaultAvailableAssets.toString(),
-      vaultDeployed: liveVaultDeployed.toString(),
-      escrowBalance: liveEscrowBalance.toString(),
-      vaultCumulativePnL: livePnlResult.realizedPnL.toString(),
-      vaultPositionsWon: livePnlResult.positionsWon,
-      vaultPositionsLost: livePnlResult.positionsLost,
-      vaultDeposits: liveFlowsResult.totalDeposits.toString(),
-      vaultWithdrawals: liveFlowsResult.totalWithdrawals.toString(),
-      vaultAirdropGains: liveAirdropGains.toString(),
-      dailyPnL: liveDailyPnL,
-      dailyVolume: liveDailyVolume,
-    });
+      // Today's display timestamp = current UTC midnight. Derived from wall-clock
+      // rather than last snapshot so a missed cron doesn't mislabel the live candle.
+      const todayTimestamp =
+        Math.floor(Date.now() / 1000 / DAY_SECONDS) * DAY_SECONDS;
+
+      results.push({
+        timestamp: todayTimestamp,
+        cumulativeVolume: liveCumVol,
+        openInterest: oiMap.get(nowTimestamp) || '0',
+        vaultBalance: liveVaultBalance.toString(),
+        vaultAvailableAssets: liveVaultAvailableAssets.toString(),
+        vaultDeployed: liveVaultDeployed.toString(),
+        escrowBalance: liveEscrowBalance.toString(),
+        vaultCumulativePnL: livePnlResult.realizedPnL.toString(),
+        vaultPositionsWon: livePnlResult.positionsWon,
+        vaultPositionsLost: livePnlResult.positionsLost,
+        vaultDeposits: liveFlowsResult.totalDeposits.toString(),
+        vaultWithdrawals: liveFlowsResult.totalWithdrawals.toString(),
+        vaultAirdropGains: liveAirdropGains.toString(),
+        dailyPnL: liveDailyPnL,
+        dailyVolume: liveDailyVolume,
+      });
+    } catch (err) {
+      console.error(
+        '[AnalyticsResolver] live candle failed, falling back to snapshots only:',
+        err
+      );
+    }
 
     return results;
   }

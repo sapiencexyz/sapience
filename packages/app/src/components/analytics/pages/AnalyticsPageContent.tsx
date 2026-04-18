@@ -20,7 +20,10 @@ import {
   ComposedChart,
   Bar,
 } from 'recharts';
-import { useProtocolStats } from '~/hooks/graphql/useAnalytics';
+import {
+  getProtocolTvlWei,
+  useProtocolStats,
+} from '~/hooks/graphql/useAnalytics';
 import Loader from '~/components/shared/Loader';
 import PeriodFilter, {
   type Period,
@@ -318,12 +321,7 @@ function AnalyticsPageContent(): React.ReactElement {
                   </div>
                 ) : (
                   <span className="transition-opacity duration-300">
-                    {formatNumber(
-                      String(
-                        BigInt(summary?.openInterest || '0') +
-                          BigInt(summary?.vaultAvailableAssets || '0')
-                      )
-                    )}{' '}
+                    {formatNumber(String(getProtocolTvlWei(summary)))}{' '}
                     {collateralSymbol}
                   </span>
                 )}

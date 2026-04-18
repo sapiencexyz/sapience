@@ -13,3 +13,19 @@ export function useProtocolStats() {
 }
 
 export type { ProtocolStat };
+
+/**
+ * Protocol TVL = open interest + undeployed vault funds (wei).
+ * Matches the analytics-page definition; see AnalyticsResolver.protocolStats.
+ */
+export function getProtocolTvlWei(
+  stat:
+    | Pick<ProtocolStat, 'openInterest' | 'vaultAvailableAssets'>
+    | null
+    | undefined
+): bigint {
+  if (!stat) return 0n;
+  return (
+    BigInt(stat.openInterest || '0') + BigInt(stat.vaultAvailableAssets || '0')
+  );
+}
