@@ -26,7 +26,6 @@ import PeriodFilter, {
   type Period,
   PERIOD_DAYS,
 } from '~/components/shared/PeriodFilter';
-import VaultPnlChart from '~/components/vaults/VaultPnlChart';
 
 function formatLargeNumber(
   value: number,
@@ -171,12 +170,18 @@ function filterDataByPeriod<T extends { timestamp: number }>(
     Math.floor((now - days * DAY_SECONDS) / DAY_SECONDS) * DAY_SECONDS;
   const filtered = data.filter((item) => item.timestamp >= cutoff);
 
-  // Fill missing days with zero entries
+  // Fill missing days with zero entries, but only between the first and last
+  // data points — don't pad the tails with zeros
   const existingTimestamps = new Set(
     filtered.map((d) => Math.floor(d.timestamp / DAY_SECONDS))
   );
+  const firstDataTs =
+    filtered.length > 0 ? Math.min(...filtered.map((d) => d.timestamp)) : now;
+  const lastDataTs =
+    filtered.length > 0 ? Math.max(...filtered.map((d) => d.timestamp)) : now;
+  const fillStart = Math.max(cutoff, firstDataTs);
   const filled = [...filtered];
-  for (let ts = cutoff; ts <= now; ts += DAY_SECONDS) {
+  for (let ts = fillStart; ts <= lastDataTs; ts += DAY_SECONDS) {
     const dayKey = Math.floor(ts / DAY_SECONDS);
     if (!existingTimestamps.has(dayKey)) {
       filled.push({ ...zeroEntry, timestamp: ts } as T);
@@ -193,7 +198,6 @@ function AnalyticsPageContent(): React.ReactElement {
   const [volumePeriod, setVolumePeriod] = useState<Period>('1W');
   const [oiPeriod, setOiPeriod] = useState<Period>('1W');
   const [tvlPeriod, setTvlPeriod] = useState<Period>('1W');
-  const [pnlPeriod, setPnlPeriod] = useState<Period>('1W');
 
   // Fetch protocol stats and daily volumes
   const { data: protocolStats, isLoading: statsLoading } = useProtocolStats();
@@ -209,16 +213,14 @@ function AnalyticsPageContent(): React.ReactElement {
     if (!protocolStats) return [];
 
     return protocolStats.map((point) => {
-      const vaultBalance = parseFloat(point.vaultBalance) / 1e18;
-      const vaultDeployed = parseFloat(point.vaultDeployed) / 1e18;
-      const escrowBalance = parseFloat(point.escrowBalance) / 1e18;
+      const openInterest = parseFloat(point.openInterest) / 1e18;
+      const vaultAvailableAssets =
+        parseFloat(point.vaultAvailableAssets) / 1e18;
       return {
         timestamp: point.timestamp,
-        openInterest: parseFloat(point.openInterest) / 1e18,
-        totalBalance: vaultBalance + escrowBalance,
-        vaultBalance,
-        vaultDeployed,
-        escrowBalance,
+        openInterest,
+        totalBalance: openInterest + vaultAvailableAssets,
+        vaultAvailableAssets,
       };
     });
   }, [protocolStats]);
@@ -242,9 +244,7 @@ function AnalyticsPageContent(): React.ReactElement {
       filterDataByPeriod(statsChartData, oiPeriod, {
         openInterest: 0,
         totalBalance: 0,
-        vaultBalance: 0,
-        vaultDeployed: 0,
-        escrowBalance: 0,
+        vaultAvailableAssets: 0,
       }),
     [statsChartData, oiPeriod]
   );
@@ -254,9 +254,7 @@ function AnalyticsPageContent(): React.ReactElement {
       filterDataByPeriod(statsChartData, tvlPeriod, {
         openInterest: 0,
         totalBalance: 0,
-        vaultBalance: 0,
-        vaultDeployed: 0,
-        escrowBalance: 0,
+        vaultAvailableAssets: 0,
       }),
     [statsChartData, tvlPeriod]
   );
@@ -292,20 +290,20 @@ function AnalyticsPageContent(): React.ReactElement {
                     <div className="space-y-3">
                       <div className="flex flex-col gap-1">
                         <span className="uppercase font-mono tracking-wide text-muted-foreground text-xs whitespace-nowrap">
-                          Prediction Market Escrow
+                          Open Interest
                         </span>
                         <span className="font-mono whitespace-nowrap text-xl">
-                          {formatNumber(summary?.escrowBalance || '0')}{' '}
+                          {formatNumber(summary?.openInterest || '0')}{' '}
                           {collateralSymbol}
                         </span>
                       </div>
                       <div className="h-px bg-[hsl(var(--accent-gold)/0.25)]" />
                       <div className="flex flex-col gap-1">
                         <span className="uppercase font-mono tracking-wide text-muted-foreground text-xs whitespace-nowrap">
-                          Protocol Vault Reserve
+                          Undeployed Vault Funds
                         </span>
                         <span className="font-mono whitespace-nowrap text-xl">
-                          {formatNumber(summary?.vaultBalance || '0')}{' '}
+                          {formatNumber(summary?.vaultAvailableAssets || '0')}{' '}
                           {collateralSymbol}
                         </span>
                       </div>
@@ -322,8 +320,8 @@ function AnalyticsPageContent(): React.ReactElement {
                   <span className="transition-opacity duration-300">
                     {formatNumber(
                       String(
-                        BigInt(summary?.vaultBalance || '0') +
-                          BigInt(summary?.escrowBalance || '0')
+                        BigInt(summary?.openInterest || '0') +
+                          BigInt(summary?.vaultAvailableAssets || '0')
                       )
                     )}{' '}
                     {collateralSymbol}
@@ -393,8 +391,8 @@ function AnalyticsPageContent(): React.ReactElement {
                       align="start"
                     >
                       <p className="text-sm text-muted-foreground">
-                        Includes volume from both V1 (legacy) and V2 (escrow)
-                        prediction markets.
+                        Includes volume from prediction mints and secondary
+                        market trades.
                       </p>
                     </PopoverContent>
                   </Popover>
@@ -625,27 +623,6 @@ function AnalyticsPageContent(): React.ReactElement {
                     </ResponsiveContainer>
                   </div>
                 )}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Vault PnL Chart */}
-          <Card className="bg-brand-black border border-brand-white/10">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="sc-heading text-foreground">
-                  Vault Profit/Loss
-                </h3>
-                <PeriodFilter value={pnlPeriod} onChange={setPnlPeriod} />
-              </div>
-              <div className="h-[300px]">
-                <VaultPnlChart
-                  protocolStats={protocolStats}
-                  isLoading={statsLoading}
-                  externalPeriod={pnlPeriod}
-                  showHeader={false}
-                  height={300}
-                />
               </div>
             </CardContent>
           </Card>
