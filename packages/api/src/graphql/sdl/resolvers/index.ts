@@ -1,15 +1,23 @@
 /**
  * Resolver map for the SDL-first schema.
  *
- * Each model file exports its `XxxResolvers` slice (typed against the
- * SDL via graphql-codegen). This index assembles them into a single
- * `Resolvers<ApolloContext>` object for `makeExecutableSchema`.
+ * Assembles the three slices into the `Resolvers<ApolloContext>` shape
+ * `makeExecutableSchema` expects:
  *
- * Query/Mutation root resolvers get wired in by Phases 3–4 under
- * `resolvers/queries/*.ts` and merged here.
+ *  - Query root — every root field from queries/*.ts flattened into
+ *    one map.
+ *  - Per-type field resolvers — one entry per Prisma-backed GraphQL
+ *    type that has relation fields requiring a custom resolver
+ *    (Category, Condition, ConditionGroup, etc.).
+ *
+ * Scalar-only GraphQL types (Pick, Trade, ActivityItem, PnlDataPoint,
+ * …) don't need an entry here; graphql-js's default field resolver
+ * reads the property off the parent directly, which is already what
+ * every root resolver returns.
  */
 
 import type { Resolvers } from '../__generated__/resolvers';
+
 import { Attestation } from './Attestation';
 import { AttestationScore } from './AttestationScore';
 import { Category } from './Category';
@@ -21,7 +29,103 @@ import { LimitOrder } from './LimitOrder';
 import { ReferralCode } from './ReferralCode';
 import { User } from './User';
 
+import { accountActivity } from './queries/activity';
+import { protocolStats } from './queries/analytics';
+import {
+  collateralBalance,
+  collateralBalanceHistory,
+  collateralTransfers,
+} from './queries/collateralBalance';
+import { conditions } from './queries/conditions';
+import {
+  attestations,
+  categories,
+  condition,
+  conditionGroup,
+  conditionGroups,
+  user,
+  users,
+} from './queries/crud';
+import {
+  claims,
+  closes,
+  pickConfiguration,
+  pickConfigurations,
+  positionCount,
+  positions,
+  prediction,
+  predictionCount,
+  predictions,
+} from './queries/escrow';
+import { accountProfitRank, profitLeaderboard } from './queries/pnl';
+import { questions } from './queries/questions';
+import {
+  accountAccuracy,
+  accountAccuracyRank,
+  accuracyLeaderboard,
+} from './queries/score';
+import { popularTags } from './queries/tags';
+import {
+  accountBalance,
+  accountPnl,
+  accountPredictionCount,
+  accountVolume,
+  protocolVolume,
+} from './queries/timeSeries';
+import { trade, tradeCount, trades } from './queries/trade';
+import { accountTotalVolume } from './queries/volume';
+
 export const resolvers: Resolvers = {
+  Query: {
+    // Leaderboards / account scores
+    accountAccuracy,
+    accountAccuracyRank,
+    accuracyLeaderboard,
+    accountProfitRank,
+    profitLeaderboard,
+    // Time series
+    accountBalance,
+    accountPnl,
+    accountPredictionCount,
+    accountVolume,
+    protocolVolume,
+    // Activity + unified feeds
+    accountActivity,
+    // Analytics
+    protocolStats,
+    // Collateral
+    accountTotalVolume,
+    collateralBalance,
+    collateralBalanceHistory,
+    collateralTransfers,
+    // Conditions / questions
+    conditions,
+    questions,
+    // Escrow (predictions / positions / claims / closes / pick configs)
+    claims,
+    closes,
+    pickConfiguration,
+    pickConfigurations,
+    positionCount,
+    positions,
+    prediction,
+    predictionCount,
+    predictions,
+    // Secondary market trades
+    trade,
+    tradeCount,
+    trades,
+    // Tags
+    popularTags,
+    // CRUD passthroughs
+    attestations,
+    categories,
+    condition,
+    conditionGroup,
+    conditionGroups,
+    user,
+    users,
+  },
   Attestation,
   AttestationScore,
   Category,
