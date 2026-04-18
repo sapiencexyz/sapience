@@ -1,4 +1,3 @@
-import 'reflect-metadata';
 import { initializeDataSource } from '../db';
 import { initializeFixtures, INDEXERS } from '../fixtures';
 import { handleJobCommand } from './jobs';

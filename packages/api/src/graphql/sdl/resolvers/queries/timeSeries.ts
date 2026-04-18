@@ -20,7 +20,7 @@ import {
   queryProtocolVolume,
   queryAccountPredictionCount,
 } from '../../../../helpers/timeSeriesQueries';
-import { TimeInterval as HelperTimeInterval } from '../../../types/TimeSeriesTypes';
+import { TimeInterval as HelperTimeInterval } from '../../../../helpers/timeSeriesTypes';
 
 const toHelperInterval = (i: string): HelperTimeInterval =>
   i as HelperTimeInterval;

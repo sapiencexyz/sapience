@@ -1,7 +1,6 @@
-import 'reflect-metadata';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { GraphQLError } from 'graphql';
-import { TimeInterval } from '../graphql/types/TimeSeriesTypes';
+import { TimeInterval } from './timeSeriesTypes';
 
 // ─── Mock prisma ─────────────────────────────────────────────────────────────
 

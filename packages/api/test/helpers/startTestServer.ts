@@ -1,17 +1,16 @@
 /**
- * Standalone ApolloServer for contract tests. Run with tsx so decorator
- * metadata is preserved the same way prod runs via `tsx src/server.ts`.
+ * Standalone ApolloServer for contract tests. Spawned via tsx by
+ * test/helpers/globalSetup.ts.
  *
  * Usage: `tsx test/helpers/startTestServer.ts`
  *
  * On startup emits a single JSON line to stdout:
  *   {"testServerReady":true,"port":12345,"url":"http://127.0.0.1:12345/graphql"}
  *
- * Reads TEST_DATABASE_URL from env (mirrored to DATABASE_URL) so all resolver
- * Prisma traffic hits the contract test database.
+ * Reads TEST_DATABASE_URL from env (mirrored to DATABASE_URL) so all
+ * resolver Prisma traffic hits the contract test database.
  */
 
-import 'reflect-metadata';
 import { createServer } from 'node:http';
 import { ApolloServer } from '@apollo/server';
 import { expressMiddleware } from '@as-integrations/express4';
