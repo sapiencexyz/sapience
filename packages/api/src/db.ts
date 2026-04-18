@@ -39,51 +39,48 @@ function getInstance(): PrismaClient {
     },
   });
 
-  // Per-query timing middleware — measures Prisma's full round-trip
-  // (connection checkout + SQL execution + result deserialization)
-  _instance.$use(async (params, next) => {
-    const start = performance.now();
-    const result = await next(params);
-    const ms = performance.now() - start;
-    const rid = requestContext.getStore()?.requestId ?? '';
-    const prefix = rid ? `[prisma:${rid}]` : '[prisma]';
-    console.log(
-      `${prefix} ${params.model ?? 'raw'}.${params.action} ${ms.toFixed(1)}ms`
-    );
-    return result;
-  });
+  // `$use` was removed in Prisma 6.16+; the modern equivalent is
+  // `$extends({ query: { $allOperations } })`. We compose the old
+  // three middlewares (timing, counter, timeout) into one wrapper.
+  _extendedInstance = _instance.$extends({
+    query: {
+      $allOperations: async ({ model, operation, args, query }) => {
+        const store = requestContext.getStore();
+        if (store) store.count++;
 
-  // Query counter middleware
-  _instance.$use(async (params, next) => {
-    const store = requestContext.getStore();
-    if (store) store.count++;
-    return next(params);
-  });
+        const timeout = config.PRISMA_QUERY_TIMEOUT_MS;
+        let timer: ReturnType<typeof setTimeout> | undefined;
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          timer = setTimeout(() => {
+            reject(
+              new Error(
+                `Query timeout: ${model ?? 'raw'}.${operation} exceeded ${timeout}ms`
+              )
+            );
+          }, timeout);
+        });
 
-  // Query timeout middleware - bounds individual query execution time
-  _instance.$use(async (params, next) => {
-    const timeout = config.PRISMA_QUERY_TIMEOUT_MS;
-    let timer: ReturnType<typeof setTimeout>;
-
-    const timeoutPromise = new Promise((_, reject) => {
-      timer = setTimeout(() => {
-        reject(
-          new Error(
-            `Query timeout: ${params.model}.${params.action} exceeded ${timeout}ms`
-          )
-        );
-      }, timeout);
-    });
-
-    try {
-      return await Promise.race([next(params), timeoutPromise]);
-    } finally {
-      clearTimeout(timer!);
-    }
-  });
+        const start = performance.now();
+        try {
+          const result = await Promise.race([query(args), timeoutPromise]);
+          const ms = performance.now() - start;
+          const rid = store?.requestId ?? '';
+          const prefix = rid ? `[prisma:${rid}]` : '[prisma]';
+          console.log(
+            `${prefix} ${model ?? 'raw'}.${operation} ${ms.toFixed(1)}ms`
+          );
+          return result;
+        } finally {
+          if (timer) clearTimeout(timer);
+        }
+      },
+    },
+  }) as unknown as PrismaClient;
 
   return _instance;
 }
+
+let _extendedInstance: PrismaClient | undefined;
 
 // Initialize database connection
 export const initializeDataSource = async () => {
@@ -105,7 +102,8 @@ export const initializeDataSource = async () => {
  */
 const prisma: PrismaClient = new Proxy({} as PrismaClient, {
   get(_, prop) {
-    const target = getInstance();
+    getInstance();
+    const target = _extendedInstance ?? _instance!;
     const value = Reflect.get(target, prop, target);
     return typeof value === 'function'
       ? (value as (...args: unknown[]) => unknown).bind(target)
