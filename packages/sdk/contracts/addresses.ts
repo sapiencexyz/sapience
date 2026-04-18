@@ -127,7 +127,7 @@ export const predictionMarketVault: ChainAddressMap = {
     legacy: [
       {
         address: '0x0f246fBd64f6FE57544aAB16A31e1E3F59257723',
-        blockCreated: 3253965,
+        blockCreated: 3472849,
       },
       {
         address: '0x5704dB4b2c068d74Fde25257106a7029463f812E',
@@ -160,7 +160,7 @@ export const pythConditionResolver: ChainAddressMap = {
     legacy: [
       {
         address: '0x3384de2a15e8D767a36f09f6e67F41C9fa8C6B1f',
-        blockCreated: 3278610,
+        blockCreated: 3659812,
       },
       {
         address: '0x6399F6397701e4213BBaEf9f7a15EF31C9c329E1',
