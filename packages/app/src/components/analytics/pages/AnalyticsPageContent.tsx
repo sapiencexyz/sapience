@@ -217,12 +217,13 @@ function AnalyticsPageContent(): React.ReactElement {
 
     return protocolStats.map((point) => {
       const openInterest = parseFloat(point.openInterest) / 1e18;
+      const escrowBalance = parseFloat(point.escrowBalance) / 1e18;
       const vaultAvailableAssets =
         parseFloat(point.vaultAvailableAssets) / 1e18;
       return {
         timestamp: point.timestamp,
         openInterest,
-        totalBalance: openInterest + vaultAvailableAssets,
+        totalBalance: escrowBalance + vaultAvailableAssets,
         vaultAvailableAssets,
       };
     });
