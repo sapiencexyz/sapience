@@ -36,10 +36,10 @@ vi.mock('~/hooks/blockchain/useCurrentAddress', () => ({
 vi.mock('~/hooks/graphql/useAnalytics', () => ({
   useProtocolStats: () => mockUseProtocolStats(),
   getProtocolTvlWei: (
-    stat: { openInterest?: string; vaultAvailableAssets?: string } | null
+    stat: { escrowBalance?: string; vaultAvailableAssets?: string } | null
   ) =>
     stat
-      ? BigInt(stat.openInterest || '0') +
+      ? BigInt(stat.escrowBalance || '0') +
         BigInt(stat.vaultAvailableAssets || '0')
       : 0n,
 }));

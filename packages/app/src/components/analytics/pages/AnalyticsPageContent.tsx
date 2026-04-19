@@ -217,12 +217,13 @@ function AnalyticsPageContent(): React.ReactElement {
 
     return protocolStats.map((point) => {
       const openInterest = parseFloat(point.openInterest) / 1e18;
+      const escrowBalance = parseFloat(point.escrowBalance) / 1e18;
       const vaultAvailableAssets =
         parseFloat(point.vaultAvailableAssets) / 1e18;
       return {
         timestamp: point.timestamp,
         openInterest,
-        totalBalance: openInterest + vaultAvailableAssets,
+        protocolTvl: escrowBalance + vaultAvailableAssets,
         vaultAvailableAssets,
       };
     });
@@ -246,7 +247,7 @@ function AnalyticsPageContent(): React.ReactElement {
     () =>
       filterDataByPeriod(statsChartData, oiPeriod, {
         openInterest: 0,
-        totalBalance: 0,
+        protocolTvl: 0,
         vaultAvailableAssets: 0,
       }),
     [statsChartData, oiPeriod]
@@ -256,7 +257,7 @@ function AnalyticsPageContent(): React.ReactElement {
     () =>
       filterDataByPeriod(statsChartData, tvlPeriod, {
         openInterest: 0,
-        totalBalance: 0,
+        protocolTvl: 0,
         vaultAvailableAssets: 0,
       }),
     [statsChartData, tvlPeriod]
@@ -293,10 +294,10 @@ function AnalyticsPageContent(): React.ReactElement {
                     <div className="space-y-3">
                       <div className="flex flex-col gap-1">
                         <span className="uppercase font-mono tracking-wide text-muted-foreground text-xs whitespace-nowrap">
-                          Open Interest
+                          Escrow Balance
                         </span>
                         <span className="font-mono whitespace-nowrap text-xl">
-                          {formatNumber(summary?.openInterest || '0')}{' '}
+                          {formatNumber(summary?.escrowBalance || '0')}{' '}
                           {collateralSymbol}
                         </span>
                       </div>
@@ -604,14 +605,14 @@ function AnalyticsPageContent(): React.ReactElement {
                           content={(props) => (
                             <ChartTooltip
                               {...props}
-                              dataKey="totalBalance"
+                              dataKey="protocolTvl"
                               collateralSymbol={collateralSymbol}
                             />
                           )}
                         />
                         <Area
                           type="monotone"
-                          dataKey="totalBalance"
+                          dataKey="protocolTvl"
                           stroke="hsl(var(--accent-gold))"
                           strokeWidth={2}
                           fill="url(#protocolTVLGradient)"
