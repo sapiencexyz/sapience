@@ -612,8 +612,8 @@ function RelatedVolumeFilter({
                     side="top"
                     className="max-w-[220px] text-xs whitespace-normal"
                   >
-                    Excludes volume from trades where the outcome price is below
-                    $0.01 or above $0.99
+                    Excludes volume from trades when the price was below $0.01
+                    or above $0.99
                   </TooltipContent>
                 </Tooltip>
               </div>
