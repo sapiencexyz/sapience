@@ -386,8 +386,8 @@ function createColumns(
                         side="left"
                         className="max-w-[200px] text-xs whitespace-normal"
                       >
-                        Excludes volume from trades where the outcome price is
-                        below $0.01 or above $0.99
+                        Excludes volume from trades when the price was below
+                        $0.01 or above $0.99
                       </TooltipContent>
                     </Tooltip>
                   </DropdownMenuItem>

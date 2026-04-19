@@ -37,6 +37,7 @@ import {
 import RiskDisclaimer from '~/components/markets/forms/shared/RiskDisclaimer';
 import Loader from '~/components/shared/Loader';
 import VaultPnlChart from '~/components/vaults/VaultPnlChart';
+import { ETHENA_BASE_APY } from '~/components/layout/StatusIndicators';
 
 const DEPOSIT_WHITELIST: `0x${string}`[] = [
   '0xdb5af497a73620d881561edb508012a5f84e9ba2',
@@ -530,7 +531,6 @@ const VaultsPageContent = () => {
     const protocolTvlNum = Number(formatAssetAmount(protocolTvlWei));
     const vaultTvlNum = Number(formatAssetAmount(tvlWei));
 
-    const ETHENA_BASE_APY = 4;
     const effectiveApy =
       vaultTvlNum > 0 ? (protocolTvlNum / vaultTvlNum) * ETHENA_BASE_APY : 0;
     const annualYieldToVault = vaultTvlNum * (effectiveApy / 100);
@@ -619,7 +619,7 @@ const VaultsPageContent = () => {
                         </h4>
                         <div className="relative">
                           {tvlWei <= VAULT_CAPACITY_WEI && (
-                            <div className="mb-1 text-right font-mono text-[10px] text-muted-foreground/50 uppercase">
+                            <div className="absolute -top-4 right-0 font-mono text-[10px] text-muted-foreground/50 uppercase">
                               {depositCapDisplay} cap
                             </div>
                           )}
