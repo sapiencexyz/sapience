@@ -6,6 +6,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@sapience/ui/components/ui/dialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@sapience/ui/components/ui/tooltip';
 import { Info } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -210,6 +215,27 @@ export default function PositionForm({
     const sizeNum = Number(positionSizeValue);
     return !Number.isNaN(sizeNum) && sizeNum > 1000;
   }, [positionSizeValue]);
+
+  // Combos that mix oracle types (e.g. Pyth feeds + Polymarket/UMA conditions)
+  // or multiple UMA resolvers attract fewer bids — surface this in the estimate UI.
+  const hasMixedResolvers = useMemo(() => {
+    const umaResolvers = new Set(
+      selections
+        .map((s) => s.resolverAddress?.toLowerCase())
+        .filter((a): a is string => Boolean(a))
+    );
+    const hasUma = selections.length > 0;
+    const hasPyth = (pythPredictions?.length ?? 0) > 0;
+    return (hasUma && hasPyth) || umaResolvers.size > 1;
+  }, [selections, pythPredictions]);
+
+  // All picks are Pyth price feeds — "shorter durations" nudge only makes sense here
+  // (UMA/Polymarket conditions have fixed end times the user doesn't control).
+  const isAllPyth = useMemo(() => {
+    const hasUma = selections.length > 0;
+    const hasPyth = (pythPredictions?.length ?? 0) > 0;
+    return hasPyth && !hasUma;
+  }, [selections, pythPredictions]);
 
   // Calculate predictor position size in wei for auction chart
   const predictorPositionSizeWei = useMemo(() => {
@@ -722,7 +748,7 @@ export default function PositionForm({
   // Since automatic auction trigger is disabled, show button immediately when no bids
   const showNoBidsHint = !bestBid && !recentlyRequested;
 
-  // Show "Some combinations may not receive bids" hint after 3 seconds of no bids
+  // Show "Some predictions may not receive bids" hint after 3 seconds of no bids
   // This replaces the disclaimer after waiting for bids without success
   const HINT_DELAY_MS = 3000;
   const showNoBidsWarning =
@@ -807,21 +833,96 @@ export default function PositionForm({
           ].map((item, index) => {
             if (item.kind === 'pyth') {
               const p = item.p;
-              const predictionData: PredictionListItemData = {
-                id: p.id,
-                question: `${p.priceFeedLabel ?? 'Crypto'} OVER $${p.targetPrice.toLocaleString()}`,
-                prediction: p.direction === 'over',
-              };
+              const feedLabel = (p.priceFeedLabel ?? 'Crypto').replace(
+                /^[^.]+\./,
+                ''
+              );
+              const directionSymbol = p.direction === 'over' ? '>' : '<';
+              const priceStr = p.targetPrice.toLocaleString(undefined, {
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2,
+              });
+              const endDate = (() => {
+                const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(
+                  p.dateTimeLocal
+                );
+                if (!m) return null;
+                return new Date(
+                  Number(m[1]),
+                  Number(m[2]) - 1,
+                  Number(m[3]),
+                  Number(m[4]),
+                  Number(m[5])
+                );
+              })();
+              const durationStr = (() => {
+                if (!endDate) return null;
+                const mins = Math.max(
+                  0,
+                  Math.round((endDate.getTime() - Date.now()) / 60000)
+                );
+                if (mins < 60) return `${mins}M`;
+                const hours = Math.round(mins / 60);
+                if (hours < 24) return `${hours}H`;
+                return `${Math.round(hours / 24)}D`;
+              })();
+              const exactPrice = (() => {
+                const raw = p.targetPriceRaw ?? String(p.targetPrice);
+                const n = Number(raw);
+                if (!Number.isFinite(n)) return raw;
+                return n.toLocaleString(undefined, {
+                  minimumFractionDigits: 2,
+                  maximumFractionDigits: 20,
+                });
+              })();
+              const exactTimestamp = endDate
+                ? new Intl.DateTimeFormat(undefined, {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    timeZoneName: 'short',
+                  }).format(endDate)
+                : null;
+              const pythTitle = `${feedLabel} ${directionSymbol}$${priceStr}${durationStr ? ` IN ${durationStr}` : ''}`;
               return (
                 <div
                   key={p.id}
                   className={`-mx-4 px-4 py-2.5 border-b border-brand-white/10 ${index === 0 ? 'border-t' : ''}`}
                 >
-                  <PredictionListItem
-                    prediction={predictionData}
-                    leading={<PythMarketBadge className="w-5 h-5" />}
-                    onRemove={onRemovePythPrediction}
-                  />
+                  <div className="flex items-center gap-2">
+                    <PythMarketBadge className="w-5 h-5" />
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="truncate text-brand-white font-mono text-sm flex-1 min-w-0 cursor-default">
+                          {pythTitle}
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent
+                        side="top"
+                        className="max-w-xs text-xs whitespace-normal break-words font-mono"
+                      >
+                        <div>
+                          {feedLabel} {directionSymbol}${exactPrice}
+                        </div>
+                        {exactTimestamp && (
+                          <div className="mt-1 text-muted-foreground">
+                            {exactTimestamp}
+                          </div>
+                        )}
+                      </TooltipContent>
+                    </Tooltip>
+                    <button
+                      onClick={() => onRemovePythPrediction?.(p.id)}
+                      className="text-[22px] leading-none text-muted-foreground hover:text-foreground shrink-0"
+                      type="button"
+                      aria-label="Remove"
+                    >
+                      ×
+                    </button>
+                  </div>
                 </div>
               );
             }
@@ -922,6 +1023,8 @@ export default function PositionForm({
               }
               enableRainbowHover={isRainbowHoverEnabled}
               hintMounted={hintMounted}
+              hasMixedResolvers={hasMixedResolvers}
+              isAllPyth={isAllPyth}
               disclaimerMounted={disclaimerMounted}
               allBids={validBids}
               predictorPositionSizeWei={predictorPositionSizeWei}
