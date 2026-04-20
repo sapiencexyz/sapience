@@ -27,6 +27,8 @@ export type PredictionListItemProps = {
   onRemove?: (id: string) => void;
   yesLabel?: string;
   noLabel?: string;
+  /** Hide the YES/NO badge. For rows where the title already encodes the choice. */
+  showChoice?: boolean;
 };
 
 export function PredictionListItem({
@@ -36,6 +38,7 @@ export function PredictionListItem({
   onRemove,
   yesLabel = 'YES',
   noLabel = 'NO',
+  showChoice = true,
 }: PredictionListItemProps) {
   return (
     <div className="flex items-center gap-2">
@@ -55,11 +58,13 @@ export function PredictionListItem({
                 </div>
               )}
             </div>
-            <span className="shrink-0">
-              <PredictionChoiceBadge
-                choice={prediction.prediction ? yesLabel : noLabel}
-              />
-            </span>
+            {showChoice && (
+              <span className="shrink-0">
+                <PredictionChoiceBadge
+                  choice={prediction.prediction ? yesLabel : noLabel}
+                />
+              </span>
+            )}
           </div>
         </div>
       </div>
