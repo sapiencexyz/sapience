@@ -101,8 +101,11 @@ function parsePythEndDate(dateTimeLocal: string): Date | null {
 
 // Floor at each boundary so we never round up into the next unit
 // (e.g. 59m50s shows as `59M`, not `60M`; 23h59m stays `23H`, not `1D`).
+// Sub-minute remaining time renders as `<1M` so the row never shows `0M`.
 function formatPythDurationFromNow(endMs: number, nowMs: number): string {
-  const mins = Math.max(0, Math.floor((endMs - nowMs) / 60000));
+  const ms = Math.max(0, endMs - nowMs);
+  const mins = Math.floor(ms / 60000);
+  if (mins < 1) return `<1M`;
   if (mins < 60) return `${mins}M`;
   const hours = Math.floor(mins / 60);
   if (hours < 24) return `${hours}H`;
@@ -271,20 +274,16 @@ export default function PositionForm({
     return !Number.isNaN(sizeNum) && sizeNum > 1000;
   }, [positionSizeValue]);
 
-  // Combos that mix Polymarket conditions and Pyth price feeds attract fewer
-  // bids — surface this in the estimate UI.
-  const hasMixedResolvers = useMemo(() => {
+  // Pick-composition flags drive which bid-estimate hint we surface:
+  // mixed combos attract fewer bids; all-Pyth combos get the shorter-duration
+  // nudge (Polymarket conditions have fixed end times the user doesn't control).
+  const { hasMixedResolvers, isAllPyth } = useMemo(() => {
     const hasPolymarket = selections.length > 0;
     const hasPyth = (pythPredictions?.length ?? 0) > 0;
-    return hasPolymarket && hasPyth;
-  }, [selections, pythPredictions]);
-
-  // All picks are Pyth price feeds — "shorter durations" nudge only makes sense here
-  // (Polymarket conditions have fixed end times the user doesn't control).
-  const isAllPyth = useMemo(() => {
-    const hasPolymarket = selections.length > 0;
-    const hasPyth = (pythPredictions?.length ?? 0) > 0;
-    return hasPyth && !hasPolymarket;
+    return {
+      hasMixedResolvers: hasPolymarket && hasPyth,
+      isAllPyth: hasPyth && !hasPolymarket,
+    };
   }, [selections, pythPredictions]);
 
   // Calculate predictor position size in wei for auction chart
@@ -930,6 +929,11 @@ export default function PositionForm({
                           className="max-w-xs text-xs whitespace-normal break-words font-mono"
                         >
                           <div>{p.priceFeedLabel ?? 'Crypto'}</div>
+                          {priceDisplay && (
+                            <div className="mt-1">
+                              {directionSymbol} ${priceDisplay}
+                            </div>
+                          )}
                           {exactTimestamp && (
                             <div className="mt-1 text-muted-foreground">
                               {exactTimestamp}
