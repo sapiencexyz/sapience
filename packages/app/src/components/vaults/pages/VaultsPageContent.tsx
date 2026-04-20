@@ -454,12 +454,17 @@ const VaultsPageContent = () => {
     </Tabs>
   );
 
-  const tvlWei = vaultData?.totalLiquidValue ?? 0n;
+  const liquidWei = vaultData?.totalLiquidValue ?? 0n;
 
   const deployedWei = useMemo(() => {
     const lastStat = protocolStats?.[protocolStats.length - 1];
     return lastStat?.vaultDeployed ? BigInt(lastStat.vaultDeployed) : 0n;
   }, [protocolStats]);
+
+  // Vault AUM = liquid USDe in the vault + collateral deployed in open positions.
+  // getTotalLiquidValue() on the contract intentionally excludes position tokens,
+  // so we add the deployed cost basis back here to show true total.
+  const tvlWei = liquidWei + deployedWei;
 
   const utilizationPercent = useMemo(() => {
     if (tvlWei <= 0n) return 0;
