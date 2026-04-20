@@ -1,4 +1,5 @@
 import prisma from '../../db';
+import { Prisma } from '../../../generated/prisma';
 import { getProviderForChain } from '../../utils/utils';
 import { type PublicClient, type Log, parseAbiItem } from 'viem';
 import Sentry from '../../instrument';
@@ -238,55 +239,65 @@ class PositionTokenTransferIndexer implements IIndexer {
     const txHash = log.transactionHash || '';
     const logIdx = log.logIndex || 0;
 
-    // Idempotency: skip if we already recorded this exact event
-    const existing = await prisma.event.findFirst({
-      where: {
-        transactionHash: txHash,
-        logIndex: logIdx,
-        logData: { path: ['source'], equals: 'PositionTokenTransfer' },
-      },
-      select: { id: true },
-    });
-    if (existing) return;
+    // Wrap everything in a transaction so the event record and the balance
+    // arithmetic commit atomically. `event` has a unique constraint on
+    // (transactionHash, logIndex), so a replay from the reconciler hits P2002
+    // on create and we roll back the whole thing — no double-debit, no
+    // double-credit on Position balances.
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.event.create({
+          data: {
+            blockNumber: Number(log.blockNumber || 0),
+            transactionHash: txHash,
+            timestamp: blockTimestamp,
+            logIndex: logIdx,
+            logData: {
+              source: 'PositionTokenTransfer',
+              chainId: this.chainId,
+              eventName: isBurn ? 'Burn' : 'Transfer',
+              args: {
+                from: fromLower,
+                to: toLower,
+                value: valueStr,
+                tokenAddress,
+              },
+            },
+          },
+        });
 
-    // Record raw event
-    await prisma.event.create({
-      data: {
-        blockNumber: Number(log.blockNumber || 0),
-        transactionHash: txHash,
-        timestamp: blockTimestamp,
-        logIndex: logIdx,
-        logData: {
-          source: 'PositionTokenTransfer',
-          chainId: this.chainId,
-          eventName: isBurn ? 'Burn' : 'Transfer',
-          args: { from: fromLower, to: toLower, value: valueStr, tokenAddress },
-        },
-      },
-    });
+        // Decrement sender balance
+        const rowsUpdated = await tx.$executeRaw`
+          UPDATE "Position"
+          SET balance = (balance::NUMERIC - ${valueStr}::NUMERIC)::TEXT, "updatedAt" = NOW()
+          WHERE "chainId" = ${this.chainId}
+            AND "tokenAddress" = ${tokenAddress}
+            AND holder = ${fromLower}
+        `;
+        if (rowsUpdated === 0) {
+          console.warn(
+            `[TransferIndexer:${this.chainId}] No Position row found to decrement for holder=${fromLower} token=${tokenAddress} (tx=${log.transactionHash})`
+          );
+        }
 
-    // Decrement sender balance
-    const rowsUpdated = await prisma.$executeRaw`
-      UPDATE "Position"
-      SET balance = (balance::NUMERIC - ${valueStr}::NUMERIC)::TEXT, "updatedAt" = NOW()
-      WHERE "chainId" = ${this.chainId}
-        AND "tokenAddress" = ${tokenAddress}
-        AND holder = ${fromLower}
-    `;
-    if (rowsUpdated === 0) {
-      console.warn(
-        `[TransferIndexer:${this.chainId}] No Position row found to decrement for holder=${fromLower} token=${tokenAddress} (tx=${log.transactionHash})`
-      );
-    }
-
-    // Upsert receiver balance (skip for burns — no recipient)
-    if (!isBurn) {
-      await prisma.$executeRaw`
-        INSERT INTO "Position" ("chainId", "tokenAddress", "pickConfigId", "isPredictorToken", holder, balance, "createdAt", "updatedAt")
-        VALUES (${this.chainId}, ${tokenAddress}, ${info.pickConfigId}, ${info.isPredictorToken}, ${toLower}, ${valueStr}, NOW(), NOW())
-        ON CONFLICT ("chainId", "tokenAddress", holder)
-        DO UPDATE SET balance = ("Position".balance::NUMERIC + ${valueStr}::NUMERIC)::TEXT, "updatedAt" = NOW()
-      `;
+        // Upsert receiver balance (skip for burns — no recipient)
+        if (!isBurn) {
+          await tx.$executeRaw`
+            INSERT INTO "Position" ("chainId", "tokenAddress", "pickConfigId", "isPredictorToken", holder, balance, "createdAt", "updatedAt")
+            VALUES (${this.chainId}, ${tokenAddress}, ${info.pickConfigId}, ${info.isPredictorToken}, ${toLower}, ${valueStr}, NOW(), NOW())
+            ON CONFLICT ("chainId", "tokenAddress", holder)
+            DO UPDATE SET balance = ("Position".balance::NUMERIC + ${valueStr}::NUMERIC)::TEXT, "updatedAt" = NOW()
+          `;
+        }
+      });
+    } catch (e) {
+      if (
+        e instanceof Prisma.PrismaClientKnownRequestError &&
+        e.code === 'P2002'
+      ) {
+        return;
+      }
+      throw e;
     }
 
     console.log(

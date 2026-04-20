@@ -7,6 +7,7 @@ import {
   type Block,
   type Hex,
 } from 'viem';
+import { Prisma } from '../../../../generated/prisma';
 import { getPythMarketId } from '@sapience/sdk/auction/encoding';
 import { OutcomeSide } from '@sapience/sdk/types';
 
@@ -533,6 +534,39 @@ describe('PredictionMarketEscrowIndexer', () => {
       // $executeRaw should be called to decrement open interest
       expect(mockPrisma.$executeRaw).toHaveBeenCalled();
     });
+
+    it('should use a transition-gated update with settled=false filter', async () => {
+      const indexer = setupSettledTest(1);
+      await indexer.indexBlocks('test', [50]);
+
+      expect(mockPrisma.prediction.updateMany).toHaveBeenCalledTimes(1);
+      const call = mockPrisma.prediction.updateMany.mock.calls[0][0];
+      expect(call.where).toEqual({
+        predictionId: PREDICTION_ID.toLowerCase(),
+        settled: false,
+      });
+    });
+
+    it('should NOT decrement open interest on replay (idempotency)', async () => {
+      const indexer = setupSettledTest(1);
+
+      // First call: updateMany flips settled false→true (count=1), decrement runs.
+      // Second call: settled is already true, updateMany matches 0 rows (count=0),
+      // handler should short-circuit before the OI decrement.
+      mockPrisma.prediction.updateMany
+        .mockResolvedValueOnce({ count: 1 })
+        .mockResolvedValueOnce({ count: 0 });
+
+      await indexer.indexBlocks('test', [50]);
+      const execRawCountAfterFirst = mockPrisma.$executeRaw.mock.calls.length;
+
+      await indexer.indexBlocks('test', [50]);
+      const execRawCountAfterSecond = mockPrisma.$executeRaw.mock.calls.length;
+
+      expect(execRawCountAfterFirst).toBeGreaterThan(0);
+      expect(execRawCountAfterSecond).toBe(execRawCountAfterFirst);
+      expect(mockPrisma.prediction.updateMany).toHaveBeenCalledTimes(2);
+    });
   });
 
   // ─── TokensRedeemed ────────────────────────────────────────────────
@@ -676,6 +710,36 @@ describe('PredictionMarketEscrowIndexer', () => {
       });
       // $executeRaw called once per condition
       expect(mockPrisma.$executeRaw).toHaveBeenCalledTimes(2);
+    });
+
+    it('should NOT decrement open interest when close.create throws P2002 (idempotency)', async () => {
+      const indexer = new PredictionMarketEscrowIndexer(42161);
+      const log = makePositionsBurnedLog();
+
+      mockPrisma.pick.findMany.mockResolvedValue([
+        { conditionId: 'cond-1' },
+        { conditionId: 'cond-2' },
+      ]);
+      mockPrisma.picks.findUnique.mockResolvedValue(null);
+
+      // Simulate replay: Close row for this (chainId, txHash, pickConfigId) already exists.
+      const uniqueErr = new Prisma.PrismaClientKnownRequestError(
+        'Unique constraint failed on the fields: (`chainId`,`txHash`,`pickConfigId`)',
+        { code: 'P2002', clientVersion: 'test' }
+      );
+      mockPrisma.close.create.mockRejectedValueOnce(uniqueErr);
+
+      indexer.client = {
+        getLogs: vi.fn().mockResolvedValue([log]),
+        getBlock: vi.fn().mockResolvedValue(MOCK_BLOCK),
+      };
+
+      await indexer.indexBlocks('test', [50]);
+
+      // close.create was attempted and threw
+      expect(mockPrisma.close.create).toHaveBeenCalledTimes(1);
+      // but no OI decrement happened
+      expect(mockPrisma.$executeRaw).not.toHaveBeenCalled();
     });
   });
 
