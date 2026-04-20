@@ -99,12 +99,14 @@ function parsePythEndDate(dateTimeLocal: string): Date | null {
   }
 }
 
+// Floor at each boundary so we never round up into the next unit
+// (e.g. 59m50s shows as `59M`, not `60M`; 23h59m stays `23H`, not `1D`).
 function formatPythDurationFromNow(endMs: number, nowMs: number): string {
-  const mins = Math.max(0, Math.round((endMs - nowMs) / 60000));
+  const mins = Math.max(0, Math.floor((endMs - nowMs) / 60000));
   if (mins < 60) return `${mins}M`;
-  const hours = Math.round(mins / 60);
+  const hours = Math.floor(mins / 60);
   if (hours < 24) return `${hours}H`;
-  return `${Math.round(hours / 24)}D`;
+  return `${Math.floor(hours / 24)}D`;
 }
 
 interface PositionFormProps {
