@@ -143,7 +143,8 @@ function formatDateTimeLocalInputValue(date: Date): string {
   const dd = pad(date.getDate());
   const hh = pad(date.getHours());
   const min = pad(date.getMinutes());
-  return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+  const sec = pad(date.getSeconds());
+  return `${yyyy}-${mm}-${dd}T${hh}:${min}:${sec}`;
 }
 
 function addMinutes(date: Date, minutes: number): Date {
@@ -158,17 +159,21 @@ function parseDateTimeLocalInputValue(value: string): {
   date: Date | undefined;
   time: string;
 } {
-  // Expected: YYYY-MM-DDTHH:MM
-  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value);
-  if (!m) return { date: undefined, time: '12:00' };
+  // Accept YYYY-MM-DDTHH:MM or YYYY-MM-DDTHH:MM:SS.
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(
+    value
+  );
+  if (!m) return { date: undefined, time: '12:00:00' };
   const yyyy = Number(m[1]);
   const mm = Number(m[2]);
   const dd = Number(m[3]);
   const hh = Number(m[4]);
   const min = Number(m[5]);
-  const d = new Date(yyyy, mm - 1, dd, hh, min);
-  if (Number.isNaN(d.getTime())) return { date: undefined, time: '12:00' };
-  return { date: d, time: `${m[4]}:${m[5]}` };
+  const sec = m[6] !== undefined ? Number(m[6]) : 0;
+  const d = new Date(yyyy, mm - 1, dd, hh, min, sec);
+  if (Number.isNaN(d.getTime())) return { date: undefined, time: '12:00:00' };
+  const secStr = m[6] ?? '00';
+  return { date: d, time: `${m[4]}:${m[5]}:${secStr}` };
 }
 
 function getLocalTimeZoneLabel(): string {
@@ -451,13 +456,16 @@ function DateTimeSelector({
                       selected={selectedDate}
                       onSelect={(d) => {
                         if (!d) return;
-                        const [hh, min] = selectedTime.split(':').map(Number);
+                        const [hh, min, sec] = selectedTime
+                          .split(':')
+                          .map(Number);
                         const next = new Date(
                           d.getFullYear(),
                           d.getMonth(),
                           d.getDate(),
                           Number.isFinite(hh) ? hh : 12,
-                          Number.isFinite(min) ? min : 0
+                          Number.isFinite(min) ? min : 0,
+                          Number.isFinite(sec) ? sec : 0
                         );
                         const nextValue = formatDateTimeLocalInputValue(next);
                         setCustomValue(nextValue);
@@ -472,17 +480,21 @@ function DateTimeSelector({
                       <div className="relative flex-1">
                         <Input
                           type="time"
+                          step={1}
                           value={selectedTime}
                           onChange={(e) => {
                             const nextTime = e.target.value;
                             const base = selectedDate ?? new Date();
-                            const [hh, min] = nextTime.split(':').map(Number);
+                            const [hh, min, sec] = nextTime
+                              .split(':')
+                              .map(Number);
                             const next = new Date(
                               base.getFullYear(),
                               base.getMonth(),
                               base.getDate(),
                               Number.isFinite(hh) ? hh : 12,
-                              Number.isFinite(min) ? min : 0
+                              Number.isFinite(min) ? min : 0,
+                              Number.isFinite(sec) ? sec : 0
                             );
                             const nextValue =
                               formatDateTimeLocalInputValue(next);
