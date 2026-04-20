@@ -39,7 +39,7 @@ import {
 import { useConditionsByIds } from '~/hooks/graphql/useConditionsByIds';
 import PicksSummary from '~/components/shared/PicksSummary';
 import LegacyBadge from '~/components/shared/LegacyBadge';
-import PredictionDialog from '~/components/positions/PredictionDialog';
+import PositionDialogContainer from '~/components/positions/PositionDialogContainer';
 import OgShareDialogBase from '~/components/shared/OgShareDialog';
 import {
   PositionsTableFilters,
@@ -622,56 +622,14 @@ export default function PositionsTable({
           </TableBody>
         </Table>
       </div>
-      {dialogPosition &&
-        (() => {
-          const dp = dialogPosition;
-          const pc = dp.pickConfig;
-          // Build a minimal Prediction object from the PositionBalance
-          const prediction = pc
-            ? {
-                id: dp.id,
-                predictionId: pc.predictionId ?? '',
-                predictor: dp.isPredictorToken ? dp.holder : '',
-                counterparty: dp.isPredictorToken ? '' : dp.holder,
-                predictorCollateral: pc.totalPredictorCollateral,
-                counterpartyCollateral: pc.totalCounterpartyCollateral,
-                settled: pc.resolved,
-                result: (pc.result ?? 'UNRESOLVED') as
-                  | 'UNRESOLVED'
-                  | 'PREDICTOR_WINS'
-                  | 'COUNTERPARTY_WINS'
-                  | 'NON_DECISIVE',
-                createdAt: dp.createdAt,
-                chainId: dp.chainId,
-                marketAddress: pc.marketAddress,
-                predictorToken: pc.predictorToken ?? '',
-                counterpartyToken: pc.counterpartyToken ?? '',
-                collateralDeposited: null,
-                collateralDepositedAt: null,
-                settledAt: pc.resolvedAt ?? null,
-                predictorClaimable: null,
-                counterpartyClaimable: null,
-                createTxHash: '',
-                settleTxHash: null,
-                refCode: null,
-                isLegacy: pc.isLegacy,
-                pickConfig: pc,
-              }
-            : null;
-          return prediction ? (
-            <PredictionDialog
-              open
-              onOpenChange={(open) => {
-                if (!open) setDialogPosition(null);
-              }}
-              prediction={prediction}
-              pickConfig={pc ?? null}
-              isPredictorSide={dp.isPredictorToken}
-              conditionsMap={conditionsMap}
-              collateralSymbol={collateralSymbol}
-            />
-          ) : null;
-        })()}
+      {dialogPosition && (
+        <PositionDialogContainer
+          position={dialogPosition}
+          conditionsMap={conditionsMap}
+          collateralSymbol={collateralSymbol}
+          onClose={() => setDialogPosition(null)}
+        />
+      )}
       {sharePosition && shareImageSrc && (
         <OgShareDialogBase
           imageSrc={shareImageSrc}
