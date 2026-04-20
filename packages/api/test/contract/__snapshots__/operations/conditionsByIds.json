@@ -1,60 +1,56 @@
 {
   "conditions": [
     {
-      "id": "0x010050b9aabd32094d582d7d9161ff25d484b20c2140d851bc4644ca28e0561b",
-      "shortName": "SAC -1.5",
-      "optionName": "Spread -1.5",
-      "question": "Kings covers -1.5 spread vs Flames?",
-      "description": "In the NHL game, scheduled for April 16 at 9:00 PM ET:\nThis market will resolve to \"Kings\" if the Kings win the game by 2 or more goals.\nOtherwise, this market will resolve to \"Flames\".\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.\nThe result will be determined based on the final score including any overtime periods and shootouts. In the event of a shootout, one goal will be added to the winning team's score for the purpose of resolution.",
-      "endTime": 1776412800,
+      "id": "0x00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000069bb1cdc0000000000000000000000000000000000000000000000000000067cc2a059c0fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff80000000000000000000000000000000000000000000000000000000000000001",
+      "shortName": "BTC OVER $71,329.11",
+      "optionName": null,
+      "question": "Crypto.BTC/USD OVER $71,329.11",
+      "description": "PYTH_LAZER|priceId=0x0000000000000000000000000000000000000000000000000000000000000001|endTime=1773870300|strikePrice=7132911000000|strikeExpo=-8|overWinsOnTie=1|strikeDecimal=71329.11000000",
+      "endTime": 1773870300,
+      "resolver": "0x3384de2a15e8d767a36f09f6e67f41c9fa8c6b1f",
+      "similarMarkets": [],
+      "settled": false,
+      "resolvedToYes": false,
+      "nonDecisive": false,
+      "estimatedPrice": null,
+      "category": null
+    },
+    {
+      "id": "0x003478da73863b7555a88a4a240042edbdfa9ce2afbab32f34ec97dbd80c5ab7",
+      "shortName": "Cashius Howell",
+      "optionName": "Cashius Howell",
+      "question": "Will Cashius Howell be the first pick of the 2026 NFL Draft?",
+      "description": "This is a polymarket to predict which player is drafted #1 overall in the 2026 NFL Draft.\nIf the listed player is drafted first overall in the 2026 NFL Draft, the market will resolve to \"Yes\". Otherwise, it will resolve to \"No\".\nIf the 2026 NFL Draft is canceled or not completed by July 30, 2026, this market will resolve to \"Other\".\nThe resolution source for this market will be official information from the NFL. A consensus of credible reporting may also be used.",
+      "endTime": 1777089600,
       "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
       "similarMarkets": [
-        "https://polymarket.com/event/nhl-lak-cal-2026-04-16#nhl-lak-cal-2026-04-16-spread-away-1pt5"
+        "https://polymarket.com/event/2026-pro-football-draft-1st-overall-pick#will-cashius-howell-be-the-first-pick-of-the-2026-nfl-draft"
       ],
       "settled": false,
       "resolvedToYes": false,
       "nonDecisive": false,
-      "estimatedPrice": 0.345,
+      "estimatedPrice": 0.0005,
       "category": {
         "slug": "sports"
       }
     },
     {
-      "id": "0x04952f90922a77313501d0c660083c668dd914c7b0bf8b9d7f00d4df88280033",
-      "shortName": "ETH $2,500-2,600 Apr 23",
-      "optionName": "2,500-2,600",
-      "question": "Will the price of Ethereum be between $2,500 and $2,600 on April 23?",
-      "description": "This market will resolve according to the final \"Close\" price of the Binance 1 minute candle for ETH/USDT 12:00 in the ET timezone (noon) on the date specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the ETH/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/ETH_USDT with \"1m\" and \"Candles\" selected on the top bar.\nIf the reported value falls exactly between two brackets, then this market will resolve to the higher range bracket.\nPlease note that this market is about the price according to Binance ETH/USDT, not according to other exchanges or trading pairs.",
-      "endTime": 1777003140,
+      "id": "0x005d9a46b9caef05b29cb69b7fb85d0d45e432d10cd5a34ecc36118a78ee3432",
+      "shortName": "April 27",
+      "optionName": "April 27",
+      "question": "Will Donald Trump publicly insult someone on April 27, 2026?",
+      "description": "This market will resolve to \"Yes\" if Donald Trump makes any public statement in which he insults, mocks, or attacks any non-fictional individual personally or professionally in a clearly negative manner on the specified date (ET). Otherwise, this market will resolve to \"No\". \nThis includes calling the individual weak, stupid, disloyal, a failure, using an insulting nickname, using other derogatory language, or using the negative form of a positive trait in a derogatory personal way (e.g., “He/She isn’t smart”). Negative forms used in reference to the individual's professional actions, policies, or decisions (e.g., “He/She isn’t being smart about this policy”) will not count. Policy disagreements stated without disparaging language will not count.\nA direct reference will qualify even if the individual is not named, so long as it is reasonably clear from context that they are the subject.\nAny written, verbal, or recorded public statement by Trump qualifies.\nThe resolution source will be a consensus of credible reporting.",
+      "endTime": 1777348740,
       "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
       "similarMarkets": [
-        "https://polymarket.com/event/ethereum-price-on-april-23#will-the-price-of-ethereum-be-between-2500-2600-on-april-23"
+        "https://polymarket.com/event/will-trump-publicly-insult-someone-on#will-donald-trump-publicly-insult-someone-on-april-27-2026"
       ],
       "settled": false,
       "resolvedToYes": false,
       "nonDecisive": false,
-      "estimatedPrice": 0.1,
+      "estimatedPrice": 0.79,
       "category": {
-        "slug": "crypto"
-      }
-    },
-    {
-      "id": "0x05038261812400c39243c50a130ce0dbed3af5d8d35dac600da684671e365407",
-      "shortName": "Will Trump say \"Tax\" 10+ times during No Tax on Tips Roundtable?",
-      "optionName": "Tax 10+ times",
-      "question": "Will Trump say \"Tax\" 10+ times during No Tax on Tips Roundtable?",
-      "description": "Donald Trump is scheduled to participate in an event titled \"The President participates in a Roundtable and Remarks on Tax Day\" in Las Vegas, Nevada on April 16, 2026, 7PM ET (https://rollcall.com/factbase/trump/calendar/). \nThis market will resolve to \"Yes\" if Donald Trump says the listed term during the Tax Day Roundtable scheduled for April 16, 2026. Otherwise, the market will resolve to \"No\".\nPlural and possessive forms of the listed term will count toward the resolution of this market regardless of context; however, other forms will NOT count.\nInstances where the term is used in a compound word will count regardless of context (e.g., joyful is not a compound word for \"joy,\" however, \"killjoy\" is a compounding of the words \"kill\" and \"joy\").\nIf this market requires a specified number of mentions of a person’s first or last name, a full-name mention will count as one mention (e.g., if a market is about “Joe / Biden 5+ times,” a mention of “Joe Biden” will count once).\nThis market is explicitly about the event titled \"The President participates in a Roundtable and Remarks on Tax Day\" scheduled for April 16, 2026, 7PM ET (https://rollcall.com/factbase/trump/calendar/). Speeches, events, or comments that occur outside of the named, scheduled event will not qualify toward this market's resolution. If the event contains a Q&A, it will count toward the resolution of this market.\nAI-generated audio or video will not count toward this market's resolution.\nIf this event is definitively cancelled, or otherwise is not aired by April 16, 2026, 11:59 PM ET, \"-No Qualifying Event-\" will resolve to \"Yes\" and all other brackets will resolve to \"No\". \nThe resolution source will be video of the events. Only remarks which are broadcast or streamed live will count toward this market's resolution.",
-      "endTime": 1776412740,
-      "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
-      "similarMarkets": [
-        "https://polymarket.com/event/what-will-trump-say-during-no-tax-on-tips-roundtable#will-trump-say-tax-10-times-during-no-tax-on-tips-roundtable"
-      ],
-      "settled": false,
-      "resolvedToYes": false,
-      "nonDecisive": false,
-      "estimatedPrice": 0.94,
-      "category": {
-        "slug": "geopolitics"
+        "slug": "culture"
       }
     }
   ]
