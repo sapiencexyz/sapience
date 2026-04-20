@@ -48,6 +48,11 @@ export interface PositionSummaryProps {
    * holder position across multiple predictions renders "Position".
    */
   kind?: 'prediction' | 'position';
+  /**
+   * Number of picks backing this aggregate position. When provided with
+   * kind="position", the header becomes "{n} Pick Position".
+   */
+  pickCount?: number;
 }
 
 export default function PositionSummary({
@@ -69,6 +74,7 @@ export default function PositionSummary({
   counterpartyAddress,
   holderAddress,
   kind = 'prediction',
+  pickCount,
 }: PositionSummaryProps) {
   const showOwner = isOwnerLoading || !!currentOwner;
   const showHolder = !!holderAddress;
@@ -91,7 +97,9 @@ export default function PositionSummary({
         <div className="flex items-center gap-2">
           <h2 className="eyebrow text-foreground">
             {kind === 'position'
-              ? 'Position'
+              ? typeof pickCount === 'number'
+                ? `${pickCount} Pick Position`
+                : 'Position'
               : (() => {
                   const idSuffix =
                     typeof positionId === 'string' &&

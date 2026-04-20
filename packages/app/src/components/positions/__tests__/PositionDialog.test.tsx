@@ -1,5 +1,5 @@
 import { vi, describe, it, expect, beforeEach } from 'vitest';
-import { render, screen } from '@testing-library/react';
+import { render, screen, fireEvent } from '@testing-library/react';
 import type {
   PickConfigData,
   PositionBalance,
@@ -122,9 +122,10 @@ describe('PositionDialog', () => {
       />
     );
 
-    // Header must say "Position" alone and must NOT surface the predictionId,
-    // because a position can aggregate many predictions with distinct ids.
-    expect(screen.getByText('Position')).toBeInTheDocument();
+    // Header reads "{picks} Pick Position" and must NOT surface the
+    // predictionId, since a position can aggregate many predictions with
+    // distinct ids. Picks for the test fixture are empty (0).
+    expect(screen.getByText('0 Pick Position')).toBeInTheDocument();
     expect(screen.queryByText(/Prediction\s+0xb8c5/i)).not.toBeInTheDocument();
   });
 
@@ -170,7 +171,7 @@ describe('PositionDialog', () => {
     expect(screen.queryByText('Predictor')).not.toBeInTheDocument();
   });
 
-  it('embeds an ActivityTable scoped to the position pickConfig', () => {
+  it('renders the activity section collapsed by default and expands on click', () => {
     render(
       <PositionDialog
         open
@@ -181,6 +182,14 @@ describe('PositionDialog', () => {
       />
     );
 
+    // Collapsed: toggle present but the embedded table is not mounted.
+    const toggle = screen.getByRole('button', { name: /activity/i });
+    expect(toggle).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByTestId('activity-table')).not.toBeInTheDocument();
+
+    // Expand it; the embedded ActivityTable mounts, scoped to this pickConfig.
+    fireEvent.click(toggle);
+    expect(toggle).toHaveAttribute('aria-expanded', 'true');
     const embedded = screen.getByTestId('activity-table');
     expect(embedded.getAttribute('data-pickconfigid')).toBe(
       counterpartyPosition.pickConfigId

@@ -1,5 +1,7 @@
 'use client';
 
+import { useState } from 'react';
+import { ChevronDown } from 'lucide-react';
 import type { Address } from 'viem';
 import { Dialog, DialogContent } from '@sapience/ui/components/ui/dialog';
 import { formatEther } from 'viem';
@@ -32,6 +34,7 @@ export default function PositionDialog({
   conditionsMap,
   collateralSymbol = 'USDe',
 }: PositionDialogProps) {
+  const [activityOpen, setActivityOpen] = useState(false);
   if (!position) return null;
   const pickConfig = position.pickConfig;
   if (!pickConfig) return null;
@@ -90,6 +93,7 @@ export default function PositionDialog({
         <PositionSummary
           kind="position"
           positionId={position.id}
+          pickCount={rawPicks.length}
           isCounterpartyPosition={!isPredictorSide}
           createdAt={createdAt}
           endsAtMs={endsAtMs}
@@ -112,12 +116,30 @@ export default function PositionDialog({
         />
 
         <div className="mt-2 rounded-md border border-border/60 overflow-hidden">
-          <ActivityTable
-            account={position.holder as Address}
-            filterPickConfigId={position.pickConfigId}
-            hiddenColumns={['position', 'status', 'share']}
-            hideFilters
-          />
+          <button
+            type="button"
+            onClick={() => setActivityOpen((v) => !v)}
+            aria-expanded={activityOpen}
+            className="w-full flex items-center justify-between px-4 py-3 bg-white/[0.03] hover:bg-white/[0.06] transition-colors"
+          >
+            <span className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
+              Related Activity
+            </span>
+            <ChevronDown
+              className={`h-4 w-4 text-muted-foreground transition-transform ${activityOpen ? 'rotate-180' : ''}`}
+              aria-hidden="true"
+            />
+          </button>
+          {activityOpen && (
+            <div className="border-t border-border/60 max-h-56 overflow-y-auto">
+              <ActivityTable
+                account={position.holder as Address}
+                filterPickConfigId={position.pickConfigId}
+                hiddenColumns={['position', 'status', 'share']}
+                hideFilters
+              />
+            </div>
+          )}
         </div>
       </DialogContent>
     </Dialog>
