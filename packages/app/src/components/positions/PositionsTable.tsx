@@ -39,7 +39,7 @@ import {
 import { useConditionsByIds } from '~/hooks/graphql/useConditionsByIds';
 import PicksSummary from '~/components/shared/PicksSummary';
 import LegacyBadge from '~/components/shared/LegacyBadge';
-import PositionDialogContainer from '~/components/positions/PositionDialogContainer';
+import PositionDialog from '~/components/positions/PositionDialog';
 import OgShareDialogBase from '~/components/shared/OgShareDialog';
 import {
   PositionsTableFilters,
@@ -622,14 +622,16 @@ export default function PositionsTable({
           </TableBody>
         </Table>
       </div>
-      {dialogPosition && (
-        <PositionDialogContainer
-          position={dialogPosition}
-          conditionsMap={conditionsMap}
-          collateralSymbol={collateralSymbol}
-          onClose={() => setDialogPosition(null)}
-        />
-      )}
+      <PositionDialog
+        open={dialogPosition !== null}
+        onOpenChange={(open) => {
+          if (!open) setDialogPosition(null);
+        }}
+        position={dialogPosition}
+        conditionsMap={conditionsMap}
+        collateralSymbol={collateralSymbol}
+      />
+
       {sharePosition && shareImageSrc && (
         <OgShareDialogBase
           imageSrc={shareImageSrc}

@@ -37,6 +37,12 @@ export interface PositionSummaryProps {
   isOwnerLoading?: boolean;
   predictorAddress?: string | null;
   counterpartyAddress?: string | null;
+  /**
+   * Entity kind the summary represents. Controls the header label: a single
+   * on-chain prediction renders "Prediction #<id>", while an aggregated
+   * holder position across multiple predictions renders "Position".
+   */
+  kind?: 'prediction' | 'position';
 }
 
 export default function PositionSummary({
@@ -56,6 +62,7 @@ export default function PositionSummary({
   isOwnerLoading,
   predictorAddress,
   counterpartyAddress,
+  kind = 'prediction',
 }: PositionSummaryProps) {
   const showOwner = isOwnerLoading || !!currentOwner;
   const showAddressesRow = showOwner || predictorAddress || counterpartyAddress;
@@ -67,12 +74,17 @@ export default function PositionSummary({
         {/* Left group: Position ID, external link, counterparty badge */}
         <div className="flex items-center gap-2">
           <h2 className="eyebrow text-foreground">
-            Prediction{' '}
-            {typeof positionId === 'string' &&
-            positionId.startsWith('0x') &&
-            positionId.length > 12
-              ? `${positionId.slice(0, 6)}...${positionId.slice(-4)}`
-              : `#${positionId}`}
+            {kind === 'position'
+              ? 'Position'
+              : (() => {
+                  const idSuffix =
+                    typeof positionId === 'string' &&
+                    positionId.startsWith('0x') &&
+                    positionId.length > 12
+                      ? `${positionId.slice(0, 6)}...${positionId.slice(-4)}`
+                      : `#${positionId}`;
+                  return `Prediction ${idSuffix}`;
+                })()}
           </h2>
           {isCounterpartyPosition && <CounterpartyBadge />}
         </div>
