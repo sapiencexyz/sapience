@@ -2,8 +2,8 @@
 
 import { Dialog, DialogContent } from '@sapience/ui/components/ui/dialog';
 import { formatEther } from 'viem';
-import { PicksContent } from '~/components/shared/PicksSummary';
 import PositionSummary from './PositionSummary';
+import { PicksContent } from '~/components/shared/PicksSummary';
 import type { Prediction, PickConfigData } from '~/hooks/graphql/usePositions';
 import {
   toPicks,
@@ -51,12 +51,13 @@ export default function PredictionDialog({
     ? prediction.result
     : (computed?.result ?? 'UNRESOLVED');
   const predictorWon = result === 'PREDICTOR_WINS';
-  const counterpartyWon = result === 'COUNTERPARTY_WINS';
+  // NON_DECISIVE resolves to the counterparty on-chain.
+  const counterpartyWon =
+    result === 'COUNTERPARTY_WINS' || result === 'NON_DECISIVE';
   const positionWon =
     isSettled &&
     ((isPredictorSide && predictorWon) ||
-      (!isPredictorSide && counterpartyWon) ||
-      result === 'NON_DECISIVE');
+      (!isPredictorSide && counterpartyWon));
 
   const viewerSize = isPredictorSide
     ? positionSize
