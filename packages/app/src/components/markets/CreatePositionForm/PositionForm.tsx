@@ -36,7 +36,10 @@ import { PREFERRED_ESTIMATE_QUOTER } from '~/lib/constants';
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import { PositionSizeInput } from '~/components/markets/forms';
 import BidDisplay from '~/components/markets/forms/shared/BidDisplay';
-import { buildPythAuctionStartPayload } from '~/lib/auction/buildAuctionPayload';
+import {
+  buildPythAuctionStartPayload,
+  parseDateTimeLocalToUnixSeconds,
+} from '~/lib/auction/buildAuctionPayload';
 import type { AuctionParams, QuoteBid } from '~/lib/auction/useAuctionStart';
 import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
@@ -53,6 +56,56 @@ import { useSponsorStatus } from '~/hooks/sponsorship/useSponsorStatus';
 import { useSponsorshipActivation } from '~/hooks/sponsorship/useSponsorshipActivation';
 
 const EMPTY_BIDS: QuoteBid[] = [];
+
+// Strip the Pyth feed namespace so only the symbol remains
+// (`Crypto.BTC/USD` → `BTC/USD`, `Equity.US.AAPL` → `AAPL`).
+function formatPythFeedLabel(label: string | undefined): string {
+  const raw = label ?? 'Crypto';
+  const lastDot = raw.lastIndexOf('.');
+  return lastDot >= 0 ? raw.slice(lastDot + 1) : raw;
+}
+
+// Display the strike price at the same precision that's actually submitted on-chain.
+// `targetPriceRaw` is the user-entered decimal string; we only add thousand separators
+// to the integer part and preserve the fractional part verbatim. Falls back to
+// `targetPrice` (number) when raw is missing.
+function formatPythTargetPriceDisplay(
+  targetPriceRaw: string | undefined,
+  targetPrice: number
+): string {
+  const raw =
+    targetPriceRaw && targetPriceRaw.trim().length > 0
+      ? targetPriceRaw.trim()
+      : Number.isFinite(targetPrice)
+        ? String(targetPrice)
+        : '';
+  if (!raw) return '';
+  const [intPart, fracPart] = raw.split('.');
+  const intNum = Number(intPart);
+  const formattedInt = Number.isFinite(intNum)
+    ? intNum.toLocaleString(undefined, { maximumFractionDigits: 0 })
+    : intPart;
+  return fracPart !== undefined ? `${formattedInt}.${fracPart}` : formattedInt;
+}
+
+// Same parse rules as the on-chain endTime encoding — ensures the displayed
+// duration is computed from the same instant we submit. Returns null on invalid input.
+function parsePythEndDate(dateTimeLocal: string): Date | null {
+  try {
+    const unixSec = parseDateTimeLocalToUnixSeconds(dateTimeLocal);
+    return new Date(Number(unixSec) * 1000);
+  } catch {
+    return null;
+  }
+}
+
+function formatPythDurationFromNow(endMs: number, nowMs: number): string {
+  const mins = Math.max(0, Math.round((endMs - nowMs) / 60000));
+  if (mins < 60) return `${mins}M`;
+  const hours = Math.round(mins / 60);
+  if (hours < 24) return `${hours}H`;
+  return `${Math.round(hours / 24)}D`;
+}
 
 interface PositionFormProps {
   methods: UseFormReturn<{
@@ -216,25 +269,20 @@ export default function PositionForm({
     return !Number.isNaN(sizeNum) && sizeNum > 1000;
   }, [positionSizeValue]);
 
-  // Combos that mix oracle types (e.g. Pyth feeds + Polymarket/UMA conditions)
-  // or multiple UMA resolvers attract fewer bids — surface this in the estimate UI.
+  // Combos that mix Polymarket conditions and Pyth price feeds attract fewer
+  // bids — surface this in the estimate UI.
   const hasMixedResolvers = useMemo(() => {
-    const umaResolvers = new Set(
-      selections
-        .map((s) => s.resolverAddress?.toLowerCase())
-        .filter((a): a is string => Boolean(a))
-    );
-    const hasUma = selections.length > 0;
+    const hasPolymarket = selections.length > 0;
     const hasPyth = (pythPredictions?.length ?? 0) > 0;
-    return (hasUma && hasPyth) || umaResolvers.size > 1;
+    return hasPolymarket && hasPyth;
   }, [selections, pythPredictions]);
 
   // All picks are Pyth price feeds — "shorter durations" nudge only makes sense here
-  // (UMA/Polymarket conditions have fixed end times the user doesn't control).
+  // (Polymarket conditions have fixed end times the user doesn't control).
   const isAllPyth = useMemo(() => {
-    const hasUma = selections.length > 0;
+    const hasPolymarket = selections.length > 0;
     const hasPyth = (pythPredictions?.length ?? 0) > 0;
-    return hasPyth && !hasUma;
+    return hasPyth && !hasPolymarket;
   }, [selections, pythPredictions]);
 
   // Calculate predictor position size in wei for auction chart
@@ -247,10 +295,10 @@ export default function PositionForm({
     }
   }, [positionSizeValue, collateralDecimals]);
 
-  // Create a stable key from all prediction legs (UMA + Pyth) to detect changes
+  // Create a stable key from all prediction legs (Polymarket + Pyth) to detect changes
   // and ensure we clear/re-key bids correctly when *either* leg set changes.
   const predictionsKey = useMemo(() => {
-    const umaKey = selections
+    const polymarketKey = selections
       .map((s) => `${s.conditionId}:${s.prediction}`)
       .sort()
       .join('|');
@@ -261,7 +309,7 @@ export default function PositionForm({
       )
       .sort()
       .join('|');
-    return [umaKey, pythKey].filter(Boolean).join('||');
+    return [polymarketKey, pythKey].filter(Boolean).join('||');
   }, [selections, pythPredictions]);
   const prevPredictionsKeyRef = useRef<string>(predictionsKey);
 
@@ -530,10 +578,10 @@ export default function PositionForm({
         return;
       }
 
-      const hasUma = selections.length > 0;
+      const hasPolymarket = selections.length > 0;
       const hasPyth = pythPredictions.length > 0;
 
-      if (!hasUma && !hasPyth) {
+      if (!hasPolymarket && !hasPyth) {
         return;
       }
       if (hasFormErrors) {
@@ -592,7 +640,7 @@ export default function PositionForm({
         let picks: AuctionParams['picks'] = [];
         if (hasPyth && pythEscrowPicks) {
           picks = pythEscrowPicks;
-        } else if (hasUma) {
+        } else if (hasPolymarket) {
           const conditionPicks = getPolymarketPicks();
           if (conditionPicks.length > 0) {
             picks = conditionPicks;
@@ -700,7 +748,7 @@ export default function PositionForm({
     // Don't auto-trigger if there are form errors (auto mode only)
     if (triggerMode === 'auto' && hasFormErrors) return;
 
-    // Must have at least one UMA prediction or at least one Pyth prediction
+    // Must have at least one Polymarket prediction or at least one Pyth prediction
     const hasPredictions = selections.length >= 1 || pythPredictions.length > 0;
     if (!hasPredictions) return;
 
@@ -833,48 +881,16 @@ export default function PositionForm({
           ].map((item, index) => {
             if (item.kind === 'pyth') {
               const p = item.p;
-              const feedLabel = (p.priceFeedLabel ?? 'Crypto').replace(
-                /^[^.]+\./,
-                ''
-              );
+              const feedLabel = formatPythFeedLabel(p.priceFeedLabel);
               const directionSymbol = p.direction === 'over' ? '>' : '<';
-              const priceStr = p.targetPrice.toLocaleString(undefined, {
-                minimumFractionDigits: 2,
-                maximumFractionDigits: 2,
-              });
-              const endDate = (() => {
-                const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(
-                  p.dateTimeLocal
-                );
-                if (!m) return null;
-                return new Date(
-                  Number(m[1]),
-                  Number(m[2]) - 1,
-                  Number(m[3]),
-                  Number(m[4]),
-                  Number(m[5])
-                );
-              })();
-              const durationStr = (() => {
-                if (!endDate) return null;
-                const mins = Math.max(
-                  0,
-                  Math.round((endDate.getTime() - Date.now()) / 60000)
-                );
-                if (mins < 60) return `${mins}M`;
-                const hours = Math.round(mins / 60);
-                if (hours < 24) return `${hours}H`;
-                return `${Math.round(hours / 24)}D`;
-              })();
-              const exactPrice = (() => {
-                const raw = p.targetPriceRaw ?? String(p.targetPrice);
-                const n = Number(raw);
-                if (!Number.isFinite(n)) return raw;
-                return n.toLocaleString(undefined, {
-                  minimumFractionDigits: 2,
-                  maximumFractionDigits: 20,
-                });
-              })();
+              const priceDisplay = formatPythTargetPriceDisplay(
+                p.targetPriceRaw,
+                p.targetPrice
+              );
+              const endDate = parsePythEndDate(p.dateTimeLocal);
+              const durationStr = endDate
+                ? formatPythDurationFromNow(endDate.getTime(), nowMs)
+                : null;
               const exactTimestamp = endDate
                 ? new Intl.DateTimeFormat(undefined, {
                     year: 'numeric',
@@ -886,43 +902,42 @@ export default function PositionForm({
                     timeZoneName: 'short',
                   }).format(endDate)
                 : null;
-              const pythTitle = `${feedLabel} ${directionSymbol}$${priceStr}${durationStr ? ` IN ${durationStr}` : ''}`;
+              const pythTitle = `${feedLabel} ${directionSymbol}$${priceDisplay}${durationStr ? ` IN ${durationStr}` : ''}`;
               return (
                 <div
                   key={p.id}
                   className={`-mx-4 px-4 py-2.5 border-b border-brand-white/10 ${index === 0 ? 'border-t' : ''}`}
                 >
-                  <div className="flex items-center gap-2">
-                    <PythMarketBadge className="w-5 h-5" />
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <div className="truncate text-brand-white font-mono text-sm flex-1 min-w-0 cursor-default">
-                          {pythTitle}
-                        </div>
-                      </TooltipTrigger>
-                      <TooltipContent
-                        side="top"
-                        className="max-w-xs text-xs whitespace-normal break-words font-mono"
-                      >
-                        <div>
-                          {feedLabel} {directionSymbol}${exactPrice}
-                        </div>
-                        {exactTimestamp && (
-                          <div className="mt-1 text-muted-foreground">
-                            {exactTimestamp}
+                  <PredictionListItem
+                    prediction={{
+                      id: p.id,
+                      question: pythTitle,
+                      prediction: p.direction === 'over',
+                    }}
+                    leading={<PythMarketBadge className="w-5 h-5" />}
+                    showChoice={false}
+                    title={
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="truncate text-brand-white font-mono text-sm cursor-default">
+                            {pythTitle}
                           </div>
-                        )}
-                      </TooltipContent>
-                    </Tooltip>
-                    <button
-                      onClick={() => onRemovePythPrediction?.(p.id)}
-                      className="text-[22px] leading-none text-muted-foreground hover:text-foreground shrink-0"
-                      type="button"
-                      aria-label="Remove"
-                    >
-                      ×
-                    </button>
-                  </div>
+                        </TooltipTrigger>
+                        <TooltipContent
+                          side="top"
+                          className="max-w-xs text-xs whitespace-normal break-words font-mono"
+                        >
+                          <div>{p.priceFeedLabel ?? 'Crypto'}</div>
+                          {exactTimestamp && (
+                            <div className="mt-1 text-muted-foreground">
+                              {exactTimestamp}
+                            </div>
+                          )}
+                        </TooltipContent>
+                      </Tooltip>
+                    }
+                    onRemove={onRemovePythPrediction}
+                  />
                 </div>
               );
             }

@@ -102,10 +102,10 @@ export default function BidDisplay({
 
   // Helper function to calculate payout amount
   const calculatePayoutAmount = useCallback(
-    (bid: QuoteBid, sizeStr: string): string => {
+    (bid: QuoteBid, size: string): string => {
       let userPositionSizeWei: bigint = 0n;
       try {
-        userPositionSizeWei = parseUnits(sizeStr || '0', collateralDecimals);
+        userPositionSizeWei = parseUnits(size || '0', collateralDecimals);
       } catch {
         userPositionSizeWei = 0n;
       }
