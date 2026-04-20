@@ -298,6 +298,9 @@ class PositionType {
   @Field(() => Date)
   createdAt!: Date;
 
+  @Field(() => Date)
+  updatedAt!: Date;
+
   @Field(() => PickConfigurationType, { nullable: true })
   pickConfig?: PickConfigurationType | null;
 }
@@ -904,6 +907,7 @@ export class EscrowResolver {
         userCollateral: userCollateral > 0n ? userCollateral.toString() : null,
         totalPayout: totalPayout > 0n ? totalPayout.toString() : null,
         createdAt: r.createdAt,
+        updatedAt: r.updatedAt,
         pickConfig: pc ? mapPickConfig(pc, { predictionId }) : null,
       };
     });
