@@ -57,12 +57,13 @@ export default function PositionDialog({
     ? pickConfig.result
     : (computed?.result ?? 'UNRESOLVED');
   const predictorWon = result === 'PREDICTOR_WINS';
-  const counterpartyWon = result === 'COUNTERPARTY_WINS';
+  // NON_DECISIVE resolves to the counterparty on-chain.
+  const counterpartyWon =
+    result === 'COUNTERPARTY_WINS' || result === 'NON_DECISIVE';
   const positionWon =
     isSettled &&
     ((isPredictorSide && predictorWon) ||
-      (!isPredictorSide && counterpartyWon) ||
-      result === 'NON_DECISIVE');
+      (!isPredictorSide && counterpartyWon));
 
   const pnl = isSettled
     ? positionWon
