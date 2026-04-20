@@ -1,8 +1,10 @@
 'use client';
 
+import type { Address } from 'viem';
 import { Dialog, DialogContent } from '@sapience/ui/components/ui/dialog';
 import { formatEther } from 'viem';
 import PositionSummary from './PositionSummary';
+import ActivityTable from './ActivityTable';
 import { PicksContent } from '~/components/shared/PicksSummary';
 import type { PositionBalance } from '~/hooks/graphql/usePositions';
 import {
@@ -98,6 +100,7 @@ export default function PositionDialog({
           isSettled={isSettled}
           positionWon={positionWon}
           collateralSymbol={collateralSymbol}
+          holderAddress={position.holder}
         />
 
         <PicksContent
@@ -107,6 +110,15 @@ export default function PositionDialog({
           hideHeader
           positionStatus={getPositionStatus()}
         />
+
+        <div className="mt-2 rounded-md border border-border/60 overflow-hidden">
+          <ActivityTable
+            account={position.holder as Address}
+            filterPickConfigId={position.pickConfigId}
+            hiddenColumns={['position', 'status', 'share']}
+            hideFilters
+          />
+        </div>
       </DialogContent>
     </Dialog>
   );

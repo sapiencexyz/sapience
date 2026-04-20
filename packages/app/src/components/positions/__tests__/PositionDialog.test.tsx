@@ -25,6 +25,32 @@ vi.mock('next/link', () => ({
   }) => <a href={href}>{children}</a>,
 }));
 
+// EnsAvatar / AddressDisplay both reach for react-query (ENS lookups); render
+// plain stand-ins so the dialog doesn't need a QueryClientProvider in tests.
+vi.mock('~/components/shared/EnsAvatar', () => ({
+  __esModule: true,
+  default: () => null,
+}));
+
+vi.mock('~/components/shared/AddressDisplay', () => ({
+  __esModule: true,
+  AddressDisplay: ({ address }: { address: string }) => (
+    <span>{`${address.slice(0, 6)}…${address.slice(-4)}`}</span>
+  ),
+}));
+
+// ActivityTable is a heavy data-fetching component (react-query under the
+// hood); exercise its data path in its own tests, not here.
+vi.mock('~/components/positions/ActivityTable', () => ({
+  __esModule: true,
+  default: (props: { filterPickConfigId?: string }) => (
+    <div
+      data-testid="activity-table"
+      data-pickconfigid={props.filterPickConfigId ?? ''}
+    />
+  ),
+}));
+
 // Dialog from @sapience/ui uses a portal that is hard to attach to jsdom;
 // render the content inline instead.
 vi.mock('@sapience/ui/components/ui/dialog', () => ({
@@ -117,6 +143,48 @@ describe('PositionDialog', () => {
     expect(screen.getByText(/979\.79/)).toBeInTheDocument();
     // Payout = totalPayout = 1,000 (with thousands separator).
     expect(screen.getByText(/1,000(\.00)?/)).toBeInTheDocument();
+  });
+
+  it('renders the position holder address', () => {
+    render(
+      <PositionDialog
+        open
+        onOpenChange={() => {}}
+        position={counterpartyPosition}
+        conditionsMap={new Map()}
+        collateralSymbol="USDe"
+      />
+    );
+
+    expect(screen.getByText('Holder')).toBeInTheDocument();
+    // AddressDisplay renders the address in a truncated form; its link href
+    // is the full holder address → profile page.
+    const profileLink = screen.getByRole('link', { name: /0x1f5f/i });
+    expect(profileLink).toHaveAttribute(
+      'href',
+      `/profile/${counterpartyPosition.holder}`
+    );
+    // Position dialog should not render a Predictor party column; the word
+    // "Counterparty" may still appear inside the CounterpartyBadge — that's
+    // a label on the position itself, not an address column, so it's allowed.
+    expect(screen.queryByText('Predictor')).not.toBeInTheDocument();
+  });
+
+  it('embeds an ActivityTable scoped to the position pickConfig', () => {
+    render(
+      <PositionDialog
+        open
+        onOpenChange={() => {}}
+        position={counterpartyPosition}
+        conditionsMap={new Map()}
+        collateralSymbol="USDe"
+      />
+    );
+
+    const embedded = screen.getByTestId('activity-table');
+    expect(embedded.getAttribute('data-pickconfigid')).toBe(
+      counterpartyPosition.pickConfigId
+    );
   });
 
   it('renders nothing when position is null', () => {
