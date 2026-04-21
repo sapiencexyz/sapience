@@ -5,7 +5,7 @@ import {
   ConditionGroupRelationsResolver,
   ConditionRelationsResolver,
 } from '@generated/type-graphql';
-import { prisma } from './resolvers/GeneratedResolvers';
+import prisma from '../db';
 import { SharedSchema } from './sharedSchema';
 import { ApolloServer } from '@apollo/server';
 import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default';
@@ -22,7 +22,6 @@ import { config } from '../config';
 import Sentry from '../instrument';
 
 // Import only the actively-used query resolvers from generated TypeGraphQL
-// See graphql-audit._ljm_.md for the full audit of which resolvers are used by consumers
 import {
   FindManyAttestationResolver,
   FindManyCategoryResolver,
