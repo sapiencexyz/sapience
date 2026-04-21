@@ -421,11 +421,7 @@ describe('ActivityResolver', () => {
     // conditionId → distinct pickConfigIds lookup
     expect(mockPrisma.pick.findMany).toHaveBeenCalledWith(
       expect.objectContaining({
-        where: expect.objectContaining({
-          conditionId: expect.objectContaining({
-            equals: '0xcondition-abc',
-          }),
-        }),
+        where: { conditionId: '0xcondition-abc' },
         select: { pickConfigId: true },
         distinct: ['pickConfigId'],
       })

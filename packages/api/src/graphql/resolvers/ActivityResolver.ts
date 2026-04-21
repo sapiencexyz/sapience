@@ -118,9 +118,7 @@ export class ActivityResolver {
     let scopedPickConfigIds: string[] | null = null; // null = no scoping
     if (conditionIdLower) {
       const matchingPicks = await prisma.pick.findMany({
-        where: {
-          conditionId: { equals: conditionIdLower, mode: 'insensitive' },
-        },
+        where: { conditionId: conditionIdLower },
         select: { pickConfigId: true },
         distinct: ['pickConfigId'],
       });
