@@ -7,6 +7,7 @@ import type {
   SapienceConditionGroup,
   SapienceOutput,
   SyncableFields,
+  GroupMetadataUpdate,
 } from '../types';
 import { RESOLVER_ADDRESS, END_TIME_BUFFER_SECONDS } from '../constants';
 import { fetchWithRetry, getAdminAuthHeaders } from '../utils';
@@ -474,6 +475,71 @@ export async function submitMetadataUpdates(
   console.log(
     `[Metadata] ${totalUpdated} updated, ${totalFailed} failed (${batches.length} batches)`
   );
+}
+
+/**
+ * Submit metadata updates for existing condition groups whose Polymarket
+ * data has changed (event slug renames, earlier broken URL format, etc.).
+ * The admin API only exposes per-id updates, so this loops rather than
+ * batching. Volume is low — one request per drifted group per run.
+ */
+export async function submitGroupMetadataUpdates(
+  apiUrl: string,
+  privateKey: `0x${string}`,
+  updates: GroupMetadataUpdate[]
+): Promise<void> {
+  if (updates.length === 0) {
+    return;
+  }
+
+  console.log(
+    `[Metadata] Submitting ${updates.length} group metadata updates...`
+  );
+
+  let updated = 0;
+  let failed = 0;
+
+  for (let i = 0; i < updates.length; i++) {
+    const update = updates[i];
+    try {
+      const authHeaders = await getAdminAuthHeaders(privateKey);
+      const response = await fetchWithRetry(
+        `${apiUrl}/admin/conditionGroups/${update.groupId}`,
+        {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            ...authHeaders,
+          },
+          body: JSON.stringify(update.fields),
+        }
+      );
+
+      if (response.ok) {
+        updated++;
+      } else {
+        const errorData = await response
+          .json()
+          .catch(() => ({ message: 'Unknown error' }));
+        console.error(
+          `[Metadata] Group ${update.groupId} failed: HTTP ${response.status}: ${(errorData as { message?: string }).message || response.statusText}`
+        );
+        failed++;
+      }
+    } catch (error) {
+      console.error(
+        `[Metadata] Group ${update.groupId} error:`,
+        error instanceof Error ? error.message : String(error)
+      );
+      failed++;
+    }
+
+    if (i + 1 < updates.length) {
+      await delay(SUBMISSION_DELAY_MS);
+    }
+  }
+
+  console.log(`[Metadata] ${updated} groups updated, ${failed} failed`);
 }
 
 /**
