@@ -149,6 +149,39 @@ export const predictionMarketVault: ChainAddressMap = {
 } as const;
 
 /**
+ * PythPredictionMarketVault
+ * Dedicated PredictionMarketVault instance paired with the Pyth binary-options
+ * bot. Same contract as `predictionMarketVault`, separate deployment so Pyth
+ * capital is isolated from the default vault.
+ *
+ * Chain entries are added/updated by `deploy.sh deploy-pyth-vault`
+ * (via packages/protocol/src/scripts/deploy/update-sdk-vault.mjs).
+ * Move old addresses into `legacy` manually on redeploy.
+ */
+export const pythPredictionMarketVault: ChainAddressMap = {
+  // (entries inserted by deploy-pyth-vault)
+} as const;
+
+/**
+ * SingleLegVault
+ * PredictionMarketVault instance restricted to single-leg (non-parlay) markets.
+ * Run by an auction-bidder configured with `SINGLE_LEG_ENABLED=true` and tighter
+ * risk caps than the parlay vault.
+ *
+ * Chain entries are added/updated via update-sdk-vault.mjs with
+ * `--exportName singleLegVault`. Move old addresses into `legacy` manually on
+ * redeploy.
+ */
+export const singleLegVault: ChainAddressMap = {
+  5064014: {
+    // Ethereal mainnet — deployed 2026-03-26
+    address: '0x1b03b3f20caa6fc8cc7f6d9ae73d634804fe7f59',
+    blockCreated: 3915329,
+    legacy: [] as const,
+  },
+} as const;
+
+/**
  * PythConditionResolver
  * Pyth oracle-based condition resolution
  */
@@ -654,6 +687,8 @@ export const contracts = {
   eas,
   predictionMarketEscrow,
   predictionMarketVault,
+  pythPredictionMarketVault,
+  singleLegVault,
   secondaryMarketEscrow,
   onboardingSponsor,
   pythConditionResolver,
