@@ -32,75 +32,69 @@ export async function checkExistingConditions(
     return new Map();
   }
 
-  try {
-    const graphqlUrl = apiUrl.replace(/\/+$/, '') + '/graphql';
+  const graphqlUrl = apiUrl.replace(/\/+$/, '') + '/graphql';
 
-    const query = `
-      query CheckConditions($where: ConditionWhereInput!) {
-        conditions(where: $where, take: 100) {
-          id
-          endTime
-          question
-          shortName
-          optionName
-          description
-          similarMarkets
-          tags
-          similarMarketVolume
-          similarMarketImage
-          conditionGroup {
-            name
-          }
+  const query = `
+    query CheckConditions($where: ConditionWhereInput!) {
+      conditions(where: $where, take: 100) {
+        id
+        endTime
+        question
+        shortName
+        optionName
+        description
+        similarMarkets
+        tags
+        similarMarketVolume
+        similarMarketImage
+        conditionGroup {
+          name
         }
       }
-    `;
-
-    const PAGE_SIZE = 100;
-    const chunks: string[][] = [];
-    for (let i = 0; i < conditionIds.length; i += PAGE_SIZE) {
-      chunks.push(conditionIds.slice(i, i + PAGE_SIZE));
     }
-    const existing = new Map<string, ExistingCondition>();
-    for (const chunk of chunks) {
-      const response = await fetchWithRetry(graphqlUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          query,
-          variables: { where: { id: { in: chunk } } },
-        }),
-      });
+  `;
 
-      if (!response.ok) {
-        console.warn(`[API] GraphQL query failed: ${response.status}`);
-        continue;
-      }
-
-      const result = await response.json();
-      for (const condition of result.data?.conditions ?? []) {
-        existing.set(condition.id, {
-          endTime: condition.endTime,
-          question: condition.question ?? undefined,
-          shortName: condition.shortName ?? undefined,
-          optionName: condition.optionName ?? undefined,
-          description: condition.description ?? undefined,
-          similarMarkets: condition.similarMarkets ?? undefined,
-          tags: condition.tags ?? undefined,
-          similarMarketVolume: condition.similarMarketVolume ?? undefined,
-          similarMarketImage: condition.similarMarketImage ?? undefined,
-          groupName: condition.conditionGroup?.name ?? undefined,
-        });
-      }
-    }
-
-    console.log(
-      `[API] Found ${existing.size}/${conditionIds.length} conditions already exist`
-    );
-    return existing;
-  } catch (error) {
-    console.warn(`[API] Error checking existing conditions: ${error}`);
-    return new Map(); // On error, proceed with all markets
+  const PAGE_SIZE = 100;
+  const chunks: string[][] = [];
+  for (let i = 0; i < conditionIds.length; i += PAGE_SIZE) {
+    chunks.push(conditionIds.slice(i, i + PAGE_SIZE));
   }
+  const existing = new Map<string, ExistingCondition>();
+  for (const chunk of chunks) {
+    const response = await fetchWithRetry(graphqlUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        query,
+        variables: { where: { id: { in: chunk } } },
+      }),
+    });
+
+    if (!response.ok) {
+      throw new Error(`[API] GraphQL query failed: ${response.status}`);
+    }
+
+    const result = await response.json();
+    for (const condition of result.data?.conditions ?? []) {
+      existing.set(condition.id, {
+        endTime: condition.endTime,
+        question: condition.question ?? undefined,
+        shortName: condition.shortName ?? undefined,
+        optionName: condition.optionName ?? undefined,
+        description: condition.description ?? undefined,
+        similarMarkets: condition.similarMarkets ?? undefined,
+        tags: condition.tags ?? undefined,
+        similarMarketVolume: condition.similarMarketVolume ?? undefined,
+        similarMarketImage: condition.similarMarketImage ?? undefined,
+        groupName: condition.conditionGroup?.name ?? undefined,
+      });
+    }
+  }
+
+  console.log(
+    `[API] Found ${existing.size}/${conditionIds.length} conditions already exist`
+  );
+  return existing;
 }
 
 /**
