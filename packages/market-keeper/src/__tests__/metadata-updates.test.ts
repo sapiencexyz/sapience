@@ -84,15 +84,15 @@ function existingFromMarket(
 ): ExistingCondition {
   const eventSlug = market.events?.[0]?.slug;
   const eventTitle = market.events?.[0]?.title;
-  const url = eventSlug
-    ? `https://polymarket.com/event/${eventSlug}#${market.slug}`
-    : `https://polymarket.com#${market.slug}`;
+  const similarMarkets = eventSlug
+    ? [`https://polymarket.com/event/${eventSlug}#${market.slug}`]
+    : [];
   return {
     endTime: 1700000000,
     question: market.question,
     shortName: market.question,
     description: market.description || '',
-    similarMarkets: [url],
+    similarMarkets,
     tags: [],
     similarMarketVolume: parseFloat(market.volume || '0') || 0,
     similarMarketImage: market.image,
@@ -598,5 +598,163 @@ describe('metadata updates via groupMarkets', () => {
 
     // No updates — we don't own a fresh value, so we don't touch it.
     expect(result.metadataUpdates).toHaveLength(0);
+  });
+});
+
+describe('group metadata updates via groupMarkets', () => {
+  it('detects stored group URL using the broken polymarket.com#slug format', async () => {
+    // Real prod bug: groups were written with `polymarket.com#<slug>` instead
+    // of `polymarket.com/event/<slug>#<market>`. Fresh Polymarket data should
+    // drive the group row back to the correct URL.
+    const market = makeMarket({
+      conditionId: '0xfmt',
+      slug: 'btc-100k',
+      events: [{ title: 'Bitcoin Milestones', slug: 'btc-milestones' }],
+    });
+
+    mockCheckExisting.mockResolvedValue(
+      new Map([
+        [
+          '0xfmt',
+          existingFromMarket(market, {
+            conditionGroupId: 42,
+            conditionGroupSimilarMarkets: [
+              'https://polymarket.com#btc-milestones', // broken legacy format
+            ],
+          }),
+        ],
+      ])
+    );
+
+    const result = await groupMarkets([market], 'https://test-api.example.com');
+
+    expect(result.groupMetadataUpdates).toHaveLength(1);
+    expect(result.groupMetadataUpdates[0].groupId).toBe(42);
+    expect(result.groupMetadataUpdates[0].fields.similarMarkets).toEqual([
+      'https://polymarket.com/event/btc-milestones#btc-100k',
+    ]);
+    expect(result.groupMetadataUpdates[0].old.similarMarkets).toEqual([
+      'https://polymarket.com#btc-milestones',
+    ]);
+  });
+
+  it('detects stored group URL when Polymarket renames the event slug', async () => {
+    const market = makeMarket({
+      conditionId: '0xrenamed',
+      slug: 'btc-100k',
+      events: [{ title: 'Bitcoin Milestones', slug: 'btc-milestones-v2' }],
+    });
+
+    mockCheckExisting.mockResolvedValue(
+      new Map([
+        [
+          '0xrenamed',
+          existingFromMarket(market, {
+            conditionGroupId: 100,
+            conditionGroupSimilarMarkets: [
+              'https://polymarket.com/event/btc-milestones#btc-100k',
+            ],
+          }),
+        ],
+      ])
+    );
+
+    const result = await groupMarkets([market], 'https://test-api.example.com');
+
+    expect(result.groupMetadataUpdates).toHaveLength(1);
+    expect(result.groupMetadataUpdates[0].groupId).toBe(100);
+    expect(result.groupMetadataUpdates[0].fields.similarMarkets).toEqual([
+      'https://polymarket.com/event/btc-milestones-v2#btc-100k',
+    ]);
+  });
+
+  it('emits no update when group similarMarkets is already current', async () => {
+    const market = makeMarket({
+      conditionId: '0xcurrent',
+      slug: 'btc-100k',
+      events: [{ title: 'Bitcoin Milestones', slug: 'btc-milestones' }],
+    });
+
+    mockCheckExisting.mockResolvedValue(
+      new Map([
+        [
+          '0xcurrent',
+          existingFromMarket(market, {
+            conditionGroupId: 7,
+            conditionGroupSimilarMarkets: [
+              'https://polymarket.com/event/btc-milestones#btc-100k',
+            ],
+          }),
+        ],
+      ])
+    );
+
+    const result = await groupMarkets([market], 'https://test-api.example.com');
+
+    expect(result.groupMetadataUpdates).toHaveLength(0);
+  });
+
+  it('emits no group update when the condition is not yet linked to a group', async () => {
+    // Condition exists but has no conditionGroupId (e.g. ungrouped). Nothing
+    // to update on the group side — skip without error.
+    const market = makeMarket({
+      conditionId: '0xnogroup',
+      events: [{ title: 'Bitcoin Milestones', slug: 'btc-milestones' }],
+    });
+
+    mockCheckExisting.mockResolvedValue(
+      new Map([
+        [
+          '0xnogroup',
+          existingFromMarket(market, {
+            conditionGroupId: undefined,
+            conditionGroupSimilarMarkets: undefined,
+          }),
+        ],
+      ])
+    );
+
+    const result = await groupMarkets([market], 'https://test-api.example.com');
+
+    expect(result.groupMetadataUpdates).toHaveLength(0);
+  });
+
+  it('emits no group update for a brand new condition', async () => {
+    const market = makeMarket({ conditionId: '0xnew' });
+
+    mockCheckExisting.mockResolvedValue(new Map()); // nothing exists
+
+    const result = await groupMarkets([market], 'https://test-api.example.com');
+
+    expect(result.groupMetadataUpdates).toHaveLength(0);
+  });
+
+  it('does not clear an existing group URL when Polymarket returns no event slug', async () => {
+    // Regression guard: if the upstream market comes back without an event
+    // (CLOB fallback, stale cache, etc.) we have no way to build a correct
+    // fresh URL. Leaving the stored value alone is better than overwriting
+    // with a broken one or clearing to [].
+    const market = makeMarket({
+      conditionId: '0xnoevent',
+      events: undefined,
+    });
+
+    mockCheckExisting.mockResolvedValue(
+      new Map([
+        [
+          '0xnoevent',
+          existingFromMarket(market, {
+            conditionGroupId: 55,
+            conditionGroupSimilarMarkets: [
+              'https://polymarket.com/event/something-old#something-old',
+            ],
+          }),
+        ],
+      ])
+    );
+
+    const result = await groupMarkets([market], 'https://test-api.example.com');
+
+    expect(result.groupMetadataUpdates).toHaveLength(0);
   });
 });
