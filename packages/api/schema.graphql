@@ -1324,6 +1324,7 @@ type Position {
   pickConfigId: String!
   tokenAddress: String!
   totalPayout: String
+  updatedAt: DateTimeISO!
   userCollateral: String
 }
 

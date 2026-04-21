@@ -1464,6 +1464,7 @@ export type Position = {
   pickConfigId: Scalars['String']['output'];
   tokenAddress: Scalars['String']['output'];
   totalPayout?: Maybe<Scalars['String']['output']>;
+  updatedAt: Scalars['DateTimeISO']['output'];
   userCollateral?: Maybe<Scalars['String']['output']>;
 };
 

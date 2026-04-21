@@ -16,7 +16,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
-import { Info } from 'lucide-react';
+import { Info, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react';
 import * as React from 'react';
 import { formatDistanceToNow } from 'date-fns';
 import { COLLATERAL_SYMBOLS, DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
@@ -343,6 +343,50 @@ function PositionRow({
   );
 }
 
+type SortKey = 'updatedAt' | 'positionSize' | 'payout' | 'pnl' | 'ends';
+type SortDir = 'asc' | 'desc';
+type SortState = { key: SortKey; dir: SortDir };
+
+const DEFAULT_SORT_DIRS: Record<SortKey, SortDir> = {
+  updatedAt: 'desc',
+  positionSize: 'desc',
+  payout: 'desc',
+  pnl: 'desc',
+  ends: 'asc',
+};
+
+function SortableHeader({
+  label,
+  sortKey,
+  sort,
+  onSort,
+}: {
+  label: React.ReactNode;
+  sortKey: SortKey;
+  sort: SortState | null;
+  onSort: (key: SortKey) => void;
+}) {
+  const active = sort?.key === sortKey;
+  return (
+    <button
+      type="button"
+      className="flex items-center gap-1 hover:text-foreground text-muted-foreground"
+      onClick={() => onSort(sortKey)}
+    >
+      {label}
+      {active ? (
+        sort.dir === 'asc' ? (
+          <ArrowUp className="h-3 w-3" />
+        ) : (
+          <ArrowDown className="h-3 w-3" />
+        )
+      ) : (
+        <ArrowUpDown className="h-3 w-3 opacity-50" />
+      )}
+    </button>
+  );
+}
+
 export default function PositionsTable({
   account,
   conditionId,
@@ -482,6 +526,64 @@ export default function PositionsTable({
     return result;
   }, [positions, filters, conditionsMap]);
 
+  // Sorting
+  const [sort, setSort] = React.useState<SortState | null>(null);
+  const handleSort = React.useCallback((key: SortKey) => {
+    setSort((prev) => {
+      if (prev?.key === key) {
+        return { key, dir: prev.dir === 'asc' ? 'desc' : 'asc' };
+      }
+      return { key, dir: DEFAULT_SORT_DIRS[key] };
+    });
+  }, []);
+
+  const sortedPositions = React.useMemo(() => {
+    if (!sort) return filteredPositions;
+    const { key, dir } = sort;
+    const multiplier = dir === 'asc' ? 1 : -1;
+    const getValue = (p: PositionBalance): number => {
+      const rawPicks = p.pickConfig?.picks ?? [];
+      const size = parseFloat(formatEther(BigInt(p.userCollateral || '0')));
+      const payout = parseFloat(formatEther(BigInt(p.totalPayout || '0')));
+      switch (key) {
+        case 'updatedAt':
+          return new Date(p.updatedAt).getTime();
+        case 'positionSize':
+          return size;
+        case 'payout':
+          return payout;
+        case 'pnl': {
+          const onChainResolved = p.pickConfig?.resolved ?? false;
+          const computed = !onChainResolved
+            ? computeResultFromConditions(rawPicks, conditionsMap)
+            : null;
+          const res = onChainResolved
+            ? (p.pickConfig?.result ?? 'UNRESOLVED')
+            : (computed?.result ?? 'UNRESOLVED');
+          const isResolved = onChainResolved || res !== 'UNRESOLVED';
+          if (!isResolved) return 0;
+          const holderWon =
+            (p.isPredictorToken && res === 'PREDICTOR_WINS') ||
+            (!p.isPredictorToken && res === 'COUNTERPARTY_WINS');
+          return holderWon ? payout - size : -size;
+        }
+        case 'ends': {
+          const endsAt = Math.max(
+            0,
+            ...rawPicks.map(
+              (pk) => conditionsMap.get(pk.conditionId)?.endTime ?? 0
+            )
+          );
+          // Missing end time sinks to the bottom regardless of direction
+          return endsAt === 0 ? Number.POSITIVE_INFINITY : endsAt;
+        }
+      }
+    };
+    return [...filteredPositions].sort(
+      (a, b) => (getValue(a) - getValue(b)) * multiplier
+    );
+  }, [filteredPositions, sort, conditionsMap]);
+
   // Share dialog state
   const [sharePosition, setSharePosition] =
     React.useState<PositionBalance | null>(null);
@@ -584,30 +686,65 @@ export default function PositionsTable({
         <Table>
           <TableHeader>
             <TableRow className="hover:!bg-white/[0.03] bg-white/[0.03] border-b border-border/60">
-              <TableHead className="h-auto py-3">Position</TableHead>
-              <TableHead className="h-auto py-3">Position Size</TableHead>
-              <TableHead className="h-auto py-3">Payout</TableHead>
-              <TableHead className="h-auto py-3">Profit/Loss</TableHead>
               <TableHead className="h-auto py-3">
-                <span className="flex items-center gap-1">
-                  Ends
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="inline-flex cursor-help">
-                        <Info className="h-3.5 w-3.5 text-muted-foreground" />
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent side="top">
-                      End times are estimates and may vary
-                    </TooltipContent>
-                  </Tooltip>
-                </span>
+                <SortableHeader
+                  label="Position"
+                  sortKey="updatedAt"
+                  sort={sort}
+                  onSort={handleSort}
+                />
+              </TableHead>
+              <TableHead className="h-auto py-3">
+                <SortableHeader
+                  label="Position Size"
+                  sortKey="positionSize"
+                  sort={sort}
+                  onSort={handleSort}
+                />
+              </TableHead>
+              <TableHead className="h-auto py-3">
+                <SortableHeader
+                  label="Payout"
+                  sortKey="payout"
+                  sort={sort}
+                  onSort={handleSort}
+                />
+              </TableHead>
+              <TableHead className="h-auto py-3">
+                <SortableHeader
+                  label="Profit/Loss"
+                  sortKey="pnl"
+                  sort={sort}
+                  onSort={handleSort}
+                />
+              </TableHead>
+              <TableHead className="h-auto py-3">
+                <SortableHeader
+                  label={
+                    <span className="flex items-center gap-1">
+                      Ends
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <span className="inline-flex cursor-help">
+                            <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                          </span>
+                        </TooltipTrigger>
+                        <TooltipContent side="top">
+                          End times are estimates and may vary
+                        </TooltipContent>
+                      </Tooltip>
+                    </span>
+                  }
+                  sortKey="ends"
+                  sort={sort}
+                  onSort={handleSort}
+                />
               </TableHead>
               <TableHead className="h-auto py-3"></TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredPositions.map((position) => (
+            {sortedPositions.map((position) => (
               <PositionRow
                 key={position.id}
                 position={position}

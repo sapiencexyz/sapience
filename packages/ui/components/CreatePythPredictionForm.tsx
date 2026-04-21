@@ -65,7 +65,7 @@ export type CreatePythPredictionFormValues = {
   dateTimeLocal: string;
 };
 
-type DateTimePreset = '' | '5m' | '1h' | '1w' | 'custom' | 'relative';
+type DateTimePreset = '' | '5m' | '10m' | '15m' | 'custom' | 'relative';
 
 type RelativeUnit = 'minutes' | 'hours' | 'days';
 
@@ -143,7 +143,8 @@ function formatDateTimeLocalInputValue(date: Date): string {
   const dd = pad(date.getDate());
   const hh = pad(date.getHours());
   const min = pad(date.getMinutes());
-  return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+  const sec = pad(date.getSeconds());
+  return `${yyyy}-${mm}-${dd}T${hh}:${min}:${sec}`;
 }
 
 function addMinutes(date: Date, minutes: number): Date {
@@ -158,17 +159,21 @@ function parseDateTimeLocalInputValue(value: string): {
   date: Date | undefined;
   time: string;
 } {
-  // Expected: YYYY-MM-DDTHH:MM
-  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value);
-  if (!m) return { date: undefined, time: '12:00' };
+  // Accept YYYY-MM-DDTHH:MM or YYYY-MM-DDTHH:MM:SS.
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(
+    value
+  );
+  if (!m) return { date: undefined, time: '12:00:00' };
   const yyyy = Number(m[1]);
   const mm = Number(m[2]);
   const dd = Number(m[3]);
   const hh = Number(m[4]);
   const min = Number(m[5]);
-  const d = new Date(yyyy, mm - 1, dd, hh, min);
-  if (Number.isNaN(d.getTime())) return { date: undefined, time: '12:00' };
-  return { date: d, time: `${m[4]}:${m[5]}` };
+  const sec = m[6] !== undefined ? Number(m[6]) : 0;
+  const d = new Date(yyyy, mm - 1, dd, hh, min, sec);
+  if (Number.isNaN(d.getTime())) return { date: undefined, time: '12:00:00' };
+  const secStr = m[6] ?? '00';
+  return { date: d, time: `${m[4]}:${m[5]}:${secStr}` };
 }
 
 function getLocalTimeZoneLabel(): string {
@@ -277,9 +282,9 @@ function DateTimeSelector({
       const next =
         nextPreset === '5m'
           ? formatDateTimeLocalInputValue(addMinutes(now, 5))
-          : nextPreset === '1h'
-            ? formatDateTimeLocalInputValue(addMinutes(now, 60))
-            : formatDateTimeLocalInputValue(addDays(now, 7));
+          : nextPreset === '10m'
+            ? formatDateTimeLocalInputValue(addMinutes(now, 10))
+            : formatDateTimeLocalInputValue(addMinutes(now, 15));
 
       onChange(next);
     },
@@ -300,8 +305,8 @@ function DateTimeSelector({
         {(
           [
             { id: '5m', label: '5m', aria: 'In 5 minutes' },
-            { id: '1h', label: '1h', aria: 'In 1 hour' },
-            { id: '1w', label: '1w', aria: 'In a week' },
+            { id: '10m', label: '10m', aria: 'In 10 minutes' },
+            { id: '15m', label: '15m', aria: 'In 15 minutes' },
             { id: 'relative', label: 'relative', aria: 'Relative time' },
             { id: 'custom', label: 'custom', aria: 'Custom time' },
           ] as const
@@ -451,13 +456,16 @@ function DateTimeSelector({
                       selected={selectedDate}
                       onSelect={(d) => {
                         if (!d) return;
-                        const [hh, min] = selectedTime.split(':').map(Number);
+                        const [hh, min, sec] = selectedTime
+                          .split(':')
+                          .map(Number);
                         const next = new Date(
                           d.getFullYear(),
                           d.getMonth(),
                           d.getDate(),
                           Number.isFinite(hh) ? hh : 12,
-                          Number.isFinite(min) ? min : 0
+                          Number.isFinite(min) ? min : 0,
+                          Number.isFinite(sec) ? sec : 0
                         );
                         const nextValue = formatDateTimeLocalInputValue(next);
                         setCustomValue(nextValue);
@@ -472,17 +480,21 @@ function DateTimeSelector({
                       <div className="relative flex-1">
                         <Input
                           type="time"
+                          step={1}
                           value={selectedTime}
                           onChange={(e) => {
                             const nextTime = e.target.value;
                             const base = selectedDate ?? new Date();
-                            const [hh, min] = nextTime.split(':').map(Number);
+                            const [hh, min, sec] = nextTime
+                              .split(':')
+                              .map(Number);
                             const next = new Date(
                               base.getFullYear(),
                               base.getMonth(),
                               base.getDate(),
                               Number.isFinite(hh) ? hh : 12,
-                              Number.isFinite(min) ? min : 0
+                              Number.isFinite(min) ? min : 0,
+                              Number.isFinite(sec) ? sec : 0
                             );
                             const nextValue =
                               formatDateTimeLocalInputValue(next);
@@ -957,10 +969,10 @@ export function CreatePythPredictionForm({
     const computedDateTimeLocal =
       dateTimePreset === '5m'
         ? formatDateTimeLocalInputValue(addMinutes(new Date(), 5))
-        : dateTimePreset === '1h'
-          ? formatDateTimeLocalInputValue(addMinutes(new Date(), 60))
-          : dateTimePreset === '1w'
-            ? formatDateTimeLocalInputValue(addDays(new Date(), 7))
+        : dateTimePreset === '10m'
+          ? formatDateTimeLocalInputValue(addMinutes(new Date(), 10))
+          : dateTimePreset === '15m'
+            ? formatDateTimeLocalInputValue(addMinutes(new Date(), 15))
             : dateTimePreset === 'relative'
               ? (() => {
                   const amt = Number(parentRelativeAmount);
