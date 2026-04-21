@@ -207,10 +207,14 @@ export const pythConditionResolver: ChainAddressMap = {
     ] as const,
   },
   13374202: {
-    // Ethereal testnet — redeployed 2026-03-31 (pyth lazer fix)
-    address: '0xF56d26C58496A07DF4882F52c56E3cadBFB87729',
-    blockCreated: 2589629,
+    // Ethereal testnet — deployed 2026-04-21
+    address: '0x7BD534c96b78A5d6C10701714F29EA4f1587B64D',
+    blockCreated: 2619401,
     legacy: [
+      {
+        address: '0xF56d26C58496A07DF4882F52c56E3cadBFB87729',
+        blockCreated: 2589629,
+      },
       {
         address: '0x27A95ab8982EAcF4EC3D4bCCaBB3630C72fd7E1b',
         blockCreated: 2585876,
