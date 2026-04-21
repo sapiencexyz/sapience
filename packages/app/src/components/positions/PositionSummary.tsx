@@ -37,6 +37,22 @@ export interface PositionSummaryProps {
   isOwnerLoading?: boolean;
   predictorAddress?: string | null;
   counterpartyAddress?: string | null;
+  /**
+   * Wallet that holds this aggregated position. Rendered as a "Holder" cell
+   * alongside predictor/counterparty in the addresses row.
+   */
+  holderAddress?: string | null;
+  /**
+   * Entity kind the summary represents. Controls the header label: a single
+   * on-chain prediction renders "Prediction #<id>", while an aggregated
+   * holder position across multiple predictions renders "Position".
+   */
+  kind?: 'prediction' | 'position';
+  /**
+   * Number of picks backing this aggregate position. When provided with
+   * kind="position", the header becomes "{n} Pick Position".
+   */
+  pickCount?: number;
 }
 
 export default function PositionSummary({
@@ -56,9 +72,22 @@ export default function PositionSummary({
   isOwnerLoading,
   predictorAddress,
   counterpartyAddress,
+  holderAddress,
+  kind = 'prediction',
+  pickCount,
 }: PositionSummaryProps) {
   const showOwner = isOwnerLoading || !!currentOwner;
-  const showAddressesRow = showOwner || predictorAddress || counterpartyAddress;
+  const showHolder = !!holderAddress;
+  const showAddressesRow =
+    showOwner || showHolder || predictorAddress || counterpartyAddress;
+  const addressCellCount =
+    (showOwner ? 1 : 0) + (showHolder ? 1 : 0) + (kind === 'position' ? 0 : 2);
+  const addressGridCols =
+    addressCellCount >= 3
+      ? 'sm:grid-cols-3'
+      : addressCellCount === 2
+        ? 'sm:grid-cols-2'
+        : 'sm:grid-cols-1';
 
   return (
     <div className="space-y-4 pt-2">
@@ -67,12 +96,19 @@ export default function PositionSummary({
         {/* Left group: Position ID, external link, counterparty badge */}
         <div className="flex items-center gap-2">
           <h2 className="eyebrow text-foreground">
-            Prediction{' '}
-            {typeof positionId === 'string' &&
-            positionId.startsWith('0x') &&
-            positionId.length > 12
-              ? `${positionId.slice(0, 6)}...${positionId.slice(-4)}`
-              : `#${positionId}`}
+            {kind === 'position'
+              ? typeof pickCount === 'number'
+                ? `${pickCount} Pick Position`
+                : 'Position'
+              : (() => {
+                  const idSuffix =
+                    typeof positionId === 'string' &&
+                    positionId.startsWith('0x') &&
+                    positionId.length > 12
+                      ? `${positionId.slice(0, 6)}...${positionId.slice(-4)}`
+                      : `#${positionId}`;
+                  return `Prediction ${idSuffix}`;
+                })()}
           </h2>
           {isCounterpartyPosition && <CounterpartyBadge />}
         </div>
@@ -103,9 +139,10 @@ export default function PositionSummary({
             <ExternalLink className="h-4 w-4" />
           </Link>
         )}
-        {/* Created time - pushed right */}
+        {/* Created time - pushed right. Omitted for aggregate positions since
+            a holder's token balance has no single creation event. */}
         <div className="flex items-center gap-2 ml-auto">
-          {createdAt && (
+          {kind !== 'position' && createdAt && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -135,9 +172,28 @@ export default function PositionSummary({
 
       {/* Addresses row */}
       {showAddressesRow && (
-        <div
-          className={`grid grid-cols-1 gap-4 ${showOwner ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}
-        >
+        <div className={`grid grid-cols-1 gap-4 ${addressGridCols}`}>
+          {/* Holder - shown for aggregate position views */}
+          {showHolder && (
+            <div className="space-y-1">
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
+                Holder
+              </div>
+              <Link
+                href={`/profile/${holderAddress}`}
+                className="inline-flex items-center gap-1.5 text-sm md:text-base font-medium tabular-nums text-foreground hover:text-accent-gold transition-colors"
+              >
+                <EnsAvatar
+                  address={holderAddress}
+                  className="shrink-0 rounded-sm ring-1 ring-border/50"
+                  width={16}
+                  height={16}
+                />
+                <AddressDisplay address={holderAddress} />
+              </Link>
+            </div>
+          )}
+
           {/* Current Owner - only shown for NFT-based positions */}
           {showOwner && (
             <div className="space-y-1">
@@ -169,55 +225,59 @@ export default function PositionSummary({
             </div>
           )}
 
-          {/* Predictor */}
-          <div className="space-y-1">
-            <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
-              Predictor
+          {/* Predictor — prediction-level view only */}
+          {kind !== 'position' && (
+            <div className="space-y-1">
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
+                Predictor
+              </div>
+              {predictorAddress ? (
+                <Link
+                  href={`/profile/${predictorAddress}`}
+                  className="inline-flex items-center gap-1.5 text-sm md:text-base font-medium tabular-nums text-foreground hover:text-accent-gold transition-colors"
+                >
+                  <EnsAvatar
+                    address={predictorAddress}
+                    className="shrink-0 rounded-sm ring-1 ring-border/50"
+                    width={16}
+                    height={16}
+                  />
+                  <AddressDisplay address={predictorAddress} />
+                </Link>
+              ) : (
+                <span className="text-sm md:text-base font-medium tabular-nums text-muted-foreground">
+                  —
+                </span>
+              )}
             </div>
-            {predictorAddress ? (
-              <Link
-                href={`/profile/${predictorAddress}`}
-                className="inline-flex items-center gap-1.5 text-sm md:text-base font-medium tabular-nums text-foreground hover:text-accent-gold transition-colors"
-              >
-                <EnsAvatar
-                  address={predictorAddress}
-                  className="shrink-0 rounded-sm ring-1 ring-border/50"
-                  width={16}
-                  height={16}
-                />
-                <AddressDisplay address={predictorAddress} />
-              </Link>
-            ) : (
-              <span className="text-sm md:text-base font-medium tabular-nums text-muted-foreground">
-                —
-              </span>
-            )}
-          </div>
+          )}
 
-          {/* Counterparty */}
-          <div className="space-y-1">
-            <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
-              Counterparty
+          {/* Counterparty — prediction-level view only */}
+          {kind !== 'position' && (
+            <div className="space-y-1">
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
+                Counterparty
+              </div>
+              {counterpartyAddress ? (
+                <Link
+                  href={`/profile/${counterpartyAddress}`}
+                  className="inline-flex items-center gap-1.5 text-sm md:text-base font-medium tabular-nums text-foreground hover:text-accent-gold transition-colors"
+                >
+                  <EnsAvatar
+                    address={counterpartyAddress}
+                    className="shrink-0 rounded-sm ring-1 ring-border/50"
+                    width={16}
+                    height={16}
+                  />
+                  <AddressDisplay address={counterpartyAddress} />
+                </Link>
+              ) : (
+                <span className="text-sm md:text-base font-medium tabular-nums text-muted-foreground">
+                  —
+                </span>
+              )}
             </div>
-            {counterpartyAddress ? (
-              <Link
-                href={`/profile/${counterpartyAddress}`}
-                className="inline-flex items-center gap-1.5 text-sm md:text-base font-medium tabular-nums text-foreground hover:text-accent-gold transition-colors"
-              >
-                <EnsAvatar
-                  address={counterpartyAddress}
-                  className="shrink-0 rounded-sm ring-1 ring-border/50"
-                  width={16}
-                  height={16}
-                />
-                <AddressDisplay address={counterpartyAddress} />
-              </Link>
-            ) : (
-              <span className="text-sm md:text-base font-medium tabular-nums text-muted-foreground">
-                —
-              </span>
-            )}
-          </div>
+          )}
         </div>
       )}
 
@@ -226,11 +286,27 @@ export default function PositionSummary({
         {/* Ends / Created */}
         <div className="space-y-1">
           <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
-            {endsAtMs && endsAtMs > Date.now() ? 'Ends' : 'Created'}
+            {endsAtMs && endsAtMs > Date.now()
+              ? 'Ends'
+              : kind === 'position'
+                ? 'Ended'
+                : 'Created'}
           </div>
           <span className="text-sm md:text-base font-medium tabular-nums text-foreground">
             {endsAtMs && endsAtMs > Date.now() ? (
               <CountdownCell endTime={Math.floor(endsAtMs / 1000)} />
+            ) : kind === 'position' ? (
+              endsAtMs ? (
+                <span title={new Date(endsAtMs).toLocaleString()}>
+                  {new Date(endsAtMs).toLocaleDateString(undefined, {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })}
+                </span>
+              ) : (
+                '—'
+              )
             ) : createdAt ? (
               <span title={createdAt.toLocaleString()}>
                 {createdAt.toLocaleDateString(undefined, {

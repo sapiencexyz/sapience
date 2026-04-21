@@ -9,6 +9,14 @@ interface PolymarketEventTag {
   slug?: string;
 }
 
+// Polymarket returns some tag labels with an inconsistent lowercase first
+// letter (e.g. `temperature`). Uppercase the first character and preserve
+// the rest so acronyms like `UFC` stay intact.
+export function normalizeTagLabel(label: string): string {
+  if (!label) return label;
+  return label.charAt(0).toUpperCase() + label.slice(1);
+}
+
 interface PolymarketEvent {
   slug?: string;
   tags?: PolymarketEventTag[];
@@ -50,7 +58,8 @@ export async function fetchEventTags(opts: {
 
       const labels = (event.tags ?? [])
         .map((t) => t.label)
-        .filter((label): label is string => !!label && label !== 'All');
+        .filter((label): label is string => !!label && label !== 'All')
+        .map(normalizeTagLabel);
 
       // Deduplicate
       tagMap.set(event.slug, [...new Set(labels)]);

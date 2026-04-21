@@ -72,8 +72,10 @@ const MarketsPage = () => {
     'sapience.markets.searchTerm',
     ''
   );
+  // Key bumped to v2 after tag-case normalization (lowercase values like
+  // "temperature" no longer match; force a reset of stale selections).
   const [selectedTag, setSelectedTag] = useSessionState<string | null>(
-    'sapience.markets.selectedTag',
+    'sapience.markets.selectedTag.v2',
     null
   );
   const defaultFilters: FilterState = {
@@ -380,7 +382,7 @@ const MarketsPage = () => {
 
           {/* Predict Prices (shared) */}
           {showPredictPrices && (
-            <div className={`w-full mb-2 ${useCardGrid ? 'px-4' : ''}`}>
+            <div className={`w-full mt-4 mb-2 ${useCardGrid ? 'px-4' : ''}`}>
               <div className="flex items-center justify-between mb-2 px-1">
                 <h2
                   className={`sc-heading ${useCardGrid ? 'text-white/80' : 'text-foreground'}`}
