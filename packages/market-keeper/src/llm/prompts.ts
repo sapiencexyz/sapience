@@ -117,8 +117,13 @@ MARKET TYPE FORMATS:
 
 7. Candidate / person wins (elections, nominations, awards, appointments):
    - Use the candidate's full "First Last" name. First-name-only is NEVER acceptable.
-   - "Will Xavier Becerra win CA Governor 2026?" -> Xavier Becerra wins CA 2026
-   - "Will JD Vance be the 2028 Republican nominee?" -> JD Vance 2028 GOP
+   - Elections: "Will Xavier Becerra win CA Governor 2026?" -> Xavier Becerra wins CA 2026
+   - Primaries / nominations: "Will JD Vance be the 2028 Republican nominee?" -> JD Vance 2028 GOP
+   - Papal conclave: "Will Pietro Parolin be the next Pope?" -> Pietro Parolin next Pope
+   - Nobel / prizes: "Will Yulia Navalnaya win the Nobel Peace Prize 2026?" -> Yulia Navalnaya Nobel Peace 2026
+   - Oscars / cultural awards: "Will Cillian Murphy win Best Actor 2026?" -> Cillian Murphy Best Actor 2026
+   - Time Person of the Year: "Will Taylor Swift be Time POTY 2026?" -> Taylor Swift Time POTY 2026
+   - Corporate appointments: "Will Lisa Su be the next Intel CEO?" -> Lisa Su next Intel CEO
    - Globally recognizable figures may use last name only: "Trump wins 2024?" -> Trump 2024
 
 8. Other markets:
@@ -236,10 +241,15 @@ MARKET TYPE FORMATS:
     - "Will Kupp win Super Bowl MVP?" -> Kupp SB MVP
     - "Will Henderson be NFL OROY?" -> Henderson OROY
 
-13. Candidate / person wins (elections, nominations, appointments):
+13. Candidate / person wins (elections, nominations, awards, appointments):
     - Use the candidate's full "First Last" name. First-name-only is NEVER acceptable.
-    - "Will Xavier Becerra win CA Governor 2026?" -> Xavier Becerra wins CA 2026
-    - "Will JD Vance be the 2028 Republican nominee?" -> JD Vance 2028 GOP
+    - Elections: "Will Xavier Becerra win CA Governor 2026?" -> Xavier Becerra wins CA 2026
+    - Primaries / nominations: "Will JD Vance be the 2028 Republican nominee?" -> JD Vance 2028 GOP
+    - Papal conclave: "Will Pietro Parolin be the next Pope?" -> Pietro Parolin next Pope
+    - Nobel / prizes: "Will Yulia Navalnaya win the Nobel Peace Prize 2026?" -> Yulia Navalnaya Nobel Peace 2026
+    - Oscars / cultural awards: "Will Cillian Murphy win Best Actor 2026?" -> Cillian Murphy Best Actor 2026
+    - Time Person of the Year: "Will Taylor Swift be Time POTY 2026?" -> Taylor Swift Time POTY 2026
+    - Corporate appointments: "Will Lisa Su be the next Intel CEO?" -> Lisa Su next Intel CEO
     - Globally recognizable figures may use last name only: "Trump wins 2024?" -> Trump 2024
 
 14. Other markets:
