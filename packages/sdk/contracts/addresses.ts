@@ -159,7 +159,12 @@ export const predictionMarketVault: ChainAddressMap = {
  * Move old addresses into `legacy` manually on redeploy.
  */
 export const pythPredictionMarketVault: ChainAddressMap = {
-  // (entries inserted by deploy-pyth-vault)
+  13374202: {
+    // Ethereal testnet — deployed 2026-04-21
+    address: '0x41eE785175C836F9F342B787a818a9B8B02bd8c8',
+    blockCreated: 2619084,
+    legacy: [] as const,
+  },
 } as const;
 
 /**
