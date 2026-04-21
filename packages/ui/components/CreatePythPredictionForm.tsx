@@ -293,15 +293,15 @@ function DateTimeSelector({
 
   const isCustom = preset === 'custom';
   const presetBtnBase =
-    'h-9 px-2 xl:px-3 font-mono font-medium transition-all duration-200 ease-in-out select-none rounded-md border whitespace-nowrap tracking-wider uppercase text-sm disabled:opacity-50 flex-1 text-center';
+    'h-9 px-2 min-[1500px]:px-3 font-mono font-medium transition-all duration-200 ease-in-out select-none rounded-md border whitespace-nowrap tracking-wider uppercase text-sm disabled:opacity-50 flex-1 text-center';
 
   return (
-    <div className="flex flex-wrap xl:flex-nowrap items-center gap-x-3 gap-y-2 w-full">
-      <span className="text-base xl:text-lg text-muted-foreground whitespace-nowrap">
+    <div className="flex flex-wrap min-[1500px]:flex-nowrap items-center gap-x-3 gap-y-2 w-full">
+      <span className="text-base min-[1500px]:text-lg text-muted-foreground whitespace-nowrap">
         {isCustom ? 'at' : 'in'}
       </span>
 
-      <div className="flex flex-wrap xl:flex-nowrap items-center gap-2 flex-1 w-full xl:w-auto">
+      <div className="flex flex-wrap min-[1500px]:flex-nowrap items-center gap-2 flex-1 w-full min-[1500px]:w-auto">
         {(
           [
             { id: '5m', label: '5m', aria: 'In 5 minutes' },
@@ -1041,8 +1041,8 @@ export function CreatePythPredictionForm({
           submit();
         }}
       >
-        <div className="flex flex-wrap xl:flex-nowrap items-center gap-x-3 xl:gap-x-4 gap-y-3">
-          <div className="basis-full xl:basis-auto w-full xl:w-auto flex-1 min-w-[180px] xl:min-w-[220px]">
+        <div className="flex flex-wrap min-[1500px]:flex-nowrap items-center gap-x-3 min-[1500px]:gap-x-4 gap-y-3">
+          <div className="basis-full min-[1500px]:basis-auto w-full min-[1500px]:w-auto flex-1 min-w-[180px] min-[1500px]:min-w-[220px]">
             <Popover
               open={lazerOpen}
               onOpenChange={(v) => {
@@ -1146,7 +1146,7 @@ export function CreatePythPredictionForm({
             </Popover>
           </div>
 
-          <div className="basis-full xl:basis-auto w-full xl:w-auto flex items-center gap-x-3 xl:gap-x-4 gap-y-3 flex-wrap xl:flex-nowrap">
+          <div className="basis-full min-[1500px]:basis-auto w-full min-[1500px]:w-auto flex items-center gap-x-3 min-[1500px]:gap-x-4 gap-y-3 flex-wrap min-[1500px]:flex-nowrap">
             <ToggleGroup
               type="single"
               value={direction}
@@ -1173,7 +1173,7 @@ export function CreatePythPredictionForm({
               </ToggleGroupItem>
             </ToggleGroup>
 
-            <div className="relative flex-1 xl:flex-none xl:w-[140px] min-w-[100px] sm:min-w-[120px] xl:min-w-[140px]">
+            <div className="relative flex-1 min-[1500px]:flex-none min-[1500px]:w-[140px] min-w-[100px] sm:min-w-[120px] min-[1500px]:min-w-[140px]">
               <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                 $
               </span>
@@ -1207,7 +1207,7 @@ export function CreatePythPredictionForm({
             </div>
           </div>
 
-          <div className="basis-full xl:basis-auto w-full xl:w-auto flex-1 min-w-0">
+          <div className="basis-full min-[1500px]:basis-auto w-full min-[1500px]:w-auto flex-1 min-w-0">
             <DateTimeSelector
               disabled={disabled}
               value={dateTimeLocal}
@@ -1221,7 +1221,7 @@ export function CreatePythPredictionForm({
             type="submit"
             disabled={isPickDisabled}
             variant="default"
-            className="tracking-wider font-mono text-base xl:text-sm px-4 h-12 xl:h-9 bg-brand-white text-brand-black shrink-0 ml-0 xl:ml-4 w-full xl:w-auto basis-full xl:basis-auto mt-2 xl:mt-0"
+            className="tracking-wider font-mono text-base min-[1500px]:text-sm px-4 h-12 min-[1500px]:h-9 bg-brand-white text-brand-black shrink-0 ml-0 min-[1500px]:ml-4 w-full min-[1500px]:w-auto basis-full min-[1500px]:basis-auto mt-0 min-[1500px]:mt-0"
           >
             PICK
           </Button>
