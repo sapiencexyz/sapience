@@ -76,6 +76,7 @@ RULES for "name" (shortName):
 - For date ranges ("from X to Y"), include BOTH dates: "Elon 50+ Feb 8 - Feb 14" not "Elon 50+ Feb 8"
 - Always put a SPACE between month abbreviation and day number: "Feb 8" not "Feb8", "Jan 14" not "Jan14"
 - If the condition refers to a specific part of the match (map, half, quarter, set, etc.), ALWAYS include it in the short name in parentheses
+- PERSON NAMES: When the subject is a person (candidate, politician, athlete, nominee, etc.), ALWAYS use their full "First Last" name if both appear anywhere in the question, description, event title, or outcomes. NEVER use a first name alone ("Xavier wins", "Kamala wins"). Last-name-only is acceptable ONLY for globally recognizable figures where the last name is unambiguous (Trump, Biden, Putin, Musk, Macron, Modi). If unsure, default to first+last.
 
 COMMON MISTAKES TO AVOID:
 - BAD: "KT vs PPLE" for "Will KT Party win most seats?" -> GOOD: KT wins Thailand
@@ -85,6 +86,9 @@ COMMON MISTAKES TO AVOID:
 - BAD: "G2 win" for "Will G2 win Map 2?" -> GOOD: G2 win vs MOUZ (Map 2)
 - BAD: "Chelsea > ATL" for "Chelsea scores more than Atletico in the second half" -> GOOD: Chelsea > ATL (2H)
 - BAD: "Elon 50+ Feb 8" for "Elon tweets 50+ times from Feb 8 to Feb 14?" -> GOOD: Elon 50+ Feb 8 - Feb 14
+- BAD: "Xavier wins CA 2026" for "Will Xavier Becerra win the 2026 California Governor election?" -> GOOD: Xavier Becerra wins CA 2026
+- BAD: "Kamala wins CA 2026" for "Will Kamala Harris win the 2026 California Governor election?" -> GOOD: Kamala Harris wins CA 2026
+- BAD: "Chad wins CA 2026" for a market about Chad Bianco -> GOOD: Chad Bianco wins CA 2026
 
 MARKET TYPE FORMATS:
 
@@ -111,9 +115,14 @@ MARKET TYPE FORMATS:
 6. Price movement ("Asset Up or Down on Date"):
    -> SOL up Jan 14
 
-7. Other markets:
+7. Candidate / person wins (elections, nominations, awards, appointments):
+   - Use the candidate's full "First Last" name. First-name-only is NEVER acceptable.
+   - "Will Xavier Becerra win CA Governor 2026?" -> Xavier Becerra wins CA 2026
+   - "Will JD Vance be the 2028 Republican nominee?" -> JD Vance 2028 GOP
+   - Globally recognizable figures may use last name only: "Trump wins 2024?" -> Trump 2024
+
+8. Other markets:
    - "Fed rate cut January?" -> Fed cut Jan
-   - "Trump wins 2024?" -> Trump 2024
    - "Bitcoin above $100k by Feb 14?" -> BTC >$100k Feb 14
 
 IMPORTANT: Never shorten or truncate the market ID - copy it exactly as provided.
@@ -162,6 +171,7 @@ RULES for "name" (shortName):
 - For date ranges ("from X to Y"), include BOTH dates: "Elon 50+ Feb 8 - Feb 14" not "Elon 50+ Feb 8"
 - Always put a SPACE between month abbreviation and day number: "Feb 8" not "Feb8", "Jan 14" not "Jan14"
 - If the condition refers to a specific part of the match (map, half, quarter, set, etc.), ALWAYS include it in the short name in parentheses
+- PERSON NAMES: When the subject is a person (candidate, politician, athlete, nominee, etc.), ALWAYS use their full "First Last" name if both appear anywhere in the question, description, event title, or outcomes. NEVER use a first name alone ("Xavier wins", "Kamala wins"). Last-name-only is acceptable ONLY for globally recognizable figures where the last name is unambiguous (Trump, Biden, Putin, Musk, Macron, Modi). If unsure, default to first+last.
 
 COMMON MISTAKES TO AVOID:
 - BAD: "KT vs PPLE" for "Will KT Party win most seats?" -> GOOD: KT wins Thailand
@@ -171,6 +181,9 @@ COMMON MISTAKES TO AVOID:
 - BAD: "G2 win" for "Will G2 win Map 2?" -> GOOD: G2 win vs MOUZ (Map 2)
 - BAD: "Chelsea > ATL" for "Chelsea scores more than Atletico in the second half" -> GOOD: Chelsea > ATL (2H)
 - BAD: "Elon 50+ Feb 8" for "Elon tweets 50+ times from Feb 8 to Feb 14?" -> GOOD: Elon 50+ Feb 8 - Feb 14
+- BAD: "Xavier wins CA 2026" for "Will Xavier Becerra win the 2026 California Governor election?" -> GOOD: Xavier Becerra wins CA 2026
+- BAD: "Kamala wins CA 2026" for "Will Kamala Harris win the 2026 California Governor election?" -> GOOD: Kamala Harris wins CA 2026
+- BAD: "Chad wins CA 2026" for a market about Chad Bianco -> GOOD: Chad Bianco wins CA 2026
 
 MARKET TYPE FORMATS:
 
@@ -223,9 +236,14 @@ MARKET TYPE FORMATS:
     - "Will Kupp win Super Bowl MVP?" -> Kupp SB MVP
     - "Will Henderson be NFL OROY?" -> Henderson OROY
 
-13. Other markets:
+13. Candidate / person wins (elections, nominations, appointments):
+    - Use the candidate's full "First Last" name. First-name-only is NEVER acceptable.
+    - "Will Xavier Becerra win CA Governor 2026?" -> Xavier Becerra wins CA 2026
+    - "Will JD Vance be the 2028 Republican nominee?" -> JD Vance 2028 GOP
+    - Globally recognizable figures may use last name only: "Trump wins 2024?" -> Trump 2024
+
+14. Other markets:
     - "Fed rate cut January?" -> Fed cut Jan
-    - "Trump wins 2024?" -> Trump 2024
     - "Bitcoin above $100k?" -> BTC >$100k
     - "Bitcoin above $100k by Feb 14?" -> BTC >$100k Feb 14
 
