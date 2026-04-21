@@ -17,6 +17,8 @@ export interface ExistingCondition {
   similarMarketVolume?: number;
   similarMarketImage?: string;
   groupName?: string;
+  conditionGroupId?: number;
+  conditionGroupSimilarMarkets?: string[];
 }
 
 /**
@@ -49,7 +51,9 @@ export async function checkExistingConditions(
           similarMarketVolume
           similarMarketImage
           conditionGroup {
+            id
             name
+            similarMarkets
           }
         }
       }
@@ -89,6 +93,9 @@ export async function checkExistingConditions(
           similarMarketVolume: condition.similarMarketVolume ?? undefined,
           similarMarketImage: condition.similarMarketImage ?? undefined,
           groupName: condition.conditionGroup?.name ?? undefined,
+          conditionGroupId: condition.conditionGroup?.id ?? undefined,
+          conditionGroupSimilarMarkets:
+            condition.conditionGroup?.similarMarkets ?? undefined,
         });
       }
     }
