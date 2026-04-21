@@ -17,12 +17,16 @@ export function parseOutcomes(outcomes: string[] | string): string[] {
   return [];
 }
 
-export function getPolymarketUrl(market: PolymarketMarket): string {
+/**
+ * Build the Polymarket deep-link for a market. Returns null when the
+ * market has no associated event slug — `polymarket.com#<marketSlug>`
+ * resolves to the homepage (ignored fragment), so returning null lets
+ * callers skip emitting a URL rather than writing a dead link.
+ */
+export function getPolymarketUrl(market: PolymarketMarket): string | null {
   const eventSlug = market.events?.[0]?.slug;
-  if (eventSlug) {
-    return `https://polymarket.com/event/${eventSlug}#${market.slug}`;
-  }
-  return `https://polymarket.com#${market.slug}`;
+  if (!eventSlug) return null;
+  return `https://polymarket.com/event/${eventSlug}#${market.slug}`;
 }
 
 /**

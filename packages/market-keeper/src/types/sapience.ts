@@ -66,6 +66,21 @@ export interface MetadataUpdate {
   old: SyncableFields;
 }
 
+/**
+ * Fields on a ConditionGroup that the generate cron is allowed to keep in sync
+ * with fresh Polymarket data. Intentionally narrow: name is excluded because
+ * group names have a unique constraint, and category is LLM-derived.
+ */
+export interface GroupSyncableFields {
+  similarMarkets?: string[];
+}
+
+export interface GroupMetadataUpdate {
+  groupId: number;
+  fields: GroupSyncableFields;
+  old: GroupSyncableFields;
+}
+
 export interface SapienceOutput {
   metadata: {
     generatedAt: string;
@@ -77,4 +92,5 @@ export interface SapienceOutput {
   groups: SapienceConditionGroup[];
   ungroupedConditions: SapienceCondition[];
   metadataUpdates: MetadataUpdate[];
+  groupMetadataUpdates: GroupMetadataUpdate[];
 }

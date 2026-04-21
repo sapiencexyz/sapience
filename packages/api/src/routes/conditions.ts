@@ -60,8 +60,6 @@ router.post('/batch-create', async (req: Request, res: Response) => {
     // No count limit — the express.json body parser (100KB) is the effective cap.
     // The keeper uses batchBySize() to stay under the body limit dynamically.
 
-    const nowSeconds = Math.floor(Date.now() / 1000);
-
     // Validate all items upfront before touching DB
     for (const item of items) {
       if (
@@ -83,9 +81,9 @@ router.post('/batch-create', async (req: Request, res: Response) => {
         });
       }
       const endTimeInt = parseInt(String(item.endTime), 10);
-      if (Number.isNaN(endTimeInt) || endTimeInt <= nowSeconds) {
+      if (Number.isNaN(endTimeInt)) {
         return res.status(400).json({
-          message: `endTime must be a future Unix timestamp for ${item.conditionHash}`,
+          message: `endTime must be a valid Unix timestamp for ${item.conditionHash}`,
         });
       }
     }
