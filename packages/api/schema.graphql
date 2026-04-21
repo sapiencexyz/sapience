@@ -1443,7 +1443,7 @@ type Query {
   """
   Unified activity feed — predictions and trades merged by timestamp. When address is provided, scopes to that account; otherwise returns recent global activity.
   """
-  accountActivity(address: String, skip: Int! = 0, take: Int! = 20, type: String): [ActivityItem!]!
+  accountActivity(address: String, conditionId: String, pickConfigId: String, skip: Int! = 0, take: Int! = 20, type: String): [ActivityItem!]!
 
   """
   Time-bucketed balance snapshots for a single address showing deployed and claimable collateral

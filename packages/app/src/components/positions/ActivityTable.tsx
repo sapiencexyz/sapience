@@ -22,15 +22,12 @@ import CounterpartyBadge from '~/components/shared/CounterpartyBadge';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import {
-  usePredictionsByConditionId,
-  usePositionBalances,
   type Prediction,
   type PickConfigData,
 } from '~/hooks/graphql/usePositions';
 import { useConditionsByIds } from '~/hooks/graphql/useConditionsByIds';
 import {
   useAccountActivity,
-  type ActivityItem,
   type PredictionActivity,
   type TradeActivity,
 } from '~/hooks/graphql/useAccountActivity';
@@ -592,8 +589,9 @@ export default function ActivityTable({
    */
   hiddenColumns?: ReadonlyArray<ActivityColumn>;
   /**
-   * Client-side filter limiting items to those on a specific pick
-   * configuration. Applied after the normal account/condition fetch.
+   * Scope the feed to a single pick configuration. Forwarded to the server
+   * query so the result contains every matching item, not just those present
+   * in the first page of the unscoped feed.
    */
   filterPickConfigId?: string;
   /** Hide the filter toolbar (search/status/value-range/date-range). */
@@ -609,11 +607,14 @@ export default function ActivityTable({
     getDefaultActivityFilterState
   );
 
-  // ── Unified activity (account + recent modes) ───────────────────────────
-  const isConditionMode = !account && !!conditionId;
+  // ── Unified activity feed ────────────────────────────────────────────────
+  // One server query handles account, condition, pickConfig, and global scopes.
+  // The resolver combines predictions and secondary trades, so condition-scoped
+  // views include both types and we no longer fetch per-holder positions just
+  // to attach pickConfigs client-side.
   const {
-    items: activityItems,
-    isLoading: activityLoading,
+    items,
+    isLoading,
     isFetchingMore: activityFetchingMore,
     hasMore: activityHasMore,
     fetchMore: activityFetchMore,
@@ -621,67 +622,11 @@ export default function ActivityTable({
     account,
     pageSize: effectivePageSize,
     activityType: filters.activityType,
-    enabled: !isConditionMode,
+    pickConfigId: filterPickConfigId,
+    conditionId: !account ? conditionId : undefined,
   });
 
-  // ── Condition-only mode (no account) ─────────────────────────────────────
-  const [condTake, setCondTake] = useState(effectivePageSize);
-
-  const { data: conditionPredictions, isLoading: conditionLoading } =
-    usePredictionsByConditionId({
-      conditionId: !account ? conditionId : undefined,
-      take: condTake,
-      skip: 0,
-    });
-
-  // Positions for non-account enrichment
-  const { data: positions } = usePositionBalances({
-    holder: account,
-  });
-
-  // Decide which mode we're in
   const isAccountMode = !!account;
-
-  const isLoading = isConditionMode ? conditionLoading : activityLoading;
-
-  // For condition mode, build items from predictions only
-  const tokenMap = React.useMemo(() => {
-    const map = new Map<
-      string,
-      { pickConfig: PickConfigData; isPredictorToken: boolean }
-    >();
-    for (const pos of positions) {
-      if (pos.pickConfig) {
-        map.set(pos.tokenAddress.toLowerCase(), {
-          pickConfig: pos.pickConfig,
-          isPredictorToken: pos.isPredictorToken,
-        });
-      }
-    }
-    return map;
-  }, [positions]);
-
-  const conditionItems: ActivityItem[] = React.useMemo(() => {
-    return conditionPredictions.map((pred) => {
-      const byPredictor = tokenMap.get(pred.predictorToken.toLowerCase());
-      const byCounterparty = tokenMap.get(pred.counterpartyToken.toLowerCase());
-      const match = byPredictor ?? byCounterparty;
-      const timestamp = pred.collateralDepositedAt
-        ? pred.collateralDepositedAt * 1000
-        : new Date(pred.createdAt).getTime();
-      return {
-        type: 'prediction' as const,
-        timestamp,
-        prediction: pred,
-        pickConfig: pred.pickConfig ?? match?.pickConfig ?? null,
-        isPredictorSide: account
-          ? pred.predictor.toLowerCase() === account.toLowerCase()
-          : true,
-      };
-    });
-  }, [conditionPredictions, tokenMap, account]);
-
-  const items = isConditionMode ? conditionItems : activityItems;
 
   // ── Condition enrichment for all prediction items ────────────────────────
   const conditionIds = React.useMemo(() => {
@@ -700,16 +645,7 @@ export default function ActivityTable({
   const filteredItems = React.useMemo(() => {
     let result = items;
 
-    // Scope to a specific pick configuration when requested (used by the
-    // PositionDialog embed so the table mirrors that aggregated position).
-    if (filterPickConfigId) {
-      const pcId = filterPickConfigId.toLowerCase();
-      result = result.filter(
-        (item) => (item.pickConfig?.id ?? '').toLowerCase() === pcId
-      );
-    }
-
-    // Activity type filtering is handled server-side via the hook
+    // pickConfigId scoping and activity type filtering are handled server-side
 
     // Filter by search term
     if (filters.searchTerm.trim()) {
@@ -772,7 +708,7 @@ export default function ActivityTable({
     }
 
     return result;
-  }, [items, filters, conditionsMap, filterPickConfigId]);
+  }, [items, filters, conditionsMap]);
 
   // ── Share / detail dialog state ──────────────────────────────────────────
   const [sharePrediction, setSharePrediction] = useState<{
@@ -788,21 +724,11 @@ export default function ActivityTable({
   } | null>(null);
 
   // ── Infinite scroll ──────────────────────────────────────────────────────
-  const hasMore = isConditionMode
-    ? conditionPredictions.length >= condTake
-    : activityHasMore;
-
   const { loadMoreRef } = useInfiniteScroll({
-    hasMore,
+    hasMore: activityHasMore,
     isLoading,
-    isFetchingMore: isConditionMode ? false : activityFetchingMore,
-    onFetchMore: () => {
-      if (isConditionMode) {
-        setCondTake((t) => t + effectivePageSize);
-      } else {
-        activityFetchMore();
-      }
-    },
+    isFetchingMore: activityFetchingMore,
+    onFetchMore: activityFetchMore,
   });
 
   // ── Render ───────────────────────────────────────────────────────────────
@@ -815,7 +741,7 @@ export default function ActivityTable({
             <ActivityTableFilters
               filters={filters}
               onFiltersChange={setFilters}
-              showTypeFilter={!isConditionMode}
+              showTypeFilter
             />
           </div>
         )}
