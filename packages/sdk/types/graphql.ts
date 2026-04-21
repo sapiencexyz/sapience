@@ -1464,6 +1464,7 @@ export type Position = {
   pickConfigId: Scalars['String']['output'];
   tokenAddress: Scalars['String']['output'];
   totalPayout?: Maybe<Scalars['String']['output']>;
+  updatedAt: Scalars['DateTimeISO']['output'];
   userCollateral?: Maybe<Scalars['String']['output']>;
 };
 
@@ -1641,6 +1642,8 @@ export type QueryAccountAccuracyRankArgs = {
 
 export type QueryAccountActivityArgs = {
   address?: InputMaybe<Scalars['String']['input']>;
+  conditionId?: InputMaybe<Scalars['String']['input']>;
+  pickConfigId?: InputMaybe<Scalars['String']['input']>;
   skip?: Scalars['Int']['input'];
   take?: Scalars['Int']['input'];
   type?: InputMaybe<Scalars['String']['input']>;

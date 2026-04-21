@@ -65,7 +65,7 @@ export type CreatePythPredictionFormValues = {
   dateTimeLocal: string;
 };
 
-type DateTimePreset = '' | '5m' | '1h' | '1w' | 'custom' | 'relative';
+type DateTimePreset = '' | '5m' | '10m' | '15m' | 'custom' | 'relative';
 
 type RelativeUnit = 'minutes' | 'hours' | 'days';
 
@@ -143,7 +143,8 @@ function formatDateTimeLocalInputValue(date: Date): string {
   const dd = pad(date.getDate());
   const hh = pad(date.getHours());
   const min = pad(date.getMinutes());
-  return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+  const sec = pad(date.getSeconds());
+  return `${yyyy}-${mm}-${dd}T${hh}:${min}:${sec}`;
 }
 
 function addMinutes(date: Date, minutes: number): Date {
@@ -158,17 +159,21 @@ function parseDateTimeLocalInputValue(value: string): {
   date: Date | undefined;
   time: string;
 } {
-  // Expected: YYYY-MM-DDTHH:MM
-  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value);
-  if (!m) return { date: undefined, time: '12:00' };
+  // Accept YYYY-MM-DDTHH:MM or YYYY-MM-DDTHH:MM:SS.
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(
+    value
+  );
+  if (!m) return { date: undefined, time: '12:00:00' };
   const yyyy = Number(m[1]);
   const mm = Number(m[2]);
   const dd = Number(m[3]);
   const hh = Number(m[4]);
   const min = Number(m[5]);
-  const d = new Date(yyyy, mm - 1, dd, hh, min);
-  if (Number.isNaN(d.getTime())) return { date: undefined, time: '12:00' };
-  return { date: d, time: `${m[4]}:${m[5]}` };
+  const sec = m[6] !== undefined ? Number(m[6]) : 0;
+  const d = new Date(yyyy, mm - 1, dd, hh, min, sec);
+  if (Number.isNaN(d.getTime())) return { date: undefined, time: '12:00:00' };
+  const secStr = m[6] ?? '00';
+  return { date: d, time: `${m[4]}:${m[5]}:${secStr}` };
 }
 
 function getLocalTimeZoneLabel(): string {
@@ -277,9 +282,9 @@ function DateTimeSelector({
       const next =
         nextPreset === '5m'
           ? formatDateTimeLocalInputValue(addMinutes(now, 5))
-          : nextPreset === '1h'
-            ? formatDateTimeLocalInputValue(addMinutes(now, 60))
-            : formatDateTimeLocalInputValue(addDays(now, 7));
+          : nextPreset === '10m'
+            ? formatDateTimeLocalInputValue(addMinutes(now, 10))
+            : formatDateTimeLocalInputValue(addMinutes(now, 15));
 
       onChange(next);
     },
@@ -288,20 +293,20 @@ function DateTimeSelector({
 
   const isCustom = preset === 'custom';
   const presetBtnBase =
-    'h-9 px-2 xl:px-3 font-mono font-medium transition-all duration-200 ease-in-out select-none rounded-md border whitespace-nowrap tracking-wider uppercase text-sm disabled:opacity-50 flex-1 text-center';
+    'h-9 px-2 min-[1500px]:px-3 font-mono font-medium transition-all duration-200 ease-in-out select-none rounded-md border whitespace-nowrap tracking-wider uppercase text-sm disabled:opacity-50 flex-1 text-center';
 
   return (
-    <div className="flex flex-wrap xl:flex-nowrap items-center gap-x-3 gap-y-2 w-full">
-      <span className="text-base xl:text-lg text-muted-foreground whitespace-nowrap">
+    <div className="flex flex-wrap min-[1500px]:flex-nowrap items-center gap-x-3 gap-y-2 w-full">
+      <span className="text-base min-[1500px]:text-lg text-muted-foreground whitespace-nowrap">
         {isCustom ? 'at' : 'in'}
       </span>
 
-      <div className="flex flex-wrap xl:flex-nowrap items-center gap-2 flex-1 w-full xl:w-auto">
+      <div className="flex flex-wrap min-[1500px]:flex-nowrap items-center gap-2 flex-1 w-full min-[1500px]:w-auto">
         {(
           [
             { id: '5m', label: '5m', aria: 'In 5 minutes' },
-            { id: '1h', label: '1h', aria: 'In 1 hour' },
-            { id: '1w', label: '1w', aria: 'In a week' },
+            { id: '10m', label: '10m', aria: 'In 10 minutes' },
+            { id: '15m', label: '15m', aria: 'In 15 minutes' },
             { id: 'relative', label: 'relative', aria: 'Relative time' },
             { id: 'custom', label: 'custom', aria: 'Custom time' },
           ] as const
@@ -451,13 +456,16 @@ function DateTimeSelector({
                       selected={selectedDate}
                       onSelect={(d) => {
                         if (!d) return;
-                        const [hh, min] = selectedTime.split(':').map(Number);
+                        const [hh, min, sec] = selectedTime
+                          .split(':')
+                          .map(Number);
                         const next = new Date(
                           d.getFullYear(),
                           d.getMonth(),
                           d.getDate(),
                           Number.isFinite(hh) ? hh : 12,
-                          Number.isFinite(min) ? min : 0
+                          Number.isFinite(min) ? min : 0,
+                          Number.isFinite(sec) ? sec : 0
                         );
                         const nextValue = formatDateTimeLocalInputValue(next);
                         setCustomValue(nextValue);
@@ -472,17 +480,21 @@ function DateTimeSelector({
                       <div className="relative flex-1">
                         <Input
                           type="time"
+                          step={1}
                           value={selectedTime}
                           onChange={(e) => {
                             const nextTime = e.target.value;
                             const base = selectedDate ?? new Date();
-                            const [hh, min] = nextTime.split(':').map(Number);
+                            const [hh, min, sec] = nextTime
+                              .split(':')
+                              .map(Number);
                             const next = new Date(
                               base.getFullYear(),
                               base.getMonth(),
                               base.getDate(),
                               Number.isFinite(hh) ? hh : 12,
-                              Number.isFinite(min) ? min : 0
+                              Number.isFinite(min) ? min : 0,
+                              Number.isFinite(sec) ? sec : 0
                             );
                             const nextValue =
                               formatDateTimeLocalInputValue(next);
@@ -957,10 +969,10 @@ export function CreatePythPredictionForm({
     const computedDateTimeLocal =
       dateTimePreset === '5m'
         ? formatDateTimeLocalInputValue(addMinutes(new Date(), 5))
-        : dateTimePreset === '1h'
-          ? formatDateTimeLocalInputValue(addMinutes(new Date(), 60))
-          : dateTimePreset === '1w'
-            ? formatDateTimeLocalInputValue(addDays(new Date(), 7))
+        : dateTimePreset === '10m'
+          ? formatDateTimeLocalInputValue(addMinutes(new Date(), 10))
+          : dateTimePreset === '15m'
+            ? formatDateTimeLocalInputValue(addMinutes(new Date(), 15))
             : dateTimePreset === 'relative'
               ? (() => {
                   const amt = Number(parentRelativeAmount);
@@ -1029,8 +1041,8 @@ export function CreatePythPredictionForm({
           submit();
         }}
       >
-        <div className="flex flex-wrap xl:flex-nowrap items-center gap-x-3 xl:gap-x-4 gap-y-3">
-          <div className="basis-full xl:basis-auto w-full xl:w-auto flex-1 min-w-[180px] xl:min-w-[220px]">
+        <div className="flex flex-wrap min-[1500px]:flex-nowrap items-center gap-x-3 min-[1500px]:gap-x-4 gap-y-3">
+          <div className="basis-full min-[1500px]:basis-auto w-full min-[1500px]:w-auto flex-1 min-w-[180px] min-[1500px]:min-w-[220px]">
             <Popover
               open={lazerOpen}
               onOpenChange={(v) => {
@@ -1134,7 +1146,7 @@ export function CreatePythPredictionForm({
             </Popover>
           </div>
 
-          <div className="basis-full xl:basis-auto w-full xl:w-auto flex items-center gap-x-3 xl:gap-x-4 gap-y-3 flex-wrap xl:flex-nowrap">
+          <div className="basis-full min-[1500px]:basis-auto w-full min-[1500px]:w-auto flex items-center gap-x-3 min-[1500px]:gap-x-4 gap-y-3 flex-wrap min-[1500px]:flex-nowrap">
             <ToggleGroup
               type="single"
               value={direction}
@@ -1161,7 +1173,7 @@ export function CreatePythPredictionForm({
               </ToggleGroupItem>
             </ToggleGroup>
 
-            <div className="relative flex-1 xl:flex-none xl:w-[140px] min-w-[100px] sm:min-w-[120px] xl:min-w-[140px]">
+            <div className="relative flex-1 min-[1500px]:flex-none min-[1500px]:w-[140px] min-w-[100px] sm:min-w-[120px] min-[1500px]:min-w-[140px]">
               <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                 $
               </span>
@@ -1195,7 +1207,7 @@ export function CreatePythPredictionForm({
             </div>
           </div>
 
-          <div className="basis-full xl:basis-auto w-full xl:w-auto flex-1 min-w-0">
+          <div className="basis-full min-[1500px]:basis-auto w-full min-[1500px]:w-auto flex-1 min-w-0">
             <DateTimeSelector
               disabled={disabled}
               value={dateTimeLocal}
@@ -1209,7 +1221,7 @@ export function CreatePythPredictionForm({
             type="submit"
             disabled={isPickDisabled}
             variant="default"
-            className="tracking-wider font-mono text-base xl:text-sm px-4 h-12 xl:h-9 bg-brand-white text-brand-black shrink-0 ml-0 xl:ml-4 w-full xl:w-auto basis-full xl:basis-auto mt-2 xl:mt-0"
+            className="tracking-wider font-mono text-base min-[1500px]:text-sm px-4 h-12 min-[1500px]:h-9 bg-brand-white text-brand-black shrink-0 ml-0 min-[1500px]:ml-4 w-full min-[1500px]:w-auto basis-full min-[1500px]:basis-auto mt-0 min-[1500px]:mt-0"
           >
             PICK
           </Button>

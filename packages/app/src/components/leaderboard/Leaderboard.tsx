@@ -113,7 +113,7 @@ const Leaderboard = () => {
         </div>
         <TabsContent value="pnl">
           <p className="text-xl font-heading font-normal mb-6 text-muted-foreground leading-relaxed">
-            Realized profit ranks{' '}
+            Profit ranks{' '}
             <Link
               href="/markets"
               className="underline decoration-1 decoration-foreground/10 underline-offset-4 hover:decoration-foreground/60"
@@ -162,9 +162,7 @@ const PnLLeaderboard = () => {
       },
       {
         id: 'totalPnL',
-        header: () => (
-          <span className="whitespace-nowrap">Realized Profit</span>
-        ),
+        header: () => <span className="whitespace-nowrap">Profit</span>,
         accessorKey: 'totalPnL',
         cell: ProfitCell,
       },

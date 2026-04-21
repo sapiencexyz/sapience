@@ -149,6 +149,44 @@ export const predictionMarketVault: ChainAddressMap = {
 } as const;
 
 /**
+ * PythPredictionMarketVault
+ * Dedicated PredictionMarketVault instance paired with the Pyth binary-options
+ * bot. Same contract as `predictionMarketVault`, separate deployment so Pyth
+ * capital is isolated from the default vault.
+ *
+ * Chain entries are added/updated by `deploy.sh deploy-pyth-vault`
+ * (via packages/protocol/src/scripts/deploy/update-sdk-vault.mjs).
+ * Move old addresses into `legacy` manually on redeploy.
+ */
+export const pythPredictionMarketVault: ChainAddressMap = {
+  13374202: {
+    // Ethereal testnet — deployed 2026-04-21
+    address: '0x41eE785175C836F9F342B787a818a9B8B02bd8c8',
+    blockCreated: 2619084,
+    legacy: [] as const,
+  },
+} as const;
+
+/**
+ * SingleLegVault
+ * PredictionMarketVault instance restricted to single-leg (non-parlay) markets.
+ * Run by an auction-bidder configured with `SINGLE_LEG_ENABLED=true` and tighter
+ * risk caps than the parlay vault.
+ *
+ * Chain entries are added/updated via update-sdk-vault.mjs with
+ * `--exportName singleLegVault`. Move old addresses into `legacy` manually on
+ * redeploy.
+ */
+export const singleLegVault: ChainAddressMap = {
+  5064014: {
+    // Ethereal mainnet — deployed 2026-03-26
+    address: '0x1b03b3f20caa6fc8cc7f6d9ae73d634804fe7f59',
+    blockCreated: 3915329,
+    legacy: [] as const,
+  },
+} as const;
+
+/**
  * PythConditionResolver
  * Pyth oracle-based condition resolution
  */
@@ -169,10 +207,14 @@ export const pythConditionResolver: ChainAddressMap = {
     ] as const,
   },
   13374202: {
-    // Ethereal testnet — redeployed 2026-03-31 (pyth lazer fix)
-    address: '0xF56d26C58496A07DF4882F52c56E3cadBFB87729',
-    blockCreated: 2589629,
+    // Ethereal testnet — deployed 2026-04-21
+    address: '0x7BD534c96b78A5d6C10701714F29EA4f1587B64D',
+    blockCreated: 2619401,
     legacy: [
+      {
+        address: '0xF56d26C58496A07DF4882F52c56E3cadBFB87729',
+        blockCreated: 2589629,
+      },
       {
         address: '0x27A95ab8982EAcF4EC3D4bCCaBB3630C72fd7E1b',
         blockCreated: 2585876,
@@ -654,6 +696,8 @@ export const contracts = {
   eas,
   predictionMarketEscrow,
   predictionMarketVault,
+  pythPredictionMarketVault,
+  singleLegVault,
   secondaryMarketEscrow,
   onboardingSponsor,
   pythConditionResolver,

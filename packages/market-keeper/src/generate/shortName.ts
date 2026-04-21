@@ -6,6 +6,21 @@
 import type { PolymarketMarket } from '../types';
 import { parseOutcomes } from './transform';
 
+// Map Polymarket's sportsMarketType to a short period label.
+// Returns null for full-game markets and non-sports markets — callers should
+// only append a label when this is non-null, so non-sports markets pass through
+// unchanged.
+function getSportsPeriodLabel(sportsMarketType?: string): string | null {
+  if (!sportsMarketType) return null;
+  if (sportsMarketType.startsWith('first_half_')) return '1H';
+  if (sportsMarketType.startsWith('second_half_')) return '2H';
+  if (sportsMarketType.startsWith('first_quarter_')) return '1Q';
+  if (sportsMarketType.startsWith('second_quarter_')) return '2Q';
+  if (sportsMarketType.startsWith('third_quarter_')) return '3Q';
+  if (sportsMarketType.startsWith('fourth_quarter_')) return '4Q';
+  return null;
+}
+
 // Team abbreviations - NBA, NFL, eSports
 const TEAM_ABBREVIATIONS: Record<string, string> = {
   // NBA
@@ -290,7 +305,9 @@ export function inferShortName(market: PolymarketMarket): string | null {
     if (vsMatch) {
       const abbrev1 = getTeamAbbreviation(outcomes[0]);
       const abbrev2 = getTeamAbbreviation(outcomes[1]);
-      return `${abbrev1} win vs ${abbrev2}`;
+      const period = getSportsPeriodLabel(market.sportsMarketType);
+      const periodSuffix = period ? ` ${period}` : '';
+      return `${abbrev1} win vs ${abbrev2}${periodSuffix}`;
     }
   }
 
