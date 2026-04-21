@@ -347,44 +347,44 @@ export async function calculateCombinedPositionPnL(): Promise<
       FROM position
       WHERE status IN ('settled', 'consolidated') AND "predictorWon" IS NOT NULL
       UNION ALL
-      -- Claims: holder redeems settled prediction
-      -- Note: Claim.predictionId stores pickConfigId, so we use tokensBurned as cost basis
-      -- (position tokens are minted 1:1 with collateral)
-      SELECT cl.holder AS address,
-        CAST(cl."collateralPaid" AS DECIMAL) - CAST(cl."tokensBurned" AS DECIMAL) AS pnl
-      FROM "Claim" cl
-      UNION ALL
-      -- Closes: predictor payout
-      SELECT c."predictorHolder" AS address,
-        CAST(c."predictorPayout" AS DECIMAL) - CAST(c."predictorTokensBurned" AS DECIMAL) AS pnl
-      FROM "Close" c
-      UNION ALL
-      -- Closes: counterparty payout
-      SELECT c."counterpartyHolder" AS address,
-        CAST(c."counterpartyPayout" AS DECIMAL) - CAST(c."counterpartyTokensBurned" AS DECIMAL) AS pnl
-      FROM "Close" c
-      UNION ALL
-      -- Unclaimed settled: predictor side (exclude already-claimed)
-      -- Join Picks to get token addresses since Prediction no longer stores them
+      -- V2 Resolved: deterministic per-prediction PnL (predictor side).
+      -- In the parimutuel model, each side receives position tokens equal to the
+      -- prediction's total pot (pc + cc), not their individual stake. So Claim.tokensBurned
+      -- (pot-sized) is NOT the user's cost basis — their actual collateral is in Prediction.
+      -- For a resolved prediction, final PnL is deterministic from pk.result + collaterals,
+      -- whether or not the user has redeemed. Predictions that were mutually cancelled via
+      -- Close are excluded (PnL ≈ 0 for mutual cancel, and they're no longer live).
       SELECT p.predictor AS address,
-        CAST(COALESCE(p."predictorClaimable", '0') AS DECIMAL) - CAST(p."predictorCollateral" AS DECIMAL) AS pnl
+        CASE pk.result
+          WHEN 'PREDICTOR_WINS' THEN CAST(p."counterpartyCollateral" AS DECIMAL)
+          WHEN 'COUNTERPARTY_WINS' THEN -CAST(p."predictorCollateral" AS DECIMAL)
+          ELSE 0::DECIMAL
+        END AS pnl
       FROM "Prediction" p
-      LEFT JOIN "Picks" pk ON pk.id = p."pickConfigId"
-      WHERE p.settled = true AND p.result != 'UNRESOLVED'
+      INNER JOIN "Picks" pk ON pk.id = p."pickConfigId"
+      WHERE pk.resolved = true AND pk.result != 'UNRESOLVED'
         AND NOT EXISTS (
-          SELECT 1 FROM "Claim" c
-          WHERE c."positionToken" = pk."predictorToken" AND c.holder = p.predictor
+          SELECT 1 FROM "Close" c
+          WHERE c."pickConfigId" = p."pickConfigId"
+            AND LOWER(c."predictorHolder") = LOWER(p.predictor)
+            AND LOWER(c."counterpartyHolder") = LOWER(p.counterparty)
         )
       UNION ALL
-      -- Unclaimed settled: counterparty side (exclude already-claimed)
+      -- V2 Resolved: counterparty side
       SELECT p.counterparty AS address,
-        CAST(COALESCE(p."counterpartyClaimable", '0') AS DECIMAL) - CAST(p."counterpartyCollateral" AS DECIMAL) AS pnl
+        CASE pk.result
+          WHEN 'COUNTERPARTY_WINS' THEN CAST(p."predictorCollateral" AS DECIMAL)
+          WHEN 'PREDICTOR_WINS' THEN -CAST(p."counterpartyCollateral" AS DECIMAL)
+          ELSE 0::DECIMAL
+        END AS pnl
       FROM "Prediction" p
-      LEFT JOIN "Picks" pk ON pk.id = p."pickConfigId"
-      WHERE p.settled = true AND p.result != 'UNRESOLVED'
+      INNER JOIN "Picks" pk ON pk.id = p."pickConfigId"
+      WHERE pk.resolved = true AND pk.result != 'UNRESOLVED'
         AND NOT EXISTS (
-          SELECT 1 FROM "Claim" c
-          WHERE c."positionToken" = pk."counterpartyToken" AND c.holder = p.counterparty
+          SELECT 1 FROM "Close" c
+          WHERE c."pickConfigId" = p."pickConfigId"
+            AND LOWER(c."predictorHolder") = LOWER(p.predictor)
+            AND LOWER(c."counterpartyHolder") = LOWER(p.counterparty)
         )
     )
     SELECT address, SUM(pnl)::TEXT AS total_pnl, COUNT(*)::BIGINT AS position_count
