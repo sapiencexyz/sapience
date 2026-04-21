@@ -89,11 +89,17 @@ export class ActivityResolver {
     @Arg('address', () => String, { nullable: true }) address?: string,
     @Arg('take', () => Int, { defaultValue: 20 }) take?: number,
     @Arg('skip', () => Int, { defaultValue: 0 }) skip?: number,
-    @Arg('type', () => String, { nullable: true }) type?: string
+    @Arg('type', () => String, { nullable: true }) type?: string,
+    @Arg('pickConfigId', () => String, { nullable: true })
+    pickConfigId?: string,
+    @Arg('conditionId', () => String, { nullable: true })
+    conditionId?: string
   ): Promise<ActivityItemType[]> {
     const cappedTake = Math.max(1, Math.min(take ?? 20, 100));
     const cappedSkip = Math.max(0, Math.min(skip ?? 0, MAX_SKIP));
     const addr = address?.toLowerCase();
+    const pickConfigIdLower = pickConfigId?.toLowerCase();
+    const conditionIdLower = conditionId?.toLowerCase();
 
     const includePredictions = !type || type === 'prediction';
     const includeTrades = !type || type === 'trade';
@@ -102,10 +108,92 @@ export class ActivityResolver {
     // for any interleaving of the two timestamp-sorted streams.
     const fetchSize = cappedSkip + cappedTake;
 
-    const predictionWhere = addr
+    // Resolve the set of pick configurations in scope. Predictions filter on
+    // pickConfigId; trades filter on the corresponding token set (trades carry
+    // no pickConfigId FK — the linkage is via the token address).
+    //
+    // - pickConfigId alone → single-element set
+    // - conditionId alone → every pickConfig whose picks reference the condition
+    // - both → intersection
+    let scopedPickConfigIds: string[] | null = null; // null = no scoping
+    if (conditionIdLower) {
+      const matchingPicks = await prisma.pick.findMany({
+        where: {
+          conditionId: { equals: conditionIdLower, mode: 'insensitive' },
+        },
+        select: { pickConfigId: true },
+        distinct: ['pickConfigId'],
+      });
+      scopedPickConfigIds = matchingPicks.map((p) => p.pickConfigId);
+      if (pickConfigIdLower) {
+        scopedPickConfigIds = scopedPickConfigIds.filter(
+          (id) => id === pickConfigIdLower
+        );
+      }
+    } else if (pickConfigIdLower) {
+      scopedPickConfigIds = [pickConfigIdLower];
+    }
+
+    // Nothing can match — short-circuit before any further queries.
+    if (scopedPickConfigIds !== null && scopedPickConfigIds.length === 0) {
+      return [];
+    }
+
+    // Load tokens for every in-scope pick configuration (for trade filtering).
+    const scopedTokens: string[] = [];
+    if (scopedPickConfigIds !== null) {
+      const configs = await prisma.picks.findMany({
+        where: { id: { in: scopedPickConfigIds } },
+        select: { predictorToken: true, counterpartyToken: true },
+      });
+      const seen = new Set<string>();
+      for (const c of configs) {
+        for (const raw of [c.predictorToken, c.counterpartyToken]) {
+          if (!raw) continue;
+          const t = raw.toLowerCase();
+          if (!seen.has(t)) {
+            seen.add(t);
+            scopedTokens.push(t);
+          }
+        }
+      }
+    }
+
+    const addressPredictionClause = addr
       ? { OR: [{ predictor: addr }, { counterparty: addr }] }
-      : {};
-    const tradeWhere = addr ? { OR: [{ seller: addr }, { buyer: addr }] } : {};
+      : null;
+    const addressTradeClause = addr
+      ? { OR: [{ seller: addr }, { buyer: addr }] }
+      : null;
+
+    // A single pickConfigId scope can be expressed as a flat equality to keep
+    // the query plan simple; any broader scope uses `IN`.
+    const pickConfigIdClause =
+      scopedPickConfigIds !== null
+        ? scopedPickConfigIds.length === 1
+          ? { pickConfigId: scopedPickConfigIds[0] }
+          : { pickConfigId: { in: scopedPickConfigIds } }
+        : null;
+
+    const tokenClause =
+      scopedPickConfigIds !== null ? { token: { in: scopedTokens } } : null;
+
+    const predictionWhere = pickConfigIdClause
+      ? addressPredictionClause
+        ? { AND: [addressPredictionClause, pickConfigIdClause] }
+        : pickConfigIdClause
+      : (addressPredictionClause ?? {});
+
+    const tradeWhere = tokenClause
+      ? addressTradeClause
+        ? { AND: [addressTradeClause, tokenClause] }
+        : tokenClause
+      : (addressTradeClause ?? {});
+
+    // If the scope has no matching tokens, trades cannot match — skip the query.
+    const shouldFetchTrades =
+      includeTrades &&
+      (scopedPickConfigIds === null || scopedTokens.length > 0);
 
     const [predictions, trades] = await Promise.all([
       includePredictions
@@ -116,7 +204,7 @@ export class ActivityResolver {
             include: { pickConfiguration: { include: { picks: true } } },
           })
         : Promise.resolve([]),
-      includeTrades
+      shouldFetchTrades
         ? prisma.secondaryTrade.findMany({
             where: tradeWhere,
             orderBy: { executedAt: 'desc' },
