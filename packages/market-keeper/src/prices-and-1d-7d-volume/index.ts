@@ -137,8 +137,8 @@ interface PriceUpdate {
 
 interface VolumeUpdate {
   id: string;
-  volume24h: number;
-  volume7d: number;
+  similarMarketVolume24h: number;
+  similarMarketVolume7d: number;
 }
 
 interface PolymarketFetchResult {
@@ -198,8 +198,8 @@ async function fetchPolymarketPrices(
           if (v24h > 0 || v7d > 0) {
             volumeUpdates.push({
               id: market.conditionId,
-              volume24h: v24h,
-              volume7d: v7d,
+              similarMarketVolume24h: v24h,
+              similarMarketVolume7d: v7d,
             });
           }
         }
@@ -279,7 +279,7 @@ export async function main() {
         log(`\nVolume updates (24h/7d from Gamma): ${volumeUpdates.length}`);
         for (const v of volumeUpdates.slice(0, 10)) {
           log(
-            `  ${v.id} → 24h: $${v.volume24h.toLocaleString()}, 7d: $${v.volume7d.toLocaleString()}`
+            `  ${v.id} → 24h: $${v.similarMarketVolume24h.toLocaleString()}, 7d: $${v.similarMarketVolume7d.toLocaleString()}`
           );
         }
         if (volumeUpdates.length > 10) {

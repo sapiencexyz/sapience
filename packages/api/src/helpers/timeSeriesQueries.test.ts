@@ -17,6 +17,8 @@ import prisma from '../db';
 import {
   resolveDefaults,
   queryAccountPredictionCount,
+  queryAccountVolume,
+  queryProtocolVolume,
 } from './timeSeriesQueries';
 
 const mockQueryRaw = prisma.$queryRaw as unknown as ReturnType<typeof vi.fn>;
@@ -89,6 +91,41 @@ describe('resolveDefaults', () => {
 });
 
 // ─── queryAccountPredictionCount ─────────────────────────────────────────────
+
+describe('queryAccountVolume and queryProtocolVolume', () => {
+  beforeEach(() => {
+    mockQueryRaw.mockReset();
+  });
+
+  it('uses secondary trade price instead of collateral address for account volume', async () => {
+    mockQueryRaw.mockResolvedValue([]);
+
+    await queryAccountVolume(
+      '0xAbCdEf1234567890AbCdEf1234567890AbCdEf12',
+      TimeInterval.DAY,
+      new Date('2024-01-01T00:00:00Z'),
+      new Date('2024-01-10T00:00:00Z')
+    );
+
+    const queryText = mockQueryRaw.mock.calls[0][0].join(' ');
+    expect(queryText).toContain('CAST(price AS DECIMAL) AS vol');
+    expect(queryText).not.toContain('CAST(collateral AS DECIMAL) AS vol');
+  });
+
+  it('uses secondary trade price instead of collateral address for protocol volume', async () => {
+    mockQueryRaw.mockResolvedValue([]);
+
+    await queryProtocolVolume(
+      TimeInterval.DAY,
+      new Date('2024-01-01T00:00:00Z'),
+      new Date('2024-01-10T00:00:00Z')
+    );
+
+    const queryText = mockQueryRaw.mock.calls[0][0].join(' ');
+    expect(queryText).toContain('CAST(price AS DECIMAL) AS vol');
+    expect(queryText).not.toContain('CAST(collateral AS DECIMAL) AS vol');
+  });
+});
 
 describe('queryAccountPredictionCount', () => {
   beforeEach(() => {

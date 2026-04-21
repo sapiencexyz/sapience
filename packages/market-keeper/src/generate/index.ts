@@ -7,7 +7,12 @@ import { DEFAULT_SAPIENCE_API_URL } from '../constants';
 import { validatePrivateKey, confirmProductionAccess } from '../utils';
 import { fetchEndingSoonestMarkets } from './market';
 import { groupMarkets, exportJSON } from './grouping';
-import { printDryRun, submitToAPI, submitMetadataUpdates } from './api';
+import {
+  printDryRun,
+  submitToAPI,
+  submitMetadataUpdates,
+  submitGroupMetadataUpdates,
+} from './api';
 
 // ============ CLI Arguments ============
 
@@ -112,6 +117,22 @@ export async function main() {
           }
         }
       }
+      if (sapienceData.groupMetadataUpdates.length > 0) {
+        console.log(
+          `\nWould update metadata for ${sapienceData.groupMetadataUpdates.length} existing condition groups:`
+        );
+        for (const u of sapienceData.groupMetadataUpdates) {
+          const changedKeys = Object.keys(u.fields);
+          console.log(`  group ${u.groupId} → ${changedKeys.join(', ')}`);
+          const oldRec = u.old as Record<string, unknown>;
+          const newRec = u.fields as Record<string, unknown>;
+          for (const key of changedKeys) {
+            console.log(
+              `    ${key}: ${JSON.stringify(oldRec[key])} → ${JSON.stringify(newRec[key])}`
+            );
+          }
+        }
+      }
       return;
     }
 
@@ -125,6 +146,14 @@ export async function main() {
           apiUrl,
           privateKey,
           sapienceData.metadataUpdates
+        );
+      }
+
+      if (sapienceData.groupMetadataUpdates.length > 0) {
+        await submitGroupMetadataUpdates(
+          apiUrl,
+          privateKey,
+          sapienceData.groupMetadataUpdates
         );
       }
     }

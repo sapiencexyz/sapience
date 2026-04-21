@@ -123,7 +123,8 @@ export default function PredictionPageClient({
     ? prediction.result
     : (computed?.result ?? 'UNRESOLVED');
   const predictorWon = result === 'PREDICTOR_WINS';
-  const positionWon = isSettled && (predictorWon || result === 'NON_DECISIVE');
+  // This page shows the predictor's side; NON_DECISIVE resolves to the counterparty.
+  const positionWon = isSettled && predictorWon;
 
   // PnL
   const pnl = isSettled

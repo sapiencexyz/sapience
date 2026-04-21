@@ -17,13 +17,26 @@ import {
   useReactTable,
   type ColumnDef,
 } from '@tanstack/react-table';
-import { ChevronUp, ChevronDown, Info, ArrowRightLeft } from 'lucide-react';
+import {
+  ChevronUp,
+  ChevronDown,
+  Info,
+  ArrowRightLeft,
+  Check,
+} from 'lucide-react';
 import { formatEther } from 'viem';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
+import {
+  DropdownMenu,
+  DropdownMenuTrigger,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+} from '@sapience/ui/components/ui/dropdown-menu';
 import { cn } from '@sapience/ui/lib/utils';
 import Loader from '../shared/Loader';
 import { PythMarketBadge } from '../shared/PythMarketBadge';
@@ -76,10 +89,12 @@ interface QuestionsTableProps {
   onSortChange: (field: SortField, direction: SortDirection) => void;
 
   // Volume sorting controls
-  volumeWindow: VolumeWindow;
-  onVolumeWindowChange: (window: VolumeWindow) => void;
-  excludeLowOdds: boolean;
-  onExcludeLowOddsChange: (exclude: boolean) => void;
+  volumeWindow: VolumeWindow | null;
+  onVolumeWindowChange: (window: VolumeWindow | null) => void;
+
+  // Filter volume toggle (excludes extreme-odds trades from sorted volume)
+  filterVolume: boolean;
+  onFilterVolumeChange: (v: boolean) => void;
 }
 
 // Class name maps for table headers and cells
@@ -108,21 +123,63 @@ function getCellClassName(colId: string): string {
 // Create columns for the TopLevelRow type
 // Uses refs instead of direct state to keep column definitions stable across
 // prediction updates, preventing remounts/flashes.
-type VolumeMetric = 'openInterest' | 'similarMarketVolume' | 'volume';
+type VolumeMetric =
+  | 'openInterest'
+  | 'similarMarketVolumeAllTime'
+  | 'similarMarketVolumeWindowed';
 
-const VOLUME_WINDOW_OPTIONS: VolumeWindow[] = ['1h', '4h', '24h', '7d'];
+const VOLUME_WINDOW_OPTIONS: VolumeWindow[] = ['7d', '24h', '4h', '1h'];
+
+export function getEffectiveVolumeWindow(
+  window: VolumeWindow | null,
+  filterVolume: boolean
+): VolumeWindow {
+  const resolvedWindow = window ?? '24h';
+  if (!filterVolume || resolvedWindow.endsWith('Filtered')) {
+    return resolvedWindow;
+  }
+  return `${resolvedWindow}Filtered` as VolumeWindow;
+}
+
+// Encode the (metric, window) tuple as a single radio value for DropdownMenu
+type MetricOptionId =
+  | 'openInterest'
+  | 'similarMarketVolumeAllTime'
+  | `similarMarketVolume-${VolumeWindow}`;
+
+function encodeOptionId(
+  metric: VolumeMetric,
+  window: VolumeWindow | null
+): MetricOptionId {
+  if (metric === 'openInterest') return 'openInterest';
+  if (metric === 'similarMarketVolumeAllTime') {
+    return 'similarMarketVolumeAllTime';
+  }
+  return `similarMarketVolume-${window ?? '24h'}`;
+}
+
+function decodeOptionId(id: string): {
+  metric: VolumeMetric;
+  window: VolumeWindow | null;
+} {
+  if (id === 'openInterest') return { metric: 'openInterest', window: null };
+  if (id === 'similarMarketVolumeAllTime') {
+    return { metric: 'similarMarketVolumeAllTime', window: null };
+  }
+  const window = id.slice('similarMarketVolume-'.length) as VolumeWindow;
+  return { metric: 'similarMarketVolumeWindowed', window };
+}
 
 function createColumns(
   predictionMapRef: React.RefObject<Record<string, number>>,
   expandedGroupIdsRef: React.RefObject<Set<number>>,
   volumeMetricRef: React.RefObject<VolumeMetric>,
-  volumeWindowRef: React.RefObject<VolumeWindow>,
-  excludeLowOddsRef: React.RefObject<boolean>,
+  volumeWindowRef: React.RefObject<VolumeWindow | null>,
+  filterVolumeRef: React.RefObject<boolean>,
   onToggleExpand: (groupId: number) => void,
   onPrediction: (conditionId: string, p: number) => void,
-  onToggleVolumeMetric: () => void,
-  onVolumeWindowChange: (w: VolumeWindow) => void,
-  onExcludeLowOddsChange: (v: boolean) => void
+  onSelectMetricOption: (id: MetricOptionId) => void,
+  onToggleFilterVolume: () => void
 ): ColumnDef<TopLevelRow>[] {
   return [
     {
@@ -222,97 +279,120 @@ function createColumns(
       accessorFn: (row) => getRowOpenInterest(row).toString(),
       header: ({ column }) => {
         const metric = volumeMetricRef.current;
+        const window = volumeWindowRef.current;
         const sorted = column.getIsSorted();
         const label =
-          metric === 'volume'
-            ? 'Volume'
-            : metric === 'similarMarketVolume'
+          metric === 'similarMarketVolumeWindowed'
+            ? `Related Volume (${window ?? '24h'})`
+            : metric === 'similarMarketVolumeAllTime'
               ? 'Related Volume'
               : 'Open Interest';
+        const selectedId = encodeOptionId(metric, window);
         return (
-          <div className="flex justify-end items-center gap-1">
-            {/* Volume window selector — only visible when volume metric is active */}
-            {metric === 'volume' && (
-              <div className="flex items-center gap-0.5 mr-1">
-                {VOLUME_WINDOW_OPTIONS.map((w) => (
-                  <button
-                    key={w}
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onVolumeWindowChange(w);
-                    }}
-                    className={cn(
-                      'px-1 py-0.5 text-[10px] rounded font-mono leading-none transition-colors',
-                      volumeWindowRef.current === w
-                        ? 'bg-foreground/10 text-foreground'
-                        : 'text-muted-foreground hover:text-foreground'
-                    )}
-                  >
-                    {w}
-                  </button>
-                ))}
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <button
-                      type="button"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        onExcludeLowOddsChange(!excludeLowOddsRef.current);
-                      }}
-                      className={cn(
-                        'px-1 py-0.5 text-[10px] rounded font-mono leading-none transition-colors ml-0.5',
-                        excludeLowOddsRef.current
-                          ? 'bg-amber-400/20 text-amber-400'
-                          : 'text-muted-foreground hover:text-foreground'
-                      )}
-                    >
-                      F
-                    </button>
-                  </TooltipTrigger>
-                  <TooltipContent side="top">
-                    {excludeLowOddsRef.current
-                      ? 'Showing filtered volume (0.01-0.99)'
-                      : 'Click to exclude extreme-odds trades'}
-                  </TooltipContent>
-                </Tooltip>
-              </div>
-            )}
+          <div className="flex justify-end items-center">
             <Button
               variant="ghost"
               onClick={() => column.toggleSorting(sorted === 'asc')}
               className="px-0 gap-1 hover:bg-transparent whitespace-nowrap"
             >
               {label}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <span
-                    role="button"
-                    tabIndex={0}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onToggleVolumeMetric();
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.stopPropagation();
-                        onToggleVolumeMetric();
-                      }
-                    }}
-                    className="inline-flex items-center justify-center h-5 w-5 rounded text-muted-foreground hover:text-foreground transition-colors"
+              <DropdownMenu>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <DropdownMenuTrigger asChild>
+                      <span
+                        role="button"
+                        tabIndex={0}
+                        onClick={(e) => e.stopPropagation()}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' || e.key === ' ') {
+                            e.stopPropagation();
+                          }
+                        }}
+                        aria-label="Choose volume metric"
+                        className="inline-flex items-center justify-center h-5 w-5 rounded text-muted-foreground hover:text-foreground transition-colors"
+                      >
+                        <ArrowRightLeft className="h-3 w-3" />
+                      </span>
+                    </DropdownMenuTrigger>
+                  </TooltipTrigger>
+                  <TooltipContent side="top">Choose metric</TooltipContent>
+                </Tooltip>
+                <DropdownMenuContent align="end" className="min-w-[13rem]">
+                  {(
+                    [
+                      { id: 'openInterest', label: 'Open Interest' },
+                      {
+                        id: 'similarMarketVolumeAllTime',
+                        label: 'Related Volume (All-time)',
+                      },
+                      ...VOLUME_WINDOW_OPTIONS.map((w) => ({
+                        id: `similarMarketVolume-${w}` as MetricOptionId,
+                        label: `Related Volume (${w})`,
+                      })),
+                    ] as Array<{ id: MetricOptionId; label: string }>
+                  ).map(({ id, label: itemLabel }) => {
+                    const isSelected = id === selectedId;
+                    return (
+                      <DropdownMenuItem
+                        key={id}
+                        onSelect={() => onSelectMetricOption(id)}
+                        onClick={(e) => e.stopPropagation()}
+                        className="pl-8 pr-2 cursor-pointer"
+                      >
+                        <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+                          {isSelected && (
+                            <Check className="h-4 w-4 text-emerald-500" />
+                          )}
+                        </span>
+                        <span
+                          className={cn(
+                            isSelected && 'font-medium text-foreground'
+                          )}
+                        >
+                          {itemLabel}
+                        </span>
+                      </DropdownMenuItem>
+                    );
+                  })}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem
+                    onSelect={onToggleFilterVolume}
+                    onClick={(e) => e.stopPropagation()}
+                    className="pl-8 pr-2 cursor-pointer"
                   >
-                    <ArrowRightLeft className="h-3 w-3" />
-                  </span>
-                </TooltipTrigger>
-                <TooltipContent side="top">
-                  Switch to{' '}
-                  {metric === 'openInterest'
-                    ? 'Related Volume'
-                    : metric === 'similarMarketVolume'
-                      ? 'Volume'
-                      : 'Open Interest'}
-                </TooltipContent>
-              </Tooltip>
+                    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+                      {filterVolumeRef.current && (
+                        <Check className="h-4 w-4 text-emerald-500" />
+                      )}
+                    </span>
+                    <span
+                      className={cn(
+                        filterVolumeRef.current && 'font-medium text-foreground'
+                      )}
+                    >
+                      Filter Volume
+                    </span>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <span
+                          className="ml-auto inline-flex cursor-help"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          <Info className="h-3.5 w-3.5 text-muted-foreground" />
+                        </span>
+                      </TooltipTrigger>
+                      <TooltipContent
+                        side="left"
+                        className="max-w-[200px] text-xs whitespace-normal"
+                      >
+                        Excludes volume from trades when the price was below
+                        $0.01 or above $0.99
+                      </TooltipContent>
+                    </Tooltip>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
               {sorted === 'asc' ? (
                 <ChevronUp className="h-4 w-4" />
               ) : sorted === 'desc' ? (
@@ -329,7 +409,11 @@ function createColumns(
       },
       cell: ({ row }) => {
         const metric = volumeMetricRef.current;
-        if (metric === 'similarMarketVolume') {
+        const effectiveVolumeWindow = getEffectiveVolumeWindow(
+          volumeWindowRef.current,
+          filterVolumeRef.current
+        );
+        if (metric === 'similarMarketVolumeAllTime') {
           const vol = getRowSimilarMarketVolume(row.original);
           if (vol === 0) {
             return (
@@ -346,11 +430,10 @@ function createColumns(
             </div>
           );
         }
-        if (metric === 'volume') {
+        if (metric === 'similarMarketVolumeWindowed') {
           const vol = getRowTimeBucketedVolume(
             row.original,
-            volumeWindowRef.current,
-            excludeLowOddsRef.current
+            effectiveVolumeWindow
           );
           if (vol === 0) {
             return (
@@ -390,10 +473,20 @@ function createColumns(
         );
       },
       sortingFn: (rowA, rowB) => {
-        if (volumeMetricRef.current === 'similarMarketVolume') {
+        if (volumeMetricRef.current === 'similarMarketVolumeAllTime') {
           return (
             getRowSimilarMarketVolume(rowA.original) -
             getRowSimilarMarketVolume(rowB.original)
+          );
+        }
+        if (volumeMetricRef.current === 'similarMarketVolumeWindowed') {
+          const effectiveVolumeWindow = getEffectiveVolumeWindow(
+            volumeWindowRef.current,
+            filterVolumeRef.current
+          );
+          return (
+            getRowTimeBucketedVolume(rowA.original, effectiveVolumeWindow) -
+            getRowTimeBucketedVolume(rowB.original, effectiveVolumeWindow)
           );
         }
         const a = getRowOpenInterest(rowA.original);
@@ -512,19 +605,24 @@ function createColumns(
   ];
 }
 
-/** Get time-bucketed volume for a single condition (used in child rows) */
-function getConditionTimeBucketedVolume(
+/** Get time-bucketed volume for a single condition (used in child rows). */
+export function getConditionTimeBucketedVolume(
   c: ConditionGroupConditionType,
-  window: VolumeWindow,
-  filtered: boolean
+  window: VolumeWindow | null
 ): number {
-  const fields = {
-    '1h': filtered ? 'volumeFiltered1h' : 'volume1h',
-    '4h': filtered ? 'volumeFiltered4h' : 'volume4h',
-    '24h': filtered ? 'volumeFiltered24h' : 'volume24h',
-    '7d': filtered ? 'volumeFiltered7d' : 'volume7d',
-  } as const;
-  return ((c as unknown as Record<string, unknown>)[fields[window]] as number) ?? 0;
+  const fields: Record<string, string> = {
+    '1h': 'similarMarketVolume1h',
+    '4h': 'similarMarketVolume4h',
+    '24h': 'similarMarketVolume24h',
+    '7d': 'similarMarketVolume7d',
+    '1hFiltered': 'similarMarketVolumeFiltered1h',
+    '4hFiltered': 'similarMarketVolumeFiltered4h',
+    '24hFiltered': 'similarMarketVolumeFiltered24h',
+    '7dFiltered': 'similarMarketVolumeFiltered7d',
+  };
+  const resolvedWindow = window ?? '24h';
+  const field = fields[resolvedWindow] ?? 'similarMarketVolume24h';
+  return ((c as unknown as Record<string, unknown>)[field] as number) ?? 0;
 }
 
 // Child row component for expanded group conditions
@@ -534,15 +632,15 @@ function ChildConditionRow({
   onPrediction,
   volumeMetric,
   volumeWindow,
-  excludeLowOdds,
+  filterVolume,
   isLast = false,
 }: {
   condition: ConditionGroupConditionType;
   predictionMap: Record<string, number>;
   onPrediction: (conditionId: string, p: number) => void;
   volumeMetric: VolumeMetric;
-  volumeWindow: VolumeWindow;
-  excludeLowOdds: boolean;
+  volumeWindow: VolumeWindow | null;
+  filterVolume: boolean;
   isLast?: boolean;
 }) {
   const conditionType = groupConditionToConditionType(condition);
@@ -555,6 +653,10 @@ function ChildConditionRow({
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
   });
+  const effectiveVolumeWindow = getEffectiveVolumeWindow(
+    volumeWindow,
+    filterVolume
+  );
 
   return (
     <TableRow
@@ -577,7 +679,8 @@ function ChildConditionRow({
           <ConditionTitleLink
             conditionId={condition.id}
             resolverAddress={condition.resolver ?? undefined}
-            title={condition.question}
+            title={condition.optionName || condition.question}
+            tooltipTitle={condition.optionName ? condition.question : undefined}
             clampLines={1}
             className="text-sm min-w-0"
           />
@@ -593,7 +696,7 @@ function ChildConditionRow({
         </div>
       </TableCell>
       <TableCell className="py-2 text-right">
-        {volumeMetric === 'similarMarketVolume' ? (
+        {volumeMetric === 'similarMarketVolumeAllTime' ? (
           <div className="text-sm whitespace-nowrap text-right">
             {(condition.similarMarketVolume ?? 0) === 0 ? (
               <span className="text-muted-foreground">—</span>
@@ -603,9 +706,12 @@ function ChildConditionRow({
               </span>
             )}
           </div>
-        ) : volumeMetric === 'volume' ? (
+        ) : volumeMetric === 'similarMarketVolumeWindowed' ? (
           (() => {
-            const vol = getConditionTimeBucketedVolume(condition, volumeWindow, excludeLowOdds);
+            const vol = getConditionTimeBucketedVolume(
+              condition,
+              effectiveVolumeWindow
+            );
             return (
               <div className="text-sm whitespace-nowrap text-right">
                 {vol === 0 ? (
@@ -669,44 +775,49 @@ export default function QuestionsTable({
   onSortChange,
   volumeWindow,
   onVolumeWindowChange,
-  excludeLowOdds,
-  onExcludeLowOddsChange,
+  filterVolume,
+  onFilterVolumeChange,
 }: QuestionsTableProps) {
-  // Volume metric toggle: cycle through OI → Related Volume → Time-Bucketed Volume
-  const [volumeMetric, setVolumeMetric] =
-    React.useState<VolumeMetric>('openInterest');
+  // Derive volume metric from the persisted sortField so the dropdown and
+  // column header stay in sync with the actual sort on reload.
+  const volumeMetric: VolumeMetric =
+    sortField === 'similarMarketVolume'
+      ? volumeWindow
+        ? 'similarMarketVolumeWindowed'
+        : 'similarMarketVolumeAllTime'
+      : 'openInterest';
   const volumeMetricRef = React.useRef<VolumeMetric>(volumeMetric);
   volumeMetricRef.current = volumeMetric;
-  const volumeWindowRef = React.useRef<VolumeWindow>(volumeWindow);
+  const volumeWindowRef = React.useRef<VolumeWindow | null>(volumeWindow);
   volumeWindowRef.current = volumeWindow;
-  const excludeLowOddsRef = React.useRef<boolean>(excludeLowOdds);
-  excludeLowOddsRef.current = excludeLowOdds;
+  const filterVolumeRef = React.useRef<boolean>(filterVolume);
+  filterVolumeRef.current = filterVolume;
 
-  const handleToggleVolumeMetric = React.useCallback(() => {
-    setVolumeMetric((prev) => {
-      const cycle: VolumeMetric[] = [
-        'openInterest',
-        'similarMarketVolume',
-        'volume',
-      ];
-      const next = cycle[(cycle.indexOf(prev) + 1) % cycle.length];
-      // If currently sorting by the old metric, switch sort to the new one
-      if (sortField === prev) {
-        onSortChange(next, sortDirection);
-      }
-      return next;
-    });
-  }, [sortField, sortDirection, onSortChange]);
+  const handleSelectMetricOption = React.useCallback(
+    (id: MetricOptionId) => {
+      const decoded = decodeOptionId(id);
+      onVolumeWindowChange(decoded.window);
+      // Selecting a metric always sorts by it, descending by default
+      onSortChange(
+        decoded.metric === 'openInterest'
+          ? 'openInterest'
+          : 'similarMarketVolume',
+        'desc'
+      );
+    },
+    [onSortChange, onVolumeWindowChange]
+  );
+
+  const handleToggleFilterVolume = React.useCallback(() => {
+    onFilterVolumeChange(!filterVolumeRef.current);
+  }, [onFilterVolumeChange]);
 
   // Derive table sorting state from controlled props
-  // Map similarMarketVolume/volume sort fields to the openInterest column id (they share a column)
+  // Map similarMarketVolume sort to the openInterest column id (they share a column)
   const sorting: SortingState = React.useMemo(
     () => [
       {
-        id:
-          sortField === 'similarMarketVolume' || sortField === 'volume'
-            ? 'openInterest'
-            : sortField,
+        id: sortField === 'similarMarketVolume' ? 'openInterest' : sortField,
         desc: sortDirection === 'desc',
       },
     ],
@@ -725,7 +836,12 @@ export default function QuestionsTable({
         const { id, desc } = newSorting[0];
         if (id === 'openInterest') {
           // Sort by whichever metric is active in the column
-          onSortChange(volumeMetricRef.current, desc ? 'desc' : 'asc');
+          onSortChange(
+            volumeMetricRef.current === 'openInterest'
+              ? 'openInterest'
+              : 'similarMarketVolume',
+            desc ? 'desc' : 'asc'
+          );
         } else if (id === 'endTime') {
           onSortChange('endTime', desc ? 'desc' : 'asc');
         }
@@ -795,15 +911,19 @@ export default function QuestionsTable({
         expandedGroupIdsRef,
         volumeMetricRef,
         volumeWindowRef,
-        excludeLowOddsRef,
+        filterVolumeRef,
         handleToggleExpand,
         handlePrediction,
-        handleToggleVolumeMetric,
-        onVolumeWindowChange,
-        onExcludeLowOddsChange
+        handleSelectMetricOption,
+        handleToggleFilterVolume
       ),
     // eslint-disable-next-line react-hooks/exhaustive-deps -- refs are stable, intentionally omitted
-    [handleToggleExpand, handlePrediction, handleToggleVolumeMetric, onVolumeWindowChange, onExcludeLowOddsChange]
+    [
+      handleToggleExpand,
+      handlePrediction,
+      handleSelectMetricOption,
+      handleToggleFilterVolume,
+    ]
   );
 
   const table = useReactTable({
@@ -834,6 +954,8 @@ export default function QuestionsTable({
         openInterestBounds={filterBounds.openInterestBounds}
         timeToResolutionBounds={filterBounds.timeToResolutionBounds}
         categories={categories}
+        filterVolume={filterVolume}
+        onFilterVolumeChange={onFilterVolumeChange}
       />
       <div
         ref={scrollContainerRef}
@@ -903,7 +1025,7 @@ export default function QuestionsTable({
                             onPrediction={handlePrediction}
                             volumeMetric={volumeMetric}
                             volumeWindow={volumeWindow}
-                            excludeLowOdds={excludeLowOdds}
+                            filterVolume={filterVolume}
                             isLast={idx === data.conditions.length - 1}
                           />
                         ))}

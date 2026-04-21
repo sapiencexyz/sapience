@@ -99,10 +99,11 @@ export function createPolygonWalletClient(
 
 export async function canRequestResolution(
   polygonClient: PublicClient,
-  conditionId: string
+  conditionId: string,
+  readerAddress: Address = CONDITIONAL_TOKENS_READER_ADDRESS
 ): Promise<boolean> {
   return polygonClient.readContract({
-    address: CONDITIONAL_TOKENS_READER_ADDRESS,
+    address: readerAddress,
     abi: conditionalTokensReaderAbi,
     functionName: 'canRequestResolution',
     args: [conditionId as Hex],
@@ -117,14 +118,15 @@ export async function canRequestResolution(
 export async function batchCanRequestResolution(
   polygonClient: PublicClient,
   conditionIds: string[],
-  batchSize: number = 50
+  batchSize: number = 50,
+  readerAddress: Address = CONDITIONAL_TOKENS_READER_ADDRESS
 ): Promise<Map<string, boolean>> {
   const results = new Map<string, boolean>();
 
   for (let i = 0; i < conditionIds.length; i += batchSize) {
     const batch = conditionIds.slice(i, i + batchSize);
     const contracts = batch.map((id) => ({
-      address: CONDITIONAL_TOKENS_READER_ADDRESS,
+      address: readerAddress,
       abi: conditionalTokensReaderAbi,
       functionName: 'canRequestResolution' as const,
       args: [id as Hex],
@@ -147,10 +149,11 @@ export async function batchCanRequestResolution(
 export async function requestResolution(
   polygonClient: PublicClient,
   walletClient: WalletClient<Transport, Chain, Account>,
-  conditionId: string
+  conditionId: string,
+  readerAddress: Address = CONDITIONAL_TOKENS_READER_ADDRESS
 ): Promise<`0x${string}`> {
   const fee = await polygonClient.readContract({
-    address: CONDITIONAL_TOKENS_READER_ADDRESS,
+    address: readerAddress,
     abi: conditionalTokensReaderAbi,
     functionName: 'quoteResolution',
     args: [conditionId as Hex],
@@ -160,7 +163,7 @@ export async function requestResolution(
   console.log(`[${conditionId}] LayerZero fee: ${formatEther(nativeFee)} POL`);
 
   const estimatedGas = await polygonClient.estimateContractGas({
-    address: CONDITIONAL_TOKENS_READER_ADDRESS,
+    address: readerAddress,
     abi: conditionalTokensReaderAbi,
     functionName: 'requestResolution',
     args: [conditionId as Hex],
@@ -170,7 +173,7 @@ export async function requestResolution(
   const gasLimit = (estimatedGas * 130n) / 100n;
 
   const hash = await walletClient.writeContract({
-    address: CONDITIONAL_TOKENS_READER_ADDRESS,
+    address: readerAddress,
     abi: conditionalTokensReaderAbi,
     functionName: 'requestResolution',
     args: [conditionId as Hex],

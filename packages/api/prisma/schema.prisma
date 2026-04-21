@@ -36,6 +36,7 @@ model Event {
   logIndex        Int
   logData         Json          @db.Json
 
+  @@unique([transactionHash, logIndex], map: "UQ_event_txhash_logindex")
   @@index([timestamp], map: "IDX_2c15918ff289396205521c5f3c")
   @@index([blockNumber], map: "IDX_5430e2d7fe1df2bcada2c12deb")
   @@map("event")
@@ -169,6 +170,7 @@ model Condition {
   createdAt        DateTime        @default(now()) @db.Timestamp(6)
   question         String          @db.VarChar
   shortName        String?         @db.VarChar
+  optionName       String?         @db.VarChar
   categoryId       Int?
   category         Category?       @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   endTime          Int
@@ -188,16 +190,18 @@ model Condition {
   /// YES probability from Polymarket (0.0–1.0), null for non-Polymarket
   estimatedPrice   Float?
 
-  // Time-bucketed Polymarket volume (USD)
-  volume1h           Float     @default(0)
-  volume4h           Float     @default(0)
-  volume24h          Float     @default(0)
-  volume7d           Float     @default(0)
-  // Filtered volume: only trades priced in [0.01, 0.99]
-  volumeFiltered1h   Float     @default(0)
-  volumeFiltered4h   Float     @default(0)
-  volumeFiltered24h  Float     @default(0)
-  volumeFiltered7d   Float     @default(0)
+  // Time-bucketed Polymarket volume (USD), computed from Polymarket Data API trades.
+  // DB columns were originally named volume*; we keep them mapped to avoid DB migrations.
+  similarMarketVolume1h  Float @default(0) @map("volume1h")
+  similarMarketVolume4h  Float @default(0) @map("volume4h")
+  similarMarketVolume24h Float @default(0) @map("volume24h")
+  similarMarketVolume7d  Float @default(0) @map("volume7d")
+
+  // Time-bucketed Polymarket volume excluding extreme-odds trades (price outside [0.01, 0.99])
+  similarMarketVolumeFiltered1h  Float @default(0) @map("volumeFiltered1h")
+  similarMarketVolumeFiltered4h  Float @default(0) @map("volumeFiltered4h")
+  similarMarketVolumeFiltered24h Float @default(0) @map("volumeFiltered24h")
+  similarMarketVolumeFiltered7d  Float @default(0) @map("volumeFiltered7d")
 
   // Resolution status
   settled          Boolean         @default(false)
@@ -253,23 +257,26 @@ model ConditionGroup {
   /// @TypeGraphQL.omit(output: true)
   publicConditionCount Int    @default(0)
 
-  // Denormalized volume aggregates (maintained by trigger)
+  // Denormalized volume aggregates (maintained by trigger).
+  // DB columns were originally named totalVolume*; keep them mapped to avoid DB migrations.
   /// @TypeGraphQL.omit(output: true)
-  totalVolume1h          Decimal  @default(0) @db.Decimal
+  totalSimilarMarketVolume1h          Decimal  @default(0) @db.Decimal @map("totalVolume1h")
   /// @TypeGraphQL.omit(output: true)
-  totalVolume4h          Decimal  @default(0) @db.Decimal
+  totalSimilarMarketVolume4h          Decimal  @default(0) @db.Decimal @map("totalVolume4h")
   /// @TypeGraphQL.omit(output: true)
-  totalVolume24h         Decimal  @default(0) @db.Decimal
+  totalSimilarMarketVolume24h         Decimal  @default(0) @db.Decimal @map("totalVolume24h")
   /// @TypeGraphQL.omit(output: true)
-  totalVolume7d          Decimal  @default(0) @db.Decimal
+  totalSimilarMarketVolume7d          Decimal  @default(0) @db.Decimal @map("totalVolume7d")
+
+  // Filtered volume aggregates (trades excluding extreme-odds prices outside [0.01, 0.99])
   /// @TypeGraphQL.omit(output: true)
-  totalVolumeFiltered1h  Decimal  @default(0) @db.Decimal
+  totalSimilarMarketVolumeFiltered1h  Decimal @default(0) @db.Decimal @map("totalVolumeFiltered1h")
   /// @TypeGraphQL.omit(output: true)
-  totalVolumeFiltered4h  Decimal  @default(0) @db.Decimal
+  totalSimilarMarketVolumeFiltered4h  Decimal @default(0) @db.Decimal @map("totalVolumeFiltered4h")
   /// @TypeGraphQL.omit(output: true)
-  totalVolumeFiltered24h Decimal  @default(0) @db.Decimal
+  totalSimilarMarketVolumeFiltered24h Decimal @default(0) @db.Decimal @map("totalVolumeFiltered24h")
   /// @TypeGraphQL.omit(output: true)
-  totalVolumeFiltered7d  Decimal  @default(0) @db.Decimal
+  totalSimilarMarketVolumeFiltered7d  Decimal @default(0) @db.Decimal @map("totalVolumeFiltered7d")
 
   @@index([categoryId])
   // Raw SQL indexes (not representable in Prisma, managed via migration):
@@ -691,6 +698,7 @@ model Close {
   txHash                   String   @db.VarChar
   refCode                  String?  @db.VarChar
 
+  @@unique([chainId, txHash, pickConfigId], map: "UQ_close_chain_tx_pickconfig")
   @@index([chainId, marketAddress], map: "IDX_close_chain_market")
   @@index([pickConfigId], map: "IDX_close_pick_config")
   @@index([predictorHolder], map: "IDX_close_predictor")

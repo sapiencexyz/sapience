@@ -84,15 +84,15 @@ function existingFromMarket(
 ): ExistingCondition {
   const eventSlug = market.events?.[0]?.slug;
   const eventTitle = market.events?.[0]?.title;
-  const url = eventSlug
-    ? `https://polymarket.com/event/${eventSlug}#${market.slug}`
-    : `https://polymarket.com#${market.slug}`;
+  const similarMarkets = eventSlug
+    ? [`https://polymarket.com/event/${eventSlug}#${market.slug}`]
+    : [];
   return {
     endTime: 1700000000,
     question: market.question,
     shortName: market.question,
     description: market.description || '',
-    similarMarkets: [url],
+    similarMarkets,
     tags: [],
     similarMarketVolume: parseFloat(market.volume || '0') || 0,
     similarMarketImage: market.image,
@@ -107,10 +107,10 @@ beforeEach(() => {
 });
 
 describe('metadata updates via groupMarkets', () => {
-  it('detects question change on existing condition', async () => {
+  it('detects question change on existing condition and rewrites shortName via regex', async () => {
     const market = makeMarket({
       conditionId: '0xaaa',
-      question: 'Will BTC hit 150k?', // new question from Polymarket
+      question: 'Bitcoin above $150k?', // new question matches cryptoThresholdMatch regex
     });
 
     mockCheckExisting.mockResolvedValue(
@@ -118,8 +118,8 @@ describe('metadata updates via groupMarkets', () => {
         [
           '0xaaa',
           existingFromMarket(market, {
-            question: 'Will BTC hit 100k?', // old question in DB
-            shortName: 'Will BTC hit 100k?',
+            question: 'Bitcoin above $100k?',
+            shortName: 'BTC >$100k',
           }),
         ],
       ])
@@ -129,14 +129,37 @@ describe('metadata updates via groupMarkets', () => {
 
     expect(result.metadataUpdates).toHaveLength(1);
     expect(result.metadataUpdates[0].conditionId).toBe('0xaaa');
-    expect(result.metadataUpdates[0].fields).toEqual({
-      question: 'Will BTC hit 150k?',
-      shortName: 'Will BTC hit 150k?', // reset to new question
+    expect(result.metadataUpdates[0].fields.question).toBe(
+      'Bitcoin above $150k?'
+    );
+    expect(result.metadataUpdates[0].fields.shortName).toBe('BTC >$150k');
+    expect(result.metadataUpdates[0].old.shortName).toBe('BTC >$100k');
+  });
+
+  it('does not rewrite shortName to question when regex does not match', async () => {
+    // Guards against the regression where freshShort fell back to question,
+    // overwriting nice LLM-generated shortNames with verbose questions.
+    const market = makeMarket({
+      conditionId: '0xnoregex',
+      question: 'Will the next Prime Minister of Hungary be Viktor Orban?',
     });
-    expect(result.metadataUpdates[0].old).toEqual({
-      question: 'Will BTC hit 100k?',
-      shortName: 'Will BTC hit 100k?',
-    });
+
+    mockCheckExisting.mockResolvedValue(
+      new Map([
+        [
+          '0xnoregex',
+          existingFromMarket(market, {
+            shortName: 'Orban wins Hungary', // nice LLM form stored in DB
+          }),
+        ],
+      ])
+    );
+
+    const result = await groupMarkets([market], 'https://test-api.example.com');
+
+    // No shortName drift — question didn't match any regex rule, so we keep
+    // the existing LLM-generated shortName untouched.
+    expect(result.metadataUpdates).toHaveLength(0);
   });
 
   it('detects group name change on existing condition', async () => {
@@ -392,7 +415,9 @@ describe('metadata updates via groupMarkets', () => {
       'https://polymarket.com/event/some-group#btc-100k',
     ]);
     expect(update.fields.similarMarketVolume).toBe(100000);
-    expect(update.fields.shortName).toBe('Some question?');
+    // shortName is NOT backfilled from question fallback — only rewritten when
+    // the regex produces a non-null result. "Some question?" doesn't match.
+    expect(update.fields.shortName).toBeUndefined();
   });
 
   it('handles multiple conditions with mixed updates', async () => {
@@ -430,38 +455,39 @@ describe('metadata updates via groupMarkets', () => {
 
     const result = await groupMarkets(markets, 'https://test-api.example.com');
 
-    // Only 0x111 changed
+    // Only 0x111 changed (question drift). shortName does NOT update because
+    // neither old nor new question matches any regex rule.
     expect(result.metadataUpdates).toHaveLength(1);
     expect(result.metadataUpdates[0].conditionId).toBe('0x111');
     expect(result.metadataUpdates[0].fields.question).toBe('Changed question?');
-    expect(result.metadataUpdates[0].fields.shortName).toBe(
-      'Changed question?'
-    );
+    expect(result.metadataUpdates[0].fields.shortName).toBeUndefined();
   });
 
-  it('uses groupItemTitle as shortName for new conditions', async () => {
+  it('routes groupItemTitle into optionName (not shortName) for new conditions', async () => {
     const market = makeMarket({
       conditionId: '0xgit',
       question: 'Will the next Prime Minister of Hungary be Viktor Orban?',
       groupItemTitle: 'Viktor Orban',
     });
 
-    mockCheckExisting.mockResolvedValue(new Map()); // new condition
+    mockCheckExisting.mockResolvedValue(new Map());
 
     const result = await groupMarkets([market], 'https://test-api.example.com');
 
-    // New condition should appear in groups with groupItemTitle as shortName
     const condition = result.groups[0]?.conditions[0];
     expect(condition).toBeDefined();
-    expect(condition.shortName).toBe('Viktor Orban');
+    expect(condition.optionName).toBe('Viktor Orban');
+    // shortName is independent — no regex match, falls back to question
+    // (no LLM in tests)
+    expect(condition.shortName).toBe(
+      'Will the next Prime Minister of Hungary be Viktor Orban?'
+    );
   });
 
-  it('uses groupItemTitle over regex-derived shortName', async () => {
-    // This market would match the crypto threshold regex (Rule 11)
-    // but groupItemTitle should take priority
+  it('never uses groupItemTitle as shortName on new conditions', async () => {
     const market = makeMarket({
       conditionId: '0xprio',
-      question: 'Will Bitcoin reach $200k?',
+      question: 'Bitcoin above $200k?',
       groupItemTitle: 'BTC 200k',
     });
 
@@ -471,38 +497,52 @@ describe('metadata updates via groupMarkets', () => {
 
     const condition = result.groups[0]?.conditions[0];
     expect(condition).toBeDefined();
-    expect(condition.shortName).toBe('BTC 200k');
+    expect(condition.optionName).toBe('BTC 200k');
+    expect(condition.shortName).not.toBe('BTC 200k');
+    expect(condition.shortName).toBe('Bitcoin above $200k?');
   });
 
-  it('updates shortName to groupItemTitle on existing condition', async () => {
+  it('backfills optionName on existing condition that predates the column', async () => {
     const market = makeMarket({
-      conditionId: '0xupd',
+      conditionId: '0xbackfill',
       question: 'Will the next Prime Minister of Hungary be Viktor Orban?',
       groupItemTitle: 'Viktor Orban',
     });
 
     mockCheckExisting.mockResolvedValue(
       new Map([
-        [
-          '0xupd',
-          existingFromMarket(market, {
-            shortName:
-              'Will the next Prime Minister of Hungary be Viktor Orban?',
-          }),
-        ],
+        ['0xbackfill', existingFromMarket(market, { optionName: undefined })],
       ])
     );
 
     const result = await groupMarkets([market], 'https://test-api.example.com');
 
     expect(result.metadataUpdates).toHaveLength(1);
-    expect(result.metadataUpdates[0].fields.shortName).toBe('Viktor Orban');
-    expect(result.metadataUpdates[0].old.shortName).toBe(
-      'Will the next Prime Minister of Hungary be Viktor Orban?'
-    );
+    expect(result.metadataUpdates[0].fields.optionName).toBe('Viktor Orban');
+    expect(result.metadataUpdates[0].old.optionName).toBeUndefined();
   });
 
-  it('does not update shortName when groupItemTitle already matches', async () => {
+  it('detects optionName drift when Polymarket renames groupItemTitle', async () => {
+    const market = makeMarket({
+      conditionId: '0xrename',
+      question: 'Will Bitcoin reach $150k in April?',
+      groupItemTitle: '↑ 150,000',
+    });
+
+    mockCheckExisting.mockResolvedValue(
+      new Map([
+        ['0xrename', existingFromMarket(market, { optionName: 'BTC 150k' })],
+      ])
+    );
+
+    const result = await groupMarkets([market], 'https://test-api.example.com');
+
+    expect(result.metadataUpdates).toHaveLength(1);
+    expect(result.metadataUpdates[0].fields.optionName).toBe('↑ 150,000');
+    expect(result.metadataUpdates[0].old.optionName).toBe('BTC 150k');
+  });
+
+  it('does not emit optionName update when groupItemTitle already matches', async () => {
     const market = makeMarket({
       conditionId: '0xmatch',
       question: 'Will the next Prime Minister of Hungary be Viktor Orban?',
@@ -511,12 +551,24 @@ describe('metadata updates via groupMarkets', () => {
 
     mockCheckExisting.mockResolvedValue(
       new Map([
-        [
-          '0xmatch',
-          existingFromMarket(market, {
-            shortName: 'Viktor Orban',
-          }),
-        ],
+        ['0xmatch', existingFromMarket(market, { optionName: 'Viktor Orban' })],
+      ])
+    );
+
+    const result = await groupMarkets([market], 'https://test-api.example.com');
+
+    expect(result.metadataUpdates).toHaveLength(0);
+  });
+
+  it('does not clear optionName when Polymarket drops groupItemTitle', async () => {
+    const market = makeMarket({
+      conditionId: '0xdrop',
+      groupItemTitle: undefined,
+    });
+
+    mockCheckExisting.mockResolvedValue(
+      new Map([
+        ['0xdrop', existingFromMarket(market, { optionName: 'Viktor Orban' })],
       ])
     );
 
@@ -546,5 +598,163 @@ describe('metadata updates via groupMarkets', () => {
 
     // No updates — we don't own a fresh value, so we don't touch it.
     expect(result.metadataUpdates).toHaveLength(0);
+  });
+});
+
+describe('group metadata updates via groupMarkets', () => {
+  it('detects stored group URL using the broken polymarket.com#slug format', async () => {
+    // Real prod bug: groups were written with `polymarket.com#<slug>` instead
+    // of `polymarket.com/event/<slug>#<market>`. Fresh Polymarket data should
+    // drive the group row back to the correct URL.
+    const market = makeMarket({
+      conditionId: '0xfmt',
+      slug: 'btc-100k',
+      events: [{ title: 'Bitcoin Milestones', slug: 'btc-milestones' }],
+    });
+
+    mockCheckExisting.mockResolvedValue(
+      new Map([
+        [
+          '0xfmt',
+          existingFromMarket(market, {
+            conditionGroupId: 42,
+            conditionGroupSimilarMarkets: [
+              'https://polymarket.com#btc-milestones', // broken legacy format
+            ],
+          }),
+        ],
+      ])
+    );
+
+    const result = await groupMarkets([market], 'https://test-api.example.com');
+
+    expect(result.groupMetadataUpdates).toHaveLength(1);
+    expect(result.groupMetadataUpdates[0].groupId).toBe(42);
+    expect(result.groupMetadataUpdates[0].fields.similarMarkets).toEqual([
+      'https://polymarket.com/event/btc-milestones#btc-100k',
+    ]);
+    expect(result.groupMetadataUpdates[0].old.similarMarkets).toEqual([
+      'https://polymarket.com#btc-milestones',
+    ]);
+  });
+
+  it('detects stored group URL when Polymarket renames the event slug', async () => {
+    const market = makeMarket({
+      conditionId: '0xrenamed',
+      slug: 'btc-100k',
+      events: [{ title: 'Bitcoin Milestones', slug: 'btc-milestones-v2' }],
+    });
+
+    mockCheckExisting.mockResolvedValue(
+      new Map([
+        [
+          '0xrenamed',
+          existingFromMarket(market, {
+            conditionGroupId: 100,
+            conditionGroupSimilarMarkets: [
+              'https://polymarket.com/event/btc-milestones#btc-100k',
+            ],
+          }),
+        ],
+      ])
+    );
+
+    const result = await groupMarkets([market], 'https://test-api.example.com');
+
+    expect(result.groupMetadataUpdates).toHaveLength(1);
+    expect(result.groupMetadataUpdates[0].groupId).toBe(100);
+    expect(result.groupMetadataUpdates[0].fields.similarMarkets).toEqual([
+      'https://polymarket.com/event/btc-milestones-v2#btc-100k',
+    ]);
+  });
+
+  it('emits no update when group similarMarkets is already current', async () => {
+    const market = makeMarket({
+      conditionId: '0xcurrent',
+      slug: 'btc-100k',
+      events: [{ title: 'Bitcoin Milestones', slug: 'btc-milestones' }],
+    });
+
+    mockCheckExisting.mockResolvedValue(
+      new Map([
+        [
+          '0xcurrent',
+          existingFromMarket(market, {
+            conditionGroupId: 7,
+            conditionGroupSimilarMarkets: [
+              'https://polymarket.com/event/btc-milestones#btc-100k',
+            ],
+          }),
+        ],
+      ])
+    );
+
+    const result = await groupMarkets([market], 'https://test-api.example.com');
+
+    expect(result.groupMetadataUpdates).toHaveLength(0);
+  });
+
+  it('emits no group update when the condition is not yet linked to a group', async () => {
+    // Condition exists but has no conditionGroupId (e.g. ungrouped). Nothing
+    // to update on the group side — skip without error.
+    const market = makeMarket({
+      conditionId: '0xnogroup',
+      events: [{ title: 'Bitcoin Milestones', slug: 'btc-milestones' }],
+    });
+
+    mockCheckExisting.mockResolvedValue(
+      new Map([
+        [
+          '0xnogroup',
+          existingFromMarket(market, {
+            conditionGroupId: undefined,
+            conditionGroupSimilarMarkets: undefined,
+          }),
+        ],
+      ])
+    );
+
+    const result = await groupMarkets([market], 'https://test-api.example.com');
+
+    expect(result.groupMetadataUpdates).toHaveLength(0);
+  });
+
+  it('emits no group update for a brand new condition', async () => {
+    const market = makeMarket({ conditionId: '0xnew' });
+
+    mockCheckExisting.mockResolvedValue(new Map()); // nothing exists
+
+    const result = await groupMarkets([market], 'https://test-api.example.com');
+
+    expect(result.groupMetadataUpdates).toHaveLength(0);
+  });
+
+  it('does not clear an existing group URL when Polymarket returns no event slug', async () => {
+    // Regression guard: if the upstream market comes back without an event
+    // (CLOB fallback, stale cache, etc.) we have no way to build a correct
+    // fresh URL. Leaving the stored value alone is better than overwriting
+    // with a broken one or clearing to [].
+    const market = makeMarket({
+      conditionId: '0xnoevent',
+      events: undefined,
+    });
+
+    mockCheckExisting.mockResolvedValue(
+      new Map([
+        [
+          '0xnoevent',
+          existingFromMarket(market, {
+            conditionGroupId: 55,
+            conditionGroupSimilarMarkets: [
+              'https://polymarket.com/event/something-old#something-old',
+            ],
+          }),
+        ],
+      ])
+    );
+
+    const result = await groupMarkets([market], 'https://test-api.example.com');
+
+    expect(result.groupMetadataUpdates).toHaveLength(0);
   });
 });

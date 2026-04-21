@@ -15,7 +15,8 @@ export type SapienceCategorySlug =
 export interface SapienceCondition {
   conditionHash: string; // Polymarket's conditionId - used to resolve via LZ
   question: string;
-  shortName: string; // Short display name (from Polymarket groupItemTitle, regex, LLM, or question fallback)
+  shortName: string; // Clear Yes/No-answerable short form (from regex, LLM, or question fallback)
+  optionName?: string; // Per-row differentiator inside a group, verbatim from Polymarket groupItemTitle
   categorySlug: SapienceCategorySlug;
   endDate: string;
   description: string;
@@ -50,6 +51,7 @@ export interface SapienceConditionGroup {
 export interface SyncableFields {
   question?: string;
   shortName?: string;
+  optionName?: string;
   description?: string;
   similarMarkets?: string[];
   tags?: string[];
@@ -64,6 +66,21 @@ export interface MetadataUpdate {
   old: SyncableFields;
 }
 
+/**
+ * Fields on a ConditionGroup that the generate cron is allowed to keep in sync
+ * with fresh Polymarket data. Intentionally narrow: name is excluded because
+ * group names have a unique constraint, and category is LLM-derived.
+ */
+export interface GroupSyncableFields {
+  similarMarkets?: string[];
+}
+
+export interface GroupMetadataUpdate {
+  groupId: number;
+  fields: GroupSyncableFields;
+  old: GroupSyncableFields;
+}
+
 export interface SapienceOutput {
   metadata: {
     generatedAt: string;
@@ -75,4 +92,5 @@ export interface SapienceOutput {
   groups: SapienceConditionGroup[];
   ungroupedConditions: SapienceCondition[];
   metadataUpdates: MetadataUpdate[];
+  groupMetadataUpdates: GroupMetadataUpdate[];
 }

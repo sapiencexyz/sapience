@@ -12,6 +12,7 @@ import type {
   SapienceCategorySlug,
   MetadataUpdate,
   SyncableFields,
+  GroupMetadataUpdate,
 } from '../types';
 import {
   CHAIN_ID,
@@ -82,17 +83,20 @@ export function transformToSapienceCondition(
   // Transform "X vs Y" questions to "X beats Y?" for clarity
   const question = transformMatchQuestion(market);
 
-  // shortName priority: groupItemTitle > LLM/regex enrichment > question fallback
-  const shortName =
-    market.groupItemTitle?.trim() || enrichment?.shortName || question;
+  // shortName = full Yes/No-answerable short form; optionName = verbatim Polymarket groupItemTitle
+  const shortName = enrichment?.shortName || question;
+  const optionName = market.groupItemTitle?.trim() || undefined;
+
+  const polymarketUrl = getPolymarketUrl(market);
 
   return {
     conditionHash: market.conditionId, // Use Polymarket's conditionId directly
     question,
     shortName,
+    optionName,
     endDate: market.endDate,
     description: market.description || '',
-    similarMarkets: [getPolymarketUrl(market)],
+    similarMarkets: polymarketUrl ? [polymarketUrl] : [],
     tags,
     categorySlug: enrichment?.category || inferSapienceCategorySlug(market), // Use LLM category or fallback
     chainId: CHAIN_ID,
@@ -176,6 +180,11 @@ export async function groupMarkets(
     eventTagMap
   );
 
+  const groupMetadataUpdates = computeGroupMetadataUpdates(
+    filteredGroups,
+    existingIds
+  );
+
   // Apply LLM pre-filter pipeline to separate new vs existing markets
   const { output: newMarkets, stats: llmFilterStats } = runPipeline(
     allFilteredMarkets,
@@ -229,11 +238,12 @@ export async function groupMarkets(
       market.description?.split('\n')[0] ||
       group.title;
 
+    const groupUrl = getPolymarketUrl(market);
     conditionGroups.push({
       title: group.title,
       description: groupDescription,
       categorySlug: condition.categorySlug,
-      similarMarkets: [`https://polymarket.com#${group.eventSlug}`],
+      similarMarkets: groupUrl ? [groupUrl] : [],
       tags: marketTags,
       conditions: [condition],
     });
@@ -268,6 +278,7 @@ export async function groupMarkets(
     groups: conditionGroups,
     ungroupedConditions,
     metadataUpdates,
+    groupMetadataUpdates,
   };
 }
 
@@ -281,10 +292,15 @@ function freshMetadataFor(
   groupTitle: string | undefined,
   tags: string[]
 ): SyncableFields {
+  const polymarketUrl = getPolymarketUrl(market);
   return {
     question: transformMatchQuestion(market),
+    optionName: market.groupItemTitle?.trim() || undefined,
     description: market.description || '',
-    similarMarkets: [getPolymarketUrl(market)],
+    // undefined (not []) so computeMetadataUpdates treats it as "we don't
+    // own a fresh value" and leaves the existing DB value alone rather
+    // than emitting an update that clears the field.
+    similarMarkets: polymarketUrl ? [polymarketUrl] : undefined,
     tags,
     similarMarketVolume: parseFloat(market.volume || '0') || 0,
     similarMarketImage: market.image,
@@ -360,6 +376,7 @@ function computeMetadataUpdates(
     // "we don't own this value right now" → skip, never blank out DB state.
     const keys: (keyof SyncableFields)[] = [
       'question',
+      'optionName',
       'description',
       'similarMarkets',
       'tags',
@@ -379,15 +396,12 @@ function computeMetadataUpdates(
       }
     }
 
-    // shortName priority: groupItemTitle > regex > question fallback.
-    // The generate cron does NOT re-run the LLM for existing markets,
-    // so we re-derive the best shortName from the current market data.
-    // If the market has a groupItemTitle (e.g. "Viktor Orban"), use that;
-    // otherwise fall back to the (possibly updated) question.
-    const freshShort =
-      resolveShortName(market) ?? fields.question ?? existing.question;
-    if (freshShort && existing.shortName !== freshShort) {
-      fields.shortName = freshShort;
+    // Only rewrite shortName when deterministic regex produces a non-null
+    // result. Never fall back to question — that would overwrite nice
+    // LLM-generated shortNames with the full question on every drift.
+    const regexShort = resolveShortName(market);
+    if (regexShort && existing.shortName !== regexShort) {
+      fields.shortName = regexShort;
       old.shortName = existing.shortName;
     }
 
@@ -405,6 +419,65 @@ function computeMetadataUpdates(
       console.log(
         `[Metadata]   ${u.conditionId.slice(0, 10)}... changed: ${changed}`
       );
+    }
+  }
+
+  return updates;
+}
+
+/**
+ * Compare stored ConditionGroup.similarMarkets against what we'd generate
+ * fresh from Polymarket and emit an update for any group whose URL has
+ * drifted (event slug rename, earlier broken format, etc.). Each filtered
+ * group is processed once; we key by the existing conditionGroupId looked
+ * up via the group's first market, so we can't double-emit even if future
+ * changes allow multi-market groups.
+ */
+function computeGroupMetadataUpdates(
+  groups: Array<{
+    title: string;
+    markets: PolymarketMarket[];
+    eventSlug?: string;
+  }>,
+  existingIds: Map<string, ExistingCondition>
+): GroupMetadataUpdate[] {
+  const updates: GroupMetadataUpdate[] = [];
+  const seenGroupIds = new Set<number>();
+
+  for (const group of groups) {
+    const market = group.markets[0];
+    if (!market) continue;
+
+    const existing = existingIds.get(market.conditionId);
+    if (!existing?.conditionGroupId) continue;
+    if (seenGroupIds.has(existing.conditionGroupId)) continue;
+    seenGroupIds.add(existing.conditionGroupId);
+
+    // If we can't build a correct fresh URL (market lacks an event slug),
+    // skip rather than clear the existing value — matches the backfill's
+    // "never overwrite with worse data" stance.
+    const freshUrl = getPolymarketUrl(market);
+    if (!freshUrl) continue;
+
+    const freshSimilarMarkets = [freshUrl];
+    const oldSimilarMarkets = existing.conditionGroupSimilarMarkets;
+
+    if (!fieldsEqual(oldSimilarMarkets, freshSimilarMarkets)) {
+      updates.push({
+        groupId: existing.conditionGroupId,
+        fields: { similarMarkets: freshSimilarMarkets },
+        old: { similarMarkets: oldSimilarMarkets },
+      });
+    }
+  }
+
+  if (updates.length > 0) {
+    console.log(
+      `[Metadata] Found ${updates.length} condition groups with stale metadata`
+    );
+    for (const u of updates) {
+      const changed = Object.keys(u.fields).join(', ');
+      console.log(`[Metadata]   group ${u.groupId} changed: ${changed}`);
     }
   }
 

@@ -1,5 +1,5 @@
 import prisma from '../../db';
-import type { PrismaClient } from '../../../generated/prisma';
+import { Prisma, type PrismaClient } from '../../../generated/prisma';
 import { getProviderForChain, getBlockByTimestamp } from '../../utils/utils';
 import { type PublicClient, decodeEventLog, type Log, type Block } from 'viem';
 import Sentry from '../../instrument';
@@ -499,25 +499,40 @@ class PredictionMarketEscrowIndexer implements IIndexer {
 
       const eventName = decoded.eventName as unknown as string;
 
-      // Record raw event
-      await prisma.event.create({
-        data: {
-          blockNumber: Number(log.blockNumber || 0),
-          transactionHash: log.transactionHash || '',
-          timestamp: BigInt(block.timestamp),
-          logIndex: log.logIndex || 0,
-          logData: {
-            source: 'PredictionMarketEscrow',
-            chainId: this.chainId,
-            eventName,
-            args: JSON.parse(
-              JSON.stringify(decoded.args, (_key, value) =>
-                typeof value === 'bigint' ? value.toString() : value
-              )
-            ),
+      // Record raw event. `Event` has a unique constraint on
+      // (transactionHash, logIndex); if we're replaying a log the Background
+      // Worker already processed, this create throws P2002 and we short-circuit
+      // the whole dispatcher. Per-handler idempotency gates below are still
+      // load-bearing for crash-in-the-middle scenarios, but this skips them in
+      // the common-case replay.
+      try {
+        await prisma.event.create({
+          data: {
+            blockNumber: Number(log.blockNumber || 0),
+            transactionHash: log.transactionHash || '',
+            timestamp: BigInt(block.timestamp),
+            logIndex: log.logIndex || 0,
+            logData: {
+              source: 'PredictionMarketEscrow',
+              chainId: this.chainId,
+              eventName,
+              args: JSON.parse(
+                JSON.stringify(decoded.args, (_key, value) =>
+                  typeof value === 'bigint' ? value.toString() : value
+                )
+              ),
+            },
           },
-        },
-      });
+        });
+      } catch (e) {
+        if (
+          e instanceof Prisma.PrismaClientKnownRequestError &&
+          e.code === 'P2002'
+        ) {
+          return;
+        }
+        throw e;
+      }
 
       switch (eventName) {
         case 'PredictionCreated':
@@ -647,7 +662,12 @@ class PredictionMarketEscrowIndexer implements IIndexer {
 
     // Wrap all DB writes in a transaction so partial state can't persist
     await prisma.$transaction(async (tx) => {
-      // Write pick config first (ensures Picks record exists for FK)
+      // Write pick config first (ensures Picks record exists for FK).
+      // NOTE: `Prediction.predictionId @unique` is load-bearing for race
+      // safety here. If two workers get past the outside-tx findUnique above
+      // both seeing null, one prediction.create below wins and the other's
+      // whole transaction rolls back — undoing the OI increment inside
+      // writePickConfigAndBalances. Do not loosen that constraint.
       if (onChainData) {
         await this.writePickConfigAndBalances(tx, event, onChainData);
       }
@@ -962,9 +982,13 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     const predictionIdLower = event.predictionId.toLowerCase();
 
     await prisma.$transaction(async (tx) => {
-      // Update prediction as settled
-      await tx.prediction.updateMany({
-        where: { predictionId: predictionIdLower },
+      // Transition-gated update: flip settled false→true atomically. Under
+      // READ COMMITTED, concurrent callers either win the row lock and update
+      // count=1, or lose and re-evaluate WHERE against the now-true row and
+      // update count=0. Sequential replays short-circuit the same way. This
+      // makes the OI decrement below run at most once per prediction.
+      const { count } = await tx.prediction.updateMany({
+        where: { predictionId: predictionIdLower, settled: false },
         data: {
           settled: true,
           settledAt: timestamp,
@@ -974,31 +998,28 @@ class PredictionMarketEscrowIndexer implements IIndexer {
           counterpartyClaimable: event.counterpartyClaimable.toString(),
         },
       });
+      if (count === 0) return;
 
-      // Decrement open interest for conditions linked to this prediction
       const pred = await tx.prediction.findUnique({
         where: { predictionId: predictionIdLower },
       });
-      if (pred) {
-        const totalCollateral = (
-          BigInt(pred.predictorCollateral) + BigInt(pred.counterpartyCollateral)
-        ).toString();
+      if (!pred?.pickConfigId) return;
 
-        if (pred.pickConfigId) {
-          const picks = await tx.pick.findMany({
-            where: { pickConfigId: pred.pickConfigId },
-            select: { conditionId: true },
-          });
-          for (const pick of picks) {
-            await tx.$executeRaw`
-              UPDATE condition
-              SET "openInterest" = GREATEST(
-                (COALESCE("openInterest"::NUMERIC, 0) - ${totalCollateral}::NUMERIC), 0
-              )::TEXT
-              WHERE id = ${pick.conditionId}
-            `;
-          }
-        }
+      const totalCollateral = (
+        BigInt(pred.predictorCollateral) + BigInt(pred.counterpartyCollateral)
+      ).toString();
+      const picks = await tx.pick.findMany({
+        where: { pickConfigId: pred.pickConfigId },
+        select: { conditionId: true },
+      });
+      for (const pick of picks) {
+        await tx.$executeRaw`
+          UPDATE condition
+          SET "openInterest" = GREATEST(
+            (COALESCE("openInterest"::NUMERIC, 0) - ${totalCollateral}::NUMERIC), 0
+          )::TEXT
+          WHERE id = ${pick.conditionId}
+        `;
       }
     });
 
@@ -1104,24 +1125,36 @@ class PredictionMarketEscrowIndexer implements IIndexer {
     const timestamp = Number(block.timestamp);
     const pickConfigIdLower = event.pickConfigId.toLowerCase();
 
-    await prisma.$transaction(async (tx) => {
-      // Create close record
-      await tx.close.create({
-        data: {
-          chainId: this.chainId,
-          marketAddress: this.contractAddress.toLowerCase(),
-          pickConfigId: pickConfigIdLower,
-          predictorHolder: event.predictorHolder.toLowerCase(),
-          counterpartyHolder: event.counterpartyHolder.toLowerCase(),
-          predictorTokensBurned: event.predictorTokensBurned.toString(),
-          counterpartyTokensBurned: event.counterpartyTokensBurned.toString(),
-          predictorPayout: event.predictorPayout.toString(),
-          counterpartyPayout: event.counterpartyPayout.toString(),
-          burnedAt: timestamp,
-          txHash: log.transactionHash || '',
-          refCode: event.refCode !== ZERO_BYTES32 ? event.refCode : null,
-        },
-      });
+    // `Close` has a unique constraint on (chainId, txHash, pickConfigId), so a
+    // replay from the reconciler hits P2002 here. We catch it and return early
+    // — the transaction rolls back and the OI decrement doesn't run twice.
+    const processed = await prisma.$transaction(async (tx) => {
+      try {
+        await tx.close.create({
+          data: {
+            chainId: this.chainId,
+            marketAddress: this.contractAddress.toLowerCase(),
+            pickConfigId: pickConfigIdLower,
+            predictorHolder: event.predictorHolder.toLowerCase(),
+            counterpartyHolder: event.counterpartyHolder.toLowerCase(),
+            predictorTokensBurned: event.predictorTokensBurned.toString(),
+            counterpartyTokensBurned: event.counterpartyTokensBurned.toString(),
+            predictorPayout: event.predictorPayout.toString(),
+            counterpartyPayout: event.counterpartyPayout.toString(),
+            burnedAt: timestamp,
+            txHash: log.transactionHash || '',
+            refCode: event.refCode !== ZERO_BYTES32 ? event.refCode : null,
+          },
+        });
+      } catch (e) {
+        if (
+          e instanceof Prisma.PrismaClientKnownRequestError &&
+          e.code === 'P2002'
+        ) {
+          return false;
+        }
+        throw e;
+      }
 
       // Position balance decrements are handled by the PositionTokenTransferIndexer
       // via the ERC20 Transfer(holder, 0x0, amount) burn events.
@@ -1145,7 +1178,10 @@ class PredictionMarketEscrowIndexer implements IIndexer {
           WHERE id = ${pick.conditionId}
         `;
       }
+      return true;
     });
+
+    if (!processed) return;
 
     // Check if fully redeemed (involves RPC calls, so outside the transaction)
     await this.checkFullyRedeemedByPickConfig(pickConfigIdLower);

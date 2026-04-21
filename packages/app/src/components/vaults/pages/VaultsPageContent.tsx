@@ -19,21 +19,25 @@ import { Vault, Clock } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { parseUnits } from 'viem';
 import { formatDuration, intervalToDuration } from 'date-fns';
+import Link from 'next/link';
+import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
 import { useCurrentAddress } from '~/hooks/blockchain/useCurrentAddress';
-import Link from 'next/link';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import { usePassiveLiquidityVault } from '~/hooks/contract/usePassiveLiquidityVault';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
-import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import { useRestrictedJurisdiction } from '~/hooks/useRestrictedJurisdiction';
 import RestrictedJurisdictionBanner from '~/components/shared/RestrictedJurisdictionBanner';
-import { useProtocolStats } from '~/hooks/graphql/useAnalytics';
+import {
+  getProtocolTvlWei,
+  useProtocolStats,
+} from '~/hooks/graphql/useAnalytics';
 import RiskDisclaimer from '~/components/markets/forms/shared/RiskDisclaimer';
 import Loader from '~/components/shared/Loader';
 import VaultPnlChart from '~/components/vaults/VaultPnlChart';
+import { ETHENA_BASE_APY } from '~/components/layout/StatusIndicators';
 
 const DEPOSIT_WHITELIST: `0x${string}`[] = [
   '0xdb5af497a73620d881561edb508012a5f84e9ba2',
@@ -523,14 +527,10 @@ const VaultsPageContent = () => {
   const yieldMetrics = useMemo(() => {
     const lastStat = protocolStats?.[protocolStats.length - 1];
 
-    const protocolTvlWei = lastStat
-      ? BigInt(lastStat.vaultBalance || '0') +
-        BigInt(lastStat.escrowBalance || '0')
-      : 0n;
+    const protocolTvlWei = getProtocolTvlWei(lastStat);
     const protocolTvlNum = Number(formatAssetAmount(protocolTvlWei));
     const vaultTvlNum = Number(formatAssetAmount(tvlWei));
 
-    const ETHENA_BASE_APY = 4;
     const effectiveApy =
       vaultTvlNum > 0 ? (protocolTvlNum / vaultTvlNum) * ETHENA_BASE_APY : 0;
     const annualYieldToVault = vaultTvlNum * (effectiveApy / 100);
@@ -618,6 +618,11 @@ const VaultsPageContent = () => {
                           </span>
                         </h4>
                         <div className="relative">
+                          {tvlWei <= VAULT_CAPACITY_WEI && (
+                            <div className="absolute -top-4 right-0 font-mono text-[10px] text-muted-foreground/50 uppercase">
+                              {depositCapDisplay} cap
+                            </div>
+                          )}
                           <div className="w-full h-3 rounded-sm bg-[hsl(var(--primary)/_0.09)] overflow-hidden shadow-inner relative">
                             <div
                               className="h-3 bg-accent-gold rounded-sm transition-all gold-sheen"
@@ -659,11 +664,6 @@ const VaultsPageContent = () => {
                                 </span>
                               </div>
                             </>
-                          )}
-                          {tvlWei <= VAULT_CAPACITY_WEI && (
-                            <div className="mt-1 text-right font-mono text-[10px] text-muted-foreground/50 uppercase">
-                              {depositCapDisplay} cap
-                            </div>
                           )}
                         </div>
                         <div className="mt-2 flex flex-col items-start sm:flex-row sm:items-baseline sm:justify-between gap-1 sm:gap-0 text-sm">

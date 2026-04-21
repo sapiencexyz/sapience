@@ -151,8 +151,9 @@ export async function queryAccountVolume(
       WHERE (predictor = ${addr} OR counterparty = ${addr})
         AND "onChainCreatedAt" >= ${fromEpoch} AND "onChainCreatedAt" <= ${toEpoch}
       UNION ALL
+      -- secondary_trade.collateral is the token address; price is the amount paid
       SELECT "executedAt" AS created_ts,
-        CAST(collateral AS DECIMAL) AS vol
+        CAST(price AS DECIMAL) AS vol
       FROM secondary_trade
       WHERE (buyer = ${addr} OR seller = ${addr})
         AND "executedAt" >= ${fromEpoch} AND "executedAt" <= ${toEpoch}
@@ -489,8 +490,9 @@ export async function queryProtocolVolume(
       WHERE "chainId" = ${chainId}
         AND "onChainCreatedAt" >= ${fromEpoch} AND "onChainCreatedAt" <= ${toEpoch}
       UNION ALL
+      -- secondary_trade.collateral is the token address; price is the amount paid
       SELECT "executedAt" AS created_ts,
-        CAST(collateral AS DECIMAL) AS vol
+        CAST(price AS DECIMAL) AS vol
       FROM secondary_trade
       WHERE "chainId" = ${chainId}
         AND "executedAt" >= ${fromEpoch} AND "executedAt" <= ${toEpoch}

@@ -21,10 +21,6 @@ import { submitVolumeUpdates } from '../generate/api';
 
 const POLYMARKET_DATA_API = 'https://data-api.polymarket.com';
 
-/** Price range for filtered volume — trades outside this are excluded */
-const FILTERED_PRICE_MIN = 0.01;
-const FILTERED_PRICE_MAX = 0.99;
-
 /** Time windows in seconds */
 const TIME_WINDOWS = {
   '1h': 3600,
@@ -48,6 +44,11 @@ const WAVE_DELAY_MS = 200;
 
 /** Max concurrent Data API requests per wave */
 const CONCURRENCY = 10;
+
+/** Price bounds for "filtered" volume — excludes trades where the outcome is
+ *  effectively decided (price near 0 or 1). */
+const FILTERED_PRICE_MIN = 0.01;
+const FILTERED_PRICE_MAX = 0.99;
 
 // ============ CLI Arguments ============
 
@@ -314,14 +315,14 @@ async function fetchTradesForConditions(
 
 export interface ConditionVolume {
   id: string;
-  volume1h: number;
-  volume4h: number;
-  volume24h: number;
-  volume7d: number;
-  volumeFiltered1h: number;
-  volumeFiltered4h: number;
-  volumeFiltered24h: number;
-  volumeFiltered7d: number;
+  similarMarketVolume1h: number;
+  similarMarketVolume4h: number;
+  similarMarketVolume24h: number;
+  similarMarketVolume7d: number;
+  similarMarketVolumeFiltered1h: number;
+  similarMarketVolumeFiltered4h: number;
+  similarMarketVolumeFiltered24h: number;
+  similarMarketVolumeFiltered7d: number;
 }
 
 export function compactConditionVolumes(
@@ -350,42 +351,39 @@ export function aggregateVolumes(
   for (const id of conditionIds) {
     volumeMap.set(id, {
       id,
-      volume1h: 0,
-      volume4h: 0,
-      volume24h: 0,
-      volume7d: 0,
-      volumeFiltered1h: 0,
-      volumeFiltered4h: 0,
-      volumeFiltered24h: 0,
-      volumeFiltered7d: 0,
+      similarMarketVolume1h: 0,
+      similarMarketVolume4h: 0,
+      similarMarketVolume24h: 0,
+      similarMarketVolume7d: 0,
+      similarMarketVolumeFiltered1h: 0,
+      similarMarketVolumeFiltered4h: 0,
+      similarMarketVolumeFiltered24h: 0,
+      similarMarketVolumeFiltered7d: 0,
     });
   }
-
-  const isFilteredPrice = (price: number) =>
-    price >= FILTERED_PRICE_MIN && price <= FILTERED_PRICE_MAX;
 
   for (const trade of trades) {
     const vol = volumeMap.get(trade.conditionId);
     if (!vol) continue;
 
     const size = trade.size;
-    const filtered = isFilteredPrice(trade.price);
+    const isFilteredPrice =
+      trade.price >= FILTERED_PRICE_MIN && trade.price <= FILTERED_PRICE_MAX;
 
     if (trade.timestamp >= cutoffs['1h']) {
-      vol.volume1h += size;
-      if (filtered) vol.volumeFiltered1h += size;
+      vol.similarMarketVolume1h += size;
+      if (isFilteredPrice) vol.similarMarketVolumeFiltered1h += size;
     }
     if (trade.timestamp >= cutoffs['4h']) {
-      vol.volume4h += size;
-      if (filtered) vol.volumeFiltered4h += size;
+      vol.similarMarketVolume4h += size;
+      if (isFilteredPrice) vol.similarMarketVolumeFiltered4h += size;
     }
     if (trade.timestamp >= cutoffs['24h']) {
-      vol.volume24h += size;
-      if (filtered) vol.volumeFiltered24h += size;
+      vol.similarMarketVolume24h += size;
+      if (isFilteredPrice) vol.similarMarketVolumeFiltered24h += size;
     }
-    // All trades are within 7d (we filtered at fetch time)
-    vol.volume7d += size;
-    if (filtered) vol.volumeFiltered7d += size;
+    vol.similarMarketVolume7d += size;
+    if (isFilteredPrice) vol.similarMarketVolumeFiltered7d += size;
   }
 
   return [...volumeMap.values()];
@@ -522,15 +520,14 @@ export async function main() {
       log(`Successful updates: ${successfulVolumes.length}`);
       log(`Failed fetches: ${totalFetchFailures}`);
 
-      const withVolume = successfulVolumes.filter((v) => v.volume7d > 0);
+      const withVolume = successfulVolumes.filter(
+        (v) => v.similarMarketVolume7d > 0
+      );
       log(`Conditions with 7d volume: ${withVolume.length}`);
 
       for (const v of withVolume.slice(0, 15)) {
         log(
-          `  ${v.id} → 1h: $${v.volume1h.toFixed(0)} | 4h: $${v.volume4h.toFixed(0)} | 24h: $${v.volume24h.toFixed(0)} | 7d: $${v.volume7d.toFixed(0)}`
-        );
-        log(
-          `    filtered → 1h: $${v.volumeFiltered1h.toFixed(0)} | 4h: $${v.volumeFiltered4h.toFixed(0)} | 24h: $${v.volumeFiltered24h.toFixed(0)} | 7d: $${v.volumeFiltered7d.toFixed(0)}`
+          `  ${v.id} → 1h: $${v.similarMarketVolume1h.toFixed(0)} | 4h: $${v.similarMarketVolume4h.toFixed(0)} | 24h: $${v.similarMarketVolume24h.toFixed(0)} | 7d: $${v.similarMarketVolume7d.toFixed(0)} | filtered7d: $${v.similarMarketVolumeFiltered7d.toFixed(0)}`
         );
       }
       if (withVolume.length > 15) {
