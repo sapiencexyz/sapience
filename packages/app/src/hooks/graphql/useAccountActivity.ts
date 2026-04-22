@@ -164,14 +164,13 @@ export function useAccountActivity({
    */
   conditionId?: string;
   /**
-   * Override enabled state. Defaults to true when account, pickConfigId, or
-   * conditionId is provided; otherwise returns the global feed.
+   * Override enabled state. Defaults to true — the unscoped feed returns
+   * recent global activity. Pass false to skip the query entirely.
    */
   enabled?: boolean;
 }) {
   const [take, setTake] = useState(pageSize);
-  const enabled =
-    enabledOverride ?? Boolean(account || pickConfigId || conditionId);
+  const enabled = enabledOverride ?? true;
 
   const typeFilter =
     activityType && activityType !== 'all' ? activityType : undefined;
