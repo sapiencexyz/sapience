@@ -410,16 +410,14 @@ export default function QuestionPageContent({
     return (TAB_VALUES as string[]).includes(raw) ? (raw as PrimaryTab) : null;
   };
 
-  // Keep primary tab controlled so we can default to Positions when available
-  const [primaryTab, setPrimaryTab] = React.useState<PrimaryTab>('forecasts');
-  const hashOverrideRef = React.useRef(false);
+  // Activity is the default landing tab; empty-state falls through naturally.
+  const [primaryTab, setPrimaryTab] = React.useState<PrimaryTab>('predictions');
 
   // Read hash on mount
   React.useEffect(() => {
     const fromHash = getTabFromHash();
     if (fromHash) {
       setPrimaryTab(fromHash);
-      hashOverrideRef.current = true;
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -447,27 +445,13 @@ export default function QuestionPageContent({
     }
   };
 
+  // Positions tab is hidden until the condition has predictions; if routed
+  // there without any, fall back to Activity (the default).
   const primaryTabValue = useMemo(() => {
-    if (
-      !hasPositions &&
-      (primaryTab === 'predictions' || primaryTab === 'positions')
-    ) {
-      return 'forecasts';
+    if (!hasPositions && primaryTab === 'positions') {
+      return 'predictions';
     }
     return primaryTab;
-  }, [hasPositions, primaryTab]);
-
-  // Default to Positions once when they first become available; thereafter respect user choice
-  const hasEverHadPositionsRef = React.useRef(hasPositions);
-  React.useEffect(() => {
-    if (hasPositions) {
-      if (!hasEverHadPositionsRef.current && !hashOverrideRef.current) {
-        setPrimaryTab('predictions');
-      }
-      hasEverHadPositionsRef.current = true;
-    } else if (primaryTab === 'predictions') {
-      setPrimaryTab('forecasts');
-    }
   }, [hasPositions, primaryTab]);
 
   // Calculate X axis domain and ticks based on all chart data
@@ -624,23 +608,21 @@ export default function QuestionPageContent({
         {/* Header with all tabs */}
         <div className="flex items-center gap-4 px-2 py-2.5 border-b border-border/60 bg-muted/10 overflow-x-auto">
           <TabsList className="h-auto p-0 bg-transparent gap-2 flex-nowrap">
+            <TabsTrigger
+              value="predictions"
+              className="px-3 py-1.5 text-sm rounded-md bg-brand-white/[0.08] data-[state=active]:bg-brand-white/15 data-[state=active]:text-brand-white text-muted-foreground hover:text-brand-white/80 hover:bg-brand-white/[0.12] transition-colors inline-flex items-center gap-1.5 whitespace-nowrap"
+            >
+              <Activity className="h-3.5 w-3.5" />
+              Activity
+            </TabsTrigger>
             {hasPositions && (
-              <>
-                <TabsTrigger
-                  value="predictions"
-                  className="px-3 py-1.5 text-sm rounded-md bg-brand-white/[0.08] data-[state=active]:bg-brand-white/15 data-[state=active]:text-brand-white text-muted-foreground hover:text-brand-white/80 hover:bg-brand-white/[0.12] transition-colors inline-flex items-center gap-1.5 whitespace-nowrap"
-                >
-                  <Activity className="h-3.5 w-3.5" />
-                  Activity
-                </TabsTrigger>
-                <TabsTrigger
-                  value="positions"
-                  className="px-3 py-1.5 text-sm rounded-md bg-brand-white/[0.08] data-[state=active]:bg-brand-white/15 data-[state=active]:text-brand-white text-muted-foreground hover:text-brand-white/80 hover:bg-brand-white/[0.12] transition-colors inline-flex items-center gap-1.5 whitespace-nowrap"
-                >
-                  <ArrowLeftRight className="h-3.5 w-3.5" />
-                  Positions
-                </TabsTrigger>
-              </>
+              <TabsTrigger
+                value="positions"
+                className="px-3 py-1.5 text-sm rounded-md bg-brand-white/[0.08] data-[state=active]:bg-brand-white/15 data-[state=active]:text-brand-white text-muted-foreground hover:text-brand-white/80 hover:bg-brand-white/[0.12] transition-colors inline-flex items-center gap-1.5 whitespace-nowrap"
+              >
+                <ArrowLeftRight className="h-3.5 w-3.5" />
+                Positions
+              </TabsTrigger>
             )}
             <TabsTrigger
               value="forecasts"
@@ -772,23 +754,21 @@ export default function QuestionPageContent({
         {/* Header with integrated tabs */}
         <div className="flex items-center gap-4 px-2 py-2.5 border-b border-border/60 bg-muted/10">
           <TabsList className="h-auto p-0 bg-transparent gap-2">
+            <TabsTrigger
+              value="predictions"
+              className="px-3 py-1.5 text-sm rounded-md bg-brand-white/[0.08] data-[state=active]:bg-brand-white/15 data-[state=active]:text-brand-white text-muted-foreground hover:text-brand-white/80 hover:bg-brand-white/[0.12] transition-colors inline-flex items-center gap-1.5"
+            >
+              <Activity className="h-3.5 w-3.5" />
+              Activity
+            </TabsTrigger>
             {hasPositions && (
-              <>
-                <TabsTrigger
-                  value="predictions"
-                  className="px-3 py-1.5 text-sm rounded-md bg-brand-white/[0.08] data-[state=active]:bg-brand-white/15 data-[state=active]:text-brand-white text-muted-foreground hover:text-brand-white/80 hover:bg-brand-white/[0.12] transition-colors inline-flex items-center gap-1.5"
-                >
-                  <Activity className="h-3.5 w-3.5" />
-                  Activity
-                </TabsTrigger>
-                <TabsTrigger
-                  value="positions"
-                  className="px-3 py-1.5 text-sm rounded-md bg-brand-white/[0.08] data-[state=active]:bg-brand-white/15 data-[state=active]:text-brand-white text-muted-foreground hover:text-brand-white/80 hover:bg-brand-white/[0.12] transition-colors inline-flex items-center gap-1.5"
-                >
-                  <ArrowLeftRight className="h-3.5 w-3.5" />
-                  Positions
-                </TabsTrigger>
-              </>
+              <TabsTrigger
+                value="positions"
+                className="px-3 py-1.5 text-sm rounded-md bg-brand-white/[0.08] data-[state=active]:bg-brand-white/15 data-[state=active]:text-brand-white text-muted-foreground hover:text-brand-white/80 hover:bg-brand-white/[0.12] transition-colors inline-flex items-center gap-1.5"
+              >
+                <ArrowLeftRight className="h-3.5 w-3.5" />
+                Positions
+              </TabsTrigger>
             )}
             <TabsTrigger
               value="forecasts"

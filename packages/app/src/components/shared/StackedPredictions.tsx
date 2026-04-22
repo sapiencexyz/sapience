@@ -67,6 +67,7 @@ export function StackedIcons({
   }
 
   const visiblePicks = max != null ? picks.slice(0, max) : picks;
+  const truncated = max != null && picks.length > max;
   const colors = visiblePicks.map((pick) =>
     getCategoryColor(pick.categorySlug)
   );
@@ -79,11 +80,18 @@ export function StackedIcons({
         const isPyth = pick.source === 'pyth';
         const CategoryIcon = getCategoryIcon(pick.categorySlug);
         const color = colors[i] || 'hsl(var(--muted-foreground))';
+        // Fade the trailing icons when there are more picks hidden behind them:
+        // last icon fades most, second-to-last a little, to hint at the stack.
+        let opacity: number | undefined;
+        if (truncated) {
+          if (i === visiblePicks.length - 1) opacity = 0.4;
+          else if (i === visiblePicks.length - 2) opacity = 0.7;
+        }
         return isPyth ? (
           <PythMarketBadge
             key={`icon-${pick.conditionId || i}-${i}`}
             className="ring-2 ring-background"
-            style={{ zIndex: picks.length - i }}
+            style={{ zIndex: picks.length - i, opacity }}
           />
         ) : (
           <div
@@ -92,6 +100,7 @@ export function StackedIcons({
             style={{
               backgroundColor: color,
               zIndex: picks.length - i,
+              opacity,
             }}
           >
             <CategoryIcon className="h-3 w-3 text-white/80" />
