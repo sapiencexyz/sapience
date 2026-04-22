@@ -18,7 +18,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
-import { Vault, Clock } from 'lucide-react';
+import { Clock } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { parseUnits } from 'viem';
 import { formatDuration, intervalToDuration } from 'date-fns';
@@ -601,66 +601,45 @@ const VaultsPageContent = () => {
   return (
     <div className="relative">
       <div className="container max-w-[600px] lg:max-w-[1200px] mx-auto px-4 pt-10 md:pt-14 lg:pt-10 pb-12 relative z-10">
-        <div className="mb-4 md:mb-6 flex flex-row items-center justify-between">
+        <div className="mb-4 md:mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 sm:gap-4">
           <h1 className="text-3xl md:text-5xl font-sans font-normal text-foreground">
             Vaults
           </h1>
-          <div className="flex items-center gap-4">
-            <Tabs value={activeVault} onValueChange={handleVaultChange}>
-              <TabsList className="h-auto p-1">
+          <Tabs value={activeVault} onValueChange={handleVaultChange}>
+            <TabsList className="h-auto p-1">
+              <TabsTrigger
+                value="protocol"
+                className="text-sm px-3 py-1.5 data-[state=active]:text-brand-white"
+              >
+                Protocol Vault
+              </TabsTrigger>
+              {optionsVaultAvailable ? (
                 <TabsTrigger
-                  value="protocol"
+                  value="options"
                   className="text-sm px-3 py-1.5 data-[state=active]:text-brand-white"
                 >
-                  Protocol Vault
+                  Options Vault
                 </TabsTrigger>
-                {optionsVaultAvailable ? (
-                  <TabsTrigger
-                    value="options"
-                    className="text-sm px-3 py-1.5 data-[state=active]:text-brand-white"
-                  >
-                    Options Vault
-                  </TabsTrigger>
-                ) : (
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <span className="inline-flex cursor-not-allowed">
-                        <TabsTrigger
-                          value="options"
-                          disabled
-                          className="text-sm px-3 py-1.5 opacity-50"
-                        >
-                          Options Vault
-                        </TabsTrigger>
-                      </span>
-                    </TooltipTrigger>
-                    <TooltipContent>
-                      <p>Not yet deployed on this network</p>
-                    </TooltipContent>
-                  </Tooltip>
-                )}
-              </TabsList>
-            </Tabs>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="inline-flex cursor-not-allowed">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled
-                    className="inline-flex items-center gap-2"
-                    onClick={(e) => e.preventDefault()}
-                  >
-                    <Vault className="h-4 w-4" />
-                    Deploy Vault
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Coming soon</p>
-              </TooltipContent>
-            </Tooltip>
-          </div>
+              ) : (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex cursor-not-allowed">
+                      <TabsTrigger
+                        value="options"
+                        disabled
+                        className="text-sm px-3 py-1.5 opacity-50"
+                      >
+                        Options Vault
+                      </TabsTrigger>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Not yet deployed on this network</p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </TabsList>
+          </Tabs>
         </div>
 
         <div className="grid grid-cols-1 gap-8">
