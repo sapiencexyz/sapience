@@ -1,6 +1,9 @@
 'use client';
 
-import { predictionMarketVault } from '@sapience/sdk/contracts';
+import {
+  predictionMarketVault,
+  pythPredictionMarketVault,
+} from '@sapience/sdk/contracts';
 import { Button } from '@sapience/ui/components/ui/button';
 import { Card, CardContent } from '@sapience/ui/components/ui/card';
 import { Input } from '@sapience/ui/components/ui/input';
@@ -46,11 +49,49 @@ const DEPOSIT_WHITELIST: `0x${string}`[] = [
 
 const DEPOSIT_CAP = 10000;
 
+type VaultKind = 'protocol' | 'options';
+
 const VaultsPageContent = () => {
   const { currentAddress, isConnected } = useCurrentAddress();
   const { openConnectDialog } = useConnectDialog();
   const VAULT_CHAIN_ID = DEFAULT_CHAIN_ID;
-  const VAULT_ADDRESS = predictionMarketVault[VAULT_CHAIN_ID]?.address;
+  const protocolVaultAddress = predictionMarketVault[VAULT_CHAIN_ID]?.address;
+  const optionsVaultAddress =
+    pythPredictionMarketVault[VAULT_CHAIN_ID]?.address;
+  const optionsVaultAvailable = Boolean(optionsVaultAddress);
+
+  const [selectedVault, setSelectedVault] = useState<VaultKind>('protocol');
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const syncFromHash = () => {
+      const hash = window.location.hash.replace('#', '').toLowerCase();
+      if (hash === 'options' || hash === 'protocol') {
+        setSelectedVault(hash);
+      }
+    };
+    syncFromHash();
+    window.addEventListener('hashchange', syncFromHash);
+    return () => window.removeEventListener('hashchange', syncFromHash);
+  }, []);
+
+  const handleVaultChange = (value: string) => {
+    const next = value === 'options' ? 'options' : 'protocol';
+    setSelectedVault(next);
+    if (typeof window !== 'undefined') {
+      const url = `${window.location.pathname}${window.location.search}#${next}`;
+      window.history.replaceState(null, '', url);
+    }
+  };
+
+  const activeVault: VaultKind =
+    selectedVault === 'options' && !optionsVaultAvailable
+      ? 'protocol'
+      : selectedVault;
+  const VAULT_ADDRESS =
+    activeVault === 'options' ? optionsVaultAddress : protocolVaultAddress;
+  const vaultTitle =
+    activeVault === 'options' ? 'Options Vault' : 'Protocol Vault';
   const collateralSymbol = COLLATERAL_SYMBOLS[VAULT_CHAIN_ID] || 'testUSDe';
 
   const {
@@ -80,7 +121,7 @@ const VaultsPageContent = () => {
 
   const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
   const { data: protocolStats, isLoading: isAnalyticsLoading } =
-    useProtocolStats();
+    useProtocolStats(VAULT_ADDRESS);
 
   const [depositAmount, setDepositAmount] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
@@ -564,7 +605,42 @@ const VaultsPageContent = () => {
           <h1 className="text-3xl md:text-5xl font-sans font-normal text-foreground">
             Vaults
           </h1>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-4">
+            <Tabs value={activeVault} onValueChange={handleVaultChange}>
+              <TabsList className="h-auto p-1">
+                <TabsTrigger
+                  value="protocol"
+                  className="text-sm px-3 py-1.5 data-[state=active]:text-brand-white"
+                >
+                  Protocol Vault
+                </TabsTrigger>
+                {optionsVaultAvailable ? (
+                  <TabsTrigger
+                    value="options"
+                    className="text-sm px-3 py-1.5 data-[state=active]:text-brand-white"
+                  >
+                    Options Vault
+                  </TabsTrigger>
+                ) : (
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="inline-flex cursor-not-allowed">
+                        <TabsTrigger
+                          value="options"
+                          disabled
+                          className="text-sm px-3 py-1.5 opacity-50"
+                        >
+                          Options Vault
+                        </TabsTrigger>
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Not yet deployed on this network</p>
+                    </TooltipContent>
+                  </Tooltip>
+                )}
+              </TabsList>
+            </Tabs>
             <Tooltip>
               <TooltipTrigger asChild>
                 <span className="inline-flex cursor-not-allowed">
@@ -597,7 +673,7 @@ const VaultsPageContent = () => {
               <CardContent className="p-6">
                 <div className="space-y-6">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                    <h3 className="text-2xl font-medium">Protocol Vault</h3>
+                    <h3 className="text-2xl font-medium">{vaultTitle}</h3>
                     <div className="flex items-center gap-2">
                       <EnsAvatar
                         address={VAULT_ADDRESS}
