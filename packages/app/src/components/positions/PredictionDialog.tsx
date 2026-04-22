@@ -16,7 +16,6 @@ interface PredictionDialogProps {
   onOpenChange: (open: boolean) => void;
   prediction: Prediction | null;
   pickConfig: PickConfigData | null;
-  isPredictorSide: boolean;
   conditionsMap: ConditionsMap;
   collateralSymbol?: string;
 }
@@ -26,23 +25,23 @@ export default function PredictionDialog({
   onOpenChange,
   prediction,
   pickConfig,
-  isPredictorSide,
   conditionsMap,
   collateralSymbol = 'USDe',
 }: PredictionDialogProps) {
   if (!prediction) return null;
 
   const rawPicks = pickConfig?.picks ?? [];
-  const picks = toPicks(rawPicks, isPredictorSide, conditionsMap);
+  // Side-agnostic dialog: picks always render from the predictor's canonical
+  // perspective; viewer identity does not flip YES/NO on display.
+  const picks = toPicks(rawPicks, true, conditionsMap);
 
-  const positionSize = Number(
+  const predictorStake = Number(
     formatEther(BigInt(prediction.predictorCollateral))
   );
-  const totalPayout =
-    Number(formatEther(BigInt(prediction.predictorCollateral))) +
-    Number(formatEther(BigInt(prediction.counterpartyCollateral)));
+  const counterpartyStake = Number(
+    formatEther(BigInt(prediction.counterpartyCollateral))
+  );
 
-  // Use on-chain result if settled, otherwise compute from individual conditions
   const computed = !prediction.settled
     ? computeResultFromConditions(rawPicks, conditionsMap)
     : null;
@@ -54,21 +53,6 @@ export default function PredictionDialog({
   // NON_DECISIVE resolves to the counterparty on-chain.
   const counterpartyWon =
     result === 'COUNTERPARTY_WINS' || result === 'NON_DECISIVE';
-  const positionWon =
-    isSettled &&
-    ((isPredictorSide && predictorWon) ||
-      (!isPredictorSide && counterpartyWon));
-
-  const viewerSize = isPredictorSide
-    ? positionSize
-    : Number(formatEther(BigInt(prediction.counterpartyCollateral)));
-
-  const pnl = isSettled
-    ? positionWon
-      ? totalPayout - viewerSize
-      : -viewerSize
-    : null;
-  const roi = pnl !== null && viewerSize > 0 ? (pnl / viewerSize) * 100 : null;
 
   const createdAt = prediction.createdAt
     ? new Date(prediction.createdAt)
@@ -82,40 +66,37 @@ export default function PredictionDialog({
 
   const predictionUrl = `/predictions/${prediction.predictionId}`;
 
-  const getPositionStatus = (): 'won' | 'lost' | 'pending' | 'active' => {
-    if (isSettled && positionWon) return 'won';
-    if (isSettled && !positionWon) return 'lost';
-    if (endsAtMs && endsAtMs <= Date.now()) return 'pending';
-    return 'active';
-  };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-4xl pt-8">
-        <PositionSummary
-          positionId={prediction.predictionId.slice(0, 8)}
-          isCounterpartyPosition={!isPredictorSide}
-          createdAt={createdAt}
-          endsAtMs={endsAtMs}
-          positionSize={viewerSize}
-          payout={totalPayout}
-          pnl={pnl}
-          roi={roi}
-          isSettled={isSettled}
-          positionWon={positionWon}
-          collateralSymbol={collateralSymbol}
-          positionUrl={predictionUrl}
-          predictorAddress={prediction.predictor}
-          counterpartyAddress={prediction.counterparty}
-        />
+      <DialogContent className="sm:max-w-4xl pt-8 overflow-x-hidden">
+        <div className="min-w-0">
+          <PositionSummary
+            positionId={prediction.predictionId}
+            createdAt={createdAt}
+            endsAtMs={endsAtMs}
+            positionSize={0}
+            payout={0}
+            pnl={null}
+            roi={null}
+            isSettled={isSettled}
+            collateralSymbol={collateralSymbol}
+            positionUrl={predictionUrl}
+            predictorAddress={prediction.predictor}
+            counterpartyAddress={prediction.counterparty}
+            predictorStake={predictorStake}
+            counterpartyStake={counterpartyStake}
+            predictorWon={predictorWon}
+            counterpartyWon={counterpartyWon}
+          />
+        </div>
 
-        <PicksContent
-          picks={picks}
-          positionId={prediction.predictionId.slice(0, 8)}
-          isCounterparty={!isPredictorSide}
-          hideHeader
-          positionStatus={getPositionStatus()}
-        />
+        <div className="min-w-0">
+          <PicksContent
+            picks={picks}
+            positionId={prediction.predictionId}
+            hideHeader
+          />
+        </div>
       </DialogContent>
     </Dialog>
   );

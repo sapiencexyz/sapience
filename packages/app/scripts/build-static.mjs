@@ -90,7 +90,6 @@ try {
   // ── Step 2: Remove route handlers ──────────────────────────────────
   const routeHandlers = [
     path.join(SRC_APP, 'api', 'permit', 'route.ts'),
-    path.join(SRC_APP, 'api', 'openrouter', 'route.ts'),
   ];
 
   // OG route handlers (keep helper files like _prediction-helpers.ts)
