@@ -183,7 +183,8 @@ export default function PositionSummary({
     let value: string;
     let badgeClass: string;
     if (!isSettled) {
-      value = 'PENDING';
+      const isLive = endsAtMs != null && endsAtMs > Date.now();
+      value = isLive ? 'ACTIVE' : 'PENDING';
       badgeClass = 'border-foreground/40 bg-foreground/10 text-foreground';
     } else if (predictorWon) {
       value = 'PREDICTOR';
