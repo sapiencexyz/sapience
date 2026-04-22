@@ -193,6 +193,20 @@ export const singleLegVault: ChainAddressMap = {
 } as const;
 
 /**
+ * PredictionMarketVaultStrategyB
+ * Alternate PredictionMarketVault instance for A/B-testing a different
+ * auction-bidder strategy against the default parlay vault. Same contract as
+ * `predictionMarketVault`, isolated capital.
+ *
+ * Chain entries are added/updated by `deploy.sh deploy-vault-b`
+ * (via packages/protocol/src/scripts/deploy/update-sdk-vault.mjs).
+ * Move old addresses into `legacy` manually on redeploy.
+ */
+export const predictionMarketVaultStrategyB: ChainAddressMap = {
+  // (entries inserted by deploy)
+} as const;
+
+/**
  * PythConditionResolver
  * Pyth oracle-based condition resolution
  */
@@ -704,6 +718,7 @@ export const contracts = {
   predictionMarketVault,
   pythPredictionMarketVault,
   singleLegVault,
+  predictionMarketVaultStrategyB,
   secondaryMarketEscrow,
   onboardingSponsor,
   pythConditionResolver,
