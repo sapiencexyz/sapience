@@ -165,6 +165,12 @@ export const pythPredictionMarketVault: ChainAddressMap = {
     blockCreated: 2619084,
     legacy: [] as const,
   },
+  5064014: {
+    // Ethereal mainnet — deployed 2026-04-22
+    address: '0x7e56D33B0A873d2735Cdd7732A5bE72A64BE591A',
+    blockCreated: 4346536,
+    legacy: [] as const,
+  },
 } as const;
 
 /**
@@ -182,6 +188,25 @@ export const singleLegVault: ChainAddressMap = {
     // Ethereal mainnet — deployed 2026-03-26
     address: '0x1b03b3f20caa6fc8cc7f6d9ae73d634804fe7f59',
     blockCreated: 3915329,
+    legacy: [] as const,
+  },
+} as const;
+
+/**
+ * PredictionMarketVaultStrategyB
+ * Alternate PredictionMarketVault instance for A/B-testing a different
+ * auction-bidder strategy against the default parlay vault. Same contract as
+ * `predictionMarketVault`, isolated capital.
+ *
+ * Chain entries are added/updated by `deploy.sh deploy-vault-b`
+ * (via packages/protocol/src/scripts/deploy/update-sdk-vault.mjs).
+ * Move old addresses into `legacy` manually on redeploy.
+ */
+export const predictionMarketVaultStrategyB: ChainAddressMap = {
+  5064014: {
+    // Ethereal mainnet — deployed 2026-04-22
+    address: '0xAE53E270ad4Ac82E87270f26C903fc76Cb209D19',
+    blockCreated: 4346624,
     legacy: [] as const,
   },
 } as const;
@@ -698,6 +723,7 @@ export const contracts = {
   predictionMarketVault,
   pythPredictionMarketVault,
   singleLegVault,
+  predictionMarketVaultStrategyB,
   secondaryMarketEscrow,
   onboardingSponsor,
   pythConditionResolver,
