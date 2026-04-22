@@ -18,7 +18,6 @@ import {
 import {
   Activity,
   ArrowLeftRight,
-  Bot,
   FileText,
   DollarSign,
   Handshake,
@@ -39,7 +38,6 @@ import ConditionForecastForm from '~/components/conditions/ConditionForecastForm
 import { POLYMARKET_RESOLVER_ADDRESSES } from '~/lib/constants';
 import { inferResolverKind } from '~/lib/resolvers/conditionResolver';
 import { FocusAreaBadge } from '~/components/shared/FocusAreaBadge';
-import ResearchAgent from '~/components/markets/ResearchAgent';
 import ActivityTable from '~/components/positions/ActivityTable';
 import PositionsTable from '~/components/positions/PositionsTable';
 import { usePredictionsByConditionId } from '~/hooks/graphql/usePositions';
@@ -396,7 +394,6 @@ export default function QuestionPageContent({
     | 'positions'
     | 'forecasts'
     | 'resolution'
-    | 'agent'
     | 'techspecs';
 
   const TAB_VALUES: PrimaryTab[] = [
@@ -404,7 +401,6 @@ export default function QuestionPageContent({
     'positions',
     'forecasts',
     'resolution',
-    'agent',
     'techspecs',
   ];
 
@@ -643,13 +639,6 @@ export default function QuestionPageContent({
               Resolution
             </TabsTrigger>
             <TabsTrigger
-              value="agent"
-              className="px-3 py-1.5 text-sm rounded-md bg-brand-white/[0.08] data-[state=active]:bg-brand-white/15 data-[state=active]:text-brand-white text-muted-foreground hover:text-brand-white/80 hover:bg-brand-white/[0.12] transition-colors inline-flex items-center gap-1.5 whitespace-nowrap"
-            >
-              <Bot className="h-3.5 w-3.5" />
-              Agent
-            </TabsTrigger>
-            <TabsTrigger
               value="techspecs"
               className="px-3 py-1.5 text-sm rounded-md bg-brand-white/[0.08] data-[state=active]:bg-brand-white/15 data-[state=active]:text-brand-white text-muted-foreground hover:text-brand-white/80 hover:bg-brand-white/[0.12] transition-colors inline-flex items-center gap-1.5 whitespace-nowrap"
             >
@@ -747,14 +736,6 @@ export default function QuestionPageContent({
             </span>
           )}
         </TabsContent>
-        {/* Content area - Agent */}
-        <TabsContent value="agent" className="m-0">
-          <ResearchAgent
-            question={data.question}
-            endTime={data.endTime}
-            description={data.description}
-          />
-        </TabsContent>
         {/* Content area - Tech Specs */}
         <TabsContent value="techspecs" className="m-0">
           {renderTechSpecsCard(false)}
@@ -802,13 +783,6 @@ export default function QuestionPageContent({
             >
               <Handshake className="h-3.5 w-3.5" />
               Resolution
-            </TabsTrigger>
-            <TabsTrigger
-              value="agent"
-              className="px-3 py-1.5 text-sm rounded-md bg-brand-white/[0.08] data-[state=active]:bg-brand-white/15 data-[state=active]:text-brand-white text-muted-foreground hover:text-brand-white/80 hover:bg-brand-white/[0.12] transition-colors inline-flex items-center gap-1.5"
-            >
-              <Bot className="h-3.5 w-3.5" />
-              Agent
             </TabsTrigger>
           </TabsList>
         </div>
@@ -897,13 +871,6 @@ export default function QuestionPageContent({
               No resolution criteria available.
             </span>
           )}
-        </TabsContent>
-        <TabsContent value="agent" className="m-0">
-          <ResearchAgent
-            question={data.question}
-            endTime={data.endTime}
-            description={data.description}
-          />
         </TabsContent>
       </div>
     </Tabs>
