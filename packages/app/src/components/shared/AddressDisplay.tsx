@@ -17,6 +17,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import {
   predictionMarketVault,
+  predictionMarketVaultStrategyB,
   pythPredictionMarketVault,
   singleLegVault,
 } from '@sapience/sdk/contracts';
@@ -124,6 +125,7 @@ const AddressDisplay = ({
   const isVaultAddress = [
     ...Object.values(predictionMarketVault),
     ...Object.values(pythPredictionMarketVault),
+    ...Object.values(predictionMarketVaultStrategyB),
     ...Object.values(singleLegVault),
   ].some((vault) => vault.address.toLowerCase() === lowerAddress);
 

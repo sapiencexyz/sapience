@@ -12,6 +12,7 @@ import {
   ResponsiveContainer,
 } from 'recharts';
 import { Tabs, TabsTrigger } from '@sapience/ui/components/ui/tabs';
+import { Button } from '@sapience/ui/components/ui/button';
 import {
   useProtocolStats,
   type ProtocolStat,
@@ -38,9 +39,12 @@ function formatLargeNumber(value: number): string {
 function formatPercentTick(value: number): string {
   const abs = Math.abs(value);
   const sign = value < 0 ? '-' : '';
-  if (abs >= 100) return `${sign}${abs.toFixed(0)}%`;
-  if (abs >= 10) return `${sign}${abs.toFixed(1)}%`;
-  return `${sign}${abs.toFixed(2)}%`;
+  const digits = abs >= 100 ? 0 : abs >= 10 ? 1 : 2;
+  const formatted = abs.toLocaleString('en-US', {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
+  return `${sign}${formatted}%`;
 }
 
 function formatTimestampTick(value: number): string {
@@ -93,16 +97,15 @@ function ChartTooltip({
 }: ChartTooltipProps): React.ReactNode {
   if (!active || !payload?.length) return null;
 
-  const dataKey = displayMode === 'pct' ? 'pct' : 'pnl';
-  const dataPoint = payload.find((p) => p.dataKey === dataKey);
+  const dataPoint = payload.find((p) => p.dataKey === 'value');
   if (!dataPoint || dataPoint.value == null) return null;
 
   const value = Number(dataPoint.value);
   const isPositive = value >= 0;
   const formattedValue =
     displayMode === 'pct'
-      ? `${Math.abs(value).toFixed(2)}%`
-      : `${Math.abs(value).toLocaleString(undefined, {
+      ? `${value.toFixed(2)}%`
+      : `${value.toLocaleString(undefined, {
           minimumFractionDigits: 2,
           maximumFractionDigits: 2,
         })} ${collateralSymbol}`;
@@ -136,7 +139,6 @@ function ChartTooltip({
       <div
         className={`text-sm font-mono ${isPositive ? 'text-green-500' : 'text-red-500'}`}
       >
-        {isPositive ? '+' : '-'}
         {formattedValue}
       </div>
     </div>
@@ -178,7 +180,7 @@ export default function VaultPnlChart({
   const [internalPeriod, setInternalPeriod] = useState<Period>('1W');
   const period = externalPeriod ?? internalPeriod;
   const setPeriod = setInternalPeriod;
-  const [displayMode, setDisplayMode] = useState<DisplayMode>('pct');
+  const [displayMode, setDisplayMode] = useState<DisplayMode>('abs');
 
   // Use internal fetch if no external data provided
   const { data: internalStats, isLoading: internalLoading } =
@@ -198,9 +200,21 @@ export default function VaultPnlChart({
         ? 0
         : Math.floor(Date.now() / 1000) - periodDays * 24 * 60 * 60;
 
-    const filteredStats = protocolStats.filter(
+    let filteredStats = protocolStats.filter(
       (stat) => stat.timestamp >= cutoffTimestamp
     );
+
+    // For the ALL view, drop leading entries where PnL hasn't started accruing
+    // yet (new vault, no activity). Keep the last zero so the chart visually
+    // starts at 0 before the first non-zero move.
+    if (period === 'ALL') {
+      const firstActiveIdx = filteredStats.findIndex(
+        (s) => s.vaultCumulativePnL && parseFloat(s.vaultCumulativePnL) !== 0
+      );
+      if (firstActiveIdx > 0) {
+        filteredStats = filteredStats.slice(firstActiveIdx - 1);
+      }
+    }
 
     if (filteredStats.length === 0) return [];
 
@@ -209,7 +223,6 @@ export default function VaultPnlChart({
         (parseFloat(point.vaultBalance) + parseFloat(point.escrowBalance)) /
         1e18;
 
-      // Use real vaultCumulativePnL from backend (stored as wei string)
       const pnl = point.vaultCumulativePnL
         ? parseFloat(point.vaultCumulativePnL) / 1e18
         : 0;
@@ -221,74 +234,60 @@ export default function VaultPnlChart({
       };
     });
 
-    // Compute period-relative percent return using avg TVL as denominator
-    // (matches the APY denominator so the chart end value lines up with APY)
+    // Both charts rebase to zero at the window start:
+    //   pnlDelta = cumulative PnL accrued since the window start
+    //   apy      = compound-annualized return on starting TVL to date
+    // Concretely apy_t = ((1 + pnlDelta_t / startTvl)^(365/daysElapsed_t) - 1)
+    const startTimestamp = points[0].timestamp;
     const startPnl = points[0].pnl;
-    const avgTvl = points.reduce((sum, p) => sum + p.tvl, 0) / points.length;
-    return points.map((p) => ({
-      ...p,
-      pct: avgTvl > 0 ? ((p.pnl - startPnl) / avgTvl) * 100 : 0,
-    }));
+    const startTvl = points[0].tvl;
+
+    return points.map((p, i) => {
+      const pnlDelta = p.pnl - startPnl;
+      const periodReturn = startTvl > 0 ? pnlDelta / startTvl : 0;
+      const daysElapsed = (p.timestamp - startTimestamp) / (24 * 60 * 60);
+
+      let apy = 0;
+      if (i > 0 && daysElapsed >= 0.5 && 1 + periodReturn > 0) {
+        apy = (Math.pow(1 + periodReturn, 365 / daysElapsed) - 1) * 100;
+      }
+
+      return { ...p, pnlDelta, apy };
+    });
   }, [protocolStats, period]);
 
-  // Calculate APY for the selected period based on actual PnL relative to average TVL
-  const apy = useMemo(() => {
-    if (chartData.length < 2) return null;
+  const apy =
+    chartData.length >= 2 ? chartData[chartData.length - 1].apy : null;
 
-    const firstPoint = chartData[0];
-    const lastPoint = chartData[chartData.length - 1];
+  // Recharts animates only when the dataKey and point count stay stable, so
+  // project both modes onto a single `value` field. Swapping source makes the
+  // area tween between shapes instead of re-rendering from scratch. `pct` is
+  // cumulative time-weighted return — monotonic while profitable, so a
+  // slowdown reads as flattening rather than descent.
+  const displayData = useMemo(
+    () =>
+      chartData.map((d) => ({
+        ...d,
+        value: displayMode === 'pct' ? d.apy : d.pnlDelta,
+      })),
+    [chartData, displayMode]
+  );
 
-    // Calculate days elapsed
-    const startTimestamp = firstPoint.timestamp;
-    const endTimestamp = lastPoint.timestamp;
-    const daysElapsed = (endTimestamp - startTimestamp) / (24 * 60 * 60);
-
-    // Require minimum 1 day of data for meaningful APY
-    if (daysElapsed < 1) return null;
-
-    // Calculate PnL change over the period
-    const pnlChange = lastPoint.pnl - firstPoint.pnl;
-
-    // Calculate average TVL over the period
-    const avgTvl =
-      chartData.reduce((sum, point) => sum + point.tvl, 0) / chartData.length;
-
-    if (avgTvl <= 0) return null;
-
-    // Calculate period return relative to average TVL
-    const periodReturn = pnlChange / avgTvl;
-
-    // Annualize: APY = ((1 + periodReturn) ^ (365 / days) - 1) * 100
-    const annualizedReturn =
-      (Math.pow(1 + periodReturn, 365 / daysElapsed) - 1) * 100;
-
-    return annualizedReturn;
-  }, [chartData]);
-
-  // Calculate domain for Y axis - only extend as much as needed for the data
   const yDomain = useMemo(() => {
-    if (chartData.length === 0) return [-1, 1];
+    if (displayData.length === 0) return [-1, 1];
 
-    const values = chartData.map((d) =>
-      displayMode === 'pct' ? d.pct : d.pnl
-    );
+    const values = displayData.map((d) => d.value);
     const minVal = Math.min(...values);
     const maxVal = Math.max(...values);
 
-    // Add 10% padding to min/max
     const range = maxVal - minVal;
     const padding = range * 0.1 || (displayMode === 'pct' ? 0.01 : 0.1);
 
     return [minVal - padding, maxVal + padding];
-  }, [chartData, displayMode]);
+  }, [displayData, displayMode]);
 
-  // Determine if overall PnL is positive or negative based on the displayed value
   const currentValue =
-    chartData.length > 0
-      ? displayMode === 'pct'
-        ? chartData[chartData.length - 1].pct
-        : chartData[chartData.length - 1].pnl
-      : 0;
+    displayData.length > 0 ? displayData[displayData.length - 1].value : 0;
   const isPositive = currentValue >= 0;
 
   // Check if className includes flex-1 to use flexible height
@@ -300,39 +299,43 @@ export default function VaultPnlChart({
     >
       {showHeader && (
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-1 gap-1 sm:gap-2">
-          <h4 className="text-base font-mono uppercase tracking-wider text-brand-white">
-            Profit/Loss
-          </h4>
+          <div className="flex items-center gap-2">
+            <h4 className="text-base font-mono uppercase tracking-wider text-brand-white">
+              Profit/Loss
+            </h4>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-5 px-1.5 text-[10px] font-mono text-muted-foreground/60 hover:text-brand-white"
+              onClick={() =>
+                setDisplayMode((m) => (m === 'pct' ? 'abs' : 'pct'))
+              }
+              aria-label="Toggle between percent and absolute"
+            >
+              {displayMode === 'pct' ? '%' : '$'}
+            </Button>
+          </div>
           <div className="flex items-center justify-between sm:justify-end gap-3 flex-wrap">
             <span
               className={`text-base font-mono transition-opacity duration-300 ${apy !== null ? 'opacity-100' : 'opacity-0'} ${apy !== null && apy >= 0 ? 'text-green-500' : 'text-red-500'}`}
             >
               {apy !== null
-                ? (apy >= 0 ? '+' : '') + apy.toFixed(1) + '% APY'
+                ? (apy >= 0 ? '+' : '') +
+                  apy.toLocaleString('en-US', {
+                    minimumFractionDigits: 0,
+                    maximumFractionDigits: 1,
+                  }) +
+                  '% APY'
                 : '\u00A0'}
             </span>
-            <div className="flex items-center gap-2">
-              <Tabs
-                value={displayMode}
-                onValueChange={(v) => setDisplayMode(v as DisplayMode)}
-              >
-                <SegmentedTabsList triggerClassName="text-xs px-2 h-7">
-                  <TabsTrigger value="pct">%</TabsTrigger>
-                  <TabsTrigger value="abs">{collateralSymbol}</TabsTrigger>
-                </SegmentedTabsList>
-              </Tabs>
-              <Tabs
-                value={period}
-                onValueChange={(v) => setPeriod(v as Period)}
-              >
-                <SegmentedTabsList triggerClassName="text-xs px-2 h-7">
-                  <TabsTrigger value="1W">1W</TabsTrigger>
-                  <TabsTrigger value="1M">1M</TabsTrigger>
-                  <TabsTrigger value="3M">3M</TabsTrigger>
-                  <TabsTrigger value="ALL">ALL</TabsTrigger>
-                </SegmentedTabsList>
-              </Tabs>
-            </div>
+            <Tabs value={period} onValueChange={(v) => setPeriod(v as Period)}>
+              <SegmentedTabsList triggerClassName="text-xs px-2 h-7">
+                <TabsTrigger value="1W">1W</TabsTrigger>
+                <TabsTrigger value="1M">1M</TabsTrigger>
+                <TabsTrigger value="3M">3M</TabsTrigger>
+                <TabsTrigger value="ALL">ALL</TabsTrigger>
+              </SegmentedTabsList>
+            </Tabs>
           </div>
         </div>
       )}
@@ -354,7 +357,7 @@ export default function VaultPnlChart({
         ) : (
           <div className="absolute inset-0 transition-opacity duration-300">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={chartData} margin={CHART_MARGIN}>
+              <AreaChart data={displayData} margin={CHART_MARGIN}>
                 <defs>
                   <linearGradient
                     id="pnlGradientPositive"
@@ -405,11 +408,12 @@ export default function VaultPnlChart({
                 <YAxis
                   {...CHART_AXIS_STYLE}
                   domain={yDomain}
-                  tickFormatter={(v) =>
-                    displayMode === 'pct'
+                  tickFormatter={(v) => {
+                    if (v < 0) return '';
+                    return displayMode === 'pct'
                       ? formatPercentTick(v)
-                      : formatLargeNumber(v)
-                  }
+                      : `$${formatLargeNumber(v)}`;
+                  }}
                 />
                 <Tooltip
                   cursor={<AnimatedCursor />}
@@ -423,7 +427,7 @@ export default function VaultPnlChart({
                 />
                 <Area
                   type="monotone"
-                  dataKey={displayMode === 'pct' ? 'pct' : 'pnl'}
+                  dataKey="value"
                   stroke={isPositive ? 'hsl(142 76% 36%)' : 'hsl(0 84% 60%)'}
                   strokeWidth={2}
                   fill={
@@ -433,6 +437,8 @@ export default function VaultPnlChart({
                   }
                   baseValue={yDomain[0]}
                   activeDot={{ r: 4, strokeWidth: 0 }}
+                  isAnimationActive
+                  animationDuration={500}
                 />
               </AreaChart>
             </ResponsiveContainer>
