@@ -1859,6 +1859,11 @@ export type QueryProfitLeaderboardArgs = {
 };
 
 
+export type QueryProtocolStatsArgs = {
+  vaultAddress?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type QueryProtocolVolumeArgs = {
   from?: InputMaybe<Scalars['DateTimeISO']['input']>;
   interval: TimeInterval;

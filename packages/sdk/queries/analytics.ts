@@ -19,8 +19,8 @@ export interface ProtocolStat {
 }
 
 const GET_PROTOCOL_STATS = /* GraphQL */ `
-  query ProtocolStats {
-    protocolStats {
+  query ProtocolStats($vaultAddress: String) {
+    protocolStats(vaultAddress: $vaultAddress) {
       timestamp
       cumulativeVolume
       openInterest
@@ -40,9 +40,11 @@ const GET_PROTOCOL_STATS = /* GraphQL */ `
   }
 `;
 
-export async function fetchProtocolStats(): Promise<ProtocolStat[]> {
+export async function fetchProtocolStats(
+  vaultAddress?: string
+): Promise<ProtocolStat[]> {
   const data = await graphqlRequest<{
     protocolStats: ProtocolStat[];
-  }>(GET_PROTOCOL_STATS);
+  }>(GET_PROTOCOL_STATS, { vaultAddress });
   return data?.protocolStats ?? [];
 }

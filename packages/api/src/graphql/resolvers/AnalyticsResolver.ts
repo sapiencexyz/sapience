@@ -1,4 +1,5 @@
 import {
+  Arg,
   Directive,
   Field,
   Int,
@@ -103,10 +104,15 @@ export class AnalyticsResolver {
       'Daily protocol statistics time series (last 90 days) — vault balance, volume, PnL, and open interest',
   })
   @Directive('@cacheControl(maxAge: 60)')
-  async protocolStats(): Promise<ProtocolStat[]> {
+  async protocolStats(
+    @Arg('vaultAddress', () => String, { nullable: true })
+    vaultAddressArg?: string
+  ): Promise<ProtocolStat[]> {
     const chainId = DEFAULT_CHAIN_ID;
     const vaultAddress = (
-      contracts.predictionMarketVault[chainId]?.address ?? ''
+      vaultAddressArg ??
+      contracts.predictionMarketVault[chainId]?.address ??
+      ''
     ).toLowerCase();
 
     // Fetch all available snapshots

@@ -29,7 +29,6 @@ import {
   type VolumeWindow,
 } from '~/hooks/graphql/useInfiniteQuestions';
 import { useDebouncedValue } from '~/hooks/useDebouncedValue';
-import { useFeatureFlag } from '~/hooks/useFeatureFlag';
 import { useSessionState } from '~/hooks/useSessionState';
 import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 
@@ -54,11 +53,6 @@ const MarketsPage = () => {
 
   // Get compact status (needed by callbacks below)
   const isCompact = useIsBelow(1024);
-
-  const showPredictPrices = useFeatureFlag(
-    'markets.predictPrices',
-    'predictPrices'
-  );
 
   const { openPopover } = useCreatePositionContext();
 
@@ -381,21 +375,19 @@ const MarketsPage = () => {
           {!useCardGrid && <ExampleCombos className="mt-4 md:mt-0" />}
 
           {/* Predict Prices (shared) */}
-          {showPredictPrices && (
-            <div className={`w-full mt-4 mb-2 ${useCardGrid ? 'px-4' : ''}`}>
-              <div className="flex items-center justify-between mb-2 px-1">
-                <h2
-                  className={`sc-heading ${useCardGrid ? 'text-white/80' : 'text-foreground'}`}
-                >
-                  Predict Prices
-                </h2>
-              </div>
-              <CreatePythPredictionForm
-                featuredFeeds={PYTH_FEEDS}
-                onPick={handlePythPick}
-              />
+          <div className={`w-full mt-4 mb-2 ${useCardGrid ? 'px-4' : ''}`}>
+            <div className="flex items-center justify-between mb-2 px-1">
+              <h2
+                className={`sc-heading ${useCardGrid ? 'text-white/80' : 'text-foreground'}`}
+              >
+                Predict Prices
+              </h2>
             </div>
-          )}
+            <CreatePythPredictionForm
+              featuredFeeds={PYTH_FEEDS}
+              onPick={handlePythPick}
+            />
+          </div>
 
           {/* Results area */}
           <div className="relative w-full max-w-full overflow-x-hidden flex-1 flex flex-col min-h-0">

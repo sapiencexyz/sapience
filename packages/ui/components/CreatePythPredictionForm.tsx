@@ -119,15 +119,64 @@ async function fetchPythProFeeds(
 let cachedLazerFeeds: PythProFeedRow[] | null = null;
 let inflightLazerFeeds: Promise<PythProFeedRow[]> | null = null;
 
+const LAZER_FEEDS_STORAGE_KEY = 'sapience.pyth.lazerFeeds.v1';
+const LAZER_FEEDS_TTL_MS = 24 * 60 * 60 * 1000; // 24h
+
+type LazerFeedsEnvelope = {
+  cachedAt: number;
+  feeds: PythProFeedRow[];
+};
+
+function readLazerFeedsFromStorage(): PythProFeedRow[] | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = window.localStorage.getItem(LAZER_FEEDS_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as LazerFeedsEnvelope;
+    if (
+      !parsed ||
+      typeof parsed.cachedAt !== 'number' ||
+      !Array.isArray(parsed.feeds)
+    ) {
+      return null;
+    }
+    if (Date.now() - parsed.cachedAt > LAZER_FEEDS_TTL_MS) return null;
+    return parsed.feeds;
+  } catch {
+    return null;
+  }
+}
+
+function writeLazerFeedsToStorage(feeds: PythProFeedRow[]): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const envelope: LazerFeedsEnvelope = { cachedAt: Date.now(), feeds };
+    window.localStorage.setItem(
+      LAZER_FEEDS_STORAGE_KEY,
+      JSON.stringify(envelope)
+    );
+  } catch {
+    // Storage unavailable or quota exceeded — ignore.
+  }
+}
+
 async function loadPythProFeedsCached(
   signal: AbortSignal
 ): Promise<PythProFeedRow[]> {
   if (cachedLazerFeeds && cachedLazerFeeds.length > 0) return cachedLazerFeeds;
+
+  const fromStorage = readLazerFeedsFromStorage();
+  if (fromStorage && fromStorage.length > 0) {
+    cachedLazerFeeds = fromStorage;
+    return fromStorage;
+  }
+
   if (inflightLazerFeeds) return await inflightLazerFeeds;
   inflightLazerFeeds = (async () => {
     try {
       const rows = await fetchPythProFeeds(signal);
       cachedLazerFeeds = rows;
+      writeLazerFeedsToStorage(rows);
       return rows;
     } finally {
       inflightLazerFeeds = null;
@@ -864,6 +913,12 @@ export function CreatePythPredictionForm({
       setLazerFeeds(cachedLazerFeeds);
       return () => {};
     }
+    const fromStorage = readLazerFeedsFromStorage();
+    if (fromStorage && fromStorage.length > 0) {
+      cachedLazerFeeds = fromStorage;
+      setLazerFeeds(fromStorage);
+      return () => {};
+    }
 
     const ac = new AbortController();
     setIsLoadingLazerFeeds(true);
@@ -1093,11 +1148,11 @@ export function CreatePythPredictionForm({
               >
                 <Command>
                   <CommandList>
-                    {isLoadingLazerFeeds ? (
+                    {filteredLazerFeeds.length === 0 && isLoadingLazerFeeds ? (
                       <div className="py-3 px-3 text-sm opacity-75">
                         Loading…
                       </div>
-                    ) : lazerFeedsError ? (
+                    ) : filteredLazerFeeds.length === 0 && lazerFeedsError ? (
                       <div className="py-3 px-3 text-sm text-red-400">
                         {lazerFeedsError}
                       </div>
