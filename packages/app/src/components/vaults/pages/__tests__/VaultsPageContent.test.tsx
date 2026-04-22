@@ -59,6 +59,8 @@ vi.mock('~/components/shared/RestrictedJurisdictionBanner', () => {
 // SDK mocks
 vi.mock('@sapience/sdk/contracts', () => ({
   predictionMarketVault: { 42161: { address: '0xVault' } },
+  pythPredictionMarketVault: { 42161: { address: '0xOptionsVault' } },
+  singleLegVault: {},
 }));
 
 vi.mock('@sapience/sdk/constants', () => ({

@@ -60,23 +60,37 @@ const VaultsPageContent = () => {
     pythPredictionMarketVault[VAULT_CHAIN_ID]?.address;
   const optionsVaultAvailable = Boolean(optionsVaultAddress);
 
-  const [selectedVault, setSelectedVault] = useState<VaultKind>('protocol');
+  const [selectedVault, setSelectedVault] = useState<VaultKind>(() => {
+    if (typeof window === 'undefined') return 'protocol';
+    const hash = window.location.hash.replace('#', '').toLowerCase();
+    return hash === 'options' && optionsVaultAvailable ? 'options' : 'protocol';
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!optionsVaultAvailable && window.location.hash === '#options') {
+      const url = `${window.location.pathname}${window.location.search}#protocol`;
+      window.history.replaceState(null, '', url);
+    }
+  }, [optionsVaultAvailable]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const syncFromHash = () => {
       const hash = window.location.hash.replace('#', '').toLowerCase();
-      if (hash === 'options' || hash === 'protocol') {
-        setSelectedVault(hash);
+      if (hash === 'options' && optionsVaultAvailable) {
+        setSelectedVault('options');
+      } else if (hash === 'options' || hash === 'protocol') {
+        setSelectedVault('protocol');
       }
     };
-    syncFromHash();
     window.addEventListener('hashchange', syncFromHash);
     return () => window.removeEventListener('hashchange', syncFromHash);
-  }, []);
+  }, [optionsVaultAvailable]);
 
   const handleVaultChange = (value: string) => {
-    const next = value === 'options' ? 'options' : 'protocol';
+    const next =
+      value === 'options' && optionsVaultAvailable ? 'options' : 'protocol';
     setSelectedVault(next);
     if (typeof window !== 'undefined') {
       const url = `${window.location.pathname}${window.location.search}#${next}`;
@@ -84,14 +98,10 @@ const VaultsPageContent = () => {
     }
   };
 
-  const activeVault: VaultKind =
-    selectedVault === 'options' && !optionsVaultAvailable
-      ? 'protocol'
-      : selectedVault;
   const VAULT_ADDRESS =
-    activeVault === 'options' ? optionsVaultAddress : protocolVaultAddress;
+    selectedVault === 'options' ? optionsVaultAddress : protocolVaultAddress;
   const vaultTitle =
-    activeVault === 'options' ? 'Options Vault' : 'Protocol Vault';
+    selectedVault === 'options' ? 'Options Vault' : 'Protocol Vault';
   const collateralSymbol = COLLATERAL_SYMBOLS[VAULT_CHAIN_ID] || 'testUSDe';
 
   const {
@@ -605,7 +615,7 @@ const VaultsPageContent = () => {
           <h1 className="text-3xl md:text-5xl font-sans font-normal text-foreground">
             Vaults
           </h1>
-          <Tabs value={activeVault} onValueChange={handleVaultChange}>
+          <Tabs value={selectedVault} onValueChange={handleVaultChange}>
             <TabsList className="h-auto p-1">
               <TabsTrigger
                 value="protocol"
