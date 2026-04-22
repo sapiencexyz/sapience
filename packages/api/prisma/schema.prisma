@@ -505,6 +505,7 @@ model VaultFlowEvent {
   id              Int      @id @default(autoincrement())
   createdAt       DateTime @default(now()) @db.Timestamp(6)
   chainId         Int
+  vaultAddress    String   @db.VarChar  // lowercased vault contract address
   blockNumber     Int
   transactionHash String   @db.VarChar
   timestamp       Int
@@ -515,7 +516,7 @@ model VaultFlowEvent {
   shares          String   @db.VarChar  // Shares minted/burned
 
   @@unique([chainId, transactionHash, logIndex])
-  @@index([chainId, timestamp])
+  @@index([chainId, vaultAddress, timestamp])
   @@index([eventType])
   @@map("vault_flow_event")
 }

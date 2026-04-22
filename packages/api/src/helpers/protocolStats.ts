@@ -34,15 +34,65 @@ interface ProtocolStatsData {
   vaultCollateralLost: bigint;
 }
 
+type VaultConfig = (typeof contracts.predictionMarketVault)[number];
+
+export interface ConfiguredVault {
+  kind: 'protocol' | 'pyth' | 'single-leg';
+  config: VaultConfig;
+  address: string;
+}
+
+/**
+ * Return all vault contracts deployed on the given chain. Used to fan-out
+ * per-vault snapshot computation.
+ */
+export function getConfiguredVaults(chainId: number): ConfiguredVault[] {
+  const list: ConfiguredVault[] = [];
+  const main = contracts.predictionMarketVault[chainId];
+  if (main) {
+    list.push({
+      kind: 'protocol',
+      config: main,
+      address: main.address.toLowerCase(),
+    });
+  }
+  const pyth = contracts.pythPredictionMarketVault[chainId];
+  if (pyth) {
+    list.push({
+      kind: 'pyth',
+      config: pyth,
+      address: pyth.address.toLowerCase(),
+    });
+  }
+  const single = contracts.singleLegVault[chainId];
+  if (single) {
+    list.push({
+      kind: 'single-leg',
+      config: single,
+      address: single.address.toLowerCase(),
+    });
+  }
+  return list;
+}
+
+function resolveVaultAddress(
+  chainId: number,
+  vaultAddressArg?: string
+): string | undefined {
+  return (
+    vaultAddressArg ?? contracts.predictionMarketVault[chainId]?.address
+  )?.toLowerCase();
+}
+
 /**
  * Fetch Vault balance: collateral.balanceOf(vault)
  */
 export async function fetchVaultTVL(
-  chainId: number = DEFAULT_CHAIN_ID
+  chainId: number = DEFAULT_CHAIN_ID,
+  vaultAddressArg?: string
 ): Promise<bigint> {
   const client = getProviderForChain(chainId);
-
-  const vaultAddress = contracts.predictionMarketVault[chainId]?.address;
+  const vaultAddress = resolveVaultAddress(chainId, vaultAddressArg);
   const collateralAddress = contracts.collateralToken[chainId]?.address;
 
   if (!vaultAddress || !collateralAddress) {
@@ -55,7 +105,7 @@ export async function fetchVaultTVL(
     address: collateralAddress,
     abi: erc20Abi,
     functionName: 'balanceOf',
-    args: [vaultAddress],
+    args: [vaultAddress as `0x${string}`],
   });
 
   return balance;
@@ -71,15 +121,16 @@ export async function fetchVaultTVL(
  */
 export async function fetchVaultDeployed(
   chainId: number = DEFAULT_CHAIN_ID,
-  atTimestamp?: number
+  atTimestamp?: number,
+  vaultAddressArg?: string
 ): Promise<bigint> {
-  const vaultAddress = contracts.predictionMarketVault[chainId]?.address;
+  const vaultAddress = resolveVaultAddress(chainId, vaultAddressArg);
   if (!vaultAddress) return 0n;
 
   const predictions = await prisma.prediction.findMany({
     where: {
       chainId,
-      counterparty: vaultAddress.toLowerCase(),
+      counterparty: vaultAddress,
       ...(atTimestamp
         ? {
             onChainCreatedAt: { lte: atTimestamp },
@@ -120,26 +171,28 @@ export async function fetchVaultDeployed(
 export async function fetchVaultDeployedAtBlock(
   chainId: number,
   _blockNumber: bigint,
-  atTimestamp?: number
+  atTimestamp?: number,
+  vaultAddressArg?: string
 ): Promise<bigint> {
-  return fetchVaultDeployed(chainId, atTimestamp);
+  return fetchVaultDeployed(chainId, atTimestamp, vaultAddressArg);
 }
 
 /**
  * Fetch Vault available assets: vault.availableAssets()
  */
 export async function fetchVaultAvailableAssets(
-  chainId: number = DEFAULT_CHAIN_ID
+  chainId: number = DEFAULT_CHAIN_ID,
+  vaultAddressArg?: string
 ): Promise<bigint> {
   const client = getProviderForChain(chainId);
-  const vaultAddress = contracts.predictionMarketVault[chainId]?.address;
+  const vaultAddress = resolveVaultAddress(chainId, vaultAddressArg);
 
   if (!vaultAddress) {
     throw new Error(`Vault not configured for chain ${chainId}`);
   }
 
   const availableAssets = (await client.readContract({
-    address: vaultAddress,
+    address: vaultAddress as `0x${string}`,
     abi: predictionMarketVaultAbi,
     functionName: 'availableAssets',
     args: [],
@@ -153,17 +206,18 @@ export async function fetchVaultAvailableAssets(
  */
 export async function fetchVaultAvailableAssetsAtBlock(
   chainId: number,
-  blockNumber: bigint
+  blockNumber: bigint,
+  vaultAddressArg?: string
 ): Promise<bigint> {
   const client = getProviderForChain(chainId);
-  const vaultAddress = contracts.predictionMarketVault[chainId]?.address;
+  const vaultAddress = resolveVaultAddress(chainId, vaultAddressArg);
 
   if (!vaultAddress) {
     throw new Error(`Vault not configured for chain ${chainId}`);
   }
 
   const availableAssets = (await client.readContract({
-    address: vaultAddress,
+    address: vaultAddress as `0x${string}`,
     abi: predictionMarketVaultAbi,
     functionName: 'availableAssets',
     args: [],
@@ -207,11 +261,11 @@ export async function fetchPredictionMarketEscrowTVL(
  */
 export async function fetchVaultTVLAtBlock(
   chainId: number,
-  blockNumber: bigint
+  blockNumber: bigint,
+  vaultAddressArg?: string
 ): Promise<bigint> {
   const client = getProviderForChain(chainId);
-
-  const vaultAddress = contracts.predictionMarketVault[chainId]?.address;
+  const vaultAddress = resolveVaultAddress(chainId, vaultAddressArg);
   const collateralAddress = contracts.collateralToken[chainId]?.address;
 
   if (!vaultAddress || !collateralAddress) {
@@ -224,7 +278,7 @@ export async function fetchVaultTVLAtBlock(
     address: collateralAddress,
     abi: erc20Abi,
     functionName: 'balanceOf',
-    args: [vaultAddress],
+    args: [vaultAddress as `0x${string}`],
     blockNumber,
   });
 
@@ -297,9 +351,10 @@ function getContractForBlock(
  */
 export async function calculateVaultPnL(
   chainId: number,
-  beforeTimestamp?: number
+  beforeTimestamp?: number,
+  vaultAddressArg?: string
 ): Promise<VaultPnLResult> {
-  const vaultAddress = contracts.predictionMarketVault[chainId]?.address;
+  const vaultAddress = resolveVaultAddress(chainId, vaultAddressArg);
   if (!vaultAddress) {
     return {
       realizedPnL: 0n,
@@ -309,7 +364,6 @@ export async function calculateVaultPnL(
       totalCollateralLost: 0n,
     };
   }
-  const vaultAddressLower = vaultAddress.toLowerCase();
 
   const predictions = await prisma.prediction.findMany({
     where: {
@@ -320,10 +374,7 @@ export async function calculateVaultPnL(
         result: { not: SettlementResult.UNRESOLVED },
         ...(beforeTimestamp ? { resolvedAt: { lte: beforeTimestamp } } : {}),
       },
-      OR: [
-        { predictor: vaultAddressLower },
-        { counterparty: vaultAddressLower },
-      ],
+      OR: [{ predictor: vaultAddress }, { counterparty: vaultAddress }],
     },
     include: {
       pickConfiguration: { select: { result: true } },
@@ -344,7 +395,7 @@ export async function calculateVaultPnL(
     const counterpartyCollateral = BigInt(prediction.counterpartyCollateral);
 
     const isVaultPredictor =
-      prediction.predictor.toLowerCase() === vaultAddressLower;
+      prediction.predictor.toLowerCase() === vaultAddress;
 
     const vaultWon =
       (isVaultPredictor && picksResult === SettlementResult.PREDICTOR_WINS) ||
@@ -377,15 +428,22 @@ export async function calculateVaultPnL(
 }
 
 /**
- * Calculate vault's cumulative deposits and withdrawals from indexed flow events.
+ * Calculate a vault's cumulative deposits and withdrawals from indexed flow
+ * events. Events are keyed by vaultAddress so each deployment is isolated.
  */
 export async function calculateVaultFlows(
   chainId: number,
-  beforeTimestamp?: number
+  beforeTimestamp?: number,
+  vaultAddressArg?: string
 ): Promise<VaultFlowsResult> {
-  const whereClause: { chainId: number; timestamp?: { lte: number } } = {
-    chainId,
-  };
+  const vaultAddress = resolveVaultAddress(chainId, vaultAddressArg);
+  if (!vaultAddress) return { totalDeposits: 0n, totalWithdrawals: 0n };
+
+  const whereClause: {
+    chainId: number;
+    vaultAddress: string;
+    timestamp?: { lte: number };
+  } = { chainId, vaultAddress };
 
   if (beforeTimestamp) {
     whereClause.timestamp = { lte: beforeTimestamp };
@@ -466,62 +524,47 @@ async function upsertProtocolStatsSnapshot(
 }
 
 /**
- * Main function to compute and store daily protocol stats snapshot.
+ * Compute and store a snapshot for a single vault.
  */
-export async function computeAndStoreProtocolStats(
-  chainId: number = DEFAULT_CHAIN_ID
+async function computeAndStoreVaultStats(
+  chainId: number,
+  vault: ConfiguredVault,
+  escrowBalance: bigint,
+  timestamp: number
 ): Promise<void> {
-  const vaultAddress = (
-    contracts.predictionMarketVault[chainId]?.address ?? ''
-  ).toLowerCase();
-
   console.log(
-    `[ProtocolStats] Starting stats computation for chain ${chainId}, vault ${vaultAddress}`
+    `[ProtocolStats] Computing ${vault.kind} vault ${vault.address} on chain ${chainId}`
   );
 
-  // Use UTC midnight for consistent daily snapshots (matches backfillProtocolStats)
-  const timestamp = getUtcMidnightTimestamp(new Date());
-
-  // Fetch balances
-  const vaultBalance = await fetchVaultTVL(chainId);
-  const vaultAvailableAssets = await fetchVaultAvailableAssets(chainId);
-  const vaultDeployed = await fetchVaultDeployed(chainId);
-
-  // Sum escrow balance across current + legacy escrow contracts
-  const escrowConfig = contracts.predictionMarketEscrow[chainId];
-  let escrowBalance = await fetchPredictionMarketEscrowTVL(chainId);
-  for (const legEntry of escrowConfig?.legacy ?? []) {
-    const { address } = normalizeLegacyEntry(legEntry);
-    try {
-      escrowBalance += await fetchPredictionMarketEscrowTVL(chainId, address);
-    } catch {
-      // Legacy escrow may no longer exist
-    }
-  }
-
-  console.log(
-    `[ProtocolStats] Vault: ${formatUnits(vaultBalance, 18)} balance, ${formatUnits(vaultAvailableAssets, 18)} available, ${formatUnits(vaultDeployed, 18)} deployed`
+  const vaultBalance = await fetchVaultTVL(chainId, vault.address);
+  const vaultAvailableAssets = await fetchVaultAvailableAssets(
+    chainId,
+    vault.address
   );
-  console.log(
-    `[ProtocolStats] Escrow: ${formatUnits(escrowBalance, 18)} USDe (all contracts)`
+  const vaultDeployed = await fetchVaultDeployed(
+    chainId,
+    undefined,
+    vault.address
   );
 
-  // Calculate vault PnL
-  const pnlResult = await calculateVaultPnL(chainId);
   console.log(
-    `[ProtocolStats] Vault PnL: ${formatUnits(pnlResult.realizedPnL, 18)} USDe (won: ${pnlResult.positionsWon}, lost: ${pnlResult.positionsLost})`
+    `[ProtocolStats]   ${formatUnits(vaultBalance, 18)} balance, ${formatUnits(vaultAvailableAssets, 18)} available, ${formatUnits(vaultDeployed, 18)} deployed`
   );
 
-  // Calculate vault flows
-  const flowsResult = await calculateVaultFlows(chainId);
+  const pnlResult = await calculateVaultPnL(chainId, undefined, vault.address);
   console.log(
-    `[ProtocolStats] Deposits: ${formatUnits(flowsResult.totalDeposits, 18)}, Withdrawals: ${formatUnits(flowsResult.totalWithdrawals, 18)}`
+    `[ProtocolStats]   PnL: ${formatUnits(pnlResult.realizedPnL, 18)} USDe (won: ${pnlResult.positionsWon}, lost: ${pnlResult.positionsLost})`
   );
 
-  // Calculate airdrop gains: unexplained balance increases
-  // Actual total assets = vaultBalance + vaultDeployed
-  // Expected total assets = deposits - withdrawals + realizedPnL
-  // Airdrop gains = actual - expected
+  const flowsResult = await calculateVaultFlows(
+    chainId,
+    undefined,
+    vault.address
+  );
+  console.log(
+    `[ProtocolStats]   Deposits: ${formatUnits(flowsResult.totalDeposits, 18)}, Withdrawals: ${formatUnits(flowsResult.totalWithdrawals, 18)}`
+  );
+
   const actualTotalAssets = vaultBalance + vaultDeployed;
   const expectedTotalAssets =
     flowsResult.totalDeposits -
@@ -532,11 +575,7 @@ export async function computeAndStoreProtocolStats(
       ? actualTotalAssets - expectedTotalAssets
       : 0n;
 
-  console.log(
-    `[ProtocolStats] Airdrop gains: ${formatUnits(airdropGains, 18)} USDe`
-  );
-
-  await upsertProtocolStatsSnapshot(timestamp, chainId, vaultAddress, {
+  await upsertProtocolStatsSnapshot(timestamp, chainId, vault.address, {
     vaultBalance,
     vaultAvailableAssets,
     vaultDeployed,
@@ -550,8 +589,48 @@ export async function computeAndStoreProtocolStats(
     vaultCollateralWon: pnlResult.totalCollateralWon,
     vaultCollateralLost: pnlResult.totalCollateralLost,
   });
+}
 
-  console.log(`[ProtocolStats] Snapshot stored successfully`);
+/**
+ * Main function to compute and store daily protocol stats snapshots, one per
+ * configured vault on the chain.
+ */
+export async function computeAndStoreProtocolStats(
+  chainId: number = DEFAULT_CHAIN_ID
+): Promise<void> {
+  const vaults = getConfiguredVaults(chainId);
+  if (vaults.length === 0) {
+    console.log(`[ProtocolStats] No vaults configured for chain ${chainId}`);
+    return;
+  }
+
+  console.log(
+    `[ProtocolStats] Starting stats computation for chain ${chainId}, ${vaults.length} vault(s): ${vaults.map((v) => `${v.kind}@${v.address}`).join(', ')}`
+  );
+
+  const timestamp = getUtcMidnightTimestamp(new Date());
+
+  // Escrow is shared across all vaults on the chain — compute once and attach
+  // the same value to each per-vault snapshot.
+  const escrowConfig = contracts.predictionMarketEscrow[chainId];
+  let escrowBalance = await fetchPredictionMarketEscrowTVL(chainId);
+  for (const legEntry of escrowConfig?.legacy ?? []) {
+    const { address } = normalizeLegacyEntry(legEntry);
+    try {
+      escrowBalance += await fetchPredictionMarketEscrowTVL(chainId, address);
+    } catch {
+      // Legacy escrow may no longer exist
+    }
+  }
+  console.log(
+    `[ProtocolStats] Escrow: ${formatUnits(escrowBalance, 18)} USDe (all contracts)`
+  );
+
+  for (const vault of vaults) {
+    await computeAndStoreVaultStats(chainId, vault, escrowBalance, timestamp);
+  }
+
+  console.log(`[ProtocolStats] Snapshots stored successfully`);
 }
 
 /**
@@ -592,20 +671,38 @@ export async function getProtocolStatsTimeSeries(
   });
 }
 
-/**
- * Backfill historical protocol stats by querying on-chain state at past blocks.
- */
-export async function backfillProtocolStats(
-  chainId: number = DEFAULT_CHAIN_ID,
-  days: number = 90
+// Ethereal mainnet launched ~October 20, 2025. Before this date, no contracts
+// existed on-chain, so we create zero-valued snapshots as time-axis placeholders.
+const ETHEREAL_MAINNET_LAUNCH = Math.floor(Date.UTC(2025, 9, 20) / 1000);
+
+const ZERO_SNAPSHOT: ProtocolStatsData = {
+  vaultBalance: 0n,
+  vaultAvailableAssets: 0n,
+  vaultDeployed: 0n,
+  escrowBalance: 0n,
+  vaultRealizedPnL: 0n,
+  vaultAirdropGains: 0n,
+  vaultDeposits: 0n,
+  vaultWithdrawals: 0n,
+  vaultPositionsWon: 0,
+  vaultPositionsLost: 0,
+  vaultCollateralWon: 0n,
+  vaultCollateralLost: 0n,
+};
+
+async function backfillVaultStats(
+  chainId: number,
+  vault: ConfiguredVault,
+  days: number
 ): Promise<void> {
   const client = getProviderForChain(chainId);
-  const vaultAddress = (
-    contracts.predictionMarketVault[chainId]?.address ?? ''
-  ).toLowerCase();
+  const collateralAddress = contracts.collateralToken[chainId]?.address as
+    | `0x${string}`
+    | undefined;
+  const escrowConfig = contracts.predictionMarketEscrow[chainId];
 
   console.log(
-    `[ProtocolStats] Starting backfill for ${days} days on chain ${chainId}, vault ${vaultAddress}`
+    `[ProtocolStats] Backfilling ${days} days for ${vault.kind} vault ${vault.address}`
   );
 
   const todayMidnight = getUtcMidnightTimestamp(new Date());
@@ -617,10 +714,6 @@ export async function backfillProtocolStats(
   let successCount = 0;
   let skipCount = 0;
 
-  // Ethereal mainnet launched ~October 20, 2025. Before this date, no contracts
-  // existed on-chain, so we create zero-valued snapshots as time-axis placeholders.
-  const ETHEREAL_MAINNET_LAUNCH = Math.floor(Date.UTC(2025, 9, 20) / 1000); // 2025-10-20 UTC
-
   for (let idx = 0; idx < timestamps.length; idx++) {
     const timestamp = timestamps[idx];
     const dateStr = new Date(timestamp * 1000).toISOString().split('T')[0];
@@ -629,20 +722,12 @@ export async function backfillProtocolStats(
       console.log(
         `[ProtocolStats] ${dateStr} - before Ethereal mainnet launch, creating zero-valued snapshot`
       );
-      await upsertProtocolStatsSnapshot(timestamp, chainId, vaultAddress, {
-        vaultBalance: 0n,
-        vaultAvailableAssets: 0n,
-        vaultDeployed: 0n,
-        escrowBalance: 0n,
-        vaultRealizedPnL: 0n,
-        vaultAirdropGains: 0n,
-        vaultDeposits: 0n,
-        vaultWithdrawals: 0n,
-        vaultPositionsWon: 0,
-        vaultPositionsLost: 0,
-        vaultCollateralWon: 0n,
-        vaultCollateralLost: 0n,
-      });
+      await upsertProtocolStatsSnapshot(
+        timestamp,
+        chainId,
+        vault.address,
+        ZERO_SNAPSHOT
+      );
       skipCount++;
       continue;
     }
@@ -660,33 +745,24 @@ export async function backfillProtocolStats(
       `[ProtocolStats] Processing ${dateStr} (block ${blockNumber}) [${idx + 1}/${timestamps.length}]`
     );
 
-    // Query historical balances using blockCreated to pick the right contract.
-    const vaultConfig = contracts.predictionMarketVault[chainId];
-    const escrowConfig = contracts.predictionMarketEscrow[chainId];
-    const collateralAddress = contracts.collateralToken[chainId]?.address as
-      | `0x${string}`
-      | undefined;
-
-    const vaultAddr = vaultConfig
-      ? getContractForBlock(vaultConfig, blockNumber)
-      : null;
+    const vaultAddrAtBlock = getContractForBlock(vault.config, blockNumber);
     const escrowAddr = escrowConfig
       ? getContractForBlock(escrowConfig, blockNumber)
       : null;
 
     let vaultBalance = 0n;
     let vaultAvailableAssets = 0n;
-    if (vaultAddr && collateralAddress) {
+    if (vaultAddrAtBlock && collateralAddress) {
       vaultBalance = await client.readContract({
         address: collateralAddress,
         abi: erc20Abi,
         functionName: 'balanceOf',
-        args: [vaultAddr],
+        args: [vaultAddrAtBlock],
         blockNumber,
       });
       try {
         vaultAvailableAssets = (await client.readContract({
-          address: vaultAddr,
+          address: vaultAddrAtBlock,
           abi: predictionMarketVaultAbi,
           functionName: 'availableAssets',
           args: [],
@@ -712,14 +788,21 @@ export async function backfillProtocolStats(
     const vaultDeployed = await fetchVaultDeployedAtBlock(
       chainId,
       blockNumber,
-      timestamp
+      timestamp,
+      vault.address
     );
 
-    // Calculate PnL up to this timestamp
-    const pnlResult = await calculateVaultPnL(chainId, timestamp);
-    const flowsResult = await calculateVaultFlows(chainId, timestamp);
+    const pnlResult = await calculateVaultPnL(
+      chainId,
+      timestamp,
+      vault.address
+    );
+    const flowsResult = await calculateVaultFlows(
+      chainId,
+      timestamp,
+      vault.address
+    );
 
-    // Calculate airdrop gains
     const actualTotalAssets = vaultBalance + vaultDeployed;
     const expectedTotalAssets =
       flowsResult.totalDeposits -
@@ -730,7 +813,7 @@ export async function backfillProtocolStats(
         ? actualTotalAssets - expectedTotalAssets
         : 0n;
 
-    await upsertProtocolStatsSnapshot(timestamp, chainId, vaultAddress, {
+    await upsertProtocolStatsSnapshot(timestamp, chainId, vault.address, {
       vaultBalance,
       vaultAvailableAssets,
       vaultDeployed,
@@ -754,6 +837,29 @@ export async function backfillProtocolStats(
   }
 
   console.log(
-    `[ProtocolStats] Backfill complete: ${successCount} days processed, ${skipCount} skipped`
+    `[ProtocolStats] Backfill for ${vault.kind} complete: ${successCount} processed, ${skipCount} skipped`
   );
+}
+
+/**
+ * Backfill historical protocol stats by querying on-chain state at past blocks,
+ * iterating over every configured vault on the chain.
+ */
+export async function backfillProtocolStats(
+  chainId: number = DEFAULT_CHAIN_ID,
+  days: number = 90
+): Promise<void> {
+  const vaults = getConfiguredVaults(chainId);
+  if (vaults.length === 0) {
+    console.log(`[ProtocolStats] No vaults configured for chain ${chainId}`);
+    return;
+  }
+
+  console.log(
+    `[ProtocolStats] Starting backfill for chain ${chainId}, ${vaults.length} vault(s): ${vaults.map((v) => `${v.kind}@${v.address}`).join(', ')}`
+  );
+
+  for (const vault of vaults) {
+    await backfillVaultStats(chainId, vault, days);
+  }
 }

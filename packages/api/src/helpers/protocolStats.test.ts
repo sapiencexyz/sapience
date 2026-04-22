@@ -43,9 +43,13 @@ vi.mock('@sapience/sdk/contracts', () => ({
       42161: { address: '0xEscrow' },
     },
     predictionMarketVault: {
-      42161: { address: '0xVault' },
+      42161: { address: '0xVault', blockCreated: 0 },
     },
+    pythPredictionMarketVault: {},
+    singleLegVault: {},
   },
+  normalizeLegacyEntry: (entry: { address: string; blockCreated: number }) =>
+    entry,
 }));
 
 vi.mock('@sapience/sdk/abis', () => ({
@@ -360,6 +364,79 @@ describe('vault PnL calculation', () => {
     expect(upsertCall.create.vaultRealizedPnL).toBe('0');
     expect(upsertCall.create.vaultPositionsWon).toBe(0);
     expect(upsertCall.create.vaultPositionsLost).toBe(0);
+  });
+});
+
+// ─── multi-vault fan-out ────────────────────────────────────────────────────
+
+describe('computeAndStoreProtocolStats — multiple configured vaults', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockPrisma.prediction.findMany.mockResolvedValue([]);
+    mockPrisma.vaultFlowEvent.findMany.mockResolvedValue([]);
+    mockPrisma.protocolStatsSnapshot.upsert.mockResolvedValue({});
+    mockReadContract.mockResolvedValue(1000000000000000000n);
+  });
+
+  it('writes one snapshot row per configured vault', async () => {
+    vi.resetModules();
+    vi.doMock('@sapience/sdk/contracts', () => ({
+      contracts: {
+        collateralToken: { 42161: { address: '0xCollateral' } },
+        predictionMarketEscrow: { 42161: { address: '0xEscrow' } },
+        predictionMarketVault: {
+          42161: { address: '0xProtocolVault', blockCreated: 0 },
+        },
+        pythPredictionMarketVault: {
+          42161: { address: '0xPythVault', blockCreated: 0 },
+        },
+        singleLegVault: {},
+      },
+      normalizeLegacyEntry: (e: { address: string; blockCreated: number }) => e,
+    }));
+
+    const { computeAndStoreProtocolStats: compute } = await import(
+      './protocolStats'
+    );
+    await compute(42161);
+
+    expect(mockPrisma.protocolStatsSnapshot.upsert).toHaveBeenCalledTimes(2);
+    const vaultAddresses = mockPrisma.protocolStatsSnapshot.upsert.mock.calls
+      .map(
+        (c) =>
+          (c[0] as { create: { vaultAddress: string } }).create.vaultAddress
+      )
+      .sort();
+    expect(vaultAddresses).toEqual(['0xprotocolvault', '0xpythvault']);
+  });
+
+  it('filters vault flow events by vaultAddress', async () => {
+    vi.resetModules();
+    vi.doMock('@sapience/sdk/contracts', () => ({
+      contracts: {
+        collateralToken: { 42161: { address: '0xCollateral' } },
+        predictionMarketEscrow: { 42161: { address: '0xEscrow' } },
+        predictionMarketVault: {
+          42161: { address: '0xProtocolVault', blockCreated: 0 },
+        },
+        pythPredictionMarketVault: {
+          42161: { address: '0xPythVault', blockCreated: 0 },
+        },
+        singleLegVault: {},
+      },
+      normalizeLegacyEntry: (e: { address: string; blockCreated: number }) => e,
+    }));
+
+    const { computeAndStoreProtocolStats: compute } = await import(
+      './protocolStats'
+    );
+    await compute(42161);
+
+    const flowsCalls = mockPrisma.vaultFlowEvent.findMany.mock.calls.map(
+      (c) => (c[0] as { where: { vaultAddress: string } }).where.vaultAddress
+    );
+    expect(flowsCalls).toContain('0xprotocolvault');
+    expect(flowsCalls).toContain('0xpythvault');
   });
 });
 
