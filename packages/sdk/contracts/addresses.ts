@@ -203,7 +203,12 @@ export const singleLegVault: ChainAddressMap = {
  * Move old addresses into `legacy` manually on redeploy.
  */
 export const predictionMarketVaultStrategyB: ChainAddressMap = {
-  // (entries inserted by deploy)
+  5064014: {
+    // Ethereal mainnet — deployed 2026-04-22
+    address: '0xAE53E270ad4Ac82E87270f26C903fc76Cb209D19',
+    blockCreated: 4346624,
+    legacy: [] as const,
+  },
 } as const;
 
 /**
