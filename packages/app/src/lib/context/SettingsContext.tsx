@@ -28,13 +28,6 @@ type SettingsContextValue = {
   arbitrumRpcURL: string | null;
   /** Signal server endpoint (http(s) — converted to ws(s) at connection time). */
   signalEndpoint: string | null;
-  // Research Agent settings
-  openrouterApiKey: string | null;
-  researchAgentSystemMessage: string | null;
-  researchAgentModel: string | null;
-  researchAgentTemperature: number | null;
-  // Appearance settings
-  showAmericanOdds: boolean | null;
   connectionDurationHours: number | null;
   meshRateLimit: number | null;
   meshMaxPeers: number | null;
@@ -46,11 +39,6 @@ type SettingsContextValue = {
   setEtherealRpcUrl: (value: string | null) => void;
   setArbitrumRpcUrl: (value: string | null) => void;
   setSignalEndpoint: (value: string | null) => void;
-  setOpenrouterApiKey: (value: string | null) => void;
-  setResearchAgentSystemMessage: (value: string | null) => void;
-  setResearchAgentModel: (value: string | null) => void;
-  setResearchAgentTemperature: (value: number | null) => void;
-  setShowAmericanOdds: (value: boolean | null) => void;
   setConnectionDurationHours: (value: number | null) => void;
   setMeshRateLimit: (value: number | null) => void;
   setMeshMaxPeers: (value: number | null) => void;
@@ -63,10 +51,6 @@ type SettingsContextValue = {
     etherealRpcURL: string;
     arbitrumRpcURL: string;
     signalEndpoint: string;
-    researchAgentSystemMessage: string;
-    researchAgentModel: string;
-    researchAgentTemperature: number;
-    showAmericanOdds: boolean;
     connectionDurationHours: number;
     meshRateLimit: number;
     meshMaxPeers: number;
@@ -81,11 +65,6 @@ const STORAGE_KEYS = {
   admin: 'sapience.settings.adminBaseUrl',
   etherealRpcURL: 'sapience.settings.etherealRpcURL',
   arbitrumRpcURL: 'sapience.settings.arbitrumRpcURL',
-  openrouterApiKey: 'sapience.settings.openrouterApiKey',
-  researchAgentSystemMessage: 'sapience.settings.researchAgentSystemMessage',
-  researchAgentModel: 'sapience.settings.researchAgentModel',
-  researchAgentTemperature: 'sapience.settings.researchAgentTemperature',
-  showAmericanOdds: 'sapience.settings.showAmericanOdds',
   connectionDurationHours: 'sapience.settings.connectionDurationHours',
   signalEndpoint: 'sapience.settings.signalEndpoint',
   meshRateLimit: 'sapience.settings.meshRateLimit',
@@ -220,24 +199,7 @@ export const SettingsProvider = ({
   const [arbitrumRpcOverride, setArbitrumRpcOverride] = useState<string | null>(
     null
   );
-  const [openrouterApiKeyOverride, setOpenrouterApiKeyOverride] = useState<
-    string | null
-  >(null);
-  const [
-    researchAgentSystemMessageOverride,
-    setResearchAgentSystemMessageOverride,
-  ] = useState<string | null>(null);
-  const [researchAgentModelOverride, setResearchAgentModelOverride] = useState<
-    string | null
-  >(null);
-  const [
-    researchAgentTemperatureOverride,
-    setResearchAgentTemperatureOverride,
-  ] = useState<number | null>(null);
   const [mounted, setMounted] = useState(false);
-  const [showAmericanOddsOverride, setShowAmericanOddsOverride] = useState<
-    boolean | null
-  >(null);
   const [connectionDurationHoursOverride, setConnectionDurationHoursOverride] =
     useState<number | null>(null);
   const [signalEndpointOverride, setSignalEndpointOverride] = useState<
@@ -280,26 +242,6 @@ export const SettingsProvider = ({
         typeof window !== 'undefined'
           ? window.localStorage.getItem(STORAGE_KEYS.arbitrumRpcURL)
           : null;
-      const ork =
-        typeof window !== 'undefined'
-          ? window.localStorage.getItem(STORAGE_KEYS.openrouterApiKey)
-          : null;
-      const rsm =
-        typeof window !== 'undefined'
-          ? window.localStorage.getItem(STORAGE_KEYS.researchAgentSystemMessage)
-          : null;
-      const rmodel =
-        typeof window !== 'undefined'
-          ? window.localStorage.getItem(STORAGE_KEYS.researchAgentModel)
-          : null;
-      const rtemp =
-        typeof window !== 'undefined'
-          ? window.localStorage.getItem(STORAGE_KEYS.researchAgentTemperature)
-          : null;
-      const sao =
-        typeof window !== 'undefined'
-          ? window.localStorage.getItem(STORAGE_KEYS.showAmericanOdds)
-          : null;
       const cdh =
         typeof window !== 'undefined'
           ? window.localStorage.getItem(STORAGE_KEYS.connectionDurationHours)
@@ -321,20 +263,6 @@ export const SettingsProvider = ({
         setEtherealRpcOverride(etherealRpc);
       if (arbitrumRpc && isHttpUrl(arbitrumRpc))
         setArbitrumRpcOverride(arbitrumRpc);
-      if (ork) setOpenrouterApiKeyOverride(ork);
-      if (rsm) setResearchAgentSystemMessageOverride(rsm);
-      if (rmodel) setResearchAgentModelOverride(rmodel);
-      if (rtemp) {
-        const parsed = parseFloat(rtemp);
-        if (Number.isFinite(parsed))
-          setResearchAgentTemperatureOverride(parsed);
-      }
-      if (sao != null) {
-        // store as '1' or '0' or 'true'/'false'
-        const lowered = sao.toLowerCase();
-        const val = lowered === '1' || lowered === 'true';
-        setShowAmericanOddsOverride(val);
-      }
       if (cdh) {
         const parsed = parseInt(cdh, 10);
         if (Number.isFinite(parsed) && parsed >= 1)
@@ -381,11 +309,6 @@ export const SettingsProvider = ({
       adminBaseUrl: getDefaultAdminBase(),
       etherealRpcURL: getDefaultEtherealRpcURL(),
       arbitrumRpcURL: getDefaultArbitrumRpcURL(),
-      researchAgentSystemMessage:
-        'You are an expert researcher assisting a prediction market participant via chat. You are friendly, smart, curious, succinct, and analytical. You proactively search the web for the most recent information relevant to the questions being discussed.',
-      researchAgentModel: 'anthropic/claude-sonnet-4:online',
-      researchAgentTemperature: 0.7,
-      showAmericanOdds: false,
       connectionDurationHours: DEFAULT_CONNECTION_DURATION_HOURS,
       meshRateLimit: 100,
       meshMaxPeers: 25,
@@ -428,19 +351,6 @@ export const SettingsProvider = ({
     : null;
   const arbitrumRpcURL = mounted
     ? arbitrumRpcOverride || defaults.arbitrumRpcURL
-    : null;
-  const openrouterApiKey = mounted ? openrouterApiKeyOverride || '' : null;
-  const researchAgentSystemMessage = mounted
-    ? researchAgentSystemMessageOverride || defaults.researchAgentSystemMessage
-    : null;
-  const researchAgentModel = mounted
-    ? researchAgentModelOverride || defaults.researchAgentModel
-    : null;
-  const researchAgentTemperature = mounted
-    ? (researchAgentTemperatureOverride ?? defaults.researchAgentTemperature)
-    : null;
-  const showAmericanOdds = mounted
-    ? (showAmericanOddsOverride ?? defaults.showAmericanOdds)
     : null;
   const connectionDurationHours = mounted
     ? (connectionDurationHoursOverride ?? defaults.connectionDurationHours)
@@ -574,91 +484,6 @@ export const SettingsProvider = ({
     }
   }, []);
 
-  const setOpenrouterApiKey = useCallback((value: string | null) => {
-    try {
-      if (typeof window === 'undefined') return;
-      if (!value) {
-        window.localStorage.removeItem(STORAGE_KEYS.openrouterApiKey);
-        setOpenrouterApiKeyOverride(null);
-        return;
-      }
-      const v = value.trim();
-      if (!v) return;
-      window.localStorage.setItem(STORAGE_KEYS.openrouterApiKey, v);
-      setOpenrouterApiKeyOverride(v);
-    } catch {
-      /* noop */
-    }
-  }, []);
-
-  const setResearchAgentSystemMessage = useCallback((value: string | null) => {
-    try {
-      if (typeof window === 'undefined') return;
-      if (!value) {
-        window.localStorage.removeItem(STORAGE_KEYS.researchAgentSystemMessage);
-        setResearchAgentSystemMessageOverride(null);
-        return;
-      }
-      const v = value.trim();
-      window.localStorage.setItem(STORAGE_KEYS.researchAgentSystemMessage, v);
-      setResearchAgentSystemMessageOverride(v);
-    } catch {
-      /* noop */
-    }
-  }, []);
-
-  const setResearchAgentModel = useCallback((value: string | null) => {
-    try {
-      if (typeof window === 'undefined') return;
-      if (!value) {
-        window.localStorage.removeItem(STORAGE_KEYS.researchAgentModel);
-        setResearchAgentModelOverride(null);
-        return;
-      }
-      const v = value.trim();
-      window.localStorage.setItem(STORAGE_KEYS.researchAgentModel, v);
-      setResearchAgentModelOverride(v);
-    } catch {
-      /* noop */
-    }
-  }, []);
-
-  const setResearchAgentTemperature = useCallback((value: number | null) => {
-    try {
-      if (typeof window === 'undefined') return;
-      if (value == null) {
-        window.localStorage.removeItem(STORAGE_KEYS.researchAgentTemperature);
-        setResearchAgentTemperatureOverride(null);
-        return;
-      }
-      const clamped = Math.max(0, Math.min(2, Number(value)));
-      if (!Number.isFinite(clamped)) return;
-      window.localStorage.setItem(
-        STORAGE_KEYS.researchAgentTemperature,
-        String(clamped)
-      );
-      setResearchAgentTemperatureOverride(clamped);
-    } catch {
-      /* noop */
-    }
-  }, []);
-
-  const setShowAmericanOdds = useCallback((value: boolean | null) => {
-    try {
-      if (typeof window === 'undefined') return;
-      if (value == null) {
-        window.localStorage.removeItem(STORAGE_KEYS.showAmericanOdds);
-        setShowAmericanOddsOverride(null);
-        return;
-      }
-      const v = Boolean(value);
-      window.localStorage.setItem(STORAGE_KEYS.showAmericanOdds, v ? '1' : '0');
-      setShowAmericanOddsOverride(v);
-    } catch {
-      /* noop */
-    }
-  }, []);
-
   const setConnectionDurationHours = useCallback((value: number | null) => {
     try {
       if (typeof window === 'undefined') return;
@@ -738,11 +563,6 @@ export const SettingsProvider = ({
     adminBaseUrl,
     etherealRpcURL,
     arbitrumRpcURL,
-    openrouterApiKey,
-    researchAgentSystemMessage,
-    researchAgentModel,
-    researchAgentTemperature,
-    showAmericanOdds,
     connectionDurationHours,
     meshRateLimit,
     meshMaxPeers,
@@ -754,11 +574,6 @@ export const SettingsProvider = ({
     setAdminBaseUrl,
     setEtherealRpcUrl,
     setArbitrumRpcUrl,
-    setOpenrouterApiKey,
-    setResearchAgentSystemMessage,
-    setResearchAgentModel,
-    setResearchAgentTemperature,
-    setShowAmericanOdds,
     setConnectionDurationHours,
     setMeshRateLimit,
     setMeshMaxPeers,
