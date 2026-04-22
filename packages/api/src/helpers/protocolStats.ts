@@ -785,23 +785,29 @@ async function backfillVaultStats(
       });
     }
 
-    const vaultDeployed = await fetchVaultDeployedAtBlock(
-      chainId,
-      blockNumber,
-      timestamp,
-      vault.address
-    );
+    const historicalVaultAddress = vaultAddrAtBlock?.toLowerCase();
 
-    const pnlResult = await calculateVaultPnL(
-      chainId,
-      timestamp,
-      vault.address
-    );
-    const flowsResult = await calculateVaultFlows(
-      chainId,
-      timestamp,
-      vault.address
-    );
+    const vaultDeployed = historicalVaultAddress
+      ? await fetchVaultDeployedAtBlock(
+          chainId,
+          blockNumber,
+          timestamp,
+          historicalVaultAddress
+        )
+      : 0n;
+
+    const pnlResult = historicalVaultAddress
+      ? await calculateVaultPnL(chainId, timestamp, historicalVaultAddress)
+      : {
+          realizedPnL: 0n,
+          positionsWon: 0,
+          positionsLost: 0,
+          totalCollateralWon: 0n,
+          totalCollateralLost: 0n,
+        };
+    const flowsResult = historicalVaultAddress
+      ? await calculateVaultFlows(chainId, timestamp, historicalVaultAddress)
+      : { totalDeposits: 0n, totalWithdrawals: 0n };
 
     const actualTotalAssets = vaultBalance + vaultDeployed;
     const expectedTotalAssets =

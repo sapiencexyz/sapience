@@ -2,19 +2,22 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // ─── Mocks ──────────────────────────────────────────────────────────────────
 
-const { mockPrisma, mockReadContract } = vi.hoisted(() => {
-  const mockReadContract = vi.fn().mockResolvedValue(1000000000000000000n);
-  const mockPrisma = {
-    prediction: { findMany: vi.fn() },
-    vaultFlowEvent: { findMany: vi.fn() },
-    protocolStatsSnapshot: {
-      upsert: vi.fn(),
-      findFirst: vi.fn(),
-      findMany: vi.fn(),
-    },
-  };
-  return { mockPrisma, mockReadContract };
-});
+const { mockPrisma, mockReadContract, mockGetBlockByTimestamp } = vi.hoisted(
+  () => {
+    const mockReadContract = vi.fn().mockResolvedValue(1000000000000000000n);
+    const mockGetBlockByTimestamp = vi.fn();
+    const mockPrisma = {
+      prediction: { findMany: vi.fn() },
+      vaultFlowEvent: { findMany: vi.fn() },
+      protocolStatsSnapshot: {
+        upsert: vi.fn(),
+        findFirst: vi.fn(),
+        findMany: vi.fn(),
+      },
+    };
+    return { mockPrisma, mockReadContract, mockGetBlockByTimestamp };
+  }
+);
 
 vi.mock('../db', () => ({ default: mockPrisma }));
 
@@ -31,7 +34,7 @@ vi.mock('../utils/utils', () => ({
   getProviderForChain: vi.fn().mockReturnValue({
     readContract: mockReadContract,
   }),
-  getBlockByTimestamp: vi.fn(),
+  getBlockByTimestamp: mockGetBlockByTimestamp,
 }));
 
 vi.mock('@sapience/sdk/contracts', () => ({
@@ -437,6 +440,118 @@ describe('computeAndStoreProtocolStats — multiple configured vaults', () => {
     );
     expect(flowsCalls).toContain('0xprotocolvault');
     expect(flowsCalls).toContain('0xpythvault');
+  });
+});
+
+// ─── backfillProtocolStats — redeploy boundary ──────────────────────────────
+
+describe('backfillProtocolStats — legacy/current vault boundaries', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockPrisma.prediction.findMany.mockResolvedValue([]);
+    mockPrisma.vaultFlowEvent.findMany.mockResolvedValue([]);
+    mockPrisma.protocolStatsSnapshot.upsert.mockResolvedValue({});
+    mockReadContract.mockResolvedValue(1000000000000000000n);
+    mockGetBlockByTimestamp.mockResolvedValue({ number: 150n });
+  });
+
+  it('uses the historical vault deployment for backfilled DB-derived metrics', async () => {
+    vi.resetModules();
+    vi.doMock('@sapience/sdk/contracts', () => ({
+      contracts: {
+        collateralToken: { 42161: { address: '0xCollateral' } },
+        predictionMarketEscrow: {
+          42161: { address: '0xEscrow', blockCreated: 0 },
+        },
+        predictionMarketVault: {
+          42161: {
+            address: '0xCurrentVault',
+            blockCreated: 200,
+            legacy: [{ address: '0xLegacyVault', blockCreated: 100 }],
+          },
+        },
+        pythPredictionMarketVault: {},
+        singleLegVault: {},
+      },
+      normalizeLegacyEntry: (e: { address: string; blockCreated: number }) => e,
+    }));
+
+    mockPrisma.prediction.findMany
+      .mockResolvedValueOnce([{ counterpartyCollateral: '300' }])
+      .mockResolvedValueOnce([
+        {
+          predictor: '0xuser',
+          counterparty: '0xlegacyvault',
+          predictorCollateral: '25',
+          counterpartyCollateral: '75',
+          pickConfiguration: { result: 'COUNTERPARTY_WINS' },
+        },
+      ]);
+    mockPrisma.vaultFlowEvent.findMany.mockResolvedValue([
+      { assets: '100', eventType: 'deposit' },
+    ]);
+
+    const { backfillProtocolStats: backfill } = await import('./protocolStats');
+    await backfill(42161, 1);
+
+    expect(mockReadContract).toHaveBeenCalledWith(
+      expect.objectContaining({
+        address: '0xCollateral',
+        functionName: 'balanceOf',
+        args: ['0xLegacyVault'],
+        blockNumber: 150n,
+      })
+    );
+    expect(mockReadContract).toHaveBeenCalledWith(
+      expect.objectContaining({
+        address: '0xLegacyVault',
+        functionName: 'availableAssets',
+        blockNumber: 150n,
+      })
+    );
+
+    expect(mockPrisma.prediction.findMany).toHaveBeenNthCalledWith(1, {
+      where: {
+        chainId: 42161,
+        counterparty: '0xlegacyvault',
+        onChainCreatedAt: expect.any(Object),
+        OR: [
+          { pickConfigId: null },
+          { pickConfiguration: { resolved: false } },
+          {
+            pickConfiguration: {
+              resolved: true,
+              resolvedAt: expect.any(Object),
+            },
+          },
+        ],
+      },
+      select: { counterpartyCollateral: true },
+    });
+    expect(mockPrisma.prediction.findMany).toHaveBeenNthCalledWith(
+      2,
+      expect.objectContaining({
+        where: expect.objectContaining({
+          OR: [
+            { predictor: '0xlegacyvault' },
+            { counterparty: '0xlegacyvault' },
+          ],
+        }),
+      })
+    );
+    expect(mockPrisma.vaultFlowEvent.findMany).toHaveBeenCalledWith({
+      where: {
+        chainId: 42161,
+        vaultAddress: '0xlegacyvault',
+        timestamp: expect.any(Object),
+      },
+    });
+
+    const upsertCall = mockPrisma.protocolStatsSnapshot.upsert.mock.calls[0][0];
+    expect(upsertCall.create.vaultAddress).toBe('0xcurrentvault');
+    expect(upsertCall.create.vaultDeployed).toBe('300');
+    expect(upsertCall.create.vaultRealizedPnL).toBe('25');
+    expect(upsertCall.create.vaultDeposits).toBe('100');
   });
 });
 
