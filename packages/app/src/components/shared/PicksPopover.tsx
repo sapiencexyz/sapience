@@ -42,7 +42,7 @@ export default function PicksPopover({
 
   return (
     <div className="flex items-center gap-2">
-      <StackedIcons picks={picks} />
+      <StackedIcons picks={picks} max={4} />
       <Popover>
         <PopoverTrigger asChild>
           <button

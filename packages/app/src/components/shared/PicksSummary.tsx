@@ -13,7 +13,6 @@ import {
   StackedIcons,
   type Pick,
 } from '~/components/shared/StackedPredictions';
-import CounterpartyBadge from '~/components/shared/CounterpartyBadge';
 import { PythMarketBadge } from '~/components/shared/PythMarketBadge';
 import ResolutionBadge from '~/components/shared/ResolutionBadge';
 import ConditionStatus from '~/components/shared/ConditionStatus';
@@ -24,7 +23,6 @@ import MarketPredictionRequest from '~/components/shared/MarketPredictionRequest
 
 interface PicksSummaryProps {
   picks: Pick[];
-  isCounterparty?: boolean;
   predictionId?: string | null;
   onClick?: () => void;
 }
@@ -32,7 +30,6 @@ interface PicksSummaryProps {
 export interface PicksContentProps {
   picks: Pick[];
   positionId: string | number;
-  isCounterparty?: boolean;
   createdAt?: string | number;
   hideHeader?: boolean;
   /** Position-level status: controls what the "Ends" column shows for settled picks */
@@ -106,7 +103,6 @@ function PickEndsCell({
 export function PicksContent({
   picks,
   positionId,
-  isCounterparty,
   createdAt,
   hideHeader,
   positionStatus,
@@ -116,7 +112,6 @@ export function PicksContent({
       {!hideHeader && (
         <div className="flex items-baseline gap-2 text-lg font-semibold mb-4">
           Prediction #{positionId}
-          {isCounterparty && <CounterpartyBadge />}
           {createdAt && (
             <span className="text-sm font-normal text-muted-foreground">
               created{' '}
@@ -217,7 +212,6 @@ export function PicksContent({
 
 export default function PicksSummary({
   picks,
-  isCounterparty,
   predictionId,
   onClick,
 }: PicksSummaryProps) {
@@ -227,7 +221,7 @@ export default function PicksSummary({
 
   return (
     <div className="flex items-center gap-2">
-      <StackedIcons picks={picks} />
+      <StackedIcons picks={picks} max={4} />
       {href ? (
         onClick ? (
           <button
@@ -250,7 +244,6 @@ export default function PicksSummary({
           {picks.length} {picks.length === 1 ? 'PICK' : 'PICKS'}
         </span>
       )}
-      {isCounterparty && <CounterpartyBadge />}
     </div>
   );
 }

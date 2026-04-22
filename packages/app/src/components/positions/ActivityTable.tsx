@@ -183,7 +183,7 @@ function PredictionActivityRow({
       {!isHidden('type') && (
         <td className="px-4 py-3 whitespace-nowrap">
           <div className="text-sm">
-            <div className="xl:hidden text-xs text-muted-foreground mb-1">
+            <div className="xl:hidden text-xs text-muted-foreground mb-2">
               Type
             </div>
             <TypeBadge type="prediction" />
@@ -200,7 +200,6 @@ function PredictionActivityRow({
             {pickLegs.length > 0 ? (
               <PicksSummary
                 picks={pickLegs}
-                isCounterparty={!isPredictorSide}
                 predictionId={prediction.predictionId}
                 onClick={onOpenDialog}
               />
@@ -381,7 +380,7 @@ function TradeActivityRow({
       {!isHidden('type') && (
         <td className="px-4 py-3 whitespace-nowrap">
           <div className="text-sm">
-            <div className="xl:hidden text-xs text-muted-foreground mb-1">
+            <div className="xl:hidden text-xs text-muted-foreground mb-2">
               Type
             </div>
             <TypeBadge type="trade" />
@@ -720,7 +719,6 @@ export default function ActivityTable({
   const [dialogPrediction, setDialogPrediction] = useState<{
     prediction: Prediction;
     pickConfig: PickConfigData | null;
-    isPredictorSide: boolean;
   } | null>(null);
 
   // ── Infinite scroll ──────────────────────────────────────────────────────
@@ -836,7 +834,6 @@ export default function ActivityTable({
                     setDialogPrediction({
                       prediction: item.prediction,
                       pickConfig: item.pickConfig,
-                      isPredictorSide: item.isPredictorSide,
                     })
                   }
                   isHidden={isHidden}
@@ -871,7 +868,6 @@ export default function ActivityTable({
         }}
         prediction={dialogPrediction?.prediction ?? null}
         pickConfig={dialogPrediction?.pickConfig ?? null}
-        isPredictorSide={dialogPrediction?.isPredictorSide ?? true}
         conditionsMap={conditionsMap}
         collateralSymbol={collateralSymbol}
       />

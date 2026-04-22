@@ -277,7 +277,6 @@ function PositionRow({
       <TableCell>
         <PicksSummary
           picks={picks}
-          isCounterparty={!isPredictorToken}
           predictionId={pickConfig?.predictionId}
           onClick={onOpenDialog}
         />
