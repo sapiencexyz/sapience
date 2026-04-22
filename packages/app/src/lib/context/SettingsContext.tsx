@@ -28,8 +28,6 @@ type SettingsContextValue = {
   arbitrumRpcURL: string | null;
   /** Signal server endpoint (http(s) — converted to ws(s) at connection time). */
   signalEndpoint: string | null;
-  // Appearance settings
-  showAmericanOdds: boolean | null;
   connectionDurationHours: number | null;
   meshRateLimit: number | null;
   meshMaxPeers: number | null;
@@ -41,7 +39,6 @@ type SettingsContextValue = {
   setEtherealRpcUrl: (value: string | null) => void;
   setArbitrumRpcUrl: (value: string | null) => void;
   setSignalEndpoint: (value: string | null) => void;
-  setShowAmericanOdds: (value: boolean | null) => void;
   setConnectionDurationHours: (value: number | null) => void;
   setMeshRateLimit: (value: number | null) => void;
   setMeshMaxPeers: (value: number | null) => void;
@@ -54,7 +51,6 @@ type SettingsContextValue = {
     etherealRpcURL: string;
     arbitrumRpcURL: string;
     signalEndpoint: string;
-    showAmericanOdds: boolean;
     connectionDurationHours: number;
     meshRateLimit: number;
     meshMaxPeers: number;
@@ -69,7 +65,6 @@ const STORAGE_KEYS = {
   admin: 'sapience.settings.adminBaseUrl',
   etherealRpcURL: 'sapience.settings.etherealRpcURL',
   arbitrumRpcURL: 'sapience.settings.arbitrumRpcURL',
-  showAmericanOdds: 'sapience.settings.showAmericanOdds',
   connectionDurationHours: 'sapience.settings.connectionDurationHours',
   signalEndpoint: 'sapience.settings.signalEndpoint',
   meshRateLimit: 'sapience.settings.meshRateLimit',
@@ -205,9 +200,6 @@ export const SettingsProvider = ({
     null
   );
   const [mounted, setMounted] = useState(false);
-  const [showAmericanOddsOverride, setShowAmericanOddsOverride] = useState<
-    boolean | null
-  >(null);
   const [connectionDurationHoursOverride, setConnectionDurationHoursOverride] =
     useState<number | null>(null);
   const [signalEndpointOverride, setSignalEndpointOverride] = useState<
@@ -250,10 +242,6 @@ export const SettingsProvider = ({
         typeof window !== 'undefined'
           ? window.localStorage.getItem(STORAGE_KEYS.arbitrumRpcURL)
           : null;
-      const sao =
-        typeof window !== 'undefined'
-          ? window.localStorage.getItem(STORAGE_KEYS.showAmericanOdds)
-          : null;
       const cdh =
         typeof window !== 'undefined'
           ? window.localStorage.getItem(STORAGE_KEYS.connectionDurationHours)
@@ -275,12 +263,6 @@ export const SettingsProvider = ({
         setEtherealRpcOverride(etherealRpc);
       if (arbitrumRpc && isHttpUrl(arbitrumRpc))
         setArbitrumRpcOverride(arbitrumRpc);
-      if (sao != null) {
-        // store as '1' or '0' or 'true'/'false'
-        const lowered = sao.toLowerCase();
-        const val = lowered === '1' || lowered === 'true';
-        setShowAmericanOddsOverride(val);
-      }
       if (cdh) {
         const parsed = parseInt(cdh, 10);
         if (Number.isFinite(parsed) && parsed >= 1)
@@ -327,7 +309,6 @@ export const SettingsProvider = ({
       adminBaseUrl: getDefaultAdminBase(),
       etherealRpcURL: getDefaultEtherealRpcURL(),
       arbitrumRpcURL: getDefaultArbitrumRpcURL(),
-      showAmericanOdds: false,
       connectionDurationHours: DEFAULT_CONNECTION_DURATION_HOURS,
       meshRateLimit: 100,
       meshMaxPeers: 25,
@@ -370,9 +351,6 @@ export const SettingsProvider = ({
     : null;
   const arbitrumRpcURL = mounted
     ? arbitrumRpcOverride || defaults.arbitrumRpcURL
-    : null;
-  const showAmericanOdds = mounted
-    ? (showAmericanOddsOverride ?? defaults.showAmericanOdds)
     : null;
   const connectionDurationHours = mounted
     ? (connectionDurationHoursOverride ?? defaults.connectionDurationHours)
@@ -506,22 +484,6 @@ export const SettingsProvider = ({
     }
   }, []);
 
-  const setShowAmericanOdds = useCallback((value: boolean | null) => {
-    try {
-      if (typeof window === 'undefined') return;
-      if (value == null) {
-        window.localStorage.removeItem(STORAGE_KEYS.showAmericanOdds);
-        setShowAmericanOddsOverride(null);
-        return;
-      }
-      const v = Boolean(value);
-      window.localStorage.setItem(STORAGE_KEYS.showAmericanOdds, v ? '1' : '0');
-      setShowAmericanOddsOverride(v);
-    } catch {
-      /* noop */
-    }
-  }, []);
-
   const setConnectionDurationHours = useCallback((value: number | null) => {
     try {
       if (typeof window === 'undefined') return;
@@ -601,7 +563,6 @@ export const SettingsProvider = ({
     adminBaseUrl,
     etherealRpcURL,
     arbitrumRpcURL,
-    showAmericanOdds,
     connectionDurationHours,
     meshRateLimit,
     meshMaxPeers,
@@ -613,7 +574,6 @@ export const SettingsProvider = ({
     setAdminBaseUrl,
     setEtherealRpcUrl,
     setArbitrumRpcUrl,
-    setShowAmericanOdds,
     setConnectionDurationHours,
     setMeshRateLimit,
     setMeshMaxPeers,

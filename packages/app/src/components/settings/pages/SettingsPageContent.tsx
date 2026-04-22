@@ -3,7 +3,6 @@
 import { Label } from '@sapience/ui/components/ui/label';
 import { Input } from '@sapience/ui/components/ui/input';
 
-import { Switch } from '@sapience/ui/components/ui/switch';
 import { Card, CardContent } from '@sapience/ui/components/ui/card';
 import { useEffect, useState } from 'react';
 import { Button } from '@sapience/ui/components/ui/button';
@@ -157,7 +156,6 @@ const SettingsPageContent = () => {
     chatBaseUrl,
     etherealRpcURL,
     arbitrumRpcURL,
-    showAmericanOdds,
     connectionDurationHours,
     meshRateLimit,
     meshMaxPeers,
@@ -168,7 +166,6 @@ const SettingsPageContent = () => {
     setChatBaseUrl,
     setEtherealRpcUrl,
     setArbitrumRpcUrl,
-    setShowAmericanOdds,
     setConnectionDurationHours,
     setMeshRateLimit,
     setMeshMaxPeers,
@@ -489,20 +486,6 @@ const SettingsPageContent = () => {
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground pointer-events-none">
                       hours
                     </span>
-                  </div>
-                </div>
-                <div className="grid gap-1">
-                  <Label htmlFor="show-american-odds">Show American Odds</Label>
-                  <div
-                    id="show-american-odds"
-                    className="flex items-center h-10"
-                  >
-                    <Switch
-                      checked={Boolean(
-                        showAmericanOdds ?? defaults.showAmericanOdds
-                      )}
-                      onCheckedChange={(val) => setShowAmericanOdds(val)}
-                    />
                   </div>
                 </div>
               </div>
