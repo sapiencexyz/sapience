@@ -95,7 +95,6 @@ export default function PositionDialog({
           kind="position"
           positionId={position.id}
           pickCount={rawPicks.length}
-          isCounterpartyPosition={!isPredictorSide}
           createdAt={createdAt}
           endsAtMs={endsAtMs}
           positionSize={positionSize}
@@ -111,7 +110,6 @@ export default function PositionDialog({
         <PicksContent
           picks={picks}
           positionId={String(position.id)}
-          isCounterparty={!isPredictorSide}
           hideHeader
           positionStatus={getPositionStatus()}
         />
