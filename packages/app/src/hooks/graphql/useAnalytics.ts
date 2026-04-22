@@ -3,10 +3,10 @@ import { fetchProtocolStats, type ProtocolStat } from '@sapience/sdk/queries';
 
 const CACHE_TIME_MS = 60 * 1000;
 
-export function useProtocolStats() {
+export function useProtocolStats(vaultAddress?: string) {
   return useQuery<ProtocolStat[]>({
-    queryKey: ['protocolStats'],
-    queryFn: fetchProtocolStats,
+    queryKey: ['protocolStats', vaultAddress?.toLowerCase() ?? null],
+    queryFn: () => fetchProtocolStats(vaultAddress),
     staleTime: CACHE_TIME_MS,
     refetchInterval: CACHE_TIME_MS,
   });

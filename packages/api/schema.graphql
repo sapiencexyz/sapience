@@ -1533,7 +1533,7 @@ type Query {
   """
   Daily protocol statistics time series (last 90 days) — vault balance, volume, PnL, and open interest
   """
-  protocolStats: [ProtocolStat!]!
+  protocolStats(vaultAddress: String): [ProtocolStat!]!
 
   """Time-bucketed total protocol trading volume across all users"""
   protocolVolume(from: DateTimeISO, interval: TimeInterval!, to: DateTimeISO): [VolumeDataPoint!]!

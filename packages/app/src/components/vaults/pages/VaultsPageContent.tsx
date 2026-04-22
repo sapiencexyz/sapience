@@ -1,6 +1,9 @@
 'use client';
 
-import { predictionMarketVault } from '@sapience/sdk/contracts';
+import {
+  predictionMarketVault,
+  pythPredictionMarketVault,
+} from '@sapience/sdk/contracts';
 import { Button } from '@sapience/ui/components/ui/button';
 import { Card, CardContent } from '@sapience/ui/components/ui/card';
 import { Input } from '@sapience/ui/components/ui/input';
@@ -15,7 +18,7 @@ import {
   TooltipContent,
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
-import { Vault, Clock } from 'lucide-react';
+import { Clock } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { parseUnits } from 'viem';
 import { formatDuration, intervalToDuration } from 'date-fns';
@@ -46,11 +49,59 @@ const DEPOSIT_WHITELIST: `0x${string}`[] = [
 
 const DEPOSIT_CAP = 10000;
 
+type VaultKind = 'protocol' | 'options';
+
 const VaultsPageContent = () => {
   const { currentAddress, isConnected } = useCurrentAddress();
   const { openConnectDialog } = useConnectDialog();
   const VAULT_CHAIN_ID = DEFAULT_CHAIN_ID;
-  const VAULT_ADDRESS = predictionMarketVault[VAULT_CHAIN_ID]?.address;
+  const protocolVaultAddress = predictionMarketVault[VAULT_CHAIN_ID]?.address;
+  const optionsVaultAddress =
+    pythPredictionMarketVault[VAULT_CHAIN_ID]?.address;
+  const optionsVaultAvailable = Boolean(optionsVaultAddress);
+
+  const [selectedVault, setSelectedVault] = useState<VaultKind>(() => {
+    if (typeof window === 'undefined') return 'protocol';
+    const hash = window.location.hash.replace('#', '').toLowerCase();
+    return hash === 'options' && optionsVaultAvailable ? 'options' : 'protocol';
+  });
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (!optionsVaultAvailable && window.location.hash === '#options') {
+      const url = `${window.location.pathname}${window.location.search}#protocol`;
+      window.history.replaceState(null, '', url);
+    }
+  }, [optionsVaultAvailable]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const syncFromHash = () => {
+      const hash = window.location.hash.replace('#', '').toLowerCase();
+      if (hash === 'options' && optionsVaultAvailable) {
+        setSelectedVault('options');
+      } else if (hash === 'options' || hash === 'protocol') {
+        setSelectedVault('protocol');
+      }
+    };
+    window.addEventListener('hashchange', syncFromHash);
+    return () => window.removeEventListener('hashchange', syncFromHash);
+  }, [optionsVaultAvailable]);
+
+  const handleVaultChange = (value: string) => {
+    const next =
+      value === 'options' && optionsVaultAvailable ? 'options' : 'protocol';
+    setSelectedVault(next);
+    if (typeof window !== 'undefined') {
+      const url = `${window.location.pathname}${window.location.search}#${next}`;
+      window.history.replaceState(null, '', url);
+    }
+  };
+
+  const VAULT_ADDRESS =
+    selectedVault === 'options' ? optionsVaultAddress : protocolVaultAddress;
+  const vaultTitle =
+    selectedVault === 'options' ? 'Options Vault' : 'Protocol Vault';
   const collateralSymbol = COLLATERAL_SYMBOLS[VAULT_CHAIN_ID] || 'testUSDe';
 
   const {
@@ -80,7 +131,7 @@ const VaultsPageContent = () => {
 
   const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
   const { data: protocolStats, isLoading: isAnalyticsLoading } =
-    useProtocolStats();
+    useProtocolStats(VAULT_ADDRESS);
 
   const [depositAmount, setDepositAmount] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
@@ -560,31 +611,45 @@ const VaultsPageContent = () => {
   return (
     <div className="relative">
       <div className="container max-w-[600px] lg:max-w-[1200px] mx-auto px-4 pt-10 md:pt-14 lg:pt-10 pb-12 relative z-10">
-        <div className="mb-4 md:mb-6 flex flex-row items-center justify-between">
+        <div className="mb-4 md:mb-6 flex flex-row items-center justify-between gap-4">
           <h1 className="text-3xl md:text-5xl font-sans font-normal text-foreground">
             Vaults
           </h1>
-          <div className="flex items-center gap-2">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="inline-flex cursor-not-allowed">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled
-                    className="inline-flex items-center gap-2"
-                    onClick={(e) => e.preventDefault()}
-                  >
-                    <Vault className="h-4 w-4" />
-                    Deploy Vault
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Coming soon</p>
-              </TooltipContent>
-            </Tooltip>
-          </div>
+          <Tabs value={selectedVault} onValueChange={handleVaultChange}>
+            <TabsList className="h-auto p-1">
+              <TabsTrigger
+                value="protocol"
+                className="text-sm px-3 py-1.5 data-[state=active]:text-brand-white"
+              >
+                Protocol Vault
+              </TabsTrigger>
+              {optionsVaultAvailable ? (
+                <TabsTrigger
+                  value="options"
+                  className="text-sm px-3 py-1.5 data-[state=active]:text-brand-white"
+                >
+                  Options Vault
+                </TabsTrigger>
+              ) : (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <span className="inline-flex cursor-not-allowed">
+                      <TabsTrigger
+                        value="options"
+                        disabled
+                        className="text-sm px-3 py-1.5 opacity-50"
+                      >
+                        Options Vault
+                      </TabsTrigger>
+                    </span>
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Not yet deployed on this network</p>
+                  </TooltipContent>
+                </Tooltip>
+              )}
+            </TabsList>
+          </Tabs>
         </div>
 
         <div className="grid grid-cols-1 gap-8">
@@ -597,7 +662,7 @@ const VaultsPageContent = () => {
               <CardContent className="p-6">
                 <div className="space-y-6">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                    <h3 className="text-2xl font-medium">Protocol Vault</h3>
+                    <h3 className="text-2xl font-medium">{vaultTitle}</h3>
                     <div className="flex items-center gap-2">
                       <EnsAvatar
                         address={VAULT_ADDRESS}
