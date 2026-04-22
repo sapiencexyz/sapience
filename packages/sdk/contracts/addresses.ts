@@ -165,6 +165,12 @@ export const pythPredictionMarketVault: ChainAddressMap = {
     blockCreated: 2619084,
     legacy: [] as const,
   },
+  5064014: {
+    // Ethereal mainnet — deployed 2026-04-22
+    address: '0x7e56D33B0A873d2735Cdd7732A5bE72A64BE591A',
+    blockCreated: 4346536,
+    legacy: [] as const,
+  },
 } as const;
 
 /**
