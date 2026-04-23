@@ -193,7 +193,7 @@ export default function PositionSummary({
         'border-muted-foreground/40 bg-muted-foreground/10 text-muted-foreground';
     }
     return (
-      <div className="flex flex-col gap-1.5 min-w-0 items-start">
+      <div className="flex flex-col gap-1 min-w-0 items-start">
         <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
           Winner
         </div>
