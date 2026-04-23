@@ -24,18 +24,21 @@ const waitForReady = (proc: ChildProcess): Promise<{ url: string; port: number }
     let buffer = '';
     proc.stdout?.on('data', (chunk: Buffer) => {
       buffer += chunk.toString();
-      const nl = buffer.indexOf('\n');
-      if (nl === -1) return;
-      const line = buffer.slice(0, nl);
-      buffer = buffer.slice(nl + 1);
-      try {
-        const parsed = JSON.parse(line) as { testServerReady?: boolean; url?: string; port?: number };
-        if (parsed.testServerReady && parsed.url && parsed.port) {
-          clearTimeout(timeout);
-          resolvePromise({ url: parsed.url, port: parsed.port });
+      let nl = buffer.indexOf('\n');
+      while (nl !== -1) {
+        const line = buffer.slice(0, nl);
+        buffer = buffer.slice(nl + 1);
+        try {
+          const parsed = JSON.parse(line) as { testServerReady?: boolean; url?: string; port?: number };
+          if (parsed.testServerReady && parsed.url && parsed.port) {
+            clearTimeout(timeout);
+            resolvePromise({ url: parsed.url, port: parsed.port });
+            return;
+          }
+        } catch {
+          process.stdout.write(`[test-server] ${line}\n`);
         }
-      } catch {
-        process.stdout.write(`[test-server] ${line}\n`);
+        nl = buffer.indexOf('\n');
       }
     });
     proc.stderr?.on('data', (chunk: Buffer) => {
@@ -118,9 +121,19 @@ export const setup = async (): Promise<void> => {
 };
 
 export const teardown = async (): Promise<void> => {
-  if (server && !server.killed) {
-    server.kill('SIGTERM');
-    await new Promise((r) => setTimeout(r, 250));
-    if (!server.killed) server.kill('SIGKILL');
+  if (!server || server.exitCode !== null) return;
+
+  const exited = new Promise<void>((resolvePromise) => {
+    server?.once('exit', () => resolvePromise());
+  });
+
+  server.kill('SIGTERM');
+  const timedOut = await Promise.race([
+    exited.then(() => false),
+    new Promise<true>((r) => setTimeout(() => r(true), 2_000)),
+  ]);
+  if (timedOut && server.exitCode === null) {
+    server.kill('SIGKILL');
+    await exited;
   }
 };
