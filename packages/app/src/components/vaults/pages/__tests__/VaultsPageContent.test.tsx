@@ -10,11 +10,15 @@ const {
   mockUsePassiveLiquidityVault,
   mockUseCurrentAddress,
   mockUseProtocolStats,
+  mockRouterReplace,
+  mockSearchParamsToString,
 } = vi.hoisted(() => ({
   mockUseRestrictedJurisdiction: vi.fn(),
   mockUsePassiveLiquidityVault: vi.fn(),
   mockUseCurrentAddress: vi.fn(),
   mockUseProtocolStats: vi.fn(),
+  mockRouterReplace: vi.fn(),
+  mockSearchParamsToString: vi.fn(() => ''),
 }));
 
 // ---------------------------------------------------------------------------
@@ -172,9 +176,13 @@ vi.mock('date-fns', () => ({
 }));
 
 vi.mock('next/navigation', () => ({
-  useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
+  useRouter: () => ({ replace: mockRouterReplace, push: vi.fn() }),
   usePathname: () => '/vaults',
-  useSearchParams: () => new URLSearchParams(''),
+  useSearchParams: () => ({
+    get: (key: string) =>
+      new URLSearchParams(mockSearchParamsToString()).get(key),
+    toString: () => mockSearchParamsToString(),
+  }),
 }));
 
 vi.mock('next/link', () => {
@@ -280,6 +288,7 @@ function setDefaults() {
 describe('VaultsPageContent geofence', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockSearchParamsToString.mockReturnValue('');
     setDefaults();
   });
 
@@ -328,5 +337,18 @@ describe('VaultsPageContent geofence', () => {
     // Deposit button should be enabled (all other conditions satisfied by mocks)
     const depositBtn = screen.getByRole('button', { name: /Submit Deposit/ });
     expect(depositBtn).not.toBeDisabled();
+  });
+
+  it('defaults to the first vault tab without rewriting the URL when no address query param is present', () => {
+    mockUseRestrictedJurisdiction.mockReturnValue({
+      isRestricted: false,
+      isPermitLoading: false,
+      permitData: { permitted: true },
+      permitError: null,
+    });
+
+    render(<VaultsPageContent />);
+
+    expect(mockRouterReplace).not.toHaveBeenCalled();
   });
 });
