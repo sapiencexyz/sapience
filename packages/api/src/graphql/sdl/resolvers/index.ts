@@ -18,6 +18,8 @@
 
 import type { Resolvers } from '../__generated__/resolvers';
 
+import { scalarResolvers } from './scalars';
+
 import { Attestation } from './Attestation';
 import { AttestationScore } from './AttestationScore';
 import { Category } from './Category';
@@ -76,6 +78,7 @@ import { trade, tradeCount, trades } from './queries/trade';
 import { accountTotalVolume } from './queries/volume';
 
 export const resolvers: Resolvers = {
+  ...scalarResolvers,
   Query: {
     // Leaderboards / account scores
     accountAccuracy,
