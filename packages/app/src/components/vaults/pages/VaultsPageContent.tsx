@@ -2,6 +2,7 @@
 
 import {
   predictionMarketVault,
+  predictionMarketVaultStrategyB,
   pythPredictionMarketVault,
 } from '@sapience/sdk/contracts';
 import { Button } from '@sapience/ui/components/ui/button';
@@ -13,16 +14,12 @@ import {
   TabsContent,
   TabsTrigger,
 } from '@sapience/ui/components/ui/tabs';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@sapience/ui/components/ui/tooltip';
 import { Clock } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { parseUnits } from 'viem';
 import { formatDuration, intervalToDuration } from 'date-fns';
 import Link from 'next/link';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
 import { useCurrentAddress } from '~/hooks/blockchain/useCurrentAddress';
@@ -33,10 +30,7 @@ import { usePassiveLiquidityVault } from '~/hooks/contract/usePassiveLiquidityVa
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
 import { useRestrictedJurisdiction } from '~/hooks/useRestrictedJurisdiction';
 import RestrictedJurisdictionBanner from '~/components/shared/RestrictedJurisdictionBanner';
-import {
-  getProtocolTvlWei,
-  useProtocolStats,
-} from '~/hooks/graphql/useAnalytics';
+import { useProtocolStats } from '~/hooks/graphql/useAnalytics';
 import RiskDisclaimer from '~/components/markets/forms/shared/RiskDisclaimer';
 import Loader from '~/components/shared/Loader';
 import VaultPnlChart from '~/components/vaults/VaultPnlChart';
@@ -49,60 +43,106 @@ const DEPOSIT_WHITELIST: `0x${string}`[] = [
 
 const DEPOSIT_CAP = 10000;
 
-type VaultKind = 'protocol' | 'options';
+type VaultOption = {
+  address: `0x${string}`;
+  label: string;
+};
+
+const VAULT_QUERY_PARAM = 'address';
+
+const normalizeAddress = (value: string | null | undefined) =>
+  value ? value.toLowerCase() : '';
 
 const VaultsPageContent = () => {
   const { currentAddress, isConnected } = useCurrentAddress();
   const { openConnectDialog } = useConnectDialog();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const VAULT_CHAIN_ID = DEFAULT_CHAIN_ID;
-  const protocolVaultAddress = predictionMarketVault[VAULT_CHAIN_ID]?.address;
-  const optionsVaultAddress =
-    pythPredictionMarketVault[VAULT_CHAIN_ID]?.address;
-  const optionsVaultAvailable = Boolean(optionsVaultAddress);
 
-  const [selectedVault, setSelectedVault] = useState<VaultKind>(() => {
-    if (typeof window === 'undefined') return 'protocol';
-    const hash = window.location.hash.replace('#', '').toLowerCase();
-    return hash === 'options' && optionsVaultAvailable ? 'options' : 'protocol';
-  });
+  const vaultOptions = useMemo<VaultOption[]>(() => {
+    const entries: Array<[`0x${string}` | undefined, string]> = [
+      [
+        predictionMarketVault[VAULT_CHAIN_ID]?.address as
+          | `0x${string}`
+          | undefined,
+        'Core Vault',
+      ],
+      [
+        predictionMarketVaultStrategyB[VAULT_CHAIN_ID]?.address as
+          | `0x${string}`
+          | undefined,
+        'Edge Vault',
+      ],
+      [
+        pythPredictionMarketVault[VAULT_CHAIN_ID]?.address as
+          | `0x${string}`
+          | undefined,
+        'Options Vault',
+      ],
+    ];
+    return entries
+      .filter((entry): entry is [`0x${string}`, string] => Boolean(entry[0]))
+      .map(([address, label]) => ({ address, label }));
+  }, [VAULT_CHAIN_ID]);
+
+  const queryVault = normalizeAddress(searchParams.get(VAULT_QUERY_PARAM));
+  const selectedVault = useMemo(() => {
+    const match = vaultOptions.find(
+      (v) => normalizeAddress(v.address) === queryVault
+    );
+    return match ?? vaultOptions[0];
+  }, [queryVault, vaultOptions]);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
-    if (!optionsVaultAvailable && window.location.hash === '#options') {
-      const url = `${window.location.pathname}${window.location.search}#protocol`;
-      window.history.replaceState(null, '', url);
+    if (!selectedVault) return;
+    const params = new URLSearchParams(searchParams.toString());
+    if (
+      normalizeAddress(params.get(VAULT_QUERY_PARAM)) ===
+      normalizeAddress(selectedVault.address)
+    ) {
+      return;
     }
-  }, [optionsVaultAvailable]);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const syncFromHash = () => {
-      const hash = window.location.hash.replace('#', '').toLowerCase();
-      if (hash === 'options' && optionsVaultAvailable) {
-        setSelectedVault('options');
-      } else if (hash === 'options' || hash === 'protocol') {
-        setSelectedVault('protocol');
-      }
-    };
-    window.addEventListener('hashchange', syncFromHash);
-    return () => window.removeEventListener('hashchange', syncFromHash);
-  }, [optionsVaultAvailable]);
+    params.set(VAULT_QUERY_PARAM, selectedVault.address.toLowerCase());
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [selectedVault, searchParams, router, pathname]);
 
   const handleVaultChange = (value: string) => {
-    const next =
-      value === 'options' && optionsVaultAvailable ? 'options' : 'protocol';
-    setSelectedVault(next);
-    if (typeof window !== 'undefined') {
-      const url = `${window.location.pathname}${window.location.search}#${next}`;
-      window.history.replaceState(null, '', url);
-    }
+    const params = new URLSearchParams(searchParams.toString());
+    params.set(VAULT_QUERY_PARAM, value.toLowerCase());
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
 
-  const VAULT_ADDRESS =
-    selectedVault === 'options' ? optionsVaultAddress : protocolVaultAddress;
-  const vaultTitle =
-    selectedVault === 'options' ? 'Options Vault' : 'Protocol Vault';
+  const VAULT_ADDRESS = selectedVault?.address;
+  const vaultTitle = selectedVault?.label ?? 'Vault';
+  const selectedVaultValue = selectedVault?.address ?? '';
   const collateralSymbol = COLLATERAL_SYMBOLS[VAULT_CHAIN_ID] || 'testUSDe';
+
+  // Separate reads for each of the (up to) three vaults so the Vault Rewards
+  // calc can sum across all vaults regardless of which tab is selected. Hooks
+  // must be called unconditionally, so missing addresses are handled inside
+  // the hook via the `enabled` flag.
+  const coreAddr = predictionMarketVault[VAULT_CHAIN_ID]?.address;
+  const optionsAddr = pythPredictionMarketVault[VAULT_CHAIN_ID]?.address;
+  const edgeAddr = predictionMarketVaultStrategyB[VAULT_CHAIN_ID]?.address;
+
+  const coreVault = usePassiveLiquidityVault({
+    vaultAddress: coreAddr,
+    chainId: VAULT_CHAIN_ID,
+  });
+  const optionsVault = usePassiveLiquidityVault({
+    vaultAddress: optionsAddr,
+    chainId: VAULT_CHAIN_ID,
+  });
+  const edgeVault = usePassiveLiquidityVault({
+    vaultAddress: edgeAddr,
+    chainId: VAULT_CHAIN_ID,
+  });
+
+  const { data: coreStats } = useProtocolStats(coreAddr);
+  const { data: optionsStats } = useProtocolStats(optionsAddr);
+  const { data: edgeStats } = useProtocolStats(edgeAddr);
 
   const {
     vaultData,
@@ -581,16 +621,50 @@ const VaultsPageContent = () => {
   const utilizationDisplay = `${utilizationPercent.toFixed(2)}%`;
 
   const yieldMetrics = useMemo(() => {
-    const lastStat = protocolStats?.[protocolStats.length - 1];
+    // Rewards are paid from the protocol-wide Ethena yield and are shared
+    // among every vault's LPs. Calc must be identical regardless of which
+    // tab is selected — sum TVL across all deployed vaults.
+    const vaultEntries = [
+      [coreVault.vaultData, coreStats] as const,
+      [optionsVault.vaultData, optionsStats] as const,
+      [edgeVault.vaultData, edgeStats] as const,
+    ];
+    const totalVaultTvlWei = vaultEntries.reduce((sum, [v, stats]) => {
+      const liquid = v?.totalLiquidValue ?? 0n;
+      const lastStat = stats?.[stats.length - 1];
+      const deployed = lastStat?.vaultDeployed
+        ? BigInt(lastStat.vaultDeployed)
+        : 0n;
+      return sum + liquid + deployed;
+    }, 0n);
 
-    const protocolTvlWei = getProtocolTvlWei(lastStat);
+    // Protocol TVL = escrow (protocol-wide, same across all vault queries) +
+    // undeployed assets summed across every vault. Sourcing from the selected
+    // vault's stats zeros out when we switch to a vault with no stats yet.
+    const escrowWei = (() => {
+      for (const [, stats] of vaultEntries) {
+        const last = stats?.[stats.length - 1];
+        if (last?.escrowBalance) return BigInt(last.escrowBalance);
+      }
+      return 0n;
+    })();
+    const vaultAvailableWei = vaultEntries.reduce((sum, [, stats]) => {
+      const last = stats?.[stats.length - 1];
+      return (
+        sum +
+        (last?.vaultAvailableAssets ? BigInt(last.vaultAvailableAssets) : 0n)
+      );
+    }, 0n);
+    const protocolTvlWei = escrowWei + vaultAvailableWei;
     const protocolTvlNum = Number(formatAssetAmount(protocolTvlWei));
-    const vaultTvlNum = Number(formatAssetAmount(tvlWei));
+    const totalVaultTvlNum = Number(formatAssetAmount(totalVaultTvlWei));
 
     const effectiveApy =
-      vaultTvlNum > 0 ? (protocolTvlNum / vaultTvlNum) * ETHENA_BASE_APY : 0;
-    const annualYieldToVault = vaultTvlNum * (effectiveApy / 100);
-    const weeklyYield = (annualYieldToVault / 365) * 7;
+      totalVaultTvlNum > 0
+        ? (protocolTvlNum / totalVaultTvlNum) * ETHENA_BASE_APY
+        : 0;
+    const annualYieldToVaults = totalVaultTvlNum * (effectiveApy / 100);
+    const weeklyYield = (annualYieldToVaults / 365) * 7;
 
     const fmt = (n: number) =>
       Number.isFinite(n)
@@ -602,52 +676,38 @@ const VaultsPageContent = () => {
 
     return {
       protocolTvl: fmt(protocolTvlNum),
-      annualYield: fmt(annualYieldToVault),
+      annualYield: fmt(annualYieldToVaults),
       weeklyYield: fmt(weeklyYield),
       effectiveApy: effectiveApy.toFixed(2),
     };
-  }, [tvlWei, formatAssetAmount, protocolStats]);
+  }, [
+    coreVault.vaultData,
+    optionsVault.vaultData,
+    edgeVault.vaultData,
+    coreStats,
+    optionsStats,
+    edgeStats,
+    formatAssetAmount,
+  ]);
 
   return (
     <div className="relative">
       <div className="container max-w-[600px] lg:max-w-[1200px] mx-auto px-4 pt-10 md:pt-14 lg:pt-10 pb-12 relative z-10">
-        <div className="mb-4 md:mb-6 flex flex-row items-center justify-between gap-4">
+        <div className="mb-4 md:mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4">
           <h1 className="text-3xl md:text-5xl font-sans font-normal text-foreground">
             Vaults
           </h1>
-          <Tabs value={selectedVault} onValueChange={handleVaultChange}>
+          <Tabs value={selectedVaultValue} onValueChange={handleVaultChange}>
             <TabsList className="h-auto p-1">
-              <TabsTrigger
-                value="protocol"
-                className="text-sm px-3 py-1.5 data-[state=active]:text-brand-white"
-              >
-                Protocol Vault
-              </TabsTrigger>
-              {optionsVaultAvailable ? (
+              {vaultOptions.map((option) => (
                 <TabsTrigger
-                  value="options"
+                  key={option.address}
+                  value={option.address}
                   className="text-sm px-3 py-1.5 data-[state=active]:text-brand-white"
                 >
-                  Options Vault
+                  {option.label}
                 </TabsTrigger>
-              ) : (
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <span className="inline-flex cursor-not-allowed">
-                      <TabsTrigger
-                        value="options"
-                        disabled
-                        className="text-sm px-3 py-1.5 opacity-50"
-                      >
-                        Options Vault
-                      </TabsTrigger>
-                    </span>
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Not yet deployed on this network</p>
-                  </TooltipContent>
-                </Tooltip>
-              )}
+              ))}
             </TabsList>
           </Tabs>
         </div>
