@@ -13,13 +13,22 @@ import { useReadContracts } from 'wagmi';
 import { collateralToken } from '@sapience/sdk/contracts';
 import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import { useSessionState } from '~/hooks/useSessionState';
-import { type UiTransaction } from '~/components/markets/DataDrawer/TransactionCells';
 import { useAuctionRelayerFeed } from '~/lib/auction/useAuctionRelayerFeed';
+import {
+  type AuctionMessageData,
+  asAuctionData,
+  auctionMessageToUiTx,
+  buildAuctionMessageAggregates,
+  collectConditionIdsFromMessages,
+  collectUniqueAddressesFromMessages,
+  getAuctionId as getAuctionIdFromMessage,
+} from '~/lib/terminal/auctionMessage';
 import AuctionRequestRow from '~/components/terminal/AuctionRequestRow';
 import AutoBid from '~/components/terminal/AutoBid';
 import { ApprovalDialogProvider } from '~/components/terminal/ApprovalDialogContext';
 import ApprovalDialog from '~/components/terminal/ApprovalDialog';
 import { TerminalLogsProvider } from '~/components/terminal/TerminalLogsContext';
+import { PythPredictionsCell } from '~/components/terminal/PythPredictionsCell';
 import { useTradeSettledNotifications } from '~/hooks/useTradeSettledNotifications';
 import { useCategories } from '~/hooks/graphql/useCategories';
 import StackedPredictions, {
@@ -27,10 +36,8 @@ import StackedPredictions, {
 } from '~/components/shared/StackedPredictions';
 import {
   decodeAuctionPredictedOutcomes,
-  formatPythPriceDecimalFromInt,
   PYTH_RESOLVER_SET,
 } from '~/lib/auction/decodePredictedOutcomes';
-import { usePythFeedLabel } from '~/lib/pyth/usePythFeedLabel';
 
 import CategoryFilter from '~/components/terminal/filters/CategoryFilter';
 import ConditionsFilter from '~/components/terminal/filters/ConditionsFilter';
@@ -46,38 +53,6 @@ import Loader from '~/components/shared/Loader';
 import bidsHub from '~/lib/auction/useAuctionBidsHub';
 import { useSettings } from '~/lib/context/SettingsContext';
 import { toAuctionWsUrl } from '~/lib/ws';
-
-/** Shape of auction message data payload */
-interface AuctionMessageData {
-  auctionId?: string;
-  predictor?: string;
-  predictorCollateral?: string;
-  predictorDeadline?: number;
-  resolver?: string;
-  predictedOutcomes?: string[];
-  predictorNonce?: number | string;
-  intentSignature?: string;
-  picks?: Array<{
-    conditionResolver: string;
-    conditionId: string;
-    predictedOutcome: number;
-  }>;
-  bids?: Array<Record<string, unknown>>;
-  payload?: {
-    auctionId?: string;
-    resolver?: string;
-    predictor?: string;
-    predictorCollateral?: string;
-    predictedOutcomes?: string[];
-  };
-  [key: string]: unknown;
-}
-
-/** Safely cast unknown feed message data to AuctionMessageData */
-function asAuctionData(data: unknown): AuctionMessageData {
-  if (data && typeof data === 'object') return data as AuctionMessageData;
-  return {} as AuctionMessageData;
-}
 
 // Defined outside TerminalPageContent to prevent remounting on parent re-renders
 const TradeNotifications = () => {
@@ -167,16 +142,8 @@ const TerminalPageContent: React.FC = () => {
       channel?: string | null;
       data?: unknown;
       auctionId?: string;
-    }): string | null => {
-      const d = asAuctionData(m?.data);
-      return (
-        m?.channel ||
-        d?.auctionId ||
-        d?.payload?.auctionId ||
-        m?.auctionId ||
-        null
-      );
-    },
+      type?: string;
+    }): string | null => getAuctionIdFromMessage(m),
     []
   );
 
@@ -278,31 +245,10 @@ const TerminalPageContent: React.FC = () => {
     [getAuctionId]
   );
 
-  // Build maps for last activity and latest started message per auction
-  const { lastActivityByAuction, latestStartedByAuction } = useMemo(() => {
-    const lastActivity = new Map<string, number>();
-    const latestStarted = new Map<
-      string,
-      (typeof auctionAndBidMessages)[number]
-    >();
-    for (const m of auctionAndBidMessages) {
-      const id = getAuctionId(m);
-      if (!id) continue;
-      const t = Number(m?.time || 0);
-      const prev = lastActivity.get(id) || 0;
-      if (t > prev) lastActivity.set(id, t);
-      if (m.type === 'auction.started') {
-        const prevStarted = latestStarted.get(id);
-        if (!prevStarted || Number(prevStarted?.time || 0) < t) {
-          latestStarted.set(id, m);
-        }
-      }
-    }
-    return {
-      lastActivityByAuction: lastActivity,
-      latestStartedByAuction: latestStarted,
-    };
-  }, [auctionAndBidMessages, getAuctionId]);
+  const { lastActivityByAuction, latestStartedByAuction } = useMemo(
+    () => buildAuctionMessageAggregates(auctionAndBidMessages),
+    [auctionAndBidMessages]
+  );
 
   // Prune decode cache every 60s - remove entries not accessed in 2 hours
   useEffect(() => {
@@ -320,60 +266,15 @@ const TerminalPageContent: React.FC = () => {
     return () => clearInterval(timer);
   }, []);
 
-  // Collect unique conditionIds from auction.started messages for enrichment
-  const conditionIds = useMemo(() => {
-    const set = new Set<string>();
-    try {
-      for (const m of auctionAndBidMessages) {
-        if (m.type !== 'auction.started') continue;
+  const conditionIds = useMemo(
+    () => collectConditionIdsFromMessages(auctionAndBidMessages),
+    [auctionAndBidMessages]
+  );
 
-        // Escrow auctions have picks[] with conditionId directly
-        const mData = asAuctionData(m?.data);
-        const picks = mData?.picks as
-          | Array<{ conditionId?: string; conditionResolver?: string }>
-          | undefined;
-        if (Array.isArray(picks) && picks.length > 0) {
-          for (const p of picks) {
-            if (p.conditionId && typeof p.conditionId === 'string') {
-              // Skip Pyth picks — they encode market params, not DB condition IDs
-              const resolver = p.conditionResolver?.toLowerCase?.() ?? '';
-              if (PYTH_RESOLVER_SET.has(resolver)) continue;
-              set.add(p.conditionId);
-            }
-          }
-          continue;
-        }
-
-        // V1 auctions use resolver + predictedOutcomes
-        const decoded = decodeAuctionPredictedOutcomes({
-          resolver: mData?.resolver ?? mData?.payload?.resolver,
-          predictedOutcomes: mData?.predictedOutcomes,
-        });
-        if (decoded.kind !== 'condition') continue;
-        for (const o of decoded.outcomes || []) {
-          const id = o?.marketId as string | undefined;
-          if (id && typeof id === 'string') set.add(id);
-        }
-      }
-    } catch {
-      /* noop */
-    }
-    return Array.from(set);
-  }, [auctionAndBidMessages]);
-
-  // Collect unique predictor addresses from auction.started messages for the address filter
-  const uniqueAddresses = useMemo(() => {
-    const set = new Set<string>();
-    for (const m of auctionAndBidMessages) {
-      if (m.type !== 'auction.started') continue;
-      const auctionData = m.data as AuctionMessageData | undefined;
-      const addr = auctionData?.predictor;
-      if (addr && typeof addr === 'string') {
-        set.add(addr);
-      }
-    }
-    return Array.from(set).sort();
-  }, [auctionAndBidMessages]);
+  const uniqueAddresses = useMemo(
+    () => collectUniqueAddressesFromMessages(auctionAndBidMessages),
+    [auctionAndBidMessages]
+  );
 
   // Query conditions to enrich shortName/question for decoded predicted outcomes
   const {
@@ -939,53 +840,7 @@ const TerminalPageContent: React.FC = () => {
     };
   }, [virtualizer]);
 
-  function toUiTx(m: {
-    time: number;
-    type: string;
-    data: unknown;
-  }): UiTransaction {
-    const createdAt = new Date(m.time).toISOString();
-    const txData = asAuctionData(m.data);
-    if (m.type === 'auction.started') {
-      const predictor = txData?.predictor || '';
-      const predictorCollateral = txData?.predictorCollateral || '0';
-      return {
-        id: m.time,
-        type: 'FORECAST',
-        createdAt,
-        collateral: String(predictorCollateral || '0'),
-        position: { owner: predictor },
-      } as UiTransaction;
-    }
-    if (m.type === 'auction.bids') {
-      const bids = Array.isArray(txData?.bids) ? txData.bids : [];
-      const top = bids.reduce((best, b) => {
-        try {
-          const cur = BigInt(String(b?.counterpartyCollateral ?? '0'));
-          const bestVal = BigInt(String(best?.counterpartyCollateral ?? '0'));
-          return cur > bestVal ? b : best;
-        } catch {
-          return best;
-        }
-      }, bids[0] || null);
-      const counterparty = top?.counterparty || '';
-      const counterpartyCollateral = top?.counterpartyCollateral || '0';
-      return {
-        id: m.time,
-        type: 'FORECAST',
-        createdAt,
-        collateral: String(counterpartyCollateral || '0'),
-        position: { owner: counterparty },
-      } as UiTransaction;
-    }
-    return {
-      id: m.time,
-      type: 'FORECAST',
-      createdAt,
-      collateral: '0',
-      position: { owner: '' },
-    } as UiTransaction;
-  }
+  const toUiTx = auctionMessageToUiTx;
 
   return (
     <TerminalLogsProvider>
@@ -1252,45 +1107,3 @@ const TerminalPageContent: React.FC = () => {
 };
 
 export default TerminalPageContent;
-
-function PythPredictionsCell({
-  first,
-}: {
-  first: {
-    priceId: `0x${string}`;
-    endTime: bigint;
-    strikePrice: bigint;
-    strikeExpo: number;
-    overWinsOnTie: boolean;
-    prediction: boolean;
-  };
-}) {
-  const feedLabel = usePythFeedLabel(first.priceId);
-  const priceStr = formatPythPriceDecimalFromInt(
-    first.strikePrice,
-    first.strikeExpo
-  );
-
-  // Taker perspective: invert the maker's prediction
-  const takerChoice = first.prediction ? 'No' : 'Yes';
-  const question = `${feedLabel ?? 'Crypto'} OVER $${priceStr}`;
-
-  const picks: Pick[] = [
-    {
-      question,
-      choice: takerChoice,
-      source: 'pyth',
-      categorySlug: 'prices',
-    },
-  ];
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      transition={{ duration: 0.14, ease: 'easeOut' }}
-    >
-      <StackedPredictions picks={picks} className="max-w-full" />
-    </motion.div>
-  );
-}
