@@ -47,7 +47,7 @@ export interface PositionSummaryProps {
   kind?: 'prediction' | 'position';
   /**
    * Number of picks backing this aggregate position. When provided with
-   * kind="position", the header becomes "{n} Pick Position".
+   * kind="position", renders a "Picks" cell in the addresses row.
    */
   pickCount?: number;
   /**
