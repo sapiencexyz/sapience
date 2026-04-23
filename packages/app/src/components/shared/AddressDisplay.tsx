@@ -15,7 +15,12 @@ import { useQuery } from '@tanstack/react-query';
 import { Copy, ExternalLink, User, Vault } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { predictionMarketVault } from '@sapience/sdk/contracts';
+import {
+  predictionMarketVault,
+  predictionMarketVaultStrategyB,
+  pythPredictionMarketVault,
+  singleLegVault,
+} from '@sapience/sdk/contracts';
 import { getAddress } from 'viem';
 import { getExplorerUrl } from '~/lib/utils/util';
 import { mainnetClient } from '~/lib/utils/util';
@@ -116,9 +121,13 @@ const AddressDisplay = ({
       : '';
 
   // Check if address matches any vault address across all chains
-  const isVaultAddress = Object.values(predictionMarketVault).some(
-    (vault) => vault.address.toLowerCase() === address.toLowerCase()
-  );
+  const lowerAddress = address.toLowerCase();
+  const isVaultAddress = [
+    ...Object.values(predictionMarketVault),
+    ...Object.values(pythPredictionMarketVault),
+    ...Object.values(predictionMarketVaultStrategyB),
+    ...Object.values(singleLegVault),
+  ].some((vault) => vault.address.toLowerCase() === lowerAddress);
 
   return (
     <div

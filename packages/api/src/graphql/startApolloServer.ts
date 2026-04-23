@@ -1,3 +1,4 @@
+import 'reflect-metadata';
 import prisma from '../db';
 import { SharedSchema } from './sharedSchema';
 import { ApolloServer } from '@apollo/server';

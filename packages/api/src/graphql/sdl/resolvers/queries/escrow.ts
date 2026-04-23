@@ -382,6 +382,7 @@ export const positions: NonNullable<QueryResolvers['positions']> = async (
       userCollateral: userCollateral > 0n ? userCollateral.toString() : null,
       totalPayout: totalPayout > 0n ? totalPayout.toString() : null,
       createdAt: r.createdAt,
+      updatedAt: r.updatedAt,
       pickConfig: pc ? mapPickConfig(pc, { predictionId }) : null,
     };
   });

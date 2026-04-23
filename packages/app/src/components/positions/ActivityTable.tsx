@@ -22,15 +22,12 @@ import CounterpartyBadge from '~/components/shared/CounterpartyBadge';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import {
-  usePredictionsByConditionId,
-  usePositionBalances,
   type Prediction,
   type PickConfigData,
 } from '~/hooks/graphql/usePositions';
 import { useConditionsByIds } from '~/hooks/graphql/useConditionsByIds';
 import {
   useAccountActivity,
-  type ActivityItem,
   type PredictionActivity,
   type TradeActivity,
 } from '~/hooks/graphql/useAccountActivity';
@@ -51,6 +48,22 @@ import {
   matchesConditionSearch,
 } from '~/lib/utils/tableFilters';
 import { useInfiniteScroll } from '~/hooks/useInfiniteScroll';
+
+// ─── Column visibility ───────────────────────────────────────────────────────
+
+export type ActivityColumn =
+  | 'date'
+  | 'type'
+  | 'position'
+  | 'parties'
+  | 'value'
+  | 'status'
+  | 'share';
+
+function makeIsHidden(hidden: ReadonlyArray<ActivityColumn> | undefined) {
+  const set = new Set(hidden ?? []);
+  return (col: ActivityColumn) => set.has(col);
+}
 
 // ─── Timestamp formatting ────────────────────────────────────────────────────
 
@@ -95,6 +108,7 @@ function PredictionActivityRow({
   conditionsMap,
   onShare,
   onOpenDialog,
+  isHidden,
 }: {
   item: PredictionActivity;
   collateralSymbol: string;
@@ -105,6 +119,7 @@ function PredictionActivityRow({
     isPredictorSide: boolean;
   }) => void;
   onOpenDialog: () => void;
+  isHidden: (col: ActivityColumn) => boolean;
 }) {
   const { prediction, pickConfig, isPredictorSide } = item;
   const rawPicks = pickConfig?.picks ?? [];
@@ -143,154 +158,167 @@ function PredictionActivityRow({
   return (
     <tr className="border-b last:border-b-0">
       {/* Date */}
-      <td className="px-4 py-3 whitespace-nowrap">
-        <div className="text-sm">
-          <div className="xl:hidden text-xs text-muted-foreground mb-1">
-            Date
+      {!isHidden('date') && (
+        <td className="px-4 py-3 whitespace-nowrap">
+          <div className="text-sm">
+            <div className="xl:hidden text-xs text-muted-foreground mb-1">
+              Date
+            </div>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="text-brand-white whitespace-nowrap cursor-default">
+                    {timeDisplay}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <span>{exactDisplay}</span>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="text-brand-white whitespace-nowrap cursor-default">
-                  {timeDisplay}
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>
-                <span>{exactDisplay}</span>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-      </td>
+        </td>
+      )}
       {/* Type */}
-      <td className="px-4 py-3 whitespace-nowrap">
-        <div className="text-sm">
-          <div className="xl:hidden text-xs text-muted-foreground mb-1">
-            Type
+      {!isHidden('type') && (
+        <td className="px-4 py-3 whitespace-nowrap">
+          <div className="text-sm">
+            <div className="xl:hidden text-xs text-muted-foreground mb-2">
+              Type
+            </div>
+            <TypeBadge type="prediction" />
           </div>
-          <TypeBadge type="prediction" />
-        </div>
-      </td>
+        </td>
+      )}
       {/* Position */}
-      <td className="px-4 py-3">
-        <div className="text-sm">
-          <div className="xl:hidden text-xs text-muted-foreground mb-1">
-            Position
+      {!isHidden('position') && (
+        <td className="px-4 py-3">
+          <div className="text-sm">
+            <div className="xl:hidden text-xs text-muted-foreground mb-1">
+              Position
+            </div>
+            {pickLegs.length > 0 ? (
+              <PicksSummary
+                picks={pickLegs}
+                predictionId={prediction.predictionId}
+                onClick={onOpenDialog}
+              />
+            ) : (
+              <span className="text-muted-foreground">&mdash;</span>
+            )}
           </div>
-          {pickLegs.length > 0 ? (
-            <PicksSummary
-              picks={pickLegs}
-              isCounterparty={!isPredictorSide}
-              predictionId={prediction.predictionId}
-              onClick={onOpenDialog}
-            />
-          ) : (
-            <span className="text-muted-foreground">&mdash;</span>
-          )}
-        </div>
-      </td>
+        </td>
+      )}
       {/* Parties */}
-      <td className="px-4 py-3 whitespace-nowrap">
-        <div>
-          <div className="xl:hidden text-xs text-muted-foreground mb-1">
-            Parties
-          </div>
-          <div className="flex flex-col gap-1">
-            <span
-              className={`inline-flex items-center gap-1.5 text-sm font-mono ${predictorWon ? 'text-green-400' : 'text-brand-white'}`}
-            >
-              <EnsAvatar
-                address={prediction.predictor}
-                className="shrink-0 rounded-sm ring-1 ring-border/50"
-                width={16}
-                height={16}
-              />
-              <AddressDisplay address={prediction.predictor} />
-              <span className="text-muted-foreground text-xs">
-                <NumberDisplay
-                  value={predictorEth}
-                  className="tabular-nums text-muted-foreground font-mono"
-                />{' '}
-                {collateralSymbol}
+      {!isHidden('parties') && (
+        <td className="px-4 py-3 whitespace-nowrap">
+          <div>
+            <div className="xl:hidden text-xs text-muted-foreground mb-1">
+              Parties
+            </div>
+            <div className="flex flex-col gap-1">
+              <span
+                className={`inline-flex items-center gap-1.5 text-sm font-mono ${predictorWon ? 'text-green-400' : 'text-brand-white'}`}
+              >
+                <EnsAvatar
+                  address={prediction.predictor}
+                  className="shrink-0 rounded-sm ring-1 ring-border/50"
+                  width={16}
+                  height={16}
+                />
+                <AddressDisplay address={prediction.predictor} />
+                <span className="text-muted-foreground text-xs">
+                  <NumberDisplay
+                    value={predictorEth}
+                    className="tabular-nums text-muted-foreground font-mono"
+                  />{' '}
+                  {collateralSymbol}
+                </span>
               </span>
-            </span>
-            <span
-              className={`inline-flex items-center gap-1.5 text-sm font-mono ${counterpartyWon ? 'text-green-400' : 'text-brand-white'}`}
-            >
-              <EnsAvatar
-                address={prediction.counterparty}
-                className="shrink-0 rounded-sm ring-1 ring-border/50"
-                width={16}
-                height={16}
-              />
-              <AddressDisplay address={prediction.counterparty} />
-              <span className="text-muted-foreground text-xs">
-                <NumberDisplay
-                  value={counterpartyEth}
-                  className="tabular-nums text-muted-foreground font-mono"
-                />{' '}
-                {collateralSymbol}
+              <span
+                className={`inline-flex items-center gap-1.5 text-sm font-mono ${counterpartyWon ? 'text-green-400' : 'text-brand-white'}`}
+              >
+                <EnsAvatar
+                  address={prediction.counterparty}
+                  className="shrink-0 rounded-sm ring-1 ring-border/50"
+                  width={16}
+                  height={16}
+                />
+                <AddressDisplay address={prediction.counterparty} />
+                <span className="text-muted-foreground text-xs">
+                  <NumberDisplay
+                    value={counterpartyEth}
+                    className="tabular-nums text-muted-foreground font-mono"
+                  />{' '}
+                  {collateralSymbol}
+                </span>
               </span>
-            </span>
+            </div>
           </div>
-        </div>
-      </td>
+        </td>
+      )}
       {/* Value */}
-      <td className="px-4 py-3 whitespace-nowrap">
-        <div>
-          <div className="xl:hidden text-xs text-muted-foreground mb-1">
-            Value
+      {!isHidden('value') && (
+        <td className="px-4 py-3 whitespace-nowrap">
+          <div>
+            <div className="xl:hidden text-xs text-muted-foreground mb-1">
+              Value
+            </div>
+            <div className="whitespace-nowrap tabular-nums text-brand-white font-mono">
+              <NumberDisplay
+                value={totalEth}
+                className="tabular-nums text-brand-white font-mono"
+              />{' '}
+              <span className="tabular-nums text-brand-white font-mono">
+                {collateralSymbol}
+              </span>
+            </div>
           </div>
-          <div className="whitespace-nowrap tabular-nums text-brand-white font-mono">
-            <NumberDisplay
-              value={totalEth}
-              className="tabular-nums text-brand-white font-mono"
-            />{' '}
-            <span className="tabular-nums text-brand-white font-mono">
-              {collateralSymbol}
-            </span>
-          </div>
-        </div>
-      </td>
+        </td>
+      )}
       {/* Status */}
-      <td className="px-4 py-3 whitespace-nowrap">
-        <div>
-          <div className="xl:hidden text-xs text-muted-foreground mb-1">
-            Status
+      {!isHidden('status') && (
+        <td className="px-4 py-3 whitespace-nowrap">
+          <div>
+            <div className="xl:hidden text-xs text-muted-foreground mb-1">
+              Status
+            </div>
+            {!isSettled && endsAtSec > 0 && endsAtMs > Date.now() ? (
+              <span className="whitespace-nowrap tabular-nums font-mono text-brand-white">
+                ENDS <CountdownCell endTime={endsAtSec} />
+              </span>
+            ) : !isSettled ? (
+              <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
+                Pending
+              </span>
+            ) : predictorWon ? (
+              <span className="whitespace-nowrap tabular-nums font-mono uppercase text-green-600 cursor-default">
+                Predictor won
+              </span>
+            ) : counterpartyWon ? (
+              <span className="whitespace-nowrap tabular-nums font-mono uppercase text-green-600 cursor-default">
+                Counterparty won
+              </span>
+            ) : (
+              <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
+                Settled
+              </span>
+            )}
           </div>
-          {!isSettled && endsAtSec > 0 && endsAtMs > Date.now() ? (
-            <span className="whitespace-nowrap tabular-nums font-mono text-brand-white">
-              ENDS <CountdownCell endTime={endsAtSec} />
-            </span>
-          ) : !isSettled ? (
-            <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
-              Pending
-            </span>
-          ) : predictorWon ? (
-            <span className="whitespace-nowrap tabular-nums font-mono uppercase text-green-600 cursor-default">
-              Predictor won
-            </span>
-          ) : counterpartyWon ? (
-            <span className="whitespace-nowrap tabular-nums font-mono uppercase text-green-600 cursor-default">
-              Counterparty won
-            </span>
-          ) : (
-            <span className="whitespace-nowrap tabular-nums font-mono uppercase text-muted-foreground cursor-default">
-              Settled
-            </span>
-          )}
-        </div>
-      </td>
+        </td>
+      )}
       {/* Share */}
-      <td className="px-4 py-3 whitespace-nowrap">
-        <button
-          type="button"
-          className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
-          onClick={() => onShare({ prediction, pickConfig, isPredictorSide })}
-        >
-          Share
-        </button>
-      </td>
+      {!isHidden('share') && (
+        <td className="px-4 py-3 whitespace-nowrap">
+          <button
+            type="button"
+            className="inline-flex items-center justify-center h-9 px-3 rounded-md border text-sm bg-background hover:bg-muted/50 border-border"
+            onClick={() => onShare({ prediction, pickConfig, isPredictorSide })}
+          >
+            Share
+          </button>
+        </td>
+      )}
     </tr>
   );
 }
@@ -302,11 +330,13 @@ function TradeActivityRow({
   collateralSymbol,
   conditionsMap,
   hasAccount,
+  isHidden,
 }: {
   item: TradeActivity;
   collateralSymbol: string;
   conditionsMap: ConditionsMap;
   hasAccount: boolean;
+  isHidden: (col: ActivityColumn) => boolean;
 }) {
   const { trade, pickConfig, isBuyer } = item;
   const rawPicks = pickConfig?.picks ?? [];
@@ -325,119 +355,131 @@ function TradeActivityRow({
   return (
     <tr className="border-b last:border-b-0">
       {/* Date */}
-      <td className="px-4 py-3 whitespace-nowrap">
-        <div className="text-sm">
-          <div className="xl:hidden text-xs text-muted-foreground mb-1">
-            Date
+      {!isHidden('date') && (
+        <td className="px-4 py-3 whitespace-nowrap">
+          <div className="text-sm">
+            <div className="xl:hidden text-xs text-muted-foreground mb-1">
+              Date
+            </div>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <span className="text-brand-white whitespace-nowrap cursor-default">
+                    {timeDisplay}
+                  </span>
+                </TooltipTrigger>
+                <TooltipContent>
+                  <span>{exactDisplay}</span>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="text-brand-white whitespace-nowrap cursor-default">
-                  {timeDisplay}
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>
-                <span>{exactDisplay}</span>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-      </td>
+        </td>
+      )}
       {/* Type */}
-      <td className="px-4 py-3 whitespace-nowrap">
-        <div className="text-sm">
-          <div className="xl:hidden text-xs text-muted-foreground mb-1">
-            Type
+      {!isHidden('type') && (
+        <td className="px-4 py-3 whitespace-nowrap">
+          <div className="text-sm">
+            <div className="xl:hidden text-xs text-muted-foreground mb-2">
+              Type
+            </div>
+            <TypeBadge type="trade" />
           </div>
-          <TypeBadge type="trade" />
-        </div>
-      </td>
+        </td>
+      )}
       {/* Position */}
-      <td className="px-4 py-3">
-        <div className="text-sm">
-          <div className="xl:hidden text-xs text-muted-foreground mb-1">
-            Position
+      {!isHidden('position') && (
+        <td className="px-4 py-3">
+          <div className="text-sm">
+            <div className="xl:hidden text-xs text-muted-foreground mb-1">
+              Position
+            </div>
+            <div className="flex items-center gap-1.5">
+              <PicksPopover picks={pickLegs} fallbackAddress={trade.token} />
+              {!isPredictorToken && <CounterpartyBadge />}
+            </div>
           </div>
-          <div className="flex items-center gap-1.5">
-            <PicksPopover picks={pickLegs} fallbackAddress={trade.token} />
-            {!isPredictorToken && <CounterpartyBadge />}
-          </div>
-        </div>
-      </td>
+        </td>
+      )}
       {/* Parties */}
-      <td className="px-4 py-3 whitespace-nowrap">
-        <div>
-          <div className="xl:hidden text-xs text-muted-foreground mb-1">
-            Parties
-          </div>
-          <div className="flex flex-col gap-1">
-            <span className="inline-flex items-center gap-1.5 text-sm font-mono text-brand-white">
-              <EnsAvatar
-                address={trade.buyer}
-                className="shrink-0 rounded-sm ring-1 ring-border/50"
-                width={16}
-                height={16}
-              />
-              <AddressDisplay address={trade.buyer} />
-              <span className="text-muted-foreground text-xs uppercase">
-                buyer
+      {!isHidden('parties') && (
+        <td className="px-4 py-3 whitespace-nowrap">
+          <div>
+            <div className="xl:hidden text-xs text-muted-foreground mb-1">
+              Parties
+            </div>
+            <div className="flex flex-col gap-1">
+              <span className="inline-flex items-center gap-1.5 text-sm font-mono text-brand-white">
+                <EnsAvatar
+                  address={trade.buyer}
+                  className="shrink-0 rounded-sm ring-1 ring-border/50"
+                  width={16}
+                  height={16}
+                />
+                <AddressDisplay address={trade.buyer} />
+                <span className="text-muted-foreground text-xs uppercase">
+                  buyer
+                </span>
               </span>
-            </span>
-            <span className="inline-flex items-center gap-1.5 text-sm font-mono text-brand-white">
-              <EnsAvatar
-                address={trade.seller}
-                className="shrink-0 rounded-sm ring-1 ring-border/50"
-                width={16}
-                height={16}
-              />
-              <AddressDisplay address={trade.seller} />
-              <span className="text-muted-foreground text-xs uppercase">
-                seller
+              <span className="inline-flex items-center gap-1.5 text-sm font-mono text-brand-white">
+                <EnsAvatar
+                  address={trade.seller}
+                  className="shrink-0 rounded-sm ring-1 ring-border/50"
+                  width={16}
+                  height={16}
+                />
+                <AddressDisplay address={trade.seller} />
+                <span className="text-muted-foreground text-xs uppercase">
+                  seller
+                </span>
               </span>
-            </span>
+            </div>
           </div>
-        </div>
-      </td>
+        </td>
+      )}
       {/* Value */}
-      <td className="px-4 py-3 whitespace-nowrap">
-        <div>
-          <div className="xl:hidden text-xs text-muted-foreground mb-1">
-            Value
+      {!isHidden('value') && (
+        <td className="px-4 py-3 whitespace-nowrap">
+          <div>
+            <div className="xl:hidden text-xs text-muted-foreground mb-1">
+              Value
+            </div>
+            <div className="flex flex-col gap-0.5">
+              <span className="whitespace-nowrap tabular-nums text-brand-white font-mono">
+                <NumberDisplay value={price} /> {collateralSymbol}
+              </span>
+              <span className="whitespace-nowrap tabular-nums text-muted-foreground font-mono text-xs">
+                <NumberDisplay value={amount} /> &times;{' '}
+                <NumberDisplay value={amount > 0 ? price / amount : 0} />{' '}
+                {collateralSymbol}
+              </span>
+            </div>
           </div>
-          <div className="flex flex-col gap-0.5">
-            <span className="whitespace-nowrap tabular-nums text-brand-white font-mono">
-              <NumberDisplay value={price} /> {collateralSymbol}
-            </span>
-            <span className="whitespace-nowrap tabular-nums text-muted-foreground font-mono text-xs">
-              <NumberDisplay value={amount} /> &times;{' '}
-              <NumberDisplay value={amount > 0 ? price / amount : 0} />{' '}
-              {collateralSymbol}
-            </span>
-          </div>
-        </div>
-      </td>
+        </td>
+      )}
       {/* Status */}
-      <td className="px-4 py-3 whitespace-nowrap">
-        <div>
-          <div className="xl:hidden text-xs text-muted-foreground mb-1">
-            Status
+      {!isHidden('status') && (
+        <td className="px-4 py-3 whitespace-nowrap">
+          <div>
+            <div className="xl:hidden text-xs text-muted-foreground mb-1">
+              Status
+            </div>
+            <span
+              className={`whitespace-nowrap tabular-nums font-mono uppercase cursor-default ${
+                hasAccount
+                  ? isBuyer
+                    ? 'text-green-400'
+                    : 'text-amber-400'
+                  : 'text-brand-white'
+              }`}
+            >
+              {hasAccount ? (isBuyer ? 'Bought' : 'Sold') : 'Trade'}
+            </span>
           </div>
-          <span
-            className={`whitespace-nowrap tabular-nums font-mono uppercase cursor-default ${
-              hasAccount
-                ? isBuyer
-                  ? 'text-green-400'
-                  : 'text-amber-400'
-                : 'text-brand-white'
-            }`}
-          >
-            {hasAccount ? (isBuyer ? 'Bought' : 'Sold') : 'Trade'}
-          </span>
-        </div>
-      </td>
+        </td>
+      )}
       {/* Share (empty for trades) */}
-      <td className="px-4 py-3 whitespace-nowrap" />
+      {!isHidden('share') && <td className="px-4 py-3 whitespace-nowrap" />}
     </tr>
   );
 }
@@ -531,23 +573,47 @@ export default function ActivityTable({
   conditionId,
   leftSlot,
   pageSize,
+  hiddenColumns,
+  filterPickConfigId,
+  hideFilters,
 }: {
   account?: Address;
   conditionId?: string;
   leftSlot?: React.ReactNode;
   pageSize?: number;
+  /**
+   * Columns to omit from the header and each row. Useful when embedding the
+   * table in a dialog where some columns (e.g. Position / Status / Share)
+   * are redundant with the surrounding context.
+   */
+  hiddenColumns?: ReadonlyArray<ActivityColumn>;
+  /**
+   * Scope the feed to a single pick configuration. Forwarded to the server
+   * query so the result contains every matching item, not just those present
+   * in the first page of the unscoped feed.
+   */
+  filterPickConfigId?: string;
+  /** Hide the filter toolbar (search/status/value-range/date-range). */
+  hideFilters?: boolean;
 }) {
+  const isHidden = React.useMemo(
+    () => makeIsHidden(hiddenColumns),
+    [hiddenColumns]
+  );
   const collateralSymbol = COLLATERAL_SYMBOLS[DEFAULT_CHAIN_ID] || 'USDe';
   const effectivePageSize = pageSize ?? DEFAULT_PAGE_SIZE;
   const [filters, setFilters] = useState<ActivityFilterState>(
     getDefaultActivityFilterState
   );
 
-  // ── Unified activity (account + recent modes) ───────────────────────────
-  const isConditionMode = !account && !!conditionId;
+  // ── Unified activity feed ────────────────────────────────────────────────
+  // One server query handles account, condition, pickConfig, and global scopes.
+  // The resolver combines predictions and secondary trades, so condition-scoped
+  // views include both types and we no longer fetch per-holder positions just
+  // to attach pickConfigs client-side.
   const {
-    items: activityItems,
-    isLoading: activityLoading,
+    items,
+    isLoading,
     isFetchingMore: activityFetchingMore,
     hasMore: activityHasMore,
     fetchMore: activityFetchMore,
@@ -555,67 +621,11 @@ export default function ActivityTable({
     account,
     pageSize: effectivePageSize,
     activityType: filters.activityType,
-    enabled: !isConditionMode,
+    pickConfigId: filterPickConfigId,
+    conditionId: !account ? conditionId : undefined,
   });
 
-  // ── Condition-only mode (no account) ─────────────────────────────────────
-  const [condTake, setCondTake] = useState(effectivePageSize);
-
-  const { data: conditionPredictions, isLoading: conditionLoading } =
-    usePredictionsByConditionId({
-      conditionId: !account ? conditionId : undefined,
-      take: condTake,
-      skip: 0,
-    });
-
-  // Positions for non-account enrichment
-  const { data: positions } = usePositionBalances({
-    holder: account,
-  });
-
-  // Decide which mode we're in
   const isAccountMode = !!account;
-
-  const isLoading = isConditionMode ? conditionLoading : activityLoading;
-
-  // For condition mode, build items from predictions only
-  const tokenMap = React.useMemo(() => {
-    const map = new Map<
-      string,
-      { pickConfig: PickConfigData; isPredictorToken: boolean }
-    >();
-    for (const pos of positions) {
-      if (pos.pickConfig) {
-        map.set(pos.tokenAddress.toLowerCase(), {
-          pickConfig: pos.pickConfig,
-          isPredictorToken: pos.isPredictorToken,
-        });
-      }
-    }
-    return map;
-  }, [positions]);
-
-  const conditionItems: ActivityItem[] = React.useMemo(() => {
-    return conditionPredictions.map((pred) => {
-      const byPredictor = tokenMap.get(pred.predictorToken.toLowerCase());
-      const byCounterparty = tokenMap.get(pred.counterpartyToken.toLowerCase());
-      const match = byPredictor ?? byCounterparty;
-      const timestamp = pred.collateralDepositedAt
-        ? pred.collateralDepositedAt * 1000
-        : new Date(pred.createdAt).getTime();
-      return {
-        type: 'prediction' as const,
-        timestamp,
-        prediction: pred,
-        pickConfig: pred.pickConfig ?? match?.pickConfig ?? null,
-        isPredictorSide: account
-          ? pred.predictor.toLowerCase() === account.toLowerCase()
-          : true,
-      };
-    });
-  }, [conditionPredictions, tokenMap, account]);
-
-  const items = isConditionMode ? conditionItems : activityItems;
 
   // ── Condition enrichment for all prediction items ────────────────────────
   const conditionIds = React.useMemo(() => {
@@ -634,7 +644,7 @@ export default function ActivityTable({
   const filteredItems = React.useMemo(() => {
     let result = items;
 
-    // Activity type filtering is handled server-side via the hook
+    // pickConfigId scoping and activity type filtering are handled server-side
 
     // Filter by search term
     if (filters.searchTerm.trim()) {
@@ -709,40 +719,32 @@ export default function ActivityTable({
   const [dialogPrediction, setDialogPrediction] = useState<{
     prediction: Prediction;
     pickConfig: PickConfigData | null;
-    isPredictorSide: boolean;
   } | null>(null);
 
   // ── Infinite scroll ──────────────────────────────────────────────────────
-  const hasMore = isConditionMode
-    ? conditionPredictions.length >= condTake
-    : activityHasMore;
-
   const { loadMoreRef } = useInfiniteScroll({
-    hasMore,
+    hasMore: activityHasMore,
     isLoading,
-    isFetchingMore: isConditionMode ? false : activityFetchingMore,
-    onFetchMore: () => {
-      if (isConditionMode) {
-        setCondTake((t) => t + effectivePageSize);
-      } else {
-        activityFetchMore();
-      }
-    },
+    isFetchingMore: activityFetchingMore,
+    onFetchMore: activityFetchMore,
   });
 
   // ── Render ───────────────────────────────────────────────────────────────
-  const headerContent = (
-    <div className="px-4 py-4 border-b border-border/60 flex flex-col sm:flex-row sm:items-center gap-4 bg-white/[0.03]">
-      {leftSlot && leftSlot}
-      <div className="flex-1">
-        <ActivityTableFilters
-          filters={filters}
-          onFiltersChange={setFilters}
-          showTypeFilter={!isConditionMode}
-        />
+  const headerContent =
+    hideFilters && !leftSlot ? null : (
+      <div className="px-4 py-4 border-b border-border/60 flex flex-col sm:flex-row sm:items-center gap-4 bg-white/[0.03]">
+        {leftSlot && leftSlot}
+        {!hideFilters && (
+          <div className="flex-1">
+            <ActivityTableFilters
+              filters={filters}
+              onFiltersChange={setFilters}
+              showTypeFilter
+            />
+          </div>
+        )}
       </div>
-    </div>
-  );
+    );
 
   if (isLoading) {
     return (
@@ -782,27 +784,42 @@ export default function ActivityTable({
         <table className="w-full text-sm [&>tbody>tr>td]:align-middle [&>tbody>tr:hover]:bg-muted/50 [&>tbody>tr>td]:text-brand-white">
           <thead className="hidden xl:table-header-group text-sm font-medium text-muted-foreground">
             <tr className="bg-white/[0.03] border-b border-border/60">
-              <th className="px-4 py-3 text-left align-middle font-medium">
-                Date
-              </th>
-              <th className="px-4 py-3 text-left align-middle font-medium">
-                Type
-              </th>
-              <th className="px-4 py-3 text-left align-middle font-medium">
-                Position
-              </th>
-              <th className="px-4 py-3 text-left align-middle font-medium">
-                Parties
-              </th>
-              <th className="px-4 py-3 text-left align-middle font-medium">
-                Value
-              </th>
-              <th className="px-4 py-3 text-left align-middle font-medium">
-                Status
-              </th>
-              <th className="px-4 py-3 text-left align-middle font-medium">
-                Share
-              </th>
+              {!isHidden('date') && (
+                <th className="px-4 py-3 text-left align-middle font-medium">
+                  Date
+                </th>
+              )}
+              {!isHidden('type') && (
+                <th className="px-4 py-3 text-left align-middle font-medium">
+                  Type
+                </th>
+              )}
+              {!isHidden('position') && (
+                <th className="px-4 py-3 text-left align-middle font-medium">
+                  Position
+                </th>
+              )}
+              {!isHidden('parties') && (
+                <th className="px-4 py-3 text-left align-middle font-medium">
+                  Parties
+                </th>
+              )}
+              {!isHidden('value') && (
+                <th className="px-4 py-3 text-left align-middle font-medium">
+                  Value
+                </th>
+              )}
+              {!isHidden('status') && (
+                <th className="px-4 py-3 text-left align-middle font-medium">
+                  Status
+                </th>
+              )}
+              {!isHidden('share') && (
+                <th
+                  className="px-4 py-3 text-left align-middle font-medium"
+                  aria-label="Share"
+                />
+              )}
             </tr>
           </thead>
           <tbody>
@@ -818,9 +835,9 @@ export default function ActivityTable({
                     setDialogPrediction({
                       prediction: item.prediction,
                       pickConfig: item.pickConfig,
-                      isPredictorSide: item.isPredictorSide,
                     })
                   }
+                  isHidden={isHidden}
                 />
               ) : (
                 <TradeActivityRow
@@ -829,13 +846,14 @@ export default function ActivityTable({
                   collateralSymbol={collateralSymbol}
                   conditionsMap={conditionsMap}
                   hasAccount={isAccountMode}
+                  isHidden={isHidden}
                 />
               )
             )}
           </tbody>
         </table>
       </div>
-      <div ref={loadMoreRef} className="h-1" />
+      <div ref={loadMoreRef} className="h-0" />
       {sharePrediction && (
         <SharePredictionDialog
           sharePrediction={sharePrediction}
@@ -851,7 +869,6 @@ export default function ActivityTable({
         }}
         prediction={dialogPrediction?.prediction ?? null}
         pickConfig={dialogPrediction?.pickConfig ?? null}
-        isPredictorSide={dialogPrediction?.isPredictorSide ?? true}
         conditionsMap={conditionsMap}
         collateralSymbol={collateralSymbol}
       />

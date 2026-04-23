@@ -30,6 +30,7 @@ model Event {
   logIndex        Int
   logData         Json          @db.Json
 
+  @@unique([transactionHash, logIndex], map: "UQ_event_txhash_logindex")
   @@index([timestamp], map: "IDX_2c15918ff289396205521c5f3c")
   @@index([blockNumber], map: "IDX_5430e2d7fe1df2bcada2c12deb")
   @@map("event")
@@ -677,6 +678,7 @@ model Close {
   txHash                   String   @db.VarChar
   refCode                  String?  @db.VarChar
 
+  @@unique([chainId, txHash, pickConfigId], map: "UQ_close_chain_tx_pickconfig")
   @@index([chainId, marketAddress], map: "IDX_close_chain_market")
   @@index([pickConfigId], map: "IDX_close_pick_config")
   @@index([predictorHolder], map: "IDX_close_predictor")

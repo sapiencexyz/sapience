@@ -803,6 +803,148 @@ deploy_vault() {
     log_success "PredictionMarketVault deployed"
 }
 
+# Deploy a PredictionMarketVault instance dedicated to the Pyth binary-options
+# bot. Same contract as `deploy-vault` but writes its address to a separate
+# slot (PYTH_VAULT_ADDRESS / PythPredictionMarketVault) and syncs it into the
+# SDK (packages/sdk/contracts/addresses.ts) via update-sdk-vault.mjs.
+deploy_pyth_vault() {
+    log_info "=== Deploy Pyth PredictionMarketVault ==="
+
+    check_env PM_NETWORK_DEPLOYER_PRIVATE_KEY PM_NETWORK_DEPLOYER_ADDRESS PM_NETWORK_RPC_URL COLLATERAL_TOKEN_ADDRESS || exit 1
+    set_deployer_pm
+
+    # Snapshot the block height before deploy so we can record blockCreated in
+    # the SDK (the forge script doesn't print it).
+    local block_before
+    block_before=$(cast block-number --rpc-url "$PM_NETWORK_RPC_URL" 2>/dev/null) || block_before=""
+
+    # The forge script reads generic VAULT_* env vars. Save them before we
+    # override, and restore after, so subsequent `deploy-vault` calls in the
+    # same shell keep their original values (bash inline `VAR=x func` leaks
+    # into the parent shell when `func` is a bash function, not an exec).
+    local saved_vault_manager="${VAULT_MANAGER-__unset__}"
+    local saved_vault_name="${VAULT_NAME-__unset__}"
+    local saved_vault_symbol="${VAULT_SYMBOL-__unset__}"
+    local saved_vault_expiration="${VAULT_EXPIRATION_TIME-__unset__}"
+
+    export VAULT_MANAGER="${PYTH_VAULT_MANAGER:-$PM_NETWORK_DEPLOYER_ADDRESS}"
+    export VAULT_NAME="${PYTH_VAULT_NAME:-Sapience Pyth Vault}"
+    export VAULT_SYMBOL="${PYTH_VAULT_SYMBOL:-SPYTH}"
+    export VAULT_EXPIRATION_TIME="${PYTH_VAULT_EXPIRATION_TIME:-86400}"
+
+    local rc=0
+    run_script "src/scripts/deploy/vault/DeployVault.s.sol:DeployVault" "$PM_NETWORK_RPC_URL" "Deploying Pyth PredictionMarketVault on PM Network" || rc=$?
+
+    if [ "$saved_vault_manager" = "__unset__" ]; then unset VAULT_MANAGER; else export VAULT_MANAGER="$saved_vault_manager"; fi
+    if [ "$saved_vault_name" = "__unset__" ]; then unset VAULT_NAME; else export VAULT_NAME="$saved_vault_name"; fi
+    if [ "$saved_vault_symbol" = "__unset__" ]; then unset VAULT_SYMBOL; else export VAULT_SYMBOL="$saved_vault_symbol"; fi
+    if [ "$saved_vault_expiration" = "__unset__" ]; then unset VAULT_EXPIRATION_TIME; else export VAULT_EXPIRATION_TIME="$saved_vault_expiration"; fi
+
+    if [ $rc -ne 0 ]; then
+        log_error "deploy-pyth-vault: forge script failed (exit $rc)"
+        return $rc
+    fi
+
+    local addr=$(extract_address "$LAST_OUTPUT" "VAULT_ADDRESS=")
+    if [ -z "$addr" ]; then
+        log_error "Could not extract vault address from forge output"
+        return 1
+    fi
+
+    update_env "PYTH_VAULT_ADDRESS" "$addr"
+    update_deployment "pmNetwork" "PythPredictionMarketVault" "$addr"
+
+    # Sync into the SDK source (produces an uncommitted diff on addresses.ts).
+    local chain_id="${PM_NETWORK_CHAIN_ID:-}"
+    if [ -z "$chain_id" ]; then
+        log_warn "PM_NETWORK_CHAIN_ID not set — skipping SDK auto-update"
+    else
+        local updater="$SCRIPT_DIR/update-sdk-vault.mjs"
+        local block_arg=""
+        if [ -n "$block_before" ]; then
+            block_arg="--blockCreated $block_before"
+        fi
+        if ! node "$updater" --exportName pythPredictionMarketVault --chainId "$chain_id" --address "$addr" $block_arg; then
+            log_warn "SDK auto-update failed — edit packages/sdk/contracts/addresses.ts manually"
+        fi
+    fi
+
+    log_success "Pyth PredictionMarketVault deployed"
+    log_info "  Address: $addr"
+    log_info "  Next steps:"
+    log_info "    1. Seed the vault: requestDeposit + processDeposit (bot signs as manager)"
+    log_info "    2. Authorize the escrow: vault.approveFundsUsage(PredictionMarketEscrow, amount)"
+    log_info "    3. Commit the SDK diff in packages/sdk/contracts/addresses.ts"
+}
+
+# Deploy a PredictionMarketVault instance for A/B-testing an alternate
+# auction-bidder strategy against the default parlay vault. Same contract as
+# `deploy-vault` but writes its address to a separate slot
+# (VAULT_B_ADDRESS / PredictionMarketVaultStrategyB) and syncs it into the
+# SDK (packages/sdk/contracts/addresses.ts) via update-sdk-vault.mjs.
+deploy_vault_b() {
+    log_info "=== Deploy PredictionMarketVault Strategy B ==="
+
+    check_env PM_NETWORK_DEPLOYER_PRIVATE_KEY PM_NETWORK_DEPLOYER_ADDRESS PM_NETWORK_RPC_URL COLLATERAL_TOKEN_ADDRESS || exit 1
+    set_deployer_pm
+
+    local block_before
+    block_before=$(cast block-number --rpc-url "$PM_NETWORK_RPC_URL" 2>/dev/null) || block_before=""
+
+    local saved_vault_manager="${VAULT_MANAGER-__unset__}"
+    local saved_vault_name="${VAULT_NAME-__unset__}"
+    local saved_vault_symbol="${VAULT_SYMBOL-__unset__}"
+    local saved_vault_expiration="${VAULT_EXPIRATION_TIME-__unset__}"
+
+    export VAULT_MANAGER="${VAULT_B_MANAGER:-$PM_NETWORK_DEPLOYER_ADDRESS}"
+    export VAULT_NAME="${VAULT_B_NAME:-Sapience Vault V2 B}"
+    export VAULT_SYMBOL="${VAULT_B_SYMBOL:-SVLTB}"
+    export VAULT_EXPIRATION_TIME="${VAULT_B_EXPIRATION_TIME:-600}"
+
+    local rc=0
+    run_script "src/scripts/deploy/vault/DeployVault.s.sol:DeployVault" "$PM_NETWORK_RPC_URL" "Deploying PredictionMarketVault Strategy B on PM Network" || rc=$?
+
+    if [ "$saved_vault_manager" = "__unset__" ]; then unset VAULT_MANAGER; else export VAULT_MANAGER="$saved_vault_manager"; fi
+    if [ "$saved_vault_name" = "__unset__" ]; then unset VAULT_NAME; else export VAULT_NAME="$saved_vault_name"; fi
+    if [ "$saved_vault_symbol" = "__unset__" ]; then unset VAULT_SYMBOL; else export VAULT_SYMBOL="$saved_vault_symbol"; fi
+    if [ "$saved_vault_expiration" = "__unset__" ]; then unset VAULT_EXPIRATION_TIME; else export VAULT_EXPIRATION_TIME="$saved_vault_expiration"; fi
+
+    if [ $rc -ne 0 ]; then
+        log_error "deploy-vault-b: forge script failed (exit $rc)"
+        return $rc
+    fi
+
+    local addr=$(extract_address "$LAST_OUTPUT" "VAULT_ADDRESS=")
+    if [ -z "$addr" ]; then
+        log_error "Could not extract vault address from forge output"
+        return 1
+    fi
+
+    update_env "VAULT_B_ADDRESS" "$addr"
+    update_deployment "pmNetwork" "PredictionMarketVaultStrategyB" "$addr"
+
+    local chain_id="${PM_NETWORK_CHAIN_ID:-}"
+    if [ -z "$chain_id" ]; then
+        log_warn "PM_NETWORK_CHAIN_ID not set — skipping SDK auto-update"
+    else
+        local updater="$SCRIPT_DIR/update-sdk-vault.mjs"
+        local block_arg=""
+        if [ -n "$block_before" ]; then
+            block_arg="--blockCreated $block_before"
+        fi
+        if ! node "$updater" --exportName predictionMarketVaultStrategyB --chainId "$chain_id" --address "$addr" $block_arg; then
+            log_warn "SDK auto-update failed — edit packages/sdk/contracts/addresses.ts manually"
+        fi
+    fi
+
+    log_success "PredictionMarketVault Strategy B deployed"
+    log_info "  Address: $addr"
+    log_info "  Next steps:"
+    log_info "    1. Seed the vault: requestDeposit + processDeposit (bot signs as manager)"
+    log_info "    2. Authorize the escrow: vault.approveFundsUsage(PredictionMarketEscrow, amount)"
+    log_info "    3. Commit the SDK diff in packages/sdk/contracts/addresses.ts"
+}
+
 # Configure PM Network only
 configure_pm_only() {
     log_info "=== Configure PM Network Bridge (Ethereal) ==="
@@ -1212,6 +1354,8 @@ usage() {
     echo "  deploy-secondary-market  Deploy SecondaryMarketEscrow"
     echo "  deploy-sponsor           Deploy OnboardingSponsor"
     echo "  deploy-vault             Deploy PredictionMarketVault"
+    echo "  deploy-pyth-vault        Deploy dedicated Pyth vault + sync SDK addresses.ts"
+    echo "  deploy-vault-b           Deploy PredictionMarketVault Strategy B + sync SDK addresses.ts"
     echo "  deploy-pyth-resolver     Deploy PythConditionResolver on Ethereal"
     echo "  deploy-ct-resolvers      Deploy CT Reader (Polygon) + CT Resolver (Ethereal) + configure bridge"
     echo "  configure-ct-dvn         Configure DVN for CT Reader (Polygon send) + CT Resolver (Ethereal receive)"
@@ -1264,6 +1408,18 @@ usage() {
     echo ""
     echo "Required env vars for PythConditionResolver:"
     echo "  PYTH_LAZER_ADDRESS"
+    echo ""
+    echo "Optional env vars for deploy-pyth-vault:"
+    echo "  PYTH_VAULT_MANAGER        (default: deployer address)"
+    echo "  PYTH_VAULT_NAME           (default: 'Sapience Pyth Vault')"
+    echo "  PYTH_VAULT_SYMBOL         (default: 'SPYTH')"
+    echo "  PYTH_VAULT_EXPIRATION_TIME (default: 86400 / 24h)"
+    echo ""
+    echo "Optional env vars for deploy-vault-b:"
+    echo "  VAULT_B_MANAGER           (default: deployer address)"
+    echo "  VAULT_B_NAME              (default: 'Sapience Vault V2 B')"
+    echo "  VAULT_B_SYMBOL            (default: 'SVLTB')"
+    echo "  VAULT_B_EXPIRATION_TIME   (default: 600 / 10m)"
     echo ""
     echo "Required env vars for CT resolvers:"
     echo "  PM_NETWORK_LZ_ENDPOINT, PM_NETWORK_LZ_EID"
@@ -1353,6 +1509,12 @@ main() {
             ;;
         deploy-vault)
             deploy_vault
+            ;;
+        deploy-pyth-vault)
+            deploy_pyth_vault
+            ;;
+        deploy-vault-b)
+            deploy_vault_b
             ;;
         deploy-pyth-resolver)
             deploy_pyth_resolver

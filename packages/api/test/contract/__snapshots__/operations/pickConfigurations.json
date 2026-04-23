@@ -1,3 +1,289 @@
 {
-  "pickConfigurations": []
+  "pickConfigurations": [
+    {
+      "id": "0x110784adf0db673f7249934a25e08ff7a0dd7e26a997709b20160291b73bd653",
+      "chainId": 5064014,
+      "totalPredictorCollateral": "1000000000000000000",
+      "totalCounterpartyCollateral": "3478398527726280800",
+      "resolved": false,
+      "picks": [
+        {
+          "conditionId": "0x6c31c73a5447ef744d271098ce51594afa5a521fe367c07f7138c868703d693f",
+          "conditionResolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+          "predictedOutcome": 0
+        },
+        {
+          "conditionId": "0xa573400b588079857899fce1e5a68da2d086f63fd35cbdd626df397e19e9995e",
+          "conditionResolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+          "predictedOutcome": 0
+        }
+      ]
+    },
+    {
+      "id": "0x9ee75c60a2d1282bb7a5856bdf382422c9b8d3b31f7930426de82c3125a6c301",
+      "chainId": 5064014,
+      "totalPredictorCollateral": "2000000000000000000",
+      "totalCounterpartyCollateral": "9035142192430910000",
+      "resolved": false,
+      "picks": [
+        {
+          "conditionId": "0x5e3c20633c3e65dd7afb3735c77fc48e1c30b3be8fb744caeab61e72a7ba5a9c",
+          "conditionResolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+          "predictedOutcome": 1
+        },
+        {
+          "conditionId": "0x7fae49350251badb16e1868f854c349484c58b356b51cd0c83c3bd9df79d9bac",
+          "conditionResolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+          "predictedOutcome": 1
+        },
+        {
+          "conditionId": "0x4e228aa40f6edd94ed381dfbfc52b790ce51a5ff67b473388311842db25d8032",
+          "conditionResolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+          "predictedOutcome": 0
+        },
+        {
+          "conditionId": "0x592cbab04ef7c6587291a91675040bada46f3883730a9232d48749d2ce07772d",
+          "conditionResolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+          "predictedOutcome": 1
+        },
+        {
+          "conditionId": "0xe77371d68925a220e9b1822e1cb7c51cf86fe764acb4cbf983a2944688531b5f",
+          "conditionResolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+          "predictedOutcome": 1
+        }
+      ]
+    },
+    {
+      "id": "0xbea52ef383e4c80ecb6b7017de41a867b6fc3d10650881d0bc29114979995e48",
+      "chainId": 5064014,
+      "totalPredictorCollateral": "24000000000000000000",
+      "totalCounterpartyCollateral": "33216353612119320000",
+      "resolved": false,
+      "picks": [
+        {
+          "conditionId": "0xccb5fb7d7a674fc609b444c141108ee546146a65546aed40ec286b7d4b1d49d8",
+          "conditionResolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+          "predictedOutcome": 1
+        },
+        {
+          "conditionId": "0x044b041979e6d97c1bbb9ae4cf58f2e8a039d3aec2788da7f74220a4016302d2",
+          "conditionResolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+          "predictedOutcome": 1
+        }
+      ]
+    },
+    {
+      "id": "0x0e67fbdb9d41f9283f680f096529b23bc93ba888c6f0e3e308902d7c7993e52e",
+      "chainId": 5064014,
+      "totalPredictorCollateral": "15000000000000000000",
+      "totalCounterpartyCollateral": "31519945737920075000",
+      "resolved": false,
+      "picks": [
+        {
+          "conditionId": "0x65414628f108533d689721c6b2576dd83da43644bcfd62506444f1591ef32c31",
+          "conditionResolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+          "predictedOutcome": 1
+        },
+        {
+          "conditionId": "0xceb6dfaa2cf5abc9d47ebc867b984a7715104944249274e8a483a2e17473e5f5",
+          "conditionResolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+          "predictedOutcome": 1
+        },
+        {
+          "conditionId": "0xdbc5836d78a9c12957fa91878915e9653f8a1fce1ee6ea512322b8ec786d6e66",
+          "conditionResolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+          "predictedOutcome": 1
+        },
+        {
+          "conditionId": "0xbbc6689d0f6d57ea42168836712237c7308b3e0118c8914d31b6126d0f3254c5",
+          "conditionResolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+          "predictedOutcome": 0
+        }
+      ]
+    },
+    {
+      "id": "0xe4493e28e22d5a638eaa6d64861fc8005d920d853f16cfef8908cc59066ec4cf",
+      "chainId": 5064014,
+      "totalPredictorCollateral": "2000000000000000000",
+      "totalCounterpartyCollateral": "9043229889907710000",
+      "resolved": false,
+      "picks": [
+        {
+          "conditionId": "0x2ac4b4c0c83f0d0d596ae640dd3da9a351b69c4a2e8c545b601bc5033d754845",
+          "conditionResolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+          "predictedOutcome": 1
+        },
+        {
+          "conditionId": "0x67e00dbc8baf696519c9093d648f58b2ac5d0c69dd4859ef7ac5a08fe3c87b7f",
+          "conditionResolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+          "predictedOutcome": 1
+        },
+        {
+          "conditionId": "0x2a46c848684015a0e27024ff7dcce1674fa0f24df8e713d55097c0f5a0b1a384",
+          "conditionResolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+          "predictedOutcome": 1
+        },
+        {
+          "conditionId": "0x28fffaed62514d36cd016e5b7ffa0de6122959e46318fc38f3f6afd8ac995728",
+          "conditionResolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+          "predictedOutcome": 0
+        },
+        {
+          "conditionId": "0xc4c3dbcc37a957a817599b0bf9fb5bd6b62b19210b0f527fec57cb75c7ed150a",
+          "conditionResolver": "0x19e34db5bef20ef0613854c3670cd809deff4035",
+          "predictedOutcome": 1
+        }
+      ]
+    },
+    {
+      "id": "0xd7095930da61d7fd43eabba4c85acd9555f9696502c949468abba761ebcda680",
+      "chainId": 5064014,
+      "totalPredictorCollateral": "2520000000000000000",
+      "totalCounterpartyCollateral": "97480000000000000000",
+      "resolved": false,
+      "picks": [
+        {
+          "conditionId": "0xec4f8effa9657cf8a34a12349250ce4c0147890e559fbb0f6154535de1fb6ae8",
+          "conditionResolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+          "predictedOutcome": 1
+        },
+        {
+          "conditionId": "0x3d4ad35073691f5416243b1bf38ad6a818c6464586502589f9a9e7adb10d924a",
+          "conditionResolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+          "predictedOutcome": 1
+        },
+        {
+          "conditionId": "0x065d03a309ea1ef17d7343d31bc3e3e69a2b3cc5671274e4cf4773cb86d02507",
+          "conditionResolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+          "predictedOutcome": 1
+        },
+        {
+          "conditionId": "0x5ca3e2f01d906d04146dea48f0f1222080a365843d15b648033a61a447469f60",
+          "conditionResolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+          "predictedOutcome": 1
+        },
+        {
+          "conditionId": "0x7a0b63c4bbe5b72c42dfa624fc69a1a6e04c6b71feb40662c77d2982db6b1107",
+          "conditionResolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+          "predictedOutcome": 1
+        },
+        {
+          "conditionId": "0x549a1a08762f00110932e703fb0200de960322e35f217e914a8e6ac288511dad",
+          "conditionResolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+          "predictedOutcome": 0
+        },
+        {
+          "conditionId": "0xd8eccc515129bbcfa96734f734bc653211e0d333cfa9c4b9e67f48dc3e312ca9",
+          "conditionResolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+          "predictedOutcome": 1
+        }
+      ]
+    },
+    {
+      "id": "0x6d2c7cd1ababe3ddf51882051b802c57ee6eeffb15f1432fe5bf7032aa5ed957",
+      "chainId": 5064014,
+      "totalPredictorCollateral": "6730000000000000000",
+      "totalCounterpartyCollateral": "93270000000000000000",
+      "resolved": true,
+      "picks": [
+        {
+          "conditionId": "0x065d03a309ea1ef17d7343d31bc3e3e69a2b3cc5671274e4cf4773cb86d02507",
+          "conditionResolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+          "predictedOutcome": 1
+        },
+        {
+          "conditionId": "0xe9f7760189458f6dd27d3c499a1137d6a8fbd113b045959f237e6d65c6ad9a2a",
+          "conditionResolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+          "predictedOutcome": 1
+        },
+        {
+          "conditionId": "0xec4f8effa9657cf8a34a12349250ce4c0147890e559fbb0f6154535de1fb6ae8",
+          "conditionResolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+          "predictedOutcome": 1
+        }
+      ]
+    },
+    {
+      "id": "0x0e97e0a4a7b79c66b777c0ba24d0cac28d9a2cbd4f43c94c4ea0e02fe086f8ef",
+      "chainId": 5064014,
+      "totalPredictorCollateral": "5090000000000000000",
+      "totalCounterpartyCollateral": "94910000000000000000",
+      "resolved": true,
+      "picks": [
+        {
+          "conditionId": "0x0a06d3ef3de34d9deffd96e9690697a9074441bd84f456b4a94824220c587af9",
+          "conditionResolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+          "predictedOutcome": 1
+        },
+        {
+          "conditionId": "0xe9f7760189458f6dd27d3c499a1137d6a8fbd113b045959f237e6d65c6ad9a2a",
+          "conditionResolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+          "predictedOutcome": 1
+        },
+        {
+          "conditionId": "0x72aa4ac5b489afebe3d076a259079a42e89ba7a36cd7b4eddf257b00031ed6bd",
+          "conditionResolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+          "predictedOutcome": 1
+        },
+        {
+          "conditionId": "0x065d03a309ea1ef17d7343d31bc3e3e69a2b3cc5671274e4cf4773cb86d02507",
+          "conditionResolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+          "predictedOutcome": 1
+        },
+        {
+          "conditionId": "0xec4f8effa9657cf8a34a12349250ce4c0147890e559fbb0f6154535de1fb6ae8",
+          "conditionResolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+          "predictedOutcome": 1
+        }
+      ]
+    },
+    {
+      "id": "0x856e8644252d1c091f694adc7daffb6f6211379dec69b043720407d59af62fb5",
+      "chainId": 5064014,
+      "totalPredictorCollateral": "20210000000000000000",
+      "totalCounterpartyCollateral": "979790000000000000000",
+      "resolved": false,
+      "picks": [
+        {
+          "conditionId": "0xa56881e290e7b60a86c1eb1bcd1d55d7aba244dd39e04d1a689e3d5eb95d9f85",
+          "conditionResolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+          "predictedOutcome": 1
+        },
+        {
+          "conditionId": "0x799e1a923170a64cd1e18ebda90fc0af23c6e0b561aa8bd6b0de3037d52ab7ec",
+          "conditionResolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+          "predictedOutcome": 1
+        },
+        {
+          "conditionId": "0x628398f2feeb7f557afe92ad6196cde0371d57e0bc1412705318b9a9edf0e8d9",
+          "conditionResolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+          "predictedOutcome": 1
+        }
+      ]
+    },
+    {
+      "id": "0xf8a78c83ced543cd535031bf20c44b2a7fece8a981aadc14126c9ad1a7294433",
+      "chainId": 5064014,
+      "totalPredictorCollateral": "3000000000000000000",
+      "totalCounterpartyCollateral": "24104525827696660000",
+      "resolved": true,
+      "picks": [
+        {
+          "conditionId": "0xeb92ad5d4d39413d0c2d1d03aa99d9934c193142549377c2b53bb07ac5e959a0",
+          "conditionResolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+          "predictedOutcome": 1
+        },
+        {
+          "conditionId": "0xe960735ead735257556d2cd2cda994407f204b7f2bdc2f208c6fb294466e2f0f",
+          "conditionResolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+          "predictedOutcome": 1
+        },
+        {
+          "conditionId": "0x100954f3740e632d2bd1d2cf9bcd19b3e1a7305d415331ef8fab2c71df85bfdb",
+          "conditionResolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+          "predictedOutcome": 1
+        }
+      ]
+    }
+  ]
 }

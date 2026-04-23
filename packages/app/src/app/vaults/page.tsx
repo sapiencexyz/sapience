@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { Suspense } from 'react';
 import VaultsPageContent from '~/components/vaults/pages/VaultsPageContent';
 
 export const metadata: Metadata = {
@@ -7,7 +8,11 @@ export const metadata: Metadata = {
 };
 
 const VaultsPage = () => {
-  return <VaultsPageContent />;
+  return (
+    <Suspense fallback={null}>
+      <VaultsPageContent />
+    </Suspense>
+  );
 };
 
 export default VaultsPage;

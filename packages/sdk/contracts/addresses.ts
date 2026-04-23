@@ -127,7 +127,7 @@ export const predictionMarketVault: ChainAddressMap = {
     legacy: [
       {
         address: '0x0f246fBd64f6FE57544aAB16A31e1E3F59257723',
-        blockCreated: 3253965,
+        blockCreated: 3472849,
       },
       {
         address: '0x5704dB4b2c068d74Fde25257106a7029463f812E',
@@ -149,6 +149,69 @@ export const predictionMarketVault: ChainAddressMap = {
 } as const;
 
 /**
+ * PythPredictionMarketVault
+ * Dedicated PredictionMarketVault instance paired with the Pyth binary-options
+ * bot. Same contract as `predictionMarketVault`, separate deployment so Pyth
+ * capital is isolated from the default vault.
+ *
+ * Chain entries are added/updated by `deploy.sh deploy-pyth-vault`
+ * (via packages/protocol/src/scripts/deploy/update-sdk-vault.mjs).
+ * Move old addresses into `legacy` manually on redeploy.
+ */
+export const pythPredictionMarketVault: ChainAddressMap = {
+  13374202: {
+    // Ethereal testnet — deployed 2026-04-21
+    address: '0x41eE785175C836F9F342B787a818a9B8B02bd8c8',
+    blockCreated: 2619084,
+    legacy: [] as const,
+  },
+  5064014: {
+    // Ethereal mainnet — deployed 2026-04-22
+    address: '0x7e56D33B0A873d2735Cdd7732A5bE72A64BE591A',
+    blockCreated: 4346536,
+    legacy: [] as const,
+  },
+} as const;
+
+/**
+ * SingleLegVault
+ * PredictionMarketVault instance restricted to single-leg (non-parlay) markets.
+ * Run by an auction-bidder configured with `SINGLE_LEG_ENABLED=true` and tighter
+ * risk caps than the parlay vault.
+ *
+ * Chain entries are added/updated via update-sdk-vault.mjs with
+ * `--exportName singleLegVault`. Move old addresses into `legacy` manually on
+ * redeploy.
+ */
+export const singleLegVault: ChainAddressMap = {
+  5064014: {
+    // Ethereal mainnet — deployed 2026-03-26
+    address: '0x1b03b3f20caa6fc8cc7f6d9ae73d634804fe7f59',
+    blockCreated: 3915329,
+    legacy: [] as const,
+  },
+} as const;
+
+/**
+ * PredictionMarketVaultStrategyB
+ * Alternate PredictionMarketVault instance for A/B-testing a different
+ * auction-bidder strategy against the default parlay vault. Same contract as
+ * `predictionMarketVault`, isolated capital.
+ *
+ * Chain entries are added/updated by `deploy.sh deploy-vault-b`
+ * (via packages/protocol/src/scripts/deploy/update-sdk-vault.mjs).
+ * Move old addresses into `legacy` manually on redeploy.
+ */
+export const predictionMarketVaultStrategyB: ChainAddressMap = {
+  5064014: {
+    // Ethereal mainnet — deployed 2026-04-22
+    address: '0xAE53E270ad4Ac82E87270f26C903fc76Cb209D19',
+    blockCreated: 4346624,
+    legacy: [] as const,
+  },
+} as const;
+
+/**
  * PythConditionResolver
  * Pyth oracle-based condition resolution
  */
@@ -160,7 +223,7 @@ export const pythConditionResolver: ChainAddressMap = {
     legacy: [
       {
         address: '0x3384de2a15e8D767a36f09f6e67F41C9fa8C6B1f',
-        blockCreated: 3278610,
+        blockCreated: 3659812,
       },
       {
         address: '0x6399F6397701e4213BBaEf9f7a15EF31C9c329E1',
@@ -169,10 +232,14 @@ export const pythConditionResolver: ChainAddressMap = {
     ] as const,
   },
   13374202: {
-    // Ethereal testnet — redeployed 2026-03-31 (pyth lazer fix)
-    address: '0xF56d26C58496A07DF4882F52c56E3cadBFB87729',
-    blockCreated: 2589629,
+    // Ethereal testnet — deployed 2026-04-21
+    address: '0x7BD534c96b78A5d6C10701714F29EA4f1587B64D',
+    blockCreated: 2619401,
     legacy: [
+      {
+        address: '0xF56d26C58496A07DF4882F52c56E3cadBFB87729',
+        blockCreated: 2589629,
+      },
       {
         address: '0x27A95ab8982EAcF4EC3D4bCCaBB3630C72fd7E1b',
         blockCreated: 2585876,
@@ -654,6 +721,9 @@ export const contracts = {
   eas,
   predictionMarketEscrow,
   predictionMarketVault,
+  pythPredictionMarketVault,
+  singleLegVault,
+  predictionMarketVaultStrategyB,
   secondaryMarketEscrow,
   onboardingSponsor,
   pythConditionResolver,
@@ -731,6 +801,54 @@ export function getLegacyResolverAddressesForChain(
     }
   }
   return result;
+}
+
+// ============================================================================
+// ConditionalTokens Reader↔Resolver Pairs
+// ============================================================================
+
+export interface ConditionalTokensPair {
+  /** Polygon ConditionalTokensReader address */
+  reader: Address;
+  /** Ethereal ConditionalTokensConditionResolver address */
+  resolver: Address;
+  /** Whether this is the current (active) deployment */
+  current: boolean;
+}
+
+/**
+ * Verified reader↔resolver pairs for ConditionalTokens settlement.
+ * Each Polygon reader bridges via LayerZero to its paired Ethereal resolver.
+ * Pairing verified on-chain via reader.getBridgeConfig().
+ */
+const CONDITIONAL_TOKENS_PAIRS: Record<ChainId, ConditionalTokensPair[]> = {
+  5064014: [
+    {
+      reader: '0xCBDc09b831f53EeD2409f32896850dd10801851E',
+      resolver: '0xc7A489F8b5CEf914fcA2511a84cdC0221cD9a0F4',
+      current: true,
+    },
+    {
+      reader: '0x79cB914f3F336426E89FaB55A9488AB25770552D',
+      resolver: '0x19e34DB5bef20EF0613854c3670cD809DEFf4035',
+      current: false,
+    },
+    {
+      reader: '0x882288A664e29aEBC654Fa9679697d23716fcCD1',
+      resolver: '0x130598b7334901077cA5369b098Fd47F042CdcC9',
+      current: false,
+    },
+  ],
+};
+
+/**
+ * Get all verified ConditionalTokens reader↔resolver pairs for a chain.
+ * Returns current pair first, then legacy pairs.
+ */
+export function getConditionalTokensPairs(
+  chainId: number
+): ConditionalTokensPair[] {
+  return CONDITIONAL_TOKENS_PAIRS[chainId] ?? [];
 }
 
 /** Identify the resolver type from an on-chain address (current or legacy). */

@@ -25,17 +25,48 @@ interface TableSpec {
   name: string;
   limit: number;
   orderBy?: string;
+  /** Optional SQL fragment injected as a WHERE clause (without the `WHERE` keyword). */
+  where?: string;
 }
 
+// Active groups captured first, then the conditions belonging to them. The
+// `questions` resolver's Part A only surfaces groups with
+// `publicConditionCount > 0`, and its Prisma include returns nested conditions
+// filtered by `public = true` — so the captured conditions must overlap with
+// the captured groups for the contract snapshot to exercise nested shapes.
+const ACTIVE_GROUP_SUBQUERY = `
+  SELECT id FROM condition_group
+  WHERE "publicConditionCount" > 0
+  ORDER BY "publicConditionCount" DESC, "maxEndTime" DESC NULLS LAST
+  LIMIT 50
+`.trim();
+
 // Order matters for INSERTs: parents before children.
+// Each TRUNCATE uses CASCADE, so a later table referencing an earlier one will
+// be wiped when the earlier one truncates — always list parents before children.
 const TABLES: TableSpec[] = [
   { name: 'category', limit: 25, orderBy: 'id' },
   { name: 'app_user', limit: 100, orderBy: 'id' },
-  { name: 'condition_group', limit: 50, orderBy: 'id' },
-  { name: 'condition', limit: 200, orderBy: '"createdAt" DESC' },
+  {
+    name: 'condition_group',
+    limit: 50,
+    orderBy: '"publicConditionCount" DESC, "maxEndTime" DESC NULLS LAST',
+  },
+  {
+    name: 'condition',
+    limit: 1000,
+    orderBy: '"createdAt" DESC',
+    where: `"conditionGroupId" IS NULL OR "conditionGroupId" IN (${ACTIVE_GROUP_SUBQUERY})`,
+  },
   { name: 'prediction', limit: 500, orderBy: '"createdAt" DESC' },
   { name: 'position', limit: 500, orderBy: 'id DESC' },
   { name: 'PositionStatus', limit: 500, orderBy: 'id DESC' },
+  // V2 escrow tables — parents of Pick, Position (V2), Claim, Close.
+  { name: 'Picks', limit: 200, orderBy: '"createdAt" DESC' },
+  { name: 'Pick', limit: 1000, orderBy: '"createdAt" DESC' },
+  { name: 'Position', limit: 500, orderBy: 'id DESC' },
+  { name: 'Claim', limit: 500, orderBy: 'id DESC' },
+  { name: 'Close', limit: 500, orderBy: 'id DESC' },
   { name: 'attestation', limit: 200, orderBy: 'id DESC' },
   { name: 'attestation_score', limit: 500, orderBy: 'id DESC' },
   { name: 'secondary_trade', limit: 200, orderBy: 'id DESC' },
@@ -86,6 +117,7 @@ const dumpTable = (url: string, spec: TableSpec): string => {
     process.stdout.write(`     (skipped: ${spec.name} not present on source)\n`);
     return `-- ${spec.name}: not present on source DB, skipped\n`;
   }
+  const where = spec.where ? ` WHERE ${spec.where}` : '';
   const order = spec.orderBy ? ` ORDER BY ${spec.orderBy}` : '';
   const result = execFileSync(
     'psql',
@@ -93,7 +125,7 @@ const dumpTable = (url: string, spec: TableSpec): string => {
       url,
       '-Atq',
       '-c',
-      `\\copy (SELECT * FROM "${spec.name}"${order} LIMIT ${spec.limit}) TO STDOUT WITH CSV HEADER`,
+      `\\copy (SELECT * FROM "${spec.name}"${where}${order} LIMIT ${spec.limit}) TO STDOUT WITH CSV HEADER`,
     ],
     { maxBuffer: 256 * 1024 * 1024 }
   ).toString();

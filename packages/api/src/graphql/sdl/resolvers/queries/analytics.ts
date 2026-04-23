@@ -1,24 +1,26 @@
 /**
  * Query.protocolStats — daily protocol-wide metrics for the last 90 days.
  *
- * Combines three sources:
- *   1. `protocol_stats_snapshot` rows fetched via getProtocolStatsTimeSeries
- *      (vault balance, deposits, withdrawals, positions won/lost, etc.).
- *   2. Raw SQL cumulative volume aggregated over legacy `position` +
- *      escrow `Prediction` rows, computed at each snapshot boundary.
- *   3. Raw SQL open-interest (unsettled collateral at each snapshot time),
- *      using `Picks.resolvedAt` for V2 predictions since losing predictions
- *      may never get settled on-chain.
- *
- * Daily deltas (`dailyVolume`, `dailyPnL`) are computed client-side in
- * the final map step from consecutive snapshot values.
+ * Matches the legacy resolver behaviour while sourcing the root field from
+ * the SDL-first resolver map.
  */
 
-import type { QueryResolvers } from '../../__generated__/resolvers';
+import type {
+  QueryResolvers,
+  ProtocolStat,
+} from '../../__generated__/resolvers';
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { contracts } from '@sapience/sdk/contracts';
 import prisma from '../../../../db';
-import { getProtocolStatsTimeSeries } from '../../../../helpers/protocolStats';
+import {
+  calculateVaultFlows,
+  calculateVaultPnL,
+  fetchPredictionMarketEscrowTVL,
+  fetchVaultAvailableAssets,
+  fetchVaultDeployed,
+  fetchVaultTVL,
+  getProtocolStatsTimeSeries,
+} from '../../../../helpers/protocolStats';
 
 interface CumulativeVolumeRow {
   timestamp: bigint;
@@ -45,10 +47,12 @@ const buildTimestampMap = <T extends { timestamp: bigint }>(
 
 export const protocolStats: NonNullable<
   QueryResolvers['protocolStats']
-> = async () => {
+> = async (_parent, { vaultAddress: vaultAddressArg }) => {
   const chainId = DEFAULT_CHAIN_ID;
   const vaultAddress = (
-    contracts.predictionMarketVault[chainId]?.address ?? ''
+    vaultAddressArg ??
+    contracts.predictionMarketVault[chainId]?.address ??
+    ''
   ).toLowerCase();
 
   const protocolSnapshots = await getProtocolStatsTimeSeries(
@@ -56,70 +60,81 @@ export const protocolStats: NonNullable<
     chainId,
     vaultAddress
   );
-  if (protocolSnapshots.length === 0) return [];
+  if (protocolSnapshots.length === 0) {
+    return [];
+  }
 
   const snapshotTimestamps = protocolSnapshots.map((s) => s.timestamp);
-  const firstSnapshotTimestamp = snapshotTimestamps[0];
+  const nowTimestamp = Math.floor(Date.now() / 1000);
+  const queryTimestamps = [...snapshotTimestamps, nowTimestamp];
 
   const [cumulativeVolumes, openInterests] = await Promise.all([
     prisma.$queryRaw<CumulativeVolumeRow[]>`
-        SELECT
-          ts.timestamp,
-          COALESCE(SUM(vol), 0)::TEXT as cumulative_volume
-        FROM UNNEST(${snapshotTimestamps}::BIGINT[]) AS ts(timestamp)
-        LEFT JOIN (
-          SELECT "mintedAt" AS created_ts, CAST("totalCollateral" AS DECIMAL) AS vol, "chainId"
-          FROM position
-          UNION ALL
-          SELECT "onChainCreatedAt" AS created_ts,
-            CAST("predictorCollateral" AS DECIMAL) + CAST("counterpartyCollateral" AS DECIMAL) AS vol,
-            "chainId"
-          FROM "Prediction"
-        ) combined ON
-          combined.created_ts >= ${firstSnapshotTimestamp}
-          AND combined.created_ts <= ts.timestamp
-          AND combined."chainId" = ${chainId}
-        GROUP BY ts.timestamp
-        ORDER BY ts.timestamp
-      `,
+      SELECT
+        ts.timestamp,
+        COALESCE(SUM(vol), 0)::TEXT as cumulative_volume
+      FROM UNNEST(${queryTimestamps}::BIGINT[]) AS ts(timestamp)
+      LEFT JOIN (
+        SELECT "mintedAt" AS created_ts, CAST("totalCollateral" AS DECIMAL) AS vol, "chainId"
+        FROM position
+        UNION ALL
+        SELECT "onChainCreatedAt" AS created_ts,
+          CAST("predictorCollateral" AS DECIMAL) + CAST("counterpartyCollateral" AS DECIMAL) AS vol,
+          "chainId"
+        FROM "Prediction"
+        UNION ALL
+        SELECT "executedAt" AS created_ts,
+          CAST(price AS DECIMAL) AS vol,
+          "chainId"
+        FROM secondary_trade
+      ) combined ON
+        combined.created_ts <= ts.timestamp
+        AND combined."chainId" = ${chainId}
+      GROUP BY ts.timestamp
+      ORDER BY ts.timestamp
+    `,
     prisma.$queryRaw<DailyOIRow[]>`
-        SELECT
-          ts.timestamp,
-          COALESCE(SUM(vol), 0)::TEXT as open_interest
-        FROM UNNEST(${snapshotTimestamps}::BIGINT[]) AS ts(timestamp)
-        LEFT JOIN (
-          SELECT "mintedAt" AS created_ts, "settledAt" AS settled_ts,
-            CAST("totalCollateral" AS DECIMAL) AS vol, "chainId"
-          FROM position
-          UNION ALL
-          SELECT p."onChainCreatedAt" AS created_ts, pk."resolvedAt" AS settled_ts,
-            CAST(p."predictorCollateral" AS DECIMAL) + CAST(p."counterpartyCollateral" AS DECIMAL) AS vol,
-            p."chainId"
-          FROM "Prediction" p
-          LEFT JOIN "Picks" pk ON pk.id = p."pickConfigId"
-        ) combined ON
-          combined.created_ts <= ts.timestamp
-          AND (combined.settled_ts IS NULL OR combined.settled_ts > ts.timestamp)
-          AND combined."chainId" = ${chainId}
-        GROUP BY ts.timestamp
-        ORDER BY ts.timestamp
-      `,
+      SELECT
+        ts.timestamp,
+        COALESCE(SUM(vol), 0)::TEXT as open_interest
+      FROM UNNEST(${queryTimestamps}::BIGINT[]) AS ts(timestamp)
+      LEFT JOIN (
+        SELECT p."onChainCreatedAt" AS created_ts, pk."resolvedAt" AS settled_ts,
+          CAST(p."predictorCollateral" AS DECIMAL) + CAST(p."counterpartyCollateral" AS DECIMAL) AS vol,
+          p."chainId"
+        FROM "Prediction" p
+        LEFT JOIN "Picks" pk ON pk.id = p."pickConfigId"
+        WHERE NOT EXISTS (
+          SELECT 1 FROM "Pick" pi
+          JOIN "condition" c ON c.id = pi."conditionId"
+          WHERE pi."pickConfigId" = pk.id AND c.public = false
+        )
+      ) combined ON
+        combined.created_ts <= ts.timestamp
+        AND (combined.settled_ts IS NULL OR combined.settled_ts > ts.timestamp)
+        AND combined."chainId" = ${chainId}
+      GROUP BY ts.timestamp
+      ORDER BY ts.timestamp
+    `,
   ]);
 
   const volumeMap = buildTimestampMap(cumulativeVolumes, 'cumulative_volume');
   const oiMap = buildTimestampMap(openInterests, 'open_interest');
+  const DAY_SECONDS = 86400;
 
-  return protocolSnapshots.map((snapshot, i) => {
+  const results: ProtocolStat[] = protocolSnapshots.map((snapshot, i) => {
     const cumVol = volumeMap.get(snapshot.timestamp) || '0';
     const prevCumVol =
       i > 0 ? volumeMap.get(protocolSnapshots[i - 1].timestamp) || '0' : '0';
     const dailyVolume = (BigInt(cumVol) - BigInt(prevCumVol)).toString();
+
     const prevPnL = i > 0 ? protocolSnapshots[i - 1].vaultRealizedPnL : '0';
     const dailyPnL = (
       BigInt(snapshot.vaultRealizedPnL) - BigInt(prevPnL)
     ).toString();
+
     return {
-      timestamp: snapshot.timestamp,
+      timestamp: snapshot.timestamp - DAY_SECONDS,
       cumulativeVolume: cumVol,
       openInterest: oiMap.get(snapshot.timestamp) || '0',
       vaultBalance: snapshot.vaultBalance,
@@ -136,4 +151,71 @@ export const protocolStats: NonNullable<
       dailyVolume,
     };
   });
+
+  try {
+    const lastSnapshot = protocolSnapshots[protocolSnapshots.length - 1];
+    const lastCumVol = volumeMap.get(lastSnapshot.timestamp) || '0';
+    const liveCumVol = volumeMap.get(nowTimestamp) || lastCumVol;
+    const liveDailyVolume = (
+      BigInt(liveCumVol) - BigInt(lastCumVol)
+    ).toString();
+
+    const [
+      liveVaultBalance,
+      liveVaultAvailableAssets,
+      liveVaultDeployed,
+      liveEscrowBalance,
+      livePnlResult,
+      liveFlowsResult,
+    ] = await Promise.all([
+      fetchVaultTVL(chainId),
+      fetchVaultAvailableAssets(chainId),
+      fetchVaultDeployed(chainId),
+      fetchPredictionMarketEscrowTVL(chainId),
+      calculateVaultPnL(chainId),
+      calculateVaultFlows(chainId),
+    ]);
+
+    const liveDailyPnL = (
+      livePnlResult.realizedPnL - BigInt(lastSnapshot.vaultRealizedPnL)
+    ).toString();
+
+    const liveActualTotalAssets = liveVaultBalance + liveVaultDeployed;
+    const liveExpectedTotalAssets =
+      liveFlowsResult.totalDeposits -
+      liveFlowsResult.totalWithdrawals +
+      livePnlResult.realizedPnL;
+    const liveAirdropGains =
+      liveActualTotalAssets > liveExpectedTotalAssets
+        ? liveActualTotalAssets - liveExpectedTotalAssets
+        : 0n;
+
+    const todayTimestamp =
+      Math.floor(Date.now() / 1000 / DAY_SECONDS) * DAY_SECONDS;
+
+    results.push({
+      timestamp: todayTimestamp,
+      cumulativeVolume: liveCumVol,
+      openInterest: oiMap.get(nowTimestamp) || '0',
+      vaultBalance: liveVaultBalance.toString(),
+      vaultAvailableAssets: liveVaultAvailableAssets.toString(),
+      vaultDeployed: liveVaultDeployed.toString(),
+      escrowBalance: liveEscrowBalance.toString(),
+      vaultCumulativePnL: livePnlResult.realizedPnL.toString(),
+      vaultPositionsWon: livePnlResult.positionsWon,
+      vaultPositionsLost: livePnlResult.positionsLost,
+      vaultDeposits: liveFlowsResult.totalDeposits.toString(),
+      vaultWithdrawals: liveFlowsResult.totalWithdrawals.toString(),
+      vaultAirdropGains: liveAirdropGains.toString(),
+      dailyPnL: liveDailyPnL,
+      dailyVolume: liveDailyVolume,
+    });
+  } catch (err) {
+    console.error(
+      '[protocolStats] live candle failed, falling back to snapshots only:',
+      err
+    );
+  }
+
+  return results;
 };

@@ -1,6 +1,5 @@
 import { isPredictedYes, OutcomeSide } from '@sapience/sdk/types';
 import { decodePythMarketId } from '@sapience/sdk';
-import type { PickData } from '~/hooks/graphql/usePositions';
 import type { Pick } from '~/components/shared/StackedPredictions';
 import { inferResolverKind } from '~/lib/resolvers/conditionResolver';
 import { getChoiceLabel } from '~/lib/resolvers/choiceLabel';
@@ -21,9 +20,18 @@ export type ConditionsMap = Map<
   }
 >;
 
+/** Minimum pick shape consumed by `toPicks` — read-only access to
+ *  conditionId, conditionResolver, and predictedOutcome. Accepts either
+ *  escrow `PickData` (usePositions) or the SSR `PredictionPick` shape. */
+export type PickInput = {
+  conditionId: string;
+  conditionResolver: string;
+  predictedOutcome: number;
+};
+
 /** Map escrow PickData to the Pick interface used by PicksSummary / PicksContent */
 export function toPicks(
-  picks: PickData[],
+  picks: readonly PickInput[],
   isPredictorSide: boolean,
   conditionsMap: ConditionsMap
 ): Pick[] {

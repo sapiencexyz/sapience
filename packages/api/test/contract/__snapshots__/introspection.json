@@ -13224,6 +13224,22 @@
             "deprecationReason": null
           },
           {
+            "name": "updatedAt",
+            "description": null,
+            "args": [],
+            "type": {
+              "kind": "NON_NULL",
+              "name": null,
+              "ofType": {
+                "kind": "SCALAR",
+                "name": "DateTimeISO",
+                "ofType": null
+              }
+            },
+            "isDeprecated": false,
+            "deprecationReason": null
+          },
+          {
             "name": "userCollateral",
             "description": null,
             "args": [],
@@ -14175,6 +14191,26 @@
             "args": [
               {
                 "name": "address",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "conditionId",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                },
+                "defaultValue": null
+              },
+              {
+                "name": "pickConfigId",
                 "description": null,
                 "type": {
                   "kind": "SCALAR",
@@ -16109,7 +16145,18 @@
           {
             "name": "protocolStats",
             "description": "Daily protocol statistics time series (last 90 days) — vault balance, volume, PnL, and open interest",
-            "args": [],
+            "args": [
+              {
+                "name": "vaultAddress",
+                "description": null,
+                "type": {
+                  "kind": "SCALAR",
+                  "name": "String",
+                  "ofType": null
+                },
+                "defaultValue": null
+              }
+            ],
             "type": {
               "kind": "NON_NULL",
               "name": null,

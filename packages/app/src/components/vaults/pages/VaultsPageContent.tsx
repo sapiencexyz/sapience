@@ -1,6 +1,10 @@
 'use client';
 
-import { predictionMarketVault } from '@sapience/sdk/contracts';
+import {
+  predictionMarketVault,
+  predictionMarketVaultStrategyB,
+  pythPredictionMarketVault,
+} from '@sapience/sdk/contracts';
 import { Button } from '@sapience/ui/components/ui/button';
 import { Card, CardContent } from '@sapience/ui/components/ui/card';
 import { Input } from '@sapience/ui/components/ui/input';
@@ -10,30 +14,27 @@ import {
   TabsContent,
   TabsTrigger,
 } from '@sapience/ui/components/ui/tabs';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipTrigger,
-} from '@sapience/ui/components/ui/tooltip';
-import { Vault, Clock } from 'lucide-react';
+import { Clock } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { parseUnits } from 'viem';
 import { formatDuration, intervalToDuration } from 'date-fns';
+import Link from 'next/link';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
 import { useCurrentAddress } from '~/hooks/blockchain/useCurrentAddress';
-import Link from 'next/link';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import { usePassiveLiquidityVault } from '~/hooks/contract/usePassiveLiquidityVault';
 import { FOCUS_AREAS } from '~/lib/constants/focusAreas';
-import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
 import { useRestrictedJurisdiction } from '~/hooks/useRestrictedJurisdiction';
 import RestrictedJurisdictionBanner from '~/components/shared/RestrictedJurisdictionBanner';
 import { useProtocolStats } from '~/hooks/graphql/useAnalytics';
 import RiskDisclaimer from '~/components/markets/forms/shared/RiskDisclaimer';
 import Loader from '~/components/shared/Loader';
 import VaultPnlChart from '~/components/vaults/VaultPnlChart';
+import { ETHENA_BASE_APY } from '~/components/layout/StatusIndicators';
 
 const DEPOSIT_WHITELIST: `0x${string}`[] = [
   '0xdb5af497a73620d881561edb508012a5f84e9ba2',
@@ -42,12 +43,106 @@ const DEPOSIT_WHITELIST: `0x${string}`[] = [
 
 const DEPOSIT_CAP = 10000;
 
+type VaultOption = {
+  address: `0x${string}`;
+  label: string;
+};
+
+const VAULT_QUERY_PARAM = 'address';
+
+const normalizeAddress = (value: string | null | undefined) =>
+  value ? value.toLowerCase() : '';
+
 const VaultsPageContent = () => {
   const { currentAddress, isConnected } = useCurrentAddress();
   const { openConnectDialog } = useConnectDialog();
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const VAULT_CHAIN_ID = DEFAULT_CHAIN_ID;
-  const VAULT_ADDRESS = predictionMarketVault[VAULT_CHAIN_ID]?.address;
+
+  const vaultOptions = useMemo<VaultOption[]>(() => {
+    const entries: Array<[`0x${string}` | undefined, string]> = [
+      [
+        predictionMarketVault[VAULT_CHAIN_ID]?.address as
+          | `0x${string}`
+          | undefined,
+        'Core Vault',
+      ],
+      [
+        predictionMarketVaultStrategyB[VAULT_CHAIN_ID]?.address as
+          | `0x${string}`
+          | undefined,
+        'Edge Vault',
+      ],
+      [
+        pythPredictionMarketVault[VAULT_CHAIN_ID]?.address as
+          | `0x${string}`
+          | undefined,
+        'Options Vault',
+      ],
+    ];
+    return entries
+      .filter((entry): entry is [`0x${string}`, string] => Boolean(entry[0]))
+      .map(([address, label]) => ({ address, label }));
+  }, [VAULT_CHAIN_ID]);
+
+  const queryVault = normalizeAddress(searchParams.get(VAULT_QUERY_PARAM));
+  const selectedVault = useMemo(() => {
+    const match = vaultOptions.find(
+      (v) => normalizeAddress(v.address) === queryVault
+    );
+    return match ?? vaultOptions[0];
+  }, [queryVault, vaultOptions]);
+
+  useEffect(() => {
+    if (!selectedVault) return;
+    const params = new URLSearchParams(searchParams.toString());
+    if (
+      normalizeAddress(params.get(VAULT_QUERY_PARAM)) ===
+      normalizeAddress(selectedVault.address)
+    ) {
+      return;
+    }
+    params.set(VAULT_QUERY_PARAM, selectedVault.address.toLowerCase());
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  }, [selectedVault, searchParams, router, pathname]);
+
+  const handleVaultChange = (value: string) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set(VAULT_QUERY_PARAM, value.toLowerCase());
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
+  const VAULT_ADDRESS = selectedVault?.address;
+  const vaultTitle = selectedVault?.label ?? 'Vault';
+  const selectedVaultValue = selectedVault?.address ?? '';
   const collateralSymbol = COLLATERAL_SYMBOLS[VAULT_CHAIN_ID] || 'testUSDe';
+
+  // Separate reads for each of the (up to) three vaults so the Vault Rewards
+  // calc can sum across all vaults regardless of which tab is selected. Hooks
+  // must be called unconditionally, so missing addresses are handled inside
+  // the hook via the `enabled` flag.
+  const coreAddr = predictionMarketVault[VAULT_CHAIN_ID]?.address;
+  const optionsAddr = pythPredictionMarketVault[VAULT_CHAIN_ID]?.address;
+  const edgeAddr = predictionMarketVaultStrategyB[VAULT_CHAIN_ID]?.address;
+
+  const coreVault = usePassiveLiquidityVault({
+    vaultAddress: coreAddr,
+    chainId: VAULT_CHAIN_ID,
+  });
+  const optionsVault = usePassiveLiquidityVault({
+    vaultAddress: optionsAddr,
+    chainId: VAULT_CHAIN_ID,
+  });
+  const edgeVault = usePassiveLiquidityVault({
+    vaultAddress: edgeAddr,
+    chainId: VAULT_CHAIN_ID,
+  });
+
+  const { data: coreStats } = useProtocolStats(coreAddr);
+  const { data: optionsStats } = useProtocolStats(optionsAddr);
+  const { data: edgeStats } = useProtocolStats(edgeAddr);
 
   const {
     vaultData,
@@ -76,7 +171,7 @@ const VaultsPageContent = () => {
 
   const { isRestricted, isPermitLoading } = useRestrictedJurisdiction();
   const { data: protocolStats, isLoading: isAnalyticsLoading } =
-    useProtocolStats();
+    useProtocolStats(VAULT_ADDRESS);
 
   const [depositAmount, setDepositAmount] = useState('');
   const [withdrawAmount, setWithdrawAmount] = useState('');
@@ -450,12 +545,17 @@ const VaultsPageContent = () => {
     </Tabs>
   );
 
-  const tvlWei = vaultData?.totalLiquidValue ?? 0n;
+  const liquidWei = vaultData?.totalLiquidValue ?? 0n;
 
   const deployedWei = useMemo(() => {
     const lastStat = protocolStats?.[protocolStats.length - 1];
     return lastStat?.vaultDeployed ? BigInt(lastStat.vaultDeployed) : 0n;
   }, [protocolStats]);
+
+  // Vault AUM = liquid USDe in the vault + collateral deployed in open positions.
+  // getTotalLiquidValue() on the contract intentionally excludes position tokens,
+  // so we add the deployed cost basis back here to show true total.
+  const tvlWei = liquidWei + deployedWei;
 
   const utilizationPercent = useMemo(() => {
     if (tvlWei <= 0n) return 0;
@@ -521,20 +621,50 @@ const VaultsPageContent = () => {
   const utilizationDisplay = `${utilizationPercent.toFixed(2)}%`;
 
   const yieldMetrics = useMemo(() => {
-    const lastStat = protocolStats?.[protocolStats.length - 1];
+    // Rewards are paid from the protocol-wide Ethena yield and are shared
+    // among every vault's LPs. Calc must be identical regardless of which
+    // tab is selected — sum TVL across all deployed vaults.
+    const vaultEntries = [
+      [coreVault.vaultData, coreStats] as const,
+      [optionsVault.vaultData, optionsStats] as const,
+      [edgeVault.vaultData, edgeStats] as const,
+    ];
+    const totalVaultTvlWei = vaultEntries.reduce((sum, [v, stats]) => {
+      const liquid = v?.totalLiquidValue ?? 0n;
+      const lastStat = stats?.[stats.length - 1];
+      const deployed = lastStat?.vaultDeployed
+        ? BigInt(lastStat.vaultDeployed)
+        : 0n;
+      return sum + liquid + deployed;
+    }, 0n);
 
-    const protocolTvlWei = lastStat
-      ? BigInt(lastStat.vaultBalance || '0') +
-        BigInt(lastStat.escrowBalance || '0')
-      : 0n;
+    // Protocol TVL = escrow (protocol-wide, same across all vault queries) +
+    // undeployed assets summed across every vault. Sourcing from the selected
+    // vault's stats zeros out when we switch to a vault with no stats yet.
+    const escrowWei = (() => {
+      for (const [, stats] of vaultEntries) {
+        const last = stats?.[stats.length - 1];
+        if (last?.escrowBalance) return BigInt(last.escrowBalance);
+      }
+      return 0n;
+    })();
+    const vaultAvailableWei = vaultEntries.reduce((sum, [, stats]) => {
+      const last = stats?.[stats.length - 1];
+      return (
+        sum +
+        (last?.vaultAvailableAssets ? BigInt(last.vaultAvailableAssets) : 0n)
+      );
+    }, 0n);
+    const protocolTvlWei = escrowWei + vaultAvailableWei;
     const protocolTvlNum = Number(formatAssetAmount(protocolTvlWei));
-    const vaultTvlNum = Number(formatAssetAmount(tvlWei));
+    const totalVaultTvlNum = Number(formatAssetAmount(totalVaultTvlWei));
 
-    const ETHENA_BASE_APY = 4;
     const effectiveApy =
-      vaultTvlNum > 0 ? (protocolTvlNum / vaultTvlNum) * ETHENA_BASE_APY : 0;
-    const annualYieldToVault = vaultTvlNum * (effectiveApy / 100);
-    const weeklyYield = (annualYieldToVault / 365) * 7;
+      totalVaultTvlNum > 0
+        ? (protocolTvlNum / totalVaultTvlNum) * ETHENA_BASE_APY
+        : 0;
+    const annualYieldToVaults = totalVaultTvlNum * (effectiveApy / 100);
+    const weeklyYield = (annualYieldToVaults / 365) * 7;
 
     const fmt = (n: number) =>
       Number.isFinite(n)
@@ -546,40 +676,40 @@ const VaultsPageContent = () => {
 
     return {
       protocolTvl: fmt(protocolTvlNum),
-      annualYield: fmt(annualYieldToVault),
+      annualYield: fmt(annualYieldToVaults),
       weeklyYield: fmt(weeklyYield),
       effectiveApy: effectiveApy.toFixed(2),
     };
-  }, [tvlWei, formatAssetAmount, protocolStats]);
+  }, [
+    coreVault.vaultData,
+    optionsVault.vaultData,
+    edgeVault.vaultData,
+    coreStats,
+    optionsStats,
+    edgeStats,
+    formatAssetAmount,
+  ]);
 
   return (
     <div className="relative">
       <div className="container max-w-[600px] lg:max-w-[1200px] mx-auto px-4 pt-10 md:pt-14 lg:pt-10 pb-12 relative z-10">
-        <div className="mb-4 md:mb-6 flex flex-row items-center justify-between">
+        <div className="mb-4 md:mb-6 flex flex-col md:flex-row md:items-center md:justify-between gap-3 md:gap-4">
           <h1 className="text-3xl md:text-5xl font-sans font-normal text-foreground">
             Vaults
           </h1>
-          <div className="flex items-center gap-2">
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <span className="inline-flex cursor-not-allowed">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled
-                    className="inline-flex items-center gap-2"
-                    onClick={(e) => e.preventDefault()}
-                  >
-                    <Vault className="h-4 w-4" />
-                    Deploy Vault
-                  </Button>
-                </span>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Coming soon</p>
-              </TooltipContent>
-            </Tooltip>
-          </div>
+          <Tabs value={selectedVaultValue} onValueChange={handleVaultChange}>
+            <TabsList className="h-auto p-1">
+              {vaultOptions.map((option) => (
+                <TabsTrigger
+                  key={option.address}
+                  value={option.address}
+                  className="text-sm px-3 py-1.5 data-[state=active]:text-brand-white"
+                >
+                  {option.label}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </Tabs>
         </div>
 
         <div className="grid grid-cols-1 gap-8">
@@ -592,7 +722,7 @@ const VaultsPageContent = () => {
               <CardContent className="p-6">
                 <div className="space-y-6">
                   <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                    <h3 className="text-2xl font-medium">Protocol Vault</h3>
+                    <h3 className="text-2xl font-medium">{vaultTitle}</h3>
                     <div className="flex items-center gap-2">
                       <EnsAvatar
                         address={VAULT_ADDRESS}
@@ -618,6 +748,11 @@ const VaultsPageContent = () => {
                           </span>
                         </h4>
                         <div className="relative">
+                          {tvlWei <= VAULT_CAPACITY_WEI && (
+                            <div className="absolute -top-4 right-0 font-mono text-[10px] text-muted-foreground/50 uppercase">
+                              {depositCapDisplay} cap
+                            </div>
+                          )}
                           <div className="w-full h-3 rounded-sm bg-[hsl(var(--primary)/_0.09)] overflow-hidden shadow-inner relative">
                             <div
                               className="h-3 bg-accent-gold rounded-sm transition-all gold-sheen"
@@ -659,11 +794,6 @@ const VaultsPageContent = () => {
                                 </span>
                               </div>
                             </>
-                          )}
-                          {tvlWei <= VAULT_CAPACITY_WEI && (
-                            <div className="mt-1 text-right font-mono text-[10px] text-muted-foreground/50 uppercase">
-                              {depositCapDisplay} cap
-                            </div>
                           )}
                         </div>
                         <div className="mt-2 flex flex-col items-start sm:flex-row sm:items-baseline sm:justify-between gap-1 sm:gap-0 text-sm">

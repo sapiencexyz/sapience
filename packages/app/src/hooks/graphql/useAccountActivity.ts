@@ -31,8 +31,17 @@ const ACCOUNT_ACTIVITY_QUERY = /* GraphQL */ `
     $take: Int
     $skip: Int
     $type: String
+    $pickConfigId: String
+    $conditionId: String
   ) {
-    accountActivity(address: $address, take: $take, skip: $skip, type: $type) {
+    accountActivity(
+      address: $address
+      take: $take
+      skip: $skip
+      type: $type
+      pickConfigId: $pickConfigId
+      conditionId: $conditionId
+    ) {
       type
       timestamp
       prediction {
@@ -137,16 +146,31 @@ export function useAccountActivity({
   account,
   pageSize = DEFAULT_PAGE_SIZE,
   activityType,
+  pickConfigId,
+  conditionId,
   enabled: enabledOverride,
 }: {
   account?: Address;
   pageSize?: number;
   activityType?: string;
-  /** Override enabled state. Defaults to true when account is provided. */
+  /**
+   * Scope the feed to a single pick configuration. Filters predictions by
+   * pickConfigId and trades by the pickConfig's predictor/counterparty tokens.
+   */
+  pickConfigId?: string;
+  /**
+   * Scope the feed to a condition. Matches every pick configuration whose
+   * picks reference this conditionId.
+   */
+  conditionId?: string;
+  /**
+   * Override enabled state. Defaults to true — the unscoped feed returns
+   * recent global activity. Pass false to skip the query entirely.
+   */
   enabled?: boolean;
 }) {
   const [take, setTake] = useState(pageSize);
-  const enabled = enabledOverride ?? Boolean(account);
+  const enabled = enabledOverride ?? true;
 
   const typeFilter =
     activityType && activityType !== 'all' ? activityType : undefined;
@@ -156,7 +180,14 @@ export function useAccountActivity({
     isLoading: initialLoading,
     isFetching,
   } = useQuery({
-    queryKey: ['accountActivity', account ?? 'global', take, typeFilter],
+    queryKey: [
+      'accountActivity',
+      account ?? 'global',
+      take,
+      typeFilter,
+      pickConfigId ?? null,
+      conditionId ?? null,
+    ],
     enabled,
     staleTime: 30_000,
     gcTime: 5 * 60 * 1000,
@@ -172,6 +203,8 @@ export function useAccountActivity({
         take,
         skip: 0,
         type: typeFilter ?? null,
+        pickConfigId: pickConfigId ?? null,
+        conditionId: conditionId ?? null,
       });
       return resp ?? { accountActivity: [] };
     },
