@@ -180,15 +180,25 @@ export default function PositionSummary({
 
   const renderStatusCell = () => {
     let value: string;
-    if (isSettled && predictorWon) value = 'PREDICTOR';
-    else if (isSettled && counterpartyWon) value = 'COUNTERPARTY';
-    else value = 'PENDING';
+    let valueClass: string;
+    if (isSettled && predictorWon) {
+      value = 'PREDICTOR';
+      valueClass = 'text-brand-white';
+    } else if (isSettled && counterpartyWon) {
+      value = 'COUNTERPARTY';
+      valueClass = 'text-brand-white';
+    } else {
+      value = 'PENDING';
+      valueClass = 'text-muted-foreground';
+    }
     return (
       <div className="flex flex-col gap-1 min-w-0">
         <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
           Winner
         </div>
-        <span className="text-sm md:text-base font-medium font-mono text-foreground">
+        <span
+          className={`text-sm md:text-base font-medium font-mono ${valueClass}`}
+        >
           {value}
         </span>
       </div>

@@ -88,7 +88,7 @@ export default function PredictionDetails({
 
   return (
     <>
-      <div className="min-w-0 mb-6">
+      <div className="min-w-0">
         <PositionSummary
           positionId={prediction.predictionId}
           createdAt={createdAt}
