@@ -60,6 +60,9 @@ vi.mock('~/components/shared/RestrictedJurisdictionBanner', () => {
 vi.mock('@sapience/sdk/contracts', () => ({
   predictionMarketVault: { 42161: { address: '0xVault' } },
   pythPredictionMarketVault: { 42161: { address: '0xOptionsVault' } },
+  predictionMarketVaultStrategyB: {
+    42161: { address: '0xStrategyBVault' },
+  },
   singleLegVault: {},
 }));
 
@@ -166,6 +169,12 @@ vi.mock('viem', () => ({
 vi.mock('date-fns', () => ({
   formatDuration: () => '',
   intervalToDuration: () => ({}),
+}));
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
+  usePathname: () => '/vaults',
+  useSearchParams: () => new URLSearchParams(''),
 }));
 
 vi.mock('next/link', () => {
