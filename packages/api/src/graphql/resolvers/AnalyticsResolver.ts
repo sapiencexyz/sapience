@@ -209,10 +209,7 @@ export class AnalyticsResolver {
       ).toString();
 
       return {
-        // Center historical snapshots at UTC noon of the day they represent
-        // so local-time rendering in any reasonable timezone still labels the
-        // point as that day. (Raw midnight shifts a day for western users.)
-        timestamp: snapshot.timestamp - DAY_SECONDS + DAY_SECONDS / 2,
+        timestamp: snapshot.timestamp - DAY_SECONDS,
         cumulativeVolume: cumVol,
         openInterest: oiMap.get(snapshot.timestamp) || '0',
         vaultBalance: snapshot.vaultBalance,
@@ -271,10 +268,10 @@ export class AnalyticsResolver {
           ? liveActualTotalAssets - liveExpectedTotalAssets
           : 0n;
 
-      // Live candle uses wall-clock now so it lands on the user's actual
-      // current local day rather than today's UTC midnight (which can read
-      // as "tomorrow" for users west of UTC).
-      const todayTimestamp = nowTimestamp;
+      // Today's display timestamp = current UTC midnight. Derived from wall-clock
+      // rather than last snapshot so a missed cron doesn't mislabel the live candle.
+      const todayTimestamp =
+        Math.floor(Date.now() / 1000 / DAY_SECONDS) * DAY_SECONDS;
 
       results.push({
         timestamp: todayTimestamp,

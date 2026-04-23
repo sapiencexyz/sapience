@@ -49,7 +49,7 @@ function formatPercentTick(value: number): string {
 
 function formatTimestampTick(value: number): string {
   const date = new Date(value * 1000);
-  return `${date.getMonth() + 1}/${date.getDate()}`;
+  return `${date.getUTCMonth() + 1}/${date.getUTCDate()}`;
 }
 
 type AnimatedCursorProps = {
@@ -128,7 +128,7 @@ function ChartTooltip({
       'Nov',
       'Dec',
     ];
-    dateLabel = `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
+    dateLabel = `${months[date.getUTCMonth()]} ${date.getUTCDate()}, ${date.getUTCFullYear()}`;
   }
 
   return (
