@@ -237,18 +237,21 @@ export default function PositionSummary({
         {label}
       </div>
       {address ? (
-        <Link
-          href={`/profile/${address}`}
-          className="inline-flex items-center gap-1.5 text-sm md:text-base font-medium tabular-nums text-foreground hover:text-accent-gold transition-colors min-w-0 max-w-full overflow-hidden"
-        >
-          <EnsAvatar
-            address={address}
-            className="shrink-0 rounded-sm ring-1 ring-border/50"
-            width={16}
-            height={16}
-          />
+        <div className="inline-flex items-center gap-1.5 text-sm md:text-base font-medium tabular-nums text-foreground min-w-0 max-w-full overflow-hidden">
+          <Link
+            href={`/profile/${address}`}
+            aria-label={`View profile for ${address}`}
+            className="shrink-0 hover:opacity-80 transition-opacity"
+          >
+            <EnsAvatar
+              address={address}
+              className="shrink-0 rounded-sm ring-1 ring-border/50"
+              width={16}
+              height={16}
+            />
+          </Link>
           <AddressDisplay address={address} />
-        </Link>
+        </div>
       ) : (
         <span className="text-sm md:text-base font-medium tabular-nums text-muted-foreground">
           —
