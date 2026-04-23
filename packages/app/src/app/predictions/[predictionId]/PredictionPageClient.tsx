@@ -1,24 +1,10 @@
 'use client';
 
-import { formatEther } from 'viem';
 import { useQuery } from '@tanstack/react-query';
-import { OutcomeSide } from '@sapience/sdk/types';
-import { PicksContent } from '~/components/shared/PicksSummary';
-import PositionSummary from '~/components/positions/PositionSummary';
+import PredictionDetails from '~/components/positions/PredictionDetails';
+import type { ConditionsMap } from '~/components/positions/toPickLegs';
 import type { PredictionData, ConditionData } from '~/lib/data/predictions';
 import { fetchPredictionWithConditions } from '~/lib/data/predictions';
-import type { Pick } from '~/components/shared/StackedPredictions';
-import { computeResultFromConditions } from '~/components/positions/toPickLegs';
-import { inferResolverKind } from '~/lib/resolvers/conditionResolver';
-
-function formatCollateral(wei?: string): number {
-  if (!wei) return 0;
-  try {
-    return Number(formatEther(BigInt(wei)));
-  } catch {
-    return 0;
-  }
-}
 
 export default function PredictionPageClient({
   predictionId,
@@ -71,96 +57,15 @@ export default function PredictionPageClient({
     );
   }
 
-  const conditionsMap = new Map(conditions.map((c) => [c.id, c]));
-  const picks = prediction.pickConfig?.picks ?? [];
-
-  // Build picks from predictor's perspective
-  const displayPicks: Pick[] = picks.map((pick) => {
-    const condition = conditionsMap.get(pick.conditionId);
-    const resolverAddr = pick.conditionResolver ?? condition?.resolver ?? null;
-    const resolverKind = inferResolverKind(resolverAddr);
-    return {
-      question: condition?.question || condition?.shortName || pick.conditionId,
-      choice:
-        (pick.predictedOutcome as OutcomeSide) === OutcomeSide.YES
-          ? 'YES'
-          : 'NO',
-      conditionId: pick.conditionId,
-      categorySlug: condition?.category?.slug ?? null,
-      endTime: condition?.endTime ?? null,
-      settled: condition?.settled ?? false,
-      resolvedToYes: condition?.resolvedToYes ?? false,
-      nonDecisive: condition?.nonDecisive,
-      resolverAddress: resolverAddr,
-      ...(resolverKind === 'pyth' && { source: 'pyth' as const }),
-    };
-  });
-
-  const predictorStake = formatCollateral(prediction.predictorCollateral);
-  const counterpartyStake = formatCollateral(prediction.counterpartyCollateral);
-  const totalPayout = predictorStake + counterpartyStake;
-  const createdAt = prediction.createdAt
-    ? new Date(prediction.createdAt)
-    : null;
-
-  // Compute the maximum endTime from conditions
-  const endsAtMs =
-    picks.reduce((max, pick) => {
-      const endTime = conditionsMap.get(pick.conditionId)?.endTime;
-      return endTime ? Math.max(max, endTime * 1000) : max;
-    }, 0) || null;
-
-  // Compute result from individual conditions when prediction not yet settled on-chain
-  const computed = !prediction.settled
-    ? computeResultFromConditions(
-        picks,
-        conditionsMap as Parameters<typeof computeResultFromConditions>[1]
-      )
-    : null;
-  const isSettled = prediction.settled || computed?.result !== 'UNRESOLVED';
-  const result = prediction.settled
-    ? prediction.result
-    : (computed?.result ?? 'UNRESOLVED');
-  const predictorWon = result === 'PREDICTOR_WINS';
-  // NON_DECISIVE resolves to the counterparty on-chain.
-  const counterpartyWon =
-    result === 'COUNTERPARTY_WINS' || result === 'NON_DECISIVE';
+  const conditionsMap: ConditionsMap = new Map(
+    conditions.map((c) => [c.id, c])
+  );
 
   return (
-    <>
-      <div className="mb-6">
-        <PositionSummary
-          positionId={predictionId}
-          createdAt={createdAt}
-          endsAtMs={endsAtMs}
-          positionSize={0}
-          payout={totalPayout}
-          pnl={null}
-          roi={null}
-          isSettled={isSettled}
-          predictorAddress={prediction.predictor}
-          counterpartyAddress={prediction.counterparty}
-          predictorStake={predictorStake}
-          counterpartyStake={counterpartyStake}
-          predictorWon={predictorWon}
-          counterpartyWon={counterpartyWon}
-        />
-      </div>
-
-      <PicksContent
-        picks={displayPicks}
-        positionId={predictionId}
-        hideHeader
-        positionStatus={
-          isSettled
-            ? predictorWon
-              ? 'won'
-              : 'lost'
-            : endsAtMs && endsAtMs <= Date.now()
-              ? 'pending'
-              : 'active'
-        }
-      />
-    </>
+    <PredictionDetails
+      prediction={prediction}
+      picks={prediction.pickConfig?.picks ?? []}
+      conditionsMap={conditionsMap}
+    />
   );
 }
