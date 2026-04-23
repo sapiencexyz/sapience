@@ -238,21 +238,16 @@ export default function VaultPnlChart({
     //   pnlDelta = cumulative PnL accrued since the window start
     //   apy      = compound-annualized return on starting TVL to date
     // Concretely apy_t = ((1 + pnlDelta_t / startTvl)^(365/daysElapsed_t) - 1)
-    const startTimestamp = points[0].timestamp;
     const startPnl = points[0].pnl;
     const startTvl = points[0].tvl;
 
-    return points.map((p, i) => {
+    return points.map((p) => {
       const pnlDelta = p.pnl - startPnl;
       const periodReturn = startTvl > 0 ? pnlDelta / startTvl : 0;
-      const daysElapsed = (p.timestamp - startTimestamp) / (24 * 60 * 60);
-
-      let apy = 0;
-      if (i > 0 && daysElapsed >= 0.5 && 1 + periodReturn > 0) {
-        apy = (Math.pow(1 + periodReturn, 365 / daysElapsed) - 1) * 100;
-      }
-
-      return { ...p, pnlDelta, apy };
+      // `pct` is just the $ chart scaled by 1/startTvl, so the % curve has
+      // exactly the same shape — only the axis scale differs.
+      const pct = periodReturn * 100;
+      return { ...p, pnlDelta, pct };
     });
   }, [protocolStats, period]);
 
@@ -281,7 +276,7 @@ export default function VaultPnlChart({
     () =>
       chartData.map((d) => ({
         ...d,
-        value: displayMode === 'pct' ? d.apy : d.pnlDelta,
+        value: displayMode === 'pct' ? d.pct : d.pnlDelta,
       })),
     [chartData, displayMode]
   );
