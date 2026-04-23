@@ -179,31 +179,25 @@ export default function PositionSummary({
   );
 
   const renderStatusCell = () => {
-    const label = isSettled ? 'Winner' : 'Status';
     let value: string;
-    let badgeClass: string;
-    if (!isSettled) {
-      const isLive = endsAtMs != null && endsAtMs > Date.now();
-      value = isLive ? 'ACTIVE' : 'PENDING';
-      badgeClass = 'border-foreground/40 bg-foreground/10 text-foreground';
-    } else if (predictorWon) {
+    let valueClass: string;
+    if (isSettled && predictorWon) {
       value = 'PREDICTOR';
-      badgeClass = 'border-yes/40 bg-yes/10 text-yes';
-    } else if (counterpartyWon) {
+      valueClass = 'text-brand-white';
+    } else if (isSettled && counterpartyWon) {
       value = 'COUNTERPARTY';
-      badgeClass = 'border-yes/40 bg-yes/10 text-yes';
+      valueClass = 'text-brand-white';
     } else {
-      value = 'SETTLED';
-      badgeClass =
-        'border-muted-foreground/40 bg-muted-foreground/10 text-muted-foreground';
+      value = 'PENDING';
+      valueClass = 'text-muted-foreground';
     }
     return (
-      <div className="flex flex-col gap-1.5 min-w-0 items-start">
+      <div className="flex flex-col gap-1 min-w-0">
         <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
-          {label}
+          Winner
         </div>
         <span
-          className={`inline-block px-1.5 py-0.5 text-xs font-medium rounded-md font-mono border ${badgeClass}`}
+          className={`text-sm md:text-base font-medium font-mono ${valueClass}`}
         >
           {value}
         </span>
@@ -237,18 +231,21 @@ export default function PositionSummary({
         {label}
       </div>
       {address ? (
-        <Link
-          href={`/profile/${address}`}
-          className="inline-flex items-center gap-1.5 text-sm md:text-base font-medium tabular-nums text-foreground hover:text-accent-gold transition-colors min-w-0 max-w-full overflow-hidden"
-        >
-          <EnsAvatar
-            address={address}
-            className="shrink-0 rounded-sm ring-1 ring-border/50"
-            width={16}
-            height={16}
-          />
+        <div className="inline-flex items-center gap-1.5 text-sm md:text-base font-medium tabular-nums text-foreground min-w-0 max-w-full overflow-hidden">
+          <Link
+            href={`/profile/${address}`}
+            aria-label={`View profile for ${address}`}
+            className="shrink-0 hover:opacity-80 transition-opacity"
+          >
+            <EnsAvatar
+              address={address}
+              className="shrink-0 rounded-sm ring-1 ring-border/50"
+              width={16}
+              height={16}
+            />
+          </Link>
           <AddressDisplay address={address} />
-        </Link>
+        </div>
       ) : (
         <span className="text-sm md:text-base font-medium tabular-nums text-muted-foreground">
           —
@@ -389,18 +386,21 @@ export default function PositionSummary({
                   <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
                     Holder
                   </div>
-                  <Link
-                    href={`/profile/${holderAddress}`}
-                    className="inline-flex items-center gap-1.5 text-sm md:text-base font-medium tabular-nums text-foreground hover:text-accent-gold transition-colors"
-                  >
-                    <EnsAvatar
-                      address={holderAddress}
-                      className="shrink-0 rounded-sm ring-1 ring-border/50"
-                      width={16}
-                      height={16}
-                    />
+                  <div className="inline-flex items-center gap-1.5 text-sm md:text-base font-medium tabular-nums text-foreground">
+                    <Link
+                      href={`/profile/${holderAddress}`}
+                      aria-label={`View profile for ${holderAddress}`}
+                      className="shrink-0 hover:opacity-80 transition-opacity"
+                    >
+                      <EnsAvatar
+                        address={holderAddress}
+                        className="shrink-0 rounded-sm ring-1 ring-border/50"
+                        width={16}
+                        height={16}
+                      />
+                    </Link>
                     <AddressDisplay address={holderAddress} />
-                  </Link>
+                  </div>
                 </div>
               )}
 
@@ -414,18 +414,21 @@ export default function PositionSummary({
                       <Loader className="w-3.5 h-3.5" />
                     </div>
                   ) : currentOwner ? (
-                    <Link
-                      href={`/profile/${currentOwner}`}
-                      className="inline-flex items-center gap-1.5 text-sm md:text-base font-medium tabular-nums text-foreground hover:text-accent-gold transition-colors"
-                    >
-                      <EnsAvatar
-                        address={currentOwner}
-                        className="shrink-0 rounded-sm ring-1 ring-border/50"
-                        width={16}
-                        height={16}
-                      />
+                    <div className="inline-flex items-center gap-1.5 text-sm md:text-base font-medium tabular-nums text-foreground">
+                      <Link
+                        href={`/profile/${currentOwner}`}
+                        aria-label={`View profile for ${currentOwner}`}
+                        className="shrink-0 hover:opacity-80 transition-opacity"
+                      >
+                        <EnsAvatar
+                          address={currentOwner}
+                          className="shrink-0 rounded-sm ring-1 ring-border/50"
+                          width={16}
+                          height={16}
+                        />
+                      </Link>
                       <AddressDisplay address={currentOwner} />
-                    </Link>
+                    </div>
                   ) : (
                     <span className="text-sm md:text-base font-medium tabular-nums text-muted-foreground">
                       —
