@@ -6,7 +6,7 @@ export type CategoryQueryResult = {
   slug: string;
 };
 
-const GET_CATEGORIES = /* GraphQL */ `
+export const GET_CATEGORIES = /* GraphQL */ `
   query Categories {
     categories {
       id

@@ -30,7 +30,7 @@ type AttestationsQueryResponse = {
   attestations: RawAttestation[];
 };
 
-const GET_ATTESTATIONS_QUERY = /* GraphQL */ `
+export const GET_ATTESTATIONS_QUERY = /* GraphQL */ `
   query FindAttestations($where: AttestationWhereInput!, $take: Int!) {
     attestations(where: $where, orderBy: { time: desc }, take: $take) {
       id
@@ -44,7 +44,7 @@ const GET_ATTESTATIONS_QUERY = /* GraphQL */ `
   }
 `;
 
-const GET_ATTESTATIONS_PAGINATED_QUERY = /* GraphQL */ `
+export const GET_ATTESTATIONS_PAGINATED_QUERY = /* GraphQL */ `
   query FindAttestationsPaginated(
     $where: AttestationWhereInput!
     $take: Int!

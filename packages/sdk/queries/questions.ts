@@ -43,7 +43,7 @@ export interface QuestionType {
   condition?: ConditionType | null;
 }
 
-const GET_QUESTIONS = /* GraphQL */ `
+export const GET_QUESTIONS = /* GraphQL */ `
   query Questions(
     $take: Int!
     $skip: Int!

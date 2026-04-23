@@ -1,10 +1,4 @@
 import 'reflect-metadata';
-import { buildSchema, type NonEmptyArray } from 'type-graphql';
-import {
-  relationResolvers,
-  ConditionGroupRelationsResolver,
-  ConditionRelationsResolver,
-} from '@generated/type-graphql';
 import prisma from '../db';
 import { SharedSchema } from './sharedSchema';
 import { ApolloServer } from '@apollo/server';
@@ -20,98 +14,14 @@ import {
 } from './queryComplexity.js';
 import { config } from '../config';
 import Sentry from '../instrument';
-
-// Import only the actively-used query resolvers from generated TypeGraphQL
-import {
-  FindManyAttestationResolver,
-  FindManyCategoryResolver,
-  FindUniqueConditionResolver,
-  FindManyConditionGroupResolver,
-  FindUniqueConditionGroupResolver,
-  FindManyUserResolver,
-  FindUniqueUserResolver,
-} from '@generated/type-graphql';
-
-// Import the custom resolvers to keep
-import {
-  PnLResolver,
-  ScoreResolver,
-  EscrowResolver,
-  AnalyticsResolver,
-  ConditionResolver,
-  VolumeResolver,
-  QuestionsResolver,
-  TradeResolver,
-  TimeSeriesResolver,
-  CollateralBalanceResolver,
-  ConditionGroupConditionsResolver,
-  ConditionFieldsResolver,
-  ActivityResolver,
-  TagsResolver,
-} from './resolvers';
+import { buildApiSchema } from './buildSchema';
 
 export interface ApolloContext {
   prisma: typeof prisma;
 }
 
 export const initializeApolloServer = async () => {
-  // Generated query resolvers — only those with verified consumer usage
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-  const queryResolvers: Function[] = [
-    FindManyAttestationResolver,
-    FindManyCategoryResolver,
-    FindUniqueConditionResolver,
-    FindManyConditionGroupResolver,
-    FindUniqueConditionGroupResolver,
-    FindManyUserResolver,
-    FindUniqueUserResolver,
-  ];
-
-  // Filter out generated relation resolvers replaced by custom implementations:
-  // - ConditionGroupRelationsResolver → ConditionGroupConditionsResolver (filters public = true)
-  // - ConditionRelationsResolver → ConditionFieldsResolver (returns pre-loaded data to avoid N+1)
-  // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type
-  const replacedResolvers: Set<Function> = new Set([
-    ConditionGroupRelationsResolver,
-    ConditionRelationsResolver,
-  ]);
-  const filteredRelationResolvers = relationResolvers.filter(
-    (r) => !replacedResolvers.has(r)
-  );
-  if (
-    filteredRelationResolvers.length !==
-    relationResolvers.length - replacedResolvers.size
-  ) {
-    throw new Error(
-      'Failed to filter generated relation resolvers — check that ConditionGroupRelationsResolver and ConditionRelationsResolver are still exported from @generated/type-graphql'
-    );
-  }
-
-  // Build the GraphQL schema with query resolvers, relation resolvers, and custom resolvers
-  const allResolvers = queryResolvers
-    .concat(filteredRelationResolvers)
-    .concat([
-      PnLResolver,
-      ScoreResolver,
-      EscrowResolver,
-      AnalyticsResolver,
-      ConditionResolver,
-      VolumeResolver,
-      QuestionsResolver,
-      TradeResolver,
-      TimeSeriesResolver,
-      CollateralBalanceResolver,
-      ConditionGroupConditionsResolver,
-      ConditionFieldsResolver,
-      ActivityResolver,
-      TagsResolver,
-    ]);
-  const schema = await buildSchema({
-    // eslint-disable-next-line @typescript-eslint/no-unsafe-function-type -- type-graphql's buildSchema API requires NonEmptyArray<Function>
-    resolvers: allResolvers as NonEmptyArray<Function>,
-    validate: false,
-    emitSchemaFile: true,
-  });
+  const schema = await buildApiSchema({ emitSchemaFile: true });
 
   // Default of 10000 allows all legitimate app queries (max ~8700) while blocking
   // deeply nested queries like conditions(take: 200) with 5 levels of nesting (~55000)

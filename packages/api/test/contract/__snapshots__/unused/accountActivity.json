@@ -1,0 +1,14 @@
+{
+  "data": {
+    "accountActivity": [
+      {
+        "timestamp": "<UNIX_TIMESTAMP>",
+        "type": "trade",
+        "prediction": null,
+        "trade": {
+          "id": 12
+        }
+      }
+    ]
+  }
+}

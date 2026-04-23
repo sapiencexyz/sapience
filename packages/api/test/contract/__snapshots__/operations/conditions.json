@@ -1,0 +1,344 @@
+{
+  "conditions": [
+    {
+      "id": "0x1422657e307ee05fadffb7280a3be9c9b31e3748dad4b854b6da659a91d93e36",
+      "createdAt": "<ISO_TIMESTAMP>",
+      "question": "James Harden: Points O/U 21.5",
+      "shortName": "James O21.5pts?",
+      "optionName": "James Harden: Points O/U 21.5",
+      "endTime": 1776751200,
+      "public": true,
+      "description": "In the upcoming NBA game, scheduled for April 20 at 7:00 PM ET:\nThis market will resolve to \"Yes\" if James Harden scores more than 21.5 points during the game.\nThis market will resolve to \"No\" if James Harden scores 21.5 points or fewer during the game.\nThe entire game including all overtime periods will be considered.\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.\nIf the player is listed as inactive or otherwise does not take the court at any point, the market will resolve \"No\".\nThe resolution source will be the official NBA box score as published on NBA.com.",
+      "similarMarkets": [
+        "https://polymarket.com/event/nba-tor-cle-2026-04-20#nba-tor-cle-2026-04-20-points-james-harden-21pt5"
+      ],
+      "chainId": 5064014,
+      "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+      "settled": false,
+      "resolvedToYes": false,
+      "nonDecisive": false,
+      "assertionId": null,
+      "assertionTimestamp": null,
+      "openInterest": "0",
+      "similarMarketVolume": 1036.212892,
+      "similarMarketImage": "https://polymarket-upload.s3.us-east-2.amazonaws.com/super+cool+basketball+in+red+and+blue+wow.png",
+      "estimatedPrice": 0.445,
+      "conditionGroupId": 129264,
+      "conditionGroup": {
+        "id": 129264,
+        "name": "Raptors vs. Cavaliers"
+      },
+      "category": {
+        "id": 6,
+        "name": "Sports",
+        "slug": "sports"
+      }
+    },
+    {
+      "id": "0x3c10c4938d8057fe0dda83f1418ce016379d3ea02c011e4b2449712d425480fe",
+      "createdAt": "<ISO_TIMESTAMP>",
+      "question": "Cavaliers covers -4.5 spread vs Raptors? (1H)",
+      "shortName": "CLE -4.5 1H",
+      "optionName": "1H Spread -4.5",
+      "endTime": 1776751200,
+      "public": true,
+      "description": "In the first half of the NBA game between Raptors and Cavaliers, scheduled for April 20 at 7:00 PM ET:\nThis market will resolve to \"Cavaliers\" if the Cavaliers are winning by 5 or more points at halftime.\nOtherwise, this market will resolve to \"Raptors\".\nThe result will be determined based on the score at halftime only.\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.",
+      "similarMarkets": [
+        "https://polymarket.com/event/nba-tor-cle-2026-04-20#nba-tor-cle-2026-04-20-1h-spread-home-4pt5"
+      ],
+      "chainId": 5064014,
+      "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+      "settled": false,
+      "resolvedToYes": false,
+      "nonDecisive": false,
+      "assertionId": null,
+      "assertionTimestamp": null,
+      "openInterest": "0",
+      "similarMarketVolume": 1117.311192,
+      "similarMarketImage": "https://polymarket-upload.s3.us-east-2.amazonaws.com/super+cool+basketball+in+red+and+blue+wow.png",
+      "estimatedPrice": 0.54,
+      "conditionGroupId": 129264,
+      "conditionGroup": {
+        "id": 129264,
+        "name": "Raptors vs. Cavaliers"
+      },
+      "category": {
+        "id": 6,
+        "name": "Sports",
+        "slug": "sports"
+      }
+    },
+    {
+      "id": "0x0f9ca7dcd30c615e67b73544ef681379e0b842bd83f21b1984b089f22c7d9973",
+      "createdAt": "<ISO_TIMESTAMP>",
+      "question": "Will WTI Crude Oil (WTI) hit (LOW) $85 in April?",
+      "shortName": "WTI LOW $85 Apr?",
+      "optionName": "↓ $85",
+      "endTime": 1777607940,
+      "public": true,
+      "description": "This market will resolve to \"Yes\" if, at any point between market creation and the final trading day during April 2026, any 1-minute candle for the Active Month of WTI Crude Oil futures has a final \"Low\" price equal to or below the listed price. Otherwise, this market will resolve to \"No\".\nFor WTI futures, the active month refers to the nearest listed contract month. The active month changes at 6:00:00 PM ET at the start of the trading session two business days prior to that contract's last trading day, at which point the next listed contract becomes the active month.\nFor WTI Crude Oil (CL) futures, the last trading day is defined as three business days prior to the 25th calendar day of the month preceding the contract's delivery month (or four business days prior if the 25th calendar day is not a business day), consistent with CME contract specifications.\nOnly prices achieved during the applicable trading session for the underlying market will be considered. Under the standard schedule, trading is open from 6:00:00 PM ET Sunday through 5:00:00 PM ET Friday, with a daily break from 5:00:00 PM ET to 6:00:00 PM ET, except where modified by holiday or special-session hours as listed on Pyth.\nPrices will be used exactly as published by Pyth, without rounding.\nIf the Active Month contract does not trade at all during the listed time frame, this market will resolve to \"No\".\nIn the event of a contract specification change, feed change, or similar structural modification affecting the underlying market during the listed time frame, this market will resolve based on adjusted prices as displayed on Pyth.\nThe resolution source for this market is Pyth — specifically, the Active Month WTI Crude Oil futures \"Low\" prices available at https://pythdata.app/explore?search=WTI, with the chart settings configured for 1-minute candles.\nHistorical 1-minute candles may be accessed by appending a Unix timestamp (seconds) to the Pyth chart URL using the \"t=\" parameter.\nIf the relevant Pyth data is unavailable due to a system outage, data failure, or other technical disruption that prevents verification of the required 1-minute candle data, the official daily low price published for the Active Month WTI Crude Oil (CL) futures contract by CME Group may be used to determine whether the listed price was reached during the applicable trading session.",
+      "similarMarkets": [
+        "https://polymarket.com/event/what-price-will-wti-hit-in-april-2026#will-wti-crude-oil-wti-hit-low-85-in-april"
+      ],
+      "chainId": 5064014,
+      "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+      "settled": false,
+      "resolvedToYes": false,
+      "nonDecisive": false,
+      "assertionId": null,
+      "assertionTimestamp": null,
+      "openInterest": "0",
+      "similarMarketVolume": 1743.866881,
+      "similarMarketImage": "https://polymarket-upload.s3.us-east-2.amazonaws.com/crude-oil-9a850ce2a2.png",
+      "estimatedPrice": 0.87,
+      "conditionGroupId": 121546,
+      "conditionGroup": {
+        "id": 121546,
+        "name": "What will WTI Crude Oil (WTI) hit in April 2026?"
+      },
+      "category": {
+        "id": 5,
+        "name": "Economy & Finance",
+        "slug": "economy-finance"
+      }
+    },
+    {
+      "id": "0x0c19dd1022b3cec12ddc8ac542f3fedfe02cf784ca8ea2e79c7ab6347d37daa9",
+      "createdAt": "<ISO_TIMESTAMP>",
+      "question": "Will Donald Trump publicly insult Joe Biden by April 30, 2026?",
+      "shortName": "Trump insults Biden Apr 30?",
+      "optionName": "Joe Biden",
+      "endTime": 1777607940,
+      "public": true,
+      "description": "This market will resolve to \"Yes\" if Donald Trump makes any public statement in which he insults, mocks, or attacks the listed individual personally or professionally in a clearly negative manner between market creation and the specified date (ET). Otherwise, this market will resolve to \"No\". \nThis includes calling the individual weak, stupid, disloyal, a failure, using an insulting nickname, using other derogatory language, or using the negative form of a positive trait in a derogatory personal way (e.g., “He/She isn’t smart”). Negative forms used in reference to the individual's professional actions, policies, or decisions (e.g., “He/She isn’t being smart about this policy”) will not count. Policy disagreements stated without disparaging language will not count.\nA direct reference will qualify even if the individual is not named, so long as it is reasonably clear from context that they are the subject.\nAny written, verbal, or recorded public statement by Trump qualifies.\nThe resolution source will be a consensus of credible reporting.",
+      "similarMarkets": [
+        "https://polymarket.com/event/who-will-trump-publicly-insult-by-april-30#will-donald-trump-publicly-insult-joe-biden-by-april-30-2026-539"
+      ],
+      "chainId": 5064014,
+      "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+      "settled": false,
+      "resolvedToYes": false,
+      "nonDecisive": false,
+      "assertionId": null,
+      "assertionTimestamp": null,
+      "openInterest": "0",
+      "similarMarketVolume": 1977.544651,
+      "similarMarketImage": "https://polymarket-upload.s3.us-east-2.amazonaws.com/will-donald-trump-publicly-insult-joe-biden-by-april-30-2026-Q8AEsVKcTOQ1.jpg",
+      "estimatedPrice": 0.9995,
+      "conditionGroupId": 130043,
+      "conditionGroup": {
+        "id": 130043,
+        "name": "Who will Trump publicly insult by April 30?"
+      },
+      "category": {
+        "id": 4,
+        "name": "Geopolitics",
+        "slug": "geopolitics"
+      }
+    },
+    {
+      "id": "0xdbead36cc9fdd0b1b5167ea6c460149f9f20496a875e2ddca2fe9776e302928e",
+      "createdAt": "<ISO_TIMESTAMP>",
+      "question": "Brandon Ingram: Points O/U 20.5",
+      "shortName": "Brandon O20.5pts?",
+      "optionName": "Brandon Ingram: Points O/U 20.5",
+      "endTime": 1776751200,
+      "public": true,
+      "description": "In the upcoming NBA game, scheduled for April 20 at 7:00 PM ET:\nThis market will resolve to \"Yes\" if Brandon Ingram scores more than 20.5 points during the game.\nThis market will resolve to \"No\" if Brandon Ingram scores 20.5 points or fewer during the game.\nThe entire game including all overtime periods will be considered.\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.\nIf the player is listed as inactive or otherwise does not take the court at any point, the market will resolve \"No\".\nThe resolution source will be the official NBA box score as published on NBA.com.",
+      "similarMarkets": [
+        "https://polymarket.com/event/nba-tor-cle-2026-04-20#nba-tor-cle-2026-04-20-points-brandon-ingram-20pt5"
+      ],
+      "chainId": 5064014,
+      "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+      "settled": false,
+      "resolvedToYes": false,
+      "nonDecisive": false,
+      "assertionId": null,
+      "assertionTimestamp": null,
+      "openInterest": "0",
+      "similarMarketVolume": 2411.717835,
+      "similarMarketImage": "https://polymarket-upload.s3.us-east-2.amazonaws.com/super+cool+basketball+in+red+and+blue+wow.png",
+      "estimatedPrice": 0.59,
+      "conditionGroupId": 129264,
+      "conditionGroup": {
+        "id": 129264,
+        "name": "Raptors vs. Cavaliers"
+      },
+      "category": {
+        "id": 6,
+        "name": "Sports",
+        "slug": "sports"
+      }
+    },
+    {
+      "id": "0x41b7f92e082fee780113808dd56fa7c58f29a04fc61edbf5140669b83d9fa492",
+      "createdAt": "<ISO_TIMESTAMP>",
+      "question": "Will WTI Crude Oil (WTI) hit (HIGH) $90 in April?",
+      "shortName": "WTI $90 April 2026?",
+      "optionName": "↑ $90",
+      "endTime": 1777607940,
+      "public": true,
+      "description": "This market will resolve to \"Yes\" if, at any point between market creation and the final trading day during April 2026, any 1-minute candle for the Active Month of WTI Crude Oil futures has a final \"High\" price equal to or above the listed price. Otherwise, this market will resolve to \"No\".\nFor WTI futures, the active month refers to the nearest listed contract month. The active month changes at 6:00:00 PM ET at the start of the trading session two business days prior to that contract's last trading day, at which point the next listed contract becomes the active month.\nFor WTI Crude Oil (CL) futures, the last trading day is defined as three business days prior to the 25th calendar day of the month preceding the contract's delivery month (or four business days prior if the 25th calendar day is not a business day), consistent with CME contract specifications.\nOnly prices achieved during the applicable trading session for the underlying market will be considered. Under the standard schedule, trading is open from 6:00:00 PM ET Sunday through 5:00:00 PM ET Friday, with a daily break from 5:00:00 PM ET to 6:00:00 PM ET, except where modified by holiday or special-session hours as listed on Pyth.\nPrices will be used exactly as published by Pyth, without rounding.\nIf the Active Month contract does not trade at all during the listed time frame, this market will resolve to \"No\".\nIn the event of a contract specification change, feed change, or similar structural modification affecting the underlying market during the listed time frame, this market will resolve based on adjusted prices as displayed on Pyth.\nThe resolution source for this market is Pyth — specifically, the Active Month WTI Crude Oil futures \"High\" prices available at https://pythdata.app/explore?search=WTI, with the chart settings configured for 1-minute candles.\nHistorical 1-minute candles may be accessed by appending a Unix timestamp (seconds) to the Pyth chart URL using the \"t=\" parameter.\nIf the relevant Pyth data is unavailable due to a system outage, data failure, or other technical disruption that prevents verification of the required 1-minute candle data, the official daily high price published for the Active Month WTI Crude Oil (CL) futures contract by CME Group may be used to determine whether the listed price was reached during the applicable trading session.",
+      "similarMarkets": [
+        "https://polymarket.com/event/what-price-will-wti-hit-in-april-2026#will-wti-crude-oil-wti-hit-high-90-in-april"
+      ],
+      "chainId": 5064014,
+      "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+      "settled": false,
+      "resolvedToYes": false,
+      "nonDecisive": false,
+      "assertionId": null,
+      "assertionTimestamp": null,
+      "openInterest": "0",
+      "similarMarketVolume": 1492.42843,
+      "similarMarketImage": "https://polymarket-upload.s3.us-east-2.amazonaws.com/crude-oil-9a850ce2a2.png",
+      "estimatedPrice": 0.705,
+      "conditionGroupId": 121546,
+      "conditionGroup": {
+        "id": 121546,
+        "name": "What will WTI Crude Oil (WTI) hit in April 2026?"
+      },
+      "category": {
+        "id": 5,
+        "name": "Economy & Finance",
+        "slug": "economy-finance"
+      }
+    },
+    {
+      "id": "0x854efe64550a69f3c4f983fcf97f29e7c6d39500e031c8b1accdbb0356f2950a",
+      "createdAt": "<ISO_TIMESTAMP>",
+      "question": "Will Raptors vs Cavaliers total be over 221.5?",
+      "shortName": "TOR/CLE O221.5",
+      "optionName": "O/U 221.5",
+      "endTime": 1776751200,
+      "public": true,
+      "description": "In the upcoming NBA game, scheduled for April 20 at 7:00 PM ET:\nThis market will resolve to \"Over\" if the Raptors and Cavaliers combine to score 222 or more points in this game.\nIf the combined total is less than 222, this market will resolve to \"Under\".\nIf the game is postponed, this market will remain open until the game has been completed. If the game is canceled entirely, with no make-up game, this market will resolve 50-50.",
+      "similarMarkets": [
+        "https://polymarket.com/event/nba-tor-cle-2026-04-20#nba-tor-cle-2026-04-20-total-221pt5"
+      ],
+      "chainId": 5064014,
+      "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+      "settled": false,
+      "resolvedToYes": false,
+      "nonDecisive": false,
+      "assertionId": null,
+      "assertionTimestamp": null,
+      "openInterest": "0",
+      "similarMarketVolume": 24306.64463699999,
+      "similarMarketImage": "https://polymarket-upload.s3.us-east-2.amazonaws.com/super+cool+basketball+in+red+and+blue+wow.png",
+      "estimatedPrice": 0.525,
+      "conditionGroupId": 129264,
+      "conditionGroup": {
+        "id": 129264,
+        "name": "Raptors vs. Cavaliers"
+      },
+      "category": {
+        "id": 6,
+        "name": "Sports",
+        "slug": "sports"
+      }
+    },
+    {
+      "id": "0x8dcfbd82b6c49a15ccd8a265b0d7eb8dffb311d607b570d2f17938d2508dd3bd",
+      "createdAt": "<ISO_TIMESTAMP>",
+      "question": "Will WTI Crude Oil (WTI) hit (HIGH) $95 in April?",
+      "shortName": "WTI $95 April?",
+      "optionName": "↑ $95",
+      "endTime": 1777607940,
+      "public": true,
+      "description": "This market will resolve to \"Yes\" if, at any point between market creation and the final trading day during April 2026, any 1-minute candle for the Active Month of WTI Crude Oil futures has a final \"High\" price equal to or above the listed price. Otherwise, this market will resolve to \"No\".\nFor WTI futures, the active month refers to the nearest listed contract month. The active month changes at 6:00:00 PM ET at the start of the trading session two business days prior to that contract's last trading day, at which point the next listed contract becomes the active month.\nFor WTI Crude Oil (CL) futures, the last trading day is defined as three business days prior to the 25th calendar day of the month preceding the contract's delivery month (or four business days prior if the 25th calendar day is not a business day), consistent with CME contract specifications.\nOnly prices achieved during the applicable trading session for the underlying market will be considered. Under the standard schedule, trading is open from 6:00:00 PM ET Sunday through 5:00:00 PM ET Friday, with a daily break from 5:00:00 PM ET to 6:00:00 PM ET, except where modified by holiday or special-session hours as listed on Pyth.\nPrices will be used exactly as published by Pyth, without rounding.\nIf the Active Month contract does not trade at all during the listed time frame, this market will resolve to \"No\".\nIn the event of a contract specification change, feed change, or similar structural modification affecting the underlying market during the listed time frame, this market will resolve based on adjusted prices as displayed on Pyth.\nThe resolution source for this market is Pyth — specifically, the Active Month WTI Crude Oil futures \"High\" prices available at https://pythdata.app/explore?search=WTI, with the chart settings configured for 1-minute candles.\nHistorical 1-minute candles may be accessed by appending a Unix timestamp (seconds) to the Pyth chart URL using the \"t=\" parameter.\nIf the relevant Pyth data is unavailable due to a system outage, data failure, or other technical disruption that prevents verification of the required 1-minute candle data, the official daily high price published for the Active Month WTI Crude Oil (CL) futures contract by CME Group may be used to determine whether the listed price was reached during the applicable trading session.",
+      "similarMarkets": [
+        "https://polymarket.com/event/what-price-will-wti-hit-in-april-2026#will-wti-crude-oil-wti-hit-high-95-in-april-181"
+      ],
+      "chainId": 5064014,
+      "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+      "settled": false,
+      "resolvedToYes": false,
+      "nonDecisive": false,
+      "assertionId": null,
+      "assertionTimestamp": null,
+      "openInterest": "0",
+      "similarMarketVolume": 2530.340332999999,
+      "similarMarketImage": "https://polymarket-upload.s3.us-east-2.amazonaws.com/crude-oil-9a850ce2a2.png",
+      "estimatedPrice": 0.485,
+      "conditionGroupId": 121546,
+      "conditionGroup": {
+        "id": 121546,
+        "name": "What will WTI Crude Oil (WTI) hit in April 2026?"
+      },
+      "category": {
+        "id": 5,
+        "name": "Economy & Finance",
+        "slug": "economy-finance"
+      }
+    },
+    {
+      "id": "0x10086a86545ad6e8ed5ce590993766836057d264857b7bffeedb78d7df7907b8",
+      "createdAt": "<ISO_TIMESTAMP>",
+      "question": "Will the price of Ethereum be above $1,900 on April 27?",
+      "shortName": "ETH >$1,900 Apr 27",
+      "optionName": "1,900",
+      "endTime": 1777348740,
+      "public": true,
+      "description": "This market will resolve to \"Yes\" if the Binance 1 minute candle for ETH/USDT 12:00 in the ET timezone (noon) on the date specified in the title has a final \"Close\" price higher than the price specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the ETH/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/ETH_USDT with \"1m\" and \"Candles\" selected on the top bar.\nPlease note that this market is about the price according to Binance ETH/USDT, not according to other exchanges or trading pairs.\nPrice precision is determined by the number of decimal places in the source.",
+      "similarMarkets": [
+        "https://polymarket.com/event/ethereum-above-on-april-27#ethereum-above-1900-on-april-27"
+      ],
+      "chainId": 5064014,
+      "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+      "settled": false,
+      "resolvedToYes": false,
+      "nonDecisive": false,
+      "assertionId": null,
+      "assertionTimestamp": null,
+      "openInterest": "0",
+      "similarMarketVolume": 0,
+      "similarMarketImage": "https://polymarket-upload.s3.us-east-2.amazonaws.com/ETH+fullsize.jpg",
+      "estimatedPrice": 0.97,
+      "conditionGroupId": 133048,
+      "conditionGroup": {
+        "id": 133048,
+        "name": "Ethereum above ___ on April 27?"
+      },
+      "category": {
+        "id": 1,
+        "name": "Crypto",
+        "slug": "crypto"
+      }
+    },
+    {
+      "id": "0x2950c996a41c89071fc7d36278d30fca402c0b7830511ef619a969e6ba6a23a4",
+      "createdAt": "<ISO_TIMESTAMP>",
+      "question": "Will the price of Bitcoin be above $66,000 on April 27?",
+      "shortName": "BTC >$66,000 Apr 27",
+      "optionName": "66,000",
+      "endTime": 1777348740,
+      "public": true,
+      "description": "This market will resolve to \"Yes\" if the Binance 1 minute candle for BTC/USDT 12:00 in the ET timezone (noon) on the date specified in the title has a final \"Close\" price higher than the price specified in the title. Otherwise, this market will resolve to \"No\".\nThe resolution source for this market is Binance, specifically the BTC/USDT \"Close\" prices currently available at https://www.binance.com/en/trade/BTC_USDT with \"1m\" and \"Candles\" selected on the top bar.\nPlease note that this market is about the price according to Binance BTC/USDT, not according to other exchanges or trading pairs.\nPrice precision is determined by the number of decimal places in the source.",
+      "similarMarkets": [
+        "https://polymarket.com/event/bitcoin-above-on-april-27#bitcoin-above-66k-on-april-27"
+      ],
+      "chainId": 5064014,
+      "resolver": "0xc7a489f8b5cef914fca2511a84cdc0221cd9a0f4",
+      "settled": false,
+      "resolvedToYes": false,
+      "nonDecisive": false,
+      "assertionId": null,
+      "assertionTimestamp": null,
+      "openInterest": "0",
+      "similarMarketVolume": 0,
+      "similarMarketImage": "https://polymarket-upload.s3.us-east-2.amazonaws.com/BTC+fullsize.png",
+      "estimatedPrice": 0.9725,
+      "conditionGroupId": 133045,
+      "conditionGroup": {
+        "id": 133045,
+        "name": "Bitcoin above ___ on April 27?"
+      },
+      "category": {
+        "id": 1,
+        "name": "Crypto",
+        "slug": "crypto"
+      }
+    }
+  ]
+}
