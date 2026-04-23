@@ -61,7 +61,7 @@ const TabsHeader = ({
   );
 };
 
-const ForecastPageImp = () => {
+const ForecastPageContent = () => {
   const { address } = useAccount();
   const [selectedCategory, setSelectedCategory] =
     useState<CommentFilters | null>(null);
@@ -285,4 +285,4 @@ const ForecastPageImp = () => {
   );
 };
 
-export default ForecastPageImp;
+export default ForecastPageContent;

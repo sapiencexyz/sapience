@@ -34,7 +34,7 @@ import { PythMarketBadge } from '~/components/shared/PythMarketBadge';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
 import { PREFERRED_ESTIMATE_QUOTER } from '~/lib/constants';
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
-import { PositionSizeInput } from '~/components/markets/forms';
+import { PositionSizeInput } from '~/components/markets/forms/inputs/PositionSizeInput';
 import BidDisplay from '~/components/markets/forms/shared/BidDisplay';
 import {
   buildPythAuctionStartPayload,

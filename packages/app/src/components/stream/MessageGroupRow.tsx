@@ -17,7 +17,7 @@ import {
   sourceBadge,
   p2pBadge,
 } from './utils';
-import type { MessageGroup } from '~/hooks/relayer/useRelayerMessageLog';
+import type { MessageGroup } from '~/hooks/ws/useRelayerMessageLog';
 import { useSecondTick } from '~/hooks/useSecondTick';
 
 function truncateId(id: string, maxLen = 16): string {

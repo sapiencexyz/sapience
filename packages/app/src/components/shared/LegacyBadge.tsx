@@ -9,17 +9,13 @@ import {
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
 
-interface LegacyBadgeProps {
-  className?: string;
-}
-
-export default function LegacyBadge({ className }: LegacyBadgeProps) {
+export default function LegacyBadge() {
   return (
     <TooltipProvider delayDuration={300}>
       <div className="inline-flex items-center">
         <Badge
           variant="outline"
-          className={`inline-flex items-center gap-1 pr-1 text-[10px] px-1.5 py-0 h-5 font-mono text-muted-foreground border-muted-foreground/40 ${className ?? ''}`}
+          className="inline-flex items-center gap-1 pr-1 text-[10px] px-1.5 py-0 h-5 font-mono text-muted-foreground border-muted-foreground/40"
         >
           <span>LEGACY</span>
           <Tooltip>

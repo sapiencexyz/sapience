@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useAnimatedNumber } from '~/hooks/useAnimatedNumber';
-import { usePeerMesh } from '~/hooks/relay/usePeerMesh';
+import { usePeerMesh } from '~/hooks/ws/usePeerMesh';
 
 /** Grace period before showing "CAN'T REACH MESH" to avoid flash on startup. */
 const GRACE_MS = 10_000;
