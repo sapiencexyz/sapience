@@ -6,7 +6,7 @@ import {
   TooltipTrigger,
 } from '@sapience/ui/components/ui/tooltip';
 import Image from 'next/image';
-import { PeerIndicator } from '~/components/relay/PeerIndicator';
+import { PeerIndicator } from '~/components/shared/PeerIndicator';
 import { useRpcPing } from '~/hooks/blockchain/useRpcPing';
 
 export const ETHENA_BASE_APY = 3.8;

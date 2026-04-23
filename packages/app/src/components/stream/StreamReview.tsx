@@ -23,7 +23,7 @@ import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 import {
   useRelayerMessageLog,
   type GroupCategory,
-} from '~/hooks/relayer/useRelayerMessageLog';
+} from '~/hooks/ws/useRelayerMessageLog';
 
 type FilterTab = 'all' | GroupCategory;
 

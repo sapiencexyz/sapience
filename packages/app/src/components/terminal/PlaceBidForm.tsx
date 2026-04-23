@@ -3,15 +3,14 @@
 import type React from 'react';
 import { useEffect, useMemo, useState } from 'react';
 import { Input } from '@sapience/ui/components/ui/input';
-import PayoutLine from '~/components/terminal/PayoutLine';
-import PercentChance from '~/components/shared/PercentChance';
-// removed ChevronsDown icon per design update
 import {
   Popover,
   PopoverTrigger,
   PopoverContent,
 } from '@sapience/ui/components/ui/popover';
 import { Pencil } from 'lucide-react';
+import PayoutLine from '~/components/terminal/PayoutLine';
+import PercentChance from '~/components/shared/PercentChance';
 import { useRestrictedJurisdiction } from '~/hooks/useRestrictedJurisdiction';
 import RestrictedJurisdictionBanner from '~/components/shared/RestrictedJurisdictionBanner';
 

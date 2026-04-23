@@ -10,14 +10,12 @@ import {
   type CarouselApi,
 } from '@sapience/ui/components/ui/carousel';
 import { useSidebar } from '@sapience/ui/components/ui/sidebar';
+import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import TickerMarketCard from './ticker/TickerMarketCard';
+import { getActivePublicConditions } from './featuredConditions';
 import { useConditions } from '~/hooks/graphql/useConditions';
 import { getCategoryStyle } from '~/lib/utils/categoryStyle';
-import { getActivePublicConditions } from './featuredConditions';
-import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import MarketPredictionRequest from '~/components/shared/MarketPredictionRequest';
-
-// Removed Loader in favor of simple fade-in cards and fixed-height placeholder
 
 // Interface for featured conditions in the homepage carousel
 interface FeaturedCondition {

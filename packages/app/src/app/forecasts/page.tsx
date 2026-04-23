@@ -1,4 +1,4 @@
-import ForecastPageImp from '~/app/forecasts/ForecastPageImp';
+import ForecastPageContent from '~/app/forecasts/ForecastPageContent';
 
 export function generateMetadata() {
   return {
@@ -13,7 +13,7 @@ export function generateMetadata() {
 }
 
 const ForecastPage = () => {
-  return <ForecastPageImp />;
+  return <ForecastPageContent />;
 };
 
 export default ForecastPage;
