@@ -256,8 +256,21 @@ export default function VaultPnlChart({
     });
   }, [protocolStats, period]);
 
-  const apy =
-    chartData.length >= 2 ? chartData[chartData.length - 1].apy : null;
+  // Headline APY uses wall-clock now for elapsed-days so it doesn't snap to
+  // whatever the last snapshot's timestamp is (midnight UTC). Chart points
+  // stay on daily granularity; only this annualization sees "now".
+  const apy = useMemo(() => {
+    if (chartData.length < 2) return null;
+    const first = chartData[0];
+    const last = chartData[chartData.length - 1];
+    if (first.tvl <= 0) return null;
+    const periodReturn = last.pnlDelta / first.tvl;
+    if (1 + periodReturn <= 0) return null;
+    const nowSec = Math.floor(Date.now() / 1000);
+    const daysElapsed = (nowSec - first.timestamp) / (24 * 60 * 60);
+    if (daysElapsed < 0.5) return null;
+    return (Math.pow(1 + periodReturn, 365 / daysElapsed) - 1) * 100;
+  }, [chartData]);
 
   // Recharts animates only when the dataKey and point count stay stable, so
   // project both modes onto a single `value` field. Swapping source makes the
