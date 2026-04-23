@@ -331,7 +331,7 @@ export default function VaultPnlChart({
                 ? (apy >= 0 ? '+' : '') +
                   apy.toLocaleString('en-US', {
                     minimumFractionDigits: 0,
-                    maximumFractionDigits: 1,
+                    maximumFractionDigits: 2,
                   }) +
                   '% APY'
                 : '\u00A0'}
