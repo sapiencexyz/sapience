@@ -51,14 +51,18 @@ function normalizePolymarketOutcomes(
 }
 
 export function parseDateTimeLocalToUnixSeconds(value: string): bigint {
-  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})$/.exec(value);
+  // Accept both YYYY-MM-DDTHH:MM and YYYY-MM-DDTHH:MM:SS.
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(
+    value
+  );
   if (!m) throw new Error('invalid_datetime_local');
   const yyyy = Number(m[1]);
   const mm = Number(m[2]);
   const dd = Number(m[3]);
   const hh = Number(m[4]);
   const min = Number(m[5]);
-  const d = new Date(yyyy, mm - 1, dd, hh, min);
+  const sec = m[6] !== undefined ? Number(m[6]) : 0;
+  const d = new Date(yyyy, mm - 1, dd, hh, min, sec);
   const ms = d.getTime();
   if (Number.isNaN(ms)) throw new Error('invalid_datetime_local');
   return BigInt(Math.floor(ms / 1000));

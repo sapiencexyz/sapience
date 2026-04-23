@@ -120,6 +120,27 @@ describe('parseDateTimeLocalToUnixSeconds', () => {
     const d = new Date(2024, 0, 1, 0, 0);
     expect(result).toBe(BigInt(Math.floor(d.getTime() / 1000)));
   });
+
+  it('parses datetime string with seconds', () => {
+    const result = parseDateTimeLocalToUnixSeconds('2024-01-15T10:30:45');
+    const d = new Date(2024, 0, 15, 10, 30, 45);
+    expect(result).toBe(BigInt(Math.floor(d.getTime() / 1000)));
+  });
+
+  it('treats HH:MM as HH:MM:00 (no seconds = zero seconds)', () => {
+    const withoutSec = parseDateTimeLocalToUnixSeconds('2024-01-15T10:30');
+    const withZeroSec = parseDateTimeLocalToUnixSeconds('2024-01-15T10:30:00');
+    expect(withoutSec).toBe(withZeroSec);
+  });
+
+  it('throws for malformed seconds segment', () => {
+    expect(() => parseDateTimeLocalToUnixSeconds('2024-01-15T10:30:5')).toThrow(
+      'invalid_datetime_local'
+    );
+    expect(() => parseDateTimeLocalToUnixSeconds('2024-01-15T10:30:')).toThrow(
+      'invalid_datetime_local'
+    );
+  });
 });
 
 describe('pow10', () => {

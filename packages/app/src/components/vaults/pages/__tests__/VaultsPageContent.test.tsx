@@ -35,6 +35,13 @@ vi.mock('~/hooks/blockchain/useCurrentAddress', () => ({
 
 vi.mock('~/hooks/graphql/useAnalytics', () => ({
   useProtocolStats: () => mockUseProtocolStats(),
+  getProtocolTvlWei: (
+    stat: { escrowBalance?: string; vaultAvailableAssets?: string } | null
+  ) =>
+    stat
+      ? BigInt(stat.escrowBalance || '0') +
+        BigInt(stat.vaultAvailableAssets || '0')
+      : 0n,
 }));
 
 vi.mock('~/lib/context/ConnectDialogContext', () => ({
@@ -52,6 +59,11 @@ vi.mock('~/components/shared/RestrictedJurisdictionBanner', () => {
 // SDK mocks
 vi.mock('@sapience/sdk/contracts', () => ({
   predictionMarketVault: { 42161: { address: '0xVault' } },
+  pythPredictionMarketVault: { 42161: { address: '0xOptionsVault' } },
+  predictionMarketVaultStrategyB: {
+    42161: { address: '0xStrategyBVault' },
+  },
+  singleLegVault: {},
 }));
 
 vi.mock('@sapience/sdk/constants', () => ({
@@ -157,6 +169,12 @@ vi.mock('viem', () => ({
 vi.mock('date-fns', () => ({
   formatDuration: () => '',
   intervalToDuration: () => ({}),
+}));
+
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ replace: vi.fn(), push: vi.fn() }),
+  usePathname: () => '/vaults',
+  useSearchParams: () => new URLSearchParams(''),
 }));
 
 vi.mock('next/link', () => {

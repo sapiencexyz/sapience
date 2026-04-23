@@ -9,7 +9,7 @@ import Image from 'next/image';
 import { PeerIndicator } from '~/components/relay/PeerIndicator';
 import { useRpcPing } from '~/hooks/blockchain/useRpcPing';
 
-export const ETHENA_BASE_APY = 4;
+export const ETHENA_BASE_APY = 3.8;
 
 export function StatusIndicators() {
   const pingMs = useRpcPing();

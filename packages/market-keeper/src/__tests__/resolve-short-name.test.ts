@@ -62,4 +62,40 @@ describe('resolveShortName', () => {
     });
     expect(resolveShortName(market)).toBeNull();
   });
+
+  it('does not append a period to full-game moneyline matchups', () => {
+    const market = makeMarket({
+      question: 'Hawks vs. Knicks',
+      outcomes: ['Hawks', 'Knicks'],
+      sportsMarketType: 'moneyline',
+    });
+    expect(resolveShortName(market)).toBe('ATL win vs NYK');
+  });
+
+  it('appends 1H to first-half moneyline matchups', () => {
+    const market = makeMarket({
+      question: 'Hawks vs. Knicks: 1H Moneyline',
+      outcomes: ['Hawks', 'Knicks'],
+      sportsMarketType: 'first_half_moneyline',
+    });
+    expect(resolveShortName(market)).toBe('ATL win vs NYK 1H');
+  });
+
+  it('appends 2H to second-half moneyline matchups', () => {
+    const market = makeMarket({
+      question: 'Hawks vs. Knicks: 2H Moneyline',
+      outcomes: ['Hawks', 'Knicks'],
+      sportsMarketType: 'second_half_moneyline',
+    });
+    expect(resolveShortName(market)).toBe('ATL win vs NYK 2H');
+  });
+
+  it('does not append a period for matchups without sportsMarketType', () => {
+    const market = makeMarket({
+      question: 'Lakers vs. Celtics',
+      outcomes: ['Lakers', 'Celtics'],
+      sportsMarketType: undefined,
+    });
+    expect(resolveShortName(market)).toBe('LAL win vs BOS');
+  });
 });

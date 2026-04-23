@@ -1,5 +1,5 @@
 import 'reflect-metadata';
-import { prisma } from './resolvers/GeneratedResolvers';
+import prisma from '../db';
 import { SharedSchema } from './sharedSchema';
 import { ApolloServer } from '@apollo/server';
 import { ApolloServerPluginLandingPageLocalDefault } from '@apollo/server/plugin/landingPage/default';

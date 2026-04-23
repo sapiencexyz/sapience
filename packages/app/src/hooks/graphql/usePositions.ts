@@ -78,6 +78,7 @@ export type PositionBalance = {
   userCollateral?: string | null;
   totalPayout?: string | null;
   createdAt: string;
+  updatedAt: string;
   pickConfig?: PickConfigData | null;
 };
 
@@ -232,6 +233,7 @@ const POSITION_BALANCES_QUERY = /* GraphQL */ `
       userCollateral
       totalPayout
       createdAt
+      updatedAt
       pickConfig {
         id
         chainId
@@ -283,6 +285,7 @@ const POSITION_BALANCES_BY_CONDITION_QUERY = /* GraphQL */ `
       userCollateral
       totalPayout
       createdAt
+      updatedAt
       pickConfig {
         id
         chainId

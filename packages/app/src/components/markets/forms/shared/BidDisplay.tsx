@@ -40,6 +40,10 @@ interface BidDisplayProps {
   disclaimerMounted?: boolean;
   /** Whether hint is mounted */
   hintMounted?: boolean;
+  /** Combo mixes oracle types / resolvers — surface a specific reason bids may be scarce */
+  hasMixedResolvers?: boolean;
+  /** Every pick is a Pyth price prediction — show the "shorter durations" nudge */
+  isAllPyth?: boolean;
   /** Optional className for the container */
   className?: string;
   /** All bids for auction chart display */
@@ -81,6 +85,8 @@ export default function BidDisplay({
   enableRainbowHover = false,
   disclaimerMounted = true,
   hintMounted = false,
+  hasMixedResolvers = false,
+  isAllPyth = false,
   className,
   allBids = [],
   predictorPositionSizeWei,
@@ -96,13 +102,10 @@ export default function BidDisplay({
 
   // Helper function to calculate payout amount
   const calculatePayoutAmount = useCallback(
-    (bid: QuoteBid, positionSize: string): string => {
+    (bid: QuoteBid, size: string): string => {
       let userPositionSizeWei: bigint = 0n;
       try {
-        userPositionSizeWei = parseUnits(
-          positionSize || '0',
-          collateralDecimals
-        );
+        userPositionSizeWei = parseUnits(size || '0', collateralDecimals);
       } catch {
         userPositionSizeWei = 0n;
       }
@@ -527,12 +530,21 @@ export default function BidDisplay({
         )}
       </Button>
 
-      {/* Position-specific hint for combinations that may not receive bids */}
+      {/* Position-specific hint for combos that may not receive bids.
+          Surfaces a targeted hint for mixed-resolver combos or a
+          shorter-duration nudge for Pyth-only combos; falls back to a generic
+          message otherwise. */}
       {hintMounted && (
-        <div className="text-xs text-foreground font-medium mt-3">
-          <span className="text-accent-gold">
-            Some combinations may not receive bids
-          </span>
+        <div className="text-xs text-foreground font-medium mt-3 space-y-1">
+          <div>
+            <span className="text-accent-gold">
+              {hasMixedResolvers
+                ? 'Predictions that mix oracle types may attract fewer bids.'
+                : isAllPyth
+                  ? 'Shorter price prediction durations attract more bids.'
+                  : 'Some predictions may not receive bids.'}
+            </span>
+          </div>
         </div>
       )}
 

@@ -1,4 +1,5 @@
 import {
+  Arg,
   Directive,
   Field,
   Int,
@@ -9,7 +10,15 @@ import {
 import { DEFAULT_CHAIN_ID } from '@sapience/sdk/constants';
 import { contracts } from '@sapience/sdk/contracts';
 import prisma from '../../db';
-import { getProtocolStatsTimeSeries } from '../../helpers/protocolStats';
+import {
+  getProtocolStatsTimeSeries,
+  fetchVaultTVL,
+  fetchVaultAvailableAssets,
+  fetchVaultDeployed,
+  fetchPredictionMarketEscrowTVL,
+  calculateVaultPnL,
+  calculateVaultFlows,
+} from '../../helpers/protocolStats';
 
 @ObjectType({
   description:
@@ -94,11 +103,16 @@ export class AnalyticsResolver {
     description:
       'Daily protocol statistics time series (last 90 days) — vault balance, volume, PnL, and open interest',
   })
-  @Directive('@cacheControl(maxAge: 3600)')
-  async protocolStats(): Promise<ProtocolStat[]> {
+  @Directive('@cacheControl(maxAge: 60)')
+  async protocolStats(
+    @Arg('vaultAddress', () => String, { nullable: true })
+    vaultAddressArg?: string
+  ): Promise<ProtocolStat[]> {
     const chainId = DEFAULT_CHAIN_ID;
     const vaultAddress = (
-      contracts.predictionMarketVault[chainId]?.address ?? ''
+      vaultAddressArg ??
+      contracts.predictionMarketVault[chainId]?.address ??
+      ''
     ).toLowerCase();
 
     // Fetch all available snapshots
@@ -112,18 +126,21 @@ export class AnalyticsResolver {
       return [];
     }
 
-    // Get all snapshot timestamps
+    // Get all snapshot timestamps + a live "now" timestamp for today's candle.
+    // Snapshot timestamps are midnight UTC — they represent end-of-previous-day.
     const snapshotTimestamps = protocolSnapshots.map((s) => s.timestamp);
-    const firstSnapshotTimestamp = snapshotTimestamps[0];
+    const nowTimestamp = Math.floor(Date.now() / 1000);
+    // Add "now" for the live today candle (OI + volume computed in real time)
+    const queryTimestamps = [...snapshotTimestamps, nowTimestamp];
 
-    // Fetch volume and OI data at snapshot timestamps in parallel
+    // Fetch volume and OI data at all timestamps (including live) in parallel
     const [cumulativeVolumes, openInterests] = await Promise.all([
-      // Cumulative volume within the snapshot window (legacy + escrow predictions)
+      // All-time cumulative volume (V1 legacy + V2 escrow + secondary trades)
       prisma.$queryRaw<CumulativeVolumeRow[]>`
         SELECT
           ts.timestamp,
           COALESCE(SUM(vol), 0)::TEXT as cumulative_volume
-        FROM UNNEST(${snapshotTimestamps}::BIGINT[]) AS ts(timestamp)
+        FROM UNNEST(${queryTimestamps}::BIGINT[]) AS ts(timestamp)
         LEFT JOIN (
           SELECT "mintedAt" AS created_ts, CAST("totalCollateral" AS DECIMAL) AS vol, "chainId"
           FROM position
@@ -132,31 +149,38 @@ export class AnalyticsResolver {
             CAST("predictorCollateral" AS DECIMAL) + CAST("counterpartyCollateral" AS DECIMAL) AS vol,
             "chainId"
           FROM "Prediction"
+          UNION ALL
+          SELECT "executedAt" AS created_ts,
+            CAST(price AS DECIMAL) AS vol,
+            "chainId"
+          FROM secondary_trade
         ) combined ON
-          combined.created_ts >= ${firstSnapshotTimestamp}
-          AND combined.created_ts <= ts.timestamp
+          combined.created_ts <= ts.timestamp
           AND combined."chainId" = ${chainId}
         GROUP BY ts.timestamp
         ORDER BY ts.timestamp
       `,
-      // Open interest at each snapshot timestamp (legacy + escrow predictions)
-      // For V2 Predictions, use Picks.resolvedAt instead of Prediction.settledAt
-      // because losing predictions may never get settled on-chain.
+      // Open interest at each snapshot timestamp (V2 escrow predictions only).
+      // V1 legacy positions are excluded — their resolvers are deprecated.
+      // Private conditions are excluded — they shouldn't inflate public metrics.
+      // Uses Picks.resolvedAt instead of Prediction.settledAt because losing
+      // predictions may never get settled on-chain.
       prisma.$queryRaw<DailyOIRow[]>`
         SELECT
           ts.timestamp,
           COALESCE(SUM(vol), 0)::TEXT as open_interest
-        FROM UNNEST(${snapshotTimestamps}::BIGINT[]) AS ts(timestamp)
+        FROM UNNEST(${queryTimestamps}::BIGINT[]) AS ts(timestamp)
         LEFT JOIN (
-          SELECT "mintedAt" AS created_ts, "settledAt" AS settled_ts,
-            CAST("totalCollateral" AS DECIMAL) AS vol, "chainId"
-          FROM position
-          UNION ALL
           SELECT p."onChainCreatedAt" AS created_ts, pk."resolvedAt" AS settled_ts,
             CAST(p."predictorCollateral" AS DECIMAL) + CAST(p."counterpartyCollateral" AS DECIMAL) AS vol,
             p."chainId"
           FROM "Prediction" p
           LEFT JOIN "Picks" pk ON pk.id = p."pickConfigId"
+          WHERE NOT EXISTS (
+            SELECT 1 FROM "Pick" pi
+            JOIN "condition" c ON c.id = pi."conditionId"
+            WHERE pi."pickConfigId" = pk.id AND c.public = false
+          )
         ) combined ON
           combined.created_ts <= ts.timestamp
           AND (combined.settled_ts IS NULL OR combined.settled_ts > ts.timestamp)
@@ -169,7 +193,11 @@ export class AnalyticsResolver {
     const volumeMap = buildTimestampMap(cumulativeVolumes, 'cumulative_volume');
     const oiMap = buildTimestampMap(openInterests, 'open_interest');
 
-    return protocolSnapshots.map((snapshot, i) => {
+    const DAY_SECONDS = 86400;
+
+    // Build results from snapshots. Each snapshot timestamp (midnight UTC) represents
+    // end-of-previous-day, so we shift the display timestamp back by 1 day.
+    const results: ProtocolStat[] = protocolSnapshots.map((snapshot, i) => {
       const cumVol = volumeMap.get(snapshot.timestamp) || '0';
       const prevCumVol =
         i > 0 ? volumeMap.get(protocolSnapshots[i - 1].timestamp) || '0' : '0';
@@ -181,7 +209,7 @@ export class AnalyticsResolver {
       ).toString();
 
       return {
-        timestamp: snapshot.timestamp,
+        timestamp: snapshot.timestamp - DAY_SECONDS,
         cumulativeVolume: cumVol,
         openInterest: oiMap.get(snapshot.timestamp) || '0',
         vaultBalance: snapshot.vaultBalance,
@@ -198,5 +226,77 @@ export class AnalyticsResolver {
         dailyVolume,
       };
     });
+
+    // Append live "today" data point using real-time OI/volume. If any of the
+    // live reads fail (flaky RPC, DB timeout) we fall through and return the
+    // snapshot-only series rather than failing the whole query.
+    try {
+      const lastSnapshot = protocolSnapshots[protocolSnapshots.length - 1];
+      const lastCumVol = volumeMap.get(lastSnapshot.timestamp) || '0';
+      const liveCumVol = volumeMap.get(nowTimestamp) || lastCumVol;
+      const liveDailyVolume = (
+        BigInt(liveCumVol) - BigInt(lastCumVol)
+      ).toString();
+
+      const [
+        liveVaultBalance,
+        liveVaultAvailableAssets,
+        liveVaultDeployed,
+        liveEscrowBalance,
+        livePnlResult,
+        liveFlowsResult,
+      ] = await Promise.all([
+        fetchVaultTVL(chainId),
+        fetchVaultAvailableAssets(chainId),
+        fetchVaultDeployed(chainId),
+        fetchPredictionMarketEscrowTVL(chainId),
+        calculateVaultPnL(chainId),
+        calculateVaultFlows(chainId),
+      ]);
+
+      const liveDailyPnL = (
+        livePnlResult.realizedPnL - BigInt(lastSnapshot.vaultRealizedPnL)
+      ).toString();
+
+      const liveActualTotalAssets = liveVaultBalance + liveVaultDeployed;
+      const liveExpectedTotalAssets =
+        liveFlowsResult.totalDeposits -
+        liveFlowsResult.totalWithdrawals +
+        livePnlResult.realizedPnL;
+      const liveAirdropGains =
+        liveActualTotalAssets > liveExpectedTotalAssets
+          ? liveActualTotalAssets - liveExpectedTotalAssets
+          : 0n;
+
+      // Today's display timestamp = current UTC midnight. Derived from wall-clock
+      // rather than last snapshot so a missed cron doesn't mislabel the live candle.
+      const todayTimestamp =
+        Math.floor(Date.now() / 1000 / DAY_SECONDS) * DAY_SECONDS;
+
+      results.push({
+        timestamp: todayTimestamp,
+        cumulativeVolume: liveCumVol,
+        openInterest: oiMap.get(nowTimestamp) || '0',
+        vaultBalance: liveVaultBalance.toString(),
+        vaultAvailableAssets: liveVaultAvailableAssets.toString(),
+        vaultDeployed: liveVaultDeployed.toString(),
+        escrowBalance: liveEscrowBalance.toString(),
+        vaultCumulativePnL: livePnlResult.realizedPnL.toString(),
+        vaultPositionsWon: livePnlResult.positionsWon,
+        vaultPositionsLost: livePnlResult.positionsLost,
+        vaultDeposits: liveFlowsResult.totalDeposits.toString(),
+        vaultWithdrawals: liveFlowsResult.totalWithdrawals.toString(),
+        vaultAirdropGains: liveAirdropGains.toString(),
+        dailyPnL: liveDailyPnL,
+        dailyVolume: liveDailyVolume,
+      });
+    } catch (err) {
+      console.error(
+        '[AnalyticsResolver] live candle failed, falling back to snapshots only:',
+        err
+      );
+    }
+
+    return results;
   }
 }

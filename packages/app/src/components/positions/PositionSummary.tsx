@@ -9,7 +9,6 @@ import {
 import { ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
-import CounterpartyBadge from '~/components/shared/CounterpartyBadge';
 import NumberDisplay from '~/components/shared/NumberDisplay';
 import CountdownCell from '~/components/shared/CountdownCell';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
@@ -18,8 +17,6 @@ import Loader from '~/components/shared/Loader';
 
 export interface PositionSummaryProps {
   positionId: string | number;
-  /** Whether this is a counterparty position (as opposed to predictor position) */
-  isCounterpartyPosition?: boolean;
   createdAt: Date | null;
   endsAtMs: number | null;
   positionSize: number;
@@ -37,11 +34,37 @@ export interface PositionSummaryProps {
   isOwnerLoading?: boolean;
   predictorAddress?: string | null;
   counterpartyAddress?: string | null;
+  /**
+   * Wallet that holds this aggregated position. Rendered as a "Holder" cell
+   * alongside predictor/counterparty in the addresses row.
+   */
+  holderAddress?: string | null;
+  /**
+   * Entity kind the summary represents. Controls the header label: a single
+   * on-chain prediction renders "Prediction <0xhash>", while an aggregated
+   * holder position across multiple predictions renders "Position".
+   */
+  kind?: 'prediction' | 'position';
+  /**
+   * Number of picks backing this aggregate position. When provided with
+   * kind="position", the header becomes "{n} Pick Position".
+   */
+  pickCount?: number;
+  /**
+   * When both stakes are provided, the summary switches to a side-agnostic
+   * 3-row layout (Predictor / Counterparty / Ends+Payout) and suppresses
+   * viewer-specific fields like P/L. Omit for the legacy aggregate layout.
+   */
+  predictorStake?: number;
+  counterpartyStake?: number;
+  /** Whether the predictor side won (for winner highlight in symmetric layout). */
+  predictorWon?: boolean;
+  /** Whether the counterparty side won (for winner highlight in symmetric layout). */
+  counterpartyWon?: boolean;
 }
 
 export default function PositionSummary({
   positionId,
-  isCounterpartyPosition,
   createdAt,
   endsAtMs,
   positionSize,
@@ -56,42 +79,248 @@ export default function PositionSummary({
   isOwnerLoading,
   predictorAddress,
   counterpartyAddress,
+  holderAddress,
+  kind = 'prediction',
+  pickCount,
+  predictorStake,
+  counterpartyStake,
+  predictorWon,
+  counterpartyWon,
 }: PositionSummaryProps) {
+  const useSymmetricStats =
+    predictorStake !== undefined && counterpartyStake !== undefined;
   const showOwner = isOwnerLoading || !!currentOwner;
-  const showAddressesRow = showOwner || predictorAddress || counterpartyAddress;
+  const showHolder = !!holderAddress;
+  const showAddressesRow =
+    !useSymmetricStats &&
+    (showOwner || showHolder || predictorAddress || counterpartyAddress);
+  const addressCellCount =
+    (showOwner ? 1 : 0) + (showHolder ? 1 : 0) + (kind === 'position' ? 0 : 2);
+  const addressGridCols =
+    addressCellCount >= 3
+      ? 'sm:grid-cols-3'
+      : addressCellCount === 2
+        ? 'sm:grid-cols-2'
+        : 'sm:grid-cols-1';
+
+  const renderEndsCell = () => (
+    <div className="flex flex-col gap-1 min-w-0">
+      <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
+        {endsAtMs && endsAtMs > Date.now()
+          ? 'Ends'
+          : kind === 'position'
+            ? 'Ended'
+            : 'Created'}
+      </div>
+      <span className="text-sm md:text-base font-medium tabular-nums text-foreground">
+        {endsAtMs && endsAtMs > Date.now() ? (
+          <CountdownCell endTime={Math.floor(endsAtMs / 1000)} />
+        ) : kind === 'position' ? (
+          endsAtMs ? (
+            <span title={new Date(endsAtMs).toLocaleString()}>
+              {new Date(endsAtMs).toLocaleDateString(undefined, {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+              })}
+            </span>
+          ) : (
+            '—'
+          )
+        ) : createdAt ? (
+          <span title={createdAt.toLocaleString()}>
+            {createdAt.toLocaleDateString(undefined, {
+              month: 'short',
+              day: 'numeric',
+              year: 'numeric',
+            })}
+          </span>
+        ) : (
+          '—'
+        )}
+      </span>
+    </div>
+  );
+
+  const renderCreatedCell = () => (
+    <div className="flex flex-col gap-1 min-w-0">
+      <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
+        Created
+      </div>
+      <span className="text-sm md:text-base font-medium tabular-nums text-foreground">
+        {createdAt ? (
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <span className="cursor-default whitespace-nowrap">
+                  {formatDistanceToNow(createdAt, { addSuffix: false })} ago
+                </span>
+              </TooltipTrigger>
+              <TooltipContent>
+                <span>
+                  {createdAt.toLocaleString(undefined, {
+                    year: 'numeric',
+                    month: 'short',
+                    day: '2-digit',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    timeZoneName: 'short',
+                  })}
+                </span>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        ) : (
+          '—'
+        )}
+      </span>
+    </div>
+  );
+
+  const renderStatusCell = () => {
+    const label = isSettled ? 'Winner' : 'Status';
+    let value: string;
+    let badgeClass: string;
+    if (!isSettled) {
+      const isLive = endsAtMs != null && endsAtMs > Date.now();
+      value = isLive ? 'ACTIVE' : 'PENDING';
+      badgeClass = 'border-foreground/40 bg-foreground/10 text-foreground';
+    } else if (predictorWon) {
+      value = 'PREDICTOR';
+      badgeClass = 'border-yes/40 bg-yes/10 text-yes';
+    } else if (counterpartyWon) {
+      value = 'COUNTERPARTY';
+      badgeClass = 'border-yes/40 bg-yes/10 text-yes';
+    } else {
+      value = 'SETTLED';
+      badgeClass =
+        'border-muted-foreground/40 bg-muted-foreground/10 text-muted-foreground';
+    }
+    return (
+      <div className="flex flex-col gap-1.5 min-w-0 items-start">
+        <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
+          {label}
+        </div>
+        <span
+          className={`inline-block px-1.5 py-0.5 text-xs font-medium rounded-md font-mono border ${badgeClass}`}
+        >
+          {value}
+        </span>
+      </div>
+    );
+  };
+
+  const renderPayoutCell = () => (
+    <div className="flex flex-col gap-1 min-w-0">
+      <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
+        Payout
+      </div>
+      <span className="text-sm md:text-base font-medium tabular-nums text-foreground">
+        <NumberDisplay
+          value={(predictorStake ?? 0) + (counterpartyStake ?? 0)}
+          className="tabular-nums"
+        />
+        <span className="ml-1 text-xs font-normal text-muted-foreground">
+          {collateralSymbol}
+        </span>
+      </span>
+    </div>
+  );
+
+  const renderPartyCell = (
+    label: 'Predictor' | 'Counterparty',
+    address: string | null | undefined
+  ) => (
+    <div className="flex flex-col gap-1 min-w-0">
+      <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
+        {label}
+      </div>
+      {address ? (
+        <Link
+          href={`/profile/${address}`}
+          className="inline-flex items-center gap-1.5 text-sm md:text-base font-medium tabular-nums text-foreground hover:text-accent-gold transition-colors min-w-0 max-w-full overflow-hidden"
+        >
+          <EnsAvatar
+            address={address}
+            className="shrink-0 rounded-sm ring-1 ring-border/50"
+            width={16}
+            height={16}
+          />
+          <AddressDisplay address={address} />
+        </Link>
+      ) : (
+        <span className="text-sm md:text-base font-medium tabular-nums text-muted-foreground">
+          —
+        </span>
+      )}
+    </div>
+  );
+
+  const renderStakeCell = (stake: number, sideWon: boolean | undefined) => (
+    <div className="flex flex-col gap-1 min-w-0">
+      <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
+        Position Size
+      </div>
+      <span
+        className={`text-sm md:text-base font-medium tabular-nums ${
+          isSettled && sideWon ? 'text-green-600' : 'text-foreground'
+        }`}
+      >
+        <NumberDisplay value={stake} className="tabular-nums" />
+        <span className="ml-1 text-xs font-normal text-muted-foreground">
+          {collateralSymbol}
+        </span>
+      </span>
+    </div>
+  );
 
   return (
     <div className="space-y-4 pt-2">
       {/* Header row */}
       <div className="flex items-center gap-2 pb-2">
-        {/* Left group: Position ID, external link, counterparty badge */}
+        {/* Left group: Position ID, external link */}
         <div className="flex items-center gap-2">
           <h2 className="eyebrow text-foreground">
-            Prediction{' '}
-            {typeof positionId === 'string' &&
-            positionId.startsWith('0x') &&
-            positionId.length > 12
-              ? `${positionId.slice(0, 6)}...${positionId.slice(-4)}`
-              : `#${positionId}`}
+            {(() => {
+              if (kind === 'position') {
+                return typeof pickCount === 'number'
+                  ? `${pickCount} Pick Position`
+                  : 'Position';
+              }
+              const idStr = String(positionId);
+              if (idStr.startsWith('0x')) {
+                const truncated =
+                  idStr.length > 12
+                    ? `${idStr.slice(0, 6)}...${idStr.slice(-4)}`
+                    : idStr;
+                return (
+                  <>
+                    Prediction <span className="font-mono">{truncated}</span>
+                  </>
+                );
+              }
+              return `Prediction #${idStr}`;
+            })()}
           </h2>
-          {isCounterpartyPosition && <CounterpartyBadge />}
         </div>
-        {/* Status badge + external link */}
-        {isSettled ? (
-          positionWon ? (
-            <span className="px-1.5 py-0.5 text-xs font-medium rounded-md font-mono border border-yes/40 bg-yes/10 text-yes">
-              WON
-            </span>
+        {/* Status badge (legacy mode only — symmetric mode surfaces it in the grid below) */}
+        {!useSymmetricStats &&
+          (isSettled ? (
+            positionWon ? (
+              <span className="px-1.5 py-0.5 text-xs font-medium rounded-md font-mono border border-yes/40 bg-yes/10 text-yes">
+                WON
+              </span>
+            ) : (
+              <span className="px-1.5 py-0.5 text-xs font-medium rounded-md font-mono border border-no/40 bg-no/10 text-no">
+                LOST
+              </span>
+            )
           ) : (
-            <span className="px-1.5 py-0.5 text-xs font-medium rounded-md font-mono border border-no/40 bg-no/10 text-no">
-              LOST
+            <span className="px-1.5 py-0.5 text-xs font-medium rounded-md font-mono border border-foreground/40 bg-foreground/10 text-foreground">
+              ACTIVE
             </span>
-          )
-        ) : (
-          <span className="px-1.5 py-0.5 text-xs font-medium rounded-md font-mono border border-foreground/40 bg-foreground/10 text-foreground">
-            ACTIVE
-          </span>
-        )}
+          ))}
         {positionUrl && (
           <Link
             href={positionUrl}
@@ -103,9 +332,12 @@ export default function PositionSummary({
             <ExternalLink className="h-4 w-4" />
           </Link>
         )}
-        {/* Created time - pushed right */}
+        {/* Created time - pushed right. Symmetric mode renders this inside
+            the grid; legacy mode keeps it in the header. Omitted for
+            aggregate positions since a holder's token balance has no single
+            creation event. */}
         <div className="flex items-center gap-2 ml-auto">
-          {createdAt && (
+          {!useSymmetricStats && kind !== 'position' && createdAt && (
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -133,175 +365,177 @@ export default function PositionSummary({
         </div>
       </div>
 
-      {/* Addresses row */}
-      {showAddressesRow && (
-        <div
-          className={`grid grid-cols-1 gap-4 ${showOwner ? 'sm:grid-cols-3' : 'sm:grid-cols-2'}`}
-        >
-          {/* Current Owner - only shown for NFT-based positions */}
-          {showOwner && (
-            <div className="space-y-1">
-              <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
-                Current Owner
-              </div>
-              {isOwnerLoading ? (
-                <div className="flex items-center h-[24px]">
-                  <Loader className="w-3.5 h-3.5" />
+      {useSymmetricStats ? (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-x-4 gap-y-6">
+          {/* Row 1: parties with stakes */}
+          {renderPartyCell('Predictor', predictorAddress)}
+          {renderStakeCell(predictorStake, predictorWon)}
+          {renderPartyCell('Counterparty', counterpartyAddress)}
+          {renderStakeCell(counterpartyStake, counterpartyWon)}
+
+          {/* Row 2: lifecycle */}
+          {renderCreatedCell()}
+          {renderEndsCell()}
+          {renderStatusCell()}
+          {renderPayoutCell()}
+        </div>
+      ) : (
+        <>
+          {/* Addresses row */}
+          {showAddressesRow && (
+            <div className={`grid grid-cols-1 gap-4 ${addressGridCols}`}>
+              {showHolder && (
+                <div className="space-y-1">
+                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
+                    Holder
+                  </div>
+                  <Link
+                    href={`/profile/${holderAddress}`}
+                    className="inline-flex items-center gap-1.5 text-sm md:text-base font-medium tabular-nums text-foreground hover:text-accent-gold transition-colors"
+                  >
+                    <EnsAvatar
+                      address={holderAddress}
+                      className="shrink-0 rounded-sm ring-1 ring-border/50"
+                      width={16}
+                      height={16}
+                    />
+                    <AddressDisplay address={holderAddress} />
+                  </Link>
                 </div>
-              ) : currentOwner ? (
-                <Link
-                  href={`/profile/${currentOwner}`}
-                  className="inline-flex items-center gap-1.5 text-sm md:text-base font-medium tabular-nums text-foreground hover:text-accent-gold transition-colors"
+              )}
+
+              {showOwner && (
+                <div className="space-y-1">
+                  <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
+                    Current Owner
+                  </div>
+                  {isOwnerLoading ? (
+                    <div className="flex items-center h-[24px]">
+                      <Loader className="w-3.5 h-3.5" />
+                    </div>
+                  ) : currentOwner ? (
+                    <Link
+                      href={`/profile/${currentOwner}`}
+                      className="inline-flex items-center gap-1.5 text-sm md:text-base font-medium tabular-nums text-foreground hover:text-accent-gold transition-colors"
+                    >
+                      <EnsAvatar
+                        address={currentOwner}
+                        className="shrink-0 rounded-sm ring-1 ring-border/50"
+                        width={16}
+                        height={16}
+                      />
+                      <AddressDisplay address={currentOwner} />
+                    </Link>
+                  ) : (
+                    <span className="text-sm md:text-base font-medium tabular-nums text-muted-foreground">
+                      —
+                    </span>
+                  )}
+                </div>
+              )}
+
+              {kind !== 'position' &&
+                renderPartyCell('Predictor', predictorAddress)}
+              {kind !== 'position' &&
+                renderPartyCell('Counterparty', counterpartyAddress)}
+            </div>
+          )}
+
+          {/* Legacy stats row */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <div className="flex flex-col gap-1 min-w-0">
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
+                {endsAtMs && endsAtMs > Date.now()
+                  ? 'Ends'
+                  : kind === 'position'
+                    ? 'Ended'
+                    : 'Created'}
+              </div>
+              <span className="text-sm md:text-base font-medium tabular-nums text-foreground">
+                {endsAtMs && endsAtMs > Date.now() ? (
+                  <CountdownCell endTime={Math.floor(endsAtMs / 1000)} />
+                ) : kind === 'position' ? (
+                  endsAtMs ? (
+                    <span title={new Date(endsAtMs).toLocaleString()}>
+                      {new Date(endsAtMs).toLocaleDateString(undefined, {
+                        month: 'short',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                    </span>
+                  ) : (
+                    '—'
+                  )
+                ) : createdAt ? (
+                  <span title={createdAt.toLocaleString()}>
+                    {createdAt.toLocaleDateString(undefined, {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })}
+                  </span>
+                ) : (
+                  '—'
+                )}
+              </span>
+            </div>
+
+            <div className="flex flex-col gap-1 min-w-0">
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
+                Position Size
+              </div>
+              <span className="text-sm md:text-base font-medium tabular-nums text-foreground">
+                <NumberDisplay value={positionSize} className="tabular-nums" />
+                <span className="ml-1 text-xs font-normal text-muted-foreground">
+                  {collateralSymbol}
+                </span>
+              </span>
+            </div>
+
+            <div className="flex flex-col gap-1 min-w-0">
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
+                Payout
+              </div>
+              <span className="text-sm md:text-base font-medium tabular-nums text-foreground">
+                <NumberDisplay value={payout} className="tabular-nums" />
+                <span className="ml-1 text-xs font-normal text-muted-foreground">
+                  {collateralSymbol}
+                </span>
+              </span>
+            </div>
+
+            <div className="flex flex-col gap-1 min-w-0">
+              <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
+                Profit/Loss
+              </div>
+              {pnl !== null ? (
+                <span
+                  className={`text-sm md:text-base font-medium tabular-nums items-baseline ${pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}
                 >
-                  <EnsAvatar
-                    address={currentOwner}
-                    className="shrink-0 rounded-sm ring-1 ring-border/50"
-                    width={16}
-                    height={16}
-                  />
-                  <AddressDisplay address={currentOwner} />
-                </Link>
+                  <NumberDisplay value={pnl} className="tabular-nums" />
+                  <span
+                    className={`ml-1 text-xs font-normal ${pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                  >
+                    {collateralSymbol}
+                  </span>
+                  {roi !== null && positionSize > 0 && (
+                    <span
+                      className={`ml-1 text-[10px] tabular-nums font-mono ${pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}
+                    >
+                      {roi >= 0 ? '+' : ''}
+                      {Math.round(roi).toLocaleString()}%
+                    </span>
+                  )}
+                </span>
               ) : (
                 <span className="text-sm md:text-base font-medium tabular-nums text-muted-foreground">
                   —
                 </span>
               )}
             </div>
-          )}
-
-          {/* Predictor */}
-          <div className="space-y-1">
-            <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
-              Predictor
-            </div>
-            {predictorAddress ? (
-              <Link
-                href={`/profile/${predictorAddress}`}
-                className="inline-flex items-center gap-1.5 text-sm md:text-base font-medium tabular-nums text-foreground hover:text-accent-gold transition-colors"
-              >
-                <EnsAvatar
-                  address={predictorAddress}
-                  className="shrink-0 rounded-sm ring-1 ring-border/50"
-                  width={16}
-                  height={16}
-                />
-                <AddressDisplay address={predictorAddress} />
-              </Link>
-            ) : (
-              <span className="text-sm md:text-base font-medium tabular-nums text-muted-foreground">
-                —
-              </span>
-            )}
           </div>
-
-          {/* Counterparty */}
-          <div className="space-y-1">
-            <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
-              Counterparty
-            </div>
-            {counterpartyAddress ? (
-              <Link
-                href={`/profile/${counterpartyAddress}`}
-                className="inline-flex items-center gap-1.5 text-sm md:text-base font-medium tabular-nums text-foreground hover:text-accent-gold transition-colors"
-              >
-                <EnsAvatar
-                  address={counterpartyAddress}
-                  className="shrink-0 rounded-sm ring-1 ring-border/50"
-                  width={16}
-                  height={16}
-                />
-                <AddressDisplay address={counterpartyAddress} />
-              </Link>
-            ) : (
-              <span className="text-sm md:text-base font-medium tabular-nums text-muted-foreground">
-                —
-              </span>
-            )}
-          </div>
-        </div>
+        </>
       )}
-
-      {/* Stats row */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        {/* Ends / Created */}
-        <div className="space-y-1">
-          <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
-            {endsAtMs && endsAtMs > Date.now() ? 'Ends' : 'Created'}
-          </div>
-          <span className="text-sm md:text-base font-medium tabular-nums text-foreground">
-            {endsAtMs && endsAtMs > Date.now() ? (
-              <CountdownCell endTime={Math.floor(endsAtMs / 1000)} />
-            ) : createdAt ? (
-              <span title={createdAt.toLocaleString()}>
-                {createdAt.toLocaleDateString(undefined, {
-                  month: 'short',
-                  day: 'numeric',
-                  year: 'numeric',
-                })}
-              </span>
-            ) : (
-              '—'
-            )}
-          </span>
-        </div>
-
-        {/* Position Size */}
-        <div className="space-y-1">
-          <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
-            Position Size
-          </div>
-          <span className="text-sm md:text-base font-medium tabular-nums text-foreground">
-            <NumberDisplay value={positionSize} className="tabular-nums" />
-            <span className="ml-1 text-xs font-normal text-muted-foreground">
-              {collateralSymbol}
-            </span>
-          </span>
-        </div>
-
-        {/* Payout */}
-        <div className="space-y-1">
-          <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
-            Payout
-          </div>
-          <span className="text-sm md:text-base font-medium tabular-nums text-foreground">
-            <NumberDisplay value={payout} className="tabular-nums" />
-            <span className="ml-1 text-xs font-normal text-muted-foreground">
-              {collateralSymbol}
-            </span>
-          </span>
-        </div>
-
-        {/* Profit/Loss */}
-        <div className="space-y-1">
-          <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
-            Profit/Loss
-          </div>
-          {pnl !== null ? (
-            <span
-              className={`text-sm md:text-base font-medium tabular-nums items-baseline ${pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}
-            >
-              <NumberDisplay value={pnl} className="tabular-nums" />
-              <span
-                className={`ml-1 text-xs font-normal ${pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}
-              >
-                {collateralSymbol}
-              </span>
-              {roi !== null && positionSize > 0 && (
-                <span
-                  className={`ml-1 text-[10px] tabular-nums font-mono ${pnl >= 0 ? 'text-green-600' : 'text-red-600'}`}
-                >
-                  {roi >= 0 ? '+' : ''}
-                  {Math.round(roi).toLocaleString()}%
-                </span>
-              )}
-            </span>
-          ) : (
-            <span className="text-sm md:text-base font-medium tabular-nums text-muted-foreground">
-              —
-            </span>
-          )}
-        </div>
-      </div>
     </div>
   );
 }

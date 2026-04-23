@@ -6,6 +6,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@sapience/ui/components/ui/dialog';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@sapience/ui/components/ui/tooltip';
 import { Info } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
@@ -31,7 +36,10 @@ import { PREFERRED_ESTIMATE_QUOTER } from '~/lib/constants';
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import { PositionSizeInput } from '~/components/markets/forms';
 import BidDisplay from '~/components/markets/forms/shared/BidDisplay';
-import { buildPythAuctionStartPayload } from '~/lib/auction/buildAuctionPayload';
+import {
+  buildPythAuctionStartPayload,
+  parseDateTimeLocalToUnixSeconds,
+} from '~/lib/auction/buildAuctionPayload';
 import type { AuctionParams, QuoteBid } from '~/lib/auction/useAuctionStart';
 import { useCreatePositionContext } from '~/lib/context/CreatePositionContext';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
@@ -48,6 +56,61 @@ import { useSponsorStatus } from '~/hooks/sponsorship/useSponsorStatus';
 import { useSponsorshipActivation } from '~/hooks/sponsorship/useSponsorshipActivation';
 
 const EMPTY_BIDS: QuoteBid[] = [];
+
+// Strip the Pyth feed namespace so only the symbol remains
+// (`Crypto.BTC/USD` → `BTC/USD`, `Equity.US.AAPL` → `AAPL`).
+function formatPythFeedLabel(label: string | undefined): string {
+  const raw = label ?? 'Crypto';
+  const lastDot = raw.lastIndexOf('.');
+  return lastDot >= 0 ? raw.slice(lastDot + 1) : raw;
+}
+
+// Display the strike price at the same precision that's actually submitted on-chain.
+// `targetPriceRaw` is the user-entered decimal string; we only add thousand separators
+// to the integer part and preserve the fractional part verbatim. Falls back to
+// `targetPrice` (number) when raw is missing.
+function formatPythTargetPriceDisplay(
+  targetPriceRaw: string | undefined,
+  targetPrice: number
+): string {
+  const raw =
+    targetPriceRaw && targetPriceRaw.trim().length > 0
+      ? targetPriceRaw.trim()
+      : Number.isFinite(targetPrice)
+        ? String(targetPrice)
+        : '';
+  if (!raw) return '';
+  const [intPart, fracPart] = raw.split('.');
+  const intNum = Number(intPart);
+  const formattedInt = Number.isFinite(intNum)
+    ? intNum.toLocaleString(undefined, { maximumFractionDigits: 0 })
+    : intPart;
+  return fracPart !== undefined ? `${formattedInt}.${fracPart}` : formattedInt;
+}
+
+// Same parse rules as the on-chain endTime encoding — ensures the displayed
+// duration is computed from the same instant we submit. Returns null on invalid input.
+function parsePythEndDate(dateTimeLocal: string): Date | null {
+  try {
+    const unixSec = parseDateTimeLocalToUnixSeconds(dateTimeLocal);
+    return new Date(Number(unixSec) * 1000);
+  } catch {
+    return null;
+  }
+}
+
+// Floor at each boundary so we never round up into the next unit
+// (e.g. 59m50s shows as `59M`, not `60M`; 23h59m stays `23H`, not `1D`).
+// Sub-minute remaining time renders as `<1M` so the row never shows `0M`.
+function formatPythDurationFromNow(endMs: number, nowMs: number): string {
+  const ms = Math.max(0, endMs - nowMs);
+  const mins = Math.floor(ms / 60000);
+  if (mins < 1) return `<1M`;
+  if (mins < 60) return `${mins}M`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}H`;
+  return `${Math.floor(hours / 24)}D`;
+}
 
 interface PositionFormProps {
   methods: UseFormReturn<{
@@ -211,6 +274,18 @@ export default function PositionForm({
     return !Number.isNaN(sizeNum) && sizeNum > 1000;
   }, [positionSizeValue]);
 
+  // Pick-composition flags drive which bid-estimate hint we surface:
+  // mixed combos attract fewer bids; all-Pyth combos get the shorter-duration
+  // nudge (Polymarket conditions have fixed end times the user doesn't control).
+  const { hasMixedResolvers, isAllPyth } = useMemo(() => {
+    const hasPolymarket = selections.length > 0;
+    const hasPyth = (pythPredictions?.length ?? 0) > 0;
+    return {
+      hasMixedResolvers: hasPolymarket && hasPyth,
+      isAllPyth: hasPyth && !hasPolymarket,
+    };
+  }, [selections, pythPredictions]);
+
   // Calculate predictor position size in wei for auction chart
   const predictorPositionSizeWei = useMemo(() => {
     const decimals = collateralDecimals ?? 18;
@@ -221,10 +296,10 @@ export default function PositionForm({
     }
   }, [positionSizeValue, collateralDecimals]);
 
-  // Create a stable key from all prediction legs (UMA + Pyth) to detect changes
+  // Create a stable key from all prediction legs (Polymarket + Pyth) to detect changes
   // and ensure we clear/re-key bids correctly when *either* leg set changes.
   const predictionsKey = useMemo(() => {
-    const umaKey = selections
+    const polymarketKey = selections
       .map((s) => `${s.conditionId}:${s.prediction}`)
       .sort()
       .join('|');
@@ -235,7 +310,7 @@ export default function PositionForm({
       )
       .sort()
       .join('|');
-    return [umaKey, pythKey].filter(Boolean).join('||');
+    return [polymarketKey, pythKey].filter(Boolean).join('||');
   }, [selections, pythPredictions]);
   const prevPredictionsKeyRef = useRef<string>(predictionsKey);
 
@@ -504,10 +579,10 @@ export default function PositionForm({
         return;
       }
 
-      const hasUma = selections.length > 0;
+      const hasPolymarket = selections.length > 0;
       const hasPyth = pythPredictions.length > 0;
 
-      if (!hasUma && !hasPyth) {
+      if (!hasPolymarket && !hasPyth) {
         return;
       }
       if (hasFormErrors) {
@@ -566,7 +641,7 @@ export default function PositionForm({
         let picks: AuctionParams['picks'] = [];
         if (hasPyth && pythEscrowPicks) {
           picks = pythEscrowPicks;
-        } else if (hasUma) {
+        } else if (hasPolymarket) {
           const conditionPicks = getPolymarketPicks();
           if (conditionPicks.length > 0) {
             picks = conditionPicks;
@@ -674,7 +749,7 @@ export default function PositionForm({
     // Don't auto-trigger if there are form errors (auto mode only)
     if (triggerMode === 'auto' && hasFormErrors) return;
 
-    // Must have at least one UMA prediction or at least one Pyth prediction
+    // Must have at least one Polymarket prediction or at least one Pyth prediction
     const hasPredictions = selections.length >= 1 || pythPredictions.length > 0;
     if (!hasPredictions) return;
 
@@ -722,7 +797,7 @@ export default function PositionForm({
   // Since automatic auction trigger is disabled, show button immediately when no bids
   const showNoBidsHint = !bestBid && !recentlyRequested;
 
-  // Show "Some combinations may not receive bids" hint after 3 seconds of no bids
+  // Show "Some predictions may not receive bids" hint after 3 seconds of no bids
   // This replaces the disclaimer after waiting for bids without success
   const HINT_DELAY_MS = 3000;
   const showNoBidsWarning =
@@ -807,19 +882,66 @@ export default function PositionForm({
           ].map((item, index) => {
             if (item.kind === 'pyth') {
               const p = item.p;
-              const predictionData: PredictionListItemData = {
-                id: p.id,
-                question: `${p.priceFeedLabel ?? 'Crypto'} OVER $${p.targetPrice.toLocaleString()}`,
-                prediction: p.direction === 'over',
-              };
+              const feedLabel = formatPythFeedLabel(p.priceFeedLabel);
+              const directionSymbol = p.direction === 'over' ? '>' : '<';
+              const priceDisplay = formatPythTargetPriceDisplay(
+                p.targetPriceRaw,
+                p.targetPrice
+              );
+              const endDate = parsePythEndDate(p.dateTimeLocal);
+              const durationStr = endDate
+                ? formatPythDurationFromNow(endDate.getTime(), nowMs)
+                : null;
+              const exactTimestamp = endDate
+                ? new Intl.DateTimeFormat(undefined, {
+                    year: 'numeric',
+                    month: 'short',
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit',
+                    second: '2-digit',
+                    timeZoneName: 'short',
+                  }).format(endDate)
+                : null;
+              const pythTitle = `${feedLabel} ${directionSymbol}$${priceDisplay}${durationStr ? ` IN ${durationStr}` : ''}`;
               return (
                 <div
                   key={p.id}
                   className={`-mx-4 px-4 py-2.5 border-b border-brand-white/10 ${index === 0 ? 'border-t' : ''}`}
                 >
                   <PredictionListItem
-                    prediction={predictionData}
+                    prediction={{
+                      id: p.id,
+                      question: pythTitle,
+                      prediction: p.direction === 'over',
+                    }}
                     leading={<PythMarketBadge className="w-5 h-5" />}
+                    showChoice={false}
+                    title={
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <div className="truncate text-brand-white font-mono text-sm cursor-default">
+                            {pythTitle}
+                          </div>
+                        </TooltipTrigger>
+                        <TooltipContent
+                          side="top"
+                          className="max-w-xs text-xs whitespace-normal break-words font-mono"
+                        >
+                          <div>{p.priceFeedLabel ?? 'Crypto'}</div>
+                          {priceDisplay && (
+                            <div className="mt-1">
+                              {directionSymbol} ${priceDisplay}
+                            </div>
+                          )}
+                          {exactTimestamp && (
+                            <div className="mt-1 text-muted-foreground">
+                              {exactTimestamp}
+                            </div>
+                          )}
+                        </TooltipContent>
+                      </Tooltip>
+                    }
                     onRemove={onRemovePythPrediction}
                   />
                 </div>
@@ -922,6 +1044,8 @@ export default function PositionForm({
               }
               enableRainbowHover={isRainbowHoverEnabled}
               hintMounted={hintMounted}
+              hasMixedResolvers={hasMixedResolvers}
+              isAllPyth={isAllPyth}
               disclaimerMounted={disclaimerMounted}
               allBids={validBids}
               predictorPositionSizeWei={predictorPositionSizeWei}

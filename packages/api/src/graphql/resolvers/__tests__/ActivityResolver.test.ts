@@ -10,6 +10,10 @@ const mockPrisma = vi.hoisted(() => ({
   },
   picks: {
     findMany: vi.fn(),
+    findUnique: vi.fn(),
+  },
+  pick: {
+    findMany: vi.fn(),
   },
 }));
 
@@ -109,6 +113,8 @@ describe('ActivityResolver', () => {
     vi.clearAllMocks();
     resolver = new ActivityResolver();
     mockPrisma.picks.findMany.mockResolvedValue([]);
+    mockPrisma.picks.findUnique.mockResolvedValue(null);
+    mockPrisma.pick.findMany.mockResolvedValue([]);
   });
 
   it('merges predictions and trades sorted by timestamp descending', async () => {
@@ -277,6 +283,226 @@ describe('ActivityResolver', () => {
     const result = await resolver.accountActivity('0xalice', 20, 0);
 
     expect(result).toEqual([]);
+  });
+
+  it('lowercases pickConfigId before querying', async () => {
+    mockPrisma.prediction.findMany.mockResolvedValue([]);
+    mockPrisma.secondaryTrade.findMany.mockResolvedValue([]);
+    mockPrisma.picks.findMany.mockResolvedValue([
+      {
+        id: '0xpc-mixedcase',
+        predictorToken: '0xtoken-pred',
+        counterpartyToken: '0xtoken-cp',
+      },
+    ]);
+
+    await resolver.accountActivity(
+      '0xalice',
+      20,
+      0,
+      undefined,
+      '0xPC-MixedCase'
+    );
+
+    expect(mockPrisma.picks.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { id: { in: ['0xpc-mixedcase'] } },
+      })
+    );
+    expect(mockPrisma.prediction.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: expect.arrayContaining([
+            expect.objectContaining({ pickConfigId: '0xpc-mixedcase' }),
+          ]),
+        }),
+      })
+    );
+  });
+
+  it('filters predictions by pickConfigId when provided', async () => {
+    mockPrisma.prediction.findMany.mockResolvedValue([]);
+    mockPrisma.secondaryTrade.findMany.mockResolvedValue([]);
+    mockPrisma.picks.findMany.mockResolvedValue([
+      {
+        id: 'pc-1',
+        predictorToken: '0xtoken-pred',
+        counterpartyToken: '0xtoken-cp',
+      },
+    ]);
+
+    await resolver.accountActivity('0xalice', 20, 0, undefined, 'pc-1');
+
+    expect(mockPrisma.prediction.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: [
+            { OR: [{ predictor: '0xalice' }, { counterparty: '0xalice' }] },
+            { pickConfigId: 'pc-1' },
+          ],
+        }),
+      })
+    );
+  });
+
+  it('filters trades by the pickConfig tokens when pickConfigId is provided', async () => {
+    mockPrisma.prediction.findMany.mockResolvedValue([]);
+    mockPrisma.secondaryTrade.findMany.mockResolvedValue([]);
+    mockPrisma.picks.findMany.mockResolvedValue([
+      {
+        id: 'pc-1',
+        predictorToken: '0xTOKEN-PRED',
+        counterpartyToken: '0xTOKEN-CP',
+      },
+    ]);
+
+    await resolver.accountActivity('0xalice', 20, 0, undefined, 'pc-1');
+
+    expect(mockPrisma.secondaryTrade.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: [
+            { OR: [{ seller: '0xalice' }, { buyer: '0xalice' }] },
+            { token: { in: ['0xtoken-pred', '0xtoken-cp'] } },
+          ],
+        }),
+      })
+    );
+  });
+
+  it('returns no trades when pickConfigId does not resolve to any pick configuration', async () => {
+    mockPrisma.prediction.findMany.mockResolvedValue([]);
+    mockPrisma.secondaryTrade.findMany.mockResolvedValue([]);
+    // No rows come back for this id → no tokens → trades short-circuited
+    mockPrisma.picks.findMany.mockResolvedValue([]);
+
+    const result = await resolver.accountActivity(
+      '0xalice',
+      20,
+      0,
+      undefined,
+      'pc-missing'
+    );
+
+    expect(result).toEqual([]);
+    expect(mockPrisma.secondaryTrade.findMany).not.toHaveBeenCalled();
+  });
+
+  it('filters predictions and trades by conditionId via matched pickConfigs', async () => {
+    mockPrisma.prediction.findMany.mockResolvedValue([]);
+    mockPrisma.secondaryTrade.findMany.mockResolvedValue([]);
+    // Two pick configs contain the condition
+    mockPrisma.pick.findMany.mockResolvedValue([
+      { pickConfigId: 'pc-a' },
+      { pickConfigId: 'pc-b' },
+    ]);
+    mockPrisma.picks.findMany.mockResolvedValue([
+      {
+        id: 'pc-a',
+        predictorToken: '0xa-pred',
+        counterpartyToken: '0xa-cp',
+      },
+      {
+        id: 'pc-b',
+        predictorToken: '0xb-pred',
+        counterpartyToken: null,
+      },
+    ]);
+
+    await resolver.accountActivity(
+      undefined,
+      20,
+      0,
+      undefined,
+      undefined,
+      '0xCONDITION-Abc'
+    );
+
+    // conditionId → distinct pickConfigIds lookup
+    expect(mockPrisma.pick.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: { conditionId: '0xcondition-abc' },
+        select: { pickConfigId: true },
+        distinct: ['pickConfigId'],
+      })
+    );
+
+    // Predictions filtered by pickConfigId IN
+    expect(mockPrisma.prediction.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          pickConfigId: { in: ['pc-a', 'pc-b'] },
+        }),
+      })
+    );
+
+    // Trades filtered by the derived tokens (deduped, lowercased, nulls dropped)
+    expect(mockPrisma.secondaryTrade.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          token: { in: ['0xa-pred', '0xa-cp', '0xb-pred'] },
+        }),
+      })
+    );
+  });
+
+  it('short-circuits when conditionId matches no pickConfigs', async () => {
+    mockPrisma.prediction.findMany.mockResolvedValue([]);
+    mockPrisma.secondaryTrade.findMany.mockResolvedValue([]);
+    mockPrisma.pick.findMany.mockResolvedValue([]);
+
+    const result = await resolver.accountActivity(
+      undefined,
+      20,
+      0,
+      undefined,
+      undefined,
+      '0xnoop'
+    );
+
+    expect(result).toEqual([]);
+    expect(mockPrisma.prediction.findMany).not.toHaveBeenCalled();
+    expect(mockPrisma.secondaryTrade.findMany).not.toHaveBeenCalled();
+  });
+
+  it('combines account and conditionId filters', async () => {
+    mockPrisma.prediction.findMany.mockResolvedValue([]);
+    mockPrisma.secondaryTrade.findMany.mockResolvedValue([]);
+    mockPrisma.pick.findMany.mockResolvedValue([{ pickConfigId: 'pc-x' }]);
+    mockPrisma.picks.findMany.mockResolvedValue([
+      { id: 'pc-x', predictorToken: '0xtok-p', counterpartyToken: '0xtok-c' },
+    ]);
+
+    await resolver.accountActivity(
+      '0xAlice',
+      20,
+      0,
+      undefined,
+      undefined,
+      '0xcond'
+    );
+
+    // Single-element scope collapses to a flat equality (not `{ in: [...] }`).
+    expect(mockPrisma.prediction.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: [
+            { OR: [{ predictor: '0xalice' }, { counterparty: '0xalice' }] },
+            { pickConfigId: 'pc-x' },
+          ],
+        }),
+      })
+    );
+    expect(mockPrisma.secondaryTrade.findMany).toHaveBeenCalledWith(
+      expect.objectContaining({
+        where: expect.objectContaining({
+          AND: [
+            { OR: [{ seller: '0xalice' }, { buyer: '0xalice' }] },
+            { token: { in: ['0xtok-p', '0xtok-c'] } },
+          ],
+        }),
+      })
+    );
   });
 
   it('returns global activity when address is omitted', async () => {
