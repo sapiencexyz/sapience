@@ -22,6 +22,22 @@ export class ReferralApiError extends Error {
   }
 }
 
+// Best-effort local persistence so we can avoid re-prompting users who have
+// already provided a code. Silent on failure (e.g. privacy mode / SSR).
+export function persistReferralCodeLocally(
+  walletAddress: string,
+  code: string
+): void {
+  try {
+    if (typeof window !== 'undefined') {
+      const key = `sapience:referralCode:${walletAddress.toLowerCase()}`;
+      window.localStorage.setItem(key, code);
+    }
+  } catch {
+    /* noop */
+  }
+}
+
 type ReferralClaimResponse = {
   allowed?: boolean;
   index?: number | null;

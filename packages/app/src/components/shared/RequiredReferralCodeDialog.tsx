@@ -15,6 +15,7 @@ import { keccak256, stringToHex } from 'viem';
 import GetAccessDialog from '~/components/shared/GetAccessDialog';
 import {
   ReferralApiError,
+  persistReferralCodeLocally,
   useClaimReferralCode,
 } from '~/hooks/referrals/useReferrals';
 
@@ -24,17 +25,6 @@ interface RequiredReferralCodeDialogProps {
   walletAddress: string | null;
   onCodeSet?: (code: string) => void;
   onLogout: () => void;
-}
-
-function persistReferralCodeLocally(walletAddress: string, code: string) {
-  try {
-    if (typeof window !== 'undefined') {
-      const key = `sapience:referralCode:${walletAddress.toLowerCase()}`;
-      window.localStorage.setItem(key, code);
-    }
-  } catch {
-    // If this fails (e.g. privacy mode), the dialog may reappear on next connect.
-  }
 }
 
 function titleForClaimError(status: number, serverMessage: string): string {

@@ -21,7 +21,7 @@ import {
   buildAuctionMessageAggregates,
   collectConditionIdsFromMessages,
   collectUniqueAddressesFromMessages,
-  getAuctionId as getAuctionIdFromMessage,
+  getAuctionId,
 } from '~/lib/terminal/auctionMessage';
 import AuctionRequestRow from '~/components/terminal/AuctionRequestRow';
 import AutoBid from '~/components/terminal/AutoBid';
@@ -137,16 +137,6 @@ const TerminalPageContent: React.FC = () => {
     );
   }, [displayMessages]);
 
-  const getAuctionId = useCallback(
-    (m: {
-      channel?: string | null;
-      data?: unknown;
-      auctionId?: string;
-      type?: string;
-    }): string | null => getAuctionIdFromMessage(m),
-    []
-  );
-
   // Cached decoder for predicted outcomes keyed by auctionId + predictorNonce
   // Stores { data, accessedAt } for time-based LRU pruning
   const decodeCacheRef = useRef<
@@ -242,7 +232,7 @@ const TerminalPageContent: React.FC = () => {
         return { kind: 'unknown', data: [] };
       }
     },
-    [getAuctionId]
+    []
   );
 
   const { lastActivityByAuction, latestStartedByAuction } = useMemo(
@@ -840,8 +830,6 @@ const TerminalPageContent: React.FC = () => {
     };
   }, [virtualizer]);
 
-  const toUiTx = auctionMessageToUiTx;
-
   return (
     <TerminalLogsProvider>
       <ApprovalDialogProvider>
@@ -998,7 +986,7 @@ const TerminalPageContent: React.FC = () => {
                             return (
                               <div key={rowKey}>
                                 <AuctionRequestRow
-                                  uiTx={toUiTx(m)}
+                                  uiTx={auctionMessageToUiTx(m)}
                                   predictionsContent={renderPredictionsCell(m)}
                                   auctionId={auctionId}
                                   predictorCollateral={String(
@@ -1047,7 +1035,7 @@ const TerminalPageContent: React.FC = () => {
                                 >
                                   {row && (
                                     <AuctionRequestRow
-                                      uiTx={toUiTx(m)}
+                                      uiTx={auctionMessageToUiTx(m)}
                                       predictionsContent={renderPredictionsCell(
                                         m
                                       )}

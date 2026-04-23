@@ -18,6 +18,7 @@ import EnsAvatar from '~/components/shared/EnsAvatar';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import {
   ReferralApiError,
+  persistReferralCodeLocally,
   useSetReferralCode,
   useUserReferrals,
 } from '~/hooks/referrals/useReferrals';
@@ -49,17 +50,6 @@ const ReferralVolumeCell = ({ address }: { address: string }) => {
     </span>
   );
 };
-
-function persistReferralCodeLocally(walletAddress: string, code: string) {
-  try {
-    if (typeof window !== 'undefined') {
-      const key = `sapience:referralCode:${walletAddress.toLowerCase()}`;
-      window.localStorage.setItem(key, code);
-    }
-  } catch {
-    // If this fails (e.g. privacy mode), the dialog may reappear on next connect.
-  }
-}
 
 const ReferralsDialog = ({
   open,
