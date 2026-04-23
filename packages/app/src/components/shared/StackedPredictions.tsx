@@ -72,36 +72,49 @@ export function StackedIcons({
     getCategoryColor(pick.categorySlug)
   );
 
+  // Subtle left-to-right fade-in once each pick's category resolves. Cached
+  // loads render ready on the first paint (no transition fires); loads that
+  // arrive later transition from opacity 0 to their target opacity.
+  const STAGGER_MS = 40;
+
   return (
-    <div
-      className={`flex items-center -space-x-2 animate-in fade-in duration-300 ${className ?? ''}`}
-    >
+    <div className={`flex items-center -space-x-2 ${className ?? ''}`}>
       {visiblePicks.map((pick, i) => {
         const isPyth = pick.source === 'pyth';
+        const hasCategory = !!pick.categorySlug;
         const CategoryIcon = getCategoryIcon(pick.categorySlug);
         const color = colors[i] || 'hsl(var(--muted-foreground))';
         // Fade the trailing icons when there are more picks hidden behind them:
         // last icon fades most, second-to-last a little, to hint at the stack.
-        let opacity: number | undefined;
+        let truncationOpacity: number | undefined;
         if (truncated) {
-          if (i === visiblePicks.length - 1) opacity = 0.4;
-          else if (i === visiblePicks.length - 2) opacity = 0.7;
+          if (i === visiblePicks.length - 1) truncationOpacity = 0.4;
+          else if (i === visiblePicks.length - 2) truncationOpacity = 0.7;
         }
-        return isPyth ? (
-          <PythMarketBadge
-            key={`icon-${pick.conditionId || i}-${i}`}
-            className="ring-2 ring-background"
-            style={{ zIndex: picks.length - i, opacity }}
-          />
-        ) : (
+        const ready = isPyth || hasCategory;
+        const opacity = ready ? (truncationOpacity ?? 1) : 0;
+        const transitionDelay = ready ? `${i * STAGGER_MS}ms` : '0ms';
+
+        if (isPyth) {
+          return (
+            <PythMarketBadge
+              key={`icon-${pick.conditionId || i}-${i}`}
+              className="ring-2 ring-background transition-opacity duration-300 ease-out"
+              style={{ zIndex: picks.length - i, opacity, transitionDelay }}
+            />
+          );
+        }
+        return (
           <div
             key={`icon-${pick.conditionId || i}-${i}`}
-            className="w-6 h-6 rounded-full shrink-0 flex items-center justify-center ring-2 ring-background transition-colors duration-300"
+            className="w-6 h-6 rounded-full shrink-0 flex items-center justify-center ring-2 ring-background transition-opacity duration-300 ease-out"
             style={{
               backgroundColor: color,
               zIndex: picks.length - i,
               opacity,
+              transitionDelay,
             }}
+            aria-hidden={!ready || undefined}
           >
             <CategoryIcon className="h-3 w-3 text-white/80" />
           </div>
