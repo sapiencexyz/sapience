@@ -45,7 +45,7 @@
     "format": "prettier --write src",
     "prisma:generate": "prisma generate",
     "prisma:deploy": "prisma migrate deploy",
-    "prisma:setup": "prisma migrate deploy && prisma generate",
+    "prisma:setup": "prisma migrate deploy && prisma generate && pnpm run generate-resolvers",
     "prisma:migrate": "prisma migrate dev",
     "prisma:reset": "prisma migrate reset",
     "prisma:studio": "prisma studio",
