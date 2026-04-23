@@ -815,9 +815,10 @@ export default function ActivityTable({
                 </th>
               )}
               {!isHidden('share') && (
-                <th className="px-4 py-3 text-left align-middle font-medium">
-                  Share
-                </th>
+                <th
+                  className="px-4 py-3 text-left align-middle font-medium"
+                  aria-label="Share"
+                />
               )}
             </tr>
           </thead>
