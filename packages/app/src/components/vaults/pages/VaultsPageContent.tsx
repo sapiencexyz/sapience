@@ -88,6 +88,7 @@ const VaultsPageContent = () => {
   }, [VAULT_CHAIN_ID]);
 
   const queryVault = normalizeAddress(searchParams.get(VAULT_QUERY_PARAM));
+  const hasVaultQueryParam = queryVault !== '';
   const selectedVault = useMemo(() => {
     const match = vaultOptions.find(
       (v) => normalizeAddress(v.address) === queryVault
@@ -96,7 +97,7 @@ const VaultsPageContent = () => {
   }, [queryVault, vaultOptions]);
 
   useEffect(() => {
-    if (!selectedVault) return;
+    if (!selectedVault || !hasVaultQueryParam) return;
     const params = new URLSearchParams(searchParams.toString());
     if (
       normalizeAddress(params.get(VAULT_QUERY_PARAM)) ===
@@ -106,7 +107,7 @@ const VaultsPageContent = () => {
     }
     params.set(VAULT_QUERY_PARAM, selectedVault.address.toLowerCase());
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
-  }, [selectedVault, searchParams, router, pathname]);
+  }, [selectedVault, hasVaultQueryParam, searchParams, router, pathname]);
 
   const handleVaultChange = (value: string) => {
     const params = new URLSearchParams(searchParams.toString());

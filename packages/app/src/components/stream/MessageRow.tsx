@@ -9,7 +9,7 @@ import {
 } from '@sapience/ui/components/ui/tooltip';
 import { formatTimeAgo, formatTimeFull, sourceBadge, p2pBadge } from './utils';
 import { useSecondTick } from '~/hooks/useSecondTick';
-import type { LoggedMessage } from '~/hooks/relayer/useRelayerMessageLog';
+import type { LoggedMessage } from '~/hooks/ws/useRelayerMessageLog';
 
 interface MessageRowProps {
   message: LoggedMessage;
