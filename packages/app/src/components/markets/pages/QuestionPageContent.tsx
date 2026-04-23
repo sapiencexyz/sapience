@@ -255,6 +255,9 @@ export default function QuestionPageContent({
             otherPicks.length > 0
               ? otherPicks.map((p) => ({
                   conditionId: p.conditionId,
+                  resolverAddress: p.conditionResolver ?? undefined,
+                  // question is hydrated lazily when the popover opens;
+                  // fall back to the conditionId hex until then.
                   question: p.conditionId,
                   prediction:
                     (p.predictedOutcome as OutcomeSide) === OutcomeSide.YES,

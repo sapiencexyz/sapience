@@ -5,3 +5,8 @@ export {
   PredictionScatterChart,
   scatterChartStyles,
 } from './PredictionScatterChart';
+export {
+  CombinedPredictionsList,
+  usePrefetchCombinedConditions,
+  prefetchCombinedConditions,
+} from './CombinedPredictionsList';

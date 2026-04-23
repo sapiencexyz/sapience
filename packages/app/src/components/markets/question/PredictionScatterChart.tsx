@@ -26,14 +26,15 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { formatDistanceToNow } from 'date-fns';
 import dynamic from 'next/dynamic';
+import {
+  CombinedPredictionsList,
+  usePrefetchCombinedConditions,
+} from './CombinedPredictionsList';
+import type { PredictionData, ForecastData } from './types';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import EnsAvatar from '~/components/shared/EnsAvatar';
 import SafeMarkdown from '~/components/shared/SafeMarkdown';
-import MarketBadge from '~/components/markets/MarketBadge';
-import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
-import { getCategoryStyle } from '~/lib/utils/categoryStyle';
 import { formatPercentChance } from '~/lib/format/percentChance';
-import type { PredictionData, ForecastData } from './types';
 
 /** Props passed by Recharts to custom scatter shape renderers */
 interface ScatterShapeProps {
@@ -86,6 +87,14 @@ export function PredictionScatterChart({
   } else if (!isTooltipHovered) {
     lastValidPointRef.current = null;
   }
+
+  // Warm the cache for the hovered point's combined picks so the popover has
+  // data ready the moment the user clicks "N predictions".
+  const prefetchIds = React.useMemo(
+    () => hoveredPoint?.combinedPredictions?.map((p) => p.conditionId) ?? [],
+    [hoveredPoint]
+  );
+  usePrefetchCombinedConditions(prefetchIds);
 
   // Comment square hover state - for comment popover
   const [hoveredComment, setHoveredComment] = React.useState<{
@@ -225,8 +234,6 @@ export function PredictionScatterChart({
               } = point as PredictionData;
               const yesAddress = predictorPrediction ? predictor : counterparty;
               const noAddress = predictorPrediction ? counterparty : predictor;
-              const getCategoryColor = (slug?: string) =>
-                getCategoryStyle(slug).color;
 
               return (
                 <div
@@ -403,55 +410,10 @@ export function PredictionScatterChart({
                                 className="w-auto max-w-sm p-0 bg-brand-black border-brand-white/20"
                                 align="start"
                               >
-                                <div className="flex flex-col divide-y divide-brand-white/20">
-                                  <div className="flex items-center gap-3 px-3 py-2">
-                                    <span className="text-sm text-brand-white">
-                                      Predicted with
-                                    </span>
-                                    <Badge
-                                      variant="outline"
-                                      className={`shrink-0 w-9 px-0 py-0.5 text-xs font-medium !rounded-md font-mono flex items-center justify-center ${
-                                        combinedWithYes
-                                          ? 'border-yes/40 bg-yes/10 text-yes'
-                                          : 'border-no/40 bg-no/10 text-no'
-                                      }`}
-                                    >
-                                      {combinedWithYes ? 'YES' : 'NO'}
-                                    </Badge>
-                                  </div>
-                                  {combinedPredictions.map((pred, i) => (
-                                    <div
-                                      key={`scatter-combined-${i}`}
-                                      className="flex items-center gap-3 px-3 py-2"
-                                    >
-                                      <MarketBadge
-                                        label={pred.question}
-                                        size={32}
-                                        color={getCategoryColor(
-                                          pred.categorySlug
-                                        )}
-                                        categorySlug={pred.categorySlug}
-                                      />
-                                      <ConditionTitleLink
-                                        conditionId={pred.conditionId}
-                                        resolverAddress={pred.resolverAddress}
-                                        title={pred.question}
-                                        className="text-sm flex-1 min-w-0"
-                                        clampLines={1}
-                                      />
-                                      <Badge
-                                        variant="outline"
-                                        className={`shrink-0 w-9 px-0 py-0.5 text-xs font-medium !rounded-md font-mono flex items-center justify-center ${
-                                          pred.prediction
-                                            ? 'border-yes/40 bg-yes/10 text-yes'
-                                            : 'border-no/40 bg-no/10 text-no'
-                                        }`}
-                                      >
-                                        {pred.prediction ? 'YES' : 'NO'}
-                                      </Badge>
-                                    </div>
-                                  ))}
-                                </div>
+                                <CombinedPredictionsList
+                                  combinedPredictions={combinedPredictions}
+                                  combinedWithYes={!!combinedWithYes}
+                                />
                               </PopoverContent>
                             </Popover>
                           </div>

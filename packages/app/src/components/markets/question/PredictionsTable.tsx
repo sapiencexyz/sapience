@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import { useMemo } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import type { ColumnDef, SortingState } from '@tanstack/react-table';
 import {
   flexRender,
@@ -32,12 +33,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@sapience/ui/components/ui/popover';
+import {
+  CombinedPredictionsList,
+  prefetchCombinedConditions,
+} from './CombinedPredictionsList';
+import type { PredictionData } from './types';
 import { AddressDisplay } from '~/components/shared/AddressDisplay';
 import EnsAvatar from '~/components/shared/EnsAvatar';
-import MarketBadge from '~/components/markets/MarketBadge';
-import { getCategoryStyle } from '~/lib/utils/categoryStyle';
 import PercentChance from '~/components/shared/PercentChance';
-import type { PredictionData } from './types';
 
 interface PredictionsTableProps {
   data: PredictionData[];
@@ -45,6 +48,7 @@ interface PredictionsTableProps {
 }
 
 export function PredictionsTable({ data, isLoading }: PredictionsTableProps) {
+  const queryClient = useQueryClient();
   // Column definitions for predictions table
   const columns: ColumnDef<PredictionData>[] = useMemo(
     () => [
@@ -254,14 +258,19 @@ export function PredictionsTable({ data, isLoading }: PredictionsTableProps) {
           }
 
           const count = combinedPredictions.length;
-          const getCategoryColor = (slug?: string) =>
-            getCategoryStyle(slug).color;
+          const rowConditionIds = combinedPredictions.map((p) => p.conditionId);
 
           return (
             <Popover>
               <PopoverTrigger asChild>
                 <button
                   type="button"
+                  onMouseEnter={() =>
+                    prefetchCombinedConditions(queryClient, rowConditionIds)
+                  }
+                  onFocus={() =>
+                    prefetchCombinedConditions(queryClient, rowConditionIds)
+                  }
                   className="text-sm text-brand-white hover:text-brand-white/80 underline decoration-dotted underline-offset-2 transition-colors whitespace-nowrap"
                 >
                   {count} prediction{count !== 1 ? 's' : ''}
@@ -271,49 +280,10 @@ export function PredictionsTable({ data, isLoading }: PredictionsTableProps) {
                 className="w-auto max-w-sm p-0 bg-brand-black border-brand-white/20"
                 align="start"
               >
-                <div className="flex flex-col divide-y divide-brand-white/20">
-                  <div className="flex items-center gap-2 px-3 py-3">
-                    <span className="text-base font-medium text-brand-white">
-                      Predicted with
-                    </span>
-                    <Badge
-                      variant="outline"
-                      className={`shrink-0 w-9 px-0 py-0.5 text-xs font-medium !rounded-md font-mono flex items-center justify-center ${
-                        combinedWithYes
-                          ? 'border-yes/40 bg-yes/10 text-yes'
-                          : 'border-no/40 bg-no/10 text-no'
-                      }`}
-                    >
-                      {combinedWithYes ? 'YES' : 'NO'}
-                    </Badge>
-                  </div>
-                  {combinedPredictions.map((pred, i) => (
-                    <div
-                      key={`combined-${i}`}
-                      className="flex items-center gap-3 px-3 py-2"
-                    >
-                      <MarketBadge
-                        label={pred.question}
-                        size={32}
-                        color={getCategoryColor(pred.categorySlug)}
-                        categorySlug={pred.categorySlug}
-                      />
-                      <span className="text-sm flex-1 min-w-0 font-mono underline decoration-dotted underline-offset-2 hover:text-brand-white/80 transition-colors cursor-pointer truncate">
-                        {pred.question}
-                      </span>
-                      <Badge
-                        variant="outline"
-                        className={`shrink-0 w-9 px-0 py-0.5 text-xs font-medium !rounded-md font-mono flex items-center justify-center ${
-                          pred.prediction
-                            ? 'border-yes/40 bg-yes/10 text-yes'
-                            : 'border-no/40 bg-no/10 text-no'
-                        }`}
-                      >
-                        {pred.prediction ? 'YES' : 'NO'}
-                      </Badge>
-                    </div>
-                  ))}
-                </div>
+                <CombinedPredictionsList
+                  combinedPredictions={combinedPredictions}
+                  combinedWithYes={!!combinedWithYes}
+                />
               </PopoverContent>
             </Popover>
           );
@@ -321,7 +291,7 @@ export function PredictionsTable({ data, isLoading }: PredictionsTableProps) {
         enableSorting: false,
       },
     ],
-    []
+    [queryClient]
   );
 
   // Table state
