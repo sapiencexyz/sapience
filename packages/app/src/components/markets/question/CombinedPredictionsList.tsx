@@ -2,11 +2,11 @@
 
 import * as React from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import { Badge } from '@sapience/ui/components/ui/badge';
 import type { CombinedPrediction } from './types';
 import MarketBadge from '~/components/markets/MarketBadge';
 import ConditionTitleLink from '~/components/markets/ConditionTitleLink';
+import { fetchConditionsByIds } from '~/hooks/graphql/fetchConditionsByIds';
 import { getCategoryStyle } from '~/lib/utils/categoryStyle';
 
 type CombinedConditionDetail = {
@@ -38,16 +38,13 @@ function combinedQueryKey(conditionIds: readonly string[]) {
   return ['combinedConditionDetails', [...conditionIds].sort().join(',')];
 }
 
-async function fetchCombinedConditionDetails(
+function fetchCombinedConditionDetails(
   conditionIds: readonly string[]
 ): Promise<CombinedConditionDetail[]> {
-  if (conditionIds.length === 0) return [];
-  const resp = await graphqlRequest<{
-    conditions: CombinedConditionDetail[];
-  }>(COMBINED_CONDITIONS_QUERY, {
-    where: { id: { in: [...conditionIds] } },
-  });
-  return resp?.conditions ?? [];
+  return fetchConditionsByIds<CombinedConditionDetail>(
+    COMBINED_CONDITIONS_QUERY,
+    [...conditionIds]
+  );
 }
 
 /**
@@ -130,15 +127,15 @@ export function CombinedPredictionsList({
           {combinedWithYes ? 'YES' : 'NO'}
         </Badge>
       </div>
-      {combinedPredictions.map((pred, i) => {
+      {combinedPredictions.map((pred) => {
         const detail = detailMap.get(pred.conditionId.toLowerCase());
-        const resolvedQuestion = detail?.question || undefined;
+        const resolvedQuestion = detail?.question ?? undefined;
         const resolverAddress = detail?.resolver ?? pred.resolverAddress;
         const categorySlug = detail?.category?.slug ?? pred.categorySlug;
         const isLoading = isPending && conditionIds.length > 0;
         return (
           <div
-            key={`combined-${i}`}
+            key={pred.conditionId}
             className="flex items-center gap-3 px-3 py-2"
           >
             <MarketBadge
