@@ -87,36 +87,31 @@ export default function PredictionDetails({
       : 'active';
 
   return (
-    <>
-      <div className="min-w-0">
-        <PositionSummary
-          positionId={prediction.predictionId}
-          createdAt={createdAt}
-          endsAtMs={endsAtMs}
-          positionSize={0}
-          payout={totalPayout}
-          pnl={null}
-          roi={null}
-          isSettled={isSettled}
-          collateralSymbol={collateralSymbol}
-          positionUrl={positionUrl}
-          predictorAddress={prediction.predictor}
-          counterpartyAddress={prediction.counterparty}
-          predictorStake={predictorStake}
-          counterpartyStake={counterpartyStake}
-          predictorWon={predictorWon}
-          counterpartyWon={counterpartyWon}
-        />
-      </div>
-
-      <div className="min-w-0">
-        <PicksContent
-          picks={displayPicks}
-          positionId={prediction.predictionId}
-          hideHeader
-          positionStatus={positionStatus}
-        />
-      </div>
-    </>
+    <div className="min-w-0 space-y-4">
+      <PositionSummary
+        positionId={prediction.predictionId}
+        createdAt={createdAt}
+        endsAtMs={endsAtMs}
+        positionSize={0}
+        payout={totalPayout}
+        pnl={null}
+        roi={null}
+        isSettled={isSettled}
+        collateralSymbol={collateralSymbol}
+        positionUrl={positionUrl}
+        predictorAddress={prediction.predictor}
+        counterpartyAddress={prediction.counterparty}
+        predictorStake={predictorStake}
+        counterpartyStake={counterpartyStake}
+        predictorWon={predictorWon}
+        counterpartyWon={counterpartyWon}
+      />
+      <PicksContent
+        picks={displayPicks}
+        positionId={prediction.predictionId}
+        hideHeader
+        positionStatus={positionStatus}
+      />
+    </div>
   );
 }

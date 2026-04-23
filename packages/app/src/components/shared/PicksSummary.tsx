@@ -108,7 +108,7 @@ export function PicksContent({
   positionStatus,
 }: PicksContentProps) {
   return (
-    <div className="pt-2">
+    <div>
       {!hideHeader && (
         <div className="flex items-baseline gap-2 text-lg font-semibold mb-4">
           Prediction #{positionId}
