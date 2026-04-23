@@ -1,3 +1,84 @@
 {
-  "accuracyLeaderboard": []
+  "accuracyLeaderboard": [
+    {
+      "address": "0xd491e93c6b05e3cda3073482a5651bcfe3dc1cc7",
+      "numScored": 0,
+      "sumErrorSquared": 0,
+      "numTimeWeighted": 0,
+      "sumTimeWeightedError": 0,
+      "accuracyScore": 1283447
+    },
+    {
+      "address": "0xa89ea8ce3b82b827c31f19045af231c4c2d2663d",
+      "numScored": 0,
+      "sumErrorSquared": 0,
+      "numTimeWeighted": 0,
+      "sumTimeWeightedError": 0,
+      "accuracyScore": 624140.5797
+    },
+    {
+      "address": "0xdb5af497a73620d881561edb508012a5f84e9ba2",
+      "numScored": 0,
+      "sumErrorSquared": 0,
+      "numTimeWeighted": 0,
+      "sumTimeWeightedError": 0,
+      "accuracyScore": 332255.0310773912
+    },
+    {
+      "address": "0x20a7404eb0422cac1e7d481548fe62bf61c3d961",
+      "numScored": 0,
+      "sumErrorSquared": 0,
+      "numTimeWeighted": 0,
+      "sumTimeWeightedError": 0,
+      "accuracyScore": 285429.9456583334
+    },
+    {
+      "address": "0x0d874e6141e3ee1c6b24ede381c663c1e16214db",
+      "numScored": 0,
+      "sumErrorSquared": 0,
+      "numTimeWeighted": 0,
+      "sumTimeWeightedError": 0,
+      "accuracyScore": 219557.6213029153
+    },
+    {
+      "address": "0x77889eaac9ca631cb2874fdef06c4f60bbc433f8",
+      "numScored": 0,
+      "sumErrorSquared": 0,
+      "numTimeWeighted": 0,
+      "sumTimeWeightedError": 0,
+      "accuracyScore": 216982.2329158333
+    },
+    {
+      "address": "0x365ec3909f4bcd276a157f5e82f6da64968e3ebb",
+      "numScored": 0,
+      "sumErrorSquared": 0,
+      "numTimeWeighted": 0,
+      "sumTimeWeightedError": 0,
+      "accuracyScore": 208073.25
+    },
+    {
+      "address": "0x4d3d050659d450b365e070e0e2b0c5391b9e6db8",
+      "numScored": 0,
+      "sumErrorSquared": 0,
+      "numTimeWeighted": 0,
+      "sumTimeWeightedError": 0,
+      "accuracyScore": 178614.3088114666
+    },
+    {
+      "address": "0x5f6dae1ab75d5c36badc6e55734ef3698fa79b9e",
+      "numScored": 0,
+      "sumErrorSquared": 0,
+      "numTimeWeighted": 0,
+      "sumTimeWeightedError": 0,
+      "accuracyScore": 170904.4063180556
+    },
+    {
+      "address": "0x4f1abd0e5c4506c95a4fd5259371bd9a877d9488",
+      "numScored": 0,
+      "sumErrorSquared": 0,
+      "numTimeWeighted": 0,
+      "sumTimeWeightedError": 0,
+      "accuracyScore": 161401.6226851852
+    }
+  ]
 }

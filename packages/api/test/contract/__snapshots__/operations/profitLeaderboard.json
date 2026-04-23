@@ -1,44 +1,44 @@
 {
   "profitLeaderboard": [
     {
-      "address": "0x4f1abd0e5c4506c95a4fd5259371bd9a877d9488",
-      "totalPnL": "45.747807621764287944"
+      "address": "0xadf3c8d4b159fda439e3c0e519dec3c93de0a4c3",
+      "totalPnL": "750.604002164782514228"
     },
     {
-      "address": "0x5c1d4fed296d2637205ac132ce3e030f5d94d026",
-      "totalPnL": "14.663317161114688858"
+      "address": "0xd2b8da7b659a8273d36bc6a28c3c2521c5f9113f",
+      "totalPnL": "97.767224660806348879"
     },
     {
-      "address": "0xc370ac37b8247df21fe16db239aab1343540a2d1",
-      "totalPnL": "12.977105074050827582"
+      "address": "0xd72ab4c67ba8162cf5bac317590d83cff83e9962",
+      "totalPnL": "0.790926598087909660"
     },
     {
-      "address": "0x0dc63a9be81db634e786aa121ddb5244502be4a4",
-      "totalPnL": "11.666471786684223133"
+      "address": "0x5704db4b2c068d74fde25257106a7029463f812e",
+      "totalPnL": "0.063580576482025267"
     },
     {
-      "address": "0x49aa23e19ae8b333d6cdd69bb09cbb74528952ce",
-      "totalPnL": "10.450670067960563969"
+      "address": "0x309d15039b8effd92b0b1a24c69e659e890ccb82",
+      "totalPnL": "0.059999999999999998"
     },
     {
-      "address": "0x5848677f1cabf41c2a17135bba15b97d93f4f1b6",
-      "totalPnL": "9.846964897867444222"
+      "address": "0x41ee785175c836f9f342b787a818a9b8b02bd8c8",
+      "totalPnL": "0.040000000000000001"
     },
     {
-      "address": "0xed1ff0c0861a125f2b8de24ceb875abd3350ead6",
-      "totalPnL": "4.469064461942968691"
+      "address": "0x27ec33ada38950105ae90f83be2e8a0f41132392",
+      "totalPnL": "0.010000000000000000"
     },
     {
-      "address": "0x6266d78bbcc5dadf193961f3014afbcd3e1fb1d8",
-      "totalPnL": "2.630068666613911699"
+      "address": "0xd7f3e6a2cce478777bbffec9518a140ace3f14a4",
+      "totalPnL": "0.000000000000000000"
     },
     {
-      "address": "0x2360b930a60266dbe9f9d993795fe34556c2ea03",
-      "totalPnL": "2.479907552129741788"
+      "address": "0x09745448f386ec8994f0a38a853d909173a8660f",
+      "totalPnL": "0.000000000000000000"
     },
     {
-      "address": "0xfa80d2f8808eb016fa90cdcdc21ae48fee93db94",
-      "totalPnL": "1.654335533670836522"
+      "address": "0xd8e6af4901719176f0e2c89defac30c12ea6ab4b",
+      "totalPnL": "-0.010000000000000000"
     }
   ]
 }

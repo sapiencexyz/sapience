@@ -3,11 +3,11 @@
     "accountActivity": [
       {
         "timestamp": "<UNIX_TIMESTAMP>",
-        "type": "trade",
-        "prediction": null,
-        "trade": {
-          "id": 12
-        }
+        "type": "prediction",
+        "prediction": {
+          "id": 206
+        },
+        "trade": null
       }
     ]
   }
