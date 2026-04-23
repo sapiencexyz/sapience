@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useMemo, useState } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -9,14 +9,18 @@ import {
 } from '@sapience/ui/components/ui/dialog';
 import { Button } from '@sapience/ui/components/ui/button';
 import { Input } from '@sapience/ui/components/ui/input';
-import { AddressDisplay } from '~/components/shared/AddressDisplay';
-import EnsAvatar from '~/components/shared/EnsAvatar';
 import { useSignMessage } from 'wagmi';
 import { keccak256, stringToHex } from 'viem';
-import { graphqlRequest } from '@sapience/sdk/queries/client/graphqlClient';
 import { useToast } from '@sapience/ui/hooks/use-toast';
-import { useProfileVolume } from '~/hooks/useProfileVolume';
 import { DEFAULT_CHAIN_ID, COLLATERAL_SYMBOLS } from '@sapience/sdk/constants';
+import { useProfileVolume } from '~/hooks/useProfileVolume';
+import EnsAvatar from '~/components/shared/EnsAvatar';
+import { AddressDisplay } from '~/components/shared/AddressDisplay';
+import {
+  ReferralApiError,
+  useSetReferralCode,
+  useUserReferrals,
+} from '~/hooks/referrals/useReferrals';
 
 const VOLUME_THRESHOLD = 5000;
 
@@ -46,6 +50,17 @@ const ReferralVolumeCell = ({ address }: { address: string }) => {
   );
 };
 
+function persistReferralCodeLocally(walletAddress: string, code: string) {
+  try {
+    if (typeof window !== 'undefined') {
+      const key = `sapience:referralCode:${walletAddress.toLowerCase()}`;
+      window.localStorage.setItem(key, code);
+    }
+  } catch {
+    // If this fails (e.g. privacy mode), the dialog may reappear on next connect.
+  }
+}
+
 const ReferralsDialog = ({
   open,
   onOpenChange,
@@ -53,16 +68,40 @@ const ReferralsDialog = ({
   onCodeSet,
 }: ReferralsDialogProps) => {
   const [code, setCode] = useState('');
-  const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [referrals, setReferrals] = useState<ReferralRow[]>([]);
-  const [maxReferrals, setMaxReferrals] = useState<number | null>(null);
   const { toast } = useToast();
   const { signMessageAsync } = useSignMessage();
 
   const userVolume = useProfileVolume(walletAddress ?? undefined);
   const hasEnoughVolume = userVolume.value >= VOLUME_THRESHOLD;
   const inviteCodeDisabled = userVolume.isLoading || !hasEnoughVolume;
+
+  const userReferralsQuery = useUserReferrals(walletAddress, open);
+  const setReferralCode = useSetReferralCode();
+  const submitting = setReferralCode.isPending;
+
+  const { referrals, maxReferrals } = useMemo<{
+    referrals: ReferralRow[];
+    maxReferrals: number | null;
+  }>(() => {
+    const user = userReferralsQuery.data?.user;
+    if (!user) {
+      return { referrals: [], maxReferrals: null };
+    }
+    const sorted = [...user.referrals].sort(
+      (a, b) =>
+        new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+    );
+    const rows: ReferralRow[] = sorted.map((r, idx) => {
+      const position = idx + 1;
+      return {
+        address: r.address,
+        index: position,
+        withinCapacity: position <= (user.maxReferrals ?? 0),
+      };
+    });
+    return { referrals: rows, maxReferrals: user.maxReferrals ?? null };
+  }, [userReferralsQuery.data]);
 
   const invitesRemaining =
     maxReferrals !== null
@@ -72,113 +111,47 @@ const ReferralsDialog = ({
         )
       : null;
 
-  const USER_REFERRALS_QUERY = `
-    query UserReferrals($wallet: String!) {
-      user(where: { address: $wallet }) {
-        address
-        refCodeHash
-        maxReferrals
-        referrals {
-          address
-          createdAt
-        }
-      }
-    }
-  `;
-
-  const fetchReferrals = async (address?: string | null) => {
-    const targetAddress = address ?? walletAddress;
-    if (!targetAddress) return;
-    try {
-      const data = await graphqlRequest<{
-        user: {
-          maxReferrals: number;
-          referrals: { address: string; createdAt: string }[];
-        } | null;
-      }>(USER_REFERRALS_QUERY, { wallet: targetAddress.toLowerCase() });
-
-      if (!data?.user) {
-        setReferrals([]);
-        setMaxReferrals(null);
-        return;
-      }
-
-      const sorted = [...data.user.referrals].sort(
-        (a, b) =>
-          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
-      );
-
-      const rows: ReferralRow[] = sorted.map((r, idx) => {
-        const position = idx + 1;
-        const withinCapacity = position <= (data.user?.maxReferrals ?? 0);
-        return {
-          address: r.address,
-          index: position,
-          withinCapacity,
-        };
-      });
-
-      setReferrals(rows);
-      setMaxReferrals(data.user.maxReferrals ?? null);
-    } catch (e) {
-      console.error('Failed to load referrals', e);
-    }
-  };
-
-  useEffect(() => {
-    if (open) {
-      void fetchReferrals();
-    }
-  }, [open, walletAddress]);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!code.trim() || submitting) return;
     if (!walletAddress) return;
 
+    setError(null);
+
+    const normalizedAddress = walletAddress.toLowerCase();
+    const normalizedCode = code.trim().toLowerCase();
+    const codeHash = keccak256(stringToHex(normalizedCode));
+
+    const payload = {
+      prefix: 'Sapience Referral',
+      walletAddress: normalizedAddress,
+      codeHash,
+      chainId: null,
+      nonce: null,
+    };
+
     try {
-      setSubmitting(true);
-      setError(null);
+      const signature = await signMessageAsync({
+        message: JSON.stringify(payload),
+      });
 
-      const normalizedAddress = walletAddress.toLowerCase();
-      const normalizedCode = code.trim().toLowerCase();
-      const codeHash = keccak256(stringToHex(normalizedCode));
-
-      const payload = {
-        prefix: 'Sapience Referral',
+      await setReferralCode.mutateAsync({
         walletAddress: normalizedAddress,
-        codeHash,
-        chainId: null,
-        nonce: null,
-      };
+        codePlaintext: code.trim(),
+        signature,
+      });
 
-      const message = JSON.stringify(payload);
-      const signature = await signMessageAsync({ message });
+      persistReferralCodeLocally(walletAddress, code.trim());
 
-      const resp = await fetch(
-        `${process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.sapience.xyz'}/referrals/code`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            walletAddress: normalizedAddress,
-            codePlaintext: code.trim(),
-            signature,
-          }),
-        }
-      );
-
-      if (!resp.ok) {
-        const data = (await resp.json().catch(() => null)) as {
-          message?: string;
-        } | null;
-        const message =
-          data?.message || 'Unable to set referral code. Please try again.';
-
+      onCodeSet?.(code.trim());
+      // Immediately refresh referrals so the dashboard reflects the new code
+      // and any updated maxReferrals before closing.
+      await userReferralsQuery.refetch();
+      onOpenChange(false);
+    } catch (err) {
+      if (err instanceof ReferralApiError) {
         if (
-          data?.message ===
+          err.message ===
           'Unable to set referral code. Please choose a different code.'
         ) {
           toast({
@@ -189,36 +162,18 @@ const ReferralsDialog = ({
           // Do not render this specific message inline in the dialog.
           setError(null);
         } else {
-          setError(message);
+          setError(
+            err.message || 'Unable to set referral code. Please try again.'
+          );
         }
         return;
       }
-
-      // Best-effort local persistence by wallet address so we can
-      // avoid re-prompting users who have already provided a code.
-      try {
-        if (walletAddress && typeof window !== 'undefined') {
-          const key = `sapience:referralCode:${walletAddress.toLowerCase()}`;
-          window.localStorage.setItem(key, code.trim());
-        }
-      } catch {
-        // If this fails (e.g. privacy mode), the dialog may reappear on next connect.
-      }
-
-      onCodeSet?.(code.trim());
-      // Immediately refresh referrals so the dashboard reflects the new code
-      // and any updated maxReferrals before closing.
-      await fetchReferrals(walletAddress);
-      onOpenChange(false);
-    } catch (err) {
       console.error('Failed to set referral code', err);
       toast({
         title: 'Unable to set referral code',
         description: err instanceof Error ? err.message : 'Please try again.',
         variant: 'destructive',
       });
-    } finally {
-      setSubmitting(false);
     }
   };
 

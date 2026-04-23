@@ -11,8 +11,12 @@ import { Button } from '@sapience/ui/components/ui/button';
 import { Input } from '@sapience/ui/components/ui/input';
 import { useToast } from '@sapience/ui/hooks/use-toast';
 import { useSignMessage } from 'wagmi';
-import GetAccessDialog from '~/components/shared/GetAccessDialog';
 import { keccak256, stringToHex } from 'viem';
+import GetAccessDialog from '~/components/shared/GetAccessDialog';
+import {
+  ReferralApiError,
+  useClaimReferralCode,
+} from '~/hooks/referrals/useReferrals';
 
 interface RequiredReferralCodeDialogProps {
   open: boolean;
@@ -20,6 +24,27 @@ interface RequiredReferralCodeDialogProps {
   walletAddress: string | null;
   onCodeSet?: (code: string) => void;
   onLogout: () => void;
+}
+
+function persistReferralCodeLocally(walletAddress: string, code: string) {
+  try {
+    if (typeof window !== 'undefined') {
+      const key = `sapience:referralCode:${walletAddress.toLowerCase()}`;
+      window.localStorage.setItem(key, code);
+    }
+  } catch {
+    // If this fails (e.g. privacy mode), the dialog may reappear on next connect.
+  }
+}
+
+function titleForClaimError(status: number, serverMessage: string): string {
+  if (status === 404) return 'Invite code not found';
+  if (status === 401 || serverMessage.toLowerCase().includes('signature')) {
+    return 'Signature verification failed';
+  }
+  if (status === 409) return 'Already claimed';
+  if (status === 403) return 'Code unavailable';
+  return 'Claim failed';
 }
 
 const RequiredReferralCodeDialog = ({
@@ -30,11 +55,12 @@ const RequiredReferralCodeDialog = ({
   onLogout,
 }: RequiredReferralCodeDialogProps) => {
   const [code, setCode] = useState('');
-  const [submitting, setSubmitting] = useState(false);
   const [loggingOut, setLoggingOut] = useState(false);
   const [isGetAccessOpen, setIsGetAccessOpen] = useState(false);
   const { toast } = useToast();
   const { signMessageAsync } = useSignMessage();
+  const claimReferralCode = useClaimReferralCode();
+  const submitting = claimReferralCode.isPending;
 
   const handleLogout = async () => {
     if (loggingOut) return;
@@ -68,8 +94,6 @@ const RequiredReferralCodeDialog = ({
     if (!code.trim() || submitting) return;
     if (!walletAddress) return;
 
-    setSubmitting(true);
-
     const normalizedAddress = walletAddress.toLowerCase();
     const normalizedCode = code.trim().toLowerCase();
     const codeHash = keccak256(stringToHex(normalizedCode));
@@ -97,90 +121,46 @@ const RequiredReferralCodeDialog = ({
           'Your wallet could not sign the verification message. Please try again.',
         variant: 'destructive',
       });
-      setSubmitting(false);
       return;
     }
 
     // Step 2: Submit claim to the server
     try {
-      const resp = await fetch(
-        `${process.env.NEXT_PUBLIC_FOIL_API_URL || 'https://api.sapience.xyz'}/referrals/claim`,
-        {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify({
-            walletAddress: normalizedAddress,
-            codePlaintext: code.trim(),
-            signature,
-          }),
-        }
-      );
-
-      const data = (await resp.json().catch(() => null)) as {
-        allowed?: boolean;
-        index?: number | null;
-        maxReferrals?: number;
-        message?: string;
-      } | null;
-
-      if (!resp.ok) {
-        const serverMessage = data?.message || 'Unknown error';
-        console.error('Referral claim failed:', {
-          status: resp.status,
-          serverMessage,
-        });
-
-        // Use a specific toast title based on the failure type
-        const title =
-          resp.status === 404
-            ? 'Invite code not found'
-            : resp.status === 401 ||
-                serverMessage.toLowerCase().includes('signature')
-              ? 'Signature verification failed'
-              : resp.status === 409
-                ? 'Already claimed'
-                : resp.status === 403
-                  ? 'Code unavailable'
-                  : 'Claim failed';
-
-        toast({
-          title,
-          description: serverMessage,
-          variant: 'destructive',
-        });
-        return;
-      }
+      const data = await claimReferralCode.mutateAsync({
+        walletAddress: normalizedAddress,
+        codePlaintext: code.trim(),
+        signature,
+      });
 
       // Capacity enforcement: if this wallet does not yet have a referral
       // relationship and the code is full, keep the dialog open and surface
       // a clear error instead of silently accepting the code.
-      if (data && data.allowed === false && (data.index ?? null) === null) {
-        const capacityMessage =
-          'This referral code has reached its capacity. Please request a new code or try a different one.';
+      if (data.allowed === false && (data.index ?? null) === null) {
         toast({
           title: 'Referral code full',
-          description: capacityMessage,
+          description:
+            'This referral code has reached its capacity. Please request a new code or try a different one.',
           variant: 'destructive',
         });
         return;
       }
 
-      // Best-effort local persistence by wallet address so we can
-      // avoid re-prompting users who have already provided a code.
-      try {
-        if (walletAddress && typeof window !== 'undefined') {
-          const key = `sapience:referralCode:${walletAddress.toLowerCase()}`;
-          window.localStorage.setItem(key, code.trim());
-        }
-      } catch {
-        // If this fails (e.g. privacy mode), the dialog may reappear on next connect.
-      }
-
+      persistReferralCodeLocally(walletAddress, code.trim());
       onCodeSet?.(code.trim());
       onOpenChange(false);
     } catch (err) {
+      if (err instanceof ReferralApiError) {
+        console.error('Referral claim failed:', {
+          status: err.status,
+          serverMessage: err.message,
+        });
+        toast({
+          title: titleForClaimError(err.status, err.message),
+          description: err.message,
+          variant: 'destructive',
+        });
+        return;
+      }
       console.error('Referral claim network error:', err);
       toast({
         title: 'Network error',
@@ -188,8 +168,6 @@ const RequiredReferralCodeDialog = ({
           'Could not reach the server. Please check your connection and try again.',
         variant: 'destructive',
       });
-    } finally {
-      setSubmitting(false);
     }
   };
 
