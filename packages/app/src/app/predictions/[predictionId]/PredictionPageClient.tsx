@@ -96,10 +96,9 @@ export default function PredictionPageClient({
     };
   });
 
-  const positionSize = formatCollateral(prediction.predictorCollateral);
-  const totalPayout =
-    formatCollateral(prediction.predictorCollateral) +
-    formatCollateral(prediction.counterpartyCollateral);
+  const predictorStake = formatCollateral(prediction.predictorCollateral);
+  const counterpartyStake = formatCollateral(prediction.counterpartyCollateral);
+  const totalPayout = predictorStake + counterpartyStake;
   const createdAt = prediction.createdAt
     ? new Date(prediction.createdAt)
     : null;
@@ -123,17 +122,9 @@ export default function PredictionPageClient({
     ? prediction.result
     : (computed?.result ?? 'UNRESOLVED');
   const predictorWon = result === 'PREDICTOR_WINS';
-  // This page shows the predictor's side; NON_DECISIVE resolves to the counterparty.
-  const positionWon = isSettled && predictorWon;
-
-  // PnL
-  const pnl = isSettled
-    ? positionWon
-      ? totalPayout - positionSize
-      : -positionSize
-    : null;
-  const roi =
-    pnl !== null && positionSize > 0 ? (pnl / positionSize) * 100 : null;
+  // NON_DECISIVE resolves to the counterparty on-chain.
+  const counterpartyWon =
+    result === 'COUNTERPARTY_WINS' || result === 'NON_DECISIVE';
 
   return (
     <>
@@ -142,14 +133,17 @@ export default function PredictionPageClient({
           positionId={predictionId}
           createdAt={createdAt}
           endsAtMs={endsAtMs}
-          positionSize={positionSize}
+          positionSize={0}
           payout={totalPayout}
-          pnl={pnl}
-          roi={roi}
+          pnl={null}
+          roi={null}
           isSettled={isSettled}
-          positionWon={positionWon}
           predictorAddress={prediction.predictor}
           counterpartyAddress={prediction.counterparty}
+          predictorStake={predictorStake}
+          counterpartyStake={counterpartyStake}
+          predictorWon={predictorWon}
+          counterpartyWon={counterpartyWon}
         />
       </div>
 
@@ -159,7 +153,7 @@ export default function PredictionPageClient({
         hideHeader
         positionStatus={
           isSettled
-            ? positionWon
+            ? predictorWon
               ? 'won'
               : 'lost'
             : endsAtMs && endsAtMs <= Date.now()
