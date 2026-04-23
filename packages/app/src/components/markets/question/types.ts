@@ -1,8 +1,9 @@
-// Type for combined prediction in a position
+// Type for combined prediction in a position.
+// Question/resolver/category are hydrated from the server by
+// CombinedPredictionsList when the popover opens.
 export type CombinedPrediction = {
   conditionId: string;
   resolverAddress?: string;
-  question: string;
   prediction: boolean;
   categorySlug?: string;
 };
