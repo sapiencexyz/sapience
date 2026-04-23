@@ -180,26 +180,15 @@ export default function PositionSummary({
 
   const renderStatusCell = () => {
     let value: string;
-    let badgeClass: string;
-    if (isSettled && predictorWon) {
-      value = 'PREDICTOR';
-      badgeClass = 'border-yes/40 bg-yes/10 text-yes';
-    } else if (isSettled && counterpartyWon) {
-      value = 'COUNTERPARTY';
-      badgeClass = 'border-yes/40 bg-yes/10 text-yes';
-    } else {
-      value = 'PENDING';
-      badgeClass =
-        'border-muted-foreground/40 bg-muted-foreground/10 text-muted-foreground';
-    }
+    if (isSettled && predictorWon) value = 'PREDICTOR';
+    else if (isSettled && counterpartyWon) value = 'COUNTERPARTY';
+    else value = 'PENDING';
     return (
-      <div className="flex flex-col gap-[5px] min-w-0 items-start">
+      <div className="flex flex-col gap-1 min-w-0">
         <div className="text-[11px] uppercase tracking-wider text-muted-foreground font-normal font-mono">
           Winner
         </div>
-        <span
-          className={`inline-block px-1.5 py-0.5 text-xs font-medium rounded-md font-mono border ${badgeClass}`}
-        >
+        <span className="text-sm md:text-base font-medium font-mono text-foreground">
           {value}
         </span>
       </div>
