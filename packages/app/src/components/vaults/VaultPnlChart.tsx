@@ -180,7 +180,7 @@ export default function VaultPnlChart({
   const [internalPeriod, setInternalPeriod] = useState<Period>('1W');
   const period = externalPeriod ?? internalPeriod;
   const setPeriod = setInternalPeriod;
-  const [displayMode, setDisplayMode] = useState<DisplayMode>('abs');
+  const [displayMode, setDisplayMode] = useState<DisplayMode>('pct');
 
   // Use internal fetch if no external data provided
   const { data: internalStats, isLoading: internalLoading } =
