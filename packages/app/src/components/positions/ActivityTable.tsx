@@ -852,7 +852,7 @@ export default function ActivityTable({
           </tbody>
         </table>
       </div>
-      <div ref={loadMoreRef} className="h-1" />
+      <div ref={loadMoreRef} className="h-0" />
       {sharePrediction && (
         <SharePredictionDialog
           sharePrediction={sharePrediction}
