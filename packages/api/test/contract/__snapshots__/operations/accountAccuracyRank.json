@@ -1,8 +1,8 @@
 {
   "accountAccuracyRank": {
-    "address": "0x0000000000000000000000000000000000000000",
-    "accuracyScore": 0,
-    "rank": null,
-    "totalForecasters": 0
+    "address": "0xd491e93c6b05e3cda3073482a5651bcfe3dc1cc7",
+    "accuracyScore": 1283447,
+    "rank": 1,
+    "totalForecasters": 27
   }
 }

@@ -3,17 +3,18 @@
  *
  * Every model's relation field resolver follows the same pattern:
  *
- *   1. Check if the relation was eagerly loaded on the parent row via
- *      Prisma `include` (driven by the root resolver's
- *      `buildPrismaInclude(info)`). If so, return it directly — no
+ *   1. If the parent row already carries the relation (e.g. a caller
+ *      threaded it in via Prisma `include`), return it directly — no
  *      second round-trip.
  *   2. Otherwise, fall back to a fresh `prisma.<parent>.findUniqueOrThrow
- *      ({ where: { id } }).<relation>(args)` — the standard
- *      typegraphql-prisma-equivalent shape.
+ *      ({ where: { id } }).<relation>(args)`.
  *
- * This is the same semantic typegraphql-prisma's generated
- * RelationResolvers implement, just written explicitly so the SDL-first
- * stack doesn't need their codegen.
+ * This matches typegraphql-prisma's generated RelationResolvers: relations
+ * are fetched on demand unless something upstream pre-loaded them. No
+ * root resolver currently pre-loads via `include`, so in practice every
+ * relation field takes the fallback path — a per-row round-trip, same as
+ * the deployed stack. If N+1 becomes a bottleneck, add an include at the
+ * root resolver and this helper's fast path will start firing.
  */
 
 import type { PrismaClient } from '../../../../generated/prisma';
@@ -23,9 +24,10 @@ type AnyRecord = Record<string, unknown>;
 
 /** A `prisma.<model>` delegate (findUniqueOrThrow + relation getters). */
 type Delegate = {
-  findUniqueOrThrow: (args: {
-    where: unknown;
-  }) => Record<string, (args?: unknown) => Promise<unknown>> & {
+  findUniqueOrThrow: (args: { where: unknown }) => Record<
+    string,
+    (args?: unknown) => Promise<unknown>
+  > & {
     then?: unknown;
   };
 };
