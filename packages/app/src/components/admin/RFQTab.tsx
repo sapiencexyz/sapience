@@ -45,7 +45,6 @@ import type { ColumnDef } from '@tanstack/react-table';
 import { useMemo, useState } from 'react';
 import { Copy, Upload, FileText, CheckCircle, XCircle } from 'lucide-react';
 import { formatDistanceToNow, fromUnixTime } from 'date-fns';
-import { useReadContract } from 'wagmi';
 import { keccak256, toHex, isAddress } from 'viem';
 import {
   manualConditionResolver,
@@ -55,7 +54,13 @@ import {
 import { DEFAULT_CHAIN_ID, CHAIN_ID_ETHEREAL } from '@sapience/sdk/constants';
 import DateTimePicker from '../shared/DateTimePicker';
 import DataTable from './data-table';
+import { ConditionStatusBadges } from './ConditionStatusBadges';
 import { parseCsv, mapCsv } from '~/lib/utils/csv';
+import {
+  validateConditionCsvRow,
+  type ConditionCsvRow as CSVRow,
+  type ValidatedConditionCsvRow as ValidatedCSVRow,
+} from '~/lib/admin/conditionCsv';
 import { useAdminApi } from '~/hooks/useAdminApi';
 import { useCategories } from '~/hooks/graphql/useCategories';
 import { useConditions } from '~/hooks/graphql/useConditions';
@@ -78,29 +83,6 @@ type RFQRow = {
   _hasData?: boolean;
 };
 
-type CSVRow = {
-  question: string;
-  categorySlug?: string;
-  endTimeUTC: string;
-  public?: string;
-  description: string;
-  shortName?: string;
-  similarMarkets?: string;
-  group?: string;
-  resolver: string;
-};
-
-type ValidatedCSVRow = CSVRow & {
-  rowIndex: number;
-  isValid: boolean;
-  errors: string[];
-  parsedEndTime?: number;
-  parsedPublic?: boolean;
-  parsedSimilarMarkets?: string[];
-  parsedGroup?: string;
-  parsedResolver?: string;
-};
-
 type RFQTabProps = {
   createOpen: boolean;
   setCreateOpen: (open: boolean) => void;
@@ -113,22 +95,6 @@ type RFQTabProps = {
 
 type ConditionFilter = 'all' | 'needs-settlement' | 'upcoming' | 'settled';
 type VisibilityFilter = 'all' | 'public' | 'private';
-
-const WRAPPED_MARKETS_ABI = [
-  {
-    inputs: [{ internalType: 'bytes32', name: '', type: 'bytes32' }],
-    name: 'wrappedMarkets',
-    outputs: [
-      { internalType: 'bytes32', name: 'marketId', type: 'bytes32' },
-      { internalType: 'bool', name: 'assertionSubmitted', type: 'bool' },
-      { internalType: 'bool', name: 'settled', type: 'bool' },
-      { internalType: 'bool', name: 'resolvedToYes', type: 'bool' },
-      { internalType: 'bytes32', name: 'assertionId', type: 'bytes32' },
-    ],
-    stateMutability: 'view',
-    type: 'function',
-  },
-] as const;
 
 const RFQTab = ({
   createOpen,
@@ -233,79 +199,6 @@ const RFQTab = ({
     setEscrowChainId(13374202);
   };
 
-  // CSV Import helper functions
-  const validateCSVRow = (row: CSVRow, rowIndex: number): ValidatedCSVRow => {
-    const errors: string[] = [];
-    let parsedEndTime: number | undefined;
-    let parsedPublic: boolean | undefined;
-    let parsedSimilarMarkets: string[] | undefined;
-    let parsedResolver: string | undefined;
-
-    // Validate required fields
-    if (!row.question?.trim()) errors.push('Question is required');
-    if (!row.endTimeUTC?.trim()) errors.push('End time is required');
-    if (!row.description?.trim()) errors.push('Description is required');
-    if (!row.resolver?.trim()) {
-      errors.push('Resolver address is required');
-    } else {
-      const trimmedResolver = row.resolver.trim();
-      if (!isAddress(trimmedResolver as `0x${string}`)) {
-        errors.push('Resolver must be a valid Ethereum address (0x...)');
-      } else {
-        parsedResolver = trimmedResolver.toLowerCase();
-      }
-    }
-
-    // Validate end time
-    if (row.endTimeUTC?.trim()) {
-      const timestamp = parseInt(row.endTimeUTC.trim(), 10);
-      if (Number.isNaN(timestamp)) {
-        errors.push('End time must be a valid Unix timestamp');
-      } else if (timestamp <= Math.floor(Date.now() / 1000)) {
-        errors.push('End time must be in the future');
-      } else {
-        parsedEndTime = timestamp;
-      }
-    }
-
-    // Validate public field
-    if (row.public !== undefined && row.public !== '') {
-      const publicValue = row.public.toLowerCase().trim();
-      if (publicValue === 'true') {
-        parsedPublic = true;
-      } else if (publicValue === 'false') {
-        parsedPublic = false;
-      } else {
-        errors.push('Public must be "true" or "false"');
-      }
-    } else {
-      parsedPublic = true; // Default to true if not specified
-    }
-
-    // Parse similar markets
-    if (row.similarMarkets?.trim()) {
-      parsedSimilarMarkets = row.similarMarkets
-        .split(',')
-        .map((url) => url.trim())
-        .filter((url) => url.length > 0);
-    }
-
-    // Parse group (optional, any non-empty string is valid)
-    const parsedGroup = row.group?.trim() || undefined;
-
-    return {
-      ...row,
-      rowIndex,
-      isValid: errors.length === 0,
-      errors,
-      parsedEndTime,
-      parsedPublic,
-      parsedSimilarMarkets,
-      parsedGroup,
-      parsedResolver,
-    };
-  };
-
   const handleFileUpload = async (file: File) => {
     setCsvFile(file);
     setValidatedRows([]);
@@ -325,7 +218,7 @@ const RFQTab = ({
       // Expecting header row to include the specific keys; map rows to objects.
       const objects = mapCsv(headers, rows) as unknown as CSVRow[];
       const validated = objects.map((row: CSVRow, index: number) =>
-        validateCSVRow(row, index + 1)
+        validateConditionCsvRow(row, index + 1)
       );
       setValidatedRows(validated);
     } catch (err) {
@@ -407,63 +300,6 @@ const RFQTab = ({
     setImportProgress(0);
     setCsvImportOpen(false);
   };
-
-  function ConditionStatusBadges({
-    conditionId,
-    endTime: badgeEndTime,
-    isSettledOverride,
-    chainId: badgeChainId,
-    resolver: badgeResolver,
-  }: {
-    conditionId?: string;
-    endTime?: number;
-    isSettledOverride?: boolean;
-    chainId?: number;
-    resolver?: string | null;
-  }) {
-    const nowSeconds = Math.floor(Date.now() / 1000);
-    const isUpcoming = (badgeEndTime ?? 0) > nowSeconds;
-    const isPastEnd = !!badgeEndTime && badgeEndTime <= nowSeconds;
-
-    const marketId = conditionId as `0x${string}` | undefined;
-
-    const targetChainId = badgeChainId || DEFAULT_CHAIN_ID;
-    const address =
-      (badgeResolver as `0x${string}` | undefined) ??
-      pythConditionResolver[targetChainId]?.address;
-
-    const { data } = useReadContract({
-      address,
-      abi: WRAPPED_MARKETS_ABI,
-      functionName: 'wrappedMarkets',
-      args: marketId ? [marketId] : undefined,
-      chainId: targetChainId,
-      query: { enabled: Boolean(marketId) && isSettledOverride === undefined },
-    });
-
-    const tuple = data;
-    const settled = isSettledOverride ?? Boolean(tuple?.[2] ?? false);
-
-    return (
-      <div className="flex flex-col items-start gap-1">
-        {isPastEnd && settled ? (
-          <Badge variant="outline" className="whitespace-nowrap">
-            Settled
-          </Badge>
-        ) : null}
-        {isPastEnd && !settled ? (
-          <Badge variant="destructive" className="whitespace-nowrap">
-            Needs Settlement
-          </Badge>
-        ) : null}
-        {isUpcoming ? (
-          <Badge variant="secondary" className="whitespace-nowrap">
-            Upcoming
-          </Badge>
-        ) : null}
-      </div>
-    );
-  }
 
   const columns: ColumnDef<RFQRow>[] = useMemo(
     () => [
