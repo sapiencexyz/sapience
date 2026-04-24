@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import type { Address } from 'viem';
+import { zeroAddress as ZERO_ADDRESS, type Address } from 'viem';
 import type { Pick, PickJson } from '@sapience/sdk/types';
 import type { ValidationResult } from '@sapience/sdk/auction/validation';
 import { validateBidOnChain } from '@sapience/sdk/auction/validation';
@@ -31,8 +31,6 @@ export interface UseValidatedBidsResult {
   invalidBidCount: number;
   isValidating: boolean;
 }
-
-const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
 
 /**
  * Hook that wraps raw QuoteBid[] with on-chain bid validation.
@@ -260,6 +258,7 @@ export function useValidatedBids(
     collateralTokenAddress,
     predictorAddress,
     predictorCollateral,
+    predictorNonce,
     picksJson,
     isSponsored,
     sponsorAddress,

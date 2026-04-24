@@ -15,7 +15,7 @@ import { Info } from 'lucide-react';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { FormProvider, type UseFormReturn, useWatch } from 'react-hook-form';
-import { parseUnits } from 'viem';
+import { parseUnits, zeroAddress as ZERO_ADDRESS } from 'viem';
 import { useAccount } from 'wagmi';
 import { generateRandomNonce } from '@sapience/sdk';
 import {
@@ -29,6 +29,7 @@ import {
   type PythPrediction,
   type PredictionListItemData,
 } from '@sapience/ui';
+import { buildPythAuctionStartPayload } from '@sapience/sdk/auction/buildAuctionPayload';
 import SponsorshipIndicator from './SponsorshipIndicator';
 import { PythMarketBadge } from '~/components/shared/PythMarketBadge';
 import { useConnectDialog } from '~/lib/context/ConnectDialogContext';
@@ -36,7 +37,6 @@ import { PREFERRED_ESTIMATE_QUOTER } from '~/lib/constants';
 import { useConnectedWallet } from '~/hooks/useConnectedWallet';
 import { PositionSizeInput } from '~/components/markets/forms/inputs/PositionSizeInput';
 import BidDisplay from '~/components/markets/forms/shared/BidDisplay';
-import { buildPythAuctionStartPayload } from '~/lib/auction/buildAuctionPayload';
 import {
   formatPythDurationFromNow,
   formatPythFeedLabel,
@@ -174,7 +174,6 @@ export default function PositionForm({
   // This MUST match the logic in useAuctionStart.requestQuotes
   // - If using session signing (smart account with active session): use effectiveAddress (smart account)
   // - Otherwise (signing with wallet): use predictorAddress (wallet)
-  const ZERO_ADDRESS = '0x0000000000000000000000000000000000000000';
   const willUseSessionSigning = isUsingSmartAccount && !!sessionSignMessage;
   const triggerMode = getAuctionTriggerMode(
     willUseSessionSigning,

@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { parseUnits } from 'viem';
+import { parseUnits, zeroAddress as ZERO_ADDRESS } from 'viem';
 import { useAccount, useReadContract } from 'wagmi';
 import { predictionMarketEscrowAbi } from '@sapience/sdk/abis';
 import { predictionMarketEscrow } from '@sapience/sdk/contracts';
@@ -15,8 +15,6 @@ import { getSharedAuctionWsClient } from '~/lib/ws/AuctionWsClient';
 import hub from '~/lib/auction/useAuctionBidsHub';
 import type { RecentCombo } from '~/hooks/graphql/useRecentCombos';
 
-const ZERO_ADDRESS =
-  '0x0000000000000000000000000000000000000000' as `0x${string}`;
 const PREDICTOR_POSITION_SIZE_WEI = parseUnits('1', 18).toString();
 
 /**

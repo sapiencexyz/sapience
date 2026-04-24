@@ -1,4 +1,4 @@
-import { parseDateTimeLocalToUnixSeconds } from '~/lib/auction/buildAuctionPayload';
+import { parseDateTimeLocalToUnixSeconds } from '@sapience/sdk/auction/buildAuctionPayload';
 
 // Strip the Pyth feed namespace so only the symbol remains
 // (`Crypto.BTC/USD` → `BTC/USD`, `Equity.US.AAPL` → `AAPL`).
