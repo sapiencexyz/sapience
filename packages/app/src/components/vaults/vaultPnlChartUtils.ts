@@ -87,6 +87,23 @@ export function buildVaultPnlChartData(
   });
 }
 
+export function computeVaultPnlYDomain(
+  values: number[],
+  displayMode: 'pct' | 'abs'
+): [number, number] {
+  if (values.length === 0) return [-1, 1];
+
+  const minVal = Math.min(...values);
+  const maxVal = Math.max(...values);
+  const range = maxVal - minVal;
+  const padding = range * 0.1 || (displayMode === 'pct' ? 0.01 : 0.1);
+
+  // Anchor the baseline at zero when the series never goes negative so gains
+  // read against a stable floor instead of a floating one that hides scale.
+  const bottom = minVal >= 0 ? 0 : minVal - padding;
+  return [bottom, maxVal + padding];
+}
+
 export function calculateVaultPnlHeadlineApy(
   chartData: VaultPnlChartPoint[],
   nowSec = Math.floor(Date.now() / 1000)
