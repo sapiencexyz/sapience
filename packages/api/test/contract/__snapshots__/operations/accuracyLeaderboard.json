@@ -30,7 +30,7 @@
       "sumErrorSquared": 0,
       "numTimeWeighted": 0,
       "sumTimeWeightedError": 0,
-      "accuracyScore": 285429.9456583334
+      "accuracyScore": 285429.94565833337
     },
     {
       "address": "0x0d874e6141e3ee1c6b24ede381c663c1e16214db",
@@ -38,7 +38,7 @@
       "sumErrorSquared": 0,
       "numTimeWeighted": 0,
       "sumTimeWeightedError": 0,
-      "accuracyScore": 219557.6213029153
+      "accuracyScore": 219557.62130291527
     },
     {
       "address": "0x77889eaac9ca631cb2874fdef06c4f60bbc433f8",
@@ -46,7 +46,7 @@
       "sumErrorSquared": 0,
       "numTimeWeighted": 0,
       "sumTimeWeightedError": 0,
-      "accuracyScore": 216982.2329158333
+      "accuracyScore": 216982.23291583333
     },
     {
       "address": "0x365ec3909f4bcd276a157f5e82f6da64968e3ebb",
@@ -62,7 +62,7 @@
       "sumErrorSquared": 0,
       "numTimeWeighted": 0,
       "sumTimeWeightedError": 0,
-      "accuracyScore": 178614.3088114666
+      "accuracyScore": 178614.30881146665
     },
     {
       "address": "0x5f6dae1ab75d5c36badc6e55734ef3698fa79b9e",
@@ -70,7 +70,7 @@
       "sumErrorSquared": 0,
       "numTimeWeighted": 0,
       "sumTimeWeightedError": 0,
-      "accuracyScore": 170904.4063180556
+      "accuracyScore": 170904.40631805555
     },
     {
       "address": "0x4f1abd0e5c4506c95a4fd5259371bd9a877d9488",

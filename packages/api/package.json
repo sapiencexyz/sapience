@@ -63,6 +63,7 @@
     "@graphql-tools/schema": "^10.0.32",
     "@prisma/adapter-pg": "^7.7.0",
     "@prisma/client": "7.7.0",
+    "@prisma/client-runtime-utils": "7.7.0",
     "@sapience/sdk": "workspace:*",
     "@sentry/cli": "2.42.2",
     "@sentry/node": "8.49.0",
@@ -106,7 +107,7 @@
     "vitest": "2.1.9"
   },
   "engines": {
-    "node": ">=22.x",
+    "node": ">=22.12",
     "pnpm": "9.x"
   }
 }
